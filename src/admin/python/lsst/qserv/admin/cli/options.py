@@ -22,10 +22,27 @@
 """
 
 
+from abc import abstractmethod
 import click
 from functools import partial
+from typing import Callable, List
 
 from .utils import process_targs, yaml_presets
+
+
+class OptionGroup:
+    """Base class for an option group decorator. Requires the option group
+    subclass to have a property called `decorator`."""
+
+    @property
+    @abstractmethod
+    def decorators(self) -> List[Callable]:
+        pass
+
+    def __call__(self, f: Callable) -> Callable:
+        for decorator in reversed(self.decorators):
+            f = decorator(f)
+        return f
 
 
 cmsd_manager_option = partial(
@@ -262,6 +279,16 @@ targs_file_option = partial(
     "--targs-file",
     help="""Path to a yaml file that contains key-value pairs to apply to templates.""",
 )
+
+
+class targs_options(OptionGroup):  # noqa: N801
+
+    @property
+    def decorators(self) -> List[Callable]:
+        return [
+            targs_option(),
+            targs_file_option(),
+        ]
 
 
 log_cfg_file_option = partial(

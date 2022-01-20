@@ -56,6 +56,7 @@ from .options import (
     run_option,
     run_tests_option,
     targs_option,
+    targs_options,
     targs_file_option,
     tests_yaml_option,
     unload_option,
@@ -352,8 +353,7 @@ def delete_database(repl_ctrl_uri: str, database: str, admin: bool) -> None:
     default=czar_cfg_template,
     show_default=True,
 )
-@targs_option()
-@targs_file_option()
+@targs_options()
 @cmd_option(default="mysql-proxy --proxy-lua-script=/usr/local/lua/qserv/scripts/mysqlProxy.lua "
 "--lua-cpath=/usr/local/lua/qserv/lib/czarProxy.so --defaults-file={{proxy_cfg_path}}")
 @options_file_option()
@@ -407,8 +407,7 @@ def proxy(
     default=cmsd_manager_cfg_path,
     show_default=True,
 )
-@targs_option()
-@targs_file_option()
+@targs_options()
 @cmd_option(default="cmsd -c {{cmsd_manager_cfg_path}} -n manager -I v4")
 @options_file_option()
 def cmsd_manager(
@@ -447,8 +446,7 @@ def cmsd_manager(
     default=xrootd_manager_cfg_path,
     show_default=True,
 )
-@targs_option()
-@targs_file_option()
+@targs_options()
 @cmd_option(default="xrootd -c {{xrootd_manager_cfg_path}} -n manager -I v4")
 @options_file_option()
 def xrootd_manager(
@@ -482,8 +480,7 @@ def xrootd_manager(
 @cmsd_worker_cfg_path_option()
 @xrdssi_cfg_file_option()
 @xrdssi_cfg_path_option()
-@targs_option()
-@targs_file_option()
+@targs_options()
 @cmd_option(default="cmsd -c {{cmsd_worker_cfg_path}} -n worker -I v4 -l @libXrdSsiLog.so -+xrdssi {{xrdssi_cfg_path}}")
 @options_file_option()
 def worker_cmsd(
@@ -526,8 +523,7 @@ def worker_cmsd(
 @cmsd_worker_cfg_path_option()
 @xrdssi_cfg_file_option()
 @xrdssi_cfg_path_option()
-@targs_option()
-@targs_file_option()
+@targs_options()
 @cmd_option(default="xrootd -c {{cmsd_worker_cfg_path}} -n worker -I v4 -l @libXrdSsiLog.so -+xrdssi {{xrdssi_cfg_path}}")
 @options_file_option()
 def worker_xrootd(
@@ -579,8 +575,7 @@ def worker_xrootd(
 )
 @debug_option()
 @cmd_option(default="qserv-replica-worker --qserv-worker-db={{db_admin_uri}} {% for arg in extended_args %}{{arg}}  {% endfor %}")
-@targs_option()
-@targs_file_option()
+@targs_options()
 @run_option()
 @options_file_option()
 def worker_repl(
@@ -633,8 +628,7 @@ def worker_repl(
 )
 @log_cfg_file_option(default="/config-etc/log4cxx.replication.properties")
 @cmd_option(default="qserv-replica-master-http --config={{db_uri}} {% for arg in extended_args %}{{arg}}  {% endfor %}")
-@targs_option()
-@targs_file_option()
+@targs_options()
 @run_option()
 @options_file_option()
 def replication_controller(
