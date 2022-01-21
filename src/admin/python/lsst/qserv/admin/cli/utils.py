@@ -22,12 +22,19 @@
 """
 
 import click
+import click.testing
+import copy
 import logging
-from typing import cast, Dict, Sequence, Tuple, Union
+import os
+import traceback
+from typing import cast, Dict, List, Sequence, Tuple, Union
 import yaml
 
 
 _log = logging.getLogger(__name__)
+
+
+Targs = Dict[str, Union[str, Sequence[str]]]
 
 
 def split_kv(values: Sequence[str]) -> Dict[str, str]:
@@ -105,3 +112,98 @@ def _read_yaml_presets(file: str, cmd_name: str) -> Dict[str, Union[str, int, bo
     with open(file) as f:
         presets = yaml.safe_load(f.read())
     return presets.get(cmd_name, dict())
+
+
+def process_targs(
+    ctx: click.Context,
+    param: click.Parameter,
+    vals: List[str]
+) -> Targs:
+    """Helper for the `click.option` that accepts template argument overrides.
+
+    On the CLI the option must be used once for each template argument.
+
+    The value can contain a single element, or multiple elements separated by
+    commas to create a list. (A single item followed by a comma will create a
+    list).
+
+    Parameters
+    ----------
+    ctx : click.Context
+        The click context for the current command.
+    param : click.Parameter
+        The click parameter currently being processed.
+    vals : List[str]
+        The value for the current parameter.
+
+    Returns
+    -------
+    Dict[str, str]
+        The modified current parameter value.
+
+    Raises
+    ------
+    RuntimeError
+        If the value does not contain exactly one equal sign.
+    """
+    kvs = list((pair.split("=", maxsplit=1) for pair in vals))
+    if any([len(kv) != 2 for kv in kvs]):
+        raise RuntimeError("Each argument to --targs must be a key-value pair with exactly one '='.")
+    # if the value ends with a comma it should be a list but remove the trailing
+    # comma to prevent an empty value, because "a,".split(",") becomes
+    # ["a", ""], and "a".split(",") becomes ["a"].
+    d = dict((k, (v.rstrip(",").split(",") if "," in v else v)) for k, v in kvs)
+    return d
+
+
+def targs(
+    ctx: click.Context,
+) -> Targs:
+    """Helper for click.command functions that assemble template
+    arguments from environment variables, command options, a --targs option and
+    a --targs-file option.
+
+    Parameters
+    ----------
+    ctx : click.Context
+        The click context for the current command.
+
+    Returns
+    -------
+    targs : Dict[str, Union[int, Any]]
+        The dict of values to to render templates.
+    """
+    options = copy.copy(ctx.params)
+    targs = options.pop("targs")
+    targs_file = options.pop("targs_file")
+    ret: Targs = dict(os.environ)
+    if hasattr(ctx.obj, "extended_args"):
+        ret["extended_args"] = ctx.obj.extended_args
+    ret.update(options)
+    if targs_file:
+        with open(targs_file) as f:
+            ret.update(yaml.safe_load(f.read()))
+    if targs:
+        ret.update(targs)
+    return ret
+
+
+def clickResultMsg(result: click.testing.Result) -> str:
+    """Helper for unit tests that use `click.testing.CliRunner`, which
+    returns a result object. This accepts a result object and returns a string
+    that can be used in a `unittest.assert...` `msg` argument.
+
+    Parameters
+    ----------
+    result : click.testing.Result
+        The result object returned from click.testing.CliRunner.invoke
+
+    Returns
+    -------
+    msg : `str`
+        The message string.
+    """
+    msg = f"""\noutput: {result.output}\nexception: {result.exception}"""
+    if result.exception:
+        msg += f"""\ntraceback: {"".join(traceback.format_tb(result.exception.__traceback__))}"""
+    return msg

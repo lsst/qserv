@@ -46,6 +46,7 @@ base_image_build_subdir = "admin/tools/docker/base"
 user_build_image_subdir = "admin/tools/docker/build-user"
 run_image_build_subdir = "admin/tools/docker/run"
 mariadb_image_subdir = "admin/tools/docker/mariadb"
+mypy_cfg_file = "src/admin/python/mypy.ini"
 
 
 _log = logging.getLogger(__name__)
@@ -335,7 +336,7 @@ def mypy(
         "--exclude",
         "testing",
     ]
-    mypy_ini_file = os.path.join(qserv_build_root.format(user=user), "mypy.ini")
+    mypy_ini_file = os.path.join(qserv_build_root.format(user=user), mypy_cfg_file)
     args.extend(["--config-file", mypy_ini_file])
     if dry:
         print(" ".join(args))
