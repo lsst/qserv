@@ -36,7 +36,8 @@ from click.decorators import pass_context
 from .options import (
     case_option,
     cmd_option,
-    cmsd_manager_option,
+    cmsd_manager_name_option,
+    cmsd_manager_count_option,
     compare_results_option,
     czar_connection_option,
     db_uri_option,
@@ -431,9 +432,8 @@ def cmsd_manager(
 
 @entrypoint.command()
 @pass_context
-@cmsd_manager_option(
-    help="Populates 'all.manager' in the xrootd manager config file.",
-)
+@cmsd_manager_name_option()
+@cmsd_manager_count_option()
 @click.option(
     "--xrootd_manager-cfg-file",
     help="Path to the xrootd manager config file.",
@@ -451,7 +451,8 @@ def cmsd_manager(
 @options_file_option()
 def xrootd_manager(
     ctx: click.Context,
-    cmsd_manager: str,
+    cmsd_manager_name: str,
+    cmsd_manager_count: str,
     xrootd_manager_cfg_file: str,
     xrootd_manager_cfg_path: str,
     targs: Dict[str, str],
@@ -472,9 +473,8 @@ def xrootd_manager(
 @pass_context
 @db_uri_option(help=worker_db_help)
 @vnid_config_option(required=True)
-@cmsd_manager_option(
-    help="Populates 'all.manager' in the cmsd worker config file.",
-)
+@cmsd_manager_name_option()
+@cmsd_manager_count_option()
 @debug_option()
 @cmsd_worker_cfg_file_option()
 @cmsd_worker_cfg_path_option()
@@ -485,7 +485,8 @@ def xrootd_manager(
 @options_file_option()
 def worker_cmsd(
     ctx: click.Context,
-    cmsd_manager: str,
+    cmsd_manager_name: str,
+    cmsd_manager_count: str,
     vnid_config: str,
     debug_port: Optional[int],
     db_uri: str,
@@ -515,7 +516,8 @@ def worker_cmsd(
 @db_uri_option(help=worker_db_help)
 @db_admin_uri_option(help=admin_worker_db_help)
 @vnid_config_option(required=True)
-@cmsd_manager_option(required=True)
+@cmsd_manager_name_option()
+@cmsd_manager_count_option()
 @repl_ctrl_domain_name_option()
 @mysql_monitor_password_option()
 @db_qserv_user_option()
@@ -532,7 +534,8 @@ def worker_xrootd(
     db_uri: str,
     db_admin_uri: str,
     vnid_config: str,
-    cmsd_manager: str,
+    cmsd_manager_name: str,
+    cmsd_manager_count: int,
     repl_ctl_dn: str,
     mysql_monitor_password: str,
     db_qserv_user: str,
@@ -550,7 +553,6 @@ def worker_xrootd(
         db_uri=db_uri,
         db_admin_uri=db_admin_uri,
         vnid_config=vnid_config,
-        cmsd_manager=cmsd_manager,
         repl_ctl_dn=repl_ctl_dn,
         mysql_monitor_password=mysql_monitor_password,
         db_qserv_user=db_qserv_user,

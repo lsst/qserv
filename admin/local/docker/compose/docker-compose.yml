@@ -93,7 +93,8 @@ services:
           --db-uri mysql://qsmaster@127.0.0.1:3306
           --db-admin-uri mysql://root:CHANGEME@127.0.0.1:3306
           --vnid-config "@/usr/local/lib64/libreplica.so mysql://qsmaster@127.0.0.1:3306/qservw_worker 0 0"
-          --cmsd-manager manager-xrootd
+          --cmsd-manager-name manager-xrootd
+          --cmsd-manager-count 1
           --mysql-monitor-password CHANGEME_MONITOR
         environment:
             << : *log-environment
@@ -116,7 +117,8 @@ services:
           entrypoint worker-cmsd
           --db-uri mysql://qsmaster@worker-db-0:3306
           --vnid-config "@/usr/local/lib64/libreplica.so mysql://qsmaster@127.0.0.1:3306/qservw_worker 0 0"
-          --cmsd-manager manager-xrootd
+          --cmsd-manager-name manager-xrootd
+          --cmsd-manager-count 1
         network_mode: "service:worker-xrootd-0"
         environment:
             << : *log-environment
@@ -172,7 +174,8 @@ services:
           --db-uri mysql://qsmaster@127.0.0.1:3306?socket=/qserv/mariadb/run/mysqld.sock
           --db-admin-uri mysql://root:CHANGEME@127.0.0.1:3306?socket=/qserv/mariadb/run/mysqld.sock
           --vnid-config "@/usr/local/lib64/libreplica.so mysql://root:CHANGEME@localhost:3306/qservw_worker 0 0"
-          --cmsd-manager manager-xrootd
+          --cmsd-manager-name manager-xrootd
+          --cmsd-manager-count 1
           --mysql-monitor-password CHANGEME_MONITOR
         environment:
             << : *log-environment
@@ -198,7 +201,8 @@ services:
           entrypoint --log-level DEBUG worker-cmsd
           --db-uri mysql://qsmaster@worker-db-1:3306?socket=/qserv/mariadb/run/mysqld.sock
           --vnid-config "@/usr/local/lib64/libreplica.so mysql://root:CHANGEME@localhost:3306/qservw_worker 0 0"
-          --cmsd-manager manager-xrootd
+          --cmsd-manager-name manager-xrootd
+          --cmsd-manager-count 1
         network_mode: "service:worker-xrootd-1"
         environment:
             << : *log-environment
@@ -236,10 +240,13 @@ services:
               source: worker_1_home
               target: /home/qserv
             - << : *log-volume
-    manager-xrootd:
+    manager-xrootd-0.manager-xrootd:
         image: "${QSERV_IMAGE:?err}"
         init: true
-        command: entrypoint xrootd-manager --cmsd-manager manager-xrootd
+        command: >
+          entrypoint xrootd-manager
+          --cmsd-manager-name manager-xrootd
+          --cmsd-manager-count 1
         hostname: manager-xrootd
         environment:
             << : *log-environment
@@ -263,7 +270,7 @@ services:
         init: true
         # NOTE!! cms-delay-servers must match the number of workers being launched!
         command: entrypoint cmsd-manager --cms-delay-servers 2
-        network_mode: "service:manager-xrootd"
+        network_mode: "service:manager-xrootd-0.manager-xrootd"
         environment:
             << : *log-environment
         volumes:
