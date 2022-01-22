@@ -348,8 +348,6 @@ def enter_worker_cmsd(
 
     Parameters
     ----------
-    cmsd_manager : str
-        The host name of the cmsd manager.
     vnid_config : str
         The config parameters used by the qserv cmsd to get the vnid
         from the specified source (static string, a file or worker database).
@@ -397,7 +395,6 @@ def enter_worker_xrootd(
     db_uri: str,
     db_admin_uri: str,
     vnid_config: str,
-    cmsd_manager: str,
     repl_ctl_dn: str,
     mysql_monitor_password: str,
     db_qserv_user: str,
@@ -422,8 +419,6 @@ def enter_worker_xrootd(
     vnid_config : str
         The config parameters used by the qserv cmsd to get the vnid
         from the specified source (static string, a file or worker database).
-    cmsd_manager : str
-        The host name of the cmsd manager.
     repl_ctl_dn : str
         The fully qualified domain name of the replication controller.
     mysql_monitor_password : str
