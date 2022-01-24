@@ -1154,8 +1154,10 @@ def down(
 
 
 def entrypoint_help(
-    command: str,
+    command: Optional[str],
     qserv_image: str,
+    entrypoint: bool,
+    spawned: bool,
     dry: bool,
 ) -> None:
     """Print the entrypoint CLI help output.
@@ -1166,22 +1168,26 @@ def entrypoint_help(
         The commands to get help for.
     qserv_image : `str`
         The name of the image to run.
+    entrypoint : `bool`
+        Show the entrypoint help.
+    spawned : `bool`
+        Show the spawned app help.
     dry : `bool`
         If True do not run the command; print what would have been run.
     """
-    args = [
-        "docker",
-        "run",
-        "--init",
-        "--rm",
-        qserv_image,
-        "entrypoint",
-    ]
-    if command:
-        args.append(command)
-    args.append("--help")
-    if dry:
-        print(" ".join(args))
-    else:
-        _log.debug('Running "%s"', " ".join(args))
-        subprocess.run(args, check=True)
+    if entrypoint:
+        print(f"Help for 'entrypoint {command}':\n")
+        cmd = f"docker run --rm {qserv_image} entrypoint {command or ''} --help"
+        if dry:
+            print(cmd)
+        else:
+            _log.debug('Running "%s"', cmd)
+            subprocess.run(cmd.split(), check=True)
+        print()
+    if spawned and command:
+        cmd = f"docker run --rm {qserv_image} entrypoint spawned-app-help {command}"
+        if dry:
+            print(cmd)
+        else:
+            _log.debug('Running "%s"', cmd)
+            subprocess.run(cmd.split(), check=True)

@@ -836,14 +836,14 @@ def _run(
             return 0
         result = subprocess.run(str_args, env=env, cwd="/home/qserv")
     if template:
-        while "{{" in template:
-            t = jinja2.Template(template, undefined=jinja2.StrictUndefined)
+        rendered = template
+        while "{{" in rendered:
+            t = jinja2.Template(rendered, undefined=jinja2.StrictUndefined)
             try:
                 rendered = t.render(targs)
             except jinja2.exceptions.UndefinedError as e:
                 _log.error(f"Missing template value: {str(e)}")
                 raise
-            template = rendered
         args = shlex.split(rendered)
         _log.debug("calling subprocess with args: %s", args) # TEMP security don't check in
         result = subprocess.run(args, env=env, cwd="/home/qserv")
@@ -957,3 +957,20 @@ def integration_test(
         compare_results=compare_results,
         mysqld_user=mysqld_user_qserv,
     )
+
+
+def spawned_app_help(
+    cmd: str,
+) -> None:
+    """Print the help output for a spawned app.
+
+    Parameters
+    ----------
+    cmd : str
+        The name of the command that spawns an app. May be followed by arguments
+        & options to the command, these are ignored.
+    """
+    app = cmd.split()[0]
+    print(f"Help for '{app}':\n", flush=True)
+    _run(template=f"{app} --help", args=None)
+    sys.exit(0)

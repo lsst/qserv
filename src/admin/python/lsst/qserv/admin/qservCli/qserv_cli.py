@@ -608,19 +608,38 @@ def down(
 @qserv.command()
 @click.argument("COMMAND", required=False)
 @qserv_image_option()
+@click.option(
+    "--entrypoint",
+    is_flag=True,
+    default=True,
+    help="Show help output for the entrypoint command.",
+)
+@click.option(
+    "--spawned",
+    is_flag=True,
+    default=True,
+    help="Show help output for the spawned app.",
+)
 @dry_option()
 def entrypoint_help(
-    command: str,
+    command: Optional[str],
     qserv_image: str,
+    entrypoint: bool,
+    spawned: bool,
     dry: bool,
 ) -> None:
-    """Show the help output of the entrypoint command inside a run container.
+    """Show the entrypoint CLI help output.
 
     COMMAND is the entrypoint subcommand to get help for. If not provided, shows
     help output for the entrypoint command.
+
+    Shows help output for the entrypoint subcommand. If the subcommand spawns
+    another process, shows help output from the app that the subcommand spawns.
     """
     launch.entrypoint_help(
         command=command,
         qserv_image=qserv_image,
+        entrypoint=entrypoint,
+        spawned=spawned,
         dry=dry,
     )

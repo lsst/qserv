@@ -24,6 +24,7 @@
 
 
 import click
+from collections import OrderedDict
 from dataclasses import dataclass, field
 from functools import partial
 import logging
@@ -44,7 +45,6 @@ from .options import (
     db_admin_uri_option,
     db_qserv_user_option,
     debug_option,
-    instance_id_option,
     load_option,
     log_cfg_file_option,
     log_level_option,
@@ -56,9 +56,7 @@ from .options import (
     repl_ctrl_domain_name_option,
     run_option,
     run_tests_option,
-    targs_option,
     targs_options,
-    targs_file_option,
     tests_yaml_option,
     unload_option,
     vnid_config_option,
@@ -68,6 +66,7 @@ from .options import (
 from . import utils
 from . import script
 from ..watcher import watch
+
 
 template_dir = "/usr/local/qserv/templates/"
 mysql_proxy_cfg_template = os.path.join(template_dir, "proxy/etc/my-proxy.cnf.jinja")
@@ -114,20 +113,46 @@ database.
 admin_worker_db_help = "Admin URI to the worker database. " + socket_option_help
 
 
-help_order  =[
-  "proxy",
-  "cmsd-manager",
-  "xrootd-manager",
-  "worker-cmsd",
-  "worker-repl",
-  "worker-xrootd",
-  "replication-controller",
-  "smig-update",
-  "integration-test",
-  "delete-database",
-  "load-simple",
-  "watcher",
-]
+@dataclass
+class CommandInfo:
+    default_cmd: Optional[str] = None
+
+# Commands are in the ordered dict in "help order" - the order they
+# appear in `entrypoint --help`
+commands = OrderedDict((
+    ("proxy", CommandInfo(
+        "mysql-proxy --proxy-lua-script=/usr/local/lua/qserv/scripts/mysqlProxy.lua "
+        "--lua-cpath=/usr/local/lua/qserv/lib/czarProxy.so --defaults-file={{proxy_cfg_path}}",
+    )),
+    ("cmsd-manager", CommandInfo(
+        "cmsd -c {{cmsd_manager_cfg_path}} -n manager -I v4",
+    )),
+    ("xrootd-manager", CommandInfo("xrootd -c {{xrootd_manager_cfg_path}} -n manager -I v4")),
+    ("worker-cmsd", CommandInfo(
+        "cmsd -c {{cmsd_worker_cfg_path}} -n worker -I v4 -l @libXrdSsiLog.so -+xrdssi {{xrdssi_cfg_path}}",
+    )),
+    ("worker-repl", CommandInfo(
+        "qserv-replica-worker "
+        "--qserv-worker-db={{db_admin_uri}} "
+        "--config={{config}} {% for arg in extended_args %}{{arg}}  {% endfor %}"
+    )),
+    ("worker-xrootd", CommandInfo(
+        "xrootd -c {{cmsd_worker_cfg_path}} -n worker -I v4 -l @libXrdSsiLog.so -+xrdssi {{xrdssi_cfg_path}}",
+    )),
+    ("replication-controller", CommandInfo(
+        "qserv-replica-master-http "
+        "--config={{db_uri}} "
+        "--http-root={{http_root}} "
+        "--qserv-czar-db={{qserv_czar_db}} "
+        "{% for arg in extended_args %}{{arg}} {% endfor %}"
+    )),
+    ("smig-update", CommandInfo()),
+    ("integration-test", CommandInfo()),
+    ("delete-database", CommandInfo()),
+    ("load-simple", CommandInfo()),
+    ("watcher", CommandInfo()),
+    ("spawned-app-help", CommandInfo()),
+))
 
 
 cmsd_worker_cfg_file_option = partial(
@@ -214,10 +239,10 @@ class EntrypointCommandGroup(click.Group):
             The list of commands, in the order they should appear in --help.
         """
         # make sure that all the commands are named in our help_order list:
-        missing = set(help_order).symmetric_difference(self.commands.keys())
+        missing = set(commands.keys()).symmetric_difference(self.commands.keys())
         if missing:
             raise RuntimeError(f"{missing} is found in help_order or commands but not both.")
-        return help_order
+        return list(commands.keys())
 
 
 @click.group(cls=EntrypointCommandGroup)
@@ -355,8 +380,7 @@ def delete_database(repl_ctrl_uri: str, database: str, admin: bool) -> None:
     show_default=True,
 )
 @targs_options()
-@cmd_option(default="mysql-proxy --proxy-lua-script=/usr/local/lua/qserv/scripts/mysqlProxy.lua "
-"--lua-cpath=/usr/local/lua/qserv/lib/czarProxy.so --defaults-file={{proxy_cfg_path}}")
+@cmd_option(default=commands["proxy"].default_cmd)
 @options_file_option()
 def proxy(
     ctx: click.Context,
@@ -409,7 +433,7 @@ def proxy(
     show_default=True,
 )
 @targs_options()
-@cmd_option(default="cmsd -c {{cmsd_manager_cfg_path}} -n manager -I v4")
+@cmd_option(default=commands["cmsd-manager"].default_cmd)
 @options_file_option()
 def cmsd_manager(
     ctx: click.Context,
@@ -447,7 +471,7 @@ def cmsd_manager(
     show_default=True,
 )
 @targs_options()
-@cmd_option(default="xrootd -c {{xrootd_manager_cfg_path}} -n manager -I v4")
+@cmd_option(default=commands["xrootd-manager"].default_cmd)
 @options_file_option()
 def xrootd_manager(
     ctx: click.Context,
@@ -481,7 +505,7 @@ def xrootd_manager(
 @xrdssi_cfg_file_option()
 @xrdssi_cfg_path_option()
 @targs_options()
-@cmd_option(default="cmsd -c {{cmsd_worker_cfg_path}} -n worker -I v4 -l @libXrdSsiLog.so -+xrdssi {{xrdssi_cfg_path}}")
+@cmd_option(default=commands["worker-cmsd"].default_cmd)
 @options_file_option()
 def worker_cmsd(
     ctx: click.Context,
@@ -526,7 +550,7 @@ def worker_cmsd(
 @xrdssi_cfg_file_option()
 @xrdssi_cfg_path_option()
 @targs_options()
-@cmd_option(default="xrootd -c {{cmsd_worker_cfg_path}} -n worker -I v4 -l @libXrdSsiLog.so -+xrdssi {{xrdssi_cfg_path}}")
+@cmd_option(default=commands["worker-xrootd"].default_cmd)
 @options_file_option()
 def worker_xrootd(
     ctx: click.Context,
@@ -576,7 +600,7 @@ def worker_xrootd(
     help=f"{repl_connection_option.keywords['help']} {socket_option_help}"
 )
 @debug_option()
-@cmd_option(default="qserv-replica-worker --qserv-worker-db={{db_admin_uri}} --config={{config}} {% for arg in extended_args %}{{arg}}  {% endfor %}")
+@cmd_option(default=commands["worker-repl"].default_cmd)
 @click.option(
     "--config",
     help="The path to the configuration database for qserv-replica-worker.",
@@ -636,12 +660,7 @@ def worker_repl(
     help="The host name of the xrootd manager node.",
 )
 @log_cfg_file_option(default="/config-etc/log4cxx.replication.properties")
-@cmd_option(default="""qserv-replica-master-http
-    --config={{db_uri}}
-    --http-root={{http_root}}
-    --qserv-czar-db={{qserv_czar_db}}
-    {% for arg in extended_args %}{{arg}} {% endfor %}"""
-)
+@cmd_option(default=commands["replication-controller"].default_cmd)
 @click.option(
     "--http-root",
     help="The root folder for the static content to be served by the built-in HTTP service.",
@@ -748,3 +767,26 @@ def smig_update(czar_connection: str, worker_connections: List[str], repl_connec
         worker_connections=worker_connections,
         repl_connection=repl_connection,
     )
+
+
+@entrypoint.command()
+@click.argument("COMMAND")
+def spawned_app_help(
+    command: str,
+) -> None:
+    """Print the help output of a spawned command for a given
+    entrypoint subcommand or a message indicating why help is not available.
+
+    Help is available for entrypoint commands that spawn an app. If the named
+    command does not exist or is misspelled is misnamed the message will say it
+    does not exist. Some entrypoint commands perform work without spawning an
+    app, in which case it will say that no spawned app help is available for
+    that command.
+    """
+    if command not in commands:
+        click.echo(f"{command} is not an entrypoint command.")
+        return
+    if (cmd := commands[command].default_cmd) is not None:
+        script.spawned_app_help(cmd)
+    else:
+        click.echo(f"No spawned app help is available for {command}.")
