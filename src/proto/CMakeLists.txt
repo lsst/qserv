@@ -30,4 +30,3 @@ target_link_libraries(testProtocol
 
 add_test(NAME testProtocol COMMAND testProtocol)
 
-set_tests_properties(testProtocol PROPERTIES WILL_FAIL 1)

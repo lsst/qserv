@@ -51,7 +51,7 @@ void dumpInventory(lsst::qserv::wpublish::ChunkInventory const& inventory,
                    string const& context) {
     ostringstream os;
     inventory.dbgPrint(os);
-    LOGS(_log, LOG_LVL_DEBUG, context << os.str());
+    LOGS(_log, LOG_LVL_TRACE, context << os.str());
 }
 
 } // annonymous namespace

@@ -121,7 +121,7 @@ protected:
     /// Increment the _userQueryCounts entry for queryId, creating it if needed.
     /// Precondition util::CommandQueue::_mx must be locked.
     /// @return the new count for queryId.
-    int _incrCountForUserQuery(QueryId queryId);
+    int _incrCountForUserQuery(QueryId queryId, int sz);
 
     /// Decrement the _userQueryCounts entry for queryId. The entry is deleted if the new value <= 0.
     /// @return the new count for queryId.

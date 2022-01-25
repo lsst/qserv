@@ -35,10 +35,12 @@
 #include "memman/MemManNone.h"
 #include "proto/ScanTableInfo.h"
 #include "proto/worker.pb.h"
+#include "util/Command.h"
 #include "util/EventThread.h"
+#include "wbase/SendChannelShared.h"
 #include "wbase/Task.h"
+#include "wcontrol/TransmitMgr.h"
 #include "wpublish/QueriesAndChunks.h"
-#include "wsched/ChunkDisk.h"
 #include "wsched/ChunkTasksQueue.h"
 #include "wsched/BlendScheduler.h"
 #include "wsched/FifoScheduler.h"
@@ -56,17 +58,29 @@ namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.wsched.testSchedulers");
 }
 
+using namespace std;
 using lsst::qserv::proto::TaskMsg;
 using lsst::qserv::wbase::Task;
 using lsst::qserv::wbase::SendChannel;
+using lsst::qserv::wbase::SendChannelShared;
 
 double const oneHr = 60.0;
 
+lsst::qserv::wcontrol::TransmitMgr::Ptr locTransmitMgr =
+    std::make_shared<lsst::qserv::wcontrol::TransmitMgr>(50, 4);
+
+std::vector<SendChannelShared::Ptr> locSendSharedPtrs;
+
 Task::Ptr makeTask(std::shared_ptr<TaskMsg> tm) {
-    Task::Ptr task(new Task(tm, std::shared_ptr<SendChannel>()));
+    auto sendC = std::make_shared<SendChannel>();
+    auto sc = SendChannelShared::create(sendC, locTransmitMgr);
+    locSendSharedPtrs.push_back(sc);
+    Task::Ptr task(new Task(tm, "", 0, sc));
     task->setSafeToMoveRunning(true); // Can't wait for MemMan in unit tests.
     return task;
 }
+
+
 struct SchedulerFixture {
     typedef std::shared_ptr<TaskMsg> TaskMsgPtr;
 
@@ -81,6 +95,7 @@ struct SchedulerFixture {
         t->set_queryid(qId);
         t->set_jobid(jobId);
         t->set_chunkid(seq);
+        t->set_czarid(1);
         t->set_db("elephant");
         for(int i=0; i < 3; ++i) {
             TaskMsg::Fragment* f = t->add_fragment();
@@ -100,6 +115,7 @@ struct SchedulerFixture {
         t->set_queryid(qId);
         t->set_jobid(jobId);
         t->set_chunkid(seq);
+        t->set_czarid(1);
         t->set_db("moose");
         t->set_scaninteractive(false);
         t->set_attemptcount(0);
@@ -128,12 +144,26 @@ struct SchedulerFixture {
         return t;
     }
 
+    vector<lsst::qserv::util::Command::Ptr>
+    queVectMsgWithChunkId(wsched::GroupScheduler &gs, int chunkId,
+                          lsst::qserv::QueryId qId, int jobId, int count) {
+        std::vector<lsst::qserv::util::Command::Ptr> cmds;
+        for(int i=0; i<count; ++i) {
+            Task::Ptr t = makeTask(newTaskMsg(chunkId, qId, jobId));
+            cmds.push_back(t);
+        }
+
+        gs.queCmd(cmds);
+        return cmds;
+    }
+
     int counter;
 };
 
 
 BOOST_FIXTURE_TEST_SUITE(SchedulerSuite, SchedulerFixture)
 
+// TODO: DM-33302 replace this test case
 BOOST_AUTO_TEST_CASE(Grouping) {
     // Test grouping by chunkId. Max entries added to a single group set to 3.
     wsched::GroupScheduler gs{"GroupSchedA", 100, 0, 3, 0};
@@ -163,7 +193,6 @@ BOOST_AUTO_TEST_CASE(Grouping) {
     Task::Ptr d1 = queMsgWithChunkId(gs, d, qIdInc++, 0);
     BOOST_CHECK(gs.getSize() == 5);
     BOOST_CHECK(gs.ready() == true);
-
     // Should get all the first 3 'a' commands in order
     auto aa1 = gs.getCmd(false);
     auto aa2 = gs.getCmd(false);
@@ -245,112 +274,6 @@ BOOST_AUTO_TEST_CASE(GroupMaxThread) {
     auto aa4 = gs.getCmd(false);
     BOOST_CHECK(a4.get() == aa4.get());
     BOOST_CHECK(gs.ready() == false);
-}
-
-BOOST_AUTO_TEST_CASE(DiskMinHeap) {
-    wsched::ChunkDisk::MinHeap minHeap{};
-    lsst::qserv::QueryId qIdInc = 1;
-
-    BOOST_CHECK(minHeap.empty() == true);
-
-    Task::Ptr a47 = makeTask(newTaskMsg(47, qIdInc++, 0));
-    minHeap.push(a47);
-    BOOST_CHECK(minHeap.top().get() == a47.get());
-    BOOST_CHECK(minHeap.empty() == false);
-
-    Task::Ptr a42 = makeTask(newTaskMsg(42, qIdInc++, 0));
-    minHeap.push(a42);
-    BOOST_CHECK(minHeap.top().get() == a42.get());
-
-    Task::Ptr a60 = makeTask(newTaskMsg(60, qIdInc++, 0));
-    minHeap.push(a60);
-    BOOST_CHECK(minHeap.top().get() == a42.get());
-
-    Task::Ptr a18 = makeTask(newTaskMsg(18, qIdInc++, 0));
-    minHeap.push(a18);
-    BOOST_CHECK(minHeap.top().get() == a18.get());
-
-    BOOST_CHECK(minHeap.pop().get() == a18.get());
-    BOOST_CHECK(minHeap.pop().get() == a42.get());
-    BOOST_CHECK(minHeap.pop().get() == a47.get());
-    BOOST_CHECK(minHeap.pop().get() == a60.get());
-    BOOST_CHECK(minHeap.empty() == true);
-}
-
-BOOST_AUTO_TEST_CASE(ChunkDiskMemManNoneTest) {
-    auto memMan = std::make_shared<lsst::qserv::memman::MemManNone>(1, false);
-    wsched::ChunkDisk cDisk(memMan);
-    lsst::qserv::QueryId qIdInc = 1;
-
-    BOOST_CHECK(cDisk.empty() == true);
-    BOOST_CHECK(cDisk.getSize() == 0);
-    BOOST_CHECK(cDisk.ready(true) == false);
-
-    Task::Ptr a47 = makeTask(newTaskMsgScan(47,0, qIdInc++, 0));
-    cDisk.queueTask(a47); // should go on pending
-    BOOST_CHECK(cDisk.empty() == false);
-    BOOST_CHECK(cDisk.getSize() == 1);
-    // call to ready swaps active and passive.
-    BOOST_CHECK(cDisk.ready(false) == false);
-    // This call to read will cause a47 to be flagged as having resources to run.
-    BOOST_CHECK(cDisk.ready(true) == true);
-
-
-    Task::Ptr a42 = makeTask(newTaskMsgScan(42,0, qIdInc++, 0));
-    cDisk.queueTask(a42); // should go on pending
-    BOOST_CHECK(cDisk.empty() == false);
-    BOOST_CHECK(cDisk.getSize() == 2);
-    // a47 at top of active has been flagged as ok to run.
-    BOOST_CHECK(cDisk.ready(false) == true);
-
-    Task::Ptr b42 = makeTask(newTaskMsgScan(42, 0, qIdInc++, 0));
-    cDisk.queueTask(b42); // should go on pending
-    BOOST_CHECK(cDisk.empty() == false);
-    BOOST_CHECK(cDisk.getSize() == 3);
-    BOOST_CHECK(cDisk.ready(false) == true);
-
-    // Get the first task
-    auto aa47 = cDisk.getTask(false);
-    BOOST_CHECK(aa47.get() == a47.get());
-    BOOST_CHECK(cDisk.empty() == false);
-    BOOST_CHECK(cDisk.getSize() == 2);
-    // useFlexibleLock should fail since MemManNone always denies LOCK requests for scans.
-    BOOST_CHECK(cDisk.ready(false) == false);
-    // MemManNone always grants FLEXIBLELOCK requests
-    BOOST_CHECK(cDisk.ready(true) == true);
-    // Since MemManNone already ok'ed the task last time ready was called, ready should be true.
-    BOOST_CHECK(cDisk.ready(false) == true);
-
-    // After calling ready, a42 is at top
-    Task::Ptr a18 = makeTask(newTaskMsgScan(18, 0, qIdInc++, 0));
-    cDisk.queueTask(a18); // should go on pending
-    BOOST_CHECK(cDisk.empty() == false);
-    BOOST_CHECK(cDisk.getSize() == 3);
-    BOOST_CHECK(cDisk.ready(false) == true);
-
-    // The last task should still be flagged as being ok'ed by MemManNone
-    auto aa42 = cDisk.getTask(false);
-    BOOST_CHECK(aa42.get() == a42.get());
-    BOOST_CHECK(cDisk.empty() == false);
-    BOOST_CHECK(cDisk.getSize() == 2);
-    BOOST_CHECK(cDisk.ready(false) == false);
-
-    auto bb42 = cDisk.getTask(false);
-    BOOST_CHECK(bb42.get() == nullptr);
-    bb42 = cDisk.getTask(true);
-    BOOST_CHECK(bb42.get() == b42.get());
-    BOOST_CHECK(cDisk.empty() == false);
-    BOOST_CHECK(cDisk.getSize() == 1);
-    BOOST_CHECK(cDisk.ready(false) == false);
-
-    auto aa18 = cDisk.getTask(false);
-    BOOST_CHECK(aa18.get() == nullptr);
-    aa18 = cDisk.getTask(true);
-    BOOST_CHECK(aa18.get() == a18.get());
-    BOOST_CHECK(cDisk.empty() == true);
-    BOOST_CHECK(cDisk.getSize() == 0);
-    BOOST_CHECK(cDisk.ready(true) == false);
-
 }
 
 
@@ -682,7 +605,8 @@ BOOST_AUTO_TEST_CASE(BlendScheduleThreadLimitingTest) {
     BOOST_CHECK(f.blend->ready() == false);
     std::vector<Task::Ptr> scanTasks;
     for (int j=0; j<7; ++j) {
-        f.blend->queCmd(makeTask(newTaskMsgScan(j, lsst::qserv::proto::ScanInfo::Rating::MEDIUM, f.qIdInc++, 0)));
+        auto tsk = makeTask(newTaskMsgScan(j, lsst::qserv::proto::ScanInfo::Rating::MEDIUM, f.qIdInc++, 0));
+        f.blend->queCmd(tsk);
         if (j < 6) {
             BOOST_CHECK(f.blend->ready() == true);
             auto cmd = f.blend->getCmd(false);
@@ -997,13 +921,11 @@ BOOST_AUTO_TEST_CASE(ChunkTasksQueueTest) {
     lsst::qserv::QueryId qIdInc = 1;
 
     BOOST_CHECK(ctl.empty() == true);
-    BOOST_CHECK(ctl.nextTaskDifferentChunkId() == true);
     BOOST_CHECK(ctl.ready(true) == false);
 
     Task::Ptr a1 = makeTask(newTaskMsgScan(chunkId, 3, qIdInc++, 0, "charlie"));
     ctl.queueTask(a1);
     BOOST_CHECK(ctl.empty() == false);
-    BOOST_CHECK(ctl.nextTaskDifferentChunkId() == true);
 
     Task::Ptr a2 = makeTask(newTaskMsgScan(chunkId, 3, qIdInc++, 0, "delta"));
     ctl.queueTask(a2);
@@ -1025,13 +947,11 @@ BOOST_AUTO_TEST_CASE(ChunkTasksQueueTest) {
     ctl.taskComplete(a4);
     BOOST_CHECK(ctl.ready(true) == false);
     BOOST_CHECK(ctl.empty() == true);
-    BOOST_CHECK(ctl.nextTaskDifferentChunkId() == true);
 
     chunkId = secondChunkId;
     Task::Ptr b1 = makeTask(newTaskMsgScan(chunkId, 3, qIdInc++, 0, "c"));
     ctl.queueTask(b1);
     BOOST_CHECK(ctl.empty() == false);
-    BOOST_CHECK(ctl.nextTaskDifferentChunkId() == true);
 
     Task::Ptr b2 = makeTask(newTaskMsgScan(chunkId, 3, qIdInc++, 0, "d"));
     ctl.queueTask(b2);
@@ -1049,26 +969,21 @@ BOOST_AUTO_TEST_CASE(ChunkTasksQueueTest) {
     BOOST_CHECK(ctl.getTask(true).get() == a2.get());
     BOOST_CHECK(ctl.getTask(true).get() == a1.get());
     BOOST_CHECK(ctl.getTask(true).get() == a4.get());
-    BOOST_CHECK(ctl.nextTaskDifferentChunkId() == false);
     BOOST_CHECK(ctl.getTask(true).get() == b3.get());
     BOOST_CHECK(ctl.getTask(true).get() == b2.get());
-    BOOST_CHECK(ctl.nextTaskDifferentChunkId() == false);
     ctl.taskComplete(a1);
     ctl.taskComplete(a2);
     ctl.taskComplete(a3);
     ctl.taskComplete(a4);
-    BOOST_CHECK(ctl.nextTaskDifferentChunkId() == true);
     BOOST_CHECK(ctl.getTask(true).get() == b1.get());
     BOOST_CHECK(ctl.ready(true) == true);
     BOOST_CHECK(ctl.getTask(true).get() == b4.get());
     BOOST_CHECK(ctl.empty() == false);
     BOOST_CHECK(ctl.ready(true) == false);
-    BOOST_CHECK(ctl.nextTaskDifferentChunkId() == false);
     ctl.taskComplete(b1);
     ctl.taskComplete(b2);
     ctl.taskComplete(b3);
     ctl.taskComplete(b4);
-    BOOST_CHECK(ctl.nextTaskDifferentChunkId() == true);
     BOOST_CHECK(ctl.empty() == false);
     BOOST_CHECK(ctl.ready(true) == false);
     BOOST_CHECK(ctl.empty() == true);
@@ -1096,15 +1011,12 @@ BOOST_AUTO_TEST_CASE(ChunkTasksQueueTest) {
     ctl.taskComplete(b1);
     ctl.taskComplete(b2);
     BOOST_CHECK(ctl.getActiveChunkId() == secondChunkId);
-    BOOST_CHECK(ctl.nextTaskDifferentChunkId() == true);
     BOOST_CHECK(ctl.getTask(true).get() == b3.get());
     BOOST_CHECK(ctl.getActiveChunkId() == firstChunkId);
-    BOOST_CHECK(ctl.nextTaskDifferentChunkId() == false);
     ctl.taskComplete(a1);
     ctl.taskComplete(a2);
     ctl.taskComplete(a3);
     ctl.taskComplete(a4);
-    BOOST_CHECK(ctl.nextTaskDifferentChunkId() == true);
     BOOST_CHECK(ctl.getTask(true).get() == b4.get());
     BOOST_CHECK(ctl.getActiveChunkId() == secondChunkId);
     ctl.taskComplete(b3);
@@ -1113,5 +1025,6 @@ BOOST_AUTO_TEST_CASE(ChunkTasksQueueTest) {
     BOOST_CHECK(ctl.getActiveChunkId() == -1);
     LOGS(_log, LOG_LVL_DEBUG, "ChunkTasksQueueTest done");
 }
+
 
 BOOST_AUTO_TEST_SUITE_END()

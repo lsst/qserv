@@ -40,7 +40,7 @@
 
 // Local headers
 #include "global/stringTypes.h"
-#include "qdisp/QdispPool.h"
+#include "qdisp/SharedResources.h"
 
 
 namespace lsst {
@@ -87,7 +87,7 @@ public:
     /// @return new UserQuery object
     std::shared_ptr<UserQuery> newUserQuery(std::string const& query,
                                std::string const& defaultDb,
-                               qdisp::QdispPool::Ptr const& qdispPool,
+                               qdisp::SharedResources::Ptr const& qdispSharedResources,
                                std::string const& userQueryId,
                                std::string const& msgTableName,
                                std::string const& resultDb);

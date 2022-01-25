@@ -35,6 +35,7 @@
 #include "global/constants.h"
 #include "global/intTypes.h"
 #include "global/ResourceUnit.h"
+#include "qmeta/types.h"
 
 // Forward declarations
 
@@ -58,12 +59,13 @@ class ResponseHandler;
 class JobDescription {
 public:
     using Ptr =  std::shared_ptr<JobDescription>;
-    static JobDescription::Ptr create(QueryId qId, int jobId, ResourceUnit const& resource,
+    static JobDescription::Ptr create(qmeta::CzarId czarId, QueryId qId, int jobId,
+                ResourceUnit const& resource,
                 std::shared_ptr<ResponseHandler> const& respHandler,
                 std::shared_ptr<qproc::TaskMsgFactory> const& taskMsgFactory,
                 std::shared_ptr<qproc::ChunkQuerySpec> const& chunkQuerySpec,
                 std::string const& chunkResultName, bool mock=false) {
-        JobDescription::Ptr jd(new JobDescription(qId, jobId, resource, respHandler,
+        JobDescription::Ptr jd(new JobDescription(czarId, qId, jobId, resource, respHandler,
                                                   taskMsgFactory, chunkQuerySpec,
                                                   chunkResultName, mock));
         return jd;
@@ -90,11 +92,13 @@ public:
 
     friend std::ostream& operator<<(std::ostream& os, JobDescription const& jd);
 private:
-    JobDescription(QueryId qId, int jobId, ResourceUnit const& resource,
+    JobDescription(qmeta::CzarId czarId, QueryId qId, int jobId,
+            ResourceUnit const& resource,
             std::shared_ptr<ResponseHandler> const& respHandler,
             std::shared_ptr<qproc::TaskMsgFactory> const& taskMsgFactory,
             std::shared_ptr<qproc::ChunkQuerySpec> const& chunkQuerySpec,
             std::string const& chunkResultName, bool mock=false);
+    qmeta::CzarId _czarId;
     QueryId _queryId;
     int _jobId; ///< Job's Id number.
     std::string const _qIdStr;

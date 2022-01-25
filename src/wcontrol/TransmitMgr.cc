@@ -70,7 +70,6 @@ void QidMgr::_take(QueryId const& qid) {
     lockCount.lcMaxCount.store(_maxCount);
     _setMaxCount(_qidLocks.size());
     uLock.unlock();
-
     lockCount.take();
 }
 
@@ -135,7 +134,7 @@ void TransmitMgr::_take(bool interactive) {
         _tCv.wait(uLock, [this](){ return (_transmitCount < _maxTransmits); });
     }
     ++_transmitCount;
-    LOGS(_log, LOG_LVL_DEBUG, "TransmitMgr::_take locking done " << *this);
+    LOGS(_log, LOG_LVL_DEBUG, "TransmitMgr take locking done " << dump());
 }
 
 
@@ -148,7 +147,6 @@ void TransmitMgr::_release(bool interactive) {
     }
     // There could be several threads waiting on _alreadyTransCount or
     // it needs to make sure to wake the thread waiting only on _transmitCount.
-    LOGS(_log, LOG_LVL_DEBUG, "TransmitMgr::_release locking done " << *this);
     _tCv.notify_all();
 }
 
@@ -161,10 +159,20 @@ ostream& TransmitMgr::dump(ostream &os) const {
 }
 
 
-string TransmitMgr::dump() const {
-    ostringstream os;
-    dump(os);
+std::string TransmitMgr::dump() const {
+    std::ostringstream os;
+    dumpBase(os);
     return os.str();
+}
+
+
+ostream& TransmitMgr::dumpBase(ostream &os) const {
+    // No mtx as long as everything is atomic. Some risk
+    // of counts from different threads.
+    os << "maxTransmits=" << _maxTransmits
+       << "(totalC=" << _totalCount
+       << " transmitC=" << _transmitCount << ")";
+    return os;
 }
 
 

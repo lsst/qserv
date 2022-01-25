@@ -96,8 +96,9 @@ class QueryRequest : public XrdSsiRequest, public std::enable_shared_from_this<Q
 public:
     typedef std::shared_ptr<QueryRequest> Ptr;
 
-    static Ptr create(std::shared_ptr<JobQuery> const& jobQuery) {
-        Ptr newQueryRequest(new QueryRequest(jobQuery));
+    static Ptr create(std::shared_ptr<JobQuery> const& jobQuery,
+                      std::shared_ptr<PseudoFifo> const& queryRequestPseudoFifo) {
+        Ptr newQueryRequest(new QueryRequest(jobQuery, queryRequestPseudoFifo));
         return newQueryRequest;
     }
 
@@ -132,7 +133,8 @@ public:
     friend std::ostream& operator<<(std::ostream& os, QueryRequest const& r);
 private:
     // Private constructor to safeguard enable_shared_from_this construction.
-    QueryRequest(std::shared_ptr<JobQuery> const& jobQuery);
+    QueryRequest(std::shared_ptr<JobQuery> const& jobQuery,
+                 std::shared_ptr<PseudoFifo> const& queryRequestPseudoFifo);
 
     void _callMarkComplete(bool success);
     bool _importStream(JobQuery::Ptr const& jq);
@@ -141,6 +143,7 @@ private:
     void _finish();
     void _processData(JobQuery::Ptr const& jq, int blen, bool last);
     void _queueAskForResponse(std::shared_ptr<AskForResponseDataCmd> const& cmd, JobQuery::Ptr const& jq, bool initialRequest);
+    void _flushError(JobQuery::Ptr const& jq);
 
     /// _holdState indicates the data is being held by SSI for a large response using LargeResultMgr.
     /// If the state is NOT NO_HOLD0, then this instance has decremented the shared semaphore and it
@@ -167,7 +170,6 @@ private:
     QueryId _qid = 0;   // for logging
     int _jobid = -1;     // for logging
     std::string _jobIdStr {QueryIdHelper::makeIdStr(0, 0, true)}; ///< for debugging only.
-    //util::InstanceCount _instC{"QueryRequest"};
 
     std::atomic<bool> _finishedCalled{false};
 
@@ -178,6 +180,10 @@ private:
     int _totalRows = 0; ///< number of rows in query added to the result table.
 
     std::atomic<int> _rowsIgnored{0}; ///< Limit log messages about rows being ignored.
+
+    std::atomic<uint> _respCount{0}; ///< number of responses created
+
+    std::shared_ptr<PseudoFifo> _pseudoFifo;
 };
 
 std::ostream& operator<<(std::ostream& os, QueryRequest const& r);

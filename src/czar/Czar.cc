@@ -41,6 +41,9 @@
 #include "czar/CzarErrors.h"
 #include "czar/MessageTable.h"
 #include "global/LogContext.h"
+#include "qdisp/PseudoFifo.h"
+#include "qdisp/QdispPool.h"
+#include "qdisp/SharedResources.h"
 #include "qproc/DatabaseModels.h"
 #include "rproc/InfileMerger.h"
 #include "sql/SqlConnection.h"
@@ -48,8 +51,8 @@
 #include "sql/SqlResults.h"
 #include "util/common.h"
 #include "util/IterableFormatter.h"
+#include "util/StringHelper.h"
 #include "XrdSsi/XrdSsiProvider.hh"
-#include "../util/StringHelper.h"
 
 
 using namespace std;
@@ -112,8 +115,15 @@ Czar::Czar(string const& configPath, string const& czarName)
     vector<int> vectMinRunningSizes = util::StringHelper::getIntVectFromStr(vectMinRunningSizesStr, ":", 0);
     LOGS(_log, LOG_LVL_INFO, "INFO qdisp config qPoolSize=" << qPoolSize << " maxPriority=" << maxPriority
             << " vectRunSizes=" << vectRunSizesStr << " -> " << util::prettyCharList(vectRunSizes)
-            << " vectMinRunningSizes=" << vectMinRunningSizesStr << " -> " << util::prettyCharList(vectMinRunningSizes));
-    _qdispPool = make_shared<qdisp::QdispPool>(qPoolSize, maxPriority, vectRunSizes, vectMinRunningSizes);
+            << " vectMinRunningSizes=" << vectMinRunningSizesStr << " -> "
+            << util::prettyCharList(vectMinRunningSizes));
+    qdisp::QdispPool::Ptr qdispPool = make_shared<qdisp::QdispPool>(qPoolSize, maxPriority,
+                                                                    vectRunSizes, vectMinRunningSizes);
+    int qReqPseudoMaxRunning = _czarConfig.getQReqPseudoFifoMaxRunning();
+    qdisp::PseudoFifo::Ptr queryRequestPseudoFifo =
+            make_shared<qdisp::PseudoFifo>(qReqPseudoMaxRunning);
+    _qdispSharedResources = qdisp::SharedResources::create(qdispPool, queryRequestPseudoFifo);
+
     int xrootdCBThreadsMax = _czarConfig.getXrootdCBThreadsMax();
     int xrootdCBThreadsInit = _czarConfig.getXrootdCBThreadsInit();
     LOGS(_log, LOG_LVL_INFO, "config xrootdCBThreadsMax=" << xrootdCBThreadsMax);
@@ -178,7 +188,8 @@ Czar::submitQuery(string const& query,
     ccontrol::UserQuery::Ptr uq;
     {
         lock_guard<mutex> lock(_mutex);
-        uq = _uqFactory->newUserQuery(query, defaultDb, getQdispPool(), userQueryId, msgTableName, resultDb);
+        uq = _uqFactory->newUserQuery(query, defaultDb, getQdispSharedResources(), userQueryId,
+                                      msgTableName, resultDb);
     }
 
     // Add logging context with query ID

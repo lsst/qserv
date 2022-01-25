@@ -28,6 +28,7 @@
 #include <assert.h>
 #include <atomic>
 #include <condition_variable>
+#include <map>
 #include <mutex>
 #include <map>
 
@@ -117,11 +118,21 @@ public:
     int getTotalCount() { return _totalCount; }
     int getTransmitCount() { return _transmitCount; }
 
-    virtual std::ostream& dump(std::ostream &os) const;
-    std::string dump() const;
+    /// Class methods, that have already locked '_mtx', should call 'dumpBase'.
+    std::ostream& dump(std::ostream &os) const;
+
+    /// This will try to lock 'TransmitMgr::_mtx'.
     friend std::ostream& operator<<(std::ostream &out, TransmitMgr const& mgr);
 
     friend class TransmitLock;
+
+protected:
+    /// _mtx must be locked before calling this function.
+    /// Dump the contents of the class to a string for logging.
+    virtual std::ostream& dumpBase(std::ostream &os) const;
+
+    /// _mtx must be locked before calling this function.
+    std::string dump() const;
 
 private:
     void _take(bool interactive);
@@ -145,7 +156,7 @@ public:
     using Ptr = std::shared_ptr<TransmitLock>;
     TransmitLock(TransmitMgr& transmitMgr, bool interactive, QueryId const qid)
       : _transmitMgr(transmitMgr), _interactive(interactive), _qid(qid) {
-        _transmitMgr._qidMgr._take(_qid);
+        //_transmitMgr._qidMgr._take(_qid);
         _transmitMgr._take(_interactive);
     }
 
@@ -155,7 +166,7 @@ public:
 
     ~TransmitLock() {
         _transmitMgr._release(_interactive);
-        _transmitMgr._qidMgr._release(_qid);
+        //_transmitMgr._qidMgr._release(_qid);
     }
 
 private:

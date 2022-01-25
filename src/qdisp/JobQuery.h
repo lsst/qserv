@@ -67,6 +67,7 @@ public:
     int getIdInt() const { return _jobDescription->id(); }
     std::string const& getIdStr() const { return _idStr; }
     JobDescription::Ptr getDescription() { return _jobDescription; }
+    std::shared_ptr<ResponseHandler> getRespHandler() { return _jobDescription->respHandler(); }
     JobStatus::Ptr getStatus() { return _jobStatus; }
 
     void setQueryRequest(std::shared_ptr<QueryRequest> const& qr) {
@@ -131,7 +132,6 @@ protected:
 
     // Cancellation
     std::atomic<bool> _cancelled {false}; ///< Lock to make sure cancel() is only called once.
-    //util::InstanceCount _instC{"JobQuery"};
 
     std::shared_ptr<QdispPool> _qdispPool;
 };

@@ -52,10 +52,10 @@ void SchedulerBase::setPriorityDefault() {
 }
 
 
-int SchedulerBase::_incrCountForUserQuery(QueryId queryId) {
+int SchedulerBase::_incrCountForUserQuery(QueryId queryId, int sz) {
     std::lock_guard<std::mutex> lock(_countsMutex);
-    ++_totalTaskCount;
-    return ++_userQueryCounts[queryId];
+    _totalTaskCount += sz;
+    return _userQueryCounts[queryId] += sz;
 }
 
 

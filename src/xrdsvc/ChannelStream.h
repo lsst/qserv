@@ -49,15 +49,17 @@ public:
     virtual ~ChannelStream();
 
     /// Push in a data packet
-    void append(StreamBuffer::Ptr const& StreamBuffer, bool last);
+    void append(StreamBuffer::Ptr const& StreamBuffer, bool last, int scsSeq);
 
     /// Empty _msgs, calling StreamBuffer::Recycle() where needed.
     void clearMsgs();
 
     /// Pull out a data packet as a Buffer object (called by XrdSsi code)
-    virtual Buffer *GetBuff(XrdSsiErrInfo &eInfo, int &dlen, bool &last);
+    Buffer *GetBuff(XrdSsiErrInfo &eInfo, int &dlen, bool &last) override;
 
     bool closed() const { return _closed; }
+
+    uint64_t getSeq() const { return _seq; }
 
 private:
     bool _closed; ///< Closed to new append() calls?
@@ -65,6 +67,10 @@ private:
     std::deque<StreamBuffer::Ptr> _msgs; ///< Message queue
     std::mutex _mutex; ///< _msgs protection
     std::condition_variable _hasDataCondition; ///< _msgs condition
+    uint64_t const _seq; ///< Unique identifier for this instance.
+    static std::atomic<uint64_t> _sequenceSource; ///< Source of unique identifiers.
+    std::atomic<uint> _appendCount{0}; ///< number of appends
+    std::atomic<uint> _getBufCount{0}; ///< number of buffers
 };
 
 }}} // namespace lsst::qserv::xrdsvc

@@ -188,7 +188,6 @@ bool MySqlConnection::runQuery(char const* query,
         if (result) mysql_free_result(result);
         std::string msg = std::string("Unable to execute query: ")
             + queryPiece;
-        //    + "\nQuery = " + std::string(query, qSize);
         return _setErrorObject(errObj, msg);
     }
     results.setAffectedRows(mysql_affected_rows(_connection->getMySql()));

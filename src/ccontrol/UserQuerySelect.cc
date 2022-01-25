@@ -157,7 +157,6 @@ UserQuerySelect::UserQuerySelect(std::shared_ptr<qproc::QuerySession> const& qs,
                                  std::shared_ptr<qmeta::QStatus> const& queryStatsData,
                                  std::shared_ptr<util::SemaMgr> const& semaMgrConn,
                                  qmeta::CzarId czarId,
-                                 std::shared_ptr<qdisp::QdispPool> const& qdispPool,
                                  std::string const& errorExtra,
                                  bool async,
                                  std::string const& resultDb)
@@ -166,7 +165,7 @@ UserQuerySelect::UserQuerySelect(std::shared_ptr<qproc::QuerySession> const& qs,
        _secondaryIndex(secondaryIndex),
        _queryMetadata(queryMetadata), _queryStatsData(queryStatsData),
        _semaMgrConn(semaMgrConn),
-       _qMetaCzarId(czarId), _qdispPool(qdispPool),
+       _qMetaCzarId(czarId),
        _errorExtra(errorExtra), _resultDb(resultDb), _async(async) {
 }
 
@@ -316,7 +315,7 @@ void UserQuerySelect::submit() {
             std::shared_ptr<ChunkMsgReceiver> cmr = ChunkMsgReceiver::newInstance(cs->chunkId, _messageStore);
             ResourceUnit ru;
             ru.setAsDbChunk(cs->db, cs->chunkId);
-            qdisp::JobDescription::Ptr jobDesc = qdisp::JobDescription::create(
+            qdisp::JobDescription::Ptr jobDesc = qdisp::JobDescription::create(_qMetaCzarId,
                     _executive->getId(), sequence, ru,
                     std::make_shared<MergingHandler>(cmr, _infileMerger, chunkResultName),
                     taskMsgFactory, cs, chunkResultName);
@@ -365,7 +364,7 @@ QueryState UserQuerySelect::join() {
     }
     if (successful) {
         _qMetaUpdateStatus(qmeta::QInfo::COMPLETED);
-        LOGS(_log, LOG_LVL_DEBUG, "Joined everything (success)");
+        LOGS(_log, LOG_LVL_INFO, "Joined everything (success)");
         return SUCCESS;
     } else if (_killed) {
         // status is already set to ABORTED

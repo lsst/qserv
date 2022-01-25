@@ -27,6 +27,7 @@
 
 // System headers
 #include <atomic>
+#include <mutex>
 #include <set>
 #include <string>
 #include <sys/types.h>
@@ -78,9 +79,7 @@ public:
 
     SQLBackend(mysql::MySqlConfig const& mc);
 
-    virtual ~SQLBackend() {
-        _memLockRelease();
-    }
+    virtual ~SQLBackend();
 
     virtual bool load(ScTableVector const& v, sql::SqlErrorObject& err);
 
@@ -96,17 +95,20 @@ protected:
 
     virtual void _discard(ScTableVector::const_iterator begin, ScTableVector::const_iterator end);
 
-    /// Run the 'query'. If it fails, terminate the program.
+    /// Run the 'query'. If it fails, terminate the program. Must hold _mtx
     void _execLockSql(std::string const& query);
 
-    /// Return the status of the lock on the in memory tables.
+    /// Return the status of the lock on the in memory tables. Must hold _mtx
     LockStatus _memLockStatus();
 
+    /// Checks that this program is the owner of the database. Must hold _mtx
+    void _memLockRequireOwnership();
+
     /// Attempt to acquire the memory table lock, terminate this program if the lock is not acquired.
-    // This must be run before any other operations on in memory tables.
+    // This must be run before any other operations on in memory tables. Must hold _mtx
     void _memLockAcquire();
 
-    /// Delete the memory lock database and everything in it.
+    /// Delete the memory lock database and everything in it. Must hold _mtx
     void _memLockRelease();
     /// Exit the program immediately to reduce minimize possible problems.
     void _exitDueToConflict(const std::string& msg);
@@ -120,6 +122,7 @@ protected:
     std::string _lockTbl;
     std::string _lockDbTbl;
     std::string _uid; // uuid
+    std::mutex _mtx; // protects the sql connection.
 };
 
 

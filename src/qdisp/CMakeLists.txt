@@ -8,6 +8,7 @@ target_sources(qdisp PRIVATE
     JobQuery.cc
     JobStatus.cc
     MessageStore.cc
+    PseudoFifo.cc
     QdispPool.cc
     QueryRequest.cc
     XrdSsiMocks.cc

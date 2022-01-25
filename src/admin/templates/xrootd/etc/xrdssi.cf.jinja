@@ -59,6 +59,7 @@ maxActiveChunks_slow = 4
 maxActiveChunks_med = 4
 maxActiveChunks_fast = 4
 
+
 # Maximum time for all tasks in a user query to complete.
 # scanmaxminutes_fast = 60
 # scanmaxminutes_med = 480
@@ -70,9 +71,11 @@ maxActiveChunks_fast = 4
 
 [sqlconnections]
 # Maximum number of SQL connections for tasks
-maxsqlconn = 800
-# Number of SQL connections reserved for interactive queries (must be less than maxsqlconn)
-reservedinteractivesqlconn = 20
+maxsqlconn = 980
+# Number of SQL connections reserved for interactive queries or
+# queries that require multiple sql connections, such as near-neighbor. 
+# This value must be less than maxsqlconn. 
+reservedinteractivesqlconn = 930
 
 [transmits]
 # Maximum number of concurrent transmits to a czar.

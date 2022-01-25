@@ -39,6 +39,7 @@
 #include "qproc/ChunkQuerySpec.h"
 #include "qproc/TaskMsgFactory.h"
 
+using namespace std;
 
 namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.qdisp.JobDescription");
@@ -50,12 +51,13 @@ namespace qserv {
 namespace qdisp {
 
 
-JobDescription::JobDescription(QueryId qId, int jobId, ResourceUnit const& resource,
-    std::shared_ptr<ResponseHandler> const& respHandler,
-    std::shared_ptr<qproc::TaskMsgFactory> const& taskMsgFactory,
-    std::shared_ptr<qproc::ChunkQuerySpec> const& chunkQuerySpec,
-    std::string const& chunkResultName, bool mock)
-    : _queryId(qId), _jobId(jobId), _qIdStr(QueryIdHelper::makeIdStr(_queryId, _jobId)),
+JobDescription::JobDescription(qmeta::CzarId czarId, QueryId qId, int jobId,
+    ResourceUnit const& resource,
+    shared_ptr<ResponseHandler> const& respHandler,
+    shared_ptr<qproc::TaskMsgFactory> const& taskMsgFactory,
+    shared_ptr<qproc::ChunkQuerySpec> const& chunkQuerySpec,
+    string const& chunkResultName, bool mock)
+    : _czarId(czarId), _queryId(qId), _jobId(jobId), _qIdStr(QueryIdHelper::makeIdStr(_queryId, _jobId)),
       _resource(resource), _respHandler(respHandler),
      _taskMsgFactory(taskMsgFactory), _chunkQuerySpec(chunkQuerySpec), _chunkResultName(chunkResultName),
      _mock(mock) {
@@ -77,8 +79,8 @@ bool JobDescription::incrAttemptCountScrubResults() {
 
 
 void JobDescription::buildPayload() {
-    std::ostringstream os;
-    _taskMsgFactory->serializeMsg(*_chunkQuerySpec, _chunkResultName, _queryId, _jobId, _attemptCount, os);
+    ostringstream os;
+    _taskMsgFactory->serializeMsg(*_chunkQuerySpec, _chunkResultName, _queryId, _jobId, _attemptCount, _czarId, os);
     _payloads[_attemptCount] = os.str();
 }
 
@@ -103,7 +105,7 @@ int JobDescription::getScanRating() const {
 }
 
 
-std::ostream& operator<<(std::ostream& os, JobDescription const& jd) {
+ostream& operator<<(ostream& os, JobDescription const& jd) {
     os << "job(id=" << jd._jobId << " payloads.size=" << jd._payloads.size()
        << " ru=" << jd._resource.path() << " attemptCount="  << jd._attemptCount << ")";
     return os;

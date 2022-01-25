@@ -41,7 +41,7 @@
 #include "proto/worker.pb.h"
 #include "util/Timer.h"
 #include "wbase/MsgProcessor.h"
-#include "wbase/SendChannel.h"
+#include "wbase/SendChannelShared.h"
 #include "wpublish/AddChunkGroupCommand.h"
 #include "wpublish/ChunkListCommand.h"
 #include "wpublish/GetChunkListCommand.h"
@@ -129,7 +129,19 @@ void SsiRequest::execute(XrdSsiRequest& req) {
                 || (ru.db()    != taskMsg->db())
                 || (ru.chunk() != taskMsg->chunkid())) {
                 reportError("Mismatched db/chunk in TaskMsg on resource db=" + ru.db() +
-                            " chunkId=" + std::to_string(ru.chunk()));
+                        " chunkId=" + std::to_string(ru.chunk()));
+                return;
+            }
+
+            if (not (taskMsg->has_queryid() && taskMsg->has_jobid()
+                     && taskMsg->has_scaninteractive() && taskMsg->has_attemptcount()
+                     && taskMsg->has_czarid())) {
+                reportError(std::string("taskMsg missing required field ")
+                          + " queryid:" + std::to_string(taskMsg->has_queryid())
+                          + " jobid:" + std::to_string(taskMsg->has_jobid())
+                          + " scaninteractive:" + std::to_string(taskMsg->has_scaninteractive())
+                          + " attemptcount:" + std::to_string(taskMsg->has_attemptcount())
+                          + " czarid:" + std::to_string(taskMsg->has_czarid()));
                 return;
             }
 
@@ -138,17 +150,16 @@ void SsiRequest::execute(XrdSsiRequest& req) {
             // the task is handed off to another thread for processing, as there is a
             // reference to this SsiRequest inside the reply channel for the task,
             // and after the call to BindRequest.
-            auto task = std::make_shared<wbase::Task>(
-                                taskMsg,
-                                std::make_shared<wbase::SendChannel>(shared_from_this()));
-            _task = task;
+            auto sendChannelBase = std::make_shared<wbase::SendChannel>(shared_from_this());
+            auto sendChannel = wbase::SendChannelShared::create(sendChannelBase, _transmitMgr);
+            auto tasks = wbase::Task::createTasks(taskMsg, sendChannel);
+
             ReleaseRequestBuffer();
             t.start();
-            _processor->processTask(task); // Queues task to be run later.
+            _processor->processTasks(tasks); // Queues tasks to be run later.
             t.stop();
-            LOGS(_log, LOG_LVL_DEBUG, "Enqueued TaskMsg for " << ru <<
-                 " in " << t.getElapsed() << " seconds");
-
+            LOGS(_log, LOG_LVL_DEBUG, "Enqueued TaskMsg for " << ru << " in "
+                                      << t.getElapsed() << " seconds");
             break;
         }
         case ResourceUnit::WORKER: {
@@ -335,7 +346,7 @@ void SsiRequest::Finished(XrdSsiRequest& req, XrdSsiRespInfo const& rinfo, bool 
     {
         std::lock_guard<std::mutex> finLock(_finMutex);
         // Clean up _stream if it exists and don't add anything new to it either.
-        _finished = true;
+        _reqFinished = true;
         if (_stream != nullptr) {
             _stream->clearMsgs();
         }
@@ -414,19 +425,21 @@ bool SsiRequest::replyFile(int fd, long long fSize) {
 }
 
 
-bool SsiRequest::replyStream(StreamBuffer::Ptr const& sBuf, bool last) {
-    // Create a streaming object if not already created.
-    LOGS(_log, LOG_LVL_DEBUG, "replyStream, checking stream size=" << sBuf->getSize() << " last=" << last);
+bool SsiRequest::replyStream(StreamBuffer::Ptr const& sBuf, bool last, int scsSeq) {
+    LOGS(_log, LOG_LVL_DEBUG, "replyStream, checking stream size=" << sBuf->getSize()
+                              << " last=" << last << " scsseq=" << scsSeq);
 
     // Normally, XrdSsi would call Recycle() when it is done with sBuf, but if this function
     // returns false, then it must call Recycle(). Otherwise, the scheduler will likely
     // wedge waiting for the buffer to be released.
     std::lock_guard<std::mutex> finLock(_finMutex);
-    if (_finished) {
+    if (_reqFinished) {
         // Finished() was called, give up.
+        LOGS(_log, LOG_LVL_ERROR, "replyStream called after reqFinished.");
         sBuf->Recycle();
         return false;
     }
+    // Create a stream if needed.
     if (!_stream) {
         _stream = std::make_shared<ChannelStream>();
         if (SetResponse(_stream.get()) != XrdSsiResponder::Status::wasPosted) {
@@ -442,8 +455,27 @@ bool SsiRequest::replyStream(StreamBuffer::Ptr const& sBuf, bool last) {
         return false;
     }
     // XrdSsi or Finished() will call Recycle().
-    _stream->append(sBuf, last);
+    LOGS(_log, LOG_LVL_INFO, "SsiRequest::replyStream seq=" << getSeq() << " scsseq=" << scsSeq);
+    _stream->append(sBuf, last, scsSeq);
     return true;
+}
+
+
+bool SsiRequest::sendMetadata(const char *buf, int blen) {
+    Status stat = SetMetadata(buf, blen);
+    switch (stat) {
+    case XrdSsiResponder::wasPosted:
+        return true;
+    case XrdSsiResponder::notActive:
+        LOGS(_log, LOG_LVL_ERROR, "failed to setMetadata notActive");
+        break;
+    case XrdSsiResponder::notPosted:
+        LOGS(_log, LOG_LVL_ERROR, "failed to setMetadata notPosted blen=" << blen);
+        break;
+    default:
+        LOGS(_log, LOG_LVL_ERROR, "failed to setMetadata unkown state blen=" << blen);
+    }
+    return false;
 }
 
 
@@ -452,5 +484,10 @@ SsiRequest::Ptr SsiRequest::freeSelfKeepAlive() {
     return keepAlive;
 }
 
+
+uint64_t SsiRequest::getSeq() const {
+    if (_stream == nullptr) return 0;
+    return _stream->getSeq();
+}
 
 }}} // namespace

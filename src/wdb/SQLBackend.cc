@@ -63,9 +63,16 @@ SQLBackend::SQLBackend() : _uid(makeUuid()) {
 
 
 SQLBackend::SQLBackend(mysql::MySqlConfig const& mc)
-     : _sqlConn(sql::SqlConnectionFactory::make(sql::SqlConfig(mc))), _uid(makeUuid()) {
-     _memLockAcquire();
+  : _sqlConn(sql::SqlConnectionFactory::make(sql::SqlConfig(mc))), _uid(makeUuid()) {
+    std::lock_guard<std::mutex> lock(_mtx);
+    _memLockAcquire();
  }
+
+
+SQLBackend::~SQLBackend() {
+    std::lock_guard<std::mutex> lock(_mtx);
+    _memLockRelease();
+}
 
 
 std::ostream& operator<<(std::ostream& os, ScTable const& st) {
@@ -76,7 +83,8 @@ std::ostream& operator<<(std::ostream& os, ScTable const& st) {
 
 bool SQLBackend::load(ScTableVector const& v, sql::SqlErrorObject& err) {
     using namespace lsst::qserv::wbase;
-    memLockRequireOwnership();
+    std::lock_guard<std::mutex> lock(_mtx);
+    _memLockRequireOwnership();
     for(ScTableVector::const_iterator i=v.begin(), e=v.end();
             i != e; ++i) {
         std::string const* createScript = nullptr;
@@ -90,6 +98,7 @@ bool SQLBackend::load(ScTableVector const& v, sql::SqlErrorObject& err) {
                 % i->chunkId % i->subChunkId).str();
 
         if (!_sqlConn->runQuery(create, err)) {
+            LOGS(_log, LOG_LVL_ERROR, "sql query err=" << err.errMsg() << " with '" << create << "'");
             _discard(v.begin(), i);
             return false;
         }
@@ -99,11 +108,19 @@ bool SQLBackend::load(ScTableVector const& v, sql::SqlErrorObject& err) {
 
 
 void SQLBackend::discard(ScTableVector const& v) {
+    std::lock_guard<std::mutex> lock(_mtx);
     _discard(v.begin(), v.end());
 }
 
 
 void SQLBackend::memLockRequireOwnership() {
+    std::lock_guard<std::mutex> lock(_mtx);
+    _memLockRequireOwnership();
+}
+
+
+void SQLBackend::_memLockRequireOwnership() {
+    // Must hold _mtx
     if (_memLockStatus() != LOCKED_OURS) {
         _exitDueToConflict("memLockRequireOwnership could not verify this program owned the memory table lock, Exiting.");
     }
@@ -112,7 +129,8 @@ void SQLBackend::memLockRequireOwnership() {
 
 void SQLBackend::_discard(ScTableVector::const_iterator begin,
               ScTableVector::const_iterator end) {
-    memLockRequireOwnership();
+    // Must hold _mtx
+    _memLockRequireOwnership();
     for(ScTableVector::const_iterator i=begin, e=end; i != e; ++i) {
         std::string discard = (boost::format(lsst::qserv::wbase::CLEANUP_SUBCHUNK_SCRIPT)
                 % i->dbTable.db % i->dbTable.table % i->chunkId % i->subChunkId).str();
@@ -125,6 +143,7 @@ void SQLBackend::_discard(ScTableVector::const_iterator begin,
 
 /// Run the 'query'. If it fails, terminate the program.
 void SQLBackend::_execLockSql(std::string const& query) {
+    // Must hold _mtx
     LOGS(_log, LOG_LVL_DEBUG, "execLockSql " << query);
     sql::SqlErrorObject err;
     if (!_sqlConn->runQuery(query, err)) {
@@ -134,6 +153,7 @@ void SQLBackend::_execLockSql(std::string const& query) {
 
 /// Return the status of the lock on the in memory tables.
 SQLBackend::LockStatus SQLBackend::_memLockStatus() {
+    // Must hold _mtx
     std::string sql = "SELECT uid FROM " + _lockDbTbl + " WHERE keyId = 1";
     sql::SqlResults results;
     sql::SqlErrorObject err;
@@ -159,6 +179,7 @@ SQLBackend::LockStatus SQLBackend::_memLockStatus() {
 /// Attempt to acquire the memory table lock, terminate this program if the lock is not acquired.
 // This must be run before any other operations on in memory tables.
 void SQLBackend::_memLockAcquire() {
+    // Must hold _mtx
     _lockDb = MEMLOCKDB;
     _lockTbl = MEMLOCKTBL;
     _lockDbTbl = _lockDb + "." + _lockTbl;
@@ -217,6 +238,7 @@ void SQLBackend::_memLockAcquire() {
 
 /// Delete the memory lock database and everything in it.
 void SQLBackend::_memLockRelease() {
+    // Must hold _mtx
     LOGS(_log, LOG_LVL_DEBUG, "memLockRelease");
     if (_lockAquired && !_lockConflict) {
         // Only attempt to release tables if the lock on the db was aquired.
@@ -228,6 +250,8 @@ void SQLBackend::_memLockRelease() {
 
 /// Exit the program immediately to reduce minimize possible problems.
 void SQLBackend::_exitDueToConflict(const std::string& msg) {
+    // This will likely not be clean exit, but clean exit is impossible
+    // with xrootd anyway.
     _lockConflict = true;
     LOGS(_log, LOG_LVL_ERROR, msg);
     exit(EXIT_FAILURE);

@@ -39,16 +39,19 @@ namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.xrdsvc.ChannelStream");
 }
 
+using namespace std;
 
 namespace lsst {
 namespace qserv {
 namespace xrdsvc {
 
+/// Provide each Channel stream with a unique identifier.
+atomic<uint64_t> ChannelStream::_sequenceSource{0};
 
 /// Constructor
 ChannelStream::ChannelStream()
     : XrdSsiStream(isActive),
-      _closed(false) {}
+      _closed(false), _seq(_sequenceSource++) {}
 
 /// Destructor
 ChannelStream::~ChannelStream() {
@@ -57,34 +60,39 @@ ChannelStream::~ChannelStream() {
 
 
 /// Push in a data packet
-void ChannelStream::append(StreamBuffer::Ptr const& streamBuffer, bool last) {
+void ChannelStream::append(StreamBuffer::Ptr const& streamBuffer, bool last, int scsSeq) {
     if (_closed) {
         throw Bug("ChannelStream::append: Stream closed, append(...,last=true) already received");
     }
-    LOGS(_log, LOG_LVL_DEBUG, "last=" << last
-         << " " << util::prettyCharBuf(streamBuffer->data, streamBuffer->getSize(), 10));
+    LOGS(_log, LOG_LVL_DEBUG, "seq=" << _seq << " scsseq=" << scsSeq << " ChannelStream::append last=" << last
+         << " " << util::prettyCharBuf(streamBuffer->data, streamBuffer->getSize(), 5));
     {
-        std::unique_lock<std::mutex> lock(_mutex);
-        LOGS(_log, LOG_LVL_DEBUG, "Trying to append message (flowing)");
-
+        unique_lock<mutex> lock(_mutex);
+        ++_appendCount;
+        LOGS(_log, LOG_LVL_DEBUG, "seq=" << to_string(_seq) << " scsseq=" << scsSeq
+                                 << " Trying to append message (flowing) appC="
+                                 << _appendCount << " getBC=" << _getBufCount);
         _msgs.push_back(streamBuffer);
         _closed = last; // if last is true, then we are closed.
-        _hasDataCondition.notify_one();
     }
+    _hasDataCondition.notify_one();
 }
 
 
 /// Pull out a data packet as a Buffer object (called by XrdSsi code)
 XrdSsiStream::Buffer* ChannelStream::GetBuff(XrdSsiErrInfo &eInfo, int &dlen, bool &last) {
-    std::unique_lock<std::mutex> lock(_mutex);
+    ++_getBufCount;
+    // This InstanceCount should be fairly quiet as there should only be one at a time.
+    util::InstanceCount inst("GetBuf seq=" + to_string(_seq));
+    unique_lock<mutex> lock(_mutex);
     while(_msgs.empty() && !_closed) { // No msgs, but we aren't done
         // wait.
-        LOGS(_log, LOG_LVL_DEBUG, "Waiting, no data ready");
+        LOGS(_log, LOG_LVL_INFO, "seq=" << _seq << " Waiting, no data ready ");
         _hasDataCondition.wait(lock);
     }
-    if (_msgs.empty() && _closed) { // We are closed and no more
-        // msgs are available.
-        LOGS(_log, LOG_LVL_DEBUG, "Not waiting, but closed");
+    if (_msgs.empty() && _closed) {
+        // It's closed and no more msgs are available.
+        LOGS(_log, LOG_LVL_INFO, "seq=" << _seq << " Not waiting, but closed");
         dlen = 0;
         eInfo.Set("Not an active stream", EOPNOTSUPP);
         return 0;
@@ -94,13 +102,16 @@ XrdSsiStream::Buffer* ChannelStream::GetBuff(XrdSsiErrInfo &eInfo, int &dlen, bo
     dlen = sb->getSize();
     _msgs.pop_front();
     last = _closed && _msgs.empty();
-    LOGS(_log, LOG_LVL_DEBUG, "returning buffer (" << dlen << ", " << (last ? "(last)" : "(more)") << ")");
+    LOGS(_log, LOG_LVL_INFO, "seq=" << to_string(_seq)
+                           << " returning buffer (" << dlen << ", " << (last ? "(last)" : "(more)") << ")"
+                           << " getBufCount=" << _getBufCount);
     return sb.get();
 }
 
 
 void ChannelStream::clearMsgs() {
-    std::unique_lock<std::mutex> lock(_mutex);
+    LOGS(_log, LOG_LVL_DEBUG, "seq=" << to_string(_seq) <<" ChannelStream::clearMsgs()");
+    unique_lock<mutex> lock(_mutex);
     while(!_msgs.empty()) {
         _msgs.front()->Recycle();
         _msgs.pop_front();

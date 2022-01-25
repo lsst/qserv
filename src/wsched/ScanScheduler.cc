@@ -48,31 +48,31 @@
 #include "util/Timer.h"
 #include "wcontrol/Foreman.h"
 #include "wsched/BlendScheduler.h"
-#include "wsched/ChunkDisk.h"
 #include "wsched/ChunkTasksQueue.h"
 
 namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.wsched.ScanScheduler");
 }
 
+using namespace std;
+
 namespace lsst {
 namespace qserv {
 namespace wsched {
 
-ScanScheduler::ScanScheduler(std::string const& name, int maxThreads, int maxReserve, int priority,
+ScanScheduler::ScanScheduler(string const& name, int maxThreads, int maxReserve, int priority,
                              int maxActiveChunks, memman::MemMan::Ptr const& memMan,
                              int minRating, int maxRating, double maxTimeMinutes)
     : SchedulerBase{name, maxThreads, maxReserve, maxActiveChunks, priority},
       _memMan{memMan}, _minRating{minRating}, _maxRating{maxRating},
       _maxTimeMinutes{maxTimeMinutes} {
-    //_taskQueue = std::make_shared<ChunkDisk>(_memMan); // keeping for testing.
-    _taskQueue = std::make_shared<ChunkTasksQueue>(this, _memMan);
+    _taskQueue = make_shared<ChunkTasksQueue>(this, _memMan);
     assert(_minRating <= _maxRating);
 }
 
 
 void ScanScheduler::commandStart(util::Command::Ptr const& cmd) {
-    wbase::Task::Ptr task = std::dynamic_pointer_cast<wbase::Task>(cmd);
+    wbase::Task::Ptr task = dynamic_pointer_cast<wbase::Task>(cmd);
     _infoChanged = true;
     if (task == nullptr) {
         LOGS(_log, LOG_LVL_WARN, "ScanScheduler::commandStart cmd failed conversion " << getName());
@@ -84,7 +84,7 @@ void ScanScheduler::commandStart(util::Command::Ptr const& cmd) {
 }
 
 void ScanScheduler::commandFinish(util::Command::Ptr const& cmd) {
-    wbase::Task::Ptr t = std::dynamic_pointer_cast<wbase::Task>(cmd);
+    wbase::Task::Ptr t = dynamic_pointer_cast<wbase::Task>(cmd);
     _infoChanged = true;
     if (t == nullptr) {
         LOGS(_log, LOG_LVL_WARN, "ScanScheduler::commandFinish cmd failed conversion " << getName());
@@ -95,7 +95,7 @@ void ScanScheduler::commandFinish(util::Command::Ptr const& cmd) {
 
     _taskQueue->taskComplete(t); // does not need _mx protection.
     {
-        std::lock_guard<std::mutex> guard(util::CommandQueue::_mx);
+        lock_guard<mutex> guard(util::CommandQueue::_mx);
         --_inFlight;
         LOGS(_log, LOG_LVL_DEBUG, "commandFinish " << getName() << " inFlight=" << _inFlight);
 
@@ -129,7 +129,7 @@ void ScanScheduler::commandFinish(util::Command::Ptr const& cmd) {
 
 /// Returns true if there is a Task ready to go and we aren't up against any limits.
 bool ScanScheduler::ready() {
-    std::lock_guard<std::mutex> lock(util::CommandQueue::_mx);
+    lock_guard<mutex> lock(util::CommandQueue::_mx);
     return _ready();
 }
 
@@ -140,30 +140,16 @@ bool ScanScheduler::_ready() {
     if (_infoChanged) {
         _infoChanged = false;
         logStuff = true;
-        LOGS(_log, LOG_LVL_DEBUG, "ScanScheduler::_ready name="<< getName() << " inFlight="
+        LOGS(_log, LOG_LVL_DEBUG, getName() <<" ScanScheduler::_ready " << " inFlight="
              << _inFlight << " maxThreads=" << _maxThreads << " adj=" << _maxThreadsAdj
-             << " activeChunks=" << getActiveChunkCount());
+             << " activeChunks=" << getActiveChunkCount() << _taskQueue->queueInfo());
     }
     if (_inFlight >= maxInFlight()) {
         if (logStuff) {
-            LOGS(_log, LOG_LVL_DEBUG, "ScanScheduler::_ready too many in flight "
+            LOGS(_log, LOG_LVL_DEBUG, getName() << " ScanScheduler::_ready too many in flight "
                  << _inFlight);
         }
         return false;
-    }
-
-    // Only run this test if _taskQueue is a ChunkDisk. ChunkTasksQueue does this in its ready() call.
-    if (std::dynamic_pointer_cast<ChunkDisk>(_taskQueue) != nullptr
-          &&_taskQueue->nextTaskDifferentChunkId()) {
-        auto activeChunkCount = getActiveChunkCount();
-        auto maxActiveChunks = getMaxActiveChunks();
-        if (activeChunkCount >= maxActiveChunks) {
-            if (logStuff) {
-                LOGS(_log, LOG_LVL_DEBUG, "ScanScheduler::_ready too many ActiveChunks "
-                     << activeChunkCount << ">=" << maxActiveChunks);
-            }
-            return false;
-        }
     }
 
     bool useFlexibleLock = (_inFlight < 1);
@@ -190,14 +176,15 @@ bool ScanScheduler::_ready() {
 }
 
 
-std::size_t ScanScheduler::getSize() const {
-    std::lock_guard<std::mutex> lock(util::CommandQueue::_mx);
+size_t ScanScheduler::getSize() const {
+    lock_guard<mutex> lock(util::CommandQueue::_mx);
     return _taskQueue->getSize();
 }
 
 
 util::Command::Ptr ScanScheduler::getCmd(bool wait)  {
-    std::unique_lock<std::mutex> lock(util::CommandQueue::_mx);
+    unique_lock<mutex> lock(util::CommandQueue::_mx);
+    LOGS(_log, LOG_LVL_TRACE, "start getCmd " << getName() << " " << _taskQueue->queueInfo());
     if (wait) {
         util::CommandQueue::_cv.wait(lock, [this](){return _ready();});
     } else if (!_ready()) {
@@ -208,8 +195,8 @@ util::Command::Ptr ScanScheduler::getCmd(bool wait)  {
     if (task != nullptr) {
         ++_inFlight; // in flight as soon as it is off the queue.
         QSERV_LOGCONTEXT_QUERY_JOB(task->getQueryId(), task->getJobId());
-        LOGS(_log, LOG_LVL_DEBUG, "getCmd " << getName() << " tskStart chunk=" << task->getChunkId()
-                               << " inflight=" << _inFlight);
+        LOGS(_log, LOG_LVL_DEBUG, "getCmd " << getName() << " tskStart chunk=" << task->getChunkId() << " tid=" << task->getIdStr()
+                               << " inflight=" << _inFlight << _taskQueue->queueInfo());
         _infoChanged = true;
         _decrCountForUserQuery(task->getQueryId());
         _incrChunkTaskCount(task->getChunkId());
@@ -221,23 +208,57 @@ util::Command::Ptr ScanScheduler::getCmd(bool wait)  {
 
 
 void ScanScheduler::queCmd(util::Command::Ptr const& cmd) {
-    wbase::Task::Ptr t = std::dynamic_pointer_cast<wbase::Task>(cmd);
-    if (t == nullptr) {
-        LOGS(_log, LOG_LVL_WARN, getName() << " queCmd could not be converted to Task or was nullptr");
-        return;
-    }
-    QSERV_LOGCONTEXT_QUERY_JOB(t->getQueryId(), t->getJobId());
-    LOGS(_log, LOG_LVL_INFO, getName()
-        << " queCmd rating=" << t->getScanInfo().scanRating << " interactive=" << t->getScanInteractive());
-    {
-        std::lock_guard<std::mutex> lock(util::CommandQueue::_mx);
-        auto uqCount = _incrCountForUserQuery(t->getQueryId());
-        LOGS(_log, LOG_LVL_DEBUG, getName() << " queCmd " << " uqCount=" << uqCount);
+    vector<util::Command::Ptr> vect;
+    vect.push_back(cmd);
+    queCmd(vect);
+}
+
+
+void ScanScheduler::queCmd(vector<util::Command::Ptr> const& cmds) {
+    LOGS(_log, LOG_LVL_TRACE, "ScanScheduler::queCmd cmds.sz=" << cmds.size());
+    std::vector<wbase::Task::Ptr> tasks;
+    bool first = true;
+    QueryId qid;
+    int jid = 0;
+    // Convert to a vector of tasks
+    for (auto const& cmd:cmds) {
+        wbase::Task::Ptr t = dynamic_pointer_cast<wbase::Task>(cmd);
+        if (t == nullptr) {
+            throw Bug(getName() + " queCmd could not be converted to Task or was nullptr");
+        }
+        if (first) {
+            first = false;
+            qid = t->getQueryId();
+            jid = t->getJobId();
+            QSERV_LOGCONTEXT_QUERY_JOB(qid, jid);
+        } else {
+            if (qid != t->getQueryId() || jid != t->getJobId()) {
+                LOGS(_log, LOG_LVL_ERROR, " mismatch multiple query/job ids in single queCmd "
+                        << " expected QID=" << qid << " got=" << t->getQueryId()
+                        << " expected JID=" << jid << " got=" << t->getJobId());
+                // This could cause difficult to detect problems later on.
+                throw Bug("Mismatch multiple query/job ids in single queCmd");
+                return;
+            }
+        }
         t->setMemMan(_memMan);
-        _taskQueue->queueTask(t);
+        tasks.push_back(t);
+        LOGS(_log, LOG_LVL_INFO, getName() << " queCmd " << t->getIdStr());
+    }
+    // Queue the tasks
+    {
+        lock_guard<mutex> lock(util::CommandQueue::_mx);
+        auto uqCount = _incrCountForUserQuery(qid, tasks.size());
+        LOGS(_log, LOG_LVL_DEBUG, getName() << " queCmd " << " uqCount=" << uqCount);
+        _taskQueue->queueTask(tasks);
         _infoChanged = true;
     }
-    util::CommandQueue::_cv.notify_one();
+
+    if (cmds.size() > 1) {
+        util::CommandQueue::_cv.notify_all();
+    } else {
+        util::CommandQueue::_cv.notify_one();
+    }
 }
 
 

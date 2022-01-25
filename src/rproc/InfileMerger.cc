@@ -192,11 +192,31 @@ void InfileMerger::_setQueryIdStr(std::string const& qIdStr) {
 }
 
 
-bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> response, bool last) {
+void InfileMerger::mergeCompleteFor(std::set<int> const& jobIds) {
+    std::lock_guard<std::mutex> resultSzLock(_mtxResultSizeMtx);
+    for (int jobId:jobIds) {
+        _totalResultSize += _perJobResultSize[jobId];
+    }
+}
+
+
+bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> const& response) {
     if (!response) {
+        LOGS(_log, LOG_LVL_ERROR, "merge response unset");
         return false;
     }
     // TODO: Check session id (once session id mgmt is implemented)
+    if (not (response->result.has_jobid() && response->result.has_rowcount()
+             && response->result.has_transmitsize() && response->result.has_attemptcount()
+             && response->result.has_rowschema())) {
+        LOGS(_log, LOG_LVL_ERROR, "merge response missing required field"
+                                  << " jobid:" << response->result.has_jobid()
+                                  << " rowcount:" << response->result.has_rowcount()
+                                  << " transmitsize:" << response->result.has_transmitsize()
+                                  << " attemptcount:" << response->result.has_attemptcount()
+                                  << " rowschema:" << response->result.has_rowschema());
+        return false;
+    }
     int const jobId = response->result.jobid();
     std::string queryIdJobStr =
         QueryIdHelper::makeIdStr(response->result.queryid(), jobId);
@@ -206,7 +226,6 @@ bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> response, bool l
     size_t resultSize = response->result.transmitsize();
     LOGS(_log, LOG_LVL_TRACE,
          "Executing InfileMerger::merge("
-         << " largeResult=" << response->result.largeresult()
          << " sizes=" << static_cast<short>(response->headerSize)
          << ", " << response->protoHeader.size()
          << ", resultSize=" << resultSize
@@ -252,9 +271,6 @@ bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> response, bool l
         std::lock_guard<std::mutex> resultSzLock(_mtxResultSizeMtx);
         _perJobResultSize[jobId] += resultSize;
         tResultSize = _totalResultSize + _perJobResultSize[jobId];
-        if (last) {
-            _totalResultSize += _perJobResultSize[jobId];
-        }
     }
     if (tResultSize > _maxResultTableSizeBytes) {
         std::ostringstream os;

@@ -29,9 +29,9 @@
 #include <memory>
 #include <mutex>
 #include <string>
+#include <thread>
 #include <vector>
 
-#include "qdisp/QdispPool.h"
 // Third-party headers
 
 // Qserv headers
@@ -41,11 +41,17 @@
 #include "czar/SubmitResult.h"
 #include "global/stringTypes.h"
 #include "mysql/MySqlConfig.h"
+#include "qdisp/SharedResources.h"
 #include "util/ConfigStore.h"
 #include "util/Timer.h"
 
 namespace lsst {
 namespace qserv {
+
+namespace qdisp {
+class PseudoFifo;
+}
+
 namespace czar {
 
 /// @addtogroup czar
@@ -101,10 +107,10 @@ public:
      */
     static Ptr getCzar() { return _czar; }
 
-    /**
-     * @return a pointer to the QdispPool.
-     */
-    qdisp::QdispPool::Ptr getQdispPool() { return _qdispPool; }
+    /// Return a pointer to QdispSharedResources
+    qdisp::SharedResources::Ptr getQdispSharedResources() {
+        return _qdispSharedResources;
+    }
 
     /// Remove all old tables in the qservResult database.
     void removeOldResultTables();
@@ -151,7 +157,10 @@ private:
     IdToQuery _idToQuery;               ///< maps query ID to query (for currently running queries)
     std::mutex _mutex;                  ///< protects _uqFactory, _clientToQuery, and _idToQuery
 
-    qdisp::QdispPool::Ptr _qdispPool; ///< Thread pool for handling Responses from XrdSsi.
+    /// Thread pool for handling Responses from XrdSsi,
+    /// the PsuedoFifo to prevent czar from calling most recent requests,
+    /// and any other resources for use by query executives.
+    qdisp::SharedResources::Ptr _qdispSharedResources;
 
     util::Timer _lastRemovedTimer; ///< Timer to limit table deletions.
     std::mutex _lastRemovedMtx;    ///< protects _lastRemovedTimer

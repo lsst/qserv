@@ -47,7 +47,7 @@ namespace lsst {
 namespace qserv {
 namespace wbase {
     struct ScriptMeta;
-    class SendChannel;
+    class SendChannelShared;
 }
 namespace proto {
     class TaskMsg;
@@ -119,22 +119,34 @@ public:
         bool operator()(Ptr const& x, Ptr const& y);
     };
 
-    explicit Task(TaskMsgPtr const& t, std::shared_ptr<SendChannel> const& sc);
+    explicit Task(TaskMsgPtr const& t, std::string const& query, int fragmentNumber,
+                  std::shared_ptr<SendChannelShared> const& sc);
     Task& operator=(const Task&) = delete;
     Task(const Task&) = delete;
     virtual ~Task();
 
+    /// Read 'taskMsg' to generate a vector of one or more task objects all using the same 'sendChannel'
+    static std::vector<Ptr> createTasks(std::shared_ptr<proto::TaskMsg> const& taskMsg,
+                                        std::shared_ptr<SendChannelShared> const& sendChannel);
+
     TaskMsgPtr msg; ///< Protobufs Task spec
-    std::shared_ptr<SendChannel> sendChannel; ///< For result reporting
+    std::shared_ptr<SendChannelShared> getSendChannel() const { return _sendChannel; }
+    void resetSendChannel() { _sendChannel.reset(); } ///< reset the shared pointer for SendChannelShared
     std::string hash; ///< hash of TaskMsg
     std::string user; ///< Incoming username
     time_t entryTime {0}; ///< Timestamp for task admission
     char timestr[100]; ///< ::ctime_r(&t.entryTime, timestr)
     // Note that manpage spec of "26 bytes"  is insufficient
 
+    /// Cancel the query in progress and set _cancelled.
     void cancel();
-    bool getCancelled() const { return _cancelled; }
 
+    /// Check if this task should be cancelled and call cancel() as needed.
+    /// @return true if this task was or needed to be cancelled.
+    bool checkCancelled();
+
+    std::string getQueryString() { return _queryString; }
+    int getQueryFragmentNum() { return _queryFragmentNum; }
     bool setTaskQueryRunner(TaskQueryRunner::Ptr const& taskQueryRunner); ///< return true if already cancelled.
     void freeTaskQueryRunner(TaskQueryRunner *tqr);
     void setTaskScheduler(TaskScheduler::Ptr const& scheduler) { _taskScheduler = scheduler; }
@@ -160,10 +172,12 @@ public:
     void setSafeToMoveRunning(bool val) { _safeToMoveRunning = val; } ///< For testing only.
 
     static IdSet allIds; // set of all task jobId numbers that are not complete.
-    std::string getIdStr() const {return _idStr;}
+    std::string getIdStr() const { return _idStr; }
 
     /// @return true if qId and jId match this task's query and job ids.
-    bool idsMatch(QueryId qId, int jId) { return (_qId == qId && _jId == jId); }
+    bool idsMatch(QueryId qId, int jId, uint64_t tseq) const {
+        return (_qId == qId && _jId == jId && tseq == _tSeq);
+    }
 
     // Functions for tracking task state and statistics.
     State getState() const;
@@ -172,11 +186,20 @@ public:
     void started(std::chrono::system_clock::time_point const& now);
     std::chrono::milliseconds finished(std::chrono::system_clock::time_point const& now);
 
+    uint64_t getTSeq() const { return _tSeq; }
+
+    std::string makeIdStr(bool invalid=false) const { return QueryIdHelper::makeIdStr(_qId, _jId, invalid)+std::to_string(_tSeq)+":"; }
+
 private:
-    QueryId  const    _qId{0}; //< queryId from czar
-    int      const    _jId{0}; //< jobId from czar
-    int      const    _attemptCount{0}; // attemptCount from czar
-    std::string const _idStr{QueryIdHelper::makeIdStr(0, 0, true)}; // < for logging only
+    std::shared_ptr<SendChannelShared> _sendChannel;
+    uint64_t const    _tSeq = 0; ///< identifier for the specific task
+    QueryId  const    _qId = 0;  ///< queryId from czar
+    int      const    _jId = 0;  ///< jobId from czar
+    int      const    _attemptCount = 0; // attemptCount from czar
+    /// _idStr for logging only.
+    std::string const _idStr = makeIdStr(true);
+    std::string _queryString; ///< The query this task will run.
+    int _queryFragmentNum = 0; ///< The fragment number of the query in the task message.
 
     std::atomic<bool> _cancelled{false};
     std::atomic<bool> _safeToMoveRunning{false}; ///< false until done with waitForMemMan().
