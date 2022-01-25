@@ -30,7 +30,7 @@ from functools import partial
 import logging
 import os
 import sys
-from typing import Dict, List, Optional
+from typing import Callable, Dict, List, Optional
 
 from click.decorators import pass_context
 
@@ -48,6 +48,7 @@ from .options import (
     load_option,
     log_cfg_file_option,
     log_level_option,
+    OptionGroup,
     options_file_option,
     mysql_monitor_password_option,
     pull_option,
@@ -66,6 +67,9 @@ from .options import (
 from . import utils
 from . import script
 from ..watcher import watch
+
+
+_log = logging.getLogger(__name__)
 
 
 template_dir = "/usr/local/qserv/templates/"
@@ -245,6 +249,46 @@ class EntrypointCommandGroup(click.Group):
         return list(commands.keys())
 
 
+def cmd_default(ctx: click.Context, param: click.core.Option, value: str) -> None:
+    """Sets the default value for --cmd for the current function in the
+    context's default map.
+    """
+    if not ctx.command.name:
+        return
+    ctx.default_map = ctx.default_map or {}
+    _log.debug(
+        "Changing the %s default_map value for --cmd from \"%s\" to \"%s\"",
+        ctx.command.name,
+        ctx.default_map.get("cmd", "None"),
+        default_cmd := commands[ctx.command.name].default_cmd,
+    )
+    ctx.default_map.update({"cmd": default_cmd})
+
+
+# cmd_default_option updates the default_map to have the default value for the --cmd option.
+cmd_default_option = partial(
+    click.option,
+    "--cmd-default",
+    callback=cmd_default,
+    is_eager=True,  # required to show the default in --help
+    expose_value=False,
+    hidden=True,
+)
+
+
+class cmd_options(OptionGroup):  # noqa: N801
+    """Applies the cmd_option and the cmd_default_option decorators to a
+    click.command function.
+    """
+
+    @property
+    def decorators(self) -> List[Callable]:
+        return [
+            cmd_option(),
+            cmd_default_option(),
+        ]
+
+
 @click.group(cls=EntrypointCommandGroup)
 @log_level_option()
 def entrypoint(log_level: str) -> None:
@@ -380,7 +424,7 @@ def delete_database(repl_ctrl_uri: str, database: str, admin: bool) -> None:
     show_default=True,
 )
 @targs_options()
-@cmd_option(default=commands["proxy"].default_cmd)
+@cmd_options()
 @options_file_option()
 def proxy(
     ctx: click.Context,
@@ -433,7 +477,7 @@ def proxy(
     show_default=True,
 )
 @targs_options()
-@cmd_option(default=commands["cmsd-manager"].default_cmd)
+@cmd_options()
 @options_file_option()
 def cmsd_manager(
     ctx: click.Context,
@@ -471,7 +515,7 @@ def cmsd_manager(
     show_default=True,
 )
 @targs_options()
-@cmd_option(default=commands["xrootd-manager"].default_cmd)
+@cmd_options()
 @options_file_option()
 def xrootd_manager(
     ctx: click.Context,
@@ -505,7 +549,7 @@ def xrootd_manager(
 @xrdssi_cfg_file_option()
 @xrdssi_cfg_path_option()
 @targs_options()
-@cmd_option(default=commands["worker-cmsd"].default_cmd)
+@cmd_options()
 @options_file_option()
 def worker_cmsd(
     ctx: click.Context,
@@ -550,7 +594,7 @@ def worker_cmsd(
 @xrdssi_cfg_file_option()
 @xrdssi_cfg_path_option()
 @targs_options()
-@cmd_option(default=commands["worker-xrootd"].default_cmd)
+@cmd_options()
 @options_file_option()
 def worker_xrootd(
     ctx: click.Context,
@@ -600,7 +644,7 @@ def worker_xrootd(
     help=f"{repl_connection_option.keywords['help']} {socket_option_help}"
 )
 @debug_option()
-@cmd_option(default=commands["worker-repl"].default_cmd)
+@cmd_options()
 @click.option(
     "--config",
     help="The path to the configuration database for qserv-replica-worker.",
@@ -660,7 +704,7 @@ def worker_repl(
     help="The host name of the xrootd manager node.",
 )
 @log_cfg_file_option(default="/config-etc/log4cxx.replication.properties")
-@cmd_option(default=commands["replication-controller"].default_cmd)
+@cmd_options()
 @click.option(
     "--http-root",
     help="The root folder for the static content to be served by the built-in HTTP service.",
