@@ -121,24 +121,20 @@ size_t IngestSvcConn::networkBufSizeBytes = 1024 * 1024;
 IngestSvcConn::Ptr IngestSvcConn::create(
         ServiceProvider::Ptr const& serviceProvider,
         string const& workerName,
-        string const& authKey,
         boost::asio::io_service& io_service) {
     return IngestSvcConn::Ptr(
         new IngestSvcConn(
             serviceProvider,
             workerName,
-            authKey,
             io_service));
 }
 
 
 IngestSvcConn::IngestSvcConn(ServiceProvider::Ptr const& serviceProvider,
                              string const& workerName,
-                             string const& authKey,
                              boost::asio::io_service& io_service)
     :   IngestFileSvc(serviceProvider,
                       workerName),
-        _authKey(authKey),
         _socket(io_service),
         _bufferPtr(make_shared<ProtocolBuffer>(
             serviceProvider->config()->get<size_t>("common", "request-buf-size-bytes"))) {
@@ -180,7 +176,7 @@ void IngestSvcConn::_handshakeReceived(boost::system::error_code const& ec,
     if (not ::readMessage(_socket, _bufferPtr, _bufferPtr->parseLength(), request)) return;
 
     // Check if the client is authorized for the operation
-    if (request.auth_key() != _authKey) {
+    if (request.auth_key() != serviceProvider()->authKey()) {
         _failed("not authorized");
         return;
     }

@@ -83,10 +83,16 @@ public:
      *  to the same instance. This mechanism also prevents 'cross-talks' between
      *  two (or many) Replication System's setups in case of an accidental
      *  mis-configuration.
+     * @param authKey  An authorization key for operations affecting the state of
+     *  Qserv or the Replication/Ingest system.
+     * @param adminAuthKey  An administrator-level authorization key for critical
+     *  operations affecting the state of Qserv or the Replication/Ingest system.
      * @return A pointer to the created object.
      */
     static ServiceProvider::Ptr create(std::string const& configUrl,
-                                       std::string const& instanceId);
+                                       std::string const& instanceId,
+                                       std::string const& authKey,
+                                       std::string const& adminAuthKey);
 
     ~ServiceProvider() = default;
 
@@ -99,11 +105,7 @@ public:
      */
     void run();
 
-    /**
-     * Check if the service is running.
-     *
-     * @return true if the service is running.
-     */
+    /// @return true if the service is running.
     bool isRunning() const;
 
     /**
@@ -120,6 +122,12 @@ public:
 
     /// @return A unique identifier of a Qserv instance served by the Replication System
     std::string const& instanceId() const { return _instanceId; }
+
+    /// @return The authorization key
+    std::string const& authKey() const { return _authKey; }
+
+    /// @return The authorization key for administrative operations.
+    std::string const& adminAuthKey() const { return _adminAuthKey; }
 
     /// @return a reference to the local (process) chunk locking services
     ChunkLocker& chunkLocker() { return _chunkLocker; }
@@ -147,10 +155,10 @@ public:
      * as it's shown below (both ways are the same):
      * @code
      *   // Okay
-     *   auto mutex = serviceProvider->get("name");
+     *   auto mutex = serviceProvider->getNamedMutex("name");
      *   util::Lock lock(mutex);
      *   // The better option
-     *   util::Lock lock(serviceProvider->get("name"));
+     *   util::Lock lock(serviceProvider->getNamedMutex("name"));
      * @code
      * Class util::Lock makes a copy of the shared pointer for a duration of the lock.
      *
@@ -158,7 +166,7 @@ public:
      * object then, please, make sure the shared pointer outlives the lock. This comment relates
      * to the locking made like shown below:
      * @code
-     *   auto mutex = serviceProvider->get("name");
+     *   auto mutex = serviceProvider->getNamedMutex("name");
      *   util::Lock lock(*mutex);
      *   std::lock_guard<util::Mutex> lock(*mutex);
      * @code
@@ -173,7 +181,9 @@ public:
 private:
     /// @see ServiceProvider::create()
     explicit ServiceProvider(std::string const& configUrl,
-                             std::string const& instanceId);
+                             std::string const& instanceId,
+                             std::string const& authKey,
+                             std::string const& adminAuthKey);
 
     /// @return the context string for debugging and diagnostic printouts
     std::string _context() const;
@@ -190,6 +200,12 @@ private:
 
     /// A unique identifier of a Qserv instance served by the Replication System
     std::string const _instanceId;
+
+    /// Authorization key
+    std::string _authKey;
+
+    /// Admin-level authorization key
+    std::string _adminAuthKey;
 
     /// For claiming exclusive ownership over chunks during replication
     /// operations to ensure consistency of the operations.

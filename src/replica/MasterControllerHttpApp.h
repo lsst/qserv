@@ -139,12 +139,6 @@ private:
     /// A connection URL to the MySQL service of the Qserv master database.
     std::string _qservCzarDbUrl;
 
-    /// An authorization key for metadata operations requested via the REST API.
-    std::string _authKey;
-
-    /// An "administrator"-level authorization key.
-    std::string _adminAuthKey;
-
     /// The root folder for the static content to be served by the built-in
     /// HTTP service.
     std::string _httpRoot;

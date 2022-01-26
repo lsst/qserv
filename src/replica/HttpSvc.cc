@@ -45,15 +45,11 @@ namespace replica {
 HttpSvc::HttpSvc(ServiceProvider::Ptr const& serviceProvider,
                  uint16_t port,
                  unsigned int backlog,
-                 size_t numThreads,
-                 string const& authKey,
-                 string const& adminAuthKey)
+                 size_t numThreads)
     :   _serviceProvider(serviceProvider),
         _port(port),
         _backlog(backlog),
         _numThreads(numThreads),
-        _authKey(authKey),
-        _adminAuthKey(adminAuthKey),
         _io_service_ptr(new boost::asio::io_service()) {
 }
 

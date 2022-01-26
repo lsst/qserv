@@ -79,14 +79,6 @@ WorkerApp::WorkerApp(int argc, char* argv[])
         "qserv-worker-db",
         "A connection url for the MySQL service of the Qserv worker database.",
         _qservWorkerDbUrl
-    ).option(
-        "auth-key",
-        "An authorization key for the catalog ingest operations.",
-        _authKey
-    ).option(
-        "admin-auth-key",
-        "An administrator-level authorization key for the catalog ingest operations.",
-        _adminAuthKey
     ).flag(
         "do-not-create-folders",
         "Do not attempt creating missing folders used by the worker services."
@@ -156,17 +148,17 @@ int WorkerApp::runImpl() {
         fileSvr->run();
     });
 
-    auto const ingestSvr = IngestSvc::create(serviceProvider(), worker, _authKey);
+    auto const ingestSvr = IngestSvc::create(serviceProvider(), worker);
     thread ingestSvrThread([ingestSvr]() {
         ingestSvr->run();
     });
 
-    auto const ingestHttpSvr = IngestHttpSvc::create(serviceProvider(), worker, _authKey, _adminAuthKey);
+    auto const ingestHttpSvr = IngestHttpSvc::create(serviceProvider(), worker);
     thread ingestHttpSvrThread([ingestHttpSvr]() {
         ingestHttpSvr->run();
     });
 
-    auto const exportSvr = ExportServer::create(serviceProvider(), worker, _authKey);
+    auto const exportSvr = ExportServer::create(serviceProvider(), worker);
     thread exportSvrThread([exportSvr]() {
         exportSvr->run();
     });

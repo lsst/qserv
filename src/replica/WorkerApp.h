@@ -72,12 +72,6 @@ private:
     /// A connection url for the MySQL service of the Qserv worker database.
     std::string _qservWorkerDbUrl;
 
-    /// An authorization key for the catalog ingest operation.
-    std::string _authKey;
-
-    /// An "administrator"-level authorization key.
-    std::string _adminAuthKey;
-
     /// The worker will create missing folders unless told not to do so by
     /// passing the corresponding command-line flag.
     bool _doNotCreateMissingFolders = false;

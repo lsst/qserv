@@ -47,18 +47,15 @@ namespace qserv {
 namespace replica {
 
 ExportServer::Ptr ExportServer::create(ServiceProvider::Ptr const& serviceProvider,
-                                       string const& workerName,
-                                       string const& authKey) {
-    return ExportServer::Ptr(new ExportServer(serviceProvider, workerName, authKey));
+                                       string const& workerName) {
+    return ExportServer::Ptr(new ExportServer(serviceProvider, workerName));
 }
 
 
 ExportServer::ExportServer(ServiceProvider::Ptr const& serviceProvider,
-                           string const& workerName,
-                           string const& authKey)
+                           string const& workerName)
     :   _serviceProvider(serviceProvider),
         _workerName(workerName),
-        _authKey(authKey),
         _workerInfo(serviceProvider->config()->workerInfo(workerName)),
         _io_service(),
         _acceptor(
@@ -101,7 +98,6 @@ void ExportServer::_beginAccept() {
         ExportServerConnection::create(
             _serviceProvider,
             _workerName,
-            _authKey,
             _io_service);
 
     _acceptor.async_accept(

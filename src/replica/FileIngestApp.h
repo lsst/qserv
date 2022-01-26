@@ -187,9 +187,6 @@ private:
 
     size_t _recordSizeBytes = IngestClient::defaultRecordSizeBytes;
 
-    /// An authorization key which should also be known to servers
-    std::string _authKey;
-
     FileIngestSpec _file;       /// File specification for the single file ingest ('FILE'))
 
     std::string _inFileName;    /// The name of a file to read from.

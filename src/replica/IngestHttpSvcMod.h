@@ -71,8 +71,6 @@ public:
      * @param workerName The name of a worker this service is acting upon (used to pull
      *   worker-specific configuration options for the service).
      * @param ingestRequestMgr The manager for handling ASYNC requests.
-     * @param authKey An authorization key for the catalog ingest operation.
-     * @param adminAuthKey An administrator-level authorization key.
      * @param req The HTTP request.
      * @param resp The HTTP response channel.
      * @param subModuleName The name of a submodule to be called. 
@@ -82,8 +80,6 @@ public:
     static void process(ServiceProvider::Ptr const& serviceProvider,
                         IngestRequestMgr::Ptr const& ingestRequestMgr,
                         std::string const& workerName,
-                        std::string const& authKey,
-                        std::string const& adminAuthKey,
                         qhttp::Request::Ptr const& req,
                         qhttp::Response::Ptr const& resp,
                         std::string const& subModuleName,
@@ -101,8 +97,6 @@ private:
     IngestHttpSvcMod(ServiceProvider::Ptr const& serviceProvider,
                      IngestRequestMgr::Ptr const& ingestRequestMgr,
                      std::string const& workerName,
-                     std::string const& authKey,
-                     std::string const& adminAuthKey,
                      qhttp::Request::Ptr const& req,
                      qhttp::Response::Ptr const& resp);
 

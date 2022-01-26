@@ -54,10 +54,11 @@ HttpModule::HttpModule(Controller::Ptr const& controller,
                        qhttp::Request::Ptr const& req,
                        qhttp::Response::Ptr const& resp)
     :   EventLogger(controller, taskName),
-        HttpModuleBase(processorConfig.authKey,
-                       processorConfig.adminAuthKey,
+        HttpModuleBase(controller->serviceProvider()->authKey(),
+                       controller->serviceProvider()->adminAuthKey(),
                        req,
-                       resp) {
+                       resp),
+        _processorConfig(processorConfig) {
 }
 
 

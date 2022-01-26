@@ -208,10 +208,6 @@ FileIngestApp::FileIngestApp(int argc, char* argv[])
         "An optional parameter specifying the record size for reading from the input"
         " file and for sending data to a server.",
         _recordSizeBytes
-    ).option(
-        "auth-key",
-        "An authorization key which should also be known to servers.",
-        _authKey
     ).flag(
         "verbose",
         "Print various stats upon a completion of the ingest",
@@ -230,7 +226,7 @@ FileIngestApp::FileIngestApp(int argc, char* argv[])
         _inFileName
     ).required(
         "outfile",
-        "A path to the oputput file to write the result.",
+        "A path to the output file to write the result.",
         _outFileName
     );
 
@@ -467,7 +463,7 @@ void FileIngestApp::_ingest(FileIngestSpec const& file) const {
         chunkContribution.chunk,
         chunkContribution.isOverlap,
         file.inFileName,
-        _authKey,
+        authKey(),
         _dialectInput,
         _recordSizeBytes
     );

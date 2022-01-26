@@ -143,9 +143,6 @@ private:
     /// The column separator in the output files.
     std::string _columnSeparatorStr = "COMMA";
 
-    /// An authorization key which should also be known to servers
-    std::string _authKey;
-
     FileExportSpec _file;       /// File specification for the single file export ('FILE'))
 
     bool _verbose = false;      /// Print various stats upon a completion of the export

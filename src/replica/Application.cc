@@ -75,7 +75,25 @@ Application::Application(int argc,
 int Application::run() {
 
     // Add extra options to the parser configuration
-    parser().flag(
+    parser().option(
+        "instance-id",
+        " A unique identifier of a Qserv instance served by the Replication System."
+        " Its value will be passed along various internal communication lines of"
+        " the system to ensure that all services are related to the same instance."
+        " This mechanism also prevents 'cross-talks' between two (or many) Replication"
+        " System's setups in case of an accidental mis-configuration.",
+        _instanceId
+    ).option(
+        "auth-key",
+        "An authorization key for operations affecting the state of Qserv or"
+        " the Replication/Ingest system.",
+        _authKey
+    ).option(
+        "admin-auth-key",
+        "An administrator-level authorization key for critical operations affecting"
+        " the state of Qserv of the Replication/Ingest system.",
+        _adminAuthKey
+    ).flag(
         "debug",
         "Change the minimum logging level from ERROR to DEBUG. Note that the Logger"
         " is configured via a configuration file (if any) presented to the application via"
@@ -126,14 +144,6 @@ int Application::run() {
             "config",
             "Configuration URL (a database connection string).",
             _config
-        ).option(
-            "instance-id",
-            " A unique identifier of a Qserv instance served by the Replication System."
-            " Its value will be passed along various internal communication lines of"
-            " the system to ensure that all services are related to the same instance."
-            " This mechanism also prevents 'cross-talks' between two (or many) Replication"
-            " System's setups in case of an accidental mis-configuration.",
-            _instanceId
         );
         // Inject options for th egeneral configuration parameters.
         for (auto&& itr: ConfigurationSchema::parameters()) {
@@ -178,7 +188,7 @@ int Application::run() {
         Configuration::setSchemaUpgradeWaitTimeoutSec(_schemaUpgradeWaitTimeoutSec);
     }
     if (_enableServiceProvider) {
-        _serviceProvider = ServiceProvider::create(_config, _instanceId);
+        _serviceProvider = ServiceProvider::create(_config, _instanceId, _authKey, _adminAuthKey);
 
         // Update general configuration parameters.
         // Note that options specified by a user will have non-empty values.
@@ -212,32 +222,27 @@ int Application::run() {
 
 
 ServiceProvider::Ptr const& Application::serviceProvider() const {
-    if (nullptr == _serviceProvider) {
-        throw logic_error(
-                "Application::" + string(__func__) + "  this application was not configured to initialize"
-                " the ServiceProvider.");
-    }
-    if (_serviceProvider == nullptr) {
-        throw logic_error(
-            "Application::" + string(__func__) + "  calling this method isn't allowed before invoking"
-            " the command-line parser.");
-    }
+    _assertValidOption(__func__, _enableServiceProvider, " service provider options");
     return _serviceProvider;
 }
 
 
 string const& Application::configUrl() const {
-    if (!_enableServiceProvider) {
+    _assertValidOption(__func__, _enableServiceProvider, " service provider options");
+    return _config;
+}
+
+
+void Application::_assertValidOption(string const& func, bool option, string const& context) const {
+    if (_parser.status() != Parser::SUCCESS) {
         throw logic_error(
-            "Application::" + string(__func__) + "  this application was not configured to initialize"
-            " the ServiceProvider.");
-    }
-    if (_serviceProvider == nullptr) {
-        throw logic_error(
-            "Application::" + string(__func__) + "  calling this method isn't allowed before invoking"
+            "Application::" + func + "  calling this method isn't allowed before invoking"
             " the command-line parser.");
     }
-    return _config;
+    if (!option) {
+        throw logic_error(
+                "Application::" + func + "  this application was not configured with " + context + ".");
+    }
 }
 
 

@@ -184,14 +184,6 @@ MasterControllerHttpApp::MasterControllerHttpApp(int argc, char* argv[])
         "A connection URL to the MySQL server of the Qserv master database.",
         _qservCzarDbUrl
     ).option(
-        "auth-key",
-        "An authorization key for requests made via the REST API.",
-        _authKey
-    ).option(
-        "admin-auth-key",
-        "An administrator-level authorization key for requests made via the REST API.",
-        _adminAuthKey
-    ).option(
         "http-root",
         "The root folder for the static content to be served by the built-in HTTP service.",
         _httpRoot
@@ -263,7 +255,7 @@ int MasterControllerHttpApp::runImpl() {
         _controller,
         HttpProcessorConfig(
                 _workerResponseTimeoutSec, _qservSyncTimeoutSec, _workerReconfigTimeoutSec,
-                _authKey, _adminAuthKey, _httpRoot
+                _httpRoot
         ),
         _healthMonitorTask
     );

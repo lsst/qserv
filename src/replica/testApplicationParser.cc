@@ -115,7 +115,7 @@ BOOST_AUTO_TEST_CASE(ApplicationParser2) {
               .flag(    "f1", "flag f1",               f1)
               .flag(    "f2", "flag f2",               f2)
               .reversedFlag("no-f3", "reversed flag f3", f3);
-        parser.parse();
+        BOOST_CHECK_EQUAL(parser.parse(), Parser::SUCCESS);
 
         LOGS_INFO("ApplicationParser: input strings  " + parser.serializeArguments());
         LOGS_INFO("ApplicationParser: parsed values  r1=" + r1 +

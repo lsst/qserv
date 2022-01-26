@@ -60,12 +60,10 @@ public:
      * @param serviceProvider  for configuration, etc. services.
      * @param workerName the name of a worker this service is acting upon (used for
      *   checking consistency of the protocol).
-     * @param authKey an authorization key for the catalog ingest operation.
      * @return pointer to the created object
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
-                      std::string const& workerName,
-                      std::string const& authKey);
+                      std::string const& workerName);
 
     IngestSvc() = delete;
     IngestSvc(IngestSvc const&) = delete;
@@ -87,8 +85,7 @@ public:
 private:
     /// @see IngestSvc::create()
     IngestSvc(ServiceProvider::Ptr const& serviceProvider,
-              std::string const& workerName,
-              std::string const& authKey);
+              std::string const& workerName);
 
     /**
      * Begin (asynchronously) accepting connection requests.
@@ -110,7 +107,6 @@ private:
 
     ServiceProvider::Ptr const _serviceProvider;
     std::string          const _workerName;
-    std::string          const _authKey;
 
     /// Cached worker descriptor obtained from the configuration
     WorkerInfo const _workerInfo;

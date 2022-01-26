@@ -47,23 +47,17 @@ namespace qserv {
 namespace replica {
 
 IngestHttpSvc::Ptr IngestHttpSvc::create(ServiceProvider::Ptr const& serviceProvider,
-                                         string const& workerName,
-                                         string const& authKey,
-                                         string const& adminAuthKey) {
-    return IngestHttpSvc::Ptr(new IngestHttpSvc(serviceProvider, workerName, authKey, adminAuthKey));
+                                         string const& workerName) {
+    return IngestHttpSvc::Ptr(new IngestHttpSvc(serviceProvider, workerName));
 }
 
 
 IngestHttpSvc::IngestHttpSvc(ServiceProvider::Ptr const& serviceProvider,
-                             string const& workerName,
-                             string const& authKey,
-                             string const& adminAuthKey)
+                             string const& workerName)
     :   HttpSvc(serviceProvider,
                 serviceProvider->config()->workerInfo(workerName).httpLoaderPort,
                 serviceProvider->config()->get<unsigned int>("worker", "http-max-listen-conn"),
-                serviceProvider->config()->get<size_t>("worker", "num-http-loader-processing-threads"),
-                authKey,
-                adminAuthKey),
+                serviceProvider->config()->get<size_t>("worker", "num-http-loader-processing-threads")),
         _workerName(workerName),
         _requestMgr(IngestRequestMgr::create(serviceProvider, workerName)),
         _threads(serviceProvider->config()->get<size_t>("worker", "num-async-loader-processing-threads")) {
@@ -80,7 +74,7 @@ void IngestHttpSvc::registerServices() {
             [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
                 IngestHttpSvcMod::process(
                         self->serviceProvider(), self->_requestMgr,
-                        self->_workerName, self->authKey(), self->adminAuthKey(),
+                        self->_workerName,
                         req, resp,
                         "SYNC-PROCESS");
             }
@@ -89,7 +83,7 @@ void IngestHttpSvc::registerServices() {
             [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
                 IngestHttpSvcMod::process(
                         self->serviceProvider(), self->_requestMgr,
-                        self->_workerName, self->authKey(), self->adminAuthKey(),
+                        self->_workerName,
                         req, resp,
                         "ASYNC-SUBMIT");
             }
@@ -98,7 +92,7 @@ void IngestHttpSvc::registerServices() {
             [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
                 IngestHttpSvcMod::process(
                         self->serviceProvider(), self->_requestMgr,
-                        self->_workerName, self->authKey(), self->adminAuthKey(),
+                        self->_workerName,
                         req, resp,
                         "ASYNC-STATUS-BY-ID",
                         HttpModuleBase::AUTH_NONE);
@@ -108,7 +102,7 @@ void IngestHttpSvc::registerServices() {
             [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
                 IngestHttpSvcMod::process(
                         self->serviceProvider(), self->_requestMgr,
-                        self->_workerName, self->authKey(), self->adminAuthKey(),
+                        self->_workerName,
                         req, resp,
                         "ASYNC-CANCEL-BY-ID");
             }
@@ -117,7 +111,7 @@ void IngestHttpSvc::registerServices() {
             [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
                 IngestHttpSvcMod::process(
                         self->serviceProvider(), self->_requestMgr,
-                        self->_workerName, self->authKey(), self->adminAuthKey(),
+                        self->_workerName,
                         req, resp,
                         "ASYNC-STATUS-BY-TRANS-ID",
                         HttpModuleBase::AUTH_NONE);
@@ -127,7 +121,7 @@ void IngestHttpSvc::registerServices() {
             [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
                 IngestHttpSvcMod::process(
                         self->serviceProvider(), self->_requestMgr,
-                        self->_workerName, self->authKey(), self->adminAuthKey(),
+                        self->_workerName,
                         req, resp,
                         "ASYNC-CANCEL-BY-TRANS-ID");
             }

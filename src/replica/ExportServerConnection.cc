@@ -116,24 +116,20 @@ size_t ExportServerConnection::networkBufSizeBytes = 1024 * 1024;
 ExportServerConnection::Ptr ExportServerConnection::create(
         ServiceProvider::Ptr const& serviceProvider,
         string const& workerName,
-        string const& authKey,
         boost::asio::io_service& io_service) {
     return ExportServerConnection::Ptr(
         new ExportServerConnection(
             serviceProvider,
             workerName,
-            authKey,
             io_service));
 }
 
 
 ExportServerConnection::ExportServerConnection(ServiceProvider::Ptr const& serviceProvider,
                                                string const& workerName,
-                                               string const& authKey,
                                                boost::asio::io_service& io_service)
     :   _serviceProvider(serviceProvider),
         _workerName(workerName),
-        _authKey(authKey),
         _workerInfo(serviceProvider->config()->workerInfo(workerName)),
         _socket(io_service),
         _bufferPtr(make_shared<ProtocolBuffer>(
@@ -190,7 +186,7 @@ void ExportServerConnection::_handshakeReceived(boost::system::error_code const&
 
     // Check if the client is authorized for the operation
 
-    if (request.auth_key() != _authKey) {
+    if (request.auth_key() != _serviceProvider->authKey()) {
         _failed("not authorized");
         return;
     }

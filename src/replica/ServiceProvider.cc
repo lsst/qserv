@@ -49,15 +49,21 @@ namespace qserv {
 namespace replica {
 
 ServiceProvider::Ptr ServiceProvider::create(string const& configUrl,
-                                             string const& instanceId) {
-    return ServiceProvider::Ptr(new ServiceProvider(configUrl, instanceId));
+                                             string const& instanceId,
+                                             string const& authKey,
+                                             string const& adminAuthKey) {
+    return ServiceProvider::Ptr(new ServiceProvider(configUrl, instanceId, authKey, adminAuthKey));
 }
 
 
 ServiceProvider::ServiceProvider(string const& configUrl,
-                                 string const& instanceId)
+                                 string const& instanceId,
+                                 string const& authKey,
+                                 string const& adminAuthKey)
     :   _configuration(Configuration::load(configUrl)),
-        _instanceId(instanceId) {
+        _instanceId(instanceId),
+        _authKey(authKey),
+        _adminAuthKey(adminAuthKey) {
 }
 
 
