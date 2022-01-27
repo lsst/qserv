@@ -52,6 +52,7 @@ Request::Request(std::shared_ptr<Server> const server, std::shared_ptr<ip::tcp::
 {
     boost::system::error_code ignore;
     localAddr = _socket->local_endpoint(ignore);
+    remoteAddr = _socket->remote_endpoint(ignore);
 }
 
 

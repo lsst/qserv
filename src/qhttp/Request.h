@@ -52,6 +52,10 @@ public:
 
     boost::asio::ip::tcp::endpoint localAddr;
 
+    //----- The remote address from which this request was initiated
+
+    boost::asio::ip::tcp::endpoint remoteAddr;
+
     //----- Elements of the HTTP header for this request
 
     std::string method;   // HTTP header method
