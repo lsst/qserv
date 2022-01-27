@@ -30,7 +30,7 @@ from functools import partial
 import logging
 import os
 import sys
-from typing import Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 from click.decorators import pass_context
 
@@ -65,6 +65,7 @@ from .options import (
     xrootd_manager_option,
 )
 from . import utils
+from .render_targs import render_targs
 from . import script
 from ..watcher import watch
 
@@ -426,35 +427,22 @@ def delete_database(repl_ctrl_uri: str, database: str, admin: bool) -> None:
 @targs_options()
 @cmd_options()
 @options_file_option()
-def proxy(
-    ctx: click.Context,
-    db_uri: str,
-    db_admin_uri: str,
-    mysql_monitor_password: str,
-    repl_ctl_dn: str,
-    xrootd_manager: str,
-    proxy_backend_address: str,
-    proxy_cfg_file: str,
-    proxy_cfg_path: str,
-    czar_cfg_file: str,
-    czar_cfg_path: str,
-    targs: Dict[str, str],
-    targs_file: str,
-    cmd: str,
-) -> None:
+def proxy(ctx: click.Context, **kwargs: Any) -> None:
     """Start as a qserv-proxy node.
     """
+    targs = utils.targs(ctx)
+    targs = render_targs(targs)
     script.enter_proxy(
-        targs=utils.targs(ctx),
-        db_uri=db_uri,
-        db_admin_uri=db_admin_uri,
-        repl_ctl_dn=repl_ctl_dn,
-        proxy_backend_address=proxy_backend_address,
-        proxy_cfg_file=proxy_cfg_file,
-        proxy_cfg_path=proxy_cfg_path,
-        czar_cfg_file=czar_cfg_file,
-        czar_cfg_path=czar_cfg_path,
-        cmd=cmd,
+        targs=targs,
+        db_uri=targs["db_uri"],
+        db_admin_uri=targs["db_admin_uri"],
+        repl_ctl_dn=targs["repl_ctl_dn"],
+        proxy_backend_address=targs["proxy_backend_address"],
+        proxy_cfg_file=targs["proxy_cfg_file"],
+        proxy_cfg_path=targs["proxy_cfg_path"],
+        czar_cfg_file=targs["czar_cfg_file"],
+        czar_cfg_path=targs["czar_cfg_path"],
+        cmd=targs["cmd"],
     )
 
 
@@ -479,22 +467,16 @@ def proxy(
 @targs_options()
 @cmd_options()
 @options_file_option()
-def cmsd_manager(
-    ctx: click.Context,
-    cms_delay_servers: int,
-    cmsd_manager_cfg_file: str,
-    cmsd_manager_cfg_path: str,
-    targs: Dict[str, str],
-    targs_file: str,
-    cmd: str,
-) -> None:
+def cmsd_manager(ctx: click.Context, **kwargs: Any) -> None:
     """Start as a cmsd manager node.
     """
+    targs = utils.targs(ctx)
+    targs = render_targs(targs)
     script.enter_manager_cmsd(
-        targs=utils.targs(ctx),
-        cmsd_manager_cfg_file=cmsd_manager_cfg_file,
-        cmsd_manager_cfg_path=cmsd_manager_cfg_path,
-        cmd=cmd,
+        targs=targs,
+        cmsd_manager_cfg_file=targs["cmsd_manager_cfg_file"],
+        cmsd_manager_cfg_path=targs["cmsd_manager_cfg_path"],
+        cmd=targs["cmd"],
     )
 
 
@@ -517,23 +499,16 @@ def cmsd_manager(
 @targs_options()
 @cmd_options()
 @options_file_option()
-def xrootd_manager(
-    ctx: click.Context,
-    cmsd_manager_name: str,
-    cmsd_manager_count: str,
-    xrootd_manager_cfg_file: str,
-    xrootd_manager_cfg_path: str,
-    targs: Dict[str, str],
-    targs_file: str,
-    cmd: str,
-) -> None:
+def xrootd_manager(ctx: click.Context, **kwargs: Any) -> None:
     """Start as an xrootd manager node.
     """
+    targs = utils.targs(ctx)
+    targs = render_targs(targs)
     script.enter_xrootd_manager(
-        targs=utils.targs(ctx),
-        xrootd_manager_cfg_file=xrootd_manager_cfg_file,
-        xrootd_manager_cfg_path=xrootd_manager_cfg_path,
-        cmd=cmd,
+        targs=targs,
+        xrootd_manager_cfg_file=targs["xrootd_manager_cfg_file"],
+        xrootd_manager_cfg_path=targs["xrootd_manager_cfg_path"],
+        cmd=targs["cmd"],
     )
 
 
@@ -551,30 +526,18 @@ def xrootd_manager(
 @targs_options()
 @cmd_options()
 @options_file_option()
-def worker_cmsd(
-    ctx: click.Context,
-    cmsd_manager_name: str,
-    cmsd_manager_count: str,
-    vnid_config: str,
-    debug_port: Optional[int],
-    db_uri: str,
-    cmsd_worker_cfg_file: str,
-    cmsd_worker_cfg_path: str,
-    xrdssi_cfg_file: str,
-    xrdssi_cfg_path: str,
-    targs: Dict[str, str],
-    targs_file: str,
-    cmd: str,
-) -> None:
+def worker_cmsd(ctx: click.Context, **kwargs: Any) -> None:
+    targs = utils.targs(ctx)
+    targs = render_targs(targs)
     script.enter_worker_cmsd(
-        targs=utils.targs(ctx),
-        debug_port=debug_port,
-        db_uri=db_uri,
-        cmsd_worker_cfg_file=cmsd_worker_cfg_file,
-        cmsd_worker_cfg_path=cmsd_worker_cfg_path,
-        xrdssi_cfg_file=xrdssi_cfg_file,
-        xrdssi_cfg_path=xrdssi_cfg_path,
-        cmd=cmd,
+        targs=targs,
+        debug_port=targs["debug_port"],
+        db_uri=targs["db_uri"],
+        cmsd_worker_cfg_file=targs["cmsd_worker_cfg_file"],
+        cmsd_worker_cfg_path=targs["cmsd_worker_cfg_path"],
+        xrdssi_cfg_file=targs["xrdssi_cfg_file"],
+        xrdssi_cfg_path=targs["xrdssi_cfg_path"],
+        cmd=targs["cmd"],
     )
 
 
@@ -596,39 +559,23 @@ def worker_cmsd(
 @targs_options()
 @cmd_options()
 @options_file_option()
-def worker_xrootd(
-    ctx: click.Context,
-    debug_port: Optional[int],
-    db_uri: str,
-    db_admin_uri: str,
-    vnid_config: str,
-    cmsd_manager_name: str,
-    cmsd_manager_count: int,
-    repl_ctl_dn: str,
-    mysql_monitor_password: str,
-    db_qserv_user: str,
-    cmsd_worker_cfg_file: str,
-    cmsd_worker_cfg_path: str,
-    xrdssi_cfg_file: str,
-    xrdssi_cfg_path: str,
-    targs: Dict[str, str],
-    targs_file: str,
-    cmd: str,
-) -> None:
+def worker_xrootd(ctx: click.Context, **kwargs: Any) -> None:
+    targs = utils.targs(ctx)
+    targs = render_targs(targs)
     script.enter_worker_xrootd(
-        targs=utils.targs(ctx),
-        debug_port=debug_port,
-        db_uri=db_uri,
-        db_admin_uri=db_admin_uri,
-        vnid_config=vnid_config,
-        repl_ctl_dn=repl_ctl_dn,
-        mysql_monitor_password=mysql_monitor_password,
-        db_qserv_user=db_qserv_user,
-        cmsd_worker_cfg_file=cmsd_worker_cfg_file,
-        cmsd_worker_cfg_path=cmsd_worker_cfg_path,
-        xrdssi_cfg_file=xrdssi_cfg_file,
-        xrdssi_cfg_path=xrdssi_cfg_path,
-        cmd=cmd,
+        targs=targs,
+        debug_port=targs["debug_port"],
+        db_uri=targs["db_uri"],
+        db_admin_uri=targs["db_admin_uri"],
+        vnid_config=targs["vnid_config"],
+        repl_ctl_dn=targs["repl_ctl_dn"],
+        mysql_monitor_password=targs["mysql_monitor_password"],
+        db_qserv_user=targs["db_qserv_user"],
+        cmsd_worker_cfg_file=targs["cmsd_worker_cfg_file"],
+        cmsd_worker_cfg_path=targs["cmsd_worker_cfg_path"],
+        xrdssi_cfg_file=targs["xrdssi_cfg_file"],
+        xrdssi_cfg_path=targs["xrdssi_cfg_path"],
+        cmd=targs["cmd"],
     )
 
 
@@ -654,24 +601,15 @@ def worker_xrootd(
 @targs_options()
 @run_option()
 @options_file_option()
-def worker_repl(
-    ctx: click.Context,
-    db_admin_uri: str,
-    repl_connection: str,
-    debug_port: Optional[int],
-    cmd: str,
-    config: str,
-    targs: Dict[str, str],
-    targs_file: str,
-    run: bool,
-) -> None:
+def worker_repl(ctx: click.Context, **kwargs: Any) -> None:
+    targs = utils.targs(ctx)
+    targs = render_targs(targs)
     script.enter_worker_repl(
-        targs=utils.targs(ctx),
-        db_admin_uri=db_admin_uri,
-        repl_connection=repl_connection,
-        debug_port=debug_port,
-        cmd=cmd,
-        run=run,
+        db_admin_uri=targs["db_admin_uri"],
+        repl_connection=targs["repl_connection"],
+        debug_port=targs["debug_port"],
+        cmd=targs["cmd"],
+        run=targs["run"],
     )
 
 
@@ -718,29 +656,17 @@ def worker_repl(
 @targs_options()
 @run_option()
 @options_file_option()
-def replication_controller(
-    ctx: click.Context,
-    db_uri: str,
-    db_admin_uri: str,
-    workers: List[str],
-    xrootd_manager: str,
-    log_cfg_file: str,
-    cmd: str,
-    http_root: str,
-    qserv_czar_db: str,
-    targs: Dict[str, str],
-    targs_file: str,
-    run: bool,
-) -> None:
+def replication_controller(ctx: click.Context, **kwargs: Any) -> None:
     """Start as a replication controller node."""
+    targs = utils.targs(ctx)
+    targs = render_targs(targs)
     script.enter_replication_controller(
-        targs=utils.targs(ctx),
-        db_uri=db_uri,
-        db_admin_uri=db_admin_uri,
-        workers=workers,
-        log_cfg_file=log_cfg_file,
-        cmd=cmd,
-        run=run,
+        db_uri=targs["db_uri"],
+        db_admin_uri=targs["db_admin_uri"],
+        workers=targs["workers"],
+        log_cfg_file=targs["log_cfg_file"],
+        cmd=targs["cmd"],
+        run=targs["run"],
     )
 
 

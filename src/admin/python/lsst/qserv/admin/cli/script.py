@@ -308,7 +308,7 @@ def enter_manager_cmsd(
         The jinja2 template for the command for this function to execute.
     """
     apply_template_cfg_file(cmsd_manager_cfg_file, cmsd_manager_cfg_path, targs)
-    sys.exit(_run(args=None, template=cmd, targs=targs))
+    sys.exit(_run(args=None, cmd=cmd))
 
 
 def enter_xrootd_manager(
@@ -331,7 +331,7 @@ def enter_xrootd_manager(
         The jinja2 template for the command for this function to execute.
     """
     apply_template_cfg_file(xrootd_manager_cfg_file, xrootd_manager_cfg_path, targs)
-    sys.exit(_run(args=None, template=cmd, targs=targs))
+    sys.exit(_run(args=None, cmd=cmd))
 
 
 def enter_worker_cmsd(
@@ -386,7 +386,7 @@ def enter_worker_cmsd(
     # for the vnid plugin to function correctly
     _do_smig_block(worker_smig_dir, "worker", db_uri)
 
-    sys.exit(_run(args=None, template=cmd, targs=targs))
+    sys.exit(_run(args=None, cmd=cmd))
 
 
 def enter_worker_xrootd(
@@ -475,11 +475,10 @@ def enter_worker_xrootd(
     apply_template_cfg_file(cmsd_worker_cfg_file, cmsd_worker_cfg_path)
     apply_template_cfg_file(xrdssi_cfg_file, xrdssi_cfg_path)
 
-    sys.exit(_run(args=None, template=cmd, targs=targs))
+    sys.exit(_run(args=None, cmd=cmd))
 
 
 def enter_worker_repl(
-    targs: Targs,
     db_admin_uri: str,
     repl_connection: str,
     debug_port: Optional[int],
@@ -490,8 +489,6 @@ def enter_worker_repl(
 
     Parameters
     ----------
-    targs : Targs
-        The arguments for template expansion.
     replic_worker_args : `list` [ `str` ]
         A list of options and arguments that will be passed directly to the
         replica worker app.
@@ -549,7 +546,7 @@ def enter_worker_repl(
         # qserv-replica-worker returned then by definition it failed, and we
         # just wait a moment and restart it.
         # This is recorded in DM-31252
-        _run(args=None, template=cmd, targs=targs, run=run)
+        _run(args=None, cmd=cmd, run=run)
         _log.info("qserv-replica-worker exited. waiting 5 seconds and restarting.")
         time.sleep(5)
 
@@ -633,11 +630,10 @@ def enter_proxy(
 
     env = dict(os.environ, QSERV_CONFIG=czar_cfg_path)
 
-    sys.exit(_run(args=None, template=cmd, env=env, targs=targs))
+    sys.exit(_run(args=None, cmd=cmd, env=env))
 
 
 def enter_replication_controller(
-    targs: Targs,
     db_uri: str,
     db_admin_uri: str,
     workers: List[str],
@@ -649,8 +645,6 @@ def enter_replication_controller(
 
     Parameters
     ----------
-    targs : Targs
-        The arguments for template expansion.
     db_uri : `str`
         The connection string for the replication manager database for the
         non-admin user (created using the `connection`), the user is typically
@@ -754,7 +748,7 @@ def enter_replication_controller(
         )
 
     env = dict(os.environ, LSST_LOG_CONFIG=log_cfg_file)
-    sys.exit(_run(args=None, template=cmd, targs=targs, env=env, run=run))
+    sys.exit(_run(args=None, cmd=cmd, env=env, run=run))
 
 
 def smig_update(czar_connection: str, worker_connections: List[str], repl_connection: str) -> None:
@@ -782,8 +776,7 @@ def smig_update(czar_connection: str, worker_connections: List[str], repl_connec
 
 def _run(
     args: Optional[Sequence[Union[str, int]]],
-    template: str = None,
-    targs: Targs = None,
+    cmd: str = None,
     env: Dict[str, str] = None,
     debug_port: Optional[int] = None,
     run: bool = True,
@@ -794,12 +787,9 @@ def _run(
     Parameters
     ----------
     args : List[Union[str, int]]
-        The command and arguments to the command. Mutually exclusive with `template`.
-    template : str, optional
-        The command and arguments in jinja template form. Mutually exclusive with `args`.
-    tvars: Dict[str, str], optional
-        The values for the `template`. If `template` is passed in, must not be `None`.
-        Mutually exclusive with `args`.
+        The command and arguments to the command. Mutually exclusive with `cmd`.
+    cmd : str, optional
+        The command and arguments to run, in the form of a string.
     env : Dict[str, str], optional
         The environment variables to run the command with, by default None which
         uses the same environment as the current shell.
@@ -823,10 +813,10 @@ def _run(
     exit_code : `int`
         The exit code of the command that was run.
     """
-    if args and (template is not None or targs is not None):
-        raise RuntimeError("Invalid use of `args` and `template` or `targs`.")
-    if template is not None and args is not None:
-        raise RuntimeError("If `template` is not `None`, `args` must not be `None`.")
+    if args and cmd:
+        raise RuntimeError("Invalid use of `args` and `cmd`.")
+    if cmd is not None and args is not None:
+        raise RuntimeError("If `cmd` is not `None`, `args` must not be `None`.")
     if args:
         str_args = [str(a) for a in args]
         if debug_port:
@@ -835,17 +825,8 @@ def _run(
             print(" ".join(str_args))
             return 0
         result = subprocess.run(str_args, env=env, cwd="/home/qserv")
-    if template:
-        rendered = template
-        while "{{" in rendered:
-            t = jinja2.Template(rendered, undefined=jinja2.StrictUndefined)
-            try:
-                rendered = t.render(targs)
-            except jinja2.exceptions.UndefinedError as e:
-                _log.error(f"Missing template value: {str(e)}")
-                raise
-        args = shlex.split(rendered)
-        _log.debug("calling subprocess with args: %s", args) # TEMP security don't check in
+    if cmd:
+        args = shlex.split(cmd)
         result = subprocess.run(args, env=env, cwd="/home/qserv")
     if check_returncode:
         result.check_returncode
@@ -972,5 +953,5 @@ def spawned_app_help(
     """
     app = cmd.split()[0]
     print(f"Help for '{app}':\n", flush=True)
-    _run(template=f"{app} --help", args=None)
+    _run(cmd=f"{app} --help", args=None)
     sys.exit(0)

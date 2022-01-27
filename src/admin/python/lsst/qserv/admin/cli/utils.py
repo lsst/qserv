@@ -27,14 +27,14 @@ import copy
 import logging
 import os
 import traceback
-from typing import cast, Dict, List, Sequence, Tuple, Union
+from typing import Any, cast, Dict, List, Sequence, Tuple, Union
 import yaml
 
 
 _log = logging.getLogger(__name__)
 
 
-Targs = Dict[str, Union[str, Sequence[str]]]
+Targs = Dict[str, Any]
 
 
 def split_kv(values: Sequence[str]) -> Dict[str, str]:
