@@ -148,6 +148,12 @@ public:
 
     /// @return JSON representation of the object
     nlohmann::json toJson() const;
+
+    /// @return 'true' if workers objects have the same values of attributes
+    bool operator ==(WorkerInfo const& other) const;
+
+    /// @return 'true' if workers objects don't have the same values of attributes
+    bool operator !=(WorkerInfo const& other) const { return operator ==(other); }
 };
 
 std::ostream& operator <<(std::ostream& os, WorkerInfo const& info);

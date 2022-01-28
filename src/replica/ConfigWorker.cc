@@ -28,6 +28,7 @@
 // System headers
 #include <iostream>
 #include <stdexcept>
+#include <tuple>
 
 using namespace std;
 using json = nlohmann::json;
@@ -181,6 +182,24 @@ json WorkerInfo::toJson() const {
     infoJson["http_loader_port"] = httpLoaderPort;
     infoJson["http_loader_tmp_dir"] = httpLoaderTmpDir;
     return infoJson;
+}
+
+
+bool WorkerInfo::operator==(WorkerInfo const& other) const {
+    return  tie(name,
+                isEnabled, isReadOnly,
+                svcHost, svcPort,
+                fsHost, fsPort, dataDir,
+                loaderHost, loaderPort, loaderTmpDir,
+                exporterHost, exporterPort, exporterTmpDir,
+                httpLoaderHost, httpLoaderPort, httpLoaderTmpDir) ==
+            tie(other.name,
+                other.isEnabled, other.isReadOnly,
+                other.svcHost, other.svcPort,
+                other.fsHost, other.fsPort, other.dataDir,
+                other.loaderHost, other.loaderPort, other.loaderTmpDir,
+                other.exporterHost, other.exporterPort, other.exporterTmpDir,
+                other.httpLoaderHost, other.httpLoaderPort, other.httpLoaderTmpDir);
 }
 
 

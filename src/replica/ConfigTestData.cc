@@ -36,11 +36,19 @@ map<string, set<string>> ConfigTestData::parameters() {
                 "request-retry-interval-sec"
             }
         },
+        {   "redirector",
+            {   "host",
+                "port",
+                "max-listen-conn",
+                "threads",
+                "heartbeat-ival-sec"
+            }
+        },
         {   "controller", 
             {   "num-threads",
-                "http-server-threads",
                 "http-server-port",
                 "http-max-listen-conn",
+                "http-server-threads",
                 "request-timeout-sec",
                 "job-timeout-sec",
                 "job-heartbeat-sec",
@@ -48,7 +56,8 @@ map<string, set<string>> ConfigTestData::parameters() {
                 "worker-evict-priority-level",
                 "health-monitor-priority-level",
                 "ingest-priority-level",
-                "catalog-management-priority-level"
+                "catalog-management-priority-level",
+                "auto-register-workers"
             }
         },
         {   "database",
@@ -109,6 +118,13 @@ json ConfigTestData::data() {
         {"request-buf-size-bytes", 8192},
         {"request-retry-interval-sec", 1}
     });
+    generalObj["redirector"] = json::object({
+        {"host", "127.0.0.1"},
+        {"port", 8081},
+        {"max-listen-conn", 512},
+        {"threads", 4},
+        {"heartbeat-ival-sec", 10}
+    });
     generalObj["controller"] = json::object({
         {"num-threads", 2},
         {"http-server-port", 8080},
@@ -121,7 +137,8 @@ json ConfigTestData::data() {
         {"worker-evict-priority-level", 1},
         {"health-monitor-priority-level", 2},
         {"ingest-priority-level", 3},
-        {"catalog-management-priority-level", 4}
+        {"catalog-management-priority-level", 4},
+        {"auto-register-workers", 1}
     });
     generalObj["database"] = json::object({
         {"host", "localhost"},

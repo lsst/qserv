@@ -108,11 +108,6 @@ BOOST_AUTO_TEST_CASE(ConfigurationInitTestJSON) {
 
 BOOST_AUTO_TEST_CASE(ConfigurationTestDir) {
     LOGS_INFO("Testing directory functions");
-
-    set<string> categories;
-    for (auto&& itr: config->parameters()) {
-        categories.insert(itr.first);
-    }
     BOOST_CHECK(config->parameters() == ConfigTestData::parameters());
 }
 
@@ -123,6 +118,12 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestReadingGeneralParameters) {
     // Fetching values of general parameters.
     BOOST_CHECK(config->get<size_t>("common", "request-buf-size-bytes") == 8192);
     BOOST_CHECK(config->get<unsigned int>("common", "request-retry-interval-sec") == 1);
+
+    BOOST_CHECK(config->get<string>("redirector", "host") == "127.0.0.1");
+    BOOST_CHECK(config->get<uint16_t>("redirector", "port") == 8081);
+    BOOST_CHECK(config->get<unsigned int>("redirector", "max-listen-conn") == 512);
+    BOOST_CHECK(config->get<size_t>("redirector", "threads") == 4);
+    BOOST_CHECK(config->get<unsigned int>("redirector", "heartbeat-ival-sec") == 10);
 
     BOOST_CHECK(config->get<size_t>("controller", "num-threads") == 2);
     BOOST_CHECK(config->get<uint16_t>("controller", "http-server-port") == 8080);
@@ -136,6 +137,7 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestReadingGeneralParameters) {
     BOOST_CHECK(config->get<int>("controller", "health-monitor-priority-level") == 2);
     BOOST_CHECK(config->get<int>("controller", "ingest-priority-level") == 3);
     BOOST_CHECK(config->get<int>("controller", "catalog-management-priority-level") == 4);
+    BOOST_CHECK(config->get<unsigned int>("controller", "auto-register-workers") == 1);
 
     BOOST_CHECK(config->get<unsigned int>("xrootd", "auto-notify") == 0);
     BOOST_CHECK(config->get<string>("xrootd", "host") == "localhost");
@@ -180,6 +182,26 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestModifyingGeneralParameters) {
     BOOST_CHECK_THROW(config->set<unsigned int>("common", "request-retry-interval-sec", 0), std::invalid_argument);
     BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("common", "request-retry-interval-sec", 2));
     BOOST_CHECK(config->get<unsigned int>("common", "request-retry-interval-sec") == 2);
+
+    BOOST_CHECK_THROW(config->set<string>("redirector", "host", string()), std::invalid_argument);
+    BOOST_REQUIRE_NO_THROW(config->set<string>("redirector", "host", "localhost"));
+    BOOST_CHECK(config->get<string>("redirector", "host") == "localhost");
+
+    BOOST_CHECK_THROW(config->set<uint16_t>("redirector", "port", 0), std::invalid_argument);
+    BOOST_REQUIRE_NO_THROW(config->set<uint16_t>("redirector", "port", 8083));
+    BOOST_CHECK(config->get<uint16_t>("redirector", "port") == 8083);
+
+    BOOST_CHECK_THROW(config->set<unsigned int>("redirector", "max-listen-conn", 0), std::invalid_argument);
+    BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("redirector", "max-listen-conn", 1024));
+    BOOST_CHECK(config->get<unsigned int>("redirector", "max-listen-conn") == 1024);
+
+    BOOST_CHECK_THROW(config->set<size_t>("redirector", "threads", 0), std::invalid_argument);
+    BOOST_REQUIRE_NO_THROW(config->set<size_t>("redirector", "threads", 5));
+    BOOST_CHECK(config->get<size_t>("redirector", "threads") == 5);
+
+    BOOST_CHECK_THROW(config->set<unsigned int>("redirector", "heartbeat-ival-sec", 0), std::invalid_argument);
+    BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("redirector", "heartbeat-ival-sec", 11));
+    BOOST_CHECK(config->get<unsigned int>("redirector", "heartbeat-ival-sec") == 11);
 
     BOOST_CHECK_THROW(config->set<size_t>("controller", "num-threads", 0), std::invalid_argument);
     BOOST_REQUIRE_NO_THROW(config->set<size_t>("controller", "num-threads", 3));
@@ -234,6 +256,9 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestModifyingGeneralParameters) {
 
     BOOST_REQUIRE_NO_THROW(config->set<int>("controller", "catalog-management-priority-level", 0));
     BOOST_CHECK(config->get<int>("controller", "catalog-management-priority-level") == 0);
+
+    BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("controller", "auto-register-workers", 0));
+    BOOST_CHECK(config->get<unsigned int>("controller", "auto-register-workers") == 0);
 
     BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("xrootd", "auto-notify", 1));
     BOOST_CHECK(config->get<unsigned int>("xrootd", "auto-notify") != 0);

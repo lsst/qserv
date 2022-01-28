@@ -81,6 +81,34 @@ json const ConfigurationSchema::_schemaJson = json::object({
             {"default", 1}
         }}
     }},
+    {"redirector", {
+        {"host", {
+            {"description",
+                "The IP address or the DNS host name for the redirector's HTTP server."},
+            {"default", "localhost"}
+        }},
+        {"port", {
+            {"description",
+                "The port number for the redirector's HTTP server. Must be greater than 0."},
+            {"default", 25082}
+        }},
+        {"max-listen-conn", {
+            {"description",
+                "The maximum length of the queue of pending connections sent to the redirector's HTTP server."
+                " Must be greater than 0."},
+            {"default", max_listen_connections}
+        }},
+        {"threads", {
+            {"description",
+                "The number of threads managed by BOOST ASIO for the HTTP server. Must be greater than 0."},
+            {"default", 2 * num_threads}
+        }},
+        {"heartbeat-ival-sec", {
+            {"description",
+                "The hearbeat interval for interactions with the workers Redirector service. Must be greater than 0."},
+            {"default", 5}
+        }}
+    }},
     {"controller", {
         {"num-threads", {
             {"description",
@@ -150,6 +178,13 @@ json const ConfigurationSchema::_schemaJson = json::object({
                 " and recording replica dispositions, fixing up missing replicas, etc."},
             {"empty-allowed", 1},
             {"default", PRIORITY_LOW}
+        }},
+        {"auto-register-workers", {
+            {"description",
+                "Automatically scale a collection of workers by registering new workers reported by the Redirector"
+                " service. If the flag is set to 0 then new workers will be ignored."},
+            {"empty-allowed", 1},
+            {"default", 0}
         }}
     }},
     {"database", {
@@ -408,7 +443,7 @@ string ConfigurationSchema::defaultValueAsString(string const& category, string 
 json ConfigurationSchema::defaultConfigData() {
     json result = json::object();
     vector<string> const generalCategories =
-            {"common", "controller", "database", "xrootd", "worker", "worker-defaults"};
+            {"common", "redirector", "controller", "database", "xrootd", "worker", "worker-defaults"};
     for (string const& category: generalCategories) {
         json const& inCategoryJson = _schemaJson.at(category);
         json& outCategoryJson = result[category];
