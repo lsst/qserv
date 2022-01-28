@@ -99,7 +99,7 @@ protected:
     }
 
     /// @return The context string to be used for the message logging.
-    virtual std::string  const& context() const=0;
+    virtual std::string const& context() const=0;
 
     /// Register subclass-specific REST services.
     virtual void registerServices()=0;
