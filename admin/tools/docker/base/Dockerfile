@@ -13,7 +13,7 @@
 # packages are preferred whenever suitable, though some here require source builds.
 #-------------------------------------------------------------------------------------------------------------
 
-FROM centos:8 AS lite-build
+FROM almalinux:8 AS lite-build
 
 RUN dnf install -y 'dnf-command(config-manager)' \
     && dnf config-manager --set-enabled powertools \
@@ -158,7 +158,7 @@ CMD ["tail", "-f", "/dev/null"]
 # DO NOT BLOAT THE RUN BASE
 #-------------------------------------------------------------------------------------------------------------
 
-FROM centos:8 AS lite-run-base
+FROM almalinux:8 AS lite-run-base
 
 RUN dnf install -y 'dnf-command(config-manager)' \
     && dnf config-manager --set-enabled powertools \
