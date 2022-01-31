@@ -18,12 +18,12 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_REPLICA_HTTPFILEREADERAPP_H
-#define LSST_QSERV_REPLICA_HTTPFILEREADERAPP_H
+#ifndef LSST_QSERV_REPLICA_HTTPCLIENTAPP_H
+#define LSST_QSERV_REPLICA_HTTPCLIENTAPP_H
 
 // Qserv headers
 #include "replica/Application.h"
-#include "replica/IngestConfigTypes.h"
+#include "replica/HttpClient.h"
 
 // This header declarations
 namespace lsst {
@@ -31,14 +31,14 @@ namespace qserv {
 namespace replica {
 
 /**
- * Class HttpFileReaderApp implements a tool that reads files from an object store
- * over the HTTP/HTTPS protocol. If option '--out=<file>' is present the file's content
- * will be writted into the specified file. Otherwise the content will be printed to
+ * Class HttpClientApp implements a tool that sends requests to a Web server over
+ * the HTTP/HTTPS protocol. If option '--out=<file>' is present the result
+ * will be writted to the specified file. Otherwise the content will be printed to
  * the standard output stream.
  */
-class HttpFileReaderApp: public Application {
+class HttpClientApp: public Application {
 public:
-    typedef std::shared_ptr<HttpFileReaderApp> Ptr;
+    typedef std::shared_ptr<HttpClientApp> Ptr;
 
     /**
      * The factory method is the only way of creating objects of this class
@@ -49,29 +49,30 @@ public:
      */
     static Ptr create(int argc, char* argv[]);
 
-    HttpFileReaderApp()=delete;
-    HttpFileReaderApp(HttpFileReaderApp const&)=delete;
-    HttpFileReaderApp& operator=(HttpFileReaderApp const&)=delete;
+    HttpClientApp()=delete;
+    HttpClientApp(HttpClientApp const&)=delete;
+    HttpClientApp& operator=(HttpClientApp const&)=delete;
 
-    virtual ~HttpFileReaderApp() override=default;
+    virtual ~HttpClientApp() override=default;
 
 protected:
     /// @see Application::runImpl()
     virtual int runImpl() final;
 
 private:
-    /// @see HttpFileReaderApp::create()
-    HttpFileReaderApp(int argc, char* argv[]);
+    /// @see HttpClientApp::create()
+    HttpClientApp(int argc, char* argv[]);
 
     std::string _method = "GET";
     std::string _url;
     std::string _data;
     std::string _header;
-    HttpFileReaderConfig _fileReaderConfig;
+    HttpClientConfig _clientConfig;
     std::string _file;
+    bool _result2json = false;
     bool _silent = false;
 };
 
 }}} // namespace lsst::qserv::replica
 
-#endif /* LSST_QSERV_REPLICA_HTTPFILEREADERAPP_H */
+#endif /* LSST_QSERV_REPLICA_HTTPCLIENTAPP_H */
