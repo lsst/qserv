@@ -22,6 +22,7 @@
 #define LSST_QSERV_REPLICA_APPLICATION_H
 
 // System headers
+#include <list>
 #include <map>
 #include <memory>
 #include <string>
@@ -29,6 +30,7 @@
 // Qserv headers
 #include "replica/ApplicationTypes.h"
 #include "replica/ServiceProvider.h"
+
 
 // This header declarations
 namespace lsst {

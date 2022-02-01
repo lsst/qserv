@@ -54,19 +54,17 @@ namespace qserv {
 namespace replica {
 
 MoveApp::Ptr MoveApp::create(int argc, char* argv[]) {
-    return Ptr(
-        new MoveApp(argc, argv)
-    );
+    return Ptr(new MoveApp(argc, argv));
 }
 
 
 MoveApp::MoveApp(int argc, char* argv[])
     :   Application(
             argc, argv,
-            description,
-            injectDatabaseOptions,
-            boostProtobufVersionCheck,
-            enableServiceProvider
+            ::description,
+            ::injectDatabaseOptions,
+            ::boostProtobufVersionCheck,
+            ::enableServiceProvider
         ) {
 
     // Configure the command line parser
@@ -74,34 +72,30 @@ MoveApp::MoveApp(int argc, char* argv[])
     parser().required(
         "database-family",
         "The name of a database family.",
-        _databaseFamily);
-
-    parser().required(
+        _databaseFamily
+    ).required(
         "chunk",
         "The chunk to be affected by the operation.",
-        _chunk);
-
-    parser().required(
+        _chunk
+    ).required(
         "source-worker",
         "The name of a worker which has the replica to be moved.",
-        _sourceWorker);
-
-    parser().required(
+        _sourceWorker
+    ).required(
         "destination-worker",
         "The name of a worker where the replica will be moved (must not"
         " be the same worker as the source one).",
-        _destinationWorker);
-
-    parser().flag(
+        _destinationWorker
+    ).flag(
         "purge",
         "Purge the input replica at the source worker upon a successful"
         " completion of the operation.",
-        _purge);
-
-    parser().option(
+        _purge
+    ).option(
         "tables-page-size",
         "The number of rows in the table of replicas (0 means no pages).",
-        _pageSize);
+        _pageSize
+    );
 }
 
 

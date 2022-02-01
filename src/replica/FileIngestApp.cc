@@ -174,10 +174,10 @@ FileIngestApp::Ptr FileIngestApp::create(int argc, char* argv[]) {
 FileIngestApp::FileIngestApp(int argc, char* argv[])
     :   Application(
             argc, argv,
-            description,
-            injectDatabaseOptions,
-            boostProtobufVersionCheck,
-            enableServiceProvider
+            ::description,
+            ::injectDatabaseOptions,
+            ::boostProtobufVersionCheck,
+            ::enableServiceProvider
         ) {
 
     // Configure the command line parser

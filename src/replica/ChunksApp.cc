@@ -146,19 +146,17 @@ namespace qserv {
 namespace replica {
 
 ChunksApp::Ptr ChunksApp::create(int argc, char* argv[]) {
-    return Ptr(
-        new ChunksApp(argc, argv)
-    );
+    return Ptr(new ChunksApp(argc, argv));
 }
 
 
 ChunksApp::ChunksApp(int argc, char* argv[])
     :   Application(
             argc, argv,
-            description,
-            injectDatabaseOptions,
-            boostProtobufVersionCheck,
-            enableServiceProvider
+            ::description,
+            ::injectDatabaseOptions,
+            ::boostProtobufVersionCheck,
+            ::enableServiceProvider
         ) {
 
     // Configure the command line parser
@@ -166,48 +164,34 @@ ChunksApp::ChunksApp(int argc, char* argv[])
     parser().required(
         "database-family",
         "The name of a database family to inspect.",
-        _databaseFamily);
-
-    parser().flag(
+        _databaseFamily
+    ).flag(
         "all-workers",
         "The flag for selecting all workers regardless of their status (DISABLED or READ-ONLY).",
-        _allWorkers);
-
-    parser().option(
-        "worker-response-timeout",
-        "Maximum timeout (seconds) to wait before the replica scanning requests sent to workers will finish."
-        " Setting this timeout to some reasonably low number would prevent the application from"
-        " hanging for a substantial duration of time (which depends on the default Configuration)"
-        " in case if some workers were down. The parameter applies to operations with both"
-        " the Replication and Qserv workers.",
-        _timeoutSec);
-
-    parser().flag(
+        _allWorkers
+    ).flag(
         "do-not-save-replica",
         "The flag which (if used) prevents the application from saving replica info in a database."
         " This may significantly speed up the application in setups where the number of chunks is on"
         " a scale of one million, or exceeds it.",
-        _doNotSaveReplicaInfo);
-
-    parser().flag(
+        _doNotSaveReplicaInfo
+    ).flag(
         "qserv-replicas",
         "The flag for pulling chunk disposition from Qserv workers for the combined analysis.",
-        _pullQservReplicas);
-
-    parser().flag(
+        _pullQservReplicas
+    ).flag(
         "detailed-report",
         "The flag triggering detailed report on the found replicas.",
-        _detailedReport);
-
-    parser().option(
+        _detailedReport
+    ).option(
         "tables-page-size",
         "The number of rows in the table of replicas (0 means no pages).",
-        _pageSize);
-
-    parser().flag(
+        _pageSize
+    ).flag(
         "tables-vertical-separator",
         "Print vertical separator when displaying tabular data in reports.",
-        _verticalSeparator);
+        _verticalSeparator
+    );
 }
 
 
@@ -220,12 +204,6 @@ int ChunksApp::runImpl() {
         serviceProvider()->config()->allWorkers() :
         serviceProvider()->config()->workers();
 
-    // Limit execution timeout for requests if such limit was provided
-    if (_timeoutSec != 0) {
-        serviceProvider()->config()->set<unsigned int>("controller", "request-timeout-sec", _timeoutSec);
-        serviceProvider()->config()->set<unsigned int>("xrootd", "request-timeout-sec", _timeoutSec);
-    }
-
     ///////////////////////////////////////////////////////////////////
     // Start two parallel jobs, the first one getting the latest state
     // of replicas across the Replication cluster, and the second one
@@ -237,7 +215,7 @@ int ChunksApp::runImpl() {
     string const noParentJobId;
     auto findAllJob = FindAllJob::create(
         _databaseFamily,
-        not _doNotSaveReplicaInfo,
+        !_doNotSaveReplicaInfo,
         _allWorkers,
         controller,
         noParentJobId,
@@ -278,14 +256,12 @@ int ChunksApp::runImpl() {
 
     // Build a map of worker "numbers" to use them instead of (potentially) very long
     // worker identifiers
-
     map<string, size_t> worker2idx;
     for (size_t idx = 0, num = workerNames.size(); idx < num; ++idx) {
         worker2idx[workerNames[idx]] = idx;
     }
 
     // Count chunk replicas per worker from both sources
-
     map<string, size_t> worker2numChunks;
     for (auto const& replicaCollection: replicaData.replicas) {
         for (auto const& replica: replicaCollection) {
@@ -303,7 +279,6 @@ int ChunksApp::runImpl() {
     }
 
     // Remember bad workers
-
     set<string> badWorkers;
     set<string> badQservWorkers;
     for (auto const& workerName: workerNames) {

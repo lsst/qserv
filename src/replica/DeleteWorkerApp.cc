@@ -53,19 +53,17 @@ namespace qserv {
 namespace replica {
 
 DeleteWorkerApp::Ptr DeleteWorkerApp::create(int argc, char* argv[]) {
-    return Ptr(
-        new DeleteWorkerApp(argc, argv)
-    );
+    return Ptr(new DeleteWorkerApp(argc, argv));
 }
 
 
 DeleteWorkerApp::DeleteWorkerApp(int argc, char* argv[])
     :   Application(
             argc, argv,
-            description,
-            injectDatabaseOptions,
-            boostProtobufVersionCheck,
-            enableServiceProvider
+            ::description,
+            ::injectDatabaseOptions,
+            ::boostProtobufVersionCheck,
+            ::enableServiceProvider
         ) {
 
     // Configure the command line parser
@@ -73,17 +71,16 @@ DeleteWorkerApp::DeleteWorkerApp(int argc, char* argv[])
     parser().required(
         "worker",
         "The name of a worker to be deleted.",
-        _workerName);
-
-    parser().flag(
+        _workerName
+    ).flag(
         "permanent-delete",
         "Permanently delete a worker from the Configuration.",
-        _permanentDelete);
-
-    parser().option(
+        _permanentDelete
+    ).option(
         "tables-page-size",
         "The number of rows in the table of replicas (0 means no pages).",
-        _pageSize);
+        _pageSize
+    );
 }
 
 

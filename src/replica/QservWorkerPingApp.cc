@@ -62,10 +62,10 @@ QservWorkerPingApp::Ptr QservWorkerPingApp::create(int argc, char* argv[]) {
 QservWorkerPingApp::QservWorkerPingApp(int argc, char* argv[])
     :   Application(
             argc, argv,
-            description,
-            injectDatabaseOptions,
-            boostProtobufVersionCheck,
-            enableServiceProvider
+            ::description,
+            ::injectDatabaseOptions,
+            ::boostProtobufVersionCheck,
+            ::enableServiceProvider
         ) {
 
     parser().required(

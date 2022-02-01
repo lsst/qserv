@@ -52,19 +52,17 @@ namespace qserv {
 namespace replica {
 
 TransactionsApp::Ptr TransactionsApp::create(int argc, char* argv[]) {
-    return Ptr(
-        new TransactionsApp(argc, argv)
-    );
+    return Ptr(new TransactionsApp(argc, argv));
 }
 
 
 TransactionsApp::TransactionsApp(int argc, char* argv[])
     :   Application(
             argc, argv,
-            description,
-            injectDatabaseOptions,
-            boostProtobufVersionCheck,
-            enableServiceProvider
+            ::description,
+            ::injectDatabaseOptions,
+            ::boostProtobufVersionCheck,
+            ::enableServiceProvider
         ) {
 
     // Configure the command line parser

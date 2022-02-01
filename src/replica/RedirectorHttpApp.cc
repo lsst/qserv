@@ -52,10 +52,10 @@ RedirectorHttpApp::Ptr RedirectorHttpApp::create(int argc, char* argv[]) {
 RedirectorHttpApp::RedirectorHttpApp(int argc, char* argv[])
     :   Application(
             argc, argv,
-            description,
-            injectDatabaseOptions,
-            boostProtobufVersionCheck,
-            enableServiceProvider
+            ::description,
+            ::injectDatabaseOptions,
+            ::boostProtobufVersionCheck,
+            ::enableServiceProvider
         ) {
 }
 

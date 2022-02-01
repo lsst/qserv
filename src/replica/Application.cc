@@ -29,6 +29,8 @@
 #include "replica/Configuration.h"
 #include "replica/ConfigParserMySQL.h"
 #include "replica/ConfigurationSchema.h"
+#include "replica/Job.h"
+#include "replica/Redirector.h"
 #include "replica/protocol.pb.h"
 #include "util/Issue.h"
 
@@ -234,14 +236,14 @@ string const& Application::configUrl() const {
 
 
 void Application::_assertValidOption(string const& func, bool option, string const& context) const {
+    string const context_ = "Application::" + func + " ";
     if (_parser.status() != Parser::SUCCESS) {
         throw logic_error(
-            "Application::" + func + "  calling this method isn't allowed before invoking"
-            " the command-line parser.");
+            context_ + "calling this method isn't allowed before invoking the command-line parser.");
     }
     if (!option) {
         throw logic_error(
-                "Application::" + func + "  this application was not configured with " + context + ".");
+                 context_ + "this application was not configured with " + context + ".");
     }
 }
 

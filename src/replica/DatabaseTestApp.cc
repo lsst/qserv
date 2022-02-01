@@ -106,19 +106,17 @@ namespace qserv {
 namespace replica {
 
 DatabaseTestApp::Ptr DatabaseTestApp::create(int argc, char* argv[]) {
-    return Ptr(
-        new DatabaseTestApp(argc, argv)
-    );
+    return Ptr(new DatabaseTestApp(argc, argv));
 }
 
 
 DatabaseTestApp::DatabaseTestApp(int argc, char* argv[])
     :   Application(
             argc, argv,
-            description,
-            injectDatabaseOptions,
-            boostProtobufVersionCheck,
-            enableServiceProvider
+            ::description,
+            ::injectDatabaseOptions,
+            ::boostProtobufVersionCheck,
+            ::enableServiceProvider
         ) {
 
     // Configure the command line parser

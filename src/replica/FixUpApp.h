@@ -35,26 +35,18 @@ namespace replica {
  * effort to leave worker nodes as balanced as possible, and it will also preserve chunk
  * collocation.
  */
-class FixUpApp : public Application {
-
+class FixUpApp: public Application {
 public:
-
-    /// The pointer type for instances of the class
     typedef std::shared_ptr<FixUpApp> Ptr;
 
     /**
      * The factory method is the only way of creating objects of this class
      * because of the very base class's inheritance from 'enable_shared_from_this'.
      *
-     * @param argc
-     *   the number of command-line arguments
-     *
-     * @param argv
-     *   the vector of command-line arguments
+     * @param argc the number of command-line arguments
+     * @param argv the vector of command-line arguments
      */
     static Ptr create(int argc, char* argv[]);
-
-    // Default construction and copy semantics are prohibited
 
     FixUpApp()=delete;
     FixUpApp(FixUpApp const&)=delete;
@@ -63,12 +55,10 @@ public:
     ~FixUpApp() override=default;
 
 protected:
-
     /// @see Application::runImpl()
     int runImpl() final;
 
 private:
-
     /// @see FixUpApp::create()
     FixUpApp(int argc, char* argv[]);
 

@@ -45,7 +45,6 @@ namespace replica {
  */
 class FileExportApp: public Application {
 public:
-
     typedef std::shared_ptr<FileExportApp> Ptr;
 
     /**

@@ -102,10 +102,10 @@ QhttpTestApp::Ptr QhttpTestApp::create(int argc, char* argv[]) {
 QhttpTestApp::QhttpTestApp(int argc, char* argv[])
     :   Application(
             argc, argv,
-            description,
-            injectDatabaseOptions,
-            boostProtobufVersionCheck,
-            enableServiceProvider
+            ::description,
+            ::injectDatabaseOptions,
+            ::boostProtobufVersionCheck,
+            ::enableServiceProvider
         ) {
     parser().required(
         "port",

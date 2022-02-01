@@ -62,10 +62,10 @@ HttpClientApp::Ptr HttpClientApp::create(int argc, char* argv[]) {
 HttpClientApp::HttpClientApp(int argc, char* argv[])
     :   Application(
             argc, argv,
-            description,
-            injectDatabaseOptions,
-            boostProtobufVersionCheck,
-            enableServiceProvider
+            ::description,
+            ::injectDatabaseOptions,
+            ::boostProtobufVersionCheck,
+            ::enableServiceProvider
         ) {
 
     parser().required(

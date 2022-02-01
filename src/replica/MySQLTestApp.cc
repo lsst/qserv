@@ -51,91 +51,80 @@ namespace qserv {
 namespace replica {
 
 MySQLTestApp::Ptr MySQLTestApp::create(int argc, char* argv[]) {
-    return Ptr(
-        new MySQLTestApp(argc, argv)
-    );
+    return Ptr(new MySQLTestApp(argc, argv));
 }
 
 
 MySQLTestApp::MySQLTestApp(int argc, char* argv[])
     :   Application(
             argc, argv,
-            description,
-            injectDatabaseOptions,
-            boostProtobufVersionCheck,
-            enableServiceProvider
+            ::description,
+            ::injectDatabaseOptions,
+            ::boostProtobufVersionCheck,
+            ::enableServiceProvider
         ) {
 
     // Configure the command line parser
 
     parser().commands(
         "operation",
-        {"TEST_TRANSACTIONS",
-         "CREATE_DATABASE",
-         "DROP_DATABASE",
-         "QUERY",
-         "QUERY_WAIT"
-        },
+        {"TEST_TRANSACTIONS", "CREATE_DATABASE", "DROP_DATABASE", "QUERY", "QUERY_WAIT"},
         _operation
     );
-    {
-        auto& command = parser().command("TEST_TRANSACTIONS");
 
-        command.description(
-            "Test the transactions API by beginning, committing or rolling back transactions.");
-    }
-    {
-        auto& command = parser().command("CREATE_DATABASE");
+    parser().command(
+        "TEST_TRANSACTIONS"
+    ).description(
+        "Test the transactions API by beginning, committing or rolling back transactions."
+    );
 
-        command.description(
-            "Create a new database.");
-        command.required(
-            "database",
-            "The name of a database to be created.",
-            _databaseName);
-    }
-    {
-        auto& command = parser().command("DROP_DATABASE");
+    parser().command(
+        "CREATE_DATABASE"
+    ).description(
+        "Create a new database."
+    ).required(
+        "database",
+        "The name of a database to be created.",
+        _databaseName
+    );
 
-        command.description(
-            "Drop an existing database.");
-        command.required(
-            "database",
-            "The name of a database to be deleted.",
-            _databaseName);
-    }
-    {
-        auto& command = parser().command("QUERY");
+    parser().command(
+        "DROP_DATABASE"
+    ).description(
+        "Drop an existing database."
+    ).required(
+        "database",
+        "The name of a database to be deleted.",
+        _databaseName
+    );
 
-        command.description(
-            "Read a query from a file and execute it using the traditional method which"
-            " wouldn't attempt to repeat the transaction after connection loss and"
-            " subsequent reconnects."
-        );
-        command.required(
-            "query",
-            "The name of a file from which to read a SQL statement."
-            " If the file name is set to '-' then statement will be read"
-            " from the standard input stream.",
-            _fileName
-        );
-    }
-    {
-        auto& command = parser().command("QUERY_WAIT");
+    parser().command(
+        "QUERY"
+    ).description(
+        "Read a query from a file and execute it using the traditional method which"
+        " wouldn't attempt to repeat the transaction after connection loss and"
+        " subsequent reconnects."
+    ).required(
+        "query",
+        "The name of a file from which to read a SQL statement."
+        " If the file name is set to '-' then statement will be read"
+        " from the standard input stream.",
+        _fileName
+    );
 
-        command.description(
-            "Read a query from a file and execute it using the advanced method which"
-            " would attempt to repeat the transaction after connection looses and"
-            " subsequent reconnects."
-        );
-        command.required(
-            "query",
-            "The name of a file from which to read a SQL statement."
-            " If the file name is set to '-' then statement will be read"
-            " from the standard input stream.",
-            _fileName
-        );
-    }
+    parser().command(
+        "QUERY_WAIT"
+    ).description(
+        "Read a query from a file and execute it using the advanced method which"
+        " would attempt to repeat the transaction after connection looses and"
+        " subsequent reconnects."
+    ).required(
+        "query",
+        "The name of a file from which to read a SQL statement."
+        " If the file name is set to '-' then statement will be read"
+        " from the standard input stream.",
+        _fileName
+    );
 }
 
 
@@ -163,13 +152,11 @@ int MySQLTestApp::runImpl() {
     util::BlockPost blockPost(_iterDelayMillisec, _iterDelayMillisec + 1);
 
     for (unsigned int i = 0; i < _numIter; ++i) {
-
         if      ("TEST_TRANSACTIONS" == _operation) _testTransactions();
         else if ("CREATE_DATABASE"   == _operation) _createDatabase();
         else if ("DROP_DATABASE"     == _operation) _dropDatabase();
         else if ("QUERY"             == _operation) _executeQuery(query);
         else if ("QUERY_WAIT"        == _operation) _executeQueryWait(query);
-
         if (_iterDelayMillisec > 0) blockPost.wait();
     }
     return 0;
@@ -240,22 +227,17 @@ void MySQLTestApp::_dropDatabase() const {
 
 
 void MySQLTestApp::_executeQuery(string const& query) const {
-
     try {
-
         if (not _noTransaction) _conn->begin();
 
         _conn->execute(query);
         cout << "hasResult: " << (_conn->hasResult() ? "true" : "false") << endl;
 
         if (_conn->hasResult()) {
-        
             if (not _noResultSet) {
-
                 if (not _resultSummaryOnly) {
 
                     // Print the result set content
-
                     cout << "Columns:   ";
                     for (auto&& name: _conn->columnNames()) {
                         cout << "'" << name << "', ";
@@ -268,7 +250,6 @@ void MySQLTestApp::_executeQuery(string const& query) const {
                         // Since this is a test/demo application for the MySQL API then cells
                         // from each row are printed twice: first - via their names, second
                         // time - via their relative numbers.
-                        
                         for (auto&& name: _conn->columnNames()) {
                             string val;
                             bool const notNull = row.get(name, val);
@@ -282,9 +263,7 @@ void MySQLTestApp::_executeQuery(string const& query) const {
                         }
                         cout << "\n";
                     }
-
                 } else {
-
                     // Just report the number of rows in the result set
                     size_t numRows = 0;
                     database::mysql::Row row;
@@ -297,7 +276,6 @@ void MySQLTestApp::_executeQuery(string const& query) const {
         }
         if (not _noTransaction) _conn->commit();
         return;
-
     } catch (logic_error const& ex) {
         cout << ex.what() << endl;
     }
@@ -315,26 +293,21 @@ void MySQLTestApp::_executeQueryWait(string const& query) const {
 
 
 string MySQLTestApp::_getQuery() const {
-
     string query;
     if (_fileName == "-") {
-        query = string(istreambuf_iterator<char>(cin),
-                       istreambuf_iterator<char>());
+        query = string(istreambuf_iterator<char>(cin),istreambuf_iterator<char>());
     } else {
-
         // Note a little optimization in which the algorithm determines the file
-        // size and pre-allocates the string buffer before
+        // size and pre-allocates the string  buffer before
         // performing the actual read.
-
         ifstream fs(_fileName);
-        if (not fs) {
+        if (!fs) {
             cerr << "failed to read the contents of file: " << _fileName << endl;
             return query;
         }
         getline(fs, query, '\0');
     }
     cout << "Query: " << query << endl;
-
     return query;
 }
 

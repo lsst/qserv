@@ -93,19 +93,17 @@ namespace qserv {
 namespace replica {
 
 RebalanceApp::Ptr RebalanceApp::create(int argc, char* argv[]) {
-    return Ptr(
-        new RebalanceApp(argc, argv)
-    );
+    return Ptr(new RebalanceApp(argc, argv));
 }
 
 
 RebalanceApp::RebalanceApp(int argc, char* argv[])
     :   Application(
             argc, argv,
-            description,
-            injectDatabaseOptions,
-            boostProtobufVersionCheck,
-            enableServiceProvider
+            ::description,
+            ::injectDatabaseOptions,
+            ::boostProtobufVersionCheck,
+            ::enableServiceProvider
         ) {
 
     // Configure the command line parser
@@ -113,19 +111,17 @@ RebalanceApp::RebalanceApp(int argc, char* argv[])
     parser().required(
         "database-family",
         "The name of a database family.",
-        _databaseFamily);
-
-    parser().flag(
+        _databaseFamily
+    ).flag(
         "estimate-only",
         "Do not make any changes to chunk disposition. Just produce and print"
         " an estimated re-balancing plan.",
         _estimateOnly
-    );
-
-    parser().option(
+    ).option(
         "tables-page-size",
         "The number of rows in the table of replicas (0 means no pages).",
-        _pageSize);
+        _pageSize
+    );
 }
 
 

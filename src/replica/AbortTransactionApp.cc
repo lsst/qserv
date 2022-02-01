@@ -29,9 +29,10 @@
 #include <vector>
 
 // Qserv headers
+#include "replica/AbortTransactionJob.h"
 #include "replica/Configuration.h"
 #include "replica/Controller.h"
-#include "replica/AbortTransactionJob.h"
+#include "replica/ServiceProvider.h"
 
 using namespace std;
 
@@ -42,6 +43,10 @@ string const description =
     " corresponding to the transaction at the relevant worker databases."
     " And while doing so, the application will make the best effort to leave"
     " worker nodes as balanced as possible.";
+
+bool const injectDatabaseOptions = true;
+bool const boostProtobufVersionCheck = true;
+bool const enableServiceProvider = true;
 
 } /// namespace
 
@@ -59,9 +64,9 @@ AbortTransactionApp::AbortTransactionApp(int argc, char* argv[])
     :   Application(
             argc, argv,
             ::description,
-            true    /* injectDatabaseOptions */,
-            true    /* boostProtobufVersionCheck */,
-            true    /* enableServiceProvider */
+            ::injectDatabaseOptions,
+            ::boostProtobufVersionCheck,
+            ::enableServiceProvider
         ) {
 
     // Configure the command line parser

@@ -71,19 +71,17 @@ namespace qserv {
 namespace replica {
 
 SqlApp::Ptr SqlApp::create(int argc, char* argv[]) {
-    return Ptr(
-        new SqlApp(argc, argv)
-    );
+    return Ptr(new SqlApp(argc, argv));
 }
 
 
 SqlApp::SqlApp(int argc, char* argv[])
     :   Application(
             argc, argv,
-            description,
-            injectDatabaseOptions,
-            boostProtobufVersionCheck,
-            enableServiceProvider
+            ::description,
+            ::injectDatabaseOptions,
+            ::boostProtobufVersionCheck,
+            ::enableServiceProvider
         ) {
 
     // Configure the command line parser

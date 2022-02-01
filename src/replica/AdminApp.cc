@@ -42,6 +42,10 @@ namespace {
 string const description =
     "This is a Controller application for launching worker management requests.";
 
+bool const injectDatabaseOptions = true;
+bool const boostProtobufVersionCheck = true;
+bool const enableServiceProvider = true;
+
 } /// namespace
 
 
@@ -50,9 +54,7 @@ namespace qserv {
 namespace replica {
 
 AdminApp::Ptr AdminApp::create(int argc, char* argv[]) {
-    return Ptr(
-        new AdminApp(argc, argv)
-    );
+    return Ptr(new AdminApp(argc, argv));
 }
 
 
@@ -60,9 +62,9 @@ AdminApp::AdminApp(int argc, char* argv[])
     :   Application(
             argc, argv,
             ::description,
-            true    /* injectDatabaseOptions */,
-            true    /* boostProtobufVersionCheck */,
-            true    /* enableServiceProvider */
+            ::injectDatabaseOptions,
+            ::boostProtobufVersionCheck,
+            ::enableServiceProvider
         ) {
 
     // Configure the command line parser
@@ -71,14 +73,6 @@ AdminApp::AdminApp(int argc, char* argv[])
         "operation",
         {"STATUS", "SUSPEND", "RESUME", "REQUESTS", "DRAIN"},
         _operation
-    ).option(
-        "priority",
-        "The priority level of the request.",
-        _priority
-    ).option(
-        "timeout",
-        "Maximum timeout (seconds) for the management requests.",
-        _requestExpirationIvalSec
     ).flag(
         "all-workers",
         "The flag for selecting all workers regardless of their status (DISABLED or READ-ONLY).",
@@ -132,54 +126,27 @@ int AdminApp::runImpl() {
         serviceProvider()->config()->allWorkers() :
         serviceProvider()->config()->workers();
 
-    string const emptyJobId;
-
     for (auto&& worker: workers) {
 
         if (_operation == "STATUS") {
-            tracker.add(
-                controller->statusOfWorkerService(
-                    worker,
-                    [&tracker] (ServiceStatusRequest::Ptr const& ptr) { tracker.onFinish(ptr); },
-                    _priority,
-                    emptyJobId,
-                    _requestExpirationIvalSec));
+            tracker.add(controller->statusOfWorkerService(
+                    worker, [&tracker] (ServiceStatusRequest::Ptr const& ptr) { tracker.onFinish(ptr); }));
 
         } else if (_operation == "SUSPEND") {
-            tracker.add(
-                controller->suspendWorkerService(
-                    worker,
-                    [&tracker] (ServiceSuspendRequest::Ptr const& ptr) { tracker.onFinish(ptr); },
-                    _priority,
-                    emptyJobId,
-                    _requestExpirationIvalSec));
+            tracker.add(controller->suspendWorkerService(
+                    worker, [&tracker] (ServiceSuspendRequest::Ptr const& ptr) { tracker.onFinish(ptr); }));
 
         } else if (_operation == "RESUME") {
-            tracker.add(
-                controller->resumeWorkerService(
-                    worker,
-                    [&tracker] (ServiceResumeRequest::Ptr const& ptr) { tracker.onFinish(ptr); },
-                    _priority,
-                    emptyJobId,
-                    _requestExpirationIvalSec));
+            tracker.add(controller->resumeWorkerService(
+                    worker, [&tracker] (ServiceResumeRequest::Ptr const& ptr) { tracker.onFinish(ptr); }));
 
         } else if (_operation == "REQUESTS") {
-            tracker.add(
-                controller->requestsOfWorkerService(
-                    worker,
-                    [&tracker] (ServiceRequestsRequest::Ptr const& ptr) { tracker.onFinish(ptr); },
-                    _priority,
-                    emptyJobId,
-                    _requestExpirationIvalSec));
+            tracker.add(controller->requestsOfWorkerService(
+                    worker, [&tracker] (ServiceRequestsRequest::Ptr const& ptr) { tracker.onFinish(ptr); }));
 
         } else if (_operation == "DRAIN") {
-            tracker.add(
-                controller->drainWorkerService(
-                    worker,
-                    [&tracker] (ServiceDrainRequest::Ptr const& ptr) { tracker.onFinish(ptr); },
-                    _priority,
-                    emptyJobId,
-                    _requestExpirationIvalSec));
+            tracker.add(controller->drainWorkerService(
+                    worker, [&tracker] (ServiceDrainRequest::Ptr const& ptr) { tracker.onFinish(ptr); }));
 
         } else {
             throw logic_error(

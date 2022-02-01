@@ -38,26 +38,18 @@ namespace replica {
  * Class QservWorkerApp represents a command-line tool for operations
  * with Qserv workers.
  */
-class QservWorkerApp : public Application {
-
+class QservWorkerApp: public Application {
 public:
-
-    /// The pointer type for instances of the class
     typedef std::shared_ptr<QservWorkerApp> Ptr;
 
     /**
      * The factory method is the only way of creating objects of this class
      * because of the very base class's inheritance from 'enable_shared_from_this'.
      *
-     * @param argc
-     *   the number of command-line arguments
-     *
-     * @param argv
-     *   the vector of command-line arguments
+     * @param argc the number of command-line arguments
+     * @param argv the vector of command-line arguments
      */
     static Ptr create(int argc, char* argv[]);
-
-    // Default construction and copy semantics are prohibited
 
     QservWorkerApp()=delete;
     QservWorkerApp(QservWorkerApp const&)=delete;
@@ -66,12 +58,10 @@ public:
     ~QservWorkerApp() override=default;
 
 protected:
-
     /// @see Application::runImpl()
     int runImpl() final;
 
 private:
-
     /// @see QservWorkerApp::create()
     QservWorkerApp(int argc, char* argv[]);
 
@@ -79,19 +69,16 @@ private:
      * Read and parse a space/newline separated stream of pairs from the input
      * file and fill replica entries into the collection. Each pair has
      * the following format:
-     *
+     * @code
      *   <database>:<chunk>
-     *
+     * @code
      * For example:
-     *
+     * @code
      *   LSST:123 LSST:124 LSST:23456
      *   LSST:0
-     *
-     * @param replicas
-     *   collection to be initialized
-     * 
-     * @param databases
-     *   collection of unique database names found in the input files. The collection
+     * @code
+     * @param replicas collection to be initialized
+     * @param databases collection of unique database names found in the input files. The collection
      *   will be populated upon a successful completion of the method.
      */
     void _readInFile(QservReplicaCollection& replicas,
@@ -99,11 +86,9 @@ private:
 
     /**
       * Print a collection of replicas
-      *
       * @param collection
       */
     void _dump(QservReplicaCollection const& collection) const;
-
 
     /// The name of a command (the first mandatory parameter)
     std::string _command;

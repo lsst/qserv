@@ -23,6 +23,7 @@
 #include "replica/MasterControllerHttpApp.h"
 
 // System headers
+#include <chrono>
 #include <functional>
 #include <stdexcept>
 #include <thread>
@@ -32,12 +33,13 @@
 #include "replica/HttpProcessor.h"
 #include "replica/HttpProcessorConfig.h"
 #include "replica/Performance.h"
-#include "util/BlockPost.h"
+#include "replica/Redirector.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
 
 using namespace std;
+using namespace std::chrono_literals;
 
 namespace {
 
@@ -88,19 +90,17 @@ namespace qserv {
 namespace replica {
 
 MasterControllerHttpApp::Ptr MasterControllerHttpApp::create(int argc, char* argv[]) {
-    return Ptr(
-        new MasterControllerHttpApp(argc, argv)
-    );
+    return Ptr(new MasterControllerHttpApp(argc, argv));
 }
 
 
 MasterControllerHttpApp::MasterControllerHttpApp(int argc, char* argv[])
     :   Application(
             argc, argv,
-            description,
-            injectDatabaseOptions,
-            boostProtobufVersionCheck,
-            enableServiceProvider
+            ::description,
+            ::injectDatabaseOptions,
+            ::boostProtobufVersionCheck,
+            ::enableServiceProvider
         ),
         _healthProbeIntervalSec  (::defaultOptions.healthProbeIntervalSec),
         _replicationIntervalSec  (::defaultOptions.replicationIntervalSec),
@@ -226,9 +226,7 @@ int MasterControllerHttpApp::runImpl() {
 
     _replicationTask = ReplicationTask::create(
         _controller,
-        [self] (Task::Ptr const& ptr) {
-            self->_isFailed.fail();
-        },
+        [self] (Task::Ptr const& ptr) { self->_isFailed.fail(); },
         _qservSyncTimeoutSec,
         _replicationIntervalSec,
         _numReplicas,
@@ -238,12 +236,8 @@ int MasterControllerHttpApp::runImpl() {
 
     _healthMonitorTask = HealthMonitorTask::create(
         _controller,
-        [self] (Task::Ptr const& ptr) {
-            self->_isFailed.fail();
-        },
-        [self] (string const& worker2evict) {
-            self->_evict(worker2evict);
-        },
+        [self] (Task::Ptr const& ptr) { self->_isFailed.fail(); },
+        [self] (string const& worker2evict) { self->_evict(worker2evict); },
         _workerEvictTimeoutSec,
         _workerResponseTimeoutSec,
         _healthProbeIntervalSec
@@ -263,25 +257,19 @@ int MasterControllerHttpApp::runImpl() {
         httpProcessor->run();
     });
 
-    // Keep running before a catastrophic failure is reported by any
-    // above initiated activity
-
-    util::BlockPost blockPost(1000, 2000);
-    while (not _isFailed()) {
-        blockPost.wait();
+    // Keep running before a catastrophic failure is reported by any activity.
+    while (!_isFailed()) {
+        this_thread::sleep_for(chrono::seconds(1s));
     }
 
     // Stop all threads if any are still running
-
     _healthMonitorTask->stop();
     _replicationTask->stop();
     httpProcessor->stop();
 
     ingestHttpSvrThread.join();
 
-    if ((_replicationTask != nullptr) and
-         _replicationTask->isRunning()) _replicationTask->stop();
-
+    if ((_replicationTask != nullptr) && _replicationTask->isRunning()) _replicationTask->stop();
     _logControllerStoppedEvent();
 
     return 1;
