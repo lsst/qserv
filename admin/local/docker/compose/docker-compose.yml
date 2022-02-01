@@ -92,7 +92,7 @@ services:
           entrypoint worker-xrootd
           --db-uri mysql://qsmaster@127.0.0.1:3306
           --db-admin-uri mysql://root:CHANGEME@127.0.0.1:3306
-          --vnid-config "@/usr/local/lib64/libreplica.so mysql://qsmaster@127.0.0.1:3306/qservw_worker 0 0"
+          --vnid-config "@/usr/local/lib64/libreplica.so {{db_uri}}/qservw_worker 0 0"
           --cmsd-manager-name manager-xrootd
           --cmsd-manager-count 1
           --mysql-monitor-password CHANGEME_MONITOR
@@ -171,12 +171,13 @@ services:
         << : *worker-xrootd
         command: >
           entrypoint --log-level DEBUG worker-xrootd
-          --db-uri mysql://qsmaster@127.0.0.1:3306?socket=/qserv/mariadb/run/mysqld.sock
-          --db-admin-uri mysql://root:CHANGEME@127.0.0.1:3306?socket=/qserv/mariadb/run/mysqld.sock
+          --db-uri mysql://qsmaster@127.0.0.1:3306?socket={{db_socket}}
+          --db-admin-uri mysql://root:CHANGEME@127.0.0.1:3306?socket={{db_socket}}
           --vnid-config "@/usr/local/lib64/libreplica.so mysql://root:CHANGEME@localhost:3306/qservw_worker 0 0"
           --cmsd-manager-name manager-xrootd
           --cmsd-manager-count 1
           --mysql-monitor-password CHANGEME_MONITOR
+          --targs db_socket=/qserv/mariadb/run/mysqld.sock
         environment:
             << : *log-environment
         volumes:
@@ -306,8 +307,9 @@ services:
         init: true
         command: >
           entrypoint --log-level DEBUG proxy
-          --db-uri mysql://qsmaster@127.0.0.1:3306?socket=/qserv/mariadb/run/mysqld.sock
-          --db-admin-uri mysql://root:CHANGEME@127.0.0.1:3306?socket=/qserv/mariadb/run/mysqld.sock
+          --db-uri mysql://qsmaster@127.0.0.1:3306?socket={{db_socket}}
+          --db-admin-uri mysql://root:CHANGEME@127.0.0.1:3306?socket={{db_socket}}
+          --targs db_socket=/qserv/mariadb/run/mysqld.sock
           --xrootd-manager manager-xrootd
         environment:
             << : *log-environment
