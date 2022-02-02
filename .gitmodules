@@ -7,9 +7,6 @@
 [submodule "extern/partition"]
 	path = extern/partition
 	url = ../../lsst/partition
-[submodule "extern/utils"]
-	path = extern/utils
-	url = ../../lsst/utils
 [submodule "extern/qserv_web"]
 	path = extern/qserv_web
 	url = ../../lsst-dm/qserv_web
