@@ -224,7 +224,6 @@ RUN pip3 install \
     deprecated \
     jinja2 \
     mysql-connector-python \
-    numpy \
     pyyaml \
     requests \
     sqlalchemy

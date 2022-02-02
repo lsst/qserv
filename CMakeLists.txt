@@ -11,9 +11,6 @@ enable_testing()
 include(GNUInstallDirs)
 set(CMAKE_INSTALL_PREFIX ${PROJECT_BINARY_DIR}/install)
 
-# utils is Python-only, so just install with pip instead of embedded cmake
-install(CODE "execute_process(COMMAND pip3 install ${CMAKE_CURRENT_SOURCE_DIR}/extern/utils -t ${CMAKE_INSTALL_PREFIX}/python --no-deps --no-compile)")
-
 add_subdirectory(extern/log)
 add_subdirectory(extern/partition)
 add_subdirectory(extern/qserv_web)
