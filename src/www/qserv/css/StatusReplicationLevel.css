@@ -1,0 +1,15 @@
+table#fwk-status-level pre {
+    padding:    0;
+    margin:     0;
+}
+table#fwk-status-level td {
+    vertical-align: middle;
+}
+table#fwk-status-level caption {
+    caption-side:   top;
+    text-align:     right;
+    padding-top:    0;
+}
+table#fwk-status-level caption.updating {
+    background-color: #ffeeba;
+}

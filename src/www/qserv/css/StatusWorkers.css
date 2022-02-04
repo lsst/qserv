@@ -1,0 +1,15 @@
+table#fwk-status-workers pre {
+    padding:    0;
+    margin:     0;
+}
+table#fwk-status-workers td {
+    vertical-align: middle;
+}
+table#fwk-status-workers caption {
+    caption-side:   top;
+    text-align:     right;
+    padding-top:    0;
+}
+table#fwk-status-workers caption.updating {
+    background-color: #ffeeba;
+}

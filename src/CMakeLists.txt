@@ -60,6 +60,7 @@ add_subdirectory(worker)
 add_subdirectory(wdb)
 add_subdirectory(wpublish)
 add_subdirectory(wsched)
+add_subdirectory(www)
 add_subdirectory(xrdlog)
 add_subdirectory(xrdsvc)
 

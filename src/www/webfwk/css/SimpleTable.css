@@ -1,0 +1,30 @@
+@CHARSET "ISO-8859-1";
+
+/* ---------------------------
+ * Standard table with borders
+ * ---------------------------
+ */
+table.simple-table {
+}
+table.simple-table th.table_active_hdr {}
+
+table.simple-table > thead > tr > th.table_active_hdr:hover {
+    cursor:             pointer !important;
+    background-color:   #007bff !important;
+}
+table.simple-table > thead > tr > th.table_active_hdr_selected {
+    background-color:   #007bff;
+} 
+table.simple-table > tbody > tr > tr.table_row_selectable {
+    cursor: pointer;
+}
+table.simple-table > tbody > tr > td.table_cell_selectable {
+    cursor:         pointer;
+    font-weight:    bold;
+}
+table.simple-table > tbody > tr > td.table_cell_selectable:hover {
+    background-color:   #007bff;
+}
+table.simple-table > tbody > tr > td.table_cell_selectable_selected {
+    background-color:   #b9dcf5;
+}

@@ -1,0 +1,16 @@
+table#fwk-qserv-queries caption {
+    caption-side:   top;
+    text-align:     right;
+    padding-top:    0;
+}
+table#fwk-qserv-queries tbody th,
+table#fwk-qserv-queries tbody td {
+    vertical-align:middle;
+}
+table#fwk-qserv-queries pre {
+    padding: 0;
+    margin: 0;
+}
+table#fwk-qserv-queries caption.updating {
+    background-color: #ffeeba;
+}

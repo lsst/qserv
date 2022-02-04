@@ -1,0 +1,31 @@
+canvas#fwk-status-activechunksmap {
+    margin-top: 20px;
+    /*background-color: black;*/
+}
+table#fwk-status-activechunksmap-table caption {
+    caption-side:   top;
+    text-align:     right;
+    padding:        5px;
+    margin-bottom:  30px;
+}
+table#fwk-status-activechunksmap-table caption.updating {
+    background-color: #ffeeba;
+}
+table#fwk-status-activechunksmap-table th,
+table#fwk-status-activechunksmap-table td {
+    vertical-align: middle;
+}
+table#fwk-status-activechunksmap-table th.right-aligned,
+table#fwk-status-activechunksmap-table th pre.right-aligned,
+table#fwk-status-activechunksmap-table td.right-aligned,
+table#fwk-status-activechunksmap-table td pre.right-aligned {
+    text-align: right;
+}
+
+table#fwk-status-activechunksmap-table th pre,
+table#fwk-status-activechunksmap-table td pre {
+    margin:     0;
+    padding:    0;
+    text-align: left;
+}
+

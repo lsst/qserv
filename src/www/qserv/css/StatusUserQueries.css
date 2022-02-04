@@ -1,0 +1,56 @@
+table#fwk-status-queries      pre,
+table#fwk-status-queries-past pre {
+    padding:    0;
+    margin:     0;
+}
+table#fwk-status-queries      th,
+table#fwk-status-queries      td,
+table#fwk-status-queries-past th,
+table#fwk-status-queries-past td {
+    vertical-align: top;
+}
+table#fwk-status-queries-past {
+    position: relative;
+}
+table#fwk-status-queries-past > thead > tr > th.sticky {
+    position:sticky;
+    top:80px;
+    z-index:2;
+}
+table#fwk-status-queries caption {
+    caption-side:   top;
+    text-align:     right;
+    padding-top:    0;
+}
+table#fwk-status-queries caption.updating {
+    background-color: #ffeeba;
+}
+
+table#fwk-status-queries      tbody > tr:hover,
+table#fwk-status-queries-past tbody > tr:hover {
+    cursor:pointer;
+}
+table#fwk-status-queries      tbody pre.query.hidden,
+table#fwk-status-queries-past tbody pre.query.hidden {
+    display:none;
+}
+table#fwk-status-queries      tbody pre.query.visible,
+table#fwk-status-queries-past tbody pre.query.visible {
+    display:block;
+}
+table#fwk-status-queries      span,
+table#fwk-status-queries-past span {
+    font-family: monospace;
+    white-space: pre;
+    font-size:   16px;
+    margin:      0;
+    padding:     0;
+}
+table#fwk-status-queries      span.trend_down,
+table#fwk-status-queries-past span.trend_down {
+    color:       green;
+}
+table#fwk-status-queries      span.trend_up,
+table#fwk-status-queries-past span.trend_up {
+    color:       red;
+}

@@ -1,0 +1,30 @@
+table#fwk-controller-config-catalogs pre {
+    padding:    0;
+    margin:     0;
+}
+table#fwk-controller-config-catalogs tbody pre.database_table:hover {
+    cursor:pointer;
+}
+table#fwk-controller-config-catalogs tbody pre.database_table {
+    color:#007bff;
+}
+table#fwk-controller-config-catalogs th,
+table#fwk-controller-config-catalogs td {
+    vertical-align: middle;
+}
+table#fwk-controller-config-catalogs {
+    position: relative;
+}
+table#fwk-controller-config-catalogs > thead > tr > th.sticky {
+    position:sticky;
+    top:80px;
+    z-index:2;
+}
+table#fwk-controller-config-catalogs caption {
+    caption-side:   top;
+    text-align:     right;
+    padding-top:    0;
+}
+table#fwk-controller-config-catalogs caption.updating {
+    background-color: #ffeeba;
+}

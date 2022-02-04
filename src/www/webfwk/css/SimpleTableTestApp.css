@@ -1,0 +1,13 @@
+#fwk-uitests-simpletable > div.table-cont {
+    float: left;
+    margin-right: 3em;
+    margin-bottom: 1em;
+}
+#fwk-uitests-simpletable > div.table-cont-last {
+    clear:both;
+}
+
+#fwk-uitests-simpletable table > caption {
+    caption-side: top;
+    text-align: left;
+}
