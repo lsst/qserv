@@ -43,6 +43,7 @@ namespace replica {
     class DatabaseServices;
     class Messenger;
     class QservMgtServices;
+    class Redirector;
 }}}  // Forward declarations
 
 // This header declarations
@@ -54,20 +55,9 @@ namespace replica {
   * Class ServiceProvider hosts various services used by both workers
   * and controllers.
   */
-class ServiceProvider : public std::enable_shared_from_this<ServiceProvider> {
+class ServiceProvider: public std::enable_shared_from_this<ServiceProvider> {
 public:
-
-    /// The pointer type for instances of the class
     typedef std::shared_ptr<ServiceProvider> Ptr;
-
-    // Forward definition for pointer types of the owned services
-
-    typedef std::shared_ptr<Configuration>    ConfigurationPtr;
-    typedef std::shared_ptr<DatabaseServices> DatabaseServicesPtr;
-    typedef std::shared_ptr<Messenger>        MessengerPtr;
-    typedef std::shared_ptr<QservMgtServices> QservMgtServicesPtr;
-
-    // Default construction and copy semantics are prohibited
 
     ServiceProvider() = delete;
     ServiceProvider(ServiceProvider const&) = delete;
@@ -118,7 +108,7 @@ public:
     void stop();
 
     /// @return a reference to the configuration service
-    ConfigurationPtr const& config() const { return _configuration; }
+    std::shared_ptr<Configuration> const& config() const { return _configuration; }
 
     /// @return A unique identifier of a Qserv instance served by the Replication System
     std::string const& instanceId() const { return _instanceId; }
@@ -133,13 +123,16 @@ public:
     ChunkLocker& chunkLocker() { return _chunkLocker; }
 
     /// @return a reference to the database services
-    DatabaseServicesPtr const& databaseServices();
+    std::shared_ptr<DatabaseServices> const& databaseServices();
 
     /// @return a reference to the Qserv notification services (via the XRootD/SSI protocol)
-    QservMgtServicesPtr const& qservMgtServices();
+    std::shared_ptr<QservMgtServices> const& qservMgtServices();
 
     /// @return a reference to worker messenger service (configured for controllers)
-    MessengerPtr const& messenger();
+    std::shared_ptr<Messenger> const& messenger();
+
+    /// @return a reference to worker redirection/registration service
+    std::shared_ptr<Redirector> const& redirector();
 
     /**
      * Acquire (and register if none existed at a time of a call to the method) a mutex for
@@ -196,7 +189,7 @@ private:
 
     /// Configuration manager (constructed from the Configuration specification
     /// URL passed into the constructor of the class).
-    ConfigurationPtr const _configuration;
+    std::shared_ptr<Configuration> const _configuration;
 
     /// A unique identifier of a Qserv instance served by the Replication System
     std::string const _instanceId;
@@ -211,14 +204,17 @@ private:
     /// operations to ensure consistency of the operations.
     ChunkLocker _chunkLocker;
 
-    /// Database services  (lazy instantiation on a first request)
-    DatabaseServicesPtr _databaseServices;
+    /// Database services (lazy instantiation on a first request)
+    std::shared_ptr<DatabaseServices> _databaseServices;
 
-    /// Qserv management services  (lazy instantiation on a first request)
-    QservMgtServicesPtr _qservMgtServices;
+    /// Qserv management services (lazy instantiation on a first request)
+    std::shared_ptr<QservMgtServices> _qservMgtServices;
 
-    /// Worker messenger service  (lazy instantiation on a first request)
-    MessengerPtr _messenger;
+    /// Worker messenger service (lazy instantiation on a first request)
+    std::shared_ptr<Messenger> _messenger;
+
+    /// Worker redirection/registration service (lazy instantiation on a first request)
+    std::shared_ptr<Redirector> _redirector;
 
     /// Registry of unique mutexes.
     NamedMutexRegistry _namedMutexRegistry;

@@ -265,6 +265,8 @@ target_sources(replica PRIVATE
     RebalanceApp.h
     RebalanceJob.cc
     RebalanceJob.h
+    Redirector.h
+    Redirector.cc
     RedirectorHttpApp.h
     RedirectorHttpApp.cc
     RedirectorHttpSvc.h
