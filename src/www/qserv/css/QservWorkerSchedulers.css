@@ -1,0 +1,16 @@
+table#fwk-qserv-schedulers caption {
+    caption-side:   top;
+    text-align:     right;
+    padding-top:    0;
+}
+table#fwk-qserv-schedulers tbody th,
+table#fwk-qserv-schedulers tbody td {
+    vertical-align:middle;
+}
+table#fwk-qserv-schedulers pre {
+    padding: 0;
+    margin: 0;
+}
+table#fwk-qserv-schedulers caption.updating {
+    background-color: #ffeeba;
+}

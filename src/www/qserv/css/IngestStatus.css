@@ -1,0 +1,79 @@
+div#fwk-ingest-status div.database:not(:first-of-type) {
+    margin-top: 1em;
+}
+div#fwk-ingest-status div.database h2 {
+    padding-bottom: 0.5em;
+}
+div#fwk-ingest-status #status {
+    text-align: right;
+}
+div#fwk-ingest-status #status.updating {
+    background-color: #ffeeba;
+}
+div#fwk-ingest-status div.block {
+    padding-left: 2em;
+}
+div#fwk-ingest-status th.right-aligned,
+div#fwk-ingest-status td.right-aligned {
+    text-align: right;
+}
+div#fwk-ingest-status th.center-aligned,
+div#fwk-ingest-status td.center-aligned {
+    text-align: center;
+}
+div#fwk-ingest-status tbody th,
+div#fwk-ingest-status tbody td {
+    vertical-align:middle;
+}
+div#fwk-ingest-status tbody th.level-2,
+div#fwk-ingest-status tbody td.level-2 {
+    padding-left: 1em;
+}
+div#fwk-ingest-status table pre {
+    padding: 0;
+    padding-top: 0.1em;
+    margin: 0;
+}
+div#fwk-ingest-status table pre.database_table:hover {
+    cursor:pointer;
+}
+div#fwk-ingest-status table pre.database_table {
+    color:#007bff;
+}
+div#fwk-ingest-status table pre.object {
+    color: maroon;
+}
+div#fwk-ingest-status table pre.trans-started {
+    color: green;
+}
+div#fwk-ingest-status table pre.trans-finished {
+    color: default;
+}
+div#fwk-ingest-status table pre.trans-aborted {
+    color: red;
+}
+div#fwk-ingest-status table pre.comment {
+    color: grey;
+}
+div#fwk-ingest-status table pre.files-in-progress {
+    color: green;
+}
+div#fwk-ingest-status table pre.files-failed {
+    color: red;
+}
+div#fwk-ingest-status table pre.files-finished {
+    color: default;
+}
+
+div#fwk-ingest-status div.perf {
+    padding-top: 2.5em;
+}
+div#fwk-ingest-status h2 span.perf-title {
+    /*font-size: 2em;*/
+    /* font-weight: bold;*/
+}
+div#fwk-ingest-status h2 span.perf-value {
+    /*font-size: 2em;*/
+    /*font-weight: bold;*/
+    color: maroon;
+}

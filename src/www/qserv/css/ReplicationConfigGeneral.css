@@ -1,0 +1,24 @@
+table#fwk-controller-config-general pre {
+    padding:    0;
+    margin:     0;
+}
+table#fwk-controller-config-general th,
+table#fwk-controller-config-general td {
+    vertical-align: middle;
+}
+table#fwk-controller-config-general {
+    position: relative;
+}
+table#fwk-controller-config-general > thead > tr > th.sticky {
+    position:sticky;
+    top:80px;
+    z-index:2;
+}
+table#fwk-controller-config-general caption {
+    caption-side:   top;
+    text-align:     right;
+    padding-top:    0;
+}
+table#fwk-controller-config-general caption.updating {
+    background-color: #ffeeba;
+}

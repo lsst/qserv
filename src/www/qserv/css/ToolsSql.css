@@ -1,0 +1,25 @@
+table#fwk-tools-sql-resultset pre {
+    padding: 0;
+    margin:  0;
+}
+table#fwk-tools-sql-resultset td {
+    vertical-align: middle;
+}
+table#fwk-tools-sql-resultset caption {
+    caption-side: top;
+    text-align:   right;
+    padding-top:  0;
+}
+table#fwk-tools-sql-resultset caption.updating {
+    background-color: #ffeeba;
+}
+table#fwk-tools-sql-resultset caption.error {
+    text-align: left;
+    color:      maroon;
+}
+#fwk-tools-sql {
+    padding-top: 1em;
+}
+#fwk-tools-sql div.row {
+    margin-bottom: 1em;
+}

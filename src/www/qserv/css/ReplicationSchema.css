@@ -1,0 +1,24 @@
+table#fwk-replication-schema pre {
+    padding:    0;
+    margin:     0;
+}
+table#fwk-replication-schema th,
+table#fwk-replication-schema td {
+    vertical-align: middle;
+}
+table#fwk-replication-schema {
+    position: relative;
+}
+table#fwk-replication-schema > thead > tr > th.sticky {
+    position:sticky;
+    top:80px;
+    z-index:2;
+}
+table#fwk-replication-schema caption {
+    caption-side:   top;
+    text-align:     right;
+    padding-top:    0;
+}
+table#fwk-replication-schema caption.updating {
+    background-color: #ffeeba;
+}

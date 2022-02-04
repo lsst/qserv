@@ -13,7 +13,6 @@ set(CMAKE_INSTALL_PREFIX ${PROJECT_BINARY_DIR}/install)
 
 add_subdirectory(extern/log)
 add_subdirectory(extern/partition)
-add_subdirectory(extern/qserv_web)
 add_subdirectory(extern/sphgeom)
 
 add_subdirectory(src)

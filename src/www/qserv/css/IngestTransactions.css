@@ -1,0 +1,27 @@
+table#fwk-ingest-transactions caption {
+    caption-side:   top;
+    text-align:     right;
+    padding-top:    0;
+}
+table#fwk-ingest-transactions th.right-aligned,
+table#fwk-ingest-transactions td.right-aligned {
+    text-align:     right;
+}
+table#fwk-ingest-transactions th.center-aligned,
+table#fwk-ingest-transactions td.center-aligned {
+    text-align: center;
+}
+table#fwk-ingest-transactions tbody th,
+table#fwk-ingest-transactions tbody td {
+    vertical-align:middle;
+}
+table#fwk-ingest-transactions tbody > tr.transaction:hover {
+    cursor:pointer;
+}
+table#fwk-ingest-transactions pre {
+    padding: 0;
+    margin: 0;
+}
+table#fwk-ingest-transactions caption.updating {
+    background-color: #ffeeba;
+}

@@ -1,0 +1,36 @@
+table#fwk-status-catalogs-databases   pre,
+table#fwk-status-catalogs-partitioned pre,
+table#fwk-status-catalogs-regular     pre {
+    padding:    0;
+    margin:     0;
+}
+table#fwk-status-catalogs-databases   th.number,
+table#fwk-status-catalogs-databases   td.number,
+table#fwk-status-catalogs-partitioned th.number,
+table#fwk-status-catalogs-partitioned td.number,
+table#fwk-status-catalogs-regular     th.number,
+table#fwk-status-catalogs-regular     td.number {
+    text-align: right;
+}
+table#fwk-status-catalogs-databases   td.number pre,
+table#fwk-status-catalogs-partitioned td.number pre,
+table#fwk-status-catalogs-regular     td.number pre {
+    color: maroon;
+}
+table#fwk-status-catalogs-partitioned pre.database_table:hover,
+table#fwk-status-catalogs-regular     pre.database_table:hover {
+        cursor:pointer;
+}
+table#fwk-status-catalogs-partitioned pre.database_table,
+table#fwk-status-catalogs-regular     pre.database_table {
+        color:#007bff;
+}
+table#fwk-status-catalogs-databases caption {
+    caption-side:   top;
+    text-align:     right;
+    padding-top:    0;
+}
+table#fwk-status-catalogs-databases caption.updating {
+    background-color: #ffeeba;
+}
+
