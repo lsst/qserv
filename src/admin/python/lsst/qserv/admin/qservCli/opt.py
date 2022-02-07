@@ -32,7 +32,7 @@ import os
 from typing import Callable, List, Optional, Union
 
 
-from .images import get_tag
+from .images import get_description
 
 
 _log = logging.getLogger(__name__)
@@ -188,7 +188,7 @@ def tagged_image_name(image_name: str, dockerfiles: Optional[List[str]]) -> Opti
     qserv_root = qserv_root_ev.val()
     if qserv_root is None:
         return None
-    return f"{image_name}:{image_tag_ev.val(get_tag(dockerfiles, qserv_root))}"
+    return f"{image_name}:{image_tag_ev.val(get_description(dockerfiles, qserv_root))}"
 
 
 qserv_root_ev = FlagEnvVal(

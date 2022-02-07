@@ -41,9 +41,10 @@ auth_header = "Bearer {token}"
 _log = logging.getLogger(__name__)
 
 
-def get_tag(dockerfiles: Optional[List[str]], cwd: str) -> str:
-    """Get the git tag of the commit that contains the most recent change to any
-    of the given dockerfiles.
+def get_description(dockerfiles: Optional[List[str]], cwd: str) -> str:
+    """Get the git description of the commit that contains the most recent
+    change to any of the given dockerfiles, or of the commit of the most
+    recent tag if it is more recent than the dockerfile changes.
 
     Parameters
     ----------
@@ -63,11 +64,50 @@ def get_tag(dockerfiles: Optional[List[str]], cwd: str) -> str:
     # todo handle if one of the dockerfiles is dirty
     if dockerfiles is not None:
         shas = [get_last_change(fname, cwd) for fname in dockerfiles]
+        shas.append(last_git_tag(cwd))
         sha: Optional[str] = get_most_recent(shas, cwd)
     else:
         sha = None
     tag = describe(sha, cwd)
     return tag
+
+
+def last_git_tag(cwd: str) -> str:
+    """Get the sha of the most recent git tag.
+
+    Parameters
+    ----------
+    cwd : str
+        The directory to run the command from, must be in the
+        git repository to get the tag from.
+
+    Returns
+    -------
+    SHA : str
+        The sha of the most recent git tag.
+
+    Raises
+    ------
+    RuntimeError
+        If the most recent tag can not be gotten, or if the
+        SHA of that tag can not be gotten from git.
+    """
+    res = subprocess.run(
+        "git describe --abbrev=0".split(),
+        stdout=subprocess.PIPE,
+        cwd=cwd,
+    )
+    tag = res.stdout.decode().strip()
+    if res.returncode != 0:
+        raise RuntimeError(f"Failed to get most recent tag from repo at {cwd}.")
+    res = subprocess.run(
+        ["git", "rev-list", "-n", "1", tag],
+        stdout=subprocess.PIPE,
+        cwd=cwd,
+    )
+    if res.returncode != 0:
+        raise RuntimeError(f"Failed to get SHA for tag {tag}.")
+    return res.stdout.decode().strip()
 
 
 def describe(sha: Optional[str], cwd: str) -> str:
