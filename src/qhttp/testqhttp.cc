@@ -33,16 +33,24 @@
 
 #include "boost/asio.hpp"
 #include "boost/algorithm/string/join.hpp"
+#include "boost/filesystem.hpp"
 #include "boost/format.hpp"
 #include "boost/range/adaptors.hpp"
 #include "curl/curl.h"
 
+#include "lsst/log/Log.h"
 #include "qhttp/Server.h"
 
 namespace asio = boost::asio;
 namespace ip = boost::asio::ip;
+namespace fs = boost::filesystem;
 
 namespace {
+
+
+void initMDC() {
+    LOG_MDC("LWP", std::to_string(lsst::log::lwpID()));
+}
 
 
 void compareWithFile(std::string const& content, std::string const& file)
@@ -265,17 +273,20 @@ namespace qserv {
 //
 //----- The test fixture instantiates a qhttp server and a boost::asio::io_service to run it,
 //      manages a thread that runs the io_service, and handles global init and cleanup of libcurl.
+//
 
 struct QhttpFixture
 {
     QhttpFixture()
+    : logLevel("DEBUG")
     {
         server = qhttp::Server::create(service, 0);
         BOOST_TEST(curl_global_init(CURL_GLOBAL_DEFAULT) == CURLE_OK);
 
-        static char const* opts = "d:";
+        static char const* opts = "d:l:";
         static struct option lopts[] = {
             {"data", required_argument, nullptr, 'd'},
+            {"log-level", required_argument, nullptr, 'l'},
             {nullptr, 0, nullptr, 0}
         };
 
@@ -289,17 +300,27 @@ struct QhttpFixture
             case 'd':
                 dataDir = optarg;
                 break;
+            case 'l':
+                logLevel = optarg;
+                break;
             default:
                 break;
             }
         }
+
+        LOG_MDC_INIT(initMDC);
+        LOG_CONFIG_PROP(
+            std::string("log4j.rootLogger=") + logLevel + ", CONSOLE\n"
+            "log4j.appender.CONSOLE=org.apache.log4j.ConsoleAppender\n"
+            "log4j.appender.CONSOLE.layout=org.apache.log4j.PatternLayout\n"
+            "log4j.appender.CONSOLE.layout.ConversionPattern="
+                "%d{yyyy-MM-ddTHH:mm:ss.SSSZ} LWP %-5X{LWP} %-5p %c{1} %m%n"
+        );
     }
 
     void start()
     {
-        boost::system::error_code ec;
-        server->start(ec);
-        BOOST_TEST(!ec);
+        server->start();
         urlPrefix = "http://localhost:" + std::to_string(server->getPort()) + "/";
         serviceThread = std::thread([this](){
             asio::io_service::work work(service);
@@ -373,6 +394,7 @@ struct QhttpFixture
     qhttp::Server::Ptr server;
     std::string urlPrefix;
     std::string dataDir;
+    std::string logLevel;
 };
 
 
@@ -448,9 +470,7 @@ BOOST_FIXTURE_TEST_CASE(shutdown, QhttpFixture)
 
     //----- restart, and verify handler in invoked again
 
-    boost::system::error_code ec;
-    server->start(ec);
-    BOOST_TEST(!ec);
+    server->start();
     curl1.setup("GET", urlPrefix, "").perform().validate(200, "text/html");
     BOOST_TEST(invocations == 2);
     curl2.setup("GET", urlPrefix, "").perform().validate(200, "text/html");
@@ -513,20 +533,14 @@ BOOST_FIXTURE_TEST_CASE(percent_decoding, QhttpFixture)
 
 BOOST_FIXTURE_TEST_CASE(static_content, QhttpFixture)
 {
-    boost::system::error_code ec;
-
     //----- test invalid root directory
 
-    server->addStaticContent("/*", "/doesnotexist", ec);
-    BOOST_TEST(ec == boost::system::errc::no_such_file_or_directory);
-
-    server->addStaticContent("/*", dataDir + "index.htm", ec);
-    BOOST_TEST(ec == boost::system::errc::not_a_directory);
+    BOOST_CHECK_THROW(server->addStaticContent("/*", "/doesnotexist"), fs::filesystem_error);
+    BOOST_CHECK_THROW(server->addStaticContent("/*", dataDir + "index.htm"), fs::filesystem_error);
 
    //----- set up valid static content for subsequent tests
 
-    server->addStaticContent("/*", dataDir, ec);
-    BOOST_TEST(!ec);
+    server->addStaticContent("/*", dataDir);
     start();
 
     CurlEasy curl;
@@ -564,19 +578,17 @@ BOOST_FIXTURE_TEST_CASE(static_content, QhttpFixture)
 
     //----- test resource path with embedded null
 
-    curl.setup("GET", urlPrefix + "/%00/", "").perform().validate(404, "text/html");
-    BOOST_TEST(curl.recdContent.find("404") != std::string::npos);
+    curl.setup("GET", urlPrefix + "/%00/", "").perform().validate(400, "text/html");
+    BOOST_TEST(curl.recdContent.find("400") != std::string::npos);
 
-    std::string content = asioHttpGet(std::string("/\0/", 3), 404, "text/html");
-    BOOST_TEST(content.find("404") != std::string::npos);
+    std::string content = asioHttpGet(std::string("/\0/", 3), 400, "text/html");
+    BOOST_TEST(content.find("400") != std::string::npos);
 }
 
 
 BOOST_FIXTURE_TEST_CASE(relative_url_containment, QhttpFixture)
 {
-    boost::system::error_code ec;
-    server->addStaticContent("/*", dataDir, ec);
-    BOOST_TEST(!ec);
+    server->addStaticContent("/*", dataDir);
 
     start();
     std::string content;
@@ -604,8 +616,7 @@ BOOST_FIXTURE_TEST_CASE(exception_handling, QhttpFixture)
     boost::system::error_code ec;
     std::string content;
 
-    server->addStaticContent("/etc/*", "/etc/", ec);
-    BOOST_TEST(!ec);
+    server->addStaticContent("/etc/*", "/etc/");
 
     server->addHandler("GET", "/throw/:errno", [](qhttp::Request::Ptr req, qhttp::Response::Ptr resp){
         int ev = std::stoi(req->params["errno"]); // will throw if can't parse int

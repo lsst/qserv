@@ -95,12 +95,7 @@ public:
     //      header files for details.  Convenience functions are provided here to instantiate and install
     //      these.
 
-    void addStaticContent(
-        std::string const& path,
-        std::string const& rootDirectory,
-        boost::system::error_code& ec
-    );
-
+    void addStaticContent(std::string const& path, std::string const& rootDirectory);
     AjaxEndpoint::Ptr addAjaxEndpoint(std::string const& path);
 
     //----- setRequestTimeout() allows the user to override the default 5 minute start-of-request to
@@ -113,7 +108,7 @@ public:
     //      Server execution may be halted either calling stop(), or by calling asio::io_service::stop()
     //      on the associated asio::io_service.
 
-    void start(boost::system::error_code& ec);
+    void start();
 
     //----- stop() shuts down the server by closing all active sockets, including the server listening
     //      socket.  No new connections will be accepted, and handlers in progress will err out the next
@@ -142,6 +137,7 @@ private:
     std::unordered_map<std::string, std::vector<PathHandler>> _pathHandlersByMethod;
 
     boost::asio::io_service& _io_service;
+
     int const _backlog;
     boost::asio::ip::tcp::endpoint _acceptorEndpoint;
     boost::asio::ip::tcp::acceptor _acceptor;

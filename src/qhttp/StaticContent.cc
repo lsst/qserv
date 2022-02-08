@@ -27,39 +27,41 @@
 #include "boost/filesystem.hpp"
 #include "boost/algorithm/string.hpp"
 
+// Local headers
+#include "lsst/log/Log.h"
+#include "qhttp/LogHelpers.h"
+
+namespace errc = boost::system::errc;
 namespace fs = boost::filesystem;
+
+namespace {
+    LOG_LOGGER _log = LOG_GET("lsst.qserv.qhttp");
+}
 
 namespace lsst {
 namespace qserv {
 namespace qhttp {
 
 
-void StaticContent::add(
-    Server& server,
-    std::string const& pattern,
-    std::string const& rootDirectory,
-    boost::system::error_code& ec)
+void StaticContent::add(Server& server, std::string const& pattern, std::string const& rootDirectory)
 {
-    fs::path rootPath = fs::canonical(rootDirectory, ec);
-    if (ec) return;
+    fs::path rootPath;
 
-    bool isDirectory = fs::is_directory(rootDirectory, ec);
-    if (ec) return;
+    try {
+        rootPath = fs::canonical(rootDirectory); // may throw fs::filesystem_error
+        if (!fs::is_directory(rootPath)) {
+            throw fs::filesystem_error("boost::filesystem::is_directory", rootDirectory,
+                errc::make_error_code(errc::not_a_directory));
+        }
+    }
 
-    if (!isDirectory) {
-        ec = boost::system::errc::make_error_code(boost::system::errc::not_a_directory);
-        return;
+    catch(fs::filesystem_error const& e) {
+        // If anything unexpected happened, log here and rethrow
+        LOGLS_ERROR(_log, logger(&server) << "failed adding static content: " << e.what());
+        throw e;
     }
 
     server.addHandler("GET", pattern, [rootPath](Request::Ptr request, Response::Ptr response) {
-
-        // Don't let resource paths with embedded nulls past this point, since boost::filesystem does not
-        // treat them consistently.  Assume we aren't intentionally serving any static content with embedded
-        // nulls in the path, and just return a 404 if we find any.
-        if (request->path.find('\0') != std::string::npos) {
-            response->sendStatus(404);
-            return;
-        }
 
         // Defend against relative paths attempting to traverse above root directory.
         fs::path requestPath = rootPath;
@@ -93,6 +95,5 @@ void StaticContent::add(
         response->sendFile(requestPath);
     });
 }
-
 
 }}} // namespace lsst::qserv::qhttp
