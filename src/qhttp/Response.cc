@@ -29,6 +29,7 @@
 #include <string>
 #include <sstream>
 #include <string>
+#include <utility>
 
 // Third-party headers
 #include "boost/asio.hpp"
@@ -98,12 +99,12 @@ namespace qserv {
 namespace qhttp {
 
 Response::Response(
-    std::shared_ptr<Server> server,
-    std::shared_ptr<ip::tcp::socket> socket,
-    DoneCallback const &doneCallback)
+    std::shared_ptr<Server> const server,
+    std::shared_ptr<ip::tcp::socket> const socket,
+    DoneCallback const& doneCallback)
 :
-    _server(server),
-    _socket(socket),
+    _server(std::move(server)),
+    _socket(std::move(socket)),
     _doneCallback(doneCallback)
 {
     _transmissionStarted.clear();

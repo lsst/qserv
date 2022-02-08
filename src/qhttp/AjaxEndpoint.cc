@@ -20,6 +20,9 @@
  * see <https://www.lsstcorp.org/LegalNotices/>.
  */
 
+// System headers
+#include <utility>
+
 // Class-header
 #include "qhttp/AjaxEndpoint.h"
 
@@ -39,16 +42,16 @@ namespace qserv {
 namespace qhttp {
 
 
-AjaxEndpoint::AjaxEndpoint(std::shared_ptr<Server> server)
+AjaxEndpoint::AjaxEndpoint(std::shared_ptr<Server> const server)
 :
-    _server(server)
+    _server(std::move(server))
 {
 }
 
 
 AjaxEndpoint::Ptr AjaxEndpoint::add(Server& server, std::string const& path)
 {
-    auto aep = std::shared_ptr<AjaxEndpoint>(new AjaxEndpoint(std::shared_ptr<Server>(&server)));
+    auto const aep = std::shared_ptr<AjaxEndpoint>(new AjaxEndpoint(std::shared_ptr<Server>(&server)));
     server.addHandler("GET", path, [aep](Request::Ptr request, Response::Ptr response) {
         std::lock_guard<std::mutex> lock{aep->_pendingResponsesMutex};
         aep->_pendingResponses.push_back(response);

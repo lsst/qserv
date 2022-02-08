@@ -58,9 +58,9 @@ public:
 
 private:
 
-    AjaxEndpoint(std::shared_ptr<Server> server);
+    AjaxEndpoint(std::shared_ptr<Server> const server);
 
-    std::shared_ptr<Server> _server;
+    std::shared_ptr<Server> const _server;
 
     std::vector<Response::Ptr> _pendingResponses;
     std::mutex _pendingResponsesMutex;

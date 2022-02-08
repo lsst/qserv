@@ -81,8 +81,8 @@ private:
     Request& operator=(Request const&) = delete;
 
     explicit Request(
-        std::shared_ptr<Server> server,
-        std::shared_ptr<boost::asio::ip::tcp::socket> socket
+        std::shared_ptr<Server> const server,
+        std::shared_ptr<boost::asio::ip::tcp::socket> const socket
     );
 
     bool _parseHeader();
@@ -91,8 +91,8 @@ private:
 
     std::string _percentDecode(std::string const& encoded, bool exceptPathDelimeters, bool& hasNULs);
 
-    std::shared_ptr<Server> _server;
-    std::shared_ptr<boost::asio::ip::tcp::socket> _socket;
+    std::shared_ptr<Server> const _server;
+    std::shared_ptr<boost::asio::ip::tcp::socket> const _socket;
     boost::asio::streambuf _requestbuf;
 
 };

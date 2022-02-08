@@ -237,7 +237,7 @@ void Server::_readRequest(std::shared_ptr<ip::tcp::socket> socket)
 
     auto startTime = chrono::steady_clock::now();
     auto reuseSocket = std::make_shared<bool>(false);
-    auto response = std::shared_ptr<Response>(new Response(
+    auto const response = std::shared_ptr<Response>(new Response(
         self, socket,
         [self, socket, startTime, reuseSocket](boost::system::error_code const& ec, std::size_t sent) {
             chrono::duration<double, std::milli> elapsed = chrono::steady_clock::now() - startTime;
@@ -257,7 +257,7 @@ void Server::_readRequest(std::shared_ptr<ip::tcp::socket> socket)
 
     // Create Request object for this request, and initiate header read.
 
-    auto request = std::shared_ptr<Request>(new Request(self, socket));
+    auto const request = std::shared_ptr<Request>(new Request(self, socket));
     asio::async_read_until(
         *socket, request->_requestbuf, "\r\n\r\n",
         [self, socket, reuseSocket, request, response, timer](

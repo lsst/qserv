@@ -25,6 +25,7 @@
 
 // System headers
 #include <cstdlib>
+#include <utility>
 
 // Third-party headers
 #include "boost/regex.hpp"
@@ -43,11 +44,11 @@ namespace lsst {
 namespace qserv {
 namespace qhttp {
 
-Request::Request(std::shared_ptr<Server> server, std::shared_ptr<ip::tcp::socket> socket)
+Request::Request(std::shared_ptr<Server> const server, std::shared_ptr<ip::tcp::socket> const socket)
 :
     content(&_requestbuf),
-    _server(server),
-    _socket(socket)
+    _server(std::move(server)),
+    _socket(std::move(socket))
 {
     boost::system::error_code ignore;
     localAddr = _socket->local_endpoint(ignore);
