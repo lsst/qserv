@@ -45,10 +45,9 @@ A simple web server, serving static content from a single directory:
 int main(int argc, char *argv[])
 {
     boost::asio::io_service service;
-    boost::system::error_code ec;
     qhttp::Server::Ptr server = qhttp::Server::create(service, 80);
-    server->addStaticContent("/*", "/path/to/web/content/dir", ec);
-    server->start(ec);
+    server->addStaticContent("/*", "/path/to/web/content/dir");
+    server->start();
     service.run();
     return 0;
 }

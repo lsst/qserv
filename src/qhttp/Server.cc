@@ -106,12 +106,9 @@ void Server::addHandlers(std::initializer_list<HandlerSpec> handlers)
 }
 
 
-void Server::addStaticContent(
-    std::string const& pattern,
-    std::string const& rootDirectory,
-    boost::system::error_code& ec)
+void Server::addStaticContent(std::string const& pattern, std::string const& rootDirectory)
 {
-    StaticContent::add(*this, pattern, rootDirectory, ec);
+    StaticContent::add(*this, pattern, rootDirectory);
 }
 
 
@@ -171,17 +168,24 @@ void Server::_accept()
 }
 
 
-void Server::start(boost::system::error_code& ec)
+void Server::start()
 {
-    _acceptor.open(_acceptorEndpoint.protocol(), ec);
-    if (ec) return;
-    _acceptor.set_option(ip::tcp::acceptor::reuse_address(true), ec);
-    if (ec) return;
-    _acceptor.bind(_acceptorEndpoint, ec);
-    if (ec) return;
-    _acceptorEndpoint.port(_acceptor.local_endpoint().port()); // preserve assigned port
-    _acceptor.listen(_backlog, ec);
-    if (ec) return;
+    LOGLS_DEBUG(_log, logger(this) << "starting");
+
+    try {
+        _acceptor.open(_acceptorEndpoint.protocol());
+        _acceptor.set_option(ip::tcp::acceptor::reuse_address(true));
+        _acceptor.bind(_acceptorEndpoint);
+        _acceptorEndpoint.port(_acceptor.local_endpoint().port()); // preserve assigned port
+        _acceptor.listen(_backlog);
+    }
+
+    catch(boost::system::system_error const& e) {
+        LOGLS_ERROR(_log, logger(this) << "acceptor "  << e.what());
+        throw e;
+    }
+
+    LOGLS_INFO(_log, logger(this) << "listening at " << _acceptor.local_endpoint());
     _accept();
 }
 

@@ -33,6 +33,7 @@
 
 #include "boost/asio.hpp"
 #include "boost/algorithm/string/join.hpp"
+#include "boost/filesystem.hpp"
 #include "boost/format.hpp"
 #include "boost/range/adaptors.hpp"
 #include "curl/curl.h"
@@ -42,6 +43,7 @@
 
 namespace asio = boost::asio;
 namespace ip = boost::asio::ip;
+namespace fs = boost::filesystem;
 
 namespace {
 
@@ -318,9 +320,7 @@ struct QhttpFixture
 
     void start()
     {
-        boost::system::error_code ec;
-        server->start(ec);
-        BOOST_TEST(!ec);
+        server->start();
         urlPrefix = "http://localhost:" + std::to_string(server->getPort()) + "/";
         serviceThread = std::thread([this](){
             asio::io_service::work work(service);
@@ -470,9 +470,7 @@ BOOST_FIXTURE_TEST_CASE(shutdown, QhttpFixture)
 
     //----- restart, and verify handler in invoked again
 
-    boost::system::error_code ec;
-    server->start(ec);
-    BOOST_TEST(!ec);
+    server->start();
     curl1.setup("GET", urlPrefix, "").perform().validate(200, "text/html");
     BOOST_TEST(invocations == 2);
     curl2.setup("GET", urlPrefix, "").perform().validate(200, "text/html");
@@ -535,20 +533,14 @@ BOOST_FIXTURE_TEST_CASE(percent_decoding, QhttpFixture)
 
 BOOST_FIXTURE_TEST_CASE(static_content, QhttpFixture)
 {
-    boost::system::error_code ec;
-
     //----- test invalid root directory
 
-    server->addStaticContent("/*", "/doesnotexist", ec);
-    BOOST_TEST(ec == boost::system::errc::no_such_file_or_directory);
-
-    server->addStaticContent("/*", dataDir + "index.htm", ec);
-    BOOST_TEST(ec == boost::system::errc::not_a_directory);
+    BOOST_CHECK_THROW(server->addStaticContent("/*", "/doesnotexist"), fs::filesystem_error);
+    BOOST_CHECK_THROW(server->addStaticContent("/*", dataDir + "index.htm"), fs::filesystem_error);
 
    //----- set up valid static content for subsequent tests
 
-    server->addStaticContent("/*", dataDir, ec);
-    BOOST_TEST(!ec);
+    server->addStaticContent("/*", dataDir);
     start();
 
     CurlEasy curl;
@@ -596,9 +588,7 @@ BOOST_FIXTURE_TEST_CASE(static_content, QhttpFixture)
 
 BOOST_FIXTURE_TEST_CASE(relative_url_containment, QhttpFixture)
 {
-    boost::system::error_code ec;
-    server->addStaticContent("/*", dataDir, ec);
-    BOOST_TEST(!ec);
+    server->addStaticContent("/*", dataDir);
 
     start();
     std::string content;
@@ -626,8 +616,7 @@ BOOST_FIXTURE_TEST_CASE(exception_handling, QhttpFixture)
     boost::system::error_code ec;
     std::string content;
 
-    server->addStaticContent("/etc/*", "/etc/", ec);
-    BOOST_TEST(!ec);
+    server->addStaticContent("/etc/*", "/etc/");
 
     server->addHandler("GET", "/throw/:errno", [](qhttp::Request::Ptr req, qhttp::Response::Ptr resp){
         int ev = std::stoi(req->params["errno"]); // will throw if can't parse int

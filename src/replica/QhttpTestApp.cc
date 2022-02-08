@@ -185,13 +185,7 @@ int QhttpTestApp::runImpl() {
 
     // Make sure the service started before launching any BOOST ASIO threads.
     // This will prevent threads from finishing due to a lack of work to be done.
-    boost::system::error_code ec;
-    httpServer->start(ec);
-    if (ec.value() != 0) {
-        throw runtime_error(
-                "QhttpTestApp::" + string(__func__) + " failed to start the service, error: "
-                + ec.message());
-    }
+    httpServer->start();
 
     // Launch all threads in the pool
     vector<shared_ptr<thread>> threads(_numThreads);
