@@ -27,7 +27,15 @@
 #include "boost/filesystem.hpp"
 #include "boost/algorithm/string.hpp"
 
+// Local headers
+#include "lsst/log/Log.h"
+#include "qhttp/LogHelpers.h"
+
 namespace fs = boost::filesystem;
+
+namespace {
+    LOG_LOGGER _log = LOG_GET("lsst.qserv.qhttp");
+}
 
 namespace lsst {
 namespace qserv {

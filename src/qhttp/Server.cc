@@ -34,13 +34,19 @@
 #include "boost/regex.hpp"
 
 // Local headers
+#include "lsst/log/Log.h"
 #include "qhttp/AjaxEndpoint.h"
+#include "qhttp/LogHelpers.h"
 #include "qhttp/StaticContent.h"
 
 namespace asio = boost::asio;
 namespace ip = boost::asio::ip;
 
 using namespace std::literals;
+
+namespace {
+    LOG_LOGGER _log = LOG_GET("lsst.qserv.qhttp");
+}
 
 namespace lsst {
 namespace qserv {

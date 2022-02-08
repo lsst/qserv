@@ -24,23 +24,31 @@
 #include "qhttp/AjaxEndpoint.h"
 
 // Local headers
+#include "lsst/log/Log.h"
+#include "qhttp/LogHelpers.h"
 #include "qhttp/Request.h"
 #include "qhttp/Response.h"
 #include "qhttp/Server.h"
+
+namespace {
+    LOG_LOGGER _log = LOG_GET("lsst.qserv.qhttp");
+}
 
 namespace lsst {
 namespace qserv {
 namespace qhttp {
 
 
-AjaxEndpoint::AjaxEndpoint()
+AjaxEndpoint::AjaxEndpoint(std::shared_ptr<Server> server)
+:
+    _server(server)
 {
 }
 
 
 AjaxEndpoint::Ptr AjaxEndpoint::add(Server& server, std::string const& path)
 {
-    auto aep = std::shared_ptr<AjaxEndpoint>(new AjaxEndpoint);
+    auto aep = std::shared_ptr<AjaxEndpoint>(new AjaxEndpoint(std::shared_ptr<Server>(&server)));
     server.addHandler("GET", path, [aep](Request::Ptr request, Response::Ptr response) {
         std::lock_guard<std::mutex> lock{aep->_pendingResponsesMutex};
         aep->_pendingResponses.push_back(response);

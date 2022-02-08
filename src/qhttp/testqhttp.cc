@@ -37,12 +37,18 @@
 #include "boost/range/adaptors.hpp"
 #include "curl/curl.h"
 
+#include "lsst/log/Log.h"
 #include "qhttp/Server.h"
 
 namespace asio = boost::asio;
 namespace ip = boost::asio::ip;
 
 namespace {
+
+
+void initMDC() {
+    LOG_MDC("LWP", std::to_string(lsst::log::lwpID()));
+}
 
 
 void compareWithFile(std::string const& content, std::string const& file)
@@ -270,13 +276,15 @@ namespace qserv {
 struct QhttpFixture
 {
     QhttpFixture()
+    : logLevel("DEBUG")
     {
         server = qhttp::Server::create(service, 0);
         BOOST_TEST(curl_global_init(CURL_GLOBAL_DEFAULT) == CURLE_OK);
 
-        static char const* opts = "d:";
+        static char const* opts = "d:l:";
         static struct option lopts[] = {
             {"data", required_argument, nullptr, 'd'},
+            {"log-level", required_argument, nullptr, 'l'},
             {nullptr, 0, nullptr, 0}
         };
 
@@ -290,10 +298,22 @@ struct QhttpFixture
             case 'd':
                 dataDir = optarg;
                 break;
+            case 'l':
+                logLevel = optarg;
+                break;
             default:
                 break;
             }
         }
+
+        LOG_MDC_INIT(initMDC);
+        LOG_CONFIG_PROP(
+            std::string("log4j.rootLogger=") + logLevel + ", CONSOLE\n"
+            "log4j.appender.CONSOLE=org.apache.log4j.ConsoleAppender\n"
+            "log4j.appender.CONSOLE.layout=org.apache.log4j.PatternLayout\n"
+            "log4j.appender.CONSOLE.layout.ConversionPattern="
+                "%d{yyyy-MM-ddTHH:mm:ss.SSSZ} LWP %-5X{LWP} %-5p %c{1} %m%n"
+        );
     }
 
     void start()
@@ -374,6 +394,7 @@ struct QhttpFixture
     qhttp::Server::Ptr server;
     std::string urlPrefix;
     std::string dataDir;
+    std::string logLevel;
 };
 
 

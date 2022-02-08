@@ -35,11 +35,17 @@
 #include "boost/filesystem.hpp"
 #include "boost/filesystem/fstream.hpp"
 
+// Local headers
+#include "lsst/log/Log.h"
+#include "qhttp/LogHelpers.h"
+
 namespace asio = boost::asio;
 namespace ip = boost::asio::ip;
 namespace fs = boost::filesystem;
 
 namespace {
+
+LOG_LOGGER _log = LOG_GET("lsst.qserv.qhttp");
 
 std::map<unsigned int, const std::string> responseStringsByCode = {
     {100, "Continue"},                          {101, "Switching Protocols"},
@@ -92,9 +98,11 @@ namespace qserv {
 namespace qhttp {
 
 Response::Response(
+    std::shared_ptr<Server> server,
     std::shared_ptr<ip::tcp::socket> socket,
     DoneCallback const &doneCallback)
 :
+    _server(server),
     _socket(socket),
     _doneCallback(doneCallback)
 {

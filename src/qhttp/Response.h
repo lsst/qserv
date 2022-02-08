@@ -39,6 +39,8 @@ namespace lsst {
 namespace qserv {
 namespace qhttp {
 
+class Server;
+
 class Response : public std::enable_shared_from_this<Response>
 {
 public:
@@ -74,11 +76,14 @@ private:
     )>;
 
     Response(
+        std::shared_ptr<Server> server,
         std::shared_ptr<boost::asio::ip::tcp::socket> socket,
         DoneCallback const& doneCallback
     );
 
     std::string _headers() const;
+
+    std::shared_ptr<Server> _server;
 
     std::shared_ptr<boost::asio::ip::tcp::socket> _socket;
     boost::asio::streambuf _responsebuf;
