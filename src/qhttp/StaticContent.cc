@@ -63,14 +63,6 @@ void StaticContent::add(Server& server, std::string const& pattern, std::string 
 
     server.addHandler("GET", pattern, [rootPath](Request::Ptr request, Response::Ptr response) {
 
-        // Don't let resource paths with embedded nulls past this point, since boost::filesystem does not
-        // treat them consistently.  Assume we aren't intentionally serving any static content with embedded
-        // nulls in the path, and just return a 404 if we find any.
-        if (request->path.find('\0') != std::string::npos) {
-            response->sendStatus(404);
-            return;
-        }
-
         // Defend against relative paths attempting to traverse above root directory.
         fs::path requestPath = rootPath;
         requestPath /= request->params["0"];

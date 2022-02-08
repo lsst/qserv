@@ -40,6 +40,8 @@ namespace lsst {
 namespace qserv {
 namespace qhttp {
 
+class Server;
+
 class Request : public std::enable_shared_from_this<Request>
 {
 public:
@@ -78,14 +80,18 @@ private:
     Request(Request const&) = delete;
     Request& operator=(Request const&) = delete;
 
-    explicit Request(std::shared_ptr<boost::asio::ip::tcp::socket> socket);
+    explicit Request(
+        std::shared_ptr<Server> server,
+        std::shared_ptr<boost::asio::ip::tcp::socket> socket
+    );
 
-    void _parseHeader();
-    void _parseUri();
-    void _parseBody();
+    bool _parseHeader();
+    bool _parseUri();
+    bool _parseBody();
 
-    std::string _percentDecode(std::string const& encoded, bool exceptPathDelimeters=false);
+    std::string _percentDecode(std::string const& encoded, bool exceptPathDelimeters, bool& hasNULs);
 
+    std::shared_ptr<Server> _server;
     std::shared_ptr<boost::asio::ip::tcp::socket> _socket;
     boost::asio::streambuf _requestbuf;
 

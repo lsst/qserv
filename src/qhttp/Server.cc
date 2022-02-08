@@ -257,7 +257,7 @@ void Server::_readRequest(std::shared_ptr<ip::tcp::socket> socket)
 
     // Create Request object for this request, and initiate header read.
 
-    auto request = std::shared_ptr<Request>(new Request(socket));
+    auto request = std::shared_ptr<Request>(new Request(self, socket));
     asio::async_read_until(
         *socket, request->_requestbuf, "\r\n\r\n",
         [self, socket, reuseSocket, request, response, timer](
@@ -274,8 +274,12 @@ void Server::_readRequest(std::shared_ptr<ip::tcp::socket> socket)
             }
 
             size_t bytesBuffered = request->_requestbuf.size() - bytesRead;
-            request->_parseHeader();
-            request->_parseUri();
+
+            if (!(request->_parseHeader() && request->_parseUri())) {
+                timer->cancel();
+                response->sendStatus(400);
+                return;
+            }
 
             if (request->version == "HTTP/1.1") {
                 // Temporary disable this option due to a bug in the implementation
@@ -303,8 +307,12 @@ void Server::_readRequest(std::shared_ptr<ip::tcp::socket> socket)
                                 << "request body read failed: " << ec.message());
                             return;
                         }
-                        if (request->header["Content-Type"] == "application/x-www-form-urlencoded") {
-                            request->_parseBody();
+                        if ((request->header["Content-Type"] == "application/x-www-form-urlencoded")
+                            && !request->_parseBody())
+                        {
+                            LOGLS_ERROR(_log, logger(self) << logger(socket) << "form decode failed");
+                            response->sendStatus(400);
+                            return;
                         }
                         self->_dispatchRequest(request, response);
                     }
@@ -334,7 +342,7 @@ void Server::_dispatchRequest(Request::Ptr request, Response::Ptr response)
                     pathHandler.handler(request, response);
                 }
                 catch(boost::system::system_error const& e) {
-                    LOGLS_WARN(_log, logger(this) << logger(request->_socket)
+                    LOGLS_ERROR(_log, logger(this) << logger(request->_socket)
                         << "exception thrown from handler: " << e.what());
                     switch(e.code().value()) {
                     case errc::permission_denied:
@@ -346,7 +354,7 @@ void Server::_dispatchRequest(Request::Ptr request, Response::Ptr response)
                     }
                 }
                 catch(std::exception const& e) {
-                    LOGLS_WARN(_log, logger(this) << logger(request->_socket)
+                    LOGLS_ERROR(_log, logger(this) << logger(request->_socket)
                         << "exception thrown from handler: " << e.what());
                     response->sendStatus(500);
                 }

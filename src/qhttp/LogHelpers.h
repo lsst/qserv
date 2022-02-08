@@ -26,6 +26,7 @@
 // System headers
 #include <iostream>
 #include <memory>
+#include <string>
 
 // Local headers
 #include "qhttp/AjaxEndpoint.h"
@@ -83,6 +84,32 @@ inline std::ostream& operator<<(std::ostream& str, AjaxLogger const& logger) {
 
 inline AjaxLogger logger(AjaxEndpoint const* aep) { return AjaxLogger(aep); }
 inline AjaxLogger logger(AjaxEndpoint::Ptr const& aep) { return AjaxLogger(aep.get()); }
+
+//
+//----- Ouput stream manipulator that translates embedded control characters to "caret notation".  Used for
+//      logging suspect inputs that fail the legal input parsing regexps.
+//
+
+struct CtrlQuoter
+{
+    std::string const& toquote;
+    CtrlQuoter(std::string const& toquote) : toquote(toquote) {}
+};
+
+inline std::ostream& operator<<(std::ostream& str, CtrlQuoter const& quoter) {
+    for(char const& c: quoter.toquote) {
+        if (c < 0x20) {
+            str << "^" << (char)(c+0x40);
+        } else if (c == 0x7F) {
+            str << "^?";
+        } else {
+            str << c;
+        }
+    }
+    return str;
+}
+
+inline CtrlQuoter ctrlquote(std::string const& toquote) { return CtrlQuoter(toquote); }
 
 }}} // namespace lsst::qserv::qhttp
 

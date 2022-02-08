@@ -29,15 +29,24 @@
 // Third-party headers
 #include "boost/regex.hpp"
 
+// Local headers
+#include "lsst/log/Log.h"
+#include "qhttp/LogHelpers.h"
+
 namespace ip = boost::asio::ip;
+
+namespace {
+    LOG_LOGGER _log = LOG_GET("lsst.qserv.qhttp");
+}
 
 namespace lsst {
 namespace qserv {
 namespace qhttp {
 
-Request::Request(std::shared_ptr<ip::tcp::socket> socket)
+Request::Request(std::shared_ptr<Server> server, std::shared_ptr<ip::tcp::socket> socket)
 :
     content(&_requestbuf),
+    _server(server),
     _socket(socket)
 {
     boost::system::error_code ignore;
@@ -45,49 +54,99 @@ Request::Request(std::shared_ptr<ip::tcp::socket> socket)
 }
 
 
-void Request::_parseHeader()
+bool Request::_parseHeader()
 {
     std::string line;
-    static boost::regex reqRe{R"(^([^ \r]+) ([^ \r]+) ([^ \r]+)\r$)"}; // e.g. "method target version"
+    if (!getline(content, line)) return false;
+
+    // Regexp to parse request line into "method target version".  Allowed character classes here are
+    // extracted from ABNF in RFC7230 and RFC3986.
+
+    static boost::regex reqRe{
+        R"(^([!#$%&'*+-.^_`|~[:digit:][:alpha:]]+) )"
+        R"(([-._-~%!$&'()*+,;=:@?/[:digit:][:alpha:]]+) )"
+        R"((HTTP/[[:digit:]]\.[[:digit:]])\r$)"
+    };
+
     boost::smatch reqMatch;
-    if (getline(content, line) && boost::regex_match(line, reqMatch, reqRe)) {
-        method = reqMatch[1];
-        target = reqMatch[2];
-        version = reqMatch[3];
-        static boost::regex headerRe{R"(^([^:\r]+): ?([^\r]*)\r$)"}; // e.g. "header: value"
-        boost::smatch headerMatch;
-        while(getline(content, line) && boost::regex_match(line, headerMatch, headerRe)) {
-            header[headerMatch[1]] = headerMatch[2];
-        }
+    if (!boost::regex_match(line, reqMatch, reqRe)) {
+        LOGLS_WARN(_log, logger(_server) << logger(_socket) << "bad start line: " << ctrlquote(line));
+        return false;
     }
+
+    method = reqMatch[1];
+    target = reqMatch[2];
+    version = reqMatch[3];
+
+    // Regexp to parse header field lines into "header: value".  Allowed character classes here are
+    // extracted from ABNF in RFC7230.
+
+    static boost::regex headerRe{
+        R"(^([!#$%&'*+-.^_`|~[:digit:][:alpha:]]+))"
+        R"(:[ \t]*)"
+        R"(([\x20-\x7e \t]*?))"
+        R"([ \t]*\r$)"
+    };
+
+    boost::smatch headerMatch;
+
+    while(getline(content, line)) {
+        if (line == "\r") break; // empty line signals end of headers
+        if (!boost::regex_match(line, headerMatch, headerRe)) {
+            LOGLS_WARN(_log, logger(_server) << logger(_socket) << "bad header: " << ctrlquote(line));
+            return false;
+        }
+        header[headerMatch[1]] = headerMatch[2];
+    }
+
+    return true;
 }
 
 
-void Request::_parseUri()
+bool Request::_parseUri()
 {
     static boost::regex targetRe{R"(([^\?#]*)(?:\?([^#]*))?)"}; // e.g. "path[?query]"
+
     boost::smatch targetMatch;
-    if (boost::regex_match(target, targetMatch, targetRe)) {
-        path = _percentDecode(targetMatch[1], true);
-        std::string squery = targetMatch[2];
-        static boost::regex queryRe{R"(([^=&]+)(?:=([^&]*))?)"}; // e.g. "key[=value]"
-        auto end = boost::sregex_iterator{};
-        for(auto i=boost::make_regex_iterator(squery, queryRe); i!=end; ++i) {
-            query[_percentDecode((*i)[1])] = _percentDecode((*i)[2]);
-        }
+    if (!boost::regex_match(target, targetMatch, targetRe)) return false;
+
+    bool hasNULs = false;
+    path = _percentDecode(targetMatch[1], true, hasNULs);
+    if (hasNULs) {
+        LOGLS_WARN(_log, logger(_server) << logger(_socket)
+            << "rejecting target with encoded NULs: " << target);
+        return false;
     }
+
+    std::string squery = targetMatch[2];
+    static boost::regex queryRe{R"(([^=&]+)(?:=([^&]*))?)"}; // e.g. "key[=value]"
+    auto end = boost::sregex_iterator{};
+    for(auto i=boost::make_regex_iterator(squery, queryRe); i!=end; ++i) {
+        std::string key = _percentDecode((*i)[1], false, hasNULs);
+        std::string value = _percentDecode((*i)[2], false, hasNULs);
+        if (hasNULs) {
+            LOGLS_WARN(_log, logger(_server) << logger(_socket)
+                << "rejecting target with encoded NULs: " << target);
+            return false;
+        }
+        query[key] = value;
+    }
+
+    return true;
 }
 
 
-void Request::_parseBody()
+bool Request::_parseBody()
 {
     // TODO: implement application/x-www-form-urlencoded body -> body
+    return true;
 }
 
 
-std::string Request::_percentDecode(std::string const& encoded, bool exceptPathDelimeters)
+std::string Request::_percentDecode(std::string const& encoded, bool exceptPathDelimeters, bool& hasNULs)
 {
     std::string decoded;
+    hasNULs = false;
 
     static boost::regex codepointRe(R"(%[0-7][0-7a-fA-F])");
     auto pbegin = boost::sregex_iterator(encoded.begin(), encoded.end(), codepointRe);
@@ -99,6 +158,8 @@ std::string Request::_percentDecode(std::string const& encoded, bool exceptPathD
         decoded.append(i->prefix().first, i->prefix().second);
         tail = i->suffix().first;
         char codepoint = strtol(i->str().c_str()+1, NULL, 16);
+
+        if (codepoint == '\0') hasNULs = true;
 
         // If decoding a path, leave any encoded slashes encoded (but ensure lower case), so they don't
         // become confused with path-element-delimiting slashes. We elsewhere make sure that intra-element

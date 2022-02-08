@@ -578,11 +578,11 @@ BOOST_FIXTURE_TEST_CASE(static_content, QhttpFixture)
 
     //----- test resource path with embedded null
 
-    curl.setup("GET", urlPrefix + "/%00/", "").perform().validate(404, "text/html");
-    BOOST_TEST(curl.recdContent.find("404") != std::string::npos);
+    curl.setup("GET", urlPrefix + "/%00/", "").perform().validate(400, "text/html");
+    BOOST_TEST(curl.recdContent.find("400") != std::string::npos);
 
-    std::string content = asioHttpGet(std::string("/\0/", 3), 404, "text/html");
-    BOOST_TEST(content.find("404") != std::string::npos);
+    std::string content = asioHttpGet(std::string("/\0/", 3), 400, "text/html");
+    BOOST_TEST(content.find("400") != std::string::npos);
 }
 
 
