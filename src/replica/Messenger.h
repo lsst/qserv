@@ -27,10 +27,14 @@
 #include <memory>
 #include <string>
 
+// Third party headers
+#include "boost/asio.hpp"
+
 // Qserv headers
 #include "replica/MessengerConnector.h"
 #include "replica/protocol.pb.h"
 #include "replica/ServiceProvider.h"
+#include "util/Mutex.h"
 
 // Forward declarations
 namespace lsst {
@@ -126,7 +130,7 @@ public:
      * @param worker The name of a worker.
      * @param id  A unique identifier of a request.
      */
-    bool exists(std::string const& worker, std::string const& id) const;
+    bool exists(std::string const& worker, std::string const& id);
 
 private:
     /// @see Messenger::create()
@@ -139,7 +143,18 @@ private:
      * @return  A pointer to the connector.
      * @throw std::invalid_argument  If the worker is unknown.
      */
-    MessengerConnector::Ptr const& _connector(std::string const& worker) const;
+    MessengerConnector::Ptr const& _connector(std::string const& worker);
+
+    /// @return The context string for the given worker (used for reporting errors and logging).
+    static std::string _context(std::string const& worker);
+
+    // Input parameters
+
+    ServiceProvider::Ptr const _serviceProvider;
+    boost::asio::io_service& _io_service;
+
+    /// The mutex for implementing the synchronized management of the connections.
+    mutable util::Mutex _mtx;
 
     /// Connection providers for individual workers
     std::map<std::string, MessengerConnector::Ptr> _workerConnector;

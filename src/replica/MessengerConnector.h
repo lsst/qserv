@@ -463,8 +463,8 @@ private:
 
     ServiceProvider::Ptr const _serviceProvider;
 
-    /// Cached worker descriptor obtained from the configuration
-    WorkerInfo const _workerInfo;
+    /// The unique identifier of the worker.
+    std::string const _worker;
 
     /// The cached parameter for the buffer sizes (pulled from
     /// the Configuration upon the construction of the object).
