@@ -117,25 +117,16 @@ public:
     }
 
     /**
-     * Construct from another worker descriptor using a required collection of
-     * the default parameters to compensate for incomplete info in the input descriptor.
-     * @param defaults The required JSON object to be used as a source of the default
-     *   values for parameters missing in the input descriptor.
-     * @throw std::invalid_argument If the JSON object is not valid, is incomplete,
-     *   or has incorrect types of the default attributes.
-     */
-    WorkerInfo(WorkerInfo const& info, nlohmann::json const& defaults);
-
-    /**
      * Construct from a JSON object.
-     * @param obj The optional object to be used as a source of the worker's state.
-     * @param defaults The optional object to be used as a source of the default values
-     *   for parameters missing in 'obj'.
+     * @param obj The object to be used as a source of the worker's state.
      * @throw std::invalid_argument If the input object can't be parsed, or if it has
      *   incorrect schema.
      */
-    explicit WorkerInfo(nlohmann::json const& obj=nlohmann::json::object(),
-                        nlohmann::json const& defaults=nlohmann::json::object());
+    explicit WorkerInfo(nlohmann::json const& obj);
+
+    WorkerInfo() = default;
+    WorkerInfo(WorkerInfo const&) = default;
+    WorkerInfo& operator=(WorkerInfo const&) = default;
 
     /**
      * Check if required folders exist and they're write-enabled for an effective user

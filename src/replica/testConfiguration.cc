@@ -389,134 +389,40 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestWorkerParameters) {
     BOOST_CHECK(workerA.name =="worker-A");
     BOOST_CHECK(workerA.isEnabled);
     BOOST_CHECK(!workerA.isReadOnly);
-    BOOST_CHECK(workerA.svcHost == "host-A");
-    BOOST_CHECK(workerA.svcPort == 51001);
-    BOOST_CHECK(workerA.fsHost == "host-A");
-    BOOST_CHECK(workerA.fsPort == 52001);
-    BOOST_CHECK(workerA.dataDir == "/data/A");
-    BOOST_CHECK(workerA.loaderHost == "host-A");
-    BOOST_CHECK(workerA.loaderPort == 53002);
-    BOOST_CHECK(workerA.loaderTmpDir == "/tmp/A");
-    BOOST_CHECK(workerA.exporterHost == "host-A");
-    BOOST_CHECK(workerA.exporterPort == 53003);
-    BOOST_CHECK(workerA.exporterTmpDir == "/tmp/export/A");
-    BOOST_CHECK(workerA.httpLoaderHost == "host-A");
-    BOOST_CHECK(workerA.httpLoaderPort == 53004);
-    BOOST_CHECK(workerA.httpLoaderTmpDir == "/tmp/http/A");
 
     WorkerInfo workerB;
     BOOST_REQUIRE_NO_THROW(workerB = config->workerInfo("worker-B"));
     BOOST_CHECK(workerB.name =="worker-B");
     BOOST_CHECK(workerB.isEnabled);
     BOOST_CHECK(workerB.isReadOnly);
-    BOOST_CHECK(workerB.svcHost == "host-B");
-    BOOST_CHECK(workerB.svcPort == 51000);
-    BOOST_CHECK(workerB.fsHost == "host-B");
-    BOOST_CHECK(workerB.fsPort == 52000);
-    BOOST_CHECK(workerB.dataDir == "/data/B");
-    BOOST_CHECK(workerB.loaderHost == "host-B");
-    BOOST_CHECK(workerB.loaderPort == 53000);
-    BOOST_CHECK(workerB.loaderTmpDir == "/tmp");
-    BOOST_CHECK(workerB.exporterHost == "host-B");
-    BOOST_CHECK(workerB.exporterPort == 54000);
-    BOOST_CHECK(workerB.exporterTmpDir == "/tmp");
-    BOOST_CHECK(workerB.httpLoaderHost == "host-B");
-    BOOST_CHECK(workerB.httpLoaderPort == 55000);
-    BOOST_CHECK(workerB.httpLoaderTmpDir == "/tmp");
 
     WorkerInfo workerC;
     BOOST_REQUIRE_NO_THROW(workerC = config->workerInfo("worker-C"));
     BOOST_CHECK(workerC.name =="worker-C");
     BOOST_CHECK(!workerC.isEnabled);
-    BOOST_CHECK(workerC.svcHost == "host-C");
-    BOOST_CHECK(workerC.svcPort == 51000);
-    BOOST_CHECK(workerC.fsHost == "host-C");
-    BOOST_CHECK(workerC.fsPort == 52000);
-    BOOST_CHECK(workerC.dataDir == "/data");
-    BOOST_CHECK(workerC.loaderHost  == "host-C");
-    BOOST_CHECK(workerC.loaderPort == 53000);
-    BOOST_CHECK(workerC.loaderTmpDir == "/tmp");
-    BOOST_CHECK(workerC.exporterHost == "host-C");
-    BOOST_CHECK(workerC.exporterPort == 54000);
-    BOOST_CHECK(workerC.exporterTmpDir == "/tmp");
-    BOOST_CHECK(workerC.httpLoaderHost == "host-C");
-    BOOST_CHECK(workerC.httpLoaderPort == 55000);
-    BOOST_CHECK(workerC.httpLoaderTmpDir == "/tmp");
 
     // Adding a new worker with well formed and unique parameters.
     WorkerInfo workerD;
     workerD.name = "worker-D";
     workerD.isEnabled = true;
     workerD.isReadOnly = true;
-    workerD.svcHost = "host-D";
-    workerD.svcPort = 51001;
-    workerD.fsHost = "host-D";
-    workerD.fsPort = 52001;
-    workerD.dataDir = "/data/D";
-    workerD.loaderHost = "host-D";
-    workerD.loaderPort = 52002;
-    workerD.loaderTmpDir = "/tmp/D";
-    workerD.exporterHost = "host-D";
-    workerD.exporterPort = 52003;
-    workerD.exporterTmpDir = "/tmp/D";
-    workerD.httpLoaderHost = "host-D";
-    workerD.httpLoaderPort = 52004;
-    workerD.httpLoaderTmpDir = "/tmp/http/D";
+
     BOOST_REQUIRE_NO_THROW(config->addWorker(workerD));
     BOOST_CHECK_THROW(config->addWorker(workerD), std::invalid_argument);
     BOOST_REQUIRE_NO_THROW(workerD = config->workerInfo("worker-D"));
     BOOST_CHECK(workerD.name =="worker-D");
     BOOST_CHECK(workerD.isEnabled);
     BOOST_CHECK(workerD.isReadOnly);
-    BOOST_CHECK(workerD.svcHost == "host-D");
-    BOOST_CHECK(workerD.svcPort == 51001);
-    BOOST_CHECK(workerD.fsHost == "host-D");
-    BOOST_CHECK(workerD.fsPort == 52001);
-    BOOST_CHECK(workerD.dataDir == "/data/D");
-    BOOST_CHECK(workerD.loaderHost == "host-D");
-    BOOST_CHECK(workerD.loaderPort == 52002);
-    BOOST_CHECK(workerD.loaderTmpDir == "/tmp/D");
-    BOOST_CHECK(workerD.exporterHost == "host-D");
-    BOOST_CHECK(workerD.exporterPort == 52003);
-    BOOST_CHECK(workerD.exporterTmpDir == "/tmp/D");
-    BOOST_CHECK(workerD.httpLoaderHost == "host-D");
-    BOOST_CHECK(workerD.httpLoaderPort == 52004);
-    BOOST_CHECK(workerD.httpLoaderTmpDir == "/tmp/http/D");
-
-    // Adding a new worker with parameters conflicting with the ones of
-    // some existing worker.
-    WorkerInfo workerE = workerD;
-    workerE.name = "worker-E";
-    BOOST_CHECK_THROW(config->addWorker(workerE), std::invalid_argument);
 
     // Adding a new worker with incomplete set of specs. The only required
-    // attributes are the name of the worker and the name of a host where
-    // the replication service of the worker would run. The host names where
-    // other services would run will be set to be the same as the one of
-    // replication serice's. The remaining unspecified attributes will be
-    // pulled from the corresponding defaults for workers.
-    WorkerInfo workerF;
-    workerF.name = "worker-F";
-    workerF.svcHost = "host-F";
-    WorkerInfo addedWorkerF;
-    BOOST_REQUIRE_NO_THROW(addedWorkerF = config->addWorker(workerF));
-    BOOST_CHECK(addedWorkerF.name == workerF.name);
-    BOOST_CHECK(addedWorkerF.isEnabled == workerF.isEnabled);
-    BOOST_CHECK(addedWorkerF.isReadOnly == workerF.isReadOnly);
-    BOOST_CHECK(addedWorkerF.svcHost == workerF.svcHost);
-    BOOST_CHECK(addedWorkerF.svcPort == config->get<uint16_t>("worker-defaults", "svc_port"));
-    BOOST_CHECK(addedWorkerF.fsHost == workerF.svcHost);
-    BOOST_CHECK(addedWorkerF.fsPort == config->get<uint16_t>("worker-defaults", "fs_port"));
-    BOOST_CHECK(addedWorkerF.dataDir == config->get<string>("worker-defaults", "data_dir"));
-    BOOST_CHECK(addedWorkerF.loaderHost == workerF.svcHost);
-    BOOST_CHECK(addedWorkerF.loaderPort == config->get<uint16_t>("worker-defaults", "loader_port"));
-    BOOST_CHECK(addedWorkerF.loaderTmpDir == config->get<string>("worker-defaults", "loader_tmp_dir"));
-    BOOST_CHECK(addedWorkerF.exporterHost == workerF.svcHost);
-    BOOST_CHECK(addedWorkerF.exporterPort == config->get<uint16_t>("worker-defaults", "exporter_port"));
-    BOOST_CHECK(addedWorkerF.exporterTmpDir == config->get<string>("worker-defaults", "exporter_tmp_dir"));
-    BOOST_CHECK(addedWorkerF.httpLoaderHost == workerF.svcHost);
-    BOOST_CHECK(addedWorkerF.httpLoaderPort == config->get<uint16_t>("worker-defaults", "http_loader_port"));
-    BOOST_CHECK(addedWorkerF.httpLoaderTmpDir == config->get<string>("worker-defaults", "http_loader_tmp_dir"));
+    // attribute is the name of the worker.
+    WorkerInfo workerE;
+    workerE.name = "worker-E";
+    WorkerInfo addedWorkerE;
+    BOOST_REQUIRE_NO_THROW(addedWorkerE = config->addWorker(workerE));
+    BOOST_CHECK(addedWorkerE.name == workerE.name);
+    BOOST_CHECK(addedWorkerE.isEnabled == workerE.isEnabled);
+    BOOST_CHECK(addedWorkerE.isReadOnly == workerE.isReadOnly);
 
     // Deleting workers.
     BOOST_REQUIRE_NO_THROW(config->deleteWorker("worker-C"));
@@ -558,35 +464,7 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestWorkerParameters) {
 
     WorkerInfo updatedWorker;
     BOOST_REQUIRE_NO_THROW(updatedWorker = config->workerInfo("worker-A"));
-    updatedWorker.svcHost = "host-A1";
-    updatedWorker.svcPort = 1;
-    updatedWorker.fsHost = "host-A1";
-    updatedWorker.fsPort = 2;
-    updatedWorker.dataDir = "/test";
-    updatedWorker.loaderHost = "host-A1";
-    updatedWorker.loaderPort = 4;
-    updatedWorker.loaderTmpDir = "/tmp/A1";
-    updatedWorker.exporterHost = "host-A1";
-    updatedWorker.exporterPort = 5;
-    updatedWorker.exporterTmpDir = "/tmp/A1";
-    updatedWorker.httpLoaderHost = "host-A1";
-    updatedWorker.httpLoaderPort = 6;
-    updatedWorker.httpLoaderTmpDir = "/tmp/A1";
     BOOST_REQUIRE_NO_THROW(updatedWorker = config->updateWorker(updatedWorker));
-    BOOST_CHECK(updatedWorker.svcHost == "host-A1");
-    BOOST_CHECK(updatedWorker.svcPort == 1);
-    BOOST_CHECK(updatedWorker.fsHost == "host-A1");
-    BOOST_CHECK(updatedWorker.fsPort == 2);
-    BOOST_CHECK(updatedWorker.dataDir == "/test");
-    BOOST_CHECK(updatedWorker.loaderHost == "host-A1");
-    BOOST_CHECK(updatedWorker.loaderPort == 4);
-    BOOST_CHECK(updatedWorker.loaderTmpDir == "/tmp/A1");
-    BOOST_CHECK(updatedWorker.exporterHost == "host-A1");
-    BOOST_CHECK(updatedWorker.exporterPort == 5);
-    BOOST_CHECK(updatedWorker.exporterTmpDir == "/tmp/A1");
-    BOOST_CHECK(updatedWorker.httpLoaderHost == "host-A1");
-    BOOST_CHECK(updatedWorker.httpLoaderPort == 6);
-    BOOST_CHECK(updatedWorker.httpLoaderTmpDir == "/tmp/A1");
 }
 
 

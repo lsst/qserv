@@ -36,7 +36,7 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-int const ConfigParserMySQL::expectedSchemaVersion = 7;
+int const ConfigParserMySQL::expectedSchemaVersion = 8;
 
 
 ConfigParserMySQL::ConfigParserMySQL(database::mysql::Connection::Ptr const& conn,
@@ -90,27 +90,12 @@ void ConfigParserMySQL::_parseVersion() {
 
 
 void ConfigParserMySQL::_parseWorkers() {
-    json& defaults = _data.at("worker-defaults");
     _conn->execute("SELECT * FROM " + _conn->sqlId("config_worker"));
     while (_conn->next(_row)) {
         WorkerInfo info;
         info.name = _parseParam<string>("name");
         info.isEnabled = _parseParam<int>("is_enabled") != 0;
         info.isReadOnly = _parseParam<int>("is_read_only") != 0;
-        info.svcHost = _parseParam<string>("svc_host");
-        info.svcPort = _parseParam<uint16_t>("svc_port", defaults);
-        info.fsHost = _parseParam<string>("fs_host", info.svcHost);
-        info.fsPort = _parseParam<uint16_t>("fs_port", defaults);
-        info.dataDir = _parseParam<string>("data_dir", defaults);
-        info.loaderHost = _parseParam<string>("loader_host", info.svcHost);
-        info.loaderPort = _parseParam<uint16_t>("loader_port", defaults);
-        info.loaderTmpDir = _parseParam<string>("loader_tmp_dir", defaults);
-        info.exporterHost = _parseParam<string>("exporter_host", info.svcHost);
-        info.exporterPort  = _parseParam<uint16_t>("exporter_port", defaults);
-        info.exporterTmpDir = _parseParam<string>("exporter_tmp_dir", defaults);
-        info.httpLoaderHost = _parseParam<string>("http_loader_host", info.svcHost);
-        info.httpLoaderPort  = _parseParam<uint16_t>("http_loader_port", defaults);
-        info.httpLoaderTmpDir = _parseParam<string>("http_loader_tmp_dir", defaults);
         _workers[info.name] = info;
     }
 }

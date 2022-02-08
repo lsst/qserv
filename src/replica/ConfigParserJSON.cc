@@ -53,9 +53,7 @@ void ConfigParserJSON::parse(json const& obj) {
     //
     // IMPORTANT: Note an order in which the parameter categories are being evaluated.
     //   This order guarantees data consistency based on the dependency between
-    //   the parameters of the categories. For instance, worker definitions in the category 
-    //   'workers' are processed after processing the default parameters of
-    //   the workers in the category 'worker-defaults'. Also, the database definitions in the category
+    //   the parameters of the categories. For instance, the database definitions in the category
     //   'databases' will be processed after processing database families in the category
     //   'database_families' so that the database's family name would be validated
     //   against names of the known families.
@@ -116,7 +114,7 @@ void ConfigParserJSON::parse(json const& obj) {
             // into the output object. Using defaults is needed to ensure the worker entry is
             // complete before storying in the transient state. Note that users of the API may rely
             // on the default values of some parameters of workers.
-            WorkerInfo const info(inWorker, _data.at("worker-defaults"));
+            WorkerInfo const info(inWorker);
             if (worker != info.name) {
                 throw invalid_argument(
                         _context + "inconsistent definition for worker: " + worker + " in JSON object: "

@@ -149,38 +149,16 @@ public:
      * @param actual The actual worker descriptor obtained from the database after adding or
      *   updating the worker.
      * @param desired The input worker descriptor that was used in worker specification.
-     * @param compareWithDefault The optional flag that if 'true' will modify the behavior
-     *   of the test by pulling expected values of the default attributes either from
-     *   the database defaults, or (for host names) from the host name where
-     *   the main replication service runs.
      */
-    void verify(WorkerInfo const& actual, WorkerInfo const& desired, bool compareWithDefault=false) {
+    void verify(WorkerInfo const& actual, WorkerInfo const& desired) {
         _verify("name", actual.name, desired.name);
-        _verify("is_enabled", actual.isEnabled, desired.isEnabled);
-        _verify("is_read_only", actual.isReadOnly, desired.isReadOnly);
-        _verify("svc_host", actual.svcHost, desired.svcHost);
-        _verify("svc_port", actual.svcPort, desired.svcPort, compareWithDefault);
-        _verify("fs_host", actual.fsHost, compareWithDefault ? desired.svcHost : desired.fsHost);
-        _verify("fs_port", actual.fsPort, desired.fsPort, compareWithDefault);
-        _verify("data_dir", actual.dataDir, desired.dataDir, compareWithDefault);
-        _verify("loader_host", actual.loaderHost, compareWithDefault ? desired.svcHost : desired.loaderHost);
-        _verify("loader_port", actual.loaderPort, desired.loaderPort, compareWithDefault);
-        _verify("loader_tmp_dir", actual.loaderTmpDir, desired.loaderTmpDir, compareWithDefault);
-        _verify("exporter_host", actual.exporterHost, compareWithDefault ? desired.svcHost : desired.exporterHost);
-        _verify("exporter_port", actual.exporterPort, desired.exporterPort, compareWithDefault);
-        _verify("exporter_tmp_dir", actual.exporterTmpDir, desired.exporterTmpDir, compareWithDefault);
-        _verify("http_loader_host", actual.httpLoaderHost, compareWithDefault ? desired.svcHost  : desired.httpLoaderHost);
-        _verify("http_loader_port", actual.httpLoaderPort, desired.httpLoaderPort, compareWithDefault);
-        _verify("http_loader_tmp_dir", actual.httpLoaderTmpDir, desired.httpLoaderTmpDir, compareWithDefault);
+        _verify("is-enabled", actual.isEnabled, desired.isEnabled);
+        _verify("is-read-only", actual.isReadOnly, desired.isReadOnly);
     }
 
     template <typename T>
-    void _verify(string const& attribute,
-                 T const& actualValue,
-                 T const& expectedValue,
-                 bool compareWithDefault=false) {
-        verifyImpl<T>(attribute, actualValue,
-                      compareWithDefault ? _config->get<T>("worker-defaults", attribute) : expectedValue);
+    void _verify(string const& attribute, T const& actualValue, T const& expectedValue) {
+        verifyImpl<T>(attribute, actualValue, expectedValue);
     }
 
 private:
@@ -189,7 +167,7 @@ private:
 };
 
 /**
- * The class CompareWorkerAtributes compares values of the coresponding
+ * The class CompareFamilyAtributes compares values of the coresponding
  * attrubutes of two database families and reports differences.
  */
 class CompareFamilyAtributes: public ComparatorBase {
@@ -317,20 +295,6 @@ bool ConfigTestApp::_testWorkers() {
         workerSpec.name = "worker-A";
         workerSpec.isEnabled = true;
         workerSpec.isReadOnly = false;
-        workerSpec.svcHost = "host-A";
-        workerSpec.svcPort = 15000;
-        workerSpec.fsHost = "host-A";
-        workerSpec.fsPort = 15001;
-        workerSpec.dataDir = "/data/A";
-        workerSpec.loaderHost = "host-A";
-        workerSpec.loaderPort = 15002;
-        workerSpec.loaderTmpDir = "/tmp/A";
-        workerSpec.exporterHost = "host-A";
-        workerSpec.exporterPort = 15003;
-        workerSpec.exporterTmpDir = "/tmp/A";
-        workerSpec.httpLoaderHost = "host-A";
-        workerSpec.httpLoaderPort = 15004;
-        workerSpec.httpLoaderTmpDir = "/tmp/http/A";
         string error;
         CompareWorkerAtributes comparator("COMPARING ATTRIBUTES OF THE ADDED WORKER VS ITS SPECIFICATIONS:",
                                           indent, verticalSeparator(),
@@ -362,7 +326,6 @@ bool ConfigTestApp::_testWorkers() {
         // be set to be the same of the main Replication service. The port numbers and directory
         // paths will be pulled from the worker defaults.
         workerSpec.name = "worker-B";
-        workerSpec.svcHost = "host-B";
         string error;
         CompareWorkerAtributes comparator("COMPARING ATRIBUTES OF THE ADDED WORKER VS ITS SPECIFICATIONS:",
                                           indent, verticalSeparator(),
@@ -373,8 +336,7 @@ bool ConfigTestApp::_testWorkers() {
             WorkerInfo const addedWorker = config()->workerInfo(workerSpec.name);
             // Compare against defaults for everything but the name of the worker and the name
             // of a host where it runs.
-            bool const compareWithDefault = true;
-            comparator.verify(addedWorker, workerSpec, compareWithDefault);
+            comparator.verify(addedWorker, workerSpec);
         } catch (exception const& ex) {
             error = "failed to add worker '" + workerSpec.name + "', ex: " + string(ex.what());
         }
@@ -399,11 +361,6 @@ bool ConfigTestApp::_testWorkers() {
         // paths will be pulled from the worker defaults.
         workerSpec.isEnabled = true;
         workerSpec.isReadOnly = true;
-        workerSpec.svcHost = "host-B-1";
-        workerSpec.svcPort = 16000;
-        workerSpec.fsHost = "host-B-1";
-        workerSpec.fsPort = 16001;
-        workerSpec.dataDir = "/qserv/data/worker-B/mysql";
         string error;
         CompareWorkerAtributes comparator("COMPARING ATRIBUTES OF THE UPDATED WORKER VS ITS SPECIFICATIONS:",
                                           indent, verticalSeparator(),
