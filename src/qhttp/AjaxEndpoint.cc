@@ -52,6 +52,8 @@ AjaxEndpoint::Ptr AjaxEndpoint::add(Server& server, std::string const& path)
     server.addHandler("GET", path, [aep](Request::Ptr request, Response::Ptr response) {
         std::lock_guard<std::mutex> lock{aep->_pendingResponsesMutex};
         aep->_pendingResponses.push_back(response);
+        LOGLS_DEBUG(_log, logger(aep->_server) << logger(aep)
+            << "deferring response (" << aep->_pendingResponses.size() << " total)");
     });
     return aep;
 }
@@ -60,6 +62,8 @@ AjaxEndpoint::Ptr AjaxEndpoint::add(Server& server, std::string const& path)
 void AjaxEndpoint::update(std::string const& json)
 {
     std::lock_guard<std::mutex> lock(_pendingResponsesMutex);
+    LOGLS_DEBUG(_log, logger(_server) << logger(this)
+        << "sending " << _pendingResponses.size() << " deferred response(s)");
     for(auto& pendingResponse : _pendingResponses) {
         pendingResponse->headers["Cache-Control"] = "no-cache";
         pendingResponse->send(json, "application/json");

@@ -132,17 +132,7 @@ void Response::send(std::string const& content, std::string const& contentType)
 
     std::ostream responseStream(&_responsebuf);
     responseStream << _headers() << "\r\n" << content;
-
-    if (!_transmissionStarted.test_and_set()) {
-        auto self = shared_from_this();
-        asio::async_write(*_socket, _responsebuf,
-            [self](boost::system::error_code const& ec, std::size_t sent) {
-                if (self->_doneCallback) {
-                    self->_doneCallback(ec, sent);
-                }
-            }
-        );
-    }
+    _write();
 }
 
 
@@ -156,22 +146,14 @@ void Response::sendFile(fs::path const& path)
     // top-level handler in Server::_dispatchRequest().
     fs::ifstream responseFile(path);
     if (!responseFile) {
+        LOGLS_ERROR(_log, logger(_server) << logger(_socket)
+            << "open failed for " << path << ": " << std::strerror(errno));
         throw(boost::system::system_error(errno, boost::system::generic_category()));
     }
 
     std::ostream responseStream(&_responsebuf);
     responseStream << _headers() << "\r\n" << responseFile.rdbuf();
-
-    if (!_transmissionStarted.test_and_set()) {
-        auto self = shared_from_this();
-        asio::async_write(*_socket, _responsebuf,
-            [self](boost::system::error_code const& ec, std::size_t sent) {
-                if (self->_doneCallback) {
-                    self->_doneCallback(ec, sent);
-                }
-            }
-        );
-    }
+    _write();
 }
 
 
@@ -182,13 +164,41 @@ std::string Response::_headers() const
 
     auto r = responseStringsByCode.find(status);
     if (r == responseStringsByCode.end()) r = responseStringsByCode.find(500);
-    headerst << r->first << " " << r->second << "\r\n";
+    headerst << r->first << " " << r->second;
 
+    auto ilength = headers.find("Content-Length");
+    std::size_t length = (ilength == headers.end()) ? 0 : std::stoi(ilength->second);
+    LOGLS_INFO(_log, logger(_server) << logger(_socket) << headerst.str() << " + " << length << " bytes");
+
+    headerst << "\r\n";
     for(auto const& h : headers) {
         headerst << h.first << ": " << h.second << "\r\n";
     }
 
     return headerst.str();
+}
+
+
+void Response::_write()
+{
+    if (_transmissionStarted.test_and_set()) {
+        LOGLS_ERROR(_log, logger(_server) << logger(_socket)
+            << "handler logic error: multiple responses sent");
+        return;
+    }
+
+    auto self = shared_from_this();
+    asio::async_write(*_socket, _responsebuf,
+        [self](boost::system::error_code const& ec, std::size_t sent) {
+            if (ec) {
+                LOGLS_ERROR(_log, logger(self->_server) << logger(self->_socket)
+                    << "write failed: " << ec.message());
+            }
+            if (self->_doneCallback) {
+                self->_doneCallback(ec, sent);
+            }
+        }
+    );
 }
 
 }}} // namespace lsst::qserv::qhttp

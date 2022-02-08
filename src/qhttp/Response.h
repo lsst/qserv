@@ -82,6 +82,7 @@ private:
     );
 
     std::string _headers() const;
+    void _write();
 
     std::shared_ptr<Server> _server;
 
