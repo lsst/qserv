@@ -9,8 +9,9 @@ and monitoring.  It was endeavored to keep the code size small and code complexi
 toward that end:
 
 * Leverages boost::asio's event proactor for a fully asyncrhonous server, so multiple simultaneous connections
-  are supported robustly even when run in a single thread.  Running single-threaded can significantly reduce
-  synchronization complications in handler codes, though throughput scaling may be limited in this case.
+  are supported robustly even when run in a single thread.  The option to run single-threaded can
+  significantly reduce synchronization complications in handler codes, though throughput scaling may be
+  limited in this case.
 
 * Express and Martini style "middlewares" were not implemented to keep complexity low.  This could be added at
   a later time if desired.  For now, perceived-to-be-commonly-used functionalities are wired directly into the
@@ -88,7 +89,7 @@ Response object provides methods for simple numeric status responses (which will
 HTML body) or the sending of strings or files.
 
 The server attempts to be exception-safe, since unhandled exceptions ocurring in asio service threads could be
-problematic for a hosting applications.  In particular, any exceptions thrown from user-handler code are be
+problematic for a hosting applications.  In particular, any exceptions thrown from user-handler code are
 caught by the server and translated to approprate HTTP responses (typically, 500 Internal Server Error).
 
 To install an AJAX endpoint:

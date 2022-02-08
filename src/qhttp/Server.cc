@@ -132,6 +132,7 @@ void Server::_accept()
         _activeSockets.erase(removed, _activeSockets.end());
         _activeSockets.push_back(socket);
     }
+
     auto self = shared_from_this();
     _acceptor.async_accept(
         *socket,
@@ -144,7 +145,7 @@ void Server::_accept()
                 socket->set_option(ip::tcp::no_delay(true), ignore);
                 self->_readRequest(socket);
             }
-            self->_accept(); // start accept for the next incoming connection
+            self->_accept(); // start accept again for the next incoming connection
         }
     );
 }

@@ -102,7 +102,7 @@ std::string Request::_percentDecode(std::string const& encoded, bool exceptPathD
 
         // If decoding a path, leave any encoded slashes encoded (but ensure lower case), so they don't
         // become confused with path-element-delimiting slashes. We elsewhere make sure that intra-element
-        // slashes within the matchers are lower-case percent-encoded as well (see Path.cc).
+        // slashes within the matchers are lowercase percent-encoded as well (see Path.cc).
         if (exceptPathDelimeters && (codepoint == '/')) {
             decoded.append("%2f");
         }

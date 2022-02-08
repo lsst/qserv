@@ -142,7 +142,6 @@ void Response::sendFile(fs::path const& path)
 {
     auto ct = contentTypesByExtension.find(path.extension().string());
     headers["Content-Type"] = (ct != contentTypesByExtension.end()) ? ct->second : "text/plain";
-
     headers["Content-Length"] = std::to_string(fs::file_size(path));
 
     // Try to open the file for streaming input. Throw if we hit a snag; exception expected to be caught by

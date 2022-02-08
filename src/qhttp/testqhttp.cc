@@ -265,6 +265,7 @@ namespace qserv {
 //
 //----- The test fixture instantiates a qhttp server and a boost::asio::io_service to run it,
 //      manages a thread that runs the io_service, and handles global init and cleanup of libcurl.
+//
 
 struct QhttpFixture
 {

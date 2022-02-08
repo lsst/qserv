@@ -142,6 +142,7 @@ private:
     std::unordered_map<std::string, std::vector<PathHandler>> _pathHandlersByMethod;
 
     boost::asio::io_service& _io_service;
+
     int const _backlog;
     boost::asio::ip::tcp::endpoint _acceptorEndpoint;
     boost::asio::ip::tcp::acceptor _acceptor;

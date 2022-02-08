@@ -94,5 +94,4 @@ void StaticContent::add(
     });
 }
 
-
 }}} // namespace lsst::qserv::qhttp
