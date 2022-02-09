@@ -48,10 +48,7 @@ namespace replica {
 
 FileServer::Ptr FileServer::create(ServiceProvider::Ptr const& serviceProvider,
                                    string const& workerName) {
-    return FileServer::Ptr(
-        new FileServer(
-            serviceProvider,
-            workerName));
+    return FileServer::Ptr(new FileServer(serviceProvider,workerName));
 }
 
 
@@ -59,13 +56,12 @@ FileServer::FileServer(ServiceProvider::Ptr const& serviceProvider,
                        string const& workerName)
     :   _serviceProvider(serviceProvider),
         _workerName(workerName),
-        _workerInfo(serviceProvider->config()->workerInfo(workerName)),
         _io_service(),
         _acceptor(
             _io_service,
             boost::asio::ip::tcp::endpoint(
                 boost::asio::ip::tcp::v4(),
-                _workerInfo.fsPort)) {
+                serviceProvider->config()->get<uint16_t>("worker", "fs-port"))) {
 
     // Set the socket reuse option to allow recycling ports after catastrophic
     // failures.

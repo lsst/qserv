@@ -175,8 +175,8 @@ bool WorkerDeleteRequestPOSIX::execute() {
 
     util::Lock lock(_mtx, context(__func__));
 
-    WorkerInfo   const workerInfo   = _serviceProvider->config()->workerInfo(worker());
-    DatabaseInfo const databaseInfo = _serviceProvider->config()->databaseInfo(database());
+    auto const config = _serviceProvider->config();
+    DatabaseInfo const databaseInfo = config->databaseInfo(database());
 
     vector<string> const files =  FileUtils::partitionedFiles(databaseInfo, chunk());
 
@@ -189,7 +189,7 @@ bool WorkerDeleteRequestPOSIX::execute() {
     {
         util::Lock dataFolderLock(_mtxDataFolderOperations, context(__func__));
 
-        fs::path        const dataDir = fs::path(workerInfo.dataDir) / database();
+        fs::path        const dataDir = fs::path(config->get<string>("worker", "data-dir")) / database();
         fs::file_status const stat    = fs::status(dataDir, ec);
         errorContext = errorContext
             or reportErrorIf(

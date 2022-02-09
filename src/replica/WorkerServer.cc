@@ -49,11 +49,7 @@ namespace replica {
 WorkerServer::Ptr WorkerServer::create(ServiceProvider::Ptr const& serviceProvider,
                                        WorkerRequestFactory& requestFactory,
                                        string const& workerName) {
-    return WorkerServer::Ptr(
-        new WorkerServer(
-            serviceProvider,
-            requestFactory,
-            workerName));
+    return WorkerServer::Ptr(new WorkerServer(serviceProvider, requestFactory, workerName));
 }
 
 
@@ -67,11 +63,10 @@ WorkerServer::WorkerServer(ServiceProvider::Ptr const& serviceProvider,
             _io_service,
             boost::asio::ip::tcp::endpoint(
                 boost::asio::ip::tcp::v4(),
-                serviceProvider->config()->workerInfo(workerName).svcPort)) {
+                serviceProvider->config()->get<uint16_t>("worker", "svc-port"))) {
 
     // Set the socket reuse option to allow recycling ports after catastrophic
     // failures.
-
     _acceptor.set_option(boost::asio::socket_base::reuse_address(true));
 }
 
@@ -79,7 +74,6 @@ WorkerServer::WorkerServer(ServiceProvider::Ptr const& serviceProvider,
 void WorkerServer::run() {
 
     // Start the processor to allow processing requests.
-
     _processor->run();
 
     // Begin accepting connections before running the service to allow
@@ -118,7 +112,6 @@ void WorkerServer::_handleAccept(WorkerServerConnection::Ptr const& connection,
         //       would be to log the message via the standard log file
         //       mechanism since it's safe to ignore problems with
         //       incoming connections due a lack of side effects.
-
         LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  ec:" << ec);
     }
     _beginAccept();

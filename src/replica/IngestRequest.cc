@@ -210,7 +210,7 @@ IngestRequest::IngestRequest(
     _contrib.table = table;
     _contrib.chunk = chunk;
     _contrib.isOverlap = isOverlap;
-    _contrib.worker = workerInfo().name;
+    _contrib.worker = workerName;
     _contrib.url = url;
     _contrib.async = async;
     _contrib.dialectInput = dialectInput;
@@ -517,13 +517,15 @@ void IngestRequest::_readRemoteFile() {
     if (!clientConfig.caInfoVal.empty()) {
         // Use this file instead of the existing path.
         clientConfig.caInfo = caInfoFile.write(
-                workerInfo().httpLoaderTmpDir, _contrib.database, clientConfig.caInfoVal);
+                serviceProvider()->config()->get<string>("worker", "http-loader-tmp-dir"),
+                _contrib.database, clientConfig.caInfoVal);
     }
     ::TemporaryCertFileRAII proxyCaInfoFile;
     if (!clientConfig.proxyCaInfoVal.empty()) {
         // Use this file instead of the existing path.
         clientConfig.proxyCaInfo = proxyCaInfoFile.write(
-                workerInfo().httpLoaderTmpDir, _contrib.database, clientConfig.proxyCaInfoVal);
+                serviceProvider()->config()->get<string>("worker", "http-loader-tmp-dir"),
+                _contrib.database, clientConfig.proxyCaInfoVal);
     }
 
     // Read and parse data from the data source

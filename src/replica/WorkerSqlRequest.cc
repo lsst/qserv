@@ -251,8 +251,6 @@ database::mysql::Connection::Ptr WorkerSqlRequest::_connector() const {
     // queries require a client to explicitly provide the credentials.
     // Otherwise, using credentials from the worker's configuration.
 
-    auto const config = serviceProvider()->config();
-    auto const workerInfo = config->workerInfo(worker());    
     bool const clientCredentials = _request.type() == ProtocolRequestSql::QUERY;
     auto connectionParams = Configuration::qservWorkerDbParams();
     if (clientCredentials) {
@@ -266,9 +264,6 @@ database::mysql::Connection::Ptr WorkerSqlRequest::_connector() const {
 vector<Query> WorkerSqlRequest::_queries(database::mysql::Connection::Ptr const& conn) const {
 
     vector<Query> queries;
-
-    auto const config = serviceProvider()->config();
-    auto const workerInfo = config->workerInfo(worker());    
 
     string const qservChunksTable = conn->sqlId("qservw_worker", "Chunks");
     string const qservDbsTable = conn->sqlId("qservw_worker", "Dbs");

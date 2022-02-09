@@ -676,7 +676,7 @@ public:
      * @param includeFileInfo a flag will instructs the method wether to provide
      *   the detailed file info for each replica as well.
      *
-     * @throw std::invalid_argument if the worker is unknown or its name is empty,
+     * @throw std::invalid_argument if the worker name is empty,
      *   or if the database family is unknown (if provided)
      */
     virtual void findWorkerReplicas(std::vector<ReplicaInfo>& replicas,
@@ -706,7 +706,7 @@ public:
      *
      * @return the number of replicas
      *
-     * @throw std::invalid_argument if the worker is unknown or its name is empty,
+     * @throw std::invalid_argument if the worker name is empty,
      *   or if the database family is unknown (if provided)
      */
     virtual uint64_t numWorkerReplicas(std::string const& worker,
@@ -732,7 +732,7 @@ public:
      *   to 'false' to further narrow a collection of databases included into
      *   the search.
      *
-     * @throw std::invalid_argument if the worker is unknown or its name is empty,
+     * @throw std::invalid_argument if the worker name is empty,
      *   or if the database family is unknown (if provided)
      */
     virtual void findWorkerReplicas(std::vector<ReplicaInfo>& replicas,

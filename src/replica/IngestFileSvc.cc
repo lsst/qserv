@@ -68,8 +68,7 @@ namespace replica {
 IngestFileSvc::IngestFileSvc(ServiceProvider::Ptr const& serviceProvider,
                              string const& workerName)
     :   _serviceProvider(serviceProvider),
-        _workerName(workerName),
-        _workerInfo(serviceProvider->config()->workerInfo(workerName)) {
+        _workerName(workerName) {
 }
 
 
@@ -161,7 +160,7 @@ string const& IngestFileSvc::openFile(TransactionId transactionId,
     }
     try {
         _fileName = FileUtils::createTemporaryFile(
-            _workerInfo.loaderTmpDir,
+            _serviceProvider->config()->get<string>("worker", "loader-tmp-dir"),
             _databaseInfo.name + "-" + _table + "-" + to_string(_chunk) + "-" + to_string(_transactionId),
             "-%%%%-%%%%-%%%%-%%%%",
             ".csv"

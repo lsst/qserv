@@ -93,23 +93,21 @@ WorkerReplicationRequest::WorkerReplicationRequest(
         _request(request),
         _sourceWorkerHostPort(request.worker_host() + ":" + to_string(request.worker_port())) {
 
-    serviceProvider->config()->assertWorkerIsValid(request.worker());
-    serviceProvider->config()->assertWorkersAreDifferent(worker, request.worker());
+    string const context = "WorkerReplicationRequest::" + string(__func__) + " ";
+
+    if (worker == request.worker()) {
+        throw invalid_argument(context + "workers are the same in the request.");
+    }
     if (request.worker_host().empty()) {
-        throw invalid_argument(
-                "WorkerReplicationRequest::" + string(__func__)
-                + " the DNS name or an IP address of the worker not provided.");
+        throw invalid_argument(context + "the DNS name or an IP address of the worker not provided.");
     }
     if (request.worker_port() > std::numeric_limits<uint16_t>::max()) {
         throw overflow_error(
-                "WorkerReplicationRequest::" + string(__func__) + " the port number "
-                + to_string(request.worker_port()) + " is not in the valid range of 0.."
-                + to_string(std::numeric_limits<uint16_t>::max()));
+                context + "the port number " + to_string(request.worker_port())
+                + " is not in the valid range of 0.." + to_string(std::numeric_limits<uint16_t>::max()));
     }
     if (request.worker_data_dir().empty()) {
-        throw invalid_argument(
-                "WorkerReplicationRequest::" + string(__func__)
-                + " the data path name at the remote worker not provided.");
+        throw invalid_argument(context + "the data path name at the remote worker not provided.");
     }
 }
 
@@ -214,11 +212,11 @@ bool WorkerReplicationRequestPOSIX::execute () {
     //   files, checking for folders and files, renaming files, creating folders, etc.)
     //   are guarded by acquiring util::Lock lock(_mtxDataFolderOperations) where it's needed.
 
-    WorkerInfo   const outWorkerInfo = _serviceProvider->config()->workerInfo(worker());
-    DatabaseInfo const databaseInfo  = _serviceProvider->config()->databaseInfo(database());
+    auto const config = serviceProvider()->config();
+    DatabaseInfo const databaseInfo  = config->databaseInfo(database());
 
     fs::path const inDir  = fs::path(sourceWorkerDataDir()) / database();
-    fs::path const outDir = fs::path(outWorkerInfo.dataDir) / database();
+    fs::path const outDir = fs::path(config->get<string>("worker", "data-dir")) / database();
 
     vector<string> const files = FileUtils::partitionedFiles(databaseInfo, chunk());
 
@@ -462,7 +460,6 @@ WorkerReplicationRequestFS::WorkerReplicationRequestFS(
             onExpired,
             requestExpirationIvalSec,
             request),
-        _outWorkerInfo(_serviceProvider->config()->workerInfo(worker)),
         _databaseInfo(_serviceProvider->config()->databaseInfo(request.database())),
         _initialized(false),
         _files(FileUtils::partitionedFiles(_databaseInfo, request.chunk())),
@@ -520,7 +517,8 @@ bool WorkerReplicationRequestFS::execute () {
     if (not _initialized) {
         _initialized = true;
 
-        fs::path const outDir = fs::path(_outWorkerInfo.dataDir) / database();
+        auto const config = serviceProvider()->config();
+        fs::path const outDir = fs::path(config->get<string>("worker", "data-dir")) / database();
 
         vector<fs::path> tmpFiles;
         vector<fs::path> outFiles;

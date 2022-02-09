@@ -113,10 +113,7 @@ FileServerConnection::Ptr FileServerConnection::create(ServiceProvider::Ptr cons
                                                        string const& workerName,
                                                        boost::asio::io_service& io_service) {
     return FileServerConnection::Ptr(
-        new FileServerConnection(
-            serviceProvider,
-            workerName,
-            io_service));
+            new FileServerConnection(serviceProvider, workerName, io_service));
 }
 
 
@@ -125,7 +122,6 @@ FileServerConnection::FileServerConnection(ServiceProvider::Ptr const& servicePr
                                            boost::asio::io_service& io_service)
     :   _serviceProvider(serviceProvider),
         _workerName(workerName),
-        _workerInfo(serviceProvider->config()->workerInfo(workerName)),
         _socket(io_service),
         _bufferPtr(
             make_shared<ProtocolBuffer>(
@@ -220,7 +216,8 @@ void FileServerConnection::_requestReceived(boost::system::error_code const& ec,
         }
         boost::system::error_code ec;
 
-        fs::path const file = fs::path(_workerInfo.dataDir) / request.database() / request.file();
+        fs::path const file = fs::path(_serviceProvider->config()->get<string>("worker", "data-dir")) /
+                request.database() / request.file();
         fs::file_status const stat = fs::status(file, ec);
         if (stat.type() == fs::status_error) {
             LOGS(_log, LOG_LVL_ERROR, context

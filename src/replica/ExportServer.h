@@ -33,7 +33,6 @@
 #include "boost/asio.hpp"
 
 // Qserv headers
-#include "replica/Configuration.h"
 #include "replica/ExportServerConnection.h"
 #include "replica/ServiceProvider.h"
 
@@ -105,9 +104,6 @@ private:
 
     ServiceProvider::Ptr const _serviceProvider;
     std::string          const _workerName;
-
-    /// Cached worker descriptor obtained from the configuration
-    WorkerInfo const _workerInfo;
 
     boost::asio::io_service        _io_service;
     boost::asio::ip::tcp::acceptor _acceptor;

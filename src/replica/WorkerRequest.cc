@@ -94,8 +94,6 @@ WorkerRequest::WorkerRequest(ServiceProvider::Ptr const& serviceProvider,
         _extendedStatus(ProtocolStatusExt::NONE),
         _performance(),
         _durationMillisec(0) {
-
-    serviceProvider->config()->assertWorkerIsValid(worker);
 }
 
 

@@ -55,7 +55,7 @@ IngestHttpSvc::Ptr IngestHttpSvc::create(ServiceProvider::Ptr const& serviceProv
 IngestHttpSvc::IngestHttpSvc(ServiceProvider::Ptr const& serviceProvider,
                              string const& workerName)
     :   HttpSvc(serviceProvider,
-                serviceProvider->config()->workerInfo(workerName).httpLoaderPort,
+                serviceProvider->config()->get<uint16_t>("worker", "http-loader-port"),
                 serviceProvider->config()->get<unsigned int>("worker", "http-max-listen-conn"),
                 serviceProvider->config()->get<size_t>("worker", "num-http-loader-processing-threads")),
         _workerName(workerName),

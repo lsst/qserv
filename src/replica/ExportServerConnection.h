@@ -185,9 +185,6 @@ private:
     ServiceProvider::Ptr const _serviceProvider;
     std::string          const _workerName;
 
-    /// Cached worker descriptor obtained from the configuration
-    WorkerInfo const _workerInfo;
-
     /// A socket for communication with clients
     boost::asio::ip::tcp::socket _socket;
 

@@ -730,9 +730,6 @@ void DatabaseServicesMySQL::_findWorkerReplicasImpl(
         " isPublished=" + bool2str(isPublished) + "  ";
     LOGS(_log, LOG_LVL_DEBUG, context);
 
-    if (not _configuration->isKnownWorker(worker)) {
-        throw invalid_argument(context + "unknown worker");
-    }
     string query =
         "SELECT * FROM " + _conn->sqlId("replica") +
         "  WHERE "       + _conn->sqlEqual("worker", worker) +
@@ -763,9 +760,6 @@ void DatabaseServicesMySQL::findWorkerReplicas(
         " isPublished=" + bool2str(isPublished) + "  ";
     LOGS(_log, LOG_LVL_DEBUG, context);
 
-    if (not _configuration->isKnownWorker(worker)) {
-        throw invalid_argument(context + "unknown worker");
-    }
     if (not databaseFamily.empty() and not _configuration->isKnownDatabaseFamily(databaseFamily)) {
         throw invalid_argument(context + "unknown databaseFamily");
     }
@@ -866,13 +860,6 @@ map<unsigned int, size_t> DatabaseServicesMySQL::actualReplicationLevel(
     if (not _configuration->isKnownDatabase(database)) {
         throw invalid_argument(context + "unknown database");
     }
-    if (not workersToExclude.empty()) {
-        for (auto&& worker: workersToExclude) {
-            if (not _configuration->isKnownWorker(worker)) {
-                throw invalid_argument(context + "unknown worker: " + worker);
-            }
-        }
-    }
     util::Lock lock(_mtx, context);
     try {
         map<unsigned int, size_t> result;
@@ -927,13 +914,6 @@ size_t DatabaseServicesMySQL::numOrphanChunks(
     }
     if (not _configuration->isKnownDatabase(database)) {
         throw invalid_argument(context + "unknown database");
-    }
-    if (not uniqueOnWorkers.empty()) {
-        for (auto&& worker: uniqueOnWorkers) {
-            if (not _configuration->isKnownWorker(worker)) {
-                throw invalid_argument(context + "unknown worker: " + worker);
-            }
-        }
     }
     util::Lock lock(_mtx, context);
     try {

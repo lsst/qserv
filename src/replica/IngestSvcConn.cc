@@ -186,7 +186,7 @@ void IngestSvcConn::_handshakeReceived(boost::system::error_code const& ec,
     _contrib.table = request.table();
     _contrib.chunk = request.chunk();
     _contrib.isOverlap = request.is_overlap();
-    _contrib.worker = workerInfo().name;
+    _contrib.worker = workerName();
     _contrib.url = request.url();
     _contrib.dialectInput = csv::DialectInput(request.dialect_input());
     _contrib.retryAllowed = true;   // stays like this before loading data into MySQL
