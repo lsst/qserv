@@ -23,6 +23,8 @@
 #include "replica/Controller.h"
 
 // System headers
+#include <algorithm>
+#include <chrono>
 #include <iostream>
 #include <stdexcept>
 #include <sys/types.h>
@@ -31,6 +33,7 @@
 // Qserv headers
 #include "replica/Common.h"
 #include "replica/Configuration.h"
+#include "replica/ConfigWorker.h"
 #include "replica/DatabaseServices.h"
 #include "replica/DeleteRequest.h"
 #include "replica/DisposeRequest.h"
@@ -41,6 +44,7 @@
 #include "replica/IndexRequest.h"
 #include "replica/Messenger.h"
 #include "replica/Performance.h"
+#include "replica/Redirector.h"
 #include "replica/ReplicationRequest.h"
 #include "replica/ServiceManagementRequest.h"
 #include "replica/ServiceProvider.h"
@@ -67,9 +71,54 @@
 #include "lsst/log/Log.h"
 
 using namespace std;
+using namespace std::chrono_literals;
+using namespace lsst::qserv::replica;
 
 namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.Controller");
+
+void tracker(weak_ptr<Controller> const& controller, string const& context) {
+    LOGS(_log, LOG_LVL_INFO, context << "started tracking workers.");
+    while (true) {
+        Controller::Ptr const ptr = controller.lock();
+        if (ptr == nullptr) break;
+
+        auto const config = ptr->serviceProvider()->config();
+        bool const autoRegisterWorkers = config->get<unsigned int>("controller", "auto-register-workers") != 0;
+
+        vector<WorkerInfo> workers;
+        try {
+            workers = ptr->serviceProvider()->redirector()->workers();
+        } catch (exception const& ex) {
+            LOGS(_log, LOG_LVL_WARN, context << "failed to pull worker info from the redirector, ex: " << ex.what());
+        }
+        for (auto&& workerInfo: workers) {
+            try {
+                if (config->isKnownWorker(workerInfo.name)) {
+                    auto const prevWorkerInfo = config->workerInfo(workerInfo.name);
+                    if (prevWorkerInfo != workerInfo) {
+                        LOGS(_log, LOG_LVL_INFO, context << "worker '" << workerInfo.name << "' logged in from host '"
+                                << workerInfo.svcHost << "'. Updating worker's record in the configuration.");
+                        config->updateWorker(workerInfo);
+                    }
+                } else {
+                    if (autoRegisterWorkers) {
+                        LOGS(_log, LOG_LVL_INFO, context << "new worker '" << workerInfo.name << "' logged in from host '"
+                                << workerInfo.svcHost << "'. Registering new worker in the configuration.");
+                        config->addWorker(workerInfo);
+                    }
+                }
+            } catch (exception const& ex) {
+                LOGS(_log, LOG_LVL_WARN, context << "failed to process worker info, worker '" << workerInfo.name
+                        << "', ex: " << ex.what());
+            }
+        }
+        this_thread::sleep_for(
+                chrono::seconds(max(1U, config->get<unsigned int>("redirector", "heartbeat-ival-sec"))));
+    }
+    LOGS(_log, LOG_LVL_INFO, context << "finished tracking workers.");
+}
+
 } /// namespace
 
 namespace lsst {
@@ -83,7 +132,27 @@ ostream& operator <<(ostream& os, ControllerIdentity const& identity) {
 
 
 Controller::Ptr Controller::create(ServiceProvider::Ptr const& serviceProvider) {
-    return Controller::Ptr(new Controller(serviceProvider));
+    auto const ptr = Controller::Ptr(new Controller(serviceProvider));
+
+    // The code below is starting the worker status tracking algorithm that would
+    // be running in the detached thread. The thread will cache the weak pointer to
+    // the Controller and check its status to see if the Controller is still alive.
+    // And if it's not then the thread would terminate. This technique is needed to
+    // avoid having the live pointer to the Controller within the thread that would
+    // prevent the normal completion of the process.
+    //
+    // IMPORTANT: updated states of the configuration parameters are obtained at each
+    // iteration of the 'for' loop to allow external control over enabling/disabling
+    // new workers to join the cluster. Also note that the automatic registration of
+    // workers should be only allowed in the Master Replication Controller.
+
+    string const context = ptr->_context(__func__) + "  ";
+    weak_ptr<Controller> w = ptr;
+    thread t([controller=move(w), context] () {
+        ::tracker(controller, context);
+    });
+    t.detach();
+    return ptr;
 }
 
 
