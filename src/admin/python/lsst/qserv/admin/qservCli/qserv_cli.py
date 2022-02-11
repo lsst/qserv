@@ -609,13 +609,13 @@ def down(
 @click.argument("COMMAND", required=False)
 @qserv_image_option()
 @click.option(
-    "--entrypoint",
+    "--entrypoint/--no-entrypoint",
     is_flag=True,
     default=True,
     help="Show help output for the entrypoint command.",
 )
 @click.option(
-    "--spawned",
+    "--spawned/--no-spawned",
     is_flag=True,
     default=True,
     help="Show help output for the spawned app.",
