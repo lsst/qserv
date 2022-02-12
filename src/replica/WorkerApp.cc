@@ -23,19 +23,27 @@
 #include "replica/WorkerApp.h"
 
 // System headers
+#include <algorithm>
+#include <chrono>
 #include <thread>
+#include <vector>
 
 // Qserv headers
+#include "replica/Configuration.h"
 #include "replica/DatabaseMySQL.h"
 #include "replica/ExportServer.h"
 #include "replica/FileServer.h"
+#include "replica/FileUtils.h"
 #include "replica/IngestHttpSvc.h"
 #include "replica/IngestSvc.h"
+#include "replica/Redirector.h"
 #include "replica/ServiceProvider.h"
 #include "replica/WorkerProcessor.h"
 #include "replica/WorkerRequestFactory.h"
 #include "replica/WorkerServer.h"
-#include "util/BlockPost.h"
+
+// LSST headers
+#include "lsst/log/Log.h"
 
 using namespace std;
 
@@ -47,6 +55,8 @@ string const description =
 bool const injectDatabaseOptions = true;
 bool const boostProtobufVersionCheck = true;
 bool const enableServiceProvider = true;
+
+LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.WorkerApp");
 
 } /// namespace
 
@@ -70,7 +80,6 @@ WorkerApp::WorkerApp(int argc, char* argv[])
             boostProtobufVersionCheck,
             enableServiceProvider
         ),
-        _log(LOG_GET("lsst.qserv.replica.WorkerApp")),
         _qservWorkerDbUrl(Configuration::qservWorkerDbUrl()) {
 
     // Configure the command line parser
@@ -117,24 +126,13 @@ int WorkerApp::runImpl() {
         LOGS(_log, LOG_LVL_INFO, context << "worker: " << worker);
     }
 
-    // Make sure the worker exists
-    auto const workerInfo = serviceProvider()->config()->workerInfo(worker);
-
-    // ATTENTION: Worker services depend on a number of folders that are used for
-    // storing intermediate files of various sizes. Locations (absolute path names)
-    // of the folders are set in the corresponding configuration parameters.
-    // Desired characteristics (including size, I/O latency, I/O bandwidth, etc.) of
-    // the folders may vary depending on the service type and a scale of a particular
-    // Qserv deployment. Note that the overall performance and scalability greately
-    // depends on the quality of of the underlying filesystems. Usually, in
-    // the large-scale deployments, the folders should be pre-created and be placed
-    // at the large-capacity high-performance filesystems at the Qserv deployment time.
-    workerInfo.verifyFolders(!_doNotCreateMissingFolders);
+    _verifyCreateFolders();
 
     // Configure the factory with a pool of persistent connectors
+    auto const config = serviceProvider()->config();
     auto const connectionPool = database::mysql::ConnectionPool::create(
         Configuration::qservWorkerDbParams(),
-        serviceProvider()->config()->get<size_t>("database", "services-pool-size")
+        config->get<size_t>("database", "services-pool-size")
     );
     WorkerRequestFactory requestFactory(serviceProvider(), connectionPool);
 
@@ -163,18 +161,23 @@ int WorkerApp::runImpl() {
         exportSvr->run();
     });
 
-    // Print the 'heartbeat' report every 5 seconds
-
-    util::BlockPost blockPost(5000, 5001);
+    // Keep sending periodic 'heartbeats' to the Redirector service to report
+    // a configuration and a status of the current worker.
     while (true) {
-        blockPost.wait();
-        LOGS(_log, LOG_LVL_INFO, "HEARTBEAT"
+        try {
+            serviceProvider()->redirector()->add(worker);
+        } catch (exception const& ex) {
+            LOGS(_log, LOG_LVL_WARN, context << "adding worker to the redirector failed, ex: " << ex.what());
+        }
+        LOGS(_log, LOG_LVL_DEBUG, "HEARTBEAT"
             << "  worker: " << reqProcSvr->worker()
             << "  processor.state: " << reqProcSvr->processor()->state2string()
             << "  new, in-progress, finished: "
             << reqProcSvr->processor()->numNewRequests() << ", "
             << reqProcSvr->processor()->numInProgressRequests() << ", "
             << reqProcSvr->processor()->numFinishedRequests());
+        this_thread::sleep_for(
+                chrono::seconds(max(1U, config->get<unsigned int>("redirector", "heartbeat-ival-sec"))));
     }
     reqProcSvrThread.join();
     fileSvrThread.join();
@@ -183,6 +186,18 @@ int WorkerApp::runImpl() {
     exportSvrThread.join();
     
     return 0;
+}
+
+
+void WorkerApp::_verifyCreateFolders() const {
+    auto const config = serviceProvider()->config();
+    vector<string> const folders = {
+        config->get<string>("worker", "data-dir"),
+        config->get<string>("worker", "loader-tmp-dir"),
+        config->get<string>("worker", "exporter-tmp-dir"),
+        config->get<string>("worker", "http-loader-tmp-dir")
+    };
+    FileUtils::verifyFolders("WORKER", folders, !_doNotCreateMissingFolders);
 }
 
 }}} // namespace lsst::qserv::replica
