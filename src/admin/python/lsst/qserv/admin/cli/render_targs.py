@@ -25,6 +25,7 @@ values in values passed into the `entrypoint` command line."""
 
 from copy import copy
 import jinja2
+from typing import List
 
 from .utils import Targs
 
@@ -33,6 +34,30 @@ class UnresolvableTemplate(RuntimeError):
     """Exception class used by `render` when a template value can not be
     resolved."""
     pass
+
+
+def _format_targs(targs: Targs) -> str:
+    """Format targs for printing to an error message."""
+    return ", ".join([f"{k}={v}" for k, v in targs.items()])
+
+def _get_vars(val: str) -> List[str]:
+    """Get variable names from a value that contains template variables.
+
+    Parameters
+    ----------
+    val : str
+        The value from a targs entry.
+
+    Returns
+    -------
+    vars : list [ `str` ]
+        The variables (value inside braces) inside val.
+    """
+    # Jinja variable names must be surrounded by double braces and may be
+    # surrounded by whitespace inside the braces (`{{foo}}` or `{{ foo }}`).
+    # Python variable names may not contain braces. So, find all the leading
+    # braces, and use the rest of the string up to the closing braces.
+    return [i[:i.find("}}")].strip() for i in val.split("{{") if "}}" in i]
 
 
 def render_targs(targs: Targs) -> Targs:
@@ -65,17 +90,21 @@ def render_targs(targs: Targs) -> Targs:
             if not isinstance(v, str):
                 continue
             if "{{" in v:
+                if k in _get_vars(v):
+                    raise UnresolvableTemplate(
+                        "Template value may not refer to its own key, directly or as a circualr reference:" +
+                        _format_targs(targs)
+                    )
                 t = jinja2.Template(v, undefined=jinja2.StrictUndefined)
                 try:
-                    rendered[k] = t.render(rendered)
-                    changed = True
+                    r = t.render(rendered)
+                    if r != rendered[k]:
+                        rendered[k] = r
+                        changed = True
                 except jinja2.exceptions.UndefinedError as e:
                     raise UnresolvableTemplate(f"Missing template value: {str(e)}")
         if not changed:
             break
     if any([isinstance(v, str) and "{{" in v for v in rendered.values()]):
-        raise UnresolvableTemplate(
-           "Could not resolve inputs: "
-           f"{', '.join([f'{k}={targs[k]}' for k, v in rendered.items() if '{{' in v])}"
-        )
+        raise UnresolvableTemplate(f"Could not resolve inputs {targs}, they became: {rendered}")
     return rendered

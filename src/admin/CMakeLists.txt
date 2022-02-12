@@ -43,3 +43,8 @@ add_test(NAME test_qserv_log
   COMMAND python3 -m unittest tests.admin.test_qserv_log
   WORKING_DIRECTORY ${CMAKE_INSTALL_PREFIX}/python/
 )
+
+add_test(NAME test_render_targs
+  COMMAND python3 -m unittest tests.admin.test_render_targs
+  WORKING_DIRECTORY ${CMAKE_INSTALL_PREFIX}/python/
+)

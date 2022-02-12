@@ -19,9 +19,29 @@
 # You should have received a copy of the GNU General Public License
 
 
+import jinja2
 import unittest
 
-from lsst.qserv.admin.cli.render_targs import render_targs, UnresolvableTemplate
+from lsst.qserv.admin.cli.render_targs import (
+    _get_vars,
+    render_targs,
+    UnresolvableTemplate,
+)
+
+
+class GetVarsTestCase(unittest.TestCase):
+
+    def test(self):
+        self.assertEqual(_get_vars("{{foo}}"), ["foo"])
+        self.assertEqual(_get_vars("abc {{foo}}"), ["foo"])
+        self.assertEqual(_get_vars("{{foo}} abc"), ["foo"])
+        self.assertEqual(_get_vars("{{foo}} {{bar}} abc"), ["foo", "bar"])
+        self.assertEqual(_get_vars("{{foo}} abc {{bar}}"), ["foo", "bar"])
+        self.assertEqual(_get_vars("{{ foo }} abc {{ bar}} {{baz }}"), ["foo", "bar", "baz"])
+        # "foo bar" is not a legal var name and will fail to resolve to anything
+        # in the jira template, but it should work fine when creating the "vars"
+        # that are used in the template string.
+        self.assertEqual(_get_vars("{{foo bar}} abc"), ["foo bar"])
 
 
 class RenderTargsTestCase(unittest.TestCase):
@@ -37,6 +57,17 @@ class RenderTargsTestCase(unittest.TestCase):
         with self.assertRaises(UnresolvableTemplate) as r:
             render_targs({"a": "{{b}}", "b": "{{c}}", "c": "{{a}}"})
         self.assertIn("a={{b}}, b={{c}}, c={{a}}", str(r.exception))
+
+    def testCircularReference_varWithText(self):
+        """Test for failure when there is a circular reference in targs."""
+        with self.assertRaises(UnresolvableTemplate) as r:
+            render_targs({"a": "{{b}}", "b": "foo {{c}}", "c": "{{a}}"})
+        self.assertIn("a={{b}}, b=foo {{c}}, c={{a}}", str(r.exception))
+
+    def testCirularReference_twoVarsWithText(self):
+        with self.assertRaises(UnresolvableTemplate) as r:
+            render_targs({"a": "the {{b}}", "b": "only {{a}}"})
+        self.assertIn("a=the {{b}}, b=only {{a}}", str(r.exception))
 
     def testSelfReference(self):
         """Test for failure when a targ refers to itself."""
@@ -60,7 +91,7 @@ class RenderTargsTestCase(unittest.TestCase):
     def testResolves(self):
         """Verify that a dict with legal values resolves correctly."""
         self.assertEqual(
-            render_targs({"a": "{{b}}", "b": "{{c}}", "c": "d"}),
+            render_targs({"a": "{{ b }}", "b": "{{c}}", "c": "d"}),
             {"a": "d", "b": "d", "c": "d"}
         )
 
@@ -77,6 +108,13 @@ class RenderTargsTestCase(unittest.TestCase):
             render_targs({"a": True}),
             {"a": True}
         )
+
+    def testVarWithSpace(self):
+        """Verify spaces are not allowed inside of jinja template variables.
+
+        (and we don't expect it)."""
+        with self.assertRaises(jinja2.exceptions.TemplateSyntaxError):
+            render_targs({"abc def": "foo", "ghi jkl": "{{abc def}}"})
 
 
 if __name__ == "__main__":
