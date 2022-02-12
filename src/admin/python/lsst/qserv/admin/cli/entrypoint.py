@@ -624,7 +624,7 @@ def worker_repl(ctx: click.Context, **kwargs: Any) -> None:
     required=True,
 )
 @db_admin_uri_option(
-    help="The admin URI to the proxy's database, used for schema initialization. " + socket_option_help,
+    help="The admin URI to the replication controller's database, used for schema initialization. " + socket_option_help,
     required=True,
 )
 @click.option(
