@@ -151,6 +151,11 @@ commands = OrderedDict((
         "--qserv-czar-db={{qserv_czar_db}} "
         "{% for arg in extended_args %}{{arg}} {% endfor %}"
     )),
+    ("replication-redirector", CommandInfo(
+        "qserv-replica-redirector "
+        "--config={{db_uri}} "
+        "{% for arg in extended_args %}{{arg}} {% endfor %}"
+    )),
     ("smig-update", CommandInfo()),
     ("integration-test", CommandInfo()),
     ("delete-database", CommandInfo()),
@@ -628,17 +633,6 @@ def worker_repl(ctx: click.Context, **kwargs: Any) -> None:
     required=True,
 )
 @click.option(
-    "--worker",
-    "workers",
-    help=("""The settings for each worker in the system.
-The value must be in the form 'key1=val1,key2=val2,...'
-These are used when initializing a fresh qserv to configure the replication controller. They become options passed to
-qserv-replica-config, like 'qserv-replica-config ADD_WORKER --key1=val1 --key2=val2, ...'.
-If using targs, name is plural; '{click.style('workers', bold=True)}'."""
-    ),
-    multiple=True,
-)
-@click.option(
     "--xrootd-manager",
     help="The host name of the xrootd manager node.",
 )
@@ -664,7 +658,38 @@ def replication_controller(ctx: click.Context, **kwargs: Any) -> None:
     script.enter_replication_controller(
         db_uri=targs["db_uri"],
         db_admin_uri=targs["db_admin_uri"],
-        workers=targs["workers"],
+        log_cfg_file=targs["log_cfg_file"],
+        cmd=targs["cmd"],
+        run=targs["run"],
+    )
+
+
+@entrypoint.command(
+    help=f"Start as a replication redirector node.\n\n{socket_option_description}\n\n"
+         f"{extended_args_description.format(app='qserv-replica-redirector')}",
+    cls=EntrypointCommandExArgs,
+)
+@pass_context
+@db_uri_option(
+    help="The non-admin URI to the replication systems's database, used for non-smig purposes.",
+    required=True,
+)
+@db_admin_uri_option(
+    help="The admin URI to the proxy's database, used for schema initialization. " + socket_option_help,
+    required=True,
+)
+@log_cfg_file_option(default="/config-etc/log4cxx.replication.properties")
+@cmd_options()
+@targs_options()
+@run_option()
+@options_file_option()
+def replication_redirector(ctx: click.Context, **kwargs: Any) -> None:
+    """Start as a replication redirector node."""
+    targs = utils.targs(ctx)
+    targs = render_targs(targs)
+    script.enter_replication_redirector(
+        db_uri=targs["db_uri"],
+        db_admin_uri=targs["db_admin_uri"],
         log_cfg_file=targs["log_cfg_file"],
         cmd=targs["cmd"],
         run=targs["run"],

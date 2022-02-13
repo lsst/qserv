@@ -636,7 +636,6 @@ def enter_proxy(
 def enter_replication_controller(
     db_uri: str,
     db_admin_uri: str,
-    workers: List[str],
     log_cfg_file: str,
     cmd: str,
     run: bool,
@@ -652,10 +651,6 @@ def enter_replication_controller(
     db_admin_uri : `str`
         The connection string for the replication manager database for the
         administrative (typically root) user.
-    workers : `list` [`str`]
-        A list of parameters for each worker in the format "key=value,..."
-        For example:
-        `["name=worker_0,host=worker-repl-0", "name=worker_1,host=worker-repl-1"]
     log_cfg_file : `str`
         The path to the log4cxx config file.
     cmd : `str`
@@ -665,62 +660,60 @@ def enter_replication_controller(
         print the command and arguments that would have been run.
     """
 
-    def get_worker_id(qserv_worker_db: str) -> str:
-        """Fetch worker identifier from the Qserv worker database.
-
-        Parameters
-        ----------
-        qserv_worker_db : `str`
-            The connection string for the Qserv worker database for the
-            non-admin user (the user is typically "qsmaster").
-        """
-
-        # wait before the worker database will be fully initialized
-        _ = _process_uri(
-            uri=qserv_worker_db,
-            query_keys=(),
-            option=options.db_uri_option.args[0],
-            block=True,
+    _ = _process_uri(
+        uri=db_uri,
+        query_keys=(),
+        option=options.db_uri_option.args[0],
+        block=True,
+    )
+    _ = _process_uri(
+        uri=db_admin_uri,
+        query_keys=("socket",),
+        option=options.db_admin_uri_option.args[0],
+        block=True,
+    )
+    if run:
+        def set_initial_configuration() -> None:
+            """Add the initial configuration to the replication database.
+            Should only be called if the replication database has newly been smigged to version 1.
+            Note that this is an obsolete function that needs to be removed."""
+            return
+        smig_replication_controller(
+            db_admin_uri=db_admin_uri,
+            db_uri=db_uri,
+            update=False,
+            set_initial_configuration=partial(set_initial_configuration),
         )
-        _do_smig_block(worker_smig_dir, "worker", qserv_worker_db)
 
-        results = []
-        query = "SELECT id FROM qservw_worker.Id"
-        try:
-            with closing(mysql_connection(qserv_worker_db)) as cnx:
-                with closing(cnx.cursor()) as cursor:
-                    res = cursor.execute(query)
-                    results = cursor.fetchall()
-        except Exception as e:
-            _log.error(f"Failed to execute the query {query} at {qserv_worker_db}, exception: {e}")
+    env = dict(os.environ, LSST_LOG_CONFIG=log_cfg_file)
+    sys.exit(_run(args=None, cmd=cmd, env=env, run=run))
 
-        if len(results) != 1:
-            raise RuntimeError(f"Failed to get worker identifier using {qserv_worker_db}")
-        worker_id = results[0][0]
-        _log.info(f"get_worker_id: {worker_id}")
-        return worker_id
+def enter_replication_redirector(
+    db_uri: str,
+    db_admin_uri: str,
+    log_cfg_file: str,
+    cmd: str,
+    run: bool,
+) -> None:
+    """Entrypoint script for the entrypoint redirector.
 
-    def set_initial_configuration(workers: Sequence[str]) -> None:
-        """Add the initial configuration to the replication database.
-        Should only be called if the replication database has newly been smigged to version 1."""
-        workers_ = [split_kv((w,)) for w in workers]
-        for worker in workers_:
-            try:
-                qserv_worker_db = worker.pop("qserv_worker_db")
-                host = worker.pop("host")
-            except KeyError as e:
-                raise RuntimeError("The worker option must contain entries 'qserv_worker_db' and 'host'") from e
-            args = [
-                "qserv-replica-config",
-                "ADD_WORKER",
-                f"--config={db_uri}",
-                get_worker_id(qserv_worker_db),
-                host,
-            ]
-            args += [f"--{key}={val}" for key, val in worker.items()]
-            _log.debug(f"Calling {' '.join(args)}")
-            _run(args, run=run, check_returncode=True)
-        _log.info(f"Finished setting initial configuration {workers_}")
+    Parameters
+    ----------
+    db_uri : `str`
+        The connection string for the replication manager database for the
+        non-admin user (created using the `connection`), the user is typically
+        "qsreplica".
+    db_admin_uri : `str`
+        The connection string for the replication manager database for the
+        administrative (typically root) user.
+    log_cfg_file : `str`
+        The path to the log4cxx config file.
+    cmd : `str`
+        The jinja2 template for the command for this function to execute.
+    run : `bool`
+        Run the subcommand that is executed by entrypoint if `True`. Otherwise,
+        print the command and arguments that would have been run.
+    """
 
     _ = _process_uri(
         uri=db_uri,
@@ -735,21 +728,21 @@ def enter_replication_controller(
         block=True,
     )
 
-    # The replication controller depends on this folder existing and does not create it if it's missing.
-    # It should get fixed in DM-30074. For now we create it here.
-    os.makedirs("/qserv/data/ingest", exist_ok=True)
+    # N.B. When the replication controller smigs the replication database, if it is migrating from Uninitialized
+    # it will also set initial configuration values in the replication database. It sets the schema
+    # version of the replica database *after* setting the config values, which allows us to wait here
+    # on the schema version to be sure that there are values in the database.
+    _do_smig_block(replication_controller_smig_dir, "replica", db_uri)
 
     if run:
         smig_replication_controller(
             db_admin_uri=db_admin_uri,
             db_uri=db_uri,
             update=False,
-            set_initial_configuration=partial(set_initial_configuration, workers),
         )
 
     env = dict(os.environ, LSST_LOG_CONFIG=log_cfg_file)
     sys.exit(_run(args=None, cmd=cmd, env=env, run=run))
-
 
 def smig_update(czar_connection: str, worker_connections: List[str], repl_connection: str) -> None:
     """Update smig on nodes that need it.
