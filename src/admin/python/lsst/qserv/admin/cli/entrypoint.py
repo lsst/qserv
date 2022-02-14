@@ -54,7 +54,6 @@ from .options import (
     pull_option,
     reload_option,
     repl_connection_option,
-    repl_ctrl_domain_name_option,
     run_option,
     run_tests_option,
     targs_options,
@@ -396,7 +395,6 @@ def delete_database(repl_ctrl_uri: str, database: str, admin: bool) -> None:
     required=True,
 )
 @mysql_monitor_password_option()
-@repl_ctrl_domain_name_option()
 @xrootd_manager_option(required=True)
 @click.option(
     "--proxy-backend-address",
@@ -441,7 +439,6 @@ def proxy(ctx: click.Context, **kwargs: Any) -> None:
         targs=targs,
         db_uri=targs["db_uri"],
         db_admin_uri=targs["db_admin_uri"],
-        repl_ctl_dn=targs["repl_ctl_dn"],
         proxy_backend_address=targs["proxy_backend_address"],
         proxy_cfg_file=targs["proxy_cfg_file"],
         proxy_cfg_path=targs["proxy_cfg_path"],
@@ -554,7 +551,6 @@ def worker_cmsd(ctx: click.Context, **kwargs: Any) -> None:
 @vnid_config_option(required=True)
 @cmsd_manager_name_option()
 @cmsd_manager_count_option()
-@repl_ctrl_domain_name_option()
 @mysql_monitor_password_option()
 @db_qserv_user_option()
 @cmsd_worker_cfg_file_option()
@@ -573,7 +569,6 @@ def worker_xrootd(ctx: click.Context, **kwargs: Any) -> None:
         db_uri=targs["db_uri"],
         db_admin_uri=targs["db_admin_uri"],
         vnid_config=targs["vnid_config"],
-        repl_ctl_dn=targs["repl_ctl_dn"],
         mysql_monitor_password=targs["mysql_monitor_password"],
         db_qserv_user=targs["db_qserv_user"],
         cmsd_worker_cfg_file=targs["cmsd_worker_cfg_file"],

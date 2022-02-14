@@ -395,7 +395,6 @@ def enter_worker_xrootd(
     db_uri: str,
     db_admin_uri: str,
     vnid_config: str,
-    repl_ctl_dn: str,
     mysql_monitor_password: str,
     db_qserv_user: str,
     cmsd_worker_cfg_file: str,
@@ -419,8 +418,6 @@ def enter_worker_xrootd(
     vnid_config : str
         The config parameters used by the qserv cmsd to get the vnid
         from the specified source (static string, a file or worker database).
-    repl_ctl_dn : str
-        The fully qualified domain name of the replication controller.
     mysql_monitor_password : str
         The password used by applications that monitor via the worker database.
     db_qserv_user : str
@@ -465,7 +462,6 @@ def enter_worker_xrootd(
 
     save_template_cfg(targs)
     save_template_cfg({"mysqld_user_qserv": mysqld_user_qserv})
-    save_template_cfg({"replication_controller_FQDN": repl_ctl_dn})
 
     smig_worker(db_admin_uri, update=False)
 
@@ -555,7 +551,6 @@ def enter_proxy(
     targs: Targs,
     db_uri: str,
     db_admin_uri: str,
-    repl_ctl_dn: str,
     proxy_backend_address: str,
     proxy_cfg_file: str,
     proxy_cfg_path: str,
@@ -573,11 +568,9 @@ def enter_proxy(
         The non-admin URI to the proxy's database.
     db_admin_uri : str
         The admin URI to the proxy's database.
-    repl_ctl_dn : str
-        The fully qualified domain name of the replication controller.
     proxy_backend_address : `str`
         A colon-separated ip address and port number (e.g. "127.0.0.1:3306")
-        substituded into my-proxy.cnf.jinja, used by mysql proxy.
+        substituted into my-proxy.cnf.jinja, used by mysql proxy.
     proxy_cfg_file : `str`
         Path to the mysql proxy config file.
     proxy_cfg_path : `str`
@@ -608,7 +601,6 @@ def enter_proxy(
         {
             "proxy_backend_address": proxy_backend_address,
             "mysqld_user_qserv": url.username,
-            "replication_controller_FQDN": repl_ctl_dn,
             "empty_chunk_path": "/qserv/data/qserv",
             "czar_db_host": url.host or "",
             "czar_db_port": url.port or "",
