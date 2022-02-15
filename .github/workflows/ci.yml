@@ -108,13 +108,3 @@ jobs:
           color: danger
         env:
           SLACK_BOT_TOKEN: ${{ secrets.QSERV_GHA_BUILD_NOTIFICATIONS }}
-
-      # TEMP remove after verifying that the bot can post to the dm-db-team room
-      - name: Test Slack CI notification on main
-        uses: voxmedia/github-action-slack-notify-build@v1
-        if: github.ref == 'refs/heads/main' && always()
-        with:
-          channel_id: G2JPZ3GC8  # this is the channel id of the dm_db_team room
-          status: SUCCESS
-        env:
-          SLACK_BOT_TOKEN: ${{ secrets.QSERV_GHA_BUILD_NOTIFICATIONS }}
