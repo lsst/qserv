@@ -624,16 +624,17 @@ def worker_repl(ctx: click.Context, **kwargs: Any) -> None:
     required=True,
 )
 @db_admin_uri_option(
-    help="The admin URI to the proxy's database, used for schema initialization. " + socket_option_help,
+    help="The admin URI to the replication controller's database, used for schema initialization. " + socket_option_help,
     required=True,
 )
 @click.option(
     "--worker",
     "workers",
-    help=(
-        "The settings for each worker in the system. "
-        "The value must be in the form 'key1=val1,key2=val,...'"
-        f"\ntarg key name is {click.style('workers', bold=True)}"
+    help=("""The settings for each worker in the system.
+The value must be in the form 'key1=val1,key2=val2,...'
+These are used when initializing a fresh qserv to configure the replication controller. They become options passed to
+qserv-replica-config, like 'qserv-replica-config ADD_WORKER --key1=val1 --key2=val2, ...'.
+If using targs, name is plural; '{click.style('workers', bold=True)}'."""
     ),
     multiple=True,
 )
