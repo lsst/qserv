@@ -238,7 +238,6 @@ def smig_replication_controller(
     db_uri: Optional[str],
     db_admin_uri: str,
     update: bool,
-    set_initial_configuration: Optional[Callable[[], None]] = None,
 ) -> None:
     """Apply schema migration scripts to the replication controller.
 
@@ -253,10 +252,6 @@ def smig_replication_controller(
     update : bool
         False if workers may only be smigged from an `Uninitialized` state, or
         True if they maybe upgraded from a (previously initialized) version.
-    set_initial_configuration : `Callable[[], None]`
-        A function that takes no arguments and returns nothing that can be used
-        by the replication controller migration manager to initialize the
-        replication controller.
     """
     _do_smig(
         replication_controller_smig_dir,
@@ -264,11 +259,8 @@ def smig_replication_controller(
         db_admin_uri,
         update,
         mig_mgr_args=dict(
-            set_initial_configuration=set_initial_configuration,
             repl_connection=db_uri,
         )
-        if set_initial_configuration
-        else None,
     )
 
 
@@ -665,16 +657,10 @@ def enter_replication_controller(
         block=True,
     )
     if run:
-        def set_initial_configuration() -> None:
-            """Add the initial configuration to the replication database.
-            Should only be called if the replication database has newly been smigged to version 1.
-            Note that this is an obsolete function that needs to be removed."""
-            return
         smig_replication_controller(
             db_admin_uri=db_admin_uri,
             db_uri=db_uri,
             update=False,
-            set_initial_configuration=partial(set_initial_configuration),
         )
 
     env = dict(os.environ, LSST_LOG_CONFIG=log_cfg_file)
@@ -725,13 +711,6 @@ def enter_replication_redirector(
     # version of the replica database *after* setting the config values, which allows us to wait here
     # on the schema version to be sure that there are values in the database.
     _do_smig_block(replication_controller_smig_dir, "replica", db_uri)
-
-    if run:
-        smig_replication_controller(
-            db_admin_uri=db_admin_uri,
-            db_uri=db_uri,
-            update=False,
-        )
 
     env = dict(os.environ, LSST_LOG_CONFIG=log_cfg_file)
     sys.exit(_run(args=None, cmd=cmd, env=env, run=run))

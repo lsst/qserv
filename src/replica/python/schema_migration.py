@@ -53,11 +53,9 @@ class MasterReplicationMigrationManager(SchemaMigMgr):
         self,
         connection: str,
         scripts_dir: str,
-        set_initial_configuration: Optional[Callable[[], None]],
         repl_connection: Optional[str],
     ):
         self.repl_connection = repl_connection
-        self.set_initial_configuration = set_initial_configuration
         super().__init__(scripts_dir, connection)
 
     def current_version(self) -> Version:
@@ -166,8 +164,6 @@ class MasterReplicationMigrationManager(SchemaMigMgr):
             self._create_users()
         self.connection.database = database
         to_version = super().apply_migrations(migrations)
-        if current_version == Uninitialized and self.set_initial_configuration:
-            self.set_initial_configuration()
         self._set_version(to_version)
         return Version(to_version)
 
@@ -175,7 +171,6 @@ class MasterReplicationMigrationManager(SchemaMigMgr):
 def make_migration_manager(
     connection: str,
     scripts_dir: str,
-    set_initial_configuration: Optional[Callable[[], None]] = None,
     repl_connection: Optional[str] = None,
 ) -> SchemaMigMgr:
     """Factory method for master replication controller schema migration
@@ -190,15 +185,11 @@ def make_migration_manager(
     scripts_dir : `str`
         Path where migration scripts are located, this is system-level directory,
         per-module scripts are usually located in sub-directories.
-    set_initial_configuration : function, optional.
-        A function to be called to set the initial configuration of the repl database.
-        Will only be called if the schema is migrated from None to version 1. Optional.
     repl_connection : `str`
         Database connection string for the non-admin user.
     """
     return MasterReplicationMigrationManager(
         connection,
         scripts_dir,
-        set_initial_configuration,
         repl_connection,
     )
