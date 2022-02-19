@@ -28,7 +28,8 @@ information.
 
 import click
 import sys
-from typing import List, Optional, Sequence
+from typing import List, Optional
+
 
 from ..cli.options import (
     czar_connection_option,
@@ -45,8 +46,7 @@ from ..cli.options import (
     worker_connection_option,
 )
 
-from . import launch
-from . import qserv_log
+from . import images, launch
 
 from .opt import (
     bind_option,
@@ -56,8 +56,11 @@ from .opt import (
     cmake_option,
     compose_file_option,
     dashboard_port_option,
+    dh_user_ev,
+    dh_token_ev,
     do_build_image_option,
     dry_option,
+    ImageName,
     itest_container_name_option,
     itest_file_option,
     itest_volume_option,
@@ -106,7 +109,8 @@ help_order = [
     "run-dev",
     "run-build",
     "run-debug",
-    "entrypoint-help"
+    "entrypoint-help",
+    "dh-image-exists",
 ]
 
 
@@ -643,3 +647,46 @@ def entrypoint_help(
         spawned=spawned,
         dry=dry,
     )
+
+@qserv.command(help=f"""Check if an image is in dockerhub.
+
+    IMAGE is the image type, can be one of build, mariadb, or run-base.
+
+    Mostly this is useful for CI, so base image builds can be skipped for
+    base images that are already already on dockerhub.
+
+    Dockerhub credentials must be provided in the environment variables
+    QSERV_DH_USER and QSERV_DH_TOKEN.
+
+    --tag may be used to look for a specific image tag. If not provided, the
+    default tag will use "git describe" of the SHA when the related dockerfiles
+    most recently changed. Defaults for the different image types are:
+
+    build-base: {ImageName("build-base").tag}
+
+    run-base: {ImageName("run-base").tag}
+
+    mariadb: {ImageName("mariadb").tag}
+    """
+)
+@click.argument(
+    "IMAGE",
+    type=click.Choice(["build-base", "mariadb", "run-base"], case_sensitive=False)
+)
+@click.option(
+    "--tag",
+    help="The image tag to check for. "
+    "If not provided will use the default described above.",
+)
+def dh_image_exists(image: str, tag: Optional[str]) -> None:
+    imageName = ImageName(image)
+    user = dh_user_ev.val()
+    token = dh_token_ev.val()
+    if not (user and token):
+        click.echo("QSERV_DH_USER and QSERV_DH_TOKEN must be set to use this command.")
+        return
+    click.echo(images.dh_image_exists(
+        imageName.name_with_tag(tag) if tag else imageName.tagged_name,
+        user,
+        token,
+    ))

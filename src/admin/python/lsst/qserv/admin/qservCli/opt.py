@@ -38,6 +38,10 @@ from .images import get_description
 _log = logging.getLogger(__name__)
 
 
+# The location of the root directory ("qserv root") relative to this file:
+relative_qserv_root = "../../../../../../../../"
+
+
 class EV:
     """Base class for classes that use environment variables to assign values
     and defaults to options.
@@ -93,7 +97,17 @@ class EnvVal(EV):
         """Get the description of what the EnvVal is used for, for help output."""
         return self.description
 
-    def val(self, default: Optional[str] = None) -> Optional[str]:
+    def val(self) -> Optional[str]:
+        """Get the value.
+
+        Returns
+        -------
+        value : `str` or `None`
+            The value of the environment variable or None
+        """
+        return super().var_val
+
+    def val_with_default(self, default: str) -> str:
         """Get the value.
 
         Parameters
@@ -160,35 +174,109 @@ class FlagEnvVal(EV):
         return msg
 
 
-base_dockerfile = "admin/tools/docker/base/Dockerfile"
-user_dockerfile = "admin/tools/docker/build-user/Dockerfile"
-run_base_dockerfile = "admin/tools/docker/base/Dockerfile"
-mariadb_dockerfile = "admin/tools/docker/mariadb/Dockerfile"
-# The location of the root directory ("qserv root") relative to this file:
-relative_qserv_root = "../../../../../../../../"
+class ImageName:
 
-
-def tagged_image_name(image_name: str, dockerfiles: Optional[List[str]]) -> Optional[str]:
-    """Get the image name to use, tagged with a tag indicating the changelist
-    when the dockerfiles were most recently changed.
-
-    Parameters
-    ----------
-    image_name : `str`
-        The image base name (without tag).
-    dockerfiles : `List` [ `str` ] or `None`
-        If provided, the list of dockerfiles to consider when generating the
-        tag. If `None`, get the current git tag.
-
-    Returns
-    -------
-    image_name : `str`
-        The image name + tag
+    """Generate an image name and/or tag based on image type, considering:
+    * image type (see `image_types`)
+    * the last time an image type's docker file has changed
+    * if the QSERV_IMAGE_TAG environment variable is set
     """
-    qserv_root = qserv_root_ev.val()
-    if qserv_root is None:
-        return None
-    return f"{image_name}:{image_tag_ev.val(get_description(dockerfiles, qserv_root))}"
+
+    # paths to dockerfiles relative to qserv root:
+    base_dockerfile = "admin/tools/docker/base/Dockerfile"
+    user_dockerfile = "admin/tools/docker/build-user/Dockerfile"
+    run_base_dockerfile = "admin/tools/docker/base/Dockerfile"
+    mariadb_dockerfile = "admin/tools/docker/mariadb/Dockerfile"
+
+    image_types = ["qserv", "run-base", "mariadb", "build-base", "build-user"]
+
+    def __init__(self, image: str):
+        if image not in self.image_types:
+            raise RuntimeError(f"Unexpected image type: {image}")
+        self.image = image
+
+    @property
+    def tagged_name(self) -> str:
+        """Get the image name+tag.
+
+        Returns
+        -------
+        name_and_tag : `str`
+            The image name + tag
+        """
+        return self.name_with_tag(self.tag)
+
+    def name_with_tag(self, tag: str) -> str:
+        """Get the image name+tag using the provided tag.
+
+        Parameters
+        ----------
+        tag : str
+            The tag to add to the image name.
+
+        Returns
+        -------
+        name_and_tag : `str`
+            The image name + tag
+        """
+        return f"{self.name}:{tag}"
+
+    @property
+    def name(self) -> str:
+        """Get the image name.
+
+        Returns
+        -------
+        name : `str`
+            The image name
+        """
+        if self.image == "qserv":
+            return "qserv/lite-qserv"
+        if self.image == "run-base":
+            return "qserv/lite-run-base"
+        if self.image == "mariadb":
+            return "qserv/lite-mariadb"
+        if self.image == "build-base":
+            return "qserv/lite-build"
+        if self.image == "build-user":
+            return f"qserv/lite-build-{getpass.getuser()}"
+        raise RuntimeError(f"Invalid image type: {self.image}")
+
+    @property
+    def tag(self) -> str:
+        """Get the image tag.
+
+        Returns
+        -------
+        tag : `str`
+            The image tag
+        """
+        qserv_root = qserv_root_ev.val()
+        if qserv_root is None:
+            raise RuntimeError("qserv root was unexpectedly None.")
+        return image_tag_ev.val_with_default(get_description(self.dockerfiles, qserv_root))
+
+    @property
+    def dockerfiles(self) -> Optional[List[str]]:
+        """Get the path(s) (relative to qserv root) of the dockerfile(s)
+        associated with the current image type.
+
+        Returns
+        -------
+        dockerfiles : list [str] or None
+            The relative paths to the dockerfiles.
+        """
+        if self.image == "qserv":
+            return None
+        if self.image == "run-base":
+            return [self.run_base_dockerfile]
+        if self.image == "mariadb":
+            return [self.mariadb_dockerfile]
+        if self.image == "build-base":
+            return [self.base_dockerfile]
+        if self.image == "build-user":
+            return [self.base_dockerfile, self.user_dockerfile]
+        raise RuntimeError(f"Invalid image type: {self.image}")
 
 
 qserv_root_ev = FlagEnvVal(
@@ -200,27 +288,27 @@ image_tag_ev = EnvVal(env_var="QSERV_IMAGE_TAG", description="the tag of all qse
 qserv_image_ev = FlagEnvVal(
     "--qserv-image",
     "QSERV_IMAGE",
-    tagged_image_name("qserv/lite-qserv", None),
+    ImageName("qserv").tagged_name,
 )
 run_base_image_ev = FlagEnvVal(
     "--run-base-image",
     "QSERV_RUN_BASE_IMAGE",
-    tagged_image_name("qserv/lite-run-base", [run_base_dockerfile]),
+    ImageName("run-base").tagged_name,
 )
 mariadb_image_ev = FlagEnvVal(
     "--mariadb-image",
     "QSERV_MARIADB_IMAGE",
-    tagged_image_name("qserv/lite-mariadb", [mariadb_dockerfile]),
+    ImageName("mariadb").tagged_name,
 )
 build_image_ev = FlagEnvVal(
     "--build-image",
     "QSERV_BUILD_IMAGE",
-    tagged_image_name("qserv/lite-build", [base_dockerfile]),
+    ImageName("build-base").tagged_name,
 )
 user_build_image_ev = FlagEnvVal(
     "--user-build-image",
     "QSERV_USER_BUILD_IMAGE",
-    tagged_image_name(f"qserv/lite-build-{getpass.getuser()}", [base_dockerfile, user_dockerfile]),
+    ImageName("build-user").tagged_name,
 )
 # qserv root default is derived by the relative path to the qserv folder from
 # the locaiton of this file.
