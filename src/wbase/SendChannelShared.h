@@ -30,6 +30,9 @@
 #include <stdexcept>
 #include <thread>
 
+// Third-party headers
+#include <mysql/mysql.h>
+
 // Qserv headers
 #include "global/Bug.h"
 #include "wbase/SendChannel.h"
@@ -112,27 +115,13 @@ public:
     void setTaskCount(int taskCount);
     int getTaskCount() const { return _taskCount; }
 
-
-    /// Try to transmit the data in tData.
-    /// If the queue already has at least 2 TransmitData objects, addTransmit
-    /// may wait before returning. Result rows are read from the
-    /// database until there are no more rows or the buffer is
-    /// sufficiently full. addTransmit waits until that buffer has been
-    /// sent to the czar before reading more rows. Without the wait,
-    /// the worker may read in too many result rows, run out of memory,
-    /// and crash.
-    ///  @see SendChannelShared::_transmit code for further explanation.
-    bool addTransmit(bool cancelled, bool erred, bool last, bool largeResult,
-                     TransmitData::Ptr const& tData, int qId, int jId);
-
-    ///
     /// @return true if inLast is true and this is the last task to call this
     ///              with inLast == true.
     /// The calling Thread must hold 'streamMutex' before calling this.
     bool transmitTaskLast(StreamGuard sLock, bool inLast);
 
     /// Return a normalized id string.
-    std::string makeIdStr(int qId, int jId);
+    static std::string makeIdStr(int qId, int jId);
 
     /// Items to share one TransmitLock across all Task's using this
     /// SendChannelShared. If all Task's using this channel are not
@@ -154,6 +143,36 @@ public:
 
     /// @return true if this is the first time this function has been called.
     bool getFirstChannelSqlConn() { return _firstChannelSqlConn.exchange(false); }
+
+    /// Create a new _transmitData object if needed.
+    void initTransmit(Task& task, qmeta::CzarId const& czarId);
+
+    /// Set the schemaCols. All tasks using this send channel should have
+    /// the same schema.
+    void setSchemaCols(Task& task, std::vector<SchemaCol>& schemaCols);
+
+    /// Take the rows from mResult and place them in the current _transmitData object
+    bool putRowsInTransmits(MYSQL_RES* mResult, int numFields, Task& task, bool largeResult,
+                            util::MultiError& multiErr, std::atomic<bool>& cancelled, bool &readRowsOk,
+                            qmeta::CzarId const& czarId);
+
+
+    /// &&& doc and rename
+    bool qrTransmit(Task& task, wcontrol::TransmitMgr& transmitMgr,
+                    wbase::TransmitData::Ptr const& tData,
+                    bool cancelled, bool largeResult, bool lastIn,
+                    qmeta::CzarId const& czarId);
+
+    /* &&&
+    /// Fill one row in the _transmitData->_result msg from one row in MYSQL_RES*
+    /// If the message has gotten larger than the desired message size,
+    /// return false. If all rows have been read, return true.
+    /// 'rowCount' and 'tSize' are changed by this method.
+    bool fillRows(MYSQL_RES* result, int numFields, uint& rowCount, size_t& tSize);
+    */
+
+    /// @return a transmit data object indicating the errors in 'multiErr'.
+    TransmitData::Ptr buildError(qmeta::CzarId const& czarId, Task& task, util::MultiError& multiErr);
 
 private:
     /// Private constructor to protect shared pointer integrity.
@@ -185,7 +204,24 @@ private:
     /// @see SendChannel::kill
     bool _kill(StreamGuard sLock, std::string const& note);
 
+    /// @return a new TransmitData::Ptr object.
+    /// Note: tMtx must be held before calling.
+    TransmitData::Ptr _createTransmit(Task& task, qmeta::CzarId const& czarId);
 
+    /// Note: tMtx must be held before calling.
+    void _initTransmit(Task& task, qmeta::CzarId const& czarId);
+
+    /// Try to transmit the data in tData.
+    /// If the queue already has at least 2 TransmitData objects, addTransmit
+    /// may wait before returning. Result rows are read from the
+    /// database until there are no more rows or the buffer is
+    /// sufficiently full. addTransmit waits until that buffer has been
+    /// sent to the czar before reading more rows. Without the wait,
+    /// the worker may read in too many result rows, run out of memory,
+    /// and crash.
+    ///  @see SendChannelShared::_transmit code for further explanation.
+    bool _addTransmit(bool cancelled, bool erred, bool last, bool largeResult,
+                      TransmitData::Ptr const& tData, int qId, int jId);
 
     /// Encode TransmitData items from _transmitQueue and pass them to XrdSsi
     /// to be sent to the czar.
@@ -196,7 +232,7 @@ private:
     /// says that there's no more data, this stream is done.
     /// _queueMtx must be held before calling this.
     /// @see SendChannel::_transmit code for further explanation.
-    bool _transmit(bool erred, bool scanInteractive, QueryId const qid, qmeta::CzarId czarId);
+    bool _transmit(bool erred, bool scanInteractive, QueryId const qid, qmeta::CzarId czarId); //&&& rename scanInteractive to sendNow
 
     /// Send the buffer 'streamBuffer' using xrdssi.
     /// 'last' should only be true if this is the last buffer to be sent with this _sendChannel.
@@ -205,6 +241,7 @@ private:
     bool _sendBuf(std::lock_guard<std::mutex> const& streamLock,
                   xrdsvc::StreamBuffer::Ptr& streamBuf, bool last,
                   std::string const& note, int scsSeq);
+
 
     /// streamMutex is used to protect _lastCount and messages that are sent
     /// using SendChannelShared.
@@ -238,6 +275,12 @@ private:
 
     /// true until getFirstChannelSqlConn() is called.
     std::atomic<bool> _firstChannelSqlConn{true};
+
+    std::vector<SchemaCol> _schemaCols;
+    std::atomic<bool> _schemaColsSet{false};
+
+    std::shared_ptr<TransmitData> _transmitData; ///< TransmitData object
+    std::mutex _tMtx; ///< protects _transmitData  //&&& this may require using _queueMtx instead.
 };
 
 }}} // namespace lsst::qserv::wbase

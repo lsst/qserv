@@ -28,6 +28,7 @@
 #include "global/LogContext.h"
 #include "proto/ProtoHeaderWrap.h"
 #include "util/Timer.h"
+#include "wbase/Task.h"
 #include "wcontrol/TransmitMgr.h"
 
 // LSST headers
@@ -118,9 +119,10 @@ void SendChannelShared::waitTransmitLock(wcontrol::TransmitMgr& transmitMgr, boo
 }
 
 
-bool SendChannelShared::addTransmit(bool cancelled, bool erred, bool last, bool largeResult,
+bool SendChannelShared::_addTransmit(bool cancelled, bool erred, bool last, bool largeResult,
                                     TransmitData::Ptr const& tData, int qId, int jId) {
     QSERV_LOGCONTEXT_QUERY_JOB(qId, jId);
+    LOGS(_log, LOG_LVL_WARN, "&&& SendChannelShared::_addTransmit a");
     assert(tData != nullptr);
 
     // This lock may be held for a very long time.
@@ -153,11 +155,11 @@ bool SendChannelShared::addTransmit(bool cancelled, bool erred, bool last, bool 
 
     // If this is reallyLast or at least 2 items are in the queue, the transmit can happen
     if (_lastRecvd || _transmitQueue.size() >= 2) {
-        bool scanInteractive = tData->scanInteractive;
+        bool sendNow = tData->getScanInteractive();
         // If there was an error, give this high priority.
-        if (erred || cancelled) scanInteractive = true;
-        int czarId = tData->czarId;
-        return _transmit(erred, scanInteractive, largeResult, czarId);
+        if (erred || cancelled) sendNow = true;
+        int czarId = tData->getCzarId();
+        return _transmit(erred, sendNow, largeResult, czarId);
     } else {
         // Not enough information to transmit. Maybe there will be with the next call
         // to addTransmit.
@@ -168,7 +170,7 @@ bool SendChannelShared::addTransmit(bool cancelled, bool erred, bool last, bool 
 
 util::TimerHistogram scsTransmitSend("scsTransmitSend", {0.01, 0.1, 1.0, 2.0, 5.0, 10.0, 20.0});
 
-bool SendChannelShared::_transmit(bool erred, bool scanInteractive, QueryId const qid, qmeta::CzarId czarId) {
+bool SendChannelShared::_transmit(bool erred, bool scanInteractive, QueryId const qid, qmeta::CzarId czarId) { //&&& rename scanInteractive to sendNow
     string idStr = "QID?";
 
     // Result data is transmitted in messages containing data and headers.
@@ -196,15 +198,27 @@ bool SendChannelShared::_transmit(bool erred, bool scanInteractive, QueryId cons
         _transmitQueue.pop();
         if (thisTransmit == nullptr) {
             throw Bug("_transmitLoop() _transmitQueue had nullptr!");
-        } else if (thisTransmit->result == nullptr) {
-            throw Bug("_transmitLoop() had nullptr result!");
         }
+        //&&&if (thisTransmit->result == nullptr) {
+        //&&&    throw Bug("_transmitLoop() had nullptr result!");
+        //&&&}
 
-        idStr = makeIdStr(thisTransmit->result->queryid(), thisTransmit->result->jobid());
         auto sz = _transmitQueue.size();
         // Is this really the last message for this SharedSendChannel?
         bool reallyLast = (_lastRecvd && sz == 0);
 
+
+        TransmitData::Ptr nextTr;
+        if (sz != 0) {
+            nextTr = _transmitQueue.front();
+        }
+        uint32_t seq = _sendChannel->getSeq();
+        int scsSeq = ++_scsSeq;
+        string seqStr = string("seq=" + to_string(seq) + " scsseq=" + to_string(scsSeq)
+                             + " scsId=" + to_string(_scsId));
+        thisTransmit->attachNextHeader(nextTr, reallyLast, seq, scsSeq);
+        /* &&&
+        idStr = makeIdStr(thisTransmit->result->queryid(), thisTransmit->result->jobid());
         // Append the header for the next message to  thisTransmit->dataMsg.
         proto::ProtoHeader* nextPHdr;
         if (sz == 0) {
@@ -225,6 +239,7 @@ bool SendChannelShared::_transmit(bool erred, bool scanInteractive, QueryId cons
         string nextHeaderString;
         nextPHdr->SerializeToString(&nextHeaderString);
         thisTransmit->dataMsg += proto::ProtoHeaderWrap::wrap(nextHeaderString);
+        &&& */
 
         // The first message needs to put its header data in metadata as there's
         // no previous message it could attach its header to.
@@ -233,12 +248,15 @@ bool SendChannelShared::_transmit(bool erred, bool scanInteractive, QueryId cons
             if (_firstTransmit.exchange(false)) {
                 // Put the header for the first message in metadata
                 // _metaDataBuf must remain valid until Finished() is called.
+                /* &&&
                 proto::ProtoHeader* thisPHdr = thisTransmit->header;
                 thisPHdr->set_seq(seq);
                 thisPHdr->set_scsseq(scsSeq - 1); // should always be 0
                 string thisHeaderString;
                 thisPHdr->SerializeToString(&thisHeaderString);
                 _metadataBuf = proto::ProtoHeaderWrap::wrap(thisHeaderString);
+                */
+                _metadataBuf = thisTransmit->getHeaderString(seq, scsSeq - 1);
                 bool metaSet = _sendChannel->setMetadata(_metadataBuf.data(), _metadataBuf.size());
                 if (!metaSet) {
                     LOGS(_log, LOG_LVL_ERROR, "Failed to setMeta " << idStr);
@@ -248,7 +266,8 @@ bool SendChannelShared::_transmit(bool erred, bool scanInteractive, QueryId cons
             }
 
             // Put the data for the transmit in a StreamBuffer and send it.
-            auto streamBuf = xrdsvc::StreamBuffer::createWithMove(thisTransmit->dataMsg);
+            //&&& auto streamBuf = xrdsvc::StreamBuffer::createWithMove(thisTransmit->dataMsg);
+            auto streamBuf = thisTransmit->getStreamBuffer();
             {
                 util::Timer sendTimer;
                 sendTimer.start();
@@ -290,6 +309,142 @@ bool SendChannelShared::_sendBuf(lock_guard<mutex> const& streamLock,
         LOGS(_log, LOG_LVL_DEBUG, logMsg);
     }
     return sent;
+}
+
+
+TransmitData::Ptr SendChannelShared::buildError(qmeta::CzarId const& czarId, Task& task,
+                                                util::MultiError& multiErr) {
+    // Ignore the existing _transmitData object as it is irrelevant now
+    // that there's an error. Just create a new one to send the error.
+    //&&&TransmitData::Ptr tData = wbase::TransmitData::createTransmitData(czarId);
+    //&&&tData->initResult(task, schemaCols); //&&&tData->_result = _initResult(); //&&&
+
+    TransmitData::Ptr tData = _createTransmit(task, czarId);
+    bool largeResult = false;
+    tData->buildDataMsg(task, largeResult, multiErr);
+    return tData;
+    /* &&&
+    bool res = _transmit(true); //&&& _transmit is QueryRunnerr::_transmit(bool)
+    if (!res) {
+        LOGS(_log, LOG_LVL_ERROR, "SendChannelShared::transmitError Could not report error to czar.");
+    }
+    return res;
+    */
+}
+
+
+void SendChannelShared::setSchemaCols(Task& task, std::vector<SchemaCol>& schemaCols) {
+    // _schemaCols should be identical for all tasks in this send channel.
+    if (_schemaColsSet.exchange(true) == false) {
+        _schemaCols = schemaCols;
+        // If this is the first time _schemaCols has been set, it is missing
+        // from the existing _transmitData object
+        lock_guard<mutex> lock(_tMtx);
+        if (_transmitData != nullptr) {
+            _transmitData->addSchemaCols(_schemaCols);
+        }
+    }
+}
+
+
+void SendChannelShared::initTransmit(Task& task, qmeta::CzarId const& czarId) {
+    //&&& czarID should be the same for all of these, we should be able to store a copy in SendChannelShared at creation.
+    lock_guard<mutex> lock(_tMtx);
+    _initTransmit(task, czarId);
+}
+
+
+void SendChannelShared::_initTransmit(Task& task, qmeta::CzarId const& czarId) {
+    //&&& czarID should be the same for all of these, we should be able to store a copy in SendChannelShared at creation.
+    LOGS(_log, LOG_LVL_WARN, "&&& SendChannelShared::_initTransmit a");
+    if (_transmitData == nullptr) {
+        _transmitData = _createTransmit(task, czarId);
+    }
+}
+
+
+TransmitData::Ptr SendChannelShared::_createTransmit(Task& task, qmeta::CzarId const& czarId) {
+    auto tData = wbase::TransmitData::createTransmitData(czarId);
+    tData->initResult(task, _schemaCols);;
+    return tData;
+}
+
+
+bool SendChannelShared::qrTransmit(Task& task, wcontrol::TransmitMgr& transmitMgr,
+                                   wbase::TransmitData::Ptr const& tData,
+                                   bool cancelled, bool largeResult, bool lastIn,
+                                   qmeta::CzarId const& czarId) {
+    LOGS(_log, LOG_LVL_WARN, "&&& SendChannelShared::qrTransmit a");
+    auto qId = task.getQueryId();
+    int jId = task.getJobId();
+    bool scanInteractive = task.getScanInteractive();
+
+    QSERV_LOGCONTEXT_QUERY_JOB(qId, jId);
+    LOGS(_log, LOG_LVL_DEBUG, "_transmit lastIn=" << lastIn);
+    if (isDead()) {
+        LOGS(_log, LOG_LVL_INFO, "aborting transmit since sendChannel is dead.");
+        return false;
+    }
+
+    waitTransmitLock(transmitMgr, scanInteractive, qId);
+    lock_guard<mutex> lock(_tMtx);
+    // Have all rows already been read, or an error?
+    //&&&bool erred = tData->result->has_errormsg();
+    bool erred = tData->hasErrormsg();
+
+    //&&& tData->scanInteractive = scanInteractive;
+    //&&& tData->erred = erred;
+    //&&& tData->largeResult = largeResult;
+    tData->setFinalValues(scanInteractive, erred, largeResult);
+
+    //&&&bool success = _task->getSendChannel()->addTransmit(_cancelled, erred, lastIn, _largeResult, _transmitData, qId, jId);
+    bool success = _addTransmit(cancelled, erred, lastIn, largeResult, _transmitData, qId, jId);
+
+    // Now that _transmitData is on the queue, reset and initialize a new one.
+    _transmitData.reset();
+    _initTransmit(task, czarId); // reset _transmitData  //&&& reset initTransmit
+
+    // Large results get priority, but new large results should not get priority until
+    // after they have started transmitting.
+    //&&&_largeResult = true;
+    return success;
+}
+
+
+bool SendChannelShared::putRowsInTransmits(MYSQL_RES* mResult, int numFields, Task& task, bool largeResult,
+                                           util::MultiError& multiErr, std::atomic<bool>& cancelled,bool &readRowsOk,
+                                           qmeta::CzarId const& czarId) {
+    LOGS(_log, LOG_LVL_WARN, "&&& SendChannelShared::putRowsInTransmits a");
+    lock_guard<mutex> lock(_tMtx);
+    bool erred = false;
+    size_t tSize = 0;
+    // If fillRows returns false, _transmitData is full and needs to be transmitted
+    // fillRows returns true when there are no more rows in mResult to add.
+    // tSize is set by fillRows.
+    while (!_transmitData->fillRows(mResult, numFields, tSize)) {
+        LOGS(_log, LOG_LVL_WARN, "&&& SendChannelShared::putRowsInTransmits b");
+        if (tSize > proto::ProtoHeaderWrap::PROTOBUFFER_HARD_LIMIT) {
+            LOGS_ERROR("Message single row too large to send using protobuffer");
+            erred = true;
+            break;
+        }
+        LOGS(_log, LOG_LVL_TRACE, "Splitting message size=" << tSize);
+        //_buildDataMsg(rowCount, tSize);
+        _transmitData->buildDataMsg(task, largeResult, multiErr);
+        // If readRowsOk==false, empty out the rows but don't bother trying to transmit.
+        // This needs to be done or mariadb won't properly release the resources.
+        //&&&if (readRowsOk && !_transmit(false)) {
+        bool lastInQuery = false;
+        if (readRowsOk && !qrTransmit(task, *_transmitMgr, _transmitData,
+                                      cancelled, largeResult, lastInQuery, czarId)) {
+            LOGS(_log, LOG_LVL_ERROR, "Could not transmit intermediate results.");
+            readRowsOk = false; // Empty the fillRows data and then return false.
+        }
+        //&&&// Now that _transmitData is on the queue, reset and initialize a new one.
+        //&&&_transmitData.reset();
+        //&&&initTransmit(task, czarId); // reset _transmitData  //&&& reset initTransmit
+    }
+    return erred;
 }
 
 
