@@ -42,7 +42,11 @@ namespace {
 string const description =
     "This is a Controller application which launches a single job Controller in order"
     " to harvest the 'secondary index' data from the 'director' tables of a select"
-    " database and aggregate these data at a specified destination.";
+    " database and aggregate these data at a specified destination."
+    " Maximum timeout (seconds) to wait before the index data extraction requests sent"
+    " to workers will finish should be set via option --controller--request-timeout-sec."
+    " Setting this timeout to some reasonably low number would prevent the application from"
+    " hanging for a substantial duration of time in case if some workers were down.";
 
 bool const injectDatabaseOptions = true;
 bool const boostProtobufVersionCheck = true;
@@ -56,19 +60,17 @@ namespace qserv {
 namespace replica {
 
 IndexApp::Ptr IndexApp::create(int argc, char* argv[]) {
-    return Ptr(
-        new IndexApp(argc, argv)
-    );
+    return Ptr(new IndexApp(argc, argv));
 }
 
 
 IndexApp::IndexApp(int argc, char* argv[])
     :   Application(
             argc, argv,
-            description,
-            injectDatabaseOptions,
-            boostProtobufVersionCheck,
-            enableServiceProvider
+            ::description,
+            ::injectDatabaseOptions,
+            ::boostProtobufVersionCheck,
+            ::enableServiceProvider
         ) {
 
     // Configure the command line parser
@@ -114,13 +116,6 @@ IndexApp::IndexApp(int argc, char* argv[])
         "qserv-czar-db",
         "A connection URL to the MySQL server of the Qserv master database.",
         _qservCzarDbUrl
-    ).option(
-        "worker-response-timeout",
-        "Maximum timeout (seconds) to wait before the index data extraction requests sent"
-        " to workers will finish. Setting this timeout to some reasonably low number would"
-        " prevent the application from hanging for a substantial duration of time (which"
-        " depends on the default Configuration) in case if some workers were down.",
-        _timeoutSec
     ).flag(
         "detailed-report",
         "The flag triggering detailed report on the harvested 'secondary index' data."
@@ -148,11 +143,6 @@ int IndexApp::runImpl() {
         _qservCzarDbUrl = "******";
     }
     auto const controller = Controller::create(serviceProvider());
-
-    // Limit execution timeout for requests if such limit was provided
-    if (_timeoutSec != 0) {
-        serviceProvider()->config()->set<unsigned int>("controller", "request-timeout-sec", _timeoutSec);
-    }
 
     string const noParentJobId;
     auto const job = IndexJob::create(

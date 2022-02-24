@@ -61,14 +61,10 @@ public:
      * @param serviceProvider For configuration, etc. services.
      * @param workerName The name of a worker this service is acting upon (used for
      *   checking consistency of the protocol).
-     * @param authKey An authorization key for the catalog ingest operation.
-     * @param adminAuthKey  An administrator-level authorization key.
      * @return A pointer to the created object.
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
-                      std::string const& workerName,
-                      std::string const& authKey,
-                      std::string const& adminAuthKey);
+                      std::string const& workerName);
 
     IngestHttpSvc() = delete;
     IngestHttpSvc(IngestHttpSvc const&) = delete;
@@ -86,9 +82,7 @@ protected:
 private:
     /// @see IngestHttpSvc::create()
     IngestHttpSvc(ServiceProvider::Ptr const& serviceProvider,
-                  std::string const& workerName,
-                  std::string const& authKey,
-                  std::string const& adminAuthKey);
+                  std::string const& workerName);
 
     // Input parameters
     std::string const _workerName;

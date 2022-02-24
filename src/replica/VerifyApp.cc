@@ -53,19 +53,17 @@ namespace qserv {
 namespace replica {
 
 VerifyApp::Ptr VerifyApp::create(int argc, char* argv[]) {
-    return Ptr(
-        new VerifyApp(argc, argv)
-    );
+    return Ptr(new VerifyApp(argc, argv));
 }
 
 
 VerifyApp::VerifyApp(int argc, char* argv[])
     :   Application(
             argc, argv,
-            description,
-            injectDatabaseOptions,
-            boostProtobufVersionCheck,
-            enableServiceProvider
+            ::description,
+            ::injectDatabaseOptions,
+            ::boostProtobufVersionCheck,
+            ::enableServiceProvider
         ) {
 
     // Configure the command line parser
@@ -74,13 +72,12 @@ VerifyApp::VerifyApp(int argc, char* argv[])
         "max-replicas",
         "The maximum number of replicas to be processed simultaneously.",
         _maxReplicas
-    );
-
-    parser().flag(
+    ).flag(
         "compute-check-sum",
         "Also compute and store in the database check/control sums for"
         " all files of the found replica.",
-        _computeCheckSum);
+        _computeCheckSum
+    );
 }
 
 

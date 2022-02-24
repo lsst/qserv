@@ -9,37 +9,10 @@ CREATE TABLE IF NOT EXISTS `config_worker` (
   `is_read_only`    BOOLEAN            NOT NULL ,     -- a subclass of 'is_enabled' which restricts use of
                                                       -- the worker for reading replicas. No new replicas can't be
                                                       -- placed onto this class of workers.
-  `svc_host`        VARCHAR(255)       NOT NULL ,     -- the host name on which the worker server runs
-  `svc_port`        SMALLINT UNSIGNED  DEFAULT NULL , -- override for the global default
-  `fs_host`         VARCHAR(255)       DEFAULT NULL,  -- the host name on which the built-in FileServer runs
-  `fs_port`         SMALLINT UNSIGNED  DEFAULT NULL , -- override for the global default
-  `data_dir`        VARCHAR(255)       DEFAULT NULL , -- a file system path to the databases
-
-  -- Ingest service
-  `loader_host`     VARCHAR(255)       DEFAULT NULL,  -- the host name on which the worker's ingest server runs
-  `loader_port`     SMALLINT UNSIGNED  DEFAULT NULL , -- override for the global default
-  `loader_tmp_dir`  VARCHAR(255)       DEFAULT NULL , -- a file system path to the temporary folder
-
-  -- Data exporting service
-  `exporter_host`     VARCHAR(255)        DEFAULT NULL,   -- the host name on which the worker's data exporting server runs
-  `exporter_port`     SMALLINT UNSIGNED   DEFAULT NULL ,  -- override for the global default
-  `exporter_tmp_dir`  VARCHAR(255)        DEFAULT NULL ,  -- a file system path to the temporary folder
-
-  -- HTTP-based ingest service
-  `http_loader_host`    VARCHAR(255)       DEFAULT NULL,     -- the host name on which the worker's HTTP-based ingest server runs
-  `http_loader_port`    SMALLINT UNSIGNED  DEFAULT NULL ,    -- override for the global default
-  `http_loader_tmp_dir` VARCHAR(255)       DEFAULT NULL ,    -- a file system path to the temporary folder
-
-  PRIMARY KEY (`name`) ,
-  UNIQUE  KEY (`svc_host`, `svc_port`) ,
-  UNIQUE  KEY (`fs_host`,  `fs_port`) ,
-  UNIQUE  KEY (`loader_host`, `loader_port`),
-  UNIQUE  KEY (`exporter_host`, `exporter_port`),
-  UNIQUE  KEY (`http_loader_host`, `http_loader_port`)
+  PRIMARY KEY (`name`)
 )
 ENGINE = InnoDB
-COMMENT = 'Worker-specific configuration parameters and overrides
- of the corresponidng default values if needed';
+COMMENT = 'Worker-specific configuration parameters';
 
 
 CREATE TABLE IF NOT EXISTS `config_worker_ext` (
@@ -466,4 +439,4 @@ ENGINE = InnoDB
 COMMENT = 'Metadata about database as a whole, key-value pairs' ;
 
 -- Add record for schema version, migration script expects this record to exist
-INSERT INTO `QMetadata` (`metakey`, `value`) VALUES ('version', '7');
+INSERT INTO `QMetadata` (`metakey`, `value`) VALUES ('version', '8');

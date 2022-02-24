@@ -54,19 +54,17 @@ namespace qserv {
 namespace replica {
 
 QservWorkerApp::Ptr QservWorkerApp::create(int argc, char* argv[]) {
-    return Ptr(
-        new QservWorkerApp(argc, argv)
-    );
+    return Ptr(new QservWorkerApp(argc, argv));
 }
 
 
 QservWorkerApp::QservWorkerApp(int argc, char* argv[])
     :   Application(
             argc, argv,
-            description,
-            injectDatabaseOptions,
-            boostProtobufVersionCheck,
-            enableServiceProvider
+            ::description,
+            ::injectDatabaseOptions,
+            ::boostProtobufVersionCheck,
+            ::enableServiceProvider
         ) {
 
     // Configure the command line parser
@@ -74,169 +72,129 @@ QservWorkerApp::QservWorkerApp(int argc, char* argv[])
     parser().commands(
         "command",
         {"ADD_REPLICA", "REMOVE_REPLICA", "GET_REPLICAS", "SET_REPLICAS"},
-        _command);
-
-    // Parameters, options and flags shared by all commands
+        _command
+    );
 
     parser().required(
         "worker",
         "The name of a Qserv worker.",
-        _workerName);
-
-    parser().flag(
+        _workerName
+    ).flag(
         "force",
         "Force the worker to proceed with requested"
         " replica removal regardless of the replica usage status.",
-        _forceRemove);
-
-    parser().option(
+        _forceRemove
+    ).option(
         "tables-page-size",
         "The number of rows in the table of replicas (0 means no pages).",
-        _pageSize);
-
-    parser().flag(
+        _pageSize
+    ).flag(
         "tables-vertical-separator",
         "Print vertical separator when displaying tabular data in reports.",
-        _verticalSeparator);
+        _verticalSeparator
+    );
 
-    // Command-specific parameters, options and flags
-
-    auto&& addCmd = parser().command("ADD_REPLICA");
-
-    addCmd.description(
-        "Add a single replica of a chunk to the worker." );
-
-    addCmd.required(
+    parser().command(
+        "ADD_REPLICA"
+    ).description(
+        "Add a single replica of a chunk to the worker."
+    ).required(
         "database",
         "The name of a database.",
-        _databaseName);
-
-    addCmd.required(
+        _databaseName
+    ).required(
         "chunk",
         "The number of a chunk.",
-        _chunkNumber);
+        _chunkNumber
+    );
 
-    // Command-specific parameters, options and flags
-
-    auto&& removeCmd = parser().command("REMOVE_REPLICA");
-
-    removeCmd.description(
-        "Remove a single replica of a chunk from the worker.");
-
-    removeCmd.required(
+    parser().command(
+        "REMOVE_REPLICA"
+    ).description(
+        "Remove a single replica of a chunk from the worker."
+    ).required(
         "database",
         "The name of a database.",
-        _databaseName);
-
-    removeCmd.required(
+        _databaseName
+    ).required(
         "chunk",
         "The number of a chunk.",
-        _chunkNumber);
+        _chunkNumber
+    );
 
-    // Command-specific parameters, options and flags
-
-    auto&& getCmd = parser().command("GET_REPLICAS");
-
-    getCmd.description(
+    parser().command(
+        "GET_REPLICAS"
+    ).description(
         "Obtain a set of replicas which are known to the Qserv worker."
-        " Then print the replica info.");
-
-    getCmd.required(
+        " Then print the replica info."
+    ).required(
         "database-family",
         "The name of a database family.",
-        _familyName);
-
-    getCmd.flag(
+        _familyName
+    ).flag(
         "in-use-only",
         "Limit a scope of operations to a subset of chunks which are in use.",
-        _inUseOnly);
+        _inUseOnly
+    );
 
-    // Command-specific parameters, options and flags
-
-    auto&& setCmd = parser().command("SET_REPLICAS");
-
-    setCmd.description(
+    parser().command(
+        "SET_REPLICAS"
+    ).description(
         "Tell the Qserv worker to set a new collection of replicas instead of what"
         " it may had at a time when this operation was initiated. The previous set"
-        " of the replica info will be printed upon a completion of the operation.");
-
-    setCmd.required(
+        " of the replica info will be printed upon a completion of the operation."
+    ).required(
         "filename",
         "The name of of a file with space-separated pairs of <database>:<chunk>.",
-        _inFileName);
+        _inFileName
+    );
 }
 
 
 int QservWorkerApp::runImpl() {
 
+    string const noParentJob;
+    QservMgtRequest::Ptr request;
+
     if (_command == "GET_REPLICAS") {
-
-        auto const request = serviceProvider()->qservMgtServices()->getReplicas(
-            _familyName,
-            _workerName,
-            _inUseOnly,
-            string(),
-            [this] (GetReplicasQservMgtRequest::Ptr const& request) {
-                cout << "state: " << request->state2string() << endl;
-                if (request->extendedState() == QservMgtRequest::SUCCESS) {
-                    this->_dump(request->replicas());
-                }
-            }
-        );
-        request->wait();
-
+        request = serviceProvider()->qservMgtServices()->getReplicas(
+                _familyName, _workerName, _inUseOnly, noParentJob,
+                [this] (GetReplicasQservMgtRequest::Ptr const& request) {
+                    cout << "state: " << request->state2string() << endl;
+                    if (request->extendedState() == QservMgtRequest::SUCCESS) {
+                        this->_dump(request->replicas());
+                    }
+                });
     } else if (_command == "SET_REPLICAS") {
-
         QservReplicaCollection replicas;
         vector<string> databases;
         _readInFile(replicas, databases);
-
         cout << "replicas read: " << replicas.size() << endl;
-
-        auto const request = serviceProvider()->qservMgtServices()->setReplicas(
-            _workerName,
-            replicas,
-            databases,
-            _forceRemove,
-            string(),
-            [this] (SetReplicasQservMgtRequest::Ptr const& request) {
-                cout << "state: " << request->state2string() << endl;
-                if (request->extendedState() == QservMgtRequest::SUCCESS) {
-                    this->_dump(request->replicas());
-                }
-            }
-        );
-        request->wait();
-
+        request = serviceProvider()->qservMgtServices()->setReplicas(
+                _workerName, replicas, databases, _forceRemove, noParentJob,
+                [this] (SetReplicasQservMgtRequest::Ptr const& request) {
+                    cout << "state: " << request->state2string() << endl;
+                    if (request->extendedState() == QservMgtRequest::SUCCESS) {
+                        this->_dump(request->replicas());
+                    }
+                });
     } else if (_command == "ADD_REPLICA") {
-
-        auto const request = serviceProvider()->qservMgtServices()->addReplica(
-            _chunkNumber,
-            {_databaseName},
-            _workerName,
-            [] (AddReplicaQservMgtRequest::Ptr const& request) {
-                cout << "state: " << request->state2string() << endl;
-            }
-        );
-        request->wait();
-
+        request = serviceProvider()->qservMgtServices()->addReplica(
+                _chunkNumber, {_databaseName}, _workerName,
+                [] (AddReplicaQservMgtRequest::Ptr const& request) {
+                    cout << "state: " << request->state2string() << endl;
+                });
     } else if (_command == "REMOVE_REPLICA") {
-
-        auto const request = serviceProvider()->qservMgtServices()->removeReplica(
-            _chunkNumber,
-            {_databaseName},
-            _workerName,
-            _forceRemove,
-            [] (RemoveReplicaQservMgtRequest::Ptr const& request) {
-                cout << "state: " << request->state2string() << endl;
-            }
-        );
-        request->wait();
-
+        request = serviceProvider()->qservMgtServices()->removeReplica(
+                _chunkNumber, {_databaseName}, _workerName, _forceRemove,
+                [] (RemoveReplicaQservMgtRequest::Ptr const& request) {
+                    cout << "state: " << request->state2string() << endl;
+                });
     } else {
         throw logic_error(
                 "QservWorkerApp::" + string(__func__) + "  unsupported command: " + _command);
     }
+    request->wait();
     return 0;
 }
 
@@ -259,7 +217,7 @@ void QservWorkerApp::_readInFile(QservReplicaCollection& replicas,
     string databaseAndChunk;
     while (infile >> databaseAndChunk) {
 
-        if (databaseAndChunk.empty()) { continue; }
+        if (databaseAndChunk.empty()) continue;
 
         string::size_type const pos = databaseAndChunk.rfind(':');
         if ((pos == string::npos) or

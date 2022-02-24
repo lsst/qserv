@@ -34,9 +34,8 @@
 
 // Qserv headers
 #include "replica/Configuration.h"
-#include "replica/IngestConfigTypes.h"
+#include "replica/HttpClient.h"
 #include "replica/HttpExceptions.h"
-#include "replica/HttpFileReader.h"
 
 using namespace std;
 namespace fs = boost::filesystem;
@@ -211,7 +210,7 @@ IngestRequest::IngestRequest(
     _contrib.table = table;
     _contrib.chunk = chunk;
     _contrib.isOverlap = isOverlap;
-    _contrib.worker = workerInfo().name;
+    _contrib.worker = workerName;
     _contrib.url = url;
     _contrib.async = async;
     _contrib.dialectInput = dialectInput;
@@ -505,7 +504,7 @@ void IngestRequest::_readRemoteFile() {
 
     // The configuration may be updated later if certificate bundles were loaded
     // by a client into the config store.
-    auto fileConfig = _fileConfig();
+    auto clientConfig = _clientConfig();
 
     // Check if values of the certificate bundles were loaded into the configuration
     // store for the catalog. If so then write the certificates into temporary files
@@ -515,22 +514,24 @@ void IngestRequest::_readRemoteFile() {
     // exceptions.
 
     ::TemporaryCertFileRAII caInfoFile;
-    if (!fileConfig.caInfoVal.empty()) {
+    if (!clientConfig.caInfoVal.empty()) {
         // Use this file instead of the existing path.
-        fileConfig.caInfo = caInfoFile.write(
-                workerInfo().httpLoaderTmpDir, _contrib.database, fileConfig.caInfoVal);
+        clientConfig.caInfo = caInfoFile.write(
+                serviceProvider()->config()->get<string>("worker", "http-loader-tmp-dir"),
+                _contrib.database, clientConfig.caInfoVal);
     }
     ::TemporaryCertFileRAII proxyCaInfoFile;
-    if (!fileConfig.proxyCaInfoVal.empty()) {
+    if (!clientConfig.proxyCaInfoVal.empty()) {
         // Use this file instead of the existing path.
-        fileConfig.proxyCaInfo = proxyCaInfoFile.write(
-                workerInfo().httpLoaderTmpDir, _contrib.database, fileConfig.proxyCaInfoVal);
+        clientConfig.proxyCaInfo = proxyCaInfoFile.write(
+                serviceProvider()->config()->get<string>("worker", "http-loader-tmp-dir"),
+                _contrib.database, clientConfig.proxyCaInfoVal);
     }
 
     // Read and parse data from the data source
     bool const flush = true;
-    HttpFileReader reader(_contrib.httpMethod, _contrib.url, _contrib.httpData,
-                          _contrib.httpHeaders, fileConfig);
+    HttpClient reader(_contrib.httpMethod, _contrib.url, _contrib.httpData,
+                      _contrib.httpHeaders, clientConfig);
     reader.read([&](char const* record, size_t size) {
         _parser->parse(record, size, !flush, reportRow);
         _contrib.numBytes += size;
@@ -541,12 +542,12 @@ void IngestRequest::_readRemoteFile() {
 }
 
 
-HttpFileReaderConfig IngestRequest::_fileConfig() const {
+HttpClientConfig IngestRequest::_clientConfig() const {
     auto const databaseServices = serviceProvider()->databaseServices();
     auto const getString = [&](string& val, string const& key) -> bool {
         try {
             val = databaseServices->ingestParam(
-                    _contrib.database, HttpFileReaderConfig::category, key).value;
+                    _contrib.database, HttpClientConfig::category, key).value;
         } catch (DatabaseServicesNotFound const&) {
             return false;
         }
@@ -560,22 +561,22 @@ HttpFileReaderConfig IngestRequest::_fileConfig() const {
         string str;
         if (getString(str, key)) val = stol(str);
     };
-    HttpFileReaderConfig fileConfig;
-    getBool(  fileConfig.sslVerifyHost,      HttpFileReaderConfig::sslVerifyHostKey);
-    getBool(  fileConfig.sslVerifyPeer,      HttpFileReaderConfig::sslVerifyPeerKey);
-    getString(fileConfig.caPath,             HttpFileReaderConfig::caPathKey);
-    getString(fileConfig.caInfo,             HttpFileReaderConfig::caInfoKey);
-    getString(fileConfig.caInfoVal,          HttpFileReaderConfig::caInfoValKey);
-    getBool(  fileConfig.proxySslVerifyHost, HttpFileReaderConfig::proxySslVerifyHostKey);
-    getBool(  fileConfig.proxySslVerifyPeer, HttpFileReaderConfig::proxySslVerifyPeerKey);
-    getString(fileConfig.proxyCaPath,        HttpFileReaderConfig::proxyCaPathKey);
-    getString(fileConfig.proxyCaInfo,        HttpFileReaderConfig::proxyCaInfoKey);
-    getString(fileConfig.proxyCaInfoVal,     HttpFileReaderConfig::proxyCaInfoValKey);
-    getLong(  fileConfig.connectTimeout,     HttpFileReaderConfig::connectTimeoutKey);
-    getLong(  fileConfig.timeout,            HttpFileReaderConfig::timeoutKey);
-    getLong(  fileConfig.lowSpeedLimit,      HttpFileReaderConfig::lowSpeedLimitKey);
-    getLong(  fileConfig.lowSpeedTime,       HttpFileReaderConfig::lowSpeedTimeKey);
-    return fileConfig;
+    HttpClientConfig clientConfig;
+    getBool(  clientConfig.sslVerifyHost,      HttpClientConfig::sslVerifyHostKey);
+    getBool(  clientConfig.sslVerifyPeer,      HttpClientConfig::sslVerifyPeerKey);
+    getString(clientConfig.caPath,             HttpClientConfig::caPathKey);
+    getString(clientConfig.caInfo,             HttpClientConfig::caInfoKey);
+    getString(clientConfig.caInfoVal,          HttpClientConfig::caInfoValKey);
+    getBool(  clientConfig.proxySslVerifyHost, HttpClientConfig::proxySslVerifyHostKey);
+    getBool(  clientConfig.proxySslVerifyPeer, HttpClientConfig::proxySslVerifyPeerKey);
+    getString(clientConfig.proxyCaPath,        HttpClientConfig::proxyCaPathKey);
+    getString(clientConfig.proxyCaInfo,        HttpClientConfig::proxyCaInfoKey);
+    getString(clientConfig.proxyCaInfoVal,     HttpClientConfig::proxyCaInfoValKey);
+    getLong(  clientConfig.connectTimeout,     HttpClientConfig::connectTimeoutKey);
+    getLong(  clientConfig.timeout,            HttpClientConfig::timeoutKey);
+    getLong(  clientConfig.lowSpeedLimit,      HttpClientConfig::lowSpeedLimitKey);
+    getLong(  clientConfig.lowSpeedTime,       HttpClientConfig::lowSpeedTimeKey);
+    return clientConfig;
 }
 
 }}} // namespace lsst::qserv::replica

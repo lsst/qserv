@@ -129,14 +129,13 @@ bool WorkerIndexRequest::execute() {
     try {
         auto const config = serviceProvider()->config();
         auto const databaseInfo = config->databaseInfo(_request.database());    
-        auto const workerInfo = config->workerInfo(worker());    
 
         // Create a folder (if it still doesn't exist) where the temporary files will be placed
         // NOTE: this folder is supposed to be seen by the worker's MySQL/MariaDB server, and it
         // must be write-enabled for an account under which the service is run.
 
         boost::system::error_code ec;
-        fs::path const tmpDirPath = fs::path(workerInfo.loaderTmpDir)  / databaseInfo.name;
+        fs::path const tmpDirPath = fs::path(config->get<string>("worker", "loader-tmp-dir")) / databaseInfo.name;
         fs::create_directory(tmpDirPath, ec);
         if (ec.value() != 0) {
             _error = "failed to create folder '" + tmpDirPath.string();

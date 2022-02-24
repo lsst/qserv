@@ -28,8 +28,8 @@
 // Qserv headers
 #include "replica/Configuration.h"
 #include "replica/DatabaseServices.h"
+#include "replica/HttpClient.h"
 #include "replica/HttpExceptions.h"
-#include "replica/IngestConfigTypes.h"
 
 using namespace std;
 using json = nlohmann::json;
@@ -84,40 +84,40 @@ json HttpIngestConfigModule::_get() {
     auto const getInt = [&databaseServices, &databaseInfo](json& obj, string const& key) {
         try {
             obj[key] = stoi(databaseServices->ingestParam(
-                    databaseInfo.name, HttpFileReaderConfig::category, key).value);
+                    databaseInfo.name, HttpClientConfig::category, key).value);
         } catch (DatabaseServicesNotFound const&) {}
     };
     auto const getLong = [&databaseServices, &databaseInfo](json& obj, string const& key) {
         try {
             obj[key] = stol(databaseServices->ingestParam(
-                    databaseInfo.name, HttpFileReaderConfig::category, key).value);
+                    databaseInfo.name, HttpClientConfig::category, key).value);
         } catch (DatabaseServicesNotFound const&) {}
     };
     auto const getStr = [&databaseServices, &databaseInfo](json& obj, string const& key) {
         try {
             obj[key] = databaseServices->ingestParam(
-                    databaseInfo.name, HttpFileReaderConfig::category, key).value;
+                    databaseInfo.name, HttpClientConfig::category, key).value;
         } catch (DatabaseServicesNotFound const&) {}
     };
 
     json result({{"database", databaseInfo.name}});
 
-    getInt(result, HttpFileReaderConfig::sslVerifyHostKey);
-    getInt(result, HttpFileReaderConfig::sslVerifyPeerKey);
-    getStr(result, HttpFileReaderConfig::caPathKey);
-    getStr(result, HttpFileReaderConfig::caInfoKey);
-    getStr(result, HttpFileReaderConfig::caInfoValKey);
+    getInt(result, HttpClientConfig::sslVerifyHostKey);
+    getInt(result, HttpClientConfig::sslVerifyPeerKey);
+    getStr(result, HttpClientConfig::caPathKey);
+    getStr(result, HttpClientConfig::caInfoKey);
+    getStr(result, HttpClientConfig::caInfoValKey);
 
-    getInt(result, HttpFileReaderConfig::proxySslVerifyHostKey);
-    getInt(result, HttpFileReaderConfig::proxySslVerifyPeerKey);
-    getStr(result, HttpFileReaderConfig::proxyCaPathKey);
-    getStr(result, HttpFileReaderConfig::proxyCaInfoKey);
-    getStr(result, HttpFileReaderConfig::proxyCaInfoValKey);
+    getInt(result, HttpClientConfig::proxySslVerifyHostKey);
+    getInt(result, HttpClientConfig::proxySslVerifyPeerKey);
+    getStr(result, HttpClientConfig::proxyCaPathKey);
+    getStr(result, HttpClientConfig::proxyCaInfoKey);
+    getStr(result, HttpClientConfig::proxyCaInfoValKey);
 
-    getLong(result, HttpFileReaderConfig::connectTimeoutKey);
-    getLong(result, HttpFileReaderConfig::timeoutKey);
-    getLong(result, HttpFileReaderConfig::lowSpeedLimitKey);
-    getLong(result, HttpFileReaderConfig::lowSpeedTimeKey);
+    getLong(result, HttpClientConfig::connectTimeoutKey);
+    getLong(result, HttpClientConfig::timeoutKey);
+    getLong(result, HttpClientConfig::lowSpeedLimitKey);
+    getLong(result, HttpClientConfig::lowSpeedTimeKey);
 
     return json({{"config", result}});
 }
@@ -138,7 +138,7 @@ json HttpIngestConfigModule::_update() {
         debug(context, key + "=" + val);
         databaseServices->saveIngestParam(
             databaseInfo.name,
-            HttpFileReaderConfig::category,
+            HttpClientConfig::category,
             key,
             val);
     };
@@ -151,22 +151,22 @@ json HttpIngestConfigModule::_update() {
     auto const updateStr = [&](string const& key) {
         if (body().has(key)) update(key, body().required<string>(key));
     };
-    updateInt(HttpFileReaderConfig::sslVerifyHostKey);
-    updateInt(HttpFileReaderConfig::sslVerifyPeerKey);
-    updateStr(HttpFileReaderConfig::caPathKey);
-    updateStr(HttpFileReaderConfig::caInfoKey);
-    updateStr(HttpFileReaderConfig::caInfoValKey);
+    updateInt(HttpClientConfig::sslVerifyHostKey);
+    updateInt(HttpClientConfig::sslVerifyPeerKey);
+    updateStr(HttpClientConfig::caPathKey);
+    updateStr(HttpClientConfig::caInfoKey);
+    updateStr(HttpClientConfig::caInfoValKey);
 
-    updateInt(HttpFileReaderConfig::proxySslVerifyHostKey);
-    updateInt(HttpFileReaderConfig::proxySslVerifyPeerKey);
-    updateStr(HttpFileReaderConfig::proxyCaPathKey);
-    updateStr(HttpFileReaderConfig::proxyCaInfoKey);
-    updateStr(HttpFileReaderConfig::proxyCaInfoValKey);
+    updateInt(HttpClientConfig::proxySslVerifyHostKey);
+    updateInt(HttpClientConfig::proxySslVerifyPeerKey);
+    updateStr(HttpClientConfig::proxyCaPathKey);
+    updateStr(HttpClientConfig::proxyCaInfoKey);
+    updateStr(HttpClientConfig::proxyCaInfoValKey);
 
-    updateLong(HttpFileReaderConfig::connectTimeoutKey);
-    updateLong(HttpFileReaderConfig::timeoutKey);
-    updateLong(HttpFileReaderConfig::lowSpeedLimitKey);
-    updateLong(HttpFileReaderConfig::lowSpeedTimeKey);
+    updateLong(HttpClientConfig::connectTimeoutKey);
+    updateLong(HttpClientConfig::timeoutKey);
+    updateLong(HttpClientConfig::lowSpeedLimitKey);
+    updateLong(HttpClientConfig::lowSpeedTimeKey);
 
     return json::object();
 }

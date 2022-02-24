@@ -34,7 +34,6 @@
 #include "boost/asio.hpp"
 
 // Qserv headers
-#include "replica/Configuration.h"
 #include "replica/FileServerConnection.h"
 #include "replica/ServiceProvider.h"
 
@@ -48,7 +47,7 @@ namespace replica {
   * the file delivery service. Each instance of this class will be running
   * in its own thread.
   */
-class FileServer : public std::enable_shared_from_this<FileServer>  {
+class FileServer: public std::enable_shared_from_this<FileServer>  {
 public:
     typedef std::shared_ptr<FileServer> Ptr;
 
@@ -108,9 +107,6 @@ private:
 
     ServiceProvider::Ptr const _serviceProvider;
     std::string          const _workerName;
-
-    /// Cached worker descriptor obtained from the configuration
-    WorkerInfo const _workerInfo;
 
     boost::asio::io_service        _io_service;
     boost::asio::ip::tcp::acceptor _acceptor;

@@ -49,11 +49,12 @@ Messenger::Ptr Messenger::create(ServiceProvider::Ptr const& serviceProvider,
 
 
 Messenger::Messenger(ServiceProvider::Ptr const& serviceProvider,
-                     boost::asio::io_service& io_service) {
-
+                     boost::asio::io_service& io_service)
+    :   _serviceProvider(serviceProvider),
+        _io_service(io_service) {
     for (auto&& worker: serviceProvider->config()->allWorkers()) {
-        _workerConnector[worker] =
-                MessengerConnector::create(serviceProvider, io_service, worker);
+        _workerConnector[worker] = MessengerConnector::create(serviceProvider, io_service, worker);
+        LOGS(_log, LOG_LVL_INFO, _context(worker) << "connector added");
     }
 }
 
@@ -70,16 +71,35 @@ void Messenger::cancel(string const& worker, string const& id) {
 }
 
 
-bool Messenger::exists(string const& worker, string const& id) const {
+bool Messenger::exists(string const& worker, string const& id) {
     return _connector(worker)->exists(id);
 }
 
 
-MessengerConnector::Ptr const& Messenger::_connector(string const& worker)  const {
-    if (0 == _workerConnector.count(worker))
-        throw invalid_argument(
-                 "Messenger::" + string(__func__) + "   unknown worker: " + worker);
-    return _workerConnector.at(worker);
+MessengerConnector::Ptr const& Messenger::_connector(string const& worker) {
+    util::Lock lock(_mtx, _context(worker));
+
+    if (auto const itr = _workerConnector.find(worker); itr != _workerConnector.end()) {
+        return itr->second;
+    }
+
+    // The worker could be just added to the Configuration. In this case
+    // worker connector needs to be created and registered in the local collection.
+    // Note that std::invalid_argument will be thrown by the worker locator method
+    // if the name won't match any worker.
+    WorkerInfo const workerInfo = _serviceProvider->config()->workerInfo(worker);
+    auto const [itr, success] = _workerConnector.insert(
+            {worker, MessengerConnector::create(_serviceProvider, _io_service, worker)});
+    if (success) {
+        LOGS(_log, LOG_LVL_INFO, _context(worker) << "connector added");
+        return itr->second;
+    }
+    throw runtime_error(_context(worker) + "failed to register the connector.");
+}
+
+
+string Messenger::_context(string const& worker) {
+    return "MESSENGER [worker=" + worker + "]  ";
 }
 
 }}} // namespace lsst::qserv::replica

@@ -22,6 +22,7 @@
 #define LSST_QSERV_REPLICA_APPLICATION_H
 
 // System headers
+#include <list>
 #include <map>
 #include <memory>
 #include <string>
@@ -29,6 +30,7 @@
 // Qserv headers
 #include "replica/ApplicationTypes.h"
 #include "replica/ServiceProvider.h"
+
 
 // This header declarations
 namespace lsst {
@@ -109,11 +111,20 @@ protected:
      * @return The configuration URL, either its default value or the one that was
      *   explicitly specified in a command line. This requires that a base class configured
      *   the application with the option 'enableServiceProvider=true'.
-     * @throws std::logic_error If Configuration loading and ServiceProvider is
-     *   not enabled in the constructor of the class, or if the method gets called
+     * @throws std::logic_error If Configuration loading and ServiceProvider was
+     *   not enabled in the constructor of the class, or if the method was called
      *   before Parser finishes processing command-line parameters.
      */
     std::string const& configUrl() const;
+
+    /// @return The unique identifier of a Qserv instance served by the Replication System.
+    std::string const& instanceId() const { return _instanceId; }
+
+    /// @return The authorization key.
+    std::string const& authKey() const { return _authKey; }
+
+    /// @return The authorization key for administrative operations.
+    std::string const& adminAuthKey() const { return _adminAuthKey; }
 
     /**
      * This method is required to be implements by subclasses to run
@@ -124,8 +135,19 @@ protected:
      * @return A completion code.
      */
     virtual int runImpl() = 0;
-    
+
 private:
+    /**
+     * @brief Make sure the command-line parsing has finished and the specified
+     *   option was configured in the c-tor of the class.
+     * @param func the name of the calling context.
+     * @param option the option to be checked.
+     * @param the meaning of the option.
+     * @throws std::logic_error If the method was called before Parser finished
+     *   processing command-line parameters, or if the option was not configured.
+     */
+    void _assertValidOption(std::string const& func, bool option, std::string const& context) const;
+
     // Input parameters
     bool const _injectDatabaseOptions;
     bool const _boostProtobufVersionCheck;
@@ -142,6 +164,11 @@ private:
 
     /// A unique identifier of a Qserv instance served by the Replication System
     std::string _instanceId;
+
+    // Authorization keys for operations that may change a state of Qserv or
+    // the Replication/Ingest system.
+    std::string _authKey;
+    std::string _adminAuthKey;
 
     // Database connector options (if enabled)
 

@@ -73,12 +73,6 @@ private:
     /// The flag which if set will trigger detailed report on remote requests.
     bool _dumpRequestInfo = false;
 
-    /// The priority level of the requests.
-    int _priority = PRIORITY_VERY_HIGH;
-
-    /// The maximum timeout for the management requests.
-    unsigned int _requestExpirationIvalSec = 10;
-
     /// The flag triggering progress report when executing batches of requests.
     bool _progressReport = false;
 

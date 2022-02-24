@@ -76,12 +76,10 @@ public:
      * @param workerName  the name of a worker this service is acting
      * upon (used to pull worker-specific configuration options for
      * the service)
-     * @param authKey an authorization key for the catalog ingest operation.
      * @param io_service service object for the network I/O operations
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
                       std::string const& workerName,
-                      std::string const& authKey,
                       boost::asio::io_service& io_service);
 
     // Default construction and copy semantics are prohibited
@@ -144,7 +142,6 @@ private:
     /// @see IngestSvcConn::create()
     IngestSvcConn(ServiceProvider::Ptr const& serviceProvider,
                   std::string const& workerName,
-                  std::string const& authKey,
                   boost::asio::io_service& io_service);
 
     /// Initiate (ASYNC) read of the handshake request from a client)
@@ -217,10 +214,6 @@ private:
      */
     void _reply(ProtocolIngestResponse::Status status,
                 std::string const& msg=std::string());
-
-    // Input parameters
-
-    std::string const _authKey;
 
     /// A socket for communication with clients
     boost::asio::ip::tcp::socket _socket;

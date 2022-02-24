@@ -38,7 +38,12 @@ namespace {
 
 string const description =
     "This application synchronizes collections of chunks at the Qserv workers"
-    " with what the Replication system sees as 'good' chunks in the data directories.";
+    " with what the Replication system sees as 'good' chunks in the data directories."
+    " The maximum timeout (seconds) to wait before requests sent to the Qserv workers"
+    " will finish should be set using command line option --xrootd-request-timeout-sec."
+    " Setting the timeout to some reasonably low number would prevent the application from"
+    " hanging for a substantial duration of time (which depends on the default Configuration)"
+    " in case if some workers were down.";
 
 bool const injectDatabaseOptions = true;
 bool const boostProtobufVersionCheck = true;
@@ -52,19 +57,17 @@ namespace qserv {
 namespace replica {
 
 SyncApp::Ptr SyncApp::create(int argc, char* argv[]) {
-    return Ptr(
-        new SyncApp(argc, argv)
-    );
+    return Ptr(new SyncApp(argc, argv));
 }
 
 
 SyncApp::SyncApp(int argc, char* argv[])
     :   Application(
             argc, argv,
-            description,
-            injectDatabaseOptions,
-            boostProtobufVersionCheck,
-            enableServiceProvider
+            ::description,
+            ::injectDatabaseOptions,
+            ::boostProtobufVersionCheck,
+            ::enableServiceProvider
         ) {
 
     // Configure the command line parser
@@ -72,22 +75,13 @@ SyncApp::SyncApp(int argc, char* argv[])
     parser().required(
         "database-family",
         "The name of a database family",
-        _databaseFamily);
-
-    parser().option(
-        "worker-response-timeout",
-        "The maximum timeout (seconds) to wait before worker requests will finish."
-        " Setting this timeout to some reasonably low number would prevent the application from"
-        " hanging for a substantial duration of time (which depends on the default Configuration)"
-        " in case if some workers were down. The parameter applies to operations with both"
-        " the Replication and Qserv workers.",
-        _timeoutSec);
-
-    parser().flag(
+        _databaseFamily
+    ).flag(
         "force",
         "Force the Qerv workers to proceed with requested chunk updates regardless of the chunk"
         " usage status.",
-        _force);
+        _force
+    );
 }
 
 
@@ -95,7 +89,7 @@ int SyncApp::runImpl() {
 
     auto const job = QservSyncJob::create(
         _databaseFamily,
-        _timeoutSec,
+        serviceProvider()->config()->get<unsigned int>("xrootd", "request-timeout-sec"),
         _force,
         Controller::create(serviceProvider())
     );

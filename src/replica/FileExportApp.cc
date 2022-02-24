@@ -125,10 +125,10 @@ FileExportApp::Ptr FileExportApp::create(int argc, char* argv[]) {
 FileExportApp::FileExportApp(int argc, char* argv[])
     :   Application(
             argc, argv,
-            description,
-            injectDatabaseOptions,
-            boostProtobufVersionCheck,
-            enableServiceProvider
+            ::description,
+            ::injectDatabaseOptions,
+            ::boostProtobufVersionCheck,
+            ::enableServiceProvider
         ) {
 
     // Configure the command line parser
@@ -141,10 +141,6 @@ FileExportApp::FileExportApp(int argc, char* argv[])
         "column-separator",
         "The column separator in the output files. Allowed values: COMMA, TAB.",
         _columnSeparatorStr
-    ).option(
-        "auth-key",
-        "An authorization key which should also be known to servers.",
-        _authKey
     ).flag(
         "verbose",
         "Print various stats upon a completion of the export.",
@@ -281,7 +277,7 @@ void FileExportApp::_export(FileExportSpec const& file) const {
         file.overlap,
         file.outFileName,
         columnSeparator,
-        _authKey
+        authKey()
     );
     ptr->receive();
     uint64_t const finishedMs = PerformanceUtils::now();

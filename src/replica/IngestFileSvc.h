@@ -57,7 +57,7 @@ protected:
                   std::string const& workerName);
 
     ServiceProvider::Ptr const& serviceProvider() const { return _serviceProvider; }
-    WorkerInfo const& workerInfo() const { return _workerInfo; }
+    std::string const& workerName() const { return _workerName; }
 
     /**
      * Open a file.
@@ -102,9 +102,6 @@ private:
 
     ServiceProvider::Ptr const _serviceProvider;
     std::string          const _workerName;
-
-    /// Cached worker descriptor obtained from the configuration
-    WorkerInfo const _workerInfo;
 
     // Parameters defining a scope of the operation are set/computed when opening a file.
 

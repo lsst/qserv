@@ -146,38 +146,8 @@ json HttpConfigurationModule::_updateWorker() {
         debug(func, name + "=" + to_string(val));
         WorkerInfo::update(val, out);
     };
-    auto const updateString = [&](string const& func, string const& name, string& out) {
-        string const val = query().optionalString(name);
-        debug(func, name + "=" + val);
-        WorkerInfo::update(val, out);
-    };
-    auto const updatePort = [&](string const& func, string const& name, uint16_t& out) {
-        uint16_t const val = query().optionalUInt16(name);
-        debug(func, name + "=" + to_string(val));
-        WorkerInfo::update(val, out);
-    };
-
-    updateBool(__func__, "is_enabled",   info.isEnabled);
-    updateBool(__func__, "is_read_only", info.isReadOnly);
-
-    updateString(__func__, "svc_host", info.svcHost);
-    updatePort(  __func__, "svc_port", info.svcPort);
-
-    updateString(__func__, "fs_host",  info.fsHost);
-    updatePort(  __func__, "fs_port",  info.fsPort);
-    updateString(__func__, "data_dir", info.dataDir);
-
-    updateString(__func__, "loader_host",    info.loaderHost);
-    updatePort(  __func__, "loader_port",    info.loaderPort);
-    updateString(__func__, "loader_tmp_dir", info.loaderTmpDir);
-
-    updateString(__func__, "exporter_host",    info.exporterHost);
-    updatePort(  __func__, "exporter_port",    info.exporterPort);
-    updateString(__func__, "exporter_tmp_dir", info.exporterTmpDir);
-
-    updateString(__func__, "http_loader_host",    info.httpLoaderHost);
-    updatePort(  __func__, "http_loader_port",    info.httpLoaderPort);
-    updateString(__func__, "http_loader_tmp_dir", info.httpLoaderTmpDir);
+    updateBool(__func__, "is-enabled",   info.isEnabled);
+    updateBool(__func__, "is-read-only", info.isReadOnly);
 
     json result;
     result["config"]["workers"][worker] = config->updateWorker(info).toJson();
@@ -198,53 +168,13 @@ json HttpConfigurationModule::_addWorker() {
 
     WorkerInfo info;
     info.name = body().required<string>("worker");
-
-    info.isEnabled  = body().required<int>("is_enabled")   != 0;
-    info.isReadOnly = body().required<int>("is_read_only") != 0;
-
-    info.svcHost = body().required<string>(  "svc_host");
-    info.svcPort = body().optional<uint16_t>("svc_port", 0);
-
-    info.fsHost  = body().required<string>(  "fs_host", string());
-    info.fsPort  = body().optional<uint16_t>("fs_port", 0);
-    info.dataDir = body().required<string>(  "data_dir", string());
-
-    info.loaderHost   = body().required<string>(  "loader_host", string());
-    info.loaderPort   = body().optional<uint16_t>("loader_port", 0);
-    info.loaderTmpDir = body().required<string>(  "loader_tmp_dir", string());
-
-    info.exporterHost   = body().required<string>(  "exporter_host", string());
-    info.exporterPort   = body().optional<uint16_t>("exporter_port", 0);
-    info.exporterTmpDir = body().required<string>(  "exporter_tmp_dir", string());
-
-    info.httpLoaderHost   = body().required<string>(  "http_loader_host", string());
-    info.httpLoaderPort   = body().optional<uint16_t>("http_loader_port", 0);
-    info.httpLoaderTmpDir = body().required<string>(  "http_loader_tmp_dir", string());
+    info.isEnabled = body().required<int>("is-enabled")  != 0;
+    info.isReadOnly = body().required<int>("is-read-only") != 0;
 
     debug(__func__, "name=" + info.name);
-
-    debug(__func__, "is_enabled="   + to_string(info.isEnabled  ? 1 : 0));
-    debug(__func__, "is_read_only=" + to_string(info.isReadOnly ? 1 : 0));
-
-    debug(__func__, "svc_host=" +           info.svcHost);
-    debug(__func__, "svc_port=" + to_string(info.svcPort));
-
-    debug(__func__, "fs_host="  +           info.fsHost);
-    debug(__func__, "fs_port="  + to_string(info.fsPort));
-    debug(__func__, "data_dir=" +           info.dataDir);        
-
-    debug(__func__, "loader_host="    +           info.loaderHost);
-    debug(__func__, "loader_port="    + to_string(info.loaderPort));
-    debug(__func__, "loader_tmp_dir=" +           info.loaderTmpDir);        
-
-    debug(__func__, "exporter_host="    +           info.exporterHost);
-    debug(__func__, "exporter_port="    + to_string(info.exporterPort));
-    debug(__func__, "exporter_tmp_dir=" +           info.exporterTmpDir);        
-
-    debug(__func__, "http_loader_host="    +           info.httpLoaderHost);
-    debug(__func__, "http_loader_port="    + to_string(info.httpLoaderPort));
-    debug(__func__, "http_loader_tmp_dir=" +           info.httpLoaderTmpDir);        
-
+    debug(__func__, "is-enabled=" + to_string(info.isEnabled ? 1 : 0));
+    debug(__func__, "is-read-only=" + to_string(info.isReadOnly ? 1 : 0));
+   
     json result;
     result["config"]["workers"][info.name] =
             controller()->serviceProvider()->config()->addWorker(info).toJson();

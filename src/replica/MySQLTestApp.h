@@ -38,26 +38,18 @@ namespace replica {
  * Class MySQLTestApp implements a tool for testing the MySQL API used by
  * the Replication system implementation.
  */
-class MySQLTestApp : public Application {
-
+class MySQLTestApp: public Application {
 public:
-
-    /// The pointer type for instances of the class
     typedef std::shared_ptr<MySQLTestApp> Ptr;
 
     /**
      * The factory method is the only way of creating objects of this class
      * because of the very base class's inheritance from 'enable_shared_from_this'.
      *
-     * @param argc
-     *   the number of command-line arguments
-     *
-     * @param argv
-     *   the vector of command-line arguments
+     * @param argc the number of command-line arguments
+     * @param argv the vector of command-line arguments
      */
     static Ptr create(int argc, char* argv[]);
-
-    // Default construction and copy semantics are prohibited
 
     MySQLTestApp()=delete;
     MySQLTestApp(MySQLTestApp const&)=delete;
@@ -66,30 +58,22 @@ public:
     ~MySQLTestApp() final=default;
 
 protected:
-
     /// @see Application::runImpl()
     int runImpl() final;
 
 private:
-
     /// @see MySQLTestApp::create()
     MySQLTestApp(int argc, char* argv[]);
 
     /**
      * Run various test on transactions
-     * 
-     * @param testName
-     *   the name of a test
-     * 
-     * @param func
-     *   the function to be executed as a test
+     * @param testName the name of a test
+     * @param func the function to be executed as a test
      */
     void _runTransactionTest(std::string const& testName,
                              std::function<void(database::mysql::Connection::Ptr const&)> func) const;
 
-    /**
-     * The actual test for transactions is here
-     */
+    /// The actual test for transactions is here
     void _testTransactions() const;
 
     /// Create a new database
@@ -100,23 +84,17 @@ private:
 
     /**
      * Execute the query and (if requested) explore its result set
-     * 
-     * @param query
-     *   the query to be executed
+     * @param query the query to be executed
      */
     void _executeQuery(std::string const& query) const;
 
     /**
      * Execute the query and (if requested) explore its result set
-     * 
-     * @param query
-     *   the query to be executed
+     * @param query the query to be executed
      */
     void _executeQueryWait(std::string const& query) const;
 
-    /**
-     * @return return a query to be read from the standard input or from a file 
-     */
+    /// @return return a query to be read from the standard input or from a file 
     std::string _getQuery() const;
 
     /// The name of a test

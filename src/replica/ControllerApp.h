@@ -41,9 +41,8 @@ namespace replica {
  * Class ControllerApp implements a tool for testing all known types of
  * the Controller requests.
  */
-class ControllerApp : public Application {
+class ControllerApp: public Application {
 public:
-    /// The pointer type for instances of the class
     typedef std::shared_ptr<ControllerApp> Ptr;
 
     /**
@@ -169,7 +168,7 @@ private:
     uint64_t _cancelDelayMilliseconds = 0;
 
     /// The priority level of a request
-    int  _priority = 0;
+    int _priority = 0;
 
     /// Do not track requests waiting before they finish
     bool _doNotTrackRequest = false;

@@ -74,7 +74,7 @@ MessengerConnector::MessengerConnector(ServiceProvider::Ptr const& serviceProvid
                                        boost::asio::io_service& io_service,
                                        string const& worker)
     :   _serviceProvider(serviceProvider),
-        _workerInfo(serviceProvider->config()->workerInfo(worker)),
+        _worker(worker),
         _bufferCapacityBytes(serviceProvider->config()->get<size_t>("common", "request-buf-size-bytes")),
         _timerIvalSec(serviceProvider->config()->get<unsigned int>("common", "request-retry-interval-sec")),
         _state(State::STATE_INITIAL),
@@ -265,7 +265,16 @@ void MessengerConnector::_resolve(util::Lock const& lock) {
 
     if (_state != STATE_INITIAL) return;
 
-    boost::asio::ip::tcp::resolver::query query(_workerInfo.svcHost, to_string(_workerInfo.svcPort));
+    // Get the current status of the worker connection parameters. If the parameters
+    // aren't set or have expired we shall still proceed to the resover. Any failures
+    // in the resolver or subsequent connection attempts will trigger the standard
+    // recovery sequence that begins with a timeout and a subsequent restart.
+    WorkerInfo const workerInfo = _serviceProvider->config()->workerInfo(_worker);
+    if (workerInfo.svcHost.empty() || (workerInfo.svcPort == 0)) {
+        LOGS(_log, LOG_LVL_WARN, _context() << __func__ << "  no connection info available for worker="
+                << _worker);
+    }
+    boost::asio::ip::tcp::resolver::query query(workerInfo.svcHost, to_string(workerInfo.svcPort));
     _resolver.async_resolve(query, bind(&MessengerConnector::_resolved,
                             shared_from_this(), _1, _2));
     _state = STATE_CONNECTING;
@@ -601,8 +610,7 @@ bool MessengerConnector::_failed(boost::system::error_code const& ec) const {
 
 
 string MessengerConnector::_context() const {
-    return "MESSENGER-CONNECTION [worker=" + _workerInfo.name + ", state=" +
-            _state2string(_state) + "]  ";
+    return "MESSENGER-CONNECTION [worker=" + _worker + ", state=" + _state2string(_state) + "]  ";
 }
 
 }}} // namespace lsst::qserv::replica

@@ -32,6 +32,7 @@
 #include "replica/DatabaseServicesPool.h"
 #include "replica/Messenger.h"
 #include "replica/QservMgtServices.h"
+#include "replica/Registry.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -49,15 +50,21 @@ namespace qserv {
 namespace replica {
 
 ServiceProvider::Ptr ServiceProvider::create(string const& configUrl,
-                                             string const& instanceId) {
-    return ServiceProvider::Ptr(new ServiceProvider(configUrl, instanceId));
+                                             string const& instanceId,
+                                             string const& authKey,
+                                             string const& adminAuthKey) {
+    return ServiceProvider::Ptr(new ServiceProvider(configUrl, instanceId, authKey, adminAuthKey));
 }
 
 
 ServiceProvider::ServiceProvider(string const& configUrl,
-                                 string const& instanceId)
+                                 string const& instanceId,
+                                 string const& authKey,
+                                 string const& adminAuthKey)
     :   _configuration(Configuration::load(configUrl)),
-        _instanceId(instanceId) {
+        _instanceId(instanceId),
+        _authKey(authKey),
+        _adminAuthKey(adminAuthKey) {
 }
 
 
@@ -85,6 +92,15 @@ Messenger::Ptr const& ServiceProvider::messenger() {
         _messenger = Messenger::create(shared_from_this(), _io_service);
     }
     return _messenger;
+}
+
+
+Registry::Ptr const& ServiceProvider::registry() {
+    util::Lock lock(_mtx, _context() + __func__);
+    if (_registry == nullptr) {
+        _registry = Registry::create(shared_from_this());
+    }
+    return _registry;
 }
 
 

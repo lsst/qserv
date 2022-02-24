@@ -68,9 +68,6 @@ private:
     /// @see QhttpTestApp::create()
     QhttpTestApp(int argc, char* argv[]);
 
-    /// @return 'YYYY-MM-DD HH:MM:SS.mmm  '
-    static std::string _timestamp();
-
     /// A port number for listening for incoming connections
     uint16_t _port;
 

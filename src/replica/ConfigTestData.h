@@ -40,9 +40,6 @@ namespace replica {
  */
 class ConfigTestData {
 public:
-    /// @return A collection of the categories.
-    static std::set<std::string> categories();
-
     /// @return A collection of the general configuration parameters. The parameters
     ///   are compatible with the current JSON configuration schema.
     static std::map<std::string, std::set<std::string>> parameters();

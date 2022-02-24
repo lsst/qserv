@@ -105,7 +105,7 @@ public:
             _workerName,
             _affectedRequestId,
             REQUEST::extendedPrinter,
-            not _doNotTrackRequest
+            !_doNotTrackRequest
         );
     }
 
@@ -115,7 +115,7 @@ public:
             _workerName,
             _affectedRequestId,
             REQUEST::extendedPrinter,
-            not _doNotTrackRequest
+            !_doNotTrackRequest
         );
     }
 
@@ -145,9 +145,7 @@ namespace qserv {
 namespace replica {
 
 ControllerApp::Ptr ControllerApp::create(int argc, char* argv[]) {
-    return Ptr(
-        new ControllerApp(argc, argv)
-    );
+    return Ptr(new ControllerApp(argc, argv));
 }
 
 
@@ -747,267 +745,175 @@ void ControllerApp::_configureParserCommandSERVICE() {
 int ControllerApp::runImpl() {
 
     string const context = "ControllerApp::" + string(__func__) + " ";
-
     auto const controller = Controller::create(serviceProvider());
     Request::Ptr request;
 
     if ("REPLICATE" == _requestType) {
-
         request = controller->replicate(
-            _workerName, _sourceWorkerName, _databaseName, _chunkNumber,
-            [] (Request::Ptr const& request_) { request_->print(); },
-            _priority, not _doNotTrackRequest, _allowDuplicates
-        );
+                _workerName, _sourceWorkerName, _databaseName, _chunkNumber,
+                [] (Request::Ptr const& request_) { request_->print(); },
+                _priority, !_doNotTrackRequest, _allowDuplicates);
 
     } else if ("DELETE" == _requestType) {
-
         request = controller->deleteReplica(
-            _workerName, _databaseName, _chunkNumber,
-            Request::defaultPrinter,
-            _priority, not _doNotTrackRequest, _allowDuplicates
-        );
+                _workerName, _databaseName, _chunkNumber, Request::defaultPrinter,
+                _priority, !_doNotTrackRequest, _allowDuplicates);
 
     } else if ("FIND" == _requestType) {
-
         request = controller->findReplica(
-            _workerName, _databaseName, _chunkNumber,
-            Request::defaultPrinter,
-            _priority, _computeCheckSum, not _doNotTrackRequest
-        );
+                _workerName, _databaseName, _chunkNumber, Request::defaultPrinter,
+                _priority, _computeCheckSum, !_doNotTrackRequest);
 
     } else if ("FIND_ALL" == _requestType) {
-
         request = controller->findAllReplicas(
-            _workerName, _databaseName, not _doNotSaveReplicaInfo,
-            Request::defaultPrinter,
-            _priority, not _doNotTrackRequest
-        );
+                _workerName, _databaseName, !_doNotSaveReplicaInfo, Request::defaultPrinter,
+                _priority, !_doNotTrackRequest);
 
     } else if ("ECHO" == _requestType) {
-
         request = controller->echo(
-            _workerName, _echoData, _echoDelayMilliseconds,
-            Request::defaultPrinter,
-            _priority, not _doNotTrackRequest
-        );
+                _workerName, _echoData, _echoDelayMilliseconds, Request::defaultPrinter,
+                _priority, !_doNotTrackRequest);
 
     } else if ("INDEX" == _requestType) {
-
         bool const hasTransactions = _transactionId != numeric_limits<TransactionId>::max();
-
         request = controller->index(
-            _workerName, _sqlDatabase, _sqlTable, _chunkNumber, hasTransactions, _transactionId,
-            [&] (IndexRequest::Ptr const& request_) {
-                Request::defaultPrinter(request_);
-                request_->responseData().print(_indexFileName);
-            },
-            _priority, not _doNotTrackRequest
-        );
+                _workerName, _sqlDatabase, _sqlTable, _chunkNumber, hasTransactions, _transactionId,
+                [&] (IndexRequest::Ptr const& request_) {
+                    Request::defaultPrinter(request_);
+                    request_->responseData().print(_indexFileName);
+                },
+                _priority, !_doNotTrackRequest);
 
     } else if ("SQL_ALTER_TABLES" == _requestType) {
-
         vector<string> const tables = {_sqlTable};
         request = controller->sqlAlterTables(
-            _workerName, _sqlDatabase, tables,
-            _sqlAlterSpec,
-            SqlRequest::extendedPrinter,
-            _priority, not _doNotTrackRequest
-        );
+                _workerName, _sqlDatabase, tables, _sqlAlterSpec, SqlRequest::extendedPrinter,
+                _priority, !_doNotTrackRequest);
 
     } else if ("SQL_QUERY" == _requestType) {
-
         request = controller->sqlQuery(
-            _workerName, _sqlQuery, _sqlUser, _sqlPassword, _sqlMaxRows,
-            SqlRequest::extendedPrinter,
-            _priority, not _doNotTrackRequest
-        );
+                _workerName, _sqlQuery, _sqlUser, _sqlPassword, _sqlMaxRows,
+                SqlRequest::extendedPrinter, _priority, !_doNotTrackRequest);
 
     } else if ("SQL_CREATE_DATABASE" == _requestType) {
-
         request = controller->sqlCreateDb(
-            _workerName, _sqlDatabase,
-            SqlRequest::extendedPrinter,
-            _priority, not _doNotTrackRequest
-        );
+                _workerName, _sqlDatabase, SqlRequest::extendedPrinter,
+                _priority, !_doNotTrackRequest);
 
     } else if ("SQL_DELETE_DATABASE" == _requestType) {
-
         request = controller->sqlDeleteDb(
-            _workerName, _sqlDatabase,
-            SqlRequest::extendedPrinter,
-            _priority, not _doNotTrackRequest
-        );
+                _workerName, _sqlDatabase, SqlRequest::extendedPrinter,
+                _priority, !_doNotTrackRequest);
 
     } else if ("SQL_ENABLE_DATABASE" == _requestType) {
-
         request = controller->sqlEnableDb(
-            _workerName, _sqlDatabase,
-            SqlRequest::extendedPrinter,
-            _priority, not _doNotTrackRequest
-        );
+                _workerName, _sqlDatabase, SqlRequest::extendedPrinter,
+                _priority, !_doNotTrackRequest);
 
     } else if ("SQL_DISABLE_DATABASE" == _requestType) {
-
         request = controller->sqlDisableDb(
-            _workerName, _sqlDatabase,
-            SqlRequest::extendedPrinter,
-            _priority, not _doNotTrackRequest
-        );
+                _workerName, _sqlDatabase, SqlRequest::extendedPrinter,
+                _priority, !_doNotTrackRequest);
 
     } else if ("SQL_GRANT_ACCESS" == _requestType) {
-
         request = controller->sqlGrantAccess(
-            _workerName, _sqlDatabase, _sqlUser,
-            SqlRequest::extendedPrinter,
-            _priority, not _doNotTrackRequest
-        );
+                _workerName, _sqlDatabase, _sqlUser, SqlRequest::extendedPrinter,
+                _priority, !_doNotTrackRequest);
 
     } else if ("SQL_CREATE_TABLE" == _requestType) {
-
         request = controller->sqlCreateTable(
-            _workerName, _sqlDatabase, _sqlTable, _sqlEngine, _sqlPartitionByColumn,
-            SqlSchemaUtils::readFromTextFile(_sqlSchemaFile),
-            SqlRequest::extendedPrinter,
-            _priority, not _doNotTrackRequest
-        );
+                _workerName, _sqlDatabase, _sqlTable, _sqlEngine, _sqlPartitionByColumn,
+                SqlSchemaUtils::readFromTextFile(_sqlSchemaFile), SqlRequest::extendedPrinter,
+                _priority, !_doNotTrackRequest);
 
     } else if ("SQL_CREATE_TABLES" == _requestType) {
-
         vector<string> const tables = {_sqlTable};
         request = controller->sqlCreateTables(
-            _workerName, _sqlDatabase, tables, _sqlEngine, _sqlPartitionByColumn,
-            SqlSchemaUtils::readFromTextFile(_sqlSchemaFile),
-            SqlRequest::extendedPrinter,
-            _priority, not _doNotTrackRequest
-        );
+                _workerName, _sqlDatabase, tables, _sqlEngine, _sqlPartitionByColumn,
+                SqlSchemaUtils::readFromTextFile(_sqlSchemaFile),
+                SqlRequest::extendedPrinter,
+                _priority, !_doNotTrackRequest);
 
     } else if ("SQL_DELETE_TABLE" == _requestType) {
-
         vector<string> const tables = {_sqlTable};
         request = controller->sqlDeleteTable(
-            _workerName, _sqlDatabase, tables,
-            SqlRequest::extendedPrinter,
-            _priority, not _doNotTrackRequest
-        );
+                _workerName, _sqlDatabase, tables, SqlRequest::extendedPrinter,
+                _priority, !_doNotTrackRequest);
 
     } else if ("SQL_REMOVE_TABLE_PARTITIONS" == _requestType) {
-
         vector<string> const tables = {_sqlTable};
         request = controller->sqlRemoveTablePartitions(
-            _workerName, _sqlDatabase, tables,
-            SqlRequest::extendedPrinter,
-            _priority, not _doNotTrackRequest
-        );
+                _workerName, _sqlDatabase, tables, SqlRequest::extendedPrinter,
+                _priority, !_doNotTrackRequest);
 
     } else if ("SQL_DELETE_TABLE_PARTITION" == _requestType) {
-
         vector<string> const tables = {_sqlTable};
         request = controller->sqlDeleteTablePartition(
-            _workerName, _sqlDatabase, tables, _transactionId,
-            SqlRequest::extendedPrinter,
-            _priority, not _doNotTrackRequest
-        );
+                _workerName, _sqlDatabase, tables, _transactionId, SqlRequest::extendedPrinter,
+                _priority, !_doNotTrackRequest);
 
     } else if ("SQL_CREATE_TABLE_INDEXES" == _requestType) {
-
         vector<string> const tables = {_sqlTable};
         request = controller->sqlCreateTableIndexes(
-            _workerName, _sqlDatabase, tables,
-            SqlRequestParams::IndexSpec(_sqlIndexSpecStr), _sqlIndexName, _sqlIndexComment,
-            SqlSchemaUtils::readIndexSpecFromTextFile(_sqlIndexColumnsFile),
-            SqlRequest::extendedPrinter,
-            _priority, not _doNotTrackRequest
-        );
+                _workerName, _sqlDatabase, tables,
+                SqlRequestParams::IndexSpec(_sqlIndexSpecStr), _sqlIndexName, _sqlIndexComment,
+                SqlSchemaUtils::readIndexSpecFromTextFile(_sqlIndexColumnsFile),
+                SqlRequest::extendedPrinter, _priority, !_doNotTrackRequest);
 
     } else if ("SQL_DROP_TABLE_INDEXES" == _requestType) {
-
         vector<string> const tables = {_sqlTable};
         request = controller->sqlDropTableIndexes(
-            _workerName, _sqlDatabase, tables,
-            _sqlIndexName,
-            SqlRequest::extendedPrinter,
-            _priority, not _doNotTrackRequest
-        );
+                _workerName, _sqlDatabase, tables, _sqlIndexName, SqlRequest::extendedPrinter,
+                _priority, !_doNotTrackRequest);
 
     } else if ("SQL_GET_TABLE_INDEXES" == _requestType) {
-
         vector<string> const tables = {_sqlTable};
         request = controller->sqlGetTableIndexes(
-            _workerName, _sqlDatabase, tables,
-            SqlRequest::extendedPrinter,
-            _priority, not _doNotTrackRequest
-        );
+                _workerName, _sqlDatabase, tables, SqlRequest::extendedPrinter,
+                _priority, !_doNotTrackRequest);
 
     } else if ("SQL_TABLE_ROW_STATS" == _requestType) {
-
         auto const databaseInfo = controller->serviceProvider()->config()->databaseInfo(_sqlDatabase);
         bool const isPartitioned = databaseInfo.isPartitioned(_sqlTable);
         vector<string> const tables = {
-            isPartitioned ? ChunkedTable(_sqlTable, _chunkNumber, _isOverlap).name() : _sqlTable
-        };
+            isPartitioned ? ChunkedTable(_sqlTable, _chunkNumber, _isOverlap).name() : _sqlTable};
         request = controller->sqlRowStats(
-            _workerName, _sqlDatabase, tables,
-            SqlRequest::extendedPrinter,
-            _priority, not _doNotTrackRequest
-        );
+                _workerName, _sqlDatabase, tables, SqlRequest::extendedPrinter,
+                _priority, !_doNotTrackRequest);
 
     } else if ("STATUS" == _requestType) {
-
         request = _launchStatusRequest(controller);
 
     } else if ("STOP" == _requestType) {
-
         request = _launchStatusRequest(controller);
 
     } else if ("DISPOSE" == _requestType) {
-
         vector<string> const targetIds = {_affectedRequestId};
-        request = controller->dispose(
-            _workerName, targetIds,
-            Request::defaultPrinter
-        );
+        request = controller->dispose(_workerName, targetIds, Request::defaultPrinter);
 
     } else if ("SERVICE_SUSPEND" == _requestType) {
-
         request = controller->suspendWorkerService(
-            _workerName,
-            ServiceManagementRequestBase::extendedPrinter
-        );
+                _workerName, ServiceManagementRequestBase::extendedPrinter);
 
     } else if ("SERVICE_RESUME" == _requestType) {
-
         request = controller->resumeWorkerService(
-            _workerName,
-            ServiceManagementRequestBase::extendedPrinter
-        );
+                _workerName, ServiceManagementRequestBase::extendedPrinter);
 
     } else if ("SERVICE_STATUS" == _requestType) {
-
         request = controller->statusOfWorkerService(
-            _workerName,
-            ServiceManagementRequestBase::extendedPrinter
-        );
+                _workerName, ServiceManagementRequestBase::extendedPrinter);
 
     } else if ("SERVICE_REQUESTS" == _requestType) {
-
         request = controller->requestsOfWorkerService(
-            _workerName,
-            ServiceManagementRequestBase::extendedPrinter
-        );
+                _workerName, ServiceManagementRequestBase::extendedPrinter);
 
     } else if ("SERVICE_DRAIN" == _requestType) {
-
         request = controller->drainWorkerService(
-            _workerName,
-            ServiceManagementRequestBase::extendedPrinter
-        );
+                _workerName, ServiceManagementRequestBase::extendedPrinter);
 
     } else if ("SERVICE_RECONFIG" == _requestType) {
-
         request = controller->reconfigWorkerService(
-            _workerName,
-            ServiceManagementRequestBase::extendedPrinter
-        );
+                _workerName, ServiceManagementRequestBase::extendedPrinter);
 
     } else {
         throw logic_error(context + "unsupported request: " + _affectedRequest);

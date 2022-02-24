@@ -782,101 +782,37 @@ json& Configuration::_get(
 }
 
 
-WorkerInfo Configuration::_updateWorker(util::Lock const& lock, WorkerInfo const& inputInfo) {
+WorkerInfo Configuration::_updateWorker(util::Lock const& lock, WorkerInfo const& info) {
 
-    // Make sure all required fields are set in the input worker descriptor.
-    // The only required fields are the name of the worker and the host name of
-    // of the Replication service. If the host names for other services will be
-    // found missing then the host name of the Replication service will be assumed.
-    if (inputInfo.name.empty() || inputInfo.svcHost.empty()) {
-       throw invalid_argument(
-                _context(__func__) + " incomplete definition of the worker: '" + inputInfo.name +"'.");
+    if (info.name.empty()) {
+       throw invalid_argument(_context(__func__) + " worker name can't be empty.");
     }
 
-    // Make an updated worker descriptor with optional fields completed using
-    // existing defaults for workers. This step is required to ensure user-provided
-    // descriptors are complete before making any changes to the Configuration's
-    // transient or persistent states.
-    WorkerInfo const completeInfo = WorkerInfo(inputInfo, _data.at("worker-defaults"));
-
-    // Make sure no host/port conflicts would exist in the transient configuration after
-    // adding/updating the worker. This step is not needed for the MySQL-based persistent
-    // backend due to the schema-enforced uniqueness constraints.
-    std::set<pair<string, uint16_t>> hostPort;
-    for (auto&& itr: _workers) {
-        string const& worker = itr.first;
-        WorkerInfo const& info = itr.second;
-        // Skip the target worker from the test to avoid comparing it to itself.
-        if (worker == completeInfo.name) continue;
-        hostPort.insert(make_pair(info.svcHost, info.svcPort));
-        hostPort.insert(make_pair(info.fsHost, info.fsPort));
-        hostPort.insert(make_pair(info.loaderHost, info.loaderPort));
-        hostPort.insert(make_pair(info.exporterHost, info.exporterPort));
-        hostPort.insert(make_pair(info.httpLoaderHost, info.httpLoaderPort));
-    }
-    bool const portConflictFound =
-            !hostPort.insert(make_pair(completeInfo.svcHost, completeInfo.svcPort)).second ||
-            !hostPort.insert(make_pair(completeInfo.fsHost, completeInfo.fsPort)).second ||
-            !hostPort.insert(make_pair(completeInfo.loaderHost, completeInfo.loaderPort)).second ||
-            !hostPort.insert(make_pair(completeInfo.exporterHost, completeInfo.exporterPort)).second ||
-            !hostPort.insert(make_pair(completeInfo.httpLoaderHost, completeInfo.httpLoaderPort)).second;
-    if (portConflictFound) {
-        throw invalid_argument(
-                _context(__func__) + " port conflict detected either between the updated worker: '"
-                + completeInfo.name + "' and one of the existing workers or within the updated worker itself.");
-    }
-
-    // Update the persistent state.
-    bool const update = _workers.count(completeInfo.name) != 0;
+    // Update a subset of parameters in the persistent state.
+    bool const update = _workers.count(info.name) != 0;
     if (_connectionPtr != nullptr) {
         _connectionPtr->executeInOwnTransaction([&](decltype(_connectionPtr) conn) {
             if (update) {
                 conn->executeSimpleUpdateQuery(
                     "config_worker",
-                    conn->sqlEqual("name", completeInfo.name),
-                    make_pair("is_enabled", completeInfo.isEnabled),
-                    make_pair("is_read_only", completeInfo.isReadOnly),
-                    make_pair("svc_host", completeInfo.svcHost),
-                    make_pair("svc_port", completeInfo.svcPort),
-                    make_pair("fs_host", completeInfo.fsHost),
-                    make_pair("fs_port", completeInfo.fsPort),
-                    make_pair("data_dir", completeInfo.dataDir),
-                    make_pair("loader_host", completeInfo.loaderHost),
-                    make_pair("loader_port", completeInfo.loaderPort),
-                    make_pair("loader_tmp_dir", completeInfo.loaderTmpDir),
-                    make_pair("exporter_host", completeInfo.exporterHost),
-                    make_pair("exporter_port", completeInfo.exporterPort),
-                    make_pair("exporter_tmp_dir", completeInfo.exporterTmpDir),
-                    make_pair("http_loader_host", completeInfo.httpLoaderHost),
-                    make_pair("http_loader_port", completeInfo.httpLoaderPort),
-                    make_pair("http_loader_tmp_dir", completeInfo.httpLoaderTmpDir)
+                    conn->sqlEqual("name", info.name),
+                    make_pair("is_enabled", info.isEnabled),
+                    make_pair("is_read_only", info.isReadOnly)
                 );
             } else {
                 conn->executeInsertQuery(
                     "config_worker",
-                    completeInfo.name,
-                    completeInfo.isEnabled,
-                    completeInfo.isReadOnly,
-                    completeInfo.svcHost,
-                    completeInfo.svcPort,
-                    completeInfo.fsHost,
-                    completeInfo.fsPort,
-                    completeInfo.dataDir,
-                    completeInfo.loaderHost,
-                    completeInfo.loaderPort,
-                    completeInfo.loaderTmpDir,
-                    completeInfo.exporterHost,
-                    completeInfo.exporterPort,
-                    completeInfo.exporterTmpDir,
-                    completeInfo.httpLoaderHost,
-                    completeInfo.httpLoaderPort,
-                    completeInfo.httpLoaderTmpDir
+                    info.name,
+                    info.isEnabled,
+                    info.isReadOnly
                 );
             }
         });
     }
-    _workers[completeInfo.name] = completeInfo;
-    return completeInfo;
+
+    // Update all parameters in the transient state.
+    _workers[info.name] = info;
+    return info;
 }
 
 

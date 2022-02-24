@@ -49,19 +49,17 @@ namespace qserv {
 namespace replica {
 
 FileServerApp::Ptr FileServerApp::create(int argc, char* argv[]) {
-    return Ptr(
-        new FileServerApp(argc, argv)
-    );
+    return Ptr(new FileServerApp(argc, argv));
 }
 
 
 FileServerApp::FileServerApp(int argc, char* argv[])
     :   Application(
             argc, argv,
-            description,
-            injectDatabaseOptions,
-            boostProtobufVersionCheck,
-            enableServiceProvider
+            ::description,
+            ::injectDatabaseOptions,
+            ::boostProtobufVersionCheck,
+            ::enableServiceProvider
         ),
         _log(LOG_GET("lsst.qserv.replica.tools.qserv-replica-file-server")) {
 
@@ -70,13 +68,12 @@ FileServerApp::FileServerApp(int argc, char* argv[])
     parser().required(
         "worker",
         "The name of a worker for which the server will be run.",
-        _workerName);
-
-    parser().flag(
+        _workerName
+    ).flag(
         "verbose",
         "Enable the periodic 'heartbeat' printouts.",
-        _verbose);
-
+        _verbose
+    );
 }
 
 

@@ -125,10 +125,6 @@ ConfigApp::ConfigApp(int argc, char* argv[])
         "worker",
         "The name of a worker to be updated.",
         _workerInfo.name
-    ).option(
-        "service-host",
-        "The new DNS name or an IP address where the worker runs.",
-        _workerInfo.svcHost
     );
     _configureWorkerOptions(updateWorkerCommand);
 
@@ -136,21 +132,11 @@ ConfigApp::ConfigApp(int argc, char* argv[])
         "ADD_WORKER"
     ).description(
         "Register a new worker in the configuration. Note that the minimal configuration"
-        " requires two mandatory parameters: the unique name (identifier) of the worker and"
-        " the DNS name (or an IP address) of a host where the worker service would run."
-        " Other parameters are optional. The following defines rules for the optional parameters."
-        " If no location will be given for some other service a location of the 'service-host' will"
-        " be assumed. If no specific port will be provided for a service then the corresponding"
-        " default port defined in the 'worker-defaults' of the general configuration category"
-        " will be assumed. The later rule also applies to the temporary folders of all services."
+        " requires just one mandatory parameter - the unique name (identifier) of the worker."
     ).required(
         "worker",
         "The name of a worker to be added.",
         _workerInfo.name
-    ).required(
-        "service-host",
-        "The DNS name or an IP address where the worker runs.",
-        _workerInfo.svcHost
     );
     _configureWorkerOptions(addWorkerCommand);
 
@@ -329,22 +315,6 @@ int ConfigApp::runSubclassImpl() {
 
 void ConfigApp::_configureWorkerOptions(detail::Command& command) {
     command.option(
-        "service-port",
-        "The port number of the worker service.",
-        _workerInfo.svcPort
-    ).option(
-        "fs-host",
-        "The DNS name or an IP address where the worker's File Server runs.",
-        _workerInfo.fsHost
-    ).option(
-        "fs-port",
-        "The port number of the worker's File Server.",
-        _workerInfo.fsPort
-    ).option(
-        "data-dir",
-        "The data directory of the worker.",
-        _workerInfo.dataDir
-    ).option(
         "enabled",
         "Set to '0' if the worker is turned into disabled mode upon creation.",
         _workerInfo.isEnabled
@@ -352,42 +322,6 @@ void ConfigApp::_configureWorkerOptions(detail::Command& command) {
         "read-only",
         "Set to '0' if the worker is NOT turned into the read-only mode upon creation.",
         _workerInfo.isReadOnly
-    ).option(
-        "loader-host",
-        "The DNS name or an IP address where the worker's Catalog Ingest Server runs.",
-        _workerInfo.loaderHost
-    ).option(
-        "loader-port",
-        "The port number of the worker's Catalog Ingest Server.",
-        _workerInfo.loaderPort
-    ).option(
-        "loader-tmp-dir",
-        "The temporay directory of the worker's Ingest Service.",
-        _workerInfo.loaderTmpDir
-    ).option(
-        "exporter-host",
-        "The DNS name or an IP address where the worker's Data Exporting Server runs.",
-        _workerInfo.exporterHost
-    ).option(
-        "exporter-port",
-        "The port number of the worker's Data Exporting Server.",
-        _workerInfo.exporterPort
-    ).option(
-        "exporter-tmp-dir",
-        "The temporay directory of the worker's Data Exporting Service.",
-        _workerInfo.exporterTmpDir
-    ).option(
-        "http-loader-host",
-        "The DNS name or an IP address where the worker's HTTP-based Catalog Ingest Server runs.",
-        _workerInfo.httpLoaderHost
-    ).option(
-        "http-loader-port",
-        "The port number of the worker's HTTP-based Catalog Ingest Server.",
-        _workerInfo.httpLoaderPort
-    ).option(
-        "http-loader-tmp-dir",
-        "The temporay directory of the worker's HTTP-based Catalog Ingest Service",
-        _workerInfo.httpLoaderTmpDir
     );
 } 
 
@@ -424,20 +358,6 @@ int ConfigApp::_updateWorker() const {
         auto info = config()->workerInfo(_workerInfo.name);
         WorkerInfo::update(_workerEnable, info.isEnabled);
         WorkerInfo::update(_workerReadOnly, info.isReadOnly);
-        WorkerInfo::update(_workerInfo.svcHost, info.svcHost);
-        WorkerInfo::update(_workerInfo.svcPort, info.svcPort);
-        WorkerInfo::update(_workerInfo.fsHost, info.fsHost);
-        WorkerInfo::update(_workerInfo.fsPort, info.fsPort);
-        WorkerInfo::update(_workerInfo.dataDir, info.dataDir);
-        WorkerInfo::update(_workerInfo.loaderHost, info.loaderHost);
-        WorkerInfo::update(_workerInfo.loaderPort, info.loaderPort);
-        WorkerInfo::update(_workerInfo.loaderTmpDir, info.loaderTmpDir);
-        WorkerInfo::update(_workerInfo.exporterHost, info.exporterHost);
-        WorkerInfo::update(_workerInfo.exporterPort, info.exporterPort);
-        WorkerInfo::update(_workerInfo.exporterTmpDir, info.exporterTmpDir);
-        WorkerInfo::update(_workerInfo.httpLoaderHost, info.httpLoaderHost);
-        WorkerInfo::update(_workerInfo.httpLoaderPort, info.httpLoaderPort);
-        WorkerInfo::update(_workerInfo.httpLoaderTmpDir, info.httpLoaderTmpDir);
         auto const updatedInfo = config()->updateWorker(info);
     } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR, "ConfigApp::" << __func__ << ": " << ex.what());

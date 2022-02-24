@@ -43,11 +43,7 @@ namespace replica {
  * whose type is specified as the template parameter of the class.
  */
 class RequestTrackerBase {
-
 public:
-
-    // Default construction and copy semantics are prohibited
-
     RequestTrackerBase() = delete;
     RequestTrackerBase(RequestTrackerBase const&) = delete;
     RequestTrackerBase& operator=(RequestTrackerBase const&) = delete;
@@ -66,62 +62,45 @@ public:
     /**
      * The method will reset the tracker to the initial (empty) state. Please,
      * make sure there are no outstanding requests which may be still executing.
-     *
-     * @throws std::logic_error
-     *   if there is at least one outstanding requests
+     * @throws std::logic_error if there is at least one outstanding requests
      */
     void reset();
 
-protected:
+    /**
+     * The method to be implemented by a subclass is supposed to return all
+     * requests which are known to the subclass.
+     * @return a collection of requests
+     */
+    virtual std::list<Request::Ptr> getRequests() const = 0;
 
+protected:
     /**
      * The constructor sets up tracking options.
-     *
-     * @param os
-     *   an output stream for monitoring and error printouts
-     *
-     * @param progressReport
-     *   (optional) triggers periodic printout onto an output stream
-     *   to see the overall progress of the operation
-     *
-     * @param errorReport
-     *   (optional) trigger detailed error reporting after the completion
-     *   of the operation
+     * @param os the output stream for monitoring and error printouts
+     * @param progressReport (optional) flag that triggers periodic printout onto
+     *   the output stream to see the overall progress of the operation.
+     * @param errorReport (optional) flag that triggers detailed error reporting after
+     *   the completion of the operation.
      */
-    explicit RequestTrackerBase(std::ostream& os,
-                                bool progressReport=true,
+    explicit RequestTrackerBase(std::ostream& os, bool progressReport=true,
                                 bool errorReport=false);
 
     /**
      * The method to be implemented by a subclass in order to print
      * type-specific report.
-     *
-     * @param os
-     *   an output stream for the printout
+     * @param os the output stream for the printout
      */
     virtual void printErrorReport(std::ostream& os) const = 0;
 
     /**
-     * The method to be implemented by a subclass is supposed to return all
-     * requests which are known to the subclass.
-     *
-     * @return
-     *   collection of requests
-     */
-    virtual std::list<Request::Ptr> getRequests() const = 0;
-
-    /**
      * The method to be implemented by a subclass is supposed to clear
      * a collection of all requests known to the subclass.
-     *
-     * @note
-     *   It's guaranteed that the base class's counters will stay
+     * @note It's guaranteed that the base class's counters will stay
      *   intact when this method is called.
      */
     virtual void resetImpl() = 0;
 
 protected:
-
     // The counter of requests which will be updated. They need to be atomic
     // to avoid race condition between the onFinish() callbacks executed within
     // the Controller's thread and this thread.
@@ -131,9 +110,9 @@ protected:
     std::atomic<size_t> _numSuccess;    ///< the number of successfully completed requests
 
 private:
+    // Input parameters
 
     std::ostream& _os;
-
     bool _progressReport;
     bool _errorReport;
 };
@@ -144,11 +123,10 @@ private:
  * the template parameter of the class.
  */
 template <class T>
-class CommonRequestTracker : public RequestTrackerBase {
-
+class CommonRequestTracker: public RequestTrackerBase {
 public:
-
-    // Default construction and copy semantics are prohibited
+    /// All requests that were launched
+    std::list<typename T::Ptr> requests;
 
     CommonRequestTracker() = delete;
     CommonRequestTracker(CommonRequestTracker const&) = delete;
@@ -156,34 +134,22 @@ public:
 
     /**
      * The constructor sets up tracking options.
-     *
-     * @param os
-     *   an output stream for monitoring and error printouts
-     *
-     * @param progressReport
-     *   (optional) triggers periodic printout onto an output stream
-     *   to see the overall progress of the operation
-     *
-     * @param errorReport
-     *   (optional) trigger detailed error reporting after the completion
-     *   of the operation
+     * @param os the output stream for monitoring and error printouts
+     * @param progressReport (optional) flag that triggers periodic printout onto
+     *   the output stream to see the overall progress of the operation.
+     * @param errorReport (optional) flag that triggers detailed error reporting after
+     *   the completion of the operation.
      */
-    explicit CommonRequestTracker(std::ostream& os,
-                                  bool progressReport=true,
+    explicit CommonRequestTracker(std::ostream& os, bool progressReport=true,
                                   bool errorReport=false)
-        :   RequestTrackerBase(os,
-                               progressReport,
-                               errorReport) {
+        :   RequestTrackerBase(os, progressReport, errorReport) {
     }
-
-    ~CommonRequestTracker() override = default;
+    virtual ~CommonRequestTracker() override = default;
 
     /**
      * The callback function to be registered with each request
      * injected into the tracker.
-     *
-     * @param ptr
-     *   pointer to a completed request
+     * @param ptr a pointer to the completed request.
      */
     void onFinish(typename T::Ptr ptr) {
         RequestTrackerBase::_numFinished++;
@@ -195,38 +161,28 @@ public:
     /**
      * Add a request to be tracked. Note that in order to be tracked
      * requests needs to be constructed with the above specified function
-     *
-     * @param ptr
-     *   pointer to a request to be tracked
+     * @param ptr A pointer to a request to be tracked.
      */
     void add(typename T::Ptr const& ptr) {
         RequestTrackerBase::_numLaunched++;
         requests.push_back(ptr);
     }
 
-protected:
-
-    /// @see RequestTrackerBase::printErrorReport
-    void printErrorReport(std::ostream& os) const override {
-        replica::reportRequestState(requests, os);
-    }
-
     /// @see RequestTrackerBase::getRequests
-    std::list<Request::Ptr> getRequests() const override {
+    virtual std::list<Request::Ptr> getRequests() const override {
         std::list<Request::Ptr> result;
         for (auto&& ptr: requests) { result.push_back(ptr); }
         return result;
     }
 
-    /// @see RequestTrackerBase::resetImpl
-    void resetImpl() override {
-        requests.clear();
+protected:
+    /// @see RequestTrackerBase::printErrorReport
+    virtual void printErrorReport(std::ostream& os) const override {
+        replica::reportRequestState(requests, os);
     }
 
-public:
-
-    /// All requests that were launched
-    std::list<typename T::Ptr> requests;
+    /// @see RequestTrackerBase::resetImpl
+    virtual void resetImpl() override { requests.clear(); }
 };
 
 
@@ -234,11 +190,10 @@ public:
  * Class AnyRequestTracker implements a type-aware request tracker for
  * a collection of heterogeneous requests.
  */
-class AnyRequestTracker : public RequestTrackerBase {
-
+class AnyRequestTracker: public RequestTrackerBase {
 public:
-
-    // Default construction and copy semantics are prohibited
+    /// All requests that were launched
+    std::list<Request::Ptr> requests;
 
     AnyRequestTracker() = delete;
     AnyRequestTracker(AnyRequestTracker const&) = delete;
@@ -246,57 +201,40 @@ public:
 
     /**
      * The constructor sets up tracking options.
-     *
-     * @param os
-     *   an output stream for monitoring and error printouts
-     *
-     * @param progressReport
-     *   triggers periodic printout onto an output stream
-     *   to see the overall progress of the operation
-     *
-     * @param errorReport
-     *   trigger detailed error reporting after the completion
-     *   of the operation
+     * @param os the output stream for monitoring and error printouts
+     * @param progressReport (optional) flag that triggers periodic printout onto
+     *   the output stream to see the overall progress of the operation.
+     * @param errorReport (optional) flag that triggers detailed error reporting after
+     *   the completion of the operation.
      */
-    explicit AnyRequestTracker(std::ostream& os,
-                               bool progressReport=true,
+    explicit AnyRequestTracker(std::ostream& os, bool progressReport=true,
                                bool errorReport=false);
 
-    ~AnyRequestTracker() override = default;
+    virtual ~AnyRequestTracker() override = default;
 
     /**
      * The callback function to be registered with each request
      * injected into the tracker.
-     *
-     * @param ptr
-     *   pointer to a completed request
+     * @param ptr A pointer to the completed request.
      */
     void onFinish(Request::Ptr const& ptr);
 
     /**
      * Add a request to be tracked. Note that in order to be tracked
      * requests needs to be constructed with the above specified function
-     *
-     * @param ptr
-     *   pointer to a request to be tracked
+     * @param ptr A pointer to a request to be tracked.
      */
     void add(Request::Ptr const& ptr);
 
-protected:
-
-    /// @see RequestTrackerBase::printErrorReport
-    void printErrorReport(std::ostream& os) const override;
-
     /// @see RequestTrackerBase::getRequests
-    std::list<Request::Ptr> getRequests() const override;
+    virtual std::list<Request::Ptr> getRequests() const override;
+
+protected:
+    /// @see RequestTrackerBase::printErrorReport
+    virtual void printErrorReport(std::ostream& os) const override;
 
     /// @see RequestTrackerBase::resetImpl
-    void resetImpl() override;
-
-public:
-
-    /// All requests that were launched
-    std::list<Request::Ptr> requests;
+    virtual void resetImpl() override;
 };
 
 }}} // namespace lsst::qserv::replica

@@ -38,7 +38,7 @@ namespace replica {
  * statement against worker databases of select workers. Result sets
  * will be reported upon a completion of the application.
  */
-class SqlApp : public Application {
+class SqlApp: public Application {
 public:
     typedef std::shared_ptr<SqlApp> Ptr;
 

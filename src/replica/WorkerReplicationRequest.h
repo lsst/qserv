@@ -246,9 +246,6 @@ private:
      */
     void _updateInfo(util::Lock const& lock);
 
-    /// Cached descriptor of the output worker obtained from the Configuration
-    WorkerInfo const _outWorkerInfo;
-
     /// Cached descriptor of the database obtained from the Configuration
     DatabaseInfo const _databaseInfo;
 

@@ -81,7 +81,7 @@ void StaticContent::add(Server& server, std::string const& pattern, std::string 
                 response->sendStatus(301);
                 return;
             }
-            requestPath /= "index.htm";
+            requestPath /= "index.html";
         }
 
         // Handle the oft-expected 404 case here explicitly, rather than as an exception.

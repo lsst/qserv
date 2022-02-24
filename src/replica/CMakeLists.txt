@@ -140,6 +140,10 @@ target_sources(replica PRIVATE
     GetStatusQservMgtRequest.h
     HealthMonitorTask.cc
     HealthMonitorTask.h
+    HttpClient.cc
+    HttpClient.h
+    HttpClientApp.cc
+    HttpClientApp.h
     HttpCatalogsModule.cc
     HttpCatalogsModule.h
     HttpConfigurationModule.cc
@@ -150,10 +154,6 @@ target_sources(replica PRIVATE
     HttpExceptions.h
     HttpExportModule.cc
     HttpExportModule.h
-    HttpFileReader.cc
-    HttpFileReader.h
-    HttpFileReaderApp.cc
-    HttpFileReaderApp.h
     HttpIngestChunksModule.cc
     HttpIngestChunksModule.h
     HttpIngestConfigModule.cc
@@ -203,8 +203,6 @@ target_sources(replica PRIVATE
     IndexRequest.h
     IngestClient.cc
     IngestClient.h
-    IngestConfigTypes.cc
-    IngestConfigTypes.h
     IngestFileSvc.cc
     IngestFileSvc.h
     IngestHttpSvc.cc
@@ -267,6 +265,16 @@ target_sources(replica PRIVATE
     RebalanceApp.h
     RebalanceJob.cc
     RebalanceJob.h
+    Registry.h
+    Registry.cc
+    RegistryHttpApp.h
+    RegistryHttpApp.cc
+    RegistryHttpSvc.h
+    RegistryHttpSvc.cc
+    RegistryHttpSvcMod.h
+    RegistryHttpSvcMod.cc
+    RegistryWorkers.h
+    RegistryWorkers.cc
     RemoveReplicaQservMgtRequest.cc
     RemoveReplicaQservMgtRequest.h
     ReplicaInfo.cc
@@ -467,6 +475,7 @@ replica_utils(
     qserv-replica-file
     qserv-replica-job
     qserv-replica-master-http
+    qserv-replica-registry
     qserv-replica-test
     qserv-replica-worker-notify
     qserv-replica-worker

@@ -81,6 +81,34 @@ json const ConfigurationSchema::_schemaJson = json::object({
             {"default", 1}
         }}
     }},
+    {"registry", {
+        {"host", {
+            {"description",
+                "The IP address or the DNS host name for the registry's HTTP server."},
+            {"default", "localhost"}
+        }},
+        {"port", {
+            {"description",
+                "The port number for the registry's HTTP server. Must be greater than 0."},
+            {"default", 25082}
+        }},
+        {"max-listen-conn", {
+            {"description",
+                "The maximum length of the queue of pending connections sent to the registry's HTTP server."
+                " Must be greater than 0."},
+            {"default", max_listen_connections}
+        }},
+        {"threads", {
+            {"description",
+                "The number of threads managed by BOOST ASIO for the HTTP server. Must be greater than 0."},
+            {"default", 2 * num_threads}
+        }},
+        {"heartbeat-ival-sec", {
+            {"description",
+                "The hearbeat interval for interactions with the workers Registry service. Must be greater than 0."},
+            {"default", 5}
+        }}
+    }},
     {"controller", {
         {"num-threads", {
             {"description",
@@ -150,6 +178,13 @@ json const ConfigurationSchema::_schemaJson = json::object({
                 " and recording replica dispositions, fixing up missing replicas, etc."},
             {"empty-allowed", 1},
             {"default", PRIORITY_LOW}
+        }},
+        {"auto-register-workers", {
+            {"description",
+                "Automatically scale a collection of workers by registering new workers reported by the Registry"
+                " service. If the flag is set to 0 then new workers will be ignored."},
+            {"empty-allowed", 1},
+            {"default", 0}
         }}
     }},
     {"database", {
@@ -323,58 +358,56 @@ json const ConfigurationSchema::_schemaJson = json::object({
                 "The maximum length of the queue of pending connections sent to the Replication worker's"
                 " HTTP-based ingest service. Must be greater than 0."},
             {"default", max_listen_connections}
-        }}
-    }},
-    {"worker-defaults", {
-        {"svc_port", {
+        }},
+        {"svc-port", {
             {"description",
-                "The default port for the worker's replication service."},
+                "The port number for the worker's replication service."},
             {"default", 25000}
         }},
-        {"fs_port", {
+        {"fs-port", {
             {"description",
-                "The default port for the worker's file service."},
+                "The port number for the worker's file service."},
             {"default", 25001}
         }},
-        {"data_dir", {
+        {"data-dir", {
             {"description",
-                "The default data directory from which the worker file service serves files"
+                "The data directory from which the worker file service serves files"
                 " to other workers. This folder is required to be the location where the MySQL"
                 " service of Qserv worker stores its data."},
             {"default", "/qserv/data/mysql"}
         }},
-        {"loader_port", {
+        {"loader-port", {
             {"description",
-                "The default port for the worker's binary file ingest service."},
+                "The port number for the worker's binary file ingest service."},
             {"default", 25002}
         }},
-        {"loader_tmp_dir", {
+        {"loader-tmp-dir", {
             {"description",
-                "The default location for temporary files stored by the worker's binary"
+                "A location for temporary files stored by the worker's binary"
                 " file ingest service before ingesting them into the adjacent Qserv worker's"
                 " MySQL database."},
             {"default", "/qserv/data/ingest"}
         }},
-        {"exporter_port", {
+        {"exporter-port", {
             {"description",
-                "The default port for the worker's table export service."},
+                "The port number for the worker's table export service."},
             {"default", 25003}
         }},
-        {"exporter_tmp_dir", {
+        {"exporter-tmp-dir", {
             {"description",
-                "The default location for temporary files stored by the worker's table"
+                "A location for temporary files stored by the worker's table"
                 " export service before returning them a client."},
             {"default", "/qserv/data/export"}
         }},
-        {"http_loader_port", {
+        {"http-loader-port", {
             {"description",
-                "The default port for the worker's HTTP-based REST service for ingesting table"
+                "The port number for the worker's HTTP-based REST service for ingesting table"
                 " contributions into the adjacent Qserv worker's MySQL database."},
             {"default", 25004}
         }},
-        {"http_loader_tmp_dir", {
+        {"http-loader-tmp-dir", {
             {"description",
-                "The default location for temporary files stored by the worker's"
+                "A location for temporary files stored by the worker's"
                 " HTTP-based REST service ingesting table before ingesting them into"
                 " the adjacent Qserv worker's MySQL database."},
             {"default", "/qserv/data/ingest"}
@@ -408,7 +441,7 @@ string ConfigurationSchema::defaultValueAsString(string const& category, string 
 json ConfigurationSchema::defaultConfigData() {
     json result = json::object();
     vector<string> const generalCategories =
-            {"common", "controller", "database", "xrootd", "worker", "worker-defaults"};
+            {"common", "registry", "controller", "database", "xrootd", "worker"};
     for (string const& category: generalCategories) {
         json const& inCategoryJson = _schemaJson.at(category);
         json& outCategoryJson = result[category];

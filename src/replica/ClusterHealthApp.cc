@@ -39,7 +39,9 @@ namespace {
 string const description =
     "This application probes and reports a status of the Replication system's"
     " and Qserv workers to see if they respond within the specified (or implied)"
-    " timeout.";
+    " timeout. Set some small value to the configuration parameter"
+    " --controller-request-timeout-sec to avoid waiting for too long due to"
+    " non-responsive workers.";
 
 bool const injectDatabaseOptions = true;
 bool const boostProtobufVersionCheck = true;
@@ -53,28 +55,20 @@ namespace qserv {
 namespace replica {
 
 ClusterHealthApp::Ptr ClusterHealthApp::create(int argc, char* argv[]) {
-    return Ptr(
-        new ClusterHealthApp(argc, argv)
-    );
+    return Ptr(new ClusterHealthApp(argc, argv));
 }
 
 
 ClusterHealthApp::ClusterHealthApp(int argc, char* argv[])
     :   Application(
             argc, argv,
-            description,
-            injectDatabaseOptions,
-            boostProtobufVersionCheck,
-            enableServiceProvider
+            ::description,
+            ::injectDatabaseOptions,
+            ::boostProtobufVersionCheck,
+            ::enableServiceProvider
         ) {
 
     // Configure the command line parser
-
-    parser().option(
-        "timeout",
-        "The timeout (seconds) for status requests sent to the Replication"
-        " system's and Qserv workers.",
-        _timeoutSec);
 
     parser().flag(
         "all-workers",
@@ -88,9 +82,12 @@ int ClusterHealthApp::runImpl() {
 
     // Send probes to workers of both types
 
+    // Zero value is set to let the job use a value of the configuration parameter:
+    // ("controller", "request-timeout-sec")
+    unsigned int const defaultTimeoutSec = 0U;
     string const noParentJobId;
     auto const job = ClusterHealthJob::create(
-        _timeoutSec,
+        defaultTimeoutSec,
         _allWorkers,
         Controller::create(serviceProvider()),
         noParentJobId,

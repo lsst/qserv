@@ -40,7 +40,7 @@
 namespace lsst {
 namespace qserv {
 namespace replica {
-    class HttpFileReaderConfig;
+    class HttpClientConfig;
 }}} // namespace lsst::qserv::replica
 
 // This header declarations
@@ -184,7 +184,7 @@ private:
      * Pull file reader's configuration from the config store.
      * @return The configuration object.
      */
-    HttpFileReaderConfig _fileConfig() const;
+    HttpClientConfig _clientConfig() const;
 
     /// Mutex guarding internal state.
     mutable util::Mutex _mtx;

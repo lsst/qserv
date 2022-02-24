@@ -36,11 +36,19 @@ map<string, set<string>> ConfigTestData::parameters() {
                 "request-retry-interval-sec"
             }
         },
+        {   "registry",
+            {   "host",
+                "port",
+                "max-listen-conn",
+                "threads",
+                "heartbeat-ival-sec"
+            }
+        },
         {   "controller", 
             {   "num-threads",
-                "http-server-threads",
                 "http-server-port",
                 "http-max-listen-conn",
+                "http-server-threads",
                 "request-timeout-sec",
                 "job-timeout-sec",
                 "job-heartbeat-sec",
@@ -48,7 +56,8 @@ map<string, set<string>> ConfigTestData::parameters() {
                 "worker-evict-priority-level",
                 "health-monitor-priority-level",
                 "ingest-priority-level",
-                "catalog-management-priority-level"
+                "catalog-management-priority-level",
+                "auto-register-workers"
             }
         },
         {   "database",
@@ -83,19 +92,16 @@ map<string, set<string>> ConfigTestData::parameters() {
                 "num-async-loader-processing-threads",
                 "async-loader-auto-resume",
                 "async-loader-cleanup-on-resume",
-                "http-max-listen-conn"
-            }
-        },
-        {   "worker-defaults", 
-            {   "svc_port",
-                "fs_port",
-                "data_dir",
-                "loader_port",
-                "loader_tmp_dir",
-                "exporter_port",
-                "exporter_tmp_dir",
-                "http_loader_port",
-                "http_loader_tmp_dir"
+                "http-max-listen-conn",
+                "svc-port",
+                "fs-port",
+                "data-dir",
+                "loader-port",
+                "loader-tmp-dir",
+                "exporter-port",
+                "exporter-tmp-dir",
+                "http-loader-port",
+                "http-loader-tmp-dir"
             }
         }
     });
@@ -109,6 +115,13 @@ json ConfigTestData::data() {
         {"request-buf-size-bytes", 8192},
         {"request-retry-interval-sec", 1}
     });
+    generalObj["registry"] = json::object({
+        {"host", "127.0.0.1"},
+        {"port", 8081},
+        {"max-listen-conn", 512},
+        {"threads", 4},
+        {"heartbeat-ival-sec", 10}
+    });
     generalObj["controller"] = json::object({
         {"num-threads", 2},
         {"http-server-port", 8080},
@@ -121,7 +134,8 @@ json ConfigTestData::data() {
         {"worker-evict-priority-level", 1},
         {"health-monitor-priority-level", 2},
         {"ingest-priority-level", 3},
-        {"catalog-management-priority-level", 4}
+        {"catalog-management-priority-level", 4},
+        {"auto-register-workers", 1}
     });
     generalObj["database"] = json::object({
         {"host", "localhost"},
@@ -152,40 +166,38 @@ json ConfigTestData::data() {
         {"num-async-loader-processing-threads", 9},
         {"async-loader-auto-resume", 0},
         {"async-loader-cleanup-on-resume", 0},
-        {"http-max-listen-conn", 512}
-    });
-    generalObj["worker-defaults"] = json::object({
-        {"svc_port", 51000},
-        {"fs_port", 52000},
-        {"data_dir", "/data"},
-        {"loader_port", 53000},
-        {"loader_tmp_dir", "/tmp"},
-        {"exporter_port", 54000},
-        {"exporter_tmp_dir", "/tmp"},
-        {"http_loader_port", 55000},
-        {"http_loader_tmp_dir", "/tmp"}
+        {"http-max-listen-conn", 512},
+        {"svc-port", 51000},
+        {"fs-port", 52000},
+        {"data-dir", "/data"},
+        {"loader-port", 53000},
+        {"loader-tmp-dir", "/tmp"},
+        {"exporter-port", 54000},
+        {"exporter-tmp-dir", "/tmp"},
+        {"http-loader-port", 55000},
+        {"http-loader-tmp-dir", "/tmp"}
     });
 
-    // A configuration of tis worker is complete as it has all required
+    // A configuration of this worker is complete as it has all required
     // parameters.
     obj["workers"]["worker-A"] = json::object({
         {"name", "worker-A"},
-        {"is_enabled", 1},
-        {"is_read_only", 0},
-        {"svc_host", "host-A"},
-        {"svc_port", 51001},
-        {"fs_host", "host-A"},
-        {"fs_port", 52001},
-        {"data_dir", "/data/A"},
-        {"loader_host", "host-A"},
-        {"loader_port", 53002},
-        {"loader_tmp_dir", "/tmp/A"},
+        {"is-enabled", 1},
+        {"is-read-only", 0},
+        {"svc-host", "host-A"},
+        {"svc-port", 51001},
+        {"fs-host", "host-A"},
+        {"fs-port", 52001},
+        {"data-dir", "/data/A"},
+        {"loader-host", "host-A"},
+        {"loader-port", 53002},
+        {"loader-tmp-dir", "/tmp/A"},
         {"exporter_host", "host-A"},
-        {"exporter_port", 53003},
-        {"exporter_tmp_dir", "/tmp/export/A"},
-        {"http_loader_host", "host-A"},
-        {"http_loader_port", 53004},
-        {"http_loader_tmp_dir", "/tmp/http/A"}
+        {"exporter-port", 53003},
+        {"exporter-tmp-dir", "/tmp/export/A"},
+        {"http-loader-host", "host-A"},
+        {"http-loader-port", 53004},
+        {"http-loader-tmp-dir", "/tmp/http/A"}
     });
 
     // This configuration is incomplete. An assumption is that the corresponding
@@ -193,14 +205,14 @@ json ConfigTestData::data() {
     // this definition.
     obj["workers"]["worker-B"] = json::object({
         {"name", "worker-B"},
-        {"is_enabled", 1},
-        {"is_read_only", 1},
-        {"svc_host", "host-B"},
-        {"fs_host", "host-B"},
-        {"data_dir", "/data/B"},
-        {"loader_host", "host-B"},
+        {"is-enabled", 1},
+        {"is-read-only", 1},
+        {"svc-host", "host-B"},
+        {"fs-host", "host-B"},
+        {"data-dir", "/data/B"},
+        {"loader-host", "host-B"},
         {"exporter_host", "host-B"},
-        {"http_loader_host", "host-B"}
+        {"http-loader-host", "host-B"}
     });
 
     // This configuration is incomplete. An assumption is that the corresponding
@@ -208,13 +220,13 @@ json ConfigTestData::data() {
     // this definition.
     obj["workers"]["worker-C"] = json::object({
         {"name", "worker-C"},
-        {"is_enabled", 0},
-        {"is_read_only", 0},
-        {"svc_host", "host-C"},
-        {"fs_host", "host-C"},
-        {"loader_host", "host-C"},
+        {"is-enabled", 0},
+        {"is-read-only", 0},
+        {"svc-host", "host-C"},
+        {"fs-host", "host-C"},
+        {"loader-host", "host-C"},
         {"exporter_host", "host-C"},
-        {"http_loader_host", "host-C"}
+        {"http-loader-host", "host-C"}
     });
     obj["database_families"]["production"] = json::object({
         {"name", "production"},

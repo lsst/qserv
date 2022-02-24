@@ -28,6 +28,7 @@
 #include <iomanip>
 #include <iostream>
 #include <random>
+#include <sstream>
 #include <stdexcept>
 #include <thread>
 #include <vector>
@@ -72,6 +73,20 @@ uint64_t readBody(qhttp::Request::Ptr const& req) {
     return numBytes;
 }
 
+
+/// @return 'YYYY-MM-DD HH:MM:SS.mmm  '
+string timestamp() {
+    return replica::PerformanceUtils::toDateTimeString(std::chrono::milliseconds(replica::PerformanceUtils::now())) + "  ";
+}
+
+/// @return requestor's IP address as a string
+/// @return requestor's IP address as a string
+string senderIpAddr(qhttp::Request::Ptr const& req) {
+    ostringstream ss;
+    ss << req->remoteAddr.address();
+    return ss.str();
+}
+
 } /// namespace
 
 
@@ -87,10 +102,10 @@ QhttpTestApp::Ptr QhttpTestApp::create(int argc, char* argv[]) {
 QhttpTestApp::QhttpTestApp(int argc, char* argv[])
     :   Application(
             argc, argv,
-            description,
-            injectDatabaseOptions,
-            boostProtobufVersionCheck,
-            enableServiceProvider
+            ::description,
+            ::injectDatabaseOptions,
+            ::boostProtobufVersionCheck,
+            ::enableServiceProvider
         ) {
     parser().required(
         "port",
@@ -139,7 +154,7 @@ int QhttpTestApp::runImpl() {
         {"GET", "/service/receive",
             [&](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
                 ++numRequests;
-                if (_verbose) cout << _timestamp() << "/service/receive" << endl;
+                if (_verbose) cout << ::timestamp() << "Request: " << ::senderIpAddr(req) << "  /service/receive" << endl;
                 numBytesReceived += readBody(req);
                 json const reply({{"success", 1}});
                 resp->send(reply.dump(), "application/json");
@@ -148,7 +163,7 @@ int QhttpTestApp::runImpl() {
         {"GET", "/service/echo",
             [&](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
                 ++numRequests;
-                if (_verbose) cout << _timestamp() << "/service/echo" << endl;
+                if (_verbose) cout << ::timestamp() << "Request: " << ::senderIpAddr(req) << "  /service/echo" << endl;
                 uint64_t const numBytes = readBody(req);
                 numBytesReceived += numBytes;
                 numBytesSent += numBytes;
@@ -160,7 +175,7 @@ int QhttpTestApp::runImpl() {
         {"GET", "/service/random",
             [&](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
                 ++numRequests;
-                if (_verbose) cout << _timestamp() << "/service/random" << endl;
+                if (_verbose) cout << ::timestamp() << "Request: " << ::senderIpAddr(req) << "  /service/random" << endl;
                 uint64_t const numBytes = readBody(req);
                 numBytesReceived += numBytes;
                 uint64_t const numBytesRandom = distr(gen);
@@ -173,7 +188,7 @@ int QhttpTestApp::runImpl() {
         {"PUT", "/management/stop",
             [&](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
                 ++numRequests;
-                if (_verbose) cout << _timestamp() << "/management/stop" << endl;
+                if (_verbose) cout << ::timestamp() << "Request: " << ::senderIpAddr(req) << "  /management/stop" << endl;
                 numBytesReceived += readBody(req);
                 json const reply({{"success", 1}});
                 resp->send(reply.dump(), "application/json");
@@ -211,7 +226,7 @@ int QhttpTestApp::runImpl() {
                 (_reportIntervalMs / millisecondsInSecond) / KiB;
         double const kBytesPerSecondSent = (endNumBytesSent - beginNumBytesSent) /
                 (_reportIntervalMs / millisecondsInSecond) / KiB;
-        cout << _timestamp()
+        cout << ::timestamp()
              << "Process: " << setprecision(7) << requestsPerSecond       << " Req/s  "
              << "Receive: " << setprecision(7) << kBytesPerSecondReceived << " KiB/s  "
              << "Send: "    << setprecision(7) << kBytesPerSecondSent     << " KiB/s" << endl;
@@ -223,9 +238,5 @@ int QhttpTestApp::runImpl() {
     return 0;
 }
 
-
-string QhttpTestApp::_timestamp() {
-    return PerformanceUtils::toDateTimeString(std::chrono::milliseconds(PerformanceUtils::now())) + "  ";
-}
 
 }}} // namespace lsst::qserv::replica

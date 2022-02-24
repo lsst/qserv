@@ -40,26 +40,18 @@ namespace replica {
  * Class FileServerApp runs an instance of a file server on behalf of
  * the specified (via a command line parameter) worker.
  */
-class FileServerApp : public Application {
-
+class FileServerApp: public Application {
 public:
-
-    /// The pointer type for instances of the class
     typedef std::shared_ptr<FileServerApp> Ptr;
 
     /**
      * The factory method is the only way of creating objects of this class
      * because of the very base class's inheritance from 'enable_shared_from_this'.
      *
-     * @param argc
-     *   the number of command-line arguments
-     *
-     * @param argv
-     *   the vector of command-line arguments
+     * @param argc the number of command-line arguments
+     * @param argv the vector of command-line arguments
      */
     static Ptr create(int argc, char* argv[]);
-
-    // Default construction and copy semantics are prohibited
 
     FileServerApp()=delete;
     FileServerApp(FileServerApp const&)=delete;
@@ -68,12 +60,10 @@ public:
     ~FileServerApp() override=default;
 
 protected:
-
     /// @see Application::runImpl()
     int runImpl() final;
 
 private:
-
     /// @see FileServerApp::create()
     FileServerApp(int argc, char* argv[]);
 

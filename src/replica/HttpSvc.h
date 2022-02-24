@@ -82,19 +82,13 @@ protected:
      * @param backlog The maximum length of the queue of pending connections to a socket
      *   open by the server.
      * @param numThreads The number of BOOST ASIO threads.
-     * @param authKey An authorization key.
-     * @param adminAuthKey An administrator-level authorization key.
      */
     HttpSvc(ServiceProvider::Ptr const& serviceProvider,
             uint16_t port,
             unsigned int backlog,
-            size_t numThreads,
-            std::string const& authKey,
-            std::string const& adminAuthKey);
+            size_t numThreads);
 
     ServiceProvider::Ptr const& serviceProvider() const { return _serviceProvider; }
-    std::string const& authKey() const { return _authKey; }
-    std::string const& adminAuthKey() const { return _adminAuthKey; }
     qhttp::Server::Ptr const& httpServer() const { return _httpServer; }
     std::shared_ptr<boost::asio::io_service> const& io_service_ptr() { return _io_service_ptr; }
 
@@ -105,7 +99,7 @@ protected:
     }
 
     /// @return The context string to be used for the message logging.
-    virtual std::string  const& context() const=0;
+    virtual std::string const& context() const=0;
 
     /// Register subclass-specific REST services.
     virtual void registerServices()=0;
@@ -115,8 +109,6 @@ private:
     uint16_t const _port;
     unsigned int const _backlog;
     size_t const _numThreads;
-    std::string const _authKey;
-    std::string const _adminAuthKey;
 
     std::shared_ptr<boost::asio::io_service> const _io_service_ptr;
     qhttp::Server::Ptr _httpServer;

@@ -37,7 +37,6 @@
 #include "boost/asio.hpp"
 
 // Qserv headers
-#include "replica/Configuration.h"
 #include "replica/protocol.pb.h"
 #include "replica/ProtocolBuffer.h"
 #include "replica/ServiceProvider.h"
@@ -65,7 +64,7 @@ namespace replica {
   * or communicating with a client) occurs. When this happens the object
   * stops doing anything.
   */
-class FileServerConnection : public std::enable_shared_from_this<FileServerConnection> {
+class FileServerConnection: public std::enable_shared_from_this<FileServerConnection> {
 public:
     typedef std::shared_ptr<FileServerConnection> Ptr;
 
@@ -180,9 +179,6 @@ private:
 
     ServiceProvider::Ptr const _serviceProvider;
     std::string          const _workerName;
-
-    /// Cached worker descriptor obtained from the configuration
-    WorkerInfo const _workerInfo;
 
     /// A socket for communication with clients
     boost::asio::ip::tcp::socket _socket;

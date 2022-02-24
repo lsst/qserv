@@ -22,7 +22,7 @@
  */
 
 // Class header
-#include "replica/HttpFileReaderApp.h"
+#include "replica/HttpClientApp.h"
 
 // System headers
 #include <algorithm>
@@ -31,16 +31,17 @@
 #include <stdexcept>
 #include <vector>
 
-// Qserv headers
-#include "replica/HttpFileReader.h"
+// Third-party headers
+#include "nlohmann/json.hpp"
 
 using namespace std;
+using json = nlohmann::json;
 
 namespace {
 
 string const description =
-    "This application reads files from an object store over the HTTP/HTTPS protocol."
-    " If option '--file=<file>' is present the file's content will be writted into the"
+    "This application sends requests to a Web server over the HTTP/HTTPS protocol."
+    " If option '--file=<file>' is present the result will be writted to the"
     " specified file. Otherwise the content will be printed to the standard output stream.";
 
 bool const injectDatabaseOptions = false;
@@ -53,18 +54,18 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-HttpFileReaderApp::Ptr HttpFileReaderApp::create(int argc, char* argv[]) {
-    return Ptr(new HttpFileReaderApp(argc, argv));
+HttpClientApp::Ptr HttpClientApp::create(int argc, char* argv[]) {
+    return Ptr(new HttpClientApp(argc, argv));
 }
 
 
-HttpFileReaderApp::HttpFileReaderApp(int argc, char* argv[])
+HttpClientApp::HttpClientApp(int argc, char* argv[])
     :   Application(
             argc, argv,
-            description,
-            injectDatabaseOptions,
-            boostProtobufVersionCheck,
-            enableServiceProvider
+            ::description,
+            ::injectDatabaseOptions,
+            ::boostProtobufVersionCheck,
+            ::enableServiceProvider
         ) {
 
     parser().required(
@@ -87,71 +88,75 @@ HttpFileReaderApp::HttpFileReaderApp(int argc, char* argv[])
     ).reversedFlag(
         "no-ssl-verify-host",
         "The flag that disables verifying the certificate's name against host.",
-        _fileReaderConfig.sslVerifyHost
+        _clientConfig.sslVerifyHost
     ).reversedFlag(
         "no-ssl-verify-peer",
         "The flag that disables verifying the peer's SSL certificate.",
-        _fileReaderConfig.sslVerifyPeer
+        _clientConfig.sslVerifyPeer
     ).option(
         "ca-path",
         "A path to a directory holding CA certificates to verify the peer with."
         " This option is ignored if flag --no-ssl-verify-peer is specified.",
-        _fileReaderConfig.caPath
+        _clientConfig.caPath
     ).option(
         "ca-info",
         "A path to a Certificate Authority (CA) bundle to verify the peer with."
         " This option is ignored if flag --no-ssl-verify-peer is specified.",
-        _fileReaderConfig.caInfo
+        _clientConfig.caInfo
     ).reversedFlag(
         "no-proxy-ssl-verify-host",
         "The flag that disables verifying the certificate's name against proxy's host.",
-        _fileReaderConfig.proxySslVerifyHost
+        _clientConfig.proxySslVerifyHost
     ).reversedFlag(
         "no-proxy-ssl-verify-peer",
         "The flag that disables verifying the proxy's SSL certificate.",
-        _fileReaderConfig.proxySslVerifyPeer
+        _clientConfig.proxySslVerifyPeer
     ).option(
         "proxy-ca-path",
         "A path to a directory holding CA certificates to verify the proxy with."
         " This option is ignored if flag --no-proxy-ssl-verify-peer is specified.",
-        _fileReaderConfig.proxyCaPath
+        _clientConfig.proxyCaPath
     ).option(
         "proxy-ca-info",
         "A path to a Certificate Authority (CA) bundle to verify the proxy with."
         " This option is ignored if flag --no-proxy-ssl-verify-peer is specified.",
-        _fileReaderConfig.proxyCaInfo
+        _clientConfig.proxyCaInfo
     ).option(
         "connect-timeout",
         "Timeout for the connect phase. It should contain the maximum time in seconds that"
         " you allow the connection phase to the server to take. This only limits the connection"
         " phase, it has no impact once it has connected. Set to zero to switch to the default"
         " built-in connection timeout - 300 seconds.",
-        _fileReaderConfig.connectTimeout
+        _clientConfig.connectTimeout
     ).option(
         "timeout",
         "Set maximum time the request is allowed to take. Pass a long as parameter containing"
         " timeout - the maximum time in seconds that you allow the libcurl transfer operation"
         " to take. Normally, name lookups can take a considerable time and limiting operations"
         " risk aborting perfectly normal operations.",
-        _fileReaderConfig.timeout
+        _clientConfig.timeout
     ).option(
         "low-speed-limit",
         "Set low speed limit in bytes per second. Pass a long as parameter. It contains the average"
         " transfer speed in bytes per second that the transfer should be below during"
         " --low-speed-time=<seconds> for libcurl to consider it to be too slow and abort.",
-        _fileReaderConfig.lowSpeedLimit
+        _clientConfig.lowSpeedLimit
     ).option(
         "low-speed-time",
         "Set low speed limit time period. Pass a long as parameter. It contains the time in number"
         " seconds that the transfer speed should be below the --low-speed-limit=<bps> for the library"
         " to consider it too slow and abort.",
-        _fileReaderConfig.lowSpeedTime
+        _clientConfig.lowSpeedTime
     ).option(
         "file",
         "A path to an output file where the content received from a remote source will be written."
         "  If the option is not specified then the content will be printed onto the standard output"
         " stream. This option is ignored if flag --silent is specified.",
         _file
+    ).flag(
+        "result2json",
+        "If specified the flag will cause the application to interpret the result as a JSON object.",
+        _result2json
     ).flag(
         "silent",
         "The flag that disables printing or writing the content received from a remote"
@@ -161,8 +166,8 @@ HttpFileReaderApp::HttpFileReaderApp(int argc, char* argv[])
 }
 
 
-int HttpFileReaderApp::runImpl() {
-    string const context = "HttpFileReaderApp::" + string(__func__) + "  ";
+int HttpClientApp::runImpl() {
+    string const context = "HttpClientApp::" + string(__func__) + "  ";
     const char* allowedMethods[] = {"GET", "POST", "PUT", "DELETE"};
     if (count(cbegin(allowedMethods), cend(allowedMethods), _method) == 0) {
         throw invalid_argument(context + "unknown HTTP method: " + _method);
@@ -182,10 +187,14 @@ int HttpFileReaderApp::runImpl() {
             osPtr = &fs;
         }
     }
-    HttpFileReader reader(_method, _url, _data, headers, _fileReaderConfig);
-    reader.read([&](char const* record, size_t size) {
-        if (nullptr != osPtr) *osPtr << string(record, size) << "\n";
-    });
+    HttpClient reader(_method, _url, _data, headers, _clientConfig);
+    if (_result2json) {
+        if (nullptr != osPtr) *osPtr << reader.readAsJson() << "\n";
+    } else {
+        reader.read([&](char const* record, size_t size) {
+            if (nullptr != osPtr) *osPtr << string(record, size) << "\n";
+        });
+    }
     if (nullptr != osPtr) {
         osPtr->flush();
         if (fs.is_open()) fs.close();

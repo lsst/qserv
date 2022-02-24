@@ -55,19 +55,17 @@ namespace qserv {
 namespace replica {
 
 FixUpApp::Ptr FixUpApp::create(int argc, char* argv[]) {
-    return Ptr(
-        new FixUpApp(argc, argv)
-    );
+    return Ptr(new FixUpApp(argc, argv));
 }
 
 
 FixUpApp::FixUpApp(int argc, char* argv[])
     :   Application(
             argc, argv,
-            description,
-            injectDatabaseOptions,
-            boostProtobufVersionCheck,
-            enableServiceProvider
+            ::description,
+            ::injectDatabaseOptions,
+            ::boostProtobufVersionCheck,
+            ::enableServiceProvider
         ) {
 
     // Configure the command line parser

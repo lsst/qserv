@@ -34,26 +34,18 @@ namespace replica {
  * and Qserv workers to see if they respond within the specified (or implied)
  * timeout.
  */
-class ClusterHealthApp : public Application {
-
+class ClusterHealthApp: public Application {
 public:
-
-    /// The pointer type for instances of the class
     typedef std::shared_ptr<ClusterHealthApp> Ptr;
 
     /**
      * The factory method is the only way of creating objects of this class
      * because of the very base class's inheritance from 'enable_shared_from_this'.
      *
-     * @param argc
-     *   the number of command-line arguments
-     *
-     * @param argv
-     *   the vector of command-line arguments
+     * @param argc the number of command-line arguments
+     * @param argv the vector of command-line arguments
      */
     static Ptr create(int argc, char* argv[]);
-
-    // Default construction and copy semantics are prohibited
 
     ClusterHealthApp()=delete;
     ClusterHealthApp(ClusterHealthApp const&)=delete;
@@ -62,19 +54,12 @@ public:
     ~ClusterHealthApp() override=default;
 
 protected:
-
     /// @see Application::runImpl()
     int runImpl() final;
 
 private:
-
     /// @see ClusterHealthApp::create()
     ClusterHealthApp(int argc, char* argv[]);
-
-
-    /// The timeout (seconds) for status requests sent to the Replication
-    /// system's and Qserv workers
-    unsigned int _timeoutSec = 10;
 
     /// Extend a scope of the operation to probes all known workers instead of
     /// just the ENABLED ones.

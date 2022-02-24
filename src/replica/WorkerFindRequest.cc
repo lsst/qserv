@@ -207,14 +207,14 @@ bool WorkerFindRequestPOSIX::execute() {
 
     if (not computeCheckSum() or not _csComputeEnginePtr) {
 
-        WorkerInfo   const workerInfo   = _serviceProvider->config()->workerInfo(worker());
-        DatabaseInfo const databaseInfo = _serviceProvider->config()->databaseInfo(database());
+        auto const config = _serviceProvider->config();
+        DatabaseInfo const databaseInfo = config->databaseInfo(database());
 
         // Check if the data directory exists and it can be read
 
         util::Lock dataFolderLock(_mtxDataFolderOperations, context(__func__));
 
-        fs::path        const dataDir = fs::path(workerInfo.dataDir) / database();
+        fs::path        const dataDir = fs::path(config->get<string>("worker", "data-dir")) / database();
         fs::file_status const stat    = fs::status(dataDir, ec);
 
         errorContext = errorContext

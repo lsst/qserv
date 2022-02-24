@@ -47,25 +47,21 @@ namespace qserv {
 namespace replica {
 
 IngestSvc::Ptr IngestSvc::create(ServiceProvider::Ptr const& serviceProvider,
-                                 string const& workerName,
-                                 string const& authKey) {
-    return IngestSvc::Ptr(new IngestSvc(serviceProvider, workerName, authKey));
+                                 string const& workerName) {
+    return IngestSvc::Ptr(new IngestSvc(serviceProvider, workerName));
 }
 
 
 IngestSvc::IngestSvc(ServiceProvider::Ptr const& serviceProvider,
-                     string const& workerName,
-                     string const& authKey)
+                     string const& workerName)
     :   _serviceProvider(serviceProvider),
         _workerName(workerName),
-        _authKey(authKey),
-        _workerInfo(serviceProvider->config()->workerInfo(workerName)),
         _io_service(),
         _acceptor(
             _io_service,
             boost::asio::ip::tcp::endpoint(
                 boost::asio::ip::tcp::v4(),
-                _workerInfo.loaderPort)) {
+                serviceProvider->config()->get<uint16_t>("worker", "loader-port"))) {
 
     // Set the socket reuse option to allow recycling ports after catastrophic
     // failures.
@@ -101,7 +97,6 @@ void IngestSvc::_beginAccept() {
         IngestSvcConn::create(
             _serviceProvider,
             _workerName,
-            _authKey,
             _io_service);
 
     _acceptor.async_accept(

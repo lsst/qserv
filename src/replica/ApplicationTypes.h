@@ -653,27 +653,19 @@ private:
  * provided by a user.
  */
 class Parser {
-
 public:
-    
     enum Status {
-
         /// The initial state for the completion code. It's used to determine
         /// if any parsing attempt has been made.
         UNDEFINED = -1,
-
         /// The normal completion status
         SUCCESS = 0,
-
         /// This status is reported after intercepting flag "--help" and printing
         /// the documentation.
         HELP_REQUESTED = 1,
-
         /// The status is used to report any problem with parsing arguments.
         PARSING_FAILED = 2
     };
-    
-     // Default construction and copy semantics are prohibited
 
     Parser() = delete;
     Parser(Parser const&) = delete;
@@ -684,18 +676,11 @@ public:
     /**
      * Construct and initialize the parser
      *
-     * @param arc
-     *   argument count
-     *
-     * @parav argv
-     *   vector of argument values
-     *
-     * @param description
-     *   description of an application
+     * @param arc argument count
+     * @param argv vector of argument values
+     * @param description description of an application
      */
-    Parser(int argc,
-           const char* const argv[],
-           std::string const& description);
+    Parser(int argc, const char* const argv[], std::string const& description);
 
     /**
      * Reset the state of the object to the one it was constructed. This
@@ -715,47 +700,28 @@ public:
     /**
      * Configure the Parser as the parser of "commands".
      *
-     * @note
-     *   This method can be called just once. Any subsequent attempts to call
+     * @note This method can be called just once. Any subsequent attempts to call
      *   the methods will result in throwing exception std::logic_error.
-     *
-     * @param name
-     *   the name of the parameter as it will be shown in error messages
+     * @param name the name of the parameter as it will be shown in error messages
      *   (should there be any problem with parsing a value of the parameter)
      *   and the 'help' printout (if the one is requested in the constructor
      *   of the class)
-     *
-     * @param commandNames
-     *   a collection of column names
-     *
-     * @param var
-     *   a user variable to be initialized with the name of a command detected
+     * @param commandNames a collection of column names
+     * @param var a user variable to be initialized with the name of a command detected
      *   by the Parser.
-     *
-     * @return
-     *   a reference to the parser object in order to allow chained calls
-     * 
-     * @throws std::logic_error
-     *   if the Parser was already configured in this way
+     * @return a reference to the parser object in order to allow chained calls
+     * @throws std::logic_error if the Parser was already configured in this way
      */
-    Parser& commands(std::string const& name,
-                     std::vector<std::string> const& commandNames,
+    Parser& commands(std::string const& name, std::vector<std::string> const& commandNames,
                      std::string& var);
 
     /**
      * Find a command in the set
      *
-     * @param name
-     *   the name of a command
-     *
-     * @return
-     *   a reference to the command description object
-     *
-     * @throws std::logic_error
-     *   if the Parser was not configured in this way
-     *
-     * @throws std::range_error
-     *   if the command is unknown
+     * @param name the name of a command
+     * @return a reference to the command description object
+     * @throws std::logic_error if the Parser was not configured in this way
+     * @throws std::range_error if the command is unknown
      */
     Command& command(std::string const& name);
 
@@ -766,47 +732,26 @@ public:
      * a being called.
      *
      * @see method Parser::optional()
-     *
-     * @param name
-     *   the name of the parameter as it will be shown in error messages
+     * @param name the name of the parameter as it will be shown in error messages
      *   (should there be any problem with parsing a value of the parameter)
      *   and the 'help' printout (if the one is requested in the constructor
      *   of the class)
-     *
-     * @param description
-     *   the description of the parameter as it will be shown in the 'help'
+     * @param description the description of the parameter as it will be shown in the 'help'
      *   printout (if the one is requested in the constructor of the class)
-     *
-     * @param var
-     *   the reference to the corresponding variable to be initialized with
+     * @param var the reference to the corresponding variable to be initialized with
      *   a value of the parameter after successful parsing. The type of the
      *   parameter is determined by the template argument.
-     *
-     * @param allowedValues
-     *   (optional) collection of allowed values of the parameter.
-     *
-     * @throws std::invalid_argument
-     *   if the name of the argument is empty, or if another parameter, option
-     *   or flag under the same name was already requested earlier.
-     *
-     * @return
-     *   a reference to the parser object in order to allow chained calls
+     * @param allowedValues (optional) collection of allowed values of the parameter.
+     * @throws std::invalid_argument if the name of the argument is empty, or if
+     *   another parameter, option or flag under the same name was already requested earlier.
+     * @return a reference to the parser object in order to allow chained calls
      */
     template <typename T>
-    Parser& required(std::string const& name,
-                              std::string const& description,
-                              T& var,
-                              std::vector<T> const& allowedValues = std::vector<T>()) {
+    Parser& required(std::string const& name, std::string const& description, T& var,
+                     std::vector<T> const& allowedValues = std::vector<T>()) {
         _verifyArgument(name);
         _required.push_back(
-            std::move(
-                std::make_unique<ParameterParser<T>>(
-                    name,
-                    description,
-                    var,
-                    allowedValues
-                )
-            )
+            std::move(std::make_unique<ParameterParser<T>>(name, description, var, allowedValues))
         );
         return *this;
     }
@@ -824,20 +769,11 @@ public:
      *   a reference to the parser object in order to allow chained calls
      */
     template <typename T>
-    Parser& optional(std::string const& name,
-                              std::string const& description ,
-                              T& var,
-                              std::vector<T> const& allowedValues = std::vector<T>()) {
+    Parser& optional(std::string const& name, std::string const& description,
+                     T& var, std::vector<T> const& allowedValues = std::vector<T>()) {
         _verifyArgument(name);
         _optional.push_back(
-            std::move(
-                std::make_unique<ParameterParser<T>>(
-                    name,
-                    description,
-                    var,
-                    allowedValues
-                )
-            )
+            std::move(std::make_unique<ParameterParser<T>>(name, description, var, allowedValues))
         );
         return *this;
     }
@@ -848,25 +784,15 @@ public:
      * show up at any position in the command line.
      *
      * @see method Parser::optional()
-     *
-     * @return
-     *   a reference to the parser object in order to allow chained calls
+     * @return  a reference to the parser object in order to allow chained calls
      */
     template <typename T>
-    Parser& option(std::string const& name,
-                   std::string const& description,
-                   T& var) {
+    Parser& option(std::string const& name, std::string const& description, T& var) {
         _verifyArgument(name);
         _options.emplace(
             std::make_pair(
                 name,
-                std::move(
-                    std::make_unique<OptionParser<T>>(
-                        name,
-                        description,
-                        var
-                    )
-                )
+                std::move(std::make_unique<OptionParser<T>>(name, description, var))
             )
         );
         return *this;
@@ -879,13 +805,9 @@ public:
      * to the ones of the above defined 'add' methods.
      *
      * @see method Parser::option()
-     *
-     * @return
-     *   a reference to the parser object in order to allow chained calls
+     * @return a reference to the parser object in order to allow chained calls
      */
-    Parser& flag(std::string const& name,
-                 std::string const& description,
-                 bool& var);
+    Parser& flag(std::string const& name, std::string const& description, bool& var);
 
     /**
      * This variation of the flag registration method would result in reversing
@@ -893,14 +815,11 @@ public:
      *
      * @see method Parser::flag()
      */
-    Parser& reversedFlag(std::string const& name,
-                         std::string const& description,
-                         bool& var);
+    Parser& reversedFlag(std::string const& name, std::string const& description, bool& var);
 
     /**
      * Parse parameters, options and flags requested by above
-     * defined 'add' methods. The method will return one the following
-     * codes defined by Status.
+     * defined 'add' methods.
      *
      * IMPORTANT: after completion (successful or not) the states of
      * some (or all) variables mentioned in the above defined methods
@@ -910,21 +829,18 @@ public:
      * @see Parser::Status
      * @see method Parser::reset()
      *
-     * @return
-     *   completion code
-     *
-     * @throws ParserError
-     *   for any problems occurring during the parsing
+     * @return the completion code
+     * @throws ParserError for any problems occurring during the parsing
      */
-    int parse();
+    Status parse();
+
+    /// @return the status of the Parser
+    Status status() const { return _code; }
 
     /**
-     * @return
-     *   serialize names and values of the parsed arguments serialized
+     * @return serialize names and values of the parsed arguments
      *   into a string
-     *
-     * @throws std::logic_error
-     *   if called before attempted to parse
+     * @throws std::logic_error if called before attempted to parse
      *   the command line parameters, or if the parsing didn't successfully
      *   finish with Status::SUCCESS.
      */
@@ -936,44 +852,28 @@ private:
      * Verify the name of an argument (parameter, option or flag) to ensure 
      * it has a valid name.
      *
-     * @param name
-     *   the name of an argument
-     * 
-     * @throws std::invalid_argument 
-     *   if the name is not allowed or it's empty
+     * @param name the name of an argument
+     * @throws std::invalid_argument if the name is not allowed or it's empty
      */
     void _verifyArgument(std::string const& name);
 
     /**
      * Parse and store a value of an option in a collection if it's a valid option
      * 
-     * @param options
-     *   a collection of options to be updated
-     *
-     * @param name
-     *   the name of an option
-     *
-     * @param value
-     *   its value
-     *
-     * @return
-     *   'true' of this is a valid option, and it's been successfully parsed
+     * @param options a collection of options to be updated
+     * @param name the name of an option
+     * @param value its value
+     * @return 'true' if this is a valid option, and it's been successfully parsed
      */
     bool _parseOption(std::map<std::string, std::unique_ptr<ArgumentParser>>& options,
-                      std::string const& name,
-                      std::string const& value);
+                      std::string const& name, std::string const& value);
 
     /**
      * Parse and store a value of a flag in a collection if it's a valid flag
      * 
-     * @param options
-     *   a collection of flags to be updated
-     *
-     * @param name
-     *   the name of a flag
-     *
-     * @return
-     *   'true' of this is a valid flag, and it's been successfully parsed
+     * @param options a collection of flags to be updated
+     * @param name the name of a flag
+     * @return 'true' if this is a valid flag, and it's been successfully parsed
      */
     bool _parseFlag(std::map<std::string, std::unique_ptr<ArgumentParser>>& flags,
                     std::string const& name);
@@ -981,15 +881,10 @@ private:
    /**
     * Parse and store values of the positional parameters
     * 
-    * @param out
-    *   the output collection of parameters to be populated from the input one
-    *
-    * @param inItr
-    *   the current position of a modifiable iterator pointing to the input
+    * @param out the output collection of parameters to be populated from the input one
+    * @param inItr the current position of a modifiable iterator pointing to the input
     *   collection of parameters to be analyzed and parsed
-    * 
-    * @param inItrEnd
-    *   the end iterator for the input collection of parameters to be analyzed
+    * @param inItrEnd the end iterator for the input collection of parameters to be analyzed
     *   and parsed
     */ 
     void _parseParameters(std::vector<std::unique_ptr<ArgumentParser>>& out,
@@ -997,8 +892,7 @@ private:
                           std::vector<std::string>::const_iterator const& inItrEnd);
 
     /**
-     * @return
-     *   the "Usage" string to be reported in case if any problem
+     * @return the "Usage" string to be reported in case if any problem
      *   with parsing the command line arguments will be seen. The current
      *   implementation of this method will build and cache the string the
      *   first time the method is invoked.
@@ -1006,8 +900,7 @@ private:
     std::string const& _usage();
 
     /**
-     * @return
-     *   the complete documentation to be returned if flag "--help"
+     * @return the complete documentation to be returned if flag "--help"
      *   is passed as an argument.  The current implementation of this method
      *   will build and cache the string the first time the method is invoked
      *   regardless if flag "--help" is registered or not for the application.
@@ -1019,21 +912,13 @@ private:
      * wrapped at wite spaces not to exceed the specified maximum width
      * of each line.
      *
-     * @param str
-     *   the input string to be wrapped
-     *   
-     * @param indent
-     *   the indent at the beginning of each line
-     *   
-     * @param width
-     *   the maximum width of each line (including the specified indent)
-     *
-     * @return
-     *   the wrapped text, in which each line (including the last one)
+     * @param str the input string to be wrapped
+     * @param indent the indent at the beginning of each line
+     * @param width the maximum width of each line (including the specified indent)
+     * @return the wrapped text, in which each line (including the last one)
      *   ends with the newline symbol.
      */
-    static std::string _wrap(std::string const& str,
-                             std::string const& indent="      ",
+    static std::string _wrap(std::string const& str, std::string const& indent="      ",
                              size_t width=72);
 
 
@@ -1061,7 +946,7 @@ private:
     /// Status code set after parsing the arguments. It's also used to avoid
     /// invoking method Parser::parse() more than one time. The default value
     /// indicates that the parser has never attempted.
-    int _code;
+    Status _code;
 
     /// The "Usage" string is build when all arguments are registered
     /// and method 'parse()' is invoked.

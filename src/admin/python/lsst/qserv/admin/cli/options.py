@@ -128,13 +128,6 @@ repl_connection_option = partial(
 )
 
 
-repl_ctrl_domain_name_option = partial(
-    click.option,
-    "--repl-ctl-dn",
-    help="The fully qualified domain name of the replication controller.",
-)
-
-
 run_option = partial(
     click.option,
     "--run/--no-run",

@@ -33,26 +33,18 @@ namespace replica {
  * Class VerifyApp implements a tool which runs the replica verification algorithm
  * for all known replicas across all ENABLED workers.
  */
-class VerifyApp : public Application {
-
+class VerifyApp: public Application {
 public:
-
-    /// The pointer type for instances of the class
     typedef std::shared_ptr<VerifyApp> Ptr;
 
     /**
      * The factory method is the only way of creating objects of this class
      * because of the very base class's inheritance from 'enable_shared_from_this'.
      *
-     * @param argc
-     *   the number of command-line arguments
-     *
-     * @param argv
-     *   the vector of command-line arguments
+     * @param argc the number of command-line arguments
+     * @param argv the vector of command-line arguments
      */
     static Ptr create(int argc, char* argv[]);
-
-    // Default construction and copy semantics are prohibited
 
     VerifyApp()=delete;
     VerifyApp(VerifyApp const&)=delete;
@@ -61,12 +53,10 @@ public:
     ~VerifyApp() final=default;
 
 protected:
-
     /// @see Application::runImpl()
     int runImpl() final;
 
 private:
-
     /// @see VerifyApp::create()
     VerifyApp(int argc, char* argv[]);
 

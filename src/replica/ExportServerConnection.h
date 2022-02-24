@@ -74,12 +74,10 @@ public:
      * @param workerName  the name of a worker this service is acting
      * upon (used to pull worker-specific configuration options for
      * the service)
-     * @param authKey an authorization key for the catalog ingest operation.
      * @param io_service service object for the network I/O operations
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider,
                       std::string const& workerName,
-                      std::string const& authKey,
                       boost::asio::io_service& io_service);
 
     ExportServerConnection() = delete;
@@ -101,7 +99,6 @@ public:
 private:
     ExportServerConnection(ServiceProvider::Ptr const& serviceProvider,
                            std::string const& workerName,
-                           std::string const& authKey,
                            boost::asio::io_service& io_service);
 
     /// Initiate (ASYNC) read of the handshake request from a client
@@ -187,10 +184,6 @@ private:
 
     ServiceProvider::Ptr const _serviceProvider;
     std::string          const _workerName;
-    std::string          const _authKey;
-
-    /// Cached worker descriptor obtained from the configuration
-    WorkerInfo const _workerInfo;
 
     /// A socket for communication with clients
     boost::asio::ip::tcp::socket _socket;

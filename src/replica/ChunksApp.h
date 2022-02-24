@@ -36,26 +36,18 @@ namespace replica {
  * Class ChunksApp implements a tool which launches a single job Controller in order
  * to acquire, analyze and reports chunk disposition within a database family.
  */
-class ChunksApp : public Application {
-
+class ChunksApp: public Application {
 public:
-
-    /// The pointer type for instances of the class
     typedef std::shared_ptr<ChunksApp> Ptr;
 
     /**
      * The factory method is the only way of creating objects of this class
      * because of the very base class's inheritance from 'enable_shared_from_this'.
      *
-     * @param argc
-     *   the number of command-line arguments
-     *
-     * @param argv
-     *   the vector of command-line arguments
+     * @param argc the number of command-line arguments
+     * @param argv the vector of command-line arguments
      */
     static Ptr create(int argc, char* argv[]);
-
-    // Default construction and copy semantics are prohibited
 
     ChunksApp()=delete;
     ChunksApp(ChunksApp const&)=delete;
@@ -64,12 +56,10 @@ public:
     ~ChunksApp() override=default;
 
 protected:
-
     /// @see Application::runImpl()
     int runImpl() final;
 
 private:
-
     /// @see ChunksApp::create()
     ChunksApp(int argc, char* argv[]);
 
@@ -85,11 +75,6 @@ private:
 
     /// The flag (if set) for pulling chunk disposition from Qserv workers for the combined analysis
     bool _pullQservReplicas = false;
-
-    /// The maximum timeout for the completion of requests sent to
-    /// the Replication System's and Qserv workers. The default value (0)
-    /// implies using the timeout found in the Configuration.
-    unsigned int _timeoutSec = 0;
 
     /// Dump the detailed report on the replicas if 'true'
     bool _detailedReport = false;

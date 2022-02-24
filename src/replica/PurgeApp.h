@@ -35,26 +35,18 @@ namespace replica {
  * doing so, the application will make the best effort to leave worker nodes as
  * balanced as possible, and it will also preserve chunk collocation.
  */
-class PurgeApp : public Application {
-
+class PurgeApp: public Application {
 public:
-
-    /// The pointer type for instances of the class
     typedef std::shared_ptr<PurgeApp> Ptr;
 
     /**
      * The factory method is the only way of creating objects of this class
      * because of the very base class's inheritance from 'enable_shared_from_this'.
      *
-     * @param argc
-     *   the number of command-line arguments
-     *
-     * @param argv
-     *   the vector of command-line arguments
+     * @param argc the number of command-line arguments
+     * @param argv the vector of command-line arguments
      */
     static Ptr create(int argc, char* argv[]);
-
-    // Default construction and copy semantics are prohibited
 
     PurgeApp()=delete;
     PurgeApp(PurgeApp const&)=delete;
@@ -63,12 +55,10 @@ public:
     ~PurgeApp() final=default;
 
 protected:
-
     /// @see Application::runImpl()
     int runImpl() final;
 
 private:
-
     /// @see PurgeApp::create()
     PurgeApp(int argc, char* argv[]);
 

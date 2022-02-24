@@ -40,14 +40,10 @@ public:
     explicit HttpProcessorConfig(unsigned int workerResponseTimeoutSec_=0,
                                  unsigned int qservSyncTimeoutSec_=0,
                                  unsigned int workerReconfigTimeoutSec_=0,
-                                 std::string const& authKey_=std::string(),
-                                 std::string const& adminAuthKey_=std::string(),
                                  std::string const& httpRoot_=std::string())
         :   workerResponseTimeoutSec(workerResponseTimeoutSec_),
             qservSyncTimeoutSec(qservSyncTimeoutSec_),
             workerReconfigTimeoutSec(workerReconfigTimeoutSec_),
-            authKey(authKey_),
-            adminAuthKey(adminAuthKey_),
             httpRoot(httpRoot_) {
     }
     HttpProcessorConfig(HttpProcessorConfig const&) = default;
@@ -69,12 +65,6 @@ public:
     /// The maximum number of seconds to wait for the completion of the worker
     /// reconfiguration requests.
     unsigned int const workerReconfigTimeoutSec = 0;
-
-    /// An authorization key for metadata operations requested via the REST API.
-    std::string authKey;
-
-    /// An "administrator"-level authorization key.
-    std::string adminAuthKey;
 
     /// The root folder for the static content to be served by the built-in
     /// HTTP service.

@@ -55,19 +55,17 @@ namespace qserv {
 namespace replica {
 
 PurgeApp::Ptr PurgeApp::create(int argc, char* argv[]) {
-    return Ptr(
-        new PurgeApp(argc, argv)
-    );
+    return Ptr(new PurgeApp(argc, argv));
 }
 
 
 PurgeApp::PurgeApp(int argc, char* argv[])
     :   Application(
             argc, argv,
-            description,
-            injectDatabaseOptions,
-            boostProtobufVersionCheck,
-            enableServiceProvider
+            ::description,
+            ::injectDatabaseOptions,
+            ::boostProtobufVersionCheck,
+            ::enableServiceProvider
         ) {
 
     // Configure the command line parser

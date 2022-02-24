@@ -44,9 +44,8 @@ namespace replica {
 /**
  * Class TransactionsApp implements a tool for testing super-transactions.
  */
-class TransactionsApp : public Application {
+class TransactionsApp: public Application {
 public:
-    /// The pointer type for instances of the class
     typedef std::shared_ptr<TransactionsApp> Ptr;
 
     /**

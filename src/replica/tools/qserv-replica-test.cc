@@ -26,7 +26,7 @@
 // Qserv headers
 #include "replica/ApplicationColl.h"
 #include "replica/DatabaseTestApp.h"
-#include "replica/HttpFileReaderApp.h"
+#include "replica/HttpClientApp.h"
 #include "replica/MessengerTestApp.h"
 #include "replica/MySQLTestApp.h"
 #include "replica/QhttpTestApp.h"
@@ -41,7 +41,7 @@ namespace {
 ApplicationColl getAppColl() {
     ApplicationColl coll;
     coll.add<DatabaseTestApp>("DATABASE");
-    coll.add<HttpFileReaderApp>("HTTP-FILE-READER");
+    coll.add<HttpClientApp>("HTTP-CLIENT");
     coll.add<MessengerTestApp>("MESSENGER");
     coll.add<MySQLTestApp>("MYSQL");
     coll.add<QhttpTestApp>("QHTTP");

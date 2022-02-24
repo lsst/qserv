@@ -186,7 +186,7 @@ Parser& Parser::reversedFlag(string const& name,
 }
 
 
-int Parser::parse() {
+Parser::Status Parser::parse() {
 
     // Check if the parser hasn't been used.
     if (Status::UNDEFINED != _code) return _code;
@@ -199,7 +199,8 @@ int Parser::parse() {
 
         if (arg == "--help") {
             cerr << _help() << endl;
-            return Status::HELP_REQUESTED;
+            _code = Status::HELP_REQUESTED;
+            return _code;
         }
     }
 

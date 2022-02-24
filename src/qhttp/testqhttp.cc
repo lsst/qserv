@@ -536,7 +536,7 @@ BOOST_FIXTURE_TEST_CASE(static_content, QhttpFixture)
     //----- test invalid root directory
 
     BOOST_CHECK_THROW(server->addStaticContent("/*", "/doesnotexist"), fs::filesystem_error);
-    BOOST_CHECK_THROW(server->addStaticContent("/*", dataDir + "index.htm"), fs::filesystem_error);
+    BOOST_CHECK_THROW(server->addStaticContent("/*", dataDir + "index.html"), fs::filesystem_error);
 
    //----- set up valid static content for subsequent tests
 
@@ -545,10 +545,10 @@ BOOST_FIXTURE_TEST_CASE(static_content, QhttpFixture)
 
     CurlEasy curl;
 
-    //----- test default index.htm
+    //----- test default index.html
 
     curl.setup("GET", urlPrefix, "").perform().validate(200, "text/html");
-    compareWithFile(curl.recdContent, dataDir + "index.htm");
+    compareWithFile(curl.recdContent, dataDir + "index.html");
 
     //----- test subdirectories and file typing by extension
 

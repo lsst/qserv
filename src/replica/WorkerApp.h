@@ -28,9 +28,6 @@
 // Qserv headers
 #include "replica/Application.h"
 
-// LSST headers
-#include "lsst/log/Log.h"
-
 // This header declarations
 namespace lsst {
 namespace qserv {
@@ -39,7 +36,7 @@ namespace replica {
 /**
  * Class WorkerApp implements represents a worker service.
  */
-class WorkerApp : public Application {
+class WorkerApp: public Application {
 public:
     typedef std::shared_ptr<WorkerApp> Ptr;
 
@@ -59,24 +56,30 @@ public:
     virtual ~WorkerApp() final = default;
 
 protected:
-    /// @see Application::runImpl()
     virtual int runImpl() final;
 
 private:
-    /// @see WorkerApp::create()
     WorkerApp(int argc, char* argv[]);
 
-    /// Logger stream
-    LOG_LOGGER _log;
+    /**
+     * @brief Check if required folders exist and they're write-enabled for an effective user
+     *   of the current process. Create missing folders if needed and if requested.
+     * @note Worker services depend on a number of folders that are used for
+     *   storing intermediate files of various sizes. Locations (absolute path names)
+     *   of the folders are set in the corresponding configuration parameters.
+     *   Desired characteristics (including size, I/O latency, I/O bandwidth, etc.) of
+     *   the folders may vary depending on the service type and a scale of a particular
+     *   Qserv deployment. Note that the overall performance and scalability greately
+     *   depends on the quality of of the underlying filesystems. Usually, in
+     *   the large-scale deployments, the folders should be pre-created and be placed
+     *   at the large-capacity high-performance filesystems at the Qserv deployment time.
+     * @throw std::runtime_error If any folder can't be created, or if any folder is not
+     *   write-enabled for the current user.
+     */
+    void _verifyCreateFolders() const;
     
     /// A connection url for the MySQL service of the Qserv worker database.
     std::string _qservWorkerDbUrl;
-
-    /// An authorization key for the catalog ingest operation.
-    std::string _authKey;
-
-    /// An "administrator"-level authorization key.
-    std::string _adminAuthKey;
 
     /// The worker will create missing folders unless told not to do so by
     /// passing the corresponding command-line flag.

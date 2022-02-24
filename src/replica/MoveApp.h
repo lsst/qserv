@@ -33,26 +33,18 @@ namespace replica {
  * Class MoveApp implements a tool which runs the rebalancing algorithm
  * in a scope of a database family.
  */
-class MoveApp : public Application {
-
+class MoveApp: public Application {
 public:
-
-    /// The pointer type for instances of the class
     typedef std::shared_ptr<MoveApp> Ptr;
 
     /**
      * The factory method is the only way of creating objects of this class
      * because of the very base class's inheritance from 'enable_shared_from_this'.
      *
-     * @param argc
-     *   the number of command-line arguments
-     *
-     * @param argv
-     *   the vector of command-line arguments
+     * @param argc the number of command-line arguments
+     * @param argv the vector of command-line arguments
      */
     static Ptr create(int argc, char* argv[]);
-
-    // Default construction and copy semantics are prohibited
 
     MoveApp()=delete;
     MoveApp(MoveApp const&)=delete;
@@ -61,12 +53,10 @@ public:
     ~MoveApp() final=default;
 
 protected:
-
     /// @see Application::runImpl()
     int runImpl() final;
 
 private:
-
     /// @see MoveApp::create()
     MoveApp(int argc, char* argv[]);
 

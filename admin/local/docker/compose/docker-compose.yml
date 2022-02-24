@@ -138,6 +138,7 @@ services:
           --repl-connection mysql://qsreplica@repl-mgr-db:3306/qservReplica
           --
           --instance-id=qserv_proj
+          --registry-host=repl-mgr-registry
           --debug
         environment:
             << : *log-environment
@@ -227,6 +228,7 @@ services:
           --repl-connection mysql://qsreplica@repl-mgr-db:3306/qservReplica
           --
           --instance-id=qserv_proj
+          --registry-host=repl-mgr-registry
           --debug
         environment:
             << : *log-environment
@@ -361,12 +363,12 @@ services:
           entrypoint --log-level DEBUG replication-controller
           --db-uri mysql://qsreplica@repl-mgr-db:3306/qservReplica
           --db-admin-uri mysql://root:CHANGEME@repl-mgr-db:3306/qservReplica
-          --worker qserv_worker_db=mysql://qsmaster@worker-db-0:3306/qservw_worker,host=worker-repl-0
-          --worker qserv_worker_db=mysql://qsmaster@worker-db-1:3306/qservw_worker,host=worker-repl-1
           --qserv-czar-db=mysql://root:CHANGEME@czar-db:3306/qservMeta
           --
           --instance-id=qserv_proj
           --xrootd-host=manager-xrootd
+          --registry-host=repl-mgr-registry
+          --controller-auto-register-workers=1
         environment:
             << : *log-environment
         expose:
@@ -380,4 +382,20 @@ services:
             - type: volume
               source: repl_mgr_home
               target: /home/qserv
+            - << : *log-volume
+    repl-mgr-registry:
+        image: "${QSERV_IMAGE:?err}"
+        init: true
+        command: >
+          entrypoint --log-level DEBUG replication-registry
+          --db-uri mysql://qsreplica@repl-mgr-db:3306/qservReplica
+          --db-admin-uri mysql://root:CHANGEME@repl-mgr-db:3306/qservReplica
+          --
+          --instance-id=qserv_proj
+          --debug
+        environment:
+            << : *log-environment
+        expose:
+            - "25082"
+        volumes:
             - << : *log-volume
