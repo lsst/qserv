@@ -18,8 +18,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_REDIRECTORWORKERS_H
-#define LSST_QSERV_REDIRECTORWORKERS_H
+#ifndef LSST_QSERV_REGISTRYWORKERS_H
+#define LSST_QSERV_REGISTRYWORKERS_H
 
 // System headers
 #include <string>
@@ -36,9 +36,9 @@ namespace qserv {
 namespace replica {
 
 /**
- * Class RedirectorWorkers represents a synchronized collection of workers.
+ * Class RegistryWorkers represents a synchronized collection of workers.
  */
-class RedirectorWorkers {
+class RegistryWorkers {
 public:
     /**
      * @brief Insert (or replace if exists) worker entry
@@ -72,4 +72,4 @@ private:
     
 }}} // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REDIRECTORWORKERS_H
+#endif // LSST_QSERV_REGISTRYWORKERS_H

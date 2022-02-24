@@ -20,16 +20,16 @@
  */
 
 // Class header
-#include "replica/RedirectorHttpApp.h"
+#include "replica/RegistryHttpApp.h"
 
 // Qserv headers
-#include "replica/RedirectorHttpSvc.h"
+#include "replica/RegistryHttpSvc.h"
 
 using namespace std;
 
 namespace {
 string const description =
-    "This application runs the worker registration (redirection) service "
+    "This application runs the worker registration service "
     "that's used by the workers to report themselves and by the controllers to locate "
     "connection and configuration parameters of the workers. The service can be used "
     "to obtain the run-time status of the workers for the system monitoring purposes";
@@ -44,12 +44,12 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-RedirectorHttpApp::Ptr RedirectorHttpApp::create(int argc, char* argv[]) {
-    return Ptr(new RedirectorHttpApp(argc, argv));
+RegistryHttpApp::Ptr RegistryHttpApp::create(int argc, char* argv[]) {
+    return Ptr(new RegistryHttpApp(argc, argv));
 }
 
 
-RedirectorHttpApp::RedirectorHttpApp(int argc, char* argv[])
+RegistryHttpApp::RegistryHttpApp(int argc, char* argv[])
     :   Application(
             argc, argv,
             ::description,
@@ -60,8 +60,8 @@ RedirectorHttpApp::RedirectorHttpApp(int argc, char* argv[])
 }
 
 
-int RedirectorHttpApp::runImpl() {
-    auto const svc = RedirectorHttpSvc::create(serviceProvider());
+int RegistryHttpApp::runImpl() {
+    auto const svc = RegistryHttpSvc::create(serviceProvider());
     svc->run();
     return 0;
 }

@@ -43,7 +43,7 @@ namespace replica {
     class DatabaseServices;
     class Messenger;
     class QservMgtServices;
-    class Redirector;
+    class Registry;
 }}}  // Forward declarations
 
 // This header declarations
@@ -131,8 +131,8 @@ public:
     /// @return a reference to worker messenger service (configured for controllers)
     std::shared_ptr<Messenger> const& messenger();
 
-    /// @return a reference to worker redirection/registration service
-    std::shared_ptr<Redirector> const& redirector();
+    /// @return a reference to worker registration service
+    std::shared_ptr<Registry> const& registry();
 
     /**
      * Acquire (and register if none existed at a time of a call to the method) a mutex for
@@ -213,8 +213,8 @@ private:
     /// Worker messenger service (lazy instantiation on a first request)
     std::shared_ptr<Messenger> _messenger;
 
-    /// Worker redirection/registration service (lazy instantiation on a first request)
-    std::shared_ptr<Redirector> _redirector;
+    /// Worker registration service (lazy instantiation on a first request)
+    std::shared_ptr<Registry> _registry;
 
     /// Registry of unique mutexes.
     NamedMutexRegistry _namedMutexRegistry;

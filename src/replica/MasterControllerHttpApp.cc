@@ -33,7 +33,6 @@
 #include "replica/HttpProcessor.h"
 #include "replica/HttpProcessorConfig.h"
 #include "replica/Performance.h"
-#include "replica/Redirector.h"
 
 // LSST headers
 #include "lsst/log/Log.h"

@@ -20,12 +20,12 @@
  */
 
 // Class header
-#include "replica/RedirectorHttpSvcMod.h"
+#include "replica/RegistryHttpSvcMod.h"
 
 // Qserv header
 #include "qhttp/Request.h"
 #include "replica/Performance.h"
-#include "replica/RedirectorWorkers.h"
+#include "replica/RegistryWorkers.h"
 
 // System headers
 #include <sstream>
@@ -48,17 +48,17 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-void RedirectorHttpSvcMod::process(
-        ServiceProvider::Ptr const& serviceProvider, RedirectorWorkers& workers,
+void RegistryHttpSvcMod::process(
+        ServiceProvider::Ptr const& serviceProvider, RegistryWorkers& workers,
         qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp,
         string const& subModuleName, HttpModuleBase::AuthType const authType) {
-    RedirectorHttpSvcMod module(serviceProvider, workers, req, resp);
+    RegistryHttpSvcMod module(serviceProvider, workers, req, resp);
     module.execute(subModuleName, authType);
 }
 
 
-RedirectorHttpSvcMod::RedirectorHttpSvcMod(
-        ServiceProvider::Ptr const& serviceProvider, RedirectorWorkers& workers,
+RegistryHttpSvcMod::RegistryHttpSvcMod(
+        ServiceProvider::Ptr const& serviceProvider, RegistryWorkers& workers,
         qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp)
         :   HttpModuleBase(serviceProvider->authKey(), serviceProvider->adminAuthKey(), req, resp),
             _serviceProvider(serviceProvider),
@@ -66,12 +66,12 @@ RedirectorHttpSvcMod::RedirectorHttpSvcMod(
 }
 
 
-string RedirectorHttpSvcMod::context() const {
-    return "REDIRECTOR-HTTP-SVC ";
+string RegistryHttpSvcMod::context() const {
+    return "REGISTRY-HTTP-SVC ";
 }
 
 
-json RedirectorHttpSvcMod::executeImpl(string const& subModuleName) {
+json RegistryHttpSvcMod::executeImpl(string const& subModuleName) {
     debug(__func__, "subModuleName: '" + subModuleName + "'");
     string const context_ = context() + "::" + string(__func__) + "  ";
     if (subModuleName == "WORKERS") {
@@ -86,7 +86,7 @@ json RedirectorHttpSvcMod::executeImpl(string const& subModuleName) {
 }
 
 
-void RedirectorHttpSvcMod::_enforceInstanceId(string const& context_, string const& instanceId) const {
+void RegistryHttpSvcMod::_enforceInstanceId(string const& context_, string const& instanceId) const {
     if (_serviceProvider->instanceId() == instanceId) return;
     throw invalid_argument(
             context_ + "Qserv instance identifier mismatch. Client sent '" + instanceId
@@ -94,12 +94,12 @@ void RedirectorHttpSvcMod::_enforceInstanceId(string const& context_, string con
 }
 
 
-json RedirectorHttpSvcMod::_getWorkers() const {
+json RegistryHttpSvcMod::_getWorkers() const {
     return json::object({{"workers", _workers.workers()}});
 }
 
 
-json RedirectorHttpSvcMod::_addWorker() {
+json RegistryHttpSvcMod::_addWorker() {
     json worker = body().required<json>("worker");
     string const name = worker.at("name").get<string>();
     string const host = ::senderIpAddr(req());
@@ -119,7 +119,7 @@ json RedirectorHttpSvcMod::_addWorker() {
 }
 
 
-json RedirectorHttpSvcMod::_deleteWorker() {
+json RegistryHttpSvcMod::_deleteWorker() {
     string const name = params().at("name");
     debug(__func__, "name: " + name);
     _workers.remove(name);

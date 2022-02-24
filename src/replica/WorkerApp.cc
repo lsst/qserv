@@ -36,7 +36,7 @@
 #include "replica/FileUtils.h"
 #include "replica/IngestHttpSvc.h"
 #include "replica/IngestSvc.h"
-#include "replica/Redirector.h"
+#include "replica/Registry.h"
 #include "replica/ServiceProvider.h"
 #include "replica/WorkerProcessor.h"
 #include "replica/WorkerRequestFactory.h"
@@ -161,13 +161,13 @@ int WorkerApp::runImpl() {
         exportSvr->run();
     });
 
-    // Keep sending periodic 'heartbeats' to the Redirector service to report
+    // Keep sending periodic 'heartbeats' to the Registry service to report
     // a configuration and a status of the current worker.
     while (true) {
         try {
-            serviceProvider()->redirector()->add(worker);
+            serviceProvider()->registry()->add(worker);
         } catch (exception const& ex) {
-            LOGS(_log, LOG_LVL_WARN, context << "adding worker to the redirector failed, ex: " << ex.what());
+            LOGS(_log, LOG_LVL_WARN, context << "adding worker to the registry failed, ex: " << ex.what());
         }
         LOGS(_log, LOG_LVL_DEBUG, "HEARTBEAT"
             << "  worker: " << reqProcSvr->worker()
@@ -177,7 +177,7 @@ int WorkerApp::runImpl() {
             << reqProcSvr->processor()->numInProgressRequests() << ", "
             << reqProcSvr->processor()->numFinishedRequests());
         this_thread::sleep_for(
-                chrono::seconds(max(1U, config->get<unsigned int>("redirector", "heartbeat-ival-sec"))));
+                chrono::seconds(max(1U, config->get<unsigned int>("registry", "heartbeat-ival-sec"))));
     }
     reqProcSvrThread.join();
     fileSvrThread.join();

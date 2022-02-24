@@ -81,20 +81,20 @@ json const ConfigurationSchema::_schemaJson = json::object({
             {"default", 1}
         }}
     }},
-    {"redirector", {
+    {"registry", {
         {"host", {
             {"description",
-                "The IP address or the DNS host name for the redirector's HTTP server."},
+                "The IP address or the DNS host name for the registry's HTTP server."},
             {"default", "localhost"}
         }},
         {"port", {
             {"description",
-                "The port number for the redirector's HTTP server. Must be greater than 0."},
+                "The port number for the registry's HTTP server. Must be greater than 0."},
             {"default", 25082}
         }},
         {"max-listen-conn", {
             {"description",
-                "The maximum length of the queue of pending connections sent to the redirector's HTTP server."
+                "The maximum length of the queue of pending connections sent to the registry's HTTP server."
                 " Must be greater than 0."},
             {"default", max_listen_connections}
         }},
@@ -105,7 +105,7 @@ json const ConfigurationSchema::_schemaJson = json::object({
         }},
         {"heartbeat-ival-sec", {
             {"description",
-                "The hearbeat interval for interactions with the workers Redirector service. Must be greater than 0."},
+                "The hearbeat interval for interactions with the workers Registry service. Must be greater than 0."},
             {"default", 5}
         }}
     }},
@@ -181,7 +181,7 @@ json const ConfigurationSchema::_schemaJson = json::object({
         }},
         {"auto-register-workers", {
             {"description",
-                "Automatically scale a collection of workers by registering new workers reported by the Redirector"
+                "Automatically scale a collection of workers by registering new workers reported by the Registry"
                 " service. If the flag is set to 0 then new workers will be ignored."},
             {"empty-allowed", 1},
             {"default", 0}
@@ -441,7 +441,7 @@ string ConfigurationSchema::defaultValueAsString(string const& category, string 
 json ConfigurationSchema::defaultConfigData() {
     json result = json::object();
     vector<string> const generalCategories =
-            {"common", "redirector", "controller", "database", "xrootd", "worker"};
+            {"common", "registry", "controller", "database", "xrootd", "worker"};
     for (string const& category: generalCategories) {
         json const& inCategoryJson = _schemaJson.at(category);
         json& outCategoryJson = result[category];

@@ -18,8 +18,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_REPLICA_REDIRECTOR_H
-#define LSST_QSERV_REPLICA_REDIRECTOR_H
+#ifndef LSST_QSERV_REPLICA_REGISTRY_H
+#define LSST_QSERV_REPLICA_REGISTRY_H
 
 // System headers
 #include <memory>
@@ -39,15 +39,15 @@ namespace qserv {
 namespace replica {
 
 /**
- * Class Redirector is the client API for comunications with the worker redirection/registration
+ * Class Registry is the client API for comunications with the worker registration
  * server. The API provides an interface for inspecting and managing (adding/deleting)
  * worker entries at the server.
  *
  * @note The implementation of the class is thread-safe.
  */
-class Redirector: public std::enable_shared_from_this<Redirector> {
+class Registry: public std::enable_shared_from_this<Registry> {
 public:
-    typedef std::shared_ptr<Redirector> Ptr;
+    typedef std::shared_ptr<Registry> Ptr;
 
     /**
      * Create an instance of the service.
@@ -56,33 +56,33 @@ public:
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider);
 
-    Redirector() = delete;
-    Redirector(Redirector const&) = delete;
-    Redirector& operator=(Redirector const&) = delete;
+    Registry() = delete;
+    Registry(Registry const&) = delete;
+    Registry& operator=(Registry const&) = delete;
 
-    virtual ~Redirector() = default;
+    virtual ~Registry() = default;
 
     /// @return All workers
-    /// @see method Redirector::_request for other exceptions.
+    /// @see method Registry::_request for other exceptions.
     std::vector<WorkerInfo> workers() const;
 
     /**
      * Add (or replace if exists) worker entry.
      * @param name The unique identifier of the worker
-     * @see method Redirector::_request for other exceptions.
+     * @see method Registry::_request for other exceptions.
      */
     void add(std::string const& name) const;
 
     /**
      * Remove (if exists) a worker entry
      * @param name A unique identifier (the name) of the worker
-     * @see method Redirector::_request for other exceptions.
+     * @see method Registry::_request for other exceptions.
      */
     void remove(std::string const& name) const;
 
 private:
-    /// @see Redirector::create()
-    Redirector(ServiceProvider::Ptr const& serviceProvider);
+    /// @see Registry::create()
+    Registry(ServiceProvider::Ptr const& serviceProvider);
 
     /**
      * Send a request to the server.
@@ -103,10 +103,10 @@ private:
 
     ServiceProvider::Ptr const _serviceProvider;
 
-    /// Base URL for communications with the Redirector server
+    /// Base URL for communications with the Registry server
     std::string _baseUrl;
 };
 
 }}} // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_REDIRECTOR_H
+#endif // LSST_QSERV_REPLICA_REGISTRY_H

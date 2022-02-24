@@ -20,7 +20,7 @@
  */
 
 // Class header
-#include "replica/RedirectorWorkers.h"
+#include "replica/RegistryWorkers.h"
 
 // System headers
 #include <stdexcept>
@@ -32,8 +32,8 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-void RedirectorWorkers::insert(json const& worker) {
-    string const context = "RedirectorWorkers::" + string(__func__) + " ";
+void RegistryWorkers::insert(json const& worker) {
+    string const context = "RegistryWorkers::" + string(__func__) + " ";
     if (!worker.is_object()) {
         throw invalid_argument(context + "worker definition is not a valid JSON object.");
     }
@@ -47,8 +47,8 @@ void RedirectorWorkers::insert(json const& worker) {
 }
 
 
-void RedirectorWorkers::remove(std::string const& id) {
-    string const context = "RedirectorWorkers::" + string(__func__) + " ";
+void RegistryWorkers::remove(std::string const& id) {
+    string const context = "RegistryWorkers::" + string(__func__) + " ";
     if (id.empty()) {
         throw invalid_argument(context + "worker identifier is empty.");
     }
@@ -57,8 +57,8 @@ void RedirectorWorkers::remove(std::string const& id) {
 }
 
 
-json RedirectorWorkers::workers() const {
-    string const context = "RedirectorWorkers::" + string(__func__) + " ";
+json RegistryWorkers::workers() const {
+    string const context = "RegistryWorkers::" + string(__func__) + " ";
     util::Lock const lock(_mtx, context);
     return _workers;
 }

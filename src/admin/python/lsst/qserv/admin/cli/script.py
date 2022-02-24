@@ -666,14 +666,14 @@ def enter_replication_controller(
     env = dict(os.environ, LSST_LOG_CONFIG=log_cfg_file)
     sys.exit(_run(args=None, cmd=cmd, env=env, run=run))
 
-def enter_replication_redirector(
+def enter_replication_registry(
     db_uri: str,
     db_admin_uri: str,
     log_cfg_file: str,
     cmd: str,
     run: bool,
 ) -> None:
-    """Entrypoint script for the entrypoint redirector.
+    """Entrypoint script for the replication worker registry.
 
     Parameters
     ----------

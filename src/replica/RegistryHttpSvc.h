@@ -18,8 +18,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_REPLICA_REDIRECTORHTTPSVC_H
-#define LSST_QSERV_REPLICA_REDIRECTORHTTPSVC_H
+#ifndef LSST_QSERV_REPLICA_REGISTRYHTTPSVC_H
+#define LSST_QSERV_REPLICA_REGISTRYHTTPSVC_H
 
 // System headers
 #include <memory>
@@ -33,7 +33,7 @@
 namespace lsst {
 namespace qserv {
 namespace replica {
-     class RedirectorWorkers;
+     class RegistryWorkers;
 }}} // namespace lsst::qserv::replica
 
 // This header declarations
@@ -42,17 +42,17 @@ namespace qserv {
 namespace replica {
 
 /**
- * Class RedirectorHttpSvc is used for handling incoming REST API requests to
- * the workers registration (redirection) service. Each instance of this class
+ * Class RegistryHttpSvc is used for handling incoming REST API requests to
+ * the workers registration service. Each instance of this class
  * will be running in its own thread.
  * 
  * @note The class's implementation starts its own collection of BOOST ASIO
  *   service threads as configured in Configuration.
  * @note The implementation of the class is not thread-safe.
  */
-class RedirectorHttpSvc: public HttpSvc {
+class RegistryHttpSvc: public HttpSvc {
 public:
-    typedef std::shared_ptr<RedirectorHttpSvc> Ptr;
+    typedef std::shared_ptr<RegistryHttpSvc> Ptr;
 
     /**
      * Create an instance of the service.
@@ -63,11 +63,11 @@ public:
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider);
 
-    RedirectorHttpSvc() = delete;
-    RedirectorHttpSvc(RedirectorHttpSvc const&) = delete;
-    RedirectorHttpSvc& operator=(RedirectorHttpSvc const&) = delete;
+    RegistryHttpSvc() = delete;
+    RegistryHttpSvc(RegistryHttpSvc const&) = delete;
+    RegistryHttpSvc& operator=(RegistryHttpSvc const&) = delete;
 
-    virtual ~RedirectorHttpSvc() = default;
+    virtual ~RegistryHttpSvc() = default;
 
 protected:
     /// @see HttpSvc::context()
@@ -77,13 +77,13 @@ protected:
     virtual void registerServices();
 
 private:
-    /// @see RedirectorHttpSvc::create()
-    RedirectorHttpSvc(ServiceProvider::Ptr const& serviceProvider);
+    /// @see RegistryHttpSvc::create()
+    RegistryHttpSvc(ServiceProvider::Ptr const& serviceProvider);
 
     /// Synchronized collection of workers
-    std::unique_ptr<RedirectorWorkers> _workers;
+    std::unique_ptr<RegistryWorkers> _workers;
 };
 
 }}} // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_REDIRECTORHTTPSVC_H
+#endif // LSST_QSERV_REPLICA_REGISTRYHTTPSVC_H

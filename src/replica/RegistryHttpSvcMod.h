@@ -18,8 +18,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_REDIRECTORHTTPSVCMOD_H
-#define LSST_QSERV_REDIRECTORHTTPSVCMOD_H
+#ifndef LSST_QSERV_REGISTRYHTTPSVCMOD_H
+#define LSST_QSERV_REGISTRYHTTPSVCMOD_H
 
 // System headers
 #include <string>
@@ -37,7 +37,7 @@
 namespace lsst {
 namespace qserv {
 namespace replica {
-     class RedirectorWorkers;
+     class RegistryWorkers;
 }}} // namespace lsst::qserv::replica
 
 // This header declarations
@@ -46,16 +46,16 @@ namespace qserv {
 namespace replica {
 
 /**
- * Class RedirectorHttpSvcMod processes worker redirection (registration) requests made
- * over HTTP. The class is used by the HTTP server build into the Redirector service.
+ * Class RegistryHttpSvcMod processes worker registration requests made
+ * over HTTP. The class is used by the HTTP server build into the Registry service.
  */
-class RedirectorHttpSvcMod: public HttpModuleBase {
+class RegistryHttpSvcMod: public HttpModuleBase {
 public:
-    RedirectorHttpSvcMod() = delete;
-    RedirectorHttpSvcMod(RedirectorHttpSvcMod const&) = delete;
-    RedirectorHttpSvcMod& operator=(RedirectorHttpSvcMod const&) = delete;
+    RegistryHttpSvcMod() = delete;
+    RegistryHttpSvcMod(RegistryHttpSvcMod const&) = delete;
+    RegistryHttpSvcMod& operator=(RegistryHttpSvcMod const&) = delete;
 
-    virtual ~RedirectorHttpSvcMod() = default;
+    virtual ~RegistryHttpSvcMod() = default;
 
     /**
      * Process a request.
@@ -75,7 +75,7 @@ public:
      * @param authType The authorization requirements for the module
      * @throws std::invalid_argument for unknown values of parameter 'subModuleName'
      */
-    static void process(ServiceProvider::Ptr const& serviceProvider, RedirectorWorkers& workers,
+    static void process(ServiceProvider::Ptr const& serviceProvider, RegistryWorkers& workers,
                         qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp,
                         std::string const& subModuleName,
                         HttpModuleBase::AuthType const authType=HttpModuleBase::AUTH_REQUIRED);
@@ -88,9 +88,9 @@ protected:
     virtual nlohmann::json executeImpl(std::string const& subModuleName) final;
 
 private:
-    /// @see method RedirectorHttpSvcMod::create()
-    RedirectorHttpSvcMod(ServiceProvider::Ptr const& serviceProvider, RedirectorWorkers& workers,
-                         qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp);
+    /// @see method RegistryHttpSvcMod::create()
+    RegistryHttpSvcMod(ServiceProvider::Ptr const& serviceProvider, RegistryWorkers& workers,
+                       qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp);
 
     /**
      * @brief Check if the specified identifier of the Qserv instance that was received
@@ -113,9 +113,9 @@ private:
 
     // Input parameters
     ServiceProvider::Ptr const _serviceProvider;
-    RedirectorWorkers& _workers;
+    RegistryWorkers& _workers;
 };
     
 }}} // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REDIRECTORHTTPSVCMOD_H
+#endif // LSST_QSERV_REGISTRYHTTPSVCMOD_H

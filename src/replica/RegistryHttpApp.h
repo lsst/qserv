@@ -18,8 +18,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_REPLICA_REDIRECTORHTTPAPP_H
-#define LSST_QSERV_REPLICA_REDIRECTORHTTPAPP_H
+#ifndef LSST_QSERV_REPLICA_REGISTRYHTTPAPP_H
+#define LSST_QSERV_REPLICA_REGISTRYHTTPAPP_H
 
 // Qserv headers
 #include "replica/Application.h"
@@ -30,16 +30,16 @@ namespace qserv {
 namespace replica {
 
 /**
- * Class RedirectorHttpApp implements represents the worker registration (redirection)
+ * Class RegistryHttpApp implements represents the worker registration
  * service that's used by the workers to report themselves and by the controllers
  * to locate connection and configuration parameters of the workers. The service can be
  * used to obtain the run-time status of the workers for the system monitoring purposes.
  * 
  * The service is implemented as the REST/HTTP server.
  */
-class RedirectorHttpApp: public Application {
+class RegistryHttpApp: public Application {
 public:
-    typedef std::shared_ptr<RedirectorHttpApp> Ptr;
+    typedef std::shared_ptr<RegistryHttpApp> Ptr;
 
     /**
      * The factory method is the only way of creating objects of this class
@@ -50,21 +50,21 @@ public:
      */
     static Ptr create(int argc, char* argv[]);
 
-    RedirectorHttpApp() = delete;
-    RedirectorHttpApp(RedirectorHttpApp const&) = delete;
-    RedirectorHttpApp& operator=(RedirectorHttpApp const&) = delete;
+    RegistryHttpApp() = delete;
+    RegistryHttpApp(RegistryHttpApp const&) = delete;
+    RegistryHttpApp& operator=(RegistryHttpApp const&) = delete;
 
-    virtual ~RedirectorHttpApp() final = default;
+    virtual ~RegistryHttpApp() final = default;
 
 protected:
     /// @see Application::runImpl()
     virtual int runImpl() final;
 
 private:
-    /// @see RedirectorHttpApp::create()
-    RedirectorHttpApp(int argc, char* argv[]);
+    /// @see RegistryHttpApp::create()
+    RegistryHttpApp(int argc, char* argv[]);
 };
 
 }}} // namespace lsst::qserv::replica
 
-#endif /* LSST_QSERV_REPLICA_REDIRECTORHTTPAPP_H */
+#endif /* LSST_QSERV_REPLICA_REGISTRYHTTPAPP_H */

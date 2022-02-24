@@ -30,7 +30,6 @@
 #include "replica/ConfigParserMySQL.h"
 #include "replica/ConfigurationSchema.h"
 #include "replica/Job.h"
-#include "replica/Redirector.h"
 #include "replica/protocol.pb.h"
 #include "util/Issue.h"
 

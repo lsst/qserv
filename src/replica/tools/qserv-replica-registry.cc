@@ -28,14 +28,14 @@
 #include <stdexcept>
 
 // Qserv headers
-#include "replica/RedirectorHttpApp.h"
+#include "replica/RegistryHttpApp.h"
 
 using namespace std;
 using namespace lsst::qserv::replica;
 
 int main(int argc, char* argv[]) {
     try {
-        auto app = RedirectorHttpApp::create(argc, argv);
+        auto app = RegistryHttpApp::create(argc, argv);
         return app->run();
     } catch (exception const& ex) {
         cerr << "main()  the application failed, exception: " << ex.what() << endl;

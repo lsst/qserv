@@ -265,16 +265,16 @@ target_sources(replica PRIVATE
     RebalanceApp.h
     RebalanceJob.cc
     RebalanceJob.h
-    Redirector.h
-    Redirector.cc
-    RedirectorHttpApp.h
-    RedirectorHttpApp.cc
-    RedirectorHttpSvc.h
-    RedirectorHttpSvc.cc
-    RedirectorHttpSvcMod.h
-    RedirectorHttpSvcMod.cc
-    RedirectorWorkers.h
-    RedirectorWorkers.cc
+    Registry.h
+    Registry.cc
+    RegistryHttpApp.h
+    RegistryHttpApp.cc
+    RegistryHttpSvc.h
+    RegistryHttpSvc.cc
+    RegistryHttpSvcMod.h
+    RegistryHttpSvcMod.cc
+    RegistryWorkers.h
+    RegistryWorkers.cc
     RemoveReplicaQservMgtRequest.cc
     RemoveReplicaQservMgtRequest.h
     ReplicaInfo.cc
@@ -475,7 +475,7 @@ replica_utils(
     qserv-replica-file
     qserv-replica-job
     qserv-replica-master-http
-    qserv-replica-redirector
+    qserv-replica-registry
     qserv-replica-test
     qserv-replica-worker-notify
     qserv-replica-worker

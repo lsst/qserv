@@ -20,7 +20,7 @@
  */
 
 // Class header
-#include "replica/Redirector.h"
+#include "replica/Registry.h"
 
 // Qserv headers
 #include "replica/Configuration.h"
@@ -39,10 +39,10 @@ using json = nlohmann::json;
 
 namespace {
 
-LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.Redirector");
+LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.Registry");
 
 string context(string const& func) {
-    return "REDIRECTOR " + func + " ";
+    return "REGISTRY " + func + " ";
 }
 
 } /// namespace
@@ -51,19 +51,19 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-Redirector::Ptr Redirector::create(ServiceProvider::Ptr const& serviceProvider) {
-    return Ptr(new Redirector(serviceProvider));
+Registry::Ptr Registry::create(ServiceProvider::Ptr const& serviceProvider) {
+    return Ptr(new Registry(serviceProvider));
 }
 
 
-Redirector::Redirector(ServiceProvider::Ptr const& serviceProvider)
+Registry::Registry(ServiceProvider::Ptr const& serviceProvider)
     :   _serviceProvider(serviceProvider),
-        _baseUrl("http://" + serviceProvider->config()->get<string>("redirector", "host")
-                 + ":" + to_string(serviceProvider->config()->get<uint16_t>("redirector", "port"))) {
+        _baseUrl("http://" + serviceProvider->config()->get<string>("registry", "host")
+                 + ":" + to_string(serviceProvider->config()->get<uint16_t>("registry", "port"))) {
 }
 
 
-vector<WorkerInfo> Redirector::workers() const {
+vector<WorkerInfo> Registry::workers() const {
     vector<WorkerInfo> coll;
     json const resultJson = _request("GET", "/workers?instance_id=" + _serviceProvider->instanceId());
     for (auto const& [name, workerJson]: resultJson.at("workers").items()) {
@@ -94,7 +94,7 @@ vector<WorkerInfo> Redirector::workers() const {
 }
 
 
-void Redirector::add(string const& name) const {
+void Registry::add(string const& name) const {
     auto const config = _serviceProvider->config();
     json const request = json::object({
         {"instance_id", _serviceProvider->instanceId()},
@@ -116,7 +116,7 @@ void Redirector::add(string const& name) const {
 }
 
 
-void Redirector::remove(string const& name) const {
+void Registry::remove(string const& name) const {
     json const request = json::object({
         {"instance_id", _serviceProvider->instanceId()},
         {"auth_key", _serviceProvider->authKey()}
@@ -125,7 +125,7 @@ void Redirector::remove(string const& name) const {
 }
 
 
-json Redirector::_request(string const& method, string const& resource, json const& request) const {
+json Registry::_request(string const& method, string const& resource, json const& request) const {
     string const url = _baseUrl + resource;
     vector<string> const headers = request.empty() ? vector<string>({}) : vector<string>({"Content-Type: application/json"});
     HttpClient client(method, url, request.empty() ? string() : request.dump(), headers);

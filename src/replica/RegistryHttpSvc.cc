@@ -20,50 +20,50 @@
  */
 
 // Class header
-#include "replica/RedirectorHttpSvc.h"
+#include "replica/RegistryHttpSvc.h"
 
 // Qserv headers
 #include "qhttp/Request.h"
 #include "qhttp/Response.h"
 #include "replica/Configuration.h"
-#include "replica/RedirectorHttpSvcMod.h"
-#include "replica/RedirectorWorkers.h"
+#include "replica/RegistryHttpSvcMod.h"
+#include "replica/RegistryWorkers.h"
 
 using namespace std;
 
 namespace {
-string const context_ = "REDIRECTOR-HTTP-SVC ";
+string const context_ = "REGISTRY-HTTP-SVC ";
 }
 
 namespace lsst {
 namespace qserv {
 namespace replica {
 
-RedirectorHttpSvc::Ptr RedirectorHttpSvc::create(
+RegistryHttpSvc::Ptr RegistryHttpSvc::create(
         ServiceProvider::Ptr const& serviceProvider) {
-    return RedirectorHttpSvc::Ptr(new RedirectorHttpSvc(serviceProvider));
+    return RegistryHttpSvc::Ptr(new RegistryHttpSvc(serviceProvider));
 }
 
 
-RedirectorHttpSvc::RedirectorHttpSvc(
+RegistryHttpSvc::RegistryHttpSvc(
         ServiceProvider::Ptr const& serviceProvider)
     :   HttpSvc(serviceProvider,
-                serviceProvider->config()->get<uint16_t>("redirector", "port"),
-                serviceProvider->config()->get<unsigned int>("redirector", "max-listen-conn"),
-                serviceProvider->config()->get<size_t>("redirector", "threads")),
-        _workers(new RedirectorWorkers()) {
+                serviceProvider->config()->get<uint16_t>("registry", "port"),
+                serviceProvider->config()->get<unsigned int>("registry", "max-listen-conn"),
+                serviceProvider->config()->get<size_t>("registry", "threads")),
+        _workers(new RegistryWorkers()) {
 }
 
 
-string const& RedirectorHttpSvc::context() const { return ::context_; }
+string const& RegistryHttpSvc::context() const { return ::context_; }
 
 
-void RedirectorHttpSvc::registerServices() {
-    auto const self = shared_from_base<RedirectorHttpSvc>();
+void RegistryHttpSvc::registerServices() {
+    auto const self = shared_from_base<RegistryHttpSvc>();
     httpServer()->addHandlers({
         {"GET", "/workers",
             [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
-                RedirectorHttpSvcMod::process(
+                RegistryHttpSvcMod::process(
                         self->serviceProvider(), *(self->_workers),
                         req, resp,
                         "WORKERS",
@@ -72,7 +72,7 @@ void RedirectorHttpSvc::registerServices() {
         },
         {"POST", "/worker",
             [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
-                RedirectorHttpSvcMod::process(
+                RegistryHttpSvcMod::process(
                         self->serviceProvider(), *(self->_workers),
                         req, resp,
                         "ADD-WORKER");
@@ -80,7 +80,7 @@ void RedirectorHttpSvc::registerServices() {
         },
         {"DELETE", "/worker/:name",
             [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
-                RedirectorHttpSvcMod::process(
+                RegistryHttpSvcMod::process(
                         self->serviceProvider(), *(self->_workers),
                         req, resp,
                         "DELETE-WORKER");

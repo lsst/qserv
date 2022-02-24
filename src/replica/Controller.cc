@@ -44,7 +44,7 @@
 #include "replica/IndexRequest.h"
 #include "replica/Messenger.h"
 #include "replica/Performance.h"
-#include "replica/Redirector.h"
+#include "replica/Registry.h"
 #include "replica/ReplicationRequest.h"
 #include "replica/ServiceManagementRequest.h"
 #include "replica/ServiceProvider.h"
@@ -88,9 +88,9 @@ void tracker(weak_ptr<Controller> const& controller, string const& context) {
 
         vector<WorkerInfo> workers;
         try {
-            workers = ptr->serviceProvider()->redirector()->workers();
+            workers = ptr->serviceProvider()->registry()->workers();
         } catch (exception const& ex) {
-            LOGS(_log, LOG_LVL_WARN, context << "failed to pull worker info from the redirector, ex: " << ex.what());
+            LOGS(_log, LOG_LVL_WARN, context << "failed to pull worker info from the registry, ex: " << ex.what());
         }
         for (auto&& workerInfo: workers) {
             try {
@@ -114,7 +114,7 @@ void tracker(weak_ptr<Controller> const& controller, string const& context) {
             }
         }
         this_thread::sleep_for(
-                chrono::seconds(max(1U, config->get<unsigned int>("redirector", "heartbeat-ival-sec"))));
+                chrono::seconds(max(1U, config->get<unsigned int>("registry", "heartbeat-ival-sec"))));
     }
     LOGS(_log, LOG_LVL_INFO, context << "finished tracking workers.");
 }

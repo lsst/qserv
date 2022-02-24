@@ -36,7 +36,7 @@ map<string, set<string>> ConfigTestData::parameters() {
                 "request-retry-interval-sec"
             }
         },
-        {   "redirector",
+        {   "registry",
             {   "host",
                 "port",
                 "max-listen-conn",
@@ -115,7 +115,7 @@ json ConfigTestData::data() {
         {"request-buf-size-bytes", 8192},
         {"request-retry-interval-sec", 1}
     });
-    generalObj["redirector"] = json::object({
+    generalObj["registry"] = json::object({
         {"host", "127.0.0.1"},
         {"port", 8081},
         {"max-listen-conn", 512},

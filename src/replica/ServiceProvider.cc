@@ -32,7 +32,7 @@
 #include "replica/DatabaseServicesPool.h"
 #include "replica/Messenger.h"
 #include "replica/QservMgtServices.h"
-#include "replica/Redirector.h"
+#include "replica/Registry.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -95,12 +95,12 @@ Messenger::Ptr const& ServiceProvider::messenger() {
 }
 
 
-Redirector::Ptr const& ServiceProvider::redirector() {
+Registry::Ptr const& ServiceProvider::registry() {
     util::Lock lock(_mtx, _context() + __func__);
-    if (_redirector == nullptr) {
-        _redirector = Redirector::create(shared_from_this());
+    if (_registry == nullptr) {
+        _registry = Registry::create(shared_from_this());
     }
-    return _redirector;
+    return _registry;
 }
 
 

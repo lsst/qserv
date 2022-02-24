@@ -150,8 +150,8 @@ commands = OrderedDict((
         "--qserv-czar-db={{qserv_czar_db}} "
         "{% for arg in extended_args %}{{arg}} {% endfor %}"
     )),
-    ("replication-redirector", CommandInfo(
-        "qserv-replica-redirector "
+    ("replication-registry", CommandInfo(
+        "qserv-replica-registry "
         "--config={{db_uri}} "
         "{% for arg in extended_args %}{{arg}} {% endfor %}"
     )),
@@ -660,8 +660,8 @@ def replication_controller(ctx: click.Context, **kwargs: Any) -> None:
 
 
 @entrypoint.command(
-    help=f"Start as a replication redirector node.\n\n{socket_option_description}\n\n"
-         f"{extended_args_description.format(app='qserv-replica-redirector')}",
+    help=f"Start as a replication registry node.\n\n{socket_option_description}\n\n"
+         f"{extended_args_description.format(app='qserv-replica-registry')}",
     cls=EntrypointCommandExArgs,
 )
 @pass_context
@@ -678,11 +678,11 @@ def replication_controller(ctx: click.Context, **kwargs: Any) -> None:
 @targs_options()
 @run_option()
 @options_file_option()
-def replication_redirector(ctx: click.Context, **kwargs: Any) -> None:
-    """Start as a replication redirector node."""
+def replication_registry(ctx: click.Context, **kwargs: Any) -> None:
+    """Start as a replication registry node."""
     targs = utils.targs(ctx)
     targs = render_targs(targs)
-    script.enter_replication_redirector(
+    script.enter_replication_registry(
         db_uri=targs["db_uri"],
         db_admin_uri=targs["db_admin_uri"],
         log_cfg_file=targs["log_cfg_file"],
