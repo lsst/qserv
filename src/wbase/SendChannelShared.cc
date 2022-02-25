@@ -122,7 +122,7 @@ void SendChannelShared::waitTransmitLock(wcontrol::TransmitMgr& transmitMgr, boo
 bool SendChannelShared::_addTransmit(bool cancelled, bool erred, bool last, bool largeResult,
                                     TransmitData::Ptr const& tData, int qId, int jId) {
     QSERV_LOGCONTEXT_QUERY_JOB(qId, jId);
-    LOGS(_log, LOG_LVL_WARN, "&&& SendChannelShared::_addTransmit a");
+    LOGS(_log, LOG_LVL_WARN, "&&& SendChannelShared::_addTransmit a" << " qId=" << qId << " jId=" << jId);
     assert(tData != nullptr);
 
     // This lock may be held for a very long time.
@@ -132,10 +132,12 @@ bool SendChannelShared::_addTransmit(bool cancelled, bool erred, bool last, bool
     // If _lastRecvd is true, the last message has already been transmitted and
     // this SendChannel is effectively dead.
     bool reallyLast = _lastRecvd;
+    LOGS(_log, LOG_LVL_WARN, "&&& SendChannelShared::_addTransmit b reallyLast=" << reallyLast  << " qId=" << qId << " jId=" << jId);
     string idStr(makeIdStr(qId, jId));
 
     // If something bad already happened, just give up.
     if (reallyLast || isDead()) {
+        LOGS(_log, LOG_LVL_WARN, "&&& SendChannelShared::_addTransmit c _lastRecvd set to true return before send"  << " qId=" << qId << " jId=" << jId);
         // If there's been some kind of error, make sure that nothing hangs waiting
         // for this.
         LOGS(_log, LOG_LVL_WARN, "addTransmit getting messages after isDead or reallyLast " << idStr);
@@ -148,23 +150,27 @@ bool SendChannelShared::_addTransmit(bool cancelled, bool erred, bool last, bool
     }
 
     if (reallyLast || erred || cancelled) {
+        LOGS(_log, LOG_LVL_WARN, "&&& SendChannelShared::_addTransmit d _lastRecvd set to true"  << " qId=" << qId << " jId=" << jId);
         _lastRecvd = true;
         LOGS(_log, LOG_LVL_DEBUG, "addTransmit lastRecvd=" << _lastRecvd << " really=" << reallyLast
                                   << " erred=" << erred << " cancelled=" << cancelled);
     }
 
     // If this is reallyLast or at least 2 items are in the queue, the transmit can happen
-    if (_lastRecvd || _transmitQueue.size() >= 2) {
-        bool sendNow = tData->getScanInteractive();
-        // If there was an error, give this high priority.
-        if (erred || cancelled) sendNow = true;
-        int czarId = tData->getCzarId();
-        return _transmit(erred, sendNow, largeResult, czarId);
+    //&&&if (_lastRecvd || _transmitQueue.size() >= 2) {
+    bool sendNow = tData->getScanInteractive();
+    // If there was an error, give this high priority.
+    if (erred || cancelled) sendNow = true;
+    int czarId = tData->getCzarId();
+    LOGS(_log, LOG_LVL_WARN, "&&& SendChannelShared::_addTransmit e _transmit"  << " qId=" << qId << " jId=" << jId << "lastRecvd=" << _lastRecvd);
+    return _transmit(erred, sendNow, largeResult, czarId);
+    /* &&&
     } else {
         // Not enough information to transmit. Maybe there will be with the next call
         // to addTransmit.
     }
     return true;
+    */
 }
 
 
@@ -193,7 +199,9 @@ bool SendChannelShared::_transmit(bool erred, bool scanInteractive, QueryId cons
     // that msg_A is the last msg in the queue.
     // Note that the order of result rows does not matter, but data_B must come after header_B.
     // Keep looping until nothing more can be transmitted.
+    LOGS(_log, LOG_LVL_WARN, "&&& SendChannelShared::_transmit a");
     while(_transmitQueue.size() >= 2 || _lastRecvd) {
+        LOGS(_log, LOG_LVL_WARN, "&&& SendChannelShared::_transmit b");
         TransmitData::Ptr thisTransmit = _transmitQueue.front();
         _transmitQueue.pop();
         if (thisTransmit == nullptr) {
@@ -246,6 +254,7 @@ bool SendChannelShared::_transmit(bool erred, bool scanInteractive, QueryId cons
         {
             lock_guard<mutex> streamLock(_streamMutex); // Must keep meta and buffer together.
             if (_firstTransmit.exchange(false)) {
+                LOGS(_log, LOG_LVL_WARN, "&&& SendChannelShared::_transmit firstTransmit");
                 // Put the header for the first message in metadata
                 // _metaDataBuf must remain valid until Finished() is called.
                 /* &&&
@@ -256,7 +265,8 @@ bool SendChannelShared::_transmit(bool erred, bool scanInteractive, QueryId cons
                 thisPHdr->SerializeToString(&thisHeaderString);
                 _metadataBuf = proto::ProtoHeaderWrap::wrap(thisHeaderString);
                 */
-                _metadataBuf = thisTransmit->getHeaderString(seq, scsSeq - 1);
+                std::string thisHeaderString = thisTransmit->getHeaderString(seq, scsSeq - 1);
+                _metadataBuf = proto::ProtoHeaderWrap::wrap(thisHeaderString);
                 bool metaSet = _sendChannel->setMetadata(_metadataBuf.data(), _metadataBuf.size());
                 if (!metaSet) {
                     LOGS(_log, LOG_LVL_ERROR, "Failed to setMeta " << idStr);
@@ -271,6 +281,7 @@ bool SendChannelShared::_transmit(bool erred, bool scanInteractive, QueryId cons
             {
                 util::Timer sendTimer;
                 sendTimer.start();
+                LOGS(_log, LOG_LVL_WARN, "&&& SendChannelShared::_transmit call _sendBuf ");
                 bool sent = _sendBuf(streamLock, streamBuf, reallyLast, "transmitLoop " + idStr + " " + seqStr, scsSeq);
                 sendTimer.stop();
                 auto logMsgSend = scsTransmitSend.addTime(sendTimer.getElapsed(), idStr);
@@ -356,7 +367,7 @@ void SendChannelShared::initTransmit(Task& task, qmeta::CzarId const& czarId) {
 
 void SendChannelShared::_initTransmit(Task& task, qmeta::CzarId const& czarId) {
     //&&& czarID should be the same for all of these, we should be able to store a copy in SendChannelShared at creation.
-    LOGS(_log, LOG_LVL_WARN, "&&& SendChannelShared::_initTransmit a");
+    LOGS(_log, LOG_LVL_WARN, "&&& SendChannelShared::_initTransmit a " << task.getIdStr() << " seq=" << task.getTSeq());
     if (_transmitData == nullptr) {
         _transmitData = _createTransmit(task, czarId);
     }
@@ -364,6 +375,7 @@ void SendChannelShared::_initTransmit(Task& task, qmeta::CzarId const& czarId) {
 
 
 TransmitData::Ptr SendChannelShared::_createTransmit(Task& task, qmeta::CzarId const& czarId) {
+    LOGS(_log, LOG_LVL_WARN, "&&& SendChannelShared::_createTransmit a "  << task.getIdStr() << " seq=" << task.getTSeq());
     auto tData = wbase::TransmitData::createTransmitData(czarId);
     tData->initResult(task, _schemaCols);;
     return tData;
@@ -374,7 +386,7 @@ bool SendChannelShared::qrTransmit(Task& task, wcontrol::TransmitMgr& transmitMg
                                    wbase::TransmitData::Ptr const& tData,
                                    bool cancelled, bool largeResult, bool lastIn,
                                    qmeta::CzarId const& czarId) {
-    LOGS(_log, LOG_LVL_WARN, "&&& SendChannelShared::qrTransmit a");
+    LOGS(_log, LOG_LVL_WARN, "&&& SendChannelShared::qrTransmit a " << task.getIdStr() << " seq=" << task.getTSeq());
     auto qId = task.getQueryId();
     int jId = task.getJobId();
     bool scanInteractive = task.getScanInteractive();

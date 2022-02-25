@@ -329,7 +329,7 @@ bool QueryRequest::_importStream(JobQuery::Ptr const& jq) {
     int len = expectedLen;
     const char* buff = GetMetadata(len);
     if (len != expectedLen) {
-        throw Bug("_importStream wrong header size=" + to_string(len) + " expected=" + to_string(expectedLen));
+        throw Bug("_importStream metadata wrong header size=" + to_string(len) + " expected=" + to_string(expectedLen));
     }
     ResponseHandler::BufPtr bufPtr = make_shared<vector<char>>(buff, buff + len);
 

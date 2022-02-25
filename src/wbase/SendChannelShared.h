@@ -219,6 +219,7 @@ private:
     /// sent to the czar before reading more rows. Without the wait,
     /// the worker may read in too many result rows, run out of memory,
     /// and crash.
+    /// @return true if transmit was added successfully.
     ///  @see SendChannelShared::_transmit code for further explanation.
     bool _addTransmit(bool cancelled, bool erred, bool last, bool largeResult,
                       TransmitData::Ptr const& tData, int qId, int jId);
@@ -231,7 +232,6 @@ private:
     /// The specially constructed header for the 'reallyLast' transmit just
     /// says that there's no more data, this stream is done.
     /// _queueMtx must be held before calling this.
-    /// @see SendChannel::_transmit code for further explanation.
     bool _transmit(bool erred, bool scanInteractive, QueryId const qid, qmeta::CzarId czarId); //&&& rename scanInteractive to sendNow
 
     /// Send the buffer 'streamBuffer' using xrdssi.

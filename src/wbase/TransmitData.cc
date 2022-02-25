@@ -184,6 +184,7 @@ void TransmitData::_buildHeader(bool largeResult) {
 
     // The size of the dataMsg must include space for the header for the next dataMsg.
     _header->set_size(_dataMsg.size() + proto::ProtoHeaderWrap::getProtoHeaderSize());
+    LOGS(_log, LOG_LVL_WARN, "&&&TransmitData::_buildHeader size=" << _dataMsg.size() + proto::ProtoHeaderWrap::getProtoHeaderSize());
     // The md5 hash must not include the header for the next dataMsg.
     _header->set_md5(util::StringHash::getMd5(_dataMsg.data(), _dataMsg.size()));
     _header->set_largeresult(largeResult);
@@ -218,6 +219,7 @@ void TransmitData::_buildDataMsg(Task const& task, bool largeResult, util::Multi
     // Build the header for this message, but this message can't be transmitted until the
     // next header has been built and appended to _transmitData->dataMsg. That happens
     // later in SendChannelShared.
+    LOGS(_log, LOG_LVL_WARN, "&&& TransmitData::_buildDataMsg rowCount=" << _rowCount << " tSize=" << _tSize);
     _buildHeader(largeResult);
 }
 
