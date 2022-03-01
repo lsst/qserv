@@ -154,7 +154,7 @@ public:
     /// Take the rows from mResult and place them in the current _transmitData object
     bool putRowsInTransmits(MYSQL_RES* mResult, int numFields, Task& task, bool largeResult,
                             util::MultiError& multiErr, std::atomic<bool>& cancelled, bool &readRowsOk,
-                            qmeta::CzarId const& czarId);
+                            qmeta::CzarId const& czarId, wcontrol::TransmitMgr& transmitMgr);
 
 
     /// &&& doc and rename
@@ -241,6 +241,12 @@ private:
     bool _sendBuf(std::lock_guard<std::mutex> const& streamLock,
                   xrdsvc::StreamBuffer::Ptr& streamBuf, bool last,
                   std::string const& note, int scsSeq);
+
+    /// @see qrTransmit
+    bool _qrTransmit(Task& task, wcontrol::TransmitMgr& transmitMgr,
+                    wbase::TransmitData::Ptr const& tData,
+                    bool cancelled, bool largeResult, bool lastIn,
+                    qmeta::CzarId const& czarId);
 
 
     /// streamMutex is used to protect _lastCount and messages that are sent

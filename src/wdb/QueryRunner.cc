@@ -151,6 +151,8 @@ size_t QueryRunner::_getDesiredLimit() {
 util::TimerHistogram memWaitHisto("memWait Hist", {1, 5, 10, 20, 40});
 
 bool QueryRunner::runQuery() {
+    LOGS(_log, LOG_LVL_WARN, "&&& QueryRunner::runQuery a" << _task->getIdStr());
+
     QSERV_LOGCONTEXT_QUERY_JOB(_task->getQueryId(), _task->getJobId());
     LOGS(_log, LOG_LVL_INFO, "QueryRunner::runQuery() tid=" << _task->getIdStr()
          << " scsId=" << _task->getSendChannel()->getScsId());
@@ -215,6 +217,7 @@ bool QueryRunner::runQuery() {
         // Since there's an error, this will be the last transmit from this QueryRunner.
         //&&&if (!_transmit(tData, true)) { //&&& should probably move _transmit into SendChannelShared
         bool lastInQuery = true;
+        LOGS(_log, LOG_LVL_WARN, "&&& runQuery qrTransmit call " << _task->getIdStr() << " seq=" << _task->getTSeq());
         if (!_task->getSendChannel()->qrTransmit(*_task, *_transmitMgr, tData,
                                                  _cancelled, _largeResult, lastInQuery, _czarId)) {
             LOGS(_log, LOG_LVL_WARN, " Could not report error to czar as sendChannel not accepting msgs.");
@@ -222,6 +225,7 @@ bool QueryRunner::runQuery() {
         _largeResult = true;
         return false;
     }
+    LOGS(_log, LOG_LVL_WARN, "&&& QueryRunner::runQuery b" << _task->getIdStr());
 
     if (_task->msg->has_protocol()) {
         switch(_task->msg->protocol()) {
@@ -491,7 +495,7 @@ util::TimerHistogram qrPrimeHist("qrPrimeHist", {0.01, 0.1, 1.0, 2.0, 5.0, 10.0,
 util::TimerHistogram qrSubChunkHist("qrSubChunkHist", {0.01, 0.1, 1.0, 2.0, 5.0, 10.0, 20.0, 60.0});
 
 bool QueryRunner::_dispatchChannel() {
-    LOGS(_log, LOG_LVL_WARN, "&&& _dispatchChannel a");
+    LOGS(_log, LOG_LVL_WARN, "&&& _dispatchChannel a " << _task->getIdStr());
     int const fragNum = _task->getQueryFragmentNum();
     proto::TaskMsg& tMsg = *_task->msg;
     bool erred = false;
@@ -513,7 +517,7 @@ bool QueryRunner::_dispatchChannel() {
     // or there are no more rows to collect, pass _transmitData to _sendChannel.
     try {
         //_initTransmit(); // set _transmit  // &&& regular initTransmit()
-        LOGS(_log, LOG_LVL_WARN, "&&& _dispatchChannel b");
+        LOGS(_log, LOG_LVL_WARN, "&&& _dispatchChannel b " << _task->getIdStr());
         _task->getSendChannel()->initTransmit(*_task, _czarId);
         util::Timer subChunkT;
         subChunkT.start();
@@ -526,7 +530,7 @@ bool QueryRunner::_dispatchChannel() {
         //       Ideally, hold it until moving on to the next chunk. Try to clean up ChunkResource code.
 
         if (!_cancelled &&  !_task->getSendChannel()->isDead()) {
-            LOGS(_log, LOG_LVL_WARN, "&&& _dispatchChannel d");
+            LOGS(_log, LOG_LVL_WARN, "&&& _dispatchChannel d " << _task->getIdStr());
             string const& query = _task->getQueryString();
             util::Timer sqlTimer;
             sqlTimer.start();
@@ -538,7 +542,7 @@ bool QueryRunner::_dispatchChannel() {
             needToFreeRes = true;
             sqlTimer.stop();
             LOGS(_log, LOG_LVL_DEBUG, " query time=" << sqlTimer.getElapsed() << " " << logPrime << " query=" << query);
-            LOGS(_log, LOG_LVL_WARN, "&&& _dispatchChannel e");
+            LOGS(_log, LOG_LVL_WARN, "&&& _dispatchChannel e " << _task->getIdStr());
             _fillSchema(res);
             numFields = mysql_num_fields(res);
             // TODO fritzm: revisit this error strategy
@@ -564,9 +568,9 @@ bool QueryRunner::_dispatchChannel() {
             }
 
             // readRowsOk may be set to true
-            LOGS(_log, LOG_LVL_WARN, "&&& _dispatchChannel f");
+            LOGS(_log, LOG_LVL_WARN, "&&& _dispatchChannel f " << _task->getIdStr());
             if (_task->getSendChannel()->putRowsInTransmits(res, numFields, *_task, _largeResult,
-                                                            _multiError, _cancelled, readRowsOk, _czarId)) {
+                                                            _multiError, _cancelled, readRowsOk, _czarId, *_transmitMgr)) {
                 erred = true;
             }
             // _fillRows() false indicates that more result rows follow.
@@ -597,7 +601,7 @@ bool QueryRunner::_dispatchChannel() {
         _multiError.push_back(worker_err);
         erred = true;
     }
-    LOGS(_log, LOG_LVL_WARN, "&&& _dispatchChannel g");
+    LOGS(_log, LOG_LVL_WARN, "&&& _dispatchChannel g " << _task->getIdStr());
     // IMPORTANT, do not leave this function before this check has been made.
     if (needToFreeRes) {
         needToFreeRes = false;
@@ -610,13 +614,14 @@ bool QueryRunner::_dispatchChannel() {
         return false;
     }
     if (!_cancelled) {
-        LOGS(_log, LOG_LVL_WARN, "&&& _dispatchChannel h");
+        LOGS(_log, LOG_LVL_WARN, "&&& _dispatchChannel h " << _task->getIdStr());
         // Send results. This needs to happen after the error check.
         //&&&_buildDataMsg(rowCount, tSize);
         auto tData = _task->getSendChannel()->buildError(_czarId, *_task, _multiError);// &&& this really has to be part of qrTransmit
         // true indicates this will be the last transmit from this thread,
         //&&&if (!_transmit(true)) { // All remaining rows/errors for this QueryRunner should be in this transmit.
         bool lastInQuery = true;
+        LOGS(_log, LOG_LVL_WARN, "&&& _dispatchChannel normal qrTransmit call " << _task->getIdStr() << " seq=" << _task->getTSeq());
         if (!_task->getSendChannel()->qrTransmit(*_task, *_transmitMgr, tData,
                                                  _cancelled, _largeResult, lastInQuery, _czarId)) {
             LOGS(_log, LOG_LVL_ERROR, "Could not transmit last results.");
@@ -624,7 +629,7 @@ bool QueryRunner::_dispatchChannel() {
         }
         _largeResult = true; //&&& move largeResult to sendChannelShared?
     } else {
-        LOGS(_log, LOG_LVL_WARN, "&&& _dispatchChannel i");
+        LOGS(_log, LOG_LVL_WARN, "&&& _dispatchChannel i " << _task->getIdStr());
         erred = true;
         // Set poison error, no point in sending.
         LOGS(_log, LOG_LVL_ERROR, "dispatchChannel Poisoned");
@@ -638,6 +643,7 @@ void QueryRunner::cancel() {
     // QueryRunner::cancel() should only be called by Task::cancel()
     // to keep the bookkeeping straight.
     LOGS(_log, LOG_LVL_WARN, "Trying QueryRunner::cancel() call");
+    LOGS(_log, LOG_LVL_WARN, "&&& QueryRunner::cancel a" << _task->getIdStr());
     _cancelled = true;
 
     auto streamB = _streamBuf.lock();

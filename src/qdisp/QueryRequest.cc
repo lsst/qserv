@@ -259,6 +259,7 @@ char* QueryRequest::GetRequest(int& requestLength) {
 bool QueryRequest::ProcessResponse(XrdSsiErrInfo  const& eInfo, XrdSsiRespInfo const& rInfo) {
     QSERV_LOGCONTEXT_QUERY_JOB(_qid, _jobid);
     LOGS(_log, LOG_LVL_DEBUG, "workerName=" << GetEndPoint() << " ProcessResponse");
+    LOGS(_log, LOG_LVL_WARN, "&&& QueryRequest::ProcessResponse qId=" << _qid << " jId=" << _jobid);
     string errorDesc = _jobIdStr + " ";
     if (isQueryCancelled()) {
         LOGS(_log, LOG_LVL_WARN, "QueryRequest::ProcessResponse job already cancelled");
@@ -318,6 +319,7 @@ bool QueryRequest::ProcessResponse(XrdSsiErrInfo  const& eInfo, XrdSsiRespInfo c
 /// Retrieve and process results in using the XrdSsi stream mechanism
 /// Uses a copy of JobQuery::Ptr instead of _jobQuery as a call to cancel() would reset _jobQuery.
 bool QueryRequest::_importStream(JobQuery::Ptr const& jq) {
+    LOGS(_log, LOG_LVL_WARN, "&&& _importStream " << jq->getIdStr());
     if (_askForResponseDataCmd != nullptr) {
         LOGS(_log, LOG_LVL_ERROR, "_importStream There's already an _askForResponseDataCmd object!!");
         // Keep the previous object from wedging the pool.
@@ -331,6 +333,7 @@ bool QueryRequest::_importStream(JobQuery::Ptr const& jq) {
     if (len != expectedLen) {
         throw Bug("_importStream metadata wrong header size=" + to_string(len) + " expected=" + to_string(expectedLen));
     }
+    LOGS(_log, LOG_LVL_WARN, "&&& _importStream metadata size=" << len);
     ResponseHandler::BufPtr bufPtr = make_shared<vector<char>>(buff, buff + len);
 
     // Use flush to read the buffer and extract the header.
@@ -352,6 +355,7 @@ bool QueryRequest::_importStream(JobQuery::Ptr const& jq) {
     }
 
     if (!last) {
+        LOGS(_log, LOG_LVL_WARN, "&&& _importStream not last nextBufSz=" << nextBufSize << " " << jq->getIdStr());
         _askForResponseDataCmd = make_shared<AskForResponseDataCmd>(shared_from_this(), ++_respCount, jq, nextBufSize);
         _queueAskForResponse(_askForResponseDataCmd, jq, true);
     } else {
@@ -409,6 +413,7 @@ void QueryRequest::ProcessResponseData(XrdSsiErrInfo const& eInfo,
     // is accessed directly by the respHandler. _mBuf is a member of MergingHandler.
     LOGS(_log, LOG_LVL_DEBUG, "ProcessResponseData with buflen=" << blen
                               << " " << (last ? "(last)" : "(more)"));
+    LOGS(_log, LOG_LVL_WARN, "&&& QueryRequest::ProcessResponseData qId=" << _qid << " jId=" << _jobid);
 
     if (_askForResponseDataCmd == nullptr) {
         LOGS(_log, LOG_LVL_ERROR,

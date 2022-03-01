@@ -134,6 +134,9 @@ public:
     /// @return true if tData has an error message in _result.
     bool hasErrormsg() const;
 
+    /// Make certain endnodata is false.
+    void clearEndNoData(); //&&& delete
+
     /// Set values that need to be set just before queuing the TransmitData
     /// to be sent.
     void setFinalValues(bool scanInteractive, bool erred, bool largeResult);

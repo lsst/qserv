@@ -85,6 +85,12 @@ proto::Result* TransmitData::_createResult() {
 }
 
 
+void TransmitData::clearEndNoData() {
+    lock_guard<mutex> lock(_trMtx);
+    _header->set_endnodata(false);
+}
+
+
 void TransmitData::attachNextHeader(TransmitData::Ptr const& nextTr, bool reallyLast,
                                     uint32_t seq, int scsSeq) {
     lock_guard<mutex> lock(_trMtx);
@@ -179,6 +185,7 @@ xrdsvc::StreamBuffer::Ptr TransmitData::getStreamBuffer() {
 
 void TransmitData::_buildHeader(bool largeResult) {
     LOGS(_log, LOG_LVL_DEBUG, "TransmitData::_buildHeader");
+    LOGS(_log, LOG_LVL_WARN, "&&& TransmitData::_buildHeader");
 
     //&&&proto::ProtoHeader* header = _transmitData->header;
 
@@ -201,6 +208,7 @@ void TransmitData::buildDataMsg(Task const& task, bool largeResult, util::MultiE
 void TransmitData::_buildDataMsg(Task const& task, bool largeResult, util::MultiError& multiErr) {
     QSERV_LOGCONTEXT_QUERY_JOB(task.getQueryId(), task.getJobId());
     LOGS(_log, LOG_LVL_INFO, "TransmitData::_buildDataMsg rowCount=" << _rowCount << " tSize=" << _tSize);
+    LOGS(_log, LOG_LVL_WARN, "&&& TransmitData::_buildDataMsg rowCount=" << _rowCount << " tSize=" << _tSize);
     //&&& assert(_transmitData != nullptr);
     assert(_result != nullptr);
 

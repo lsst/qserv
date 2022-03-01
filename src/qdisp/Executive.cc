@@ -287,6 +287,7 @@ bool Executive::join() {
 }
 
 void Executive::markCompleted(int jobId, bool success) {
+    LOGS(_log, LOG_LVL_WARN, "&&& Executive::markCompleted qId=" << getId() << " jId=" << jobId << " success=" << success);
     ResponseHandler::Error err;
     string idStr = QueryIdHelper::makeIdStr(_id, jobId);
     LOGS(_log, LOG_LVL_DEBUG, "Executive::markCompleted " << success);
@@ -457,10 +458,11 @@ bool Executive::_track(int jobId, shared_ptr<JobQuery> const& r) {
 }
 
 void Executive::_unTrack(int jobId) {
+    LOGS(_log, LOG_LVL_WARN, "&&& Executive::_unTrack qId=" << getId() << " jId=" << jobId);
     bool untracked = false;
     int incompleteJobs = _totalJobs;
     string s;
-    bool logSome = false;
+    bool logSome = true;//&&& restore bool logSome = false;
     {
         lock_guard<mutex> lock(_incompleteJobsMutex);
         auto i = _incompleteJobs.find(jobId);
@@ -483,6 +485,7 @@ void Executive::_unTrack(int jobId) {
     // Every time a chunk completes, consider sending an update to QMeta.
     // Important chunks to log: first, last, middle
     // limiting factors: no more than one update a minute (config)
+    LOGS(_log, LOG_LVL_WARN, "&&& Executive UNTRACKING " << (untracked ? "success":"failed") << "::" << s);
     if (untracked) {
         auto now = chrono::system_clock::now();
         unique_lock<mutex> lastUpdateLock(_lastQMetaMtx);
