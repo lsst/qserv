@@ -540,15 +540,13 @@ def update_schema(
     to be updated. This command can be used to update the schema and then nodes
     will continue startup.
     """
-    click.echo(
-        launch.update_schema(
-            czar_connection,
-            worker_connections,
-            repl_connection,
-            qserv_image,
-            project,
-            dry,
-        )
+    launch.update_schema(
+        czar_connection,
+        worker_connections,
+        repl_connection,
+        qserv_image,
+        project,
+        dry,
     )
 
 
