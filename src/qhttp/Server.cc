@@ -289,7 +289,19 @@ void Server::_readRequest(std::shared_ptr<ip::tcp::socket> socket)
             }
 
             if (request->header.count("Content-Length") > 0) {
-                std::size_t bytesToRead = stoull(request->header["Content-Length"]) - bytesBuffered;
+                std::size_t bytesToRead;
+                try {
+                    bytesToRead = stoull(request->header["Content-Length"]);
+                }
+                catch(std::exception const& e) {
+                    LOGLS_WARN(_log, logger(self) << logger(socket)
+                        << "rejecting request with bad Content-Length: "
+                        << ctrlquote(request->header["Content-Length"]));
+                    timer->cancel();
+                    response->sendStatus(400);
+                    return;
+                }
+                bytesToRead -= bytesBuffered;
                 LOGLS_INFO(_log, logger(self) << logger(socket)
                     << request->method << " " << request->target << " " << request->version
                     << " + " << bytesToRead << " bytes");
