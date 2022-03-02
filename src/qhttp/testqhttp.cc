@@ -345,7 +345,8 @@ struct QhttpFixture
     std::string asioHttpGet(
         std::string const& path,
         int responseCode,
-        std::string const& contentType)
+        std::string const& contentType,
+        std::string const invalidContentLength = "")
     {
         boost::system::error_code ec;
 
@@ -354,7 +355,12 @@ struct QhttpFixture
         socket.connect(endpoint, ec);
         BOOST_TEST(!ec);
 
-        std::string req = std::string("GET ") + path + " HTTP/1.1\r\n\r\n";
+        std::string req = std::string("GET ") + path + " HTTP/1.1\r\n";
+        if (!invalidContentLength.empty()) {
+            req += std::string("Content-Length: ") + invalidContentLength + "\r\n";
+        }
+        req += "\r\n";
+
         asio::write(socket, asio::buffer(req), ec);
         BOOST_TEST(!ec);
 
@@ -538,7 +544,7 @@ BOOST_FIXTURE_TEST_CASE(static_content, QhttpFixture)
     BOOST_CHECK_THROW(server->addStaticContent("/*", "/doesnotexist"), fs::filesystem_error);
     BOOST_CHECK_THROW(server->addStaticContent("/*", dataDir + "index.html"), fs::filesystem_error);
 
-   //----- set up valid static content for subsequent tests
+    //----- set up valid static content for subsequent tests
 
     server->addStaticContent("/*", dataDir);
     start();
@@ -575,14 +581,6 @@ BOOST_FIXTURE_TEST_CASE(static_content, QhttpFixture)
 
     curl.setup("GET", urlPrefix + "doesNotExist", "").perform().validate(404, "text/html");
     BOOST_TEST(curl.recdContent.find("404") != std::string::npos);
-
-    //----- test resource path with embedded null
-
-    curl.setup("GET", urlPrefix + "/%00/", "").perform().validate(400, "text/html");
-    BOOST_TEST(curl.recdContent.find("400") != std::string::npos);
-
-    std::string content = asioHttpGet(std::string("/\0/", 3), 400, "text/html");
-    BOOST_TEST(content.find("400") != std::string::npos);
 }
 
 
@@ -628,30 +626,57 @@ BOOST_FIXTURE_TEST_CASE(exception_handling, QhttpFixture)
         throw std::runtime_error("test");
     });
 
+    server->addHandler("GET", "/invalid-content-length",
+        [](qhttp::Request::Ptr req, qhttp::Response::Ptr resp){
+            resp->sendStatus(200);
+        }
+    );
+
     start();
 
-    // Test EACCESS thrown from static file handler
+    CurlEasy curl;
 
-    content = asioHttpGet("/etc/shadow", 403, "text/html");
-    BOOST_TEST(content.find("403") != std::string::npos);
+    //----- test EACCESS thrown from static file handler
 
-    // Test exceptions thrown from user handler
+    curl.setup("GET", urlPrefix + "etc/shadow", "").perform().validate(403, "text/html");
+    BOOST_TEST(curl.recdContent.find("403") != std::string::npos);
 
-    content = asioHttpGet((boost::format("/throw/%1%") % EACCES).str(), 403, "text/html");
-    BOOST_TEST(content.find("403") != std::string::npos);
+    //----- test exceptions thrown from user handler
 
-    content = asioHttpGet((boost::format("/throw/%1%") % ENOENT).str(), 500, "text/html");
-    BOOST_TEST(content.find("500") != std::string::npos);
+    curl.setup("GET", urlPrefix + (boost::format("throw/%1%") % EACCES).str(), "");
+    curl.perform().validate(403, "text/html");
+    BOOST_TEST(curl.recdContent.find("403") != std::string::npos);
 
-    content = asioHttpGet("/throw/make-stoi-throw-invalid-argument", 500, "text/html");
-    BOOST_TEST(content.find("500") != std::string::npos);
+    curl.setup("GET", urlPrefix + (boost::format("throw/%1%") % ENOENT).str(), "");
+    curl.perform().validate(500, "text/html");
+    BOOST_TEST(curl.recdContent.find("500") != std::string::npos);
 
-    // Test exception thrown in user handler after calling a request send() method.  This would be a user
-    // programming error, but we defend against it anyway.  From the point of view of the HTTP client, the
-    // response provided by the handler before the exception goes through.
+    curl.setup("GET", urlPrefix + "throw/make-stoi-throw-invalid-argument", "");
+    curl.perform().validate(500, "text/html");
+    BOOST_TEST(curl.recdContent.find("500") != std::string::npos);
 
-    content = asioHttpGet("/throw-after-send", 200, "text/html");
-    BOOST_TEST(content.find("200") != std::string::npos);
+    //----- Test exception thrown in user handler after calling a request send() method.  This would be a user
+    //      programming error, but we defend against it anyway.  From the point of view of the HTTP client,
+    //      the response provided by the handler before the exception goes through.
+
+    curl.setup("GET", urlPrefix + "throw-after-send", "").perform().validate(200, "text/html");
+    BOOST_TEST(curl.recdContent.find("200") != std::string::npos);
+
+    //----- test resource path with embedded null
+
+    curl.setup("GET", urlPrefix + "etc/%00/", "").perform().validate(400, "text/html");
+    BOOST_TEST(curl.recdContent.find("400") != std::string::npos);
+
+    content = asioHttpGet(std::string("/\0/", 3), 400, "text/html");
+    BOOST_TEST(content.find("400") != std::string::npos);
+
+    //----- test request with invalid Content-Length headers
+
+    content = asioHttpGet("/invalid-content-length", 400, "text/html", "not-an-integer");
+    BOOST_TEST(content.find("400") != std::string::npos);
+
+    content = asioHttpGet("/invalid-content-length", 400, "text/html", "18446744073709551616");
+    BOOST_TEST(content.find("400") != std::string::npos);
 }
 
 
