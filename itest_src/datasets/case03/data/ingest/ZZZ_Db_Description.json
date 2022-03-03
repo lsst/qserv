@@ -1,0 +1,10 @@
+{
+    "auth_key":"",
+    "database":"qservTest_case03_qserv",
+    "table":"ZZZ_Db_Description",
+    "is_partitioned":0,
+    "schema":[
+        {"name":"f", "type":"varchar(255) DEFAULT NULL"},
+        {"name":"r", "type":"varchar(255) DEFAULT NULL"}
+    ]
+}

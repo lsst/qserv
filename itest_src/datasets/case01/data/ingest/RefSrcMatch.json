@@ -1,0 +1,18 @@
+{
+    "auth_key":"",
+    "database":"qservTest_case01_qserv",
+    "table":"RefSrcMatch",
+    "is_partitioned":0,
+    "schema":[
+        {"name":"refObjectId", "type":"bigint(20) DEFAULT NULL"},
+        {"name":"sourceId", "type":"bigint(20) DEFAULT NULL"},
+        {"name":"refRa", "type":"double DEFAULT NULL"},
+        {"name":"refDec", "type":"double DEFAULT NULL"},
+        {"name":"angSep", "type":"double DEFAULT NULL"},
+        {"name":"nRefMatches", "type":"int(11) DEFAULT NULL"},
+        {"name":"nSrcMatches", "type":"int(11) DEFAULT NULL"},
+        {"name":"closestToRef", "type":"tinyint(4) DEFAULT NULL"},
+        {"name":"closestToSrc", "type":"tinyint(4) DEFAULT NULL"},
+        {"name":"flags", "type":"int(11) DEFAULT NULL"}
+    ]
+}

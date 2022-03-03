@@ -1,0 +1,9 @@
+{
+    "auth_key":"",
+    "database":"qservTest_case05_qserv",
+    "auto_build_secondary_index":1,
+    "local_load_secondary_index":1,
+    "num_stripes":85,
+    "num_sub_stripes":12,
+    "overlap":0.01667
+}

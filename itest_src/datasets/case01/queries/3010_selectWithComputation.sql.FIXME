@@ -1,0 +1,6 @@
+SELECT o.objectId,src.*,src.sourceId%pow(2,10)
+FROM Object o, Source src
+WHERE o.ra_PS  BETWEEN 0. AND 1.
+ AND o.decl_PS BETWEEN 0. AND 1.
+ AND o.objectId = src.objectId ;
+ 

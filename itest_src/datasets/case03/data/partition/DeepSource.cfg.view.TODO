@@ -1,0 +1,26 @@
+# ======================================
+# W13 DeepSource view configuration file
+# ======================================
+
+# TODO: DM-1728
+
+# Table primary key column.
+id  = id
+
+# Partitioning parameters.
+part = {
+    # The partitioning position is the object's point-source model position.
+    pos = 'coord_ra, coord_decl'
+    # Overlap radius in degrees.
+    overlap = 0
+    subChunks = 0
+}
+
+dirColName = "TODO"
+
+in.csv = {
+    # List of table column names, in order of occurrence.
+    field = [
+#TODO
+    ]
+}

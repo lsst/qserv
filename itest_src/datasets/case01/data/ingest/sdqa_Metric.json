@@ -1,0 +1,13 @@
+{
+    "auth_key":"",
+    "database":"qservTest_case01_qserv",
+    "table":"sdqa_Metric",
+    "is_partitioned":0,
+    "schema":[
+        {"name":"sdqa_metricId", "type":"smallint(6) NOT NULL"},
+        {"name":"metricName", "type":"varchar(30) NOT NULL"},
+        {"name":"physicalUnits", "type":"varchar(30) NOT NULL"},
+        {"name":"dataType", "type":"char(1) NOT NULL"},
+        {"name":"definition", "type":"varchar(255) NOT NULL"}
+    ]
+}

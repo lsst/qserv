@@ -1,0 +1,31 @@
+{
+    "auth_key":"",
+    "database":"qservTest_case03_qserv",
+    "table":"AvgForcedPhotYearly",
+    "is_partitioned":0,
+    "schema":[
+        {"name":"deepSourceId", "type":"bigint(20) NOT NULL"},
+        {"name":"year", "type":"tinyint(4) NOT NULL"},
+        {"name":"ra", "type":"double NOT NULL"},
+        {"name":"decl", "type":"double NOT NULL"},
+        {"name":"htmId20", "type":"bigint(20) NOT NULL"},
+        {"name":"magFaint_g", "type":"float DEFAULT NULL"},
+        {"name":"q1Mag_g", "type":"float DEFAULT NULL"},
+        {"name":"medMag_g", "type":"float DEFAULT NULL"},
+        {"name":"q3Mag_g", "type":"float DEFAULT NULL"},
+        {"name":"magBright_g", "type":"float DEFAULT NULL"},
+        {"name":"nMag_g", "type":"float DEFAULT NULL"},
+        {"name":"magFaint_r", "type":"float DEFAULT NULL"},
+        {"name":"q1Mag_r", "type":"float DEFAULT NULL"},
+        {"name":"medMag_r", "type":"float DEFAULT NULL"},
+        {"name":"q3Mag_r", "type":"float DEFAULT NULL"},
+        {"name":"magBright_r", "type":"float DEFAULT NULL"},
+        {"name":"nMag_r", "type":"float DEFAULT NULL"},
+        {"name":"magFaint_i", "type":"float DEFAULT NULL"},
+        {"name":"q1Mag_i", "type":"float DEFAULT NULL"},
+        {"name":"medMag_i", "type":"float DEFAULT NULL"},
+        {"name":"q3Mag_i", "type":"float DEFAULT NULL"},
+        {"name":"magBright_i", "type":"float DEFAULT NULL"},
+        {"name":"nMag_i", "type":"float DEFAULT NULL"}
+    ]
+}

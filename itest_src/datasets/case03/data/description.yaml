@@ -1,0 +1,16 @@
+tables:
+    load-order: ['Science_Ccd_Exposure_Metadata_coadd_r', 'AvgForcedPhotYearly',
+        'Science_Ccd_Exposure_Metadata','ZZZ_Db_Description', 'RefObject',
+        'RefDeepSrcMatch', 'Science_Ccd_Exposure_coadd_r', 'Science_Ccd_Exposure',
+        'AvgForcedPhot', 'DeepCoadd_To_Htm10', 'LeapSeconds', 'DeepCoadd',
+        'DeepCoadd_Metadata', 'Science_Ccd_Exposure_To_Htm10_coadd_r',
+        'LeapSeconds', 'DeepCoadd', 'DeepCoadd_Metadata', 'Filter', 'RunDeepSource',
+        'RunDeepForcedSource',]
+    directors:          ['RunDeepSource']
+    partitioned-tables: ['RunDeepSource', 'RunDeepForcedSource']
+    views:              ['DeepForcedSource','DeepSource']
+    partitioned-views:  ['DeepForcedSource','DeepSource']
+extensions:
+    data:   '.csv'
+    schema: '.schema'
+    zip:    '.gz'
