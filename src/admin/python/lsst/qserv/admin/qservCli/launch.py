@@ -29,7 +29,7 @@ import subprocess
 import time
 from urllib.parse import urlparse
 import yaml
-from typing import Dict, List, Optional, Sequence
+from typing import Dict, List, Optional
 
 from .opt import (
     dashboard_port_ev,
@@ -39,6 +39,7 @@ from .opt import (
     dh_token_ev,
 )
 from . import images
+from . import subproc
 
 
 # The location where the lite-build and run-base images should be built from:
@@ -198,7 +199,7 @@ def do_update_submodules(
         print(" ".join(args))
         return
     _log.debug('Running "%s"', " ".join(args))
-    subprocess.run(args, check=True)
+    subproc.run(args)
 
 
 def cmake(qserv_root: str, qserv_build_root: str, build_image: str, user: str, dry: bool) -> None:
@@ -236,7 +237,7 @@ def cmake(qserv_root: str, qserv_build_root: str, build_image: str, user: str, d
         print(" ".join(args))
         return
     _log.debug('Running "%s"', " ".join(args))
-    subprocess.run(args, check=True)
+    subproc.run(args)
 
 
 def make(
@@ -292,7 +293,7 @@ def make(
         print(" ".join(args))
         return
     _log.debug('Running "%s"', " ".join(args))
-    subprocess.run(args, check=True)
+    subproc.run(args)
 
 
 def mypy(
@@ -343,7 +344,7 @@ def mypy(
         return
     _log.debug('Running "%s"', " ".join(args))
     print("Running mypy on all qserv python modules except 'testing'...")
-    subprocess.run(args, check=True)
+    subproc.run(args)
 
 
 def build(
@@ -493,7 +494,7 @@ def build_user_build_image(
         print(f"cd {run_dir}; {' '.join(args)}; cd -")
     else:
         _log.debug('Running "%s" from directory %s', " ".join(args), run_dir)
-        subprocess.run(args, cwd=run_dir, check=True)
+        subproc.run(args, cwd=run_dir)
 
 
 def build_run_base_image(
@@ -615,7 +616,7 @@ def run_dev(
         print(" ".join(args))
     else:
         _log.debug('Running "%s"', " ".join(args))
-        subprocess.run(args, check=True)
+        subprocess.run(args)
     return test_container
 
 
@@ -649,7 +650,7 @@ def run_build(
         print(" ".join(args))
     else:
         _log.debug('Running "%s"', " ".join(args))
-        subprocess.run(args, check=True)
+        subprocess.run(args)
 
 
 def run_debug(
@@ -682,7 +683,7 @@ def run_debug(
         print(" ".join(args))
     else:
         _log.debug('Running "%s"', " ".join(args))
-        subprocess.run(args, check=True)
+        subprocess.run(args)
 
 
 def itest_ref(
@@ -753,12 +754,11 @@ def itest_ref(
         print(" ".join(args))
         return hostname
     _log.debug(f"Running {' '.join(args)}")
-    result = subprocess.run(args)
-    result.check_returncode()
+    subproc.run(args)
     return hostname
 
 
-def stop_itest_ref(container_name: str, dry: bool) -> None:
+def stop_itest_ref(container_name: str, dry: bool) -> int:
     """Stop the integration test reference database.
 
     Parameters
@@ -768,14 +768,21 @@ def stop_itest_ref(container_name: str, dry: bool) -> None:
         database.
     dry : `bool`
         If True do not run the command; print what would have been run.
+
+    Returns
+    -------
+    returncode : `int`
+        The returncode from the subprocess stopping & removing the integration
+        test reference database. Will be 0 if it succeeded or nonzero if there
+        was a problem.
     """
     args = ["docker", "rm", "-f", container_name]
     if dry:
         print(" ".join(args))
-        return
+        return 0
     _log.debug(f"Running {' '.join(args)}")
     result = subprocess.run(args)
-    result.check_returncode()
+    return result.returncode
 
 
 def integration_test(
@@ -937,7 +944,9 @@ def itest(
     Returns
     -------
     returncode : `int`
-        The returncode of "entrypoint integration-test".
+        The returncode of "entrypoint integration-test" if there was a test
+        failure, or the returncode of stopping the test database if there was a
+        problem doing that, or 0 if there was no problems.
     """
     ref_db_container_name = itest_ref(qserv_root, itest_file, itest_volume, project, mariadb_image, dry)
     try:
@@ -962,9 +971,8 @@ def itest(
             remove,
         )
     finally:
-        if remove:
-            stop_itest_ref(ref_db_container_name, dry)
-    return returncode
+        stop_db_returncode = stop_itest_ref(ref_db_container_name, dry) if remove else 0
+    return returncode or stop_db_returncode
 
 
 def itest_rm(itest_volume: str, dry: bool) -> None:
@@ -977,13 +985,22 @@ def itest_rm(itest_volume: str, dry: bool) -> None:
     dry : `bool`
         If True do not run the command; print what would have been run.
     """
-    args = ["docker", "volume", "rm", itest_volume, f"{itest_volume}_lib"]
+    res = subproc.run(
+        ["docker", "volume", "ls", "--format", "{{.Name}}"],
+        capture_stdout=True,
+    )
+    volumes = res.stdout.decode().split()
+    rm_volumes = [v for v in [itest_volume, f"{itest_volume}_lib"] if v in volumes]
+    if not rm_volumes:
+        print("There are not itest volumes to remove.")
+        return
+
+    args = ["docker", "volume", "rm", *rm_volumes]
     if dry:
         print(" ".join(args))
         return
     _log.debug(f"Running {' '.join(args)}")
-    result = subprocess.run(args)
-    result.check_returncode()
+    result = subproc.run(args)
 
 
 def update_schema(
@@ -993,7 +1010,7 @@ def update_schema(
     qserv_image: str,
     project: str,
     dry: bool,
-) -> str:
+) -> None:
     """Update schema on qserv nodes.
 
     Parameters
@@ -1010,11 +1027,6 @@ def update_schema(
         The project name that is used to derive a network name.
     dry : `bool`
         If True do not run the command; print what would have been run.
-
-    Returns
-    -------
-    stderr : `str`
-        If there is an error, returns stderr, otherwise returns an empty string.
     """
     args = [
         "docker",
@@ -1041,10 +1053,9 @@ def update_schema(
         args.extend(["--repl-connection", repl_connection])
     if dry:
         print(" ".join(args))
-        return ""
+        return
     _log.debug('Running "%s"', " ".join(args))
-    result = subprocess.run(args, encoding="utf-8", errors="replace")
-    return result.stderr
+    subproc.run(args)
 
 
 def get_env(vals: Dict[str, str]) -> Dict[str, str]:
@@ -1102,7 +1113,7 @@ def up(
     else:
         env = get_env(env_override)
         _log.debug("Running %s with environment overrides %s", " ".join(args), env_override)
-        subprocess.run(args, env=env, check=True)
+        subproc.run(args, env=env)
 
 
 def down(
@@ -1150,7 +1161,7 @@ def down(
             mariadb_image_ev.env_var: mariadb_image,
         }
     )
-    subprocess.run(args, env=env, check=True)
+    subproc.run(args, env=env)
 
 
 def entrypoint_help(
@@ -1182,7 +1193,7 @@ def entrypoint_help(
             print(cmd)
         else:
             _log.debug('Running "%s"', cmd)
-            subprocess.run(cmd.split(), check=True)
+            subproc.run(cmd.split())
         print()
     if spawned and command:
         cmd = f"docker run --rm {qserv_image} entrypoint spawned-app-help {command}"
@@ -1190,4 +1201,4 @@ def entrypoint_help(
             print(cmd)
         else:
             _log.debug('Running "%s"', cmd)
-            subprocess.run(cmd.split(), check=True)
+            subproc.run(cmd.split())

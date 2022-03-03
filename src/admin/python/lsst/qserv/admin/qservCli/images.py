@@ -30,6 +30,7 @@ import requests
 import subprocess
 from typing import List, Optional
 
+from . import subproc
 
 # Values specific to dockerhub and its api that could be substituted or added as
 # ImageTagger init args as needed. Currently they're set at member variables in
@@ -92,21 +93,19 @@ def last_git_tag(cwd: str) -> str:
         If the most recent tag can not be gotten, or if the
         SHA of that tag can not be gotten from git.
     """
-    res = subprocess.run(
+    res = subproc.run(
         "git describe --abbrev=0".split(),
-        stdout=subprocess.PIPE,
+        capture_stdout=True,
         cwd=cwd,
+        errmsg=f"Failed to get most recent tag from repo at {cwd}."
     )
     tag = res.stdout.decode().strip()
-    if res.returncode != 0:
-        raise RuntimeError(f"Failed to get most recent tag from repo at {cwd}.")
-    res = subprocess.run(
+    res = subproc.run(
         ["git", "rev-list", "-n", "1", tag],
-        stdout=subprocess.PIPE,
+        capture_stdout=True,
         cwd=cwd,
+        errmsg=f"Failed to get SHA for tag {tag}.",
     )
-    if res.returncode != 0:
-        raise RuntimeError(f"Failed to get SHA for tag {tag}.")
     return res.stdout.decode().strip()
 
 
@@ -137,17 +136,13 @@ def describe(sha: Optional[str], cwd: str) -> str:
     else:
         args = ["git", "describe", "--always", "--dirty", f"--abbrev={abbrev}"]
     _log.debug("Running %s", " ".join(args))
-    res = subprocess.run(
+    res = subproc.run(
         args,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
         cwd=cwd,
-        encoding="utf-8",
-        errors="replace",
+        capture_stdout=True,
+        errmsg=f"Failed to get git description of sha {sha}.",
     )
-    if res.returncode != 0:
-        raise RuntimeError(f"Failed to get git description of sha {sha}: {res.stderr}")
-    description = res.stdout.strip()
+    description = res.stdout.decode().strip()
     if sha:
         _log.debug("The description of %s is %s", sha, description)
     else:
@@ -172,17 +167,13 @@ def get_last_change(fname: str, cwd: str) -> str:
     """
     args = ["git", "log", "--pretty=format:%H", "--max-count=1", fname]
     _log.debug(f"running %s", " ".join(args))
-    res = subprocess.run(
+    res = subproc.run(
         args,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
         cwd=cwd,
-        encoding="utf-8",
-        errors="replace",
+        capture_stdout=True,
+        errmsg=f"Failed to get git sha of most recent change to {fname}.",
     )
-    if res.returncode != 0:
-        raise RuntimeError(f"Failed to get git sha of most recent change to {fname}: {res.stderr}")
-    sha = res.stdout.strip()
+    sha = res.stdout.decode().strip()
     _log.debug(f"The most recent change to %s was in %s", fname, sha)
     return sha
 
@@ -210,16 +201,12 @@ def git_log(a: str, b: str, cwd: str) -> List[str]:
         If there is an error running `git log a..b`.
     """
     args = ["git", "log", "--pretty=format:%H", f"{a}..{b}"]
-    res = subprocess.run(
+    res = subproc.run(
         args,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
         cwd=cwd,
-        encoding="utf-8",
-        errors="replace",
+        capture_stdout=True,
+        errmsg=f"Get log of shas {a}..{b}."
     )
-    if res.returncode != 0:
-        raise RuntimeError(f"Get log of shas {a}..{b}: {res.stderr}")
     return res.stdout.strip().split()
 
 
@@ -428,5 +415,4 @@ def build_image(
         print(f"cd {run_dir}; {' '.join(args)}; cd -")
     else:
         _log.debug('Running "%s" from directory %s', " ".join(args), run_dir)
-        result = subprocess.run(args, cwd=run_dir)
-        result.check_returncode()
+        result = subproc.run(args, cwd=run_dir)
