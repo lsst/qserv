@@ -81,7 +81,10 @@ public:
     TransmitData& operator=(TransmitData const&) = delete;
 
     /// Create a transmitData object
-    static Ptr createTransmitData(qmeta::CzarId const& czarId_);
+    static Ptr createTransmitData(qmeta::CzarId const& czarId_, std::string const& idStr);
+
+    /// Initialize the result.
+    void initResult(Task& task, std::vector<SchemaCol>& schemaCols);
 
     /* &&&
     /// Create a header for an empty result using our arena.
@@ -115,9 +118,6 @@ public:
     qmeta::CzarId getCzarId() const { return _czarId; }
     bool getScanInteractive() const { return _scanInteractive; }
 
-    /// Initialize the result.
-    void initResult(Task& task, std::vector<SchemaCol>& schemaCols);
-
     /// Fill one row in the _result msg from one row in MYSQL_RES* 'mResult'
     /// If the message has gotten larger than the desired message size,
     /// return false.
@@ -141,8 +141,20 @@ public:
     /// to be sent.
     void setFinalValues(bool scanInteractive, bool erred, bool largeResult);
 
+    int getSizeFromHeader() const; // &&& delete?
+
+    int getResultSize() const; // &&& delete?
+
+    std::string getIdStr() const { return _idStr; }
+
+    std::string dump() const { //&&& delete?
+        std::lock_guard<std::mutex> lock(_trMtx);
+        return _dump();
+    }
+
 private:
-    TransmitData(qmeta::CzarId const& czarId, std::shared_ptr<google::protobuf::Arena> const& arena);
+    TransmitData(qmeta::CzarId const& czarId, std::shared_ptr<google::protobuf::Arena> const& arena,
+                 std::string const& idStr);
 
     /// Create a header for an empty result using our arena.
     /// This does not set the 'header' member of this object as there is a
@@ -180,7 +192,7 @@ private:
     std::atomic<bool> _largeResult{false};
     std::atomic<bool> _scanInteractive{false};
 
-    std::mutex _trMtx; ///< Protects all private member variables.
+    mutable std::mutex _trMtx; ///< Protects all private member variables. // &&& this may no longer be needed.
     std::atomic<bool> _schemaColsSet{false}; ///< Set to true when schema columns are set.
 
     unsigned int _rowCount = 0; ///< Number of rows in the _result so far.
@@ -191,6 +203,13 @@ private:
     proto::Result* _createResult();
 
     std::shared_ptr<google::protobuf::Arena> _arena;
+
+    std::string const _idStr; //&&& delete?
+
+    std::string _dump() const; //&&& delete?
+
+    int const _trSeq; //&&& delete
+
 };
 
 }}} // namespace lsst::qserv::wbase

@@ -118,7 +118,7 @@ public:
     /// @return true if inLast is true and this is the last task to call this
     ///              with inLast == true.
     /// The calling Thread must hold 'streamMutex' before calling this.
-    bool transmitTaskLast(StreamGuard sLock, bool inLast);
+    bool transmitTaskLast(StreamGuard sLock, bool inLast); //&&& can StreamGuard sLock be removed???
 
     /// Return a normalized id string.
     static std::string makeIdStr(int qId, int jId);
@@ -144,8 +144,10 @@ public:
     /// @return true if this is the first time this function has been called.
     bool getFirstChannelSqlConn() { return _firstChannelSqlConn.exchange(false); }
 
+    /* &&&
     /// Create a new _transmitData object if needed.
-    void initTransmit(Task& task, qmeta::CzarId const& czarId);
+    void initTransmit(Task& task, qmeta::CzarId const& czarId); //&&& delete
+    */
 
     /// Set the schemaCols. All tasks using this send channel should have
     /// the same schema.
@@ -156,12 +158,13 @@ public:
                             util::MultiError& multiErr, std::atomic<bool>& cancelled, bool &readRowsOk,
                             qmeta::CzarId const& czarId, wcontrol::TransmitMgr& transmitMgr);
 
-
+    /* &&&
     /// &&& doc and rename
     bool qrTransmit(Task& task, wcontrol::TransmitMgr& transmitMgr,
-                    wbase::TransmitData::Ptr const& tData,
+                    //&&&wbase::TransmitData::Ptr const& tData,
                     bool cancelled, bool largeResult, bool lastIn,
-                    qmeta::CzarId const& czarId);
+                    qmeta::CzarId const& czarId, std::string const& note); // remove note
+    */
 
     /* &&&
     /// Fill one row in the _transmitData->_result msg from one row in MYSQL_RES*
@@ -171,8 +174,20 @@ public:
     bool fillRows(MYSQL_RES* result, int numFields, uint& rowCount, size_t& tSize);
     */
 
+    /* &&&
     /// @return a transmit data object indicating the errors in 'multiErr'.
     TransmitData::Ptr buildError(qmeta::CzarId const& czarId, Task& task, util::MultiError& multiErr);
+    */
+    bool buildAndTransmitError(util::MultiError& multiErr,
+                                Task& task, wcontrol::TransmitMgr& transmitMgr,
+                                bool cancelled, qmeta::CzarId const& czarId);
+
+    // &&& doc
+    bool buildAndTransmit(MYSQL_RES* mResult, int numFields, Task& task, bool largeResult,
+            util::MultiError& multiErr, std::atomic<bool>& cancelled, bool &readRowsOk,
+            qmeta::CzarId const& czarId, wcontrol::TransmitMgr& transmitMgr);
+
+    std::string dumpTr() const; //&&& delete?
 
 private:
     /// Private constructor to protect shared pointer integrity.
@@ -205,9 +220,9 @@ private:
     bool _kill(StreamGuard sLock, std::string const& note);
 
     /// @return a new TransmitData::Ptr object.
-    /// Note: tMtx must be held before calling.
     TransmitData::Ptr _createTransmit(Task& task, qmeta::CzarId const& czarId);
 
+    /// Create a new _transmitData object if needed.
     /// Note: tMtx must be held before calling.
     void _initTransmit(Task& task, qmeta::CzarId const& czarId);
 
@@ -242,11 +257,13 @@ private:
                   xrdsvc::StreamBuffer::Ptr& streamBuf, bool last,
                   std::string const& note, int scsSeq);
 
-    /// @see qrTransmit
+    /// &&& doc and rename
     bool _qrTransmit(Task& task, wcontrol::TransmitMgr& transmitMgr,
-                    wbase::TransmitData::Ptr const& tData,
+                    //&&&wbase::TransmitData::Ptr const& tData,
                     bool cancelled, bool largeResult, bool lastIn,
-                    qmeta::CzarId const& czarId);
+                    qmeta::CzarId const& czarId, std::string const& note); //&&& remove note
+
+    std::string _dumpTr() const; //&&& delete?
 
 
     /// streamMutex is used to protect _lastCount and messages that are sent
@@ -286,7 +303,7 @@ private:
     std::atomic<bool> _schemaColsSet{false};
 
     std::shared_ptr<TransmitData> _transmitData; ///< TransmitData object
-    std::mutex _tMtx; ///< protects _transmitData  //&&& this may require using _queueMtx instead.
+    mutable std::mutex _tMtx; ///< protects _transmitData  //&&& this may require using _queueMtx instead.
 };
 
 }}} // namespace lsst::qserv::wbase

@@ -168,7 +168,7 @@ private:
     util::MultiError _multiError; // Error log
 
     //&&&std::vector<wbase::SchemaCol> _schemaCols; ///< Description of columns for schema.
-    wbase::TransmitData::Ptr _transmitData; ///< Data for this transmit. //&&& delete
+    //wbase::TransmitData::Ptr _transmitData; ///< Data for this transmit. //&&& delete
     bool _largeResult = false; //< True for all transmits after the first transmit.
 
     /// Used to limit the number of open MySQL connections.
