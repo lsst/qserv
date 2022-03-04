@@ -880,7 +880,6 @@ def load_simple(repl_ctrl_uri: str) -> None:
 
 def integration_test(
     repl_connection: str,
-    pull: Optional[bool],
     unload: bool,
     load: Optional[bool],
     reload: bool,
@@ -892,7 +891,6 @@ def integration_test(
     if repl_connection is not None:
         _do_smig_block(admin_smig_dir, "replica", repl_connection)
     return _integration_test.run_integration_tests(
-        pull=pull,
         unload=unload,
         load=load,
         reload=reload,

@@ -4,16 +4,16 @@ reference-db-admin-uri: mysql://root:CHANGEME@integration-test-reference:3306
 replication-controller-uri: repl://@repl-mgr-controller:25081
 qserv-uri: qserv://qsmaster@czar-proxy:4040
 czar-db-admin-uri: mysql://root:CHANGEME@czar-db:3306
-# the folder where the testdata repo will be downladed:
-qserv-testdata-dir: /qserv/data/qserv_testdata
-# location where a tarball can be downloaded from:
-qserv-testdata-repo: https://github.com/lsst/qserv_testdata/tarball/main
-# relative path in the repo to the test case folders:
+# The folder where the itest sources will be mounted in the container:
+qserv-testdata-dir: /tmp/qserv/itest_src
+# The path to the test case folders, relative to qserv-testdata-dir
 qserv-testdata-test-case-dir: datasets
-testdata-output: /qserv/data/integration_test/
+# The location where itest query results will be written. (After writing they
+# are evaluated/compared by the itest tool)
+testdata-output: /qserv/data/
 test_cases:
   - id: case01
-    root: /qserv/data/qserv_testdata/datasets/case01
+    root: /tmp/qserv/itest_src/datasets/case01
     data: data/{table_name}.tsv.gz
     schema: data/schema/{table_name}.schema
     partition:
@@ -48,7 +48,7 @@ test_cases:
       - "1097"  # has select *
       - "1103"  # has select *
   - id: case02
-    root: /qserv/data/qserv_testdata/datasets/case02
+    root: /tmp/qserv/itest_src/datasets/case02
     data: data/{table_name}.csv.gz
     schema: data/schema/{table_name}.schema
     partition:
@@ -65,7 +65,7 @@ test_cases:
     skip_numbers:
       - "0002"  # has select *
   - id: case03
-    root: /qserv/data/qserv_testdata/datasets/case03
+    root: /tmp/qserv/itest_src/datasets/case03
     data: data/{table_name}.csv.gz
     schema: data/schema/{table_name}.schema
     partition:
@@ -122,7 +122,7 @@ test_cases:
       - "0019.2"  # depends on DeepCoadd
       - "0019.2"  # depends on DeepCoadd
   - id: case04
-    root: /qserv/data/qserv_testdata/datasets/case04
+    root: /tmp/qserv/itest_src/datasets/case04
     data: data/{table_name}.csv.gz
     schema: data/schema/{table_name}.schema
     partition:
@@ -145,7 +145,7 @@ test_cases:
       - "0030"  # depends on DeepForcedSource
       - "0030"  # depends on DeepForcedSource
   - id: case05
-    root: /qserv/data/qserv_testdata/datasets/case05
+    root: /tmp/qserv/itest_src/datasets/case05
     data: data/{table_name}.csv
     schema: data/schema/{table_name}.schema
     partition:

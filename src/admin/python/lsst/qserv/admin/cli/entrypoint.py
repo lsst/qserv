@@ -51,7 +51,6 @@ from .options import (
     OptionGroup,
     options_file_option,
     mysql_monitor_password_option,
-    pull_option,
     reload_option,
     repl_connection_option,
     run_option,
@@ -319,7 +318,6 @@ def load_simple(repl_ctrl_uri: str) -> None:
     help=repl_connection_option.keywords["help"]
     + " If provided will wait for the replication system to be responsive before loading data (does not guarantee system readyness)."
 )
-@pull_option()
 @load_option()
 @unload_option()
 @reload_option()
@@ -329,7 +327,6 @@ def load_simple(repl_ctrl_uri: str) -> None:
 @tests_yaml_option()
 def integration_test(
     repl_connection: str,
-    pull: Optional[bool],
     unload: bool,
     load: Optional[bool],
     reload: bool,
@@ -344,7 +341,6 @@ def integration_test(
     """
     results = script.integration_test(
         repl_connection=repl_connection,
-        pull=pull,
         unload=unload,
         load=load,
         reload=reload,
