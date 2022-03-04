@@ -67,7 +67,8 @@ public:
     SendChannelShared& operator=(SendChannelShared const&) = delete;
 
     static Ptr create(SendChannel::Ptr const& sendChannel,
-                      std::shared_ptr<wcontrol::TransmitMgr> const& transmitMgr);
+                      std::shared_ptr<wcontrol::TransmitMgr> const& transmitMgr,
+                      qmeta::CzarId const& czarId);
 
     ~SendChannelShared();
 
@@ -118,7 +119,7 @@ public:
     /// @return true if inLast is true and this is the last task to call this
     ///              with inLast == true.
     /// The calling Thread must hold 'streamMutex' before calling this.
-    bool transmitTaskLast(StreamGuard sLock, bool inLast); //&&& can StreamGuard sLock be removed???
+    bool transmitTaskLast(StreamGuard sLock, bool inLast);
 
     /// Return a normalized id string.
     static std::string makeIdStr(int qId, int jId);
@@ -144,55 +145,28 @@ public:
     /// @return true if this is the first time this function has been called.
     bool getFirstChannelSqlConn() { return _firstChannelSqlConn.exchange(false); }
 
-    /* &&&
-    /// Create a new _transmitData object if needed.
-    void initTransmit(Task& task, qmeta::CzarId const& czarId); //&&& delete
-    */
 
     /// Set the schemaCols. All tasks using this send channel should have
     /// the same schema.
     void setSchemaCols(Task& task, std::vector<SchemaCol>& schemaCols);
 
-    /// Take the rows from mResult and place them in the current _transmitData object
-    bool putRowsInTransmits(MYSQL_RES* mResult, int numFields, Task& task, bool largeResult,
-                            util::MultiError& multiErr, std::atomic<bool>& cancelled, bool &readRowsOk,
-                            qmeta::CzarId const& czarId, wcontrol::TransmitMgr& transmitMgr);
-
-    /* &&&
-    /// &&& doc and rename
-    bool qrTransmit(Task& task, wcontrol::TransmitMgr& transmitMgr,
-                    //&&&wbase::TransmitData::Ptr const& tData,
-                    bool cancelled, bool largeResult, bool lastIn,
-                    qmeta::CzarId const& czarId, std::string const& note); // remove note
-    */
-
-    /* &&&
-    /// Fill one row in the _transmitData->_result msg from one row in MYSQL_RES*
-    /// If the message has gotten larger than the desired message size,
-    /// return false. If all rows have been read, return true.
-    /// 'rowCount' and 'tSize' are changed by this method.
-    bool fillRows(MYSQL_RES* result, int numFields, uint& rowCount, size_t& tSize);
-    */
-
-    /* &&&
     /// @return a transmit data object indicating the errors in 'multiErr'.
-    TransmitData::Ptr buildError(qmeta::CzarId const& czarId, Task& task, util::MultiError& multiErr);
-    */
-    bool buildAndTransmitError(util::MultiError& multiErr,
-                                Task& task, wcontrol::TransmitMgr& transmitMgr,
-                                bool cancelled, qmeta::CzarId const& czarId);
+    bool buildAndTransmitError(util::MultiError& multiErr, Task& task, bool cancelled);
 
-    // &&& doc
-    bool buildAndTransmit(MYSQL_RES* mResult, int numFields, Task& task, bool largeResult,
-            util::MultiError& multiErr, std::atomic<bool>& cancelled, bool &readRowsOk,
-            qmeta::CzarId const& czarId, wcontrol::TransmitMgr& transmitMgr);
+    /// Put the SQL results in a TransmitData object and transmit it to the czar
+    /// if appropriate.
+    /// @ return true if there was an error.
+    bool buildAndTransmitResult(MYSQL_RES* mResult, int numFields, Task& task, bool largeResult,
+            util::MultiError& multiErr, std::atomic<bool>& cancelled, bool &readRowsOk);
 
-    std::string dumpTr() const; //&&& delete?
+    /// @return a log worthy string describing _transmitData.
+    std::string dumpTr() const;
 
 private:
     /// Private constructor to protect shared pointer integrity.
     SendChannelShared(SendChannel::Ptr const& sendChannel,
-                      std::shared_ptr<wcontrol::TransmitMgr> const& transmitMgr);
+                      std::shared_ptr<wcontrol::TransmitMgr> const& transmitMgr,
+                      qmeta::CzarId const& czarId);
 
     /// Wrappers for SendChannel public functions that may need to be used
     /// by threads.
@@ -220,11 +194,11 @@ private:
     bool _kill(StreamGuard sLock, std::string const& note);
 
     /// @return a new TransmitData::Ptr object.
-    TransmitData::Ptr _createTransmit(Task& task, qmeta::CzarId const& czarId);
+    TransmitData::Ptr _createTransmit(Task& task);
 
     /// Create a new _transmitData object if needed.
     /// Note: tMtx must be held before calling.
-    void _initTransmit(Task& task, qmeta::CzarId const& czarId);
+    void _initTransmit(Task& task);
 
     /// Try to transmit the data in tData.
     /// If the queue already has at least 2 TransmitData objects, addTransmit
@@ -235,8 +209,8 @@ private:
     /// the worker may read in too many result rows, run out of memory,
     /// and crash.
     /// @return true if transmit was added successfully.
-    ///  @see SendChannelShared::_transmit code for further explanation.
-    bool _addTransmit(bool cancelled, bool erred, bool last, bool largeResult,
+    /// @see SendChannelShared::_transmit code for further explanation.
+    bool _addTransmit(bool cancelled, bool erred, bool lastIn,
                       TransmitData::Ptr const& tData, int qId, int jId);
 
     /// Encode TransmitData items from _transmitQueue and pass them to XrdSsi
@@ -245,9 +219,9 @@ private:
     /// 'thisTransmit', with a specially constructed header appended for the
     /// 'reallyLast' transmit.
     /// The specially constructed header for the 'reallyLast' transmit just
-    /// says that there's no more data, this stream is done.
+    /// says that there's no more data, this SendChannel is done.
     /// _queueMtx must be held before calling this.
-    bool _transmit(bool erred, bool scanInteractive, QueryId const qid, qmeta::CzarId czarId); //&&& rename scanInteractive to sendNow
+    bool _transmit(bool erred);
 
     /// Send the buffer 'streamBuffer' using xrdssi.
     /// 'last' should only be true if this is the last buffer to be sent with this _sendChannel.
@@ -257,13 +231,11 @@ private:
                   xrdsvc::StreamBuffer::Ptr& streamBuf, bool last,
                   std::string const& note, int scsSeq);
 
-    /// &&& doc and rename
-    bool _qrTransmit(Task& task, wcontrol::TransmitMgr& transmitMgr,
-                    //&&&wbase::TransmitData::Ptr const& tData,
-                    bool cancelled, bool largeResult, bool lastIn,
-                    qmeta::CzarId const& czarId, std::string const& note); //&&& remove note
+    /// Prepare the transmit data and then call _addTransmit.
+    bool _prepTransmit(Task& task, bool cancelled, bool lastIn);
 
-    std::string _dumpTr() const; //&&& delete?
+    /// @see dumpTr()
+    std::string _dumpTr() const;
 
 
     /// streamMutex is used to protect _lastCount and messages that are sent
@@ -288,6 +260,7 @@ private:
     std::mutex _transmitLockMtx;
     std::condition_variable _transmitLockCv;
     std::shared_ptr<wcontrol::TransmitMgr> _transmitMgr; ///< Pointer to the TransmitMgr
+    qmeta::CzarId _czarId; ///< id of the czar that requested this task(s).
     uint64_t const _scsId; ///< id number for this SendChannelShared
     std::atomic<uint32_t> _scsSeq{0}; ///< SendChannelSharedsequence number for transmit.
 
@@ -303,7 +276,7 @@ private:
     std::atomic<bool> _schemaColsSet{false};
 
     std::shared_ptr<TransmitData> _transmitData; ///< TransmitData object
-    mutable std::mutex _tMtx; ///< protects _transmitData  //&&& this may require using _queueMtx instead.
+    mutable std::mutex _tMtx; ///< protects _transmitData
 };
 
 }}} // namespace lsst::qserv::wbase

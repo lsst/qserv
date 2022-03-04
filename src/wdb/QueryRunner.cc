@@ -151,8 +151,6 @@ size_t QueryRunner::_getDesiredLimit() {
 util::TimerHistogram memWaitHisto("memWait Hist", {1, 5, 10, 20, 40});
 
 bool QueryRunner::runQuery() {
-    LOGS(_log, LOG_LVL_WARN, "&&& QueryRunner::runQuery a" << _task->getIdStr());
-
     QSERV_LOGCONTEXT_QUERY_JOB(_task->getQueryId(), _task->getJobId());
     LOGS(_log, LOG_LVL_INFO, "QueryRunner::runQuery() tid=" << _task->getIdStr()
          << " scsId=" << _task->getSendChannel()->getScsId());
@@ -195,43 +193,17 @@ bool QueryRunner::runQuery() {
 
     _setDb();
     LOGS(_log, LOG_LVL_INFO,  "Exec in flight for Db=" << _dbName << " sqlConnMgr " << _sqlConnMgr->dump());
-    //&&&wcontrol::SqlConnLock sqlConnLock(*_sqlConnMgr, not _task->getScanInteractive(), _task->getSendChannel());
     // Queries that span multiple tasks should not be high priority for the SqlConMgr as it risks deadlock.
-    bool interactive = _task->getScanInteractive() && !(_task->getSendChannel()->getTaskCount() > 1); //&&&
+    bool interactive = _task->getScanInteractive() && !(_task->getSendChannel()->getTaskCount() > 1);
     wcontrol::SqlConnLock sqlConnLock(*_sqlConnMgr, not interactive, _task->getSendChannel());
     bool connOk = _initConnection();
     if (!connOk) {
-        /// &&& replace this entire block with SendChannelShared::buildError()
-        /* &&&
-        // Transmit the mysql connection error to the czar, which should trigger a re-try.
-        // _initConnection should have added an error message to _multiError.
-        _initTransmit();  // &&& error transmit message
-        // Put the error from _initConnection in _transmitData via _multiError.
-        _buildDataMsg(0, 0);
         // Since there's an error, this will be the last transmit from this QueryRunner.
-        if (!_transmit(true)) {
-            LOGS(_log, LOG_LVL_WARN, " Could not report error to czar as sendChannel not accepting msgs.");
-        }
-        */
-        /* &&&
-        auto tData = _task->getSendChannel()->buildError(_czarId, *_task, _multiError);
-        // Since there's an error, this will be the last transmit from this QueryRunner.
-        //&&&if (!_transmit(tData, true)) { //&&& should probably move _transmit into SendChannelShared
-        bool lastInQuery = true;
-        LOGS(_log, LOG_LVL_WARN, "&&& runQuery qrTransmit call " << _task->getIdStr() << " seq=" << _task->getTSeq());
-        if (!_task->getSendChannel()->qrTransmit(*_task, *_transmitMgr, tData,
-                                                 _cancelled, _largeResult, lastInQuery, _czarId)) {
-            LOGS(_log, LOG_LVL_WARN, " Could not report error to czar as sendChannel not accepting msgs.");
-        }
-        */
-        // Since there's an error, this will be the last transmit from this QueryRunner.
-        if (!_task->getSendChannel()->buildAndTransmitError(_multiError, *_task, *_transmitMgr,
-                                                            _cancelled, _czarId)) {
+        if (!_task->getSendChannel()->buildAndTransmitError(_multiError, *_task, _cancelled)) {
             LOGS(_log, LOG_LVL_WARN, " Could not report error to czar as sendChannel not accepting msgs.");
         }
         return false;
     }
-    LOGS(_log, LOG_LVL_WARN, "&&& QueryRunner::runQuery b" << _task->getIdStr());
 
     if (_task->msg->has_protocol()) {
         switch(_task->msg->protocol()) {
@@ -263,69 +235,6 @@ MYSQL_RES* QueryRunner::_primeResult(string const& query) {
         }
         return _mysqlConn->getResult();
 }
-
-
-void QueryRunner::_fillSchema(MYSQL_RES* result) { ///&&& move this functionality to SendChannelShared::_setSchemaCols()
-    // Build schema obj from result
-    auto const schema = mysql::SchemaFactory::newFromResult(result);
-    // Fill _schemaCols from Schema obj
-    vector<wbase::SchemaCol> schemaCols;
-    for (auto&& col:schema.columns) {
-        string name = col.name;
-        string sqltype = col.colType.sqlType;
-        int mysqltype = col.colType.mysqlType;
-        schemaCols.emplace_back(name, sqltype, mysqltype);
-    }
-    _task->getSendChannel()->setSchemaCols(*_task, schemaCols);
-}
-
-
-
-
-
-/* &&&
-void QueryRunner::_initTransmit() {
-    _transmitData = wbase::TransmitData::createTransmitData(_czarId);
-    _transmitData->result = _initResult();
-}
-*/
-
-/* &&&
-proto::Result* QueryRunner::_initResult() {
-    proto::Result* result = _transmitData->result;
-    result->set_queryid(_task->getQueryId());
-    result->set_jobid(_task->getJobId());
-    _transmitData->result = result;
-    result->mutable_rowschema();
-    if (_task->msg->has_session()) {
-        result->set_session(_task->msg->session());
-    }
-    // Load schema from _schemaCols
-    for(auto&& col:_schemaCols) {
-        proto::ColumnSchema* cs = result->mutable_rowschema()->add_columnschema();
-        cs->set_name(col.colName);
-        cs->set_sqltype(col.colSqlType);
-        cs->set_mysqltype(col.colMysqlType);
-    }
-    return result;
-}
-&&& */
-
-
-/* &&&
-void QueryRunner::_buildHeader() {
-    LOGS(_log, LOG_LVL_DEBUG, "_buildHeaderThis");
-
-    proto::ProtoHeader* header = _transmitData->header;
-
-    // The size of the dataMsg must include space for the header for the next dataMsg.
-    header->set_size(_transmitData->dataMsg.size() + proto::ProtoHeaderWrap::getProtoHeaderSize());
-    // The md5 hash must not include the header for the next dataMsg.
-    header->set_md5(util::StringHash::getMd5(_transmitData->dataMsg.data(), _transmitData->dataMsg.size()));
-    header->set_largeresult(_largeResult);
-    header->set_endnodata(false);
-}
-*/
 
 
 class ChunkResourceRequest {
@@ -373,88 +282,40 @@ private:
     proto::TaskMsg const& _msg;
 };
 
-/* &&&
-/// Fill one row in the Result msg from one row in MYSQL_RES*
-/// If the message has gotten larger than the desired message size,
-/// return false. If all rows have been read, return true.
-bool QueryRunner::_fillRows(MYSQL_RES* result, int numFields, uint& rowCount, size_t& tSize) {
-    MYSQL_ROW row;
-
-    unsigned int szLimit = std::min(proto::ProtoHeaderWrap::PROTOBUFFER_DESIRED_LIMIT,
-                                    proto::ProtoHeaderWrap::PROTOBUFFER_HARD_LIMIT);
-
-    while ((row = mysql_fetch_row(result))) {
-        auto lengths = mysql_fetch_lengths(result);
-        proto::RowBundle* rawRow = _transmitData->result->add_row();
-        for(int i=0; i < numFields; ++i) {
-            if (row[i]) {
-                rawRow->add_column(row[i], lengths[i]);
-                rawRow->add_isnull(false);
-            } else {
-                rawRow->add_column();
-                rawRow->add_isnull(true);
-            }
-        }
-        tSize += rawRow->ByteSizeLong();
-        ++rowCount;
-
-        // Each element needs to be mysql-sanitized
-        // Break the loop if the result is too big so this part can be transmitted.
-        if (tSize > szLimit) {
-            return false;
-        }
-    }
-    return true;
-}
-*/
 
 /// Histograms to log subchunk creation time and query run time.
 util::TimerHistogram qrPrimeHist("qrPrimeHist", {0.01, 0.1, 1.0, 2.0, 5.0, 10.0, 20.0, 60.0});
 util::TimerHistogram qrSubChunkHist("qrSubChunkHist", {0.01, 0.1, 1.0, 2.0, 5.0, 10.0, 20.0, 60.0});
 
 bool QueryRunner::_dispatchChannel() {
-    LOGS(_log, LOG_LVL_WARN, "&&& _dispatchChannel a " << _task->getIdStr());
     int const fragNum = _task->getQueryFragmentNum();
-    LOGS(_log, LOG_LVL_WARN, "&&& _dispatchChannel a1 " << _task->getIdStr());
     proto::TaskMsg& tMsg = *_task->msg;
-    LOGS(_log, LOG_LVL_WARN, "&&& _dispatchChannel a2 " << _task->getIdStr());
     bool erred = false;
     int numFields = -1;
-    LOGS(_log, LOG_LVL_WARN, "&&& _dispatchChannel a3 " << _task->getIdStr());
     if (tMsg.fragment_size() < 1) {
         throw Bug("QueryRunner: No fragments to execute in TaskMsg");
     }
-
-    //&&& unsigned int rowCount = 0;
-    //&&& size_t tSize = 0;
 
     // readRowsOk remains true as long as there are no problems with reading/transmitting.
     // However, if it gets set to false, _mysqlConn->freeResult() needs to be
     // called before this function exits.
     bool readRowsOk = true;
     bool needToFreeRes = false; // set to true once there are results to be freed.
-    LOGS(_log, LOG_LVL_WARN, "&&& _dispatchChannel a4 " << _task->getIdStr());
     // Collect the result in _transmitData. When a reasonable amount of data has been collected,
     // or there are no more rows to collect, pass _transmitData to _sendChannel.
     try {
-        //_initTransmit(); // set _transmit  // &&& regular initTransmit()
-        LOGS(_log, LOG_LVL_WARN, "&&& _dispatchChannel b " << _task->getIdStr() << _task->getSendChannel()->dumpTr());
-        //&&& _task->getSendChannel()->initTransmit(*_task, _czarId);
-        LOGS(_log, LOG_LVL_WARN, "&&& _dispatchChannel b1 " << _task->getIdStr() << _task->getSendChannel()->dumpTr());
+        LOGS(_log, LOG_LVL_TRACE, "&&& _dispatchChannel b " << _task->getIdStr() << _task->getSendChannel()->dumpTr());
         util::Timer subChunkT;
         subChunkT.start();
         ChunkResourceRequest req(_chunkResourceMgr, tMsg);
-        LOGS(_log, LOG_LVL_WARN, "&&& _dispatchChannel b2 " << _task->getIdStr());
         ChunkResource cr(req.getResourceFragment(fragNum));
         subChunkT.stop();
         auto logSubChunk = qrSubChunkHist.addTime(subChunkT.getElapsed(), "");
         LOGS(_log, LOG_LVL_DEBUG, "subchunk time=" << subChunkT.getElapsed() << " " << logSubChunk);
-        LOGS(_log, LOG_LVL_WARN, "&&& _dispatchChannel c " << _task->getIdStr() << _task->getSendChannel()->dumpTr());
         // TODO: Hold onto this for longer period of time as the odds of reuse are pretty low at this scale
         //       Ideally, hold it until moving on to the next chunk. Try to clean up ChunkResource code.
 
         if (!_cancelled &&  !_task->getSendChannel()->isDead()) {
-            LOGS(_log, LOG_LVL_WARN, "&&& _dispatchChannel d " << _task->getIdStr() << _task->getSendChannel()->dumpTr());
             string const& query = _task->getQueryString();
             util::Timer sqlTimer;
             sqlTimer.start();
@@ -466,7 +327,6 @@ bool QueryRunner::_dispatchChannel() {
             needToFreeRes = true;
             sqlTimer.stop();
             LOGS(_log, LOG_LVL_DEBUG, " query time=" << sqlTimer.getElapsed() << " " << logPrime << " query=" << query);
-            LOGS(_log, LOG_LVL_WARN, "&&& _dispatchChannel e " << _task->getIdStr());
 
             // This thread may have already been removed from the pool for
             // other reasons, such as taking too long.
@@ -488,49 +348,10 @@ bool QueryRunner::_dispatchChannel() {
 
             // Pass all information on to the shared object to add on to
             // an existing message or build a new one as needed.
-            LOGS(_log, LOG_LVL_WARN, "&&& _dispatchChannel f " << _task->getIdStr());
-            if (_task->getSendChannel()->buildAndTransmit(res, numFields, *_task, _largeResult,
-                    _multiError, _cancelled, readRowsOk, _czarId, *_transmitMgr)) {
+            if (_task->getSendChannel()->buildAndTransmitResult(res, numFields, *_task, _largeResult,
+                    _multiError, _cancelled, readRowsOk)) {
                 erred = true;
             }
-
-            /* &&&
-            _fillSchema(res);
-            numFields = mysql_num_fields(res);
-            // TODO fritzm: revisit this error strategy
-            // (see pull-request for DM-216)
-            // Now get rows...
-
-
-
-            // readRowsOk may be set to true
-            LOGS(_log, LOG_LVL_WARN, "&&& _dispatchChannel f " << _task->getIdStr());
-            if (_task->getSendChannel()->putRowsInTransmits(res, numFields, *_task, _largeResult,
-                                                            _multiError, _cancelled, readRowsOk, _czarId, *_transmitMgr)) {
-                erred = true;
-            }
-            // _fillRows() false indicates that more result rows follow.
-            */
-            /* &&&
-            while (!_fillRows(res, numFields, rowCount, tSize)) {
-                if (tSize > proto::ProtoHeaderWrap::PROTOBUFFER_HARD_LIMIT) {
-                    LOGS_ERROR("Message single row too large to send using protobuffer");
-                    erred = true;
-                    break;
-                }
-                LOGS(_log, LOG_LVL_TRACE, "Splitting message size=" << tSize << ", rowCount=" << rowCount);
-                _buildDataMsg(rowCount, tSize);
-                // If readRowsOk==false, empty out the rows but don't bother trying to transmit.
-                // This needs to be done or mariadb won't properly release the resources.
-                if (readRowsOk && !_transmit(false)) {
-                    LOGS(_log, LOG_LVL_ERROR, "Could not transmit intermediate results.");
-                    readRowsOk = false; // Empty the fillRows data and then return false.
-                }
-                rowCount = 0;
-                tSize = 0;
-                _initTransmit(); // reset _transmitData  //&&& reset initTransmit
-            }
-            */
         }
     } catch(sql::SqlErrorObject const& e) {
         LOGS(_log, LOG_LVL_ERROR, "dispatchChannel " << e.errMsg());
@@ -538,7 +359,6 @@ bool QueryRunner::_dispatchChannel() {
         _multiError.push_back(worker_err);
         erred = true;
     }
-    LOGS(_log, LOG_LVL_WARN, "&&& _dispatchChannel g " << _task->getIdStr());
     // IMPORTANT, do not leave this function before this check has been made.
     if (needToFreeRes) {
         needToFreeRes = false;
@@ -555,170 +375,21 @@ bool QueryRunner::_dispatchChannel() {
     }
     // Transmit errors, if needed.
     if (!_cancelled && _multiError.size() > 0) {
-        LOGS(_log, LOG_LVL_WARN, "&&& _dispatchChannel h " << _task->getIdStr());
+        LOGS(_log, LOG_LVL_WARN, "Transmitting error " << _task->getIdStr());
         erred = true;
         // Send results. This needs to happen after the error check.
-        //&&&_buildDataMsg(rowCount, tSize);
         // If any errors were found, send an error back.
-        if (!_task->getSendChannel()->buildAndTransmitError(_multiError, *_task, *_transmitMgr,
-                _cancelled, _czarId)) {
+        if (!_task->getSendChannel()->buildAndTransmitError(_multiError, *_task, _cancelled)) {
             LOGS(_log, LOG_LVL_WARN, " Could not report error to czar as sendChannel not accepting msgs.");
         }
     }
-    /* &&&
-    } else {
-        LOGS(_log, LOG_LVL_WARN, "&&& _dispatchChannel i " << _task->getIdStr());
-        erred = true;
-        // Set poison error, no point in sending.
-        LOGS(_log, LOG_LVL_ERROR, "dispatchChannel Poisoned");
-        _multiError.push_back(util::Error(-1, "Poisoned."));
-        // Is more cleanup needed?
-    }
-    */
     return !erred;
-#if 0 // &&&
-    // Collect the result in _transmitData. When a reasonable amount of data has been collected,
-    // or there are no more rows to collect, pass _transmitData to _sendChannel.
-    try {
-        //_initTransmit(); // set _transmit  // &&& regular initTransmit()
-        LOGS(_log, LOG_LVL_WARN, "&&& _dispatchChannel b " << _task->getIdStr() << _task->getSendChannel()->dumpTr());
-        _task->getSendChannel()->initTransmit(*_task, _czarId);
-        LOGS(_log, LOG_LVL_WARN, "&&& _dispatchChannel b1 " << _task->getIdStr() << _task->getSendChannel()->dumpTr());
-        util::Timer subChunkT;
-        subChunkT.start();
-        ChunkResourceRequest req(_chunkResourceMgr, tMsg);
-        LOGS(_log, LOG_LVL_WARN, "&&& _dispatchChannel b2 " << _task->getIdStr());
-        ChunkResource cr(req.getResourceFragment(fragNum));
-        subChunkT.stop();
-        auto logSubChunk = qrSubChunkHist.addTime(subChunkT.getElapsed(), "");
-        LOGS(_log, LOG_LVL_DEBUG, "subchunk time=" << subChunkT.getElapsed() << " " << logSubChunk);
-        LOGS(_log, LOG_LVL_WARN, "&&& _dispatchChannel c " << _task->getIdStr() << _task->getSendChannel()->dumpTr());
-        // TODO: Hold onto this for longer period of time as the odds of reuse are pretty low at this scale
-        //       Ideally, hold it until moving on to the next chunk. Try to clean up ChunkResource code.
-
-        if (!_cancelled &&  !_task->getSendChannel()->isDead()) {
-            LOGS(_log, LOG_LVL_WARN, "&&& _dispatchChannel d " << _task->getIdStr() << _task->getSendChannel()->dumpTr());
-            string const& query = _task->getQueryString();
-            util::Timer sqlTimer;
-            sqlTimer.start();
-            util::Timer primeT;
-            primeT.start();
-            MYSQL_RES* res = _primeResult(query); // This runs the SQL query, throws SqlErrorObj on failure.
-            primeT.stop();
-            auto logPrime = qrPrimeHist.addTime(primeT.getElapsed(), "");
-            needToFreeRes = true;
-            sqlTimer.stop();
-            LOGS(_log, LOG_LVL_DEBUG, " query time=" << sqlTimer.getElapsed() << " " << logPrime << " query=" << query);
-            LOGS(_log, LOG_LVL_WARN, "&&& _dispatchChannel e " << _task->getIdStr());
-            _fillSchema(res);
-            numFields = mysql_num_fields(res);
-            // TODO fritzm: revisit this error strategy
-            // (see pull-request for DM-216)
-            // Now get rows...
-
-            // This thread may have already been removed from the pool for
-            // other reasons, such as taking too long.
-            if (not _removedFromThreadPool) {
-                // This query has been answered by the database and the
-                // scheduler for this worker should stop waiting for it.
-                // leavePool() will tell the scheduler this task is finished
-                // and create a new thread in the pool to replace this one.
-                // This thread will wait for the czar to read all of the
-                // results of the query and then die.
-                auto pet = _task->getAndNullPoolEventThread();
-                _removedFromThreadPool = true;
-                if (pet != nullptr) {
-                    pet->leavePool();
-                } else {
-                    LOGS(_log, LOG_LVL_WARN, "Result PoolEventThread was null. Probably already moved.");
-                }
-            }
-
-            // readRowsOk may be set to true
-            LOGS(_log, LOG_LVL_WARN, "&&& _dispatchChannel f " << _task->getIdStr());
-            if (_task->getSendChannel()->putRowsInTransmits(res, numFields, *_task, _largeResult,
-                                                            _multiError, _cancelled, readRowsOk, _czarId, *_transmitMgr)) {
-                erred = true;
-            }
-            // _fillRows() false indicates that more result rows follow.
-            /* &&&
-            while (!_fillRows(res, numFields, rowCount, tSize)) {
-                if (tSize > proto::ProtoHeaderWrap::PROTOBUFFER_HARD_LIMIT) {
-                    LOGS_ERROR("Message single row too large to send using protobuffer");
-                    erred = true;
-                    break;
-                }
-                LOGS(_log, LOG_LVL_TRACE, "Splitting message size=" << tSize << ", rowCount=" << rowCount);
-                _buildDataMsg(rowCount, tSize);
-                // If readRowsOk==false, empty out the rows but don't bother trying to transmit.
-                // This needs to be done or mariadb won't properly release the resources.
-                if (readRowsOk && !_transmit(false)) {
-                    LOGS(_log, LOG_LVL_ERROR, "Could not transmit intermediate results.");
-                    readRowsOk = false; // Empty the fillRows data and then return false.
-                }
-                rowCount = 0;
-                tSize = 0;
-                _initTransmit(); // reset _transmitData  //&&& reset initTransmit
-            }
-            */
-        }
-    } catch(sql::SqlErrorObject const& e) {
-        LOGS(_log, LOG_LVL_ERROR, "dispatchChannel " << e.errMsg());
-        util::Error worker_err(e.errNo(), e.errMsg());
-        _multiError.push_back(worker_err);
-        erred = true;
-    }
-    LOGS(_log, LOG_LVL_WARN, "&&& _dispatchChannel g " << _task->getIdStr());
-    // IMPORTANT, do not leave this function before this check has been made.
-    if (needToFreeRes) {
-        needToFreeRes = false;
-        // All rows have been read out or there was an error. In
-        // either case resources need to be freed.
-        _mysqlConn->freeResult();
-    }
-    if (!readRowsOk) {
-        LOGS(_log, LOG_LVL_ERROR, "Failed to read and transmit rows.");
-        return false;
-    }
-    if (!_cancelled) {
-        LOGS(_log, LOG_LVL_WARN, "&&& _dispatchChannel h " << _task->getIdStr());
-        // Send results. This needs to happen after the error check.
-        //&&&_buildDataMsg(rowCount, tSize);
-        bool lastInQuery = true;
-        // If any errors were found, send an error back.
-        if (_multiError.size() > 0) {
-            //&&&auto tData = _task->getSendChannel()->buildError(_czarId, *_task, _multiError);// &&& this really has to be part of qrTransmit
-            if (!_task->getSendChannel()->buildAndTransmitError(_multiError, *_task, *_transmitMgr,
-                                                                _cancelled, lastInQuery, _czarId)) {
-                LOGS(_log, LOG_LVL_WARN, " Could not report error to czar as sendChannel not accepting msgs.");
-            }
-        } else {
-            // true indicates this will be the last transmit from this thread,
-            LOGS(_log, LOG_LVL_WARN, "&&& _dispatchChannel normal qrTransmit call " << _task->getIdStr() << " seq=" << _task->getTSeq());
-            if (!_task->getSendChannel()->qrTransmit(*_task, *_transmitMgr,
-                    _cancelled, _largeResult, lastInQuery, _czarId, " from:normal dispatch")) {
-                LOGS(_log, LOG_LVL_ERROR, "Could not transmit last results.");
-                return false;
-            }
-            _largeResult = true; //&&& move largeResult to sendChannelShared?
-        }
-    } else {
-        LOGS(_log, LOG_LVL_WARN, "&&& _dispatchChannel i " << _task->getIdStr());
-        erred = true;
-        // Set poison error, no point in sending.
-        LOGS(_log, LOG_LVL_ERROR, "dispatchChannel Poisoned");
-        _multiError.push_back(util::Error(-1, "Poisoned."));
-        // Is more cleanup needed?
-    }
-    return !erred;
-#endif // &&&
 }
 
 void QueryRunner::cancel() {
     // QueryRunner::cancel() should only be called by Task::cancel()
     // to keep the bookkeeping straight.
     LOGS(_log, LOG_LVL_WARN, "Trying QueryRunner::cancel() call");
-    LOGS(_log, LOG_LVL_WARN, "&&& QueryRunner::cancel a" << _task->getIdStr());
     _cancelled = true;
 
     auto streamB = _streamBuf.lock();

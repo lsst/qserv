@@ -73,7 +73,7 @@ std::vector<SendChannelShared::Ptr> locSendSharedPtrs;
 
 Task::Ptr makeTask(std::shared_ptr<TaskMsg> tm) {
     auto sendC = std::make_shared<SendChannel>();
-    auto sc = SendChannelShared::create(sendC, locTransmitMgr);
+    auto sc = SendChannelShared::create(sendC, locTransmitMgr, 1);
     locSendSharedPtrs.push_back(sc);
     Task::Ptr task(new Task(tm, "", 0, sc));
     task->setSafeToMoveRunning(true); // Can't wait for MemMan in unit tests.
