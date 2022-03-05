@@ -702,9 +702,10 @@ def itest_ref(
     itest_file: str,
     itest_volumes: ITestVolumes,
     project: str,
+    container_name: str,
     mariadb_image: str,
     dry: bool,
-) -> str:
+) -> None:
     """Launch the reference database used by integration tests.
 
     Parameters
@@ -717,16 +718,12 @@ def itest_ref(
         The names of the volumes that host integration test data.
      project : `str`
         The name used for qserv instance customizations.
+    container_name : `str`
+        The name to assign to the container.
     mariadb_image : `str`
         The name of the database image to run.
     dry : `bool`
         If True do not run the command; print what would have been run.
-
-    Returns
-    -------
-    container_name : `str`
-        The name of the container that was launched (or if dry == True the name
-        of the contianer that would have been launched).
     """
     with open(itest_file) as f:
         tests_data = yaml.safe_load(f.read())
@@ -740,6 +737,8 @@ def itest_ref(
         "--init",
         "-d",
         "--name",
+        container_name,
+        "--network-alias",
         hostname,
         "--expose",
         str(ref_db.port),
@@ -762,10 +761,9 @@ def itest_ref(
     )
     if dry:
         print(" ".join(args))
-        return hostname
+        return
     _log.debug(f"Running {' '.join(args)}")
     subproc.run(args)
-    return hostname
 
 
 def stop_itest_ref(container_name: str, dry: bool) -> int:
@@ -927,6 +925,7 @@ def itest(
     qserv_root: str,
     mariadb_image: str,
     itest_container: str,
+    itest_ref_container: str,
     qserv_image: str,
     bind: List[str],
     itest_file: str,
@@ -956,7 +955,15 @@ def itest(
         problem doing that, or 0 if there was no problems.
     """
     itest_volumes = make_itest_volumes(project)
-    ref_db_container_name = itest_ref(qserv_root, itest_file, itest_volumes, project, mariadb_image, dry)
+    itest_ref(
+        qserv_root,
+        itest_file,
+        itest_volumes,
+        project,
+        itest_ref_container,
+        mariadb_image,
+        dry,
+    )
     try:
         returncode = integration_test(
             qserv_root,
@@ -978,7 +985,7 @@ def itest(
             remove,
         )
     finally:
-        stop_db_returncode = stop_itest_ref(ref_db_container_name, dry) if remove else 0
+        stop_db_returncode = stop_itest_ref(itest_ref_container, dry) if remove else 0
     return returncode or stop_db_returncode
 
 

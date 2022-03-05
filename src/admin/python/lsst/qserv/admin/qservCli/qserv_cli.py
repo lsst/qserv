@@ -61,6 +61,7 @@ from .opt import (
     dry_option,
     ImageName,
     itest_container_name_option,
+    itest_ref_container_name_option,
     itest_file_option,
     jobs_option,
     make_option,
@@ -412,6 +413,7 @@ def run_debug(
 @qserv_root_option()
 @project_option()
 @itest_container_name_option()
+@itest_ref_container_name_option()
 @bind_option()
 @itest_file_option()
 @load_option()
@@ -435,6 +437,7 @@ def itest(
     qserv_root: str,
     mariadb_image: str,
     itest_container: str,
+    itest_ref_container: str,
     qserv_image: str,
     bind: List[str],
     itest_file: str,
@@ -457,6 +460,7 @@ def itest(
         qserv_root=qserv_root,
         mariadb_image=mariadb_image,
         itest_container=itest_container,
+        itest_ref_container=itest_ref_container,
         qserv_image=qserv_image,
         bind=bind,
         itest_file=itest_file,

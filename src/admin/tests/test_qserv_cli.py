@@ -107,6 +107,7 @@ def itest_args(**kwargs):
         qserv_root=ANY,
         mariadb_image=ANY,
         itest_container=ANY,
+        itest_ref_container=ANY,
         qserv_image=ANY,
         bind=ANY,
         itest_file=ANY,

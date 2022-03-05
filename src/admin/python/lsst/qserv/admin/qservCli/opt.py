@@ -407,6 +407,12 @@ itest_container_default = OptDefault(
     ev=project_ev,
     val=lambda ev_val: f"{ev_val}_itest",
 )
+itest_ref_container_default = OptDefault(
+    opt=["--itest-ref-container"],
+    default="itest_ref",
+    ev=project_ev,
+    val=lambda ev_val: f"{ev_val}_itest_ref",
+)
 test_container_default = OptDefault(
     opt=["--test-container"],
     default="test",
@@ -668,6 +674,14 @@ itest_container_name_option = partial(
     *itest_container_default.opt,
     help=itest_container_default.help("The name to give the integration test container."),
     default=itest_container_default.val(),
+    required=True,
+)
+
+itest_ref_container_name_option = partial(
+    click.option,
+    *itest_ref_container_default.opt,
+    help=itest_ref_container_default.help("The name to give the integration test reference db container."),
+    default=itest_ref_container_default.val(),
     required=True,
 )
 
