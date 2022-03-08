@@ -304,7 +304,6 @@ bool QueryRunner::_dispatchChannel() {
     // Collect the result in _transmitData. When a reasonable amount of data has been collected,
     // or there are no more rows to collect, pass _transmitData to _sendChannel.
     try {
-        LOGS(_log, LOG_LVL_TRACE, "&&& _dispatchChannel b " << _task->getIdStr() << _task->getSendChannel()->dumpTr());
         util::Timer subChunkT;
         subChunkT.start();
         ChunkResourceRequest req(_chunkResourceMgr, tMsg);

@@ -71,7 +71,8 @@ public:
 };
 
 
-/// This class is used to store information needed for one transmit
+/// This class is used to store information needed for one transmit.
+/// The data may be for result rows or an error message.
 class TransmitData {
 public:
     using Ptr = std::shared_ptr<TransmitData>;

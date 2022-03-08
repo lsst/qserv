@@ -331,7 +331,6 @@ bool QueryRequest::_importStream(JobQuery::Ptr const& jq) {
     if (len != expectedLen) {
         throw Bug("_importStream metadata wrong header size=" + to_string(len) + " expected=" + to_string(expectedLen));
     }
-    LOGS(_log, LOG_LVL_DEBUG, "&&& _importStream metadata size=" << len);
     ResponseHandler::BufPtr bufPtr = make_shared<vector<char>>(buff, buff + len);
 
     // Use flush to read the buffer and extract the header.
@@ -353,7 +352,6 @@ bool QueryRequest::_importStream(JobQuery::Ptr const& jq) {
     }
 
     if (!last) {
-        LOGS(_log, LOG_LVL_WARN, "&&& _importStream not last nextBufSz=" << nextBufSize << " " << jq->getIdStr());
         _askForResponseDataCmd = make_shared<AskForResponseDataCmd>(shared_from_this(), ++_respCount, jq, nextBufSize);
         _queueAskForResponse(_askForResponseDataCmd, jq, true);
     } else {

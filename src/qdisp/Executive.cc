@@ -287,7 +287,6 @@ bool Executive::join() {
 }
 
 void Executive::markCompleted(int jobId, bool success) {
-    LOGS(_log, LOG_LVL_TRACE, "&&& Executive::markCompleted qId=" << getId() << " jId=" << jobId << " success=" << success);
     ResponseHandler::Error err;
     string idStr = QueryIdHelper::makeIdStr(_id, jobId);
     LOGS(_log, LOG_LVL_DEBUG, "Executive::markCompleted " << success);

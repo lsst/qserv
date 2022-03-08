@@ -64,7 +64,6 @@ TransmitData::TransmitData(qmeta::CzarId const& czarId_, shared_ptr<google::prot
 TransmitData::Ptr TransmitData::createTransmitData(qmeta::CzarId const& czarId_, string const& idStr) {
     shared_ptr<google::protobuf::Arena> arena = make_shared<google::protobuf::Arena>();
     auto ptr = shared_ptr<TransmitData>(new TransmitData(czarId_, arena, idStr));
-    LOGS(_log, LOG_LVL_TRACE, idStr << "&&&TransmitData::createTransmitData " << ptr->dump() );
     return ptr;
 }
 
@@ -98,13 +97,14 @@ void TransmitData::attachNextHeader(TransmitData::Ptr const& nextTr, bool really
     string nextHeaderString;
     if (reallyLast) {
         // Need a special header to indicate there are no more messages.
-        LOGS(_log, LOG_LVL_TRACE, _dump() << "&&& attachNextHeader a reallyLast=" << reallyLast);
+        LOGS(_log, LOG_LVL_TRACE, _dump() << " attachNextHeader reallyLast=" << reallyLast);
         // this _tMtx is already locked, so call private member
         nextHeaderString = _makeHeaderString(reallyLast, seq, scsSeq);
     } else {
         // Need the header from the next TransmitData object in the queue.
         // Using public version to lock its mutex.
-        LOGS(_log, LOG_LVL_TRACE, _dump() << "&&& attachNextHeader b reallyLast=" << reallyLast << " next=" << nextTr->dump());
+        LOGS(_log, LOG_LVL_TRACE, _dump() << "attachNextHeader reallyLast=" << reallyLast
+                                  << " next=" << nextTr->dump());
         // next _tMtx is not locked, so call public member
         nextHeaderString = nextTr->makeHeaderString(reallyLast, seq, scsSeq);
     }
@@ -130,7 +130,6 @@ string TransmitData::_makeHeaderString(bool reallyLast, uint32_t seq, int scsSeq
         pHeader = _header;
     }
     pHeader->set_endnodata(reallyLast);
-    LOGS(_log, LOG_LVL_TRACE, _idStr << "&&& _makeHeaderString reallyLast=" << reallyLast << " h.size=" << pHeader->size() << " h.endnodata=" << pHeader->endnodata());
     pHeader->set_seq(seq);
     pHeader->set_scsseq(scsSeq);
     string headerString;
@@ -162,7 +161,6 @@ void TransmitData::_buildHeader(bool largeResult) {
 
     // The size of the dataMsg must include space for the header for the next dataMsg.
     _header->set_size(_dataMsg.size() + proto::ProtoHeaderWrap::getProtoHeaderSize());
-    LOGS(_log, LOG_LVL_TRACE, _idStr << "&&&TransmitData::_buildHeader size=" << _dataMsg.size() + proto::ProtoHeaderWrap::getProtoHeaderSize());
     // The md5 hash must not include the header for the next dataMsg.
     _header->set_md5(util::StringHash::getMd5(_dataMsg.data(), _dataMsg.size()));
     _header->set_largeresult(largeResult);
@@ -192,7 +190,6 @@ void TransmitData::_buildDataMsg(Task const& task, bool largeResult, util::Multi
         LOGS(_log, LOG_LVL_ERROR, _idStr << "buildDataMsg adding " << msg);
     }
     _result->SerializeToString(&_dataMsg);
-    LOGS(_log, LOG_LVL_TRACE, _idStr << "&&& TransmitData::_buildDataMsg dataMsg.sz=" << _dataMsg.size());
     // Build the header for this message, but this message can't be transmitted until the
     // next header has been built and appended to _transmitData->dataMsg. That happens
     // later in SendChannelShared.
@@ -201,7 +198,6 @@ void TransmitData::_buildDataMsg(Task const& task, bool largeResult, util::Multi
 
 
 void TransmitData::initResult(Task& task, std::vector<SchemaCol>& schemaCols) {
-    LOGS(_log, LOG_LVL_TRACE, _idStr << "&&&TransmitData::initResult");
     lock_guard<mutex> lock(_trMtx);
     _result->set_queryid(task.getQueryId());
     _result->set_jobid(task.getJobId());
@@ -230,7 +226,6 @@ void TransmitData::addSchemaCols(std::vector<SchemaCol>& schemaCols) {
 void TransmitData::_addSchemaCols(std::vector<SchemaCol>& schemaCols) {
     // Load schema from _schemaCols into _result, this should only happen once
     // per TransmitData object.
-    LOGS(_log, LOG_LVL_TRACE, _dump() << "&&&TransmitData::_addSchemaCols");
     if (_schemaColsSet.exchange(true) == false) {
         for(auto&& col:schemaCols) {
             proto::ColumnSchema* cs = _result->mutable_rowschema()->add_columnschema();
@@ -245,9 +240,7 @@ void TransmitData::_addSchemaCols(std::vector<SchemaCol>& schemaCols) {
 
 
 bool TransmitData::fillRows(MYSQL_RES* mResult, int numFields, size_t &sz) {
-    LOGS(_log, LOG_LVL_TRACE, _idStr << "&&&TransmitData::fillRows");
     lock_guard<mutex> lock(_trMtx);
-    LOGS(_log, LOG_LVL_TRACE, _dump() << "&&&TransmitData::fillRows");
     MYSQL_ROW row;
 
     unsigned int szLimit = std::min(proto::ProtoHeaderWrap::PROTOBUFFER_DESIRED_LIMIT,

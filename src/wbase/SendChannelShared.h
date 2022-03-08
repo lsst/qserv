@@ -50,8 +50,32 @@ class TransmitLock;
 namespace wbase {
 
 /// A class that provides a SendChannel object with synchronization so it can be
-/// shared by across multiple threads. Due to what may be sent, the synchronization locking
-/// is needs to be available outside of the class.
+/// shared by across multiple threads. Due to what may be sent, the synchronization
+/// locking needs to be available outside of the class.
+/// This class is now also responsible for assembling transmit messages from
+/// mysql result rows as well as error messages.
+///
+/// When building messages for result rows, multiple tasks may add to the
+/// the TransmitData object before it is transmitted to the czar. All the
+/// tasks adding rows to the TransmitData object must be operating on
+/// the same chunk. This only happens for near-neighbor queries, which
+/// have one task per subchunk.
+///
+/// Error meesages cause the existing TransmitData object to be thrown away
+/// as the contents cannot be used, due to the error. This is one of
+/// many reasons TransmitData objects can only be shared among a single chunk.
+///
+/// An important concept for this class is 'reallyLast'. This means that
+/// the 'reallyLast' TransmitData object is on the queue.
+/// '_taskCount' is set with the number of Tasks that will add to this instance.
+/// As each task sends its 'last' message, '_lastCount' is incremented.
+/// When '_lastCount' == '_taskCount', the instance knows the 'reallyLast'
+/// message has been received and all queued up messages should be sent.
+///
+/// 'reallyLast' is also set to true when an error message is sent. When
+/// there's an error, the czar will throw out all data related to the
+/// chunk, since it is unreliable. The error needs to be sent immediately to
+/// waste as little time processing useless results as possible
 class SendChannelShared {
 public:
     using Ptr = std::shared_ptr<SendChannelShared>;
