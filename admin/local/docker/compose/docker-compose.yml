@@ -74,7 +74,7 @@ networks:
                 - subnet: 192.168.3.0/24
 
 services:
-    # worker 0 uses ip+port to connect to the worker-db
+    # worker 0 uses and validates ip+port to connect to the worker-db
     worker-db-0:
         << : *worker-db
         volumes:
@@ -153,7 +153,7 @@ services:
               source: worker_0_home
               target: /home/qserv
             - << : *log-volume
-    # worker 1 uses socket file (where possible) to connect to the worker-db
+    # worker 1 uses and validates socket file (where possible) to connect to the worker-db
     worker-db-1:
         << : *worker-db
         volumes:
@@ -174,7 +174,7 @@ services:
           entrypoint --log-level DEBUG worker-xrootd
           --db-uri mysql://qsmaster@127.0.0.1:3306?socket={{db_socket}}
           --db-admin-uri mysql://root:CHANGEME@127.0.0.1:3306?socket={{db_socket}}
-          --vnid-config "@/usr/local/lib64/libreplica.so mysql://root:CHANGEME@localhost:3306/qservw_worker 0 0"
+          --vnid-config "@/usr/local/lib64/libreplica.so mysql://qsmaster@127.0.0.1:3306/qservw_worker 0 0"
           --cmsd-manager-name manager-xrootd
           --cmsd-manager-count 1
           --mysql-monitor-password CHANGEME_MONITOR
@@ -202,7 +202,7 @@ services:
         command: >
           entrypoint --log-level DEBUG worker-cmsd
           --db-uri mysql://qsmaster@worker-db-1:3306?socket=/qserv/mariadb/run/mysqld.sock
-          --vnid-config "@/usr/local/lib64/libreplica.so mysql://root:CHANGEME@localhost:3306/qservw_worker 0 0"
+          --vnid-config "@/usr/local/lib64/libreplica.so mysql://qsmaster@127.0.0.1:3306/qservw_worker 0 0"
           --cmsd-manager-name manager-xrootd
           --cmsd-manager-count 1
         network_mode: "service:worker-xrootd-1"
