@@ -296,11 +296,13 @@ public:
      */
     OptionParser(std::string const& name,
                  std::string const& description,
-                 T& var)
+                 T& var,
+                 std::vector<T> const& allowedValues)
     :   ArgumentParser(name,
                        description),
         _var(var),
-        _defaultValue(var) {
+        _defaultValue(var),
+        _allowedValues(allowedValues) {
     }
 
     virtual ~OptionParser() = default;
@@ -313,6 +315,13 @@ public:
         } catch (boost::bad_lexical_cast const& ex) {
             throw ParserError(ERR_LOC,
                               "failed to parse a value of option '" + name() + " from '" + inStr);
+        }
+        if (not _allowedValues.empty()) {
+            if (not in(_var, _allowedValues)) {
+                throw ParserError(
+                    ERR_LOC,
+                    "the value of parameter '" + name() + "' is disallowed: '" + inStr + "'");
+            }
         }
     }
 
@@ -335,6 +344,9 @@ private:
 
     /// A copy of the variable is captured here
     T const _defaultValue;
+
+    /// A collection of allowed values (if provided)
+    std::vector<T> const _allowedValues;
 };
 
 
@@ -531,13 +543,15 @@ public:
     template <typename T>
     Command& option(std::string const& name,
                     std::string const& description,
-                    T& var) {
+                    T& var,
+                    std::vector<T> const& allowedValues = std::vector<T>()) {
         _options.emplace(
             name,
             std::make_unique<OptionParser<T>>(
                 name,
                 description,
-                var
+                var,
+                allowedValues
             )
         );
         return *this;
@@ -787,12 +801,13 @@ public:
      * @return  a reference to the parser object in order to allow chained calls
      */
     template <typename T>
-    Parser& option(std::string const& name, std::string const& description, T& var) {
+    Parser& option(std::string const& name, std::string const& description,
+                   T& var, std::vector<T> const& allowedValues = std::vector<T>()) {
         _verifyArgument(name);
         _options.emplace(
             std::make_pair(
                 name,
-                std::move(std::make_unique<OptionParser<T>>(name, description, var))
+                std::move(std::make_unique<OptionParser<T>>(name, description, var, allowedValues))
             )
         );
         return *this;
