@@ -61,6 +61,14 @@ BOOST_AUTO_TEST_CASE(UrlTest) {
         ptr.reset(new Url("https://"));
     }, invalid_argument);
 
+    // Host name is required for both schemes
+    BOOST_CHECK_THROW({
+        ptr.reset(new Url("http://:"));
+    }, invalid_argument);
+    BOOST_CHECK_THROW({
+        ptr.reset(new Url("https://:"));
+    }, invalid_argument);
+
     // Check for non-supported resources
     BOOST_CHECK_THROW({
         ptr.reset(new Url("other:///////"));
@@ -80,6 +88,15 @@ BOOST_AUTO_TEST_CASE(UrlTest) {
     BOOST_REQUIRE_NO_THROW({
         BOOST_CHECK_EQUAL(ptr->filePath(), "/a");
     });
+    BOOST_CHECK_THROW({
+        ptr->host();
+    }, logic_error);
+    BOOST_CHECK_THROW({
+        ptr->port();
+    }, logic_error);
+    BOOST_CHECK_THROW({
+        ptr->target();
+    }, logic_error);
 
     // Test file-based URLs that have the name of a host
     fileUrl = "file://h/b";
@@ -100,7 +117,7 @@ BOOST_AUTO_TEST_CASE(UrlTest) {
     });
 
     // Test HTTP-based URLs
-    string const httpUrl = "http://a";
+    string httpUrl = "http://a";
     BOOST_REQUIRE_NO_THROW({
         ptr.reset(new Url(httpUrl));
     });
@@ -110,24 +127,90 @@ BOOST_AUTO_TEST_CASE(UrlTest) {
     BOOST_REQUIRE_NO_THROW({
         BOOST_CHECK_EQUAL(ptr->scheme(), Url::Scheme::HTTP);
     });
+    BOOST_REQUIRE_NO_THROW({
+        BOOST_CHECK_EQUAL(ptr->host(), string("a"));
+    });
+    BOOST_REQUIRE_NO_THROW({
+        BOOST_CHECK_EQUAL(ptr->port(), 0U);
+    });
+    BOOST_REQUIRE_NO_THROW({
+        BOOST_CHECK(ptr->target().empty());
+    });
     BOOST_CHECK_THROW({
         ptr->filePath();
     }, logic_error);
 
-    // Test HTTPS-based URLs
-    string const httpsUrl = "https://b";
+    httpUrl = "http://a:123";
     BOOST_REQUIRE_NO_THROW({
-        ptr.reset(new Url(httpsUrl));
+        ptr.reset(new Url(httpUrl));
     });
     BOOST_REQUIRE_NO_THROW({
-        BOOST_CHECK_EQUAL(ptr->url(), httpsUrl);
+        BOOST_CHECK_EQUAL(ptr->url(), httpUrl);
+    });
+    BOOST_REQUIRE_NO_THROW({
+        BOOST_CHECK_EQUAL(ptr->scheme(), Url::Scheme::HTTP);
+    });
+    BOOST_REQUIRE_NO_THROW({
+        BOOST_CHECK_EQUAL(ptr->host(), string("a"));
+    });
+    BOOST_REQUIRE_NO_THROW({
+        BOOST_CHECK_EQUAL(ptr->port(), 123U);
+    });
+    BOOST_REQUIRE_NO_THROW({
+        BOOST_CHECK(ptr->target().empty());
+    });
+
+    httpUrl = "http://a/b";
+    BOOST_REQUIRE_NO_THROW({
+        ptr.reset(new Url(httpUrl));
+    });
+    BOOST_REQUIRE_NO_THROW({
+        BOOST_CHECK_EQUAL(ptr->url(), httpUrl);
+    });
+    BOOST_REQUIRE_NO_THROW({
+        BOOST_CHECK_EQUAL(ptr->scheme(), Url::Scheme::HTTP);
+    });
+    BOOST_REQUIRE_NO_THROW({
+        BOOST_CHECK_EQUAL(ptr->host(), string("a"));
+    });
+    BOOST_REQUIRE_NO_THROW({
+        BOOST_CHECK_EQUAL(ptr->port(), 0U);
+    });
+    BOOST_REQUIRE_NO_THROW({
+        BOOST_CHECK_EQUAL(ptr->target(), string("/b"));
+    });
+
+    httpUrl = "http://a:123/c";
+    BOOST_REQUIRE_NO_THROW({
+        ptr.reset(new Url(httpUrl));
+    });
+    BOOST_REQUIRE_NO_THROW({
+        BOOST_CHECK_EQUAL(ptr->url(), httpUrl);
+    });
+    BOOST_REQUIRE_NO_THROW({
+        BOOST_CHECK_EQUAL(ptr->scheme(), Url::Scheme::HTTP);
+    });
+    BOOST_REQUIRE_NO_THROW({
+        BOOST_CHECK_EQUAL(ptr->host(), string("a"));
+    });
+    BOOST_REQUIRE_NO_THROW({
+        BOOST_CHECK_EQUAL(ptr->port(), 123U);
+    });
+    BOOST_REQUIRE_NO_THROW({
+        BOOST_CHECK_EQUAL(ptr->target(), string("/c"));
+    });
+
+    // Test HTTPS-based URLs
+    httpUrl = "https://b";
+    BOOST_REQUIRE_NO_THROW({
+        ptr.reset(new Url(httpUrl));
+    });
+    BOOST_REQUIRE_NO_THROW({
+        BOOST_CHECK_EQUAL(ptr->url(), httpUrl);
     });
     BOOST_REQUIRE_NO_THROW({
         BOOST_CHECK_EQUAL(ptr->scheme(), Url::Scheme::HTTPS);
     });
-    BOOST_CHECK_THROW({
-        ptr->filePath();
-    }, logic_error);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
