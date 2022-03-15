@@ -22,6 +22,7 @@
 #define LSST_QSERV_URL_H
 
 // System headers
+#include <cstdint>
 #include <string>
 
 // This header declarations
@@ -58,17 +59,28 @@ public:
     Scheme scheme() const { return _scheme; }
     std::string const& url() const { return _url; }
 
-    /**
-     * @return A host name part (if present) of a url based on Scheme::FILE
-     * @throw std::logic_error If attempting to call for non-file urls.
-     */
+    // Components of the url based parsed as Scheme::FILE.
+    // The exception std::logic_error will be thrown by the methods if calling
+    // the method for other schemes.
+
+    /// @return The host name part (if present) of a url.
     std::string const& fileHost() const;
 
-    /**
-     * @return A file path part of a url based on Scheme::FILE
-     * @throw std::logic_error If attempting to call for non-file urls.
-     */
+    /// @return The file path part of a url.
     std::string const& filePath() const;
+
+    // Components of the url based parsed as Scheme::HTTP or Scheme::HTTPS.
+    // The exception std::logic_error will be thrown by the methods if calling
+    // the method for other schemes.
+
+    /// @return The host name part of a url.
+    std::string const& host() const;
+
+    /// @return The optional port number part of a url.
+    std::uint16_t port() const;
+
+    /// @return The target part of a url.
+    std::string const& target() const;
 
 private:
     /**
@@ -92,8 +104,15 @@ private:
 
     // Cached state
     Scheme _scheme = Scheme::FILE;
-    std::string _fileHost;   ///< the host name for a file (FILE scheme only)
-    std::string _filePath;   ///< local path to a file (FILE scheme only)
+
+    // The FILE scheme only
+    std::string _fileHost;  ///< the host name for a file if any was provided
+    std::string _filePath;  ///< local path to a file
+
+    // The HTTP and HTTPS schemes only
+    std::string _host;          ///< the host name
+    std::uint16_t _port = 0;    ///< the port number if any found in the url
+    std::string _target;        ///< the target part of the url
 };
 
 }}} // namespace lsst::qserv::replica

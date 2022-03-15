@@ -26,6 +26,7 @@
 // Qserv headers
 #include "replica/ApplicationColl.h"
 #include "replica/DatabaseTestApp.h"
+#include "replica/HttpAsyncReqApp.h"
 #include "replica/HttpClientApp.h"
 #include "replica/MessengerTestApp.h"
 #include "replica/MySQLTestApp.h"
@@ -41,6 +42,7 @@ namespace {
 ApplicationColl getAppColl() {
     ApplicationColl coll;
     coll.add<DatabaseTestApp>("DATABASE");
+    coll.add<HttpAsyncReqApp>("HTTP-ASYNC-CLIENT");
     coll.add<HttpClientApp>("HTTP-CLIENT");
     coll.add<MessengerTestApp>("MESSENGER");
     coll.add<MySQLTestApp>("MYSQL");

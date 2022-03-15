@@ -140,6 +140,10 @@ target_sources(replica PRIVATE
     GetStatusQservMgtRequest.h
     HealthMonitorTask.cc
     HealthMonitorTask.h
+    HttpAsyncReq.h
+    HttpAsyncReq.cc
+    HttpAsyncReqApp.h
+    HttpAsyncReqApp.cc
     HttpClient.cc
     HttpClient.h
     HttpClientApp.cc
@@ -510,6 +514,7 @@ replica_tests(
     testCsv
     testFileIngestApp
     testFileUtils
+    testHttpAsyncReq
     testJson
     testMessageQueue
     testNamedMutexRegistry
