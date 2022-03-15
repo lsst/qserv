@@ -23,8 +23,6 @@ target_sources(replica PRIVATE
     ApplicationColl.h
     ApplicationTypes.cc
     ApplicationTypes.h
-    AsyncTimer.h
-    AsyncTimer.cc
     CheckSumApp.cc
     CheckSumApp.h
     ChunkLocker.cc
@@ -508,7 +506,6 @@ ENDFUNCTION()
 
 replica_tests(
     testApplicationParser
-    testAsyncTimer
     testChunkLocker
     testChunkNumber
     testChunkedTable
