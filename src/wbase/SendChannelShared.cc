@@ -81,15 +81,7 @@ void SendChannelShared::setTaskCount(int taskCount) {
     _taskCount = taskCount;
 }
 
-/* &&&
-bool SendChannelShared::transmitTaskLast(StreamGuard sLock, bool inLast) {
-    /// _caller must have locked _streamMutex before calling this.
-    if (not inLast) return false; // This wasn't the last message buffer for this task, so it doesn't matter.
-    ++_lastCount;
-    bool lastTaskDone = _lastCount >= _taskCount;
-    return lastTaskDone;
-}
-*/
+
 bool SendChannelShared::transmitTaskLast(bool inLast) {
     lock_guard<mutex> streamLock(_streamMutex);
     /// _caller must have locked _streamMutex before calling this.
@@ -101,7 +93,6 @@ bool SendChannelShared::transmitTaskLast(bool inLast) {
 
 
 
-//&&&bool SendChannelShared::_kill(StreamGuard sLock, std::string const& note) {
 bool SendChannelShared::_kill(std::string const& note) {
     LOGS(_log, LOG_LVL_DEBUG, "SendChannelShared::kill() called " << note);
     bool ret = _sendChannel->kill(note);
@@ -234,7 +225,6 @@ bool SendChannelShared::_transmit(bool erred) {
                 bool metaSet = _sendChannel->setMetadata(_metadataBuf.data(), _metadataBuf.size());
                 if (!metaSet) {
                     LOGS(_log, LOG_LVL_ERROR, "Failed to setMeta " << idStr);
-                    //&&&_kill(streamLock, "metadata");
                     _kill("metadata");
                     return false;
                 }
@@ -251,7 +241,6 @@ bool SendChannelShared::_transmit(bool erred) {
                 LOGS(_log, LOG_LVL_INFO, logMsgSend);
                 if (!sent) {
                     LOGS(_log, LOG_LVL_ERROR, "Failed to send " << idStr);
-                    //&&&_kill(streamLock, "SendChannelShared::_transmit b");
                     _kill("SendChannelShared::_transmit b");
                     return false;
                 }
@@ -360,12 +349,6 @@ bool SendChannelShared::buildAndTransmitResult(MYSQL_RES* mResult, int numFields
                 break;
             }
         } else {
-            /* &&&
-            {
-                lock_guard<mutex> streamLock(_streamMutex);
-                lastIn = transmitTaskLast(streamLock, true);
-            }
-            */
             lastIn = transmitTaskLast(true);
             // If 'lastIn', this is the last transmit and it needs to be added.
             // Otherwise, just append the next query result rows to the existing _transmitData

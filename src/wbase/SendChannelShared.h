@@ -50,8 +50,7 @@ class TransmitLock;
 namespace wbase {
 
 /// A class that provides a SendChannel object with synchronization so it can be
-/// shared by across multiple threads. Due to what may be sent, the synchronization //&&& fix doc
-/// locking needs to be available outside of the class.
+/// shared by across multiple threads.
 /// This class is now also responsible for assembling transmit messages from
 /// mysql result rows as well as error messages.
 ///
@@ -82,12 +81,6 @@ public:
 
     static std::atomic<uint64_t> scsSeqId; ///< Source for unique _scsId numbers
 
-    /* &&&
-    /// To help ensure that _streamMutex is locked before calling,
-    /// many member functions require a StreamGuard argument.
-    using StreamGuard = std::lock_guard<std::mutex> const&;
-    */
-
     SendChannelShared()=delete;
     SendChannelShared(SendChannelShared const&) = delete;
     SendChannelShared& operator=(SendChannelShared const&) = delete;
@@ -103,35 +96,30 @@ public:
     /// @see SendChannel::send
     bool send(char const* buf, int bufLen) {
         std::lock_guard<std::mutex> sLock(_streamMutex);
-        //&&&return _send(sLock, buf, bufLen);
         return _send(buf, bufLen);
     }
 
     /// @see SendChannel::sendError
     bool sendError(std::string const& msg, int code) {
         std::lock_guard<std::mutex> sLock(_streamMutex);
-        //&&&return _sendError(sLock, msg, code);
         return _sendError(msg, code);
     }
 
     /// @see SendChannel::sendFile
     bool sendFile(int fd, SendChannel::Size fSize) {
         std::lock_guard<std::mutex> sLock(_streamMutex);
-        //&&&return _sendFile(sLock, fd, fSize);
         return _sendFile(fd, fSize);
     }
 
     /// @see SendChannel::sendStream
     bool sendStream(xrdsvc::StreamBuffer::Ptr const& sBuf, bool last, int scsSeq=-1) {
         std::lock_guard<std::mutex> sLock(_streamMutex);
-        //&&&return _sendStream(sLock, sBuf, last, scsSeq);
         return _sendStream(sBuf, last, scsSeq);
     }
 
     /// @see SendChannel::kill
     bool kill(std::string const& note) {
         std::lock_guard<std::mutex> sLock(_streamMutex);
-        //&&&return _kill(sLock, note);
         return _kill(note);
     }
 
@@ -150,7 +138,6 @@ public:
     /// @return true if inLast is true and this is the last task to call this
     ///              with inLast == true.
     /// The calling Thread must hold 'streamMutex' before calling this.
-    //&&&bool transmitTaskLast(StreamGuard sLock, bool inLast);
     bool transmitTaskLast(bool inLast);
 
     /// Return a normalized id string.
@@ -200,32 +187,6 @@ private:
                       std::shared_ptr<wcontrol::TransmitMgr> const& transmitMgr,
                       qmeta::CzarId const& czarId);
 
-    /* &&&
-    /// Wrappers for SendChannel public functions that may need to be used
-    /// by threads.
-    /// @see SendChannel::send
-    bool _send(StreamGuard sLock, char const* buf, int bufLen) {
-        return _sendChannel->send(buf, bufLen);
-    }
-
-    /// @see SendChannel::sendError
-    bool _sendError(StreamGuard sLock, std::string const& msg, int code) {
-        return _sendChannel->sendError(msg, code);
-    }
-
-    /// @see SendChannel::sendFile
-    bool _sendFile(StreamGuard sLock, int fd, SendChannel::Size fSize) {
-        return _sendChannel->sendFile(fd, fSize);
-    }
-
-    /// @see SendChannel::sendStream
-    bool _sendStream(StreamGuard sLock, xrdsvc::StreamBuffer::Ptr const& sBuf, bool last, int scsSeq=-1) {
-        return _sendChannel->sendStream(sBuf, last, scsSeq);
-    }
-
-    /// @see SendChannel::kill
-    bool _kill(StreamGuard sLock, std::string const& note);
-    */
     /// Wrappers for SendChannel public functions that may need to be used
     /// by threads.
     /// @see SendChannel::send
