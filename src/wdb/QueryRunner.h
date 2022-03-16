@@ -113,10 +113,12 @@ private:
 
     static size_t _getDesiredLimit();
 
+    /* &&&
     /// The pass tData to _sendChannel so it can be transmitted.
     /// 'lastIn' - True if this is the last transmit for this QueryRunner instance.
     /// @return true if _transmitData was passed to _sendChannel and will be transmitted.
     bool _transmit(wbase::TransmitData::Ptr const& tData, bool lastIn);
+    */
 
     wbase::Task::Ptr const _task; ///< Actual task
 

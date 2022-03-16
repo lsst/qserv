@@ -50,7 +50,7 @@ class TransmitLock;
 namespace wbase {
 
 /// A class that provides a SendChannel object with synchronization so it can be
-/// shared by across multiple threads. Due to what may be sent, the synchronization
+/// shared by across multiple threads. Due to what may be sent, the synchronization //&&& fix doc
 /// locking needs to be available outside of the class.
 /// This class is now also responsible for assembling transmit messages from
 /// mysql result rows as well as error messages.
@@ -61,18 +61,18 @@ namespace wbase {
 /// the same chunk. This only happens for near-neighbor queries, which
 /// have one task per subchunk.
 ///
-/// Error meesages cause the existing TransmitData object to be thrown away
-/// as the contents cannot be used, due to the error. This is one of
-/// many reasons TransmitData objects can only be shared among a single chunk.
+/// Error messages cause the existing TransmitData object to be thrown away
+/// as the contents cannot be used. This is one of many reasons TransmitData
+/// objects can only be shared among a single chunk.
 ///
-/// An important concept for this class is 'reallyLast'. This means that
-/// the 'reallyLast' TransmitData object is on the queue.
+/// An important concept for this class is '_lastRecvd'. This means that
+/// the last TransmitData object needed is on the queue.
 /// '_taskCount' is set with the number of Tasks that will add to this instance.
 /// As each task sends its 'last' message, '_lastCount' is incremented.
-/// When '_lastCount' == '_taskCount', the instance knows the 'reallyLast'
+/// When '_lastCount' == '_taskCount', the instance knows the '_lastRecvd'
 /// message has been received and all queued up messages should be sent.
 ///
-/// 'reallyLast' is also set to true when an error message is sent. When
+/// '_lastRecvd' is also set to true when an error message is sent. When
 /// there's an error, the czar will throw out all data related to the
 /// chunk, since it is unreliable. The error needs to be sent immediately to
 /// waste as little time processing useless results as possible
@@ -82,9 +82,11 @@ public:
 
     static std::atomic<uint64_t> scsSeqId; ///< Source for unique _scsId numbers
 
+    /* &&&
     /// To help ensure that _streamMutex is locked before calling,
     /// many member functions require a StreamGuard argument.
     using StreamGuard = std::lock_guard<std::mutex> const&;
+    */
 
     SendChannelShared()=delete;
     SendChannelShared(SendChannelShared const&) = delete;
@@ -101,31 +103,36 @@ public:
     /// @see SendChannel::send
     bool send(char const* buf, int bufLen) {
         std::lock_guard<std::mutex> sLock(_streamMutex);
-        return _send(sLock, buf, bufLen);
+        //&&&return _send(sLock, buf, bufLen);
+        return _send(buf, bufLen);
     }
 
     /// @see SendChannel::sendError
     bool sendError(std::string const& msg, int code) {
         std::lock_guard<std::mutex> sLock(_streamMutex);
-        return _sendError(sLock, msg, code);
+        //&&&return _sendError(sLock, msg, code);
+        return _sendError(msg, code);
     }
 
     /// @see SendChannel::sendFile
     bool sendFile(int fd, SendChannel::Size fSize) {
         std::lock_guard<std::mutex> sLock(_streamMutex);
-        return _sendFile(sLock, fd, fSize);
+        //&&&return _sendFile(sLock, fd, fSize);
+        return _sendFile(fd, fSize);
     }
 
     /// @see SendChannel::sendStream
     bool sendStream(xrdsvc::StreamBuffer::Ptr const& sBuf, bool last, int scsSeq=-1) {
         std::lock_guard<std::mutex> sLock(_streamMutex);
-        return _sendStream(sLock, sBuf, last, scsSeq);
+        //&&&return _sendStream(sLock, sBuf, last, scsSeq);
+        return _sendStream(sBuf, last, scsSeq);
     }
 
     /// @see SendChannel::kill
     bool kill(std::string const& note) {
         std::lock_guard<std::mutex> sLock(_streamMutex);
-        return _kill(sLock, note);
+        //&&&return _kill(sLock, note);
+        return _kill(note);
     }
 
     /// @see SendChannel::isDead
@@ -143,7 +150,8 @@ public:
     /// @return true if inLast is true and this is the last task to call this
     ///              with inLast == true.
     /// The calling Thread must hold 'streamMutex' before calling this.
-    bool transmitTaskLast(StreamGuard sLock, bool inLast);
+    //&&&bool transmitTaskLast(StreamGuard sLock, bool inLast);
+    bool transmitTaskLast(bool inLast);
 
     /// Return a normalized id string.
     static std::string makeIdStr(int qId, int jId);
@@ -192,6 +200,7 @@ private:
                       std::shared_ptr<wcontrol::TransmitMgr> const& transmitMgr,
                       qmeta::CzarId const& czarId);
 
+    /* &&&
     /// Wrappers for SendChannel public functions that may need to be used
     /// by threads.
     /// @see SendChannel::send
@@ -216,6 +225,38 @@ private:
 
     /// @see SendChannel::kill
     bool _kill(StreamGuard sLock, std::string const& note);
+    */
+    /// Wrappers for SendChannel public functions that may need to be used
+    /// by threads.
+    /// @see SendChannel::send
+    /// Note: _streamLock must be held before calling this function.
+    bool _send(char const* buf, int bufLen) {
+        return _sendChannel->send(buf, bufLen);
+    }
+
+    /// @see SendChannel::sendError
+    /// Note: _streamLock must be held before calling this function.
+    bool _sendError(std::string const& msg, int code) {
+        return _sendChannel->sendError(msg, code);
+    }
+
+    /// @see SendChannel::sendFile
+    /// Note: _streamLock must be held before calling this function.
+    bool _sendFile(int fd, SendChannel::Size fSize) {
+        return _sendChannel->sendFile(fd, fSize);
+    }
+
+    /// @see SendChannel::sendStream
+    /// Note: _streamLock must be held before calling this function.
+    bool _sendStream(xrdsvc::StreamBuffer::Ptr const& sBuf, bool last, int scsSeq=-1) {
+        return _sendChannel->sendStream(sBuf, last, scsSeq);
+    }
+
+    /// @see SendChannel::kill
+    /// Note: _streamLock must be held before calling this function.
+    bool _kill(std::string const& note);
+
+
 
     /// @return a new TransmitData::Ptr object.
     TransmitData::Ptr _createTransmit(Task& task);
@@ -267,7 +308,7 @@ private:
     std::mutex _streamMutex;
 
     std::queue<TransmitData::Ptr> _transmitQueue; ///< Queue of data to be encoded and sent.
-    std::mutex _queueMtx; ///< protects _transmitQueue, _taskCount, _lastCount
+    std::mutex _queueMtx; ///< protects _transmitQueue
 
     /// metadata buffer. Once set, it cannot change until after Finish() has been called.
     std::string _metadataBuf;
@@ -281,10 +322,10 @@ private:
 
     std::atomic<bool> _firstTransmitLock{true}; ///< True until the first thread tries to lock transmitLock.
     std::shared_ptr<wcontrol::TransmitLock> _transmitLock; ///< Hold onto transmitLock until finished.
-    std::mutex _transmitLockMtx;
+    std::mutex _transmitLockMtx; ///< protects access to _transmitLock.
     std::condition_variable _transmitLockCv;
     std::shared_ptr<wcontrol::TransmitMgr> _transmitMgr; ///< Pointer to the TransmitMgr
-    qmeta::CzarId _czarId; ///< id of the czar that requested this task(s).
+    qmeta::CzarId const _czarId; ///< id of the czar that requested this task(s).
     uint64_t const _scsId; ///< id number for this SendChannelShared
     std::atomic<uint32_t> _scsSeq{0}; ///< SendChannelSharedsequence number for transmit.
 

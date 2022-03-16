@@ -2,6 +2,7 @@ add_library(util OBJECT)
 
 target_sources(util PRIVATE
     BlockPost.cc
+    Bug.cc
     CmdLineParser.cc
     Command.cc
     ConfigStore.cc

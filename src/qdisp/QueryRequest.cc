@@ -48,6 +48,7 @@
 #include "qdisp/JobStatus.h"
 #include "qdisp/PseudoFifo.h"
 #include "qdisp/ResponseHandler.h"
+#include "util/Bug.h"
 #include "util/common.h"
 #include "util/InstanceCount.h"
 #include "util/Timer.h"
@@ -329,7 +330,8 @@ bool QueryRequest::_importStream(JobQuery::Ptr const& jq) {
     int len = expectedLen;
     const char* buff = GetMetadata(len);
     if (len != expectedLen) {
-        throw Bug("_importStream metadata wrong header size=" + to_string(len) + " expected=" + to_string(expectedLen));
+        throw util::Bug(ERR_LOC, string("metadata wrong header size=") + to_string(len)
+                         + " expected=" + to_string(expectedLen));
     }
     ResponseHandler::BufPtr bufPtr = make_shared<vector<char>>(buff, buff + len);
 
@@ -338,7 +340,8 @@ bool QueryRequest::_importStream(JobQuery::Ptr const& jq) {
     int nextBufSize = 0;
     bool last = false;
     int resultRows = 0;
-    bool flushOk = jq->getDescription()->respHandler()->flush(len, bufPtr, last, largeResult, nextBufSize, resultRows);
+    bool flushOk = jq->getDescription()->respHandler()->flush(len, bufPtr, last, largeResult,
+                                                              nextBufSize, resultRows);
 
     if (!flushOk) {
         LOGS(_log, LOG_LVL_ERROR, "_importStream not flushOk");

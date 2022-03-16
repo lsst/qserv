@@ -27,6 +27,7 @@
 // Qserv headers
 #include "global/LogContext.h"
 #include "proto/ProtoHeaderWrap.h"
+#include "util/Bug.h"
 #include "util/Error.h"
 #include "util/MultiError.h"
 #include "util/Timer.h"
@@ -61,7 +62,7 @@ SendChannelShared::SendChannelShared(SendChannel::Ptr const& sendChannel,
                    std::shared_ptr<wcontrol::TransmitMgr> const& transmitMgr, qmeta::CzarId const& czarId)
          : _sendChannel(sendChannel), _transmitMgr(transmitMgr), _czarId(czarId), _scsId(scsSeqId++) {
      if (_sendChannel == nullptr) {
-         throw Bug("SendChannelShared constructor given nullptr");
+         throw util::Bug(ERR_LOC, "SendChannelShared constructor given nullptr");
      }
  }
 
@@ -80,8 +81,17 @@ void SendChannelShared::setTaskCount(int taskCount) {
     _taskCount = taskCount;
 }
 
-
+/* &&&
 bool SendChannelShared::transmitTaskLast(StreamGuard sLock, bool inLast) {
+    /// _caller must have locked _streamMutex before calling this.
+    if (not inLast) return false; // This wasn't the last message buffer for this task, so it doesn't matter.
+    ++_lastCount;
+    bool lastTaskDone = _lastCount >= _taskCount;
+    return lastTaskDone;
+}
+*/
+bool SendChannelShared::transmitTaskLast(bool inLast) {
+    lock_guard<mutex> streamLock(_streamMutex);
     /// _caller must have locked _streamMutex before calling this.
     if (not inLast) return false; // This wasn't the last message buffer for this task, so it doesn't matter.
     ++_lastCount;
@@ -90,7 +100,9 @@ bool SendChannelShared::transmitTaskLast(StreamGuard sLock, bool inLast) {
 }
 
 
-bool SendChannelShared::_kill(StreamGuard sLock, std::string const& note) {
+
+//&&&bool SendChannelShared::_kill(StreamGuard sLock, std::string const& note) {
+bool SendChannelShared::_kill(std::string const& note) {
     LOGS(_log, LOG_LVL_DEBUG, "SendChannelShared::kill() called " << note);
     bool ret = _sendChannel->kill(note);
     _lastRecvd = true;
@@ -222,7 +234,8 @@ bool SendChannelShared::_transmit(bool erred) {
                 bool metaSet = _sendChannel->setMetadata(_metadataBuf.data(), _metadataBuf.size());
                 if (!metaSet) {
                     LOGS(_log, LOG_LVL_ERROR, "Failed to setMeta " << idStr);
-                    _kill(streamLock, "metadata");
+                    //&&&_kill(streamLock, "metadata");
+                    _kill("metadata");
                     return false;
                 }
             }
@@ -238,7 +251,8 @@ bool SendChannelShared::_transmit(bool erred) {
                 LOGS(_log, LOG_LVL_INFO, logMsgSend);
                 if (!sent) {
                     LOGS(_log, LOG_LVL_ERROR, "Failed to send " << idStr);
-                    _kill(streamLock, "SendChannelShared::_transmit b");
+                    //&&&_kill(streamLock, "SendChannelShared::_transmit b");
+                    _kill("SendChannelShared::_transmit b");
                     return false;
                 }
             }
@@ -303,9 +317,10 @@ void SendChannelShared::setSchemaCols(Task& task, std::vector<SchemaCol>& schema
     }
 }
 
-bool SendChannelShared::buildAndTransmitResult(MYSQL_RES* mResult, int numFields, Task& task, bool largeResult,
-        util::MultiError& multiErr, std::atomic<bool>& cancelled, bool &readRowsOk) {
-
+bool SendChannelShared::buildAndTransmitResult(MYSQL_RES* mResult, int numFields, Task& task,
+        bool largeResult, util::MultiError& multiErr, std::atomic<bool>& cancelled, bool &readRowsOk) {
+    // 'cancelled' is passed as a reference so that if its value is
+    // changed externally, it will break the while loop below.
     // Wait until the transmit Manager says it is ok to send data to the czar.
     auto qId = task.getQueryId();
     bool scanInteractive = task.getScanInteractive();
@@ -345,11 +360,14 @@ bool SendChannelShared::buildAndTransmitResult(MYSQL_RES* mResult, int numFields
                 break;
             }
         } else {
+            /* &&&
             {
                 lock_guard<mutex> streamLock(_streamMutex);
                 lastIn = transmitTaskLast(streamLock, true);
             }
-            // If 'reallyLast', this is the last transmit and it needs to be added.
+            */
+            lastIn = transmitTaskLast(true);
+            // If 'lastIn', this is the last transmit and it needs to be added.
             // Otherwise, just append the next query result rows to the existing _transmitData
             // and send it later.
             if (lastIn && readRowsOk

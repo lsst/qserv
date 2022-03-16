@@ -46,9 +46,7 @@
 
 // LSST headers
 #include "lsst/log/Log.h"
-
 #include "wcontrol/TransmitMgr.h"
-#include "global/Bug.h"
 #include "global/DbTable.h"
 #include "global/LogContext.h"
 #include "global/UnsupportedError.h"
@@ -59,6 +57,7 @@
 #include "proto/worker.pb.h"
 #include "sql/Schema.h"
 #include "sql/SqlErrorObject.h"
+#include "util/Bug.h"
 #include "util/common.h"
 #include "util/IterableFormatter.h"
 #include "util/MultiError.h"
@@ -157,7 +156,7 @@ bool QueryRunner::runQuery() {
     if (_runQueryCalled.exchange(true)) {
         LOGS(_log, LOG_LVL_ERROR, "QueryRunner::runQuery already called for task="
                 << _task->getQueryId() << " job=" <<  _task->getJobId());
-        throw Bug("runQuery called twice");
+        throw util::Bug(ERR_LOC, "runQuery called twice");
     }
 
     // Make certain our Task knows that this object is no longer in use when this function exits.
@@ -293,7 +292,7 @@ bool QueryRunner::_dispatchChannel() {
     bool erred = false;
     int numFields = -1;
     if (tMsg.fragment_size() < 1) {
-        throw Bug("QueryRunner: No fragments to execute in TaskMsg");
+        throw util::Bug(ERR_LOC, "QueryRunner: No fragments to execute in TaskMsg");
     }
 
     // readRowsOk remains true as long as there are no problems with reading/transmitting.
