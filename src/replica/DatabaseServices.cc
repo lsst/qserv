@@ -136,9 +136,15 @@ json JobInfo::toJson() const {
 
 
 TransactionInfo::State TransactionInfo::string2state(string const& str) {
-    if ("STARTED"  == str) return STARTED;
-    if ("FINISHED" == str) return FINISHED;
-    if ("ABORTED"  == str) return ABORTED;
+    if ("IS_STARTING" == str) return State::IS_STARTING;
+    if ("STARTED" == str) return State::STARTED;
+    if ("IS_FINISHING" == str) return State::IS_FINISHING;
+    if ("IS_ABORTING" == str) return State::IS_ABORTING;
+    if ("FINISHED" == str) return State::FINISHED;
+    if ("ABORTED" == str) return State::ABORTED;
+    if ("START_FAILED" == str) return State::START_FAILED;
+    if ("FINISH_FAILED" == str) return State::FINISH_FAILED;
+    if ("ABORT_FAILED" == str) return State::ABORT_FAILED;
     throw runtime_error(
             "DatabaseServices::" + string(__func__) + "  unknown transaction state: '"
             + str + "'");
@@ -147,24 +153,72 @@ TransactionInfo::State TransactionInfo::string2state(string const& str) {
 
 string TransactionInfo::state2string(State state) {
     switch (state) {
-        case STARTED:  return "STARTED";
-        case FINISHED: return "FINISHED";
-        case ABORTED:  return "ABORTED";
+        case State::IS_STARTING: return "IS_STARTING";
+        case State::STARTED: return "STARTED";
+        case State::IS_FINISHING: return "IS_FINISHING";
+        case State::IS_ABORTING: return "IS_ABORTING";
+        case State::FINISHED: return "FINISHED";
+        case State::ABORTED: return "ABORTED";
+        case State::START_FAILED: return "START_FAILED";
+        case State::FINISH_FAILED: return "FINISH_FAILED";
+        case State::ABORT_FAILED: return "ABORT_FAILED";
     };
     throw runtime_error(
-            "DatabaseServices::" + string(__func__) + "  unhandled transaction state");
+            "DatabaseServices::" + string(__func__) + "  unhandled transaction state "
+            + to_string(static_cast<int>(state)));
+}
+
+
+bool TransactionInfo::stateTransitionIsAllowed(State currentState, State newState) {
+    switch (currentState) {
+        case State::IS_STARTING:
+            return (newState == State::STARTED) || (newState == State::START_FAILED) || (newState == State::IS_ABORTING);
+        case State::STARTED:
+            return (newState == State::IS_FINISHING) || (newState == State::IS_ABORTING);
+        case State::IS_FINISHING:
+            return (newState == State::FINISHED) || (newState == State::FINISH_FAILED) || (newState == State::IS_ABORTING);
+        case State::IS_ABORTING:
+            return (newState == State::ABORTED) || (newState == State::ABORT_FAILED);
+        case State::START_FAILED:
+        case State::FINISH_FAILED:
+        case State::ABORT_FAILED:
+            return newState == State::IS_ABORTING;
+        default:
+            return false;
+    }
+}
+
+bool TransactionInfo::isValid() const {
+    return id != std::numeric_limits<TransactionId>::max() && beginTime != 0;
 }
 
 
 json TransactionInfo::toJson() const {
     json info;
-    info["id"]         = id;
-    info["database"]   = database;
-    info["state"]      = state2string(state);
+    info["id"] = id;
+    info["database"] = database;
+    info["state"] = state2string(state);
     info["begin_time"] = beginTime;
-    info["end_time"]   = endTime;
-    info["context"]    = context;
+    info["start_time"] = startTime;
+    info["transition_time"] = transitionTime;
+    info["end_time"] = endTime;
+    info["context"] = context;
+    info["log"] = json::array();
+    for (auto&& elem: log) {
+        info["log"].push_back(elem.toJson());
+    }
     return info;
+}
+
+
+json TransactionInfo::Event::toJson() const {
+    json event;
+    event["id"] = id;
+    event["transaction_state"] = TransactionInfo::state2string(transactionState);
+    event["name"] = name;
+    event["time"] = time;
+    event["data"] = data;
+    return event;
 }
 
 

@@ -387,37 +387,42 @@ list<JobInfo> DatabaseServicesPool::jobs(string const& controllerId,
 
 
 TransactionInfo DatabaseServicesPool::transaction(TransactionId id,
-                                                  bool includeContext) {
+                                                  bool includeContext,
+                                                  bool includeLog) {
     ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
-    return service()->transaction(id, includeContext);
+    return service()->transaction(id, includeContext, includeLog);
 }
 
 
 vector<TransactionInfo> DatabaseServicesPool::transactions(string const& databaseName,
-                                                           bool includeContext) {
+                                                           bool includeContext,
+                                                           bool includeLog) {
     ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
-    return service()->transactions(databaseName, includeContext);
+    return service()->transactions(databaseName, includeContext, includeLog);
 }
 
 
 vector<TransactionInfo> DatabaseServicesPool::transactions(TransactionInfo::State state,
-                                                           bool includeContext) {
+                                                           bool includeContext,
+                                                           bool includeLog) {
     ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
-    return service()->transactions(state, includeContext);
+    return service()->transactions(state, includeContext, includeLog);
 }
 
 
-TransactionInfo DatabaseServicesPool::beginTransaction(string const& databaseName,
-                                                       json const& transactionContext) {
+TransactionInfo DatabaseServicesPool::createTransaction(string const& databaseName,
+                                                        NamedMutexRegistry& namedMutexRegistry,
+                                                        unique_ptr<util::Lock>& namedMutexLock,
+                                                        json const& transactionContext) {
     ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
-    return service()->beginTransaction(databaseName, transactionContext);
+    return service()->createTransaction(databaseName, namedMutexRegistry, namedMutexLock, transactionContext);
 }
 
 
-TransactionInfo DatabaseServicesPool::endTransaction(TransactionId id,
-                                                     bool abort) {
+TransactionInfo DatabaseServicesPool::updateTransaction(TransactionId id,
+                                                        TransactionInfo::State newState) {
     ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
-    return service()->endTransaction(id, abort);
+    return service()->updateTransaction(id, newState);
 }
 
 
@@ -425,6 +430,13 @@ TransactionInfo DatabaseServicesPool::updateTransaction(TransactionId id,
                                                         json const& transactionContext) {
     ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
     return service()->updateTransaction(id, transactionContext);
+}
+
+
+TransactionInfo DatabaseServicesPool::updateTransaction(TransactionId id,
+                                                        unordered_map<string, json> const& events) {
+    ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
+    return service()->updateTransaction(id, events);
 }
 
 

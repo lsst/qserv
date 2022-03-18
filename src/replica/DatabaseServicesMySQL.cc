@@ -35,6 +35,7 @@
 #include "replica/Configuration.h"
 #include "replica/Controller.h"
 #include "replica/Job.h"
+#include "replica/NamedMutexRegistry.h"
 #include "replica/Performance.h"
 #include "replica/QservMgtRequest.h"
 #include "replica/ReplicaInfo.h"
@@ -1553,7 +1554,7 @@ list<JobInfo> DatabaseServicesMySQL::_jobs(
 
 
 TransactionInfo DatabaseServicesMySQL::transaction(
-        TransactionId id, bool includeContext) {
+        TransactionId id, bool includeContext, bool includeLog) {
 
     string const context = _context(__func__) + "id="  + to_string(id) + " ";
     LOGS(_log, LOG_LVL_DEBUG, context);
@@ -1563,7 +1564,7 @@ TransactionInfo DatabaseServicesMySQL::transaction(
     try {
         auto const predicate = _conn->sqlEqual("id", id);
         _conn->executeInOwnTransaction([&](decltype(_conn) conn) {
-            info = _findTransactionImpl(lock, predicate, includeContext);
+            info = _findTransactionImpl(lock, predicate, includeContext, includeLog);
         });
     } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context << "failed, exception: " << ex.what());
@@ -1574,22 +1575,25 @@ TransactionInfo DatabaseServicesMySQL::transaction(
 }
 
 
-vector<TransactionInfo> DatabaseServicesMySQL::transactions(string const& databaseName,
-                                                            bool includeContext) {
+vector<TransactionInfo> DatabaseServicesMySQL::transactions(
+        string const& databaseName, bool includeContext, bool includeLog) {
     auto const predicate = databaseName.empty() ? "" : _conn->sqlEqual("database", databaseName);
-    return _transactions(predicate, includeContext);
+    return _transactions(predicate, includeContext, includeLog);
 }
 
 
-vector<TransactionInfo> DatabaseServicesMySQL::transactions(TransactionInfo::State state,
-                                                            bool includeContext) {
+vector<TransactionInfo> DatabaseServicesMySQL::transactions(
+        TransactionInfo::State state, bool includeContext, bool includeLog) {
     auto const predicate = _conn->sqlEqual("state", TransactionInfo::state2string(state));
-    return _transactions(predicate, includeContext);
+    return _transactions(predicate, includeContext, includeLog);
 }
 
 
-TransactionInfo DatabaseServicesMySQL::beginTransaction(
-        string const& databaseName, json const& transactionContext) {
+TransactionInfo DatabaseServicesMySQL::createTransaction(
+        string const& databaseName,
+        NamedMutexRegistry& namedMutexRegistry,
+        unique_ptr<util::Lock>& namedMutexLock,
+        json const& transactionContext) {
 
     string const context = _context(__func__) + "database="  + databaseName + " ";
     LOGS(_log, LOG_LVL_DEBUG, context);
@@ -1601,8 +1605,10 @@ TransactionInfo DatabaseServicesMySQL::beginTransaction(
     util::Lock lock(_mtx, context);
     
     uint64_t const beginTime = PerformanceUtils::now();
-    uint64_t const endTime   = 0;
-    string   const state     = "STARTED";
+    uint64_t const startTime = 0;
+    uint64_t const transitionTime = 0;
+    uint64_t const endTime = 0;
+    string   const state = "IS_STARTING";
 
     TransactionInfo info;
     try {
@@ -1610,9 +1616,12 @@ TransactionInfo DatabaseServicesMySQL::beginTransaction(
         _conn->executeInOwnTransaction([&](decltype(_conn) conn) {
             conn->executeInsertQuery(
                     "transaction", database::mysql::Keyword::SQL_NULL,
-                    databaseName, state, beginTime, endTime, transactionContext.dump());
+                    databaseName, state, beginTime, startTime, endTime, transitionTime,
+                    transactionContext.dump());
             bool const includeContext = true;
-            info = _findTransactionImpl(lock, predicate, includeContext);
+            bool const includeLog = true;
+            info = _findTransactionImpl(lock, predicate, includeContext, includeLog);
+            namedMutexLock.reset(new util::Lock(namedMutexRegistry.get("transaction:" + to_string(info.id))));
         });
     } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context << "failed, exception: " << ex.what());
@@ -1623,32 +1632,48 @@ TransactionInfo DatabaseServicesMySQL::beginTransaction(
 }
 
 
-TransactionInfo DatabaseServicesMySQL::endTransaction(
-        TransactionId id, bool abort) {
+TransactionInfo DatabaseServicesMySQL::updateTransaction(
+        TransactionId id, TransactionInfo::State newState) {
 
-    string const context = _context(__func__) +
-            "id="  + to_string(id) + " abort=" + string(abort ? "true" : "false") + " ";
+    string const context =_context(__func__) + "id="  + to_string(id) + " ";
     LOGS(_log, LOG_LVL_DEBUG, context);
 
+    // Figure out which timestamp needs to be updated along with the requested
+    // state transition.
+    string timeStampName;
+    switch (newState) {
+        case TransactionInfo::State::STARTED:
+            timeStampName = "start_time";
+            break;
+        case TransactionInfo::State::IS_FINISHING:
+        case TransactionInfo::State::IS_ABORTING:
+            timeStampName = "transition_time";
+            break;
+        default:
+            timeStampName = "end_time";
+            break;
+    }
+
     util::Lock lock(_mtx, context);
-
-    uint64_t const endTime = PerformanceUtils::now();
-    string   const stateStr = abort ? "ABORTED" : "FINISHED";
-
     TransactionInfo info;
     try {
         auto const predicate = _conn->sqlEqual("id", id);
         _conn->executeInOwnTransaction([&](decltype(_conn) conn) {
-            bool const includeContext = true;
-            info = _findTransactionImpl(lock, predicate, includeContext);
-            if (info.endTime != 0) {
-                throw logic_error(context + "transaction " + to_string(id) + " is not active");
+            bool includeContext = false;
+            bool includeLog = false;
+            info = _findTransactionImpl(lock, predicate, includeContext, includeLog);
+            if (!TransactionInfo::stateTransitionIsAllowed(info.state, newState)) {
+                throw invalid_argument(
+                        context + "state transition from " + TransactionInfo::state2string(newState)
+                        + "into " + TransactionInfo::state2string(newState) + " is not allowed.");
             }
             conn->executeSimpleUpdateQuery(
-                    "transaction", predicate, make_pair("state", stateStr),
-                    make_pair("end_time", endTime));
-            info.state = TransactionInfo::string2state(stateStr);
-            info.endTime = endTime;
+                    "transaction", predicate,
+                    make_pair("state", TransactionInfo::state2string(newState)),
+                    make_pair(timeStampName, PerformanceUtils::now()));
+            includeContext = true;
+            includeLog = true;
+            info = _findTransactionImpl(lock, predicate, includeContext, includeLog);
         });
     } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context << "failed, exception: " << ex.what());
@@ -1662,7 +1687,7 @@ TransactionInfo DatabaseServicesMySQL::endTransaction(
 TransactionInfo DatabaseServicesMySQL::updateTransaction(
         TransactionId id, json const& transactionContext) {
 
-    string const context = _context(__func__) + "id="  + to_string(id) + " ";
+    string const context = _context(__func__) + "id="  + to_string(id) + " " ;
     LOGS(_log, LOG_LVL_DEBUG, context);
 
     if (!transactionContext.is_object()) {
@@ -1674,11 +1699,50 @@ TransactionInfo DatabaseServicesMySQL::updateTransaction(
     try {
         auto const predicate = _conn->sqlEqual("id", id);
         _conn->executeInOwnTransaction([&](decltype(_conn) conn) {
-            bool const includeContext = false;
-            info = _findTransactionImpl(lock, predicate, includeContext);
+            bool includeContext = false;
+            bool includeLog = false;
+            info = _findTransactionImpl(lock, predicate, includeContext, includeLog);
             conn->executeSimpleUpdateQuery(
                     "transaction", predicate, make_pair("context", transactionContext.dump()));
-            info.context = transactionContext;
+            includeContext = true;
+            includeLog = true;
+            info = _findTransactionImpl(lock, predicate, includeContext, includeLog);
+        });
+    } catch (exception const& ex) {
+        LOGS(_log, LOG_LVL_ERROR, context << "failed, exception: " << ex.what());
+        throw;
+    }
+    LOGS(_log, LOG_LVL_DEBUG, context + "** DONE **");
+    return info;
+}
+
+
+TransactionInfo DatabaseServicesMySQL::updateTransaction(
+        TransactionId id, unordered_map<string, json> const& events) {
+
+    string const context = _context(__func__) + "id="  + to_string(id) + " " ;
+    LOGS(_log, LOG_LVL_DEBUG, context);
+
+    util::Lock lock(_mtx, context);
+    TransactionInfo info;
+    try {
+        auto const predicate = _conn->sqlEqual("id", id);
+        _conn->executeInOwnTransaction([&](decltype(_conn) conn) {
+            bool includeContext = false;
+            bool includeLog = false;
+            info = _findTransactionImpl(lock, predicate, includeContext, includeLog);
+            for (auto&& elem: events) {
+                string const& eventName = elem.first;
+                json const& eventData = elem.second;
+                uint64_t const eventTime = PerformanceUtils::now();
+                conn->executeInsertQuery(
+                        "transaction_log", database::mysql::Keyword::SQL_NULL,
+                        info.id, TransactionInfo::state2string(info.state),
+                        eventTime, eventName, eventData.dump());
+            }
+            includeContext = true;
+            includeLog = true;
+            info = _findTransactionImpl(lock, predicate, includeContext, includeLog);
         });
     } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context << "failed, exception: " << ex.what());
@@ -1690,7 +1754,7 @@ TransactionInfo DatabaseServicesMySQL::updateTransaction(
 
 
 vector<TransactionInfo> DatabaseServicesMySQL::_transactions(
-        string const& predicate, bool includeContext) {
+        string const& predicate, bool includeContext, bool includeLog) {
 
     string const context = _context(__func__) + "predicate="  + predicate + " ";
     LOGS(_log, LOG_LVL_DEBUG, context);
@@ -1699,7 +1763,7 @@ vector<TransactionInfo> DatabaseServicesMySQL::_transactions(
     vector<TransactionInfo> collection;
     try {
         _conn->executeInOwnTransaction([&](decltype(_conn) conn) {
-            collection = _findTransactionsImpl(lock, predicate, includeContext);
+            collection = _findTransactionsImpl(lock, predicate, includeContext, includeLog);
         });
     } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context << "failed, exception: " << ex.what());
@@ -1711,10 +1775,10 @@ vector<TransactionInfo> DatabaseServicesMySQL::_transactions(
 
 
 TransactionInfo DatabaseServicesMySQL::_findTransactionImpl(
-    util::Lock const& lock, string const& predicate, bool includeContext) {
+    util::Lock const& lock, string const& predicate, bool includeContext, bool includeLog) {
 
     string const context = _context(__func__) + "predicate=" + predicate + " ";
-    auto   const collection = _findTransactionsImpl(lock, predicate, includeContext);
+    auto   const collection = _findTransactionsImpl(lock, predicate, includeContext, includeLog);
     size_t const num = collection.size();
 
     if (num == 1) return collection[0];
@@ -1724,7 +1788,7 @@ TransactionInfo DatabaseServicesMySQL::_findTransactionImpl(
 
 
 vector<TransactionInfo> DatabaseServicesMySQL::_findTransactionsImpl(
-        util::Lock const& lock, string const& predicate, bool includeContext) {
+        util::Lock const& lock, string const& predicate, bool includeContext, bool includeLog) {
 
     string const context = _context(__func__) + "predicate=" + predicate + " ";
     LOGS(_log, LOG_LVL_DEBUG, context);
@@ -1736,6 +1800,8 @@ vector<TransactionInfo> DatabaseServicesMySQL::_findTransactionsImpl(
         _conn->sqlId("database") + "," +
         _conn->sqlId("state") + "," +
         _conn->sqlId("begin_time") + "," +
+        _conn->sqlId("start_time") + "," +
+        _conn->sqlId("transition_time") + "," +
         _conn->sqlId("end_time");
 
     string const query =
@@ -1748,13 +1814,15 @@ vector<TransactionInfo> DatabaseServicesMySQL::_findTransactionsImpl(
         database::mysql::Row row;
         while (_conn->next(row)) {
             TransactionInfo info;
-            row.get("id",         info.id);
-            row.get("database",   info.database);
+            row.get("id", info.id);
+            row.get("database", info.database);
             string stateStr;
-            row.get("state",      stateStr);
+            row.get("state", stateStr);
             info.state = TransactionInfo::string2state(stateStr);
             row.get("begin_time", info.beginTime);
-            row.get("end_time",   info.endTime);
+            row.get("start_time", info.startTime);
+            row.get("transition_time", info.transitionTime);
+            row.get("end_time", info.endTime);
             if (includeContext) {
                 string contextStr;
                 row.get("context", contextStr);
@@ -1763,6 +1831,31 @@ vector<TransactionInfo> DatabaseServicesMySQL::_findTransactionsImpl(
                 }
             }
             collection.push_back(info);
+        }
+    }
+    if (includeLog) {
+        for (auto& info: collection) {
+            string const query =
+                    "SELECT * FROM " + _conn->sqlId("transaction_log") +
+                    " WHERE " + _conn->sqlEqual("transaction_id", info.id) +
+                    " ORDER BY time ASC";
+            _conn->execute(query);
+            if (_conn->hasResult()) {
+                database::mysql::Row row;
+                while (_conn->next(row)) {
+                    TransactionInfo::Event event;
+                    row.get("id", event.id);
+                    string transactionStateStr;
+                    row.get("transaction_state", transactionStateStr);
+                    event.transactionState = TransactionInfo::string2state(transactionStateStr);
+                    row.get("name", event.name);
+                    row.get("time", event.time);
+                    string data;
+                    row.get("data", data);
+                    if (!data.empty()) event.data = json::parse(data);
+                    info.log.push_back(move(event));
+                }
+            }
         }
     }
     return collection;
@@ -2476,7 +2569,7 @@ void DatabaseServicesMySQL::deleteTableRowStats(
 }
 
 
-string DatabaseServicesMySQL::_context(string const& func) const {
+string DatabaseServicesMySQL::_context(string const& func) {
     return "DatabaseServicesMySQL::" + func + " ";
 }
 

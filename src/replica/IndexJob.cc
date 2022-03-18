@@ -44,6 +44,7 @@
 
 using namespace std;
 namespace fs = boost::filesystem;
+using json = nlohmann::json;
 
 namespace {
 
@@ -54,6 +55,22 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.IndexJob");
 namespace lsst {
 namespace qserv {
 namespace replica {
+
+json IndexJobResult::toJson() const {
+    json result;
+    for (auto&& workerItr: error) {
+        string const& worker = workerItr.first;
+        result[worker] = json::object();
+        json& workerJson = result[worker];
+        for (auto&& chunksItr: workerItr.second) {
+            unsigned int chunk = chunksItr.first;
+            string const& errorMessage = chunksItr.second;
+            workerJson[chunk] = errorMessage;
+        }
+    }
+    return result;
+}
+
 
 string IndexJob::typeName() { return "IndexJob"; }
 

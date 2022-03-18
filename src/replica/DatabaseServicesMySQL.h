@@ -182,22 +182,30 @@ public:
     // Operations with super-transactions
 
     TransactionInfo transaction(TransactionId id,
-                                bool includeContext=false) final;
+                                bool includeContext=false,
+                                bool includeLog=false) final;
 
     std::vector<TransactionInfo> transactions(std::string const& databaseName=std::string(),
-                                              bool includeContext=false) final;
+                                              bool includeContext=false,
+                                              bool includeLog=false) final;
 
     std::vector<TransactionInfo> transactions(TransactionInfo::State state,
-                                              bool includeContext=false) final;
+                                              bool includeContext=false,
+                                              bool includeLog=false) final;
 
-    TransactionInfo beginTransaction(std::string const& databaseName,
-                                     nlohmann::json const& transactionContext=nlohmann::json::object()) final;
+    TransactionInfo createTransaction(std::string const& databaseName,
+                                      NamedMutexRegistry& namedMutexRegistry,
+                                      std::unique_ptr<util::Lock>& namedMutexLock,
+                                      nlohmann::json const& transactionContext=nlohmann::json::object()) final;
 
-    TransactionInfo endTransaction(TransactionId id,
-                                   bool abort=false) final;
+    TransactionInfo updateTransaction(TransactionId id,
+                                      TransactionInfo::State newState) final;
 
     TransactionInfo updateTransaction(TransactionId id,
                                       nlohmann::json const& transactionContext=nlohmann::json::object()) final;
+
+    TransactionInfo updateTransaction(TransactionId id,
+                                      std::unordered_map<std::string, nlohmann::json> const& events) final;
 
     TransactionContribInfo transactionContrib(unsigned int id) final;
 
@@ -253,7 +261,7 @@ public:
 
 private:
 
-    std::string _context(std::string const& func=std::string()) const;
+    static std::string _context(std::string const& func=std::string());
 
     /**
      * Thread unsafe implementation of the corresponding public method.
@@ -401,15 +409,18 @@ private:
                              size_t maxEntries);
 
     std::vector<TransactionInfo> _transactions(std::string const& predicate,
-                                               bool includeContext);
+                                               bool includeContext,
+                                               bool includeLog);
 
     TransactionInfo _findTransactionImpl(util::Lock const& lock,
                                          std::string const& predicate,
-                                         bool includeContext);
+                                         bool includeContext,
+                                         bool includeLog);
 
     std::vector<TransactionInfo> _findTransactionsImpl(util::Lock const& lock,
                                                        std::string const& predicate,
-                                                       bool includeContext);
+                                                       bool includeContext,
+                                                       bool includeLog);
 
     std::vector<TransactionContribInfo> _transactionContribs(std::string const& predicate);
 

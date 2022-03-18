@@ -218,6 +218,9 @@ public:
 /// The type for the super-transaction identifiers
 typedef uint32_t TransactionId;
 
+/// The type for event identifiers of the the super-transactions.
+typedef uint32_t  TransactionEventId;
+
 /**
  * Class SqlRequestParams represents parameters of the SQL requests.
  */

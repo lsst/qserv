@@ -32,6 +32,9 @@
 #include <tuple>
 #include <vector>
 
+// Third party headers
+#include "nlohmann/json.hpp"
+
 // Qserv headers
 #include "replica/Common.h"
 #include "replica/Job.h"
@@ -60,6 +63,8 @@ struct IndexJobResult {
     std::map<std::string,           // worker
              std::map<unsigned int, // chunk
                       std::string>> error;
+    /// @return JSON representation of the object as {<worker>:{<chunk>:<error>}}
+    nlohmann::json toJson() const;
 };
 
 /**

@@ -30,6 +30,7 @@
 #include <stdexcept>
 #include <string>
 #include <vector>
+#include <unordered_map>
 
 // Third party headers
 #include "nlohmann/json.hpp"
@@ -39,6 +40,7 @@
 #include "replica/Csv.h"
 #include "replica/Job.h"
 #include "replica/ReplicaInfo.h"
+#include "util/Mutex.h"
 
 // Forward declarations
 namespace lsst {
@@ -46,6 +48,7 @@ namespace qserv {
 namespace replica {
     class Configuration;
     class ControllerIdentity;
+    class NamedMutexRegistry;
     class QservMgtRequest;
     class Performance;
     class Request;
@@ -198,20 +201,35 @@ public:
 
 
 /**
- * Class TransactionInfo encapsulates a persistent state of
- * the "super-transaction" objects fetched from the database.
+ * Class TransactionInfo encapsulates a persistent state of the "super-transaction"
+ * objects fetched from the database.
+ * @note The default constructor will put objects of the class into the non-valid
+ *   state. Objects retrieved from the database are all valid. The validity
+ *   of the transaction objects can be verified by calling class method 'isValid()'.
  */
 class TransactionInfo {
 public:
-    /// Allowed states for the transaction
-    enum State {
-        STARTED,
-        FINISHED,
-        ABORTED
+    /// Allowed states for the transaction.
+    /// See the implementation of method TransactionInfo::stateTransitionIsAllowed
+    /// for possible state transitions in this FSA.
+    enum class State: int {
+        IS_STARTING = 0,    ///< the initial (and transitional) state, next states: (START, START_FAILED)
+        STARTED,            ///< the active state allowing data ingests, next states: (IS_FINISHING, IS_ABORTING)
+        IS_FINISHING,       ///< the transitonal state, next states: (FINISHED, FINISH_FAILED, IS_ABORTING)
+        IS_ABORTING,        ///< the transitonal state, next states: (ABORTED, ABORT_FAILED)
+        FINISHED,           ///< the final successfull) state
+        ABORTED,            ///< the final unsuccessfull state
+        START_FAILED,       ///< the failed (inactive) state, next states: (IS_ABORTING)
+        FINISH_FAILED,      ///< the failed (inactive) state, next states: (IS_ABORTING)
+        ABORT_FAILED        ///< the failed (inactive) state, next states: (IS_ABORTING)
     };
 
     static State string2state(std::string const& str);
     static std::string state2string(State state);
+
+    /// @brief Verify if the proposed state transition is possible.
+    /// @return 'true' if the transition is allowed.
+    static bool stateTransitionIsAllowed(State currentState, State newState);
 
     /// Its unique identifier (the default value represents a non valid transaction)
     TransactionId id = std::numeric_limits<TransactionId>::max();
@@ -219,30 +237,74 @@ public:
     /// The name of a database associated with the transaction
     std::string database;
 
-    State state = State::STARTED;
+    /// The current state of the transaction
+    State state = State::IS_STARTING;
 
-    uint64_t beginTime = 0; /// The timestamp (milliseconds) when it started
-    uint64_t endTime = 0;   /// The timestamp (milliseconds) when it was committed/aborted
+    uint64_t beginTime = 0;         ///< The timestamp (milliseconds) when it was created (IS_STARTING).
+    uint64_t startTime = 0;         ///< The timestamp (milliseconds) when it started (STARTED).
+    uint64_t transitionTime = 0;    ///< The timestamp (milliseconds) when a transition
+                                    ///  commit (IS_FINISHING) / abort (IS_ABORTING) was initiated.
+    uint64_t endTime = 0;           ///< The timestamp (milliseconds) is set after transitioning
+                                    ///  into the final states (FINISHED, ABORTED) or the failed states
+                                    ///  (START_FAILED, FINISH_FAILED, ABORT_FAILED). The timestamp is
+                                    ///  reset to 0 when the transaction is moved from either
+                                    ///  of the failed states into the transitional state IS_ABORTING.
+
+    /// @return 'true' if the object is in the valid state (was retrieved from the database).
+    bool isValid() const;
 
     /// (Optional) An arbitrary JSON object explaining the transaction.
     /// Normally this could be used later (during transaction abort/commit time, or for general
     /// bookkeeping/ data provenance purposes).
     /// The content of this attribute gets populated if a non-empty string was stored in
-    /// the database when staring/ending transaction (methods 'beginTransaction', 'endTransaction')
-    /// or updating the context (method 'updateTransaction') and if the corresponding
-    /// transaction lookup method was invoked with the optional flag set as 'includeContext=true'.
-    /// @note methods 'beginTranaction', 'endTransaction', and 'updateTransaction' always
+    /// the database when staring/ending transaction (method 'createTransaction'), ending
+    /// it (method 'updateTransaction') updating its context (method 'updateTransaction') and
+    /// if the corresponding transaction lookup method was invoked with the optional flag set
+    /// as 'includeContext=true'.
+    /// @note methods 'createTransaction' and 'updateTransaction' always
     ///   populates this attribute. Methods 'transaction' and 'transactions' do it only on demand,
     ///   of the corresponding flag passed into those methods is set. Keep in mind that a value of
     ///   the context attribute could be as large as 16 MB as defined by MySQL type 'MEDIUMBLOB'.
     ///   Therefore do not pull the context unless it's strictly necessary.
     ///
-    /// @see method DatabaseServices::beginTransaction
-    /// @see method DatabaseServices::endTransaction
+    /// @see method DatabaseServices::createTransaction
     /// @see method DatabaseServices::updateTransaction
     /// @see DatabaseServices::transaction
     /// @see DatabaseServices::transactions
-   nlohmann::json context = nlohmann::json::object();
+    nlohmann::json context = nlohmann::json::object();
+
+    /**
+     * Class represents events logged in the lifetime of a transaction.
+     */
+    class Event {
+    public:
+        /// The unique identifier of the event
+        TransactionEventId id = std::numeric_limits<TransactionEventId>::max();
+
+        /// A state of a transaction when the event was recorded 
+        State transactionState = State::IS_STARTING;
+
+        /// The name of the event
+        std::string name;
+
+        /// The timestamp (milliseconds) when the event was recorded.
+        uint64_t time = 0;
+
+        /// The optional data (parameters, context) of the event. The content
+        /// of the field depends on the event.
+        nlohmann::json data = nlohmann::json::object();
+
+        /// @return JSON representation of the object
+        nlohmann::json toJson() const;
+    };
+
+    /// (Optional) A collection of events recorded in the lifetime of the transaction.
+    /// The log gets populated with event recording actions taken over data at various stages,
+    /// Events are recorded and state transitions and while the transaction is within some
+    /// state.
+    /// The collection is pulled from the database when the corresponding methods are callled
+    /// with flag 'includeLog=true'.
+    std::list<Event> log;
 
     /// @return JSON representation of the object
     nlohmann::json toJson() const;
@@ -952,25 +1014,39 @@ public:
 
     /// @param id the unique identifier of a transaction
     /// @param includeContext (optional) flag that (if 'true') would pull the transacion context
+    /// @param includeLog (optional) flag that (if 'true') would pull the transacion log (events)
     /// @return a description of a super-transaction
     /// @throws DatabaseServicesNotFound if no such transaction found
     virtual TransactionInfo transaction(TransactionId id,
-                                        bool includeContext=false) = 0;
+                                        bool includeContext=false,
+                                        bool includeLog=false) = 0;
 
     /// @param databaseName (optional) the name of a database
     /// @param includeContext (optional) flag that (if 'true') would pull the transacion context
+    /// @param includeLog (optional) flag that (if 'true') would pull the transacion log (events)
     /// @return a collection of super-transactions (all of them or for the specified database only)
     /// @throws std::invalid_argument if database name is not valid
     virtual std::vector<TransactionInfo> transactions(std::string const& databaseName=std::string(),
-                                                      bool includeContext=false) = 0;
+                                                      bool includeContext=false,
+                                                      bool includeLog=false) = 0;
 
     /// @param state the desired state of the transactions
     /// @param includeContext (optional) flag that (if 'true') would pull the transacion context
+    /// @param includeLog (optional) flag that (if 'true') would pull the transacion log (events)
     /// @return a collection of super-transactions (all of them or for the specified database only)
     virtual std::vector<TransactionInfo> transactions(TransactionInfo::State state,
-                                                      bool includeContext=false) = 0;
+                                                      bool includeContext=false,
+                                                      bool includeLog=false) = 0;
 
     /// @param databaseName the name of a database
+    /// @param namedMutexRegistry the registry for acquiring named mutex to be locked by the method
+    /// @param namedMutexLock the lock on the named mutex initialed upon creation of the transaction
+    ///   object in the database and (which is important) before committing the transactions.
+    ///   The atomicity of transaction creation and locking builds a foundation for implementing
+    ///   race-free transaction management in the Controller. The name of the locked mutex is
+    ///   based on a unique identifier of the created transaction "transaction:<id>", where "<id>"
+    ///   is a placeholder for the identifier. Other transaction management operations are expected
+    ///   to acquire a lock on this mutex before attempting to modify a state of the transaction.
     /// @param transactionContext (optional) a user-define context explaining the transaction.
     ///   Note that a serialized value of this attribute could be as large as 16 MB as defined by
     ///   MySQL type 'MEDIUMBLOB', Longer strings will be automatically truncated.
@@ -978,18 +1054,27 @@ public:
     /// @throws std::invalid_argument if database name is not valid, or if a value
     ///   of parameter 'transactionContext' is not a valid JSON object.
     /// @throws std::logic_error if super-transactions are not allowed for the database
-    virtual TransactionInfo beginTransaction(std::string const& databaseName,
-                                             nlohmann::json const& transactionContext=nlohmann::json::object()) = 0;
+    /// @see ServiceProvider::getNamedMutex
+    virtual TransactionInfo createTransaction(std::string const& databaseName,
+                                              NamedMutexRegistry& namedMutexRegistry,
+                                              std::unique_ptr<util::Lock>& namedMutexLock,
+                                              nlohmann::json const& transactionContext=nlohmann::json::object()) = 0;
 
+    /// @brief Update the state of a transaction
     /// @param id the unique identifier of a transaction
-    /// @param abort (optional) flag indicating if the transaction is being committed or aborted
-    /// @return an updated descriptor of the (committed or aborted) super-transaction 
+    /// @param newState a new state to turn the transaction into. Note that not all possible
+    ///   states are allowed for a transaction in the given state. See details on the transaction's
+    ///   FSA in class TransactionInfo.
+    /// @return an updated descriptor of the transactions that includes the requested modification
     /// @throws DatabaseServicesNotFound if no such transaction found
-    /// @throws std::logic_error if the transaction has already ended
-    virtual TransactionInfo endTransaction(TransactionId id,
-                                           bool abort=false) = 0;
+    /// @throws std::logic_error for values of the newState parameters that aren't allowed
+    ///   in the current state of the transaction
+    virtual TransactionInfo updateTransaction(TransactionId id,
+                                              TransactionInfo::State newState) = 0;
 
-    /// @param a user-defined context explaining the transaction
+    /// @brief Update or reset the context attribute of a transaction
+    /// @param id the unique identifier of a transaction
+    /// @param transactionContexta user-defined context explaining the transaction
     /// @return an updated descriptor of the transactions that includes the requested modification
     /// @throws DatabaseServicesNotFound if no such transaction found
     /// @throws std::invalid_argument if a value of parameter 'transactionContext'
@@ -998,6 +1083,32 @@ public:
     /// @note the empty input object will reset the context in the database
     virtual TransactionInfo updateTransaction(TransactionId id,
                                               nlohmann::json const& transactionContext=nlohmann::json::object()) = 0;
+
+    /// @brief Log life-time events for a transaction
+    /// @param id the unique identifier of a transaction
+    /// @param events life-time events to be recorded for the transaction, where the key
+    ///   of the dictionary represents the name of an event, and its value is the data
+    ///   representing optional values of the event. The data object can be empty.
+    /// @return an updated descriptor of the transactions that includes the requested modification
+    /// @throws DatabaseServicesNotFound if no such transaction found
+    /// @throws std::invalid_argument for incorrect values of the input parameters
+    virtual TransactionInfo updateTransaction(TransactionId id,
+                                              std::unordered_map<std::string, nlohmann::json> const& events) = 0;
+
+    /// @brief The convenience method for logging single events
+    /// @param id the unique identifier of a transaction
+    /// @param eventName the name of a life-time events to be recorded
+    /// @param eventData the optional data describing the event
+    /// @return an updated descriptor of the transactions that includes the requested modification
+    /// @throws DatabaseServicesNotFound if no such transaction found
+    /// @throws std::invalid_argument for incorrect values of the input parameters
+    TransactionInfo updateTransaction(TransactionId id,
+                                      std::string const& eventName,
+                                      nlohmann::json const& eventData=nlohmann::json::object()) {
+        return this->updateTransaction(id, std::unordered_map<std::string, nlohmann::json>({
+            {eventName, eventData}
+        }));
+    }
 
     /// @return the desired contribution into a super-transaction (if found)
     /// @param id a unique identifier of the contribution

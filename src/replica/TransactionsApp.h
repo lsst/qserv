@@ -24,6 +24,7 @@
 // System headers
 #include <cstdint>
 #include <string>
+#include <vector>
 
 // Qserv headers
 #include "replica/Application.h"
@@ -72,16 +73,14 @@ private:
     void _print(TransactionInfo const& info) const;
     void _print(std::vector<TransactionInfo> const& collection) const;
 
+    std::string _operation;     ///< An operation over transactions
+    std::string _databaseName;  ///< The name of a database associated with a transaction(s))
 
-    std::string _operation;     /// An operation over transactions
-    std::string _databaseName;  /// The name of a database associated with a transaction(s))
+    TransactionId _id = 0;      ///< A unique identifier of an existing transaction
+    std::string _state;         ///< The new state of an existing transaction. 
 
-    TransactionId _id = 0;      /// A unique identifier of an existing transaction
-
-    bool _abort = false;        /// Abort a transaction rather than finish it normally
-
-    size_t _sqlPageSize = 20;   /// The number of rows per page printed in a table of
-                                /// transactions (0 means no pages)
+    size_t _sqlPageSize = 20;   ///< The number of rows per page printed in a table of
+                                ///  transactions (0 means no pages)
 };
 
 }}} // namespace lsst::qserv::replica
