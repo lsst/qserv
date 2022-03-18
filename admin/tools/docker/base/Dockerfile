@@ -181,6 +181,7 @@ RUN dnf install -y 'dnf-command(config-manager)' \
         lua5.1 \
         mariadb-connector-c \
         openssl \
+        procps-ng \
         protobuf \
         python38 \
         tree \
