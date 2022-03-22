@@ -57,7 +57,8 @@ map<string, set<string>> ConfigTestData::parameters() {
                 "health-monitor-priority-level",
                 "ingest-priority-level",
                 "catalog-management-priority-level",
-                "auto-register-workers"
+                "auto-register-workers",
+                "ingest-job-monitor-ival-sec"
             }
         },
         {   "database",
@@ -135,7 +136,8 @@ json ConfigTestData::data() {
         {"health-monitor-priority-level", 2},
         {"ingest-priority-level", 3},
         {"catalog-management-priority-level", 4},
-        {"auto-register-workers", 1}
+        {"auto-register-workers", 1},
+        {"ingest-job-monitor-ival-sec", 5}
     });
     generalObj["database"] = json::object({
         {"host", "localhost"},

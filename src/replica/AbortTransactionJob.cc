@@ -145,8 +145,8 @@ void AbortTransactionJob::startImpl(util::Lock const& lock) {
         finish(lock, ExtendedState::CONFIG_ERROR);
         return;
     }
-    if (transactionInfo.state != TransactionInfo::ABORTED) {
-        LOGS(_log, LOG_LVL_ERROR, context_ << "transaction " << transactionInfo.id << " is not ABORTED");
+    if (transactionInfo.state != TransactionInfo::State::IS_ABORTING) {
+        LOGS(_log, LOG_LVL_ERROR, context_ << "transaction " << transactionInfo.id << " is not IS_ABORTING");
         finish(lock, ExtendedState::CONFIG_ERROR);
         return;
     }

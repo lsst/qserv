@@ -63,6 +63,7 @@ public:
      * @throws std::invalid_argument for unknown values of parameter 'subModuleName'
      */
     static void process(Controller::Ptr const& controller,
+                        NamedMutexRegistry& transactionMutexRegistry,
                         std::string const& taskName,
                         HttpProcessorConfig const& processorConfig,
                         qhttp::Request::Ptr const& req,
@@ -81,6 +82,7 @@ protected:
 
 private:
     HttpIngestTransModule(Controller::Ptr const& controller,
+                          NamedMutexRegistry& transactionMutexRegistry,
                           std::string const& taskName,
                           HttpProcessorConfig const& processorConfig,
                           qhttp::Request::Ptr const& req,
@@ -97,6 +99,19 @@ private:
 
     /// Commit or rollback a super-transaction
     nlohmann::json _endTransaction();
+
+    /**
+     * @brief Log controller events for the transaction management operations.
+     * 
+     * @param operation The name of the operation.
+     * @param status The completion status of the operation.
+     * @param id The unique identifier of the transaction affected by the operation.
+     * @param database The name of a database associated with the transaction.
+     * @param msg The optional error message in case if the operation failed.
+     */
+    void _logTransactionMgtEvent(std::string const& operation, std::string const& status,
+                                 TransactionId id, std::string const& database, 
+                                 std::string const& msg=std::string()) const;
 
     /**
      * Extend an existing "secondary index" table by adding a MySQL partition
@@ -129,6 +144,10 @@ private:
      */
     nlohmann::json _getTransactionContributions(TransactionInfo const& transactionInfo,
                                                 bool longContribFormat) const;
+
+    /// Named mutexes are used for acquiring exclusive transient locks on the transaction
+    /// management operations performed by the module.
+    NamedMutexRegistry& _transactionMutexRegistry;
 };
     
 }}} // namespace lsst::qserv::replica

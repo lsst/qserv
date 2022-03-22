@@ -403,7 +403,7 @@ void HttpProcessor::registerServices() {
             "GET", "/ingest/trans",
             [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
                 HttpIngestTransModule::process(
-                        self->controller(), self->name(), self->_processorConfig,
+                        self->controller(), self->_transactionMutexRegistry, self->name(), self->_processorConfig,
                         req, resp,
                         "TRANSACTIONS");
             }
@@ -412,7 +412,7 @@ void HttpProcessor::registerServices() {
             "GET", "/ingest/trans/:id",
             [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
                 HttpIngestTransModule::process(
-                        self->controller(), self->name(), self->_processorConfig,
+                        self->controller(), self->_transactionMutexRegistry, self->name(), self->_processorConfig,
                         req, resp,
                         "SELECT-TRANSACTION-BY-ID");
             }
@@ -421,7 +421,7 @@ void HttpProcessor::registerServices() {
             "POST", "/ingest/trans",
             [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
                 HttpIngestTransModule::process(
-                        self->controller(), self->name(), self->_processorConfig,
+                        self->controller(), self->_transactionMutexRegistry, self->name(), self->_processorConfig,
                         req, resp,
                         "BEGIN-TRANSACTION", HttpAuthType::REQUIRED);
             }
@@ -430,7 +430,7 @@ void HttpProcessor::registerServices() {
             "PUT", "/ingest/trans/:id",
             [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
                 HttpIngestTransModule::process(
-                        self->controller(), self->name(), self->_processorConfig,
+                        self->controller(), self->_transactionMutexRegistry, self->name(), self->_processorConfig,
                         req, resp,
                         "END-TRANSACTION", HttpAuthType::REQUIRED);
             }

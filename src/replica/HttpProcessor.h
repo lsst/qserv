@@ -31,6 +31,7 @@
 #include "replica/HealthMonitorTask.h"
 #include "replica/HttpProcessorConfig.h"
 #include "replica/HttpSvc.h"
+#include "replica/NamedMutexRegistry.h"
 
 // This header declarations
 namespace lsst {
@@ -82,6 +83,10 @@ private:
 
     HttpProcessorConfig const _processorConfig;
     HealthMonitorTask::Ptr const _healthMonitorTask;
+
+    /// Named mutexes are used for acquiring exclusive transient locks on the transaction
+    /// management operations performed by the relevant modules.
+    NamedMutexRegistry _transactionMutexRegistry;
 };
     
 }}} // namespace lsst::qserv::replica

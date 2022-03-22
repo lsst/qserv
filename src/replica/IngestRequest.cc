@@ -169,7 +169,7 @@ IngestRequest::Ptr IngestRequest::resume(
     }
 
     auto const trans = databaseServices->transaction(contrib.transactionId);
-    if (trans.state != TransactionInfo::STARTED) {
+    if (trans.state != TransactionInfo::State::STARTED) {
         contrib.status = TransactionContribInfo::Status::CREATE_FAILED;
         contrib.error = context + " transactionId=" + to_string(contrib.transactionId) + " is not active";
         contrib = databaseServices->updateTransactionContrib(contrib);
@@ -232,7 +232,7 @@ IngestRequest::IngestRequest(
     if (!config->databaseInfo(_contrib.database).hasTable(_contrib.table)) {
         throw invalid_argument(context + "no such table '" + _contrib.table + "' in database '" + _contrib.database + "'.");
     }
-    if (trans.state != TransactionInfo::STARTED) {
+    if (trans.state != TransactionInfo::State::STARTED) {
         _contrib.error = context + " transactionId=" + to_string(_contrib.transactionId) + " is not active";
         _contrib = databaseServices->createdTransactionContrib(_contrib, failed);
         throw logic_error(_contrib.error);

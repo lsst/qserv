@@ -185,6 +185,12 @@ json const ConfigurationSchema::_schemaJson = json::object({
                 " service. If the flag is set to 0 then new workers will be ignored."},
             {"empty-allowed", 1},
             {"default", 0}
+        }},
+        {"ingest-job-monitor-ival-sec", {
+            {"description",
+                "An interval (seconds) for monitoring progress of jobs submitted by the Controller during"
+                 " asynchronous ingest operations."},
+            {"default", 60}
         }}
     }},
     {"database", {

@@ -210,7 +210,7 @@ void IngestSvcConn::_handshakeReceived(boost::system::error_code const& ec,
 
     bool const failed = true;
 
-    if (trans.state != TransactionInfo::STARTED) {
+    if (trans.state != TransactionInfo::State::STARTED) {
         _contrib.error =
                 context + string(__func__) + " transactionId=" + to_string(_contrib.transactionId)
                 + " is not active";
