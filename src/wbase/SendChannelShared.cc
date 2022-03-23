@@ -52,14 +52,14 @@ atomic<uint64_t> SendChannelShared::scsSeqId{0};
 
 SendChannelShared::Ptr SendChannelShared::create(SendChannel::Ptr const& sendChannel,
                                                  wcontrol::TransmitMgr::Ptr const& transmitMgr,
-                                                 qmeta::CzarId const& czarId)  {
+                                                 qmeta::CzarId czarId)  {
     auto scs = shared_ptr<SendChannelShared>(new SendChannelShared(sendChannel, transmitMgr, czarId));
     return scs;
 }
 
 
 SendChannelShared::SendChannelShared(SendChannel::Ptr const& sendChannel,
-                   std::shared_ptr<wcontrol::TransmitMgr> const& transmitMgr, qmeta::CzarId const& czarId)
+                   std::shared_ptr<wcontrol::TransmitMgr> const& transmitMgr, qmeta::CzarId czarId)
          : _sendChannel(sendChannel), _transmitMgr(transmitMgr), _czarId(czarId), _scsId(scsSeqId++) {
      if (_sendChannel == nullptr) {
          throw util::Bug(ERR_LOC, "SendChannelShared constructor given nullptr");

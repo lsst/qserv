@@ -87,7 +87,7 @@ public:
 
     static Ptr create(SendChannel::Ptr const& sendChannel,
                       std::shared_ptr<wcontrol::TransmitMgr> const& transmitMgr,
-                      qmeta::CzarId const& czarId);
+                      qmeta::CzarId czarId);
 
     ~SendChannelShared();
 
@@ -185,7 +185,7 @@ private:
     /// Private constructor to protect shared pointer integrity.
     SendChannelShared(SendChannel::Ptr const& sendChannel,
                       std::shared_ptr<wcontrol::TransmitMgr> const& transmitMgr,
-                      qmeta::CzarId const& czarId);
+                      qmeta::CzarId czarId);
 
     /// Wrappers for SendChannel public functions that may need to be used
     /// by threads.
