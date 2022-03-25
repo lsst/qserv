@@ -24,15 +24,18 @@
 // System headers
 #include <atomic>
 #include <condition_variable>
+#include <chrono>
 #include <cstdint>
+#include <functional>
 #include <list>
 #include <memory>
 #include <ostream>
 #include <string>
 #include <vector>
 
-// THird party headers
+// Third party headers
 #include "boost/asio.hpp"
+#include "nlohmann/json.hpp"
 
 // Qserv headers
 #include "replica/AddReplicaQservMgtRequest.h"
@@ -53,6 +56,10 @@ namespace replica {
 class Job: public std::enable_shared_from_this<Job>  {
 public:
     typedef std::shared_ptr<Job> Ptr;
+
+    /// The function type for initiating periodic monitoring callbacks while waiting for
+    /// the completion of a job.
+    typedef std::function<void(Ptr const&)> WaitMonitorFunc;
 
     /// Primary public state of the job.
     enum State {
@@ -89,6 +96,15 @@ public:
     static std::string state2string(State state, ExtendedState extendedState) {
         return state2string(state) + "::" + state2string(extendedState);
     }
+
+    /// Structure Progress captures counters for the tasks completed by the jobs
+    /// adn the total number of tasks to be processed by the job.
+    struct Progress {
+        size_t complete = 0;
+        size_t total = 1;
+        /// @return JSON representation of the object
+        nlohmann::json toJson() const;
+    };
 
     Job() = delete;
     Job(Job const&) = delete;
@@ -137,8 +153,29 @@ public:
      */
     void start();
 
+    /**
+     * @brief Monitor progress of a job.
+     * The method returns a simple object containing two counters - the number of tasks
+     * completed (regardless of the completion status) by the jobs, and the total number
+     * of tasks to be launched by the jobs. The default implementation will return
+     * (0,1) for a job that's still in progress, and (1,1) for a job that's finished.
+     * @return Progress the job progress counters.
+     */
+    virtual Progress progress() const;
+
     /// Wait for the completion of the job.
     void wait();
+
+    /**
+     * @brief Wait for the completion of a job with the monitoring capability.
+     * Periodic callbacks will be made at an interval specified by a caller while waiting
+     * for the completion of the job. This (essentially - the coroutine) mechansm is meant
+     * to be used primarily for the job monitoring purposes, such as tracking and reporting
+     * the progression of the job.
+     * @param ivalSec The interval between making callbacks.
+     * @param func The callback function to be called.
+     */
+    void wait(std::chrono::milliseconds const& ivalMsec, WaitMonitorFunc const& func);
 
     /**
      * Explicitly cancel the job and all relevant requests which may be still

@@ -152,6 +152,13 @@ IndexJob::~IndexJob() {
 }
 
 
+Job::Progress IndexJob::progress() const {
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
+    util::Lock lock(_mtx, context() + __func__);
+    return Progress{_completeChunks, _totalChunks};
+}
+
+
 IndexJobResult const& IndexJob::getResultData() const {
 
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
@@ -307,6 +314,7 @@ void IndexJob::startImpl(util::Lock const& lock) {
             throw logic_error(context() + string(__func__) + ":  internal bug");
         }
         _chunks[worker].push(chunk);
+        _totalChunks++;
     }
 
     // --------------------------------------------------
@@ -393,6 +401,8 @@ void IndexJob::_onRequestFinish(IndexRequest::Ptr const& request) {
     util::Lock lock(_mtx, context() + __func__);
 
     if (state() == State::FINISHED) return;
+
+    _completeChunks++;
 
     bool hasData = true;
     if (request->extendedState() != Request::SUCCESS) {

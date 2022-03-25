@@ -66,6 +66,9 @@ public:
     bool ignoreNonPartitioned() const { return _ignoreNonPartitioned; }
     bool ignoreDuplicateKey() const { return _ignoreDuplicateKey; }
 
+    /// @see Job::progress
+    virtual Job::Progress progress() const override;
+
     /**
      * Return the combined result of the operation
      *

@@ -169,6 +169,9 @@ public:
     std::string const& destinationPath() const { return _destinationPath; }
     bool               localFile()       const { return _localFile; }
 
+    /// @see Job::progress
+    virtual Job::Progress progress() const override;
+
     /**
      * Return the combined result of the operation
      *
@@ -275,6 +278,10 @@ private:
 
     /// The result of the operation (gets updated as requests are finishing)
     IndexJobResult _resultData;
+
+    // Job progression counters
+    size_t _totalChunks = 0;    ///< The total number of chunks is set when the job is starting.
+    size_t _completeChunks = 0; ///< Is incremented for each processed (regardless of results) chunk.
 };
 
 }}} // namespace lsst::qserv::replica

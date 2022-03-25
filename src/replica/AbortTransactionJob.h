@@ -94,6 +94,9 @@ public:
 
     bool allWorkers() const { return _allWorkers; }
 
+    /// @see Job::progress
+    virtual Job::Progress progress() const override;
+
     /**
      * Return the combined result of the operation
      *
