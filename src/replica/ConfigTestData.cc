@@ -192,7 +192,7 @@ json ConfigTestData::data() {
         {"loader-host", "host-A"},
         {"loader-port", 53002},
         {"loader-tmp-dir", "/tmp/A"},
-        {"exporter_host", "host-A"},
+        {"exporter-host", "host-A"},
         {"exporter-port", 53003},
         {"exporter-tmp-dir", "/tmp/export/A"},
         {"http-loader-host", "host-A"},
@@ -211,7 +211,7 @@ json ConfigTestData::data() {
         {"fs-host", "host-B"},
         {"data-dir", "/data/B"},
         {"loader-host", "host-B"},
-        {"exporter_host", "host-B"},
+        {"exporter-host", "host-B"},
         {"http-loader-host", "host-B"}
     });
 
@@ -225,7 +225,7 @@ json ConfigTestData::data() {
         {"svc-host", "host-C"},
         {"fs-host", "host-C"},
         {"loader-host", "host-C"},
-        {"exporter_host", "host-C"},
+        {"exporter-host", "host-C"},
         {"http-loader-host", "host-C"}
     });
     obj["database_families"]["production"] = json::object({
