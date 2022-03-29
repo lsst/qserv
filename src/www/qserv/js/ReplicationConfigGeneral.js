@@ -132,10 +132,10 @@ function(CSSLoader,
             let html = '';
             for (const category in config.general) {
                 for (const param in config.general[category]) {
-                    const value = config.general[category][param];
+                    const value = (category === "database" && param === "password") ? "******" : config.general[category][param];
                     html += `
 <tr>
-  <th style="text-align:left" scope="row"><pre>` + category + '.' + param + `</pre></th>
+  <th style="text-align:left" scope="row"><pre>` + category + '-' + param + `</pre></th>
   <td><pre>` + value + `</pre></td>
   <td>` + config.meta[category][param].description + `</td>
 </tr>`;
