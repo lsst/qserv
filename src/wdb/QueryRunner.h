@@ -74,21 +74,6 @@ namespace lsst {
 namespace qserv {
 namespace wdb {
 
-/// This class stores properties for one column in the schema.
-class SchemaCol {
-public:
-    SchemaCol() = default;
-    SchemaCol(SchemaCol const&) = default;
-    SchemaCol& operator=(SchemaCol const&) = default;
-    SchemaCol(std::string name, std::string sqltype, int mysqltype) :
-        colName(name), colSqlType(sqltype), colMysqlType(mysqltype) {
-    }
-    std::string colName;
-    std::string colSqlType; ///< sqltype for the column
-    int colMysqlType = 0; ///< MySQL type number
-};
-
-
 /// On the worker, run a query related to a Task, writing the results to a table or supplied SendChannel.
 ///
 class QueryRunner : public wbase::TaskQueryRunner, public std::enable_shared_from_this<QueryRunner> {
@@ -126,27 +111,7 @@ private:
     bool _dispatchChannel();
     MYSQL_RES* _primeResult(std::string const& query); ///< Obtain a result handle for a query.
 
-
-    /// Use the mysql 'result' and other parameters to fill 'tData'.
-    /// @return true if there are no more left in 'result'
-    bool _fillRows(MYSQL_RES* result, int numFields, uint& rowCount, size_t& tsize);
-
-    /// Use the mysql 'result' to load _schemaCols with the schema.
-    void _fillSchema(MYSQL_RES* result);
-    proto::Result* _initResult();
-    void _initTransmit();
-
-
     static size_t _getDesiredLimit();
-
-    /// The pass _transmitData to _sendChannel so it can be transmitted.
-    /// 'lastIn' - True if this is the last transmit for this QueryRunner instance.
-    /// @return true if _transmitData was passed to _sendChannel and will be transmitted.
-    bool _transmit(bool lastIn);
-
-    /// Build a message in 'tData' based on the parameters provided
-     void _buildDataMsg(unsigned int rowCount, size_t size);
-     void _buildHeader();
 
     wbase::Task::Ptr const _task; ///< Actual task
 
@@ -163,8 +128,6 @@ private:
 
     util::MultiError _multiError; // Error log
 
-    std::vector<SchemaCol> _schemaCols; ///< Description of columns for schema.
-    wbase::TransmitData::Ptr _transmitData; ///< Data for this transmit.
     bool _largeResult = false; //< True for all transmits after the first transmit.
 
     /// Used to limit the number of open MySQL connections.

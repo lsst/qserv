@@ -151,7 +151,7 @@ void SsiRequest::execute(XrdSsiRequest& req) {
             // reference to this SsiRequest inside the reply channel for the task,
             // and after the call to BindRequest.
             auto sendChannelBase = std::make_shared<wbase::SendChannel>(shared_from_this());
-            auto sendChannel = wbase::SendChannelShared::create(sendChannelBase, _transmitMgr);
+            auto sendChannel = wbase::SendChannelShared::create(sendChannelBase, _transmitMgr, taskMsg->czarid());
             auto tasks = wbase::Task::createTasks(taskMsg, sendChannel);
 
             ReleaseRequestBuffer();
