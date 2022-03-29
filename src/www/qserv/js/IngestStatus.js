@@ -47,7 +47,15 @@ function(CSSLoader,
             this._initialized = true;
             this._prevTimestamp = 0;
             let html = `
-<div class="form-row">
+<div class="form-row" id="fwk-ingest-status-controls">
+  <div class="form-group col-md-1">
+    <label for="ingest-database-status">Status:</label>
+    <select id="ingest-database-status" class="form-control form-control-view">
+      <option value=""></option>
+      <option value="INGESTING" selected>INGESTING</option>
+      <option value="PUBLISHED">PUBLISHED</option>
+    </select>
+  </div>
   <div class="form-group col-md-3">
     <label for="ingest-database">Database:</label>
     <select id="ingest-database" class="form-control form-control-view">
@@ -75,7 +83,7 @@ function(CSSLoader,
             cont.find(".form-control-view").change(() => {
                 this._load();
             });
-            this._disable_databases(true);
+            this._disable_selectors(true);
         }
         
         /// @returns JQuery object displaying the last update time of the page
@@ -101,22 +109,29 @@ function(CSSLoader,
             }
             return this._form_control_obj[id];
         }
+        _get_database_status() { return this._form_control('select', 'ingest-database-status').val(); }
         _get_database() { return this._form_control('select', 'ingest-database').val(); }
         _set_database(val) { this._form_control('select', 'ingest-database').val(val); }
         _set_databases(databases) {
-            // To keep the current selection after updating the selector
+            // Keep the current selection after updating the selector in case if the
+            // database belongs to this collection.
             const current_database = this._get_database();
-            let html = '';
-            for (let i in databases) {
-                const name = databases[i];
-                const selected = i ? '' : 'selected'; 
-                html += `<option value="${name}" ${selected}>${name}</option>`;
-            }
-            this._form_control('select', 'ingest-database').html(html);
-            if (current_database) this._set_database(current_database);
+            let in_collection = false;
+            this._form_control('select', 'ingest-database').html(
+                _.reduce(
+                    databases,
+                    (html, name) => {
+                        if (name === current_database) in_collection = true;
+                        const selected = !html ? 'selected' : '';
+                        return html + `<option value="${name}" ${selected}>${name}</option>`;
+                    },
+                    ''
+                )
+            );
+            if (in_collection && current_database) this._set_database(current_database);
         }
-        _disable_databases(disable) {
-            this._form_control('select', 'ingest-database').prop('disabled', disable);
+        _disable_selectors(disable) {
+            this.fwk_app_container.find(".form-control-view").prop('disabled', disable);
         }
         _update_interval_sec() { return this._form_control('select', 'ingest-update-interval').val(); }
 
@@ -126,10 +141,10 @@ function(CSSLoader,
             if (this._loading) return;
             this._loading = true;
             this._status().addClass('updating');
-            this._disable_databases(true);
-            this._load_databases();
+            this._disable_selectors(true);
+            this._load_databases(this._get_database_status());
         }
-        _load_databases() {
+        _load_databases(status) {
             Fwk.web_service_GET(
                 "/replication/config",
                 {},
@@ -138,11 +153,19 @@ function(CSSLoader,
                         this._on_failure(data.error);
                         return;
                     }
-                    this._set_databases(_.map(
-                        // Unpublished databases are shown on top of the selector's list
-                        _.sortBy(data.config.databases, function (info) { return info.is_published; }),
-                          function (info) { return info.database; }
-                    ));
+                    this._set_databases(
+                        _.map(
+                            _.filter(
+                                data.config.databases,
+                                function (info) {
+                                    return (status === "") ||
+                                           ((status === "PUBLISHED") && info.is_published) ||
+                                           ((status === "INGESTING") && !info.is_published);
+                                }
+                            ),
+                            function (info) { return info.database; }
+                        )
+                    );
                     this._load_transactions();
                   },
                 (msg) => { this._on_failure(msg); }
@@ -164,7 +187,7 @@ function(CSSLoader,
                         return;
                     }
                     this._display(data.databases[current_database]);
-                    this._disable_databases(false);
+                    this._disable_selectors(false);
                     Fwk.setLastUpdate(this._status());
                     this._status().removeClass('updating');
                     this._loading = false;
@@ -223,24 +246,29 @@ function(CSSLoader,
                 'EXPIRED': 0,
                 'FINISHED': 0
             };
-            let databaseNumTransStarted = 0;
-            let databaseNumTransFinished = 0;
-            let databaseNumTransAborted = 0;
+            let databaseNumTrans = {
+              "IS_STARTING" : 0,
+              "STARTED" : 0,
+              "IS_FINISHING" : 0,
+              "IS_ABORTING" : 0,
+              "FINISHED" : 0,
+              "START_FAILED" : 0,
+              "FINISH_FAILED" : 0,
+              "ABORT_FAILED" : 0,
+              "ABORTED" : 0
+            };
+
+
             let firstIngestTime = 0;
             let lastIngestTime = 0;
             let tableStats = {};
             let workerStats = {};
             for (let transactionIdx in databaseInfo.transactions) {
-
                 let transactionInfo = databaseInfo.transactions[transactionIdx];
-                switch (transactionInfo.state) {
-                    case 'STARTED':  databaseNumTransStarted++;  break;
-                    case 'FINISHED': databaseNumTransFinished++; break;
-                    case 'ABORTED':  databaseNumTransAborted++;  break;
-                }
+                databaseNumTrans[transactionInfo.state]++;
 
                 // For other summary data ignore transactions that has been aborted
-                if (transactionInfo.state === 'ABORTED') continue;
+                if (transactionInfo.state === 'STARTED') continue;
 
                 let summary = transactionInfo.contrib.summary;
 
@@ -321,38 +349,51 @@ function(CSSLoader,
                 lastIngestTimeStr = (new Date(lastIngestTime)).toLocalTimeString('short');
                 lastIngestTimeAgoStr = IngestStatus.timeAgo(lastIngestTime);
             }
-            let perfStr = 'n/a';
+            let perfStr = 0;
             if ((firstIngestTime > 0) && (lastIngestTime > 0) && (lastIngestTime > firstIngestTime)) {
                 let perfGBps = databaseDataSize / ((lastIngestTime - firstIngestTime) / 1000.);
-                perfStr = (1000. * perfGBps).toFixed(2) + ' MB/s';
+                perfStr = (1000. * perfGBps).toFixed(2);
             }
-            const isPublishedStr = databaseInfo.is_published ? 'YES' : 'NO';
+            const catalogStatus = databaseInfo.is_published ? 'PUBLISHED' : 'INGESTING';
             html += `
     <div class="database">
       <div class="row block">
         <div class="col-md-auto">
           <table class="table table-sm table-hover">
             <tbody>
-              <tr><th>Published</th><td class="right-aligned"><pre>${isPublishedStr}</pre></td><td>&nbsp;</td></tr>
-              <tr><th>Data [GB]</th><td class="right-aligned"><pre>${databaseDataSize.toFixed(2)}</pre></td><td>&nbsp;</td></tr>
+              <tr><th>Status</th><td class="right-aligned"><pre>${catalogStatus}</pre></td><td>&nbsp;</td></tr>
+              <tr><th>Chunks</th><td class="right-aligned"><pre>${databaseInfo.num_chunks}</pre></td><td>&nbsp;</td></tr>
               <tr><th>Rows</th><td class="right-aligned"><pre>${databaseNumRows}</pre></td><td>&nbsp;</td></tr>
-              <tr><th>Alloc.chunks</th><td class="right-aligned"><pre>${databaseInfo.num_chunks}</pre></td><td>&nbsp;</td></tr>
-              <tr><th>Transactions</th><td class="right-aligned"><pre>${databaseNumTransStarted}</pre></td><td><pre class="trans-started">STARTED</pre></td></tr>
-              <tr><th>&nbsp;</th><td class="right-aligned"><pre>${databaseNumTransAborted}</pre></td><td><pre class="trans-aborted">ABORTED</pre></td</tr>
-              <tr><th>&nbsp;</th><td class="right-aligned"><pre>${databaseNumTransFinished}</pre></td><td><pre class="trans-finished">FINISHED</pre></td></tr>
+              <tr><th>Data [GB]</th><td class="right-aligned"><pre>${databaseDataSize.toFixed(2)}</pre></td><td>&nbsp;</td></tr>
+              <tr><th>Performance [MB/s]:</th><td class="right-aligned"><pre>${perfStr}</pre></td><td>&nbsp;</td></tr>
             </tbody>
           </table>
         </div>
         <div class="col-md-auto">
           <table class="table table-sm table-hover">
             <tbody>
+            <tr><th>Transactions</th><td class="right-aligned"><pre>${databaseNumTrans['IS_STARTING']}</pre></td><td><pre class="trans-started">IS_STARTING</pre></td></tr>
+            <tr><th>&nbsp;</th><td class="right-aligned"><pre>${databaseNumTrans['STARTED']}</pre></td><td><pre class="trans-started">STARTED</pre></td</tr>
+            <tr><th>&nbsp;</th><td class="right-aligned"><pre>${databaseNumTrans['IS_FINISHING']}</pre></td><td><pre class="trans-started">IS_FINISHING</pre></td</tr>
+            <tr><th>&nbsp;</th><td class="right-aligned"><pre>${databaseNumTrans['FINISHED']}</pre></td><td><pre class="trans-finished">FINISHED</pre></td></tr>
+            <tr><th>&nbsp;</th><td class="right-aligned"><pre>${databaseNumTrans['START_FAILED']}</pre></td><td><pre class="trans-aborted">START_FAILED</pre></td</tr>
+            <tr><th>&nbsp;</th><td class="right-aligned"><pre>${databaseNumTrans['FINISH_FAILED']}</pre></td><td><pre class="trans-aborted">FINISH_FAILED</pre></td</tr>
+            <tr><th>&nbsp;</th><td class="right-aligned"><pre>${databaseNumTrans['IS_ABORTING']}</pre></td><td><pre class="trans-aborted">IS_ABORTING</pre></td</tr>
+            <tr><th>&nbsp;</th><td class="right-aligned"><pre>${databaseNumTrans['ABORT_FAILED']}</pre></td><td><pre class="trans-aborted">ABORT_FAILED</pre></td</tr>
+            <tr><th>&nbsp;</th><td class="right-aligned"><pre>${databaseNumTrans['ABORTED']}</pre></td><td><pre class="trans-aborted">ABORTED</pre></td</tr>
+          </tbody>
+          </table>
+        </div>
+        <div class="col-md-auto">
+          <table class="table table-sm table-hover">
+            <tbody>
               <tr><th>Contributions</th><td class="right-aligned"><pre>${databaseNumFilesByStatus['IN_PROGRESS']}</pre></td><td><pre class="files-in-progress">IN_PROGRESS</pre></td></tr>
+              <tr><th>&nbsp;</th><td class="right-aligned"><pre>${databaseNumFilesByStatus['FINISHED']}</pre></td><td><pre class="files-finished">FINISHED</pre></td></tr>
               <tr><th>&nbsp;</th><td class="right-aligned"><pre>${databaseNumFilesByStatus['CREATE_FAILED']}</pre></td><td><pre class="files-failed">CREATE_FAILED</pre></td></tr>
               <tr><th>&nbsp;</th><td class="right-aligned"><pre>${databaseNumFilesByStatus['START_FAILED']}</pre></td><td><pre class="files-failed">START_FAILED</pre></td></tr>
               <tr><th>&nbsp;</th><td class="right-aligned"><pre>${databaseNumFilesByStatus['READ_FAILED']}</pre></td><td><pre class="files-failed">READ_FAILED</pre></td></tr>
               <tr><th>&nbsp;</th><td class="right-aligned"><pre>${databaseNumFilesByStatus['LOAD_FAILED']}</pre></td><td><pre class="files-failed">LOAD_FAILED</pre></td></tr>
               <tr><th>&nbsp;</th><td class="right-aligned"><pre>${databaseNumFilesByStatus['CANCELLED']}</pre></td><td><pre class="files-failed">CANCELLED</pre></td></tr>
-              <tr><th>&nbsp;</th><td class="right-aligned"><pre>${databaseNumFilesByStatus['FINISHED']}</pre></td><td><pre class="files-finished">FINISHED</pre></td></tr>
             </tbody>
           </table>
         </div>
@@ -365,9 +406,6 @@ function(CSSLoader,
               <tr><th>Last contrib</th><td class="right-aligned"><pre class="object">${lastIngestTimeStr}</pre></td><td class="right-aligned"><pre class="comment>">${lastIngestTimeAgoStr}</pre></td></tr>
             </tbody>
           </table>
-        </div>
-        <div class="col-md-auto perf">
-          <h2><span class="perf-title">avg.perf:&nbsp;</span><span class="perf-value">${perfStr}</span></h2>
         </div>
       </div>`;
 

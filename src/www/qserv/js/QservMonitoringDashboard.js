@@ -50,6 +50,7 @@ require([
     'qserv/ReplicationSchema',
     'qserv/IngestStatus',
     'qserv/IngestTransactions',
+    'qserv/IngestTransactionsLog',
     'qserv/IngestContributions',
     'qserv/ToolsSql',
 
@@ -77,11 +78,12 @@ function(CSSLoader,
          ReplicationSchema,
          IngestStatus,
          IngestTransactions,
+         IngestTransactionsLog,
          IngestContributions,
          ToolsSql) {
 
     CSSLoader.load('https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.css');
-    CSSLoader.load('https://cdn.jsdelivr.net/npm/bootstrap-icons@1.5.0/font/bootstrap-icons.css');
+    CSSLoader.load('https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.1/font/bootstrap-icons.css');
     CSSLoader.load('qserv/css/QservPDAC.css');
 
     $(function() {
@@ -131,6 +133,7 @@ function(CSSLoader,
                 apps: [
                     new IngestStatus('Status'),
                     new IngestTransactions('Transactions'),
+                    new IngestTransactionsLog('Transaction Events Log'),
                     new IngestContributions('Contributions')
                 ]
             },

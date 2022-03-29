@@ -1,3 +1,6 @@
+#fwk-ingest-transactions-controls label {
+    font-weight:    bold;
+}
 table#fwk-ingest-transactions caption {
     caption-side:   top;
     text-align:     right;
@@ -15,9 +18,13 @@ table#fwk-ingest-transactions tbody th,
 table#fwk-ingest-transactions tbody td {
     vertical-align:middle;
 }
-table#fwk-ingest-transactions tbody > tr.transaction:hover {
-    cursor:pointer;
+table#fwk-ingest-transactions tbody > tr > th.controls {
+    padding:2px;
 }
+table#fwk-ingest-transactions tbody > tr > th.controls button {
+    color:#007bff;
+}
+
 table#fwk-ingest-transactions pre {
     padding: 0;
     margin: 0;
