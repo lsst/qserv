@@ -1,0 +1,7 @@
+tables:
+    directors:          ['Object']
+    partitioned-tables: ['Object', 'Source']
+extensions:
+    data: '.csv'
+    schema: '.schema'
+    zip: '.gz'

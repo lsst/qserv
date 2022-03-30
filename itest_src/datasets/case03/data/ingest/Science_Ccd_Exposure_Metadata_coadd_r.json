@@ -1,0 +1,14 @@
+{
+    "auth_key":"",
+    "database":"qservTest_case03_qserv",
+    "table":"Science_Ccd_Exposure_Metadata_coadd_r",
+    "is_partitioned":0,
+    "schema":[
+        {"name":"scienceCcdExposureId", "type":"bigint(20) NOT NULL"},
+        {"name":"metadataKey", "type":"varchar(255) NOT NULL"},
+        {"name":"exposureType", "type":"tinyint(4) NOT NULL"},
+        {"name":"intValue", "type":"int(11) DEFAULT NULL"},
+        {"name":"doubleValue", "type":"double DEFAULT NULL"},
+        {"name":"stringValue", "type":"varchar(255) DEFAULT NULL"}
+    ]
+}

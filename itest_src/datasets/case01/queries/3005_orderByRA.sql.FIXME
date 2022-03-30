@@ -1,0 +1,6 @@
+SELECT * 
+ FROM Object
+ WHERE ra_PS BETWEEN 0. AND 1.   -- noQserv
+   AND decl_PS BETWEEN 0. AND 1. -- noQserv
+-- withQserv WHERE qserv_areaspec_box(0.,1.,0.,1.)
+ ORDER BY ra_PS

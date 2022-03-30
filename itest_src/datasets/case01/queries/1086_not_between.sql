@@ -1,0 +1,6 @@
+-- test for NOT BETWEEN
+
+
+-- pragma sortresult
+
+SELECT objectId,ra_PS FROM Object WHERE objectId NOT BETWEEN 417857368235490 AND 420949744686724

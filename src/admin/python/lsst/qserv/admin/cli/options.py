@@ -172,20 +172,6 @@ case_option = partial(
 )
 
 
-pull_option = partial(
-    click.option,
-    "--pull/--no-pull",
-    help=(
-        "Pull or don't pull a new copy of qserv_testdata. "
-        "By default will pull if testdata has not yet been pulled. "
-        "Will remove the old copy if it exists. "
-        "Will be handled before --load or --unload."
-    ),
-    is_flag=True,
-    default=None,
-)
-
-
 load_option = partial(
     click.option,
     "--load/--no-load",

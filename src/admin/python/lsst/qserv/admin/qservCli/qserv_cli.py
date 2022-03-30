@@ -33,7 +33,6 @@ from typing import List, Optional
 
 from ..cli.options import (
     czar_connection_option,
-    pull_option,
     load_option,
     log_level_option,
     unload_option,
@@ -62,8 +61,8 @@ from .opt import (
     dry_option,
     ImageName,
     itest_container_name_option,
+    itest_ref_container_name_option,
     itest_file_option,
-    itest_volume_option,
     jobs_option,
     make_option,
     mariadb_image_ev,
@@ -414,10 +413,9 @@ def run_debug(
 @qserv_root_option()
 @project_option()
 @itest_container_name_option()
-@itest_volume_option()
+@itest_ref_container_name_option()
 @bind_option()
 @itest_file_option()
-@pull_option()
 @load_option()
 @unload_option()
 @reload_option()
@@ -439,13 +437,12 @@ def itest(
     qserv_root: str,
     mariadb_image: str,
     itest_container: str,
-    itest_volume: str,
+    itest_ref_container: str,
     qserv_image: str,
     bind: List[str],
     itest_file: str,
     dry: bool,
     project: str,
-    pull: Optional[bool],
     unload: bool,
     load: Optional[bool],
     reload: bool,
@@ -463,13 +460,12 @@ def itest(
         qserv_root=qserv_root,
         mariadb_image=mariadb_image,
         itest_container=itest_container,
-        itest_volume=itest_volume,
+        itest_ref_container=itest_ref_container,
         qserv_image=qserv_image,
         bind=bind,
         itest_file=itest_file,
         dry=dry,
         project=project,
-        pull=pull,
         unload=unload,
         load=load,
         reload=reload,
@@ -484,11 +480,11 @@ def itest(
 
 
 @qserv.command()
-@itest_volume_option()
+@project_option()
 @dry_option()
-def itest_rm(itest_volume: str, dry: bool) -> None:
+def itest_rm(project: str, dry: bool) -> None:
     """Remove volumes created by itest."""
-    launch.itest_rm(itest_volume, dry)
+    launch.itest_rm(project, dry)
 
 
 # These defaults match connection options used in

@@ -1,0 +1,9 @@
+tables:
+    directors:          ['Object']
+    partitioned-tables: ['Object', 'Source']
+extensions:
+    data: '.csv'
+    schema: '.schema'
+# Indicating if duplicator is going to be used
+duplicate:
+    tables: ['Object', 'Source']

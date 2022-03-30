@@ -1,0 +1,32 @@
+{
+"htm":{
+    "level":4
+},
+"dirDb":"qservTest_case05_qserv",
+"dirTable":"Object",
+"lon-min":6,
+"lon-max":72,
+"lat-min":-30,
+"lat-max":18,
+"part":{
+    "num-stripes":85,
+    "num-sub-stripes":12,
+    "chunk":"chunkId",
+    "sub-chunk":"subChunkId",
+    "default-overlap":0.01667
+},
+"in":{
+    "csv":{
+        "null":"\\N",
+        "delimiter":","
+    }
+},
+"out":{
+    "csv":{
+        "null":"\\N",
+        "delimiter":",",
+        "escape":"\\",
+        "no-quote":true
+    }
+}
+}

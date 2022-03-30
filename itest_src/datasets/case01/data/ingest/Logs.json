@@ -1,0 +1,32 @@
+{
+    "auth_key":"",
+    "database":"qservTest_case01_qserv",
+    "table":"Logs",
+    "is_partitioned":0,
+    "schema":[
+        {"name":"id", "type":"int(11) NOT NULL"},
+        {"name":"HOSTID", "type":"varchar(80) DEFAULT NULL"},
+        {"name":"RUNID", "type":"varchar(80) DEFAULT NULL"},
+        {"name":"LOG", "type":"varchar(80) DEFAULT NULL"},
+        {"name":"workerid", "type":"varchar(80) DEFAULT NULL"},
+        {"name":"stagename", "type":"varchar(80) DEFAULT NULL"},
+        {"name":"SLICEID", "type":"int(11) DEFAULT NULL"},
+        {"name":"STAGEID", "type":"int(11) DEFAULT NULL"},
+        {"name":"LOOPNUM", "type":"int(11) DEFAULT NULL"},
+        {"name":"STATUS", "type":"varchar(80) DEFAULT NULL"},
+        {"name":"LEVEL", "type":"int(11) DEFAULT '9999'"},
+        {"name":"DATE", "type":"varchar(30) DEFAULT NULL"},
+        {"name":"TIMESTAMP", "type":"bigint(20) DEFAULT NULL"},
+        {"name":"node", "type":"int(11) DEFAULT NULL"},
+        {"name":"custom", "type":"varchar(4096) DEFAULT NULL"},
+        {"name":"timereceived", "type":"timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP"},
+        {"name":"visitid", "type":"int(11) DEFAULT NULL"},
+        {"name":"COMMENT", "type":"text"},
+        {"name":"PIPELINE", "type":"varchar(80) DEFAULT NULL"},
+        {"name":"TYPE", "type":"varchar(5) DEFAULT NULL"},
+        {"name":"EVENTTIME", "type":"bigint(20) DEFAULT NULL"},
+        {"name":"PUBTIME", "type":"bigint(20) DEFAULT NULL"},
+        {"name":"usertime", "type":"float DEFAULT NULL"},
+        {"name":"systemtime", "type":"float DEFAULT NULL"}
+    ]
+}

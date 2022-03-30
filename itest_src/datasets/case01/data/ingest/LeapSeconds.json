@@ -1,0 +1,15 @@
+{
+    "auth_key":"",
+    "database":"qservTest_case01_qserv",
+    "table":"LeapSeconds",
+    "is_partitioned":0,
+    "schema":[
+        {"name":"whenJd", "type":"float NOT NULL"},
+        {"name":"offset", "type":"float NOT NULL"},
+        {"name":"mjdRef", "type":"float NOT NULL"},
+        {"name":"drift", "type":"float NOT NULL"},
+        {"name":"whenMjdUtc", "type":"float DEFAULT NULL"},
+        {"name":"whenUtc", "type":"bigint(20) DEFAULT NULL"},
+        {"name":"whenTai", "type":"bigint(20) DEFAULT NULL"}
+    ]
+}

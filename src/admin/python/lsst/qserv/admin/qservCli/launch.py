@@ -49,8 +49,19 @@ run_image_build_subdir = "admin/tools/docker/run"
 mariadb_image_subdir = "admin/tools/docker/mariadb"
 mypy_cfg_file = "src/admin/python/mypy.ini"
 
+# the location of the testdata dir within qserv_root:
+testdata_subdir = "itest_src"
 
 _log = logging.getLogger(__name__)
+
+
+ITestVolumes = namedtuple("ITestVolumes", "db_data, db_lib, exe")
+def make_itest_volumes(project : str) -> ITestVolumes:
+    return ITestVolumes(
+        project + "_itest_db_data",
+        project + "_itest_db_lib",
+        project + "_itest_exe"
+    )
 
 
 def do_pull_image(image_name: str, dh_user: Optional[str], dh_token: Optional[str], dry: bool) -> bool:
@@ -689,11 +700,12 @@ def run_debug(
 def itest_ref(
     qserv_root: str,
     itest_file: str,
-    itest_volume: str,
+    itest_volumes: ITestVolumes,
     project: str,
+    container_name: str,
     mariadb_image: str,
     dry: bool,
-) -> str:
+) -> None:
     """Launch the reference database used by integration tests.
 
     Parameters
@@ -702,21 +714,16 @@ def itest_ref(
         The path to the qserv source folder.
     itest_file : `str` or `None`
         The path to the yaml file that contains integration test execution data.
-    itest_volume : `str`
-        The name of the volume that holds integration test data. Also used to
-        derive other database volume names.
-    project : `str`
+    itest_volumes : `str`
+        The names of the volumes that host integration test data.
+     project : `str`
         The name used for qserv instance customizations.
+    container_name : `str`
+        The name to assign to the container.
     mariadb_image : `str`
         The name of the database image to run.
     dry : `bool`
         If True do not run the command; print what would have been run.
-
-    Returns
-    -------
-    container_name : `str`
-        The name of the container that was launched (or if dry == True the name
-        of the contianer that would have been launched).
     """
     with open(itest_file) as f:
         tests_data = yaml.safe_load(f.read())
@@ -730,15 +737,17 @@ def itest_ref(
         "--init",
         "-d",
         "--name",
+        container_name,
+        "--network-alias",
         hostname,
         "--expose",
         str(ref_db.port),
         "--mount",
-        f"src={itest_volume},dst=/qserv/data,type=volume",
+        f"src={itest_volumes.db_data},dst=/qserv/data,type=volume",
         "--mount",
         f"src={cnf_src},dst=/etc/mysql/my.cnf,type=bind",
         "--mount",
-        f"src={itest_volume}_lib,dst=/var/lib/mysql,type=volume",
+        f"src={itest_volumes.db_lib},dst=/var/lib/mysql,type=volume",
         "-e",
         "MYSQL_ROOT_PASSWORD=CHANGEME",
     ]
@@ -752,10 +761,9 @@ def itest_ref(
     )
     if dry:
         print(" ".join(args))
-        return hostname
+        return
     _log.debug(f"Running {' '.join(args)}")
     subproc.run(args)
-    return hostname
 
 
 def stop_itest_ref(container_name: str, dry: bool) -> int:
@@ -794,7 +802,6 @@ def integration_test(
     itest_file: str,
     dry: bool,
     project: str,
-    pull: Optional[bool],
     unload: bool,
     load: Optional[bool],
     reload: bool,
@@ -829,10 +836,6 @@ def integration_test(
         If True do not run the command; print what would have been run.
     project : `str`
         The name used for qserv instance customizations.
-    pull : Optional[bool]
-        True forces pull of a new copy of qserv_testdata, False prohibits it.
-        None will pull if testdata has not yet been pulled. Will remove the old
-        copy if it exists. Will be handled before `load` or `unload.
     unload : bool
         If True, unload qserv_testdata from qserv and the reference database.
     load : Optional[bool]
@@ -865,6 +868,9 @@ def integration_test(
         time.sleep(wait)
         _log.info("Continuing.")
 
+    with open(itest_file) as f:
+        tests_data = yaml.safe_load(f.read())
+
     args = [
         "docker",
         "run",
@@ -874,7 +880,9 @@ def integration_test(
         "--mount",
         f"src={itest_file},dst=/usr/local/etc/integration_tests.yaml,type=bind",
         "--mount",
-        f"src={itest_volume},dst=/qserv/data,type=volume",
+        f"src={itest_volume},dst={tests_data['testdata-output']},type=volume",
+        "--mount",
+        f"src={os.path.join(qserv_root, testdata_subdir)},dst={tests_data['qserv-testdata-dir']},type=bind",
     ]
     if remove:
         args.append("--rm")
@@ -899,7 +907,6 @@ def integration_test(
         elif val == False:
             args.append(false_flag)
 
-    add_flag_if(pull, "--pull", "--no-pull", args)
     add_flag_if(load, "--load", "--no-load", args)
 
     if tests_yaml:
@@ -918,13 +925,12 @@ def itest(
     qserv_root: str,
     mariadb_image: str,
     itest_container: str,
-    itest_volume: str,
+    itest_ref_container: str,
     qserv_image: str,
     bind: List[str],
     itest_file: str,
     dry: bool,
     project: str,
-    pull: Optional[bool],
     unload: bool,
     load: Optional[bool],
     reload: bool,
@@ -948,18 +954,26 @@ def itest(
         failure, or the returncode of stopping the test database if there was a
         problem doing that, or 0 if there was no problems.
     """
-    ref_db_container_name = itest_ref(qserv_root, itest_file, itest_volume, project, mariadb_image, dry)
+    itest_volumes = make_itest_volumes(project)
+    itest_ref(
+        qserv_root,
+        itest_file,
+        itest_volumes,
+        project,
+        itest_ref_container,
+        mariadb_image,
+        dry,
+    )
     try:
         returncode = integration_test(
             qserv_root,
             itest_container,
-            itest_volume,
+            itest_volumes.exe,
             qserv_image,
             bind,
             itest_file,
             dry,
             project,
-            pull,
             unload,
             load,
             reload,
@@ -971,17 +985,17 @@ def itest(
             remove,
         )
     finally:
-        stop_db_returncode = stop_itest_ref(ref_db_container_name, dry) if remove else 0
+        stop_db_returncode = stop_itest_ref(itest_ref_container, dry) if remove else 0
     return returncode or stop_db_returncode
 
 
-def itest_rm(itest_volume: str, dry: bool) -> None:
+def itest_rm(project: str, dry: bool) -> None:
     """Remove integration test volumes.
 
     Parameters
     ----------
-    itest_volume : `str`
-        The name of the volume used for integration tests.
+    project : `str`
+        The project name that is used to derive volume names.
     dry : `bool`
         If True do not run the command; print what would have been run.
     """
@@ -990,7 +1004,8 @@ def itest_rm(itest_volume: str, dry: bool) -> None:
         capture_stdout=True,
     )
     volumes = res.stdout.decode().split()
-    rm_volumes = [v for v in [itest_volume, f"{itest_volume}_lib"] if v in volumes]
+    itest_volumes = make_itest_volumes(project)
+    rm_volumes = [v for v in itest_volumes if v in volumes]
     if not rm_volumes:
         print("There are not itest volumes to remove.")
         return
@@ -1000,7 +1015,7 @@ def itest_rm(itest_volume: str, dry: bool) -> None:
         print(" ".join(args))
         return
     _log.debug(f"Running {' '.join(args)}")
-    result = subproc.run(args)
+    subproc.run(args)
 
 
 def update_schema(

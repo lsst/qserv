@@ -1,0 +1,10 @@
+{
+    "auth_key":"",
+    "database":"qservTest_case03_qserv",
+    "table":"DeepCoadd_To_Htm10",
+    "is_partitioned":0,
+    "schema":[
+        {"name":"deepCoaddId", "type":"bigint(20) NOT NULL"},
+        {"name":"htmId10", "type":"int(11) NOT NULL"}
+    ]
+}

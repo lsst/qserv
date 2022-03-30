@@ -44,40 +44,6 @@ from .. import itest
 _log = logging.getLogger(__name__)
 
 
-def _pull_testdata(destination: str, qserv_testdata_repo: str) -> None:
-    """Run `git pull` from repo, into the given destination.
-
-    Parameters
-    ----------
-    destination : `str`
-        Absolute path to the location to put the qserv_testdata repository.
-    qserv_testdata_repo : `str`
-        The url where a tar of the testdata repo can be downloaded using
-        `requests.get`.
-    """
-    # Remove the existing testdata files if they exist
-    if os.path.exists(destination):
-        _log.warn("Removing existing qserv_testdata files and pulling new ones.")
-        shutil.rmtree(destination)
-    os.makedirs(destination)
-    tar_filename = os.path.join(destination, "main.tar")
-
-    # Get a tarball of the testdata repo
-    response = requests.get(qserv_testdata_repo, stream=True)
-    if response.status_code != 200:
-        raise RuntimeError(f"Failed getting qserv_testdata tarball, status code {response.status_code}")
-    with open(tar_filename, mode="wb") as f:
-        shutil.copyfileobj(response.raw, f)
-
-    # Extract the tarball
-    args = ["tar", "xpvf", "main.tar", "--strip-components", "1"]
-    result = subprocess.run(args, cwd=destination, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    result.check_returncode()
-
-    # Remove the tarball
-    os.remove(tar_filename)
-
-
 @backoff.on_exception(
     exception=requests.exceptions.ConnectionError,
     wait_gen=backoff.expo,
@@ -145,7 +111,6 @@ def wait_for_czar(czar_db_uri: str) -> None:
 
 
 def run_integration_tests(
-    pull: Optional[bool],
     unload: bool,
     load: Optional[bool],
     reload: bool,
@@ -159,9 +124,6 @@ def run_integration_tests(
 
     Parameters
     ----------
-    pull : `bool` or `None`
-        True if a new copy of qserv_testdata should be downloaded. If a local
-        copy of qserv_testdata already exists it will be removed first.
     unload : `bool`
         Remove test databases from the databases.
     load : `bool` or `None`
@@ -188,12 +150,6 @@ def run_integration_tests(
     -------
     success : `bool`
         `True` if all query outputs were the same, otherwise `False`.
-
-    Raises
-    ------
-    RuntimeError
-        If qserv_testdata sources have not been downloaded and `pull` was
-        `False`.
     """
     save_template_cfg(
         dict(
@@ -205,14 +161,11 @@ def run_integration_tests(
         tests_data = yaml.safe_load(f.read())
 
     qserv_testdata_dir = tests_data["qserv-testdata-dir"]
-    qserv_testdata_repo = tests_data["qserv-testdata-repo"]
     qserv_testdata_test_case_dir = tests_data["qserv-testdata-test-case-dir"]
     testdata_output = tests_data["testdata-output"]
 
-    if pull or (pull is None and not os.path.exists(qserv_testdata_dir)):
-        _pull_testdata(qserv_testdata_dir, qserv_testdata_repo)
-    elif not os.path.exists(qserv_testdata_dir):
-        raise RuntimeError("qserv_testdata sources have not been downloaded. Use --pull to get them.")
+    if not os.path.exists(qserv_testdata_dir):
+        raise RuntimeError("qserv_testdata sources are not present.")
 
     wait_for_czar(tests_data["czar-db-admin-uri"])
     wait_for_replication_system(tests_data["replication-controller-uri"])
@@ -240,10 +193,6 @@ def run_integration_tests(
             cases=cases,
             load=load,
         )
-
-    if os.path.exists(testdata_output):
-        _log.info(f"Removing previous test outputs from {testdata_output}.")
-        shutil.rmtree(testdata_output)
 
     if run_tests:
         itest.run_queries(

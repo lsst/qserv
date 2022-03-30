@@ -1,0 +1,7 @@
+tables:
+    directors:          ['DeepSource']
+    partitioned-tables: ['DeepSource', 'DeepForcedSource']
+extensions:
+    data:   '.csv'
+    schema: '.schema'
+    zip:    '.gz'

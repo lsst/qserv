@@ -1,0 +1,29 @@
+{
+"htm":{
+    "level":8
+},
+"dirDb":"qservTest_case03_qserv",
+"dirTable":"RunDeepSource",
+"part":{
+    "num-stripes":85,
+    "num-sub-stripes":14,
+    "chunk":"chunkId",
+    "sub-chunk":"subChunkId",
+    "default-overlap":0.0001
+},
+"in":{
+    "csv":{
+        "null":"\\N",
+        "delimiter":",",
+        "escape":"\\"
+    }
+},
+"out":{
+    "csv":{
+        "null":"\\N",
+        "delimiter":",",
+        "escape":"\\",
+        "no-quote":true
+    }
+}
+}

@@ -407,11 +407,11 @@ itest_container_default = OptDefault(
     ev=project_ev,
     val=lambda ev_val: f"{ev_val}_itest",
 )
-itest_volume_default = OptDefault(
-    opt=["--itest-volume"],
-    default="itest_volume",
+itest_ref_container_default = OptDefault(
+    opt=["--itest-ref-container"],
+    default="itest_ref",
     ev=project_ev,
-    val=lambda ev_val: f"{ev_val}_itest_volume",
+    val=lambda ev_val: f"{ev_val}_itest_ref",
 )
 test_container_default = OptDefault(
     opt=["--test-container"],
@@ -677,21 +677,20 @@ itest_container_name_option = partial(
     required=True,
 )
 
+itest_ref_container_name_option = partial(
+    click.option,
+    *itest_ref_container_default.opt,
+    help=itest_ref_container_default.help("The name to give the integration test reference db container."),
+    default=itest_ref_container_default.val(),
+    required=True,
+)
+
 
 itest_file_option = partial(
     click.option,
     *itest_default.opt,
     help=itest_default.help("Path to an yaml file that describes how to run the integration tests."),
     default=itest_default.val(),
-    required=True,
-)
-
-
-itest_volume_option = partial(
-    click.option,
-    *itest_volume_default.opt,
-    help=itest_volume_default.help("The name of the volume used to hold integration test data."),
-    default=itest_volume_default.val(),
     required=True,
 )
 
