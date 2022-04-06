@@ -32,8 +32,8 @@
 #include "lsst/log/Log.h"
 
 // Qserv headers
-#include "global/Bug.h"
 #include "sql/Schema.h"
+#include "util/Bug.h"
 
 namespace {
 
@@ -51,7 +51,7 @@ namespace sql {
 
 std::string formCreateTable(std::string const& table, sql::Schema const& s) {
     if (table.empty()) {
-        throw Bug("sql/statement.cc: No table name for CREATE TABLE");
+        throw util::Bug(ERR_LOC, "sql/statement.cc: No table name for CREATE TABLE");
     }
     std::ostringstream os;
     os << "CREATE TABLE " << table << " (";

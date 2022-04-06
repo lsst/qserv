@@ -39,11 +39,11 @@
 #include "lsst/log/Log.h"
 
 // Qserv headers
-#include "global/Bug.h"
 #include "global/constants.h"
 #include "global/LogContext.h"
 #include "proto/TaskMsgDigest.h"
 #include "proto/worker.pb.h"
+#include "util/Bug.h"
 #include "wbase/Base.h"
 #include "wbase/SendChannelShared.h"
 
@@ -146,7 +146,7 @@ std::vector<Task::Ptr> Task::createTasks(std::shared_ptr<proto::TaskMsg> const& 
     /// Make one task for each fragment.
     int fragmentCount = taskMsg->fragment_size();
     if (fragmentCount < 1) {
-        throw Bug("Task::createTasks No fragments to execute in TaskMsg");
+        throw util::Bug(ERR_LOC, "Task::createTasks No fragments to execute in TaskMsg");
     }
     for (int fragNum=0; fragNum<fragmentCount; ++fragNum) {
         proto::TaskMsg_Fragment const& fragment = taskMsg->fragment(fragNum);

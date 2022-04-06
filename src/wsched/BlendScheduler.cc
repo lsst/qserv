@@ -43,9 +43,9 @@
 #include "lsst/log/Log.h"
 
 // Qserv headers
-#include "global/Bug.h"
 #include "global/LogContext.h"
 #include "proto/worker.pb.h"
+#include "util/Bug.h"
 #include "util/EventThread.h"
 #include "util/Timer.h"
 #include "wcontrol/Foreman.h"
@@ -158,7 +158,7 @@ void BlendScheduler::queCmd(std::vector<util::Command::Ptr> const& cmds) {
             // These should be few and far between.
             LOGS(_log, LOG_LVL_INFO, "BlendScheduler::queCmd got control command");
             if (cmds.size() > 1) {
-                throw Bug("BlendScheduler::queCmd cmds.size() > 1 when no task was set.");
+                throw util::Bug(ERR_LOC, "BlendScheduler::queCmd cmds.size() > 1 when no task was set.");
             }
             {
                 util::LockGuardTimed guard(util::CommandQueue::_mx, "BlendScheduler::queCmd a");
@@ -172,7 +172,7 @@ void BlendScheduler::queCmd(std::vector<util::Command::Ptr> const& cmds) {
             QSERV_LOGCONTEXT_QUERY_JOB(task->getQueryId(), task->getJobId());
         }
         if (task->msg == nullptr) {
-            throw Bug("BlendScheduler::queCmd task with null message!");
+            throw util::Bug(ERR_LOC, "BlendScheduler::queCmd task with null message!");
         }
 
         util::LockGuardTimed guard(util::CommandQueue::_mx, "BlendScheduler::queCmd b");

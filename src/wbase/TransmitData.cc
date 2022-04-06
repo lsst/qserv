@@ -31,11 +31,11 @@
 #include "lsst/log/Log.h"
 
 // Qserv headers
-#include "global/Bug.h"
 #include "global/debugUtil.h"
 #include "global/intTypes.h"
 #include "global/LogContext.h"
 #include "proto/ProtoHeaderWrap.h"
+#include "util/Bug.h"
 #include "util/MultiError.h"
 #include "util/StringHash.h"
 #include "wbase/Task.h"
@@ -91,7 +91,7 @@ void TransmitData::attachNextHeader(TransmitData::Ptr const& nextTr, bool really
                                     uint32_t seq, int scsSeq) {
     lock_guard<mutex> lock(_trMtx);
     if (_result == nullptr) {
-        throw Bug(_idStr + "_transmitLoop() had nullptr result!");
+        throw util::Bug(ERR_LOC, _idStr + "_transmitLoop() had nullptr result!");
     }
 
     string nextHeaderString;

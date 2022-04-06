@@ -39,7 +39,6 @@
 #include <stdexcept>
 
 // Qserv headers
-#include "global/Bug.h"
 #include "query/AndTerm.h"
 #include "query/AreaRestrictor.h"
 #include "query/BoolTerm.h"
@@ -50,6 +49,7 @@
 #include "query/Predicate.h"
 #include "query/QueryTemplate.h"
 #include "query/typedefs.h"
+#include "util/Bug.h"
 #include "util/PointerCompare.h"
 #include "util/IterableFormatter.h"
 
@@ -96,7 +96,7 @@ void findColumnRefs(std::shared_ptr<BoolTerm> t, ColumnRef::Vector& vector) {
         } else {
             std::ostringstream os;
             t->putStream(os);
-            throw Bug(std::string("Unexpected non BoolFactor in BoolTerm(")
+            throw util::Bug(ERR_LOC, std::string("Unexpected non BoolFactor in BoolTerm(")
                       + t->getName()
                       + "): " + os.str());
         }

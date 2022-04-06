@@ -34,7 +34,6 @@
 #include <mysql/mysql.h>
 
 // Qserv headers
-#include "global/Bug.h"
 #include "wbase/SendChannel.h"
 #include "wbase/TransmitData.h"
 

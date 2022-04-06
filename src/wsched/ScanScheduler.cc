@@ -43,8 +43,8 @@
 #include "lsst/log/Log.h"
 
 // Qserv headers
-#include "global/Bug.h"
 #include "global/LogContext.h"
+#include "util/Bug.h"
 #include "util/Timer.h"
 #include "wcontrol/Foreman.h"
 #include "wsched/BlendScheduler.h"
@@ -224,7 +224,7 @@ void ScanScheduler::queCmd(vector<util::Command::Ptr> const& cmds) {
     for (auto const& cmd:cmds) {
         wbase::Task::Ptr t = dynamic_pointer_cast<wbase::Task>(cmd);
         if (t == nullptr) {
-            throw Bug(getName() + " queCmd could not be converted to Task or was nullptr");
+            throw util::Bug(ERR_LOC, getName() + " queCmd could not be converted to Task or was nullptr");
         }
         if (first) {
             first = false;
@@ -237,7 +237,7 @@ void ScanScheduler::queCmd(vector<util::Command::Ptr> const& cmds) {
                         << " expected QID=" << qid << " got=" << t->getQueryId()
                         << " expected JID=" << jid << " got=" << t->getJobId());
                 // This could cause difficult to detect problems later on.
-                throw Bug("Mismatch multiple query/job ids in single queCmd");
+                throw util::Bug(ERR_LOC, "Mismatch multiple query/job ids in single queCmd");
                 return;
             }
         }

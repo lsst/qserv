@@ -38,7 +38,7 @@
 #include <stdexcept>
 
 // Qserv headers
-#include "global/Bug.h"
+#include "util/Bug.h"
 #include "util/IterableFormatter.h"
 
 namespace { // File-scope helpers
@@ -143,7 +143,7 @@ ChunkSpec ChunkSpec::intersect(ChunkSpec const& cs) const {
 
 void ChunkSpec::restrict(ChunkSpec const& rhs) {
     if (chunkId != rhs.chunkId) {
-        throw Bug("ChunkSpec::merge with different chunkId");
+        throw util::Bug(ERR_LOC, "ChunkSpec::merge with different chunkId");
     }
     Int32Vector output;
     output.reserve(rhs.subChunks.size());
@@ -156,7 +156,7 @@ void ChunkSpec::restrict(ChunkSpec const& rhs) {
 
 void ChunkSpec::mergeUnion(ChunkSpec const& rhs) {
     if (chunkId != rhs.chunkId) {
-        throw Bug("ChunkSpec::merge with different chunkId");
+        throw util::Bug(ERR_LOC, "ChunkSpec::merge with different chunkId");
     }
     Int32Vector output(subChunks.size() + rhs.subChunks.size());
     std::merge(subChunks.begin(), subChunks.end(),
@@ -247,7 +247,7 @@ bool ChunkSpecFragmenter::isDone() {
 ChunkSpecSingle::Vector ChunkSpecSingle::makeVector(ChunkSpec const& spec) {
     Vector vector;
     if (spec.subChunks.empty()) {
-        throw Bug("Attempted subchunk spec list without subchunks.");
+        throw util::Bug(ERR_LOC, "Attempted subchunk spec list without subchunks.");
     }
     ChunkSpecSingle s;
     s.chunkId = spec.chunkId;

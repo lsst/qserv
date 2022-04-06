@@ -1,7 +1,6 @@
 add_library(global OBJECT)
 
 target_sources(global PRIVATE
-    Bug.cc
     DbTable.cc
     debugUtil.cc
     ResourceUnit.cc

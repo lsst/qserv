@@ -58,7 +58,6 @@
 
 // Qserv headers
 #include "ccontrol/msgCode.h"
-#include "global/Bug.h"
 #include "global/LogContext.h"
 #include "global/ResourceUnit.h"
 #include "qdisp/JobQuery.h"
@@ -70,6 +69,7 @@
 #include "qmeta/Exceptions.h"
 #include "qmeta/QStatus.h"
 #include "query/SelectStmt.h"
+#include "util/Bug.h"
 #include "util/EventThread.h"
 
 
@@ -304,7 +304,7 @@ void Executive::markCompleted(int jobId, bool success) {
                 // been tracked. Otherwise, this indicates a serious problem.
                 if (!getCancelled()) {
                     LOGS(_log, LOG_LVL_WARN, msg << " " << _getIncompleteJobsString(-1));
-                    throw Bug(msg);
+                    throw util::Bug(ERR_LOC, msg);
                 } else {
                     LOGS(_log, LOG_LVL_DEBUG, msg);
                 }

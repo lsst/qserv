@@ -31,8 +31,8 @@
 #include "lsst/log/Log.h"
 
 // Qserv headers
-#include "global/Bug.h"
 #include "global/debugUtil.h"
+#include "util/Bug.h"
 #include "util/common.h"
 
 namespace {
@@ -62,7 +62,7 @@ ChannelStream::~ChannelStream() {
 /// Push in a data packet
 void ChannelStream::append(StreamBuffer::Ptr const& streamBuffer, bool last, int scsSeq) {
     if (_closed) {
-        throw Bug("ChannelStream::append: Stream closed, append(...,last=true) already received");
+        throw util::Bug(ERR_LOC, "ChannelStream::append: Stream closed, append(...,last=true) already received");
     }
     LOGS(_log, LOG_LVL_DEBUG, "seq=" << _seq << " scsseq=" << scsSeq << " ChannelStream::append last=" << last
          << " " << util::prettyCharBuf(streamBuffer->data, streamBuffer->getSize(), 5));

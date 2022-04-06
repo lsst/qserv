@@ -41,7 +41,7 @@ namespace qserv {
 namespace parser {
 
 
-ParseException::ParseException(Bug const& b)
+ParseException::ParseException(util::Bug const& b)
     : std::runtime_error(std::string("Bug during parse:") + b.what())
 {}
 

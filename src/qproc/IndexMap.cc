@@ -47,12 +47,12 @@
 #include "lsst/sphgeom/Chunker.h"
 
 // Qserv headers
-#include "global/Bug.h"
 #include "global/intTypes.h"
 #include "qproc/QueryProcessingError.h"
 #include "qproc/SecondaryIndex.h"
 #include "query/AreaRestrictor.h"
 #include "query/SecIdxRestrictor.h"
+#include "util/Bug.h"
 #include "util/IterableFormatter.h"
 
 
@@ -160,7 +160,7 @@ ChunkSpecVector IndexMap::getChunks(query::AreaRestrictorVecPtr const& areaRestr
 
     // Secondary Index lookups
     if (!_si) {
-        throw Bug("Invalid SecondaryIndex in IndexMap. Check IndexMap(...)");
+        throw util::Bug(ERR_LOC, "Invalid SecondaryIndex in IndexMap. Check IndexMap(...)");
     }
     ChunkSpecVector indexSpecs;
     bool hasIndex = true;

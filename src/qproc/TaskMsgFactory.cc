@@ -44,7 +44,6 @@
 #include "global/intTypes.h"
 #include "qmeta/types.h"
 #include "qproc/ChunkQuerySpec.h"
-#include "qproc/QueryProcessingBug.h"
 #include "util/common.h"
 
 namespace {
