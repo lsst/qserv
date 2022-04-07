@@ -13,6 +13,7 @@ qserv-testdata-test-case-dir: datasets
 testdata-output: /qserv/data/
 test_cases:
   - id: case01
+    build_table_stats: True
     root: /tmp/qserv/itest_src/datasets/case01
     data: data/{table_name}.tsv.gz
     schema: data/schema/{table_name}.schema

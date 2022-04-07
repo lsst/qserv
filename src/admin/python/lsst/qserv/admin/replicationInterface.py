@@ -186,7 +186,6 @@ class ReplicationInterface:
 
     class CommandError(RuntimeError):
         """Raised when the call to the replication system returns not-success."""
-
         pass
 
     def __init__(self, repl_ctrl_uri: str):
@@ -369,6 +368,25 @@ class ReplicationInterface:
                 f"Subprocess failed ({res.returncode}) stdout:{res.stdout} stderr:{res.stderr}"
             )
         _log.debug("ingest file res: %s", res)
+
+    def build_table_stats(self, database: str, tables: List[str]) -> None:
+        for table in tables:
+            _log.debug("build table stats for %s.%s", database, table)
+            _post(
+                url=f"http://{self.repl_ctrl.hostname}:{self.repl_ctrl.port}/ingest/table-stats",
+                data=json.dumps(
+                    dict(
+                        database=database,
+                        table=table,
+                        row_counters_deploy_at_qserv=1,
+                        row_counters_state_update_policy="ENABLED",
+                        force_rescan=1,
+                        auth_key="",
+                        admin_auth_key="",
+                        instance_id="qserv_proj",
+                    ),
+                ),
+            )
 
     def publish_database(self, database: str) -> None:
         """Publish a database

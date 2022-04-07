@@ -249,6 +249,8 @@ class LoadDb:
         # config file.
         self.ingest_table_t = os.path.join(self.root, load_db_cfg["ingest"]["table"])
 
+        self.build_table_stats = load_db_cfg.get("build_table_stats", False)
+
     @property
     def name(self) -> str:
         """Accessor for the name of the database."""
@@ -397,6 +399,8 @@ def _load_database(load_db: LoadDb, ref_db_uri: str, ref_db_admin: str, repl_ctr
                 repl.commit_transaction(transaction_id)
 
     repl.publish_database(load_db.name)
+    if load_db.build_table_stats:
+        repl.build_table_stats(load_db.name, load_db.tables)
 
 
 def _remove_database(case_data: Dict[Any, Any], ref_db_connection: str, repl_ctrl_uri: str) -> None:
