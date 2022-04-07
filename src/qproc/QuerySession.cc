@@ -161,7 +161,7 @@ void QuerySession::analyzeQuery(std::string const& sql, std::shared_ptr<query::S
         _error = std::string("NoSuchDb(sql):") + e.what();
     } catch(sql::NoSuchTable& e) {
         _error = std::string("NoSuchTable(sql):") + e.what();
-    } catch(Bug& b) {
+    } catch(util::Bug& b) {
         _error = std::string("Qserv bug:") + b.what();
     } catch(std::exception const& e) {
         _error = std::string("analyzeQuery unexpected:") + e.what();
@@ -430,11 +430,11 @@ std::vector<std::string> QuerySession::_buildChunkQueries(query::QueryTemplate::
     std::vector<std::string> chunkQueries;
     // This logic may be pushed over to the qserv worker in the future.
     if (_stmtParallel.empty() || !_stmtParallel.front()) {
-        throw QueryProcessingBug("Attempted buildChunkQueries without _stmtParallel");
+        throw QueryProcessingBug(ERR_LOC, "Attempted buildChunkQueries without _stmtParallel");
     }
 
     if (!_context->queryMapping) {
-        throw QueryProcessingBug("Missing QueryMapping in _context");
+        throw QueryProcessingBug(ERR_LOC, "Missing QueryMapping in _context");
     }
 
     for (auto&& queryTemplate: queryTemplates) {

@@ -32,7 +32,6 @@
 
 // Qserv headers
 #include "ccontrol/msgCode.h"
-#include "global/Bug.h"
 #include "global/debugUtil.h"
 #include "global/MsgReceiver.h"
 #include "proto/ProtoHeaderWrap.h"
@@ -40,6 +39,7 @@
 #include "proto/WorkerResponse.h"
 #include "qdisp/JobQuery.h"
 #include "rproc/InfileMerger.h"
+#include "util/Bug.h"
 #include "util/common.h"
 #include "util/StringHash.h"
 
@@ -95,7 +95,7 @@ bool MergingHandler::flush(int bLen, BufPtr const& bufPtr, bool& last, bool& lar
     resultRows = 0;
 
     if (bLen < 0) {
-        throw Bug("MergingHandler invalid blen=" + to_string(bLen) + " from " + _wName);
+        throw util::Bug(ERR_LOC, "MergingHandler invalid blen=" + to_string(bLen) + " from " + _wName);
     }
 
     switch(_state) {
@@ -130,8 +130,8 @@ bool MergingHandler::flush(int bLen, BufPtr const& bufPtr, bool& last, bool& lar
             _state = MsgState::RESULT_WAIT;
             if (endNoData || nextBufSize == 0) {
                 if (!endNoData || nextBufSize != 0 ) {
-                    throw Bug("inconsistent msg termination endNoData=" + std::to_string(endNoData)
-                    + " nextBufSize=" + std::to_string(nextBufSize));
+                    throw util::Bug(ERR_LOC, "inconsistent msg termination endNoData=" + std::to_string(endNoData)
+                                    + " nextBufSize=" + std::to_string(nextBufSize));
                 }
                 // Nothing to merge, but some bookkeeping needs to be done.
                 _infileMerger->mergeCompleteFor(_jobIds);
@@ -230,7 +230,7 @@ void MergingHandler::_initState() {
 bool MergingHandler::_merge() {
     if (auto job = getJobQuery().lock()) {
         if (_flushed) {
-            throw Bug("MergingRequester::_merge : already flushed");
+            throw util::Bug(ERR_LOC, "MergingRequester::_merge : already flushed");
         }
         bool success = _infileMerger->merge(_response);
         if (!success) {

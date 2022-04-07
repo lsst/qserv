@@ -511,13 +511,13 @@ void QueryRequest::_processData(JobQuery::Ptr const& jq, int blen, bool xrdLast)
     flushOk = jq->getRespHandler()->flush(respSize, bufPtr, last, largeResult, nextBufSize, resultRows);
     if (last) {
         // Last should only be true when the header is read, not the result.
-        throw Bug("_processData result had 'last' true, which cannot be allowed.");
+        throw util::Bug(ERR_LOC, "_processData result had 'last' true, which cannot be allowed.");
     }
 
 
     bufPtr.reset(); // don't need the buffer anymore and it could be big.
     if (nextBufSize != protoHeaderSize) {
-        throw Bug("Unexpected header size from flush(result) call QID="
+        throw util::Bug(ERR_LOC, "Unexpected header size from flush(result) call QID="
                 + to_string(_qid) + "#" + to_string(_jobid));
     }
     if (flushOk) {

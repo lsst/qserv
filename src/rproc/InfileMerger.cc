@@ -55,7 +55,6 @@
 
 // Qserv headers
 #include "czar/Czar.h"
-#include "global/Bug.h"
 #include "global/intTypes.h"
 #include "proto/WorkerResponse.h"
 #include "proto/ProtoImporter.h"
@@ -69,6 +68,7 @@
 #include "sql/SqlResults.h"
 #include "sql/SqlErrorObject.h"
 #include "sql/statement.h"
+#include "util/Bug.h"
 #include "util/IterableFormatter.h"
 #include "util/StringHash.h"
 
@@ -449,7 +449,7 @@ int InfileMerger::makeJobIdAttempt(int jobId, int attemptCount) {
         std::string msg = _queryIdStr + " jobId=" + std::to_string(jobId)
                 + " Canceling query attemptCount too large at " + std::to_string(attemptCount);
         LOGS(_log, LOG_LVL_ERROR, msg);
-        throw Bug(msg);
+        throw util::Bug(ERR_LOC, msg);
     }
     jobIdAttempt += attemptCount;
     return jobIdAttempt;

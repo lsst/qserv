@@ -41,7 +41,6 @@
 #include "lsst/log/Log.h"
 
 // Qserv headers
-#include "global/Bug.h"
 #include "global/LogContext.h"
 #include "proto/worker.pb.h"
 

@@ -25,7 +25,7 @@
 // Class header
 #include "ChunkTasksQueue.h"
 
-#include "global/Bug.h"
+#include "util/Bug.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -51,7 +51,7 @@ void ChunkTasksQueue::queueTask(std::vector<wbase::Task::Ptr> const& tasks) {
         if (iter != _chunkMap.end() && iter->first != chunkId) {
             LOGS(_log, LOG_LVL_ERROR, "All tasks grouped together must be on the same chunk."
                     << " chunkA=" << iter->first << " chunkB=" << chunkId);
-            throw Bug("ChunkTasksQueue::queueTask mismatched chunkIds");
+            throw util::Bug(ERR_LOC, "ChunkTasksQueue::queueTask mismatched chunkIds");
         }
         /// If it's the first time through, or the chunkId is different than the previous one, then
         /// find the correct ChunkTask.

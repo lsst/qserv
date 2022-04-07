@@ -25,7 +25,7 @@
 #include "wcontrol/TransmitMgr.h"
 
 // Qserv headers
-#include "global/Bug.h"
+#include "util/Bug.h"
 
 #include "lsst/log/Log.h"
 
@@ -116,7 +116,7 @@ int QidMgr::LockCount::release() {
         --lcTotalCount;
         --lcCount;
         if (lcTotalCount <=0 && lcCount > 0) {
-            throw Bug("LockCount::_release() _count > _totalCount "
+            throw util::Bug(ERR_LOC, "LockCount::_release() _count > _totalCount "
                       + to_string(lcCount ) + " > " + to_string(lcTotalCount) );
         }
         totalCount = lcTotalCount;

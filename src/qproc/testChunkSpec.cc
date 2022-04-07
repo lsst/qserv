@@ -44,6 +44,7 @@
 // Local headers
 #include "global/intTypes.h"
 #include "qproc/ChunkSpec.h"
+#include "util/Bug.h"
 
 // Boost unit test header
 #define BOOST_TEST_MODULE ChunkSpec
@@ -115,7 +116,7 @@ BOOST_AUTO_TEST_CASE(Intersect) {
         c3.subChunks.push_back(i);
     }
     // Throws because chunkIds are different.
-    BOOST_CHECK_THROW(c1c2 = c1.intersect(c2), std::logic_error);
+    BOOST_CHECK_THROW(c1c2 = c1.intersect(c2), lsst::qserv::util::Bug);
     c1.chunkId = c2.chunkId = 100; // Make them the same
     c1c2 = c1.intersect(c2);
     BOOST_CHECK_EQUAL(c1c2.subChunks.size(), IntVector::size_type(5));

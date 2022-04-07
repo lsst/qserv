@@ -41,7 +41,6 @@
 #include "boost/format.hpp"
 
 // Qserv headers
-#include "global/Bug.h"
 #include "global/intTypes.h"
 #include "global/constants.h"
 #include "global/stringUtil.h"
@@ -51,6 +50,7 @@
 #include "qproc/ChunkSpec.h"
 #include "sql/SqlConnection.h"
 #include "sql/SqlConnectionFactory.h"
+#include "util/Bug.h"
 #include "util/IterableFormatter.h"
 
 namespace {
@@ -176,7 +176,7 @@ ChunkSpecVector SecondaryIndex::lookup(query::SecIdxRestrictorVec const& restric
     if (_backend) {
         return _backend->lookup(restrictors);
     } else {
-        throw Bug("SecondaryIndex : no backend initialized");
+        throw util::Bug(ERR_LOC, "SecondaryIndex : no backend initialized");
     }
 }
 

@@ -25,6 +25,7 @@
 #include "wcontrol/SqlConnMgr.h"
 
 // qserv headers
+#include "util/Bug.h"
 #include "wbase/SendChannelShared.h"
 
 #include "lsst/log/Log.h"
@@ -84,7 +85,7 @@ SqlConnMgr::ConnType SqlConnMgr::_take(bool scanQuery,
                 ok = _sqlScanConnCount < _maxSqlScanConnections;
                 break;
             default:
-                throw Bug("SqlConnMgr::_take unexpected type " + to_string(connType));
+                throw util::Bug(ERR_LOC, "SqlConnMgr::_take unexpected type " + to_string(connType));
         }
         return ok;
     });

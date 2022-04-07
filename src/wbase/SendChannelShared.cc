@@ -192,7 +192,7 @@ bool SendChannelShared::_transmit(bool erred) {
         TransmitData::Ptr thisTransmit = _transmitQueue.front();
         _transmitQueue.pop();
         if (thisTransmit == nullptr) {
-            throw Bug("_transmitLoop() _transmitQueue had nullptr!");
+            throw util::Bug(ERR_LOC, "_transmitLoop() _transmitQueue had nullptr!");
         }
 
         auto sz = _transmitQueue.size();

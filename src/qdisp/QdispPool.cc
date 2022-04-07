@@ -28,6 +28,7 @@
 #include "lsst/log/Log.h"
 
 // Qserv headers
+#include "util/Bug.h"
 #include "util/common.h"
 
 namespace {
@@ -59,7 +60,7 @@ void PriorityQueue::queCmd(util::Command::Ptr const& cmd) {
         std::lock_guard<std::mutex> lock(_mtx);
         auto iter = _queues.find(_defaultPriority);
         if (iter == _queues.end()) {
-            throw Bug("PriorityQueue default priority queue not found a!");
+            throw util::Bug(ERR_LOC, "PriorityQueue default priority queue not found a!");
         }
         iter->second->queCmd(cmd);
         _changed = true;
@@ -78,7 +79,7 @@ void PriorityQueue::queCmd(PriorityCommand::Ptr const& cmd, int priority) {
                                      " using default priority=" << _defaultPriority);
             iter = _queues.find(_defaultPriority);
             if (iter == _queues.end()) {
-                throw Bug("PriorityQueue default priority queue not found b!");
+                throw util::Bug(ERR_LOC, "PriorityQueue default priority queue not found b!");
             }
         }
         cmd->_priority = priority;

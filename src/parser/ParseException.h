@@ -33,7 +33,7 @@
 #include <map>
 
 // Qserv headers
-#include "global/Bug.h"
+#include "util/Bug.h"
 
 
 namespace lsst {
@@ -48,7 +48,7 @@ public:
     ~ParseException() override = default;
 
     /// Parse exception with a qserv "likely bug" (see global/Bug.h)
-    explicit ParseException(Bug const& b);
+    explicit ParseException(util::Bug const& b);
 
     /// Parse related exception where the antlr4 context need not be included.
     explicit ParseException(std::string const& msg);

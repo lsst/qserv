@@ -30,7 +30,6 @@
 // Third-party headers
 
 // Qserv headers
-#include "global/Bug.h"
 #include "util/ThreadPool.h"
 
 namespace lsst {

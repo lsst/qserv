@@ -43,9 +43,9 @@
 #include "lsst/log/Log.h"
 
 // Qserv headers
-#include "global/Bug.h"
 #include "global/constants.h"
 #include "sql/SqlResults.h"
+#include "util/Bug.h"
 #include "util/IterableFormatter.h"
 #include "wbase/Base.h"
 #include "wdb/QuerySql.h"
@@ -247,7 +247,7 @@ public:
             for(i=sc.begin(), e=sc.end(); i != e; ++i) {
                 SubChunkMap::iterator it = scm.find(*i); // Should be there
                 if (it == scm.end()) {
-                    throw Bug("ChunkResource ChunkEntry::release: Error releasing un-acquired resource");
+                    throw util::Bug(ERR_LOC, "ChunkResource ChunkEntry::release: Error releasing un-acquired resource");
                 }
                 scm[*i] = it->second - 1; // write new value
             } // All subchunks
@@ -272,7 +272,7 @@ private:
                     discardable.push_back(ScTable(_chunkId, elem.first, si->first));
                     mapDiscardable.push_back(si->first);
                 } else if (si->second < 0) {
-                    throw Bug("ChunkResource ChunkEntry::flush: Invalid negative use count when flushing subchunks");
+                    throw util::Bug(ERR_LOC, "ChunkResource ChunkEntry::flush: Invalid negative use count when flushing subchunks");
                 }
             } // All subchunks
             // Prune zero elements for this db+table+chunk
