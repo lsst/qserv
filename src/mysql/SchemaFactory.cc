@@ -60,12 +60,12 @@ struct ColTypeFactory {
           case MYSQL_TYPE_DOUBLE: sqlType = "DOUBLE"; break; // n,m
           case MYSQL_TYPE_NULL: sqlType = "NULL"; break;
 
-          case MYSQL_TYPE_TIMESTAMP: sqlType = "TIMESTAMP"; break;
+          case MYSQL_TYPE_TIMESTAMP: _setDateTime("TIMESTAMP", f.decimals); break;
           case MYSQL_TYPE_LONGLONG: _setGeneric("BIGINT", f.length); break;
           case MYSQL_TYPE_INT24: sqlType = "MEDIUMINT"; break;
           case MYSQL_TYPE_DATE: sqlType = "DATE"; break;
           case MYSQL_TYPE_TIME: sqlType = "TIME"; break;
-          case MYSQL_TYPE_DATETIME: sqlType = "DATETIME"; break;
+          case MYSQL_TYPE_DATETIME: _setDateTime("DATETIME", f.decimals); break;
           case MYSQL_TYPE_YEAR: sqlType = "YEAR"; break;
           case MYSQL_TYPE_NEWDATE: sqlType = "DATE"; break;
           case MYSQL_TYPE_VARCHAR: sqlType = "VARCHAR"; break; // n
@@ -105,6 +105,14 @@ private:
         std::ostringstream os;
         os << baseType << "(" << length << ")";
         sqlType = os.str();
+    }
+
+    void _setDateTime(char const* baseType, int length) {
+        if (length == 0) {
+            sqlType = baseType;
+        } else {
+            sqlType = std::string(baseType) + "(" + std::to_string(length) + ")";
+        }
     }
 
     void _setDecimal(MYSQL_FIELD const& f) {
