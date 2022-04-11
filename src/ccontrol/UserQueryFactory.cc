@@ -71,6 +71,56 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.ccontrol.UserQueryFactory");
 
 namespace lsst::qserv::ccontrol {
 
+using userQuerySharedResourcesPtr = std::shared_ptr<UserQuerySharedResources>;
+
+/**
+ * @brief Determine if the table name in the FROM statement refers to PROCESSLIST table.
+ *
+ * @param stmt SelectStmt representing the query.
+ * @param defaultDb Default database name, may be empty.
+ * @return true if the query refers only to the PROCESSLIST table.
+ * @return false if the query does not refer only to the PROCESSLIST table.
+ */
+bool _stmtRefersToProcessListTable(query::SelectStmt::Ptr& stmt, std::string defaultDb) {
+    auto const& tableRefList = stmt->getFromList().getTableRefList();
+    if (tableRefList.size() != 1) return false;
+    auto const& tblRef = tableRefList[0];
+    std::string const& db = tblRef->getDb().empty() ? defaultDb : tblRef->getDb();
+    if (UserQueryType::isProcessListTable(db, tblRef->getTable())) return true;
+    return false;
+}
+
+/**
+ * @brief Make a UserQueryProcessList (or UserQueryInvalid) from given parameters.
+ *
+ * @param stmt The SelectStmt representing the query.
+ * @param sharedResources Resources used by UserQueryFactory to create UserQueries.
+ * @param userQueryId Unique string identifying the query.
+ * @param resultDb Name of the databse that will contain results.
+ * @param aQuery The original query string.
+ * @param async If the query is to be run asynchronously.
+ * @return std::shared_ptr<UserQuery>, will be a UserQueryProcessList or UserQueryInvalid.
+ */
+std::shared_ptr<UserQuery> _makeUserQueryProcessList(query::SelectStmt::Ptr& stmt,
+                                                     userQuerySharedResourcesPtr& sharedResources,
+                                                     std::string const& userQueryId,
+                                                     std::string const& resultDb, std::string const& aQuery,
+                                                     bool async) {
+    if (async) {
+        // no point supporting async for these
+        auto uq = std::make_shared<UserQueryInvalid>("SUBMIT is not allowed with query: " + aQuery);
+        return uq;
+    }
+    LOGS(_log, LOG_LVL_DEBUG, "SELECT query is a PROCESSLIST");
+    try {
+        return std::make_shared<UserQueryProcessList>(stmt, sharedResources->resultDbConn.get(),
+                                                      sharedResources->qMetaSelect,
+                                                      sharedResources->qMetaCzarId, userQueryId, resultDb);
+    } catch (std::exception const& exc) {
+        return std::make_shared<UserQueryInvalid>(exc.what());
+    }
+}
+
 std::shared_ptr<UserQuerySharedResources> makeUserQuerySharedResources(
         czar::CzarConfig const& czarConfig, std::shared_ptr<qproc::DatabaseModels> const& dbModels,
         std::string const& czarName) {
@@ -147,27 +197,9 @@ UserQuery::Ptr UserQueryFactory::newUserQuery(std::string const& aQuery, std::st
         auto stmt = parser->getSelectStmt();
 
         // handle special database/table names
-        auto&& tblRefList = stmt->getFromList().getTableRefList();
-        if (tblRefList.size() == 1) {
-            auto&& tblRef = tblRefList[0];
-            std::string const db = tblRef->getDb().empty() ? defaultDb : tblRef->getDb();
-            if (UserQueryType::isProcessListTable(db, tblRef->getTable())) {
-                if (async) {
-                    // no point supporting async for these
-                    auto uq =
-                            std::make_shared<UserQueryInvalid>("SUBMIT is not allowed with query: " + aQuery);
-                    return uq;
-                }
-                LOGS(_log, LOG_LVL_DEBUG, "SELECT query is a PROCESSLIST");
-                try {
-                    return std::make_shared<UserQueryProcessList>(
-                            stmt, _userQuerySharedResources->resultDbConn.get(),
-                            _userQuerySharedResources->qMetaSelect, _userQuerySharedResources->qMetaCzarId,
-                            userQueryId, resultDb);
-                } catch (std::exception const& exc) {
-                    return std::make_shared<UserQueryInvalid>(exc.what());
-                }
-            }
+        if (_stmtRefersToProcessListTable(stmt, defaultDb)) {
+            return _makeUserQueryProcessList(stmt, _userQuerySharedResources, userQueryId, resultDb, aQuery,
+                                             async);
         }
 
         // This is a regular SELECT for qserv
