@@ -169,6 +169,16 @@ public:
     bool isStar() const;
 
     /**
+     * @brief Check if this ValueExpr represents a COUNT(*) factor.
+     *
+     * @param spelling if not nullptr will set the string to the spelling of
+     *                 count (may be lower case, mixed case, or upper case)
+     *
+     * @return true if there is exactly 1 factor, and it is a COUNT(*) factor.
+     */
+    bool isCountStar(std::string* spelling = nullptr) const;
+
+    /**
      * @brief Check if this ValueExpr represents a column ref factor.
      *
      * @return true if there is exactly 1 factor, and it is a COLUMNREF factor.

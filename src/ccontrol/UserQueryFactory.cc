@@ -45,6 +45,7 @@
 #include "ccontrol/UserQueryProcessList.h"
 #include "ccontrol/UserQueryResources.h"
 #include "ccontrol/UserQuerySelect.h"
+#include "ccontrol/UserQuerySelectCountStar.h"
 #include "ccontrol/UserQueryType.h"
 #include "css/CssAccess.h"
 #include "css/KvInterfaceImplMem.h"
@@ -119,6 +120,43 @@ std::shared_ptr<UserQuery> _makeUserQueryProcessList(query::SelectStmt::Ptr& stm
     } catch (std::exception const& exc) {
         return std::make_shared<UserQueryInvalid>(exc.what());
     }
+}
+
+/**
+ * @brief Determine if the qmeta database has a metadata table with chunks & row
+ *        counts that represents the table in the FROM statement for a SELECT
+ *        COUNT(*) query.
+ *
+ * @param stmt The SelectStmt representing the query.
+ * @param sharedResources Resources used by UserQueryFactory to create UserQueries.
+ * @param defaultDb Default database name, may be empty.
+ * @param rowsTable Output variable, will be set to the name of the rows table if it
+ *                  exists, otherwise will be set to an empty string.
+ * @return true if the qmeta table containing the row counts is present in qmeta.
+ * @return false if the table is not present in qmeta.
+ */
+bool qmetaHasDataForSelectCountStarQuery(query::SelectStmt::Ptr const& stmt,
+                                         userQuerySharedResourcesPtr& sharedResources,
+                                         std::string const& defaultDb, std::string& rowsTable) {
+    auto const& tableRefList = stmt->getFromList().getTableRefList();
+    // by definition a simple COUNT(*) should have exactly one table ref.
+    assert(tableRefList.size() > 0);
+    auto const& tableRefPtr = tableRefList[0];
+    assert(tableRefPtr != nullptr);
+    auto fromDb = tableRefPtr->getDb();
+    if (fromDb.empty()) {
+        fromDb = defaultDb;
+    }
+    auto const& fromTable = tableRefPtr->getTable();
+    rowsTable = fromDb + "__" + fromTable + "__rows";
+    // TODO consider using QMetaSelect instead of making a new connection.
+    auto cnx = sql::SqlConnectionFactory::make(sharedResources->czarConfig.getMySqlQmetaConfig());
+    sql::SqlErrorObject err;
+    auto tableExists = cnx->tableExists(rowsTable, err);
+    LOGS(_log, LOG_LVL_DEBUG,
+         *stmt << " rows table: " << rowsTable << (tableExists ? " exists" : " does not exist"));
+    if (not tableExists) rowsTable = "";
+    return tableExists;
 }
 
 std::shared_ptr<UserQuerySharedResources> makeUserQuerySharedResources(
@@ -200,6 +238,23 @@ UserQuery::Ptr UserQueryFactory::newUserQuery(std::string const& aQuery, std::st
         if (_stmtRefersToProcessListTable(stmt, defaultDb)) {
             return _makeUserQueryProcessList(stmt, _userQuerySharedResources, userQueryId, resultDb, aQuery,
                                              async);
+        }
+
+        /// Determine if a SelectStmt is a simple COUNT(*) query and can be run as an optimized query.
+        /// It may not be runnable as an optimzed simple COUNT(*) query because:
+        /// * The queryMeta tables do not have the required information.
+        /// * The option to run optimized COUNT(*) queries is turned off.
+        /// * It is not a COUNT(*) query.
+        /// * It is a COUNT(*) query but is too complex for the simple optimization.
+        std::string rowsTable;
+        std::string countSpelling;
+        if (UserQueryType::isSimpleCountStar(stmt, countSpelling) &&
+            qmetaHasDataForSelectCountStarQuery(stmt, _userQuerySharedResources, defaultDb, rowsTable)) {
+            auto uq = std::make_shared<UserQuerySelectCountStar>(
+                    _userQuerySharedResources->resultDbConn, _userQuerySharedResources->qMetaSelect,
+                    userQueryId, rowsTable, resultDb, countSpelling, async);
+            LOGS(_log, LOG_LVL_DEBUG, "make UserQuerySelectCountStar");
+            return uq;
         }
 
         // This is a regular SELECT for qserv

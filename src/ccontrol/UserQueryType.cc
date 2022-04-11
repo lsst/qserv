@@ -31,6 +31,11 @@
 
 // LSST headers
 #include "lsst/log/Log.h"
+#include "query/FromList.h"
+#include "query/SelectStmt.h"
+#include "query/SelectList.h"
+#include "query/TableRef.h"
+#include "query/ValueExpr.h"
 
 namespace {
 
@@ -219,6 +224,25 @@ bool UserQueryType::isCancel(std::string const& query, QueryId& queryId) {
 bool UserQueryType::isCall(std::string const& query) {
     LOGS(_log, LOG_LVL_TRACE, "isCall: " << query);
     return boost::regex_match(query, _callRe);
+}
+
+bool UserQueryType::isSimpleCountStar(std::shared_ptr<query::SelectStmt> const& stmt, std::string& spelling) {
+    if (stmt->hasWhereClause() || stmt->hasLimit() || stmt->hasOrderBy() || stmt->hasGroupBy() ||
+        stmt->hasHaving()) {
+        return false;
+    }
+    auto& selectList = stmt->getSelectList();
+    auto valueExprVec = selectList.getValueExprList();
+    if (valueExprVec == nullptr) return false;
+    if (valueExprVec->size() != 1) return false;
+    if (not(*valueExprVec)[0]->isCountStar(&spelling)) return false;
+    auto& fromList = stmt->getFromList();
+    auto& tableRefVec = fromList.getTableRefList();
+    if (tableRefVec.size() != 1) return false;
+    if (not tableRefVec[0]->isSimple())  // do not allow JOIN
+        return false;
+
+    return true;
 }
 
 }  // namespace lsst::qserv::ccontrol

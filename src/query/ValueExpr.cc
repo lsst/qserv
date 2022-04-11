@@ -38,6 +38,7 @@
 // System headers
 #include <algorithm>
 #include <cassert>
+#include <cctype>
 #include <cstddef>
 #include <iostream>
 #include <iterator>
@@ -254,6 +255,40 @@ bool ValueExpr::isStar() const {
         return vf->getType() == ValueFactor::STAR;
     }
     return false;
+}
+
+bool ValueExpr::isCountStar(std::string* spelling) const {
+    if (_factorOps.empty() or _factorOps.size() != 1) {
+        return false;
+    }
+    std::shared_ptr<ValueFactor const> vf = getFactor();
+    if (not vf) {
+        throw std::invalid_argument("ValueExpr::isCountStar null ValueFactor");
+    }
+    if (vf->getType() != ValueFactor::AGGFUNC) {
+        return false;
+    }
+    auto aggFunc = vf->getFuncExpr();
+    if (not aggFunc) {
+        throw std::logic_error("ValueExpr::isCountStar null FuncExpr in AGGFUNC");
+    }
+    auto name = aggFunc->getName();
+    auto uppercaseName = name;
+    std::transform(uppercaseName.begin(), uppercaseName.end(), uppercaseName.begin(), ::toupper);
+    if (uppercaseName != "COUNT") {
+        return false;
+    }
+    if (spelling != nullptr) {
+        *spelling = name;
+    }
+    auto& valueExprParams = aggFunc->getParams();
+    if (valueExprParams.size() != 1) {
+        return false;
+    }
+    if (not valueExprParams[0]->isStar()) {
+        return false;
+    }
+    return true;
 }
 
 /// @return true if holding a single ValueFactor

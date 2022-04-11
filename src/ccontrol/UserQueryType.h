@@ -24,12 +24,17 @@
 
 // System headers
 #include <cstdint>
+#include <memory>
 #include <string>
 
 // Third-party headers
 
 // Qserv headers
 #include "global/intTypes.h"
+
+namespace lsst::qserv::query {
+class SelectStmt;
+}
 
 namespace lsst::qserv::ccontrol {
 
@@ -98,6 +103,16 @@ public:
      *  Returns true if query is CALL ...
      */
     static bool isCall(std::string const& query);
+
+    /**
+     *
+     * @param stmt the statement to check
+     * @param spelling if not nullptr will set the string to the spelling of
+     *                 count (may be lower case, mixed case, or upper case)
+     *
+     * Returns true if the select statement is SELECT COUNT(*) FROM <database>
+     */
+    static bool isSimpleCountStar(std::shared_ptr<query::SelectStmt> const& stmt, std::string& spelling);
 };
 
 }  // namespace lsst::qserv::ccontrol
