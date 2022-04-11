@@ -56,6 +56,7 @@ from .opt import (
     cmake_option,
     compose_file_option,
     dashboard_port_option,
+    debuggable_option,
     dh_user_ev,
     dh_token_ev,
     do_build_image_option,
@@ -440,6 +441,17 @@ def run_dev(
 @qserv_build_root_option()
 @user_build_image_option()
 @user_option()
+@debuggable_option()
+@click.option(
+    "--mode",
+    type=click.Choice(("long-lived", "temp")),
+    help="Indicates the container lifecycle.\n\n"
+    "* 'long-lived' for long-lived container; runs and does not enter the container.\n\n"
+    "* 'temp' for a temporary container; runs and enters container, removes container when exiting.\n\n"
+    ,
+    default="temp",
+    show_default=True
+)
 @dry_option()
 def run_build(
     qserv_root: str,
@@ -447,6 +459,8 @@ def run_build(
     qserv_build_root: str,
     user_build_image: str,
     user: str,
+    debuggable: bool,
+    mode: str,
     dry: bool,
 ) -> None:
     "Run and enter a build container."
@@ -456,6 +470,8 @@ def run_build(
         qserv_build_root,
         user_build_image,
         user,
+        debuggable,
+        mode,
         dry,
     )
 

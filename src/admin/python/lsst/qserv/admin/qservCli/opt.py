@@ -806,5 +806,13 @@ clang_format_option = partial(
          "If REFORMAT, run clang-format on C++ files (will reformat files)."
          "If OFF, do not run clang-format.",
     default="OFF",
+)
+
+
+debuggable_option = partial(
+    click.option,
+    "--debuggable/--no-debuggable",
+    help="Run the container with permissions to enable debugging.",
+    default=True,
     show_default=True,
 )
