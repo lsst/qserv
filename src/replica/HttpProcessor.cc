@@ -208,7 +208,7 @@ void HttpProcessor::registerServices() {
                 HttpConfigurationModule::process(
                         self->controller(), self->name(), self->_processorConfig,
                         req, resp,
-                        "UPDATE-GENERAL", HttpModule::AUTH_REQUIRED);
+                        "UPDATE-GENERAL", HttpAuthType::REQUIRED);
             }
     );
     httpServer()->addHandler(
@@ -217,7 +217,7 @@ void HttpProcessor::registerServices() {
                 HttpConfigurationModule::process(
                         self->controller(), self->name(), self->_processorConfig,
                         req, resp,
-                        "UPDATE-WORKER", HttpModule::AUTH_REQUIRED);
+                        "UPDATE-WORKER", HttpAuthType::REQUIRED);
             }
     );
     httpServer()->addHandler(
@@ -226,7 +226,7 @@ void HttpProcessor::registerServices() {
                 HttpConfigurationModule::process(
                         self->controller(), self->name(), self->_processorConfig,
                         req, resp,
-                        "DELETE-WORKER", HttpModule::AUTH_REQUIRED);
+                        "DELETE-WORKER", HttpAuthType::REQUIRED);
             }
     );
     httpServer()->addHandler(
@@ -235,7 +235,7 @@ void HttpProcessor::registerServices() {
                 HttpConfigurationModule::process(
                         self->controller(), self->name(), self->_processorConfig,
                         req, resp,
-                        "ADD-WORKER", HttpModule::AUTH_REQUIRED);
+                        "ADD-WORKER", HttpAuthType::REQUIRED);
             }
     );
     httpServer()->addHandler(
@@ -244,7 +244,7 @@ void HttpProcessor::registerServices() {
                 HttpConfigurationModule::process(
                         self->controller(), self->name(), self->_processorConfig,
                         req, resp,
-                        "DELETE-DATABASE-FAMILY", HttpModule::AUTH_REQUIRED);
+                        "DELETE-DATABASE-FAMILY", HttpAuthType::REQUIRED);
             }
     );
     httpServer()->addHandler(
@@ -253,7 +253,7 @@ void HttpProcessor::registerServices() {
                 HttpConfigurationModule::process(
                         self->controller(), self->name(), self->_processorConfig,
                         req, resp,
-                        "ADD-DATABASE-FAMILY", HttpModule::AUTH_REQUIRED);
+                        "ADD-DATABASE-FAMILY", HttpAuthType::REQUIRED);
             }
     );
     httpServer()->addHandler(
@@ -262,7 +262,7 @@ void HttpProcessor::registerServices() {
                 HttpConfigurationModule::process(
                         self->controller(), self->name(), self->_processorConfig,
                         req, resp,
-                        "DELETE-DATABASE", HttpModule::AUTH_REQUIRED);
+                        "DELETE-DATABASE", HttpAuthType::REQUIRED);
             }
     );
     httpServer()->addHandler(
@@ -271,7 +271,7 @@ void HttpProcessor::registerServices() {
                 HttpConfigurationModule::process(
                         self->controller(), self->name(), self->_processorConfig,
                         req, resp,
-                        "ADD-DATABASE", HttpModule::AUTH_REQUIRED);
+                        "ADD-DATABASE", HttpAuthType::REQUIRED);
             }
     );
     httpServer()->addHandler(
@@ -279,7 +279,7 @@ void HttpProcessor::registerServices() {
             [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
                 HttpConfigurationModule::process(
                         self->controller(), self->name(), self->_processorConfig,
-                        req, resp,"DELETE-TABLE", HttpModule::AUTH_REQUIRED);
+                        req, resp,"DELETE-TABLE", HttpAuthType::REQUIRED);
             }
     );
     httpServer()->addHandler(
@@ -288,7 +288,7 @@ void HttpProcessor::registerServices() {
                 HttpConfigurationModule::process(
                         self->controller(), self->name(), self->_processorConfig,
                         req, resp,
-                        "ADD-TABLE", HttpModule::AUTH_REQUIRED);
+                        "ADD-TABLE", HttpAuthType::REQUIRED);
             }
     );
     httpServer()->addHandler(
@@ -342,7 +342,7 @@ void HttpProcessor::registerServices() {
                 HttpSqlSchemaModule::process(
                         self->controller(), self->name(), self->_processorConfig,
                         req, resp,
-                        "ALTER-TABLE-SCHEMA", HttpModule::AUTH_REQUIRED);
+                        "ALTER-TABLE-SCHEMA", HttpAuthType::REQUIRED);
             }
     );
     httpServer()->addHandler(
@@ -352,7 +352,7 @@ void HttpProcessor::registerServices() {
                 HttpQservSqlModule::process(
                         self->controller(), self->name(), self->_processorConfig,
                         req, resp,
-                        defaultSubModule, HttpModule::AUTH_REQUIRED);
+                        defaultSubModule, HttpAuthType::REQUIRED);
             }
     );
     httpServer()->addHandler(
@@ -369,7 +369,7 @@ void HttpProcessor::registerServices() {
                 HttpSqlIndexModule::process(
                         self->controller(), self->name(), self->_processorConfig,
                         req, resp,
-                        "CREATE-INDEXES", HttpModule::AUTH_REQUIRED);
+                        "CREATE-INDEXES", HttpAuthType::REQUIRED);
             }
     );
     httpServer()->addHandler(
@@ -378,7 +378,7 @@ void HttpProcessor::registerServices() {
                 HttpSqlIndexModule::process(
                         self->controller(), self->name(), self->_processorConfig,
                         req, resp,
-                        "DROP-INDEXES", HttpModule::AUTH_REQUIRED);
+                        "DROP-INDEXES", HttpAuthType::REQUIRED);
             }
     );
     httpServer()->addHandler(
@@ -396,7 +396,7 @@ void HttpProcessor::registerServices() {
                 HttpIngestConfigModule::process(
                         self->controller(), self->name(), self->_processorConfig,
                         req, resp,
-                        "UPDATE", HttpModule::AUTH_REQUIRED);
+                        "UPDATE", HttpAuthType::REQUIRED);
             }
     );
     httpServer()->addHandler(
@@ -423,7 +423,7 @@ void HttpProcessor::registerServices() {
                 HttpIngestTransModule::process(
                         self->controller(), self->name(), self->_processorConfig,
                         req, resp,
-                        "BEGIN-TRANSACTION", HttpModule::AUTH_REQUIRED);
+                        "BEGIN-TRANSACTION", HttpAuthType::REQUIRED);
             }
     );
     httpServer()->addHandler(
@@ -432,7 +432,7 @@ void HttpProcessor::registerServices() {
                 HttpIngestTransModule::process(
                         self->controller(), self->name(), self->_processorConfig,
                         req, resp,
-                        "END-TRANSACTION", HttpModule::AUTH_REQUIRED);
+                        "END-TRANSACTION", HttpAuthType::REQUIRED);
             }
     );
     httpServer()->addHandler(
@@ -450,7 +450,7 @@ void HttpProcessor::registerServices() {
                 HttpIngestModule::process(
                         self->controller(), self->name(), self->_processorConfig,
                         req, resp,
-                        "ADD-DATABASE", HttpModule::AUTH_REQUIRED);
+                        "ADD-DATABASE", HttpAuthType::REQUIRED);
             }
     );
     httpServer()->addHandler(
@@ -459,7 +459,7 @@ void HttpProcessor::registerServices() {
                 HttpIngestModule::process(
                         self->controller(), self->name(), self->_processorConfig,
                         req, resp,
-                        "PUBLISH-DATABASE", HttpModule::AUTH_REQUIRED);
+                        "PUBLISH-DATABASE", HttpAuthType::REQUIRED);
             }
     );
     httpServer()->addHandler(
@@ -468,7 +468,7 @@ void HttpProcessor::registerServices() {
                 HttpIngestModule::process(
                         self->controller(), self->name(), self->_processorConfig,
                         req, resp,
-                        "DELETE-DATABASE", HttpModule::AUTH_REQUIRED);
+                        "DELETE-DATABASE", HttpAuthType::REQUIRED);
             }
     );
     httpServer()->addHandler(
@@ -486,7 +486,7 @@ void HttpProcessor::registerServices() {
                 HttpIngestModule::process(
                         self->controller(), self->name(), self->_processorConfig,
                         req, resp,
-                        "ADD-TABLE", HttpModule::AUTH_REQUIRED);
+                        "ADD-TABLE", HttpAuthType::REQUIRED);
             }
     );
     httpServer()->addHandler(
@@ -495,7 +495,7 @@ void HttpProcessor::registerServices() {
                 HttpIngestModule::process(
                         self->controller(), self->name(), self->_processorConfig,
                         req, resp,
-                        "DELETE-TABLE", HttpModule::AUTH_REQUIRED);
+                        "DELETE-TABLE", HttpAuthType::REQUIRED);
             }
     );
     httpServer()->addHandler(
@@ -504,7 +504,7 @@ void HttpProcessor::registerServices() {
                 HttpIngestModule::process(
                         self->controller(), self->name(), self->_processorConfig,
                         req, resp,
-                        "SCAN-TABLE-STATS", HttpModule::AUTH_REQUIRED);
+                        "SCAN-TABLE-STATS", HttpAuthType::REQUIRED);
             }
     );
     httpServer()->addHandler(
@@ -513,7 +513,7 @@ void HttpProcessor::registerServices() {
                 HttpIngestModule::process(
                         self->controller(), self->name(), self->_processorConfig,
                         req, resp,
-                        "DELETE-TABLE-STATS", HttpModule::AUTH_REQUIRED);
+                        "DELETE-TABLE-STATS", HttpAuthType::REQUIRED);
             }
     );
     httpServer()->addHandler(
@@ -531,7 +531,7 @@ void HttpProcessor::registerServices() {
                 HttpIngestChunksModule::process(
                         self->controller(), self->name(), self->_processorConfig,
                         req, resp,
-                        "ADD-CHUNK", HttpModule::AUTH_REQUIRED);
+                        "ADD-CHUNK", HttpAuthType::REQUIRED);
             }
     );
     httpServer()->addHandler(
@@ -540,7 +540,7 @@ void HttpProcessor::registerServices() {
                 HttpIngestChunksModule::process(
                         self->controller(), self->name(), self->_processorConfig,
                         req, resp,
-                        "ADD-CHUNK-LIST", HttpModule::AUTH_REQUIRED);
+                        "ADD-CHUNK-LIST", HttpAuthType::REQUIRED);
             }
     );
     httpServer()->addHandler(
@@ -558,7 +558,7 @@ void HttpProcessor::registerServices() {
                 HttpIngestModule::process(
                         self->controller(), self->name(), self->_processorConfig,
                         req, resp,
-                        "BUILD-CHUNK-LIST", HttpModule::AUTH_REQUIRED);
+                        "BUILD-CHUNK-LIST", HttpAuthType::REQUIRED);
             }
     );
     httpServer()->addHandler(
@@ -576,7 +576,7 @@ void HttpProcessor::registerServices() {
                 HttpIngestIndexModule::process(
                         self->controller(), self->name(), self->_processorConfig,
                         req, resp,
-                        "BUILD-SECONDARY-INDEX", HttpModule::AUTH_REQUIRED);
+                        "BUILD-SECONDARY-INDEX", HttpAuthType::REQUIRED);
             }
     );
     httpServer()->addHandler(
@@ -585,7 +585,7 @@ void HttpProcessor::registerServices() {
                 HttpExportModule::process(
                         self->controller(), self->name(), self->_processorConfig,
                         req, resp,
-                        "TABLES", HttpModule::AUTH_REQUIRED);
+                        "TABLES", HttpAuthType::REQUIRED);
             }
     );
 

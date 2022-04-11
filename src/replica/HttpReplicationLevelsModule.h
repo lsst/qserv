@@ -53,7 +53,7 @@ public:
                         qhttp::Response::Ptr const& resp,
                         HealthMonitorTask::Ptr const& healthMonitorTask,
                         std::string const& subModuleName=std::string(),
-                        HttpModule::AuthType const authType=HttpModule::AUTH_NONE);
+                        HttpAuthType const authType=HttpAuthType::NONE);
 
     HttpReplicationLevelsModule() = delete;
     HttpReplicationLevelsModule(HttpReplicationLevelsModule const&) = delete;

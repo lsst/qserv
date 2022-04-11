@@ -43,7 +43,7 @@ void HttpRequestsModule::process(Controller::Ptr const& controller,
                                  qhttp::Request::Ptr const& req,
                                  qhttp::Response::Ptr const& resp,
                                  string const& subModuleName,
-                                 HttpModule::AuthType const authType) {
+                                 HttpAuthType const authType) {
     HttpRequestsModule module(controller, taskName, processorConfig, req, resp);
     module.execute(subModuleName, authType);
 }

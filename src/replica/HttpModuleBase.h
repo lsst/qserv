@@ -42,19 +42,20 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
+
+/// The enumeration type which is used for configuring/enforcing
+/// module's authorization requirements.
+enum class HttpAuthType {
+    REQUIRED,
+    NONE
+};
+
 /**
  * Class HttpModuleBase is a base class for requests processing modules
  * of the HTTP servers built into the Replication system's services.
  */
 class HttpModuleBase {
 public:
-    /// The enumeration type which is used for configuring/enforcing
-    /// module's authorization requirements.
-    enum AuthType {
-        AUTH_REQUIRED,
-        AUTH_NONE
-    };
-
     /**
      * Class AuthError represent exceptions thrown when the authorization
      * requirements aren't met.
@@ -81,12 +82,12 @@ public:
      *   multiple sub-modules. A value of this parameter will be forwarded to
      *   the subclass-specific implementation of the pure virtual method
      *   HttpModuleBase::executeImpl().
-     * @param authType  Authorization requirements of the module. If AUTH_REQUIRED is
+     * @param authType  Authorization requirements of the module. If HttpAuthType::REQUIRED is
      *   requested then the method will enforce the authorization. A lack of required
      *   authorization key in a request, or an incorrect value of such key would result
      *   in a error sent back to a client.
      * 
-     * @note For requests with 'AuthType::AUTH_REQUIRED' authorization keys must be sent
+     * @note For requests with 'HttpAuthType::REQUIRED' authorization keys must be sent
      *   by a requestor in the body of a request. There are two types of keys. The normal
      *   authorization level key "auth_key" is required for most operations resulting
      *   in any changes made to a persistent or transient states of Qserv, and its
@@ -98,7 +99,7 @@ public:
      *   use the administrative privileges.
      */
     void execute(std::string const& subModuleName=std::string(),
-                 AuthType const authType=AUTH_NONE);
+                 HttpAuthType const authType=HttpAuthType::NONE);
 
 protected:
     /**

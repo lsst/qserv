@@ -95,7 +95,7 @@ void IngestHttpSvc::registerServices() {
                         self->_workerName,
                         req, resp,
                         "ASYNC-STATUS-BY-ID",
-                        HttpModuleBase::AUTH_NONE);
+                        HttpAuthType::NONE);
             }
         },
         {"DELETE", "/ingest/file-async/:id",
@@ -114,7 +114,7 @@ void IngestHttpSvc::registerServices() {
                         self->_workerName,
                         req, resp,
                         "ASYNC-STATUS-BY-TRANS-ID",
-                        HttpModuleBase::AUTH_NONE);
+                        HttpAuthType::NONE);
             }
         },
         {"DELETE", "/ingest/file-async/trans/:id",

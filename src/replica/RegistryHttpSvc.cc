@@ -67,7 +67,7 @@ void RegistryHttpSvc::registerServices() {
                         self->serviceProvider(), *(self->_workers),
                         req, resp,
                         "WORKERS",
-                        HttpModuleBase::AUTH_NONE);
+                        HttpAuthType::NONE);
             }
         },
         {"POST", "/worker",
