@@ -103,7 +103,7 @@ void HttpProcessor::registerServices() {
             "GET", "/meta/version",
             [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
                 HttpMetaModule::process(
-                        self->controller(), self->name(), self->_processorConfig,
+                        self->controller()->serviceProvider(), ::taskName,
                         req, resp,
                         "VERSION");
             }

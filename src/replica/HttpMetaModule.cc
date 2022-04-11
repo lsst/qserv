@@ -26,6 +26,7 @@
 #include <stdexcept>
 
 // Qserv headers
+#include "replica/ConfigParserMySQL.h"
 #include "replica/HttpExceptions.h"
 
 using namespace std;
@@ -38,24 +39,23 @@ namespace replica {
 unsigned int const HttpMetaModule::version = 8;
 
 
-void HttpMetaModule::process(Controller::Ptr const& controller,
-                             string const& taskName,
-                             HttpProcessorConfig const& processorConfig,
+void HttpMetaModule::process(ServiceProvider::Ptr const& serviceProvider,
+                             string const& context,
                              qhttp::Request::Ptr const& req,
                              qhttp::Response::Ptr const& resp,
                              string const& subModuleName,
                              HttpAuthType const authType) {
-    HttpMetaModule module(controller, taskName, processorConfig, req, resp);
+    HttpMetaModule module(serviceProvider, context, req, resp);
     module.execute(subModuleName, authType);
 }
 
 
-HttpMetaModule::HttpMetaModule(Controller::Ptr const& controller,
-                               string const& taskName,
-                               HttpProcessorConfig const& processorConfig,
+HttpMetaModule::HttpMetaModule(ServiceProvider::Ptr const& serviceProvider,
+                               string const& context,
                                qhttp::Request::Ptr const& req,
                                qhttp::Response::Ptr const& resp)
-    :   HttpModule(controller, taskName, processorConfig, req, resp) {
+    :   HttpModuleBase(serviceProvider->authKey(), serviceProvider->adminAuthKey(), req, resp),
+        _context(context) {
 }
 
 
@@ -67,10 +67,16 @@ json HttpMetaModule::executeImpl(string const& subModuleName) {
 }
 
 
+string HttpMetaModule::context() const {
+    return _context;
+}
+
+
 json HttpMetaModule::_version() {
     debug(__func__);
     json result;
     result["version"] = version;
+    result["database_schema_version"] = ConfigParserMySQL::expectedSchemaVersion;
     return result;
 }
 
