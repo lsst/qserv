@@ -135,7 +135,7 @@ public:
     bool operator ==(WorkerInfo const& other) const;
 
     /// @return 'true' if workers objects don't have the same values of attributes
-    bool operator !=(WorkerInfo const& other) const { return operator ==(other); }
+    bool operator !=(WorkerInfo const& other) const { return !(operator ==(other)); }
 };
 
 std::ostream& operator <<(std::ostream& os, WorkerInfo const& info);

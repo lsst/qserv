@@ -340,6 +340,21 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestModifyingGeneralParameters) {
 }
 
 
+BOOST_AUTO_TEST_CASE(ConfigurationTestWorkerOperators) {
+    LOGS_INFO("Testing worker comparison operators");
+
+    WorkerInfo w1;
+    WorkerInfo w2;
+    BOOST_CHECK(w1 == w2);
+    BOOST_CHECK(!(w1 != w2));
+
+    w1.name = "w1";
+    w2.name = "w2";
+    BOOST_CHECK(w1 != w2);
+    BOOST_CHECK(!(w1 == w2));
+}
+
+
 BOOST_AUTO_TEST_CASE(ConfigurationTestWorkers) {
     LOGS_INFO("Testing worker services");
 
@@ -386,19 +401,19 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestWorkerParameters) {
 
     WorkerInfo workerA;
     BOOST_REQUIRE_NO_THROW(workerA = config->workerInfo("worker-A"));
-    BOOST_CHECK(workerA.name =="worker-A");
+    BOOST_CHECK(workerA.name == "worker-A");
     BOOST_CHECK(workerA.isEnabled);
     BOOST_CHECK(!workerA.isReadOnly);
 
     WorkerInfo workerB;
     BOOST_REQUIRE_NO_THROW(workerB = config->workerInfo("worker-B"));
-    BOOST_CHECK(workerB.name =="worker-B");
+    BOOST_CHECK(workerB.name == "worker-B");
     BOOST_CHECK(workerB.isEnabled);
     BOOST_CHECK(workerB.isReadOnly);
 
     WorkerInfo workerC;
     BOOST_REQUIRE_NO_THROW(workerC = config->workerInfo("worker-C"));
-    BOOST_CHECK(workerC.name =="worker-C");
+    BOOST_CHECK(workerC.name == "worker-C");
     BOOST_CHECK(!workerC.isEnabled);
 
     // Adding a new worker with well formed and unique parameters.
@@ -410,7 +425,7 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestWorkerParameters) {
     BOOST_REQUIRE_NO_THROW(config->addWorker(workerD));
     BOOST_CHECK_THROW(config->addWorker(workerD), std::invalid_argument);
     BOOST_REQUIRE_NO_THROW(workerD = config->workerInfo("worker-D"));
-    BOOST_CHECK(workerD.name =="worker-D");
+    BOOST_CHECK(workerD.name == "worker-D");
     BOOST_CHECK(workerD.isEnabled);
     BOOST_CHECK(workerD.isReadOnly);
 
