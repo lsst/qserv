@@ -13,11 +13,6 @@ function(CSSLoader,
 
     class ReplicationController extends FwkApplication {
 
-        /**
-         * @returns the default update interval for the page
-         */ 
-        static update_ival_sec() { return 10; }
-
         constructor(name) {
             super(name);
             this._prev_update_sec = 0;  // for triggering page updates
@@ -45,12 +40,15 @@ function(CSSLoader,
          * Override event handler defined in the base class
          * @see FwkApplication.fwk_app_on_update
          */
-        fwk_app_on_update() {
+         fwk_app_on_update() {
             if (this.fwk_app_visible) {
+                this._init();
+                if (this._prev_update_sec === undefined) {
+                    this._prev_update_sec = 0;
+                }
                 let now_sec = Fwk.now().sec;
-                if (now_sec - this._prev_update_sec > ReplicationController.update_ival_sec()) {
+                if (now_sec - this._prev_update_sec > this._update_interval_sec()) {
                     this._prev_update_sec = now_sec;
-                    this._init();
                     this._load();
                 }
             }
@@ -65,21 +63,32 @@ function(CSSLoader,
 
             let html = `
 <div class="row">
-  <div class="col">
-    <h3>Status</h3>
-    <table class="table table-sm table-hover" id="fwk-controller-status">
-      <caption class="updating">
-        Loading...
-      </caption>
-      <tbody></tbody>
-    </table>
+  <div class="col" id="fwk-controller-status">
+    <div id="status">Loading...</div>
   </div>
 </div>
 <div class="row">
+  <div class="col col-md-7">
+    <table class="table table-sm table-hover" id="fwk-controller-status">
+      <tbody>
+        <tr>
+          <th style="text-align:left" scope="row">id</th><td style="text-align:left"><pre id="id">Loading...</pre></td>
+          <th style="text-align:left" scope="row">Host</th><td style="text-align:left"><pre id="hostname">Loading...</pre></td>
+          <th style="text-align:left" scope="row">API version</th><td style="text-align:left"><pre id="api-version">Loading...</pre></td>
+        </tr>
+        <tr>
+          <th style="text-align:left" scope="row">Started</th><td style="text-align:left"><pre id="started">Loading...</pre></td>
+          <th style="text-align:left" scope="row">PID</th><td style="text-align:left"><pre id="pid">Loading...</pre></td>
+          <th style="text-align:left" scope="row">Database schema version</th><td style="text-align:left"><pre id="database-schema-version">Loading...</pre></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+<div class="row" id="fwk-controller-status-events">
   <div class="col">
-    <h3>Search event log <button id="reset-events-form" class="btn btn-primary">Reset</button></h3>
     <div class="form-row">
-      <div class="form-group col-md-2">
+      <div class="form-group col-md-1">
         <label for="current-controller">Controller:</label>
         <select id="current-controller" class="form-control">
           <option value="0" selected>any</option>
@@ -114,11 +123,30 @@ function(CSSLoader,
           <option value="2000"2,000</option>
         </select>
       </div>
+      <div class="form-group col-md-1">
+        <label for="update-interval"><i class="bi bi-arrow-repeat"></i> interval:</label>
+        <select id="update-interval" class="form-control">
+          <option value="10">10 sec</option>
+          <option value="20">20 sec</option>
+          <option value="30" selected>30 sec</option>
+          <option value="60">1 min</option>
+          <option value="120">2 min</option>
+          <option value="300">5 min</option>
+        </select>
+      </div>
+      <div class="form-group col-md-1">
+        <label for="reset-events-form">&nbsp;</label>
+        <button id="reset-events-form" class="form-control btn btn-primary">Reset</button>
+      </div>
     </div>
+  </div>
+</div>
+<div class="row">
+  <div class="col">
     <table class="table table-sm table-hover" id="fwk-controller-log">
       <thead class="thead-light">
         <tr>
-          <th rowspan="2">Timestamp</th>
+          <th rowspan="2">Event time</th>
           <th rowspan="2">Task</th>
           <th rowspan="2">Operation</th>
           <th rowspan="2">Status</th>
@@ -148,22 +176,21 @@ function(CSSLoader,
                 this._loadFromScratch();
             });
         }
-        
-        /**
-         * Table for displaying the general status of the Master Replication Controller
-         * @returns JQuery table object
-         */
+        _status() {
+            if (this._status_obj === undefined) {
+                this._status_obj = this.fwk_app_container.find('div#fwk-controller-status > div#status');
+            }
+            return this._status_obj;
+        }
         _tableStatus() {
             if (this._tableStatus_obj === undefined) {
                 this._tableStatus_obj = this.fwk_app_container.find('table#fwk-controller-status');
             }
             return this._tableStatus_obj;
         }
-
-        /**
-         * Table for displaying event log of the current Master Replication Controller
-         * @returns JQuery table object
-         */
+        _setStatusVal(name, val) {
+            this._tableStatus().find("pre#" + name).text(val);
+        }
         _tableLog() {
             if (this._tableLog_obj === undefined) {
                 this._tableLog_obj = this.fwk_app_container.find('table#fwk-controller-log');
@@ -192,6 +219,11 @@ function(CSSLoader,
         _get_current_controller() { return this._form_control('select', 'current-controller').val(); }
         _set_current_controller(val) { this._form_control('select', 'current-controller').val(val); }
 
+        _update_interval_sec() { return this._form_control('select', 'update-interval').val(); }
+
+        _disable_controls(disable) {
+            this.fwk_app_container.find('.form-control').prop('disabled', disable);
+        }
         _isImportant(event) {
             if (this._importantKeys === undefined) {
                 this._importantKeys = [
@@ -216,10 +248,6 @@ function(CSSLoader,
             this._tableLog().children('tbody').html("");
             this._load();
         }
-
-        /**
-         * Load data from the REST services then update the application's page.
-         */
         _load() {
             if (!this._loadStarted()) return;
             this._loadControllerInfo((controllerId) => {
@@ -237,25 +265,25 @@ function(CSSLoader,
             // is unable to address them within the refresh interval set for the application.
             if (_.isUndefined(this._loading) || !this._loading) {
                 this._loading = true;
-                this._tableStatus().children('caption').addClass('updating');
+                this._status().addClass('updating');
+                this._disable_controls(true);
                 return true;
             }
             return false;
         }
-
         _loadFailed(msg) {
             console.log('request failed', this.fwk_app_name, msg);
-            this._tableStatus().children('caption').html('<span style="color:maroon">No Response</span>');
-            this._tableStatus().children('caption').removeClass('updating');
+            this._status().html('<span style="color:maroon">No Response</span>');
+            this._status().removeClass('updating');
             this._loading = false;
+            this._disable_controls(false);
         }
-
         _loadFinished() {
-            Fwk.setLastUpdate(this._tableStatus().children('caption'));
-            this._tableStatus().children('caption').removeClass('updating');
+            Fwk.setLastUpdate(this._status());
+            this._status().removeClass('updating');
             this._loading = false;
+            this._disable_controls(false);
         }
-
         _loadControllerInfo(onLoaded) {
             Fwk.web_service_GET(
                 "/replication/controller",
@@ -287,7 +315,6 @@ function(CSSLoader,
                 (msg) => { this._loadFailed(msg); }
             );
         }
-
         _loadLogDictionary(controllerId, onLoaded) {
             // The dictionary (if the corresponding REST service is available) is loaded just once.
             if (!_.isUndefined(this._dict)) {
@@ -341,13 +368,13 @@ function(CSSLoader,
                 }
             );
         }
-
         _loadApiVersion(onLoaded) {
             Fwk.web_service_GET(
                 "/meta/version",
                 {},
                 (data) => {
-                    this._tableStatus().find("pre#api-version").text(data.version);
+                    this._setStatusVal("api-version", data.version);
+                    this._setStatusVal("database-schema-version", data.database_schema_version);
                     onLoaded();
                 },
                 (msg) => {
@@ -355,7 +382,6 @@ function(CSSLoader,
                 }
             );
         }
-
         _loadLogEvents(controllerId, onLoaded) {
             Fwk.web_service_GET(
                 "/replication/controller/" + controllerId,
@@ -377,37 +403,12 @@ function(CSSLoader,
                 }
             );
         }
-
         _displayStatus(controller) {
-            let started = new Date(controller.start_time);
-            let html = `
-<tr>
-  <th style="text-align:left" scope="row">Status</th>
-  <td style="text-align:left"><pre>RUNNING</pre></td>
-</tr>
-<tr>
-  <th style="text-align:left" scope="row">id</th>
-  <td style="text-align:left"><pre>` + controller.id + `</pre></td>
-</tr>
-<tr>
-  <th style="text-align:left" scope="row">Started</th>
-  <td style="text-align:left"><pre>` + started.toLocalTimeString() + `</pre></td>
-</tr>
-<tr>
-  <th style="text-align:left" scope="row">Host</th>
-  <td style="text-align:left"><pre>` + controller.hostname + `</pre></td>
-</tr>
-<tr>
-  <th style="text-align:left" scope="row">PID</th>
-  <td style="text-align:left"><pre>` + controller.pid + `</pre></td>
-</tr>
-<tr>
-  <th style="text-align:left" scope="row">API version</th>
-  <td style="text-align:left"><pre id="api-version">Loading...</pre></td>
-</tr>`;
-            this._tableStatus().children('tbody').html(html);
+            this._setStatusVal("id",       controller.id);
+            this._setStatusVal("started",  (new Date(controller.start_time)).toLocalTimeString());
+            this._setStatusVal("hostname", controller.hostname);
+            this._setStatusVal("pid",      controller.pid);
         }
-
         _displayLog(log) {
             let html = '';
             for (let i in log) {
