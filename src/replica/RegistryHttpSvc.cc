@@ -26,6 +26,7 @@
 #include "qhttp/Request.h"
 #include "qhttp/Response.h"
 #include "replica/Configuration.h"
+#include "replica/HttpMetaModule.h"
 #include "replica/RegistryHttpSvcMod.h"
 #include "replica/RegistryWorkers.h"
 
@@ -61,6 +62,14 @@ string const& RegistryHttpSvc::context() const { return ::context_; }
 void RegistryHttpSvc::registerServices() {
     auto const self = shared_from_base<RegistryHttpSvc>();
     httpServer()->addHandlers({
+        {"GET", "/meta/version",
+            [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
+                HttpMetaModule::process(
+                        self->serviceProvider(), ::context_,
+                        req, resp,
+                        "VERSION");
+            }
+        },
         {"GET", "/workers",
             [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
                 RegistryHttpSvcMod::process(

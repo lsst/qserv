@@ -31,6 +31,7 @@
 #include "replica/Configuration.h"
 #include "replica/IngestHttpSvcMod.h"
 #include "replica/IngestRequestMgr.h"
+#include "replica/HttpMetaModule.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -70,6 +71,14 @@ string const& IngestHttpSvc::context() const { return context_; }
 void IngestHttpSvc::registerServices() {
     auto const self = shared_from_base<IngestHttpSvc>();
     httpServer()->addHandlers({
+        {"GET", "/meta/version",
+            [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
+                HttpMetaModule::process(
+                        self->serviceProvider(), ::context_,
+                        req, resp,
+                        "VERSION");
+            }
+        },
         {"POST", "/ingest/file",
             [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
                 IngestHttpSvcMod::process(
