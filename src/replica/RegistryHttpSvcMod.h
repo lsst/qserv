@@ -78,7 +78,7 @@ public:
     static void process(ServiceProvider::Ptr const& serviceProvider, RegistryWorkers& workers,
                         qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp,
                         std::string const& subModuleName,
-                        HttpModuleBase::AuthType const authType=HttpModuleBase::AUTH_REQUIRED);
+                        HttpAuthType const authType=HttpAuthType::REQUIRED);
 
 protected:
     /// @see HttpModuleBase::context()

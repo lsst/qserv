@@ -29,7 +29,8 @@
 #include "nlohmann/json.hpp"
 
 // Qserv headers
-#include "replica/HttpModule.h"
+#include "replica/HttpModuleBase.h"
+#include "replica/ServiceProvider.h"
 
 // This header declarations
 namespace lsst {
@@ -40,7 +41,7 @@ namespace replica {
  * Class HttpMetaModule implements a handler for the metadata queries
  * on the REST API itself.
  */
-class HttpMetaModule: public HttpModule {
+class HttpMetaModule: public HttpModuleBase {
 public:
     typedef std::shared_ptr<HttpMetaModule> Ptr;
 
@@ -53,13 +54,12 @@ public:
      *
      * @throws std::invalid_argument for unknown values of parameter 'subModuleName'
      */
-    static void process(Controller::Ptr const& controller,
-                        std::string const& taskName,
-                        HttpProcessorConfig const& processorConfig,
+    static void process(ServiceProvider::Ptr const& serviceProvider,
+                        std::string const& context,
                         qhttp::Request::Ptr const& req,
                         qhttp::Response::Ptr const& resp,
                         std::string const& subModuleName=std::string(),
-                        HttpModule::AuthType const authType=HttpModule::AUTH_NONE);
+                        HttpAuthType const authType=HttpAuthType::NONE);
 
     HttpMetaModule() = delete;
     HttpMetaModule(HttpMetaModule const&) = delete;
@@ -68,16 +68,18 @@ public:
     ~HttpMetaModule() final = default;
 
 protected:
-    nlohmann::json executeImpl(std::string const& subModuleName) final;
+    virtual nlohmann::json executeImpl(std::string const& subModuleName) final;
+    virtual std::string context() const final;
 
 private:
-    HttpMetaModule(Controller::Ptr const& controller,
-                   std::string const& taskName,
-                   HttpProcessorConfig const& processorConfig,
+    HttpMetaModule(ServiceProvider::Ptr const& serviceProvider,
+                   std::string const& context,
                    qhttp::Request::Ptr const& req,
                    qhttp::Response::Ptr const& resp);
 
     nlohmann::json _version();
+
+    std::string const _context;
 };
     
 }}} // namespace lsst::qserv::replica

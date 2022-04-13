@@ -31,6 +31,7 @@
 #include "replica/Configuration.h"
 #include "replica/IngestHttpSvcMod.h"
 #include "replica/IngestRequestMgr.h"
+#include "replica/HttpMetaModule.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -70,6 +71,14 @@ string const& IngestHttpSvc::context() const { return context_; }
 void IngestHttpSvc::registerServices() {
     auto const self = shared_from_base<IngestHttpSvc>();
     httpServer()->addHandlers({
+        {"GET", "/meta/version",
+            [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
+                HttpMetaModule::process(
+                        self->serviceProvider(), ::context_,
+                        req, resp,
+                        "VERSION");
+            }
+        },
         {"POST", "/ingest/file",
             [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
                 IngestHttpSvcMod::process(
@@ -95,7 +104,7 @@ void IngestHttpSvc::registerServices() {
                         self->_workerName,
                         req, resp,
                         "ASYNC-STATUS-BY-ID",
-                        HttpModuleBase::AUTH_NONE);
+                        HttpAuthType::NONE);
             }
         },
         {"DELETE", "/ingest/file-async/:id",
@@ -114,7 +123,7 @@ void IngestHttpSvc::registerServices() {
                         self->_workerName,
                         req, resp,
                         "ASYNC-STATUS-BY-TRANS-ID",
-                        HttpModuleBase::AUTH_NONE);
+                        HttpAuthType::NONE);
             }
         },
         {"DELETE", "/ingest/file-async/trans/:id",

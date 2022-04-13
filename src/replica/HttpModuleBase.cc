@@ -59,10 +59,10 @@ HttpModuleBase::~HttpModuleBase() {
 
 
 void HttpModuleBase::execute(string const& subModuleName,
-                             AuthType const authType) {
+                             HttpAuthType const authType) {
     try {
         _body = HttpRequestBody(_req);
-        if (authType == AUTH_REQUIRED) _enforceAuthorization();
+        if (authType == HttpAuthType::REQUIRED) _enforceAuthorization();
         json result = executeImpl(subModuleName);
         _sendData(result);
     } catch (AuthError const& ex) {

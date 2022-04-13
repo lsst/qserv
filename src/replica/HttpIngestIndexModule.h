@@ -57,7 +57,7 @@ public:
                         qhttp::Request::Ptr const& req,
                         qhttp::Response::Ptr const& resp,
                         std::string const& subModuleName=std::string(),
-                        HttpModule::AuthType const authType=HttpModule::AUTH_NONE);
+                        HttpAuthType const authType=HttpAuthType::NONE);
 
     HttpIngestIndexModule() = delete;
     HttpIngestIndexModule(HttpIngestIndexModule const&) = delete;

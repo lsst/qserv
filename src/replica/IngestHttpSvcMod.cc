@@ -41,7 +41,7 @@ void IngestHttpSvcMod::process(ServiceProvider::Ptr const& serviceProvider,
                                qhttp::Request::Ptr const& req,
                                qhttp::Response::Ptr const& resp,
                                string const& subModuleName,
-                               HttpModuleBase::AuthType const authType) {
+                               HttpAuthType const authType) {
     IngestHttpSvcMod module(serviceProvider, ingestRequestMgr,
                             workerName, req, resp);
     module.execute(subModuleName, authType);

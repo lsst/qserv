@@ -51,7 +51,7 @@ namespace replica {
 void RegistryHttpSvcMod::process(
         ServiceProvider::Ptr const& serviceProvider, RegistryWorkers& workers,
         qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp,
-        string const& subModuleName, HttpModuleBase::AuthType const authType) {
+        string const& subModuleName, HttpAuthType const authType) {
     RegistryHttpSvcMod module(serviceProvider, workers, req, resp);
     module.execute(subModuleName, authType);
 }

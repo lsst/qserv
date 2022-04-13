@@ -42,7 +42,7 @@ void HttpWorkerStatusModule::process(Controller::Ptr const& controller,
                                      qhttp::Response::Ptr const& resp,
                                      HealthMonitorTask::Ptr const& healthMonitorTask,
                                      string const& subModuleName,
-                                     HttpModule::AuthType const authType) {
+                                     HttpAuthType const authType) {
     HttpWorkerStatusModule module(controller, taskName, processorConfig, req, resp, healthMonitorTask);
     module.execute(subModuleName, authType);
 }

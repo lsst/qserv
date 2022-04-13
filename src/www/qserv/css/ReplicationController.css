@@ -1,3 +1,18 @@
+div#fwk-controller-status {
+    margin-top: 1em;
+}
+div#fwk-controller-status #status {
+    text-align: right;
+}
+div#fwk-controller-status #status.updating {
+    background-color: #ffeeba;
+}
+div#fwk-controller-status-events {
+    margin-top: 2em;
+}
+div#fwk-controller-status-events label {
+    font-weight: bold;
+}
 table#fwk-controller-status pre {
     padding:    0;
     margin:     0;
@@ -10,9 +25,6 @@ table#fwk-controller-status caption {
     caption-side:   top;
     text-align:     right;
     padding-top:    0;
-}
-table#fwk-controller-status caption.updating {
-    background-color: #ffeeba;
 }
 table#fwk-controller-log pre {
     padding:    0;
