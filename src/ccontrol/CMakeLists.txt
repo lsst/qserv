@@ -20,6 +20,7 @@ target_sources(ccontrol PRIVATE
     UserQueryQservManager.cc
     UserQueryResources.cc
     UserQuerySelect.cc
+    UserQuerySet.cc
     UserQueryType.cc
 )
 

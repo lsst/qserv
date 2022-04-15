@@ -27,6 +27,7 @@
 // System headers
 #include <cassert>
 #include <cstdlib>
+#include <memory>
 #include <string>
 
 // Third-party headers
@@ -46,6 +47,7 @@
 #include "ccontrol/UserQueryResources.h"
 #include "ccontrol/UserQuerySelect.h"
 #include "ccontrol/UserQuerySelectCountStar.h"
+#include "ccontrol/UserQuerySet.h"
 #include "ccontrol/UserQueryType.h"
 #include "css/CssAccess.h"
 #include "css/KvInterfaceImplMem.h"
@@ -177,7 +179,8 @@ std::shared_ptr<UserQuerySharedResources> makeUserQuerySharedResources(
 ////////////////////////////////////////////////////////////////////////
 UserQueryFactory::UserQueryFactory(czar::CzarConfig const& czarConfig,
                                    qproc::DatabaseModels::Ptr const& dbModels, std::string const& czarName)
-        : _userQuerySharedResources(makeUserQuerySharedResources(czarConfig, dbModels, czarName)) {
+        : _userQuerySharedResources(makeUserQuerySharedResources(czarConfig, dbModels, czarName)),
+          _useQservRowCounterOptimization(true) {
     _executiveConfig = std::make_shared<qdisp::ExecutiveConfig>(
             czarConfig.getXrootdFrontendUrl(), czarConfig.getQMetaSecondsBetweenChunkUpdates());
 
@@ -248,7 +251,10 @@ UserQuery::Ptr UserQueryFactory::newUserQuery(std::string const& aQuery, std::st
         /// * It is a COUNT(*) query but is too complex for the simple optimization.
         std::string rowsTable;
         std::string countSpelling;
-        if (UserQueryType::isSimpleCountStar(stmt, countSpelling) &&
+        LOGS(_log, LOG_LVL_DEBUG,
+             "UseQservRowCounterOptimization: is " << (_useQservRowCounterOptimization ? "on" : "off")
+                                                   << ".");
+        if (_useQservRowCounterOptimization && UserQueryType::isSimpleCountStar(stmt, countSpelling) &&
             qmetaHasDataForSelectCountStarQuery(stmt, _userQuerySharedResources, defaultDb, rowsTable)) {
             auto uq = std::make_shared<UserQuerySelectCountStar>(
                     _userQuerySharedResources->resultDbConn, _userQuerySharedResources->qMetaSelect,
@@ -341,6 +347,22 @@ UserQuery::Ptr UserQueryFactory::newUserQuery(std::string const& aQuery, std::st
         auto parser = std::make_shared<ParseRunner>(
                 query, _userQuerySharedResources->makeUserQueryResources(userQueryId, resultDb));
         return parser->getUserQuery();
+    } else if (UserQueryType::isSet(query)) {
+        ParseRunner::Ptr parser;
+        try {
+            parser = std::make_shared<ParseRunner>(query);
+        } catch (parser::ParseException& e) {
+            return std::make_shared<UserQueryInvalid>(std::string("ParseException:") + e.what());
+        }
+        auto uq = parser->getUserQuery();
+        auto setQuery = std::static_pointer_cast<UserQuerySet>(uq);
+        if (setQuery->varName() == "QSERV_ROW_COUNTER_OPTIMIZATION") {
+            _useQservRowCounterOptimization = setQuery->varValue() != "0" ? true : false;
+            LOGS(_log, LOG_LVL_INFO,
+                 "Set SELECT COUNT(*) row count optimization to "
+                         << (_useQservRowCounterOptimization ? "ON" : "OFF"));
+        }
+        return uq;
     } else {
         // something that we don't recognize
         auto uq = std::make_shared<UserQueryInvalid>("Invalid or unsupported query: " + query);

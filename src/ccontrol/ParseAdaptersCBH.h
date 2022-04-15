@@ -169,6 +169,11 @@ public:
     virtual void handleComparisonOperator(std::string const& text) = 0;
 };
 
+class AdministrationStatementCBH : public BaseCBH {
+public:
+    virtual void handleAdministrationStatement(std::string const& varName, std::string const& varVal) = 0;
+};
+
 class CallStatementCBH : public BaseCBH {
 public:
     virtual void handleCallStatement(std::shared_ptr<ccontrol::UserQuery> const& userQuery) = 0;
@@ -222,6 +227,16 @@ public:
 class LimitClauseCBH : public BaseCBH {
 public:
     virtual void handleLimitClause(int limit) = 0;
+};
+
+class SetVariableCBH : public BaseCBH {
+public:
+    virtual void handleVariable(std::string const& varName, std::string const& varValue) = 0;
+};
+
+class VariableClauseCBH : public BaseCBH {
+public:
+    virtual void handleVariableClause(std::string const& varName) = 0;
 };
 
 class SimpleIdCBH : public BaseCBH {

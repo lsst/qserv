@@ -99,6 +99,10 @@ boost::regex _cancelRe(R"(^cancel\s+(\d+)\s*$)",
 boost::regex _callRe(R"(^call\s+.+$)",
                      boost::regex::ECMAScript | boost::regex::icase | boost::regex::optimize);
 
+// regex for SET
+// Note that parens around whole string are not part of the regex but raw string literal
+boost::regex _setRe(R"(^set\s+.+$)", boost::regex::ECMAScript | boost::regex::icase | boost::regex::optimize);
+
 }  // namespace
 
 namespace lsst::qserv::ccontrol {
@@ -243,6 +247,17 @@ bool UserQueryType::isSimpleCountStar(std::shared_ptr<query::SelectStmt> const& 
         return false;
 
     return true;
+}
+
+/// Returns true if query is SET
+bool UserQueryType::isSet(std::string const& query) {
+    LOGS(_log, LOG_LVL_TRACE, "isSet: " << query);
+    boost::smatch sm;
+    bool match = boost::regex_match(query, sm, _setRe);
+    if (match) {
+        LOGS(_log, LOG_LVL_TRACE, "isSet: match");
+    }
+    return match;
 }
 
 }  // namespace lsst::qserv::ccontrol

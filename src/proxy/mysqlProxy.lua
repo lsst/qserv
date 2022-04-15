@@ -197,7 +197,6 @@ function queryType()
     -- Detects if query can be handled locally without sending it to qserv
     local isLocal = function(qU)
         if (string.find(qU, "^SHOW ") and not string.find(qU, "^SHOW .*PROCESSLIST")) or
-           string.find(qU, "^SET ") or
            string.find(qU, "^DESCRIBE ") or
            string.find(qU, "^DESC ") or
            string.find(qU, "^ROLLBACK") or
@@ -241,10 +240,6 @@ function queryType()
     ---------------------------------------------------------------------------
 
     local isIgnored = function(qU)
-        -- SET is already in isLocal() so this always returns false for now
-        if string.find(qU, "^SET ") then
-            return true
-        end
         return false
     end
 
@@ -565,7 +560,7 @@ function read_query_result(inj)
 		 if (code == '0') then
 		     countUnknown = countUnknown + 1
 		 elseif (code == '1211') then
-		     countCancel = countCancel + 1 
+		     countCancel = countCancel + 1
                 elseif (code == '1206') then
                     countResponseData = countResponseData + 1
                 elseif (code == '2000') then
@@ -574,7 +569,7 @@ function read_query_result(inj)
                     countOther = countOther + 1
                     czarProxy.log("mysql-proxy", "INFO", "   chunkId: " .. row[1] .. ", code: " .. row[2] ..
                                   ", msg: " .. tostring(row[3]) .. ", timestamp: " .. row[5])
-                end 
+                end
             end
         end
         czarProxy.log("mysql-proxy", "INFO", "counts Complete:" .. countComplete ..

@@ -113,6 +113,9 @@ public:
      * Returns true if the select statement is SELECT COUNT(*) FROM <database>
      */
     static bool isSimpleCountStar(std::shared_ptr<query::SelectStmt> const& stmt, std::string& spelling);
+
+    /// Returns true if query is SET (for variable assignment)
+    static bool isSet(std::string const& query);
 };
 
 }  // namespace lsst::qserv::ccontrol

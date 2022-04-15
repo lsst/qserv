@@ -34,6 +34,7 @@
 
 // Qserv headers
 #include "ccontrol/ParseRunner.h"
+#include "ccontrol/UserQuerySet.h"
 #include "ccontrol/UserQueryType.h"
 #include "parser/ParseException.h"
 #include "qproc/QuerySession.h"
@@ -2259,6 +2260,27 @@ BOOST_DATA_TEST_CASE(antlr4_test, ANTLR4_TEST_QUERIES, queryInfo) {
     BOOST_REQUIRE_NO_THROW(serializedQuery = selectStatement->getQueryTemplate().sqlFragment());
     BOOST_REQUIRE_EQUAL(serializedQuery,
                         (queryInfo.serializedQuery != "" ? queryInfo.serializedQuery : queryInfo.query));
+}
+
+BOOST_AUTO_TEST_CASE(set_session_var_test) {
+    auto parser = ccontrol::ParseRunner("SET GLOBAL QSERV_ROW_COUNTER_OPTIMIZATION = 0;");
+    auto uq = parser.getUserQuery();
+    auto setQuery = std::static_pointer_cast<ccontrol::UserQuerySet>(uq);
+    BOOST_REQUIRE_EQUAL(setQuery->varName(), "QSERV_ROW_COUNTER_OPTIMIZATION");
+    BOOST_REQUIRE_EQUAL(setQuery->varValue(), "0");
+
+    auto parser1 = ccontrol::ParseRunner("SET GLOBAL QSERV_ROW_COUNTER_OPTIMIZATION = 1;");
+    uq = parser1.getUserQuery();
+    setQuery = std::static_pointer_cast<ccontrol::UserQuerySet>(uq);
+    BOOST_REQUIRE_EQUAL(setQuery->varName(), "QSERV_ROW_COUNTER_OPTIMIZATION");
+    BOOST_REQUIRE_EQUAL(setQuery->varValue(), "1");
+
+    // Verify that bool vals (not handled) are explicity rejected (to prevent a case where a
+    // non-zero value "FALSE" evaluates to ON)
+    BOOST_CHECK_THROW(ccontrol::ParseRunner("SET GLOBAL QSERV_ROW_COUNTER_OPTIMIZATION = FALSE;"),
+                      parser::adapter_order_error);
+    BOOST_CHECK_THROW(ccontrol::ParseRunner("SET GLOBAL QSERV_ROW_COUNTER_OPTIMIZATION = TRUE;"),
+                      parser::adapter_order_error);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
