@@ -5,16 +5,18 @@
 
 .. highlight:: sql
 
-####################
-Administration Guide
-####################
+###############
+Developer Guide
+###############
 
 .. toctree::
    :maxdepth: 2
 
-   docker
-   k8s
-   configuration
-   test-set
-   gb-sized-integration-test
-   data-loader
+   quick-start-devel
+   doc
+   scons-targets
+   build-qserv-with-specific-dependencies
+   bisect
+   build-partition-without-eups
+   css
+   wmgr-api

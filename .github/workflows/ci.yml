@@ -42,7 +42,7 @@ jobs:
       - name: Rebuild and push build image if needed
         id: rebuild
         run: |
-          if [[ $(./admin/local/cli/qserv dh-image-exists build-base) == "True" ]]; then
+          if [[ $(./admin/local/cli/qserv --log-level DEBUG dh-image-exists build-base) == "True" ]]; then
             echo "Build image already on docker hub; skipping..."
             echo "::set-output name=build-rebuilt::False"
           else
@@ -55,7 +55,7 @@ jobs:
 
       - name: Rebuild and push run base image if needed
         run: |
-          if [[ $(./admin/local/cli/qserv dh-image-exists run-base) == "True" ]]; then
+          if [[ $(./admin/local/cli/qserv --log-level DEBUG dh-image-exists run-base) == "True" ]]; then
             echo "Run base image already on docker hub; skipping..."
             echo "::set-output name=run-base-rebuilt::False"
           else
@@ -97,7 +97,7 @@ jobs:
       - name: Rebuild and push if needed
         id: rebuild
         run: |
-          if [[ $(./admin/local/cli/qserv dh-image-exists mariadb) == "True" ]]; then
+          if [[ $(./admin/local/cli/qserv --log-level DEBUG dh-image-exists mariadb) == "True" ]]; then
             echo "MariaDB image already on docker hub; skipping..."
             echo "::set-output name=rebuilt::False"
           else
@@ -107,6 +107,54 @@ jobs:
         env:
           QSERV_DH_USER: ${{ secrets.FM_DOCKERHUB_TOKEN_USER }}
           QSERV_DH_TOKEN: ${{ secrets.FM_DOCKERHUB_TOKEN }}
+
+  documentation:
+    name: Documentation
+    runs-on: ubuntu-20.04
+    needs: update-base-images
+    steps:
+
+      - name: Install python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.x'
+
+      - name: Install click
+        run: |
+          python -m pip install --upgrade pip
+          pip install click pyyaml requests
+
+      - name: Checkout code
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0  # 0 is "all history and branch tags"
+          submodules: true
+
+      - name: Check for changes
+        uses: dorny/paths-filter@v2
+        id: filter
+        with:
+          filters: |
+              docs:
+                - '**'
+
+      - name: Prepare user build image
+        if: needs.update-base-images.outputs.build-rebuilt == 'True' || steps.filter.outputs.docs == 'true'
+        run: |
+          ./admin/local/cli/qserv --log-level DEBUG build-user-build-image \
+          --group docker_outer
+
+      - name: Build and publish
+        if: needs.update-base-images.outputs.build-rebuilt == 'True' || steps.filter.outputs.docs == 'true'
+        run: |
+          ./admin/local/cli/qserv build-docs --cmake --linkcheck --upload
+        env:
+          QSERV_LTD_USERNAME: ${{ secrets.LTD_USERNAME }}
+          QSERV_LTD_PASSWORD: ${{ secrets.LTD_PASSWORD }}
+          QSERV_GH_EVENT_NAME: ${{ github.event_name }}
+          QSERV_GH_HEAD_REF: ${{ github.head_ref }}
+          QSERV_GH_REF: ${{ github.ref }}
+
 
   update-run-image:
     name: Update Qserv image
@@ -198,7 +246,7 @@ jobs:
   notify-on-fail:
     name: Notify Slack if fail on main
     runs-on: ubuntu-20.04
-    needs: [compose-integration-tests]
+    needs: [documentation, compose-integration-tests]
     if: github.ref == 'refs/heads/main' && failure()
     steps:
       - name: Notify

@@ -59,11 +59,16 @@ from .opt import (
     dh_token_ev,
     do_build_image_option,
     dry_option,
+    gh_event_name_ev,
+    gh_head_ref_ev,
+    gh_ref_ev,
     ImageName,
     itest_container_name_option,
     itest_ref_container_name_option,
     itest_file_option,
     jobs_option,
+    ltd_password_ev,
+    ltd_user_ev,
     make_option,
     mariadb_image_ev,
     mariadb_image_option,
@@ -99,6 +104,7 @@ help_order = [
     "build-mariadb-image",
     "build-images",
     "build",
+    "build-docs",
     "env",
     "up",
     "down",
@@ -234,6 +240,74 @@ def build(
         pull_image=pull_image,
         update_submodules=update_submodules,
         user=user,
+    )
+
+
+@qserv.command(help=f"""Build the qserv documentation.
+
+    Passing --upload will cause the docs to be uploaded to LSST The Docs (LTD).
+    Typically this is only used by Github Actions (GHA)
+
+    If using --upload, the following environment variables must be set:
+
+    * {ltd_user_ev.env_var} - {ltd_user_ev.used_for}
+
+    * {ltd_password_ev.env_var} - {ltd_password_ev.used_for}
+
+    * {gh_event_name_ev.env_var} - {gh_event_name_ev.used_for}
+
+    * {gh_head_ref_ev.env_var} - {gh_head_ref_ev.used_for}
+
+    * {gh_ref_ev.env_var} - {gh_ref_ev.used_for}
+
+    See the LSST The Docs Conveyor help about the LTD_* environment variables,
+    at https://ltd-conveyor.lsst.io.
+
+    See the Github Actions help about environment variables for more information about the
+    GITHUB_* environment variables.
+    """
+)
+@qserv_root_option()
+@qserv_build_root_option()
+@user_build_image_option()
+@user_option()
+@click.option(
+    "--upload/--no-upload",
+    help="Upload the documentation.",
+    show_default=True,
+)
+@click.option(
+    "--linkcheck/--no-linkcheck",
+    help="Test the links in documentation to make sure they are valid (includes all external links).",
+    default=False,
+    show_default=True,
+)
+@cmake_option()
+@dry_option()
+def build_docs(
+    upload: bool,
+    qserv_root: str,
+    qserv_build_root: str,
+    user_build_image: str,
+    user: str,
+    linkcheck: bool,
+    run_cmake: bool,
+    dry: bool,
+) -> None:
+    launch.build_docs(
+        upload=upload,
+        ltd_user=ltd_user_ev.val(),
+        ltd_password=ltd_password_ev.val(),
+        gh_event=gh_event_name_ev.val(),
+        gh_head_ref=gh_head_ref_ev.val(),
+        gh_ref=gh_ref_ev.val(),
+        qserv_root=qserv_root,
+        qserv_build_root=qserv_build_root,
+        build_image=user_build_image,
+        user=user,
+        linkcheck=linkcheck,
+        run_cmake=run_cmake,
+        dry=dry,
     )
 
 

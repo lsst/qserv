@@ -321,6 +321,27 @@ dh_token_ev = EnvVal(
     "CI only; the dockerhub user token for pushing and pulling images",
     private=True,
 )
+ltd_user_ev = EnvVal(
+    "QSERV_LTD_USERNAME",
+    "CI only; the LSST The Docs user for pushing docs."
+)
+ltd_password_ev = EnvVal(
+    "QSERV_LTD_PASSWORD",
+    "CI only; the LSST The Docs password for pushing docs.",
+    private=True
+)
+gh_event_name_ev = EnvVal(
+    "QSERV_GH_EVENT_NAME",
+    "CI only; The name of the event that triggered the GHA workflow."
+)
+gh_head_ref_ev = EnvVal(
+    "QSERV_GH_HEAD_REF",
+    "CI only; The head ref or source branch of the pull request in a GHA workflow run."
+)
+gh_ref_ev = EnvVal(
+    "QSERV_GH_REF",
+    "CI only; The branch or tag ref that triggered the workflow run."
+)
 
 
 class OptDefault:
@@ -507,6 +528,11 @@ qserv_env_vals = FlagEnvVals(
         dashboard_port_ev,
         dh_user_ev,
         dh_token_ev,
+        ltd_user_ev,
+        ltd_password_ev,
+        gh_event_name_ev,
+        gh_head_ref_ev,
+        gh_ref_ev,
     ]
 )
 

@@ -127,8 +127,11 @@ RUN pip3 install \
     click \
     deprecated \
     docker-compose \
+    documenteer \
     jinja2 \
+    ltd-conveyor \
     mypy \
+    sphinx-rtd-theme \
     mysql-connector-python \
     numpy \
     pybind11[global] \
