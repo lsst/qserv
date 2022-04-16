@@ -150,6 +150,23 @@ def build_dir(qserv_root: str) -> str:
     return os.path.join(qserv_root, "build")
 
 
+def doc_dir(qserv_root: str) -> str:
+    """Get the documentation build directory in the build container.
+
+    Parameters
+    ----------
+    qserv_root : `str`
+        The path to the qserv sources (may be on the host machine or in a build
+        container).
+
+    Returns
+    -------
+    build_dir : `str`
+        The path to the documentation build folder.
+    """
+    return os.path.join(build_dir(qserv_root), "doc/html")
+
+
 def submodules_initalized(qserv_root: str) -> bool:
     """Perform a very simple check to see if "git submodule update --init" has been
     run yet.
@@ -213,8 +230,15 @@ def do_update_submodules(
     subproc.run(args)
 
 
-def cmake(qserv_root: str, qserv_build_root: str, build_image: str, user: str, dry: bool) -> None:
-    """Run cmake on qserv.
+def cmake(
+    qserv_root: str,
+    qserv_build_root: str,
+    build_image: str,
+    user: str,
+    run_cmake: Optional[bool],
+    dry: bool
+) -> None:
+    """Run cmake on qserv, optionally if needed.
 
     Parameters
     ----------
@@ -226,9 +250,27 @@ def cmake(qserv_root: str, qserv_build_root: str, build_image: str, user: str, d
         The name of the build image to use to run cmake.
     user : `str`
         The name of the user to run the build container as.
+    run_cmake : `Optional`[`bool`]
+        True if cmake should be run, False if not, or None if cmake should be
+        run if it has not been run before, determened by the absence/presence
+        of the build direcetory.
     dry : `bool`
         If True do not run the command; print what would have been run.
     """
+    build_dir_exists = os.path.exists(build_dir(qserv_root))
+    if run_cmake is False or (run_cmake is None and build_dir_exists):
+        _log.debug(
+            "run_cmake is %s, the build dir %s.",
+            run_cmake, "exists" if build_dir_exists else "does not exist",
+        )
+        return
+
+    # Make sure the build dir exists because it will be the working dir of a
+    # future `docker run` command, and if it does not exist it will be
+    # created but the owner will be root, and we need the owner to be the
+    # same as `user`.
+    os.makedirs("build", exist_ok=True)
+
     args = [
         "docker",
         "run",
@@ -419,13 +461,7 @@ def build(
     if update_submodules is True or (update_submodules is None and not submodules_initalized(qserv_root)):
         do_update_submodules(qserv_root, qserv_build_root, user_build_image, user, dry)
 
-    if run_cmake is True or (run_cmake is None and not os.path.exists(build_dir(qserv_root))):
-        # Make sure the build dir exists because it will be the working dir of a
-        # future `docker run` command, and if it does not exist it will be
-        # created but the owner will be root, and we need the owner to be the
-        # same as `user`.
-        os.makedirs("build", exist_ok=True)
-        cmake(qserv_root, qserv_build_root, user_build_image, user, dry)
+    cmake(qserv_root, qserv_build_root, user_build_image, user, run_cmake, dry)
 
     if run_make:
         make(qserv_root, qserv_build_root, unit_test, user_build_image, user, dry, jobs)
@@ -447,6 +483,89 @@ def build(
 
     if push_image:
         images.dh_push_image(qserv_image, dry)
+
+
+def build_docs(
+    upload: bool,
+    ltd_user: Optional[str],
+    ltd_password: Optional[str],
+    gh_event: Optional[str],
+    gh_head_ref: Optional[str],
+    gh_ref: Optional[str],
+    qserv_root: str,
+    qserv_build_root: str,
+    build_image: str,
+    user: str,
+    linkcheck: bool,
+    run_cmake: bool,
+    dry: bool,
+) -> None:
+    """Build the qserv documentation.
+
+    Parameters
+    ----------
+    upload : bool
+        True if the documents should be uploaded to lsstthedocs.
+    ltd_user : `str` or `None`
+        The user name for uploading to lsstthedocs.
+    ltd_password : `str` or `None`
+        The password for uploading to lsstthedocs.
+    gh_event : `str` or `None`
+        The github event that triggered the build.
+    gh_head_ref : `str` or `None`
+        The current git head ref.
+    gh_ref : `str` or `None`
+        The current git ref.
+    qserv_root : `str`
+        The path to the qserv folder.
+    qserv_build_root : `str`
+        The location inside the container to mount the qserv folder.
+    build_image : `str`
+        The name of the build image to use to build docs.
+    user : `str`
+        If `qserv_build_root` has a formattable string with a `user` field, this
+        value will be substituted into that field.
+    linkcheck : bool
+        Indicates if linkcheck should be run.
+    run_cmake : `Optional`[`bool`]
+        True if cmake should be run, False if not, or None if cmake should be
+        run if it has not been run before, determened by the absence/presence
+        of the build direcetory.
+    dry : `bool`
+        If True do not run the command; print what would have been run.
+    """
+    cmake(qserv_root, qserv_build_root, build_image, user, run_cmake, dry)
+    upload_vars = None
+    upload_cmd = None
+    if upload:
+        upload_vars = (
+            f'-e LTD_USERNAME={ltd_user} -e LTD_PASSWORD={ltd_password} -e '
+            f'GITHUB_EVENT_NAME={gh_event} -e GITHUB_HEAD_REF={gh_head_ref} -e GITHUB_REF={gh_ref} '
+        ).split()
+        upload_cmd = f" && ltd upload --product qserv --gh --dir {doc_dir(qserv_build_root.format(user=user))}"
+    args = [
+        "docker",
+        "run",
+    ]
+    if upload_vars:
+        args.extend(upload_vars)
+    args.extend([
+        "-u",
+        user,
+        "--mount",
+        root_mount(qserv_root, qserv_build_root, user),
+        "-w",
+        build_dir(qserv_build_root.format(user=user)),
+        build_image,
+        "/bin/bash",
+        "-c",
+        f"make {'docs-linkcheck ' if linkcheck else ''}docs-html{' ' + upload_cmd if upload_cmd else ''}",
+    ])
+    if dry:
+        print(" ".join(args))
+        return
+    subprocess.run(args, check=True)
+
 
 
 def build_build_image(
