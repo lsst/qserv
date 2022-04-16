@@ -346,7 +346,7 @@ def mypy(
         "mypy",
         qserv_py_modules,
         "--exclude",
-        "testing",
+        "lsst/qserv/.*/tests",
     ]
     mypy_ini_file = os.path.join(qserv_build_root.format(user=user), mypy_cfg_file)
     args.extend(["--config-file", mypy_ini_file])
@@ -354,7 +354,7 @@ def mypy(
         print(" ".join(args))
         return
     _log.debug('Running "%s"', " ".join(args))
-    print("Running mypy on all qserv python modules except 'testing'...")
+    print("Running mypy on all qserv python modules except 'lsst.qserv.*.tests'...")
     subproc.run(args)
 
 

@@ -173,8 +173,9 @@ class QservCliTestCase(unittest.TestCase):
             # because that's where the unit tests run. This is from the install
             # location of the unit tests back up the tree to the root qserv
             # folder.
-            os.path.join(__file__, "../../../../../..")
+            os.path.join(__file__, "../../../../../../../..")
         )
+        print(expected)
         itest_mock.assert_called_with(**itest_args(qserv_root=expected))
 
     def test_env(self):
