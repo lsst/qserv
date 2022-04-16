@@ -1,0 +1,62 @@
+{% extends "layout.html" %}
+{% set title = "Overview" %}
+{% block body %}
+
+  <h1>Qserv documentation</h1>
+
+  <p> Welcome! This is the documentation for Qserv {{ version|e }}, last updated {{ last_updated|e }}. </p>
+
+  <p>Qserv is an open source <a href="reference/glossary.html#term-MPP">MPP</a> SQL database system designed
+  originally to host the astronomical catalogs of the <a href="reference/glossary.html#term-LSST">Legacy
+  Survey of Space and Time</a> to be conducted by the
+  <a href="https://www.lsst.org/about"> Rubin Observatory</a>.</p>
+
+  <p><strong>General documentation for Qserv:</strong></p>
+
+  <table class="contentstable"><tr>
+    <td width="40%" style="padding-left:2em;">
+      <p class="biglink">
+        <a class="biglink" href="{{ pathto('intro/index') }}">Introduction</a><br/>
+        <span class="linkdescr">start here</span>
+      </p>
+      <p class="biglink">
+        <a class="biglink" href="{{ pathto('admin/index') }}">Administration Guide</a><br/>
+        <span class="linkdescr">requirements, installation, montitoring, and tuning</span>
+      </p>
+    </td>
+    <td width="40%" style="padding-left:2em;">
+      <p class="biglink">
+        <a class="biglink" href="{{ pathto('user/index') }}">User Guide</a><br/>
+        <span class="linkdescr">how to ingest and query data</span>
+      </p>
+      <p class="biglink">
+        <a class="biglink" href="{{ pathto('dev/index') }}">Developer Guide</a><br/>
+        <span class="linkdescr">under the hood</span>
+      </p>
+    </td>
+  </tr></table>
+
+  <p><strong>Indices and tables:</strong></p>
+
+  <table class="contentstable"><tr>
+    <td width="40%" style="padding-left:2em;">
+      <p class="biglink">
+        <a class="biglink" href="{{ pathto('genindex') }}">General index</a><br/>
+        <span class="linkdescr">all terms and concepts, alphabetically</span>
+      </p>
+      <p class="biglink">
+        <a class="biglink" href="{{ pathto('reference/glossary') }}">Glossary</a><br/>
+        <span class="linkdescr">Qserv terms explained</span>
+      </p>
+    </td>
+    <td width="40%" style="padding-left:2em;">
+      <p class="biglink">
+        <a class="biglink" href="{{ pathto('reference/contents') }}">Full table of contents</a><br/>
+        <span class="linkdescr">a list of all sections and subsections</span>
+      </p>
+    </td>
+  </tr></table>
+
+  <p><strong>External links:</strong></p>
+
+{% endblock %}

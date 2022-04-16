@@ -18,6 +18,9 @@ extensions = [
     "documenteer.sphinxext",
 ]
 
+# Add any paths that contain templates here, relative to this directory.
+templates_path = ["templates"]
+
 source_suffix = ".rst"
 
 root_doc = "index"
@@ -51,7 +54,7 @@ html_last_updated_fmt = ""
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
-exclude_patterns = ["CMakeLists.txt"]
+# exclude_patterns = []
 
 # The reST default role cross-links Python (used for this markup: `text`)
 default_role = "py:obj"
@@ -86,8 +89,6 @@ html_context = {
 # further.  For a list of options available for each theme, see the
 # documentation.
 html_theme_options = {
-    "collapse_navigation": False,
-    "navigation_depth": -1
 }
 
 # The name for this set of Sphinx documents.  If unset, it defaults to
@@ -104,6 +105,10 @@ html_theme_options = {
 
 # If true, links to the reST sources are added to the pages.
 # html_show_sourcelink = False
+
+html_additional_pages = {
+    "index": "overview.html"
+}
 
 # -- Intersphinx --------------------------------------------------------------
 # For linking to other Sphinx documentation.
