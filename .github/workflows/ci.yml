@@ -193,6 +193,7 @@ jobs:
           ./admin/local/cli/qserv --log-level DEBUG build \
           --pull-image \
           --push-image \
+          --clang-format CHECK \
           -j2
         env:
           QSERV_DH_USER: ${{ secrets.FM_DOCKERHUB_TOKEN_USER }}
