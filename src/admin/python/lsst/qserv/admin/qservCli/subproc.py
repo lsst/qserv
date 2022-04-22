@@ -38,6 +38,7 @@ def run(
     capture_stdout: bool = False,
     cwd: Optional[str] = None,
     errmsg: Optional[str] = None,
+    encoding: Optional[str] = None,
 ) -> subprocess.CompletedProcess:
     """Run a command in a subprocess. Raise a QservSubprocessError if the
     result of the subprocess execution was not 0.
@@ -57,6 +58,8 @@ def run(
     errmsg : str, optional
         A message to print, if there is an error, before raising
         QservSubprocessError.
+    encoding : str, optional
+        The encoding argument to subprocess.run.
 
     Returns
     -------
@@ -74,12 +77,15 @@ def run(
         stdout=subprocess.PIPE if capture_stdout else None,
         stderr=subprocess.STDOUT,
         cwd=cwd,
+        encoding=encoding,
     )
     if res.returncode != 0:
         if errmsg:
             print(errmsg)
         if capture_stdout:
-            stdout = res.stdout.decode().strip()
+            stdout = res.stdout
+            if isinstance(stdout, bytes):
+                stdout = res.stdout.decode().strip()
             if stdout:
                 print(stdout)
         raise QservSubprocessError()

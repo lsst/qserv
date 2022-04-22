@@ -150,6 +150,23 @@ def build_dir(qserv_root: str) -> str:
     return os.path.join(qserv_root, "build")
 
 
+def src_dir(qserv_root: str) -> str:
+    """Get the source ("src") directory in the build container.
+
+    Parameters
+    ----------
+    qserv_root : `str`
+        The path to the qserv sources (may be on the host machine or in a build
+        container).
+
+    Returns
+    -------
+    src_dir : `str`
+        The path to the src folder.
+    """
+    return os.path.join(qserv_root, "src")
+
+
 def doc_dir(qserv_root: str) -> str:
     """Get the documentation build directory in the build container.
 
@@ -400,6 +417,38 @@ def mypy(
     subproc.run(args)
 
 
+def clang_format(
+    clang_format_mode: str,
+    qserv_root: str,
+    qserv_build_root: str,
+    build_image: str,
+    user: str,
+    dry: bool
+) -> None:
+    if clang_format_mode == "check":
+        print("Checking all .h and .cc files in 'src' with clang-format...")
+    elif clang_format_mode == "reformat":
+        print("Reformatting .h and .cc files in 'src' (if needed) with clang-format...")
+    else:
+        raise RuntimeError(f"Unexpected value for clang_format_mode: {clang_format_mode}")
+
+    cmd = (f"docker run --init --rm -u {user} --mount {root_mount(qserv_root, qserv_build_root, user)} "
+          f"-w {src_dir(qserv_build_root.format(user=user))} {build_image} ")
+    find_cmd = cmd + "find . -name *.h -o -name *.cc"
+    args = find_cmd.split()
+    result = subproc.run(args, capture_stdout=True, encoding="utf-8")
+    files = result.stdout.split()
+    clang_format_cmd = cmd + "clang-format -i --style file "
+    if clang_format_mode == "check":
+        clang_format_cmd += "--dry-run -Werror"
+    args = clang_format_cmd.split()
+    args.extend(files)
+    if dry:
+        print(" ".join(args))
+        return
+    subproc.run(args, cwd=os.path.join(qserv_root, "src"))
+
+
 def build(
     qserv_root: str,
     qserv_build_root: str,
@@ -409,6 +458,7 @@ def build(
     run_cmake: bool,
     run_make: bool,
     run_mypy: bool,
+    clang_format_mode: str,
     user_build_image: str,
     qserv_image: str,
     run_base_image: str,
@@ -436,6 +486,11 @@ def build(
         True if `make` should be called.
     run_mypy : `bool`
         True if `mypy` should be run.
+    clang_format_mode: `str`
+        "check" if clang-format should be run to check and fail if files need to
+        be formatted.
+        "reformat" if clang-format should reformat files if needed.
+        "off" if clang-format should not be run.
     user_build_image : `str`
         The name of the lite-build image to use to run cmake and make.
     qserv_image : `str`
@@ -457,6 +512,9 @@ def build(
     """
     if pull_image and do_pull_image(qserv_image, dh_user_ev.val(), dh_token_ev.val(), dry):
         return
+
+    if clang_format_mode != "off":
+        clang_format(clang_format_mode, qserv_root, qserv_build_root, user_build_image, user, dry)
 
     if update_submodules is True or (update_submodules is None and not submodules_initalized(qserv_root)):
         do_update_submodules(qserv_root, qserv_build_root, user_build_image, user, dry)
