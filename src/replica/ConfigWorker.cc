@@ -71,7 +71,7 @@ WorkerInfo::WorkerInfo(json const& obj) {
         parseOptional<string>(loaderHost, obj, "loader-host");
         parseOptional<uint16_t>(loaderPort, obj, "loader-port");
         parseOptional<string>(loaderTmpDir, obj, "loader-tmp-dir");
-        parseOptional<string>(exporterHost, obj, "exporter_host");
+        parseOptional<string>(exporterHost, obj, "exporter-host");
         parseOptional<uint16_t>(exporterPort, obj, "exporter-port");
         parseOptional<string>(exporterTmpDir, obj, "exporter-tmp-dir");
         parseOptional<string>(httpLoaderHost, obj, "http-loader-host");
@@ -96,7 +96,7 @@ json WorkerInfo::toJson() const {
     infoJson["loader-host"] = loaderHost;
     infoJson["loader-port"] = loaderPort;
     infoJson["loader-tmp-dir"] = loaderTmpDir;
-    infoJson["exporter_host"] = exporterHost;
+    infoJson["exporter-host"] = exporterHost;
     infoJson["exporter-port"] = exporterPort;
     infoJson["exporter-tmp-dir"] = exporterTmpDir;
     infoJson["http-loader-host"] = httpLoaderHost;
@@ -124,7 +124,7 @@ bool WorkerInfo::operator==(WorkerInfo const& other) const {
 }
 
 
-ostream& operator <<(ostream& os, WorkerInfo const& info) {
+ostream& operator<<(ostream& os, WorkerInfo const& info) {
     os  << "WorkerInfo: " << info.toJson().dump();
     return os;
 }

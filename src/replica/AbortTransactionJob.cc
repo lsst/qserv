@@ -80,6 +80,19 @@ AbortTransactionJob::AbortTransactionJob(TransactionId transactionId,
 }
 
 
+Job::Progress AbortTransactionJob::progress() const {
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
+    util::Lock lock(_mtx, context() + __func__);
+    Progress jobProgress{0ULL, 0ULL};
+    for (auto const& job: _jobs) {
+        Progress const subJobProgress = job->progress();
+        jobProgress.complete += subJobProgress.complete;
+        jobProgress.total += subJobProgress.total;
+    }
+    return jobProgress;
+}
+
+
 SqlJobResult const& AbortTransactionJob::getResultData() const {
     LOGS(_log, LOG_LVL_TRACE, context() << __func__);
     if (state() == State::FINISHED) return _resultData;
@@ -132,8 +145,8 @@ void AbortTransactionJob::startImpl(util::Lock const& lock) {
         finish(lock, ExtendedState::CONFIG_ERROR);
         return;
     }
-    if (transactionInfo.state != TransactionInfo::ABORTED) {
-        LOGS(_log, LOG_LVL_ERROR, context_ << "transaction " << transactionInfo.id << " is not ABORTED");
+    if (transactionInfo.state != TransactionInfo::State::IS_ABORTING) {
+        LOGS(_log, LOG_LVL_ERROR, context_ << "transaction " << transactionInfo.id << " is not IS_ABORTING");
         finish(lock, ExtendedState::CONFIG_ERROR);
         return;
     }

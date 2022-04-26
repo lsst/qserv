@@ -136,18 +136,18 @@ function(CSSLoader,
             let html = '';
             for (let i in config.workers) {
                 let worker = config.workers[i];
-                let workerEnabledCssClass  = worker.is_enabled   ? '' : 'class="table-warning"';
-                let workerReadOnlyCssClass = worker.is_read_only ? 'class="table-warning"' : '';
+                let workerEnabledCssClass  = worker['is-enabled']   ? '' : 'class="table-warning"';
+                let workerReadOnlyCssClass = worker['is-read-only'] ? 'class="table-warning"' : '';
                 html += `
 <tr>
-  <th style="text-align:left" scope="row"><pre>` + worker.name + `</pre></th>
-  <td ` + workerEnabledCssClass  + `><pre>` + (worker.is_enabled ? 'yes' : 'no') + `</pre></td>
-  <td ` + workerReadOnlyCssClass + `><pre>` + (worker.is_read_only ? 'yes' : 'no') + `</pre></td>
-  <td><pre>` + worker.svc_host + `:` + worker.svc_port + `</pre></td>
-  <td><pre>` + worker.fs_host + `:` + worker.fs_port + `</pre></td>
-  <td><pre>` + worker.loader_host + `:` + worker.loader_port + `</pre></td>
-  <td><pre>` + worker.exporter_host + `:` + worker.exporter_port + `</pre></td>
-  <td><pre>` + worker.http_loader_host + `:` + worker.http_loader_port + `</pre></td>
+  <th style="text-align:left" scope="row"><pre>` + worker['name'] + `</pre></th>
+  <td ` + workerEnabledCssClass  + `><pre>` + (worker['is-enabled'] ? 'yes' : 'no') + `</pre></td>
+  <td ` + workerReadOnlyCssClass + `><pre>` + (worker['is-read-only'] ? 'yes' : 'no') + `</pre></td>
+  <td><pre>` + worker['svc-host'] + `:` + worker['svc-port'] + `</pre></td>
+  <td><pre>` + worker['fs-host'] + `:` + worker['fs-port'] + `</pre></td>
+  <td><pre>` + worker['loader-host'] + `:` + worker['loader-port'] + `</pre></td>
+  <td><pre>` + worker['exporter-host'] + `:` + worker['exporter-port'] + `</pre></td>
+  <td><pre>` + worker['http-loader-host'] + `:` + worker['http-loader-port'] + `</pre></td>
 </tr>`;
             }
             this._table().children('tbody').html(html);

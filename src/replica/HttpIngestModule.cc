@@ -328,7 +328,7 @@ json HttpIngestModule::_publishDatabase() {
 
     // Scan super-transactions to make sure none is still open
     for (auto&& t: databaseServices->transactions(databaseInfo.name)) {
-        if (t.state == TransactionInfo::STARTED) {
+        if (!(t.state == TransactionInfo::State::FINISHED || t.state == TransactionInfo::State::ABORTED)) {
             throw HttpError(__func__, "database has uncommitted transactions");
         }
     }

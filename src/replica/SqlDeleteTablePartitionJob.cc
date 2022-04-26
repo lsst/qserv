@@ -95,11 +95,6 @@ SqlDeleteTablePartitionJob::SqlDeleteTablePartitionJob(
     try {
         auto const serviceProvider = controller->serviceProvider();
         auto const transactionInfo = serviceProvider->databaseServices()->transaction(transactionId);
-        if (transactionInfo.state != TransactionInfo::ABORTED) {
-            throw invalid_argument(
-                    context() + string(__func__) + " transaction id=" + to_string(transactionId)
-                    + " is not in the state ABORTED.");
-        }
         _database = transactionInfo.database;
 
         auto const databaseInfo = serviceProvider->config()->databaseInfo(_database);

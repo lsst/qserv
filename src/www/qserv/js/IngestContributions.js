@@ -24,13 +24,14 @@ function(CSSLoader,
         }
 
         /// @see FwkApplication.fwk_app_on_hide
-        fwk_app_on_hide() {}
+        fwk_app_on_hide() {
+        }
 
         /// @see FwkApplication.fwk_app_on_update
         fwk_app_on_update() {
             if (this.fwk_app_visible) {
-              this._init();
-              if (this._prev_update_sec === undefined) {
+                this._init();
+                if (this._prev_update_sec === undefined) {
                     this._prev_update_sec = 0;
                 }
                 let now_sec = Fwk.now().sec;
@@ -41,12 +42,13 @@ function(CSSLoader,
             }
         }
 
-        loadTransaction(database, transactions, id) {
-            transactions.sort();
+        /// Set parameters of the transaction in the selectors and begin loading
+        /// the contributions in the background.
+        set_transaction(status, databases, database, transactions, trans_id) {
             this._init();
-            this._set_database(database);
-            this._set_transactions(transactions);
-            this._set_trans_id(id);
+            this._set_database_status(status);
+            this._set_databases(databases, database);
+            this._set_transactions(transactions, trans_id);
             this._load();
         }
 
@@ -62,40 +64,61 @@ function(CSSLoader,
             /* <span style="color:maroon">&sum;</span>&nbsp; */
 
             let html = `
-<div class="row">
+<div class="row" id="fwk-ingest-contributions-controls">
   <div class="col">
     <div class="form-row">
+      <div class="form-group col-md-1">
+        <label for="contrib-database-status">Status:</label>
+        <select id="contrib-database-status" class="form-control loader">
+          <option value=""></option>
+          <option value="INGESTING" selected>INGESTING</option>
+          <option value="PUBLISHED">PUBLISHED</option>
+        </select>
+      </div>
       <div class="form-group col-md-2">
         <label for="contrib-database">Database:</label>
-        <input type="text" id="contrib-database"  class="form-control" disabled value="">
+        <select id="contrib-database" class="form-control loader"></select>
       </div>
       <div class="form-group col-md-1">
-        <label for="trans-id">Transaction Id:</label>
-        <select id="trans-id" class="form-control"></select>
+        <label for="contrib-trans-id">Transaction Id:</label>
+        <select id="contrib-trans-id" class="form-control loader"></select>
       </div>
       <div class="form-group col-md-1">
-        <label for="contrib-num-select"># Contrib:</label>
+        <label for="contrib-update-interval"><i class="bi bi-arrow-repeat"></i> interval:</label>
+        <select id="contrib-update-interval" class="form-control loader">
+          <option value="10">10 sec</option>
+          <option value="20">20 sec</option>
+          <option value="30">30 sec</option>
+          <option value="60" selected>1 min</option>
+          <option value="120">2 min</option>
+          <option value="300">5 min</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group col-md-1">
+        <label for="contrib-num-select"># filtered contribs:</label>
         <input type="text" id="contrib-num-select" class="form-control" value="0 / 0" disabled>
       </div>
       <div class="form-group col-md-1">
         <label for="contrib-worker">Worker:</label>
-          <select id="contrib-worker" class="form-control form-control-view">
+          <select id="contrib-worker" class="form-control filter">
             <option value="" selected></option>
           </select>
       </div>
       <div class="form-group col-md-2">
         <label for="contrib-table">Table:</label>
-        <select id="contrib-table" class="form-control form-control-view">
+        <select id="contrib-table" class="form-control filter">
           <option value="" selected></option>
         </select>
       </div>
       <div class="form-group col-md-1">
         <label for="contrib-chunk">Chunk:</label>
-        <input type="number" id="contrib-chunk"  class="form-control form-control-view" value="">
+        <input type="number" id="contrib-chunk"  class="form-control filter" value="">
       </div>
       <div class="form-group col-md-1">
         <label for="contrib-overlap">Overlap:</label>
-        <select id="contrib-overlap" class="form-control form-control-view">
+        <select id="contrib-overlap" class="form-control filter">
           <option value="" selected></option>
           <option value="0">No</option>
           <option value="1">Yes</option>
@@ -103,17 +126,15 @@ function(CSSLoader,
       </div>
       <div class="form-group col-md-1">
         <label for="contrib-async">Type:</label>
-        <select id="contrib-async" class="form-control form-control-view">
+        <select id="contrib-async" class="form-control filter">
           <option value="" selected></option>
           <option value="0">SYNC</option>
           <option value="1">ASYNC</option>
         </select>
       </div>
-    </div>
-    <div class="form-row">
-      <div class="form-group col-md-2">
+      <div class="form-group col-md-1">
         <label for="contrib-status">Status:</label>
-        <select id="contrib-status" class="form-control form-control-view">
+        <select id="contrib-status" class="form-control filter">
           <option value="" selected></option>
           <option value="IN_PROGRESS">IN_PROGRESS</option>
           <option value="CREATE_FAILED">CREATE_FAILED</option>
@@ -127,16 +148,22 @@ function(CSSLoader,
       </div>
       <div class="form-group col-md-2">
         <label for="contrib-stage">Stage (IN_PROGRESS):</label>
-        <select id="contrib-stage" class="form-control form-control-view">
+        <select id="contrib-stage" class="form-control filter">
           <option value="" selected></option>
           <option value="1:QUEUED">1:QUEUED</option>
           <option value="2:READING_DATA">2:READING_DATA</option>
           <option value="3:LOADING_MYSQL">3:LOADING_MYSQL</option>
         </select>
       </div>
+      <div class="form-group col-md-1">
+        <label for="contrib-reset">&nbsp;</label>
+        <button id="contrib-reset" type="button" class="btn btn-primary form-control">Reset Filter</button>
+      </div>
+    </div>
+    <div class="form-row">  
       <div class="form-group col-md-2">
         <label for="contrib-sort-column">Sort by:</label>
-        <select id="contrib-sort-column" class="form-control form-control-view">
+        <select id="contrib-sort-column" class="form-control sorter">
           <option value="id" selected>Id</option>
           <option value="worker">Worker</option>
           <option value="table">Table</option>
@@ -159,25 +186,10 @@ function(CSSLoader,
       </div>
       <div class="form-group col-md-1">
         <label for="contrib-sort-order">Sort order:</label>
-        <select id="contrib-sort-order" class="form-control form-control-view">
+        <select id="contrib-sort-order" class="form-control sorter">
           <option value="ASC" selected>ASC</option>
           <option value="DESC">DESC</option>
         </select>
-      </div>
-      <div class="form-group col-md-1">
-        <label for="contrib-update-interval"><i class="bi bi-arrow-repeat"></i> interval:</label>
-        <select id="contrib-update-interval" class="form-control">
-          <option value="10">10 sec</option>
-          <option value="20">20 sec</option>
-          <option value="30">30 sec</option>
-          <option value="60" selected>1 min</option>
-          <option value="120">2 min</option>
-          <option value="300">5 min</option>
-        </select>
-      </div>
-      <div class="form-group col-md-1">
-        <label for="contrib-reset">&nbsp;</label>
-        <button id="contrib-reset" type="button" class="btn btn-primary form-control">Reset Form</button>
       </div>
     </div>
   </div>
@@ -235,23 +247,23 @@ function(CSSLoader,
           <th class="sticky">Url</th>
         </tr>
       </thead>
-      <caption>No transaction</caption>
+      <caption>Loading...</caption>
       <tbody></tbody>
     </table>
   </div>
 </div>`;
             let cont = this.fwk_app_container.html(html);
-            cont.find(".form-control#trans-id").change(() => {
+            cont.find(".loader").change(() => {
                 this._load();
             });
-            cont.find(".form-control-view").change(() => {
+            cont.find(".filter").change(() => {
                 if (!_.isUndefined(this._data)) this._display(this._data);
             });
-            cont.find(".form-control#contrib-update-interval").change(() => {
-                this._load();
+            cont.find(".sorter").change(() => {
+                if (!_.isUndefined(this._data)) this._display(this._data);
             });
             cont.find("button#contrib-reset").click(() => {
-                this._reset_controls();
+                this._reset_contrib_filter();
                 if (!_.isUndefined(this._data)) this._display(this._data);
             });
         }
@@ -274,18 +286,44 @@ function(CSSLoader,
             }
             return this._form_control_obj[id];
         }
-        _get_trans_id() { return this._form_control('select', 'trans-id').val(); }
-        _set_trans_id(val) { this._form_control('select', 'trans-id').val(val); }
-        _set_transactions(transactions) {
-            let html = '';
-            for (let i in transactions) {
-                const id = transactions[i];
-                const selected = i ? '' : 'selected'; 
-                html += `<option value="${id}" ${selected}>${id}</option>`;
+        _set_num_select(val, total) { this._form_control('input', 'contrib-num-select').val(val + ' / ' + total); }
+        _get_database_status() { return this._form_control('select', 'contrib-database-status').val(); }
+        _set_database_status(val) { this._form_control('select', 'contrib-database-status').val(val); }
+        _get_database() { return this._form_control('select', 'contrib-database').val(); }
+        _set_databases(databases, database=undefined) {
+            // Keep the current selection after updating the selector in case if the
+            // database belongs to this collection.
+            const current_database = _.isUndefined(database) ? this._get_database() : database;
+            let in_collection = false;
+            this._form_control('select', 'contrib-database').html(
+                _.reduce(databases, (html, name) => {
+                    if (name === current_database) in_collection = true;
+                    const selected = !html ? 'selected' : '';
+                    return html + `<option value="${name}" ${selected}>${name}</option>`;
+                }, '')
+            );
+            if (in_collection) {
+                this._form_control('select', 'contrib-database').val(current_database);
             }
-            this._form_control('select', 'trans-id').html(html);
         }
-        _reset_controls() {
+        _get_trans_id() { return this._form_control('select', 'contrib-trans-id').val(); }
+        _set_transactions(transactions, trans_id=undefined) {
+            // Keep the current selection after updating the selector in case if the
+            // transaction belongs to this collection.
+            const current_id = parseInt(_.isUndefined(trans_id) ? this._get_trans_id() : trans_id);
+            let in_collection = false;
+            this._form_control('select', 'contrib-trans-id').html(
+                _.reduce(transactions, (html, id) => {
+                    if (id === current_id) in_collection = true;
+                    const selected = !html ? 'selected' : '';
+                    return html + `<option value="${id}" ${selected}>${id}</option>`;
+                }, '')
+            );
+            if (in_collection) {
+                this._form_control('select', 'contrib-trans-id').val(current_id);
+            }
+        }
+        _reset_contrib_filter() {
             this._form_control('select', 'contrib-worker').val('');
             this._form_control('select', 'contrib-table').val('');
             this._form_control('input',  'contrib-chunk').val('');
@@ -293,27 +331,10 @@ function(CSSLoader,
             this._form_control('select', 'contrib-async').val('');
             this._form_control('select', 'contrib-status').val('');
             this._form_control('select', 'contrib-stage').val('');
-            this._form_control('select', 'contrib-sort-column').val('id');
-            this._form_control('select', 'contrib-sort-order').val('ASC');
-            this._form_control('select', 'contrib-update-interval').val('60');
         }
         _disable_controls(disable) {
-            this._form_control('select', 'trans-id').prop('disabled', disable);
-            this._form_control('select', 'contrib-worker').prop('disabled', disable);
-            this._form_control('select', 'contrib-table').prop('disabled', disable);
-            this._form_control('input',  'contrib-chunk').prop('disabled', disable);
-            this._form_control('select', 'contrib-overlap').prop('disabled', disable);
-            this._form_control('select', 'contrib-async').prop('disabled', disable);
-            this._form_control('select', 'contrib-status').prop('disabled', disable);
-            this._form_control('select', 'contrib-stage').prop('disabled', disable);
-            this._form_control('select', 'contrib-sort-column').prop('disabled', disable);
-            this._form_control('select', 'contrib-sort-order').prop('disabled', disable);
-            this._form_control('select', 'contrib-update-interval').prop('disabled', disable);
-            this._form_control('button', 'contrib-reset').prop('disabled', disable);
+            this.fwk_app_container.find(".form-control").prop('disabled', disable);
         }
-        _set_num_select(val, total) { this._form_control('input', 'contrib-num-select').val(val + ' / ' + total); }
-        _get_database() { return this._form_control('input', 'contrib-database').val(); }
-        _set_database(val) { this._form_control('input', 'contrib-database').val(val); }
         _get_worker() { return this._form_control('select', 'contrib-worker').val(); }
         _set_workers(workers, val) {
             let html = `<option value=""></option>`;
@@ -339,26 +360,75 @@ function(CSSLoader,
         _get_sort_order() { return this._form_control('select', 'contrib-sort-order').val(); }
         _update_interval_sec() { return this._form_control('select', 'contrib-update-interval').val(); }
 
-        /**
-         * Load data from a web servie then render it to the application's page.
-         */
         _load() {
-            // Updates make no sense if no transaction identifier provided
-            if (!this._get_trans_id()) {
-                this._table().children('tbody').html('');
-                return;
-            }
-
             if (this._loading === undefined) this._loading = false;
             if (this._loading) return;
             this._loading = true;
-
-            this._status().html('<span style="color:maroon">Loading...</span>');
             this._status().addClass('updating');
             this._disable_controls(true);
-
+            this._load_databases(this._get_database_status());
+        }
+        _load_databases(status) {
             Fwk.web_service_GET(
-                "/ingest/trans/" + this._get_trans_id(),
+                "/replication/config",
+                {},
+                (data) => {
+                    if (!data.success) {
+                        this._on_failure(data.error);
+                        return;
+                    }
+                    this._set_databases(_.map(
+                        _.filter(
+                            data.config.databases,
+                            function (info) {
+                                return (status === "") ||
+                                      ((status === "PUBLISHED") && info.is_published) ||
+                                      ((status === "INGESTING") && !info.is_published);
+                            }
+                        ),
+                        function (info) { return info.database; }
+                    ));
+                    this._load_transactions();
+                },
+                (msg) => { this._on_failure(msg); }
+            );
+        }
+        _load_transactions() {
+            const current_database = this._get_database();
+            if (!current_database) {
+                this._on_failure("No databases exist for selected status");
+                return;
+            }
+            Fwk.web_service_GET(
+                "/ingest/trans",
+                {database: current_database, contrib: 1, contrib_long: 0},
+                (data) => {
+                    if (!data.success) {
+                        this._on_failure(data.error);
+                        return;
+                    }
+                    // Transactions are shown sorted in the ASC order
+                    this._set_transactions(_.map(
+                        _.sortBy(
+                            data.databases[current_database].transactions,
+                            function (info) { return info.id; }
+                        ),
+                        function (info) { return info.id; }
+                    ));
+                    this._load_contribs();
+
+                },
+                (msg) => { this._on_failure(msg); }
+            );
+        }
+        _load_contribs() {
+            const current_id = this._get_trans_id();
+            if (!current_id) {
+                this._on_failure("No transactions exist for selected database");
+                return;
+            }
+            Fwk.web_service_GET(
+                "/ingest/trans/" + current_id,
                 {contrib: 1, contrib_long: 1},
                 (data) => {
                     if (!data.success) {
@@ -417,16 +487,16 @@ function(CSSLoader,
                     this._disable_controls(false);
                     this._loading = false;
                 },
-                (msg) => {
-                    console.log('request failed', this.fwk_app_name, msg);
-                    this._status().html('<span style="color:maroon">No Response</span>');
-                    this._status().removeClass('updating');
-                    this._disable_controls(false);
-                    this._loading = false;
-                }
+                (msg) => { this._on_failure(msg); }
             );
         }
-
+        _on_failure(msg) {
+            this._status().html(`<span style="color:maroon">${msg}</span>`);
+            this._table().children('tbody').html('');
+            this._status().removeClass('updating');
+            this._disable_controls(false);
+            this._loading = false;
+        }
         /**
          * Render the data received from a server
          * @param {Object} info transaction descriptor

@@ -64,6 +64,13 @@ SqlJob::SqlJob(
 }
 
 
+Job::Progress SqlJob::progress() const {
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
+    util::Lock lock(_mtx, context() + __func__);
+    return Progress{_numFinished, _requests.size()};
+}
+
+
 SqlJobResult const& SqlJob::getResultData() const {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
     if (state() == State::FINISHED) return _resultData;

@@ -29,8 +29,10 @@
 
 // Qserv headers
 #include "replica/DatabaseServices.h"
+#include "replica/NamedMutexRegistry.h"
 #include "replica/Performance.h"
 #include "replica/ServiceProvider.h"
+#include "util/Mutex.h"
 #include "util/TablePrinter.h"
 
 using namespace std;
@@ -43,6 +45,11 @@ string const description =
 bool const injectDatabaseOptions = true;
 bool const boostProtobufVersionCheck = false;
 bool const enableServiceProvider = true;
+
+vector<string> const transactionStates = {
+    "IS_STARTING", "STARTED", "IS_FINISHING", "IS_ABORTING", "FINISHED",
+     "ABORTED", "START_FAILED", "FINISH_FAILED", "ABORT_FAILED"
+};
 
 } /// namespace
 
@@ -67,10 +74,10 @@ TransactionsApp::TransactionsApp(int argc, char* argv[])
 
     // Configure the command line parser
 
+    vector<string> commands = {"FIND", "LIST", "CREATE", "UPDATE"};
+    commands.insert(commands.end(), transactionStates.begin(), transactionStates.end());
     parser().commands(
-        "operation",
-        {"FIND", "LIST", "BEGIN", "END"},
-        _operation
+        "operation", commands, _operation
     ).option(
         "tables-page-size",
         "The number of rows in the table of a query result set (0 means no pages).",
@@ -99,9 +106,11 @@ TransactionsApp::TransactionsApp(int argc, char* argv[])
     );
 
     parser().command(
-        "BEGIN"
+        "CREATE"
     ).description(
-        "Begin a new transaction in a scope of the specified database."
+        "Create a new transaction in a scope of the specified database. Set a state of"
+        " the transaction to IS_STARTING. The command also allows to set the initial value"
+        " of the transaction's 'context' attribute."
     ).optional(
         "database",
         "The name of a database to be associated with a new transaction.",
@@ -109,34 +118,40 @@ TransactionsApp::TransactionsApp(int argc, char* argv[])
     );
 
     parser().command(
-        "END"
+        "UPDATE"
     ).description(
-        "End normally or abnormally (depending on a presence of an optional flag"
-        " an existing transaction."
+        "Update an existing transaction. The transaction will get a new state."
+        " The context attribute of the transaction will be updated as well if requested."
+        " Events may be also added to the transaction."
     ).required(
         "id",
-        "A unique identifier of a transaction to be ended.",
+        "A unique identifier of an existing transaction.",
         _id
-    ).flag(
-        "abort",
-        "Abort the transaction",
-        _abort
+    ).required(
+        "state",
+        "The new state of the transaction.",
+        _state
     );
 }
 
 
 int TransactionsApp::runImpl() {
-
     string const context = "TransactionsApp::" + string(__func__) + " ";
-
     auto const service = serviceProvider()->databaseServices();
 
-    if      ("FIND"   == _operation) { _print(service->transaction(_id)); }
-    else if ("LIST"   == _operation) { _print(service->transactions(_databaseName)); }
-    else if ("BEGIN"  == _operation) { _print(service->beginTransaction(_databaseName)); }
-    else if ("END"    == _operation) { _print(service->endTransaction(_id, _abort)); }
-    else { throw logic_error(context + "unsupported operation: " + _operation); }
-
+    if ("FIND" == _operation) {
+        _print(service->transaction(_id));
+    } else if ("LIST" == _operation) {
+        _print(service->transactions(_databaseName));
+    } else if ("CREATE" == _operation) {
+        NamedMutexRegistry registry;
+        unique_ptr<util::Lock> lock;
+        _print(service->createTransaction(_databaseName, registry, lock));
+    } else if ("UPDATE" == _operation) {
+        _print(service->updateTransaction(_id, _state));
+    } else {
+        throw logic_error(context + "unsupported operation: " + _operation);
+    }
     return 0;
 }
 
@@ -147,13 +162,17 @@ void TransactionsApp::_print(vector<TransactionInfo> const& collection) const {
     vector<string>   colDatabase;
     vector<string>   colState;
     vector<string>   colBeginTime;
+    vector<string>   colStartTime;
+    vector<string>   colTransTime;
     vector<string>   colEndTime;
 
     for (auto&& info: collection) {
         colId       .push_back(info.id);
         colDatabase .push_back(info.database);
         colState    .push_back(TransactionInfo::state2string(info.state));
-        colBeginTime.push_back(PerformanceUtils::toDateTimeString(chrono::milliseconds(info.beginTime)));
+        colStartTime.push_back(PerformanceUtils::toDateTimeString(chrono::milliseconds(info.beginTime)));
+        colTransTime.push_back(PerformanceUtils::toDateTimeString(chrono::milliseconds(info.transitionTime)));
+        colBeginTime.push_back(PerformanceUtils::toDateTimeString(chrono::milliseconds(info.startTime)));
         colEndTime  .push_back(info.endTime == 0 ? "" : PerformanceUtils::toDateTimeString(chrono::milliseconds(info.endTime)));
     }
 
@@ -163,6 +182,8 @@ void TransactionsApp::_print(vector<TransactionInfo> const& collection) const {
     table.addColumn("database",   colDatabase,  table.LEFT);
     table.addColumn("state",      colState,     table.LEFT);
     table.addColumn("begin time", colBeginTime, table.LEFT);
+    table.addColumn("start time", colStartTime, table.LEFT);
+    table.addColumn("trans time", colTransTime, table.LEFT);
     table.addColumn("end time",   colEndTime,   table.LEFT);
 
     cout << "\n";

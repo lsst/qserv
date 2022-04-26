@@ -44,6 +44,7 @@
 
 using namespace std;
 namespace fs = boost::filesystem;
+using json = nlohmann::json;
 
 namespace {
 
@@ -54,6 +55,22 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.IndexJob");
 namespace lsst {
 namespace qserv {
 namespace replica {
+
+json IndexJobResult::toJson() const {
+    json result;
+    for (auto&& workerItr: error) {
+        string const& worker = workerItr.first;
+        result[worker] = json::object();
+        json& workerJson = result[worker];
+        for (auto&& chunksItr: workerItr.second) {
+            unsigned int chunk = chunksItr.first;
+            string const& errorMessage = chunksItr.second;
+            workerJson[chunk] = errorMessage;
+        }
+    }
+    return result;
+}
+
 
 string IndexJob::typeName() { return "IndexJob"; }
 
@@ -149,6 +166,13 @@ IndexJob::IndexJob(string const& database,
 
 IndexJob::~IndexJob() {
     _rollbackTransaction(__func__);
+}
+
+
+Job::Progress IndexJob::progress() const {
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
+    util::Lock lock(_mtx, context() + __func__);
+    return Progress{_completeChunks, _totalChunks};
 }
 
 
@@ -307,6 +331,7 @@ void IndexJob::startImpl(util::Lock const& lock) {
             throw logic_error(context() + string(__func__) + ":  internal bug");
         }
         _chunks[worker].push(chunk);
+        _totalChunks++;
     }
 
     // --------------------------------------------------
@@ -393,6 +418,8 @@ void IndexJob::_onRequestFinish(IndexRequest::Ptr const& request) {
     util::Lock lock(_mtx, context() + __func__);
 
     if (state() == State::FINISHED) return;
+
+    _completeChunks++;
 
     bool hasData = true;
     if (request->extendedState() != Request::SUCCESS) {

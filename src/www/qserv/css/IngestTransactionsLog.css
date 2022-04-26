@@ -1,0 +1,74 @@
+#fwk-ingest-transactions-log-controls label {
+    font-weight: bold;
+}
+div#fwk-ingest-transactions-log-status #status {
+    text-align: right;
+}
+div#fwk-ingest-transactions-log-status #status.updating {
+    background-color: #ffeeba;
+}
+div#fwk-ingest-transactions-log-info {
+    margin-bottom: 1.0em;
+}
+div#fwk-ingest-transactions-log-info span {
+    font-weight: bold;
+    text-align: right;
+}
+div#fwk-ingest-transactions-log-info pre {
+    padding: 0;
+    margin: 0;
+}
+div#fwk-ingest-transactions-log-info textarea {
+    width: 100%;
+    height: 100%;
+    padding: 0.5em;
+    border:0;
+    border-top: solid 1px rgb(222, 226, 230);
+    overflow-y: scroll;
+    color: maroon;
+}
+table#fwk-ingest-transactions-log th.right-aligned,
+table#fwk-ingest-transactions-log td.right-aligned {
+    text-align: right;
+}
+table#fwk-ingest-transactions-log th.center-aligned,
+table#fwk-ingest-transactions-log td.center-aligned {
+    text-align: center;
+}
+table#fwk-ingest-transactions-log tbody th,
+table#fwk-ingest-transactions-log tbody td {
+    vertical-align: middle;
+}
+table#fwk-ingest-transactions-log tbody > tr > th.controls {
+    padding: 2px;
+}
+table#fwk-ingest-transactions-log tbody > tr > th.controls button {
+    color: #007bff;
+}
+
+table#fwk-ingest-transactions-log tbody pre {
+    padding: 0;
+    margin: 0;
+}
+table#fwk-ingest-transactions-log tbody pre.database_table:hover {
+    cursor:pointer;
+}
+table#fwk-ingest-transactions-log tbody pre.database_table {
+    color: #007bff;
+}
+div#fwk-ingest-transactions-log-info tbody pre.trans-in-progress,
+table#fwk-ingest-transactions-log    tbody pre.trans-in-progress {
+    color: green;
+}
+div#fwk-ingest-transactions-log-info tbody pre.trans-failed,
+table#fwk-ingest-transactions-log    tbody pre.trans-failed {
+    color: red;
+}
+div#fwk-ingest-transactions-log-info tbody pre.trans-finished,
+table#fwk-ingest-transactions-log    tbody pre.trans-finished {
+    color: default;
+}
+table#fwk-ingest-transactions-log textarea {
+    width: 100%;
+    height: 8em;
+}

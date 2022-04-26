@@ -36,7 +36,7 @@ namespace lsst {
 namespace qserv {
 namespace replica {
 
-int const ConfigParserMySQL::expectedSchemaVersion = 8;
+int const ConfigParserMySQL::expectedSchemaVersion = 9;
 
 
 ConfigParserMySQL::ConfigParserMySQL(database::mysql::Connection::Ptr const& conn,

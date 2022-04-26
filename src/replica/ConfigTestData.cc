@@ -57,7 +57,8 @@ map<string, set<string>> ConfigTestData::parameters() {
                 "health-monitor-priority-level",
                 "ingest-priority-level",
                 "catalog-management-priority-level",
-                "auto-register-workers"
+                "auto-register-workers",
+                "ingest-job-monitor-ival-sec"
             }
         },
         {   "database",
@@ -135,7 +136,8 @@ json ConfigTestData::data() {
         {"health-monitor-priority-level", 2},
         {"ingest-priority-level", 3},
         {"catalog-management-priority-level", 4},
-        {"auto-register-workers", 1}
+        {"auto-register-workers", 1},
+        {"ingest-job-monitor-ival-sec", 5}
     });
     generalObj["database"] = json::object({
         {"host", "localhost"},
@@ -192,7 +194,7 @@ json ConfigTestData::data() {
         {"loader-host", "host-A"},
         {"loader-port", 53002},
         {"loader-tmp-dir", "/tmp/A"},
-        {"exporter_host", "host-A"},
+        {"exporter-host", "host-A"},
         {"exporter-port", 53003},
         {"exporter-tmp-dir", "/tmp/export/A"},
         {"http-loader-host", "host-A"},
@@ -211,7 +213,7 @@ json ConfigTestData::data() {
         {"fs-host", "host-B"},
         {"data-dir", "/data/B"},
         {"loader-host", "host-B"},
-        {"exporter_host", "host-B"},
+        {"exporter-host", "host-B"},
         {"http-loader-host", "host-B"}
     });
 
@@ -225,7 +227,7 @@ json ConfigTestData::data() {
         {"svc-host", "host-C"},
         {"fs-host", "host-C"},
         {"loader-host", "host-C"},
-        {"exporter_host", "host-C"},
+        {"exporter-host", "host-C"},
         {"http-loader-host", "host-C"}
     });
     obj["database_families"]["production"] = json::object({

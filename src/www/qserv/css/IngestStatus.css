@@ -1,3 +1,6 @@
+#fwk-ingest-status-controls label {
+    font-weight:    bold;
+}
 div#fwk-ingest-status div.database:not(:first-of-type) {
     margin-top: 1em;
 }

@@ -47,6 +47,7 @@
 
 using namespace std;
 using namespace std::placeholders;
+using json = nlohmann::json;
 
 namespace {
 
@@ -85,6 +86,11 @@ string Job::state2string(ExtendedState state) {
         case CANCELLED:          return "CANCELLED";
     }
     throw logic_error("Job::" + string(__func__) + "  incomplete implementation of method");
+}
+
+
+json Job::Progress::toJson() const {
+    return json::object({{"complete", complete}, {"total", total}});
 }
 
 
@@ -165,6 +171,13 @@ void Job::start() {
 }
 
 
+Job::Progress Job::progress() const {
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
+    util::Lock lock(_mtx, context() + __func__);
+    return Progress{_finished ? 1ULL : 0ULL, 1ULL};
+}
+
+
 void Job::wait() {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
     if (_finished) return;
@@ -172,6 +185,23 @@ void Job::wait() {
     _onFinishCv.wait(onFinishLock, [&] { return _finished.load(); });
 }
 
+
+void Job::wait(chrono::milliseconds const& ivalMsec, WaitMonitorFunc const& func) {
+    string const context_ = context() + string(__func__) + " ";
+    LOGS(_log, LOG_LVL_DEBUG, context_);
+    if (_finished) return;
+    if (ivalMsec.count() == 0) throw invalid_argument(context_ + "callaback interval can't be 0.");
+    if (func == nullptr) throw invalid_argument(context_ + "callaback function not provided.");
+    auto const self = shared_from_this();
+    unique_lock<mutex> onFinishLock(_onFinishMtx);
+    while (!_onFinishCv.wait_for(onFinishLock, ivalMsec, [&] { return _finished.load(); })) {
+        // Unlock and relock is needed to prevent the deadlock in case if the called function
+        // will be interacting with the public API of the job.
+        onFinishLock.unlock();
+        func(self);
+        onFinishLock.lock();
+    }
+}
 
 void Job::cancel() {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);

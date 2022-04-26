@@ -313,6 +313,38 @@ function(Class,
         };
 
         /**
+         * Find and return the specified application.
+         * Note that unlike the method 'show(), the method won't hidr
+         * the currently active application or show the requested one.
+         *
+         * @param cxt1  level-1 menu context name
+         * @param cxt2  (optional) level-2 menu context name
+         * @return the found application or 'undefined' if no such application was found.
+         */
+         this.find = function(cxt1, cxt2) {
+            for (var k1 in this._apps) {
+                var v1 = this._apps[k1];
+                if (v1 instanceof FwkApplication) {
+                    if (v1.fwk_app_name === cxt1) {
+                        return v1;
+                    }
+                } else if (_.isObject(v1)) {
+                    if (v1.name === cxt1) {
+                        for (var k2 in v1) {
+                            var v2 = v1[k2];
+                            if (v2 instanceof FwkApplication) {
+                                if (v2.fwk_app_name === cxt2) {
+                                    return v2;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            return undefined;
+        };
+
+        /**
          * Switch to the specified application by locating and hiding
          * the currently active application and then showing the requested
          * one.

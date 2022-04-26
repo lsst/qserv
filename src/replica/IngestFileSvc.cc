@@ -107,7 +107,7 @@ string const& IngestFileSvc::openFile(TransactionId transactionId,
     // Check if a context of the request is valid
     try {
         auto transactionInfo = _serviceProvider->databaseServices()->transaction(_transactionId);
-        if (transactionInfo.state != TransactionInfo::STARTED) {
+        if (transactionInfo.state != TransactionInfo::State::STARTED) {
             throw logic_error(context_ + "transaction " + to_string(_transactionId) + " is not active");
         }
         _databaseInfo = _serviceProvider->config()->databaseInfo(transactionInfo.database);
@@ -204,7 +204,7 @@ void IngestFileSvc::loadDataIntoTable() {
     // Make sure no change in the state of the current transaction happened
     // while the input file was being prepared for the ingest.
     auto const transactionInfo = _serviceProvider->databaseServices()->transaction(_transactionId);
-    if (transactionInfo.state != TransactionInfo::STARTED) {
+    if (transactionInfo.state != TransactionInfo::State::STARTED) {
         throw logic_error(
                 context_ + "transaction " + to_string(_transactionId)
                 + " changed state to " + TransactionInfo::state2string(transactionInfo.state)
@@ -350,7 +350,7 @@ void IngestFileSvc::loadDataIntoTable() {
         // while the input file was being ingested into the table. If it was
         // then make the best attempt to remove the partition.
         auto const transactionInfo = _serviceProvider->databaseServices()->transaction(_transactionId);
-        if (transactionInfo.state == TransactionInfo::ABORTED) {
+        if (transactionInfo.state == TransactionInfo::State::ABORTED) {
             LOGS(_log, LOG_LVL_WARN, context_ << "transaction " << _transactionId
                  << " was aborted during ingest. Removing the MySQL partition, query: "
                  << partitionRemovalQuery.query);

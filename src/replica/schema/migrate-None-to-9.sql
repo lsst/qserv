@@ -291,6 +291,8 @@ CREATE TABLE IF NOT EXISTS `transaction` (
   `database`    VARCHAR(255)    NOT NULL ,
   `state`       VARCHAR(255)    NOT NULL ,
   `begin_time`  BIGINT UNSIGNED NOT NULL ,
+  `start_time`  BIGINT UNSIGNED DEFAULT 0 ,
+  `transition_time`  BIGINT UNSIGNED DEFAULT 0 ,
   `end_time`    BIGINT UNSIGNED DEFAULT 0 ,
   `context`     MEDIUMBLOB      DEFAULT '' ,
   UNIQUE KEY (`id`) ,
@@ -305,6 +307,23 @@ CREATE TABLE IF NOT EXISTS `transaction` (
 ENGINE = InnoDB
 COMMENT = 'The super-transactions created by the ingest system';
 
+CREATE TABLE IF NOT EXISTS `transaction_log` (
+  `id`                 INT UNSIGNED    NOT NULL AUTO_INCREMENT,   -- a unique identifier of the event
+  `transaction_id`     INT UNSIGNED    NOT NULL ,                 -- FK to the parent transaction
+  `transaction_state`  VARCHAR(255)    NOT NULL ,                 -- a state of the transaction tion when the event was recorded
+  `time`               BIGINT UNSIGNED NOT NULL ,                 -- an timestamp (milliseconds) when the event was recorded
+  `name`               VARCHAR(255)    NOT NULL ,                 -- an identifier of the event
+  `data`               MEDIUMBLOB      DEFAULT '' ,               -- optional parameters (JSON object) of the event
+  PRIMARY KEY (`id`) ,
+  CONSTRAINT `transaction_log_fk_1`
+    FOREIGN KEY (`transaction_id`)
+    REFERENCES `transaction` (`id`)
+    ON DELETE CASCADE
+    ON UPDATE CASCADE
+)
+ENGINE = InnoDB
+COMMENT = 'Events logged in a context of the super-transactions. The information is meant
+  for progress tracking, monitoring and performance analysis of the transactions.';
 
 CREATE TABLE IF NOT EXISTS `transaction_contrib` (
   `id`              INT UNSIGNED  NOT NULL AUTO_INCREMENT,  -- a unique identifier of the contribution
@@ -439,4 +458,4 @@ ENGINE = InnoDB
 COMMENT = 'Metadata about database as a whole, key-value pairs' ;
 
 -- Add record for schema version, migration script expects this record to exist
-INSERT INTO `QMetadata` (`metakey`, `value`) VALUES ('version', '8');
+INSERT INTO `QMetadata` (`metakey`, `value`) VALUES ('version', '9');

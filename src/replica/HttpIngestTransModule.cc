@@ -29,6 +29,7 @@
 #include <set>
 #include <stdexcept>
 #include <vector>
+#include <unordered_map>
 
 // Qserv headers
 #include "replica/AbortTransactionJob.h"
@@ -37,7 +38,9 @@
 #include "replica/DatabaseServices.h"
 #include "replica/HttpExceptions.h"
 #include "replica/IndexJob.h"
+#include "replica/NamedMutexRegistry.h"
 #include "replica/ServiceProvider.h"
+#include "util/Mutex.h"
 
 using namespace std;
 using json = nlohmann::json;
@@ -59,24 +62,27 @@ namespace replica {
 
 
 void HttpIngestTransModule::process(Controller::Ptr const& controller,
+                                    NamedMutexRegistry& transactionMutexRegistry,
                                     string const& taskName,
                                     HttpProcessorConfig const& processorConfig,
                                     qhttp::Request::Ptr const& req,
                                     qhttp::Response::Ptr const& resp,
                                     string const& subModuleName,
                                     HttpAuthType const authType) {
-    HttpIngestTransModule module(controller, taskName, processorConfig, req, resp);
+    HttpIngestTransModule module(controller, transactionMutexRegistry, taskName, processorConfig, req, resp);
     module.execute(subModuleName, authType);
 }
 
 
 HttpIngestTransModule::HttpIngestTransModule(
             Controller::Ptr const& controller,
+            NamedMutexRegistry& transactionMutexRegistry,
             string const& taskName,
             HttpProcessorConfig const& processorConfig,
             qhttp::Request::Ptr const& req,
             qhttp::Response::Ptr const& resp)
-    :   HttpModule(controller, taskName, processorConfig, req, resp) {
+    :   HttpModule(controller, taskName, processorConfig, req, resp),
+        _transactionMutexRegistry(transactionMutexRegistry) {
 }
 
 
@@ -104,6 +110,7 @@ json HttpIngestTransModule::_getTransactions() {
     auto const includeContributions = query().optionalUInt64("contrib", 0) != 0;
     auto const longContribFormat = query().optionalUInt64("contrib_long", 0) != 0;
     bool const includeContext = query().optionalUInt64("include_context", 0) != 0;
+    bool const includeLog = query().optionalUInt64("include_log", 0) != 0;
 
     debug(__func__, "database=" + database);
     debug(__func__, "family=" + family);
@@ -112,6 +119,7 @@ json HttpIngestTransModule::_getTransactions() {
     debug(__func__, "contrib=" + bool2str(includeContributions));
     debug(__func__, "contrib_long=" + bool2str(longContribFormat));
     debug(__func__, "include_context=" + bool2str(includeContext));
+    debug(__func__, "include_log=" + bool2str(includeLog));
 
     vector<string> databases;
     if (database.empty()) {
@@ -120,18 +128,18 @@ json HttpIngestTransModule::_getTransactions() {
         databases.push_back(database);
     }
 
+    bool const allWorkers = true;
     json result;
     result["databases"] = json::object();
     for (auto&& database: databases) {
         auto const databaseInfo = config->databaseInfo(database);
-        bool const allWorkers = true;
         vector<unsigned int> chunks;
         databaseServices->findDatabaseChunks(chunks, database, allWorkers);
 
         result["databases"][database]["is_published"] = databaseInfo.isPublished ? 1 : 0;
         result["databases"][database]["num_chunks"] = chunks.size();
         result["databases"][database]["transactions"] = json::array();
-        for (auto&& transaction: databaseServices->transactions(database, includeContext)) {
+        for (auto&& transaction: databaseServices->transactions(database, includeContext, includeLog)) {
             json transJson = transaction.toJson();
             if (includeContributions) {
                 transJson["contrib"] =
@@ -153,13 +161,15 @@ json HttpIngestTransModule::_getTransaction() {
     auto const includeContributions = query().optionalUInt64("contrib", 0) != 0;
     auto const longContribFormat = query().optionalUInt64("contrib_long", 0) != 0;
     bool const includeContext = query().optionalUInt64("include_context", 0) != 0;
+    bool const includeLog = query().optionalUInt64("include_log", 0) != 0;
 
     debug(__func__, "id=" + to_string(id));
     debug(__func__, "contrib=" + bool2str(includeContributions));
     debug(__func__, "contrib_long=" + bool2str(longContribFormat));
     debug(__func__, "include_context=" + bool2str(includeContext));
+    debug(__func__, "include_log=" + bool2str(includeLog));
 
-    auto const transaction = databaseServices->transaction(id, includeContext);
+    auto const transaction = databaseServices->transaction(id, includeContext, includeLog);
     auto const databaseInfo = config->databaseInfo(transaction.database);
     bool const allWorkers = true;
     vector<unsigned int> chunks;
@@ -181,74 +191,77 @@ json HttpIngestTransModule::_getTransaction() {
 json HttpIngestTransModule::_beginTransaction() {
     debug(__func__);
 
+    auto const config = controller()->serviceProvider()->config();
+    auto const databaseServices = controller()->serviceProvider()->databaseServices();
+
+    auto const database = body().required<string>("database");
+    auto const context = body().optional<json>("context", json::object());
+
+    debug(__func__, "database=" + database);
+
+    auto const databaseInfo = config->databaseInfo(database);
+    if (databaseInfo.isPublished) {
+        throw HttpError(__func__, "the database is already published");
+    }
+
+    // Get chunks stats to be reported with the request's result object
+    bool const allWorkers = true;
+    vector<unsigned int> chunks;
+    databaseServices->findDatabaseChunks(chunks, database, allWorkers);
+
     // Keep the transaction object in this scope to allow logging a status
-    // of the operation regardless if it succeeds or fails. The name of a database
-    // encoded in the object will get initialized from the REST request's
-    // parameter. And the rest will be set up after attempting to actually start
-    // the transaction.
+    // of the operation regardless if it succeeds or fails.
     TransactionInfo transaction;
 
-    auto const logBeginTransaction = [&](string const& status, string const& msg=string()) {
-        ControllerEvent event;
-        event.operation = "BEGIN TRANSACTION";
-        event.status = status;
-        event.kvInfo.emplace_back("id", to_string(transaction.id));
-        event.kvInfo.emplace_back("database", transaction.database);
-        if (not msg.empty()) event.kvInfo.emplace_back("error", msg);
-        logEvent(event);
-    };
-    
-    // Intercept standard exceptions just to report the failure, then
-    // let a caller to do the rest (post error messages into the Logger,
-    // return errors to clients).
+    // The transient lock on the named mutex will be initialized upon creation of
+    // the transaction. This mechanism prevents race conditions in the transaction
+    // management operations performed by the module.
+    unique_ptr<util::Lock> lock;
+
+    // Any problems during the secondary index creation will result in
+    // failing the transaction.
     try {
-        auto const config = controller()->serviceProvider()->config();
-        auto const databaseServices = controller()->serviceProvider()->databaseServices();
+        // Upon creation, the transaction will be put into the transitional
+        // state IS_STARTING.
+        transaction = databaseServices->createTransaction(database, _transactionMutexRegistry, lock, context);
 
-        transaction.database = body().required<string>("database");
-        transaction.context = body().optional<json>("context", json::object());
-
-        debug(__func__, "database=" + transaction.database);
-
-        auto const databaseInfo = config->databaseInfo(transaction.database);
-        if (databaseInfo.isPublished) {
-            throw HttpError(__func__, "the database is already published");
-        }
-
-        // Get chunks stats to be reported with the request's result object
-        bool const allWorkers = true;
-        vector<unsigned int> chunks;
-        databaseServices->findDatabaseChunks(chunks, databaseInfo.name, allWorkers);
-
-        // Any problems during the secondary index creation will result in
-        // automatically aborting the transaction. Otherwise ingest workflows
-        // may be screwed/confused by the presence of the "invisible" transaction.
-        transaction = databaseServices->beginTransaction(databaseInfo.name, transaction.context);
-        try {
-            // This operation can be vetoed by a catalog ingest workflow at the database
-            // registration time.
-            if (autoBuildSecondaryIndex(databaseInfo.name)) {
-                for (auto&& directorTable: databaseInfo.directorTables()) {
+        // This operation can be vetoed by a catalog ingest workflow at the database
+        // registration time.
+        if (autoBuildSecondaryIndex(database)) {
+            string const transEvent = "add dir idx part";
+            for (auto&& directorTable: databaseInfo.directorTables()) {
+                json transEventData = {{"table", directorTable}};
+                transaction = databaseServices->updateTransaction(transaction.id, "begin " + transEvent, transEventData);
+                transEventData["success"] = 1;
+                transEventData["error"] = string();
+                try {
                     _addPartitionToSecondaryIndex(databaseInfo, transaction.id, directorTable);
+                    transaction = databaseServices->updateTransaction(transaction.id, "end " + transEvent, transEventData);
+                } catch (exception const& ex) {
+                    transEventData["success"] = 0;
+                    transEventData["error"] = string(ex.what());
+                    transaction = databaseServices->updateTransaction(transaction.id, "end " + transEvent, transEventData);
+                    throw;
                 }
             }
-        } catch (...) {
-            bool const abort = true;
-            transaction = databaseServices->endTransaction(transaction.id, abort);
-            throw;
         }
-        logBeginTransaction("SUCCESS");
+        transaction = databaseServices->updateTransaction(transaction.id, TransactionInfo::State::STARTED);
+
+        _logTransactionMgtEvent("BEGIN TRANSACTION", "SUCCESS", transaction.id, database);
 
         json result;
-        result["databases"][transaction.database]["transactions"].push_back(transaction.toJson());
-        result["databases"][transaction.database]["num_chunks"] = chunks.size();
+        result["databases"][database]["transactions"].push_back(transaction.toJson());
+        result["databases"][database]["num_chunks"] = chunks.size();
         return result;
 
-    } catch (invalid_argument const& ex) {
-        logBeginTransaction("FAILED", "invalid parameters of the request, ex: " + string(ex.what()));
-        throw;
     } catch (exception const& ex) {
-        logBeginTransaction("FAILED", "operation failed due to: " + string(ex.what()));
+        // The safety check is needed to ensure the transaction object was created
+        // and recorded in the database.
+        if (transaction.isValid()) {
+            transaction = databaseServices->updateTransaction(transaction.id, TransactionInfo::State::START_FAILED);
+        }
+        _logTransactionMgtEvent("BEGIN TRANSACTION", "FAILED", transaction.id, database,
+                                "operation failed due to: " + string(ex.what()));
         throw;
     }
 }
@@ -257,122 +270,177 @@ json HttpIngestTransModule::_beginTransaction() {
 json HttpIngestTransModule::_endTransaction() {
     debug(__func__);
 
-    TransactionId id = 0;
-    string database;
-    bool abort = false;
+    auto const config = controller()->serviceProvider()->config();
+    auto const databaseServices = controller()->serviceProvider()->databaseServices();
 
-    auto const logEndTransaction = [&](string const& status, string const& msg=string()) {
-        ControllerEvent event;
-        event.operation = "END TRANSACTION";
-        event.status = status;
-        event.kvInfo.emplace_back("id", to_string(id));
-        event.kvInfo.emplace_back("database", database);
-        event.kvInfo.emplace_back("abort", abort ? "true" : "false");
-        if (not msg.empty()) event.kvInfo.emplace_back("error", msg);
-        logEvent(event);
-    };
+    TransactionId const id = stoul(params().at("id"));
+    bool const abort = query().requiredBool("abort");
+    const bool hasContext = body().has("context");
+    json const context = body().optional<json>("context", json::object());
 
-    // Intercept standard exceptions just to report the failure, then
-    // let a caller to do the rest (post error messages into the Logger,
-    // return errors to clients).
+    debug(__func__, "id="    + to_string(id));
+    debug(__func__, "abort=" + to_string(abort ? 1 : 0));
+
+    // The transient lock on the named mutex will be acquired to guarantee exclusive control
+    // over transaction states. This mechanism prevents race conditions in the transaction
+    // management operations performed by the module.
+    string const lockName = "transaction:" + to_string(id);
+    debug(__func__, "begin acquiring transient management lock on mutex '" + lockName = "'");
+    util::Lock const lock(_transactionMutexRegistry.get(lockName));
+    debug(__func__, "transient management lock on mutex '" + lockName + "' acquired");
+
+    // At this point the transaction state is guaranteed not to be changed by others.
+    TransactionInfo transaction = databaseServices->transaction(id);
+    auto const operationIsAllowed = TransactionInfo::stateTransitionIsAllowed(transaction.state, abort ?
+            TransactionInfo::State::IS_ABORTING : TransactionInfo::State::IS_FINISHING);
+    if (!operationIsAllowed) {
+        throw HttpError(
+                __func__, "transaction id=" + to_string(id) + " can't be ended at this time"
+                " because of state=" + TransactionInfo::state2string(transaction.state) + ".");
+    }
+
+    string const database = transaction.database;
+    auto const databaseInfo = config->databaseInfo(database);
+
+    bool const allWorkers = true;
+    vector<unsigned int> chunks;
+    databaseServices->findDatabaseChunks(chunks, database, allWorkers);
+
+    // Exceptions thrown on operations affecting the persistent state of Qserv
+    // or the Replication/Ingest system would result in transitioning the transaction
+    // into a failed state ABORT_FAILED or FINISH_FAILED.
     try {
-        auto const config = controller()->serviceProvider()->config();
-        auto const databaseServices = controller()->serviceProvider()->databaseServices();
-
-        id = stoul(params().at("id"));
-        abort = query().requiredBool("abort");
-
-        bool const hasContext = body().has("context");
-        json const context = body().optional<json>("context", json::object());
-
-        debug(__func__, "id="    + to_string(id));
-        debug(__func__, "abort=" + to_string(abort ? 1 : 0));
-
-        auto transaction = databaseServices->transaction(id);
-        if (transaction.state != TransactionInfo::STARTED) {
-            throw HttpError(__func__, "transaction id=" + to_string(transaction.id) + " is not active");
+        transaction = databaseServices->updateTransaction(id, abort ?
+                TransactionInfo::State::IS_ABORTING : TransactionInfo::State::IS_FINISHING);
+        if (hasContext) {
+            transaction = databaseServices->updateTransaction(id, context);
         }
 
-        if (hasContext) databaseServices->updateTransaction(id, context);
-        transaction = databaseServices->endTransaction(id, abort);
-        auto const databaseInfo = config->databaseInfo(transaction.database);
-        database = transaction.database;
-
-        bool const allWorkers = true;
-        vector<unsigned int> chunks;
-        databaseServices->findDatabaseChunks(chunks, transaction.database, allWorkers);
-
-        json result;
-        result["databases"][transaction.database]["transactions"].push_back(transaction.toJson());
-        result["databases"][transaction.database]["num_chunks"] = chunks.size();
-        result["secondary-index-build-success"] = 0;
-
+        bool secondaryIndexBuildSuccess = false;
         string const noParentJobId;
         if (abort) {
-
-            // Drop the transaction-specific MySQL partition from the relevant tables
+            // Drop the transaction-specific MySQL partition from the relevant tables.
             auto const job = AbortTransactionJob::create(
-                    transaction.id, allWorkers, controller(), noParentJobId, nullptr,
+                    id, allWorkers, controller(), noParentJobId, nullptr,
                     config->get<int>("controller", "ingest-priority-level"));
+
+            chrono::milliseconds const jobMonitoringIval(1000 * config->get<unsigned int>("controller", "ingest-job-monitor-ival-sec"));
+            string const transEvent = "del table part";
+            json transEventData = {{"job", job->id()}};
+            transaction = databaseServices->updateTransaction(id, "begin " + transEvent, transEventData);
+
             job->start();
             logJobStartedEvent(AbortTransactionJob::typeName(), job, databaseInfo.family);
-            job->wait();
+            job->wait(jobMonitoringIval, [&](Job::Ptr const& job) {
+                auto data = transEventData;
+                data["progress"] = job->progress().toJson();
+                transaction = databaseServices->updateTransaction(id, "progress " + transEvent, data);
+            });
             logJobFinishedEvent(AbortTransactionJob::typeName(), job, databaseInfo.family);
+
+            bool const success = job->extendedState() == Job::ExtendedState::SUCCESS;
+            auto const error = success ? json::object() : job->getResultData().toJson();
+            transEventData["success"] = success ? 1 : 0;
+            transEventData["error"] = error;
+            transaction = databaseServices->updateTransaction(id, "end " + transEvent, transEventData);
+
+            if (!success) throw HttpError(__func__, "failed to drop table partitions", error);
 
             // This operation in a context of the "secondary index" table can be vetoed by
             // a catalog ingest workflow at the database registration time.
-            if (autoBuildSecondaryIndex(databaseInfo.name)) {
-                for (auto&& directorTable: databaseInfo.directorTables()) {
-                    _removePartitionFromSecondaryIndex(databaseInfo, transaction.id, directorTable);
+            if (autoBuildSecondaryIndex(database)) {
+                string const transEvent = "del dir idx part";
+                for (auto&& directorTable: databaseInfo.directorTables()) {;
+                    json transEventData = {{"table", directorTable}};
+                    transaction = databaseServices->updateTransaction(id, "begin " + transEvent, transEventData);
+                    transEventData["success"] = 1;
+                    transEventData["error"] = string();
+                    try {
+                        _removePartitionFromSecondaryIndex(databaseInfo, id, directorTable);
+                        transaction = databaseServices->updateTransaction(id, "end " + transEvent, transEventData);
+                    } catch (exception const& ex) {
+                        transEventData["success"] = 0;
+                        transEventData["error"] = string(ex.what());
+                        transaction = databaseServices->updateTransaction(id, "end " + transEvent, transEventData);
+                        throw;
+                    }
                 }
             }
-
         } else {
-
             // Make the best attempt to build a layer at the "secondary index" if requested
             // by a catalog ingest workflow at the database registration time.
-            if (autoBuildSecondaryIndex(databaseInfo.name)) {
-                bool secondaryIndexBuildSuccess = true;
+            if (autoBuildSecondaryIndex(database)) {
+                secondaryIndexBuildSuccess = true;
+                chrono::milliseconds const jobMonitoringIval(1000 * config->get<unsigned int>("controller", "ingest-job-monitor-ival-sec"));
+                string const transEvent = "bld dir idx";
                 for (auto&& directorTable: databaseInfo.directorTables()) {
                     bool const hasTransactions = true;
-                    string const destinationPath = transaction.database + "__" + directorTable;
+                    string const destinationPath = database + "__" + directorTable;
                     auto const job = IndexJob::create(
-                        transaction.database,
+                        database,
                         directorTable,
                         hasTransactions,
-                        transaction.id,
+                        id,
                         allWorkers,
                         IndexJob::TABLE,
                         destinationPath,
-                        localLoadSecondaryIndex(databaseInfo.name),
+                        localLoadSecondaryIndex(database),
                         controller(),
                         noParentJobId,
                         nullptr,        // no callback
                         config->get<int>("controller", "ingest-priority-level")
                     );
+                    json transEventData = {{"job", job->id()}, {"table", directorTable}};
+                    transaction = databaseServices->updateTransaction(id, "begin " + transEvent, transEventData);
+
                     job->start();
                     logJobStartedEvent(IndexJob::typeName(), job, databaseInfo.family);
-                    job->wait();
+                    job->wait(jobMonitoringIval, [&](Job::Ptr const& job) {
+                        auto data = transEventData;
+                        data["progress"] = job->progress().toJson();
+                        transaction = databaseServices->updateTransaction(id, "progress " + transEvent, data);
+                    });
                     logJobFinishedEvent(IndexJob::typeName(), job, databaseInfo.family);
                     secondaryIndexBuildSuccess = secondaryIndexBuildSuccess && (job->extendedState() == Job::SUCCESS);
+
+                    transEventData["success"] = job->extendedState() == Job::ExtendedState::SUCCESS ? 1 : 0;
+                    transEventData["error"] = job->getResultData().toJson();
+                    transaction = databaseServices->updateTransaction(id, "end " + transEvent, transEventData);
                 }
-                result["secondary-index-build-success"] = secondaryIndexBuildSuccess ? 1 : 0;
             }
-
-            // TODO: replicate MySQL partition associated with the transaction
-            info(__func__, "replication stage is not implemented");
         }
-        logEndTransaction("SUCCESS");
+        transaction = databaseServices->updateTransaction(id, abort ?
+                TransactionInfo::State::ABORTED : TransactionInfo::State::FINISHED);
 
+        _logTransactionMgtEvent(abort ? "ABORT TRANSACTION" : "COMMIT TRANSACTION",
+                "SUCCESS", id, database);
+
+        json result;
+        result["secondary-index-build-success"] = secondaryIndexBuildSuccess ? 1 : 0;
+        result["databases"][database]["num_chunks"] = chunks.size();
+        result["databases"][database]["transactions"].push_back(transaction.toJson());
         return result;
 
-    } catch (invalid_argument const& ex) {
-        logEndTransaction("FAILED", "invalid parameters of the request, ex: " + string(ex.what()));
-        throw;
     } catch (exception const& ex) {
-        logEndTransaction("FAILED", "operation failed due to: " + string(ex.what()));
+        _logTransactionMgtEvent(abort ? "ABORT TRANSACTION" : "COMMIT TRANSACTION",
+                "FAILED", id, database,
+                "operation failed due to: " + string(ex.what()));
+        transaction = databaseServices->updateTransaction(id, abort ?
+                TransactionInfo::State::ABORT_FAILED : TransactionInfo::State::FINISH_FAILED);
         throw;
     }
+}
+
+void HttpIngestTransModule::_logTransactionMgtEvent(
+        string const& operation, string const& status, TransactionId id,
+        string const& database, string const& msg) const {
+    ControllerEvent event;
+    event.operation = operation;
+    event.status = status;
+    event.kvInfo.emplace_back("id", to_string(id));
+    event.kvInfo.emplace_back("database", database);
+    if (not msg.empty()) event.kvInfo.emplace_back("error", msg);
+    logEvent(event);
 }
 
 
