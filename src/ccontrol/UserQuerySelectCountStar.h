@@ -30,6 +30,7 @@
 // Qserv headers
 #include "ccontrol/QueryState.h"
 #include "ccontrol/UserQuery.h"
+#include "qmeta/QMeta.h"
 
 // Forward decl
 namespace lsst::qserv {
@@ -54,10 +55,12 @@ class UserQuerySelectCountStar : public UserQuery {
 public:
     typedef std::shared_ptr<UserQuerySelectCountStar> Ptr;
 
-    UserQuerySelectCountStar(std::shared_ptr<sql::SqlConnection> const& resultDbConn,
+    UserQuerySelectCountStar(std::string query, std::shared_ptr<sql::SqlConnection> const& resultDbConn,
                              std::shared_ptr<qmeta::QMetaSelect> const& qMetaSelect,
+                             std::shared_ptr<qmeta::QMeta> const& queryMetadata,
                              std::string const& userQueryId, std::string const& rowsTable,
-                             std::string const& resultDb, std::string const& countSpelling, bool async);
+                             std::string const& resultDb, std::string const& countSpelling,
+                             qmeta::CzarId czarId, bool async);
 
     virtual ~UserQuerySelectCountStar() {}
 
@@ -70,7 +73,7 @@ public:
 
     /// Wait until the query has completed execution.
     /// @return the final execution state.
-    QueryState join() override { return _qState; }
+    QueryState join() override;
 
     /// Stop a query in progress (for immediate shutdowns)
     void kill() override {}
@@ -98,15 +101,31 @@ public:
     /// @return get the SELECT statement to be executed by proxy
     std::string getResultQuery() const override;
 
+    /// @return this query's QueryId.
+    QueryId getQueryId() const override { return _qMetaQueryId; }
+
+    /**
+     *  @param resultLocation:  Result location, if empty use result table with unique
+     *                          name generated from query ID.
+     *  @param msgTableName:  Message table name.
+     */
+    void qMetaRegister(std::string const& resultLocation, std::string const& msgTableName);
+
 private:
+    void _qMetaUpdateStatus(qmeta::QInfo::QStatus qStatus);
+
     std::shared_ptr<sql::SqlConnection> _resultDbConn;
     std::shared_ptr<qmeta::QMetaSelect> _qMetaSelect;
+    std::shared_ptr<qmeta::QMeta> const& _queryMetadata;
     std::shared_ptr<qdisp::MessageStore> _messageStore;
     std::string _resultTableName;
     std::string _userQueryId;
     std::string _rowsTable;
     std::string _resultDb;
     std::string _countSpelling;  // keeps track of how "COUNT" is spelled, for the result query.
+    std::string _query;          // The original query text (without SUBMIT if async)
+    qmeta::CzarId _qMetaCzarId;
+    QueryId _qMetaQueryId;
     bool _async;
     QueryState _qState{UNKNOWN};
 };

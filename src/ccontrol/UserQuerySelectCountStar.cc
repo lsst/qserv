@@ -30,6 +30,7 @@
 #include "ccontrol/UserQueryError.h"
 #include "ccontrol/UserQueryType.h"
 #include "qdisp/MessageStore.h"
+#include "qmeta/QInfo.h"
 #include "qmeta/QMetaSelect.h"
 #include "query/SelectStmt.h"
 #include "sql/SqlConnection.h"
@@ -50,19 +51,25 @@ using boost::lexical_cast;
 
 namespace lsst::qserv::ccontrol {
 
-UserQuerySelectCountStar::UserQuerySelectCountStar(std::shared_ptr<sql::SqlConnection> const& resultDbConn,
+UserQuerySelectCountStar::UserQuerySelectCountStar(std::string query,
+                                                   std::shared_ptr<sql::SqlConnection> const& resultDbConn,
                                                    std::shared_ptr<qmeta::QMetaSelect> const& qMetaSelect,
+                                                   std::shared_ptr<qmeta::QMeta> const& queryMetadata,
                                                    std::string const& userQueryId,
                                                    std::string const& rowsTable, std::string const& resultDb,
-                                                   std::string const& countSpelling, bool async)
+                                                   std::string const& countSpelling, qmeta::CzarId czarId,
+                                                   bool async)
         : _resultDbConn(resultDbConn),
           _qMetaSelect(qMetaSelect),
+          _queryMetadata(queryMetadata),
           _messageStore(std::make_shared<qdisp::MessageStore>()),
           _resultTableName(::g_nextResultTableId(userQueryId)),
           _userQueryId(userQueryId),
           _rowsTable(rowsTable),
           _resultDb(resultDb),
           _countSpelling(countSpelling),
+          _query(query),
+          _qMetaCzarId(czarId),
           _async(async) {}
 
 // Submit or execute the query.
@@ -145,6 +152,24 @@ void UserQuerySelectCountStar::submit() {
 
 std::string UserQuerySelectCountStar::getResultQuery() const {
     return "SELECT row_count as '" + _countSpelling + "(*)' FROM " + _resultDb + "." + getResultTableName();
+}
+
+void UserQuerySelectCountStar::qMetaRegister(std::string const& resultLocation,
+                                             std::string const& msgTableName) {
+    qmeta::QInfo::QType qType = _async ? qmeta::QInfo::ASYNC : qmeta::QInfo::SYNC;
+    std::string user = "anonymous";  // we do not have access to that info yet
+    std::string qTemplate = "template";
+    std::string qMerge = "merge";
+    qmeta::QInfo qInfo(qType, _qMetaCzarId, user, _query, qTemplate, qMerge, getResultLocation(),
+                       msgTableName, getResultQuery());
+    qmeta::QMeta::TableNames tableNames;
+    _qMetaQueryId = _queryMetadata->registerQuery(qInfo, tableNames);
+}
+
+QueryState UserQuerySelectCountStar::join() {
+    _queryMetadata->completeQuery(_qMetaQueryId,
+                                  _qState == SUCCESS ? qmeta::QInfo::COMPLETED : qmeta::QInfo::FAILED);
+    return _qState;
 }
 
 }  // namespace lsst::qserv::ccontrol

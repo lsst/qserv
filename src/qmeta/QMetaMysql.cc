@@ -263,12 +263,13 @@ QueryId QMetaMysql::registerQuery(QInfo const& qInfo, TableNames const& tables) 
     std::string const resultLocation = "'" + _conn->escapeString(qInfo.resultLocation()) + "'";
     std::string const msgTableName = "'" + _conn->escapeString(qInfo.msgTableName()) + "'";
     std::string qMerge = "NULL";
+    std::string resultQuery = "'" + _conn->escapeString(qInfo.resultQuery()) + "'";
     if (not qInfo.mergeQuery().empty()) {
         qMerge = "'" + _conn->escapeString(qInfo.mergeQuery()) + "'";
     }
     std::string query =
             "INSERT INTO QInfo (qType, czarId, user, query, qTemplate, qMerge, "
-            "status, messageTable, resultLocation) VALUES (";
+            "status, messageTable, resultLocation, resultQuery) VALUES (";
     query += qType;
     query += ", ";
     query += boost::lexical_cast<std::string>(qInfo.czarId());
@@ -284,6 +285,8 @@ QueryId QMetaMysql::registerQuery(QInfo const& qInfo, TableNames const& tables) 
     query += msgTableName;
     query += ", ";
     query += resultLocation;
+    query += ", ";
+    query += resultQuery;
     query += ")";
 
     // run query

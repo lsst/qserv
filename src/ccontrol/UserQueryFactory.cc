@@ -256,10 +256,12 @@ UserQuery::Ptr UserQueryFactory::newUserQuery(std::string const& aQuery, std::st
                                                    << ".");
         if (_useQservRowCounterOptimization && UserQueryType::isSimpleCountStar(stmt, countSpelling) &&
             qmetaHasDataForSelectCountStarQuery(stmt, _userQuerySharedResources, defaultDb, rowsTable)) {
-            auto uq = std::make_shared<UserQuerySelectCountStar>(
-                    _userQuerySharedResources->resultDbConn, _userQuerySharedResources->qMetaSelect,
-                    userQueryId, rowsTable, resultDb, countSpelling, async);
             LOGS(_log, LOG_LVL_DEBUG, "make UserQuerySelectCountStar");
+            auto uq = std::make_shared<UserQuerySelectCountStar>(
+                    query, _userQuerySharedResources->resultDbConn, _userQuerySharedResources->qMetaSelect,
+                    _userQuerySharedResources->queryMetadata, userQueryId, rowsTable, resultDb, countSpelling,
+                    _userQuerySharedResources->qMetaCzarId, async);
+            uq->qMetaRegister(resultLocation, msgTableName);
             return uq;
         }
 
