@@ -206,7 +206,6 @@ run_tests_option = partial(
     click.option,
     "--run-tests/--no-run-tests",
     help="Run or skip test execution. Defaults to --run-tests.",
-    is_flag=True,
     default=True,
 )
 

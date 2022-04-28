@@ -1013,14 +1013,16 @@ def integration_test(
         args.extend(bind_args(qserv_root=qserv_root, bind_names=bind))
     add_network_option(args, project)
     args.extend([qserv_image, "entrypoint", "--log-level", "DEBUG", "integration-test"])
+
     for opt, var in (
         ("--unload", unload),
         ("--reload", reload),
-        ("--run-tests", run_tests),
-        ("--compare-results", compare_results),
     ):
         if var:
             args.append(opt)
+
+    args.append("--run-tests" if run_tests else "--no-run-tests")
+    args.append("--compare-results" if compare_results else "--no-compare-results")
 
     def add_flag_if(val: Optional[bool], true_flag: str, false_flag: str, args: List[str]) -> None:
         """Add a do-or-do-not flag to `args` if `val` is `True` or `False`, do
@@ -1088,6 +1090,7 @@ def itest(
         dry,
     )
     try:
+
         returncode = integration_test(
             qserv_root,
             itest_container,
@@ -1139,6 +1142,65 @@ def itest_rm(project: str, dry: bool) -> None:
         return
     _log.debug(f"Running {' '.join(args)}")
     subproc.run(args)
+
+
+def prepare_data(
+    qserv_root: str,
+    itest_container: str,
+    qserv_image: str,
+    itest_file: str,
+    dry: bool,
+    project: str,
+
+) -> int:
+    """Unzip and partition integration tests datasets.
+
+    Parameters
+    ----------
+    qserv_root : `str`
+        The path to the qserv source folder.
+    itest_container : `str`
+        The name to give the container.
+    qserv_image : `str`
+        The name of the image to run.
+    itest_file : `str`
+        The path to the yaml file that contains integration test execution data.
+    dry : `bool`
+        If True do not run the command; print what would have been run.
+    project : `str`
+        The name used for qserv instance customizations.
+
+    Returns
+    -------
+    returncode : `int`
+        The returncode of "entrypoint integration-test".
+    """
+    itest_volumes = make_itest_volumes(project)
+
+    with open(itest_file) as f:
+        tests_data = yaml.safe_load(f.read())
+
+    args = [
+        "docker",
+        "run",
+        "--init",
+        "--name",
+        itest_container,
+        "--mount",
+        f"src={itest_file},dst=/usr/local/etc/integration_tests.yaml,type=bind",
+        "--mount",
+        f"src={os.path.join(qserv_root, testdata_subdir)},dst={tests_data['qserv-testdata-dir']},type=bind",
+    ]
+
+    add_network_option(args, project)
+    args.extend([qserv_image, "entrypoint", "--log-level", "DEBUG", "prepare-data"])
+
+    if dry:
+        print(" ".join(args))
+        return 0
+    _log.debug(f"Running {' '.join(args)}")
+    result = subprocess.run(args)
+    return result.returncode
 
 
 def update_schema(

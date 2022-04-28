@@ -161,6 +161,7 @@ commands = OrderedDict((
     ("delete-database", CommandInfo()),
     ("load-simple", CommandInfo()),
     ("watcher", CommandInfo()),
+    ("prepare-data", CommandInfo()),
     ("spawned-app-help", CommandInfo()),
 ))
 
@@ -321,13 +322,13 @@ def load_simple(repl_ctrl_uri: str, repl_auth_key: str) -> None:
     help=repl_connection_option.keywords["help"]
     + " If provided will wait for the replication system to be responsive before loading data (does not guarantee system readyness)."
 )
-@load_option()
 @unload_option()
+@load_option()
 @reload_option()
-@run_tests_option()
-@compare_results_option()
 @case_option()
+@run_tests_option()
 @tests_yaml_option()
+@compare_results_option()
 def integration_test(
     repl_connection: str,
     unload: bool,
@@ -342,6 +343,7 @@ def integration_test(
 
     TESTS_YAML is the yaml file paths that contains connection information & describes tests to load and run.
     """
+
     results = script.integration_test(
         repl_connection=repl_connection,
         unload=unload,
@@ -355,6 +357,22 @@ def integration_test(
     click.echo(str(results))
     sys.exit(0 if results.passed else 1)
 
+
+@entrypoint.command()
+@tests_yaml_option()
+def prepare_data(
+    tests_yaml: str,
+) -> None:
+    """Unzip and partition test datasets.
+
+    TESTS_YAML is the yaml file paths that contains connection information & describes tests to load and run.
+    """
+
+    ok = script.prepare_data(
+        tests_yaml=tests_yaml,
+    )
+    click.echo(str(ok))
+    sys.exit(0 if ok else 1)
 
 @entrypoint.command()
 @click.argument("DATABASE")

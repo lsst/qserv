@@ -20,6 +20,8 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 
+from pathlib import Path
+import tarfile
 import backoff
 from contextlib import closing
 from dataclasses import dataclass
@@ -32,7 +34,7 @@ import os
 import shutil
 import subprocess
 from tempfile import TemporaryDirectory
-from typing import Any, Dict, Generator, List, NamedTuple, Optional, Sequence, Union
+from typing import Any, Dict, Generator, List, NamedTuple, Optional, Sequence, Tuple, Union
 import yaml
 
 from .qserv_backoff import on_backoff, max_backoff_sec
@@ -241,8 +243,16 @@ class LoadDb:
             load_db_cfg["partition"]["output"],  # ("output" is an absolute path.)
         )
 
+        # self.ingest_db_cfg_file is the absolute path to the database ingest
+        # config file.
+        self.ingest_db_cfg_file = os.path.join(self.root, load_db_cfg["ingest"]["database"])
+
+        # self.ingest_db_metadata_file is the absolute path to the database ingest
+        # metadata file, used by qserv-ingest
+        self.ingest_db_metadata_file = os.path.join(self.root, load_db_cfg["ingest"]["metadata"])
+
         # self.ingest_db_cfg is the database ingest config dict.
-        with open(os.path.join(self.root, load_db_cfg["ingest"]["database"])) as f:
+        with open(self.ingest_db_cfg_file) as f:
             self.ingest_db_cfg = yaml.safe_load(f.read())
 
         # self.ingest_table_t is the templated absolute path to the table ingest
@@ -321,6 +331,27 @@ def _partition(staging_dir: str, table: LoadTable, data_file: str) -> None:
         f.write(partition_info)
 
 
+def _prep_table_data(load_table: LoadTable, dest_dir: str) ->  Tuple[str, str]:
+    """ Unzip and partition, if needed, input data for a table
+    Parameters
+    ----------
+    table : `LoadTable`
+        Contains details about the table to which belong processed input files.
+    dest_dir : `str`
+        Directory where input files will be unziped and partitioned
+    """
+    if load_table.is_gzipped:
+        data_file = os.path.join(dest_dir, os.path.splitext(os.path.basename(load_table.data_file))[0])
+        unzip(source=load_table.data_file, destination=data_file)
+    else:
+        data_file = load_table.data_file
+    # Create the partitioned table data into chunks
+    staging_dir = os.path.join(dest_dir, load_table.data_staging_dir)
+    if load_table.is_partitioned:
+        _partition(staging_dir, load_table, data_file)
+    return staging_dir, data_file
+
+
 def _load_database(
     load_db: LoadDb,
     ref_db_uri: str,
@@ -368,15 +399,7 @@ def _load_database(
             # TODO maybe we should be cosuming more info from each case's description.yaml (like field sep)
 
             with TemporaryDirectory(dir=qserv_data_dir) as tmp_dir:
-                if table.is_gzipped:
-                    data_file = os.path.join(tmp_dir, os.path.splitext(os.path.basename(table.data_file))[0])
-                    unzip(source=table.data_file, destination=data_file)
-                else:
-                    data_file = table.data_file
-                # Create partition the partitioned table data into chunks
-                staging_dir = os.path.join(tmp_dir, table.data_staging_dir)
-                if table.is_partitioned:
-                    _partition(staging_dir, table, data_file)
+                staging_dir, data_file = _prep_table_data(table, tmp_dir)
 
                 # Assume data is either comma separated (with csv) otherwise tab separated.
                 data_file_ext = os.path.splitext(data_file)[1]
@@ -485,6 +508,43 @@ def _get_cases(cases: Optional[List[str]], test_cases_data: List[Dict[Any, Any]]
     else:
         cases_data = test_cases_data
     return cases_data
+
+
+def prepare_data(
+    test_cases_data: List[Dict[Any, Any]],
+) -> None:
+    """Unzip and partition integration test dataset(s) inside a persistent volume
+       also R-I system configuration files for input data
+
+    Parameters
+    ----------
+    test_cases_data : `list` [ `dict` ]
+        Dicts whose values will be used to initialize a LoadDb class instance.
+
+    """
+    _log.debug("test cases data:\n%s", test_cases_data)
+    cases_data = _get_cases(None, test_cases_data)
+    work_dir = os.path.join("/tmp", "datasets")
+    for case_data in cases_data:
+        load_db = LoadDb(case_data)
+        dest_dir = os.path.join(work_dir, load_db.id)
+        if os.path.exists(dest_dir):
+            shutil.rmtree(dest_dir)
+        Path(dest_dir).mkdir(parents=True, exist_ok=True)
+        ingest_db_json = load_db.ingest_db_cfg_file
+        shutil.copy(ingest_db_json, dest_dir)
+        shutil.copy(load_db.ingest_db_metadata_file, dest_dir)
+        for table_name in load_db.tables:
+            ingest_table_json = load_db.ingest_table_t.format(table_name=table_name)
+            shutil.copy(ingest_table_json, dest_dir)
+        _log.info("Preparing input dataset %s for test %s inside directory %s", load_db.name, load_db.id, dest_dir)
+        for table in load_db.iter_tables():
+            staging_dir, data_file = _prep_table_data(table, dest_dir)
+
+    output_filename = os.path.join(qserv_data_dir, "datasets.tgz")
+    _log.info("Archiving input datasets for integration tests to %s", output_filename)
+    with tarfile.open(output_filename, "w:gz") as tar:
+        tar.add(work_dir, arcname=os.path.basename(work_dir))
 
 
 def load(
