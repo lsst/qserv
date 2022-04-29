@@ -35,7 +35,7 @@
 // Third-party headers
 #include "boost/asio.hpp"
 
-namespace lsst { namespace qserv { namespace qhttp {
+namespace lsst::qserv::qhttp {
 
 //
 //----- Helper ouput stream manipulators for logging.  These let you say things like:
@@ -104,6 +104,6 @@ inline std::ostream& operator<<(std::ostream& str, CtrlQuoter const& quoter) {
 
 inline CtrlQuoter ctrlquote(std::string const& toquote) { return CtrlQuoter(toquote); }
 
-}}}  // namespace lsst::qserv::qhttp
+}  // namespace lsst::qserv::qhttp
 
 #endif  // !defined(LSST_QSERV_QHTTP_LOGHELPERS_H)

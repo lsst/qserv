@@ -32,7 +32,7 @@
 // Local headers
 #include "qhttp/Server.h"
 
-namespace lsst { namespace qserv { namespace qhttp {
+namespace lsst::qserv::qhttp {
 
 class StaticContent {
 public:
@@ -48,6 +48,6 @@ public:
     static void add(Server& server, std::string const& path, std::string const& rootDirectory);
 };
 
-}}}  // namespace lsst::qserv::qhttp
+}  // namespace lsst::qserv::qhttp
 
 #endif  // LSST_QSER_QHTTP_STATICCONTENT_H

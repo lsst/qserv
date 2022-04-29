@@ -32,7 +32,7 @@
 // Local headers
 #include "qhttp/Response.h"
 
-namespace lsst { namespace qserv { namespace qhttp {
+namespace lsst::qserv::qhttp {
 
 class Server;
 
@@ -61,6 +61,6 @@ private:
     std::mutex _pendingResponsesMutex;
 };
 
-}}}  // namespace lsst::qserv::qhttp
+}  // namespace lsst::qserv::qhttp
 
 #endif  // LSST_QSERV_QHTTP_AJAXENDPOINT_H

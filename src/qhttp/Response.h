@@ -35,7 +35,7 @@
 #include "boost/asio.hpp"
 #include "boost/filesystem.hpp"
 
-namespace lsst { namespace qserv { namespace qhttp {
+namespace lsst::qserv::qhttp {
 
 class Server;
 
@@ -83,6 +83,6 @@ private:
     DoneCallback _doneCallback;
 };
 
-}}}  // namespace lsst::qserv::qhttp
+}  // namespace lsst::qserv::qhttp
 
 #endif  // LSST_QSERV_QHTTP_RESPONSE_H

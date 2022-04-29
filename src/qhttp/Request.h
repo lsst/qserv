@@ -36,7 +36,7 @@
 // Local headers
 #include "util/CIUtils.h"
 
-namespace lsst { namespace qserv { namespace qhttp {
+namespace lsst::qserv::qhttp {
 
 class Server;
 
@@ -93,6 +93,6 @@ private:
     boost::asio::streambuf _requestbuf;
 };
 
-}}}  // namespace lsst::qserv::qhttp
+}  // namespace lsst::qserv::qhttp
 
 #endif  // LSST_QSERV_QHTTP_REQUEST_H

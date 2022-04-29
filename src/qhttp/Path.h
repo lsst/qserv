@@ -33,7 +33,7 @@
 // Local headers
 #include "qhttp/Request.h"
 
-namespace lsst { namespace qserv { namespace qhttp {
+namespace lsst::qserv::qhttp {
 
 //----- This is an internal utility class, used by the Server class, that encapsulates compiling a path
 //      specifier into a matching regexp, and then updating any captured params in a Request after matching
@@ -50,6 +50,6 @@ public:
     std::vector<std::string> paramNames;
 };
 
-}}}  // namespace lsst::qserv::qhttp
+}  // namespace lsst::qserv::qhttp
 
 #endif  // LSST_QSERV_QHTTP_PATH_H

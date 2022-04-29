@@ -42,7 +42,7 @@
 #include "qhttp/Response.h"
 #include "qhttp/Request.h"
 
-namespace lsst { namespace qserv { namespace qhttp {
+namespace lsst::qserv::qhttp {
 
 class Server : public std::enable_shared_from_this<Server> {
 public:
@@ -143,6 +143,6 @@ private:
     std::mutex _activeSocketsMutex;
 };
 
-}}}  // namespace lsst::qserv::qhttp
+}  // namespace lsst::qserv::qhttp
 
 #endif  // LSST_QSERV_QHTTP_SERVER_H
