@@ -35,47 +35,40 @@
 #include <string>
 
 // Forward declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
-    class ProtocolPerformance;
-}}}  // Forward declarations
+namespace lsst { namespace qserv { namespace replica {
+class ProtocolPerformance;
+}}}  // namespace lsst::qserv::replica
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
 /**
  * Structure PerformanceUtils provides utilities shared by all classes in this scope
  */
 struct PerformanceUtils {
-
     /// @return the current time in milliseconds since Epoch
     static uint64_t now();
-    
+
     /// @return a human-readable timestamp in a format 'YYYY-MM-DD HH:MM:SS.mmm'
     static std::string toDateTimeString(std::chrono::milliseconds const& millisecondsSinceEpoch);
 };
 
 /**
  * Class Performance encapsulates controller-side performance counters of requests
- * 
+ *
  * The counters are meant for tracking requests progression over time.
  * All time counters are expressed in milliseconds since Epoch.
  * Undefined values are set to 0.
  */
 class Performance {
-
 public:
-
     /**
      * The default constructor
      *
      * All (but the request creation one) timestamps will be initialized with 0.
      */
     Performance();
-    
+
     Performance(Performance const&) = default;
     Performance& operator=(Performance const&) = default;
 
@@ -127,7 +120,6 @@ public:
 /// Overloaded streaming operator for class Performance
 std::ostream& operator<<(std::ostream& os, Performance const& p);
 
-
 /**
  * Class WorkerPerformance is worker-side value class with performance counters
  * of a request.
@@ -136,11 +128,9 @@ std::ostream& operator<<(std::ostream& os, Performance const& p);
  * Undefined values are set to 0.
  */
 class WorkerPerformance {
-
 public:
-
     WorkerPerformance();
-    
+
     WorkerPerformance(WorkerPerformance const&) = default;
     WorkerPerformance& operator=(WorkerPerformance const&) = default;
 
@@ -152,12 +142,12 @@ public:
     std::unique_ptr<ProtocolPerformance> info() const;
 
     uint64_t receive_time = 0;  /// Received by a worker service
-    uint64_t start_time   = 0;  /// Execution started by a worker service
-    uint64_t finish_time  = 0;  /// Execution finished by a worker service
+    uint64_t start_time = 0;    /// Execution started by a worker service
+    uint64_t finish_time = 0;   /// Execution finished by a worker service
 };
 
-std::ostream& operator<<(std::ostream& os, WorkerPerformance const&p);
+std::ostream& operator<<(std::ostream& os, WorkerPerformance const& p);
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_PERFORMANCE_H
+#endif  // LSST_QSERV_REPLICA_PERFORMANCE_H

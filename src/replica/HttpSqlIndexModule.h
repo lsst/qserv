@@ -33,14 +33,12 @@
 #include "replica/HttpModule.h"
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
 /**
  * Class HttpSqlIndexModule manages table indexes on the published catalogs.
  */
-class HttpSqlIndexModule: public HttpModule {
+class HttpSqlIndexModule : public HttpModule {
 public:
     typedef std::shared_ptr<HttpSqlIndexModule> Ptr;
 
@@ -53,13 +51,10 @@ public:
      *
      * @throws std::invalid_argument for unknown values of parameter 'subModuleName'
      */
-    static void process(Controller::Ptr const& controller,
-                        std::string const& taskName,
-                        HttpProcessorConfig const& processorConfig,
-                        qhttp::Request::Ptr const& req,
-                        qhttp::Response::Ptr const& resp,
-                        std::string const& subModuleName=std::string(),
-                        HttpAuthType const authType=HttpAuthType::NONE);
+    static void process(Controller::Ptr const& controller, std::string const& taskName,
+                        HttpProcessorConfig const& processorConfig, qhttp::Request::Ptr const& req,
+                        qhttp::Response::Ptr const& resp, std::string const& subModuleName = std::string(),
+                        HttpAuthType const authType = HttpAuthType::NONE);
 
     HttpSqlIndexModule() = delete;
     HttpSqlIndexModule(HttpSqlIndexModule const&) = delete;
@@ -71,10 +66,8 @@ protected:
     nlohmann::json executeImpl(std::string const& subModuleName) final;
 
 private:
-    HttpSqlIndexModule(Controller::Ptr const& controller,
-                       std::string const& taskName,
-                       HttpProcessorConfig const& processorConfig,
-                       qhttp::Request::Ptr const& req,
+    HttpSqlIndexModule(Controller::Ptr const& controller, std::string const& taskName,
+                       HttpProcessorConfig const& processorConfig, qhttp::Request::Ptr const& req,
                        qhttp::Response::Ptr const& resp);
 
     /**
@@ -92,7 +85,7 @@ private:
      */
     nlohmann::json _dropIndexes();
 };
-    
-}}} // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_HTTPSQLINDEXMODULE_H
+}}}  // namespace lsst::qserv::replica
+
+#endif  // LSST_QSERV_HTTPSQLINDEXMODULE_H

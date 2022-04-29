@@ -24,7 +24,7 @@
 #define LSST_QSERV_WSCHED_SCANSCHEDULER_H
 
 // System headers
-#include<atomic>
+#include <atomic>
 #include <mutex>
 
 // Qserv headers
@@ -33,17 +33,11 @@
 #include "wsched/SchedulerBase.h"
 
 // Forward declarations
-namespace lsst {
-namespace qserv {
-namespace wsched {
-    class BlendScheduler;
-}}} // End of forward declarations
+namespace lsst { namespace qserv { namespace wsched {
+class BlendScheduler;
+}}}  // namespace lsst::qserv::wsched
 
-
-namespace lsst {
-namespace qserv {
-namespace wsched {
-
+namespace lsst { namespace qserv { namespace wsched {
 
 /// The purpose of the scan scheduler is to try to limit disk i/o.
 /// Tasks given to ScanScheduler are parts of user queries that are
@@ -58,9 +52,8 @@ class ScanScheduler : public SchedulerBase {
 public:
     typedef std::shared_ptr<ScanScheduler> Ptr;
 
-    ScanScheduler(std::string const& name, int maxThreads, int maxReserve, int priority,
-                  int maxActiveChunks, memman::MemMan::Ptr const& memman,
-                  int minRating, int maxRating, double maxTimeMinutes);
+    ScanScheduler(std::string const& name, int maxThreads, int maxReserve, int priority, int maxActiveChunks,
+                  memman::MemMan::Ptr const& memman, int minRating, int maxRating, double maxTimeMinutes);
     virtual ~ScanScheduler() {}
 
     // util::CommandQueue overrides
@@ -80,7 +73,7 @@ public:
 
     // SchedulerBase overrides
     bool ready() override;
-    std::size_t getSize() const override ;
+    std::size_t getSize() const override;
 
     void logMemManStats();
 
@@ -89,9 +82,9 @@ public:
 
 private:
     bool _ready();
-    std::shared_ptr<ChunkTaskCollection> _taskQueue; ///< Constrains access to files.
+    std::shared_ptr<ChunkTaskCollection> _taskQueue;  ///< Constrains access to files.
 
-    memman::MemMan::Ptr _memMan; ///< Limits queries when resources not available.
+    memman::MemMan::Ptr _memMan;  ///< Limits queries when resources not available.
     memman::MemMan::Handle _memManHandleToUnlock{memman::MemMan::HandleType::INVALID};
 
     /// Scans placed on this scheduler should have a rating between(inclusive) _minRating and _maxRating.
@@ -102,10 +95,9 @@ private:
     /// take to complete on this scheduler.
     double _maxTimeMinutes;
 
-    std::atomic<bool> _infoChanged{true}; ///< "Used to limit the amount of debug logging.
+    std::atomic<bool> _infoChanged{true};  ///< "Used to limit the amount of debug logging.
 };
 
-}}} // namespace lsst::qserv::wsched
+}}}  // namespace lsst::qserv::wsched
 
-#endif // LSST_QSERV_WSCHED_SCANSCHEDULER_H
-
+#endif  // LSST_QSERV_WSCHED_SCANSCHEDULER_H

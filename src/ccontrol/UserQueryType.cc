@@ -20,7 +20,6 @@
  * see <https://www.lsstcorp.org/LegalNotices/>.
  */
 
-
 // Class header
 #include "ccontrol/UserQueryType.h"
 
@@ -33,12 +32,9 @@
 // LSST headers
 #include "lsst/log/Log.h"
 
-
 namespace {
 
-
 LOG_LOGGER _log = LOG_GET("lsst.qserv.ccontrol.UserQueryType");
-
 
 // regex for DROP {DATABASE|SCHEMA} dbname; db name can be in quotes;
 // db name will be in group 3.
@@ -46,19 +42,16 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.ccontrol.UserQueryType");
 boost::regex _dropDbRe(R"(^drop\s+(database|schema)\s+(["`]?)(\w+)\2\s*;?\s*$)",
                        boost::regex::ECMAScript | boost::regex::icase | boost::regex::optimize);
 
-
 // regex for DROP TABLE [dbname.]table; both table and db names can be in quotes;
 // db name will be in group 3, table name in group 5.
 // Note that parens around whole string are not part of the regex but raw string literal
 boost::regex _dropTableRe(R"(^drop\s+table\s+((["`]?)(\w+)\2[.])?(["`]?)(\w+)\4\s*;?\s*$)",
                           boost::regex::ECMAScript | boost::regex::icase | boost::regex::optimize);
 
-
 // regex for SELECT *
 // Note that parens around whole string are not part of the regex but raw string literal
 boost::regex _selectRe(R"(^select\s+.+$)",
                        boost::regex::ECMAScript | boost::regex::icase | boost::regex::optimize);
-
 
 // regex for FLUSH QSERV_CHUNKS_CACHE [FOR database]
 // Note that parens around whole string are not part of the regex but raw string literal
@@ -66,13 +59,11 @@ boost::regex _selectRe(R"(^select\s+.+$)",
 boost::regex _flushEmptyRe(R"(^flush\s+qserv_chunks_cache(\s+for\s+(["`]?)(\w+)\2)?\s*;?\s*$)",
                            boost::regex::ECMAScript | boost::regex::icase | boost::regex::optimize);
 
-
 // regex for SHOW [FULL] PROCESSLIST
 // if FULL is present then group 1 is non-empty
 // Note that parens around whole string are not part of the regex but raw string literal
 boost::regex _showProcessListRe(R"(^show\s+(full\s+)?processlist$)",
                                 boost::regex::ECMAScript | boost::regex::icase | boost::regex::optimize);
-
 
 // regex for SUBMIT ...
 // group 1 is the query without SUBMIT prefix
@@ -80,13 +71,11 @@ boost::regex _showProcessListRe(R"(^show\s+(full\s+)?processlist$)",
 boost::regex _submitRe(R"(^submit\s+(.+)$)",
                        boost::regex::ECMAScript | boost::regex::icase | boost::regex::optimize);
 
-
 // regex for SELECT * FROM QSERV_RESULT(12345)
 // group 1 is the query ID number
 // Note that parens around whole string are not part of the regex but raw string literal
 boost::regex _selectResultRe(R"(^select\s+\*\s+from\s+qserv_result\s*\(\s*(\d+)\s*\)$)",
                              boost::regex::ECMAScript | boost::regex::icase | boost::regex::optimize);
-
 
 // regex for KILL [QUERY|CONNECTION] 12345
 // group 1 is the thread ID number
@@ -94,27 +83,20 @@ boost::regex _selectResultRe(R"(^select\s+\*\s+from\s+qserv_result\s*\(\s*(\d+)\
 boost::regex _killRe(R"(^kill\s+(?:QUERY\s+|CONNECTION\s+)?(\d+)\s*$)",
                      boost::regex::ECMAScript | boost::regex::icase | boost::regex::optimize);
 
-
 // regex for CANCEL 12345
 // group 1 is the query ID number
 // Note that parens around whole string are not part of the regex but raw string literal
 boost::regex _cancelRe(R"(^cancel\s+(\d+)\s*$)",
                        boost::regex::ECMAScript | boost::regex::icase | boost::regex::optimize);
 
-
 // regex for CALL
 // Note that parens around whole string are not part of the regex but raw string literal
 boost::regex _callRe(R"(^call\s+.+$)",
-                       boost::regex::ECMAScript | boost::regex::icase | boost::regex::optimize);
+                     boost::regex::ECMAScript | boost::regex::icase | boost::regex::optimize);
 
+}  // namespace
 
-} // namespace
-
-
-namespace lsst {
-namespace qserv {
-namespace ccontrol {
-
+namespace lsst { namespace qserv { namespace ccontrol {
 
 /// Returns true if query is DROP DATABASE
 bool UserQueryType::isDropDb(std::string const& query, std::string& dbName) {
@@ -128,7 +110,6 @@ bool UserQueryType::isDropDb(std::string const& query, std::string& dbName) {
     return match;
 }
 
-
 /// Returns true if query is DROP TABLE
 bool UserQueryType::isDropTable(std::string const& query, std::string& dbName, std::string& tableName) {
     LOGS(_log, LOG_LVL_TRACE, "isDropTable: " << query);
@@ -141,7 +122,6 @@ bool UserQueryType::isDropTable(std::string const& query, std::string& dbName, s
     }
     return match;
 }
-
 
 /// Returns true if query is regular SELECT (not isSelectResult())
 bool UserQueryType::isSelect(std::string const& query) {
@@ -158,7 +138,6 @@ bool UserQueryType::isSelect(std::string const& query) {
     return match;
 }
 
-
 /// Returns true if query is FLUSH QSERV_CHUNKS_CACHE [FOR database]
 bool UserQueryType::isFlushChunksCache(std::string const& query, std::string& dbName) {
     LOGS(_log, LOG_LVL_TRACE, "isFlushChunksCache: " << query);
@@ -170,7 +149,6 @@ bool UserQueryType::isFlushChunksCache(std::string const& query, std::string& db
     }
     return match;
 }
-
 
 /// Returns true if query is SHOW [FULL] PROCESSLIST
 bool UserQueryType::isShowProcessList(std::string const& query, bool& full) {
@@ -184,39 +162,35 @@ bool UserQueryType::isShowProcessList(std::string const& query, bool& full) {
     return match;
 }
 
-
 /// Returns true if table name refers to PROCESSLIST table
 bool UserQueryType::isProcessListTable(std::string const& dbName, std::string const& tblName) {
     return boost::to_upper_copy(dbName) == "INFORMATION_SCHEMA" &&
-            boost::to_upper_copy(tblName) == "PROCESSLIST";
+           boost::to_upper_copy(tblName) == "PROCESSLIST";
 }
-
 
 /// Returns true if query is SUBMIT ...
 bool UserQueryType::isSubmit(std::string const& query, std::string& stripped) {
-     LOGS(_log, LOG_LVL_TRACE, "isSubmit: " << query);
-     boost::smatch sm;
-     bool match = boost::regex_match(query, sm, _submitRe);
-     if (match) {
-         stripped = sm.str(1);
-         LOGS(_log, LOG_LVL_TRACE, "isSubmit: match: " << stripped);
-     }
-     return match;
+    LOGS(_log, LOG_LVL_TRACE, "isSubmit: " << query);
+    boost::smatch sm;
+    bool match = boost::regex_match(query, sm, _submitRe);
+    if (match) {
+        stripped = sm.str(1);
+        LOGS(_log, LOG_LVL_TRACE, "isSubmit: match: " << stripped);
+    }
+    return match;
 }
-
 
 /// Returns true if query is SELECT * FROM QSERV_RESULT(...)
 bool UserQueryType::isSelectResult(std::string const& query, QueryId& queryId) {
-     LOGS(_log, LOG_LVL_TRACE, "isSelectResult: " << query);
-     boost::smatch sm;
-     bool match = boost::regex_match(query, sm, _selectResultRe);
-     if (match) {
-         queryId = std::stoull(sm.str(1));
-         LOGS(_log, LOG_LVL_TRACE, "isSelectResult: queryId: " << queryId);
-     }
-     return match;
+    LOGS(_log, LOG_LVL_TRACE, "isSelectResult: " << query);
+    boost::smatch sm;
+    bool match = boost::regex_match(query, sm, _selectResultRe);
+    if (match) {
+        queryId = std::stoull(sm.str(1));
+        LOGS(_log, LOG_LVL_TRACE, "isSelectResult: queryId: " << queryId);
+    }
+    return match;
 }
-
 
 // Returns true if query is KILL [QUERY|CONNECTION] NNN
 bool UserQueryType::isKill(std::string const& query, int& threadId) {
@@ -230,7 +204,6 @@ bool UserQueryType::isKill(std::string const& query, int& threadId) {
     return match;
 }
 
-
 // Returns true if query is CANCEL NNN
 bool UserQueryType::isCancel(std::string const& query, QueryId& queryId) {
     LOGS(_log, LOG_LVL_TRACE, "isCancel: " << query);
@@ -243,11 +216,9 @@ bool UserQueryType::isCancel(std::string const& query, QueryId& queryId) {
     return match;
 }
 
-
 bool UserQueryType::isCall(std::string const& query) {
     LOGS(_log, LOG_LVL_TRACE, "isCall: " << query);
     return boost::regex_match(query, _callRe);
 }
 
-
-}}} // namespace lsst::qserv::ccontrol
+}}}  // namespace lsst::qserv::ccontrol

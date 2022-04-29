@@ -47,11 +47,10 @@ vector<string> splitByFirstSpace(const string& str) {
     auto const pos = str.find(' ');
     if (pos != string::npos) {
         result.push_back(str.substr(0, pos));
-        result.push_back(str.substr(pos+1));
+        result.push_back(str.substr(pos + 1));
     }
     return result;
 }
-
 
 /**
  * Split the input string at the specified delimiter into an array of an arbitrary
@@ -61,7 +60,7 @@ vector<string> splitByFirstSpace(const string& str) {
  * @param delim  The delimiter.
  * @return The resulting array (is allowed to be empty) if the input string is empty.
  */
-vector<string> splitBy(const string& str, char delim=' ') {
+vector<string> splitBy(const string& str, char delim = ' ') {
     std::stringstream ss(str);
     std::string token;
     vector<string> result;
@@ -71,39 +70,34 @@ vector<string> splitBy(const string& str, char delim=' ') {
     return result;
 }
 
-} // namespace
+}  // namespace
 
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
 list<SqlColDef> SqlSchemaUtils::readFromTextFile(string const& fileName) {
     list<SqlColDef> columns;
     int lineNum = 0;
-    for (auto&& line: util::File::getLines(fileName)) {
+    for (auto&& line : util::File::getLines(fileName)) {
         ++lineNum;
         auto const tokens = ::splitByFirstSpace(line);
         if (tokens.size() != 2 or tokens[0].empty() or tokens[1].empty()) {
-            throw invalid_argument(
-                    "SqlSchemaUtils::" + string(__func__) + "  invalid format at line: " +
-                    to_string(lineNum) + " of file: " + fileName);
+            throw invalid_argument("SqlSchemaUtils::" + string(__func__) + "  invalid format at line: " +
+                                   to_string(lineNum) + " of file: " + fileName);
         }
         columns.emplace_back(tokens[0], tokens[1]);
     }
     return columns;
 }
 
-
 vector<SqlIndexColumn> SqlSchemaUtils::readIndexSpecFromTextFile(string const& fileName) {
     vector<SqlIndexColumn> columns;
     int lineNum = 0;
-    for (auto&& line: util::File::getLines(fileName)) {
+    for (auto&& line : util::File::getLines(fileName)) {
         ++lineNum;
         auto const tokens = ::splitBy(line);
         if (tokens.size() != 3 or tokens[0].empty() or tokens[1].empty() or tokens[2].empty()) {
-            throw invalid_argument(
-                    "SqlSchemaUtils::" + string(__func__) + "  invalid format at line: " +
-                    to_string(lineNum) + " of file: " + fileName);
+            throw invalid_argument("SqlSchemaUtils::" + string(__func__) + "  invalid format at line: " +
+                                   to_string(lineNum) + " of file: " + fileName);
         }
         size_t const length = stoull(tokens[1]);
         bool const ascending = tokens[2] != "0";
@@ -112,4 +106,4 @@ vector<SqlIndexColumn> SqlSchemaUtils::readIndexSpecFromTextFile(string const& f
     return columns;
 }
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica

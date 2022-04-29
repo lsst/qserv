@@ -32,18 +32,12 @@
 #include "replica/WorkerRequest.h"
 
 // Forward declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
-namespace database {
-namespace mysql {
-    class Connection;
-}}}}} // Forward declaration
+namespace lsst { namespace qserv { namespace replica { namespace database { namespace mysql {
+class Connection;
+}}}}}  // namespace lsst::qserv::replica::database::mysql
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
 /**
  * Class WorkerSqlRequest executes queries against the worker database
@@ -79,13 +73,9 @@ public:
      * @param request The ProtoBuf body of the original request
      * @return A pointer to the created object
      */
-    static Ptr create(ServiceProvider::Ptr const& serviceProvider,
-                      std::string const& worker,
-                      std::string const& id,
-                      int priority,
-                      ExpirationCallbackType const& onExpired,
-                      unsigned int requestExpirationIvalSec,
-                      ProtocolRequestSql const& request);
+    static Ptr create(ServiceProvider::Ptr const& serviceProvider, std::string const& worker,
+                      std::string const& id, int priority, ExpirationCallbackType const& onExpired,
+                      unsigned int requestExpirationIvalSec, ProtocolRequestSql const& request);
 
     WorkerSqlRequest() = delete;
     WorkerSqlRequest(WorkerSqlRequest const&) = delete;
@@ -105,13 +95,9 @@ public:
     bool execute() override;
 
 private:
-    WorkerSqlRequest(ServiceProvider::Ptr const& serviceProvider,
-                     std::string const& worker,
-                     std::string const& id,
-                     int priority,
-                     ExpirationCallbackType const& onExpired,
-                     unsigned int requestExpirationIvalSec,
-                     ProtocolRequestSql const& request);
+    WorkerSqlRequest(ServiceProvider::Ptr const& serviceProvider, std::string const& worker,
+                     std::string const& id, int priority, ExpirationCallbackType const& onExpired,
+                     unsigned int requestExpirationIvalSec, ProtocolRequestSql const& request);
 
     /// @return A connector as per the input request
     std::shared_ptr<database::mysql::Connection> _connector() const;
@@ -136,8 +122,7 @@ private:
      * @return A query as per the input request and the name of a table.
      * @throw std::invalid_argument For unsupported requests types.
      */
-    Query _query(std::shared_ptr<database::mysql::Connection> const& conn,
-                 std::string const& table) const;
+    Query _query(std::shared_ptr<database::mysql::Connection> const& conn, std::string const& table) const;
 
     /**
      * Extract a result set (if any) via the database connector into
@@ -146,8 +131,7 @@ private:
      *   going to access a protected state of the object.
      * @param conn  a valid database connector for extracting a result set
      */
-    void _extractResultSet(util::Lock const& lock,
-                           std::shared_ptr<database::mysql::Connection> const& conn);
+    void _extractResultSet(util::Lock const& lock, std::shared_ptr<database::mysql::Connection> const& conn);
 
     /**
      * Report & record a failure
@@ -159,10 +143,8 @@ private:
      * @param error A message to be logged and returned to Controllers.
      * @throw std::logic_error Is thrown when the method is called before
      *   creating a result set.
-     */    
-    void _reportFailure(util::Lock const& lock,
-                        ProtocolStatusExt statusExt,
-                        std::string const& error);
+     */
+    void _reportFailure(util::Lock const& lock, ProtocolStatusExt statusExt, std::string const& error);
 
     // @return A mutable pointer to the current result set
     ProtocolResponseSqlResultSet* _currentResultSet(util::Lock const& lock);
@@ -184,6 +166,6 @@ typedef WorkerSqlRequest WorkerSqlRequestFS;
 /// Class WorkerSqlRequest provides an actual implementation
 typedef WorkerSqlRequest WorkerSqlRequestPOSIX;
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_WORKERSQLREQUEST_H
+#endif  // LSST_QSERV_REPLICA_WORKERSQLREQUEST_H

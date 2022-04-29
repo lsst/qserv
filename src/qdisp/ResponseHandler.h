@@ -32,14 +32,9 @@
 // Qserv headers
 #include "util/Error.h"
 
-namespace lsst {
-namespace qserv {
-namespace qdisp {
+namespace lsst { namespace qserv { namespace qdisp {
 
 class JobQuery;
-
-
-
 
 /// ResponseHandler is an interface that handles result bytes. Tasks are
 /// submitted to an Executive instance naming a resource unit (what resource is
@@ -65,15 +60,15 @@ public:
     /// largeResult - true if there is more than 1 message in the result.
     /// nextBufSize - size of the next buffer
     /// resultRows - number of result rows in this result.
-    virtual bool flush(int bLen, BufPtr const& bufPtr, bool& last, bool& largeResult,
-                       int& nextBufSize, int& resultRows) = 0;
+    virtual bool flush(int bLen, BufPtr const& bufPtr, bool& last, bool& largeResult, int& nextBufSize,
+                       int& resultRows) = 0;
 
     /// Signal an unrecoverable error condition. No further calls are expected.
     virtual void errorFlush(std::string const& msg, int code) = 0;
 
     /// @return true if the receiver has completed its duties.
     virtual bool finished() const = 0;
-    virtual bool reset() = 0; ///< Reset the state that a request can be retried.
+    virtual bool reset() = 0;  ///< Reset the state that a request can be retried.
 
     /// Print a string representation of the receiver to an ostream
     virtual std::ostream& print(std::ostream& os) const = 0;
@@ -82,7 +77,7 @@ public:
     virtual Error getError() const = 0;
 
     /// Do anything that needs to be done if this job gets cancelled.
-    virtual void processCancel() {};
+    virtual void processCancel(){};
 
     /// Scrub the results from jobId-attempt from the result table.
     virtual void prepScrubResults(int jobId, int attempt) = 0;
@@ -93,11 +88,8 @@ private:
     std::weak_ptr<JobQuery> _jobQuery;
 };
 
-inline std::ostream& operator<<(std::ostream& os, ResponseHandler const& r) {
-    return r.print(os);
-}
+inline std::ostream& operator<<(std::ostream& os, ResponseHandler const& r) { return r.print(os); }
 
+}}}  // namespace lsst::qserv::qdisp
 
-}}} // namespace lsst::qserv::qdisp
-
-#endif // LSST_QSERV_QDISP_RESPONSEHANDLER_H
+#endif  // LSST_QSERV_QDISP_RESPONSEHANDLER_H

@@ -50,9 +50,7 @@ namespace test = boost::test_tools;
 namespace util = lsst::qserv::util;
 
 struct Fixture {
-    void _throw_it(std::exception e) {
-        throw e;
-    }
+    void _throw_it(std::exception e) { throw e; }
 };
 
 BOOST_FIXTURE_TEST_SUITE(Basic, Fixture)
@@ -61,7 +59,6 @@ BOOST_FIXTURE_TEST_SUITE(Basic, Fixture)
  * Print a MultiError object containing only one error
  */
 BOOST_AUTO_TEST_CASE(MonoError) {
-
     test::output_test_stream output;
     util::MultiError multiError;
 
@@ -81,13 +78,13 @@ BOOST_AUTO_TEST_CASE(MonoError) {
  * Print a MultiError object containing several errors
  */
 BOOST_AUTO_TEST_CASE(MultiError) {
-
     test::output_test_stream output;
     util::MultiError multiError;
 
-    std::string expected_err_msg = "[10] Error code is: 10\n"
-        "[11] Error code is: 11\n"
-        "[12] Error code is: 12";
+    std::string expected_err_msg =
+            "[10] Error code is: 10\n"
+            "[11] Error code is: 11\n"
+            "[12] Error code is: 12";
 
     for (int errCode = 10; errCode < 13; errCode = errCode + 1) {
         std::stringstream ss;
@@ -115,8 +112,6 @@ BOOST_AUTO_TEST_CASE(ThrowMultiError) {
     BOOST_REQUIRE_THROW(_throw_it(multiError), std::exception);
 }
 
-BOOST_AUTO_TEST_CASE(Exception) {
-    std::string out;
-}
+BOOST_AUTO_TEST_CASE(Exception) { std::string out; }
 
 BOOST_AUTO_TEST_SUITE_END()

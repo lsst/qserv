@@ -21,18 +21,17 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 /**
-  * @file
-  *
-  * @brief Implementation of a SelectStmt
-  *
-  * SelectStmt is the query info structure. It contains information
-  * about the top-level query characteristics. It shouldn't contain
-  * information about run-time query execution.  It might contain
-  * enough information to generate queries for execution.
-  *
-  * @author Daniel L. Wang, SLAC
-  */
-
+ * @file
+ *
+ * @brief Implementation of a SelectStmt
+ *
+ * SelectStmt is the query info structure. It contains information
+ * about the top-level query characteristics. It shouldn't contain
+ * information about run-time query execution.  It might contain
+ * enough information to generate queries for execution.
+ *
+ * @author Daniel L. Wang, SLAC
+ */
 
 // Class header
 #include "query/SelectStmt.h"
@@ -42,7 +41,7 @@
 #include <sstream>
 
 // Third-party headers
-#include "boost/algorithm/string/predicate.hpp" // string iequal
+#include "boost/algorithm/string/predicate.hpp"  // string iequal
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -57,16 +56,13 @@
 #include "util/IterableFormatter.h"
 #include "util/PointerCompare.h"
 
-
 ////////////////////////////////////////////////////////////////////////
 // anonymous
 ////////////////////////////////////////////////////////////////////////
 namespace {
 
 template <typename T>
-inline void renderTemplate(lsst::qserv::query::QueryTemplate& qt,
-                           char const prefix[],
-                           std::shared_ptr<T> t) {
+inline void renderTemplate(lsst::qserv::query::QueryTemplate& qt, char const prefix[], std::shared_ptr<T> t) {
     if (t.get()) {
         qt.append(prefix);
         t->renderTo(qt);
@@ -74,30 +70,24 @@ inline void renderTemplate(lsst::qserv::query::QueryTemplate& qt,
 }
 
 template <typename T>
-inline void
-cloneIf(std::shared_ptr<T>& dest, std::shared_ptr<T> source) {
+inline void cloneIf(std::shared_ptr<T>& dest, std::shared_ptr<T> source) {
     if (source != nullptr) dest = source->clone();
 }
 
 template <typename T>
-inline void
-copySyntaxIf(std::shared_ptr<T>& dest, std::shared_ptr<T> source) {
+inline void copySyntaxIf(std::shared_ptr<T>& dest, std::shared_ptr<T> source) {
     if (source != nullptr) dest = source->copySyntax();
 }
 
-} // namespace
+}  // namespace
 
-
-namespace lsst {
-namespace qserv {
-namespace query {
+namespace lsst { namespace qserv { namespace query {
 
 ////////////////////////////////////////////////////////////////////////
 // class SelectStmt
 ////////////////////////////////////////////////////////////////////////
 
-QueryTemplate
-SelectStmt::getQueryTemplate() const {
+QueryTemplate SelectStmt::getQueryTemplate() const {
     QueryTemplate qt;
     std::string selectQuant = "SELECT";
     if (_hasDistinct) {
@@ -107,7 +97,8 @@ SelectStmt::getQueryTemplate() const {
     renderTemplate(qt, selectQuant.c_str(), _selectList);
     qt.setAliasMode(QueryTemplate::DEFINE_TABLE_ALIAS);
     renderTemplate(qt, "FROM", _fromList);
-    qt.setAliasMode(QueryTemplate::NO_VALUE_ALIAS_USE_TABLE_ALIAS); // column aliases are not allowed in the WHERE clause.
+    qt.setAliasMode(QueryTemplate::NO_VALUE_ALIAS_USE_TABLE_ALIAS);  // column aliases are not allowed in the
+                                                                     // WHERE clause.
     renderTemplate(qt, "WHERE", _whereClause);
     qt.setAliasMode(QueryTemplate::USE_ALIAS);
     renderTemplate(qt, "GROUP BY", _groupBy);
@@ -123,13 +114,11 @@ SelectStmt::getQueryTemplate() const {
     return qt;
 }
 
-
 /// getPostTemplate() is specialized to the needs of generating a
 /// "post" string for the aggregating table merger MergeFixup
 /// object. Hopefully, we will port the merger to use the merging
 /// statement more as-is (just patching the FROM part).
-QueryTemplate
-SelectStmt::getPostTemplate() const {
+QueryTemplate SelectStmt::getPostTemplate() const {
     QueryTemplate qt;
     renderTemplate(qt, "GROUP BY", _groupBy);
     renderTemplate(qt, "HAVING", _having);
@@ -137,15 +126,9 @@ SelectStmt::getPostTemplate() const {
     return qt;
 }
 
+std::shared_ptr<WhereClause const> SelectStmt::getWhere() const { return _whereClause; }
 
-std::shared_ptr<WhereClause const>
-SelectStmt::getWhere() const {
-    return _whereClause;
-}
-
-
-std::shared_ptr<SelectStmt>
-SelectStmt::clone() const {
+std::shared_ptr<SelectStmt> SelectStmt::clone() const {
     std::shared_ptr<SelectStmt> newS = std::make_shared<SelectStmt>(*this);
     // Starting from a shallow copy, make a copy of the syntax portion.
     cloneIf(newS->_fromList, _fromList);
@@ -159,10 +142,8 @@ SelectStmt::clone() const {
     return newS;
 }
 
-
 // reate a merge statement for current object
-std::shared_ptr<SelectStmt>
-SelectStmt::copyMerge() const {
+std::shared_ptr<SelectStmt> SelectStmt::copyMerge() const {
     std::shared_ptr<SelectStmt> newS = std::make_shared<SelectStmt>(*this);
     copySyntaxIf(newS->_selectList, _selectList);
     // Final sort has to be performed by final query on result table, launched by mysql-proxy.
@@ -182,13 +163,11 @@ SelectStmt::copyMerge() const {
     return newS;
 }
 
-
 void SelectStmt::setFromListAsTable(std::string const& t) {
     TableRefListPtr tr = std::make_shared<TableRefList>();
     tr->push_back(std::make_shared<TableRef>("", t, ""));
     _fromList = std::make_shared<FromList>(tr);
 }
-
 
 bool SelectStmt::operator==(const SelectStmt& rhs) const {
     return (util::ptrCompare<FromList>(_fromList, rhs._fromList) &&
@@ -196,12 +175,9 @@ bool SelectStmt::operator==(const SelectStmt& rhs) const {
             util::ptrCompare<WhereClause>(_whereClause, rhs._whereClause) &&
             util::ptrCompare<OrderByClause>(_orderBy, rhs._orderBy) &&
             util::ptrCompare<GroupByClause>(_groupBy, rhs._groupBy) &&
-            util::ptrCompare<HavingClause>(_having, rhs._having) &&
-            _hasDistinct == rhs._hasDistinct &&
-            _limit == rhs._limit &&
-            OutputMods == rhs.OutputMods);
+            util::ptrCompare<HavingClause>(_having, rhs._having) && _hasDistinct == rhs._hasDistinct &&
+            _limit == rhs._limit && OutputMods == rhs.OutputMods);
 }
-
 
 std::ostream& operator<<(std::ostream& os, SelectStmt const& selectStmt) {
     os << "SelectStmt(";
@@ -220,5 +196,4 @@ std::ostream& operator<<(std::ostream& os, SelectStmt const& selectStmt) {
     return os;
 }
 
-
-}}} // namespace lsst::qserv::query
+}}}  // namespace lsst::qserv::query

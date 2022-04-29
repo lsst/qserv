@@ -35,8 +35,8 @@ namespace test = boost::test_tools;
 using lsst::qserv::wconfig::WorkerConfig;
 
 struct SanityFixture {
-    SanityFixture(void) { };
-    ~SanityFixture(void) { };
+    SanityFixture(void){};
+    ~SanityFixture(void){};
 };
 
 BOOST_FIXTURE_TEST_SUITE(SanityCheckTest, SanityFixture)

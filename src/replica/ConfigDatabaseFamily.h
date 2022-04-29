@@ -31,16 +31,12 @@
 #include "nlohmann/json.hpp"
 
 // Forward declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
-    class ChunkNumberValidator;
-}}}  // Forward declarations
+namespace lsst { namespace qserv { namespace replica {
+class ChunkNumberValidator;
+}}}  // namespace lsst::qserv::replica
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
 /**
  * Class DatabaseFamilyInfo encapsulates various parameters describing
@@ -48,13 +44,13 @@ namespace replica {
  */
 class DatabaseFamilyInfo {
 public:
-    std::string  name;                  // The name of a database family
-    size_t       replicationLevel = 0;  // The minimum replication level
-    unsigned int numStripes = 0;        // The number of stripes (from the CSS partitioning configuration)
-    unsigned int numSubStripes = 0;     // The number of sub-stripes (from the CSS partitioning configuration)
-    double       overlap = 0.;          // The default overlap (radians) for tables that do not specify their own overlap
+    std::string name;                // The name of a database family
+    size_t replicationLevel = 0;     // The minimum replication level
+    unsigned int numStripes = 0;     // The number of stripes (from the CSS partitioning configuration)
+    unsigned int numSubStripes = 0;  // The number of sub-stripes (from the CSS partitioning configuration)
+    double overlap = 0.;  // The default overlap (radians) for tables that do not specify their own overlap
 
-    std::shared_ptr<ChunkNumberValidator> chunkNumberValidator;     /// A validator for chunk numbers
+    std::shared_ptr<ChunkNumberValidator> chunkNumberValidator;  /// A validator for chunk numbers
 
     /**
      * Construct from a JSON object.
@@ -62,14 +58,14 @@ public:
      * @throw std::invalid_argument If the input objces can't be parsed, or if it has
      *   incorrect schema.
      */
-    explicit DatabaseFamilyInfo(nlohmann::json const& obj=nlohmann::json::object());
+    explicit DatabaseFamilyInfo(nlohmann::json const& obj = nlohmann::json::object());
 
     /// @return JSON representation of the object
     nlohmann::json toJson() const;
 };
 
-std::ostream& operator <<(std::ostream& os, DatabaseFamilyInfo const& info);
+std::ostream& operator<<(std::ostream& os, DatabaseFamilyInfo const& info);
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_CONFIGDATABASEFAMILY_H
+#endif  // LSST_QSERV_REPLICA_CONFIGDATABASEFAMILY_H

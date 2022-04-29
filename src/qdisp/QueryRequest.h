@@ -31,7 +31,6 @@
 #include <sstream>
 #include <string>
 
-
 // Third-party headers
 #include "XrdSsi/XrdSsiRequest.hh"
 
@@ -40,37 +39,25 @@
 #include "qdisp/JobQuery.h"
 #include "qdisp/QdispPool.h"
 
-namespace lsst {
-namespace qserv {
-namespace qdisp {
-
+namespace lsst { namespace qserv { namespace qdisp {
 
 /// Bad response received from SSI API
 class BadResponseError : public std::exception {
 public:
-    BadResponseError(std::string const& s_)
-        : std::exception(),
-          s("BadResponseError:" + s_) {}
+    BadResponseError(std::string const& s_) : std::exception(), s("BadResponseError:" + s_) {}
     virtual ~BadResponseError() throw() {}
-    virtual const char* what() const throw() {
-        return s.c_str();
-    }
+    virtual const char* what() const throw() { return s.c_str(); }
     std::string s;
 };
 
 /// Error in QueryRequest
 class RequestError : public std::exception {
 public:
-    RequestError(std::string const& s_)
-        : std::exception(),
-          s("QueryRequest error:" + s_) {}
+    RequestError(std::string const& s_) : std::exception(), s("QueryRequest error:" + s_) {}
     virtual ~RequestError() throw() {}
-    virtual const char* what() const throw() {
-        return s.c_str();
-    }
+    virtual const char* what() const throw() { return s.c_str(); }
     std::string s;
 };
-
 
 /// A client implementation of an XrdSsiRequest that adapts qserv's executing
 /// queries to the XrdSsi API.
@@ -115,22 +102,22 @@ public:
 
     /// Called by SSI when a response is ready
     /// precondition: rInfo.rType != isNone
-    bool ProcessResponse(XrdSsiErrInfo const& eInfo,
-                         XrdSsiRespInfo const& rInfo) override;
+    bool ProcessResponse(XrdSsiErrInfo const& eInfo, XrdSsiRespInfo const& rInfo) override;
 
     /// Called by SSI when new data is available.
-    void ProcessResponseData(XrdSsiErrInfo const& eInfo, char *buff, int blen, bool last) override;
+    void ProcessResponseData(XrdSsiErrInfo const& eInfo, char* buff, int blen, bool last) override;
 
     bool cancel();
     bool isQueryCancelled();
     bool isQueryRequestCancelled();
     void doNotRetry() { _retried.store(true); }
     std::string getSsiErr(XrdSsiErrInfo const& eInfo, int* eCode);
-    void cleanup(); ///< Must be called when this object is no longer needed.
+    void cleanup();  ///< Must be called when this object is no longer needed.
 
     class AskForResponseDataCmd;
 
     friend std::ostream& operator<<(std::ostream& os, QueryRequest const& r);
+
 private:
     // Private constructor to safeguard enable_shared_from_this construction.
     QueryRequest(std::shared_ptr<JobQuery> const& jobQuery,
@@ -139,55 +126,56 @@ private:
     void _callMarkComplete(bool success);
     bool _importStream(JobQuery::Ptr const& jq);
     bool _importError(std::string const& msg, int code);
-    bool _errorFinish(bool stopTrying=false);
+    bool _errorFinish(bool stopTrying = false);
     void _finish();
     void _processData(JobQuery::Ptr const& jq, int blen, bool last);
-    void _queueAskForResponse(std::shared_ptr<AskForResponseDataCmd> const& cmd, JobQuery::Ptr const& jq, bool initialRequest);
+    void _queueAskForResponse(std::shared_ptr<AskForResponseDataCmd> const& cmd, JobQuery::Ptr const& jq,
+                              bool initialRequest);
     void _flushError(JobQuery::Ptr const& jq);
 
     /// _holdState indicates the data is being held by SSI for a large response using LargeResultMgr.
     /// If the state is NOT NO_HOLD0, then this instance has decremented the shared semaphore and it
     /// must increment the semaphore before going away.
-    enum HoldState {NO_HOLD0 = 0, GET_DATA1 = 1, MERGE2 = 2};
+    enum HoldState { NO_HOLD0 = 0, GET_DATA1 = 1, MERGE2 = 2 };
     void _setHoldState(HoldState state);
     HoldState _holdState{NO_HOLD0};
 
-    /// Job information. Not using a weak_ptr as Executive could drop its JobQuery::Ptr before we're done with it.
-    /// A call to cancel() could reset _jobQuery early, so copy or protect _jobQuery with _finishStatusMutex
-    /// as needed. If (_finishStatus == ACTIVE) _jobQuery should be good.
+    /// Job information. Not using a weak_ptr as Executive could drop its JobQuery::Ptr before we're done with
+    /// it. A call to cancel() could reset _jobQuery early, so copy or protect _jobQuery with
+    /// _finishStatusMutex as needed. If (_finishStatus == ACTIVE) _jobQuery should be good.
     std::shared_ptr<JobQuery> _jobQuery;
 
-    std::atomic<bool> _retried {false}; ///< Protect against multiple retries of _jobQuery from a 
-                                        /// single QueryRequest.
-    std::atomic<bool> _calledMarkComplete {false}; ///< Protect against multiple calls to MarkCompleteFunc
+    std::atomic<bool> _retried{false};             ///< Protect against multiple retries of _jobQuery from a
+                                                   /// single QueryRequest.
+    std::atomic<bool> _calledMarkComplete{false};  ///< Protect against multiple calls to MarkCompleteFunc
                                                    /// from a single QueryRequest.
 
-    std::mutex _finishStatusMutex; ///< used to protect _cancelled, _finishStatus, and _jobQuery.
-    enum FinishStatus { ACTIVE, FINISHED, ERROR } _finishStatus {ACTIVE}; // _finishStatusMutex
-    bool _cancelled {false}; ///< true if cancelled, protected by _finishStatusMutex.
+    std::mutex _finishStatusMutex;  ///< used to protect _cancelled, _finishStatus, and _jobQuery.
+    enum FinishStatus { ACTIVE, FINISHED, ERROR } _finishStatus{ACTIVE};  // _finishStatusMutex
+    bool _cancelled{false};  ///< true if cancelled, protected by _finishStatusMutex.
 
-    std::shared_ptr<QueryRequest> _keepAlive; ///< Used to keep this object alive during race condition.
-    QueryId _qid = 0;   // for logging
-    int _jobid = -1;     // for logging
-    std::string _jobIdStr {QueryIdHelper::makeIdStr(0, 0, true)}; ///< for debugging only.
+    std::shared_ptr<QueryRequest> _keepAlive;  ///< Used to keep this object alive during race condition.
+    QueryId _qid = 0;                          // for logging
+    int _jobid = -1;                           // for logging
+    std::string _jobIdStr{QueryIdHelper::makeIdStr(0, 0, true)};  ///< for debugging only.
 
     std::atomic<bool> _finishedCalled{false};
 
-    bool _largeResult{false}; ///< True if the worker flags this job as having a large result.
+    bool _largeResult{false};  ///< True if the worker flags this job as having a large result.
     QdispPool::Ptr _qdispPool;
     std::shared_ptr<AskForResponseDataCmd> _askForResponseDataCmd;
 
-    int _totalRows = 0; ///< number of rows in query added to the result table.
+    int _totalRows = 0;  ///< number of rows in query added to the result table.
 
-    std::atomic<int> _rowsIgnored{0}; ///< Limit log messages about rows being ignored.
+    std::atomic<int> _rowsIgnored{0};  ///< Limit log messages about rows being ignored.
 
-    std::atomic<uint> _respCount{0}; ///< number of responses created
+    std::atomic<uint> _respCount{0};  ///< number of responses created
 
     std::shared_ptr<PseudoFifo> _pseudoFifo;
 };
 
 std::ostream& operator<<(std::ostream& os, QueryRequest const& r);
 
-}}} // namespace lsst::qserv::qdisp
+}}}  // namespace lsst::qserv::qdisp
 
-#endif // LSST_QSERV_QDISP_QUERYREQUEST_H
+#endif  // LSST_QSERV_QDISP_QUERYREQUEST_H

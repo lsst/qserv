@@ -31,18 +31,12 @@
 #include "mysql/MySqlConfig.h"
 #include "qmeta/QMeta.h"
 
-
 // Forward declarations
-namespace lsst {
-namespace qserv {
-namespace sql {
-    class SqlConnection;
-}}}
+namespace lsst { namespace qserv { namespace sql {
+class SqlConnection;
+}}}  // namespace lsst::qserv::sql
 
-
-namespace lsst {
-namespace qserv {
-namespace qmeta {
+namespace lsst { namespace qserv { namespace qmeta {
 
 /// @addtogroup qmeta
 
@@ -54,7 +48,6 @@ namespace qmeta {
 
 class QMetaMysql : public QMeta {
 public:
-
     /**
      *  @param mysqlConf: Configuration object for mysql connection
      */
@@ -119,8 +112,7 @@ public:
      *                 (e.g. for interactive queries).
      *  @return: Query ID, non-negative number
      */
-    QueryId registerQuery(QInfo const& qInfo,
-                          TableNames const& tables) override;
+    QueryId registerQuery(QInfo const& qInfo, TableNames const& tables) override;
 
     /**
      *  @brief Add list of chunks to query.
@@ -141,9 +133,7 @@ public:
      *  @param chunk:     Chunk number.
      *  @param xrdEndpoint:  Worker xrootd communication endpoint ("host:port").
      */
-    void assignChunk(QueryId queryId,
-                     int chunk,
-                     std::string const& xrdEndpoint) override;
+    void assignChunk(QueryId queryId, int chunk, std::string const& xrdEndpoint) override;
 
     /**
      *  @brief Mark chunk as completed.
@@ -204,12 +194,10 @@ public:
      *                    (default) return all queries.
      *  @return: List of query IDs.
      */
-    std::vector<QueryId> findQueries(CzarId czarId=0,
-                                             QInfo::QType qType=QInfo::ANY,
-                                             std::string const& user=std::string(),
-                                             std::vector<QInfo::QStatus> const& status=std::vector<QInfo::QStatus>(),
-                                             int completed=-1,
-                                             int returned=-1) override;
+    std::vector<QueryId> findQueries(
+            CzarId czarId = 0, QInfo::QType qType = QInfo::ANY, std::string const& user = std::string(),
+            std::vector<QInfo::QStatus> const& status = std::vector<QInfo::QStatus>(), int completed = -1,
+            int returned = -1) override;
 
     /**
      *  @brief Find all pending queries for given czar.
@@ -253,8 +241,7 @@ public:
      *  @param tableName:   Table name.
      *  @return: List of query IDs.
      */
-    std::vector<QueryId> getQueriesForTable(std::string const& dbName,
-                                            std::string const& tableName) override;
+    std::vector<QueryId> getQueriesForTable(std::string const& dbName, std::string const& tableName) override;
 
     /**
      * @brief Save the result query in metadata, to give to the proxy when fetching results from an async
@@ -268,17 +255,14 @@ public:
     void saveResultQuery(QueryId queryId, std::string const& query) override;
 
 protected:
-
     ///  Check that all necessary tables exist
     void _checkDb();
 
 private:
-
     std::shared_ptr<sql::SqlConnection> _conn;
-    std::mutex _dbMutex;    ///< Synchronizes access to certain DB operations
-
+    std::mutex _dbMutex;  ///< Synchronizes access to certain DB operations
 };
 
-}}} // namespace lsst::qserv::qmeta
+}}}  // namespace lsst::qserv::qmeta
 
-#endif // LSST_QSERV_QMETA_QMETAMYSQL_H
+#endif  // LSST_QSERV_QMETA_QMETAMYSQL_H

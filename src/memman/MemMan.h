@@ -30,10 +30,7 @@
 #include <string>
 #include <vector>
 
-
-namespace lsst {
-namespace qserv {
-namespace memman {
+namespace lsst { namespace qserv { namespace memman {
 
 //-----------------------------------------------------------------------------
 //! @brief Describe a table that can be potentially locked in memory.
@@ -46,18 +43,17 @@ namespace memman {
 
 class TableInfo {
 public:
-
-    std::string tableName;    //< Name of the table
+    std::string tableName;  //< Name of the table
 
     enum class LockType {
-        NOLOCK   = 0,         //< Item should not be locked
-        REQUIRED = 1,         //< Item must be locked or declare failure
-        FLEXIBLE = 2,         //< Item may  be locked if memory can be reserved
-        OPTIONAL = 3          //< Item may  be locked if possible or ignored
+        NOLOCK = 0,    //< Item should not be locked
+        REQUIRED = 1,  //< Item must be locked or declare failure
+        FLEXIBLE = 2,  //< Item may  be locked if memory can be reserved
+        OPTIONAL = 3   //< Item may  be locked if possible or ignored
     };
 
-    LockType theData;         //< Lock options for the table's data
-    LockType theIndex;        //< Lock options for the table's index, if any
+    LockType theData;   //< Lock options for the table's data
+    LockType theIndex;  //< Lock options for the table's index, if any
 
     //-----------------------------------------------------------------------------
     //! Constructor
@@ -67,11 +63,9 @@ public:
     //! @param  optIndex  lock options for the table's index
     //-----------------------------------------------------------------------------
 
-    TableInfo(std::string const& tabName,
-              LockType optData=LockType::REQUIRED,
-              LockType optIndex=LockType::NOLOCK)
-             : tableName(tabName), theData(optData), theIndex(optIndex)
-             {}
+    TableInfo(std::string const& tabName, LockType optData = LockType::REQUIRED,
+              LockType optIndex = LockType::NOLOCK)
+            : tableName(tabName), theData(optData), theIndex(optIndex) {}
 };
 
 //-----------------------------------------------------------------------------
@@ -123,11 +117,11 @@ public:
     using Handle = uint64_t;
 
     struct HandleType {
-        static const Handle INVALID=0;
-        static const Handle ISEMPTY=1;
+        static const Handle INVALID = 0;
+        static const Handle ISEMPTY = 1;
     };
 
-    virtual int    lock(Handle handle, bool strict=false) = 0;
+    virtual int lock(Handle handle, bool strict = false) = 0;
 
     //-----------------------------------------------------------------------------
     //! @briefPrepare a set of tables for locking into memory.
@@ -157,7 +151,7 @@ public:
     //!                the memory associated with the resource is unlocked.
     //-----------------------------------------------------------------------------
 
-    virtual bool  unlock(Handle handle) = 0;
+    virtual bool unlock(Handle handle) = 0;
 
     //-----------------------------------------------------------------------------
     //! @brief Release all resources and unlock all locked memory.
@@ -165,7 +159,7 @@ public:
     //! This method effectively calls unlock() on each resource handle.
     //-----------------------------------------------------------------------------
 
-    virtual void  unlockAll() = 0;
+    virtual void unlockAll() = 0;
 
     //-----------------------------------------------------------------------------
     //! @brief Obtain statistics about this memory manager.
@@ -174,19 +168,19 @@ public:
     //-----------------------------------------------------------------------------
 
     struct Statistics {
-        uint64_t bytesLockMax; //!< Maximum number of bytes to lock
-        uint64_t bytesLocked;  //!< Current number of bytes locked
-        uint64_t bytesReserved;//!< Current number of bytes reserved
-        uint32_t numMapErrors; //!< Number of mmap()  calls that failed
-        uint32_t numLokErrors; //!< Number of mlock() calls that failed
-        uint32_t numFSets;     //!< Global  number of active file sets
-        uint32_t numFiles;     //!< Global  number of active files
-        uint32_t numReqdFiles; //!< Number  required files encountered
-        uint32_t numFlexFiles; //!< Number  flexible files encountered
-        uint32_t numFlexLock;  //!< Number  flexible files that were locked
-        uint32_t numLocks;     //!< Number of calls to lock()
-        uint32_t numErrors;    //!< Number of calls that failed
-        std::string logString(); //!< Returns a string suitable for logging.
+        uint64_t bytesLockMax;    //!< Maximum number of bytes to lock
+        uint64_t bytesLocked;     //!< Current number of bytes locked
+        uint64_t bytesReserved;   //!< Current number of bytes reserved
+        uint32_t numMapErrors;    //!< Number of mmap()  calls that failed
+        uint32_t numLokErrors;    //!< Number of mlock() calls that failed
+        uint32_t numFSets;        //!< Global  number of active file sets
+        uint32_t numFiles;        //!< Global  number of active files
+        uint32_t numReqdFiles;    //!< Number  required files encountered
+        uint32_t numFlexFiles;    //!< Number  flexible files encountered
+        uint32_t numFlexLock;     //!< Number  flexible files that were locked
+        uint32_t numLocks;        //!< Number of calls to lock()
+        uint32_t numErrors;       //!< Number of calls that failed
+        std::string logString();  //!< Returns a string suitable for logging.
     };
 
     virtual Statistics getStatistics() = 0;
@@ -201,31 +195,29 @@ public:
     //-----------------------------------------------------------------------------
 
     struct Status {
-        uint64_t bytesLock{0};   //!< Number of resource bytes locked
-        double   secondsLock{0}; //!< Number of seconds spent locking files.
-        uint32_t numFiles{0};    //!< Number of files resource has
-        int      chunk{-1};      //!< Chunk number associated with resource
+        uint64_t bytesLock{0};  //!< Number of resource bytes locked
+        double secondsLock{0};  //!< Number of seconds spent locking files.
+        uint32_t numFiles{0};   //!< Number of files resource has
+        int chunk{-1};          //!< Chunk number associated with resource
         Status() {}
         Status(uint64_t bytesLock_, double seconds, uint32_t numFiles_, int chunk_)
-          : bytesLock(bytesLock_), secondsLock(seconds), numFiles(numFiles_), chunk(chunk_) {}
-        std::string logString(); //!< Returns a string suitable for logging.
+                : bytesLock(bytesLock_), secondsLock(seconds), numFiles(numFiles_), chunk(chunk_) {}
+        std::string logString();  //!< Returns a string suitable for logging.
     };
 
     virtual Status getStatus(Handle handle) = 0;
 
     //-----------------------------------------------------------------------------
 
-    MemMan & operator=(const MemMan&) = delete;
+    MemMan& operator=(const MemMan&) = delete;
     MemMan(const MemMan&) = delete;
 
-                  MemMan() {}
-    virtual      ~MemMan() {}
+    MemMan() {}
+    virtual ~MemMan() {}
 
 protected:
-
     static uint64_t lockLimit;
 };
 
-}}} // namespace lsst:qserv:memman
+}}}     // namespace lsst::qserv::memman
 #endif  // LSST_QSERV_MEMMAN_MEMMAN_H
-

@@ -30,9 +30,7 @@
 #include "replica/Common.h"
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
 /**
  * Class IndexApp implements a tool which launches a single job Controller in order
@@ -53,11 +51,11 @@ public:
      */
     static Ptr create(int argc, char* argv[]);
 
-    IndexApp()=delete;
-    IndexApp(IndexApp const&)=delete;
-    IndexApp& operator=(IndexApp const&)=delete;
+    IndexApp() = delete;
+    IndexApp(IndexApp const&) = delete;
+    IndexApp& operator=(IndexApp const&) = delete;
 
-    ~IndexApp() final=default;
+    ~IndexApp() final = default;
 
 protected:
     int runImpl() final;
@@ -110,6 +108,6 @@ private:
     size_t _pageSize = 20;
 };
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica
 
 #endif /* LSST_QSERV_REPLICA_INDEXAPP_H */

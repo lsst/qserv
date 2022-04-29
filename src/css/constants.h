@@ -24,9 +24,7 @@
 #ifndef LSST_QSERV_CSS_CONSTANTS_H
 #define LSST_QSERV_CSS_CONSTANTS_H
 
-namespace lsst {
-namespace qserv {
-namespace css {
+namespace lsst { namespace qserv { namespace css {
 
 // Current version of metadata store.
 // VERSION and VERSION_KEY are used by qservAdmin.py and css/Facade .
@@ -34,11 +32,11 @@ namespace css {
 // database is created. All other clients are supposed to check stored
 // version against compiled-in version and fail if they do not match.
 // Another place where version number appears is tests/testKvMap.h.
-char const VERSION_KEY[] = "/css_meta/version"; ///< Path to version
-int const VERSION = 1; ///< Current supported version (integer)
+char const VERSION_KEY[] = "/css_meta/version";  ///< Path to version
+int const VERSION = 1;                           ///< Current supported version (integer)
 // kvInterface treats everything as strings, so to avoid multiple
 // conversions I define this string once and use it with kvInterface
-char const VERSION_STR[] = "1"; ///< Current supported version
+char const VERSION_STR[] = "1";  ///< Current supported version
 
 // Set of values used for database and table status.
 
@@ -68,6 +66,6 @@ char const NODE_STATE_ACTIVE[] = "ACTIVE";
 /// Node state, "ACTIVE" means can be used for regular work
 char const NODE_STATE_INACTIVE[] = "INACTIVE";
 
-}}} // namespace lsst::qserv::css
+}}}  // namespace lsst::qserv::css
 
-#endif // LSST_QSERV_CSS_CONSTANTS_H
+#endif  // LSST_QSERV_CSS_CONSTANTS_H

@@ -48,8 +48,8 @@ using namespace lsst::qserv::replica;
 namespace {
 
 string const description =
-    "This is an  application which acts as a a catalog data loading"
-    " client of the Replication system's catalog data ingest server.";
+        "This is an  application which acts as a a catalog data loading"
+        " client of the Replication system's catalog data ingest server.";
 
 bool const injectDatabaseOptions = false;
 bool const boostProtobufVersionCheck = true;
@@ -57,71 +57,60 @@ bool const enableServiceProvider = false;
 
 string parse(string const& context, json const& jsonObj, string const& key) {
     if ((0 == jsonObj.count(key) or not jsonObj[key].is_string())) {
-        throw invalid_argument(
-                context + "No key for <" + key + "> found in the current element of the JSON array"
-                " or its value is not a string");
+        throw invalid_argument(context + "No key for <" + key +
+                               "> found in the current element of the JSON array"
+                               " or its value is not a string");
     }
     return jsonObj[key];
 }
 
-
-template<typename T>
+template <typename T>
 T parse(string const& context, json const& jsonObj, string const& key, T minValue) {
     if ((0 == jsonObj.count(key) or not jsonObj[key].is_number())) {
-        throw invalid_argument(
-                context + "No key for <" + key + "> found in the current element of the JSON array"
-                " or its value is not a number");
+        throw invalid_argument(context + "No key for <" + key +
+                               "> found in the current element of the JSON array"
+                               " or its value is not a number");
     }
     uint64_t const num = jsonObj[key];
     if (num < minValue or num > numeric_limits<T>::max()) {
-        throw invalid_argument(
-                context
-                + "Failed to parse JSON object, a value " + to_string(num)
-                + " of <" + key + "> is not in a range of " + to_string(minValue) + "-"
-                + to_string(numeric_limits<T>::max()) + ".");
+        throw invalid_argument(context + "Failed to parse JSON object, a value " + to_string(num) + " of <" +
+                               key + "> is not in a range of " + to_string(minValue) + "-" +
+                               to_string(numeric_limits<T>::max()) + ".");
     }
     return (T)num;
 }
 
-} /// namespace
+}  // namespace
 
+namespace lsst { namespace qserv { namespace replica {
 
-namespace lsst {
-namespace qserv {
-namespace replica {
-
-list<FileIngestApp::FileIngestSpec> FileIngestApp::parseFileList(
-        json const& jsonObj,
-        bool shortFormat,
-        TransactionId transactionId,
-        std::string const& tableName,
-        std::string const& tableType) {
-
+list<FileIngestApp::FileIngestSpec> FileIngestApp::parseFileList(json const& jsonObj, bool shortFormat,
+                                                                 TransactionId transactionId,
+                                                                 std::string const& tableName,
+                                                                 std::string const& tableType) {
     string const context = "FileIngestApp::" + string(__func__) + "  ";
 
     list<FileIngestApp::FileIngestSpec> files;
 
     if (not jsonObj.is_array()) {
-        throw invalid_argument(
-                context + "The input parameter doesn't represent a JSON array of file"
-                " specifications.");
+        throw invalid_argument(context +
+                               "The input parameter doesn't represent a JSON array of file"
+                               " specifications.");
     }
     if (shortFormat) {
         if (tableName.empty()) {
-            throw invalid_argument(
-                    context + "The name of the table can't be empty");
+            throw invalid_argument(context + "The name of the table can't be empty");
         }
         if ((tableType != "R") and (tableType != "P")) {
-            throw invalid_argument(
-                    context + "The value '" + tableType
-                    + "' of the table type is not in a set of {'R','P'}.");
+            throw invalid_argument(context + "The value '" + tableType +
+                                   "' of the table type is not in a set of {'R','P'}.");
         }
     }
-    for (auto&& fileSpecJson: jsonObj) {
+    for (auto&& fileSpecJson : jsonObj) {
         if (not fileSpecJson.is_object()) {
-            throw invalid_argument(
-                    context + "The next element in the JSON array doesn't represent a JSON object"
-                    " with a file specification.");
+            throw invalid_argument(context +
+                                   "The next element in the JSON array doesn't represent a JSON object"
+                                   " with a file specification.");
         }
         FileIngestApp::FileIngestSpec file;
         file.workerHost = parse(context, fileSpecJson, "worker-host");
@@ -137,9 +126,8 @@ list<FileIngestApp::FileIngestSpec> FileIngestApp::parseFileList(
             string tableType = parse(context, fileSpecJson, "type");
             transform(tableType.begin(), tableType.end(), tableType.begin(), ::toupper);
             if ((tableType != "R") and (tableType != "P")) {
-                throw invalid_argument(
-                        + "Failed to parse JSON object, a value " + tableType
-                        + " of <type> is not in a set of {'R','P'}.");
+                throw invalid_argument(+"Failed to parse JSON object, a value " + tableType +
+                                       " of <type> is not in a set of {'R','P'}.");
             }
             file.tableType = tableType;
         }
@@ -149,15 +137,13 @@ list<FileIngestApp::FileIngestSpec> FileIngestApp::parseFileList(
     return files;
 }
 
-
 FileIngestApp::ChunkContribution FileIngestApp::parseChunkContribution(string const& filename) {
     regex const re("^chunk_([0-9]+)(_overlap)?\\.txt$", regex::extended);
     smatch match;
     if (not regex_search(filename, match, re) or match.size() != 3) {
-        throw invalid_argument(
-                "FileIngestApp::" + string(__func__)
-                + "allowed file names for contributions into partitioned tables:"
-                " 'chunk_<chunk>.txt', 'chunk_<chunk>_overlap.txt'");
+        throw invalid_argument("FileIngestApp::" + string(__func__) +
+                               "allowed file names for contributions into partitioned tables:"
+                               " 'chunk_<chunk>.txt', 'chunk_<chunk>_overlap.txt'");
     }
     ChunkContribution result;
     result.chunk = stoul(match[1].str());
@@ -165,156 +151,98 @@ FileIngestApp::ChunkContribution FileIngestApp::parseChunkContribution(string co
     return result;
 }
 
-
 FileIngestApp::Ptr FileIngestApp::create(int argc, char* argv[]) {
     return Ptr(new FileIngestApp(argc, argv));
 }
 
-
 FileIngestApp::FileIngestApp(int argc, char* argv[])
-    :   Application(
-            argc, argv,
-            ::description,
-            ::injectDatabaseOptions,
-            ::boostProtobufVersionCheck,
-            ::enableServiceProvider
-        ) {
-
+        : Application(argc, argv, ::description, ::injectDatabaseOptions, ::boostProtobufVersionCheck,
+                      ::enableServiceProvider) {
     // Configure the command line parser
 
-    parser().commands(
-        "command",
-        {"PARSE", "FILE", "FILE-LIST", "FILE-LIST-TRANS"},
-        _command
-    ).option(
-        "fields-terminated-by",
-        "An optional character which separates fields within a row.",
-        _dialectInput.fieldsTerminatedBy
-    ).option(
-        "fields-enclosed-by",
-        "An optional character which is used to quote fields within a row.",
-        _dialectInput.fieldsEnclosedBy
-     ).option(
-        "fields-escaped-by",
-        "An optional character which is used to escape special characters (reserved by MySQL)"
-        " within a row",
-        _dialectInput.fieldsEscapedBy
-    ).option(
-        "lines-terminated-by",
-        "An optional character which is used to terminate lines.",
-        _dialectInput.linesTerminatedBy
-    ).option(
-        "record-size-bytes",
-        "An optional parameter specifying the record size for reading from the input"
-        " file and for sending data to a server.",
-        _recordSizeBytes
-    ).flag(
-        "verbose",
-        "Print various stats upon a completion of the ingest",
-        _verbose
-    );
+    parser().commands("command", {"PARSE", "FILE", "FILE-LIST", "FILE-LIST-TRANS"}, _command)
+            .option("fields-terminated-by", "An optional character which separates fields within a row.",
+                    _dialectInput.fieldsTerminatedBy)
+            .option("fields-enclosed-by", "An optional character which is used to quote fields within a row.",
+                    _dialectInput.fieldsEnclosedBy)
+            .option("fields-escaped-by",
+                    "An optional character which is used to escape special characters (reserved by MySQL)"
+                    " within a row",
+                    _dialectInput.fieldsEscapedBy)
+            .option("lines-terminated-by", "An optional character which is used to terminate lines.",
+                    _dialectInput.linesTerminatedBy)
+            .option("record-size-bytes",
+                    "An optional parameter specifying the record size for reading from the input"
+                    " file and for sending data to a server.",
+                    _recordSizeBytes)
+            .flag("verbose", "Print various stats upon a completion of the ingest", _verbose);
 
-    parser().command(
-        "PARSE"
-    ).description(
-        "Parse the 'infile' to locate rows according to the specified field terminator,"
-        " field quotation, escape and line terminator strings. Print each row onto"
-        " 'outfile'. The row will be preceeded by the row number."
-    ).required(
-        "infile",
-        "A path to an input file to be parsed.",
-        _inFileName
-    ).required(
-        "outfile",
-        "A path to the output file to write the result.",
-        _outFileName
-    );
+    parser().command("PARSE")
+            .description(
+                    "Parse the 'infile' to locate rows according to the specified field terminator,"
+                    " field quotation, escape and line terminator strings. Print each row onto"
+                    " 'outfile'. The row will be preceeded by the row number.")
+            .required("infile", "A path to an input file to be parsed.", _inFileName)
+            .required("outfile", "A path to the output file to write the result.", _outFileName);
 
-    parser().command(
-        "FILE"
-    ).description(
-        "The single file ingest option. A destination of the ingest and a path to"
-        " the file to ingest are specified via a group of mandatory parameters."
-    ).required(
-        "worker-host",
-        "The name of a worker host the Ingest service is run.",
-        _file.workerHost
-    ).required(
-        "worker-port",
-        "The port number of the worker's Ingest service.",
-        _file.workerPort
-    ).required(
-        "transaction-id",
-        "A unique identifier (number) of a super-transaction which must be already"
-        " open.",
-        _file.transactionId
-    ).required(
-        "table",
-        "The name of a table to be ingested.",
-        _file.tableName
-    ).required(
-        "type",
-        "The type of a table to be ingested. Allowed options: 'P' for contributions"
-        " into partitioned tables, and 'R' for contributions into the regular tables.",
-        _file.tableType
-    ).required(
-        "infile",
-        "A path to an input file to be sent to the worker.",
-        _file.inFileName
-    );
+    parser().command("FILE")
+            .description(
+                    "The single file ingest option. A destination of the ingest and a path to"
+                    " the file to ingest are specified via a group of mandatory parameters.")
+            .required("worker-host", "The name of a worker host the Ingest service is run.", _file.workerHost)
+            .required("worker-port", "The port number of the worker's Ingest service.", _file.workerPort)
+            .required("transaction-id",
+                      "A unique identifier (number) of a super-transaction which must be already"
+                      " open.",
+                      _file.transactionId)
+            .required("table", "The name of a table to be ingested.", _file.tableName)
+            .required("type",
+                      "The type of a table to be ingested. Allowed options: 'P' for contributions"
+                      " into partitioned tables, and 'R' for contributions into the regular tables.",
+                      _file.tableType)
+            .required("infile", "A path to an input file to be sent to the worker.", _file.inFileName);
 
-    parser().command(
-        "FILE-LIST"
-    ).description(
-        "The batch ingest option. A list of files to be ingested will be read from"
-        " a file. The content of the file is required to be a serialized JSON array"
-        " of objects. Each object specifies a destination of the ingest and"
-        " the name name of a file to ingest. The general schema of the JSON object is:"
-        " [{\"worker-host\":<string>,\"worker-port\":<number>,\"transaction-id\":<number>,"
-        " \"table\":<string>,\"type\":<string>,\"path\":<string>},...]."
-        " Where allowed values for the key \"type\" are either \"P\" for"
-        " the partitioned (chunked) table contributions, or \"R\" for the"
-        " regular tables contributions. Input files for the partitioned tables"
-        " are expected to have the following names: \"chunk_<num>.txt\" or"
-        " \"chunk_<num>_overlap.txt\". The files will be ingested sequentially."
-    ).required(
-        "file-list",
-        "The name of a file with ingest specifications. If the file name is set to '-'"
-        " then the specifications will be read from the standard input stream",
-        _fileListName
-    );
+    parser().command("FILE-LIST")
+            .description(
+                    "The batch ingest option. A list of files to be ingested will be read from"
+                    " a file. The content of the file is required to be a serialized JSON array"
+                    " of objects. Each object specifies a destination of the ingest and"
+                    " the name name of a file to ingest. The general schema of the JSON object is:"
+                    " [{\"worker-host\":<string>,\"worker-port\":<number>,\"transaction-id\":<number>,"
+                    " \"table\":<string>,\"type\":<string>,\"path\":<string>},...]."
+                    " Where allowed values for the key \"type\" are either \"P\" for"
+                    " the partitioned (chunked) table contributions, or \"R\" for the"
+                    " regular tables contributions. Input files for the partitioned tables"
+                    " are expected to have the following names: \"chunk_<num>.txt\" or"
+                    " \"chunk_<num>_overlap.txt\". The files will be ingested sequentially.")
+            .required("file-list",
+                      "The name of a file with ingest specifications. If the file name is set to '-'"
+                      " then the specifications will be read from the standard input stream",
+                      _fileListName);
 
-    parser().command(
-        "FILE-LIST-TRANS"
-    ).description(
-        "The alternative batch ingest option. A list of files to be ingested will be read"
-        " from a file. The content of the file is required to be a serialized JSON array"
-        " of objects. Each object specifies a destination of the ingest and"
-        " the name name of a file to ingest. The general schema of the JSON object is:"
-        " [{\"worker-host\":<string>,\"worker-port\":<number>,\"path\":<string>},...]."
-        " Input files for the partitioned tables are expected to have the following"
-        " names: \"chunk_<num>.txt\" or \"chunk_<num>_overlap.txt\". The files will be"
-        " ingested sequentially."
-    ).required(
-        "transaction-id",
-        "A unique identifier (number) of a super-transaction which must be already"
-        " open.",
-        _file.transactionId
-    ).required(
-        "table",
-        "The name of a table to be ingested.",
-        _file.tableName
-    ).required(
-        "type",
-        "The type of a table to be ingested. Allowed options: 'P' for contributions"
-        " into partitioned tables, and 'R' for contributions into the regular tables.",
-        _file.tableType
-    ).required(
-        "file-list",
-        "The name of a file with ingest specifications. If the file name is set to '-'"
-        " then the specifications will be read from the standard input stream",
-        _fileListName
-    );
+    parser().command("FILE-LIST-TRANS")
+            .description(
+                    "The alternative batch ingest option. A list of files to be ingested will be read"
+                    " from a file. The content of the file is required to be a serialized JSON array"
+                    " of objects. Each object specifies a destination of the ingest and"
+                    " the name name of a file to ingest. The general schema of the JSON object is:"
+                    " [{\"worker-host\":<string>,\"worker-port\":<number>,\"path\":<string>},...]."
+                    " Input files for the partitioned tables are expected to have the following"
+                    " names: \"chunk_<num>.txt\" or \"chunk_<num>_overlap.txt\". The files will be"
+                    " ingested sequentially.")
+            .required("transaction-id",
+                      "A unique identifier (number) of a super-transaction which must be already"
+                      " open.",
+                      _file.transactionId)
+            .required("table", "The name of a table to be ingested.", _file.tableName)
+            .required("type",
+                      "The type of a table to be ingested. Allowed options: 'P' for contributions"
+                      " into partitioned tables, and 'R' for contributions into the regular tables.",
+                      _file.tableType)
+            .required("file-list",
+                      "The name of a file with ingest specifications. If the file name is set to '-'"
+                      " then the specifications will be read from the standard input stream",
+                      _fileListName);
 }
 
 int FileIngestApp::runImpl() {
@@ -336,12 +264,11 @@ int FileIngestApp::runImpl() {
     } else {
         throw invalid_argument(context + "Unsupported loading method " + _command);
     }
-    for (auto&& file: files) {
+    for (auto&& file : files) {
         _ingest(file);
     }
     return 0;
 }
-
 
 void FileIngestApp::_parseFile() const {
     string const context = "FileIngestApp::" + string(__func__) + "  ";
@@ -349,7 +276,7 @@ void FileIngestApp::_parseFile() const {
     if (!infile.good()) {
         throw invalid_argument(context + "Failed to open file: '" + _inFileName + "'.");
     }
-    ofstream outfile(_outFileName, ios::trunc|ios::binary);
+    ofstream outfile(_outFileName, ios::trunc | ios::binary);
     if (!outfile.good()) {
         throw invalid_argument(context + "Failed to create file: '" + _outFileName + "'.");
     }
@@ -363,18 +290,16 @@ void FileIngestApp::_parseFile() const {
     do {
         eof = !infile.read(record.get(), _recordSizeBytes);
         if (eof && !infile.eof()) {
-            runtime_error(context + "Failed to read the file '" + _inFileName
-                          + "', error: '" + strerror(errno) + "', errno: " + to_string(errno)
-                          + ".");
+            runtime_error(context + "Failed to read the file '" + _inFileName + "', error: '" +
+                          strerror(errno) + "', errno: " + to_string(errno) + ".");
         }
         size_t const num = infile.gcount();
         inNumBytes += num;
         // Flush on the end of file
         parser.parse(record.get(), num, eof, [&](char const* buf, size_t size) {
             if (!outfile.write(buf, size)) {
-                runtime_error(context + "Failed to write into the file '" + _outFileName
-                            + "', error: '" + strerror(errno) + "', errno: " + to_string(errno)
-                            + ".");
+                runtime_error(context + "Failed to write into the file '" + _outFileName + "', error: '" +
+                              strerror(errno) + "', errno: " + to_string(errno) + ".");
             }
             outNumBytes += size;
             numLines++;
@@ -384,7 +309,6 @@ void FileIngestApp::_parseFile() const {
          << "wrote: " << outNumBytes << " bytes, "
          << "lines: " << numLines << endl;
 }
-
 
 list<FileIngestApp::FileIngestSpec> FileIngestApp::_readFileList(bool shortFormat) const {
     string const context = "FileIngestApp::" + string(__func__) + "  ";
@@ -397,25 +321,18 @@ list<FileIngestApp::FileIngestSpec> FileIngestApp::_readFileList(bool shortForma
     try {
         str = string(istreambuf_iterator<char>(file), istreambuf_iterator<char>());
     } catch (exception const& ex) {
-        throw invalid_argument(
-                context + "Failed to read file: " + _fileListName
-                + ", exception: " + string(ex.what()));
+        throw invalid_argument(context + "Failed to read file: " + _fileListName +
+                               ", exception: " + string(ex.what()));
     }
     json jsonObj;
     try {
         jsonObj = json::parse(str);
     } catch (exception const& ex) {
-        throw invalid_argument(
-                context + "Failed to parse the content of file: " + _fileListName
-                + " into a JSON object, exception: " + string(ex.what()));
+        throw invalid_argument(context + "Failed to parse the content of file: " + _fileListName +
+                               " into a JSON object, exception: " + string(ex.what()));
     }
-    return parseFileList(jsonObj,
-                         shortFormat,
-                         _file.transactionId,
-                         _file.tableName,
-                         _file.tableType);
+    return parseFileList(jsonObj, shortFormat, _file.transactionId, _file.tableName, _file.tableType);
 }
-
 
 void FileIngestApp::_ingest(FileIngestSpec const& file) const {
     string const context = "FileIngestApp::" + string(__func__) + "  ";
@@ -431,20 +348,20 @@ void FileIngestApp::_ingest(FileIngestSpec const& file) const {
     if (!fs::is_regular(status)) {
         throw runtime_error(context + "not a regular file: " + file.inFileName);
     }
-    
+
     // For partitioned tables analyze file name and extract a chunk number and
     // the 'overlap' attribute
     ChunkContribution chunkContribution;
     if (file.tableType == "P") {
         // Remove a base path (if any) from the file name before parsing the name
-        chunkContribution = parseChunkContribution(fs::absolute(fs::path(file.inFileName)).filename().string());
+        chunkContribution =
+                parseChunkContribution(fs::absolute(fs::path(file.inFileName)).filename().string());
     } else if (file.tableType == "R") {
         // No special requirements for the names of the regular files
         ;
     } else {
-        throw invalid_argument(
-                context + "a value '" + file.tableType
-                + "' of <type> is not in a set of {P,R}.");
+        throw invalid_argument(context + "a value '" + file.tableType +
+                               "' of <type> is not in a set of {P,R}.");
     }
 
     // Push the file
@@ -456,32 +373,25 @@ void FileIngestApp::_ingest(FileIngestSpec const& file) const {
 
     uint64_t const startedMs = PerformanceUtils::now();
     auto const ptr = IngestClient::connect(
-        file.workerHost,
-        file.workerPort,
-        file.transactionId,
-        file.tableName,
-        chunkContribution.chunk,
-        chunkContribution.isOverlap,
-        file.inFileName,
-        authKey(),
-        _dialectInput,
-        _recordSizeBytes
-    );
+            file.workerHost, file.workerPort, file.transactionId, file.tableName, chunkContribution.chunk,
+            chunkContribution.isOverlap, file.inFileName, authKey(), _dialectInput, _recordSizeBytes);
     ptr->send();
     uint64_t const finishedMs = PerformanceUtils::now();
-    
+
     if (_verbose) {
-        uint64_t const elapsedMs  = max(1UL, finishedMs - startedMs);
-        double   const elapsedSec = elapsedMs / 1000;
-        double   const megaBytesPerSec = ptr->sizeBytes() / 1000000 / elapsedSec;
+        uint64_t const elapsedMs = max(1UL, finishedMs - startedMs);
+        double const elapsedSec = elapsedMs / 1000;
+        double const megaBytesPerSec = ptr->sizeBytes() / 1000000 / elapsedSec;
         cout << "Ingest service location: " << file.workerHost << ":" << file.workerPort << "\n"
              << " Transaction identifier: " << file.transactionId << "\n"
              << "      Destination table: " << file.tableName << "\n"
              << "                  Chunk: " << chunkContribution.chunk << "\n"
              << "       Is chunk overlap: " << bool2str(chunkContribution.isOverlap) << "\n"
              << "        Input file name: " << file.inFileName << "\n"
-             << "            Start  time: " << PerformanceUtils::toDateTimeString(chrono::milliseconds(startedMs)) << "\n"
-             << "            Finish time: " << PerformanceUtils::toDateTimeString(chrono::milliseconds(finishedMs)) << "\n"
+             << "            Start  time: "
+             << PerformanceUtils::toDateTimeString(chrono::milliseconds(startedMs)) << "\n"
+             << "            Finish time: "
+             << PerformanceUtils::toDateTimeString(chrono::milliseconds(finishedMs)) << "\n"
              << "           Elapsed time: " << elapsedSec << " sec\n"
              << "             Bytes sent: " << ptr->sizeBytes() << "\n"
              << "              MByte/sec: " << megaBytesPerSec << "\n"
@@ -489,4 +399,4 @@ void FileIngestApp::_ingest(FileIngestSpec const& file) const {
     }
 }
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica

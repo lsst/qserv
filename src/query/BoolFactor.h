@@ -21,10 +21,8 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-
 #ifndef LSST_QSERV_QUERY_BOOLFACTOR_H
 #define LSST_QSERV_QUERY_BOOLFACTOR_H
-
 
 // System headers
 #include <vector>
@@ -32,32 +30,25 @@
 // Qserv headers
 #include "query/BoolTerm.h"
 
-
 // Forward declarations
-namespace lsst {
-namespace qserv {
-namespace query {
-    class BoolFactorTerm;
-    class ColumnRef;
-    class ValueExpr;
-}}} // End of forward declarations
+namespace lsst { namespace qserv { namespace query {
+class BoolFactorTerm;
+class ColumnRef;
+class ValueExpr;
+}}}  // namespace lsst::qserv::query
 
-
-namespace lsst {
-namespace qserv {
-namespace query {
-
+namespace lsst { namespace qserv { namespace query {
 
 /// BoolFactor is a plain factor in a BoolTerm.
 class BoolFactor : public BoolTerm {
 public:
     BoolFactor() = default;
 
-    BoolFactor(std::vector<std::shared_ptr<BoolFactorTerm>> const & terms, bool hasNot=false)
-        : _terms(terms), _hasNot(hasNot) {}
+    BoolFactor(std::vector<std::shared_ptr<BoolFactorTerm>> const& terms, bool hasNot = false)
+            : _terms(terms), _hasNot(hasNot) {}
 
-    BoolFactor(std::shared_ptr<BoolFactorTerm> const & term, bool hasNot=false)
-        : _terms({term}), _hasNot(hasNot) {}
+    BoolFactor(std::shared_ptr<BoolFactorTerm> const& term, bool hasNot = false)
+            : _terms({term}), _hasNot(hasNot) {}
 
     typedef std::shared_ptr<BoolFactor> Ptr;
 
@@ -125,7 +116,6 @@ private:
     bool _checkParen(std::vector<std::shared_ptr<BoolFactorTerm>>& terms);
 };
 
+}}}  // namespace lsst::qserv::query
 
-}}} // namespace lsst::qserv::query
-
-#endif // LSST_QSERV_QUERY_BOOLFACOTR_H
+#endif  // LSST_QSERV_QUERY_BOOLFACOTR_H

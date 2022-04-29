@@ -21,15 +21,13 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 /**
-  * @file
-  *
-  * @author Daniel L. Wang, SLAC
-  */
-
+ * @file
+ *
+ * @author Daniel L. Wang, SLAC
+ */
 
 #ifndef LSST_QSERV_QUERY_QUERYCONTEXT_H
 #define LSST_QSERV_QUERY_QUERYCONTEXT_H
-
 
 // System headers
 #include <memory>
@@ -47,25 +45,20 @@
 #include "query/ValueExpr.h"
 #include "util/CIUtils.h"
 
-
 // Forward declarations
-namespace lsst {
-namespace qserv {
+namespace lsst { namespace qserv {
 namespace query {
-    class AreaRestrictor;
-    class ColumnRef;
-    class SecIdxRestrictor;
-    class TableRef;
-}
+class AreaRestrictor;
+class ColumnRef;
+class SecIdxRestrictor;
+class TableRef;
+}  // namespace query
 namespace qproc {
-    class DatabaseModels;
-}}} // End of forward declarations
+class DatabaseModels;
+}
+}}  // namespace lsst::qserv
 
-
-namespace lsst {
-namespace qserv {
-namespace query {
-
+namespace lsst { namespace qserv { namespace query {
 
 /// QueryContext is a value container for query state related to analyzing,
 /// rewriting, and generating queries. It is the primary mechanism for
@@ -80,18 +73,17 @@ public:
     typedef std::shared_ptr<QueryContext> Ptr;
 
     QueryContext(std::string const& defDb, std::shared_ptr<css::CssAccess> const& cssPtr,
-            std::shared_ptr<qproc::DatabaseModels> const& dbModels)
-        : css(cssPtr), defaultDb(defDb), databaseModels(dbModels) {}
-
+                 std::shared_ptr<qproc::DatabaseModels> const& dbModels)
+            : css(cssPtr), defaultDb(defDb), databaseModels(dbModels) {}
 
     std::shared_ptr<css::CssAccess> css;  ///< interface to CSS
-    std::string defaultDb; ///< User session db context
-    std::string dominantDb; ///< "dominant" database for this query
-    std::string userName{"default"}; ///< unused, but reserved.
+    std::string defaultDb;                ///< User session db context
+    std::string dominantDb;               ///< "dominant" database for this query
+    std::string userName{"default"};      ///< unused, but reserved.
 
-    std::shared_ptr<qproc::DatabaseModels> databaseModels; ///< contains database schema information.
+    std::shared_ptr<qproc::DatabaseModels> databaseModels;  ///< contains database schema information.
 
-    proto::ScanInfo scanInfo; // Tables scanned (for shared scans)
+    proto::ScanInfo scanInfo;  // Tables scanned (for shared scans)
 
     /**
      * @brief Add a TableRef to the list of tables used by this query.
@@ -109,8 +101,7 @@ public:
      * but they must have been added via addUsedTableRef, which would typically indicate that they at least
      * exist in the FROM list of the query being processed.
      */
-    std::shared_ptr<query::TableRef> getTableRefMatch(
-        std::shared_ptr<query::TableRef> const& tableRef) const;
+    std::shared_ptr<query::TableRef> getTableRefMatch(std::shared_ptr<query::TableRef> const& tableRef) const;
 
     /**
      * @brief Get complete TableRef from the list of tables used by this query that matches the pased-in
@@ -122,7 +113,7 @@ public:
      * in the returned ColumnRef.
      */
     std::shared_ptr<query::TableRef> getTableRefMatch(
-        std::shared_ptr<query::ColumnRef> const& columnRef) const;
+            std::shared_ptr<query::ColumnRef> const& columnRef) const;
 
     /**
      * @brief Add a ValueExpr that is used in the SELECT list.
@@ -181,23 +172,19 @@ public:
 
     std::string columnToTablesMapToString() const;
 
-    int chunkCount{0}; //< -1: all, 0: none, N: #chunks
+    int chunkCount{0};  //< -1: all, 0: none, N: #chunks
 
-    bool needsMerge{false}; ///< Does this query require a merge/post-processing step?
+    bool needsMerge{false};  ///< Does this query require a merge/post-processing step?
 
-    css::StripingParams getDbStriping() {
-        return css->getDbStriping(dominantDb); }
-    bool containsDb(std::string const& dbName) {
-        return css->containsDb(dbName); }
+    css::StripingParams getDbStriping() { return css->getDbStriping(dominantDb); }
+    bool containsDb(std::string const& dbName) { return css->containsDb(dbName); }
     bool containsTable(std::string const& dbName, std::string const& tableName) {
-        return css->containsTable(dbName, tableName); }
-    bool hasChunks() const {
-        return queryMapping.get() && queryMapping->hasChunks(); }
-    bool hasSubChunks() const {
-        return queryMapping.get() && queryMapping->hasSubChunks(); }
+        return css->containsTable(dbName, tableName);
+    }
+    bool hasChunks() const { return queryMapping.get() && queryMapping->hasChunks(); }
+    bool hasSubChunks() const { return queryMapping.get() && queryMapping->hasSubChunks(); }
 
 private:
-
     std::vector<std::string> _getTableSchema(std::string const& dbName, std::string const& tableName);
 
     // Comparison function for the TableRefSet that goes into the _columnToTablesMap, to compare the TableRef
@@ -212,11 +199,10 @@ private:
     // stores the names of columns that are in each table that is used in the FROM statement.
     std::unordered_map<std::string, TableRefSet, util::ci_hash, util::ci_pred> _columnToTablesMap;
 
-    std::vector<std::shared_ptr<query::TableRef>> _usedTableRefs; ///< TableRefs from the FROM list
-    std::vector<std::shared_ptr<query::ValueExpr>> _usedValueExprs; ///< ValueExprs from the SELECT list
+    std::vector<std::shared_ptr<query::TableRef>> _usedTableRefs;    ///< TableRefs from the FROM list
+    std::vector<std::shared_ptr<query::ValueExpr>> _usedValueExprs;  ///< ValueExprs from the SELECT list
 };
 
+}}}  // namespace lsst::qserv::query
 
-}}} // namespace lsst::qserv::query
-
-#endif // LSST_QSERV_QUERY_QUERYCONTEXT_H
+#endif  // LSST_QSERV_QUERY_QUERYCONTEXT_H

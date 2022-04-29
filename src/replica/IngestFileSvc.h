@@ -31,9 +31,7 @@
 #include "replica/ServiceProvider.h"
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
 /**
  * Class IngestFileSvc is used in the server-side implementations of
@@ -51,10 +49,8 @@ public:
     virtual ~IngestFileSvc();
 
 protected:
-
     /// @see IngestFileSvc::create()
-    IngestFileSvc(ServiceProvider::Ptr const& serviceProvider,
-                  std::string const& workerName);
+    IngestFileSvc(ServiceProvider::Ptr const& serviceProvider, std::string const& workerName);
 
     ServiceProvider::Ptr const& serviceProvider() const { return _serviceProvider; }
     std::string const& workerName() const { return _workerName; }
@@ -73,11 +69,8 @@ protected:
      * @throw invalid_argument  For incorrect parameters on the input.
      * @throw runtime_error  Error wile creating, or opening a file.
      */
-    std::string const& openFile(TransactionId transactionId,
-                                std::string const& table,
-                                csv::Dialect const& dialect,
-                                unsigned int chunk=0,
-                                bool isOverlap=false);
+    std::string const& openFile(TransactionId transactionId, std::string const& table,
+                                csv::Dialect const& dialect, unsigned int chunk = 0, bool isOverlap = false);
 
     /**
      * @note Each row will be prepended with an identifier of a transaction before being written.
@@ -101,26 +94,26 @@ private:
     // Input parameters
 
     ServiceProvider::Ptr const _serviceProvider;
-    std::string          const _workerName;
+    std::string const _workerName;
 
     // Parameters defining a scope of the operation are set/computed when opening a file.
 
-    std::string   _fileName;
+    std::string _fileName;
     TransactionId _transactionId = 0;
-    std::string   _table;
-    csv::Dialect  _dialect;
-    bool          _isPartitioned = false;
-    unsigned int  _chunk = 0;
-    bool          _isOverlap = false;
-    DatabaseInfo  _databaseInfo;    ///< Derived from the transaction identifier
+    std::string _table;
+    csv::Dialect _dialect;
+    bool _isPartitioned = false;
+    unsigned int _chunk = 0;
+    bool _isOverlap = false;
+    DatabaseInfo _databaseInfo;  ///< Derived from the transaction identifier
 
-    std::string _transactionIdField;    ///< The terminated field to be prepend at each row
+    std::string _transactionIdField;  ///< The terminated field to be prepend at each row
 
     std::ofstream _file;
 
-    size_t _totalNumRows = 0;   ///< The number of rows received and recorded
+    size_t _totalNumRows = 0;  ///< The number of rows received and recorded
 };
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_INGESTFILESVC_H
+#endif  // LSST_QSERV_REPLICA_INGESTFILESVC_H

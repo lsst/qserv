@@ -32,15 +32,13 @@
 #include "wpublish/TestEchoQservRequest.h"
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
 /**
  * Class TestEchoQservMgtRequest implements a special kind of requests
  * for testing Qserv workers.
  */
-class TestEchoQservMgtRequest: public QservMgtRequest {
+class TestEchoQservMgtRequest : public QservMgtRequest {
 public:
     typedef std::shared_ptr<TestEchoQservMgtRequest> Ptr;
 
@@ -64,10 +62,8 @@ public:
      * @param onFinish (optional) callback function to be called upon request completion.
      * @return A pointer to the created object.
      */
-    static Ptr create(ServiceProvider::Ptr const& serviceProvider,
-                      std::string const& worker,
-                      std::string const& data,
-                      CallbackType const& onFinish=nullptr);
+    static Ptr create(ServiceProvider::Ptr const& serviceProvider, std::string const& worker,
+                      std::string const& data, CallbackType const& onFinish = nullptr);
 
     /// @return input data string sent to the worker
     std::string const& data() const { return _data; }
@@ -80,7 +76,7 @@ public:
     std::string const& dataEcho() const;
 
     /// @see QservMgtRequest::extendedPersistentState()
-    std::list<std::pair<std::string,std::string>> extendedPersistentState() const override;
+    std::list<std::pair<std::string, std::string>> extendedPersistentState() const override;
 
 protected:
     /// @see QservMgtRequest::startImpl
@@ -94,10 +90,8 @@ protected:
 
 private:
     /// @see TestEchoQservMgtRequest::create()
-    TestEchoQservMgtRequest(ServiceProvider::Ptr const& serviceProvider,
-                            std::string const& worker,
-                            std::string const& data,
-                            CallbackType const& onFinish);
+    TestEchoQservMgtRequest(ServiceProvider::Ptr const& serviceProvider, std::string const& worker,
+                            std::string const& data, CallbackType const& onFinish);
 
     /**
      * Carry over results of the request into a local storage.
@@ -105,13 +99,12 @@ private:
      *   of the method.
      * @param data The data string returned by a worker.
      */
-    void _setData(util::Lock const& lock,
-                  std::string const& data);
+    void _setData(util::Lock const& lock, std::string const& data);
 
     // Input parameters
 
     std::string const _data;
-    CallbackType      _onFinish;    ///< @note this object is reset after finishing the request
+    CallbackType _onFinish;  ///< @note this object is reset after finishing the request
 
     /// A request to the remote services
     wpublish::TestEchoQservRequest::Ptr _qservRequest;
@@ -120,6 +113,6 @@ private:
     std::string _dataEcho;
 };
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_TESTECHOQSERVMGTREQUEST_H
+#endif  // LSST_QSERV_REPLICA_TESTECHOQSERVMGTREQUEST_H

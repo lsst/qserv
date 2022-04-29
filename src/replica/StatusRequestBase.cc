@@ -44,34 +44,21 @@ namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.StatusRequest");
 
-} /// namespace
+}  // namespace
 
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
 StatusRequestBase::StatusRequestBase(ServiceProvider::Ptr const& serviceProvider,
-                                     boost::asio::io_service& io_service,
-                                     char const* requestTypeName,
-                                     string const& worker,
-                                     string const& targetRequestId,
-                                     ProtocolQueuedRequestType targetRequestType,
-                                     int priority,
-                                     bool keepTracking,
-                                     shared_ptr<Messenger> const& messenger)
-    :   RequestMessenger(serviceProvider,
-                         io_service,
-                         requestTypeName,
-                         worker,
-                         priority,
-                         keepTracking,
-                         false, // allowDuplicate
-                         false, // disposeRequired
-                         messenger),
-        _targetRequestId(targetRequestId),
-        _targetRequestType(targetRequestType) {
-}
-
+                                     boost::asio::io_service& io_service, char const* requestTypeName,
+                                     string const& worker, string const& targetRequestId,
+                                     ProtocolQueuedRequestType targetRequestType, int priority,
+                                     bool keepTracking, shared_ptr<Messenger> const& messenger)
+        : RequestMessenger(serviceProvider, io_service, requestTypeName, worker, priority, keepTracking,
+                           false,  // allowDuplicate
+                           false,  // disposeRequired
+                           messenger),
+          _targetRequestId(targetRequestId),
+          _targetRequestType(targetRequestType) {}
 
 string StatusRequestBase::toString(bool extended) const {
     ostringstream oss(Request::toString(extended));
@@ -80,15 +67,12 @@ string StatusRequestBase::toString(bool extended) const {
     return oss.str();
 }
 
-
 void StatusRequestBase::startImpl(util::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
     _sendImpl(lock);
 }
 
-
 void StatusRequestBase::awaken(boost::system::error_code const& ec) {
-
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     if (isAborted(ec)) return;
@@ -100,9 +84,7 @@ void StatusRequestBase::awaken(boost::system::error_code const& ec) {
     _sendImpl(lock);
 }
 
-
 void StatusRequestBase::_sendImpl(util::Lock const& lock) {
-
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     // Serialize the Status message header and the request itself into
@@ -127,9 +109,7 @@ void StatusRequestBase::_sendImpl(util::Lock const& lock) {
     send(lock);
 }
 
-
 void StatusRequestBase::analyze(bool success, ProtocolStatus status) {
-
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  success=" << (success ? "true" : "false"));
 
     // This method is called on behalf of an asynchronous callback fired
@@ -147,7 +127,6 @@ void StatusRequestBase::analyze(bool success, ProtocolStatus status) {
     }
 
     switch (status) {
-
         case ProtocolStatus::SUCCESS:
             saveReplicaInfo();
             finish(lock, SUCCESS);
@@ -182,10 +161,9 @@ void StatusRequestBase::analyze(bool success, ProtocolStatus status) {
             break;
 
         default:
-            throw logic_error(
-                    "StatusRequestBase::" + string(__func__) + "  unknown status '"
-                    + ProtocolStatus_Name(status) + "' received from server");
+            throw logic_error("StatusRequestBase::" + string(__func__) + "  unknown status '" +
+                              ProtocolStatus_Name(status) + "' received from server");
     }
 }
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica

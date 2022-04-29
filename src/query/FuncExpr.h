@@ -21,18 +21,16 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 /**
-  * @file
-  *
-  * @brief FuncExpr is a SQL function expression including a name and a list of
-  * parameters.
-  *
-  * @author Daniel L. Wang, SLAC
-  */
-
+ * @file
+ *
+ * @brief FuncExpr is a SQL function expression including a name and a list of
+ * parameters.
+ *
+ * @author Daniel L. Wang, SLAC
+ */
 
 #ifndef LSST_QSERV_QUERY_FUNCEXPR_H
 #define LSST_QSERV_QUERY_FUNCEXPR_H
-
 
 // System headers
 #include <memory>
@@ -42,19 +40,12 @@
 #include "query/ColumnRef.h"
 #include "query/typedefs.h"
 
-
 // Forward declarations
-namespace lsst {
-namespace qserv {
-namespace query {
-    class QueryTemplate;
-}}} // End of forward declarations
+namespace lsst { namespace qserv { namespace query {
+class QueryTemplate;
+}}}  // namespace lsst::qserv::query
 
-
-namespace lsst {
-namespace qserv {
-namespace query {
-
+namespace lsst { namespace qserv { namespace query {
 
 // FuncExpr is a function expression, e.g., foo(1,2,bar)
 class FuncExpr {
@@ -63,10 +54,7 @@ public:
 
     FuncExpr() = default;
 
-    FuncExpr(std::string name, ValueExprPtrVector const& valueExprVec)
-            : params(valueExprVec)
-            , _name(name) {
-    }
+    FuncExpr(std::string name, ValueExprPtrVector const& valueExprVec) : params(valueExprVec), _name(name) {}
 
     /// Set the function name.
     void setName(const std::string& val);
@@ -81,16 +69,13 @@ public:
     static FuncExpr::Ptr newLike(FuncExpr const& src, std::string const& newName);
 
     /// Construct a new FuncExpr with a name and string arg
-    static FuncExpr::Ptr newArg1(std::string const& newName,
-                                 std::string const& arg1);
+    static FuncExpr::Ptr newArg1(std::string const& newName, std::string const& arg1);
 
     /// Construct a new FuncExpr with a name and ValueExpr arg
-    static FuncExpr::Ptr newArg1(std::string const& newName,
-                                 ValueExprPtr ve);
+    static FuncExpr::Ptr newArg1(std::string const& newName, ValueExprPtr ve);
 
     /// Construct a new FuncExpr with a name and a vector of ValueExpr arg
-    static FuncExpr::Ptr newWithArgs(std::string const& newName,
-                                     const ValueExprPtrVector& ve);
+    static FuncExpr::Ptr newWithArgs(std::string const& newName, const ValueExprPtrVector& ve);
 
     /// Get a vector of the ColumnRefs this contains.
     void findColumnRefs(ColumnRef::Vector& outputRefs) const;
@@ -116,12 +101,10 @@ private:
     std::string _name;
 };
 
-
 // output helpers
 std::ostream& output(std::ostream& os, ValueExprPtrVector const& vel);
 void renderList(QueryTemplate& qt, ValueExprPtrVector const& vel);
 
+}}}  // namespace lsst::qserv::query
 
-}}} // namespace lsst::qserv::query
-
-#endif // LSST_QSERV_QUERY_FUNCEXPR_H
+#endif  // LSST_QSERV_QUERY_FUNCEXPR_H

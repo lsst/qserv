@@ -44,75 +44,48 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.ExportClient");
 
 size_t const defaultBufferCapacity = 1024 * 1024;
 
-} /// namespace
+}  // namespace
 
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
-ExportClient::Ptr ExportClient::connect(
-        string const& workerHost,
-        uint16_t workerPort,
-        string const& databaseName,
-        string const& tableName,
-        unsigned int chunk,
-        bool isOverlap,
-        string const& outputFilePath,
-        ColumnSeparator columnSeparator,
-        string const& authKey) {
-    ExportClient::Ptr ptr(new ExportClient(
-        workerHost,
-        workerPort,
-        databaseName,
-        tableName,
-        chunk,
-        isOverlap,
-        outputFilePath,
-        columnSeparator,
-        authKey
-    ));
+ExportClient::Ptr ExportClient::connect(string const& workerHost, uint16_t workerPort,
+                                        string const& databaseName, string const& tableName,
+                                        unsigned int chunk, bool isOverlap, string const& outputFilePath,
+                                        ColumnSeparator columnSeparator, string const& authKey) {
+    ExportClient::Ptr ptr(new ExportClient(workerHost, workerPort, databaseName, tableName, chunk, isOverlap,
+                                           outputFilePath, columnSeparator, authKey));
     ptr->_connectImpl();
     return ptr;
 }
 
-
-ExportClient::ExportClient(string const& workerHost,
-                           uint16_t workerPort,
-                           string const& databaseName,
-                           string const& tableName,
-                           unsigned int chunk,
-                           bool isOverlap,
-                           string const& outputFilePath,
-                           ColumnSeparator columnSeparator,
+ExportClient::ExportClient(string const& workerHost, uint16_t workerPort, string const& databaseName,
+                           string const& tableName, unsigned int chunk, bool isOverlap,
+                           string const& outputFilePath, ColumnSeparator columnSeparator,
                            string const& authKey)
-    :   _workerHost(workerHost),
-        _workerPort(workerPort),
-        _databaseName(databaseName),
-        _tableName(tableName),
-        _chunk(chunk),
-        _isOverlap(isOverlap),
-        _outputFilePath(outputFilePath),
-        _columnSeparator(columnSeparator),
-        _authKey(authKey),
-        _bufferCapacity(defaultBufferCapacity),
-        _bufferPtr(new ProtocolBuffer(defaultBufferCapacity)),
-        _io_service(),
-        _socket(_io_service) {
-
+        : _workerHost(workerHost),
+          _workerPort(workerPort),
+          _databaseName(databaseName),
+          _tableName(tableName),
+          _chunk(chunk),
+          _isOverlap(isOverlap),
+          _outputFilePath(outputFilePath),
+          _columnSeparator(columnSeparator),
+          _authKey(authKey),
+          _bufferCapacity(defaultBufferCapacity),
+          _bufferPtr(new ProtocolBuffer(defaultBufferCapacity)),
+          _io_service(),
+          _socket(_io_service) {
     if (outputFilePath.empty()) {
         _abort(__func__, "the file name can't be empty");
     }
 }
-
 
 ExportClient::~ExportClient() {
     LOGS(_log, LOG_LVL_DEBUG, _context(__func__));
     _closeConnection();
 }
 
-
 void ExportClient::receive() {
-
     LOGS(_log, LOG_LVL_DEBUG, _context(__func__));
 
     if (_received) return;
@@ -123,13 +96,11 @@ void ExportClient::receive() {
     handshakeRequest.set_table(_tableName);
     handshakeRequest.set_chunk(_chunk);
     handshakeRequest.set_is_overlap(_isOverlap);
-    handshakeRequest.set_column_separator(_columnSeparator == ColumnSeparator::COMMA ?
-        ProtocolExportHandshakeRequest::COMMA :
-        ProtocolExportHandshakeRequest::TAB
-    );
+    handshakeRequest.set_column_separator(_columnSeparator == ColumnSeparator::COMMA
+                                                  ? ProtocolExportHandshakeRequest::COMMA
+                                                  : ProtocolExportHandshakeRequest::TAB);
     handshakeRequest.set_auth_key(_authKey);
     _send(handshakeRequest, "handshake request send");
-
 
     // Read and analyze the response
     ProtocolExportHandshakeResponse handshakeResponse;
@@ -180,7 +151,7 @@ void ExportClient::receive() {
 
         // The second check for the number of rows is made just in case. In theory
         // (unless something bad happened) the number of rows should never be less
-        // than 1 in normal circumstances. 
+        // than 1 in normal circumstances.
         if (response.last() or numRows < 1) {
             // Send a confirmation to the server regarding a completion
             // of the data transfer.
@@ -204,22 +175,20 @@ void ExportClient::receive() {
     file.close();
     _closeConnection();
 
-    LOGS(_log, LOG_LVL_DEBUG, _context(__func__) << "_totalNumRows: " << _totalNumRows
-         << " _sizeBytes: " << _sizeBytes);
+    LOGS(_log, LOG_LVL_DEBUG,
+         _context(__func__) << "_totalNumRows: " << _totalNumRows << " _sizeBytes: " << _sizeBytes);
 
     // As a sanity check, verify if the local file has the same size as
     // the remote one before declaring a success.
     auto const localFileSizeBytes = fs::file_size(fs::path(_outputFilePath));
     if (localFileSizeBytes != _totalSizeBytes) {
-        _abort(__func__, "local file: " + _outputFilePath + " size: " + to_string(localFileSizeBytes)
-                + " doesn't match the remote file size: " + to_string(_totalSizeBytes));
+        _abort(__func__, "local file: " + _outputFilePath + " size: " + to_string(localFileSizeBytes) +
+                                 " doesn't match the remote file size: " + to_string(_totalSizeBytes));
     }
     _received = true;
 }
 
-
 void ExportClient::_connectImpl() {
-
     LOGS(_log, LOG_LVL_DEBUG, _context(__func__));
 
     boost::system::error_code ec;
@@ -227,19 +196,15 @@ void ExportClient::_connectImpl() {
     // Connect to the server synchronously using error codes to process errors
     // instead of exceptions.
     boost::asio::ip::tcp::resolver resolver(_io_service);
-    boost::asio::ip::tcp::resolver::iterator iter = resolver.resolve(
-        boost::asio::ip::tcp::resolver::query(_workerHost,to_string(_workerPort)),
-        ec
-    );
+    boost::asio::ip::tcp::resolver::iterator iter =
+            resolver.resolve(boost::asio::ip::tcp::resolver::query(_workerHost, to_string(_workerPort)), ec);
     _assertErrorCode(ec, __func__, "host/port resolve");
 
     boost::asio::connect(_socket, iter, ec);
     _assertErrorCode(ec, __func__, "server connect");
 }
 
-
 uint32_t ExportClient::_receiveFrameHeaderAndBody(string const& context) {
-
     LOGS(_log, LOG_LVL_DEBUG, _context(__func__));
 
     // First, read the fixed frame header carrying the length of
@@ -249,34 +214,24 @@ uint32_t ExportClient::_receiveFrameHeaderAndBody(string const& context) {
     _bufferPtr->resize(frameLengthBytes);
 
     boost::system::error_code ec;
-    boost::asio::read(
-        _socket,
-        boost::asio::buffer(_bufferPtr->data(), frameLengthBytes),
-        boost::asio::transfer_at_least(frameLengthBytes),
-        ec
-    );
+    boost::asio::read(_socket, boost::asio::buffer(_bufferPtr->data(), frameLengthBytes),
+                      boost::asio::transfer_at_least(frameLengthBytes), ec);
     _assertErrorCode(ec, __func__, "frame header receive, " + context);
 
     // Parse the length of the message and try reading the message body
     // from the socket.
     const uint32_t messageLengthBytes = _bufferPtr->parseLength();
 
-    _bufferPtr->resize(messageLengthBytes); // make sure the buffer has enough space to
-                                            // accommodate the data of the message.
-    boost::asio::read(
-        _socket,
-        boost::asio::buffer(_bufferPtr->data(), messageLengthBytes),
-        boost::asio::transfer_at_least(messageLengthBytes),
-        ec
-    );
+    _bufferPtr->resize(messageLengthBytes);  // make sure the buffer has enough space to
+                                             // accommodate the data of the message.
+    boost::asio::read(_socket, boost::asio::buffer(_bufferPtr->data(), messageLengthBytes),
+                      boost::asio::transfer_at_least(messageLengthBytes), ec);
     _assertErrorCode(ec, __func__, "message body receive, " + context);
 
     return messageLengthBytes;
 }
 
-
-void ExportClient::_assertErrorCode(boost::system::error_code const& ec,
-                                    string const& func,
+void ExportClient::_assertErrorCode(boost::system::error_code const& ec, string const& func,
                                     string const& msg) {
     LOGS(_log, LOG_LVL_DEBUG, _context(__func__));
 
@@ -285,9 +240,7 @@ void ExportClient::_assertErrorCode(boost::system::error_code const& ec,
     }
 }
 
-
-void ExportClient::_abort(string const& func,
-                          string const& error) {
+void ExportClient::_abort(string const& func, string const& error) {
     LOGS(_log, LOG_LVL_DEBUG, _context(__func__));
     _closeConnection();
     string const msg = _context(func) + error;
@@ -295,9 +248,7 @@ void ExportClient::_abort(string const& func,
     throw ExportClientError(msg);
 }
 
-                
 void ExportClient::_closeConnection() {
-
     LOGS(_log, LOG_LVL_DEBUG, _context(__func__));
 
     // Always attempt to shutdown and close the socket. This code deliberately
@@ -307,4 +258,4 @@ void ExportClient::_closeConnection() {
     _socket.close(ec);
 }
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica

@@ -47,66 +47,34 @@ namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.DeleteRequest");
 
-} /// namespace
+}  // namespace
 
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
 DeleteRequest::Ptr DeleteRequest::create(ServiceProvider::Ptr const& serviceProvider,
-                                         boost::asio::io_service& io_service,
-                                         string const& worker,
-                                         string const& database,
-                                         unsigned int chunk,
-                                         bool allowDuplicate,
-                                         CallbackType const& onFinish,
-                                         int priority,
-                                         bool keepTracking,
+                                         boost::asio::io_service& io_service, string const& worker,
+                                         string const& database, unsigned int chunk, bool allowDuplicate,
+                                         CallbackType const& onFinish, int priority, bool keepTracking,
                                          shared_ptr<Messenger> const& messenger) {
-    return DeleteRequest::Ptr(new DeleteRequest(
-        serviceProvider,
-        io_service,
-        worker,
-        database,
-        chunk,
-        allowDuplicate,
-        onFinish,
-        priority,
-        keepTracking,
-        messenger
-    ));
+    return DeleteRequest::Ptr(new DeleteRequest(serviceProvider, io_service, worker, database, chunk,
+                                                allowDuplicate, onFinish, priority, keepTracking, messenger));
 }
 
-
-DeleteRequest::DeleteRequest(ServiceProvider::Ptr const& serviceProvider,
-                             boost::asio::io_service& io_service,
-                             string const& worker,
-                             string const& database,
-                             unsigned int chunk,
-                             bool allowDuplicate,
-                             CallbackType const& onFinish,
-                             int priority,
-                             bool keepTracking,
-                             shared_ptr<Messenger> const& messenger)
-    :   RequestMessenger(serviceProvider,
-                         io_service,
-                         "REPLICA_DELETE",
-                         worker,
-                         priority,
-                         keepTracking,
-                         allowDuplicate,
-                         true,  // disposeRequired
-                         messenger),
-        _database(database),
-        _chunk(chunk),
-        _onFinish(onFinish) {
-
+DeleteRequest::DeleteRequest(ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service,
+                             string const& worker, string const& database, unsigned int chunk,
+                             bool allowDuplicate, CallbackType const& onFinish, int priority,
+                             bool keepTracking, shared_ptr<Messenger> const& messenger)
+        : RequestMessenger(serviceProvider, io_service, "REPLICA_DELETE", worker, priority, keepTracking,
+                           allowDuplicate,
+                           true,  // disposeRequired
+                           messenger),
+          _database(database),
+          _chunk(chunk),
+          _onFinish(onFinish) {
     Request::serviceProvider()->config()->assertDatabaseIsValid(database);
 }
 
-
 void DeleteRequest::startImpl(util::Lock const& lock) {
-
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     // Serialize the Request message header and the request itself into
@@ -133,9 +101,7 @@ void DeleteRequest::startImpl(util::Lock const& lock) {
     _send(lock);
 }
 
-
 void DeleteRequest::awaken(boost::system::error_code const& ec) {
-
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     if (isAborted(ec)) return;
@@ -166,20 +132,16 @@ void DeleteRequest::awaken(boost::system::error_code const& ec) {
     _send(lock);
 }
 
-
 void DeleteRequest::_send(util::Lock const& lock) {
     auto self = shared_from_base<DeleteRequest>();
     messenger()->send<ProtocolResponseDelete>(
-        worker(), id(), priority(), buffer(),
-        [self] (string const& id, bool success, ProtocolResponseDelete const& response) {
-            self->_analyze(success, response);
-        }
-    );
+            worker(), id(), priority(), buffer(),
+            [self](string const& id, bool success, ProtocolResponseDelete const& response) {
+                self->_analyze(success, response);
+            });
 }
 
-
 void DeleteRequest::_analyze(bool success, ProtocolResponseDelete const& message) {
-
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  success=" << (success ? "true" : "false"));
 
     // This method is called on behalf of an asynchronous callback fired
@@ -218,7 +180,6 @@ void DeleteRequest::_analyze(bool success, ProtocolResponseDelete const& message
         _targetRequestParams = DeleteRequestParams(message.request());
     }
     switch (message.status()) {
-
         case ProtocolStatus::SUCCESS:
             serviceProvider()->databaseServices()->saveReplicaInfo(_replicaInfo);
             finish(lock, SUCCESS);
@@ -262,30 +223,25 @@ void DeleteRequest::_analyze(bool success, ProtocolResponseDelete const& message
             break;
 
         default:
-            throw logic_error(
-                    "DeleteRequest::" + string(__func__) + "  unknown status '" +
-                    ProtocolStatus_Name(message.status()) +
-                    "' received from server");
+            throw logic_error("DeleteRequest::" + string(__func__) + "  unknown status '" +
+                              ProtocolStatus_Name(message.status()) + "' received from server");
     }
 }
-
 
 void DeleteRequest::notify(util::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
     notifyDefaultImpl<DeleteRequest>(lock, _onFinish);
 }
 
-
 void DeleteRequest::savePersistentState(util::Lock const& lock) {
     controller()->serviceProvider()->databaseServices()->saveState(*this, performance(lock));
 }
 
-
-list<pair<string,string>> DeleteRequest::extendedPersistentState() const {
-    list<pair<string,string>> result;
+list<pair<string, string>> DeleteRequest::extendedPersistentState() const {
+    list<pair<string, string>> result;
     result.emplace_back("database", database());
-    result.emplace_back("chunk",    to_string(chunk()));
+    result.emplace_back("chunk", to_string(chunk()));
     return result;
 }
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica

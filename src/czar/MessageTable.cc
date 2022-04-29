@@ -43,38 +43,35 @@ namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.czar.MessageTable");
 
-#define MAX_MESSAGE_LEN "1024" // string, for splicing into templates below
+#define MAX_MESSAGE_LEN "1024"  // string, for splicing into templates below
 
-std::string const createTmpl("CREATE TABLE IF NOT EXISTS %1% "
-    "(chunkId INT, code SMALLINT, message VARCHAR(" MAX_MESSAGE_LEN "), "
-    "severity ENUM ('INFO', 'ERROR'), timeStamp FLOAT)"
-    "ENGINE=MEMORY");
+std::string const createTmpl(
+        "CREATE TABLE IF NOT EXISTS %1% "
+        "(chunkId INT, code SMALLINT, message VARCHAR(" MAX_MESSAGE_LEN
+        "), "
+        "severity ENUM ('INFO', 'ERROR'), timeStamp FLOAT)"
+        "ENGINE=MEMORY");
 
 std::string const createAndLockTmpl(createTmpl + "; LOCK TABLES %1% WRITE;");
 
-std::string const writeTmpl("INSERT INTO %1% (chunkId, code, message, severity, timeStamp) "
-    "VALUES (%2%, %3%, '%4$." MAX_MESSAGE_LEN "s', '%5%', %6%)");
+std::string const writeTmpl(
+        "INSERT INTO %1% (chunkId, code, message, severity, timeStamp) "
+        "VALUES (%2%, %3%, '%4$." MAX_MESSAGE_LEN "s', '%5%', %6%)");
 
 // mysql can only unlock all locked tables,
 // there is no command to unlock single table
 std::string const unlockTmpl("UNLOCK TABLES");
 
-}
+}  // namespace
 
-namespace lsst {
-namespace qserv {
-namespace czar {
+namespace lsst { namespace qserv { namespace czar {
 
 // Constructors
-MessageTable::MessageTable(std::string const& tableName,
-                           mysql::MySqlConfig const& resultConfig)
-    : _tableName(tableName),
-      _sqlConn(sql::SqlConnectionFactory::make(resultConfig)) {
-}
+MessageTable::MessageTable(std::string const& tableName, mysql::MySqlConfig const& resultConfig)
+        : _tableName(tableName), _sqlConn(sql::SqlConnectionFactory::make(resultConfig)) {}
 
 // Create the table, do not lock
-void
-MessageTable::create() {
+void MessageTable::create() {
     std::string query = (boost::format(::createTmpl) % _tableName).str();
     sql::SqlErrorObject sqlErr;
     LOGS(_log, LOG_LVL_DEBUG, "creating message table " << _tableName);
@@ -86,8 +83,7 @@ MessageTable::create() {
 }
 
 // Create and lock the table
-void
-MessageTable::lock() {
+void MessageTable::lock() {
     std::string query = (boost::format(::createAndLockTmpl) % _tableName).str();
     sql::SqlErrorObject sqlErr;
     LOGS(_log, LOG_LVL_DEBUG, "locking message table " << _tableName);
@@ -99,8 +95,7 @@ MessageTable::lock() {
 }
 
 // Release lock on message table so that proxy can proceed
-void
-MessageTable::unlock(ccontrol::UserQuery::Ptr const& userQuery) {
+void MessageTable::unlock(ccontrol::UserQuery::Ptr const& userQuery) {
     _saveQueryMessages(userQuery);
 
     sql::SqlErrorObject sqlErr;
@@ -113,8 +108,7 @@ MessageTable::unlock(ccontrol::UserQuery::Ptr const& userQuery) {
 }
 
 // store all messages from current session to the table
-void
-MessageTable::_saveQueryMessages(ccontrol::UserQuery::Ptr const& userQuery) {
+void MessageTable::_saveQueryMessages(ccontrol::UserQuery::Ptr const& userQuery) {
     if (not userQuery) {
         return;
     }
@@ -123,15 +117,16 @@ MessageTable::_saveQueryMessages(ccontrol::UserQuery::Ptr const& userQuery) {
 
     // copy all messages from query message store to a message table
     int msgCount = msgStore->messageCount();
-    for (int i = 0; i != msgCount; ++ i) {
+    for (int i = 0; i != msgCount; ++i) {
         const qdisp::QueryMessage& qm = msgStore->getMessage(i);
-        LOGS(_log, LOG_LVL_DEBUG, "Insert in message table: ["
-             << qm.description << ", " << qm.chunkId << ", " << qm.code
-             << ", " << qm.severity << ", " << qm.timestamp << "]");
+        LOGS(_log, LOG_LVL_DEBUG,
+             "Insert in message table: [" << qm.description << ", " << qm.chunkId << ", " << qm.code << ", "
+                                          << qm.severity << ", " << qm.timestamp << "]");
 
         char const* severity = (qm.severity == MSG_INFO ? "INFO" : "ERROR");
         std::string query = (boost::format(::writeTmpl) % _tableName % qm.chunkId % qm.code %
-            _sqlConn->escapeString(qm.description) % severity % qm.timestamp).str();
+                             _sqlConn->escapeString(qm.description) % severity % qm.timestamp)
+                                    .str();
         sql::SqlErrorObject sqlErr;
         if (not _sqlConn->runQuery(query, sqlErr)) {
             SqlError exc(ERR_LOC, "Failure updating message table", sqlErr);
@@ -141,4 +136,4 @@ MessageTable::_saveQueryMessages(ccontrol::UserQuery::Ptr const& userQuery) {
     }
 }
 
-}}} // namespace lsst::qserv::czar
+}}}  // namespace lsst::qserv::czar

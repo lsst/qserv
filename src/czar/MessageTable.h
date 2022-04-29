@@ -33,16 +33,11 @@
 #include "global/stringTypes.h"
 #include "mysql/MySqlConfig.h"
 
-
-namespace lsst {
-namespace qserv {
-namespace sql {
+namespace lsst { namespace qserv { namespace sql {
 class SqlConnection;
-}}}
+}}}  // namespace lsst::qserv::sql
 
-namespace lsst {
-namespace qserv {
-namespace czar {
+namespace lsst { namespace qserv { namespace czar {
 
 /// @addtogroup czar
 
@@ -53,9 +48,8 @@ namespace czar {
  *
  */
 
-class MessageTable  {
+class MessageTable {
 public:
-
     // Constructor takes table name including database name
     explicit MessageTable(std::string const& tableName, mysql::MySqlConfig const& resultConfig);
 
@@ -69,17 +63,14 @@ public:
     void unlock(ccontrol::UserQuery::Ptr const& userQuery);
 
 protected:
-
 private:
-
     /// store all messages from current session to the table
     void _saveQueryMessages(ccontrol::UserQuery::Ptr const& userQuery);
 
     std::string const _tableName;
     std::shared_ptr<sql::SqlConnection> _sqlConn;
-
 };
 
-}}} // namespace lsst::qserv::czar
+}}}  // namespace lsst::qserv::czar
 
-#endif // LSST_QSERV_CZAR_MESSAGETABLE_H
+#endif  // LSST_QSERV_CZAR_MESSAGETABLE_H

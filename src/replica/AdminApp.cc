@@ -39,118 +39,86 @@ using namespace std;
 
 namespace {
 
-string const description =
-    "This is a Controller application for launching worker management requests.";
+string const description = "This is a Controller application for launching worker management requests.";
 
 bool const injectDatabaseOptions = true;
 bool const boostProtobufVersionCheck = true;
 bool const enableServiceProvider = true;
 
-} /// namespace
+}  // namespace
 
+namespace lsst { namespace qserv { namespace replica {
 
-namespace lsst {
-namespace qserv {
-namespace replica {
-
-AdminApp::Ptr AdminApp::create(int argc, char* argv[]) {
-    return Ptr(new AdminApp(argc, argv));
-}
-
+AdminApp::Ptr AdminApp::create(int argc, char* argv[]) { return Ptr(new AdminApp(argc, argv)); }
 
 AdminApp::AdminApp(int argc, char* argv[])
-    :   Application(
-            argc, argv,
-            ::description,
-            ::injectDatabaseOptions,
-            ::boostProtobufVersionCheck,
-            ::enableServiceProvider
-        ) {
-
+        : Application(argc, argv, ::description, ::injectDatabaseOptions, ::boostProtobufVersionCheck,
+                      ::enableServiceProvider) {
     // Configure the command line parser
 
-    parser().commands(
-        "operation",
-        {"STATUS", "SUSPEND", "RESUME", "REQUESTS", "DRAIN"},
-        _operation
-    ).flag(
-        "all-workers",
-        "The flag for selecting all workers regardless of their status (DISABLED or READ-ONLY).",
-        _allWorkers
-    ).flag(
-        "progress-report",
-        "The flag triggering progress report when executing batches of requests.",
-        _progressReport
-    ).flag(
-        "error-report",
-        "The flag triggering detailed report on failed requests.",
-        _errorReport
-    ).flag(
-        "tables-vertical-separator",
-        "Print vertical separator when displaying tabular data in reports.",
-        _verticalSeparator);
+    parser().commands("operation", {"STATUS", "SUSPEND", "RESUME", "REQUESTS", "DRAIN"}, _operation)
+            .flag("all-workers",
+                  "The flag for selecting all workers regardless of their status (DISABLED or READ-ONLY).",
+                  _allWorkers)
+            .flag("progress-report",
+                  "The flag triggering progress report when executing batches of requests.", _progressReport)
+            .flag("error-report", "The flag triggering detailed report on failed requests.", _errorReport)
+            .flag("tables-vertical-separator",
+                  "Print vertical separator when displaying tabular data in reports.", _verticalSeparator);
 
-    parser().command("STATUS").description(
-        "Retrieve and display the status of each worker.");
+    parser().command("STATUS").description("Retrieve and display the status of each worker.");
 
     parser().command("SUSPEND").description(
-        "Suspend workers services on all workers. Cancel requests which are being processed"
-        " and put them back into the input queue. The operation won't affect requests"
-        " which have already completed.");
+            "Suspend workers services on all workers. Cancel requests which are being processed"
+            " and put them back into the input queue. The operation won't affect requests"
+            " which have already completed.");
 
-    parser().command("RESUME").description(
-        "Resume workers services on all workers");
+    parser().command("RESUME").description("Resume workers services on all workers");
 
-    parser().command("REQUESTS").description(
-        "Retrieve and display the information of all (regardless of their processing status)"
-        " requests from all workers."
-    ).flag(
-        "dump-request-info",
-        "Print detailed info on requests obtained from the workers.",
-        _dumpRequestInfo);
+    parser().command("REQUESTS")
+            .description(
+                    "Retrieve and display the information of all (regardless of their processing status)"
+                    " requests from all workers.")
+            .flag("dump-request-info", "Print detailed info on requests obtained from the workers.",
+                  _dumpRequestInfo);
 
     parser().command("DRAIN").description(
-        "Cancel the in-progress (if any) requests on all workers, then empty all queues.");
+            "Cancel the in-progress (if any) requests on all workers, then empty all queues.");
 }
 
-
 int AdminApp::runImpl() {
-
     auto controller = Controller::create(serviceProvider());
 
     // Launch requests against a collection of workers
 
     CommonRequestTracker<ServiceManagementRequestBase> tracker(cout, _progressReport, _errorReport);
 
-    auto const workers = _allWorkers ?
-        serviceProvider()->config()->allWorkers() :
-        serviceProvider()->config()->workers();
+    auto const workers =
+            _allWorkers ? serviceProvider()->config()->allWorkers() : serviceProvider()->config()->workers();
 
-    for (auto&& worker: workers) {
-
+    for (auto&& worker : workers) {
         if (_operation == "STATUS") {
             tracker.add(controller->statusOfWorkerService(
-                    worker, [&tracker] (ServiceStatusRequest::Ptr const& ptr) { tracker.onFinish(ptr); }));
+                    worker, [&tracker](ServiceStatusRequest::Ptr const& ptr) { tracker.onFinish(ptr); }));
 
         } else if (_operation == "SUSPEND") {
             tracker.add(controller->suspendWorkerService(
-                    worker, [&tracker] (ServiceSuspendRequest::Ptr const& ptr) { tracker.onFinish(ptr); }));
+                    worker, [&tracker](ServiceSuspendRequest::Ptr const& ptr) { tracker.onFinish(ptr); }));
 
         } else if (_operation == "RESUME") {
             tracker.add(controller->resumeWorkerService(
-                    worker, [&tracker] (ServiceResumeRequest::Ptr const& ptr) { tracker.onFinish(ptr); }));
+                    worker, [&tracker](ServiceResumeRequest::Ptr const& ptr) { tracker.onFinish(ptr); }));
 
         } else if (_operation == "REQUESTS") {
             tracker.add(controller->requestsOfWorkerService(
-                    worker, [&tracker] (ServiceRequestsRequest::Ptr const& ptr) { tracker.onFinish(ptr); }));
+                    worker, [&tracker](ServiceRequestsRequest::Ptr const& ptr) { tracker.onFinish(ptr); }));
 
         } else if (_operation == "DRAIN") {
             tracker.add(controller->drainWorkerService(
-                    worker, [&tracker] (ServiceDrainRequest::Ptr const& ptr) { tracker.onFinish(ptr); }));
+                    worker, [&tracker](ServiceDrainRequest::Ptr const& ptr) { tracker.onFinish(ptr); }));
 
         } else {
-            throw logic_error(
-                    "AdminApp::" + string(__func__) + "  unsupported operation: " + _operation);
+            throw logic_error("AdminApp::" + string(__func__) + "  unsupported operation: " + _operation);
         }
     }
 
@@ -167,78 +135,73 @@ int AdminApp::runImpl() {
     vector<string> numInProgressRequests;
     vector<string> numFinishedRequests;
 
-    for (auto const& ptr: tracker.requests) {
-
+    for (auto const& ptr : tracker.requests) {
         workerName.push_back(ptr->worker());
 
-        if ((ptr->state()         == Request::State::FINISHED) &&
+        if ((ptr->state() == Request::State::FINISHED) &&
             (ptr->extendedState() == Request::ExtendedState::SUCCESS)) {
-
-            startedSecondsAgo    .push_back(to_string((PerformanceUtils::now() - ptr->getServiceState().startTime) / 1000));
-            state                .push_back(                                     ptr->getServiceState().state2string());
-            numNewRequests       .push_back(to_string(                           ptr->getServiceState().numNewRequests));
-            numInProgressRequests.push_back(to_string(                           ptr->getServiceState().numInProgressRequests));
-            numFinishedRequests  .push_back(to_string(                           ptr->getServiceState().numFinishedRequests));
+            startedSecondsAgo.push_back(
+                    to_string((PerformanceUtils::now() - ptr->getServiceState().startTime) / 1000));
+            state.push_back(ptr->getServiceState().state2string());
+            numNewRequests.push_back(to_string(ptr->getServiceState().numNewRequests));
+            numInProgressRequests.push_back(to_string(ptr->getServiceState().numInProgressRequests));
+            numFinishedRequests.push_back(to_string(ptr->getServiceState().numFinishedRequests));
 
         } else {
-            startedSecondsAgo    .push_back("*");
-            state                .push_back("*");
-            numNewRequests       .push_back("*");
+            startedSecondsAgo.push_back("*");
+            state.push_back("*");
+            numNewRequests.push_back("*");
             numInProgressRequests.push_back("*");
-            numFinishedRequests  .push_back("*");
+            numFinishedRequests.push_back("*");
         }
     }
     util::ColumnTablePrinter tableWorkers("WORKERS:", "  ", _verticalSeparator);
 
-    tableWorkers.addColumn("worker",                workerName, util::ColumnTablePrinter::Alignment::LEFT);
+    tableWorkers.addColumn("worker", workerName, util::ColumnTablePrinter::Alignment::LEFT);
     tableWorkers.addColumn("started (seconds ago)", startedSecondsAgo);
-    tableWorkers.addColumn("state",                 state,      util::ColumnTablePrinter::Alignment::LEFT);
-    tableWorkers.addColumn("queued",                numNewRequests);
-    tableWorkers.addColumn("in-progress",           numInProgressRequests);
-    tableWorkers.addColumn("finished",              numFinishedRequests);
+    tableWorkers.addColumn("state", state, util::ColumnTablePrinter::Alignment::LEFT);
+    tableWorkers.addColumn("queued", numNewRequests);
+    tableWorkers.addColumn("in-progress", numInProgressRequests);
+    tableWorkers.addColumn("finished", numFinishedRequests);
 
     cout << "\n";
     tableWorkers.print(cout, false, false);
 
     if (_dumpRequestInfo) {
-
-        vector<string>   workerName;
-        vector<string>   requestId;
-        vector<string>   requestType;
-        vector<string>   queue;
+        vector<string> workerName;
+        vector<string> requestId;
+        vector<string> requestType;
+        vector<string> queue;
         vector<uint32_t> priority;
 
-        auto analyzeRemoteRequestInfo = [&](string const& worker,
-                                            string const& queueName,
+        auto analyzeRemoteRequestInfo = [&](string const& worker, string const& queueName,
                                             ProtocolServiceResponseInfo const& info) {
-            workerName      .push_back(worker);
-            requestId       .push_back(info.id());
-            requestType     .push_back(ProtocolQueuedRequestType_Name(info.queued_type()));
-            queue           .push_back(queueName);
-            priority        .push_back(info.priority());
+            workerName.push_back(worker);
+            requestId.push_back(info.id());
+            requestType.push_back(ProtocolQueuedRequestType_Name(info.queued_type()));
+            queue.push_back(queueName);
+            priority.push_back(info.priority());
         };
-        for (auto const& ptr: tracker.requests) {
-
-            if ((ptr->state()         == Request::State::FINISHED) &&
+        for (auto const& ptr : tracker.requests) {
+            if ((ptr->state() == Request::State::FINISHED) &&
                 (ptr->extendedState() == Request::ExtendedState::SUCCESS)) {
-
-                for (auto&& info: ptr->getServiceState().newRequests) {
+                for (auto&& info : ptr->getServiceState().newRequests) {
                     analyzeRemoteRequestInfo(ptr->worker(), "QUEUED", info);
                 }
-                for (auto&& info: ptr->getServiceState().inProgressRequests) {
+                for (auto&& info : ptr->getServiceState().inProgressRequests) {
                     analyzeRemoteRequestInfo(ptr->worker(), "IN-PROGRESS", info);
                 }
-                for (auto&& info: ptr->getServiceState().finishedRequests) {
+                for (auto&& info : ptr->getServiceState().finishedRequests) {
                     analyzeRemoteRequestInfo(ptr->worker(), "FINISHED", info);
                 }
             }
         }
         util::ColumnTablePrinter tableRequests("REQUESTS:", "  ", _verticalSeparator);
 
-        tableRequests.addColumn("worker",   workerName,  util::ColumnTablePrinter::Alignment::LEFT);
-        tableRequests.addColumn("id",       requestId,   util::ColumnTablePrinter::Alignment::LEFT);
-        tableRequests.addColumn("type",     requestType, util::ColumnTablePrinter::Alignment::LEFT);
-        tableRequests.addColumn("queue",    queue,       util::ColumnTablePrinter::Alignment::LEFT);
+        tableRequests.addColumn("worker", workerName, util::ColumnTablePrinter::Alignment::LEFT);
+        tableRequests.addColumn("id", requestId, util::ColumnTablePrinter::Alignment::LEFT);
+        tableRequests.addColumn("type", requestType, util::ColumnTablePrinter::Alignment::LEFT);
+        tableRequests.addColumn("queue", queue, util::ColumnTablePrinter::Alignment::LEFT);
         tableRequests.addColumn("priority", priority);
 
         cout << "\n";
@@ -247,4 +210,4 @@ int AdminApp::runImpl() {
     return 0;
 }
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica

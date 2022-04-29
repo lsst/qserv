@@ -36,45 +36,32 @@ using namespace std;
 
 namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.Messenger");
-} /// namespace
+}  // namespace
 
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
 Messenger::Ptr Messenger::create(ServiceProvider::Ptr const& serviceProvider,
                                  boost::asio::io_service& io_service) {
     return Messenger::Ptr(new Messenger(serviceProvider, io_service));
 }
 
-
-Messenger::Messenger(ServiceProvider::Ptr const& serviceProvider,
-                     boost::asio::io_service& io_service)
-    :   _serviceProvider(serviceProvider),
-        _io_service(io_service) {
-    for (auto&& worker: serviceProvider->config()->allWorkers()) {
+Messenger::Messenger(ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service)
+        : _serviceProvider(serviceProvider), _io_service(io_service) {
+    for (auto&& worker : serviceProvider->config()->allWorkers()) {
         _workerConnector[worker] = MessengerConnector::create(serviceProvider, io_service, worker);
         LOGS(_log, LOG_LVL_INFO, _context(worker) << "connector added");
     }
 }
 
-
 void Messenger::stop() {
-    for (auto&& entry: _workerConnector) {
+    for (auto&& entry : _workerConnector) {
         entry.second->stop();
     }
 }
 
+void Messenger::cancel(string const& worker, string const& id) { _connector(worker)->cancel(id); }
 
-void Messenger::cancel(string const& worker, string const& id) {
-    _connector(worker)->cancel(id);
-}
-
-
-bool Messenger::exists(string const& worker, string const& id) {
-    return _connector(worker)->exists(id);
-}
-
+bool Messenger::exists(string const& worker, string const& id) { return _connector(worker)->exists(id); }
 
 MessengerConnector::Ptr const& Messenger::_connector(string const& worker) {
     util::Lock lock(_mtx, _context(worker));
@@ -97,9 +84,6 @@ MessengerConnector::Ptr const& Messenger::_connector(string const& worker) {
     throw runtime_error(_context(worker) + "failed to register the connector.");
 }
 
+string Messenger::_context(string const& worker) { return "MESSENGER [worker=" + worker + "]  "; }
 
-string Messenger::_context(string const& worker) {
-    return "MESSENGER [worker=" + worker + "]  ";
-}
-
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica

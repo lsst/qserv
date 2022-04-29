@@ -27,20 +27,13 @@
 #include "global/stringTypes.h"
 #include "qana/QueryPlugin.h"
 
-
 // forward declarations
-namespace lsst {
-namespace qserv {
-namespace query {
-    class QueryContext;
-    class SelectStmt;
-}}} // end forward declarations
+namespace lsst { namespace qserv { namespace query {
+class QueryContext;
+class SelectStmt;
+}}}  // namespace lsst::qserv::query
 
-
-namespace lsst {
-namespace qserv {
-namespace qana {
-
+namespace lsst { namespace qserv { namespace qana {
 
 /// QservRestrictorPlugin replaces a qserv restrictor spec with directives
 /// that can be executed on a qserv mysqld. This plugin should be
@@ -62,8 +55,6 @@ public:
     std::string name() const override { return "QservRestrictorPlugin"; }
 };
 
-
-}}} // namespace lsst::qserv::qana
-
+}}}  // namespace lsst::qserv::qana
 
 #endif /* LSST_QSERV_QANA_QSERVRESTRICTORPLUGIN_H */

@@ -33,9 +33,7 @@
 #include "util/Mutex.h"
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
 /**
  * Class HealthMonitorTask represents a task which monitors a status of
@@ -43,14 +41,13 @@ namespace replica {
  * for eviction if they're not responding within the specified timeout.
  */
 class HealthMonitorTask : public Task {
-
 public:
-
     /// Delays (seconds) in getting responses from the worker services (both Qserv and
     /// the Replication system)
     typedef std::map<std::string,           // worker
                      std::map<std::string,  // service ('qserv', 'replication')
-                              unsigned int>> WorkerResponseDelay;
+                              unsigned int>>
+            WorkerResponseDelay;
 
     /// The pointer type for instances of the class
     typedef std::shared_ptr<HealthMonitorTask> Ptr;
@@ -108,16 +105,13 @@ public:
      */
     static Ptr create(Controller::Ptr const& controller,
                       Task::AbnormalTerminationCallbackType const& onTerminated,
-                      WorkerEvictCallbackType const& onWorkerEvictTimeout,
-                      unsigned int workerEvictTimeoutSec,
-                      unsigned int workerResponseTimeoutSec,
-                      unsigned int healthProbeIntervalSec);
+                      WorkerEvictCallbackType const& onWorkerEvictTimeout, unsigned int workerEvictTimeoutSec,
+                      unsigned int workerResponseTimeoutSec, unsigned int healthProbeIntervalSec);
 
     /// @return delays (seconds) in getting responses from the worker services
     WorkerResponseDelay workerResponseDelay() const;
 
 protected:
-
     /// @see Task::onStart()
     void onStart() final;
 
@@ -125,18 +119,15 @@ protected:
     bool onRun() final;
 
 private:
-
     /**
      * The constructor is available to the class's factory method
      *
      * @see HealthMonitorTask::create()
      */
     HealthMonitorTask(Controller::Ptr const& controller,
-                        Task::AbnormalTerminationCallbackType const& onTerminated,
-                        WorkerEvictCallbackType const& onWorkerEvictTimeout,
-                        unsigned int workerEvictTimeoutSec,
-                        unsigned int workerResponseTimeoutSec,
-                        unsigned int healthProbeIntervalSec);
+                      Task::AbnormalTerminationCallbackType const& onTerminated,
+                      WorkerEvictCallbackType const& onWorkerEvictTimeout, unsigned int workerEvictTimeoutSec,
+                      unsigned int workerResponseTimeoutSec, unsigned int healthProbeIntervalSec);
 
     /**
      * Log a persistent event on the started job
@@ -153,7 +144,6 @@ private:
      *   pointer to the job
      */
     void _logFinishedEvent(ClusterHealthJob::Ptr const& job) const;
-
 
     // Input parameters
 
@@ -176,7 +166,7 @@ private:
     /// Last time the workers response delays were updated
     uint64_t _prevUpdateTimeMs;
 };
-    
-}}} // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_HEALTHMONITORTASK_H
+}}}  // namespace lsst::qserv::replica
+
+#endif  // LSST_QSERV_HEALTHMONITORTASK_H

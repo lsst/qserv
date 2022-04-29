@@ -41,13 +41,10 @@
 #include <vector>
 #include <memory>
 
-namespace lsst {
-namespace qserv {
-namespace util {
-
+namespace lsst { namespace qserv { namespace util {
 
 template <typename T>
-bool ptrCompare(std::shared_ptr<T> const & lhs, std::shared_ptr<T> const & rhs) {
+bool ptrCompare(std::shared_ptr<T> const& lhs, std::shared_ptr<T> const& rhs) {
     if (lhs == nullptr && rhs == nullptr) {
         return true;
     }
@@ -60,10 +57,9 @@ bool ptrCompare(std::shared_ptr<T> const & lhs, std::shared_ptr<T> const & rhs) 
     return false;
 }
 
-
 template <typename T>
-bool vectorPtrCompare(std::vector<std::shared_ptr<T>> const & lhs,
-                      std::vector<std::shared_ptr<T>> const & rhs) {
+bool vectorPtrCompare(std::vector<std::shared_ptr<T>> const& lhs,
+                      std::vector<std::shared_ptr<T>> const& rhs) {
     if (lhs.size() != rhs.size()) {
         return false;
     }
@@ -73,10 +69,9 @@ bool vectorPtrCompare(std::vector<std::shared_ptr<T>> const & lhs,
     return false;
 }
 
-
 template <typename T>
-bool ptrVectorCompare(std::shared_ptr<std::vector<T>> const & lhs,
-                      std::shared_ptr<std::vector<T>> const & rhs) {
+bool ptrVectorCompare(std::shared_ptr<std::vector<T>> const& lhs,
+                      std::shared_ptr<std::vector<T>> const& rhs) {
     if (nullptr == lhs && nullptr == rhs) {
         return true;
     } else if (nullptr == lhs || nullptr == rhs) {
@@ -88,10 +83,9 @@ bool ptrVectorCompare(std::shared_ptr<std::vector<T>> const & lhs,
     return false;
 }
 
-
 template <typename T>
-bool ptrVectorPtrCompare(std::shared_ptr<std::vector<std::shared_ptr<T>>> const & lhs,
-                         std::shared_ptr<std::vector<std::shared_ptr<T>>> const & rhs) {
+bool ptrVectorPtrCompare(std::shared_ptr<std::vector<std::shared_ptr<T>>> const& lhs,
+                         std::shared_ptr<std::vector<std::shared_ptr<T>>> const& rhs) {
     if (nullptr == lhs && nullptr == rhs) {
         return true;
     } else if (nullptr == lhs || nullptr == rhs) {
@@ -100,10 +94,8 @@ bool ptrVectorPtrCompare(std::shared_ptr<std::vector<std::shared_ptr<T>>> const 
     return vectorPtrCompare<T>(*lhs, *rhs);
 }
 
-
 template <typename T>
-bool ptrDequeCompare(std::shared_ptr<std::deque<T>> const & lhs,
-                     std::shared_ptr<std::deque<T>> const & rhs) {
+bool ptrDequeCompare(std::shared_ptr<std::deque<T>> const& lhs, std::shared_ptr<std::deque<T>> const& rhs) {
     if (nullptr == lhs && nullptr == rhs) {
         return true;
     } else if (nullptr == lhs || nullptr == rhs) {
@@ -115,26 +107,17 @@ bool ptrDequeCompare(std::shared_ptr<std::deque<T>> const & lhs,
     return false;
 }
 
-
 template <typename T>
-struct Compare
-{
+struct Compare {
     using is_transparent = void;
 
-    bool operator() (std::shared_ptr<T> const & a, std::shared_ptr<T> const & b) const {
-        return *a < *b;
-    }
+    bool operator()(std::shared_ptr<T> const& a, std::shared_ptr<T> const& b) const { return *a < *b; }
 
-    bool operator() (std::shared_ptr<T> const & a, int b) const {
-        return *a < b;
-    }
+    bool operator()(std::shared_ptr<T> const& a, int b) const { return *a < b; }
 
-    bool operator() (int a, std::shared_ptr<T> const & b) const {
-        return a < *b;
-    }
+    bool operator()(int a, std::shared_ptr<T> const& b) const { return a < *b; }
 };
 
+}}}  // namespace lsst::qserv::util
 
-}}} // namespace lsst::qserv::util
-
-#endif // LSST_QSERV_UTIL_POINTER_COMPARE_H
+#endif  // LSST_QSERV_UTIL_POINTER_COMPARE_H

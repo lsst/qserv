@@ -46,67 +46,37 @@ namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.FindAllRequest");
 
-} /// namespace
+}  // namespace
 
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
 FindAllRequest::Ptr FindAllRequest::create(ServiceProvider::Ptr const& serviceProvider,
-                                           boost::asio::io_service& io_service,
-                                           string const& worker,
-                                           string const& database,
-                                           bool saveReplicaInfo,
-                                           CallbackType const& onFinish,
-                                           int priority,
-                                           bool keepTracking,
+                                           boost::asio::io_service& io_service, string const& worker,
+                                           string const& database, bool saveReplicaInfo,
+                                           CallbackType const& onFinish, int priority, bool keepTracking,
                                            shared_ptr<Messenger> const& messenger) {
-    return FindAllRequest::Ptr(new FindAllRequest(serviceProvider,
-        io_service,
-        worker,
-        database,
-        saveReplicaInfo,
-        onFinish,
-        priority,
-        keepTracking,
-        messenger
-    ));
+    return FindAllRequest::Ptr(new FindAllRequest(serviceProvider, io_service, worker, database,
+                                                  saveReplicaInfo, onFinish, priority, keepTracking,
+                                                  messenger));
 }
 
-
 FindAllRequest::FindAllRequest(ServiceProvider::Ptr const& serviceProvider,
-                               boost::asio::io_service& io_service,
-                               string const& worker,
-                               string const& database,
-                               bool saveReplicaInfo,
-                               CallbackType const& onFinish,
-                               int priority,
-                               bool keepTracking,
-                               shared_ptr<Messenger> const& messenger)
-    :   RequestMessenger(serviceProvider,
-                         io_service,
-                         "REPLICA_FIND_ALL",
-                         worker,
-                         priority,
-                         keepTracking,
-                         false, // allowDuplicate
-                         true,  // disposeRequired
-                         messenger),
-        _database(database),
-        _saveReplicaInfo(saveReplicaInfo),
-        _onFinish(onFinish) {
-
+                               boost::asio::io_service& io_service, string const& worker,
+                               string const& database, bool saveReplicaInfo, CallbackType const& onFinish,
+                               int priority, bool keepTracking, shared_ptr<Messenger> const& messenger)
+        : RequestMessenger(serviceProvider, io_service, "REPLICA_FIND_ALL", worker, priority, keepTracking,
+                           false,  // allowDuplicate
+                           true,   // disposeRequired
+                           messenger),
+          _database(database),
+          _saveReplicaInfo(saveReplicaInfo),
+          _onFinish(onFinish) {
     Request::serviceProvider()->config()->assertDatabaseIsValid(database);
 }
 
-
-const ReplicaInfoCollection& FindAllRequest::responseData() const {
-    return _replicaInfoCollection;
-}
-
+const ReplicaInfoCollection& FindAllRequest::responseData() const { return _replicaInfoCollection; }
 
 void FindAllRequest::startImpl(util::Lock const& lock) {
-
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     // Serialize the Request message header and the request itself into
@@ -132,9 +102,7 @@ void FindAllRequest::startImpl(util::Lock const& lock) {
     _send(lock);
 }
 
-
 void FindAllRequest::awaken(boost::system::error_code const& ec) {
-
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     if (isAborted(ec)) return;
@@ -166,20 +134,16 @@ void FindAllRequest::awaken(boost::system::error_code const& ec) {
     _send(lock);
 }
 
-
 void FindAllRequest::_send(util::Lock const& lock) {
     auto self = shared_from_base<FindAllRequest>();
     messenger()->send<ProtocolResponseFindAll>(
-        worker(), id(), priority(), buffer(),
-        [self] (string const& id, bool success, ProtocolResponseFindAll const& response) {
-            self->_analyze(success, response);
-        }
-    );
+            worker(), id(), priority(), buffer(),
+            [self](string const& id, bool success, ProtocolResponseFindAll const& response) {
+                self->_analyze(success, response);
+            });
 }
 
-
 void FindAllRequest::_analyze(bool success, ProtocolResponseFindAll const& message) {
-
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  success=" << (success ? "true" : "false"));
 
     // This method is called on behalf of an asynchronous callback fired
@@ -220,11 +184,10 @@ void FindAllRequest::_analyze(bool success, ProtocolResponseFindAll const& messa
         _targetRequestParams = FindAllRequestParams(message.request());
     }
     switch (message.status()) {
-
         case ProtocolStatus::SUCCESS:
             if (saveReplicaInfo()) {
-                serviceProvider()->databaseServices()->saveReplicaInfoCollection(
-                        worker(), database(), _replicaInfoCollection);
+                serviceProvider()->databaseServices()->saveReplicaInfoCollection(worker(), database(),
+                                                                                 _replicaInfoCollection);
             }
             finish(lock, SUCCESS);
             break;
@@ -258,28 +221,24 @@ void FindAllRequest::_analyze(bool success, ProtocolResponseFindAll const& messa
             break;
 
         default:
-            throw logic_error(
-                    "FindAllRequest::" + string(__func__) + " unknown status '" +
-                    ProtocolStatus_Name(message.status()) + "' received from server");
+            throw logic_error("FindAllRequest::" + string(__func__) + " unknown status '" +
+                              ProtocolStatus_Name(message.status()) + "' received from server");
     }
 }
-
 
 void FindAllRequest::notify(util::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
     notifyDefaultImpl<FindAllRequest>(lock, _onFinish);
 }
 
-
 void FindAllRequest::savePersistentState(util::Lock const& lock) {
     controller()->serviceProvider()->databaseServices()->saveState(*this, performance(lock));
 }
 
-
-list<pair<string,string>> FindAllRequest::extendedPersistentState() const {
-    list<pair<string,string>> result;
+list<pair<string, string>> FindAllRequest::extendedPersistentState() const {
+    list<pair<string, string>> result;
     result.emplace_back("database", database());
     return result;
 }
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica

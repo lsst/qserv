@@ -35,16 +35,13 @@
 #include "replica/DeleteReplicaJob.h"
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
 /**
  * Structure MoveReplicaJobResult represents a combined result received
  * from worker services upon a completion of the job.
  */
 struct MoveReplicaJobResult {
-
     /// Results reported by workers upon the successful completion
     /// of the new replica creation requests
     std::list<ReplicaInfo> createdReplicas;
@@ -61,14 +58,12 @@ struct MoveReplicaJobResult {
 };
 
 /**
-  * Class MoveReplicaJob represents a tool which will move a chunk replica
-  * from a source worker to some other (destination) worker. The input replica
-  * may be deleted if requested.
-  */
-class MoveReplicaJob : public Job  {
-
+ * Class MoveReplicaJob represents a tool which will move a chunk replica
+ * from a source worker to some other (destination) worker. The input replica
+ * may be deleted if requested.
+ */
+class MoveReplicaJob : public Job {
 public:
-
     /// The pointer type for instances of the class
     typedef std::shared_ptr<MoveReplicaJob> Ptr;
 
@@ -113,15 +108,9 @@ public:
      * @return
      *   pointer to the created object
      */
-    static Ptr create(std::string const& databaseFamily,
-                      unsigned int chunk,
-                      std::string const& sourceWorker,
-                      std::string const& destinationWorker,
-                      bool purge,
-                      Controller::Ptr const& controller,
-                      std::string const& parentJobId,
-                      CallbackType const& onFinish,
-                      int priority);
+    static Ptr create(std::string const& databaseFamily, unsigned int chunk, std::string const& sourceWorker,
+                      std::string const& destinationWorker, bool purge, Controller::Ptr const& controller,
+                      std::string const& parentJobId, CallbackType const& onFinish, int priority);
 
     // Default construction and copy semantics are prohibited
 
@@ -168,13 +157,12 @@ public:
     MoveReplicaJobResult const& getReplicaData() const;
 
     /// @see Job::extendedPersistentState()
-    std::list<std::pair<std::string,std::string>> extendedPersistentState() const final;
+    std::list<std::pair<std::string, std::string>> extendedPersistentState() const final;
 
     /// @see Job::persistentLogData()
-    std::list<std::pair<std::string,std::string>> persistentLogData() const final;
+    std::list<std::pair<std::string, std::string>> persistentLogData() const final;
 
 protected:
-
     /// @see Job::startImpl()
     void startImpl(util::Lock const& lock) final;
 
@@ -185,17 +173,10 @@ protected:
     void notify(util::Lock const& lock) final;
 
 private:
-
     /// @see MoveReplicaJob::create()
-    MoveReplicaJob(std::string const& databaseFamily,
-                   unsigned int chunk,
-                   std::string const& sourceWorker,
-                   std::string const& destinationWorker,
-                   bool purge,
-                   Controller::Ptr const& controller,
-                   std::string const& parentJobId,
-                   CallbackType const& onFinish,
-                   int priority);
+    MoveReplicaJob(std::string const& databaseFamily, unsigned int chunk, std::string const& sourceWorker,
+                   std::string const& destinationWorker, bool purge, Controller::Ptr const& controller,
+                   std::string const& parentJobId, CallbackType const& onFinish, int priority);
 
     /**
      * The callback function to be invoked on a completion of the replica
@@ -209,15 +190,14 @@ private:
      */
     void _onDeleteJobFinish();
 
-
     // Input parameters
 
-    std::string  const _databaseFamily;
+    std::string const _databaseFamily;
     unsigned int const _chunk;
-    std::string  const _sourceWorker;
-    std::string  const _destinationWorker;
-    bool         const _purge;
-    CallbackType       _onFinish;       /// @note is reset when the job finishes
+    std::string const _sourceWorker;
+    std::string const _destinationWorker;
+    bool const _purge;
+    CallbackType _onFinish;  /// @note is reset when the job finishes
 
     /// The chained job implementing the first stage of the move
     CreateReplicaJob::Ptr _createReplicaJob;
@@ -229,6 +209,6 @@ private:
     MoveReplicaJobResult _replicaData;
 };
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_MOVEREPLICAJOB_H
+#endif  // LSST_QSERV_REPLICA_MOVEREPLICAJOB_H

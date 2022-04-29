@@ -21,11 +21,10 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 /**
-  * @file
-  *
-  * @author Daniel L. Wang, SLAC
-  */
-
+ * @file
+ *
+ * @author Daniel L. Wang, SLAC
+ */
 
 #ifndef LSST_QSERV_QUERY_SELECTLIST_H
 #define LSST_QSERV_QUERY_SELECTLIST_H
@@ -39,23 +38,16 @@
 #include "query/ColumnRef.h"
 #include "query/ValueExpr.h"
 
-
 // Forward declarations
-namespace lsst {
-namespace qserv {
-namespace query {
-    class ColumnRefNodeMap;
-    class ColumnAliasMap;
-    class QueryTemplate;
-    class BoolTerm;
-    class GroupByClause;
-}}} // End of forward declarations
+namespace lsst { namespace qserv { namespace query {
+class ColumnRefNodeMap;
+class ColumnAliasMap;
+class QueryTemplate;
+class BoolTerm;
+class GroupByClause;
+}}}  // namespace lsst::qserv::query
 
-
-namespace lsst {
-namespace qserv {
-namespace query {
-
+namespace lsst { namespace qserv { namespace query {
 
 /// SelectList is the SELECT... portion of a SELECT...FROM...
 /// SelectList contains a list of the ValueExprs that are representative of the
@@ -67,8 +59,7 @@ public:
     SelectList() : _valueExprList(std::make_shared<ValueExprPtrVector>()) {}
 
     // Construct a SelectList that owns the given vector of ValueExpr.
-    SelectList(std::shared_ptr<ValueExprPtrVector> valueExprList)
-    : _valueExprList(valueExprList) {}
+    SelectList(std::shared_ptr<ValueExprPtrVector> valueExprList) : _valueExprList(valueExprList) {}
 
     ~SelectList() {}
 
@@ -85,9 +76,7 @@ public:
     std::shared_ptr<SelectList> copySyntax();
 
     // non-const accessor for query manipulation.
-    std::shared_ptr<ValueExprPtrVector> getValueExprList() const {
-        return _valueExprList;
-    }
+    std::shared_ptr<ValueExprPtrVector> getValueExprList() const { return _valueExprList; }
 
     bool operator==(const SelectList& rhs);
 
@@ -98,7 +87,6 @@ private:
     std::shared_ptr<ValueExprPtrVector> _valueExprList;
 };
 
+}}}  // namespace lsst::qserv::query
 
-}}} // namespace lsst::qserv::query
-
-#endif // LSST_QSERV_QUERY_SELECTLIST_H
+#endif  // LSST_QSERV_QUERY_SELECTLIST_H

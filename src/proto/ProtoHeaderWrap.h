@@ -23,13 +23,13 @@
 
 #ifndef LSST_QSERV_PROTO_PROTO_HEADER_WRAP_H
 #define LSST_QSERV_PROTO_PROTO_HEADER_WRAP_H
- /**
-  * @file
-  *
-  * @brief Wrap the google protocol header in a fixed size container.
-  *
-  * @author John Gates, SLAC
-  */
+/**
+ * @file
+ *
+ * @brief Wrap the google protocol header in a fixed size container.
+ *
+ * @author John Gates, SLAC
+ */
 
 // System headers
 #include <memory>
@@ -38,23 +38,21 @@
 #include "proto/ProtoImporter.h"
 #include "proto/WorkerResponse.h"
 
-namespace lsst {
-namespace qserv {
-namespace proto {
+namespace lsst { namespace qserv { namespace proto {
 
 class ProtoHeaderWrap {
 public:
     static const size_t PROTO_HEADER_SIZE;
     static const size_t PROTOBUFFER_HARD_LIMIT;
     static const size_t PROTOBUFFER_DESIRED_LIMIT;
-    ProtoHeaderWrap() {};
-    virtual ~ProtoHeaderWrap() {};
+    ProtoHeaderWrap(){};
+    virtual ~ProtoHeaderWrap(){};
 
     static std::string wrap(std::string const& protoHeaderString);
     static bool unwrap(std::shared_ptr<WorkerResponse>& response, std::vector<char>& buffer);
     static size_t getProtoHeaderSize();
 };
 
-}}} // end namespace
+}}}  // namespace lsst::qserv::proto
 
 #endif

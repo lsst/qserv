@@ -20,11 +20,11 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-  /**
-  *
-  * @brief Simple testing for QueryPlugin implementations
-  *
-  */
+/**
+ *
+ * @brief Simple testing for QueryPlugin implementations
+ *
+ */
 
 // System headers
 #include <fstream>
@@ -49,7 +49,6 @@
 #include "query/TestFactory.h"
 #include "util/IterableFormatter.h"
 
-
 // Boost unit test header
 #define BOOST_TEST_MODULE QueryPlugins_1
 #include "boost/test/data/test_case.hpp"
@@ -64,12 +63,11 @@ using lsst::qserv::query::SelectStmt;
 using lsst::qserv::query::TestFactory;
 using namespace lsst::qserv;
 
-
 struct TestFixture {
     TestFixture(void) : metaSession(0) {
         // To learn how to dump the map, see qserv/core/css/KvInterfaceImplMem.cc
         // Use admin/examples/testMap_generateMap
-        std::string kvMapPath = "./core/modules/qana/testPlugins.kvmap"; // FIXME
+        std::string kvMapPath = "./core/modules/qana/testPlugins.kvmap";  // FIXME
         std::ifstream stream(kvMapPath);
         css = lsst::qserv::css::CssAccess::createFromStream(stream, ".");
     }
@@ -81,13 +79,11 @@ struct TestFixture {
     int metaSession;
 };
 
-
 BOOST_FIXTURE_TEST_SUITE(Suite, TestFixture)
 
-
 struct OrderByQueryAndExpectedColumns {
-    OrderByQueryAndExpectedColumns(std::string const & q, query::ColumnRef::Vector c)
-    : query(q), expectedColumns(c) {}
+    OrderByQueryAndExpectedColumns(std::string const& q, query::ColumnRef::Vector c)
+            : query(q), expectedColumns(c) {}
 
     std::string query;
     query::ColumnRef::Vector expectedColumns;
@@ -103,44 +99,39 @@ std::ostream& operator<<(std::ostream& os, OrderByQueryAndExpectedColumns const&
 
 static const std::vector<OrderByQueryAndExpectedColumns> QUERIES = {
         OrderByQueryAndExpectedColumns("SELECT bar from my_table",
-                {std::make_shared<query::ColumnRef>("", "", "bar")}),
+                                       {std::make_shared<query::ColumnRef>("", "", "bar")}),
 
         // note, don't use the column name inside a function; it must be aliased to be usable.
         OrderByQueryAndExpectedColumns("SELECT foo.bar, some_func(baz) from my_table",
-                {std::make_shared<query::ColumnRef>("", "foo", "bar")}),
+                                       {std::make_shared<query::ColumnRef>("", "foo", "bar")}),
 
         OrderByQueryAndExpectedColumns("SELECT some_func(boz) as foo from my_table",
-                {std::make_shared<query::ColumnRef>("", "", "foo")}),
+                                       {std::make_shared<query::ColumnRef>("", "", "foo")}),
 
         OrderByQueryAndExpectedColumns("SELECT foo.bar.baz from my_table",
-                {std::make_shared<query::ColumnRef>("foo", "bar", "baz")})
-};
-
+                                       {std::make_shared<query::ColumnRef>("foo", "bar", "baz")})};
 
 bool columnRefPtrComparisonPredicate(query::ColumnRef::Ptr lhs, query::ColumnRef::Ptr rhs) {
     return *lhs == *rhs;
 }
 
-
 static const std::vector<OrderByQueryAndExpectedColumns> ORDER_BY_QUERIES = {
         OrderByQueryAndExpectedColumns("SELECT foo ORDER BY bar",
-                {std::make_shared<query::ColumnRef>("", "", "bar")}),
+                                       {std::make_shared<query::ColumnRef>("", "", "bar")}),
 
         OrderByQueryAndExpectedColumns("SELECT some_func(boz) as foo from my_table ORDER BY foo",
-                {std::make_shared<query::ColumnRef>("", "", "foo")}),
+                                       {std::make_shared<query::ColumnRef>("", "", "foo")}),
 
         OrderByQueryAndExpectedColumns("SELECT foo.bar.baz from my_table ORDER BY foo.bar.baz",
-                {std::make_shared<query::ColumnRef>("foo", "bar", "baz")})
-};
-
+                                       {std::make_shared<query::ColumnRef>("foo", "bar", "baz")})};
 
 struct ColumnDifferenceData {
     ColumnDifferenceData(query::ColumnRef::Vector a, query::ColumnRef::Vector r, bool p)
-    : available(a), required(r), pass(p)  {}
+            : available(a), required(r), pass(p) {}
 
     query::ColumnRef::Vector available;
     query::ColumnRef::Vector required;
-    bool pass; // if the test should pass; i.e. the available columns should satisfy the required columns.
+    bool pass;  // if the test should pass; i.e. the available columns should satisfy the required columns.
 };
 
 std::ostream& operator<<(std::ostream& os, ColumnDifferenceData const& self) {
@@ -150,7 +141,6 @@ std::ostream& operator<<(std::ostream& os, ColumnDifferenceData const& self) {
     os << ")";
     return os;
 }
-
 
 BOOST_AUTO_TEST_CASE(Exceptions) {
     // Should throw an Analysis error, because columnref is invalid.
@@ -179,6 +169,5 @@ BOOST_AUTO_TEST_CASE(DuplicateSelectExpr) {
     qp->prepare();
     BOOST_CHECK_THROW(qp->applyLogical(*stmt, *qc), AnalysisError);
 }
-
 
 BOOST_AUTO_TEST_SUITE_END()

@@ -32,9 +32,7 @@
 #include "sql/SqlConnection.h"
 #include "sql/SqlErrorObject.h"
 
-namespace lsst {
-namespace qserv {
-namespace sql {
+namespace lsst { namespace qserv { namespace sql {
 
 /// @addtogroup sql
 
@@ -52,9 +50,8 @@ namespace sql {
  *  added.
  */
 
-class SqlBulkInsert  {
+class SqlBulkInsert {
 public:
-
     /**
      *  Instantiate inserter object.
      *
@@ -62,9 +59,7 @@ public:
      *  @param table: Tnble name
      *  @param columns: List of column names
      */
-    SqlBulkInsert(SqlConnection* conn,
-                  std::string const& table,
-                  std::vector<std::string> const& columns);
+    SqlBulkInsert(SqlConnection* conn, std::string const& table, std::vector<std::string> const& columns);
 
     /**
      *  Insert one more row
@@ -90,19 +85,17 @@ public:
     bool flush(SqlErrorObject& errObj);
 
 protected:
-
 private:
-
     // Data members
     SqlConnection* _conn;
-    unsigned long _maxSize;     ///< Max. allowed buffer size
-    std::string _insert;   ///< INSERT ... (columns) VALUES
-    std::string _buffer;   ///< Buffer for query
+    unsigned long _maxSize;  ///< Max. allowed buffer size
+    std::string _insert;     ///< INSERT ... (columns) VALUES
+    std::string _buffer;     ///< Buffer for query
 
     SqlBulkInsert(SqlBulkInsert const&) = delete;
     SqlBulkInsert& operator=(SqlBulkInsert const&) = delete;
 };
 
-}}} // namespace lsst::qserv::sql
+}}}  // namespace lsst::qserv::sql
 
-#endif // LSST_QSERV_SQL_SQLBULKINSERT_H
+#endif  // LSST_QSERV_SQL_SQLBULKINSERT_H

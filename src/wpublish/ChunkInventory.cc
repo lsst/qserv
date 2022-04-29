@@ -53,14 +53,9 @@ namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.wpublish.ChunkInventory");
 
-
-
 /// get a list of published databases
 template <class C>
-void fetchDbs(string const& instanceName,
-              SqlConnection& sc,
-              C& dbs) {
-
+void fetchDbs(string const& instanceName, SqlConnection& sc, C& dbs) {
     string const query = "SELECT db FROM qservw_" + instanceName + ".Dbs";
 
     shared_ptr<SqlResultIter> resultP;
@@ -73,7 +68,8 @@ void fetchDbs(string const& instanceName,
         assert(resultP.get());
         if (resultP->getErrorObject().isSet()) {
             SqlErrorObject& seo = resultP->getErrorObject();
-            LOGS(_log, LOG_LVL_WARN, "Waiting to get list of publishable dbs: " << seo.errNo() << ": " << seo.errMsg());
+            LOGS(_log, LOG_LVL_WARN,
+                 "Waiting to get list of publishable dbs: " << seo.errNo() << ": " << seo.errMsg());
             this_thread::sleep_for(1s);
         } else {
             break;
@@ -81,21 +77,16 @@ void fetchDbs(string const& instanceName,
     }
 
     bool nothing = true;
-    for(; !resultP->done(); ++(*resultP)) {
+    for (; !resultP->done(); ++(*resultP)) {
         dbs.push_back((**resultP)[0]);
         nothing = false;
     }
-    if (nothing)
-        LOGS(_log, LOG_LVL_WARN, "ChunkInventory couldn't find databases to export");
+    if (nothing) LOGS(_log, LOG_LVL_WARN, "ChunkInventory couldn't find databases to export");
 }
 
-
 /// Fetch a list of chunks published for a database
-void fetchChunks(string const& instanceName,
-                 string const& db,
-                 SqlConnection& sc,
+void fetchChunks(string const& instanceName, string const& db, SqlConnection& sc,
                  ChunkInventory::ChunkMap& chunkMap) {
-
     string const query = "SELECT db,chunk FROM qservw_" + instanceName + ".Chunks WHERE db='" + db + "'";
 
     LOGS(_log, LOG_LVL_DEBUG, "Launching query: " << query);
@@ -110,21 +101,16 @@ void fetchChunks(string const& instanceName,
         return;
     }
     bool nothing = true;
-    for(; !resultP->done(); ++(*resultP)) {
+    for (; !resultP->done(); ++(*resultP)) {
         int const chunk = stoi((**resultP)[1]);
         chunkMap.insert(chunk);
         nothing = false;
     }
-    if (nothing)
-        LOGS(_log, LOG_LVL_WARN, "ChunkInventory couldn't find any published chunks for db: " << db);
+    if (nothing) LOGS(_log, LOG_LVL_WARN, "ChunkInventory couldn't find any published chunks for db: " << db);
 }
 
-
 /// Fetch a unique identifier of a worker
-void fetchId(string const& instanceName,
-             SqlConnection& sc,
-             string& id) {
-
+void fetchId(string const& instanceName, SqlConnection& sc, string& id) {
     // Look for the newest one
     // FIXME: perhaps we should allow multiple identifiers?
     string const query = "SELECT id FROM qservw_" + instanceName + ".Id WHERE `type`='UUID'";
@@ -140,57 +126,43 @@ void fetchId(string const& instanceName,
         LOGS(_log, LOG_LVL_ERROR, seo.printErrMsg());
         return;
     }
-    for(; !resultP->done(); ++(*resultP)) {
+    for (; !resultP->done(); ++(*resultP)) {
         id = (**resultP)[0];
         return;
     }
     LOGS(_log, LOG_LVL_WARN, "ChunkInventory couldn't find any a unique identifier of the worker");
 }
 
-
 class Validator : public lsst::qserv::ResourceUnit::Checker {
 public:
     Validator(lsst::qserv::wpublish::ChunkInventory& c) : chunkInventory(c) {}
     virtual bool operator()(lsst::qserv::ResourceUnit const& ru) {
         switch (ru.unitType()) {
-            case lsst::qserv::ResourceUnit::DBCHUNK: return chunkInventory.has(ru.db(), ru.chunk());
-            case lsst::qserv::ResourceUnit::WORKER:  return chunkInventory.id() == ru.hashName();
-            default: return false;
+            case lsst::qserv::ResourceUnit::DBCHUNK:
+                return chunkInventory.has(ru.db(), ru.chunk());
+            case lsst::qserv::ResourceUnit::WORKER:
+                return chunkInventory.id() == ru.hashName();
+            default:
+                return false;
         }
     }
     lsst::qserv::wpublish::ChunkInventory& chunkInventory;
 };
 
-} // anonymous namespace
+}  // anonymous namespace
 
+namespace lsst { namespace qserv { namespace wpublish {
 
+ChunkInventory::ChunkInventory(string const& name, shared_ptr<SqlConnection> sc) : _name(name) { _init(*sc); }
 
-namespace lsst {
-namespace qserv {
-namespace wpublish {
-
-ChunkInventory::ChunkInventory(string const& name,
-                               shared_ptr<SqlConnection> sc)
-    : _name(name) {
-    _init(*sc);
-}
-
-
-ChunkInventory::ChunkInventory(ChunkInventory::ExistMap const& existMap,
-                               string const& name,
-                               string const& id)
-    :   _existMap(existMap),
-        _name(name),
-        _id(id) {
-}
-
+ChunkInventory::ChunkInventory(ChunkInventory::ExistMap const& existMap, string const& name, string const& id)
+        : _existMap(existMap), _name(name), _id(id) {}
 
 void ChunkInventory::init(string const& name, mysql::MySqlConfig const& mySqlConfig) {
     _name = name;
     auto sc = SqlConnectionFactory::make(mySqlConfig);
     _init(*sc);
 }
-
 
 void ChunkInventory::rebuild(string const& name, mysql::MySqlConfig const& mySqlConfig) {
     _name = name;
@@ -199,9 +171,7 @@ void ChunkInventory::rebuild(string const& name, mysql::MySqlConfig const& mySql
     _init(*sc);
 }
 
-
 void ChunkInventory::add(string const& db, int chunk) {
-
     lock_guard<mutex> lock(_mtx);
 
     LOGS(_log, LOG_LVL_DEBUG, "ChunkInventory::add()  db: " << db << ", chunk: " << chunk);
@@ -209,12 +179,9 @@ void ChunkInventory::add(string const& db, int chunk) {
     // Adding unconditionally. if the database key doesn't exist then it will
     // be automatically added by this operation.
     _existMap[db].insert(chunk);
-
 }
 
-
 void ChunkInventory::add(string const& db, int chunk, mysql::MySqlConfig const& mySqlConfig) {
-
     lock_guard<mutex> lock(_mtx);
 
     LOGS(_log, LOG_LVL_DEBUG, "ChunkInventory::add()  db: " << db << ", chunk: " << chunk);
@@ -233,10 +200,10 @@ void ChunkInventory::add(string const& db, int chunk, mysql::MySqlConfig const& 
     }
 
     vector<string> const queries = {
-        "DELETE FROM qservw_" + _name + ".Chunks WHERE db='" + db + "' AND chunk=" + to_string(chunk),
-        "INSERT INTO qservw_" + _name + ".Chunks (db,chunk) VALUES ('" + db + "'," + to_string(chunk) +")"
-    };
-    for (auto const& query: queries) {
+            "DELETE FROM qservw_" + _name + ".Chunks WHERE db='" + db + "' AND chunk=" + to_string(chunk),
+            "INSERT INTO qservw_" + _name + ".Chunks (db,chunk) VALUES ('" + db + "'," + to_string(chunk) +
+                    ")"};
+    for (auto const& query : queries) {
         LOGS(_log, LOG_LVL_DEBUG, "Launching query:\n" << query);
 
         SqlErrorObject seo;
@@ -252,9 +219,7 @@ void ChunkInventory::add(string const& db, int chunk, mysql::MySqlConfig const& 
     _existMap[db].insert(chunk);
 }
 
-
 void ChunkInventory::remove(string const& db, int chunk) {
-
     lock_guard<mutex> lock(_mtx);
 
     LOGS(_log, LOG_LVL_DEBUG, "ChunkInventory::remove()  db: " << db << ", chunk: " << chunk);
@@ -265,27 +230,24 @@ void ChunkInventory::remove(string const& db, int chunk) {
     auto dbItr = _existMap.find(db);
     if (dbItr == _existMap.end()) return;
 
-    auto chunks   = dbItr->second;
+    auto chunks = dbItr->second;
     auto chunkItr = chunks.find(chunk);
     if (chunkItr == chunks.end()) return;
 
     _existMap[db].erase(chunk);
 }
 
-
 void ChunkInventory::remove(string const& db, int chunk, mysql::MySqlConfig const& mySqlConfig) {
-
     lock_guard<mutex> lock(_mtx);
 
     LOGS(_log, LOG_LVL_DEBUG, "ChunkInventory::remove()  db: " << db << ", chunk: " << chunk);
 
-    vector<string> const queries = {
-        "DELETE FROM qservw_" + _name + ".Chunks WHERE db='" + db + "' AND chunk=" + to_string(chunk)
-    };
+    vector<string> const queries = {"DELETE FROM qservw_" + _name + ".Chunks WHERE db='" + db +
+                                    "' AND chunk=" + to_string(chunk)};
 
     auto sc = SqlConnectionFactory::make(mySqlConfig);
 
-    for (auto const& query: queries) {
+    for (auto const& query : queries) {
         LOGS(_log, LOG_LVL_DEBUG, "Launching query:\n" << query);
 
         SqlErrorObject seo;
@@ -302,53 +264,44 @@ void ChunkInventory::remove(string const& db, int chunk, mysql::MySqlConfig cons
     auto dbItr = _existMap.find(db);
     if (dbItr == _existMap.end()) return;
 
-    auto chunks   = dbItr->second;
+    auto chunks = dbItr->second;
     auto chunkItr = chunks.find(chunk);
     if (chunkItr == chunks.end()) return;
 
     _existMap[db].erase(chunk);
 }
 
-
 bool ChunkInventory::has(string const& db, int chunk) const {
-
     lock_guard<mutex> lock(_mtx);
 
     auto dbItr = _existMap.find(db);
     if (dbItr == _existMap.end()) return false;
 
-    auto const& chunks   = dbItr->second;
-    auto        chunkItr = chunks.find(chunk);
+    auto const& chunks = dbItr->second;
+    auto chunkItr = chunks.find(chunk);
     if (chunkItr == chunks.end()) return false;
 
     return true;
 }
 
-
 shared_ptr<ResourceUnit::Checker> ChunkInventory::newValidator() {
     return shared_ptr<ResourceUnit::Checker>(new Validator(*this));
 }
 
-
 void ChunkInventory::dbgPrint(ostream& os) const {
-
     lock_guard<mutex> lock(_mtx);
 
     os << "ChunkInventory(";
-    for(auto dbItr      = _existMap.begin(),
-             dbItrBegin = _existMap.begin(),
-             dbItrEnd   = _existMap.end(); dbItr != dbItrEnd; ++dbItr) {
-
+    for (auto dbItr = _existMap.begin(), dbItrBegin = _existMap.begin(), dbItrEnd = _existMap.end();
+         dbItr != dbItrEnd; ++dbItr) {
         if (dbItr != dbItrBegin) os << endl;
 
-        auto const& db     = dbItr->first;
+        auto const& db = dbItr->first;
         auto const& chunks = dbItr->second;
 
         os << "db: " << db << ", chunks: [";
-        for (auto chunkItr      = chunks.begin(),
-                  chunkItrBegin = chunks.begin(),
-                  chunkItrEnd   = chunks.end(); chunkItr != chunkItrEnd; ++chunkItr) {
-
+        for (auto chunkItr = chunks.begin(), chunkItrBegin = chunks.begin(), chunkItrEnd = chunks.end();
+             chunkItr != chunkItrEnd; ++chunkItr) {
             if (chunkItr != chunkItrBegin) os << ",";
 
             auto const& chunk = *chunkItr;
@@ -359,9 +312,7 @@ void ChunkInventory::dbgPrint(ostream& os) const {
     os << ")";
 }
 
-
 void ChunkInventory::_init(SqlConnection& sc) {
-
     lock_guard<mutex> lock(_mtx);
 
     // Check metadata for databases to track
@@ -371,44 +322,40 @@ void ChunkInventory::_init(SqlConnection& sc) {
 
     // get chunkList
     _existMap.clear();
-    for (string const& db: dbs)
-        ::fetchChunks(_name, db, sc, _existMap[db]);
+    for (string const& db : dbs) ::fetchChunks(_name, db, sc, _existMap[db]);
 
     // get unique identifier of a worker
     ::fetchId(_name, sc, _id);
 }
 
-
 void ChunkInventory::_rebuild(SqlConnection& sc) {
-
     lock_guard<mutex> lock(_mtx);
 
     vector<string> const queries = {
-        "DELETE FROM qservw_" + _name + ".Chunks",
-        "INSERT INTO qservw_" + _name + ".Chunks"
-        "  SELECT DISTINCT TABLE_SCHEMA,SUBSTRING_INDEX(TABLE_NAME,'_',-1)"
-        "    FROM information_schema.tables"
-        "    WHERE TABLE_SCHEMA IN (SELECT db FROM qservw_" + _name + ".Dbs)"
-        "          AND TABLE_NAME REGEXP '_[0-9]*$'"
-    };
+            "DELETE FROM qservw_" + _name + ".Chunks",
+            "INSERT INTO qservw_" + _name +
+                    ".Chunks"
+                    "  SELECT DISTINCT TABLE_SCHEMA,SUBSTRING_INDEX(TABLE_NAME,'_',-1)"
+                    "    FROM information_schema.tables"
+                    "    WHERE TABLE_SCHEMA IN (SELECT db FROM qservw_" +
+                    _name +
+                    ".Dbs)"
+                    "          AND TABLE_NAME REGEXP '_[0-9]*$'"};
 
-    for (auto const& query: queries) {
+    for (auto const& query : queries) {
         LOGS(_log, LOG_LVL_DEBUG, "Launching query: " << query);
 
         SqlErrorObject seo;
         if (not sc.runQuery(query, seo)) {
-            string const error =
-                "ChunkInventory failed to rebuild a list of published chunks, error: " +
-                seo.printErrMsg();
+            string const error = "ChunkInventory failed to rebuild a list of published chunks, error: " +
+                                 seo.printErrMsg();
             LOGS(_log, LOG_LVL_ERROR, error);
             throw QueryError(error);
         }
     }
 }
 
-
 ChunkInventory::ExistMap ChunkInventory::existMap() const {
-
     ChunkInventory::ExistMap result;
 
     lock_guard<mutex> lock(_mtx);
@@ -420,9 +367,7 @@ ChunkInventory::ExistMap ChunkInventory::existMap() const {
     return result;
 }
 
-
 ChunkInventory::ExistMap operator-(ChunkInventory const& lhs, ChunkInventory const& rhs) {
-
     // The comparision will be made based on two self-consistent copies of
     // the maps obtained by calling the thread-safe accessor methods.
 
@@ -430,17 +375,16 @@ ChunkInventory::ExistMap operator-(ChunkInventory const& lhs, ChunkInventory con
     ChunkInventory::ExistMap const rhs_existMap = rhs.existMap();
     ChunkInventory::ExistMap result;
 
-    for (auto&& entry: lhs_existMap) {
+    for (auto&& entry : lhs_existMap) {
         string const& db = entry.first;
         ChunkInventory::ChunkMap const& chunks = entry.second;
         if (rhs_existMap.count(db)) {
-            for (int chunk: chunks)
-                if (not rhs_existMap.at(db).count(chunk))
-                    result[db].insert(chunk);   // this chunk was missing
+            for (int chunk : chunks)
+                if (not rhs_existMap.at(db).count(chunk)) result[db].insert(chunk);  // this chunk was missing
         } else
-            result[db] = chunks;    // the whole database was missing
+            result[db] = chunks;  // the whole database was missing
     }
     return result;
 }
 
-}}} // lsst::qserv::wpublish
+}}}  // namespace lsst::qserv::wpublish

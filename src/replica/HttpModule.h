@@ -34,28 +34,23 @@
 #include "replica/HttpProcessorConfig.h"
 
 // Forward declarations
-namespace lsst {
-namespace qserv {
+namespace lsst { namespace qserv {
 namespace css {
-    class CssAccess;
+class CssAccess;
 }
-namespace replica {
-namespace database {
-namespace mysql {
-    class Connection;
-}}}}} // Forward declarations
+namespace replica { namespace database { namespace mysql {
+class Connection;
+}}}  // namespace replica::database::mysql
+}}   // namespace lsst::qserv
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
 /**
  * Class HttpModule is a base class for requests processing modules
  * of an HTTP server built into the Master Replication Controller.
  */
-class HttpModule: public EventLogger,
-                  public HttpModuleBase {
+class HttpModule : public EventLogger, public HttpModuleBase {
 public:
     HttpModule() = delete;
     HttpModule(HttpModule const&) = delete;
@@ -65,17 +60,15 @@ public:
 
 protected:
     /**
-     * 
+     *
      * @param controller       The Controller provides the network I/O services (BOOST ASIO)
      * @param taskName         The name of a task in a context of the Master Replication Controller
      * @param processorConfig  Shared parameters of the HTTP services
      * @param req              The HTTP request
      * @param resp             The HTTP response channel
      */
-    HttpModule(Controller::Ptr const& controller,
-               std::string const& taskName,
-               HttpProcessorConfig const& processorConfig,
-               qhttp::Request::Ptr const& req,
+    HttpModule(Controller::Ptr const& controller, std::string const& taskName,
+               HttpProcessorConfig const& processorConfig, qhttp::Request::Ptr const& req,
                qhttp::Response::Ptr const& resp);
 
     unsigned int workerResponseTimeoutSec() const { return _processorConfig.workerResponseTimeoutSec; }
@@ -91,13 +84,13 @@ protected:
 
     /// @param readOnly The open mode for the connection.
     /// @return A connection object for operations with Qserv CSS.
-    std::shared_ptr<css::CssAccess> qservCssAccess(bool readOnly=false) const;
+    std::shared_ptr<css::CssAccess> qservCssAccess(bool readOnly = false) const;
 
     /**
      * Fetch a mode of building the "secondary index" as requested by a catalog
      * ingest workflow and recorded at the database creation time. A value of
      * the parameter is recorded in a database.
-     * 
+     *
      * @param database The name of a database for which a value of the parameter
      *   is requested.
      * @return 'true' if the index was requested to be built automatically w/o any
@@ -109,7 +102,7 @@ protected:
      * Fetch a mode of loading contributions into the "secondary index" as requested by
      * a catalog ingest workflow and recorded at the database creation time. A value of
      * the parameter is recorded in a database.
-     * 
+     *
      * @param database The name of a database for which a value of the parameter
      *   is requested.
      * @return 'true' if the index was requested to be loaded using MySQL protocol
@@ -133,12 +126,12 @@ protected:
      * @throw HttpError If the database is already "published" and a value of
      *   the parameter 'throwIfPublished' is set to 'true'.
      */
-    DatabaseInfo getDatabaseInfo(std::string const& func, bool throwIfPublished=true) const;
+    DatabaseInfo getDatabaseInfo(std::string const& func, bool throwIfPublished = true) const;
 
 private:
     HttpProcessorConfig const _processorConfig;
 };
-    
-}}} // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_HTTPMODULE_H
+}}}  // namespace lsst::qserv::replica
+
+#endif  // LSST_QSERV_HTTPMODULE_H

@@ -21,10 +21,8 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-
 #ifndef LSST_QSERV_QUERY_BOOLFACTORTERM_H
 #define LSST_QSERV_QUERY_BOOLFACTORTERM_H
-
 
 // System headers
 #include <memory>
@@ -38,19 +36,13 @@
 #include "query/typedefs.h"
 
 // Forward declarations
-namespace lsst {
-namespace qserv {
-namespace query {
-    class QueryTemplate;
-    class ColumnRef;
-    class ValueExpr;
-}}} // End of forward declarations
+namespace lsst { namespace qserv { namespace query {
+class QueryTemplate;
+class ColumnRef;
+class ValueExpr;
+}}}  // namespace lsst::qserv::query
 
-
-namespace lsst {
-namespace qserv {
-namespace query {
-
+namespace lsst { namespace qserv { namespace query {
 
 /// BoolFactorTerm is a term in a in a BoolFactor
 class BoolFactorTerm {
@@ -98,7 +90,6 @@ protected:
     virtual void dbgPrint(std::ostream& os) const = 0;
 };
 
+}}}  // namespace lsst::qserv::query
 
-}}} // namespace lsst::qserv::query
-
-#endif // LSST_QSERV_QUERY_BOOLFACTORTERM_H
+#endif  // LSST_QSERV_QUERY_BOOLFACTORTERM_H

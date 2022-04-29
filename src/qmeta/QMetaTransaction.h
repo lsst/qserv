@@ -30,10 +30,7 @@
 #include "sql/SqlErrorObject.h"
 #include "sql/SqlTransactionScope.h"
 
-
-namespace lsst {
-namespace qserv {
-namespace qmeta {
+namespace lsst { namespace qserv { namespace qmeta {
 
 /// @addtogroup qmeta
 
@@ -45,7 +42,7 @@ namespace qmeta {
  *  This wrapper generates exceptions when errors happen
  *  during calls to SqlTransaction instance.
  */
-class QMetaTransaction : public sql::SqlTransactionScope  {
+class QMetaTransaction : public sql::SqlTransactionScope {
 public:
     using Ptr = std::shared_ptr<QMetaTransaction>;
 
@@ -53,16 +50,16 @@ public:
         return sql::SqlTransactionScope::create<QMetaTransaction>(conn);
     }
 
-    ~QMetaTransaction() override {};
+    ~QMetaTransaction() override{};
 
     void throwException(util::Issue::Context const& ctx, std::string const& msg) override;
 
     friend sql::SqlTransactionScope;
+
 private:
     QMetaTransaction(sql::SqlConnection& conn) : sql::SqlTransactionScope(conn) {}
-
 };
 
-}}} // namespace lsst::qserv::qmeta
+}}}  // namespace lsst::qserv::qmeta
 
-#endif // LSST_QSERV_QMETA_QMETATRANSACTION_H
+#endif  // LSST_QSERV_QMETA_QMETATRANSACTION_H

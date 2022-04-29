@@ -29,9 +29,7 @@
 #include "replica/Common.h"
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
 /**
  * Class AbortTransactionApp implements a tool which aborts a transaction by dropping
@@ -51,11 +49,11 @@ public:
      */
     static Ptr create(int argc, char* argv[]);
 
-    AbortTransactionApp()=delete;
-    AbortTransactionApp(AbortTransactionApp const&)=delete;
-    AbortTransactionApp& operator=(AbortTransactionApp const&)=delete;
+    AbortTransactionApp() = delete;
+    AbortTransactionApp(AbortTransactionApp const&) = delete;
+    AbortTransactionApp& operator=(AbortTransactionApp const&) = delete;
 
-    ~AbortTransactionApp() override=default;
+    ~AbortTransactionApp() override = default;
 
 protected:
     int runImpl() final;
@@ -68,6 +66,6 @@ private:
     unsigned int _reportLevel = 0;
 };
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica
 
 #endif /* LSST_QSERV_REPLICA_ABORTTRANSACTIONAPP_H */

@@ -25,16 +25,14 @@
 #include "replica/Application.h"
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
 /**
  * Class ClusterHealthApp probes and reports a status of the Replication system's
  * and Qserv workers to see if they respond within the specified (or implied)
  * timeout.
  */
-class ClusterHealthApp: public Application {
+class ClusterHealthApp : public Application {
 public:
     typedef std::shared_ptr<ClusterHealthApp> Ptr;
 
@@ -47,11 +45,11 @@ public:
      */
     static Ptr create(int argc, char* argv[]);
 
-    ClusterHealthApp()=delete;
-    ClusterHealthApp(ClusterHealthApp const&)=delete;
-    ClusterHealthApp& operator=(ClusterHealthApp const&)=delete;
+    ClusterHealthApp() = delete;
+    ClusterHealthApp(ClusterHealthApp const&) = delete;
+    ClusterHealthApp& operator=(ClusterHealthApp const&) = delete;
 
-    ~ClusterHealthApp() override=default;
+    ~ClusterHealthApp() override = default;
 
 protected:
     /// @see Application::runImpl()
@@ -66,6 +64,6 @@ private:
     bool _allWorkers = false;
 };
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica
 
 #endif /* LSST_QSERV_REPLICA_CLUSTERHEALTHAPP_H */

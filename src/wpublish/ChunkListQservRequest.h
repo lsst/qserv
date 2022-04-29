@@ -31,32 +31,28 @@
 // Qserv headers
 #include "wpublish/QservRequest.h"
 
-namespace lsst {
-namespace qserv {
-namespace wpublish {
+namespace lsst { namespace qserv { namespace wpublish {
 
 /**
  * Class ChunkListQservRequest the base class for client-side requests
  * the Qserv worker services affecting chunk lists.
  */
 class ChunkListQservRequest : public QservRequest {
-
 public:
-
     /// Completion status of the operation
     enum Status {
-        SUCCESS,    // successful completion of a request
-        ERROR       // an error occured during command execution
+        SUCCESS,  // successful completion of a request
+        ERROR     // an error occured during command execution
     };
 
     /// @return string representation of a status
-    static std::string status2str (Status status);
+    static std::string status2str(Status status);
 
     /// Struct Chunk a value type encapsulating a chunk number and the name
     /// of a database
     struct Chunk {
         unsigned int chunk;
-        std::string  database;
+        std::string database;
     };
 
     /// The ChunkCollection type represents a collection of chunks
@@ -64,11 +60,10 @@ public:
 
     /// The callback function type to be used for notifications on
     /// the operation completion.
-    using CallbackType =
-        std::function<void(Status,                      // completion status
-                           std::string const&,          // error message
-                           ChunkCollection const&,      // chunks added   (if success)
-                           ChunkCollection const&)>;    // chunks removed (if success)
+    using CallbackType = std::function<void(Status,                    // completion status
+                                            std::string const&,        // error message
+                                            ChunkCollection const&,    // chunks added   (if success)
+                                            ChunkCollection const&)>;  // chunks removed (if success)
 
     // Default construction and copy semantics are prohibited
     ChunkListQservRequest() = delete;
@@ -78,16 +73,13 @@ public:
     ~ChunkListQservRequest() override;
 
 protected:
-
     /**
      * @param rebuild   rebuild the list from actual database tables
      * @param reload    reload the list in worker's memory
      * @param onFinish  optional callback function to be called upon the completion
      *                  (successful or not) of the request.
      */
-     ChunkListQservRequest(bool rebuild,
-                           bool reload,
-                           CallbackType onFinish = nullptr);
+    ChunkListQservRequest(bool rebuild, bool reload, CallbackType onFinish = nullptr);
 
     void onRequest(proto::FrameBuffer& buf) override;
 
@@ -96,7 +88,6 @@ protected:
     void onError(std::string const& error) override;
 
 private:
-
     // Parameters of the object
 
     bool _rebuild;
@@ -104,15 +95,12 @@ private:
     CallbackType _onFinish;
 };
 
-
 /**
  * Class ReloadChunkListQservRequest implements a client-side request to
  * the Qserv worker management services.
  */
 class ReloadChunkListQservRequest : public ChunkListQservRequest {
-
 public:
-
     /// The pointer type for instances of the class
     typedef std::shared_ptr<ReloadChunkListQservRequest> Ptr;
 
@@ -124,7 +112,7 @@ public:
      * @param onFinish  optional callback function to be called upon the completion
      *                  (successful or not) of the request.
      */
-    static Ptr create(CallbackType onFinish=nullptr);
+    static Ptr create(CallbackType onFinish = nullptr);
 
     // Default construction and copy semantics are prohibited
     ReloadChunkListQservRequest() = delete;
@@ -134,23 +122,19 @@ public:
     ~ReloadChunkListQservRequest() override = default;
 
 protected:
-
     /**
      * @param onFinish optional callback function to be called upon the completion
      *                 (successful or not) of the request.
      */
-     ReloadChunkListQservRequest(CallbackType onFinish);
+    ReloadChunkListQservRequest(CallbackType onFinish);
 };
-
 
 /**
  * Class RebuildChunkListQservRequest implements a client-side request to
  * the Qserv worker management services.
  */
 class RebuildChunkListQservRequest : public ChunkListQservRequest {
-
 public:
-
     /// The pointer type for instances of the class
     typedef std::shared_ptr<RebuildChunkListQservRequest> Ptr;
 
@@ -163,8 +147,7 @@ public:
      * @param onFinish  optional callback function to be called upon the completion
      *                  (successful or not) of the request.
      */
-    static Ptr create(bool reload,
-                      CallbackType onFinish=nullptr);
+    static Ptr create(bool reload, CallbackType onFinish = nullptr);
 
     // Default construction and copy semantics are prohibited
     RebuildChunkListQservRequest() = delete;
@@ -174,16 +157,14 @@ public:
     ~RebuildChunkListQservRequest() override = default;
 
 protected:
-
     /**
      * @param reload    reload the list in worker's memory
      * @param onFinish  optional callback function to be called upon the completion
      *                  (successful or not) of the request.
      */
-    RebuildChunkListQservRequest(bool reload,
-                                 CallbackType onFinish);
+    RebuildChunkListQservRequest(bool reload, CallbackType onFinish);
 };
 
-}}} // namespace lsst::qserv::wpublish
+}}}  // namespace lsst::qserv::wpublish
 
-#endif // LSST_QSERV_WPUBLISH_CHUNK_LIST_QSERV_REQUEST_H
+#endif  // LSST_QSERV_WPUBLISH_CHUNK_LIST_QSERV_REQUEST_H

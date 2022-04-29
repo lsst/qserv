@@ -26,9 +26,7 @@
 #include <string>
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
 /**
  * Class Url is a helper class for parsing and validating URLs.
@@ -36,9 +34,7 @@ namespace replica {
 class Url {
 public:
     /// Types of resources
-    enum Scheme {
-        FILE, HTTP, HTTPS
-    };
+    enum Scheme { FILE, HTTP, HTTPS };
 
     // Default construction is prohibited to avoid extra complexity in managing
     // a "valid" state of the resource object.
@@ -89,8 +85,7 @@ private:
      * @param msg An optional message to be appended by the output
      * @return A string which starts with a scope and includes the optional message.
      */
-    static std::string _error(std::string const& func,
-                              std::string const& msg=std::string());
+    static std::string _error(std::string const& func, std::string const& msg = std::string());
 
     /**
      * Translate and validate the URL stored in attribute _url.
@@ -110,11 +105,11 @@ private:
     std::string _filePath;  ///< local path to a file
 
     // The HTTP and HTTPS schemes only
-    std::string _host;          ///< the host name
-    std::uint16_t _port = 0;    ///< the port number if any found in the url
-    std::string _target;        ///< the target part of the url
+    std::string _host;        ///< the host name
+    std::uint16_t _port = 0;  ///< the port number if any found in the url
+    std::string _target;      ///< the target part of the url
 };
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_URL_H
+#endif  // LSST_QSERV_URL_H

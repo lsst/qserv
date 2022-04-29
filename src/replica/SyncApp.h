@@ -25,16 +25,14 @@
 #include "replica/Application.h"
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
 /**
  * Class SyncApp implements a tool which synchronizes
  * collections of chunks at the Qserv workers with what the Replication
  * system sees as "good" chunks in the data directories.
  */
-class SyncApp: public Application {
+class SyncApp : public Application {
 public:
     typedef std::shared_ptr<SyncApp> Ptr;
 
@@ -47,11 +45,11 @@ public:
      */
     static Ptr create(int argc, char* argv[]);
 
-    SyncApp()=delete;
-    SyncApp(SyncApp const&)=delete;
-    SyncApp& operator=(SyncApp const&)=delete;
+    SyncApp() = delete;
+    SyncApp(SyncApp const&) = delete;
+    SyncApp& operator=(SyncApp const&) = delete;
 
-    ~SyncApp() final=default;
+    ~SyncApp() final = default;
 
 protected:
     /// @see Application::runImpl()
@@ -69,6 +67,6 @@ private:
     bool _force = false;
 };
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica
 
 #endif /* LSST_QSERV_REPLICA_SYNCAPP_H */

@@ -21,7 +21,6 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-
 // Class header
 #include "query/NullPredicate.h"
 
@@ -33,11 +32,7 @@
 #include "query/QueryTemplate.h"
 #include "query/ValueExpr.h"
 
-
-namespace lsst {
-namespace qserv {
-namespace query {
-
+namespace lsst { namespace qserv { namespace query {
 
 void NullPredicate::findColumnRefs(std::vector<std::shared_ptr<ColumnRef>>& vector) const {
     if (value) {
@@ -45,35 +40,27 @@ void NullPredicate::findColumnRefs(std::vector<std::shared_ptr<ColumnRef>>& vect
     }
 }
 
-
-std::ostream& NullPredicate::putStream(std::ostream& os) const {
-    return QueryTemplate::renderDbg(os, *this);
-}
-
+std::ostream& NullPredicate::putStream(std::ostream& os) const { return QueryTemplate::renderDbg(os, *this); }
 
 void NullPredicate::renderTo(QueryTemplate& qt) const {
     ValueExpr::render r(qt, false);
     r.applyToQT(value);
     qt.append("IS");
-    if (hasNot) { qt.append("NOT"); }
+    if (hasNot) {
+        qt.append("NOT");
+    }
     qt.append("NULL");
 }
-
 
 void NullPredicate::findValueExprs(std::vector<std::shared_ptr<ValueExpr>>& vector) const {
     vector.push_back(value);
 }
 
-
-void NullPredicate::findValueExprRefs(ValueExprPtrRefVector& vector) {
-    vector.push_back(value);
-}
-
+void NullPredicate::findValueExprRefs(ValueExprPtrRefVector& vector) { vector.push_back(value); }
 
 BoolFactorTerm::Ptr NullPredicate::clone() const {
     return std::make_shared<NullPredicate>(((nullptr != value) ? value->clone() : nullptr), hasNot);
 }
-
 
 void NullPredicate::dbgPrint(std::ostream& os) const {
     os << "NullPredicate(";
@@ -82,15 +69,12 @@ void NullPredicate::dbgPrint(std::ostream& os) const {
     os << ")";
 }
 
-
 bool NullPredicate::operator==(BoolFactorTerm const& rhs) const {
-    auto rhsNullPredicate = dynamic_cast<NullPredicate const *>(&rhs);
+    auto rhsNullPredicate = dynamic_cast<NullPredicate const*>(&rhs);
     if (nullptr == rhsNullPredicate) {
         return false;
     }
-    return hasNot == rhsNullPredicate->hasNot &&
-           util::ptrCompare<ValueExpr>(value, rhsNullPredicate->value);
+    return hasNot == rhsNullPredicate->hasNot && util::ptrCompare<ValueExpr>(value, rhsNullPredicate->value);
 }
 
-
-}}} // namespace lsst::qserv::query
+}}}  // namespace lsst::qserv::query

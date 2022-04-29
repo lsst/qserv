@@ -21,7 +21,6 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-
 // Class header
 #include "qana/QueryMapping.h"
 
@@ -40,24 +39,19 @@
 #include "qproc/ChunkSpec.h"
 #include "query/QueryTemplate.h"
 
-
-
 namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.query.QueryMapping");
 
 }
 
-namespace lsst {
-namespace qserv {
-namespace qana {
-
+namespace lsst { namespace qserv { namespace qana {
 
 std::string const replace(std::string const& s, std::string const& pat, std::string const& value) {
     std::string result;
     size_t i = 0;
     result.reserve(s.size() + value.size());
-    while(true) {
+    while (true) {
         size_t j = s.find(pat, i);
         result.append(s, i, j - i);
         if (j == std::string::npos) {
@@ -71,9 +65,8 @@ std::string const replace(std::string const& s, std::string const& pat, std::str
 
 class Mapping : public query::QueryTemplate::EntryMapping {
 public:
-
     Mapping(QueryMapping::ParameterMap const& m, qproc::ChunkSpec const& s)
-        : _subChunks(s.subChunks.begin(), s.subChunks.end()) {
+            : _subChunks(s.subChunks.begin(), s.subChunks.end()) {
         _chunkString = boost::lexical_cast<std::string>(s.chunkId);
         if (!_subChunks.empty()) {
             _subChunkString = boost::lexical_cast<std::string>(_subChunks.front());
@@ -92,37 +85,37 @@ public:
         auto newE = std::make_shared<query::QueryTemplate::StringEntry>(e.getValue());
 
         // FIXME see if this works
-        //if (!e.isDynamic()) {return newE; }
+        // if (!e.isDynamic()) {return newE; }
 
-        for(auto i=_replaceItems.begin(); i != _replaceItems.end(); ++i) {
+        for (auto i = _replaceItems.begin(); i != _replaceItems.end(); ++i) {
             newE->s = replace(newE->s, i->pattern, i->target);
         }
         return newE;
     }
     bool valid() const {
-        return _subChunkString.empty()
-            || (!_subChunkString.empty() && !_subChunks.empty());
+        return _subChunkString.empty() || (!_subChunkString.empty() && !_subChunks.empty());
     }
+
 private:
     inline void _initMap(QueryMapping::ParameterMap const& m) {
         QueryMapping::ParameterMap::const_iterator i;
-        for(i = m.begin(); i != m.end(); ++i) {
+        for (i = m.begin(); i != m.end(); ++i) {
             _replaceItems.push_back(MapTuple(i->first, lookup(i->second), i->second));
         }
     }
 
     inline std::string lookup(QueryMapping::Parameter const& p) const {
-        switch(p) {
-        case QueryMapping::INVALID:
-            return "INVALID";
-        case QueryMapping::CHUNK:
-            return _chunkString;
-        case QueryMapping::SUBCHUNK:
-            return _subChunkString;
-        case QueryMapping::HTM1:
-            throw std::range_error("HTM unimplemented");
-        default:
-            throw std::range_error("Unknown mapping parameter");
+        switch (p) {
+            case QueryMapping::INVALID:
+                return "INVALID";
+            case QueryMapping::CHUNK:
+                return _chunkString;
+            case QueryMapping::SUBCHUNK:
+                return _subChunkString;
+            case QueryMapping::HTM1:
+                throw std::range_error("HTM unimplemented");
+            default:
+                throw std::range_error("Unknown mapping parameter");
         }
     }
     void _nextSubChunk() {
@@ -136,10 +129,8 @@ private:
     std::deque<int> _subChunks;
 
     struct MapTuple {
-        MapTuple(std::string const& pattern,
-                 std::string const& target,
-                 QueryMapping::Parameter p)
-            : pattern(pattern), target(target), paramType(p) {}
+        MapTuple(std::string const& pattern, std::string const& target, QueryMapping::Parameter p)
+                : pattern(pattern), target(target), paramType(p) {}
         std::string pattern;
         std::string target;
         QueryMapping::Parameter paramType;
@@ -159,21 +150,18 @@ std::string QueryMapping::apply(qproc::ChunkSpec const& s, query::QueryTemplate 
     return str;
 }
 
-
 std::string QueryMapping::apply(qproc::ChunkSpecSingle const& s, query::QueryTemplate const& t) const {
     Mapping m(_subs, s);
     std::string str = t.generate(m);
     return str;
 }
 
-
-bool
-QueryMapping::hasParameter(Parameter p) const {
+bool QueryMapping::hasParameter(Parameter p) const {
     ParameterMap::const_iterator i;
-    for(i=_subs.begin(); i != _subs.end(); ++i) {
+    for (i = _subs.begin(); i != _subs.end(); ++i) {
         if (i->second == p) return true;
     }
     return false;
 }
 
-}}} // namespace lsst::qserv::qana
+}}}  // namespace lsst::qserv::qana

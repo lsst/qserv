@@ -33,10 +33,10 @@
 
 // Qserv headers
 #include "replica/AddReplicaQservMgtRequest.h"
-#include "replica/Common.h"            // Generators::uniqueId()
+#include "replica/Common.h"  // Generators::uniqueId()
 #include "replica/Configuration.h"
 #include "replica/DatabaseServices.h"
-#include "replica/Performance.h"       // PerformanceUtils::now()
+#include "replica/Performance.h"  // PerformanceUtils::now()
 #include "replica/QservMgtServices.h"
 #include "replica/RemoveReplicaQservMgtRequest.h"
 #include "replica/ServiceProvider.h"
@@ -53,96 +53,90 @@ namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.Job");
 
-} /// namespace
+}  // namespace
 
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
 atomic<size_t> Job::_numClassInstances(0);
 
-
 string Job::state2string(State state) {
     switch (state) {
-        case CREATED:     return "CREATED";
-        case IN_PROGRESS: return "IN_PROGRESS";
-        case FINISHED:    return "FINISHED";
+        case CREATED:
+            return "CREATED";
+        case IN_PROGRESS:
+            return "IN_PROGRESS";
+        case FINISHED:
+            return "FINISHED";
     }
-    throw logic_error(
-                "incomplete implementation of method Job::state2string(State)");
+    throw logic_error("incomplete implementation of method Job::state2string(State)");
 }
-
 
 string Job::state2string(ExtendedState state) {
     switch (state) {
-        case NONE:               return "NONE";
-        case SUCCESS:            return "SUCCESS";
-        case CONFIG_ERROR:       return "CONFIG_ERROR";
-        case FAILED:             return "FAILED";
-        case QSERV_FAILED:       return "QSERV_FAILED";
-        case QSERV_CHUNK_IN_USE: return "QSERV_CHUNK_IN_USE";
-        case BAD_RESULT:         return "BAD_RESULT";
-        case TIMEOUT_EXPIRED:    return "TIMEOUT_EXPIRED";
-        case CANCELLED:          return "CANCELLED";
+        case NONE:
+            return "NONE";
+        case SUCCESS:
+            return "SUCCESS";
+        case CONFIG_ERROR:
+            return "CONFIG_ERROR";
+        case FAILED:
+            return "FAILED";
+        case QSERV_FAILED:
+            return "QSERV_FAILED";
+        case QSERV_CHUNK_IN_USE:
+            return "QSERV_CHUNK_IN_USE";
+        case BAD_RESULT:
+            return "BAD_RESULT";
+        case TIMEOUT_EXPIRED:
+            return "TIMEOUT_EXPIRED";
+        case CANCELLED:
+            return "CANCELLED";
     }
     throw logic_error("Job::" + string(__func__) + "  incomplete implementation of method");
 }
 
+json Job::Progress::toJson() const { return json::object({{"complete", complete}, {"total", total}}); }
 
-json Job::Progress::toJson() const {
-    return json::object({{"complete", complete}, {"total", total}});
-}
-
-
-Job::Job(Controller::Ptr const& controller, string const& parentJobId,
-         string const& type, int priority)
-    :   _id(Generators::uniqueId()),
-        _controller(controller),
-        _parentJobId(parentJobId),
-        _type(type),
-        _priority(priority),
-        _state(State::CREATED),
-        _extendedState(ExtendedState::NONE),
-        _beginTime(0),
-        _endTime(0),
-        _heartbeatTimerIvalSec(controller->serviceProvider()->config()->get<unsigned int>(
-                "controller", "job-heartbeat-sec")),
-        _expirationIvalSec(controller->serviceProvider()->config()->get<unsigned int>(
-                "controller", "job-timeout-sec")) {
-
+Job::Job(Controller::Ptr const& controller, string const& parentJobId, string const& type, int priority)
+        : _id(Generators::uniqueId()),
+          _controller(controller),
+          _parentJobId(parentJobId),
+          _type(type),
+          _priority(priority),
+          _state(State::CREATED),
+          _extendedState(ExtendedState::NONE),
+          _beginTime(0),
+          _endTime(0),
+          _heartbeatTimerIvalSec(controller->serviceProvider()->config()->get<unsigned int>(
+                  "controller", "job-heartbeat-sec")),
+          _expirationIvalSec(controller->serviceProvider()->config()->get<unsigned int>("controller",
+                                                                                        "job-timeout-sec")) {
     // This report is used solely for debugging purposes to allow tracking
     // potential memory leaks within applications.
     ++_numClassInstances;
     LOGS(_log, LOG_LVL_DEBUG, context() << "constructed  instances: " << _numClassInstances);
 }
 
-
 Job::~Job() {
     --_numClassInstances;
     LOGS(_log, LOG_LVL_DEBUG, context() << "destructed   instances: " << _numClassInstances);
 }
-
 
 string Job::state2string() const {
     util::Lock lock(_mtx, context() + __func__);
     return state2string(state(), extendedState());
 }
 
-
-list<pair<string,string>> Job::persistentLogData() const {
+list<pair<string, string>> Job::persistentLogData() const {
     LOGS(_log, LOG_LVL_DEBUG, context());
-    if (state() == State::FINISHED) return list<pair<string,string>>();
-    throw logic_error(
-            "Job::" + string(__func__)
-            + "  the method can't be called while the job hasn't finished");
+    if (state() == State::FINISHED) return list<pair<string, string>>();
+    throw logic_error("Job::" + string(__func__) +
+                      "  the method can't be called while the job hasn't finished");
 }
-
 
 string Job::context() const {
-    return  "JOB     " + id() + "  " + type() +
-            "  " + state2string(state(), extendedState()) + "  ";
+    return "JOB     " + id() + "  " + type() + "  " + state2string(state(), extendedState()) + "  ";
 }
-
 
 void Job::start() {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
@@ -170,13 +164,11 @@ void Job::start() {
     setState(lock, State::IN_PROGRESS);
 }
 
-
 Job::Progress Job::progress() const {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
     util::Lock lock(_mtx, context() + __func__);
     return Progress{_finished ? 1ULL : 0ULL, 1ULL};
 }
-
 
 void Job::wait() {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
@@ -184,7 +176,6 @@ void Job::wait() {
     unique_lock<mutex> onFinishLock(_onFinishMtx);
     _onFinishCv.wait(onFinishLock, [&] { return _finished.load(); });
 }
-
 
 void Job::wait(chrono::milliseconds const& ivalMsec, WaitMonitorFunc const& func) {
     string const context_ = context() + string(__func__) + " ";
@@ -211,10 +202,9 @@ void Job::cancel() {
     finish(lock, ExtendedState::CANCELLED);
 }
 
-
 void Job::finish(util::Lock const& lock, ExtendedState newExtendedState) {
-    LOGS(_log, LOG_LVL_DEBUG, context() << __func__
-         << "  newExtendedState=" << state2string(newExtendedState));
+    LOGS(_log, LOG_LVL_DEBUG,
+         context() << __func__ << "  newExtendedState=" << state2string(newExtendedState));
 
     // Also ignore this event if the request is over
     if (state() == State::FINISHED) return;
@@ -230,8 +220,8 @@ void Job::finish(util::Lock const& lock, ExtendedState newExtendedState) {
     controller()->serviceProvider()->databaseServices()->saveState(*this);
 
     // Stop timers if they're still running
-    if(_heartbeatTimerPtr)  _heartbeatTimerPtr->cancel();
-    if(_expirationTimerPtr) _expirationTimerPtr->cancel();
+    if (_heartbeatTimerPtr) _heartbeatTimerPtr->cancel();
+    if (_expirationTimerPtr) _expirationTimerPtr->cancel();
     notify(lock);
 
     // Unblock threads (if any) waiting on the synchronization call
@@ -240,77 +230,61 @@ void Job::finish(util::Lock const& lock, ExtendedState newExtendedState) {
     _onFinishCv.notify_all();
 }
 
-
-void Job::qservAddReplica(
-        util::Lock const& lock, unsigned int chunk, vector<string> const& databases,
-        string const& worker, AddReplicaQservMgtRequest::CallbackType const& onFinish) {
-
-    LOGS(_log, LOG_LVL_DEBUG, context() << __func__
-         << "  ** START ** Qserv notification on ADD replica:"
-         << ", chunk="     << chunk
-         << ", databases=" << util::printable(databases)
-         << "  worker="    << worker);
+void Job::qservAddReplica(util::Lock const& lock, unsigned int chunk, vector<string> const& databases,
+                          string const& worker, AddReplicaQservMgtRequest::CallbackType const& onFinish) {
+    LOGS(_log, LOG_LVL_DEBUG,
+         context() << __func__ << "  ** START ** Qserv notification on ADD replica:"
+                   << ", chunk=" << chunk << ", databases=" << util::printable(databases)
+                   << "  worker=" << worker);
 
     auto self = shared_from_this();
     controller()->serviceProvider()->qservMgtServices()->addReplica(
             chunk, databases, worker,
-            [self,onFinish] (AddReplicaQservMgtRequest::Ptr const& request) {
-                LOGS(_log, LOG_LVL_DEBUG, self->context() << __func__
-                    << "  ** FINISH ** Qserv notification on ADD replica:"
-                    << "  chunk="     << request->chunk()
-                    << ", databases=" << util::printable(request->databases())
-                    << ", worker="    << request->worker()
-                    << ", state="     << request->state2string());
+            [self, onFinish](AddReplicaQservMgtRequest::Ptr const& request) {
+                LOGS(_log, LOG_LVL_DEBUG,
+                     self->context() << __func__ << "  ** FINISH ** Qserv notification on ADD replica:"
+                                     << "  chunk=" << request->chunk()
+                                     << ", databases=" << util::printable(request->databases()) << ", worker="
+                                     << request->worker() << ", state=" << request->state2string());
                 if (onFinish) onFinish(request);
             },
             id());
 }
 
-
-void Job::qservRemoveReplica(
-        util::Lock const& lock, unsigned int chunk, vector<string> const& databases,
-        string const& worker, bool force,
-        RemoveReplicaQservMgtRequest::CallbackType const& onFinish) {
-
-    LOGS(_log, LOG_LVL_DEBUG, context() << __func__
-         << "  ** START ** Qserv notification on REMOVE replica:"
-         << "  chunk="     << chunk
-         << ", databases=" << util::printable(databases)
-         << ", worker="    << worker
-         << ", force="     << (force ? "true" : "false"));
+void Job::qservRemoveReplica(util::Lock const& lock, unsigned int chunk, vector<string> const& databases,
+                             string const& worker, bool force,
+                             RemoveReplicaQservMgtRequest::CallbackType const& onFinish) {
+    LOGS(_log, LOG_LVL_DEBUG,
+         context() << __func__ << "  ** START ** Qserv notification on REMOVE replica:"
+                   << "  chunk=" << chunk << ", databases=" << util::printable(databases)
+                   << ", worker=" << worker << ", force=" << (force ? "true" : "false"));
 
     auto self = shared_from_this();
     controller()->serviceProvider()->qservMgtServices()->removeReplica(
             chunk, databases, worker, force,
-            [self,onFinish] (RemoveReplicaQservMgtRequest::Ptr const& request) {
-                LOGS(_log, LOG_LVL_DEBUG, self->context() << __func__
-                    << "  ** FINISH ** Qserv notification on REMOVE replica:"
-                    << "  chunk="     << request->chunk()
-                    << ", databases=" << util::printable(request->databases())
-                    << ", worker="    << request->worker()
-                    << ", force="     << (request->force() ? "true" : "false")
-                    << ", state="     << request->state2string());
+            [self, onFinish](RemoveReplicaQservMgtRequest::Ptr const& request) {
+                LOGS(_log, LOG_LVL_DEBUG,
+                     self->context() << __func__ << "  ** FINISH ** Qserv notification on REMOVE replica:"
+                                     << "  chunk=" << request->chunk()
+                                     << ", databases=" << util::printable(request->databases())
+                                     << ", worker=" << request->worker()
+                                     << ", force=" << (request->force() ? "true" : "false")
+                                     << ", state=" << request->state2string());
                 if (onFinish) onFinish(request);
             },
             id());
 }
 
-
-void Job::_assertState(
-        util::Lock const& lock, State desiredState, string const& context) const {
+void Job::_assertState(util::Lock const& lock, State desiredState, string const& context) const {
     if (desiredState != state()) {
-        throw logic_error(
-                context + ": wrong state " + state2string(state()) + " instead of " +
-                state2string(desiredState));
+        throw logic_error(context + ": wrong state " + state2string(state()) + " instead of " +
+                          state2string(desiredState));
     }
 }
 
-
-void Job::setState(
-        util::Lock const& lock, State newState, ExtendedState newExtendedState) {
-
-    LOGS(_log, LOG_LVL_DEBUG, context() << __func__
-         << "  new state=" << state2string(newState, newExtendedState));
+void Job::setState(util::Lock const& lock, State newState, ExtendedState newExtendedState) {
+    LOGS(_log, LOG_LVL_DEBUG,
+         context() << __func__ << "  new state=" << state2string(newState, newExtendedState));
 
     // ATTENTION: changing the top-level state to FINISHED should be last step
     // in the transient state transition in order to ensure a consistent view
@@ -324,7 +298,6 @@ void Job::setState(
     controller()->serviceProvider()->databaseServices()->saveState(*this);
 }
 
-
 void Job::_startHeartbeatTimer(util::Lock const& lock) {
     if (_heartbeatTimerIvalSec) {
         LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
@@ -332,17 +305,15 @@ void Job::_startHeartbeatTimer(util::Lock const& lock) {
         // is about to begin. Otherwise it will immediately expire when
         // async_wait() will be called.
         _heartbeatTimerPtr.reset(new boost::asio::deadline_timer(
-                controller()->io_service(),
-                boost::posix_time::seconds(_heartbeatTimerIvalSec)));
+                controller()->io_service(), boost::posix_time::seconds(_heartbeatTimerIvalSec)));
         _heartbeatTimerPtr->async_wait(bind(&Job::_heartbeat, shared_from_this(), _1));
     }
 }
 
-
 void Job::_heartbeat(boost::system::error_code const& ec) {
-
-    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  "
-         << (ec == boost::asio::error::operation_aborted ? "** ABORTED **" : ""));
+    LOGS(_log, LOG_LVL_DEBUG,
+         context() << __func__ << "  "
+                   << (ec == boost::asio::error::operation_aborted ? "** ABORTED **" : ""));
 
     // Ignore this event if the timer was aborted
     if (ec == boost::asio::error::operation_aborted) return;
@@ -357,7 +328,6 @@ void Job::_heartbeat(boost::system::error_code const& ec) {
     _startHeartbeatTimer(lock);
 }
 
-
 void Job::_startExpirationTimer(util::Lock const& lock) {
     if (0 != _expirationIvalSec) {
         LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
@@ -365,17 +335,15 @@ void Job::_startExpirationTimer(util::Lock const& lock) {
         // is about to begin. Otherwise it will immediately expire when
         // async_wait() will be called.
         _expirationTimerPtr.reset(new boost::asio::deadline_timer(
-                controller()->io_service(),
-                boost::posix_time::seconds(_expirationIvalSec)));
-        _expirationTimerPtr->async_wait(bind(&Job::_expired, shared_from_this(),_1));
+                controller()->io_service(), boost::posix_time::seconds(_expirationIvalSec)));
+        _expirationTimerPtr->async_wait(bind(&Job::_expired, shared_from_this(), _1));
     }
 }
 
-
 void Job::_expired(boost::system::error_code const& ec) {
-
-    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  "
-         << (ec == boost::asio::error::operation_aborted ? "** ABORTED **" : ""));
+    LOGS(_log, LOG_LVL_DEBUG,
+         context() << __func__ << "  "
+                   << (ec == boost::asio::error::operation_aborted ? "** ABORTED **" : ""));
 
     // Ignore this event if the timer was aborted
     if (ec == boost::asio::error::operation_aborted) return;
@@ -385,4 +353,4 @@ void Job::_expired(boost::system::error_code const& ec) {
     finish(lock, ExtendedState::TIMEOUT_EXPIRED);
 }
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica

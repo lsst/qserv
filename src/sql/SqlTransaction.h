@@ -30,9 +30,7 @@
 #include "SqlConnection.h"
 #include "SqlErrorObject.h"
 
-namespace lsst {
-namespace qserv {
-namespace sql {
+namespace lsst { namespace qserv { namespace sql {
 
 /// @addtogroup sql
 
@@ -67,10 +65,8 @@ namespace sql {
 
 class SqlTransaction {
 public:
-
     /// Constructor takes connection instance
-    explicit SqlTransaction(SqlConnection& conn,
-                            SqlErrorObject& errObj);
+    explicit SqlTransaction(SqlConnection& conn, SqlErrorObject& errObj);
 
     // Instances cannot be copied
     SqlTransaction(SqlTransaction const&) = delete;
@@ -89,14 +85,11 @@ public:
     bool isActive() const { return _doCleanup; }
 
 protected:
-
 private:
-
     SqlConnection& _conn;
     bool _doCleanup;
-
 };
 
-}}} // namespace lsst::qserv::sql
+}}}  // namespace lsst::qserv::sql
 
-#endif // LSST_QSERV_SQL_SQLTRANSACTION_H
+#endif  // LSST_QSERV_SQL_SQLTRANSACTION_H

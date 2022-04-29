@@ -24,25 +24,23 @@
 #ifndef LSST_QSERV_QANA_PLUGINNOTFOUNDERROR_H
 #define LSST_QSERV_QANA_PLUGINNOTFOUNDERROR_H
 /**
-  * @file
-  *
-  * @brief
-  *
-  * @author Daniel L. Wang, SLAC
-  */
+ * @file
+ *
+ * @brief
+ *
+ * @author Daniel L. Wang, SLAC
+ */
 
 // System headers
 #include <exception>
 #include <sstream>
 #include <string>
 
-namespace lsst {
-namespace qserv {
-namespace qana {
+namespace lsst { namespace qserv { namespace qana {
 
 /// PluginNotFoundError is an exception class thrown when a plugin is requested
 /// by a name that has not been registered.
-class PluginNotFoundError: public std::exception {
+class PluginNotFoundError : public std::exception {
 public:
     explicit PluginNotFoundError(std::string const& name) {
         std::stringstream ss;
@@ -51,14 +49,12 @@ public:
     }
     virtual ~PluginNotFoundError() throw() {}
 
-    virtual const char* what() const throw() {
-        return _descr.c_str();
-    }
+    virtual const char* what() const throw() { return _descr.c_str(); }
+
 private:
     std::string _descr;
 };
 
-}}} // namespace lsst::qserv::qana
+}}}  // namespace lsst::qserv::qana
 
-#endif // LSST_QSERV_QANA_PLUGINNOTFOUNDERROR_H
-
+#endif  // LSST_QSERV_QANA_PLUGINNOTFOUNDERROR_H

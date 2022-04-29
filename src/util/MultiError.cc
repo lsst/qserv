@@ -29,9 +29,7 @@
 #include <iterator>
 #include <sstream>
 
-namespace lsst {
-namespace qserv {
-namespace util {
+namespace lsst { namespace qserv { namespace util {
 
 std::string MultiError::toString() const {
     std::ostringstream oss;
@@ -42,48 +40,36 @@ std::string MultiError::toString() const {
 std::string MultiError::toOneLineString() const {
     std::ostringstream oss;
     if (!this->empty()) {
-        if (this->size()>1) {
+        if (this->size() > 1) {
             std::ostream_iterator<Error> string_it(oss, ", ");
-            std::copy(this->begin(), this->end()-1, string_it);
+            std::copy(this->begin(), this->end() - 1, string_it);
         }
         oss << this->back();
     }
     return oss.str();
 }
 
-bool MultiError::empty() const {
-    return _errorVector.empty();
-}
+bool MultiError::empty() const { return _errorVector.empty(); }
 
-std::vector<Error>::size_type MultiError::size() const{
-    return _errorVector.size();
-}
+std::vector<Error>::size_type MultiError::size() const { return _errorVector.size(); }
 
-std::vector<Error>::const_iterator MultiError::begin() const {
-    return _errorVector.begin();
-}
+std::vector<Error>::const_iterator MultiError::begin() const { return _errorVector.begin(); }
 
-std::vector<Error>::const_iterator MultiError::end() const{
-    return _errorVector.end();
-}
+std::vector<Error>::const_iterator MultiError::end() const { return _errorVector.end(); }
 
-std::vector<Error>::const_reference MultiError::back() const{
-    return _errorVector.back();
-}
+std::vector<Error>::const_reference MultiError::back() const { return _errorVector.back(); }
 
-void MultiError::push_back (const std::vector<Error>::value_type& val) {
-    _errorVector.push_back(val);
-}
+void MultiError::push_back(const std::vector<Error>::value_type& val) { _errorVector.push_back(val); }
 
-std::ostream& operator<<(std::ostream &out, MultiError const& multiError) {
+std::ostream& operator<<(std::ostream& out, MultiError const& multiError) {
     if (!multiError.empty()) {
-        if (multiError.size()>1) {
+        if (multiError.size() > 1) {
             std::ostream_iterator<Error> string_it(out, "\n");
-            std::copy(multiError.begin(), multiError.end()-1, string_it);
+            std::copy(multiError.begin(), multiError.end() - 1, string_it);
         }
         out << multiError.back();
     }
     return out;
 }
 
-}}} // lsst::qserv::util
+}}}  // namespace lsst::qserv::util

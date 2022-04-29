@@ -22,20 +22,19 @@
  */
 #ifndef LSST_QSERV_DEBUGUTIL_H
 #define LSST_QSERV_DEBUGUTIL_H
- /**
-  * @brief  Simple helpers for debugging output
-  *
-  */
+/**
+ * @brief  Simple helpers for debugging output
+ *
+ */
 
 // System headers
 #include <string>
 
-namespace lsst {
-namespace qserv {
+namespace lsst { namespace qserv {
 
-std::string makeByteStreamAnnotated(char const* tag, char const*buf, int bufLen);
+std::string makeByteStreamAnnotated(char const* tag, char const* buf, int bufLen);
 
 std::string const& getHostname();
 
-}}
-#endif //  LSST_QSERV_DEBUGUTIL_H
+}}      // namespace lsst::qserv
+#endif  //  LSST_QSERV_DEBUGUTIL_H

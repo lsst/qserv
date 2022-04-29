@@ -30,9 +30,7 @@
 
 using namespace std;
 
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
 shared_ptr<util::Mutex> NamedMutexRegistry::get(string const& name) {
     string const context = "NamedMutexRegistry::" + string(__func__) + " ";
@@ -72,10 +70,9 @@ shared_ptr<util::Mutex> NamedMutexRegistry::get(string const& name) {
     return mtx;
 }
 
-
 size_t NamedMutexRegistry::size() const {
     util::Lock const lock(_registryAccessMtx, "NamedMutexRegistry::" + string(__func__));
     return _registry.size();
 }
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica

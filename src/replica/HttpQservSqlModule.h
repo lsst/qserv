@@ -32,15 +32,13 @@
 #include "replica/HttpModule.h"
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
 /**
  * Class HttpQservSqlModule implements a handler for executing SQL queries
  * via database services of the Qserv workers.
  */
-class HttpQservSqlModule: public HttpModule {
+class HttpQservSqlModule : public HttpModule {
 public:
     typedef std::shared_ptr<HttpQservSqlModule> Ptr;
 
@@ -51,13 +49,10 @@ public:
      *
      * @throws std::invalid_argument for unknown values of parameter 'subModuleName'
      */
-    static void process(Controller::Ptr const& controller,
-                        std::string const& taskName,
-                        HttpProcessorConfig const& processorConfig,
-                        qhttp::Request::Ptr const& req,
-                        qhttp::Response::Ptr const& resp,
-                        std::string const& subModuleName=std::string(),
-                        HttpAuthType const authType=HttpAuthType::NONE);
+    static void process(Controller::Ptr const& controller, std::string const& taskName,
+                        HttpProcessorConfig const& processorConfig, qhttp::Request::Ptr const& req,
+                        qhttp::Response::Ptr const& resp, std::string const& subModuleName = std::string(),
+                        HttpAuthType const authType = HttpAuthType::NONE);
 
     HttpQservSqlModule() = delete;
     HttpQservSqlModule(HttpQservSqlModule const&) = delete;
@@ -69,10 +64,8 @@ protected:
     nlohmann::json executeImpl(std::string const& subModuleName) final;
 
 private:
-    HttpQservSqlModule(Controller::Ptr const& controller,
-                       std::string const& taskName,
-                       HttpProcessorConfig const& processorConfig,
-                       qhttp::Request::Ptr const& req,
+    HttpQservSqlModule(Controller::Ptr const& controller, std::string const& taskName,
+                       HttpProcessorConfig const& processorConfig, qhttp::Request::Ptr const& req,
                        qhttp::Response::Ptr const& resp);
 
     /**
@@ -82,7 +75,7 @@ private:
      */
     nlohmann::json _execute();
 };
-    
-}}} // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_HTTPQSERVSQLMODULE_H
+}}}  // namespace lsst::qserv::replica
+
+#endif  // LSST_QSERV_HTTPQSERVSQLMODULE_H

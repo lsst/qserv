@@ -23,12 +23,12 @@
 #ifndef LSST_QSERV_QPROC_SECONDARYINDEX_H
 #define LSST_QSERV_QPROC_SECONDARYINDEX_H
 /**
-  * @file
-  *
-  * @brief SecondaryIndex to plug into index map to handle lookups
-  *
-  * @author Daniel L. Wang, SLAC
-  */
+ * @file
+ *
+ * @brief SecondaryIndex to plug into index map to handle lookups
+ *
+ * @author Daniel L. Wang, SLAC
+ */
 
 // System headers
 #include <memory>
@@ -39,9 +39,7 @@
 #include "qproc/ChunkSpec.h"
 #include "query/typedefs.h"
 
-namespace lsst {
-namespace qserv {
-namespace qproc {
+namespace lsst { namespace qserv { namespace qproc {
 
 /**
  *  SecondaryIndex handles lookups into Qserv secondary index.
@@ -66,11 +64,12 @@ public:
     ChunkSpecVector lookup(query::SecIdxRestrictorVec const& restrictors);
 
     class Backend;
+
 private:
     // change to unique_ptr
     std::shared_ptr<Backend> _backend;
 };
 
-}}} // namespace lsst::qserv::qproc
+}}}  // namespace lsst::qserv::qproc
 
-#endif // LSST_QSERV_QPROC_SECONDARYINDEX_H
+#endif  // LSST_QSERV_QPROC_SECONDARYINDEX_H

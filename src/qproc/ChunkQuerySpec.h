@@ -23,10 +23,10 @@
 #ifndef LSST_QSERV_QPROC_CHUNKQUERYSPEC_H
 #define LSST_QSERV_QPROC_CHUNKQUERYSPEC_H
 /**
-  * @file
-  *
-  * @author Daniel L. Wang, SLAC
-  */
+ * @file
+ *
+ * @author Daniel L. Wang, SLAC
+ */
 
 // System headers
 #include <ostream>
@@ -41,10 +41,7 @@
 #include "global/stringTypes.h"
 #include "proto/ScanTableInfo.h"
 
-
-namespace lsst {
-namespace qserv {
-namespace qproc {
+namespace lsst { namespace qserv { namespace qproc {
 
 /// ChunkQuerySpec is a value class that bundles a set of queries with their
 /// dependent db, chunkId, and set of subChunkIds. It has a pointer to another
@@ -55,15 +52,14 @@ public:
     using Ptr = std::shared_ptr<ChunkQuerySpec>;
 
     ChunkQuerySpec() {}
-    ChunkQuerySpec(std::string const& db_, int chunkId_,
-                   proto::ScanInfo const& scanInfo_, bool scanInteractive_)
-        : db(db_), chunkId(chunkId_), scanInfo(scanInfo_),
-          scanInteractive(scanInteractive_) {}
+    ChunkQuerySpec(std::string const& db_, int chunkId_, proto::ScanInfo const& scanInfo_,
+                   bool scanInteractive_)
+            : db(db_), chunkId(chunkId_), scanInfo(scanInfo_), scanInteractive(scanInteractive_) {}
 
     // Contents could change
-    std::string db{""}; ///< dominant db
+    std::string db{""};  ///< dominant db
     int chunkId{0};
-    proto::ScanInfo scanInfo; ///< shared-scan candidates
+    proto::ScanInfo scanInfo;  ///< shared-scan candidates
     // Consider saving subChunkTable templates, and substituting the chunkIds
     // and subChunkIds into them on-the-fly.
     bool scanInteractive{false};
@@ -72,12 +68,11 @@ public:
     std::vector<std::string> queries;
     // Consider promoting the concept of container of ChunkQuerySpec
     // in the hopes of increased code cleanliness.
-    std::shared_ptr<ChunkQuerySpec> nextFragment; ///< ad-hoc linked list (consider removal)
+    std::shared_ptr<ChunkQuerySpec> nextFragment;  ///< ad-hoc linked list (consider removal)
 };
 
 std::ostream& operator<<(std::ostream& os, ChunkQuerySpec const& c);
 
-}}} // namespace lsst::qserv::qproc
+}}}  // namespace lsst::qserv::qproc
 
-#endif // LSST_QSERV_QPROC_CHUNKQUERYSPEC_H
-
+#endif  // LSST_QSERV_QPROC_CHUNKQUERYSPEC_H

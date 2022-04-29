@@ -34,15 +34,13 @@
 #include "replica/SqlRequest.h"
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
 /**
  * Class SqlRowStatsRequest represents Controller-side requests for initiating
  * queries for obtaining row counters from existing tables at remote worker nodes.
  */
-class SqlRowStatsRequest: public SqlRequest {
+class SqlRowStatsRequest : public SqlRequest {
 public:
     typedef std::shared_ptr<SqlRowStatsRequest> Ptr;
 
@@ -76,33 +74,23 @@ public:
      *
      * @return A pointer to the created object.
      */
-    static Ptr create(ServiceProvider::Ptr const& serviceProvider,
-                      boost::asio::io_service& io_service,
-                      std::string const& worker,
-                      std::string const& database,
-                      std::vector<std::string> const& tables,
-                      CallbackType const& onFinish,
-                      int priority,
-                      bool keepTracking,
-                      std::shared_ptr<Messenger> const& messenger);
+    static Ptr create(ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service,
+                      std::string const& worker, std::string const& database,
+                      std::vector<std::string> const& tables, CallbackType const& onFinish, int priority,
+                      bool keepTracking, std::shared_ptr<Messenger> const& messenger);
 
 protected:
     void notify(util::Lock const& lock) final;
 
 private:
-    SqlRowStatsRequest(ServiceProvider::Ptr const& serviceProvider,
-                         boost::asio::io_service& io_service,
-                         std::string const& worker,
-                         std::string const& database,
-                         std::vector<std::string> const& tables,
-                         CallbackType const& onFinish,
-                         int priority,
-                         bool keepTracking,
-                         std::shared_ptr<Messenger> const& messenger);
+    SqlRowStatsRequest(ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service,
+                       std::string const& worker, std::string const& database,
+                       std::vector<std::string> const& tables, CallbackType const& onFinish, int priority,
+                       bool keepTracking, std::shared_ptr<Messenger> const& messenger);
 
-    CallbackType _onFinish; ///< @note is reset when the request finishes
+    CallbackType _onFinish;  ///< @note is reset when the request finishes
 };
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_SQLROWSTATSREQUEST_H
+#endif  // LSST_QSERV_REPLICA_SQLROWSTATSREQUEST_H

@@ -21,7 +21,6 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-
 // Class header
 #include "query/LogicalTerm.h"
 
@@ -30,24 +29,20 @@
 #include "query/ColumnRef.h"
 #include "query/QueryTemplate.h"
 
+namespace lsst { namespace qserv { namespace query {
 
-namespace lsst {
-namespace qserv {
-namespace query {
-
-
-std::ostream& LogicalTerm::putStream(std::ostream& os) const {
-    return QueryTemplate::renderDbg(os, *this);
-}
-
+std::ostream& LogicalTerm::putStream(std::ostream& os) const { return QueryTemplate::renderDbg(os, *this); }
 
 std::shared_ptr<BoolTerm> LogicalTerm::getReduced() {
     // Can I eliminate myself?
     if (_terms.size() == 1) {
         std::shared_ptr<BoolTerm> reduced = _terms.front()->getReduced();
-        if (reduced) { return reduced; }
-        else { return _terms.front(); }
-    } else { // Get reduced versions of my children.
+        if (reduced) {
+            return reduced;
+        } else {
+            return _terms.front();
+        }
+    } else {  // Get reduced versions of my children.
         // FIXME: Apply reduction on each term.
         // If reduction was successful on any child, construct a new LogicalTerm of the same subclass type
         // (AndTerm, OrTerm, etc).
@@ -55,21 +50,13 @@ std::shared_ptr<BoolTerm> LogicalTerm::getReduced() {
     return std::shared_ptr<BoolTerm>();
 }
 
+void LogicalTerm::addBoolTerm(std::shared_ptr<BoolTerm> boolTerm) { _terms.push_back(boolTerm); }
 
-void LogicalTerm::addBoolTerm(std::shared_ptr<BoolTerm> boolTerm) {
-    _terms.push_back(boolTerm);
-}
-
-
-void LogicalTerm::setBoolTerms(std::vector<std::shared_ptr<BoolTerm>> const& terms) {
-    _terms = terms;
-}
-
+void LogicalTerm::setBoolTerms(std::vector<std::shared_ptr<BoolTerm>> const& terms) { _terms = terms; }
 
 void LogicalTerm::setBoolTerms(std::vector<std::shared_ptr<BoolFactor>> const& terms) {
     std::copy(terms.begin(), terms.end(), std::back_inserter(_terms));
 }
-
 
 void LogicalTerm::findValueExprs(std::vector<std::shared_ptr<ValueExpr>>& vector) const {
     for (auto&& boolTerm : _terms) {
@@ -79,7 +66,6 @@ void LogicalTerm::findValueExprs(std::vector<std::shared_ptr<ValueExpr>>& vector
     }
 }
 
-
 void LogicalTerm::findValueExprRefs(ValueExprPtrRefVector& vector) {
     for (auto&& boolTerm : _terms) {
         if (boolTerm) {
@@ -87,8 +73,6 @@ void LogicalTerm::findValueExprRefs(ValueExprPtrRefVector& vector) {
         }
     }
 }
-
-
 
 void LogicalTerm::findColumnRefs(std::vector<std::shared_ptr<ColumnRef>>& vector) const {
     for (auto&& boolTerm : _terms) {
@@ -98,5 +82,4 @@ void LogicalTerm::findColumnRefs(std::vector<std::shared_ptr<ColumnRef>>& vector
     }
 }
 
-
-}}} // namespace lsst::qserv::query
+}}}  // namespace lsst::qserv::query

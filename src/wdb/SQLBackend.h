@@ -21,7 +21,6 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-
 #ifndef LSST_QSERV_WDB_SQLBACKEND_H
 #define LSST_QSERV_WDB_SQLBACKEND_H
 
@@ -41,31 +40,22 @@
 #include "sql/SqlErrorObject.h"
 
 // Forward declarations
-namespace lsst {
-namespace qserv {
-namespace mysql {
-    class MySqlConfig;
-}}} // end forward declarations
+namespace lsst { namespace qserv { namespace mysql {
+class MySqlConfig;
+}}}  // namespace lsst::qserv::mysql
 
-
-namespace lsst {
-namespace qserv {
-namespace wdb {
-
+namespace lsst { namespace qserv { namespace wdb {
 
 struct ScTable {
     ScTable(int chunkId_, DbTable const& dbTable_, int subChunkId_)
-        : chunkId(chunkId_), dbTable(dbTable_), subChunkId(subChunkId_) {
-    }
+            : chunkId(chunkId_), dbTable(dbTable_), subChunkId(subChunkId_) {}
 
     int chunkId;
     DbTable dbTable;
     int subChunkId;
 };
 
-
 typedef std::vector<ScTable> ScTableVector;
-
 
 /// This class maintains a connection to the database for making temporary in-memory tables
 /// for subchunks.
@@ -75,7 +65,7 @@ typedef std::vector<ScTable> ScTableVector;
 /// just a bunch of empty tables when the program starts up.
 class SQLBackend {
 public:
-    using Ptr=std::shared_ptr<SQLBackend>;
+    using Ptr = std::shared_ptr<SQLBackend>;
 
     SQLBackend(mysql::MySqlConfig const& mc);
 
@@ -85,7 +75,7 @@ public:
 
     virtual void discard(ScTableVector const& v);
 
-    enum LockStatus {UNLOCKED, LOCKED_OTHER, LOCKED_OURS};
+    enum LockStatus { UNLOCKED, LOCKED_OTHER, LOCKED_OURS };
 
     virtual void memLockRequireOwnership();
 
@@ -121,15 +111,14 @@ protected:
     std::string _lockDb;
     std::string _lockTbl;
     std::string _lockDbTbl;
-    std::string _uid; // uuid
-    std::mutex _mtx; // protects the sql connection.
+    std::string _uid;  // uuid
+    std::mutex _mtx;   // protects the sql connection.
 };
-
 
 /// Mock for unit testing other classes.
 class FakeBackend : public SQLBackend {
 public:
-    using Ptr=std::shared_ptr<FakeBackend>;
+    using Ptr = std::shared_ptr<FakeBackend>;
 
     FakeBackend() {}
 
@@ -139,20 +128,20 @@ public:
 
     void discard(ScTableVector const& v) override;
 
-    void memLockRequireOwnership() override {}; ///< Do nothing for fake version.
+    void memLockRequireOwnership() override{};  ///< Do nothing for fake version.
 
     /// For unit tests only.
     static std::string makeFakeKey(ScTable const& sctbl) {
-        std::string str = sctbl.dbTable.db + ":" + std::to_string(sctbl.chunkId) + ":"
-                + sctbl.dbTable.table + ":" + std::to_string(sctbl.subChunkId);
+        std::string str = sctbl.dbTable.db + ":" + std::to_string(sctbl.chunkId) + ":" + sctbl.dbTable.table +
+                          ":" + std::to_string(sctbl.subChunkId);
         return str;
     }
-    std::set<std::string> fakeSet; // set of strings for tracking unique tables.
+    std::set<std::string> fakeSet;  // set of strings for tracking unique tables.
 
 private:
     void _discard(ScTableVector::const_iterator begin, ScTableVector::const_iterator end) override;
 };
 
-}}} // namespace lsst::qserv::wdb
+}}}  // namespace lsst::qserv::wdb
 
-#endif // LSST_QSERV_WDB_SQLBACKEND_H
+#endif  // LSST_QSERV_WDB_SQLBACKEND_H

@@ -23,14 +23,14 @@
 
 #ifndef LSST_QSERV_WDB_QUERYSQL_H
 #define LSST_QSERV_WDB_QUERYSQL_H
- /**
-  * @file
-  *
-  * @brief QuerySql is a bundle of SQL statements that represent an accepted
-  * query's generated SQL.
-  *
-  * @author Daniel L. Wang, SLAC
-  */
+/**
+ * @file
+ *
+ * @brief QuerySql is a bundle of SQL statements that represent an accepted
+ * query's generated SQL.
+ *
+ * @author Daniel L. Wang, SLAC
+ */
 
 // System headers
 #include <deque>
@@ -39,40 +39,34 @@
 #include <string>
 
 // Forward declarations
-namespace lsst {
-namespace qserv {
+namespace lsst { namespace qserv {
 namespace proto {
-    class TaskMsg_Fragment;
+class TaskMsg_Fragment;
 }
 namespace wdb {
-    class Task;
-}}} // End of forward declarations
+class Task;
+}
+}}  // namespace lsst::qserv
 
-
-namespace lsst {
-namespace qserv {
-namespace wdb {
+namespace lsst { namespace qserv { namespace wdb {
 
 class QuerySql {
 public:
-typedef std::shared_ptr<QuerySql> Ptr;
+    typedef std::shared_ptr<QuerySql> Ptr;
     typedef std::deque<std::string> StringDeque;
     typedef lsst::qserv::proto::TaskMsg_Fragment Fragment;
 
     QuerySql() {}
-    QuerySql(std::string const& db,
-             int chunkId,
-             proto::TaskMsg_Fragment const& f,
-             bool needCreate,
+    QuerySql(std::string const& db, int chunkId, proto::TaskMsg_Fragment const& f, bool needCreate,
              std::string const& defaultResultTable);
 
     StringDeque buildList;
-    StringDeque executeList; // Consider using SqlFragmenter to break this up into fragments.
+    StringDeque executeList;  // Consider using SqlFragmenter to break this up into fragments.
     StringDeque cleanupList;
     struct Batch;
     friend std::ostream& operator<<(std::ostream& os, QuerySql const& q);
 };
 
-}}} // namespace lsst::qserv::wdb
+}}}  // namespace lsst::qserv::wdb
 
-#endif // LSST_QSERV_WDB_QUERYSQL_H
+#endif  // LSST_QSERV_WDB_QUERYSQL_H

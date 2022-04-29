@@ -26,9 +26,7 @@
 // System headers
 #include <stdexcept>
 
-namespace lsst {
-namespace qserv {
-namespace ccontrol {
+namespace lsst { namespace qserv { namespace ccontrol {
 
 /// UserQueryError is a trivial exception for query problems (analysis or execution).
 class UserQueryError : public std::runtime_error {
@@ -40,9 +38,8 @@ public:
 /// UserQueryBug is an exception that indicates a bug in the UserQuery code.
 class UserQueryBug : public UserQueryError {
 public:
-    explicit UserQueryBug(std::string const& msg)
-        : UserQueryError("Bug:" + msg) {}
+    explicit UserQueryBug(std::string const& msg) : UserQueryError("Bug:" + msg) {}
 };
-}}} // namespace lsst::qserv::ccontrol
+}}}  // namespace lsst::qserv::ccontrol
 
-#endif // LSST_QSERV_CCONTROL_USERQUERYERROR_H
+#endif  // LSST_QSERV_CCONTROL_USERQUERYERROR_H

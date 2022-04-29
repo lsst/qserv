@@ -22,14 +22,13 @@
  */
 
 /**
-  * @file
-  *
-  * @brief Implementation of FuncExpr (a parsed function call
-  * expression) and FuncExpr::render
-  *
-  * @author Daniel L. Wang, SLAC
-  */
-
+ * @file
+ *
+ * @brief Implementation of FuncExpr (a parsed function call
+ * expression) and FuncExpr::render
+ *
+ * @author Daniel L. Wang, SLAC
+ */
 
 // Class header
 #include "query/FuncExpr.h"
@@ -46,75 +45,50 @@
 #include "util/IterableFormatter.h"
 #include "util/PointerCompare.h"
 
+namespace lsst { namespace qserv { namespace query {
 
-namespace lsst {
-namespace qserv {
-namespace query {
+const std::string& FuncExpr::getName() const { return _name; }
 
-
-const std::string &
-FuncExpr::getName() const {
-    return _name;
-}
-
-
-FuncExpr::Ptr
-FuncExpr::newLike(FuncExpr const& src, std::string const& newName) {
+FuncExpr::Ptr FuncExpr::newLike(FuncExpr const& src, std::string const& newName) {
     FuncExpr::Ptr e = std::make_shared<FuncExpr>();
     e->setName(newName);
-    e->params = src.params; // Shallow list copy.
+    e->params = src.params;  // Shallow list copy.
     return e;
 }
 
-
-FuncExpr::Ptr
-FuncExpr::newArg1(std::string const& newName, std::string const& arg1) {
-    std::shared_ptr<ColumnRef> cr = std::make_shared<ColumnRef>("","",arg1);
-    return newArg1(newName,
-                   ValueExpr::newSimple(ValueFactor::newColumnRefFactor(cr)));
+FuncExpr::Ptr FuncExpr::newArg1(std::string const& newName, std::string const& arg1) {
+    std::shared_ptr<ColumnRef> cr = std::make_shared<ColumnRef>("", "", arg1);
+    return newArg1(newName, ValueExpr::newSimple(ValueFactor::newColumnRefFactor(cr)));
 }
 
-
-FuncExpr::Ptr
-FuncExpr::newArg1(std::string const& newName, ValueExprPtr ve) {
+FuncExpr::Ptr FuncExpr::newArg1(std::string const& newName, ValueExprPtr ve) {
     FuncExpr::Ptr e = std::make_shared<FuncExpr>();
     e->setName(newName);
     e->params.push_back(ve);
     return e;
 }
 
-
-FuncExpr::Ptr
-FuncExpr::newWithArgs(std::string const& newName, const ValueExprPtrVector& ve) {
+FuncExpr::Ptr FuncExpr::newWithArgs(std::string const& newName, const ValueExprPtrVector& ve) {
     FuncExpr::Ptr e = std::make_shared<FuncExpr>();
     e->setName(newName);
     e->params = ve;
     return e;
 }
 
+void FuncExpr::setName(const std::string& val) { _name = val; }
 
-void
-FuncExpr::setName(const std::string& val) {
-    _name = val;
-}
-
-
-void
-FuncExpr::findColumnRefs(ColumnRef::Vector& outputRefs) const {
+void FuncExpr::findColumnRefs(ColumnRef::Vector& outputRefs) const {
     for (auto&& valueExpr : params) {
         valueExpr->findColumnRefs(outputRefs);
     }
 }
 
-
-std::shared_ptr<FuncExpr>
-FuncExpr::clone() const {
+std::shared_ptr<FuncExpr> FuncExpr::clone() const {
     FuncExpr::Ptr e = std::make_shared<FuncExpr>();
     e->setName(getName());
     cloneValueExprPtrVector(e->params, params);
     return e;
 }
-
 
 // determine if this object is the same as or a less complete description of the passed in object.
 bool FuncExpr::isSubsetOf(FuncExpr const& rhs) const {
@@ -124,9 +98,7 @@ bool FuncExpr::isSubsetOf(FuncExpr const& rhs) const {
     return query::isSubsetOf(params, rhs.params);
 }
 
-
-std::ostream&
-operator<<(std::ostream& os, FuncExpr const& fe) {
+std::ostream& operator<<(std::ostream& os, FuncExpr const& fe) {
     os << "FuncExpr(";
     os << "\"" << fe._name << "\"";
     os << ", " << util::printable(fe.params, "", "");
@@ -134,27 +106,20 @@ operator<<(std::ostream& os, FuncExpr const& fe) {
     return os;
 }
 
-
-std::ostream&
-operator<<(std::ostream& os, FuncExpr const* fe) {
+std::ostream& operator<<(std::ostream& os, FuncExpr const* fe) {
     (nullptr == fe) ? os << "nullptr" : os << *fe;
     return os;
 }
 
-
-void
-FuncExpr::renderTo(QueryTemplate& qt) const {
+void FuncExpr::renderTo(QueryTemplate& qt) const {
     qt.append(getName());
     qt.append("(");
     renderList(qt, params);
     qt.append(")");
 }
 
-
 bool FuncExpr::operator==(const FuncExpr& rhs) const {
-    return _name == rhs._name &&
-           util::vectorPtrCompare<ValueExpr>(params, rhs.params);
+    return _name == rhs._name && util::vectorPtrCompare<ValueExpr>(params, rhs.params);
 }
 
-
-}}} // namespace lsst::qserv::query
+}}}  // namespace lsst::qserv::query

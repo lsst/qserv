@@ -5,9 +5,8 @@
  */
 
 /**
-  * @brief Unit test for the CssAccess class.
-  */
-
+ * @brief Unit test for the CssAccess class.
+ */
 
 // System headers
 #include <algorithm>
@@ -30,9 +29,7 @@
 
 using namespace std;
 
-namespace lsst {
-namespace qserv {
-namespace css {
+namespace lsst { namespace qserv { namespace css {
 
 shared_ptr<KvInterface> initKVI() {
     vector<pair<string, string>> kv;
@@ -43,9 +40,9 @@ shared_ptr<KvInterface> initKVI() {
     kv.push_back(make_pair("/PARTITIONING", ""));
     string p = "/PARTITIONING/_0000000001";
     kv.push_back(make_pair(p, ""));
-    kv.push_back(make_pair(p+"/nStripes", "60"));
-    kv.push_back(make_pair(p+"/nSubStripes", "18"));
-    kv.push_back(make_pair(p+"/overlap", "0.025"));
+    kv.push_back(make_pair(p + "/nStripes", "60"));
+    kv.push_back(make_pair(p + "/nSubStripes", "18"));
+    kv.push_back(make_pair(p + "/overlap", "0.025"));
 
     kv.push_back(make_pair("/DBS", ""));
     kv.push_back(make_pair("/DBS/dbA", KEY_STATUS_READY));
@@ -59,7 +56,7 @@ shared_ptr<KvInterface> initKVI() {
     kv.push_back(make_pair(p + "/Object/partitioning/lonColName", "ra_PS"));
     kv.push_back(make_pair(p + "/Object/partitioning/latColName", "decl_PS"));
     kv.push_back(make_pair(p + "/Object/partitioning/subChunks", "1"));
-    kv.push_back(make_pair(p + "/Object/partitioning/dirColName","objectId"));
+    kv.push_back(make_pair(p + "/Object/partitioning/dirColName", "objectId"));
     kv.push_back(make_pair(p + "/Object/sharedScan/lockInMem", "1"));
     kv.push_back(make_pair(p + "/Object/sharedScan/scanRating", "1"));
     kv.push_back(make_pair(p + "/Source", KEY_STATUS_READY));
@@ -82,13 +79,16 @@ shared_ptr<KvInterface> initKVI() {
     kv.push_back(make_pair(p + "/Exposure/CHUNKS/1234", ""));
     kv.push_back(make_pair(p + "/Exposure/CHUNKS/1234/REPLICAS", ""));
     kv.push_back(make_pair(p + "/Exposure/CHUNKS/1234/REPLICAS/0000000001", ""));
-    kv.push_back(make_pair(p + "/Exposure/CHUNKS/1234/REPLICAS/0000000001/.packed.json", R"({"nodeName": "worker1"})"));
+    kv.push_back(make_pair(p + "/Exposure/CHUNKS/1234/REPLICAS/0000000001/.packed.json",
+                           R"({"nodeName": "worker1"})"));
     kv.push_back(make_pair(p + "/Exposure/CHUNKS/1234/REPLICAS/0000000002", ""));
-    kv.push_back(make_pair(p + "/Exposure/CHUNKS/1234/REPLICAS/0000000002/.packed.json", R"({"nodeName": "worker2"})"));
+    kv.push_back(make_pair(p + "/Exposure/CHUNKS/1234/REPLICAS/0000000002/.packed.json",
+                           R"({"nodeName": "worker2"})"));
     kv.push_back(make_pair(p + "/Exposure/CHUNKS/5678", ""));
     kv.push_back(make_pair(p + "/Exposure/CHUNKS/5678/REPLICAS", ""));
     kv.push_back(make_pair(p + "/Exposure/CHUNKS/5678/REPLICAS/0000000001", ""));
-    kv.push_back(make_pair(p + "/Exposure/CHUNKS/5678/REPLICAS/0000000001/.packed.json", R"({"nodeName": "worker1"})"));
+    kv.push_back(make_pair(p + "/Exposure/CHUNKS/5678/REPLICAS/0000000001/.packed.json",
+                           R"({"nodeName": "worker1"})"));
 
     p = "/DBS/dbB/TABLES";
     kv.push_back(make_pair(p, ""));
@@ -99,9 +99,9 @@ shared_ptr<KvInterface> initKVI() {
     kv.push_back(make_pair(p + "/MyObject/partitioning/lonColName", "ra_PS"));
     kv.push_back(make_pair(p + "/MyObject/partitioning/latColName", "decl_PS"));
     kv.push_back(make_pair(p + "/MyObject/partitioning/subChunks", "1"));
-    kv.push_back(make_pair(p + "/MyObject/partitioning/dirDb","dbA"));
-    kv.push_back(make_pair(p + "/MyObject/partitioning/dirTable","Object"));
-    kv.push_back(make_pair(p + "/MyObject/partitioning/dirColName","objectId"));
+    kv.push_back(make_pair(p + "/MyObject/partitioning/dirDb", "dbA"));
+    kv.push_back(make_pair(p + "/MyObject/partitioning/dirTable", "Object"));
+    kv.push_back(make_pair(p + "/MyObject/partitioning/dirColName", "objectId"));
     kv.push_back(make_pair(p + "/DeletedTable", "NOT_READY"));
 
     p = "/DBS/dbC/TABLES";
@@ -116,8 +116,9 @@ shared_ptr<KvInterface> initKVI() {
     kv.push_back(make_pair(p + "/RefMatch/match/angSep", "0.001"));
     kv.push_back(make_pair(p + "/RefMatch2", KEY_STATUS_READY));
     kv.push_back(make_pair(p + "/RefMatch2/match", ""));
-    kv.push_back(make_pair(p + "/RefMatch2/match/.packed.json",
-                           R"({"dirTable1": "Object", "dirColName1": "objectId", "dirTable2": "Source", "dirColName2": "sourceId", "flagColName": "flag", "angSep": "0.002"})"));
+    kv.push_back(make_pair(
+            p + "/RefMatch2/match/.packed.json",
+            R"({"dirTable1": "Object", "dirColName1": "objectId", "dirTable2": "Source", "dirColName2": "sourceId", "flagColName": "flag", "angSep": "0.002"})"));
     kv.push_back(make_pair(p + "/TempTable1", KEY_STATUS_IGNORE));
     kv.push_back(make_pair(p + "/TempTable2", "PENDING_CREATE:12345"));
 
@@ -125,7 +126,8 @@ shared_ptr<KvInterface> initKVI() {
     kv.push_back(make_pair(p, ""));
     kv.push_back(make_pair(p + "/node1", "ACTIVE"));
     kv.push_back(make_pair(p + "/node2", "INACTIVE"));
-    kv.push_back(make_pair(p + "/node2/.packed.json", R"({"type": "worker", "host": "worker2", "port": 5012})"));
+    kv.push_back(
+            make_pair(p + "/node2/.packed.json", R"({"type": "worker", "host": "worker2", "port": 5012})"));
     kv.push_back(make_pair(p + "/node3", "ACTIVE"));
     kv.push_back(make_pair(p + "/node3/type", "worker"));
     kv.push_back(make_pair(p + "/node3/host", "worker3"));
@@ -133,7 +135,7 @@ shared_ptr<KvInterface> initKVI() {
 
     // copy all stuff to KVI
     auto kvI = make_shared<KvInterfaceImplMem>();
-    for (auto& pair: kv) {
+    for (auto& pair : kv) {
         kvI->create(pair.first, pair.second);
     }
 
@@ -141,7 +143,7 @@ shared_ptr<KvInterface> initKVI() {
 }
 
 // Test fixure that instantiates a CSS with pre-loaded data
-class CssAccessFixture: public CssAccess {
+class CssAccessFixture : public CssAccess {
 public:
     CssAccessFixture() : CssAccess(initKVI(), nullptr, ".", "") {}
 
@@ -750,7 +752,6 @@ char const* testData = R"(
 BOOST_AUTO_TEST_SUITE(CssAccessFactoryTestSuite)
 
 BOOST_AUTO_TEST_CASE(testDataString) {
-
     auto css1 = CssAccess::createFromData("{}", "");
     auto css2 = CssAccess::createFromData(testData, "");
     auto names = css2->getDbNames();
@@ -768,7 +769,6 @@ BOOST_AUTO_TEST_CASE(testConfigMap) {
         // this test will fail when we have CSS implemented using monkeys
         StringMap config = {std::make_pair("technology", "monkeys")};
         BOOST_CHECK_THROW(auto css = CssAccess::createFromConfig(config, ""), ConfigError);
-
     }
     {
         // test with empty initial data
@@ -778,8 +778,8 @@ BOOST_AUTO_TEST_CASE(testConfigMap) {
     {
         // test with initial data from string
         StringMap config = {
-            std::make_pair("technology", "mem"),
-            std::make_pair("data", testData),
+                std::make_pair("technology", "mem"),
+                std::make_pair("data", testData),
         };
         auto css = CssAccess::createFromConfig(config, "");
         auto names = css->getDbNames();
@@ -788,16 +788,16 @@ BOOST_AUTO_TEST_CASE(testConfigMap) {
     {
         // test bad file name
         StringMap config = {
-            std::make_pair("technology", "mem"),
-            std::make_pair("file", "/~~~"),
+                std::make_pair("technology", "mem"),
+                std::make_pair("file", "/~~~"),
         };
         BOOST_CHECK_THROW(auto css = CssAccess::createFromConfig(config, ""), ConfigError);
     }
     {
         // test badly-formatted port number for mysql
         StringMap config = {
-            std::make_pair("technology", "mysql"),
-            std::make_pair("port", "X"),
+                std::make_pair("technology", "mysql"),
+                std::make_pair("port", "X"),
         };
         BOOST_CHECK_THROW(auto css = CssAccess::createFromConfig(config, ""), ConfigError);
 
@@ -810,7 +810,6 @@ BOOST_AUTO_TEST_CASE(testConfigMap) {
 }
 
 BOOST_AUTO_TEST_CASE(testReadOnly) {
-
     // read-write instance
     auto css = CssAccess::createFromData(testData, "");
     StripingParams params1;
@@ -823,15 +822,14 @@ BOOST_AUTO_TEST_CASE(testReadOnly) {
     // same read-only from config map
     typedef std::map<std::string, std::string> StringMap;
     StringMap config = {
-        std::make_pair("technology", "mem"),
-        std::make_pair("data", testData),
+            std::make_pair("technology", "mem"),
+            std::make_pair("data", testData),
     };
     css = CssAccess::createFromConfig(config, "", true);
     BOOST_CHECK_THROW(css->createDb("dbNew1", params1, "L2", "UNRELEASED"), ReadonlyCss);
 }
 
 BOOST_AUTO_TEST_CASE(testCssVersion) {
-
     // version mismatch
     testData = R"({"/": "", "/css_meta": "", "/css_meta/version": "1000000"})";
     BOOST_CHECK_THROW(CssAccess::createFromData(testData, ""), VersionMismatchError);
@@ -839,4 +837,4 @@ BOOST_AUTO_TEST_CASE(testCssVersion) {
 
 BOOST_AUTO_TEST_SUITE_END()
 
-}}} // namespace lsst::qserv::css
+}}}  // namespace lsst::qserv::css

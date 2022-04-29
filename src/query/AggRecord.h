@@ -21,25 +21,19 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 /**
-  * @file
-  *
-  * @author Daniel L. Wang, SLAC
-  */
-
+ * @file
+ *
+ * @author Daniel L. Wang, SLAC
+ */
 
 #ifndef LSST_QSERV_QUERY_AGGRECORD_H
 #define LSST_QSERV_QUERY_AGGRECORD_H
-
 
 // Local headers
 #include "query/ValueExpr.h"
 #include "query/ValueFactor.h"
 
-
-namespace lsst {
-namespace qserv {
-namespace query {
-
+namespace lsst { namespace qserv { namespace query {
 
 /// AggRecord is a value class for the information needed to successfully
 /// perform aggregation of distributed queries.  lbl and meaning record the
@@ -61,8 +55,6 @@ public:
     std::ostream& printTo(std::ostream& os);
 };
 
+}}}  // namespace lsst::qserv::query
 
-}}} // namespace lsst::qserv::query
-
-#endif // LSST_QSERV_QUERY_AGGRECORD_H
-
+#endif  // LSST_QSERV_QUERY_AGGRECORD_H

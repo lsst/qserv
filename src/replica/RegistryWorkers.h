@@ -31,9 +31,7 @@
 #include "util/Mutex.h"
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
 /**
  * Class RegistryWorkers represents a synchronized collection of workers.
@@ -60,7 +58,6 @@ public:
     nlohmann::json workers() const;
 
 private:
-
     /// This mutex is needed for implementing synchronized operations over
     /// the collection.
     mutable util::Mutex _mtx;
@@ -69,7 +66,7 @@ private:
     // of a worker.
     nlohmann::json _workers = nlohmann::json::object();
 };
-    
-}}} // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REGISTRYWORKERS_H
+}}}  // namespace lsst::qserv::replica
+
+#endif  // LSST_QSERV_REGISTRYWORKERS_H

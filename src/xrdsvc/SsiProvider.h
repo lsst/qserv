@@ -42,51 +42,38 @@
 class XrdSsiCluster;
 class XrdSsiLogger;
 
-namespace lsst {
-namespace qserv {
-namespace xrdsvc {
+namespace lsst { namespace qserv { namespace xrdsvc {
 
-class SsiProviderServer : public XrdSsiProvider
-{
+class SsiProviderServer : public XrdSsiProvider {
 public:
-
-    XrdSsiService *GetService(XrdSsiErrInfo&     eInfo,
-                              std::string const& contact,
-                              int                oHold=256) override {
-         return _service.get();
+    XrdSsiService* GetService(XrdSsiErrInfo& eInfo, std::string const& contact, int oHold = 256) override {
+        return _service.get();
     }
 
-    wpublish::ChunkInventory &GetChunkInventory() {
-        return _chunkInventory;
-    }
+    wpublish::ChunkInventory& GetChunkInventory() { return _chunkInventory; }
 
-    XrdSsiCluster *GetClusterManager() {
-        return _cmsSsi;
-    }
+    XrdSsiCluster* GetClusterManager() { return _cmsSsi; }
 
-    bool  Init(XrdSsiLogger* logP,  XrdSsiCluster* clsP,
-               std::string   cfgFn, std::string    parms,
-               int           argc,  char**         argv) override;
+    bool Init(XrdSsiLogger* logP, XrdSsiCluster* clsP, std::string cfgFn, std::string parms, int argc,
+              char** argv) override;
 
-    rStat QueryResource(char const* rName,
-                        char const* contact=0) override;
+    rStat QueryResource(char const* rName, char const* contact = 0) override;
 
-    void ResourceAdded(const char *rName) override;
+    void ResourceAdded(const char* rName) override;
 
-    void ResourceRemoved(const char *rName) override;
+    void ResourceRemoved(const char* rName) override;
 
-                  SsiProviderServer() : _cmsSsi(0), _logSsi(0) {}
-    virtual      ~SsiProviderServer();
+    SsiProviderServer() : _cmsSsi(0), _logSsi(0) {}
+    virtual ~SsiProviderServer();
 
 private:
-
     wpublish::ChunkInventory _chunkInventory;
     std::unique_ptr<SsiService> _service;
 
     XrdSsiCluster* _cmsSsi;
-    XrdSsiLogger*  _logSsi;
+    XrdSsiLogger* _logSsi;
 };
 
-}}} // lsst::qserv::xrdsvc
+}}}  // namespace lsst::qserv::xrdsvc
 
-#endif // LSST_QSERV_XRDSVC_SSIPROVIDER_H
+#endif  // LSST_QSERV_XRDSVC_SSIPROVIDER_H

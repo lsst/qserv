@@ -32,51 +32,32 @@ using namespace std;
 
 namespace {
 
-string const description =
-    "This application calculates and prints a checksum of a file.";
+string const description = "This application calculates and prints a checksum of a file.";
 
-} /// namespace
+}  // namespace
 
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
-CheckSumApp::Ptr CheckSumApp::create(int argc, char* argv[]) {
-    return Ptr(
-        new CheckSumApp(argc, argv)
-    );
-}
-
+CheckSumApp::Ptr CheckSumApp::create(int argc, char* argv[]) { return Ptr(new CheckSumApp(argc, argv)); }
 
 CheckSumApp::CheckSumApp(int argc, char* argv[])
-    :   Application(
-            argc, argv,
-            ::description,
-            false   /* injectDatabaseOptions */,
-            false   /* boostProtobufVersionCheck */,
-            true    /* enableServiceProvider */
-        ),
-        _incremental(false) {
-
+        : Application(argc, argv, ::description, false /* injectDatabaseOptions */,
+                      false /* boostProtobufVersionCheck */, true /* enableServiceProvider */
+                      ),
+          _incremental(false) {
     // Configure the command line parser
 
-    parser().required(
-        "file",
-        "The name of a file to process.",
-        _file);
+    parser().required("file", "The name of a file to process.", _file);
 
-    parser().flag(
-        "incremental",
-        "Use the incremental file reader.",
-        _incremental);
+    parser().flag("incremental", "Use the incremental file reader.", _incremental);
 }
 
-
 int CheckSumApp::runImpl() {
-
     if (_incremental) {
         FileCsComputeEngine eng(_file);
-        while (not eng.execute()) { ; }
+        while (not eng.execute()) {
+            ;
+        }
         cout << _file << ": " << eng.cs() << endl;
     } else {
         cout << _file << ": " << FileUtils::compute_cs(_file) << endl;
@@ -84,4 +65,4 @@ int CheckSumApp::runImpl() {
     return 0;
 }
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica

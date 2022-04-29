@@ -38,16 +38,14 @@
 #include "replica/ServiceProvider.h"
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
 /**
-  * Class FileServer is used for handling incoming connections to
-  * the file delivery service. Each instance of this class will be running
-  * in its own thread.
-  */
-class FileServer: public std::enable_shared_from_this<FileServer>  {
+ * Class FileServer is used for handling incoming connections to
+ * the file delivery service. Each instance of this class will be running
+ * in its own thread.
+ */
+class FileServer : public std::enable_shared_from_this<FileServer> {
 public:
     typedef std::shared_ptr<FileServer> Ptr;
 
@@ -62,8 +60,7 @@ public:
      *
      * @return A pointer to the created object
      */
-    static Ptr create(ServiceProvider::Ptr const& serviceProvider,
-                      std::string const& workerName);
+    static Ptr create(ServiceProvider::Ptr const& serviceProvider, std::string const& workerName);
 
     FileServer() = delete;
     FileServer(FileServer const&) = delete;
@@ -84,21 +81,19 @@ public:
 
 private:
     /// @see FileServer::create()
-    FileServer(ServiceProvider::Ptr const& serviceProvider,
-               std::string const& workerName);
+    FileServer(ServiceProvider::Ptr const& serviceProvider, std::string const& workerName);
 
     /**
      * Begin (asynchronously) accepting connection requests.
      */
     void _beginAccept();
-    
+
     /**
      * Handle a connection request once it's detected. The rest of
      * the communication will be forwarded to the connection object
      * specified as a parameter of the method.
      */
-    void _handleAccept(FileServerConnection::Ptr const& connection,
-                       boost::system::error_code const& ec);
+    void _handleAccept(FileServerConnection::Ptr const& connection, boost::system::error_code const& ec);
 
     /// @return the context string to be used for the message logging
     std::string _context() const { return "FILE-SERVER  "; }
@@ -106,12 +101,12 @@ private:
     // Input parameters
 
     ServiceProvider::Ptr const _serviceProvider;
-    std::string          const _workerName;
+    std::string const _workerName;
 
-    boost::asio::io_service        _io_service;
+    boost::asio::io_service _io_service;
     boost::asio::ip::tcp::acceptor _acceptor;
 };
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_FILESERVER_H
+#endif  // LSST_QSERV_REPLICA_FILESERVER_H

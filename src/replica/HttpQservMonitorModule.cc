@@ -52,7 +52,7 @@ using namespace lsst::qserv::replica;
 namespace {
 
 /**
- * Extract a value of field from a result set and store it 
+ * Extract a value of field from a result set and store it
  *
  * @param context the context for error reporting
  * @param row     the current row from the result set
@@ -62,10 +62,8 @@ namespace {
  * @throws invalid_argument  if the column is not present in a result set
  * or the value of the field is 'NULL'.
  */
-template<typename T>
-void parseFieldIntoJson(string const& context,
-                        database::mysql::Row const& row,
-                        string const& column,
+template <typename T>
+void parseFieldIntoJson(string const& context, database::mysql::Row const& row, string const& column,
                         json& obj) {
     T val;
     if (not row.get(column, val)) {
@@ -78,12 +76,9 @@ void parseFieldIntoJson(string const& context,
  * The complementary version of the above defined function which replaces
  * 'NULL' found in a field with the specified default value.
  */
-template<typename T>
-void parseFieldIntoJson(string const& context,
-                        database::mysql::Row const& row,
-                        string const& column,
-                        json& obj,
-                        T const& defaultValue) {
+template <typename T>
+void parseFieldIntoJson(string const& context, database::mysql::Row const& row, string const& column,
+                        json& obj, T const& defaultValue) {
     if (row.isNull(column)) {
         obj[column] = defaultValue;
         return;
@@ -94,73 +89,63 @@ void parseFieldIntoJson(string const& context,
 /**
  * Extract rows selected from table qservMeta.QInfo into a JSON object.
  */
-void extractQInfo(database::mysql::Connection::Ptr const& conn,
-                  json& result) {
-
+void extractQInfo(database::mysql::Connection::Ptr const& conn, json& result) {
     if (not conn->hasResult()) return;
 
     database::mysql::Row row;
     while (conn->next(row)) {
-
         QueryId queryId;
         if (not row.get("queryId", queryId)) continue;
-        
+
         string query, status, submitted, completed;
-        row.get("query",     query);
-        row.get("status",    status);
+        row.get("query", query);
+        row.get("status", status);
         row.get("submitted", submitted);
         row.get("completed", completed);
 
         string const queryIdStr = to_string(queryId);
-        result[queryIdStr]["query"]     = query;
-        result[queryIdStr]["status"]    = status;
+        result[queryIdStr]["query"] = query;
+        result[queryIdStr]["status"] = status;
         result[queryIdStr]["submitted"] = submitted;
         result[queryIdStr]["completed"] = completed;
     }
 }
-}
+}  // namespace
 
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
-void HttpQservMonitorModule::process(Controller::Ptr const& controller,
-                                     string const& taskName,
+void HttpQservMonitorModule::process(Controller::Ptr const& controller, string const& taskName,
                                      HttpProcessorConfig const& processorConfig,
-                                     qhttp::Request::Ptr const& req,
-                                     qhttp::Response::Ptr const& resp,
-                                     string const& subModuleName,
-                                     HttpAuthType const authType) {
+                                     qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp,
+                                     string const& subModuleName, HttpAuthType const authType) {
     HttpQservMonitorModule module(controller, taskName, processorConfig, req, resp);
     module.execute(subModuleName, authType);
 }
 
-
-HttpQservMonitorModule::HttpQservMonitorModule(Controller::Ptr const& controller,
-                                               string const& taskName,
+HttpQservMonitorModule::HttpQservMonitorModule(Controller::Ptr const& controller, string const& taskName,
                                                HttpProcessorConfig const& processorConfig,
                                                qhttp::Request::Ptr const& req,
                                                qhttp::Response::Ptr const& resp)
-    :   HttpModule(controller, taskName, processorConfig, req, resp) {
-}
-
+        : HttpModule(controller, taskName, processorConfig, req, resp) {}
 
 json HttpQservMonitorModule::executeImpl(string const& subModuleName) {
-    if (subModuleName == "WORKERS") return _workers();
-    else if (subModuleName == "SELECT-WORKER-BY-NAME") return _worker();
-    else if (subModuleName == "QUERIES") return _userQueries();
-    else if (subModuleName == "SELECT-QUERY-BY-ID") return _userQuery();
-    throw invalid_argument(
-            context() + "::" + string(__func__) +
-            "  unsupported sub-module: '" + subModuleName + "'");
+    if (subModuleName == "WORKERS")
+        return _workers();
+    else if (subModuleName == "SELECT-WORKER-BY-NAME")
+        return _worker();
+    else if (subModuleName == "QUERIES")
+        return _userQueries();
+    else if (subModuleName == "SELECT-QUERY-BY-ID")
+        return _userQuery();
+    throw invalid_argument(context() + "::" + string(__func__) + "  unsupported sub-module: '" +
+                           subModuleName + "'");
 }
-
 
 json HttpQservMonitorModule::_workers() {
     debug(__func__);
 
-    unsigned int const timeoutSec    = query().optionalUInt("timeout_sec", workerResponseTimeoutSec());
-    bool         const keepResources = query().optionalUInt("keep_resources", 0) != 0;
+    unsigned int const timeoutSec = query().optionalUInt("timeout_sec", workerResponseTimeoutSec());
+    bool const keepResources = query().optionalUInt("keep_resources", 0) != 0;
 
     debug(__func__, "timeout_sec=" + to_string(timeoutSec));
 
@@ -173,7 +158,7 @@ json HttpQservMonitorModule::_workers() {
     map<string, set<int>> schedulers2chunks;
     set<int> chunks;
     auto&& status = job->qservStatus();
-    for (auto&& entry: status.workers) {
+    for (auto&& entry : status.workers) {
         auto&& worker = entry.first;
         bool success = entry.second;
         if (success) {
@@ -185,9 +170,9 @@ json HttpQservMonitorModule::_workers() {
             result["status"][worker]["info"] = info;
             result["status"][worker]["queries"] = _getQueries(info);
             auto&& schedulers = info["processor"]["queries"]["blend_scheduler"]["schedulers"];
-            for (auto&& scheduler: schedulers) {
+            for (auto&& scheduler : schedulers) {
                 string const scheduerName = scheduler["name"];
-                for (auto&& chunk2tasks: scheduler["chunk_to_num_tasks"]) {
+                for (auto&& chunk2tasks : scheduler["chunk_to_num_tasks"]) {
                     int const chunk = chunk2tasks[0];
                     schedulers2chunks[scheduerName].insert(chunk);
                     chunks.insert(chunk);
@@ -198,9 +183,9 @@ json HttpQservMonitorModule::_workers() {
         }
     }
     json resultSchedulers2chunks;
-    for (auto&& entry: schedulers2chunks) {
+    for (auto&& entry : schedulers2chunks) {
         auto&& scheduerName = entry.first;
-        for (auto&& chunk: entry.second) {
+        for (auto&& chunk : entry.second) {
             resultSchedulers2chunks[scheduerName].push_back(chunk);
         }
     }
@@ -208,7 +193,6 @@ json HttpQservMonitorModule::_workers() {
     result["chunks"] = _chunkInfo(chunks);
     return result;
 }
-
 
 json HttpQservMonitorModule::_worker() {
     debug(__func__);
@@ -222,12 +206,8 @@ json HttpQservMonitorModule::_worker() {
     string const noParentJobId;
     GetStatusQservMgtRequest::CallbackType const onFinish = nullptr;
 
-    auto const request =
-        controller()->serviceProvider()->qservMgtServices()->status(
-            worker,
-            noParentJobId,
-            onFinish,
-            timeoutSec);
+    auto const request = controller()->serviceProvider()->qservMgtServices()->status(worker, noParentJobId,
+                                                                                     onFinish, timeoutSec);
     request->wait();
 
     json result;
@@ -239,10 +219,9 @@ json HttpQservMonitorModule::_worker() {
         result["status"][worker]["queries"] = _getQueries(info);
     } else {
         result["status"][worker]["success"] = 0;
-    }        
+    }
     return result;
 }
-
 
 json HttpQservMonitorModule::_userQueries() {
     debug(__func__);
@@ -273,15 +252,15 @@ json HttpQservMonitorModule::_userQueries() {
 
     map<QueryId, string> queryId2scheduler;
     auto&& status = job->qservStatus();
-    for (auto&& entry: status.workers) {
+    for (auto&& entry : status.workers) {
         auto&& worker = entry.first;
         bool success = entry.second;
         if (success) {
             auto info = status.info.at(worker);
             auto&& schedulers = info["processor"]["queries"]["blend_scheduler"]["schedulers"];
-            for (auto&& scheduler: schedulers) {
+            for (auto&& scheduler : schedulers) {
                 string const scheduerName = scheduler["name"];
-                for (auto&& queryId2count: scheduler["query_id_to_count"]) {
+                for (auto&& queryId2count : scheduler["query_id_to_count"]) {
                     QueryId const queryId = queryId2count[0];
                     queryId2scheduler[queryId] = scheduerName;
                 }
@@ -298,39 +277,42 @@ json HttpQservMonitorModule::_userQueries() {
     // is automatically rolled-back in case of exceptions.
 
     database::mysql::ConnectionHandler const h(
-        database::mysql::Connection::open(Configuration::qservCzarDbParams("qservMeta"))
-    );
+            database::mysql::Connection::open(Configuration::qservCzarDbParams("qservMeta")));
 
     // NOTE: the roll-back for this transaction will happen automatically. It will
     // be done by the connection handler.
     h.conn->begin();
-    h.conn->execute(
-        "SELECT " + h.conn->sqlId("QStatsTmp") + ".*,"
-        "UNIX_TIMESTAMP(" + h.conn->sqlId("queryBegin") + ") AS " + h.conn->sqlId("queryBegin_sec") + ","
-        "UNIX_TIMESTAMP(" + h.conn->sqlId("lastUpdate") + ") AS " + h.conn->sqlId("lastUpdate_sec") + ","
-        "NOW() AS "       + h.conn->sqlId("samplingTime") + ","
-        "UNIX_TIMESTAMP(NOW()) AS " + h.conn->sqlId("samplingTime_sec") + "," +
-        h.conn->sqlId("QInfo") + "." + h.conn->sqlId("query") +
-        " FROM " + h.conn->sqlId("QStatsTmp") + "," + h.conn->sqlId("QInfo") +
-        " WHERE " +
-        h.conn->sqlId("QStatsTmp") + "." + h.conn->sqlId("queryId") + "=" +
-        h.conn->sqlId("QInfo")     + "." + h.conn->sqlId("queryId") +
-        " ORDER BY " + h.conn->sqlId("QStatsTmp") + "." + h.conn->sqlId("queryBegin") + " DESC"
-    );
+    h.conn->execute("SELECT " + h.conn->sqlId("QStatsTmp") +
+                    ".*,"
+                    "UNIX_TIMESTAMP(" +
+                    h.conn->sqlId("queryBegin") + ") AS " + h.conn->sqlId("queryBegin_sec") +
+                    ","
+                    "UNIX_TIMESTAMP(" +
+                    h.conn->sqlId("lastUpdate") + ") AS " + h.conn->sqlId("lastUpdate_sec") +
+                    ","
+                    "NOW() AS " +
+                    h.conn->sqlId("samplingTime") +
+                    ","
+                    "UNIX_TIMESTAMP(NOW()) AS " +
+                    h.conn->sqlId("samplingTime_sec") + "," + h.conn->sqlId("QInfo") + "." +
+                    h.conn->sqlId("query") + " FROM " + h.conn->sqlId("QStatsTmp") + "," +
+                    h.conn->sqlId("QInfo") + " WHERE " + h.conn->sqlId("QStatsTmp") + "." +
+                    h.conn->sqlId("queryId") + "=" + h.conn->sqlId("QInfo") + "." + h.conn->sqlId("queryId") +
+                    " ORDER BY " + h.conn->sqlId("QStatsTmp") + "." + h.conn->sqlId("queryBegin") + " DESC");
     if (h.conn->hasResult()) {
         database::mysql::Row row;
         while (h.conn->next(row)) {
             json resultRow;
-            ::parseFieldIntoJson<QueryId>(__func__, row, "queryId",          resultRow);
-            ::parseFieldIntoJson<int>(    __func__, row, "totalChunks",      resultRow);
-            ::parseFieldIntoJson<int>(    __func__, row, "completedChunks",  resultRow);
-            ::parseFieldIntoJson<string>( __func__, row, "queryBegin",       resultRow);
-            ::parseFieldIntoJson<long>(   __func__, row, "queryBegin_sec",   resultRow);
-            ::parseFieldIntoJson<string>( __func__, row, "lastUpdate",       resultRow);
-            ::parseFieldIntoJson<long>(   __func__, row, "lastUpdate_sec",   resultRow);
-            ::parseFieldIntoJson<string>( __func__, row, "samplingTime",     resultRow);
-            ::parseFieldIntoJson<long>(   __func__, row, "samplingTime_sec", resultRow);
-            ::parseFieldIntoJson<string>( __func__, row, "query",            resultRow);
+            ::parseFieldIntoJson<QueryId>(__func__, row, "queryId", resultRow);
+            ::parseFieldIntoJson<int>(__func__, row, "totalChunks", resultRow);
+            ::parseFieldIntoJson<int>(__func__, row, "completedChunks", resultRow);
+            ::parseFieldIntoJson<string>(__func__, row, "queryBegin", resultRow);
+            ::parseFieldIntoJson<long>(__func__, row, "queryBegin_sec", resultRow);
+            ::parseFieldIntoJson<string>(__func__, row, "lastUpdate", resultRow);
+            ::parseFieldIntoJson<long>(__func__, row, "lastUpdate_sec", resultRow);
+            ::parseFieldIntoJson<string>(__func__, row, "samplingTime", resultRow);
+            ::parseFieldIntoJson<long>(__func__, row, "samplingTime_sec", resultRow);
+            ::parseFieldIntoJson<string>(__func__, row, "query", resultRow);
 
             // Optionally, add the name of corresponding worker scheduler
             // if the one was already known for the query.
@@ -357,46 +339,46 @@ json HttpQservMonitorModule::_userQueries() {
                    << h.conn->sqlValue(queryAgeSec);
     }
     if (minElapsedSec > 0) {
-        constraint << " AND TIMESTAMPDIFF(SECOND," << h.conn->sqlId("submitted") << "," << h.conn->sqlId("completed") << ") > "
-                   << h.conn->sqlValue(minElapsedSec);
+        constraint << " AND TIMESTAMPDIFF(SECOND," << h.conn->sqlId("submitted") << ","
+                   << h.conn->sqlId("completed") << ") > " << h.conn->sqlValue(minElapsedSec);
     }
     h.conn->execute(
-        "SELECT *,"
-        "UNIX_TIMESTAMP(" + h.conn->sqlId("submitted") + ") AS " + h.conn->sqlId("submitted_sec") + "," +
-        "UNIX_TIMESTAMP(" + h.conn->sqlId("completed") + ") AS " + h.conn->sqlId("completed_sec") + ","
-        "UNIX_TIMESTAMP(" + h.conn->sqlId("returned")  + ") AS " + h.conn->sqlId("returned_sec") +
-        " FROM "  + h.conn->sqlId("QInfo") +
-        " WHERE " + constraint.str() +
-        " ORDER BY " + h.conn->sqlId("submitted") + " DESC" +
-        (limit4past == 0 ? "" : " LIMIT " + to_string(limit4past))
-    );
+            "SELECT *,"
+            "UNIX_TIMESTAMP(" +
+            h.conn->sqlId("submitted") + ") AS " + h.conn->sqlId("submitted_sec") + "," + "UNIX_TIMESTAMP(" +
+            h.conn->sqlId("completed") + ") AS " + h.conn->sqlId("completed_sec") +
+            ","
+            "UNIX_TIMESTAMP(" +
+            h.conn->sqlId("returned") + ") AS " + h.conn->sqlId("returned_sec") + " FROM " +
+            h.conn->sqlId("QInfo") + " WHERE " + constraint.str() + " ORDER BY " +
+            h.conn->sqlId("submitted") + " DESC" +
+            (limit4past == 0 ? "" : " LIMIT " + to_string(limit4past)));
     if (h.conn->hasResult()) {
         database::mysql::Row row;
         while (h.conn->next(row)) {
             json resultRow;
-            ::parseFieldIntoJson<QueryId>(__func__, row, "queryId",        resultRow);
-            ::parseFieldIntoJson<string>( __func__, row, "qType",          resultRow);
-            ::parseFieldIntoJson<int>(    __func__, row, "czarId",         resultRow);
-            ::parseFieldIntoJson<string>( __func__, row, "user",           resultRow);
-            ::parseFieldIntoJson<string>( __func__, row, "query",          resultRow);
-            ::parseFieldIntoJson<string>( __func__, row, "qTemplate",      resultRow);
-            ::parseFieldIntoJson<string>( __func__, row, "qMerge",         resultRow, "");
-            ::parseFieldIntoJson<string>( __func__, row, "status",         resultRow);
-            ::parseFieldIntoJson<string>( __func__, row, "submitted",      resultRow);
-            ::parseFieldIntoJson<long>(   __func__, row, "submitted_sec",  resultRow);
-            ::parseFieldIntoJson<string>( __func__, row, "completed",      resultRow, "");
-            ::parseFieldIntoJson<long>(   __func__, row, "completed_sec",  resultRow, 0);
-            ::parseFieldIntoJson<string>( __func__, row, "returned",       resultRow, "");
-            ::parseFieldIntoJson<long>(   __func__, row, "returned_sec",   resultRow, 0);
-            ::parseFieldIntoJson<string>( __func__, row, "messageTable",   resultRow, "");
-            ::parseFieldIntoJson<string>( __func__, row, "resultLocation", resultRow, "");
-            ::parseFieldIntoJson<string>( __func__, row, "resultQuery",    resultRow, "");
+            ::parseFieldIntoJson<QueryId>(__func__, row, "queryId", resultRow);
+            ::parseFieldIntoJson<string>(__func__, row, "qType", resultRow);
+            ::parseFieldIntoJson<int>(__func__, row, "czarId", resultRow);
+            ::parseFieldIntoJson<string>(__func__, row, "user", resultRow);
+            ::parseFieldIntoJson<string>(__func__, row, "query", resultRow);
+            ::parseFieldIntoJson<string>(__func__, row, "qTemplate", resultRow);
+            ::parseFieldIntoJson<string>(__func__, row, "qMerge", resultRow, "");
+            ::parseFieldIntoJson<string>(__func__, row, "status", resultRow);
+            ::parseFieldIntoJson<string>(__func__, row, "submitted", resultRow);
+            ::parseFieldIntoJson<long>(__func__, row, "submitted_sec", resultRow);
+            ::parseFieldIntoJson<string>(__func__, row, "completed", resultRow, "");
+            ::parseFieldIntoJson<long>(__func__, row, "completed_sec", resultRow, 0);
+            ::parseFieldIntoJson<string>(__func__, row, "returned", resultRow, "");
+            ::parseFieldIntoJson<long>(__func__, row, "returned_sec", resultRow, 0);
+            ::parseFieldIntoJson<string>(__func__, row, "messageTable", resultRow, "");
+            ::parseFieldIntoJson<string>(__func__, row, "resultLocation", resultRow, "");
+            ::parseFieldIntoJson<string>(__func__, row, "resultQuery", resultRow, "");
             result["queries_past"].push_back(resultRow);
         }
     }
     return result;
 }
-
 
 json HttpQservMonitorModule::_userQuery() {
     debug(__func__);
@@ -405,13 +387,11 @@ json HttpQservMonitorModule::_userQuery() {
     return json::object();
 }
 
-
 json HttpQservMonitorModule::_getQueries(json& workerInfo) const {
-
     // Find identifiers of all queries in the wait queues of all schedulers
     set<QueryId> qids;
-    for (auto&& scheduler: workerInfo.at("processor").at("queries").at("blend_scheduler").at("schedulers")) {
-        for (auto&& entry: scheduler.at("query_id_to_count")) {
+    for (auto&& scheduler : workerInfo.at("processor").at("queries").at("blend_scheduler").at("schedulers")) {
+        for (auto&& entry : scheduler.at("query_id_to_count")) {
             qids.insert(entry[0].get<QueryId>());
         }
     }
@@ -422,16 +402,15 @@ json HttpQservMonitorModule::_getQueries(json& workerInfo) const {
 
     auto const config = controller()->serviceProvider()->config();
     database::mysql::ConnectionHandler const h(
-        database::mysql::Connection::open(Configuration::qservCzarDbParams("qservMeta"))
-    );
+            database::mysql::Connection::open(Configuration::qservCzarDbParams("qservMeta")));
 
     // Extract descriptions of those queries from qservMeta
     json result;
     if (not qids.empty()) {
         h.conn->execute([&](decltype(h.conn) conn) {
             conn->begin();
-            conn->execute("SELECT * FROM " + h.conn->sqlId("QInfo") +
-                          " WHERE " + h.conn->sqlIn("queryId", qids));
+            conn->execute("SELECT * FROM " + h.conn->sqlId("QInfo") + " WHERE " +
+                          h.conn->sqlIn("queryId", qids));
             ::extractQInfo(conn, result);
             conn->commit();
         });
@@ -439,11 +418,10 @@ json HttpQservMonitorModule::_getQueries(json& workerInfo) const {
     return result;
 }
 
-
 json HttpQservMonitorModule::_chunkInfo(set<int> const& chunks) const {
     json result;
     auto const config = controller()->serviceProvider()->config();
-    for (auto&& familyName: config->databaseFamilies()) {
+    for (auto&& familyName : config->databaseFamilies()) {
         auto&& familyInfo = config->databaseFamilyInfo(familyName);
         /*
          * TODO: both versions of the 'Chunker' class need to be used due to non-overlapping
@@ -456,7 +434,7 @@ json HttpQservMonitorModule::_chunkInfo(set<int> const& chunks) const {
         lsst::sphgeom::Chunker const sphgeomChunker(familyInfo.numStripes, familyInfo.numSubStripes);
         lsst::partition::Chunker const partitionChunker(familyInfo.overlap, familyInfo.numStripes,
                                                         familyInfo.numSubStripes);
-        for (auto&& chunk: chunks) {
+        for (auto&& chunk : chunks) {
             if (sphgeomChunker.valid(chunk)) {
                 json chunkGeometry;
                 auto&& box = partitionChunker.getChunkBounds(chunk);

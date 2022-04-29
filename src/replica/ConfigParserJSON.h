@@ -35,9 +35,7 @@
 #include "replica/ConfigurationSchema.h"
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
 /**
  * The class for parsing and loading a configuration from the JSON object.
@@ -55,8 +53,7 @@ public:
      * @param databaseFamilies The collection of the database family descriptors.
      * @param databases The collection of the database descriptors.
      */
-    ConfigParserJSON(nlohmann::json& data,
-                     std::map<std::string, WorkerInfo>& workers,
+    ConfigParserJSON(nlohmann::json& data, std::map<std::string, WorkerInfo>& workers,
                      std::map<std::string, DatabaseFamilyInfo>& databaseFamilies,
                      std::map<std::string, DatabaseInfo>& databases);
 
@@ -77,17 +74,15 @@ private:
      * @throws std::invalid_argument If the parameter's value didn't pass the validation.
      */
     template <typename T>
-    void _storeGeneralParameter(nlohmann::json& dest,
-                                nlohmann::json const& source,
-                                std::string const& category,
-                                std::string const& param) {
+    void _storeGeneralParameter(nlohmann::json& dest, nlohmann::json const& source,
+                                std::string const& category, std::string const& param) {
         // Sanitize the input to ensure it matches schema requirements before
         // pushing the value into the configuration.
         ConfigurationSchema::validate<T>(category, param, source.get<T>());
         dest = source;
     }
 
-    std::string const _context =  "CONFIG-JSON-PARSER  ";
+    std::string const _context = "CONFIG-JSON-PARSER  ";
 
     // Input parameters
 
@@ -97,6 +92,6 @@ private:
     std::map<std::string, DatabaseInfo>& _databases;
 };
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_CONFIGPARSERJSON_H
+#endif  // LSST_QSERV_REPLICA_CONFIGPARSERJSON_H

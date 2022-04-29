@@ -21,10 +21,8 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-
 #ifndef LSST_QSERV_CCONTROL_USERQUERYRESOURCES_H
 #define LSST_QSERV_CCONTROL_USERQUERYRESOURCES_H
-
 
 #include <memory>
 #include <string>
@@ -32,51 +30,44 @@
 #include "qmeta/types.h"
 #include "mysql/MySqlConfig.h"
 
-
-namespace lsst {
-namespace qserv {
+namespace lsst { namespace qserv {
 namespace ccontrol {
-    class UserQueryResources;
+class UserQueryResources;
 }
 namespace css {
-    class CssAccess;
+class CssAccess;
 }
 namespace czar {
-    class CzarConfig;
+class CzarConfig;
 }
 namespace mysql {
-    class MySqlConfig;
+class MySqlConfig;
 }
 namespace qmeta {
-    class QMeta;
-    class QStatus;
-    class QMetaSelect;
-}
+class QMeta;
+class QStatus;
+class QMetaSelect;
+}  // namespace qmeta
 namespace qproc {
-    class DatabaseModels;
-    class SecondaryIndex;
-}
+class DatabaseModels;
+class SecondaryIndex;
+}  // namespace qproc
 namespace sql {
-    class SqlConnection;
+class SqlConnection;
 }
 namespace util {
-    class SemaMgr;
-}}}
+class SemaMgr;
+}
+}}  // namespace lsst::qserv
 
-
-namespace lsst {
-namespace qserv {
-namespace ccontrol {
-
+namespace lsst { namespace qserv { namespace ccontrol {
 
 /**
  * UserQueryResources owns the Czar resources that are useful to & shared among UserQuery instances.
  */
 class UserQuerySharedResources {
-
 public:
-    UserQuerySharedResources(czar::CzarConfig const& czarConfig_,
-                             std::shared_ptr<css::CssAccess> const& css_,
+    UserQuerySharedResources(czar::CzarConfig const& czarConfig_, std::shared_ptr<css::CssAccess> const& css_,
                              mysql::MySqlConfig const& mysqlResultConfig_,
                              std::shared_ptr<qproc::SecondaryIndex> const& secondaryIndex_,
                              std::shared_ptr<qmeta::QMeta> const& queryMetadata_,
@@ -84,8 +75,7 @@ public:
                              std::shared_ptr<qmeta::QMetaSelect> const& qMetaSelect_,
                              std::shared_ptr<sql::SqlConnection> const& resultDbConn_,
                              std::shared_ptr<qproc::DatabaseModels> const& databaseModels_,
-                             std::string const& czarName,
-                             int interactiveChunkLimit_);
+                             std::string const& czarName, int interactiveChunkLimit_);
 
     UserQuerySharedResources(UserQuerySharedResources const& rhs) = default;
     UserQuerySharedResources& operator=(UserQuerySharedResources const& rhs) = delete;
@@ -98,7 +88,7 @@ public:
     std::shared_ptr<qmeta::QMetaSelect> qMetaSelect;
     std::shared_ptr<sql::SqlConnection> resultDbConn;
     std::shared_ptr<qproc::DatabaseModels> databaseModels;
-    qmeta::CzarId qMetaCzarId;   ///< Czar ID in QMeta database
+    qmeta::CzarId qMetaCzarId;  ///< Czar ID in QMeta database
     int const interactiveChunkLimit;
     std::shared_ptr<util::SemaMgr> semaMgrConnections;
 
@@ -111,7 +101,8 @@ public:
      * @param resultDb the result db specifically for the UserQuery
      * @return std::shared_ptr<UserQueryResources> The pointer to the new object.
      */
-    std::shared_ptr<UserQueryResources> makeUserQueryResources(std::string const& userQueryId, std::string const& resultDb);
+    std::shared_ptr<UserQueryResources> makeUserQueryResources(std::string const& userQueryId,
+                                                               std::string const& resultDb);
 };
 
 /**
@@ -120,21 +111,16 @@ public:
  */
 class UserQueryResources : public UserQuerySharedResources {
 public:
-
     UserQueryResources(UserQuerySharedResources const& userQuerySharedResources,
-                       std::string const& userQueryId_,
-                       std::string const& resultDb_)
-        : UserQuerySharedResources(userQuerySharedResources),
-          userQueryId(userQueryId_),
-          resultDb(resultDb_)
-    {}
+                       std::string const& userQueryId_, std::string const& resultDb_)
+            : UserQuerySharedResources(userQuerySharedResources),
+              userQueryId(userQueryId_),
+              resultDb(resultDb_) {}
 
     std::string userQueryId;
     std::string resultDb;
 };
 
+}}}  // namespace lsst::qserv::ccontrol
 
-}}} // lsst::qserv::ccontrol
-
-
-#endif // LSST_QSERV_CCONTROL_USERQUERYRESOURCES_H
+#endif  // LSST_QSERV_CCONTROL_USERQUERYRESOURCES_H

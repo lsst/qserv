@@ -21,9 +21,8 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 /**
-  * @author Daniel L. Wang, SLAC
-  */
-
+ * @author Daniel L. Wang, SLAC
+ */
 
 // Class header
 #include "query/JoinSpec.h"
@@ -36,16 +35,9 @@
 #include "query/ColumnRef.h"
 #include "query/QueryTemplate.h"
 
+namespace lsst { namespace qserv { namespace query {
 
-namespace lsst {
-namespace qserv {
-namespace query {
-
-
-inline bool isInconsistent(JoinSpec const& s) {
-    return s.getOn() && s.getUsing();
-}
-
+inline bool isInconsistent(JoinSpec const& s) { return s.getOn() && s.getUsing(); }
 
 std::ostream& operator<<(std::ostream& os, JoinSpec const& js) {
     os << "JoinSpec(";
@@ -55,12 +47,10 @@ std::ostream& operator<<(std::ostream& os, JoinSpec const& js) {
     return os;
 }
 
-
 std::ostream& operator<<(std::ostream& os, JoinSpec const* js) {
     (nullptr == js) ? os << "nullptr" : os << *js;
     return os;
 }
-
 
 std::ostream& JoinSpec::putStream(std::ostream& os) const {
     // boilerplate impl until we can think of something better
@@ -68,7 +58,6 @@ std::ostream& JoinSpec::putStream(std::ostream& os) const {
     putTemplate(qt);
     return os << qt;
 }
-
 
 void JoinSpec::putTemplate(QueryTemplate& qt) const {
     if (isInconsistent(*this)) {
@@ -81,13 +70,12 @@ void JoinSpec::putTemplate(QueryTemplate& qt) const {
     } else if (_usingColumn) {
         qt.append("USING");
         qt.append("(");
-        qt.append(*_usingColumn); // FIXME: update to support column lists
+        qt.append(*_usingColumn);  // FIXME: update to support column lists
         qt.append(")");
     } else {
         throw std::logic_error("Empty JoinSpec");
     }
 }
-
 
 JoinSpec::Ptr JoinSpec::clone() const {
     if (isInconsistent(*this)) {
@@ -101,11 +89,9 @@ JoinSpec::Ptr JoinSpec::clone() const {
     }
 }
 
-
 bool JoinSpec::operator==(const JoinSpec& rhs) const {
     return util::ptrCompare<ColumnRef>(_usingColumn, rhs._usingColumn) &&
            util::ptrCompare<BoolTerm>(_onTerm, rhs._onTerm);
 }
 
-
-}}} // lsst::qserv::query
+}}}  // namespace lsst::qserv::query

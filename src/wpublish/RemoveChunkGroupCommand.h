@@ -34,29 +34,25 @@
 #include "wbase/WorkerCommand.h"
 
 // Forward declarations
-namespace lsst {
-namespace qserv {
+namespace lsst { namespace qserv {
 namespace wbase {
-    class SendChannel;
+class SendChannel;
 }
 namespace wpublish {
-    class ChunkInventory;
-    class ResourceMonitor;
-}}}
+class ChunkInventory;
+class ResourceMonitor;
+}  // namespace wpublish
+}}  // namespace lsst::qserv
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace wpublish {
+namespace lsst { namespace qserv { namespace wpublish {
 
 /**
-  * Class RemoveChunkGroupCommand removes a group of chunks from XRootD
-  * and the worker's list of chunks.
-  */
+ * Class RemoveChunkGroupCommand removes a group of chunks from XRootD
+ * and the worker's list of chunks.
+ */
 class RemoveChunkGroupCommand : public wbase::WorkerCommand {
-
 public:
-
     // The default construction and copy semantics are prohibited
     RemoveChunkGroupCommand() = delete;
     RemoveChunkGroupCommand& operator=(const RemoveChunkGroupCommand&) = delete;
@@ -74,17 +70,14 @@ public:
     RemoveChunkGroupCommand(std::shared_ptr<wbase::SendChannel> const& sendChannel,
                             std::shared_ptr<ChunkInventory> const& chunkInventory,
                             std::shared_ptr<ResourceMonitor> const& resourceMonitor,
-                            mysql::MySqlConfig const& mySqlConfig,
-                            int chunk,
-                            std::vector<std::string> const& dbs,
-                            bool force);
+                            mysql::MySqlConfig const& mySqlConfig, int chunk,
+                            std::vector<std::string> const& dbs, bool force);
 
     ~RemoveChunkGroupCommand() override = default;
 
     void run() override;
 
 private:
-
     /**
      * Report error condition to the logging stream and reply back to
      * a service caller.
@@ -92,9 +85,7 @@ private:
      * @param status   error status
      * @param message  message to be reported
      */
-    void _reportError(proto::WorkerCommandChunkGroupR::Status status,
-                      std::string const& message);
-
+    void _reportError(proto::WorkerCommandChunkGroupR::Status status, std::string const& message);
 
     // Parameters of the object
 
@@ -106,6 +97,6 @@ private:
     bool _force;
 };
 
-}}} // namespace lsst::qserv::wpublish
+}}}  // namespace lsst::qserv::wpublish
 
-#endif // LSST_QSERV_PUBLISH_REMOVE_CHUNK_GROUP_COMMAND_H
+#endif  // LSST_QSERV_PUBLISH_REMOVE_CHUNK_GROUP_COMMAND_H

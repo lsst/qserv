@@ -35,15 +35,13 @@
 #include "wpublish/GetStatusQservRequest.h"
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
 /**
  * Class GetStatusQservMgtRequest is a request for obtaining various info
  * (status, counters, monitoring) reported the Qserv workers.
  */
-class GetStatusQservMgtRequest: public QservMgtRequest {
+class GetStatusQservMgtRequest : public QservMgtRequest {
 public:
     typedef std::shared_ptr<GetStatusQservMgtRequest> Ptr;
 
@@ -66,9 +64,8 @@ public:
      * @param onFinish (optional) callback function to be called upon request completion.
      * @return A pointer to the created object.
      */
-    static Ptr create(ServiceProvider::Ptr const& serviceProvider,
-                      std::string const& worker,
-                      CallbackType const& onFinish=nullptr);
+    static Ptr create(ServiceProvider::Ptr const& serviceProvider, std::string const& worker,
+                      CallbackType const& onFinish = nullptr);
 
     /**
      * @return The info object returned back by the worker.
@@ -78,7 +75,7 @@ public:
     nlohmann::json const& info() const;
 
     /// @see QservMgtRequest::extendedPersistentState()
-    std::list<std::pair<std::string,std::string>> extendedPersistentState() const override;
+    std::list<std::pair<std::string, std::string>> extendedPersistentState() const override;
 
 protected:
     /// @see QservMgtRequest::startImpl()
@@ -92,8 +89,7 @@ protected:
 
 private:
     /// @see GetStatusQservMgtRequest::create()
-    GetStatusQservMgtRequest(ServiceProvider::Ptr const& serviceProvider,
-                             std::string const& worker,
+    GetStatusQservMgtRequest(ServiceProvider::Ptr const& serviceProvider, std::string const& worker,
                              CallbackType const& onFinish);
 
     /**
@@ -101,13 +97,12 @@ private:
      * @param lock A lock on QservMgtRequest::_mtx must be acquired by a caller of the method.
      * @param info The data string returned by a worker.
      */
-    void _setInfo(util::Lock const& lock,
-                  std::string const& info);
+    void _setInfo(util::Lock const& lock, std::string const& info);
 
     // Input parameters
 
     std::string const _data;
-    CallbackType      _onFinish;    ///< @note this object is reset after finishing the request
+    CallbackType _onFinish;  ///< @note this object is reset after finishing the request
 
     /// A request to the remote services
     wpublish::GetStatusQservRequest::Ptr _qservRequest;
@@ -116,6 +111,6 @@ private:
     nlohmann::json _info;
 };
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_GETSTATUSQSERVMGTREQUEST_H
+#endif  // LSST_QSERV_REPLICA_GETSTATUSQSERVMGTREQUEST_H

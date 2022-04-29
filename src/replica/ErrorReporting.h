@@ -34,9 +34,7 @@
 #include "replica/Common.h"
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
 /**
  * Print a report on a state of requests
@@ -48,26 +46,26 @@ namespace replica {
  *   an output stream
  */
 template <class COLLECTION>
-void reportRequestState(COLLECTION const& requests,
-                        std::ostream& os) {
-    os  << "\n"
-        << "REQUESTS:\n"
-        << "--------------------------------------+----------------------+--------+-------------+----------------------+--------------------------\n"
-        << "                                   id |                 type | worker |       state |            ext.state |          server err.code \n"
-        << "--------------------------------------+----------------------+--------+-------------+----------------------+--------------------------\n";   
-    for (auto&& ptr: requests) {
-        os  << " "   << std::setw(36) << ptr->id()
-            << " | " << std::setw(20) << ptr->type()
-            << " | " << std::setw(6)  << ptr->worker()
-            << " | " << std::setw(11) << ptr->state2string(ptr->state())
-            << " | " << std::setw(20) << ptr->state2string(ptr->extendedState())
-            << " | " << std::setw(24) << replica::status2string(ptr->extendedServerStatus())
-            << "\n";
+void reportRequestState(COLLECTION const& requests, std::ostream& os) {
+    os << "\n"
+       << "REQUESTS:\n"
+       << "--------------------------------------+----------------------+--------+-------------+-------------"
+          "---------+--------------------------\n"
+       << "                                   id |                 type | worker |       state |            "
+          "ext.state |          server err.code \n"
+       << "--------------------------------------+----------------------+--------+-------------+-------------"
+          "---------+--------------------------\n";
+    for (auto&& ptr : requests) {
+        os << " " << std::setw(36) << ptr->id() << " | " << std::setw(20) << ptr->type() << " | "
+           << std::setw(6) << ptr->worker() << " | " << std::setw(11) << ptr->state2string(ptr->state())
+           << " | " << std::setw(20) << ptr->state2string(ptr->extendedState()) << " | " << std::setw(24)
+           << replica::status2string(ptr->extendedServerStatus()) << "\n";
     }
-    os  << "--------------------------------------+----------------------+--------+-------------+----------------------+--------------------------\n"
-        << std::endl;
+    os << "--------------------------------------+----------------------+--------+-------------+-------------"
+          "---------+--------------------------\n"
+       << std::endl;
 }
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_ERRORREPORTING_H
+#endif  // LSST_QSERV_REPLICA_ERRORREPORTING_H

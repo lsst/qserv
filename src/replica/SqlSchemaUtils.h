@@ -30,9 +30,7 @@
 #include "replica/Common.h"
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
 /**
  * Utility class SqlSchemaUtils hosts tools for manipulating schema(s).
@@ -43,7 +41,7 @@ public:
      * Read column definitions from a text file. Each column is defined
      * on a separate line of a file. And the format of the file looks
      * like this:
-     * 
+     *
      *   <column-name> <column-type-definition>
      *
      * @param fileName  the name of a file to be parsed
@@ -60,7 +58,7 @@ public:
      * Read column definitions of an index specification from a text file.
      * Each column is defined on a separate line of a file. And the format of
      * the file looks like this:
-     * 
+     *
      *   <column-name> <length> <ascending-flag>
      *
      * Where:
@@ -79,6 +77,6 @@ public:
     static std::vector<SqlIndexColumn> readIndexSpecFromTextFile(std::string const& fileName);
 };
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica
 
 #endif /* LSST_QSERV_REPLICA_SQLSCHEMAUTILS_H */

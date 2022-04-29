@@ -34,11 +34,9 @@
 #include "replica/ConfigDatabaseFamily.h"
 #include "replica/ConfigWorker.h"
 #include "replica/DatabaseMySQL.h"
-    
+
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
 /**
  * The class for parsing and loading the persistent configuration stored in MySQL.
@@ -61,8 +59,7 @@ public:
      * @param databaseFamilies The collection of the database family descriptors.
      * @param databases The collection of the database descriptors.
      */
-    ConfigParserMySQL(database::mysql::Connection::Ptr const& conn,
-                      nlohmann::json& data,
+    ConfigParserMySQL(database::mysql::Connection::Ptr const& conn, nlohmann::json& data,
                       std::map<std::string, WorkerInfo>& workers,
                       std::map<std::string, DatabaseFamilyInfo>& databaseFamilies,
                       std::map<std::string, DatabaseInfo>& databases);
@@ -75,7 +72,6 @@ public:
     void parse();
 
 private:
-
     /**
      * Read schema version from the database. Make sure it matches the one
      * expected by this application.
@@ -105,8 +101,7 @@ private:
     T _parseParam(std::string const& name) {
         T value;
         if (_row.get(name, value)) return value;
-        throw std::runtime_error(
-                _context + " the spec field '" + name + "' is not allowed to be NULL");
+        throw std::runtime_error(_context + " the spec field '" + name + "' is not allowed to be NULL");
     }
 
     template <typename T>
@@ -123,7 +118,7 @@ private:
         return defaults.at(name).get<T>();
     }
 
-    std::string const _context =  "CONFIG-MYSQL-PARSER  ";
+    std::string const _context = "CONFIG-MYSQL-PARSER  ";
 
     // Input parameters
 
@@ -138,6 +133,6 @@ private:
     database::mysql::Row _row;
 };
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_CONFIGPARSERMYSQL_H
+#endif  // LSST_QSERV_REPLICA_CONFIGPARSERMYSQL_H

@@ -32,11 +32,7 @@
 
 // Qserv headers
 
-
-namespace lsst {
-namespace qserv {
-namespace util {
-
+namespace lsst { namespace qserv { namespace util {
 
 /// This class (with SemaLock) is used to limit the number of simultaneous
 /// connections to MySQL for merging the results.
@@ -47,7 +43,7 @@ public:
     SemaMgr() = delete;
     SemaMgr(SemaMgr const&) = delete;
     SemaMgr& operator=(SemaMgr const&) = delete;
-    virtual ~SemaMgr() =  default;
+    virtual ~SemaMgr() = default;
 
     int getTotalCount() { return _totalCount; }
     int getUsedCount() { return _usedCount; }
@@ -59,17 +55,17 @@ public:
         return max;
     }
 
-    virtual std::ostream& dump(std::ostream &os) const;
+    virtual std::ostream& dump(std::ostream& os) const;
     std::string dump() const;
-    friend std::ostream& operator<<(std::ostream &out, SemaMgr const& semaMgr);
+    friend std::ostream& operator<<(std::ostream& out, SemaMgr const& semaMgr);
 
     friend class SemaLock;
 
 private:
-    void _take()  {
+    void _take() {
         ++_totalCount;
         std::unique_lock<std::mutex> uLock(_mtx);
-        _tCv.wait(uLock, [this](){ return _usedCount < _max; });
+        _tCv.wait(uLock, [this]() { return _usedCount < _max; });
         ++_usedCount;
     }
 
@@ -86,25 +82,20 @@ private:
     std::condition_variable _tCv;
 };
 
-
 /// RAII class to support SemaMgr
 class SemaLock {
 public:
-    explicit SemaLock(SemaMgr& semaMgr)
-      : _semaMgr(semaMgr) {
-        _semaMgr._take();
-    }
+    explicit SemaLock(SemaMgr& semaMgr) : _semaMgr(semaMgr) { _semaMgr._take(); }
     SemaLock() = delete;
     SemaLock(SemaLock const&) = delete;
     SemaLock& operator=(SemaLock const&) = delete;
 
-    ~SemaLock() {
-        _semaMgr._release();
-    }
+    ~SemaLock() { _semaMgr._release(); }
+
 private:
     SemaMgr& _semaMgr;
 };
 
-}}} // namespace lsst::qserv::util
+}}}  // namespace lsst::qserv::util
 
-#endif // LSST_QSERV_UTIL_SEMAMGR_H
+#endif  // LSST_QSERV_UTIL_SEMAMGR_H

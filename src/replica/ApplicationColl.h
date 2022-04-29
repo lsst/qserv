@@ -27,9 +27,7 @@
 #include <string>
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
 /**
  * Class ApplicationColl represents a collection of application launchers. It's meant
@@ -47,7 +45,7 @@ public:
      * Register an application of the given type.
      * @param name The name of the application.
      */
-    template<class APPLICATION>
+    template <class APPLICATION>
     void add(std::string const& name) {
         _coll.insert(std::make_pair(name, std::make_shared<AppLauncher<APPLICATION>>()));
     }
@@ -57,7 +55,7 @@ public:
      * @note The name of the application is expected to be specified as the very
      *   first (argv[1]) mandatory parameter found in the input collection of
      *   arguments. This is required to be one of the names used during application
-     *   registration when calling above described method add(). 
+     *   registration when calling above described method add().
      * @param argc The number of the command line arguments.
      * @param argv A collection of the arguments.
      */
@@ -65,24 +63,24 @@ public:
 
 private:
     /// @param err The optional message to be printed onto the standard error stream
-    void _printUsage(std::string const& err=std::string()) const;
+    void _printUsage(std::string const& err = std::string()) const;
 
     class AppLauncherBase {
     public:
         virtual int run(int argc, char* argv[]) const = 0;
     };
 
-    template<class APPLICATION>
-    class AppLauncher: public AppLauncherBase {
+    template <class APPLICATION>
+    class AppLauncher : public AppLauncherBase {
     public:
-        virtual int run(int argc, char* argv[]) const override { 
+        virtual int run(int argc, char* argv[]) const override {
             auto const app = APPLICATION::create(argc, argv);
             return app->run();
         }
     };
-    std::map< std::string, std::shared_ptr<AppLauncherBase>> _coll;
+    std::map<std::string, std::shared_ptr<AppLauncherBase>> _coll;
 };
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_APPLICATIONCOLL_H
+#endif  // LSST_QSERV_REPLICA_APPLICATIONCOLL_H

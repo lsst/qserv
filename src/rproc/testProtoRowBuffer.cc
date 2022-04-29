@@ -21,7 +21,6 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-
 // Class header
 #include "rproc/ProtoRowBuffer.h"
 
@@ -40,9 +39,8 @@ using lsst::qserv::rproc::ProtoRowBuffer;
 
 struct Fixture {
     Fixture(void) {}
-    ~Fixture(void) { }
+    ~Fixture(void) {}
 };
-
 
 BOOST_FIXTURE_TEST_SUITE(suite, Fixture)
 

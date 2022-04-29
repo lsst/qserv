@@ -68,9 +68,7 @@ bool isErrorCode(boost::system::error_code const& ec, string const& scope) {
     return true;
 }
 
-
-bool readIntoBuffer(boost::asio::ip::tcp::socket& socket,
-                    shared_ptr<ProtocolBuffer> const& ptr,
+bool readIntoBuffer(boost::asio::ip::tcp::socket& socket, shared_ptr<ProtocolBuffer> const& ptr,
                     size_t bytes) {
     // Make sure the buffer has enough space to accommodate the data
     // of the message. Note, this call may throw an exception which is
@@ -78,20 +76,13 @@ bool readIntoBuffer(boost::asio::ip::tcp::socket& socket,
     ptr->resize(bytes);
 
     boost::system::error_code ec;
-    boost::asio::read(
-        socket,
-        boost::asio::buffer(ptr->data(), bytes),
-        boost::asio::transfer_at_least(bytes),
-        ec
-    );
+    boost::asio::read(socket, boost::asio::buffer(ptr->data(), bytes), boost::asio::transfer_at_least(bytes),
+                      ec);
     return not ::isErrorCode(ec, __func__);
 }
 
-
 template <class T>
-bool readMessage(boost::asio::ip::tcp::socket& socket,
-                 shared_ptr<ProtocolBuffer> const& ptr,
-                 size_t bytes,
+bool readMessage(boost::asio::ip::tcp::socket& socket, shared_ptr<ProtocolBuffer> const& ptr, size_t bytes,
                  T& message) {
     try {
         if (readIntoBuffer(socket, ptr, bytes)) {
@@ -103,63 +94,40 @@ bool readMessage(boost::asio::ip::tcp::socket& socket,
     }
     return false;
 }
-}   // namespace
+}  // namespace
 
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
 size_t ExportServerConnection::networkBufSizeBytes = 1024 * 1024;
 
-
-ExportServerConnection::Ptr ExportServerConnection::create(
-        ServiceProvider::Ptr const& serviceProvider,
-        string const& workerName,
-        boost::asio::io_service& io_service) {
-    return ExportServerConnection::Ptr(
-        new ExportServerConnection(
-            serviceProvider,
-            workerName,
-            io_service));
+ExportServerConnection::Ptr ExportServerConnection::create(ServiceProvider::Ptr const& serviceProvider,
+                                                           string const& workerName,
+                                                           boost::asio::io_service& io_service) {
+    return ExportServerConnection::Ptr(new ExportServerConnection(serviceProvider, workerName, io_service));
 }
-
 
 ExportServerConnection::ExportServerConnection(ServiceProvider::Ptr const& serviceProvider,
-                                               string const& workerName,
-                                               boost::asio::io_service& io_service)
-    :   _serviceProvider(serviceProvider),
-        _workerName(workerName),
-        _socket(io_service),
-        _bufferPtr(make_shared<ProtocolBuffer>(
-            serviceProvider->config()->get<size_t>("common", "request-buf-size-bytes"))) {
-}
+                                               string const& workerName, boost::asio::io_service& io_service)
+        : _serviceProvider(serviceProvider),
+          _workerName(workerName),
+          _socket(io_service),
+          _bufferPtr(make_shared<ProtocolBuffer>(
+                  serviceProvider->config()->get<size_t>("common", "request-buf-size-bytes"))) {}
 
+ExportServerConnection::~ExportServerConnection() { _closeFile(); }
 
-ExportServerConnection::~ExportServerConnection() {
-    _closeFile();
-}
-
-
-void ExportServerConnection::beginProtocol() {
-    _receiveHandshake();
-}
-
+void ExportServerConnection::beginProtocol() { _receiveHandshake(); }
 
 void ExportServerConnection::_receiveHandshake() {
-
     LOGS(_log, LOG_LVL_DEBUG, context << __func__);
 
     const size_t bytes = sizeof(uint32_t);
     _bufferPtr->resize(bytes);
 
-    boost::asio::async_read(
-        _socket,
-        boost::asio::buffer(_bufferPtr->data(), bytes),
-        boost::asio::transfer_at_least(bytes),
-        bind(&ExportServerConnection::_handshakeReceived, shared_from_this(), _1, _2)
-    );
+    boost::asio::async_read(_socket, boost::asio::buffer(_bufferPtr->data(), bytes),
+                            boost::asio::transfer_at_least(bytes),
+                            bind(&ExportServerConnection::_handshakeReceived, shared_from_this(), _1, _2));
 }
-
 
 void ExportServerConnection::_handshakeReceived(boost::system::error_code const& ec,
                                                 size_t bytes_transferred) {
@@ -176,10 +144,10 @@ void ExportServerConnection::_handshakeReceived(boost::system::error_code const&
     ProtocolExportHandshakeRequest request;
     if (not ::readMessage(_socket, _bufferPtr, _bufferPtr->parseLength(), request)) return;
 
-    _database        = request.database();
-    _table           = request.table();
-    _chunk           = request.chunk();
-    _isOverlap       = request.is_overlap();
+    _database = request.database();
+    _table = request.table();
+    _chunk = request.chunk();
+    _isOverlap = request.is_overlap();
     _columnSeparator = request.column_separator() == ProtocolExportHandshakeRequest::COMMA ? ',' : '\t';
 
     // Check if the client is authorized for the operation
@@ -191,24 +159,19 @@ void ExportServerConnection::_handshakeReceived(boost::system::error_code const&
 
     // Check if a context of the request is valid
     try {
-
         // Get and validate a status of the database and the table
         _databaseInfo = _serviceProvider->config()->databaseInfo(_database);
         if (not _databaseInfo.isPublished) {
             throw invalid_argument("database '" + _databaseInfo.name + "' is not PUBLISHED");
         }
-        _isPartitioned = _databaseInfo.partitionedTables.end() != find(
-                _databaseInfo.partitionedTables.begin(),
-                _databaseInfo.partitionedTables.end(),
-                _table);
+        _isPartitioned =
+                _databaseInfo.partitionedTables.end() !=
+                find(_databaseInfo.partitionedTables.begin(), _databaseInfo.partitionedTables.end(), _table);
         if (not _isPartitioned) {
-            if (_databaseInfo.regularTables.end() == find(
-                    _databaseInfo.regularTables.begin(),
-                    _databaseInfo.regularTables.end(),
-                    _table)) {
-                throw invalid_argument(
-                        "no such table '" + _table + "' in a scope of database '" +
-                        _databaseInfo.name + "'");
+            if (_databaseInfo.regularTables.end() ==
+                find(_databaseInfo.regularTables.begin(), _databaseInfo.regularTables.end(), _table)) {
+                throw invalid_argument("no such table '" + _table + "' in a scope of database '" +
+                                       _databaseInfo.name + "'");
             }
         }
 
@@ -217,27 +180,20 @@ void ExportServerConnection::_handshakeReceived(boost::system::error_code const&
         // also ensure that the database is in the PUBLISHED state.
 
         if (_isPartitioned) {
-
-            vector<ReplicaInfo> replicas;       // Chunk replicas at the current worker found
-                                                // among the unpublished databases only
+            vector<ReplicaInfo> replicas;  // Chunk replicas at the current worker found
+                                           // among the unpublished databases only
             bool const allDatabases = false;
             bool const isPublished = true;
 
             _serviceProvider->databaseServices()->findWorkerReplicas(
-                replicas,
-                _chunk,
-                _workerName,
-                _databaseInfo.family,
-                allDatabases,
-                isPublished
-            );
-            if (replicas.cend() == find_if(replicas.cbegin(), replicas.cend(),
-                    [&](ReplicaInfo const& replica) {
-                        return replica.database() == _databaseInfo.name;
-                    })) {
-                throw invalid_argument(
-                        "chunk " + to_string(_chunk) + " of the PUBLISHED database '" +
-                        _databaseInfo.name + "' is not allocated to worker '" + _workerName + "'");
+                    replicas, _chunk, _workerName, _databaseInfo.family, allDatabases, isPublished);
+            if (replicas.cend() ==
+                find_if(replicas.cbegin(), replicas.cend(), [&](ReplicaInfo const& replica) {
+                    return replica.database() == _databaseInfo.name;
+                })) {
+                throw invalid_argument("chunk " + to_string(_chunk) + " of the PUBLISHED database '" +
+                                       _databaseInfo.name + "' is not allocated to worker '" + _workerName +
+                                       "'");
             }
         }
 
@@ -256,22 +212,19 @@ void ExportServerConnection::_handshakeReceived(boost::system::error_code const&
     // - and eliminate a possibility of the naming conflicts in case if two (or many)
     //   similar requests were made by clients.
     try {
-        auto const baseFileName =
-            _databaseInfo.name + "." +
-            (_isPartitioned ? ChunkedTable(_table, _chunk, _isOverlap).name() : _table);
+        auto const baseFileName = _databaseInfo.name + "." +
+                                  (_isPartitioned ? ChunkedTable(_table, _chunk, _isOverlap).name() : _table);
         _fileName = FileUtils::createTemporaryFile(
-            _serviceProvider->config()->get<string>("worker", "exporter-tmp-dir"),
-            baseFileName,
-            ".%%%%-%%%%-%%%%-%%%%",
-            ".csv"
-        );
+                _serviceProvider->config()->get<string>("worker", "exporter-tmp-dir"), baseFileName,
+                ".%%%%-%%%%-%%%%-%%%%", ".csv");
         boost::system::error_code ec;
         fs::remove(fs::path(_fileName), ec);
         if (ec.value() != 0) {
             LOGS(_log, LOG_LVL_ERROR, context << __func__ << "  file removal failed: " << ec.message());
         }
     } catch (exception const& ex) {
-        _failed("failed to generate a unique name for a temporary file, ex: " + string(ex.what()), isHandshakeError);
+        _failed("failed to generate a unique name for a temporary file, ex: " + string(ex.what()),
+                isHandshakeError);
         return;
     }
     LOGS(_log, LOG_LVL_DEBUG, context << __func__ << "  output file: " << _fileName);
@@ -309,29 +262,25 @@ void ExportServerConnection::_handshakeReceived(boost::system::error_code const&
     _sendHandshakeResponse();
 }
 
-
 void ExportServerConnection::_sendHandshakeResponse(string const& error) {
-
     LOGS(_log, LOG_LVL_DEBUG, context << __func__);
 
     ProtocolExportHandshakeResponse response;
-    if (error.empty()) response.set_file_size(_fileSizeBytes);
-    else               response.set_error(error);
+    if (error.empty())
+        response.set_file_size(_fileSizeBytes);
+    else
+        response.set_error(error);
 
     _bufferPtr->resize();
     _bufferPtr->serialize(response);
 
     boost::asio::async_write(
-        _socket,
-        boost::asio::buffer(_bufferPtr->data(), _bufferPtr->size()),
-        bind(&ExportServerConnection::_handshakeResponseSent, shared_from_this(), _1, _2)
-    );
+            _socket, boost::asio::buffer(_bufferPtr->data(), _bufferPtr->size()),
+            bind(&ExportServerConnection::_handshakeResponseSent, shared_from_this(), _1, _2));
 }
-
 
 void ExportServerConnection::_handshakeResponseSent(boost::system::error_code const& ec,
                                                     size_t bytes_transferred) {
-
     LOGS(_log, LOG_LVL_DEBUG, context << __func__);
 
     if (::isErrorCode(ec, __func__)) _closeFile();
@@ -340,26 +289,19 @@ void ExportServerConnection::_handshakeResponseSent(boost::system::error_code co
     _receiveDataRequest();
 }
 
-
 void ExportServerConnection::_receiveDataRequest() {
-
     LOGS(_log, LOG_LVL_DEBUG, context << __func__);
 
     const size_t bytes = sizeof(uint32_t);
     _bufferPtr->resize(bytes);
 
-    boost::asio::async_read(
-        _socket,
-        boost::asio::buffer(_bufferPtr->data(), bytes),
-        boost::asio::transfer_at_least(bytes),
-        bind(&ExportServerConnection::_dataRequestReceived, shared_from_this(), _1, _2)
-    );
+    boost::asio::async_read(_socket, boost::asio::buffer(_bufferPtr->data(), bytes),
+                            boost::asio::transfer_at_least(bytes),
+                            bind(&ExportServerConnection::_dataRequestReceived, shared_from_this(), _1, _2));
 }
-
 
 void ExportServerConnection::_dataRequestReceived(boost::system::error_code const& ec,
                                                   size_t bytes_transferred) {
-
     LOGS(_log, LOG_LVL_DEBUG, context << __func__ << " bytes_transferred=" << bytes_transferred);
 
     if (::isErrorCode(ec, __func__)) {
@@ -409,18 +351,12 @@ void ExportServerConnection::_dataRequestReceived(boost::system::error_code cons
     _bufferPtr->resize();
     _bufferPtr->serialize(response);
 
-    boost::asio::async_write(
-        _socket,
-        boost::asio::buffer(_bufferPtr->data(), _bufferPtr->size()),
-        bind(&ExportServerConnection::_dataResponseSent, shared_from_this(), _1, _2)
-    );
-
+    boost::asio::async_write(_socket, boost::asio::buffer(_bufferPtr->data(), _bufferPtr->size()),
+                             bind(&ExportServerConnection::_dataResponseSent, shared_from_this(), _1, _2));
 }
-
 
 void ExportServerConnection::_dataResponseSent(boost::system::error_code const& ec,
                                                size_t bytes_transferred) {
-
     LOGS(_log, LOG_LVL_DEBUG, context << __func__);
 
     if (::isErrorCode(ec, __func__)) _closeFile();
@@ -429,9 +365,7 @@ void ExportServerConnection::_dataResponseSent(boost::system::error_code const& 
     _receiveDataRequest();
 }
 
-
 void ExportServerConnection::_dumpTableIntoFile() const {
-
     LOGS(_log, LOG_LVL_DEBUG, context << __func__);
 
     // ATTENTION: the table dump method used in this implementation requires
@@ -441,25 +375,22 @@ void ExportServerConnection::_dumpTableIntoFile() const {
 
     try {
         database::mysql::ConnectionHandler h(
-            database::mysql::Connection::open(Configuration::qservWorkerDbParams())
-        );
+                database::mysql::Connection::open(Configuration::qservWorkerDbParams()));
         string const statement =
-            "SELECT * FROM " + h.conn->sqlId(_databaseInfo.name) + "." +
+                "SELECT * FROM " + h.conn->sqlId(_databaseInfo.name) + "." +
                 h.conn->sqlId(_isPartitioned ? ChunkedTable(_table, _chunk, _isOverlap).name() : _table) +
-            " INTO OUTFILE " + h.conn->sqlValue(_fileName) +
-            " FIELDS TERMINATED BY " + h.conn->sqlValue(string() + _columnSeparator);
+                " INTO OUTFILE " + h.conn->sqlValue(_fileName) + " FIELDS TERMINATED BY " +
+                h.conn->sqlValue(string() + _columnSeparator);
 
         LOGS(_log, LOG_LVL_DEBUG, context << __func__ << "  statement: " << statement);
 
-        h.conn->executeInOwnTransaction([&statement](decltype(h.conn) const& conn) {
-            conn->execute(statement);
-        });
+        h.conn->executeInOwnTransaction(
+                [&statement](decltype(h.conn) const& conn) { conn->execute(statement); });
     } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context << __func__ << "  exception: " << ex.what());
         throw;
     }
 }
-
 
 void ExportServerConnection::_closeFile() {
     if (_file.is_open()) {
@@ -472,4 +403,4 @@ void ExportServerConnection::_closeFile() {
     }
 }
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica

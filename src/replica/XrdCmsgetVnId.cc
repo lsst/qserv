@@ -46,10 +46,10 @@ using namespace lsst::qserv::replica;
  * @code
  *   <work-db-conn-url> <max-reconnects> <conn-timeout-sec>
  * @code
- * 
+ *
  * Where:
  *   work-db-conn-url:  the database connector string for the worker's MySQL service
- *   max-reconnects:    the maximum number of reconnects to he service 
+ *   max-reconnects:    the maximum number of reconnects to he service
  *   conn-timeout-sec:  the timeout for connecting to the service and executing the query
  */
 extern "C" string XrdCmsgetVnId(XrdCmsgetVnIdArgs) {
@@ -59,7 +59,8 @@ extern "C" string XrdCmsgetVnId(XrdCmsgetVnIdArgs) {
         vector<string> args = lsst::qserv::replica::strsplit(parms);
         if (args.size() != 3) {
             eDest.Say(context.data(), "illegal number of parameters for the plugin. ",
-                    "Exactly 3 parameters are required: <work-db-conn-url> <max-reconnects> <conn-timeout-sec>.");
+                      "Exactly 3 parameters are required: <work-db-conn-url> <max-reconnects> "
+                      "<conn-timeout-sec>.");
         } else {
             string const qservWorkerDbUrl = args[0];
             Configuration::setQservWorkerDbUrl(qservWorkerDbUrl);
@@ -71,35 +72,34 @@ extern "C" string XrdCmsgetVnId(XrdCmsgetVnIdArgs) {
             // Parameter 'timeoutSec' is used both while connecting to the database server and for executing
             // the query. If the MySQl service won't respond to the connection attempts beyond a period of
             // time specified by the parameter then the operation will fail. Similarly, if the query execution
-            // will take longer than it's specified in the parameter then the query will fail. If the parameter's
-            // value is set to 0 then the default value of the parameter will be pulled by the query processor
-            // from the Replication system's Configuration.
+            // will take longer than it's specified in the parameter then the query will fail. If the
+            // parameter's value is set to 0 then the default value of the parameter will be pulled by the
+            // query processor from the Replication system's Configuration.
             unsigned int timeoutSec = lsst::qserv::replica::stoui(args[2]);
             // This parameter allows the database connector to make reconnects if the MySQL service
             // won't be responding (or not be up) at the initial connection attempt.
             bool const allowReconnects = true;
             // Using the RAII-style connection handler to automatically close the connection and
             // release resources in case of exceptions.
-            database::mysql::ConnectionHandler const handler(
-                    database::mysql::Connection::open2(Configuration::qservWorkerDbParams("qservw_worker"),
-                                                       allowReconnects, timeoutSec));
+            database::mysql::ConnectionHandler const handler(database::mysql::Connection::open2(
+                    Configuration::qservWorkerDbParams("qservw_worker"), allowReconnects, timeoutSec));
             handler.conn->executeInOwnTransaction(
-                [&context,&vnid,&eDest](decltype(handler.conn) conn) {
-                    string const colname = "id";
-                    string const query = "SELECT " + conn->sqlId(colname) + " FROM " + conn->sqlId("Id");
-                    if (!conn->executeSingleValueSelect(query, colname, vnid)) {
-                        eDest.Say(context.data(), "worker identity is not set in the Qserv worker database.");
-                    }
-                },
-                maxReconnects, timeoutSec
-            );
+                    [&context, &vnid, &eDest](decltype(handler.conn) conn) {
+                        string const colname = "id";
+                        string const query = "SELECT " + conn->sqlId(colname) + " FROM " + conn->sqlId("Id");
+                        if (!conn->executeSingleValueSelect(query, colname, vnid)) {
+                            eDest.Say(context.data(),
+                                      "worker identity is not set in the Qserv worker database.");
+                        }
+                    },
+                    maxReconnects, timeoutSec);
         }
     } catch (exception const& ex) {
-        eDest.Say(context.data(), "failed to pull worker identity from the Qserv worker database, ex:", ex.what());
+        eDest.Say(context.data(),
+                  "failed to pull worker identity from the Qserv worker database, ex:", ex.what());
     }
     eDest.Say(context.data(), "vnid: ", vnid.data());
     return vnid;
 }
 
-XrdVERSIONINFO(XrdCmsgetVnId,vnid_mysql_0);
-
+XrdVERSIONINFO(XrdCmsgetVnId, vnid_mysql_0);

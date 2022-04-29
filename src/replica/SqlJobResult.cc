@@ -31,12 +31,10 @@
 using namespace std;
 using namespace nlohmann;
 
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
 void SqlJobResult::merge(SqlJobResult const& other) {
-    for (auto&& otherWorkerItr: other.resultSets) {
+    for (auto&& otherWorkerItr : other.resultSets) {
         auto&& worker = otherWorkerItr.first;
         auto&& otherColl = otherWorkerItr.second;
         auto&& thisColl = resultSets[worker];
@@ -44,12 +42,11 @@ void SqlJobResult::merge(SqlJobResult const& other) {
     }
 }
 
-
 void SqlJobResult::iterate(OnResultVisitCallback const& onResultVisitCallback) const {
-    for (auto&& workerItr: resultSets) {
+    for (auto&& workerItr : resultSets) {
         auto&& worker = workerItr.first;
-        for (auto&& requestResultSets: workerItr.second) {
-            for (auto&& scopeItr: requestResultSets.queryResultSet) {
+        for (auto&& requestResultSets : workerItr.second) {
+            for (auto&& scopeItr : requestResultSets.queryResultSet) {
                 auto&& scope = scopeItr.first;
                 auto&& resultSet = scopeItr.second;
                 onResultVisitCallback(worker, scope, resultSet);
@@ -58,34 +55,24 @@ void SqlJobResult::iterate(OnResultVisitCallback const& onResultVisitCallback) c
     }
 }
 
-
 json SqlJobResult::toJson() const {
     json result = json::object();
-    iterate([&result](Worker const& worker,
-                      Scope const& scope,
-                      SqlResultSet::ResultSet const& resultSet) {
+    iterate([&result](Worker const& worker, Scope const& scope, SqlResultSet::ResultSet const& resultSet) {
         result["completed"][worker][scope] = resultSet.extendedStatus == ProtocolStatusExt::NONE ? 1 : 0;
-        result["error"    ][worker][scope] = resultSet.error;
+        result["error"][worker][scope] = resultSet.error;
     });
     return result;
 }
 
-
-util::ColumnTablePrinter SqlJobResult::toColumnTable(
-        string const& caption,
-        string const& indent,
-        bool verticalSeparator,
-        bool reportAll,
-        string const& scopeName) const {
-
+util::ColumnTablePrinter SqlJobResult::toColumnTable(string const& caption, string const& indent,
+                                                     bool verticalSeparator, bool reportAll,
+                                                     string const& scopeName) const {
     vector<string> workers;
     vector<string> scopes;
     vector<string> statuses;
     vector<string> errors;
 
-    iterate([&](Worker const& worker,
-                Scope const& scope,
-                SqlResultSet::ResultSet const& resultSet) {
+    iterate([&](Worker const& worker, Scope const& scope, SqlResultSet::ResultSet const& resultSet) {
         if (reportAll or resultSet.extendedStatus != ProtocolStatusExt::NONE) {
             workers.push_back(worker);
             scopes.push_back(scope);
@@ -95,43 +82,39 @@ util::ColumnTablePrinter SqlJobResult::toColumnTable(
     });
 
     util::ColumnTablePrinter table(caption, indent, verticalSeparator);
-    table.addColumn("worker",  workers,  util::ColumnTablePrinter::LEFT);
-    table.addColumn(scopeName, scopes,   util::ColumnTablePrinter::LEFT);
-    table.addColumn("status",  statuses, util::ColumnTablePrinter::LEFT);
-    table.addColumn("error",   errors,   util::ColumnTablePrinter::LEFT);
+    table.addColumn("worker", workers, util::ColumnTablePrinter::LEFT);
+    table.addColumn(scopeName, scopes, util::ColumnTablePrinter::LEFT);
+    table.addColumn("status", statuses, util::ColumnTablePrinter::LEFT);
+    table.addColumn("error", errors, util::ColumnTablePrinter::LEFT);
 
     return table;
 }
 
-
-util::ColumnTablePrinter SqlJobResult::summaryToColumnTable(
-        string const& caption,
-        std::string const& indent,
-        bool verticalSeparator) const {
-
+util::ColumnTablePrinter SqlJobResult::summaryToColumnTable(string const& caption, std::string const& indent,
+                                                            bool verticalSeparator) const {
     vector<string> workers;
     vector<size_t> succeeded;
     vector<size_t> failed;
     vector<double> performance;
 
     for (auto&& itr : resultSets) {
-         auto&& worker = itr.first;
-         for (auto&& workerResultSet: itr.second) {
-             size_t numSucceeded = 0;
-             size_t numFailed = 0;
-             for (auto&& queryResultSetItr: workerResultSet.queryResultSet) {
+        auto&& worker = itr.first;
+        for (auto&& workerResultSet : itr.second) {
+            size_t numSucceeded = 0;
+            size_t numFailed = 0;
+            for (auto&& queryResultSetItr : workerResultSet.queryResultSet) {
                 auto&& resultSet = queryResultSetItr.second;
                 if (resultSet.extendedStatus == ProtocolStatusExt::NONE) {
                     numSucceeded++;
                 } else {
                     numFailed++;
                 }
-             }
-             workers.push_back(worker);
-             succeeded.push_back(numSucceeded);
-             failed.push_back(numFailed);
-             performance.push_back(workerResultSet.performanceSec);
-         }
+            }
+            workers.push_back(worker);
+            succeeded.push_back(numSucceeded);
+            failed.push_back(numFailed);
+            performance.push_back(workerResultSet.performanceSec);
+        }
     }
 
     util::ColumnTablePrinter table(caption, indent, verticalSeparator);
@@ -143,4 +126,4 @@ util::ColumnTablePrinter SqlJobResult::summaryToColumnTable(
     return table;
 }
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica

@@ -22,9 +22,9 @@
  */
 
 /** @file
-  * @brief A plugin for removing duplicate rows introduced by the match-
-  *        table partitioner.
-  */
+ * @brief A plugin for removing duplicate rows introduced by the match-
+ *        table partitioner.
+ */
 
 // Class header
 #include "MatchTablePlugin.h"
@@ -52,7 +52,6 @@
 #include "query/ValueFactor.h"
 #include "query/WhereClause.h"
 
-
 using lsst::qserv::query::BoolFactor;
 using lsst::qserv::query::BoolTermFactor;
 using lsst::qserv::query::ColumnRef;
@@ -65,9 +64,7 @@ using lsst::qserv::query::ValueExpr;
 using lsst::qserv::query::ValueFactor;
 using lsst::qserv::query::WhereClause;
 
-namespace lsst {
-namespace qserv {
-namespace qana {
+namespace lsst { namespace qserv { namespace qana {
 
 /// MatchTablePlugin fixes up queries on match tables which are not joins
 /// so that they do not return duplicate rows potentially introduced by
@@ -98,10 +95,7 @@ namespace qana {
 /// lookup. This in turn requires knowledge of that table's containing
 /// database. As a result, MatchTablePlugin must run after TablePlugin.
 
-
-void MatchTablePlugin::applyLogical(query::SelectStmt& stmt,
-                                    query::QueryContext& ctx)
-{
+void MatchTablePlugin::applyLogical(query::SelectStmt& stmt, query::QueryContext& ctx) {
     if (stmt.getFromList().isJoin()) {
         // Do nothing. Query analysis and transformation for match table
         // joins is handled by the more general TablePlugin.
@@ -120,16 +114,14 @@ void MatchTablePlugin::applyLogical(query::SelectStmt& stmt,
     // are possible.
     //
     // First, create IR nodes for "dirCol1 IS NULL".
-    std::shared_ptr<NullPredicate> nullPred =
-        std::make_shared<NullPredicate>();
+    std::shared_ptr<NullPredicate> nullPred = std::make_shared<NullPredicate>();
     nullPred->hasNot = false;
-    nullPred->value = ValueExpr::newSimple(ValueFactor::newColumnRefFactor(
-        std::make_shared<ColumnRef>("", "", mt.dirColName1)));
+    nullPred->value = ValueExpr::newSimple(
+            ValueFactor::newColumnRefFactor(std::make_shared<ColumnRef>("", "", mt.dirColName1)));
     // Then create IR nodes for "flagCol<>2".
-    std::shared_ptr<CompPredicate> compPred =
-        std::make_shared<CompPredicate>();
-    compPred->left = ValueExpr::newSimple(ValueFactor::newColumnRefFactor(
-        std::make_shared<ColumnRef>("", "", mt.flagColName)));
+    std::shared_ptr<CompPredicate> compPred = std::make_shared<CompPredicate>();
+    compPred->left = ValueExpr::newSimple(
+            ValueFactor::newColumnRefFactor(std::make_shared<ColumnRef>("", "", mt.flagColName)));
     compPred->op = CompPredicate::NOT_EQUALS_OP;
     compPred->right = ValueExpr::newSimple(ValueFactor::newConstFactor("2"));
     // Create BoolFactors for each Predicate node.
@@ -142,8 +134,7 @@ void MatchTablePlugin::applyLogical(query::SelectStmt& stmt,
     std::shared_ptr<OrTerm> bfs = std::make_shared<OrTerm>();
     bfs->_terms.push_back(bf1);
     bfs->_terms.push_back(bf2);
-    std::shared_ptr<BoolTermFactor> btf =
-        std::make_shared<BoolTermFactor>();
+    std::shared_ptr<BoolTermFactor> btf = std::make_shared<BoolTermFactor>();
     btf->_term = bfs;
     // Create PassTerm objects for parentheses.
     // TODO: remove this after DM-737 is resolved.
@@ -160,11 +151,10 @@ void MatchTablePlugin::applyLogical(query::SelectStmt& stmt,
     if (stmt.hasWhereClause()) {
         stmt.getWhereClause().prependAndTerm(filter);
     } else {
-        std::shared_ptr<WhereClause> where =
-            std::make_shared<WhereClause>();
+        std::shared_ptr<WhereClause> where = std::make_shared<WhereClause>();
         where->prependAndTerm(filter);
         stmt.setWhereClause(where);
     }
 }
 
-}}} // namespace lsst::qserv::qana
+}}}  // namespace lsst::qserv::qana

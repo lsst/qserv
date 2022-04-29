@@ -35,35 +35,19 @@ namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.RequestMessenger");
 
-} /// namespace
+}  // namespace
 
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
 RequestMessenger::RequestMessenger(ServiceProvider::Ptr const& serviceProvider,
-                                   boost::asio::io_service& io_service,
-                                   string const& type,
-                                   string const& worker,
-                                   int  priority,
-                                   bool keepTracking,
-                                   bool allowDuplicate,
-                                   bool disposeRequired,
-                                   Messenger::Ptr const& messenger)
-    :   Request(serviceProvider,
-                io_service,
-                type,
-                worker,
-                priority,
-                keepTracking,
-                allowDuplicate,
-                disposeRequired),
-        _messenger(messenger) {
-}
-
+                                   boost::asio::io_service& io_service, string const& type,
+                                   string const& worker, int priority, bool keepTracking, bool allowDuplicate,
+                                   bool disposeRequired, Messenger::Ptr const& messenger)
+        : Request(serviceProvider, io_service, type, worker, priority, keepTracking, allowDuplicate,
+                  disposeRequired),
+          _messenger(messenger) {}
 
 void RequestMessenger::finishImpl(util::Lock const& lock) {
-
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     // Make sure the request (if any) has been eliminated from the messenger.
@@ -87,7 +71,6 @@ void RequestMessenger::finishImpl(util::Lock const& lock) {
     // Requests in other states ended up at workers would be automatically disposed
     // by workers after requests's expiration deadlines.
     if (disposeRequired() && (extendedState() == Request::ExtendedState::SUCCESS)) {
-
         buffer()->resize();
 
         ProtocolRequestHeader hdr;
@@ -102,16 +85,12 @@ void RequestMessenger::finishImpl(util::Lock const& lock) {
         buffer()->serialize(message);
 
         _messenger->send<ProtocolResponseDispose>(
-            worker(),
-            id(),
-            priority(),
-            buffer(),
-            // Don't require any callback notification for the completion of
-            // the operation. This will also prevent incrementing a shared pointer
-            // counter for the current object.
-            nullptr
-        );
+                worker(), id(), priority(), buffer(),
+                // Don't require any callback notification for the completion of
+                // the operation. This will also prevent incrementing a shared pointer
+                // counter for the current object.
+                nullptr);
     }
 }
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica

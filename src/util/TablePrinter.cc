@@ -28,42 +28,27 @@
 #include <stdexcept>
 #include <iomanip>
 
-namespace lsst {
-namespace qserv {
-namespace util {
+namespace lsst { namespace qserv { namespace util {
 
-    
-ColumnTablePrinter::ColumnTablePrinter(std::string const& caption,
-                                       std::string const& indent,
+ColumnTablePrinter::ColumnTablePrinter(std::string const& caption, std::string const& indent,
                                        bool verticalSeparator)
-    :   _caption(caption),
-        _indent(indent),
-        _verticalSeparator(verticalSeparator) {
-}
+        : _caption(caption), _indent(indent), _verticalSeparator(verticalSeparator) {}
 
-
-void ColumnTablePrinter::addColumn(std::string const& title,
-                                   std::vector<std::string> const& data,
+void ColumnTablePrinter::addColumn(std::string const& title, std::vector<std::string> const& data,
                                    ColumnTablePrinter::Alignment align) {
-
     _initRows(data.size());
 
     // Translate and put values into cells as strings
 
     std::list<std::string> cells;
-    for (auto&& v: data) {
+    for (auto&& v : data) {
         cells.push_back(v);
     }
     _rightUppendCellsToRows(title, cells, align);
 }
 
-
-void ColumnTablePrinter::print(std::ostream& os,
-                               bool topSeparator,
-                               bool bottomSeparator,
-                               size_t pageSize,
+void ColumnTablePrinter::print(std::ostream& os, bool topSeparator, bool bottomSeparator, size_t pageSize,
                                bool repeatedHeader) const {
-
     if (not _caption.empty()) {
         os << _indent << _caption << "\n";
     }
@@ -72,11 +57,10 @@ void ColumnTablePrinter::print(std::ostream& os,
     } else {
         os << _indent << "\n";
     }
-    os << _indent << _header    << "\n"
-       << _indent << _separator << "\n";
+    os << _indent << _header << "\n" << _indent << _separator << "\n";
 
     size_t currentPageRows = 0;
-    for (auto&& r: _rows) {
+    for (auto&& r : _rows) {
         os << _indent << r << "\n";
         if (pageSize != 0 and pageSize == ++currentPageRows) {
             currentPageRows = 0;
@@ -86,8 +70,7 @@ void ColumnTablePrinter::print(std::ostream& os,
                 os << _indent << "\n";
             }
             if (repeatedHeader) {
-                os << _indent << _header    << "\n"
-                   << _indent << _separator << "\n";
+                os << _indent << _header << "\n" << _indent << _separator << "\n";
             }
         }
     }
@@ -96,46 +79,38 @@ void ColumnTablePrinter::print(std::ostream& os,
     }
 }
 
-
-size_t ColumnTablePrinter::_columnWidth(std::string const& title,
-                                        std::list<std::string> const& cells) {
-
+size_t ColumnTablePrinter::_columnWidth(std::string const& title, std::list<std::string> const& cells) {
     size_t width = title.size();
-    for (auto const& c: cells) {
+    for (auto const& c : cells) {
         width = std::max(width, c.size());
     }
     return width;
 }
 
-
 void ColumnTablePrinter::_initRows(size_t numRows) {
-
     if (_rows.size() == 0) {
         for (size_t i = 0; i < numRows; ++i) {
             _rows.push_back(std::string());
         }
     } else {
         if (_rows.size() != numRows) {
-            throw std::invalid_argument(
-                    "util::ColumnTablePrinter::_initRows  the number of rows " + std::to_string(numRows) +
-                    " is not the same as " + std::to_string(_rows.size()) +
-                    " for the previously added columns");
+            throw std::invalid_argument("util::ColumnTablePrinter::_initRows  the number of rows " +
+                                        std::to_string(numRows) + " is not the same as " +
+                                        std::to_string(_rows.size()) + " for the previously added columns");
         }
     }
 }
 
-
 void ColumnTablePrinter::_rightUppendCellsToRows(std::string const& title,
                                                  std::list<std::string> const& cells,
                                                  ColumnTablePrinter::Alignment align) {
-
     size_t const width = _columnWidth(title, cells);
 
     // Extend the separator
     if (_verticalSeparator) {
-        _separator += (_separator.empty() ? ""  : "+")   + std::string(1 + width + 1, '-');
+        _separator += (_separator.empty() ? "" : "+") + std::string(1 + width + 1, '-');
     } else {
-        _separator += (_separator.empty() ? " "  : "  ") + std::string(    width,     '-') + " ";
+        _separator += (_separator.empty() ? " " : "  ") + std::string(width, '-') + " ";
     }
 
     // Extend the header
@@ -146,14 +121,12 @@ void ColumnTablePrinter::_rightUppendCellsToRows(std::string const& title,
 
     // Extend rows with the values of the column's cells
     auto itr = cells.cbegin();
-    for (auto&& r: _rows) {
+    for (auto&& r : _rows) {
         std::ostringstream cellStream;
-        cellStream << " " <<  (r.empty() ? "" : (_verticalSeparator ? "| " : "  "))
+        cellStream << " " << (r.empty() ? "" : (_verticalSeparator ? "| " : "  "))
                    << (align == Alignment::LEFT ? std::left : std::right) << std::setw(width) << *(itr++);
         r += cellStream.str();
     }
 }
 
-
-}}} // namespace lsst::qserv::util
-
+}}}  // namespace lsst::qserv::util

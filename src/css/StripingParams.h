@@ -24,22 +24,22 @@
 #ifndef LSST_QSERV_CSS_STRIPINGPARAMS_H
 #define LSST_QSERV_CSS_STRIPINGPARAMS_H
 
-namespace lsst {
-namespace qserv {
-namespace css {
+namespace lsst { namespace qserv { namespace css {
 
 class StripingParams {
 public:
     StripingParams() : stripes(0), subStripes(0), partitioningId(0), overlap(0.0) {}
-    StripingParams(int stripes_, int subStripes_, int partitioningId_, double overlap_) :
-        stripes(stripes_), subStripes(subStripes_), partitioningId(partitioningId_),
-        overlap(overlap_){}
+    StripingParams(int stripes_, int subStripes_, int partitioningId_, double overlap_)
+            : stripes(stripes_),
+              subStripes(subStripes_),
+              partitioningId(partitioningId_),
+              overlap(overlap_) {}
     int stripes;
     int subStripes;
     int partitioningId;
-    double overlap;     // default overlap for tables that do not specify their own overlap
+    double overlap;  // default overlap for tables that do not specify their own overlap
 };
 
-}}} // namespace lsst::qserv::css
+}}}  // namespace lsst::qserv::css
 
-#endif // LSST_QSERV_CSS_STRIPINGPARAMS_H
+#endif  // LSST_QSERV_CSS_STRIPINGPARAMS_H

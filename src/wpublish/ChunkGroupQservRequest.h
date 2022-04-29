@@ -33,24 +33,20 @@
 #include "wpublish/QservRequest.h"
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace wpublish {
+namespace lsst { namespace qserv { namespace wpublish {
 
 /**
-  * Class ChunkGroupQservRequest implements a client-side request to
-  * the Qserv worker management services.
-  */
+ * Class ChunkGroupQservRequest implements a client-side request to
+ * the Qserv worker management services.
+ */
 class ChunkGroupQservRequest : public QservRequest {
-
 public:
-
     /// Completion status of the operation
     enum Status {
-        SUCCESS,    // successful completion of a request
-        INVALID,    // invalid parameters of the request
-        IN_USE,     // request is rejected because one of the chunks is in use
-        ERROR       // an error occurred during command execution
+        SUCCESS,  // successful completion of a request
+        INVALID,  // invalid parameters of the request
+        IN_USE,   // request is rejected because one of the chunks is in use
+        ERROR     // an error occurred during command execution
     };
 
     /// @return string representation of a status
@@ -58,9 +54,8 @@ public:
 
     /// The callback function type to be used for notifications on
     /// the operation completion.
-    using CallbackType =
-            std::function<void(Status,                  // completion status
-                               std::string const&)>;    // error message (depends on a status)
+    using CallbackType = std::function<void(Status,                // completion status
+                                            std::string const&)>;  // error message (depends on a status)
 
     // Default construction and copy semantics is prohibited
     ChunkGroupQservRequest() = delete;
@@ -70,7 +65,6 @@ public:
     ~ChunkGroupQservRequest() override;
 
 protected:
-
     /**
      * @param add        add a group if 'true', remove otherwise
      * @param chunk      chunk number
@@ -79,18 +73,14 @@ protected:
      * @param onFinish   optional callback function to be called upon the completion
      *                   (successful or not) of the request.
      */
-    ChunkGroupQservRequest(bool add,
-                           unsigned int chunk,
-                           std::vector<std::string> const& databases,
-                           bool force,
-                           CallbackType onFinish);
+    ChunkGroupQservRequest(bool add, unsigned int chunk, std::vector<std::string> const& databases,
+                           bool force, CallbackType onFinish);
 
     void onRequest(proto::FrameBuffer& buf) override;
     void onResponse(proto::FrameBufferView& view) override;
     void onError(std::string const& error) override;
 
 private:
-
     // Parameters of a request
 
     bool _add;
@@ -101,13 +91,11 @@ private:
 };
 
 /**
-  * Class AddChunkGroupQservRequest implements a client-side request to
-  * the Qserv worker management services.
-  */
+ * Class AddChunkGroupQservRequest implements a client-side request to
+ * the Qserv worker management services.
+ */
 class AddChunkGroupQservRequest : public ChunkGroupQservRequest {
-
 public:
-
     /// The pointer type for instances of the class
     typedef std::shared_ptr<AddChunkGroupQservRequest> Ptr;
 
@@ -116,7 +104,7 @@ public:
     AddChunkGroupQservRequest(AddChunkGroupQservRequest const&) = delete;
     AddChunkGroupQservRequest& operator=(AddChunkGroupQservRequest const&) = delete;
 
-    ~AddChunkGroupQservRequest() override  = default;
+    ~AddChunkGroupQservRequest() override = default;
 
     /**
      * Static factory method is needed to prevent issues with the lifespan
@@ -127,31 +115,26 @@ public:
      * @param databases  names of databases in the group
      * @param onFinish   callback function to be called upon request completion
      */
-    static Ptr create(unsigned int chunk,
-                      std::vector<std::string> const& databases,
+    static Ptr create(unsigned int chunk, std::vector<std::string> const& databases,
                       CallbackType onFinish = nullptr);
 
 private:
-
     /**
      * @param chunk      chunk number
      * @param databases  names of databases in the group
      * @param onFinish   optional callback function to be called upon the completion
      *                   (successful or not) of the request.
      */
-    AddChunkGroupQservRequest(unsigned int chunk,
-                              std::vector<std::string> const& databases,
+    AddChunkGroupQservRequest(unsigned int chunk, std::vector<std::string> const& databases,
                               CallbackType onFinish);
 };
 
 /**
-  * Class RemoveChunkGroupQservRequest implements a client-side request to
-  * the Qserv worker management services.
-  */
+ * Class RemoveChunkGroupQservRequest implements a client-side request to
+ * the Qserv worker management services.
+ */
 class RemoveChunkGroupQservRequest : public ChunkGroupQservRequest {
-
 public:
-
     /// The pointer type for instances of the class
     typedef std::shared_ptr<RemoveChunkGroupQservRequest> Ptr;
 
@@ -172,13 +155,10 @@ public:
      * @param force      force the proposed change even if the chunk is in use
      * @param onFinish   callback function to be called upon request completion
      */
-    static Ptr create(unsigned int chunk,
-                      std::vector<std::string> const& databases,
-                      bool force,
+    static Ptr create(unsigned int chunk, std::vector<std::string> const& databases, bool force,
                       CallbackType onFinish = nullptr);
 
 private:
-
     /**
      * @param chunk      chunk number
      * @param databases  names of databases in the group
@@ -186,12 +166,10 @@ private:
      * @param onFinish   optional callback function to be called upon the completion
      *                   (successful or not) of the request.
      */
-    RemoveChunkGroupQservRequest(unsigned int chunk,
-                                 std::vector<std::string> const& databases,
-                                 bool force,
+    RemoveChunkGroupQservRequest(unsigned int chunk, std::vector<std::string> const& databases, bool force,
                                  CallbackType onFinish);
 };
 
-}}} // namespace lsst::qserv::wpublish
+}}}  // namespace lsst::qserv::wpublish
 
-#endif // LSST_QSERV_WPUBLISH_CHUNK_GROUP_QSERV_REQUEST_H
+#endif  // LSST_QSERV_WPUBLISH_CHUNK_GROUP_QSERV_REQUEST_H

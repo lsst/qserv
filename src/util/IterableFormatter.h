@@ -19,14 +19,13 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
- /**
-  * @file
-  *
-  * @brief Provide generic output operator for iterable data structures
-  *
-  * @author Fabrice Jammes, IN2P3/SLAC
-  */
-
+/**
+ * @file
+ *
+ * @brief Provide generic output operator for iterable data structures
+ *
+ * @author Fabrice Jammes, IN2P3/SLAC
+ */
 
 #ifndef LSST_QSERV_UTIL_ITERABLERFORMATTER_H
 #define LSST_QSERV_UTIL_ITERABLERFORMATTER_H
@@ -45,9 +44,7 @@
 
 // Qserv headers
 
-namespace lsst {
-namespace qserv {
-namespace util {
+namespace lsst { namespace qserv { namespace util {
 
 /**
  *  Provide generic output operator for iterable data structures
@@ -60,10 +57,8 @@ namespace util {
  *  - doesn't work for std::multimap.
  */
 template <typename Iter>
-class IterableFormatter
-{
+class IterableFormatter {
 public:
-
     /**
      *  Create a printable wrapper for an iterable data structure
      *
@@ -73,11 +68,9 @@ public:
      *  @param close:   closing bracket, NULL is undefined behaviour
      *  @param sep:     separator between elements, NULL is undefined behaviour
      */
-    explicit IterableFormatter(Iter begin, Iter end,
-                               char const *const open, char const *const close,
-                               char const *const sep) :
-            _begin(begin), _end(end), _open(open), _close(close), _sep(sep), _nullptr(false){
-    }
+    explicit IterableFormatter(Iter begin, Iter end, char const* const open, char const* const close,
+                               char const* const sep)
+            : _begin(begin), _end(end), _open(open), _close(close), _sep(sep), _nullptr(false) {}
 
     explicit IterableFormatter() : _open(nullptr), _close(nullptr), _sep(nullptr), _nullptr(true) {}
 
@@ -88,8 +81,7 @@ public:
      *  @param iterableFormatter
      *  @return an output stream, with no newline at the end
      */
-    friend std::ostream& operator<<(std::ostream& os,
-                                    IterableFormatter<Iter> const& self) {
+    friend std::ostream& operator<<(std::ostream& os, IterableFormatter<Iter> const& self) {
         if (self._nullptr) {
             os << "nullptr";
             return os;
@@ -105,7 +97,7 @@ public:
             _item_fmt(os, *it);
             ++it;
         }
-        for ( ; it != self._end; ++it) {
+        for (; it != self._end; ++it) {
             os << self._sep;
             _item_fmt(os, *it);
         }
@@ -118,14 +110,16 @@ public:
 private:
     Iter _begin;
     Iter _end;
-    char const *const _open;
-    char const *const _close;
-    char const *const _sep;
+    char const* const _open;
+    char const* const _close;
+    char const* const _sep;
     bool _nullptr;
 
     // generic item formatting
     template <typename T>
-    static void _item_fmt(std::ostream& os, T const& item) { os << item; }
+    static void _item_fmt(std::ostream& os, T const& item) {
+        os << item;
+    }
     // specialization for shared_ptr; allows the container to contain `shared_ptr`s. If the pointer is null,
     // "nullptr" will be printed.
     template <typename T>
@@ -150,17 +144,13 @@ private:
         _item_fmt(os, item.second);
         os << ')';
     }
-
 };
 
 template <typename Iterator>
-IterableFormatter<Iterator> printable(Iterator begin, Iterator end,
-                                  char const *const open = "[", char const *const close = "]",
-                                  char const *const sep = ", ")
-{
+IterableFormatter<Iterator> printable(Iterator begin, Iterator end, char const* const open = "[",
+                                      char const* const close = "]", char const* const sep = ", ") {
     return IterableFormatter<Iterator>(begin, end, open, close, sep);
 }
-
 
 /**
  *  Create a printable wrapper for an iterable data structure
@@ -174,9 +164,9 @@ IterableFormatter<Iterator> printable(Iterator begin, Iterator end,
  */
 template <typename Iterable>
 IterableFormatter<typename Iterable::const_iterator> printable(Iterable const& x,
-                                  char const *const open = "[", char const *const close = "]",
-                                  char const *const sep = ", ")
-{
+                                                               char const* const open = "[",
+                                                               char const* const close = "]",
+                                                               char const* const sep = ", ") {
     return printable(x.begin(), x.end(), open, close, sep);
 }
 
@@ -186,9 +176,9 @@ IterableFormatter<typename Iterable::const_iterator> printable(Iterable const& x
  */
 template <typename Iterable>
 IterableFormatter<typename Iterable::const_iterator> ptrPrintable(std::shared_ptr<Iterable> const& x,
-                                  char const *const open = "[", char const *const close = "]",
-                                  char const *const sep = ", ")
-{
+                                                                  char const* const open = "[",
+                                                                  char const* const close = "]",
+                                                                  char const* const sep = ", ") {
     if (x != nullptr) {
         Iterable& xderef = *(x.get());
         return printable(xderef, open, close, sep);
@@ -197,6 +187,5 @@ IterableFormatter<typename Iterable::const_iterator> ptrPrintable(std::shared_pt
     }
 }
 
-
-}}} // namespace lsst::qserv::util
-#endif // LSST_QSERV_UTIL_ITERABLERFORMATTER_H
+}}}     // namespace lsst::qserv::util
+#endif  // LSST_QSERV_UTIL_ITERABLERFORMATTER_H

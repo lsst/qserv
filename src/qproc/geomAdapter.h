@@ -23,12 +23,12 @@
 #ifndef LSST_QSERV_QPROC_GEOMADAPTER_H
 #define LSST_QSERV_QPROC_GEOMADAPTER_H
 /**
-  * @file
-  *
-  * @brief Geometry adapter interface code
-  *
-  * @author Daniel L. Wang, SLAC
-  */
+ * @file
+ *
+ * @brief Geometry adapter interface code
+ *
+ * @author Daniel L. Wang, SLAC
+ */
 
 // System headers
 #include <vector>
@@ -43,22 +43,19 @@
 #include "css/StripingParams.h"
 #include "qproc/QueryProcessingError.h"
 
-namespace lsst {
-namespace qserv {
-namespace qproc {
+namespace lsst { namespace qserv { namespace qproc {
 
-inline std::shared_ptr<lsst::sphgeom::Box>
-getBoxFromParams(std::vector<double> const& params) {
-    if(params.size() != 4) {
+inline std::shared_ptr<lsst::sphgeom::Box> getBoxFromParams(std::vector<double> const& params) {
+    if (params.size() != 4) {
         throw QueryProcessingError("Invalid number of parameters for box");
     }
-    return std::make_shared<lsst::sphgeom::Box>(lsst::sphgeom::Box::fromDegrees(params[0], params[1], params[2], params[3]));
+    return std::make_shared<lsst::sphgeom::Box>(
+            lsst::sphgeom::Box::fromDegrees(params[0], params[1], params[2], params[3]));
 }
 
-inline std::shared_ptr<lsst::sphgeom::Circle>
-getCircleFromParams(std::vector<double> const& params) {
+inline std::shared_ptr<lsst::sphgeom::Circle> getCircleFromParams(std::vector<double> const& params) {
     // lon, lat radius_deg
-    if(params.size() != 3) {
+    if (params.size() != 3) {
         throw QueryProcessingError("Invalid number of parameters for circle");
     }
     lsst::sphgeom::LonLat center = lsst::sphgeom::LonLat::fromDegrees(params[0], params[1]);
@@ -67,11 +64,10 @@ getCircleFromParams(std::vector<double> const& params) {
 }
 
 inline double arcsecToDegrees(double arcsec) {
-    return arcsec / 3600.; // there are 3600 arcsec in 1 degree.
+    return arcsec / 3600.;  // there are 3600 arcsec in 1 degree.
 }
 
-inline std::shared_ptr<lsst::sphgeom::Ellipse>
-getEllipseFromParams(std::vector<double> const& params) {
+inline std::shared_ptr<lsst::sphgeom::Ellipse> getEllipseFromParams(std::vector<double> const& params) {
     // Per the Spatial Constraints section of the qserv user manual
     //     (see https://github.com/lsst/qserv/blob/master/UserManual.md#spatial-constraints)
     // For a qserv_areaspec_ellipse, the position of each parameter, the parameter, and its unit type
@@ -81,32 +77,30 @@ getEllipseFromParams(std::vector<double> const& params) {
     // 2 semi major axis angle (arcsec)
     // 3 semi minor axis angle (arcsec)
     // 4 orientation angle (degrees)
-    if(params.size() != 5) {
+    if (params.size() != 5) {
         throw QueryProcessingError("Invalid number of parameters for ellipse");
     }
     lsst::sphgeom::UnitVector3d center(lsst::sphgeom::LonLat::fromDegrees(params[0], params[1]));
     return std::make_shared<lsst::sphgeom::Ellipse>(
-        center,
-        lsst::sphgeom::Angle::fromDegrees(arcsecToDegrees(params[2])),
-        lsst::sphgeom::Angle::fromDegrees(arcsecToDegrees(params[3])),
-        lsst::sphgeom::Angle::fromDegrees(params[4]));
+            center, lsst::sphgeom::Angle::fromDegrees(arcsecToDegrees(params[2])),
+            lsst::sphgeom::Angle::fromDegrees(arcsecToDegrees(params[3])),
+            lsst::sphgeom::Angle::fromDegrees(params[4]));
 }
 
-inline std::shared_ptr<lsst::sphgeom::ConvexPolygon>
-getConvexPolyFromParams(std::vector<double> const& params) {
+inline std::shared_ptr<lsst::sphgeom::ConvexPolygon> getConvexPolyFromParams(
+        std::vector<double> const& params) {
     // polygon vertices, min 3 vertices, must get even number of params
-    if((params.size() < 6) || ((params.size() & 1) != 0)) {
+    if ((params.size() < 6) || ((params.size() & 1) != 0)) {
         throw QueryProcessingError("Invalid number of parameters for convex polygon");
     }
     std::vector<lsst::sphgeom::UnitVector3d> uv3;
-    for(unsigned i=0; i < params.size(); i += 2) {
-        lsst::sphgeom::LonLat vx = lsst::sphgeom::LonLat::fromDegrees(params[i], params[i+1]);
+    for (unsigned i = 0; i < params.size(); i += 2) {
+        lsst::sphgeom::LonLat vx = lsst::sphgeom::LonLat::fromDegrees(params[i], params[i + 1]);
         uv3.push_back(lsst::sphgeom::UnitVector3d(vx));
     }
     return std::make_shared<lsst::sphgeom::ConvexPolygon>(uv3);
 }
 
-}}} // namespace lsst::qserv::qproc
+}}}  // namespace lsst::qserv::qproc
 
-#endif // LSST_QSERV_QPROC_GEOMADAPTER_H
-
+#endif  // LSST_QSERV_QPROC_GEOMADAPTER_H

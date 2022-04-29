@@ -21,10 +21,8 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-
 #ifndef LSST_QSERV_QUERY_TESTFACTORY_H
 #define LSST_QSERV_QUERY_TESTFACTORY_H
-
 
 // System headers
 #include <memory>
@@ -33,30 +31,25 @@
 #include "global/stringTypes.h"
 #include "sql/SqlConfig.h"
 
-
 // Forward declarations
-namespace lsst {
-namespace qserv {
+namespace lsst { namespace qserv {
 namespace css {
-    class CssAccess;
+class CssAccess;
 }
 namespace query {
-    class QueryContext;
-    class SelectStmt;
-}}} // End of forward declarations
+class QueryContext;
+class SelectStmt;
+}  // namespace query
+}}  // namespace lsst::qserv
 
-
-namespace lsst {
-namespace qserv {
-namespace query {
-
+namespace lsst { namespace qserv { namespace query {
 
 /// TestFactory is a factory for non-parsed query representation objects
 class TestFactory {
 public:
     TestFactory() {}
-    std::shared_ptr<QueryContext> newContext(
-            std::shared_ptr<css::CssAccess> css, sql::SqlConfig const& schemaCfg);
+    std::shared_ptr<QueryContext> newContext(std::shared_ptr<css::CssAccess> css,
+                                             sql::SqlConfig const& schemaCfg);
     std::shared_ptr<SelectStmt> newSimpleStmt();
     std::shared_ptr<SelectStmt> newDuplSelectExprStmt();
 
@@ -69,7 +62,6 @@ private:
     static void addWhere(std::shared_ptr<SelectStmt> const& stmt);
 };
 
+}}}  // namespace lsst::qserv::query
 
-}}} // namespace lsst::qserv::query
-
-#endif // LSST_QSERV_QUERY_TESTFACTORY_H
+#endif  // LSST_QSERV_QUERY_TESTFACTORY_H

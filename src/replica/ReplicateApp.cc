@@ -38,68 +38,43 @@ using namespace std;
 namespace {
 
 string const description =
-    "This application analyzes the replication level for all chunks of a given"
-    " database family and brings the number of replicas up to the explicitly specified"
-    " (via the corresponding option) or implied (as per the site Configuration)"
-    " minimum level. Chunks which already have the desired replication level won't"
-    " be affected by the operation.";
+        "This application analyzes the replication level for all chunks of a given"
+        " database family and brings the number of replicas up to the explicitly specified"
+        " (via the corresponding option) or implied (as per the site Configuration)"
+        " minimum level. Chunks which already have the desired replication level won't"
+        " be affected by the operation.";
 
 bool const injectDatabaseOptions = true;
 bool const boostProtobufVersionCheck = true;
 bool const enableServiceProvider = true;
 
-} /// namespace
+}  // namespace
 
+namespace lsst { namespace qserv { namespace replica {
 
-namespace lsst {
-namespace qserv {
-namespace replica {
-
-ReplicateApp::Ptr ReplicateApp::create(int argc, char* argv[]) {
-    return Ptr( new ReplicateApp(argc, argv));
-}
-
+ReplicateApp::Ptr ReplicateApp::create(int argc, char* argv[]) { return Ptr(new ReplicateApp(argc, argv)); }
 
 ReplicateApp::ReplicateApp(int argc, char* argv[])
-    :   Application(
-            argc, argv,
-            ::description,
-            ::injectDatabaseOptions,
-            ::boostProtobufVersionCheck,
-            ::enableServiceProvider
-        ) {
-
+        : Application(argc, argv, ::description, ::injectDatabaseOptions, ::boostProtobufVersionCheck,
+                      ::enableServiceProvider) {
     // Configure the command line parser
 
-    parser().required(
-        "database-family",
-        "The name of a database family.",
-        _databaseFamily
-    ).option(
-        "replicas",
-        "The minimum number of replicas to be guaranteed for each chunk (leaving"
-        " it to the default value 0 will pull the actual value of the parameter"
-        " from the Configuration).",
-        _replicas
-    ).option(
-        "tables-page-size",
-        "The number of rows in the table of replicas (0 means no pages).",
-        _pageSize
-    );
+    parser().required("database-family", "The name of a database family.", _databaseFamily)
+            .option("replicas",
+                    "The minimum number of replicas to be guaranteed for each chunk (leaving"
+                    " it to the default value 0 will pull the actual value of the parameter"
+                    " from the Configuration).",
+                    _replicas)
+            .option("tables-page-size", "The number of rows in the table of replicas (0 means no pages).",
+                    _pageSize);
 }
 
-
 int ReplicateApp::runImpl() {
-
     string const noParentJobId;
-    auto const job = ReplicateJob::create(
-        _databaseFamily,
-        _replicas,
-        Controller::create(serviceProvider()),
-        noParentJobId,
-        nullptr,    // no callback
-        PRIORITY_NORMAL
-    );
+    auto const job = ReplicateJob::create(_databaseFamily, _replicas, Controller::create(serviceProvider()),
+                                          noParentJobId,
+                                          nullptr,  // no callback
+                                          PRIORITY_NORMAL);
     job->start();
     job->wait();
 
@@ -110,4 +85,4 @@ int ReplicateApp::runImpl() {
     return 0;
 }
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica

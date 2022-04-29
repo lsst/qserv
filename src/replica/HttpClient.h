@@ -31,9 +31,7 @@
 #include "nlohmann/json.hpp"
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
 /**
  * Class HttpClientConfig encapsulates configuration parameters related to 'libcurl'
@@ -137,18 +135,17 @@ public:
     std::string proxyCaInfo;
     std::string proxyCaInfoVal;
 
-    long connectTimeout = 0;    ///< corresponds to the default (300 seconds)
-    long timeout = 0;           ///< corresponds to the default (no timeout)
-    long lowSpeedLimit = 0;     ///< corresponds to the default (no limit)
-    long lowSpeedTime = 0;      ///< corresponds to the default (no limit)
+    long connectTimeout = 0;  ///< corresponds to the default (300 seconds)
+    long timeout = 0;         ///< corresponds to the default (no timeout)
+    long lowSpeedLimit = 0;   ///< corresponds to the default (no limit)
+    long lowSpeedTime = 0;    ///< corresponds to the default (no limit)
 };
-
 
 /**
  * Class HttpClient is a simple interface for communicating over the HTTP protocol.
  * The implementation of the class invokes a user-supplied callback (lambda) function for
  * each sequence of bytes read from the input stream.
- * 
+ *
  * Here is an example of using the class to pull a file and dump its content on
  * to the standard output stream:
  * @code
@@ -169,7 +166,7 @@ public:
  *   HttpClient client("POST", "http://svc.domain.net/create", request.dump(), headers);
  *   nlohmann::json const result = client.readAsJson();
  * @code
- * 
+ *
  */
 class HttpClient {
 public:
@@ -191,11 +188,9 @@ public:
      * @param headers Optional HTTP headers to be send with a request.
      * @param clientConfig Optional configuration parameters of the reader.
      */
-    HttpClient(std::string const& method,
-               std::string const& url,
-               std::string const& data=std::string(),
-               std::vector<std::string> const& headers=std::vector<std::string>(),
-               HttpClientConfig const& clientConfig=HttpClientConfig());
+    HttpClient(std::string const& method, std::string const& url, std::string const& data = std::string(),
+               std::vector<std::string> const& headers = std::vector<std::string>(),
+               HttpClientConfig const& clientConfig = HttpClientConfig());
 
     /**
      * Begin processing a request. The whole content of the remote data source
@@ -209,7 +204,6 @@ public:
      * @throw std::runtime_error For any errors encountered during data retrieval.
      */
     void read(CallbackType const& onDataRead);
- 
 
     /**
      * @brief Send a request to a service that is expected to return a JSON object.
@@ -235,7 +229,7 @@ private:
     /**
      * Non-member function declaration used for pushing chunks of data retrieved from
      * an input stream managed by libcurl into the class's method _store().
-     * 
+     *
      * See the implementation of the class for further details on the function.
      * See the documentation on lincurl C API for an explanation of the function's parameters.
      */
@@ -258,13 +252,13 @@ private:
     std::vector<std::string> const _headers;
     HttpClientConfig const _clientConfig;
 
-    CallbackType _onDataRead;   ///< set by method read() before pulling the data
+    CallbackType _onDataRead;  ///< set by method read() before pulling the data
 
     // Cached members
     CURL* _hcurl = nullptr;
     curl_slist* _hlist = nullptr;
 };
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_HTTPCLIENT_H
+#endif  // LSST_QSERV_HTTPCLIENT_H

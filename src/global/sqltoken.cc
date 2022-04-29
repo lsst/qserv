@@ -21,12 +21,12 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 /**
-  * @file
-  *
-  * @brief Utility functions for working with SQL tokens.
-  *
-  * @author Daniel L. Wang, SLAC
-  */
+ * @file
+ *
+ * @brief Utility functions for working with SQL tokens.
+ *
+ * @author Daniel L. Wang, SLAC
+ */
 
 // Class header
 #include "global/sqltoken.h"
@@ -37,10 +37,10 @@
 // Third-party headers
 #include "boost/algorithm/string/predicate.hpp"
 
-namespace { // File-scope helpers
+namespace {  // File-scope helpers
 struct InsensitiveCompare {
-    bool operator() (std::string const& a, std::string const& b) const {
-        return boost::ilexicographical_compare(a,b);
+    bool operator()(std::string const& a, std::string const& b) const {
+        return boost::ilexicographical_compare(a, b);
     }
 };
 
@@ -50,41 +50,36 @@ struct InsensitiveCompare {
 struct CompareMap {
     CompareMap() {
         const char* sepWords[] = {"select", "from", "where", "by", "limit", "and", "or"};
-        const int swSize=7;
+        const int swSize = 7;
         _sepWords.insert(sepWords, sepWords + swSize);
     }
-    inline bool isSeparatingWord(std::string const& w) {
-        return _sepWords.find(w) != _sepWords.end();
-    };
+    inline bool isSeparatingWord(std::string const& w) { return _sepWords.find(w) != _sepWords.end(); };
     std::set<std::string, InsensitiveCompare> _sepWords;
 };
 CompareMap _cMap;
 
-} // anonymous namespace
+}  // anonymous namespace
 
-namespace lsst {
-namespace qserv {
-namespace sql {
+namespace lsst { namespace qserv { namespace sql {
 
-bool
-sqlShouldSeparate(std::string const& s, int last, int next) {
+bool sqlShouldSeparate(std::string const& s, int last, int next) {
     if (_cMap.isSeparatingWord(s)) return true;
     bool lastAlnum = isalnum(last);
     bool nextAlnum = isalnum(next);
-    return (lastAlnum && nextAlnum) // adjoining alnums
-        || ((last == '\'') && nextAlnum) // 'saf
-        || ((next == '\'') && lastAlnum) // saf'
-        || ((last == '*') && nextAlnum) // *saf
-        || ((next == '*') && lastAlnum) // saf*
-        || ((last == ')') && nextAlnum) // )asdf
-        || ((last == '#') && nextAlnum) // #asdf
-        || ((last == '%') && nextAlnum) // %asdf
-        || ((next == '%') && lastAlnum) // asdf%
-        || ((last == '_') && nextAlnum) // _asdf
-        || ((next == '_') && lastAlnum) // asdf_
-        || ((last == '`') && nextAlnum) // `asdf
-        || ((next == '`') && lastAlnum) // asdf`
-        ;
+    return (lastAlnum && nextAlnum)          // adjoining alnums
+           || ((last == '\'') && nextAlnum)  // 'saf
+           || ((next == '\'') && lastAlnum)  // saf'
+           || ((last == '*') && nextAlnum)   // *saf
+           || ((next == '*') && lastAlnum)   // saf*
+           || ((last == ')') && nextAlnum)   // )asdf
+           || ((last == '#') && nextAlnum)   // #asdf
+           || ((last == '%') && nextAlnum)   // %asdf
+           || ((next == '%') && lastAlnum)   // asdf%
+           || ((last == '_') && nextAlnum)   // _asdf
+           || ((next == '_') && lastAlnum)   // asdf_
+           || ((last == '`') && nextAlnum)   // `asdf
+           || ((next == '`') && lastAlnum)   // asdf`
+            ;
 }
 
-}}} // namespace lsst::qserv::sql
+}}}  // namespace lsst::qserv::sql

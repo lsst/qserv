@@ -57,18 +57,16 @@ unsigned char* SHA256(unsigned char const* data, size_t len, unsigned char* md) 
     return CC_SHA256(static_cast<void const*>(data), static_cast<CC_LONG>(len), md);
 }
 
-#endif // __APPLE__
+#endif  // __APPLE__
 
-template <unsigned char* dFunc(unsigned char const*, size_t, unsigned char*),
-          int dLength>
+template <unsigned char* dFunc(unsigned char const*, size_t, unsigned char*), int dLength>
 inline std::string wrapHash(void const* buffer, int bufferSize) {
     unsigned char digest[dLength];
     dFunc(reinterpret_cast<unsigned char const*>(buffer), bufferSize, digest);
     return std::string(reinterpret_cast<char*>(digest), dLength);
 }
 
-template <unsigned char *dFunc(unsigned char const*, size_t, unsigned char*),
-          int dLength>
+template <unsigned char* dFunc(unsigned char const*, size_t, unsigned char*), int dLength>
 inline std::string wrapHashHex(void const* buffer, int bufferSize) {
     unsigned char digest[dLength];
     dFunc(reinterpret_cast<unsigned char const*>(buffer), bufferSize, digest);
@@ -84,11 +82,9 @@ inline std::string wrapHashHex(void const* buffer, int bufferSize) {
     return s.str();
 }
 
-} // anonymous namespace
+}  // anonymous namespace
 
-namespace lsst {
-namespace qserv {
-namespace util {
+namespace lsst { namespace qserv { namespace util {
 
 /// @return a hexadecimal representation of the MD5 hash of the input buffer
 /// 128 bits -> 16 bytes -> 32 hex digits
@@ -125,4 +121,4 @@ std::string StringHash::getSha256(char const* buffer, int bufferSize) {
     return wrapHash<SHA256, SHA256_DIGEST_LENGTH>(buffer, bufferSize);
 }
 
-}}} // namespace lsst::qserv::util
+}}}  // namespace lsst::qserv::util

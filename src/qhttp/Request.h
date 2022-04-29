@@ -36,16 +36,12 @@
 // Local headers
 #include "util/CIUtils.h"
 
-namespace lsst {
-namespace qserv {
-namespace qhttp {
+namespace lsst { namespace qserv { namespace qhttp {
 
 class Server;
 
-class Request : public std::enable_shared_from_this<Request>
-{
+class Request : public std::enable_shared_from_this<Request> {
 public:
-
     using Ptr = std::shared_ptr<Request>;
 
     //----- The local address on which this request was accepted
@@ -67,27 +63,24 @@ public:
     //      supported (last parsed for any given header or parameter wins).  Headers are stored in a
     //      case-insensitive map, in accordance with HTTP standards.
 
-    std::string path;                                                      // path portion of URL
-    std::unordered_map<std::string, std::string> query;                    // parsed URL query parameters
-    std::unordered_map<std::string, std::string, util::ci_hash, util::ci_pred> header; // parsed HTTP headers
-    std::unordered_map<std::string, std::string> params;                   // captured URL path elements
+    std::string path;                                    // path portion of URL
+    std::unordered_map<std::string, std::string> query;  // parsed URL query parameters
+    std::unordered_map<std::string, std::string, util::ci_hash, util::ci_pred> header;  // parsed HTTP headers
+    std::unordered_map<std::string, std::string> params;  // captured URL path elements
 
     //----- Body content for this request
 
-    std::istream content;                                  // unparsed body
-    std::unordered_map<std::string, std::string> body;     // parsed body, if x-www-form-urlencoded
+    std::istream content;                               // unparsed body
+    std::unordered_map<std::string, std::string> body;  // parsed body, if x-www-form-urlencoded
 
 private:
-
     friend class Server;
 
     Request(Request const&) = delete;
     Request& operator=(Request const&) = delete;
 
-    explicit Request(
-        std::shared_ptr<Server> const server,
-        std::shared_ptr<boost::asio::ip::tcp::socket> const socket
-    );
+    explicit Request(std::shared_ptr<Server> const server,
+                     std::shared_ptr<boost::asio::ip::tcp::socket> const socket);
 
     bool _parseHeader();
     bool _parseUri();
@@ -98,9 +91,8 @@ private:
     std::shared_ptr<Server> const _server;
     std::shared_ptr<boost::asio::ip::tcp::socket> const _socket;
     boost::asio::streambuf _requestbuf;
-
 };
 
-}}} // namespace lsst::qserv::qhttp
+}}}  // namespace lsst::qserv::qhttp
 
-#endif // LSST_QSERV_QHTTP_REQUEST_H
+#endif  // LSST_QSERV_QHTTP_REQUEST_H

@@ -38,15 +38,13 @@
 #include "replica/DatabaseServices.h"
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
 /**
-  * Class DatabaseServicesPool is a pool of service objects.
-  * @see class DatabaseServices
-  */
-class DatabaseServicesPool: public DatabaseServices {
+ * Class DatabaseServicesPool is a pool of service objects.
+ * @see class DatabaseServices
+ */
+class DatabaseServicesPool : public DatabaseServices {
 public:
     /// This class which implements the RAII paradigm is used by
     /// the implementation of the pool.
@@ -70,190 +68,145 @@ public:
 
     ~DatabaseServicesPool() override = default;
 
-    void saveState(ControllerIdentity const& identity,
-                   uint64_t startTime) final;
+    void saveState(ControllerIdentity const& identity, uint64_t startTime) final;
 
     void saveState(Job const& job) final;
 
     void updateHeartbeatTime(Job const& job) final;
 
-    void saveState(QservMgtRequest const& request,
-                   Performance const& performance,
+    void saveState(QservMgtRequest const& request, Performance const& performance,
                    std::string const& serverError) final;
 
-    void saveState(Request const& request,
-                   Performance const& performance) final;
+    void saveState(Request const& request, Performance const& performance) final;
 
-    void updateRequestState(Request const& request,
-                            std::string const& targetRequestId,
+    void updateRequestState(Request const& request, std::string const& targetRequestId,
                             Performance const& targetRequestPerformance) final;
 
     void saveReplicaInfo(ReplicaInfo const& info) final;
 
-    void saveReplicaInfoCollection(std::string const& worker,
-                                   std::string const& database,
+    void saveReplicaInfoCollection(std::string const& worker, std::string const& database,
                                    ReplicaInfoCollection const& newReplicaInfoCollection) final;
 
-    void findOldestReplicas(std::vector<ReplicaInfo>& replicas,
-                            size_t maxReplicas,
-                            bool enabledWorkersOnly,
-                            bool allDatabases,
-                            bool isPublished) final;
+    void findOldestReplicas(std::vector<ReplicaInfo>& replicas, size_t maxReplicas, bool enabledWorkersOnly,
+                            bool allDatabases, bool isPublished) final;
 
-    void findReplicas(std::vector<ReplicaInfo>& replicas,
-                      unsigned int chunk,
-                      std::string const& database,
-                      bool enabledWorkersOnly,
-                      bool includeFileInfo) final;
+    void findReplicas(std::vector<ReplicaInfo>& replicas, unsigned int chunk, std::string const& database,
+                      bool enabledWorkersOnly, bool includeFileInfo) final;
 
-    void findReplicas(std::vector<ReplicaInfo>& replicas,
-                      std::vector<unsigned int> const& chunks,
-                      std::string const& database,
-                      bool enabledWorkersOnly,
-                      bool includeFileInfo) final;
+    void findReplicas(std::vector<ReplicaInfo>& replicas, std::vector<unsigned int> const& chunks,
+                      std::string const& database, bool enabledWorkersOnly, bool includeFileInfo) final;
 
-    void findWorkerReplicas(std::vector<ReplicaInfo>& replicas,
-                            std::string const& worker,
-                            std::string const& database,
-                            bool allDatabases,
-                            bool isPublished,
+    void findWorkerReplicas(std::vector<ReplicaInfo>& replicas, std::string const& worker,
+                            std::string const& database, bool allDatabases, bool isPublished,
                             bool includeFileInfo) final;
 
-    uint64_t numWorkerReplicas(std::string const& worker,
-                               std::string const& database,
-                               bool allDatabases,
+    uint64_t numWorkerReplicas(std::string const& worker, std::string const& database, bool allDatabases,
                                bool isPublished) final;
 
-    void findWorkerReplicas(std::vector<ReplicaInfo>& replicas,
-                            unsigned int chunk,
-                            std::string const& worker,
-                            std::string const& databaseFamily,
-                            bool allDatabases,
-                            bool isPublished) final;
+    void findWorkerReplicas(std::vector<ReplicaInfo>& replicas, unsigned int chunk, std::string const& worker,
+                            std::string const& databaseFamily, bool allDatabases, bool isPublished) final;
 
-    void findDatabaseReplicas(std::vector<ReplicaInfo>& replicas,
-                              std::string const& database,
+    void findDatabaseReplicas(std::vector<ReplicaInfo>& replicas, std::string const& database,
                               bool enabledWorkersOnly) final;
 
-    void findDatabaseChunks(std::vector<unsigned int>& chunks,
-                            std::string const& database,
+    void findDatabaseChunks(std::vector<unsigned int>& chunks, std::string const& database,
                             bool enabledWorkersOnly) final;
 
     std::map<unsigned int, size_t> actualReplicationLevel(
-                                        std::string const& database,
-                                        std::vector<std::string> const& workersToExclude) final;
+            std::string const& database, std::vector<std::string> const& workersToExclude) final;
 
     size_t numOrphanChunks(std::string const& database,
                            std::vector<std::string> const& uniqueOnWorkers) final;
 
     void logControllerEvent(ControllerEvent const& event) final;
 
-    std::list<ControllerEvent> readControllerEvents(std::string const& controllerId,
-                                                    uint64_t fromTimeStamp,
-                                                    uint64_t toTimeStamp,
-                                                    size_t maxEntries,
-                                                    std::string const& task,
-                                                    std::string const& operation,
+    std::list<ControllerEvent> readControllerEvents(std::string const& controllerId, uint64_t fromTimeStamp,
+                                                    uint64_t toTimeStamp, size_t maxEntries,
+                                                    std::string const& task, std::string const& operation,
                                                     std::string const& operationStatus) final;
 
     nlohmann::json readControllerEventDict(std::string const& controllerId) final;
 
     ControllerInfo controller(std::string const& id) final;
 
-    std::list<ControllerInfo> controllers(uint64_t fromTimeStamp,
-                                          uint64_t toTimeStamp,
+    std::list<ControllerInfo> controllers(uint64_t fromTimeStamp, uint64_t toTimeStamp,
                                           size_t maxEntries) final;
 
     RequestInfo request(std::string const& id) final;
 
-    std::list<RequestInfo> requests(std::string const& jobId,
-                                    uint64_t fromTimeStamp,
-                                    uint64_t toTimeStamp,
+    std::list<RequestInfo> requests(std::string const& jobId, uint64_t fromTimeStamp, uint64_t toTimeStamp,
                                     size_t maxEntries) final;
 
     JobInfo job(std::string const& id) final;
 
-    std::list<JobInfo> jobs(std::string const& controllerId,
-                            std::string const& parentJobId,
-                            uint64_t fromTimeStamp,
-                            uint64_t toTimeStamp,
-                            size_t maxEntries) final;
+    std::list<JobInfo> jobs(std::string const& controllerId, std::string const& parentJobId,
+                            uint64_t fromTimeStamp, uint64_t toTimeStamp, size_t maxEntries) final;
 
-    TransactionInfo transaction(TransactionId id,
-                                bool includeContext=false,
-                                bool includeLog=false) final;
+    TransactionInfo transaction(TransactionId id, bool includeContext = false, bool includeLog = false) final;
 
-    std::vector<TransactionInfo> transactions(std::string const& databaseName=std::string(),
-                                              bool includeContext=false,
-                                              bool includeLog=false) final;
+    std::vector<TransactionInfo> transactions(std::string const& databaseName = std::string(),
+                                              bool includeContext = false, bool includeLog = false) final;
 
-    std::vector<TransactionInfo> transactions(TransactionInfo::State state,
-                                              bool includeContext=false,
-                                              bool includeLog=false) final;
+    std::vector<TransactionInfo> transactions(TransactionInfo::State state, bool includeContext = false,
+                                              bool includeLog = false) final;
 
-    TransactionInfo createTransaction(std::string const& databaseName,
-                                      NamedMutexRegistry& namedMutexRegistry,
-                                      std::unique_ptr<util::Lock>& namedMutexLock,
-                                      nlohmann::json const& transactionContext=nlohmann::json::object()) final;
+    TransactionInfo createTransaction(
+            std::string const& databaseName, NamedMutexRegistry& namedMutexRegistry,
+            std::unique_ptr<util::Lock>& namedMutexLock,
+            nlohmann::json const& transactionContext = nlohmann::json::object()) final;
 
-    TransactionInfo updateTransaction(TransactionId id,
-                                      TransactionInfo::State newState) final;
+    TransactionInfo updateTransaction(TransactionId id, TransactionInfo::State newState) final;
 
-    TransactionInfo updateTransaction(TransactionId id,
-                                      nlohmann::json const& transactionContext=nlohmann::json::object()) final;
+    TransactionInfo updateTransaction(
+            TransactionId id, nlohmann::json const& transactionContext = nlohmann::json::object()) final;
 
     TransactionInfo updateTransaction(TransactionId id,
                                       std::unordered_map<std::string, nlohmann::json> const& events) final;
 
     TransactionContribInfo transactionContrib(unsigned int id) final;
 
-    std::vector<TransactionContribInfo> transactionContribs(TransactionId transactionId,
-                                                            std::string const& table=std::string(),
-                                                            std::string const& worker=std::string(),
-                                                            TransactionContribInfo::TypeSelector typeSelector=
-                                                                    TransactionContribInfo::TypeSelector::SYNC_OR_ASYNC) final;
+    std::vector<TransactionContribInfo> transactionContribs(
+            TransactionId transactionId, std::string const& table = std::string(),
+            std::string const& worker = std::string(),
+            TransactionContribInfo::TypeSelector typeSelector =
+                    TransactionContribInfo::TypeSelector::SYNC_OR_ASYNC) final;
 
-    std::vector<TransactionContribInfo> transactionContribs(TransactionId transactionId,
-                                                            TransactionContribInfo::Status status,
-                                                            std::string const& table=std::string(),
-                                                            std::string const& worker=std::string(),
-                                                            TransactionContribInfo::TypeSelector typeSelector=
-                                                                      TransactionContribInfo::TypeSelector::SYNC_OR_ASYNC) final;
+    std::vector<TransactionContribInfo> transactionContribs(
+            TransactionId transactionId, TransactionContribInfo::Status status,
+            std::string const& table = std::string(), std::string const& worker = std::string(),
+            TransactionContribInfo::TypeSelector typeSelector =
+                    TransactionContribInfo::TypeSelector::SYNC_OR_ASYNC) final;
 
-    std::vector<TransactionContribInfo> transactionContribs(std::string const& database,
-                                                            std::string const& table=std::string(),
-                                                            std::string const& worker=std::string(),
-                                                            TransactionContribInfo::TypeSelector typeSelector=
-                                                                    TransactionContribInfo::TypeSelector::SYNC_OR_ASYNC) final;
+    std::vector<TransactionContribInfo> transactionContribs(
+            std::string const& database, std::string const& table = std::string(),
+            std::string const& worker = std::string(),
+            TransactionContribInfo::TypeSelector typeSelector =
+                    TransactionContribInfo::TypeSelector::SYNC_OR_ASYNC) final;
 
-    TransactionContribInfo createdTransactionContrib(TransactionContribInfo const& info,
-                                                     bool failed=false,
-                                                     TransactionContribInfo::Status statusOnFailed=
-                                                            TransactionContribInfo::Status::CREATE_FAILED) final;
+    TransactionContribInfo createdTransactionContrib(
+            TransactionContribInfo const& info, bool failed = false,
+            TransactionContribInfo::Status statusOnFailed =
+                    TransactionContribInfo::Status::CREATE_FAILED) final;
 
     TransactionContribInfo updateTransactionContrib(TransactionContribInfo const& info) final;
 
-    DatabaseIngestParam ingestParam(std::string const& database,
-                                    std::string const& category,
+    DatabaseIngestParam ingestParam(std::string const& database, std::string const& category,
                                     std::string const& param) final;
 
     std::vector<DatabaseIngestParam> ingestParams(std::string const& database,
-                                                  std::string const& category=std::string()) final;
+                                                  std::string const& category = std::string()) final;
 
-    void saveIngestParam(std::string const& database,
-                         std::string const& category,
-                         std::string const& param,
+    void saveIngestParam(std::string const& database, std::string const& category, std::string const& param,
                          std::string const& value) final;
 
-    TableRowStats tableRowStats(std::string const& database,
-                                std::string const& table,
-                                TransactionId transactionId=0) final;
+    TableRowStats tableRowStats(std::string const& database, std::string const& table,
+                                TransactionId transactionId = 0) final;
 
     void saveTableRowStats(TableRowStats const& stats) final;
 
     void deleteTableRowStats(
             std::string const& database, std::string const& table,
-            ChunkOverlapSelector overlapSelector=ChunkOverlapSelector::CHUNK_AND_OVERLAP) final;
+            ChunkOverlapSelector overlapSelector = ChunkOverlapSelector::CHUNK_AND_OVERLAP) final;
 
 private:
     /**
@@ -279,7 +232,6 @@ private:
      */
     void _releaseService(DatabaseServices::Ptr const& service);
 
-
     /// Service objects which are available
     std::list<DatabaseServices::Ptr> _availableServices;
 
@@ -296,6 +248,6 @@ private:
     std::condition_variable _available;
 };
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_DATABASESERVICESPOOL_H
+#endif  // LSST_QSERV_REPLICA_DATABASESERVICESPOOL_H

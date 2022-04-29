@@ -31,37 +31,32 @@
 // Qserv headers
 #include "wpublish/QservRequest.h"
 
-namespace lsst {
-namespace qserv {
-namespace wpublish {
+namespace lsst { namespace qserv { namespace wpublish {
 
 /**
-  * Class TestEchoQservRequest represents a simple test request sending a string
-  * to the worker management service and expecting the same value back.
-  */
+ * Class TestEchoQservRequest represents a simple test request sending a string
+ * to the worker management service and expecting the same value back.
+ */
 class TestEchoQservRequest : public QservRequest {
-
 public:
-
     /// Completion status of the operation
     enum Status {
-        SUCCESS,    // successful completion of a request
-        ERROR       // an error occurred during command execution
+        SUCCESS,  // successful completion of a request
+        ERROR     // an error occurred during command execution
     };
 
     /// @return string representation of a status
-    static std::string status2str (Status status);
+    static std::string status2str(Status status);
 
     /// The pointer type for instances of the class
     typedef std::shared_ptr<TestEchoQservRequest> Ptr;
 
     /// The callback function type to be used for notifications on
     /// the operation completion.
-    using CallbackType =
-        std::function<void(Status,                  // completion status
-                           std::string const&,      // error message
-                           std::string const&,      // value sent
-                           std::string const&)>;    // value received (if success)
+    using CallbackType = std::function<void(Status,                // completion status
+                                            std::string const&,    // error message
+                                            std::string const&,    // value sent
+                                            std::string const&)>;  // value received (if success)
 
     /**
      * Static factory method is needed to prevent issues with the lifespan
@@ -73,8 +68,7 @@ public:
      *                  (successful or not) of the request.
      * @return smart pointer to the object of the class
      */
-    static Ptr create(std::string const& value,
-                      CallbackType onFinish=nullptr);
+    static Ptr create(std::string const& value, CallbackType onFinish = nullptr);
 
     // Default construction and copy semantics is prohibited
     TestEchoQservRequest() = delete;
@@ -84,15 +78,13 @@ public:
     ~TestEchoQservRequest() override;
 
 protected:
-
     /**
      * Normal constructor
      *
      * @param value     a value to be sent to the worker service
      * @param onFinish  function to be called upon the completion of a request
      */
-    TestEchoQservRequest(std::string const& value,
-                         CallbackType onFinish);
+    TestEchoQservRequest(std::string const& value, CallbackType onFinish);
 
     void onRequest(proto::FrameBuffer& buf) override;
 
@@ -101,13 +93,12 @@ protected:
     void onError(std::string const& error) override;
 
 private:
-
     // Parameters of the object
 
     std::string _value;
     CallbackType _onFinish;
 };
 
-}}} // namespace lsst::qserv::wpublish
+}}}  // namespace lsst::qserv::wpublish
 
-#endif // LSST_QSERV_WPUBLISH_TEST_ECHO_QSERV_REQUEST_H
+#endif  // LSST_QSERV_WPUBLISH_TEST_ECHO_QSERV_REQUEST_H

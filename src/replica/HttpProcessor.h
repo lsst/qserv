@@ -34,17 +34,15 @@
 #include "replica/NamedMutexRegistry.h"
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
 /**
  * Class HttpProcessor processes requests from the built-in HTTP server.
- * 
+ *
  * @note The class's implementation starts its own collection of BOOST ASIO
  *   service threads as configured in Configuration.
  */
-class HttpProcessor: public HttpSvc, public EventLogger {
+class HttpProcessor : public HttpSvc, public EventLogger {
 public:
     typedef std::shared_ptr<HttpProcessor> Ptr;
 
@@ -62,8 +60,7 @@ public:
      * @param processorConfig Configuration parameters of the processor.
      * @return A pointer to the created object.
      */
-    static Ptr create(Controller::Ptr const& controller,
-                      HttpProcessorConfig const& processorConfig,
+    static Ptr create(Controller::Ptr const& controller, HttpProcessorConfig const& processorConfig,
                       HealthMonitorTask::Ptr const& healthMonitorTask);
 
 protected:
@@ -75,8 +72,7 @@ protected:
 
 private:
     /// @see HttpProcessor::create()
-    HttpProcessor(Controller::Ptr const& controller,
-                  HttpProcessorConfig const& processorConfig,
+    HttpProcessor(Controller::Ptr const& controller, HttpProcessorConfig const& processorConfig,
                   HealthMonitorTask::Ptr const& healthMonitorTask);
 
     // Input parameters
@@ -88,7 +84,7 @@ private:
     /// management operations performed by the relevant modules.
     NamedMutexRegistry _transactionMutexRegistry;
 };
-    
-}}} // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_HTTPPROCESSOR_H
+}}}  // namespace lsst::qserv::replica
+
+#endif  // LSST_QSERV_HTTPPROCESSOR_H

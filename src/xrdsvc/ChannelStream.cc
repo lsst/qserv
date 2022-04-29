@@ -41,51 +41,45 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.xrdsvc.ChannelStream");
 
 using namespace std;
 
-namespace lsst {
-namespace qserv {
-namespace xrdsvc {
+namespace lsst { namespace qserv { namespace xrdsvc {
 
 /// Provide each Channel stream with a unique identifier.
 atomic<uint64_t> ChannelStream::_sequenceSource{0};
 
 /// Constructor
-ChannelStream::ChannelStream()
-    : XrdSsiStream(isActive),
-      _closed(false), _seq(_sequenceSource++) {}
+ChannelStream::ChannelStream() : XrdSsiStream(isActive), _closed(false), _seq(_sequenceSource++) {}
 
 /// Destructor
-ChannelStream::~ChannelStream() {
-    clearMsgs();
-}
-
+ChannelStream::~ChannelStream() { clearMsgs(); }
 
 /// Push in a data packet
-void ChannelStream::append(StreamBuffer::Ptr const& streamBuffer, bool last, int scsSeq) {
+void ChannelStream::append(StreamBuffer::Ptr const &streamBuffer, bool last, int scsSeq) {
     if (_closed) {
-        throw util::Bug(ERR_LOC, "ChannelStream::append: Stream closed, append(...,last=true) already received");
+        throw util::Bug(ERR_LOC,
+                        "ChannelStream::append: Stream closed, append(...,last=true) already received");
     }
-    LOGS(_log, LOG_LVL_DEBUG, "seq=" << _seq << " scsseq=" << scsSeq << " ChannelStream::append last=" << last
-         << " " << util::prettyCharBuf(streamBuffer->data, streamBuffer->getSize(), 5));
+    LOGS(_log, LOG_LVL_DEBUG,
+         "seq=" << _seq << " scsseq=" << scsSeq << " ChannelStream::append last=" << last << " "
+                << util::prettyCharBuf(streamBuffer->data, streamBuffer->getSize(), 5));
     {
         unique_lock<mutex> lock(_mutex);
         ++_appendCount;
-        LOGS(_log, LOG_LVL_DEBUG, "seq=" << to_string(_seq) << " scsseq=" << scsSeq
-                                 << " Trying to append message (flowing) appC="
-                                 << _appendCount << " getBC=" << _getBufCount);
+        LOGS(_log, LOG_LVL_DEBUG,
+             "seq=" << to_string(_seq) << " scsseq=" << scsSeq << " Trying to append message (flowing) appC="
+                    << _appendCount << " getBC=" << _getBufCount);
         _msgs.push_back(streamBuffer);
-        _closed = last; // if last is true, then we are closed.
+        _closed = last;  // if last is true, then we are closed.
     }
     _hasDataCondition.notify_one();
 }
 
-
 /// Pull out a data packet as a Buffer object (called by XrdSsi code)
-XrdSsiStream::Buffer* ChannelStream::GetBuff(XrdSsiErrInfo &eInfo, int &dlen, bool &last) {
+XrdSsiStream::Buffer *ChannelStream::GetBuff(XrdSsiErrInfo &eInfo, int &dlen, bool &last) {
     ++_getBufCount;
     // This InstanceCount should be fairly quiet as there should only be one at a time.
     util::InstanceCount inst("GetBuf seq=" + to_string(_seq));
     unique_lock<mutex> lock(_mutex);
-    while(_msgs.empty() && !_closed) { // No msgs, but we aren't done
+    while (_msgs.empty() && !_closed) {  // No msgs, but we aren't done
         // wait.
         LOGS(_log, LOG_LVL_INFO, "seq=" << _seq << " Waiting, no data ready ");
         _hasDataCondition.wait(lock);
@@ -102,20 +96,20 @@ XrdSsiStream::Buffer* ChannelStream::GetBuff(XrdSsiErrInfo &eInfo, int &dlen, bo
     dlen = sb->getSize();
     _msgs.pop_front();
     last = _closed && _msgs.empty();
-    LOGS(_log, LOG_LVL_INFO, "seq=" << to_string(_seq)
-                           << " returning buffer (" << dlen << ", " << (last ? "(last)" : "(more)") << ")"
-                           << " getBufCount=" << _getBufCount);
+    LOGS(_log, LOG_LVL_INFO,
+         "seq=" << to_string(_seq) << " returning buffer (" << dlen << ", " << (last ? "(last)" : "(more)")
+                << ")"
+                << " getBufCount=" << _getBufCount);
     return sb.get();
 }
 
-
 void ChannelStream::clearMsgs() {
-    LOGS(_log, LOG_LVL_DEBUG, "seq=" << to_string(_seq) <<" ChannelStream::clearMsgs()");
+    LOGS(_log, LOG_LVL_DEBUG, "seq=" << to_string(_seq) << " ChannelStream::clearMsgs()");
     unique_lock<mutex> lock(_mutex);
-    while(!_msgs.empty()) {
+    while (!_msgs.empty()) {
         _msgs.front()->Recycle();
         _msgs.pop_front();
     }
 }
 
-}}} // lsst::qserv::xrdsvc
+}}}  // namespace lsst::qserv::xrdsvc

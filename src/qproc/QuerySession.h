@@ -25,10 +25,10 @@
 #define LSST_QSERV_QPROC_QUERYSESSION_H
 
 /**
-  * @file
-  *
-  * @author Daniel L. Wang, SLAC
-  */
+ * @file
+ *
+ * @author Daniel L. Wang, SLAC
+ */
 
 // System headers
 #include <cstddef>
@@ -50,22 +50,18 @@
 #include "query/typedefs.h"
 #include "sql/SqlConfig.h"
 
-
 // Forward declarations
-namespace lsst {
-namespace qserv {
+namespace lsst { namespace qserv {
 namespace css {
-    class StripingParams;
+class StripingParams;
 }
 namespace query {
-    class SelectStmt;
-    class QueryContext;
-}}} // End of forward declarations
+class SelectStmt;
+class QueryContext;
+}  // namespace query
+}}  // namespace lsst::qserv
 
-
-namespace lsst {
-namespace qserv {
-namespace qproc {
+namespace lsst { namespace qserv { namespace qproc {
 
 ///  QuerySession contains state and behavior for operating on user queries. It
 ///  contains much of the query analysis-side responsibility, including the text
@@ -77,13 +73,14 @@ public:
     // null constructor should only be used by parser unit tests.
     QuerySession();
 
-    QuerySession(std::shared_ptr<css::CssAccess> const& css,
-                 qproc::DatabaseModels::Ptr const& dbModels,
-                 std::string const& defaultDb,
-                 int const interactiveChunkLimit)
-        : _css(css), _defaultDb(defaultDb), _databaseModels(dbModels), _interactiveChunkLimit(interactiveChunkLimit) {}
+    QuerySession(std::shared_ptr<css::CssAccess> const& css, qproc::DatabaseModels::Ptr const& dbModels,
+                 std::string const& defaultDb, int const interactiveChunkLimit)
+            : _css(css),
+              _defaultDb(defaultDb),
+              _databaseModels(dbModels),
+              _interactiveChunkLimit(interactiveChunkLimit) {}
 
-    std::shared_ptr<query::SelectStmt> parseQuery(std::string const & statement);
+    std::shared_ptr<query::SelectStmt> parseQuery(std::string const& statement);
 
     std::string const& getOriginal() const { return _original; }
 
@@ -146,7 +143,7 @@ public:
     std::shared_ptr<query::SelectStmt> getMergeStmt() const;
 
     ChunkQuerySpec::Ptr buildChunkQuerySpec(query::QueryTemplate::Vect const& queryTemplates,
-                                       ChunkSpec const& chunkSpec) const;
+                                            ChunkSpec const& chunkSpec) const;
 
     /// Finalize a query after chunk coverage has been updated
     void finalize();
@@ -158,17 +155,15 @@ public:
     // For test harnesses.
     struct Test {
         Test() : cfgNum(0), defaultDb("LSST"), sqlConfig(sql::SqlConfig(sql::SqlConfig::MOCK)) {}
-        Test(int cfgNum_,
-             std::shared_ptr<css::CssAccess> css_,
-             std::string defaultDb_,
+        Test(int cfgNum_, std::shared_ptr<css::CssAccess> css_, std::string defaultDb_,
              sql::SqlConfig const& sqlConfig_)
-             : cfgNum(cfgNum_), css(css_), defaultDb(defaultDb_), sqlConfig(sqlConfig_) {}
+                : cfgNum(cfgNum_), css(css_), defaultDb(defaultDb_), sqlConfig(sqlConfig_) {}
         int cfgNum;
         std::shared_ptr<css::CssAccess> css;
         std::string defaultDb;
         sql::SqlConfig sqlConfig;
     };
-    explicit QuerySession(Test& t); ///< Debug constructor
+    explicit QuerySession(Test& t);  ///< Debug constructor
     std::shared_ptr<query::QueryContext> dbgGetContext() { return _context; }
 
     query::QueryTemplate::Vect makeQueryTemplates();
@@ -201,26 +196,26 @@ private:
                                                    ChunkSpecFragmenter& f) const;
 
     // Fields
-    std::shared_ptr<css::CssAccess> _css; ///< Metadata access
-    std::string _defaultDb; ///< User db context
-    std::string _original; ///< Original user query
-    std::shared_ptr<qproc::DatabaseModels> _databaseModels; ///< Source of schema information
-    std::shared_ptr<query::QueryContext> _context; ///< Analysis context
-    std::shared_ptr<query::SelectStmt> _stmt; ///< Logical query statement
+    std::shared_ptr<css::CssAccess> _css;                    ///< Metadata access
+    std::string _defaultDb;                                  ///< User db context
+    std::string _original;                                   ///< Original user query
+    std::shared_ptr<qproc::DatabaseModels> _databaseModels;  ///< Source of schema information
+    std::shared_ptr<query::QueryContext> _context;           ///< Analysis context
+    std::shared_ptr<query::SelectStmt> _stmt;                ///< Logical query statement
 
     /// Group of parallel statements (not a sequence)
     /**
-    * Store the template used to generate queries on the workers
-    * Example:
-    *    - input user query:
-    *    select sum(pm_declErr), chunkId as f1, chunkId AS f1, avg(pm_declErr)
-    *    from LSST.Object where bMagF > 20.0 GROUP BY chunkId;
-    *    - template for worker queries:
-    *    SELECT sum(pm_declErr) AS QS1_SUM,chunkId AS f1,chunkId AS f1,
-    *    COUNT(pm_declErr) AS QS2_COUNT,SUM(pm_declErr) AS QS3_SUM
-    *    FROM LSST.Object_%CC% AS QST_1_ WHERE bMagF>20.0 GROUP BY chunkId
-    *
-    */
+     * Store the template used to generate queries on the workers
+     * Example:
+     *    - input user query:
+     *    select sum(pm_declErr), chunkId as f1, chunkId AS f1, avg(pm_declErr)
+     *    from LSST.Object where bMagF > 20.0 GROUP BY chunkId;
+     *    - template for worker queries:
+     *    SELECT sum(pm_declErr) AS QS1_SUM,chunkId AS f1,chunkId AS f1,
+     *    COUNT(pm_declErr) AS QS2_COUNT,SUM(pm_declErr) AS QS3_SUM
+     *    FROM LSST.Object_%CC% AS QST_1_ WHERE bMagF>20.0 GROUP BY chunkId
+     *
+     */
     query::SelectStmtPtrVector _stmtParallel;
 
     /**
@@ -231,34 +226,33 @@ private:
     query::SelectStmtPtr _stmtPreFlight;
 
     /**
-    * Store the query used to aggregate results on the czar.
-    * Aggregation is optional, so this variable may be empty
-    * It will run against a table named: result_ID_m, where ID is an integer
-    * Example:
-    *    - input user query:
-    *    select sum(pm_declErr), chunkId as f1, chunkId AS f1, avg(pm_declErr)
-    *    from LSST.Object where bMagF > 20.0 GROUP BY chunkId;
-    *    - merge query:
-    *    SELECT SUM(QS1_SUM),f1 AS f1,f1 AS f1,(SUM(QS3_SUM)/SUM(QS2_COUNT))
-    *    GROUP BY chunkId
-    *
-    */
+     * Store the query used to aggregate results on the czar.
+     * Aggregation is optional, so this variable may be empty
+     * It will run against a table named: result_ID_m, where ID is an integer
+     * Example:
+     *    - input user query:
+     *    select sum(pm_declErr), chunkId as f1, chunkId AS f1, avg(pm_declErr)
+     *    from LSST.Object where bMagF > 20.0 GROUP BY chunkId;
+     *    - merge query:
+     *    SELECT SUM(QS1_SUM),f1 AS f1,f1 AS f1,(SUM(QS3_SUM)/SUM(QS2_COUNT))
+     *    GROUP BY chunkId
+     *
+     */
     query::SelectStmtPtr _stmtMerge;
 
     bool _hasMerge = false;
-    bool _isDummy = false; ///< Use dummy chunk, disabling subchunks or any real chunks
+    bool _isDummy = false;  ///< Use dummy chunk, disabling subchunks or any real chunks
     std::string _tmpTable;
     std::string _resultTable;
     std::string _error;
-    int _isFinal = 0; ///< Has query analysis/optimization completed?
+    int _isFinal = 0;  ///< Has query analysis/optimization completed?
 
-    ChunkSpecVector _chunks; ///< Chunk coverage
-    std::shared_ptr<QueryPluginPtrVector> _plugins; ///< Analysis plugin chain
+    ChunkSpecVector _chunks;                         ///< Chunk coverage
+    std::shared_ptr<QueryPluginPtrVector> _plugins;  ///< Analysis plugin chain
 
     /// Maximum number of chunks in an interactive query.
-    int const _interactiveChunkLimit = 10; // Value of 10 only used in unit tests.
-    bool _scanInteractive = true; ///< True if the query can be considered interactive.
-
+    int const _interactiveChunkLimit = 10;  // Value of 10 only used in unit tests.
+    bool _scanInteractive = true;           ///< True if the query can be considered interactive.
 };
 
 /**
@@ -270,6 +264,6 @@ private:
  */
 std::ostream& operator<<(std::ostream& out, QuerySession const& querySession);
 
-}}} // namespace lsst::qserv::qproc
+}}}  // namespace lsst::qserv::qproc
 
-#endif // LSST_QSERV_QPROC_QUERYSESSION_H
+#endif  // LSST_QSERV_QPROC_QUERYSESSION_H

@@ -23,15 +23,15 @@
 
 #ifndef LSST_QSERV_WDB_QUERYRUNNER_H
 #define LSST_QSERV_WDB_QUERYRUNNER_H
- /**
-  * @file
-  *
-  * @brief QueryAction instances perform single-shot query execution with the
-  * result reflected in the db state or returned via a SendChannel. Works with
-  * new XrdSsi API.
-  *
-  * @author Daniel L. Wang, SLAC
-  */
+/**
+ * @file
+ *
+ * @brief QueryAction instances perform single-shot query execution with the
+ * result reflected in the db state or returned via a SendChannel. Works with
+ * new XrdSsi API.
+ *
+ * @author Daniel L. Wang, SLAC
+ */
 
 // System headers
 #include <atomic>
@@ -46,13 +46,12 @@
 #include "wcontrol/SqlConnMgr.h"
 #include "wdb/ChunkResource.h"
 
-namespace lsst {
-namespace qserv {
+namespace lsst { namespace qserv {
 
 namespace proto {
 class ProtoHeader;
 class Result;
-}
+}  // namespace proto
 
 namespace util {
 class TimerHistogram;
@@ -65,14 +64,11 @@ class StreamBuffer;
 namespace wcontrol {
 class SqlConnMgr;
 class TransmitMgr;
-}
+}  // namespace wcontrol
 
-}}
+}}  // namespace lsst::qserv
 
-
-namespace lsst {
-namespace qserv {
-namespace wdb {
+namespace lsst { namespace qserv { namespace wdb {
 
 /// On the worker, run a query related to a Task, writing the results to a table or supplied SendChannel.
 ///
@@ -98,46 +94,46 @@ public:
     void cancel() override;
 
 protected:
-    QueryRunner(wbase::Task::Ptr const& task,
-                ChunkResourceMgr::Ptr const& chunkResourceMgr,
+    QueryRunner(wbase::Task::Ptr const& task, ChunkResourceMgr::Ptr const& chunkResourceMgr,
                 mysql::MySqlConfig const& mySqlConfig,
                 std::shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr,
                 std::shared_ptr<wcontrol::TransmitMgr> const& transmitMgr);
+
 private:
     bool _initConnection();
     void _setDb();
 
     /// Dispatch with output sent through a SendChannel
     bool _dispatchChannel();
-    MYSQL_RES* _primeResult(std::string const& query); ///< Obtain a result handle for a query.
+    MYSQL_RES* _primeResult(std::string const& query);  ///< Obtain a result handle for a query.
 
     static size_t _getDesiredLimit();
 
-    wbase::Task::Ptr const _task; ///< Actual task
+    wbase::Task::Ptr const _task;  ///< Actual task
 
-    qmeta::CzarId _czarId = 0; ///< To be replaced with the czarId of the requesting czar.
+    qmeta::CzarId _czarId = 0;  ///< To be replaced with the czarId of the requesting czar.
 
     /// Resource reservation
     ChunkResourceMgr::Ptr _chunkResourceMgr;
     std::string _dbName;
     std::atomic<bool> _cancelled{false};
-    std::weak_ptr<xrdsvc::StreamBuffer> _streamBuf; ///< used release condition variable on cancel.
+    std::weak_ptr<xrdsvc::StreamBuffer> _streamBuf;  ///< used release condition variable on cancel.
     std::atomic<bool> _removedFromThreadPool{false};
     mysql::MySqlConfig const _mySqlConfig;
     std::unique_ptr<mysql::MySqlConnection> _mysqlConn;
 
-    util::MultiError _multiError; // Error log
+    util::MultiError _multiError;  // Error log
 
-    bool _largeResult = false; //< True for all transmits after the first transmit.
+    bool _largeResult = false;  //< True for all transmits after the first transmit.
 
     /// Used to limit the number of open MySQL connections.
     std::shared_ptr<wcontrol::SqlConnMgr> const _sqlConnMgr;
-    std::atomic<bool> _runQueryCalled{false}; ///< If runQuery gets called twice, the scheduler messed up.
+    std::atomic<bool> _runQueryCalled{false};  ///< If runQuery gets called twice, the scheduler messed up.
 
     /// Used to limit the number of transmits being sent to czars.
     std::shared_ptr<wcontrol::TransmitMgr> const _transmitMgr;
 };
 
-}}} // namespace
+}}}  // namespace lsst::qserv::wdb
 
 #endif

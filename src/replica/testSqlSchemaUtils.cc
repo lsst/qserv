@@ -18,9 +18,9 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
- /**
-  * @brief test ReplicaInfo
-  */
+/**
+ * @brief test ReplicaInfo
+ */
 
 // Third-party headers
 
@@ -46,13 +46,12 @@ namespace fs = boost::filesystem;
 using namespace lsst::qserv::replica;
 
 namespace {
-string makeTempFileName(string const& baseFolder="/tmp",
-                        string const& prefix="SqlSchemaUtils-",
-                        string const& suffix="columns") {
+string makeTempFileName(string const& baseFolder = "/tmp", string const& prefix = "SqlSchemaUtils-",
+                        string const& suffix = "columns") {
     auto const p = fs::path(baseFolder) / fs::unique_path(prefix + "%%%%_%%%%_%%%%_%%%%." + suffix);
     return p.string();
 }
-}
+}  // namespace
 
 BOOST_AUTO_TEST_SUITE(Suite)
 
@@ -105,6 +104,5 @@ BOOST_AUTO_TEST_CASE(SqlSchemaUtilsTest) {
 
     LOGS_INFO("SqlSchemaUtils test ends");
 }
-
 
 BOOST_AUTO_TEST_SUITE_END()

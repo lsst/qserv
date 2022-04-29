@@ -29,10 +29,7 @@
 
 // Qserv headers
 
-
-namespace lsst {
-namespace qserv {
-namespace czar {
+namespace lsst { namespace qserv { namespace czar {
 
 /// @addtogroup czar
 
@@ -49,6 +46,6 @@ struct SubmitResult {
     std::string resultQuery;   ///< The query to execute to get results
 };
 
-}}} // namespace lsst::qserv::czar
+}}}  // namespace lsst::qserv::czar
 
-#endif // LSST_QSERV_CZAR_SUBMITRESULT_H
+#endif  // LSST_QSERV_CZAR_SUBMITRESULT_H

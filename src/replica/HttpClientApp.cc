@@ -40,131 +40,101 @@ using json = nlohmann::json;
 namespace {
 
 string const description =
-    "This application sends requests to a Web server over the HTTP/HTTPS protocol."
-    " If option '--file=<file>' is present the result will be writted to the"
-    " specified file. Otherwise the content will be printed to the standard output stream.";
+        "This application sends requests to a Web server over the HTTP/HTTPS protocol."
+        " If option '--file=<file>' is present the result will be writted to the"
+        " specified file. Otherwise the content will be printed to the standard output stream.";
 
 bool const injectDatabaseOptions = false;
 bool const boostProtobufVersionCheck = false;
 bool const enableServiceProvider = false;
 
-} /// namespace
+}  // namespace
 
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
 HttpClientApp::Ptr HttpClientApp::create(int argc, char* argv[]) {
     return Ptr(new HttpClientApp(argc, argv));
 }
 
-
 HttpClientApp::HttpClientApp(int argc, char* argv[])
-    :   Application(
-            argc, argv,
-            ::description,
-            ::injectDatabaseOptions,
-            ::boostProtobufVersionCheck,
-            ::enableServiceProvider
-        ) {
-
-    parser().required(
-        "url",
-        "The URL to read data from.",
-        _url
-    ).option(
-        "method",
-        "The HTTP method. Allowed values: GET, POST, PUT, DELETE.",
-        _method
-    ).option(
-        "header",
-        "The HTTP header to be sent with a request. Note this application allows"
-        " only one header.",
-        _header
-    ).option(
-        "data",
-        "The data to be sent in the body of a request.",
-        _data
-    ).reversedFlag(
-        "no-ssl-verify-host",
-        "The flag that disables verifying the certificate's name against host.",
-        _clientConfig.sslVerifyHost
-    ).reversedFlag(
-        "no-ssl-verify-peer",
-        "The flag that disables verifying the peer's SSL certificate.",
-        _clientConfig.sslVerifyPeer
-    ).option(
-        "ca-path",
-        "A path to a directory holding CA certificates to verify the peer with."
-        " This option is ignored if flag --no-ssl-verify-peer is specified.",
-        _clientConfig.caPath
-    ).option(
-        "ca-info",
-        "A path to a Certificate Authority (CA) bundle to verify the peer with."
-        " This option is ignored if flag --no-ssl-verify-peer is specified.",
-        _clientConfig.caInfo
-    ).reversedFlag(
-        "no-proxy-ssl-verify-host",
-        "The flag that disables verifying the certificate's name against proxy's host.",
-        _clientConfig.proxySslVerifyHost
-    ).reversedFlag(
-        "no-proxy-ssl-verify-peer",
-        "The flag that disables verifying the proxy's SSL certificate.",
-        _clientConfig.proxySslVerifyPeer
-    ).option(
-        "proxy-ca-path",
-        "A path to a directory holding CA certificates to verify the proxy with."
-        " This option is ignored if flag --no-proxy-ssl-verify-peer is specified.",
-        _clientConfig.proxyCaPath
-    ).option(
-        "proxy-ca-info",
-        "A path to a Certificate Authority (CA) bundle to verify the proxy with."
-        " This option is ignored if flag --no-proxy-ssl-verify-peer is specified.",
-        _clientConfig.proxyCaInfo
-    ).option(
-        "connect-timeout",
-        "Timeout for the connect phase. It should contain the maximum time in seconds that"
-        " you allow the connection phase to the server to take. This only limits the connection"
-        " phase, it has no impact once it has connected. Set to zero to switch to the default"
-        " built-in connection timeout - 300 seconds.",
-        _clientConfig.connectTimeout
-    ).option(
-        "timeout",
-        "Set maximum time the request is allowed to take. Pass a long as parameter containing"
-        " timeout - the maximum time in seconds that you allow the libcurl transfer operation"
-        " to take. Normally, name lookups can take a considerable time and limiting operations"
-        " risk aborting perfectly normal operations.",
-        _clientConfig.timeout
-    ).option(
-        "low-speed-limit",
-        "Set low speed limit in bytes per second. Pass a long as parameter. It contains the average"
-        " transfer speed in bytes per second that the transfer should be below during"
-        " --low-speed-time=<seconds> for libcurl to consider it to be too slow and abort.",
-        _clientConfig.lowSpeedLimit
-    ).option(
-        "low-speed-time",
-        "Set low speed limit time period. Pass a long as parameter. It contains the time in number"
-        " seconds that the transfer speed should be below the --low-speed-limit=<bps> for the library"
-        " to consider it too slow and abort.",
-        _clientConfig.lowSpeedTime
-    ).option(
-        "file",
-        "A path to an output file where the content received from a remote source will be written."
-        "  If the option is not specified then the content will be printed onto the standard output"
-        " stream. This option is ignored if flag --silent is specified.",
-        _file
-    ).flag(
-        "result2json",
-        "If specified the flag will cause the application to interpret the result as a JSON object.",
-        _result2json
-    ).flag(
-        "silent",
-        "The flag that disables printing or writing the content received from a remote"
-        " source.",
-        _silent
-    );
+        : Application(argc, argv, ::description, ::injectDatabaseOptions, ::boostProtobufVersionCheck,
+                      ::enableServiceProvider) {
+    parser().required("url", "The URL to read data from.", _url)
+            .option("method", "The HTTP method. Allowed values: GET, POST, PUT, DELETE.", _method)
+            .option("header",
+                    "The HTTP header to be sent with a request. Note this application allows"
+                    " only one header.",
+                    _header)
+            .option("data", "The data to be sent in the body of a request.", _data)
+            .reversedFlag("no-ssl-verify-host",
+                          "The flag that disables verifying the certificate's name against host.",
+                          _clientConfig.sslVerifyHost)
+            .reversedFlag("no-ssl-verify-peer",
+                          "The flag that disables verifying the peer's SSL certificate.",
+                          _clientConfig.sslVerifyPeer)
+            .option("ca-path",
+                    "A path to a directory holding CA certificates to verify the peer with."
+                    " This option is ignored if flag --no-ssl-verify-peer is specified.",
+                    _clientConfig.caPath)
+            .option("ca-info",
+                    "A path to a Certificate Authority (CA) bundle to verify the peer with."
+                    " This option is ignored if flag --no-ssl-verify-peer is specified.",
+                    _clientConfig.caInfo)
+            .reversedFlag("no-proxy-ssl-verify-host",
+                          "The flag that disables verifying the certificate's name against proxy's host.",
+                          _clientConfig.proxySslVerifyHost)
+            .reversedFlag("no-proxy-ssl-verify-peer",
+                          "The flag that disables verifying the proxy's SSL certificate.",
+                          _clientConfig.proxySslVerifyPeer)
+            .option("proxy-ca-path",
+                    "A path to a directory holding CA certificates to verify the proxy with."
+                    " This option is ignored if flag --no-proxy-ssl-verify-peer is specified.",
+                    _clientConfig.proxyCaPath)
+            .option("proxy-ca-info",
+                    "A path to a Certificate Authority (CA) bundle to verify the proxy with."
+                    " This option is ignored if flag --no-proxy-ssl-verify-peer is specified.",
+                    _clientConfig.proxyCaInfo)
+            .option("connect-timeout",
+                    "Timeout for the connect phase. It should contain the maximum time in seconds that"
+                    " you allow the connection phase to the server to take. This only limits the connection"
+                    " phase, it has no impact once it has connected. Set to zero to switch to the default"
+                    " built-in connection timeout - 300 seconds.",
+                    _clientConfig.connectTimeout)
+            .option("timeout",
+                    "Set maximum time the request is allowed to take. Pass a long as parameter containing"
+                    " timeout - the maximum time in seconds that you allow the libcurl transfer operation"
+                    " to take. Normally, name lookups can take a considerable time and limiting operations"
+                    " risk aborting perfectly normal operations.",
+                    _clientConfig.timeout)
+            .option("low-speed-limit",
+                    "Set low speed limit in bytes per second. Pass a long as parameter. It contains the "
+                    "average"
+                    " transfer speed in bytes per second that the transfer should be below during"
+                    " --low-speed-time=<seconds> for libcurl to consider it to be too slow and abort.",
+                    _clientConfig.lowSpeedLimit)
+            .option("low-speed-time",
+                    "Set low speed limit time period. Pass a long as parameter. It contains the time in "
+                    "number"
+                    " seconds that the transfer speed should be below the --low-speed-limit=<bps> for the "
+                    "library"
+                    " to consider it too slow and abort.",
+                    _clientConfig.lowSpeedTime)
+            .option("file",
+                    "A path to an output file where the content received from a remote source will be "
+                    "written."
+                    "  If the option is not specified then the content will be printed onto the standard "
+                    "output"
+                    " stream. This option is ignored if flag --silent is specified.",
+                    _file)
+            .flag("result2json",
+                  "If specified the flag will cause the application to interpret the result as a JSON "
+                  "object.",
+                  _result2json)
+            .flag("silent",
+                  "The flag that disables printing or writing the content received from a remote"
+                  " source.",
+                  _silent);
 }
-
 
 int HttpClientApp::runImpl() {
     string const context = "HttpClientApp::" + string(__func__) + "  ";
@@ -180,7 +150,7 @@ int HttpClientApp::runImpl() {
         if (_file.empty()) {
             osPtr = &cout;
         } else {
-            fs.open(_file, ios::out|ios::trunc|ios::binary);
+            fs.open(_file, ios::out | ios::trunc | ios::binary);
             if (!fs.is_open()) {
                 throw runtime_error(context + "failed to open/create file: " + _file);
             }
@@ -202,4 +172,4 @@ int HttpClientApp::runImpl() {
     return 0;
 }
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica

@@ -31,18 +31,15 @@
 #include "replica/ApplicationTypes.h"
 #include "replica/ServiceProvider.h"
 
-
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
 /**
-  * Class Application is a utility base class for building command-line
-  * tools. The class is meant to take care of mundane tasks such as handling
-  * command-line parameters, initializing application environment, etc.
-  */
-class Application: public std::enable_shared_from_this<Application> {
+ * Class Application is a utility base class for building command-line
+ * tools. The class is meant to take care of mundane tasks such as handling
+ * command-line parameters, initializing application environment, etc.
+ */
+class Application : public std::enable_shared_from_this<Application> {
 public:
     /// To bring the Parser type into the class's scope
     using Parser = detail::Parser;
@@ -83,12 +80,9 @@ protected:
      *   option "--config=<url>", load the configuration into Configuration and initialize
      *   the ServiceProvider with the configuration.
      */
-    Application(int argc,
-                const char* const argv[],
-                std::string const& description="",
-                bool const injectDatabaseOptions=true,
-                bool const boostProtobufVersionCheck=false,
-                bool const enableServiceProvider=false);
+    Application(int argc, const char* const argv[], std::string const& description = "",
+                bool const injectDatabaseOptions = true, bool const boostProtobufVersionCheck = false,
+                bool const enableServiceProvider = false);
 
     /// @return a shared pointer of the desired subclass (no dynamic type checking)
     template <class T>
@@ -189,6 +183,6 @@ private:
     ServiceProvider::Ptr _serviceProvider;
 };
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_APPLICATION_H
+#endif  // LSST_QSERV_REPLICA_APPLICATION_H

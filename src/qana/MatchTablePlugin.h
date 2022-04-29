@@ -26,10 +26,7 @@
 // Qserv headers
 #include "qana/QueryPlugin.h"
 
-
-namespace lsst {
-namespace qserv {
-namespace qana {
+namespace lsst { namespace qserv { namespace qana {
 
 /// MatchTablePlugin fixes up queries on match tables which are not joins
 /// so that they do not return duplicate rows potentially introduced by
@@ -74,8 +71,6 @@ public:
     std::string name() const override { return "MatchTablePlugin"; }
 };
 
-
-}}} // namespace lsst::qserv::qana
+}}}  // namespace lsst::qserv::qana
 
 #endif /* LSST_QSERV_QANA_MATCHTABLEPLUGIN_H */
-

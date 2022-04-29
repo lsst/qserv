@@ -21,27 +21,21 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 /**
-  * @file
-  *
-  * @brief Predicate implementation.
-  *
-  * @author Daniel L. Wang, SLAC
-  */
-
+ * @file
+ *
+ * @brief Predicate implementation.
+ *
+ * @author Daniel L. Wang, SLAC
+ */
 
 // Class header
 #include "query/Predicate.h"
 
-
-namespace lsst {
-namespace qserv {
-namespace query {
-
+namespace lsst { namespace qserv { namespace query {
 
 std::ostream& operator<<(std::ostream& os, Predicate const& bt) {
     bt.dbgPrint(os);
     return os;
 }
 
-
-}}} // namespace lsst::qserv::query
+}}}  // namespace lsst::qserv::query

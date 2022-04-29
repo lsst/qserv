@@ -21,13 +21,12 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 /**
-  * @file
-  *
-  * @brief BoolTerm implementations.
-  *
-  * @author Daniel L. Wang, SLAC
-  */
-
+ * @file
+ *
+ * @brief BoolTerm implementations.
+ *
+ * @author Daniel L. Wang, SLAC
+ */
 
 // Class header
 #include "query/BoolTerm.h"
@@ -46,29 +45,21 @@
 #include "query/ValueExpr.h"
 #include "util/IterableFormatter.h"
 
-
-namespace lsst {
-namespace qserv {
-namespace query {
-
+namespace lsst { namespace qserv { namespace query {
 
 std::ostream& operator<<(std::ostream& os, BoolTerm const& bt) {
     bt.dbgPrint(os);
     return os;
 }
 
-
 std::ostream& operator<<(std::ostream& os, BoolTerm const* bt) {
     (nullptr == bt) ? os << "nullptr" : os << *bt;
     return os;
 }
 
-
-void BoolTerm::renderList(QueryTemplate& qt,
-                          BoolTerm::PtrVector const& terms,
-                          std::string const& sep) const {
-    int count=0;
-    for(auto&& ptr : terms) {
+void BoolTerm::renderList(QueryTemplate& qt, BoolTerm::PtrVector const& terms, std::string const& sep) const {
+    int count = 0;
+    for (auto&& ptr : terms) {
         if (!sep.empty() && ++count > 1) {
             qt.append(sep);
         }
@@ -86,12 +77,10 @@ void BoolTerm::renderList(QueryTemplate& qt,
     }
 }
 
-
-void BoolTerm::renderList(QueryTemplate& qt,
-                          std::vector<std::shared_ptr<BoolFactorTerm>> const& terms,
+void BoolTerm::renderList(QueryTemplate& qt, std::vector<std::shared_ptr<BoolFactorTerm>> const& terms,
                           std::string const& sep) const {
-    int count=0;
-    for(auto&& ptr : terms) {
+    int count = 0;
+    for (auto&& ptr : terms) {
         if (!sep.empty() && ++count > 1) {
             qt.append(sep);
         }
@@ -109,10 +98,6 @@ void BoolTerm::renderList(QueryTemplate& qt,
     }
 }
 
+std::shared_ptr<BoolTerm> BoolTerm::copySyntax() const { return std::shared_ptr<BoolTerm>(); }
 
-std::shared_ptr<BoolTerm> BoolTerm::copySyntax() const {
-    return std::shared_ptr<BoolTerm>();
-}
-
-
-}}} // namespace lsst::qserv::query
+}}}  // namespace lsst::qserv::query

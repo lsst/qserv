@@ -33,19 +33,16 @@
 #include <vector>
 
 // Forward declarations
-namespace lsst {
-namespace qserv {
+namespace lsst { namespace qserv {
 namespace css {
-    class CssAccess;
+class CssAccess;
 }
 namespace qana {
-    struct TableInfo;
-}}}
+struct TableInfo;
+}
+}}  // namespace lsst::qserv
 
-
-namespace lsst {
-namespace qserv {
-namespace qana {
+namespace lsst { namespace qserv { namespace qana {
 
 /// `TableInfoPool` is a factory and pool of owned, immutable `TableInfo`
 /// objects.
@@ -59,7 +56,7 @@ namespace qana {
 class TableInfoPool {
 public:
     TableInfoPool(std::string const& defaultDb, css::CssAccess const& css)
-        : _defaultDb(defaultDb), _css(css) {}
+            : _defaultDb(defaultDb), _css(css) {}
 
     // not implemented
     TableInfoPool(TableInfoPool const&) = delete;
@@ -78,8 +75,7 @@ public:
     /// unowned pointers to other metadata objects - these can sometimes
     /// be successfully created and added to the pool before an exception
     /// is thrown for the directly requested object.
-    TableInfo const* get(std::string const& db,
-                         std::string const& table);
+    TableInfo const* get(std::string const& db, std::string const& table);
 
 private:
     // A set implemented as a sorted vector since the number of entries
@@ -94,6 +90,6 @@ private:
     Pool _pool;
 };
 
-}}} // namespace lsst::qserv::qana
+}}}  // namespace lsst::qserv::qana
 
-#endif // LSST_QSERV_QANA_TABLEINFOPOOL_H
+#endif  // LSST_QSERV_QANA_TABLEINFOPOOL_H

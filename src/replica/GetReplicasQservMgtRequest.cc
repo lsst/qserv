@@ -44,91 +44,64 @@ namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.GetReplicasQservMgtRequest");
 
-} /// namespace
+}  // namespace
 
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
 GetReplicasQservMgtRequest::Ptr GetReplicasQservMgtRequest::create(
-                                        ServiceProvider::Ptr const& serviceProvider,
-                                        string const& worker,
-                                        string const& databaseFamily,
-                                        bool inUseOnly,
-                                        GetReplicasQservMgtRequest::CallbackType const& onFinish) {
+        ServiceProvider::Ptr const& serviceProvider, string const& worker, string const& databaseFamily,
+        bool inUseOnly, GetReplicasQservMgtRequest::CallbackType const& onFinish) {
     return GetReplicasQservMgtRequest::Ptr(
-        new GetReplicasQservMgtRequest(serviceProvider,
-                                       worker,
-                                       databaseFamily,
-                                       inUseOnly,
-                                       onFinish));
+            new GetReplicasQservMgtRequest(serviceProvider, worker, databaseFamily, inUseOnly, onFinish));
 }
-
 
 GetReplicasQservMgtRequest::GetReplicasQservMgtRequest(
-                                ServiceProvider::Ptr const& serviceProvider,
-                                string const& worker,
-                                string const& databaseFamily,
-                                bool inUseOnly,
-                                GetReplicasQservMgtRequest::CallbackType const& onFinish)
-    :   QservMgtRequest(serviceProvider,
-                        "QSERV_GET_REPLICAS",
-                        worker),
-        _databaseFamily(databaseFamily),
-        _inUseOnly(inUseOnly),
-        _onFinish(onFinish),
-        _qservRequest(nullptr) {
-}
-
+        ServiceProvider::Ptr const& serviceProvider, string const& worker, string const& databaseFamily,
+        bool inUseOnly, GetReplicasQservMgtRequest::CallbackType const& onFinish)
+        : QservMgtRequest(serviceProvider, "QSERV_GET_REPLICAS", worker),
+          _databaseFamily(databaseFamily),
+          _inUseOnly(inUseOnly),
+          _onFinish(onFinish),
+          _qservRequest(nullptr) {}
 
 QservReplicaCollection const& GetReplicasQservMgtRequest::replicas() const {
-    if (not ((state() == State::FINISHED) and (extendedState() == ExtendedState::SUCCESS))) {
-        throw logic_error(
-                "GetReplicasQservMgtRequest::" + string(__func__) +
-                "  replicas aren't available in state: " +
-                state2string(state(), extendedState()));
+    if (not((state() == State::FINISHED) and (extendedState() == ExtendedState::SUCCESS))) {
+        throw logic_error("GetReplicasQservMgtRequest::" + string(__func__) +
+                          "  replicas aren't available in state: " + state2string(state(), extendedState()));
     }
     return _replicas;
 }
 
-
-list<pair<string,string>> GetReplicasQservMgtRequest::extendedPersistentState() const {
-    list<pair<string,string>> result;
+list<pair<string, string>> GetReplicasQservMgtRequest::extendedPersistentState() const {
+    list<pair<string, string>> result;
     result.emplace_back("database_family", databaseFamily());
     result.emplace_back("in_use_only", bool2str(inUseOnly()));
     return result;
 }
 
-
 void GetReplicasQservMgtRequest::_setReplicas(
-            util::Lock const& lock,
-            wpublish::GetChunkListQservRequest::ChunkCollection const& collection) {
-
+        util::Lock const& lock, wpublish::GetChunkListQservRequest::ChunkCollection const& collection) {
     // Filter results by databases participating in the family
 
     set<string> databases;
-    for (auto&& database: serviceProvider()->config()->databases(databaseFamily())) {
+    for (auto&& database : serviceProvider()->config()->databases(databaseFamily())) {
         databases.insert(database);
     }
     _replicas.clear();
-    for (auto&& replica: collection) {
+    for (auto&& replica : collection) {
         if (databases.count(replica.database)) {
-            _replicas.emplace_back(QservReplica{replica.chunk,
-                                                replica.database,
-                                                replica.use_count});
+            _replicas.emplace_back(QservReplica{replica.chunk, replica.database, replica.use_count});
         }
     }
 }
 
-
 void GetReplicasQservMgtRequest::startImpl(util::Lock const& lock) {
-
     // Check if configuration parameters are valid
 
     if (not serviceProvider()->config()->isKnownDatabaseFamily(databaseFamily())) {
-
-        LOGS(_log, LOG_LVL_ERROR, context() << __func__ << "  ** MISCONFIGURED ** "
-             << " database family: '" << databaseFamily() << "'");
+        LOGS(_log, LOG_LVL_ERROR,
+             context() << __func__ << "  ** MISCONFIGURED ** "
+                       << " database family: '" << databaseFamily() << "'");
 
         finish(lock, ExtendedState::CONFIG_ERROR);
         return;
@@ -139,47 +112,38 @@ void GetReplicasQservMgtRequest::startImpl(util::Lock const& lock) {
     auto const request = shared_from_base<GetReplicasQservMgtRequest>();
 
     _qservRequest = wpublish::GetChunkListQservRequest::create(
-        inUseOnly(),
-        [request] (wpublish::GetChunkListQservRequest::Status status,
-                   string const& error,
-                   wpublish::GetChunkListQservRequest::ChunkCollection const& collection) {
+            inUseOnly(), [request](wpublish::GetChunkListQservRequest::Status status, string const& error,
+                                   wpublish::GetChunkListQservRequest::ChunkCollection const& collection) {
+                if (request->state() == State::FINISHED) return;
 
-            if (request->state() == State::FINISHED) return;
-        
-            util::Lock lock(request->_mtx, request->context() + string(__func__) + "[callback]");
-        
-            if (request->state() == State::FINISHED) return;
+                util::Lock lock(request->_mtx, request->context() + string(__func__) + "[callback]");
 
-            switch (status) {
+                if (request->state() == State::FINISHED) return;
 
-                case wpublish::GetChunkListQservRequest::Status::SUCCESS:
+                switch (status) {
+                    case wpublish::GetChunkListQservRequest::Status::SUCCESS:
 
-                    request->_setReplicas(lock, collection);
-                    request->finish(lock, QservMgtRequest::ExtendedState::SUCCESS);
-                    break;
+                        request->_setReplicas(lock, collection);
+                        request->finish(lock, QservMgtRequest::ExtendedState::SUCCESS);
+                        break;
 
-                case wpublish::GetChunkListQservRequest::Status::ERROR:
+                    case wpublish::GetChunkListQservRequest::Status::ERROR:
 
-                    request->finish(lock, QservMgtRequest::ExtendedState::SERVER_ERROR, error);
-                    break;
+                        request->finish(lock, QservMgtRequest::ExtendedState::SERVER_ERROR, error);
+                        break;
 
-                default:
-                    throw logic_error(
-                            "GetReplicasQservMgtRequest::" + string(__func__) +
-                            "  unhandled server status: " +
-                            wpublish::GetChunkListQservRequest::status2str(status));
-            }
-        }
-    );
+                    default:
+                        throw logic_error("GetReplicasQservMgtRequest::" + string(__func__) +
+                                          "  unhandled server status: " +
+                                          wpublish::GetChunkListQservRequest::status2str(status));
+                }
+            });
     XrdSsiResource resource(ResourceUnit::makeWorkerPath(worker()));
     service()->ProcessRequest(*_qservRequest, resource);
 }
 
-
 void GetReplicasQservMgtRequest::finishImpl(util::Lock const& lock) {
-
     switch (extendedState()) {
-
         case ExtendedState::CANCELLED:
         case ExtendedState::TIMEOUT_EXPIRED:
 
@@ -196,10 +160,9 @@ void GetReplicasQservMgtRequest::finishImpl(util::Lock const& lock) {
     }
 }
 
-
 void GetReplicasQservMgtRequest::notify(util::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
     notifyDefaultImpl<GetReplicasQservMgtRequest>(lock, _onFinish);
 }
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica

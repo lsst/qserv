@@ -42,14 +42,10 @@
 #include "qhttp/Response.h"
 #include "qhttp/Request.h"
 
-namespace lsst {
-namespace qserv {
-namespace qhttp {
+namespace lsst { namespace qserv { namespace qhttp {
 
-class Server : public std::enable_shared_from_this<Server>
-{
+class Server : public std::enable_shared_from_this<Server> {
 public:
-
     using Ptr = std::shared_ptr<Server>;
 
     //----- The server dispatches incoming HTTP requests to Handlers.  A Handler is a callable that receives
@@ -79,7 +75,7 @@ public:
     //      maximum length of the queue of pending connections.
 
     static Ptr create(boost::asio::io_service& io_service, unsigned short port,
-                      int backlog=boost::asio::socket_base::max_listen_connections);
+                      int backlog = boost::asio::socket_base::max_listen_connections);
     unsigned short getPort();
 
     ~Server();
@@ -118,7 +114,6 @@ public:
     void stop();
 
 private:
-
     Server(Server const&) = delete;
     Server& operator=(Server const&) = delete;
 
@@ -146,9 +141,8 @@ private:
 
     std::vector<std::weak_ptr<boost::asio::ip::tcp::socket>> _activeSockets;
     std::mutex _activeSocketsMutex;
-
 };
 
-}}} // namespace lsst::qserv::qhttp
+}}}  // namespace lsst::qserv::qhttp
 
-#endif    // LSST_QSERV_QHTTP_SERVER_H
+#endif  // LSST_QSERV_QHTTP_SERVER_H

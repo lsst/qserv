@@ -23,12 +23,12 @@
 #ifndef LSST_QSERV_QPROC_INDEXMAP_H
 #define LSST_QSERV_QPROC_INDEXMAP_H
 /**
-  * @file
-  *
-  * @brief IndexMap to look up chunk numbers
-  *
-  * @author Daniel L. Wang, SLAC
-  */
+ * @file
+ *
+ * @brief IndexMap to look up chunk numbers
+ *
+ * @author Daniel L. Wang, SLAC
+ */
 
 // System headers
 #include <memory>
@@ -38,24 +38,16 @@
 #include "qproc/ChunkSpec.h"
 #include "query/typedefs.h"
 
-
 // forward declarations
-namespace lsst {
-namespace qserv {
-namespace qproc {
-    class SecondaryIndex;
-}}}
+namespace lsst { namespace qserv { namespace qproc {
+class SecondaryIndex;
+}}}  // namespace lsst::qserv::qproc
 
-
-namespace lsst {
-namespace qserv {
-namespace qproc {
-
+namespace lsst { namespace qserv { namespace qproc {
 
 class IndexMap {
 public:
-    IndexMap(css::StripingParams const& sp,
-             std::shared_ptr<SecondaryIndex> si);
+    IndexMap(css::StripingParams const& sp, std::shared_ptr<SecondaryIndex> si);
 
     /** Compute the chunks list for the whole partitioning scheme
      *
@@ -81,10 +73,11 @@ public:
                               query::SecIdxRestrictorVecPtr const& secIdxRestrictors);
 
     class PartitioningMap;
+
 private:
     std::shared_ptr<PartitioningMap> _pm;
     std::shared_ptr<SecondaryIndex> _si;
 };
 
-}}} // namespace lsst::qserv::qproc
-#endif // LSST_QSERV_QPROC_INDEXMAP_H
+}}}     // namespace lsst::qserv::qproc
+#endif  // LSST_QSERV_QPROC_INDEXMAP_H

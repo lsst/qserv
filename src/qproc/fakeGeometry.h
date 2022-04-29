@@ -23,12 +23,12 @@
 #ifndef LSST_QSERV_QPROC_FAKEGEOMETRY_H
 #define LSST_QSERV_QPROC_FAKEGEOMETRY_H
 /**
-  * @file
-  *
-  * @brief Fake geometry interface code for testing
-  *
-  * @author Daniel L. Wang, SLAC
-  */
+ * @file
+ *
+ * @brief Fake geometry interface code for testing
+ *
+ * @author Daniel L. Wang, SLAC
+ */
 
 // System headers
 #include <memory>
@@ -39,9 +39,7 @@
 #include "css/StripingParams.h"
 #include "qproc/QueryProcessingBug.h"
 
-namespace lsst {
-namespace qserv {
-namespace qproc {
+namespace lsst { namespace qserv { namespace qproc {
 
 // Temporary
 typedef double Coordinate;
@@ -55,11 +53,10 @@ typedef std::pair<Coordinate, Coordinate> UnitVector3d;
 
 class BoxRegion : public Region {
 public:
-
-    static BoxRegion fromDeg(Coordinate lon1, Coordinate lat1,
-                             Coordinate lon2, Coordinate lat2) {
-        return BoxRegion(); // Fake.
+    static BoxRegion fromDeg(Coordinate lon1, Coordinate lat1, Coordinate lon2, Coordinate lat2) {
+        return BoxRegion();  // Fake.
     }
+
 private:
     BoxRegion() {}
 };
@@ -67,18 +64,16 @@ private:
 class CircleRegion : public Region {
 public:
     // FIXME: Is circle chord squared in radians? probably...
-    CircleRegion(std::pair<Coordinate, Coordinate> const& u, Coordinate cl2) {
-    }
+    CircleRegion(std::pair<Coordinate, Coordinate> const& u, Coordinate cl2) {}
+
 private:
     CircleRegion() {}
 };
 
 class EllipseRegion : public Region {
 public:
-    EllipseRegion(UnitVector3d const& center,
-                  double alphaRad,
-                  double betaRad,
-                  double orientRad) {}
+    EllipseRegion(UnitVector3d const& center, double alphaRad, double betaRad, double orientRad) {}
+
 private:
     EllipseRegion(std::vector<Coordinate> const& params) {}
 };
@@ -91,14 +86,14 @@ private:
     ConvexPolyRegion() {}
 };
 
-struct ChunkTuple { // Geometry will have a struct like this.
+struct ChunkTuple {  // Geometry will have a struct like this.
     int chunkId;
     std::vector<int> subChunkIds;
     static ChunkTuple makeFake(int i) {
         ChunkTuple t;
         t.chunkId = i;
-        for (int sc=0; sc < 3; ++i) {
-            t.subChunkIds.push_back((sc*10) + i);
+        for (int sc = 0; sc < 3; ++i) {
+            t.subChunkIds.push_back((sc * 10) + i);
         }
         return t;
     }
@@ -109,9 +104,7 @@ class PartitioningMap {
 public:
     /// Placeholder
     explicit PartitioningMap(css::StripingParams const& sp)
-        : _stripes(sp.stripes),
-          _subStripes(sp.subStripes) {
-    }
+            : _stripes(sp.stripes), _subStripes(sp.subStripes) {}
 
     std::shared_ptr<ChunkRegion> intersect(Region const& r) {
         std::shared_ptr<ChunkRegion> cr = std::make_shared<ChunkRegion>();
@@ -137,7 +130,6 @@ public:
     int _subStripes;
 };
 
-}}} // namespace lsst::qserv::ccontrol
+}}}  // namespace lsst::qserv::qproc
 
-#endif // LSST_QSERV_CCONTROL_FAKEGEOMETRY_H
-
+#endif  // LSST_QSERV_CCONTROL_FAKEGEOMETRY_H

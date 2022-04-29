@@ -21,7 +21,6 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-
 // Class header
 #include "query/BetweenPredicate.h"
 
@@ -30,11 +29,7 @@
 #include "query/QueryTemplate.h"
 #include "query/ValueExpr.h"
 
-
-namespace lsst {
-namespace qserv {
-namespace query {
-
+namespace lsst { namespace qserv { namespace query {
 
 void BetweenPredicate::findColumnRefs(std::vector<std::shared_ptr<ColumnRef>>& vector) const {
     if (value) {
@@ -48,11 +43,9 @@ void BetweenPredicate::findColumnRefs(std::vector<std::shared_ptr<ColumnRef>>& v
     }
 }
 
-
 std::ostream& BetweenPredicate::putStream(std::ostream& os) const {
     return QueryTemplate::renderDbg(os, *this);
 }
-
 
 void BetweenPredicate::renderTo(QueryTemplate& qt) const {
     ValueExpr::render r(qt, false);
@@ -64,20 +57,17 @@ void BetweenPredicate::renderTo(QueryTemplate& qt) const {
     r.applyToQT(maxValue);
 }
 
-
 void BetweenPredicate::findValueExprs(std::vector<std::shared_ptr<ValueExpr>>& vector) const {
     vector.push_back(value);
     vector.push_back(minValue);
     vector.push_back(maxValue);
 }
 
-
 void BetweenPredicate::findValueExprRefs(ValueExprPtrRefVector& vector) {
     vector.push_back(value);
     vector.push_back(minValue);
     vector.push_back(maxValue);
 }
-
 
 BoolFactorTerm::Ptr BetweenPredicate::clone() const {
     BetweenPredicate::Ptr p = std::make_shared<BetweenPredicate>();
@@ -88,7 +78,6 @@ BoolFactorTerm::Ptr BetweenPredicate::clone() const {
     return p;
 }
 
-
 void BetweenPredicate::dbgPrint(std::ostream& os) const {
     os << "BetweenPredicate(";
     os << value;
@@ -98,9 +87,8 @@ void BetweenPredicate::dbgPrint(std::ostream& os) const {
     os << ")";
 }
 
-
 bool BetweenPredicate::operator==(const BoolFactorTerm& rhs) const {
-    auto rhsBetweenPredicate = dynamic_cast<BetweenPredicate const *>(&rhs);
+    auto rhsBetweenPredicate = dynamic_cast<BetweenPredicate const*>(&rhs);
     if (nullptr == rhsBetweenPredicate) {
         return false;
     }
@@ -110,5 +98,4 @@ bool BetweenPredicate::operator==(const BoolFactorTerm& rhs) const {
            util::ptrCompare<ValueExpr>(maxValue, rhsBetweenPredicate->maxValue);
 }
 
-
-}}} // namespace lsst::qserv::query
+}}}  // namespace lsst::qserv::query

@@ -22,12 +22,12 @@
  */
 
 /**
-  * @file
-  *
-  * @brief Implementation of IndexMap
-  *
-  * @author Daniel L. Wang, SLAC
-  */
+ * @file
+ *
+ * @brief Implementation of IndexMap
+ *
+ * @author Daniel L. Wang, SLAC
+ */
 
 #include "qproc/IndexMap.h"
 
@@ -55,10 +55,8 @@
 #include "util/Bug.h"
 #include "util/IterableFormatter.h"
 
-
 using lsst::sphgeom::Region;
 using lsst::sphgeom::SubChunks;
-
 
 namespace {
 
@@ -70,18 +68,13 @@ lsst::qserv::qproc::ChunkSpec convertSgSubChunks(SubChunks const& sc) {
     lsst::qserv::qproc::ChunkSpec cs;
     cs.chunkId = sc.chunkId;
     cs.subChunks.resize(sc.subChunkIds.size());
-    std::copy(sc.subChunkIds.begin(), sc.subChunkIds.end(),
-              cs.subChunks.begin());
+    std::copy(sc.subChunkIds.begin(), sc.subChunkIds.end(), cs.subChunks.begin());
     return cs;
 }
 
-} // anonymous namespace
+}  // anonymous namespace
 
-
-namespace lsst {
-namespace qserv {
-namespace qproc {
-
+namespace lsst { namespace qserv { namespace qproc {
 
 typedef std::vector<std::shared_ptr<Region> > RegionPtrVector;
 
@@ -92,12 +85,10 @@ class IndexMap::PartitioningMap {
 public:
     class NoRegion : public std::invalid_argument {
     public:
-        NoRegion() : std::invalid_argument("No region specified")
-            {}
+        NoRegion() : std::invalid_argument("No region specified") {}
     };
     explicit PartitioningMap(css::StripingParams const& sp) {
-        _chunker = std::make_shared<lsst::sphgeom::Chunker>(sp.stripes,
-                                                            sp.subStripes);
+        _chunker = std::make_shared<lsst::sphgeom::Chunker>(sp.stripes, sp.subStripes);
     }
     /// @return un-canonicalized vector<SubChunks> of concatenated region
     /// results. Regions are assumed to be joined by implicit "OR" and not "AND"
@@ -105,9 +96,7 @@ public:
     SubChunksVector getIntersect(RegionPtrVector const& rv) {
         SubChunksVector scv;
         bool hasRegion = false;
-        for(RegionPtrVector::const_iterator i=rv.begin(), e=rv.end();
-            i != e;
-            ++i) {
+        for (RegionPtrVector::const_iterator i = rv.begin(), e = rv.end(); i != e; ++i) {
             if (*i) {
                 SubChunksVector area = getCoverage(**i);
                 scv.insert(scv.end(), area.begin(), area.end());
@@ -123,19 +112,17 @@ public:
         return scv;
     }
 
-    inline SubChunksVector getCoverage(Region const& r) {
-        return _chunker->getSubChunksIntersecting(r);
-    }
+    inline SubChunksVector getCoverage(Region const& r) { return _chunker->getSubChunksIntersecting(r); }
     ChunkSpecVector getAllChunks() const {
         Int32Vector allChunks = _chunker->getAllChunks();
         ChunkSpecVector csv;
         csv.reserve(allChunks.size());
-        for(IntVector::const_iterator i=allChunks.begin(), e=allChunks.end();
-            i != e; ++i) {
+        for (IntVector::const_iterator i = allChunks.begin(), e = allChunks.end(); i != e; ++i) {
             csv.push_back(ChunkSpec(*i, _chunker->getAllSubChunks(*i)));
         }
         return csv;
     }
+
 private:
     std::shared_ptr<lsst::sphgeom::Chunker> _chunker;
 };
@@ -143,21 +130,15 @@ private:
 ////////////////////////////////////////////////////////////////////////
 // IndexMap implementation
 ////////////////////////////////////////////////////////////////////////
-IndexMap::IndexMap(css::StripingParams const& sp,
-                   std::shared_ptr<SecondaryIndex> si)
-    : _pm(std::make_shared<PartitioningMap>(sp)),
-      _si(si) {
-}
+IndexMap::IndexMap(css::StripingParams const& sp, std::shared_ptr<SecondaryIndex> si)
+        : _pm(std::make_shared<PartitioningMap>(sp)), _si(si) {}
 
 // Compute the chunks list for the whole partitioning scheme
-ChunkSpecVector IndexMap::getAllChunks() {
-    return _pm->getAllChunks();
-}
+ChunkSpecVector IndexMap::getAllChunks() { return _pm->getAllChunks(); }
 
 //  Compute chunks coverage of spatial and secondary index restrictors
 ChunkSpecVector IndexMap::getChunks(query::AreaRestrictorVecPtr const& areaRestrictors,
                                     query::SecIdxRestrictorVecPtr const& secIdxRestrictors) {
-
     // Secondary Index lookups
     if (!_si) {
         throw util::Bug(ERR_LOC, "Invalid SecondaryIndex in IndexMap. Check IndexMap(...)");
@@ -182,16 +163,15 @@ ChunkSpecVector IndexMap::getChunks(query::AreaRestrictorVecPtr const& areaRestr
     SubChunksVector scv;
     try {
         scv = _pm->getIntersect(rv);
-    } catch(PartitioningMap::NoRegion& e) {
+    } catch (PartitioningMap::NoRegion& e) {
         hasRegion = false;
-    } catch(std::invalid_argument& a) {
+    } catch (std::invalid_argument& a) {
         throw QueryProcessingError(a.what());
-    } catch(std::runtime_error& e) {
+    } catch (std::runtime_error& e) {
         throw QueryProcessingError(e.what());
     }
     ChunkSpecVector regionSpecs;
-    std::transform(scv.begin(), scv.end(),
-                   std::back_inserter(regionSpecs), convertSgSubChunks);
+    std::transform(scv.begin(), scv.end(), std::back_inserter(regionSpecs), convertSgSubChunks);
     LOGS(_log, LOG_LVL_TRACE, "indexSpecs subChunks " << util::printable(indexSpecs));
     LOGS(_log, LOG_LVL_TRACE, "regionSpecs subChunks " << util::printable(regionSpecs));
 
@@ -212,6 +192,4 @@ ChunkSpecVector IndexMap::getChunks(query::AreaRestrictorVecPtr const& areaRestr
     }
 }
 
-}}} // namespace lsst::qserv::qproc
-
-
+}}}  // namespace lsst::qserv::qproc

@@ -21,13 +21,12 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 /**
-  * @file
-  *
-  * @brief Implementation of OrderByTerm and OrderByClause
-  *
-  * @author Daniel L. Wang, SLAC
-  */
-
+ * @file
+ *
+ * @brief Implementation of OrderByTerm and OrderByClause
+ *
+ * @author Daniel L. Wang, SLAC
+ */
 
 // Class header
 #include "query/OrderByClause.h"
@@ -53,21 +52,21 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.query.OrderByClause");
 using lsst::qserv::query::OrderByTerm;
 
 char const* getOrderStr(OrderByTerm::Order o) {
-    switch(o) {
-    case OrderByTerm::ASC: return "ASC";
-    case OrderByTerm::DESC: return "DESC";
-    case OrderByTerm::DEFAULT: return "";
-    default: return "UNKNOWN_ORDER";
+    switch (o) {
+        case OrderByTerm::ASC:
+            return "ASC";
+        case OrderByTerm::DESC:
+            return "DESC";
+        case OrderByTerm::DEFAULT:
+            return "";
+        default:
+            return "UNKNOWN_ORDER";
     }
 }
 
-} // anonymous namespace
+}  // anonymous namespace
 
-
-namespace lsst {
-namespace qserv {
-namespace query {
-
+namespace lsst { namespace qserv { namespace query {
 
 class OrderByTerm::render : public std::unary_function<OrderByTerm, void> {
 public:
@@ -83,17 +82,13 @@ public:
     int _count;
 };
 
-
 ////////////////////////////////////////////////////////////////////////
 // OrderByTerm
 ////////////////////////////////////////////////////////////////////////
 OrderByTerm::OrderByTerm(OrderByTerm const& rhs)
-        : _expr(rhs._expr->clone()), _order(rhs._order), _collate(rhs._collate)
-{}
+        : _expr(rhs._expr->clone()), _order(rhs._order), _collate(rhs._collate) {}
 
-
-void
-OrderByTerm::renderTo(QueryTemplate& qt) const {
+void OrderByTerm::renderTo(QueryTemplate& qt) const {
     ValueExpr::render r(qt, true);
     r.applyToQT(_expr);
     if (!_collate.empty()) {
@@ -105,7 +100,6 @@ OrderByTerm::renderTo(QueryTemplate& qt) const {
         qt.append(orderStr);
     }
 }
-
 
 std::string OrderByTerm::sqlFragment() const {
     std::string str;
@@ -120,30 +114,32 @@ std::string OrderByTerm::sqlFragment() const {
     return str;
 }
 
-
-std::ostream&
-operator<<(std::ostream& os, OrderByTerm const& t) {
+std::ostream& operator<<(std::ostream& os, OrderByTerm const& t) {
     os << "OrderByTerm(";
     os << t._expr;
     os << ", ";
     switch (t._order) {
-    case OrderByTerm::DEFAULT: os << "query::OrderByTerm::DEFAULT"; break;
-    case OrderByTerm::ASC: os << "query::OrderByTerm::ASC"; break;
-    case OrderByTerm::DESC: os << "query::OrderByTerm::DESC"; break;
-    default: os << "!!unhandled!!"; break;
+        case OrderByTerm::DEFAULT:
+            os << "query::OrderByTerm::DEFAULT";
+            break;
+        case OrderByTerm::ASC:
+            os << "query::OrderByTerm::ASC";
+            break;
+        case OrderByTerm::DESC:
+            os << "query::OrderByTerm::DESC";
+            break;
+        default:
+            os << "!!unhandled!!";
+            break;
     }
-    os << ", \"" <<  t._collate << "\"";
+    os << ", \"" << t._collate << "\"";
     os << ")";
     return os;
 }
 
-
 bool OrderByTerm::operator==(const OrderByTerm& rhs) const {
-    return util::ptrCompare<ValueExpr>(_expr, rhs._expr) &&
-            _order == rhs._order &&
-            _collate == rhs._collate;
+    return util::ptrCompare<ValueExpr>(_expr, rhs._expr) && _order == rhs._order && _collate == rhs._collate;
 }
-
 
 ////////////////////////////////////////////////////////////////////////
 // OrderByClause
@@ -156,20 +152,15 @@ OrderByClause::OrderByClause(OrderByClause const& rhs) {
     }
 }
 
-
-std::ostream&
-operator<<(std::ostream& os, OrderByClause const& clause) {
+std::ostream& operator<<(std::ostream& os, OrderByClause const& clause) {
     os << "OrderByClause(" << util::ptrPrintable(clause._terms, "", "") << ")";
     return os;
 }
 
-
-std::ostream&
-operator<<(std::ostream& os, OrderByClause const* clause) {
+std::ostream& operator<<(std::ostream& os, OrderByClause const* clause) {
     (nullptr == clause) ? os << "nullptr" : os << *clause;
     return os;
 }
-
 
 std::string OrderByClause::sqlFragment() const {
     std::string str;
@@ -187,28 +178,19 @@ std::string OrderByClause::sqlFragment() const {
     return str;
 }
 
-
-void
-OrderByClause::renderTo(QueryTemplate& qt) const {
+void OrderByClause::renderTo(QueryTemplate& qt) const {
     if (_terms.get() && _terms->size() > 0) {
         OrderByTerm::render r(qt);
-        for(auto& term : *_terms) {
+        for (auto& term : *_terms) {
             LOGS(_log, LOG_LVL_TRACE, "Rendering term: " << term);
             r.applyToQT(term);
         }
     }
 }
 
+std::shared_ptr<OrderByClause> OrderByClause::clone() const { return std::make_shared<OrderByClause>(*this); }
 
-std::shared_ptr<OrderByClause> OrderByClause::clone() const {
-    return std::make_shared<OrderByClause>(*this);
-}
-
-
-std::shared_ptr<OrderByClause> OrderByClause::copySyntax() {
-    return std::make_shared<OrderByClause>(*this);
-}
-
+std::shared_ptr<OrderByClause> OrderByClause::copySyntax() { return std::make_shared<OrderByClause>(*this); }
 
 void OrderByClause::findValueExprs(ValueExprPtrVector& list) const {
     for (auto&& orderByTerm : *_terms) {
@@ -216,17 +198,14 @@ void OrderByClause::findValueExprs(ValueExprPtrVector& list) const {
     }
 }
 
-
 void OrderByClause::findValueExprRefs(ValueExprPtrRefVector& list) {
     for (auto&& orderByTerm : *_terms) {
         list.push_back(orderByTerm.getExpr());
     }
 }
 
-
 bool OrderByClause::operator==(const OrderByClause& rhs) const {
     return util::ptrVectorCompare<OrderByTerm>(_terms, rhs._terms);
 }
 
-
-}}} // namespace lsst::qserv::query
+}}}  // namespace lsst::qserv::query

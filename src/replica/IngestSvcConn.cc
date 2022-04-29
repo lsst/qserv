@@ -31,7 +31,6 @@
 #include <thread>
 #include <stdexcept>
 
-
 // Third party headers
 #include "nlohmann/json.hpp"
 
@@ -58,8 +57,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.IngestSvcConn");
 /// The context for diagnostic & debug printouts
 string const context = "INGEST-SVC-CONN  ";
 
-bool isErrorCode(boost::system::error_code const& ec,
-                 string const& scope) {
+bool isErrorCode(boost::system::error_code const& ec, string const& scope) {
     if (ec.value() != 0) {
         if (ec == boost::asio::error::eof) {
             LOGS(_log, LOG_LVL_DEBUG, context << scope << "  ** closed **");
@@ -71,9 +69,7 @@ bool isErrorCode(boost::system::error_code const& ec,
     return false;
 }
 
-
-bool readIntoBuffer(boost::asio::ip::tcp::socket& socket,
-                    shared_ptr<ProtocolBuffer> const& ptr,
+bool readIntoBuffer(boost::asio::ip::tcp::socket& socket, shared_ptr<ProtocolBuffer> const& ptr,
                     size_t bytes) {
     // Make sure the buffer has enough space to accommodate the data
     // of the message. Note, this call may throw an exception which is
@@ -81,23 +77,13 @@ bool readIntoBuffer(boost::asio::ip::tcp::socket& socket,
     ptr->resize(bytes);
 
     boost::system::error_code ec;
-    boost::asio::read(
-        socket,
-        boost::asio::buffer(
-            ptr->data(),
-            bytes
-        ),
-        boost::asio::transfer_at_least(bytes),
-        ec
-    );
+    boost::asio::read(socket, boost::asio::buffer(ptr->data(), bytes), boost::asio::transfer_at_least(bytes),
+                      ec);
     return not ::isErrorCode(ec, __func__);
 }
 
-
 template <class T>
-bool readMessage(boost::asio::ip::tcp::socket& socket,
-                 shared_ptr<ProtocolBuffer> const& ptr,
-                 size_t bytes,
+bool readMessage(boost::asio::ip::tcp::socket& socket, shared_ptr<ProtocolBuffer> const& ptr, size_t bytes,
                  T& message) {
     try {
         if (readIntoBuffer(socket, ptr, bytes)) {
@@ -109,63 +95,39 @@ bool readMessage(boost::asio::ip::tcp::socket& socket,
     }
     return false;
 }
-}   // namespace
+}  // namespace
 
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
 size_t IngestSvcConn::networkBufSizeBytes = 1024 * 1024;
 
-
-IngestSvcConn::Ptr IngestSvcConn::create(
-        ServiceProvider::Ptr const& serviceProvider,
-        string const& workerName,
-        boost::asio::io_service& io_service) {
-    return IngestSvcConn::Ptr(
-        new IngestSvcConn(
-            serviceProvider,
-            workerName,
-            io_service));
+IngestSvcConn::Ptr IngestSvcConn::create(ServiceProvider::Ptr const& serviceProvider,
+                                         string const& workerName, boost::asio::io_service& io_service) {
+    return IngestSvcConn::Ptr(new IngestSvcConn(serviceProvider, workerName, io_service));
 }
 
-
-IngestSvcConn::IngestSvcConn(ServiceProvider::Ptr const& serviceProvider,
-                             string const& workerName,
+IngestSvcConn::IngestSvcConn(ServiceProvider::Ptr const& serviceProvider, string const& workerName,
                              boost::asio::io_service& io_service)
-    :   IngestFileSvc(serviceProvider,
-                      workerName),
-        _socket(io_service),
-        _bufferPtr(make_shared<ProtocolBuffer>(
-            serviceProvider->config()->get<size_t>("common", "request-buf-size-bytes"))) {
-}
+        : IngestFileSvc(serviceProvider, workerName),
+          _socket(io_service),
+          _bufferPtr(make_shared<ProtocolBuffer>(
+                  serviceProvider->config()->get<size_t>("common", "request-buf-size-bytes"))) {}
 
-
-void IngestSvcConn::beginProtocol() {
-    _receiveHandshake();
-}
-
+void IngestSvcConn::beginProtocol() { _receiveHandshake(); }
 
 void IngestSvcConn::_receiveHandshake() {
-
     LOGS(_log, LOG_LVL_DEBUG, context << __func__);
 
     const size_t bytes = sizeof(uint32_t);
 
     _bufferPtr->resize(bytes);
 
-    boost::asio::async_read(
-        _socket,
-        boost::asio::buffer(_bufferPtr->data(), bytes),
-        boost::asio::transfer_at_least(bytes),
-        bind(&IngestSvcConn::_handshakeReceived, shared_from_this(), _1, _2)
-    );
+    boost::asio::async_read(_socket, boost::asio::buffer(_bufferPtr->data(), bytes),
+                            boost::asio::transfer_at_least(bytes),
+                            bind(&IngestSvcConn::_handshakeReceived, shared_from_this(), _1, _2));
 }
 
-
-void IngestSvcConn::_handshakeReceived(boost::system::error_code const& ec,
-                                       size_t bytes_transferred) {
-
+void IngestSvcConn::_handshakeReceived(boost::system::error_code const& ec, size_t bytes_transferred) {
     LOGS(_log, LOG_LVL_DEBUG, context << __func__);
 
     if (::isErrorCode(ec, __func__)) return;
@@ -189,7 +151,7 @@ void IngestSvcConn::_handshakeReceived(boost::system::error_code const& ec,
     _contrib.worker = workerName();
     _contrib.url = request.url();
     _contrib.dialectInput = csv::DialectInput(request.dialect_input());
-    _contrib.retryAllowed = true;   // stays like this before loading data into MySQL
+    _contrib.retryAllowed = true;  // stays like this before loading data into MySQL
 
     // Attempts to pass invalid transaction identifiers or tables are not recorded
     // as transaction contributions since it's impossible to determine a context
@@ -211,9 +173,8 @@ void IngestSvcConn::_handshakeReceived(boost::system::error_code const& ec,
     bool const failed = true;
 
     if (trans.state != TransactionInfo::State::STARTED) {
-        _contrib.error =
-                context + string(__func__) + " transactionId=" + to_string(_contrib.transactionId)
-                + " is not active";
+        _contrib.error = context + string(__func__) + " transactionId=" + to_string(_contrib.transactionId) +
+                         " is not active";
         _contrib = databaseServices->createdTransactionContrib(_contrib, failed);
         _failed(_contrib.error);
         return;
@@ -237,7 +198,7 @@ void IngestSvcConn::_handshakeReceived(boost::system::error_code const& ec,
     // Register the contribution
     _contrib = databaseServices->createdTransactionContrib(_contrib);
 
-    // This is where the actual processing of the request begins. 
+    // This is where the actual processing of the request begins.
     try {
         openFile(_contrib.transactionId, _contrib.table, dialect, _contrib.chunk, _contrib.isOverlap);
         _contrib = databaseServices->startedTransactionContrib(_contrib);
@@ -264,22 +225,14 @@ void IngestSvcConn::_handshakeReceived(boost::system::error_code const& ec,
     _reply(ProtocolIngestResponse::READY_TO_READ_DATA);
 }
 
-
 void IngestSvcConn::_sendResponse() {
-
     LOGS(_log, LOG_LVL_DEBUG, context << __func__);
 
-    boost::asio::async_write(
-        _socket,
-        boost::asio::buffer(_bufferPtr->data(), _bufferPtr->size()),
-        bind(&IngestSvcConn::_responseSent, shared_from_this(), _1, _2)
-    );
+    boost::asio::async_write(_socket, boost::asio::buffer(_bufferPtr->data(), _bufferPtr->size()),
+                             bind(&IngestSvcConn::_responseSent, shared_from_this(), _1, _2));
 }
 
-
-void IngestSvcConn::_responseSent(boost::system::error_code const& ec,
-                                  size_t bytes_transferred) {
-
+void IngestSvcConn::_responseSent(boost::system::error_code const& ec, size_t bytes_transferred) {
     LOGS(_log, LOG_LVL_DEBUG, context << __func__);
 
     if (!isOpen()) return;
@@ -296,25 +249,18 @@ void IngestSvcConn::_responseSent(boost::system::error_code const& ec,
 }
 
 void IngestSvcConn::_receiveData() {
-
     LOGS(_log, LOG_LVL_DEBUG, context << __func__);
 
     const size_t bytes = sizeof(uint32_t);
 
     _bufferPtr->resize(bytes);
 
-    boost::asio::async_read(
-        _socket,
-        boost::asio::buffer(_bufferPtr->data(), bytes),
-        boost::asio::transfer_at_least(bytes),
-        bind(&IngestSvcConn::_dataReceived, shared_from_this(), _1, _2)
-    );
+    boost::asio::async_read(_socket, boost::asio::buffer(_bufferPtr->data(), bytes),
+                            boost::asio::transfer_at_least(bytes),
+                            bind(&IngestSvcConn::_dataReceived, shared_from_this(), _1, _2));
 }
 
-
-void IngestSvcConn::_dataReceived(boost::system::error_code const& ec,
-                                  size_t bytes_transferred) {
-
+void IngestSvcConn::_dataReceived(boost::system::error_code const& ec, size_t bytes_transferred) {
     LOGS(_log, LOG_LVL_DEBUG, context << __func__);
 
     if (!isOpen()) return;
@@ -323,9 +269,8 @@ void IngestSvcConn::_dataReceived(boost::system::error_code const& ec,
     bool const failed = true;
 
     if (::isErrorCode(ec, __func__)) {
-        _contrib.error =
-                context + string(__func__) + " failed to receive the data packet from the client, error: "
-                + ec.message();
+        _contrib.error = context + string(__func__) +
+                         " failed to receive the data packet from the client, error: " + ec.message();
         _contrib.systemError = ec.value();
         _contrib = databaseServices->readTransactionContrib(_contrib, failed);
         closeFile();
@@ -344,16 +289,12 @@ void IngestSvcConn::_dataReceived(boost::system::error_code const& ec,
 
     // Parse and process the input data, write the processed data into
     // the output file to be ingested into MySQL.
-    _parser->parse(
-        request.data().data(),
-        request.data().size(),
-        request.last(),
-        [&](char const* buf, size_t size) {
-            writeRowIntoFile(buf, size);
-            _contrib.numRows++;
-        }
-    );
-    _contrib.numBytes += request.data().size(); // count unmodified input data
+    _parser->parse(request.data().data(), request.data().size(), request.last(),
+                   [&](char const* buf, size_t size) {
+                       writeRowIntoFile(buf, size);
+                       _contrib.numRows++;
+                   });
+    _contrib.numBytes += request.data().size();  // count unmodified input data
 
     ProtocolIngestResponse response;
     if (request.last()) {
@@ -366,7 +307,7 @@ void IngestSvcConn::_dataReceived(boost::system::error_code const& ec,
             loadDataIntoTable();
             serviceProvider()->databaseServices()->loadedTransactionContrib(_contrib);
             _finished();
-        } catch(exception const& ex) {
+        } catch (exception const& ex) {
             _contrib.error = context + string(__func__) + string(" data load failed: ") + ex.what();
             _contrib.systemError = errno;
             serviceProvider()->databaseServices()->loadedTransactionContrib(_contrib, failed);
@@ -377,16 +318,13 @@ void IngestSvcConn::_dataReceived(boost::system::error_code const& ec,
     }
 }
 
-
 void IngestSvcConn::_failed(std::string const& msg) {
     LOGS(_log, LOG_LVL_ERROR, msg);
     closeFile();
     _reply(ProtocolIngestResponse::FAILED, msg);
 }
 
-
-void IngestSvcConn::_reply(ProtocolIngestResponse::Status status,
-                           string const& msg) {
+void IngestSvcConn::_reply(ProtocolIngestResponse::Status status, string const& msg) {
     ProtocolIngestResponse response;
     response.set_status(status);
     response.set_error(msg);
@@ -398,4 +336,4 @@ void IngestSvcConn::_reply(ProtocolIngestResponse::Status status,
     _sendResponse();
 }
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica

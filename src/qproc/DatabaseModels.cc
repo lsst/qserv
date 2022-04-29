@@ -43,26 +43,19 @@ namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.qproc.DatabaseModels");
 }
 
-namespace lsst {
-namespace qserv {
-namespace qproc {
+namespace lsst { namespace qserv { namespace qproc {
 
 DatabaseModels::Ptr DatabaseModels::create(std::map<std::string, std::string> const& cfgMapMaster,
                                            sql::SqlConfig const& sqlCfgLocal) {
     util::ConfigStore cfgStore(cfgMapMaster);
     /// Use the CSS config for now. The CSS database is not used but sql::SqlConnection wants a database name.
-    mysql::MySqlConfig mySqlConfig(cfgStore.get("username"),
-                                   cfgStore.get("password"),
-                                   cfgStore.get("hostname"),
-                                   cfgStore.getInt("port"),
-                                   cfgStore.get("socket"),
+    mysql::MySqlConfig mySqlConfig(cfgStore.get("username"), cfgStore.get("password"),
+                                   cfgStore.get("hostname"), cfgStore.getInt("port"), cfgStore.get("socket"),
                                    cfgStore.get("db"));
-
 
     Ptr dbModels(new DatabaseModels(mySqlConfig, sqlCfgLocal));
     return dbModels;
 }
-
 
 DatabaseModels::Ptr DatabaseModels::create(sql::SqlConfig const& sqlCfgMaster,
                                            sql::SqlConfig const& sqlCfgLocal) {
@@ -70,11 +63,9 @@ DatabaseModels::Ptr DatabaseModels::create(sql::SqlConfig const& sqlCfgMaster,
     return dbModels;
 }
 
-
 DatabaseModels::DatabaseModels(sql::SqlConfig const& sqlCfgMaster, sql::SqlConfig const& sqlCfgLocal)
-    : _sqlConnMaster(sql::SqlConnectionFactory::make(sqlCfgMaster)),
-      _sqlConnLocal(sql::SqlConnectionFactory::make(sqlCfgLocal)) {}
-
+        : _sqlConnMaster(sql::SqlConnectionFactory::make(sqlCfgMaster)),
+          _sqlConnLocal(sql::SqlConnectionFactory::make(sqlCfgLocal)) {}
 
 bool DatabaseModels::applySql(string const& sql, sql::SqlResults& results, sql::SqlErrorObject& errObj) {
     lock_guard<mutex> lg(_sqlMutex);
@@ -92,7 +83,6 @@ bool DatabaseModels::applySql(string const& sql, sql::SqlResults& results, sql::
     return true;
 }
 
-
 vector<string> DatabaseModels::listColumns(string const& dbName, string const& tableName) {
     try {
         lock_guard<mutex> lg(_sqlMutex);
@@ -105,4 +95,4 @@ vector<string> DatabaseModels::listColumns(string const& dbName, string const& t
     }
 }
 
-}}} // namespace lsst::qserv::qproc
+}}}  // namespace lsst::qserv::qproc

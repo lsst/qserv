@@ -40,35 +40,30 @@ namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.mysql.MySqlConfig");
 
-} // anonymous
+}  // namespace
 
-namespace lsst {
-namespace qserv {
-namespace mysql {
-
-MySqlConfig::MySqlConfig(std::string const& username,
-                         std::string const& password,
-                         std::string const& hostname,
-                         unsigned int const port,
-                         std::string const& socket,
-                         std::string const& dbName)
-    : username(username), password(password), hostname(hostname), port(port),
-      socket(socket), dbName(dbName) {
-
-}
+namespace lsst { namespace qserv { namespace mysql {
 
 MySqlConfig::MySqlConfig(std::string const& username, std::string const& password,
-                         std::string const& socket, std::string const& dbName)
-    : username(username), password(password), port(0), socket(socket), dbName(dbName) {
-}
+                         std::string const& hostname, unsigned int const port, std::string const& socket,
+                         std::string const& dbName)
+        : username(username),
+          password(password),
+          hostname(hostname),
+          port(port),
+          socket(socket),
+          dbName(dbName) {}
 
-std::ostream& operator<<(std::ostream &out, MySqlConfig const& mysqlConfig) {
+MySqlConfig::MySqlConfig(std::string const& username, std::string const& password, std::string const& socket,
+                         std::string const& dbName)
+        : username(username), password(password), port(0), socket(socket), dbName(dbName) {}
+
+std::ostream& operator<<(std::ostream& out, MySqlConfig const& mysqlConfig) {
     out << "[host=" << mysqlConfig.hostname << ", port=" << mysqlConfig.port
         << ", user=" << mysqlConfig.username << ", password=XXXXXX"
         << ", db=" << mysqlConfig.dbName << ", socket=" << mysqlConfig.socket << "]";
     return out;
 }
-
 
 std::string MySqlConfig::toString() const {
     std::ostringstream oss;
@@ -76,4 +71,4 @@ std::string MySqlConfig::toString() const {
     return oss.str();
 }
 
-}}} // namespace lsst::qserv::mysql
+}}}  // namespace lsst::qserv::mysql

@@ -39,23 +39,16 @@ namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.wpublish.GetStatusCommand");
 
-} // anonymous namespace
+}  // anonymous namespace
 
-namespace lsst {
-namespace qserv {
-namespace wpublish {
+namespace lsst { namespace qserv { namespace wpublish {
 
 GetStatusCommand::GetStatusCommand(shared_ptr<wbase::SendChannel> const& sendChannel,
                                    shared_ptr<wbase::MsgProcessor> const& processor,
                                    shared_ptr<ResourceMonitor> const& resourceMonitor)
-    :   wbase::WorkerCommand(sendChannel),
-        _processor(processor),
-        _resourceMonitor(resourceMonitor) {
-}
-
+        : wbase::WorkerCommand(sendChannel), _processor(processor), _resourceMonitor(resourceMonitor) {}
 
 void GetStatusCommand::run() {
-
     LOGS(_log, LOG_LVL_DEBUG, "GetStatusCommand::" << __func__);
 
     nlohmann::json result;
@@ -72,4 +65,4 @@ void GetStatusCommand::run() {
     LOGS(_log, LOG_LVL_DEBUG, "GetStatusCommand::" << __func__ << "  ** SENT **");
 }
 
-}}} // namespace lsst::qserv::wpublish
+}}}  // namespace lsst::qserv::wpublish

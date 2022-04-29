@@ -32,10 +32,7 @@
 #include "mysql/MySqlConfig.h"
 #include "sql/SqlResults.h"
 
-
-namespace lsst {
-namespace qserv {
-namespace qmeta {
+namespace lsst { namespace qserv { namespace qmeta {
 
 /// @addtogroup qmeta
 
@@ -51,7 +48,6 @@ namespace qmeta {
 
 class QMetaSelect {
 public:
-
     /**
      *  @param mysqlConf: Configuration object for mysql connection
      */
@@ -78,11 +74,9 @@ public:
     virtual std::unique_ptr<sql::SqlResults> select(std::string const& query);
 
 protected:
-
     std::shared_ptr<sql::SqlConnection> _conn;
-
 };
 
-}}} // namespace lsst::qserv::qmeta
+}}}  // namespace lsst::qserv::qmeta
 
-#endif // LSST_QSERV_QMETA_QMETASELECT_H
+#endif  // LSST_QSERV_QMETA_QMETASELECT_H

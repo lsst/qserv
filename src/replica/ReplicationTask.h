@@ -25,17 +25,13 @@
 #include "replica/Task.h"
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
 /**
- * Class 
+ * Class
  */
 class ReplicationTask : public Task {
-
 public:
-
     /// The pointer type for instances of the class
     typedef std::shared_ptr<ReplicationTask> Ptr;
 
@@ -76,30 +72,22 @@ public:
      */
     static Ptr create(Controller::Ptr const& controller,
                       Task::AbnormalTerminationCallbackType const& onTerminated,
-                      unsigned int qservSyncTimeoutSec,
-                      unsigned int replicationIntervalSec,
-                      unsigned int numReplicas,
-                      bool purge);
+                      unsigned int qservSyncTimeoutSec, unsigned int replicationIntervalSec,
+                      unsigned int numReplicas, bool purge);
 
 protected:
-
     /// @see Task::onRun()
     bool onRun() final;
 
 private:
-
     /**
      * The constructor is available to the class's factory method
      *
      * @see ReplicationTask::create()
      */
-    ReplicationTask(Controller::Ptr const& controller,
-                    AbnormalTerminationCallbackType const& onTerminated,
-                    unsigned int qservSyncTimeoutSec,
-                    unsigned int replicationIntervalSec,
-                    unsigned int numReplicas,
-                    bool purge);
-
+    ReplicationTask(Controller::Ptr const& controller, AbnormalTerminationCallbackType const& onTerminated,
+                    unsigned int qservSyncTimeoutSec, unsigned int replicationIntervalSec,
+                    unsigned int numReplicas, bool purge);
 
     /// The maximum number of seconds to be waited before giving up
     /// on the Qserv synchronization requests.
@@ -111,7 +99,7 @@ private:
     /// Purge excess replicas if 'true'
     bool _purge;
 };
-    
-}}} // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICATIONTASK_H
+}}}  // namespace lsst::qserv::replica
+
+#endif  // LSST_QSERV_REPLICATIONTASK_H

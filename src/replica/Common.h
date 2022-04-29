@@ -41,9 +41,7 @@
 #include "util/Mutex.h"
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
 /// The number of the 'overflow' chunks
 unsigned int const overflowChunkNumber = 1234567890;
@@ -53,21 +51,17 @@ unsigned int const overflowChunkNumber = 1234567890;
 // one of the high priority levels. The default priority level should be set
 // to PRIORITY_NORMAL.
 
-int const PRIORITY_VERY_LOW  = 1;
-int const PRIORITY_LOW       = 2;
-int const PRIORITY_NORMAL    = 3;
-int const PRIORITY_HIGH      = 4;
+int const PRIORITY_VERY_LOW = 1;
+int const PRIORITY_LOW = 2;
+int const PRIORITY_NORMAL = 3;
+int const PRIORITY_HIGH = 4;
 int const PRIORITY_VERY_HIGH = 5;
 
 /// @return The string representation of the extended status.
 std::string status2string(ProtocolStatusExt status);
 
 /// The chunk overlap selector is used where the tri-state is required.
-enum class ChunkOverlapSelector: int {
-    CHUNK = 1,
-    OVERLAP = 2,
-    CHUNK_AND_OVERLAP = 3
-};
+enum class ChunkOverlapSelector : int { CHUNK = 1, OVERLAP = 2, CHUNK_AND_OVERLAP = 3 };
 
 /// @param selector The selector to be translated.
 /// @return The string representation of the selector.
@@ -90,11 +84,11 @@ class Generators {
 public:
     /// @return next unique identifier
     static std::string uniqueId();
+
 private:
     /// For thread safety where it's required
     static util::Mutex _mtx;
 };
-
 
 /**
  * This class is an abstraction for column definitions. A column has
@@ -103,11 +97,7 @@ private:
 class SqlColDef {
 public:
     SqlColDef() = default;
-    SqlColDef(std::string const name_,
-              std::string const type_)
-        :    name(name_),
-             type(type_) {
-    }
+    SqlColDef(std::string const name_, std::string const type_) : name(name_), type(type_) {}
     SqlColDef(SqlColDef const&) = default;
     SqlColDef& operator=(SqlColDef const&) = default;
     ~SqlColDef() = default;
@@ -116,7 +106,6 @@ public:
     std::string type;
 };
 
-
 /**
  * This class is an abstraction for columns within table index
  * specifications.
@@ -124,13 +113,8 @@ public:
 class SqlIndexColumn {
 public:
     SqlIndexColumn() = default;
-    SqlIndexColumn(std::string const name_,
-                   size_t length_,
-                   bool ascending_)
-        :   name(name_),
-            length(length_),
-            ascending(ascending_) {
-    }
+    SqlIndexColumn(std::string const name_, size_t length_, bool ascending_)
+            : name(name_), length(length_), ascending(ascending_) {}
     SqlIndexColumn(SqlIndexColumn const&) = default;
     SqlIndexColumn& operator=(SqlIndexColumn const&) = default;
     ~SqlIndexColumn() = default;
@@ -140,19 +124,18 @@ public:
     bool ascending = true;
 };
 
-
 /**
  * Class ReplicationRequestParams encapsulates parameters of the replica
  * creation requests.
  */
 class ReplicationRequestParams {
 public:
-    std::string  database;
+    std::string database;
     unsigned int chunk = 0;
-    std::string  sourceWorker;
-    std::string  sourceWorkerHost;
-    uint16_t     sourceWorkerPort;
-    std::string  sourceWorkerDataDir;
+    std::string sourceWorker;
+    std::string sourceWorkerHost;
+    uint16_t sourceWorkerPort;
+    std::string sourceWorkerDataDir;
 
     ReplicationRequestParams() = default;
 
@@ -165,9 +148,9 @@ public:
  */
 class DeleteRequestParams {
 public:
-    std::string  database;
+    std::string database;
     unsigned int chunk = 0;
-    std::string  sourceWorker;
+    std::string sourceWorker;
 
     DeleteRequestParams() = default;
 
@@ -180,7 +163,7 @@ public:
  */
 class FindRequestParams {
 public:
-    std::string  database;
+    std::string database;
     unsigned int chunk = 0;
 
     FindRequestParams() = default;
@@ -195,7 +178,7 @@ public:
  */
 class FindAllRequestParams {
 public:
-    std::string  database;
+    std::string database;
 
     FindAllRequestParams() = default;
 
@@ -207,8 +190,8 @@ public:
  */
 class EchoRequestParams {
 public:
-    std::string  data;
-    uint64_t     delay = 0;
+    std::string data;
+    uint64_t delay = 0;
 
     EchoRequestParams() = default;
 
@@ -219,7 +202,7 @@ public:
 typedef uint32_t TransactionId;
 
 /// The type for event identifiers of the the super-transactions.
-typedef uint32_t  TransactionEventId;
+typedef uint32_t TransactionEventId;
 
 /**
  * Class SqlRequestParams represents parameters of the SQL requests.
@@ -265,7 +248,7 @@ public:
 
     /**
      * Class IndexSpec is an abstraction for the index type specification.
-     * 
+     *
      * It's been designed to allow constructing specifications from a string
      * or a Protobuf representations. The class contract also allows a reverse
      * translation into either of those representations.
@@ -298,12 +281,7 @@ public:
 
     private:
         /// The internal representation
-        enum Spec {
-            DEFAULT,
-            UNIQUE,
-            FULLTEXT,
-            SPATIAL
-        };
+        enum Spec { DEFAULT, UNIQUE, FULLTEXT, SPATIAL };
         Spec _spec = Spec::DEFAULT;
     };
     IndexSpec indexSpec;
@@ -330,9 +308,9 @@ std::ostream& operator<<(std::ostream& os, SqlRequestParams const& params);
  */
 class IndexRequestParams {
 public:
-    std::string   database;
-    unsigned int  chunk = 0;
-    bool          hasTransactions = false;
+    std::string database;
+    unsigned int chunk = 0;
+    bool hasTransactions = false;
     TransactionId transactionId = 0;
 
     IndexRequestParams() = default;
@@ -340,14 +318,12 @@ public:
     explicit IndexRequestParams(ProtocolRequestIndex const& request);
 };
 
-
 /**
  * An utility function translating a boolean value into a string representation.
  * @param v The input value.
  * @return The result ("0" for "false" and "1" for "true").
  */
 inline std::string bool2str(bool v) { return v ? "1" : "0"; }
-
 
 /**
  * Class Query stores a query and the optional transient synchronization context
@@ -361,33 +337,30 @@ public:
     /// @param query_ A query.
     /// @param mutexName_ The optional name of a mutex to be held before
     ///   executing the query.
-    explicit Query(std::string const& query_,
-                   std::string const& mutexName_=std::string())
-        :   query(query_), mutexName(mutexName_) {
-    }
+    explicit Query(std::string const& query_, std::string const& mutexName_ = std::string())
+            : query(query_), mutexName(mutexName_) {}
     ~Query() = default;
 
     std::string query;
     std::string mutexName;
 };
 
-
 /**
  * The function that is not present in the Standard library.
  */
-unsigned int stoui(std::string const& str, size_t *idx = 0, int base = 10);
+unsigned int stoui(std::string const& str, size_t* idx = 0, int base = 10);
 
 /**
  * @brief Split the input string into words separated by the delimiter.
- * 
+ *
  * @param str The input string.
  * @param delimiter The delimiter character.
  * @return std::vector<std::string> A collection of words found in the string. The words
  *   are guaranteed not to have delimiters. The collection is guaranteed not to have
  *   empty strings.
  */
-std::vector<std::string> strsplit(std::string const& str, char delimiter=' ');
+std::vector<std::string> strsplit(std::string const& str, char delimiter = ' ');
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_COMMON_H
+#endif  // LSST_QSERV_REPLICA_COMMON_H

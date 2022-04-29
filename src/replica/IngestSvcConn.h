@@ -36,9 +36,7 @@
 #include "replica/ServiceProvider.h"
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
 /**
  * Class IngestSvcConn is used in the server-side implementation of
@@ -59,8 +57,7 @@ namespace replica {
  * a database, or communicating with a client) occurs. When this happens the object
  * stops doing anything.
  */
-class IngestSvcConn: public IngestFileSvc,
-                     public std::enable_shared_from_this<IngestSvcConn> {
+class IngestSvcConn : public IngestFileSvc, public std::enable_shared_from_this<IngestSvcConn> {
 public:
     typedef std::shared_ptr<IngestSvcConn> Ptr;
 
@@ -78,8 +75,7 @@ public:
      * the service)
      * @param io_service service object for the network I/O operations
      */
-    static Ptr create(ServiceProvider::Ptr const& serviceProvider,
-                      std::string const& workerName,
+    static Ptr create(ServiceProvider::Ptr const& serviceProvider, std::string const& workerName,
                       boost::asio::io_service& io_service);
 
     // Default construction and copy semantics are prohibited
@@ -96,7 +92,7 @@ public:
     /**
      * Begin communicating asynchronously with a client. This is essentially
      * an RPC protocol which runs in a loop this sequence of steps:
-     * 
+     *
      *   1. ASYNC: read a frame header of a request
      *       SYNC: read the request header (a scope and parameters of the request, etc.)
      *   2. ASYNC: write a frame header of a reply to the request
@@ -118,7 +114,7 @@ public:
      *             notify the client on the maximum number of rows to be send in
      *             the next request.
      *   5 -> 3:   repeat this in the loop until all rows are received from the client
-     *             and loaded into the database, or until a problem at any stage occurs. 
+     *             and loaded into the database, or until a problem at any stage occurs.
      *
      * @note
      *   A reason why the read phase is split into two phases (ASYNC, SYNC) is
@@ -131,17 +127,15 @@ public:
      *   will require two things: 1) to ensure enough we have enough buffer space
      *   allocated, and 2) to tell the asynchronous reader function
      *   how many bytes exactly are we going to read.
-     * 
+     *
      * The chain ends when a client disconnects or when an error condition
      * is met.
      */
     void beginProtocol();
 
 private:
-
     /// @see IngestSvcConn::create()
-    IngestSvcConn(ServiceProvider::Ptr const& serviceProvider,
-                  std::string const& workerName,
+    IngestSvcConn(ServiceProvider::Ptr const& serviceProvider, std::string const& workerName,
                   boost::asio::io_service& io_service);
 
     /// Initiate (ASYNC) read of the handshake request from a client)
@@ -156,8 +150,7 @@ private:
      * @param ec  error code to be evaluated
      * @param bytes_transferred  number of bytes received from a client
      */
-    void _handshakeReceived(boost::system::error_code const& ec,
-                            size_t bytes_transferred);
+    void _handshakeReceived(boost::system::error_code const& ec, size_t bytes_transferred);
 
     /**
      * Begin sending (asynchronously) a result back to a client
@@ -170,8 +163,7 @@ private:
      * @param ec  error code to be evaluated
      * @param bytes_transferred  number of bytes sent to a client in a response
      */
-    void _responseSent(boost::system::error_code const& ec,
-                       size_t bytes_transferred);
+    void _responseSent(boost::system::error_code const& ec, size_t bytes_transferred);
 
     /**
      * Read asynchronously the next batch of rows from a client. The method
@@ -187,10 +179,9 @@ private:
      * from a client will get processed.
      *
      * @param ec  a error code to be evaluated
-     * @param bytes_transferred  the number of bytes of the file payload sent to a client 
+     * @param bytes_transferred  the number of bytes of the file payload sent to a client
      */
-    void _dataReceived(boost::system::error_code const& ec,
-                       size_t bytes_transferred);
+    void _dataReceived(boost::system::error_code const& ec, size_t bytes_transferred);
 
     /**
      * Send back a message with status FAILED and the error message.
@@ -212,8 +203,7 @@ private:
      * @param msg  (optional) message to be delivered to a client
      * @param maxRows (optional) the maximum number of rows to be requested from a client
      */
-    void _reply(ProtocolIngestResponse::Status status,
-                std::string const& msg=std::string());
+    void _reply(ProtocolIngestResponse::Status status, std::string const& msg = std::string());
 
     /// A socket for communication with clients
     boost::asio::ip::tcp::socket _socket;
@@ -238,6 +228,6 @@ private:
     std::unique_ptr<csv::Parser> _parser;
 };
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_INGESTSVCCONN_H
+#endif  // LSST_QSERV_REPLICA_INGESTSVCCONN_H

@@ -22,15 +22,14 @@
  */
 
 /**
-  * @file
-  *
-  * @brief Implementation of QueryTemplate, which is a object that can
-  * be used to generate concrete queries from a template, given
-  * certain parameters (e.g. chunk/subchunk).
-  *
-  * @author Daniel L. Wang, SLAC
-  */
-
+ * @file
+ *
+ * @brief Implementation of QueryTemplate, which is a object that can
+ * be used to generate concrete queries from a template, given
+ * certain parameters (e.g. chunk/subchunk).
+ *
+ * @author Daniel L. Wang, SLAC
+ */
 
 // Class header
 #include "query/QueryTemplate.h"
@@ -40,15 +39,11 @@
 #include <sstream>
 
 // Qserv headers
-#include "global/sqltoken.h" // sqlShouldSeparate
+#include "global/sqltoken.h"  // sqlShouldSeparate
 #include "query/ColumnRef.h"
 #include "query/TableRef.h"
 
-
-namespace lsst {
-namespace qserv {
-namespace query {
-
+namespace lsst { namespace qserv { namespace query {
 
 ////////////////////////////////////////////////////////////////////////
 // QueryTemplate::Entry subclasses
@@ -66,7 +61,7 @@ public:
                 TableRef::render render(qt);
                 render.applyToQT(*tableRef);
                 os << qt;
-                if (os.tellp() > 0) { // if the tableRef wrote anything...
+                if (os.tellp() > 0) {  // if the tableRef wrote anything...
                     os << ".";
                 }
             }
@@ -74,32 +69,28 @@ public:
         os << queryTemplate.formatIdentifier(cr.getColumn());
         val = os.str();
     }
-    virtual std::string getValue() const {
-        return val;
-    }
+    virtual std::string getValue() const { return val; }
     virtual bool isDynamic() const { return true; }
 
     std::string val;
 };
 
-
 ////////////////////////////////////////////////////////////////////////
 // QueryTemplate
 ////////////////////////////////////////////////////////////////////////
-
 
 // Return a string representation of the object
 std::string QueryTemplate::sqlFragment() const {
     std::string lastEntry;
     std::string sep(" ");
     std::ostringstream os;
-    for (auto const& entry : _entries ) {
+    for (auto const& entry : _entries) {
         std::string const& entryStr = entry->getValue();
         if (entryStr.empty()) {
             return std::string();
         }
-        if (!lastEntry.empty()
-          && lsst::qserv::sql::sqlShouldSeparate(lastEntry, *lastEntry.rbegin(), entryStr.at(0))) {
+        if (!lastEntry.empty() &&
+            lsst::qserv::sql::sqlShouldSeparate(lastEntry, *lastEntry.rbegin(), entryStr.at(0))) {
             os << sep;
         }
         os << entryStr;
@@ -108,17 +99,16 @@ std::string QueryTemplate::sqlFragment() const {
     return os.str();
 }
 
-
 std::ostream& operator<<(std::ostream& os, QueryTemplate const& queryTemplate) {
     std::string lastEntry;
     std::string sep(" ");
-    for (auto const& entry : queryTemplate._entries ) {
+    for (auto const& entry : queryTemplate._entries) {
         std::string const& entryStr = entry->getValue();
         if (entryStr.empty()) {
             return os;
         }
-        if (!lastEntry.empty()
-          && lsst::qserv::sql::sqlShouldSeparate(lastEntry, *lastEntry.rbegin(), entryStr.at(0))) {
+        if (!lastEntry.empty() &&
+            lsst::qserv::sql::sqlShouldSeparate(lastEntry, *lastEntry.rbegin(), entryStr.at(0))) {
             os << sep;
         }
         os << entryStr;
@@ -127,29 +117,22 @@ std::ostream& operator<<(std::ostream& os, QueryTemplate const& queryTemplate) {
     return os;
 }
 
-
 std::string QueryTemplate::formatIdentifier(std::string const& identifier) const {
     if (not _quoteIdentifiers) return identifier;
     return "`" + identifier + "`";
 }
-
 
 void QueryTemplate::append(std::string const& s) {
     std::shared_ptr<Entry> e = std::make_shared<StringEntry>(s);
     _entries.push_back(e);
 }
 
-
 void QueryTemplate::append(ColumnRef const& cr) {
     std::shared_ptr<Entry> e = std::make_shared<ColumnEntry>(cr, *this);
     _entries.push_back(e);
 }
 
-
-void QueryTemplate::append(QueryTemplate::Entry::Ptr const& e) {
-    _entries.push_back(e);
-}
-
+void QueryTemplate::append(QueryTemplate::Entry::Ptr const& e) { _entries.push_back(e); }
 
 void QueryTemplate::appendIdentifier(std::string const& s) {
     if (not _quoteIdentifiers) {
@@ -159,7 +142,6 @@ void QueryTemplate::appendIdentifier(std::string const& s) {
     append(formatIdentifier(s));
 }
 
-
 std::string QueryTemplate::generate(EntryMapping const& em) const {
     QueryTemplate newQt;
     for (auto const& entry : _entries) {
@@ -168,22 +150,11 @@ std::string QueryTemplate::generate(EntryMapping const& em) const {
     return newQt.sqlFragment();
 }
 
+void QueryTemplate::clear() { _entries.clear(); }
 
-void
-QueryTemplate::clear() {
-    _entries.clear();
-}
+void QueryTemplate::setAliasMode(SetAliasMode aliasMode) { _aliasMode = aliasMode; }
 
-
-void QueryTemplate::setAliasMode(SetAliasMode aliasMode) {
-    _aliasMode = aliasMode;
-}
-
-
-QueryTemplate::SetAliasMode QueryTemplate::getAliasMode() const {
-    return _aliasMode;
-}
-
+QueryTemplate::SetAliasMode QueryTemplate::getAliasMode() const { return _aliasMode; }
 
 QueryTemplate::GetAliasMode QueryTemplate::getValueExprAliasMode() const {
     switch (_aliasMode) {
@@ -206,9 +177,8 @@ QueryTemplate::GetAliasMode QueryTemplate::getValueExprAliasMode() const {
             return DONT_USE;
     }
     throw std::runtime_error("Unexpected function exit.");
-    return DONT_USE; // should never get here but to satisfy the compiler.
+    return DONT_USE;  // should never get here but to satisfy the compiler.
 }
-
 
 QueryTemplate::GetAliasMode QueryTemplate::getTableAliasMode() const {
     switch (_aliasMode) {
@@ -231,8 +201,7 @@ QueryTemplate::GetAliasMode QueryTemplate::getTableAliasMode() const {
             return USE;
     }
     throw std::runtime_error("Unexpected function exit.");
-    return DONT_USE; // should never get here but to satisfy the compiler.
+    return DONT_USE;  // should never get here but to satisfy the compiler.
 }
 
-
-}}} // namespace lsst::qserv::query
+}}}  // namespace lsst::qserv::query

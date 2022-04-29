@@ -37,7 +37,7 @@
 #include <glob.h>
 #include <iostream>
 #include <sstream>
-#include <string.h> // memcpy
+#include <string.h>  // memcpy
 #include <unistd.h>
 
 // Third-party headers
@@ -47,25 +47,22 @@
 #include "global/constants.h"
 #include "util/StringHash.h"
 
-
 // Local helpers
 namespace {
-template <class T> struct ptrDestroy {
-    void operator() (T& x) { delete[] x.buffer;}
+template <class T>
+struct ptrDestroy {
+    void operator()(T& x) { delete[] x.buffer; }
 };
 
-template <class T> struct offsetLess {
-    bool operator() (T const& x, T const& y) { return x.offset < y.offset;}
+template <class T>
+struct offsetLess {
+    bool operator()(T const& x, T const& y) { return x.offset < y.offset; }
 };
-} // annonymous namespace
+}  // namespace
 
-bool checkWritablePath(char const* path) {
-    return path && (0 == ::access(path, W_OK | X_OK));
-}
+bool checkWritablePath(char const* path) { return path && (0 == ::access(path, W_OK | X_OK)); }
 
-namespace lsst {
-namespace qserv {
-namespace wbase {
+namespace lsst { namespace qserv { namespace wbase {
 
 //////////////////////////////////////////////////////////////////////
 // Constants
@@ -80,13 +77,17 @@ std::string const SUBCHUNKDB_PREFIX_STR = SUBCHUNKDB_PREFIX;
 // %3% subchunk column name (e.g. x_subChunkId)
 // %4% chunkId (e.g. 2523)
 // %5% subChunkId (e.g., 34)
-std::string const CREATE_SUBCHUNK_SCRIPT =
-    "CREATE DATABASE IF NOT EXISTS " + SUBCHUNKDB_PREFIX_STR + "%1%_%4%;"
-    "CREATE TABLE IF NOT EXISTS " + SUBCHUNKDB_PREFIX_STR + "%1%_%4%.%2%_%4%_%5% ENGINE = MEMORY "
-    "AS SELECT * FROM %1%.%2%_%4% WHERE %3% = %5%;"
-    "CREATE TABLE IF NOT EXISTS " + SUBCHUNKDB_PREFIX_STR + "%1%_%4%.%2%FullOverlap_%4%_%5% "
-    "ENGINE = MEMORY "
-    "AS SELECT * FROM %1%.%2%FullOverlap_%4% WHERE %3% = %5%;";
+std::string const CREATE_SUBCHUNK_SCRIPT = "CREATE DATABASE IF NOT EXISTS " + SUBCHUNKDB_PREFIX_STR +
+                                           "%1%_%4%;"
+                                           "CREATE TABLE IF NOT EXISTS " +
+                                           SUBCHUNKDB_PREFIX_STR +
+                                           "%1%_%4%.%2%_%4%_%5% ENGINE = MEMORY "
+                                           "AS SELECT * FROM %1%.%2%_%4% WHERE %3% = %5%;"
+                                           "CREATE TABLE IF NOT EXISTS " +
+                                           SUBCHUNKDB_PREFIX_STR +
+                                           "%1%_%4%.%2%FullOverlap_%4%_%5% "
+                                           "ENGINE = MEMORY "
+                                           "AS SELECT * FROM %1%.%2%FullOverlap_%4% WHERE %3% = %5%;";
 
 // Parameters:
 // %1% database (e.g., LSST)
@@ -94,9 +95,11 @@ std::string const CREATE_SUBCHUNK_SCRIPT =
 // %3% chunkId (e.g. 2523)
 // %4% subChunkId (e.g., 34)
 std::string const CLEANUP_SUBCHUNK_SCRIPT =
-    "DROP TABLE IF EXISTS " + SUBCHUNKDB_PREFIX_STR + "%1%_%3%.%2%_%3%_%4%;"
-//    "DROP TABLE IF EXISTS " + SUBCHUNKDB_PREFIX_STR + "%1%_%3%.%2%SelfOverlap_%3%_%4%;"
-    "DROP TABLE IF EXISTS " + SUBCHUNKDB_PREFIX_STR + "%1%_%3%.%2%FullOverlap_%3%_%4%;";
+        "DROP TABLE IF EXISTS " + SUBCHUNKDB_PREFIX_STR +
+        "%1%_%3%.%2%_%3%_%4%;"
+        //    "DROP TABLE IF EXISTS " + SUBCHUNKDB_PREFIX_STR + "%1%_%3%.%2%SelfOverlap_%3%_%4%;"
+        "DROP TABLE IF EXISTS " +
+        SUBCHUNKDB_PREFIX_STR + "%1%_%3%.%2%FullOverlap_%3%_%4%;";
 
 // Parameters:
 // %1% database (e.g., LSST)
@@ -104,13 +107,17 @@ std::string const CLEANUP_SUBCHUNK_SCRIPT =
 // %3% subchunk column name (e.g. x_subChunkId)
 // %4% chunkId (e.g. 2523)
 // %5% subChunkId (e.g., 34)
-std::string const CREATE_DUMMY_SUBCHUNK_SCRIPT =
-    "CREATE DATABASE IF NOT EXISTS " + SUBCHUNKDB_PREFIX_STR + "%1%_%4%;"
-    "CREATE TABLE IF NOT EXISTS " + SUBCHUNKDB_PREFIX_STR + "%1%_%4%.%2%_%4%_%5% ENGINE = MEMORY "
-    "AS SELECT * FROM %1%.%2%_%4% WHERE %3% = %5%;"
-    "CREATE TABLE IF NOT EXISTS " + SUBCHUNKDB_PREFIX_STR + "%1%_%4%.%2%FullOverlap_%4%_%5% "
-    "ENGINE = MEMORY "
-    "AS SELECT * FROM %1%.%2%_%4% WHERE %3% = %5%;";
+std::string const CREATE_DUMMY_SUBCHUNK_SCRIPT = "CREATE DATABASE IF NOT EXISTS " + SUBCHUNKDB_PREFIX_STR +
+                                                 "%1%_%4%;"
+                                                 "CREATE TABLE IF NOT EXISTS " +
+                                                 SUBCHUNKDB_PREFIX_STR +
+                                                 "%1%_%4%.%2%_%4%_%5% ENGINE = MEMORY "
+                                                 "AS SELECT * FROM %1%.%2%_%4% WHERE %3% = %5%;"
+                                                 "CREATE TABLE IF NOT EXISTS " +
+                                                 SUBCHUNKDB_PREFIX_STR +
+                                                 "%1%_%4%.%2%FullOverlap_%4%_%5% "
+                                                 "ENGINE = MEMORY "
+                                                 "AS SELECT * FROM %1%.%2%_%4% WHERE %3% = %5%;";
 
 // Note:
 // Not all Object partitions will have overlap tables created by the
@@ -125,12 +132,11 @@ std::string const CREATE_DUMMY_SUBCHUNK_SCRIPT =
 //////////////////////////////////////////////////////////////////////
 // StringBuffer
 //////////////////////////////////////////////////////////////////////
-void StringBuffer::addBuffer(
-    StringBufferOffset offset, char const* buffer, StringBufferSize bufferSize) {
+void StringBuffer::addBuffer(StringBufferOffset offset, char const* buffer, StringBufferSize bufferSize) {
     char* newItem = new char[bufferSize];
     assert(newItem != nullptr);
     memcpy(newItem, buffer, bufferSize);
-    { // Assume(!) that there are no overlapping writes.
+    {  // Assume(!) that there are no overlapping writes.
         std::unique_lock<std::mutex> lock(_mutex);
         _buffers.push_back(Fragment(offset, newItem, bufferSize));
         _totalSize += bufferSize;
@@ -141,7 +147,7 @@ std::string StringBuffer::getStr() const {
     std::string accumulated;
     char* accStr = new char[_totalSize];
     assert(accStr);
-    int cursor=0;
+    int cursor = 0;
     if (false) {
         // Cast away const to perform a sort (doesn't logically change state)
         FragmentDeque& nonConst = const_cast<FragmentDeque&>(_buffers);
@@ -151,14 +157,14 @@ std::string StringBuffer::getStr() const {
     FragmentDeque::const_iterator bend = _buffers.end();
 
     //    accumulated.assign(getLength(), '\0'); //
-    for(bi = _buffers.begin(); bi != bend; ++bi) {
+    for (bi = _buffers.begin(); bi != bend; ++bi) {
         Fragment const& p = *bi;
-        //accumulated += std::string(p.buffer, p.bufferSize);
-        memcpy(accStr+cursor, p.buffer, p.bufferSize);
+        // accumulated += std::string(p.buffer, p.bufferSize);
+        memcpy(accStr + cursor, p.buffer, p.bufferSize);
         cursor += p.bufferSize;
         // Perform "writes" of the buffers into the string
         // Assume that we end up with a contiguous string.
-        //accumulated.replace(p.offset, p.bufferSize, p.buffer, p.bufferSize);
+        // accumulated.replace(p.offset, p.bufferSize, p.buffer, p.bufferSize);
     }
     assert(cursor == _totalSize);
     accumulated.assign(accStr, cursor);
@@ -171,7 +177,7 @@ std::string StringBuffer::getDigest() const {
     FragmentDeque::const_iterator bend = _buffers.end();
 
     std::stringstream ss;
-    for(bi = _buffers.begin(); bi != bend; ++bi) {
+    for (bi = _buffers.begin(); bi != bend; ++bi) {
         Fragment const& p = *bi;
         ss << "Offset=" << p.offset << "\n";
         int fragsize = 100;
@@ -198,13 +204,12 @@ void StringBuffer::reset() {
 // StringBuffer2
 // A mutex-protected string buffer that uses a raw c-string.
 //////////////////////////////////////////////////////////////////////
-void StringBuffer2::addBuffer(
-    StringBufferOffset offset, char const* buffer, StringBufferSize bufferSize) {
+void StringBuffer2::addBuffer(StringBufferOffset offset, char const* buffer, StringBufferSize bufferSize) {
     std::unique_lock<std::mutex> lock(_mutex);
-    if (_bufferSize < offset+bufferSize) {
-        _setSize(offset+bufferSize);
+    if (_bufferSize < offset + bufferSize) {
+        _setSize(offset + bufferSize);
     }
-     memcpy(_buffer+offset, buffer, bufferSize);
+    memcpy(_buffer + offset, buffer, bufferSize);
     _bytesWritten += bufferSize;
 }
 
@@ -213,7 +218,7 @@ std::string StringBuffer2::getStr() const {
     // Cast away const in order to lock.
     std::mutex& mutex = const_cast<std::mutex&>(_mutex);
     std::unique_lock<std::mutex> lock(mutex);
-    assert(_bytesWritten == _bufferSize); //no holes.
+    assert(_bytesWritten == _bufferSize);  // no holes.
     return std::string(_buffer, _bytesWritten);
 }
 
@@ -222,13 +227,11 @@ char const* StringBuffer2::getData() const {
     // Cast away const in order to lock.
     std::mutex& mutex = const_cast<std::mutex&>(_mutex);
     std::unique_lock<std::mutex> lock(mutex);
-    assert(_bytesWritten == _bufferSize); //no holes.
+    assert(_bytesWritten == _bufferSize);  // no holes.
     return _buffer;
 }
 
-StringBufferOffset StringBuffer2::getLength() const {
-    return _bytesWritten;
-}
+StringBufferOffset StringBuffer2::getLength() const { return _bytesWritten; }
 
 void StringBuffer2::reset() {
     std::unique_lock<std::mutex> lock(_mutex);
@@ -241,7 +244,7 @@ void StringBuffer2::reset() {
 }
 
 void StringBuffer2::_setSize(unsigned size) {
-    if (size==0) {
+    if (size == 0) {
         if (_buffer) {
             delete[] _buffer;
             _buffer = 0;
@@ -258,4 +261,4 @@ void StringBuffer2::_setSize(unsigned size) {
     _bufferSize = size;
 }
 
-}}} // namespace
+}}}  // namespace lsst::qserv::wbase

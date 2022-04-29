@@ -37,18 +37,14 @@
 
 // Forward decl
 
-namespace lsst {
-namespace qserv {
-namespace ccontrol {
+namespace lsst { namespace qserv { namespace ccontrol {
 
 /// UserQueryInvalid : implementation of the UserQuery which is used
 /// to indicate invalid queries.
 class UserQueryInvalid : public UserQuery {
 public:
-
     UserQueryInvalid(std::string const& message)
-        : _message(message),
-          _messageStore(std::make_shared<qdisp::MessageStore>()) {}
+            : _message(message), _messageStore(std::make_shared<qdisp::MessageStore>()) {}
 
     UserQueryInvalid(UserQueryInvalid const&) = delete;
     UserQueryInvalid& operator=(UserQueryInvalid const&) = delete;
@@ -73,16 +69,13 @@ public:
     virtual void discard() override {}
 
     // Delegate objects
-    virtual std::shared_ptr<qdisp::MessageStore> getMessageStore() override {
-        return _messageStore; }
+    virtual std::shared_ptr<qdisp::MessageStore> getMessageStore() override { return _messageStore; }
 
 private:
-
     std::string const _message;
     std::shared_ptr<qdisp::MessageStore> _messageStore;
-
 };
 
-}}} // namespace lsst::qserv:ccontrol
+}}}  // namespace lsst::qserv::ccontrol
 
-#endif // LSST_QSERV_CCONTROL_USERQUERYINVALID_H
+#endif  // LSST_QSERV_CCONTROL_USERQUERYINVALID_H

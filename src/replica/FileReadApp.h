@@ -30,17 +30,14 @@
 // Qserv headers
 #include "replica/Application.h"
 
-
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
 /**
  * Class FileReadApp implements a tool which acts as a read-only client of
  * the Replication system's file server.
  */
-class FileReadApp: public Application {
+class FileReadApp : public Application {
 public:
     typedef std::shared_ptr<FileReadApp> Ptr;
 
@@ -53,11 +50,11 @@ public:
      */
     static Ptr create(int argc, char* argv[]);
 
-    FileReadApp()=delete;
-    FileReadApp(FileReadApp const&)=delete;
-    FileReadApp& operator=(FileReadApp const&)=delete;
+    FileReadApp() = delete;
+    FileReadApp(FileReadApp const&) = delete;
+    FileReadApp& operator=(FileReadApp const&) = delete;
 
-    ~FileReadApp() override=default;
+    ~FileReadApp() override = default;
 
 protected:
     /// @see Application::runImpl()
@@ -68,17 +65,18 @@ private:
     FileReadApp(int argc, char* argv[]);
 
     std::string _workerHost;    ///< The DNS name or an IP address of a worker.
-    uint16_t    _workerPort;    ///< The port number for the worker service where the input file is located.
+    uint16_t _workerPort;       ///< The port number for the worker service where the input file is located.
     std::string _databaseName;  ///< The name of a database.
     std::string _inFileName;    ///< The name of an input file to be copied from the worker.
     std::string _outFileName;   ///< The name of a local file to be created and populated with received data
 
-    bool   _verbose = false;              ///< The flag triggering (if 'true') a report on a progress of the operation.
-    size_t _recordSizeBytes = 1024*1024;  ///< The maximum number of bytes to be read from a server at each request.
+    bool _verbose = false;  ///< The flag triggering (if 'true') a report on a progress of the operation.
+    size_t _recordSizeBytes =
+            1024 * 1024;  ///< The maximum number of bytes to be read from a server at each request.
 
     std::vector<uint8_t> _buf;  ///< The data buffer for receiving data records from a file server.
 };
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica
 
 #endif /* LSST_QSERV_REPLICA_FILEREADAPP_H */

@@ -32,17 +32,14 @@
 #include "replica/Common.h"
 #include "replica/HttpModule.h"
 
-
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
 /**
  * Class HttpIngestConfigModule provides a support for configuring catalog
  * ingest operations.
  */
-class HttpIngestConfigModule: public HttpModule {
+class HttpIngestConfigModule : public HttpModule {
 public:
     typedef std::shared_ptr<HttpIngestConfigModule> Ptr;
 
@@ -54,13 +51,10 @@ public:
      *
      * @throws std::invalid_argument for unknown values of parameter 'subModuleName'
      */
-    static void process(Controller::Ptr const& controller,
-                        std::string const& taskName,
-                        HttpProcessorConfig const& processorConfig,
-                        qhttp::Request::Ptr const& req,
-                        qhttp::Response::Ptr const& resp,
-                        std::string const& subModuleName=std::string(),
-                        HttpAuthType const authType=HttpAuthType::NONE);
+    static void process(Controller::Ptr const& controller, std::string const& taskName,
+                        HttpProcessorConfig const& processorConfig, qhttp::Request::Ptr const& req,
+                        qhttp::Response::Ptr const& resp, std::string const& subModuleName = std::string(),
+                        HttpAuthType const authType = HttpAuthType::NONE);
 
     HttpIngestConfigModule() = delete;
     HttpIngestConfigModule(HttpIngestConfigModule const&) = delete;
@@ -72,10 +66,8 @@ protected:
     nlohmann::json executeImpl(std::string const& subModuleName) final;
 
 private:
-    HttpIngestConfigModule(Controller::Ptr const& controller,
-                           std::string const& taskName,
-                           HttpProcessorConfig const& processorConfig,
-                           qhttp::Request::Ptr const& req,
+    HttpIngestConfigModule(Controller::Ptr const& controller, std::string const& taskName,
+                           HttpProcessorConfig const& processorConfig, qhttp::Request::Ptr const& req,
                            qhttp::Response::Ptr const& resp);
 
     /// Get configuration parameters
@@ -84,7 +76,7 @@ private:
     /// Update configuration parameters
     nlohmann::json _update();
 };
-    
-}}} // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_HTTPINGESTCONFIGMODULE_H
+}}}  // namespace lsst::qserv::replica
+
+#endif  // LSST_QSERV_HTTPINGESTCONFIGMODULE_H

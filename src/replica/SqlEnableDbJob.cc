@@ -41,95 +41,57 @@ namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.SqlEnableDbJob");
 
-} /// namespace
+}  // namespace
 
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
 string SqlEnableDbJob::typeName() { return "SqlEnableDbJob"; }
 
-
-SqlEnableDbJob::Ptr SqlEnableDbJob::create(
-        string const& database,
-        bool allWorkers,
-        Controller::Ptr const& controller,
-        string const& parentJobId,
-        CallbackType const& onFinish,
-        int priority) {
-    return Ptr(new SqlEnableDbJob(
-        database,
-        allWorkers,
-        controller,
-        parentJobId,
-        onFinish,
-        priority
-    ));
+SqlEnableDbJob::Ptr SqlEnableDbJob::create(string const& database, bool allWorkers,
+                                           Controller::Ptr const& controller, string const& parentJobId,
+                                           CallbackType const& onFinish, int priority) {
+    return Ptr(new SqlEnableDbJob(database, allWorkers, controller, parentJobId, onFinish, priority));
 }
 
+SqlEnableDbJob::SqlEnableDbJob(string const& database, bool allWorkers, Controller::Ptr const& controller,
+                               string const& parentJobId, CallbackType const& onFinish, int priority)
+        : SqlJob(0, allWorkers, controller, parentJobId, "SQL_ENABLE_DATABASE", priority),
+          _database(database),
+          _onFinish(onFinish) {}
 
-SqlEnableDbJob::SqlEnableDbJob(string const& database,
-                               bool allWorkers,
-                               Controller::Ptr const& controller,
-                               string const& parentJobId,
-                               CallbackType const& onFinish,
-                               int priority)
-    :   SqlJob(0,
-               allWorkers,
-               controller,
-               parentJobId,
-               "SQL_ENABLE_DATABASE",
-               priority),
-        _database(database),
-        _onFinish(onFinish) {
-}
-
-
-list<pair<string,string>> SqlEnableDbJob::extendedPersistentState() const {
-    list<pair<string,string>> result;
+list<pair<string, string>> SqlEnableDbJob::extendedPersistentState() const {
+    list<pair<string, string>> result;
     result.emplace_back("database", database());
     result.emplace_back("all_workers", bool2str(allWorkers()));
     return result;
 }
 
-
-list<SqlRequest::Ptr> SqlEnableDbJob::launchRequests(util::Lock const& lock,
-                                                     string const& worker,
+list<SqlRequest::Ptr> SqlEnableDbJob::launchRequests(util::Lock const& lock, string const& worker,
                                                      size_t maxRequestsPerWorker) {
-
     // Launch exactly one request per worker unless it was already
     // launched earlier
 
     list<SqlRequest::Ptr> requests;
     if (not _workers.count(worker) and maxRequestsPerWorker != 0) {
         auto const self = shared_from_base<SqlEnableDbJob>();
-        requests.push_back(
-            controller()->sqlEnableDb(
-                worker,
-                database(),
-                [self] (SqlEnableDbRequest::Ptr const& request) {
-                    self->onRequestFinish(request);
-                },
-                priority(),
-                true,   /* keepTracking*/
-                id()    /* jobId */
-            )
-        );
+        requests.push_back(controller()->sqlEnableDb(
+                worker, database(),
+                [self](SqlEnableDbRequest::Ptr const& request) { self->onRequestFinish(request); },
+                priority(), true, /* keepTracking*/
+                id()              /* jobId */
+                ));
         _workers.insert(worker);
     }
     return requests;
 }
 
-
-void SqlEnableDbJob::stopRequest(util::Lock const& lock,
-                                 SqlRequest::Ptr const& request) {
+void SqlEnableDbJob::stopRequest(util::Lock const& lock, SqlRequest::Ptr const& request) {
     stopRequestDefaultImpl<StopSqlEnableDbRequest>(lock, request);
 }
-
 
 void SqlEnableDbJob::notify(util::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "[" << typeName() << "]");
     notifyDefaultImpl<SqlEnableDbJob>(lock, _onFinish);
 }
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica

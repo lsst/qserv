@@ -38,69 +38,36 @@ namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.SqlCreateTablesJob");
 
-} /// namespace
+}  // namespace
 
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
 string SqlCreateTablesJob::typeName() { return "SqlCreateTablesJob"; }
 
-
-SqlCreateTablesJob::Ptr SqlCreateTablesJob::create(
-        string const& database,
-        string const& table,
-        string const& engine,
-        string const& partitionByColumn,
-        list<SqlColDef> const& columns,
-        bool allWorkers,
-        Controller::Ptr const& controller,
-        string const& parentJobId,
-        CallbackType const& onFinish,
-        int priority) {
-    return Ptr(new SqlCreateTablesJob(
-        database,
-        table,
-        engine,
-        partitionByColumn,
-        columns,
-        allWorkers,
-        controller,
-        parentJobId,
-        onFinish,
-        priority
-    ));
+SqlCreateTablesJob::Ptr SqlCreateTablesJob::create(string const& database, string const& table,
+                                                   string const& engine, string const& partitionByColumn,
+                                                   list<SqlColDef> const& columns, bool allWorkers,
+                                                   Controller::Ptr const& controller,
+                                                   string const& parentJobId, CallbackType const& onFinish,
+                                                   int priority) {
+    return Ptr(new SqlCreateTablesJob(database, table, engine, partitionByColumn, columns, allWorkers,
+                                      controller, parentJobId, onFinish, priority));
 }
 
+SqlCreateTablesJob::SqlCreateTablesJob(string const& database, string const& table, string const& engine,
+                                       string const& partitionByColumn, list<SqlColDef> const& columns,
+                                       bool allWorkers, Controller::Ptr const& controller,
+                                       string const& parentJobId, CallbackType const& onFinish, int priority)
+        : SqlJob(0, allWorkers, controller, parentJobId, "SQL_CREATE_TABLES", priority),
+          _database(database),
+          _table(table),
+          _engine(engine),
+          _partitionByColumn(partitionByColumn),
+          _columns(columns),
+          _onFinish(onFinish) {}
 
-SqlCreateTablesJob::SqlCreateTablesJob(
-        string const& database,
-        string const& table,
-        string const& engine,
-        string const& partitionByColumn,
-        list<SqlColDef> const& columns,
-        bool allWorkers,
-        Controller::Ptr const& controller,
-        string const& parentJobId,
-        CallbackType const& onFinish,
-        int priority)
-    :   SqlJob(0,
-               allWorkers,
-               controller,
-               parentJobId,
-               "SQL_CREATE_TABLES",
-               priority),
-        _database(database),
-        _table(table),
-        _engine(engine),
-        _partitionByColumn(partitionByColumn),
-        _columns(columns),
-        _onFinish(onFinish) {
-}
-
-
-list<pair<string,string>> SqlCreateTablesJob::extendedPersistentState() const {
-    list<pair<string,string>> result;
+list<pair<string, string>> SqlCreateTablesJob::extendedPersistentState() const {
+    list<pair<string, string>> result;
     result.emplace_back("database", database());
     result.emplace_back("table", table());
     result.emplace_back("engine", engine());
@@ -110,9 +77,7 @@ list<pair<string,string>> SqlCreateTablesJob::extendedPersistentState() const {
     return result;
 }
 
-
-list<SqlRequest::Ptr> SqlCreateTablesJob::launchRequests(util::Lock const& lock,
-                                                         string const& worker,
+list<SqlRequest::Ptr> SqlCreateTablesJob::launchRequests(util::Lock const& lock, string const& worker,
                                                          size_t maxRequestsPerWorker) {
     list<SqlRequest::Ptr> requests;
 
@@ -128,37 +93,24 @@ list<SqlRequest::Ptr> SqlCreateTablesJob::launchRequests(util::Lock const& lock,
     // Divide tables into subsets allocated to the "batch" requests. Then launch
     // the requests for the current worker.
     auto const self = shared_from_base<SqlCreateTablesJob>();
-    for (auto&& tables: distributeTables(allTables, maxRequestsPerWorker)) {
-        requests.push_back(
-            controller()->sqlCreateTables(
-                worker,
-                database(),
-                tables,
-                engine(),
-                partitionByColumn(),
-                columns(),
-                [self] (SqlCreateTablesRequest::Ptr const& request) {
-                    self->onRequestFinish(request);
-                },
-                priority(),
-                true,   /* keepTracking*/
-                id()    /* jobId */
-            )
-        );
+    for (auto&& tables : distributeTables(allTables, maxRequestsPerWorker)) {
+        requests.push_back(controller()->sqlCreateTables(
+                worker, database(), tables, engine(), partitionByColumn(), columns(),
+                [self](SqlCreateTablesRequest::Ptr const& request) { self->onRequestFinish(request); },
+                priority(), true, /* keepTracking*/
+                id()              /* jobId */
+                ));
     }
     return requests;
 }
 
-
-void SqlCreateTablesJob::stopRequest(util::Lock const& lock,
-                                     SqlRequest::Ptr const& request) {
+void SqlCreateTablesJob::stopRequest(util::Lock const& lock, SqlRequest::Ptr const& request) {
     stopRequestDefaultImpl<StopSqlCreateTablesRequest>(lock, request);
 }
-
 
 void SqlCreateTablesJob::notify(util::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "[" << typeName() << "]");
     notifyDefaultImpl<SqlCreateTablesJob>(lock, _onFinish);
 }
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica

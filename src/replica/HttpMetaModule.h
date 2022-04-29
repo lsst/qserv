@@ -33,15 +33,13 @@
 #include "replica/ServiceProvider.h"
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
 /**
  * Class HttpMetaModule implements a handler for the metadata queries
  * on the REST API itself.
  */
-class HttpMetaModule: public HttpModuleBase {
+class HttpMetaModule : public HttpModuleBase {
 public:
     typedef std::shared_ptr<HttpMetaModule> Ptr;
 
@@ -54,12 +52,10 @@ public:
      *
      * @throws std::invalid_argument for unknown values of parameter 'subModuleName'
      */
-    static void process(ServiceProvider::Ptr const& serviceProvider,
-                        std::string const& context,
-                        qhttp::Request::Ptr const& req,
-                        qhttp::Response::Ptr const& resp,
-                        std::string const& subModuleName=std::string(),
-                        HttpAuthType const authType=HttpAuthType::NONE);
+    static void process(ServiceProvider::Ptr const& serviceProvider, std::string const& context,
+                        qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp,
+                        std::string const& subModuleName = std::string(),
+                        HttpAuthType const authType = HttpAuthType::NONE);
 
     HttpMetaModule() = delete;
     HttpMetaModule(HttpMetaModule const&) = delete;
@@ -72,16 +68,14 @@ protected:
     virtual std::string context() const final;
 
 private:
-    HttpMetaModule(ServiceProvider::Ptr const& serviceProvider,
-                   std::string const& context,
-                   qhttp::Request::Ptr const& req,
-                   qhttp::Response::Ptr const& resp);
+    HttpMetaModule(ServiceProvider::Ptr const& serviceProvider, std::string const& context,
+                   qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp);
 
     nlohmann::json _version();
 
     std::string const _context;
 };
-    
-}}} // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_HTTPMETAMODULE_H
+}}}  // namespace lsst::qserv::replica
+
+#endif  // LSST_QSERV_HTTPMETAMODULE_H

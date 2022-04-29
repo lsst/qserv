@@ -47,76 +47,41 @@ namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.FindRequest");
 
-} /// namespace
+}  // namespace
 
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
 FindRequest::Ptr FindRequest::create(ServiceProvider::Ptr const& serviceProvider,
-                                     boost::asio::io_service& io_service,
-                                     string const& worker,
-                                     string const& database,
-                                     unsigned int chunk,
-                                     bool computeCheckSum,
-                                     CallbackType const& onFinish,
-                                     int priority,
-                                     bool keepTracking,
+                                     boost::asio::io_service& io_service, string const& worker,
+                                     string const& database, unsigned int chunk, bool computeCheckSum,
+                                     CallbackType const& onFinish, int priority, bool keepTracking,
                                      shared_ptr<Messenger> const& messenger) {
-    return FindRequest::Ptr(new FindRequest(serviceProvider,
-        io_service,
-        worker,
-        database,
-        chunk,
-        computeCheckSum,
-        onFinish,
-        priority,
-        keepTracking,
-        messenger
-    ));
+    return FindRequest::Ptr(new FindRequest(serviceProvider, io_service, worker, database, chunk,
+                                            computeCheckSum, onFinish, priority, keepTracking, messenger));
 }
 
-
-FindRequest::FindRequest(ServiceProvider::Ptr const& serviceProvider,
-                           boost::asio::io_service& io_service,
-                           string const& worker,
-                           string const& database,
-                           unsigned int chunk,
-                           bool computeCheckSum,
-                           CallbackType const& onFinish,
-                           int priority,
-                           bool keepTracking,
-                           shared_ptr<Messenger> const& messenger)
-    :   RequestMessenger(serviceProvider,
-                         io_service,
-                         "REPLICA_FIND",
-                         worker,
-                         priority,
-                         keepTracking,
-                         false, // allowDuplicate
-                         true,  // disposeRequired
-                         messenger),
-        _database(database),
-        _chunk(chunk),
-        _computeCheckSum(computeCheckSum),
-        _onFinish(onFinish) {
-
+FindRequest::FindRequest(ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service,
+                         string const& worker, string const& database, unsigned int chunk,
+                         bool computeCheckSum, CallbackType const& onFinish, int priority, bool keepTracking,
+                         shared_ptr<Messenger> const& messenger)
+        : RequestMessenger(serviceProvider, io_service, "REPLICA_FIND", worker, priority, keepTracking,
+                           false,  // allowDuplicate
+                           true,   // disposeRequired
+                           messenger),
+          _database(database),
+          _chunk(chunk),
+          _computeCheckSum(computeCheckSum),
+          _onFinish(onFinish) {
     Request::serviceProvider()->config()->assertDatabaseIsValid(database);
 }
 
-
-ReplicaInfo const& FindRequest::responseData() const {
-    return _replicaInfo;
-}
-
+ReplicaInfo const& FindRequest::responseData() const { return _replicaInfo; }
 
 void FindRequest::startImpl(util::Lock const& lock) {
-
-    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << " "
-         << " worker: "          << worker()
-         << " database: "        << database()
-         << " chunk: "           << chunk()
-         << " computeCheckSum: " << (computeCheckSum() ? "true" : "false"));
+    LOGS(_log, LOG_LVL_DEBUG,
+         context() << __func__ << " "
+                   << " worker: " << worker() << " database: " << database() << " chunk: " << chunk()
+                   << " computeCheckSum: " << (computeCheckSum() ? "true" : "false"));
 
     // Serialize the Request message header and the request itself into
     // the network buffer.
@@ -143,9 +108,7 @@ void FindRequest::startImpl(util::Lock const& lock) {
     _send(lock);
 }
 
-
 void FindRequest::awaken(boost::system::error_code const& ec) {
-
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     if (isAborted(ec)) return;
@@ -176,21 +139,17 @@ void FindRequest::awaken(boost::system::error_code const& ec) {
     _send(lock);
 }
 
-
 void FindRequest::_send(util::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
     auto self = shared_from_base<FindRequest>();
     messenger()->send<ProtocolResponseFind>(
-        worker(), id(), priority(), buffer(),
-        [self] (string const& id, bool success, ProtocolResponseFind const& response) {
-            self->_analyze(success, response);
-        }
-    );
+            worker(), id(), priority(), buffer(),
+            [self](string const& id, bool success, ProtocolResponseFind const& response) {
+                self->_analyze(success, response);
+            });
 }
 
-
 void FindRequest::_analyze(bool success, ProtocolResponseFind const& message) {
-
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  success=" << (success ? "true" : "false"));
 
     // This method is called on behalf of an asynchronous callback fired
@@ -229,7 +188,6 @@ void FindRequest::_analyze(bool success, ProtocolResponseFind const& message) {
         _targetRequestParams = FindRequestParams(message.request());
     }
     switch (message.status()) {
-
         case ProtocolStatus::SUCCESS:
             serviceProvider()->databaseServices()->saveReplicaInfo(_replicaInfo);
             finish(lock, SUCCESS);
@@ -264,29 +222,25 @@ void FindRequest::_analyze(bool success, ProtocolResponseFind const& message) {
             break;
 
         default:
-            throw logic_error(
-                    "FindRequest::" + string(__func__) + " unknown status '" +
-                    ProtocolStatus_Name(message.status()) + "' received from server");
+            throw logic_error("FindRequest::" + string(__func__) + " unknown status '" +
+                              ProtocolStatus_Name(message.status()) + "' received from server");
     }
 }
-
 
 void FindRequest::notify(util::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
     notifyDefaultImpl<FindRequest>(lock, _onFinish);
 }
 
-
 void FindRequest::savePersistentState(util::Lock const& lock) {
     controller()->serviceProvider()->databaseServices()->saveState(*this, performance(lock));
 }
 
-
-list<pair<string,string>> FindRequest::extendedPersistentState() const {
-    list<pair<string,string>> result;
+list<pair<string, string>> FindRequest::extendedPersistentState() const {
+    list<pair<string, string>> result;
     result.emplace_back("database", database());
-    result.emplace_back("chunk",    to_string(chunk()));
+    result.emplace_back("chunk", to_string(chunk()));
     return result;
 }
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica

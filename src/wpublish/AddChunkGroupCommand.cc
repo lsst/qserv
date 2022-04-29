@@ -44,64 +44,58 @@ namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.wpublish.AddChunkGroupCommand");
 
-} // annonymous namespace
+}  // namespace
 
-namespace lsst {
-namespace qserv {
-namespace wpublish {
+namespace lsst { namespace qserv { namespace wpublish {
 
 AddChunkGroupCommand::AddChunkGroupCommand(shared_ptr<wbase::SendChannel> const& sendChannel,
                                            shared_ptr<ChunkInventory> const& chunkInventory,
-                                           mysql::MySqlConfig const& mySqlConfig,
-                                           int chunk,
+                                           mysql::MySqlConfig const& mySqlConfig, int chunk,
                                            vector<string> const& databases)
-    :   wbase::WorkerCommand(sendChannel),
-        _chunkInventory(chunkInventory),
-        _mySqlConfig(mySqlConfig),
-        _chunk(chunk),
-        _databases(databases) {
-}
+        : wbase::WorkerCommand(sendChannel),
+          _chunkInventory(chunkInventory),
+          _mySqlConfig(mySqlConfig),
+          _chunk(chunk),
+          _databases(databases) {}
 
 void AddChunkGroupCommand::_reportError(proto::WorkerCommandChunkGroupR::Status status,
                                         string const& message) {
-
     LOGS(_log, LOG_LVL_ERROR, "AddChunkGroupCommand::" << __func__ << "  " << message);
 
     proto::WorkerCommandChunkGroupR reply;
 
     reply.set_status(status);
-    reply.set_error (message);
+    reply.set_error(message);
 
     _frameBuf.serialize(reply);
     string str(_frameBuf.data(), _frameBuf.size());
     _sendChannel->sendStream(xrdsvc::StreamBuffer::createWithMove(str), true);
 }
 
-
 void AddChunkGroupCommand::run() {
-
     string const context = "AddChunkGroupCommand::" + string(__func__) + "  ";
 
     LOGS(_log, LOG_LVL_DEBUG, context);
 
     if (not _databases.size()) {
         _reportError(proto::WorkerCommandChunkGroupR::INVALID,
-                    "the list of database names in the group was found empty");
+                     "the list of database names in the group was found empty");
         return;
     }
 
-    xrdsvc::SsiProviderServer* providerServer = dynamic_cast<xrdsvc::SsiProviderServer*>(XrdSsiProviderLookup);
-    XrdSsiCluster*             clusterManager = providerServer->GetClusterManager();
+    xrdsvc::SsiProviderServer* providerServer =
+            dynamic_cast<xrdsvc::SsiProviderServer*>(XrdSsiProviderLookup);
+    XrdSsiCluster* clusterManager = providerServer->GetClusterManager();
 
     proto::WorkerCommandChunkGroupR reply;
     reply.set_status(proto::WorkerCommandChunkGroupR::SUCCESS);
 
-    for (auto&& database: _databases) {
-
+    for (auto&& database : _databases) {
         string const resource = "/chk/" + database + "/" + to_string(_chunk);
 
-        LOGS(_log, LOG_LVL_DEBUG, context << "  adding the chunk resource: "
-             << resource << " in DataContext=" << clusterManager->DataContext());
+        LOGS(_log, LOG_LVL_DEBUG,
+             context << "  adding the chunk resource: " << resource
+                     << " in DataContext=" << clusterManager->DataContext());
 
         try {
             // Notify XRootD/cmsd and (depending on a mode) modify the provider's copy
@@ -133,4 +127,4 @@ void AddChunkGroupCommand::run() {
     LOGS(_log, LOG_LVL_DEBUG, context << "** SENT **");
 }
 
-}}} // namespace lsst::qserv::wpublish
+}}}  // namespace lsst::qserv::wpublish

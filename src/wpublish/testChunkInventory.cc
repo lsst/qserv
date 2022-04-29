@@ -34,72 +34,55 @@
 
 namespace test = boost::test_tools;
 using lsst::qserv::sql::MockSql;
-using lsst::qserv::sql::SqlResultIter;
 using lsst::qserv::sql::SqlErrorObject;
+using lsst::qserv::sql::SqlResultIter;
 using lsst::qserv::wpublish::ChunkInventory;
 
 namespace {
 bool startswith(std::string const& a, std::string const& start) {
     return 0 == a.compare(0, start.length(), start);
 }
-}
+}  // namespace
 
 struct ChunkInvFixture {
-    ChunkInvFixture(void) {
-    };
-    ~ChunkInvFixture(void) {};
-
+    ChunkInvFixture(void){};
+    ~ChunkInvFixture(void){};
 };
 
 struct ChunkSql : public MockSql {
     ChunkSql(std::vector<std::vector<std::string>> const& chunks,
              std::vector<std::vector<std::string>> const& workerId)
 
-        :   _selectChunkTuples   (chunks),
-            _selectWorkerIdTuples(workerId) {
-
+            : _selectChunkTuples(chunks), _selectWorkerIdTuples(workerId) {
         Tuple t;
         t.push_back("LSST");
         _selectDbTuples.push_back(t);
     }
-    virtual std::string getActiveDb() const {
-        return std::string("LSST");
-    }
+    virtual std::string getActiveDb() const { return std::string("LSST"); }
     virtual std::shared_ptr<SqlResultIter> getQueryIter(std::string const& query) {
         if (startswith(query, "SELECT db FROM"))
-            return std::make_shared<SqlIter>(_selectDbTuples.begin(),
-                                             _selectDbTuples.end  ());
+            return std::make_shared<SqlIter>(_selectDbTuples.begin(), _selectDbTuples.end());
         else if (startswith(query, "SELECT db,chunk FROM"))
-            return std::make_shared<SqlIter>(_selectChunkTuples.begin(),
-                                             _selectChunkTuples.end  ());
+            return std::make_shared<SqlIter>(_selectChunkTuples.begin(), _selectChunkTuples.end());
         else if (startswith(query, "SELECT id FROM"))
-            return std::make_shared<SqlIter>(_selectWorkerIdTuples.begin(),
-                                             _selectWorkerIdTuples.end  ());
+            return std::make_shared<SqlIter>(_selectWorkerIdTuples.begin(), _selectWorkerIdTuples.end());
         else
             return std::shared_ptr<SqlIter>();
     }
 
     typedef std::vector<std::string> Tuple;
-    typedef std::vector<Tuple>       TupleVector;
-    typedef TupleVector::const_iterator    TupleVectorIter;
+    typedef std::vector<Tuple> TupleVector;
+    typedef TupleVector::const_iterator TupleVectorIter;
     typedef MockSql::Iter<TupleVectorIter> SqlIter;
 
     TupleVector _selectDbTuples;
     TupleVector _selectChunkTuples;
     TupleVector _selectWorkerIdTuples;
-
 };
 
-std::vector<std::vector<std::string>> chunks = {
-    {"LSST","31415"},
-    {"LSST","1234567890"}
-};
-std::vector<std::vector<std::string>> chunksNoDummy = {
-    {"LSST","31415"}
-};
-std::vector<std::vector<std::string>> workerId = {
-    {"worker","UUID","2018-01-24 01:16:35"}
-};
+std::vector<std::vector<std::string>> chunks = {{"LSST", "31415"}, {"LSST", "1234567890"}};
+std::vector<std::vector<std::string>> chunksNoDummy = {{"LSST", "31415"}};
+std::vector<std::vector<std::string>> workerId = {{"worker", "UUID", "2018-01-24 01:16:35"}};
 
 BOOST_FIXTURE_TEST_SUITE(ChunkInv, ChunkInvFixture)
 
@@ -121,12 +104,11 @@ BOOST_AUTO_TEST_CASE(MissingDummy) {
     // Construct the mock without the dummy chunk
     std::shared_ptr<ChunkSql> cs = std::make_shared<ChunkSql>(chunksNoDummy, workerId);
     // FIXME: enable when throwing on corrupt dbs is enabled.
-    //BOOST_CHECK_THROW(new ChunkInventory("test", w, cs));
+    // BOOST_CHECK_THROW(new ChunkInventory("test", w, cs));
     ChunkInventory ci("test", cs);
-    //ci.dbgPrint(std::cout);
+    // ci.dbgPrint(std::cout);
     BOOST_CHECK(ci.has("LSST", 31415));
     BOOST_CHECK(!ci.has("LSST", 123));
-
 }
 
 BOOST_AUTO_TEST_CASE(WorkerId) {
@@ -136,7 +118,6 @@ BOOST_AUTO_TEST_CASE(WorkerId) {
 }
 
 BOOST_AUTO_TEST_CASE(ChunkInvDiff) {
-
     // This is a test for an implementation of operator:
     //
     //   ChunkInventory::ExistMap
@@ -152,7 +133,7 @@ BOOST_AUTO_TEST_CASE(ChunkInvDiff) {
     oneMap["db1"].insert(3);
     oneMap["db2"].insert(3);
     oneMap["db2"].insert(4);
-    oneMap["db2"].insert(5);                    // in this map only
+    oneMap["db2"].insert(5);  // in this map only
     oneMap["db3"] = ChunkInventory::ChunkMap();
 
     ChunkInventory::ExistMap twoMap;
@@ -161,8 +142,8 @@ BOOST_AUTO_TEST_CASE(ChunkInvDiff) {
     twoMap["db1"].insert(3);
     twoMap["db2"].insert(3);
     twoMap["db2"].insert(4);
-    twoMap["db3"].insert(6);                    // in this map only
-    twoMap["db4"] = ChunkInventory::ChunkMap(); // in this map only
+    twoMap["db3"].insert(6);                     // in this map only
+    twoMap["db4"] = ChunkInventory::ChunkMap();  // in this map only
 
     ChunkInventory oneInv(oneMap, "name:one", "id:one");
     ChunkInventory twoInv(twoMap, "name:two", "id:two");

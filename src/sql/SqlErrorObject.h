@@ -27,9 +27,7 @@
 // Standard
 #include <string>
 
-namespace lsst {
-namespace qserv {
-namespace sql {
+namespace lsst { namespace qserv { namespace sql {
 /// SqlErrorObject should be considered for inheriting from util::Error
 class SqlErrorObject {
 public:
@@ -43,22 +41,29 @@ public:
 
     void setErrNo(int e) { _errNo = e; }
     bool addErrMsg(std::string const& s) {
-        if (_errMsg.empty()) _errMsg = s;
-        else { _errMsg += ' '; _errMsg += s; }
+        if (_errMsg.empty())
+            _errMsg = s;
+        else {
+            _errMsg += ' ';
+            _errMsg += s;
+        }
         return false;
     };
-    void reset() { _errNo = 0; _errMsg.clear(); }
+    void reset() {
+        _errNo = 0;
+        _errMsg.clear();
+    }
 
 private:
     int _errNo;           // error number
     std::string _errMsg;  // error message
 };
 
-}}} // namespace lsst::qserv::sql
+}}}  // namespace lsst::qserv::sql
 
 // Local Variables:
 // mode:c++
 // comment-column:0
 // End:
 
-#endif // LSST_QSERV_SQL_SQLERROROBJECT_H
+#endif  // LSST_QSERV_SQL_SQLERROROBJECT_H

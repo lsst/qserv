@@ -50,16 +50,12 @@
 #include "replica/StatusRequestBase.h"
 
 // Forward declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
-    class IndexInfo;
-}}} // namespace lsst::qserv::replica
+namespace lsst { namespace qserv { namespace replica {
+class IndexInfo;
+}}}  // namespace lsst::qserv::replica
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
 // ========================================================================
 //   Customizations for specific request types require dedicated policies
@@ -67,8 +63,8 @@ namespace replica {
 
 class StatusReplicationRequestPolicy {
 public:
-    using ResponseMessageType     = ProtocolResponseReplicate;
-    using ResponseDataType        = ReplicaInfo;
+    using ResponseMessageType = ProtocolResponseReplicate;
+    using ResponseDataType = ReplicaInfo;
     using TargetRequestParamsType = ReplicationRequestParams;
 
     static char const* requestName();
@@ -86,8 +82,8 @@ public:
 
 class StatusDeleteRequestPolicy {
 public:
-    using ResponseMessageType     = ProtocolResponseDelete;
-    using ResponseDataType        = ReplicaInfo;
+    using ResponseMessageType = ProtocolResponseDelete;
+    using ResponseDataType = ReplicaInfo;
     using TargetRequestParamsType = DeleteRequestParams;
 
     static char const* requestName();
@@ -105,8 +101,8 @@ public:
 
 class StatusFindRequestPolicy {
 public:
-    using ResponseMessageType     = ProtocolResponseFind;
-    using ResponseDataType        = ReplicaInfo;
+    using ResponseMessageType = ProtocolResponseFind;
+    using ResponseDataType = ReplicaInfo;
     using TargetRequestParamsType = FindRequestParams;
 
     static char const* requestName();
@@ -124,8 +120,8 @@ public:
 
 class StatusFindAllRequestPolicy {
 public:
-    using ResponseMessageType     = ProtocolResponseFindAll;
-    using ResponseDataType        = ReplicaInfoCollection;
+    using ResponseMessageType = ProtocolResponseFindAll;
+    using ResponseDataType = ReplicaInfoCollection;
     using TargetRequestParamsType = FindAllRequestParams;
 
     static char const* requestName();
@@ -144,8 +140,8 @@ public:
 
 class StatusEchoRequestPolicy {
 public:
-    using ResponseMessageType     = ProtocolResponseEcho;
-    using ResponseDataType        = std::string;
+    using ResponseMessageType = ProtocolResponseEcho;
+    using ResponseDataType = std::string;
     using TargetRequestParamsType = EchoRequestParams;
 
     static char const* requestName();
@@ -160,11 +156,10 @@ public:
     }
 };
 
-
 class StatusIndexRequestPolicy {
 public:
-    using ResponseMessageType     = ProtocolResponseIndex;
-    using ResponseDataType        = IndexInfo;
+    using ResponseMessageType = ProtocolResponseIndex;
+    using ResponseDataType = IndexInfo;
     using TargetRequestParamsType = IndexRequestParams;
 
     static char const* requestName();
@@ -179,11 +174,10 @@ public:
     }
 };
 
-
 class StatusSqlRequestPolicy {
 public:
-    using ResponseMessageType     = ProtocolResponseSql;
-    using ResponseDataType        = SqlResultSet;
+    using ResponseMessageType = ProtocolResponseSql;
+    using ResponseDataType = SqlResultSet;
     using TargetRequestParamsType = SqlRequestParams;
 
     static char const* requestName();
@@ -199,11 +193,11 @@ public:
 };
 
 /**
-  * Generic class StatusRequest extends its base class to allow further policy-based
-  * customization of specific requests.
-  */
+ * Generic class StatusRequest extends its base class to allow further policy-based
+ * customization of specific requests.
+ */
 template <typename POLICY>
-class StatusRequest: public StatusRequestBase {
+class StatusRequest : public StatusRequestBase {
 public:
     typedef std::shared_ptr<StatusRequest<POLICY>> Ptr;
 
@@ -245,13 +239,9 @@ public:
      * @param messenger an interface for communicating with workers
      * @return pointer to the created object
      */
-    static Ptr create(ServiceProvider::Ptr const& serviceProvider,
-                      boost::asio::io_service& io_service,
-                      std::string const& worker,
-                      std::string const& targetRequestId,
-                      CallbackType const& onFinish,
-                      int priority,
-                      bool keepTracking,
+    static Ptr create(ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service,
+                      std::string const& worker, std::string const& targetRequestId,
+                      CallbackType const& onFinish, int priority, bool keepTracking,
                       std::shared_ptr<Messenger> const& messenger) {
         return StatusRequest<POLICY>::Ptr(new StatusRequest<POLICY>(
                 serviceProvider, io_service, POLICY::requestName(), worker, targetRequestId,
@@ -269,9 +259,7 @@ public:
     }
 
 protected:
-    void notify(util::Lock const& lock) final {
-        notifyDefaultImpl<StatusRequest<POLICY>>(lock, _onFinish);
-    }
+    void notify(util::Lock const& lock) final { notifyDefaultImpl<StatusRequest<POLICY>>(lock, _onFinish); }
 
     /**
      * Initiate request-specific send.
@@ -283,12 +271,13 @@ protected:
         auto self = shared_from_base<StatusRequest<POLICY>>();
         messenger()->send<typename POLICY::ResponseMessageType>(
                 worker(), id(), priority(), buffer(),
-                [self] (std::string const& id, bool success,
-                        typename POLICY::ResponseMessageType const& response) {
-                    if (success) self->analyze(true, self->_parseResponse(response));
-                    else self->analyze(false);
-                }
-        );
+                [self](std::string const& id, bool success,
+                       typename POLICY::ResponseMessageType const& response) {
+                    if (success)
+                        self->analyze(true, self->_parseResponse(response));
+                    else
+                        self->analyze(false);
+                });
     }
 
     /**
@@ -303,20 +292,13 @@ protected:
     }
 
 private:
-    StatusRequest(ServiceProvider::Ptr const& serviceProvider,
-                  boost::asio::io_service& io_service,
-                  char const* requestName,
-                  std::string const& worker,
-                  std::string const& targetRequestId,
-                  ProtocolQueuedRequestType targetRequestType,
-                  CallbackType const& onFinish,
-                  int priority,
-                  bool keepTracking,
-                  std::shared_ptr<Messenger> const& messenger)
-        :   StatusRequestBase(serviceProvider, io_service, requestName, worker, targetRequestId,
-                              targetRequestType, priority, keepTracking, messenger),
-            _onFinish(onFinish) {
-    }
+    StatusRequest(ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service,
+                  char const* requestName, std::string const& worker, std::string const& targetRequestId,
+                  ProtocolQueuedRequestType targetRequestType, CallbackType const& onFinish, int priority,
+                  bool keepTracking, std::shared_ptr<Messenger> const& messenger)
+            : StatusRequestBase(serviceProvider, io_service, requestName, worker, targetRequestId,
+                                targetRequestType, priority, keepTracking, messenger),
+              _onFinish(onFinish) {}
 
     /**
      * Parse request-specific reply.
@@ -324,7 +306,6 @@ private:
      * @return  The status of the operation reported by a server.
      */
     ProtocolStatus _parseResponse(typename POLICY::ResponseMessageType const& message) {
-
         // This lock must be acquired because the method is going to modify
         // results of the request. Note that the operation doesn't care
         // about the global state of the request (wether it's already finished
@@ -366,22 +347,22 @@ private:
 };
 
 typedef StatusRequest<StatusReplicationRequestPolicy> StatusReplicationRequest;
-typedef StatusRequest<StatusDeleteRequestPolicy>      StatusDeleteRequest;
-typedef StatusRequest<StatusFindRequestPolicy>        StatusFindRequest;
-typedef StatusRequest<StatusFindAllRequestPolicy>     StatusFindAllRequest;
-typedef StatusRequest<StatusEchoRequestPolicy>        StatusEchoRequest;
-typedef StatusRequest<StatusIndexRequestPolicy>       StatusIndexRequest;
-typedef StatusRequest<StatusSqlRequestPolicy>         StatusSqlQueryRequest;
-typedef StatusRequest<StatusSqlRequestPolicy>         StatusSqlCreateDbRequest;
-typedef StatusRequest<StatusSqlRequestPolicy>         StatusSqlDeleteDbRequest;
-typedef StatusRequest<StatusSqlRequestPolicy>         StatusSqlEnableDbRequest;
-typedef StatusRequest<StatusSqlRequestPolicy>         StatusSqlDisableDbRequest;
-typedef StatusRequest<StatusSqlRequestPolicy>         StatusSqlGrantAccessRequest;
-typedef StatusRequest<StatusSqlRequestPolicy>         StatusSqlCreateTableRequest;
-typedef StatusRequest<StatusSqlRequestPolicy>         StatusSqlDeleteTableRequest;
-typedef StatusRequest<StatusSqlRequestPolicy>         StatusSqlRemoveTablePartitionsRequest;
-typedef StatusRequest<StatusSqlRequestPolicy>         StatusSqlDeleteTablePartitionRequest;
+typedef StatusRequest<StatusDeleteRequestPolicy> StatusDeleteRequest;
+typedef StatusRequest<StatusFindRequestPolicy> StatusFindRequest;
+typedef StatusRequest<StatusFindAllRequestPolicy> StatusFindAllRequest;
+typedef StatusRequest<StatusEchoRequestPolicy> StatusEchoRequest;
+typedef StatusRequest<StatusIndexRequestPolicy> StatusIndexRequest;
+typedef StatusRequest<StatusSqlRequestPolicy> StatusSqlQueryRequest;
+typedef StatusRequest<StatusSqlRequestPolicy> StatusSqlCreateDbRequest;
+typedef StatusRequest<StatusSqlRequestPolicy> StatusSqlDeleteDbRequest;
+typedef StatusRequest<StatusSqlRequestPolicy> StatusSqlEnableDbRequest;
+typedef StatusRequest<StatusSqlRequestPolicy> StatusSqlDisableDbRequest;
+typedef StatusRequest<StatusSqlRequestPolicy> StatusSqlGrantAccessRequest;
+typedef StatusRequest<StatusSqlRequestPolicy> StatusSqlCreateTableRequest;
+typedef StatusRequest<StatusSqlRequestPolicy> StatusSqlDeleteTableRequest;
+typedef StatusRequest<StatusSqlRequestPolicy> StatusSqlRemoveTablePartitionsRequest;
+typedef StatusRequest<StatusSqlRequestPolicy> StatusSqlDeleteTablePartitionRequest;
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_STATUSREQUEST_H
+#endif  // LSST_QSERV_REPLICA_STATUSREQUEST_H

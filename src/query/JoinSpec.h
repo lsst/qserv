@@ -21,37 +21,28 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 /**
-  * @file
-  *
-  * @brief Declarations for TableRefN and subclasses SimpleTableN and JoinRefN
-  *
-  * @author Daniel L. Wang, SLAC
-  */
-
+ * @file
+ *
+ * @brief Declarations for TableRefN and subclasses SimpleTableN and JoinRefN
+ *
+ * @author Daniel L. Wang, SLAC
+ */
 
 #ifndef LSST_QSERV_QUERY_JOINSPEC_H
 #define LSST_QSERV_QUERY_JOINSPEC_H
-
 
 // System headers
 #include <iostream>
 #include <memory>
 
-
 // Forward declarations
-namespace lsst {
-namespace qserv {
-namespace query {
-    class QueryTemplate;
-    class BoolTerm;
-    class ColumnRef;
-}}} // End of forward declarations
+namespace lsst { namespace qserv { namespace query {
+class QueryTemplate;
+class BoolTerm;
+class ColumnRef;
+}}}  // namespace lsst::qserv::query
 
-
-namespace lsst {
-namespace qserv {
-namespace query {
-
+namespace lsst { namespace qserv { namespace query {
 
 /// JoinSpec is a parsed join spec.
 /// join_spec :
@@ -72,15 +63,13 @@ class JoinSpec {
 public:
     typedef std::shared_ptr<JoinSpec> Ptr;
 
-    JoinSpec(std::shared_ptr<BoolTerm> const& onTerm)
-        : _onTerm(onTerm) {}
+    JoinSpec(std::shared_ptr<BoolTerm> const& onTerm) : _onTerm(onTerm) {}
 
     /// FIXME: not supporting join by multiple columns now
-    JoinSpec(std::shared_ptr<ColumnRef> const& ref)
-        : _usingColumn(ref) {}
+    JoinSpec(std::shared_ptr<ColumnRef> const& ref) : _usingColumn(ref) {}
 
     JoinSpec(std::shared_ptr<ColumnRef> ref, std::shared_ptr<BoolTerm> const& onTerm)
-        : _usingColumn(ref), _onTerm(onTerm) {}
+            : _usingColumn(ref), _onTerm(onTerm) {}
 
     std::shared_ptr<ColumnRef> getUsing() { return _usingColumn; }
     std::shared_ptr<ColumnRef const> getUsing() const { return _usingColumn; }
@@ -101,7 +90,6 @@ private:
     std::shared_ptr<BoolTerm> _onTerm;
 };
 
+}}}  // namespace lsst::qserv::query
 
-}}} // namespace lsst::qserv::query
-
-#endif // LSST_QSERV_QUERY_JOINSPEC_H
+#endif  // LSST_QSERV_QUERY_JOINSPEC_H

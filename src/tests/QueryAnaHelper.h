@@ -20,13 +20,13 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
- /**
-  * @file
-  *
-  * @brief Test functions and structures used in QueryAnalysis tests
-  *
-  * @author Fabrice Jammes, IN2P3/SLAC
-  */
+/**
+ * @file
+ *
+ * @brief Test functions and structures used in QueryAnalysis tests
+ *
+ * @author Fabrice Jammes, IN2P3/SLAC
+ */
 
 #ifndef LSST_QSERV_TESTS_QUERYANAHELPER_H
 #define LSST_QSERV_TESTS_QUERYANAHELPER_H
@@ -40,38 +40,35 @@
 #include "qproc/QuerySession.h"
 #include "util/IterableFormatter.h"
 
-namespace lsst {
-namespace qserv {
-namespace tests {
+namespace lsst { namespace qserv { namespace tests {
 
 /**
-*  @brief Test tools used by qproc::testQueryAna* units tests
-*/
+ *  @brief Test tools used by qproc::testQueryAna* units tests
+ */
 struct QueryAnaHelper {
-
     static ccontrol::ParseRunner::Ptr getParser(const std::string& stmt);
 
     /**
-    *  @brief Prepare the query session used to process SQL queries
-    *  issued from MySQL client.
-    *
-    *  @param t:             Test environment required by the object
-    *  @param stmt:          sql query to process
-    *  @param expectedErr:   expected error message
-    */
+     *  @brief Prepare the query session used to process SQL queries
+     *  issued from MySQL client.
+     *
+     *  @param t:             Test environment required by the object
+     *  @param stmt:          sql query to process
+     *  @param expectedErr:   expected error message
+     */
     std::shared_ptr<qproc::QuerySession> buildQuerySession(qproc::QuerySession::Test qsTest,
-            std::string const & stmt, bool expectError=false);
+                                                           std::string const& stmt, bool expectError = false);
 
     /**
-    *  @brief Compute the first parallel query which will be send on
-    *  worker node.
-    *
-    *  Add a mock chunk, compute chunk queries for this chunk, and returns
-    *  the first one.
-    *
-    *  @param withSubChunks:    Also add subchunks
-    *  @return:                 The first parallel query for mock chunk
-    */
+     *  @brief Compute the first parallel query which will be send on
+     *  worker node.
+     *
+     *  Add a mock chunk, compute chunk queries for this chunk, and returns
+     *  the first one.
+     *
+     *  @param withSubChunks:    Also add subchunks
+     *  @return:                 The first parallel query for mock chunk
+     */
     std::string buildFirstParallelQuery(bool withSubChunks = true);
 
     /** @brief control consistency of Qserv internal queries
@@ -81,12 +78,11 @@ struct QueryAnaHelper {
      * If a user SQL query requires
      *
      */
-    std::vector<std::string> getInternalQueries(qproc::QuerySession::Test& t,
-            std::string const & stmt);
+    std::vector<std::string> getInternalQueries(qproc::QuerySession::Test& t, std::string const& stmt);
 
     std::shared_ptr<qproc::QuerySession> querySession;
 };
 
-}}} // namespace lsst::qserv::test
+}}}  // namespace lsst::qserv::tests
 
-#endif // LSST_QSERV_TESTS_QUERYANAHELPER_H
+#endif  // LSST_QSERV_TESTS_QUERYANAHELPER_H

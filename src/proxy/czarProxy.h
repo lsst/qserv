@@ -32,10 +32,7 @@
 // Qserv headers
 #include "czar/SubmitResult.h"
 
-
-namespace lsst {
-namespace qserv {
-namespace proxy {
+namespace lsst { namespace qserv { namespace proxy {
 
 /// @addtogroup proxy
 
@@ -67,8 +64,7 @@ void initCzar(std::string const& czarName);
  *               provided as "db" key.
  * @return Structure with info about submitted query.
  */
-czar::SubmitResult submitQuery(std::string const& query,
-                               std::map<std::string, std::string> const& hints);
+czar::SubmitResult submitQuery(std::string const& query, std::map<std::string, std::string> const& hints);
 
 /**
  * Process a kill query command (experimental).
@@ -81,10 +77,9 @@ void killQuery(std::string const& query, std::string const& clientId);
 /**
  *  Send message to logging system. level is a string like "DEBUG".
  */
-void log(std::string const& loggername, std::string const& level,
-         std::string const& filename, std::string const& funcname,
-         unsigned lineno, std::string const& message);
+void log(std::string const& loggername, std::string const& level, std::string const& filename,
+         std::string const& funcname, unsigned lineno, std::string const& message);
 
-}}} // namespace lsst::qserv::proxy
+}}}  // namespace lsst::qserv::proxy
 
-#endif // LSST_QSERV_PROXY_CZARPROXY_H
+#endif  // LSST_QSERV_PROXY_CZARPROXY_H

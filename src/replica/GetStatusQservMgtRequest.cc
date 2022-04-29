@@ -45,103 +45,79 @@ namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.GetStatusQservMgtRequest");
 
-} /// namespace
+}  // namespace
 
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
 GetStatusQservMgtRequest::Ptr GetStatusQservMgtRequest::create(
-                                        ServiceProvider::Ptr const& serviceProvider,
-                                        string const& worker,
-                                        GetStatusQservMgtRequest::CallbackType const& onFinish) {
-    return GetStatusQservMgtRequest::Ptr(
-        new GetStatusQservMgtRequest(serviceProvider,
-                                     worker,
-                                     onFinish));
+        ServiceProvider::Ptr const& serviceProvider, string const& worker,
+        GetStatusQservMgtRequest::CallbackType const& onFinish) {
+    return GetStatusQservMgtRequest::Ptr(new GetStatusQservMgtRequest(serviceProvider, worker, onFinish));
 }
 
-
-GetStatusQservMgtRequest::GetStatusQservMgtRequest(
-                                ServiceProvider::Ptr const& serviceProvider,
-                                string const& worker,
-                                GetStatusQservMgtRequest::CallbackType const& onFinish)
-    :   QservMgtRequest(serviceProvider,
-                        "QSERV_GET_STATUS",
-                        worker),
-        _onFinish(onFinish) {
-}
-
+GetStatusQservMgtRequest::GetStatusQservMgtRequest(ServiceProvider::Ptr const& serviceProvider,
+                                                   string const& worker,
+                                                   GetStatusQservMgtRequest::CallbackType const& onFinish)
+        : QservMgtRequest(serviceProvider, "QSERV_GET_STATUS", worker), _onFinish(onFinish) {}
 
 json const& GetStatusQservMgtRequest::info() const {
-    if (not ((state() == State::FINISHED) and (extendedState() == ExtendedState::SUCCESS))) {
-        throw logic_error(
-                "GetStatusQservMgtRequest::" + string(__func__) + "  no info available in state: " +
-                state2string(state(), extendedState()));
+    if (not((state() == State::FINISHED) and (extendedState() == ExtendedState::SUCCESS))) {
+        throw logic_error("GetStatusQservMgtRequest::" + string(__func__) +
+                          "  no info available in state: " + state2string(state(), extendedState()));
     }
     return _info;
 }
 
-
-list<pair<string,string>> GetStatusQservMgtRequest::extendedPersistentState() const {
-    list<pair<string,string>> result;
+list<pair<string, string>> GetStatusQservMgtRequest::extendedPersistentState() const {
+    list<pair<string, string>> result;
     return result;
 }
 
-
 void GetStatusQservMgtRequest::startImpl(util::Lock const& lock) {
-
     // Submit the actual request
 
     auto const request = shared_from_base<GetStatusQservMgtRequest>();
 
-    _qservRequest = wpublish::GetStatusQservRequest::create(
-        [request] (wpublish::GetStatusQservRequest::Status status,
-                   string const& error,
-                   string const& info) {
+    _qservRequest =
+            wpublish::GetStatusQservRequest::create([request](wpublish::GetStatusQservRequest::Status status,
+                                                              string const& error, string const& info) {
+                if (request->state() == State::FINISHED) return;
 
-            if (request->state() == State::FINISHED) return;
-        
-            util::Lock lock(request->_mtx, request->context() + string(__func__) + "[callback]");
-        
-            if (request->state() == State::FINISHED) return;
+                util::Lock lock(request->_mtx, request->context() + string(__func__) + "[callback]");
 
-            switch (status) {
+                if (request->state() == State::FINISHED) return;
 
-                case wpublish::GetStatusQservRequest::Status::SUCCESS:
+                switch (status) {
+                    case wpublish::GetStatusQservRequest::Status::SUCCESS:
 
-                    try {
-                        request->_setInfo(lock, info);
-                        request->finish(lock, QservMgtRequest::ExtendedState::SUCCESS);
-                    } catch(exception const& ex) {
-                        string const msg = "failed to parse worker response, ex: " + string(ex.what());
-                        LOGS(_log, LOG_LVL_ERROR, "GetStatusQservMgtRequest::" << __func__ << "  " << msg);
-                        request->finish(lock, QservMgtRequest::ExtendedState::SERVER_BAD_RESPONSE, msg);
-                    }
-                    break;
+                        try {
+                            request->_setInfo(lock, info);
+                            request->finish(lock, QservMgtRequest::ExtendedState::SUCCESS);
+                        } catch (exception const& ex) {
+                            string const msg = "failed to parse worker response, ex: " + string(ex.what());
+                            LOGS(_log, LOG_LVL_ERROR,
+                                 "GetStatusQservMgtRequest::" << __func__ << "  " << msg);
+                            request->finish(lock, QservMgtRequest::ExtendedState::SERVER_BAD_RESPONSE, msg);
+                        }
+                        break;
 
-                case wpublish::GetStatusQservRequest::Status::ERROR:
+                    case wpublish::GetStatusQservRequest::Status::ERROR:
 
-                    request->finish(lock, QservMgtRequest::ExtendedState::SERVER_ERROR, error);
-                    break;
+                        request->finish(lock, QservMgtRequest::ExtendedState::SERVER_ERROR, error);
+                        break;
 
-                default:
-                    throw logic_error(
-                            "GetStatusQservMgtRequest::" + string(__func__) +
-                            "  unhandled server status: " +
-                            wpublish::GetStatusQservRequest::status2str(status));
-            }
-        }
-    );
+                    default:
+                        throw logic_error("GetStatusQservMgtRequest::" + string(__func__) +
+                                          "  unhandled server status: " +
+                                          wpublish::GetStatusQservRequest::status2str(status));
+                }
+            });
     XrdSsiResource resource(ResourceUnit::makeWorkerPath(worker()));
     service()->ProcessRequest(*_qservRequest, resource);
 }
 
-
 void GetStatusQservMgtRequest::finishImpl(util::Lock const& lock) {
-
     switch (extendedState()) {
-
         case ExtendedState::CANCELLED:
         case ExtendedState::TIMEOUT_EXPIRED:
 
@@ -158,16 +134,13 @@ void GetStatusQservMgtRequest::finishImpl(util::Lock const& lock) {
     }
 }
 
-
 void GetStatusQservMgtRequest::notify(util::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
     notifyDefaultImpl<GetStatusQservMgtRequest>(lock, _onFinish);
 }
 
-
-void GetStatusQservMgtRequest::_setInfo(util::Lock const& lock,
-                                        string const& info) {
+void GetStatusQservMgtRequest::_setInfo(util::Lock const& lock, string const& info) {
     _info = json::parse(info);
 }
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica

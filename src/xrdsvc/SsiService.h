@@ -38,26 +38,22 @@
 // Forward declarations
 class XrdSsiLogger;
 
-namespace lsst {
-namespace qserv {
+namespace lsst { namespace qserv {
 namespace wcontrol {
-  class Foreman;
-  class TransmitMgr;
-}
+class Foreman;
+class TransmitMgr;
+}  // namespace wcontrol
 namespace wpublish {
-  class ChunkInventory;
-}}} // End of forward declarations
+class ChunkInventory;
+}
+}}  // namespace lsst::qserv
 
-
-namespace lsst {
-namespace qserv {
-namespace xrdsvc {
+namespace lsst { namespace qserv { namespace xrdsvc {
 
 /// SsiService is an XrdSsiService implementation that implements a Qserv query
 /// worker services
 class SsiService : public XrdSsiService {
 public:
-
     /** Build a SsiService object
      *
      * @param log xrdssi logger
@@ -69,8 +65,7 @@ public:
     virtual ~SsiService();
 
     /// Called by SSI framework to handle new requests
-    void ProcessRequest(XrdSsiRequest  &reqRef,
-                        XrdSsiResource &resRef) override;
+    void ProcessRequest(XrdSsiRequest& reqRef, XrdSsiResource& resRef) override;
 
 private:
     void _initInventory();
@@ -87,8 +82,8 @@ private:
 
     mysql::MySqlConfig const _mySqlConfig;
 
-}; // class SsiService
+};  // class SsiService
 
-}}} // namespace lsst::qserv::xrdsvc
+}}}  // namespace lsst::qserv::xrdsvc
 
-#endif // LSST_QSERV_XRDSVC_SSISERVICE_H
+#endif  // LSST_QSERV_XRDSVC_SSISERVICE_H

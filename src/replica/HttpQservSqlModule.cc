@@ -32,60 +32,42 @@
 using namespace std;
 using json = nlohmann::json;
 
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
-void HttpQservSqlModule::process(Controller::Ptr const& controller,
-                                 string const& taskName,
-                                 HttpProcessorConfig const& processorConfig,
-                                 qhttp::Request::Ptr const& req,
-                                 qhttp::Response::Ptr const& resp,
-                                 string const& subModuleName,
+void HttpQservSqlModule::process(Controller::Ptr const& controller, string const& taskName,
+                                 HttpProcessorConfig const& processorConfig, qhttp::Request::Ptr const& req,
+                                 qhttp::Response::Ptr const& resp, string const& subModuleName,
                                  HttpAuthType const authType) {
     HttpQservSqlModule module(controller, taskName, processorConfig, req, resp);
     module.execute(subModuleName, authType);
 }
 
-
-HttpQservSqlModule::HttpQservSqlModule(Controller::Ptr const& controller,
-                                       string const& taskName,
+HttpQservSqlModule::HttpQservSqlModule(Controller::Ptr const& controller, string const& taskName,
                                        HttpProcessorConfig const& processorConfig,
-                                       qhttp::Request::Ptr const& req,
-                                       qhttp::Response::Ptr const& resp)
-    :   HttpModule(controller, taskName, processorConfig, req, resp) {
-}
-
+                                       qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp)
+        : HttpModule(controller, taskName, processorConfig, req, resp) {}
 
 json HttpQservSqlModule::executeImpl(string const& subModuleName) {
     if (subModuleName.empty()) return _execute();
-    throw invalid_argument(
-            context() + "::" + string(__func__) +
-            "  unsupported sub-module: '" + subModuleName + "'");
+    throw invalid_argument(context() + "::" + string(__func__) + "  unsupported sub-module: '" +
+                           subModuleName + "'");
 }
-
 
 json HttpQservSqlModule::_execute() {
     debug(__func__);
 
-    auto const worker   = body().required<string>("worker");
-    auto const query    = body().required<string>("query");
-    auto const user     = body().required<string>("user");
+    auto const worker = body().required<string>("worker");
+    auto const query = body().required<string>("query");
+    auto const user = body().required<string>("user");
     auto const password = body().required<string>("password");
-    auto const maxRows  = body().optional<uint64_t>("max_rows", 0);
+    auto const maxRows = body().optional<uint64_t>("max_rows", 0);
 
-    debug(__func__, "worker="   + worker);
-    debug(__func__, "query="    + query);
-    debug(__func__, "user="     + user);
-    debug(__func__, "maxRows="  + to_string(maxRows));
+    debug(__func__, "worker=" + worker);
+    debug(__func__, "query=" + query);
+    debug(__func__, "user=" + user);
+    debug(__func__, "maxRows=" + to_string(maxRows));
 
-    auto const request = controller()->sqlQuery(
-        worker,
-        query,
-        user,
-        password,
-        maxRows
-    );
+    auto const request = controller()->sqlQuery(worker, query, user, password, maxRows);
     request->wait();
 
     json result;

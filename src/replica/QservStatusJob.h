@@ -36,16 +36,13 @@
 #include "replica/ServiceManagementRequest.h"
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
 /**
  * This data structure represents status responses from Qserv workers
  * reported by the job upon its completion.
  */
 struct QservStatus {
-
     /// key: worker name, value: 'true' if got a response from the worker
     std::map<std::string, bool> workers;
 
@@ -60,10 +57,8 @@ struct QservStatus {
  *
  * The job is implemented not to have any side effects Qserv workers.
  */
-class QservStatusJob : public Job  {
-
+class QservStatusJob : public Job {
 public:
-
     /// The pointer type for instances of the class
     typedef std::shared_ptr<QservStatusJob> Ptr;
 
@@ -103,12 +98,9 @@ public:
      * @return
      *   pointer to the created object
      */
-    static Ptr create(unsigned int timeoutSec,
-                      bool allWorkers,
-                      Controller::Ptr const& controller,
-                      std::string const& parentJobId=std::string(),
-                      CallbackType const& onFinish=nullptr,
-                      int priority=PRIORITY_NORMAL);
+    static Ptr create(unsigned int timeoutSec, bool allWorkers, Controller::Ptr const& controller,
+                      std::string const& parentJobId = std::string(), CallbackType const& onFinish = nullptr,
+                      int priority = PRIORITY_NORMAL);
 
     // Default construction and copy semantics are prohibited
 
@@ -135,13 +127,12 @@ public:
     QservStatus const& qservStatus() const;
 
     /// @see Job::extendedPersistentState()
-    std::list<std::pair<std::string,std::string>> extendedPersistentState() const override;
+    std::list<std::pair<std::string, std::string>> extendedPersistentState() const override;
 
     /// @see Job::persistentLogData()
-    std::list<std::pair<std::string,std::string>> persistentLogData() const final;
+    std::list<std::pair<std::string, std::string>> persistentLogData() const final;
 
 protected:
-
     void startImpl(util::Lock const& lock) final;
 
     void cancelImpl(util::Lock const& lock) final;
@@ -149,14 +140,9 @@ protected:
     void notify(util::Lock const& lock) final;
 
 private:
-
     /// @see QservStatusJob::create()
-    QservStatusJob(unsigned int timeoutSec,
-                   bool allWorkers,
-                   Controller::Ptr const& controller,
-                   std::string const& parentJobId,
-                   CallbackType const& onFinish,
-                   int priority);
+    QservStatusJob(unsigned int timeoutSec, bool allWorkers, Controller::Ptr const& controller,
+                   std::string const& parentJobId, CallbackType const& onFinish, int priority);
 
     /**
      * The callback function to be invoked on a completion of the Qserv
@@ -170,12 +156,12 @@ private:
     // Input parameters
 
     unsigned int const _timeoutSec;
-    bool         const _allWorkers;
-    CallbackType       _onFinish;
+    bool const _allWorkers;
+    CallbackType _onFinish;
 
     /// Requests sent to the Qserv workers registered by their identifiers
     std::map<std::string, GetStatusQservMgtRequest::Ptr> _requests;
-    
+
     /// Result to be returned
     QservStatus _qservStatus;
 
@@ -186,6 +172,6 @@ private:
     size_t _numFinished = 0;
 };
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_QSERVSTATUSJOB_H
+#endif  // LSST_QSERV_REPLICA_QSERVSTATUSJOB_H

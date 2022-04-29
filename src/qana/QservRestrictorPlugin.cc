@@ -21,12 +21,12 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 /**
-  * @file
-  *
-  * @brief QservRestrictorPlugin implementation
-  *
-  * @author Daniel L. Wang, SLAC
-  */
+ * @file
+ *
+ * @brief QservRestrictorPlugin implementation
+ *
+ * @author Daniel L. Wang, SLAC
+ */
 
 // Class header
 #include "qana/QservRestrictorPlugin.h"
@@ -67,42 +67,29 @@
 #include "query/WhereClause.h"
 #include "util/IterableFormatter.h"
 
-
 namespace {
-
 
 using namespace lsst::qserv;
 
-
 LOG_LOGGER _log = LOG_GET("lsst.qserv.qana.QservRestrictorPlugin");
-
 
 /// RestrictorEntry is a class to contain information about chunked tables.
 struct RestrictorEntry {
-
-    RestrictorEntry(std::string const& alias_,
-                    StringPair const& chunkColumns_,
+    RestrictorEntry(std::string const& alias_, StringPair const& chunkColumns_,
                     std::string const& secIndexColumn_)
-        : alias(alias_),
-          chunkColumns(chunkColumns_),
-          secIndexColumn(secIndexColumn_)
-        {}
-    std::string const alias; //< The alias of the chunked table.
+            : alias(alias_), chunkColumns(chunkColumns_), secIndexColumn(secIndexColumn_) {}
+    std::string const alias;  //< The alias of the chunked table.
     StringPair const chunkColumns;
     std::string const secIndexColumn;
 };
 
-
 typedef std::pair<std::string, std::string> StringPair;
 typedef std::deque<RestrictorEntry> RestrictoryEntryList;
 
-
 class GetTable : public query::TableRef::Func {
 public:
-
     GetTable(css::CssAccess& css, RestrictoryEntryList& chunkedTables)
-        : _css(css),
-          _chunkedTables(chunkedTables) {}
+            : _css(css), _chunkedTables(chunkedTables) {}
 
     void operator()(query::TableRef::Ptr t) {
         // FIXME: Modify so we can use TableRef::apply()
@@ -115,15 +102,13 @@ public:
         std::string const& db = t.getDb();
         std::string const& table = t.getTable();
 
-        if (db.empty() || table.empty()
-           || !_css.containsDb(db)
-           || !_css.containsTable(db, table)) {
+        if (db.empty() || table.empty() || !_css.containsDb(db) || !_css.containsTable(db, table)) {
             throw qana::AnalysisError("Invalid db/table:" + db + "." + table);
         }
         css::PartTableParams const& partParam = _css.getPartTableParams(db, table);
         // Is table chunked?
         if (!partParam.isChunked()) {
-            return; // Do nothing for non-chunked tables
+            return;  // Do nothing for non-chunked tables
         }
         // Now save an entry for WHERE clause processing.
         std::string alias = t.getAlias();
@@ -133,9 +118,7 @@ public:
             throw qana::AnalysisBug("Unexpected unaliased table reference");
         }
         std::vector<std::string> pCols = partParam.partitionCols();
-        RestrictorEntry se(alias,
-                           StringPair(pCols[0], pCols[1]),
-                           pCols[2]);
+        RestrictorEntry se(alias, StringPair(pCols[0], pCols[1]), pCols[2]);
         _chunkedTables.push_back(se);
         for (auto const& joinRef : t.getJoins()) {
             (*this)(joinRef->getRight());
@@ -144,7 +127,6 @@ public:
     css::CssAccess& _css;
     RestrictoryEntryList& _chunkedTables;
 };
-
 
 /**
  * @brief Determine if the given ValueExpr represents a func that is one of the scisql functions that
@@ -161,7 +143,6 @@ bool isScisqlAreaFunc(query::ValueExpr const& valueExpr) {
     if (funcExpr->getName().find("scisql_s2Pt") != 0) return false;
     return true;
 }
-
 
 /**
  * @brief If there is exactly one scisql area restrictor in the top level AND of the where clause,
@@ -182,7 +163,7 @@ std::shared_ptr<const query::FuncExpr> extractSingleScisqlAreaFunc(query::WhereC
             auto compPredicate = std::dynamic_pointer_cast<const query::CompPredicate>(boolFactorTerm);
             if (nullptr == compPredicate) continue;
             if (compPredicate->op != query::CompPredicate::EQUALS_OP) continue;
-            for (auto const& valueExpr: {compPredicate->left, compPredicate->right}) {
+            for (auto const& valueExpr : {compPredicate->left, compPredicate->right}) {
                 if (isScisqlAreaFunc(*valueExpr)) {
                     if (scisqlFunc != nullptr) {
                         return nullptr;
@@ -194,7 +175,6 @@ std::shared_ptr<const query::FuncExpr> extractSingleScisqlAreaFunc(query::WhereC
     }
     return scisqlFunc;
 }
-
 
 std::shared_ptr<query::AreaRestrictor> makeAreaRestrictor(query::FuncExpr const& scisqlFunc) {
     std::vector<std::string> parameters;
@@ -230,7 +210,6 @@ std::shared_ptr<query::AreaRestrictor> makeAreaRestrictor(query::FuncExpr const&
     return nullptr;
 }
 
-
 /**
  * @brief Add scisql restrictors for each AreaRestrictor.
  *
@@ -244,9 +223,8 @@ std::shared_ptr<query::AreaRestrictor> makeAreaRestrictor(query::FuncExpr const&
  * @param context The query context.
  */
 void addScisqlRestrictors(std::vector<std::shared_ptr<query::AreaRestrictor>> const& areaRestrictors,
-                           query::FromList const& fromList,
-                           query::WhereClause& whereClause,
-                           query::QueryContext& context) {
+                          query::FromList const& fromList, query::WhereClause& whereClause,
+                          query::QueryContext& context) {
     if (areaRestrictors.empty()) return;
 
     auto const& tableList = fromList.getTableRefList();
@@ -263,15 +241,14 @@ void addScisqlRestrictors(std::vector<std::shared_ptr<query::AreaRestrictor>> co
     // condition for each chunked table.
     for (auto const& areaRestrictor : areaRestrictors) {
         for (auto const& chunkedTable : chunkedTables) {
-            newTerm->_terms.push_back(areaRestrictor->asSciSqlFactor(chunkedTable.alias,
-                                                                        chunkedTable.chunkColumns));
+            newTerm->_terms.push_back(
+                    areaRestrictor->asSciSqlFactor(chunkedTable.alias, chunkedTable.chunkColumns));
         }
     }
-    LOGS(_log, LOG_LVL_TRACE, "for restrictors: " << util::printable(areaRestrictors) <<
-                              " adding: " << newTerm);
+    LOGS(_log, LOG_LVL_TRACE,
+         "for restrictors: " << util::printable(areaRestrictors) << " adding: " << newTerm);
     whereClause.prependAndTerm(newTerm);
 }
-
 
 /**
  * @brief Find out if the given ColumnRef represents a valid secondary index column.
@@ -281,23 +258,22 @@ bool isSecIndexCol(query::QueryContext const& context, std::shared_ptr<query::Co
     // database's partitioning strategy.
     if (nullptr == cr || nullptr == context.css) return false;
     if (not context.css->containsDb(cr->getDb()) ||
-            not context.css->containsTable(cr->getDb(), cr->getTable())) {
+        not context.css->containsTable(cr->getDb(), cr->getTable())) {
         throw qana::AnalysisError("Invalid db/table:" + cr->getDb() + "." + cr->getTable());
     }
     if (cr->getColumn().empty()) {
         return false;
     }
-    std::vector<std::string> sics = context.css->getPartTableParams(
-        cr->getDb(), cr->getTable()).secIndexColNames();
+    std::vector<std::string> sics =
+            context.css->getPartTableParams(cr->getDb(), cr->getTable()).secIndexColNames();
     return std::find(sics.begin(), sics.end(), cr->getColumn()) != sics.end();
 }
-
 
 query::ColumnRef::Ptr getCorrespondingDirectorColumn(query::QueryContext const& context,
                                                      query::ColumnRef::Ptr const& columnRef) {
     if (nullptr == columnRef) return nullptr;
-    auto const partitionTableParams = context.css->getPartTableParams(columnRef->getDb(),
-                                                                      columnRef->getTable());
+    auto const partitionTableParams =
+            context.css->getPartTableParams(columnRef->getDb(), columnRef->getTable());
     // Get the director column name
     std::string dirCol = partitionTableParams.dirColName;
     if (columnRef->getColumn() == dirCol) {
@@ -309,8 +285,9 @@ query::ColumnRef::Ptr getCorrespondingDirectorColumn(query::QueryContext const& 
         if (dirTable.empty()) {
             dirTable = columnRef->getTable();
             if (!dirDb.empty() && dirDb != columnRef->getDb()) {
-                LOGS(_log, LOG_LVL_ERROR, "dirTable missing, but dirDb is set inconsistently for "
-                     << columnRef->getDb() << "." << columnRef->getTable());
+                LOGS(_log, LOG_LVL_ERROR,
+                     "dirTable missing, but dirDb is set inconsistently for " << columnRef->getDb() << "."
+                                                                              << columnRef->getTable());
                 return nullptr;
             }
             dirDb = columnRef->getDb();
@@ -325,15 +302,15 @@ query::ColumnRef::Ptr getCorrespondingDirectorColumn(query::QueryContext const& 
                 return nullptr;
             }
         }
-        LOGS(_log, LOG_LVL_TRACE, "Restrictor dirDb " << dirDb << ", dirTable " << dirTable
-             << ", dirCol " << dirCol << " as sIndex for " << columnRef->getDb() << "." << columnRef->getTable()
-             << "." << columnRef->getColumn());
+        LOGS(_log, LOG_LVL_TRACE,
+             "Restrictor dirDb " << dirDb << ", dirTable " << dirTable << ", dirCol " << dirCol
+                                 << " as sIndex for " << columnRef->getDb() << "." << columnRef->getTable()
+                                 << "." << columnRef->getColumn());
         return std::make_shared<query::ColumnRef>(dirDb, dirTable, dirCol);
     }
     LOGS_DEBUG("Restrictor " << columnRef << " as sIndex.");
     return columnRef;
 }
-
 
 /**
  * @brief Make a Secondary Index comparison restrictor for the given 'in' predicate, if the value column
@@ -341,17 +318,16 @@ query::ColumnRef::Ptr getCorrespondingDirectorColumn(query::QueryContext const& 
  *
  * @param inPredicate
  * @param context
- * @return std::shared_ptr<query::SecIdxInRestrictor> The restrictor that corresponds to the given predicate if
- *      the value column is a director column, otherwise nullptr.
+ * @return std::shared_ptr<query::SecIdxInRestrictor> The restrictor that corresponds to the given predicate
+ * if the value column is a director column, otherwise nullptr.
  */
-std::shared_ptr<query::SecIdxInRestrictor> makeSecondaryIndexRestrictor(
-            query::InPredicate const& inPredicate,
-            query::QueryContext const& context) {
+std::shared_ptr<query::SecIdxInRestrictor> makeSecondaryIndexRestrictor(query::InPredicate const& inPredicate,
+                                                                        query::QueryContext const& context) {
     if (isSecIndexCol(context, inPredicate.value->getColumnRef())) {
         auto dirCol = getCorrespondingDirectorColumn(context, inPredicate.value->getColumnRef());
         if (nullptr == dirCol) {
-            LOGS(_log, LOG_LVL_ERROR, "Failed to get director column for " <<
-                inPredicate.value->getColumnRef());
+            LOGS(_log, LOG_LVL_ERROR,
+                 "Failed to get director column for " << inPredicate.value->getColumnRef());
             return nullptr;
         }
         return std::make_shared<query::SecIdxInRestrictor>(std::make_shared<query::InPredicate>(
@@ -360,33 +336,30 @@ std::shared_ptr<query::SecIdxInRestrictor> makeSecondaryIndexRestrictor(
     return nullptr;
 }
 
-
 /**
  * @brief Make a Secondary Index comparison restrictor for the given between predicate, if one of the
  *      columns in the predicate is a director column.
  *
  * @param betweenPredicate
  * @param context
- * @return std::shared_ptr<query::SIBetweenRestr> The restrictor that corresponds to the given predicate if one
- *      of the columns is a director column, otherwise nullptr.
+ * @return std::shared_ptr<query::SIBetweenRestr> The restrictor that corresponds to the given predicate if
+ * one of the columns is a director column, otherwise nullptr.
  */
 std::shared_ptr<query::SecIdxBetweenRestrictor> makeSecondaryIndexRestrictor(
-            query::BetweenPredicate const& betweenPredicate,
-            query::QueryContext const& context) {
+        query::BetweenPredicate const& betweenPredicate, query::QueryContext const& context) {
     if (isSecIndexCol(context, betweenPredicate.value->getColumnRef())) {
         auto dirCol = getCorrespondingDirectorColumn(context, betweenPredicate.value->getColumnRef());
         if (nullptr == dirCol) {
-            LOGS(_log, LOG_LVL_ERROR, "Failed to get director column for " <<
-                betweenPredicate.value->getColumnRef());
+            LOGS(_log, LOG_LVL_ERROR,
+                 "Failed to get director column for " << betweenPredicate.value->getColumnRef());
             return nullptr;
         }
         return std::make_shared<query::SecIdxBetweenRestrictor>(std::make_shared<query::BetweenPredicate>(
-                query::ValueExpr::newSimple(dirCol), betweenPredicate.minValue,
-                betweenPredicate.maxValue, betweenPredicate.hasNot));
+                query::ValueExpr::newSimple(dirCol), betweenPredicate.minValue, betweenPredicate.maxValue,
+                betweenPredicate.hasNot));
     }
     return nullptr;
 }
-
 
 /**
  * @brief Make a Secondary Index 'between' restrictor for the given comparison predicate, if one of the
@@ -398,26 +371,26 @@ std::shared_ptr<query::SecIdxBetweenRestrictor> makeSecondaryIndexRestrictor(
  *      of the columns is a director column, otherwise nullptr.
  */
 std::shared_ptr<query::SecIdxCompRestrictor> makeSecondaryIndexRestrictor(
-            query::CompPredicate const& compPredicate,
-            query::QueryContext const& context) {
+        query::CompPredicate const& compPredicate, query::QueryContext const& context) {
     if (compPredicate.right->isConstVal() && isSecIndexCol(context, compPredicate.left->getColumnRef())) {
         auto dirCol = getCorrespondingDirectorColumn(context, compPredicate.left->getColumnRef());
         if (nullptr == dirCol) {
-            LOGS(_log, LOG_LVL_ERROR, "Failed to get director column for " << compPredicate.left->getColumnRef());
+            LOGS(_log, LOG_LVL_ERROR,
+                 "Failed to get director column for " << compPredicate.left->getColumnRef());
             return nullptr;
         }
         auto siCompPred = std::make_shared<query::CompPredicate>(query::ValueExpr::newSimple(dirCol),
-                                                                 compPredicate.op,
-                                                                 compPredicate.right);
+                                                                 compPredicate.op, compPredicate.right);
         return std::make_shared<query::SecIdxCompRestrictor>(siCompPred, true);
-    } else if (compPredicate.left->isConstVal() && isSecIndexCol(context, compPredicate.right->getColumnRef())) {
+    } else if (compPredicate.left->isConstVal() &&
+               isSecIndexCol(context, compPredicate.right->getColumnRef())) {
         auto dirCol = getCorrespondingDirectorColumn(context, compPredicate.right->getColumnRef());
         if (nullptr == dirCol) {
-            LOGS(_log, LOG_LVL_ERROR, "Failed to get director column for " << compPredicate.right->getColumnRef());
+            LOGS(_log, LOG_LVL_ERROR,
+                 "Failed to get director column for " << compPredicate.right->getColumnRef());
             return nullptr;
         }
-        auto siCompPred = std::make_shared<query::CompPredicate>(compPredicate.left,
-                                                                 compPredicate.op,
+        auto siCompPred = std::make_shared<query::CompPredicate>(compPredicate.left, compPredicate.op,
                                                                  query::ValueExpr::newSimple(dirCol));
         return std::make_shared<query::SecIdxCompRestrictor>(siCompPred, false);
     }
@@ -442,14 +415,13 @@ std::vector<std::shared_ptr<query::SecIdxRestrictor>> getSecIndexRestrictors(que
         if (!factor) continue;
         for (auto factorTerm : factor->_terms) {
             std::shared_ptr<query::SecIdxRestrictor> restrictor;
-            if (auto const inPredicate =
-                    std::dynamic_pointer_cast<query::InPredicate>(factorTerm)) {
+            if (auto const inPredicate = std::dynamic_pointer_cast<query::InPredicate>(factorTerm)) {
                 restrictor = makeSecondaryIndexRestrictor(*inPredicate, context);
             } else if (auto const compPredicate =
-                    std::dynamic_pointer_cast<query::CompPredicate>(factorTerm)) {
+                               std::dynamic_pointer_cast<query::CompPredicate>(factorTerm)) {
                 restrictor = makeSecondaryIndexRestrictor(*compPredicate, context);
             } else if (auto const betweenPredicate =
-                    std::dynamic_pointer_cast<query::BetweenPredicate>(factorTerm)) {
+                               std::dynamic_pointer_cast<query::BetweenPredicate>(factorTerm)) {
                 restrictor = makeSecondaryIndexRestrictor(*betweenPredicate, context);
             }
             if (restrictor) {
@@ -460,7 +432,6 @@ std::vector<std::shared_ptr<query::SecIdxRestrictor>> getSecIndexRestrictors(que
     }
     return result;
 }
-
 
 /**
  * @brief Looks in the WHERE clause for use of columns from chunked tables where chunk restrictions can
@@ -476,22 +447,14 @@ void handleSecondaryIndex(query::WhereClause& whereClause, query::QueryContext& 
     context.addSecIdxRestrictors(secIndexPreds);
 }
 
+}  // anonymous namespace
 
-} // anonymous namespace
-
-
-namespace lsst {
-namespace qserv {
-namespace qana {
-
+namespace lsst { namespace qserv { namespace qana {
 
 ////////////////////////////////////////////////////////////////////////
 // QservRestrictorPlugin implementation
 ////////////////////////////////////////////////////////////////////////
-void
-QservRestrictorPlugin::applyLogical(query::SelectStmt& stmt,
-                                    query::QueryContext& context) {
-
+void QservRestrictorPlugin::applyLogical(query::SelectStmt& stmt, query::QueryContext& context) {
     // Idea: For each of the qserv restrictors in the WHERE clause,
     // rewrite in the context of whatever chunked tables exist in the
     // FROM list.
@@ -501,7 +464,9 @@ QservRestrictorPlugin::applyLogical(query::SelectStmt& stmt,
     }
 
     // If there's no where clause then there's no need to do any work here.
-    if (!stmt.hasWhereClause()) { return; }
+    if (!stmt.hasWhereClause()) {
+        return;
+    }
 
     // Prepare to patch the WHERE clause
     query::WhereClause& whereClause = stmt.getWhereClause();
@@ -520,8 +485,8 @@ QservRestrictorPlugin::applyLogical(query::SelectStmt& stmt,
         // Get scisql restrictor if there is exactly one of them
         auto scisqlFunc = extractSingleScisqlAreaFunc(whereClause);
         if (scisqlFunc != nullptr) {
-            // Attempt to convirt the scisql restrictor to an AreaRestrictor. This will fail if any parameter in
-            // the scisql function is NOT a const val.
+            // Attempt to convirt the scisql restrictor to an AreaRestrictor. This will fail if any parameter
+            // in the scisql function is NOT a const val.
             auto areaRestrictor = makeAreaRestrictor(*scisqlFunc);
             if (areaRestrictor != nullptr) {
                 LOGS(_log, LOG_LVL_TRACE, "Adding restrictor: " << *areaRestrictor);
@@ -533,11 +498,8 @@ QservRestrictorPlugin::applyLogical(query::SelectStmt& stmt,
     handleSecondaryIndex(whereClause, context);
 }
 
-
-void QservRestrictorPlugin::applyPhysical(QueryPlugin::Plan& p,
-                                          query::QueryContext& context) {
+void QservRestrictorPlugin::applyPhysical(QueryPlugin::Plan& p, query::QueryContext& context) {
     // Probably nothing is needed here...
 }
 
-
-}}} // namespace lsst::qserv::qana
+}}}  // namespace lsst::qserv::qana

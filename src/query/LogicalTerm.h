@@ -21,30 +21,22 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-
 #ifndef LSST_QSERV_QUERY_LOGICALTERM_H
 #define LSST_QSERV_QUERY_LOGICALTERM_H
 
-
 #include "query/BoolTerm.h"
 
-
-namespace lsst {
-namespace qserv {
-namespace query {
-
+namespace lsst { namespace qserv { namespace query {
 
 class BoolFactor;
 class ColumnRef;
 class ValueExpr;
 
-
 class LogicalTerm : public BoolTerm {
 public:
-
     LogicalTerm() {}
     LogicalTerm(std::vector<std::shared_ptr<BoolTerm>> const& terms) : _terms(terms) {}
-    LogicalTerm(std::shared_ptr<BoolTerm> const & term) : _terms({term}) {}
+    LogicalTerm(std::shared_ptr<BoolTerm> const& term) : _terms({term}) {}
 
     /// Get an iterator to the beginning of the terms this contains.
     std::vector<std::shared_ptr<BoolTerm>>::iterator iterBegin() override { return _terms.begin(); }
@@ -59,7 +51,8 @@ public:
     void setBoolTerms(const std::vector<std::shared_ptr<BoolTerm>>& terms);
 
     /// Set the list of BoolFactors owned by this class.
-    void setBoolTerms(const std::vector<std::shared_ptr<BoolFactor>>& terms); // not needed? BoolFactor inherits from BoolTerm...
+    void setBoolTerms(const std::vector<std::shared_ptr<BoolFactor>>&
+                              terms);  // not needed? BoolFactor inherits from BoolTerm...
 
     /// Get a vector of the ValueExprs this contains.
     void findValueExprs(std::vector<std::shared_ptr<ValueExpr>>& vector) const override;
@@ -80,7 +73,6 @@ public:
     std::vector<std::shared_ptr<BoolTerm>> _terms;
 };
 
+}}}  // namespace lsst::qserv::query
 
-}}} // namespace lsst::qserv::query
-
-#endif // LSST_QSERV_QUERY_LOGICALTERM_H
+#endif  // LSST_QSERV_QUERY_LOGICALTERM_H

@@ -28,7 +28,6 @@
 // LSST headers
 #include "lsst/log/Log.h"
 
-
 // Qserv headers
 #include "css/CssAccess.h"
 #include "css/EmptyChunks.h"
@@ -40,29 +39,25 @@ namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.ccontrol.UserQueryFlushChunksCache");
 }
 
-namespace lsst {
-namespace qserv {
-namespace ccontrol {
+namespace lsst { namespace qserv { namespace ccontrol {
 
 // Constructor
 UserQueryFlushChunksCache::UserQueryFlushChunksCache(std::shared_ptr<css::CssAccess> const& css,
                                                      std::string const& dbName,
                                                      sql::SqlConnection* resultDbConn)
-    : _css(css), _dbName(dbName), _resultDbConn(resultDbConn),
-      _qState(UNKNOWN), _messageStore(std::make_shared<qdisp::MessageStore>()) {
-}
+        : _css(css),
+          _dbName(dbName),
+          _resultDbConn(resultDbConn),
+          _qState(UNKNOWN),
+          _messageStore(std::make_shared<qdisp::MessageStore>()) {}
 
-std::string UserQueryFlushChunksCache::getError() const {
-    return std::string();
-}
+std::string UserQueryFlushChunksCache::getError() const { return std::string(); }
 
 // Attempt to kill in progress.
-void UserQueryFlushChunksCache::kill() {
-}
+void UserQueryFlushChunksCache::kill() {}
 
 // Submit or execute the query.
 void UserQueryFlushChunksCache::submit() {
-
     LOGS(_log, LOG_LVL_INFO, "Flushing empty chunks for db: " << _dbName);
 
     // reset empty chunk cache , this does not throw
@@ -84,4 +79,4 @@ void UserQueryFlushChunksCache::discard() {
     // no resources
 }
 
-}}} // lsst::qserv::ccontrol
+}}}  // namespace lsst::qserv::ccontrol

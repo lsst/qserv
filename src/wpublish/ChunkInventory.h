@@ -38,31 +38,23 @@
 #include "mysql/MySqlConfig.h"
 
 // Forward declarations
-namespace lsst {
-namespace qserv {
-namespace sql {
-    class SqlConnection;
-}}}
+namespace lsst { namespace qserv { namespace sql {
+class SqlConnection;
+}}}  // namespace lsst::qserv::sql
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace wpublish {
+namespace lsst { namespace qserv { namespace wpublish {
 
 /// Exception class for reporting problems with parameter values
 class InvalidParamError : public std::runtime_error {
 public:
-    InvalidParamError (std::string const& msg)
-        :   std::runtime_error(msg) {
-    }
+    InvalidParamError(std::string const& msg) : std::runtime_error(msg) {}
 };
 
 /// Exception class for reporting problems during query processing
 class QueryError : public std::runtime_error {
 public:
-    QueryError (std::string const& msg)
-        :   std::runtime_error(msg) {
-    }
+    QueryError(std::string const& msg) : std::runtime_error(msg) {}
 };
 
 /**
@@ -72,14 +64,12 @@ public:
  * the existence of certain xrootd paths.
  */
 class ChunkInventory {
-
 public:
-
     // These should be converted to unordered_* with C++11
     typedef std::set<int> ChunkMap;
     typedef std::map<std::string, ChunkMap> ExistMap;
 
-    typedef std::shared_ptr<ChunkInventory>       Ptr;
+    typedef std::shared_ptr<ChunkInventory> Ptr;
     typedef std::shared_ptr<ChunkInventory const> CPtr;
 
     ChunkInventory() = default;
@@ -128,7 +118,6 @@ public:
     friend ChunkInventory::ExistMap operator-(ChunkInventory const& lhs, ChunkInventory const& rhs);
 
 private:
-
     void _init(sql::SqlConnection& sc);
     void _rebuild(sql::SqlConnection& sc);
 
@@ -146,7 +135,6 @@ private:
 /// @return databases and chunks known to 'lhs' and which are not in 'rhs
 ChunkInventory::ExistMap operator-(ChunkInventory const& lhs, ChunkInventory const& rhs);
 
+}}}  // namespace lsst::qserv::wpublish
 
-}}} // namespace lsst::qserv::wpublish
-
-#endif // LSST_QSERV_WPUBLISH_CHUNKINVENTORY_H
+#endif  // LSST_QSERV_WPUBLISH_CHUNKINVENTORY_H

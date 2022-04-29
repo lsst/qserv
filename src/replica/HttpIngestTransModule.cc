@@ -47,55 +47,46 @@ using json = nlohmann::json;
 using namespace lsst::qserv::replica;
 
 namespace {
-    float const GiB = 1024 * 1024 * 1024;
+float const GiB = 1024 * 1024 * 1024;
 
-    template <typename T>
-    void incrementBy(json& obj, string const& key, T const val) {
-        T const prev = obj[key].get<T>();
-        obj[key] = prev + val;
-    }
+template <typename T>
+void incrementBy(json& obj, string const& key, T const val) {
+    T const prev = obj[key].get<T>();
+    obj[key] = prev + val;
 }
+}  // namespace
 
-namespace lsst {
-namespace qserv {
-namespace replica {
-
+namespace lsst { namespace qserv { namespace replica {
 
 void HttpIngestTransModule::process(Controller::Ptr const& controller,
-                                    NamedMutexRegistry& transactionMutexRegistry,
-                                    string const& taskName,
+                                    NamedMutexRegistry& transactionMutexRegistry, string const& taskName,
                                     HttpProcessorConfig const& processorConfig,
-                                    qhttp::Request::Ptr const& req,
-                                    qhttp::Response::Ptr const& resp,
-                                    string const& subModuleName,
-                                    HttpAuthType const authType) {
+                                    qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp,
+                                    string const& subModuleName, HttpAuthType const authType) {
     HttpIngestTransModule module(controller, transactionMutexRegistry, taskName, processorConfig, req, resp);
     module.execute(subModuleName, authType);
 }
 
-
-HttpIngestTransModule::HttpIngestTransModule(
-            Controller::Ptr const& controller,
-            NamedMutexRegistry& transactionMutexRegistry,
-            string const& taskName,
-            HttpProcessorConfig const& processorConfig,
-            qhttp::Request::Ptr const& req,
-            qhttp::Response::Ptr const& resp)
-    :   HttpModule(controller, taskName, processorConfig, req, resp),
-        _transactionMutexRegistry(transactionMutexRegistry) {
-}
-
+HttpIngestTransModule::HttpIngestTransModule(Controller::Ptr const& controller,
+                                             NamedMutexRegistry& transactionMutexRegistry,
+                                             string const& taskName,
+                                             HttpProcessorConfig const& processorConfig,
+                                             qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp)
+        : HttpModule(controller, taskName, processorConfig, req, resp),
+          _transactionMutexRegistry(transactionMutexRegistry) {}
 
 json HttpIngestTransModule::executeImpl(string const& subModuleName) {
-    if (subModuleName == "TRANSACTIONS") return _getTransactions();
-    else if (subModuleName == "SELECT-TRANSACTION-BY-ID") return _getTransaction();
-    else if (subModuleName == "BEGIN-TRANSACTION") return _beginTransaction();
-    else if (subModuleName == "END-TRANSACTION") return _endTransaction();
-    throw invalid_argument(
-            context() + "::" + string(__func__) +
-            "  unsupported sub-module: '" + subModuleName + "'");
+    if (subModuleName == "TRANSACTIONS")
+        return _getTransactions();
+    else if (subModuleName == "SELECT-TRANSACTION-BY-ID")
+        return _getTransaction();
+    else if (subModuleName == "BEGIN-TRANSACTION")
+        return _beginTransaction();
+    else if (subModuleName == "END-TRANSACTION")
+        return _endTransaction();
+    throw invalid_argument(context() + "::" + string(__func__) + "  unsupported sub-module: '" +
+                           subModuleName + "'");
 }
-
 
 json HttpIngestTransModule::_getTransactions() {
     debug(__func__);
@@ -103,10 +94,10 @@ json HttpIngestTransModule::_getTransactions() {
     auto const config = controller()->serviceProvider()->config();
     auto const databaseServices = controller()->serviceProvider()->databaseServices();
 
-    auto const database     = query().optionalString("database");
-    auto const family       = query().optionalString("family");
+    auto const database = query().optionalString("database");
+    auto const family = query().optionalString("family");
     auto const allDatabases = query().optionalUInt64("all_databases", 0) != 0;
-    auto const isPublished  = query().optionalUInt64("is_published",  0) != 0;
+    auto const isPublished = query().optionalUInt64("is_published", 0) != 0;
     auto const includeContributions = query().optionalUInt64("contrib", 0) != 0;
     auto const longContribFormat = query().optionalUInt64("contrib_long", 0) != 0;
     bool const includeContext = query().optionalUInt64("include_context", 0) != 0;
@@ -131,7 +122,7 @@ json HttpIngestTransModule::_getTransactions() {
     bool const allWorkers = true;
     json result;
     result["databases"] = json::object();
-    for (auto&& database: databases) {
+    for (auto&& database : databases) {
         auto const databaseInfo = config->databaseInfo(database);
         vector<unsigned int> chunks;
         databaseServices->findDatabaseChunks(chunks, database, allWorkers);
@@ -139,18 +130,16 @@ json HttpIngestTransModule::_getTransactions() {
         result["databases"][database]["is_published"] = databaseInfo.isPublished ? 1 : 0;
         result["databases"][database]["num_chunks"] = chunks.size();
         result["databases"][database]["transactions"] = json::array();
-        for (auto&& transaction: databaseServices->transactions(database, includeContext, includeLog)) {
+        for (auto&& transaction : databaseServices->transactions(database, includeContext, includeLog)) {
             json transJson = transaction.toJson();
             if (includeContributions) {
-                transJson["contrib"] =
-                    _getTransactionContributions(transaction, longContribFormat);
+                transJson["contrib"] = _getTransactionContributions(transaction, longContribFormat);
             }
             result["databases"][database]["transactions"].push_back(transJson);
         }
     }
     return result;
 }
-
 
 json HttpIngestTransModule::_getTransaction() {
     debug(__func__);
@@ -177,8 +166,7 @@ json HttpIngestTransModule::_getTransaction() {
 
     json transJson = transaction.toJson();
     if (includeContributions) {
-        transJson["contrib"] =
-            _getTransactionContributions(transaction, longContribFormat);
+        transJson["contrib"] = _getTransactionContributions(transaction, longContribFormat);
     }
     json result;
     result["databases"][transaction.database]["is_published"] = databaseInfo.isPublished ? 1 : 0;
@@ -186,7 +174,6 @@ json HttpIngestTransModule::_getTransaction() {
     result["databases"][transaction.database]["transactions"].push_back(transJson);
     return result;
 }
-
 
 json HttpIngestTransModule::_beginTransaction() {
     debug(__func__);
@@ -229,18 +216,21 @@ json HttpIngestTransModule::_beginTransaction() {
         // registration time.
         if (autoBuildSecondaryIndex(database)) {
             string const transEvent = "add dir idx part";
-            for (auto&& directorTable: databaseInfo.directorTables()) {
+            for (auto&& directorTable : databaseInfo.directorTables()) {
                 json transEventData = {{"table", directorTable}};
-                transaction = databaseServices->updateTransaction(transaction.id, "begin " + transEvent, transEventData);
+                transaction = databaseServices->updateTransaction(transaction.id, "begin " + transEvent,
+                                                                  transEventData);
                 transEventData["success"] = 1;
                 transEventData["error"] = string();
                 try {
                     _addPartitionToSecondaryIndex(databaseInfo, transaction.id, directorTable);
-                    transaction = databaseServices->updateTransaction(transaction.id, "end " + transEvent, transEventData);
+                    transaction = databaseServices->updateTransaction(transaction.id, "end " + transEvent,
+                                                                      transEventData);
                 } catch (exception const& ex) {
                     transEventData["success"] = 0;
                     transEventData["error"] = string(ex.what());
-                    transaction = databaseServices->updateTransaction(transaction.id, "end " + transEvent, transEventData);
+                    transaction = databaseServices->updateTransaction(transaction.id, "end " + transEvent,
+                                                                      transEventData);
                     throw;
                 }
             }
@@ -258,14 +248,14 @@ json HttpIngestTransModule::_beginTransaction() {
         // The safety check is needed to ensure the transaction object was created
         // and recorded in the database.
         if (transaction.isValid()) {
-            transaction = databaseServices->updateTransaction(transaction.id, TransactionInfo::State::START_FAILED);
+            transaction =
+                    databaseServices->updateTransaction(transaction.id, TransactionInfo::State::START_FAILED);
         }
         _logTransactionMgtEvent("BEGIN TRANSACTION", "FAILED", transaction.id, database,
                                 "operation failed due to: " + string(ex.what()));
         throw;
     }
 }
-
 
 json HttpIngestTransModule::_endTransaction() {
     debug(__func__);
@@ -278,7 +268,7 @@ json HttpIngestTransModule::_endTransaction() {
     const bool hasContext = body().has("context");
     json const context = body().optional<json>("context", json::object());
 
-    debug(__func__, "id="    + to_string(id));
+    debug(__func__, "id=" + to_string(id));
     debug(__func__, "abort=" + to_string(abort ? 1 : 0));
 
     // The transient lock on the named mutex will be acquired to guarantee exclusive control
@@ -291,12 +281,14 @@ json HttpIngestTransModule::_endTransaction() {
 
     // At this point the transaction state is guaranteed not to be changed by others.
     TransactionInfo transaction = databaseServices->transaction(id);
-    auto const operationIsAllowed = TransactionInfo::stateTransitionIsAllowed(transaction.state, abort ?
-            TransactionInfo::State::IS_ABORTING : TransactionInfo::State::IS_FINISHING);
+    auto const operationIsAllowed = TransactionInfo::stateTransitionIsAllowed(
+            transaction.state,
+            abort ? TransactionInfo::State::IS_ABORTING : TransactionInfo::State::IS_FINISHING);
     if (!operationIsAllowed) {
-        throw HttpError(
-                __func__, "transaction id=" + to_string(id) + " can't be ended at this time"
-                " because of state=" + TransactionInfo::state2string(transaction.state) + ".");
+        throw HttpError(__func__, "transaction id=" + to_string(id) +
+                                          " can't be ended at this time"
+                                          " because of state=" +
+                                          TransactionInfo::state2string(transaction.state) + ".");
     }
 
     string const database = transaction.database;
@@ -310,8 +302,8 @@ json HttpIngestTransModule::_endTransaction() {
     // or the Replication/Ingest system would result in transitioning the transaction
     // into a failed state ABORT_FAILED or FINISH_FAILED.
     try {
-        transaction = databaseServices->updateTransaction(id, abort ?
-                TransactionInfo::State::IS_ABORTING : TransactionInfo::State::IS_FINISHING);
+        transaction = databaseServices->updateTransaction(
+                id, abort ? TransactionInfo::State::IS_ABORTING : TransactionInfo::State::IS_FINISHING);
         if (hasContext) {
             transaction = databaseServices->updateTransaction(id, context);
         }
@@ -320,11 +312,12 @@ json HttpIngestTransModule::_endTransaction() {
         string const noParentJobId;
         if (abort) {
             // Drop the transaction-specific MySQL partition from the relevant tables.
-            auto const job = AbortTransactionJob::create(
-                    id, allWorkers, controller(), noParentJobId, nullptr,
-                    config->get<int>("controller", "ingest-priority-level"));
+            auto const job =
+                    AbortTransactionJob::create(id, allWorkers, controller(), noParentJobId, nullptr,
+                                                config->get<int>("controller", "ingest-priority-level"));
 
-            chrono::milliseconds const jobMonitoringIval(1000 * config->get<unsigned int>("controller", "ingest-job-monitor-ival-sec"));
+            chrono::milliseconds const jobMonitoringIval(
+                    1000 * config->get<unsigned int>("controller", "ingest-job-monitor-ival-sec"));
             string const transEvent = "del table part";
             json transEventData = {{"job", job->id()}};
             transaction = databaseServices->updateTransaction(id, "begin " + transEvent, transEventData);
@@ -350,18 +343,22 @@ json HttpIngestTransModule::_endTransaction() {
             // a catalog ingest workflow at the database registration time.
             if (autoBuildSecondaryIndex(database)) {
                 string const transEvent = "del dir idx part";
-                for (auto&& directorTable: databaseInfo.directorTables()) {;
+                for (auto&& directorTable : databaseInfo.directorTables()) {
+                    ;
                     json transEventData = {{"table", directorTable}};
-                    transaction = databaseServices->updateTransaction(id, "begin " + transEvent, transEventData);
+                    transaction =
+                            databaseServices->updateTransaction(id, "begin " + transEvent, transEventData);
                     transEventData["success"] = 1;
                     transEventData["error"] = string();
                     try {
                         _removePartitionFromSecondaryIndex(databaseInfo, id, directorTable);
-                        transaction = databaseServices->updateTransaction(id, "end " + transEvent, transEventData);
+                        transaction =
+                                databaseServices->updateTransaction(id, "end " + transEvent, transEventData);
                     } catch (exception const& ex) {
                         transEventData["success"] = 0;
                         transEventData["error"] = string(ex.what());
-                        transaction = databaseServices->updateTransaction(id, "end " + transEvent, transEventData);
+                        transaction =
+                                databaseServices->updateTransaction(id, "end " + transEvent, transEventData);
                         throw;
                     }
                 }
@@ -371,27 +368,20 @@ json HttpIngestTransModule::_endTransaction() {
             // by a catalog ingest workflow at the database registration time.
             if (autoBuildSecondaryIndex(database)) {
                 secondaryIndexBuildSuccess = true;
-                chrono::milliseconds const jobMonitoringIval(1000 * config->get<unsigned int>("controller", "ingest-job-monitor-ival-sec"));
+                chrono::milliseconds const jobMonitoringIval(
+                        1000 * config->get<unsigned int>("controller", "ingest-job-monitor-ival-sec"));
                 string const transEvent = "bld dir idx";
-                for (auto&& directorTable: databaseInfo.directorTables()) {
+                for (auto&& directorTable : databaseInfo.directorTables()) {
                     bool const hasTransactions = true;
                     string const destinationPath = database + "__" + directorTable;
                     auto const job = IndexJob::create(
-                        database,
-                        directorTable,
-                        hasTransactions,
-                        id,
-                        allWorkers,
-                        IndexJob::TABLE,
-                        destinationPath,
-                        localLoadSecondaryIndex(database),
-                        controller(),
-                        noParentJobId,
-                        nullptr,        // no callback
-                        config->get<int>("controller", "ingest-priority-level")
-                    );
+                            database, directorTable, hasTransactions, id, allWorkers, IndexJob::TABLE,
+                            destinationPath, localLoadSecondaryIndex(database), controller(), noParentJobId,
+                            nullptr,  // no callback
+                            config->get<int>("controller", "ingest-priority-level"));
                     json transEventData = {{"job", job->id()}, {"table", directorTable}};
-                    transaction = databaseServices->updateTransaction(id, "begin " + transEvent, transEventData);
+                    transaction =
+                            databaseServices->updateTransaction(id, "begin " + transEvent, transEventData);
 
                     job->start();
                     logJobStartedEvent(IndexJob::typeName(), job, databaseInfo.family);
@@ -401,19 +391,20 @@ json HttpIngestTransModule::_endTransaction() {
                         transaction = databaseServices->updateTransaction(id, "progress " + transEvent, data);
                     });
                     logJobFinishedEvent(IndexJob::typeName(), job, databaseInfo.family);
-                    secondaryIndexBuildSuccess = secondaryIndexBuildSuccess && (job->extendedState() == Job::SUCCESS);
+                    secondaryIndexBuildSuccess =
+                            secondaryIndexBuildSuccess && (job->extendedState() == Job::SUCCESS);
 
                     transEventData["success"] = job->extendedState() == Job::ExtendedState::SUCCESS ? 1 : 0;
                     transEventData["error"] = job->getResultData().toJson();
-                    transaction = databaseServices->updateTransaction(id, "end " + transEvent, transEventData);
+                    transaction =
+                            databaseServices->updateTransaction(id, "end " + transEvent, transEventData);
                 }
             }
         }
-        transaction = databaseServices->updateTransaction(id, abort ?
-                TransactionInfo::State::ABORTED : TransactionInfo::State::FINISHED);
+        transaction = databaseServices->updateTransaction(
+                id, abort ? TransactionInfo::State::ABORTED : TransactionInfo::State::FINISHED);
 
-        _logTransactionMgtEvent(abort ? "ABORT TRANSACTION" : "COMMIT TRANSACTION",
-                "SUCCESS", id, database);
+        _logTransactionMgtEvent(abort ? "ABORT TRANSACTION" : "COMMIT TRANSACTION", "SUCCESS", id, database);
 
         json result;
         result["secondary-index-build-success"] = secondaryIndexBuildSuccess ? 1 : 0;
@@ -422,18 +413,17 @@ json HttpIngestTransModule::_endTransaction() {
         return result;
 
     } catch (exception const& ex) {
-        _logTransactionMgtEvent(abort ? "ABORT TRANSACTION" : "COMMIT TRANSACTION",
-                "FAILED", id, database,
-                "operation failed due to: " + string(ex.what()));
-        transaction = databaseServices->updateTransaction(id, abort ?
-                TransactionInfo::State::ABORT_FAILED : TransactionInfo::State::FINISH_FAILED);
+        _logTransactionMgtEvent(abort ? "ABORT TRANSACTION" : "COMMIT TRANSACTION", "FAILED", id, database,
+                                "operation failed due to: " + string(ex.what()));
+        transaction = databaseServices->updateTransaction(
+                id, abort ? TransactionInfo::State::ABORT_FAILED : TransactionInfo::State::FINISH_FAILED);
         throw;
     }
 }
 
-void HttpIngestTransModule::_logTransactionMgtEvent(
-        string const& operation, string const& status, TransactionId id,
-        string const& database, string const& msg) const {
+void HttpIngestTransModule::_logTransactionMgtEvent(string const& operation, string const& status,
+                                                    TransactionId id, string const& database,
+                                                    string const& msg) const {
     ControllerEvent event;
     event.operation = operation;
     event.status = status;
@@ -443,24 +433,21 @@ void HttpIngestTransModule::_logTransactionMgtEvent(
     logEvent(event);
 }
 
-
 void HttpIngestTransModule::_addPartitionToSecondaryIndex(DatabaseInfo const& databaseInfo,
                                                           TransactionId transactionId,
                                                           string const& directorTable) const {
     if (!databaseInfo.isDirector(directorTable)) {
-        throw logic_error(
-                "table '" + directorTable + "' is not configured in database '" +
-                databaseInfo.name + "' as the director table");
+        throw logic_error("table '" + directorTable + "' is not configured in database '" +
+                          databaseInfo.name + "' as the director table");
     }
 
     // Manage the new connection via the RAII-style handler to ensure the transaction
     // is automatically rolled-back in case of exceptions.
 
     database::mysql::ConnectionHandler const h(qservMasterDbConnection("qservMeta"));
-    string const query =
-        "ALTER TABLE " + h.conn->sqlId(databaseInfo.name + "__" + directorTable) +
-        " ADD PARTITION (PARTITION `p" + to_string(transactionId) + "` VALUES IN (" + to_string(transactionId) +
-        ") ENGINE=InnoDB)";
+    string const query = "ALTER TABLE " + h.conn->sqlId(databaseInfo.name + "__" + directorTable) +
+                         " ADD PARTITION (PARTITION `p" + to_string(transactionId) + "` VALUES IN (" +
+                         to_string(transactionId) + ") ENGINE=InnoDB)";
 
     debug(__func__, query);
 
@@ -471,23 +458,20 @@ void HttpIngestTransModule::_addPartitionToSecondaryIndex(DatabaseInfo const& da
     });
 }
 
-
 void HttpIngestTransModule::_removePartitionFromSecondaryIndex(DatabaseInfo const& databaseInfo,
                                                                TransactionId transactionId,
                                                                string const& directorTable) const {
     if (!databaseInfo.isDirector(directorTable)) {
-        throw logic_error(
-                "table '" + directorTable + "' is not configured in database '" +
-                databaseInfo.name + "' as the director table");
+        throw logic_error("table '" + directorTable + "' is not configured in database '" +
+                          databaseInfo.name + "' as the director table");
     }
 
     // Manage the new connection via the RAII-style handler to ensure the transaction
     // is automatically rolled-back in case of exceptions.
 
     database::mysql::ConnectionHandler const h(qservMasterDbConnection("qservMeta"));
-    string const query =
-        "ALTER TABLE " + h.conn->sqlId(databaseInfo.name + "__" + directorTable) +
-        " DROP PARTITION `p" + to_string(transactionId) + "`";
+    string const query = "ALTER TABLE " + h.conn->sqlId(databaseInfo.name + "__" + directorTable) +
+                         " DROP PARTITION `p" + to_string(transactionId) + "`";
 
     debug(__func__, query);
 
@@ -503,7 +487,6 @@ void HttpIngestTransModule::_removePartitionFromSecondaryIndex(DatabaseInfo cons
         ;
     }
 }
-
 
 json HttpIngestTransModule::_getTransactionContributions(TransactionInfo const& transactionInfo,
                                                          bool longContribFormat) const {
@@ -525,12 +508,11 @@ json HttpIngestTransModule::_getTransactionContributions(TransactionInfo const& 
     json transContribFilesJson = json::array();
 
     json numFilesByStatusJson = json::object();
-    for (auto status: TransactionContribInfo::statusCodes()) {
+    for (auto status : TransactionContribInfo::statusCodes()) {
         numFilesByStatusJson[TransactionContribInfo::status2str(status)] = 0;
     }
 
-    for (auto&& contrib: databaseServices->transactionContribs(transactionInfo.id)) {
-
+    for (auto&& contrib : databaseServices->transactionContribs(transactionInfo.id)) {
         // Always include detailed into on the contributions
         if (longContribFormat) transContribFilesJson.push_back(contrib.toJson());
 
@@ -552,30 +534,22 @@ json HttpIngestTransModule::_getTransactionContributions(TransactionInfo const& 
         //   The second issue is related to operator '+=' that's implemented in the library
         //   as container's 'push_back'! The code below avoid using this operator.
         if (!tableContribJson.contains(contrib.table)) {
-            tableContribJson[contrib.table] = json::object({
-                {"data_size_gb", 0},
-                {"num_rows", 0},
-                {"num_files", 0}
-            });
+            tableContribJson[contrib.table] =
+                    json::object({{"data_size_gb", 0}, {"num_rows", 0}, {"num_files", 0}});
         }
         if (!workerContribJson.contains(contrib.worker)) {
-            workerContribJson[contrib.worker] = json::object({
-                {"data_size_gb", 0},
-                {"num_rows", 0},
-                {"num_chunk_overlap_files", 0},
-                {"num_chunk_files", 0},
-                {"num_regular_files", 0}
-            });
+            workerContribJson[contrib.worker] = json::object({{"data_size_gb", 0},
+                                                              {"num_rows", 0},
+                                                              {"num_chunk_overlap_files", 0},
+                                                              {"num_chunk_files", 0},
+                                                              {"num_regular_files", 0}});
         }
         json& objWorker = workerContribJson[contrib.worker];
         if (databaseInfo.isPartitioned(contrib.table)) {
             if (contrib.isOverlap) {
                 if (!tableContribJson[contrib.table].contains("overlap")) {
-                    tableContribJson[contrib.table]["overlap"] = json::object({
-                        {"data_size_gb", 0},
-                        {"num_rows", 0},
-                        {"num_files", 0}
-                    });
+                    tableContribJson[contrib.table]["overlap"] =
+                            json::object({{"data_size_gb", 0}, {"num_rows", 0}, {"num_files", 0}});
                 }
                 json& objTable = tableContribJson[contrib.table]["overlap"];
                 incrementBy<float>(objTable, "data_size_gb", contribDataSizeGb);
@@ -609,25 +583,23 @@ json HttpIngestTransModule::_getTransactionContributions(TransactionInfo const& 
         lastContribEndTime = max(lastContribEndTime, contrib.loadTime);
     }
     json resultJson;
-    resultJson["summary"] = json::object({
-        {"num_workers", uniqueWorkers.size()},
-        {"num_files_by_status", numFilesByStatusJson},
-        {"num_regular_files", numRegularFiles},
-        {"num_chunk_files", numChunkFiles},
-        {"num_chunk_overlap_files", numChunkOverlapFiles},
-        {"data_size_gb", dataSizeGb},
-        {"num_rows", numRows},
-        // Force 0 if no contribution has been made
-        {"first_contrib_begin", firstContribBeginTime == numeric_limits<uint64_t>::max() ?
-                0 : firstContribBeginTime},
-        // Will be 0 if none of the contributions has finished yet, or all have failed.
-        {"last_contrib_end", lastContribEndTime},
-        {"table", tableContribJson},
-        {"worker", workerContribJson}
-    });
+    resultJson["summary"] = json::object(
+            {{"num_workers", uniqueWorkers.size()},
+             {"num_files_by_status", numFilesByStatusJson},
+             {"num_regular_files", numRegularFiles},
+             {"num_chunk_files", numChunkFiles},
+             {"num_chunk_overlap_files", numChunkOverlapFiles},
+             {"data_size_gb", dataSizeGb},
+             {"num_rows", numRows},
+             // Force 0 if no contribution has been made
+             {"first_contrib_begin",
+              firstContribBeginTime == numeric_limits<uint64_t>::max() ? 0 : firstContribBeginTime},
+             // Will be 0 if none of the contributions has finished yet, or all have failed.
+             {"last_contrib_end", lastContribEndTime},
+             {"table", tableContribJson},
+             {"worker", workerContribJson}});
     resultJson["files"] = transContribFilesJson;
     return resultJson;
 }
-
 
 }}}  // namespace lsst::qserv::replica

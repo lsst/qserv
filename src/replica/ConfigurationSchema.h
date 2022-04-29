@@ -32,17 +32,14 @@
 #include "nlohmann/json.hpp"
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 namespace detail {
 
 template <typename T>
 struct EmptyValueValidator {
     static void validate(T const& val) {
         if (val == 0) {
-            throw std::invalid_argument(
-                    "ConfigurationSchema::EmptyValueValidator: 0 is not permited.");
+            throw std::invalid_argument("ConfigurationSchema::EmptyValueValidator: 0 is not permited.");
         }
     }
 };
@@ -56,7 +53,7 @@ struct EmptyValueValidator<std::string> {
         }
     }
 };
-}   // namespace detail
+}  // namespace detail
 
 /**
  * This utility class ConfigurationSchema provides methods returning known JSON schemas of
@@ -111,7 +108,6 @@ public:
 
     template <typename T>
     static void validate(std::string const& category, std::string const& param, T const& val) {
-
         // The test for parameters that have "zero" numeric value or the "empty"
         // string restrictions.
         if (!_emptyAllowed(category, param)) detail::EmptyValueValidator<T>::validate(val);
@@ -121,23 +117,23 @@ public:
         if (restrictor.is_null()) return;
         std::string const type = restrictor.at("type").get<std::string>();
         if (type != "set") {
-            throw std::runtime_error(
-                    "ConfigurationSchema::" + std::string(__func__) + " unsupported restrictor type: '"
-                    + type + "', category: '" + category + "', param: '" + param + "'.");
+            throw std::runtime_error("ConfigurationSchema::" + std::string(__func__) +
+                                     " unsupported restrictor type: '" + type + "', category: '" + category +
+                                     "', param: '" + param + "'.");
         }
-        for (auto&& obj: restrictor.at("values")) {
+        for (auto&& obj : restrictor.at("values")) {
             if (obj.get<T>() == val) return;
         }
         throw std::invalid_argument(
-                "ConfigurationSchema::" + std::string(__func__)
-                + " a value of the parameter isn't allowed due to schema restrictions, category: '"
-                + category + "', param: '" + param + "'.");
+                "ConfigurationSchema::" + std::string(__func__) +
+                " a value of the parameter isn't allowed due to schema restrictions, category: '" + category +
+                "', param: '" + param + "'.");
     }
 
 private:
     /**
      * @brief Retreive a value of the parameter's attribute (allow default value).
-     * 
+     *
      * @tparam T The type of the attribute's value.
      * @param category The name of the parameter's category.
      * @param param The name of the parameter within its category.
@@ -147,8 +143,8 @@ private:
      * @return T The value of the attribute (or the default value).
      */
     template <typename T>
-    static T _attributeValue(std::string const& category, std::string const& param,
-                             std::string const& attr, T const& defaultValue) {
+    static T _attributeValue(std::string const& category, std::string const& param, std::string const& attr,
+                             T const& defaultValue) {
         auto const categoryItr = _schemaJson.find(category);
         if (categoryItr != _schemaJson.end()) {
             auto const paramItr = categoryItr->find(param);
@@ -162,7 +158,7 @@ private:
 
     /**
      * @brief Retreive a value of the parameter's attribute.
-     * 
+     *
      * @param category The name of the parameter's category.
      * @param param The name of the parameter within its category.
      * @param attr The name of the attribute.
@@ -185,6 +181,6 @@ private:
     static nlohmann::json const _schemaJson;
 };
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_CONFIGURATIONSCHEMA_H
+#endif  // LSST_QSERV_REPLICA_CONFIGURATIONSCHEMA_H

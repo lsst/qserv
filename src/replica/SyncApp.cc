@@ -37,62 +37,40 @@ using namespace std;
 namespace {
 
 string const description =
-    "This application synchronizes collections of chunks at the Qserv workers"
-    " with what the Replication system sees as 'good' chunks in the data directories."
-    " The maximum timeout (seconds) to wait before requests sent to the Qserv workers"
-    " will finish should be set using command line option --xrootd-request-timeout-sec."
-    " Setting the timeout to some reasonably low number would prevent the application from"
-    " hanging for a substantial duration of time (which depends on the default Configuration)"
-    " in case if some workers were down.";
+        "This application synchronizes collections of chunks at the Qserv workers"
+        " with what the Replication system sees as 'good' chunks in the data directories."
+        " The maximum timeout (seconds) to wait before requests sent to the Qserv workers"
+        " will finish should be set using command line option --xrootd-request-timeout-sec."
+        " Setting the timeout to some reasonably low number would prevent the application from"
+        " hanging for a substantial duration of time (which depends on the default Configuration)"
+        " in case if some workers were down.";
 
 bool const injectDatabaseOptions = true;
 bool const boostProtobufVersionCheck = true;
 bool const enableServiceProvider = true;
 
-} /// namespace
+}  // namespace
 
+namespace lsst { namespace qserv { namespace replica {
 
-namespace lsst {
-namespace qserv {
-namespace replica {
-
-SyncApp::Ptr SyncApp::create(int argc, char* argv[]) {
-    return Ptr(new SyncApp(argc, argv));
-}
-
+SyncApp::Ptr SyncApp::create(int argc, char* argv[]) { return Ptr(new SyncApp(argc, argv)); }
 
 SyncApp::SyncApp(int argc, char* argv[])
-    :   Application(
-            argc, argv,
-            ::description,
-            ::injectDatabaseOptions,
-            ::boostProtobufVersionCheck,
-            ::enableServiceProvider
-        ) {
-
+        : Application(argc, argv, ::description, ::injectDatabaseOptions, ::boostProtobufVersionCheck,
+                      ::enableServiceProvider) {
     // Configure the command line parser
 
-    parser().required(
-        "database-family",
-        "The name of a database family",
-        _databaseFamily
-    ).flag(
-        "force",
-        "Force the Qerv workers to proceed with requested chunk updates regardless of the chunk"
-        " usage status.",
-        _force
-    );
+    parser().required("database-family", "The name of a database family", _databaseFamily)
+            .flag("force",
+                  "Force the Qerv workers to proceed with requested chunk updates regardless of the chunk"
+                  " usage status.",
+                  _force);
 }
 
-
 int SyncApp::runImpl() {
-
     auto const job = QservSyncJob::create(
-        _databaseFamily,
-        serviceProvider()->config()->get<unsigned int>("xrootd", "request-timeout-sec"),
-        _force,
-        Controller::create(serviceProvider())
-    );
+            _databaseFamily, serviceProvider()->config()->get<unsigned int>("xrootd", "request-timeout-sec"),
+            _force, Controller::create(serviceProvider()));
     job->start();
     job->wait();
 
@@ -102,20 +80,21 @@ int SyncApp::runImpl() {
     vector<string> columnNumPrevChunks;
     vector<string> columnNumNewChunks;
 
-    for (auto&& workerEntry: replicaData.workers) {
+    for (auto&& workerEntry : replicaData.workers) {
+        string const& worker = workerEntry.first;
+        bool const succeeded = workerEntry.second;
 
-        string const& worker    = workerEntry.first;
-        bool   const  succeeded = workerEntry.second;
-
-        columnWorker       .push_back(worker);
-        columnNumPrevChunks.push_back(succeeded ? to_string(replicaData.prevReplicas.at(worker).size()) : "FAILED");
-        columnNumNewChunks .push_back(succeeded ? to_string(replicaData.newReplicas .at(worker).size()) : "FAILED");
+        columnWorker.push_back(worker);
+        columnNumPrevChunks.push_back(succeeded ? to_string(replicaData.prevReplicas.at(worker).size())
+                                                : "FAILED");
+        columnNumNewChunks.push_back(succeeded ? to_string(replicaData.newReplicas.at(worker).size())
+                                               : "FAILED");
     }
     util::ColumnTablePrinter table("CHUNK DISTRIBUTION:", "  ", false);
 
-    table.addColumn("worker",       columnWorker, util::ColumnTablePrinter::LEFT);
+    table.addColumn("worker", columnWorker, util::ColumnTablePrinter::LEFT);
     table.addColumn("prev #chunks", columnNumPrevChunks);
-    table.addColumn("new #chunks",  columnNumNewChunks);
+    table.addColumn("new #chunks", columnNumNewChunks);
 
     cout << "\n";
     table.print(cout, false, false);
@@ -123,4 +102,4 @@ int SyncApp::runImpl() {
     return 0;
 }
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica

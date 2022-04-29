@@ -21,17 +21,15 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 /**
-  * @file
-  *
-  * @brief GroupByClause is a representation of a group-by clause element.
-  *
-  * @author Daniel L. Wang, SLAC
-  */
-
+ * @file
+ *
+ * @brief GroupByClause is a representation of a group-by clause element.
+ *
+ * @author Daniel L. Wang, SLAC
+ */
 
 #ifndef LSST_QSERV_QUERY_GROUPBYCLAUSE_H
 #define LSST_QSERV_QUERY_GROUPBYCLAUSE_H
-
 
 // System headers
 #include <deque>
@@ -41,19 +39,12 @@
 // Qserv headers
 #include "query/typedefs.h"
 
-
 // Forward declarations
-namespace lsst {
-namespace qserv {
-namespace query {
-    class QueryTemplate;
-}}}
+namespace lsst { namespace qserv { namespace query {
+class QueryTemplate;
+}}}  // namespace lsst::qserv::query
 
-
-namespace lsst {
-namespace qserv {
-namespace query {
-
+namespace lsst { namespace qserv { namespace query {
 
 // GroupByTerm is a element of a GroupByClause
 class GroupByTerm {
@@ -64,8 +55,7 @@ public:
     GroupByTerm() {}
     ~GroupByTerm() {}
 
-    GroupByTerm(ValueExprPtr valueExpr, std::string collate)
-    : _expr(valueExpr), _collate(collate) {}
+    GroupByTerm(ValueExprPtr valueExpr, std::string collate) : _expr(valueExpr), _collate(collate) {}
 
     GroupByTerm(GroupByTerm const&) = default;
 
@@ -83,7 +73,6 @@ private:
     ValueExprPtr _expr;
     std::string _collate;
 };
-
 
 /// GroupByClause is a parsed GROUP BY ... element.
 class GroupByClause {
@@ -117,7 +106,6 @@ private:
     std::shared_ptr<List> _terms;
 };
 
+}}}  // namespace lsst::qserv::query
 
-}}} // namespace lsst::qserv::query
-
-#endif // LSST_QSERV_QUERY_GROUPBYCLAUSE_H
+#endif  // LSST_QSERV_QUERY_GROUPBYCLAUSE_H

@@ -41,30 +41,27 @@ namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.ccontrol.UserQueryAsyncResult");
 }
 
-namespace lsst {
-namespace qserv {
-namespace ccontrol {
+namespace lsst { namespace qserv { namespace ccontrol {
 
 // Constructors
-UserQueryAsyncResult::UserQueryAsyncResult(QueryId queryId,
-                                           qmeta::CzarId qMetaCzarId,
+UserQueryAsyncResult::UserQueryAsyncResult(QueryId queryId, qmeta::CzarId qMetaCzarId,
                                            std::shared_ptr<qmeta::QMeta> const& qMeta,
                                            sql::SqlConnection* resultDbConn)
-    : UserQuery(),
-      _queryId(queryId),
-      _qMetaCzarId(qMetaCzarId),
-      _qMeta(qMeta),
-      _resultDbConn(resultDbConn),
-      _messageStore(std::make_shared<qdisp::MessageStore>()) {
-
+        : UserQuery(),
+          _queryId(queryId),
+          _qMetaCzarId(qMetaCzarId),
+          _qMeta(qMeta),
+          _resultDbConn(resultDbConn),
+          _messageStore(std::make_shared<qdisp::MessageStore>()) {
     LOGS(_log, LOG_LVL_DEBUG, "UserQueryAsyncResult: QID=" << queryId);
 
     // get query info from QMeta
     try {
         _qInfo = qMeta->getQueryInfo(queryId);
-        LOGS(_log, LOG_LVL_DEBUG, "found QMeta record: czar=" << _qInfo.czarId()
-             << " status=" << _qInfo.queryStatus() << " resultLoc=" << _qInfo.resultLocation()
-             << " msgTableName=" << _qInfo.msgTableName());
+        LOGS(_log, LOG_LVL_DEBUG,
+             "found QMeta record: czar=" << _qInfo.czarId() << " status=" << _qInfo.queryStatus()
+                                         << " resultLoc=" << _qInfo.resultLocation()
+                                         << " msgTableName=" << _qInfo.msgTableName());
     } catch (qmeta::QueryIdError const& exc) {
         std::string message = "No job found for ID=" + std::to_string(queryId);
         LOGS(_log, LOG_LVL_DEBUG, message);
@@ -78,16 +75,11 @@ UserQueryAsyncResult::UserQueryAsyncResult(QueryId queryId,
 }
 
 // Destructor
-UserQueryAsyncResult::~UserQueryAsyncResult() {
-}
+UserQueryAsyncResult::~UserQueryAsyncResult() {}
 
-
-std::string UserQueryAsyncResult::getError() const {
-    return std::string();
-}
+std::string UserQueryAsyncResult::getError() const { return std::string(); }
 
 void UserQueryAsyncResult::submit() {
-
     _qState = ERROR;
 
     // if there are messages already it means the error was detected, stop right here
@@ -137,8 +129,7 @@ void UserQueryAsyncResult::submit() {
 
     // all checks are OK, copy message table from original query
     // into the message store, at this point original result table must be unlocked
-    std::string query = "SELECT chunkId, code, message, severity, timeStamp FROM " +
-                    _qInfo.msgTableName();
+    std::string query = "SELECT chunkId, code, message, severity, timeStamp FROM " + _qInfo.msgTableName();
     sql::SqlResults sqlResults;
     if (!_resultDbConn->runQuery(query, sqlResults, sqlErrObj)) {
         LOGS(_log, LOG_LVL_ERROR, "Failed to retrieve message table data: " << sqlErrObj.errMsg());
@@ -149,7 +140,7 @@ void UserQueryAsyncResult::submit() {
 
     // copy messages
     int count = 0;
-    for (auto&& row: sqlResults) {
+    for (auto&& row : sqlResults) {
         try {
             int chunkId = boost::lexical_cast<int>(row[0].first);
             int code = boost::lexical_cast<int>(row[1].first);
@@ -164,7 +155,7 @@ void UserQueryAsyncResult::submit() {
             _messageStore->addErrorMessage(message);
             return;
         }
-        ++ count;
+        ++count;
     }
     LOGS(_log, LOG_LVL_DEBUG, "Copied " << count << " messages from " << _qInfo.msgTableName());
 
@@ -184,19 +175,13 @@ void UserQueryAsyncResult::submit() {
     _qState = SUCCESS;
 }
 
-QueryState UserQueryAsyncResult::join() {
-    return _qState;
-}
+QueryState UserQueryAsyncResult::join() { return _qState; }
 
-void UserQueryAsyncResult::kill() {
-}
+void UserQueryAsyncResult::kill() {}
 
-void UserQueryAsyncResult::discard() {
-}
+void UserQueryAsyncResult::discard() {}
 
-std::shared_ptr<qdisp::MessageStore> UserQueryAsyncResult::getMessageStore() {
-    return _messageStore;
-}
+std::shared_ptr<qdisp::MessageStore> UserQueryAsyncResult::getMessageStore() { return _messageStore; }
 
 std::string UserQueryAsyncResult::getResultTableName() const {
     if (_qInfo.resultLocation().compare(0, 6, "table:") == 0) {
@@ -206,14 +191,8 @@ std::string UserQueryAsyncResult::getResultTableName() const {
     }
 }
 
-std::string UserQueryAsyncResult::getResultLocation() const {
-    return "table:" + getResultTableName();
-}
+std::string UserQueryAsyncResult::getResultLocation() const { return "table:" + getResultTableName(); }
 
+std::string UserQueryAsyncResult::getResultQuery() const { return _qInfo.resultQuery(); }
 
-std::string UserQueryAsyncResult::getResultQuery() const {
-    return _qInfo.resultQuery();
-}
-
-
-}}} // namespace lsst::qserv::ccontrol
+}}}  // namespace lsst::qserv::ccontrol

@@ -40,36 +40,29 @@ int const bufInitialSize = 1024;
 
 }  // namespace
 
-namespace lsst {
-namespace qserv {
-namespace wpublish {
+namespace lsst { namespace qserv { namespace wpublish {
 
 atomic<size_t> QservRequest::_numClassInstances(0);
 
 QservRequest::~QservRequest() {
-
-    delete [] _buf;
+    delete[] _buf;
 
     --_numClassInstances;
     LOGS(_log, LOG_LVL_DEBUG, "QservRequest  destructed   instances: " << _numClassInstances);
 }
 
-
 QservRequest::QservRequest()
-    :   _bufIncrementSize(bufInitialSize),
-        _bufSize(0),
-        _bufCapacity(bufInitialSize),
-        _buf(new char[bufInitialSize]) {
-
+        : _bufIncrementSize(bufInitialSize),
+          _bufSize(0),
+          _bufCapacity(bufInitialSize),
+          _buf(new char[bufInitialSize]) {
     // This report is used solely for debugging purposes to allow tracking
     // potential memory leaks within applications.
     ++_numClassInstances;
     LOGS(_log, LOG_LVL_DEBUG, "QservRequest  constructed  instances: " << _numClassInstances);
 }
 
-
 char* QservRequest::GetRequest(int& dlen) {
-
     // Ask a subclass to serialize its request into the frame buffer
     onRequest(_frameBuf);
 
@@ -78,14 +71,10 @@ char* QservRequest::GetRequest(int& dlen) {
     return _frameBuf.data();
 }
 
-
-bool QservRequest::ProcessResponse(const XrdSsiErrInfo& eInfo,
-                                   const XrdSsiRespInfo& rInfo) {
-
+bool QservRequest::ProcessResponse(const XrdSsiErrInfo& eInfo, const XrdSsiRespInfo& rInfo) {
     string const context = "QservRequest::" + string(__func__) + "  ";
 
     if (eInfo.hasError()) {
-
         // Copy the argument before sending the upstream notification
         // Otherwise the current object may get disposed before we even had
         // a chance to notify XRootD/SSI by calling Finished().
@@ -103,12 +92,11 @@ bool QservRequest::ProcessResponse(const XrdSsiErrInfo& eInfo,
 
         return false;
     }
-    LOGS(_log, LOG_LVL_DEBUG, context
-        << "  eInfo.rType: " << rInfo.rType << "(" << rInfo.State() << ")"
-        << ", eInfo.blen: " << rInfo.blen);
+    LOGS(_log, LOG_LVL_DEBUG,
+         context << "  eInfo.rType: " << rInfo.rType << "(" << rInfo.State() << ")"
+                 << ", eInfo.blen: " << rInfo.blen);
 
     switch (rInfo.rType) {
-
         case XrdSsiRespInfo::isData:
         case XrdSsiRespInfo::isStream:
 
@@ -134,30 +122,24 @@ bool QservRequest::ProcessResponse(const XrdSsiErrInfo& eInfo,
     }
 }
 
-
-void QservRequest::ProcessResponseData(const XrdSsiErrInfo& eInfo,
-                                       char* buff,
-                                       int blen,
-                                       bool last) {
-
+void QservRequest::ProcessResponseData(const XrdSsiErrInfo& eInfo, char* buff, int blen, bool last) {
     string const context = "QservRequest::" + string(__func__) + "  ";
 
     LOGS(_log, LOG_LVL_DEBUG, context << "eInfo.isOK: " << eInfo.isOK());
 
     if (not eInfo.isOK()) {
-
         // Copy these arguments before sending the upstream notification.
         // Otherwise the current object may get disposed before we even had
         // a chance to notify XRootD/SSI by calling Finished().
 
         string const errorStr = eInfo.Get();
-        int         const errorNum = eInfo.GetArg();
+        int const errorNum = eInfo.GetArg();
 
-        LOGS(_log, LOG_LVL_ERROR, context << "** FAILED **  eInfo.Get(): " << errorStr
-             << ", eInfo.GetArg(): " << errorNum);
+        LOGS(_log, LOG_LVL_ERROR,
+             context << "** FAILED **  eInfo.Get(): " << errorStr << ", eInfo.GetArg(): " << errorNum);
 
-         // Tell XrootD to realease all resources associated with this request
-         Finished();
+        // Tell XrootD to realease all resources associated with this request
+        Finished();
 
         // Notify a subclass on the ubnormal condition.
         // WARNING: This has to be the last call as the object may get deleted
@@ -171,7 +153,6 @@ void QservRequest::ProcessResponseData(const XrdSsiErrInfo& eInfo,
         _bufSize += blen;
 
         if (last) {
-
             // Tell XrootD to release all resources associated with this request
             Finished();
 
@@ -192,7 +173,7 @@ void QservRequest::ProcessResponseData(const XrdSsiErrInfo& eInfo,
 
             copy(prevBuf, prevBuf + prevBufCapacity, _buf);
 
-            delete [] prevBuf;
+            delete[] prevBuf;
 
             // Keep reading
             GetResponseData(_buf + _bufSize, _bufIncrementSize);
@@ -200,4 +181,4 @@ void QservRequest::ProcessResponseData(const XrdSsiErrInfo& eInfo,
     }
 }
 
-}}} // namespace lsst::qserv::wpublish
+}}}  // namespace lsst::qserv::wpublish

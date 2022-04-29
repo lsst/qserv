@@ -45,21 +45,14 @@ namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.wpublish.TestEchoCommand");
 
-} // anonymous namespace
+}  // anonymous namespace
 
-namespace lsst {
-namespace qserv {
-namespace wpublish {
+namespace lsst { namespace qserv { namespace wpublish {
 
-TestEchoCommand::TestEchoCommand(shared_ptr<wbase::SendChannel> const& sendChannel,
-                                 string const& value)
-    :   wbase::WorkerCommand(sendChannel),
-        _value(value) {
-}
-
+TestEchoCommand::TestEchoCommand(shared_ptr<wbase::SendChannel> const& sendChannel, string const& value)
+        : wbase::WorkerCommand(sendChannel), _value(value) {}
 
 void TestEchoCommand::run() {
-
     LOGS(_log, LOG_LVL_DEBUG, "TestEchoCommand::" << __func__);
 
     proto::WorkerCommandTestEchoR reply;
@@ -73,4 +66,4 @@ void TestEchoCommand::run() {
     LOGS(_log, LOG_LVL_DEBUG, "TestEchoCommand::" << __func__ << "  ** SENT **");
 }
 
-}}} // namespace lsst::qserv::wpublish
+}}}  // namespace lsst::qserv::wpublish

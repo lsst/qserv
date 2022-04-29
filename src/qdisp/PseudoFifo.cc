@@ -36,18 +36,14 @@ namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.qdsip.PseudoFifo");
 }
 
-namespace lsst {
-namespace qserv {
-namespace qdisp {
+namespace lsst { namespace qserv { namespace qdisp {
 
 uint32_t PseudoFifo::Element::seq = 0;
 
-
 void PseudoFifo::Element::wait() {
     std::unique_lock<std::mutex> eLock(_eMtx);
-    _eCv.wait(eLock, [this](){ return _go; });
+    _eCv.wait(eLock, [this]() { return _go; });
 }
-
 
 void PseudoFifo::Element::go() {
     {
@@ -57,7 +53,6 @@ void PseudoFifo::Element::go() {
     _eCv.notify_one();
 }
 
-
 PseudoFifo::Element::Ptr PseudoFifo::queueAndWait() {
     Element::Ptr thisElem = std::make_shared<Element>(*this);
     {
@@ -65,10 +60,9 @@ PseudoFifo::Element::Ptr PseudoFifo::queueAndWait() {
         _queue.push_back(thisElem);
         _runSomeElements();
     }
-    thisElem->wait(); // wait until _runSomeElements pops this from the queue.
+    thisElem->wait();  // wait until _runSomeElements pops this from the queue.
     return thisElem;
 }
-
 
 void PseudoFifo::_runSomeElements() {
     LOGS(_log, LOG_LVL_DEBUG, "start _runningCount=" << _runningCount << " max=" << _maxRunningCount);
@@ -82,5 +76,4 @@ void PseudoFifo::_runSomeElements() {
     LOGS(_log, LOG_LVL_DEBUG, "end _runningCount=" << _runningCount);
 }
 
-
-}}} // namespace lsst::qserv::qdisp
+}}}  // namespace lsst::qserv::qdisp

@@ -22,10 +22,10 @@
  */
 
 /**
-  * @file
-  *
-  * @author Daniel L. Wang, SLAC
-  */
+ * @file
+ *
+ * @author Daniel L. Wang, SLAC
+ */
 
 // Class header
 #include "qana/AggregatePlugin.h"
@@ -56,19 +56,14 @@ namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.qana.AggregatePlugin");
 }
 
-namespace lsst {
-namespace qserv {
-namespace qana {
+namespace lsst { namespace qserv { namespace qana {
 
-
-inline query::ValueExprPtr
-newExprFromAlias(std::string const& alias) {
+inline query::ValueExprPtr newExprFromAlias(std::string const& alias) {
     std::shared_ptr<query::ColumnRef> cr = std::make_shared<query::ColumnRef>("", "", alias);
     std::shared_ptr<query::ValueFactor> vf;
     vf = query::ValueFactor::newColumnRefFactor(cr);
     return query::ValueExpr::newSimple(vf);
 }
-
 
 /// ConvertAgg build records for merge expressions from parallel expressions
 template <class C>
@@ -76,13 +71,10 @@ class ConvertAgg {
 public:
     typedef typename C::value_type T;
     ConvertAgg(C& parallelList_, C& mergeList_, query::AggOp::Mgr& aMgr_)
-        : parallelList(parallelList_), mergeList(mergeList_), aMgr(aMgr_) {}
-    void operator()(T const& e) {
-        _makeRecord(*e);
-    }
+            : parallelList(parallelList_), mergeList(mergeList_), aMgr(aMgr_) {}
+    void operator()(T const& e) { _makeRecord(*e); }
 
 private:
-
     void _makeRecord(query::ValueExpr const& e) {
         std::string origAlias = e.getAlias();
 
@@ -95,7 +87,7 @@ private:
             // * cannot be protected--can't alias a set of columns
             // simple column names are already legal column names
             if (origAlias.empty() && !e.isStar() && !e.isColumnRef()) {
-                    interName = aMgr.getAggName("PASS");
+                interName = aMgr.getAggName("PASS");
             }
             query::ValueExprPtr par(e.clone());
             par->setAlias(interName);
@@ -120,8 +112,8 @@ private:
         query::ValueExprPtr mergeExpr = std::make_shared<query::ValueExpr>();
         query::ValueExpr::FactorOpVector& mergeFactorOps = mergeExpr->getFactorOps();
         query::ValueExpr::FactorOpVector const& factorOps = e.getFactorOps();
-        for(query::ValueExpr::FactorOpVector::const_iterator i=factorOps.begin();
-            i != factorOps.end(); ++i) {
+        for (query::ValueExpr::FactorOpVector::const_iterator i = factorOps.begin(); i != factorOps.end();
+             ++i) {
             query::ValueFactorPtr newFactor = i->factor->clone();
             if (newFactor->getType() != query::ValueFactor::AGGFUNC) {
                 parallelList.push_back(query::ValueExpr::newSimple(newFactor));
@@ -131,8 +123,7 @@ private:
                 if (!newFactor->getFuncExpr()) {
                     throw std::logic_error("Missing FuncExpr in AggRecord");
                 }
-                query::AggRecord::Ptr p =
-                    aMgr.applyOp(newFactor->getFuncExpr()->getName(), *newFactor);
+                query::AggRecord::Ptr p = aMgr.applyOp(newFactor->getFuncExpr()->getName(), *newFactor);
                 if (!p) {
                     throw std::logic_error("Couldn't process AggRecord");
                 }
@@ -152,13 +143,10 @@ private:
     query::AggOp::Mgr& aMgr;
 };
 
-
 ////////////////////////////////////////////////////////////////////////
 // AggregatePlugin implementation
 ////////////////////////////////////////////////////////////////////////
-void
-AggregatePlugin::applyPhysical(QueryPlugin::Plan& plan,
-                               query::QueryContext&  context) {
+void AggregatePlugin::applyPhysical(QueryPlugin::Plan& plan, query::QueryContext& context) {
     // For each entry in original's SelectList, modify the SelectList for the parallel and merge versions.
     // Set hasMerge to true if aggregation is detected.
     auto origSelectValueExprs = plan.stmtOriginal.getSelectList().getValueExprList();
@@ -171,10 +159,9 @@ AggregatePlugin::applyPhysical(QueryPlugin::Plan& plan,
     // is executed early enough to ensure that other fragmenting activity has not yet taken place.
     query::SelectList parallelSelectList;
     auto mergeSelectList = std::make_shared<query::SelectList>();
-    query::AggOp::Mgr aggOpManager; // Eventually, this can be shared?
+    query::AggOp::Mgr aggOpManager;  // Eventually, this can be shared?
     ConvertAgg<query::ValueExprPtrVector> ca(*parallelSelectList.getValueExprList(),
-                                             *mergeSelectList->getValueExprList(),
-                                             aggOpManager);
+                                             *mergeSelectList->getValueExprList(), aggOpManager);
     std::for_each(origSelectValueExprs->begin(), origSelectValueExprs->end(), ca);
     // Also need to operate on GROUP BY.
 
@@ -191,8 +178,7 @@ AggregatePlugin::applyPhysical(QueryPlugin::Plan& plan,
     // contains any aliased colums that were removed from the select list, in which case the order by clause
     // must not use that alias.
     std::shared_ptr<query::OrderByClause> newOrderBy;
-    if ((not context.needsMerge or plan.stmtOriginal.hasLimit()) &&
-            plan.stmtParallel.front()->hasOrderBy()) {
+    if ((not context.needsMerge or plan.stmtOriginal.hasLimit()) && plan.stmtParallel.front()->hasOrderBy()) {
         newOrderBy = plan.stmtParallel.front()->getOrderBy().clone();
         for (auto& orderByTerm : *newOrderBy->getTerms()) {
             bool orderByIsInSelect = false;
@@ -211,10 +197,10 @@ AggregatePlugin::applyPhysical(QueryPlugin::Plan& plan,
         }
     }
 
-    for (auto & parallel_query : plan.stmtParallel) {
+    for (auto& parallel_query : plan.stmtParallel) {
         parallel_query->setOrderBy(newOrderBy);
         parallel_query->setSelectList(parallelSelectList.clone());
     }
 }
 
-}}} // namespace lsst::qserv::qana
+}}}  // namespace lsst::qserv::qana

@@ -26,9 +26,7 @@
 #include "replica/HttpClient.h"
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
 /**
  * Class HttpClientApp implements a tool that sends requests to a Web server over
@@ -36,7 +34,7 @@ namespace replica {
  * will be writted to the specified file. Otherwise the content will be printed to
  * the standard output stream.
  */
-class HttpClientApp: public Application {
+class HttpClientApp : public Application {
 public:
     typedef std::shared_ptr<HttpClientApp> Ptr;
 
@@ -49,11 +47,11 @@ public:
      */
     static Ptr create(int argc, char* argv[]);
 
-    HttpClientApp()=delete;
-    HttpClientApp(HttpClientApp const&)=delete;
-    HttpClientApp& operator=(HttpClientApp const&)=delete;
+    HttpClientApp() = delete;
+    HttpClientApp(HttpClientApp const&) = delete;
+    HttpClientApp& operator=(HttpClientApp const&) = delete;
 
-    virtual ~HttpClientApp() override=default;
+    virtual ~HttpClientApp() override = default;
 
 protected:
     /// @see Application::runImpl()
@@ -73,6 +71,6 @@ private:
     bool _silent = false;
 };
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica
 
 #endif /* LSST_QSERV_REPLICA_HTTPCLIENTAPP_H */

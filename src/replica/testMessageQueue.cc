@@ -53,6 +53,7 @@ public:
     string const& id() const { return _id; }
     int priority() const { return _priority; }
     bool operator==(Element const& e) const { return _id == e._id && _priority == e._priority; }
+
 private:
     string _id;
     int _priority = 0;
@@ -61,7 +62,7 @@ ostream& operator<<(ostream& os, Element const& e) {
     os << "Element(" << e.id() << "," << e.priority() << ")";
     return os;
 }
-}
+}  // namespace
 
 BOOST_AUTO_TEST_SUITE(Suite)
 
@@ -86,11 +87,9 @@ BOOST_AUTO_TEST_CASE(MessageQueueTest) {
     shared_ptr<Element> const id_7_pri_3(new Element("id_7", 3));
     shared_ptr<Element> const id_8_pri_3(new Element("id_8", 3));
     shared_ptr<Element> const id_9_pri_3(new Element("id_9", 3));
-    vector<shared_ptr<Element>> const allElements = {
-        id_1_pri_1, id_2_pri_1,
-        id_3_pri_2, id_4_pri_2, id_5_pri_2,
-        id_6_pri_3, id_7_pri_3, id_8_pri_3, id_9_pri_3
-    };
+    vector<shared_ptr<Element>> const allElements = {id_1_pri_1, id_2_pri_1, id_3_pri_2,
+                                                     id_4_pri_2, id_5_pri_2, id_6_pri_3,
+                                                     id_7_pri_3, id_8_pri_3, id_9_pri_3};
 
     // Check adding and then removing a single element from the queue.
     BOOST_REQUIRE_NO_THROW({ queue.push_back(id_1_pri_1); });
@@ -107,7 +106,7 @@ BOOST_AUTO_TEST_CASE(MessageQueueTest) {
     // Add all elements and check that the're pulling in the expected order,
     // in which higher priority elements are returned in the FIFO order they
     // were insert.
-    for (auto&& e: allElements) {
+    for (auto&& e : allElements) {
         BOOST_REQUIRE_NO_THROW({ queue.push_back(e); });
     }
     BOOST_CHECK(!queue.empty());
@@ -129,7 +128,7 @@ BOOST_AUTO_TEST_CASE(MessageQueueTest) {
     BOOST_CHECK_EQUAL(queue.size(), 0U);
 
     // Check if the FIFO ordering works within the same priority lane
-    for (auto&& e: allElements) {
+    for (auto&& e : allElements) {
         BOOST_REQUIRE_NO_THROW({ queue.push_back(e); });
     }
     BOOST_CHECK(!queue.empty());
@@ -158,10 +157,10 @@ BOOST_AUTO_TEST_CASE(MessageQueueTest) {
 
     // Test locating elements by the identifiers.
     // Note that elements should be staying in the queue s a result of this operaton.
-    for (auto&& e: allElements) queue.push_back(e);
+    for (auto&& e : allElements) queue.push_back(e);
     BOOST_CHECK(!queue.empty());
     BOOST_CHECK_EQUAL(queue.size(), allElements.size());
-    for (auto&& e: allElements) {
+    for (auto&& e : allElements) {
         shared_ptr<Element> found;
         BOOST_REQUIRE_NO_THROW({ found = queue.find(e->id()); });
         BOOST_CHECK(found != nullptr);
@@ -172,7 +171,7 @@ BOOST_AUTO_TEST_CASE(MessageQueueTest) {
 
     // Test removing elements by the identifiers.
     size_t remainingSize = allElements.size();
-    for (auto&& e: allElements) {
+    for (auto&& e : allElements) {
         BOOST_CHECK(queue.find(e->id()) != nullptr);
         BOOST_REQUIRE_NO_THROW({ queue.remove(e->id()); });
         BOOST_CHECK_EQUAL(queue.size(), --remainingSize);

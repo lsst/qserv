@@ -45,21 +45,20 @@ namespace util = lsst::qserv::util;
 namespace {
 
 string const description =
-    "This application represents the complete integration test for"
-    " the Configuration service. The test is supposed to be run against"
-    " the Configuration database in MySQL at a location (and credential)"
-    " specified via configuration URL parameter '--config=<url>'. The database is required"
-    " to exist and be compatible with the application's requirements."
-    " ATTENTION: Plan carefully when using this flag to avoid destroying any"
-    " valuable data. Avoid running this command in the production environment.";
+        "This application represents the complete integration test for"
+        " the Configuration service. The test is supposed to be run against"
+        " the Configuration database in MySQL at a location (and credential)"
+        " specified via configuration URL parameter '--config=<url>'. The database is required"
+        " to exist and be compatible with the application's requirements."
+        " ATTENTION: Plan carefully when using this flag to avoid destroying any"
+        " valuable data. Avoid running this command in the production environment.";
 
 // The strings for operaton completion reporting.
 
 string const PASSED_STR = "[PASSED]";
 string const FAILED_STR = "[FAILED]";
-string const OK_STR  = "OK";
+string const OK_STR = "OK";
 string const VALUE_MISMATCH_STR = "VALUE MISMATCH";
-
 
 /**
  * The class ComparatorBase represents the base class for specific comparators
@@ -86,13 +85,10 @@ public:
 
 protected:
     ComparatorBase(string const& caption, string const& indent, bool verticalSeparator)
-        :   _caption(caption), _indent(indent), _verticalSeparator(verticalSeparator) {
-    }
+            : _caption(caption), _indent(indent), _verticalSeparator(verticalSeparator) {}
 
     template <typename T>
-    void verifyImpl(string const& attribute,
-                    T const& actualValue,
-                    T const& expectedValue) {
+    void verifyImpl(string const& attribute, T const& actualValue, T const& expectedValue) {
         bool const equal = actualValue == expectedValue;
         _result.push_back(equal ? OK_STR : VALUE_MISMATCH_STR);
         _attribute.push_back(attribute);
@@ -101,9 +97,7 @@ protected:
         if (!equal) ++_failed;
     }
 
-    void verifyImpl(string const& attribute,
-                    double actualValue,
-                    double expectedValue) {
+    void verifyImpl(string const& attribute, double actualValue, double expectedValue) {
         bool const equal = std::abs(actualValue - expectedValue) <= std::numeric_limits<double>::epsilon();
         _result.push_back(equal ? OK_STR : VALUE_MISMATCH_STR);
         _attribute.push_back(attribute);
@@ -132,7 +126,7 @@ private:
  * The class CompareWorkerAtributes compares values of the corresponding attrubutes
  * of two workers and reports differences.
  */
-class CompareWorkerAtributes: public ComparatorBase {
+class CompareWorkerAtributes : public ComparatorBase {
 public:
     CompareWorkerAtributes() = delete;
     CompareWorkerAtributes(CompareWorkerAtributes const&) = delete;
@@ -140,9 +134,7 @@ public:
 
     CompareWorkerAtributes(string const& caption, string const& indent, bool verticalSeparator,
                            Configuration::Ptr const& config)
-        :   ComparatorBase(caption, indent, verticalSeparator),
-            _config(config) {
-    }
+            : ComparatorBase(caption, indent, verticalSeparator), _config(config) {}
 
     /**
      * Compare values of the the corresponding attributes of two workers.
@@ -170,14 +162,14 @@ private:
  * The class CompareFamilyAtributes compares values of the coresponding
  * attrubutes of two database families and reports differences.
  */
-class CompareFamilyAtributes: public ComparatorBase {
+class CompareFamilyAtributes : public ComparatorBase {
 public:
     CompareFamilyAtributes() = delete;
     CompareFamilyAtributes(CompareFamilyAtributes const&) = delete;
     CompareFamilyAtributes& operator=(CompareFamilyAtributes const&) = delete;
 
     CompareFamilyAtributes(string const& caption, string const& indent, bool verticalSeparator)
-        :  ComparatorBase(caption, indent, verticalSeparator) {}
+            : ComparatorBase(caption, indent, verticalSeparator) {}
 
     /**
      * Compare values of the the corresponding attributes of two families.
@@ -199,14 +191,14 @@ public:
  * The class CompareDatabaseAtributes compares values of the corresponding
  * attrubutes of two databases and reports differences.
  */
-class CompareDatabaseAtributes: public ComparatorBase {
+class CompareDatabaseAtributes : public ComparatorBase {
 public:
     CompareDatabaseAtributes() = delete;
     CompareDatabaseAtributes(CompareDatabaseAtributes const&) = delete;
     CompareDatabaseAtributes& operator=(ComparatorBase const&) = delete;
 
     CompareDatabaseAtributes(string const& caption, string const& indent, bool verticalSeparator)
-        :  ComparatorBase(caption, indent, verticalSeparator) {}
+            : ComparatorBase(caption, indent, verticalSeparator) {}
 
     /**
      * Compare values of the the corresponding attributes of two databases.
@@ -219,7 +211,8 @@ public:
         verifyImpl("name", actual.name, desired.name);
         verifyImpl("family_name", actual.family, desired.family);
         verifyImpl("is_published", actual.isPublished, desired.isPublished);
-        verifyImpl("partitioned_tables.empty()", actual.partitionedTables.empty(), desired.partitionedTables.empty());
+        verifyImpl("partitioned_tables.empty()", actual.partitionedTables.empty(),
+                   desired.partitionedTables.empty());
         verifyImpl("regular_tables.empty()", actual.regularTables.empty(), desired.regularTables.empty());
         verifyImpl("columns.empty()", actual.columns.empty(), desired.columns.empty());
         verifyImpl("director_table.size()", actual.directorTable.size(), desired.directorTable.size());
@@ -230,36 +223,26 @@ public:
     }
 };
 
-} /// namespace
+}  // namespace
 
-
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
 ConfigTestApp::Ptr ConfigTestApp::create(int argc, char* argv[]) {
     return Ptr(new ConfigTestApp(argc, argv));
 }
 
-
-ConfigTestApp::ConfigTestApp(int argc, char* argv[])
-    :   ConfigAppBase(argc, argv, description) {
-
-    parser().optional(
-        "scope",
-        "This optional parameter narrows a scope of the operation down to a specific"
-        " context. Allowed values: ALL, WORKERS, DATABASES_AND_FAMILIES, TABLES.",
-        _testScope,
-        vector<string>({"ALL", "WORKERS", "DATABASES_AND_FAMILIES", "TABLES"})
-    );
+ConfigTestApp::ConfigTestApp(int argc, char* argv[]) : ConfigAppBase(argc, argv, description) {
+    parser().optional("scope",
+                      "This optional parameter narrows a scope of the operation down to a specific"
+                      " context. Allowed values: ALL, WORKERS, DATABASES_AND_FAMILIES, TABLES.",
+                      _testScope, vector<string>({"ALL", "WORKERS", "DATABASES_AND_FAMILIES", "TABLES"}));
 }
-
 
 int ConfigTestApp::runSubclassImpl() {
     int result = 0;
     if (_testScope == "ALL") {
         result += _testWorkers() ? 0 : 1;
-        result += _testDatabasesAndFamilies()  ? 0 : 1;
+        result += _testDatabasesAndFamilies() ? 0 : 1;
         result += _testTables() ? 0 : 1;
     } else if (_testScope == "WORKERS") {
         result += _testWorkers() ? 0 : 1;
@@ -271,9 +254,7 @@ int ConfigTestApp::runSubclassImpl() {
     return result;
 }
 
-
 bool ConfigTestApp::_testWorkers() {
-
     // IMPORTANT: This test will reload configuration from the database after
     // each modification to ensure the modifications were actually saved in
     // the persistent store.
@@ -284,7 +265,8 @@ bool ConfigTestApp::_testWorkers() {
     // No workers should exist right after initializing the configuration.
     {
         vector<string> const workers = config()->allWorkers();
-        cout << (workers.empty() ? PASSED_STR : FAILED_STR) << " NO WORKERS SHOULD EXIST AFTER INITIALIZATION" << "\n";
+        cout << (workers.empty() ? PASSED_STR : FAILED_STR) << " NO WORKERS SHOULD EXIST AFTER INITIALIZATION"
+             << "\n";
         dumpWorkersAsTable(indent, "");
         success = success && workers.empty();
     }
@@ -297,8 +279,7 @@ bool ConfigTestApp::_testWorkers() {
         workerSpec.isReadOnly = false;
         string error;
         CompareWorkerAtributes comparator("COMPARING ATTRIBUTES OF THE ADDED WORKER VS ITS SPECIFICATIONS:",
-                                          indent, verticalSeparator(),
-                                          config());
+                                          indent, verticalSeparator(), config());
         try {
             config()->addWorker(workerSpec);
             config()->reload();
@@ -308,7 +289,8 @@ bool ConfigTestApp::_testWorkers() {
             error = "failed to add worker '" + workerSpec.name + "', ex: " + string(ex.what());
         }
         success = success && error.empty();
-        cout << (error.empty() ? PASSED_STR : FAILED_STR ) << " ADDING WORKERS WITH FULL SPECIFICATION" << "\n";
+        cout << (error.empty() ? PASSED_STR : FAILED_STR) << " ADDING WORKERS WITH FULL SPECIFICATION"
+             << "\n";
         if (!error.empty()) {
             cout << "\n";
             cout << indent << " ERROR: " << error << "\n";
@@ -328,8 +310,7 @@ bool ConfigTestApp::_testWorkers() {
         workerSpec.name = "worker-B";
         string error;
         CompareWorkerAtributes comparator("COMPARING ATRIBUTES OF THE ADDED WORKER VS ITS SPECIFICATIONS:",
-                                          indent, verticalSeparator(),
-                                          config());
+                                          indent, verticalSeparator(), config());
         try {
             config()->addWorker(workerSpec);
             config()->reload();
@@ -341,7 +322,8 @@ bool ConfigTestApp::_testWorkers() {
             error = "failed to add worker '" + workerSpec.name + "', ex: " + string(ex.what());
         }
         success = success && error.empty();
-        cout << (error.empty() ? PASSED_STR : FAILED_STR) << " ADDING WORKERS WITH PARTIAL SPECIFICATION" << "\n";
+        cout << (error.empty() ? PASSED_STR : FAILED_STR) << " ADDING WORKERS WITH PARTIAL SPECIFICATION"
+             << "\n";
         if (!error.empty()) {
             cout << "\n";
             cout << indent << " ERROR: " << error << "\n";
@@ -363,8 +345,7 @@ bool ConfigTestApp::_testWorkers() {
         workerSpec.isReadOnly = true;
         string error;
         CompareWorkerAtributes comparator("COMPARING ATRIBUTES OF THE UPDATED WORKER VS ITS SPECIFICATIONS:",
-                                          indent, verticalSeparator(),
-                                          config());
+                                          indent, verticalSeparator(), config());
         try {
             config()->updateWorker(workerSpec);
             config()->reload();
@@ -374,7 +355,8 @@ bool ConfigTestApp::_testWorkers() {
             error = "failed to update worker '" + workerSpec.name + "', ex: " + string(ex.what());
         }
         success = success && error.empty();
-        cout << (error.empty() ? PASSED_STR : FAILED_STR) << " UPDATING WORKERS" << "\n";
+        cout << (error.empty() ? PASSED_STR : FAILED_STR) << " UPDATING WORKERS"
+             << "\n";
         if (!error.empty()) {
             cout << "\n";
             cout << indent << " ERROR: " << error << "\n";
@@ -390,16 +372,19 @@ bool ConfigTestApp::_testWorkers() {
         vector<string> const workers = config()->allWorkers();
         bool const passed = workers.size() == 2;
         success = success && passed;
-        cout << (passed ? PASSED_STR : FAILED_STR) << " 2 WORKERS SHOULD EXIST AT THIS POINT" << "\n";
+        cout << (passed ? PASSED_STR : FAILED_STR) << " 2 WORKERS SHOULD EXIST AT THIS POINT"
+             << "\n";
         dumpWorkersAsTable(indent, "");
     }
     {
         // Assuming default selectors passed into the method:
-        //  
+        //
         vector<string> const workers = config()->workers();
         bool const passed = (workers.size() == 1) && (workers[0] == "worker-A");
         success = success && passed;
-        cout << (passed ? PASSED_STR : FAILED_STR) << " 1 ENABLED & READ-WRITE WORKER SHOULD EXIST AT THIS POINT" << "\n";
+        cout << (passed ? PASSED_STR : FAILED_STR)
+             << " 1 ENABLED & READ-WRITE WORKER SHOULD EXIST AT THIS POINT"
+             << "\n";
         dumpWorkersAsTable(indent, "");
     }
     {
@@ -408,14 +393,15 @@ bool ConfigTestApp::_testWorkers() {
         vector<string> const workers = config()->workers(isEnabled, isReadOnly);
         bool const passed = ((workers.size() == 1) && (workers[0] == "worker-B"));
         success = success && passed;
-        cout << (passed ? PASSED_STR : FAILED_STR) << " 1 READ-ONLY WORKER SHOULD EXIST AT THIS POINT" << "\n";
+        cout << (passed ? PASSED_STR : FAILED_STR) << " 1 READ-ONLY WORKER SHOULD EXIST AT THIS POINT"
+             << "\n";
         dumpWorkersAsTable(indent, "");
     }
 
     // Delete both workers
     {
         vector<string> errors;
-        for (auto&& worker: config()->allWorkers()) {
+        for (auto&& worker : config()->allWorkers()) {
             try {
                 config()->deleteWorker(worker);
                 config()->reload();
@@ -424,10 +410,11 @@ bool ConfigTestApp::_testWorkers() {
             }
         }
         success = success && errors.empty();
-        cout << (errors.empty() ? PASSED_STR : FAILED_STR) << " DELETING ALL WORKERS" << "\n";
+        cout << (errors.empty() ? PASSED_STR : FAILED_STR) << " DELETING ALL WORKERS"
+             << "\n";
         dumpWorkersAsTable(indent, "");
         if (!errors.empty()) {
-            for (auto&& error: errors) {
+            for (auto&& error : errors) {
                 cout << indent << " ERROR: " << error << "\n";
             }
             cout << "\n";
@@ -438,15 +425,15 @@ bool ConfigTestApp::_testWorkers() {
     {
         vector<string> const workers = config()->allWorkers();
         success = success && workers.empty();
-        cout << (workers.empty() ? PASSED_STR : FAILED_STR) << " NO WORKERS SHOULD EXIST AFTER DELETING THEM ALL" << "\n";
+        cout << (workers.empty() ? PASSED_STR : FAILED_STR)
+             << " NO WORKERS SHOULD EXIST AFTER DELETING THEM ALL"
+             << "\n";
         dumpWorkersAsTable(indent, "");
     }
     return success;
 }
 
-
 bool ConfigTestApp::_testDatabasesAndFamilies() {
-
     // IMPORTANT: This test involves operatons on database families and databases
     // due to a dependency of the later to the former.
 
@@ -457,7 +444,8 @@ bool ConfigTestApp::_testDatabasesAndFamilies() {
     {
         vector<string> const families = config()->databaseFamilies();
         bool const passed = families.empty();
-        cout << (passed ? PASSED_STR : FAILED_STR) << " NO FAMILIES SHOULD EXIST AFTER INITIALIZATION" << "\n";
+        cout << (passed ? PASSED_STR : FAILED_STR) << " NO FAMILIES SHOULD EXIST AFTER INITIALIZATION"
+             << "\n";
         dumpFamiliesAsTable(indent, "");
         success = success && passed;
     }
@@ -482,7 +470,8 @@ bool ConfigTestApp::_testDatabasesAndFamilies() {
             error = "failed to add family '" + familySpec.name + "', ex: " + string(ex.what());
         }
         success = success && error.empty();
-        cout << (error.empty() ? PASSED_STR : FAILED_STR) << " ADDING FAMILIES WITH FULL SPECIFICATION" << "\n";
+        cout << (error.empty() ? PASSED_STR : FAILED_STR) << " ADDING FAMILIES WITH FULL SPECIFICATION"
+             << "\n";
         if (!error.empty()) {
             cout << "\n";
             cout << indent << " ERROR: " << error << "\n";
@@ -513,7 +502,8 @@ bool ConfigTestApp::_testDatabasesAndFamilies() {
             error = "failed to add family '" + familySpec.name + "', ex: " + string(ex.what());
         }
         success = success && error.empty();
-        cout << (error.empty() ? PASSED_STR : FAILED_STR) << " ADDING FAMILIES WITH FULL SPECIFICATION" << "\n";
+        cout << (error.empty() ? PASSED_STR : FAILED_STR) << " ADDING FAMILIES WITH FULL SPECIFICATION"
+             << "\n";
         if (!error.empty()) {
             cout << "\n";
             cout << indent << " ERROR: " << error << "\n";
@@ -528,18 +518,21 @@ bool ConfigTestApp::_testDatabasesAndFamilies() {
     {
         vector<string> const families = config()->databaseFamilies();
         bool const passed = families.size() == 2;
-        cout << (passed ? PASSED_STR : FAILED_STR ) << " EXACTLY 2 FAMILIES SHOULD EXIST NOW" << "\n";
+        cout << (passed ? PASSED_STR : FAILED_STR) << " EXACTLY 2 FAMILIES SHOULD EXIST NOW"
+             << "\n";
         dumpFamiliesAsTable(indent, "");
         success = success && passed;
     }
 
     // No database should exist at this point
     {
-        string const family;    // all families if empty
+        string const family;  // all families if empty
         bool const allDatabases = true;
         vector<string> const databases = config()->databases(family, allDatabases);
         bool const passed = databases.empty();
-        cout << (passed ? PASSED_STR : FAILED_STR ) << " NO DATABASE OF ANY FAMILY AND IN ANY STATE SHOULD EXIST" << "\n";
+        cout << (passed ? PASSED_STR : FAILED_STR)
+             << " NO DATABASE OF ANY FAMILY AND IN ANY STATE SHOULD EXIST"
+             << "\n";
         dumpDatabasesAsTable(indent, "");
         success = success && passed;
     }
@@ -550,8 +543,9 @@ bool ConfigTestApp::_testDatabasesAndFamilies() {
         databaseSpec.name = "db1";
         databaseSpec.family = "test";
         string error;
-        CompareDatabaseAtributes comparator("COMPARING ATTRIBUTES OF THE ADDED DATABASE VS ITS SPECIFICATIONS:",
-                                            indent, verticalSeparator());
+        CompareDatabaseAtributes comparator(
+                "COMPARING ATTRIBUTES OF THE ADDED DATABASE VS ITS SPECIFICATIONS:", indent,
+                verticalSeparator());
         try {
             config()->addDatabase(databaseSpec.name, databaseSpec.family);
             config()->reload();
@@ -561,7 +555,8 @@ bool ConfigTestApp::_testDatabasesAndFamilies() {
             error = "failed to add database '" + databaseSpec.name + "', ex: " + string(ex.what());
         }
         success = success && error.empty();
-        cout << (error.empty() ? PASSED_STR : FAILED_STR) << " ADDING DATABASES" << "\n";
+        cout << (error.empty() ? PASSED_STR : FAILED_STR) << " ADDING DATABASES"
+             << "\n";
         if (!error.empty()) {
             cout << "\n";
             cout << indent << " ERROR: " << error << "\n";
@@ -574,11 +569,13 @@ bool ConfigTestApp::_testDatabasesAndFamilies() {
 
     // One database should exist at this point
     {
-        string const family;    // all families if empty
+        string const family;  // all families if empty
         bool const allDatabases = true;
         vector<string> const databases = config()->databases(family, allDatabases);
         bool const passed = (databases.size() == 1) && (databases[0] == "db1");
-        cout << (passed ? PASSED_STR : FAILED_STR ) << " EXACTLY 1 DATABASE OF ANY FAMILY AND IN ANY STATE SHOULD EXIST" << "\n";
+        cout << (passed ? PASSED_STR : FAILED_STR)
+             << " EXACTLY 1 DATABASE OF ANY FAMILY AND IN ANY STATE SHOULD EXIST"
+             << "\n";
         dumpDatabasesAsTable(indent, "");
         success = success && passed;
     }
@@ -589,8 +586,9 @@ bool ConfigTestApp::_testDatabasesAndFamilies() {
         databaseSpec.name = "db2";
         databaseSpec.family = "production";
         string error;
-        CompareDatabaseAtributes comparator("COMPARING ATTRIBUTES OF THE ADDED DATABASE VS ITS SPECIFICATIONS:",
-                                            indent, verticalSeparator());
+        CompareDatabaseAtributes comparator(
+                "COMPARING ATTRIBUTES OF THE ADDED DATABASE VS ITS SPECIFICATIONS:", indent,
+                verticalSeparator());
         try {
             config()->addDatabase(databaseSpec.name, databaseSpec.family);
             config()->reload();
@@ -600,7 +598,8 @@ bool ConfigTestApp::_testDatabasesAndFamilies() {
             error = "failed to add database '" + databaseSpec.name + "', ex: " + string(ex.what());
         }
         success = success && error.empty();
-        cout << (error.empty() ? PASSED_STR : FAILED_STR) << " ADDING DATABASES" << "\n";
+        cout << (error.empty() ? PASSED_STR : FAILED_STR) << " ADDING DATABASES"
+             << "\n";
         if (!error.empty()) {
             cout << "\n";
             cout << indent << " ERROR: " << error << "\n";
@@ -613,11 +612,13 @@ bool ConfigTestApp::_testDatabasesAndFamilies() {
 
     // Two databases should exist at this point
     {
-        string const family;    // all families if empty
+        string const family;  // all families if empty
         bool const allDatabases = true;
         vector<string> const databases = config()->databases(family, allDatabases);
         bool const passed = databases.size() == 2;
-        cout << (passed ? PASSED_STR : FAILED_STR ) << " EXACTLY 1 DATABASE OF ANY FAMILY AND IN ANY STATE SHOULD EXIST" << "\n";
+        cout << (passed ? PASSED_STR : FAILED_STR)
+             << " EXACTLY 1 DATABASE OF ANY FAMILY AND IN ANY STATE SHOULD EXIST"
+             << "\n";
         dumpDatabasesAsTable(indent, "");
         success = success && passed;
     }
@@ -629,8 +630,9 @@ bool ConfigTestApp::_testDatabasesAndFamilies() {
         databaseSpec.family = "production";
         databaseSpec.isPublished = true;
         string error;
-        CompareDatabaseAtributes comparator("COMPARING ATTRIBUTES OF THE PUBLISHED DATABASE VS ITS ORIGINALE:",
-                                            indent, verticalSeparator());
+        CompareDatabaseAtributes comparator(
+                "COMPARING ATTRIBUTES OF THE PUBLISHED DATABASE VS ITS ORIGINALE:", indent,
+                verticalSeparator());
         try {
             config()->publishDatabase(databaseSpec.name);
             config()->reload();
@@ -640,7 +642,8 @@ bool ConfigTestApp::_testDatabasesAndFamilies() {
             error = "failed to publish database '" + databaseSpec.name + "', ex: " + string(ex.what());
         }
         success = success && error.empty();
-        cout << (error.empty() ? PASSED_STR : FAILED_STR) << " PUBLISHING DATABASES" << "\n";
+        cout << (error.empty() ? PASSED_STR : FAILED_STR) << " PUBLISHING DATABASES"
+             << "\n";
         if (!error.empty()) {
             cout << "\n";
             cout << indent << " ERROR: " << error << "\n";
@@ -653,17 +656,19 @@ bool ConfigTestApp::_testDatabasesAndFamilies() {
 
     // Test database selectors (one published and one unpublished databases are expected)
     {
-        string const family;    // all families if empty
+        string const family;  // all families if empty
         bool const allDatabases = false;
 
         vector<string> databases = config()->databases(family, allDatabases, true);
         bool passed = (databases.size() == 1) && (databases[0] == "db2");
-        cout << (passed ? PASSED_STR : FAILED_STR ) << " EXACTLY 1 PUBLISHED DATABASE SHOULD EXIST" << "\n";
+        cout << (passed ? PASSED_STR : FAILED_STR) << " EXACTLY 1 PUBLISHED DATABASE SHOULD EXIST"
+             << "\n";
         success = success && passed;
 
         databases = config()->databases(family, allDatabases, false);
         passed = (databases.size() == 1) && (databases[0] == "db1");
-        cout << (passed ? PASSED_STR : FAILED_STR ) << " EXACTLY 1 NON-PUBLISHED DATABASE SHOULD EXIST" << "\n";
+        cout << (passed ? PASSED_STR : FAILED_STR) << " EXACTLY 1 NON-PUBLISHED DATABASE SHOULD EXIST"
+             << "\n";
         success = success && passed;
 
         dumpDatabasesAsTable(indent, "");
@@ -680,7 +685,8 @@ bool ConfigTestApp::_testDatabasesAndFamilies() {
             error = "failed to delete database '" + name + "', ex: " + string(ex.what());
         }
         success = success && error.empty();
-        cout << (error.empty() ? PASSED_STR : FAILED_STR) << " DELETING DATABASES" << "\n";
+        cout << (error.empty() ? PASSED_STR : FAILED_STR) << " DELETING DATABASES"
+             << "\n";
         if (!error.empty()) {
             cout << "\n";
             cout << indent << " ERROR: " << error << "\n";
@@ -690,11 +696,13 @@ bool ConfigTestApp::_testDatabasesAndFamilies() {
 
     // One database should still remain at this point
     {
-        string const family;    // all families if empty
+        string const family;  // all families if empty
         bool const allDatabases = true;
         vector<string> const databases = config()->databases(family, allDatabases);
         bool const passed = (databases.size() == 1) && (databases[0] == "db2");
-        cout << (passed ? PASSED_STR : FAILED_STR ) << " EXACTLY 1 DATABASE OF ANY FAMILY AND IN ANY STATE SHOULD EXIST" << "\n";
+        cout << (passed ? PASSED_STR : FAILED_STR)
+             << " EXACTLY 1 DATABASE OF ANY FAMILY AND IN ANY STATE SHOULD EXIST"
+             << "\n";
         dumpDatabasesAsTable(indent, "");
         success = success && passed;
     }
@@ -710,7 +718,8 @@ bool ConfigTestApp::_testDatabasesAndFamilies() {
             error = "failed to delete database family '" + name + "', ex: " + string(ex.what());
         }
         success = success && error.empty();
-        cout << (error.empty() ? PASSED_STR : FAILED_STR) << " DELETING DATABASE FAMILIES" << "\n";
+        cout << (error.empty() ? PASSED_STR : FAILED_STR) << " DELETING DATABASE FAMILIES"
+             << "\n";
         if (!error.empty()) {
             cout << "\n";
             cout << indent << " ERROR: " << error << "\n";
@@ -722,18 +731,21 @@ bool ConfigTestApp::_testDatabasesAndFamilies() {
     {
         vector<string> const families = config()->databaseFamilies();
         bool const passed = (families.size() == 1) && (families[0] == "test");
-        cout << (passed ? PASSED_STR : FAILED_STR ) << " EXACTLY 1 FAMILY SHOULD EXIST NOW" << "\n";
+        cout << (passed ? PASSED_STR : FAILED_STR) << " EXACTLY 1 FAMILY SHOULD EXIST NOW"
+             << "\n";
         dumpFamiliesAsTable(indent, "");
         success = success && passed;
     }
 
     // No databases should exist at this point
     {
-        string const family;    // all families if empty
+        string const family;  // all families if empty
         bool const allDatabases = true;
         vector<string> const databases = config()->databases(family, allDatabases);
         bool const passed = databases.empty();
-        cout << (passed ? PASSED_STR : FAILED_STR ) << " NO DATABASE OF ANY FAMILY AND IN ANY STATE SHOULD EXIST" << "\n";
+        cout << (passed ? PASSED_STR : FAILED_STR)
+             << " NO DATABASE OF ANY FAMILY AND IN ANY STATE SHOULD EXIST"
+             << "\n";
         dumpDatabasesAsTable(indent, "");
         success = success && passed;
     }
@@ -749,7 +761,8 @@ bool ConfigTestApp::_testDatabasesAndFamilies() {
             error = "failed to delete database family '" + name + "', ex: " + string(ex.what());
         }
         success = success && error.empty();
-        cout << (error.empty() ? PASSED_STR : FAILED_STR) << " DELETING DATABASE FAMILIES" << "\n";
+        cout << (error.empty() ? PASSED_STR : FAILED_STR) << " DELETING DATABASE FAMILIES"
+             << "\n";
         if (!error.empty()) {
             cout << "\n";
             cout << indent << " ERROR: " << error << "\n";
@@ -761,7 +774,8 @@ bool ConfigTestApp::_testDatabasesAndFamilies() {
     {
         vector<string> const families = config()->databaseFamilies();
         bool const passed = families.empty();
-        cout << (passed ? PASSED_STR : FAILED_STR) << " NO FAMILIES SHOULD EXIST AFTER THE CLEANUP!" << "\n";
+        cout << (passed ? PASSED_STR : FAILED_STR) << " NO FAMILIES SHOULD EXIST AFTER THE CLEANUP!"
+             << "\n";
         dumpFamiliesAsTable(indent, "");
         success = success && passed;
     }
@@ -769,9 +783,7 @@ bool ConfigTestApp::_testDatabasesAndFamilies() {
     return success;
 }
 
-
 bool ConfigTestApp::_testTables() {
-
     // IMPORTANT: This test involves operatons on database families, databases and tables
     // due to a dependency of the later to the former.
 
@@ -782,7 +794,8 @@ bool ConfigTestApp::_testTables() {
     {
         vector<string> const families = config()->databaseFamilies();
         if (!families.empty()) {
-            cout << FAILED_STR << " NO FAMILIES SHOULD EXIST BEFORE THE TEST OF TABLES" << "\n";
+            cout << FAILED_STR << " NO FAMILIES SHOULD EXIST BEFORE THE TEST OF TABLES"
+                 << "\n";
             dumpFamiliesAsTable(indent, "");
             return false;
         }
@@ -790,11 +803,13 @@ bool ConfigTestApp::_testTables() {
 
     // No database should exist at this point
     {
-        string const family;    // all families if empty
+        string const family;  // all families if empty
         bool const allDatabases = true;
         vector<string> const databases = config()->databases(family, allDatabases);
         if (!databases.empty()) {
-            cout << PASSED_STR << " NO DATABASE OF ANY FAMILY AND IN ANY STATE SHOULD EXIST BEFORE THE TEST OF TABLES" << "\n";
+            cout << PASSED_STR
+                 << " NO DATABASE OF ANY FAMILY AND IN ANY STATE SHOULD EXIST BEFORE THE TEST OF TABLES"
+                 << "\n";
             dumpDatabasesAsTable(indent, "");
             return false;
         }
@@ -815,8 +830,9 @@ bool ConfigTestApp::_testTables() {
             DatabaseFamilyInfo const addedFamily = config()->databaseFamilyInfo(familySpec.name);
         } catch (exception const& ex) {
             cout << "\n";
-            cout << indent << " ERROR: " << "failed to add family '" << familySpec.name << "', ex: "
-                << string(ex.what()) << ", ABORTING THE TEST OF TABLES\n";
+            cout << indent << " ERROR: "
+                 << "failed to add family '" << familySpec.name << "', ex: " << string(ex.what())
+                 << ", ABORTING THE TEST OF TABLES\n";
             cout << "\n";
             return false;
         }
@@ -834,29 +850,30 @@ bool ConfigTestApp::_testTables() {
             DatabaseInfo const addedDatabase = config()->databaseInfo(databaseSpec.name);
         } catch (exception const& ex) {
             cout << "\n";
-            cout << indent << " ERROR: " << "failed to add database '" << databaseSpec.name << "', ex: "
-                << string(ex.what()) << ", ABORTING THE TEST OF TABLES\n";
+            cout << indent << " ERROR: "
+                 << "failed to add database '" << databaseSpec.name << "', ex: " << string(ex.what())
+                 << ", ABORTING THE TEST OF TABLES\n";
 
             cout << "\n";
             return false;
         }
     }
 
-    auto const addTable = [&](string const& database, string const& table,
-                              bool isPartitioned, bool isDirector, string const& directorTable,
-                              string const& directorTableKey, string const& latitudeColName,
-                              string const& longitudeColName, list<SqlColDef> const& coldefs) -> bool {
+    auto const addTable = [&](string const& database, string const& table, bool isPartitioned,
+                              bool isDirector, string const& directorTable, string const& directorTableKey,
+                              string const& latitudeColName, string const& longitudeColName,
+                              list<SqlColDef> const& coldefs) -> bool {
         try {
-            config()->addTable(database, table, isPartitioned, coldefs,
-                               isDirector, directorTable, directorTableKey,
-                               latitudeColName, longitudeColName);
+            config()->addTable(database, table, isPartitioned, coldefs, isDirector, directorTable,
+                               directorTableKey, latitudeColName, longitudeColName);
             config()->reload();
             DatabaseInfo const updatedDatabase = config()->databaseInfo(database);
             return true;
         } catch (exception const& ex) {
             cout << "\n";
-            cout << indent << " ERROR: " << "failed to add table '" << table << "' to database '" << database << "', ex: "
-                << string(ex.what()) << ", ABORTING THE TEST OF TABLES\n";
+            cout << indent << " ERROR: "
+                 << "failed to add table '" << table << "' to database '" << database
+                 << "', ex: " << string(ex.what()) << ", ABORTING THE TEST OF TABLES\n";
             cout << "\n";
             return false;
         }
@@ -882,16 +899,17 @@ bool ConfigTestApp::_testTables() {
     {
         DatabaseInfo const databaseInfo = config()->databaseInfo(database);
         auto const tables = databaseInfo.tables();
-        bool const passed = (tables.size() == 1)
-                && (find(tables.cbegin(), tables.cend(), table1) != tables.cend())
-                && (databaseInfo.isPartitioned(table1) == isPartitioned1)
-                && (databaseInfo.isDirector(table1) == isDirector1)
-                && databaseInfo.directorTable.at(table1).empty()
-                && (databaseInfo.directorTableKey.at(table1) == directorTableKey1)
-                && (databaseInfo.latitudeColName.at(table1) == latitudeColName1)
-                && (databaseInfo.longitudeColName.at(table1) == longitudeColName1)
-                && (databaseInfo.columns.at(table1).size() == coldefs1.size());
-        cout << (passed ? PASSED_STR : FAILED_STR ) << " EXACTLY 1 TABLE SHOULD EXIST NOW" << "\n";
+        bool const passed = (tables.size() == 1) &&
+                            (find(tables.cbegin(), tables.cend(), table1) != tables.cend()) &&
+                            (databaseInfo.isPartitioned(table1) == isPartitioned1) &&
+                            (databaseInfo.isDirector(table1) == isDirector1) &&
+                            databaseInfo.directorTable.at(table1).empty() &&
+                            (databaseInfo.directorTableKey.at(table1) == directorTableKey1) &&
+                            (databaseInfo.latitudeColName.at(table1) == latitudeColName1) &&
+                            (databaseInfo.longitudeColName.at(table1) == longitudeColName1) &&
+                            (databaseInfo.columns.at(table1).size() == coldefs1.size());
+        cout << (passed ? PASSED_STR : FAILED_STR) << " EXACTLY 1 TABLE SHOULD EXIST NOW"
+             << "\n";
         dumpDatabasesAsTable(indent, "");
         success = success && passed;
     }
@@ -915,16 +933,17 @@ bool ConfigTestApp::_testTables() {
     {
         DatabaseInfo const databaseInfo = config()->databaseInfo(database);
         auto const tables = databaseInfo.tables();
-        bool const passed = (tables.size() == 2)
-                && (find(tables.cbegin(), tables.cend(), table2) != tables.cend())
-                && (databaseInfo.isPartitioned(table2) == isPartitioned2)
-                && (databaseInfo.isDirector(table2) == isDirector2)
-                && databaseInfo.directorTable.at(table2).empty()
-                && (databaseInfo.directorTableKey.at(table2) == directorTableKey2)
-                && (databaseInfo.latitudeColName.at(table2) == latitudeColName2)
-                && (databaseInfo.longitudeColName.at(table2) == longitudeColName2)
-                && (databaseInfo.columns.at(table2).size() == coldefs2.size());
-        cout << (passed ? PASSED_STR : FAILED_STR ) << " EXACTLY 2 TABLES SHOULD EXIST NOW" << "\n";
+        bool const passed = (tables.size() == 2) &&
+                            (find(tables.cbegin(), tables.cend(), table2) != tables.cend()) &&
+                            (databaseInfo.isPartitioned(table2) == isPartitioned2) &&
+                            (databaseInfo.isDirector(table2) == isDirector2) &&
+                            databaseInfo.directorTable.at(table2).empty() &&
+                            (databaseInfo.directorTableKey.at(table2) == directorTableKey2) &&
+                            (databaseInfo.latitudeColName.at(table2) == latitudeColName2) &&
+                            (databaseInfo.longitudeColName.at(table2) == longitudeColName2) &&
+                            (databaseInfo.columns.at(table2).size() == coldefs2.size());
+        cout << (passed ? PASSED_STR : FAILED_STR) << " EXACTLY 2 TABLES SHOULD EXIST NOW"
+             << "\n";
         dumpDatabasesAsTable(indent, "");
         success = success && passed;
     }
@@ -945,16 +964,17 @@ bool ConfigTestApp::_testTables() {
     {
         DatabaseInfo const databaseInfo = config()->databaseInfo(database);
         auto const tables = databaseInfo.tables();
-        bool const passed = (tables.size() == 3)
-                && (find(tables.cbegin(), tables.cend(), table12) != tables.cend())
-                && (databaseInfo.isPartitioned(table12) == isPartitioned12)
-                && (databaseInfo.isDirector(table12) == isDirector12)
-                && (databaseInfo.directorTable.at(table12) == directorTable12)
-                && (databaseInfo.directorTableKey.at(table12) == directorTableKey12)
-                && (databaseInfo.latitudeColName.at(table12) == latitudeColName12)
-                && (databaseInfo.longitudeColName.at(table12) == longitudeColName12)
-                && (databaseInfo.columns.at(table12).size() == coldefs12.size());
-        cout << (passed ? PASSED_STR : FAILED_STR ) << " EXACTLY 3 TABLES SHOULD EXIST NOW" << "\n";
+        bool const passed = (tables.size() == 3) &&
+                            (find(tables.cbegin(), tables.cend(), table12) != tables.cend()) &&
+                            (databaseInfo.isPartitioned(table12) == isPartitioned12) &&
+                            (databaseInfo.isDirector(table12) == isDirector12) &&
+                            (databaseInfo.directorTable.at(table12) == directorTable12) &&
+                            (databaseInfo.directorTableKey.at(table12) == directorTableKey12) &&
+                            (databaseInfo.latitudeColName.at(table12) == latitudeColName12) &&
+                            (databaseInfo.longitudeColName.at(table12) == longitudeColName12) &&
+                            (databaseInfo.columns.at(table12).size() == coldefs12.size());
+        cout << (passed ? PASSED_STR : FAILED_STR) << " EXACTLY 3 TABLES SHOULD EXIST NOW"
+             << "\n";
         dumpDatabasesAsTable(indent, "");
         success = success && passed;
     }
@@ -977,16 +997,17 @@ bool ConfigTestApp::_testTables() {
     {
         DatabaseInfo const databaseInfo = config()->databaseInfo(database);
         auto const tables = databaseInfo.tables();
-        bool const passed = (tables.size() == 4)
-                && (find(tables.cbegin(), tables.cend(), table22) != tables.cend())
-                && (databaseInfo.isPartitioned(table22) == isPartitioned22)
-                && (databaseInfo.isDirector(table22) == isDirector22)
-                && (databaseInfo.directorTable.at(table22) == directorTable22)
-                && (databaseInfo.directorTableKey.at(table22) == directorTableKey22)
-                && (databaseInfo.latitudeColName.at(table22) == latitudeColName22)
-                && (databaseInfo.longitudeColName.at(table22) == longitudeColName22)
-                && (databaseInfo.columns.at(table22).size() == coldefs22.size());
-        cout << (passed ? PASSED_STR : FAILED_STR ) << " EXACTLY 4 TABLES SHOULD EXIST NOW" << "\n";
+        bool const passed = (tables.size() == 4) &&
+                            (find(tables.cbegin(), tables.cend(), table22) != tables.cend()) &&
+                            (databaseInfo.isPartitioned(table22) == isPartitioned22) &&
+                            (databaseInfo.isDirector(table22) == isDirector22) &&
+                            (databaseInfo.directorTable.at(table22) == directorTable22) &&
+                            (databaseInfo.directorTableKey.at(table22) == directorTableKey22) &&
+                            (databaseInfo.latitudeColName.at(table22) == latitudeColName22) &&
+                            (databaseInfo.longitudeColName.at(table22) == longitudeColName22) &&
+                            (databaseInfo.columns.at(table22).size() == coldefs22.size());
+        cout << (passed ? PASSED_STR : FAILED_STR) << " EXACTLY 4 TABLES SHOULD EXIST NOW"
+             << "\n";
         dumpDatabasesAsTable(indent, "");
         success = success && passed;
     }
@@ -999,8 +1020,8 @@ bool ConfigTestApp::_testTables() {
             config()->reload();
         } catch (exception const& ex) {
             cout << "\n";
-            cout << indent << " ERROR: " << "failed to delete database family '" << family << "', ex: "
-                << string(ex.what()) << "\n";
+            cout << indent << " ERROR: "
+                 << "failed to delete database family '" << family << "', ex: " << string(ex.what()) << "\n";
             cout << "\n";
             return false;
         }
@@ -1008,4 +1029,4 @@ bool ConfigTestApp::_testTables() {
     return success;
 }
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica

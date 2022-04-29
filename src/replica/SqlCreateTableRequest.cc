@@ -34,88 +34,49 @@ namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.SqlCreateTableRequest");
 
-} /// namespace
+}  // namespace
 
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
 SqlCreateTableRequest::Ptr SqlCreateTableRequest::create(
-        ServiceProvider::Ptr const& serviceProvider,
-        boost::asio::io_service& io_service,
-        string const& worker,
-        std::string const& database,
-        std::string const& table,
-        std::string const& engine,
-        string const& partitionByColumn,
-        std::list<SqlColDef> const& columns,
-        CallbackType const& onFinish,
-        int priority,
-        bool keepTracking,
+        ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service,
+        string const& worker, std::string const& database, std::string const& table,
+        std::string const& engine, string const& partitionByColumn, std::list<SqlColDef> const& columns,
+        CallbackType const& onFinish, int priority, bool keepTracking,
         shared_ptr<Messenger> const& messenger) {
-
-    return Ptr(new SqlCreateTableRequest(
-        serviceProvider,
-        io_service,
-        worker,
-        database,
-        table,
-        engine,
-        partitionByColumn,
-        columns,
-        onFinish,
-        priority,
-        keepTracking,
-        messenger
-    ));
+    return Ptr(new SqlCreateTableRequest(serviceProvider, io_service, worker, database, table, engine,
+                                         partitionByColumn, columns, onFinish, priority, keepTracking,
+                                         messenger));
 }
 
-
-SqlCreateTableRequest::SqlCreateTableRequest(
-        ServiceProvider::Ptr const& serviceProvider,
-        boost::asio::io_service& io_service,
-        string const& worker,
-        std::string const& database,
-        std::string const& table,
-        std::string const& engine,
-        string const& partitionByColumn,
-        std::list<SqlColDef> const& columns,
-        CallbackType const& onFinish,
-        int priority,
-        bool keepTracking,
-        shared_ptr<Messenger> const& messenger)
-    :   SqlRequest(
-            serviceProvider,
-            io_service,
-            "SQL_CREATE_TABLE",
-            worker,
-            0,          /* maxRows */
-            priority,
-            keepTracking,
-            messenger
-        ),
-        _onFinish(onFinish) {
-
+SqlCreateTableRequest::SqlCreateTableRequest(ServiceProvider::Ptr const& serviceProvider,
+                                             boost::asio::io_service& io_service, string const& worker,
+                                             std::string const& database, std::string const& table,
+                                             std::string const& engine, string const& partitionByColumn,
+                                             std::list<SqlColDef> const& columns,
+                                             CallbackType const& onFinish, int priority, bool keepTracking,
+                                             shared_ptr<Messenger> const& messenger)
+        : SqlRequest(serviceProvider, io_service, "SQL_CREATE_TABLE", worker, 0, /* maxRows */
+                     priority, keepTracking, messenger),
+          _onFinish(onFinish) {
     // Finish initializing the request body's content
     requestBody.set_type(ProtocolRequestSql::CREATE_TABLE);
     requestBody.set_database(database);
     requestBody.set_table(table);
     requestBody.set_engine(engine);
     requestBody.set_partition_by_column(partitionByColumn);
-    for (auto&& column: columns) {
+    for (auto&& column : columns) {
         auto out = requestBody.add_columns();
         out->set_name(column.name);
         out->set_type(column.type);
     }
 }
 
-
 void SqlCreateTableRequest::notify(util::Lock const& lock) {
-
-    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ <<
-        "[" << ProtocolRequestSql_Type_Name(requestBody.type()) << "]");
+    LOGS(_log, LOG_LVL_DEBUG,
+         context() << __func__ << "[" << ProtocolRequestSql_Type_Name(requestBody.type()) << "]");
 
     notifyDefaultImpl<SqlCreateTableRequest>(lock, _onFinish);
 }
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica

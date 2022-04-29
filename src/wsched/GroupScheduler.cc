@@ -20,14 +20,14 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
- /**
-  * @file
-  *
-  * @brief A scheduler implementation that limits disk scans to one at
-  * a time, but allows multiple queries to share I/O.
-  *
-  * @author Daniel L. Wang, SLAC
-  */
+/**
+ * @file
+ *
+ * @brief A scheduler implementation that limits disk scans to one at
+ * a time, but allows multiple queries to share I/O.
+ *
+ * @author Daniel L. Wang, SLAC
+ */
 
 // Class header
 #include "wsched/GroupScheduler.h"
@@ -48,10 +48,7 @@ namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.wsched.GroupScheduler");
 }
 
-namespace lsst {
-namespace qserv {
-namespace wsched {
-
+namespace lsst { namespace qserv { namespace wsched {
 
 GroupQueue::GroupQueue(int maxAccepted, wbase::Task::Ptr const& task) : _maxAccepted{maxAccepted} {
     assert(task != nullptr);
@@ -68,11 +65,11 @@ bool GroupQueue::queTask(wbase::Task::Ptr const& task, bool keepInThisGroup) {
     /// Not having a chunk id is considered an id.
     auto hasChunkId = task->msg->has_chunkid();
     if (hasChunkId != _hasChunkId) {
-        return false; // Reject as one has a chunk id and the other does not.
+        return false;  // Reject as one has a chunk id and the other does not.
     }
     auto chunkId = task->msg->chunkid();
     if (hasChunkId && chunkId != _chunkId) {
-        return false; // Reject since chunk ids don't match.
+        return false;  // Reject since chunk ids don't match.
     }
     // Accept if not already full or keepInThisGroup
     if (keepInThisGroup || (_accepted < _maxAccepted)) {
@@ -90,10 +87,7 @@ wbase::Task::Ptr GroupQueue::getTask() {
     return task;
 }
 
-wbase::Task::Ptr GroupQueue::peekTask() {
-    return _tasks.front();
-}
-
+wbase::Task::Ptr GroupQueue::peekTask() { return _tasks.front(); }
 
 /// Queue a Task in the GroupScheduler.
 /// Tasks in the same chunk are grouped together.
@@ -107,7 +101,7 @@ void GroupScheduler::_queCmd(util::Command::Ptr const& cmd, bool keepInThisGroup
     QSERV_LOGCONTEXT_QUERY_JOB(t->getQueryId(), t->getJobId());
     // Start at the front of the queue looking for a group to accept the task.
     bool queued = false;
-    for(auto iter = _queue.begin(), end = _queue.end(); iter != end && !queued; ++iter) {
+    for (auto iter = _queue.begin(), end = _queue.end(); iter != end && !queued; ++iter) {
         GroupQueue::Ptr group = *iter;
         if (group->queTask(t, keepInThisGroup)) {
             queued = true;
@@ -119,18 +113,18 @@ void GroupScheduler::_queCmd(util::Command::Ptr const& cmd, bool keepInThisGroup
         _queue.push_back(group);
     }
     auto uqCount = _incrCountForUserQuery(t->getQueryId(), 1);
-    LOGS(_log, LOG_LVL_DEBUG, getName() << " queCmd uqCount=" << uqCount
-        << " rating=" << t->getScanInfo().scanRating << " interactive=" << t->getScanInteractive());
+    LOGS(_log, LOG_LVL_DEBUG,
+         getName() << " queCmd uqCount=" << uqCount << " rating=" << t->getScanInfo().scanRating
+                   << " interactive=" << t->getScanInteractive());
     util::CommandQueue::_cv.notify_one();
 }
-
 
 void GroupScheduler::queCmd(std::vector<util::Command::Ptr> const& cmds) {
     std::lock_guard<std::mutex> lock(util::CommandQueue::_mx);
     // All the 'cmd's in the vector must be kept in the same group.
     // If there's only one cmd in cmds, it's impossible to split up.
     bool keepInGroup = (cmds.size() > 1);
-    for (auto const& cmd:cmds) {
+    for (auto const& cmd : cmds) {
         _queCmd(cmd, keepInGroup);
     }
 }
@@ -143,10 +137,10 @@ void GroupScheduler::queCmd(util::Command::Ptr const& cmd) {
 }
 
 /// Return a Task from the front of the queue. If no message is available, wait until one is.
-util::Command::Ptr GroupScheduler::getCmd(bool wait)  {
+util::Command::Ptr GroupScheduler::getCmd(bool wait) {
     std::unique_lock<std::mutex> lock(util::CommandQueue::_mx);
     if (wait) {
-        util::CommandQueue::_cv.wait(lock, [this](){return _ready();});
+        util::CommandQueue::_cv.wait(lock, [this]() { return _ready(); });
     } else if (!_ready()) {
         return nullptr;
     }
@@ -155,14 +149,13 @@ util::Command::Ptr GroupScheduler::getCmd(bool wait)  {
     if (group->isEmpty()) {
         _queue.pop_front();
     }
-    ++_inFlight; // Considered inFlight as soon as it's off the queue.
+    ++_inFlight;  // Considered inFlight as soon as it's off the queue.
     _decrCountForUserQuery(task->getQueryId());
     _incrChunkTaskCount(task->getChunkId());
-    LOGS(_log, LOG_LVL_DEBUG, "GroupSched tskStart task=" << task->getIdStr()
-                           << " chunk=" << task->getChunkId());
+    LOGS(_log, LOG_LVL_DEBUG,
+         "GroupSched tskStart task=" << task->getIdStr() << " chunk=" << task->getChunkId());
     return task;
 }
-
 
 void GroupScheduler::commandFinish(util::Command::Ptr const& cmd) {
     --_inFlight;
@@ -171,11 +164,10 @@ void GroupScheduler::commandFinish(util::Command::Ptr const& cmd) {
     LOGS(_log, LOG_LVL_DEBUG, "GroupSched tskEnd task=" << t->getIdStr() << " chunk=" << t->getChunkId());
 }
 
-
 /// MaxActiveChunks and resource limitations (aside from available threads) are ignored by the GroupScheduler.
-GroupScheduler::GroupScheduler(std::string const& name, int maxThreads, int maxReserve, int maxGroupSize, int priority)
-  : SchedulerBase{name, maxThreads, maxReserve, 0, priority}, _maxGroupSize{maxGroupSize} {
-}
+GroupScheduler::GroupScheduler(std::string const& name, int maxThreads, int maxReserve, int maxGroupSize,
+                               int priority)
+        : SchedulerBase{name, maxThreads, maxReserve, 0, priority}, _maxGroupSize{maxGroupSize} {}
 
 bool GroupScheduler::empty() {
     std::lock_guard<std::mutex> lock(util::CommandQueue::_mx);
@@ -194,11 +186,10 @@ bool GroupScheduler::_ready() {
     return !_queue.empty() && _inFlight < maxInFlight();
 }
 
-
 /// Return the number of groups (not Tasks) in the queue.
 std::size_t GroupScheduler::getSize() const {
     std::lock_guard<std::mutex> lock(util::CommandQueue::_mx);
     return _queue.size();
 }
 
-}}} // namespace lsst::qserv::wsched
+}}}  // namespace lsst::qserv::wsched

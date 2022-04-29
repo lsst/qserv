@@ -41,43 +41,43 @@ namespace util = lsst::qserv::util;
 namespace {
 
 string const description =
-    "This application makes the best effort to ensure replicas are distributed"
-    " equally among the worker nodes. And while doing so the re-balancing algorithm"
-    " will both preserve the replication level of chunks and to keep the chunk"
-    " collocation intact.";
+        "This application makes the best effort to ensure replicas are distributed"
+        " equally among the worker nodes. And while doing so the re-balancing algorithm"
+        " will both preserve the replication level of chunks and to keep the chunk"
+        " collocation intact.";
 
 bool const injectDatabaseOptions = true;
 bool const boostProtobufVersionCheck = true;
 bool const enableServiceProvider = true;
 
 void printPlan(RebalanceJobResult const& r) {
-
     cout << "\nTHE REBALANCE PLAN:\n"
-         << "  totalWorkers:    " << r.totalWorkers    << "  (not counting workers which failed to report chunks)\n"
+         << "  totalWorkers:    " << r.totalWorkers
+         << "  (not counting workers which failed to report chunks)\n"
          << "  totalGoodChunks: " << r.totalGoodChunks << "  (good chunks reported by the precursor job)\n"
-         << "  avgChunks:       " << r.avgChunks       << "\n"
+         << "  avgChunks:       " << r.avgChunks << "\n"
          << "\n";
 
     vector<unsigned int> columnChunk;
-    vector<string>       columnSourceWorker;
-    vector<string>       columnDestinationWorker;
+    vector<string> columnSourceWorker;
+    vector<string> columnDestinationWorker;
 
-    for (auto&& chunkEntry: r.plan) {
+    for (auto&& chunkEntry : r.plan) {
         auto const chunkNumber = chunkEntry.first;
 
-        for (auto&& sourceWorkerEntry: chunkEntry.second) {
-            auto&& sourceWorker      = sourceWorkerEntry.first;
+        for (auto&& sourceWorkerEntry : chunkEntry.second) {
+            auto&& sourceWorker = sourceWorkerEntry.first;
             auto&& destinationWorker = sourceWorkerEntry.second;
 
-            columnChunk            .push_back(chunkNumber);
-            columnSourceWorker     .push_back(sourceWorker);
+            columnChunk.push_back(chunkNumber);
+            columnSourceWorker.push_back(sourceWorker);
             columnDestinationWorker.push_back(destinationWorker);
         }
     }
     util::ColumnTablePrinter table("", "  ", false);
 
-    table.addColumn("chunk",              columnChunk );
-    table.addColumn("source worker",      columnSourceWorker,      util::ColumnTablePrinter::LEFT);
+    table.addColumn("chunk", columnChunk);
+    table.addColumn("source worker", columnSourceWorker, util::ColumnTablePrinter::LEFT);
     table.addColumn("destination worker", columnDestinationWorker, util::ColumnTablePrinter::LEFT);
 
     table.print(cout, false, false);
@@ -85,57 +85,32 @@ void printPlan(RebalanceJobResult const& r) {
     cout << endl;
 }
 
-} /// namespace
+}  // namespace
 
+namespace lsst { namespace qserv { namespace replica {
 
-namespace lsst {
-namespace qserv {
-namespace replica {
-
-RebalanceApp::Ptr RebalanceApp::create(int argc, char* argv[]) {
-    return Ptr(new RebalanceApp(argc, argv));
-}
-
+RebalanceApp::Ptr RebalanceApp::create(int argc, char* argv[]) { return Ptr(new RebalanceApp(argc, argv)); }
 
 RebalanceApp::RebalanceApp(int argc, char* argv[])
-    :   Application(
-            argc, argv,
-            ::description,
-            ::injectDatabaseOptions,
-            ::boostProtobufVersionCheck,
-            ::enableServiceProvider
-        ) {
-
+        : Application(argc, argv, ::description, ::injectDatabaseOptions, ::boostProtobufVersionCheck,
+                      ::enableServiceProvider) {
     // Configure the command line parser
 
-    parser().required(
-        "database-family",
-        "The name of a database family.",
-        _databaseFamily
-    ).flag(
-        "estimate-only",
-        "Do not make any changes to chunk disposition. Just produce and print"
-        " an estimated re-balancing plan.",
-        _estimateOnly
-    ).option(
-        "tables-page-size",
-        "The number of rows in the table of replicas (0 means no pages).",
-        _pageSize
-    );
+    parser().required("database-family", "The name of a database family.", _databaseFamily)
+            .flag("estimate-only",
+                  "Do not make any changes to chunk disposition. Just produce and print"
+                  " an estimated re-balancing plan.",
+                  _estimateOnly)
+            .option("tables-page-size", "The number of rows in the table of replicas (0 means no pages).",
+                    _pageSize);
 }
 
-
 int RebalanceApp::runImpl() {
-
     string const noParentJobId;
-    auto const job = RebalanceJob::create(
-        _databaseFamily,
-        _estimateOnly,
-        Controller::create(serviceProvider()),
-        noParentJobId,
-        nullptr,    // no callback
-        PRIORITY_NORMAL
-    );
+    auto const job = RebalanceJob::create(_databaseFamily, _estimateOnly,
+                                          Controller::create(serviceProvider()), noParentJobId,
+                                          nullptr,  // no callback
+                                          PRIORITY_NORMAL);
     job->start();
     job->wait();
 
@@ -153,4 +128,4 @@ int RebalanceApp::runImpl() {
     return 0;
 }
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica

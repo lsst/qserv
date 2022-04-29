@@ -35,20 +35,16 @@ namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.memman.MemFile");
 }
 
-
-namespace lsst {
-namespace qserv {
-namespace memman {
-
+namespace lsst { namespace qserv { namespace memman {
 
 /******************************************************************************/
 /*                  L o c a l   S t a t i c   O b j e c t s                   */
 /******************************************************************************/
-  
+
 namespace {
-std::mutex                                cacheMutex;
+std::mutex cacheMutex;
 std::unordered_map<std::string, MemFile*> fileCache;
-}
+}  // namespace
 
 /******************************************************************************/
 /*                               m e m L o c k                                */
@@ -82,7 +78,6 @@ MemFile::MLResult MemFile::memLock() {
         }
     }
 
-
     // Only call if _isMapped was true. The only line that sets it to false is protected by _mlockFileMutex.
     if (rc == 0) {
         rc = _memory.memLock(_memInfo, _isFlex);
@@ -95,7 +90,7 @@ MemFile::MLResult MemFile::memLock() {
         }
     }
     _mlocking = false;
- 
+
     // If this is a flexible table, we can ignore this error.
     //
     if (_isFlex) {
@@ -108,8 +103,6 @@ MemFile::MLResult MemFile::memLock() {
     MLResult errResult(0, 0.0, rc);
     return errResult;
 }
-
-
 
 /******************************************************************************/
 /*                                m e m M a p                                 */
@@ -124,8 +117,8 @@ int MemFile::memMap() {
 
     // If _mlocking == true, _isMapped somehow got set to false during memLock() call
     if (_mlocking) {
-        LOGS(_log, LOG_LVL_ERROR, "mlocking operations in bad order _isMapped=" << _isMapped <<
-                                  " _mlocking=" << _mlocking);
+        LOGS(_log, LOG_LVL_ERROR,
+             "mlocking operations in bad order _isMapped=" << _isMapped << " _mlocking=" << _mlocking);
         return 0;
     }
 
@@ -145,7 +138,7 @@ int MemFile::memMap() {
     // If we successfully mapped this file, return success (memory reserved).
     //
     if (mInfo.isValid()) {
-        _memInfo  = mInfo;
+        _memInfo = mInfo;
         _isMapped = true;
         return 0;
     }
@@ -170,7 +163,6 @@ int MemFile::memMap() {
 /******************************************************************************/
 
 uint32_t MemFile::numFiles() {
-
     std::lock_guard<std::mutex> guard(cacheMutex);
 
     // Simply return the size of our file cache
@@ -181,10 +173,8 @@ uint32_t MemFile::numFiles() {
 /******************************************************************************/
 /*                                o b t a i n                                 */
 /******************************************************************************/
-  
-MemFile::MFResult MemFile::obtain(std::string const& fPath,
-                                  Memory& mem, bool isFlex) {
 
+MemFile::MFResult MemFile::obtain(std::string const& fPath, Memory& mem, bool isFlex) {
     std::lock_guard<std::mutex> guard(cacheMutex);
 
     // First look up if this table already exists in our cache and is using the
@@ -198,7 +188,7 @@ MemFile::MFResult MemFile::obtain(std::string const& fPath,
             return errResult;
         }
         it->second->_refs++;
-        MFResult aokResult(it->second,0);
+        MFResult aokResult(it->second, 0);
         return aokResult;
     }
 
@@ -217,7 +207,7 @@ MemFile::MFResult MemFile::obtain(std::string const& fPath,
 
     // Return the pointer to the file object
     //
-    MFResult aokResult(mfP,0);
+    MFResult aokResult(mfP, 0);
     return aokResult;
 }
 
@@ -226,19 +216,19 @@ MemFile::MFResult MemFile::obtain(std::string const& fPath,
 /******************************************************************************/
 
 void MemFile::release() {
-
     // Obtain the cache mutex as it protects the cache and the ref count
     //
-    {    std::lock_guard<std::mutex> guard(cacheMutex);
+    {
+        std::lock_guard<std::mutex> guard(cacheMutex);
 
-         // Decrease the reference count. If there are still references, return
-         //
-         _refs--;
-         if (_refs > 0) return;
+        // Decrease the reference count. If there are still references, return
+        //
+        _refs--;
+        if (_refs > 0) return;
 
-         // Remove the object from our cache
-         //
-         fileCache.erase(_fPath);
+        // Remove the object from our cache
+        //
+        fileCache.erase(_fPath);
     }
 
     // We lock the file mutex. We also get the size of the file as memRel()
@@ -266,5 +256,4 @@ void MemFile::release() {
     _mlockFileMutex.unlock();
     delete this;
 }
-}}} // namespace lsst:qserv:memman
-
+}}}  // namespace lsst::qserv::memman

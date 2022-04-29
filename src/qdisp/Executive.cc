@@ -22,17 +22,17 @@
  */
 
 /**
-  * @file
-  *
-  * @brief Executive. It executes and tracks jobs from a user query.
-  *
-  * TODO: Consider merging RequesterMap and StatusMap. Originally, RequesterMap
-  * was separate from StatusMap to reduce contention when things are just
-  * updating statuses, but if the contention is small, we can simplify by
-  * combining them (Requester, status) into a single map.
-  *
-  * @author Daniel L. Wang, SLAC
-  */
+ * @file
+ *
+ * @brief Executive. It executes and tracks jobs from a user query.
+ *
+ * TODO: Consider merging RequesterMap and StatusMap. Originally, RequesterMap
+ * was separate from StatusMap to reduce contention when things are just
+ * updating statuses, but if the contention is small, we can simplify by
+ * combining them (Requester, status) into a single map.
+ *
+ * @author Daniel L. Wang, SLAC
+ */
 
 // Class header
 #include "qdisp/Executive.h"
@@ -72,67 +72,61 @@
 #include "util/Bug.h"
 #include "util/EventThread.h"
 
-
 using namespace std;
 
-extern XrdSsiProvider *XrdSsiProviderClient;
+extern XrdSsiProvider* XrdSsiProviderClient;
 
 namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.qdisp.Executive");
 
-string getErrorText(XrdSsiErrInfo & e) {
+string getErrorText(XrdSsiErrInfo& e) {
     ostringstream os;
     int errCode;
     os << "XrdSsiError " << e.Get(errCode);
-    os <<  " Code=" << errCode;
+    os << " Code=" << errCode;
     return os.str();
 }
 
-} // anonymous namespace
+}  // anonymous namespace
 
-namespace lsst {
-namespace qserv {
-namespace qdisp {
-
+namespace lsst { namespace qserv { namespace qdisp {
 
 ////////////////////////////////////////////////////////////////////////
 // class Executive implementation
 ////////////////////////////////////////////////////////////////////////
 Executive::Executive(ExecutiveConfig const& c, shared_ptr<MessageStore> const& ms,
-                     SharedResources::Ptr const& sharedResources,
-                     shared_ptr<qmeta::QStatus> const& qStatus,
+                     SharedResources::Ptr const& sharedResources, shared_ptr<qmeta::QStatus> const& qStatus,
                      shared_ptr<qproc::QuerySession> const& querySession)
-    : _config(c), _messageStore(ms),
-      _qdispPool(sharedResources->getQdispPool()),
-      _queryRequestPseudoFifo(sharedResources->getQueryRequestPseudoFifo()),
-      _qMeta(qStatus), _querySession(querySession) {
+        : _config(c),
+          _messageStore(ms),
+          _qdispPool(sharedResources->getQdispPool()),
+          _queryRequestPseudoFifo(sharedResources->getQueryRequestPseudoFifo()),
+          _qMeta(qStatus),
+          _querySession(querySession) {
     _secondsBetweenQMetaUpdates = chrono::seconds(_config.secondsBetweenChunkUpdates);
     _setup();
     _setupLimit();
 }
 
-
 Executive::~Executive() {
     // Real XrdSsiService objects are unowned, but mocks are allocated in _setup.
-    delete dynamic_cast<XrdSsiServiceMock *>(_xrdSsiService);
+    delete dynamic_cast<XrdSsiServiceMock*>(_xrdSsiService);
 }
-
 
 Executive::Ptr Executive::create(ExecutiveConfig const& c, shared_ptr<MessageStore> const& ms,
                                  SharedResources::Ptr const& sharedResources,
                                  shared_ptr<qmeta::QStatus> const& qMeta,
                                  shared_ptr<qproc::QuerySession> const& querySession) {
-    Executive::Ptr exec(new Executive(c, ms, sharedResources, qMeta, querySession)); // make_shared dislikes private constructor.
+    Executive::Ptr exec(new Executive(c, ms, sharedResources, qMeta,
+                                      querySession));  // make_shared dislikes private constructor.
     return exec;
 }
-
 
 void Executive::setQueryId(QueryId id) {
     _id = id;
     _idStr = QueryIdHelper::makeIdStr(_id);
 }
-
 
 /// Add a new job to executive queue, if not already in. Not thread-safe.
 ///
@@ -150,8 +144,8 @@ JobQuery::Ptr Executive::add(JobDescription::Ptr const& jobDesc) {
         {
             lock_guard<recursive_mutex> lock(_cancelled.getMutex());
             if (_cancelled) {
-                LOGS(_log, LOG_LVL_DEBUG, "Executive already cancelled, ignoring add("
-                        << jobDesc->id() << ")");
+                LOGS(_log, LOG_LVL_DEBUG,
+                     "Executive already cancelled, ignoring add(" << jobDesc->id() << ")");
                 return nullptr;
             }
 
@@ -182,7 +176,6 @@ JobQuery::Ptr Executive::add(JobDescription::Ptr const& jobDesc) {
     return jobQuery;
 }
 
-
 void Executive::queueJobStart(PriorityCommand::Ptr const& cmd) {
     _jobStartCmdList.push_back(cmd);
     if (_scanInteractive) {
@@ -191,7 +184,6 @@ void Executive::queueJobStart(PriorityCommand::Ptr const& cmd) {
         _qdispPool->queCmd(cmd, 1);
     }
 }
-
 
 void Executive::waitForAllJobsToStart() {
     LOGS(_log, LOG_LVL_INFO, "waitForAllJobsToStart");
@@ -206,13 +198,10 @@ void Executive::waitForAllJobsToStart() {
     LOGS(_log, LOG_LVL_INFO, "waitForAllJobsToStart done");
 }
 
-
-
 // If the executive has not been cancelled, then we simply start the query.
 // @return true if query was actually started (i.e. we were not cancelled)
 //
 bool Executive::startQuery(shared_ptr<JobQuery> const& jobQuery) {
-
     lock_guard<recursive_mutex> lock(_cancelled.getMutex());
 
     // If we have been cancelled, then return false.
@@ -223,8 +212,8 @@ bool Executive::startQuery(shared_ptr<JobQuery> const& jobQuery) {
     //   Interactive Queries should have an Affinity of XrdSsiResource::None or Weak while
     //   Scans should have an affinity of Strong
     XrdSsiResource::Affinity affinity = (_scanInteractive) ? XrdSsiResource::Weak : XrdSsiResource::Strong;
-    XrdSsiResource jobResource(jobQuery->getDescription()->resource().path(), "", jobQuery->getIdStr(),
-                               "", 0, affinity);
+    XrdSsiResource jobResource(jobQuery->getDescription()->resource().path(), "", jobQuery->getIdStr(), "", 0,
+                               affinity);
 
     // Now construct the actual query request and tie it to the jobQuery. The
     // shared pointer is used by QueryRequest to keep itself alive, sloppy design.
@@ -238,7 +227,6 @@ bool Executive::startQuery(shared_ptr<JobQuery> const& jobQuery) {
     getXrdSsiService()->ProcessRequest(*(qr.get()), jobResource);
     return true;
 }
-
 
 /// Add a JobQuery to this Executive.
 /// Return true if it was successfully added to the map.
@@ -270,19 +258,21 @@ bool Executive::join() {
         sCount = count_if(_jobMap.begin(), _jobMap.end(), successF::func);
     }
     if (sCount == _requestCount) {
-        LOGS(_log, LOG_LVL_INFO, "Query execution succeeded all: " << _requestCount
-             << " jobs dispatched and completed.");
+        LOGS(_log, LOG_LVL_INFO,
+             "Query execution succeeded all: " << _requestCount << " jobs dispatched and completed.");
     } else if (isLimitRowComplete()) {
-        LOGS(_log, LOG_LVL_INFO, "Query execution succeeded enough (LIMIT): " << sCount
-             << " jobs out of " << _requestCount << " completed.");
+        LOGS(_log, LOG_LVL_INFO,
+             "Query execution succeeded enough (LIMIT): " << sCount << " jobs out of " << _requestCount
+                                                          << " completed.");
     } else {
-        LOGS(_log, LOG_LVL_ERROR, "Query execution failed: " << _requestCount
-             << " jobs dispatched, but only " << sCount << " jobs completed");
+        LOGS(_log, LOG_LVL_ERROR,
+             "Query execution failed: " << _requestCount << " jobs dispatched, but only " << sCount
+                                        << " jobs completed");
     }
     _updateProxyMessages();
     _empty = (sCount == _requestCount);
-    LOGS(_log, LOG_LVL_DEBUG, "Flag set to _empty=" << _empty << ", sCount=" << sCount
-         << ", requestCount=" << _requestCount);
+    LOGS(_log, LOG_LVL_DEBUG,
+         "Flag set to _empty=" << _empty << ", sCount=" << sCount << ", requestCount=" << _requestCount);
     return _empty || isLimitRowComplete();
 }
 
@@ -295,11 +285,11 @@ void Executive::markCompleted(int jobId, bool success) {
             lock_guard<mutex> lock(_incompleteJobsMutex);
             auto iter = _incompleteJobs.find(jobId);
             if (iter != _incompleteJobs.end()) {
-                auto jobQuery =  iter->second;
+                auto jobQuery = iter->second;
                 err = jobQuery->getDescription()->respHandler()->getError();
             } else {
                 string msg = "Executive::markCompleted failed to find TRACKED " + idStr +
-                        " size=" + to_string(_incompleteJobs.size());
+                             " size=" + to_string(_incompleteJobs.size());
                 // If the user query has been cancelled, this is expected for jobs that have not yet
                 // been tracked. Otherwise, this indicates a serious problem.
                 if (!getCancelled()) {
@@ -311,8 +301,8 @@ void Executive::markCompleted(int jobId, bool success) {
                 return;
             }
         }
-        LOGS(_log, LOG_LVL_WARN, "Executive: error executing "
-             << err << " (status: " << err.getStatus() << ")");
+        LOGS(_log, LOG_LVL_WARN,
+             "Executive: error executing " << err << " (status: " << err.getStatus() << ")");
         {
             lock_guard<recursive_mutex> lockJobMap(_jobMapMtx);
             auto job = _jobMap[jobId];
@@ -322,18 +312,18 @@ void Executive::markCompleted(int jobId, bool success) {
         {
             lock_guard<mutex> lock(_errorsMutex);
             _multiError.push_back(err);
-            LOGS(_log, LOG_LVL_TRACE, "Currently " << _multiError.size()
-                 << " registered errors: " << _multiError);
+            LOGS(_log, LOG_LVL_TRACE,
+                 "Currently " << _multiError.size() << " registered errors: " << _multiError);
         }
     }
     _unTrack(jobId);
     if (!success && !isLimitRowComplete()) {
-        LOGS(_log, LOG_LVL_ERROR, "Executive: requesting squash, cause: "
-             << " failed (code=" << err.getCode() << " " << err.getMsg() << ")");
-        squash(); // ask to squash
+        LOGS(_log, LOG_LVL_ERROR,
+             "Executive: requesting squash, cause: "
+                     << " failed (code=" << err.getCode() << " " << err.getMsg() << ")");
+        squash();  // ask to squash
     }
 }
-
 
 void Executive::squash() {
     bool alreadyCancelled = _cancelled.exchange(true);
@@ -346,7 +336,7 @@ void Executive::squash() {
     deque<JobQuery::Ptr> jobsToCancel;
     {
         lock_guard<recursive_mutex> lockJobMap(_jobMapMtx);
-        for(auto const& jobEntry : _jobMap) {
+        for (auto const& jobEntry : _jobMap) {
             jobsToCancel.push_back(jobEntry.second);
         }
     }
@@ -356,7 +346,6 @@ void Executive::squash() {
     }
     LOGS(_log, LOG_LVL_DEBUG, "Executive::squash done");
 }
-
 
 void Executive::_squashSuperfluous() {
     if (_cancelled) {
@@ -368,11 +357,11 @@ void Executive::_squashSuperfluous() {
     deque<JobQuery::Ptr> jobsToCancel;
     {
         lock_guard<recursive_mutex> lockJobMap(_jobMapMtx);
-        for(auto const& jobEntry : _jobMap) {
+        for (auto const& jobEntry : _jobMap) {
             JobQuery::Ptr jq = jobEntry.second;
             // It's important that none of the cancelled queries
             // try to remove their rows from the result.
-            if (jq->getStatus()->getInfo().state  != JobStatus::COMPLETE) {
+            if (jq->getStatus()->getInfo().state != JobStatus::COMPLETE) {
                 jobsToCancel.push_back(jobEntry.second);
             }
         }
@@ -383,7 +372,6 @@ void Executive::_squashSuperfluous() {
     }
     LOGS(_log, LOG_LVL_DEBUG, "Executive::squashSuperfluous done");
 }
-
 
 int Executive::getNumInflight() {
     unique_lock<mutex> lock(_incompleteJobsMutex);
@@ -397,10 +385,11 @@ string Executive::getProgressDesc() const {
         auto first = true;
         for (auto entry : _jobMap) {
             JobQuery::Ptr job = entry.second;
-            if (!first) { os << "\n"; }
+            if (!first) {
+                os << "\n";
+            }
             first = false;
             os << "Ref=" << entry.first << " " << job;
-
         }
     }
     string msg_progress = os.str();
@@ -408,9 +397,7 @@ string Executive::getProgressDesc() const {
     return msg_progress;
 }
 
-
 void Executive::_setup() {
-
     XrdSsiErrInfo eInfo;
     _empty.store(true);
     _requestCount = 0;
@@ -418,35 +405,37 @@ void Executive::_setup() {
     if (_config.serviceUrl.compare(_config.getMockStr()) == 0) {
         _xrdSsiService = new XrdSsiServiceMock(this);
     } else {
-        static XrdSsiService* xrdSsiServiceStatic = XrdSsiProviderClient->GetService(eInfo, _config.serviceUrl);
+        static XrdSsiService* xrdSsiServiceStatic =
+                XrdSsiProviderClient->GetService(eInfo, _config.serviceUrl);
         _xrdSsiService = xrdSsiServiceStatic;
-
     }
     if (!_xrdSsiService) {
-        LOGS(_log, LOG_LVL_DEBUG, _id << " Error obtaining XrdSsiService in Executive: "
-             "serviceUrl=" << _config.serviceUrl << " " <<  getErrorText(eInfo));
+        LOGS(_log, LOG_LVL_DEBUG,
+             _id << " Error obtaining XrdSsiService in Executive: "
+                    "serviceUrl="
+                 << _config.serviceUrl << " " << getErrorText(eInfo));
     }
     assert(_xrdSsiService);
 }
 
-
 /** Add (jobId,r) entry to _requesters map if not here yet
-  *  else leave _requesters untouched.
-  *
-  *  @param jobId id of the job related to current chunk query
-  *  @param r pointer to job which will store chunk query result
-  *
-  *  @return true if (jobId,r) was added to _requesters
-  *          false if this entry was previously in the map
-  */
+ *  else leave _requesters untouched.
+ *
+ *  @param jobId id of the job related to current chunk query
+ *  @param r pointer to job which will store chunk query result
+ *
+ *  @return true if (jobId,r) was added to _requesters
+ *          false if this entry was previously in the map
+ */
 bool Executive::_track(int jobId, shared_ptr<JobQuery> const& r) {
     int size = -1;
     {
         lock_guard<mutex> lock(_incompleteJobsMutex);
         if (_incompleteJobs.find(jobId) != _incompleteJobs.end()) {
-            LOGS(_log, LOG_LVL_WARN, "Attempt for TRACKING "
-                 << " failed as jobId already found in incomplete jobs. "
-                 << _getIncompleteJobsString(-1));
+            LOGS(_log, LOG_LVL_WARN,
+                 "Attempt for TRACKING "
+                         << " failed as jobId already found in incomplete jobs. "
+                         << _getIncompleteJobsString(-1));
             return false;
         }
         _incompleteJobs[jobId] = r;
@@ -471,27 +460,26 @@ void Executive::_unTrack(int jobId) {
             if (_incompleteJobs.empty()) _allJobsComplete.notify_all();
         }
         auto sz = _incompleteJobs.size();
-        logSome = (sz < 50) || (sz%1000 == 0) || !untracked;
+        logSome = (sz < 50) || (sz % 1000 == 0) || !untracked;
         if (logSome || LOG_CHECK_LVL(_log, LOG_LVL_DEBUG)) {
             // Log up to 5 incomplete jobs. Very useful when jobs do not finish.
             s = _getIncompleteJobsString(5);
         }
     }
     bool logDebug = untracked || isLimitRowComplete();
-    LOGS(_log, (logDebug ? LOG_LVL_DEBUG :  LOG_LVL_WARN),
-         "Executive UNTRACKING " << (untracked ? "success":"failed") << "::" << s);
+    LOGS(_log, (logDebug ? LOG_LVL_DEBUG : LOG_LVL_WARN),
+         "Executive UNTRACKING " << (untracked ? "success" : "failed") << "::" << s);
     // Every time a chunk completes, consider sending an update to QMeta.
     // Important chunks to log: first, last, middle
     // limiting factors: no more than one update a minute (config)
     if (untracked) {
         auto now = chrono::system_clock::now();
         unique_lock<mutex> lastUpdateLock(_lastQMetaMtx);
-        if (now - _lastQMetaUpdate > _secondsBetweenQMetaUpdates
-           || incompleteJobs == _totalJobs/2
-           || incompleteJobs == 0) {
+        if (now - _lastQMetaUpdate > _secondsBetweenQMetaUpdates || incompleteJobs == _totalJobs / 2 ||
+            incompleteJobs == 0) {
             _lastQMetaUpdate = now;
-            lastUpdateLock.unlock(); // unlock asap, _qMeta write can be slow.
-            int completedJobs = _totalJobs -  incompleteJobs;
+            lastUpdateLock.unlock();  // unlock asap, _qMeta write can be slow.
+            int completedJobs = _totalJobs - incompleteJobs;
             if (_qMeta != nullptr) {
                 // This is not vital (logging), if it fails keep going.
                 try {
@@ -504,7 +492,6 @@ void Executive::_unTrack(int jobId) {
     }
 }
 
-
 /// _incompleteJobsMutex must be held before calling this function.
 /// @return: a string containing a list of incomplete jobs containing up to 'maxToList' jobs.
 ///          If maxToList is less than 0, all jobs are printed
@@ -513,12 +500,11 @@ string Executive::_getIncompleteJobsString(int maxToList) {
     int c = 0;
     if (maxToList < 0) maxToList = _incompleteJobs.size();
     os << "_incompleteJobs listing first" << maxToList << " of (size=" << _incompleteJobs.size() << ") ";
-    for(auto j = _incompleteJobs.begin(), e = _incompleteJobs.end(); j != e && c < maxToList; ++j, ++c) {
+    for (auto j = _incompleteJobs.begin(), e = _incompleteJobs.end(); j != e && c < maxToList; ++j, ++c) {
         os << j->first << " ";
     }
     return os.str();
 }
-
 
 /** Store job status and execution errors in the current user query message store
  *
@@ -539,9 +525,7 @@ void Executive::_updateProxyMessages() {
                 os << " (" << info.stateDesc << ")";
             }
             os << " " << info.stateTime;
-            _messageStore->addMessage(job->getDescription()->resource().chunk(),
-                    info.state, os.str());
-
+            _messageStore->addMessage(job->getDescription()->resource().chunk(), info.state, os.str());
         }
     }
     {
@@ -551,7 +535,6 @@ void Executive::_updateProxyMessages() {
         }
     }
 }
-
 
 /// This function blocks until it has reaped all the requesters.
 /// Typically the requesters are handled by markCompleted().
@@ -563,7 +546,7 @@ void Executive::_waitAllUntilEmpty() {
     int moreDetailThreshold = 10;
     int complainCount = 0;
     const chrono::seconds statePrintDelay(5);
-    while(!_incompleteJobs.empty()) {
+    while (!_incompleteJobs.empty()) {
         count = _incompleteJobs.size();
         if (count != lastCount) {
             lastCount = count;
@@ -576,7 +559,7 @@ void Executive::_waitAllUntilEmpty() {
                 }
                 os << "Still " << count << " in flight.";
                 complainCount = 0;
-                lock.unlock(); // release the lock while we trigger logging.
+                lock.unlock();  // release the lock while we trigger logging.
                 LOGS(_log, LOG_LVL_INFO, os.str());
                 lock.lock();
             }
@@ -584,7 +567,6 @@ void Executive::_waitAllUntilEmpty() {
         _allJobsComplete.wait_for(lock, statePrintDelay);
     }
 }
-
 
 void Executive::_setupLimit() {
     // Figure out the limit situation.
@@ -597,11 +579,10 @@ void Executive::_setupLimit() {
     bool hasLimit = selectStatement.hasLimit();
     if (hasLimit) {
         _limit = selectStatement.getLimit();
-        if (_limit <=0) hasLimit = false;
+        if (_limit <= 0) hasLimit = false;
     }
     _limitApplies = hasLimit && !(groupBy || orderBy);
 }
-
 
 void Executive::checkLimitRowComplete() {
     if (!_limitApplies) return;
@@ -618,7 +599,6 @@ void Executive::checkLimitRowComplete() {
     _squashSuperfluous();
 }
 
-
 ostream& operator<<(ostream& os, Executive::JobMap::value_type const& v) {
     JobStatus::Ptr status = v.second->getStatus();
     os << v.first << ": " << *status;
@@ -633,5 +613,4 @@ void Executive::_printState(ostream& os) {
     }
 }
 
-
-}}} // namespace lsst::qserv::qdisp
+}}}  // namespace lsst::qserv::qdisp

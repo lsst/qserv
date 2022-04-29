@@ -37,24 +37,20 @@
 #include "replica/WorkerRequest.h"
 
 // Forward declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
-    class FileClient;
-}}}  // Forward declarations
+namespace lsst { namespace qserv { namespace replica {
+class FileClient;
+}}}  // namespace lsst::qserv::replica
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
 /**
-  * Class WorkerReplicationRequest represents a context and a state of replication
-  * requests within the worker servers. It can also be used for testing the framework
-  * operation as its implementation won't make any changes to any files or databases.
-  *
-  * Real implementations of the request processing must derive from this class.
-  */
+ * Class WorkerReplicationRequest represents a context and a state of replication
+ * requests within the worker servers. It can also be used for testing the framework
+ * operation as its implementation won't make any changes to any files or databases.
+ *
+ * Real implementations of the request processing must derive from this class.
+ */
 class WorkerReplicationRequest : public WorkerRequest {
 public:
     typedef std::shared_ptr<WorkerReplicationRequest> Ptr;
@@ -80,13 +76,9 @@ public:
      * @param request ProtoBuf body of the request
      * @return pointer to the created object
      */
-    static Ptr create(ServiceProvider::Ptr const& serviceProvider,
-                      std::string const& worker,
-                      std::string const& id,
-                      int priority,
-                      ExpirationCallbackType const& onExpired,
-                      unsigned int requestExpirationIvalSec,
-                      ProtocolRequestReplicate const& request);
+    static Ptr create(ServiceProvider::Ptr const& serviceProvider, std::string const& worker,
+                      std::string const& id, int priority, ExpirationCallbackType const& onExpired,
+                      unsigned int requestExpirationIvalSec, ProtocolRequestReplicate const& request);
 
     WorkerReplicationRequest() = delete;
     WorkerReplicationRequest(WorkerReplicationRequest const&) = delete;
@@ -113,13 +105,9 @@ public:
     bool execute() override;
 
 protected:
-    WorkerReplicationRequest(ServiceProvider::Ptr const& serviceProvider,
-                             std::string const& worker,
-                             std::string const& id,
-                             int priority,
-                             ExpirationCallbackType const& onExpired,
-                             unsigned int requestExpirationIvalSec,
-                             ProtocolRequestReplicate const& request);
+    WorkerReplicationRequest(ServiceProvider::Ptr const& serviceProvider, std::string const& worker,
+                             std::string const& id, int priority, ExpirationCallbackType const& onExpired,
+                             unsigned int requestExpirationIvalSec, ProtocolRequestReplicate const& request);
 
     /// Result of the operation
     ReplicaInfo replicaInfo;
@@ -133,22 +121,18 @@ private:
 };
 
 /**
-  * Class WorkerReplicationRequestPOSIX provides an actual implementation for
-  * the replication requests based on the direct manipulation of files on
-  * a POSIX file system.
-  */
+ * Class WorkerReplicationRequestPOSIX provides an actual implementation for
+ * the replication requests based on the direct manipulation of files on
+ * a POSIX file system.
+ */
 class WorkerReplicationRequestPOSIX : public WorkerReplicationRequest {
 public:
     typedef std::shared_ptr<WorkerReplicationRequestPOSIX> Ptr;
 
     /// @see WorkerReplicationRequest::created()
-    static Ptr create(ServiceProvider::Ptr const& serviceProvider,
-                      std::string const& worker,
-                      std::string const& id,
-                      int priority,
-                      ExpirationCallbackType const& onExpired,
-                      unsigned int requestExpirationIvalSec,
-                      ProtocolRequestReplicate const& request);
+    static Ptr create(ServiceProvider::Ptr const& serviceProvider, std::string const& worker,
+                      std::string const& id, int priority, ExpirationCallbackType const& onExpired,
+                      unsigned int requestExpirationIvalSec, ProtocolRequestReplicate const& request);
 
     WorkerReplicationRequestPOSIX() = delete;
     WorkerReplicationRequestPOSIX(WorkerReplicationRequestPOSIX const&) = delete;
@@ -159,33 +143,27 @@ public:
     bool execute() final;
 
 protected:
-    WorkerReplicationRequestPOSIX(ServiceProvider::Ptr const& serviceProvider,
-                                  std::string const& worker,
-                                  std::string const& id,
-                                  int priority,
+    WorkerReplicationRequestPOSIX(ServiceProvider::Ptr const& serviceProvider, std::string const& worker,
+                                  std::string const& id, int priority,
                                   ExpirationCallbackType const& onExpired,
                                   unsigned int requestExpirationIvalSec,
                                   ProtocolRequestReplicate const& request);
 };
 
 /**
-  * Class WorkerReplicationRequestFS provides an actual implementation for
-  * the replication requests based on the direct manipulation of local files
-  * on a POSIX file system and for reading remote files using the built-into-worker
-  * simple file server.
-  */
+ * Class WorkerReplicationRequestFS provides an actual implementation for
+ * the replication requests based on the direct manipulation of local files
+ * on a POSIX file system and for reading remote files using the built-into-worker
+ * simple file server.
+ */
 class WorkerReplicationRequestFS : public WorkerReplicationRequest {
 public:
     typedef std::shared_ptr<WorkerReplicationRequestFS> Ptr;
 
     /// @see WorkerReplicationRequest::created()
-    static Ptr create(ServiceProvider::Ptr const& serviceProvider,
-                      std::string const& worker,
-                      std::string const& id,
-                      int priority,
-                      ExpirationCallbackType const& onExpired,
-                      unsigned int requestExpirationIvalSec,
-                      ProtocolRequestReplicate const& request);
+    static Ptr create(ServiceProvider::Ptr const& serviceProvider, std::string const& worker,
+                      std::string const& id, int priority, ExpirationCallbackType const& onExpired,
+                      unsigned int requestExpirationIvalSec, ProtocolRequestReplicate const& request);
 
     WorkerReplicationRequestFS() = delete;
     WorkerReplicationRequestFS(WorkerReplicationRequestFS const&) = delete;
@@ -198,11 +176,8 @@ public:
 
 protected:
     /// @see WorkerReplicationRequestFS::create()
-    WorkerReplicationRequestFS(ServiceProvider::Ptr const& serviceProvider,
-                               std::string const& worker,
-                               std::string const& id,
-                               int priority,
-                               ExpirationCallbackType const& onExpired,
+    WorkerReplicationRequestFS(ServiceProvider::Ptr const& serviceProvider, std::string const& worker,
+                               std::string const& id, int priority, ExpirationCallbackType const& onExpired,
                                unsigned int requestExpirationIvalSec,
                                ProtocolRequestReplicate const& request);
 
@@ -270,14 +245,13 @@ private:
 
     /// The FileDescr structure encapsulates various parameters of a file
     struct FileDescr {
-
         /// The input file size as reported by a remote server
         size_t inSizeBytes = 0;
 
         /// The actual number of bytes read so far (changes as the operation
         /// is progressing)
         size_t outSizeBytes = 0;
-        
+
         /// The last modification time of the file (seconds since UNISX Epoch)
         std::time_t mtime = 0;
 
@@ -309,7 +283,6 @@ private:
     size_t _bufSize;
 };
 
+}}}  // namespace lsst::qserv::replica
 
-}}} // namespace lsst::qserv::replica
-
-#endif // LSST_QSERV_REPLICA_WORKERREPLICATIONREQUEST_H
+#endif  // LSST_QSERV_REPLICA_WORKERREPLICATIONREQUEST_H

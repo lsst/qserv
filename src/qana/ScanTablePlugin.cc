@@ -21,12 +21,12 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 /**
-  * @file
-  *
-  * @brief ScanTablePlugin implementation
-  *
-  * @author Daniel L. Wang, SLAC
-  */
+ * @file
+ *
+ * @brief ScanTablePlugin implementation
+ *
+ * @author Daniel L. Wang, SLAC
+ */
 
 // Class header
 #include "qana/ScanTablePlugin.h"
@@ -54,22 +54,17 @@ namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.qana.ScanTablePlugin");
 }
 
-namespace lsst {
-namespace qserv {
-namespace qana {
+namespace lsst { namespace qserv { namespace qana {
 
 ////////////////////////////////////////////////////////////////////////
 // ScanTablePlugin implementation
 ////////////////////////////////////////////////////////////////////////
-void
-ScanTablePlugin::applyLogical(query::SelectStmt& stmt,
-                              query::QueryContext& context) {
+void ScanTablePlugin::applyLogical(query::SelectStmt& stmt, query::QueryContext& context) {
     _scanInfo = _findScanTables(stmt, context);
     context.scanInfo = _scanInfo;
 }
 
-void
-ScanTablePlugin::applyFinal(query::QueryContext& context) {
+void ScanTablePlugin::applyFinal(query::QueryContext& context) {
     int const scanThreshold = _interactiveChunkLimit;
     if (context.chunkCount < scanThreshold) {
         context.scanInfo.infoTables.clear();
@@ -91,21 +86,16 @@ struct getPartitioned : public query::TableRef::FuncC {
 };
 
 // helper
-StringPairVector
-filterPartitioned(query::TableRefList const& tList) {
+StringPairVector filterPartitioned(query::TableRefList const& tList) {
     StringPairVector vector;
     getPartitioned gp(vector);
-    for(query::TableRefList::const_iterator i=tList.begin(), e=tList.end();
-        i != e; ++i) {
+    for (query::TableRefList::const_iterator i = tList.begin(), e = tList.end(); i != e; ++i) {
         (**i).apply(gp);
     }
     return vector;
 }
 
-
-proto::ScanInfo
-ScanTablePlugin::_findScanTables(query::SelectStmt& stmt,
-                                 query::QueryContext& context) {
+proto::ScanInfo ScanTablePlugin::_findScanTables(query::SelectStmt& stmt, query::QueryContext& context) {
     // Might be better as a separate plugin
 
     // All tables of a query are scan tables if the statement both:
@@ -129,12 +119,12 @@ ScanTablePlugin::_findScanTables(query::SelectStmt& stmt,
     // the presence of a small-valued LIMIT should be enough to
     // de-classify a query as a scanning query.
 
-    bool hasSelectColumnRef = false; // Requires row-reading for
-                                     // results
-    bool hasWhereColumnRef = false; // Makes count(*) non-trivial
-    bool hasSecondaryKey = false; // Using secondaryKey to restrict
-                                  // coverage, e.g., via objectId=123
-                                  // or objectId IN (123,133) ?
+    bool hasSelectColumnRef = false;  // Requires row-reading for
+                                      // results
+    bool hasWhereColumnRef = false;   // Makes count(*) non-trivial
+    bool hasSecondaryKey = false;     // Using secondaryKey to restrict
+                                      // coverage, e.g., via objectId=123
+                                      // or objectId IN (123,133) ?
 
     if (stmt.hasWhereClause()) {
         query::WhereClause& wc = stmt.getWhereClause();
@@ -168,16 +158,16 @@ ScanTablePlugin::_findScanTables(query::SelectStmt& stmt,
     std::shared_ptr<query::ValueExprPtrVector> sVexpr = sList.getValueExprList();
 
     if (sVexpr) {
-        query::ColumnRef::Vector cList; // For each expr, get column refs.
+        query::ColumnRef::Vector cList;  // For each expr, get column refs.
 
         typedef query::ValueExprPtrVector::const_iterator Iter;
-        for(Iter i=sVexpr->begin(), e=sVexpr->end(); i != e; ++i) {
+        for (Iter i = sVexpr->begin(), e = sVexpr->end(); i != e; ++i) {
             (*i)->findColumnRefs(cList);
         }
         // Resolve column refs, see if they include partitioned
         // tables.
         typedef query::ColumnRef::Vector::const_iterator ColIter;
-        for(ColIter i=cList.begin(), e=cList.end(); i != e; ++i) {
+        for (ColIter i = cList.begin(), e = cList.end(); i != e; ++i) {
             // FIXME: Need to resolve and see if it's a partitioned table.
             hasSelectColumnRef = true;
         }
@@ -210,7 +200,6 @@ ScanTablePlugin::_findScanTables(query::SelectStmt& stmt,
         scanTables = filterPartitioned(stmt.getFromList().getTableRefList());
     }
 
-
     // Ask css if any of the tables should be locked in memory and their scan rating.
     // Use this information to determine scanPriority.
     proto::ScanInfo scanInfo;
@@ -222,11 +211,12 @@ ScanTablePlugin::_findScanTables(query::SelectStmt& stmt,
         scanInfo.infoTables.push_back(info);
         scanInfo.scanRating = std::max(scanInfo.scanRating, info.scanRating);
         scanInfo.scanRating = std::min(scanInfo.scanRating, static_cast<int>(proto::ScanInfo::SLOWEST));
-        LOGS(_log, LOG_LVL_TRACE, "ScanInfo " << info.db << "." << info.table
-              << " lockInMemory=" << info.lockInMemory << " rating=" << info.scanRating);
+        LOGS(_log, LOG_LVL_TRACE,
+             "ScanInfo " << info.db << "." << info.table << " lockInMemory=" << info.lockInMemory
+                         << " rating=" << info.scanRating);
     }
 
     return scanInfo;
 }
 
-}}} // namespace lsst::qserv::qana
+}}}  // namespace lsst::qserv::qana

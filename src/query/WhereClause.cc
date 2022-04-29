@@ -21,13 +21,12 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 /**
-  * @file
-  *
-  * @brief WhereClause is a parse element construct for SQL WHERE.
-  *
-  * @author Daniel L. Wang, SLAC
-  */
-
+ * @file
+ *
+ * @brief WhereClause is a parse element construct for SQL WHERE.
+ *
+ * @author Daniel L. Wang, SLAC
+ */
 
 // Class header
 #include "query/WhereClause.h"
@@ -53,14 +52,9 @@
 #include "util/PointerCompare.h"
 #include "util/IterableFormatter.h"
 
+namespace lsst { namespace qserv { namespace query {
 
-namespace lsst {
-namespace qserv {
-namespace query {
-
-
-std::ostream&
-operator<<(std::ostream& os, WhereClause const& wc) {
+std::ostream& operator<<(std::ostream& os, WhereClause const& wc) {
     os << "WhereClause(" << wc._rootOrTerm;
     if (nullptr != wc._restrs && !wc._restrs->empty()) {
         os << ", " << util::ptrPrintable(wc._restrs, "", "");
@@ -69,13 +63,10 @@ operator<<(std::ostream& os, WhereClause const& wc) {
     return os;
 }
 
-
-std::ostream&
-operator<<(std::ostream& os, WhereClause const* wc) {
+std::ostream& operator<<(std::ostream& os, WhereClause const* wc) {
     (nullptr == wc) ? os << "nullptr" : os << *wc;
     return os;
 }
-
 
 void findColumnRefs(std::shared_ptr<BoolFactor> f, ColumnRef::Vector& vector) {
     if (f) {
@@ -83,12 +74,13 @@ void findColumnRefs(std::shared_ptr<BoolFactor> f, ColumnRef::Vector& vector) {
     }
 }
 
-
 void findColumnRefs(std::shared_ptr<BoolTerm> t, ColumnRef::Vector& vector) {
-    if (!t) { return; }
+    if (!t) {
+        return;
+    }
     BoolTerm::PtrVector::iterator i = t->iterBegin();
     BoolTerm::PtrVector::iterator e = t->iterEnd();
-    if (i == e) { // Leaf.
+    if (i == e) {  // Leaf.
         // Bool factor?
         std::shared_ptr<BoolFactor> bf = std::dynamic_pointer_cast<BoolFactor>(t);
         if (bf) {
@@ -96,17 +88,15 @@ void findColumnRefs(std::shared_ptr<BoolTerm> t, ColumnRef::Vector& vector) {
         } else {
             std::ostringstream os;
             t->putStream(os);
-            throw util::Bug(ERR_LOC, std::string("Unexpected non BoolFactor in BoolTerm(")
-                      + t->getName()
-                      + "): " + os.str());
+            throw util::Bug(ERR_LOC, std::string("Unexpected non BoolFactor in BoolTerm(") + t->getName() +
+                                             "): " + os.str());
         }
     } else {
-        for(; i != e; ++i) {
-            findColumnRefs(*i, vector); // Recurse
+        for (; i != e; ++i) {
+            findColumnRefs(*i, vector);  // Recurse
         }
     }
 }
-
 
 void WhereClause::setRootTerm(std::shared_ptr<LogicalTerm> const& term) {
     auto orTerm = std::dynamic_pointer_cast<OrTerm>(term);
@@ -116,14 +106,11 @@ void WhereClause::setRootTerm(std::shared_ptr<LogicalTerm> const& term) {
     _rootOrTerm = orTerm;
 }
 
-
 void WhereClause::addAreaRestrictor(std::shared_ptr<AreaRestrictor> const& areaRestrictor) {
     _restrs->push_back(areaRestrictor);
 }
 
-
-std::shared_ptr<AndTerm> WhereClause::getRootAndTerm() const
-{
+std::shared_ptr<AndTerm> WhereClause::getRootAndTerm() const {
     // Find the global AND. If an OR term is root and has multiple terms, there is no global AND which means
     // we should return NULL.
     if (nullptr == _rootOrTerm) {
@@ -136,9 +123,7 @@ std::shared_ptr<AndTerm> WhereClause::getRootAndTerm() const
     return andTerm;
 }
 
-
-void
-WhereClause::prependAndTerm(std::shared_ptr<BoolTerm> t) {
+void WhereClause::prependAndTerm(std::shared_ptr<BoolTerm> t) {
     // Find the global AndTerm and add the new BoolTerm to its terms. If the new BoolTerm is an instance of
     // AndTerm, merge its terms instead of adding it to the AndTerm's terms.
     // If a global AndTerm can not be found then throw; this query can not be handled.
@@ -155,8 +140,7 @@ WhereClause::prependAndTerm(std::shared_ptr<BoolTerm> t) {
         if (nullptr == andTerm) {
             throw std::logic_error("Term of first OR term is not an AND term; there is no global AND term");
         }
-    }
-    else {
+    } else {
         throw std::logic_error("There is more than term in the root OR term; can't pick a global AND term");
     }
 
@@ -165,9 +149,7 @@ WhereClause::prependAndTerm(std::shared_ptr<BoolTerm> t) {
     }
 }
 
-
-std::shared_ptr<ColumnRef::Vector const>
-WhereClause::getColumnRefs() const {
+std::shared_ptr<ColumnRef::Vector const> WhereClause::getColumnRefs() const {
     std::shared_ptr<ColumnRef::Vector> vector = std::make_shared<ColumnRef::Vector>();
 
     // Idea: Walk the expression tree and add all column refs to the
@@ -178,24 +160,23 @@ WhereClause::getColumnRefs() const {
     return vector;
 }
 
-
 void WhereClause::findValueExprs(ValueExprPtrVector& vector) const {
-    if (_rootOrTerm) { _rootOrTerm->findValueExprs(vector); }
+    if (_rootOrTerm) {
+        _rootOrTerm->findValueExprs(vector);
+    }
 }
-
 
 void WhereClause::findValueExprRefs(ValueExprPtrRefVector& list) {
-    if (_rootOrTerm) { _rootOrTerm->findValueExprRefs(list); }
+    if (_rootOrTerm) {
+        _rootOrTerm->findValueExprRefs(list);
+    }
 }
 
-
-std::string
-WhereClause::getGenerated() const {
+std::string WhereClause::getGenerated() const {
     QueryTemplate qt;
     renderTo(qt);
     return qt.sqlFragment();
 }
-
 
 void WhereClause::renderTo(QueryTemplate& qt) const {
     if (_restrs != nullptr) {
@@ -207,7 +188,6 @@ void WhereClause::renderTo(QueryTemplate& qt) const {
         _rootOrTerm->renderTo(qt);
     }
 }
-
 
 std::shared_ptr<WhereClause> WhereClause::clone() const {
     // FIXME
@@ -221,9 +201,7 @@ std::shared_ptr<WhereClause> WhereClause::clone() const {
     }
     // For the other fields, default-copied versions are okay.
     return newC;
-
 }
-
 
 std::shared_ptr<WhereClause> WhereClause::copySyntax() {
     std::shared_ptr<WhereClause> newC = std::make_shared<WhereClause>(*this);
@@ -235,28 +213,22 @@ std::shared_ptr<WhereClause> WhereClause::copySyntax() {
     return newC;
 }
 
-
 std::shared_ptr<AndTerm> WhereClause::_addRootAndTerm() {
     if (nullptr == _rootOrTerm) {
         _rootOrTerm = std::make_shared<OrTerm>();
     } else if (_rootOrTerm->_terms.size() != 0) {
-        throw std::logic_error("Can not add root AND term."); // expected 0 or 1 items in _terms
+        throw std::logic_error("Can not add root AND term.");  // expected 0 or 1 items in _terms
     }
     auto andTerm = std::make_shared<AndTerm>();
     _rootOrTerm->addBoolTerm(andTerm);
     return andTerm;
 }
 
-
 bool WhereClause::operator==(WhereClause const& rhs) const {
     return (util::ptrCompare<BoolTerm>(_rootOrTerm, rhs._rootOrTerm) &&
             util::ptrVectorPtrCompare<AreaRestrictor>(_restrs, rhs._restrs));
 }
 
+void WhereClause::resetRestrs() { _restrs = std::make_shared<AreaRestrictorVec>(); }
 
-void WhereClause::resetRestrs() {
-    _restrs = std::make_shared<AreaRestrictorVec>();
-}
-
-
-}}} // namespace lsst::qserv::query
+}}}  // namespace lsst::qserv::query

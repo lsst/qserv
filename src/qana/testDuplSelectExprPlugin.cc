@@ -20,11 +20,11 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-  /**
-  *
-  * @brief Test for DuplicateSelectExprPlugin
-  *
-  */
+/**
+ *
+ * @brief Test for DuplicateSelectExprPlugin
+ *
+ */
 
 // System headers
 #include <sstream>
@@ -41,42 +41,34 @@
 #define BOOST_TEST_MODULE SelectList
 #include <boost/test/unit_test.hpp>
 
-namespace lsst {
-namespace qserv {
-namespace qana {
+namespace lsst { namespace qserv { namespace qana {
 
-namespace test
-{
+namespace test {
+
+/**
+ * Used to test DuplSelectExprPlugin private methods
+ */
+class DuplSelectExprPluginTestHelper {
+public:
+    DuplSelectExprPluginTestHelper() { plugin = DuplSelectExprPlugin(); }
 
     /**
-     * Used to test DuplSelectExprPlugin private methods
+     * Used to test getDuplicateAndPosition()
+     *
+     * getDuplicateAndPosition() algorithm presents
+     * a strong complexity w.r.t its short size
+     *
+     * @see DuplSelectExprPlugin::getDuplicateAndPosition(StringVector const& v)
      */
-    class DuplSelectExprPluginTestHelper
-    {
-    public:
-        DuplSelectExprPluginTestHelper()
-        {
-            plugin = DuplSelectExprPlugin();
-        }
+    util::MultiError getDuplicateAndPosition(StringVector const& v) {
+        util::MultiError errors = plugin.getDuplicateAndPosition(v);
+        return errors;
+    }
 
-        /**
-         * Used to test getDuplicateAndPosition()
-         *
-         * getDuplicateAndPosition() algorithm presents
-         * a strong complexity w.r.t its short size
-         *
-         * @see DuplSelectExprPlugin::getDuplicateAndPosition(StringVector const& v)
-         */
-        util::MultiError getDuplicateAndPosition(StringVector const& v)
-        {
-            util::MultiError errors = plugin.getDuplicateAndPosition(v);
-            return errors;
-        }
-
-    private:
-            DuplSelectExprPlugin plugin;
-    };
-}
+private:
+    DuplSelectExprPlugin plugin;
+};
+}  // namespace test
 
 struct TestFixture {
     test::DuplSelectExprPluginTestHelper testPlugin;
@@ -85,7 +77,6 @@ struct TestFixture {
 BOOST_FIXTURE_TEST_SUITE(Suite, TestFixture)
 
 BOOST_AUTO_TEST_CASE(getDuplicateAndPosition) {
-
     std::vector<std::string> v;
     v.push_back("sum(pm_declerr)");
     v.push_back("f1");
@@ -98,8 +89,7 @@ BOOST_AUTO_TEST_CASE(getDuplicateAndPosition) {
     sstm << "[" << util::ErrorCode::DUPLICATE_SELECT_EXPR << "] " << DuplSelectExprPlugin::ERR_MSG;
     std::string err_msg_template = sstm.str();
 
-    boost::format dupl_field_err_msg = boost::format(err_msg_template) %
-                            "f1" % " 2 3";
+    boost::format dupl_field_err_msg = boost::format(err_msg_template) % "f1" % " 2 3";
     std::string expected_err_msg = dupl_field_err_msg.str();
 
     BOOST_CHECK_EQUAL(errors.toString(), expected_err_msg);
@@ -107,4 +97,4 @@ BOOST_AUTO_TEST_CASE(getDuplicateAndPosition) {
 
 BOOST_AUTO_TEST_SUITE_END()
 
-}}} // lsst::qserv::query
+}}}  // namespace lsst::qserv::qana

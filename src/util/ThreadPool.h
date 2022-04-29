@@ -37,13 +37,9 @@
 // Qserv headers
 #include "util/EventThread.h"
 
-
-namespace lsst {
-namespace qserv {
-namespace util {
+namespace lsst { namespace qserv { namespace util {
 
 class ThreadPool;
-
 
 /// An EventThread to be used by the ThreadPool class.
 /// finishup() is used to tell the ThreadPool that this thread is finished.
@@ -75,13 +71,11 @@ protected:
     void specialActions(Command::Ptr const& cmd) override;
     void finishup() override;
     std::shared_ptr<ThreadPool> _threadPool;
-    std::atomic<bool> _finishupOnce{false}; //< Ensure finishup() only called once.
+    std::atomic<bool> _finishupOnce{false};  //< Ensure finishup() only called once.
 
 private:
     PoolEventThread(std::shared_ptr<ThreadPool> const& threadPool, CommandQueue::Ptr const& q);
-
 };
-
 
 /// A Command that is aware that it is running as part of a PoolEventThread,
 // which allows it to tell the event thread and pool to take special actions.
@@ -98,13 +92,13 @@ public:
     PoolEventThread::Ptr getAndNullPoolEventThread();
 
     friend class PoolEventThread;
+
 private:
     void _setPoolEventThread(PoolEventThread::Ptr const& poolEventThread);
 
     std::weak_ptr<PoolEventThread> _poolEventThread;
     std::mutex _poolMtx;
 };
-
 
 /// ThreadPool is a variable size pool of threads all fed by the same CommandQueue.
 /// Growing the pool is simple, shrinking the pool is complex. Both operations should
@@ -124,8 +118,7 @@ public:
 
     /// Used to create thread pool where there is not expected to be be a need
     /// to remove time consuming, low CPU usage threads from the pool.
-    static ThreadPool::Ptr newThreadPool(unsigned int thrdCount,
-                                         CommandQueue::Ptr const& q,
+    static ThreadPool::Ptr newThreadPool(unsigned int thrdCount, CommandQueue::Ptr const& q,
                                          EventThreadJoiner::Ptr const& joiner = nullptr);
 
     /// Used to create a pool where threads are expected to be removed for processing
@@ -133,15 +126,14 @@ public:
     /// Useful for scheduling queries against mysql. The queries use significant CPU until
     /// mysql finishes, and then the results sit around (using little CPU) until the czar
     /// collects them.
-    static ThreadPool::Ptr newThreadPool(unsigned int thrdCount,
-                                         unsigned int maxThreadCount,
+    static ThreadPool::Ptr newThreadPool(unsigned int thrdCount, unsigned int maxThreadCount,
                                          CommandQueue::Ptr const& q,
                                          EventThreadJoiner::Ptr const& joiner = nullptr);
 
     virtual ~ThreadPool();
 
     void shutdownPool();
-    CommandQueue::Ptr getQueue() {return _q;}
+    CommandQueue::Ptr getQueue() { return _q; }
     unsigned int getTargetThrdCount() {
         std::lock_guard<std::mutex> lock(_countMutex);
         return _targetThrdCount;
@@ -154,7 +146,7 @@ public:
     void waitForResize(int millisecs);
     void endAll() { resize(0); }
     void resize(unsigned int targetThrdCount);
-    bool release(PoolEventThread *thread);
+    bool release(PoolEventThread* thread);
 
     /// Return true if existing threads are at or above _maxThreadCount.
     bool atMaxThreadPoolCount();
@@ -162,20 +154,20 @@ public:
     friend PoolEventThread;
 
 private:
-    ThreadPool(unsigned int thrdCount, unsigned int maxPoolThreads,
-               CommandQueue::Ptr const& q, EventThreadJoiner::Ptr const& joiner);
+    ThreadPool(unsigned int thrdCount, unsigned int maxPoolThreads, CommandQueue::Ptr const& q,
+               EventThreadJoiner::Ptr const& joiner);
     void _resize();
 
-    std::mutex _poolMutex; ///< Protects _pool
-    std::vector<std::shared_ptr<PoolEventThread>> _pool; ///< All the threads in our pool.
+    std::mutex _poolMutex;                                ///< Protects _pool
+    std::vector<std::shared_ptr<PoolEventThread>> _pool;  ///< All the threads in our pool.
 
-    std::mutex _countMutex; ///< protects _targetThrdCount
-    unsigned int _targetThrdCount{0}; ///< How many threads wanted in the pool.
-    std::condition_variable _countCV; ///< Notifies about changes to _pool size, uses _countMutex.
-    CommandQueue::Ptr _q; ///< The queue used by all threads in the _pool.
+    std::mutex _countMutex;            ///< protects _targetThrdCount
+    unsigned int _targetThrdCount{0};  ///< How many threads wanted in the pool.
+    std::condition_variable _countCV;  ///< Notifies about changes to _pool size, uses _countMutex.
+    CommandQueue::Ptr _q;              ///< The queue used by all threads in the _pool.
 
-    EventThreadJoiner::Ptr _joinerThread; ///< Tracks and joins threads removed from the pool.
-    std::atomic<bool> _shutdown{false}; ///< True after shutdownPool has been called.
+    EventThreadJoiner::Ptr _joinerThread;  ///< Tracks and joins threads removed from the pool.
+    std::atomic<bool> _shutdown{false};    ///< True after shutdownPool has been called.
 
     // Functions to track the number of threads created by the pool.
     /// Wait until the number of existing threads is <= max existing threads.
@@ -194,11 +186,9 @@ private:
 
     unsigned int _poolThreadCount = 0;    ///< Number of threads that exist.
     unsigned int _maxThreadCount = 5000;  ///< Max number of thread allowed, set from config.
-    std::condition_variable  _cvPool{};   ///< Signal when threads deleted.
-    mutable std::mutex       _mxPool{};   ///< Protects _poolThreadCount, _cvPool, _mxPool
+    std::condition_variable _cvPool{};    ///< Signal when threads deleted.
+    mutable std::mutex _mxPool{};         ///< Protects _poolThreadCount, _cvPool, _mxPool
 };
 
-
-
-}}} // namespace lsst:qserv:util
-#endif // LSST_QSERV_UTIL_THREADPOOL_H_
+}}}     // namespace lsst::qserv::util
+#endif  // LSST_QSERV_UTIL_THREADPOOL_H_

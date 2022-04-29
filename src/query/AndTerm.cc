@@ -21,7 +21,6 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-
 // Class header
 #include "query/AndTerm.h"
 
@@ -30,11 +29,7 @@
 #include "query/CopyTerms.h"
 #include "util/IterableFormatter.h"
 
-
-namespace lsst {
-namespace qserv {
-namespace query {
-
+namespace lsst { namespace qserv { namespace query {
 
 std::shared_ptr<BoolTerm> AndTerm::copySyntax() const {
     std::shared_ptr<AndTerm> at = std::make_shared<AndTerm>();
@@ -42,11 +37,7 @@ std::shared_ptr<BoolTerm> AndTerm::copySyntax() const {
     return at;
 }
 
-
-bool AndTerm::merge(BoolTerm const& other) {
-    return merge(other, APPEND);
-}
-
+bool AndTerm::merge(BoolTerm const& other) { return merge(other, APPEND); }
 
 bool AndTerm::merge(BoolTerm const& other, MergeBehavior mergeBehavior) {
     auto otherAnd = dynamic_cast<const AndTerm*>(&other);
@@ -58,25 +49,17 @@ bool AndTerm::merge(BoolTerm const& other, MergeBehavior mergeBehavior) {
     return true;
 }
 
-
-void AndTerm::dbgPrint(std::ostream& os) const {
-    os << "AndTerm(" << util::printable(_terms, "", "") << ")";
-}
-
+void AndTerm::dbgPrint(std::ostream& os) const { os << "AndTerm(" << util::printable(_terms, "", "") << ")"; }
 
 bool AndTerm::operator==(BoolTerm const& rhs) const {
-    auto rhsAndTerm = dynamic_cast<AndTerm const *>(&rhs);
+    auto rhsAndTerm = dynamic_cast<AndTerm const*>(&rhs);
     if (nullptr == rhsAndTerm) {
         return false;
     }
     return util::vectorPtrCompare<BoolTerm>(_terms, rhsAndTerm->_terms);
 }
 
-
-void AndTerm::renderTo(QueryTemplate& qt) const {
-    renderList(qt, _terms, "AND");
-}
-
+void AndTerm::renderTo(QueryTemplate& qt) const { renderList(qt, _terms, "AND"); }
 
 std::shared_ptr<BoolTerm> AndTerm::clone() const {
     std::shared_ptr<AndTerm> t = std::make_shared<AndTerm>();
@@ -84,5 +67,4 @@ std::shared_ptr<BoolTerm> AndTerm::clone() const {
     return t;
 }
 
-
-}}} // namespace lsst::qserv::query
+}}}  // namespace lsst::qserv::query

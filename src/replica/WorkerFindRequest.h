@@ -29,24 +29,20 @@
 #include "replica/WorkerRequest.h"
 
 // Forward declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
-    class MultiFileCsComputeEngine;
-}}}  // Forward declarations
+namespace lsst { namespace qserv { namespace replica {
+class MultiFileCsComputeEngine;
+}}}  // namespace lsst::qserv::replica
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
 /**
-  * Class WorkerFindRequest represents a context and a state of replica lookup
-  * requests within the worker servers. It can also be used for testing the framework
-  * operation as its implementation won't make any changes to any files or databases.
-  *
-  * Real implementations of the request processing must derive from this class.
-  */
+ * Class WorkerFindRequest represents a context and a state of replica lookup
+ * requests within the worker servers. It can also be used for testing the framework
+ * operation as its implementation won't make any changes to any files or databases.
+ *
+ * Real implementations of the request processing must derive from this class.
+ */
 class WorkerFindRequest : public WorkerRequest {
 public:
     typedef std::shared_ptr<WorkerFindRequest> Ptr;
@@ -71,13 +67,9 @@ public:
      * @param request ProtoBuf body of the request
      * @return pointer to the created object
      */
-    static Ptr create(ServiceProvider::Ptr const& serviceProvider,
-                      std::string const& worker,
-                      std::string const& id,
-                      int priority,
-                      ExpirationCallbackType const& onExpired,
-                      unsigned int requestExpirationIvalSec,
-                      ProtocolRequestFind const& request);
+    static Ptr create(ServiceProvider::Ptr const& serviceProvider, std::string const& worker,
+                      std::string const& id, int priority, ExpirationCallbackType const& onExpired,
+                      unsigned int requestExpirationIvalSec, ProtocolRequestFind const& request);
 
     WorkerFindRequest() = delete;
     WorkerFindRequest(WorkerFindRequest const&) = delete;
@@ -102,14 +94,9 @@ public:
     bool execute() override;
 
 protected:
-    WorkerFindRequest(ServiceProvider::Ptr const& serviceProvider,
-                      std::string const& worker,
-                      std::string const& id,
-                      int priority,
-                      ExpirationCallbackType const& onExpired,
-                      unsigned int requestExpirationIvalSec,
-                      ProtocolRequestFind const& request);
-
+    WorkerFindRequest(ServiceProvider::Ptr const& serviceProvider, std::string const& worker,
+                      std::string const& id, int priority, ExpirationCallbackType const& onExpired,
+                      unsigned int requestExpirationIvalSec, ProtocolRequestFind const& request);
 
     // Input parameters
 
@@ -120,22 +107,18 @@ protected:
 };
 
 /**
-  * Class WorkerFindRequestPOSIX provides an actual implementation for
-  * the replica lookup requests based on the direct manipulation of files on
-  * a POSIX file system.
-  */
+ * Class WorkerFindRequestPOSIX provides an actual implementation for
+ * the replica lookup requests based on the direct manipulation of files on
+ * a POSIX file system.
+ */
 class WorkerFindRequestPOSIX : public WorkerFindRequest {
 public:
     typedef std::shared_ptr<WorkerFindRequestPOSIX> Ptr;
 
     /// @see WorkerFindRequestPOSIX::create()
-    static Ptr create(ServiceProvider::Ptr const& serviceProvider,
-                      std::string const& worker,
-                      std::string const& id,
-                      int priority,
-                      ExpirationCallbackType const& onExpired,
-                      unsigned int requestExpirationIvalSec,
-                      ProtocolRequestFind const& request);
+    static Ptr create(ServiceProvider::Ptr const& serviceProvider, std::string const& worker,
+                      std::string const& id, int priority, ExpirationCallbackType const& onExpired,
+                      unsigned int requestExpirationIvalSec, ProtocolRequestFind const& request);
 
     WorkerFindRequestPOSIX() = delete;
     WorkerFindRequestPOSIX(WorkerFindRequestPOSIX const&) = delete;
@@ -146,15 +129,10 @@ public:
     bool execute() final;
 
 private:
-    WorkerFindRequestPOSIX(ServiceProvider::Ptr const& serviceProvider,
-                           std::string const& worker,
-                           std::string const& id,
-                           int priority,
-                           ExpirationCallbackType const& onExpired,
-                           unsigned int requestExpirationIvalSec,
-                           ProtocolRequestFind const& request);
+    WorkerFindRequestPOSIX(ServiceProvider::Ptr const& serviceProvider, std::string const& worker,
+                           std::string const& id, int priority, ExpirationCallbackType const& onExpired,
+                           unsigned int requestExpirationIvalSec, ProtocolRequestFind const& request);
 
-    
     /// The engine for incremental control sum calculation
     std::unique_ptr<MultiFileCsComputeEngine> _csComputeEnginePtr;
 };
@@ -166,6 +144,6 @@ private:
  */
 typedef WorkerFindRequestPOSIX WorkerFindRequestFS;
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_WORKERFINDREQUEST_H
+#endif  // LSST_QSERV_REPLICA_WORKERFINDREQUEST_H

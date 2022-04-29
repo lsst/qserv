@@ -25,9 +25,7 @@
 // Qserv headers
 #include "util/Issue.h"
 
-namespace lsst {
-namespace qserv {
-namespace util {
+namespace lsst { namespace qserv { namespace util {
 
 /// Bug is a generic Qserv exception that indicates a probable bug
 class Bug : public util::Issue {
@@ -35,6 +33,6 @@ public:
     explicit Bug(util::Issue::Context const& ctx, std::string const& msg);
 };
 
-}}} // namespace lsst::qserv::util
+}}}  // namespace lsst::qserv::util
 
-#endif // LSST_QSERV_UTIL_BUG_H
+#endif  // LSST_QSERV_UTIL_BUG_H

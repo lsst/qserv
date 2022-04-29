@@ -33,15 +33,13 @@
 #include "replica/HttpModule.h"
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
 /**
  * Class HttpQservMonitorModule implements a handler for reporting
  * various monitoring stats on info on a managed instance of Qserv.
  */
-class HttpQservMonitorModule: public HttpModule {
+class HttpQservMonitorModule : public HttpModule {
 public:
     typedef std::shared_ptr<HttpQservMonitorModule> Ptr;
 
@@ -55,13 +53,10 @@ public:
      *
      * @throws std::invalid_argument for unknown values of parameter 'subModuleName'
      */
-    static void process(Controller::Ptr const& controller,
-                        std::string const& taskName,
-                        HttpProcessorConfig const& processorConfig,
-                        qhttp::Request::Ptr const& req,
-                        qhttp::Response::Ptr const& resp,
-                        std::string const& subModuleName=std::string(),
-                        HttpAuthType const authType=HttpAuthType::NONE);
+    static void process(Controller::Ptr const& controller, std::string const& taskName,
+                        HttpProcessorConfig const& processorConfig, qhttp::Request::Ptr const& req,
+                        qhttp::Response::Ptr const& resp, std::string const& subModuleName = std::string(),
+                        HttpAuthType const authType = HttpAuthType::NONE);
 
     HttpQservMonitorModule() = delete;
     HttpQservMonitorModule(HttpQservMonitorModule const&) = delete;
@@ -73,10 +68,8 @@ protected:
     nlohmann::json executeImpl(std::string const& subModuleName) final;
 
 private:
-    HttpQservMonitorModule(Controller::Ptr const& controller,
-                           std::string const& taskName,
-                           HttpProcessorConfig const& processorConfig,
-                           qhttp::Request::Ptr const& req,
+    HttpQservMonitorModule(Controller::Ptr const& controller, std::string const& taskName,
+                           HttpProcessorConfig const& processorConfig, qhttp::Request::Ptr const& req,
                            qhttp::Response::Ptr const& resp);
 
     /**
@@ -117,9 +110,8 @@ private:
      * @return descriptors of chunks (including their spatial geometry)
      */
     nlohmann::json _chunkInfo(std::set<int> const& chunks) const;
-
 };
-    
-}}} // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_HTTPQSERVMONITORMODULE_H
+}}}  // namespace lsst::qserv::replica
+
+#endif  // LSST_QSERV_HTTPQSERVMONITORMODULE_H

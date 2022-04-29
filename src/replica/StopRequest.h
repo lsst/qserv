@@ -51,16 +51,12 @@
 #include "replica/StopRequestBase.h"
 
 // Forward declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
-    class IndexInfo;
-}}} // namespace lsst::qserv::replica
+namespace lsst { namespace qserv { namespace replica {
+class IndexInfo;
+}}}  // namespace lsst::qserv::replica
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
 // ========================================================================
 //   Customizations for specific request types require dedicated policies
@@ -68,8 +64,8 @@ namespace replica {
 
 class StopReplicationRequestPolicy {
 public:
-    using ResponseMessageType     = ProtocolResponseReplicate;
-    using ResponseDataType        = ReplicaInfo;
+    using ResponseMessageType = ProtocolResponseReplicate;
+    using ResponseDataType = ReplicaInfo;
     using TargetRequestParamsType = ReplicationRequestParams;
 
     static char const* requestName();
@@ -87,8 +83,8 @@ public:
 
 class StopDeleteRequestPolicy {
 public:
-    using ResponseMessageType     = ProtocolResponseDelete;
-    using ResponseDataType        = ReplicaInfo;
+    using ResponseMessageType = ProtocolResponseDelete;
+    using ResponseDataType = ReplicaInfo;
     using TargetRequestParamsType = DeleteRequestParams;
 
     static char const* requestName();
@@ -106,8 +102,8 @@ public:
 
 class StopFindRequestPolicy {
 public:
-    using ResponseMessageType     = ProtocolResponseFind;
-    using ResponseDataType        = ReplicaInfo;
+    using ResponseMessageType = ProtocolResponseFind;
+    using ResponseDataType = ReplicaInfo;
     using TargetRequestParamsType = FindRequestParams;
 
     static char const* requestName();
@@ -125,8 +121,8 @@ public:
 
 class StopFindAllRequestPolicy {
 public:
-    using ResponseMessageType     = ProtocolResponseFindAll;
-    using ResponseDataType        = ReplicaInfoCollection;
+    using ResponseMessageType = ProtocolResponseFindAll;
+    using ResponseDataType = ReplicaInfoCollection;
     using TargetRequestParamsType = FindAllRequestParams;
 
     static char const* requestName();
@@ -145,8 +141,8 @@ public:
 
 class StopEchoRequestPolicy {
 public:
-    using ResponseMessageType     = ProtocolResponseEcho;
-    using ResponseDataType        = std::string;
+    using ResponseMessageType = ProtocolResponseEcho;
+    using ResponseDataType = std::string;
     using TargetRequestParamsType = EchoRequestParams;
 
     static char const* requestName();
@@ -163,8 +159,8 @@ public:
 
 class StopIndexRequestPolicy {
 public:
-    using ResponseMessageType     = ProtocolResponseIndex;
-    using ResponseDataType        = IndexInfo;
+    using ResponseMessageType = ProtocolResponseIndex;
+    using ResponseDataType = IndexInfo;
     using TargetRequestParamsType = IndexRequestParams;
 
     static char const* requestName();
@@ -181,8 +177,8 @@ public:
 
 class StopSqlRequestPolicy {
 public:
-    using ResponseMessageType     = ProtocolResponseSql;
-    using ResponseDataType        = SqlResultSet;
+    using ResponseMessageType = ProtocolResponseSql;
+    using ResponseDataType = SqlResultSet;
     using TargetRequestParamsType = SqlRequestParams;
 
     static char const* requestName();
@@ -198,11 +194,11 @@ public:
 };
 
 /**
-  * Generic class StopRequest extends its base class to allow further policy-based
-  * customization of specific requests.
-  */
+ * Generic class StopRequest extends its base class to allow further policy-based
+ * customization of specific requests.
+ */
 template <typename POLICY>
-class StopRequest: public StopRequestBase {
+class StopRequest : public StopRequestBase {
 public:
     typedef std::shared_ptr<StopRequest<POLICY>> Ptr;
 
@@ -211,7 +207,7 @@ public:
 
     StopRequest() = delete;
     StopRequest(StopRequest const&) = delete;
-    StopRequest &operator=(StopRequest const&) = delete;
+    StopRequest& operator=(StopRequest const&) = delete;
 
     ~StopRequest() final = default;
 
@@ -224,9 +220,7 @@ public:
      * @return The request-specific extended data reported upon a successful
      *   completion of the request.
      */
-    typename POLICY::ResponseDataType const& responseData() const {
-        return _responseData;
-    }
+    typename POLICY::ResponseDataType const& responseData() const { return _responseData; }
 
     /**
      * Create a new request with specified parameters.
@@ -246,13 +240,9 @@ public:
      * @param messenger an interface for communicating with workers
      * @return  A pointer to the created object.
      */
-    static Ptr create(ServiceProvider::Ptr const& serviceProvider,
-                      boost::asio::io_service& io_service,
-                      std::string const& worker,
-                      std::string const& targetRequestId,
-                      CallbackType const& onFinish,
-                      int priority,
-                      bool keepTracking,
+    static Ptr create(ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service,
+                      std::string const& worker, std::string const& targetRequestId,
+                      CallbackType const& onFinish, int priority, bool keepTracking,
                       std::shared_ptr<Messenger> const& messenger) {
         return StopRequest<POLICY>::Ptr(new StopRequest<POLICY>(
                 serviceProvider, io_service, POLICY::requestName(), worker, targetRequestId,
@@ -270,20 +260,19 @@ public:
     }
 
 protected:
-    void notify(util::Lock const& lock) final {
-        notifyDefaultImpl<StopRequest<POLICY>>(lock, _onFinish);
-    }
+    void notify(util::Lock const& lock) final { notifyDefaultImpl<StopRequest<POLICY>>(lock, _onFinish); }
 
     void send(util::Lock const& lock) final {
         auto self = shared_from_base<StopRequest<POLICY>>();
         messenger()->send<typename POLICY::ResponseMessageType>(
                 worker(), id(), priority(), buffer(),
-                [self] (std::string const& id, bool success,
-                        typename POLICY::ResponseMessageType const& response) {
-                    if (success) self->analyze(true, self->_parseResponse(response));
-                    else self->analyze(false);
-                }
-        );
+                [self](std::string const& id, bool success,
+                       typename POLICY::ResponseMessageType const& response) {
+                    if (success)
+                        self->analyze(true, self->_parseResponse(response));
+                    else
+                        self->analyze(false);
+                });
     }
 
     void saveReplicaInfo() final {
@@ -292,20 +281,13 @@ protected:
     }
 
 private:
-    StopRequest(ServiceProvider::Ptr const& serviceProvider,
-                boost::asio::io_service& io_service,
-                char const* requestName,
-                std::string const& worker,
-                std::string const& targetRequestId,
-                ProtocolQueuedRequestType targetRequestType,
-                CallbackType const& onFinish,
-                int priority,
-                bool keepTracking,
-                std::shared_ptr<Messenger> const& messenger)
-        :   StopRequestBase(serviceProvider, io_service, requestName, worker, targetRequestId,
-                            targetRequestType, priority, keepTracking, messenger),
-            _onFinish(onFinish) {
-    }
+    StopRequest(ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service,
+                char const* requestName, std::string const& worker, std::string const& targetRequestId,
+                ProtocolQueuedRequestType targetRequestType, CallbackType const& onFinish, int priority,
+                bool keepTracking, std::shared_ptr<Messenger> const& messenger)
+            : StopRequestBase(serviceProvider, io_service, requestName, worker, targetRequestId,
+                              targetRequestType, priority, keepTracking, messenger),
+              _onFinish(onFinish) {}
 
     /**
      * Parse request-specific reply.
@@ -313,7 +295,6 @@ private:
      * @return  The status of the operation reported by a server.
      */
     ProtocolStatus _parseResponse(typename POLICY::ResponseMessageType const& message) {
-
         // This lock must be acquired because the method is going to modify
         // results of the request. Note that the operation doesn't care
         // about the global state of the request (wether it's already finished
@@ -355,22 +336,22 @@ private:
 };
 
 typedef StopRequest<StopReplicationRequestPolicy> StopReplicationRequest;
-typedef StopRequest<StopDeleteRequestPolicy>      StopDeleteRequest;
-typedef StopRequest<StopFindRequestPolicy>        StopFindRequest;
-typedef StopRequest<StopFindAllRequestPolicy>     StopFindAllRequest;
-typedef StopRequest<StopEchoRequestPolicy>        StopEchoRequest;
-typedef StopRequest<StopIndexRequestPolicy>       StopIndexRequest;
-typedef StopRequest<StopSqlRequestPolicy>         StopSqlQueryRequest;
-typedef StopRequest<StopSqlRequestPolicy>         StopSqlCreateDbRequest;
-typedef StopRequest<StopSqlRequestPolicy>         StopSqlDeleteDbRequest;
-typedef StopRequest<StopSqlRequestPolicy>         StopSqlEnableDbRequest;
-typedef StopRequest<StopSqlRequestPolicy>         StopSqlDisableDbRequest;
-typedef StopRequest<StopSqlRequestPolicy>         StopSqlGrantAccessRequest;
-typedef StopRequest<StopSqlRequestPolicy>         StopSqlCreateTableRequest;
-typedef StopRequest<StopSqlRequestPolicy>         StopSqlDeleteTableRequest;
-typedef StopRequest<StopSqlRequestPolicy>         StopSqlRemoveTablePartitionsRequest;
-typedef StopRequest<StopSqlRequestPolicy>         StopSqlDeleteTablePartitionRequest;
+typedef StopRequest<StopDeleteRequestPolicy> StopDeleteRequest;
+typedef StopRequest<StopFindRequestPolicy> StopFindRequest;
+typedef StopRequest<StopFindAllRequestPolicy> StopFindAllRequest;
+typedef StopRequest<StopEchoRequestPolicy> StopEchoRequest;
+typedef StopRequest<StopIndexRequestPolicy> StopIndexRequest;
+typedef StopRequest<StopSqlRequestPolicy> StopSqlQueryRequest;
+typedef StopRequest<StopSqlRequestPolicy> StopSqlCreateDbRequest;
+typedef StopRequest<StopSqlRequestPolicy> StopSqlDeleteDbRequest;
+typedef StopRequest<StopSqlRequestPolicy> StopSqlEnableDbRequest;
+typedef StopRequest<StopSqlRequestPolicy> StopSqlDisableDbRequest;
+typedef StopRequest<StopSqlRequestPolicy> StopSqlGrantAccessRequest;
+typedef StopRequest<StopSqlRequestPolicy> StopSqlCreateTableRequest;
+typedef StopRequest<StopSqlRequestPolicy> StopSqlDeleteTableRequest;
+typedef StopRequest<StopSqlRequestPolicy> StopSqlRemoveTablePartitionsRequest;
+typedef StopRequest<StopSqlRequestPolicy> StopSqlDeleteTablePartitionRequest;
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_STOPREQUEST_H
+#endif  // LSST_QSERV_REPLICA_STOPREQUEST_H

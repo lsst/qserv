@@ -20,13 +20,12 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-  /**
-  *
-  * @brief Simple testing for class FifoScheduler
-  *
-  * @author Daniel L. Wang, SLAC
-  */
-
+/**
+ *
+ * @brief Simple testing for class FifoScheduler
+ *
+ * @author Daniel L. Wang, SLAC
+ */
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -60,14 +59,14 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.wsched.testSchedulers");
 
 using namespace std;
 using lsst::qserv::proto::TaskMsg;
-using lsst::qserv::wbase::Task;
 using lsst::qserv::wbase::SendChannel;
 using lsst::qserv::wbase::SendChannelShared;
+using lsst::qserv::wbase::Task;
 
 double const oneHr = 60.0;
 
 lsst::qserv::wcontrol::TransmitMgr::Ptr locTransmitMgr =
-    std::make_shared<lsst::qserv::wcontrol::TransmitMgr>(50, 4);
+        std::make_shared<lsst::qserv::wcontrol::TransmitMgr>(50, 4);
 
 std::vector<SendChannelShared::Ptr> locSendSharedPtrs;
 
@@ -76,18 +75,15 @@ Task::Ptr makeTask(std::shared_ptr<TaskMsg> tm) {
     auto sc = SendChannelShared::create(sendC, locTransmitMgr, 1);
     locSendSharedPtrs.push_back(sc);
     Task::Ptr task(new Task(tm, "", 0, sc));
-    task->setSafeToMoveRunning(true); // Can't wait for MemMan in unit tests.
+    task->setSafeToMoveRunning(true);  // Can't wait for MemMan in unit tests.
     return task;
 }
-
 
 struct SchedulerFixture {
     typedef std::shared_ptr<TaskMsg> TaskMsgPtr;
 
-    SchedulerFixture(void) {
-        counter = 20;
-    }
-    ~SchedulerFixture(void) { }
+    SchedulerFixture(void) { counter = 20; }
+    ~SchedulerFixture(void) {}
 
     TaskMsgPtr newTaskMsg(int seq, lsst::qserv::QueryId qId, int jobId) {
         TaskMsgPtr t = std::make_shared<TaskMsg>();
@@ -97,10 +93,10 @@ struct SchedulerFixture {
         t->set_chunkid(seq);
         t->set_czarid(1);
         t->set_db("elephant");
-        for(int i=0; i < 3; ++i) {
+        for (int i = 0; i < 3; ++i) {
             TaskMsg::Fragment* f = t->add_fragment();
             f->add_query("Hello, this is a query.");
-            f->mutable_subchunks()->add_id(100+i);
+            f->mutable_subchunks()->add_id(100 + i);
             f->set_resulttable("r_341");
         }
         t->set_scaninteractive(false);
@@ -123,9 +119,8 @@ struct SchedulerFixture {
         return t;
     }
 
-
     TaskMsgPtr newTaskMsgScan(int seq, int priority, lsst::qserv::QueryId qId, int jobId,
-                              std::string const& tableName="whatever") {
+                              std::string const& tableName = "whatever") {
         auto taskMsg = newTaskMsg(seq, qId, jobId);
         taskMsg->set_scanpriority(priority);
         auto sTbl = taskMsg->add_scantable();
@@ -136,19 +131,18 @@ struct SchedulerFixture {
         return taskMsg;
     }
 
-
-    Task::Ptr queMsgWithChunkId(wsched::GroupScheduler &gs, int chunkId,
-                                lsst::qserv::QueryId qId, int jobId) {
+    Task::Ptr queMsgWithChunkId(wsched::GroupScheduler& gs, int chunkId, lsst::qserv::QueryId qId,
+                                int jobId) {
         Task::Ptr t = makeTask(newTaskMsg(chunkId, qId, jobId));
         gs.queCmd(t);
         return t;
     }
 
-    vector<lsst::qserv::util::Command::Ptr>
-    queVectMsgWithChunkId(wsched::GroupScheduler &gs, int chunkId,
-                          lsst::qserv::QueryId qId, int jobId, int count) {
+    vector<lsst::qserv::util::Command::Ptr> queVectMsgWithChunkId(wsched::GroupScheduler& gs, int chunkId,
+                                                                  lsst::qserv::QueryId qId, int jobId,
+                                                                  int count) {
         std::vector<lsst::qserv::util::Command::Ptr> cmds;
-        for(int i=0; i<count; ++i) {
+        for (int i = 0; i < count; ++i) {
             Task::Ptr t = makeTask(newTaskMsg(chunkId, qId, jobId));
             cmds.push_back(t);
         }
@@ -159,7 +153,6 @@ struct SchedulerFixture {
 
     int counter;
 };
-
 
 BOOST_FIXTURE_TEST_SUITE(SchedulerSuite, SchedulerFixture)
 
@@ -181,7 +174,6 @@ BOOST_AUTO_TEST_CASE(Grouping) {
     BOOST_CHECK(gs.empty() == false);
     BOOST_CHECK(gs.ready() == true);
 
-
     Task::Ptr b1 = queMsgWithChunkId(gs, b, qIdInc++, 0);
     Task::Ptr c1 = queMsgWithChunkId(gs, c, qIdInc++, 0);
     Task::Ptr b2 = queMsgWithChunkId(gs, b, qIdInc++, 0);
@@ -196,7 +188,7 @@ BOOST_AUTO_TEST_CASE(Grouping) {
     // Should get all the first 3 'a' commands in order
     auto aa1 = gs.getCmd(false);
     auto aa2 = gs.getCmd(false);
-    Task::Ptr a4 = queMsgWithChunkId(gs, a, qIdInc++, 0); // this should get its own group
+    Task::Ptr a4 = queMsgWithChunkId(gs, a, qIdInc++, 0);  // this should get its own group
     auto aa3 = gs.getCmd(false);
     BOOST_CHECK(a1.get() == aa1.get());
     BOOST_CHECK(a2.get() == aa2.get());
@@ -245,7 +237,6 @@ BOOST_AUTO_TEST_CASE(Grouping) {
     BOOST_CHECK(gs.empty() == true);
 }
 
-
 BOOST_AUTO_TEST_CASE(GroupMaxThread) {
     // Test that maxThreads is meaningful.
     wsched::GroupScheduler gs{"GroupSchedB", 3, 0, 100, 0};
@@ -276,7 +267,6 @@ BOOST_AUTO_TEST_CASE(GroupMaxThread) {
     BOOST_CHECK(gs.ready() == false);
 }
 
-
 BOOST_AUTO_TEST_CASE(ScanScheduleTest) {
     auto memMan = std::make_shared<lsst::qserv::memman::MemManNone>(1, false);
     wsched::ScanScheduler sched{"ScanSchedA", 2, 1, 0, 20, memMan, 0, 100, oneHr};
@@ -291,15 +281,15 @@ BOOST_AUTO_TEST_CASE(ScanScheduleTest) {
     // Calling read swaps active and pending heaps, putting a38 at the top of the active.
     BOOST_CHECK(sched.ready() == true);
 
-    Task::Ptr a40 = makeTask(newTaskMsgScan(40, 0, qIdInc++, 0)); // goes on active
+    Task::Ptr a40 = makeTask(newTaskMsgScan(40, 0, qIdInc++, 0));  // goes on active
     sched.queCmd(a40);
 
     // Making a non-scan message so MemManNone will grant it an empty Handle
-    Task::Ptr b41 = makeTask(newTaskMsg(41, qIdInc++, 0)); // goes on active
+    Task::Ptr b41 = makeTask(newTaskMsg(41, qIdInc++, 0));  // goes on active
     sched.queCmd(b41);
 
     // Making a non-scan message so MemManNone will grant it an empty Handle
-    Task::Ptr a33 = makeTask(newTaskMsg(33, qIdInc++, 0)); // goes on pending.
+    Task::Ptr a33 = makeTask(newTaskMsg(33, qIdInc++, 0));  // goes on pending.
     sched.queCmd(a33);
 
     BOOST_CHECK(sched.ready() == true);
@@ -337,35 +327,31 @@ BOOST_AUTO_TEST_CASE(ScanScheduleTest) {
     BOOST_CHECK(sched.ready() == false);
 }
 
-
 struct SchedFixture {
-    SchedFixture() {
-        setupQueriesBlend();
-    }
+    SchedFixture() { setupQueriesBlend(); }
     SchedFixture(double maxScanTimeFast, bool examinAllSleep)
-          : _maxScanTimeFast{maxScanTimeFast}, _examineAllSleep{examinAllSleep} {
+            : _maxScanTimeFast{maxScanTimeFast}, _examineAllSleep{examinAllSleep} {
         setupQueriesBlend();
     }
     ~SchedFixture() {}
 
     void setupQueriesBlend() {
         queries = std::make_shared<lsst::qserv::wpublish::QueriesAndChunks>(
-                std::chrono::seconds(1),
-                std::chrono::seconds(_examineAllSleep), 5);
-        blend = std::make_shared<wsched::BlendScheduler>("blendSched", queries, maxThreads,
-                group, scanSlow, scanSchedulers);
+                std::chrono::seconds(1), std::chrono::seconds(_examineAllSleep), 5);
+        blend = std::make_shared<wsched::BlendScheduler>("blendSched", queries, maxThreads, group, scanSlow,
+                                                         scanSchedulers);
         group->setDefaultPosition(0);
         scanFast->setDefaultPosition(1);
         scanMed->setDefaultPosition(2);
         scanSlow->setDefaultPosition(3);
         queries->setBlendScheduler(blend);
-        queries->setRequiredTasksCompleted(1); // Make it easy to set a baseline.
+        queries->setRequiredTasksCompleted(1);  // Make it easy to set a baseline.
     }
 
     int const fastest = lsst::qserv::proto::ScanInfo::Rating::FASTEST;
-    int const fast    = lsst::qserv::proto::ScanInfo::Rating::FAST;
-    int const medium  = lsst::qserv::proto::ScanInfo::Rating::MEDIUM;
-    int const slow    = lsst::qserv::proto::ScanInfo::Rating::SLOW;
+    int const fast = lsst::qserv::proto::ScanInfo::Rating::FAST;
+    int const medium = lsst::qserv::proto::ScanInfo::Rating::MEDIUM;
+    int const slow = lsst::qserv::proto::ScanInfo::Rating::SLOW;
 
     lsst::qserv::QueryId qIdInc{1};
 
@@ -374,21 +360,19 @@ struct SchedFixture {
     int priority{2};
 
 private:
-    double _maxScanTimeFast{oneHr}; ///< Don't hit time limit in tests.
-    int _examineAllSleep{0}; ///< Don't run _examineThread when 0
+    double _maxScanTimeFast{oneHr};  ///< Don't hit time limit in tests.
+    int _examineAllSleep{0};         ///< Don't run _examineThread when 0
 
 public:
-    lsst::qserv::memman::MemManNone::Ptr memMan{
-        std::make_shared<lsst::qserv::memman::MemManNone>(1, true)};
-    wsched::GroupScheduler::Ptr group{std::make_shared<wsched::GroupScheduler>(
-                "GroupSched", maxThreads, 2, 3, priority++)};
+    lsst::qserv::memman::MemManNone::Ptr memMan{std::make_shared<lsst::qserv::memman::MemManNone>(1, true)};
+    wsched::GroupScheduler::Ptr group{
+            std::make_shared<wsched::GroupScheduler>("GroupSched", maxThreads, 2, 3, priority++)};
     wsched::ScanScheduler::Ptr scanSlow{std::make_shared<wsched::ScanScheduler>(
-                "ScanSlow", maxThreads, 2, priority++, maxActiveChunks, memMan, medium+1, slow, oneHr)};
+            "ScanSlow", maxThreads, 2, priority++, maxActiveChunks, memMan, medium + 1, slow, oneHr)};
     wsched::ScanScheduler::Ptr scanMed{std::make_shared<wsched::ScanScheduler>(
-                "ScanMed",  maxThreads, 2, priority++, maxActiveChunks, memMan, fast+1, medium, oneHr)};
+            "ScanMed", maxThreads, 2, priority++, maxActiveChunks, memMan, fast + 1, medium, oneHr)};
     wsched::ScanScheduler::Ptr scanFast{std::make_shared<wsched::ScanScheduler>(
-                "ScanFast", maxThreads, 3, priority++, maxActiveChunks, memMan, fastest, fast,
-                _maxScanTimeFast)};
+            "ScanFast", maxThreads, 3, priority++, maxActiveChunks, memMan, fastest, fast, _maxScanTimeFast)};
     std::vector<wsched::ScanScheduler::Ptr> scanSchedulers{scanFast, scanMed};
 
     lsst::qserv::wpublish::QueriesAndChunks::Ptr queries;
@@ -423,7 +407,6 @@ BOOST_AUTO_TEST_CASE(BlendScheduleTest) {
     BOOST_CHECK(f.scanFast->getSize() == 2);
     BOOST_CHECK(f.blend->ready() == true);
 
-
     taskMsg = newTaskMsgScan(34, lsst::qserv::proto::ScanInfo::Rating::SLOW, f.qIdInc++, 0);
     Task::Ptr sS1 = makeTask(taskMsg);
     f.blend->queCmd(sS1);
@@ -446,7 +429,7 @@ BOOST_AUTO_TEST_CASE(BlendScheduleTest) {
     BOOST_CHECK(og1.get() == g1.get());
     BOOST_CHECK(f.blend->calcAvailableTheads() == 4);
     auto osF1 = f.blend->getCmd(false);
-    BOOST_CHECK(osF1.get() == sF1.get()); // sF1 has lower chunkId than sF2
+    BOOST_CHECK(osF1.get() == sF1.get());  // sF1 has lower chunkId than sF2
     BOOST_CHECK(f.blend->calcAvailableTheads() == 3);
     auto osF2 = f.blend->getCmd(false);
     BOOST_CHECK(osF2.get() == sF2.get());
@@ -532,7 +515,7 @@ BOOST_AUTO_TEST_CASE(BlendScheduleTest) {
     BOOST_CHECK(osS2.get() == sS2.get());
     BOOST_CHECK(f.blend->calcAvailableTheads() == 0);
     BOOST_CHECK(f.blend->getSize() == 4);
-    BOOST_CHECK(f.blend->ready() == false); // all threads in use
+    BOOST_CHECK(f.blend->ready() == false);  // all threads in use
 
     // Finishing a fast Task should allow the last fast Task to go.
     LOGS(_log, LOG_LVL_DEBUG, "BlendScheduleTest-1 call commandFinish");
@@ -596,7 +579,6 @@ BOOST_AUTO_TEST_CASE(BlendScheduleTest) {
     LOGS(_log, LOG_LVL_DEBUG, "BlendScheduleTest-1 done");
 }
 
-
 BOOST_AUTO_TEST_CASE(BlendScheduleThreadLimitingTest) {
     SchedFixture f;
     LOGS(_log, LOG_LVL_DEBUG, "BlendScheduleTest-2 check thread limiting");
@@ -604,7 +586,7 @@ BOOST_AUTO_TEST_CASE(BlendScheduleThreadLimitingTest) {
     // This leaves 3 threads available, 1 for each other scheduler.
     BOOST_CHECK(f.blend->ready() == false);
     std::vector<Task::Ptr> scanTasks;
-    for (int j=0; j<7; ++j) {
+    for (int j = 0; j < 7; ++j) {
         auto tsk = makeTask(newTaskMsgScan(j, lsst::qserv::proto::ScanInfo::Rating::MEDIUM, f.qIdInc++, 0));
         f.blend->queCmd(tsk);
         if (j < 6) {
@@ -629,14 +611,14 @@ BOOST_AUTO_TEST_CASE(BlendScheduleThreadLimitingTest) {
         scanTasks.push_back(task);
     }
     // Finish all the scanTasks, scanTasks[0] is already finished.
-    for (int j=1; j<7; ++j) f.blend->commandFinish(scanTasks[j]);
+    for (int j = 1; j < 7; ++j) f.blend->commandFinish(scanTasks[j]);
     BOOST_CHECK(f.blend->getInFlight() == 0);
     BOOST_CHECK(f.blend->ready() == false);
 
     // Test that only 6 threads can be started on a single GroupScheduler
     // This leaves 3 threads available, 1 for each other scheduler.
     std::vector<Task::Ptr> groupTasks;
-    for (int j=0; j<7; ++j) {
+    for (int j = 0; j < 7; ++j) {
         f.blend->queCmd(makeTask(newTaskMsg(j, f.qIdInc++, 0)));
         if (j < 6) {
             BOOST_CHECK(f.blend->ready() == true);
@@ -660,12 +642,11 @@ BOOST_AUTO_TEST_CASE(BlendScheduleThreadLimitingTest) {
         groupTasks.push_back(task);
     }
     // Finish all the groupTasks, groupTasks[0] is already finished.
-    for (int j=1; j<7; ++j) f.blend->commandFinish(groupTasks[j]);
+    for (int j = 1; j < 7; ++j) f.blend->commandFinish(groupTasks[j]);
     BOOST_CHECK(f.blend->getInFlight() == 0);
     BOOST_CHECK(f.blend->ready() == false);
     LOGS(_log, LOG_LVL_DEBUG, "BlendScheduleTest-2 done");
 }
-
 
 BOOST_AUTO_TEST_CASE(BlendScheduleQueryRemovalTest) {
     // Test that space is appropriately reserved for each scheduler as Tasks are started and finished.
@@ -685,7 +666,7 @@ BOOST_AUTO_TEST_CASE(BlendScheduleQueryRemovalTest) {
     {
         int jobId = 0;
         int chunkId = startChunk;
-        for (unsigned int j=0; j<jobs; ++j) {
+        for (unsigned int j = 0; j < jobs; ++j) {
             auto taskMsg = newTaskMsgScan(chunkId, lsst::qserv::proto::ScanInfo::Rating::FAST, qIdA, jobId);
             Task::Ptr mv = makeTask(taskMsg);
             queryATasks.push_back(mv);
@@ -698,7 +679,7 @@ BOOST_AUTO_TEST_CASE(BlendScheduleQueryRemovalTest) {
             f.blend->queCmd(mv);
         }
     }
-    BOOST_CHECK(f.scanFast->getSize() == jobs*2);
+    BOOST_CHECK(f.scanFast->getSize() == jobs * 2);
     BOOST_CHECK(f.scanSlow->getSize() == 0);
 
     // This should run 1 job from one of the queries, but there are no guarantees about which one.
@@ -711,10 +692,12 @@ BOOST_AUTO_TEST_CASE(BlendScheduleQueryRemovalTest) {
             break;
         }
     }
-    if (poppedFromA) --jobsA;
-    else --jobsB;
+    if (poppedFromA)
+        --jobsA;
+    else
+        --jobsB;
 
-    f.blend->moveUserQuery(qIdA, f.scanFast, f.scanSlow); // move query qIdA to scanSlow.
+    f.blend->moveUserQuery(qIdA, f.scanFast, f.scanSlow);  // move query qIdA to scanSlow.
     LOGS(_log, LOG_LVL_DEBUG, "fastSize=" << f.scanFast->getSize() << " slowSize=" << f.scanSlow->getSize());
     BOOST_CHECK(f.scanFast->getSize() == jobsB);
     BOOST_CHECK(f.scanSlow->getSize() == jobsA);
@@ -725,25 +708,22 @@ BOOST_AUTO_TEST_CASE(BlendScheduleQueryRemovalTest) {
     BOOST_CHECK(schedForA == f.scanSlow);
 }
 
-
 BOOST_AUTO_TEST_CASE(BlendScheduleQueryBootTaskTest) {
     // Test if a task is removed if it takes takes too long.
     // Give the user query 0.1 seconds to run and run it for a second, it should get removed.
-    double tenthOfSecInMinutes = 1.0/600.0; // task
-    SchedFixture f(tenthOfSecInMinutes, 1); // sleep 1 second then check if tasks took too long
+    double tenthOfSecInMinutes = 1.0 / 600.0;  // task
+    SchedFixture f(tenthOfSecInMinutes, 1);    // sleep 1 second then check if tasks took too long
     LOGS(_log, LOG_LVL_DEBUG, "BlendScheduleQueryBootTaskTest");
 
     // Create a thread pool to run task
     auto pool = lsst::qserv::util::ThreadPool::newThreadPool(20, 1000, f.blend);
 
     // Create fake data - one query to get a baseline time, another to take too long.
-    int qid=5;
+    int qid = 5;
     auto taskMsg = newTaskMsgScan(27, lsst::qserv::proto::ScanInfo::Rating::FAST, qid++, 0);
     Task::Ptr task = makeTask(taskMsg);
     std::atomic<bool> running{false};
-    auto fastFunc = [&running](lsst::qserv::util::CmdData*){
-        running = true;
-    };
+    auto fastFunc = [&running](lsst::qserv::util::CmdData*) { running = true; };
     task->setFunc(fastFunc);
     f.queries->addTask(task);
     f.blend->queCmd(task);
@@ -757,7 +737,7 @@ BOOST_AUTO_TEST_CASE(BlendScheduleQueryBootTaskTest) {
     taskMsg = newTaskMsgScan(27, lsst::qserv::proto::ScanInfo::Rating::FAST, qid, 0);
     task = makeTask(taskMsg);
     std::atomic<bool> slowSleepDone{false};
-    auto slowFunc = [&running, &slowSleepDone](lsst::qserv::util::CmdData*){
+    auto slowFunc = [&running, &slowSleepDone](lsst::qserv::util::CmdData*) {
         running = true;
         std::this_thread::sleep_for(std::chrono::seconds(1));
         slowSleepDone = true;
@@ -785,7 +765,7 @@ BOOST_AUTO_TEST_CASE(BlendScheduleQueryBootTaskTest) {
     // examineAll() should boot the query.
     LOGS(_log, LOG_LVL_DEBUG, "Chunks after slowFunc " << *f.queries);
     f.queries->examineAll();
-    running = false; // allow slowFunc to exit its loop and finish.
+    running = false;  // allow slowFunc to exit its loop and finish.
     LOGS(_log, LOG_LVL_DEBUG, "Chunks after examineAll " << *f.queries);
 
     // Check if the tasks booted value for qid has gone up.
@@ -800,8 +780,6 @@ BOOST_AUTO_TEST_CASE(BlendScheduleQueryBootTaskTest) {
     pool->shutdownPool();
     LOGS(_log, LOG_LVL_DEBUG, "BlendScheduleQueryBootTaskTest done");
 }
-
-
 
 BOOST_AUTO_TEST_CASE(SlowTableHeapTest) {
     LOGS(_log, LOG_LVL_DEBUG, "SlowTableHeapTest start");
@@ -828,7 +806,6 @@ BOOST_AUTO_TEST_CASE(SlowTableHeapTest) {
     BOOST_CHECK(heap.top().get() == a3.get());
     BOOST_CHECK(heap.size() == 4);
 
-
     BOOST_CHECK(heap.pop().get() == a3.get());
     BOOST_CHECK(heap.pop().get() == a2.get());
     BOOST_CHECK(heap.pop().get() == a1.get());
@@ -836,7 +813,6 @@ BOOST_AUTO_TEST_CASE(SlowTableHeapTest) {
     BOOST_CHECK(heap.empty() == true);
     LOGS(_log, LOG_LVL_DEBUG, "SlowTableHeapTest done");
 }
-
 
 BOOST_AUTO_TEST_CASE(ChunkTasksTest) {
     LOGS(_log, LOG_LVL_DEBUG, "ChunkTasksTest start");
@@ -872,7 +848,7 @@ BOOST_AUTO_TEST_CASE(ChunkTasksTest) {
     BOOST_CHECK(chunkTasks.getTask(true).get() == a1.get());
     BOOST_CHECK(chunkTasks.getTask(true).get() == a4.get());
     chunkTasks.taskComplete(a1);
-    chunkTasks.taskComplete(a1); // duplicate should not cause problems.
+    chunkTasks.taskComplete(a1);  // duplicate should not cause problems.
     chunkTasks.taskComplete(a2);
     chunkTasks.taskComplete(a4);
     BOOST_CHECK(chunkTasks.empty() == true);
@@ -908,7 +884,6 @@ BOOST_AUTO_TEST_CASE(ChunkTasksTest) {
     BOOST_CHECK(chunkTasks.readyToAdvance() == true);
     LOGS(_log, LOG_LVL_DEBUG, "ChunkTasksTest done");
 }
-
 
 BOOST_AUTO_TEST_CASE(ChunkTasksQueueTest) {
     LOGS(_log, LOG_LVL_DEBUG, "ChunkTasksQueueTest start");
@@ -997,7 +972,7 @@ BOOST_AUTO_TEST_CASE(ChunkTasksQueueTest) {
     ctl.queueTask(a1);
     ctl.queueTask(a2);
     ctl.queueTask(a3);
-    ctl.queueTask(b3); // test pendingTasks
+    ctl.queueTask(b3);  // test pendingTasks
     ctl.queueTask(b4);
     ctl.queueTask(a4);
     BOOST_CHECK(ctl.getTask(true).get() == b1.get());
@@ -1025,6 +1000,5 @@ BOOST_AUTO_TEST_CASE(ChunkTasksQueueTest) {
     BOOST_CHECK(ctl.getActiveChunkId() == -1);
     LOGS(_log, LOG_LVL_DEBUG, "ChunkTasksQueueTest done");
 }
-
 
 BOOST_AUTO_TEST_SUITE_END()

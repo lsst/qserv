@@ -28,9 +28,7 @@
 
 // Qserv headers
 
-namespace lsst {
-namespace qserv {
-namespace css {
+namespace lsst { namespace qserv { namespace css {
 
 /// @addtogroup css
 
@@ -45,15 +43,18 @@ namespace css {
  *  may be set if director table does not exist.
  */
 struct PartTableParams {
-
     PartTableParams() : overlap(0.0), partitioned(false), subChunks(false) {}
-    PartTableParams(std::string const& dirDb_, std::string const& dirTable_,
-                    std::string const& dirColName_, std::string const& latColName_,
-                    std::string const& lonColName_, double overlap_, bool partitioned_,
-                    bool subChunks_) :
-                        dirDb(dirDb_), dirTable(dirTable_), dirColName(dirColName_),
-                        latColName(latColName_), lonColName(lonColName_),
-                        overlap(overlap_), partitioned(partitioned_), subChunks(subChunks_) {}
+    PartTableParams(std::string const& dirDb_, std::string const& dirTable_, std::string const& dirColName_,
+                    std::string const& latColName_, std::string const& lonColName_, double overlap_,
+                    bool partitioned_, bool subChunks_)
+            : dirDb(dirDb_),
+              dirTable(dirTable_),
+              dirColName(dirColName_),
+              latColName(latColName_),
+              lonColName(lonColName_),
+              overlap(overlap_),
+              partitioned(partitioned_),
+              subChunks(subChunks_) {}
     std::string dirDb;       ///< Director database name.
     std::string dirTable;    ///< Director table name.
     std::string dirColName;  ///< Column in current table mapping to objectId column in director table.
@@ -64,19 +65,13 @@ struct PartTableParams {
     bool subChunks;          ///< True if table is sub-chunked
 
     /// Returns true if table is partitioned
-    bool isPartitioned() const {
-        return partitioned;
-    }
+    bool isPartitioned() const { return partitioned; }
 
     /// Returns true if table is chunked === partitioned
-    bool isChunked() const {
-        return partitioned;
-    }
+    bool isChunked() const { return partitioned; }
 
     /// Returns true if table is sub-chunked
-    bool isSubChunked() const {
-        return subChunks;
-    }
+    bool isSubChunked() const { return subChunks; }
 
     /// Returns chunk level for this table
     int chunkLevel() const {
@@ -86,10 +81,10 @@ struct PartTableParams {
     }
 
     /** Returns the partitioning columns for the given table. This is a
-      * 3-element vector containing the longitude, latitude, and secondary
-      * index column name for that table. An empty string indicates
-      * that a column is not available.
-      */
+     * 3-element vector containing the longitude, latitude, and secondary
+     * index column name for that table. An empty string indicates
+     * that a column is not available.
+     */
     std::vector<std::string> partitionCols() const {
         return std::vector<std::string>{lonColName, latColName, dirColName};
     }
@@ -102,6 +97,6 @@ struct PartTableParams {
     }
 };
 
-}}} // namespace lsst::qserv::css
+}}}  // namespace lsst::qserv::css
 
-#endif // LSST_QSERV_CSS_PARTTABLEPARAMS_H
+#endif  // LSST_QSERV_CSS_PARTTABLEPARAMS_H

@@ -21,13 +21,12 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 /**
-  * @file
-  *
-  * @brief TableRefN, SimpleTableN, JoinRefN implementations
-  *
-  * @author Daniel L. Wang, SLAC
-  */
-
+ * @file
+ *
+ * @brief TableRefN, SimpleTableN, JoinRefN implementations
+ *
+ * @author Daniel L. Wang, SLAC
+ */
 
 // Class header
 #include "query/TableRef.h"
@@ -49,39 +48,29 @@
 #include "util/IterableFormatter.h"
 #include "util/PointerCompare.h"
 
-
 namespace {
 
-lsst::qserv::query::JoinRef::Ptr
-joinRefClone(lsst::qserv::query::JoinRef::Ptr const& r) {
+lsst::qserv::query::JoinRef::Ptr joinRefClone(lsst::qserv::query::JoinRef::Ptr const& r) {
     return r->clone();
 }
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.query.TableRef");
 
-} // anonymous namespace
+}  // anonymous namespace
 
+namespace lsst { namespace qserv { namespace query {
 
-namespace lsst {
-namespace qserv {
-namespace query {
-
-
-TableRef::TableRef()
-{}
-
+TableRef::TableRef() {}
 
 TableRef::TableRef(std::string const& db, std::string const& table, std::string const& alias)
         : _db(db), _table(table), _alias(alias) {
     _verify();
 }
 
-
 void TableRef::setAlias(std::string const& alias) {
     LOGS(_log, LOG_LVL_TRACE, *this << "; set alias:" << alias);
     _alias = alias;
 }
-
 
 void TableRef::setDb(std::string const& db) {
     LOGS(_log, LOG_LVL_TRACE, *this << "; set db:" << db);
@@ -89,13 +78,11 @@ void TableRef::setDb(std::string const& db) {
     _verify();
 }
 
-
 void TableRef::setTable(std::string const& table) {
     LOGS(_log, LOG_LVL_TRACE, *this << "; set table:" << table);
     _table = table;
     _verify();
 }
-
 
 bool TableRef::isSubsetOf(TableRef const& rhs) const {
     if (not isSimple() || not rhs.isSimple()) {
@@ -124,23 +111,17 @@ bool TableRef::isSubsetOf(TableRef const& rhs) const {
     return true;
 }
 
-
 bool TableRef::isAliasedBy(TableRef const& rhs) const {
     if (hasTable() && not hasDb() && not hasAlias()) {
-        if (_table == rhs._alias)
-            return true;
+        if (_table == rhs._alias) return true;
     }
     return false;
 }
 
-
 bool TableRef::isComplete() const {
-    if (_table.empty())
-        return false;
-    if (_db.empty())
-        return false;
-    if (_alias.empty())
-        return false;
+    if (_table.empty()) return false;
+    if (_db.empty()) return false;
+    if (_alias.empty()) return false;
     for (auto&& joinRef : _joinRefs) {
         if (not joinRef->getRight()->isComplete()) {
             return false;
@@ -149,11 +130,9 @@ bool TableRef::isComplete() const {
     return true;
 }
 
-
 bool TableRef::operator<(const TableRef& rhs) const {
     return std::tie(_db, _table, _alias) < std::tie(rhs._db, rhs._table, rhs._alias);
 }
-
 
 std::ostream& operator<<(std::ostream& os, TableRef const& ref) {
     os << "TableRef(";
@@ -166,7 +145,6 @@ std::ostream& operator<<(std::ostream& os, TableRef const& ref) {
     os << ")";
     return os;
 }
-
 
 std::ostream& operator<<(std::ostream& os, TableRef const* ref) {
     if (nullptr == ref) {
@@ -182,18 +160,18 @@ void TableRef::render::applyToQT(TableRef const& ref) {
     ref.putTemplate(_qt);
 }
 
-
 std::ostream& TableRef::putStream(std::ostream& os) const {
     os << "Table(" << _db << "." << _table << ")";
-    if (!_alias.empty()) { os << " AS " << _alias; }
+    if (!_alias.empty()) {
+        os << " AS " << _alias;
+    }
     typedef JoinRefPtrVector::const_iterator Iter;
-    for(Iter i=_joinRefs.begin(), e=_joinRefs.end(); i != e; ++i) {
+    for (Iter i = _joinRefs.begin(), e = _joinRefs.end(); i != e; ++i) {
         JoinRef const& j = **i;
         os << " " << j;
     }
     return os;
 }
-
 
 std::string TableRef::sqlFragment() const {
     QueryTemplate qt;
@@ -201,7 +179,6 @@ std::string TableRef::sqlFragment() const {
     render.applyToQT(*this);
     return boost::lexical_cast<std::string>(qt);
 }
-
 
 void TableRef::putTemplate(QueryTemplate& qt) const {
     auto aliasMode = qt.getTableAliasMode();
@@ -213,14 +190,18 @@ void TableRef::putTemplate(QueryTemplate& qt) const {
                 qt.appendIdentifier(_db);
                 qt.append(".");
             }
-            if (!_table.empty()) { qt.appendIdentifier(_table); }
+            if (!_table.empty()) {
+                qt.appendIdentifier(_table);
+            }
         }
-    } else { // DEFINE or DONT_USE
+    } else {  // DEFINE or DONT_USE
         if (!_db.empty()) {
             qt.appendIdentifier(_db);
             qt.append(".");
         }
-        if (!_table.empty()) { qt.appendIdentifier(_table); }
+        if (!_table.empty()) {
+            qt.appendIdentifier(_table);
+        }
     }
     if (QueryTemplate::DEFINE == aliasMode) {
         if (hasAlias()) {
@@ -229,22 +210,17 @@ void TableRef::putTemplate(QueryTemplate& qt) const {
         }
     }
     typedef JoinRefPtrVector::const_iterator Iter;
-    for(Iter i=_joinRefs.begin(), e=_joinRefs.end(); i != e; ++i) {
+    for (Iter i = _joinRefs.begin(), e = _joinRefs.end(); i != e; ++i) {
         JoinRef const& j = **i;
         j.putTemplate(qt);
     }
 }
 
-
-void TableRef::addJoin(std::shared_ptr<JoinRef> r) {
-    _joinRefs.push_back(r);
-}
-
+void TableRef::addJoin(std::shared_ptr<JoinRef> r) { _joinRefs.push_back(r); }
 
 void TableRef::addJoins(const JoinRefPtrVector& r) {
     _joinRefs.insert(std::end(_joinRefs), std::begin(r), std::end(r));
 }
-
 
 void TableRef::verifyPopulated(std::string const& defaultDb) {
     // it should not be possible to construct a TableRef with an empty table, but just to be sure:
@@ -260,46 +236,38 @@ void TableRef::verifyPopulated(std::string const& defaultDb) {
     }
     for (auto&& joinRef : _joinRefs) {
         auto&& rightTableRef = joinRef->getRight();
-        if (rightTableRef != nullptr)
-            rightTableRef->verifyPopulated(defaultDb);
+        if (rightTableRef != nullptr) rightTableRef->verifyPopulated(defaultDb);
     }
 }
-
 
 void TableRef::apply(TableRef::Func& f) {
     f(*this);
     typedef JoinRefPtrVector::iterator Iter;
-    for(Iter i=_joinRefs.begin(), e=_joinRefs.end(); i != e; ++i) {
+    for (Iter i = _joinRefs.begin(), e = _joinRefs.end(); i != e; ++i) {
         JoinRef& j = **i;
         j.getRight()->apply(f);
     }
 }
 
-
 void TableRef::apply(TableRef::FuncC& f) const {
     f(*this);
     typedef JoinRefPtrVector::const_iterator Iter;
-    for(Iter i=_joinRefs.begin(), e=_joinRefs.end(); i != e; ++i) {
+    for (Iter i = _joinRefs.begin(), e = _joinRefs.end(); i != e; ++i) {
         JoinRef const& j = **i;
         j.getRight()->apply(f);
     }
 }
 
-
 TableRef::Ptr TableRef::clone() const {
     TableRef::Ptr newCopy = std::make_shared<TableRef>(_db, _table, _alias);
-    std::transform(_joinRefs.begin(), _joinRefs.end(),
-                   std::back_inserter(newCopy->_joinRefs), joinRefClone);
+    std::transform(_joinRefs.begin(), _joinRefs.end(), std::back_inserter(newCopy->_joinRefs), joinRefClone);
     return newCopy;
 }
 
-
 bool TableRef::operator==(TableRef const& rhs) const {
-    if (std::tie(_db, _table, _alias) != std::tie(rhs._db, rhs._table, rhs._alias))
-        return false;
+    if (std::tie(_db, _table, _alias) != std::tie(rhs._db, rhs._table, rhs._alias)) return false;
     return util::vectorPtrCompare<JoinRef>(_joinRefs, rhs._joinRefs);
 }
-
 
 void TableRef::_verify() const {
     if (_table.empty() && hasDb()) {
@@ -307,4 +275,4 @@ void TableRef::_verify() const {
     }
 }
 
-}}} // Namespace lsst::qserv::query
+}}}  // Namespace lsst::qserv::query

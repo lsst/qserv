@@ -36,27 +36,23 @@
 #include "wpublish/ChunkInventory.h"
 
 // Forward declarations
-namespace lsst {
-namespace qserv {
+namespace lsst { namespace qserv {
 namespace wbase {
-    class SendChannel;
+class SendChannel;
 }
 namespace wpublish {
-    class ResourceMonitor;
-}}}
+class ResourceMonitor;
+}
+}}  // namespace lsst::qserv
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace wpublish {
+namespace lsst { namespace qserv { namespace wpublish {
 
 /**
-  * Class SetChunkListCommand sets a new list of chunks
-  */
+ * Class SetChunkListCommand sets a new list of chunks
+ */
 class SetChunkListCommand : public wbase::WorkerCommand {
-
 public:
-
     /// An abstraction for a chunk to be set
     struct Chunk {
         std::string database;
@@ -80,25 +76,21 @@ public:
     SetChunkListCommand(std::shared_ptr<wbase::SendChannel> const& sendChannel,
                         std::shared_ptr<ChunkInventory> const& chunkInventory,
                         std::shared_ptr<ResourceMonitor> const& resourceMonitor,
-                        mysql::MySqlConfig const& mySqlConfig,
-                        std::vector<Chunk> const& chunks,
-                        std::vector<std::string> const& databases,
-                        bool force);
+                        mysql::MySqlConfig const& mySqlConfig, std::vector<Chunk> const& chunks,
+                        std::vector<std::string> const& databases, bool force);
 
     ~SetChunkListCommand() override = default;
 
     void run() override;
 
 private:
-
     /**
      * Set the chunk list in the reply
      *
      * @param reply         message to be initialized
      * @param prevExistMap  previous state of the ChunkList
      */
-    void _setChunks(proto::WorkerCommandSetChunkListR& reply,
-                    ChunkInventory::ExistMap const& prevExistMap);
+    void _setChunks(proto::WorkerCommandSetChunkListR& reply, ChunkInventory::ExistMap const& prevExistMap);
 
     /**
      * Report error condition to the logging stream and reply back to
@@ -108,8 +100,7 @@ private:
      * @param message       message to be reported
      * @param prevExistMap  previous state of the ChunkList
      */
-    void _reportError(proto::WorkerCommandSetChunkListR::Status status,
-                      std::string const& message,
+    void _reportError(proto::WorkerCommandSetChunkListR::Status status, std::string const& message,
                       ChunkInventory::ExistMap const& prevExistMap);
 
     // Parameters of the object
@@ -122,6 +113,6 @@ private:
     bool const _force;
 };
 
-}}} // namespace lsst::qserv::wpublish
+}}}  // namespace lsst::qserv::wpublish
 
-#endif // LSST_QSERV_WPUBLISH_SET_CHUNK_LIST_COMMAND_H
+#endif  // LSST_QSERV_WPUBLISH_SET_CHUNK_LIST_COMMAND_H

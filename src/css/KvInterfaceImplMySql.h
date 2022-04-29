@@ -22,13 +22,12 @@
  */
 
 /**
-  * @file KvInterfaceImplMySql.h
-  *
-  * @brief Interface to the Central State System - in MySql storage
-  *
-  * @Author Nathan Pease, SLAC
-  */
-
+ * @file KvInterfaceImplMySql.h
+ *
+ * @brief Interface to the Central State System - in MySql storage
+ *
+ * @Author Nathan Pease, SLAC
+ */
 
 #ifndef LSST_QSERV_CSS_KVINTERFACEIMPLMYSQL_H
 #define LSST_QSERV_CSS_KVINTERFACEIMPLMYSQL_H
@@ -42,32 +41,25 @@
 #include "css/KvInterface.h"
 #include "mysql/MySqlConfig.h"
 
-
 // Forward declarations
-namespace lsst {
-namespace qserv {
-namespace sql {
-    class SqlConnection;
-}}}
+namespace lsst { namespace qserv { namespace sql {
+class SqlConnection;
+}}}  // namespace lsst::qserv::sql
 
-
-namespace lsst {
-namespace qserv {
-namespace css {
+namespace lsst { namespace qserv { namespace css {
 
 class KvTransaction;
 
 class KvInterfaceImplMySql : public KvInterface {
 public:
-
     /**
      *  @param mysqlConf: Configuration object for mysql connection
      */
-    explicit KvInterfaceImplMySql(mysql::MySqlConfig const& mysqlConf, bool readOnly=false);
-    virtual ~KvInterfaceImplMySql() {};
+    explicit KvInterfaceImplMySql(mysql::MySqlConfig const& mysqlConf, bool readOnly = false);
+    virtual ~KvInterfaceImplMySql(){};
 
     virtual std::string create(std::string const& key, std::string const& value,
-                               bool unique=false) override;
+                               bool unique = false) override;
 
     virtual void set(std::string const& key, std::string const& value) override;
 
@@ -81,17 +73,18 @@ public:
 
     virtual void deleteKey(std::string const& key) override;
 
-    virtual std::string dumpKV(std::string const& key=std::string()) override;
+    virtual std::string dumpKV(std::string const& key = std::string()) override;
 
 protected:
-    virtual std::string _get(std::string const& key,
-                             std::string const& defaultValue,
+    virtual std::string _get(std::string const& key, std::string const& defaultValue,
                              bool throwIfKeyNotFound) override;
+
 private:
     /**
      * @brief Returns children with full path (vector of strings) for a given key.
      */
-    std::vector<std::string> _getChildrenFullPath(std::string const& parentKey, KvTransaction const& transaction);
+    std::vector<std::string> _getChildrenFullPath(std::string const& parentKey,
+                                                  KvTransaction const& transaction);
 
     /**
      * @brief Get the id from the server for a given key.
@@ -106,7 +99,8 @@ private:
      * @note This gets used by the create member function. If the parent of the named child key does
      * not exist then the parent will be created (recursively).
      */
-    void _findParentId(std::string const& childKvKey, bool* hasParent, unsigned int* parentKvId, KvTransaction const& transaction);
+    void _findParentId(std::string const& childKvKey, bool* hasParent, unsigned int* parentKvId,
+                       KvTransaction const& transaction);
 
     /**
      * @brief create a key value pair in the KV database
@@ -115,7 +109,8 @@ private:
      * @param updateIfExists flag to update if the key already exists (used by set)
      * @return the kvId of the key value pair entry in the database
      */
-    unsigned int _create(std::string const& key, std::string const& value, bool updateIfExists, KvTransaction const& transaction);
+    unsigned int _create(std::string const& key, std::string const& value, bool updateIfExists,
+                         KvTransaction const& transaction);
 
     /**
      * @brief delete the entry for key, and all of its children if applicable
@@ -147,6 +142,6 @@ private:
     bool _readOnly;
 };
 
-}}} // namespace lsst::qserv::css
+}}}  // namespace lsst::qserv::css
 
-#endif // LSST_QSERV_CSS_KVINTERFACEIMPLMYSQL_H
+#endif  // LSST_QSERV_CSS_KVINTERFACEIMPLMYSQL_H

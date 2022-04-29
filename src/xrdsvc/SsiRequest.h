@@ -40,26 +40,23 @@
 #include "wpublish/ChunkInventory.h"
 #include "xrdsvc/StreamBuffer.h"
 
-
 // Forward declarations
 class XrdSsiService;
 
-namespace lsst {
-namespace qserv {
+namespace lsst { namespace qserv {
 namespace wbase {
 struct MsgProcessor;
 class Task;
-}
+}  // namespace wbase
 namespace wcontrol {
 class TransmitMgr;
 }
 namespace wpublish {
 class ResourceMonitor;
-}}}
+}
+}}  // namespace lsst::qserv
 
-namespace lsst {
-namespace qserv {
-namespace xrdsvc {
+namespace lsst { namespace qserv { namespace xrdsvc {
 
 class ChannelStream;
 class StreamBuffer;
@@ -68,29 +65,21 @@ class StreamBuffer;
 /// qserv worker services. The SSI interface encourages such an approach, and
 /// object lifetimes are explicitly stated in the documentation which we
 /// adhere to using BindRequest() and UnBindRequest() responder methods.
-class SsiRequest
-    :   public XrdSsiResponder,
-        public std::enable_shared_from_this<SsiRequest> {
-
+class SsiRequest : public XrdSsiResponder, public std::enable_shared_from_this<SsiRequest> {
 public:
-
     // Smart pointer definitions
 
     typedef std::shared_ptr<ResourceUnit::Checker> ValidatorPtr;
-    typedef std::shared_ptr<SsiRequest>            Ptr;
+    typedef std::shared_ptr<SsiRequest> Ptr;
 
     /// Use factory to ensure proper construction for enable_shared_from_this.
-    static SsiRequest::Ptr newSsiRequest (
-            std::string const&                               rname,
-            std::shared_ptr<wpublish::ChunkInventory> const& chunkInventory,
-            std::shared_ptr<wbase::MsgProcessor> const&      processor,
-            mysql::MySqlConfig const&                        mySqlConfig,
-            std::shared_ptr<wcontrol::TransmitMgr> const&    transmitMgr) {
-        auto req = SsiRequest::Ptr(new SsiRequest(rname,
-                                                  chunkInventory,
-                                                  processor,
-                                                  mySqlConfig,
-                                                  transmitMgr));
+    static SsiRequest::Ptr newSsiRequest(std::string const& rname,
+                                         std::shared_ptr<wpublish::ChunkInventory> const& chunkInventory,
+                                         std::shared_ptr<wbase::MsgProcessor> const& processor,
+                                         mysql::MySqlConfig const& mySqlConfig,
+                                         std::shared_ptr<wcontrol::TransmitMgr> const& transmitMgr) {
+        auto req =
+                SsiRequest::Ptr(new SsiRequest(rname, chunkInventory, processor, mySqlConfig, transmitMgr));
         req->_selfKeepAlive = req;
         return req;
     }
@@ -104,9 +93,7 @@ public:
      *
      * @see XrdSsiResponder::Finished
      */
-    void Finished(XrdSsiRequest&        req,
-                  XrdSsiRespInfo const& rinfo,
-                  bool                  cancel=false) override;
+    void Finished(XrdSsiRequest& req, XrdSsiRespInfo const& rinfo, bool cancel = false) override;
 
     bool isFinished() { return _reqFinished; }
 
@@ -115,7 +102,7 @@ public:
     bool replyFile(int fd, long long fSize);
     bool replyStream(StreamBuffer::Ptr const& sbuf, bool last, int scsSeq);
 
-    bool sendMetadata(const char *buf, int blen);
+    bool sendMetadata(const char* buf, int blen);
 
     /// Call this to allow object to die after it truly is no longer needed.
     /// i.e. It is know Finish() will not be called.
@@ -128,23 +115,19 @@ public:
     uint64_t getSeq() const;
 
 private:
-
     /// Constructor (called by SsiService)
-    SsiRequest(std::string const&                               rname,
-               std::shared_ptr<wpublish::ChunkInventory> const& chunkInventory,
-               std::shared_ptr<wbase::MsgProcessor> const&      processor,
-               mysql::MySqlConfig const&                        mySqlConfig,
-               std::shared_ptr<wcontrol::TransmitMgr> const&    transmitMgr)
-        :   _chunkInventory(chunkInventory),
-            _validator(_chunkInventory->newValidator()),
-            _processor(processor),
-            _resourceName(rname),
-            _mySqlConfig(mySqlConfig),
-            _transmitMgr(transmitMgr){
-    }
+    SsiRequest(std::string const& rname, std::shared_ptr<wpublish::ChunkInventory> const& chunkInventory,
+               std::shared_ptr<wbase::MsgProcessor> const& processor, mysql::MySqlConfig const& mySqlConfig,
+               std::shared_ptr<wcontrol::TransmitMgr> const& transmitMgr)
+            : _chunkInventory(chunkInventory),
+              _validator(_chunkInventory->newValidator()),
+              _processor(processor),
+              _resourceName(rname),
+              _mySqlConfig(mySqlConfig),
+              _transmitMgr(transmitMgr) {}
 
     /// For internal error reporting
-    void reportError (std::string const& errStr);
+    void reportError(std::string const& errStr);
 
     /**
      * Parse a Protobuf request into the corresponding command
@@ -157,31 +140,30 @@ private:
     wbase::WorkerCommand::Ptr parseWorkerCommand(char const* reqData, int reqSize);
 
 private:
-
     /// Counters of the database/chunk requests which are being used
     static std::shared_ptr<wpublish::ResourceMonitor> _resourceMonitor;
 
     std::shared_ptr<wpublish::ChunkInventory> _chunkInventory;
 
-    ValidatorPtr                         _validator;    ///< validates request against what's available
-    std::shared_ptr<wbase::MsgProcessor> _processor;    ///< actual msg processor
+    ValidatorPtr _validator;                          ///< validates request against what's available
+    std::shared_ptr<wbase::MsgProcessor> _processor;  ///< actual msg processor
 
-    std::mutex  _finMutex;  ///< Protects execute() from Finish(), _finished, and _stream
+    std::mutex _finMutex;                   ///< Protects execute() from Finish(), _finished, and _stream
     std::atomic<bool> _reqFinished{false};  ///< set to true when Finished called
-    std::string _resourceName; ///< chunk identifier
+    std::string _resourceName;              ///< chunk identifier
 
     std::shared_ptr<ChannelStream> _stream;
 
     std::weak_ptr<wbase::Task> _task;
 
     mysql::MySqlConfig const _mySqlConfig;
-    std::shared_ptr<wcontrol::TransmitMgr> _transmitMgr; ///< limits transmits to czars.
+    std::shared_ptr<wcontrol::TransmitMgr> _transmitMgr;  ///< limits transmits to czars.
 
     /// Make sure this object exists until Finish() is called.
     /// Make a local copy before calling reset() within and non-static member function.
     Ptr _selfKeepAlive;
 };
 
-}}} // namespace
+}}}  // namespace lsst::qserv::xrdsvc
 
-#endif // LSST_QSERV_XRDSVC_SSIREQUEST_H
+#endif  // LSST_QSERV_XRDSVC_SSIREQUEST_H

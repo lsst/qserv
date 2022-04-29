@@ -35,9 +35,7 @@
 #include <vector>
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
 /**
  * The namespace providing core implementations for a family
@@ -46,16 +44,14 @@ namespace replica {
 namespace detail {
 
 /**
-  * Class template SemanticMap is a base class for type-specific collections.
-  * This class template has two parameters:
-  *   K - the key type (name or a numeric identifier)
-  *   V - the value type
-  */
+ * Class template SemanticMap is a base class for type-specific collections.
+ * This class template has two parameters:
+ *   K - the key type (name or a numeric identifier)
+ *   V - the value type
+ */
 template <typename K, typename V>
 class SemanticMap {
-
 public:
-
     /// Internal collection (is public because this is the only state here)
     std::map<K, V> coll;
 
@@ -71,46 +67,37 @@ public:
     void clear() { coll.clear(); }
 
     /// @return iterator to the beginning of the container
-    decltype(coll.begin()) begin() {
-        return coll.begin();
-    }
+    decltype(coll.begin()) begin() { return coll.begin(); }
 
     /// @return constant iterator to the beginning of the container
-    decltype(coll.cbegin()) begin() const {
-        return coll.cbegin();
-    }
+    decltype(coll.cbegin()) begin() const { return coll.cbegin(); }
 
     /// @return iterator to the end of the container
-    decltype(coll.end()) end() {
-        return coll.end();
-    }
+    decltype(coll.end()) end() { return coll.end(); }
 
     /// @return constant iterator to the end of the container
-    decltype(coll.cend()) end() const {
-        return coll.cend();
-    }
+    decltype(coll.cend()) end() const { return coll.cend(); }
 
     /**
      * Merge the content of another collection of the same type
      *
      * @param coll
      *   collection whose content is to be merged
-     * 
+     *
      * @param ignoreDuplicateKeys
      *   ignore duplicate keys if 'true'
      *
      * @throws std::invalid_argument
      *   on attempts to merge a collection with itself
-     * 
+     *
      * @throws std::range_error
      *   on duplicate keys if ignoreDuplicateKeys is 'false'
      */
-    void merge(SemanticMap<K,V> const& coll, bool ignoreDuplicateKeys = false) {
-
+    void merge(SemanticMap<K, V> const& coll, bool ignoreDuplicateKeys = false) {
         if (this == &coll) {
             throw std::invalid_argument("attempted to merge the collection with itself");
         }
-        for (auto&& entry: coll.coll) {
+        for (auto&& entry : coll.coll) {
             K const& k = entry.first;
             V const& v = entry.second;
             if ((not ignoreDuplicateKeys) and exists(k)) {
@@ -121,7 +108,6 @@ public:
     }
 
 protected:
-
     // The constructors and the copy operator assume copy by value
 
     SemanticMap() = default;
@@ -137,7 +123,7 @@ protected:
      * @param k
      *   its key
      *
-     * @param 
+     * @param
      *    object to be insert
      *
      * @return
@@ -156,7 +142,7 @@ protected:
      *
      * @param v
      *   object to be insert
-     * 
+     *
      * @return
      *   reference to the object within the collection
      */
@@ -178,7 +164,7 @@ protected:
     std::vector<K> keys() const {
         std::vector<K> result;
         result.reserve(coll.size());
-        for (auto&& entry: coll) {
+        for (auto&& entry : coll) {
             result.push_back(entry.first);
         }
         return result;
@@ -186,21 +172,19 @@ protected:
 };
 
 /**
-  * Class template WorkerMap template has two parameters:
-  *
-  *   K - the key type (name or a numeric identifier)
-  *   V - the value type
-  */
+ * Class template WorkerMap template has two parameters:
+ *
+ *   K - the key type (name or a numeric identifier)
+ *   V - the value type
+ */
 template <typename V>
-class WorkerMap : public SemanticMap<std::string,V> {
-
+class WorkerMap : public SemanticMap<std::string, V> {
 public:
-
     /// The key type
     using KeyType = std::string;
 
     /// The base map type
-    using MapType = SemanticMap<KeyType,V>;
+    using MapType = SemanticMap<KeyType, V>;
 
     // The constructors and the copy operator assume copy by value
 
@@ -263,21 +247,19 @@ public:
 };
 
 /**
-  * Class template DatabaseMap has two parameters:
-  *
-  *   K - the key type (name or a numeric identifier)
-  *   V - the value type
-  */
+ * Class template DatabaseMap has two parameters:
+ *
+ *   K - the key type (name or a numeric identifier)
+ *   V - the value type
+ */
 template <typename V>
-class DatabaseMap : public SemanticMap<std::string,V> {
-
+class DatabaseMap : public SemanticMap<std::string, V> {
 public:
-
     /// The key type
     using KeyType = std::string;
 
     /// The base map type
-    using MapType = SemanticMap<KeyType,V>;
+    using MapType = SemanticMap<KeyType, V>;
 
     // The constructors and the copy operator assume copy by value
 
@@ -306,7 +288,7 @@ public:
      * @param k
      *   key for the object
      *
-     * @param v 
+     * @param v
      *   reference to an object to be copied into the collection
      *
      * @return
@@ -340,21 +322,19 @@ public:
 };
 
 /**
-  * Class template ChunkMap has two parameters:
-  *
-  *   K - the key type (name or a numeric identifier)
-  *   V - the value type
-  */
+ * Class template ChunkMap has two parameters:
+ *
+ *   K - the key type (name or a numeric identifier)
+ *   V - the value type
+ */
 template <typename V>
-class ChunkMap : public SemanticMap<unsigned int,V> {
-
+class ChunkMap : public SemanticMap<unsigned int, V> {
 public:
-
     /// The key type
     using KeyType = unsigned int;
 
     /// The base map type
-    using MapType = SemanticMap<KeyType,V>;
+    using MapType = SemanticMap<KeyType, V>;
 
     // The constructors and the copy operator assume copy by value
 
@@ -394,7 +374,7 @@ public:
     /**
      * @param k
      *   object's key
-     * 
+     *
      * @return
      *   'true' if  with the specified key already exists
      */
@@ -403,7 +383,7 @@ public:
     /**
      * @param k
      *   object's key
-     * 
+     *
      * @return
      *   read-only reference to a chunk object for a key
      */
@@ -420,30 +400,20 @@ public:
  *
  *   .chunk(number).database(name).worker(name) -> T
  */
-template<typename T>
-using ChunkDatabaseWorkerMap =
-        detail::ChunkMap<
-            detail::DatabaseMap<
-                detail::WorkerMap<T>>>;
- 
- /**
-  * Dictionary of: worker-chunk-database
-  */
-template<typename T>
-using WorkerChunkDatabaseMap =
-        detail::WorkerMap<
-            detail::ChunkMap<
-                detail::DatabaseMap<T>>>;
+template <typename T>
+using ChunkDatabaseWorkerMap = detail::ChunkMap<detail::DatabaseMap<detail::WorkerMap<T>>>;
+
+/**
+ * Dictionary of: worker-chunk-database
+ */
+template <typename T>
+using WorkerChunkDatabaseMap = detail::WorkerMap<detail::ChunkMap<detail::DatabaseMap<T>>>;
 
 /**
  * Dictionary of: worker-database-chunk
  */
-template<typename T>
-using WorkerDatabaseChunkMap =
-        detail::WorkerMap<
-            detail::DatabaseMap<
-                detail::ChunkMap<T>>>;
-
+template <typename T>
+using WorkerDatabaseChunkMap = detail::WorkerMap<detail::DatabaseMap<detail::ChunkMap<T>>>;
 
 // Algorithms are put into a nested namespace below in order
 // to avoid confusing them with simple singe-worded user defined
@@ -467,24 +437,21 @@ namespace SemanticMaps {
  *
  * @throws std::invalid_argument
  *   on attempts to merge a collection with itself
- * 
+ *
  * @throws std::range_error
  *   on duplicate keys if ignoreDuplicateKeys is 'false'
  */
- template<typename T>
- void merge(ChunkDatabaseWorkerMap<T>& dst,
-            ChunkDatabaseWorkerMap<T> const& src,
-            bool ignoreDuplicateKeys = false) {
-
-     for (auto const chunk: src.chunkNumbers()) {
-         auto const& srcChunkMap = src.chunk(chunk);
-         for (auto&& database: srcChunkMap.databaseNames()) {
-             dst.atChunk(chunk).atDatabase(database).merge(
-                 srcChunkMap.database(database),
-                 ignoreDuplicateKeys);
-         }
-     }
- }
+template <typename T>
+void merge(ChunkDatabaseWorkerMap<T>& dst, ChunkDatabaseWorkerMap<T> const& src,
+           bool ignoreDuplicateKeys = false) {
+    for (auto const chunk : src.chunkNumbers()) {
+        auto const& srcChunkMap = src.chunk(chunk);
+        for (auto&& database : srcChunkMap.databaseNames()) {
+            dst.atChunk(chunk).atDatabase(database).merge(srcChunkMap.database(database),
+                                                          ignoreDuplicateKeys);
+        }
+    }
+}
 
 /**
  * One-directional comparison of dictionaries of: worker-database-chunk
@@ -507,35 +474,28 @@ namespace SemanticMaps {
  *
  * @return 'true' if different
  */
- template<typename T>
- bool diff(WorkerDatabaseChunkMap<T> const& one,
-           WorkerDatabaseChunkMap<T> const& two,
-           WorkerDatabaseChunkMap<T>& inFirstOnly) {
-
+template <typename T>
+bool diff(WorkerDatabaseChunkMap<T> const& one, WorkerDatabaseChunkMap<T> const& two,
+          WorkerDatabaseChunkMap<T>& inFirstOnly) {
     inFirstOnly.clear();
-    for (auto&& worker: one.workerNames()) {
-        if (not         two.workerExists(worker)) {
-            inFirstOnly.insertWorker(worker,
-                                     one.worker(worker));
+    for (auto&& worker : one.workerNames()) {
+        if (not two.workerExists(worker)) {
+            inFirstOnly.insertWorker(worker, one.worker(worker));
             continue;
         }
-        for (auto&& database: one.worker(worker).databaseNames()) {
-            if (not           two.worker(worker).databaseExists(database)) {
-                inFirstOnly.atWorker(worker)
-                           .insertDatabase(database,
-                                         one.worker(worker).database(database));
+        for (auto&& database : one.worker(worker).databaseNames()) {
+            if (not two.worker(worker).databaseExists(database)) {
+                inFirstOnly.atWorker(worker).insertDatabase(database, one.worker(worker).database(database));
                 continue;
             }
-            for (auto&& chunk: one.worker(worker).database(database).chunkNumbers()) {
-                if (not        two.worker(worker).database(database).chunkExists(chunk)) {
-                    inFirstOnly.atWorker(worker)
-                               .atDatabase(database)
-                               .insertChunk(chunk,
-                                          one.worker(worker).database(database).chunk(chunk));
+            for (auto&& chunk : one.worker(worker).database(database).chunkNumbers()) {
+                if (not two.worker(worker).database(database).chunkExists(chunk)) {
+                    inFirstOnly.atWorker(worker).atDatabase(database).insertChunk(
+                            chunk, one.worker(worker).database(database).chunk(chunk));
                 }
             }
         }
-    }    
+    }
     return not inFirstOnly.empty();
 }
 
@@ -565,12 +525,9 @@ namespace SemanticMaps {
  *
  * @return 'true' if different
  */
- template<typename T>
- bool diff2(WorkerDatabaseChunkMap<T> const& one,
-            WorkerDatabaseChunkMap<T> const& two,
-            WorkerDatabaseChunkMap<T>& inFirstOnly,
-            WorkerDatabaseChunkMap<T>& inSecondOnly) {
-
+template <typename T>
+bool diff2(WorkerDatabaseChunkMap<T> const& one, WorkerDatabaseChunkMap<T> const& two,
+           WorkerDatabaseChunkMap<T>& inFirstOnly, WorkerDatabaseChunkMap<T>& inSecondOnly) {
     bool const notEqual1 = diff<T>(one, two, inFirstOnly);
     bool const notEqual2 = diff<T>(two, one, inSecondOnly);
 
@@ -588,30 +545,26 @@ namespace SemanticMaps {
  *
  * @param one
  *   input dictionary to be compared with the second one
- * 
+ *
  * @param two
  *   input dictionary to be compared with the first one
- * 
+ *
  * @param inBoth
  *   output dictionary with elements of the first map which
  *   are not found in the second map
  */
- template<typename T>
- void intersect(WorkerDatabaseChunkMap<T> const& one,
-                WorkerDatabaseChunkMap<T> const& two,
-                WorkerDatabaseChunkMap<T>& inBoth) {
-
+template <typename T>
+void intersect(WorkerDatabaseChunkMap<T> const& one, WorkerDatabaseChunkMap<T> const& two,
+               WorkerDatabaseChunkMap<T>& inBoth) {
     inBoth.clear();
-    for (auto&& worker: one.workerNames()) {
+    for (auto&& worker : one.workerNames()) {
         if (two.workerExists(worker)) {
-            for (auto&& database: one.worker(worker).databaseNames()) {
+            for (auto&& database : one.worker(worker).databaseNames()) {
                 if (two.worker(worker).databaseExists(database)) {
-                    for (auto&& chunk: one.worker(worker).database(database).chunkNumbers()) {
+                    for (auto&& chunk : one.worker(worker).database(database).chunkNumbers()) {
                         if (two.worker(worker).database(database).chunkExists(chunk)) {
-                            inBoth.atWorker(worker)
-                                  .atDatabase(database)
-                                  .insertChunk(chunk,
-                                               one.worker(worker).database(database).chunk(chunk));
+                            inBoth.atWorker(worker).atDatabase(database).insertChunk(
+                                    chunk, one.worker(worker).database(database).chunk(chunk));
                         }
                     }
                 }
@@ -629,11 +582,11 @@ namespace SemanticMaps {
  * @return
  *   the total number of keys across all leaf nodes
  */
-template<typename T>
+template <typename T>
 size_t count(WorkerDatabaseChunkMap<T> const& d) {
     size_t num = 0;
-    for (auto&& worker: d.workerNames()) {
-        for (auto&& database: d.worker(worker).databaseNames()) {
+    for (auto&& worker : d.workerNames()) {
+        for (auto&& database : d.worker(worker).databaseNames()) {
             num += d.worker(worker).database(database).size();
         }
     }
@@ -642,6 +595,6 @@ size_t count(WorkerDatabaseChunkMap<T> const& d) {
 
 }  // namespace SemanticMaps
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_SEMANTICMAPS_H
+#endif  // LSST_QSERV_REPLICA_SEMANTICMAPS_H

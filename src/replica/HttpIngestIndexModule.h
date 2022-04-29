@@ -33,14 +33,12 @@
 #include "replica/HttpModule.h"
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
 /**
  * Class HttpIngestIndexModule manages the "secondary" indexes in Qserv.
  */
-class HttpIngestIndexModule: public HttpModule {
+class HttpIngestIndexModule : public HttpModule {
 public:
     typedef std::shared_ptr<HttpIngestIndexModule> Ptr;
 
@@ -51,13 +49,10 @@ public:
      *
      * @throws std::invalid_argument for unknown values of parameter 'subModuleName'
      */
-    static void process(Controller::Ptr const& controller,
-                        std::string const& taskName,
-                        HttpProcessorConfig const& processorConfig,
-                        qhttp::Request::Ptr const& req,
-                        qhttp::Response::Ptr const& resp,
-                        std::string const& subModuleName=std::string(),
-                        HttpAuthType const authType=HttpAuthType::NONE);
+    static void process(Controller::Ptr const& controller, std::string const& taskName,
+                        HttpProcessorConfig const& processorConfig, qhttp::Request::Ptr const& req,
+                        qhttp::Response::Ptr const& resp, std::string const& subModuleName = std::string(),
+                        HttpAuthType const authType = HttpAuthType::NONE);
 
     HttpIngestIndexModule() = delete;
     HttpIngestIndexModule(HttpIngestIndexModule const&) = delete;
@@ -69,15 +64,13 @@ protected:
     nlohmann::json executeImpl(std::string const& subModuleName) final;
 
 private:
-    HttpIngestIndexModule(Controller::Ptr const& controller,
-                          std::string const& taskName,
-                          HttpProcessorConfig const& processorConfig,
-                          qhttp::Request::Ptr const& req,
+    HttpIngestIndexModule(Controller::Ptr const& controller, std::string const& taskName,
+                          HttpProcessorConfig const& processorConfig, qhttp::Request::Ptr const& req,
                           qhttp::Response::Ptr const& resp);
 
     nlohmann::json _buildSecondaryIndex();
 };
-    
-}}} // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_HTTPINGESTINDEXMODULE_H
+}}}  // namespace lsst::qserv::replica
+
+#endif  // LSST_QSERV_HTTPINGESTINDEXMODULE_H

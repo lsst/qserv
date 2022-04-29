@@ -34,16 +34,14 @@
 
 // external headers
 
-namespace lsst {
-namespace qserv {
-namespace util {
+namespace lsst { namespace qserv { namespace util {
 
 /// Provide a thread safe method for incrementing a sequence number.
 ///
 template <class T>
 class Sequential {
 public:
-    explicit Sequential(T seq) : _seq(seq) {};
+    explicit Sequential(T seq) : _seq(seq){};
     // Returns the value before incrementing.
     T incr() {
         std::lock_guard<std::mutex> lock(_mutex);
@@ -54,23 +52,23 @@ public:
         std::lock_guard<std::mutex> lock(_mutex);
         return _seq;
     }
+
 private:
     std::mutex _mutex;
     T _seq;
 };
-
 
 /// A flag that can be set/read safely across threads.
 ///
 template <class T>
 class Flag {
 public:
-    explicit Flag(T flag) : _flag(flag) {};
+    explicit Flag(T flag) : _flag(flag){};
     Flag& operator=(Flag&& other) = delete;
     Flag(const Flag&&) = delete;
     Flag& operator=(const Flag&) = delete;
     Flag(const Flag&) = delete;
-    virtual ~Flag() {};
+    virtual ~Flag(){};
 
     /// Sets flag value to 'val' and returns the old value of flag.
     virtual T exchange(T val) {
@@ -100,8 +98,8 @@ protected:
 template <class T>
 class FlagNotify {
 public:
-    explicit FlagNotify(T flag) : _flag(flag) {};
-    virtual ~FlagNotify() {};
+    explicit FlagNotify(T flag) : _flag(flag){};
+    virtual ~FlagNotify(){};
     /** Sets flag value to 'val' while notifying others of the change,
      * and returns the old value of flag.
      */
@@ -118,12 +116,13 @@ public:
             _condition.wait(lock);
         }
     }
+
 protected:
     std::condition_variable _condition;
     std::mutex _mutex;
     T _flag;
 };
 
-}}} // namespace
+}}}  // namespace lsst::qserv::util
 
 #endif /* CORE_MODULES_UTIL_THREADSAFE_H_ */

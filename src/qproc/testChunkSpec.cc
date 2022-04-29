@@ -21,13 +21,13 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
- /**
-  * @file
-  *
-  * @brief Test ChunkSpec operations.
-  *
-  * @author Daniel L. Wang, SLAC
-  */
+/**
+ * @file
+ *
+ * @brief Test ChunkSpec operations.
+ *
+ * @author Daniel L. Wang, SLAC
+ */
 
 // System headers
 #include <algorithm>
@@ -50,30 +50,28 @@
 #define BOOST_TEST_MODULE ChunkSpec
 #include <boost/test/unit_test.hpp>
 
-
 namespace test = boost::test_tools;
 
+using lsst::qserv::IntVector;
 using lsst::qserv::qproc::ChunkSpec;
 using lsst::qserv::qproc::ChunkSpecVector;
-using lsst::qserv::IntVector;
 
 namespace {
-    ChunkSpec c1 = ChunkSpec::makeFake(101);
-    ChunkSpec c2 = ChunkSpec::makeFake(102);
-    ChunkSpec c3 = ChunkSpec::makeFake(103);
+ChunkSpec c1 = ChunkSpec::makeFake(101);
+ChunkSpec c2 = ChunkSpec::makeFake(102);
+ChunkSpec c3 = ChunkSpec::makeFake(103);
 
-} // anonymous namespace
+}  // anonymous namespace
 
 struct Fixture {
-    Fixture(void) :
-        c1(ChunkSpec::makeFake(101)),
-        c2(ChunkSpec::makeFake(102)),
-        c3(ChunkSpec::makeFake(103)),
-        c4(ChunkSpec::makeFake(104)),
-        c5(ChunkSpec::makeFake(105)) {
-    }
+    Fixture(void)
+            : c1(ChunkSpec::makeFake(101)),
+              c2(ChunkSpec::makeFake(102)),
+              c3(ChunkSpec::makeFake(103)),
+              c4(ChunkSpec::makeFake(104)),
+              c5(ChunkSpec::makeFake(105)) {}
 
-    ~Fixture(void) { };
+    ~Fixture(void){};
 
     ChunkSpec c1;
     ChunkSpec c2;
@@ -104,7 +102,7 @@ BOOST_AUTO_TEST_CASE(Intersect) {
     c2.subChunks.push_back(2);
     c3.subChunks.push_back(3);
 
-    for(int i=10; i < 20; ++i) {
+    for (int i = 10; i < 20; ++i) {
         if (forC1 > 0) {
             c1.subChunks.push_back(i);
             --forC1;
@@ -117,7 +115,7 @@ BOOST_AUTO_TEST_CASE(Intersect) {
     }
     // Throws because chunkIds are different.
     BOOST_CHECK_THROW(c1c2 = c1.intersect(c2), lsst::qserv::util::Bug);
-    c1.chunkId = c2.chunkId = 100; // Make them the same
+    c1.chunkId = c2.chunkId = 100;  // Make them the same
     c1c2 = c1.intersect(c2);
     BOOST_CHECK_EQUAL(c1c2.subChunks.size(), IntVector::size_type(5));
     BOOST_CHECK(c1c2.subChunks.size() != c2.subChunks.size());
@@ -150,10 +148,9 @@ BOOST_AUTO_TEST_CASE(Vector) {
     v1.push_back(c5);
 
     ChunkSpecVector v2;
-    c1.chunkId = 42; // Different chunkId
+    c1.chunkId = 42;  // Different chunkId
     // Same chunkId, different subchunks
-    for(IntVector::iterator i=c2.subChunks.begin(), e=c2.subChunks.end();
-        i != e; ++i) {
+    for (IntVector::iterator i = c2.subChunks.begin(), e = c2.subChunks.end(); i != e; ++i) {
         *i += 100;
     }
     // Same chunkId, some subChunks shared.

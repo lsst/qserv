@@ -81,60 +81,37 @@ public:
         unsigned int const maxRetries = 1;
         _fileName = FileUtils::createTemporaryFile(baseDir, prefix, model, suffix, maxRetries);
         ofstream fs;
-        fs.open(_fileName, ios::out|ios::trunc);
+        fs.open(_fileName, ios::out | ios::trunc);
         if (!fs.is_open()) {
             raiseRetryAllowedError("TemporaryCertFileRAII::" + string(__func__),
-                    "failed to open/create file '" + _fileName+ "'.");
+                                   "failed to open/create file '" + _fileName + "'.");
         }
         fs << cert;
         fs.close();
         return _fileName;
     }
+
 private:
     string _fileName;
 };
-}
+}  // namespace
 
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
-IngestRequest::Ptr IngestRequest::create(
-        ServiceProvider::Ptr const& serviceProvider,
-        string const& workerName,
-        TransactionId transactionId,
-        string const& table,
-        unsigned int chunk,
-        bool isOverlap,
-        string const& url,
-        bool async,
-        csv::DialectInput const& dialectInput,
-        string const& httpMethod,
-        string const& httpData,
-        vector<string> const& httpHeaders) {
-    IngestRequest::Ptr ptr(new IngestRequest(
-            serviceProvider,
-            workerName,
-            transactionId,
-            table,
-            chunk,
-            isOverlap,
-            url,
-            async,
-            dialectInput,
-            httpMethod,
-            httpData,
-            httpHeaders
-    ));
+IngestRequest::Ptr IngestRequest::create(ServiceProvider::Ptr const& serviceProvider,
+                                         string const& workerName, TransactionId transactionId,
+                                         string const& table, unsigned int chunk, bool isOverlap,
+                                         string const& url, bool async, csv::DialectInput const& dialectInput,
+                                         string const& httpMethod, string const& httpData,
+                                         vector<string> const& httpHeaders) {
+    IngestRequest::Ptr ptr(new IngestRequest(serviceProvider, workerName, transactionId, table, chunk,
+                                             isOverlap, url, async, dialectInput, httpMethod, httpData,
+                                             httpHeaders));
     return ptr;
 }
 
-
-IngestRequest::Ptr IngestRequest::resume(
-        ServiceProvider::Ptr const& serviceProvider,
-        string const& workerName,
-        unsigned int contribId) {
-
+IngestRequest::Ptr IngestRequest::resume(ServiceProvider::Ptr const& serviceProvider,
+                                         string const& workerName, unsigned int contribId) {
     string const context = ::context_ + string(__func__) + " ";
     auto const databaseServices = serviceProvider->databaseServices();
 
@@ -144,15 +121,14 @@ IngestRequest::Ptr IngestRequest::resume(
     try {
         contrib = databaseServices->transactionContrib(contribId);
     } catch (exception const& ex) {
-        throw runtime_error(
-                context + "failed to locate the contribution id=" + to_string(contribId)
-                + " in the database.");
+        throw runtime_error(context + "failed to locate the contribution id=" + to_string(contribId) +
+                            " in the database.");
     }
     if (contrib.status != TransactionContribInfo::Status::IN_PROGRESS) {
         throw invalid_argument(
-                "contribution id=" + to_string(contribId) + " is not in state "
-                + TransactionContribInfo::status2str(TransactionContribInfo::Status::IN_PROGRESS)
-                + ", the actual state is " + TransactionContribInfo::status2str(contrib.status) + ".");
+                "contribution id=" + to_string(contribId) + " is not in state " +
+                TransactionContribInfo::status2str(TransactionContribInfo::Status::IN_PROGRESS) +
+                ", the actual state is " + TransactionContribInfo::status2str(contrib.status) + ".");
     }
     if (!contrib.async) {
         throw invalid_argument("contribution id=" + to_string(contribId) + " is not ASYNC.");
@@ -163,9 +139,9 @@ IngestRequest::Ptr IngestRequest::resume(
     // processing state (before the final stage when changes to MySQL are about to be
     // made or have been made).
     if ((contrib.createTime == 0) || (contrib.readTime != 0) || (contrib.loadTime != 0)) {
-        throw invalid_argument(
-                "contribution id=" + to_string(contribId) + " is not eligible to be resumed since"
-                " changes to the MySQL table may have already been made.");
+        throw invalid_argument("contribution id=" + to_string(contribId) +
+                               " is not eligible to be resumed since"
+                               " changes to the MySQL table may have already been made.");
     }
 
     auto const trans = databaseServices->transaction(contrib.transactionId);
@@ -189,22 +165,12 @@ IngestRequest::Ptr IngestRequest::resume(
     return IngestRequest::Ptr(new IngestRequest(serviceProvider, workerName, contrib));
 }
 
-
-IngestRequest::IngestRequest(
-        ServiceProvider::Ptr const& serviceProvider,
-        string const& workerName,
-        TransactionId transactionId,
-        string const& table,
-        unsigned int chunk,
-        bool isOverlap,
-        string const& url,
-        bool async,
-        csv::DialectInput const& dialectInput,
-        string const& httpMethod,
-        string const& httpData,
-        vector<string> const& httpHeaders)
-        :   IngestFileSvc(serviceProvider, workerName) {
-
+IngestRequest::IngestRequest(ServiceProvider::Ptr const& serviceProvider, string const& workerName,
+                             TransactionId transactionId, string const& table, unsigned int chunk,
+                             bool isOverlap, string const& url, bool async,
+                             csv::DialectInput const& dialectInput, string const& httpMethod,
+                             string const& httpData, vector<string> const& httpHeaders)
+        : IngestFileSvc(serviceProvider, workerName) {
     // Initialize the descriptor
     _contrib.transactionId = transactionId;
     _contrib.table = table;
@@ -230,7 +196,8 @@ IngestRequest::IngestRequest(
     _contrib.database = trans.database;
 
     if (!config->databaseInfo(_contrib.database).hasTable(_contrib.table)) {
-        throw invalid_argument(context + "no such table '" + _contrib.table + "' in database '" + _contrib.database + "'.");
+        throw invalid_argument(context + "no such table '" + _contrib.table + "' in database '" +
+                               _contrib.database + "'.");
     }
     if (trans.state != TransactionInfo::State::STARTED) {
         _contrib.error = context + " transactionId=" + to_string(_contrib.transactionId) + " is not active";
@@ -257,14 +224,9 @@ IngestRequest::IngestRequest(
     _contrib = databaseServices->createdTransactionContrib(_contrib);
 }
 
-
-IngestRequest::IngestRequest(
-        ServiceProvider::Ptr const& serviceProvider,
-        string const& workerName,
-        TransactionContribInfo const& contrib)
-        :   IngestFileSvc(serviceProvider, workerName),
-            _contrib(contrib) {
-
+IngestRequest::IngestRequest(ServiceProvider::Ptr const& serviceProvider, string const& workerName,
+                             TransactionContribInfo const& contrib)
+        : IngestFileSvc(serviceProvider, workerName), _contrib(contrib) {
     // This contructor assumes a valid contribution object obtained from a database
     // was passed into the method.
     _resource.reset(new Url(_contrib.url));
@@ -272,27 +234,23 @@ IngestRequest::IngestRequest(
     _parser.reset(new csv::Parser(_dialect));
 }
 
-
 TransactionContribInfo IngestRequest::transactionContribInfo() const {
     string const context = ::context_ + string(__func__) + " ";
     util::Lock lock(_mtx, context);
     return _contrib;
 }
 
-
 void IngestRequest::process() {
     string const context = ::context_ + string(__func__) + " ";
     {
         util::Lock lock(_mtx, context);
         if (_processing) {
-            throw logic_error(
-                    context + "the contribution request " + to_string(_contrib.id)
-                    + " is already being processed or has been processed.");
+            throw logic_error(context + "the contribution request " + to_string(_contrib.id) +
+                              " is already being processed or has been processed.");
         }
         if (_cancelled) {
-            throw IngestRequestInterrupted(
-                    context + "request " + to_string(_contrib.id)
-                    + " is already cancelled");
+            throw IngestRequestInterrupted(context + "request " + to_string(_contrib.id) +
+                                           " is already cancelled");
         }
         _processing = true;
     }
@@ -301,9 +259,7 @@ void IngestRequest::process() {
     _processLoadData();
 }
 
-
 void IngestRequest::cancel() {
-
     string const context = ::context_ + string(__func__) + " ";
     util::Lock lock(_mtx, context);
 
@@ -316,15 +272,11 @@ void IngestRequest::cancel() {
         // of the request.
         bool const failed = true;
         _contrib = serviceProvider()->databaseServices()->startedTransactionContrib(
-                _contrib,
-                failed,
-                TransactionContribInfo::Status::CANCELLED);
+                _contrib, failed, TransactionContribInfo::Status::CANCELLED);
     }
 }
 
-
 void IngestRequest::_processStart() {
-
     string const context = ::context_ + string(__func__) + " ";
     bool const failed = true;
     auto const databaseServices = serviceProvider()->databaseServices();
@@ -336,14 +288,14 @@ void IngestRequest::_processStart() {
         if (_cancelled) {
             _contrib.error = "cancelled before opening a temporary file.";
             _contrib.retryAllowed = true;
-            _contrib = databaseServices->startedTransactionContrib(
-                    _contrib, failed, TransactionContribInfo::Status::CANCELLED);
+            _contrib = databaseServices->startedTransactionContrib(_contrib, failed,
+                                                                   TransactionContribInfo::Status::CANCELLED);
             throw IngestRequestInterrupted(context + "request " + to_string(_contrib.id) + _contrib.error);
         }
     }
     try {
-        _contrib.tmpFile = openFile(
-                _contrib.transactionId, _contrib.table, _dialect, _contrib.chunk, _contrib.isOverlap);
+        _contrib.tmpFile = openFile(_contrib.transactionId, _contrib.table, _dialect, _contrib.chunk,
+                                    _contrib.isOverlap);
         util::Lock lock(_mtx, context);
         _contrib = databaseServices->startedTransactionContrib(_contrib);
 
@@ -368,9 +320,7 @@ void IngestRequest::_processStart() {
     }
 }
 
-
 void IngestRequest::_processReadData() {
-
     string const context = ::context_ + string(__func__) + " ";
     bool const failed = true;
     auto const databaseServices = serviceProvider()->databaseServices();
@@ -381,14 +331,14 @@ void IngestRequest::_processReadData() {
         if (_cancelled) {
             _contrib.error = "cancelled before reading the input file.";
             _contrib.retryAllowed = true;
-            _contrib = databaseServices->readTransactionContrib(
-                    _contrib, failed, TransactionContribInfo::Status::CANCELLED);
+            _contrib = databaseServices->readTransactionContrib(_contrib, failed,
+                                                                TransactionContribInfo::Status::CANCELLED);
             closeFile();
             throw IngestRequestInterrupted(context + "request " + to_string(_contrib.id) + _contrib.error);
         }
     }
     try {
-        switch(_resource->scheme()) {
+        switch (_resource->scheme()) {
             case Url::FILE:
                 _readLocalFile();
                 break;
@@ -424,9 +374,7 @@ void IngestRequest::_processReadData() {
     }
 }
 
-
 void IngestRequest::_processLoadData() {
-
     string const context = ::context_ + string(__func__) + " ";
     bool const failed = true;
     auto const databaseServices = serviceProvider()->databaseServices();
@@ -438,8 +386,8 @@ void IngestRequest::_processLoadData() {
         if (_cancelled) {
             _contrib.error = "cancelled before loading data into MySQL";
             _contrib.retryAllowed = true;
-            _contrib = databaseServices->loadedTransactionContrib(
-                    _contrib, failed, TransactionContribInfo::Status::CANCELLED);
+            _contrib = databaseServices->loadedTransactionContrib(_contrib, failed,
+                                                                  TransactionContribInfo::Status::CANCELLED);
             closeFile();
             throw IngestRequestInterrupted(context + "request " + to_string(_contrib.id) + _contrib.error);
         }
@@ -461,7 +409,6 @@ void IngestRequest::_processLoadData() {
     closeFile();
 }
 
-
 void IngestRequest::_readLocalFile() {
     string const context = ::context_ + string(__func__) + " ";
 
@@ -471,15 +418,16 @@ void IngestRequest::_readLocalFile() {
     unique_ptr<char[]> const record(new char[defaultRecordSizeBytes]);
     ifstream infile(_resource->filePath(), ios::binary);
     if (!infile.is_open()) {
-        raiseRetryAllowedError(context, "failed to open the file '" + _resource->filePath()
-                + "', error: '" + strerror(errno) + "', errno: " + to_string(errno));
+        raiseRetryAllowedError(context, "failed to open the file '" + _resource->filePath() + "', error: '" +
+                                                strerror(errno) + "', errno: " + to_string(errno));
     }
     bool eof = false;
     do {
         eof = !infile.read(record.get(), defaultRecordSizeBytes);
         if (eof && !infile.eof()) {
-            raiseRetryAllowedError(context, "failed to read the file '" + _resource->filePath()
-                    + "', error: '" + strerror(errno) + "', errno: " + to_string(errno));
+            raiseRetryAllowedError(context, "failed to read the file '" + _resource->filePath() +
+                                                    "', error: '" + strerror(errno) +
+                                                    "', errno: " + to_string(errno));
         }
         size_t const num = infile.gcount();
         _contrib.numBytes += num;
@@ -491,9 +439,7 @@ void IngestRequest::_readLocalFile() {
     } while (!eof);
 }
 
-
 void IngestRequest::_readRemoteFile() {
-
     _contrib.numBytes = 0;
     _contrib.numRows = 0;
 
@@ -516,22 +462,22 @@ void IngestRequest::_readRemoteFile() {
     ::TemporaryCertFileRAII caInfoFile;
     if (!clientConfig.caInfoVal.empty()) {
         // Use this file instead of the existing path.
-        clientConfig.caInfo = caInfoFile.write(
-                serviceProvider()->config()->get<string>("worker", "http-loader-tmp-dir"),
-                _contrib.database, clientConfig.caInfoVal);
+        clientConfig.caInfo =
+                caInfoFile.write(serviceProvider()->config()->get<string>("worker", "http-loader-tmp-dir"),
+                                 _contrib.database, clientConfig.caInfoVal);
     }
     ::TemporaryCertFileRAII proxyCaInfoFile;
     if (!clientConfig.proxyCaInfoVal.empty()) {
         // Use this file instead of the existing path.
         clientConfig.proxyCaInfo = proxyCaInfoFile.write(
-                serviceProvider()->config()->get<string>("worker", "http-loader-tmp-dir"),
-                _contrib.database, clientConfig.proxyCaInfoVal);
+                serviceProvider()->config()->get<string>("worker", "http-loader-tmp-dir"), _contrib.database,
+                clientConfig.proxyCaInfoVal);
     }
 
     // Read and parse data from the data source
     bool const flush = true;
-    HttpClient reader(_contrib.httpMethod, _contrib.url, _contrib.httpData,
-                      _contrib.httpHeaders, clientConfig);
+    HttpClient reader(_contrib.httpMethod, _contrib.url, _contrib.httpData, _contrib.httpHeaders,
+                      clientConfig);
     reader.read([&](char const* record, size_t size) {
         _parser->parse(record, size, !flush, reportRow);
         _contrib.numBytes += size;
@@ -541,13 +487,11 @@ void IngestRequest::_readRemoteFile() {
     _parser->parse(emptyRecord.data(), emptyRecord.size(), flush, reportRow);
 }
 
-
 HttpClientConfig IngestRequest::_clientConfig() const {
     auto const databaseServices = serviceProvider()->databaseServices();
     auto const getString = [&](string& val, string const& key) -> bool {
         try {
-            val = databaseServices->ingestParam(
-                    _contrib.database, HttpClientConfig::category, key).value;
+            val = databaseServices->ingestParam(_contrib.database, HttpClientConfig::category, key).value;
         } catch (DatabaseServicesNotFound const&) {
             return false;
         }
@@ -562,21 +506,21 @@ HttpClientConfig IngestRequest::_clientConfig() const {
         if (getString(str, key)) val = stol(str);
     };
     HttpClientConfig clientConfig;
-    getBool(  clientConfig.sslVerifyHost,      HttpClientConfig::sslVerifyHostKey);
-    getBool(  clientConfig.sslVerifyPeer,      HttpClientConfig::sslVerifyPeerKey);
-    getString(clientConfig.caPath,             HttpClientConfig::caPathKey);
-    getString(clientConfig.caInfo,             HttpClientConfig::caInfoKey);
-    getString(clientConfig.caInfoVal,          HttpClientConfig::caInfoValKey);
-    getBool(  clientConfig.proxySslVerifyHost, HttpClientConfig::proxySslVerifyHostKey);
-    getBool(  clientConfig.proxySslVerifyPeer, HttpClientConfig::proxySslVerifyPeerKey);
-    getString(clientConfig.proxyCaPath,        HttpClientConfig::proxyCaPathKey);
-    getString(clientConfig.proxyCaInfo,        HttpClientConfig::proxyCaInfoKey);
-    getString(clientConfig.proxyCaInfoVal,     HttpClientConfig::proxyCaInfoValKey);
-    getLong(  clientConfig.connectTimeout,     HttpClientConfig::connectTimeoutKey);
-    getLong(  clientConfig.timeout,            HttpClientConfig::timeoutKey);
-    getLong(  clientConfig.lowSpeedLimit,      HttpClientConfig::lowSpeedLimitKey);
-    getLong(  clientConfig.lowSpeedTime,       HttpClientConfig::lowSpeedTimeKey);
+    getBool(clientConfig.sslVerifyHost, HttpClientConfig::sslVerifyHostKey);
+    getBool(clientConfig.sslVerifyPeer, HttpClientConfig::sslVerifyPeerKey);
+    getString(clientConfig.caPath, HttpClientConfig::caPathKey);
+    getString(clientConfig.caInfo, HttpClientConfig::caInfoKey);
+    getString(clientConfig.caInfoVal, HttpClientConfig::caInfoValKey);
+    getBool(clientConfig.proxySslVerifyHost, HttpClientConfig::proxySslVerifyHostKey);
+    getBool(clientConfig.proxySslVerifyPeer, HttpClientConfig::proxySslVerifyPeerKey);
+    getString(clientConfig.proxyCaPath, HttpClientConfig::proxyCaPathKey);
+    getString(clientConfig.proxyCaInfo, HttpClientConfig::proxyCaInfoKey);
+    getString(clientConfig.proxyCaInfoVal, HttpClientConfig::proxyCaInfoValKey);
+    getLong(clientConfig.connectTimeout, HttpClientConfig::connectTimeoutKey);
+    getLong(clientConfig.timeout, HttpClientConfig::timeoutKey);
+    getLong(clientConfig.lowSpeedLimit, HttpClientConfig::lowSpeedLimitKey);
+    getLong(clientConfig.lowSpeedTime, HttpClientConfig::lowSpeedTimeKey);
     return clientConfig;
 }
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica

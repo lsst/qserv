@@ -18,9 +18,9 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
- /**
-  * @brief test SemanticMap
-  */
+/**
+ * @brief test SemanticMap
+ */
 
 // System headers
 #include <algorithm>
@@ -54,13 +54,11 @@ using json = nlohmann::json;
 using namespace lsst::qserv::replica;
 
 namespace {
-    /// The configuration is shared by all tests.
-    Configuration::Ptr config;
-}
-
+/// The configuration is shared by all tests.
+Configuration::Ptr config;
+}  // namespace
 
 BOOST_AUTO_TEST_SUITE(Suite)
-
 
 BOOST_AUTO_TEST_CASE(ConfigurationTestStaticParameters) {
     LOGS_INFO("Testing static parameters");
@@ -105,12 +103,10 @@ BOOST_AUTO_TEST_CASE(ConfigurationInitTestJSON) {
     BOOST_CHECK(!configJsonStr.empty());
 }
 
-
 BOOST_AUTO_TEST_CASE(ConfigurationTestDir) {
     LOGS_INFO("Testing directory functions");
     BOOST_CHECK(config->parameters() == ConfigTestData::parameters());
 }
-
 
 BOOST_AUTO_TEST_CASE(ConfigurationTestReadingGeneralParameters) {
     LOGS_INFO("Testing reading general parameters");
@@ -172,15 +168,15 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestReadingGeneralParameters) {
     BOOST_CHECK(config->get<unsigned int>("worker", "http-max-listen-conn") == 512);
 }
 
-
 BOOST_AUTO_TEST_CASE(ConfigurationTestModifyingGeneralParameters) {
     LOGS_INFO("Testing modifying general parameters");
- 
+
     BOOST_CHECK_THROW(config->set<size_t>("common", "request-buf-size-bytes", 0), std::invalid_argument);
     BOOST_REQUIRE_NO_THROW(config->set<size_t>("common", "request-buf-size-bytes", 8193));
     BOOST_CHECK(config->get<size_t>("common", "request-buf-size-bytes") == 8193);
 
-    BOOST_CHECK_THROW(config->set<unsigned int>("common", "request-retry-interval-sec", 0), std::invalid_argument);
+    BOOST_CHECK_THROW(config->set<unsigned int>("common", "request-retry-interval-sec", 0),
+                      std::invalid_argument);
     BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("common", "request-retry-interval-sec", 2));
     BOOST_CHECK(config->get<unsigned int>("common", "request-retry-interval-sec") == 2);
 
@@ -212,7 +208,8 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestModifyingGeneralParameters) {
     BOOST_REQUIRE_NO_THROW(config->set<uint16_t>("controller", "http-server-port", 8081));
     BOOST_CHECK(config->get<uint16_t>("controller", "http-server-port") == 8081);
 
-    BOOST_CHECK_THROW(config->set<unsigned int>("controller", "http-max-listen-conn", 0), std::invalid_argument);
+    BOOST_CHECK_THROW(config->set<unsigned int>("controller", "http-max-listen-conn", 0),
+                      std::invalid_argument);
     BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("controller", "http-max-listen-conn", 1024));
     BOOST_CHECK(config->get<unsigned int>("controller", "http-max-listen-conn") == 1024);
 
@@ -220,7 +217,8 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestModifyingGeneralParameters) {
     BOOST_REQUIRE_NO_THROW(config->set<size_t>("controller", "http-server-threads", 4));
     BOOST_CHECK(config->get<size_t>("controller", "http-server-threads") == 4);
 
-    BOOST_CHECK_THROW(config->set<unsigned int>("controller", "request-timeout-sec", 0), std::invalid_argument);
+    BOOST_CHECK_THROW(config->set<unsigned int>("controller", "request-timeout-sec", 0),
+                      std::invalid_argument);
     BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("controller", "request-timeout-sec", 101));
     BOOST_CHECK(config->get<unsigned int>("controller", "request-timeout-sec") == 101);
 
@@ -261,10 +259,10 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestModifyingGeneralParameters) {
     BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("controller", "auto-register-workers", 0));
     BOOST_CHECK(config->get<unsigned int>("controller", "auto-register-workers") == 0);
 
-    BOOST_CHECK_THROW(config->set<uint16_t>("controller", "ingest-job-monitor-ival-sec", 0), std::invalid_argument);
+    BOOST_CHECK_THROW(config->set<uint16_t>("controller", "ingest-job-monitor-ival-sec", 0),
+                      std::invalid_argument);
     BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("controller", "ingest-job-monitor-ival-sec", 6));
     BOOST_CHECK(config->get<unsigned int>("controller", "ingest-job-monitor-ival-sec") == 6);
-
 
     BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("xrootd", "auto-notify", 1));
     BOOST_CHECK(config->get<unsigned int>("xrootd", "auto-notify") != 0);
@@ -314,19 +312,23 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestModifyingGeneralParameters) {
     BOOST_REQUIRE_NO_THROW(config->set<size_t>("worker", "fs-buf-size-bytes", 1025));
     BOOST_CHECK(config->get<size_t>("worker", "fs-buf-size-bytes") == 1025);
 
-    BOOST_CHECK_THROW(config->set<size_t>("worker", "num-loader-processing-threads", 0), std::invalid_argument);
+    BOOST_CHECK_THROW(config->set<size_t>("worker", "num-loader-processing-threads", 0),
+                      std::invalid_argument);
     BOOST_REQUIRE_NO_THROW(config->set<size_t>("worker", "num-loader-processing-threads", 7));
     BOOST_CHECK(config->get<size_t>("worker", "num-loader-processing-threads") == 7);
 
-    BOOST_CHECK_THROW(config->set<size_t>("worker", "num-exporter-processing-threads", 0), std::invalid_argument);
+    BOOST_CHECK_THROW(config->set<size_t>("worker", "num-exporter-processing-threads", 0),
+                      std::invalid_argument);
     BOOST_REQUIRE_NO_THROW(config->set<size_t>("worker", "num-exporter-processing-threads", 8));
     BOOST_CHECK(config->get<size_t>("worker", "num-exporter-processing-threads") == 8);
 
-    BOOST_CHECK_THROW(config->set<size_t>("worker", "num-http-loader-processing-threads", 0), std::invalid_argument);
+    BOOST_CHECK_THROW(config->set<size_t>("worker", "num-http-loader-processing-threads", 0),
+                      std::invalid_argument);
     BOOST_REQUIRE_NO_THROW(config->set<size_t>("worker", "num-http-loader-processing-threads", 9));
     BOOST_CHECK(config->get<size_t>("worker", "num-http-loader-processing-threads") == 9);
 
-    BOOST_CHECK_THROW(config->set<size_t>("worker", "num-async-loader-processing-threads", 0), std::invalid_argument);
+    BOOST_CHECK_THROW(config->set<size_t>("worker", "num-async-loader-processing-threads", 0),
+                      std::invalid_argument);
     BOOST_REQUIRE_NO_THROW(config->set<size_t>("worker", "num-async-loader-processing-threads", 10));
     BOOST_CHECK(config->get<size_t>("worker", "num-async-loader-processing-threads") == 10);
 
@@ -345,7 +347,6 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestModifyingGeneralParameters) {
     BOOST_CHECK(config->get<unsigned int>("worker", "http-max-listen-conn") == 2048);
 }
 
-
 BOOST_AUTO_TEST_CASE(ConfigurationTestWorkerOperators) {
     LOGS_INFO("Testing worker comparison operators");
 
@@ -360,7 +361,6 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestWorkerOperators) {
     BOOST_CHECK(!(w1 == w2));
 }
 
-
 BOOST_AUTO_TEST_CASE(ConfigurationTestWorkers) {
     LOGS_INFO("Testing worker services");
 
@@ -371,36 +371,35 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestWorkers) {
     BOOST_CHECK(workers1 == vector<string>({"worker-A"}));
 
     // Explicit values of the worker selectors.
-    bool isEnabled  = true;
+    bool isEnabled = true;
     bool isReadOnly = false;
     vector<string> workers2;
     BOOST_REQUIRE_NO_THROW(workers2 = config->workers(isEnabled, isReadOnly));
     sort(workers2.begin(), workers2.end());
     BOOST_CHECK(workers2.size() == 1);
     BOOST_CHECK(workers2 == workers1);
- 
+
     // Fetch names of all the read-only workers.
-    isEnabled  = true;
+    isEnabled = true;
     isReadOnly = true;
     vector<string> workers3;
     BOOST_REQUIRE_NO_THROW(workers3 = config->workers(isEnabled, isReadOnly));
     sort(workers3.begin(), workers3.end());
     BOOST_CHECK(workers3.size() == 1);
     BOOST_CHECK(workers3 == vector<string>({"worker-B"}));
- 
+
     // Fetch names of all the disabled workers.
-    isEnabled  = false;
+    isEnabled = false;
     vector<string> workers4;
     BOOST_REQUIRE_NO_THROW(workers4 = config->workers(isEnabled));
     sort(workers4.begin(), workers4.end());
     BOOST_CHECK(workers4.size() == 1);
     BOOST_CHECK(workers4 == vector<string>({"worker-C"}));
 
-    for (auto&& name: vector<string>({"worker-A", "worker-B", "worker-C"})) {
+    for (auto&& name : vector<string>({"worker-A", "worker-B", "worker-C"})) {
         BOOST_CHECK(config->isKnownWorker(name));
     }
 }
-
 
 BOOST_AUTO_TEST_CASE(ConfigurationTestWorkerParameters) {
     LOGS_INFO("Testing worker parameters");
@@ -488,7 +487,6 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestWorkerParameters) {
     BOOST_REQUIRE_NO_THROW(updatedWorker = config->updateWorker(updatedWorker));
 }
 
-
 BOOST_AUTO_TEST_CASE(ConfigurationTestFamilies) {
     LOGS_INFO("Testing database families");
 
@@ -498,7 +496,7 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestFamilies) {
     sort(families.begin(), families.end());
     BOOST_CHECK(families.size() == 2);
     BOOST_CHECK(families == vector<string>({"production", "test"}));
-    for (auto&& name: families) {
+    for (auto&& name : families) {
         BOOST_CHECK(config->isKnownDatabaseFamily(name));
     }
     DatabaseFamilyInfo production;
@@ -542,14 +540,12 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestFamilies) {
     // Deleting non-existing families.
     BOOST_REQUIRE_THROW(config->deleteDatabaseFamily(""), std::invalid_argument);
     BOOST_REQUIRE_THROW(config->deleteDatabaseFamily("non-existing"), std::invalid_argument);
-
 }
-
 
 BOOST_AUTO_TEST_CASE(ConfigurationTestReadingDatabases) {
     LOGS_INFO("Testing reading databases");
 
-    // Database selectors. 
+    // Database selectors.
     vector<string> databases1;
     BOOST_REQUIRE_NO_THROW(databases1 = config->databases());
     sort(databases1.begin(), databases1.end());
@@ -596,11 +592,10 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestReadingDatabases) {
     sort(databases8.begin(), databases8.end());
     BOOST_CHECK(databases8.size() == 3);
     BOOST_CHECK(databases8 == vector<string>({"db4", "db5", "db6"}));
-    for (auto&& name: vector<string>({"db1", "db2", "db3", "db4", "db5", "db6"})) {
-        BOOST_CHECK(config->isKnownDatabase(name));  
+    for (auto&& name : vector<string>({"db1", "db2", "db3", "db4", "db5", "db6"})) {
+        BOOST_CHECK(config->isKnownDatabase(name));
     }
 }
-
 
 BOOST_AUTO_TEST_CASE(ConfigurationTestReadingTables) {
     LOGS_INFO("Testing reading tables");
@@ -713,7 +708,7 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestReadingTables) {
     BOOST_CHECK(db3info.directorTableKey.at("Table33") == "id33");
     BOOST_CHECK(db3info.latitudeColName.count("Table33") != 0);
     BOOST_CHECK(db3info.latitudeColName.at("Table33").empty());
-    BOOST_CHECK(db3info.longitudeColName.count("Table33") != 0 );
+    BOOST_CHECK(db3info.longitudeColName.count("Table33") != 0);
     BOOST_CHECK(db3info.longitudeColName.at("Table33").empty());
 
     tables = db3info.partitionedTables;
@@ -794,7 +789,6 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestReadingTables) {
     BOOST_CHECK(tables.size() == 1);
     BOOST_CHECK(tables == vector<string>({"Table51"}));
 
-
     tables = db5info.regularTables;
     BOOST_CHECK(tables.size() == 0);
 
@@ -827,7 +821,6 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestReadingTables) {
     BOOST_CHECK(tables.size() == 1);
     BOOST_CHECK(tables == vector<string>({"MetaTable61"}));
 }
-
 
 BOOST_AUTO_TEST_CASE(ConfigurationTestAddingDatabases) {
     LOGS_INFO("Testing adding databases");
@@ -878,7 +871,6 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestAddingDatabases) {
     }
 }
 
-
 BOOST_AUTO_TEST_CASE(ConfigurationTestModifyingTables) {
     LOGS_INFO("Testing modifying tables");
     {
@@ -894,36 +886,25 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestModifyingTables) {
         coldefs.emplace_back(longitudeColName, "DOUBLE");
         coldefs.emplace_back(lsst::qserv::SUB_CHUNK_COLUMN, "INT");
         DatabaseInfo info;
-        BOOST_REQUIRE_NO_THROW(
-            info = config->addTable("new", "T1", isPartitioned, coldefs,
-                    isDirectorTable, directorTable, directorTableKey, latitudeColName, longitudeColName);
-        );
+        BOOST_REQUIRE_NO_THROW(info = config->addTable("new", "T1", isPartitioned, coldefs, isDirectorTable,
+                                                       directorTable, directorTableKey, latitudeColName,
+                                                       longitudeColName););
         BOOST_CHECK(info.columns.count("T1") == 1);
         std::list<SqlColDef> columns;
-        BOOST_REQUIRE_NO_THROW(
-            columns = info.columns.at("T1");
-        );
+        BOOST_REQUIRE_NO_THROW(columns = info.columns.at("T1"););
         BOOST_CHECK(columns.size() == 4);
-        BOOST_CHECK(
-            find_if(columns.cbegin(), columns.cend(), [&directorTableKey](SqlColDef const& coldef) {
-                return (coldef.name == directorTableKey) && (coldef.type == "INT UNSIGNED");
-            }) != columns.cend()
-        );
-        BOOST_CHECK(
-            find_if(columns.cbegin(), columns.cend(), [&latitudeColName](SqlColDef const& coldef) {
-                return (coldef.name == latitudeColName) && (coldef.type == "DOUBLE");
-            }) != columns.cend()
-        );
-        BOOST_CHECK(
-            find_if(columns.cbegin(), columns.cend(), [&longitudeColName](SqlColDef const& coldef) {
-                return (coldef.name == longitudeColName) && (coldef.type == "DOUBLE");
-            }) != columns.cend()
-        );
-        BOOST_CHECK(
-            find_if(columns.cbegin(), columns.cend(), [](SqlColDef const& coldef) {
-                return (coldef.name == lsst::qserv::SUB_CHUNK_COLUMN) && (coldef.type == "INT");
-            }) != columns.cend()
-        );
+        BOOST_CHECK(find_if(columns.cbegin(), columns.cend(), [&directorTableKey](SqlColDef const& coldef) {
+                        return (coldef.name == directorTableKey) && (coldef.type == "INT UNSIGNED");
+                    }) != columns.cend());
+        BOOST_CHECK(find_if(columns.cbegin(), columns.cend(), [&latitudeColName](SqlColDef const& coldef) {
+                        return (coldef.name == latitudeColName) && (coldef.type == "DOUBLE");
+                    }) != columns.cend());
+        BOOST_CHECK(find_if(columns.cbegin(), columns.cend(), [&longitudeColName](SqlColDef const& coldef) {
+                        return (coldef.name == longitudeColName) && (coldef.type == "DOUBLE");
+                    }) != columns.cend());
+        BOOST_CHECK(find_if(columns.cbegin(), columns.cend(), [](SqlColDef const& coldef) {
+                        return (coldef.name == lsst::qserv::SUB_CHUNK_COLUMN) && (coldef.type == "INT");
+                    }) != columns.cend());
         BOOST_CHECK((info.partitionedTables.size() == 1) && (info.partitionedTables[0] == "T1"));
         BOOST_CHECK(info.directorTable.at("T1").empty());
         BOOST_CHECK(info.directorTableKey.at("T1") == directorTableKey);
@@ -944,10 +925,9 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestModifyingTables) {
         coldefs.emplace_back(latitudeColName, "DOUBLE");
         coldefs.emplace_back(longitudeColName, "DOUBLE");
         DatabaseInfo info;
-        BOOST_REQUIRE_NO_THROW(
-            info = config->addTable("new", "T2", isPartitioned, coldefs,
-                    isDirectorTable, directorTable, directorTableKey, latitudeColName, longitudeColName);
-        );
+        BOOST_REQUIRE_NO_THROW(info = config->addTable("new", "T2", isPartitioned, coldefs, isDirectorTable,
+                                                       directorTable, directorTableKey, latitudeColName,
+                                                       longitudeColName););
         BOOST_CHECK(info.partitionedTables.size() == 2);
         BOOST_CHECK(info.directorTable.at("T2") == "T1");
         BOOST_CHECK(info.directorTableKey.count("T2") != 0);
@@ -969,9 +949,7 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestModifyingTables) {
     }
     BOOST_CHECK_THROW(config->addTable("new", "T3", false), std::invalid_argument);
     BOOST_REQUIRE_NO_THROW(config->deleteTable("new", "T3"));
-
 }
-
 
 BOOST_AUTO_TEST_CASE(ConfigurationTestPublishingDatabases) {
     LOGS_INFO("Testing publishing databases");
@@ -989,7 +967,7 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestPublishingDatabases) {
     // Adding tables to the database after it's published isn't allowed.
     BOOST_CHECK_THROW(config->addTable("new", "T4", true), std::invalid_argument);
 
-    // Deleting director tables which may still have dependent ones is not allowed 
+    // Deleting director tables which may still have dependent ones is not allowed
     BOOST_CHECK_THROW(config->deleteTable("new", "T1"), std::invalid_argument);
     BOOST_REQUIRE_NO_THROW(config->deleteTable("new", "T2"));
     // Now we can do this, after delting the dependent one.
@@ -998,7 +976,6 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestPublishingDatabases) {
     BOOST_REQUIRE_NO_THROW(config->deleteDatabase("new"));
     BOOST_CHECK_THROW(config->deleteDatabase("new"), std::invalid_argument);
 }
-
 
 BOOST_AUTO_TEST_CASE(ConfigurationTestDeletingFamilies) {
     LOGS_INFO("Testing deleting families");

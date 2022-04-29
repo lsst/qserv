@@ -33,17 +33,14 @@
 #include "qmeta/QStats.h"
 #include "qmeta/types.h"
 
-
-namespace lsst {
-namespace qserv {
-namespace qmeta {
+namespace lsst { namespace qserv { namespace qmeta {
 
 /// This class is used to track temporary status information.
 /// Currently, this only consists of how many chunks have been completed
 /// out of how many total chunks there are in the query.
 class QStatus {
 public:
-	typedef std::shared_ptr<QStatus> Ptr;
+    typedef std::shared_ptr<QStatus> Ptr;
 
     QStatus(QStatus const&) = delete;
     QStatus& operator=(QStatus const&) = delete;
@@ -74,7 +71,6 @@ protected:
     QStatus() = default;
 };
 
+}}}  // namespace lsst::qserv::qmeta
 
-}}} // namespace lsst::qserv::qmeta
-
-#endif // LSST_QSERV_QMETA_QSTATUS_H
+#endif  // LSST_QSERV_QMETA_QSTATUS_H

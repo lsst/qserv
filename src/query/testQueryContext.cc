@@ -43,9 +43,7 @@
 #define BOOST_TEST_MODULE TableRef
 #include "boost/test/unit_test.hpp"
 
-
 using namespace lsst::qserv::query;
-
 
 const std::string testPlugins(R"BEGINEND({
     "\/css_meta": "",
@@ -101,7 +99,6 @@ const std::string testPlugins(R"BEGINEND({
     "\/PARTITIONING\/_0000000000\/overlap": "0.025"
 })BEGINEND");
 
-
 struct TestFixture {
     TestFixture(void) : metaSession(0) {
         css = lsst::qserv::css::CssAccess::createFromData(testPlugins, ".");
@@ -114,9 +111,7 @@ struct TestFixture {
     int metaSession;
 };
 
-
 BOOST_FIXTURE_TEST_SUITE(Suite, TestFixture)
-
 
 BOOST_AUTO_TEST_CASE(UsedTables) {
     TestFactory factory;
@@ -125,21 +120,24 @@ BOOST_AUTO_TEST_CASE(UsedTables) {
     auto tableRef1 = std::make_shared<TableRef>("db", "table", "alias");
     BOOST_REQUIRE_EQUAL(true, queryContext->addUsedTableRef(tableRef1));
     // adding a table ref with the same values should pass.
-    BOOST_REQUIRE_EQUAL(true, queryContext->addUsedTableRef(
-        std::make_shared<TableRef>("db", "table", "alias")));
+    BOOST_REQUIRE_EQUAL(true,
+                        queryContext->addUsedTableRef(std::make_shared<TableRef>("db", "table", "alias")));
     // adding a table ref with the same alias (and different other values) should fail.
     BOOST_REQUIRE_EQUAL(false, queryContext->addUsedTableRef(
-        std::make_shared<TableRef>("another_db", "another_table", "alias")));
+                                       std::make_shared<TableRef>("another_db", "another_table", "alias")));
     // adding a table ref with the same db & table but a different alias should pass
     auto tableRef2 = std::make_shared<TableRef>("db", "table", "another_alias");
     BOOST_REQUIRE_EQUAL(true, queryContext->addUsedTableRef(tableRef2));
 
-    // getting a table ref with the same values as an added TableRef should return the originally enetered object.
-    auto tableRefMatch = queryContext->getTableRefMatch(std::make_shared<TableRef>("db", "table", "another_alias"));
+    // getting a table ref with the same values as an added TableRef should return the originally enetered
+    // object.
+    auto tableRefMatch =
+            queryContext->getTableRefMatch(std::make_shared<TableRef>("db", "table", "another_alias"));
     BOOST_REQUIRE(tableRefMatch != nullptr);
     BOOST_REQUIRE_EQUAL(*tableRef2, *tableRefMatch);
 
-    // getting a table ref with a subset of the same values as an added TableRef should return the originally enetered object.
+    // getting a table ref with a subset of the same values as an added TableRef should return the originally
+    // enetered object.
     tableRefMatch = queryContext->getTableRefMatch(std::make_shared<TableRef>("", "table", "another_alias"));
     BOOST_REQUIRE(tableRefMatch != nullptr);
     BOOST_REQUIRE_EQUAL(*tableRef2, *tableRefMatch);
@@ -148,7 +146,8 @@ BOOST_AUTO_TEST_CASE(UsedTables) {
     BOOST_REQUIRE_EQUAL(*tableRef2, *tableRefMatch);
     tableRefMatch = queryContext->getTableRefMatch(std::make_shared<TableRef>("db", "table", ""));
     BOOST_REQUIRE(tableRefMatch != nullptr);
-    BOOST_REQUIRE_EQUAL(*tableRef1, *tableRefMatch); // <- notice it gets the first object because same db & table name!
+    BOOST_REQUIRE_EQUAL(*tableRef1,
+                        *tableRefMatch);  // <- notice it gets the first object because same db & table name!
     tableRefMatch = queryContext->getTableRefMatch(std::make_shared<TableRef>("", "table", ""));
     BOOST_REQUIRE(tableRefMatch != nullptr);
     BOOST_REQUIRE_EQUAL(*tableRef1.get(), *tableRefMatch);
@@ -159,14 +158,13 @@ BOOST_AUTO_TEST_CASE(UsedTables) {
     BOOST_REQUIRE_EQUAL(*tableRef2, *tableRefMatch);
 
     // getting a table ref with non-matching values should return nullptr.
-    BOOST_REQUIRE_EQUAL(nullptr,
-                        queryContext->getTableRefMatch(std::make_shared<TableRef>("", "", "some_other_alias")));
-    BOOST_REQUIRE_EQUAL(nullptr,
-                        queryContext->getTableRefMatch(std::make_shared<TableRef>("", "some_other_table", "")));
-    BOOST_REQUIRE_EQUAL(nullptr,
-                        queryContext->getTableRefMatch(std::make_shared<TableRef>("some_other_db", "some_other_table", "")));
+    BOOST_REQUIRE_EQUAL(
+            nullptr, queryContext->getTableRefMatch(std::make_shared<TableRef>("", "", "some_other_alias")));
+    BOOST_REQUIRE_EQUAL(
+            nullptr, queryContext->getTableRefMatch(std::make_shared<TableRef>("", "some_other_table", "")));
+    BOOST_REQUIRE_EQUAL(nullptr, queryContext->getTableRefMatch(std::make_shared<TableRef>(
+                                         "some_other_db", "some_other_table", "")));
 }
-
 
 BOOST_AUTO_TEST_CASE(UsedSelectListValueExprs) {
     TestFactory factory;
@@ -179,55 +177,72 @@ BOOST_AUTO_TEST_CASE(UsedSelectListValueExprs) {
     queryContext->addUsedValueExpr(columnRef2);
 
     // get columnRef1 with a subset value match
-    BOOST_REQUIRE_EQUAL(queryContext->getValueExprMatch(ValueExpr::newColumnExpr("",        "",       "", "column1")).get(),
-                        columnRef1.get());
-    BOOST_REQUIRE_EQUAL(queryContext->getValueExprMatch(ValueExpr::newColumnExpr("",   "table",       "", "column1")).get(),
-                        columnRef1.get());
-    BOOST_REQUIRE_EQUAL(queryContext->getValueExprMatch(ValueExpr::newColumnExpr("db", "table",       "", "column1")).get(),
-                        columnRef1.get());
-    BOOST_REQUIRE_EQUAL(queryContext->getValueExprMatch(ValueExpr::newColumnExpr("",        "", "alias1", "column1")).get(),
-                        columnRef1.get());
-    BOOST_REQUIRE_EQUAL(queryContext->getValueExprMatch(ValueExpr::newColumnExpr("db", "table", "alias1", "column1")).get(),
-                        columnRef1.get());
+    BOOST_REQUIRE_EQUAL(
+            queryContext->getValueExprMatch(ValueExpr::newColumnExpr("", "", "", "column1")).get(),
+            columnRef1.get());
+    BOOST_REQUIRE_EQUAL(
+            queryContext->getValueExprMatch(ValueExpr::newColumnExpr("", "table", "", "column1")).get(),
+            columnRef1.get());
+    BOOST_REQUIRE_EQUAL(
+            queryContext->getValueExprMatch(ValueExpr::newColumnExpr("db", "table", "", "column1")).get(),
+            columnRef1.get());
+    BOOST_REQUIRE_EQUAL(
+            queryContext->getValueExprMatch(ValueExpr::newColumnExpr("", "", "alias1", "column1")).get(),
+            columnRef1.get());
+    BOOST_REQUIRE_EQUAL(
+            queryContext->getValueExprMatch(ValueExpr::newColumnExpr("db", "table", "alias1", "column1"))
+                    .get(),
+            columnRef1.get());
 
     // try some expected-fail values
-    BOOST_REQUIRE_EQUAL(queryContext->getValueExprMatch(ValueExpr::newColumnExpr("", "", "", "column3")).get(),
-                        nullptr);
-    BOOST_REQUIRE_EQUAL(queryContext->getValueExprMatch(ValueExpr::newColumnExpr("", "", "alias3", "column1")).get(),
-                        nullptr);
-    BOOST_REQUIRE_EQUAL(queryContext->getValueExprMatch(ValueExpr::newColumnExpr("", "", "alias2", "column1")).get(),
-                        nullptr);
-    BOOST_REQUIRE_EQUAL(queryContext->getValueExprMatch(ValueExpr::newColumnExpr("", "", "alias1", "column2")).get(),
-                        nullptr);
+    BOOST_REQUIRE_EQUAL(
+            queryContext->getValueExprMatch(ValueExpr::newColumnExpr("", "", "", "column3")).get(), nullptr);
+    BOOST_REQUIRE_EQUAL(
+            queryContext->getValueExprMatch(ValueExpr::newColumnExpr("", "", "alias3", "column1")).get(),
+            nullptr);
+    BOOST_REQUIRE_EQUAL(
+            queryContext->getValueExprMatch(ValueExpr::newColumnExpr("", "", "alias2", "column1")).get(),
+            nullptr);
+    BOOST_REQUIRE_EQUAL(
+            queryContext->getValueExprMatch(ValueExpr::newColumnExpr("", "", "alias1", "column2")).get(),
+            nullptr);
 
     // get columnRef2 with a subset value match
-    BOOST_REQUIRE_EQUAL(queryContext->getValueExprMatch(ValueExpr::newColumnExpr("",        "",       "", "column2")).get(),
-                        columnRef2.get());
-    BOOST_REQUIRE_EQUAL(queryContext->getValueExprMatch(ValueExpr::newColumnExpr("",   "table",       "", "column2")).get(),
-                        columnRef2.get());
-    BOOST_REQUIRE_EQUAL(queryContext->getValueExprMatch(ValueExpr::newColumnExpr("db", "table",       "", "column2")).get(),
-                        columnRef2.get());
-    BOOST_REQUIRE_EQUAL(queryContext->getValueExprMatch(ValueExpr::newColumnExpr("",        "", "alias2", "column2")).get(),
-                        columnRef2.get());
-    BOOST_REQUIRE_EQUAL(queryContext->getValueExprMatch(ValueExpr::newColumnExpr("db", "table", "alias2", "column2")).get(),
-                        columnRef2.get());
+    BOOST_REQUIRE_EQUAL(
+            queryContext->getValueExprMatch(ValueExpr::newColumnExpr("", "", "", "column2")).get(),
+            columnRef2.get());
+    BOOST_REQUIRE_EQUAL(
+            queryContext->getValueExprMatch(ValueExpr::newColumnExpr("", "table", "", "column2")).get(),
+            columnRef2.get());
+    BOOST_REQUIRE_EQUAL(
+            queryContext->getValueExprMatch(ValueExpr::newColumnExpr("db", "table", "", "column2")).get(),
+            columnRef2.get());
+    BOOST_REQUIRE_EQUAL(
+            queryContext->getValueExprMatch(ValueExpr::newColumnExpr("", "", "alias2", "column2")).get(),
+            columnRef2.get());
+    BOOST_REQUIRE_EQUAL(
+            queryContext->getValueExprMatch(ValueExpr::newColumnExpr("db", "table", "alias2", "column2"))
+                    .get(),
+            columnRef2.get());
 
     // get columnRef1 with alias value match
-    BOOST_REQUIRE_EQUAL(queryContext->getValueExprMatch(ValueExpr::newColumnExpr("", "alias1", "", "column1")).get(),
-                        columnRef1.get());
+    BOOST_REQUIRE_EQUAL(
+            queryContext->getValueExprMatch(ValueExpr::newColumnExpr("", "alias1", "", "column1")).get(),
+            columnRef1.get());
     // get columnRef2 with alias value match
-    BOOST_REQUIRE_EQUAL(queryContext->getValueExprMatch(ValueExpr::newColumnExpr("", "alias2", "", "column2")).get(),
-                        columnRef2.get());
+    BOOST_REQUIRE_EQUAL(
+            queryContext->getValueExprMatch(ValueExpr::newColumnExpr("", "alias2", "", "column2")).get(),
+            columnRef2.get());
     // try some expected-fail alias matches
-    BOOST_REQUIRE_EQUAL(queryContext->getValueExprMatch(ValueExpr::newColumnExpr("", "alias1", "", "column2")).get(),
-                        nullptr);
-    BOOST_REQUIRE_EQUAL(queryContext->getValueExprMatch(ValueExpr::newColumnExpr("", "alias2", "", "column1")).get(),
-                        nullptr);
-    BOOST_REQUIRE_EQUAL(queryContext->getValueExprMatch(ValueExpr::newColumnExpr("", "alias3", "", "column2")).get(),
-                        nullptr);
-
-
+    BOOST_REQUIRE_EQUAL(
+            queryContext->getValueExprMatch(ValueExpr::newColumnExpr("", "alias1", "", "column2")).get(),
+            nullptr);
+    BOOST_REQUIRE_EQUAL(
+            queryContext->getValueExprMatch(ValueExpr::newColumnExpr("", "alias2", "", "column1")).get(),
+            nullptr);
+    BOOST_REQUIRE_EQUAL(
+            queryContext->getValueExprMatch(ValueExpr::newColumnExpr("", "alias3", "", "column2")).get(),
+            nullptr);
 }
-
 
 BOOST_AUTO_TEST_SUITE_END()

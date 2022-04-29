@@ -45,15 +45,13 @@
 #include "util/Mutex.h"
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
 /**
-  * Class Job is a base class for a family of replication jobs within
-  * the master server.
-  */
-class Job: public std::enable_shared_from_this<Job>  {
+ * Class Job is a base class for a family of replication jobs within
+ * the master server.
+ */
+class Job : public std::enable_shared_from_this<Job> {
 public:
     typedef std::shared_ptr<Job> Ptr;
 
@@ -63,11 +61,11 @@ public:
 
     /// Primary public state of the job.
     enum State {
-        CREATED,        ///< The job has been constructed, and no attempt to execute
-                        ///  it has been made.
-        IN_PROGRESS,    ///< The job is in a progress.
-        FINISHED        ///< The job is finished. See extended status for more details
-                        ///  (the completion status, etc.).
+        CREATED,      ///< The job has been constructed, and no attempt to execute
+                      ///  it has been made.
+        IN_PROGRESS,  ///< The job is in a progress.
+        FINISHED      ///< The job is finished. See extended status for more details
+                      ///  (the completion status, etc.).
     };
 
     /// Return the string representation of the primary state.
@@ -76,17 +74,17 @@ public:
     /// Refined public sub-state of the job once it's FINISHED as per
     /// the above defined primary state.
     enum ExtendedState {
-        NONE,               ///< No extended state exists at this time.
-        SUCCESS,            ///< The job has been fully implemented.
-        CONFIG_ERROR,       ///< Problems with job configuration found.
-        FAILED,             ///< The job has failed.
-        QSERV_FAILED,       ///< Qserv notification failed.
-        QSERV_CHUNK_IN_USE, ///< Qserv reported that the source chunk is in use and
-                            ///  couldn't be removed.
-        BAD_RESULT,         ///< Incorrect or unexpected result set received by a job.
-        TIMEOUT_EXPIRED,    ///< Expired due to a timeout (as per the Configuration).
-        CANCELLED           ///< Explicitly cancelled on the client-side
-                            ///  (similar to TIMEOUT_EXPIRED).
+        NONE,                ///< No extended state exists at this time.
+        SUCCESS,             ///< The job has been fully implemented.
+        CONFIG_ERROR,        ///< Problems with job configuration found.
+        FAILED,              ///< The job has failed.
+        QSERV_FAILED,        ///< Qserv notification failed.
+        QSERV_CHUNK_IN_USE,  ///< Qserv reported that the source chunk is in use and
+                             ///  couldn't be removed.
+        BAD_RESULT,          ///< Incorrect or unexpected result set received by a job.
+        TIMEOUT_EXPIRED,     ///< Expired due to a timeout (as per the Configuration).
+        CANCELLED            ///< Explicitly cancelled on the client-side
+                             ///  (similar to TIMEOUT_EXPIRED).
     };
 
     /// @return  The string representation of the extended state.
@@ -190,8 +188,8 @@ public:
      * @return  A collection of parameters and the corresponding values to
      *   be stored in a database for a job.
      */
-    virtual std::list<std::pair<std::string,std::string>> extendedPersistentState() const {
-        return std::list<std::pair<std::string,std::string>>();
+    virtual std::list<std::pair<std::string, std::string>> extendedPersistentState() const {
+        return std::list<std::pair<std::string, std::string>>();
     }
 
     /**
@@ -199,7 +197,7 @@ public:
      *   a job. The method is supposed to be called upon a completion of the job.
      * @throws std::logic_error  If the method is called when the job hasn't finished.
      */
-    virtual std::list<std::pair<std::string,std::string>> persistentLogData() const;
+    virtual std::list<std::pair<std::string, std::string>> persistentLogData() const;
 
 protected:
     /**
@@ -210,9 +208,7 @@ protected:
      *   and it's also logged into the persistent state of the Replication system.
      * @param priority  The priority level of the job.
      */
-    Job(Controller::Ptr const& controller,
-        std::string const& parentJobId,
-        std::string const& type,
+    Job(Controller::Ptr const& controller, std::string const& parentJobId, std::string const& type,
         int priority);
 
     /// @return  A shared pointer of the desired subclass (no dynamic type checking).
@@ -222,10 +218,10 @@ protected:
     }
 
     /**
-      * This method is supposed to be provided by subclasses for additional
-      * subclass-specific actions to begin processing the request.
-      * @param lock  A lock on Job::_mtx must be acquired by a caller of the method.
-      */
+     * This method is supposed to be provided by subclasses for additional
+     * subclass-specific actions to begin processing the request.
+     * @param lock  A lock on Job::_mtx must be acquired by a caller of the method.
+     */
     virtual void startImpl(util::Lock const& lock) = 0;
 
     /**
@@ -242,10 +238,10 @@ protected:
     void finish(util::Lock const& lock, ExtendedState extendedState);
 
     /**
-      * This method is supposed to be provided by subclasses to finalize request
-      * processing as required by the subclass.
-      * @param lock  A lock on Job::_mtx must be acquired by a caller of the method.
-      */
+     * This method is supposed to be provided by subclasses to finalize request
+     * processing as required by the subclass.
+     * @param lock  A lock on Job::_mtx must be acquired by a caller of the method.
+     */
     virtual void cancelImpl(util::Lock const& lock) = 0;
 
     /**
@@ -284,7 +280,7 @@ protected:
      * @param onFinish  A callback function (if set) to be called.
      */
     template <class T>
-    void notifyDefaultImpl(util::Lock const& lock, typename T::CallbackType& onFinish) {    
+    void notifyDefaultImpl(util::Lock const& lock, typename T::CallbackType& onFinish) {
         if (nullptr != onFinish) {
             // Clearing the stored callback after finishing the up-stream notification
             // has two purposes:
@@ -292,7 +288,7 @@ protected:
             // 2. it breaks the up-stream dependency on a caller object if a shared
             //    pointer to the object was mentioned as the lambda-function's closure
             controller()->serviceProvider()->io_service().post(
-                std::bind(std::move(onFinish), shared_from_base<T>()));
+                    std::bind(std::move(onFinish), shared_from_base<T>()));
             onFinish = nullptr;
         }
     }
@@ -306,11 +302,9 @@ protected:
      * @param onFinish  An (optional) callback function to be called upon completion
      *   of the operation.
      */
-    void qservAddReplica(util::Lock const& lock,
-                         unsigned int chunk,
-                         std::vector<std::string> const& databases,
-                         std::string const& worker,
-                         AddReplicaQservMgtRequest::CallbackType const& onFinish=nullptr);
+    void qservAddReplica(util::Lock const& lock, unsigned int chunk,
+                         std::vector<std::string> const& databases, std::string const& worker,
+                         AddReplicaQservMgtRequest::CallbackType const& onFinish = nullptr);
 
     /**
      * Notify Qserv about a new chunk added to its database.
@@ -323,12 +317,9 @@ protected:
      * @param onFinish  An (optional) callback function to be called upon completion
      *   of the operation.
      */
-    void qservRemoveReplica(util::Lock const& lock,
-                            unsigned int chunk,
-                            std::vector<std::string> const& databases,
-                            std::string const& worker,
-                            bool force,
-                            RemoveReplicaQservMgtRequest::CallbackType const& onFinish=nullptr);
+    void qservRemoveReplica(util::Lock const& lock, unsigned int chunk,
+                            std::vector<std::string> const& databases, std::string const& worker, bool force,
+                            RemoveReplicaQservMgtRequest::CallbackType const& onFinish = nullptr);
 
     /**
      * Set the desired primary and extended state.
@@ -342,9 +333,7 @@ protected:
      * @param state  The new primary state.
      * @param extendedState The (optional) new extended state.
      */
-    void setState(util::Lock const& lock,
-                  State state,
-                  ExtendedState extendedState=ExtendedState::NONE);
+    void setState(util::Lock const& lock, State state, ExtendedState extendedState = ExtendedState::NONE);
 
 private:
     /**
@@ -357,9 +346,7 @@ private:
      * @param context  A context from which the state test is requested.
      * @throw std::logic_error  If the desired state requirement is not met.
      */
-    void _assertState(util::Lock const& lock,
-                      State desiredState,
-                      std::string const& context) const;
+    void _assertState(util::Lock const& lock, State desiredState, std::string const& context) const;
 
     /**
      * Start the timer (if the corresponding Configuration parameter is set`).
@@ -447,6 +434,6 @@ private:
     std::condition_variable _onFinishCv;
 };
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_JOB_H
+#endif  // LSST_QSERV_REPLICA_JOB_H

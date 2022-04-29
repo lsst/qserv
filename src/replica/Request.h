@@ -42,22 +42,18 @@
 #include "util/Mutex.h"
 
 // Forward declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
-    class Controller;
-}}}  // Forward declarations
+namespace lsst { namespace qserv { namespace replica {
+class Controller;
+}}}  // namespace lsst::qserv::replica
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
 /**
-  * Class Request is a base class for a family of requests within
-  * the master server.
-  */
-class Request: public std::enable_shared_from_this<Request>  {
+ * Class Request is a base class for a family of requests within
+ * the master server.
+ */
+class Request : public std::enable_shared_from_this<Request> {
 public:
     typedef std::shared_ptr<Request> Ptr;
 
@@ -130,12 +126,10 @@ public:
     static std::string state2string(ExtendedState state);
 
     /// @return the string representation of the combined state
-    static std::string state2string(State state,
-                                    ExtendedState extendedState);
+    static std::string state2string(State state, ExtendedState extendedState);
 
     /// @return the string representation of the combined state
-    static std::string state2string(State state,
-                                    ExtendedState extendedState,
+    static std::string state2string(State state, ExtendedState extendedState,
                                     ProtocolStatusExt extendedServerStatus);
 
     Request() = delete;
@@ -199,9 +193,8 @@ public:
      *   allowing to override the default value of the corresponding parameter from
      *   the Configuration.
      */
-    void start(std::shared_ptr<Controller> const& controller=nullptr,
-               std::string const& jobId="",
-               unsigned int requestExpirationIvalSec=0);
+    void start(std::shared_ptr<Controller> const& controller = nullptr, std::string const& jobId = "",
+               unsigned int requestExpirationIvalSec = 0);
 
     /// Wait for the completion of the request
     void wait();
@@ -236,8 +229,8 @@ public:
      * @return a dictionary of parameters and the corresponding values to
      *   be stored in a database for a request.
      */
-    virtual std::list<std::pair<std::string,std::string>> extendedPersistentState() const {
-        return std::list<std::pair<std::string,std::string>>();
+    virtual std::list<std::pair<std::string, std::string>> extendedPersistentState() const {
+        return std::list<std::pair<std::string, std::string>>();
     }
 
     /**
@@ -248,7 +241,7 @@ public:
      * - the performance
      * - (optionally, if 'extended' is set to true) the key/value pairs of
      *   the extended persistent state
-     * 
+     *
      * Subclasses may extend the implementation of the method
      *
      * @param extended  if 'true' then include the key/value pairs of
@@ -257,13 +250,9 @@ public:
      */
     virtual std::string toString(bool extended = false) const;
 
-    void print(std::ostream& os = std::cout, bool extended = false) const {
-        os << toString(extended);
-    }
+    void print(std::ostream& os = std::cout, bool extended = false) const { os << toString(extended); }
 
-    static void defaultPrinter(Ptr const& ptr) {
-        ptr->print(std::cout, true);
-    }
+    static void defaultPrinter(Ptr const& ptr) { ptr->print(std::cout, true); }
 
 protected:
     /**
@@ -287,14 +276,9 @@ protected:
      *   disposal is needed for a particular request. Normally, it's required for
      *   requests which are queued by workers in its processing queues.
      */
-    Request(ServiceProvider::Ptr const& serviceProvider,
-            boost::asio::io_service& io_service,
-            std::string const& type,
-            std::string const& worker,
-            int  priority,
-            bool keepTracking,
-            bool allowDuplicate,
-            bool disposeRequired);
+    Request(ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service,
+            std::string const& type, std::string const& worker, int priority, bool keepTracking,
+            bool allowDuplicate, bool disposeRequired);
 
     /// @return A shared pointer of the desired subclass (no dynamic type checking)
     template <class T>
@@ -377,16 +361,16 @@ protected:
      * @param lock A lock on Request::_mtx must be acquired before calling this method
      * @param status The new status to be set.
      */
-    void setExtendedServerStatus(util::Lock const& lock,
-                                 ProtocolStatusExt status) { _extendedServerStatus = status; }
+    void setExtendedServerStatus(util::Lock const& lock, ProtocolStatusExt status) {
+        _extendedServerStatus = status;
+    }
 
     /**
      * Set an effective identifier of a remote (worker-side) request
      * @param lock A lock on Request::_mtx must be acquired before calling this method.
      * @param id An identifier to be set.
      */
-    void setDuplicateRequestId(util::Lock const& lock,
-                               std::string const& id) { _duplicateRequestId = id; }
+    void setDuplicateRequestId(util::Lock const& lock, std::string const& id) { _duplicateRequestId = id; }
 
     /**
      * This method is supposed to be provided by subclasses for additional
@@ -410,8 +394,7 @@ protected:
      * @param lock A lock on Request::_mtx must be acquired before calling this method.
      * @param extendedState The new extended state.
      */
-    void finish(util::Lock const& lock,
-                ExtendedState extendedState);
+    void finish(util::Lock const& lock, ExtendedState extendedState);
 
     /**
      * This method is supposed to be provided by subclasses
@@ -426,7 +409,7 @@ protected:
      *
      * The default implementation of the method is intentionally left empty
      * to allow requests not to have the persistent state.
-     * 
+     *
      * @param lock A lock on Request::_mtx must be acquired before calling this method.
      */
     virtual void savePersistentState(util::Lock const& lock) {}
@@ -456,9 +439,7 @@ protected:
      * @param context A context from which the state test is requested.
      * @throws std::logic_error If the desired state condition is not met.
      */
-    void assertState(util::Lock const& lock,
-                     State desiredState,
-                     std::string const& context) const;
+    void assertState(util::Lock const& lock, State desiredState, std::string const& context) const;
 
     /**
      * Set the desired primary and extended state.
@@ -472,9 +453,7 @@ protected:
      * @param state The new primary state.
      * @param extendedState The new extended state.
      */
-    void setState(util::Lock const& lock,
-                  State state,
-                  ExtendedState extendedStat=ExtendedState::NONE);
+    void setState(util::Lock const& lock, State state, ExtendedState extendedStat = ExtendedState::NONE);
 
     /**
      * This method will begin an optional user protocol upon a completion
@@ -514,15 +493,14 @@ protected:
      * @param onFinish A callback function (if set) to be called.
      */
     template <class T>
-    void notifyDefaultImpl(util::Lock const& lock, typename T::CallbackType& onFinish) {    
+    void notifyDefaultImpl(util::Lock const& lock, typename T::CallbackType& onFinish) {
         if (nullptr != onFinish) {
             // Clearing the stored callback after finishing the up-stream notification
             // has two purposes:
             // 1. it guaranties (exactly) one time notification
             // 2. it breaks the up-stream dependency on a caller object if a shared
             //    pointer to the object was mentioned as the lambda-function's closure
-            serviceProvider()->io_service().post(
-                std::bind(std::move(onFinish), shared_from_base<T>()));
+            serviceProvider()->io_service().post(std::bind(std::move(onFinish), shared_from_base<T>()));
             onFinish = nullptr;
         }
     }
@@ -545,10 +523,10 @@ private:
     ServiceProvider::Ptr const _serviceProvider;
 
     std::string const _type;
-    std::string const _id;     /// @note UUID generated by the constructor
+    std::string const _id;  /// @note UUID generated by the constructor
     std::string const _worker;
 
-    int  const _priority;
+    int const _priority;
     bool const _keepTracking;
     bool const _allowDuplicate;
     bool const _disposeRequired;
@@ -560,7 +538,7 @@ private:
 
     // 2-level state of a request
 
-    std::atomic<State>         _state;
+    std::atomic<State> _state;
     std::atomic<ExtendedState> _extendedState;
 
     /// Request status reported by a worker (where this applies)
@@ -586,7 +564,7 @@ private:
     /// The only responsibility of the current class (apart from providing
     /// these objects to its subclasses) is to set up the default timer interval
     /// from a configuration.
-    unsigned int                _timerIvalSec;
+    unsigned int _timerIvalSec;
     boost::asio::deadline_timer _timer;
 
     /// @see Request::nextTimeIvalMsec()
@@ -598,7 +576,7 @@ private:
     ///
     /// If the time has a chance to expire then the request would finish
     /// with status: FINISHED::TIMEOUT_EXPIRED.
-    unsigned int                _requestExpirationIvalSec;
+    unsigned int _requestExpirationIvalSec;
     boost::asio::deadline_timer _requestExpirationTimer;
 
     /// The optional association with the Controller
@@ -614,6 +592,6 @@ private:
     std::condition_variable _onFinishCv;
 };
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_REQUEST_H
+#endif  // LSST_QSERV_REPLICA_REQUEST_H

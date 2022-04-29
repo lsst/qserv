@@ -30,42 +30,29 @@
 #include "replica/IndexJob.h"
 #include "replica/ServiceProvider.h"
 
-
 using namespace std;
 using json = nlohmann::json;
 
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
-void HttpIngestIndexModule::process(Controller::Ptr const& controller,
-                                    string const& taskName,
+void HttpIngestIndexModule::process(Controller::Ptr const& controller, string const& taskName,
                                     HttpProcessorConfig const& processorConfig,
-                                    qhttp::Request::Ptr const& req,
-                                    qhttp::Response::Ptr const& resp,
-                                    string const& subModuleName,
-                                    HttpAuthType const authType) {
+                                    qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp,
+                                    string const& subModuleName, HttpAuthType const authType) {
     HttpIngestIndexModule module(controller, taskName, processorConfig, req, resp);
     module.execute(subModuleName, authType);
 }
 
-
-HttpIngestIndexModule::HttpIngestIndexModule(Controller::Ptr const& controller,
-                                             string const& taskName,
+HttpIngestIndexModule::HttpIngestIndexModule(Controller::Ptr const& controller, string const& taskName,
                                              HttpProcessorConfig const& processorConfig,
-                                             qhttp::Request::Ptr const& req,
-                                             qhttp::Response::Ptr const& resp)
-    :   HttpModule(controller, taskName, processorConfig, req, resp) {
-}
-
+                                             qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp)
+        : HttpModule(controller, taskName, processorConfig, req, resp) {}
 
 json HttpIngestIndexModule::executeImpl(string const& subModuleName) {
     if (subModuleName == "BUILD-SECONDARY-INDEX") return _buildSecondaryIndex();
-    throw invalid_argument(
-            context() + "::" + string(__func__) +
-            "  unsupported sub-module: '" + subModuleName + "'");
+    throw invalid_argument(context() + "::" + string(__func__) + "  unsupported sub-module: '" +
+                           subModuleName + "'");
 }
-
 
 json HttpIngestIndexModule::_buildSecondaryIndex() {
     debug(__func__);
@@ -88,10 +75,11 @@ json HttpIngestIndexModule::_buildSecondaryIndex() {
     auto const databaseInfo = config->databaseInfo(database);
     if (databaseInfo.isPublished and not allowForPublished) {
         throw HttpError(__func__, "database '" + databaseInfo.name +
-                "' is already published. Use 'allow_for_published' option to override the restriction.");
+                                          "' is already published. Use 'allow_for_published' option to "
+                                          "override the restriction.");
     }
-    vector<string> const directorTables = directorTable.empty() ?
-            databaseInfo.directorTables() : vector<string>({directorTable});
+    vector<string> const directorTables =
+            directorTable.empty() ? databaseInfo.directorTables() : vector<string>({directorTable});
 
     // Pre-screen parameters of the table(s).
     map<string, string> directorTableKey;
@@ -99,42 +87,39 @@ json HttpIngestIndexModule::_buildSecondaryIndex() {
     map<string, string> chunkIdColNameType;
     map<string, string> subChunkIdColNameType;
 
-    for (auto&& table: directorTables) {
+    for (auto&& table : directorTables) {
         if (!databaseInfo.isDirector(table)) {
-            throw HttpError(
-                    __func__,
-                    "table '" + table + "' is not configured as the director table in database '" +
-                    databaseInfo.name + "'");
+            throw HttpError(__func__, "table '" + table +
+                                              "' is not configured as the director table in database '" +
+                                              databaseInfo.name + "'");
         }
-        if ((databaseInfo.directorTableKey.count(table) == 0) || databaseInfo.directorTableKey.at(table).empty()) {
-            throw HttpError(
-                    __func__,
-                    "director table has not been properly configured in database '" +
-                    databaseInfo.name + "'");
+        if ((databaseInfo.directorTableKey.count(table) == 0) ||
+            databaseInfo.directorTableKey.at(table).empty()) {
+            throw HttpError(__func__, "director table has not been properly configured in database '" +
+                                              databaseInfo.name + "'");
         }
         directorTableKey[table] = databaseInfo.directorTableKey.at(table);
 
         if (0 == databaseInfo.columns.count(table)) {
-            throw HttpError(
-                    __func__,
-                    "no schema found for director table '" + table +
-                    "' of database '" + databaseInfo.name + "'");
+            throw HttpError(__func__, "no schema found for director table '" + table + "' of database '" +
+                                              databaseInfo.name + "'");
         }
 
         // Find types of the secondary index table's columns
         directorTableKeyType[table] = string();
         chunkIdColNameType[table] = "INT";
         subChunkIdColNameType[table] = string();
-        for (auto&& coldef: databaseInfo.columns.at(table)) {
-            if      (coldef.name == directorTableKey[table]) directorTableKeyType[table]  = coldef.type;
-            else if (coldef.name == lsst::qserv::SUB_CHUNK_COLUMN) subChunkIdColNameType[table] = coldef.type;
+        for (auto&& coldef : databaseInfo.columns.at(table)) {
+            if (coldef.name == directorTableKey[table])
+                directorTableKeyType[table] = coldef.type;
+            else if (coldef.name == lsst::qserv::SUB_CHUNK_COLUMN)
+                subChunkIdColNameType[table] = coldef.type;
         }
         if (directorTableKeyType[table].empty() || subChunkIdColNameType[table].empty()) {
-            throw HttpError(
-                    __func__,
-                    "column definitions for the director key or sub-chunk identifier"
-                    " columns are missing in the director table schema for table '" +
-                    table + "' of database '" + databaseInfo.name + "'");
+            throw HttpError(__func__,
+                            "column definitions for the director key or sub-chunk identifier"
+                            " columns are missing in the director table schema for table '" +
+                                    table + "' of database '" + databaseInfo.name + "'");
         }
     }
 
@@ -145,8 +130,7 @@ json HttpIngestIndexModule::_buildSecondaryIndex() {
     TransactionId const noTransactionId = 0;
     json extError = json::object();
     bool failed = false;
-    for (auto&& table: directorTables) {
-
+    for (auto&& table : directorTables) {
         // The entry will have the empty object for the tables if no problems will be
         // encountered during the construction of the index.
         extError[table] = json::object();
@@ -162,35 +146,29 @@ json HttpIngestIndexModule::_buildSecondaryIndex() {
         // the 'rebuild' mode should be explicitly requested by a client to avoid the problem.
         vector<string> queries;
         if (rebuild) queries.push_back("DROP TABLE IF EXISTS " + escapedIndexTableName);
-        queries.push_back(
-            "CREATE TABLE " + escapedIndexTableName +
-            " (" + h.conn->sqlId(directorTableKey[table]) + " " + directorTableKeyType[table] + "," +
-                h.conn->sqlId(lsst::qserv::CHUNK_COLUMN) + " " + chunkIdColNameType[table] + "," +
-                h.conn->sqlId(lsst::qserv::SUB_CHUNK_COLUMN) + " " + subChunkIdColNameType[table] + ","
-                " UNIQUE KEY (" + h.conn->sqlId(directorTableKey[table]) + "),"
-                " KEY (" + h.conn->sqlId(directorTableKey[table]) + ")"
-            ") ENGINE=InnoDB"
-        );
+        queries.push_back("CREATE TABLE " + escapedIndexTableName + " (" +
+                          h.conn->sqlId(directorTableKey[table]) + " " + directorTableKeyType[table] + "," +
+                          h.conn->sqlId(lsst::qserv::CHUNK_COLUMN) + " " + chunkIdColNameType[table] + "," +
+                          h.conn->sqlId(lsst::qserv::SUB_CHUNK_COLUMN) + " " + subChunkIdColNameType[table] +
+                          ","
+                          " UNIQUE KEY (" +
+                          h.conn->sqlId(directorTableKey[table]) +
+                          "),"
+                          " KEY (" +
+                          h.conn->sqlId(directorTableKey[table]) +
+                          ")"
+                          ") ENGINE=InnoDB");
         h.conn->executeInOwnTransaction([&queries](decltype(h.conn) conn) {
-            for (auto&& query: queries) {
+            for (auto&& query : queries) {
                 conn->execute(query);
             }
         });
         string const noParentJobId;
-        auto const job = IndexJob::create(
-            databaseInfo.name,
-            table,
-            noTransactions,
-            noTransactionId,
-            allWorkers,
-            IndexJob::TABLE,
-            indexTableName,
-            localFile,
-            controller(),
-            noParentJobId,
-            nullptr,        // no callback
-            config->get<int>("controller", "catalog-management-priority-level")
-        );
+        auto const job =
+                IndexJob::create(databaseInfo.name, table, noTransactions, noTransactionId, allWorkers,
+                                 IndexJob::TABLE, indexTableName, localFile, controller(), noParentJobId,
+                                 nullptr,  // no callback
+                                 config->get<int>("controller", "catalog-management-priority-level"));
         job->start();
         logJobStartedEvent(IndexJob::typeName(), job, databaseInfo.family);
         job->wait();
@@ -200,11 +178,11 @@ json HttpIngestIndexModule::_buildSecondaryIndex() {
         if (job->extendedState() != Job::SUCCESS) {
             failed = true;
             IndexJobResult const& jobResultData = job->getResultData();
-            for (auto&& workerItr: jobResultData.error) {
+            for (auto&& workerItr : jobResultData.error) {
                 string const& worker = workerItr.first;
                 extError[table][worker] = json::object();
                 json& workerError = extError[table][worker];
-                for (auto&& chunkItr: workerItr.second) {
+                for (auto&& chunkItr : workerItr.second) {
                     // JSON library requires string type keys
                     workerError[to_string(chunkItr.first)] = chunkItr.second;
                 }

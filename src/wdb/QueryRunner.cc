@@ -20,16 +20,15 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
- /**
-  * @file
-  *
-  * @brief QueryRunner instances perform single-shot query execution with the
-  * result reflected in the db state or returned via a SendChannel. Works with
-  * new XrdSsi API.
-  *
-  * @author Daniel L. Wang, SLAC; John Gates, SLAC
-  */
-
+/**
+ * @file
+ *
+ * @brief QueryRunner instances perform single-shot query execution with the
+ * result reflected in the db state or returned via a SendChannel. Works with
+ * new XrdSsi API.
+ *
+ * @author Daniel L. Wang, SLAC; John Gates, SLAC
+ */
 
 // System headers
 #include <algorithm>
@@ -74,16 +73,15 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.wdb.QueryRunner");
 
 using namespace std;
 
-namespace lsst {
-namespace qserv {
-namespace wdb {
+namespace lsst { namespace qserv { namespace wdb {
 
 QueryRunner::Ptr QueryRunner::newQueryRunner(wbase::Task::Ptr const& task,
                                              ChunkResourceMgr::Ptr const& chunkResourceMgr,
                                              mysql::MySqlConfig const& mySqlConfig,
                                              shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr,
                                              std::shared_ptr<wcontrol::TransmitMgr> const& transmitMgr) {
-    Ptr qr(new QueryRunner(task, chunkResourceMgr, mySqlConfig, sqlConnMgr, transmitMgr)); // Private constructor.
+    Ptr qr(new QueryRunner(task, chunkResourceMgr, mySqlConfig, sqlConnMgr,
+                           transmitMgr));  // Private constructor.
     // Let the Task know this is its QueryRunner.
     bool cancelled = qr->_task->setTaskQueryRunner(qr);
     if (cancelled) {
@@ -95,13 +93,15 @@ QueryRunner::Ptr QueryRunner::newQueryRunner(wbase::Task::Ptr const& task,
 
 /// New instances need to be made with QueryRunner to ensure registration with the task
 /// and correct setup of enable_shared_from_this.
-QueryRunner::QueryRunner(wbase::Task::Ptr const& task,
-                         ChunkResourceMgr::Ptr const& chunkResourceMgr,
+QueryRunner::QueryRunner(wbase::Task::Ptr const& task, ChunkResourceMgr::Ptr const& chunkResourceMgr,
                          mysql::MySqlConfig const& mySqlConfig,
                          shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr,
                          std::shared_ptr<wcontrol::TransmitMgr> const& transmitMgr)
-    : _task(task), _chunkResourceMgr(chunkResourceMgr), _mySqlConfig(mySqlConfig),
-      _sqlConnMgr(sqlConnMgr), _transmitMgr(transmitMgr) {
+        : _task(task),
+          _chunkResourceMgr(chunkResourceMgr),
+          _mySqlConfig(mySqlConfig),
+          _sqlConnMgr(sqlConnMgr),
+          _transmitMgr(transmitMgr) {
     [[maybe_unused]] int rc = mysql_thread_init();
     assert(rc == 0);
     assert(_task->msg);
@@ -110,9 +110,10 @@ QueryRunner::QueryRunner(wbase::Task::Ptr const& task,
 /// Initialize the db connection
 bool QueryRunner::_initConnection() {
     mysql::MySqlConfig localMySqlConfig(_mySqlConfig);
-    localMySqlConfig.username = _task->user; // Override with czar-passed username.
+    localMySqlConfig.username = _task->user;  // Override with czar-passed username.
     if (_mysqlConn != nullptr) {
-        LOGS(_log, LOG_LVL_ERROR, "QueryRunner::_initConnection _mysqlConn not nullptr _mysqlConn=" << _mysqlConn.get());
+        LOGS(_log, LOG_LVL_ERROR,
+             "QueryRunner::_initConnection _mysqlConn not nullptr _mysqlConn=" << _mysqlConn.get());
     }
     _mysqlConn.reset(new mysql::MySqlConnection(localMySqlConfig));
 
@@ -133,40 +134,41 @@ void QueryRunner::_setDb() {
     }
 }
 
-
 size_t QueryRunner::_getDesiredLimit() {
     double percent = xrdsvc::StreamBuffer::percentOfMaxTotalBytesUsed();
     size_t minLimit = 1'000'000;
     size_t maxLimit = proto::ProtoHeaderWrap::PROTOBUFFER_DESIRED_LIMIT;
     if (percent < 0.1) return maxLimit;
-    double reduce = 1.0 - (percent + 0.2); // force minLimit when 80% of memory used.
+    double reduce = 1.0 - (percent + 0.2);  // force minLimit when 80% of memory used.
     if (reduce < 0.0) reduce = 0.0;
     size_t lim = maxLimit * reduce;
     if (lim < minLimit) lim = minLimit;
     return lim;
 }
 
-
 util::TimerHistogram memWaitHisto("memWait Hist", {1, 5, 10, 20, 40});
 
 bool QueryRunner::runQuery() {
     QSERV_LOGCONTEXT_QUERY_JOB(_task->getQueryId(), _task->getJobId());
-    LOGS(_log, LOG_LVL_INFO, "QueryRunner::runQuery() tid=" << _task->getIdStr()
-         << " scsId=" << _task->getSendChannel()->getScsId());
+    LOGS(_log, LOG_LVL_INFO,
+         "QueryRunner::runQuery() tid=" << _task->getIdStr()
+                                        << " scsId=" << _task->getSendChannel()->getScsId());
     if (_runQueryCalled.exchange(true)) {
-        LOGS(_log, LOG_LVL_ERROR, "QueryRunner::runQuery already called for task="
-                << _task->getQueryId() << " job=" <<  _task->getJobId());
+        LOGS(_log, LOG_LVL_ERROR,
+             "QueryRunner::runQuery already called for task=" << _task->getQueryId()
+                                                              << " job=" << _task->getJobId());
         throw util::Bug(ERR_LOC, "runQuery called twice");
     }
 
     // Make certain our Task knows that this object is no longer in use when this function exits.
     class Release {
     public:
-        Release(wbase::Task::Ptr t, wbase::TaskQueryRunner *tqr) : _t{t}, _tqr{tqr} {}
+        Release(wbase::Task::Ptr t, wbase::TaskQueryRunner* tqr) : _t{t}, _tqr{tqr} {}
         ~Release() { _t->freeTaskQueryRunner(_tqr); }
+
     private:
         wbase::Task::Ptr _t;
-        wbase::TaskQueryRunner *_tqr;
+        wbase::TaskQueryRunner* _tqr;
     };
     Release release(_task, this);
 
@@ -191,7 +193,7 @@ bool QueryRunner::runQuery() {
     }
 
     _setDb();
-    LOGS(_log, LOG_LVL_INFO,  "Exec in flight for Db=" << _dbName << " sqlConnMgr " << _sqlConnMgr->dump());
+    LOGS(_log, LOG_LVL_INFO, "Exec in flight for Db=" << _dbName << " sqlConnMgr " << _sqlConnMgr->dump());
     // Queries that span multiple tasks should not be high priority for the SqlConMgr as it risks deadlock.
     bool interactive = _task->getScanInteractive() && !(_task->getSendChannel()->getTaskCount() > 1);
     wcontrol::SqlConnLock sqlConnLock(*_sqlConnMgr, not interactive, _task->getSendChannel());
@@ -205,18 +207,18 @@ bool QueryRunner::runQuery() {
     }
 
     if (_task->msg->has_protocol()) {
-        switch(_task->msg->protocol()) {
-        case 2:
-            // Run the query and send the results back.
-            if (!_dispatchChannel()) {
-                LOGS(_log, LOG_LVL_WARN, "_dispatchChannel failed.");
-                return false;
-            }
-            return true;
-        case 1:
-            throw UnsupportedError(_task->getIdStr() + " QueryRunner: Expected protocol > 1 in TaskMsg");
-        default:
-            throw UnsupportedError(_task->getIdStr() + " QueryRunner: Invalid protocol in TaskMsg");
+        switch (_task->msg->protocol()) {
+            case 2:
+                // Run the query and send the results back.
+                if (!_dispatchChannel()) {
+                    LOGS(_log, LOG_LVL_WARN, "_dispatchChannel failed.");
+                    return false;
+                }
+                return true;
+            case 1:
+                throw UnsupportedError(_task->getIdStr() + " QueryRunner: Expected protocol > 1 in TaskMsg");
+            default:
+                throw UnsupportedError(_task->getIdStr() + " QueryRunner: Invalid protocol in TaskMsg");
         }
     } else {
         throw UnsupportedError(_task->getIdStr() + " QueryRunner: Expected protocol > 1 in TaskMsg");
@@ -225,24 +227,22 @@ bool QueryRunner::runQuery() {
 }
 
 MYSQL_RES* QueryRunner::_primeResult(string const& query) {
-        bool queryOk = _mysqlConn->queryUnbuffered(query);
-        if (!queryOk) {
-            sql::SqlErrorObject errObj;
-            errObj.setErrNo(_mysqlConn->getErrno());
-            errObj.addErrMsg("primeResult error " + _mysqlConn->getError());
-            throw errObj;
-        }
-        return _mysqlConn->getResult();
+    bool queryOk = _mysqlConn->queryUnbuffered(query);
+    if (!queryOk) {
+        sql::SqlErrorObject errObj;
+        errObj.setErrNo(_mysqlConn->getErrno());
+        errObj.addErrMsg("primeResult error " + _mysqlConn->getError());
+        throw errObj;
+    }
+    return _mysqlConn->getResult();
 }
-
 
 class ChunkResourceRequest {
 public:
-    ChunkResourceRequest(shared_ptr<ChunkResourceMgr> const& mgr,
-                         proto::TaskMsg const& msg)
-        // Use old-school member initializers because gcc 4.8.5
-        // miscompiles the code when using brace initializers (DM-4704).
-        : _mgr(mgr), _msg(msg) {}
+    ChunkResourceRequest(shared_ptr<ChunkResourceMgr> const& mgr, proto::TaskMsg const& msg)
+            // Use old-school member initializers because gcc 4.8.5
+            // miscompiles the code when using brace initializers (DM-4704).
+            : _mgr(mgr), _msg(msg) {}
 
     ChunkResource getResourceFragment(int i) {
         proto::TaskMsg_Fragment const& fragment(_msg.fragment(i));
@@ -253,15 +253,16 @@ public:
                 dbTbls.emplace(scanTbl.db(), scanTbl.table());
             }
             assert(_msg.has_db());
-            LOGS(_log, LOG_LVL_DEBUG, "fragment a db=" << _msg.db() << ":" << _msg.chunkid()
-                    << " dbTbls=" << util::printable(dbTbls));
+            LOGS(_log, LOG_LVL_DEBUG,
+                 "fragment a db=" << _msg.db() << ":" << _msg.chunkid()
+                                  << " dbTbls=" << util::printable(dbTbls));
             return _mgr->acquire(_msg.db(), _msg.chunkid(), dbTbls);
         }
 
         string db;
         proto::TaskMsg_Subchunk const& sc = fragment.subchunks();
         DbTableSet dbTableSet;
-        for (int j=0; j < sc.dbtbl_size(); j++) {
+        for (int j = 0; j < sc.dbtbl_size(); j++) {
             dbTableSet.emplace(sc.dbtbl(j).db(), sc.dbtbl(j).tbl());
         }
         IntVector subchunks(sc.id().begin(), sc.id().end());
@@ -270,17 +271,16 @@ public:
         } else {
             db = _msg.db();
         }
-        LOGS(_log, LOG_LVL_DEBUG, "fragment b db=" << db << ":" << _msg.chunkid()
-                               << " dbTableSet" << util::printable(dbTableSet)
-                               << " subChunks=" << util::printable(subchunks));
+        LOGS(_log, LOG_LVL_DEBUG,
+             "fragment b db=" << db << ":" << _msg.chunkid() << " dbTableSet" << util::printable(dbTableSet)
+                              << " subChunks=" << util::printable(subchunks));
         return _mgr->acquire(db, _msg.chunkid(), dbTableSet, subchunks);
-
     }
+
 private:
     shared_ptr<ChunkResourceMgr> _mgr;
     proto::TaskMsg const& _msg;
 };
-
 
 /// Histograms to log subchunk creation time and query run time.
 util::TimerHistogram qrPrimeHist("qrPrimeHist", {0.01, 0.1, 1.0, 2.0, 5.0, 10.0, 20.0, 60.0});
@@ -299,7 +299,7 @@ bool QueryRunner::_dispatchChannel() {
     // However, if it gets set to false, _mysqlConn->freeResult() needs to be
     // called before this function exits.
     bool readRowsOk = true;
-    bool needToFreeRes = false; // set to true once there are results to be freed.
+    bool needToFreeRes = false;  // set to true once there are results to be freed.
     // Collect the result in _transmitData. When a reasonable amount of data has been collected,
     // or there are no more rows to collect, pass _transmitData to _sendChannel.
     try {
@@ -313,18 +313,19 @@ bool QueryRunner::_dispatchChannel() {
         // TODO: Hold onto this for longer period of time as the odds of reuse are pretty low at this scale
         //       Ideally, hold it until moving on to the next chunk. Try to clean up ChunkResource code.
 
-        if (!_cancelled &&  !_task->getSendChannel()->isDead()) {
+        if (!_cancelled && !_task->getSendChannel()->isDead()) {
             string const& query = _task->getQueryString();
             util::Timer sqlTimer;
             sqlTimer.start();
             util::Timer primeT;
             primeT.start();
-            MYSQL_RES* res = _primeResult(query); // This runs the SQL query, throws SqlErrorObj on failure.
+            MYSQL_RES* res = _primeResult(query);  // This runs the SQL query, throws SqlErrorObj on failure.
             primeT.stop();
             auto logPrime = qrPrimeHist.addTime(primeT.getElapsed(), "");
             needToFreeRes = true;
             sqlTimer.stop();
-            LOGS(_log, LOG_LVL_DEBUG, " query time=" << sqlTimer.getElapsed() << " " << logPrime << " query=" << query);
+            LOGS(_log, LOG_LVL_DEBUG,
+                 " query time=" << sqlTimer.getElapsed() << " " << logPrime << " query=" << query);
 
             // This thread may have already been removed from the pool for
             // other reasons, such as taking too long.
@@ -347,11 +348,11 @@ bool QueryRunner::_dispatchChannel() {
             // Pass all information on to the shared object to add on to
             // an existing message or build a new one as needed.
             if (_task->getSendChannel()->buildAndTransmitResult(res, numFields, *_task, _largeResult,
-                    _multiError, _cancelled, readRowsOk)) {
+                                                                _multiError, _cancelled, readRowsOk)) {
                 erred = true;
             }
         }
-    } catch(sql::SqlErrorObject const& e) {
+    } catch (sql::SqlErrorObject const& e) {
         LOGS(_log, LOG_LVL_ERROR, "dispatchChannel " << e.errMsg());
         util::Error worker_err(e.errNo(), e.errMsg());
         _multiError.push_back(worker_err);
@@ -402,39 +403,33 @@ void QueryRunner::cancel() {
         sChannel->kill("QueryRunner cancel");
     }
 
-
-
     if (!_mysqlConn.get()) {
         LOGS(_log, LOG_LVL_WARN, "QueryRunner::cancel() no MysqlConn");
         return;
     }
     int status = _mysqlConn->cancel();
     switch (status) {
-      case -1:
-          LOGS(_log, LOG_LVL_WARN, "QueryRunner::cancel() NOP");
-          break;
-      case 0:
-          LOGS(_log, LOG_LVL_WARN, "QueryRunner::cancel() success");
-          break;
-      case 1:
-          LOGS(_log, LOG_LVL_ERROR, "QueryRunner::cancel() Error connecting to kill query.");
-          break;
-      case 2:
-          LOGS(_log, LOG_LVL_ERROR, "QueryRunner::cancel() Error processing kill query.");
-          break;
-      default:
-          LOGS(_log, LOG_LVL_ERROR, "QueryRunner::cancel() unknown error");
-          break;
+        case -1:
+            LOGS(_log, LOG_LVL_WARN, "QueryRunner::cancel() NOP");
+            break;
+        case 0:
+            LOGS(_log, LOG_LVL_WARN, "QueryRunner::cancel() success");
+            break;
+        case 1:
+            LOGS(_log, LOG_LVL_ERROR, "QueryRunner::cancel() Error connecting to kill query.");
+            break;
+        case 2:
+            LOGS(_log, LOG_LVL_ERROR, "QueryRunner::cancel() Error processing kill query.");
+            break;
+        default:
+            LOGS(_log, LOG_LVL_ERROR, "QueryRunner::cancel() unknown error");
+            break;
     }
 }
 
+QueryRunner::~QueryRunner() {}
 
-
-
-QueryRunner::~QueryRunner() {
-}
-
-}}} // namespace lsst::qserv::wdb
+}}}  // namespace lsst::qserv::wdb
 
 // Future idea: Query cache
 // Pseudocode: Record query in query cache table

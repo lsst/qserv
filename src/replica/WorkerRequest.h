@@ -39,9 +39,7 @@
 #include "util/Mutex.h"
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
 /**
  * Structure WorkerRequestCancelled represent an exception thrown when
@@ -50,18 +48,16 @@ namespace replica {
 class WorkerRequestCancelled : public std::exception {
 public:
     /// @return a short description of the exception
-    char const* what() const noexcept override {
-        return "cancelled";
-    }
+    char const* what() const noexcept override { return "cancelled"; }
 };
 
 /**
-  * Class WorkerRequest is the base class for a family of the worker-side
-  * requests which require non-deterministic interactions with the server's
-  * environment (network, disk I/O, etc.). Generally speaking, all requests
-  * which can't be implemented instantaneously fall into this category.
-  */
-class WorkerRequest: public std::enable_shared_from_this<WorkerRequest> {
+ * Class WorkerRequest is the base class for a family of the worker-side
+ * requests which require non-deterministic interactions with the server's
+ * environment (network, disk I/O, etc.). Generally speaking, all requests
+ * which can't be implemented instantaneously fall into this category.
+ */
+class WorkerRequest : public std::enable_shared_from_this<WorkerRequest> {
 public:
     typedef std::shared_ptr<WorkerRequest> Ptr;
 
@@ -73,8 +69,7 @@ public:
     static std::string status2string(ProtocolStatus status);
 
     /// @return the string representation of the full status
-    static std::string status2string(ProtocolStatus status,
-                                     ProtocolStatusExt extendedStatus);
+    static std::string status2string(ProtocolStatus status, ProtocolStatusExt extendedStatus);
 
     WorkerRequest() = delete;
     WorkerRequest(WorkerRequest const&) = delete;
@@ -102,7 +97,6 @@ public:
     /// @return the performance info
     const WorkerPerformance& performance() const { return _performance; }
 
-
     /**
      * This method is called from the initial state ProtocolStatus::CREATED in order
      * to start the request expiration timer. It's safe to call this operation
@@ -118,7 +112,7 @@ public:
      * of the method should be ProtocolStatus::IN_PROGRESS.
      */
     void start();
-    
+
     /**
      * This method should be invoked (repeatedly) to execute the request until
      * it returns 'true' or throws an exception. Note that returning 'true'
@@ -145,8 +139,10 @@ public:
      * the request. The default (the base class's implementation) assumes
      * the following transitions:
      *
-     *   ProtocolStatus::CREATED or ProtocolStatus::CANCELLED          - transition to state ProtocolStatus::CANCELLED
-     *   ProtocolStatus::IN_PROGRESS or ProtocolStatus::IS_CANCELLING  - transition to state ProtocolStatus::IS_CANCELLING
+     *   ProtocolStatus::CREATED or ProtocolStatus::CANCELLED          - transition to state
+     ProtocolStatus::CANCELLED
+     *   ProtocolStatus::IN_PROGRESS or ProtocolStatus::IS_CANCELLING  - transition to state
+     ProtocolStatus::IS_CANCELLING
      *   other                                                         - throwing std::logic_error
 
      */
@@ -161,15 +157,16 @@ public:
      * the following transitions:
      *
      *   ProtocolStatus::CREATED or ProtocolStatus::IN_PROGRESS - transition to ProtocolStatus::CREATED
-     *   ProtocolStatus::IS_CANCELLING                          - transition to ProtocolStatus::CANCELLED and throwing WorkerRequestCancelled
-     *   other                                                  - throwing std::logic_error
+     *   ProtocolStatus::IS_CANCELLING                          - transition to ProtocolStatus::CANCELLED and
+     * throwing WorkerRequestCancelled other                                                  - throwing
+     * std::logic_error
      */
     virtual void rollback();
 
     /**
      * This method is called from *ANY* initial state in order to turn
      * the request back into the initial ProtocolStatus::CREATED.
-     * 
+     *
      * @param func (optional) the name of a function/method which requested
      *   the context string
      */
@@ -189,7 +186,7 @@ public:
     void dispose() noexcept;
 
     /// @return the context string
-    std::string context(std::string const& func=std::string()) const {
+    std::string context(std::string const& func = std::string()) const {
         return id() + "  " + type() + "  " + status2string(status()) + "  " + func;
     }
 
@@ -212,13 +209,10 @@ protected:
      *   the Configuration.
      * @throws std::invalid_argument if the worker is unknown
      */
-    WorkerRequest(ServiceProvider::Ptr const& serviceProvider,
-                  std::string const& worker,
-                  std::string const& type,
-                  std::string const& id,
-                  int priority,
-                  ExpirationCallbackType const& onExpired=nullptr,
-                  unsigned int requestExpirationIvalSec=0);
+    WorkerRequest(ServiceProvider::Ptr const& serviceProvider, std::string const& worker,
+                  std::string const& type, std::string const& id, int priority,
+                  ExpirationCallbackType const& onExpired = nullptr,
+                  unsigned int requestExpirationIvalSec = 0);
 
     /** Set the status
      *
@@ -229,24 +223,19 @@ protected:
      * @param status primary status to be set
      * @param extendedStatus secondary status to be set
      */
-    void setStatus(util::Lock const& lock,
-                   ProtocolStatus status,
-                   ProtocolStatusExt extendedStatus=ProtocolStatusExt::NONE);
+    void setStatus(util::Lock const& lock, ProtocolStatus status,
+                   ProtocolStatusExt extendedStatus = ProtocolStatusExt::NONE);
 
     /**
      * Structure ErrorContext is used for tracking errors reported by
      * method 'reportErrorIf
      */
     struct ErrorContext {
-
         // State of the object
         bool failed;
         ProtocolStatusExt extendedStatus;
 
-        ErrorContext()
-            :   failed(false),
-                extendedStatus(ProtocolStatusExt::NONE) {
-        }
+        ErrorContext() : failed(false), extendedStatus(ProtocolStatusExt::NONE) {}
 
         /**
          * Merge the context of another object into the current one.
@@ -257,7 +246,7 @@ protected:
          *  Other details could be found in the log files if needed.
          * @param ErrorContext input context to be merged with the current state
          */
-        ErrorContext& operator||(const ErrorContext &rhs) {
+        ErrorContext& operator||(const ErrorContext& rhs) {
             if (&rhs != this) {
                 if (rhs.failed and not failed) {
                     failed = true;
@@ -280,9 +269,7 @@ protected:
      * @return the context object encapsulating values passed in parameters
      *   'condition' and 'extendedStatus'
      */
-    ErrorContext reportErrorIf(bool condition,
-                               ProtocolStatusExt extendedStatus,
-                               std::string const& errorMsg);
+    ErrorContext reportErrorIf(bool condition, ProtocolStatusExt extendedStatus, std::string const& errorMsg);
 
     /// Return shared pointer of the desired subclass (no dynamic type checking)
     template <class T>
@@ -297,7 +284,7 @@ protected:
     std::string const _worker;
     std::string const _type;
     std::string const _id;
-    int         const _priority;
+    int const _priority;
 
     ExpirationCallbackType _onExpired;  ///< The callback is reset when the request gets expired
                                         /// or explicitly disposed.
@@ -315,7 +302,7 @@ protected:
 
     // 2-layer state of a request
 
-    std::atomic<ProtocolStatus>    _status;
+    std::atomic<ProtocolStatus> _status;
     std::atomic<ProtocolStatusExt> _extendedStatus;
 
     /// Performance counters
@@ -346,13 +333,11 @@ private:
     void _expired(boost::system::error_code const& ec);
 };
 
-
 /**
  * Structure WorkerRequestCompare is a functor representing a comparison type
  * for strict weak ordering required by std::priority_queue
  */
 struct WorkerRequestCompare {
-
     /**
      * Sort requests by their priorities
      *
@@ -365,13 +350,11 @@ struct WorkerRequestCompare {
      * @return
      *   'true' if the priority of 'lhs' is strictly less than the one of 'rhs'
      */
-    bool operator()(WorkerRequest::Ptr const& lhs,
-                    WorkerRequest::Ptr const& rhs) const {
-
+    bool operator()(WorkerRequest::Ptr const& lhs, WorkerRequest::Ptr const& rhs) const {
         return lhs->priority() < rhs->priority();
     }
 };
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_WORKERREQUEST_H
+#endif  // LSST_QSERV_REPLICA_WORKERREQUEST_H

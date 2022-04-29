@@ -21,7 +21,6 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-
 // list must be included before boost/test/data/test_case.hpp, because it is used there but not included.
 // (or that file could be included after boost/test/unit_test.hpp, which does cause list to be
 // included. But, we like to include our headers alphabetically so I'm including list here.
@@ -39,12 +38,9 @@
 #define BOOST_TEST_MODULE OrderBy
 #include "boost/test/unit_test.hpp"
 
-
 using namespace lsst::qserv::query;
 
-
 BOOST_AUTO_TEST_SUITE(Suite)
-
 
 BOOST_AUTO_TEST_CASE(clone) {
     auto valueExpr = std::make_shared<ValueExpr>();
@@ -62,6 +58,5 @@ BOOST_AUTO_TEST_CASE(clone) {
     // verify the value expr in the first term of each clause is not the same object
     BOOST_CHECK(clonedOrderBy->getTerms()->at(0).getExpr() != orderBy.getTerms()->at(0).getExpr());
 }
-
 
 BOOST_AUTO_TEST_SUITE_END()

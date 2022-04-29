@@ -30,25 +30,19 @@
 #include "wbase/WorkerCommand.h"
 
 // Forward declarations
-namespace lsst {
-namespace qserv {
-namespace wpublish {
-    class ChunkInventory;
-    class ResourceMonitor;
-}}}
+namespace lsst { namespace qserv { namespace wpublish {
+class ChunkInventory;
+class ResourceMonitor;
+}}}  // namespace lsst::qserv::wpublish
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace wpublish {
+namespace lsst { namespace qserv { namespace wpublish {
 
 /**
-  * Class GetChunkListCommand returns a status of the chunk inventory
-  */
+ * Class GetChunkListCommand returns a status of the chunk inventory
+ */
 class GetChunkListCommand : public wbase::WorkerCommand {
-
 public:
-
     // The default construction and copy semantics are prohibited
     GetChunkListCommand() = delete;
     GetChunkListCommand& operator=(GetChunkListCommand const&) = delete;
@@ -68,13 +62,12 @@ public:
     void run() override;
 
 private:
-
     // Parameters of the object
 
-    std::shared_ptr<ChunkInventory>  _chunkInventory;
+    std::shared_ptr<ChunkInventory> _chunkInventory;
     std::shared_ptr<ResourceMonitor> _resourceMonitor;
 };
 
-}}} // namespace lsst::qserv::wpublish
+}}}  // namespace lsst::qserv::wpublish
 
-#endif // LSST_QSERV_WPUBLISH_GET_CHUNK_LIST_COMMAND_H
+#endif  // LSST_QSERV_WPUBLISH_GET_CHUNK_LIST_COMMAND_H

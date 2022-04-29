@@ -34,16 +34,13 @@
 #include "replica/SemanticMaps.h"
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
 /**
  * The structure QservGetReplicasJobResult represents a combined result received
  * from the Qserv worker management services upon a completion of the job.
  */
 struct QservGetReplicasJobResult {
-
     /// Per-worker flags indicating if the corresponding replica retrieval
     /// request succeeded.
     std::map<std::string, bool> workers;
@@ -62,13 +59,11 @@ struct QservGetReplicasJobResult {
 };
 
 /**
-  * Class QservGetReplicasJob represents a tool which will find all replicas
-  * of all chunks on all worker nodes.
-  */
-class QservGetReplicasJob : public Job  {
-
+ * Class QservGetReplicasJob represents a tool which will find all replicas
+ * of all chunks on all worker nodes.
+ */
+class QservGetReplicasJob : public Job {
 public:
-
     /// The pointer type for instances of the class
     typedef std::shared_ptr<QservGetReplicasJob> Ptr;
 
@@ -107,13 +102,9 @@ public:
      * @return
      *   pointer to the created object
      */
-    static Ptr create(std::string const& databaseFamily,
-                      bool inUseOnly,
-                      bool allWorkers,
-                      Controller::Ptr const& controller,
-                      std::string const& parentJobId=std::string(),
-                      CallbackType const& onFinish=nullptr,
-                      int priority=PRIORITY_NORMAL);
+    static Ptr create(std::string const& databaseFamily, bool inUseOnly, bool allWorkers,
+                      Controller::Ptr const& controller, std::string const& parentJobId = std::string(),
+                      CallbackType const& onFinish = nullptr, int priority = PRIORITY_NORMAL);
 
     // Default construction and copy semantics are prohibited
 
@@ -151,13 +142,12 @@ public:
     QservGetReplicasJobResult const& getReplicaData() const;
 
     /// @see Job::extendedPersistentState()
-    std::list<std::pair<std::string,std::string>> extendedPersistentState() const final;
+    std::list<std::pair<std::string, std::string>> extendedPersistentState() const final;
 
     /// @see Job::persistentLogData()
-    std::list<std::pair<std::string,std::string>> persistentLogData() const final;
+    std::list<std::pair<std::string, std::string>> persistentLogData() const final;
 
 protected:
-
     /// @see Job::startImpl()
     void startImpl(util::Lock const& lock) final;
 
@@ -168,15 +158,10 @@ protected:
     void notify(util::Lock const& lock) final;
 
 private:
-
     /// @see QservGetReplicasJob::create()
-    QservGetReplicasJob(std::string const& databaseFamily,
-                        bool inUseOnly,
-                        bool allWorkers,
-                        Controller::Ptr const& controller,
-                        std::string const& parentJobId,
-                        CallbackType const& onFinish,
-                        int priority);
+    QservGetReplicasJob(std::string const& databaseFamily, bool inUseOnly, bool allWorkers,
+                        Controller::Ptr const& controller, std::string const& parentJobId,
+                        CallbackType const& onFinish, int priority);
 
     /**
      * The callback function to be invoked on a completion of each request.
@@ -186,25 +171,24 @@ private:
      */
     void _onRequestFinish(GetReplicasQservMgtRequest::Ptr const& request);
 
-
     // Input parameters
 
     std::string const _databaseFamily;
-    bool        const _inUseOnly;
-    bool        const _allWorkers;
-    CallbackType      _onFinish;    /// @note is reset when the job finishes
+    bool const _inUseOnly;
+    bool const _allWorkers;
+    CallbackType _onFinish;  /// @note is reset when the job finishes
 
     /// A collection of requests implementing the operation
     std::list<GetReplicasQservMgtRequest::Ptr> _requests;
 
-    size_t _numLaunched = 0;    ///< the total number of requests launched
-    size_t _numFinished = 0;    ///< the total number of finished requests
-    size_t _numSuccess  = 0;    ///< the number of successfully completed requests
+    size_t _numLaunched = 0;  ///< the total number of requests launched
+    size_t _numFinished = 0;  ///< the total number of finished requests
+    size_t _numSuccess = 0;   ///< the number of successfully completed requests
 
     /// The result of the operation (gets updated as requests are finishing)
     QservGetReplicasJobResult _replicaData;
 };
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_QSERV_GETREPLICASJOB_H
+#endif  // LSST_QSERV_REPLICA_QSERV_GETREPLICASJOB_H

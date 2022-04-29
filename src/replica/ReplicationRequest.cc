@@ -47,76 +47,42 @@ namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.ReplicationRequest");
 
-} /// namespace
+}  // namespace
 
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
-ReplicationRequest::Ptr ReplicationRequest::create(
-                            ServiceProvider::Ptr const& serviceProvider,
-                            boost::asio::io_service& io_service,
-                            string const& worker,
-                            string const& sourceWorker,
-                            string const& database,
-                            unsigned int chunk,
-                            bool allowDuplicate,
-                            CallbackType const& onFinish,
-                            int priority,
-                            bool keepTracking,
-                            shared_ptr<Messenger> const& messenger) {
-    return ReplicationRequest::Ptr(new ReplicationRequest(
-        serviceProvider,
-        io_service,
-        worker,
-        sourceWorker,
-        database,
-        chunk,
-        allowDuplicate,
-        onFinish,
-        priority,
-        keepTracking,
-        messenger
-    ));
+ReplicationRequest::Ptr ReplicationRequest::create(ServiceProvider::Ptr const& serviceProvider,
+                                                   boost::asio::io_service& io_service, string const& worker,
+                                                   string const& sourceWorker, string const& database,
+                                                   unsigned int chunk, bool allowDuplicate,
+                                                   CallbackType const& onFinish, int priority,
+                                                   bool keepTracking,
+                                                   shared_ptr<Messenger> const& messenger) {
+    return ReplicationRequest::Ptr(new ReplicationRequest(serviceProvider, io_service, worker, sourceWorker,
+                                                          database, chunk, allowDuplicate, onFinish, priority,
+                                                          keepTracking, messenger));
 }
 
-
-ReplicationRequest::ReplicationRequest(
-                        ServiceProvider::Ptr const& serviceProvider,
-                        boost::asio::io_service& io_service,
-                        string const& worker,
-                        string const& sourceWorker,
-                        string const& database,
-                        unsigned int chunk,
-                        bool allowDuplicate,
-                        CallbackType const& onFinish,
-                        int priority,
-                        bool keepTracking,
-                        shared_ptr<Messenger> const& messenger)
-    :   RequestMessenger(
-            serviceProvider,
-            io_service,
-            "REPLICA_CREATE",
-            worker,
-            priority,
-            keepTracking,
-            allowDuplicate,
-            true,  // disposeRequired
-            messenger),
-        _database(database),
-        _chunk(chunk),
-        _sourceWorker(sourceWorker),
-        _onFinish(onFinish),
-        _replicaInfo() {
-
+ReplicationRequest::ReplicationRequest(ServiceProvider::Ptr const& serviceProvider,
+                                       boost::asio::io_service& io_service, string const& worker,
+                                       string const& sourceWorker, string const& database, unsigned int chunk,
+                                       bool allowDuplicate, CallbackType const& onFinish, int priority,
+                                       bool keepTracking, shared_ptr<Messenger> const& messenger)
+        : RequestMessenger(serviceProvider, io_service, "REPLICA_CREATE", worker, priority, keepTracking,
+                           allowDuplicate,
+                           true,  // disposeRequired
+                           messenger),
+          _database(database),
+          _chunk(chunk),
+          _sourceWorker(sourceWorker),
+          _onFinish(onFinish),
+          _replicaInfo() {
     Request::serviceProvider()->config()->assertWorkerIsValid(sourceWorker);
     Request::serviceProvider()->config()->assertWorkersAreDifferent(sourceWorker, worker);
     Request::serviceProvider()->config()->assertDatabaseIsValid(database);
 }
 
-
 void ReplicationRequest::startImpl(util::Lock const& lock) {
-
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     WorkerInfo const sourceWorkerInfo = serviceProvider()->config()->workerInfo(sourceWorker());
@@ -149,9 +115,7 @@ void ReplicationRequest::startImpl(util::Lock const& lock) {
     _send(lock);
 }
 
-
 void ReplicationRequest::awaken(boost::system::error_code const& ec) {
-
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     if (isAborted(ec)) return;
@@ -182,20 +146,16 @@ void ReplicationRequest::awaken(boost::system::error_code const& ec) {
     _send(lock);
 }
 
-
 void ReplicationRequest::_send(util::Lock const& lock) {
     auto self = shared_from_base<ReplicationRequest>();
     messenger()->send<ProtocolResponseReplicate>(
-        worker(), id(), priority(), buffer(),
-        [self] (string const& id, bool success, ProtocolResponseReplicate const& response) {
-            self->_analyze(success, response);
-        }
-    );
+            worker(), id(), priority(), buffer(),
+            [self](string const& id, bool success, ProtocolResponseReplicate const& response) {
+                self->_analyze(success, response);
+            });
 }
 
-
 void ReplicationRequest::_analyze(bool success, ProtocolResponseReplicate const& message) {
-
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  success=" << (success ? "true" : "false"));
 
     // This method is called on behalf of an asynchronous callback fired
@@ -219,8 +179,10 @@ void ReplicationRequest::_analyze(bool success, ProtocolResponseReplicate const&
     // depending on the availability of the 'target' performance counters
     // filled in by the 'STATUS' queries. If the later is not available
     // then fallback to the one of the current request.
-    if (message.has_target_performance()) mutablePerformance().update(message.target_performance());
-    else                                  mutablePerformance().update(message.performance());
+    if (message.has_target_performance())
+        mutablePerformance().update(message.target_performance());
+    else
+        mutablePerformance().update(message.performance());
 
     // Always extract extended data regardless of the completion status
     // reported by the worker service.
@@ -231,7 +193,6 @@ void ReplicationRequest::_analyze(bool success, ProtocolResponseReplicate const&
         _targetRequestParams = ReplicationRequestParams(message.request());
     }
     switch (message.status()) {
-
         case ProtocolStatus::SUCCESS:
             serviceProvider()->databaseServices()->saveReplicaInfo(_replicaInfo);
             finish(lock, SUCCESS);
@@ -260,7 +221,8 @@ void ReplicationRequest::_analyze(bool success, ProtocolResponseReplicate const&
                 setDuplicateRequestId(lock, message.duplicate_request_id());
                 if (allowDuplicate() && keepTracking()) {
                     timer().expires_from_now(boost::posix_time::milliseconds(nextTimeIvalMsec()));
-                    timer().async_wait(bind(&ReplicationRequest::awaken, shared_from_base<ReplicationRequest>(), _1));
+                    timer().async_wait(
+                            bind(&ReplicationRequest::awaken, shared_from_base<ReplicationRequest>(), _1));
                     return;
                 }
             }
@@ -276,31 +238,26 @@ void ReplicationRequest::_analyze(bool success, ProtocolResponseReplicate const&
             break;
 
         default:
-            throw logic_error(
-                    "ReplicationRequest::" + string(__func__) + "  unknown status '" +
-                    ProtocolStatus_Name(message.status()) +
-                    "' received from server");
+            throw logic_error("ReplicationRequest::" + string(__func__) + "  unknown status '" +
+                              ProtocolStatus_Name(message.status()) + "' received from server");
     }
 }
-
 
 void ReplicationRequest::notify(util::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
     notifyDefaultImpl<ReplicationRequest>(lock, _onFinish);
 }
 
-
 void ReplicationRequest::savePersistentState(util::Lock const& lock) {
     controller()->serviceProvider()->databaseServices()->saveState(*this, performance(lock));
 }
 
-
-list<pair<string,string>> ReplicationRequest::extendedPersistentState() const {
-    list<pair<string,string>> result;
-    result.emplace_back("database",      database());
-    result.emplace_back("chunk",         to_string(chunk()));
+list<pair<string, string>> ReplicationRequest::extendedPersistentState() const {
+    list<pair<string, string>> result;
+    result.emplace_back("database", database());
+    result.emplace_back("chunk", to_string(chunk()));
     result.emplace_back("source_worker", sourceWorker());
     return result;
 }
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica

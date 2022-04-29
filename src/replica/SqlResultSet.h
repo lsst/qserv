@@ -37,9 +37,7 @@
 #include "nlohmann/json.hpp"
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
 /**
  * Class SqlResultSet represents a result set received from a remote worker
@@ -47,7 +45,6 @@ namespace replica {
  */
 class SqlResultSet {
 public:
-
     class ResultSet {
     public:
         /// A status code for a particular query/operation.
@@ -59,24 +56,24 @@ public:
         /// to extendedCompletionStatus::EXT_STATUS_NONE.
         ProtocolStatusExt extendedStatus = ProtocolStatusExt::MYSQL_ERROR;
 
-        std::string error;          /// is set if a error code received from a server
-        std::string charSetName;    /// of the connection
-        bool hasResult = false;     /// 'true' if the request produced a result set
+        std::string error;        /// is set if a error code received from a server
+        std::string charSetName;  /// of the connection
+        bool hasResult = false;   /// 'true' if the request produced a result set
 
         /// Structure Field stores a content captured from MYSQL_FIELD
         struct Field {
-            std::string name;           /// The name of the column
-            std::string orgName;        /// The original name of the column
-            std::string table;          /// The name of the table
-            std::string orgTable;       /// The original name of the table
-            std::string db;             /// The name of the database (schema)
-            std::string catalog;        /// The catalog name (always 'def')
-            std::string def;            /// default value
-            uint32_t    length = 0;     /// The length (width) of the column definition
-            uint32_t    maxLength = 0;  /// The maximum length of the column value
-            uint32_t    flags = 0;      /// Flags
-            uint32_t    decimals = 0;   /// Number of decimals
-            int32_t     type = 0;       /// Field type (see MySQL headers for enum enum_field_types)
+            std::string name;        /// The name of the column
+            std::string orgName;     /// The original name of the column
+            std::string table;       /// The name of the table
+            std::string orgTable;    /// The original name of the table
+            std::string db;          /// The name of the database (schema)
+            std::string catalog;     /// The catalog name (always 'def')
+            std::string def;         /// default value
+            uint32_t length = 0;     /// The length (width) of the column definition
+            uint32_t maxLength = 0;  /// The maximum length of the column value
+            uint32_t flags = 0;      /// Flags
+            uint32_t decimals = 0;   /// Number of decimals
+            int32_t type = 0;        /// Field type (see MySQL headers for enum enum_field_types)
 
             /// The default c-tor is required at a presence of the explicit one
             Field() = default;
@@ -87,7 +84,7 @@ public:
             /**
              * Construct the object by carrying over the content of the input protocol
              * message into the corresponding data members of the structure.
-             * 
+             *
              * @param field  a filed from an input result set to be parsed
              */
             explicit Field(ProtocolResponseSqlField const& field);
@@ -101,7 +98,6 @@ public:
         /// The row type of a result set. The number of elements in each row
         /// must match the number of fields.
         struct Row {
-
             /// Values at the cells
             std::vector<std::string> cells;
 
@@ -115,7 +111,7 @@ public:
             /**
              * Construct the object by carrying over the content of the input protocol
              * message into the corresponding data members of the structure.
-             * 
+             *
              * @param row a row from an input result set to be parsed
              */
             explicit Row(ProtocolResponseSqlRow const& row);
@@ -129,7 +125,7 @@ public:
         /**
          * Construct the object by carrying over the content of the input protocol
          * message into the corresponding data members of the structure.
-         * 
+         *
          * @param result  a result set from an input message to be parsed
          */
         explicit ResultSet(ProtocolResponseSqlResultSet const& result);
@@ -140,14 +136,14 @@ public:
         /**
          * Package results into a table. For description of other input parameters
          * @see class util::ColumnTablePrinter.
-         * 
+         *
          * @throws std::logic_error
          *    if attempting to use the method when member SqlResultSet::hasResult is
          *    set to 'false'.
          */
-        util::ColumnTablePrinter toColumnTable(std::string const& caption=std::string(),
-                                               std::string const& indent=std::string(),
-                                               bool verticalSeparator=true) const;
+        util::ColumnTablePrinter toColumnTable(std::string const& caption = std::string(),
+                                               std::string const& indent = std::string(),
+                                               bool verticalSeparator = true) const;
     };
 
     /// A collection of result sets for queries or other operations over
@@ -155,7 +151,7 @@ public:
     /// a scope of an operation over a worker database, and its meaning varies
     /// depending on a request. It could be the name of a table, the name of a database,
     /// or a query.
-    std::map<std::string,ResultSet> queryResultSet;
+    std::map<std::string, ResultSet> queryResultSet;
 
     /// The duration of a request (in seconds) since it was created
     /// by the Controller and before its completion was recorded by
@@ -166,7 +162,7 @@ public:
     /**
      * Carry over the content of the input protocol message into
      * the corresponding data members of the structure.
-     * 
+     *
      * @param message
      *   input message to be parsed
      */
@@ -183,7 +179,7 @@ public:
     /// @note this method should be used together with method SqlResultSet::hasErrors().
     /// @note ProtocolStatusExt::NONE is not treated as an error.
     bool allErrorsOf(ProtocolStatusExt status) const;
-    
+
     /**
      * Look for errors in the result sets based on a value of the extended
      * status and MySQL error strings reported by the servers. And return
@@ -202,6 +198,6 @@ public:
 
 std::ostream& operator<<(std::ostream& os, SqlResultSet const& info);
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_SQLRESULTSET_H
+#endif  // LSST_QSERV_REPLICA_SQLRESULTSET_H

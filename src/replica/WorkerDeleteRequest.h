@@ -31,17 +31,15 @@
 #include "replica/WorkerRequest.h"
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
 /**
-  * Class WorkerDeleteRequest represents a context and a state of replica deletion
-  * requests within the worker servers. It can also be used for testing the framework
-  * operation as its implementation won't make any changes to any files or databases.
-  *
-  * Real implementations of the request processing must derive from this class.
-  */
+ * Class WorkerDeleteRequest represents a context and a state of replica deletion
+ * requests within the worker servers. It can also be used for testing the framework
+ * operation as its implementation won't make any changes to any files or databases.
+ *
+ * Real implementations of the request processing must derive from this class.
+ */
 class WorkerDeleteRequest : public WorkerRequest {
 public:
     typedef std::shared_ptr<WorkerDeleteRequest> Ptr;
@@ -66,13 +64,9 @@ public:
      * @param request ProtoBuf body of the request
      * @return pointer to the created object
      */
-    static Ptr create(ServiceProvider::Ptr const& serviceProvider,
-                      std::string const& worker,
-                      std::string const& id,
-                      int priority,
-                      ExpirationCallbackType const& onExpired,
-                      unsigned int requestExpirationIvalSec,
-                      ProtocolRequestDelete const& request);
+    static Ptr create(ServiceProvider::Ptr const& serviceProvider, std::string const& worker,
+                      std::string const& id, int priority, ExpirationCallbackType const& onExpired,
+                      unsigned int requestExpirationIvalSec, ProtocolRequestDelete const& request);
 
     WorkerDeleteRequest() = delete;
     WorkerDeleteRequest(WorkerDeleteRequest const&) = delete;
@@ -85,7 +79,7 @@ public:
     std::string const& database() const { return _request.database(); }
 
     unsigned int chunk() const { return _request.chunk(); }
-    
+
     /**
      * Extract request status into the Protobuf response object.
      * @param response Protobuf response to be initialized
@@ -95,13 +89,9 @@ public:
     bool execute() override;
 
 protected:
-    WorkerDeleteRequest(ServiceProvider::Ptr const& serviceProvider,
-                        std::string const& worker,
-                        std::string const& id,
-                        int priority,
-                        ExpirationCallbackType const& onExpired,
-                        unsigned int requestExpirationIvalSec,
-                        ProtocolRequestDelete const& request);
+    WorkerDeleteRequest(ServiceProvider::Ptr const& serviceProvider, std::string const& worker,
+                        std::string const& id, int priority, ExpirationCallbackType const& onExpired,
+                        unsigned int requestExpirationIvalSec, ProtocolRequestDelete const& request);
 
     // Input parameters
 
@@ -112,21 +102,17 @@ protected:
 };
 
 /**
-  * Class WorkerDeleteRequestPOSIX provides an actual implementation for
-  * the replica deletion based on the direct manipulation of files on
-  * a POSIX file system.
-  */
+ * Class WorkerDeleteRequestPOSIX provides an actual implementation for
+ * the replica deletion based on the direct manipulation of files on
+ * a POSIX file system.
+ */
 class WorkerDeleteRequestPOSIX : public WorkerDeleteRequest {
 public:
     typedef std::shared_ptr<WorkerDeleteRequestPOSIX> Ptr;
 
-    static Ptr create(ServiceProvider::Ptr const& serviceProvider,
-                      std::string const& worker,
-                      std::string const& id,
-                      int priority,
-                      ExpirationCallbackType const& onExpired,
-                      unsigned int requestExpirationIvalSec,
-                      ProtocolRequestDelete const& request);
+    static Ptr create(ServiceProvider::Ptr const& serviceProvider, std::string const& worker,
+                      std::string const& id, int priority, ExpirationCallbackType const& onExpired,
+                      unsigned int requestExpirationIvalSec, ProtocolRequestDelete const& request);
 
     WorkerDeleteRequestPOSIX() = delete;
     WorkerDeleteRequestPOSIX(WorkerDeleteRequestPOSIX const&) = delete;
@@ -137,13 +123,9 @@ public:
     bool execute() final;
 
 private:
-    WorkerDeleteRequestPOSIX(ServiceProvider::Ptr const& serviceProvider,
-                             std::string const& worker,
-                             std::string const& id,
-                             int priority,
-                             ExpirationCallbackType const& onExpired,
-                             unsigned int requestExpirationIvalSec,
-                             ProtocolRequestDelete const& request);
+    WorkerDeleteRequestPOSIX(ServiceProvider::Ptr const& serviceProvider, std::string const& worker,
+                             std::string const& id, int priority, ExpirationCallbackType const& onExpired,
+                             unsigned int requestExpirationIvalSec, ProtocolRequestDelete const& request);
 };
 
 /**
@@ -153,6 +135,6 @@ private:
  */
 typedef WorkerDeleteRequestPOSIX WorkerDeleteRequestFS;
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_WORKERDELETEREQUEST_H
+#endif  // LSST_QSERV_REPLICA_WORKERDELETEREQUEST_H

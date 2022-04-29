@@ -43,9 +43,7 @@
 #include "util/Mutex.h"
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
 /**
  * Class MessageWrapperBase is the base class for request wrappers.
@@ -101,21 +99,19 @@ protected:
      * @param requestBufferPtr  The input buffer with serialized request.
      * @param responseBufferCapacityBytes  The initial capacity of the response buffer.
      */
-    MessageWrapperBase(std::string const& id,
-                       int priority,
+    MessageWrapperBase(std::string const& id, int priority,
                        std::shared_ptr<ProtocolBuffer> const& requestBufferPtr,
                        size_t responseBufferCapacityBytes)
-        :   _success(false),
-            _id(id),
-            _priority(priority),
-            _requestBufferPtr(requestBufferPtr),
-            _responseBuffer(responseBufferCapacityBytes) {
-    }
+            : _success(false),
+              _id(id),
+              _priority(priority),
+              _requestBufferPtr(requestBufferPtr),
+              _responseBuffer(responseBufferCapacityBytes) {}
 
 private:
-    bool        _success;   ///< The completion status to be returned to a subscriber.
-    std::string _id;        ///< A unique identifier of the request.
-    int         _priority;  ///< The priority level of a request.
+    bool _success;    ///< The completion status to be returned to a subscriber.
+    std::string _id;  ///< A unique identifier of the request.
+    int _priority;    ///< The priority level of a request.
 
     /// The buffer with a serialized request.
     std::shared_ptr<ProtocolBuffer> _requestBufferPtr;
@@ -124,13 +120,12 @@ private:
     ProtocolBuffer _responseBuffer;
 };
 
-
 /**
  * Class template MessageWrapper extends its based to support type-specific
  * treatment (including serialization) of responses from workers.
  */
 template <class RESPONSE_TYPE>
-class MessageWrapper: public MessageWrapperBase {
+class MessageWrapper : public MessageWrapperBase {
 public:
     typedef std::function<void(std::string const&, bool, RESPONSE_TYPE const&)> CallbackType;
 
@@ -149,14 +144,11 @@ public:
      * @param onFinish  An asynchronous callback function called upon the completion
      *    or failure of the operation.
      */
-    MessageWrapper(std::string const& id,
-                   int priority,
+    MessageWrapper(std::string const& id, int priority,
                    std::shared_ptr<ProtocolBuffer> const& requestBufferPtr,
-                   size_t responseBufferCapacityBytes,
-                   CallbackType const& onFinish)
-        :   MessageWrapperBase(id, priority, requestBufferPtr, responseBufferCapacityBytes),
-            _onFinish(onFinish) {
-    }
+                   size_t responseBufferCapacityBytes, CallbackType const& onFinish)
+            : MessageWrapperBase(id, priority, requestBufferPtr, responseBufferCapacityBytes),
+              _onFinish(onFinish) {}
 
     /// @see MessageWrapperBase::parseResponseAndNotify
     void parseAndNotify() override {
@@ -164,7 +156,7 @@ public:
         if (success()) {
             try {
                 responseBuffer().parse(response, responseBuffer().size());
-            } catch(std::runtime_error const& ex) {
+            } catch (std::runtime_error const& ex) {
                 // The message is corrupt. Google Protobuf will report an error
                 // of the following kind:
                 // @code
@@ -185,7 +177,6 @@ private:
     CallbackType _onFinish;
 };
 
-
 /**
  * Class MessengerConnector provides a communication interface for sending/receiving
  * messages to and from worker services. It provides connection multiplexing and
@@ -205,7 +196,7 @@ private:
  *   on specific states) are required to be called with a reference to
  *   the lock acquired prior to the calls.
  */
-class MessengerConnector: public std::enable_shared_from_this<MessengerConnector> {
+class MessengerConnector : public std::enable_shared_from_this<MessengerConnector> {
 public:
     typedef std::shared_ptr<MessengerConnector> Ptr;
 
@@ -228,8 +219,7 @@ public:
      * @param worker  The name of a worker.
      * @return  A pointer to the created object.
      */
-    static Ptr create(ServiceProvider::Ptr const& serviceProvider,
-                      boost::asio::io_service& io_service,
+    static Ptr create(ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service,
                       std::string const& worker);
 
     /**
@@ -252,12 +242,10 @@ public:
      *   or failure of the operation.
      */
     template <class RESPONSE_TYPE>
-    void send(std::string const& id,
-              int priority,
-              std::shared_ptr<ProtocolBuffer> const& requestBufferPtr,
+    void send(std::string const& id, int priority, std::shared_ptr<ProtocolBuffer> const& requestBufferPtr,
               typename MessageWrapper<RESPONSE_TYPE>::CallbackType const& onFinish) {
-        _sendImpl(std::make_shared<MessageWrapper<RESPONSE_TYPE>>(
-                id, priority, requestBufferPtr, _bufferCapacityBytes, onFinish));
+        _sendImpl(std::make_shared<MessageWrapper<RESPONSE_TYPE>>(id, priority, requestBufferPtr,
+                                                                  _bufferCapacityBytes, onFinish));
     }
 
     /**
@@ -282,8 +270,7 @@ public:
 
 private:
     /// @see MessengerConnector::create()
-    MessengerConnector(ServiceProvider::Ptr const& serviceProvider,
-                       boost::asio::io_service& io_service,
+    MessengerConnector(ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service,
                        std::string const& worker);
 
     /**
@@ -294,9 +281,9 @@ private:
 
     /// State transitions for the connector object
     enum State {
-        STATE_INITIAL,      // no communication is happening
-        STATE_CONNECTING,   // attempting to connect to a worker service
-        STATE_COMMUNICATING // sending or receiving messages
+        STATE_INITIAL,       // no communication is happening
+        STATE_CONNECTING,    // attempting to connect to a worker service
+        STATE_COMMUNICATING  // sending or receiving messages
     };
 
     /// @return the string representation of the connector's state.
@@ -327,16 +314,14 @@ private:
      * @param ec  An error code to be checked.
      * @param iter  The host resolver iterator.
      */
-    void _resolved(boost::system::error_code const& ec,
-                   boost::asio::ip::tcp::resolver::iterator iter);
+    void _resolved(boost::system::error_code const& ec, boost::asio::ip::tcp::resolver::iterator iter);
 
     /**
      * Start resolving the destination worker host & port.
      * @param lock  A lock on MessengerConnector::_mtx must be acquired before
      *   calling this method.
      */
-    void _connect(util::Lock const& lock,
-                  boost::asio::ip::tcp::resolver::iterator iter);
+    void _connect(util::Lock const& lock, boost::asio::ip::tcp::resolver::iterator iter);
 
     /**
      * Callback handler for the asynchronous operation upon its successful
@@ -344,8 +329,7 @@ private:
      * @param ec  An error code to be checked.
      * @param iter  The host resolver iterator.
      */
-    void _connected(boost::system::error_code const& ec,
-                    boost::asio::ip::tcp::resolver::iterator iter);
+    void _connected(boost::system::error_code const& ec, boost::asio::ip::tcp::resolver::iterator iter);
 
     /**
      * Start a timeout before attempting to restart the connection.
@@ -373,8 +357,7 @@ private:
      * @param ec  An error code to be checked.
      * @param bytes_transferred  The number of bytes sent.
      */
-    void _requestSent(boost::system::error_code const& ec,
-                      size_t bytes_transferred);
+    void _requestSent(boost::system::error_code const& ec, size_t bytes_transferred);
 
     /**
      * Begin receiving a response.
@@ -388,8 +371,7 @@ private:
      * @param ec  An error code to be checked.
      * @param bytes_transferred  The number of bytes sent.
      */
-    void _responseReceived(boost::system::error_code const& ec,
-                           size_t bytes_transferred);
+    void _responseReceived(boost::system::error_code const& ec, size_t bytes_transferred);
 
     /**
      * Synchronously read a protocol frame which carries the length
@@ -401,29 +383,25 @@ private:
      * @param bytes  The length in bytes extracted from the frame.
      * @return  The completion code of the operation.
      */
-    boost::system::error_code _syncReadFrame(util::Lock const& lock,
-                                             ProtocolBuffer& buf,
-                                             size_t& bytes);
+    boost::system::error_code _syncReadFrame(util::Lock const& lock, ProtocolBuffer& buf, size_t& bytes);
 
-   /**
-    * Synchronously read a response header of a known size. Then parse it
-    * and analyze it to ensure its content matches expectations. Return
-    * the completion status of the operation.
-    *
-    * The method will throw exception std::logic_error if the header's
-    * content won't match expectations.
-    *
+    /**
+     * Synchronously read a response header of a known size. Then parse it
+     * and analyze it to ensure its content matches expectations. Return
+     * the completion status of the operation.
+     *
+     * The method will throw exception std::logic_error if the header's
+     * content won't match expectations.
+     *
      * @param lock  A lock on MessengerConnector::_mtx must be acquired before
      *   calling this method.
-    * @param buf The buffer to use.
-    * @param bytes  The expected length of the message (obtained from a preceding
-    *   frame) to be received into the network buffer from the network.
-    * @param id  A unique identifier of a request to match the 'id' in a response header
-    * @return  The completion code of the operation.
-    */
-    boost::system::error_code _syncReadVerifyHeader(util::Lock const& lock,
-                                                    ProtocolBuffer& buf,
-                                                    size_t bytes,
+     * @param buf The buffer to use.
+     * @param bytes  The expected length of the message (obtained from a preceding
+     *   frame) to be received into the network buffer from the network.
+     * @param id  A unique identifier of a request to match the 'id' in a response header
+     * @return  The completion code of the operation.
+     */
+    boost::system::error_code _syncReadVerifyHeader(util::Lock const& lock, ProtocolBuffer& buf, size_t bytes,
                                                     std::string const& id);
 
     /**
@@ -438,9 +416,7 @@ private:
      *   to be received into the network buffer from the network.
      * @return  The completion code of the operation.
      */
-    boost::system::error_code _syncReadMessageImpl(util::Lock const& lock,
-                                                   ProtocolBuffer& buf,
-                                                   size_t bytes);
+    boost::system::error_code _syncReadMessageImpl(util::Lock const& lock, ProtocolBuffer& buf, size_t bytes);
 
     /**
      * Check if the error status corresponds to a failed operation.
@@ -479,8 +455,8 @@ private:
     State _state;
 
     boost::asio::ip::tcp::resolver _resolver;
-    boost::asio::ip::tcp::socket   _socket;
-    boost::asio::deadline_timer    _timer;
+    boost::asio::ip::tcp::socket _socket;
+    boost::asio::deadline_timer _timer;
 
     /// This mutex is meant to avoid race conditions to the internal data
     /// structure between threads that trigger asynchronous I/O events
@@ -498,6 +474,6 @@ private:
     ProtocolBuffer _inBuffer;
 };
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_MESSENGERCONNECTOR_H
+#endif  // LSST_QSERV_REPLICA_MESSENGERCONNECTOR_H

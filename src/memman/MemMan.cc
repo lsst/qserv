@@ -34,7 +34,7 @@
 /******************************************************************************/
 /*                        G l o b a l   S t a t i c s                         */
 /******************************************************************************/
-  
+
 namespace {
 
 uint64_t memLockLimit() {
@@ -59,38 +59,35 @@ uint64_t memLockLimit() {
                 rlim.rlim_cur = rlim.rlim_max;
                 setrlimit(RLIMIT_MEMLOCK, &rlim);
                 return rlim.rlim_cur;
-            } else theMax = rlim.rlim_cur;
+            } else
+                theMax = rlim.rlim_cur;
         }
     }
     return theMax;
 }
-}
+}  // namespace
 
 uint64_t lsst::qserv::memman::MemMan::lockLimit = memLockLimit();
 
 /******************************************************************************/
 /*                                M e m M a n                                 */
 /******************************************************************************/
-  
-namespace lsst {
-namespace qserv {
-namespace memman {
+
+namespace lsst { namespace qserv { namespace memman {
 
 /******************************************************************************/
 /*                                C r e a t e                                 */
 /******************************************************************************/
-  
-MemMan *MemMan::create(uint64_t maxBytes, std::string const &dbPath) {
 
+MemMan *MemMan::create(uint64_t maxBytes, std::string const &dbPath) {
     // Return a memory manager implementation
     //
     return new MemManReal(dbPath, maxBytes);
 }
 
-
 std::string MemMan::Statistics::logString() {
     std::stringstream os;
-    os <<  "MemManStats ";
+    os << "MemManStats ";
     os << " LockMax=" << bytesLockMax;
     os << " Locked=" << bytesLocked;
     os << " Reserved=" << bytesReserved;
@@ -107,17 +104,15 @@ std::string MemMan::Statistics::logString() {
     return os.str();
 }
 
-
 std::string MemMan::Status::logString() {
     std::stringstream os;
-    os <<  "MemManHandle ";
+    os << "MemManHandle ";
     os << " bLock=" << bytesLock;
     os << " secs=" << secondsLock;
     os << " nFiles=" << numFiles;
     os << " chunk=" << chunk;
-    os << " MB/sec=" << bytesLock/(1048576.0*secondsLock);
+    os << " MB/sec=" << bytesLock / (1048576.0 * secondsLock);
     return os.str();
 }
 
-}}} // namespace lsst:qserv:memman
-
+}}}  // namespace lsst::qserv::memman

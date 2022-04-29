@@ -27,21 +27,15 @@
 #include "qana/QueryPlugin.h"
 #include "query/ColumnRef.h"
 
-
 // Forward declarations
-namespace lsst {
-namespace qserv {
-namespace query {
+namespace lsst { namespace qserv { namespace query {
 
 class OrderByClause;
 class ValueExpr;
 
-}}} // namespace lsst::qserv::query
+}}}  // namespace lsst::qserv::query
 
-
-namespace lsst {
-namespace qserv {
-namespace qana {
+namespace lsst { namespace qserv { namespace qana {
 
 /// PostPlugin is a plugin handling query result post-processing.
 class PostPlugin : public QueryPlugin {
@@ -67,7 +61,6 @@ public:
     std::string name() const override { return "PostPlugin"; }
 };
 
-}}} // namespace lsst::qserv::qana
+}}}  // namespace lsst::qserv::qana
 
-
-#endif // LSST_QSERV_QANA_POSTPLUGIN_H
+#endif  // LSST_QSERV_QANA_POSTPLUGIN_H

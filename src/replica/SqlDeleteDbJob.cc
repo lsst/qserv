@@ -41,96 +41,57 @@ namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.SqlDeleteDbJob");
 
-} /// namespace
+}  // namespace
 
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
 string SqlDeleteDbJob::typeName() { return "SqlDeleteDbJob"; }
 
-
-SqlDeleteDbJob::Ptr SqlDeleteDbJob::create(
-        string const& database,
-        bool allWorkers,
-        Controller::Ptr const& controller,
-        string const& parentJobId,
-        CallbackType const& onFinish,
-        int priority) {
-
-    return Ptr(new SqlDeleteDbJob(
-        database,
-        allWorkers,
-        controller,
-        parentJobId,
-        onFinish,
-        priority
-    ));
+SqlDeleteDbJob::Ptr SqlDeleteDbJob::create(string const& database, bool allWorkers,
+                                           Controller::Ptr const& controller, string const& parentJobId,
+                                           CallbackType const& onFinish, int priority) {
+    return Ptr(new SqlDeleteDbJob(database, allWorkers, controller, parentJobId, onFinish, priority));
 }
 
+SqlDeleteDbJob::SqlDeleteDbJob(string const& database, bool allWorkers, Controller::Ptr const& controller,
+                               string const& parentJobId, CallbackType const& onFinish, int priority)
+        : SqlJob(0, allWorkers, controller, parentJobId, "SQL_DROP_DATABASE", priority),
+          _database(database),
+          _onFinish(onFinish) {}
 
-SqlDeleteDbJob::SqlDeleteDbJob(string const& database,
-                               bool allWorkers,
-                               Controller::Ptr const& controller,
-                               string const& parentJobId,
-                               CallbackType const& onFinish,
-                               int priority)
-    :   SqlJob(0,
-               allWorkers,
-               controller,
-               parentJobId,
-               "SQL_DROP_DATABASE",
-               priority),
-        _database(database),
-        _onFinish(onFinish) {
-}
-
-
-list<pair<string,string>> SqlDeleteDbJob::extendedPersistentState() const {
-    list<pair<string,string>> result;
+list<pair<string, string>> SqlDeleteDbJob::extendedPersistentState() const {
+    list<pair<string, string>> result;
     result.emplace_back("database", database());
     result.emplace_back("all_workers", bool2str(allWorkers()));
     return result;
 }
 
-
-list<SqlRequest::Ptr> SqlDeleteDbJob::launchRequests(util::Lock const& lock,
-                                                     string const& worker,
+list<SqlRequest::Ptr> SqlDeleteDbJob::launchRequests(util::Lock const& lock, string const& worker,
                                                      size_t maxRequestsPerWorker) {
-
     // Launch exactly one request per worker unless it was already
     // launched earlier
 
     list<SqlRequest::Ptr> requests;
     if (not _workers.count(worker) and maxRequestsPerWorker != 0) {
         auto const self = shared_from_base<SqlDeleteDbJob>();
-        requests.push_back(
-            controller()->sqlDeleteDb(
-                worker,
-                database(),
-                [self] (SqlDeleteDbRequest::Ptr const& request) {
-                    self->onRequestFinish(request);
-                },
-                priority(),
-                true,   /* keepTracking*/
-                id()    /* jobId */
-            )
-        );
+        requests.push_back(controller()->sqlDeleteDb(
+                worker, database(),
+                [self](SqlDeleteDbRequest::Ptr const& request) { self->onRequestFinish(request); },
+                priority(), true, /* keepTracking*/
+                id()              /* jobId */
+                ));
         _workers.insert(worker);
     }
     return requests;
 }
 
-
-void SqlDeleteDbJob::stopRequest(util::Lock const& lock,
-                                 SqlRequest::Ptr const& request) {
+void SqlDeleteDbJob::stopRequest(util::Lock const& lock, SqlRequest::Ptr const& request) {
     stopRequestDefaultImpl<StopSqlDeleteDbRequest>(lock, request);
 }
-
 
 void SqlDeleteDbJob::notify(util::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "[" << typeName() << "]");
     notifyDefaultImpl<SqlDeleteDbJob>(lock, _onFinish);
 }
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica

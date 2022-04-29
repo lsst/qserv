@@ -39,9 +39,7 @@
 using namespace std;
 using json = nlohmann::json;
 
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
 // Initialize static members
 
@@ -49,31 +47,23 @@ json HttpReplicationLevelsModule::_replicationLevelReport = json::object();
 uint64_t HttpReplicationLevelsModule::_replicationLevelReportTimeMs = 0;
 util::Mutex HttpReplicationLevelsModule::_replicationLevelMtx;
 
-
-void HttpReplicationLevelsModule::process(Controller::Ptr const& controller,
-                                          string const& taskName,
+void HttpReplicationLevelsModule::process(Controller::Ptr const& controller, string const& taskName,
                                           HttpProcessorConfig const& processorConfig,
-                                          qhttp::Request::Ptr const& req,
-                                          qhttp::Response::Ptr const& resp,
+                                          qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp,
                                           HealthMonitorTask::Ptr const& healthMonitorTask,
-                                          string const& subModuleName,
-                                          HttpAuthType const authType) {
+                                          string const& subModuleName, HttpAuthType const authType) {
     HttpReplicationLevelsModule module(controller, taskName, processorConfig, req, resp, healthMonitorTask);
     module.execute(subModuleName, authType);
 }
 
-
-HttpReplicationLevelsModule::HttpReplicationLevelsModule(
-                                Controller::Ptr const& controller,
-                                string const& taskName,
-                                HttpProcessorConfig const& processorConfig,
-                                qhttp::Request::Ptr const& req,
-                                qhttp::Response::Ptr const& resp,
-                                HealthMonitorTask::Ptr const& healthMonitorTask)
-    :   HttpModule(controller, taskName, processorConfig, req, resp),
-        _healthMonitorTask(healthMonitorTask) {
-}
-
+HttpReplicationLevelsModule::HttpReplicationLevelsModule(Controller::Ptr const& controller,
+                                                         string const& taskName,
+                                                         HttpProcessorConfig const& processorConfig,
+                                                         qhttp::Request::Ptr const& req,
+                                                         qhttp::Response::Ptr const& resp,
+                                                         HealthMonitorTask::Ptr const& healthMonitorTask)
+        : HttpModule(controller, taskName, processorConfig, req, resp),
+          _healthMonitorTask(healthMonitorTask) {}
 
 json HttpReplicationLevelsModule::executeImpl(string const& subModuleName) {
     debug(__func__);
@@ -98,15 +88,15 @@ json HttpReplicationLevelsModule::executeImpl(string const& subModuleName) {
     auto const healthMonitorTask = _healthMonitorTask.lock();
     if (nullptr == healthMonitorTask) {
         throw HttpError(__func__,
-                "no access to the Health Monitor Task from HttpReplicationLevelsModule."
-                " The service may be shutting down.");
+                        "no access to the Health Monitor Task from HttpReplicationLevelsModule."
+                        " The service may be shutting down.");
     }
     auto const delays = healthMonitorTask->workerResponseDelay();
 
     vector<string> disabledQservWorkers;
     vector<string> disabledReplicationWorkers;
-    for (auto&& entry: delays) {
-        auto&& worker =  entry.first;
+    for (auto&& entry : delays) {
+        auto&& worker = entry.first;
 
         unsigned int const qservProbeDelaySec = entry.second.at("qserv");
         if (qservProbeDelaySec > 0) {
@@ -119,53 +109,52 @@ json HttpReplicationLevelsModule::executeImpl(string const& subModuleName) {
     }
 
     json result;
-    for (auto&& family: config->databaseFamilies()) {
-
+    for (auto&& family : config->databaseFamilies()) {
         size_t const replicationLevel = config->databaseFamilyInfo(family).replicationLevel;
         result["families"][family]["level"] = replicationLevel;
 
-        for (auto&& database: config->databases(family)) {
+        for (auto&& database : config->databases(family)) {
             debug(string(__func__) + "  database=" + database);
 
             // Get observed replication levels for workers which are on-line
             // as well as for the whole cluster (if there in-active workers).
 
             auto const onlineQservLevels =
-                controller()->serviceProvider()->databaseServices()->actualReplicationLevel(
-                    database,
-                    disabledQservWorkers);
+                    controller()->serviceProvider()->databaseServices()->actualReplicationLevel(
+                            database, disabledQservWorkers);
 
-            auto const allQservLevels = disabledQservWorkers.empty() ?
-                onlineQservLevels : 
-                controller()->serviceProvider()->databaseServices()->actualReplicationLevel(
-                    database);
+            auto const allQservLevels =
+                    disabledQservWorkers.empty()
+                            ? onlineQservLevels
+                            : controller()->serviceProvider()->databaseServices()->actualReplicationLevel(
+                                      database);
 
             auto const onLineReplicationSystemLevels =
-                controller()->serviceProvider()->databaseServices()->actualReplicationLevel(
-                    database,
-                    disabledReplicationWorkers);
+                    controller()->serviceProvider()->databaseServices()->actualReplicationLevel(
+                            database, disabledReplicationWorkers);
 
-            auto const allReplicationSystemLevels = disabledReplicationWorkers.empty() ?
-                onLineReplicationSystemLevels :
-                controller()->serviceProvider()->databaseServices()->actualReplicationLevel(
-                    database);
+            auto const allReplicationSystemLevels =
+                    disabledReplicationWorkers.empty()
+                            ? onLineReplicationSystemLevels
+                            : controller()->serviceProvider()->databaseServices()->actualReplicationLevel(
+                                      database);
 
             // Get the numbers of 'orphan' chunks in each context. These chunks (if any)
             // will be associated with the replication level 0. Also note, that these
             // chunks will be contributing into the total number of chunks when computing
             // the percentage of each replication level.
 
-            size_t const numOrphanQservChunks = disabledQservWorkers.empty() ?
-                0 :
-                controller()->serviceProvider()->databaseServices()->numOrphanChunks(
-                    database,
-                    disabledQservWorkers);
+            size_t const numOrphanQservChunks =
+                    disabledQservWorkers.empty()
+                            ? 0
+                            : controller()->serviceProvider()->databaseServices()->numOrphanChunks(
+                                      database, disabledQservWorkers);
 
-            size_t const numOrphanReplicationSystemChunks = disabledReplicationWorkers.empty() ?
-                0 :
-                controller()->serviceProvider()->databaseServices()->numOrphanChunks(
-                    database,
-                    disabledReplicationWorkers);
+            size_t const numOrphanReplicationSystemChunks =
+                    disabledReplicationWorkers.empty()
+                            ? 0
+                            : controller()->serviceProvider()->databaseServices()->numOrphanChunks(
+                                      database, disabledReplicationWorkers);
 
             // The maximum level is needed to initialize result with zeros for
             // a contiguous range of levels [0,maxObservedLevel]. The non-empty
@@ -176,25 +165,25 @@ json HttpReplicationLevelsModule::executeImpl(string const& subModuleName) {
             unsigned int maxObservedLevel = 0;
 
             size_t numOnlineQservChunks = numOrphanQservChunks;
-            for (auto&& entry: onlineQservLevels) {
+            for (auto&& entry : onlineQservLevels) {
                 maxObservedLevel = max(maxObservedLevel, entry.first);
                 numOnlineQservChunks += entry.second;
             }
 
             size_t numAllQservChunks = 0;
-            for (auto&& entry: allQservLevels) {
+            for (auto&& entry : allQservLevels) {
                 maxObservedLevel = max(maxObservedLevel, entry.first);
                 numAllQservChunks += entry.second;
             }
 
             size_t numOnlineReplicationSystemChunks = numOrphanReplicationSystemChunks;
-            for (auto&& entry: onLineReplicationSystemLevels) {
+            for (auto&& entry : onLineReplicationSystemLevels) {
                 maxObservedLevel = max(maxObservedLevel, entry.first);
                 numOnlineReplicationSystemChunks += entry.second;
             }
 
             size_t numAllReplicationSystemChunks = 0;
-            for (auto&& entry: allReplicationSystemLevels) {
+            for (auto&& entry : allReplicationSystemLevels) {
                 maxObservedLevel = max(maxObservedLevel, entry.first);
                 numAllReplicationSystemChunks += entry.second;
             }
@@ -205,61 +194,65 @@ json HttpReplicationLevelsModule::executeImpl(string const& subModuleName) {
             json databaseJson;
 
             for (int level = maxObservedLevel; level >= 0; --level) {
-                databaseJson["levels"][level]["qserv"      ]["online"]["num_chunks"] = 0;
-                databaseJson["levels"][level]["qserv"      ]["online"]["percent"   ] = 0.;
-                databaseJson["levels"][level]["qserv"      ]["all"   ]["num_chunks"] = 0;
-                databaseJson["levels"][level]["qserv"      ]["all"   ]["percent"   ] = 0.;
+                databaseJson["levels"][level]["qserv"]["online"]["num_chunks"] = 0;
+                databaseJson["levels"][level]["qserv"]["online"]["percent"] = 0.;
+                databaseJson["levels"][level]["qserv"]["all"]["num_chunks"] = 0;
+                databaseJson["levels"][level]["qserv"]["all"]["percent"] = 0.;
                 databaseJson["levels"][level]["replication"]["online"]["num_chunks"] = 0;
-                databaseJson["levels"][level]["replication"]["online"]["percent"   ] = 0.;
-                databaseJson["levels"][level]["replication"]["all"   ]["num_chunks"] = 0;
-                databaseJson["levels"][level]["replication"]["all"   ]["percent"   ] = 0.;
+                databaseJson["levels"][level]["replication"]["online"]["percent"] = 0.;
+                databaseJson["levels"][level]["replication"]["all"]["num_chunks"] = 0;
+                databaseJson["levels"][level]["replication"]["all"]["percent"] = 0.;
             }
 
             // Fill-in non-blank areas
 
-            for (auto&& entry: onlineQservLevels) {
+            for (auto&& entry : onlineQservLevels) {
                 unsigned int const level = entry.first;
                 size_t const numChunks = entry.second;
-                double const percent = numOnlineQservChunks == 0
-                        ? 0. : 100. * numChunks / numOnlineQservChunks;
+                double const percent =
+                        numOnlineQservChunks == 0 ? 0. : 100. * numChunks / numOnlineQservChunks;
                 databaseJson["levels"][level]["qserv"]["online"]["num_chunks"] = numChunks;
-                databaseJson["levels"][level]["qserv"]["online"]["percent"   ] = percent;
+                databaseJson["levels"][level]["qserv"]["online"]["percent"] = percent;
             }
-            for (auto&& entry: allQservLevels) {
+            for (auto&& entry : allQservLevels) {
                 unsigned int const level = entry.first;
                 size_t const numChunks = entry.second;
-                double const percent = numAllQservChunks == 0
-                        ? 0. : 100. * numChunks / numAllQservChunks;
+                double const percent = numAllQservChunks == 0 ? 0. : 100. * numChunks / numAllQservChunks;
                 databaseJson["levels"][level]["qserv"]["all"]["num_chunks"] = numChunks;
-                databaseJson["levels"][level]["qserv"]["all"]["percent"   ] = percent;
+                databaseJson["levels"][level]["qserv"]["all"]["percent"] = percent;
             }
-            for (auto&& entry: onLineReplicationSystemLevels) {
+            for (auto&& entry : onLineReplicationSystemLevels) {
                 unsigned int const level = entry.first;
                 size_t const numChunks = entry.second;
                 double const percent = numOnlineReplicationSystemChunks == 0
-                        ? 0. : 100. * numChunks / numOnlineReplicationSystemChunks;
+                                               ? 0.
+                                               : 100. * numChunks / numOnlineReplicationSystemChunks;
                 databaseJson["levels"][level]["replication"]["online"]["num_chunks"] = numChunks;
-                databaseJson["levels"][level]["replication"]["online"]["percent"   ] = percent;
+                databaseJson["levels"][level]["replication"]["online"]["percent"] = percent;
             }
-            for (auto&& entry: allReplicationSystemLevels) {
+            for (auto&& entry : allReplicationSystemLevels) {
                 unsigned int const level = entry.first;
                 size_t const numChunks = entry.second;
                 double const percent = numAllReplicationSystemChunks == 0
-                        ? 0. : 100. * numChunks / numAllReplicationSystemChunks;
+                                               ? 0.
+                                               : 100. * numChunks / numAllReplicationSystemChunks;
                 databaseJson["levels"][level]["replication"]["all"]["num_chunks"] = numChunks;
-                databaseJson["levels"][level]["replication"]["all"]["percent"   ] = percent;
+                databaseJson["levels"][level]["replication"]["all"]["percent"] = percent;
             }
             {
-                double const percent = numAllQservChunks == 0
-                        ? 0 : 100. * numOrphanQservChunks / numAllQservChunks;
+                double const percent =
+                        numAllQservChunks == 0 ? 0 : 100. * numOrphanQservChunks / numAllQservChunks;
                 databaseJson["levels"][0]["qserv"]["online"]["num_chunks"] = numOrphanQservChunks;
-                databaseJson["levels"][0]["qserv"]["online"]["percent"   ] = percent;
+                databaseJson["levels"][0]["qserv"]["online"]["percent"] = percent;
             }
             {
-                double const percent = numAllReplicationSystemChunks == 0
-                        ? 0 : 100. * numOrphanReplicationSystemChunks / numAllReplicationSystemChunks;
-                databaseJson["levels"][0]["replication"]["online"]["num_chunks"] = numOrphanReplicationSystemChunks;
-                databaseJson["levels"][0]["replication"]["online"]["percent"   ] = percent;
+                double const percent =
+                        numAllReplicationSystemChunks == 0
+                                ? 0
+                                : 100. * numOrphanReplicationSystemChunks / numAllReplicationSystemChunks;
+                databaseJson["levels"][0]["replication"]["online"]["num_chunks"] =
+                        numOrphanReplicationSystemChunks;
+                databaseJson["levels"][0]["replication"]["online"]["percent"] = percent;
             }
             result["families"][family]["databases"][database] = databaseJson;
         }

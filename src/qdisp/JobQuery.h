@@ -37,9 +37,7 @@
 #include "qdisp/ResponseHandler.h"
 #include "util/InstanceCount.h"
 
-namespace lsst {
-namespace qserv {
-namespace qdisp {
+namespace lsst { namespace qserv { namespace qdisp {
 
 class QdispPool;
 class QueryRequest;
@@ -53,8 +51,8 @@ public:
 
     /// Factory function to make certain a shared_ptr is used and _setup is called.
     static JobQuery::Ptr create(Executive::Ptr const& executive, JobDescription::Ptr const& jobDescription,
-            JobStatus::Ptr const& jobStatus, std::shared_ptr<MarkCompleteFunc> const& markCompleteFunc,
-            QueryId qid) {
+                                JobStatus::Ptr const& jobStatus,
+                                std::shared_ptr<MarkCompleteFunc> const& markCompleteFunc, QueryId qid) {
         Ptr jq = std::make_shared<JobQuery>(executive, jobDescription, jobStatus, markCompleteFunc, qid);
         jq->_setup();
         return jq;
@@ -63,7 +61,7 @@ public:
     virtual ~JobQuery();
     virtual bool runJob();
 
-    QueryId getQueryId() const {return _qid; }
+    QueryId getQueryId() const { return _qid; }
     int getIdInt() const { return _jobDescription->id(); }
     std::string const& getIdStr() const { return _idStr; }
     JobDescription::Ptr getDescription() { return _jobDescription; }
@@ -81,7 +79,7 @@ public:
 
     std::shared_ptr<MarkCompleteFunc> getMarkCompleteFunc() { return _markCompleteFunc; }
 
-    bool cancel(bool superfluous=false);
+    bool cancel(bool superfluous = false);
     bool isQueryCancelled();
 
     Executive::Ptr getExecutive() { return _executive.lock(); }
@@ -93,49 +91,47 @@ public:
     /// Make a copy of the job description. JobQuery::_setup() must be called after creation.
     /// Do not call this directly, use create.
     JobQuery(Executive::Ptr const& executive, JobDescription::Ptr const& jobDescription,
-        JobStatus::Ptr const& jobStatus, std::shared_ptr<MarkCompleteFunc> const& markCompleteFunc,
-        QueryId qid);
+             JobStatus::Ptr const& jobStatus, std::shared_ptr<MarkCompleteFunc> const& markCompleteFunc,
+             QueryId qid);
 
     bool isCancelled() { return _cancelled; }
 
 protected:
-    void _setup() {
-        _jobDescription->respHandler()->setJobQuery(shared_from_this());
-    }
+    void _setup() { _jobDescription->respHandler()->setJobQuery(shared_from_this()); }
 
     int _getRunAttemptsCount() const {
         std::lock_guard<std::recursive_mutex> lock(_rmutex);
         return _jobDescription->getAttemptCount();
     }
-    int _getMaxAttempts() const { return 5; } // Arbitrary value until solid value with reason determined.
-    int _getAttemptSleepSeconds() const { return 30; } // As above or until added to config file.
+    int _getMaxAttempts() const { return 5; }  // Arbitrary value until solid value with reason determined.
+    int _getAttemptSleepSeconds() const { return 30; }  // As above or until added to config file.
 
     // Values that don't change once set.
-    std::weak_ptr<Executive>  _executive;
+    std::weak_ptr<Executive> _executive;
     /// The job description needs to survive until the task is complete.
     JobDescription::Ptr _jobDescription;
     std::shared_ptr<MarkCompleteFunc> _markCompleteFunc;
 
     // JobStatus has its own mutex.
-    JobStatus::Ptr _jobStatus; ///< Points at status in Executive::_statusMap
+    JobStatus::Ptr _jobStatus;  ///< Points at status in Executive::_statusMap
 
-    QueryId const _qid; // User query id
-    std::string const _idStr; ///< Identifier string for logging.
+    QueryId const _qid;        // User query id
+    std::string const _idStr;  ///< Identifier string for logging.
 
     // Values that need mutex protection
-    mutable std::recursive_mutex _rmutex; ///< protects _jobDescription,
-                                          ///< _queryRequestPtr, and _inSsi
+    mutable std::recursive_mutex _rmutex;  ///< protects _jobDescription,
+                                           ///< _queryRequestPtr, and _inSsi
 
     // SSI items
     std::shared_ptr<QueryRequest> _queryRequestPtr;
     bool _inSsi{false};
 
     // Cancellation
-    std::atomic<bool> _cancelled {false}; ///< Lock to make sure cancel() is only called once.
+    std::atomic<bool> _cancelled{false};  ///< Lock to make sure cancel() is only called once.
 
     std::shared_ptr<QdispPool> _qdispPool;
 };
 
-}}} // end namespace
+}}}  // namespace lsst::qserv::qdisp
 
 #endif /* LSST_QSERV_QDISP_JOBQUERY_H_ */

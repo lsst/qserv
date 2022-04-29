@@ -41,28 +41,21 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.css.CssConfig");
 
 }
 
-namespace lsst {
-namespace qserv {
-namespace css {
+namespace lsst { namespace qserv { namespace css {
 
-CssConfig::CssConfig(util::ConfigStore const& configStore)
-    try : _technology(configStore.get("technology")),
-      _data(configStore.get("data")),
-      _file(configStore.get("file")),
-      _mySqlConfig(configStore.get("username"),
-           configStore.get("password"),
-           configStore.get("hostname"),
-           configStore.getInt("port"),
-           configStore.get("socket"),
-           configStore.get("database")) {
-
+CssConfig::CssConfig(util::ConfigStore const& configStore) try
+        : _technology(configStore.get("technology")),
+          _data(configStore.get("data")),
+          _file(configStore.get("file")),
+          _mySqlConfig(configStore.get("username"), configStore.get("password"), configStore.get("hostname"),
+                       configStore.getInt("port"), configStore.get("socket"), configStore.get("database")) {
     if (_technology.empty()) {
         std::string msg = "\"technology\" does not exist in configuration map";
         LOGS(_log, LOG_LVL_ERROR, msg);
         throw ConfigError(ERR_LOC, msg);
     }
 
-    if (not _data.empty() and  not _file.empty()) {
+    if (not _data.empty() and not _file.empty()) {
         std::string msg = "\"data\"  and \"file\" keys are mutually exclusive";
         LOGS(_log, LOG_LVL_ERROR, msg);
         throw ConfigError(ERR_LOC, msg);
@@ -71,12 +64,10 @@ CssConfig::CssConfig(util::ConfigStore const& configStore)
     throw ConfigError(ERR_LOC, e.what());
 }
 
-std::ostream& operator<<(std::ostream &out, CssConfig const& cssConfig) {
+std::ostream& operator<<(std::ostream& out, CssConfig const& cssConfig) {
     out << "[ technology=" << cssConfig._technology << ", data=" << cssConfig._data
-        << ", file=" << cssConfig._file << ", mysql_configuration=" << cssConfig._mySqlConfig <<"]";
+        << ", file=" << cssConfig._file << ", mysql_configuration=" << cssConfig._mySqlConfig << "]";
     return out;
 }
 
-}}} // namespace lsst::qserv::css
-
-
+}}}  // namespace lsst::qserv::css

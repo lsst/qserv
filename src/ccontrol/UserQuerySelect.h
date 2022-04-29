@@ -24,12 +24,12 @@
 #ifndef LSST_QSERV_CCONTROL_USERQUERYSELECT_H
 #define LSST_QSERV_CCONTROL_USERQUERYSELECT_H
 /**
-  * @file
-  *
-  * @brief Umbrella container for user query state
-   *
-  * @author Daniel L. Wang, SLAC
-  */
+ * @file
+ *
+ * @brief Umbrella container for user query state
+ *
+ * @author Daniel L. Wang, SLAC
+ */
 
 // System headers
 #include <cstdint>
@@ -47,45 +47,39 @@
 #include "qmeta/types.h"
 #include "qproc/ChunkSpec.h"
 
-
 // Forward declarations
-namespace lsst {
-namespace qserv {
+namespace lsst { namespace qserv {
 namespace qdisp {
-    class Executive;
-    class MessageStore;
-    class QdispPool;
-}
+class Executive;
+class MessageStore;
+class QdispPool;
+}  // namespace qdisp
 namespace qmeta {
-    class QMeta;
+class QMeta;
 }
 namespace qproc {
-    class DatabaseModels;
-    class QuerySession;
-    class SecondaryIndex;
-}
+class DatabaseModels;
+class QuerySession;
+class SecondaryIndex;
+}  // namespace qproc
 namespace query {
-    class ColumnRef;
-    class SelectStmt;
-}
+class ColumnRef;
+class SelectStmt;
+}  // namespace query
 namespace rproc {
-    class InfileMerger;
-    class InfileMergerConfig;
-}
+class InfileMerger;
+class InfileMergerConfig;
+}  // namespace rproc
 namespace util {
-    class SemaMgr;
-}}} // End of forward declarations
+class SemaMgr;
+}
+}}  // namespace lsst::qserv
 
-
-
-namespace lsst {
-namespace qserv {
-namespace ccontrol {
+namespace lsst { namespace qserv { namespace ccontrol {
 
 /// UserQuerySelect : implementation of the UserQuery for regular SELECT statements.
 class UserQuerySelect : public UserQuery {
 public:
-
     UserQuerySelect(std::shared_ptr<qproc::QuerySession> const& qs,
                     std::shared_ptr<qdisp::MessageStore> const& messageStore,
                     std::shared_ptr<qdisp::Executive> const& executive,
@@ -94,11 +88,8 @@ public:
                     std::shared_ptr<qproc::SecondaryIndex> const& secondaryIndex,
                     std::shared_ptr<qmeta::QMeta> const& queryMetadata,
                     std::shared_ptr<qmeta::QStatus> const& queryStatsData,
-                    std::shared_ptr<util::SemaMgr> const& semaMgrConn,
-                    qmeta::CzarId czarId,
-                    std::string const& errorExtra,
-                    bool async,
-                    std::string const& resultDb);
+                    std::shared_ptr<util::SemaMgr> const& semaMgrConn, qmeta::CzarId czarId,
+                    std::string const& errorExtra, bool async, std::string const& resultDb);
 
     UserQuerySelect(UserQuerySelect const&) = delete;
     UserQuerySelect& operator=(UserQuerySelect const&) = delete;
@@ -130,8 +121,7 @@ public:
     void discard() override;
 
     // Delegate objects
-    std::shared_ptr<qdisp::MessageStore> getMessageStore() override {
-        return _messageStore; }
+    std::shared_ptr<qdisp::MessageStore> getMessageStore() override { return _messageStore; }
 
     /// @return Name of the result table for this query, can be empty
     std::string getResultTableName() const override { return _resultTable; }
@@ -182,19 +172,19 @@ private:
     std::shared_ptr<qmeta::QStatus> _queryStatsData;
     std::shared_ptr<util::SemaMgr> const& _semaMgrConn;
 
-    qmeta::CzarId _qMetaCzarId; ///< Czar ID in QMeta database
-    QueryId _qMetaQueryId{0};      ///< Query ID in QMeta database
+    qmeta::CzarId _qMetaCzarId;  ///< Czar ID in QMeta database
+    QueryId _qMetaQueryId{0};    ///< Query ID in QMeta database
     /// QueryId in a standard string form, initially set to unknown.
     std::string _queryIdStr{QueryIdHelper::makeIdStr(0, true)};
     bool _killed{false};
     std::mutex _killMutex;
-    mutable std::string _errorExtra;    ///< Additional error information
-    std::string _resultTable;   ///< Result table name
-    std::string _resultLoc;     ///< Result location
-    std::string _resultDb;      ///< Result database (todo is this the same as resultLoc??)
-    bool _async;                ///< true for async query
+    mutable std::string _errorExtra;  ///< Additional error information
+    std::string _resultTable;         ///< Result table name
+    std::string _resultLoc;           ///< Result location
+    std::string _resultDb;            ///< Result database (todo is this the same as resultLoc??)
+    bool _async;                      ///< true for async query
 };
 
-}}} // namespace lsst::qserv:ccontrol
+}}}  // namespace lsst::qserv::ccontrol
 
-#endif // LSST_QSERV_CCONTROL_USERQUERYSELECT_H
+#endif  // LSST_QSERV_CCONTROL_USERQUERYSELECT_H

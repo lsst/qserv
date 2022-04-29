@@ -23,10 +23,10 @@
 #ifndef LSST_QSERV_QANA_QUERYMAPPING_H
 #define LSST_QSERV_QANA_QUERYMAPPING_H
 /**
-  * @file
-  *
-  * @author Daniel L. Wang, SLAC
-  */
+ * @file
+ *
+ * @author Daniel L. Wang, SLAC
+ */
 
 // System headers
 #include <map>
@@ -38,20 +38,17 @@
 #include "global/DbTable.h"
 
 // Forward declarations
-namespace lsst {
-namespace qserv {
+namespace lsst { namespace qserv {
 namespace query {
-    class QueryTemplate;
+class QueryTemplate;
 }
 namespace qproc {
-    struct ChunkSpec;
-    class ChunkSpecSingle;
-}}} // End of forward declarations
+struct ChunkSpec;
+class ChunkSpecSingle;
+}  // namespace qproc
+}}  // namespace lsst::qserv
 
-
-namespace lsst {
-namespace qserv {
-namespace qana {
+namespace lsst { namespace qserv { namespace qana {
 
 /// QueryMapping is a value class that stores a mapping that can be
 /// consulted for a partitioning-strategy-agnostic query generation
@@ -75,16 +72,13 @@ namespace qana {
 /// moved to the worker.
 class QueryMapping {
 public:
-    enum Parameter {INVALID, CHUNK=100, SUBCHUNK, HTM1=200};
-    typedef std::map<std::string,Parameter> ParameterMap;
-
+    enum Parameter { INVALID, CHUNK = 100, SUBCHUNK, HTM1 = 200 };
+    typedef std::map<std::string, Parameter> ParameterMap;
 
     QueryMapping();
 
-    std::string apply(qproc::ChunkSpec const& s,
-                      query::QueryTemplate const& t) const;
-    std::string apply(qproc::ChunkSpecSingle const& s,
-                      query::QueryTemplate const& t) const;
+    std::string apply(qproc::ChunkSpec const& s, query::QueryTemplate const& t) const;
+    std::string apply(qproc::ChunkSpecSingle const& s, query::QueryTemplate const& t) const;
 
     // Modifiers
     /// Set the DbTable(s) that will be used with the subchunk query.
@@ -103,7 +97,6 @@ private:
     DbTableSet _subChunkTables;
 };
 
-}}} // namespace lsst::qserv::qana
+}}}  // namespace lsst::qserv::qana
 
-#endif // LSST_QSERV_QANA_QUERYMAPPING_H
-
+#endif  // LSST_QSERV_QANA_QUERYMAPPING_H

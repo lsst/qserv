@@ -33,15 +33,13 @@
 
 // This header declarations
 
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
 /**
  * Class AddReplicaQservMgtRequest implements a request notifying Qserv workers
  * on new chunks added to the database.
  */
-class AddReplicaQservMgtRequest: public QservMgtRequest  {
+class AddReplicaQservMgtRequest : public QservMgtRequest {
 public:
     typedef std::shared_ptr<AddReplicaQservMgtRequest> Ptr;
 
@@ -67,11 +65,9 @@ public:
      * @param onFinish (optional) callback function to be called upon request completion.
      * @return A pointer to the created object.
      */
-    static Ptr create(ServiceProvider::Ptr const& serviceProvider,
-                      std::string const& worker,
-                      unsigned int chunk,
-                      std::vector<std::string> const& databases,
-                      CallbackType const& onFinish=nullptr);
+    static Ptr create(ServiceProvider::Ptr const& serviceProvider, std::string const& worker,
+                      unsigned int chunk, std::vector<std::string> const& databases,
+                      CallbackType const& onFinish = nullptr);
 
     /// @return the chunk number
     unsigned int chunk() const { return _chunk; }
@@ -80,7 +76,7 @@ public:
     std::vector<std::string> const& databases() const { return _databases; }
 
     /// @see QservMgtRequest::extendedPersistentState()
-    std::list<std::pair<std::string,std::string>> extendedPersistentState() const final;
+    std::list<std::pair<std::string, std::string>> extendedPersistentState() const final;
 
 protected:
     /// @see QservMgtRequest::startImpl
@@ -94,22 +90,20 @@ protected:
 
 private:
     /// @see AddReplicaQservMgtRequest::create()
-    AddReplicaQservMgtRequest(ServiceProvider::Ptr const& serviceProvider,
-                              std::string const& worker,
-                              unsigned int chunk,
-                              std::vector<std::string> const& databases,
+    AddReplicaQservMgtRequest(ServiceProvider::Ptr const& serviceProvider, std::string const& worker,
+                              unsigned int chunk, std::vector<std::string> const& databases,
                               CallbackType const& onFinish);
 
     // Input parameters
 
-    unsigned int             const _chunk;
+    unsigned int const _chunk;
     std::vector<std::string> const _databases;
-    CallbackType                   _onFinish;   /// @note is reset when the request finishes
+    CallbackType _onFinish;  /// @note is reset when the request finishes
 
     /// A request to the remote services
     wpublish::AddChunkGroupQservRequest::Ptr _qservRequest;
 };
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_ADDREPLICAQSERVMGTREQUEST_H
+#endif  // LSST_QSERV_REPLICA_ADDREPLICAQSERVMGTREQUEST_H

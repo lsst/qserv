@@ -21,17 +21,15 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 /**
-  * @file
-  *
-  * @brief AggOp and AggOp::Mgr declarations
-  *
-  * @author Daniel L. Wang, SLAC
-  */
-
+ * @file
+ *
+ * @brief AggOp and AggOp::Mgr declarations
+ *
+ * @author Daniel L. Wang, SLAC
+ */
 
 #ifndef LSST_QSERV_QUERY_AGGOP_H
 #define LSST_QSERV_QUERY_AGGOP_H
-
 
 // System headers
 #include <map>
@@ -41,10 +39,7 @@
 #include "query/AggRecord.h"
 #include "query/ValueExpr.h"
 
-
-namespace lsst {
-namespace qserv {
-namespace query {
+namespace lsst { namespace qserv { namespace query {
 
 /// class AggOp is a function object that creates AggRecords from
 /// aggregation parameters. It is used to contain the differences in how
@@ -59,8 +54,9 @@ public:
     /// Produce an AggRecord from a ValueFactor.
     virtual AggRecord::Ptr operator()(ValueFactor const& orig) = 0;
     virtual ~AggOp() {}
+
 protected:
-    explicit AggOp(Mgr&m) : _mgr(m) {}
+    explicit AggOp(Mgr& m) : _mgr(m) {}
     Mgr& _mgr;
 };
 
@@ -81,13 +77,13 @@ public:
     int getNextSeq() { return ++_seq; }
     std::string getAggName(std::string const& name);
     bool hasAggregate() const { return _hasAggregate; }
+
 private:
     OpMap _map;
     int _seq;
     bool _hasAggregate;
 };
 
+}}}  // namespace lsst::qserv::query
 
-}}} // namespace lsst::qserv::query
-
-#endif // LSST_QSERV_QUERY_AGGOP_H
+#endif  // LSST_QSERV_QUERY_AGGOP_H

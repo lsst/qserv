@@ -34,15 +34,13 @@
 #include "replica/ServiceProvider.h"
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
 /**
-  * Class StopRequestBase represents the base class for a family of requests
-  * stopping an on-going operation.
-  */
-class StopRequestBase: public RequestMessenger {
+ * Class StopRequestBase represents the base class for a family of requests
+ * stopping an on-going operation.
+ */
+class StopRequestBase : public RequestMessenger {
 public:
     typedef std::shared_ptr<StopRequestBase> Ptr;
 
@@ -59,7 +57,7 @@ public:
     Performance const& targetPerformance() const { return _targetPerformance; }
 
     /// @see Request::extendedPersistentState()
-    std::list<std::pair<std::string,std::string>> extendedPersistentState() const override;
+    std::list<std::pair<std::string, std::string>> extendedPersistentState() const override;
 
     std::string toString(bool extended = false) const override;
 
@@ -80,14 +78,9 @@ protected:
      * @param keepTracking keep tracking the request before it finishes or fails
      * @param messenger an interface for communicating with workers
      */
-    StopRequestBase(ServiceProvider::Ptr const& serviceProvider,
-                    boost::asio::io_service& io_service,
-                    char const* requestName,
-                    std::string const& worker,
-                    std::string const& targetRequestId,
-                    ProtocolQueuedRequestType targetRequestType,
-                    int priority,
-                    bool keepTracking,
+    StopRequestBase(ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service,
+                    char const* requestName, std::string const& worker, std::string const& targetRequestId,
+                    ProtocolQueuedRequestType targetRequestType, int priority, bool keepTracking,
                     std::shared_ptr<Messenger> const& messenger);
 
     /// @see Request::startImpl()
@@ -107,7 +100,7 @@ protected:
      * @param success 'true' indicates a successful response from a worker
      * @param status a response from the worker service (only valid if success is 'true')
      */
-    void analyze(bool success, ProtocolStatus status=ProtocolStatus::FAILED);
+    void analyze(bool success, ProtocolStatus status = ProtocolStatus::FAILED);
 
     /**
      * Initiate request-specific operation with the persistent state
@@ -134,6 +127,6 @@ private:
     ProtocolQueuedRequestType const _targetRequestType;
 };
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_STOPREQUESTBASE_H
+#endif  // LSST_QSERV_REPLICA_STOPREQUESTBASE_H

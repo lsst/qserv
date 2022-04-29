@@ -21,17 +21,15 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 /**
-  * @file
-  *
-  * @brief Predicate is a representation of a boolean term in a WHERE clause
-  *
-  * @author Daniel L. Wang, SLAC
-  */
-
+ * @file
+ *
+ * @brief Predicate is a representation of a boolean term in a WHERE clause
+ *
+ * @author Daniel L. Wang, SLAC
+ */
 
 #ifndef LSST_QSERV_QUERY_PREDICATE_H
 #define LSST_QSERV_QUERY_PREDICATE_H
-
 
 // System headers
 #include <memory>
@@ -40,11 +38,7 @@
 // Local headers
 #include "query/BoolFactorTerm.h"
 
-
-namespace lsst {
-namespace qserv {
-namespace query {
-
+namespace lsst { namespace qserv { namespace query {
 
 ///  Predicate is a representation of a SQL predicate.
 /// predicate :
@@ -74,7 +68,6 @@ public:
     BoolFactorTerm::Ptr copySyntax() const override { return BoolFactorTerm::Ptr(); }
 };
 
+}}}  // namespace lsst::qserv::query
 
-}}} // namespace lsst::qserv::query
-
-#endif // LSST_QSERV_QUERY_PREDICATE_H
+#endif  // LSST_QSERV_QUERY_PREDICATE_H

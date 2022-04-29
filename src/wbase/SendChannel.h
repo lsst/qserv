@@ -30,10 +30,9 @@
 // Qserv headers
 #include "xrdsvc/StreamBuffer.h"
 
-namespace lsst {
-namespace qserv {
+namespace lsst { namespace qserv {
 namespace xrdsvc {
-    class SsiRequest;    // Forward declaration
+class SsiRequest;  // Forward declaration
 }
 namespace wbase {
 
@@ -46,7 +45,7 @@ public:
     using Size = long long;
 
     SendChannel(std::shared_ptr<xrdsvc::SsiRequest> const& s) : _ssiRequest(s) {}
-    SendChannel() {} // Strictly for non-Request versions of this object.
+    SendChannel() {}  // Strictly for non-Request versions of this object.
 
     virtual ~SendChannel() {}
 
@@ -65,7 +64,7 @@ public:
     /// Send a bucket of bytes.
     /// @param last true if no more sendStream calls will be invoked.
     /// @param scsSeq - is the SendChannelShared sequence number, if there is one.
-    virtual bool sendStream(xrdsvc::StreamBuffer::Ptr const& sBuf, bool last, int scsSeq=-1);
+    virtual bool sendStream(xrdsvc::StreamBuffer::Ptr const& sBuf, bool last, int scsSeq = -1);
 
     ///
     /// ******************************************************************
@@ -74,9 +73,7 @@ public:
     /// operation may be released. This allows a sendFile() caller to be
     /// notified when the file descriptor may be closed and perhaps reclaimed.
     void setReleaseFunc(std::function<void(void)> const& r) { _release = r; }
-    void release() {
-        _release();
-    }
+    void release() { _release(); }
 
     /// Construct a new NopChannel that ignores everything it is asked to send
     static SendChannel::Ptr newNopChannel();
@@ -87,7 +84,7 @@ public:
 
     /// @return true if metadata was set.
     /// buff must remain valid until the transmit is complete.
-    bool setMetadata(const char *buf, int blen);
+    bool setMetadata(const char* buf, int blen);
 
     /// Kill this SendChannel
     /// @ return the previous value of _dead
@@ -102,14 +99,14 @@ public:
     uint64_t getSeq() const;
 
 protected:
-    std::function<void(void)> _release = [](){;}; ///< Function to release resources.
+    std::function<void(void)> _release = []() { ; };  ///< Function to release resources.
 
 private:
     std::shared_ptr<xrdsvc::SsiRequest> _ssiRequest;
-    std::atomic<bool> _dead{false}; ///< True if there were any failures using this SendChanel.
+    std::atomic<bool> _dead{false};  ///< True if there were any failures using this SendChanel.
     std::atomic<bool> _destroying{false};
 };
 
-
-}}} // lsst::qserv::wbase
-#endif // LSST_QSERV_WBASE_SENDCHANNEL_H
+}  // namespace wbase
+}}      // namespace lsst::qserv
+#endif  // LSST_QSERV_WBASE_SENDCHANNEL_H

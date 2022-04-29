@@ -26,22 +26,18 @@
 #include "replica/Common.h"
 
 // Forward declaratons
-namespace lsst {
-namespace qserv {
-namespace replica {
-    class TableRowStats;
-}}} // namespace lsst::qserv::replica
+namespace lsst { namespace qserv { namespace replica {
+class TableRowStats;
+}}}  // namespace lsst::qserv::replica
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
 /**
  * Class DatabaseTestApp implements a tool for testing the DatabaseServices API
  * used by the Replication system implementation.
  */
-class DatabaseTestApp: public Application {
+class DatabaseTestApp : public Application {
 public:
     typedef std::shared_ptr<DatabaseTestApp> Ptr;
 
@@ -54,11 +50,11 @@ public:
      */
     static Ptr create(int argc, char* argv[]);
 
-    DatabaseTestApp()=delete;
-    DatabaseTestApp(DatabaseTestApp const&)=delete;
-    DatabaseTestApp& operator=(DatabaseTestApp const&)=delete;
+    DatabaseTestApp() = delete;
+    DatabaseTestApp(DatabaseTestApp const&) = delete;
+    DatabaseTestApp& operator=(DatabaseTestApp const&) = delete;
 
-    ~DatabaseTestApp() override=default;
+    ~DatabaseTestApp() override = default;
 
 protected:
     int runImpl() final;
@@ -78,7 +74,7 @@ private:
     /// the Replication system.
     bool _enabledWorkersOnly = false;
 
-    unsigned int _chunk  = 0;
+    unsigned int _chunk = 0;
     unsigned int _chunk1 = 0;
     unsigned int _chunk2 = 0;
 
@@ -102,6 +98,6 @@ private:
     bool _verticalSeparator = false;
 };
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica
 
 #endif /* LSST_QSERV_REPLICA_DATABASETESTAPP_H */

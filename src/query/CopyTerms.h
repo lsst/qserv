@@ -21,45 +21,30 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-
 #ifndef LSST_QSERV_QUERY_COPYTERMS_H
 #define LSST_QSERV_QUERY_COPYTERMS_H
 
-
-namespace lsst {
-namespace qserv {
-namespace query {
-
+namespace lsst { namespace qserv { namespace query {
 
 struct syntaxCopy {
-    inline BoolTerm::Ptr operator()(BoolTerm::Ptr const& t) {
-        return t ? t->copySyntax() : BoolTerm::Ptr();
-    }
+    inline BoolTerm::Ptr operator()(BoolTerm::Ptr const& t) { return t ? t->copySyntax() : BoolTerm::Ptr(); }
     inline BoolFactorTerm::Ptr operator()(BoolFactorTerm::Ptr const& t) {
         return t ? t->copySyntax() : BoolFactorTerm::Ptr();
     }
 };
 
-
 struct deepCopy {
-    inline BoolTerm::Ptr operator()(BoolTerm::Ptr const& t) {
-        return t ? t->clone() : BoolTerm::Ptr();
-    }
+    inline BoolTerm::Ptr operator()(BoolTerm::Ptr const& t) { return t ? t->clone() : BoolTerm::Ptr(); }
     inline BoolFactorTerm::Ptr operator()(BoolFactorTerm::Ptr const& t) {
         return t ? t->clone() : BoolFactorTerm::Ptr();
     }
 };
-
 
 template <typename List, class Copy>
 inline void copyTerms(List& dest, List const& src) {
     std::transform(src.begin(), src.end(), std::back_inserter(dest), Copy());
 }
 
+}}}  // namespace lsst::qserv::query
 
-}}} // namespace lsst::qserv::query
-
-#endif // LSST_QSERV_QUERY_COPYTERMS_H
-
-
-
+#endif  // LSST_QSERV_QUERY_COPYTERMS_H

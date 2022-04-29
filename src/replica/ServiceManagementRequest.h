@@ -45,16 +45,12 @@
 #include "replica/ServiceManagementRequestBase.h"
 
 // Forward declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
-    class Messenger;
-}}}  // Forward declarations
+namespace lsst { namespace qserv { namespace replica {
+class Messenger;
+}}}  // namespace lsst::qserv::replica
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
 // ========================================================================
 //   Customizations for specific request types require dedicated policies
@@ -97,11 +93,11 @@ public:
 };
 
 /**
-  * Generic class ServiceManagementRequest extends its base class
-  * to allow further policy-based customization of specific requests.
-  */
+ * Generic class ServiceManagementRequest extends its base class
+ * to allow further policy-based customization of specific requests.
+ */
 template <typename POLICY>
-class ServiceManagementRequest: public ServiceManagementRequestBase {
+class ServiceManagementRequest : public ServiceManagementRequestBase {
 public:
     /// Inject the into a namespace of the class
     typedef POLICY Policy;
@@ -131,22 +127,12 @@ public:
      * @param onFinish callback function to be called upon a completion of the request
      * @param messenger messenger service for workers
      */
-    static Ptr create(ServiceProvider::Ptr const& serviceProvider,
-                      boost::asio::io_service& io_service,
-                      std::string const& worker,
-                      CallbackType const& onFinish,
-                      int priority,
+    static Ptr create(ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service,
+                      std::string const& worker, CallbackType const& onFinish, int priority,
                       std::shared_ptr<Messenger> const& messenger) {
-        return ServiceManagementRequest<POLICY>::Ptr(
-            new ServiceManagementRequest<POLICY>(
-                serviceProvider,
-                io_service,
-                POLICY::requestName(),
-                worker,
-                POLICY::requestType(),
-                priority,
-                onFinish,
-                messenger));
+        return ServiceManagementRequest<POLICY>::Ptr(new ServiceManagementRequest<POLICY>(
+                serviceProvider, io_service, POLICY::requestName(), worker, POLICY::requestType(), priority,
+                onFinish, messenger));
     }
 
 protected:
@@ -155,36 +141,26 @@ protected:
     }
 
 private:
-    ServiceManagementRequest(ServiceProvider::Ptr const& serviceProvider,
-                             boost::asio::io_service& io_service,
-                             char const* requestName,
-                             std::string const& worker,
-                             ProtocolServiceRequestType requestType,
-                             int priority,
-                             CallbackType const& onFinish,
-                             std::shared_ptr<Messenger> const& messenger)
-        :   ServiceManagementRequestBase(serviceProvider,
-                                         io_service,
-                                         requestName,
-                                         worker,
-                                         requestType,
-                                         priority,
-                                         messenger),
-            _onFinish(onFinish) {
-    }
+    ServiceManagementRequest(ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service,
+                             char const* requestName, std::string const& worker,
+                             ProtocolServiceRequestType requestType, int priority,
+                             CallbackType const& onFinish, std::shared_ptr<Messenger> const& messenger)
+            : ServiceManagementRequestBase(serviceProvider, io_service, requestName, worker, requestType,
+                                           priority, messenger),
+              _onFinish(onFinish) {}
 
     // Input parameters
 
     CallbackType _onFinish;
 };
 
-typedef ServiceManagementRequest<ServiceSuspendRequestPolicy>  ServiceSuspendRequest;
-typedef ServiceManagementRequest<ServiceResumeRequestPolicy>   ServiceResumeRequest;
-typedef ServiceManagementRequest<ServiceStatusRequestPolicy>   ServiceStatusRequest;
+typedef ServiceManagementRequest<ServiceSuspendRequestPolicy> ServiceSuspendRequest;
+typedef ServiceManagementRequest<ServiceResumeRequestPolicy> ServiceResumeRequest;
+typedef ServiceManagementRequest<ServiceStatusRequestPolicy> ServiceStatusRequest;
 typedef ServiceManagementRequest<ServiceRequestsRequestPolicy> ServiceRequestsRequest;
-typedef ServiceManagementRequest<ServiceDrainRequestPolicy>    ServiceDrainRequest;
+typedef ServiceManagementRequest<ServiceDrainRequestPolicy> ServiceDrainRequest;
 typedef ServiceManagementRequest<ServiceReconfigRequestPolicy> ServiceReconfigRequest;
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_SERVICEMANAGEMENTREQUEST_H
+#endif  // LSST_QSERV_REPLICA_SERVICEMANAGEMENTREQUEST_H

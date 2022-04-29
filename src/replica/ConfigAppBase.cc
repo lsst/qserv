@@ -40,43 +40,25 @@ bool const injectDatabaseOptions = true;
 bool const boostProtobufVersionCheck = false;
 bool const enableServiceProvider = false;
 
-} /// namespace
+}  // namespace
 
-
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
 ConfigAppBase::ConfigAppBase(int argc, char* argv[], string const& description)
-    :   Application(
-            argc, argv,
-            description,
-            injectDatabaseOptions,
-            boostProtobufVersionCheck,
-            enableServiceProvider
-        ),
-        _configUrl("mysql://qsreplica@localhost:3306/qservReplica") {
-
-    parser().option(
-        "config",
-        "Configuration URL (a database connection string).",
-        _configUrl
-    ).flag(
-        "tables-vertical-separator",
-        "Print vertical separator when displaying tabular data in dumps.",
-        _verticalSeparator
-    );
+        : Application(argc, argv, description, injectDatabaseOptions, boostProtobufVersionCheck,
+                      enableServiceProvider),
+          _configUrl("mysql://qsreplica@localhost:3306/qservReplica") {
+    parser().option("config", "Configuration URL (a database connection string).", _configUrl)
+            .flag("tables-vertical-separator",
+                  "Print vertical separator when displaying tabular data in dumps.", _verticalSeparator);
 }
-
 
 int ConfigAppBase::runImpl() {
     _config = Configuration::load(_configUrl);
     return runSubclassImpl();
 }
 
-
 void ConfigAppBase::dumpWorkersAsTable(string const& indent, string const& caption) const {
-
     // Extract attributes of each worker and put them into the corresponding
     // columns. Translate tables cell values into strings when required.
 
@@ -93,10 +75,10 @@ void ConfigAppBase::dumpWorkersAsTable(string const& indent, string const& capti
     vector<string> httpLoaderHostPort;
     vector<string> httpLoaderTmpDir;
 
-    for (auto&& worker: _config->allWorkers()) {
+    for (auto&& worker : _config->allWorkers()) {
         auto const wi = _config->workerInfo(worker);
         name.push_back(wi.name);
-        isEnabled.push_back(wi.isEnabled  ? "yes" : "no");
+        isEnabled.push_back(wi.isEnabled ? "yes" : "no");
         isReadOnly.push_back(wi.isReadOnly ? "yes" : "no");
         dataDir.push_back(wi.dataDir);
         svcHostPort.push_back(wi.svcHost + ":" + to_string(wi.svcPort));
@@ -128,18 +110,16 @@ void ConfigAppBase::dumpWorkersAsTable(string const& indent, string const& capti
     cout << endl;
 }
 
-
 void ConfigAppBase::dumpFamiliesAsTable(string const& indent, string const& caption) const {
-
     // Extract attributes of each family and put them into the corresponding
     // columns.
 
-    vector<string>       name;
-    vector<size_t>       replicationLevel;
+    vector<string> name;
+    vector<size_t> replicationLevel;
     vector<unsigned int> numStripes;
     vector<unsigned int> numSubStripes;
 
-    for (auto&& family: _config->databaseFamilies()) {
+    for (auto&& family : _config->databaseFamilies()) {
         auto const fi = _config->databaseFamilyInfo(family);
         name.push_back(fi.name);
         replicationLevel.push_back(fi.replicationLevel);
@@ -158,9 +138,7 @@ void ConfigAppBase::dumpFamiliesAsTable(string const& indent, string const& capt
     cout << endl;
 }
 
-
 void ConfigAppBase::dumpDatabasesAsTable(string const& indent, string const& caption) const {
-
     // Extract attributes of each database and put them into the corresponding
     // columns.
 
@@ -178,9 +156,9 @@ void ConfigAppBase::dumpDatabasesAsTable(string const& indent, string const& cap
 
     string const noSpecificFamily;
     bool const allDatabases = true;
-    for (auto&& database: _config->databases(noSpecificFamily, allDatabases)) {
+    for (auto&& database : _config->databases(noSpecificFamily, allDatabases)) {
         auto const di = _config->databaseInfo(database);
-        for (auto& table: di.partitionedTables) {
+        for (auto& table : di.partitionedTables) {
             familyName.push_back(di.family);
             databaseName.push_back(di.name);
             isPublished.push_back(di.isPublished ? "yes" : "no");
@@ -197,8 +175,8 @@ void ConfigAppBase::dumpDatabasesAsTable(string const& indent, string const& cap
             latitudeColName.push_back(di.latitudeColName.at(table));
             longitudeColName.push_back(di.longitudeColName.at(table));
             numColumns.push_back(to_string(di.columns.at(table).size()));
-       }
-        for (auto& table: di.regularTables) {
+        }
+        for (auto& table : di.regularTables) {
             familyName.push_back(di.family);
             databaseName.push_back(di.name);
             isPublished.push_back(di.isPublished ? "yes" : "no");
@@ -244,4 +222,4 @@ void ConfigAppBase::dumpDatabasesAsTable(string const& indent, string const& cap
     cout << endl;
 }
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica

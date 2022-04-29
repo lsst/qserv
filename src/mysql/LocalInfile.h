@@ -34,11 +34,9 @@
 #include "boost/utility.hpp"
 #include <mysql/mysql.h>
 
-namespace lsst {
-namespace qserv {
-namespace mysql {
+namespace lsst { namespace qserv { namespace mysql {
 
-class RowBuffer; // Forward. Defined in LocalInfile.cc
+class RowBuffer;  // Forward. Defined in LocalInfile.cc
 
 /// LocalInfile : a virtual LOCAL INFILE handler for mysql to use.
 /// Do not inherit. Used in mysql_set_local_infile_handler .
@@ -58,7 +56,7 @@ class RowBuffer; // Forward. Defined in LocalInfile.cc
 /// implicitly.
 class LocalInfile : boost::noncopyable {
 public:
-    class Mgr; // Helper for attaching to MYSQL*
+    class Mgr;  // Helper for attaching to MYSQL*
 
     LocalInfile(char const* filename, MYSQL_RES* result);
     LocalInfile(char const* filename, std::shared_ptr<RowBuffer> rowBuffer);
@@ -76,12 +74,12 @@ public:
     inline bool isValid() const { return static_cast<bool>(_rowBuffer); }
 
 private:
-    char* _buffer; ///< Internal buffer for passing to mysql
-    int _bufferSize; ///< Allocated size of internal buffer
-    char* _leftover; ///< Ptr to bytes not yet sent to mysql
-    unsigned _leftoverSize; ///< Size of bytes not yet sent in _leftover
-    std::string _filename; ///< virtual filename for mysql
-    std::shared_ptr<RowBuffer> _rowBuffer; ///< Underlying row source
+    char* _buffer;                          ///< Internal buffer for passing to mysql
+    int _bufferSize;                        ///< Allocated size of internal buffer
+    char* _leftover;                        ///< Ptr to bytes not yet sent to mysql
+    unsigned _leftoverSize;                 ///< Size of bytes not yet sent in _leftover
+    std::string _filename;                  ///< virtual filename for mysql
+    std::shared_ptr<RowBuffer> _rowBuffer;  ///< Underlying row source
 };
 
 /// Do not inherit or copy. Used in mysql_set_local_infile_handler
@@ -118,11 +116,11 @@ public:
 
     // mysql_local_infile_handler interface ////////////////////////////////
     // These function pointers are needed to attach a handler
-    static int local_infile_init(void **ptr, const char *filename, void *userdata);
-    static int local_infile_read(void *ptr, char *buf, unsigned int buf_len);
-    static void local_infile_end(void *ptr);
+    static int local_infile_init(void** ptr, const char* filename, void* userdata);
+    static int local_infile_read(void* ptr, char* buf, unsigned int buf_len);
+    static void local_infile_end(void* ptr);
 
-    static int local_infile_error(void *ptr, char *error_msg, unsigned int error_msg_len);
+    static int local_infile_error(void* ptr, char* error_msg, unsigned int error_msg_len);
 
     std::string insertBuffer(std::shared_ptr<RowBuffer> const& rb);
     void setBuffer(std::string const& s, std::shared_ptr<RowBuffer> const& rb);
@@ -140,6 +138,6 @@ private:
     std::mutex _mapMutex;
 };
 
-}}} // namespace lsst::qserv::mysql
+}}}  // namespace lsst::qserv::mysql
 
-#endif // LSST_QSERV_MYSQL_LOCALINFILE_H
+#endif  // LSST_QSERV_MYSQL_LOCALINFILE_H

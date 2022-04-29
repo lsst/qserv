@@ -35,10 +35,7 @@ namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.wcontrol.TransmitMgr");
 }
 
-namespace lsst {
-namespace qserv {
-namespace wcontrol {
-
+namespace lsst { namespace qserv { namespace wcontrol {
 
 // _mapMtx must be locked before calling, except for constructor.
 void QidMgr::_setMaxCount(int uniqueQidCount) {
@@ -56,13 +53,12 @@ void QidMgr::_setMaxCount(int uniqueQidCount) {
     bool notify = maxCount > _maxCount;
     _maxCount = maxCount;
     // send the new value to all LockCounts in the map.
-    for (auto&& elem:_qidLocks) {
+    for (auto&& elem : _qidLocks) {
         LockCount& lc = elem.second;
         lc.lcMaxCount.store(_maxCount);
         if (notify) lc.lcCv.notify_one();
     }
 }
-
 
 void QidMgr::_take(QueryId const& qid) {
     unique_lock<mutex> uLock(_mapMtx);
@@ -72,7 +68,6 @@ void QidMgr::_take(QueryId const& qid) {
     uLock.unlock();
     lockCount.take();
 }
-
 
 void QidMgr::_release(QueryId const& qid) {
     LockCount* lockCount;
@@ -97,17 +92,15 @@ void QidMgr::_release(QueryId const& qid) {
     }
 }
 
-
 int QidMgr::LockCount::take() {
     {
         unique_lock<mutex> uLock(lcMtx);
         ++lcTotalCount;
-        lcCv.wait(uLock, [this](){ return (lcCount < lcMaxCount); });
+        lcCv.wait(uLock, [this]() { return (lcCount < lcMaxCount); });
         ++lcCount;
     }
     return lcTotalCount;
 }
-
 
 int QidMgr::LockCount::release() {
     int totalCount = 0;
@@ -115,9 +108,9 @@ int QidMgr::LockCount::release() {
         unique_lock<mutex> uLock(lcMtx);
         --lcTotalCount;
         --lcCount;
-        if (lcTotalCount <=0 && lcCount > 0) {
-            throw util::Bug(ERR_LOC, "LockCount::_release() _count > _totalCount "
-                      + to_string(lcCount ) + " > " + to_string(lcTotalCount) );
+        if (lcTotalCount <= 0 && lcCount > 0) {
+            throw util::Bug(ERR_LOC, "LockCount::_release() _count > _totalCount " + to_string(lcCount) +
+                                             " > " + to_string(lcTotalCount));
         }
         totalCount = lcTotalCount;
     }
@@ -125,18 +118,16 @@ int QidMgr::LockCount::release() {
     return totalCount;
 }
 
-
 void TransmitMgr::_take(bool interactive) {
     LOGS(_log, LOG_LVL_DEBUG, "TransmitMgr::_take locking " << *this);
     unique_lock<mutex> uLock(_mtx);
     ++_totalCount;
     if (not interactive || _transmitCount >= _maxTransmits) {
-        _tCv.wait(uLock, [this](){ return (_transmitCount < _maxTransmits); });
+        _tCv.wait(uLock, [this]() { return (_transmitCount < _maxTransmits); });
     }
     ++_transmitCount;
     LOGS(_log, LOG_LVL_DEBUG, "TransmitMgr take locking done " << dump());
 }
-
 
 void TransmitMgr::_release(bool interactive) {
     LOGS(_log, LOG_LVL_DEBUG, "TransmitMgr::_release locking " << *this);
@@ -150,14 +141,11 @@ void TransmitMgr::_release(bool interactive) {
     _tCv.notify_all();
 }
 
-
-ostream& TransmitMgr::dump(ostream &os) const {
-    os << "(totalCount=" << _totalCount
-       << " transmitCount=" << _transmitCount
-       << ":max=" << _maxTransmits << ")";
+ostream& TransmitMgr::dump(ostream& os) const {
+    os << "(totalCount=" << _totalCount << " transmitCount=" << _transmitCount << ":max=" << _maxTransmits
+       << ")";
     return os;
 }
-
 
 std::string TransmitMgr::dump() const {
     std::ostringstream os;
@@ -165,20 +153,14 @@ std::string TransmitMgr::dump() const {
     return os.str();
 }
 
-
-ostream& TransmitMgr::dumpBase(ostream &os) const {
+ostream& TransmitMgr::dumpBase(ostream& os) const {
     // No mtx as long as everything is atomic. Some risk
     // of counts from different threads.
-    os << "maxTransmits=" << _maxTransmits
-       << "(totalC=" << _totalCount
-       << " transmitC=" << _transmitCount << ")";
+    os << "maxTransmits=" << _maxTransmits << "(totalC=" << _totalCount << " transmitC=" << _transmitCount
+       << ")";
     return os;
 }
 
+ostream& operator<<(ostream& os, TransmitMgr const& mgr) { return mgr.dump(os); }
 
-ostream& operator<<(ostream &os, TransmitMgr const& mgr) {
-    return mgr.dump(os);
-}
-
-
-}}} // namespace lsst::qserv::wcontrol
+}}}  // namespace lsst::qserv::wcontrol

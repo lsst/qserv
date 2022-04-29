@@ -20,11 +20,11 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-  /**
-  * @brief Simple testing for class QuerySql
-  *
-  * @author Daniel L. Wang, SLAC
-  */
+/**
+ * @brief Simple testing for class QuerySql
+ *
+ * @author Daniel L. Wang, SLAC
+ */
 
 // Third-party headers
 
@@ -39,12 +39,11 @@
 
 namespace test = boost::test_tools;
 
-using lsst::qserv::wdb::QuerySql;
-using lsst::qserv::proto::TaskMsg_Subchunk;
 using lsst::qserv::proto::TaskMsg_Fragment;
+using lsst::qserv::proto::TaskMsg_Subchunk;
+using lsst::qserv::wdb::QuerySql;
 
 struct Fixture {
-
     Fixture() {
         defaultDb = "Winter";
         defaultResult = "myResult";
@@ -68,25 +67,17 @@ struct Fixture {
         return f;
     }
 
-    void printQsql(QuerySql const& q) {
-        std::cout << "qsql=" << q << std::endl;
-    }
+    void printQsql(QuerySql const& q) { std::cout << "qsql=" << q << std::endl; }
     std::string defaultDb;
     std::string defaultResult;
 };
-
 
 BOOST_FIXTURE_TEST_SUITE(QuerySqlSuite, Fixture)
 
 BOOST_AUTO_TEST_CASE(Basic) {
     std::shared_ptr<QuerySql> qSql;
     TaskMsg_Fragment frag = makeFragment();
-    qSql = std::make_shared<QuerySql>(defaultDb,
-                                      1001,
-                                      frag,
-                                      true,
-                                      defaultResult
-                                      );
+    qSql = std::make_shared<QuerySql>(defaultDb, 1001, frag, true, defaultResult);
     BOOST_CHECK(qSql.get());
     printQsql(*qSql);
 }
@@ -94,22 +85,15 @@ BOOST_AUTO_TEST_CASE(Basic) {
 BOOST_AUTO_TEST_CASE(QueryBatch) {
     std::shared_ptr<QuerySql> qSql;
     TaskMsg_Fragment frag = makeFragment();
-    qSql = std::make_shared<QuerySql>(
-                                        defaultDb,
-                                        1001,
-                                        frag,
-                                        true,
-                                        defaultResult
-                                       );
+    qSql = std::make_shared<QuerySql>(defaultDb, 1001, frag, true, defaultResult);
     BOOST_CHECK(qSql.get());
 
     QuerySql::Batch build("QueryBuildSub", qSql->buildList);
-    QuerySql::Batch& batch=build;
-    while(!batch.isDone()) {
+    QuerySql::Batch& batch = build;
+    while (!batch.isDone()) {
         std::string piece = batch.current();
         batch.next();
     }
 }
-
 
 BOOST_AUTO_TEST_SUITE_END()

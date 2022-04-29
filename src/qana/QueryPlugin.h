@@ -23,10 +23,10 @@
 #ifndef LSST_QSERV_QANA_QUERYPLUGIN_H
 #define LSST_QSERV_QANA_QUERYPLUGIN_H
 /**
-  * @file
-  *
-  * @author Daniel L. Wang, SLAC
-  */
+ * @file
+ *
+ * @author Daniel L. Wang, SLAC
+ */
 
 // System headers
 #include <memory>
@@ -37,17 +37,12 @@
 #include "query/typedefs.h"
 
 // Forward declarations
-namespace lsst {
-namespace qserv {
-namespace query {
-    class SelectStmt;
-    class QueryContext;
-}}} // End of forward declarations
+namespace lsst { namespace qserv { namespace query {
+class SelectStmt;
+class QueryContext;
+}}}  // namespace lsst::qserv::query
 
-
-namespace lsst {
-namespace qserv {
-namespace qana {
+namespace lsst { namespace qserv { namespace qana {
 
 using query::SelectStmtPtrVector;
 
@@ -81,11 +76,9 @@ public:
     virtual std::string name() const = 0;
 };
 
-
 /// A bundle of references to a components that form a "plan"
 class QueryPlugin::Plan {
 public:
-
     /**
      * @brief Construct a new Plan object
      *
@@ -98,13 +91,12 @@ public:
      * @param hasMerge_ if there is an aggregation step to perform.
      */
     Plan(query::SelectStmt& stmtOriginal_, SelectStmtPtrVector& stmtParallel_,
-        std::shared_ptr<query::SelectStmt>& stmtPreFlight_, query::SelectStmt& stmtMerge_,
-        bool hasMerge_)
-        :  stmtOriginal(stmtOriginal_),
-           stmtParallel(stmtParallel_),
-           stmtPreFlight(stmtPreFlight_),
-           stmtMerge(stmtMerge_),
-           hasMerge(hasMerge_) {}
+         std::shared_ptr<query::SelectStmt>& stmtPreFlight_, query::SelectStmt& stmtMerge_, bool hasMerge_)
+            : stmtOriginal(stmtOriginal_),
+              stmtParallel(stmtParallel_),
+              stmtPreFlight(stmtPreFlight_),
+              stmtMerge(stmtMerge_),
+              hasMerge(hasMerge_) {}
 
     // Each of these should become a sequence for two-step queries.
     query::SelectStmt& stmtOriginal;
@@ -125,6 +117,6 @@ public:
     bool const hasMerge;
 };
 
-}}} // namespace lsst::qserv::qana
+}}}  // namespace lsst::qserv::qana
 
-#endif // LSST_QSERV_QANA_QUERYPLUGIN_H
+#endif  // LSST_QSERV_QANA_QUERYPLUGIN_H

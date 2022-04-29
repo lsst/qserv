@@ -28,9 +28,7 @@
 
 using namespace std;
 
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
 int ApplicationColl::run(int argc, char* argv[]) const {
     if (argc < 2) {
@@ -54,21 +52,20 @@ int ApplicationColl::run(int argc, char* argv[]) const {
     return itr->second->run(argc_, argv_.get());
 }
 
-
 void ApplicationColl::_printUsage(string const& err) const {
     if (!err.empty()) {
         cerr << "error: " << err << "\n";
     }
     string usage =
-        "Usage:\n"
-        "  <application> [parameters] [options] [flags]\n"
-        "  <application> --help\n"
-        "\n"
-        "Supported applications:\n";
-    for (auto&& itr: _coll) {
+            "Usage:\n"
+            "  <application> [parameters] [options] [flags]\n"
+            "  <application> --help\n"
+            "\n"
+            "Supported applications:\n";
+    for (auto&& itr : _coll) {
         usage += "  " + itr.first + "\n";
     }
     cerr << usage << endl;
 }
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica

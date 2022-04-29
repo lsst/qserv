@@ -32,16 +32,14 @@
 #include "sql/SqlTransaction.h"
 #include "util/Issue.h"
 
-namespace lsst {
-namespace qserv {
-namespace sql {
+namespace lsst { namespace qserv { namespace sql {
 
 /// An RAII class for handling transactions.
 // All child classes should call SqlTransactionScope::create<T> to make
 // new instances and have private or protected constructors. Children will
 // probably need to make this class their friend.
 // throwException can be overridden to throw a desired exception.
-class SqlTransactionScope  {
+class SqlTransactionScope {
 public:
     /// Always create new instances of children using this function so that verify() is called.
     /// This function allows virtual functions to be safely called to check on the object
@@ -77,15 +75,14 @@ public:
     /// Query to find out if this represents an active transaction
     virtual bool isActive() const { return trans.isActive(); }
 
-
 protected:
     /// Constructor takes connection instance. It starts transaction.
     SqlTransactionScope(sql::SqlConnection& conn) : errObj(), trans(conn, errObj) {}
 
-    sql::SqlErrorObject errObj; // this must be declared before _trans
+    sql::SqlErrorObject errObj;  // this must be declared before _trans
     sql::SqlTransaction trans;
 };
 
-}}} // namespace lsst:qserv:sql
+}}}  // namespace lsst::qserv::sql
 
 #endif /* LSST_QSERV_SQL_SQLTRANSACTIONSCOPE_H */

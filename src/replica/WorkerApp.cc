@@ -49,8 +49,7 @@ using namespace std;
 
 namespace {
 
-string const description =
-    "This application represents the worker service of the Replication system.";
+string const description = "This application represents the worker service of the Replication system.";
 
 bool const injectDatabaseOptions = true;
 bool const boostProtobufVersionCheck = true;
@@ -58,47 +57,27 @@ bool const enableServiceProvider = true;
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.WorkerApp");
 
-} /// namespace
+}  // namespace
 
+namespace lsst { namespace qserv { namespace replica {
 
-namespace lsst {
-namespace qserv {
-namespace replica {
-
-WorkerApp::Ptr WorkerApp::create(int argc, char* argv[]) {
-    return Ptr(
-        new WorkerApp(argc, argv)
-    );
-}
-
+WorkerApp::Ptr WorkerApp::create(int argc, char* argv[]) { return Ptr(new WorkerApp(argc, argv)); }
 
 WorkerApp::WorkerApp(int argc, char* argv[])
-    :   Application(
-            argc, argv,
-            description,
-            injectDatabaseOptions,
-            boostProtobufVersionCheck,
-            enableServiceProvider
-        ),
-        _qservWorkerDbUrl(Configuration::qservWorkerDbUrl()) {
-
+        : Application(argc, argv, description, injectDatabaseOptions, boostProtobufVersionCheck,
+                      enableServiceProvider),
+          _qservWorkerDbUrl(Configuration::qservWorkerDbUrl()) {
     // Configure the command line parser
 
-    parser().option(
-        "qserv-worker-db",
-        "A connection url for the MySQL service of the Qserv worker database.",
-        _qservWorkerDbUrl
-    ).flag(
-        "do-not-create-folders",
-        "Do not attempt creating missing folders used by the worker services."
-        " Specify this flag in the production deployments of the Replication/Ingest system.",
-        _doNotCreateMissingFolders
-    );
+    parser().option("qserv-worker-db", "A connection url for the MySQL service of the Qserv worker database.",
+                    _qservWorkerDbUrl)
+            .flag("do-not-create-folders",
+                  "Do not attempt creating missing folders used by the worker services."
+                  " Specify this flag in the production deployments of the Replication/Ingest system.",
+                  _doNotCreateMissingFolders);
 }
 
-
 int WorkerApp::runImpl() {
-
     string const context = "WorkerApp::" + string(__func__) + "  ";
 
     if (!_qservWorkerDbUrl.empty()) {
@@ -116,7 +95,7 @@ int WorkerApp::runImpl() {
         // and close the MySQL connection in case of exceptions.
         database::mysql::ConnectionHandler const handler(
                 database::mysql::Connection::open(Configuration::qservWorkerDbParams("qservw_worker")));
-        handler.conn->executeInOwnTransaction([&worker,&context](decltype(handler.conn) conn) {
+        handler.conn->executeInOwnTransaction([&worker, &context](decltype(handler.conn) conn) {
             string const colname = "id";
             string const query = "SELECT " + conn->sqlId(colname) + " FROM " + conn->sqlId("Id");
             if (!conn->executeSingleValueSelect(query, colname, worker)) {
@@ -131,35 +110,23 @@ int WorkerApp::runImpl() {
     // Configure the factory with a pool of persistent connectors
     auto const config = serviceProvider()->config();
     auto const connectionPool = database::mysql::ConnectionPool::create(
-        Configuration::qservWorkerDbParams(),
-        config->get<size_t>("database", "services-pool-size")
-    );
+            Configuration::qservWorkerDbParams(), config->get<size_t>("database", "services-pool-size"));
     WorkerRequestFactory requestFactory(serviceProvider(), connectionPool);
 
     auto const reqProcSvr = WorkerServer::create(serviceProvider(), requestFactory, worker);
-    thread reqProcSvrThread([reqProcSvr] () {
-        reqProcSvr->run();
-    });
+    thread reqProcSvrThread([reqProcSvr]() { reqProcSvr->run(); });
 
     auto const fileSvr = FileServer::create(serviceProvider(), worker);
-    thread fileSvrThread([fileSvr]() {
-        fileSvr->run();
-    });
+    thread fileSvrThread([fileSvr]() { fileSvr->run(); });
 
     auto const ingestSvr = IngestSvc::create(serviceProvider(), worker);
-    thread ingestSvrThread([ingestSvr]() {
-        ingestSvr->run();
-    });
+    thread ingestSvrThread([ingestSvr]() { ingestSvr->run(); });
 
     auto const ingestHttpSvr = IngestHttpSvc::create(serviceProvider(), worker);
-    thread ingestHttpSvrThread([ingestHttpSvr]() {
-        ingestHttpSvr->run();
-    });
+    thread ingestHttpSvrThread([ingestHttpSvr]() { ingestHttpSvr->run(); });
 
     auto const exportSvr = ExportServer::create(serviceProvider(), worker);
-    thread exportSvrThread([exportSvr]() {
-        exportSvr->run();
-    });
+    thread exportSvrThread([exportSvr]() { exportSvr->run(); });
 
     // Keep sending periodic 'heartbeats' to the Registry service to report
     // a configuration and a status of the current worker.
@@ -169,13 +136,13 @@ int WorkerApp::runImpl() {
         } catch (exception const& ex) {
             LOGS(_log, LOG_LVL_WARN, context << "adding worker to the registry failed, ex: " << ex.what());
         }
-        LOGS(_log, LOG_LVL_DEBUG, "HEARTBEAT"
-            << "  worker: " << reqProcSvr->worker()
-            << "  processor.state: " << reqProcSvr->processor()->state2string()
-            << "  new, in-progress, finished: "
-            << reqProcSvr->processor()->numNewRequests() << ", "
-            << reqProcSvr->processor()->numInProgressRequests() << ", "
-            << reqProcSvr->processor()->numFinishedRequests());
+        LOGS(_log, LOG_LVL_DEBUG,
+             "HEARTBEAT"
+                     << "  worker: " << reqProcSvr->worker()
+                     << "  processor.state: " << reqProcSvr->processor()->state2string()
+                     << "  new, in-progress, finished: " << reqProcSvr->processor()->numNewRequests() << ", "
+                     << reqProcSvr->processor()->numInProgressRequests() << ", "
+                     << reqProcSvr->processor()->numFinishedRequests());
         this_thread::sleep_for(
                 chrono::seconds(max(1U, config->get<unsigned int>("registry", "heartbeat-ival-sec"))));
     }
@@ -184,20 +151,17 @@ int WorkerApp::runImpl() {
     ingestSvrThread.join();
     ingestHttpSvrThread.join();
     exportSvrThread.join();
-    
+
     return 0;
 }
 
-
 void WorkerApp::_verifyCreateFolders() const {
     auto const config = serviceProvider()->config();
-    vector<string> const folders = {
-        config->get<string>("worker", "data-dir"),
-        config->get<string>("worker", "loader-tmp-dir"),
-        config->get<string>("worker", "exporter-tmp-dir"),
-        config->get<string>("worker", "http-loader-tmp-dir")
-    };
+    vector<string> const folders = {config->get<string>("worker", "data-dir"),
+                                    config->get<string>("worker", "loader-tmp-dir"),
+                                    config->get<string>("worker", "exporter-tmp-dir"),
+                                    config->get<string>("worker", "http-loader-tmp-dir")};
     FileUtils::verifyFolders("WORKER", folders, !_doNotCreateMissingFolders);
 }
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica

@@ -29,14 +29,12 @@
 #include "replica/Application.h"
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
 /**
  * Class WorkerApp implements represents a worker service.
  */
-class WorkerApp: public Application {
+class WorkerApp : public Application {
 public:
     typedef std::shared_ptr<WorkerApp> Ptr;
 
@@ -77,7 +75,7 @@ private:
      *   write-enabled for the current user.
      */
     void _verifyCreateFolders() const;
-    
+
     /// A connection url for the MySQL service of the Qserv worker database.
     std::string _qservWorkerDbUrl;
 
@@ -86,6 +84,6 @@ private:
     bool _doNotCreateMissingFolders = false;
 };
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica
 
 #endif /* LSST_QSERV_REPLICA_WORKERAPP_H */

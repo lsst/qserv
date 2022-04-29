@@ -38,65 +38,33 @@ namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.SqlDropIndexesJob");
 
-} /// namespace
+}  // namespace
 
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
 string SqlDropIndexesJob::typeName() { return "SqlDropIndexesJob"; }
 
-
-SqlDropIndexesJob::Ptr SqlDropIndexesJob::create(
-        string const& database,
-        string const& table,
-        bool overlap,
-        string const& indexName,
-        bool allWorkers,
-        Controller::Ptr const& controller,
-        string const& parentJobId,
-        CallbackType const& onFinish,
-        int priority) {
-    return Ptr(new SqlDropIndexesJob(
-        database,
-        table,
-        overlap,
-        indexName,
-        allWorkers,
-        controller,
-        parentJobId,
-        onFinish,
-        priority
-    ));
+SqlDropIndexesJob::Ptr SqlDropIndexesJob::create(string const& database, string const& table, bool overlap,
+                                                 string const& indexName, bool allWorkers,
+                                                 Controller::Ptr const& controller, string const& parentJobId,
+                                                 CallbackType const& onFinish, int priority) {
+    return Ptr(new SqlDropIndexesJob(database, table, overlap, indexName, allWorkers, controller, parentJobId,
+                                     onFinish, priority));
 }
 
+SqlDropIndexesJob::SqlDropIndexesJob(string const& database, string const& table, bool overlap,
+                                     string const& indexName, bool allWorkers,
+                                     Controller::Ptr const& controller, string const& parentJobId,
+                                     CallbackType const& onFinish, int priority)
+        : SqlJob(0, allWorkers, controller, parentJobId, "SQL_DROP_TABLE_INDEXES", priority),
+          _database(database),
+          _table(table),
+          _overlap(overlap),
+          _indexName(indexName),
+          _onFinish(onFinish) {}
 
-SqlDropIndexesJob::SqlDropIndexesJob(
-        string const& database,
-        string const& table,
-        bool overlap,
-        string const& indexName,
-        bool allWorkers,
-        Controller::Ptr const& controller,
-        string const& parentJobId,
-        CallbackType const& onFinish,
-        int priority)
-    :   SqlJob(0,
-               allWorkers,
-               controller,
-               parentJobId,
-               "SQL_DROP_TABLE_INDEXES",
-               priority),
-        _database(database),
-        _table(table),
-        _overlap(overlap),
-        _indexName(indexName),
-        _onFinish(onFinish) {
-}
-
-
-list<pair<string,string>> SqlDropIndexesJob::extendedPersistentState() const {
-    list<pair<string,string>> result;
+list<pair<string, string>> SqlDropIndexesJob::extendedPersistentState() const {
+    list<pair<string, string>> result;
     result.emplace_back("database", database());
     result.emplace_back("table", table());
     result.emplace_back("overlap", bool2str(overlap()));
@@ -105,10 +73,8 @@ list<pair<string,string>> SqlDropIndexesJob::extendedPersistentState() const {
     return result;
 }
 
-
-list<SqlRequest::Ptr> SqlDropIndexesJob::launchRequests(util::Lock const& lock,
-                                                         string const& worker,
-                                                         size_t maxRequestsPerWorker) {
+list<SqlRequest::Ptr> SqlDropIndexesJob::launchRequests(util::Lock const& lock, string const& worker,
+                                                        size_t maxRequestsPerWorker) {
     list<SqlRequest::Ptr> requests;
 
     if (maxRequestsPerWorker == 0) return requests;
@@ -124,38 +90,24 @@ list<SqlRequest::Ptr> SqlDropIndexesJob::launchRequests(util::Lock const& lock,
     // Divide tables into subsets allocated to the "batch" requests. Then launch
     // the requests for the current worker.
     auto const self = shared_from_base<SqlDropIndexesJob>();
-    for (auto&& tables: distributeTables(tables2process, maxRequestsPerWorker)) {
-        requests.push_back(
-            controller()->sqlDropTableIndexes(
-                worker,
-                database(),
-                tables,
-                indexName(),
-                [self] (SqlDropIndexesRequest::Ptr const& request) {
-                    self->onRequestFinish(request);
-                },
-                priority(),
-                true,   /* keepTracking*/
-                id()    /* jobId */
-            )
-        );
+    for (auto&& tables : distributeTables(tables2process, maxRequestsPerWorker)) {
+        requests.push_back(controller()->sqlDropTableIndexes(
+                worker, database(), tables, indexName(),
+                [self](SqlDropIndexesRequest::Ptr const& request) { self->onRequestFinish(request); },
+                priority(), true, /* keepTracking*/
+                id()              /* jobId */
+                ));
     }
     return requests;
 }
 
-
-void SqlDropIndexesJob::stopRequest(util::Lock const& lock,
-                                    SqlRequest::Ptr const& request) {
+void SqlDropIndexesJob::stopRequest(util::Lock const& lock, SqlRequest::Ptr const& request) {
     stopRequestDefaultImpl<StopSqlDropIndexesRequest>(lock, request);
 }
-
 
 void SqlDropIndexesJob::notify(util::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "[" << typeName() << "]");
     notifyDefaultImpl<SqlDropIndexesJob>(lock, _onFinish);
 }
 
-}}} // namespace lsst::qserv::replica
-
-
-
+}}}  // namespace lsst::qserv::replica

@@ -26,20 +26,17 @@
 
 #include <string>
 
-namespace lsst {
-namespace qserv {
-namespace css {
+namespace lsst { namespace qserv { namespace css {
 
 /// A container for shared scan-table metadata.
 struct ScanTableParams {
     ScanTableParams() {}
-    ScanTableParams(bool lockInMem_, int scanRating_) :
-        lockInMem(lockInMem_), scanRating(scanRating_) {}
+    ScanTableParams(bool lockInMem_, int scanRating_) : lockInMem(lockInMem_), scanRating(scanRating_) {}
 
     bool lockInMem{false};  ///< True if table should be locked in memory for shared scan
     int scanRating{0};      ///< Speed of shared scan. 1-fast, 2-medium, 3-slow
 };
 
-}}} // namespace lsst::qserv::css
+}}}  // namespace lsst::qserv::css
 
-#endif // LSST_QSERV_CSS_SCANTABLEPARAMS_H
+#endif  // LSST_QSERV_CSS_SCANTABLEPARAMS_H

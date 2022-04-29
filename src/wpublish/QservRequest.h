@@ -33,15 +33,13 @@
 #include "proto/FrameBuffer.h"
 #include "proto/worker.pb.h"
 
-namespace lsst {
-namespace qserv {
-namespace wpublish {
+namespace lsst { namespace qserv { namespace wpublish {
 
 /**
  * Class QservRequest is a base class for a family of the client-side requests
  * (classes) to the Qserv worker management services.
  */
-class QservRequest: public XrdSsiRequest {
+class QservRequest : public XrdSsiRequest {
 public:
     QservRequest(QservRequest const&) = delete;
     QservRequest& operator=(QservRequest const&) = delete;
@@ -76,19 +74,15 @@ protected:
 
     char* GetRequest(int& dlen) override;
 
-    bool ProcessResponse(const XrdSsiErrInfo& eInfo,
-                         const XrdSsiRespInfo& rInfo) override;
+    bool ProcessResponse(const XrdSsiErrInfo& eInfo, const XrdSsiRespInfo& rInfo) override;
 
-    void ProcessResponseData(const XrdSsiErrInfo& eInfo,
-                             char* buff,
-                             int blen,
-                             bool last) override;
+    void ProcessResponseData(const XrdSsiErrInfo& eInfo, char* buff, int blen, bool last) override;
 
 private:
     // Request buffer (gets prepared by subclasses before sending a request
     // to the worker service of Qserv)
 
-    proto::FrameBuffer _frameBuf;   ///< buffer for serializing messages before sending them
+    proto::FrameBuffer _frameBuf;  ///< buffer for serializing messages before sending them
 
     /// The global counter for the number of instances of any subclasses
     static std::atomic<size_t> _numClassInstances;
@@ -100,12 +94,12 @@ private:
     /// buffer is used to limit the amount of bytes to be received from a server.
     int _bufIncrementSize;
 
-    int _bufSize;       ///< actual (meaningful) number of bytes in the incoming buffer
-    int _bufCapacity;   ///< total capacity of the incoming buffer
+    int _bufSize;      ///< actual (meaningful) number of bytes in the incoming buffer
+    int _bufCapacity;  ///< total capacity of the incoming buffer
 
-    char* _buf;         ///< buffer for incomming data
+    char* _buf;  ///< buffer for incomming data
 };
 
-}}} // namespace lsst::qserv::wpublish
+}}}  // namespace lsst::qserv::wpublish
 
-#endif // LSST_QSERV_WPUBLISH_QSERV_REQUEST_H
+#endif  // LSST_QSERV_WPUBLISH_QSERV_REQUEST_H

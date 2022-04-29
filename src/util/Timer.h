@@ -32,15 +32,15 @@
 #include <mutex>
 #include <vector>
 
-namespace lsst {
-namespace qserv {
-namespace util {
+namespace lsst { namespace qserv { namespace util {
 
 /// A dirt-simple class for instrumenting ops in qserv.
 struct Timer {
     Timer() {
-        startTime.tv_sec = 0; startTime.tv_usec = 0;
-        stopTime.tv_sec = 0; stopTime.tv_usec = 0;
+        startTime.tv_sec = 0;
+        startTime.tv_usec = 0;
+        stopTime.tv_sec = 0;
+        stopTime.tv_usec = 0;
     }
 
     void start() { ::gettimeofday(&startTime, nullptr); }
@@ -59,11 +59,10 @@ struct Timer {
 
     /// Convert time to an ISO 8601 UTC string with microsecond precision
     /// and write it to the given output stream.
-    static std::ostream & write(std::ostream & os,
-                                struct ::timeval const & time);
+    static std::ostream& write(std::ostream& os, struct ::timeval const& time);
 };
 
-std::ostream& operator<<(std::ostream & os, Timer const & tm);
+std::ostream& operator<<(std::ostream& os, Timer const& tm);
 
 /// This class is used to log how long it takes to lock a mutex
 /// and how long the mutex is held.
@@ -83,7 +82,6 @@ private:
     Timer timeHeld;
 };
 
-
 /// This class is useful for getting an idea of how long something usually takes.
 /// It is also fairly easy to locate an abnormally long call in the log by
 /// searching for the first instance of a particular histogram value.
@@ -99,6 +97,7 @@ public:
 
         double getMaxVal() { return _maxVal; }
         int count{0};
+
     private:
         double _maxVal;
     };
@@ -109,8 +108,8 @@ public:
     TimerHistogram& operator=(TimerHistogram const&) = delete;
 
     // Add a time to the histogram. If note is != "", return a log worthy string of the histogram.
-    std::string addTime(double time, std::string const& note="");
-    std::string getString(std::string const& note=""); ///< @return a log worthy version of the histogram.
+    std::string addTime(double time, std::string const& note = "");
+    std::string getString(std::string const& note = "");  ///< @return a log worthy version of the histogram.
 
 private:
     std::string _getString(std::string const& note);
@@ -123,7 +122,6 @@ private:
     uint64_t _totalCount{0};
 };
 
-}}} // namespace lsst::qserv::util
+}}}  // namespace lsst::qserv::util
 
-#endif // LSST_QSERV_UTIL_TIMER_H
-
+#endif  // LSST_QSERV_UTIL_TIMER_H

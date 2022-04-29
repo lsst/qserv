@@ -30,24 +30,18 @@
 #include "wbase/WorkerCommand.h"
 
 // Forward declarations
-namespace lsst {
-namespace qserv {
-namespace wbase {
-    class SendChannel;
-}}}
+namespace lsst { namespace qserv { namespace wbase {
+class SendChannel;
+}}}  // namespace lsst::qserv::wbase
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace wpublish {
+namespace lsst { namespace qserv { namespace wpublish {
 
 /**
-  * Class TestEchoCommand reloads a list of chunks from the database
-  */
+ * Class TestEchoCommand reloads a list of chunks from the database
+ */
 class TestEchoCommand : public wbase::WorkerCommand {
-
 public:
-
     // The default construction and copy semantics are prohibited
     TestEchoCommand& operator=(TestEchoCommand const&) = delete;
     TestEchoCommand(TestEchoCommand const&) = delete;
@@ -65,10 +59,9 @@ public:
     void run() override;
 
 private:
-
     std::string _value;
 };
 
-}}} // namespace lsst::qserv::wpublish
+}}}  // namespace lsst::qserv::wpublish
 
-#endif // LSST_QSERV_WPUBLISH_TEST_ECHO_COMMAND_H
+#endif  // LSST_QSERV_WPUBLISH_TEST_ECHO_COMMAND_H

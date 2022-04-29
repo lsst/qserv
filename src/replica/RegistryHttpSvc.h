@@ -30,27 +30,23 @@
 #include "replica/ServiceProvider.h"
 
 // Forward declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
-     class RegistryWorkers;
-}}} // namespace lsst::qserv::replica
+namespace lsst { namespace qserv { namespace replica {
+class RegistryWorkers;
+}}}  // namespace lsst::qserv::replica
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
 /**
  * Class RegistryHttpSvc is used for handling incoming REST API requests to
  * the workers registration service. Each instance of this class
  * will be running in its own thread.
- * 
+ *
  * @note The class's implementation starts its own collection of BOOST ASIO
  *   service threads as configured in Configuration.
  * @note The implementation of the class is not thread-safe.
  */
-class RegistryHttpSvc: public HttpSvc {
+class RegistryHttpSvc : public HttpSvc {
 public:
     typedef std::shared_ptr<RegistryHttpSvc> Ptr;
 
@@ -84,6 +80,6 @@ private:
     std::unique_ptr<RegistryWorkers> _workers;
 };
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_REGISTRYHTTPSVC_H
+#endif  // LSST_QSERV_REPLICA_REGISTRYHTTPSVC_H

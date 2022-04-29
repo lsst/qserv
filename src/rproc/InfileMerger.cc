@@ -21,19 +21,19 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 /**
-  * @file
-  *
-  * @brief InfileMerger implementation
-  *
-  * InfileMerger is a class that is responsible for the organized
-  * merging of query results into a single table that can be returned
-  * to the user. The current strategy loads dumped chunk result tables
-  * from workers into a single table, followed by a
-  * merging/aggregation query (as needed) to produce the final user
-  * result table.
-  *
-  * @author Daniel L. Wang, SLAC
-  */
+ * @file
+ *
+ * @brief InfileMerger implementation
+ *
+ * InfileMerger is a class that is responsible for the organized
+ * merging of query results into a single table that can be returned
+ * to the user. The current strategy loads dumped chunk result tables
+ * from workers into a single table, followed by a
+ * merging/aggregation query (as needed) to produce the final user
+ * result table.
+ *
+ * @author Daniel L. Wang, SLAC
+ */
 
 // Class header
 #include "rproc/InfileMerger.h"
@@ -72,7 +72,7 @@
 #include "util/IterableFormatter.h"
 #include "util/StringHash.h"
 
-namespace { // File-scope helpers
+namespace {  // File-scope helpers
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.rproc.InfileMerger");
 
@@ -98,26 +98,22 @@ std::string getTimeStampId() {
 
 const char JOB_ID_BASE_NAME[] = "jobId";
 size_t const MB_SIZE_BYTES = 1024 * 1024;
-} // anonymous namespace
+}  // anonymous namespace
 
-
-namespace lsst {
-namespace qserv {
-namespace rproc {
+namespace lsst { namespace qserv { namespace rproc {
 
 ////////////////////////////////////////////////////////////////////////
 // InfileMerger public
 ////////////////////////////////////////////////////////////////////////
-InfileMerger::InfileMerger(InfileMergerConfig const& c,
-                           std::shared_ptr<qproc::DatabaseModels> const& dm,
+InfileMerger::InfileMerger(InfileMergerConfig const& c, std::shared_ptr<qproc::DatabaseModels> const& dm,
                            util::SemaMgr::Ptr const& semaMgrConn)
-    : _config(c),
-      _mysqlConn(_config.mySqlConfig),
-      _databaseModels(dm),
-      _jobIdColName(JOB_ID_BASE_NAME),
-      _maxSqlConnectionAttempts(_config.czarConfig.getMaxSqlConnectionAttempts()),
-      _maxResultTableSizeBytes(_config.czarConfig.getMaxTableSizeMB()*MB_SIZE_BYTES),
-      _semaMgrConn(semaMgrConn) {
+        : _config(c),
+          _mysqlConn(_config.mySqlConfig),
+          _databaseModels(dm),
+          _jobIdColName(JOB_ID_BASE_NAME),
+          _maxSqlConnectionAttempts(_config.czarConfig.getMaxSqlConnectionAttempts()),
+          _maxResultTableSizeBytes(_config.czarConfig.getMaxTableSizeMB() * MB_SIZE_BYTES),
+          _semaMgrConn(semaMgrConn) {
     _fixupTargetName();
     _setEngineFromStr(_config.czarConfig.getResultEngine());
     if (_dbEngine == MYISAM) {
@@ -126,7 +122,7 @@ InfileMerger::InfileMerger(InfileMergerConfig const& c,
             throw InfileMergerError(util::ErrorCode::MYSQLCONNECT, "InfileMerger mysql connect failure.");
         }
     } else {
-        if (_dbEngine == INNODB)  {
+        if (_dbEngine == INNODB) {
             LOGS(_log, LOG_LVL_INFO, "Engine is INNODB, parallel, semaMgrConn=" << *_semaMgrConn);
         } else if (_dbEngine == MEMORY) {
             LOGS(_log, LOG_LVL_INFO, "Engine is MEMORY, parallel, semaMgrConn=" << *_semaMgrConn);
@@ -138,21 +134,21 @@ InfileMerger::InfileMerger(InfileMergerConfig const& c,
         _mysqlConn.closeMySqlConn();
     }
 
-    LOGS(_log, LOG_LVL_TRACE, "InfileMerger maxResultTableSizeBytes=" << _maxResultTableSizeBytes
-                              << " maxSqlConnexctionAttempts=" << _maxSqlConnectionAttempts);
+    LOGS(_log, LOG_LVL_TRACE,
+         "InfileMerger maxResultTableSizeBytes=" << _maxResultTableSizeBytes << " maxSqlConnexctionAttempts="
+                                                 << _maxSqlConnectionAttempts);
     _invalidJobAttemptMgr.setDeleteFunc([this](InvalidJobAttemptMgr::jASetType const& jobAttempts) -> bool {
         return _deleteInvalidRows(jobAttempts);
     });
 }
 
-
-InfileMerger::~InfileMerger() {
-}
-
+InfileMerger::~InfileMerger() {}
 
 void InfileMerger::_setEngineFromStr(std::string const& engineName) {
     std::string eName;
-    for (auto&& c:engineName) { eName += toupper(c); }
+    for (auto&& c : engineName) {
+        eName += toupper(c);
+    }
     if (eName == "INNODB") {
         _dbEngine = INNODB;
     } else if (eName == "MEMORY") {
@@ -184,21 +180,18 @@ std::string InfileMerger::_getQueryIdStr() {
     return _queryIdStr;
 }
 
-
 void InfileMerger::_setQueryIdStr(std::string const& qIdStr) {
     std::lock_guard<std::mutex> lk(_queryIdStrMtx);
     _queryIdStr = qIdStr;
     _queryIdStrSet = true;
 }
 
-
 void InfileMerger::mergeCompleteFor(std::set<int> const& jobIds) {
     std::lock_guard<std::mutex> resultSzLock(_mtxResultSizeMtx);
-    for (int jobId:jobIds) {
+    for (int jobId : jobIds) {
         _totalResultSize += _perJobResultSize[jobId];
     }
 }
-
 
 bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> const& response) {
     if (!response) {
@@ -206,39 +199,38 @@ bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> const& response)
         return false;
     }
     // TODO: Check session id (once session id mgmt is implemented)
-    if (not (response->result.has_jobid() && response->result.has_rowcount()
-             && response->result.has_transmitsize() && response->result.has_attemptcount()
-             && response->result.has_rowschema())) {
-        LOGS(_log, LOG_LVL_ERROR, "merge response missing required field"
-                                  << " jobid:" << response->result.has_jobid()
-                                  << " rowcount:" << response->result.has_rowcount()
-                                  << " transmitsize:" << response->result.has_transmitsize()
-                                  << " attemptcount:" << response->result.has_attemptcount()
-                                  << " rowschema:" << response->result.has_rowschema());
+    if (not(response->result.has_jobid() && response->result.has_rowcount() &&
+            response->result.has_transmitsize() && response->result.has_attemptcount() &&
+            response->result.has_rowschema())) {
+        LOGS(_log, LOG_LVL_ERROR,
+             "merge response missing required field"
+                     << " jobid:" << response->result.has_jobid()
+                     << " rowcount:" << response->result.has_rowcount()
+                     << " transmitsize:" << response->result.has_transmitsize()
+                     << " attemptcount:" << response->result.has_attemptcount()
+                     << " rowschema:" << response->result.has_rowschema());
         return false;
     }
     int const jobId = response->result.jobid();
-    std::string queryIdJobStr =
-        QueryIdHelper::makeIdStr(response->result.queryid(), jobId);
+    std::string queryIdJobStr = QueryIdHelper::makeIdStr(response->result.queryid(), jobId);
     if (!_queryIdStrSet) {
         _setQueryIdStr(QueryIdHelper::makeIdStr(response->result.queryid()));
     }
     size_t resultSize = response->result.transmitsize();
     LOGS(_log, LOG_LVL_TRACE,
          "Executing InfileMerger::merge("
-         << " sizes=" << static_cast<short>(response->headerSize)
-         << ", " << response->protoHeader.size()
-         << ", resultSize=" << resultSize
-         << ", rowCount=" << response->result.rowcount()
-         << ", row_size=" << response->result.row_size()
-         << ", attemptCount=" << response-> result.attemptcount()
-         << ", errCode=" << response->result.has_errorcode()
-         << " hasErMsg=" << response->result.has_errormsg() << ")");
+                 << " sizes=" << static_cast<short>(response->headerSize) << ", "
+                 << response->protoHeader.size() << ", resultSize=" << resultSize << ", rowCount="
+                 << response->result.rowcount() << ", row_size=" << response->result.row_size()
+                 << ", attemptCount=" << response->result.attemptcount()
+                 << ", errCode=" << response->result.has_errorcode()
+                 << " hasErMsg=" << response->result.has_errormsg() << ")");
 
     if (response->result.has_errorcode() || response->result.has_errormsg()) {
-        _error = util::Error(response->result.errorcode(), response->result.errormsg(), util::ErrorCode::MYSQLEXEC);
-        LOGS(_log, LOG_LVL_ERROR, "Error from worker:" << response->protoHeader.wname()
-                << " in response data: " << _error);
+        _error = util::Error(response->result.errorcode(), response->result.errormsg(),
+                             util::ErrorCode::MYSQLEXEC);
+        LOGS(_log, LOG_LVL_ERROR,
+             "Error from worker:" << response->protoHeader.wname() << " in response data: " << _error);
         return false;
     }
 
@@ -255,8 +247,8 @@ bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> const& response)
     bool ret = false;
     // Add columns to rows in virtFile.
     int resultJobId = makeJobIdAttempt(response->result.jobid(), response->result.attemptcount());
-    ProtoRowBuffer::Ptr pRowBuffer = std::make_shared<ProtoRowBuffer>(response->result,
-                                     resultJobId, _jobIdColName, _jobIdSqlType, _jobIdMysqlType);
+    ProtoRowBuffer::Ptr pRowBuffer = std::make_shared<ProtoRowBuffer>(
+            response->result, resultJobId, _jobIdColName, _jobIdSqlType, _jobIdMysqlType);
     std::string const virtFile = _infileMgr.prepareSrc(pRowBuffer);
     std::string const infileStatement = sql::formLoadInfile(_mergeTable, virtFile);
 
@@ -287,7 +279,7 @@ bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> const& response)
         case MYISAM:
             ret = _applyMysqlMyIsam(infileStatement);
             break;
-        case INNODB: // Fallthrough
+        case INNODB:  // Fallthrough
         case MEMORY:
             ret = _applyMysqlInnoDb(infileStatement);
             break;
@@ -296,8 +288,9 @@ bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> const& response)
     }
     auto end = std::chrono::system_clock::now();
     auto mergeDur = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-    LOGS(_log, LOG_LVL_DEBUG, "mergeDur=" << mergeDur.count()
-        << " sema(total=" << _semaMgrConn->getTotalCount() << " used=" << _semaMgrConn->getUsedCount() << ")");
+    LOGS(_log, LOG_LVL_DEBUG,
+         "mergeDur=" << mergeDur.count() << " sema(total=" << _semaMgrConn->getTotalCount()
+                     << " used=" << _semaMgrConn->getUsedCount() << ")");
     if (not ret) {
         LOGS(_log, LOG_LVL_ERROR, "InfileMerger::merge mysql applyMysql failure");
     }
@@ -307,10 +300,9 @@ bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> const& response)
     return ret;
 }
 
-
 bool InfileMerger::_applyMysqlMyIsam(std::string const& query) {
     std::unique_lock<std::mutex> lock(_mysqlMutex);
-    for (int j=0; !_mysqlConn.connected(); ++j) {
+    for (int j = 0; !_mysqlConn.connected(); ++j) {
         // should have connected during construction
         // Try reconnecting--maybe we timed out.
         if (!_setupConnectionMyIsam()) {
@@ -320,23 +312,21 @@ bool InfileMerger::_applyMysqlMyIsam(std::string const& query) {
                 lock.lock();
             } else {
                 LOGS(_log, LOG_LVL_ERROR, "InfileMerger::_applyMysql _setupConnection() failed!!!");
-                return false; // Reconnection failed. This is an error.
+                return false;  // Reconnection failed. This is an error.
             }
         }
     }
 
-    int rc = mysql_real_query(_mysqlConn.getMySql(),
-                              query.data(), query.size());
+    int rc = mysql_real_query(_mysqlConn.getMySql(), query.data(), query.size());
     return rc == 0;
 }
-
 
 bool InfileMerger::_applyMysqlInnoDb(std::string const& query) {
     mysql::MySqlConnection mySConn(_config.mySqlConfig);
     if (!mySConn.connected()) {
         if (!_setupConnectionInnoDb(mySConn)) {
             LOGS(_log, LOG_LVL_ERROR, "InfileMerger::_applyMysql _setupConnection() failed!!!");
-            return false; // Reconnection failed. This is an error.
+            return false;  // Reconnection failed. This is an error.
         }
     }
 
@@ -344,11 +334,10 @@ bool InfileMerger::_applyMysqlInnoDb(std::string const& query) {
     return rc == 0;
 }
 
-
 bool InfileMerger::_setupConnectionInnoDb(mysql::MySqlConnection& mySConn) {
     // Make 10 attempts to open the connection. They can fail when the
     // system is busy.
-    for (int j=0; j < sqlConnectionAttempts(); ++j) {
+    for (int j = 0; j < sqlConnectionAttempts(); ++j) {
         if (mySConn.connect()) {
             _infileMgr.attach(mySConn.getMySql());
             return true;
@@ -359,7 +348,6 @@ bool InfileMerger::_setupConnectionInnoDb(mysql::MySqlConnection& mySConn) {
     }
     return false;
 }
-
 
 bool InfileMerger::finalize() {
     bool finalizeOk = true;
@@ -376,9 +364,8 @@ bool InfileMerger::finalize() {
         // Aggregation needed: Do the aggregation.
         std::string mergeSelect = _config.mergeStmt->getQueryTemplate().sqlFragment();
         // Using MyISAM as single thread writing with no need to recover from errors.
-        std::string createMerge = "CREATE TABLE " + _config.targetTable
-            + " ENGINE=MyISAM " + mergeSelect;
-        LOGS(_log, LOG_LVL_TRACE, "Prepping merging w/" <<  *_config.mergeStmt);
+        std::string createMerge = "CREATE TABLE " + _config.targetTable + " ENGINE=MyISAM " + mergeSelect;
+        LOGS(_log, LOG_LVL_TRACE, "Prepping merging w/" << *_config.mergeStmt);
         LOGS(_log, LOG_LVL_DEBUG, "Merging w/" << createMerge);
         finalizeOk = _applySqlLocal(createMerge, "createMerge");
 
@@ -386,10 +373,8 @@ bool InfileMerger::finalize() {
         sql::SqlErrorObject eObj;
         // Don't report failure on not exist
         LOGS(_log, LOG_LVL_TRACE, "Cleaning up " << _mergeTable);
-#if 1 // Set to 0 when we want to retain mergeTables for debugging.
-        bool cleanupOk = _sqlConn->dropTable(_mergeTable, eObj,
-                                             false,
-                                             _config.mySqlConfig.dbName);
+#if 1  // Set to 0 when we want to retain mergeTables for debugging.
+        bool cleanupOk = _sqlConn->dropTable(_mergeTable, eObj, false, _config.mySqlConfig.dbName);
 #else
         bool cleanupOk = true;
 #endif
@@ -399,8 +384,7 @@ bool InfileMerger::finalize() {
     } else {
         // Remove jobId and attemptCount information from the result table.
         // Returning a view could be faster, but is more complicated.
-        std::string sqlDropCol = std::string("ALTER TABLE ") + _mergeTable
-                               + " DROP COLUMN " +  _jobIdColName;
+        std::string sqlDropCol = std::string("ALTER TABLE ") + _mergeTable + " DROP COLUMN " + _jobIdColName;
         LOGS(_log, LOG_LVL_TRACE, "Removing w/" << sqlDropCol);
         finalizeOk = _applySqlLocal(sqlDropCol, "dropCol Removing");
     }
@@ -409,14 +393,11 @@ bool InfileMerger::finalize() {
     return finalizeOk;
 }
 
-bool InfileMerger::isFinished() const {
-    return _isFinished;
-}
-
+bool InfileMerger::isFinished() const { return _isFinished; }
 
 bool InfileMerger::_deleteInvalidRows(InvalidJobAttemptMgr::jASetType const& jobIdAttempts) {
     // delete several rows at a time
-    unsigned int maxSize = 950000; /// default 1mb limit
+    unsigned int maxSize = 950000;  /// default 1mb limit
     auto iter = jobIdAttempts.begin();
     auto end = jobIdAttempts.end();
     while (iter != end) {
@@ -431,8 +412,8 @@ bool InfileMerger::_deleteInvalidRows(InvalidJobAttemptMgr::jASetType const& job
             invalidStr += std::to_string(*iter);
             ++iter;
         }
-        std::string sqlDelRows = std::string("DELETE FROM ") + _mergeTable
-                + " WHERE " + _jobIdColName + " IN (" + invalidStr + ")";
+        std::string sqlDelRows = std::string("DELETE FROM ") + _mergeTable + " WHERE " + _jobIdColName +
+                                 " IN (" + invalidStr + ")";
         bool ok = _applySqlLocal(sqlDelRows, "deleteInvalidRows");
         if (!ok) {
             LOGS(_log, LOG_LVL_ERROR, "Failed to drop columns w/" << sqlDelRows);
@@ -442,12 +423,11 @@ bool InfileMerger::_deleteInvalidRows(InvalidJobAttemptMgr::jASetType const& job
     return true;
 }
 
-
 int InfileMerger::makeJobIdAttempt(int jobId, int attemptCount) {
     int jobIdAttempt = jobId * MAX_JOB_ATTEMPTS;
     if (attemptCount >= MAX_JOB_ATTEMPTS) {
-        std::string msg = _queryIdStr + " jobId=" + std::to_string(jobId)
-                + " Canceling query attemptCount too large at " + std::to_string(attemptCount);
+        std::string msg = _queryIdStr + " jobId=" + std::to_string(jobId) +
+                          " Canceling query attemptCount too large at " + std::to_string(attemptCount);
         LOGS(_log, LOG_LVL_ERROR, msg);
         throw util::Bug(ERR_LOC, msg);
     }
@@ -455,13 +435,11 @@ int InfileMerger::makeJobIdAttempt(int jobId, int attemptCount) {
     return jobIdAttempt;
 }
 
-
 void InfileMerger::setMergeStmtFromList(std::shared_ptr<query::SelectStmt> const& mergeStmt) const {
     if (mergeStmt != nullptr) {
         mergeStmt->setFromListAsTable(_mergeTable);
     }
 }
-
 
 bool InfileMerger::getSchemaForQueryResults(query::SelectStmt const& stmt, sql::Schema& schema) {
     sql::SqlResults results;
@@ -470,20 +448,21 @@ bool InfileMerger::getSchemaForQueryResults(query::SelectStmt const& stmt, sql::
     bool ok = _databaseModels->applySql(query, results, getSchemaErrObj);
     if (not ok) {
         LOGS(_log, LOG_LVL_ERROR, "Failed to get schema:" << getSchemaErrObj.errMsg());
-        _error = InfileMergerError(util::ErrorCode::INTERNAL, "Failed to get schema: " + getSchemaErrObj.errMsg());
+        _error = InfileMergerError(util::ErrorCode::INTERNAL,
+                                   "Failed to get schema: " + getSchemaErrObj.errMsg());
         return false;
     }
     sql::SqlErrorObject errObj;
     if (errObj.isSet()) {
         LOGS(_log, LOG_LVL_ERROR, "Failed to extract schema from result: " << errObj.errMsg());
-        _error = InfileMergerError(util::ErrorCode::INTERNAL, "Failed to extract schema from result: " + errObj.errMsg());
+        _error = InfileMergerError(util::ErrorCode::INTERNAL,
+                                   "Failed to extract schema from result: " + errObj.errMsg());
         return false;
     }
     schema = results.makeSchema(errObj);
     LOGS(_log, LOG_LVL_TRACE, "InfileMerger extracted schema: " << schema);
     return true;
 }
-
 
 bool InfileMerger::makeResultsTableForQuery(query::SelectStmt const& stmt) {
     sql::Schema schema;
@@ -503,19 +482,19 @@ bool InfileMerger::makeResultsTableForQuery(query::SelectStmt const& stmt) {
             createStmt += " ENGINE=MEMORY";
             break;
         default:
-            throw std::invalid_argument("InfileMerger::makeResultsTableForQuery unknown engine "
-                                        + engineToStr(_dbEngine));
+            throw std::invalid_argument("InfileMerger::makeResultsTableForQuery unknown engine " +
+                                        engineToStr(_dbEngine));
     }
     LOGS(_log, LOG_LVL_TRACE, "InfileMerger make results table query: " << createStmt);
     if (not _applySqlLocal(createStmt, "makeResultsTableForQuery")) {
-        _error = InfileMergerError(util::ErrorCode::CREATE_TABLE, "Error creating table:" + _mergeTable + ": " + _error.getMsg());
-        _isFinished = true; // Cannot continue.
+        _error = InfileMergerError(util::ErrorCode::CREATE_TABLE,
+                                   "Error creating table:" + _mergeTable + ": " + _error.getMsg());
+        _isFinished = true;  // Cannot continue.
         LOGS(_log, LOG_LVL_ERROR, "InfileMerger sql error: " << _error.getMsg());
         return false;
     }
     return true;
 }
-
 
 void InfileMerger::_addJobIdColumnToSchema(sql::Schema& schema) {
     unsigned int attempt = 0;
@@ -523,50 +502,47 @@ void InfileMerger::_addJobIdColumnToSchema(sql::Schema& schema) {
     while (columnItr != schema.columns.end()) {
         if (columnItr->name == _jobIdColName) {
             _jobIdColName = JOB_ID_BASE_NAME + std::to_string(attempt++);
-            columnItr = schema.columns.begin(); // start over
+            columnItr = schema.columns.begin();  // start over
         } else {
             ++columnItr;
         }
     }
     sql::ColSchema scs;
-    scs.name              = _jobIdColName;
+    scs.name = _jobIdColName;
     scs.colType.mysqlType = _jobIdMysqlType;
-    scs.colType.sqlType   = _jobIdSqlType;
+    scs.colType.sqlType = _jobIdSqlType;
     schema.columns.insert(schema.columns.begin(), scs);
 }
-
 
 bool InfileMerger::prepScrub(int jobId, int attemptCount) {
     int jobIdAttempt = makeJobIdAttempt(jobId, attemptCount);
     return _invalidJobAttemptMgr.prepScrub(jobIdAttempt);
 }
 
-
-bool InfileMerger::_applySqlLocal(std::string const& sql, std::string const& logMsg, sql::SqlResults& results) {
+bool InfileMerger::_applySqlLocal(std::string const& sql, std::string const& logMsg,
+                                  sql::SqlResults& results) {
     auto begin = std::chrono::system_clock::now();
     bool success = _applySqlLocal(sql, results);
     auto end = std::chrono::system_clock::now();
-    LOGS(_log, LOG_LVL_TRACE, logMsg << " success=" << success
-         << " microseconds="
-         << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count());
+    LOGS(_log, LOG_LVL_TRACE,
+         logMsg << " success=" << success << " microseconds="
+                << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count());
     return success;
 }
 
-
 bool InfileMerger::_applySqlLocal(std::string const& sql, std::string const& logMsg) {
-    sql::SqlResults results(true); // true = throw results away immediately
+    sql::SqlResults results(true);  // true = throw results away immediately
     return _applySqlLocal(sql, logMsg, results);
 }
-
 
 bool InfileMerger::_applySqlLocal(std::string const& sql, sql::SqlResults& results) {
     sql::SqlErrorObject errObj;
     return _applySqlLocal(sql, results, errObj);
 }
 
-
 /// Apply a SQL query, setting the appropriate error upon failure.
-bool InfileMerger::_applySqlLocal(std::string const& sql, sql::SqlResults& results, sql::SqlErrorObject& errObj) {
+bool InfileMerger::_applySqlLocal(std::string const& sql, sql::SqlResults& results,
+                                  sql::SqlErrorObject& errObj) {
     std::lock_guard<std::mutex> m(_sqlMutex);
 
     if (not _sqlConnect(errObj)) {
@@ -574,7 +550,7 @@ bool InfileMerger::_applySqlLocal(std::string const& sql, sql::SqlResults& resul
     }
     if (not _sqlConn->runQuery(sql, results, errObj)) {
         _error = util::Error(errObj.errNo(), "Error applying sql: " + errObj.printErrMsg(),
-                       util::ErrorCode::MYSQLEXEC);
+                             util::ErrorCode::MYSQLEXEC);
         LOGS(_log, LOG_LVL_ERROR, "InfileMerger error: " << _error.getMsg());
         return false;
     }
@@ -582,29 +558,26 @@ bool InfileMerger::_applySqlLocal(std::string const& sql, sql::SqlResults& resul
     return true;
 }
 
-
 bool InfileMerger::_sqlConnect(sql::SqlErrorObject& errObj) {
     if (_sqlConn == nullptr) {
         _sqlConn = sql::SqlConnectionFactory::make(_config.mySqlConfig);
         if (not _sqlConn->connectToDb(errObj)) {
             _error = util::Error(errObj.errNo(), "Error connecting to db: " + errObj.printErrMsg(),
-                           util::ErrorCode::MYSQLCONNECT);
+                                 util::ErrorCode::MYSQLCONNECT);
             _sqlConn.reset();
             LOGS(_log, LOG_LVL_ERROR, "InfileMerger error: " << _error.getMsg());
             return false;
         }
-        LOGS(_log, LOG_LVL_TRACE, "InfileMerger " << (void*) this << " connected to db");
+        LOGS(_log, LOG_LVL_TRACE, "InfileMerger " << (void*)this << " connected to db");
     }
     return true;
 }
 
-
 size_t InfileMerger::_getResultTableSizeMB() {
-    std::string tableSizeSql = std::string("SELECT table_name, ")
-                             + "round(((data_length + index_length) / 1048576), 2) as 'MB' "
-                             + "FROM information_schema.TABLES "
-                             + "WHERE table_schema = '" + _config.mySqlConfig.dbName
-                             + "' AND table_name = '" + _mergeTable + "'";
+    std::string tableSizeSql = std::string("SELECT table_name, ") +
+                               "round(((data_length + index_length) / 1048576), 2) as 'MB' " +
+                               "FROM information_schema.TABLES " + "WHERE table_schema = '" +
+                               _config.mySqlConfig.dbName + "' AND table_name = '" + _mergeTable + "'";
     LOGS(_log, LOG_LVL_TRACE, "Checking ResultTableSize " << tableSizeSql);
     std::lock_guard<std::mutex> m(_sqlMutex);
     sql::SqlErrorObject errObj;
@@ -614,7 +587,7 @@ size_t InfileMerger::_getResultTableSizeMB() {
     }
     if (not _sqlConn->runQuery(tableSizeSql, results, errObj)) {
         _error = util::Error(errObj.errNo(), "error getting size sql: " + errObj.printErrMsg(),
-                       util::ErrorCode::MYSQLEXEC);
+                             util::ErrorCode::MYSQLEXEC);
         LOGS(_log, LOG_LVL_ERROR, "result table size error: " << _error.getMsg() << tableSizeSql);
         return 0;
     }
@@ -629,11 +602,11 @@ size_t InfileMerger::_getResultTableSizeMB() {
     std::string tbName = row[0].first;
     std::string tbSize = row[1].first;
     size_t sz = std::stoul(tbSize);
-    LOGS(_log, LOG_LVL_TRACE, "Checking ResultTableSize " << tableSizeSql
-                           << " ResultTableSizeMB tbl=" << tbName << " tbSize=" << tbSize);
+    LOGS(_log, LOG_LVL_TRACE,
+         "Checking ResultTableSize " << tableSizeSql << " ResultTableSizeMB tbl=" << tbName
+                                     << " tbSize=" << tbSize);
     return sz;
 }
-
 
 /// Read a ProtoHeader message from a buffer and return the number of bytes
 /// consumed.
@@ -666,17 +639,16 @@ bool InfileMerger::_verifySession(int sessionId) {
     if (false) {
         _error = InfileMergerError(util::ErrorCode::RESULT_IMPORT, "Session id mismatch");
     }
-    return true; // TODO: for better message integrity
+    return true;  // TODO: for better message integrity
 }
-
 
 /// Choose the appropriate target name, depending on whether post-processing is
 /// needed on the result rows.
 void InfileMerger::_fixupTargetName() {
     if (_config.targetTable.empty()) {
         assert(not _config.mySqlConfig.dbName.empty());
-        _config.targetTable = (boost::format("%1%.result_%2%")
-                               % _config.mySqlConfig.dbName % getTimeStampId()).str();
+        _config.targetTable =
+                (boost::format("%1%.result_%2%") % _config.mySqlConfig.dbName % getTimeStampId()).str();
     }
 
     if (_config.mergeStmt) {
@@ -687,7 +659,6 @@ void InfileMerger::_fixupTargetName() {
     }
 }
 
-
 bool InvalidJobAttemptMgr::incrConcurrentMergeCount(int jobIdAttempt) {
     std::unique_lock<std::mutex> uLock(_iJAMtx);
     if (_isJobAttemptInvalid(jobIdAttempt)) {
@@ -697,7 +668,7 @@ bool InvalidJobAttemptMgr::incrConcurrentMergeCount(int jobIdAttempt) {
     if (_waitFlag) {
         LOGS(_log, LOG_LVL_DEBUG, "InvalidJobAttemptMgr waiting");
         /// wait for flag to clear
-        _cv.wait(uLock, [this](){ return !_waitFlag; });
+        _cv.wait(uLock, [this]() { return !_waitFlag; });
         // Since wait lets the mutex go, this must be checked again.
         if (_isJobAttemptInvalid(jobIdAttempt)) {
             LOGS(_log, LOG_LVL_DEBUG, jobIdAttempt << " invalid after wait, not merging");
@@ -712,7 +683,6 @@ bool InvalidJobAttemptMgr::incrConcurrentMergeCount(int jobIdAttempt) {
     return false;
 }
 
-
 void InvalidJobAttemptMgr::decrConcurrentMergeCount() {
     std::lock_guard<std::mutex> uLock(_iJAMtx);
     --_concurrentMergeCount;
@@ -722,7 +692,6 @@ void InvalidJobAttemptMgr::decrConcurrentMergeCount() {
         _cv.notify_all();
     }
 }
-
 
 bool InvalidJobAttemptMgr::prepScrub(int jobIdAttempt) {
     std::unique_lock<std::mutex> lockJA(_iJAMtx);
@@ -737,12 +706,10 @@ bool InvalidJobAttemptMgr::prepScrub(int jobIdAttempt) {
     return invalidRowsInResult;
 }
 
-
 void InvalidJobAttemptMgr::_cleanupIJA() {
     _waitFlag = false;
     _cv.notify_all();
 }
-
 
 bool InvalidJobAttemptMgr::holdMergingForRowDelete(std::string const& msg) {
     std::unique_lock<std::mutex> lockJA(_iJAMtx);
@@ -756,7 +723,7 @@ bool InvalidJobAttemptMgr::holdMergingForRowDelete(std::string const& msg) {
     }
 
     if (_concurrentMergeCount > 0) {
-        _cv.wait(lockJA, [this](){ return _concurrentMergeCount == 0;});
+        _cv.wait(lockJA, [this]() { return _concurrentMergeCount == 0; });
     }
 
     LOGS(_log, LOG_LVL_DEBUG, "Deleting rows for " << util::printable(_invalidJAWithRows));
@@ -766,13 +733,12 @@ bool InvalidJobAttemptMgr::holdMergingForRowDelete(std::string const& msg) {
         _invalidJAWithRows.clear();
         // Table scrubbed, continue merging results.
     } else {
-        LOGS(_log, LOG_LVL_ERROR, "holdMergingForRowDelete failed to remove rows! "
-                                  << util::printable(_invalidJAWithRows));
+        LOGS(_log, LOG_LVL_ERROR,
+             "holdMergingForRowDelete failed to remove rows! " << util::printable(_invalidJAWithRows));
     }
     _cleanupIJA();
     return res;
 }
-
 
 bool InvalidJobAttemptMgr::isJobAttemptInvalid(int jobIdAttempt) {
     // Return true if jobIdAttempt is in the invalid set.
@@ -780,11 +746,9 @@ bool InvalidJobAttemptMgr::isJobAttemptInvalid(int jobIdAttempt) {
     return _isJobAttemptInvalid(jobIdAttempt);
 }
 
-
 /// Precondition, must hold _iJAMtx.
 bool InvalidJobAttemptMgr::_isJobAttemptInvalid(int jobIdAttempt) {
     return _invalidJobAttempts.find(jobIdAttempt) != _invalidJobAttempts.end();
 }
 
-
-}}} // namespace lsst::qserv::rproc
+}}}  // namespace lsst::qserv::rproc

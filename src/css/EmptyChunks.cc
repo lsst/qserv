@@ -40,7 +40,6 @@
 #include "global/ConfigError.h"
 #include "global/stringUtil.h"
 
-
 using lsst::qserv::ConfigError;
 using lsst::qserv::IntSet;
 
@@ -50,15 +49,11 @@ namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.css.EmptyChunks");
 
-string makeFilename(string const& db) {
-    return "empty_" + lsst::qserv::sanitizeName(db) + ".txt";
-}
+string makeFilename(string const& db) { return "empty_" + lsst::qserv::sanitizeName(db) + ".txt"; }
 
-} // anonymous namespace
+}  // anonymous namespace
 
-namespace lsst {
-namespace qserv {
-namespace css {
+namespace lsst { namespace qserv { namespace css {
 
 shared_ptr<IntSet const> EmptyChunks::getEmpty(string const& db) {
     lock_guard<mutex> lock(_setsMutex);
@@ -88,7 +83,6 @@ void EmptyChunks::clearCache(string const& db) const {
     }
 }
 
-
 IntSet EmptyChunks::_populate(string const& db) {
     // Try to open database table
     LOGS(_log, LOG_LVL_DEBUG, "populate " << db);
@@ -98,8 +92,8 @@ IntSet EmptyChunks::_populate(string const& db) {
         s = _dbI->getEmptyChunks(db);
         return s;
     } catch (CssError const& e) {
-        LOGS(_log, LOG_LVL_WARN, " failed to read empty chunks from table. Trying file. " +
-                                 db + " " + e.what());
+        LOGS(_log, LOG_LVL_WARN,
+             " failed to read empty chunks from table. Trying file. " + db + " " + e.what());
     }
 
     // Since the table wasn't found, use the empty chunks file
@@ -108,7 +102,7 @@ IntSet EmptyChunks::_populate(string const& db) {
     LOGS(_log, LOG_LVL_WARN, "Trying path:" << _path << " emptyChunk file:" << best);
     string fileName = best;
     ifstream rawStream(best.c_str());
-    if (!rawStream.good()) { // On error, try using default filename
+    if (!rawStream.good()) {  // On error, try using default filename
         rawStream.close();
         rawStream.open(_fallbackFile.c_str());
         fileName = _fallbackFile;
@@ -125,6 +119,4 @@ IntSet EmptyChunks::_populate(string const& db) {
     return s;
 }
 
-
-}}} // namespace lsst::qserv::css
-
+}}}  // namespace lsst::qserv::css

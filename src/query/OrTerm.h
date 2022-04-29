@@ -21,18 +21,12 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-
 #ifndef LSST_QSERV_QUERY_ORTERM_H
 #define LSST_QSERV_QUERY_ORTERM_H
 
-
 #include "query/LogicalTerm.h"
 
-
-namespace lsst {
-namespace qserv {
-namespace query {
-
+namespace lsst { namespace qserv { namespace query {
 
 /// OrTerm is a set of OR-connected BoolTerms
 class OrTerm : public LogicalTerm {
@@ -77,7 +71,6 @@ protected:
     void dbgPrint(std::ostream& os) const override;
 };
 
+}}}  // namespace lsst::qserv::query
 
-}}} // namespace lsst::qserv::query
-
-#endif // LSST_QSERV_QUERY_ORTERM_H
+#endif  // LSST_QSERV_QUERY_ORTERM_H

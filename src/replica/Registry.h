@@ -34,9 +34,7 @@
 #include "replica/ServiceProvider.h"
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
 /**
  * Class Registry is the client API for comunications with the worker registration
@@ -45,7 +43,7 @@ namespace replica {
  *
  * @note The implementation of the class is thread-safe.
  */
-class Registry: public std::enable_shared_from_this<Registry> {
+class Registry : public std::enable_shared_from_this<Registry> {
 public:
     typedef std::shared_ptr<Registry> Ptr;
 
@@ -97,7 +95,7 @@ private:
      * @throw std::runtime_error In case if a error was received from the server.
      */
     nlohmann::json _request(std::string const& method, std::string const& resource,
-                            nlohmann::json const& request=nlohmann::json()) const;
+                            nlohmann::json const& request = nlohmann::json()) const;
 
     // Input parameters
 
@@ -107,6 +105,6 @@ private:
     std::string _baseUrl;
 };
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_REGISTRY_H
+#endif  // LSST_QSERV_REPLICA_REGISTRY_H

@@ -23,7 +23,6 @@
 #ifndef LSST_QSERV_SQL_MOCKSQL_H
 #define LSST_QSERV_SQL_MOCKSQL_H
 
-
 // System headers
 #include <map>
 #include <vector>
@@ -32,11 +31,7 @@
 #include "sql/SqlConnection.h"
 #include "sql/SqlException.h"
 
-
-namespace lsst {
-namespace qserv {
-namespace sql {
-
+namespace lsst { namespace qserv { namespace sql {
 
 class MockSql : public SqlConnection {
 public:
@@ -67,29 +62,29 @@ public:
 
     bool dbExists(std::string const& dbName, SqlErrorObject&) override { return false; }
 
-    bool createDb(std::string const& dbName, SqlErrorObject&, bool failIfExists=true) override {
+    bool createDb(std::string const& dbName, SqlErrorObject&, bool failIfExists = true) override {
         return false;
     }
 
-    bool createDbAndSelect(std::string const& dbName, SqlErrorObject&, bool failIfExists=true) override {
+    bool createDbAndSelect(std::string const& dbName, SqlErrorObject&, bool failIfExists = true) override {
         return false;
     }
 
-    bool dropDb(std::string const& dbName, SqlErrorObject&, bool failIfDoesNotExist=true) override {
+    bool dropDb(std::string const& dbName, SqlErrorObject&, bool failIfDoesNotExist = true) override {
         return false;
     }
 
-    bool tableExists(std::string const& tableName, SqlErrorObject&, std::string const& dbName="") override {
+    bool tableExists(std::string const& tableName, SqlErrorObject&, std::string const& dbName = "") override {
         return false;
     }
 
-    bool dropTable(std::string const& tableName, SqlErrorObject&, bool failIfDoesNotExist=true,
-                   std::string const& dbName="") override {
+    bool dropTable(std::string const& tableName, SqlErrorObject&, bool failIfDoesNotExist = true,
+                   std::string const& dbName = "") override {
         return false;
     }
 
-    bool listTables(std::vector<std::string>&, SqlErrorObject&, std::string const& prefixed="",
-                    std::string const& dbName="") override {
+    bool listTables(std::vector<std::string>&, SqlErrorObject&, std::string const& prefixed = "",
+                    std::string const& dbName = "") override {
         return false;
     }
 
@@ -103,8 +98,7 @@ public:
      * @param tableName The name of the table to look in.
      * @return std::vector<std::string> The column names.
      */
-    std::vector<std::string> listColumns(std::string const& dbName,
-                                         std::string const& tableName) override {
+    std::vector<std::string> listColumns(std::string const& dbName, std::string const& tableName) override {
         // The QueryContext gets all the columns in each table used by the query and stores this information
         // for lookup later. Here we return a list of column names for a table.
         auto tableItr = _dbTableColumns.find(dbName);
@@ -134,7 +128,10 @@ public:
         virtual ~Iter() {}
         SqlErrorObject& getErrorObject() override { return _errObj; }
         StringVector const& operator*() const override { return *_cursor; }
-        SqlResultIter& operator++() override { ++_cursor; return *this; }
+        SqlResultIter& operator++() override {
+            ++_cursor;
+            return *this;
+        }
         bool done() const override { return _cursor == _end; }
 
         SqlErrorObject _errObj;
@@ -153,8 +150,6 @@ private:
     DbTableColumns _dbTableColumns;
 };
 
+}}}  // namespace lsst::qserv::sql
 
-}}} // lsst::qserv::sql
-
-
-#endif // LSST_QSERV_SQL_MOCKSQL_H
+#endif  // LSST_QSERV_SQL_MOCKSQL_H

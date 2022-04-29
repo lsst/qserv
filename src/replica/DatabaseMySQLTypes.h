@@ -31,11 +31,7 @@
 #include "replica/FileUtils.h"
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
-namespace database {
-namespace mysql {
+namespace lsst { namespace qserv { namespace replica { namespace database { namespace mysql {
 /**
  * Class ConnectionParams encapsulates connection parameters to
  * a MySQL server. If constructed using the default constructor
@@ -71,21 +67,17 @@ public:
      * @param defaultPassword default value for a database user account
      * @throw std::invalid_argument if the string can't be parsed
      */
-    static ConnectionParams parse(std::string const& params,
-                                  std::string const& defaultHost="localhost",
-                                  uint16_t defaultPort=3306,
-                                  std::string const& defaultUser=FileUtils::getEffectiveUser(),
-                                  std::string const& defaultPassword=std::string());
+    static ConnectionParams parse(std::string const& params, std::string const& defaultHost = "localhost",
+                                  uint16_t defaultPort = 3306,
+                                  std::string const& defaultUser = FileUtils::getEffectiveUser(),
+                                  std::string const& defaultPassword = std::string());
 
     /// Initialize connection parameters with default values
     ConnectionParams();
 
     /// Normal constructor
-    ConnectionParams(std::string const& host_,
-                     uint16_t port_,
-                     std::string const& user_,
-                     std::string const& password_,
-                     std::string const& database_);
+    ConnectionParams(std::string const& host_, uint16_t port_, std::string const& user_,
+                     std::string const& password_, std::string const& database_);
 
     ConnectionParams(ConnectionParams const&) = default;
     ConnectionParams& operator=(ConnectionParams const&) = default;
@@ -101,20 +93,18 @@ public:
      *   parameters. The result will be formatted similarly to the one expected by
      *   the non-default constructor of the class.
      */
-    std::string toString(bool showPassword=false) const;
+    std::string toString(bool showPassword = false) const;
 
-    std::string host;       ///< The DNS name or IP address of a machine where the MySQL service runs
-    uint16_t    port;       ///< The port number of the MySQL service
-    std::string user;       ///< The name of a database user
-    std::string password;   ///< The database password
-    std::string database;   ///< The name of a default database to be set upon the connection
+    std::string host;      ///< The DNS name or IP address of a machine where the MySQL service runs
+    uint16_t port;         ///< The port number of the MySQL service
+    std::string user;      ///< The name of a database user
+    std::string password;  ///< The database password
+    std::string database;  ///< The name of a default database to be set upon the connection
 };
-
 
 /// Overloaded operator for serializing ConnectionParams instances
 /// @note a value of the database password will be hashed in the output
 std::ostream& operator<<(std::ostream&, ConnectionParams const&);
-
 
 /**
  * Class DoNotProcess is an abstraction for SQL strings which than ordinary
@@ -137,13 +127,12 @@ public:
     std::string name;
 };
 
-
 /**
  * Class Keyword is an abstraction for SQL keywords which needs to be processed
  * differently than ordinary values of string types. There won't be escape
  * processing or extra quotes of any kind added to the function name strings.
  */
-class Keyword: public DoNotProcess {
+class Keyword : public DoNotProcess {
 public:
     /// @return the object representing the SQL keyword 'NULL'
     static Keyword const SQL_NULL;
@@ -157,13 +146,12 @@ public:
     ~Keyword() override = default;
 };
 
-
 /**
  * Class Function is an abstraction for SQL functions which needs to be processed
  * differently than ordinary values of string types. There won't be escape
  * processing or extra quotes of any kind added to the function name strings.
  */
-class Function: public DoNotProcess {
+class Function : public DoNotProcess {
 public:
     /// @return the object representing the corresponding SQL function
     static Function const LAST_INSERT_ID;
@@ -178,7 +166,6 @@ public:
     ~Function() override = default;
 };
 
-
 /**
  * Objects of class Warning store rows extracted from a result set of MySQL
  * query "SHOW WARNINGS". Members of the class directly map to the corresponding
@@ -187,15 +174,13 @@ public:
  */
 class Warning {
 public:
-    explicit Warning(std::string const& level_,
-                     unsigned int code_,
-                     std::string const& message_)
-        :   level(level_), code(code_), message(message_) {}
+    explicit Warning(std::string const& level_, unsigned int code_, std::string const& message_)
+            : level(level_), code(code_), message(message_) {}
     std::string level;
     unsigned int code = 0;
     std::string message;
 };
 
-}}}}} // namespace lsst::qserv::replica::database::mysql
+}}}}}  // namespace lsst::qserv::replica::database::mysql
 
-#endif // LSST_QSERV_REPLICA_DATABASEMYSQLTYPES_H
+#endif  // LSST_QSERV_REPLICA_DATABASEMYSQLTYPES_H

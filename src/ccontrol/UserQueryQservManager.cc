@@ -21,7 +21,6 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-
 // Class header
 #include "ccontrol/UserQueryQservManager.h"
 
@@ -33,18 +32,13 @@
 #include "sql/SqlBulkInsert.h"
 #include "sql/SqlConnection.h"
 
-
 namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.ccontrol.UserQueryQservManager");
 
 }
 
-
-namespace lsst {
-namespace qserv {
-namespace ccontrol {
-
+namespace lsst { namespace qserv { namespace ccontrol {
 
 UserQueryQservManager::UserQueryQservManager(std::shared_ptr<UserQueryResources> const& queryResources,
                                              std::string const& value)
@@ -52,14 +46,13 @@ UserQueryQservManager::UserQueryQservManager(std::shared_ptr<UserQueryResources>
           _resultTableName("qserv_manager_" + queryResources->userQueryId),
           _messageStore(std::make_shared<qdisp::MessageStore>()),
           _resultDbConn(queryResources->resultDbConn),
-          _resultDb(queryResources->resultDb)
-{}
-
+          _resultDb(queryResources->resultDb) {}
 
 void UserQueryQservManager::submit() {
     // create result table, one could use formCreateTable() method
     // to build statement but it does not set NULL flag on TIMESTAMP columns
-    std::string createTable = "CREATE TABLE " + _resultTableName + "(response BLOB)"; // The columns must match resColumns, below.
+    std::string createTable = "CREATE TABLE " + _resultTableName +
+                              "(response BLOB)";  // The columns must match resColumns, below.
     LOGS(_log, LOG_LVL_TRACE, "creating result table: " << createTable);
     sql::SqlErrorObject errObj;
     if (!_resultDbConn->runQuery(createTable, errObj)) {
@@ -72,9 +65,10 @@ void UserQueryQservManager::submit() {
 
     // For now just insert the parsed argument to QSERV_MANAGER into the result table.
 
-    std::vector<std::string> resColumns({"response"}); // this must match the schema in the CREATE TABLE statement above.
+    std::vector<std::string> resColumns(
+            {"response"});  // this must match the schema in the CREATE TABLE statement above.
     sql::SqlBulkInsert bulkInsert(_resultDbConn.get(), _resultTableName, resColumns);
-    std::vector<std::string> values = { _value };
+    std::vector<std::string> values = {_value};
     bool success = bulkInsert.addRow(values, errObj);
     if (success) success = bulkInsert.flush(errObj);
     if (not success) {
@@ -87,11 +81,9 @@ void UserQueryQservManager::submit() {
     _qState = SUCCESS;
 }
 
-
 std::string UserQueryQservManager::getResultQuery() const {
     std::string ret = "SELECT * FROM " + _resultDb + "." + _resultTableName;
     return ret;
 }
 
-
-}}} // lsst::qserv::ccontrol
+}}}  // namespace lsst::qserv::ccontrol

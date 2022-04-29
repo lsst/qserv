@@ -32,14 +32,12 @@
 // Third party headers
 #include "nlohmann/json.hpp"
 
-namespace lsst {
-namespace qserv {
-namespace wpublish {
+namespace lsst { namespace qserv { namespace wpublish {
 
 /**
-  * Class ResourceMonitor is a thread-safe implementation for a counter of resources
-  * which are in use at any given moment by the application.
-  */
+ * Class ResourceMonitor is a thread-safe implementation for a counter of resources
+ * which are in use at any given moment by the application.
+ */
 class ResourceMonitor {
 public:
     /// The ResourceCounter type definition maps resources to the number of uses
@@ -93,11 +91,11 @@ public:
 private:
     /// Number of uses for each resource
     ResourceCounter _resourceCounter;
-    
-    /// Mutex for thread safaty 
+
+    /// Mutex for thread safaty
     mutable std::mutex _mtx;
 };
 
-}}} // namespace lsst::qserv::wpublish
+}}}  // namespace lsst::qserv::wpublish
 
-#endif // LSST_QSERV_WPUBLISH_RESOURCE_MONITOR_H
+#endif  // LSST_QSERV_WPUBLISH_RESOURCE_MONITOR_H

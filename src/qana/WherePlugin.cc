@@ -21,10 +21,10 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 /**
-  * @file
-  *
-  * @author Daniel L. Wang, SLAC
-  */
+ * @file
+ *
+ * @author Daniel L. Wang, SLAC
+ */
 
 // Parent class
 #include "qana/WherePlugin.h"
@@ -43,26 +43,26 @@
 #include "query/SelectStmt.h"
 #include "query/WhereClause.h"
 
-
-namespace lsst {
-namespace qserv {
-namespace qana {
+namespace lsst { namespace qserv { namespace qana {
 
 ////////////////////////////////////////////////////////////////////////
 // WherePlugin declaration
 ////////////////////////////////////////////////////////////////////////
 
-void
-WherePlugin::applyLogical(query::SelectStmt& stmt, query::QueryContext&) {
+void WherePlugin::applyLogical(query::SelectStmt& stmt, query::QueryContext&) {
     // Go to the WhereClause and remove extraneous OR_OP and AND_OP,
     // except for the root AND.
-    if (!stmt.hasWhereClause()) { return; }
+    if (!stmt.hasWhereClause()) {
+        return;
+    }
 
     query::WhereClause& wc = stmt.getWhereClause();
     std::shared_ptr<query::AndTerm> at = wc.getRootAndTerm();
-    if (!at) { return; }
+    if (!at) {
+        return;
+    }
     typedef query::BoolTerm::PtrVector::iterator Iter;
-    for(Iter i=at->iterBegin(), e=at->iterEnd(); i != e; ++i) {
+    for (Iter i = at->iterBegin(), e = at->iterEnd(); i != e; ++i) {
         std::shared_ptr<query::BoolTerm> reduced = (**i).getReduced();
         if (reduced) {
             *i = reduced;
@@ -70,4 +70,4 @@ WherePlugin::applyLogical(query::SelectStmt& stmt, query::QueryContext&) {
     }
 }
 
-}}} // namespace lsst::qserv::qana
+}}}  // namespace lsst::qserv::qana

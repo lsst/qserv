@@ -36,8 +36,7 @@
 #include "qmeta/types.h"
 
 // Forward decl
-namespace lsst {
-namespace qserv {
+namespace lsst { namespace qserv {
 namespace qmeta {
 class QMeta;
 }
@@ -46,17 +45,14 @@ class SelectStmt;
 }
 namespace sql {
 class SqlConnection;
-}}}
+}
+}}  // namespace lsst::qserv
 
-
-namespace lsst {
-namespace qserv {
-namespace ccontrol {
+namespace lsst { namespace qserv { namespace ccontrol {
 
 /// UserQueryProcessList : implementation of the UserQuery for SHOWPROCESS statements.
 class UserQueryProcessList : public UserQuery {
 public:
-
     /**
      *  Constructor for "SELECT ... FROM  INFORMATION_SCHEMA.PROCESSLIST ...".
      *
@@ -67,11 +63,9 @@ public:
      *  @param userQueryId:   Unique string identifying query
      */
     UserQueryProcessList(std::shared_ptr<query::SelectStmt> const& statement,
-            sql::SqlConnection* resultDbConn,
-            std::shared_ptr<qmeta::QMetaSelect> const& qMetaSelect,
-            qmeta::CzarId qMetaCzarId,
-            std::string const& userQueryId,
-            std::string const& resultDb);
+                         sql::SqlConnection* resultDbConn,
+                         std::shared_ptr<qmeta::QMetaSelect> const& qMetaSelect, qmeta::CzarId qMetaCzarId,
+                         std::string const& userQueryId, std::string const& resultDb);
 
     /**
      *  Constructor for "SHOW [FULL] PROCESSLIST".
@@ -82,12 +76,9 @@ public:
      *  @param qMetaCzarId:   Czar ID for QMeta queries
      *  @param userQueryId:   Unique string identifying query
      */
-    UserQueryProcessList(bool full,
-            sql::SqlConnection* resultDbConn,
-            std::shared_ptr<qmeta::QMetaSelect> const& qMetaSelect,
-            qmeta::CzarId qMetaCzarId,
-            std::string const& userQueryId,
-            std::string const& resultDb);
+    UserQueryProcessList(bool full, sql::SqlConnection* resultDbConn,
+                         std::shared_ptr<qmeta::QMetaSelect> const& qMetaSelect, qmeta::CzarId qMetaCzarId,
+                         std::string const& userQueryId, std::string const& resultDb);
 
     UserQueryProcessList(UserQueryProcessList const&) = delete;
     UserQueryProcessList& operator=(UserQueryProcessList const&) = delete;
@@ -112,8 +103,7 @@ public:
     void discard() override;
 
     // Delegate objects
-    std::shared_ptr<qdisp::MessageStore> getMessageStore() override {
-        return _messageStore; }
+    std::shared_ptr<qdisp::MessageStore> getMessageStore() override { return _messageStore; }
 
     /// @return Name of the result table for this query, can be empty
     std::string getResultTableName() const override { return _resultTableName; }
@@ -130,16 +120,15 @@ private:
 
     sql::SqlConnection* _resultDbConn;
     std::shared_ptr<qmeta::QMetaSelect> _qMetaSelect;
-    qmeta::CzarId const _qMetaCzarId;   ///< Czar ID in QMeta database
+    qmeta::CzarId const _qMetaCzarId;  ///< Czar ID in QMeta database
     QueryState _qState = UNKNOWN;
     std::shared_ptr<qdisp::MessageStore> _messageStore;
     std::string _resultTableName;
-    std::string _query;            ///< query to execute on QMeta database
+    std::string _query;  ///< query to execute on QMeta database
     std::string _orderBy;
     std::string _resultDb;
-
 };
 
-}}} // namespace lsst::qserv:ccontrol
+}}}  // namespace lsst::qserv::ccontrol
 
-#endif // LSST_QSERV_CCONTROL_USERQUERYPROCESSLIST_H
+#endif  // LSST_QSERV_CCONTROL_USERQUERYPROCESSLIST_H

@@ -31,15 +31,13 @@
 #include "replica/SqlRequest.h"
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
 /**
  * Class SqlQueryRequest represents Controller-side requests for initiating
  * arbitrary database queries at a remote worker nodes.
  */
-class SqlQueryRequest: public SqlRequest {
+class SqlQueryRequest : public SqlRequest {
 public:
     typedef std::shared_ptr<SqlQueryRequest> Ptr;
 
@@ -52,8 +50,8 @@ public:
 
     ~SqlQueryRequest() final = default;
 
-    std::string const& query()    const { return requestBody.query(); }
-    std::string const& user()     const { return requestBody.user(); }
+    std::string const& query() const { return requestBody.query(); }
+    std::string const& user() const { return requestBody.user(); }
     std::string const& password() const { return requestBody.password(); }
 
     /**
@@ -70,7 +68,7 @@ public:
      * @param user  The name of a database account for connecting to the database service.
      * @param password The database account password for connecting to the database service.
      * @param maxRows  The (optional) limit for the maximum number of rows to be returned with
-     *   the request. Leaving the default value of the parameter to 0 will result in not imposing 
+     *   the request. Leaving the default value of the parameter to 0 will result in not imposing
      *   any explicit restrictions on a size of the result set. Note that other, resource-defined
      *   restrictions will still apply. The later includes the maximum size of the Google Protobuf
      *   objects, the amount of available memory, etc.
@@ -81,17 +79,10 @@ public:
      * @param messenger An interface for communicating with workers.
      * @return A pointer to the created object.
      */
-    static Ptr create(ServiceProvider::Ptr const& serviceProvider,
-                      boost::asio::io_service& io_service,
-                      std::string const& worker,
-                      std::string const& query,
-                      std::string const& user,
-                      std::string const& password,
-                      uint64_t maxRows,
-                      CallbackType const& onFinish,
-                      int priority,
-                      bool keepTracking,
-                      std::shared_ptr<Messenger> const& messenger);
+    static Ptr create(ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service,
+                      std::string const& worker, std::string const& query, std::string const& user,
+                      std::string const& password, uint64_t maxRows, CallbackType const& onFinish,
+                      int priority, bool keepTracking, std::shared_ptr<Messenger> const& messenger);
 
 protected:
     /// @see Request::notify()
@@ -99,21 +90,14 @@ protected:
 
 private:
     /// @see SqlQueryRequest::create()
-    SqlQueryRequest(ServiceProvider::Ptr const& serviceProvider,
-                    boost::asio::io_service& io_service,
-                    std::string const& worker,
-                    std::string const& query,
-                    std::string const& user,
-                    std::string const& password,
-                    uint64_t maxRows,
-                    CallbackType const& onFinish,
-                    int priority,
-                    bool keepTracking,
-                    std::shared_ptr<Messenger> const& messenger);
+    SqlQueryRequest(ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service,
+                    std::string const& worker, std::string const& query, std::string const& user,
+                    std::string const& password, uint64_t maxRows, CallbackType const& onFinish, int priority,
+                    bool keepTracking, std::shared_ptr<Messenger> const& messenger);
 
-    CallbackType _onFinish; ///< @note is reset when the request finishes
+    CallbackType _onFinish;  ///< @note is reset when the request finishes
 };
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_SQLQUERYREQUEST_H
+#endif  // LSST_QSERV_REPLICA_SQLQUERYREQUEST_H

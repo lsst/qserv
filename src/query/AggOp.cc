@@ -21,13 +21,12 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 /**
-  * @file
-  *
-  * @brief PassAggOp, CountAggOp, AccumulateOp, AvgAggOp implementations
-  *
-  * @author Daniel L. Wang, SLAC
-  */
-
+ * @file
+ *
+ * @brief PassAggOp, CountAggOp, AccumulateOp, AvgAggOp implementations
+ *
+ * @author Daniel L. Wang, SLAC
+ */
 
 // Class header
 #include "query/AggOp.h"
@@ -42,11 +41,7 @@
 #include "query/ValueExpr.h"
 #include "query/ValueFactor.h"
 
-
-namespace lsst {
-namespace qserv {
-namespace query {
-
+namespace lsst { namespace qserv { namespace query {
 
 ////////////////////////////////////////////////////////////////////////
 // AggOp specializations
@@ -66,7 +61,6 @@ public:
         return arp;
     }
 };
-
 
 /// CountAggOp implements COUNT() (COUNT followed by SUM)
 class CountAggOp : public AggOp {
@@ -93,17 +87,22 @@ public:
     }
 };
 
-
 /// AccumulateOp implements simple aggregations (MIN, MAX, SUM) where
 /// the same action may be used in the parallel and merging phases.
 class AccumulateOp : public AggOp {
 public:
-    typedef enum {MIN, MAX, SUM} Type;
+    typedef enum { MIN, MAX, SUM } Type;
     explicit AccumulateOp(AggOp::Mgr& mgr, Type t) : AggOp(mgr) {
-        switch(t) {
-        case MIN: accName = "MIN"; break;
-        case MAX: accName = "MAX"; break;
-        case SUM: accName = "SUM"; break;
+        switch (t) {
+            case MIN:
+                accName = "MIN";
+                break;
+            case MAX:
+                accName = "MAX";
+                break;
+            case SUM:
+                accName = "SUM";
+                break;
         }
     }
 
@@ -134,7 +133,6 @@ public:
     explicit AvgAggOp(AggOp::Mgr& mgr) : AggOp(mgr) {}
 
     virtual AggRecord::Ptr operator()(ValueFactor const& orig) {
-
         AggRecord::Ptr arp = std::make_shared<AggRecord>();
         arp->orig = orig.clone();
         // Parallel: get each aggregation subterm.
@@ -172,7 +170,6 @@ public:
     }
 };
 
-
 ////////////////////////////////////////////////////////////////////////
 // class AggOp::Mgr
 ////////////////////////////////////////////////////////////////////////
@@ -183,30 +180,27 @@ AggOp::Mgr::Mgr() : _hasAggregate(false) {
     _map["MAX"].reset(new AccumulateOp(*this, AccumulateOp::MAX));
     _map["MIN"].reset(new AccumulateOp(*this, AccumulateOp::MIN));
     _map["SUM"].reset(new AccumulateOp(*this, AccumulateOp::SUM));
-    _seq = 0; // Note: accessor return ++_seq
+    _seq = 0;  // Note: accessor return ++_seq
 }
 
-
-AggOp::Ptr
-AggOp::Mgr::getOp(std::string const& name) {
+AggOp::Ptr AggOp::Mgr::getOp(std::string const& name) {
     OpMap::const_iterator i = _map.find(name);
-    if (i != _map.end()) return i->second;
-    else return AggOp::Ptr();
+    if (i != _map.end())
+        return i->second;
+    else
+        return AggOp::Ptr();
 }
 
-
-AggRecord::Ptr
-AggOp::Mgr::applyOp(std::string const& name, ValueFactor const& orig) {
+AggRecord::Ptr AggOp::Mgr::applyOp(std::string const& name, ValueFactor const& orig) {
     std::string n(name);
     std::transform(name.begin(), name.end(), n.begin(), ::toupper);
     AggOp::Ptr p = getOp(n);
     if (!p) {
         throw std::invalid_argument("Missing AggOp in applyOp()");
     }
-    _hasAggregate = true; // Mark existence of real aggregation record
+    _hasAggregate = true;  // Mark existence of real aggregation record
     return (*p)(orig);
 }
-
 
 std::string AggOp::Mgr::getAggName(std::string const& name) {
     std::stringstream ss;
@@ -215,5 +209,4 @@ std::string AggOp::Mgr::getAggName(std::string const& name) {
     return ss.str();
 }
 
-
-}}} // namespace lsst::qserv::query
+}}}  // namespace lsst::qserv::query

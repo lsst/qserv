@@ -40,56 +40,44 @@ using namespace lsst::qserv;
 
 wpublish::TestEchoQservRequest::Status translate(proto::WorkerCommandTestEchoR::Status status) {
     switch (status) {
-        case proto::WorkerCommandTestEchoR::SUCCESS: return wpublish::TestEchoQservRequest::SUCCESS;
-        case proto::WorkerCommandTestEchoR::ERROR:   return wpublish::TestEchoQservRequest::ERROR;
+        case proto::WorkerCommandTestEchoR::SUCCESS:
+            return wpublish::TestEchoQservRequest::SUCCESS;
+        case proto::WorkerCommandTestEchoR::ERROR:
+            return wpublish::TestEchoQservRequest::ERROR;
     }
-    throw domain_error(
-            "TestEchoQservRequest::" + string(__func__) + "  no match for Protobuf status: " +
-            proto::WorkerCommandTestEchoR_Status_Name(status));
+    throw domain_error("TestEchoQservRequest::" + string(__func__) + "  no match for Protobuf status: " +
+                       proto::WorkerCommandTestEchoR_Status_Name(status));
 }
 }  // namespace
 
-namespace lsst {
-namespace qserv {
-namespace wpublish {
+namespace lsst { namespace qserv { namespace wpublish {
 
 string TestEchoQservRequest::status2str(Status status) {
     switch (status) {
-        case SUCCESS: return "SUCCESS";
-        case ERROR:   return "ERROR";
+        case SUCCESS:
+            return "SUCCESS";
+        case ERROR:
+            return "ERROR";
     }
-    throw domain_error(
-            "TestEchoQservRequest::" + string(__func__) + "  no match for status: " +
-            to_string(status));
+    throw domain_error("TestEchoQservRequest::" + string(__func__) +
+                       "  no match for status: " + to_string(status));
 }
 
-
-TestEchoQservRequest::Ptr TestEchoQservRequest::create(
-                                    string const& value,
-                                    TestEchoQservRequest::CallbackType onFinish) {
-    return TestEchoQservRequest::Ptr(
-        new TestEchoQservRequest(value,
-                                 onFinish));
+TestEchoQservRequest::Ptr TestEchoQservRequest::create(string const& value,
+                                                       TestEchoQservRequest::CallbackType onFinish) {
+    return TestEchoQservRequest::Ptr(new TestEchoQservRequest(value, onFinish));
 }
 
-
-TestEchoQservRequest::TestEchoQservRequest(
-                                    string const& value,
-                                    TestEchoQservRequest::CallbackType onFinish)
-    :   _value(value),
-        _onFinish(onFinish) {
-
+TestEchoQservRequest::TestEchoQservRequest(string const& value, TestEchoQservRequest::CallbackType onFinish)
+        : _value(value), _onFinish(onFinish) {
     LOGS(_log, LOG_LVL_DEBUG, "TestEchoQservRequest  ** CONSTRUCTED **");
 }
-
 
 TestEchoQservRequest::~TestEchoQservRequest() {
     LOGS(_log, LOG_LVL_DEBUG, "TestEchoQservRequest  ** DELETED **");
 }
 
-
 void TestEchoQservRequest::onRequest(proto::FrameBuffer& buf) {
-
     proto::WorkerCommandH header;
     header.set_command(proto::WorkerCommandH::TEST_ECHO);
     buf.serialize(header);
@@ -99,17 +87,15 @@ void TestEchoQservRequest::onRequest(proto::FrameBuffer& buf) {
     buf.serialize(echo);
 }
 
-
 void TestEchoQservRequest::onResponse(proto::FrameBufferView& view) {
-
     proto::WorkerCommandTestEchoR reply;
     view.parse(reply);
 
-    LOGS(_log, LOG_LVL_DEBUG, "TestEchoQservRequest  ** SERVICE REPLY **  status: "
-         << proto::WorkerCommandTestEchoR_Status_Name(reply.status()));
+    LOGS(_log, LOG_LVL_DEBUG,
+         "TestEchoQservRequest  ** SERVICE REPLY **  status: "
+                 << proto::WorkerCommandTestEchoR_Status_Name(reply.status()));
 
     if (nullptr != _onFinish) {
-
         // Clearing the stored callback after finishing the up-stream notification
         // has two purposes:
         //
@@ -119,18 +105,12 @@ void TestEchoQservRequest::onResponse(proto::FrameBufferView& view) {
 
         auto onFinish = move(_onFinish);
         _onFinish = nullptr;
-        onFinish(::translate(reply.status()),
-                 reply.error(),
-                 _value,
-                 reply.value());
+        onFinish(::translate(reply.status()), reply.error(), _value, reply.value());
     }
 }
-
 
 void TestEchoQservRequest::onError(string const& error) {
-
     if (nullptr != _onFinish) {
-
         // Clearing the stored callback after finishing the up-stream notification
         // has two purposes:
         //
@@ -140,11 +120,8 @@ void TestEchoQservRequest::onError(string const& error) {
 
         auto onFinish = move(_onFinish);
         _onFinish = nullptr;
-        onFinish(Status::ERROR,
-                 error,
-                 _value,
-                 string());
+        onFinish(Status::ERROR, error, _value, string());
     }
 }
 
-}}} // namespace lsst::qserv::wpublish
+}}}  // namespace lsst::qserv::wpublish

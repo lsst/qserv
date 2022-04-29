@@ -28,16 +28,11 @@
 #include <memory>
 #include <string>
 
-namespace lsst {
-namespace qserv {
-namespace sql {
-    class SqlConnection;
-}}}
+namespace lsst { namespace qserv { namespace sql {
+class SqlConnection;
+}}}  // namespace lsst::qserv::sql
 
-
-namespace lsst {
-namespace qserv {
-namespace mysql {
+namespace lsst { namespace qserv { namespace mysql {
 
 /**
  *  Value class for configuring the MySQL connection
@@ -65,11 +60,8 @@ public:
      *
      * @throws std::runtime_error: if checkValid is true and some parameters are invalid
      */
-    MySqlConfig(std::string const& username, std::string const& password,
-                std::string const& hostname,
-                unsigned int const port,
-                std::string const& socket,
-                std::string const& db="");
+    MySqlConfig(std::string const& username, std::string const& password, std::string const& hostname,
+                unsigned int const port, std::string const& socket, std::string const& db = "");
 
     /**
      *  Create MySqlConfig instance
@@ -82,9 +74,8 @@ public:
      *
      * @throws std::runtime_error: if some parameters are invalid
      */
-    MySqlConfig(std::string const& username, std::string const& password,
-                std::string const& socket, std::string const& db = "");
-
+    MySqlConfig(std::string const& username, std::string const& password, std::string const& socket,
+                std::string const& db = "");
 
     /** Overload output operator for current class
      *
@@ -92,7 +83,7 @@ public:
      * @param mysqlConfig
      * @return an output stream
      */
-    friend std::ostream& operator<<(std::ostream &out, MySqlConfig const& mysqlConfig);
+    friend std::ostream& operator<<(std::ostream& out, MySqlConfig const& mysqlConfig);
 
     /** Return a string representation of the object
      *
@@ -106,9 +97,8 @@ public:
     unsigned int port = 0;
     std::string socket;
     std::string dbName;
-
 };
 
-}}} // namespace lsst::qserv::mysql
+}}}  // namespace lsst::qserv::mysql
 
-#endif // LSST_QSERV_MYSQL_MYSQLCONFIG_H
+#endif  // LSST_QSERV_MYSQL_MYSQLCONFIG_H

@@ -33,26 +33,20 @@
 #include "replica/WorkerServerConnection.h"
 
 // Forward declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
-    class WorkerRequestFactory;
-}}}  // Forward declarations
+namespace lsst { namespace qserv { namespace replica {
+class WorkerRequestFactory;
+}}}  // namespace lsst::qserv::replica
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
 /**
-  * Class WorkerServer is used for handling incoming connections to
-  * the worker replication service. Only one instance of this class is
-  * allowed per a thread.
-  */
-class WorkerServer : public std::enable_shared_from_this<WorkerServer>  {
-
+ * Class WorkerServer is used for handling incoming connections to
+ * the worker replication service. Only one instance of this class is
+ * allowed per a thread.
+ */
+class WorkerServer : public std::enable_shared_from_this<WorkerServer> {
 public:
-
     /// The pointer type for instances of the class
     typedef std::shared_ptr<WorkerServer> Ptr;
 
@@ -75,8 +69,7 @@ public:
      * @return
      *   pointer to the new object created by the factory
      */
-    static Ptr create(ServiceProvider::Ptr const& serviceProvider,
-                      WorkerRequestFactory& requestFactory,
+    static Ptr create(ServiceProvider::Ptr const& serviceProvider, WorkerRequestFactory& requestFactory,
                       std::string const& workerName);
 
     // Default construction and copy semantics are prohibited
@@ -101,26 +94,24 @@ public:
 
     /**
      * Begin listening for and processing incoming connections.
-     * 
+     *
      * @note
      *   This method is blocking, so it can be called just once from
      *   a thread. Calling it from different threads won't work because
-     *   of a port conflict. 
+     *   of a port conflict.
      */
     void run();
 
 private:
-
     /// @see WorkerServer::create()
-    WorkerServer(ServiceProvider::Ptr const& serviceProvider,
-                 WorkerRequestFactory& requestFactory,
+    WorkerServer(ServiceProvider::Ptr const& serviceProvider, WorkerRequestFactory& requestFactory,
                  std::string const& workerName);
 
     /**
      * Begin (asynchronously) accepting connection requests.
      */
     void _beginAccept();
-    
+
     /**
      * Handle a connection request once it's detected. The rest of
      * the communication will be forwarded to the connection object
@@ -132,27 +123,25 @@ private:
      * @param ec
      *   error condition to be checked for
      */
-    void _handleAccept(WorkerServerConnection::Ptr const& connection,
-                       boost::system::error_code const& ec);
+    void _handleAccept(WorkerServerConnection::Ptr const& connection, boost::system::error_code const& ec);
 
     /// @return the context string
     std::string context() const { return "SERVER  "; }
 
-
     // Input parameters
 
     ServiceProvider::Ptr const _serviceProvider;
-    std::string          const _workerName;
+    std::string const _workerName;
 
     /// This is pointer onto an object where the requests would
     /// get processed. This object gets created by the constructor of
     /// the class.
     WorkerProcessor::Ptr const _processor;
 
-    boost::asio::io_service        _io_service;
+    boost::asio::io_service _io_service;
     boost::asio::ip::tcp::acceptor _acceptor;
 };
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_WORKERSERVER_H
+#endif  // LSST_QSERV_REPLICA_WORKERSERVER_H

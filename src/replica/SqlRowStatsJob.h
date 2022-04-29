@@ -35,9 +35,7 @@
 #include "replica/SqlJob.h"
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
 /**
  * Class SqlRowStatsJob represents a tool which will broadcast batches of
@@ -50,7 +48,7 @@ namespace replica {
  * In the StateUpdatePolicy::FORCED was selected then updates will be made for
  * the successfully scanned tables only.
  * @see SqlRowStatsJob::stateUpdatePolicy()
- * 
+ *
  * @note the meaning of the 'table' depends on a kind of a table. If this is
  * a regular table then tables with exact names will be searched at all workers.
  * For the partitioned tables the operation will include both the prototype
@@ -58,7 +56,7 @@ namespace replica {
  * the corresponding chunk tables for all chunks associated with the corresponding
  * workers, as well as so called "dummy chunk" tables.
  */
-class SqlRowStatsJob: public SqlJob {
+class SqlRowStatsJob : public SqlJob {
 public:
     typedef std::shared_ptr<SqlRowStatsJob> Ptr;
 
@@ -71,8 +69,8 @@ public:
     /// Options for updating the persistent state of the table counters.
     enum StateUpdatePolicy {
         DISABLED,
-        ENABLED,    ///< Only if the scan succeeded.
-        FORCED      ///< Only for the successfully scanned tables.
+        ENABLED,  ///< Only if the scan succeeded.
+        FORCED    ///< Only for the successfully scanned tables.
     };
 
     /// @return The string representation of the policy.
@@ -104,15 +102,10 @@ public:
      * @param priority The priority level of the job.
      * @return A pointer to the created object.
      */
-    static Ptr create(std::string const& database,
-                      std::string const& table,
-                      ChunkOverlapSelector overlapSelector,
-                      StateUpdatePolicy stateUpdatePolicy,
-                      bool allWorkers,
-                      Controller::Ptr const& controller,
-                      std::string const& parentJobId,
-                      CallbackType const& onFinish,
-                      int priority);
+    static Ptr create(std::string const& database, std::string const& table,
+                      ChunkOverlapSelector overlapSelector, StateUpdatePolicy stateUpdatePolicy,
+                      bool allWorkers, Controller::Ptr const& controller, std::string const& parentJobId,
+                      CallbackType const& onFinish, int priority);
 
     SqlRowStatsJob() = delete;
     SqlRowStatsJob(SqlRowStatsJob const&) = delete;
@@ -125,41 +118,38 @@ public:
     ChunkOverlapSelector overlapSelector() const { return _overlapSelector; }
     StateUpdatePolicy stateUpdatePolicy() const { return _stateUpdatePolicy; }
 
-    std::list<std::pair<std::string,std::string>> extendedPersistentState() const final;
+    std::list<std::pair<std::string, std::string>> extendedPersistentState() const final;
 
 protected:
     void notify(util::Lock const& lock) final;
 
-    std::list<SqlRequest::Ptr> launchRequests(
-            util::Lock const& lock, std::string const& worker,
-            size_t maxRequestsPerWorker) final;
+    std::list<SqlRequest::Ptr> launchRequests(util::Lock const& lock, std::string const& worker,
+                                              size_t maxRequestsPerWorker) final;
 
     void stopRequest(util::Lock const& lock, SqlRequest::Ptr const& request) final;
     void processResultAndFinish(util::Lock const& lock, ExtendedState extendedState) final;
 
 private:
-    SqlRowStatsJob(
-            std::string const& database, std::string const& table, ChunkOverlapSelector overlapSelector,
-            StateUpdatePolicy stateUpdatePolicy, bool allWorkers, Controller::Ptr const& controller,
-            std::string const& parentJobId, CallbackType const& onFinish,
-            int priority);
+    SqlRowStatsJob(std::string const& database, std::string const& table,
+                   ChunkOverlapSelector overlapSelector, StateUpdatePolicy stateUpdatePolicy, bool allWorkers,
+                   Controller::Ptr const& controller, std::string const& parentJobId,
+                   CallbackType const& onFinish, int priority);
 
     /**
      * @brief Process a result set and (in case of success) update the collection of counters.
-     * 
+     *
      * @param context_ The prefix for reporting errors.
-     * @param isPartitioned The kind of a partitioned table. 
+     * @param isPartitioned The kind of a partitioned table.
      * @param worker The name of a worker.
      * @param internalTable The name of the internal (at the worker) table.
      * @param resultSet A result set to be analyzed.
-     * @param counters The collection to be updated. 
+     * @param counters The collection to be updated.
      * @return true If succeeded.
      * @return false If failed.
      */
-    bool _process(
-            std::string const& context_, bool isPartitioned, SqlJobResult::Worker const& worker,
-            SqlJobResult::Scope const& internalTable, SqlResultSet::ResultSet const& resultSet,
-            std::map<std::string, std::map<TransactionId, std::vector<size_t>>>& counters) const;
+    bool _process(std::string const& context_, bool isPartitioned, SqlJobResult::Worker const& worker,
+                  SqlJobResult::Scope const& internalTable, SqlResultSet::ResultSet const& resultSet,
+                  std::map<std::string, std::map<TransactionId, std::vector<size_t>>>& counters) const;
 
     // Input parameters
 
@@ -168,7 +158,7 @@ private:
     ChunkOverlapSelector const _overlapSelector;
     StateUpdatePolicy const _stateUpdatePolicy;
 
-    CallbackType _onFinish;     /// @note is reset when the job finishes
+    CallbackType _onFinish;  /// @note is reset when the job finishes
 
     /// A registry of workers to mark those for which request has been sent.
     /// The registry prevents duplicate requests because exactly one
@@ -176,6 +166,6 @@ private:
     std::set<std::string> _workers;
 };
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_SQLROWSTATSJOB_H
+#endif  // LSST_QSERV_REPLICA_SQLROWSTATSJOB_H

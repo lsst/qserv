@@ -24,9 +24,7 @@
 // Class header
 #include "ccontrol/QueryState.h"
 
-namespace lsst {
-namespace qserv {
-namespace ccontrol {
+namespace lsst { namespace qserv { namespace ccontrol {
 
 std::string const& getQueryStateString(QueryState const& qs) {
     static const std::string unknown("unknown");
@@ -34,19 +32,19 @@ std::string const& getQueryStateString(QueryState const& qs) {
     static const std::string dispatched("dispatched");
     static const std::string success("success");
     static const std::string error("error");
-    switch(qs) {
-    case UNKNOWN:
-        return unknown;
-    case WAITING:
-        return waiting;
-    case DISPATCHED:
-        return dispatched;
-    case SUCCESS:
-        return success;
-    case ERROR:
-        return error;
-    default:
-        return unknown;
+    switch (qs) {
+        case UNKNOWN:
+            return unknown;
+        case WAITING:
+            return waiting;
+        case DISPATCHED:
+            return dispatched;
+        case SUCCESS:
+            return success;
+        case ERROR:
+            return error;
+        default:
+            return unknown;
     }
 }
-}}} // namespace lsst::qserv::ccontrol
+}}}  // namespace lsst::qserv::ccontrol

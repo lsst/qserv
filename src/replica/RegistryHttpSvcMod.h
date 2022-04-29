@@ -34,22 +34,18 @@
 #include "replica/ServiceProvider.h"
 
 // Forward declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
-     class RegistryWorkers;
-}}} // namespace lsst::qserv::replica
+namespace lsst { namespace qserv { namespace replica {
+class RegistryWorkers;
+}}}  // namespace lsst::qserv::replica
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
 /**
  * Class RegistryHttpSvcMod processes worker registration requests made
  * over HTTP. The class is used by the HTTP server build into the Registry service.
  */
-class RegistryHttpSvcMod: public HttpModuleBase {
+class RegistryHttpSvcMod : public HttpModuleBase {
 public:
     RegistryHttpSvcMod() = delete;
     RegistryHttpSvcMod(RegistryHttpSvcMod const&) = delete;
@@ -71,14 +67,14 @@ public:
      * @param workers The synchronized collection of workers.
      * @param req The HTTP request.
      * @param resp The HTTP response channel.
-     * @param subModuleName The name of a submodule to be called. 
+     * @param subModuleName The name of a submodule to be called.
      * @param authType The authorization requirements for the module
      * @throws std::invalid_argument for unknown values of parameter 'subModuleName'
      */
     static void process(ServiceProvider::Ptr const& serviceProvider, RegistryWorkers& workers,
                         qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp,
                         std::string const& subModuleName,
-                        HttpAuthType const authType=HttpAuthType::REQUIRED);
+                        HttpAuthType const authType = HttpAuthType::REQUIRED);
 
 protected:
     /// @see HttpModuleBase::context()
@@ -95,7 +91,7 @@ private:
     /**
      * @brief Check if the specified identifier of the Qserv instance that was received
      *   from a client matches the one of the current service. Throw an exception if not.
-     * 
+     *
      * @param context_ The calling context to be reported in the exception.
      * @param instanceId The instance identifier received from a client.
      * @throws std::invalid_argument If the identifier didn't match expectations.
@@ -115,7 +111,7 @@ private:
     ServiceProvider::Ptr const _serviceProvider;
     RegistryWorkers& _workers;
 };
-    
-}}} // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REGISTRYHTTPSVCMOD_H
+}}}  // namespace lsst::qserv::replica
+
+#endif  // LSST_QSERV_REGISTRYHTTPSVCMOD_H

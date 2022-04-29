@@ -21,15 +21,13 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 /**
-  * @file
-  *
-  * @author Daniel L. Wang, SLAC
-  */
-
+ * @file
+ *
+ * @author Daniel L. Wang, SLAC
+ */
 
 #ifndef LSST_QSERV_QUERY_SELECTSTMT_H
 #define LSST_QSERV_QUERY_SELECTSTMT_H
-
 
 // System headers
 #include <memory>
@@ -40,46 +38,40 @@
 #include "query/OrderByClause.h"
 #include "query/QueryTemplate.h"
 
-
 // Forward declarations
-namespace lsst {
-namespace qserv {
-namespace query {
-    class SelectList;
-    class FromList;
-    class WhereClause;
-    class GroupByClause;
-    class HavingClause;
-}}} // End of forward declarations
+namespace lsst { namespace qserv { namespace query {
+class SelectList;
+class FromList;
+class WhereClause;
+class GroupByClause;
+class HavingClause;
+}}}  // namespace lsst::qserv::query
 
-
-namespace lsst {
-namespace qserv {
-namespace query {
-
+namespace lsst { namespace qserv { namespace query {
 
 // SelectStmt contains extracted information about a particular parsed
 // SQL select statement. It is not responsible for performing
 // verification, validation, or other processing that requires
 // persistent or run-time state.
-class SelectStmt  {
+class SelectStmt {
 public:
     typedef std::shared_ptr<SelectStmt> Ptr;
     typedef std::shared_ptr<SelectStmt const> Cptr;
 
-    SelectStmt(std::shared_ptr<SelectList> selectList=nullptr, std::shared_ptr<FromList> fromList=nullptr,
-            std::shared_ptr<WhereClause> whereClause=nullptr, std::shared_ptr<OrderByClause> orderBy=nullptr,
-            std::shared_ptr<GroupByClause> groupBy=nullptr, std::shared_ptr<HavingClause> having=nullptr,
-            bool hasDistinct=false, int limit=lsst::qserv::NOTSET)
-    : _fromList(fromList)
-    , _selectList(selectList)
-    , _whereClause(whereClause)
-    , _orderBy(orderBy)
-    , _groupBy(groupBy)
-    , _having(having)
-    , _hasDistinct(hasDistinct)
-    , _limit(limit)
-    {}
+    SelectStmt(std::shared_ptr<SelectList> selectList = nullptr, std::shared_ptr<FromList> fromList = nullptr,
+               std::shared_ptr<WhereClause> whereClause = nullptr,
+               std::shared_ptr<OrderByClause> orderBy = nullptr,
+               std::shared_ptr<GroupByClause> groupBy = nullptr,
+               std::shared_ptr<HavingClause> having = nullptr, bool hasDistinct = false,
+               int limit = lsst::qserv::NOTSET)
+            : _fromList(fromList),
+              _selectList(selectList),
+              _whereClause(whereClause),
+              _orderBy(orderBy),
+              _groupBy(groupBy),
+              _having(having),
+              _hasDistinct(hasDistinct),
+              _limit(limit) {}
 
     std::shared_ptr<WhereClause const> getWhere() const;
     QueryTemplate getQueryTemplate() const;
@@ -166,23 +158,21 @@ public:
     bool operator==(const SelectStmt& rhs) const;
 
 private:
-
     // Fields
-    std::shared_ptr<FromList> _fromList; // Data sources
-    std::shared_ptr<SelectList> _selectList; // Desired columns
-    std::shared_ptr<WhereClause> _whereClause; // Filtering conditions (WHERE)
-    std::shared_ptr<OrderByClause> _orderBy; // Ordering
-    std::shared_ptr<GroupByClause> _groupBy; // Aggr. grouping
-    std::shared_ptr<HavingClause> _having; // Aggr. grouping
+    std::shared_ptr<FromList> _fromList;        // Data sources
+    std::shared_ptr<SelectList> _selectList;    // Desired columns
+    std::shared_ptr<WhereClause> _whereClause;  // Filtering conditions (WHERE)
+    std::shared_ptr<OrderByClause> _orderBy;    // Ordering
+    std::shared_ptr<GroupByClause> _groupBy;    // Aggr. grouping
+    std::shared_ptr<HavingClause> _having;      // Aggr. grouping
 
-    bool _hasDistinct; ///< SELECT DISTINCT (consider merging with ALL)
+    bool _hasDistinct;  ///< SELECT DISTINCT (consider merging with ALL)
 
-    int  _limit; // result limit
-    StringVector OutputMods; // Output modifiers (order, grouping,
-                             // sort, limit
+    int _limit;               // result limit
+    StringVector OutputMods;  // Output modifiers (order, grouping,
+                              // sort, limit
 };
 
+}}}  // namespace lsst::qserv::query
 
-}}} // namespace lsst::qserv::query
-
-#endif // LSST_QSERV_QUERY_SELECTSTMT_H
+#endif  // LSST_QSERV_QUERY_SELECTSTMT_H

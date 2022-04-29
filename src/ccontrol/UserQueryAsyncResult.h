@@ -31,8 +31,7 @@
 #include "qmeta/QInfo.h"
 #include "qmeta/types.h"
 
-namespace lsst {
-namespace qserv {
+namespace lsst { namespace qserv {
 namespace qdisp {
 class MessageStore;
 }
@@ -41,12 +40,10 @@ class QMeta;
 }
 namespace sql {
 class SqlConnection;
-}}}
+}
+}}  // namespace lsst::qserv
 
-
-namespace lsst {
-namespace qserv {
-namespace ccontrol {
+namespace lsst { namespace qserv { namespace ccontrol {
 
 /// @addtogroup ccontrol
 
@@ -58,7 +55,6 @@ namespace ccontrol {
 
 class UserQueryAsyncResult : public UserQuery {
 public:
-
     /**
      *  Constructor for "SELECT * FROM QSERV_RESULT(QID)".
      *
@@ -67,10 +63,8 @@ public:
      *  @param qMetaSelect:   QMetaSelect instance
      *  @param resultDbConn:  Connection to results database
      */
-    UserQueryAsyncResult(QueryId queryId,
-                         qmeta::CzarId qMetaCzarId,
-                         std::shared_ptr<qmeta::QMeta> const& qMeta,
-                         sql::SqlConnection* resultDbConn);
+    UserQueryAsyncResult(QueryId queryId, qmeta::CzarId qMetaCzarId,
+                         std::shared_ptr<qmeta::QMeta> const& qMeta, sql::SqlConnection* resultDbConn);
 
     // Destructor
     ~UserQueryAsyncResult();
@@ -113,9 +107,7 @@ public:
     std::string getResultQuery() const override;
 
 protected:
-
 private:
-
     QueryId _queryId;
     qmeta::CzarId _qMetaCzarId;
     std::shared_ptr<qmeta::QMeta> _qMeta;
@@ -125,6 +117,6 @@ private:
     QueryState _qState = UNKNOWN;
 };
 
-}}} // namespace lsst::qserv::ccontrol
+}}}  // namespace lsst::qserv::ccontrol
 
-#endif // LSST_QSERV_CCONTROL_USERQUERYASYNCRESULT_H
+#endif  // LSST_QSERV_CCONTROL_USERQUERYASYNCRESULT_H

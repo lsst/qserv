@@ -35,21 +35,18 @@
 // Qserv headers
 #include "global/intTypes.h"
 
-
-namespace lsst {
-namespace qserv {
-namespace wcontrol {
+namespace lsst { namespace qserv { namespace wcontrol {
 
 class TransmitLock;
 class QidMgr;
-
 
 /// Limit the number of transmitting tasks sharing the same query id number.
 class QidMgr {
 public:
     QidMgr() = delete;
-    QidMgr(int maxTransmits, int maxPerQid)
-        : _maxTransmits(maxTransmits), _maxPerQid(maxPerQid) { _setMaxCount(0); }
+    QidMgr(int maxTransmits, int maxPerQid) : _maxTransmits(maxTransmits), _maxPerQid(maxPerQid) {
+        _setMaxCount(0);
+    }
     QidMgr(QidMgr const&) = delete;
     QidMgr& operator=(QidMgr const&) = delete;
     virtual ~QidMgr() = default;
@@ -64,11 +61,11 @@ private:
     void _take(QueryId const& qid);
     void _release(QueryId const& qid);
 
-    int const _maxTransmits; ///< Maximum number of transmits per czar connection
+    int const _maxTransmits;  ///< Maximum number of transmits per czar connection
 
     ///< Absolute maximum number of Transmits per unique QID + czarID
     int const _maxPerQid;
-    int _prevUniqueQidCount = -1; ///< previous number of unique QID's, invalid value to start.
+    int _prevUniqueQidCount = -1;  ///< previous number of unique QID's, invalid value to start.
     std::atomic<int> _maxCount{1};
     std::mutex _mapMtx;
 
@@ -79,8 +76,8 @@ private:
         LockCount& operator=(LockCount const&) = delete;
         ~LockCount() = default;
 
-        int take(); /// @return _totalCount.
-        int release(); /// @return _totalCount.
+        int take();     /// @return _totalCount.
+        int release();  /// @return _totalCount.
         std::atomic<int> lcTotalCount{0};
         std::atomic<int> lcCount{0};
         std::atomic<int> lcMaxCount{1};
@@ -90,7 +87,6 @@ private:
 
     std::map<QueryId, LockCount> _qidLocks;
 };
-
 
 /// A way to limit the number of concurrent
 /// transmits. 'interactive queries' are not blocked.
@@ -105,8 +101,7 @@ class TransmitMgr {
 public:
     using Ptr = std::shared_ptr<TransmitMgr>;
 
-    TransmitMgr(int maxTransmits, int maxPerQid)
-        : _maxTransmits(maxTransmits), _maxPerQid(maxPerQid) {
+    TransmitMgr(int maxTransmits, int maxPerQid) : _maxTransmits(maxTransmits), _maxPerQid(maxPerQid) {
         assert(_maxTransmits > 0);
     }
 
@@ -119,17 +114,17 @@ public:
     int getTransmitCount() { return _transmitCount; }
 
     /// Class methods, that have already locked '_mtx', should call 'dumpBase'.
-    std::ostream& dump(std::ostream &os) const;
+    std::ostream& dump(std::ostream& os) const;
 
     /// This will try to lock 'TransmitMgr::_mtx'.
-    friend std::ostream& operator<<(std::ostream &out, TransmitMgr const& mgr);
+    friend std::ostream& operator<<(std::ostream& out, TransmitMgr const& mgr);
 
     friend class TransmitLock;
 
 protected:
     /// _mtx must be locked before calling this function.
     /// Dump the contents of the class to a string for logging.
-    virtual std::ostream& dumpBase(std::ostream &os) const;
+    virtual std::ostream& dumpBase(std::ostream& os) const;
 
     /// _mtx must be locked before calling this function.
     std::string dump() const;
@@ -149,13 +144,12 @@ private:
     QidMgr _qidMgr{_maxTransmits, _maxPerQid};
 };
 
-
 /// RAII class to support TransmitMgr
 class TransmitLock {
 public:
     using Ptr = std::shared_ptr<TransmitLock>;
     TransmitLock(TransmitMgr& transmitMgr, bool interactive, QueryId const qid)
-      : _transmitMgr(transmitMgr), _interactive(interactive), _qid(qid) {
+            : _transmitMgr(transmitMgr), _interactive(interactive), _qid(qid) {
         //_transmitMgr._qidMgr._take(_qid);
         _transmitMgr._take(_interactive);
     }
@@ -175,7 +169,6 @@ private:
     QueryId const _qid;
 };
 
+}}}  // namespace lsst::qserv::wcontrol
 
-}}} // namespace lsst::qserv::wcontrol
-
-#endif // LSST_QSERV_WCONTROL_TRANSMITMGR_H
+#endif  // LSST_QSERV_WCONTROL_TRANSMITMGR_H

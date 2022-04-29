@@ -28,13 +28,9 @@
 using namespace std;
 using json = nlohmann::json;
 
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
-void raiseRetryAllowedError(string const& scope,
-                            string const& error,
-                            long httpErrCode) {
+void raiseRetryAllowedError(string const& scope, string const& error, long httpErrCode) {
     json errorExt;
     errorExt["http_error"] = httpErrCode;
     errorExt["system_error"] = errno;
@@ -42,4 +38,4 @@ void raiseRetryAllowedError(string const& scope,
     throw HttpError(scope, error, errorExt);
 }
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica

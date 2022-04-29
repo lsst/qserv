@@ -21,7 +21,6 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-
 // SessionManager -- tracks sessions that the frontend dispatches out.
 // A "session" maps to a user-issued query, which the frontend should
 // break apart into many chunk queries.
@@ -40,14 +39,12 @@
 #include <map>
 #include <mutex>
 
-namespace lsst {
-namespace qserv {
-namespace ccontrol {
+namespace lsst { namespace qserv { namespace ccontrol {
 
 template <typename Value>
 class SessionManager {
 public:
-    SessionManager() :_idLimit(200000000), _nextId(1) {}
+    SessionManager() : _idLimit(200000000), _nextId(1) {}
 
     int newSession(Value const& v) {
         std::lock_guard<std::mutex> g(_mutex);
@@ -64,7 +61,7 @@ public:
     void discardSession(int id) {
         std::lock_guard<std::mutex> g(_mutex);
         MapIterator i = _map.find(id);
-        if(i != _map.end()) {
+        if (i != _map.end()) {
             _map.erase(i);
         }
     }
@@ -74,26 +71,26 @@ private:
     typedef typename Map::iterator MapIterator;
 
     int _getNextId() {
-        int goodId = _nextId++; // Dispense the next id.
-        while(true) {
-            if(_nextId < _idLimit) { // Still within limit?
+        int goodId = _nextId++;  // Dispense the next id.
+        while (true) {
+            if (_nextId < _idLimit) {  // Still within limit?
                 MapIterator i = _map.find(_nextId);
-                if(i == _map.end()) { // Not already assigned?
+                if (i == _map.end()) {  // Not already assigned?
                     break;
                 }
             }
             ++_nextId;
         }
-        assert(goodId != _nextId); // Should have found *new* nextId.
+        assert(goodId != _nextId);  // Should have found *new* nextId.
         return goodId;
     }
 
     std::mutex _mutex;
     Map _map;
-    int const _idLimit; // explicit arbitrary numerical id limit.
+    int const _idLimit;  // explicit arbitrary numerical id limit.
     int _nextId;
 };
 
-}}} // namespace lsst::qserv::ccontrol
+}}}  // namespace lsst::qserv::ccontrol
 
-#endif // LSST_QSERV_CCONTROL_SESSIONMANAGER_H
+#endif  // LSST_QSERV_CCONTROL_SESSIONMANAGER_H

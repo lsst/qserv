@@ -22,12 +22,12 @@
  */
 
 /**
-  * @file
-  *
-  * @brief Implementation of helpers for ChunkSpec
-  *
-  * @author Daniel L. Wang, SLAC
-  */
+ * @file
+ *
+ * @brief Implementation of helpers for ChunkSpec
+ *
+ * @author Daniel L. Wang, SLAC
+ */
 
 #include "qproc/ChunkSpec.h"
 
@@ -41,15 +41,13 @@
 #include "util/Bug.h"
 #include "util/IterableFormatter.h"
 
-namespace { // File-scope helpers
+namespace {  // File-scope helpers
 /// A "good" number of subchunks to include in a chunk query.  This is
 /// a guess. The best value is an open question
 int const GOOD_SUBCHUNK_COUNT = 20;
-} // annonymous namespace
+}  // namespace
 
-namespace lsst {
-namespace qserv {
-namespace qproc {
+namespace lsst { namespace qserv { namespace qproc {
 
 std::ostream& operator<<(std::ostream& os, ChunkSpec const& c) {
     os << "ChunkSpec("
@@ -58,7 +56,6 @@ std::ostream& operator<<(std::ostream& os, ChunkSpec const& c) {
     os << ")";
     return os;
 }
-
 
 /// ChunkSpecVector intersection.
 /// Computes ChunkSpecVector intersection, overwriting dest with the result.
@@ -73,9 +70,9 @@ void intersectSorted(ChunkSpecVector& dest, ChunkSpecVector const& a) {
     ChunkSpecVector::iterator de = dest.end();
     ChunkSpecVector::const_iterator ai = a.begin();
     ChunkSpecVector::const_iterator ae = a.end();
-    for(; (di != de) && (ai != ae); ++di) { // march down dest vector
+    for (; (di != de) && (ai != ae); ++di) {  // march down dest vector
         // For each item in dest, advance through a to find a matching chunkId.
-        while(ai->chunkId < di->chunkId) {
+        while (ai->chunkId < di->chunkId) {
             ++ai;
         }
 
@@ -90,7 +87,6 @@ void intersectSorted(ChunkSpecVector& dest, ChunkSpecVector const& a) {
     }
     tmp.swap(dest);
 }
-
 
 ChunkSpecVector intersect(ChunkSpecVector const& a, ChunkSpecVector const& b) {
     ChunkSpecVector asort(a);
@@ -108,13 +104,10 @@ void normalize(ChunkSpecVector& specs) {
     ChunkSpecVector output;
     std::sort(specs.begin(), specs.end());
     // Merge duplicate chunkId entries.
-    for(ChunkSpecVector::iterator i=specs.begin(), e=specs.end();
-        i != e; ) { // Increment according to j
+    for (ChunkSpecVector::iterator i = specs.begin(), e = specs.end(); i != e;) {  // Increment according to j
         i->normalize();
         ChunkSpecVector::iterator j;
-        for(j=i+1;
-            (j != e) && i->chunkId == j->chunkId;
-            ++j) {
+        for (j = i + 1; (j != e) && i->chunkId == j->chunkId; ++j) {
             j->normalize();
             // Same chunkId, then merge and mark.
             i->mergeUnion(*j);
@@ -128,9 +121,7 @@ void normalize(ChunkSpecVector& specs) {
 ////////////////////////////////////////////////////////////////////////
 // ChunkSpec
 ////////////////////////////////////////////////////////////////////////
-bool ChunkSpec::shouldSplit() const {
-    return subChunks.size() > (unsigned)GOOD_SUBCHUNK_COUNT;
-}
+bool ChunkSpec::shouldSplit() const { return subChunks.size() > (unsigned)GOOD_SUBCHUNK_COUNT; }
 
 ChunkSpec ChunkSpec::intersect(ChunkSpec const& cs) const {
     ChunkSpec output(*this);
@@ -147,10 +138,8 @@ void ChunkSpec::restrict(ChunkSpec const& rhs) {
     }
     Int32Vector output;
     output.reserve(rhs.subChunks.size());
-    std::set_intersection(
-        subChunks.begin(), subChunks.end(),
-        rhs.subChunks.begin(), rhs.subChunks.end(),
-        std::insert_iterator<Int32Vector>(output, output.end()));
+    std::set_intersection(subChunks.begin(), subChunks.end(), rhs.subChunks.begin(), rhs.subChunks.end(),
+                          std::insert_iterator<Int32Vector>(output, output.end()));
     subChunks.swap(output);
 }
 
@@ -159,38 +148,37 @@ void ChunkSpec::mergeUnion(ChunkSpec const& rhs) {
         throw util::Bug(ERR_LOC, "ChunkSpec::merge with different chunkId");
     }
     Int32Vector output(subChunks.size() + rhs.subChunks.size());
-    std::merge(subChunks.begin(), subChunks.end(),
-               rhs.subChunks.begin(), rhs.subChunks.end(),
+    std::merge(subChunks.begin(), subChunks.end(), rhs.subChunks.begin(), rhs.subChunks.end(),
                output.begin());
-    output.erase(std::unique(output.begin(), output.end() ), output.end());
+    output.erase(std::unique(output.begin(), output.end()), output.end());
     subChunks.swap(output);
 }
 
 void ChunkSpec::normalize() {
-    std::sort(subChunks.begin(), subChunks.end() );
-    subChunks.erase(std::unique(subChunks.begin(), subChunks.end() ),
-                    subChunks.end());
+    std::sort(subChunks.begin(), subChunks.end());
+    subChunks.erase(std::unique(subChunks.begin(), subChunks.end()), subChunks.end());
 }
 
 bool ChunkSpec::operator<(ChunkSpec const& rhs) const {
     typedef std::vector<int32_t>::const_iterator VecIter;
 
-    if (chunkId < rhs.chunkId) return true;
-    else if (chunkId > rhs.chunkId) return false;
+    if (chunkId < rhs.chunkId)
+        return true;
+    else if (chunkId > rhs.chunkId)
+        return false;
     else {
         // Ideally, we would use std::mismatch(f1,l1,f2,l2), but that algo is
         // unavailable until c++14
         if (subChunks.size() != rhs.subChunks.size()) {
             return subChunks.size() < rhs.subChunks.size();
         }
-        std::pair<VecIter,VecIter> mism
-            = std::mismatch(subChunks.begin(), subChunks.end(),
-                            rhs.subChunks.begin());
+        std::pair<VecIter, VecIter> mism =
+                std::mismatch(subChunks.begin(), subChunks.end(), rhs.subChunks.begin());
         if (mism.first == subChunks.end()) {
             return mism.second != rhs.subChunks.end();
         } else if (mism.second == rhs.subChunks.end()) {
             return false;
-        } else { // both are valid;
+        } else {  // both are valid;
             return ((*mism.first) < (*mism.second));
         }
     }
@@ -208,8 +196,8 @@ ChunkSpec ChunkSpec::makeFake(int chunkId, bool withSubChunks) {
     if (withSubChunks) {
         int base = 1000 * chunkId;
         cs.subChunks.push_back(base);
-        cs.subChunks.push_back(base+10);
-        cs.subChunks.push_back(base+20);
+        cs.subChunks.push_back(base + 10);
+        cs.subChunks.push_back(base + 20);
     }
     return cs;
 }
@@ -218,8 +206,7 @@ ChunkSpec ChunkSpec::makeFake(int chunkId, bool withSubChunks) {
 // ChunkSpecFragmenter
 ////////////////////////////////////////////////////////////////////////
 ChunkSpecFragmenter::ChunkSpecFragmenter(ChunkSpec const& s)
-    : _original(s), _pos(_original.subChunks.begin()) {
-}
+        : _original(s), _pos(_original.subChunks.begin()) {}
 ChunkSpec ChunkSpecFragmenter::get() const {
     ChunkSpec c;
     c.chunkId = _original.chunkId;
@@ -233,13 +220,9 @@ ChunkSpec ChunkSpecFragmenter::get() const {
     return c;
 }
 
-void ChunkSpecFragmenter::next() {
-    _pos += GOOD_SUBCHUNK_COUNT;
-}
+void ChunkSpecFragmenter::next() { _pos += GOOD_SUBCHUNK_COUNT; }
 
-bool ChunkSpecFragmenter::isDone() {
-    return _pos >= _original.subChunks.end();
-}
+bool ChunkSpecFragmenter::isDone() { return _pos >= _original.subChunks.end(); }
 ////////////////////////////////////////////////////////////////////////
 // ChunkSpecSingle
 ////////////////////////////////////////////////////////////////////////
@@ -252,8 +235,7 @@ ChunkSpecSingle::Vector ChunkSpecSingle::makeVector(ChunkSpec const& spec) {
     ChunkSpecSingle s;
     s.chunkId = spec.chunkId;
     std::vector<int>::const_iterator i;
-    for(i = spec.subChunks.begin();
-        i != spec.subChunks.end(); ++i) {
+    for (i = spec.subChunks.begin(); i != spec.subChunks.end(); ++i) {
         s.subChunkId = *i;
         vector.push_back(s);
     }
@@ -265,5 +247,4 @@ std::ostream& operator<<(std::ostream& os, ChunkSpecSingle const& c) {
     return os;
 }
 
-}}} // namespace lsst::qserv::qproc
-
+}}}  // namespace lsst::qserv::qproc

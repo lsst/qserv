@@ -34,9 +34,7 @@
 #include "replica/SqlJob.h"
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
 /**
  * Class SqlDeleteTablePartitionJob represents a tool that will broadcast
@@ -50,7 +48,7 @@ namespace replica {
  *   tables (tables at exactly the specified name existing at all workers) and
  *   the corresponding chunk tables for all chunks found at the relevant workers.
  */
-class SqlDeleteTablePartitionJob: public SqlJob {
+class SqlDeleteTablePartitionJob : public SqlJob {
 public:
     typedef std::shared_ptr<SqlDeleteTablePartitionJob> Ptr;
 
@@ -78,13 +76,9 @@ public:
      * @param priority defines the job priority
      * @return pointer to the created object
      */
-    static Ptr create(TransactionId transactionId,
-                      std::string const& table,
-                      bool allWorkers,
-                      Controller::Ptr const& controller,
-                      std::string const& parentJobId,
-                      CallbackType const& onFinish,
-                      int priority);
+    static Ptr create(TransactionId transactionId, std::string const& table, bool allWorkers,
+                      Controller::Ptr const& controller, std::string const& parentJobId,
+                      CallbackType const& onFinish, int priority);
 
     SqlDeleteTablePartitionJob() = delete;
     SqlDeleteTablePartitionJob(SqlDeleteTablePartitionJob const&) = delete;
@@ -99,32 +93,26 @@ public:
 
     TransactionId transactionId() const { return _transactionId; }
 
-    std::list<std::pair<std::string,std::string>> extendedPersistentState() const final;
+    std::list<std::pair<std::string, std::string>> extendedPersistentState() const final;
 
 protected:
     void notify(util::Lock const& lock) final;
 
-    std::list<SqlRequest::Ptr> launchRequests(util::Lock const& lock,
-                                              std::string const& worker,
+    std::list<SqlRequest::Ptr> launchRequests(util::Lock const& lock, std::string const& worker,
                                               size_t maxRequestsPerWorker) final;
 
-    void stopRequest(util::Lock const& lock,
-                     SqlRequest::Ptr const& request) final;
+    void stopRequest(util::Lock const& lock, SqlRequest::Ptr const& request) final;
 
 private:
-    SqlDeleteTablePartitionJob(TransactionId transactionId,
-                               std::string const& table,
-                               bool allWorkers,
-                               Controller::Ptr const& controller,
-                               std::string const& parentJobId,
-                               CallbackType const& onFinish,
-                               int priority);
+    SqlDeleteTablePartitionJob(TransactionId transactionId, std::string const& table, bool allWorkers,
+                               Controller::Ptr const& controller, std::string const& parentJobId,
+                               CallbackType const& onFinish, int priority);
 
     // Input parameters
 
     TransactionId const _transactionId;
-    std::string   const _table;
-    CallbackType _onFinish;     /// @note is reset when the job finishes
+    std::string const _table;
+    CallbackType _onFinish;  /// @note is reset when the job finishes
 
     /// The name is extracted from the TransactionInfo for the transaction.
     std::string _database;
@@ -135,6 +123,6 @@ private:
     std::set<std::string> _workers;
 };
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_SQLDELETETABLEPARTITIONJOB_H
+#endif  // LSST_QSERV_REPLICA_SQLDELETETABLEPARTITIONJOB_H

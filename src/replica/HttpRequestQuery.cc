@@ -28,82 +28,66 @@
 
 using namespace std;
 
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
-HttpRequestQuery::HttpRequestQuery(std::unordered_map<std::string,std::string> const& query)
-    :   _query(query) {
-}
-
+HttpRequestQuery::HttpRequestQuery(std::unordered_map<std::string, std::string> const& query)
+        : _query(query) {}
 
 string HttpRequestQuery::requiredString(string const& param) const {
     auto const val = optionalString(param);
     if (val.empty()) {
-        throw invalid_argument(
-                string(__func__) + " parameter '" + param + "' is missing or has an invalid value");
+        throw invalid_argument(string(__func__) + " parameter '" + param +
+                               "' is missing or has an invalid value");
     }
     return val;
 }
 
-
-string HttpRequestQuery::optionalString(string const& param,
-                                        string const& defaultValue) const {
+string HttpRequestQuery::optionalString(string const& param, string const& defaultValue) const {
     auto&& itr = _query.find(param);
     if (itr == _query.end()) return defaultValue;
     return itr->second;
 }
 
-
 uint16_t HttpRequestQuery::requiredUInt16(string const& param) const {
     auto const val = optionalUInt16(param, 0);
     if (val == 0) {
-        throw invalid_argument(
-                string(__func__) + " parameter '" + param + "' is missing or has an invalid value");
+        throw invalid_argument(string(__func__) + " parameter '" + param +
+                               "' is missing or has an invalid value");
     }
     return val;
 }
 
-
-uint16_t HttpRequestQuery::optionalUInt16(string const& param,
-                                          uint16_t defaultValue) const {
+uint16_t HttpRequestQuery::optionalUInt16(string const& param, uint16_t defaultValue) const {
     auto&& itr = _query.find(param);
     if (itr == _query.end()) return defaultValue;
     unsigned long val = stoul(itr->second);
     if (val >= numeric_limits<uint16_t>::max()) {
-        throw out_of_range(
-                "HttpProcessor::" + string(__func__) + " value of parameter: " + param +
-                " exceeds allowed limit for type 'uint16_t'");
+        throw out_of_range("HttpProcessor::" + string(__func__) + " value of parameter: " + param +
+                           " exceeds allowed limit for type 'uint16_t'");
     }
     return static_cast<uint16_t>(val);
 }
 
-
 uint64_t HttpRequestQuery::requiredUInt64(string const& param) const {
     auto const val = optionalUInt64(param, 0);
     if (val == 0) {
-        throw invalid_argument(
-                string(__func__) + " parameter '" + param + "' is missing or has an invalid value");
+        throw invalid_argument(string(__func__) + " parameter '" + param +
+                               "' is missing or has an invalid value");
     }
     return val;
 }
 
-
-uint64_t HttpRequestQuery::optionalUInt64(string const& param,
-                                          uint64_t defaultValue) const {
+uint64_t HttpRequestQuery::optionalUInt64(string const& param, uint64_t defaultValue) const {
     auto&& itr = _query.find(param);
     if (itr == _query.end()) return defaultValue;
     return stoull(itr->second);
 }
 
-
-int HttpRequestQuery::optionalInt(string const& param,
-                                  int defaultValue) const {
+int HttpRequestQuery::optionalInt(string const& param, int defaultValue) const {
     auto&& itr = _query.find(param);
     if (itr == _query.end()) return defaultValue;
     return stoi(itr->second);
 }
-
 
 unsigned int HttpRequestQuery::requiredUInt(string const& param) const {
     auto&& itr = _query.find(param);
@@ -112,53 +96,41 @@ unsigned int HttpRequestQuery::requiredUInt(string const& param) const {
     }
     unsigned long val = stoul(itr->second);
     if (val > numeric_limits<unsigned int>::max()) {
-        throw out_of_range(
-                "HttpProcessor::" + string(__func__) + " value of parameter: " + param +
-                " exceeds allowed limit for type 'unsigned int'");
+        throw out_of_range("HttpProcessor::" + string(__func__) + " value of parameter: " + param +
+                           " exceeds allowed limit for type 'unsigned int'");
     }
     return static_cast<unsigned int>(val);
 }
 
-
-unsigned int HttpRequestQuery::optionalUInt(string const& param,
-                                            unsigned int defaultValue) const {
+unsigned int HttpRequestQuery::optionalUInt(string const& param, unsigned int defaultValue) const {
     auto&& itr = _query.find(param);
     if (itr == _query.end()) return defaultValue;
     return stoul(itr->second);
 }
 
-
 bool HttpRequestQuery::requiredBool(string const& param) const {
     auto const val = optionalInt(param);
     if (val < 0) {
-        throw invalid_argument(
-                string(__func__) + " parameter '" + param + "' is missing or has an invalid value");
+        throw invalid_argument(string(__func__) + " parameter '" + param +
+                               "' is missing or has an invalid value");
     }
     return val != 0;
 }
 
-
-bool HttpRequestQuery::optionalBool(string const& param,
-                                    bool defaultValue) const {
+bool HttpRequestQuery::optionalBool(string const& param, bool defaultValue) const {
     auto&& itr = _query.find(param);
     if (itr == _query.end()) return defaultValue;
-    return not (itr->second.empty() or (itr->second == "0"));
+    return not(itr->second.empty() or (itr->second == "0"));
 }
-
 
 double HttpRequestQuery::requiredDouble(string const& param) const {
     auto&& itr = _query.find(param);
     if (itr == _query.end()) {
-        throw invalid_argument(
-                string(__func__) + " parameter '" + param + "' is missing");
+        throw invalid_argument(string(__func__) + " parameter '" + param + "' is missing");
     }
     return stod(itr->second);
 }
 
-
-bool HttpRequestQuery::has(std::string const& param) const {
-    return _query.find(param) != _query.end();
-}
-
+bool HttpRequestQuery::has(std::string const& param) const { return _query.find(param) != _query.end(); }
 
 }}}  // namespace lsst::qserv::replica

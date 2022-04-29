@@ -44,60 +44,48 @@ namespace {
  * be exported.
  */
 struct TableSpec {
-    std::string   tableName;            /// The base name of a table to be exported
-    bool          partitioned = false;  /// Is 'true' for the partitioned tables
-    unsigned int  chunk = 0;            /// The chunk number (partitioned tables)
-    bool          overlap = false;      /// Is 'true' for the 'overlap' tables (partitioned tables)
-    std::string   workerHost;           /// The host name or an IP address of a worker
-    uint16_t      workerPort = 0;       /// The port number of the Export Service
+    std::string tableName;     /// The base name of a table to be exported
+    bool partitioned = false;  /// Is 'true' for the partitioned tables
+    unsigned int chunk = 0;    /// The chunk number (partitioned tables)
+    bool overlap = false;      /// Is 'true' for the 'overlap' tables (partitioned tables)
+    std::string workerHost;    /// The host name or an IP address of a worker
+    uint16_t workerPort = 0;   /// The port number of the Export Service
 
     json toJson() const {
         json spec;
-        spec["baseName"]    = tableName;
-        spec["fullName"]    = partitioned ? ChunkedTable(tableName, chunk, overlap).name() : tableName;
+        spec["baseName"] = tableName;
+        spec["fullName"] = partitioned ? ChunkedTable(tableName, chunk, overlap).name() : tableName;
         spec["partitioned"] = partitioned ? 1 : 0;
-        spec["chunk"]       = chunk;
-        spec["overlap"]     = overlap ? 1 : 0;
-        spec["worker"]      = workerHost;
-        spec["port"]        = workerPort;
+        spec["chunk"] = chunk;
+        spec["overlap"] = overlap ? 1 : 0;
+        spec["worker"] = workerHost;
+        spec["port"] = workerPort;
         return spec;
     }
 };
-    
-}
 
-namespace lsst {
-namespace qserv {
-namespace replica {
+}  // namespace
 
-void HttpExportModule::process(Controller::Ptr const& controller,
-                               string const& taskName,
-                               HttpProcessorConfig const& processorConfig,
-                               qhttp::Request::Ptr const& req,
-                               qhttp::Response::Ptr const& resp,
-                               string const& subModuleName,
+namespace lsst { namespace qserv { namespace replica {
+
+void HttpExportModule::process(Controller::Ptr const& controller, string const& taskName,
+                               HttpProcessorConfig const& processorConfig, qhttp::Request::Ptr const& req,
+                               qhttp::Response::Ptr const& resp, string const& subModuleName,
                                HttpAuthType const authType) {
     HttpExportModule module(controller, taskName, processorConfig, req, resp);
     module.execute(subModuleName, authType);
 }
 
-
-HttpExportModule::HttpExportModule(Controller::Ptr const& controller,
-                                   string const& taskName,
-                                   HttpProcessorConfig const& processorConfig,
-                                   qhttp::Request::Ptr const& req,
+HttpExportModule::HttpExportModule(Controller::Ptr const& controller, string const& taskName,
+                                   HttpProcessorConfig const& processorConfig, qhttp::Request::Ptr const& req,
                                    qhttp::Response::Ptr const& resp)
-    :   HttpModule(controller, taskName, processorConfig, req, resp) {
-}
-
+        : HttpModule(controller, taskName, processorConfig, req, resp) {}
 
 json HttpExportModule::executeImpl(string const& subModuleName) {
     if (subModuleName == "TABLES") return _getTables();
-    throw invalid_argument(
-            context() + "::" + string(__func__) +
-            "  unsupported sub-module: '" + subModuleName + "'");
+    throw invalid_argument(context() + "::" + string(__func__) + "  unsupported sub-module: '" +
+                           subModuleName + "'");
 }
-
 
 json HttpExportModule::_getTables() {
     debug(__func__);
@@ -119,7 +107,7 @@ json HttpExportModule::_getTables() {
 
     // Get a collection of known workers which are in the 'ENABLED' state
     vector<WorkerInfo> allWorkerInfos;
-    for (auto&& worker: config->workers()) {
+    for (auto&& worker : config->workers()) {
         allWorkerInfos.push_back(config->workerInfo(worker));
     }
     if (allWorkerInfos.empty()) {
@@ -133,28 +121,21 @@ json HttpExportModule::_getTables() {
      * chunk. The WorkerInfo object will be returned upon successful completion
      * o f the function.
      *
-     * @param chunk  The chunk number for 
+     * @param chunk  The chunk number for
      * @return The WorkerInfo for the found worker
      * @throws invalid_argument in case if no replica was found for the specified
      *   chunk. For the databases in the 'PUBLISHED' state it means that the chunk
      *   doesn't exist.
      */
-    auto const findWorkerForChunk =
-            [&databaseServices, &config, &databaseInfo](unsigned int chunk) {
+    auto const findWorkerForChunk = [&databaseServices, &config, &databaseInfo](unsigned int chunk) {
         bool const enabledWorkersOnly = true;
         bool const includeFileInfo = false;
         vector<ReplicaInfo> replicas;
-        databaseServices->findReplicas(
-            replicas,
-            chunk,
-            databaseInfo.name,
-            enabledWorkersOnly,
-            includeFileInfo
-        );
+        databaseServices->findReplicas(replicas, chunk, databaseInfo.name, enabledWorkersOnly,
+                                       includeFileInfo);
         if (replicas.empty()) {
-            throw invalid_argument(
-                    "no replica found for chunk " + to_string(chunk) +
-                    " in a scope of database '" + databaseInfo.name + "'.");
+            throw invalid_argument("no replica found for chunk " + to_string(chunk) +
+                                   " in a scope of database '" + databaseInfo.name + "'.");
         }
         return config->workerInfo(replicas[0].worker());
     };
@@ -178,9 +159,8 @@ json HttpExportModule::_getTables() {
         result["location"] = json::array();
 
         if (tables.empty()) {
-
             // Report locations for all regular tables in the database
-            for (auto&& table: databaseInfo.regularTables) {
+            for (auto&& table : databaseInfo.regularTables) {
                 TableSpec spec;
                 spec.tableName = table;
                 spec.workerHost = allWorkerInfos[0].exporterHost;
@@ -192,10 +172,10 @@ json HttpExportModule::_getTables() {
             bool const enabledWorkersOnly = true;
             vector<unsigned int> chunks;
             databaseServices->findDatabaseChunks(chunks, databaseInfo.name, enabledWorkersOnly);
-            for(auto chunk: chunks) {
+            for (auto chunk : chunks) {
                 auto const workerInfo = findWorkerForChunk(chunk);
 
-                for (auto&& table: databaseInfo.partitionedTables) {
+                for (auto&& table : databaseInfo.partitionedTables) {
                     TableSpec spec;
 
                     // One entry for the main chunk table itself
@@ -213,18 +193,16 @@ json HttpExportModule::_getTables() {
                 }
             }
         } else {
-
             // Validate input collection of tables and produce an extended collection
             // with table specifications to be returned back (to a caller).
 
-            for (auto&& table: tables) {
-
+            for (auto&& table : tables) {
                 TableSpec spec;
                 spec.tableName = HttpRequestBody::required<string>(table, "table");
                 spec.partitioned = databaseInfo.isPartitioned(spec.tableName);
                 if (spec.partitioned) {
                     spec.overlap = HttpRequestBody::required<unsigned int>(table, "overlap");
-                    spec.chunk   = HttpRequestBody::required<unsigned int>(table, "chunk");
+                    spec.chunk = HttpRequestBody::required<unsigned int>(table, "chunk");
                 }
                 WorkerInfo const workerInfo =
                         spec.partitioned ? findWorkerForChunk(spec.chunk) : allWorkerInfos[0];

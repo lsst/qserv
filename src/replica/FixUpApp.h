@@ -25,9 +25,7 @@
 #include "replica/Application.h"
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
 /**
  * Class FixUpApp implements a tool which finds and corrects various problems with replicas
@@ -35,7 +33,7 @@ namespace replica {
  * effort to leave worker nodes as balanced as possible, and it will also preserve chunk
  * collocation.
  */
-class FixUpApp: public Application {
+class FixUpApp : public Application {
 public:
     typedef std::shared_ptr<FixUpApp> Ptr;
 
@@ -48,11 +46,11 @@ public:
      */
     static Ptr create(int argc, char* argv[]);
 
-    FixUpApp()=delete;
-    FixUpApp(FixUpApp const&)=delete;
-    FixUpApp& operator=(FixUpApp const&)=delete;
+    FixUpApp() = delete;
+    FixUpApp(FixUpApp const&) = delete;
+    FixUpApp& operator=(FixUpApp const&) = delete;
 
-    ~FixUpApp() override=default;
+    ~FixUpApp() override = default;
 
 protected:
     /// @see Application::runImpl()
@@ -69,6 +67,6 @@ private:
     size_t _pageSize = 20;
 };
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica
 
 #endif /* LSST_QSERV_REPLICA_FIXUPAPP_H */

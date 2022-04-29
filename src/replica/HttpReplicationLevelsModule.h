@@ -34,26 +34,21 @@
 #include "util/Mutex.h"
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
 /**
  * Class HttpReplicationLevelsModule implements a handler for the replication
  * levels requests.
  */
-class HttpReplicationLevelsModule: public HttpModule {
+class HttpReplicationLevelsModule : public HttpModule {
 public:
     typedef std::shared_ptr<HttpReplicationLevelsModule> Ptr;
 
-    static void process(Controller::Ptr const& controller,
-                        std::string const& taskName,
-                        HttpProcessorConfig const& processorConfig,
-                        qhttp::Request::Ptr const& req,
-                        qhttp::Response::Ptr const& resp,
-                        HealthMonitorTask::Ptr const& healthMonitorTask,
-                        std::string const& subModuleName=std::string(),
-                        HttpAuthType const authType=HttpAuthType::NONE);
+    static void process(Controller::Ptr const& controller, std::string const& taskName,
+                        HttpProcessorConfig const& processorConfig, qhttp::Request::Ptr const& req,
+                        qhttp::Response::Ptr const& resp, HealthMonitorTask::Ptr const& healthMonitorTask,
+                        std::string const& subModuleName = std::string(),
+                        HttpAuthType const authType = HttpAuthType::NONE);
 
     HttpReplicationLevelsModule() = delete;
     HttpReplicationLevelsModule(HttpReplicationLevelsModule const&) = delete;
@@ -65,10 +60,8 @@ protected:
     nlohmann::json executeImpl(std::string const& subModuleName) final;
 
 private:
-    HttpReplicationLevelsModule(Controller::Ptr const& controller,
-                                std::string const& taskName,
-                                HttpProcessorConfig const& processorConfig,
-                                qhttp::Request::Ptr const& req,
+    HttpReplicationLevelsModule(Controller::Ptr const& controller, std::string const& taskName,
+                                HttpProcessorConfig const& processorConfig, qhttp::Request::Ptr const& req,
                                 qhttp::Response::Ptr const& resp,
                                 HealthMonitorTask::Ptr const& healthMonitorTask);
 
@@ -87,7 +80,7 @@ private:
     /// Protects the replication level cache
     static util::Mutex _replicationLevelMtx;
 };
-    
-}}} // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_HTTPREPLICATIONLEVELSMODULE_H
+}}}  // namespace lsst::qserv::replica
+
+#endif  // LSST_QSERV_HTTPREPLICATIONLEVELSMODULE_H

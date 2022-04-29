@@ -41,101 +41,61 @@ namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.SqlGrantAccessJob");
 
-} /// namespace
+}  // namespace
 
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
 string SqlGrantAccessJob::typeName() { return "SqlGrantAccessJob"; }
 
-
-SqlGrantAccessJob::Ptr SqlGrantAccessJob::create(
-        string const& database,
-        string const& user,
-        bool allWorkers,
-        Controller::Ptr const& controller,
-        string const& parentJobId,
-        CallbackType const& onFinish,
-        int priority) {
-    return Ptr(new SqlGrantAccessJob(
-        database,
-        user,
-        allWorkers,
-        controller,
-        parentJobId,
-        onFinish,
-        priority
-    ));
+SqlGrantAccessJob::Ptr SqlGrantAccessJob::create(string const& database, string const& user, bool allWorkers,
+                                                 Controller::Ptr const& controller, string const& parentJobId,
+                                                 CallbackType const& onFinish, int priority) {
+    return Ptr(
+            new SqlGrantAccessJob(database, user, allWorkers, controller, parentJobId, onFinish, priority));
 }
 
+SqlGrantAccessJob::SqlGrantAccessJob(string const& database, string const& user, bool allWorkers,
+                                     Controller::Ptr const& controller, string const& parentJobId,
+                                     CallbackType const& onFinish, int priority)
+        : SqlJob(0, allWorkers, controller, parentJobId, "SQL_GRANT_ACCESS", priority),
+          _database(database),
+          _user(user),
+          _onFinish(onFinish) {}
 
-SqlGrantAccessJob::SqlGrantAccessJob(string const& database,
-                                     string const& user,
-                                     bool allWorkers,
-                                     Controller::Ptr const& controller,
-                                     string const& parentJobId,
-                                     CallbackType const& onFinish,
-                                     int priority)
-    :   SqlJob(0,
-               allWorkers,
-               controller,
-               parentJobId,
-               "SQL_GRANT_ACCESS",
-               priority),
-        _database(database),
-        _user(user),
-        _onFinish(onFinish) {
-}
-
-
-list<pair<string,string>> SqlGrantAccessJob::extendedPersistentState() const {
-    list<pair<string,string>> result;
+list<pair<string, string>> SqlGrantAccessJob::extendedPersistentState() const {
+    list<pair<string, string>> result;
     result.emplace_back("database", database());
     result.emplace_back("user", user());
     result.emplace_back("all_workers", bool2str(allWorkers()));
     return result;
 }
 
-
-list<SqlRequest::Ptr> SqlGrantAccessJob::launchRequests(util::Lock const& lock,
-                                                        string const& worker,
+list<SqlRequest::Ptr> SqlGrantAccessJob::launchRequests(util::Lock const& lock, string const& worker,
                                                         size_t maxRequestsPerWorker) {
-
     // Launch exactly one request per worker unless it was already
     // launched earlier
 
     list<SqlRequest::Ptr> requests;
     if (not _workers.count(worker) and maxRequestsPerWorker != 0) {
         auto const self = shared_from_base<SqlGrantAccessJob>();
-        requests.push_back(
-            controller()->sqlGrantAccess(
-                worker,
-                database(),
-                user(),
-                [self] (SqlGrantAccessRequest::Ptr const& request) {
-                    self->onRequestFinish(request);
-                },
-                priority(),
-                true,   /* keepTracking*/
-                id()    /* jobId */
-            )
-        );
+        requests.push_back(controller()->sqlGrantAccess(
+                worker, database(), user(),
+                [self](SqlGrantAccessRequest::Ptr const& request) { self->onRequestFinish(request); },
+                priority(), true, /* keepTracking*/
+                id()              /* jobId */
+                ));
         _workers.insert(worker);
     }
     return requests;
 }
 
-
-void SqlGrantAccessJob::stopRequest(util::Lock const& lock,
-                                    SqlRequest::Ptr const& request) {
+void SqlGrantAccessJob::stopRequest(util::Lock const& lock, SqlRequest::Ptr const& request) {
     stopRequestDefaultImpl<StopSqlGrantAccessRequest>(lock, request);
 }
-
 
 void SqlGrantAccessJob::notify(util::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "[" << typeName() << "]");
     notifyDefaultImpl<SqlGrantAccessJob>(lock, _onFinish);
 }
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica

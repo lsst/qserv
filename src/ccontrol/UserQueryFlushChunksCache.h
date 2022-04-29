@@ -31,18 +31,16 @@
 #include "ccontrol/UserQuery.h"
 
 // Forward decl
-namespace lsst {
-namespace qserv {
+namespace lsst { namespace qserv {
 namespace css {
 class CssAccess;
 }
 namespace sql {
 class SqlConnection;
-}}}
+}
+}}  // namespace lsst::qserv
 
-namespace lsst {
-namespace qserv {
-namespace ccontrol {
+namespace lsst { namespace qserv { namespace ccontrol {
 
 /// @addtogroup ccontrol
 
@@ -54,14 +52,12 @@ namespace ccontrol {
 
 class UserQueryFlushChunksCache : public UserQuery {
 public:
-
     /**
      *  @param css:           CSS interface
      *  @param dbName:        Name of the database where table is
      *  @param resultDbConn:  Connection to results database
      */
-    UserQueryFlushChunksCache(std::shared_ptr<css::CssAccess> const& css,
-                              std::string const& dbName,
+    UserQueryFlushChunksCache(std::shared_ptr<css::CssAccess> const& css, std::string const& dbName,
                               sql::SqlConnection* resultDbConn);
 
     UserQueryFlushChunksCache(UserQueryFlushChunksCache const&) = delete;
@@ -87,21 +83,17 @@ public:
     virtual void discard() override;
 
     // Delegate objects
-    virtual std::shared_ptr<qdisp::MessageStore> getMessageStore() override {
-        return _messageStore; }
+    virtual std::shared_ptr<qdisp::MessageStore> getMessageStore() override { return _messageStore; }
 
 protected:
-
 private:
-
     std::shared_ptr<css::CssAccess> const _css;
     std::string const _dbName;
     sql::SqlConnection* _resultDbConn;
     QueryState _qState;
     std::shared_ptr<qdisp::MessageStore> _messageStore;
-
 };
 
-}}} // namespace lsst::qserv::ccontrol
+}}}  // namespace lsst::qserv::ccontrol
 
-#endif // LSST_QSERV_CCONTROL_USERQUERYFLUSHCHUNKSCACHE_H
+#endif  // LSST_QSERV_CCONTROL_USERQUERYFLUSHCHUNKSCACHE_H

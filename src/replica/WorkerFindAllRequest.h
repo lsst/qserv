@@ -30,17 +30,15 @@
 #include "replica/WorkerRequest.h"
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
 /**
-  * Class WorkerFindAllRequest represents a context and a state of replicas lookup
-  * requests within the worker servers. It can also be used for testing the framework
-  * operation as its implementation won't make any changes to any files or databases.
-  *
-  * Real implementations of the request processing must derive from this class.
-  */
+ * Class WorkerFindAllRequest represents a context and a state of replicas lookup
+ * requests within the worker servers. It can also be used for testing the framework
+ * operation as its implementation won't make any changes to any files or databases.
+ *
+ * Real implementations of the request processing must derive from this class.
+ */
 class WorkerFindAllRequest : public WorkerRequest {
 public:
     typedef std::shared_ptr<WorkerFindAllRequest> Ptr;
@@ -65,13 +63,9 @@ public:
      * @param request ProtoBuf body of the request
      * @return pointer to the created object
      */
-    static Ptr create(ServiceProvider::Ptr const& serviceProvider,
-                      std::string const& worker,
-                      std::string const& id,
-                      int priority,
-                      ExpirationCallbackType const& onExpired,
-                      unsigned int requestExpirationIvalSec,
-                      ProtocolRequestFindAll const& request);
+    static Ptr create(ServiceProvider::Ptr const& serviceProvider, std::string const& worker,
+                      std::string const& id, int priority, ExpirationCallbackType const& onExpired,
+                      unsigned int requestExpirationIvalSec, ProtocolRequestFindAll const& request);
 
     WorkerFindAllRequest() = delete;
     WorkerFindAllRequest(WorkerFindAllRequest const&) = delete;
@@ -92,13 +86,9 @@ public:
     bool execute() override;
 
 protected:
-    WorkerFindAllRequest(ServiceProvider::Ptr const& serviceProvider,
-                         std::string const& worker,
-                         std::string const& id,
-                         int priority,
-                         ExpirationCallbackType const& onExpired,
-                         unsigned int requestExpirationIvalSec,
-                         ProtocolRequestFindAll const& request);
+    WorkerFindAllRequest(ServiceProvider::Ptr const& serviceProvider, std::string const& worker,
+                         std::string const& id, int priority, ExpirationCallbackType const& onExpired,
+                         unsigned int requestExpirationIvalSec, ProtocolRequestFindAll const& request);
 
     // Input parameters
 
@@ -109,22 +99,18 @@ protected:
 };
 
 /**
-  * Class WorkerFindAllRequestPOSIX provides an actual implementation for
-  * the replicas lookup based on the direct manipulation of files on
-  * a POSIX file system.
-  */
+ * Class WorkerFindAllRequestPOSIX provides an actual implementation for
+ * the replicas lookup based on the direct manipulation of files on
+ * a POSIX file system.
+ */
 class WorkerFindAllRequestPOSIX : public WorkerFindAllRequest {
 public:
     typedef std::shared_ptr<WorkerFindAllRequestPOSIX> Ptr;
 
     /// @see WorkerFindAllRequest::create()
-    static Ptr create(ServiceProvider::Ptr const& serviceProvider,
-                      std::string const& worker,
-                      std::string const& id,
-                      int priority,
-                      ExpirationCallbackType const& onExpired,
-                      unsigned int requestExpirationIvalSec,
-                      ProtocolRequestFindAll const& request);
+    static Ptr create(ServiceProvider::Ptr const& serviceProvider, std::string const& worker,
+                      std::string const& id, int priority, ExpirationCallbackType const& onExpired,
+                      unsigned int requestExpirationIvalSec, ProtocolRequestFindAll const& request);
 
     WorkerFindAllRequestPOSIX() = delete;
     WorkerFindAllRequestPOSIX(WorkerFindAllRequestPOSIX const&) = delete;
@@ -135,13 +121,9 @@ public:
     bool execute() final;
 
 private:
-    WorkerFindAllRequestPOSIX(ServiceProvider::Ptr const& serviceProvider,
-                              std::string const& worker,
-                              std::string const& id,
-                              int priority,
-                              ExpirationCallbackType const& onExpired,
-                              unsigned int requestExpirationIvalSec,
-                              ProtocolRequestFindAll const& request);
+    WorkerFindAllRequestPOSIX(ServiceProvider::Ptr const& serviceProvider, std::string const& worker,
+                              std::string const& id, int priority, ExpirationCallbackType const& onExpired,
+                              unsigned int requestExpirationIvalSec, ProtocolRequestFindAll const& request);
 };
 
 /**
@@ -151,6 +133,6 @@ private:
  */
 typedef WorkerFindAllRequestPOSIX WorkerFindAllRequestFS;
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_WORKERFINDALLREQUEST_H
+#endif  // LSST_QSERV_REPLICA_WORKERFINDALLREQUEST_H

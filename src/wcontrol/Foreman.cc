@@ -54,24 +54,17 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.wcontrol.Foreman");
 
 using namespace std;
 
-namespace lsst {
-namespace qserv {
-namespace wcontrol {
+namespace lsst { namespace qserv { namespace wcontrol {
 
-Foreman::Foreman(Scheduler::Ptr                  const& scheduler,
-                 unsigned int                    poolSize,
-                 unsigned int                    maxPoolThreads,
-                 mysql::MySqlConfig              const& mySqlConfig,
-                 wpublish::QueriesAndChunks::Ptr const& queries,
-                 wcontrol::SqlConnMgr::Ptr       const& sqlConnMgr,
-                 wcontrol::TransmitMgr::Ptr      const& transmitMgr)
+Foreman::Foreman(Scheduler::Ptr const& scheduler, unsigned int poolSize, unsigned int maxPoolThreads,
+                 mysql::MySqlConfig const& mySqlConfig, wpublish::QueriesAndChunks::Ptr const& queries,
+                 wcontrol::SqlConnMgr::Ptr const& sqlConnMgr, wcontrol::TransmitMgr::Ptr const& transmitMgr)
 
-    :   _scheduler  (scheduler),
-        _mySqlConfig(mySqlConfig),
-        _queries    (queries),
-        _sqlConnMgr (sqlConnMgr),
-        _transmitMgr(transmitMgr) {
-
+        : _scheduler(scheduler),
+          _mySqlConfig(mySqlConfig),
+          _queries(queries),
+          _sqlConnMgr(sqlConnMgr),
+          _transmitMgr(transmitMgr) {
     // Make the chunk resource mgr
     // Creating backend makes a connection to the database for making temporary tables.
     // It will delete temporary tables that it can identify as being created by a worker.
@@ -80,14 +73,13 @@ Foreman::Foreman(Scheduler::Ptr                  const& scheduler,
     _backend = make_shared<wdb::SQLBackend>(_mySqlConfig);
     _chunkResourceMgr = wdb::ChunkResourceMgr::newMgr(_backend);
 
-    assert(_scheduler); // Cannot operate without scheduler.
+    assert(_scheduler);  // Cannot operate without scheduler.
 
     LOGS(_log, LOG_LVL_DEBUG, "poolSize=" << poolSize << " maxPoolThreads=" << maxPoolThreads);
-    _pool = util::ThreadPool::newThreadPool(poolSize,  maxPoolThreads, _scheduler);
+    _pool = util::ThreadPool::newThreadPool(poolSize, maxPoolThreads, _scheduler);
 
     _workerCommandQueue = make_shared<util::CommandQueue>();
-    _workerCommandPool  = util::ThreadPool::newThreadPool(poolSize, _workerCommandQueue);
-
+    _workerCommandPool = util::ThreadPool::newThreadPool(poolSize, _workerCommandQueue);
 }
 
 Foreman::~Foreman() {
@@ -97,15 +89,13 @@ Foreman::~Foreman() {
     _pool->shutdownPool();
 }
 
-
 void Foreman::_setRunFunc(shared_ptr<wbase::Task> const& task) {
-
     // If there are no problems, this lambda function creates
     // a QueryRunner instance for this Task and then runs
     // QueryRunner::runQuery() for the Task.
-    auto func = [this, task](util::CmdData*){
+    auto func = [this, task](util::CmdData*) {
         proto::TaskMsg const& msg = *task->msg;
-        int const resultProtocol = 2; // See proto/worker.proto Result protocol
+        int const resultProtocol = 2;  // See proto/worker.proto Result protocol
         if (!msg.has_protocol() || msg.protocol() < resultProtocol) {
             LOGS(_log, LOG_LVL_WARN, "processMsg Unsupported wire protocol");
             if (!task->checkCancelled()) {
@@ -113,8 +103,8 @@ void Foreman::_setRunFunc(shared_ptr<wbase::Task> const& task) {
                 task->getSendChannel()->sendError("Unsupported wire protocol", 1);
             }
         } else {
-            auto qr = wdb::QueryRunner::newQueryRunner(task, _chunkResourceMgr, _mySqlConfig,
-                                                       _sqlConnMgr, _transmitMgr);
+            auto qr = wdb::QueryRunner::newQueryRunner(task, _chunkResourceMgr, _mySqlConfig, _sqlConnMgr,
+                                                       _transmitMgr);
             bool success = false;
             try {
                 success = qr->runQuery();
@@ -131,17 +121,16 @@ void Foreman::_setRunFunc(shared_ptr<wbase::Task> const& task) {
         // Transmission is done, but 'task' contains statistics that are still useful.
         // However, the resources used by sendChannel need to be freed quickly.
         // The QueryRunner class access to sendChannel for results is over by this point.
-        task->resetSendChannel(); // Frees its xrdsvc::SsiRequest object.
+        task->resetSendChannel();  // Frees its xrdsvc::SsiRequest object.
     };
 
     task->setFunc(func);
 }
 
-
 /// Put the task on the scheduler to be run later.
 void Foreman::processTasks(vector<wbase::Task::Ptr> const& tasks) {
     std::vector<util::Command::Ptr> cmds;
-    for (auto const& task:tasks) {
+    for (auto const& task : tasks) {
         _setRunFunc(task);
         _queries->addTask(task);
         cmds.push_back(task);
@@ -149,11 +138,9 @@ void Foreman::processTasks(vector<wbase::Task::Ptr> const& tasks) {
     _scheduler->queCmd(cmds);
 }
 
-
 void Foreman::processCommand(shared_ptr<wbase::WorkerCommand> const& command) {
     _workerCommandQueue->queCmd(command);
 }
-
 
 nlohmann::json Foreman::statusToJson() {
     nlohmann::json status;
@@ -161,4 +148,4 @@ nlohmann::json Foreman::statusToJson() {
     return status;
 }
 
-}}} // namespace
+}}}  // namespace lsst::qserv::wcontrol

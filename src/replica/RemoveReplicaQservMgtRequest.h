@@ -32,15 +32,13 @@
 #include "wpublish/ChunkGroupQservRequest.h"
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
 /**
  * Class RemoveReplicaQservMgtRequest implements a request notifying Qserv workers
  * on new chunks added to the database.
  */
-class RemoveReplicaQservMgtRequest: public QservMgtRequest {
+class RemoveReplicaQservMgtRequest : public QservMgtRequest {
 public:
     typedef std::shared_ptr<RemoveReplicaQservMgtRequest> Ptr;
 
@@ -67,12 +65,9 @@ public:
      * @param onFinish (optional) callback function to be called upon request completion.
      * @return A pointer to the created object.
      */
-    static Ptr create(ServiceProvider::Ptr const& serviceProvider,
-                      std::string const& worker,
-                      unsigned int chunk,
-                      std::vector<std::string> const& databases,
-                      bool force=false,
-                      CallbackType const& onFinish=nullptr);
+    static Ptr create(ServiceProvider::Ptr const& serviceProvider, std::string const& worker,
+                      unsigned int chunk, std::vector<std::string> const& databases, bool force = false,
+                      CallbackType const& onFinish = nullptr);
 
     /// @return number of a chunk
     unsigned int chunk() const { return _chunk; }
@@ -84,7 +79,7 @@ public:
     bool force() const { return _force; }
 
     /// @see QservMgtRequest::extendedPersistentState()
-    std::list<std::pair<std::string,std::string>> extendedPersistentState() const override;
+    std::list<std::pair<std::string, std::string>> extendedPersistentState() const override;
 
 protected:
     /// @see QservMgtRequest::startImpl
@@ -98,18 +93,15 @@ protected:
 
 private:
     /// @see RemoveReplicaQservMgtRequest::create()
-    RemoveReplicaQservMgtRequest(ServiceProvider::Ptr const& serviceProvider,
-                                 std::string const& worker,
-                                 unsigned int chunk,
-                                 std::vector<std::string> const& databases,
-                                 bool force,
+    RemoveReplicaQservMgtRequest(ServiceProvider::Ptr const& serviceProvider, std::string const& worker,
+                                 unsigned int chunk, std::vector<std::string> const& databases, bool force,
                                  CallbackType const& onFinish);
 
     // Input parameters
 
-    unsigned int             const _chunk;
+    unsigned int const _chunk;
     std::vector<std::string> const _databases;
-    bool                     const _force;
+    bool const _force;
 
     /// The callback function for sending a notification upon request completion
     CallbackType _onFinish;
@@ -118,6 +110,6 @@ private:
     wpublish::RemoveChunkGroupQservRequest::Ptr _qservRequest;
 };
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_REMOVEREPLICAQSERVMGTREQUEST_H
+#endif  // LSST_QSERV_REPLICA_REMOVEREPLICAQSERVMGTREQUEST_H

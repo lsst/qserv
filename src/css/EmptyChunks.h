@@ -22,13 +22,13 @@
  */
 
 /**
-  * @file
-  *
-  * @brief Empty-chunks tracker. Reads an on-disk file from cwd, but
-  * should ideally query (and cache) table state.
-  *
-  * @Author Daniel L. Wang, SLAC
-  */
+ * @file
+ *
+ * @brief Empty-chunks tracker. Reads an on-disk file from cwd, but
+ * should ideally query (and cache) table state.
+ *
+ * @Author Daniel L. Wang, SLAC
+ */
 
 #ifndef LSST_QSERV_CSS_EMPTYCHUNKS_H
 #define LSST_QSERV_CSS_EMPTYCHUNKS_H
@@ -42,9 +42,7 @@
 // Qserv headers
 #include "global/intTypes.h"
 
-namespace lsst {
-namespace qserv {
-namespace css {
+namespace lsst { namespace qserv { namespace css {
 
 class DbInterfaceMySql;
 
@@ -56,10 +54,9 @@ class DbInterfaceMySql;
 class EmptyChunks {
 public:
     /// Doing anything with _css inside the constructor would be dangerous.
-    EmptyChunks(std::shared_ptr<DbInterfaceMySql> const& dbI,
-                std::string const& path=".",
-                std::string const& fallbackFile="emptyChunks.txt")
-        : _dbI(dbI), _path(path), _fallbackFile(fallbackFile) {}
+    EmptyChunks(std::shared_ptr<DbInterfaceMySql> const& dbI, std::string const& path = ".",
+                std::string const& fallbackFile = "emptyChunks.txt")
+            : _dbI(dbI), _path(path), _fallbackFile(fallbackFile) {}
 
     EmptyChunks() = delete;
     EmptyChunks(EmptyChunks const&) = delete;
@@ -79,7 +76,7 @@ public:
     /// Clear cache for empty chunk list so that on next call to above methods
     /// empty chunk list is re-populated. If database name is empty then cache
     // for all databases is cleared.
-    void clearCache(std::string const& db=std::string()) const;
+    void clearCache(std::string const& db = std::string()) const;
 
 private:
     // Convenience types
@@ -89,15 +86,14 @@ private:
     /// @return all the empty chunks for database 'db'.
     IntSet _populate(std::string const& db);
 
-
     typedef std::map<std::string, IntSetPtr> IntSetMap;
-    std::shared_ptr<DbInterfaceMySql> const _dbI; ///< allow access to empty chunks table.
-    std::string _path; ///< Search path for empty chunks files
-    std::string _fallbackFile; ///< Fallback path for empty chunks
-    mutable IntSetMap _sets; ///< Container for empty chunks sets (cache)
+    std::shared_ptr<DbInterfaceMySql> const _dbI;  ///< allow access to empty chunks table.
+    std::string _path;                             ///< Search path for empty chunks files
+    std::string _fallbackFile;                     ///< Fallback path for empty chunks
+    mutable IntSetMap _sets;                       ///< Container for empty chunks sets (cache)
     mutable std::mutex _setsMutex;
 };
 
-}}} // namespace lsst::qserv::css
+}}}  // namespace lsst::qserv::css
 
-#endif // LSST_QSERV_CSS_EMPTYCHUNKS_H
+#endif  // LSST_QSERV_CSS_EMPTYCHUNKS_H

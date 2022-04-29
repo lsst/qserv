@@ -38,23 +38,20 @@ namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.util.EventThread");
 }
 
-namespace lsst {
-namespace qserv {
-namespace util {
-
+namespace lsst { namespace qserv { namespace util {
 
 void CommandQueue::queCmd(std::vector<Command::Ptr> const& cmds) {
     {
         std::lock_guard<std::mutex> lock(_mx);
         _qu.insert(_qu.end(), cmds.begin(), cmds.end());
     }
-    notify(cmds.size() > 1); // notify all if more than 1 command, otherwise notify 1.
+    notify(cmds.size() > 1);  // notify all if more than 1 command, otherwise notify 1.
 }
 
 /// Handle commands as they arrive until queEnd() is called.
 void EventThread::handleCmds() {
     startup();
-    while(_loop) {
+    while (_loop) {
         _cmd = _q->getCmd();
         _commandFinishCalled = false;
         _currentCommand = _cmd.get();
@@ -73,7 +70,6 @@ void EventThread::handleCmds() {
     finishup();
 }
 
-
 /// Ensure that commandFinish is only called once per loop.
 void EventThread::callCommandFinish(Command::Ptr const& cmd) {
     if (_commandFinishCalled.exchange(true) == false) {
@@ -81,19 +77,16 @@ void EventThread::callCommandFinish(Command::Ptr const& cmd) {
     }
 }
 
-
 /// call this to start the thread
 void EventThread::run() {
     std::thread t{&EventThread::handleCmds, this};
     _t = std::move(t);
 }
 
-
 EventThreadJoiner::EventThreadJoiner() {
     std::thread t(&EventThreadJoiner::joinLoop, this);
     _tJoiner = std::move(t);
 }
-
 
 EventThreadJoiner::~EventThreadJoiner() {
     if (_continue) {
@@ -101,19 +94,17 @@ EventThreadJoiner::~EventThreadJoiner() {
     }
 }
 
-
 void EventThreadJoiner::shutdownJoin() {
     _continue = false;
     LOGS(_log, LOG_LVL_DEBUG, "Waiting for joiner thread to finish.");
     _tJoiner.join();
 }
 
-
 void EventThreadJoiner::joinLoop() {
     EventThread::Ptr pet;
-    while(true) {
+    while (true) {
         std::unique_lock<std::mutex> ulock(_mtxJoiner);
-        if(!_eventThreads.empty()) {
+        if (!_eventThreads.empty()) {
             pet = _eventThreads.front();
             _eventThreads.pop();
             ulock.unlock();
@@ -130,7 +121,6 @@ void EventThreadJoiner::joinLoop() {
     LOGS(_log, LOG_LVL_DEBUG, "join loop exiting");
 }
 
-
 void EventThreadJoiner::addThread(EventThread::Ptr const& eventThread) {
     if (eventThread == nullptr) return;
     std::lock_guard<std::mutex> lg(_mtxJoiner);
@@ -138,6 +128,4 @@ void EventThreadJoiner::addThread(EventThread::Ptr const& eventThread) {
     _eventThreads.push(eventThread);
 }
 
-}}} // namespace lsst:qserv:util
-
-
+}}}  // namespace lsst::qserv::util

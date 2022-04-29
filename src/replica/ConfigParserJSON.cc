@@ -31,20 +31,12 @@
 using namespace std;
 using json = nlohmann::json;
 
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
-ConfigParserJSON::ConfigParserJSON(json& data,
-                                   map<string, WorkerInfo>& workers,
+ConfigParserJSON::ConfigParserJSON(json& data, map<string, WorkerInfo>& workers,
                                    map<string, DatabaseFamilyInfo>& databaseFamilies,
                                    map<string, DatabaseInfo>& databases)
-    :   _data(data),
-        _workers(workers),
-        _databaseFamilies(databaseFamilies),
-        _databases(databases) {
-}
-
+        : _data(data), _workers(workers), _databaseFamilies(databaseFamilies), _databases(databases) {}
 
 void ConfigParserJSON::parse(json const& obj) {
     if (!obj.is_object()) throw invalid_argument(_context + "a JSON object is required.");
@@ -65,12 +57,11 @@ void ConfigParserJSON::parse(json const& obj) {
     //   - The last insert always wins.
 
     if (obj.count("general") != 0) {
-        for (auto&& itr: obj.at("general").items()) {
+        for (auto&& itr : obj.at("general").items()) {
             string const& category = itr.key();
             json const& inCategoryObj = itr.value();
             json& outCategoryObj = _data[category];
-            for (auto&& itr: inCategoryObj.items()) {
-
+            for (auto&& itr : inCategoryObj.items()) {
                 string const& param = itr.key();
                 json const& inParamObj = itr.value();
 
@@ -79,9 +70,9 @@ void ConfigParserJSON::parse(json const& obj) {
 
                 json& outParamObj = outCategoryObj[param];
                 if (inParamObj.type() != outParamObj.type()) {
-                    throw std::invalid_argument(
-                            _context + " no transient schema match for the parameter, category: '"
-                            + category + "' param: '" + param + "'.");
+                    throw std::invalid_argument(_context +
+                                                " no transient schema match for the parameter, category: '" +
+                                                category + "' param: '" + param + "'.");
                 }
                 if (inParamObj.is_string()) {
                     _storeGeneralParameter<string>(outParamObj, inParamObj, category, param);
@@ -93,8 +84,8 @@ void ConfigParserJSON::parse(json const& obj) {
                     _storeGeneralParameter<double>(outParamObj, inParamObj, category, param);
                 } else {
                     throw invalid_argument(
-                            _context + " unsupported transient schema type for the parameter, category: '"
-                            + category + "' param: '" + param + "'.");
+                            _context + " unsupported transient schema type for the parameter, category: '" +
+                            category + "' param: '" + param + "'.");
                 }
             }
         }
@@ -106,7 +97,7 @@ void ConfigParserJSON::parse(json const& obj) {
     if (obj.count("workers") != 0) {
         string const category = "workers";
         json const& inCategoryObj = obj.at(category);
-        for (auto&& itr: inCategoryObj.items()) {
+        for (auto&& itr : inCategoryObj.items()) {
             string const& worker = itr.key();
             json const& inWorker = itr.value();
             // Use this constructor to validate the schema and to fill in the missing (optional)
@@ -116,9 +107,8 @@ void ConfigParserJSON::parse(json const& obj) {
             // on the default values of some parameters of workers.
             WorkerInfo const info(inWorker);
             if (worker != info.name) {
-                throw invalid_argument(
-                        _context + "inconsistent definition for worker: " + worker + " in JSON object: "
-                        + inWorker.dump());
+                throw invalid_argument(_context + "inconsistent definition for worker: " + worker +
+                                       " in JSON object: " + inWorker.dump());
             }
             _workers[worker] = info;
         }
@@ -126,16 +116,15 @@ void ConfigParserJSON::parse(json const& obj) {
     if (obj.count("database_families") != 0) {
         string const category = "database_families";
         json const& inCategoryObj = obj.at(category);
-        for (auto&& itr: inCategoryObj.items()) {
+        for (auto&& itr : inCategoryObj.items()) {
             string const& family = itr.key();
             json const& inFamily = itr.value();
             // Use this constructor to validate the schema. If it won't throw then
             // the input description is correct and can be placed into the output object.
             DatabaseFamilyInfo const info(inFamily);
             if (family != info.name) {
-                throw invalid_argument(
-                        _context + "inconsistent definition for database family: " + family + " in JSON object: "
-                        + inFamily.dump());
+                throw invalid_argument(_context + "inconsistent definition for database family: " + family +
+                                       " in JSON object: " + inFamily.dump());
             }
             _databaseFamilies[family] = info;
         }
@@ -143,7 +132,7 @@ void ConfigParserJSON::parse(json const& obj) {
     if (obj.count("databases") != 0) {
         string const category = "databases";
         json const& inCategoryObj = obj.at(category);
-        for (auto&& itr: inCategoryObj.items()) {
+        for (auto&& itr : inCategoryObj.items()) {
             string const& database = itr.key();
             json const& inDatabase = itr.value();
             // Use this constructor to validate the schema. If it won't throw then
@@ -152,13 +141,12 @@ void ConfigParserJSON::parse(json const& obj) {
             // an existing family name was provided in the input spec.
             DatabaseInfo const info(inDatabase, _databaseFamilies);
             if (database != info.name) {
-                throw invalid_argument(
-                        _context + "inconsistent definition for database: " + database + " in JSON object: "
-                        + inDatabase.dump());
+                throw invalid_argument(_context + "inconsistent definition for database: " + database +
+                                       " in JSON object: " + inDatabase.dump());
             }
             _databases[database] = info;
         }
     }
 }
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica

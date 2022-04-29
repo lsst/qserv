@@ -45,77 +45,49 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.IngestClient");
 
 size_t const defaultBufferCapacity = 1024;
 
-} /// namespace
+}  // namespace
 
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
-IngestClient::Ptr IngestClient::connect(
-        string const& workerHost,
-        uint16_t workerPort,
-        TransactionId transactionId,
-        string const& tableName,
-        unsigned int chunk,
-        bool isOverlap,
-        string const& inputFilePath,
-        string const& authKey,
-        csv::DialectInput const& dialectInput,
-        size_t recordSizeBytes) {
-    IngestClient::Ptr const ptr(new IngestClient(
-        workerHost,
-        workerPort,
-        transactionId,
-        tableName,
-        chunk,
-        isOverlap,
-        inputFilePath,
-        authKey,
-        dialectInput,
-        recordSizeBytes
-    ));
+IngestClient::Ptr IngestClient::connect(string const& workerHost, uint16_t workerPort,
+                                        TransactionId transactionId, string const& tableName,
+                                        unsigned int chunk, bool isOverlap, string const& inputFilePath,
+                                        string const& authKey, csv::DialectInput const& dialectInput,
+                                        size_t recordSizeBytes) {
+    IngestClient::Ptr const ptr(new IngestClient(workerHost, workerPort, transactionId, tableName, chunk,
+                                                 isOverlap, inputFilePath, authKey, dialectInput,
+                                                 recordSizeBytes));
     ptr->_connectImpl();
     return ptr;
 }
 
-
-IngestClient::IngestClient(string const& workerHost,
-                           uint16_t workerPort,
-                           TransactionId transactionId,
-                           string const& tableName,
-                           unsigned int chunk,
-                           bool isOverlap,
-                           string const& inputFilePath,
-                           string const& authKey,
-                           csv::DialectInput const& dialectInput,
-                           size_t recordSizeBytes)
-    :   _workerHost(workerHost),
-        _workerPort(workerPort),
-        _transactionId(transactionId),
-        _tableName(tableName),
-        _chunk(chunk),
-        _isOverlap(isOverlap),
-        _inputFilePath(inputFilePath),
-        _authKey(authKey),
-        _dialectInput(dialectInput),
-        _recordSizeBytes(recordSizeBytes),
-        _bufferPtr(new ProtocolBuffer(defaultBufferCapacity)),
-        _io_service(),
-        _socket(_io_service) {
-
+IngestClient::IngestClient(string const& workerHost, uint16_t workerPort, TransactionId transactionId,
+                           string const& tableName, unsigned int chunk, bool isOverlap,
+                           string const& inputFilePath, string const& authKey,
+                           csv::DialectInput const& dialectInput, size_t recordSizeBytes)
+        : _workerHost(workerHost),
+          _workerPort(workerPort),
+          _transactionId(transactionId),
+          _tableName(tableName),
+          _chunk(chunk),
+          _isOverlap(isOverlap),
+          _inputFilePath(inputFilePath),
+          _authKey(authKey),
+          _dialectInput(dialectInput),
+          _recordSizeBytes(recordSizeBytes),
+          _bufferPtr(new ProtocolBuffer(defaultBufferCapacity)),
+          _io_service(),
+          _socket(_io_service) {
     if (inputFilePath.empty()) _abort(__func__, "the file name can't be empty");
     if (_recordSizeBytes == 0) _abort(__func__, "the record size can't be 0");
 }
-
 
 IngestClient::~IngestClient() {
     LOGS(_log, LOG_LVL_DEBUG, _context(__func__));
     _closeConnection();
 }
 
-
 void IngestClient::send() {
-
     LOGS(_log, LOG_LVL_DEBUG, _context(__func__));
 
     if (_sent) return;
@@ -124,15 +96,15 @@ void IngestClient::send() {
     if (!file.good()) {
         _abort(__func__, "failed to open the file: '" + _inputFilePath + "'.");
     }
-    
+
     unique_ptr<char[]> const record(new char[_recordSizeBytes]);
     bool eof = false;
     do {
         ProtocolIngestData data;
         eof = !file.read(record.get(), _recordSizeBytes);
         if (eof && !file.eof()) {
-            _abort(__func__, "failed to open the file: '" + _inputFilePath +
-                   + "', error: '" + strerror(errno) + "', errno: " + to_string(errno));
+            _abort(__func__, "failed to open the file: '" + _inputFilePath + +"', error: '" +
+                                     strerror(errno) + "', errno: " + to_string(errno));
         }
         size_t const num = file.gcount();
         _sizeBytes += num;
@@ -144,11 +116,7 @@ void IngestClient::send() {
         _bufferPtr->serialize(data);
 
         boost::system::error_code ec;
-        boost::asio::write(
-            _socket,
-            boost::asio::buffer(_bufferPtr->data(), _bufferPtr->size()),
-            ec
-        );
+        boost::asio::write(_socket, boost::asio::buffer(_bufferPtr->data(), _bufferPtr->size()), ec);
         _assertErrorCode(ec, __func__, "data send");
 
         // Read and analyze the response
@@ -159,14 +127,16 @@ void IngestClient::send() {
         switch (response.status()) {
             case ProtocolIngestResponse::READY_TO_READ_DATA:
                 if (eof) {
-                    _abort(__func__, "protocol error: the server is still waiting for data"
+                    _abort(__func__,
+                           "protocol error: the server is still waiting for data"
                            " after receiving the last batch of rows.");
                 }
                 break;
 
             case ProtocolIngestResponse::FINISHED:
                 if (!eof) {
-                    _abort(__func__, "protocol error: the server unexpectedly finished accepting"
+                    _abort(__func__,
+                           "protocol error: the server unexpectedly finished accepting"
                            " new data");
                 }
                 break;
@@ -188,15 +158,12 @@ void IngestClient::send() {
     _closeConnection();
 }
 
-
 bool IngestClient::retryAllowed() const {
     if (!_sent) throw logic_error(_context(__func__) + "the request hasn't been sent");
     return _retryAllowed;
 }
 
-
 void IngestClient::_connectImpl() {
-
     LOGS(_log, LOG_LVL_DEBUG, _context(__func__));
 
     boost::system::error_code ec;
@@ -204,10 +171,8 @@ void IngestClient::_connectImpl() {
     // Connect to the server synchronously using error codes to process errors
     // instead of exceptions.
     boost::asio::ip::tcp::resolver resolver(_io_service);
-    boost::asio::ip::tcp::resolver::iterator iter = resolver.resolve(
-        boost::asio::ip::tcp::resolver::query(_workerHost,to_string(_workerPort)),
-        ec
-    );
+    boost::asio::ip::tcp::resolver::iterator iter =
+            resolver.resolve(boost::asio::ip::tcp::resolver::query(_workerHost, to_string(_workerPort)), ec);
     _assertErrorCode(ec, __func__, "host/port resolve");
 
     boost::asio::connect(_socket, iter, ec);
@@ -231,11 +196,7 @@ void IngestClient::_connectImpl() {
     _bufferPtr->resize();
     _bufferPtr->serialize(request);
 
-    boost::asio::write(
-        _socket,
-        boost::asio::buffer(_bufferPtr->data(), _bufferPtr->size()),
-        ec
-    );
+    boost::asio::write(_socket, boost::asio::buffer(_bufferPtr->data(), _bufferPtr->size()), ec);
     _assertErrorCode(ec, __func__, "handshake send");
 
     // Read and analyze the response
@@ -246,9 +207,7 @@ void IngestClient::_connectImpl() {
     }
 }
 
-
 void IngestClient::_readResponse(ProtocolIngestResponse& response) {
-
     LOGS(_log, LOG_LVL_DEBUG, _context(__func__));
 
     // Start with receiving the fixed length frame carrying
@@ -258,26 +217,18 @@ void IngestClient::_readResponse(ProtocolIngestResponse& response) {
     _bufferPtr->resize(frameLengthBytes);
 
     boost::system::error_code ec;
-    boost::asio::read(
-        _socket,
-        boost::asio::buffer(_bufferPtr->data(), frameLengthBytes),
-        boost::asio::transfer_at_least(frameLengthBytes),
-        ec
-    );
+    boost::asio::read(_socket, boost::asio::buffer(_bufferPtr->data(), frameLengthBytes),
+                      boost::asio::transfer_at_least(frameLengthBytes), ec);
     _assertErrorCode(ec, __func__, "frame receive");
 
     // Get the length of the message and try reading the message itself
     // from the socket.
     const uint32_t responseLengthBytes = _bufferPtr->parseLength();
 
-    _bufferPtr->resize(responseLengthBytes);    // make sure the buffer has enough space to
-                                                // accommodate the data of the message.
-    boost::asio::read(
-        _socket,
-        boost::asio::buffer(_bufferPtr->data(), responseLengthBytes),
-        boost::asio::transfer_at_least(responseLengthBytes),
-        ec
-    );
+    _bufferPtr->resize(responseLengthBytes);  // make sure the buffer has enough space to
+                                              // accommodate the data of the message.
+    boost::asio::read(_socket, boost::asio::buffer(_bufferPtr->data(), responseLengthBytes),
+                      boost::asio::transfer_at_least(responseLengthBytes), ec);
     _assertErrorCode(ec, __func__, "response receive");
 
     // Parse and analyze the response
@@ -288,9 +239,7 @@ void IngestClient::_readResponse(ProtocolIngestResponse& response) {
     }
 }
 
-
-void IngestClient::_assertErrorCode(boost::system::error_code const& ec,
-                                    string const& func,
+void IngestClient::_assertErrorCode(boost::system::error_code const& ec, string const& func,
                                     string const& msg) {
     LOGS(_log, LOG_LVL_DEBUG, _context(__func__));
 
@@ -299,9 +248,7 @@ void IngestClient::_assertErrorCode(boost::system::error_code const& ec,
     }
 }
 
-
-void IngestClient::_abort(string const& func,
-                          string const& error) {
+void IngestClient::_abort(string const& func, string const& error) {
     LOGS(_log, LOG_LVL_DEBUG, _context(__func__));
     _closeConnection();
     string const msg = _context(func) + error;
@@ -309,9 +256,7 @@ void IngestClient::_abort(string const& func,
     throw IngestClientError(msg);
 }
 
-                
 void IngestClient::_closeConnection() {
-
     LOGS(_log, LOG_LVL_DEBUG, _context(__func__));
 
     // Always attempt to shutdown and close the socket. This code deliberately
@@ -321,4 +266,4 @@ void IngestClient::_closeConnection() {
     _socket.close(ec);
 }
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica

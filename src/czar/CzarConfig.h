@@ -30,9 +30,7 @@
 #include "mysql/MySqlConfig.h"
 #include "util/ConfigStore.h"
 
-namespace lsst {
-namespace qserv {
-namespace czar {
+namespace lsst { namespace qserv { namespace czar {
 
 /**
  *  Provide all configuration parameters for a Qserv Czar instance
@@ -46,9 +44,7 @@ namespace czar {
  */
 class CzarConfig {
 public:
-    CzarConfig(std::string configFileName)
-        : CzarConfig(util::ConfigStore(configFileName)) {
-    }
+    CzarConfig(std::string configFileName) : CzarConfig(util::ConfigStore(configFileName)) {}
 
     CzarConfig(CzarConfig const&) = delete;
     CzarConfig& operator=(CzarConfig const&) = delete;
@@ -59,36 +55,27 @@ public:
      * @param workerConfig
      * @return an output stream
      */
-    friend std::ostream& operator<<(std::ostream &out, CzarConfig const& czarConfig);
+    friend std::ostream& operator<<(std::ostream& out, CzarConfig const& czarConfig);
 
     /* Get MySQL configuration for czar MySQL result database
      *
      * @return a structure containing MySQL parameters
      */
-    mysql::MySqlConfig const& getMySqlResultConfig() const {
-        return _mySqlResultConfig;
-    }
+    mysql::MySqlConfig const& getMySqlResultConfig() const { return _mySqlResultConfig; }
 
-    std::string const& getLogConfig() const {
-        return _logConfig;
-    }
+    std::string const& getLogConfig() const { return _logConfig; }
 
     /* Get MySQL configuration for czar MySQL qmeta database
      *
      * @return a structure containing MySQL parameters
      */
-    mysql::MySqlConfig const& getMySqlQmetaConfig() const {
-        return _mySqlQmetaConfig;
-    }
+    mysql::MySqlConfig const& getMySqlQmetaConfig() const { return _mySqlQmetaConfig; }
 
     /* Get MySQL configuration for czar MySQL QStatusData
      *
      * @return a structure containing MySQL parameters
      */
-    mysql::MySqlConfig const& getMySqlQStatusDataConfig() const {
-        return _mySqlQstatusDataConfig;
-    }
-
+    mysql::MySqlConfig const& getMySqlQStatusDataConfig() const { return _mySqlQstatusDataConfig; }
 
     /* Get CSS parameters as a collection of key-value
      *
@@ -96,9 +83,7 @@ public:
      *
      * @return a structure containing CSS parameters
      */
-    std::map<std::string, std::string> const& getCssConfigMap() const {
-        return _cssConfigMap;
-    }
+    std::map<std::string, std::string> const& getCssConfigMap() const { return _cssConfigMap; }
 
     /* Get path to directory where the empty chunk files resides
      *
@@ -106,17 +91,13 @@ public:
      *
      * @return path to directory where the empty chunk files resides
      */
-    std::string const& getEmptyChunkPath() const {
-        return _emptyChunkPath;
-    }
+    std::string const& getEmptyChunkPath() const { return _emptyChunkPath; }
 
     /* Get the maximum number of chunks that can be in an interactive query.
      * Queries that are not limited in area to a small number of chunks must
      * be part of a full table scan.
      */
-    int getInteractiveChunkLimit() const {
-        return _interactiveChunkLimit;
-    }
+    int getInteractiveChunkLimit() const { return _interactiveChunkLimit; }
 
     /* Get hostname and port for xrootd manager
      *
@@ -125,46 +106,34 @@ public:
      *
      * @return a string containing "<hostname>:<port>"
      */
-    std::string const& getXrootdFrontendUrl() const {
-        return _xrootdFrontendUrl;
-    }
+    std::string const& getXrootdFrontendUrl() const { return _xrootdFrontendUrl; }
 
     /* Get the maximum number of threads for xrootd to use.
      *
      * @return the maximum number of threads for xrootd to use.
      */
-    int getXrootdCBThreadsMax() const {
-        return _xrootdCBThreadsMax;
-    }
+    int getXrootdCBThreadsMax() const { return _xrootdCBThreadsMax; }
 
     /* Get the initial number of threads for xrootd to create and maintain.
      *
      * @return the initial number of threads for xrootd to use.
      */
-    int getXrootdCBThreadsInit() const {
-        return _xrootdCBThreadsInit;
-    }
+    int getXrootdCBThreadsInit() const { return _xrootdCBThreadsInit; }
 
-    bool getQueryDistributionTestVer() const {
-        return _queryDistributionTestVer;
-    }
+    bool getQueryDistributionTestVer() const { return _queryDistributionTestVer; }
 
     /*
      * @return A value of the "spread" parameter. This may improve a performance
      * of xrootd for catalogs with the large number of chunks. The default value
      * of this parameter in xrootd is 4.
      */
-    int getXrootdSpread() const {
-        return _xrootdSpread;
-    }
+    int getXrootdSpread() const { return _xrootdSpread; }
 
     /* Get minimum number of seconds between QMeta chunk completion updates.
      *
      * @return seconds between QMeta chunk completion updates.
      */
-    int getQMetaSecondsBetweenChunkUpdates() const {
-        return _qMetaSecsBetweenChunkCompletionUpdates;
-    }
+    int getQMetaSecondsBetweenChunkUpdates() const { return _qMetaSecsBetweenChunkCompletionUpdates; }
 
     /// Getters for result aggregation options.
     int getMaxTableSizeMB() const { return _maxTableSizeMB; }
@@ -192,7 +161,6 @@ public:
     int getOldestResultKeptDays() const { return _oldestResultKeptDays; }
 
 private:
-
     CzarConfig(util::ConfigStore const& ConfigStore);
 
     // Parameters below used in czar::Czar
@@ -200,12 +168,12 @@ private:
     std::string const _logConfig;
 
     // Parameters used to affect result aggregation in rproc.
-    int const         _maxTableSizeMB;
-    int const         _maxSqlConnectionAttempts;
+    int const _maxTableSizeMB;
+    int const _maxSqlConnectionAttempts;
     std::string const _resultEngine;
-    int const         _resultMaxConnections;
+    int const _resultMaxConnections;
     /// Any table in the result table not updated in this many days will be deleted.
-    int const         _oldestResultKeptDays;
+    int const _oldestResultKeptDays;
 
     // Parameters below used in ccontrol::UserQueryFactory
     std::map<std::string, std::string> const _cssConfigMap;
@@ -223,14 +191,13 @@ private:
     // Parameters for QdispPool configuration
     int const _qdispPoolSize;
     int const _qdispMaxPriority;
-    std::string const _qdispVectRunSizes; // No spaces, values separated by ':'
-    std::string const _qdispVectMinRunningSizes; // No spaces, values separated by ':'
+    std::string const _qdispVectRunSizes;         // No spaces, values separated by ':'
+    std::string const _qdispVectMinRunningSizes;  // No spaces, values separated by ':'
 
     // Parameters for QueryRequest PseudoFifo
     int const _qReqPseudoFifoMaxRunning;
-
 };
 
-}}} // namespace lsst::qserv::czar
+}}}  // namespace lsst::qserv::czar
 
-#endif // LSST_QSERV_CZAR_CZARCONFIG_H
+#endif  // LSST_QSERV_CZAR_CZARCONFIG_H

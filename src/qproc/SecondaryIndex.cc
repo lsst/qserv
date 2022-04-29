@@ -22,12 +22,12 @@
  */
 
 /**
-  * @file
-  *
-  * @brief SecondaryIndex implementation
-  *
-  * @author Daniel L. Wang, SLAC
-  */
+ * @file
+ *
+ * @brief SecondaryIndex implementation
+ *
+ * @author Daniel L. Wang, SLAC
+ */
 
 #include "qproc/SecondaryIndex.h"
 
@@ -57,12 +57,9 @@ namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.qproc.SecondaryIndex");
 
-} // anonymous namespace
+}  // anonymous namespace
 
-namespace lsst {
-namespace qserv {
-namespace qproc {
-
+namespace lsst { namespace qserv { namespace qproc {
 
 class SecondaryIndex::Backend {
 public:
@@ -71,20 +68,17 @@ public:
     virtual ChunkSpecVector lookup(query::SecIdxRestrictorVec const& restrictors) = 0;
 };
 
-
 class MySqlBackend : public SecondaryIndex::Backend {
 public:
-    MySqlBackend(mysql::MySqlConfig const& c)
-        : _sqlConnection(sql::SqlConnectionFactory::make(c)) {
-    }
+    MySqlBackend(mysql::MySqlConfig const& c) : _sqlConnection(sql::SqlConnectionFactory::make(c)) {}
 
     ChunkSpecVector lookup(query::SecIdxRestrictorVec const& restrictors) override {
         ChunkSpecVector output;
-        for(auto const& secIdxRestrictor : restrictors) {
+        for (auto const& secIdxRestrictor : restrictors) {
             // handle it
             auto const& secondaryIndexCol = secIdxRestrictor->getSecIdxColumnRef();
-            std::string index_table = _buildIndexTableName(secondaryIndexCol->getDb(),
-                                                           secondaryIndexCol->getTable());
+            std::string index_table =
+                    _buildIndexTableName(secondaryIndexCol->getDb(), secondaryIndexCol->getTable());
             auto sql = secIdxRestrictor->getSecIdxLookupQuery(SEC_INDEX_DB, index_table, CHUNK_COLUMN,
                                                               SUB_CHUNK_COLUMN);
             LOGS(_log, LOG_LVL_TRACE, "secondary lookup sql:" << sql);
@@ -94,14 +88,12 @@ public:
         return output;
     }
 
-
 private:
     static std::string _buildIndexTableName(std::string const& db, std::string const& table) {
         return sanitizeName(db) + "__" + sanitizeName(table);
     }
 
     void _sqlLookup(ChunkSpecVector& output, std::string sql) {
-
         std::map<int, Int32Vector> tmp;
 
         // Insert sql query result:
@@ -117,9 +109,8 @@ private:
         // chunkId_x1, [subChunkId_y1, subChunkId_y2, ...]
         // chunkId_xi, [subChunkId_yj, ..., subChunkId_yk]
         // chunkId_xm, [subChunkId_yl, ..., subChunkId_yn]
-        for(std::shared_ptr<sql::SqlResultIter> results = _sqlConnection->getQueryIter(sql);
-            not results->done();
-            ++(*results)) {
+        for (std::shared_ptr<sql::SqlResultIter> results = _sqlConnection->getQueryIter(sql);
+             not results->done(); ++(*results)) {
             StringVector const& row = **results;
             int chunkId = std::stoi(row[0]);
             int subChunkId = std::stoi(row[1]);
@@ -127,8 +118,7 @@ private:
         }
 
         // Add results to output
-        for(auto i=tmp.begin(), e=tmp.end();
-            i != e; ++i) {
+        for (auto i = tmp.begin(), e = tmp.end(); i != e; ++i) {
             output.push_back(ChunkSpec(i->first, i->second));
         }
     }
@@ -136,41 +126,33 @@ private:
     std::shared_ptr<sql::SqlConnection> _sqlConnection;
 };
 
-
 class FakeBackend : public SecondaryIndex::Backend {
 public:
     FakeBackend() {}
     virtual ChunkSpecVector lookup(query::SecIdxRestrictorVec const& restrictors) {
         ChunkSpecVector dummy;
         if (_hasSecondary(restrictors)) {
-            for(int i=100; i < 103; ++i) {
-                int bogus[] = {1,2,3};
-                std::vector<int> subChunks(bogus, bogus+3);
+            for (int i = 100; i < 103; ++i) {
+                int bogus[] = {1, 2, 3};
+                std::vector<int> subChunks(bogus, bogus + 3);
                 dummy.push_back(ChunkSpec(i, subChunks));
             }
         }
         return dummy;
     }
+
 private:
     struct _checkIndex {
-        bool operator()(std::shared_ptr<query::SecIdxRestrictor> const& restrictor) {
-            return true;
-        }
+        bool operator()(std::shared_ptr<query::SecIdxRestrictor> const& restrictor) { return true; }
     };
     bool _hasSecondary(query::SecIdxRestrictorVec const& restrictors) {
         return restrictors.end() != std::find_if(restrictors.begin(), restrictors.end(), _checkIndex());
     }
 };
 
+SecondaryIndex::SecondaryIndex(mysql::MySqlConfig const& c) : _backend(std::make_shared<MySqlBackend>(c)) {}
 
-SecondaryIndex::SecondaryIndex(mysql::MySqlConfig const& c)
-    : _backend(std::make_shared<MySqlBackend>(c)) {
-}
-
-SecondaryIndex::SecondaryIndex()
-    : _backend(std::make_shared<FakeBackend>()) {
-}
-
+SecondaryIndex::SecondaryIndex() : _backend(std::make_shared<FakeBackend>()) {}
 
 ChunkSpecVector SecondaryIndex::lookup(query::SecIdxRestrictorVec const& restrictors) {
     if (_backend) {
@@ -180,6 +162,4 @@ ChunkSpecVector SecondaryIndex::lookup(query::SecIdxRestrictorVec const& restric
     }
 }
 
-
-}}} // namespace lsst::qserv::qproc
-
+}}}  // namespace lsst::qserv::qproc

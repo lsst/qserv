@@ -33,74 +33,58 @@
 using namespace std;
 using json = nlohmann::json;
 
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
-void HttpJobsModule::process(Controller::Ptr const& controller,
-                             string const& taskName,
-                             HttpProcessorConfig const& processorConfig,
-                             qhttp::Request::Ptr const& req,
-                             qhttp::Response::Ptr const& resp,
-                             string const& subModuleName,
+void HttpJobsModule::process(Controller::Ptr const& controller, string const& taskName,
+                             HttpProcessorConfig const& processorConfig, qhttp::Request::Ptr const& req,
+                             qhttp::Response::Ptr const& resp, string const& subModuleName,
                              HttpAuthType const authType) {
     HttpJobsModule module(controller, taskName, processorConfig, req, resp);
     module.execute(subModuleName, authType);
 }
 
-
-HttpJobsModule::HttpJobsModule(Controller::Ptr const& controller,
-                               string const& taskName,
-                               HttpProcessorConfig const& processorConfig,
-                               qhttp::Request::Ptr const& req,
+HttpJobsModule::HttpJobsModule(Controller::Ptr const& controller, string const& taskName,
+                               HttpProcessorConfig const& processorConfig, qhttp::Request::Ptr const& req,
                                qhttp::Response::Ptr const& resp)
-    :   HttpModule(controller, taskName, processorConfig, req, resp) {
-}
-
+        : HttpModule(controller, taskName, processorConfig, req, resp) {}
 
 json HttpJobsModule::executeImpl(string const& subModuleName) {
-    if (subModuleName.empty()) return _jobs();
-    else if (subModuleName == "SELECT-ONE-BY-ID") return _oneJob();
-    throw invalid_argument(
-            context() + "::" + string(__func__) +
-            "  unsupported sub-module: '" + subModuleName + "'");
+    if (subModuleName.empty())
+        return _jobs();
+    else if (subModuleName == "SELECT-ONE-BY-ID")
+        return _oneJob();
+    throw invalid_argument(context() + "::" + string(__func__) + "  unsupported sub-module: '" +
+                           subModuleName + "'");
 }
-
 
 json HttpJobsModule::_jobs() {
     debug(__func__);
 
-    string   const controllerId  = query().optionalString("controller_id");
-    string   const parentJobId   = query().optionalString("parent_job_id");
+    string const controllerId = query().optionalString("controller_id");
+    string const parentJobId = query().optionalString("parent_job_id");
     uint64_t const fromTimeStamp = query().optionalUInt64("from");
-    uint64_t const toTimeStamp   = query().optionalUInt64("to", numeric_limits<uint64_t>::max());
-    size_t   const maxEntries    = query().optionalUInt64("max_entries");
+    uint64_t const toTimeStamp = query().optionalUInt64("to", numeric_limits<uint64_t>::max());
+    size_t const maxEntries = query().optionalUInt64("max_entries");
 
-    debug(string(__func__) + " controller_id=" +           controllerId);
-    debug(string(__func__) + " parent_job_id=" +           parentJobId);
-    debug(string(__func__) + " from="          + to_string(fromTimeStamp));
-    debug(string(__func__) + " to="            + to_string(toTimeStamp));
-    debug(string(__func__) + " max_entries="   + to_string(maxEntries));
+    debug(string(__func__) + " controller_id=" + controllerId);
+    debug(string(__func__) + " parent_job_id=" + parentJobId);
+    debug(string(__func__) + " from=" + to_string(fromTimeStamp));
+    debug(string(__func__) + " to=" + to_string(toTimeStamp));
+    debug(string(__func__) + " max_entries=" + to_string(maxEntries));
 
     // Pull descriptions of the Jobs
 
-    auto const jobs =
-        controller()->serviceProvider()->databaseServices()->jobs(
-            controllerId,
-            parentJobId,
-            fromTimeStamp,
-            toTimeStamp,
-            maxEntries);
+    auto const jobs = controller()->serviceProvider()->databaseServices()->jobs(
+            controllerId, parentJobId, fromTimeStamp, toTimeStamp, maxEntries);
 
     json jobsJson;
-    for (auto&& info: jobs) {
+    for (auto&& info : jobs) {
         jobsJson.push_back(info.toJson());
     }
     json result;
     result["jobs"] = jobsJson;
     return result;
 }
-
 
 json HttpJobsModule::_oneJob() {
     debug(__func__);
@@ -117,5 +101,3 @@ json HttpJobsModule::_oneJob() {
 }
 
 }}}  // namespace lsst::qserv::replica
-
-

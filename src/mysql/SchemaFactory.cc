@@ -33,9 +33,7 @@
 // Qserv headers
 #include "sql/Schema.h"
 
-namespace lsst {
-namespace qserv {
-namespace mysql {
+namespace lsst { namespace qserv { namespace mysql {
 
 ////////////////////////////////////////////////////////////////////////
 // Helpers
@@ -44,44 +42,96 @@ namespace mysql {
 struct ColTypeFactory {
     /// Construct a ColTypeFactory tied to a ColType. Each invocation of
     /// buildTo() fills the associated ColType.
-    ColTypeFactory(sql::ColType& ct)
-        : mysqlType(ct.mysqlType),
-          sqlType(ct.sqlType) {}
+    ColTypeFactory(sql::ColType& ct) : mysqlType(ct.mysqlType), sqlType(ct.sqlType) {}
 
     /// Set the attached ColType according to an input MYSQL_FIELD
     void buildTo(MYSQL_FIELD const& f) {
         mysqlType = f.type;
-        switch(f.type) {
-          case MYSQL_TYPE_DECIMAL: _setDecimal(f); break;
-          case MYSQL_TYPE_TINY: _setGeneric("TINYINT", f.length); break;//,n
-          case MYSQL_TYPE_SHORT: _setGeneric("SMALLINT", f.length); break;//,n
-          case MYSQL_TYPE_LONG: _setGeneric("INT", f.length); break; //,n
-          case MYSQL_TYPE_FLOAT: sqlType = "FLOAT"; break; // n,m
-          case MYSQL_TYPE_DOUBLE: sqlType = "DOUBLE"; break; // n,m
-          case MYSQL_TYPE_NULL: sqlType = "NULL"; break;
+        switch (f.type) {
+            case MYSQL_TYPE_DECIMAL:
+                _setDecimal(f);
+                break;
+            case MYSQL_TYPE_TINY:
+                _setGeneric("TINYINT", f.length);
+                break;  //,n
+            case MYSQL_TYPE_SHORT:
+                _setGeneric("SMALLINT", f.length);
+                break;  //,n
+            case MYSQL_TYPE_LONG:
+                _setGeneric("INT", f.length);
+                break;  //,n
+            case MYSQL_TYPE_FLOAT:
+                sqlType = "FLOAT";
+                break;  // n,m
+            case MYSQL_TYPE_DOUBLE:
+                sqlType = "DOUBLE";
+                break;  // n,m
+            case MYSQL_TYPE_NULL:
+                sqlType = "NULL";
+                break;
 
-          case MYSQL_TYPE_TIMESTAMP: _setDateTime("TIMESTAMP", f.decimals); break;
-          case MYSQL_TYPE_LONGLONG: _setGeneric("BIGINT", f.length); break;
-          case MYSQL_TYPE_INT24: sqlType = "MEDIUMINT"; break;
-          case MYSQL_TYPE_DATE: sqlType = "DATE"; break;
-          case MYSQL_TYPE_TIME: sqlType = "TIME"; break;
-          case MYSQL_TYPE_DATETIME: _setDateTime("DATETIME", f.decimals); break;
-          case MYSQL_TYPE_YEAR: sqlType = "YEAR"; break;
-          case MYSQL_TYPE_NEWDATE: sqlType = "DATE"; break;
-          case MYSQL_TYPE_VARCHAR: sqlType = "VARCHAR"; break; // n
-          case MYSQL_TYPE_BIT: _setGeneric("BIT", f.length); break;
-          case MYSQL_TYPE_NEWDECIMAL: _setDecimal(f); break;
-          case MYSQL_TYPE_ENUM: sqlType = "ENUM??"; break; // flag handling??
-          case MYSQL_TYPE_SET: sqlType = "SET??"; break; // flag handling??
-          case MYSQL_TYPE_TINY_BLOB: _setBlobOrText("TINY", f); break;
-          case MYSQL_TYPE_MEDIUM_BLOB: _setBlobOrText("MEDIUM", f); break;
-          case MYSQL_TYPE_LONG_BLOB: _setBlobOrText("LONG", f); break;
-          case MYSQL_TYPE_BLOB: _setBlobOrText("", f); break;
-          case MYSQL_TYPE_VAR_STRING: _setVarString(f); break;
-          case MYSQL_TYPE_STRING: _setString(f); break;
-          case MYSQL_TYPE_GEOMETRY: sqlType = "GEOM??"; break; // point, linestring, etc.
-          default:
-              break;
+            case MYSQL_TYPE_TIMESTAMP:
+                _setDateTime("TIMESTAMP", f.decimals);
+                break;
+            case MYSQL_TYPE_LONGLONG:
+                _setGeneric("BIGINT", f.length);
+                break;
+            case MYSQL_TYPE_INT24:
+                sqlType = "MEDIUMINT";
+                break;
+            case MYSQL_TYPE_DATE:
+                sqlType = "DATE";
+                break;
+            case MYSQL_TYPE_TIME:
+                sqlType = "TIME";
+                break;
+            case MYSQL_TYPE_DATETIME:
+                _setDateTime("DATETIME", f.decimals);
+                break;
+            case MYSQL_TYPE_YEAR:
+                sqlType = "YEAR";
+                break;
+            case MYSQL_TYPE_NEWDATE:
+                sqlType = "DATE";
+                break;
+            case MYSQL_TYPE_VARCHAR:
+                sqlType = "VARCHAR";
+                break;  // n
+            case MYSQL_TYPE_BIT:
+                _setGeneric("BIT", f.length);
+                break;
+            case MYSQL_TYPE_NEWDECIMAL:
+                _setDecimal(f);
+                break;
+            case MYSQL_TYPE_ENUM:
+                sqlType = "ENUM??";
+                break;  // flag handling??
+            case MYSQL_TYPE_SET:
+                sqlType = "SET??";
+                break;  // flag handling??
+            case MYSQL_TYPE_TINY_BLOB:
+                _setBlobOrText("TINY", f);
+                break;
+            case MYSQL_TYPE_MEDIUM_BLOB:
+                _setBlobOrText("MEDIUM", f);
+                break;
+            case MYSQL_TYPE_LONG_BLOB:
+                _setBlobOrText("LONG", f);
+                break;
+            case MYSQL_TYPE_BLOB:
+                _setBlobOrText("", f);
+                break;
+            case MYSQL_TYPE_VAR_STRING:
+                _setVarString(f);
+                break;
+            case MYSQL_TYPE_STRING:
+                _setString(f);
+                break;
+            case MYSQL_TYPE_GEOMETRY:
+                sqlType = "GEOM??";
+                break;  // point, linestring, etc.
+            default:
+                break;
         }
     }
 
@@ -91,9 +141,7 @@ private:
         return (f.charsetnr != 63);  // 63 -> binary
     }
 
-    inline bool _hasFlagUnsigned(MYSQL_FIELD const& f) {
-        return f.flags & UNSIGNED_FLAG;
-    }
+    inline bool _hasFlagUnsigned(MYSQL_FIELD const& f) { return f.flags & UNSIGNED_FLAG; }
 
     inline void _setBlobOrText(char const* variant, MYSQL_FIELD const& f) {
         std::ostringstream os;
@@ -128,8 +176,8 @@ private:
     void _setString(MYSQL_FIELD const& f) {
         // See mysql src sql/field.cc:Field_string::sql_type()
         std::ostringstream os;
-        os << (_hasCharset(f) ? "CHAR(" : "BINARY(" )
-           << f.length; // Cheat and skip the actual charset handling.
+        os << (_hasCharset(f) ? "CHAR(" : "BINARY(")
+           << f.length;  // Cheat and skip the actual charset handling.
         // For charsets with non single-byte characters, this
         // overestimates the width, which is fine for us.
         os << ")";
@@ -140,7 +188,7 @@ private:
         // See mysql src sql/field.cc:Field_varstring::sql_type(String &res) const
         std::ostringstream os;
         os << (_hasCharset(f) ? "VARCHAR(" : "VARBINARY(")
-           << f.length; // Cheat and skip the actual charset handling.
+           << f.length;  // Cheat and skip the actual charset handling.
         // For charsets with non single-byte characters, this
         // overestimates the width, which is fine for us.
         os << ")";
@@ -153,9 +201,7 @@ private:
 };
 
 /// Set a ColSchema according to the contents of a MYSQL_FIELD
-void setColSchemaTo(sql::ColSchema& cs, MYSQL_FIELD const& f) {
-    cs.name = f.name;
-}
+void setColSchemaTo(sql::ColSchema& cs, MYSQL_FIELD const& f) { cs.name = f.name; }
 
 ////////////////////////////////////////////////////////////////////////
 // SchemaFactory implementation
@@ -175,10 +221,10 @@ sql::ColSchema SchemaFactory::newColSchema(MYSQL_FIELD const& f) {
 sql::Schema SchemaFactory::newFromResult(MYSQL_RES* result) {
     sql::Schema s;
     MYSQL_FIELD* field;
-    while((field = mysql_fetch_field(result))) {
+    while ((field = mysql_fetch_field(result))) {
         s.columns.push_back(newColSchema(*field));
     }
     return s;
 }
 
-}}} // namespace lsst::qserv::mysql
+}}}  // namespace lsst::qserv::mysql

@@ -31,27 +31,23 @@
 #include "replica/ServiceProvider.h"
 
 // Forward declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
-    class IngestRequestMgr;
-}}} // namespace lsst::qserv::replica
+namespace lsst { namespace qserv { namespace replica {
+class IngestRequestMgr;
+}}}  // namespace lsst::qserv::replica
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
 /**
  * Class IngestHttpSvc is used for handling incoming REST API requests for
  * the table contribution uploads. Each instance of this class will be running
  * in its own thread.
- * 
+ *
  * @note The class's implementation starts its own collection of BOOST ASIO
  *   service threads as configured in Configuration.
  * @note The implementation of the class is not thread-safe.
  */
-class IngestHttpSvc: public HttpSvc {
+class IngestHttpSvc : public HttpSvc {
 public:
     typedef std::shared_ptr<IngestHttpSvc> Ptr;
 
@@ -63,8 +59,7 @@ public:
      *   checking consistency of the protocol).
      * @return A pointer to the created object.
      */
-    static Ptr create(ServiceProvider::Ptr const& serviceProvider,
-                      std::string const& workerName);
+    static Ptr create(ServiceProvider::Ptr const& serviceProvider, std::string const& workerName);
 
     IngestHttpSvc() = delete;
     IngestHttpSvc(IngestHttpSvc const&) = delete;
@@ -81,8 +76,7 @@ protected:
 
 private:
     /// @see IngestHttpSvc::create()
-    IngestHttpSvc(ServiceProvider::Ptr const& serviceProvider,
-                  std::string const& workerName);
+    IngestHttpSvc(ServiceProvider::Ptr const& serviceProvider, std::string const& workerName);
 
     // Input parameters
     std::string const _workerName;
@@ -97,6 +91,6 @@ private:
     std::vector<std::unique_ptr<std::thread>> _threads;
 };
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_INGESTHTTPSVC_H
+#endif  // LSST_QSERV_REPLICA_INGESTHTTPSVC_H

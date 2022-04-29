@@ -26,11 +26,7 @@
 // Qserv headers
 #include "qana/QueryPlugin.h"
 
-
-namespace lsst {
-namespace qserv {
-namespace qana {
-
+namespace lsst { namespace qserv { namespace qana {
 
 /// WherePlugin optimizes out extraneous OR_OP and AND_OP from the
 /// WhereClause predicate.
@@ -51,6 +47,6 @@ public:
     std::string name() const override { return "WherePlugin"; }
 };
 
-}}} // namespace lsst::qserv::qana
+}}}  // namespace lsst::qserv::qana
 
-#endif // LSST_QSERV_QANA_WHEREPLUGIN_H
+#endif  // LSST_QSERV_QANA_WHEREPLUGIN_H

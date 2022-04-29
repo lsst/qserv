@@ -36,28 +36,24 @@
 #include "replica/protocol.pb.h"
 
 // Forward declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
-    class Messenger;
-}}}  // Forward declarations
+namespace lsst { namespace qserv { namespace replica {
+class Messenger;
+}}}  // namespace lsst::qserv::replica
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
 /**
  * Abstract class SqlRequest is a base class for a family of the Controller-side
  * requests launching queries against a MySQL/MariaDB database of Qserv workers
  * via the corresponding Replication workers. The requests are sent over
  * the controller-worker protocol and they are executed by the the worker-side
- * framework. 
+ * framework.
  *
  * In case of a successful completion of a request an object of this request class
  * will receive a result set (if any) of the query.
  */
-class SqlRequest: public RequestMessenger  {
+class SqlRequest : public RequestMessenger {
 public:
     typedef std::shared_ptr<SqlRequest> Ptr;
 
@@ -80,7 +76,7 @@ public:
     SqlResultSet const& responseData() const;
 
     /// @see Request::extendedPersistentState()
-    std::list<std::pair<std::string,std::string>> extendedPersistentState() const final;
+    std::list<std::pair<std::string, std::string>> extendedPersistentState() const final;
 
     /**
      * Make an extended print of the request which would include a result set.
@@ -105,14 +101,9 @@ protected:
      * @param keepTracking keep tracking the request before it finishes or fails
      * @param messenger interface for communicating with workers
      */
-    SqlRequest(ServiceProvider::Ptr const& serviceProvider,
-               boost::asio::io_service& io_service,
-               std::string const& requestName,
-               std::string const& worker,
-               uint64_t maxRows,
-               int priority,
-               bool keepTracking,
-               std::shared_ptr<Messenger> const& messenger);
+    SqlRequest(ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service,
+               std::string const& requestName, std::string const& worker, uint64_t maxRows, int priority,
+               bool keepTracking, std::shared_ptr<Messenger> const& messenger);
 
     /// @see Request::startImpl()
     void startImpl(util::Lock const& lock) final;
@@ -151,6 +142,6 @@ private:
     SqlResultSet _responseData;
 };
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_SQLREQUEST_H
+#endif  // LSST_QSERV_REPLICA_SQLREQUEST_H

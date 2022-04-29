@@ -42,29 +42,27 @@
 #include "replica/ServiceProvider.h"
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
 /**
-  * Class FileServerConnection is used for handling file read requests from
-  * remote clients. One instance of the class serves one file from one client
-  * at a time.
-  *
-  * Objects of this class are instantiated by FileServer. After that
-  * the server calls this class's method beginProtocol() which starts
-  * a series of asynchronous operations to communicate with remote client.
-  * When all details of an incoming request are obtained from the client
-  * the connection object begins actual processing of the request and
-  * communicates with a client as required by the file transfer protocol.
-  * All communications are asynchronous and they're using Google Protobuf.
-  *
-  * The lifespan of this object is exactly one request until it's fully
-  * satisfied or any failure during request execution (when reading a file,
-  * or communicating with a client) occurs. When this happens the object
-  * stops doing anything.
-  */
-class FileServerConnection: public std::enable_shared_from_this<FileServerConnection> {
+ * Class FileServerConnection is used for handling file read requests from
+ * remote clients. One instance of the class serves one file from one client
+ * at a time.
+ *
+ * Objects of this class are instantiated by FileServer. After that
+ * the server calls this class's method beginProtocol() which starts
+ * a series of asynchronous operations to communicate with remote client.
+ * When all details of an incoming request are obtained from the client
+ * the connection object begins actual processing of the request and
+ * communicates with a client as required by the file transfer protocol.
+ * All communications are asynchronous and they're using Google Protobuf.
+ *
+ * The lifespan of this object is exactly one request until it's fully
+ * satisfied or any failure during request execution (when reading a file,
+ * or communicating with a client) occurs. When this happens the object
+ * stops doing anything.
+ */
+class FileServerConnection : public std::enable_shared_from_this<FileServerConnection> {
 public:
     typedef std::shared_ptr<FileServerConnection> Ptr;
 
@@ -78,8 +76,7 @@ public:
      *   for checking a consistency of the protocol)
      * @param io_service A service object for the network I/O operations
      */
-    static Ptr create(ServiceProvider::Ptr const& serviceProvider,
-                      std::string const& workerName,
+    static Ptr create(ServiceProvider::Ptr const& serviceProvider, std::string const& workerName,
                       boost::asio::io_service& io_service);
 
     FileServerConnection() = delete;
@@ -95,7 +92,7 @@ public:
     /**
      * Begin communicating asynchronously with a client. This is essentially
      * an RPC protocol which runs in a loop this sequence of steps:
-     * 
+     *
      *   - ASYNC: read a frame header of a request
      *   -  SYNC: read the request header (a specification of a file, additional
      *            instructions, etc.)
@@ -115,7 +112,7 @@ public:
      *   will require two things: 1) to ensure enough we have enough buffer space
      *   allocated, and 2) to tell the asynchronous reader function
      *   how many bytes exactly are we going to read.
-     * 
+     *
      * The chain ends when a client disconnects or when an error condition
      * is met.
      */
@@ -123,8 +120,7 @@ public:
 
 private:
     /// @see FileServerConnection::create()
-    FileServerConnection(ServiceProvider::Ptr const& serviceProvider,
-                         std::string const& workerName,
+    FileServerConnection(ServiceProvider::Ptr const& serviceProvider, std::string const& workerName,
                          boost::asio::io_service& io_service);
 
     /**
@@ -143,8 +139,7 @@ private:
      * @param ec An error code to be evaluated.
      * @param bytes_transferred The number of bytes received from a client.
      */
-    void _requestReceived(boost::system::error_code const& ec,
-                          size_t bytes_transferred);
+    void _requestReceived(boost::system::error_code const& ec, size_t bytes_transferred);
 
     /**
      * Begin sending (asynchronously) a result back to a client
@@ -157,8 +152,7 @@ private:
      * @param ec An error code to be evaluated.
      * @param bytes_transferred The number of bytes sent to a client in a response.
      */
-    void _responseSent(boost::system::error_code const& ec,
-                       size_t bytes_transferred);
+    void _responseSent(boost::system::error_code const& ec, size_t bytes_transferred);
 
     /**
      * Read the next record from the currently open file, and if succeeded
@@ -172,13 +166,12 @@ private:
      * @param ec An error code to be evaluated.
      * @param bytes_transferred The number of bytes of the file payload sent to a client.
      */
-    void _dataSent(boost::system::error_code const& ec,
-                   size_t bytes_transferred);
+    void _dataSent(boost::system::error_code const& ec, size_t bytes_transferred);
 
     // Input parameters
 
     ServiceProvider::Ptr const _serviceProvider;
-    std::string          const _workerName;
+    std::string const _workerName;
 
     /// A socket for communication with clients
     boost::asio::ip::tcp::socket _socket;
@@ -192,7 +185,7 @@ private:
 
     /// For a file during on-going transfer
     std::FILE* _filePtr;
-    
+
     /// The file record buffer size (bytes)
     size_t _fileBufSize;
 
@@ -200,6 +193,6 @@ private:
     uint8_t* _fileBuf;
 };
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_FILESERVERCONNECTION_H
+#endif  // LSST_QSERV_REPLICA_FILESERVERCONNECTION_H

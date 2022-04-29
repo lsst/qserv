@@ -34,39 +34,31 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.wpublish.GetStatusQservRequest");
 
 }  // namespace
 
-namespace lsst {
-namespace qserv {
-namespace wpublish {
+namespace lsst { namespace qserv { namespace wpublish {
 
 string GetStatusQservRequest::status2str(Status status) {
     switch (status) {
-        case SUCCESS: return "SUCCESS";
-        case ERROR:   return "ERROR";
+        case SUCCESS:
+            return "SUCCESS";
+        case ERROR:
+            return "ERROR";
     }
-    throw domain_error(
-            "GetStatusQservRequest::" + string(__func__) + "  no match for status: " +
-            to_string(status));
+    throw domain_error("GetStatusQservRequest::" + string(__func__) +
+                       "  no match for status: " + to_string(status));
 }
 
-
-GetStatusQservRequest::Ptr GetStatusQservRequest::create(
-                                    GetStatusQservRequest::CallbackType onFinish) {
-    return GetStatusQservRequest::Ptr(
-        new GetStatusQservRequest(onFinish));
+GetStatusQservRequest::Ptr GetStatusQservRequest::create(GetStatusQservRequest::CallbackType onFinish) {
+    return GetStatusQservRequest::Ptr(new GetStatusQservRequest(onFinish));
 }
 
-
-GetStatusQservRequest::GetStatusQservRequest(
-                                    GetStatusQservRequest::CallbackType onFinish)
-    :   _onFinish(onFinish) {
+GetStatusQservRequest::GetStatusQservRequest(GetStatusQservRequest::CallbackType onFinish)
+        : _onFinish(onFinish) {
     LOGS(_log, LOG_LVL_DEBUG, "GetStatusQservRequest  ** CONSTRUCTED **");
 }
-
 
 GetStatusQservRequest::~GetStatusQservRequest() {
     LOGS(_log, LOG_LVL_DEBUG, "GetStatusQservRequest  ** DELETED **");
 }
-
 
 void GetStatusQservRequest::onRequest(proto::FrameBuffer& buf) {
     proto::WorkerCommandH header;
@@ -74,14 +66,11 @@ void GetStatusQservRequest::onRequest(proto::FrameBuffer& buf) {
     buf.serialize(header);
 }
 
-
 void GetStatusQservRequest::onResponse(proto::FrameBufferView& view) {
-
     proto::WorkerCommandGetStatusR reply;
     view.parse(reply);
 
     if (nullptr != _onFinish) {
-
         // Clearing the stored callback after finishing the up-stream notification
         // has two purposes:
         //
@@ -91,17 +80,12 @@ void GetStatusQservRequest::onResponse(proto::FrameBufferView& view) {
 
         auto onFinish = move(_onFinish);
         _onFinish = nullptr;
-        onFinish(Status::SUCCESS,
-                 string(),
-                 reply.info());
+        onFinish(Status::SUCCESS, string(), reply.info());
     }
 }
-
 
 void GetStatusQservRequest::onError(string const& error) {
-
     if (nullptr != _onFinish) {
-
         // Clearing the stored callback after finishing the up-stream notification
         // has two purposes:
         //
@@ -111,10 +95,8 @@ void GetStatusQservRequest::onError(string const& error) {
 
         auto onFinish = move(_onFinish);
         _onFinish = nullptr;
-        onFinish(Status::ERROR,
-                 error,
-                 string());
+        onFinish(Status::ERROR, error, string());
     }
 }
 
-}}} // namespace lsst::qserv::wpublish
+}}}  // namespace lsst::qserv::wpublish

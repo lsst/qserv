@@ -42,71 +42,64 @@
 #include "ccontrol/UserQuery.h"
 #include "parser/ParseException.h"
 
-
 using namespace std;
-
 
 namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.ccontrol.ParseListener");
 
-} // end namespace
-
+}  // end namespace
 
 // This macro creates the enterXXX and exitXXX function definitions, for functions declared in
 // ParseListener.h; the enter function pushes the adapter onto the stack (with parent from top of the
 // stack), and the exit function pops the adapter from the top of the stack.
-#define ENTER_EXIT_PARENT(NAME) \
-void ParseListener::enter##NAME(QSMySqlParser::NAME##Context* ctx) { \
-    LOGS(_log, LOG_LVL_TRACE, __FUNCTION__ << " '" << getQueryString(ctx) << "'"); \
-    pushAdapterStack<NAME##CBH, NAME##Adapter, QSMySqlParser::NAME##Context>(ctx); \
-} \
-\
-void ParseListener::exit##NAME(QSMySqlParser::NAME##Context* ctx) { \
-    LOGS(_log, LOG_LVL_TRACE, __FUNCTION__); \
-    popAdapterStack<NAME##Adapter>(ctx); \
-} \
-
+#define ENTER_EXIT_PARENT(NAME)                                                        \
+    void ParseListener::enter##NAME(QSMySqlParser::NAME##Context* ctx) {               \
+        LOGS(_log, LOG_LVL_TRACE, __FUNCTION__ << " '" << getQueryString(ctx) << "'"); \
+        pushAdapterStack<NAME##CBH, NAME##Adapter, QSMySqlParser::NAME##Context>(ctx); \
+    }                                                                                  \
+                                                                                       \
+    void ParseListener::exit##NAME(QSMySqlParser::NAME##Context* ctx) {                \
+        LOGS(_log, LOG_LVL_TRACE, __FUNCTION__);                                       \
+        popAdapterStack<NAME##Adapter>(ctx);                                           \
+    }
 
 // This macro creates the enterXXX and exitXXX function definitions similar to ENTER_EXIT_PARENT to satisfy
 // the QSMySqlParserListener class API but expects that the grammar element will not be used. The enter
 // function throws an adapter_order_error so that if the grammar element is unexpectedly entered the query
 // parsing will abort.
-#define UNHANDLED(NAME) \
-void ParseListener::enter##NAME(QSMySqlParser::NAME##Context* ctx) { \
-    LOGS(_log, LOG_LVL_ERROR, __FUNCTION__ << " is UNHANDLED for '" << getQueryString(ctx) << "'"); \
-    throw parser::adapter_order_error("qserv can not parse query, near \"" + getQueryString(ctx) + '"'); \
-} \
-\
-void ParseListener::exit##NAME(QSMySqlParser::NAME##Context* ctx) {}\
-
+#define UNHANDLED(NAME)                                                                                      \
+    void ParseListener::enter##NAME(QSMySqlParser::NAME##Context* ctx) {                                     \
+        LOGS(_log, LOG_LVL_ERROR, __FUNCTION__ << " is UNHANDLED for '" << getQueryString(ctx) << "'");      \
+        throw parser::adapter_order_error("qserv can not parse query, near \"" + getQueryString(ctx) + '"'); \
+    }                                                                                                        \
+                                                                                                             \
+    void ParseListener::exit##NAME(QSMySqlParser::NAME##Context* ctx) {}
 
 // This macro creates the enterXXX and exitXXX function definitions similar to ENTER_EXIT_PARENT but does not
 // push (or pop) an adapter on the stack. Other adapters are expected to handle the grammar element as may be
 // appropraite.
-#define IGNORED(NAME) \
-void ParseListener::enter##NAME(QSMySqlParser::NAME##Context* ctx) { \
-    LOGS(_log, LOG_LVL_TRACE, __FUNCTION__ << " is IGNORED"); \
-} \
-\
-void ParseListener::exit##NAME(QSMySqlParser::NAME##Context* ctx) {\
-    LOGS(_log, LOG_LVL_TRACE, __FUNCTION__ << " is IGNORED"); \
-} \
-
+#define IGNORED(NAME)                                                    \
+    void ParseListener::enter##NAME(QSMySqlParser::NAME##Context* ctx) { \
+        LOGS(_log, LOG_LVL_TRACE, __FUNCTION__ << " is IGNORED");        \
+    }                                                                    \
+                                                                         \
+    void ParseListener::exit##NAME(QSMySqlParser::NAME##Context* ctx) {  \
+        LOGS(_log, LOG_LVL_TRACE, __FUNCTION__ << " is IGNORED");        \
+    }
 
 // This macro is similar to IGNORED, but allows the enter message to log a specific warning message when it is
 // called.
-#define IGNORED_WARN(NAME, WARNING) \
-void ParseListener::enter##NAME(QSMySqlParser::NAME##Context* ctx) { \
-    LOGS(_log, LOG_LVL_WARN, \
-            __FUNCTION__ << " is IGNORED, in '" << getQueryString(ctx) << "' warning:" << WARNING); \
-} \
-\
-void ParseListener::exit##NAME(QSMySqlParser::NAME##Context* ctx) {\
-    LOGS(_log, LOG_LVL_TRACE, \
-        __FUNCTION__ << " is IGNORED, see warning in enter-function log entry, above."); \
-} \
-
+#define IGNORED_WARN(NAME, WARNING)                                                                  \
+    void ParseListener::enter##NAME(QSMySqlParser::NAME##Context* ctx) {                             \
+        LOGS(_log, LOG_LVL_WARN,                                                                     \
+             __FUNCTION__ << " is IGNORED, in '" << getQueryString(ctx) << "' warning:" << WARNING); \
+    }                                                                                                \
+                                                                                                     \
+    void ParseListener::exit##NAME(QSMySqlParser::NAME##Context* ctx) {                              \
+        LOGS(_log, LOG_LVL_TRACE,                                                                    \
+             __FUNCTION__ << " is IGNORED, see warning in enter-function log entry, above.");        \
+    }
 
 // assert that condition is true, otherwise log a message & throw an adapter_execution_error with the
 // text of the query string that the context represents.
@@ -118,29 +111,23 @@ void ParseListener::exit##NAME(QSMySqlParser::NAME##Context* ctx) {\
 // CTX: an antlr4::ParserRuleContext* (or derived class)
 //      The antlr4 context that is used to get the segment of the query that is currently being
 //      processed.
-#define ASSERT_EXECUTION_CONDITION(CONDITION, MESSAGE_STRING, CTX) \
-if (not (CONDITION)) { \
-    auto queryString = getQueryString(CTX); \
-    LOGS(_log, LOG_LVL_ERROR, \
-        "Execution condition assertion failure:" \
-        << getTypeName(this) << "::" << __FUNCTION__ \
-        << " messsage:\"" << MESSAGE_STRING << '"' \
-        << ", in query:" << getStatementString() \
-        << ", in or around query segment: '" << queryString << "'" \
-        << ", with adapter stack:" << adapterStackToString() \
-        << ", string tree:" << getStringTree() \
-        << ", tokens:" << getTokens()); \
-    throw parser::adapter_execution_error("Error parsing query, near \"" + queryString + '"'); \
-} \
+#define ASSERT_EXECUTION_CONDITION(CONDITION, MESSAGE_STRING, CTX)                                           \
+    if (not(CONDITION)) {                                                                                    \
+        auto queryString = getQueryString(CTX);                                                              \
+        LOGS(_log, LOG_LVL_ERROR,                                                                            \
+             "Execution condition assertion failure:"                                                        \
+                     << getTypeName(this) << "::" << __FUNCTION__ << " messsage:\"" << MESSAGE_STRING << '"' \
+                     << ", in query:" << getStatementString() << ", in or around query segment: '"           \
+                     << queryString << "'"                                                                   \
+                     << ", with adapter stack:" << adapterStackToString()                                    \
+                     << ", string tree:" << getStringTree() << ", tokens:" << getTokens());                  \
+        throw parser::adapter_execution_error("Error parsing query, near \"" + queryString + '"');           \
+    }
 
-
-namespace lsst {
-namespace qserv {
-namespace ccontrol {
-
+namespace lsst { namespace qserv { namespace ccontrol {
 
 ParseListener::VecPairStr ParseListener::getTokenPairs(antlr4::CommonTokenStream& tokens,
-                                                           QSMySqlLexer const& lexer) {
+                                                       QSMySqlLexer const& lexer) {
     VecPairStr ret;
     for (auto const& t : tokens.getTokens()) {
         std::string name = lexer.getVocabulary().getSymbolicName(t->getType());
@@ -152,32 +139,24 @@ ParseListener::VecPairStr ParseListener::getTokenPairs(antlr4::CommonTokenStream
     return ret;
 }
 
-
 ParseListener::ParseListener(std::string const& statement,
                              shared_ptr<ccontrol::UserQueryResources> const& queryResources)
-    : _statement(statement), _queryResources(queryResources)
-{}
-
+        : _statement(statement), _queryResources(queryResources) {}
 
 shared_ptr<query::SelectStmt> ParseListener::getSelectStatement() const {
     return _rootAdapter->getSelectStatement();
 }
 
-
-shared_ptr<ccontrol::UserQuery> ParseListener::getUserQuery() const {
-    return _rootAdapter->getUserQuery();
-}
-
+shared_ptr<ccontrol::UserQuery> ParseListener::getUserQuery() const { return _rootAdapter->getUserQuery(); }
 
 // Create and push an Adapter onto the context stack, using the current top of the stack as a callback handler
 // for the new Adapter. Returns the new Adapter.
-template<typename ParentCBH, typename ChildAdapter, typename Context>
+template <typename ParentCBH, typename ChildAdapter, typename Context>
 shared_ptr<ChildAdapter> ParseListener::pushAdapterStack(Context* ctx) {
     auto p = dynamic_pointer_cast<ParentCBH>(_adapterStack.back());
-    ASSERT_EXECUTION_CONDITION(p != nullptr,
-            "can't acquire expected Adapter `" +
-            getTypeName<ParentCBH>() +
-            "` from top of listenerStack.",
+    ASSERT_EXECUTION_CONDITION(
+            p != nullptr,
+            "can't acquire expected Adapter `" + getTypeName<ParentCBH>() + "` from top of listenerStack.",
             ctx);
     auto childAdapter = make_shared<ChildAdapter>(p, ctx, this);
     childAdapter->checkContext();
@@ -186,8 +165,7 @@ shared_ptr<ChildAdapter> ParseListener::pushAdapterStack(Context* ctx) {
     return childAdapter;
 }
 
-
-template<typename ChildAdapter>
+template <typename ChildAdapter>
 void ParseListener::popAdapterStack(antlr4::ParserRuleContext* ctx) {
     shared_ptr<Adapter> adapterPtr = _adapterStack.back();
     adapterPtr->onExit();
@@ -198,13 +176,12 @@ void ParseListener::popAdapterStack(antlr4::ParserRuleContext* ctx) {
     // adds too much of a performance penalty.
     shared_ptr<ChildAdapter> derivedPtr = dynamic_pointer_cast<ChildAdapter>(adapterPtr);
     ASSERT_EXECUTION_CONDITION(derivedPtr != nullptr,
-        "Top of listenerStack was not of expected type. "
-        "Expected: " + getTypeName<ChildAdapter>() +
-        ", Actual: " + getTypeName(adapterPtr) +
-        ", Are there out of order or unhandled listener exits?",
-        ctx);
+                               "Top of listenerStack was not of expected type. "
+                               "Expected: " +
+                                       getTypeName<ChildAdapter>() + ", Actual: " + getTypeName(adapterPtr) +
+                                       ", Are there out of order or unhandled listener exits?",
+                               ctx);
 }
-
 
 string ParseListener::adapterStackToString() const {
     string ret;
@@ -216,20 +193,15 @@ string ParseListener::adapterStackToString() const {
 
 // ParseListener class methods
 
-
 void ParseListener::enterRoot(QSMySqlParser::RootContext* ctx) {
-    ASSERT_EXECUTION_CONDITION(_adapterStack.empty(),
-            "RootAdatper should be the first entry on the stack.", ctx);
+    ASSERT_EXECUTION_CONDITION(_adapterStack.empty(), "RootAdatper should be the first entry on the stack.",
+                               ctx);
     _rootAdapter = make_shared<RootAdapter>();
     _adapterStack.push_back(_rootAdapter);
     _rootAdapter->onEnter(ctx, this);
 }
 
-
-void ParseListener::exitRoot(QSMySqlParser::RootContext* ctx) {
-    popAdapterStack<RootAdapter>(ctx);
-}
-
+void ParseListener::exitRoot(QSMySqlParser::RootContext* ctx) { popAdapterStack<RootAdapter>(ctx); }
 
 string ParseListener::getStringTree() const {
     using namespace antlr4;
@@ -238,10 +210,9 @@ string ParseListener::getStringTree() const {
     CommonTokenStream tokens(&lexer);
     tokens.fill();
     QSMySqlParser parser(&tokens);
-    tree::ParseTree *tree = parser.root();
+    tree::ParseTree* tree = parser.root();
     return tree->toStringTree(&parser);
 }
-
 
 string ParseListener::getTokens() const {
     using namespace antlr4;
@@ -254,11 +225,7 @@ string ParseListener::getTokens() const {
     return t.str();
 }
 
-
-string ParseListener::getStatementString() const {
-    return _statement;
-}
-
+string ParseListener::getStatementString() const { return _statement; }
 
 IGNORED(SqlStatements)
 IGNORED(SqlStatement)
@@ -782,7 +749,7 @@ UNHANDLED(TransactionLevelBase)
 UNHANDLED(PrivilegesBase)
 UNHANDLED(IntervalTypeBase)
 UNHANDLED(DataTypeBase)
-IGNORED_WARN(KeywordsCanBeId, "Keyword reused as ID") // todo emit a warning?
+IGNORED_WARN(KeywordsCanBeId, "Keyword reused as ID")  // todo emit a warning?
 ENTER_EXIT_PARENT(FunctionNameBase)
 
-}}} // namespace lsst::qserv::ccontrol
+}}}  // namespace lsst::qserv::ccontrol

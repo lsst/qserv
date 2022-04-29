@@ -37,38 +37,28 @@
 namespace ip = boost::asio::ip;
 
 namespace {
-    LOG_LOGGER _log = LOG_GET("lsst.qserv.qhttp");
+LOG_LOGGER _log = LOG_GET("lsst.qserv.qhttp");
 }
 
-namespace lsst {
-namespace qserv {
-namespace qhttp {
+namespace lsst { namespace qserv { namespace qhttp {
 
 Request::Request(std::shared_ptr<Server> const server, std::shared_ptr<ip::tcp::socket> const socket)
-:
-    content(&_requestbuf),
-    _server(std::move(server)),
-    _socket(std::move(socket))
-{
+        : content(&_requestbuf), _server(std::move(server)), _socket(std::move(socket)) {
     boost::system::error_code ignore;
     localAddr = _socket->local_endpoint(ignore);
     remoteAddr = _socket->remote_endpoint(ignore);
 }
 
-
-bool Request::_parseHeader()
-{
+bool Request::_parseHeader() {
     std::string line;
     if (!getline(content, line)) return false;
 
     // Regexp to parse request line into "method target version".  Allowed character classes here are
     // extracted from ABNF in RFC7230 and RFC3986.
 
-    static boost::regex reqRe{
-        R"(^([!#$%&'*+-.^_`|~[:digit:][:alpha:]]+) )"
-        R"(([-._-~%!$&'()*+,;=:@?/[:digit:][:alpha:]]+) )"
-        R"((HTTP/[[:digit:]]\.[[:digit:]])\r$)"
-    };
+    static boost::regex reqRe{R"(^([!#$%&'*+-.^_`|~[:digit:][:alpha:]]+) )"
+                              R"(([-._-~%!$&'()*+,;=:@?/[:digit:][:alpha:]]+) )"
+                              R"((HTTP/[[:digit:]]\.[[:digit:]])\r$)"};
 
     boost::smatch reqMatch;
     if (!boost::regex_match(line, reqMatch, reqRe)) {
@@ -83,17 +73,15 @@ bool Request::_parseHeader()
     // Regexp to parse header field lines into "header: value".  Allowed character classes here are
     // extracted from ABNF in RFC7230.
 
-    static boost::regex headerRe{
-        R"(^([!#$%&'*+-.^_`|~[:digit:][:alpha:]]+))"
-        R"(:[ \t]*)"
-        R"(([\x20-\x7e \t]*?))"
-        R"([ \t]*\r$)"
-    };
+    static boost::regex headerRe{R"(^([!#$%&'*+-.^_`|~[:digit:][:alpha:]]+))"
+                                 R"(:[ \t]*)"
+                                 R"(([\x20-\x7e \t]*?))"
+                                 R"([ \t]*\r$)"};
 
     boost::smatch headerMatch;
 
-    while(getline(content, line)) {
-        if (line == "\r") break; // empty line signals end of headers
+    while (getline(content, line)) {
+        if (line == "\r") break;  // empty line signals end of headers
         if (!boost::regex_match(line, headerMatch, headerRe)) {
             LOGLS_WARN(_log, logger(_server) << logger(_socket) << "bad header: " << ctrlquote(line));
             return false;
@@ -104,10 +92,8 @@ bool Request::_parseHeader()
     return true;
 }
 
-
-bool Request::_parseUri()
-{
-    static boost::regex targetRe{R"(([^\?#]*)(?:\?([^#]*))?)"}; // e.g. "path[?query]"
+bool Request::_parseUri() {
+    static boost::regex targetRe{R"(([^\?#]*)(?:\?([^#]*))?)"};  // e.g. "path[?query]"
 
     boost::smatch targetMatch;
     if (!boost::regex_match(target, targetMatch, targetRe)) return false;
@@ -115,20 +101,20 @@ bool Request::_parseUri()
     bool hasNULs = false;
     path = _percentDecode(targetMatch[1], true, hasNULs);
     if (hasNULs) {
-        LOGLS_WARN(_log, logger(_server) << logger(_socket)
-            << "rejecting target with encoded NULs: " << target);
+        LOGLS_WARN(_log, logger(_server)
+                                 << logger(_socket) << "rejecting target with encoded NULs: " << target);
         return false;
     }
 
     std::string squery = targetMatch[2];
-    static boost::regex queryRe{R"(([^=&]+)(?:=([^&]*))?)"}; // e.g. "key[=value]"
+    static boost::regex queryRe{R"(([^=&]+)(?:=([^&]*))?)"};  // e.g. "key[=value]"
     auto end = boost::sregex_iterator{};
-    for(auto i=boost::make_regex_iterator(squery, queryRe); i!=end; ++i) {
+    for (auto i = boost::make_regex_iterator(squery, queryRe); i != end; ++i) {
         std::string key = _percentDecode((*i)[1], false, hasNULs);
         std::string value = _percentDecode((*i)[2], false, hasNULs);
         if (hasNULs) {
-            LOGLS_WARN(_log, logger(_server) << logger(_socket)
-                << "rejecting target with encoded NULs: " << target);
+            LOGLS_WARN(_log, logger(_server)
+                                     << logger(_socket) << "rejecting target with encoded NULs: " << target);
             return false;
         }
         query[key] = value;
@@ -137,16 +123,12 @@ bool Request::_parseUri()
     return true;
 }
 
-
-bool Request::_parseBody()
-{
+bool Request::_parseBody() {
     // TODO: implement application/x-www-form-urlencoded body -> body
     return true;
 }
 
-
-std::string Request::_percentDecode(std::string const& encoded, bool exceptPathDelimeters, bool& hasNULs)
-{
+std::string Request::_percentDecode(std::string const& encoded, bool exceptPathDelimeters, bool& hasNULs) {
     std::string decoded;
     hasNULs = false;
 
@@ -156,10 +138,10 @@ std::string Request::_percentDecode(std::string const& encoded, bool exceptPathD
 
     std::string::const_iterator tail = encoded.cbegin();
 
-    for(boost::sregex_iterator i=pbegin; i!=pend; ++i) {
+    for (boost::sregex_iterator i = pbegin; i != pend; ++i) {
         decoded.append(i->prefix().first, i->prefix().second);
         tail = i->suffix().first;
-        char codepoint = strtol(i->str().c_str()+1, NULL, 16);
+        char codepoint = strtol(i->str().c_str() + 1, NULL, 16);
 
         if (codepoint == '\0') hasNULs = true;
 
@@ -174,7 +156,6 @@ std::string Request::_percentDecode(std::string const& encoded, bool exceptPathD
         else {
             decoded.push_back(codepoint);
         }
-
     }
 
     decoded.append(tail, encoded.cend());

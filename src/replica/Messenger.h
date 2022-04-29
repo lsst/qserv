@@ -37,23 +37,19 @@
 #include "util/Mutex.h"
 
 // Forward declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
-    class ProtocolBuffer;
-}}}  // Forward declarations
+namespace lsst { namespace qserv { namespace replica {
+class ProtocolBuffer;
+}}}  // namespace lsst::qserv::replica
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
 /**
  * Class Messenger provides a communication interface for sending/receiving messages
  * to and from worker services. It provides connection multiplexing and automatic
  * reconnects.
  */
-class Messenger: public std::enable_shared_from_this<Messenger> {
+class Messenger : public std::enable_shared_from_this<Messenger> {
 public:
     typedef std::shared_ptr<Messenger> Ptr;
 
@@ -65,7 +61,7 @@ public:
 
     /**
      * Create a new messenger with specified parameters.
-     * 
+     *
      * Static factory method is needed to prevent issue with the lifespan
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
@@ -76,8 +72,7 @@ public:
      *   of the Messenger.
      * @return  A pointer to the created object.
      */
-    static Ptr create(ServiceProvider::Ptr const& serviceProvider,
-                      boost::asio::io_service& io_service);
+    static Ptr create(ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service);
 
     /**
      * Stop operations
@@ -91,7 +86,7 @@ public:
      * of the request. The method may throw exception std::invalid_argument if
      * the worker name is not valid, and std::logic_error if the Messenger already
      * has another request registered with the same request 'id'.
-     * 
+     *
      * @param worker  The name of a worker.
      * @param id  A unique identifier of a request.
      * @param priority  The priority level of a request.
@@ -100,9 +95,7 @@ public:
      *   or failure of the operation
      */
     template <class RESPONSE_TYPE>
-    void send(std::string const& worker,
-              std::string const& id,
-              int priority,
+    void send(std::string const& worker, std::string const& id, int priority,
               std::shared_ptr<ProtocolBuffer> const& requestBufferPtr,
               std::function<void(std::string const&, bool, RESPONSE_TYPE const&)> onFinish) {
         _connector(worker)->send<RESPONSE_TYPE>(id, priority, requestBufferPtr, onFinish);
@@ -134,8 +127,7 @@ public:
 
 private:
     /// @see Messenger::create()
-    Messenger(ServiceProvider::Ptr const& serviceProvider,
-              boost::asio::io_service& io_service);
+    Messenger(ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service);
 
     /**
      * Locate and return a connector for the specified worker
@@ -160,6 +152,6 @@ private:
     std::map<std::string, MessengerConnector::Ptr> _workerConnector;
 };
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_MESSENGER_H
+#endif  // LSST_QSERV_REPLICA_MESSENGER_H

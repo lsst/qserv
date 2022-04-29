@@ -32,15 +32,13 @@
 #include "replica/Application.h"
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
 /**
  * Class QhttpTestApp is performance and scalability test for the embedded
  * HTTP server "qhttp".
  */
-class QhttpTestApp: public Application {
+class QhttpTestApp : public Application {
 public:
     /// The pointer type for instances of the class
     typedef std::shared_ptr<QhttpTestApp> Ptr;
@@ -54,11 +52,11 @@ public:
      */
     static Ptr create(int argc, char* argv[]);
 
-    QhttpTestApp()=delete;
-    QhttpTestApp(QhttpTestApp const&)=delete;
-    QhttpTestApp& operator=(QhttpTestApp const&)=delete;
+    QhttpTestApp() = delete;
+    QhttpTestApp(QhttpTestApp const&) = delete;
+    QhttpTestApp& operator=(QhttpTestApp const&) = delete;
 
-    virtual ~QhttpTestApp() final=default;
+    virtual ~QhttpTestApp() final = default;
 
 protected:
     /// @see Application::runImpl()
@@ -85,6 +83,6 @@ private:
     bool _verbose = false;
 };
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica
 
 #endif /* LSST_QSERV_REPLICA_QHTTPTESTAPP_H */

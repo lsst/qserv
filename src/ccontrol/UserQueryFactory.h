@@ -24,12 +24,12 @@
 #ifndef LSST_QSERV_CCONTROL_USERQUERYFACTORY_H
 #define LSST_QSERV_CCONTROL_USERQUERYFACTORY_H
 /**
-  * @file
-  *
-  * @brief Factory for UserQuery.
-  *
-  * @author Daniel L. Wang, SLAC
-  */
+ * @file
+ *
+ * @brief Factory for UserQuery.
+ *
+ * @author Daniel L. Wang, SLAC
+ */
 
 // System headers
 #include <cstdint>
@@ -42,31 +42,26 @@
 #include "global/stringTypes.h"
 #include "qdisp/SharedResources.h"
 
-
-namespace lsst {
-namespace qserv {
+namespace lsst { namespace qserv {
 namespace ccontrol {
-    class UserQuery;
-    class UserQuerySharedResources;
-}
+class UserQuery;
+class UserQuerySharedResources;
+}  // namespace ccontrol
 namespace czar {
-    class CzarConfig;
+class CzarConfig;
 }
 namespace qdisp {
-    class ExecutiveConfig;
+class ExecutiveConfig;
 }
 namespace qproc {
-    class DatabaseModels;
+class DatabaseModels;
 }
 namespace query {
-    class SelectStmt;
-}}}
+class SelectStmt;
+}
+}}  // namespace lsst::qserv
 
-
-namespace lsst {
-namespace qserv {
-namespace ccontrol {
-
+namespace lsst { namespace qserv { namespace ccontrol {
 
 ///  UserQueryFactory breaks construction of user queries into two phases:
 ///  creation/configuration of the factory and construction of the
@@ -74,10 +69,8 @@ namespace ccontrol {
 ///  constant between successive user queries.
 class UserQueryFactory : private boost::noncopyable {
 public:
-
     UserQueryFactory(czar::CzarConfig const& czarConfig,
-                     std::shared_ptr<qproc::DatabaseModels> const& dbModels,
-                     std::string const& czarName);
+                     std::shared_ptr<qproc::DatabaseModels> const& dbModels, std::string const& czarName);
 
     /// @param query:        Query text
     /// @param defaultDb:    Default database name, may be empty
@@ -85,18 +78,16 @@ public:
     /// @param userQueryId:  Unique string identifying query
     /// @param msgTableName: Name of the message table without database name.
     /// @return new UserQuery object
-    std::shared_ptr<UserQuery> newUserQuery(std::string const& query,
-                               std::string const& defaultDb,
-                               qdisp::SharedResources::Ptr const& qdispSharedResources,
-                               std::string const& userQueryId,
-                               std::string const& msgTableName,
-                               std::string const& resultDb);
+    std::shared_ptr<UserQuery> newUserQuery(std::string const& query, std::string const& defaultDb,
+                                            qdisp::SharedResources::Ptr const& qdispSharedResources,
+                                            std::string const& userQueryId, std::string const& msgTableName,
+                                            std::string const& resultDb);
 
 private:
     std::shared_ptr<UserQuerySharedResources> _userQuerySharedResources;
     std::shared_ptr<qdisp::ExecutiveConfig> _executiveConfig;
 };
 
-}}} // namespace lsst::qserv:control
+}}}  // namespace lsst::qserv::ccontrol
 
-#endif // LSST_QSERV_CCONTROL_USERQUERYFACTORY_H
+#endif  // LSST_QSERV_CCONTROL_USERQUERYFACTORY_H

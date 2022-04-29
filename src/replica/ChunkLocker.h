@@ -31,9 +31,7 @@
 #include "util/Mutex.h"
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
 /**
  * Structure Chunk is an abstraction grouping together database families and
@@ -41,7 +39,6 @@ namespace replica {
  * require chunk collocation.
  */
 struct Chunk {
-
     std::string databaseFamily;
     unsigned int number;
 
@@ -68,7 +65,7 @@ struct Chunk {
 };
 
 /// The overloaded operator for dumping objects of type Chunk
-std::ostream& operator<< (std::ostream& os, Chunk const& chunk);
+std::ostream& operator<<(std::ostream& os, Chunk const& chunk);
 
 /**
  * Class ChunkLocker provides a thread-safe mechanism allowing
@@ -76,9 +73,7 @@ std::ostream& operator<< (std::ostream& os, Chunk const& chunk);
  * exclusive 'locks' (ownership claims) on chunks.
  */
 class ChunkLocker {
-
 public:
-
     /// The type for a collection of locked chunks grouped by owners
     typedef std::map<std::string, std::list<Chunk>> OwnerToChunks;
 
@@ -117,8 +112,7 @@ public:
      *   'true' if the chunk is locked and set an identifier of
      *   an owner which locked the chunk.
      */
-    bool isLocked(Chunk const& chunk,
-                  std::string& ownerId) const;
+    bool isLocked(Chunk const& chunk, std::string& ownerId) const;
 
     /**
      * Find chunks which are locked by a particular owner (if provided),
@@ -131,7 +125,7 @@ public:
      * @return
      *   a collection of chunks grouped by owners
      */
-    OwnerToChunks locked(std::string const& owner=std::string()) const;
+    OwnerToChunks locked(std::string const& owner = std::string()) const;
 
     /**
      * Lock a chunk to a specific owner
@@ -150,8 +144,7 @@ public:
      * @throw std::invalid_argument
      *   if the owner 'id' is an empty string
      */
-    bool lock(Chunk const&       chunk,
-              std::string const& owner);
+    bool lock(Chunk const& chunk, std::string const& owner);
 
     /**
      * Release a chunk regardless of its owner
@@ -179,8 +172,7 @@ public:
      * @return
      *   'true' if the operation was successful
      */
-    bool release(Chunk const& chunk,
-                 std::string& owner);
+    bool release(Chunk const& chunk, std::string& owner);
 
     /**
      * Release all chunks which were found claimed by the specified owner
@@ -191,7 +183,6 @@ public:
     std::list<Chunk> release(std::string const& owner);
 
 private:
-
     /**
      * Find chunks which are locked by a particular owner (if provided),
      * or by all owners.
@@ -209,9 +200,7 @@ private:
      * @return
      *   a collection of chunks grouped by owners
      */
-    void _lockedImpl(util::Lock const& mLock,
-                     std::string const& owner,
-                     OwnerToChunks& owner2chunks) const;
+    void _lockedImpl(util::Lock const& mLock, std::string const& owner, OwnerToChunks& owner2chunks) const;
 
     /**
      * Actual implementation of the chunk release operation, which will attempt
@@ -237,10 +226,7 @@ private:
      * @return
      *   'true' if the operation was successful
      */
-    bool _releaseImpl(util::Lock const& mLock,
-                      Chunk const& chunk,
-                      std::string& owner);
-
+    bool _releaseImpl(util::Lock const& mLock, Chunk const& chunk, std::string& owner);
 
     /// Mapping a chunk to its "owner" (the one which holds the lock)
     ChunkToOwner _chunk2owner;
@@ -249,6 +235,6 @@ private:
     mutable util::Mutex _mtx;
 };
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_CHUNKLOCKER_H
+#endif  // LSST_QSERV_REPLICA_CHUNKLOCKER_H

@@ -31,6 +31,7 @@
 
 // helper macro to reduce boilerplate whe generating logging context for Query ID and Job ID
 #define QSERV_LOGCONTEXT_QUERY(qid) LOG_MDC_SCOPE("QID", qid == 0 ? "" : std::to_string(qid))
-#define QSERV_LOGCONTEXT_QUERY_JOB(qid, jobid) LOG_MDC_SCOPE("QID", qid == 0 ? "" : std::to_string(qid) + "#" + std::to_string(jobid))
+#define QSERV_LOGCONTEXT_QUERY_JOB(qid, jobid) \
+    LOG_MDC_SCOPE("QID", qid == 0 ? "" : std::to_string(qid) + "#" + std::to_string(jobid))
 
-#endif // LSST_QSERV_LOGCONTEXT_H
+#endif  // LSST_QSERV_LOGCONTEXT_H

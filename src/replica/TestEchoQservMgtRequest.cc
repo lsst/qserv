@@ -44,104 +44,73 @@ namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.TestEchoQservMgtRequest");
 
-} /// namespace
+}  // namespace
 
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
 TestEchoQservMgtRequest::Ptr TestEchoQservMgtRequest::create(
-                                        ServiceProvider::Ptr const& serviceProvider,
-                                        string const& worker,
-                                        string const& data,
-                                        TestEchoQservMgtRequest::CallbackType const& onFinish) {
-    return TestEchoQservMgtRequest::Ptr(
-        new TestEchoQservMgtRequest(serviceProvider,
-                                    worker,
-                                    data,
-                                    onFinish));
+        ServiceProvider::Ptr const& serviceProvider, string const& worker, string const& data,
+        TestEchoQservMgtRequest::CallbackType const& onFinish) {
+    return TestEchoQservMgtRequest::Ptr(new TestEchoQservMgtRequest(serviceProvider, worker, data, onFinish));
 }
 
-
-TestEchoQservMgtRequest::TestEchoQservMgtRequest(
-                                ServiceProvider::Ptr const& serviceProvider,
-                                string const& worker,
-                                string const& data,
-                                TestEchoQservMgtRequest::CallbackType const& onFinish)
-    :   QservMgtRequest(serviceProvider,
-                        "QSERV_TEST_ECHO",
-                        worker),
-        _data(data),
-        _onFinish(onFinish) {
-}
-
+TestEchoQservMgtRequest::TestEchoQservMgtRequest(ServiceProvider::Ptr const& serviceProvider,
+                                                 string const& worker, string const& data,
+                                                 TestEchoQservMgtRequest::CallbackType const& onFinish)
+        : QservMgtRequest(serviceProvider, "QSERV_TEST_ECHO", worker), _data(data), _onFinish(onFinish) {}
 
 string const& TestEchoQservMgtRequest::dataEcho() const {
-    if (not ((state() == State::FINISHED) and (extendedState() == ExtendedState::SUCCESS))) {
-        throw logic_error(
-                "TestEchoQservMgtRequest::" + string(__func__) + "  no data available in state: " +
-                state2string(state(), extendedState()));
+    if (not((state() == State::FINISHED) and (extendedState() == ExtendedState::SUCCESS))) {
+        throw logic_error("TestEchoQservMgtRequest::" + string(__func__) +
+                          "  no data available in state: " + state2string(state(), extendedState()));
     }
     return _dataEcho;
 }
 
-
-list<pair<string,string>> TestEchoQservMgtRequest::extendedPersistentState() const {
-    list<pair<string,string>> result;
+list<pair<string, string>> TestEchoQservMgtRequest::extendedPersistentState() const {
+    list<pair<string, string>> result;
     result.emplace_back("data_length_bytes", to_string(data().size()));
     return result;
 }
 
-
 void TestEchoQservMgtRequest::startImpl(util::Lock const& lock) {
-
     // Submit the actual request
 
     auto const request = shared_from_base<TestEchoQservMgtRequest>();
 
     _qservRequest = wpublish::TestEchoQservRequest::create(
-        data(),
-        [request] (wpublish::TestEchoQservRequest::Status status,
-                   string const& error,
-                   string const& data,
-                   string const& dataEcho) {
+            data(), [request](wpublish::TestEchoQservRequest::Status status, string const& error,
+                              string const& data, string const& dataEcho) {
+                if (request->state() == State::FINISHED) return;
 
-            if (request->state() == State::FINISHED) return;
-        
-            util::Lock lock(request->_mtx, request->context() + string(__func__) + "[callback]");
-        
-            if (request->state() == State::FINISHED) return;
+                util::Lock lock(request->_mtx, request->context() + string(__func__) + "[callback]");
 
-            switch (status) {
+                if (request->state() == State::FINISHED) return;
 
-                case wpublish::TestEchoQservRequest::Status::SUCCESS:
+                switch (status) {
+                    case wpublish::TestEchoQservRequest::Status::SUCCESS:
 
-                    request->_setData(lock, dataEcho);
-                    request->finish(lock, QservMgtRequest::ExtendedState::SUCCESS);
-                    break;
+                        request->_setData(lock, dataEcho);
+                        request->finish(lock, QservMgtRequest::ExtendedState::SUCCESS);
+                        break;
 
-                case wpublish::TestEchoQservRequest::Status::ERROR:
+                    case wpublish::TestEchoQservRequest::Status::ERROR:
 
-                    request->finish(lock, QservMgtRequest::ExtendedState::SERVER_ERROR, error);
-                    break;
+                        request->finish(lock, QservMgtRequest::ExtendedState::SERVER_ERROR, error);
+                        break;
 
-                default:
-                    throw logic_error(
-                            "TestEchoQservMgtRequest::" + string(__func__) +
-                            "  unhandled server status: " +
-                            wpublish::TestEchoQservRequest::status2str(status));
-            }
-        }
-    );
+                    default:
+                        throw logic_error("TestEchoQservMgtRequest::" + string(__func__) +
+                                          "  unhandled server status: " +
+                                          wpublish::TestEchoQservRequest::status2str(status));
+                }
+            });
     XrdSsiResource resource(ResourceUnit::makeWorkerPath(worker()));
     service()->ProcessRequest(*_qservRequest, resource);
 }
 
-
 void TestEchoQservMgtRequest::finishImpl(util::Lock const& lock) {
-
     switch (extendedState()) {
-
         case ExtendedState::CANCELLED:
         case ExtendedState::TIMEOUT_EXPIRED:
 
@@ -158,16 +127,11 @@ void TestEchoQservMgtRequest::finishImpl(util::Lock const& lock) {
     }
 }
 
-
 void TestEchoQservMgtRequest::notify(util::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
     notifyDefaultImpl<TestEchoQservMgtRequest>(lock, _onFinish);
 }
 
+void TestEchoQservMgtRequest::_setData(util::Lock const& lock, string const& data) { _dataEcho = data; }
 
-void TestEchoQservMgtRequest::_setData(util::Lock const& lock,
-                                       string const& data) {
-    _dataEcho = data;
-}
-
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica

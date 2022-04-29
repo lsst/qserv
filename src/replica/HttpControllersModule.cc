@@ -33,48 +33,39 @@
 using namespace std;
 using json = nlohmann::json;
 
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
-void HttpControllersModule::process(Controller::Ptr const& controller,
-                                    string const& taskName,
+void HttpControllersModule::process(Controller::Ptr const& controller, string const& taskName,
                                     HttpProcessorConfig const& processorConfig,
-                                    qhttp::Request::Ptr const& req,
-                                    qhttp::Response::Ptr const& resp,
-                                    string const& subModuleName,
-                                    HttpAuthType const authType) {
+                                    qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp,
+                                    string const& subModuleName, HttpAuthType const authType) {
     HttpControllersModule module(controller, taskName, processorConfig, req, resp);
     module.execute(subModuleName, authType);
 }
 
-
-HttpControllersModule::HttpControllersModule(Controller::Ptr const& controller,
-                                             string const& taskName,
+HttpControllersModule::HttpControllersModule(Controller::Ptr const& controller, string const& taskName,
                                              HttpProcessorConfig const& processorConfig,
-                                             qhttp::Request::Ptr const& req,
-                                             qhttp::Response::Ptr const& resp)
-    :   HttpModule(controller, taskName, processorConfig, req, resp) {
-}
-
+                                             qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp)
+        : HttpModule(controller, taskName, processorConfig, req, resp) {}
 
 json HttpControllersModule::executeImpl(string const& subModuleName) {
-    if (subModuleName.empty()) return _controllers();
-    else if (subModuleName == "SELECT-ONE-BY-ID") return _oneController();
-    else if (subModuleName == "LOG-DICT") return _eventLogDict();
-    throw invalid_argument(
-            context() + "::" + string(__func__) +
-            "  unsupported sub-module: '" + subModuleName + "'");
+    if (subModuleName.empty())
+        return _controllers();
+    else if (subModuleName == "SELECT-ONE-BY-ID")
+        return _oneController();
+    else if (subModuleName == "LOG-DICT")
+        return _eventLogDict();
+    throw invalid_argument(context() + "::" + string(__func__) + "  unsupported sub-module: '" +
+                           subModuleName + "'");
 }
-
 
 json HttpControllersModule::_controllers() {
     debug(__func__);
 
     uint64_t const fromTimeStamp = query().optionalUInt64("from");
     uint64_t const toTimeStamp = query().optionalUInt64("to", numeric_limits<uint64_t>::max());
-    size_t   const maxEntries = query().optionalUInt64("max_entries");
-    bool     const currentOnly = query().optionalBool("current_only", false);
+    size_t const maxEntries = query().optionalUInt64("max_entries");
+    bool const currentOnly = query().optionalBool("current_only", false);
 
     debug(__func__, "from=" + to_string(fromTimeStamp));
     debug(__func__, "to=" + to_string(toTimeStamp));
@@ -84,14 +75,11 @@ json HttpControllersModule::_controllers() {
     // Just descriptions of the Controllers. No persistent logs in this
     // report.
 
-    auto const controllers =
-        controller()->serviceProvider()->databaseServices()->controllers(
-            fromTimeStamp,
-            toTimeStamp,
-            maxEntries);
+    auto const controllers = controller()->serviceProvider()->databaseServices()->controllers(
+            fromTimeStamp, toTimeStamp, maxEntries);
 
     json controllersJson;
-    for (auto&& info: controllers) {
+    for (auto&& info : controllers) {
         bool const isCurrent = info.id == controller()->identity().id;
         if (currentOnly && !isCurrent) continue;
         controllersJson.push_back(info.toJson(isCurrent));
@@ -101,19 +89,18 @@ json HttpControllersModule::_controllers() {
     return result;
 }
 
-
 json HttpControllersModule::_oneController() {
     debug(__func__);
 
-    string   const id = params().at("id");
-    bool     const log = query().optionalBool("log");
-    bool     const logCurrentController = query().optionalBool("log_current_controller");
-    string   const logTask = query().optionalString("log_task");
-    string   const logOperation = query().optionalString("log_operation");
-    string   const logOperationStatus = query().optionalString("log_operation_status");
+    string const id = params().at("id");
+    bool const log = query().optionalBool("log");
+    bool const logCurrentController = query().optionalBool("log_current_controller");
+    string const logTask = query().optionalString("log_task");
+    string const logOperation = query().optionalString("log_operation");
+    string const logOperationStatus = query().optionalString("log_operation_status");
     uint64_t const fromTimeStamp = query().optionalUInt64("log_from");
     uint64_t const toTimeStamp = query().optionalUInt64("log_to", numeric_limits<uint64_t>::max());
-    size_t   const maxEvents = query().optionalUInt64("log_max_events");
+    size_t const maxEvents = query().optionalUInt64("log_max_events");
 
     debug(string(__func__) + " id=" + id);
     debug(string(__func__) + " log=" + bool2str(log));
@@ -139,15 +126,9 @@ json HttpControllersModule::_oneController() {
         json jsonLog = json::array();
         if (log) {
             auto const events = databaseServices->readControllerEvents(
-                logCurrentController ? id : string(),
-                fromTimeStamp,
-                toTimeStamp,
-                maxEvents,
-                logTask,
-                logOperation,
-                logOperationStatus
-            );
-            for (auto&& event: events) {
+                    logCurrentController ? id : string(), fromTimeStamp, toTimeStamp, maxEvents, logTask,
+                    logOperation, logOperationStatus);
+            for (auto&& event : events) {
                 jsonLog.push_back(event.toJson());
             }
         }
@@ -176,7 +157,6 @@ json HttpControllersModule::_eventLogDict() {
         throw HttpError(__func__, "no such controller found");
     }
     return result;
-
 }
 
 }}}  // namespace lsst::qserv::replica

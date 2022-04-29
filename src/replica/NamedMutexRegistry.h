@@ -30,9 +30,7 @@
 #include "util/Mutex.h"
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
 /**
  * Class NamedMutexRegistry represents a collection of named instances
@@ -69,6 +67,6 @@ private:
     mutable util::Mutex _registryAccessMtx;
 };
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_NAMEDMUTEXREGISTRY_H
+#endif  // LSST_QSERV_REPLICA_NAMEDMUTEXREGISTRY_H

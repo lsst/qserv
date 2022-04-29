@@ -34,78 +34,44 @@ namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.SqlDeleteTablePartitionRequest");
 
-} /// namespace
+}  // namespace
 
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
 SqlDeleteTablePartitionRequest::Ptr SqlDeleteTablePartitionRequest::create(
-        ServiceProvider::Ptr const& serviceProvider,
-        boost::asio::io_service& io_service,
-        string const& worker,
-        string const& database,
-        vector<string> const& tables,
-        TransactionId transactionId,
-        CallbackType const& onFinish,
-        int priority,
-        bool keepTracking,
+        ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service,
+        string const& worker, string const& database, vector<string> const& tables,
+        TransactionId transactionId, CallbackType const& onFinish, int priority, bool keepTracking,
         shared_ptr<Messenger> const& messenger) {
-
-    return Ptr(new SqlDeleteTablePartitionRequest(
-        serviceProvider,
-        io_service,
-        worker,
-        database,
-        tables,
-        transactionId,
-        onFinish,
-        priority,
-        keepTracking,
-        messenger
-    ));
+    return Ptr(new SqlDeleteTablePartitionRequest(serviceProvider, io_service, worker, database, tables,
+                                                  transactionId, onFinish, priority, keepTracking,
+                                                  messenger));
 }
 
-
 SqlDeleteTablePartitionRequest::SqlDeleteTablePartitionRequest(
-        ServiceProvider::Ptr const& serviceProvider,
-        boost::asio::io_service& io_service,
-        string const& worker,
-        string const& database,
-        vector<string> const& tables,
-        TransactionId transactionId,
-        CallbackType const& onFinish,
-        int priority,
-        bool keepTracking,
+        ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service,
+        string const& worker, string const& database, vector<string> const& tables,
+        TransactionId transactionId, CallbackType const& onFinish, int priority, bool keepTracking,
         shared_ptr<Messenger> const& messenger)
-    :   SqlRequest(serviceProvider,
-                   io_service,
-                   "SQL_DROP_TABLE_PARTITION",
-                   worker,
-                   0,          /* maxRows */
-                   priority,
-                   keepTracking,
-                   messenger),
-        _onFinish(onFinish) {
-
+        : SqlRequest(serviceProvider, io_service, "SQL_DROP_TABLE_PARTITION", worker, 0, /* maxRows */
+                     priority, keepTracking, messenger),
+          _onFinish(onFinish) {
     // Finish initializing the request body's content
     requestBody.set_type(ProtocolRequestSql::DROP_TABLE_PARTITION);
     requestBody.set_database(database);
     requestBody.clear_tables();
-    for (auto&& table: tables) {
+    for (auto&& table : tables) {
         requestBody.add_tables(table);
     }
     requestBody.set_transaction_id(transactionId);
     requestBody.set_batch_mode(true);
 }
 
-
 void SqlDeleteTablePartitionRequest::notify(util::Lock const& lock) {
-
-    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ <<
-        "[" << ProtocolRequestSql_Type_Name(requestBody.type()) << "]");
+    LOGS(_log, LOG_LVL_DEBUG,
+         context() << __func__ << "[" << ProtocolRequestSql_Type_Name(requestBody.type()) << "]");
 
     notifyDefaultImpl<SqlDeleteTablePartitionRequest>(lock, _onFinish);
 }
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica

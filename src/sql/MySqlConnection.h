@@ -45,21 +45,18 @@
 #include "sql/SqlErrorObject.h"
 
 // Forward declarations
-namespace lsst {
-namespace qserv {
+namespace lsst { namespace qserv {
 namespace mysql {
-    class MySqlConnection;
+class MySqlConnection;
 }
 namespace sql {
-    class MySqlConnection;
-    class SqlConnectionFactory;
-    class SqlResults;
-}}}
+class MySqlConnection;
+class SqlConnectionFactory;
+class SqlResults;
+}  // namespace sql
+}}  // namespace lsst::qserv
 
-
-namespace lsst {
-namespace qserv {
-namespace sql {
+namespace lsst { namespace qserv { namespace sql {
 
 class MySqlResultIter : public SqlResultIter {
 public:
@@ -69,8 +66,8 @@ public:
 
     SqlErrorObject& getErrorObject() override { return _errObj; }
     StringVector const& operator*() const override { return _current; }
-    SqlResultIter& operator++() override; // pre-increment iterator advance.
-    bool done() const override; // Would like to relax LSST standard 3-4 for iterator classes
+    SqlResultIter& operator++() override;  // pre-increment iterator advance.
+    bool done() const override;            // Would like to relax LSST standard 3-4 for iterator classes
 
 private:
     bool _setup(mysql::MySqlConfig const& sqlConfig, std::string const& query);
@@ -80,7 +77,6 @@ private:
     SqlErrorObject _errObj;
     int _columnCount;
 };
-
 
 /// class SqlConnection : Class for interacting with a MySQL database.
 class MySqlConnection : public SqlConnection {
@@ -93,13 +89,11 @@ public:
 
     bool selectDb(std::string const& dbName, SqlErrorObject&) override;
 
-    bool runQuery(char const* query, int qSize,
-                  SqlResults& results, SqlErrorObject&) override;
+    bool runQuery(char const* query, int qSize, SqlResults& results, SqlErrorObject&) override;
 
     bool runQuery(char const* query, int qSize, SqlErrorObject&) override;
 
-    bool runQuery(std::string const query, SqlResults&,
-                  SqlErrorObject&) override;
+    bool runQuery(std::string const query, SqlResults&, SqlErrorObject&) override;
 
     /// with runQueryIter SqlConnection is busy until SqlResultIter is closed
     std::shared_ptr<SqlResultIter> getQueryIter(std::string const& query) override;
@@ -108,30 +102,19 @@ public:
 
     bool dbExists(std::string const& dbName, SqlErrorObject&) override;
 
-    bool createDb(std::string const& dbName, SqlErrorObject&,
-                  bool failIfExists=true) override;
+    bool createDb(std::string const& dbName, SqlErrorObject&, bool failIfExists = true) override;
 
-    bool createDbAndSelect(std::string const& dbName,
-                           SqlErrorObject&,
-                           bool failIfExists=true) override;
+    bool createDbAndSelect(std::string const& dbName, SqlErrorObject&, bool failIfExists = true) override;
 
+    bool dropDb(std::string const& dbName, SqlErrorObject&, bool failIfDoesNotExist = true) override;
 
-    bool dropDb(std::string const& dbName, SqlErrorObject&,
-                bool failIfDoesNotExist=true) override;
+    bool tableExists(std::string const& tableName, SqlErrorObject&, std::string const& dbName = "") override;
 
-    bool tableExists(std::string const& tableName,
-                     SqlErrorObject&,
-                     std::string const& dbName="") override;
+    bool dropTable(std::string const& tableName, SqlErrorObject&, bool failIfDoesNotExist = true,
+                   std::string const& dbName = "") override;
 
-    bool dropTable(std::string const& tableName,
-                   SqlErrorObject&,
-                   bool failIfDoesNotExist=true,
-                   std::string const& dbName="") override;
-
-    bool listTables(std::vector<std::string>&,
-                    SqlErrorObject&,
-                    std::string const& prefixed="",
-                    std::string const& dbName="") override;
+    bool listTables(std::vector<std::string>&, SqlErrorObject&, std::string const& prefixed = "",
+                    std::string const& dbName = "") override;
 
     /**
      * @brief Get the names of the columns in the given db and table
@@ -143,8 +126,7 @@ public:
      * @param tableName The name of the table to look in.
      * @return std::vector<std::string> The column names.
      */
-    std::vector<std::string> listColumns(std::string const& dbName,
-                                         std::string const& tableName) override;
+    std::vector<std::string> listColumns(std::string const& dbName, std::string const& tableName) override;
 
     std::string getActiveDbName() const override;
 
@@ -167,7 +149,7 @@ public:
      * @note this method will attempt to connect if the connection is not already estabilshed.
      */
     bool escapeString(std::string const& rawString, std::string& escapedString,
-            SqlErrorObject& errObj) override;
+                      SqlErrorObject& errObj) override;
 
 private:
     friend class MySqlResultIter;
@@ -179,13 +161,10 @@ private:
 
     bool _init(SqlErrorObject&);
     bool _connect(SqlErrorObject&);
-    bool _setErrorObject(SqlErrorObject&,
-                         std::string const& details=std::string(""));
+    bool _setErrorObject(SqlErrorObject&, std::string const& details = std::string(""));
     std::shared_ptr<mysql::MySqlConnection> _connection;
 };
 
+}}}  // namespace lsst::qserv::sql
 
-}}} // namespace lsst::qserv::sql
-
-
-#endif // LSST_QSERV_SQL_MYSQLCONNECTION_H
+#endif  // LSST_QSERV_SQL_MYSQLCONNECTION_H

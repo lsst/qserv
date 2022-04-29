@@ -24,11 +24,10 @@
 #ifndef LSST_QSERV_QUERY_COLUMNREF_H
 #define LSST_QSERV_QUERY_COLUMNREF_H
 /**
-  * @file
-  *
-  * @author Daniel L. Wang, SLAC
-  */
-
+ * @file
+ *
+ * @author Daniel L. Wang, SLAC
+ */
 
 // System headers
 #include <memory>
@@ -39,19 +38,12 @@
 // Qserv headers
 #include "query/TableRef.h"
 
-
 // Forward declarations
-namespace lsst {
-namespace qserv {
-namespace query {
-    class QueryTemplate;
-}}} // End of forward declarations
+namespace lsst { namespace qserv { namespace query {
+class QueryTemplate;
+}}}  // namespace lsst::qserv::query
 
-
-namespace lsst {
-namespace qserv {
-namespace query {
-
+namespace lsst { namespace qserv { namespace query {
 
 /// ColumnRef is an abstract value class holding a parsed single _column ref.
 /// Note when setting database, table, and column:
@@ -61,7 +53,7 @@ namespace query {
 // result in a logic_error being thrown.
 class ColumnRef {
 public:
-    typedef std::shared_ptr<ColumnRef>  Ptr;
+    typedef std::shared_ptr<ColumnRef> Ptr;
     typedef std::vector<Ptr> Vector;
 
     ColumnRef(std::string column_);
@@ -95,7 +87,7 @@ public:
     // Only considers populated member variables, e.g. if the database is not populated in this or in rhs it
     // is ignored during comparison, except if e.g. the database is populated but the table is not (or the
     // table is but the column is not) this will return false.
-    bool isSubsetOf(const ColumnRef::Ptr & rhs) const;
+    bool isSubsetOf(const ColumnRef::Ptr& rhs) const;
     bool isSubsetOf(ColumnRef const& rhs) const;
 
     bool isAliasedBy(ColumnRef const& rhs) const;
@@ -121,7 +113,6 @@ private:
     std::string _column;
 };
 
+}}}  // namespace lsst::qserv::query
 
-}}} // namespace lsst::qserv::query
-
-#endif // LSST_QSERV_QUERY_COLUMNREF_H
+#endif  // LSST_QSERV_QUERY_COLUMNREF_H

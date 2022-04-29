@@ -27,9 +27,7 @@
 // System headers
 #include <memory>
 
-namespace lsst {
-namespace qserv {
-namespace ccontrol {
+namespace lsst { namespace qserv { namespace ccontrol {
 
 class Callback {
 public:
@@ -38,6 +36,6 @@ public:
     void operator()() {}
 };
 
-}}} // namespace lsst::qserv::ccontrol
+}}}  // namespace lsst::qserv::ccontrol
 
-#endif // LSST_QSERV_CCONTROL_CALLBACK_H
+#endif  // LSST_QSERV_CCONTROL_CALLBACK_H

@@ -25,7 +25,6 @@
 // Qserv headers
 #include "replica/ChunkedTable.h"
 
-
 // Boost unit test header
 #define BOOST_TEST_MODULE ChunkedTableTest
 #include <boost/test/unit_test.hpp>
@@ -37,7 +36,6 @@ using namespace lsst::qserv::replica;
 BOOST_AUTO_TEST_SUITE(Suite)
 
 BOOST_AUTO_TEST_CASE(ChunkedTableTest) {
-
     LOGS_INFO("ChunkedTableTest begins");
 
     // Test default construction
@@ -47,24 +45,16 @@ BOOST_AUTO_TEST_CASE(ChunkedTableTest) {
         BOOST_CHECK(not invalidTable.valid());
     });
     ChunkedTable const invalidTable;
-    BOOST_CHECK_THROW({
-        invalidTable.baseName();
-    }, invalid_argument);
-    BOOST_CHECK_THROW({
-        invalidTable.overlap();
-    }, invalid_argument);
-    BOOST_CHECK_THROW({
-        invalidTable.chunk();
-    }, invalid_argument);
-    BOOST_CHECK_THROW({
-        invalidTable.name();
-    }, invalid_argument);
+    BOOST_CHECK_THROW({ invalidTable.baseName(); }, invalid_argument);
+    BOOST_CHECK_THROW({ invalidTable.overlap(); }, invalid_argument);
+    BOOST_CHECK_THROW({ invalidTable.chunk(); }, invalid_argument);
+    BOOST_CHECK_THROW({ invalidTable.name(); }, invalid_argument);
 
     BOOST_REQUIRE_NO_THROW({
         ChunkedTable const invalidTable;
         ChunkedTable const invalidTable2;
         BOOST_CHECK(invalidTable2 == invalidTable);
-        BOOST_CHECK(invalidTable  == invalidTable2);
+        BOOST_CHECK(invalidTable == invalidTable2);
 
         ChunkedTable const invalidTable3(invalidTable2);
         BOOST_CHECK(not invalidTable3.valid());
@@ -124,27 +114,13 @@ BOOST_AUTO_TEST_CASE(ChunkedTableTest) {
         BOOST_CHECK(table.chunk() == 123);
         BOOST_CHECK(table.name() == "ObjectFullOverlap_123");
     });
-    BOOST_CHECK_THROW({
-        ChunkedTable const table1("");
-    }, invalid_argument);
-    BOOST_CHECK_THROW({
-        ChunkedTable const table1("123");
-    }, invalid_argument);
-    BOOST_CHECK_THROW({
-        ChunkedTable const table1("_123");
-    }, invalid_argument);
-    BOOST_CHECK_THROW({
-        ChunkedTable const table("Object_");
-    }, invalid_argument);
-    BOOST_CHECK_THROW({
-        ChunkedTable const table("Object");
-    }, invalid_argument);
-    BOOST_CHECK_THROW({
-        ChunkedTable const table("ObjectFullOverlap_");
-    }, invalid_argument);
-    BOOST_CHECK_THROW({
-        ChunkedTable const table("FullOverlap_");
-    }, invalid_argument);
+    BOOST_CHECK_THROW({ ChunkedTable const table1(""); }, invalid_argument);
+    BOOST_CHECK_THROW({ ChunkedTable const table1("123"); }, invalid_argument);
+    BOOST_CHECK_THROW({ ChunkedTable const table1("_123"); }, invalid_argument);
+    BOOST_CHECK_THROW({ ChunkedTable const table("Object_"); }, invalid_argument);
+    BOOST_CHECK_THROW({ ChunkedTable const table("Object"); }, invalid_argument);
+    BOOST_CHECK_THROW({ ChunkedTable const table("ObjectFullOverlap_"); }, invalid_argument);
+    BOOST_CHECK_THROW({ ChunkedTable const table("FullOverlap_"); }, invalid_argument);
 
     // This is a perfectly valid table name
     BOOST_REQUIRE_NO_THROW({

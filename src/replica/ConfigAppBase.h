@@ -29,17 +29,14 @@
 #include "replica/Configuration.h"
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
 /**
  * Class ConfigAppBase is a base class for applications working with
  * the configuration service of the system.
  */
-class ConfigAppBase: public Application {
+class ConfigAppBase : public Application {
 public:
-
     ConfigAppBase() = delete;
     ConfigAppBase(ConfigAppBase const&) = delete;
     ConfigAppBase& operator=(ConfigAppBase const&) = delete;
@@ -68,16 +65,17 @@ protected:
      * Dump the Configuration into the standard output stream
      * @return A status code to be returned to the shell.
      */
-    void dumpWorkersAsTable(std::string const& indent, std::string const& caption="WORKERS:") const;
-    void dumpFamiliesAsTable(std::string const& indent, std::string const& caption="DATABASE FAMILIES:") const;
-    void dumpDatabasesAsTable(std::string const& indent, std::string const& caption="DATABASES:") const;
+    void dumpWorkersAsTable(std::string const& indent, std::string const& caption = "WORKERS:") const;
+    void dumpFamiliesAsTable(std::string const& indent,
+                             std::string const& caption = "DATABASE FAMILIES:") const;
+    void dumpDatabasesAsTable(std::string const& indent, std::string const& caption = "DATABASES:") const;
 
 private:
     std::string _configUrl;
     Configuration::Ptr _config;
-    bool _verticalSeparator = false;    ///< print vertical separator in tables
+    bool _verticalSeparator = false;  ///< print vertical separator in tables
 };
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica
 
 #endif /* LSST_QSERV_REPLICA_CONFIGAPPBASE_H */

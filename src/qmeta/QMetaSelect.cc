@@ -41,22 +41,16 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.qmeta.QMetaSelect");
 
 }
 
-namespace lsst {
-namespace qserv {
-namespace qmeta {
+namespace lsst { namespace qserv { namespace qmeta {
 
 // Constructors
 QMetaSelect::QMetaSelect(mysql::MySqlConfig const& mysqlConf)
-  : _conn(sql::SqlConnectionFactory::make(mysqlConf)) {
-}
+        : _conn(sql::SqlConnectionFactory::make(mysqlConf)) {}
 
 // Destructor
-QMetaSelect::~QMetaSelect() {
-}
+QMetaSelect::~QMetaSelect() {}
 
-std::unique_ptr<sql::SqlResults>
-QMetaSelect::select(std::string const& query) {
-
+std::unique_ptr<sql::SqlResults> QMetaSelect::select(std::string const& query) {
     // run query
     sql::SqlErrorObject errObj;
     std::unique_ptr<sql::SqlResults> results(new sql::SqlResults);
@@ -69,4 +63,4 @@ QMetaSelect::select(std::string const& query) {
     return results;
 }
 
-}}} // namespace lsst::qserv::qmeta
+}}}  // namespace lsst::qserv::qmeta

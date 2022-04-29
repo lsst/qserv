@@ -21,10 +21,8 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-
 #ifndef LSST_QSERV_QUERY_BOOLTERM_H
 #define LSST_QSERV_QUERY_BOOLTERM_H
-
 
 // System headers
 #include <algorithm>
@@ -42,21 +40,14 @@
 #include "typedefs.h"
 #include "util/PointerCompare.h"
 
-
 // Forward declarations
-namespace lsst {
-namespace qserv {
-namespace query {
-    class BoolFactorTerm;
-    class QueryTemplate;
-    class ValueExpr;
-}}} // End of forward declarations
+namespace lsst { namespace qserv { namespace query {
+class BoolFactorTerm;
+class QueryTemplate;
+class ValueExpr;
+}}}  // namespace lsst::qserv::query
 
-
-namespace lsst {
-namespace qserv {
-namespace query {
-
+namespace lsst { namespace qserv { namespace query {
 
 /// BoolTerm is a representation of a boolean-valued term in a SQL WHERE
 class BoolTerm {
@@ -71,10 +62,10 @@ public:
 
     /// Definition of the precidence order for different operators.
     enum OpPrecedence {
-        OTHER_PRECEDENCE   = 3,  // terms joined stronger than AND -- no parens needed
-        AND_PRECEDENCE     = 2,  // terms joined by AND
-        OR_PRECEDENCE      = 1,  // terms joined by OR
-        UNKNOWN_PRECEDENCE = 0   // terms joined by ??? -- always add parens
+        OTHER_PRECEDENCE = 3,   // terms joined stronger than AND -- no parens needed
+        AND_PRECEDENCE = 2,     // terms joined by AND
+        OR_PRECEDENCE = 1,      // terms joined by OR
+        UNKNOWN_PRECEDENCE = 0  // terms joined by ??? -- always add parens
     };
 
     /// Get the operator precidence for this class.
@@ -144,7 +135,8 @@ protected:
     /**
      * @brief Render a list of BoolFactorTerm to the QueryTemplate.
      *
-     * @note Used by subclasses that own a list of BoolFactorTerm. Uses `this` to determine operator precidence.
+     * @note Used by subclasses that own a list of BoolFactorTerm. Uses `this` to determine operator
+     * precidence.
      *
      * @param qt[out] The QueryTemplate to which this is rendered.
      * @param terms[in] The terms to render.
@@ -154,7 +146,6 @@ protected:
                     std::string const& sep) const;
 };
 
+}}}  // namespace lsst::qserv::query
 
-}}} // namespace lsst::qserv::query
-
-#endif // LSST_QSERV_QUERY_BOOLTERM_H
+#endif  // LSST_QSERV_QUERY_BOOLTERM_H

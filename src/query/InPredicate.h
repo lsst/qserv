@@ -21,7 +21,6 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-
 #ifndef LSST_QSERV_QUERY_INPREDICATE_H
 #define LSST_QSERV_QUERY_INPREDICATE_H
 
@@ -32,30 +31,23 @@
 // Local headers
 #include "query/Predicate.h"
 
-
 // Forward declarations
-namespace lsst {
-namespace qserv {
-namespace query {
-    class ColumnRef;
-    class ValueExpr;
-    class QueryTemplate;
-}}} // End of forward declarations
+namespace lsst { namespace qserv { namespace query {
+class ColumnRef;
+class ValueExpr;
+class QueryTemplate;
+}}}  // namespace lsst::qserv::query
 
-
-namespace lsst {
-namespace qserv {
-namespace query {
-
+namespace lsst { namespace qserv { namespace query {
 
 /// InPredicate is a Predicate comparing a row value to a set
 class InPredicate : public Predicate {
 public:
     typedef std::shared_ptr<InPredicate> Ptr;
 
-    InPredicate(std::shared_ptr<ValueExpr> const& iValue, std::vector<std::shared_ptr<ValueExpr>> const& iCands, bool iHasNot)
-    : value(iValue), cands(iCands), hasNot(iHasNot)
-    {}
+    InPredicate(std::shared_ptr<ValueExpr> const& iValue,
+                std::vector<std::shared_ptr<ValueExpr>> const& iCands, bool iHasNot)
+            : value(iValue), cands(iCands), hasNot(iHasNot) {}
 
     InPredicate() : hasNot(false) {}
 
@@ -68,7 +60,7 @@ public:
     std::ostream& putStream(std::ostream& os) const override;
     void renderTo(QueryTemplate& qt) const override;
     BoolFactorTerm::Ptr clone() const override;
-    BoolFactorTerm::Ptr copySyntax() const override { return clone();}
+    BoolFactorTerm::Ptr copySyntax() const override { return clone(); }
     bool operator==(BoolFactorTerm const& rhs) const override;
 
     std::shared_ptr<ValueExpr> value;
@@ -79,7 +71,6 @@ protected:
     void dbgPrint(std::ostream& os) const override;
 };
 
+}}}  // namespace lsst::qserv::query
 
-}}} // namespace lsst::qserv::query
-
-#endif // LSST_QSERV_QUERY_INPREDICATE_H
+#endif  // LSST_QSERV_QUERY_INPREDICATE_H

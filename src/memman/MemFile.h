@@ -34,9 +34,7 @@
 // Qserv headers
 #include "memman/Memory.h"
 
-namespace lsst {
-namespace qserv {
-namespace memman {
+namespace lsst { namespace qserv { namespace memman {
 
 //-----------------------------------------------------------------------------
 //! @brief Description of a memory based file.
@@ -46,7 +44,6 @@ namespace memman {
 
 class MemFile {
 public:
-
     //-----------------------------------------------------------------------------
     //! @brief Lock database file in memory.
     //!
@@ -58,14 +55,14 @@ public:
 
     struct MLResult {
         uint64_t bLocked{0};
-        double   mlockTime{0.0};
-        int      retc{0};
+        double mlockTime{0.0};
+        int retc{0};
 
         MLResult() {}
         MLResult(uint64_t lksz, double mlockT, int rc) : bLocked(lksz), mlockTime(mlockT), retc(rc) {}
     };
 
-    MLResult    memLock();
+    MLResult memLock();
 
     //-----------------------------------------------------------------------------
     //! @brief Map database file in memory.
@@ -76,7 +73,7 @@ public:
     //!                   returned value is the errno describing the error.
     //-----------------------------------------------------------------------------
 
-    int         memMap();
+    int memMap();
 
     //-----------------------------------------------------------------------------
     //! @brief Get number of active files (global count).
@@ -100,7 +97,7 @@ public:
 
     struct MFResult {
         MemFile* mfP;
-        int      retc;
+        int retc;
         MFResult() : mfP(nullptr), retc(0) {}
         MFResult(MemFile* mfp, int rc) : mfP(mfp), retc(rc) {}
     };
@@ -124,28 +121,24 @@ private:
     //! @param  isFlex  - Tag file as flexible or not (for statistical reasons).
     //-----------------------------------------------------------------------------
 
-    MemFile(std::string const& fPath,
-            Memory&            mem,
-            MemInfo const&     minfo,
-            bool               isFlex)
-           : _fPath(fPath), _memory(mem), _memInfo(minfo), _isFlex(isFlex) {}
+    MemFile(std::string const& fPath, Memory& mem, MemInfo const& minfo, bool isFlex)
+            : _fPath(fPath), _memory(mem), _memInfo(minfo), _isFlex(isFlex) {}
 
-   ~MemFile() {}
+    ~MemFile() {}
 
-    std::mutex  _fileMutex;
+    std::mutex _fileMutex;
     std::string _fPath;
-    Memory&     _memory;
-    MemInfo     _memInfo;              // Protected by _fileMutex
-    int         _refs = 1;             // Protected by cacheMutex
-    bool        _isMapped   = false;   // Protected by _fileMutex
-    bool        _isReserved = false;   // Ditto
-    bool        _isLocked   = false;   // Ditto
-    bool const  _isFlex;               // Set once at object creation
+    Memory& _memory;
+    MemInfo _memInfo;          // Protected by _fileMutex
+    int _refs = 1;             // Protected by cacheMutex
+    bool _isMapped = false;    // Protected by _fileMutex
+    bool _isReserved = false;  // Ditto
+    bool _isLocked = false;    // Ditto
+    bool const _isFlex;        // Set once at object creation
 
-    std::mutex  _mlockFileMutex;       // Protects _isLocked
-    std::atomic<bool> _mlocking{false}; // Flag indicating mlock is being called.
+    std::mutex _mlockFileMutex;          // Protects _isLocked
+    std::atomic<bool> _mlocking{false};  // Flag indicating mlock is being called.
 };
 
-}}} // namespace lsst:qserv:memman
+}}}     // namespace lsst::qserv::memman
 #endif  // LSST_QSERV_MEMMAN_MEMFILE_H
-

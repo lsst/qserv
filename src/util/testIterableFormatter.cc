@@ -50,16 +50,14 @@
 namespace test = boost::test_tools;
 namespace util = lsst::qserv::util;
 
-
 BOOST_AUTO_TEST_SUITE(Suite)
 
 /** @test
  * Print an empty vector
  */
 BOOST_AUTO_TEST_CASE(EmptyVector) {
-
     test::output_test_stream output;
-    std::vector<int> iterable {};
+    std::vector<int> iterable{};
     auto formatable = util::printable(iterable);
 
     output << formatable;
@@ -70,9 +68,8 @@ BOOST_AUTO_TEST_CASE(EmptyVector) {
  * Print a vector of int with default formatting
  */
 BOOST_AUTO_TEST_CASE(Vector) {
-
     test::output_test_stream output;
-    std::vector<int> iterable { 1, 2, 3, 4, 5, 6};
+    std::vector<int> iterable{1, 2, 3, 4, 5, 6};
     auto formatable = util::printable(iterable);
 
     output << formatable;
@@ -84,9 +81,9 @@ BOOST_AUTO_TEST_CASE(Vector) {
  */
 BOOST_AUTO_TEST_CASE(Array) {
     test::output_test_stream output;
-    std::array<std::string, 6> iterable { {"1", "2", "3", "4", "5", "6"} };
+    std::array<std::string, 6> iterable{{"1", "2", "3", "4", "5", "6"}};
     auto start = std::next(iterable.begin(), 2);
-    auto formatable = util::printable( start, iterable.end(), "", "", "; ");
+    auto formatable = util::printable(start, iterable.end(), "", "", "; ");
 
     output << formatable;
     BOOST_REQUIRE(output.is_equal(R"("3"; "4"; "5"; "6")"));
@@ -105,14 +102,13 @@ private:
     int _val;
 };
 
-
 /** @test
  * Print a vector of objects
  */
 BOOST_AUTO_TEST_CASE(Vector_of_object) {
     test::output_test_stream output;
-    std::vector<PrintableObj> iterable { {PrintableObj(1), PrintableObj(2), PrintableObj(3),
-        PrintableObj(4), PrintableObj(5), PrintableObj(6)} };
+    std::vector<PrintableObj> iterable{{PrintableObj(1), PrintableObj(2), PrintableObj(3), PrintableObj(4),
+                                        PrintableObj(5), PrintableObj(6)}};
     auto formatable = util::printable(iterable);
 
     output << formatable;
@@ -124,13 +120,10 @@ BOOST_AUTO_TEST_CASE(Vector_of_object) {
  */
 BOOST_AUTO_TEST_CASE(Vector_of_ptr_to_object) {
     test::output_test_stream output;
-    std::vector<std::shared_ptr<PrintableObj>> iterable { {
-        std::make_shared<PrintableObj>(1),
-        std::make_shared<PrintableObj>(2),
-        std::make_shared<PrintableObj>(3),
-        std::make_shared<PrintableObj>(4),
-        std::make_shared<PrintableObj>(5),
-        std::make_shared<PrintableObj>(6)} };
+    std::vector<std::shared_ptr<PrintableObj>> iterable{
+            {std::make_shared<PrintableObj>(1), std::make_shared<PrintableObj>(2),
+             std::make_shared<PrintableObj>(3), std::make_shared<PrintableObj>(4),
+             std::make_shared<PrintableObj>(5), std::make_shared<PrintableObj>(6)}};
     auto formatable = util::printable(iterable);
 
     output << formatable;
@@ -142,13 +135,10 @@ BOOST_AUTO_TEST_CASE(Vector_of_ptr_to_object) {
  */
 BOOST_AUTO_TEST_CASE(Vector_of_ptr_to_null_object) {
     test::output_test_stream output;
-    std::vector<std::shared_ptr<PrintableObj>> iterable { {
-        nullptr,
-        std::make_shared<PrintableObj>(2),
-        std::make_shared<PrintableObj>(3),
-        std::make_shared<PrintableObj>(4),
-        std::make_shared<PrintableObj>(5),
-        std::make_shared<PrintableObj>(6)} };
+    std::vector<std::shared_ptr<PrintableObj>> iterable{
+            {nullptr, std::make_shared<PrintableObj>(2), std::make_shared<PrintableObj>(3),
+             std::make_shared<PrintableObj>(4), std::make_shared<PrintableObj>(5),
+             std::make_shared<PrintableObj>(6)}};
     auto formatable = util::printable(iterable);
 
     output << formatable;
@@ -195,12 +185,11 @@ BOOST_AUTO_TEST_CASE(Ptr_to_vector_of_ptr_to_object) {
  * Print a map
  */
 BOOST_AUTO_TEST_CASE(Map) {
-
     test::output_test_stream output;
     std::map<std::string, int> mapping{
-        std::make_pair("a", 1),
-        std::make_pair("b", 2),
-        std::make_pair("x", 1001),
+            std::make_pair("a", 1),
+            std::make_pair("b", 2),
+            std::make_pair("x", 1001),
     };
     auto formatable = util::printable(mapping, "{", "}", "; ");
 

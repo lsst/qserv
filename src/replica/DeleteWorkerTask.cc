@@ -31,59 +31,31 @@
 
 using namespace std;
 
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
-DeleteWorkerTask::Ptr DeleteWorkerTask::create(
-        Controller::Ptr const& controller,
-        Task::AbnormalTerminationCallbackType const& onTerminated,
-        string const& worker,
-        bool permanentDelete) {
-    return Ptr(
-        new DeleteWorkerTask(
-            controller,
-            onTerminated,
-            worker,
-            permanentDelete
-        )
-    );
+DeleteWorkerTask::Ptr DeleteWorkerTask::create(Controller::Ptr const& controller,
+                                               Task::AbnormalTerminationCallbackType const& onTerminated,
+                                               string const& worker, bool permanentDelete) {
+    return Ptr(new DeleteWorkerTask(controller, onTerminated, worker, permanentDelete));
 }
-
 
 DeleteWorkerTask::DeleteWorkerTask(Controller::Ptr const& controller,
                                    Task::AbnormalTerminationCallbackType const& onTerminated,
-                                   string const& worker,
-                                   bool permanentDelete)
-    :   Task(controller,
-             "EVICT-WORKER  ",
-             onTerminated,
-             0
-        ),
-        _worker(worker),
-        _permanentDelete(permanentDelete) {
-}
-
+                                   string const& worker, bool permanentDelete)
+        : Task(controller, "EVICT-WORKER  ", onTerminated, 0),
+          _worker(worker),
+          _permanentDelete(permanentDelete) {}
 
 void DeleteWorkerTask::onStart() {
-
     info(DeleteWorkerJob::typeName());
 
     string const noParentJobId;
     atomic<size_t> numFinishedJobs{0};
     vector<DeleteWorkerJob::Ptr> jobs;
-    jobs.emplace_back(
-        DeleteWorkerJob::create(
-            _worker,
-            _permanentDelete,
-            controller(),
-            noParentJobId,
-            [&numFinishedJobs](DeleteWorkerJob::Ptr const& job) {
-                ++numFinishedJobs;
-            },
-            serviceProvider()->config()->get<int>("controller", "worker-evict-priority-level")
-        )
-    );
+    jobs.emplace_back(DeleteWorkerJob::create(
+            _worker, _permanentDelete, controller(), noParentJobId,
+            [&numFinishedJobs](DeleteWorkerJob::Ptr const& job) { ++numFinishedJobs; },
+            serviceProvider()->config()->get<int>("controller", "worker-evict-priority-level")));
     jobs[0]->start();
 
     _logStartedEvent(jobs[0]);
@@ -91,28 +63,24 @@ void DeleteWorkerTask::onStart() {
     _logStartedEvent(jobs[0]);
 }
 
-
 void DeleteWorkerTask::_logStartedEvent(DeleteWorkerJob::Ptr const& job) const {
-
     ControllerEvent event;
 
     event.operation = job->typeName();
-    event.status    = "STARTED";
-    event.jobId     = job->id();
+    event.status = "STARTED";
+    event.jobId = job->id();
 
     event.kvInfo.emplace_back("worker", _worker);
 
     logEvent(event);
 }
 
-
 void DeleteWorkerTask::_logFinishedEvent(DeleteWorkerJob::Ptr const& job) const {
-
     ControllerEvent event;
 
     event.operation = job->typeName();
-    event.status    = job->state2string();
-    event.jobId     = job->id();
+    event.status = job->state2string();
+    event.jobId = job->id();
 
     event.kvInfo = job->persistentLogData();
     event.kvInfo.emplace_back("worker", _worker);
@@ -120,4 +88,4 @@ void DeleteWorkerTask::_logFinishedEvent(DeleteWorkerJob::Ptr const& job) const 
     logEvent(event);
 }
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica

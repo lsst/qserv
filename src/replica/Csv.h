@@ -33,10 +33,7 @@
 #include "replica/protocol.pb.h"
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
-namespace csv {
+namespace lsst { namespace qserv { namespace replica { namespace csv {
 
 /// The maximum number of characters (including the terminator character) in a row.
 constexpr size_t const MAX_ROW_LENGTH = 16 * 1024 * 1024;
@@ -77,7 +74,7 @@ public:
 
     /**
      * Translate string sequences into valid characters accepted by MySQL's
-     * statement 'LOAD DATA INFILE'. 
+     * statement 'LOAD DATA INFILE'.
      * @note Values of the parameters can't be empty. Use the corresponding default
      *   values if needed.
      * @param dialectInput The unprocessed input for the corresponding parameters of the dialect.
@@ -126,7 +123,6 @@ private:
     char _linesTerminatedBy;
 };
 
-
 /// @see class Dialect
 class DialectInput {
 public:
@@ -149,7 +145,6 @@ public:
     std::string fieldsEscapedBy = Dialect::defaultFieldsEscapedBy;
     std::string linesTerminatedBy = Dialect::defaultLinesTerminatedBy;
 };
-
 
 /**
  * The class Parser parses the CSV/TSV formatted input stream of bytes into rows
@@ -192,9 +187,7 @@ public:
      *   the last non-terminated line stored in the parser's buffer if the buffer is not empty.
      * @param onStringParsed The callback function to be called for each line parsed.
      */
-    void parse(char const* inBuf,
-               size_t inBufSize,
-               bool flush,
+    void parse(char const* inBuf, size_t inBufSize, bool flush,
                ParsedStringCallbackType const& onStringParsed);
 
     Dialect const& dialect() const { return _dialect; }
@@ -206,10 +199,10 @@ private:
     Dialect const _dialect;
     std::unique_ptr<char[]> _lineBuf;
     size_t _lineBufNext = 0;
-    size_t _lineNum = 1;            ///< the number of the current line (for diagnostic messages)
-    bool _inEscapeMode = false;     ///< for counting escapes while processing the input stream
+    size_t _lineNum = 1;         ///< the number of the current line (for diagnostic messages)
+    bool _inEscapeMode = false;  ///< for counting escapes while processing the input stream
 };
 
-}}}} // namespace lsst::qserv::replica::csv
+}}}}  // namespace lsst::qserv::replica::csv
 
-#endif // LSST_QSERV_REPLICA_CSV_H
+#endif  // LSST_QSERV_REPLICA_CSV_H

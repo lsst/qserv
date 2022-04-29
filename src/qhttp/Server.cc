@@ -51,91 +51,56 @@ using namespace std::literals;
 #define DEFAULT_REQUEST_TIMEOUT 5min
 
 namespace {
-    LOG_LOGGER _log = LOG_GET("lsst.qserv.qhttp");
+LOG_LOGGER _log = LOG_GET("lsst.qserv.qhttp");
 }
 
-namespace lsst {
-namespace qserv {
-namespace qhttp {
+namespace lsst { namespace qserv { namespace qhttp {
 
-
-Server::Ptr Server::create(asio::io_service& io_service, unsigned short port, int backlog)
-{
+Server::Ptr Server::create(asio::io_service& io_service, unsigned short port, int backlog) {
     return std::shared_ptr<Server>(new Server(io_service, port, backlog));
 }
 
-
-unsigned short Server::getPort()
-{
-    return _acceptor.local_endpoint().port();
-}
-
+unsigned short Server::getPort() { return _acceptor.local_endpoint().port(); }
 
 Server::Server(asio::io_service& io_service, unsigned short port, int backlog)
-:
-    _io_service(io_service),
-    _backlog(backlog),
-    _acceptorEndpoint(ip::tcp::v4(), port),
-    _acceptor(io_service),
-    _requestTimeout(DEFAULT_REQUEST_TIMEOUT)
-{
-}
+        : _io_service(io_service),
+          _backlog(backlog),
+          _acceptorEndpoint(ip::tcp::v4(), port),
+          _acceptor(io_service),
+          _requestTimeout(DEFAULT_REQUEST_TIMEOUT) {}
 
+Server::~Server() { stop(); }
 
-Server::~Server()
-{
-    stop();
-}
-
-
-void Server::addHandler(std::string const& method, std::string const& pattern, Handler handler)
-{
-    auto &handlers = _pathHandlersByMethod[method];
+void Server::addHandler(std::string const& method, std::string const& pattern, Handler handler) {
+    auto& handlers = _pathHandlersByMethod[method];
     handlers.resize(handlers.size() + 1);
-    auto &phandler = handlers.back();
+    auto& phandler = handlers.back();
     phandler.path.parse(pattern);
     phandler.handler = handler;
 }
 
-
-void Server::addHandlers(std::initializer_list<HandlerSpec> handlers)
-{
-    for(auto& handler: handlers) {
+void Server::addHandlers(std::initializer_list<HandlerSpec> handlers) {
+    for (auto& handler : handlers) {
         addHandler(handler.method, handler.pattern, handler.handler);
     }
 }
 
-
-void Server::addStaticContent(std::string const& pattern, std::string const& rootDirectory)
-{
+void Server::addStaticContent(std::string const& pattern, std::string const& rootDirectory) {
     StaticContent::add(*this, pattern, rootDirectory);
 }
 
-
-AjaxEndpoint::Ptr Server::addAjaxEndpoint(const std::string& pattern)
-{
+AjaxEndpoint::Ptr Server::addAjaxEndpoint(const std::string& pattern) {
     return AjaxEndpoint::add(*this, pattern);
 }
 
+void Server::setRequestTimeout(chrono::milliseconds const& timeout) { _requestTimeout = timeout; }
 
-void Server::setRequestTimeout(chrono::milliseconds const& timeout)
-{
-    _requestTimeout = timeout;
-}
-
-
-void Server::_accept()
-{
+void Server::_accept() {
     auto socket = std::make_shared<ip::tcp::socket>(_io_service);
     {
         std::lock_guard<std::mutex> lock(_activeSocketsMutex);
-        auto removed = std::remove_if(
-            _activeSockets.begin(),
-            _activeSockets.end(),
-            [](auto& weakSocket) {
-                return weakSocket.expired();
-            }
-        );
+        auto removed = std::remove_if(_activeSockets.begin(), _activeSockets.end(),
+                                      [](auto& weakSocket) { return weakSocket.expired(); });
         auto numExpired = _activeSockets.end() - removed;
         if (numExpired != 0) {
             LOGLS_DEBUG(_log, logger(this) << "purging tracking for " << numExpired << " expired socket(s)");
@@ -146,42 +111,36 @@ void Server::_accept()
     }
 
     auto self = shared_from_this();
-    _acceptor.async_accept(
-        *socket,
-        [self, socket](boost::system::error_code const& ec) {
-            if (!self->_acceptor.is_open() || ec == asio::error::operation_aborted) {
-                LOGLS_DEBUG(_log, logger(self) << "accept chain exiting");
-                return;
-            }
-            if (!ec) {
-                LOGLS_INFO(_log, logger(self) << logger(socket)
-                    << "connect from " << socket->remote_endpoint());
-                boost::system::error_code ignore;
-                socket->set_option(ip::tcp::no_delay(true), ignore);
-                self->_readRequest(socket);
-            } else {
-                LOGLS_ERROR(_log, logger(self) << "accept failed: " << ec.message());
-            }
-            self->_accept(); // start accept again for the next incoming connection
+    _acceptor.async_accept(*socket, [self, socket](boost::system::error_code const& ec) {
+        if (!self->_acceptor.is_open() || ec == asio::error::operation_aborted) {
+            LOGLS_DEBUG(_log, logger(self) << "accept chain exiting");
+            return;
         }
-    );
+        if (!ec) {
+            LOGLS_INFO(_log, logger(self) << logger(socket) << "connect from " << socket->remote_endpoint());
+            boost::system::error_code ignore;
+            socket->set_option(ip::tcp::no_delay(true), ignore);
+            self->_readRequest(socket);
+        } else {
+            LOGLS_ERROR(_log, logger(self) << "accept failed: " << ec.message());
+        }
+        self->_accept();  // start accept again for the next incoming connection
+    });
 }
 
-
-void Server::start()
-{
+void Server::start() {
     LOGLS_DEBUG(_log, logger(this) << "starting");
 
     try {
         _acceptor.open(_acceptorEndpoint.protocol());
         _acceptor.set_option(ip::tcp::acceptor::reuse_address(true));
         _acceptor.bind(_acceptorEndpoint);
-        _acceptorEndpoint.port(_acceptor.local_endpoint().port()); // preserve assigned port
+        _acceptorEndpoint.port(_acceptor.local_endpoint().port());  // preserve assigned port
         _acceptor.listen(_backlog);
     }
 
-    catch(boost::system::system_error const& e) {
-        LOGLS_ERROR(_log, logger(this) << "acceptor "  << e.what());
+    catch (boost::system::system_error const& e) {
+        LOGLS_ERROR(_log, logger(this) << "acceptor " << e.what());
         throw e;
     }
 
@@ -189,15 +148,13 @@ void Server::start()
     _accept();
 }
 
-
-void Server::stop()
-{
+void Server::stop() {
     LOGLS_DEBUG(_log, logger(this) << "shutting down");
     boost::system::error_code ignore;
     _acceptor.close(ignore);
     std::lock_guard<std::mutex> lock(_activeSocketsMutex);
     LOGLS_DEBUG(_log, logger(this) << "purging tracking for " << _activeSockets.size() << " socket(s)");
-    for(auto& weakSocket : _activeSockets) {
+    for (auto& weakSocket : _activeSockets) {
         auto socket = weakSocket.lock();
         if (socket) {
             LOGLS_DEBUG(_log, logger(this) << logger(socket) << "closing");
@@ -208,29 +165,25 @@ void Server::stop()
     _activeSockets.clear();
 }
 
-
-void Server::_readRequest(std::shared_ptr<ip::tcp::socket> socket)
-{
+void Server::_readRequest(std::shared_ptr<ip::tcp::socket> socket) {
     auto self = shared_from_this();
 
     // Set up a timer and handler to timeout requests that take too long to arrive.
 
     auto timer = std::make_shared<asio::steady_timer>(_io_service);
     timer->expires_from_now(_requestTimeout);
-    timer->async_wait(
-        [self, socket](boost::system::error_code const& ec) {
-            if (!ec) {
-                LOGLS_WARN(_log, logger(self) << logger(socket) << "read timed out, closing");
-                boost::system::error_code ignore;
-                socket->lowest_layer().shutdown(ip::tcp::socket::shutdown_both, ignore);
-                socket->lowest_layer().close(ignore);
-            } else if (ec == asio::error::operation_aborted) {
-                LOGLS_DEBUG(_log, logger(self) << logger(socket) << "read timeout timer canceled");
-            } else {
-                LOGLS_ERROR(_log, logger(self) << logger(socket) << "read timeout timer: " << ec.message());
-            }
+    timer->async_wait([self, socket](boost::system::error_code const& ec) {
+        if (!ec) {
+            LOGLS_WARN(_log, logger(self) << logger(socket) << "read timed out, closing");
+            boost::system::error_code ignore;
+            socket->lowest_layer().shutdown(ip::tcp::socket::shutdown_both, ignore);
+            socket->lowest_layer().close(ignore);
+        } else if (ec == asio::error::operation_aborted) {
+            LOGLS_DEBUG(_log, logger(self) << logger(socket) << "read timeout timer canceled");
+        } else {
+            LOGLS_ERROR(_log, logger(self) << logger(socket) << "read timeout timer: " << ec.message());
         }
-    );
+    });
 
     // Create Response object for this request. Completion handler will log total request + response
     // time, then either turn-around or close the client socket as appropriate.
@@ -238,136 +191,129 @@ void Server::_readRequest(std::shared_ptr<ip::tcp::socket> socket)
     auto startTime = chrono::steady_clock::now();
     auto reuseSocket = std::make_shared<bool>(false);
     auto const response = std::shared_ptr<Response>(new Response(
-        self, socket,
-        [self, socket, startTime, reuseSocket](boost::system::error_code const& ec, std::size_t sent) {
-            chrono::duration<double, std::milli> elapsed = chrono::steady_clock::now() - startTime;
-            LOGLS_INFO(_log, logger(self) << logger(socket)
-                << "request duration " << elapsed.count() << "ms");
-            if (!ec && *reuseSocket) {
-                LOGLS_DEBUG(_log, logger(self) << logger(socket) << "lingering");
-                self->_readRequest(socket);
-            } else {
-                LOGLS_DEBUG(_log, logger(self) << logger(socket) << "closing");
-                boost::system::error_code ignore;
-                socket->lowest_layer().shutdown(ip::tcp::socket::shutdown_both, ignore);
-                socket->lowest_layer().close(ignore);
-            }
-        }
-    ));
+            self, socket,
+            [self, socket, startTime, reuseSocket](boost::system::error_code const& ec, std::size_t sent) {
+                chrono::duration<double, std::milli> elapsed = chrono::steady_clock::now() - startTime;
+                LOGLS_INFO(_log, logger(self)
+                                         << logger(socket) << "request duration " << elapsed.count() << "ms");
+                if (!ec && *reuseSocket) {
+                    LOGLS_DEBUG(_log, logger(self) << logger(socket) << "lingering");
+                    self->_readRequest(socket);
+                } else {
+                    LOGLS_DEBUG(_log, logger(self) << logger(socket) << "closing");
+                    boost::system::error_code ignore;
+                    socket->lowest_layer().shutdown(ip::tcp::socket::shutdown_both, ignore);
+                    socket->lowest_layer().close(ignore);
+                }
+            }));
 
     // Create Request object for this request, and initiate header read.
 
     auto const request = std::shared_ptr<Request>(new Request(self, socket));
     asio::async_read_until(
-        *socket, request->_requestbuf, "\r\n\r\n",
-        [self, socket, reuseSocket, request, response, timer](
-            boost::system::error_code const& ec, size_t bytesRead)
-        {
-            if (ec == asio::error::operation_aborted) {
-                LOGLS_ERROR(_log, logger(self) << logger(socket) << "header read canceled");
-                timer->cancel();
-                return;
-            } else if (ec) {
-                LOGLS_ERROR(_log, logger(self) << logger(socket) << "header read failed: " << ec.message());
-                timer->cancel();
-                return;
-            }
-
-            size_t bytesBuffered = request->_requestbuf.size() - bytesRead;
-
-            if (!(request->_parseHeader() && request->_parseUri())) {
-                timer->cancel();
-                response->sendStatus(400);
-                return;
-            }
-
-            if (request->version == "HTTP/1.1") {
-                // Temporary disable this option due to a bug in the implementation
-                // causing disconnect if running the service within the Docker environment.
-                // See: DM-27396
-                //*reuseSocket = true;
-            }
-
-            if (request->header.count("Content-Length") > 0) {
-                std::size_t bytesToRead;
-                try {
-                    bytesToRead = stoull(request->header["Content-Length"]);
+            *socket, request->_requestbuf, "\r\n\r\n",
+            [self, socket, reuseSocket, request, response, timer](boost::system::error_code const& ec,
+                                                                  size_t bytesRead) {
+                if (ec == asio::error::operation_aborted) {
+                    LOGLS_ERROR(_log, logger(self) << logger(socket) << "header read canceled");
+                    timer->cancel();
+                    return;
+                } else if (ec) {
+                    LOGLS_ERROR(_log, logger(self)
+                                              << logger(socket) << "header read failed: " << ec.message());
+                    timer->cancel();
+                    return;
                 }
-                catch(std::exception const& e) {
-                    LOGLS_WARN(_log, logger(self) << logger(socket)
-                        << "rejecting request with bad Content-Length: "
-                        << ctrlquote(request->header["Content-Length"]));
+
+                size_t bytesBuffered = request->_requestbuf.size() - bytesRead;
+
+                if (!(request->_parseHeader() && request->_parseUri())) {
                     timer->cancel();
                     response->sendStatus(400);
                     return;
                 }
-                bytesToRead -= bytesBuffered;
-                LOGLS_INFO(_log, logger(self) << logger(socket)
-                    << request->method << " " << request->target << " " << request->version
-                    << " + " << bytesToRead << " bytes");
-                asio::async_read(*socket, request->_requestbuf, asio::transfer_exactly(bytesToRead),
-                    [self, socket, request, response, timer](
-                        boost::system::error_code const& ec, size_t)
-                    {
+
+                if (request->version == "HTTP/1.1") {
+                    // Temporary disable this option due to a bug in the implementation
+                    // causing disconnect if running the service within the Docker environment.
+                    // See: DM-27396
+                    //*reuseSocket = true;
+                }
+
+                if (request->header.count("Content-Length") > 0) {
+                    std::size_t bytesToRead;
+                    try {
+                        bytesToRead = stoull(request->header["Content-Length"]);
+                    } catch (std::exception const& e) {
+                        LOGLS_WARN(_log, logger(self) << logger(socket)
+                                                      << "rejecting request with bad Content-Length: "
+                                                      << ctrlquote(request->header["Content-Length"]));
                         timer->cancel();
-                        if (ec == asio::error::operation_aborted) {
-                            LOGLS_ERROR(_log, logger(self) << logger(socket)
-                                << "request body read canceled");
-                            return;
-                        } else if (ec) {
-                            LOGLS_ERROR(_log, logger(self) << logger(socket)
-                                << "request body read failed: " << ec.message());
-                            return;
-                        }
-                        if ((request->header["Content-Type"] == "application/x-www-form-urlencoded")
-                            && !request->_parseBody())
-                        {
-                            LOGLS_ERROR(_log, logger(self) << logger(socket) << "form decode failed");
-                            response->sendStatus(400);
-                            return;
-                        }
-                        self->_dispatchRequest(request, response);
+                        response->sendStatus(400);
+                        return;
                     }
-                );
-            } else {
-                LOGLS_INFO(_log, logger(self) << logger(socket)
-                    << request->method << " " << request->target << " " << request->version);
-                timer->cancel();
-                self->_dispatchRequest(request, response);
-            }
-        }
-    );
+                    bytesToRead -= bytesBuffered;
+                    LOGLS_INFO(_log, logger(self)
+                                             << logger(socket) << request->method << " " << request->target
+                                             << " " << request->version << " + " << bytesToRead << " bytes");
+                    asio::async_read(
+                            *socket, request->_requestbuf, asio::transfer_exactly(bytesToRead),
+                            [self, socket, request, response, timer](boost::system::error_code const& ec,
+                                                                     size_t) {
+                                timer->cancel();
+                                if (ec == asio::error::operation_aborted) {
+                                    LOGLS_ERROR(_log, logger(self) << logger(socket)
+                                                                   << "request body read canceled");
+                                    return;
+                                } else if (ec) {
+                                    LOGLS_ERROR(_log,
+                                                logger(self) << logger(socket)
+                                                             << "request body read failed: " << ec.message());
+                                    return;
+                                }
+                                if ((request->header["Content-Type"] ==
+                                     "application/x-www-form-urlencoded") &&
+                                    !request->_parseBody()) {
+                                    LOGLS_ERROR(_log, logger(self) << logger(socket) << "form decode failed");
+                                    response->sendStatus(400);
+                                    return;
+                                }
+                                self->_dispatchRequest(request, response);
+                            });
+                } else {
+                    LOGLS_INFO(_log, logger(self) << logger(socket) << request->method << " "
+                                                  << request->target << " " << request->version);
+                    timer->cancel();
+                    self->_dispatchRequest(request, response);
+                }
+            });
 }
 
-
-void Server::_dispatchRequest(Request::Ptr request, Response::Ptr response)
-{
+void Server::_dispatchRequest(Request::Ptr request, Response::Ptr response) {
     auto pathHandlersIt = _pathHandlersByMethod.find(request->method);
     if (pathHandlersIt != _pathHandlersByMethod.end()) {
         boost::smatch pathMatch;
-        for(auto& pathHandler : pathHandlersIt->second) {
+        for (auto& pathHandler : pathHandlersIt->second) {
             if (boost::regex_match(request->path, pathMatch, pathHandler.path.regex)) {
                 pathHandler.path.updateParamsFromMatch(request, pathMatch);
-                LOGLS_DEBUG(_log, logger(this) << logger(request->_socket)
-                    << "invoking handler for " << pathHandler.path.regex);
+                LOGLS_DEBUG(_log, logger(this) << logger(request->_socket) << "invoking handler for "
+                                               << pathHandler.path.regex);
                 try {
                     pathHandler.handler(request, response);
-                }
-                catch(boost::system::system_error const& e) {
+                } catch (boost::system::system_error const& e) {
                     LOGLS_ERROR(_log, logger(this) << logger(request->_socket)
-                        << "exception thrown from handler: " << e.what());
-                    switch(e.code().value()) {
-                    case errc::permission_denied:
-                        response->sendStatus(403);
-                        break;
-                    default:
-                        response->sendStatus(500);
-                        break;
+                                                   << "exception thrown from handler: " << e.what());
+                    switch (e.code().value()) {
+                        case errc::permission_denied:
+                            response->sendStatus(403);
+                            break;
+                        default:
+                            response->sendStatus(500);
+                            break;
                     }
-                }
-                catch(std::exception const& e) {
+                } catch (std::exception const& e) {
                     LOGLS_ERROR(_log, logger(this) << logger(request->_socket)
-                        << "exception thrown from handler: " << e.what());
+                                                   << "exception thrown from handler: " << e.what());
                     response->sendStatus(500);
                 }
                 return;
@@ -378,4 +324,4 @@ void Server::_dispatchRequest(Request::Ptr request, Response::Ptr response)
     response->sendStatus(404);
 }
 
-}}} // namespace lsst::qserv::qhttp
+}}}  // namespace lsst::qserv::qhttp

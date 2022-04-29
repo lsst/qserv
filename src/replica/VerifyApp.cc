@@ -38,89 +38,64 @@ using namespace std;
 namespace {
 
 string const description =
-    "This application runs the replica verification algorithm for all known"
-    " replicas across all ENABLED workers.";
+        "This application runs the replica verification algorithm for all known"
+        " replicas across all ENABLED workers.";
 
 bool const injectDatabaseOptions = true;
 bool const boostProtobufVersionCheck = true;
 bool const enableServiceProvider = true;
 
-} /// namespace
+}  // namespace
 
+namespace lsst { namespace qserv { namespace replica {
 
-namespace lsst {
-namespace qserv {
-namespace replica {
-
-VerifyApp::Ptr VerifyApp::create(int argc, char* argv[]) {
-    return Ptr(new VerifyApp(argc, argv));
-}
-
+VerifyApp::Ptr VerifyApp::create(int argc, char* argv[]) { return Ptr(new VerifyApp(argc, argv)); }
 
 VerifyApp::VerifyApp(int argc, char* argv[])
-    :   Application(
-            argc, argv,
-            ::description,
-            ::injectDatabaseOptions,
-            ::boostProtobufVersionCheck,
-            ::enableServiceProvider
-        ) {
-
+        : Application(argc, argv, ::description, ::injectDatabaseOptions, ::boostProtobufVersionCheck,
+                      ::enableServiceProvider) {
     // Configure the command line parser
 
-    parser().option(
-        "max-replicas",
-        "The maximum number of replicas to be processed simultaneously.",
-        _maxReplicas
-    ).flag(
-        "compute-check-sum",
-        "Also compute and store in the database check/control sums for"
-        " all files of the found replica.",
-        _computeCheckSum
-    );
+    parser().option("max-replicas", "The maximum number of replicas to be processed simultaneously.",
+                    _maxReplicas)
+            .flag("compute-check-sum",
+                  "Also compute and store in the database check/control sums for"
+                  " all files of the found replica.",
+                  _computeCheckSum);
 }
 
-
 int VerifyApp::runImpl() {
-
     // Once started this job will run indefinitely or until it fails and throws
     // an exception.
 
     string const noParentJobId;
-    auto const job = VerifyJob::create (
-        _maxReplicas,
-        _computeCheckSum,
-        [] (VerifyJob::Ptr const& job,
-            ReplicaDiff const& selfReplicaDiff,
-            vector<ReplicaDiff> const& otherReplicaDiff) {
-
+    auto const job = VerifyJob::create(
+            _maxReplicas, _computeCheckSum,
+            [](VerifyJob::Ptr const& job, ReplicaDiff const& selfReplicaDiff,
+               vector<ReplicaDiff> const& otherReplicaDiff) {
                 ReplicaInfo const& r1 = selfReplicaDiff.replica1();
                 ReplicaInfo const& r2 = selfReplicaDiff.replica2();
                 cout << "Compared with OWN previous state  "
-                     << " " << setw(20) << r1.database() << " " << setw(12) << r1.chunk()
-                     << " " << setw(20) << r1.worker()   << " " << setw(20) << r2.worker() << " "
-                     << " " << selfReplicaDiff.flags2string()
-                     << endl;
+                     << " " << setw(20) << r1.database() << " " << setw(12) << r1.chunk() << " " << setw(20)
+                     << r1.worker() << " " << setw(20) << r2.worker() << " "
+                     << " " << selfReplicaDiff.flags2string() << endl;
 
-                for (auto const& diff: otherReplicaDiff) {
+                for (auto const& diff : otherReplicaDiff) {
                     ReplicaInfo const& r1 = diff.replica1();
                     ReplicaInfo const& r2 = diff.replica2();
                     cout << "Compared with OTHER replica state "
-                         << " " << setw(20) << r1.database() << " " << setw(12) << r1.chunk()
-                         << " " << setw(20) << r1.worker()   << " " << setw(20) << r2.worker() << " "
-                         << " " << diff.flags2string()
-                         << endl;
+                         << " " << setw(20) << r1.database() << " " << setw(12) << r1.chunk() << " "
+                         << setw(20) << r1.worker() << " " << setw(20) << r2.worker() << " "
+                         << " " << diff.flags2string() << endl;
                 }
-        },
-        Controller::create(serviceProvider()),
-        noParentJobId,
-        nullptr,    // no callback
-        PRIORITY_NORMAL
-    );
+            },
+            Controller::create(serviceProvider()), noParentJobId,
+            nullptr,  // no callback
+            PRIORITY_NORMAL);
     job->start();
     job->wait();
 
     return 0;
 }
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica

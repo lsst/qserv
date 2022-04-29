@@ -53,20 +53,13 @@
 #include "replica/DatabaseMySQLTypes.h"
 #include "util/Mutex.h"
 
-
 // Forward declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
-namespace database {
-namespace mysql {
-    class Connection;
-}}}}}  // Forward declarations
+namespace lsst { namespace qserv { namespace replica { namespace database { namespace mysql {
+class Connection;
+}}}}}  // namespace lsst::qserv::replica::database::mysql
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 namespace detail {
 
 template <typename T>
@@ -86,7 +79,7 @@ struct TypeConversionTrait<std::string> {
         return val;
     }
 };
-}   // namespace detail
+}  // namespace detail
 
 /**
  * Class Configuration is the main API class that provide configuration services
@@ -121,7 +114,7 @@ public:
      * @throw std::runtime_error If the input configuration is not consistent
      *   with the transient schema.
      */
-    static Ptr load(nlohmann::json const& obj=nlohmann::json::object());
+    static Ptr load(nlohmann::json const& obj = nlohmann::json::object());
 
     /**
      * The static factory method will create a new object and initialize its content
@@ -135,7 +128,7 @@ public:
      *   as the corresponding data member of the class.
      * @param configUrl The configuration source.
      * @throw std::invalid_argument If the URL has unsupported scheme or it
-     *   couldn't be parsed.                          
+     *   couldn't be parsed.
      * @throw std::runtime_error If the input configuration is not consistent
      *   with the transient schema.
      */
@@ -151,7 +144,7 @@ public:
      * @return The parsed connection object with the name of the database optionally
      *   overwritten.
      */
-    static database::mysql::ConnectionParams qservCzarDbParams(std::string const& database=std::string());
+    static database::mysql::ConnectionParams qservCzarDbParams(std::string const& database = std::string());
 
     /// @return A connection string for accessing Qserv czar's database.
     static std::string qservCzarDbUrl();
@@ -169,7 +162,7 @@ public:
      * @return The parsed connection object with the name of the database optionally
      *   overwritten.
      */
-     static database::mysql::ConnectionParams qservWorkerDbParams(std::string const& database=std::string());
+    static database::mysql::ConnectionParams qservWorkerDbParams(std::string const& database = std::string());
 
     /**
      * This method is used by the Replication/Ingest system's workers when they need
@@ -233,7 +226,7 @@ public:
 
     /**
      * @brief This option, if set, allows tracking schema version status.
-     * 
+     *
      * If the tracking is enabled then an application will keep re-checking
      * a state of the persistent store for a duration of time specified in
      * the parameter Configuration::schemaUpgradeWaitTimeoutSec() up to a point
@@ -301,7 +294,7 @@ public:
      *   expectations of the transient schema.
      */
     void reload(std::string const& configUrl);
-    
+
     /**
      * Construct the original (minus security-related info) path to
      * the configuration source.
@@ -309,7 +302,7 @@ public:
      *   in the result.
      * @return The constructed path.
      */
-    std::string configUrl(bool showPassword=false) const;
+    std::string configUrl(bool showPassword = false) const;
 
     /**
      * The directory method for locating categories and parameters within
@@ -339,10 +332,10 @@ public:
         try {
             return obj.get<T>();
         } catch (nlohmann::json::type_error const& ex) {
-            throw ConfigTypeMismatch(
-                _context(__func__) + " failed to convert the parameter for category '"
-                + category + "', and param '" + param + "', expected type: '" + std::string(obj.type_name())
-                + "', ex: " + std::string(ex.what()) + "'.");
+            throw ConfigTypeMismatch(_context(__func__) + " failed to convert the parameter for category '" +
+                                     category + "', and param '" + param + "', expected type: '" +
+                                     std::string(obj.type_name()) + "', ex: " + std::string(ex.what()) +
+                                     "'.");
         } catch (std::exception const&) {
             throw;
         }
@@ -365,7 +358,8 @@ public:
      */
     template <typename T>
     void set(std::string const& category, std::string const& param, T const& val) {
-        std::string const context_ = _context(__func__) + " category='" + category + "' param='" + param + "' ";
+        std::string const context_ =
+                _context(__func__) + " category='" + category + "' param='" + param + "' ";
         util::Lock const lock(_mtx, context_);
         // Some parameters can't be updated using this interface.
         if (ConfigurationSchema::readOnly(category, param)) {
@@ -378,8 +372,8 @@ public:
             nlohmann::json& obj = _get(lock, category, param);
             obj = val;
         } catch (std::exception const& ex) {
-            throw std::invalid_argument(
-                context_ + " failed to set a new value of the parameter, ex: " + std::string(ex.what()) + "'.");
+            throw std::invalid_argument(context_ + " failed to set a new value of the parameter, ex: " +
+                                        std::string(ex.what()) + "'.");
         }
     }
 
@@ -388,8 +382,7 @@ public:
      * into the same type of the parameter stored in the transient state of the configuration.
      * @see Configuration::set()
      */
-    void setFromString(std::string const& category, std::string const& param,
-                       std::string const& val);
+    void setFromString(std::string const& category, std::string const& param, std::string const& val);
 
     /**
      * Return the names of known workers as per the selection criteria.
@@ -408,8 +401,7 @@ public:
      * @return The names of known workers which have the specified properties
      *   as per input filters.
      */
-    std::vector<std::string> workers(bool isEnabled=true,
-                                     bool isReadOnly=false) const;
+    std::vector<std::string> workers(bool isEnabled = true, bool isReadOnly = false) const;
 
     /// @return The names of all known workers regardless of their statuses.
     std::vector<std::string> allWorkers() const;
@@ -475,9 +467,8 @@ public:
      * @throw std::invalid_argument If the specified family (unless the empty string is passed
      *   into the method) was not found in the configuration.
      */
-    std::vector<std::string> databases(std::string const& family=std::string(),
-                                       bool allDatabases=false,
-                                       bool isPublished=true) const;
+    std::vector<std::string> databases(std::string const& family = std::string(), bool allDatabases = false,
+                                       bool isPublished = true) const;
 
     /**
      * Make sure this database is known in the configuration
@@ -513,7 +504,7 @@ public:
 
     /**
      * Change database status to be published.
-     * 
+     *
      * @param name The name of a database.
      * @return An updated database descriptor.
      * @throw std::invalid_argument If the empty string passed as a value of the parameter, or
@@ -567,15 +558,12 @@ public:
      *   if the table already exists, or if either of those parameters are the empty
      *   strings, or other required parameters have incorrect values or missing.
      */
-    DatabaseInfo addTable(std::string const& database,
-                          std::string const& table,
-                          bool isPartitioned,
-                          std::list<SqlColDef> const& columns=std::list<SqlColDef>(),
-                          bool isDirectorTable=false,
-                          std::string const& directorTable=std::string(),
-                          std::string const& directorTableKey=std::string(),
-                          std::string const& latitudeColName=std::string(),
-                          std::string const& longitudeColName=std::string());
+    DatabaseInfo addTable(std::string const& database, std::string const& table, bool isPartitioned,
+                          std::list<SqlColDef> const& columns = std::list<SqlColDef>(),
+                          bool isDirectorTable = false, std::string const& directorTable = std::string(),
+                          std::string const& directorTableKey = std::string(),
+                          std::string const& latitudeColName = std::string(),
+                          std::string const& longitudeColName = std::string());
 
     /**
      * Delete an existing table.
@@ -585,8 +573,7 @@ public:
      *   if the table doesn't exist, or if either of those parameters are
      *   the empty strings.
      */
-    DatabaseInfo deleteTable(std::string const& database,
-                             std::string const& table);
+    DatabaseInfo deleteTable(std::string const& database, std::string const& table);
 
     /**
      * Make sure this worker is known in the configuration
@@ -602,8 +589,7 @@ public:
      * @throws std::invalid_argument If either worker is unknown, or if the workers
      *   are the same.
      */
-    void assertWorkersAreDifferent(std::string const& workerOneName,
-                                   std::string const& workerTwoName);
+    void assertWorkersAreDifferent(std::string const& workerOneName, std::string const& workerTwoName);
 
     /**
      * @param name The name of a worker.
@@ -656,7 +642,7 @@ public:
 
     /// @param showPassword If a value of the flag is 'false' then hash a password in the result.
     /// @return The JSON representation of the object.
-    nlohmann::json toJson(bool showPassword=false) const;
+    nlohmann::json toJson(bool showPassword = false) const;
 
 private:
     /**
@@ -664,7 +650,7 @@ private:
      *   initiated the call.
      * @return The complete context string to be used for logging or other purposes.
      */
-    static std::string _context(std::string const& func=std::string());
+    static std::string _context(std::string const& func = std::string());
 
     /**
      * The light weight c-tor to initialize the default state of the configuration.
@@ -700,7 +686,7 @@ private:
     /// @param lock The lock on '_mtx' to be acquired prior to calling the method.
     /// @param showPassword If a value of the flag is 'false' then hash a password in the result.
     /// @return The JSON representation of the object.
-    nlohmann::json _toJson(util::Lock const& lock, bool showPassword=false) const;
+    nlohmann::json _toJson(util::Lock const& lock, bool showPassword = false) const;
 
     /**
      * Return a JSON object representing a parameter.
@@ -710,8 +696,7 @@ private:
      * @return A 'const' reference to a JSON object encapsulating the parameter's value and its type.
      * @throws std::invalid_argument If the parameter doesn't exist.
      */
-    nlohmann::json const& _get(util::Lock const& lock,
-                               std::string const& category,
+    nlohmann::json const& _get(util::Lock const& lock, std::string const& category,
                                std::string const& param) const;
 
     /**
@@ -723,17 +708,14 @@ private:
      * @param param The name of the parameter within its category.
      * @return A reference to a JSON object encapsulating the parameter's value and its type.
      */
-    nlohmann::json& _get(util::Lock const& lock,
-                         std::string const& category,
-                         std::string const& param);
+    nlohmann::json& _get(util::Lock const& lock, std::string const& category, std::string const& param);
 
     /**
      * Validate the input and add or update worker entry.
      * @param lock The lock on '_mtx' to be acquired prior to calling the method.
      * @return An updated worker description.
      */
-    WorkerInfo _updateWorker(util::Lock const& lock,
-                             WorkerInfo const& info);
+    WorkerInfo _updateWorker(util::Lock const& lock, WorkerInfo const& info);
 
     /**
      * @param lock The lock on '_mtx' to be acquired prior to calling the method.
@@ -765,20 +747,18 @@ private:
      * @param publish The new state of the database.
      * @return An updated database descriptor.
      */
-    DatabaseInfo& _publishDatabase(util::Lock const& lock,
-                                   std::string const& name,
-                                   bool publish);
+    DatabaseInfo& _publishDatabase(util::Lock const& lock, std::string const& name, bool publish);
 
     // Static parameters of the database connectors (read-write).
 
-    static bool         _databaseAllowReconnect;
+    static bool _databaseAllowReconnect;
     static unsigned int _databaseConnectTimeoutSec;
     static unsigned int _databaseMaxReconnects;
     static unsigned int _databaseTransactionTimeoutSec;
-    static bool         _schemaUpgradeWait;
+    static bool _schemaUpgradeWait;
     static unsigned int _schemaUpgradeWaitTimeoutSec;
-    static std::string  _qservCzarDbUrl;
-    static std::string  _qservWorkerDbUrl;
+    static std::string _qservCzarDbUrl;
+    static std::string _qservWorkerDbUrl;
 
     // For implementing static synchronized methods.
     static util::Mutex _classMtx;
@@ -800,6 +780,6 @@ private:
     mutable util::Mutex _mtx;
 };
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_CONFIGURATION_H
+#endif  // LSST_QSERV_REPLICA_CONFIGURATION_H

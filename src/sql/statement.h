@@ -28,11 +28,9 @@
 #include <string>
 #include <vector>
 
-namespace lsst {
-namespace qserv {
-namespace sql {
+namespace lsst { namespace qserv { namespace sql {
 
-struct Schema; // Forward
+struct Schema;  // Forward
 
 /// Construct a CREATE TABLE statement according to a table name and
 /// a schema.
@@ -50,13 +48,10 @@ typedef std::vector<InsertColumn> InsertColumnVector;
 std::shared_ptr<InsertColumnVector> newInsertColumnVector(Schema const& s);
 
 /// Compose a LOAD DATA INFILE statement
-std::string formLoadInfile(std::string const& table,
-                           std::string const& virtFile);
+std::string formLoadInfile(std::string const& table, std::string const& virtFile);
 /// Compose a LOAD DATA INFILE statement that needs binary patching
-std::string formLoadInfile(std::string const& table,
-                           std::string const& virtFile,
+std::string formLoadInfile(std::string const& table, std::string const& virtFile,
                            InsertColumnVector const& icv);
 
-
-}}} // namespace lsst::qserv::sql
-#endif // LSST_QSERV_SQL_STATEMENT_H
+}}}     // namespace lsst::qserv::sql
+#endif  // LSST_QSERV_SQL_STATEMENT_H

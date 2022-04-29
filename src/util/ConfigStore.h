@@ -41,9 +41,7 @@
 
 // Qserv headers
 
-namespace lsst {
-namespace qserv {
-namespace util {
+namespace lsst { namespace qserv { namespace util {
 
 /**
  *  Read, store and provide read-only access for a key-value list
@@ -59,26 +57,20 @@ namespace util {
  */
 class ConfigStore {
 public:
-
     /** Build a ConfigStore object from a configuration file
      *
      * @param configFilePath: path to Qserv configuration file
      */
-    ConfigStore(std::string const& configFilePath)
-        : _configMap(_parseIniFile(configFilePath)) {
-    }
+    ConfigStore(std::string const& configFilePath) : _configMap(_parseIniFile(configFilePath)) {}
 
     /** Build a ConfigStore object from a map
      *
      * @param kvMap: key-value map
      */
-    ConfigStore(std::map<std::string, std::string> const& kvMap)
-    :   _configMap(kvMap) {
-    }
+    ConfigStore(std::map<std::string, std::string> const& kvMap) : _configMap(kvMap) {}
 
     ConfigStore(ConfigStore const&) = delete;
     ConfigStore& operator=(ConfigStore const&) = delete;
-
 
     /** Output operator for current class
      *
@@ -86,7 +78,7 @@ public:
      * @param config
      * @return an output stream
      */
-    friend std::ostream& operator<<(std::ostream &out, ConfigStore const& config);
+    friend std::ostream& operator<<(std::ostream& out, ConfigStore const& config);
 
     /** Get value for a configuration key
      *
@@ -102,8 +94,7 @@ public:
      * @param defaultValue to use if key is not found
      * @return the string value for a key, defaulting to defaultValue
      */
-    std::string get(std::string const& key,
-        std::string const& defaultValue = std::string()) const;
+    std::string get(std::string const& key, std::string const& defaultValue = std::string()) const;
 
     /** Get value for a configuration key or a default value if key is not found
      *
@@ -137,13 +128,11 @@ public:
     std::map<std::string, std::string> getSectionConfigMap(std::string sectionName) const;
 
 private:
-
-    static std::map<std::string, std::string> const  _parseIniFile(std::string const& configFilePath);
+    static std::map<std::string, std::string> const _parseIniFile(std::string const& configFilePath);
 
     std::map<std::string, std::string> const _configMap;
-
 };
 
-}}} // namespace lsst::qserv::util
+}}}  // namespace lsst::qserv::util
 
 #endif /* LSST_QSERV_UTIL_CONFIGSTORE_H */

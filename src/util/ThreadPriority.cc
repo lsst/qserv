@@ -35,18 +35,15 @@ namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.util.ThreadPriority");
 }
 
-namespace lsst {
-namespace qserv {
-namespace util {
-
+namespace lsst { namespace qserv { namespace util {
 
 void ThreadPriority::storeOriginalValues() {
     getCurrentValues(_originalPriority, _originalPolicy);
-    LOGS(_log, LOG_LVL_DEBUG, "thread priority original " <<
-                              " priority=" << _originalPriority <<
-                              " policy=" << _originalPolicy);
+    LOGS(
+            _log, LOG_LVL_DEBUG,
+            "thread priority original "
+                    << " priority=" << _originalPriority << " policy=" << _originalPolicy);
 }
-
 
 void ThreadPriority::getCurrentValues(int &priority, int &policy) {
     sched_param sch;
@@ -54,11 +51,9 @@ void ThreadPriority::getCurrentValues(int &priority, int &policy) {
     priority = sch.sched_priority;
 }
 
-
 void ThreadPriority::getCurrentValues(sched_param &sch, int &policy) {
     pthread_getschedparam(_pthreadHandle, &policy, &sch);
 }
-
 
 int ThreadPriority::setPriorityPolicy(int newPriority, int newPolicy) {
     sched_param sch;
@@ -67,13 +62,9 @@ int ThreadPriority::setPriorityPolicy(int newPriority, int newPolicy) {
     sch.sched_priority = newPriority;
     int result = pthread_setschedparam(_pthreadHandle, newPolicy, &sch);
     if (result) {
-        LOGS(_log, LOG_LVL_ERROR, "failed to set thread priority result=" << result <<
-                " EPERM=" << EPERM);
+        LOGS(_log, LOG_LVL_ERROR, "failed to set thread priority result=" << result << " EPERM=" << EPERM);
     }
     return result;
 }
 
-
-}}} // namespace lsst/qserv/util
-
-
+}}}  // namespace lsst::qserv::util

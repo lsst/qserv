@@ -21,35 +21,26 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 /**
-  * @file
-  *
-  * @author Daniel L. Wang, SLAC
-  */
-
+ * @file
+ *
+ * @author Daniel L. Wang, SLAC
+ */
 
 #ifndef LSST_QSERV_QUERY_QUERYTEMPLATE_H
 #define LSST_QSERV_QUERY_QUERYTEMPLATE_H
-
 
 // System headers
 #include <memory>
 #include <string>
 #include <vector>
 
-
 // Forward declarations
-namespace lsst {
-namespace qserv {
-namespace query {
-    class ColumnRef;
-    class TableRefAux;
-}}} // End of forward declarations
+namespace lsst { namespace qserv { namespace query {
+class ColumnRef;
+class TableRefAux;
+}}}  // namespace lsst::qserv::query
 
-
-namespace lsst {
-namespace qserv {
-namespace query {
-
+namespace lsst { namespace qserv { namespace query {
 
 /// QueryTemplate
 ///
@@ -109,18 +100,18 @@ public:
     };
 
     enum SetAliasMode {
-        NO_ALIAS,                           // e.g. "db.table.val"
-        USE_ALIAS,                          // e.g. "myValue" (or "`alias`.val" if no value alias, or "db.table.col" if
-                                            // no value or table alias).
-        DEFINE_TABLE_ALIAS,                 // e.g. "db.table AS myTable" - it is illegal to render ValueExpr in this mode
-        DEFINE_VALUE_ALIAS_USE_TABLE_ALIAS, // e.g. "`alias`.val AS myValue"
-        NO_VALUE_ALIAS_USE_TABLE_ALIAS,     // e.g. "`myTable`.val"
+        NO_ALIAS,            // e.g. "db.table.val"
+        USE_ALIAS,           // e.g. "myValue" (or "`alias`.val" if no value alias, or "db.table.col" if
+                             // no value or table alias).
+        DEFINE_TABLE_ALIAS,  // e.g. "db.table AS myTable" - it is illegal to render ValueExpr in this mode
+        DEFINE_VALUE_ALIAS_USE_TABLE_ALIAS,  // e.g. "`alias`.val AS myValue"
+        NO_VALUE_ALIAS_USE_TABLE_ALIAS,      // e.g. "`myTable`.val"
     };
 
     enum GetAliasMode {
-        DEFINE,  // DEFINE should print out the table or column name followed by AS and the alias name.
-        USE,     // USE should only print out the alias.
-        DONT_USE // DONT USE should only print out the table or column name.
+        DEFINE,   // DEFINE should print out the table or column name followed by AS and the alias name.
+        USE,      // USE should only print out the alias.
+        DONT_USE  // DONT USE should only print out the table or column name.
     };
 
     QueryTemplate() {}
@@ -169,7 +160,6 @@ public:
      *  @return std::ostream containing output.
      */
     friend std::ostream& operator<<(std::ostream& os, QueryTemplate const& queryTemplate);
-
 
     /**
      * @brief Set a flag indicating if aliases should be defined or used.
@@ -221,11 +211,10 @@ public:
 private:
     EntryPtrVector _entries;
     SetAliasMode _aliasMode{USE_ALIAS};
-    bool _quoteIdentifiers{true}; // if true, identifiers will be quoted.
-    bool _useColumnOnly{false}; // if true, ColumnRef won't print db or table, only column name.
+    bool _quoteIdentifiers{true};  // if true, identifiers will be quoted.
+    bool _useColumnOnly{false};    // if true, ColumnRef won't print db or table, only column name.
 };
 
+}}}  // namespace lsst::qserv::query
 
-}}} // namespace lsst::qserv::query
-
-#endif // LSST_QSERV_QUERY_QUERYTEMPLATE_H
+#endif  // LSST_QSERV_QUERY_QUERYTEMPLATE_H

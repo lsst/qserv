@@ -36,16 +36,12 @@
 // Qserv headers
 #include "replica/Common.h"
 // Forward declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
-    class DatabaseFamilyInfo;
-}}}  // Forward declarations
+namespace lsst { namespace qserv { namespace replica {
+class DatabaseFamilyInfo;
+}}}  // namespace lsst::qserv::replica
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
 /**
  * Class DatabaseInfo encapsulates various parameters describing databases.
@@ -55,14 +51,15 @@ public:
     std::string name;    // The name of a database.
     std::string family;  // The name of the database family.
 
-    bool isPublished = false;   // The status of the database.
+    bool isPublished = false;  // The status of the database.
 
-    std::vector<std::string> partitionedTables; // The names of the partitioned tables.
-    std::vector<std::string> regularTables;     // The list of fully replicated tables.
+    std::vector<std::string> partitionedTables;  // The names of the partitioned tables.
+    std::vector<std::string> regularTables;      // The list of fully replicated tables.
 
     /// Table schema (optional).
-    std::map<std::string,                       // table name
-             std::list<SqlColDef>> columns;
+    std::map<std::string,  // table name
+             std::list<SqlColDef>>
+            columns;
 
     /// @return The names of all tables.
     std::vector<std::string> tables() const;
@@ -74,17 +71,19 @@ public:
     /// "directors". The "director" tables also have entries here, although they are
     /// guaranteed to have the empty values. The "dependent" tables are guaranteed
     /// to have non-empty values.
-    std::map<std::string,               // The table name (partitioned tables only!).
-        std::string> directorTable;     // The name of the Qserv "director" table if any.
+    std::map<std::string,  // The table name (partitioned tables only!).
+             std::string>
+            directorTable;  // The name of the Qserv "director" table if any.
 
     /// Each partitioned table will have an entry here. The key is required for
     /// both "director" and the "dependent" tables.
-    std::map<std::string,               // The table name (partitioned tables only!).
-        std::string> directorTableKey;  // The name of the table's key representing object identifiers.
-                                        // NOTES: (1) In the "director" table this is the unique
-                                        // PK identifying table rows, (2) In the "dependent" tables
-                                        // the key represents the FK associated with the corresponding
-                                        // PK of the "director" table.
+    std::map<std::string,  // The table name (partitioned tables only!).
+             std::string>
+            directorTableKey;  // The name of the table's key representing object identifiers.
+                               // NOTES: (1) In the "director" table this is the unique
+                               // PK identifying table rows, (2) In the "dependent" tables
+                               // the key represents the FK associated with the corresponding
+                               // PK of the "director" table.
 
     // Names of special columns of the partitioned tables. Each partitioned tables has
     // an entry in both maps. Non-empty values are required for the "director" tables.
@@ -92,11 +91,13 @@ public:
     // the direct association with the corresponding "director" tables via
     // the FK -> PK relation.
 
-    std::map<std::string,                   // table name
-             std::string> latitudeColName;  // latitude (declination) column name
+    std::map<std::string,  // table name
+             std::string>
+            latitudeColName;  // latitude (declination) column name
 
-    std::map<std::string,                   // table name
-             std::string> longitudeColName; // longitude (right ascension) column name
+    std::map<std::string,  // table name
+             std::string>
+            longitudeColName;  // longitude (right ascension) column name
 
     /**
      * Construct from JSON.
@@ -111,9 +112,9 @@ public:
      * @throw std::invalid_argument If the input object can't be parsed, or if it has
      *   incorrect schema.
      */
-    explicit DatabaseInfo(nlohmann::json const& obj=nlohmann::json::object(),
+    explicit DatabaseInfo(nlohmann::json const& obj = nlohmann::json::object(),
                           std::map<std::string, DatabaseFamilyInfo> const& families =
-                                std::map<std::string, DatabaseFamilyInfo>());
+                                  std::map<std::string, DatabaseFamilyInfo>());
 
     /// @return The JSON representation of the object.
     nlohmann::json toJson() const;
@@ -124,14 +125,12 @@ public:
 
     /// Validate parameters of a new table, then add it to the database.
     /// @throw std::invalid_argument If the input parameters are incorrect or inconsistent.
-    void addTable(std::string const& table,
-                  std::list<SqlColDef> const& columns_=std::list<SqlColDef>(),
-                  bool isPartitioned=false,
-                  bool isDirector=false,
-                  std::string const& directorTable_=std::string(),
-                  std::string const& directorTableKey_=std::string(),
-                  std::string const& latitudeColName_=std::string(),
-                  std::string const& longitudeColName_=std::string());
+    void addTable(std::string const& table, std::list<SqlColDef> const& columns_ = std::list<SqlColDef>(),
+                  bool isPartitioned = false, bool isDirector = false,
+                  std::string const& directorTable_ = std::string(),
+                  std::string const& directorTableKey_ = std::string(),
+                  std::string const& latitudeColName_ = std::string(),
+                  std::string const& longitudeColName_ = std::string());
 
     /// Remove the specified table from the database
     /// @throw std::invalid_argument If the empty string is passed as a value of
@@ -153,8 +152,8 @@ public:
     std::string schema4css(std::string const& table) const;
 };
 
-std::ostream& operator <<(std::ostream& os, DatabaseInfo const& info);
+std::ostream& operator<<(std::ostream& os, DatabaseInfo const& info);
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_CONFIGDATABASE_H
+#endif  // LSST_QSERV_REPLICA_CONFIGDATABASE_H

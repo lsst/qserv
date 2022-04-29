@@ -28,24 +28,17 @@
 
 using namespace std;
 
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
-RequestTrackerBase::RequestTrackerBase(ostream& os,
-                                       bool progressReport,
-                                       bool errorReport)
-    :   _numLaunched(0),
-        _numFinished(0),
-        _numSuccess(0),
-        _os(os),
-        _progressReport(progressReport),
-        _errorReport(errorReport) {
-}
-
+RequestTrackerBase::RequestTrackerBase(ostream& os, bool progressReport, bool errorReport)
+        : _numLaunched(0),
+          _numFinished(0),
+          _numSuccess(0),
+          _os(os),
+          _progressReport(progressReport),
+          _errorReport(errorReport) {}
 
 void RequestTrackerBase::track() const {
-
     // Wait before all request are finished. Then analyze results
     // and print a report on failed requests (if any)
 
@@ -56,48 +49,36 @@ void RequestTrackerBase::track() const {
             _os << "RequestTracker::" << __func__ << "  "
                 << "launched: " << _numLaunched << ", "
                 << "finished: " << _numFinished << ", "
-                << "success: "  << _numSuccess
-                << endl;
+                << "success: " << _numSuccess << endl;
         }
     }
     if (_progressReport) {
         _os << "RequestTracker::" << __func__ << "  "
             << "launched: " << _numLaunched << ", "
             << "finished: " << _numFinished << ", "
-            << "success: "  << _numSuccess
-            << endl;
+            << "success: " << _numSuccess << endl;
     }
     if (_errorReport and (_numLaunched - _numSuccess)) {
         printErrorReport(_os);
     }
 }
 
-
-void RequestTrackerBase::reset () {
-    size_t const numOutstanding = RequestTrackerBase::_numLaunched -
-                                  RequestTrackerBase::_numFinished;
+void RequestTrackerBase::reset() {
+    size_t const numOutstanding = RequestTrackerBase::_numLaunched - RequestTrackerBase::_numFinished;
     if (numOutstanding) {
-        throw logic_error(
-                "RequestTrackerBase::" + string(__func__) +
-                "  the operation is not allowed due to " +
-                to_string(numOutstanding) + " outstanding requests");
+        throw logic_error("RequestTrackerBase::" + string(__func__) +
+                          "  the operation is not allowed due to " + to_string(numOutstanding) +
+                          " outstanding requests");
     }
     resetImpl();
 
     RequestTrackerBase::_numLaunched = 0;
     RequestTrackerBase::_numFinished = 0;
-    RequestTrackerBase::_numSuccess  = 0;
+    RequestTrackerBase::_numSuccess = 0;
 }
 
-
-AnyRequestTracker::AnyRequestTracker(ostream& os,
-                                     bool progressReport,
-                                     bool errorReport)
-    :   RequestTrackerBase(os,
-                           progressReport,
-                           errorReport) {
-}
-
+AnyRequestTracker::AnyRequestTracker(ostream& os, bool progressReport, bool errorReport)
+        : RequestTrackerBase(os, progressReport, errorReport) {}
 
 void AnyRequestTracker::onFinish(Request::Ptr const& ptr) {
     RequestTrackerBase::_numFinished++;
@@ -106,25 +87,15 @@ void AnyRequestTracker::onFinish(Request::Ptr const& ptr) {
     }
 }
 
-
 void AnyRequestTracker::add(Request::Ptr const& ptr) {
     RequestTrackerBase::_numLaunched++;
     requests.push_back(ptr);
 }
 
+void AnyRequestTracker::printErrorReport(ostream& os) const { replica::reportRequestState(requests, os); }
 
-void AnyRequestTracker::printErrorReport(ostream& os) const {
-    replica::reportRequestState(requests, os);
-}
+list<Request::Ptr> AnyRequestTracker::getRequests() const { return requests; }
 
+void AnyRequestTracker::resetImpl() { requests.clear(); }
 
-list<Request::Ptr> AnyRequestTracker::getRequests() const {
-    return requests;
-}
-
-
-void AnyRequestTracker::resetImpl() {
-    requests.clear();
-}
-
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica

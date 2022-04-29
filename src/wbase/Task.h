@@ -43,28 +43,26 @@
 #include "util/threadSafe.h"
 
 // Forward declarations
-namespace lsst {
-namespace qserv {
+namespace lsst { namespace qserv {
 namespace wbase {
-    struct ScriptMeta;
-    class SendChannelShared;
-}
+struct ScriptMeta;
+class SendChannelShared;
+}  // namespace wbase
 namespace proto {
-    class TaskMsg;
-    class TaskMsg_Fragment;
-}}} // End of forward declarations
+class TaskMsg;
+class TaskMsg_Fragment;
+}  // namespace proto
+}}  // namespace lsst::qserv
 
-namespace lsst {
-namespace qserv {
-namespace wbase {
+namespace lsst { namespace qserv { namespace wbase {
 
 /// Base class for tracking a database query for a worker Task.
 class TaskQueryRunner {
 public:
     using Ptr = std::shared_ptr<TaskQueryRunner>;
-    virtual ~TaskQueryRunner() {};
-    virtual bool runQuery()=0;
-    virtual void cancel()=0; ///< Repeated calls to cancel() must be harmless.
+    virtual ~TaskQueryRunner(){};
+    virtual bool runQuery() = 0;
+    virtual void cancel() = 0;  ///< Repeated calls to cancel() must be harmless.
 };
 
 class Task;
@@ -75,8 +73,8 @@ class TaskScheduler {
 public:
     using Ptr = std::shared_ptr<TaskScheduler>;
     virtual ~TaskScheduler() {}
-    virtual void taskCancelled(Task*)=0;///< Repeated calls must be harmless.
-    virtual bool removeTask(std::shared_ptr<Task> const& task, bool removeRunning)=0;
+    virtual void taskCancelled(Task*) = 0;  ///< Repeated calls must be harmless.
+    virtual bool removeTask(std::shared_ptr<Task> const& task, bool removeRunning) = 0;
 };
 
 /// Used to find tasks that are in process for debugging with Task::_idStr.
@@ -93,8 +91,9 @@ struct IdSet {
         std::lock_guard<std::mutex> lock(mx);
         _ids.erase(id);
     }
-    std::atomic<int> maxDisp{5}; //< maximum number of entries to show with operator<<
+    std::atomic<int> maxDisp{5};  //< maximum number of entries to show with operator<<
     friend std::ostream& operator<<(std::ostream& os, IdSet const& idSet);
+
 private:
     std::set<std::string> _ids;
     mutable std::mutex mx;
@@ -107,10 +106,10 @@ private:
 class Task : public util::CommandForThreadPool {
 public:
     static std::string const defaultUser;
-    using Ptr =  std::shared_ptr<Task>;
+    using Ptr = std::shared_ptr<Task>;
     using TaskMsgPtr = std::shared_ptr<proto::TaskMsg>;
 
-    enum class State {CREATED, QUEUED, RUNNING, FINISHED};
+    enum class State { CREATED, QUEUED, RUNNING, FINISHED };
 
     struct ChunkEqual {
         bool operator()(Task::Ptr const& x, Task::Ptr const& y);
@@ -129,13 +128,13 @@ public:
     static std::vector<Ptr> createTasks(std::shared_ptr<proto::TaskMsg> const& taskMsg,
                                         std::shared_ptr<SendChannelShared> const& sendChannel);
 
-    TaskMsgPtr msg; ///< Protobufs Task spec
+    TaskMsgPtr msg;  ///< Protobufs Task spec
     std::shared_ptr<SendChannelShared> getSendChannel() const { return _sendChannel; }
-    void resetSendChannel() { _sendChannel.reset(); } ///< reset the shared pointer for SendChannelShared
-    std::string hash; ///< hash of TaskMsg
-    std::string user; ///< Incoming username
-    time_t entryTime {0}; ///< Timestamp for task admission
-    char timestr[100]; ///< ::ctime_r(&t.entryTime, timestr)
+    void resetSendChannel() { _sendChannel.reset(); }  ///< reset the shared pointer for SendChannelShared
+    std::string hash;                                  ///< hash of TaskMsg
+    std::string user;                                  ///< Incoming username
+    time_t entryTime{0};                               ///< Timestamp for task admission
+    char timestr[100];                                 ///< ::ctime_r(&t.entryTime, timestr)
     // Note that manpage spec of "26 bytes"  is insufficient
 
     /// Cancel the query in progress and set _cancelled.
@@ -147,8 +146,9 @@ public:
 
     std::string getQueryString() { return _queryString; }
     int getQueryFragmentNum() { return _queryFragmentNum; }
-    bool setTaskQueryRunner(TaskQueryRunner::Ptr const& taskQueryRunner); ///< return true if already cancelled.
-    void freeTaskQueryRunner(TaskQueryRunner *tqr);
+    bool setTaskQueryRunner(
+            TaskQueryRunner::Ptr const& taskQueryRunner);  ///< return true if already cancelled.
+    void freeTaskQueryRunner(TaskQueryRunner* tqr);
     void setTaskScheduler(TaskScheduler::Ptr const& scheduler) { _taskScheduler = scheduler; }
     TaskScheduler::Ptr getTaskScheduler() { return _taskScheduler.lock(); }
     friend std::ostream& operator<<(std::ostream& os, Task const& t);
@@ -158,7 +158,7 @@ public:
     QueryId getQueryId() const { return _qId; }
     int getJobId() const { return _jId; }
     int getAttemptCount() const { return _attemptCount; }
-    bool getScanInteractive() {return _scanInteractive; }
+    bool getScanInteractive() { return _scanInteractive; }
     proto::ScanInfo& getScanInfo() { return _scanInfo; }
     void setOnInteractive(bool val) { _onInteractive = val; }
     bool getOnInteractive() { return _onInteractive; }
@@ -169,9 +169,9 @@ public:
     void setMemMan(memman::MemMan::Ptr const& memMan) { _memMan = memMan; }
     void waitForMemMan();
     bool getSafeToMoveRunning() { return _safeToMoveRunning; }
-    void setSafeToMoveRunning(bool val) { _safeToMoveRunning = val; } ///< For testing only.
+    void setSafeToMoveRunning(bool val) { _safeToMoveRunning = val; }  ///< For testing only.
 
-    static IdSet allIds; // set of all task jobId numbers that are not complete.
+    static IdSet allIds;  // set of all task jobId numbers that are not complete.
     std::string getIdStr() const { return _idStr; }
 
     /// @return true if qId and jId match this task's query and job ids.
@@ -188,37 +188,40 @@ public:
 
     uint64_t getTSeq() const { return _tSeq; }
 
-    std::string makeIdStr(bool invalid=false) const { return QueryIdHelper::makeIdStr(_qId, _jId, invalid)+std::to_string(_tSeq)+":"; }
+    std::string makeIdStr(bool invalid = false) const {
+        return QueryIdHelper::makeIdStr(_qId, _jId, invalid) + std::to_string(_tSeq) + ":";
+    }
 
 private:
     std::shared_ptr<SendChannelShared> _sendChannel;
-    uint64_t const    _tSeq = 0; ///< identifier for the specific task
-    QueryId  const    _qId = 0;  ///< queryId from czar
-    int      const    _jId = 0;  ///< jobId from czar
-    int      const    _attemptCount = 0; // attemptCount from czar
+    uint64_t const _tSeq = 0;     ///< identifier for the specific task
+    QueryId const _qId = 0;       ///< queryId from czar
+    int const _jId = 0;           ///< jobId from czar
+    int const _attemptCount = 0;  // attemptCount from czar
     /// _idStr for logging only.
     std::string const _idStr = makeIdStr(true);
-    std::string _queryString; ///< The query this task will run.
-    int _queryFragmentNum = 0; ///< The fragment number of the query in the task message.
+    std::string _queryString;   ///< The query this task will run.
+    int _queryFragmentNum = 0;  ///< The fragment number of the query in the task message.
 
     std::atomic<bool> _cancelled{false};
-    std::atomic<bool> _safeToMoveRunning{false}; ///< false until done with waitForMemMan().
+    std::atomic<bool> _safeToMoveRunning{false};  ///< false until done with waitForMemMan().
     TaskQueryRunner::Ptr _taskQueryRunner;
     std::weak_ptr<TaskScheduler> _taskScheduler;
     proto::ScanInfo _scanInfo;
-    bool _scanInteractive; ///< True if the czar thinks this query should be interactive.
-    bool _onInteractive{false}; ///< True if the scheduler put this task on the interactive (group) scheduler.
+    bool _scanInteractive;  ///< True if the czar thinks this query should be interactive.
+    bool _onInteractive{
+            false};  ///< True if the scheduler put this task on the interactive (group) scheduler.
     std::atomic<memman::MemMan::Handle> _memHandle{memman::MemMan::HandleType::INVALID};
     memman::MemMan::Ptr _memMan;
 
-    mutable std::mutex _stateMtx; ///< Mutex to protect state related members _state, _???Time.
+    mutable std::mutex _stateMtx;  ///< Mutex to protect state related members _state, _???Time.
     State _state{State::CREATED};
     std::chrono::system_clock::time_point _queueTime;
     std::chrono::system_clock::time_point _startTime;
     std::chrono::system_clock::time_point _finishTime;
-    size_t _totalSize = 0; ///< Total size of the result so far.
+    size_t _totalSize = 0;  ///< Total size of the result so far.
 };
 
-}}} // namespace lsst::qserv::wbase
+}}}  // namespace lsst::qserv::wbase
 
-#endif // LSST_QSERV_WBASE_TASK_H
+#endif  // LSST_QSERV_WBASE_TASK_H

@@ -22,54 +22,47 @@
  */
 #ifndef LSST_QSERV_STRINGUTIL_H
 #define LSST_QSERV_STRINGUTIL_H
- /**
-  * @brief  Misc. lightweight string manipulation.
-  *
-  */
+/**
+ * @brief  Misc. lightweight string manipulation.
+ *
+ */
 
 // System headers
 #include <algorithm>
 #include <cctype>
 #include <sstream>
 
-namespace lsst {
-namespace qserv {
+namespace lsst { namespace qserv {
 
 /// @return true if a string is safe enough to use as a name in our SQL dialect.
-bool
-inline isNameSafe(std::string::value_type const& c) {
+bool inline isNameSafe(std::string::value_type const& c) {
     std::locale loc;
-    if(std::isalnum(c)) { // Not sure that using the default locale is safe.
+    if (std::isalnum(c)) {  // Not sure that using the default locale is safe.
         return true;
     }
-    switch(c) { // Special cases. '_' is the only one right now.
-    case '_':
-        return true;
-    default:
-        return false;
+    switch (c) {  // Special cases. '_' is the only one right now.
+        case '_':
+            return true;
+        default:
+            return false;
     }
 }
 
 /// Function object version of isNameSafe
 struct isNameSafePred {
-    inline bool operator()(std::string::value_type const& c) const {
-        return isNameSafe(c);
-    }
+    inline bool operator()(std::string::value_type const& c) const { return isNameSafe(c); }
     typedef std::string::value_type argument_type;
 };
 
 /// @return a string equal to the original string with non-safe characters
 /// removed.
-inline std::string
-sanitizeName(std::string const& name) {
+inline std::string sanitizeName(std::string const& name) {
     std::string out;
-    std::remove_copy_if(name.begin(), name.end(),
-                        std::insert_iterator<std::string>(out, out.begin()),
+    std::remove_copy_if(name.begin(), name.end(), std::insert_iterator<std::string>(out, out.begin()),
                         std::not1(isNameSafePred()));
 
     return out;
 }
-
 
 /// @return: string version of the contents of 'a'.
 template <typename A>
@@ -80,5 +73,5 @@ std::string toString(A&& a) {
     return os.str();
 }
 
-}} // namespace lsst::qserv
-#endif // LSST_QSERV_STRINGUTIL_H
+}}      // namespace lsst::qserv
+#endif  // LSST_QSERV_STRINGUTIL_H

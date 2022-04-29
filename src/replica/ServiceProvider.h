@@ -36,26 +36,22 @@
 #include "util/Mutex.h"
 
 // Forward declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
-    class Configuration;
-    class DatabaseServices;
-    class Messenger;
-    class QservMgtServices;
-    class Registry;
-}}}  // Forward declarations
+namespace lsst { namespace qserv { namespace replica {
+class Configuration;
+class DatabaseServices;
+class Messenger;
+class QservMgtServices;
+class Registry;
+}}}  // namespace lsst::qserv::replica
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
 /**
-  * Class ServiceProvider hosts various services used by both workers
-  * and controllers.
-  */
-class ServiceProvider: public std::enable_shared_from_this<ServiceProvider> {
+ * Class ServiceProvider hosts various services used by both workers
+ * and controllers.
+ */
+class ServiceProvider : public std::enable_shared_from_this<ServiceProvider> {
 public:
     typedef std::shared_ptr<ServiceProvider> Ptr;
 
@@ -79,10 +75,8 @@ public:
      *  operations affecting the state of Qserv or the Replication/Ingest system.
      * @return A pointer to the created object.
      */
-    static ServiceProvider::Ptr create(std::string const& configUrl,
-                                       std::string const& instanceId,
-                                       std::string const& authKey,
-                                       std::string const& adminAuthKey);
+    static ServiceProvider::Ptr create(std::string const& configUrl, std::string const& instanceId,
+                                       std::string const& authKey, std::string const& adminAuthKey);
 
     ~ServiceProvider() = default;
 
@@ -164,7 +158,7 @@ public:
      *   std::lock_guard<util::Mutex> lock(*mutex);
      * @code
      * Though, in general this would work, the above shown dereferencing is not recommended.
-     * 
+     *
      * @param database The name of a named mutex.
      * @return A smart pointer to a mutex for the name.
      * @throw std::invalid_argument If the name is empty.
@@ -173,10 +167,8 @@ public:
 
 private:
     /// @see ServiceProvider::create()
-    explicit ServiceProvider(std::string const& configUrl,
-                             std::string const& instanceId,
-                             std::string const& authKey,
-                             std::string const& adminAuthKey);
+    explicit ServiceProvider(std::string const& configUrl, std::string const& instanceId,
+                             std::string const& authKey, std::string const& adminAuthKey);
 
     /// @return the context string for debugging and diagnostic printouts
     std::string _context() const;
@@ -224,6 +216,6 @@ private:
     mutable util::Mutex _mtx;
 };
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_SERVICEPROVIDER_H
+#endif  // LSST_QSERV_REPLICA_SERVICEPROVIDER_H

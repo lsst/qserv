@@ -37,26 +37,21 @@
 #include "util/Mutex.h"
 
 // Forward declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
-    class HttpClientConfig;
-}}} // namespace lsst::qserv::replica
+namespace lsst { namespace qserv { namespace replica {
+class HttpClientConfig;
+}}}  // namespace lsst::qserv::replica
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
 /**
  * Class IngestRequestInterrupted respresents exceptions thrown by the request
  * processing method IngestRequest::process() after terminating the request
  * either due to an explicit request cancellation or expiration.
  */
- class IngestRequestInterrupted: public std::runtime_error {
-     using std::runtime_error::runtime_error;
- };
-
+class IngestRequestInterrupted : public std::runtime_error {
+    using std::runtime_error::runtime_error;
+};
 
 /**
  * Class IngestRequest encapsulates a state and algorithms needed for processing
@@ -64,8 +59,7 @@ namespace replica {
  *
  * @note All public methods of the class are thread-safe (synchronized).
  */
-class IngestRequest: public std::enable_shared_from_this<IngestRequest>,
-                     public IngestFileSvc {
+class IngestRequest : public std::enable_shared_from_this<IngestRequest>, public IngestFileSvc {
 public:
     typedef std::shared_ptr<IngestRequest> Ptr;
 
@@ -88,18 +82,12 @@ public:
      * @param workerName The name of a worker this service is acting upon.
      * @return A newly created instance of the request object.
      */
-    static IngestRequest::Ptr create(ServiceProvider::Ptr const& serviceProvider,
-                                     std::string const& workerName,
-                                     TransactionId transactionId,
-                                     std::string const& table,
-                                     unsigned int chunk,
-                                     bool isOverlap,
-                                     std::string const& url,
-                                     bool async,
-                                     csv::DialectInput const& dialectInput,
-                                     std::string const& httpMethod="GET",
-                                     std::string const& httpData=std::string(),
-                                     std::vector<std::string> const& httpHeaders=std::vector<std::string>());
+    static IngestRequest::Ptr create(
+            ServiceProvider::Ptr const& serviceProvider, std::string const& workerName,
+            TransactionId transactionId, std::string const& table, unsigned int chunk, bool isOverlap,
+            std::string const& url, bool async, csv::DialectInput const& dialectInput,
+            std::string const& httpMethod = "GET", std::string const& httpData = std::string(),
+            std::vector<std::string> const& httpHeaders = std::vector<std::string>());
 
     /**
      * The factory method for instantiating the request from an existing contribution.
@@ -116,8 +104,7 @@ public:
      * @return A newly created instance of the request object.
      */
     static IngestRequest::Ptr resume(ServiceProvider::Ptr const& serviceProvider,
-                                     std::string const& workerName,
-                                     unsigned int contribId);
+                                     std::string const& workerName, unsigned int contribId);
 
     /// @return The descriptor of the request.
     TransactionContribInfo transactionContribInfo() const;
@@ -150,22 +137,14 @@ public:
 
 private:
     /// @see method IngestRequest::create()
-    IngestRequest(ServiceProvider::Ptr const& serviceProvider,
-                  std::string const& workerName,
-                  TransactionId transactionId,
-                  std::string const& table,
-                  unsigned int chunk,
-                  bool isOverlap,
-                  std::string const& url,
-                  bool async,
-                  csv::DialectInput const& dialectInput,
-                  std::string const& httpMethod,
-                  std::string const& httpData,
+    IngestRequest(ServiceProvider::Ptr const& serviceProvider, std::string const& workerName,
+                  TransactionId transactionId, std::string const& table, unsigned int chunk, bool isOverlap,
+                  std::string const& url, bool async, csv::DialectInput const& dialectInput,
+                  std::string const& httpMethod, std::string const& httpData,
                   std::vector<std::string> const& httpHeaders);
 
     /// @see method IngestRequest::resume()
-    IngestRequest(ServiceProvider::Ptr const& serviceProvider,
-                  std::string const& workerName,
+    IngestRequest(ServiceProvider::Ptr const& serviceProvider, std::string const& workerName,
                   TransactionContribInfo const& contrib);
 
     // Three processing stages of the request
@@ -207,9 +186,9 @@ private:
 
     // Setting the flag will interrupt request processing (if the one is
     // still going on).
-    std::atomic<bool> _cancelled{false};    ///< Set by calling the public method cancel()
+    std::atomic<bool> _cancelled{false};  ///< Set by calling the public method cancel()
 };
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_INGESTREQUEST_H
+#endif  // LSST_QSERV_REPLICA_INGESTREQUEST_H

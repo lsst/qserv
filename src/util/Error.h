@@ -36,10 +36,7 @@
 // System headers
 #include <string>
 
-namespace lsst {
-namespace qserv {
-namespace util {
-
+namespace lsst { namespace qserv { namespace util {
 
 /**
  * List of known Qserv errors
@@ -74,7 +71,6 @@ struct ErrorCode {
  */
 class Error {
 public:
-
     Error(int code = ErrorCode::NONE, std::string const& msg = "", int status = ErrorCode::NONE);
 
     /** Overload output operator for current class
@@ -83,7 +79,7 @@ public:
      * @param error
      * @return an output stream
      */
-    friend std::ostream& operator<<(std::ostream &out, Error const& error);
+    friend std::ostream& operator<<(std::ostream& out, Error const& error);
 
     int getCode() const { return _code; }
 
@@ -98,17 +94,14 @@ public:
      *
      * @return true if current object doesn't contain an actual error
      */
-    bool isNone() {
-        return (_code==util::ErrorCode::NONE);
-    }
+    bool isNone() { return (_code == util::ErrorCode::NONE); }
 
 private:
-
     int _code;
     std::string _msg;
     int _status;
 };
 
-}}} // namespace lsst::qserv::util
+}}}  // namespace lsst::qserv::util
 
 #endif /* LSST_QSERV_UTIL_ERROR_H_ */

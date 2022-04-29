@@ -25,15 +25,13 @@
 #include "replica/Application.h"
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
 /**
  * Class ReplicateApp implements a tool which runs the replication algorithm
  * in a scope of a database family.
  */
-class ReplicateApp: public Application {
+class ReplicateApp : public Application {
 public:
     typedef std::shared_ptr<ReplicateApp> Ptr;
 
@@ -46,11 +44,11 @@ public:
      */
     static Ptr create(int argc, char* argv[]);
 
-    ReplicateApp()=delete;
-    ReplicateApp(ReplicateApp const&)=delete;
-    ReplicateApp& operator=(ReplicateApp const&)=delete;
+    ReplicateApp() = delete;
+    ReplicateApp(ReplicateApp const&) = delete;
+    ReplicateApp& operator=(ReplicateApp const&) = delete;
 
-    ~ReplicateApp() final=default;
+    ~ReplicateApp() final = default;
 
 protected:
     /// @see Application::runImpl()
@@ -72,6 +70,6 @@ private:
     size_t _pageSize = 20;
 };
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica
 
 #endif /* LSST_QSERV_REPLICA_REPLICATEAPP_H */

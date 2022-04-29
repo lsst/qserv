@@ -35,65 +35,50 @@
 #include "wbase/MsgProcessor.h"
 #include "wpublish/QueriesAndChunks.h"
 
-
 // Forward declarations
-namespace lsst {
-namespace qserv {
-namespace wdb {
-    class SQLBackend;
-    class ChunkResourceMgr;
-    class QueryRunner;
-}}}
+namespace lsst { namespace qserv { namespace wdb {
+class SQLBackend;
+class ChunkResourceMgr;
+class QueryRunner;
+}}}  // namespace lsst::qserv::wdb
 
-namespace lsst {
-namespace qserv {
-namespace wcontrol {
+namespace lsst { namespace qserv { namespace wcontrol {
 
 class SqlConnMgr;
 class TransmitMgr;
 
 /// An abstract scheduler interface. Foreman objects use Scheduler instances
 /// to determine what tasks to launch upon triggering events.
-class Scheduler
-    :   public wbase::TaskScheduler,
-        public util::CommandQueue {
-
+class Scheduler : public wbase::TaskScheduler, public util::CommandQueue {
 public:
-
     /// Smart pointer type for objects of this class
     using Ptr = std::shared_ptr<Scheduler>;
 
     /// The destructor
     virtual ~Scheduler() {}
 
-    virtual std::string getName() const = 0; //< @return the name of the scheduler.
+    virtual std::string getName() const = 0;  //< @return the name of the scheduler.
 
     /// Take appropriate action when a task in the Schedule is cancelled. Doing
     /// nothing should be harmless, but some Schedulers may work better if cancelled
     /// tasks are removed.
-    void taskCancelled(wbase::Task *task) override {}
+    void taskCancelled(wbase::Task* task) override {}
 };
 
 /// Foreman is used to maintain a thread pool and schedule Tasks for the thread pool.
 /// It also manages sub-chunk tables with the ChunkResourceMgr.
 /// The schedulers may limit the number of threads they will use from the thread pool.
-class Foreman
-    :   public wbase::MsgProcessor {
-
+class Foreman : public wbase::MsgProcessor {
 public:
-
     /**
      * @param scheduler   - pointer to the scheduler
      * @param poolSize    - size of the thread pool
      * @param mySqlConfig - configuration object for the MySQL service
      * @param queries     - query statistics collector
      */
-    Foreman(Scheduler::Ptr                  const& scheduler,
-            unsigned int                    poolSize,
-            unsigned int                    maxPoolThreads,
-            mysql::MySqlConfig              const& mySqlConfig,
-            wpublish::QueriesAndChunks::Ptr const& queries,
-            std::shared_ptr<wcontrol::SqlConnMgr>  const& sqlConnMgr,
+    Foreman(Scheduler::Ptr const& scheduler, unsigned int poolSize, unsigned int maxPoolThreads,
+            mysql::MySqlConfig const& mySqlConfig, wpublish::QueriesAndChunks::Ptr const& queries,
+            std::shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr,
             std::shared_ptr<wcontrol::TransmitMgr> const& transmitMgr);
 
     virtual ~Foreman();
@@ -103,12 +88,11 @@ public:
     Foreman(Foreman const&) = delete;
     Foreman& operator=(Foreman const&) = delete;
 
-
     /// Process a group of query processing tasks.
     /// @see sgProcessor::processTasks()
     void processTasks(std::vector<std::shared_ptr<wbase::Task>> const& tasks) override;
 
-    ///Implement the corresponding method of the base class
+    /// Implement the corresponding method of the base class
     /// @see MsgProcessor::processCommand()
     void processCommand(std::shared_ptr<wbase::WorkerCommand> const& command) override;
 
@@ -118,16 +102,16 @@ private:
     /// Set the function called when it is time to process the task.
     void _setRunFunc(std::shared_ptr<wbase::Task> const& task);
 
-    std::shared_ptr<wdb::SQLBackend>       _backend;
+    std::shared_ptr<wdb::SQLBackend> _backend;
     std::shared_ptr<wdb::ChunkResourceMgr> _chunkResourceMgr;
 
     util::ThreadPool::Ptr _pool;
-    Scheduler::Ptr        _scheduler;
+    Scheduler::Ptr _scheduler;
 
-    util::CommandQueue::Ptr _workerCommandQueue;    ///< dedicated queue for the worker commands
-    util::ThreadPool::Ptr   _workerCommandPool;     ///< dedicated pool for executing worker commands
+    util::CommandQueue::Ptr _workerCommandQueue;  ///< dedicated queue for the worker commands
+    util::ThreadPool::Ptr _workerCommandPool;     ///< dedicated pool for executing worker commands
 
-    mysql::MySqlConfig const        _mySqlConfig;
+    mysql::MySqlConfig const _mySqlConfig;
     wpublish::QueriesAndChunks::Ptr _queries;
 
     /// For limiting the number of MySQL connections used for tasks.
@@ -139,4 +123,4 @@ private:
 
 }}}  // namespace lsst::qserv::wcontrol
 
-#endif // LSST_QSERV_WCONTROL_FOREMAN_H
+#endif  // LSST_QSERV_WCONTROL_FOREMAN_H

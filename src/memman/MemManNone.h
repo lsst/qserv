@@ -31,9 +31,7 @@
 // Qserv Headers
 #include "MemMan.h"
 
-namespace lsst {
-namespace qserv {
-namespace memman {
+namespace lsst { namespace qserv { namespace memman {
 
 // This class defines a memory manager implementation that basically does
 // nothing. If a table needs to be locked it says that there is no memory to
@@ -42,46 +40,52 @@ namespace memman {
 
 class MemManNone : public MemMan {
 public:
-
-    int    lock(Handle handle, bool strict=false) override {return 0;}
+    int lock(Handle handle, bool strict = false) override { return 0; }
 
     Handle prepare(std::vector<TableInfo> const& tables, int chunk) override {
-               (void)chunk;
-               if (_alwaysLock) return HandleType::ISEMPTY;
-               for (auto it=tables.begin() ; it != tables.end(); it++) {
-                   if (it->theData  == TableInfo::LockType::REQUIRED
-                   ||  it->theIndex == TableInfo::LockType::REQUIRED)
-                      {errno = ENOMEM; return HandleType::INVALID;}
-               }
-               return HandleType::ISEMPTY;
-           }
+        (void)chunk;
+        if (_alwaysLock) return HandleType::ISEMPTY;
+        for (auto it = tables.begin(); it != tables.end(); it++) {
+            if (it->theData == TableInfo::LockType::REQUIRED ||
+                it->theIndex == TableInfo::LockType::REQUIRED) {
+                errno = ENOMEM;
+                return HandleType::INVALID;
+            }
+        }
+        return HandleType::ISEMPTY;
+    }
 
-    bool  unlock(Handle handle) override {(void)handle; return true;}
+    bool unlock(Handle handle) override {
+        (void)handle;
+        return true;
+    }
 
-    void  unlockAll() override {}
+    void unlockAll() override {}
 
-    Statistics getStatistics() override {return _myStats;}
+    Statistics getStatistics() override { return _myStats; }
 
-    Status getStatus(Handle handle) override {(void)handle; return _status;}
+    Status getStatus(Handle handle) override {
+        (void)handle;
+        return _status;
+    }
 
-    MemManNone & operator=(const MemManNone&) = delete;
+    MemManNone& operator=(const MemManNone&) = delete;
     MemManNone(const MemManNone&) = delete;
 
     // @param alwaysLock - When true, always return ISEMPTY for all lock requests.
-    MemManNone(uint64_t maxBytes, bool alwaysLock) : _alwaysLock(alwaysLock)
-              {memset(&_myStats, 0, sizeof(_myStats));
-               _myStats.bytesLockMax = maxBytes;
-               _myStats.bytesLocked  = maxBytes;
-              }
+    MemManNone(uint64_t maxBytes, bool alwaysLock) : _alwaysLock(alwaysLock) {
+        memset(&_myStats, 0, sizeof(_myStats));
+        _myStats.bytesLockMax = maxBytes;
+        _myStats.bytesLocked = maxBytes;
+    }
 
     ~MemManNone() override {}
 
 private:
     Statistics _myStats;
-    Status     _status;
-    int        _alwaysLock{false};
+    Status _status;
+    int _alwaysLock{false};
 };
 
-}}} // namespace lsst:qserv:memman
+}}}     // namespace lsst::qserv::memman
 #endif  // LSST_QSERV_MEMMAN_MEMMANNONE_H
-

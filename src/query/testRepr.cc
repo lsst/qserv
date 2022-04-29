@@ -20,12 +20,11 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-  /**
-  *
-  * @brief Simple testing for query representation
-  *
-  */
-
+/**
+ *
+ * @brief Simple testing for query representation
+ *
+ */
 
 // System headers
 #include <cstddef>
@@ -51,14 +50,9 @@
 #define BOOST_TEST_MODULE QueryRepr_1
 #include "boost/test/unit_test.hpp"
 
-
-namespace lsst {
-namespace qserv {
-namespace query {
-
+namespace lsst { namespace qserv { namespace query {
 
 namespace test = boost::test_tools;
-
 
 struct TestFixture {
     TestFixture(void) {}
@@ -68,9 +62,7 @@ struct TestFixture {
     std::shared_ptr<lsst::qserv::css::CssAccess> css;
 };
 
-
 BOOST_FIXTURE_TEST_SUITE(Suite, TestFixture)
-
 
 BOOST_AUTO_TEST_CASE(Factory) {
     TestFactory tf;
@@ -83,17 +75,16 @@ BOOST_AUTO_TEST_CASE(Factory) {
 // and the tree is constructed via a push down list.  The aim here
 // was to keep the specification parser as simple as possible...
 
-const std::string RenderedBoolTermFromRPN(const char **rpn)
-{
+const std::string RenderedBoolTermFromRPN(const char **rpn) {
     BoolTerm::PtrVector pdl;
     int opcount;
 
-    for(const char **t=rpn; *t; ++t) {
-        if (sscanf(*t, "%d", &opcount)==1) {
+    for (const char **t = rpn; *t; ++t) {
+        if (sscanf(*t, "%d", &opcount) == 1) {
             ;
         } else if (!strcmp(*t, "AND")) {
             AndTerm::Ptr andt = std::make_shared<AndTerm>();
-            for(int i=0; i<opcount; ++i) {
+            for (int i = 0; i < opcount; ++i) {
                 andt->_terms.push_back(pdl.front());
                 assert(!pdl.empty());
                 pdl.erase(pdl.begin());
@@ -101,17 +92,17 @@ const std::string RenderedBoolTermFromRPN(const char **rpn)
             pdl.insert(pdl.begin(), andt);
         } else if (!strcmp(*t, "OR")) {
             OrTerm::Ptr ort = std::make_shared<OrTerm>();
-            for(int i=0; i<opcount; ++i) {
+            for (int i = 0; i < opcount; ++i) {
                 ort->_terms.push_back(pdl.front());
                 pdl.erase(pdl.begin());
             }
-            pdl.insert(pdl.begin(),ort);
+            pdl.insert(pdl.begin(), ort);
         } else {
             PassTerm::Ptr pt = std::make_shared<PassTerm>();
             pt->_text = *t;
             BoolFactor::Ptr bf = std::make_shared<BoolFactor>();
             bf->_terms.push_back(pt);
-            pdl.insert(pdl.begin(),bf);
+            pdl.insert(pdl.begin(), bf);
         }
     }
 
@@ -121,7 +112,6 @@ const std::string RenderedBoolTermFromRPN(const char **rpn)
 }
 
 BOOST_AUTO_TEST_CASE(BoolTermRenderParens) {
-
     // AND
     // +-- AND
     // |   +-- A
@@ -173,11 +163,9 @@ BOOST_AUTO_TEST_CASE(BoolTermRenderParens) {
     // +-- E
     const char *test5[] = {"E", "D", "C", "B", "3", "AND", "A", "3", "OR", nullptr};
     BOOST_CHECK_EQUAL(RenderedBoolTermFromRPN(test5), "A OR B AND C AND D OR E");
-
 }
 
 BOOST_AUTO_TEST_CASE(DM_737_REGRESSION) {
-
     // Construct "refObjectId IS NULL OR flags<>2"
     ColumnRef::Ptr cr0 = std::make_shared<ColumnRef>("", "", "refObjectId");
     std::shared_ptr<ValueFactor> vf0 = ValueFactor::newColumnRefFactor(cr0);
@@ -241,4 +229,4 @@ BOOST_AUTO_TEST_CASE(DM_737_REGRESSION) {
 
 BOOST_AUTO_TEST_SUITE_END()
 
-}}} // lsst::qserv::query
+}}}  // namespace lsst::qserv::query

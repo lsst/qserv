@@ -31,34 +31,24 @@
 using namespace std;
 using json = nlohmann::json;
 
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
-void HttpWorkerStatusModule::process(Controller::Ptr const& controller,
-                                     string const& taskName,
+void HttpWorkerStatusModule::process(Controller::Ptr const& controller, string const& taskName,
                                      HttpProcessorConfig const& processorConfig,
-                                     qhttp::Request::Ptr const& req,
-                                     qhttp::Response::Ptr const& resp,
+                                     qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp,
                                      HealthMonitorTask::Ptr const& healthMonitorTask,
-                                     string const& subModuleName,
-                                     HttpAuthType const authType) {
+                                     string const& subModuleName, HttpAuthType const authType) {
     HttpWorkerStatusModule module(controller, taskName, processorConfig, req, resp, healthMonitorTask);
     module.execute(subModuleName, authType);
 }
 
-
-HttpWorkerStatusModule::HttpWorkerStatusModule(
-                            Controller::Ptr const& controller,
-                            string const& taskName,
-                            HttpProcessorConfig const& processorConfig,
-                            qhttp::Request::Ptr const& req,
-                            qhttp::Response::Ptr const& resp,
-                            HealthMonitorTask::Ptr const& healthMonitorTask)
-    :   HttpModule(controller, taskName, processorConfig, req, resp),
-        _healthMonitorTask(healthMonitorTask) {
-}
-
+HttpWorkerStatusModule::HttpWorkerStatusModule(Controller::Ptr const& controller, string const& taskName,
+                                               HttpProcessorConfig const& processorConfig,
+                                               qhttp::Request::Ptr const& req,
+                                               qhttp::Response::Ptr const& resp,
+                                               HealthMonitorTask::Ptr const& healthMonitorTask)
+        : HttpModule(controller, taskName, processorConfig, req, resp),
+          _healthMonitorTask(healthMonitorTask) {}
 
 json HttpWorkerStatusModule::executeImpl(string const& subModuleName) {
     debug(__func__);
@@ -66,32 +56,32 @@ json HttpWorkerStatusModule::executeImpl(string const& subModuleName) {
     auto const healthMonitorTask = _healthMonitorTask.lock();
     if (nullptr == healthMonitorTask) {
         throw HttpError(__func__,
-                "no access to the Health Monitor Task from HttpWorkerStatusModule."
-                " The service may be shutting down.");
+                        "no access to the Health Monitor Task from HttpWorkerStatusModule."
+                        " The service may be shutting down.");
     }
     auto const delays = healthMonitorTask->workerResponseDelay();
 
     json workersJson = json::array();
-    for (auto&& worker: controller()->serviceProvider()->config()->allWorkers()) {
-
+    for (auto&& worker : controller()->serviceProvider()->config()->allWorkers()) {
         json workerJson;
 
         workerJson["worker"] = worker;
 
         WorkerInfo const info = controller()->serviceProvider()->config()->workerInfo(worker);
-        uint64_t const numReplicas = controller()->serviceProvider()->databaseServices()->numWorkerReplicas(worker);
+        uint64_t const numReplicas =
+                controller()->serviceProvider()->databaseServices()->numWorkerReplicas(worker);
 
         workerJson["replication"]["num_replicas"] = numReplicas;
-        workerJson["replication"]["isEnabled"]    = info.isEnabled  ? 1 : 0;
-        workerJson["replication"]["isReadOnly"]   = info.isReadOnly ? 1 : 0;
+        workerJson["replication"]["isEnabled"] = info.isEnabled ? 1 : 0;
+        workerJson["replication"]["isReadOnly"] = info.isReadOnly ? 1 : 0;
 
         auto&& itr = delays.find(worker);
         if (delays.end() != itr) {
             workerJson["replication"]["probe_delay_s"] = itr->second.at("replication");
-            workerJson["qserv"      ]["probe_delay_s"] = itr->second.at("qserv");
+            workerJson["qserv"]["probe_delay_s"] = itr->second.at("qserv");
         } else {
             workerJson["replication"]["probe_delay_s"] = 0;
-            workerJson["qserv"      ]["probe_delay_s"] = 0;
+            workerJson["qserv"]["probe_delay_s"] = 0;
         }
         workersJson.push_back(workerJson);
     }
@@ -101,4 +91,3 @@ json HttpWorkerStatusModule::executeImpl(string const& subModuleName) {
 }
 
 }}}  // namespace lsst::qserv::replica
-

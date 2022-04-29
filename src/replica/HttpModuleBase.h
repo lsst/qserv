@@ -38,17 +38,11 @@
 #include "replica/HttpRequestQuery.h"
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
-
+namespace lsst { namespace qserv { namespace replica {
 
 /// The enumeration type which is used for configuring/enforcing
 /// module's authorization requirements.
-enum class HttpAuthType {
-    REQUIRED,
-    NONE
-};
+enum class HttpAuthType { REQUIRED, NONE };
 
 /**
  * Class HttpModuleBase is a base class for requests processing modules
@@ -60,7 +54,7 @@ public:
      * Class AuthError represent exceptions thrown when the authorization
      * requirements aren't met.
      */
-    class AuthError: public std::invalid_argument {
+    class AuthError : public std::invalid_argument {
     public:
         using std::invalid_argument::invalid_argument;
     };
@@ -77,7 +71,7 @@ public:
      * would also do an optional processing of exceptions thrown by the subclass-specific
      * implementations of method HttpModuleBase::executeImpl(). These error conditions will
      * be reported to as errors to callers.
-     * 
+     *
      * @param subModuleName  this optional parameter allows modules to have
      *   multiple sub-modules. A value of this parameter will be forwarded to
      *   the subclass-specific implementation of the pure virtual method
@@ -86,7 +80,7 @@ public:
      *   requested then the method will enforce the authorization. A lack of required
      *   authorization key in a request, or an incorrect value of such key would result
      *   in a error sent back to a client.
-     * 
+     *
      * @note For requests with 'HttpAuthType::REQUIRED' authorization keys must be sent
      *   by a requestor in the body of a request. There are two types of keys. The normal
      *   authorization level key "auth_key" is required for most operations resulting
@@ -98,8 +92,8 @@ public:
      *   validated if present. It's up to a specific module to decide on how to (or if)
      *   use the administrative privileges.
      */
-    void execute(std::string const& subModuleName=std::string(),
-                 HttpAuthType const authType=HttpAuthType::NONE);
+    void execute(std::string const& subModuleName = std::string(),
+                 HttpAuthType const authType = HttpAuthType::NONE);
 
 protected:
     /**
@@ -108,10 +102,8 @@ protected:
      * @param req  The HTTP request.
      * @param resp  The HTTP response channel.
      */
-    HttpModuleBase(std::string const& authKey,
-                   std::string const& adminAuthKey,
-                   qhttp::Request::Ptr const& req,
-                   qhttp::Response::Ptr const& resp);
+    HttpModuleBase(std::string const& authKey, std::string const& adminAuthKey,
+                   qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp);
 
     qhttp::Request::Ptr const& req() const { return _req; }
     qhttp::Response::Ptr const& resp() const { return _resp; }
@@ -147,14 +139,14 @@ protected:
 
     /**
      * To implement a subclass-specific request processing.
-     * 
+     *
      * @note All exceptions thrown by the implementations will be intercepted and
      *   reported as errors to callers. Exceptions are now the only way to report
      *   errors from modules.
      * @return A result to be sent back to a service requester in case of a successful
      *   completion of the requested operation.
      * @throws HttpExceptions In case if a module needs to pass extra details
-     *   on a error back to a service requester. 
+     *   on a error back to a service requester.
      */
     virtual nlohmann::json executeImpl(std::string const& subModuleName) = 0;
 
@@ -178,9 +170,8 @@ private:
      * @param errorMsg An error condition to be reported.
      * @param errorExt (optional) The additional information on the error.
      */
-    void _sendError(std::string const& func,
-                    std::string const& errorMsg,
-                    nlohmann::json const& errorExt=nlohmann::json::object()) const;
+    void _sendError(std::string const& func, std::string const& errorMsg,
+                    nlohmann::json const& errorExt = nlohmann::json::object()) const;
 
     /**
      * Report a result back to a requester of a service upon its successful
@@ -207,7 +198,7 @@ private:
     /// the overloaded method HttpModule::executeImpl.
     HttpRequestBody _body;
 };
-    
-}}} // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_HTTPMODULEBASE_H
+}}}  // namespace lsst::qserv::replica
+
+#endif  // LSST_QSERV_HTTPMODULEBASE_H

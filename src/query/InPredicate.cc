@@ -21,7 +21,6 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-
 // Class header
 #include "query/InPredicate.h"
 
@@ -34,11 +33,7 @@
 #include "query/ValueExpr.h"
 #include "util/IterableFormatter.h"
 
-
-namespace lsst {
-namespace qserv {
-namespace query {
-
+namespace lsst { namespace qserv { namespace query {
 
 namespace {
 
@@ -48,23 +43,18 @@ struct valueExprCopy {
     }
 };
 
-}
-
+}  // namespace
 
 void InPredicate::findColumnRefs(std::vector<std::shared_ptr<ColumnRef>>& vector) const {
     if (value) {
         value->findColumnRefs(vector);
     }
-    for(auto&& valueExpr : cands) {
+    for (auto&& valueExpr : cands) {
         valueExpr->findColumnRefs(vector);
     }
 }
 
-
-std::ostream& InPredicate::putStream(std::ostream& os) const {
-    return QueryTemplate::renderDbg(os, *this);
-}
-
+std::ostream& InPredicate::putStream(std::ostream& os) const { return QueryTemplate::renderDbg(os, *this); }
 
 void InPredicate::renderTo(QueryTemplate& qt) const {
     ValueExpr::render r(qt, false);
@@ -79,29 +69,23 @@ void InPredicate::renderTo(QueryTemplate& qt) const {
     qt.append(")");
 }
 
-
 void InPredicate::findValueExprs(std::vector<std::shared_ptr<ValueExpr>>& vector) const {
     vector.push_back(value);
     vector.insert(vector.end(), cands.begin(), cands.end());
 }
-
 
 void InPredicate::findValueExprRefs(ValueExprPtrRefVector& vector) {
     vector.push_back(value);
     vector.insert(vector.end(), cands.begin(), cands.end());
 }
 
-
 BoolFactorTerm::Ptr InPredicate::clone() const {
-    InPredicate::Ptr p  = std::make_shared<InPredicate>();
+    InPredicate::Ptr p = std::make_shared<InPredicate>();
     if (value) p->value = value->clone();
-    std::transform(cands.begin(), cands.end(),
-                   std::back_inserter(p->cands),
-                   valueExprCopy());
+    std::transform(cands.begin(), cands.end(), std::back_inserter(p->cands), valueExprCopy());
     p->hasNot = hasNot;
     return BoolFactorTerm::Ptr(p);
 }
-
 
 void InPredicate::dbgPrint(std::ostream& os) const {
     os << "InPredicate(";
@@ -110,7 +94,6 @@ void InPredicate::dbgPrint(std::ostream& os) const {
     os << ", " << util::printable(cands, "", "");
     os << ")";
 }
-
 
 bool InPredicate::operator==(BoolFactorTerm const& rhs) const {
     auto rhsInPredicate = dynamic_cast<InPredicate const*>(&rhs);
@@ -122,5 +105,4 @@ bool InPredicate::operator==(BoolFactorTerm const& rhs) const {
            hasNot == rhsInPredicate->hasNot;
 }
 
-
-}}} // namespace lsst::qserv::query
+}}}  // namespace lsst::qserv::query

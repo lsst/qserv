@@ -30,18 +30,13 @@
  * @author Fabrice Jammes, IN2P3/SLAC
  */
 
-
 #ifndef LSST_QSERV_QUERY_TYPES_H_
 #define LSST_QSERV_QUERY_TYPES_H_
-
 
 // System headers
 #include <vector>
 
-
-namespace lsst {
-namespace qserv {
-namespace query {
+namespace lsst { namespace qserv { namespace query {
 
 class ValueExpr;
 typedef std::shared_ptr<ValueExpr> ValueExprPtr;
@@ -51,7 +46,7 @@ typedef std::vector<std::reference_wrapper<ValueExprPtr>> ValueExprPtrRefVector;
 
 class SelectStmt;
 typedef std::shared_ptr<SelectStmt> SelectStmtPtr;
-typedef std::vector<std::shared_ptr<SelectStmt> > SelectStmtPtrVector;
+typedef std::vector<std::shared_ptr<SelectStmt>> SelectStmtPtrVector;
 
 class AreaRestrictor;
 typedef std::vector<std::shared_ptr<AreaRestrictor>> AreaRestrictorVec;
@@ -61,6 +56,6 @@ class SecIdxRestrictor;
 typedef std::vector<std::shared_ptr<SecIdxRestrictor>> SecIdxRestrictorVec;
 typedef std::shared_ptr<SecIdxRestrictorVec> SecIdxRestrictorVecPtr;
 
-}}} // namespace lsst::qserv::query
+}}}  // namespace lsst::qserv::query
 
 #endif /* LSST_QSERV_QUERY_TYPES_H_ */

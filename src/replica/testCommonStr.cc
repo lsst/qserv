@@ -18,9 +18,9 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
- /**
-  * @brief Test data types shared by all classes of the module.
-  */
+/**
+ * @brief Test data types shared by all classes of the module.
+ */
 
 // System headers
 #include <string>

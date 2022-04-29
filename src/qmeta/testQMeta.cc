@@ -20,15 +20,14 @@
  * see <https://www.lsstcorp.org/LegalNotices/>.
  */
 
-
 // System headers
 #include <iostream>
 #include <fstream>
 #include <string>
-#include <unistd.h> // for getpass
+#include <unistd.h>  // for getpass
 
 // Third-party headers
-#include  "boost/algorithm/string/replace.hpp"
+#include "boost/algorithm/string/replace.hpp"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -97,8 +96,7 @@ struct TestDBGuard {
     MySqlConfig sqlConfig;
 };
 
-
-}
+}  // namespace
 
 struct PerTestFixture {
     PerTestFixture() {
@@ -113,11 +111,9 @@ struct PerTestFixture {
 
 TestDBGuard PerTestFixture::testDB;
 
-
 BOOST_FIXTURE_TEST_SUITE(SqlConnectionTestSuite, PerTestFixture)
 
 BOOST_AUTO_TEST_CASE(messWithCzars) {
-
     // check for few non-existing names
     BOOST_CHECK_EQUAL(qMeta->getCzarID(""), 0U);
     BOOST_CHECK_EQUAL(qMeta->getCzarID("unknown"), 0U);
@@ -139,10 +135,7 @@ BOOST_AUTO_TEST_CASE(messWithCzars) {
     BOOST_CHECK_THROW(qMeta->setCzarActive(9999999, true), CzarIdError);
 }
 
-
-
 BOOST_AUTO_TEST_CASE(messWithQueries) {
-
     // make sure that we have czars from previous test
     CzarId cid1 = qMeta->getCzarID("czar:1000");
     BOOST_CHECK(cid1 != 0U);
@@ -252,7 +245,6 @@ BOOST_AUTO_TEST_CASE(messWithQueries) {
 }
 
 BOOST_AUTO_TEST_CASE(messWithQueries2) {
-
     // make sure that we have czars from previous test
     CzarId cid1 = qMeta->getCzarID("czar:1000");
     BOOST_CHECK(cid1 != 0U);
@@ -260,11 +252,13 @@ BOOST_AUTO_TEST_CASE(messWithQueries2) {
     BOOST_CHECK(cid2 != 0U);
 
     // resister few queries
-    QInfo qinfo(QInfo::SYNC, cid1, "user1", "SELECT * from Object", "SELECT * from Object_{}", "", "", "", "");
+    QInfo qinfo(QInfo::SYNC, cid1, "user1", "SELECT * from Object", "SELECT * from Object_{}", "", "", "",
+                "");
     QMeta::TableNames tables(1, std::make_pair("TestDB", "Object"));
     lsst::qserv::QueryId qid1 = qMeta->registerQuery(qinfo, tables);
     lsst::qserv::QueryId qid2 = qMeta->registerQuery(qinfo, tables);
-    qinfo = QInfo(QInfo::ASYNC, cid2, "user2", "SELECT * from Object", "SELECT * from Object_{}", "", "", "", "");
+    qinfo = QInfo(QInfo::ASYNC, cid2, "user2", "SELECT * from Object", "SELECT * from Object_{}", "", "", "",
+                  "");
     lsst::qserv::QueryId qid3 = qMeta->registerQuery(qinfo, tables);
     lsst::qserv::QueryId qid4 = qMeta->registerQuery(qinfo, tables);
 
@@ -297,7 +291,6 @@ BOOST_AUTO_TEST_CASE(messWithQueries2) {
 }
 
 BOOST_AUTO_TEST_CASE(messWithTables) {
-
     // make sure that we have czars from previous test
     CzarId cid1 = qMeta->getCzarID("czar:1000");
     BOOST_CHECK(cid1 != 0U);
@@ -305,11 +298,13 @@ BOOST_AUTO_TEST_CASE(messWithTables) {
     BOOST_CHECK(cid2 != 0U);
 
     // resister few queries
-    QInfo qinfo(QInfo::SYNC, cid1, "user1", "SELECT * from Object", "SELECT * from Object_{}", "", "", "", "");
+    QInfo qinfo(QInfo::SYNC, cid1, "user1", "SELECT * from Object", "SELECT * from Object_{}", "", "", "",
+                "");
     QMeta::TableNames tables(1, std::make_pair("TestDB", "Object"));
     lsst::qserv::QueryId qid1 = qMeta->registerQuery(qinfo, tables);
     lsst::qserv::QueryId qid2 = qMeta->registerQuery(qinfo, tables);
-    qinfo = QInfo(QInfo::ASYNC, cid2, "user2", "SELECT * from Object", "SELECT * from Object_{}", "", "", "", "");
+    qinfo = QInfo(QInfo::ASYNC, cid2, "user2", "SELECT * from Object", "SELECT * from Object_{}", "", "", "",
+                  "");
     tables.push_back(std::make_pair("TestDB", "Source"));
     lsst::qserv::QueryId qid3 = qMeta->registerQuery(qinfo, tables);
     lsst::qserv::QueryId qid4 = qMeta->registerQuery(qinfo, tables);
@@ -343,7 +338,6 @@ BOOST_AUTO_TEST_CASE(messWithTables) {
 }
 
 BOOST_AUTO_TEST_CASE(messWithChunks) {
-
     // make sure that we have czars from previous test
     CzarId cid1 = qMeta->getCzarID("czar:1000");
     BOOST_CHECK(cid1 != 0U);
@@ -351,7 +345,8 @@ BOOST_AUTO_TEST_CASE(messWithChunks) {
     BOOST_CHECK(cid2 != 0U);
 
     // resister one query
-    QInfo qinfo(QInfo::SYNC, cid1, "user1", "SELECT * from Object", "SELECT * from Object_{}", "", "", "", "");
+    QInfo qinfo(QInfo::SYNC, cid1, "user1", "SELECT * from Object", "SELECT * from Object_{}", "", "", "",
+                "");
     QMeta::TableNames tables;
     tables.push_back(std::make_pair("TestDB", "Object"));
     lsst::qserv::QueryId qid1 = qMeta->registerQuery(qinfo, tables);
@@ -381,12 +376,11 @@ BOOST_AUTO_TEST_CASE(messWithChunks) {
     BOOST_CHECK_THROW(qMeta->finishChunk(qid1, 42), ChunkIdError);
 }
 
-
 BOOST_AUTO_TEST_CASE(messWithQueryStats) {
     LOGS(_log, LOG_LVL_WARN, "messWithQueryStats connect");
     std::shared_ptr<QStatus> qStatus = std::make_shared<QStatusMysql>(testDB.sqlConfig);
     sqlConn = SqlConnectionFactory::make(testDB.sqlConfig);
-    CzarId qid1 = 7; // just need a number.
+    CzarId qid1 = 7;  // just need a number.
 
     int totalChunks = 99;
     LOGS(_log, LOG_LVL_WARN, "messWithQueryStats register");
@@ -417,6 +411,5 @@ BOOST_AUTO_TEST_CASE(messWithQueryStats) {
     }
     BOOST_CHECK(caught);
 }
-
 
 BOOST_AUTO_TEST_SUITE_END()

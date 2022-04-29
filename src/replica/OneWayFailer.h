@@ -25,27 +25,21 @@
 #include <atomic>
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
 /**
  * This class maintains a boolean state which can go in one direction
  * only: from 'false' to 'true'. The state is thread safe.
  */
 class OneWayFailer {
-
 public:
-
     /**
      * Fail the state.
      *
      * @return
      *   the previous state of the object
      */
-    bool fail() {
-        return _failed.exchange(true);
-    }
+    bool fail() { return _failed.exchange(true); }
 
     /// @return the current state of the object
     bool operator()() const { return _failed; }
@@ -54,6 +48,6 @@ private:
     std::atomic<bool> _failed{false};
 };
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica
 
 #endif /* LSST_QSERV_REPLICA_ONEWAYFAILER_H */

@@ -29,23 +29,18 @@
 #include "replica/ConfigAppBase.h"
 
 // Forward declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
-namespace detail {
-    class Command;
-}}}}  // forward declarations
+namespace lsst { namespace qserv { namespace replica { namespace detail {
+class Command;
+}}}}  // namespace lsst::qserv::replica::detail
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
 /**
  * Class ConfigApp implements a tool for inspecting/modifying configuration
  * records stored in the MySQL/MariaDB database.
  */
-class ConfigApp: public ConfigAppBase {
+class ConfigApp : public ConfigAppBase {
 public:
     typedef std::shared_ptr<ConfigApp> Ptr;
 
@@ -207,6 +202,6 @@ private:
     std::string _longitudeColName;
 };
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica
 
 #endif /* LSST_QSERV_REPLICA_CONFIGAPP_H */

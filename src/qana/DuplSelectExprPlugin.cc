@@ -58,17 +58,15 @@ namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.qana.DuplSelectExprPlugin");
 }
 
-namespace lsst {
-namespace qserv {
-namespace qana {
+namespace lsst { namespace qserv { namespace qana {
 
-std::string const DuplSelectExprPlugin::EXCEPTION_MSG = "Duplicate names detected in select expression,"
+std::string const DuplSelectExprPlugin::EXCEPTION_MSG =
+        "Duplicate names detected in select expression,"
         " rewrite SQL query using alias: ";
 
 std::string const DuplSelectExprPlugin::ERR_MSG = "'%1%' at positions:%2%";
 
 util::MultiError DuplSelectExprPlugin::getDuplicateAndPosition(StringVector const& v) const {
-
     typedef std::multimap<std::string, int> MultiMap;
 
     util::MultiError multiError;
@@ -77,22 +75,19 @@ util::MultiError DuplSelectExprPlugin::getDuplicateAndPosition(StringVector cons
 
     MultiMap mm;
     int pos;
-    for (StringVector::const_iterator it = v.begin(), end = v.end(); it!=end; ++it) {
+    for (StringVector::const_iterator it = v.begin(), end = v.end(); it != end; ++it) {
         pos = it - v.begin();
-        mm.insert(std::pair<std::string, int>(*it,pos));
-     }
+        mm.insert(std::pair<std::string, int>(*it, pos));
+    }
 
-    for (MultiMap::iterator it = mm.begin(), end = mm.end();
-        it != end;
-        it = mm.upper_bound(it->first))
-    {
+    for (MultiMap::iterator it = mm.begin(), end = mm.end(); it != end; it = mm.upper_bound(it->first)) {
         std::string key = it->first;
         int nb_elem = mm.count(it->first);
-        if (nb_elem>1) {
+        if (nb_elem > 1) {
             std::ostringstream os;
             MultiMap::iterator subIt;
-            for (subIt=mm.equal_range(key).first; subIt!=mm.equal_range(key).second; ++subIt)
-                os << ' ' << (*subIt).second+1;
+            for (subIt = mm.equal_range(key).first; subIt != mm.equal_range(key).second; ++subIt)
+                os << ' ' << (*subIt).second + 1;
 
             boost::format err_msg = boost::format(ERR_MSG) % key % os.str();
 
@@ -102,19 +97,17 @@ util::MultiError DuplSelectExprPlugin::getDuplicateAndPosition(StringVector cons
     }
 
     if (LOG_CHECK_LVL(_log, LOG_LVL_TRACE)) {
-          std::string msg;
-          if (!multiError.empty()) {
-              LOGS(_log, LOG_LVL_TRACE,  "Duplicate select fields found:\n" << multiError);
-          } else {
-              LOGS(_log, LOG_LVL_TRACE,  "No duplicate select field.");
-          }
+        std::string msg;
+        if (!multiError.empty()) {
+            LOGS(_log, LOG_LVL_TRACE, "Duplicate select fields found:\n" << multiError);
+        } else {
+            LOGS(_log, LOG_LVL_TRACE, "No duplicate select field.");
+        }
     }
     return multiError;
 }
 
-util::MultiError
-DuplSelectExprPlugin::getDuplicateSelectErrors(query::SelectStmt const& stmt) const {
-
+util::MultiError DuplSelectExprPlugin::getDuplicateSelectErrors(query::SelectStmt const& stmt) const {
     query::SelectList const& selectList = stmt.getSelectList();
     query::ValueExprPtrVector valueExprList = *(selectList.getValueExprList());
 
@@ -124,9 +117,8 @@ DuplSelectExprPlugin::getDuplicateSelectErrors(query::SelectStmt const& stmt) co
 
     StringVector selectExprNormalizedNames;
 
-    for (query::ValueExprPtrVectorConstIter viter = valueExprList.begin();
-        viter != valueExprList.end();
-        ++viter) {
+    for (query::ValueExprPtrVectorConstIter viter = valueExprList.begin(); viter != valueExprList.end();
+         ++viter) {
         query::ValueExpr const& ve = *(*viter);
         if (ve.isStar()) {
             continue;
@@ -145,9 +137,7 @@ DuplSelectExprPlugin::getDuplicateSelectErrors(query::SelectStmt const& stmt) co
     return getDuplicateAndPosition(selectExprNormalizedNames);
 }
 
-void DuplSelectExprPlugin::applyLogical(query::SelectStmt& stmt,
-                                        query::QueryContext&) {
-
+void DuplSelectExprPlugin::applyLogical(query::SelectStmt& stmt, query::QueryContext&) {
     util::MultiError const dupSelectErrors = getDuplicateSelectErrors(stmt);
 
     if (!dupSelectErrors.empty()) {
@@ -156,4 +146,4 @@ void DuplSelectExprPlugin::applyLogical(query::SelectStmt& stmt,
     }
 }
 
-}}} // namespace lsst::qserv::qana
+}}}  // namespace lsst::qserv::qana

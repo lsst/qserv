@@ -27,29 +27,22 @@
 
 using namespace std;
 
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
 // ---------------------------------------------------
 // --------- StatusReplicationRequestPolicy ----------
 // ---------------------------------------------------
 
-char const* StatusReplicationRequestPolicy::requestName() {
-    return "REQUEST_STATUS:REPLICA_CREATE";
-}
-
+char const* StatusReplicationRequestPolicy::requestName() { return "REQUEST_STATUS:REPLICA_CREATE"; }
 
 ProtocolQueuedRequestType StatusReplicationRequestPolicy::targetRequestType() {
     return ProtocolQueuedRequestType::REPLICA_CREATE;
 }
 
-
 void StatusReplicationRequestPolicy::extractResponseData(ResponseMessageType const& msg,
                                                          ResponseDataType& data) {
     data = ResponseDataType(&(msg.replica_info()));
 }
-
 
 void StatusReplicationRequestPolicy::extractTargetRequestParams(ResponseMessageType const& msg,
                                                                 TargetRequestParamsType& params) {
@@ -58,26 +51,19 @@ void StatusReplicationRequestPolicy::extractTargetRequestParams(ResponseMessageT
     }
 }
 
-
 // ----------------------------------------------
 // --------- StatusDeleteRequestPolicy ----------
 // ----------------------------------------------
 
-char const* StatusDeleteRequestPolicy::requestName() {
-    return "REQUEST_STATUS:REPLICA_DELETE";
-}
-
+char const* StatusDeleteRequestPolicy::requestName() { return "REQUEST_STATUS:REPLICA_DELETE"; }
 
 ProtocolQueuedRequestType StatusDeleteRequestPolicy::targetRequestType() {
     return ProtocolQueuedRequestType::REPLICA_DELETE;
 }
 
-
-void StatusDeleteRequestPolicy::extractResponseData(ResponseMessageType const& msg,
-                                                    ResponseDataType& data) {
+void StatusDeleteRequestPolicy::extractResponseData(ResponseMessageType const& msg, ResponseDataType& data) {
     data = ResponseDataType(&(msg.replica_info()));
 }
-
 
 void StatusDeleteRequestPolicy::extractTargetRequestParams(ResponseMessageType const& msg,
                                                            TargetRequestParamsType& params) {
@@ -86,26 +72,19 @@ void StatusDeleteRequestPolicy::extractTargetRequestParams(ResponseMessageType c
     }
 }
 
-
 // --------------------------------------------
 // --------- StatusFindRequestPolicy ----------
 // --------------------------------------------
 
-char const* StatusFindRequestPolicy::requestName() {
-    return "REQUEST_STATUS:REPLICA_FIND";
-}
-
+char const* StatusFindRequestPolicy::requestName() { return "REQUEST_STATUS:REPLICA_FIND"; }
 
 ProtocolQueuedRequestType StatusFindRequestPolicy::targetRequestType() {
     return ProtocolQueuedRequestType::REPLICA_FIND;
 }
 
-
-void StatusFindRequestPolicy::extractResponseData(ResponseMessageType const& msg,
-                                                  ResponseDataType& data) {
+void StatusFindRequestPolicy::extractResponseData(ResponseMessageType const& msg, ResponseDataType& data) {
     data = ReplicaInfo(&(msg.replica_info()));
 }
-
 
 void StatusFindRequestPolicy::extractTargetRequestParams(ResponseMessageType const& msg,
                                                          TargetRequestParamsType& params) {
@@ -114,29 +93,21 @@ void StatusFindRequestPolicy::extractTargetRequestParams(ResponseMessageType con
     }
 }
 
-
 // -----------------------------------------------
 // --------- StatusFindAllRequestPolicy ----------
 // -----------------------------------------------
 
-char const* StatusFindAllRequestPolicy::requestName() {
-    return "REQUEST_STATUS:REPLICA_FIND_ALL";
-}
-
+char const* StatusFindAllRequestPolicy::requestName() { return "REQUEST_STATUS:REPLICA_FIND_ALL"; }
 
 ProtocolQueuedRequestType StatusFindAllRequestPolicy::targetRequestType() {
     return ProtocolQueuedRequestType::REPLICA_FIND_ALL;
 }
 
-
-void StatusFindAllRequestPolicy::extractResponseData(ResponseMessageType const& msg,
-                                                     ResponseDataType& data) {
-
+void StatusFindAllRequestPolicy::extractResponseData(ResponseMessageType const& msg, ResponseDataType& data) {
     for (int num = msg.replica_info_many_size(), idx = 0; idx < num; ++idx) {
         data.emplace_back(&(msg.replica_info_many(idx)));
     }
 }
-
 
 void StatusFindAllRequestPolicy::extractTargetRequestParams(ResponseMessageType const& msg,
                                                             TargetRequestParamsType& params) {
@@ -145,26 +116,19 @@ void StatusFindAllRequestPolicy::extractTargetRequestParams(ResponseMessageType 
     }
 }
 
-
 // --------------------------------------------
 // --------- StatusEchoRequestPolicy ----------
 // --------------------------------------------
 
-char const* StatusEchoRequestPolicy::requestName() {
-    return "REQUEST_STATUS:TEST_ECHO";
-}
-
+char const* StatusEchoRequestPolicy::requestName() { return "REQUEST_STATUS:TEST_ECHO"; }
 
 ProtocolQueuedRequestType StatusEchoRequestPolicy::targetRequestType() {
     return ProtocolQueuedRequestType::TEST_ECHO;
 }
 
-
-void StatusEchoRequestPolicy::extractResponseData(ResponseMessageType const& msg,
-                                                  ResponseDataType& data) {
+void StatusEchoRequestPolicy::extractResponseData(ResponseMessageType const& msg, ResponseDataType& data) {
     data = msg.data();
 }
-
 
 void StatusEchoRequestPolicy::extractTargetRequestParams(ResponseMessageType const& msg,
                                                          TargetRequestParamsType& params) {
@@ -173,27 +137,20 @@ void StatusEchoRequestPolicy::extractTargetRequestParams(ResponseMessageType con
     }
 }
 
-
 // ---------------------------------------------
 // --------- StatusIndexRequestPolicy ----------
 // ---------------------------------------------
 
-char const* StatusIndexRequestPolicy::requestName() {
-    return "REQUEST_STATUS:INDEX";
-}
-
+char const* StatusIndexRequestPolicy::requestName() { return "REQUEST_STATUS:INDEX"; }
 
 ProtocolQueuedRequestType StatusIndexRequestPolicy::targetRequestType() {
     return ProtocolQueuedRequestType::INDEX;
 }
 
-
-void StatusIndexRequestPolicy::extractResponseData(ResponseMessageType const& msg,
-                                                   ResponseDataType& data) {
+void StatusIndexRequestPolicy::extractResponseData(ResponseMessageType const& msg, ResponseDataType& data) {
     data.error = msg.error();
-    data.data  = msg.data();
+    data.data = msg.data();
 }
-
 
 void StatusIndexRequestPolicy::extractTargetRequestParams(ResponseMessageType const& msg,
                                                           TargetRequestParamsType& params) {
@@ -202,26 +159,19 @@ void StatusIndexRequestPolicy::extractTargetRequestParams(ResponseMessageType co
     }
 }
 
-
 // -------------------------------------------
 // --------- StatusSqlRequestPolicy ----------
 // -------------------------------------------
 
-char const* StatusSqlRequestPolicy::requestName() {
-    return "REQUEST_STATUS:SQL";
-}
-
+char const* StatusSqlRequestPolicy::requestName() { return "REQUEST_STATUS:SQL"; }
 
 ProtocolQueuedRequestType StatusSqlRequestPolicy::targetRequestType() {
     return ProtocolQueuedRequestType::SQL;
 }
 
-
-void StatusSqlRequestPolicy::extractResponseData(ResponseMessageType const& msg,
-                                                 ResponseDataType& data) {
+void StatusSqlRequestPolicy::extractResponseData(ResponseMessageType const& msg, ResponseDataType& data) {
     data.set(msg);
 }
-
 
 void StatusSqlRequestPolicy::extractTargetRequestParams(ResponseMessageType const& msg,
                                                         TargetRequestParamsType& params) {
@@ -230,4 +180,4 @@ void StatusSqlRequestPolicy::extractTargetRequestParams(ResponseMessageType cons
     }
 }
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica

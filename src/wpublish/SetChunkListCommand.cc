@@ -44,42 +44,36 @@ namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.wpublish.SetChunkListCommand");
 
-} // anonymous namespace
+}  // anonymous namespace
 
-namespace lsst {
-namespace qserv {
-namespace wpublish {
+namespace lsst { namespace qserv { namespace wpublish {
 
 SetChunkListCommand::SetChunkListCommand(shared_ptr<wbase::SendChannel> const& sendChannel,
                                          shared_ptr<ChunkInventory> const& chunkInventory,
                                          shared_ptr<ResourceMonitor> const& resourceMonitor,
                                          mysql::MySqlConfig const& mySqlConfig,
                                          vector<SetChunkListCommand::Chunk> const& chunks,
-                                         vector<string> const& databases,
-                                         bool force)
-    :   wbase::WorkerCommand(sendChannel),
-        _chunkInventory(chunkInventory),
-        _resourceMonitor(resourceMonitor),
-        _mySqlConfig(mySqlConfig),
-        _chunks(chunks),
-        _force(force) {
-    for (auto&& database: databases) {
+                                         vector<string> const& databases, bool force)
+        : wbase::WorkerCommand(sendChannel),
+          _chunkInventory(chunkInventory),
+          _resourceMonitor(resourceMonitor),
+          _mySqlConfig(mySqlConfig),
+          _chunks(chunks),
+          _force(force) {
+    for (auto&& database : databases) {
         _databases.insert(database);
     }
 }
 
-
 void SetChunkListCommand::_setChunks(proto::WorkerCommandSetChunkListR& reply,
                                      ChunkInventory::ExistMap const& prevExistMap) {
-
-    for (auto const& entry: prevExistMap) {
-
+    for (auto const& entry : prevExistMap) {
         string const& database = entry.first;
 
         // Exclude databases which are not in a scope of this command
         if (0 == _databases.count(database)) continue;
 
-        for (int chunk: entry.second) {
+        for (int chunk : entry.second) {
             proto::WorkerCommandChunk* ptr = reply.add_chunks();
             ptr->set_db(database);
             ptr->set_chunk(chunk);
@@ -88,11 +82,8 @@ void SetChunkListCommand::_setChunks(proto::WorkerCommandSetChunkListR& reply,
     }
 }
 
-
 void SetChunkListCommand::_reportError(proto::WorkerCommandSetChunkListR::Status status,
-                                       string const& message,
-                                       ChunkInventory::ExistMap const& prevExistMap) {
-
+                                       string const& message, ChunkInventory::ExistMap const& prevExistMap) {
     LOGS(_log, LOG_LVL_ERROR, "SetChunkListCommand::" << __func__ << "  " << message);
 
     proto::WorkerCommandSetChunkListR reply;
@@ -107,9 +98,7 @@ void SetChunkListCommand::_reportError(proto::WorkerCommandSetChunkListR::Status
     _sendChannel->sendStream(streamBuffer, true);
 }
 
-
 void SetChunkListCommand::run() {
-
     string const context = "SetChunkListCommand::" + string(__func__) + "  ";
 
     LOGS(_log, LOG_LVL_DEBUG, context);
@@ -120,28 +109,25 @@ void SetChunkListCommand::run() {
     // Build a temporary object representing a desired chunk list and
     // compare it with the present one.
     ChunkInventory::ExistMap newExistMap;
-    for (Chunk const& chunkEntry: _chunks) {
+    for (Chunk const& chunkEntry : _chunks) {
         newExistMap[chunkEntry.database].insert(chunkEntry.chunk);
     }
-    ChunkInventory const newChunkInventory(newExistMap,
-                                           _chunkInventory->name(),
-                                           _chunkInventory->id());
+    ChunkInventory const newChunkInventory(newExistMap, _chunkInventory->name(), _chunkInventory->id());
 
-    ChunkInventory::ExistMap const toBeRemovedExistMap =  *_chunkInventory - newChunkInventory;
-    ChunkInventory::ExistMap const toBeAddedExistMap   = newChunkInventory -  *_chunkInventory;
+    ChunkInventory::ExistMap const toBeRemovedExistMap = *_chunkInventory - newChunkInventory;
+    ChunkInventory::ExistMap const toBeAddedExistMap = newChunkInventory - *_chunkInventory;
 
     // Make sure none of the chunks in the 'to be removed' group is not being used
     // unless in the 'force' mode
     if (not _force) {
-        for (auto const& entry: toBeRemovedExistMap) {
+        for (auto const& entry : toBeRemovedExistMap) {
             string const& database = entry.first;
             // Exclude databases which are not in a scope of this command
             if (0 == _databases.count(database)) continue;
-            for (auto chunk: entry.second) {
+            for (auto chunk : entry.second) {
                 if (_resourceMonitor->count(chunk, database)) {
                     _reportError(proto::WorkerCommandSetChunkListR::IN_USE,
-                                 "some chunks of the group are in use",
-                                prevExistMap);
+                                 "some chunks of the group are in use", prevExistMap);
                     return;
                 }
             }
@@ -150,20 +136,21 @@ void SetChunkListCommand::run() {
 
     // Begin making desired adjustments to the current inventory
 
-    xrdsvc::SsiProviderServer* providerServer = dynamic_cast<xrdsvc::SsiProviderServer*>(XrdSsiProviderLookup);
-    XrdSsiCluster*             clusterManager = providerServer->GetClusterManager();
+    xrdsvc::SsiProviderServer* providerServer =
+            dynamic_cast<xrdsvc::SsiProviderServer*>(XrdSsiProviderLookup);
+    XrdSsiCluster* clusterManager = providerServer->GetClusterManager();
 
-    for (auto const& entry: toBeRemovedExistMap) {
+    for (auto const& entry : toBeRemovedExistMap) {
         string const& database = entry.first;
         // Exclude databases which are not in a scope of this command
         if (0 == _databases.count(database)) continue;
 
-        for (auto chunk: entry.second) {
-
+        for (auto chunk : entry.second) {
             string const resource = "/chk/" + database + "/" + to_string(chunk);
 
-            LOGS(_log, LOG_LVL_DEBUG, context << "removing the chunk resource: "
-                 << resource << " in DataContext=" << clusterManager->DataContext());
+            LOGS(_log, LOG_LVL_DEBUG,
+                 context << "removing the chunk resource: " << resource
+                         << " in DataContext=" << clusterManager->DataContext());
 
             try {
                 // Notify QServ and update the database
@@ -176,34 +163,29 @@ void SetChunkListCommand::run() {
                     clusterManager->Removed(resource.c_str());
                 }
             } catch (InvalidParamError const& ex) {
-                _reportError(proto::WorkerCommandSetChunkListR::INVALID,
-                             ex.what(),
-                             prevExistMap);
+                _reportError(proto::WorkerCommandSetChunkListR::INVALID, ex.what(), prevExistMap);
                 return;
             } catch (QueryError const& ex) {
-                _reportError(proto::WorkerCommandSetChunkListR::ERROR,
-                             ex.what(),
-                             prevExistMap);
+                _reportError(proto::WorkerCommandSetChunkListR::ERROR, ex.what(), prevExistMap);
                 return;
             } catch (exception const& ex) {
                 _reportError(proto::WorkerCommandSetChunkListR::ERROR,
-                             "failed to remove the chunk: " + string(ex.what()),
-                             prevExistMap);
+                             "failed to remove the chunk: " + string(ex.what()), prevExistMap);
                 return;
             }
         }
     }
-    for (auto const& entry: toBeAddedExistMap) {
+    for (auto const& entry : toBeAddedExistMap) {
         string const& database = entry.first;
         // Exclude databases which are not in a scope of this command
         if (0 == _databases.count(database)) continue;
 
-        for (auto chunk: entry.second) {
-
+        for (auto chunk : entry.second) {
             string const resource = "/chk/" + database + "/" + to_string(chunk);
 
-            LOGS(_log, LOG_LVL_DEBUG, context << "adding the chunk resource: "
-                 << resource << " in DataContext=" << clusterManager->DataContext());
+            LOGS(_log, LOG_LVL_DEBUG,
+                 context << "adding the chunk resource: " << resource
+                         << " in DataContext=" << clusterManager->DataContext());
 
             try {
                 // Notify QServ and update the database
@@ -216,19 +198,14 @@ void SetChunkListCommand::run() {
                     clusterManager->Added(resource.c_str());
                 }
             } catch (InvalidParamError const& ex) {
-                _reportError(proto::WorkerCommandSetChunkListR::INVALID,
-                             ex.what(),
-                             prevExistMap);
+                _reportError(proto::WorkerCommandSetChunkListR::INVALID, ex.what(), prevExistMap);
                 return;
             } catch (QueryError const& ex) {
-                _reportError(proto::WorkerCommandSetChunkListR::ERROR,
-                             ex.what(),
-                             prevExistMap);
+                _reportError(proto::WorkerCommandSetChunkListR::ERROR, ex.what(), prevExistMap);
                 return;
             } catch (exception const& ex) {
                 _reportError(proto::WorkerCommandSetChunkListR::ERROR,
-                             "failed to add the chunk: " + string(ex.what()),
-                             prevExistMap);
+                             "failed to add the chunk: " + string(ex.what()), prevExistMap);
                 return;
             }
         }
@@ -246,4 +223,4 @@ void SetChunkListCommand::run() {
     LOGS(_log, LOG_LVL_DEBUG, context << "** SENT **");
 }
 
-}}} // namespace lsst::qserv::wpublish
+}}}  // namespace lsst::qserv::wpublish

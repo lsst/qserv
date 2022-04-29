@@ -33,19 +33,17 @@
 #include "replica/ServiceProvider.h"
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
 /**
-  * Class HttpSvc is a base class for HTTP servers of various components of the system.
-  * 
-  * @note The class's implementation starts its own collection of BOOST ASIO
-  *   service threads. The number of threads is specified via the corresponding
-  *   parameter of the class's constructor.
-  * @note The implementation of the class is not thread-safe.
-  */
-class HttpSvc: public std::enable_shared_from_this<HttpSvc> {
+ * Class HttpSvc is a base class for HTTP servers of various components of the system.
+ *
+ * @note The class's implementation starts its own collection of BOOST ASIO
+ *   service threads. The number of threads is specified via the corresponding
+ *   parameter of the class's constructor.
+ * @note The implementation of the class is not thread-safe.
+ */
+class HttpSvc : public std::enable_shared_from_this<HttpSvc> {
 public:
     typedef std::shared_ptr<HttpSvc> Ptr;
 
@@ -83,9 +81,7 @@ protected:
      *   open by the server.
      * @param numThreads The number of BOOST ASIO threads.
      */
-    HttpSvc(ServiceProvider::Ptr const& serviceProvider,
-            uint16_t port,
-            unsigned int backlog,
+    HttpSvc(ServiceProvider::Ptr const& serviceProvider, uint16_t port, unsigned int backlog,
             size_t numThreads);
 
     ServiceProvider::Ptr const& serviceProvider() const { return _serviceProvider; }
@@ -99,10 +95,10 @@ protected:
     }
 
     /// @return The context string to be used for the message logging.
-    virtual std::string const& context() const=0;
+    virtual std::string const& context() const = 0;
 
     /// Register subclass-specific REST services.
-    virtual void registerServices()=0;
+    virtual void registerServices() = 0;
 
 private:
     ServiceProvider::Ptr const _serviceProvider;
@@ -114,6 +110,6 @@ private:
     qhttp::Server::Ptr _httpServer;
 };
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_HTTPSVC_H
+#endif  // LSST_QSERV_REPLICA_HTTPSVC_H

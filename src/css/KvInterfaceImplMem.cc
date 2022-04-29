@@ -23,12 +23,12 @@
  */
 
 /**
-  * @file
-  *
-  * @brief Interface to the Common State System - transient memory-based implementation.
-  *
-  * @Author Jacek Becla, SLAC
-  */
+ * @file
+ *
+ * @brief Interface to the Common State System - transient memory-based implementation.
+ *
+ * @Author Jacek Becla, SLAC
+ */
 
 // Class header
 #include "css/KvInterfaceImplMem.h"
@@ -70,27 +70,25 @@ std::string norm_key(std::string const& key) {
     return path;
 }
 
-}
+}  // namespace
 
-namespace lsst {
-namespace qserv {
-namespace css {
+namespace lsst { namespace qserv { namespace css {
 
 /**
-  * Initialize the interface.
-  *
-  * @param mapPath path to the map dumped using ./admin/bin/qserv-admin.py
-  *
-  * To generate the key/value map, follow this recipe:
-  * 1) cleanup everything in CSS. careful, this will wipe out
-  *    everyting!
-  *    ./admin/bin/qserv-admin.py "drop everything"
-  * 2) generate the clean set:
-  *    ./admin/bin/qserv-admin.py <  <commands>
-  *    (example commands can be found in admin/examples/testMap_generateMap)
-  * 3) then copy the generate file to final destination:
-  *    mv /tmp/testMap.kvmap <destination>
-  */
+ * Initialize the interface.
+ *
+ * @param mapPath path to the map dumped using ./admin/bin/qserv-admin.py
+ *
+ * To generate the key/value map, follow this recipe:
+ * 1) cleanup everything in CSS. careful, this will wipe out
+ *    everyting!
+ *    ./admin/bin/qserv-admin.py "drop everything"
+ * 2) generate the clean set:
+ *    ./admin/bin/qserv-admin.py <  <commands>
+ *    (example commands can be found in admin/examples/testMap_generateMap)
+ * 3) then copy the generate file to final destination:
+ *    mv /tmp/testMap.kvmap <destination>
+ */
 KvInterfaceImplMem::KvInterfaceImplMem(std::istream& mapStream, bool readOnly) {
     _init(mapStream);
     // read-only should only be set after _init
@@ -104,11 +102,9 @@ KvInterfaceImplMem::KvInterfaceImplMem(string const& filename, bool readOnly) {
     _readOnly = readOnly;
 }
 
-KvInterfaceImplMem::~KvInterfaceImplMem() {
-}
+KvInterfaceImplMem::~KvInterfaceImplMem() {}
 
-std::string
-KvInterfaceImplMem::create(string const& key, string const& value, bool unique) {
+std::string KvInterfaceImplMem::create(string const& key, string const& value, bool unique) {
     LOGS(_log, LOG_LVL_DEBUG, "create(" << key << ", " << value << ", unique=" << int(unique));
 
     if (_readOnly) {
@@ -141,8 +137,7 @@ KvInterfaceImplMem::create(string const& key, string const& value, bool unique) 
     return path;
 }
 
-void
-KvInterfaceImplMem::set(string const& key, string const& value) {
+void KvInterfaceImplMem::set(string const& key, string const& value) {
     // Should always succeed, as long as std::map works.
     LOGS(_log, LOG_LVL_DEBUG, "set(" << key << ", " << value << ")");
 
@@ -163,18 +158,16 @@ KvInterfaceImplMem::set(string const& key, string const& value) {
     _kvMap[path] = value;
 }
 
-bool
-KvInterfaceImplMem::exists(string const& key) {
+bool KvInterfaceImplMem::exists(string const& key) {
     std::string path = norm_key(key);
     bool ret = _kvMap.find(path) != _kvMap.end();
-    LOGS(_log, LOG_LVL_DEBUG, "exists(" << key << "): " << (ret?"YES":"NO"));
+    LOGS(_log, LOG_LVL_DEBUG, "exists(" << key << "): " << (ret ? "YES" : "NO"));
     return ret;
 }
 
-std::map<std::string, std::string>
-KvInterfaceImplMem::getMany(std::vector<std::string> const& keys) {
+std::map<std::string, std::string> KvInterfaceImplMem::getMany(std::vector<std::string> const& keys) {
     std::map<std::string, std::string> result;
-    for (auto& key: keys) {
+    for (auto& key : keys) {
         std::string path = norm_key(key);
         auto iter = _kvMap.find(path);
         if (iter != _kvMap.end()) {
@@ -184,13 +177,10 @@ KvInterfaceImplMem::getMany(std::vector<std::string> const& keys) {
     return result;
 }
 
-string
-KvInterfaceImplMem::_get(string const& key,
-                         string const& defaultValue,
-                         bool throwIfKeyNotFound) {
+string KvInterfaceImplMem::_get(string const& key, string const& defaultValue, bool throwIfKeyNotFound) {
     LOGS(_log, LOG_LVL_DEBUG, "get(" << key << ")");
     std::string path = norm_key(key);
-    if ( !exists(path) ) {
+    if (!exists(path)) {
         if (throwIfKeyNotFound) {
             throw NoSuchKey(ERR_LOC, path);
         }
@@ -201,17 +191,16 @@ KvInterfaceImplMem::_get(string const& key,
     return s;
 }
 
-vector<string>
-KvInterfaceImplMem::getChildren(string const& key) {
+vector<string> KvInterfaceImplMem::getChildren(string const& key) {
     LOGS(_log, LOG_LVL_DEBUG, "getChildren(), key: " << key);
     std::string path = norm_key(key);
-    if ( ! exists(path) ) {
+    if (!exists(path)) {
         throw NoSuchKey(ERR_LOC, path);
     }
     const string pfx(path + "/");
     vector<string> retV;
     map<string, string>::const_iterator itrM;
-    for (itrM=_kvMap.begin() ; itrM!=_kvMap.end() ; itrM++) {
+    for (itrM = _kvMap.begin(); itrM != _kvMap.end(); itrM++) {
         string fullKey = itrM->first;
         LOGS(_log, LOG_LVL_DEBUG, "fullKey: " << fullKey);
         if (boost::starts_with(fullKey, pfx)) {
@@ -226,16 +215,15 @@ KvInterfaceImplMem::getChildren(string const& key) {
     return retV;
 }
 
-std::map<std::string, std::string>
-KvInterfaceImplMem::getChildrenValues(std::string const& key) {
+std::map<std::string, std::string> KvInterfaceImplMem::getChildrenValues(std::string const& key) {
     LOGS(_log, LOG_LVL_DEBUG, "getChildrenValues(), key: " << key);
     std::string path = norm_key(key);
-    if ( ! exists(path) ) {
+    if (!exists(path)) {
         throw NoSuchKey(ERR_LOC, path);
     }
     const string pfx(path + "/");
     std::map<std::string, std::string> retV;
-    for (auto const& pair: _kvMap) {
+    for (auto const& pair : _kvMap) {
         auto& fullKey = pair.first;
         LOGS(_log, LOG_LVL_DEBUG, "fullKey: " << fullKey);
         if (boost::starts_with(fullKey, pfx)) {
@@ -250,8 +238,7 @@ KvInterfaceImplMem::getChildrenValues(std::string const& key) {
     return retV;
 }
 
-void
-KvInterfaceImplMem::deleteKey(string const& key) {
+void KvInterfaceImplMem::deleteKey(string const& key) {
     LOGS(_log, LOG_LVL_DEBUG, "deleteKey(" << key << ")");
 
     if (_readOnly) {
@@ -268,13 +255,13 @@ KvInterfaceImplMem::deleteKey(string const& key) {
     _kvMap.erase(iter);
     // delete all children keys, not very efficient but we don't care
     std::string const keyPfx(path + "/");
-    for (auto iter = _kvMap.begin(); iter != _kvMap.end(); ) {
+    for (auto iter = _kvMap.begin(); iter != _kvMap.end();) {
         auto const& iterKey = iter->first;
         if (iterKey.size() > keyPfx.size() and iterKey.compare(0, keyPfx.size(), keyPfx) == 0) {
             LOGS(_log, LOG_LVL_DEBUG, "deleteKey: erasing child " << iterKey);
             iter = _kvMap.erase(iter);
         } else {
-            ++ iter;
+            ++iter;
         }
     }
 }
@@ -282,7 +269,7 @@ KvInterfaceImplMem::deleteKey(string const& key) {
 std::string KvInterfaceImplMem::dumpKV(std::string const& key) {
     const string pfx(norm_key(key) + "/");
     ptree::ptree tree;
-    for (auto& pair: _kvMap) {
+    for (auto& pair : _kvMap) {
         // filter the key, note that root key which is empty string will
         // be filtered out because pfx is never empty
         if (boost::starts_with(pair.first, pfx)) {
@@ -308,16 +295,15 @@ void KvInterfaceImplMem::_init(std::istream& mapStream) {
         throw CssError(ERR_LOC, "KvInterfaceImplMem - failed to parse JSON file");
     }
 
-    for (auto&& pair: tree) {
+    for (auto&& pair : tree) {
         set(pair.first, pair.second.data());
     }
 }
 
-std::shared_ptr<KvInterfaceImplMem>
-KvInterfaceImplMem::clone() const {
+std::shared_ptr<KvInterfaceImplMem> KvInterfaceImplMem::clone() const {
     std::shared_ptr<KvInterfaceImplMem> newOne = std::make_shared<KvInterfaceImplMem>();
     newOne->_kvMap = _kvMap;
     return newOne;
 }
 
-}}} // namespace lsst::qserv::css
+}}}  // namespace lsst::qserv::css

@@ -38,60 +38,36 @@ using namespace std;
 namespace {
 
 string const description =
-    "This application finds and corrects various problems with replicas in a scope"
-    " of a database family. And while doing so, the application will make the best"
-    " effort to leave worker nodes as balanced as possible, and it will also preserve"
-    " chunk collocation.";
+        "This application finds and corrects various problems with replicas in a scope"
+        " of a database family. And while doing so, the application will make the best"
+        " effort to leave worker nodes as balanced as possible, and it will also preserve"
+        " chunk collocation.";
 
 bool const injectDatabaseOptions = true;
 bool const boostProtobufVersionCheck = true;
 bool const enableServiceProvider = true;
 
-} /// namespace
+}  // namespace
 
+namespace lsst { namespace qserv { namespace replica {
 
-namespace lsst {
-namespace qserv {
-namespace replica {
-
-FixUpApp::Ptr FixUpApp::create(int argc, char* argv[]) {
-    return Ptr(new FixUpApp(argc, argv));
-}
-
+FixUpApp::Ptr FixUpApp::create(int argc, char* argv[]) { return Ptr(new FixUpApp(argc, argv)); }
 
 FixUpApp::FixUpApp(int argc, char* argv[])
-    :   Application(
-            argc, argv,
-            ::description,
-            ::injectDatabaseOptions,
-            ::boostProtobufVersionCheck,
-            ::enableServiceProvider
-        ) {
-
+        : Application(argc, argv, ::description, ::injectDatabaseOptions, ::boostProtobufVersionCheck,
+                      ::enableServiceProvider) {
     // Configure the command line parser
 
-    parser().required(
-        "database-family",
-        "The name of a database family.",
-        _databaseFamily
-    ).option(
-        "tables-page-size",
-        "The number of rows in the table of replicas (0 means no pages).",
-        _pageSize
-    );
+    parser().required("database-family", "The name of a database family.", _databaseFamily)
+            .option("tables-page-size", "The number of rows in the table of replicas (0 means no pages).",
+                    _pageSize);
 }
 
-
 int FixUpApp::runImpl() {
-
     string const noParentJobId;
-    auto const job = FixUpJob::create(
-        _databaseFamily,
-        Controller::create(serviceProvider()),
-        noParentJobId,
-        nullptr,    // no callback
-        PRIORITY_NORMAL
-    );
+    auto const job = FixUpJob::create(_databaseFamily, Controller::create(serviceProvider()), noParentJobId,
+                                      nullptr,  // no callback
+                                      PRIORITY_NORMAL);
     job->start();
     job->wait();
 
@@ -104,4 +80,4 @@ int FixUpApp::runImpl() {
     return job->extendedState() == Job::SUCCESS ? 0 : 1;
 }
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica

@@ -35,15 +35,13 @@
 
 // This header declarations
 
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
 /**
  * Class FileExportApp implements a tool which acts as a client of
  * the Replication system's table exporting server.
  */
-class FileExportApp: public Application {
+class FileExportApp : public Application {
 public:
     typedef std::shared_ptr<FileExportApp> Ptr;
 
@@ -52,14 +50,14 @@ public:
      * be exported.
      */
     struct FileExportSpec {
-        std::string   workerHost;           /// The host name or an IP address of a worker
-        uint16_t      workerPort = 0;       /// The port number of the Export Service
-        std::string   databaseName;         /// The name of a database which has the desired table
-        std::string   tableName;            /// The base name of a table to be exported
-        unsigned int  chunk;                /// The chunk number (partitioned tables only)
-        bool          overlap;              /// The flag is set to 'true' for the 'overlap
-                                            /// tables (partitioned tables only)
-        std::string   outFileName;          /// The name of a local file to be created
+        std::string workerHost;    /// The host name or an IP address of a worker
+        uint16_t workerPort = 0;   /// The port number of the Export Service
+        std::string databaseName;  /// The name of a database which has the desired table
+        std::string tableName;     /// The base name of a table to be exported
+        unsigned int chunk;        /// The chunk number (partitioned tables only)
+        bool overlap;              /// The flag is set to 'true' for the 'overlap
+                                   /// tables (partitioned tables only)
+        std::string outFileName;   /// The name of a local file to be created
     };
 
     /**
@@ -94,7 +92,7 @@ public:
      *   chunk_<number>.txt
      *   chunk_<number>_overlap.txt
      * @code
-     * 
+     *
      * @param jsonObj specifications packaged into a JSON object
      * @return a collection of specifications
      * @throws std::invalid_argument if the string can't be parsed
@@ -142,11 +140,11 @@ private:
     /// The column separator in the output files.
     std::string _columnSeparatorStr = "COMMA";
 
-    FileExportSpec _file;       /// File specification for the single file export ('FILE'))
+    FileExportSpec _file;  /// File specification for the single file export ('FILE'))
 
-    bool _verbose = false;      /// Print various stats upon a completion of the export
+    bool _verbose = false;  /// Print various stats upon a completion of the export
 };
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica
 
 #endif /* LSST_QSERV_REPLICA_FILEEXPORTAPP_H */

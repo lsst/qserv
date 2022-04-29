@@ -43,18 +43,12 @@
 #include "util/Issue.h"
 
 // Forward declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
-namespace detail {
-    class Parser;
-}}}}  // Forward declarations
+namespace lsst { namespace qserv { namespace replica { namespace detail {
+class Parser;
+}}}}  // namespace lsst::qserv::replica::detail
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
-namespace detail {
+namespace lsst { namespace qserv { namespace replica { namespace detail {
 
 /**
  * Class ParserError represents exceptions throw by the command-line parser
@@ -62,19 +56,15 @@ namespace detail {
  */
 class ParserError : public util::Issue {
 public:
-    ParserError(util::Issue::Context const& ctx,
-                std::string const& message);
+    ParserError(util::Issue::Context const& ctx, std::string const& message);
 };
-
 
 /**
  * The very base class which represents subjects which are parsed:
  * parameters, options and flags.
  */
 class ArgumentParser {
-
 public:
-
     /**
      * @return
      *   'true' if the specified value belongs to a collection
@@ -86,12 +76,11 @@ public:
      *   the collection of allowed values
      */
     template <typename T>
-    static bool in(T const& val,
-                  std::vector<T> const& col) {
+    static bool in(T const& val, std::vector<T> const& col) {
         return col.end() != std::find(col.begin(), col.end(), val);
     }
 
-     // Default construction and copy semantics are prohibited
+    // Default construction and copy semantics are prohibited
 
     ArgumentParser() = delete;
     ArgumentParser(ArgumentParser const&) = delete;
@@ -110,11 +99,8 @@ public:
      *   the description of the parameter as it will be shown in the 'help'
      *   printout (if the one is requested in the constructor of the class)
      */
-    ArgumentParser(std::string const& name,
-                   std::string const& description)
-    :   _name(name),
-        _description(description) {
-    }
+    ArgumentParser(std::string const& name, std::string const& description)
+            : _name(name), _description(description) {}
 
     virtual ~ArgumentParser() = default;
 
@@ -133,7 +119,7 @@ public:
      * @throws ParserErro
      *   if the text can't be parsed
      */
-    virtual void parse(std::string const& inStr="") = 0;
+    virtual void parse(std::string const& inStr = "") = 0;
 
     /**
      * Default values are supposed to be captured from user-defined variables
@@ -154,13 +140,11 @@ public:
     virtual void dumpNameValue(std::ostream& os) const = 0;
 
 private:
-    
     // Parameters of the object passed via the class's constructor
 
     std::string const _name;
     std::string const _description;
 };
-
 
 /**
  * Dump a string representation of the argument name and its value
@@ -168,16 +152,13 @@ private:
  */
 std::ostream& operator<<(std::ostream& os, ArgumentParser const& arg);
 
-
 /**
  * The class representing (mandatory or optional) parameters
  */
 template <typename T>
 class ParameterParser : public ArgumentParser {
-
 public:
-
-     // Default construction and copy semantics are prohibited
+    // Default construction and copy semantics are prohibited
 
     ParameterParser() = delete;
     ParameterParser(ParameterParser const&) = delete;
@@ -203,34 +184,26 @@ public:
      *
      * @see ArgumentParser::ArgumentParser()
      */
-    ParameterParser(std::string const& name,
-                    std::string const& description,
-                    T& var,
+    ParameterParser(std::string const& name, std::string const& description, T& var,
                     std::vector<T> const& allowedValues)
-    :   ArgumentParser(name,
-                       description),
-        _var(var),
-        _defaultValue(var),
-        _allowedValues(allowedValues) {
-    }
+            : ArgumentParser(name, description),
+              _var(var),
+              _defaultValue(var),
+              _allowedValues(allowedValues) {}
 
     virtual ~ParameterParser() = default;
 
     /// @see ArgumentParser::parse()
-    void parse(std::string const& inStr="") final {
+    void parse(std::string const& inStr = "") final {
         try {
             _var = boost::lexical_cast<T>(inStr);
         } catch (boost::bad_lexical_cast const& ex) {
-            throw ParserError(
-                    ERR_LOC,
-                    "failed to parse a value of parameter '" + name() +
-                    " from '" + inStr);
+            throw ParserError(ERR_LOC, "failed to parse a value of parameter '" + name() + " from '" + inStr);
         }
         if (not _allowedValues.empty()) {
             if (not in(_var, _allowedValues)) {
-                throw ParserError(
-                    ERR_LOC,
-                    "the value of parameter '" + name() + "' is disallowed: '" + inStr + "'");
+                throw ParserError(ERR_LOC,
+                                  "the value of parameter '" + name() + "' is disallowed: '" + inStr + "'");
             }
         }
     }
@@ -243,15 +216,12 @@ public:
     }
 
     /// @see ArgumentParser::dumpNameValue()
-    void dumpNameValue(std::ostream& os) const final {
-        os << name() << "=" << _var;
-    }
+    void dumpNameValue(std::ostream& os) const final { os << name() << "=" << _var; }
 
 private:
-    
     /// A reference to a user variable to be initialized
     T& _var;
-    
+
     /// A copy of the variable is captured here
     T const _defaultValue;
 
@@ -259,16 +229,13 @@ private:
     std::vector<T> const _allowedValues;
 };
 
-
 /**
  * The class representing named options
  */
 template <typename T>
 class OptionParser : public ArgumentParser {
-
 public:
-
-     // Default construction and copy semantics are prohibited
+    // Default construction and copy semantics are prohibited
 
     OptionParser() = delete;
     OptionParser(OptionParser const&) = delete;
@@ -294,33 +261,27 @@ public:
      *
      * @see ArgumentParser::ArgumentParser()
      */
-    OptionParser(std::string const& name,
-                 std::string const& description,
-                 T& var,
+    OptionParser(std::string const& name, std::string const& description, T& var,
                  std::vector<T> const& allowedValues)
-    :   ArgumentParser(name,
-                       description),
-        _var(var),
-        _defaultValue(var),
-        _allowedValues(allowedValues) {
-    }
+            : ArgumentParser(name, description),
+              _var(var),
+              _defaultValue(var),
+              _allowedValues(allowedValues) {}
 
     virtual ~OptionParser() = default;
 
     /// @see ArgumentParser::parse()
-    void parse(std::string const& inStr="") final {
+    void parse(std::string const& inStr = "") final {
         if (inStr.empty()) return;
         try {
             _var = boost::lexical_cast<T>(inStr);
         } catch (boost::bad_lexical_cast const& ex) {
-            throw ParserError(ERR_LOC,
-                              "failed to parse a value of option '" + name() + " from '" + inStr);
+            throw ParserError(ERR_LOC, "failed to parse a value of option '" + name() + " from '" + inStr);
         }
         if (not _allowedValues.empty()) {
             if (not in(_var, _allowedValues)) {
-                throw ParserError(
-                    ERR_LOC,
-                    "the value of parameter '" + name() + "' is disallowed: '" + inStr + "'");
+                throw ParserError(ERR_LOC,
+                                  "the value of parameter '" + name() + "' is disallowed: '" + inStr + "'");
             }
         }
     }
@@ -333,12 +294,9 @@ public:
     }
 
     /// @see ArgumentParser::dumpNameValue()
-    void dumpNameValue(std::ostream& os) const final {
-        os << name() << "=" << _var;
-    }
+    void dumpNameValue(std::ostream& os) const final { os << name() << "=" << _var; }
 
 private:
-    
     /// A reference to a user variable to be initialized
     T& _var;
 
@@ -349,15 +307,12 @@ private:
     std::vector<T> const _allowedValues;
 };
 
-
 /**
  * The class representing named flags
  */
 class FlagParser : public ArgumentParser {
-
 public:
-
-     // Default construction and copy semantics are prohibited
+    // Default construction and copy semantics are prohibited
 
     FlagParser() = delete;
     FlagParser(FlagParser const&) = delete;
@@ -365,7 +320,7 @@ public:
 
     /**
      * Construct the object
-     * 
+     *
      * @param name
      *   the name of the parameter as it will be shown in error messages
      *   (should there be any problem with parsing a value of the parameter)
@@ -389,31 +344,21 @@ public:
      *
      * @see ArgumentParser::ArgumentParser()
      */
-    FlagParser(std::string const& name,
-               std::string const& description,
-               bool& var,
-               bool reverse)
-    :   ArgumentParser(name,
-                       description),
-        _var(var),
-        _reverse(reverse) {
-    }
+    FlagParser(std::string const& name, std::string const& description, bool& var, bool reverse)
+            : ArgumentParser(name, description), _var(var), _reverse(reverse) {}
 
     virtual ~FlagParser() = default;
 
     /// @see ArgumentParser::parse()
-    void parse(std::string const& inStr="") final { _var = _reverse ? false : true; }
+    void parse(std::string const& inStr = "") final { _var = _reverse ? false : true; }
 
     /// @see ArgumentParser::defaultValue()
     std::string defaultValue() const final { return _reverse ? "true" : "false"; }
 
     /// @see ArgumentParser::dumpNameValue()
-    void dumpNameValue(std::ostream& os) const final {
-        os << name() << "=" << bool2str(_var);
-    }
+    void dumpNameValue(std::ostream& os) const final { os << name() << "=" << bool2str(_var); }
 
 private:
-    
     /// A reference to a user variable to be initialized
     bool& _var;
 
@@ -421,14 +366,11 @@ private:
     bool _reverse;
 };
 
-
 /**
  * Class Command is an abstraction for commands
  */
 class Command {
-
 public:
-
     // The default constructor
     Command() = default;
 
@@ -487,18 +429,9 @@ public:
      *   a reference to the command object in order to allow chained calls
      */
     template <typename T>
-    Command& required(std::string const& name,
-                      std::string const& description,
-                      T& var,
+    Command& required(std::string const& name, std::string const& description, T& var,
                       std::vector<T> const& allowedValues = std::vector<T>()) {
-        _required.push_back(
-            std::make_unique<ParameterParser<T>>(
-                name,
-                description,
-                var,
-                allowedValues
-            )
-        );
+        _required.push_back(std::make_unique<ParameterParser<T>>(name, description, var, allowedValues));
         return *this;
     }
 
@@ -515,18 +448,9 @@ public:
      *   a reference to the command object in order to allow chained calls
      */
     template <typename T>
-    Command& optional(std::string const& name,
-                      std::string const& description,
-                      T& var,
+    Command& optional(std::string const& name, std::string const& description, T& var,
                       std::vector<T> const& allowedValues = std::vector<T>()) {
-        _optional.push_back(
-            std::make_unique<ParameterParser<T>>(
-                name,
-                description,
-                var,
-                allowedValues
-            )
-        );
+        _optional.push_back(std::make_unique<ParameterParser<T>>(name, description, var, allowedValues));
         return *this;
     }
 
@@ -541,19 +465,9 @@ public:
      *   a reference to the command object in order to allow chained calls
      */
     template <typename T>
-    Command& option(std::string const& name,
-                    std::string const& description,
-                    T& var,
+    Command& option(std::string const& name, std::string const& description, T& var,
                     std::vector<T> const& allowedValues = std::vector<T>()) {
-        _options.emplace(
-            name,
-            std::make_unique<OptionParser<T>>(
-                name,
-                description,
-                var,
-                allowedValues
-            )
-        );
+        _options.emplace(name, std::make_unique<OptionParser<T>>(name, description, var, allowedValues));
         return *this;
     }
 
@@ -568,9 +482,7 @@ public:
      * @return
      *   a reference to the command object in order to allow chained calls
      */
-    Command& flag(std::string const& name,
-                  std::string const& description,
-                  bool& var);
+    Command& flag(std::string const& name, std::string const& description, bool& var);
 
     /**
      * This variation of the flag registration method would result in reversing
@@ -578,12 +490,9 @@ public:
      *
      * @see method Command::flag()
      */
-    Command& reversedFlag(std::string const& name,
-                          std::string const& description,
-                          bool& var);
+    Command& reversedFlag(std::string const& name, std::string const& description, bool& var);
 
 private:
-
     /// The friend class is allowed to access the members when parsing
     /// the command-line input
     friend class Parser;
@@ -593,7 +502,7 @@ private:
 
     /// A sequence of the mandatory parameters
     std::vector<std::unique_ptr<ArgumentParser>> _required;
-    
+
     /// A sequence of the optional parameters
     std::vector<std::unique_ptr<ArgumentParser>> _optional;
 
@@ -604,16 +513,13 @@ private:
     std::map<std::string, std::unique_ptr<ArgumentParser>> _flags;
 };
 
-
 /**
  * Class CommandsSet encapsulates a collection of commands along
  * with command-specific parameters.
  */
 class CommandsSet {
-
 public:
-
-     // Default construction and copy semantics are prohibited
+    // Default construction and copy semantics are prohibited
 
     CommandsSet() = delete;
     CommandsSet(CommandsSet const&) = delete;
@@ -621,7 +527,7 @@ public:
 
     /**
      * Construct the object
-     * 
+     *
      * @param commandNames
      *   a collection of command names
      *
@@ -629,8 +535,7 @@ public:
      *   a user variable to be initialized with the name of a command detected
      *   by the Parser.
      */
-    CommandsSet(std::vector<std::string> const& commandNames,
-                std::string& var);
+    CommandsSet(std::vector<std::string> const& commandNames, std::string& var);
 
     ~CommandsSet() = default;
 
@@ -649,7 +554,6 @@ public:
     Command& command(std::string const& name);
 
 private:
-
     /// The friend class is allowed to access the members when parsing
     /// the command-line input
     friend class Parser;
@@ -660,7 +564,6 @@ private:
     /// A reference to a user variable to be initialized
     std::string& _var;
 };
-
 
 /**
  * The class for parsing command line parameters and filling variables
@@ -726,8 +629,7 @@ public:
      * @return a reference to the parser object in order to allow chained calls
      * @throws std::logic_error if the Parser was already configured in this way
      */
-    Parser& commands(std::string const& name, std::vector<std::string> const& commandNames,
-                     std::string& var);
+    Parser& commands(std::string const& name, std::vector<std::string> const& commandNames, std::string& var);
 
     /**
      * Find a command in the set
@@ -765,8 +667,7 @@ public:
                      std::vector<T> const& allowedValues = std::vector<T>()) {
         _verifyArgument(name);
         _required.push_back(
-            std::move(std::make_unique<ParameterParser<T>>(name, description, var, allowedValues))
-        );
+                std::move(std::make_unique<ParameterParser<T>>(name, description, var, allowedValues)));
         return *this;
     }
 
@@ -783,12 +684,11 @@ public:
      *   a reference to the parser object in order to allow chained calls
      */
     template <typename T>
-    Parser& optional(std::string const& name, std::string const& description,
-                     T& var, std::vector<T> const& allowedValues = std::vector<T>()) {
+    Parser& optional(std::string const& name, std::string const& description, T& var,
+                     std::vector<T> const& allowedValues = std::vector<T>()) {
         _verifyArgument(name);
         _optional.push_back(
-            std::move(std::make_unique<ParameterParser<T>>(name, description, var, allowedValues))
-        );
+                std::move(std::make_unique<ParameterParser<T>>(name, description, var, allowedValues)));
         return *this;
     }
 
@@ -801,15 +701,11 @@ public:
      * @return  a reference to the parser object in order to allow chained calls
      */
     template <typename T>
-    Parser& option(std::string const& name, std::string const& description,
-                   T& var, std::vector<T> const& allowedValues = std::vector<T>()) {
+    Parser& option(std::string const& name, std::string const& description, T& var,
+                   std::vector<T> const& allowedValues = std::vector<T>()) {
         _verifyArgument(name);
-        _options.emplace(
-            std::make_pair(
-                name,
-                std::move(std::make_unique<OptionParser<T>>(name, description, var, allowedValues))
-            )
-        );
+        _options.emplace(std::make_pair(
+                name, std::move(std::make_unique<OptionParser<T>>(name, description, var, allowedValues))));
         return *this;
     }
 
@@ -862,9 +758,8 @@ public:
     std::string serializeArguments() const;
 
 private:
-
     /**
-     * Verify the name of an argument (parameter, option or flag) to ensure 
+     * Verify the name of an argument (parameter, option or flag) to ensure
      * it has a valid name.
      *
      * @param name the name of an argument
@@ -874,7 +769,7 @@ private:
 
     /**
      * Parse and store a value of an option in a collection if it's a valid option
-     * 
+     *
      * @param options a collection of options to be updated
      * @param name the name of an option
      * @param value its value
@@ -885,23 +780,22 @@ private:
 
     /**
      * Parse and store a value of a flag in a collection if it's a valid flag
-     * 
+     *
      * @param options a collection of flags to be updated
      * @param name the name of a flag
      * @return 'true' if this is a valid flag, and it's been successfully parsed
      */
-    bool _parseFlag(std::map<std::string, std::unique_ptr<ArgumentParser>>& flags,
-                    std::string const& name);
+    bool _parseFlag(std::map<std::string, std::unique_ptr<ArgumentParser>>& flags, std::string const& name);
 
-   /**
-    * Parse and store values of the positional parameters
-    * 
-    * @param out the output collection of parameters to be populated from the input one
-    * @param inItr the current position of a modifiable iterator pointing to the input
-    *   collection of parameters to be analyzed and parsed
-    * @param inItrEnd the end iterator for the input collection of parameters to be analyzed
-    *   and parsed
-    */ 
+    /**
+     * Parse and store values of the positional parameters
+     *
+     * @param out the output collection of parameters to be populated from the input one
+     * @param inItr the current position of a modifiable iterator pointing to the input
+     *   collection of parameters to be analyzed and parsed
+     * @param inItrEnd the end iterator for the input collection of parameters to be analyzed
+     *   and parsed
+     */
     void _parseParameters(std::vector<std::unique_ptr<ArgumentParser>>& out,
                           std::vector<std::string>::const_iterator& inItr,
                           std::vector<std::string>::const_iterator const& inItrEnd);
@@ -921,7 +815,7 @@ private:
      *   regardless if flag "--help" is registered or not for the application.
      */
     std::string const& _help();
-    
+
     /**
      * Read the input string and produce an output one with words
      * wrapped at wite spaces not to exceed the specified maximum width
@@ -933,19 +827,17 @@ private:
      * @return the wrapped text, in which each line (including the last one)
      *   ends with the newline symbol.
      */
-    static std::string _wrap(std::string const& str, std::string const& indent="      ",
-                             size_t width=72);
-
+    static std::string _wrap(std::string const& str, std::string const& indent = "      ", size_t width = 72);
 
     // Input parameters
 
-    int         const  _argc;
+    int const _argc;
     const char* const* _argv;
-    std::string const  _description;
+    std::string const _description;
 
     /// A sequence of the mandatory parameters
     std::vector<std::unique_ptr<ArgumentParser>> _required;
-    
+
     /// A sequence of the optional parameters
     std::vector<std::unique_ptr<ArgumentParser>> _optional;
 
@@ -972,7 +864,6 @@ private:
     std::string _helpStr;
 };
 
-}}}} // namespace lsst::qserv::replica::detail
+}}}}  // namespace lsst::qserv::replica::detail
 
-#endif // LSST_QSERV_REPLICA_APPLICATION_TYPES_H
-
+#endif  // LSST_QSERV_REPLICA_APPLICATION_TYPES_H

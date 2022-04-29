@@ -33,22 +33,18 @@
 #include "replica/RequestMessenger.h"
 
 // Forward declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
-    class Messenger;
-}}}  // Forward declarations
+namespace lsst { namespace qserv { namespace replica {
+class Messenger;
+}}}  // namespace lsst::qserv::replica
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
 /**
-  * Class DeleteRequest represents a transient state of the replica deletion
-  * requests within the master controller for deleting replicas.
-  */
-class DeleteRequest: public RequestMessenger  {
+ * Class DeleteRequest represents a transient state of the replica deletion
+ * requests within the master controller for deleting replicas.
+ */
+class DeleteRequest : public RequestMessenger {
 public:
     typedef std::shared_ptr<DeleteRequest> Ptr;
 
@@ -62,7 +58,7 @@ public:
     ~DeleteRequest() final = default;
 
     std::string const& database() const { return _database; }
-    unsigned int       chunk() const    { return _chunk; }
+    unsigned int chunk() const { return _chunk; }
 
     /// @return parameters of a target request
     DeleteRequestParams const& targetRequestParams() const { return _targetRequestParams; }
@@ -92,15 +88,9 @@ public:
      * @param messenger an interface for communicating with workers
      * @return pointer to the created object
      */
-    static Ptr create(ServiceProvider::Ptr const& serviceProvider,
-                      boost::asio::io_service& io_service,
-                      std::string const& worker,
-                      std::string const& database,
-                      unsigned int chunk,
-                      bool allowDuplicate,
-                      CallbackType const& onFinish,
-                      int priority,
-                      bool keepTracking,
+    static Ptr create(ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service,
+                      std::string const& worker, std::string const& database, unsigned int chunk,
+                      bool allowDuplicate, CallbackType const& onFinish, int priority, bool keepTracking,
                       std::shared_ptr<Messenger> const& messenger);
 
 protected:
@@ -114,22 +104,16 @@ protected:
     void savePersistentState(util::Lock const& lock) final;
 
     /// @see Request::extendedPersistentState()
-    std::list<std::pair<std::string,std::string>> extendedPersistentState() const override;
+    std::list<std::pair<std::string, std::string>> extendedPersistentState() const override;
 
     /// @see Request::awaken()
     void awaken(boost::system::error_code const& ec) final;
 
 private:
     /// @see DeleteRequest::create()
-    DeleteRequest(ServiceProvider::Ptr const& serviceProvider,
-                  boost::asio::io_service& io_service,
-                  std::string const& worker,
-                  std::string const& database,
-                  unsigned int chunk,
-                  bool allowDuplicate,
-                  CallbackType const& onFinish,
-                  int priority,
-                  bool keepTracking,
+    DeleteRequest(ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service,
+                  std::string const& worker, std::string const& database, unsigned int chunk,
+                  bool allowDuplicate, CallbackType const& onFinish, int priority, bool keepTracking,
                   std::shared_ptr<Messenger> const& messenger);
 
     /**
@@ -145,12 +129,11 @@ private:
      */
     void _analyze(bool success, ProtocolResponseDelete const& message);
 
-
     // Input parameters
 
-    std::string  const _database;
+    std::string const _database;
     unsigned int const _chunk;
-    CallbackType       _onFinish;   ///< @note is reset when the job finishes
+    CallbackType _onFinish;  ///< @note is reset when the job finishes
 
     /// Request-specific parameters of the target request
     DeleteRequestParams _targetRequestParams;
@@ -159,6 +142,6 @@ private:
     ReplicaInfo _replicaInfo;
 };
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_DELETEREQUEST_H
+#endif  // LSST_QSERV_REPLICA_DELETEREQUEST_H

@@ -28,9 +28,7 @@
 // qserv headers
 #include "wbase/Task.h"
 
-namespace lsst {
-namespace qserv {
-namespace wsched {
+namespace lsst { namespace qserv { namespace wsched {
 
 /// Class defines an interface to store Tasks related to chunks in an ordered manner.
 /// The only derived classes are expected to be ChunkDisk and ChunkTasksQueue.
@@ -69,9 +67,6 @@ public:
     virtual std::string queueInfo() const = 0;
 };
 
-}}} // namespace lsst::qserv::wsched
+}}}  // namespace lsst::qserv::wsched
 
-
-
-
-#endif // LSST_QSERV_WSCHED_CHUNKTASKCOLLECTION_H
+#endif  // LSST_QSERV_WSCHED_CHUNKTASKCOLLECTION_H

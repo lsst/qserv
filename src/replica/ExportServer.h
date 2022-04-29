@@ -37,16 +37,14 @@
 #include "replica/ServiceProvider.h"
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
 /**
-  * Class ExportServer is used for handling incoming connections to
-  * the table/chunk exporting service. Each instance of this class will be running
-  * in its own thread.
-  */
-class ExportServer : public std::enable_shared_from_this<ExportServer>  {
+ * Class ExportServer is used for handling incoming connections to
+ * the table/chunk exporting service. Each instance of this class will be running
+ * in its own thread.
+ */
+class ExportServer : public std::enable_shared_from_this<ExportServer> {
 public:
     typedef std::shared_ptr<ExportServer> Ptr;
 
@@ -60,8 +58,7 @@ public:
      *   for checking the consistency of the protocol)
      * @return A pointer to the created object
      */
-    static Ptr create(ServiceProvider::Ptr const& serviceProvider,
-                      std::string const& workerName);
+    static Ptr create(ServiceProvider::Ptr const& serviceProvider, std::string const& workerName);
 
     ExportServer() = delete;
     ExportServer(ExportServer const&) = delete;
@@ -81,21 +78,19 @@ public:
     void run();
 
 private:
-    ExportServer(ServiceProvider::Ptr const& serviceProvider,
-                 std::string const& workerName);
+    ExportServer(ServiceProvider::Ptr const& serviceProvider, std::string const& workerName);
 
     /**
      * Begin (asynchronously) accepting connection requests.
      */
     void _beginAccept();
-    
+
     /**
      * Handle a connection request once it's detected. The rest of
      * the communication will be forwarded to the connection object
      * specified as a parameter of the method.
      */
-    void _handleAccept(ExportServerConnection::Ptr const& connection,
-                       boost::system::error_code const& ec);
+    void _handleAccept(ExportServerConnection::Ptr const& connection, boost::system::error_code const& ec);
 
     /// @return the context string to be used for the message logging
     std::string _context() const { return "EXPORT-SERVER  "; }
@@ -103,12 +98,12 @@ private:
     // Input parameters
 
     ServiceProvider::Ptr const _serviceProvider;
-    std::string          const _workerName;
+    std::string const _workerName;
 
-    boost::asio::io_service        _io_service;
+    boost::asio::io_service _io_service;
     boost::asio::ip::tcp::acceptor _acceptor;
 };
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_EXPORTSERVER_H
+#endif  // LSST_QSERV_REPLICA_EXPORTSERVER_H

@@ -21,13 +21,12 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 /**
-  * @file
-  *
-  * @brief Implementation of a SelectList
-  *
-  * @author Daniel L. Wang, SLAC
-  */
-
+ * @file
+ *
+ * @brief Implementation of a SelectList
+ *
+ * @author Daniel L. Wang, SLAC
+ */
 
 // SelectList design notes:
 // Idea was to have this as an intermediate query tree representation.
@@ -40,7 +39,6 @@
 // Should we keep a hash table when column refs are detected, so we can
 // map them?
 // For now, just build the syntax tree without evaluating.
-
 
 // Class header
 #include "query/SelectList.h"
@@ -62,16 +60,11 @@
 #include "util/PointerCompare.h"
 #include "util/IterableFormatter.h"
 
-
-namespace lsst {
-namespace qserv {
-namespace query {
-
+namespace lsst { namespace qserv { namespace query {
 
 template <typename T>
 struct renderWithSep {
-    renderWithSep(QueryTemplate& qt_, std::string const& sep_)
-        : qt(qt_),sep(sep_),count(0) {}
+    renderWithSep(QueryTemplate& qt_, std::string const& sep_) : qt(qt_), sep(sep_), count(0) {}
     void operator()(T const& t) {
         if (++count > 1) qt.append(sep);
     }
@@ -80,9 +73,7 @@ struct renderWithSep {
     int count;
 };
 
-
-void
-SelectList::addStar(std::string const& table) {
+void SelectList::addStar(std::string const& table) {
     if (!_valueExprList) {
         throw std::logic_error("Corrupt SelectList object");
     }
@@ -92,35 +83,24 @@ SelectList::addStar(std::string const& table) {
     _valueExprList->push_back(ve);
 }
 
+void SelectList::addValueExpr(ValueExprPtr const& valueExpr) { _valueExprList->push_back(valueExpr); }
 
-void
-SelectList::addValueExpr(ValueExprPtr const& valueExpr) {
-    _valueExprList->push_back(valueExpr);
-}
-
-
-std::ostream&
-operator<<(std::ostream& os, SelectList const& sl) {
+std::ostream& operator<<(std::ostream& os, SelectList const& sl) {
     os << "SelectList(" << util::ptrPrintable(sl._valueExprList, "", "") << ")";
     return os;
 }
 
-
-std::ostream&
-operator<<(std::ostream& os, SelectList const* sl) {
+std::ostream& operator<<(std::ostream& os, SelectList const* sl) {
     (nullptr == sl) ? os << "nullptr" : os << *sl;
     return os;
 }
 
-
-std::string
-SelectList::getGenerated() {
+std::string SelectList::getGenerated() {
     QueryTemplate qt;
     renderTo(qt);
     auto generated = qt.sqlFragment();
     return generated;
 }
-
 
 void SelectList::renderTo(QueryTemplate& qt) const {
     ValueExpr::render rend(qt, true);
@@ -128,7 +108,6 @@ void SelectList::renderTo(QueryTemplate& qt) const {
         rend.applyToQT(valExpr);
     }
 }
-
 
 std::shared_ptr<SelectList> SelectList::clone() const {
     std::shared_ptr<SelectList> newS = std::make_shared<SelectList>(*this);
@@ -138,7 +117,6 @@ std::shared_ptr<SelectList> SelectList::clone() const {
     return newS;
 }
 
-
 std::shared_ptr<SelectList> SelectList::copySyntax() {
     std::shared_ptr<SelectList> newS = std::make_shared<SelectList>(*this);
     // Shallow copy of expr list is okay.
@@ -147,10 +125,8 @@ std::shared_ptr<SelectList> SelectList::copySyntax() {
     return newS;
 }
 
-
 bool SelectList::operator==(const SelectList& rhs) {
     return util::ptrVectorPtrCompare<ValueExpr>(_valueExprList, rhs._valueExprList);
 }
 
-
-}}} // namespace lsst::qserv::query
+}}}  // namespace lsst::qserv::query

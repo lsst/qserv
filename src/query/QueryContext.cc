@@ -21,13 +21,12 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 /**
-  * @file
-  *
-  * @brief QueryContext implementation.
-  *
-  * @author Daniel L. Wang, SLAC
-  */
-
+ * @file
+ *
+ * @brief QueryContext implementation.
+ *
+ * @author Daniel L. Wang, SLAC
+ */
 
 // Class header
 #include "query/QueryContext.h"
@@ -44,17 +43,13 @@
 #include "sql/SqlConnectionFactory.h"
 #include "sql/SqlResults.h"
 
-
 namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.query.QueryContext");
 
 }
 
-namespace lsst {
-namespace qserv {
-namespace query {
-
+namespace lsst { namespace qserv { namespace query {
 
 bool QueryContext::addUsedTableRef(std::shared_ptr<query::TableRef> const& tableRef) {
     if (nullptr == tableRef) {
@@ -63,15 +58,16 @@ bool QueryContext::addUsedTableRef(std::shared_ptr<query::TableRef> const& table
     // TableRefs added from the FROM list can have JoinRefs, which are nonsensical anywhere but in the FROM
     // list. To prevent these from leaking into other parts of the statement, copy the TableRef but omit the
     // JoinRefs.
-    auto addTableRef = std::make_shared<query::TableRef>(
-            tableRef->getDb(), tableRef->getTable(), tableRef->getAlias());
+    auto addTableRef =
+            std::make_shared<query::TableRef>(tableRef->getDb(), tableRef->getTable(), tableRef->getAlias());
     for (auto const& usedTableRef : _usedTableRefs) {
         // If the TableRef is already represented in the list (fully & exactly - but without joins) then just
         // return true.
         if (*usedTableRef == *addTableRef) {
             return true;
         }
-        // At a minimum, make sure we aren't accepting a second tableRef with different db or table but the same alias
+        // At a minimum, make sure we aren't accepting a second tableRef with different db or table but the
+        // same alias
         if (usedTableRef->getAlias() == addTableRef->getAlias()) {
             return false;
         }
@@ -79,7 +75,6 @@ bool QueryContext::addUsedTableRef(std::shared_ptr<query::TableRef> const& table
     _usedTableRefs.push_back(addTableRef);
     return true;
 }
-
 
 std::shared_ptr<query::TableRef> QueryContext::getTableRefMatch(
         std::shared_ptr<query::TableRef> const& tableRef) const {
@@ -101,12 +96,10 @@ std::shared_ptr<query::TableRef> QueryContext::getTableRefMatch(
     return nullptr;
 }
 
-
-std::shared_ptr<query::TableRef>
-QueryContext::getTableRefMatch(std::shared_ptr<query::ColumnRef> const& columnRef) const {
+std::shared_ptr<query::TableRef> QueryContext::getTableRefMatch(
+        std::shared_ptr<query::ColumnRef> const& columnRef) const {
     auto mapItr = _columnToTablesMap.find(columnRef->getColumn());
-    if (_columnToTablesMap.end() == mapItr)
-        return nullptr;
+    if (_columnToTablesMap.end() == mapItr) return nullptr;
     for (auto tableRef : mapItr->second) {
         auto&& tableRefMatch = getTableRefMatch(tableRef);
         if (tableRefMatch != nullptr) {
@@ -121,14 +114,12 @@ QueryContext::getTableRefMatch(std::shared_ptr<query::ColumnRef> const& columnRe
     return nullptr;
 }
 
-
 void QueryContext::addUsedValueExpr(std::shared_ptr<query::ValueExpr> const& valueExpr) {
     _usedValueExprs.push_back(valueExpr);
 }
 
-
-std::shared_ptr<query::ValueExpr>
-QueryContext::getValueExprMatch(std::shared_ptr<query::ValueExpr> const& valExpr) const {
+std::shared_ptr<query::ValueExpr> QueryContext::getValueExprMatch(
+        std::shared_ptr<query::ValueExpr> const& valExpr) const {
     for (auto&& usedValExpr : _usedValueExprs) {
         if (valExpr->isSubsetOf(*usedValExpr)) {
             return usedValExpr;
@@ -142,7 +133,6 @@ QueryContext::getValueExprMatch(std::shared_ptr<query::ValueExpr> const& valExpr
     return nullptr;
 }
 
-
 void QueryContext::addAreaRestrictors(AreaRestrictorVec const& newRestrictors) {
     if (newRestrictors.empty()) {
         return;
@@ -154,7 +144,6 @@ void QueryContext::addAreaRestrictors(AreaRestrictorVec const& newRestrictors) {
         areaRestrictors->insert(areaRestrictors->end(), newRestrictors.begin(), newRestrictors.end());
     }
 }
-
 
 void QueryContext::addSecIdxRestrictors(SecIdxRestrictorVec const& newRestrictors) {
     if (newRestrictors.empty()) {
@@ -168,7 +157,6 @@ void QueryContext::addSecIdxRestrictors(SecIdxRestrictorVec const& newRestrictor
     }
 }
 
-
 /// Get the table schema for the tables mentioned in the SQL 'FROM' statement.
 /// This should be adequate and possibly desirable as this information is being used
 /// to restrict queries to particular nodes via the secondary index. Sub-queries are not
@@ -181,9 +169,7 @@ void QueryContext::collectTopLevelTableSchema(FromList& fromList) {
     }
 }
 
-
 void QueryContext::collectTopLevelTableSchema(std::shared_ptr<query::TableRef> const& tableRef) {
-
     std::string db = tableRef->getDb();
     if (db.empty()) db = defaultDb;
     std::string table = tableRef->getTable();
@@ -209,11 +195,10 @@ void QueryContext::collectTopLevelTableSchema(std::shared_ptr<query::TableRef> c
     }
 }
 
-
 std::string QueryContext::columnToTablesMapToString() const {
     std::ostringstream os;
     for (auto const& elem : _columnToTablesMap) {
-        os << elem.first <<  "( "; // column name
+        os << elem.first << "( ";  // column name
         auto const& tableRefSet = elem.second;
         for (auto const& tableRef : tableRefSet) {
             os << *tableRef;
@@ -223,7 +208,6 @@ std::string QueryContext::columnToTablesMapToString() const {
     return os.str();
 }
 
-
 /// Get the table schema from the databaseModels. Primarily, this is
 /// used to map column names to particular tables.
 std::vector<std::string> QueryContext::_getTableSchema(std::string const& dbName,
@@ -231,14 +215,12 @@ std::vector<std::string> QueryContext::_getTableSchema(std::string const& dbName
     return databaseModels->listColumns(dbName, tableName);
 }
 
-
 bool QueryContext::TableRefSetLessThan::operator()(std::shared_ptr<query::TableRef const> const& lhs,
-        std::shared_ptr<query::TableRef const> const& rhs) const {
+                                                   std::shared_ptr<query::TableRef const> const& rhs) const {
     if (nullptr == lhs || nullptr == rhs) {
         throw std::runtime_error("nullptr in TableRefSetLessThan");
     }
     return *lhs < *rhs;
 }
 
-
-}}} // namespace lsst::qserv::query
+}}}  // namespace lsst::qserv::query

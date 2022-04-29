@@ -40,50 +40,32 @@ namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.RemoveReplicaQservMgtRequest");
 
-} /// namespace
+}  // namespace
 
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
 RemoveReplicaQservMgtRequest::Ptr RemoveReplicaQservMgtRequest::create(
-                                        ServiceProvider::Ptr const& serviceProvider,
-                                        string const& worker,
-                                        unsigned int chunk,
-                                        vector<string> const& databases,
-                                        bool force,
-                                        RemoveReplicaQservMgtRequest::CallbackType const& onFinish) {
+        ServiceProvider::Ptr const& serviceProvider, string const& worker, unsigned int chunk,
+        vector<string> const& databases, bool force,
+        RemoveReplicaQservMgtRequest::CallbackType const& onFinish) {
     return RemoveReplicaQservMgtRequest::Ptr(
-        new RemoveReplicaQservMgtRequest(serviceProvider,
-                                         worker,
-                                         chunk,
-                                         databases,
-                                         force,
-                                         onFinish));
+            new RemoveReplicaQservMgtRequest(serviceProvider, worker, chunk, databases, force, onFinish));
 }
-
 
 RemoveReplicaQservMgtRequest::RemoveReplicaQservMgtRequest(
-                                ServiceProvider::Ptr const& serviceProvider,
-                                string const& worker,
-                                unsigned int chunk,
-                                vector<string> const& databases,
-                                bool force,
-                                RemoveReplicaQservMgtRequest::CallbackType const& onFinish)
-    :   QservMgtRequest(serviceProvider,
-                        "QSERV_REMOVE_REPLICA",
-                        worker),
-        _chunk(chunk),
-        _databases(databases),
-        _force(force),
-        _onFinish(onFinish),
-        _qservRequest(nullptr) {
-}
+        ServiceProvider::Ptr const& serviceProvider, string const& worker, unsigned int chunk,
+        vector<string> const& databases, bool force,
+        RemoveReplicaQservMgtRequest::CallbackType const& onFinish)
+        : QservMgtRequest(serviceProvider, "QSERV_REMOVE_REPLICA", worker),
+          _chunk(chunk),
+          _databases(databases),
+          _force(force),
+          _onFinish(onFinish),
+          _qservRequest(nullptr) {}
 
-
-list<pair<string,string>> RemoveReplicaQservMgtRequest::extendedPersistentState() const {
-    list<pair<string,string>> result;
-    for (auto&& database: databases()) {
+list<pair<string, string>> RemoveReplicaQservMgtRequest::extendedPersistentState() const {
+    list<pair<string, string>> result;
+    for (auto&& database : databases()) {
         result.emplace_back("database", database);
     }
     result.emplace_back("chunk", to_string(chunk()));
@@ -91,58 +73,47 @@ list<pair<string,string>> RemoveReplicaQservMgtRequest::extendedPersistentState(
     return result;
 }
 
-
 void RemoveReplicaQservMgtRequest::startImpl(util::Lock const& lock) {
-
     auto const request = shared_from_base<RemoveReplicaQservMgtRequest>();
 
     _qservRequest = wpublish::RemoveChunkGroupQservRequest::create(
-        chunk(),
-        databases(),
-        force(),
-        [request] (wpublish::ChunkGroupQservRequest::Status status,
-                   string const& error) {
+            chunk(), databases(), force(),
+            [request](wpublish::ChunkGroupQservRequest::Status status, string const& error) {
+                if (request->state() == State::FINISHED) return;
 
-            if (request->state() == State::FINISHED) return;
-        
-            util::Lock lock(request->_mtx, request->context() + string(__func__) + "[callback]");
-        
-            if (request->state() == State::FINISHED) return;
+                util::Lock lock(request->_mtx, request->context() + string(__func__) + "[callback]");
 
-            switch (status) {
-                case wpublish::ChunkGroupQservRequest::Status::SUCCESS:
-                    request->finish(lock, QservMgtRequest::ExtendedState::SUCCESS);
-                    break;
+                if (request->state() == State::FINISHED) return;
 
-                case wpublish::ChunkGroupQservRequest::Status::INVALID:
-                    request->finish(lock, QservMgtRequest::ExtendedState::SERVER_BAD, error);
-                    break;
+                switch (status) {
+                    case wpublish::ChunkGroupQservRequest::Status::SUCCESS:
+                        request->finish(lock, QservMgtRequest::ExtendedState::SUCCESS);
+                        break;
 
-                case wpublish::ChunkGroupQservRequest::Status::IN_USE:
-                    request->finish(lock, QservMgtRequest::ExtendedState::SERVER_CHUNK_IN_USE, error);
-                    break;
+                    case wpublish::ChunkGroupQservRequest::Status::INVALID:
+                        request->finish(lock, QservMgtRequest::ExtendedState::SERVER_BAD, error);
+                        break;
 
-                case wpublish::ChunkGroupQservRequest::Status::ERROR:
-                    request->finish(lock, QservMgtRequest::ExtendedState::SERVER_ERROR, error);
-                    break;
+                    case wpublish::ChunkGroupQservRequest::Status::IN_USE:
+                        request->finish(lock, QservMgtRequest::ExtendedState::SERVER_CHUNK_IN_USE, error);
+                        break;
 
-                default:
-                    throw logic_error(
-                            "RemoveReplicaQservMgtRequest::" + string(__func__) +
-                            "  unhandled server status: " +
-                            wpublish::ChunkGroupQservRequest::status2str(status));
-            }
-        }
-    );
+                    case wpublish::ChunkGroupQservRequest::Status::ERROR:
+                        request->finish(lock, QservMgtRequest::ExtendedState::SERVER_ERROR, error);
+                        break;
+
+                    default:
+                        throw logic_error("RemoveReplicaQservMgtRequest::" + string(__func__) +
+                                          "  unhandled server status: " +
+                                          wpublish::ChunkGroupQservRequest::status2str(status));
+                }
+            });
     XrdSsiResource resource(ResourceUnit::makeWorkerPath(worker()));
     service()->ProcessRequest(*_qservRequest, resource);
 }
 
-
 void RemoveReplicaQservMgtRequest::finishImpl(util::Lock const& lock) {
-
     switch (extendedState()) {
-
         case ExtendedState::CANCELLED:
         case ExtendedState::TIMEOUT_EXPIRED:
 
@@ -159,10 +130,9 @@ void RemoveReplicaQservMgtRequest::finishImpl(util::Lock const& lock) {
     }
 }
 
-
 void RemoveReplicaQservMgtRequest::notify(util::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
     notifyDefaultImpl<RemoveReplicaQservMgtRequest>(lock, _onFinish);
 }
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica

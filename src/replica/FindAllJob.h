@@ -34,16 +34,13 @@
 #include "replica/SemanticMaps.h"
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
 /**
  * The structure FindAllJobResult represents a combined result received
  * from worker services upon a completion of the job.
  */
 struct FindAllJobResult {
-
     /// Per-worker flags indicating if the corresponding replica retrieval
     /// request succeeded for all databases in the family.
     ///
@@ -67,16 +64,13 @@ struct FindAllJobResult {
     ///
     ///      [chunk]
     ///
-    std::map<unsigned int,
-             std::list<std::string>> databases;
+    std::map<unsigned int, std::list<std::string>> databases;
 
     /// [SUBSET OF CHUNKS]  Workers hosting complete chunks
     ///
     ///      [chunk][database]->(worker,worker,,,)
     ///
-    std::map<unsigned int,
-             std::map<std::string,
-                      std::list<std::string>>> complete;
+    std::map<unsigned int, std::map<std::string, std::list<std::string>>> complete;
 
     /// [ALL CHUNKS]  The 'colocated' replicas are the ones in which all
     ///               participating databases are represented on the replica's
@@ -88,28 +82,22 @@ struct FindAllJobResult {
     ///
     ///      [chunk][worker]
     ///
-    std::map<unsigned int,
-             std::map<std::string,
-                      bool>> isColocated;
+    std::map<unsigned int, std::map<std::string, bool>> isColocated;
 
     /// [ALL CHUNKS]  The 'good' replicas are the 'colocated' one in which
     ///               all database-specific chunks are also complete (healthy).
     ///
     ///      [chunk][worker]
     ///
-    std::map<unsigned int,
-             std::map<std::string,
-                      bool>> isGood;
+    std::map<unsigned int, std::map<std::string, bool>> isGood;
 };
 
 /**
-  * Class FindAllJob represents a tool which will find all replicas
-  * of all chunks on all worker nodes.
-  */
-class FindAllJob : public Job  {
-
+ * Class FindAllJob represents a tool which will find all replicas
+ * of all chunks on all worker nodes.
+ */
+class FindAllJob : public Job {
 public:
-
     /// The pointer type for instances of the class
     typedef std::shared_ptr<FindAllJob> Ptr;
 
@@ -148,13 +136,9 @@ public:
      * @return
      *   pointer to the created object
      */
-    static Ptr create(std::string const& databaseFamily,
-                      bool saveReplicaInfo,
-                      bool allWorkers,
-                      Controller::Ptr const& controller,
-                      std::string const& parentJobId,
-                      CallbackType const& onFinish,
-                      int priority);
+    static Ptr create(std::string const& databaseFamily, bool saveReplicaInfo, bool allWorkers,
+                      Controller::Ptr const& controller, std::string const& parentJobId,
+                      CallbackType const& onFinish, int priority);
 
     // Default construction and copy semantics are prohibited
 
@@ -195,13 +179,12 @@ public:
     FindAllJobResult const& getReplicaData() const;
 
     /// @see Job::extendedPersistentState()
-    std::list<std::pair<std::string,std::string>> extendedPersistentState() const final;
+    std::list<std::pair<std::string, std::string>> extendedPersistentState() const final;
 
     /// @see Job::persistentLogData()
-    std::list<std::pair<std::string,std::string>> persistentLogData() const final;
+    std::list<std::pair<std::string, std::string>> persistentLogData() const final;
 
 protected:
-
     /// @see Job::startImpl()
     void startImpl(util::Lock const& lock) final;
 
@@ -212,15 +195,10 @@ protected:
     void notify(util::Lock const& lock) final;
 
 private:
-
     /// @see FindAllJob::create()
-    FindAllJob(std::string const& databaseFamily,
-               bool saveReplicaInfo,
-               bool allWorkers,
-               Controller::Ptr const& controller,
-               std::string const& parentJobId,
-               CallbackType const& onFinish,
-               int priority);
+    FindAllJob(std::string const& databaseFamily, bool saveReplicaInfo, bool allWorkers,
+               Controller::Ptr const& controller, std::string const& parentJobId,
+               CallbackType const& onFinish, int priority);
 
     /**
      * The callback function to be invoked on a completion of each request.
@@ -233,9 +211,9 @@ private:
     // Input parameters
 
     std::string const _databaseFamily;
-    bool        const _saveReplicaInfo;
-    bool        const _allWorkers;
-    CallbackType      _onFinish;    /// @note is reset when the job finishes
+    bool const _saveReplicaInfo;
+    bool const _allWorkers;
+    CallbackType _onFinish;  /// @note is reset when the job finishes
 
     /// Members of the family pulled from Configuration
     std::vector<std::string> const _databases;
@@ -247,14 +225,14 @@ private:
     /// retrieval request succeeded for all databases in the family.
     std::map<std::string, std::map<std::string, bool>> _workerDatabaseSuccess;
 
-    size_t _numLaunched = 0;    ///< the total number of requests launched
-    size_t _numFinished = 0;    ///< the total number of finished requests
-    size_t _numSuccess  = 0;    ///< the number of successfully completed requests
+    size_t _numLaunched = 0;  ///< the total number of requests launched
+    size_t _numFinished = 0;  ///< the total number of finished requests
+    size_t _numSuccess = 0;   ///< the number of successfully completed requests
 
     /// The result of the operation (gets updated as requests are finishing)
     FindAllJobResult _replicaData;
 };
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_FINDALLJOB_H
+#endif  // LSST_QSERV_REPLICA_FINDALLJOB_H

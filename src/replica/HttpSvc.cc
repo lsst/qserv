@@ -36,28 +36,21 @@ namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.HttpSvc");
 
-} /// namespace
+}  // namespace
 
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
-HttpSvc::HttpSvc(ServiceProvider::Ptr const& serviceProvider,
-                 uint16_t port,
-                 unsigned int backlog,
+HttpSvc::HttpSvc(ServiceProvider::Ptr const& serviceProvider, uint16_t port, unsigned int backlog,
                  size_t numThreads)
-    :   _serviceProvider(serviceProvider),
-        _port(port),
-        _backlog(backlog),
-        _numThreads(numThreads),
-        _io_service_ptr(new boost::asio::io_service()) {
-}
-
+        : _serviceProvider(serviceProvider),
+          _port(port),
+          _backlog(backlog),
+          _numThreads(numThreads),
+          _io_service_ptr(new boost::asio::io_service()) {}
 
 HttpSvc::~HttpSvc() {
     if (_httpServer != nullptr) _httpServer->stop();
 }
-
 
 void HttpSvc::run() {
     string const context_ = context() + " " + string(__func__) + " ";
@@ -67,7 +60,7 @@ void HttpSvc::run() {
         throw logic_error(context_ + "service is already running.");
     }
     _httpServer = qhttp::Server::create(*_io_service_ptr, _port, _backlog);
- 
+
     // Make sure the services were registered and the server  started before launching
     // any BOOST ASIO threads. This will prevent threads from finishing due to a lack of
     // work to be done.
@@ -77,12 +70,10 @@ void HttpSvc::run() {
     // Launch all threads in a dedicated pool.
     auto const self = shared_from_this();
     vector<shared_ptr<thread>> threads(_numThreads);
-    for (auto&& ptr: threads) {
-        ptr = shared_ptr<thread>(new thread([self]() {
-            self->_io_service_ptr->run();
-        }));
+    for (auto&& ptr : threads) {
+        ptr = shared_ptr<thread>(new thread([self]() { self->_io_service_ptr->run(); }));
     }
-    for (auto&& ptr: threads) {
+    for (auto&& ptr : threads) {
         ptr->join();
     }
 }
@@ -96,5 +87,4 @@ void HttpSvc::stop() {
     _httpServer->stop();
 }
 
-
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica

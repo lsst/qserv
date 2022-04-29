@@ -41,25 +41,16 @@
 // Qserv headers
 #include "global/constants.h"
 
-
-namespace lsst {
-namespace qserv {
-namespace qdisp {
+namespace lsst { namespace qserv { namespace qdisp {
 
 struct QueryMessage {
-
-    QueryMessage(int chunkId_,
-                 int code_,
-                 std::string description_,
-                 std::time_t timestamp_,
-                 MessageSeverity severity_
-                 )
-        :  chunkId(chunkId_),
-           code(code_),
-           description(description_),
-           timestamp(timestamp_),
-           severity(severity_) {
-    }
+    QueryMessage(int chunkId_, int code_, std::string description_, std::time_t timestamp_,
+                 MessageSeverity severity_)
+            : chunkId(chunkId_),
+              code(code_),
+              description(description_),
+              timestamp(timestamp_),
+              severity(severity_) {}
 
     int chunkId;
     int code;
@@ -76,7 +67,6 @@ struct QueryMessage {
  */
 class MessageStore {
 public:
-
     /** Add a message to this MessageStore
      *
      * This message will be sent to proxy via message table, in order to be
@@ -103,7 +93,7 @@ public:
      */
     void addErrorMessage(std::string const& description);
     QueryMessage getMessage(int idx) const;
-    int messageCount() const ;
+    int messageCount() const;
     int messageCount(int code) const;
 
 private:
@@ -111,6 +101,6 @@ private:
     std::vector<QueryMessage> _queryMessages;
 };
 
-}}} // namespace lsst::qserv::qdisp
+}}}  // namespace lsst::qserv::qdisp
 
-#endif // LSST_QSERV_QDISP_MESSAGESTORE_H
+#endif  // LSST_QSERV_QDISP_MESSAGESTORE_H

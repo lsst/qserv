@@ -31,9 +31,7 @@
 
 // LSST headers
 
-namespace lsst {
-namespace qserv {
-namespace util {
+namespace lsst { namespace qserv { namespace util {
 
 ///  class WorkQueue -- A class that implements a fixed-size
 ///  thread-pool for performing tasks.  No pre-emption, so if all
@@ -48,10 +46,10 @@ class WorkQueue {
 public:
     class Callable {
     public:
-        virtual ~Callable() {} // Must halt current operation.
+        virtual ~Callable() {}  // Must halt current operation.
         virtual void operator()() = 0;
-        virtual void abort() {} // Halt while running or otherwise
-        virtual void cancel() {} // Cleanup (not run yet)
+        virtual void abort() {}   // Halt while running or otherwise
+        virtual void cancel() {}  // Cleanup (not run yet)
     };
 
     WorkQueue(int numRunners);
@@ -66,15 +64,13 @@ public:
     class Runner;
     void registerRunner(Runner* r);
     void signalDeath(Runner* r);
-    bool isPoison(Callable const* const c) {
-        return (Callable *)0 == c;
-    }
+    bool isPoison(Callable const* const c) { return (Callable*)0 == c; }
 
 private:
     void _addRunner();
     static void _startRunner(WorkQueue& wq);
 
-    void _dropQueue(bool final=true);
+    void _dropQueue(bool final = true);
 
     typedef std::deque<std::shared_ptr<Callable> > WorkDeque;
     typedef std::deque<Runner*> RunnerDeque;
@@ -91,4 +87,4 @@ private:
 
 }}}  // namespace lsst::qserv::util
 
-#endif // LSST_QSERV_UTIL_WORKQUEUE_H
+#endif  // LSST_QSERV_UTIL_WORKQUEUE_H

@@ -42,8 +42,8 @@ using namespace lsst::qserv::replica;
 namespace {
 
 string const description =
-    "This is a Controller application which launches a single job Controller in order"
-    " to acquire, analyze, and report chunk disposition within a database family.";
+        "This is a Controller application which launches a single job Controller in order"
+        " to acquire, analyze, and report chunk disposition within a database family.";
 
 bool const injectDatabaseOptions = true;
 bool const boostProtobufVersionCheck = true;
@@ -53,26 +53,22 @@ bool const enableServiceProvider = true;
  * Dump the replica info
  */
 void dump(FindAllJobResult const& replicaData) {
-
     cout << "*** DETAILED REPORTS ***\n"
          << "\nCO-LOCATION:\n";
 
-    for (auto&& chunk2workers: replicaData.isColocated) {
+    for (auto&& chunk2workers : replicaData.isColocated) {
         unsigned int const chunk = chunk2workers.first;
 
-        for (auto&& worker2colocated: chunk2workers.second) {
+        for (auto&& worker2colocated : chunk2workers.second) {
             auto&& destinationWorker = worker2colocated.first;
-            bool const isColocated   = worker2colocated.second;
+            bool const isColocated = worker2colocated.second;
 
             cout << "  "
-                 << "  chunk: "  << setw(6) << chunk
-                 << "  worker: " << setw(12) << destinationWorker
-                 << "  isColocated: " << (isColocated ? "YES" : "NO")
-                 << "\n";
+                 << "  chunk: " << setw(6) << chunk << "  worker: " << setw(12) << destinationWorker
+                 << "  isColocated: " << (isColocated ? "YES" : "NO") << "\n";
         }
     }
 }
-
 
 /**
  * @return
@@ -96,113 +92,83 @@ void dump(FindAllJobResult const& replicaData) {
  * @param badWorkers
  *   collection of the Replication system's workers which didn't respond
  *   to the requests
- * 
+ *
  * @param qservWorkers
  *   collection of the names of  Qserv workers participating
  *   in the operation
- * 
+ *
  * @param badQservWorkers
  *   collection of the Qserv workers which didn't respond
  *   to the requests
  */
-string workers2str(map<string, size_t> const& worker2idx,
-                   set<string> const& workers,
-                   set<string> const& badWorkers,
-                   set<string> const& qservWorkers,
+string workers2str(map<string, size_t> const& worker2idx, set<string> const& workers,
+                   set<string> const& badWorkers, set<string> const& qservWorkers,
                    set<string> const& badQservWorkers) {
-
     // Prepare a blank line using symbols '--' as a placeholder for workers
     // at the relative 0-based positions. The last placeholder is intentionally
     // shorter by 1 character to avoid leaving the trailing white space character.
 
-    string result(3*worker2idx.size() - 1, ' ');
+    string result(3 * worker2idx.size() - 1, ' ');
     for (size_t idx = 0, num = worker2idx.size(); idx < num; ++idx) {
-        result[3*idx]   = '-';
-        result[3*idx+1] = '-';
+        result[3 * idx] = '-';
+        result[3 * idx + 1] = '-';
     }
 
     // Fill-in participating workers at their positions in the line
 
-    for (auto const& worker: workers) {
-        result[3*worker2idx.at(worker)] = 'R';
+    for (auto const& worker : workers) {
+        result[3 * worker2idx.at(worker)] = 'R';
     }
-    for (auto const& worker: badWorkers) {
-        result[3*worker2idx.at(worker)] = '*';
+    for (auto const& worker : badWorkers) {
+        result[3 * worker2idx.at(worker)] = '*';
     }
-    for (auto const& worker: qservWorkers) {
-        result[3*worker2idx.at(worker)+1] = 'Q';
+    for (auto const& worker : qservWorkers) {
+        result[3 * worker2idx.at(worker) + 1] = 'Q';
     }
-    for (auto const& worker: badQservWorkers) {
-        result[3*worker2idx.at(worker)+1] = '*';
+    for (auto const& worker : badQservWorkers) {
+        result[3 * worker2idx.at(worker) + 1] = '*';
     }
     return result;
 }
 
-} /// namespace
+}  // namespace
 
+namespace lsst { namespace qserv { namespace replica {
 
-namespace lsst {
-namespace qserv {
-namespace replica {
-
-ChunksApp::Ptr ChunksApp::create(int argc, char* argv[]) {
-    return Ptr(new ChunksApp(argc, argv));
-}
-
+ChunksApp::Ptr ChunksApp::create(int argc, char* argv[]) { return Ptr(new ChunksApp(argc, argv)); }
 
 ChunksApp::ChunksApp(int argc, char* argv[])
-    :   Application(
-            argc, argv,
-            ::description,
-            ::injectDatabaseOptions,
-            ::boostProtobufVersionCheck,
-            ::enableServiceProvider
-        ) {
-
+        : Application(argc, argv, ::description, ::injectDatabaseOptions, ::boostProtobufVersionCheck,
+                      ::enableServiceProvider) {
     // Configure the command line parser
 
-    parser().required(
-        "database-family",
-        "The name of a database family to inspect.",
-        _databaseFamily
-    ).flag(
-        "all-workers",
-        "The flag for selecting all workers regardless of their status (DISABLED or READ-ONLY).",
-        _allWorkers
-    ).flag(
-        "do-not-save-replica",
-        "The flag which (if used) prevents the application from saving replica info in a database."
-        " This may significantly speed up the application in setups where the number of chunks is on"
-        " a scale of one million, or exceeds it.",
-        _doNotSaveReplicaInfo
-    ).flag(
-        "qserv-replicas",
-        "The flag for pulling chunk disposition from Qserv workers for the combined analysis.",
-        _pullQservReplicas
-    ).flag(
-        "detailed-report",
-        "The flag triggering detailed report on the found replicas.",
-        _detailedReport
-    ).option(
-        "tables-page-size",
-        "The number of rows in the table of replicas (0 means no pages).",
-        _pageSize
-    ).flag(
-        "tables-vertical-separator",
-        "Print vertical separator when displaying tabular data in reports.",
-        _verticalSeparator
-    );
+    parser().required("database-family", "The name of a database family to inspect.", _databaseFamily)
+            .flag("all-workers",
+                  "The flag for selecting all workers regardless of their status (DISABLED or READ-ONLY).",
+                  _allWorkers)
+            .flag("do-not-save-replica",
+                  "The flag which (if used) prevents the application from saving replica info in a database."
+                  " This may significantly speed up the application in setups where the number of chunks is "
+                  "on"
+                  " a scale of one million, or exceeds it.",
+                  _doNotSaveReplicaInfo)
+            .flag("qserv-replicas",
+                  "The flag for pulling chunk disposition from Qserv workers for the combined analysis.",
+                  _pullQservReplicas)
+            .flag("detailed-report", "The flag triggering detailed report on the found replicas.",
+                  _detailedReport)
+            .option("tables-page-size", "The number of rows in the table of replicas (0 means no pages).",
+                    _pageSize)
+            .flag("tables-vertical-separator",
+                  "Print vertical separator when displaying tabular data in reports.", _verticalSeparator);
 }
 
-
 int ChunksApp::runImpl() {
-
     auto controller = Controller::create(serviceProvider());
 
     // Workers requested
-    auto const workerNames = _allWorkers ?
-        serviceProvider()->config()->allWorkers() :
-        serviceProvider()->config()->workers();
+    auto const workerNames =
+            _allWorkers ? serviceProvider()->config()->allWorkers() : serviceProvider()->config()->workers();
 
     ///////////////////////////////////////////////////////////////////
     // Start two parallel jobs, the first one getting the latest state
@@ -213,34 +179,23 @@ int ChunksApp::runImpl() {
     // workers are offline.
 
     string const noParentJobId;
-    auto findAllJob = FindAllJob::create(
-        _databaseFamily,
-        !_doNotSaveReplicaInfo,
-        _allWorkers,
-        controller,
-        noParentJobId,
-        nullptr,        // no callback
-        PRIORITY_NORMAL
-    );
+    auto findAllJob = FindAllJob::create(_databaseFamily, !_doNotSaveReplicaInfo, _allWorkers, controller,
+                                         noParentJobId,
+                                         nullptr,  // no callback
+                                         PRIORITY_NORMAL);
     findAllJob->start();
 
     QservGetReplicasJob::Ptr qservGetReplicasJob;
     if (_pullQservReplicas) {
         bool const inUseOnly = false;
-        qservGetReplicasJob = QservGetReplicasJob::create(
-            _databaseFamily,
-            inUseOnly,
-            _allWorkers,
-            controller,
-            noParentJobId,
-            nullptr,        // no callback
-            PRIORITY_NORMAL
-        );
+        qservGetReplicasJob = QservGetReplicasJob::create(_databaseFamily, inUseOnly, _allWorkers, controller,
+                                                          noParentJobId,
+                                                          nullptr,  // no callback
+                                                          PRIORITY_NORMAL);
         qservGetReplicasJob->start();
         qservGetReplicasJob->wait();
     }
     findAllJob->wait();
-
 
     //////////////////////////////
     // Analyze and display results
@@ -263,15 +218,15 @@ int ChunksApp::runImpl() {
 
     // Count chunk replicas per worker from both sources
     map<string, size_t> worker2numChunks;
-    for (auto const& replicaCollection: replicaData.replicas) {
-        for (auto const& replica: replicaCollection) {
+    for (auto const& replicaCollection : replicaData.replicas) {
+        for (auto const& replica : replicaCollection) {
             worker2numChunks[replica.worker()]++;
         }
     }
 
     map<string, size_t> qservWorker2numChunks;
     if (_pullQservReplicas) {
-        for (auto const& entry: qservReplicaData.replicas) {
+        for (auto const& entry : qservReplicaData.replicas) {
             auto const& worker = entry.first;
             auto const& replicaCollection = entry.second;
             qservWorker2numChunks[worker] = replicaCollection.size();
@@ -281,9 +236,10 @@ int ChunksApp::runImpl() {
     // Remember bad workers
     set<string> badWorkers;
     set<string> badQservWorkers;
-    for (auto const& workerName: workerNames) {
+    for (auto const& workerName : workerNames) {
         if (not replicaData.workers.at(workerName)) badWorkers.insert(workerName);
-        if (_pullQservReplicas and not qservReplicaData.workers.at(workerName)) badQservWorkers.insert(workerName);
+        if (_pullQservReplicas and not qservReplicaData.workers.at(workerName))
+            badQservWorkers.insert(workerName);
     }
 
     // Print a summary table with the number of chunks across both types
@@ -295,38 +251,32 @@ int ChunksApp::runImpl() {
         vector<string> columnNumQservReplicas;
         vector<string> columnNumReplicasDiff;
 
-        for (auto const& workerName: workerNames) {
-
+        for (auto const& workerName : workerNames) {
             columnWorkerIdx.push_back(worker2idx[workerName]);
             columnWorkerName.push_back(workerName);
 
             columnNumReplicas.push_back(
-                replicaData.workers.at(workerName) ?
-                    to_string(worker2numChunks[workerName]) :
-                    "*");
+                    replicaData.workers.at(workerName) ? to_string(worker2numChunks[workerName]) : "*");
 
-            columnNumQservReplicas.push_back(
-                _pullQservReplicas and qservReplicaData.workers.at(workerName) ?
-                    to_string(qservWorker2numChunks[workerName]) :
-                    "*");
-            
+            columnNumQservReplicas.push_back(_pullQservReplicas and qservReplicaData.workers.at(workerName)
+                                                     ? to_string(qservWorker2numChunks[workerName])
+                                                     : "*");
+
             string const numReplicasDiffStr =
-                replicaData.workers.at(workerName) and
-                _pullQservReplicas and qservReplicaData.workers.at(workerName) ?
-                    to_string(qservWorker2numChunks[workerName] - worker2numChunks[workerName]) :
-                    "*";
+                    replicaData.workers.at(workerName) and _pullQservReplicas and
+                                    qservReplicaData.workers.at(workerName)
+                            ? to_string(qservWorker2numChunks[workerName] - worker2numChunks[workerName])
+                            : "*";
             columnNumReplicasDiff.push_back(numReplicasDiffStr == "0" ? "" : numReplicasDiffStr);
         }
         util::ColumnTablePrinter table(
-            "NUMBER OF CHUNKS REPORTED BY WORKERS ('R'eplication, 'Q'serv, '*' - no response):",
-            "  ",
-            _verticalSeparator
-        );
-        table.addColumn("idx",    columnWorkerIdx);
+                "NUMBER OF CHUNKS REPORTED BY WORKERS ('R'eplication, 'Q'serv, '*' - no response):", "  ",
+                _verticalSeparator);
+        table.addColumn("idx", columnWorkerIdx);
         table.addColumn("worker", columnWorkerName, util::ColumnTablePrinter::LEFT);
-        table.addColumn("R",      columnNumReplicas);
-        table.addColumn("Q",      columnNumQservReplicas);
-        table.addColumn("Q-R",    columnNumReplicasDiff);
+        table.addColumn("R", columnNumReplicas);
+        table.addColumn("Q", columnNumQservReplicas);
+        table.addColumn("Q-R", columnNumReplicasDiff);
 
         cout << "\n";
         table.print(cout, false, false);
@@ -336,83 +286,80 @@ int ChunksApp::runImpl() {
     // across both types of workers.
     {
         vector<unsigned int> columnChunkNumber;
-        vector<string>       columnDatabaseName;
-        vector<string>       columnNumReplicas;
-        vector<string>       columnNumReplicasDiff;
-        vector<string>       columnNumQservReplicas;
-        vector<string>       columnNumQservReplicasDiff;
-        vector<string>       columnReplicasAtWorkers;
+        vector<string> columnDatabaseName;
+        vector<string> columnNumReplicas;
+        vector<string> columnNumReplicasDiff;
+        vector<string> columnNumQservReplicas;
+        vector<string> columnNumQservReplicasDiff;
+        vector<string> columnReplicasAtWorkers;
 
         size_t const replicationLevel = serviceProvider()->config()->replicationLevel(_databaseFamily);
 
-        for (auto&& chunk: replicaData.chunks) {
-            auto&& chunkNumber = chunk.first; 
-            auto&& databases   = chunk.second;
+        for (auto&& chunk : replicaData.chunks) {
+            auto&& chunkNumber = chunk.first;
+            auto&& databases = chunk.second;
 
-            for (auto&& database: databases) {
+            for (auto&& database : databases) {
                 auto&& databaseName = database.first;
-                auto&& workers      = database.second;
+                auto&& workers = database.second;
 
-                size_t const  numReplicas        = workers.size();
-                string const  numReplicasStr     = numReplicas ? to_string(numReplicas) : "";
-                int    const  numReplicasDiff    = int(numReplicas) - int(replicationLevel);
-                string const  numReplicasDiffStr = numReplicasDiff ? to_string(numReplicasDiff) : "";
+                size_t const numReplicas = workers.size();
+                string const numReplicasStr = numReplicas ? to_string(numReplicas) : "";
+                int const numReplicasDiff = int(numReplicas) - int(replicationLevel);
+                string const numReplicasDiffStr = numReplicasDiff ? to_string(numReplicasDiff) : "";
 
-                columnChunkNumber    .push_back(chunkNumber);
-                columnDatabaseName   .push_back(databaseName);
-                columnNumReplicas    .push_back(numReplicasStr);
+                columnChunkNumber.push_back(chunkNumber);
+                columnDatabaseName.push_back(databaseName);
+                columnNumReplicas.push_back(numReplicasStr);
                 columnNumReplicasDiff.push_back(numReplicasDiffStr);
 
                 string numQservReplicasStr = "*";
                 string numQservReplicasDiffStr = "*";
 
                 if (_pullQservReplicas) {
-
                     size_t const numQservReplicas =
-                        qservReplicaData.useCount.chunkExists(chunkNumber) and
-                        qservReplicaData.useCount.atChunk(chunkNumber).databaseExists(databaseName) ?
-                            qservReplicaData.useCount.atChunk(chunkNumber).atDatabase(databaseName).size() :
-                            0;
+                            qservReplicaData.useCount.chunkExists(chunkNumber) and
+                                            qservReplicaData.useCount.atChunk(chunkNumber)
+                                                    .databaseExists(databaseName)
+                                    ? qservReplicaData.useCount.atChunk(chunkNumber)
+                                              .atDatabase(databaseName)
+                                              .size()
+                                    : 0;
 
                     numQservReplicasStr = numQservReplicas ? to_string(numQservReplicas) : "";
 
                     long long const numQservReplicasDiff = numQservReplicas - numReplicas;
                     numQservReplicasDiffStr = numQservReplicasDiff ? to_string(numQservReplicasDiff) : "";
                 }
-                columnNumQservReplicas    .push_back(numQservReplicasStr);
+                columnNumQservReplicas.push_back(numQservReplicasStr);
                 columnNumQservReplicasDiff.push_back(numQservReplicasDiffStr);
 
                 set<string> workerNames;
-                for (auto&& name: workers.workerNames()) {
+                for (auto&& name : workers.workerNames()) {
                     workerNames.insert(name);
                 }
                 set<string> qservWorkerNames;
                 if (qservReplicaData.useCount.chunkExists(chunkNumber) and
                     qservReplicaData.useCount.atChunk(chunkNumber).databaseExists(databaseName)) {
-                    for (auto&& name: qservReplicaData.useCount
-                                                      .atChunk(chunkNumber)
-                                                      .atDatabase(databaseName)
-                                                      .workerNames()) {
+                    for (auto&& name : qservReplicaData.useCount.atChunk(chunkNumber)
+                                               .atDatabase(databaseName)
+                                               .workerNames()) {
                         qservWorkerNames.insert(name);
                     }
                 }
-                columnReplicasAtWorkers.push_back(::workers2str(
-                    worker2idx,
-                    workerNames,
-                    badWorkers,
-                    qservWorkerNames,
-                    badQservWorkers
-                ));
+                columnReplicasAtWorkers.push_back(::workers2str(worker2idx, workerNames, badWorkers,
+                                                                qservWorkerNames, badQservWorkers));
             }
         }
-        util::ColumnTablePrinter table("REPLICAS (desired 'L'evel, 'R'eplication, 'Q'serv):", "  ", _verticalSeparator);
+        util::ColumnTablePrinter table("REPLICAS (desired 'L'evel, 'R'eplication, 'Q'serv):", "  ",
+                                       _verticalSeparator);
 
-        table.addColumn("chunk",               columnChunkNumber);
-        table.addColumn("database",            columnDatabaseName, util::ColumnTablePrinter::LEFT);
-        table.addColumn("  R",                 columnNumReplicas);
-        table.addColumn("R-L",                 columnNumReplicasDiff);
-        table.addColumn("  Q",                 columnNumQservReplicas);
-        table.addColumn("Q-R",                 columnNumQservReplicasDiff);
+        table.addColumn("chunk", columnChunkNumber);
+        table.addColumn("database", columnDatabaseName, util::ColumnTablePrinter::LEFT);
+        table.addColumn("  R", columnNumReplicas);
+        table.addColumn("R-L", columnNumReplicasDiff);
+        table.addColumn("  Q", columnNumQservReplicas);
+        table.addColumn("Q-R", columnNumQservReplicasDiff);
         table.addColumn("replicas at workers", columnReplicasAtWorkers, util::ColumnTablePrinter::LEFT);
 
         cout << "\n";
@@ -423,4 +370,4 @@ int ChunksApp::runImpl() {
     return 0;
 }
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica

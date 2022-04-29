@@ -25,15 +25,13 @@
 #include "replica/Application.h"
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
 /**
  * Class RebalanceApp implements a tool which runs the rebalancing algorithm
  * in a scope of a database family.
  */
-class RebalanceApp: public Application {
+class RebalanceApp : public Application {
 public:
     typedef std::shared_ptr<RebalanceApp> Ptr;
 
@@ -46,11 +44,11 @@ public:
      */
     static Ptr create(int argc, char* argv[]);
 
-    RebalanceApp()=delete;
-    RebalanceApp(RebalanceApp const&)=delete;
-    RebalanceApp& operator=(RebalanceApp const&)=delete;
+    RebalanceApp() = delete;
+    RebalanceApp(RebalanceApp const&) = delete;
+    RebalanceApp& operator=(RebalanceApp const&) = delete;
 
-    ~RebalanceApp() final=default;
+    ~RebalanceApp() final = default;
 
 protected:
     /// @see Application::runImpl()
@@ -71,6 +69,6 @@ private:
     size_t _pageSize = 20;
 };
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica
 
 #endif /* LSST_QSERV_REPLICA_REBALANCEAPP_H */

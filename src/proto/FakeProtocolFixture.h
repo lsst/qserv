@@ -28,9 +28,7 @@
 #include <memory>
 #include <string>
 
-namespace lsst {
-namespace qserv {
-namespace proto {
+namespace lsst { namespace qserv { namespace proto {
 
 /// FakeProtocolFixture is a utility class containing code for making fake
 /// versions of the protobufs messages used in Qserv. Its intent was
@@ -60,10 +58,10 @@ public:
         sTbl->set_lockinmemory(false);
         sTbl->set_scanrating(1);
 
-        for(int i=0; i < 3; ++i) {
+        for (int i = 0; i < 3; ++i) {
             TaskMsg::Fragment* f = t->add_fragment();
             f->add_query("Hello, this is a query.");
-            addSubChunk(*f, 100+i);
+            addSubChunk(*f, 100 + i);
             f->set_resulttable("r_341");
         }
         ++_counter;
@@ -72,7 +70,7 @@ public:
 
     void addSubChunk(TaskMsg_Fragment& f, int scId) {
         TaskMsg_Subchunk* s;
-        if(!f.has_subchunks()) {
+        if (!f.has_subchunks()) {
             TaskMsg_Subchunk subc;
             // f.add_scgroup(); // How do I add optional objects?
             subc.set_database("subdatabase_default");
@@ -95,11 +93,11 @@ public:
         p->set_endnodata(false);
         return p;
     }
+
 private:
     int _counter;
 };
 
-}}} // lsst::qserv::proto
+}}}  // namespace lsst::qserv::proto
 
-#endif // #define LSST_QSERV_PROTO_FAKEPROTOCOLFIXTURE_H
-
+#endif  // #define LSST_QSERV_PROTO_FAKEPROTOCOLFIXTURE_H

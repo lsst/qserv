@@ -29,16 +29,14 @@
 #include "replica/Application.h"
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
 /**
  * Class QservWorkerPingApp represents a command-line tool for testing a communication
  * path with Qserv workers. The application will be sending multiple requests containing
  * a string that is expected to be echoed back by a worker.
  */
-class QservWorkerPingApp: public Application {
+class QservWorkerPingApp : public Application {
 public:
     typedef std::shared_ptr<QservWorkerPingApp> Ptr;
 
@@ -51,11 +49,11 @@ public:
      */
     static Ptr create(int argc, char* argv[]);
 
-    QservWorkerPingApp()=delete;
-    QservWorkerPingApp(QservWorkerPingApp const&)=delete;
-    QservWorkerPingApp& operator=(QservWorkerPingApp const&)=delete;
+    QservWorkerPingApp() = delete;
+    QservWorkerPingApp(QservWorkerPingApp const&) = delete;
+    QservWorkerPingApp& operator=(QservWorkerPingApp const&) = delete;
 
-    ~QservWorkerPingApp() override=default;
+    ~QservWorkerPingApp() override = default;
 
 protected:
     /// @see Application::runImpl()
@@ -67,20 +65,20 @@ private:
 
     // Parameter value parsed from the command line.
 
-    std::string _worker;    ///< The name of a worker.
-    std::string _data;      ///< The data string to be sent to the worker.
+    std::string _worker;  ///< The name of a worker.
+    std::string _data;    ///< The data string to be sent to the worker.
 
-    size_t _numRequests = 1;    ///< The total number of requests to be launched (>=1)
-    size_t _maxRequests = 1;    ///< The maximum number of requests to be in flight at any moment (>=1).
+    size_t _numRequests = 1;  ///< The total number of requests to be launched (>=1)
+    size_t _maxRequests = 1;  ///< The maximum number of requests to be in flight at any moment (>=1).
 
     /// Requests will be cancelled if no response received before the specified timeout
     /// expires. Zero value of the parameter corresponds to the corresponding default set
-    /// in the configuration. 
+    /// in the configuration.
     unsigned int _requestExpirationIvalSec = 0;
 
     bool _verbose = false;  ///< For reporting a progress of the testing.
 };
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica
 
 #endif /* LSST_QSERV_REPLICA_QSERVWORKERPINGAPP_H */

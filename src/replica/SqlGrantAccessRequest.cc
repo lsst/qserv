@@ -34,70 +34,40 @@ namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.SqlGrantAccessRequest");
 
-} /// namespace
+}  // namespace
 
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
-SqlGrantAccessRequest::Ptr SqlGrantAccessRequest::create(
-        ServiceProvider::Ptr const& serviceProvider,
-        boost::asio::io_service& io_service,
-        string const& worker,
-        std::string const& database,
-        std::string const& user,
-        CallbackType const& onFinish,
-        int priority,
-        bool keepTracking,
-        shared_ptr<Messenger> const& messenger) {
-
-    return Ptr(new SqlGrantAccessRequest(
-        serviceProvider,
-        io_service,
-        worker,
-        database,
-        user,
-        onFinish,
-        priority,
-        keepTracking,
-        messenger
-    ));
+SqlGrantAccessRequest::Ptr SqlGrantAccessRequest::create(ServiceProvider::Ptr const& serviceProvider,
+                                                         boost::asio::io_service& io_service,
+                                                         string const& worker, std::string const& database,
+                                                         std::string const& user,
+                                                         CallbackType const& onFinish, int priority,
+                                                         bool keepTracking,
+                                                         shared_ptr<Messenger> const& messenger) {
+    return Ptr(new SqlGrantAccessRequest(serviceProvider, io_service, worker, database, user, onFinish,
+                                         priority, keepTracking, messenger));
 }
 
-
-SqlGrantAccessRequest::SqlGrantAccessRequest(
-        ServiceProvider::Ptr const& serviceProvider,
-        boost::asio::io_service& io_service,
-        string const& worker,
-        std::string const& database,
-        std::string const& user,
-        CallbackType const& onFinish,
-        int priority,
-        bool keepTracking,
-        shared_ptr<Messenger> const& messenger)
-    :   SqlRequest(serviceProvider,
-                   io_service,
-                   "SQL_GRANT_ACCESS",
-                   worker,
-                   0 /* maxRows */,
-                   priority,
-                   keepTracking,
-                   messenger),
-        _onFinish(onFinish) {
-
+SqlGrantAccessRequest::SqlGrantAccessRequest(ServiceProvider::Ptr const& serviceProvider,
+                                             boost::asio::io_service& io_service, string const& worker,
+                                             std::string const& database, std::string const& user,
+                                             CallbackType const& onFinish, int priority, bool keepTracking,
+                                             shared_ptr<Messenger> const& messenger)
+        : SqlRequest(serviceProvider, io_service, "SQL_GRANT_ACCESS", worker, 0 /* maxRows */, priority,
+                     keepTracking, messenger),
+          _onFinish(onFinish) {
     // Finish initializing the request body's content
     requestBody.set_type(ProtocolRequestSql::GRANT_ACCESS);
     requestBody.set_database(database);
     requestBody.set_user(user);
 }
 
-
 void SqlGrantAccessRequest::notify(util::Lock const& lock) {
-
-    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ <<
-        "[" << ProtocolRequestSql_Type_Name(requestBody.type()) << "]");
+    LOGS(_log, LOG_LVL_DEBUG,
+         context() << __func__ << "[" << ProtocolRequestSql_Type_Name(requestBody.type()) << "]");
 
     notifyDefaultImpl<SqlGrantAccessRequest>(lock, _onFinish);
 }
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica

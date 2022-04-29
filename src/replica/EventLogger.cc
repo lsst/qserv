@@ -36,48 +36,38 @@
 using namespace std;
 
 namespace {
-    LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.EventLogger");
+LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.EventLogger");
 }
 
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
-EventLogger::EventLogger(
-    Controller::Ptr const& controller,
-    string const& name)
-    :   _controller(controller),
-        _name(name) {
-}
-
+EventLogger::EventLogger(Controller::Ptr const& controller, string const& name)
+        : _controller(controller), _name(name) {}
 
 void EventLogger::logEvent(ControllerEvent& event) const {
-
     // Finish filling the common fields
 
     event.controllerId = controller()->identity().id;
-    event.timeStamp    = PerformanceUtils::now();
-    event.task         = name();
+    event.timeStamp = PerformanceUtils::now();
+    event.task = name();
 
     // For now ignore exceptions when logging events. Just report errors.
     try {
         controller()->serviceProvider()->databaseServices()->logControllerEvent(event);
     } catch (exception const& ex) {
-       LOGS(_log, LOG_LVL_ERROR, name() << "  " << "failed to log event in " << __func__);
+        LOGS(_log, LOG_LVL_ERROR,
+             name() << "  "
+                    << "failed to log event in " << __func__);
     }
 }
 
-
 void EventLogger::logOnStartEvent() const {
-
     ControllerEvent event;
     event.status = "STARTED";
     logEvent(event);
 }
 
-
 void EventLogger::logOnStopEvent() const {
-
     ControllerEvent event;
 
     event.status = "STOPPED";
@@ -85,9 +75,7 @@ void EventLogger::logOnStopEvent() const {
     logEvent(event);
 }
 
-
 void EventLogger::logOnTerminatedEvent(string const& msg) const {
-
     ControllerEvent event;
 
     event.status = "TERMINATED";
@@ -96,30 +84,26 @@ void EventLogger::logOnTerminatedEvent(string const& msg) const {
     logEvent(event);
 }
 
-
-void EventLogger::logJobStartedEvent(string const& typeName,
-                                     Job::Ptr const& job,
+void EventLogger::logJobStartedEvent(string const& typeName, Job::Ptr const& job,
                                      string const& family) const {
     ControllerEvent event;
 
     event.operation = typeName;
-    event.status    = "STARTED";
-    event.jobId     = job->id();
+    event.status = "STARTED";
+    event.jobId = job->id();
 
     event.kvInfo.emplace_back("database-family", family);
 
     logEvent(event);
 }
 
-
-void EventLogger::logJobFinishedEvent(string const& typeName,
-                                     Job::Ptr const& job,
-                                     string const& family) const {
+void EventLogger::logJobFinishedEvent(string const& typeName, Job::Ptr const& job,
+                                      string const& family) const {
     ControllerEvent event;
 
     event.operation = typeName;
-    event.status    = job->state2string();
-    event.jobId     = job->id();
+    event.status = job->state2string();
+    event.jobId = job->id();
 
     event.kvInfo = job->persistentLogData();
     event.kvInfo.emplace_back("database-family", family);
@@ -127,4 +111,4 @@ void EventLogger::logJobFinishedEvent(string const& typeName,
     logEvent(event);
 }
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica

@@ -34,15 +34,12 @@
 
 // Qserv headers
 #include "util/IterableFormatter.h"
-namespace lsst {
-namespace qserv {
-namespace sql {
+namespace lsst { namespace qserv { namespace sql {
 
 /// Type information for a single column
 struct ColType {
-
-    std::string sqlType; ///< Typespec to use in CREATE TABLE
-    int mysqlType; ///< Internal MYSQL type code
+    std::string sqlType;  ///< Typespec to use in CREATE TABLE
+    int mysqlType;        ///< Internal MYSQL type code
 };
 
 inline std::ostream& operator<<(std::ostream& os, ColType const& ct) {
@@ -52,9 +49,9 @@ inline std::ostream& operator<<(std::ostream& os, ColType const& ct) {
 
 /// Schema for a single column
 struct ColSchema {
-    std::string table; ///< Table name
-    std::string name; ///< Column name
-    ColType colType; ///< Column type
+    std::string table;  ///< Table name
+    std::string name;   ///< Column name
+    ColType colType;    ///< Column type
 };
 
 // Related ColSchema types for convenience
@@ -62,8 +59,7 @@ typedef std::vector<ColSchema> ColSchemaVector;
 typedef ColSchemaVector::const_iterator ColumnsIter;
 
 inline std::ostream& operator<<(std::ostream& os, ColSchema const& cs) {
-    if (not cs.table.empty())
-        os << "`" << cs.table << "`.";
+    if (not cs.table.empty()) os << "`" << cs.table << "`.";
     os << "`" << cs.name << "` " << cs.colType;
     return os;
 }
@@ -80,5 +76,5 @@ inline std::ostream& operator<<(std::ostream& os, Schema const& s) {
     return os;
 }
 
-}}} // namespace lsst::qserv::sql
-#endif // LSST_QSERV_SQL_SCHEMA_H
+}}}     // namespace lsst::qserv::sql
+#endif  // LSST_QSERV_SQL_SCHEMA_H

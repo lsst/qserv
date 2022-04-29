@@ -21,14 +21,14 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
- /**
-  * @file
-  *
-  * @brief Test C++ parsing and query analysis logic for select expressions
-  *
-  *
-  * @author Fabrice Jammes, IN2P3/SLAC
-  */
+/**
+ * @file
+ *
+ * @brief Test C++ parsing and query analysis logic for select expressions
+ *
+ *
+ * @author Fabrice Jammes, IN2P3/SLAC
+ */
 
 // System headers
 #include <algorithm>
@@ -58,7 +58,6 @@
 #include "util/Error.h"
 #include "util/MultiError.h"
 
-
 using lsst::qserv::mysql::MySqlConfig;
 using lsst::qserv::qana::DuplSelectExprPlugin;
 using lsst::qserv::qproc::QuerySession;
@@ -78,13 +77,12 @@ using lsst::qserv::util::MultiError;
  */
 std::string build_exception_msg(std::string n, std::string name, std::string pos) {
     MultiError multiError;
-    boost::format dupl_err_msg = boost::format(DuplSelectExprPlugin::ERR_MSG) %
-                                               name % pos;
+    boost::format dupl_err_msg = boost::format(DuplSelectExprPlugin::ERR_MSG) % name % pos;
 
     Error error(ErrorCode::DUPLICATE_SELECT_EXPR, dupl_err_msg.str());
     multiError.push_back(error);
-    std::string err_msg = "AnalysisError:" + DuplSelectExprPlugin::EXCEPTION_MSG +
-                          multiError.toOneLineString();
+    std::string err_msg =
+            "AnalysisError:" + DuplSelectExprPlugin::EXCEPTION_MSG + multiError.toOneLineString();
     return err_msg;
 }
 
@@ -94,11 +92,13 @@ std::string build_exception_msg(std::string n, std::string name, std::string pos
 BOOST_FIXTURE_TEST_SUITE(DuplSelectExpr, QueryAnaFixture)
 
 BOOST_AUTO_TEST_CASE(Alias) {
-    std::string sql = "select chunkId as f1, pm_declErr AS f1 from LSST.Object where bMagF > 20.0 GROUP BY chunkId;";
+    std::string sql =
+            "select chunkId as f1, pm_declErr AS f1 from LSST.Object where bMagF > 20.0 GROUP BY chunkId;";
 
     std::string expected_err_msg = build_exception_msg("2", "f1", " 1 2");
 
-    qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Object", {"pm_declErr", "chunkId", "bMagF"}}}}}));
+    qsTest.sqlConfig = SqlConfig(
+            SqlConfig::MockDbTableColumns({{"LSST", {{"Object", {"pm_declErr", "chunkId", "bMagF"}}}}}));
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, sql, true);
     BOOST_CHECK_EQUAL(qs->getError(), expected_err_msg);
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
@@ -117,10 +117,13 @@ BOOST_AUTO_TEST_CASE(CaseInsensitive) {
 }
 
 BOOST_AUTO_TEST_CASE(Function) {
-    std::string sql = "select sum(pm_declErr), chunkId as f1, chunkId AS f1, avg(pm_declErr) from LSST.Object where bMagF > 20.0 GROUP BY chunkId;";
+    std::string sql =
+            "select sum(pm_declErr), chunkId as f1, chunkId AS f1, avg(pm_declErr) from LSST.Object where "
+            "bMagF > 20.0 GROUP BY chunkId;";
 
     std::string expected_err_msg = build_exception_msg("2", "f1", " 2 3");
-    qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Object", {"pm_declErr", "chunkId", "bMagF"}}}}}));
+    qsTest.sqlConfig = SqlConfig(
+            SqlConfig::MockDbTableColumns({{"LSST", {{"Object", {"pm_declErr", "chunkId", "bMagF"}}}}}));
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, sql, true);
     BOOST_CHECK_EQUAL(qs->getError(), expected_err_msg);
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
@@ -128,13 +131,14 @@ BOOST_AUTO_TEST_CASE(Function) {
 }
 
 BOOST_AUTO_TEST_CASE(Simple) {
-    std::string sql = "select pm_declErr, chunkId, ra_Test from LSST.Object where bMagF > 20.0 GROUP BY chunkId;";
+    std::string sql =
+            "select pm_declErr, chunkId, ra_Test from LSST.Object where bMagF > 20.0 GROUP BY chunkId;";
     std::string expected_err_msg = build_exception_msg("2", "f1", " 2 3");
-    qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Object", {"pm_declErr", "chunkId", "ra_Test", "bMagF"}}}}}));
+    qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns(
+            {{"LSST", {{"Object", {"pm_declErr", "chunkId", "ra_Test", "bMagF"}}}}}));
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, sql);
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
 }
-
 
 BOOST_AUTO_TEST_SUITE_END()

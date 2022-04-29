@@ -35,16 +35,12 @@
 #include "boost/asio.hpp"
 #include "boost/filesystem.hpp"
 
-namespace lsst {
-namespace qserv {
-namespace qhttp {
+namespace lsst { namespace qserv { namespace qhttp {
 
 class Server;
 
-class Response : public std::enable_shared_from_this<Response>
-{
+class Response : public std::enable_shared_from_this<Response> {
 public:
-
     using Ptr = std::shared_ptr<Response>;
 
     //----- These methods are used to send a response back to the HTTP client.  When using sendStatus,
@@ -52,7 +48,7 @@ public:
     //      will be inferred based on file extension for a handful of known file types (see map defined
     //      near the top of Response.cc for specific extensions supported.)
 
-    void send(std::string const& content, std::string const& contentType="text/html");
+    void send(std::string const& content, std::string const& contentType = "text/html");
     void sendStatus(unsigned int status);
     void sendFile(boost::filesystem::path const& path);
 
@@ -60,26 +56,20 @@ public:
     //      included/observed by the send methods above (sendStatus and sendFile will override status set
     //      here, though; sendFile will override any Content-Type header set here.)
 
-    unsigned int status = { 200 };
+    unsigned int status = {200};
     std::unordered_map<std::string, std::string> headers;
 
 private:
-
     friend class Server;
 
     Response(Response const&) = delete;
     Response& operator=(Response const&) = delete;
 
-    using DoneCallback = std::function<void(
-        boost::system::error_code const& ec,
-        std::size_t bytesTransferred
-    )>;
+    using DoneCallback =
+            std::function<void(boost::system::error_code const& ec, std::size_t bytesTransferred)>;
 
-    Response(
-        std::shared_ptr<Server> const server,
-        std::shared_ptr<boost::asio::ip::tcp::socket> const socket,
-        DoneCallback const& doneCallback
-    );
+    Response(std::shared_ptr<Server> const server, std::shared_ptr<boost::asio::ip::tcp::socket> const socket,
+             DoneCallback const& doneCallback);
 
     std::string _headers() const;
     void _write();
@@ -91,9 +81,8 @@ private:
     std::atomic_flag _transmissionStarted;
 
     DoneCallback _doneCallback;
-
 };
 
-}}} // namespace lsst::qserv::qhttp
+}}}  // namespace lsst::qserv::qhttp
 
-#endif // LSST_QSERV_QHTTP_RESPONSE_H
+#endif  // LSST_QSERV_QHTTP_RESPONSE_H

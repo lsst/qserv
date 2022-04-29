@@ -27,29 +27,22 @@
 
 using namespace std;
 
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
 // -------------------------------------------------
 // --------- StopReplicationRequestPolicy ----------
 // -------------------------------------------------
 
-char const* StopReplicationRequestPolicy::requestName() {
-    return "REQUEST_STOP:REPLICA_CREATE";
-}
-
+char const* StopReplicationRequestPolicy::requestName() { return "REQUEST_STOP:REPLICA_CREATE"; }
 
 ProtocolQueuedRequestType StopReplicationRequestPolicy::targetRequestType() {
     return ProtocolQueuedRequestType::REPLICA_CREATE;
 }
 
-
 void StopReplicationRequestPolicy::extractResponseData(ResponseMessageType const& msg,
                                                        ResponseDataType& data) {
     data = ResponseDataType(&(msg.replica_info()));
 }
-
 
 void StopReplicationRequestPolicy::extractTargetRequestParams(ResponseMessageType const& msg,
                                                               TargetRequestParamsType& params) {
@@ -58,26 +51,19 @@ void StopReplicationRequestPolicy::extractTargetRequestParams(ResponseMessageTyp
     }
 }
 
-
 // --------------------------------------------
 // --------- StopDeleteRequestPolicy ----------
 // --------------------------------------------
 
-char const* StopDeleteRequestPolicy::requestName() {
-    return "REQUEST_STOP:REPLICA_DELETE";
-}
-
+char const* StopDeleteRequestPolicy::requestName() { return "REQUEST_STOP:REPLICA_DELETE"; }
 
 ProtocolQueuedRequestType StopDeleteRequestPolicy::targetRequestType() {
     return ProtocolQueuedRequestType::REPLICA_DELETE;
 }
 
-
-void StopDeleteRequestPolicy::extractResponseData(ResponseMessageType const& msg,
-                                                  ResponseDataType& data) {
+void StopDeleteRequestPolicy::extractResponseData(ResponseMessageType const& msg, ResponseDataType& data) {
     data = ResponseDataType(&(msg.replica_info()));
 }
-
 
 void StopDeleteRequestPolicy::extractTargetRequestParams(ResponseMessageType const& msg,
                                                          TargetRequestParamsType& params) {
@@ -86,27 +72,19 @@ void StopDeleteRequestPolicy::extractTargetRequestParams(ResponseMessageType con
     }
 }
 
-
 // ------------------------------------------
 // --------- StopFindRequestPolicy ----------
 // ------------------------------------------
 
-char const* StopFindRequestPolicy::requestName() {
-    return "REQUEST_STOP:REPLICA_FIND";
-}
-
+char const* StopFindRequestPolicy::requestName() { return "REQUEST_STOP:REPLICA_FIND"; }
 
 ProtocolQueuedRequestType StopFindRequestPolicy::targetRequestType() {
     return ProtocolQueuedRequestType::REPLICA_FIND;
 }
 
-
-void StopFindRequestPolicy::extractResponseData(ResponseMessageType const& msg,
-                                                ResponseDataType& data) {
-
+void StopFindRequestPolicy::extractResponseData(ResponseMessageType const& msg, ResponseDataType& data) {
     data = ResponseDataType(&(msg.replica_info()));
 }
-
 
 void StopFindRequestPolicy::extractTargetRequestParams(ResponseMessageType const& msg,
                                                        TargetRequestParamsType& params) {
@@ -115,29 +93,21 @@ void StopFindRequestPolicy::extractTargetRequestParams(ResponseMessageType const
     }
 }
 
-
 // ---------------------------------------------
 // --------- StopFindAllRequestPolicy ----------
 // ---------------------------------------------
 
-char const* StopFindAllRequestPolicy::requestName() {
-    return "REQUEST_STOP:REPLICA_FIND_ALL";
-}
-
+char const* StopFindAllRequestPolicy::requestName() { return "REQUEST_STOP:REPLICA_FIND_ALL"; }
 
 ProtocolQueuedRequestType StopFindAllRequestPolicy::targetRequestType() {
     return ProtocolQueuedRequestType::REPLICA_FIND_ALL;
 }
 
-
-void StopFindAllRequestPolicy::extractResponseData(ResponseMessageType const& msg,
-                                                   ResponseDataType& data) {
-
+void StopFindAllRequestPolicy::extractResponseData(ResponseMessageType const& msg, ResponseDataType& data) {
     for (int num = msg.replica_info_many_size(), idx = 0; idx < num; ++idx) {
         data.emplace_back(&(msg.replica_info_many(idx)));
     }
 }
-
 
 void StopFindAllRequestPolicy::extractTargetRequestParams(ResponseMessageType const& msg,
                                                           TargetRequestParamsType& params) {
@@ -146,26 +116,19 @@ void StopFindAllRequestPolicy::extractTargetRequestParams(ResponseMessageType co
     }
 }
 
-
 // ------------------------------------------
 // --------- StopEchoRequestPolicy ----------
 // ------------------------------------------
 
-char const* StopEchoRequestPolicy::requestName() {
-    return "REQUEST_STOP:TEST_ECHO";
-}
-
+char const* StopEchoRequestPolicy::requestName() { return "REQUEST_STOP:TEST_ECHO"; }
 
 ProtocolQueuedRequestType StopEchoRequestPolicy::targetRequestType() {
     return ProtocolQueuedRequestType::TEST_ECHO;
 }
 
-
-void StopEchoRequestPolicy::extractResponseData(ResponseMessageType const& msg,
-                                                ResponseDataType& data) {
+void StopEchoRequestPolicy::extractResponseData(ResponseMessageType const& msg, ResponseDataType& data) {
     data = msg.data();
 }
-
 
 void StopEchoRequestPolicy::extractTargetRequestParams(ResponseMessageType const& msg,
                                                        TargetRequestParamsType& params) {
@@ -174,27 +137,20 @@ void StopEchoRequestPolicy::extractTargetRequestParams(ResponseMessageType const
     }
 }
 
-
 // -------------------------------------------
 // --------- StopIndexRequestPolicy ----------
 // -------------------------------------------
 
-char const* StopIndexRequestPolicy::requestName() {
-    return "REQUEST_STOP:INDEX";
-}
-
+char const* StopIndexRequestPolicy::requestName() { return "REQUEST_STOP:INDEX"; }
 
 ProtocolQueuedRequestType StopIndexRequestPolicy::targetRequestType() {
     return ProtocolQueuedRequestType::TEST_ECHO;
 }
 
-
-void StopIndexRequestPolicy::extractResponseData(ResponseMessageType const& msg,
-                                                 ResponseDataType& data) {
+void StopIndexRequestPolicy::extractResponseData(ResponseMessageType const& msg, ResponseDataType& data) {
     data.error = msg.error();
-    data.data  = msg.data();
+    data.data = msg.data();
 }
-
 
 void StopIndexRequestPolicy::extractTargetRequestParams(ResponseMessageType const& msg,
                                                         TargetRequestParamsType& params) {
@@ -203,26 +159,17 @@ void StopIndexRequestPolicy::extractTargetRequestParams(ResponseMessageType cons
     }
 }
 
-
 // -----------------------------------------
 // --------- StopSqlRequestPolicy ----------
 // -----------------------------------------
 
-char const* StopSqlRequestPolicy::requestName() {
-    return "REQUEST_STOP:SQL";
-}
+char const* StopSqlRequestPolicy::requestName() { return "REQUEST_STOP:SQL"; }
 
+ProtocolQueuedRequestType StopSqlRequestPolicy::targetRequestType() { return ProtocolQueuedRequestType::SQL; }
 
-ProtocolQueuedRequestType StopSqlRequestPolicy::targetRequestType() {
-    return ProtocolQueuedRequestType::SQL;
-}
-
-
-void StopSqlRequestPolicy::extractResponseData(ResponseMessageType const& msg,
-                                               ResponseDataType& data) {
+void StopSqlRequestPolicy::extractResponseData(ResponseMessageType const& msg, ResponseDataType& data) {
     data.set(msg);
 }
-
 
 void StopSqlRequestPolicy::extractTargetRequestParams(ResponseMessageType const& msg,
                                                       TargetRequestParamsType& params) {
@@ -231,4 +178,4 @@ void StopSqlRequestPolicy::extractTargetRequestParams(ResponseMessageType const&
     }
 }
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica

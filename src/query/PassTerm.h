@@ -21,24 +21,17 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-
 #ifndef LSST_QSERV_QUERY_PASSTERM_H
 #define LSST_QSERV_QUERY_PASSTERM_H
-
 
 #include "query/BoolFactorTerm.h"
 #include "query/LogicalTerm.h"
 
-
-namespace lsst {
-namespace qserv {
-namespace query {
-
+namespace lsst { namespace qserv { namespace query {
 
 /// PassTerm is a catch-all boolean factor term that can be safely passed
 /// without further analysis or manipulation.
-class PassTerm : public BoolFactorTerm
-{
+class PassTerm : public BoolFactorTerm {
 public:
     typedef std::shared_ptr<PassTerm> Ptr;
 
@@ -49,7 +42,7 @@ public:
     void findValueExprs(ValueExprPtrVector& vector) const override {}
 
     /// Get a vector of references to pointers to the ValueExprs this contains.
-    void findValueExprRefs(ValueExprPtrRefVector& vector) override {};
+    void findValueExprRefs(ValueExprPtrRefVector& vector) override{};
 
     /// Get a vector of the ColumnRefs this contains.
     void findColumnRefs(ColumnRef::Vector& vector) const override {}
@@ -76,7 +69,6 @@ protected:
     void dbgPrint(std::ostream& os) const override;
 };
 
+}}}  // namespace lsst::qserv::query
 
-}}} // namespace lsst::qserv::query
-
-#endif // LSST_QSERV_QUERY_PASSTERM_H
+#endif  // LSST_QSERV_QUERY_PASSTERM_H

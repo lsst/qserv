@@ -21,29 +21,20 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-
 #ifndef LSST_QSERV_QUERY_BETWEENPREDICATE_H
 #define LSST_QSERV_QUERY_BETWEENPREDICATE_H
-
 
 // Local headers
 #include "query/Predicate.h"
 
-
 // Forward declarations
-namespace lsst {
-namespace qserv {
-namespace query {
-    class ColumnRef;
-    class ValueExpr;
-    class QueryTemplate;
-}}} // End of forward declarations
+namespace lsst { namespace qserv { namespace query {
+class ColumnRef;
+class ValueExpr;
+class QueryTemplate;
+}}}  // namespace lsst::qserv::query
 
-
-namespace lsst {
-namespace qserv {
-namespace query {
-
+namespace lsst { namespace qserv { namespace query {
 
 /// BetweenPredicate is a Predicate comparing a row value to a range
 class BetweenPredicate : public Predicate {
@@ -54,7 +45,7 @@ public:
 
     BetweenPredicate(std::shared_ptr<ValueExpr> const& iValue, std::shared_ptr<ValueExpr> const& iMinValue,
                      std::shared_ptr<ValueExpr> const& iMaxValue, bool iHasNot)
-    : value(iValue), minValue(iMinValue), maxValue(iMaxValue), hasNot(iHasNot) {}
+            : value(iValue), minValue(iMinValue), maxValue(iMaxValue), hasNot(iHasNot) {}
 
     ~BetweenPredicate() override = default;
 
@@ -77,7 +68,7 @@ public:
     bool operator==(BoolFactorTerm const& rhs) const override;
 
     // FIXME these members should be private, or at least protected. Jira issue DM-17306
-     std::shared_ptr<ValueExpr> value;
+    std::shared_ptr<ValueExpr> value;
     std::shared_ptr<ValueExpr> minValue;
     std::shared_ptr<ValueExpr> maxValue;
     bool hasNot;
@@ -86,7 +77,6 @@ protected:
     void dbgPrint(std::ostream& os) const override;
 };
 
+}}}  // namespace lsst::qserv::query
 
-}}} // namespace lsst::qserv::query
-
-#endif // LSST_QSERV_QUERY_BETWEENPREDICATE_H
+#endif  // LSST_QSERV_QUERY_BETWEENPREDICATE_H

@@ -31,20 +31,17 @@
 #include <string>
 #include <vector>
 
-
 // Qserv headers
 #include "replica/Common.h"
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
 /**
  * Class MessageQueue is the priority-based queue for storing shared pointers
  * to objects of class MessageWrapperBase. Requests of the same priority are
  * organized as the FIFO-based sub-queues (priority "lanes").
- * 
+ *
  * The implementation is optimized for three most frequent operations with
  * the queue:
  * - fetching the first element from the front of the highest-priority lane,
@@ -53,7 +50,7 @@ namespace replica {
  * Since the number of unique priorities in the Replication system's framework
  * is rather small the performances of the above-mentioned operations is nearly
  * constant in this implementation.
- * 
+ *
  * The lookup operation based on a unique identifier of an object has the 'O(n)'
  * performance. The operation is of no concern since it's only used in response
  * to the message cancellation requests, which are rather infrequent.
@@ -89,7 +86,7 @@ public:
     /// @return The total number of elements (of any priority) in the collection.
     size_t size() const {
         size_t num = 0;
-        for (auto&& itr: _priority2lane) num += itr.second.size();
+        for (auto&& itr : _priority2lane) num += itr.second.size();
         return num;
     }
 
@@ -108,9 +105,9 @@ public:
     std::shared_ptr<T> front() {
         std::vector<int> priorities;
         priorities.reserve(_priority2lane.size());
-        for (auto&& itr: _priority2lane) priorities.push_back(itr.first);
+        for (auto&& itr : _priority2lane) priorities.push_back(itr.first);
         sort(priorities.begin(), priorities.end(), std::greater<int>());
-        for (int priority: priorities) {
+        for (int priority : priorities) {
             auto& lane = _priority2lane[priority];
             if (!lane.empty()) {
                 std::shared_ptr<T> const ptr = lane.front();
@@ -127,10 +124,11 @@ public:
      *   if no such element exists in the collection.
      */
     std::shared_ptr<T> find(std::string const& id) const {
-        for (auto&& itr: _priority2lane) {
+        for (auto&& itr : _priority2lane) {
             auto& lane = itr.second;
             if (!lane.empty()) {
-                auto laneItr = std::find_if(lane.cbegin(), lane.cend(), [&id] (auto ptr) { return ptr->id() == id; });
+                auto laneItr =
+                        std::find_if(lane.cbegin(), lane.cend(), [&id](auto ptr) { return ptr->id() == id; });
                 if (laneItr != lane.cend()) return *laneItr;
             }
         }
@@ -139,15 +137,16 @@ public:
 
     /// Locate and remove an element matching the specified identifier.
     void remove(std::string const& id) {
-        for (auto&& itr: _priority2lane) {
+        for (auto&& itr : _priority2lane) {
             auto&& lane = itr.second;
-            lane.remove_if([&id] (auto ptr) { return ptr->id() == id; });
+            lane.remove_if([&id](auto ptr) { return ptr->id() == id; });
         }
     }
+
 private:
     std::map<int, std::list<std::shared_ptr<T>>> _priority2lane;
 };
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_MESSAGEQUEUE_H
+#endif  // LSST_QSERV_REPLICA_MESSAGEQUEUE_H

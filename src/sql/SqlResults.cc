@@ -32,44 +32,35 @@
 // Qserv headers
 #include "mysql/SchemaFactory.h"
 
-namespace lsst {
-namespace qserv {
-namespace sql {
+namespace lsst { namespace qserv { namespace sql {
 
 namespace detail {
 
-SqlResults_Iterator::SqlResults_Iterator()
-    : _results(), _value() {
-}
+SqlResults_Iterator::SqlResults_Iterator() : _results(), _value() {}
 
 SqlResults_Iterator::SqlResults_Iterator(std::vector<MYSQL_RES*> const& results)
-    : _results(results), _value() {
+        : _results(results), _value() {
     _newRow(true);
 }
 
-SqlResults_Iterator&
-SqlResults_Iterator::operator++() {
+SqlResults_Iterator& SqlResults_Iterator::operator++() {
     _newRow(false);
     return *this;
 }
 
-SqlResults_Iterator
-SqlResults_Iterator::operator++(int) {
+SqlResults_Iterator SqlResults_Iterator::operator++(int) {
     SqlResults_Iterator tmp = *this;
     operator++();
     return tmp;
 }
 
-bool
-SqlResults_Iterator::operator==(SqlResults_Iterator const& other) const {
+bool SqlResults_Iterator::operator==(SqlResults_Iterator const& other) const {
     // the only iterators that we want to compare are "end" iterators,
     return _results.empty() and other._results.empty();
 }
 
-void
-SqlResults_Iterator::_newRow(bool newResult) {
+void SqlResults_Iterator::_newRow(bool newResult) {
     while (not _results.empty()) {
-
         MYSQL_RES* res = _results.front();
 
         // get number of columns
@@ -84,7 +75,7 @@ SqlResults_Iterator::_newRow(bool newResult) {
         // get next row and store
         if (MYSQL_ROW row = mysql_fetch_row(res)) {
             unsigned long* lengths = mysql_fetch_lengths(res);
-            for (unsigned i = 0; i != ncols; ++ i) {
+            for (unsigned i = 0; i != ncols; ++i) {
                 _value[i].first = row[i];
                 _value[i].second = lengths[i];
             }
@@ -102,32 +93,27 @@ SqlResults_Iterator::_newRow(bool newResult) {
     return;
 }
 
-}
+}  // namespace detail
 
-
-void
-SqlResults::freeResults() {
+void SqlResults::freeResults() {
     int i, s = _results.size();
-    for (i=0 ; i<s ; ++i) {
+    for (i = 0; i < s; ++i) {
         mysql_free_result(_results[i]);
     }
     _results.clear();
 }
 
-void
-SqlResults::addResult(MYSQL_RES* r) {
-    if ( _discardImmediately ) {
+void SqlResults::addResult(MYSQL_RES* r) {
+    if (_discardImmediately) {
         mysql_free_result(r);
     } else {
         _results.push_back(r);
     }
 }
 
-bool
-SqlResults::extractFirstColumn(std::vector<std::string>& ret,
-                               SqlErrorObject& errObj) {
+bool SqlResults::extractFirstColumn(std::vector<std::string>& ret, SqlErrorObject& errObj) {
     int i, s = _results.size();
-    for (i=0 ; i<s ; ++i) {
+    for (i = 0; i < s; ++i) {
         MYSQL_ROW row;
         while ((row = mysql_fetch_row(_results[i])) != nullptr) {
             ret.push_back(row[0]);
@@ -138,12 +124,10 @@ SqlResults::extractFirstColumn(std::vector<std::string>& ret,
     return true;
 }
 
-bool
-SqlResults::extractFirst2Columns(std::vector<std::string>& col1,
-                                 std::vector<std::string>& col2,
-                                 SqlErrorObject& errObj) {
+bool SqlResults::extractFirst2Columns(std::vector<std::string>& col1, std::vector<std::string>& col2,
+                                      SqlErrorObject& errObj) {
     int i, s = _results.size();
-    for (i=0 ; i<s ; ++i) {
+    for (i = 0; i < s; ++i) {
         MYSQL_ROW row;
         while ((row = mysql_fetch_row(_results[i])) != nullptr) {
             col1.push_back(row[0]);
@@ -155,13 +139,10 @@ SqlResults::extractFirst2Columns(std::vector<std::string>& col1,
     return true;
 }
 
-bool
-SqlResults::extractFirst3Columns(std::vector<std::string>& col1,
-                                 std::vector<std::string>& col2,
-                                 std::vector<std::string>& col3,
-                                 SqlErrorObject& errObj) {
+bool SqlResults::extractFirst3Columns(std::vector<std::string>& col1, std::vector<std::string>& col2,
+                                      std::vector<std::string>& col3, SqlErrorObject& errObj) {
     int i, s = _results.size();
-    for (i=0 ; i<s ; ++i) {
+    for (i = 0; i < s; ++i) {
         MYSQL_ROW row;
         while ((row = mysql_fetch_row(_results[i])) != nullptr) {
             col1.push_back(row[0]);
@@ -174,14 +155,11 @@ SqlResults::extractFirst3Columns(std::vector<std::string>& col1,
     return true;
 }
 
-bool
-SqlResults::extractFirst4Columns(std::vector<std::string>& col1,
-                                 std::vector<std::string>& col2,
-                                 std::vector<std::string>& col3,
-                                 std::vector<std::string>& col4,
-                                 SqlErrorObject& errObj) {
+bool SqlResults::extractFirst4Columns(std::vector<std::string>& col1, std::vector<std::string>& col2,
+                                      std::vector<std::string>& col3, std::vector<std::string>& col4,
+                                      SqlErrorObject& errObj) {
     int i, s = _results.size();
-    for (i=0 ; i<s ; ++i) {
+    for (i = 0; i < s; ++i) {
         MYSQL_ROW row;
         while ((row = mysql_fetch_row(_results[i])) != nullptr) {
             col1.push_back(row[0]);
@@ -195,12 +173,10 @@ SqlResults::extractFirst4Columns(std::vector<std::string>& col1,
     return true;
 }
 
-bool
-SqlResults::extractFirstValue(std::string& ret, SqlErrorObject& errObj) {
+bool SqlResults::extractFirstValue(std::string& ret, SqlErrorObject& errObj) {
     if (_results.size() != 1) {
         std::stringstream ss;
-        ss << "Expecting one row, found " << _results.size() << " results"
-           << std::endl;
+        ss << "Expecting one row, found " << _results.size() << " results" << std::endl;
         return errObj.addErrMsg(ss.str());
     }
     MYSQL_ROW row = mysql_fetch_row(_results[0]);
@@ -212,8 +188,7 @@ SqlResults::extractFirstValue(std::string& ret, SqlErrorObject& errObj) {
     return true;
 }
 
-sql::Schema
-SqlResults::makeSchema(SqlErrorObject& errObj) {
+sql::Schema SqlResults::makeSchema(SqlErrorObject& errObj) {
     sql::Schema schema;
     if (_results.size() != 1) {
         errObj.addErrMsg("Expecting single result, found " + std::to_string(_results.size()) + " results");
@@ -224,4 +199,4 @@ SqlResults::makeSchema(SqlErrorObject& errObj) {
     return schema;
 }
 
-}}} // namespace lsst::qserv::sql
+}}}  // namespace lsst::qserv::sql

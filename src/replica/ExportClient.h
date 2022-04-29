@@ -35,15 +35,13 @@
 #include "replica/ProtocolBuffer.h"
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
 /**
  * Class ExportClientError represents exceptions thrown by ExportClient
  * on errors.
  */
-class ExportClientError: public std::runtime_error {
+class ExportClientError : public std::runtime_error {
 public:
     using std::runtime_error::runtime_error;
 };
@@ -52,15 +50,11 @@ public:
  * Class ExportClient is a client-side API for the point-to-point
  * table exporting service.
  */
-class ExportClient: public std::enable_shared_from_this<ExportClient>  {
+class ExportClient : public std::enable_shared_from_this<ExportClient> {
 public:
-
     typedef std::shared_ptr<ExportClient> Ptr;
 
-    enum ColumnSeparator {
-        COMMA,
-        TAB
-    };
+    enum ColumnSeparator { COMMA, TAB };
 
     /**
      * Establish a connection to the remote service. If the operation is successful
@@ -86,19 +80,14 @@ public:
      * @throws ExportClientError for any problem occurred when establishing
      *   a connection or during the initial handshake with the server
      */
-    static Ptr connect(std::string const& workerHost,
-                       uint16_t workerPort,
-                       std::string const& databaseName,
-                       std::string const& tableName,
-                       unsigned int chunk,
-                       bool isOverlap,
-                       std::string const& outputFilePath,
-                       ColumnSeparator columnSeparator=COMMA,
-                       std::string const& authKey=std::string());
+    static Ptr connect(std::string const& workerHost, uint16_t workerPort, std::string const& databaseName,
+                       std::string const& tableName, unsigned int chunk, bool isOverlap,
+                       std::string const& outputFilePath, ColumnSeparator columnSeparator = COMMA,
+                       std::string const& authKey = std::string());
 
     ExportClient() = delete;
     ExportClient(ExportClient const&) = delete;
-    ExportClient &operator=(ExportClient const&) = delete;
+    ExportClient& operator=(ExportClient const&) = delete;
 
     /// Non-trivial destructor is needed to close a connection to the server
     ~ExportClient();
@@ -106,7 +95,7 @@ public:
     /**
      * Receive the whole file. Note, this is a blocking operation
      * for a thread which calls the method.
-     * 
+     *
      * @throws ExportClientError for any problem occurred when receiving the file
      *   content from a server
      */
@@ -119,26 +108,19 @@ public:
     size_t sizeBytes() const { return _sizeBytes; }
 
 private:
-    ExportClient(std::string const& workerHost,
-                 uint16_t workerPort,
-                 std::string const& databaseName,
-                 std::string const& tableName,
-                 unsigned int chunk,
-                 bool isOverlap,
-                 std::string const& outputFilePath,
-                 ColumnSeparator columnSeparator,
+    ExportClient(std::string const& workerHost, uint16_t workerPort, std::string const& databaseName,
+                 std::string const& tableName, unsigned int chunk, bool isOverlap,
+                 std::string const& outputFilePath, ColumnSeparator columnSeparator,
                  std::string const& authKey);
 
     /// @return a context string for the logger and exceptions
     std::string _context(std::string const& func) const {
-        return "ExportClient::" + func +
-               "[" + _workerHost + ":" + std::to_string(_workerPort) + "]  ";
-
+        return "ExportClient::" + func + "[" + _workerHost + ":" + std::to_string(_workerPort) + "]  ";
     }
 
     /**
      * Establish a connection with the service.
-     * 
+     *
      * @throws ExportClientError for any problem occurred when establishing a connection.
      */
     void _connectImpl();
@@ -157,11 +139,7 @@ private:
         _bufferPtr->resize();
         _bufferPtr->serialize(message);
         boost::system::error_code ec;
-        boost::asio::write(
-            _socket,
-            boost::asio::buffer(_bufferPtr->data(), _bufferPtr->size()),
-            ec
-        );
+        boost::asio::write(_socket, boost::asio::buffer(_bufferPtr->data(), _bufferPtr->size()), ec);
         _assertErrorCode(ec, __func__, context);
     }
 
@@ -183,13 +161,13 @@ private:
             _abort(__func__, "message parsing failed: " + std::string(ex.what()));
         }
     }
-    
+
     /**
      * Read and parse the protocol frame header carrying the length of the subsequent
      * message body. Also, read the body of the message into the buffer. Upon
      * the successful completion of the method тhe buffer will contain the message
      * to be parsed.
-     * 
+     *
      * @param context The context of the on-going operation for error reporting.
      * @return The number of bytes in the message body.
      */
@@ -208,8 +186,7 @@ private:
      *   the error code.
      * @throws ExportClientError if a problem was found
      */
-    void _assertErrorCode(boost::system::error_code const& ec,
-                          std::string const& func,
+    void _assertErrorCode(boost::system::error_code const& ec, std::string const& func,
                           std::string const& msg);
 
     /**
@@ -220,23 +197,22 @@ private:
      * @param error an error message to be reported
      * @throws ExportClientError is always thrown by the method
      */
-    void _abort(std::string const& func,
-                std::string const& error);
+    void _abort(std::string const& func, std::string const& error);
 
     /// Make an attempt to shutdown and close a connection with the server
     void _closeConnection();
 
     // Input parameters
 
-    std::string     const _workerHost;
-    uint16_t        const _workerPort;
-    std::string     const _databaseName;
-    std::string     const _tableName;
-    unsigned int    const _chunk;
-    bool            const _isOverlap;
-    std::string     const _outputFilePath;
+    std::string const _workerHost;
+    uint16_t const _workerPort;
+    std::string const _databaseName;
+    std::string const _tableName;
+    unsigned int const _chunk;
+    bool const _isOverlap;
+    std::string const _outputFilePath;
     ColumnSeparator const _columnSeparator;
-    std::string     const _authKey;
+    std::string const _authKey;
 
     // Buffer for data moved over the network. The initial buffer capacity
     // would be adjusted during the initial handshake with the server.
@@ -249,17 +225,17 @@ private:
     /// the server.
     long _numRowsPerReceive = 1;
 
-    boost::asio::io_service      _io_service;
+    boost::asio::io_service _io_service;
     boost::asio::ip::tcp::socket _socket;
 
-    bool _received = false; /// Set to 'true' after a successful completion of
-                            /// the table export.
+    bool _received = false;  /// Set to 'true' after a successful completion of
+                             /// the table export.
 
-    size_t _totalSizeBytes = 0; /// The number of bytes expected from a server (set during the handshake)
-    size_t _sizeBytes = 0;      /// The number of bytes written into an output file so far
-    size_t _totalNumRows = 0;   /// The number of received received from a server so far
+    size_t _totalSizeBytes = 0;  /// The number of bytes expected from a server (set during the handshake)
+    size_t _sizeBytes = 0;       /// The number of bytes written into an output file so far
+    size_t _totalNumRows = 0;    /// The number of received received from a server so far
 };
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_EXPORTCLIENT_H
+#endif  // LSST_QSERV_REPLICA_EXPORTCLIENT_H

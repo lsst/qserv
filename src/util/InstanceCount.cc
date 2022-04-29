@@ -1,6 +1,5 @@
 // -*- LSST-C++ -*-
 
-
 // Class header
 #include "util/InstanceCount.h"
 
@@ -9,36 +8,22 @@
 // LSST headers
 #include "lsst/log/Log.h"
 
-
-namespace { // File-scope helpers
+namespace {  // File-scope helpers
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.util.InstanceCount");
 
-} // namespace
+}  // namespace
 
-
-namespace lsst {
-namespace qserv {
-namespace util {
+namespace lsst { namespace qserv { namespace util {
 
 std::map<std::string, int> InstanceCount::_instances;
 std::recursive_mutex InstanceCount::_mx;
 
+InstanceCount::InstanceCount(std::string const& className) : _className{className} { _increment("con"); }
 
-InstanceCount::InstanceCount(std::string const& className) :_className{className} {
-    _increment("con");
-}
+InstanceCount::InstanceCount(InstanceCount const& other) : _className{other._className} { _increment("cpy"); }
 
-
-InstanceCount::InstanceCount(InstanceCount const& other) : _className{other._className} {
-    _increment("cpy");
-}
-
-
-InstanceCount::InstanceCount(InstanceCount &&origin) : _className{origin._className} {
-    _increment("mov");
-}
-
+InstanceCount::InstanceCount(InstanceCount&& origin) : _className{origin._className} { _increment("mov"); }
 
 void InstanceCount::_increment(std::string const& source) {
     std::lock_guard<std::recursive_mutex> lg(_mx);
@@ -46,10 +31,8 @@ void InstanceCount::_increment(std::string const& source) {
     auto ret = _instances.insert(entry);
     auto iter = ret.first;
     iter->second += 1;
-    LOGS(_log, LOG_LVL_INFO, "InstanceCount " << source
-         << " " << iter->first << "=" << iter->second);
+    LOGS(_log, LOG_LVL_INFO, "InstanceCount " << source << " " << iter->first << "=" << iter->second);
 }
-
 
 InstanceCount::~InstanceCount() {
     std::lock_guard<std::recursive_mutex> lg(_mx);
@@ -62,7 +45,6 @@ InstanceCount::~InstanceCount() {
     }
 }
 
-
 int InstanceCount::getCount() {
     std::lock_guard<std::recursive_mutex> lg(_mx);
     auto iter = _instances.find(_className);
@@ -72,8 +54,7 @@ int InstanceCount::getCount() {
     return iter->second;
 }
 
-
-std::ostream& operator<<(std::ostream &os, InstanceCount const& instanceCount) {
+std::ostream& operator<<(std::ostream& os, InstanceCount const& instanceCount) {
     std::lock_guard<std::recursive_mutex> lg(instanceCount._mx);
     for (auto const& entry : instanceCount._instances) {
         if (entry.second != 0) {
@@ -83,4 +64,4 @@ std::ostream& operator<<(std::ostream &os, InstanceCount const& instanceCount) {
     return os;
 }
 
-}}} // namespace lsst::qserv::util
+}}}  // namespace lsst::qserv::util

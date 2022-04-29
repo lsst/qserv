@@ -44,38 +44,33 @@ namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.ccontrol.UserQueryDrop");
 }
 
-namespace lsst {
-namespace qserv {
-namespace ccontrol {
+namespace lsst { namespace qserv { namespace ccontrol {
 
 // Constructor
-UserQueryDrop::UserQueryDrop(std::shared_ptr<css::CssAccess> const& css,
-                             std::string const& dbName,
-                             std::string const& tableName,
-                             sql::SqlConnection* resultDbConn,
-                             std::shared_ptr<qmeta::QMeta> const& queryMetadata,
-                             qmeta::CzarId qMetaCzarId)
-    : _css(css), _dbName(dbName), _tableName(tableName),
-      _resultDbConn(resultDbConn), _queryMetadata(queryMetadata),
-      _qMetaCzarId(qMetaCzarId), _qState(UNKNOWN),
-      _messageStore(std::make_shared<qdisp::MessageStore>()),
-      _sessionId(0) {
-}
+UserQueryDrop::UserQueryDrop(std::shared_ptr<css::CssAccess> const& css, std::string const& dbName,
+                             std::string const& tableName, sql::SqlConnection* resultDbConn,
+                             std::shared_ptr<qmeta::QMeta> const& queryMetadata, qmeta::CzarId qMetaCzarId)
+        : _css(css),
+          _dbName(dbName),
+          _tableName(tableName),
+          _resultDbConn(resultDbConn),
+          _queryMetadata(queryMetadata),
+          _qMetaCzarId(qMetaCzarId),
+          _qState(UNKNOWN),
+          _messageStore(std::make_shared<qdisp::MessageStore>()),
+          _sessionId(0) {}
 
-std::string UserQueryDrop::getError() const {
-    return std::string();
-}
+std::string UserQueryDrop::getError() const { return std::string(); }
 
 // Attempt to kill in progress.
-void UserQueryDrop::kill() {
-}
+void UserQueryDrop::kill() {}
 
 // Submit or execute the query.
 void UserQueryDrop::submit() {
     // Just mark this db/table in CSS with special status, watcher
     // will take care of the actual delete process
 
-    LOGS(_log, LOG_LVL_INFO, "About to drop: " << _dbName <<  "." << _tableName);
+    LOGS(_log, LOG_LVL_INFO, "About to drop: " << _dbName << "." << _tableName);
 
     // check current status of table or db, if not READY then fail
     if (not _checkStatus()) {
@@ -86,12 +81,12 @@ void UserQueryDrop::submit() {
     // QMeta needs to be updated by watcher when it finishes with the table
     // so we embed query id into CSS table status below
     qmeta::QInfo::QType qType = qmeta::QInfo::ASYNC;
-    std::string user = "anonymous";    // we do not have access to that info yet
+    std::string user = "anonymous";  // we do not have access to that info yet
     std::string query;
     if (_tableName.empty()) {
         query = "DROP DATABASE " + _dbName;
     } else {
-        query = "DROP TABLE " + _dbName  + "." + _tableName;
+        query = "DROP TABLE " + _dbName + "." + _tableName;
     }
     qmeta::QInfo qInfo(qType, _qMetaCzarId, user, query, "", "", "", "", "");
     qmeta::QMeta::TableNames tableNames;
@@ -105,7 +100,7 @@ void UserQueryDrop::submit() {
 
     // update status to trigger watcher
     std::string newStatus = css::KEY_STATUS_DROP_PFX + std::to_string(::time(nullptr)) +
-            ":qid=" + std::to_string(qMetaQueryId);
+                            ":qid=" + std::to_string(qMetaQueryId);
     LOGS(_log, LOG_LVL_DEBUG, "new db/table status: " << newStatus);
     try {
         // TODO: it's better to do it in one atomic operation with
@@ -174,8 +169,8 @@ bool UserQueryDrop::_checkStatus() {
             }
             LOGS(_log, LOG_LVL_DEBUG, "db status: " << statusMap[_dbName]);
             if (statusMap[_dbName] != css::KEY_STATUS_READY) {
-                std::string message = "Unexpected status for database: " + _dbName
-                                + ": " + statusMap[_dbName];
+                std::string message =
+                        "Unexpected status for database: " + _dbName + ": " + statusMap[_dbName];
                 _messageStore->addMessage(-1, 1051, message, MessageSeverity::MSG_ERROR);
                 _qState = ERROR;
                 return false;
@@ -192,8 +187,8 @@ bool UserQueryDrop::_checkStatus() {
             }
             LOGS(_log, LOG_LVL_DEBUG, "table status: " << statusMap[_tableName]);
             if (statusMap[_tableName] != css::KEY_STATUS_READY) {
-                std::string message = "Unexpected status for table: " + _dbName + "."
-                                + _tableName + ": " + statusMap[_tableName];
+                std::string message = "Unexpected status for table: " + _dbName + "." + _tableName + ": " +
+                                      statusMap[_tableName];
                 _messageStore->addMessage(-1, 1051, message, MessageSeverity::MSG_ERROR);
                 _qState = ERROR;
                 return false;
@@ -209,4 +204,4 @@ bool UserQueryDrop::_checkStatus() {
     return true;
 }
 
-}}} // lsst::qserv::ccontrol
+}}}  // namespace lsst::qserv::ccontrol

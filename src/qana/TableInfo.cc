@@ -36,7 +36,6 @@
 #include "query/ColumnRef.h"
 #include "util/IterableFormatter.h"
 
-
 namespace {
 
 using lsst::qserv::qana::ColumnRefConstPtr;
@@ -46,12 +45,8 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.qana.TableInfo");
 
 /// `appendColumnRefs` appends all possible references to the given
 /// column to `columnRefs`. At most 3 references are appended.
-void appendColumnRefs(std::string const& column,
-                      std::string const& database,
-                      std::string const& table,
-                      std::string const& tableAlias,
-                      std::vector<ColumnRefConstPtr>& refs)
-{
+void appendColumnRefs(std::string const& column, std::string const& database, std::string const& table,
+                      std::string const& tableAlias, std::vector<ColumnRefConstPtr>& refs) {
     if (column.empty() || database.empty() || table.empty() || tableAlias.empty()) {
         throw std::runtime_error("unexpected empty column info element.");
     }
@@ -60,45 +55,31 @@ void appendColumnRefs(std::string const& column,
     LOGS(_log, LOG_LVL_TRACE, "did appendColumnRefs" << lsst::qserv::util::printable(refs));
 }
 
-} // anonymous namespace
+}  // anonymous namespace
 
-namespace lsst {
-namespace qserv {
-namespace qana {
-
+namespace lsst { namespace qserv { namespace qana {
 
 void TableInfo::dump(std::ostream& os) const {
     os << "TI(" << database << "." << table << " kind=" << kind << ")";
 }
 
 void DirTableInfo::dump(std::ostream& os) const {
-    os << "DTI(" << database << "." << table << " kind=" << kind
-       << " pk=" << pk
-       << " lon=" << lon
-       << " lat=" << lat
-       << " partId=" << partitioningId
-       << ")";
+    os << "DTI(" << database << "." << table << " kind=" << kind << " pk=" << pk << " lon=" << lon
+       << " lat=" << lat << " partId=" << partitioningId << ")";
 }
 
 void ChildTableInfo::dump(std::ostream& os) const {
-    os << "CTI(" << database << "." << table << " kind=" << kind
-       << " fk=" << fk
-       << " director=(" << *director
+    os << "CTI(" << database << "." << table << " kind=" << kind << " fk=" << fk << " director=(" << *director
        << "))";
 }
 
 void MatchTableInfo::dump(std::ostream& os) const {
-    os << "MTI(" << database << "." << table << " kind=" << kind
-       << " director_1[" << *director.first << "]"
+    os << "MTI(" << database << "." << table << " kind=" << kind << " director_1[" << *director.first << "]"
        << " director_2[" << *director.second << "]"
-       << " fk_1=" << fk.first
-       << " fk_2=" << fk.second
-       << ")";
+       << " fk_1=" << fk.first << " fk_2=" << fk.second << ")";
 }
 
-std::vector<ColumnRefConstPtr> const DirTableInfo::makeColumnRefs(
-    std::string const& tableAlias) const
-{
+std::vector<ColumnRefConstPtr> const DirTableInfo::makeColumnRefs(std::string const& tableAlias) const {
     std::vector<ColumnRefConstPtr> refs;
     refs.reserve(9);
     appendColumnRefs(pk, database, table, tableAlias, refs);
@@ -107,18 +88,14 @@ std::vector<ColumnRefConstPtr> const DirTableInfo::makeColumnRefs(
     return refs;
 }
 
-std::vector<ColumnRefConstPtr> const ChildTableInfo::makeColumnRefs(
-    std::string const& tableAlias) const
-{
+std::vector<ColumnRefConstPtr> const ChildTableInfo::makeColumnRefs(std::string const& tableAlias) const {
     std::vector<ColumnRefConstPtr> refs;
     refs.reserve(3);
     appendColumnRefs(fk, database, table, tableAlias, refs);
     return refs;
 }
 
-std::vector<ColumnRefConstPtr> const MatchTableInfo::makeColumnRefs(
-    std::string const& tableAlias) const
-{
+std::vector<ColumnRefConstPtr> const MatchTableInfo::makeColumnRefs(std::string const& tableAlias) const {
     std::vector<ColumnRefConstPtr> refs;
     refs.reserve(6);
     appendColumnRefs(fk.first, database, table, tableAlias, refs);
@@ -126,27 +103,21 @@ std::vector<ColumnRefConstPtr> const MatchTableInfo::makeColumnRefs(
     return refs;
 }
 
-bool DirTableInfo::isEqPredAdmissible(DirTableInfo const& t,
-                                      std::string const& a,
-                                      std::string const& b,
-                                      bool outer) const
-{
+bool DirTableInfo::isEqPredAdmissible(DirTableInfo const& t, std::string const& a, std::string const& b,
+                                      bool outer) const {
     // An equality predicate between two directors is only
     // admissible for self joins on the director primary key.
     bool selfJoin = (*this == t);
     bool aPK = (a == pk);
     bool bPK = (b == t.pk);
     bool admissible = (selfJoin && aPK && bPK);
-    LOGS(_log, LOG_LVL_TRACE, "a admissible=" << admissible
-            << " selfJoin=" << selfJoin << " aPK=" << aPK << " bPK=" << bPK);
+    LOGS(_log, LOG_LVL_TRACE,
+         "a admissible=" << admissible << " selfJoin=" << selfJoin << " aPK=" << aPK << " bPK=" << bPK);
     return admissible;
 }
 
-bool DirTableInfo::isEqPredAdmissible(ChildTableInfo const& t,
-                                      std::string const& a,
-                                      std::string const& b,
-                                      bool outer) const
-{
+bool DirTableInfo::isEqPredAdmissible(ChildTableInfo const& t, std::string const& a, std::string const& b,
+                                      bool outer) const {
     // An equality predicate between a director D and a child is only
     // admissible if the child's director is D, and the column names
     // correspond to the director primary key and child foreign key.
@@ -154,16 +125,14 @@ bool DirTableInfo::isEqPredAdmissible(ChildTableInfo const& t,
     bool aPK = (a == pk);
     bool bFK = (b == t.fk);
     bool admissible = (childsDirector && aPK && bFK);
-    LOGS(_log, LOG_LVL_TRACE, "b admissible=" << admissible << " childsDirector=" << childsDirector
-                           << " aPK=" << aPK << " bFK=" << bFK);
+    LOGS(_log, LOG_LVL_TRACE,
+         "b admissible=" << admissible << " childsDirector=" << childsDirector << " aPK=" << aPK
+                         << " bFK=" << bFK);
     return admissible;
 }
 
-bool DirTableInfo::isEqPredAdmissible(MatchTableInfo const& t,
-                                      std::string const& a,
-                                      std::string const& b,
-                                      bool outer) const
-{
+bool DirTableInfo::isEqPredAdmissible(MatchTableInfo const& t, std::string const& a, std::string const& b,
+                                      bool outer) const {
     // Equality predicates between director and match tables are not
     // admissible in the ON clauses of outer joins.
     if (outer) {
@@ -183,17 +152,14 @@ bool DirTableInfo::isEqPredAdmissible(MatchTableInfo const& t,
     bool directorB = (*this == *t.director.second);
     bool bFK = (b == t.fk.second);
     bool admissible = (directorA && aFK) || (directorB && bFK);
-    LOGS(_log, LOG_LVL_TRACE, "c admissible=" << admissible
-                    << " directorA=" << directorA << " aFK=" << aFK
-                    << " directorB=" << directorB << " bFK=" << bFK);
+    LOGS(_log, LOG_LVL_TRACE,
+         "c admissible=" << admissible << " directorA=" << directorA << " aFK=" << aFK
+                         << " directorB=" << directorB << " bFK=" << bFK);
     return admissible;
 }
 
-bool ChildTableInfo::isEqPredAdmissible(ChildTableInfo const& t,
-                                        std::string const& a,
-                                        std::string const& b,
-                                        bool outer) const
-{
+bool ChildTableInfo::isEqPredAdmissible(ChildTableInfo const& t, std::string const& a, std::string const& b,
+                                        bool outer) const {
     // An equality predicate between two child tables is only admissible
     // if both tables have the same director, and the column names refer
     // to their foreign keys.
@@ -201,16 +167,14 @@ bool ChildTableInfo::isEqPredAdmissible(ChildTableInfo const& t,
     bool aFK = (a == fk);
     bool bFK = (b == t.fk);
     bool admissible = sameDirector && aFK && bFK;
-    LOGS(_log, LOG_LVL_TRACE, "d admissible=" << admissible
-                << " sameDirector=" << sameDirector << " aFK=" << aFK << " bFK=" << bFK);
+    LOGS(_log, LOG_LVL_TRACE,
+         "d admissible=" << admissible << " sameDirector=" << sameDirector << " aFK=" << aFK
+                         << " bFK=" << bFK);
     return admissible;
 }
 
-bool ChildTableInfo::isEqPredAdmissible(MatchTableInfo const& t,
-                                        std::string const& a,
-                                        std::string const& b,
-                                        bool outer) const
-{
+bool ChildTableInfo::isEqPredAdmissible(MatchTableInfo const& t, std::string const& a, std::string const& b,
+                                        bool outer) const {
     // Equality predicates between director and child tables are not
     // admissible in the ON clauses of outer joins.
     if (outer) {
@@ -231,10 +195,10 @@ bool ChildTableInfo::isEqPredAdmissible(MatchTableInfo const& t,
     bool matchDirSecond = (*director == *t.director.second);
     bool fKSecond = (b == t.fk.second);
     bool admissible = (matchDirFirst && bFKFirst) || (matchDirSecond && fKSecond);
-    LOGS(_log, LOG_LVL_TRACE, "e admissible=" << admissible
-            << " matchDirFirst=" << matchDirFirst << " bFKFirst=" << bFKFirst
-            << " matchDirSecond=" << matchDirSecond << " fKSecond=" << fKSecond);
+    LOGS(_log, LOG_LVL_TRACE,
+         "e admissible=" << admissible << " matchDirFirst=" << matchDirFirst << " bFKFirst=" << bFKFirst
+                         << " matchDirSecond=" << matchDirSecond << " fKSecond=" << fKSecond);
     return admissible;
 }
 
-}}} // namespace lsst::qserv::qana
+}}}  // namespace lsst::qserv::qana

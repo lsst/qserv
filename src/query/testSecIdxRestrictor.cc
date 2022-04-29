@@ -40,21 +40,18 @@
 #define BOOST_TEST_MODULE TableRef
 #include "boost/test/unit_test.hpp"
 
-
 using namespace lsst::qserv;
 using namespace lsst::qserv::query;
 using namespace std;
 
-
 BOOST_AUTO_TEST_SUITE(Suite)
 
-
-BOOST_AUTO_TEST_CASE(SecIdxCompRestrictorTestLeft){
+BOOST_AUTO_TEST_CASE(SecIdxCompRestrictorTestLeft) {
     auto restrictor = SecIdxCompRestrictor(
             make_shared<CompPredicate>(ValueExpr::newColumnExpr("db", "tbl", "", "objectId"),
                                        CompPredicate::EQUALS_OP,
                                        ValueExpr::newSimple(ValueFactor::newConstFactor("123456"))),
-                                       true);
+            true);
     BOOST_CHECK_EQUAL(restrictor.sqlFragment(), "`db`.`tbl`.`objectId`=123456");
     BOOST_CHECK_EQUAL(restrictor.getSecIdxLookupQuery("db", "tbl", "chunkColumn", "subChunkColumn"),
                       "SELECT `chunkColumn`, `subChunkColumn` "
@@ -65,13 +62,12 @@ BOOST_AUTO_TEST_CASE(SecIdxCompRestrictorTestLeft){
     BOOST_CHECK_EQUAL(*secIdxColRef, ColumnRef("db", "tbl", "", "objectId"));
 }
 
-
-BOOST_AUTO_TEST_CASE(SecIdxCompRestrictorTestRight){
+BOOST_AUTO_TEST_CASE(SecIdxCompRestrictorTestRight) {
     auto restrictor = SecIdxCompRestrictor(
             make_shared<CompPredicate>(ValueExpr::newSimple(ValueFactor::newConstFactor("123456")),
                                        CompPredicate::EQUALS_OP,
                                        ValueExpr::newColumnExpr("db", "tbl", "", "objectId")),
-                                       false);
+            false);
     BOOST_CHECK_EQUAL(restrictor.sqlFragment(), "123456=`db`.`tbl`.`objectId`");
     BOOST_CHECK_EQUAL(restrictor.getSecIdxLookupQuery("db", "tbl", "chunkColumn", "subChunkColumn"),
                       "SELECT `chunkColumn`, `subChunkColumn` "
@@ -82,13 +78,11 @@ BOOST_AUTO_TEST_CASE(SecIdxCompRestrictorTestRight){
     BOOST_CHECK_EQUAL(*secIdxColRef, ColumnRef("db", "tbl", "", "objectId"));
 }
 
-
 BOOST_AUTO_TEST_CASE(SecIdxBetweenRestrictorTest) {
-    auto restrictor = SecIdxBetweenRestrictor(
-            make_shared<BetweenPredicate>(ValueExpr::newColumnExpr("db", "tbl", "", "objectId"),
-                                          ValueExpr::newSimple(ValueFactor::newConstFactor("0")),
-                                          ValueExpr::newSimple(ValueFactor::newConstFactor("100000")),
-                                          false));
+    auto restrictor = SecIdxBetweenRestrictor(make_shared<BetweenPredicate>(
+            ValueExpr::newColumnExpr("db", "tbl", "", "objectId"),
+            ValueExpr::newSimple(ValueFactor::newConstFactor("0")),
+            ValueExpr::newSimple(ValueFactor::newConstFactor("100000")), false));
     BOOST_CHECK_EQUAL(restrictor.sqlFragment(), "`db`.`tbl`.`objectId` BETWEEN 0 AND 100000");
     BOOST_CHECK_EQUAL(restrictor.getSecIdxLookupQuery("db", "tbl", "chunkColumn", "subChunkColumn"),
                       "SELECT `chunkColumn`, `subChunkColumn` "
@@ -99,16 +93,14 @@ BOOST_AUTO_TEST_CASE(SecIdxBetweenRestrictorTest) {
     BOOST_CHECK_EQUAL(*secIdxColRef, ColumnRef("db", "tbl", "", "objectId"));
 }
 
-
 BOOST_AUTO_TEST_CASE(SecIdxInRestrictorTest) {
     vector<shared_ptr<ValueExpr>> candidates = {ValueExpr::newSimple(ValueFactor::newConstFactor("1")),
-                                      ValueExpr::newSimple(ValueFactor::newConstFactor("3")),
-                                      ValueExpr::newSimple(ValueFactor::newConstFactor("5")),
-                                      ValueExpr::newSimple(ValueFactor::newConstFactor("7")),
-                                      ValueExpr::newSimple(ValueFactor::newConstFactor("11"))};
-    auto restrictor = SecIdxInRestrictor(
-            make_shared<InPredicate>(ValueExpr::newColumnExpr("db", "tbl", "", "objectId"),
-                                     candidates, false));
+                                                ValueExpr::newSimple(ValueFactor::newConstFactor("3")),
+                                                ValueExpr::newSimple(ValueFactor::newConstFactor("5")),
+                                                ValueExpr::newSimple(ValueFactor::newConstFactor("7")),
+                                                ValueExpr::newSimple(ValueFactor::newConstFactor("11"))};
+    auto restrictor = SecIdxInRestrictor(make_shared<InPredicate>(
+            ValueExpr::newColumnExpr("db", "tbl", "", "objectId"), candidates, false));
     BOOST_CHECK_EQUAL(restrictor.sqlFragment(), "`db`.`tbl`.`objectId` IN(1,3,5,7,11)");
     BOOST_CHECK_EQUAL(restrictor.getSecIdxLookupQuery("db", "tbl", "chunkColumn", "subChunkColumn"),
                       "SELECT `chunkColumn`, `subChunkColumn` "
@@ -118,6 +110,5 @@ BOOST_AUTO_TEST_CASE(SecIdxInRestrictorTest) {
     BOOST_REQUIRE(secIdxColRef != nullptr);
     BOOST_CHECK_EQUAL(*secIdxColRef, ColumnRef("db", "tbl", "", "objectId"));
 }
-
 
 BOOST_AUTO_TEST_SUITE_END()

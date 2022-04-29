@@ -22,13 +22,13 @@
  */
 
 /**
-  * @file
-  *
-  * @brief PostPlugin does the right thing to handle LIMIT (and
-  * perhaps ORDER BY and GROUP BY) clauses.
-  *
-  * @author Daniel L. Wang, SLAC
-  */
+ * @file
+ *
+ * @brief PostPlugin does the right thing to handle LIMIT (and
+ * perhaps ORDER BY and GROUP BY) clauses.
+ *
+ * @author Daniel L. Wang, SLAC
+ */
 
 // Class header
 #include "qana/PostPlugin.h"
@@ -61,25 +61,19 @@ namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.qana.PostPlugin");
 }
 
-namespace lsst {
-namespace qserv {
-namespace qana {
+namespace lsst { namespace qserv { namespace qana {
 
 ////////////////////////////////////////////////////////////////////////
 // PostPlugin implementation
 ////////////////////////////////////////////////////////////////////////
-void
-PostPlugin::applyLogical(query::SelectStmt& stmt,
-                         query::QueryContext& context) {
+void PostPlugin::applyLogical(query::SelectStmt& stmt, query::QueryContext& context) {
     _limit = stmt.getLimit();
     if (stmt.hasOrderBy()) {
         _orderBy = stmt.getOrderBy().clone();
     }
 }
 
-void
-PostPlugin::applyPhysical(QueryPlugin::Plan& plan,
-                          query::QueryContext& context) {
+void PostPlugin::applyPhysical(QueryPlugin::Plan& plan, query::QueryContext& context) {
     // Idea: If a limit is available in the user query, compose a
     // merge statement (if one is not available)
     LOGS(_log, LOG_LVL_TRACE, "Apply physical");
@@ -95,16 +89,16 @@ PostPlugin::applyPhysical(QueryPlugin::Plan& plan,
     }
 
     if (_limit != NOTSET) {
-        // [ORDER BY ...] LIMIT ... is a special case which require sort on worker and sort/aggregation on czar
+        // [ORDER BY ...] LIMIT ... is a special case which require sort on worker and sort/aggregation on
+        // czar
         if (context.hasChunks()) {
-             LOGS(_log, LOG_LVL_TRACE, "Add merge operation");
-             context.needsMerge = true;
-         }
+            LOGS(_log, LOG_LVL_TRACE, "Add merge operation");
+            context.needsMerge = true;
+        }
     } else if (_orderBy) {
-        // If there is no LIMIT clause, remove ORDER BY clause from all Czar queries because it is performed by
-        // mysql-proxy (mysql doesn't garantee result order for non ORDER BY queries)
-        LOGS(_log, LOG_LVL_TRACE, "Remove ORDER BY from parallel and merge queries: \""
-             << *_orderBy << "\"");
+        // If there is no LIMIT clause, remove ORDER BY clause from all Czar queries because it is performed
+        // by mysql-proxy (mysql doesn't garantee result order for non ORDER BY queries)
+        LOGS(_log, LOG_LVL_TRACE, "Remove ORDER BY from parallel and merge queries: \"" << *_orderBy << "\"");
         for (auto i = plan.stmtParallel.begin(), e = plan.stmtParallel.end(); i != e; ++i) {
             (**i).setOrderBy(nullptr);
         }
@@ -128,5 +122,4 @@ PostPlugin::applyPhysical(QueryPlugin::Plan& plan,
     }
 }
 
-
-}}} // namespace lsst::qserv::qana
+}}}  // namespace lsst::qserv::qana

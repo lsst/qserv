@@ -45,9 +45,7 @@
 #include "lsst/sphgeom/Chunker.h"
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst { namespace qserv { namespace replica {
 
 /**
  * Class ChunkNumberValidator represents an abstract interface for chunk
@@ -58,9 +56,7 @@ namespace replica {
  * comparable. The comparison is based on the instance uniqueness.
  */
 class ChunkNumberValidator {
-
 public:
-
     /// Pointer type to objects of this type
     typedef std::shared_ptr<ChunkNumberValidator> Ptr;
 
@@ -82,15 +78,13 @@ public:
     virtual unsigned int overflowValue() const;
 
 protected:
-
-    // No publicly available construction methods for objects of this class 
+    // No publicly available construction methods for objects of this class
 
     ChunkNumberValidator();
     ChunkNumberValidator(ChunkNumberValidator const&) = default;
     ChunkNumberValidator& operator=(ChunkNumberValidator const&) = default;
 
 private:
-    
     unsigned int _id;
 };
 
@@ -100,9 +94,7 @@ private:
  * numbers whose boundaries are passed into the normal constructor of the class.
  */
 class ChunkNumberSingleRangeValidator : public ChunkNumberValidator {
-
 public:
-
     /**
      * Construct the validator for a specific range of chunk numbers
      *
@@ -112,8 +104,7 @@ public:
      * @param maxValue
      *   the maximum (inclusive) number in the range
      */
-    ChunkNumberSingleRangeValidator(unsigned int minValue,
-                                    unsigned int maxValue);
+    ChunkNumberSingleRangeValidator(unsigned int minValue, unsigned int maxValue);
 
     ChunkNumberSingleRangeValidator() = delete;
 
@@ -126,22 +117,18 @@ public:
     bool valid(unsigned int value) const final;
 
 private:
-
     // Input parameters
 
     unsigned int const _minValue;
     unsigned int const _maxValue;
 };
 
-
 /**
  * Class ChunkNumberQservValidator extends and completes) its abstract
  * base class. The class is based on the Qserv partitioning algorithm..
  */
 class ChunkNumberQservValidator : public ChunkNumberValidator {
-
 public:
-
     /**
      * Construct the validator with a specific set of the partitioning parameters.
      * See further details on the meaning of these parameters in a documentation
@@ -149,8 +136,7 @@ public:
      *
      * @see lsst::sphgeom::Chunker
      */
-    explicit ChunkNumberQservValidator(int32_t numStripes,
-                                       int32_t numSubStripesPerStripe);
+    explicit ChunkNumberQservValidator(int32_t numStripes, int32_t numSubStripesPerStripe);
 
     ChunkNumberQservValidator() = delete;
 
@@ -163,7 +149,6 @@ public:
     bool valid(unsigned int value) const final;
 
 private:
-
     lsst::sphgeom::Chunker _chunker;
 };
 
@@ -199,9 +184,7 @@ typedef std::range_error ChunkNumberNotValid;
  * or other states.
  */
 class ChunkNumber {
-
 public:
-
     /**
      * Construct the 'overflow' chunk (as per the specified validator)
      *
@@ -211,7 +194,7 @@ public:
      * @return
      *   a valid object which also passes 'overflow()' test
      */
-    static ChunkNumber makeOverflow(ChunkNumberValidator::Ptr const& validator=defaultValidator());
+    static ChunkNumber makeOverflow(ChunkNumberValidator::Ptr const& validator = defaultValidator());
 
     /**
      * Construct an empty object which is not 'valid'.
@@ -219,7 +202,7 @@ public:
      * @param pointer
      *   a to a validator for a specific validation scheme
      */
-    explicit ChunkNumber(ChunkNumberValidator::Ptr const& validator=defaultValidator());
+    explicit ChunkNumber(ChunkNumberValidator::Ptr const& validator = defaultValidator());
 
     /**
      * Attempt to construct a 'valid' object
@@ -233,8 +216,7 @@ public:
      * @throws ChunkNumberNotValid
      *   if the input value is not valid
      */
-    explicit ChunkNumber(unsigned int value,
-                         ChunkNumberValidator::Ptr const& validator=defaultValidator());
+    explicit ChunkNumber(unsigned int value, ChunkNumberValidator::Ptr const& validator = defaultValidator());
 
     // ATENTION: The copy constructor and the assignment operator will inherit
     // a validator of the input object.
@@ -281,7 +263,6 @@ public:
     bool operator<(unsigned int value) const;
 
 private:
-
     /**
      * @return
      *   validator which is based on ChunkNumberSingleRangeValidator for
@@ -299,9 +280,7 @@ private:
      * @param rhs
      *   the 'rvalue' object
      */
-    static void assertBothValid(ChunkNumber const& lhs,
-                                ChunkNumber const& rhs);
-
+    static void assertBothValid(ChunkNumber const& lhs, ChunkNumber const& rhs);
 
     // Data members
 
@@ -315,6 +294,6 @@ private:
 /// Print the chunk number onto a stream
 std::ostream& operator<<(std::ostream& os, ChunkNumber const& chunkNumber);
 
-}}} // namespace lsst::qserv::replica
+}}}  // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_CHUNKNUMBER_H
+#endif  // LSST_QSERV_REPLICA_CHUNKNUMBER_H

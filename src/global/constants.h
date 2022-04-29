@@ -22,13 +22,12 @@
  */
 #ifndef LSST_QSERV_CONSTANTS_H
 #define LSST_QSERV_CONSTANTS_H
- /**
-  * @brief  Global constants.
-  *
-  */
+/**
+ * @brief  Global constants.
+ *
+ */
 
-namespace lsst {
-namespace qserv {
+namespace lsst { namespace qserv {
 const char CHUNK_COLUMN[] = "chunkId";
 const char SUB_CHUNK_COLUMN[] = "subChunkId";
 const int DUMMY_CHUNK = 1234567890;
@@ -67,7 +66,7 @@ const int NOTSET = -1;
  *
  * @warning mysql enum index start from 1
  */
-enum MessageSeverity { MSG_INFO=1, MSG_ERROR } ;
+enum MessageSeverity { MSG_INFO = 1, MSG_ERROR };
 
-}}
-#endif // LSST_QSERV_CONSTANTS_H
+}}      // namespace lsst::qserv
+#endif  // LSST_QSERV_CONSTANTS_H
