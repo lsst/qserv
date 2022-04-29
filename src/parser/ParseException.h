@@ -35,7 +35,7 @@
 // Qserv headers
 #include "util/Bug.h"
 
-namespace lsst { namespace qserv { namespace parser {
+namespace lsst::qserv::parser {
 
 /// ParseException is a trivial exception for Qserv parse problems.
 /// ParseExceptions automatically retrieves basic information from the ANTLR
@@ -65,6 +65,6 @@ public:
     using ParseException::ParseException;
 };
 
-}}}  // namespace lsst::qserv::parser
+}  // namespace lsst::qserv::parser
 
 #endif  // LSST_QSERV_PARSER_PARSEEXCEPTION_H

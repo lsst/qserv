@@ -34,11 +34,11 @@
 ////////////////////////////////////////////////////////////////////////
 // ParseException
 ////////////////////////////////////////////////////////////////////////
-namespace lsst { namespace qserv { namespace parser {
+namespace lsst::qserv::parser {
 
 ParseException::ParseException(util::Bug const& b)
         : std::runtime_error(std::string("Bug during parse:") + b.what()) {}
 
 ParseException::ParseException(std::string const& msg) : std::runtime_error(msg) {}
 
-}}}  // namespace lsst::qserv::parser
+}  // namespace lsst::qserv::parser
