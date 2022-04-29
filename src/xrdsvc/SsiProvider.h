@@ -42,7 +42,7 @@
 class XrdSsiCluster;
 class XrdSsiLogger;
 
-namespace lsst { namespace qserv { namespace xrdsvc {
+namespace lsst::qserv::xrdsvc {
 
 class SsiProviderServer : public XrdSsiProvider {
 public:
@@ -74,6 +74,6 @@ private:
     XrdSsiLogger* _logSsi;
 };
 
-}}}  // namespace lsst::qserv::xrdsvc
+}  // namespace lsst::qserv::xrdsvc
 
 #endif  // LSST_QSERV_XRDSVC_SSIPROVIDER_H

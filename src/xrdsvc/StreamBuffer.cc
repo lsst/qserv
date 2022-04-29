@@ -38,7 +38,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.xrdsvc.StreamBuffer");
 
 using namespace std;
 
-namespace lsst { namespace qserv { namespace xrdsvc {
+namespace lsst::qserv::xrdsvc {
 
 atomic<int64_t> StreamBuffer::_maxTotalBytes{40'000'000'000};
 atomic<int64_t> StreamBuffer::_totalBytes(0);
@@ -130,4 +130,4 @@ bool StreamBuffer::waitForDoneWithThis() {
     return !_cancelled;
 }
 
-}}}  // namespace lsst::qserv::xrdsvc
+}  // namespace lsst::qserv::xrdsvc

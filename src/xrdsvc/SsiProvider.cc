@@ -66,7 +66,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.xrdsvc.SsiProvider");
 /*                            D e s t r u c t o r                             */
 /******************************************************************************/
 
-namespace lsst { namespace qserv { namespace xrdsvc {
+namespace lsst::qserv::xrdsvc {
 
 SsiProviderServer::~SsiProviderServer() {}
 
@@ -218,4 +218,4 @@ void SsiProviderServer::ResourceRemoved(const char* rName) {
     LOGS(_log, LOG_LVL_DEBUG, "SsiProvider ResourceRemoved " << rName << " invalid");
 }
 
-}}}  // namespace lsst::qserv::xrdsvc
+}  // namespace lsst::qserv::xrdsvc

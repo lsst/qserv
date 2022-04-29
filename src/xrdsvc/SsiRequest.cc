@@ -56,7 +56,7 @@ namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.xrdsvc.SsiRequest");
 }
 
-namespace lsst { namespace qserv { namespace xrdsvc {
+namespace lsst::qserv::xrdsvc {
 
 std::shared_ptr<wpublish::ResourceMonitor> SsiRequest::_resourceMonitor(new wpublish::ResourceMonitor());
 
@@ -447,4 +447,4 @@ uint64_t SsiRequest::getSeq() const {
     return _stream->getSeq();
 }
 
-}}}  // namespace lsst::qserv::xrdsvc
+}  // namespace lsst::qserv::xrdsvc

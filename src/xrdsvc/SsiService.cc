@@ -70,7 +70,7 @@ int dummyInitMDC = LOG_MDC_INIT(initMDC);
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace xrdsvc {
+namespace lsst::qserv::xrdsvc {
 
 SsiService::SsiService(XrdSsiLogger* log, wconfig::WorkerConfig const& workerConfig)
         : _mySqlConfig(workerConfig.getMySqlConfig()) {
@@ -193,4 +193,4 @@ void SsiService::_initInventory() {
     LOGS(_log, LOG_LVL_DEBUG, os.str());
 }
 
-}}}  // namespace lsst::qserv::xrdsvc
+}  // namespace lsst::qserv::xrdsvc

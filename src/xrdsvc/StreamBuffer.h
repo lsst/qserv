@@ -37,7 +37,7 @@
 #include "XrdSsi/XrdSsiErrInfo.hh"  // required by XrdSsiStream
 #include "XrdSsi/XrdSsiStream.hh"
 
-namespace lsst { namespace qserv { namespace xrdsvc {
+namespace lsst::qserv::xrdsvc {
 
 /// StreamBuffer is a single use buffer for transferring data packets
 /// to XrdSsi.
@@ -98,6 +98,6 @@ private:
     static std::condition_variable _createCv;
 };
 
-}}}  // namespace lsst::qserv::xrdsvc
+}  // namespace lsst::qserv::xrdsvc
 
 #endif  // LSST_QSERV_XRDSVC_STREAMBUFFER_H

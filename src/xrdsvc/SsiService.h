@@ -38,7 +38,7 @@
 // Forward declarations
 class XrdSsiLogger;
 
-namespace lsst { namespace qserv {
+namespace lsst::qserv {
 namespace wcontrol {
 class Foreman;
 class TransmitMgr;
@@ -46,9 +46,9 @@ class TransmitMgr;
 namespace wpublish {
 class ChunkInventory;
 }
-}}  // namespace lsst::qserv
+}  // namespace lsst::qserv
 
-namespace lsst { namespace qserv { namespace xrdsvc {
+namespace lsst::qserv::xrdsvc {
 
 /// SsiService is an XrdSsiService implementation that implements a Qserv query
 /// worker services
@@ -84,6 +84,6 @@ private:
 
 };  // class SsiService
 
-}}}  // namespace lsst::qserv::xrdsvc
+}  // namespace lsst::qserv::xrdsvc
 
 #endif  // LSST_QSERV_XRDSVC_SSISERVICE_H

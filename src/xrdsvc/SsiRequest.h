@@ -43,7 +43,7 @@
 // Forward declarations
 class XrdSsiService;
 
-namespace lsst { namespace qserv {
+namespace lsst::qserv {
 namespace wbase {
 struct MsgProcessor;
 class Task;
@@ -54,9 +54,9 @@ class TransmitMgr;
 namespace wpublish {
 class ResourceMonitor;
 }
-}}  // namespace lsst::qserv
+}  // namespace lsst::qserv
 
-namespace lsst { namespace qserv { namespace xrdsvc {
+namespace lsst::qserv::xrdsvc {
 
 class ChannelStream;
 class StreamBuffer;
@@ -164,6 +164,6 @@ private:
     Ptr _selfKeepAlive;
 };
 
-}}}  // namespace lsst::qserv::xrdsvc
+}  // namespace lsst::qserv::xrdsvc
 
 #endif  // LSST_QSERV_XRDSVC_SSIREQUEST_H

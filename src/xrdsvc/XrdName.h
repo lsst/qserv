@@ -28,7 +28,7 @@
 #include <cstdlib>
 #include <string>
 
-namespace lsst { namespace qserv { namespace xrdsvc {
+namespace lsst::qserv::xrdsvc {
 
 /// XrdName is a small class that helps extract the name of a running xrootd (or
 /// cmsd) instance. It does this by checking an environment variable that is
@@ -56,6 +56,6 @@ private:
     std::string _name;
 };
 
-}}}  // namespace lsst::qserv::xrdsvc
+}  // namespace lsst::qserv::xrdsvc
 
 #endif  // LSST_QSERV_XRDFS_XRDNAME_H

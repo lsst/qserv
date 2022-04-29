@@ -41,7 +41,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.xrdsvc.ChannelStream");
 
 using namespace std;
 
-namespace lsst { namespace qserv { namespace xrdsvc {
+namespace lsst::qserv::xrdsvc {
 
 /// Provide each Channel stream with a unique identifier.
 atomic<uint64_t> ChannelStream::_sequenceSource{0};
@@ -112,4 +112,4 @@ void ChannelStream::clearMsgs() {
     }
 }
 
-}}}  // namespace lsst::qserv::xrdsvc
+}  // namespace lsst::qserv::xrdsvc

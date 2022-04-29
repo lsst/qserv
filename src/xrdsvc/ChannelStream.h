@@ -36,7 +36,7 @@
 #include "XrdSsi/XrdSsiErrInfo.hh"  // required by XrdSsiStream
 #include "XrdSsi/XrdSsiStream.hh"
 
-namespace lsst { namespace qserv { namespace xrdsvc {
+namespace lsst::qserv::xrdsvc {
 
 /// ChannelStream is an implementation of an XrdSsiStream that accepts
 /// SendChannel streamed data.
@@ -70,6 +70,6 @@ private:
     std::atomic<uint> _getBufCount{0};             ///< number of buffers
 };
 
-}}}  // namespace lsst::qserv::xrdsvc
+}  // namespace lsst::qserv::xrdsvc
 
 #endif  // LSST_QSERV_XRDSVC_CHANNELSTREAM_H
