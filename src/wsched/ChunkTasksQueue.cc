@@ -35,7 +35,7 @@ namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.wsched.ChunkTasksQueue");
 }
 
-namespace lsst { namespace qserv { namespace wsched {
+namespace lsst::qserv::wsched {
 
 /// Queue a Task with other tasks on the same chunk.
 void ChunkTasksQueue::queueTask(std::vector<wbase::Task::Ptr> const& tasks) {
@@ -507,4 +507,4 @@ std::string ChunkTasks::cInfo() const {
     return os.str();
 }
 
-}}}  // namespace lsst::qserv::wsched
+}  // namespace lsst::qserv::wsched

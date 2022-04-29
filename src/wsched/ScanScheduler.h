@@ -33,11 +33,11 @@
 #include "wsched/SchedulerBase.h"
 
 // Forward declarations
-namespace lsst { namespace qserv { namespace wsched {
+namespace lsst::qserv::wsched {
 class BlendScheduler;
-}}}  // namespace lsst::qserv::wsched
+}  // namespace lsst::qserv::wsched
 
-namespace lsst { namespace qserv { namespace wsched {
+namespace lsst::qserv::wsched {
 
 /// The purpose of the scan scheduler is to try to limit disk i/o.
 /// Tasks given to ScanScheduler are parts of user queries that are
@@ -98,6 +98,6 @@ private:
     std::atomic<bool> _infoChanged{true};  ///< "Used to limit the amount of debug logging.
 };
 
-}}}  // namespace lsst::qserv::wsched
+}  // namespace lsst::qserv::wsched
 
 #endif  // LSST_QSERV_WSCHED_SCANSCHEDULER_H

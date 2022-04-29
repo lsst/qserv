@@ -36,7 +36,7 @@
 #include "wsched/ChunkTaskCollection.h"
 #include "wsched/SchedulerBase.h"
 
-namespace lsst { namespace qserv { namespace wsched {
+namespace lsst::qserv::wsched {
 
 /// A class to store Tasks for a specific chunk.
 /// Tasks are normally placed on _activeTasks, but will be added
@@ -174,6 +174,6 @@ private:
     SchedulerBase* _scheduler;  ///< Pointer to scheduler that owns this. This can be nullptr.
 };
 
-}}}  // namespace lsst::qserv::wsched
+}  // namespace lsst::qserv::wsched
 
 #endif  // LSST_QSERV_WSCHED_CHUNKTASKLIST_H

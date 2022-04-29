@@ -56,7 +56,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.wsched.ScanScheduler");
 
 using namespace std;
 
-namespace lsst { namespace qserv { namespace wsched {
+namespace lsst::qserv::wsched {
 
 ScanScheduler::ScanScheduler(string const& name, int maxThreads, int maxReserve, int priority,
                              int maxActiveChunks, memman::MemMan::Ptr const& memMan, int minRating,
@@ -316,4 +316,4 @@ void ScanScheduler::logMemManStats() {
     LOGS(_log, LOG_LVL_DEBUG, "Scan " << _memMan->getStatistics().logString());
 }
 
-}}}  // namespace lsst::qserv::wsched
+}  // namespace lsst::qserv::wsched

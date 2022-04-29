@@ -27,7 +27,7 @@
 #include "util/EventThread.h"
 #include "wsched/SchedulerBase.h"
 
-namespace lsst { namespace qserv { namespace wsched {
+namespace lsst::qserv::wsched {
 
 /// A container to hold commands for a single chunk.
 /// Similar to util::CommandQueue but it doesn't need the condition variable or mutex.
@@ -94,6 +94,6 @@ private:
     int _maxGroupSize{1};
 };
 
-}}}  // namespace lsst::qserv::wsched
+}  // namespace lsst::qserv::wsched
 
 #endif  // LSST_QSERV_WSCHED_GROUPSCHEDULER_H

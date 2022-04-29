@@ -48,7 +48,7 @@ namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.wsched.GroupScheduler");
 }
 
-namespace lsst { namespace qserv { namespace wsched {
+namespace lsst::qserv::wsched {
 
 GroupQueue::GroupQueue(int maxAccepted, wbase::Task::Ptr const& task) : _maxAccepted{maxAccepted} {
     assert(task != nullptr);
@@ -192,4 +192,4 @@ std::size_t GroupScheduler::getSize() const {
     return _queue.size();
 }
 
-}}}  // namespace lsst::qserv::wsched
+}  // namespace lsst::qserv::wsched

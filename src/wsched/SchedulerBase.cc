@@ -35,7 +35,7 @@ namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.wsched.ScanScheduler");
 }
 
-namespace lsst { namespace qserv { namespace wsched {
+namespace lsst::qserv::wsched {
 
 /// Set priority to use when starting next chunk.
 void SchedulerBase::setPriority(int priority) { _priority = priority; }
@@ -139,4 +139,4 @@ bool SchedulerBase::chunkAlreadyActive(int chunkId) {
     return iter != _chunkTasks.end();  // return true if chunkId was found.
 }
 
-}}}  // namespace lsst::qserv::wsched
+}  // namespace lsst::qserv::wsched

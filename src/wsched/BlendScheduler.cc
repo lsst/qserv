@@ -63,7 +63,7 @@ namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.wsched.BlendScheduler");
 }
 
-namespace lsst { namespace qserv { namespace wsched {
+namespace lsst::qserv::wsched {
 
 BlendScheduler* dbgBlendScheduler = nullptr;  ///< A symbol for gdb
 
@@ -528,4 +528,4 @@ bool ControlCommandQueue::ready() {
     return !_qu.empty();
 }
 
-}}}  // namespace lsst::qserv::wsched
+}  // namespace lsst::qserv::wsched

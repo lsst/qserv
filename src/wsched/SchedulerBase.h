@@ -31,7 +31,7 @@
 // Qserv headers
 #include "wcontrol/Foreman.h"
 
-namespace lsst { namespace qserv { namespace wsched {
+namespace lsst::qserv::wsched {
 
 class BlendScheduler;
 
@@ -151,6 +151,6 @@ private:
     int _defaultPosition{10};  ///< Position of this scheduler in the list of schedulers.
 };
 
-}}}  // namespace lsst::qserv::wsched
+}  // namespace lsst::qserv::wsched
 
 #endif /* LSST_QSERV_WSCHED_SCHEDULERBASE_H_ */

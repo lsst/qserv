@@ -34,12 +34,12 @@
 #include "wsched/SchedulerBase.h"
 
 // Forward declarations
-namespace lsst { namespace qserv { namespace wsched {
+namespace lsst::qserv::wsched {
 class GroupScheduler;
 class ScanScheduler;
-}}}  // namespace lsst::qserv::wsched
+}  // namespace lsst::qserv::wsched
 
-namespace lsst { namespace qserv { namespace wsched {
+namespace lsst::qserv::wsched {
 
 // Class to pass control commands to the pool thread.
 // The scheduler doesn't know what to do with commands that aren't associated with
@@ -153,7 +153,7 @@ private:
     SchedulerBase::Ptr _readySched;  //< Pointer to the scheduler with a ready task.
 };
 
-}}}  // namespace lsst::qserv::wsched
+}  // namespace lsst::qserv::wsched
 
 extern lsst::qserv::wsched::BlendScheduler* dbgBlendScheduler;  ///< A symbol for gdb
 
