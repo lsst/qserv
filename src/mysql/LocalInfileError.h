@@ -26,7 +26,7 @@
 // System headers
 #include <stdexcept>
 
-namespace lsst { namespace qserv { namespace mysql {
+namespace lsst::qserv::mysql {
 
 /// LocalInfileError is a trivial exception for runtime LocalInfile problems
 class LocalInfileError : public std::runtime_error {
@@ -35,6 +35,6 @@ public:
     explicit LocalInfileError(std::string const& msg) : std::runtime_error(msg) {}
 };
 
-}}}  // namespace lsst::qserv::mysql
+}  // namespace lsst::qserv::mysql
 
 #endif  // LSST_QSERV_MYSQL_LOCALINFILEERROR_H

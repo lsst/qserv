@@ -34,7 +34,7 @@
 #include "boost/utility.hpp"
 #include <mysql/mysql.h>
 
-namespace lsst { namespace qserv { namespace mysql {
+namespace lsst::qserv::mysql {
 
 class RowBuffer;  // Forward. Defined in LocalInfile.cc
 
@@ -138,6 +138,6 @@ private:
     std::mutex _mapMutex;
 };
 
-}}}  // namespace lsst::qserv::mysql
+}  // namespace lsst::qserv::mysql
 
 #endif  // LSST_QSERV_MYSQL_LOCALINFILE_H

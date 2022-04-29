@@ -28,11 +28,11 @@
 #include <memory>
 #include <string>
 
-namespace lsst { namespace qserv { namespace sql {
+namespace lsst::qserv::sql {
 class SqlConnection;
-}}}  // namespace lsst::qserv::sql
+}  // namespace lsst::qserv::sql
 
-namespace lsst { namespace qserv { namespace mysql {
+namespace lsst::qserv::mysql {
 
 /**
  *  Value class for configuring the MySQL connection
@@ -99,6 +99,6 @@ public:
     std::string dbName;
 };
 
-}}}  // namespace lsst::qserv::mysql
+}  // namespace lsst::qserv::mysql
 
 #endif  // LSST_QSERV_MYSQL_MYSQLCONFIG_H

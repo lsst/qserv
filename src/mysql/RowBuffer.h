@@ -32,11 +32,11 @@
 // Third-party headers
 #include <mysql/mysql.h>
 
-namespace lsst { namespace qserv { namespace proto {
+namespace lsst::qserv::proto {
 class Result;
-}}}  // namespace lsst::qserv::proto
+}  // namespace lsst::qserv::proto
 
-namespace lsst { namespace qserv { namespace mysql {
+namespace lsst::qserv::mysql {
 
 /// Row is a mysql row abstraction that bundles field sizes and counts. Row is
 /// shallow, and does not perform any memory management.
@@ -80,5 +80,5 @@ public:
     virtual std::string dump() const = 0;
 };
 
-}}}     // namespace lsst::qserv::mysql
+}     // namespace lsst::qserv::mysql
 #endif  // LSST_QSERV_MYSQL_ROWBUFFER_H

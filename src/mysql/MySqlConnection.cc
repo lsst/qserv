@@ -69,7 +69,7 @@ struct InitializeMysqlLibrary {
 };
 }  // namespace
 
-namespace lsst { namespace qserv { namespace mysql {
+namespace lsst::qserv::mysql {
 
 MySqlConnection::MySqlConnection()
         : _mysql(nullptr),
@@ -230,4 +230,4 @@ std::string MySqlConnection::dump() {
     return os.str();
 }
 
-}}}  // namespace lsst::qserv::mysql
+}  // namespace lsst::qserv::mysql

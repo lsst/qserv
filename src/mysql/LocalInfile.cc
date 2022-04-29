@@ -47,7 +47,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.mysql.LocalInfile");
 
 }
 
-namespace lsst { namespace qserv { namespace mysql {
+namespace lsst::qserv::mysql {
 
 ////////////////////////////////////////////////////////////////////////
 // LocalInfile implementation
@@ -215,4 +215,4 @@ bool LocalInfile::Mgr::_set(std::string const& s, std::shared_ptr<RowBuffer> con
     return res.second;
 }
 
-}}}  // namespace lsst::qserv::mysql
+}  // namespace lsst::qserv::mysql

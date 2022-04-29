@@ -31,12 +31,12 @@
 // Qserv headers
 #include "sql/Schema.h"
 
-namespace lsst { namespace qserv { namespace mysql {
+namespace lsst::qserv::mysql {
 class SchemaFactory {
 public:
     static sql::ColSchema newColSchema(MYSQL_FIELD const& f);
     static sql::Schema newFromResult(MYSQL_RES* result);
 };
 
-}}}     // namespace lsst::qserv::mysql
+}     // namespace lsst::qserv::mysql
 #endif  // LSST_QSERV_MYSQL_SCHEMAFACTORY_H

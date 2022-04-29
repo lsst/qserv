@@ -46,7 +46,7 @@ std::string const mysqlNull("\\N");
 // should be less than 0.5 * infileBufferSize
 int const largeRowThreshold = 500 * 1024;
 
-namespace lsst { namespace qserv { namespace mysql {
+namespace lsst::qserv::mysql {
 ////////////////////////////////////////////////////////////////////////
 // Helpers
 ////////////////////////////////////////////////////////////////////////
@@ -282,4 +282,4 @@ std::shared_ptr<RowBuffer> RowBuffer::newResRowBuffer(MYSQL_RES* result) {
     Ptr p = std::make_shared<ResRowBuffer>(result);
     return p;
 }
-}}}  // namespace lsst::qserv::mysql
+}  // namespace lsst::qserv::mysql

@@ -33,7 +33,7 @@
 // Qserv headers
 #include "sql/Schema.h"
 
-namespace lsst { namespace qserv { namespace mysql {
+namespace lsst::qserv::mysql {
 
 ////////////////////////////////////////////////////////////////////////
 // Helpers
@@ -227,4 +227,4 @@ sql::Schema SchemaFactory::newFromResult(MYSQL_RES* result) {
     return s;
 }
 
-}}}  // namespace lsst::qserv::mysql
+}  // namespace lsst::qserv::mysql

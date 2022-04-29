@@ -42,7 +42,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.mysql.MySqlConfig");
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace mysql {
+namespace lsst::qserv::mysql {
 
 MySqlConfig::MySqlConfig(std::string const& username, std::string const& password,
                          std::string const& hostname, unsigned int const port, std::string const& socket,
@@ -71,4 +71,4 @@ std::string MySqlConfig::toString() const {
     return oss.str();
 }
 
-}}}  // namespace lsst::qserv::mysql
+}  // namespace lsst::qserv::mysql

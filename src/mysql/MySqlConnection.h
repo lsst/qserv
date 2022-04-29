@@ -38,7 +38,7 @@
 #include "boost/utility.hpp"
 #include <mysql/mysql.h>
 
-namespace lsst { namespace qserv { namespace mysql {
+namespace lsst::qserv::mysql {
 
 // Forward
 class MySqlConfig;
@@ -108,6 +108,6 @@ private:
     std::mutex _interruptMutex;
 };
 
-}}}  // namespace lsst::qserv::mysql
+}  // namespace lsst::qserv::mysql
 
 #endif  // LSST_QSERV_MYSQL_MYSQLCONNECTION_H
