@@ -38,7 +38,7 @@
 // Local headers
 #include "wdb/QuerySql.h"
 
-namespace lsst { namespace qserv { namespace wdb {
+namespace lsst::qserv::wdb {
 
 struct QuerySql::Batch {
     // Default to 10 SQL statements at a time.
@@ -77,6 +77,6 @@ struct QuerySql::Batch {
     QuerySql::StringDeque::size_type pos;
 };
 
-}}}  // namespace lsst::qserv::wdb
+}  // namespace lsst::qserv::wdb
 
 #endif  // LSST_QSERV_WDB_QUERYSQL_BATCH_H

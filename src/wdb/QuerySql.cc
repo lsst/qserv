@@ -73,7 +73,7 @@ public:
 };
 }  // anonymous namespace
 
-namespace lsst { namespace qserv { namespace wdb {
+namespace lsst::qserv::wdb {
 
 ////////////////////////////////////////////////////////////////////////
 // QuerySql ostream friend
@@ -130,4 +130,4 @@ QuerySql::QuerySql(std::string const& db, int chunkId, proto::TaskMsg_Fragment c
     }
 }
 
-}}}  // namespace lsst::qserv::wdb
+}  // namespace lsst::qserv::wdb

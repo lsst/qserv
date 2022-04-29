@@ -73,7 +73,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.wdb.QueryRunner");
 
 using namespace std;
 
-namespace lsst { namespace qserv { namespace wdb {
+namespace lsst::qserv::wdb {
 
 QueryRunner::Ptr QueryRunner::newQueryRunner(wbase::Task::Ptr const& task,
                                              ChunkResourceMgr::Ptr const& chunkResourceMgr,
@@ -429,7 +429,7 @@ void QueryRunner::cancel() {
 
 QueryRunner::~QueryRunner() {}
 
-}}}  // namespace lsst::qserv::wdb
+}  // namespace lsst::qserv::wdb
 
 // Future idea: Query cache
 // Pseudocode: Record query in query cache table

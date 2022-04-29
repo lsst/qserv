@@ -51,7 +51,7 @@ std::string makeUuid() {
 
 }  // anonymous namespace
 
-namespace lsst { namespace qserv { namespace wdb {
+namespace lsst::qserv::wdb {
 
 SQLBackend::SQLBackend() : _uid(makeUuid()) {}
 
@@ -276,4 +276,4 @@ void FakeBackend::_discard(ScTableVector::const_iterator begin, ScTableVector::c
     LOGS(_log, LOG_LVL_DEBUG, os.str());
 }
 
-}}}  // namespace lsst::qserv::wdb
+}  // namespace lsst::qserv::wdb

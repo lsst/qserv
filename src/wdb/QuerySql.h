@@ -39,16 +39,16 @@
 #include <string>
 
 // Forward declarations
-namespace lsst { namespace qserv {
+namespace lsst::qserv {
 namespace proto {
 class TaskMsg_Fragment;
 }
 namespace wdb {
 class Task;
 }
-}}  // namespace lsst::qserv
+}  // namespace lsst::qserv
 
-namespace lsst { namespace qserv { namespace wdb {
+namespace lsst::qserv::wdb {
 
 class QuerySql {
 public:
@@ -67,6 +67,6 @@ public:
     friend std::ostream& operator<<(std::ostream& os, QuerySql const& q);
 };
 
-}}}  // namespace lsst::qserv::wdb
+}  // namespace lsst::qserv::wdb
 
 #endif  // LSST_QSERV_WDB_QUERYSQL_H

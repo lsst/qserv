@@ -40,11 +40,11 @@
 #include "sql/SqlErrorObject.h"
 
 // Forward declarations
-namespace lsst { namespace qserv { namespace mysql {
+namespace lsst::qserv::mysql {
 class MySqlConfig;
-}}}  // namespace lsst::qserv::mysql
+}  // namespace lsst::qserv::mysql
 
-namespace lsst { namespace qserv { namespace wdb {
+namespace lsst::qserv::wdb {
 
 struct ScTable {
     ScTable(int chunkId_, DbTable const& dbTable_, int subChunkId_)
@@ -142,6 +142,6 @@ private:
     void _discard(ScTableVector::const_iterator begin, ScTableVector::const_iterator end) override;
 };
 
-}}}  // namespace lsst::qserv::wdb
+}  // namespace lsst::qserv::wdb
 
 #endif  // LSST_QSERV_WDB_SQLBACKEND_H

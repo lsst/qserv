@@ -50,16 +50,16 @@
 #include "wdb/SQLBackend.h"
 
 // Forward declarations
-namespace lsst { namespace qserv {
+namespace lsst::qserv {
 namespace proto {
 class TaskMsg_Fragment;
 }
 namespace wdb {
 class Task;
 }
-}}  // namespace lsst::qserv
+}  // namespace lsst::qserv
 
-namespace lsst { namespace qserv { namespace wdb {
+namespace lsst::qserv::wdb {
 
 class ChunkEntry;
 class ChunkResourceMgr;
@@ -144,6 +144,6 @@ private:
     std::mutex _mapMutex;  // Do not alter map without this mutex
 };
 
-}}}  // namespace lsst::qserv::wdb
+}  // namespace lsst::qserv::wdb
 
 #endif  // LSST_QSERV_WDB_CHUNKRESOURCE_H

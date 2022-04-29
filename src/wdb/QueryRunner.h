@@ -46,7 +46,7 @@
 #include "wcontrol/SqlConnMgr.h"
 #include "wdb/ChunkResource.h"
 
-namespace lsst { namespace qserv {
+namespace lsst::qserv {
 
 namespace proto {
 class ProtoHeader;
@@ -66,9 +66,9 @@ class SqlConnMgr;
 class TransmitMgr;
 }  // namespace wcontrol
 
-}}  // namespace lsst::qserv
+}  // namespace lsst::qserv
 
-namespace lsst { namespace qserv { namespace wdb {
+namespace lsst::qserv::wdb {
 
 /// On the worker, run a query related to a Task, writing the results to a table or supplied SendChannel.
 ///
@@ -134,6 +134,6 @@ private:
     std::shared_ptr<wcontrol::TransmitMgr> const _transmitMgr;
 };
 
-}}}  // namespace lsst::qserv::wdb
+}  // namespace lsst::qserv::wdb
 
 #endif

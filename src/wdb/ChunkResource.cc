@@ -76,7 +76,7 @@ public:
 };
 }  // anonymous namespace
 
-namespace lsst { namespace qserv { namespace wdb {
+namespace lsst::qserv::wdb {
 ////////////////////////////////////////////////////////////////////////
 // ChunkResource
 ////////////////////////////////////////////////////////////////////////
@@ -355,4 +355,4 @@ ChunkEntry& ChunkResourceMgr::_getChunkEntry(Map& m, int chunkId) {
     return *(it->second.get());
 }
 
-}}}  // namespace lsst::qserv::wdb
+}  // namespace lsst::qserv::wdb
