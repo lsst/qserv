@@ -52,7 +52,7 @@ std::mutex _czarMutex;
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace proxy {
+namespace lsst::qserv::proxy {
 
 void initCzar(std::string const& czarName) {
     std::lock_guard<std::mutex> lock(_czarMutex);
@@ -111,4 +111,4 @@ void log(std::string const& loggername, std::string const& level, std::string co
     }
 }
 
-}}}  // namespace lsst::qserv::proxy
+}  // namespace lsst::qserv::proxy

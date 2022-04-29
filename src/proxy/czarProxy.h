@@ -32,7 +32,7 @@
 // Qserv headers
 #include "czar/SubmitResult.h"
 
-namespace lsst { namespace qserv { namespace proxy {
+namespace lsst::qserv::proxy {
 
 /// @addtogroup proxy
 
@@ -80,6 +80,6 @@ void killQuery(std::string const& query, std::string const& clientId);
 void log(std::string const& loggername, std::string const& level, std::string const& filename,
          std::string const& funcname, unsigned lineno, std::string const& message);
 
-}}}  // namespace lsst::qserv::proxy
+}  // namespace lsst::qserv::proxy
 
 #endif  // LSST_QSERV_PROXY_CZARPROXY_H
