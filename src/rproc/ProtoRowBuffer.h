@@ -31,7 +31,7 @@
 #include "proto/worker.pb.h"
 #include "sql/Schema.h"
 
-namespace lsst { namespace qserv { namespace rproc {
+namespace lsst::qserv::rproc {
 
 /// ProtoRowBuffer is an implementation of RowBuffer designed to allow a
 /// LocalInfile object to use a Protobufs Result message as a row source
@@ -161,5 +161,5 @@ private:
     int const _jobIdMysqlType;
 };
 
-}}}     // namespace lsst::qserv::rproc
+}     // namespace lsst::qserv::rproc
 #endif  // LSST_QSERV_RPROC_PROTOROWBUFFER_H

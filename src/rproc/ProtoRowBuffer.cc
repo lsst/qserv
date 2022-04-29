@@ -62,7 +62,7 @@ std::string printCharVect(std::vector<char> const& cVect) {
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace rproc {
+namespace lsst::qserv::rproc {
 
 ProtoRowBuffer::ProtoRowBuffer(proto::Result& res, int jobId, std::string const& jobIdColName,
                                std::string const& jobIdSqlType, int jobIdMysqlType)
@@ -166,4 +166,4 @@ void ProtoRowBuffer::_initCurrentRow() {
     _currentRow.reserve(rowSize * 2);  // for future usage
 }
 
-}}}  // namespace lsst::qserv::rproc
+}  // namespace lsst::qserv::rproc

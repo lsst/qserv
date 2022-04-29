@@ -100,7 +100,7 @@ const char JOB_ID_BASE_NAME[] = "jobId";
 size_t const MB_SIZE_BYTES = 1024 * 1024;
 }  // anonymous namespace
 
-namespace lsst { namespace qserv { namespace rproc {
+namespace lsst::qserv::rproc {
 
 ////////////////////////////////////////////////////////////////////////
 // InfileMerger public
@@ -751,4 +751,4 @@ bool InvalidJobAttemptMgr::_isJobAttemptInvalid(int jobIdAttempt) {
     return _invalidJobAttempts.find(jobIdAttempt) != _invalidJobAttempts.end();
 }
 
-}}}  // namespace lsst::qserv::rproc
+}  // namespace lsst::qserv::rproc

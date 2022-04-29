@@ -45,7 +45,7 @@
 #include "util/SemaMgr.h"
 
 // Forward declarations
-namespace lsst { namespace qserv {
+namespace lsst::qserv {
 namespace czar {
 class CzarConfig;
 }
@@ -71,9 +71,9 @@ class Schema;
 class SqlConnection;
 class SqlResults;
 }  // namespace sql
-}}  // namespace lsst::qserv
+}  // namespace lsst::qserv
 
-namespace lsst { namespace qserv { namespace rproc {
+namespace lsst::qserv::rproc {
 
 /** \typedef InfileMergerError Store InfileMerger error code.
  *
@@ -315,6 +315,6 @@ private:
     std::shared_ptr<util::SemaMgr> _semaMgrConn;  ///< Used to limit the number of open mysql connections.
 };
 
-}}}  // namespace lsst::qserv::rproc
+}  // namespace lsst::qserv::rproc
 
 #endif  // LSST_QSERV_RPROC_INFILEMERGER_H
