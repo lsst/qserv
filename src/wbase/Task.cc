@@ -69,7 +69,7 @@ std::ostream& dump(std::ostream& os, lsst::qserv::proto::TaskMsg_Fragment const&
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace wbase {
+namespace lsst::qserv::wbase {
 
 // Task::ChunkEqual functor
 bool Task::ChunkEqual::operator()(Task::Ptr const& x, Task::Ptr const& y) {
@@ -345,4 +345,4 @@ std::ostream& operator<<(std::ostream& os, IdSet const& idSet) {
     return os;
 }
 
-}}}  // namespace lsst::qserv::wbase
+}  // namespace lsst::qserv::wbase

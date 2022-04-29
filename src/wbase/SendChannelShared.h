@@ -37,7 +37,7 @@
 #include "wbase/SendChannel.h"
 #include "wbase/TransmitData.h"
 
-namespace lsst { namespace qserv {
+namespace lsst::qserv {
 
 namespace wcontrol {
 class TransmitMgr;
@@ -289,6 +289,6 @@ private:
 };
 
 }  // namespace wbase
-}}  // namespace lsst::qserv
+}  // namespace lsst::qserv
 
 #endif  // LSST_QSERV_WBASE_SENDCHANNELSHARED_H

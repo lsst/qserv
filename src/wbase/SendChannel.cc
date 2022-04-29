@@ -49,7 +49,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.wbase.SendChannel");
 
 using namespace std;
 
-namespace lsst { namespace qserv { namespace wbase {
+namespace lsst::qserv::wbase {
 
 /// NopChannel is a NOP implementation of SendChannel for development and
 /// debugging code without an XrdSsi channel.
@@ -200,4 +200,4 @@ uint64_t SendChannel::getSeq() const {
     return _ssiRequest->getSeq();
 }
 
-}}}  // namespace lsst::qserv::wbase
+}  // namespace lsst::qserv::wbase

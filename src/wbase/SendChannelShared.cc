@@ -43,7 +43,7 @@ namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.wbase.SendChannelShared");
 }
 
-namespace lsst { namespace qserv { namespace wbase {
+namespace lsst::qserv::wbase {
 
 atomic<uint64_t> SendChannelShared::scsSeqId{0};
 
@@ -407,4 +407,4 @@ string SendChannelShared::_dumpTr() const {
     return str;
 }
 
-}}}  // namespace lsst::qserv::wbase
+}  // namespace lsst::qserv::wbase

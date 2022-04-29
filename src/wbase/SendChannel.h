@@ -30,7 +30,7 @@
 // Qserv headers
 #include "xrdsvc/StreamBuffer.h"
 
-namespace lsst { namespace qserv {
+namespace lsst::qserv {
 namespace xrdsvc {
 class SsiRequest;  // Forward declaration
 }
@@ -108,5 +108,5 @@ private:
 };
 
 }  // namespace wbase
-}}      // namespace lsst::qserv
+}      // namespace lsst::qserv
 #endif  // LSST_QSERV_WBASE_SENDCHANNEL_H

@@ -37,7 +37,7 @@
 class XrdSysError;
 class XrdSysLogger;
 class XrdSfsAio;
-namespace lsst { namespace qserv {
+namespace lsst::qserv {
 namespace proto {
 class TaskMsg;
 }
@@ -45,9 +45,9 @@ namespace wbase {
 class StringBuffer;
 class StringBuffer2;
 }  // namespace wbase
-}}  // namespace lsst::qserv
+}  // namespace lsst::qserv
 
-namespace lsst { namespace qserv { namespace wbase {
+namespace lsst::qserv::wbase {
 
 typedef long long StringBufferOffset;
 typedef int StringBufferSize;
@@ -107,7 +107,7 @@ private:
     unsigned _bytesWritten{0};
 };
 
-}}}  // namespace lsst::qserv::wbase
+}  // namespace lsst::qserv::wbase
 
 typedef boost::format Pformat;
 

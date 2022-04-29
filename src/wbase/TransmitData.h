@@ -33,12 +33,12 @@
 #include "proto/ProtoHeaderWrap.h"
 #include "qmeta/types.h"
 
-namespace google { namespace protobuf {
+namespace google::protobuf {
 class Arena;
-}}  // namespace google::protobuf
+}  // namespace google::protobuf
 
 // This header declarations
-namespace lsst { namespace qserv {
+namespace lsst::qserv {
 
 namespace util {
 class MultiError;
@@ -190,6 +190,6 @@ private:
 };
 
 }  // namespace wbase
-}}  // namespace lsst::qserv
+}  // namespace lsst::qserv
 
 #endif  // LSST_QSERV_WBASE_TRANSMITDATA_H

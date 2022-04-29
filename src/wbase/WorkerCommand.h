@@ -34,11 +34,11 @@
 #include "util/Command.h"
 
 // Forward declarations
-namespace lsst { namespace qserv { namespace wbase {
+namespace lsst::qserv::wbase {
 class SendChannel;
-}}}  // namespace lsst::qserv::wbase
+}  // namespace lsst::qserv::wbase
 
-namespace lsst { namespace qserv { namespace wbase {
+namespace lsst::qserv::wbase {
 
 /**
  * Class WorkerCommand is the base class for a family of various worker
@@ -73,6 +73,6 @@ protected:
     proto::FrameBuffer _frameBuf;               ///< Buffer for serializing a response
 };
 
-}}}  // namespace lsst::qserv::wbase
+}  // namespace lsst::qserv::wbase
 
 #endif  // LSST_QSERV_WBASE_WORKER_COMMAND_H

@@ -43,7 +43,7 @@
 #include "util/threadSafe.h"
 
 // Forward declarations
-namespace lsst { namespace qserv {
+namespace lsst::qserv {
 namespace wbase {
 struct ScriptMeta;
 class SendChannelShared;
@@ -52,9 +52,9 @@ namespace proto {
 class TaskMsg;
 class TaskMsg_Fragment;
 }  // namespace proto
-}}  // namespace lsst::qserv
+}  // namespace lsst::qserv
 
-namespace lsst { namespace qserv { namespace wbase {
+namespace lsst::qserv::wbase {
 
 /// Base class for tracking a database query for a worker Task.
 class TaskQueryRunner {
@@ -222,6 +222,6 @@ private:
     size_t _totalSize = 0;  ///< Total size of the result so far.
 };
 
-}}}  // namespace lsst::qserv::wbase
+}  // namespace lsst::qserv::wbase
 
 #endif  // LSST_QSERV_WBASE_TASK_H

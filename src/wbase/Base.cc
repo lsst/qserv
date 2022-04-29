@@ -62,7 +62,7 @@ struct offsetLess {
 
 bool checkWritablePath(char const* path) { return path && (0 == ::access(path, W_OK | X_OK)); }
 
-namespace lsst { namespace qserv { namespace wbase {
+namespace lsst::qserv::wbase {
 
 //////////////////////////////////////////////////////////////////////
 // Constants
@@ -261,4 +261,4 @@ void StringBuffer2::_setSize(unsigned size) {
     _bufferSize = size;
 }
 
-}}}  // namespace lsst::qserv::wbase
+}  // namespace lsst::qserv::wbase

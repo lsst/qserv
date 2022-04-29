@@ -38,7 +38,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.wbase.WorkerCommand");
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace wbase {
+namespace lsst::qserv::wbase {
 
 WorkerCommand::WorkerCommand(SendChannel::Ptr const& sendChannel) : _sendChannel(sendChannel) {
     // Register a function which will run a subclass-specific
@@ -48,4 +48,4 @@ WorkerCommand::WorkerCommand(SendChannel::Ptr const& sendChannel) : _sendChannel
 
 WorkerCommand::~WorkerCommand() {}
 
-}}}  // namespace lsst::qserv::wbase
+}  // namespace lsst::qserv::wbase

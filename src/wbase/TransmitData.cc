@@ -47,7 +47,7 @@ namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.wbase.TransmitData");
 }
 
-namespace lsst { namespace qserv { namespace wbase {
+namespace lsst::qserv::wbase {
 
 std::atomic<int> seqSource{0};
 
@@ -268,4 +268,4 @@ string TransmitData::_dump() const {
     return str;
 }
 
-}}}  // namespace lsst::qserv::wbase
+}  // namespace lsst::qserv::wbase
