@@ -31,7 +31,7 @@
 #include <string>
 #include <unistd.h>
 
-namespace lsst { namespace qserv { namespace memman {
+namespace lsst::qserv::memman {
 
 //-----------------------------------------------------------------------------
 //! @brief Memory information object describing memory requirements or errors.
@@ -262,5 +262,5 @@ private:
 
     static std::mutex _mlockMtx;  // Prevent multiple concurrent mlock calls.
 };
-}}}     // namespace lsst::qserv::memman
+}     // namespace lsst::qserv::memman
 #endif  // LSST_QSERV_MEMMAN_MEMORY_H

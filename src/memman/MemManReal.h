@@ -33,7 +33,7 @@
 #include "memman/MemMan.h"
 #include "memman/Memory.h"
 
-namespace lsst { namespace qserv { namespace memman {
+namespace lsst::qserv::memman {
 
 class MemFileSet;
 
@@ -75,5 +75,5 @@ private:
     uint32_t _numFlexFiles;  // Ditto
 };
 
-}}}     // namespace lsst::qserv::memman
+}     // namespace lsst::qserv::memman
 #endif  // LSST_QSERV_MEMMAN_MEMMANREAL_H

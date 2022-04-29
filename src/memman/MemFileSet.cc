@@ -31,7 +31,7 @@
 #include "memman/MemFile.h"
 #include "memman/Memory.h"
 
-namespace lsst { namespace qserv { namespace memman {
+namespace lsst::qserv::memman {
 
 /******************************************************************************/
 /*                            D e s t r u c t o r                             */
@@ -160,4 +160,4 @@ MemMan::Status MemFileSet::status() {
 
     return myStatus;
 }
-}}}  // namespace lsst::qserv::memman
+}  // namespace lsst::qserv::memman

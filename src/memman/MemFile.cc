@@ -35,7 +35,7 @@ namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.memman.MemFile");
 }
 
-namespace lsst { namespace qserv { namespace memman {
+namespace lsst::qserv::memman {
 
 /******************************************************************************/
 /*                  L o c a l   S t a t i c   O b j e c t s                   */
@@ -256,4 +256,4 @@ void MemFile::release() {
     _mlockFileMutex.unlock();
     delete this;
 }
-}}}  // namespace lsst::qserv::memman
+}  // namespace lsst::qserv::memman

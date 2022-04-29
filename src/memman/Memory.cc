@@ -41,7 +41,7 @@ namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.memman.Memory");
 }
 
-namespace lsst { namespace qserv { namespace memman {
+namespace lsst::qserv::memman {
 
 std::mutex Memory::_mlockMtx;
 
@@ -196,4 +196,4 @@ void Memory::memRel(MemInfo& mInfo, bool islkd) {
         mInfo._memAddr = MAP_FAILED;
     }
 }
-}}}  // namespace lsst::qserv::memman
+}  // namespace lsst::qserv::memman

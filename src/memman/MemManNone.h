@@ -31,7 +31,7 @@
 // Qserv Headers
 #include "MemMan.h"
 
-namespace lsst { namespace qserv { namespace memman {
+namespace lsst::qserv::memman {
 
 // This class defines a memory manager implementation that basically does
 // nothing. If a table needs to be locked it says that there is no memory to
@@ -87,5 +87,5 @@ private:
     int _alwaysLock{false};
 };
 
-}}}     // namespace lsst::qserv::memman
+}     // namespace lsst::qserv::memman
 #endif  // LSST_QSERV_MEMMAN_MEMMANNONE_H

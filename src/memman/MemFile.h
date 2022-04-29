@@ -34,7 +34,7 @@
 // Qserv headers
 #include "memman/Memory.h"
 
-namespace lsst { namespace qserv { namespace memman {
+namespace lsst::qserv::memman {
 
 //-----------------------------------------------------------------------------
 //! @brief Description of a memory based file.
@@ -140,5 +140,5 @@ private:
     std::atomic<bool> _mlocking{false};  // Flag indicating mlock is being called.
 };
 
-}}}     // namespace lsst::qserv::memman
+}     // namespace lsst::qserv::memman
 #endif  // LSST_QSERV_MEMMAN_MEMFILE_H

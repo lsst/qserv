@@ -46,7 +46,7 @@ std::unordered_map<lsst::qserv::memman::MemMan::Handle, lsst::qserv::memman::Mem
 lsst::qserv::memman::MemMan::Handle handleNum = lsst::qserv::memman::MemMan::HandleType::ISEMPTY;
 }  // namespace
 
-namespace lsst { namespace qserv { namespace memman {
+namespace lsst::qserv::memman {
 
 /******************************************************************************/
 /*                         g e t S t a t i s t i c s                          */
@@ -277,4 +277,4 @@ void MemManReal::unlockAll() {
             it++;
     }
 }
-}}}  // namespace lsst::qserv::memman
+}  // namespace lsst::qserv::memman

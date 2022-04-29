@@ -73,7 +73,7 @@ uint64_t lsst::qserv::memman::MemMan::lockLimit = memLockLimit();
 /*                                M e m M a n                                 */
 /******************************************************************************/
 
-namespace lsst { namespace qserv { namespace memman {
+namespace lsst::qserv::memman {
 
 /******************************************************************************/
 /*                                C r e a t e                                 */
@@ -115,4 +115,4 @@ std::string MemMan::Status::logString() {
     return os.str();
 }
 
-}}}  // namespace lsst::qserv::memman
+}  // namespace lsst::qserv::memman

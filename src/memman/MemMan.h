@@ -30,7 +30,7 @@
 #include <string>
 #include <vector>
 
-namespace lsst { namespace qserv { namespace memman {
+namespace lsst::qserv::memman {
 
 //-----------------------------------------------------------------------------
 //! @brief Describe a table that can be potentially locked in memory.
@@ -219,5 +219,5 @@ protected:
     static uint64_t lockLimit;
 };
 
-}}}     // namespace lsst::qserv::memman
+}     // namespace lsst::qserv::memman
 #endif  // LSST_QSERV_MEMMAN_MEMMAN_H

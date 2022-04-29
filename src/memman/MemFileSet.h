@@ -35,7 +35,7 @@
 #include "memman/MemMan.h"
 #include "memman/MemFile.h"
 
-namespace lsst { namespace qserv { namespace memman {
+namespace lsst::qserv::memman {
 
 class Memory;
 
@@ -161,5 +161,5 @@ private:
     std::atomic<bool> _mtxLocked;  // true -> _setMutex is locked
 };
 
-}}}     // namespace lsst::qserv::memman
+}     // namespace lsst::qserv::memman
 #endif  // LSST_QSERV_MEMMAN_MEMFILESET_H
