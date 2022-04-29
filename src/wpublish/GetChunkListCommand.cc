@@ -41,7 +41,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.wpublish.GetChunkListCommand");
 
 }  // anonymous namespace
 
-namespace lsst { namespace qserv { namespace wpublish {
+namespace lsst::qserv::wpublish {
 
 GetChunkListCommand::GetChunkListCommand(shared_ptr<wbase::SendChannel> const& sendChannel,
                                          shared_ptr<ChunkInventory> const& chunkInventory,
@@ -76,4 +76,4 @@ void GetChunkListCommand::run() {
     LOGS(_log, LOG_LVL_DEBUG, "GetChunkListCommand::" << __func__ << "  ** SENT **");
 }
 
-}}}  // namespace lsst::qserv::wpublish
+}  // namespace lsst::qserv::wpublish

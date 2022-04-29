@@ -31,12 +31,12 @@
 #include "mysql/MySqlConfig.h"
 
 // Forward declarations
-namespace lsst { namespace qserv { namespace wpublish {
+namespace lsst::qserv::wpublish {
 class ChunkInventory;
-}}}  // namespace lsst::qserv::wpublish
+}  // namespace lsst::qserv::wpublish
 
 // This header declarations
-namespace lsst { namespace qserv { namespace wpublish {
+namespace lsst::qserv::wpublish {
 
 /**
  * Class ChunkListCommand is the base class for operations with chunk lists
@@ -131,6 +131,6 @@ public:
     ~RebuildChunkListCommand() override = default;
 };
 
-}}}  // namespace lsst::qserv::wpublish
+}  // namespace lsst::qserv::wpublish
 
 #endif  // LSST_QSERV_WPUBLISH_CHUNK_LIST_COMMAND_H

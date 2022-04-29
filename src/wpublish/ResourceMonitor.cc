@@ -30,7 +30,7 @@
 using namespace std;
 using namespace nlohmann;
 
-namespace lsst { namespace qserv { namespace wpublish {
+namespace lsst::qserv::wpublish {
 
 void ResourceMonitor::increment(string const& resource) {
     lock_guard<mutex> lock(_mtx);
@@ -69,4 +69,4 @@ json ResourceMonitor::statusToJson() const {
     return result;
 }
 
-}}}  // namespace lsst::qserv::wpublish
+}  // namespace lsst::qserv::wpublish

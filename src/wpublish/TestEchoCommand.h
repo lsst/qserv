@@ -30,12 +30,12 @@
 #include "wbase/WorkerCommand.h"
 
 // Forward declarations
-namespace lsst { namespace qserv { namespace wbase {
+namespace lsst::qserv::wbase {
 class SendChannel;
-}}}  // namespace lsst::qserv::wbase
+}  // namespace lsst::qserv::wbase
 
 // This header declarations
-namespace lsst { namespace qserv { namespace wpublish {
+namespace lsst::qserv::wpublish {
 
 /**
  * Class TestEchoCommand reloads a list of chunks from the database
@@ -62,6 +62,6 @@ private:
     std::string _value;
 };
 
-}}}  // namespace lsst::qserv::wpublish
+}  // namespace lsst::qserv::wpublish
 
 #endif  // LSST_QSERV_WPUBLISH_TEST_ECHO_COMMAND_H

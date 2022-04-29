@@ -34,7 +34,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.wpublish.GetStatusQservRequest");
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace wpublish {
+namespace lsst::qserv::wpublish {
 
 string GetStatusQservRequest::status2str(Status status) {
     switch (status) {
@@ -99,4 +99,4 @@ void GetStatusQservRequest::onError(string const& error) {
     }
 }
 
-}}}  // namespace lsst::qserv::wpublish
+}  // namespace lsst::qserv::wpublish

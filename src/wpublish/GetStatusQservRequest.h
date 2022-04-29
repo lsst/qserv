@@ -31,7 +31,7 @@
 // Qserv headers
 #include "wpublish/QservRequest.h"
 
-namespace lsst { namespace qserv { namespace wpublish {
+namespace lsst::qserv::wpublish {
 
 /**
  * Class GetStatusQservRequest represents a request returning various info
@@ -93,6 +93,6 @@ private:
     CallbackType _onFinish;
 };
 
-}}}  // namespace lsst::qserv::wpublish
+}  // namespace lsst::qserv::wpublish
 
 #endif  // LSST_QSERV_WPUBLISH_GET_STATUS_QSERV_REQUEST_H

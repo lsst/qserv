@@ -36,17 +36,17 @@
 #include "wpublish/ChunkInventory.h"
 
 // Forward declarations
-namespace lsst { namespace qserv {
+namespace lsst::qserv {
 namespace wbase {
 class SendChannel;
 }
 namespace wpublish {
 class ResourceMonitor;
 }
-}}  // namespace lsst::qserv
+}  // namespace lsst::qserv
 
 // This header declarations
-namespace lsst { namespace qserv { namespace wpublish {
+namespace lsst::qserv::wpublish {
 
 /**
  * Class SetChunkListCommand sets a new list of chunks
@@ -113,6 +113,6 @@ private:
     bool const _force;
 };
 
-}}}  // namespace lsst::qserv::wpublish
+}  // namespace lsst::qserv::wpublish
 
 #endif  // LSST_QSERV_WPUBLISH_SET_CHUNK_LIST_COMMAND_H

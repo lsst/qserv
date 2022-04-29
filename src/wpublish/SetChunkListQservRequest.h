@@ -32,7 +32,7 @@
 // Qserv headers
 #include "wpublish/QservRequest.h"
 
-namespace lsst { namespace qserv { namespace wpublish {
+namespace lsst::qserv::wpublish {
 
 /**
  * Class SetChunkListQservRequest implements the client-side requests
@@ -115,6 +115,6 @@ private:
     CallbackType _onFinish;
 };
 
-}}}  // namespace lsst::qserv::wpublish
+}  // namespace lsst::qserv::wpublish
 
 #endif  // LSST_QSERV_WPUBLISH_SET_CHUNK_LIST_QSERV_REQUEST_H

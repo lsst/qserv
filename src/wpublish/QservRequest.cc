@@ -40,7 +40,7 @@ int const bufInitialSize = 1024;
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace wpublish {
+namespace lsst::qserv::wpublish {
 
 atomic<size_t> QservRequest::_numClassInstances(0);
 
@@ -181,4 +181,4 @@ void QservRequest::ProcessResponseData(const XrdSsiErrInfo& eInfo, char* buff, i
     }
 }
 
-}}}  // namespace lsst::qserv::wpublish
+}  // namespace lsst::qserv::wpublish

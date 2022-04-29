@@ -32,7 +32,7 @@
 // Third party headers
 #include "nlohmann/json.hpp"
 
-namespace lsst { namespace qserv { namespace wpublish {
+namespace lsst::qserv::wpublish {
 
 /**
  * Class ResourceMonitor is a thread-safe implementation for a counter of resources
@@ -96,6 +96,6 @@ private:
     mutable std::mutex _mtx;
 };
 
-}}}  // namespace lsst::qserv::wpublish
+}  // namespace lsst::qserv::wpublish
 
 #endif  // LSST_QSERV_WPUBLISH_RESOURCE_MONITOR_H

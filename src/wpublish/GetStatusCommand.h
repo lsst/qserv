@@ -30,7 +30,7 @@
 #include "wbase/WorkerCommand.h"
 
 // Forward declarations
-namespace lsst { namespace qserv {
+namespace lsst::qserv {
 namespace wbase {
 class MsgProcessor;
 class SendChannel;
@@ -38,10 +38,10 @@ class SendChannel;
 namespace wpublish {
 class ResourceMonitor;
 }
-}}  // namespace lsst::qserv
+}  // namespace lsst::qserv
 
 // This header declarations
-namespace lsst { namespace qserv { namespace wpublish {
+namespace lsst::qserv::wpublish {
 
 /**
  * Class GetStatusCommand returns various info on the on-going status of
@@ -74,6 +74,6 @@ private:
     std::shared_ptr<ResourceMonitor> _resourceMonitor;
 };
 
-}}}  // namespace lsst::qserv::wpublish
+}  // namespace lsst::qserv::wpublish
 
 #endif  // LSST_QSERV_WPUBLISH_GET_STATUS_COMMAND_H

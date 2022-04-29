@@ -31,7 +31,7 @@
 // Qserv headers
 #include "wpublish/QservRequest.h"
 
-namespace lsst { namespace qserv { namespace wpublish {
+namespace lsst::qserv::wpublish {
 
 /**
  * Class ChunkListQservRequest the base class for client-side requests
@@ -165,6 +165,6 @@ protected:
     RebuildChunkListQservRequest(bool reload, CallbackType onFinish);
 };
 
-}}}  // namespace lsst::qserv::wpublish
+}  // namespace lsst::qserv::wpublish
 
 #endif  // LSST_QSERV_WPUBLISH_CHUNK_LIST_QSERV_REQUEST_H

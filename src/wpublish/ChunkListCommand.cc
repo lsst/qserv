@@ -55,7 +55,7 @@ void dumpInventory(lsst::qserv::wpublish::ChunkInventory const& inventory, strin
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace wpublish {
+namespace lsst::qserv::wpublish {
 
 ChunkListCommand::ChunkListCommand(shared_ptr<wbase::SendChannel> const& sendChannel,
                                    shared_ptr<ChunkInventory> const& chunkInventory,
@@ -200,4 +200,4 @@ void ChunkListCommand::run() {
     LOGS(_log, LOG_LVL_DEBUG, context << "** SENT **");
 }
 
-}}}  // namespace lsst::qserv::wpublish
+}  // namespace lsst::qserv::wpublish

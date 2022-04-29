@@ -49,7 +49,7 @@ wpublish::GetChunkListQservRequest::Status translate(proto::WorkerCommandGetChun
 }
 }  // namespace
 
-namespace lsst { namespace qserv { namespace wpublish {
+namespace lsst::qserv::wpublish {
 
 string GetChunkListQservRequest::status2str(Status status) {
     switch (status) {
@@ -133,4 +133,4 @@ void GetChunkListQservRequest::onError(string const& error) {
     }
 }
 
-}}}  // namespace lsst::qserv::wpublish
+}  // namespace lsst::qserv::wpublish

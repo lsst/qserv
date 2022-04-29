@@ -55,7 +55,7 @@ wpublish::ChunkGroupQservRequest::Status translate(proto::WorkerCommandChunkGrou
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace wpublish {
+namespace lsst::qserv::wpublish {
 
 string ChunkGroupQservRequest::status2str(Status status) {
     switch (status) {
@@ -157,4 +157,4 @@ RemoveChunkGroupQservRequest::RemoveChunkGroupQservRequest(unsigned int chunk,
                                                            CallbackType onFinish)
         : ChunkGroupQservRequest(false, chunk, databases, force, onFinish) {}
 
-}}}  // namespace lsst::qserv::wpublish
+}  // namespace lsst::qserv::wpublish

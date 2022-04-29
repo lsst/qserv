@@ -151,7 +151,7 @@ public:
 
 }  // anonymous namespace
 
-namespace lsst { namespace qserv { namespace wpublish {
+namespace lsst::qserv::wpublish {
 
 ChunkInventory::ChunkInventory(string const& name, shared_ptr<SqlConnection> sc) : _name(name) { _init(*sc); }
 
@@ -387,4 +387,4 @@ ChunkInventory::ExistMap operator-(ChunkInventory const& lhs, ChunkInventory con
     return result;
 }
 
-}}}  // namespace lsst::qserv::wpublish
+}  // namespace lsst::qserv::wpublish

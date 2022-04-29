@@ -30,7 +30,7 @@
 #include "wbase/Task.h"
 
 // Forward declarations
-namespace lsst { namespace qserv {
+namespace lsst::qserv {
 namespace wsched {
 class SchedulerBase;
 class BlendScheduler;
@@ -39,10 +39,10 @@ class ScanScheduler;
 namespace wpublish {
 class QueriesAndChunks;
 }
-}}  // namespace lsst::qserv
+}  // namespace lsst::qserv
 
 // This header declarations
-namespace lsst { namespace qserv { namespace wpublish {
+namespace lsst::qserv::wpublish {
 
 /// Statistics for a single user query.
 class QueryStatistics {
@@ -228,6 +228,6 @@ private:
     unsigned int _requiredTasksCompleted = 50;
 };
 
-}}}  // namespace lsst::qserv::wpublish
+}  // namespace lsst::qserv::wpublish
 
 #endif  // LSST_QSERV_WPUBLISH_QUERIESANDCHUNKS_H

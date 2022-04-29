@@ -34,7 +34,7 @@
 #include "wbase/WorkerCommand.h"
 
 // Forward declarations
-namespace lsst { namespace qserv {
+namespace lsst::qserv {
 namespace wbase {
 class SendChannel;
 }
@@ -42,10 +42,10 @@ namespace wpublish {
 class ChunkInventory;
 class ResourceMonitor;
 }  // namespace wpublish
-}}  // namespace lsst::qserv
+}  // namespace lsst::qserv
 
 // This header declarations
-namespace lsst { namespace qserv { namespace wpublish {
+namespace lsst::qserv::wpublish {
 
 /**
  * Class RemoveChunkGroupCommand removes a group of chunks from XRootD
@@ -97,6 +97,6 @@ private:
     bool _force;
 };
 
-}}}  // namespace lsst::qserv::wpublish
+}  // namespace lsst::qserv::wpublish
 
 #endif  // LSST_QSERV_PUBLISH_REMOVE_CHUNK_GROUP_COMMAND_H

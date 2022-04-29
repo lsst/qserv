@@ -30,13 +30,13 @@
 #include "wbase/WorkerCommand.h"
 
 // Forward declarations
-namespace lsst { namespace qserv { namespace wpublish {
+namespace lsst::qserv::wpublish {
 class ChunkInventory;
 class ResourceMonitor;
-}}}  // namespace lsst::qserv::wpublish
+}  // namespace lsst::qserv::wpublish
 
 // This header declarations
-namespace lsst { namespace qserv { namespace wpublish {
+namespace lsst::qserv::wpublish {
 
 /**
  * Class GetChunkListCommand returns a status of the chunk inventory
@@ -68,6 +68,6 @@ private:
     std::shared_ptr<ResourceMonitor> _resourceMonitor;
 };
 
-}}}  // namespace lsst::qserv::wpublish
+}  // namespace lsst::qserv::wpublish
 
 #endif  // LSST_QSERV_WPUBLISH_GET_CHUNK_LIST_COMMAND_H

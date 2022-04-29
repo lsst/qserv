@@ -33,7 +33,7 @@
 #include "wpublish/QservRequest.h"
 
 // This header declarations
-namespace lsst { namespace qserv { namespace wpublish {
+namespace lsst::qserv::wpublish {
 
 /**
  * Class ChunkGroupQservRequest implements a client-side request to
@@ -170,6 +170,6 @@ private:
                                  CallbackType onFinish);
 };
 
-}}}  // namespace lsst::qserv::wpublish
+}  // namespace lsst::qserv::wpublish
 
 #endif  // LSST_QSERV_WPUBLISH_CHUNK_GROUP_QSERV_REQUEST_H

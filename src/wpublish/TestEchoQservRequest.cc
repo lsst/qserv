@@ -50,7 +50,7 @@ wpublish::TestEchoQservRequest::Status translate(proto::WorkerCommandTestEchoR::
 }
 }  // namespace
 
-namespace lsst { namespace qserv { namespace wpublish {
+namespace lsst::qserv::wpublish {
 
 string TestEchoQservRequest::status2str(Status status) {
     switch (status) {
@@ -124,4 +124,4 @@ void TestEchoQservRequest::onError(string const& error) {
     }
 }
 
-}}}  // namespace lsst::qserv::wpublish
+}  // namespace lsst::qserv::wpublish

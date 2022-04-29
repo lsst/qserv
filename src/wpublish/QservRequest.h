@@ -33,7 +33,7 @@
 #include "proto/FrameBuffer.h"
 #include "proto/worker.pb.h"
 
-namespace lsst { namespace qserv { namespace wpublish {
+namespace lsst::qserv::wpublish {
 
 /**
  * Class QservRequest is a base class for a family of the client-side requests
@@ -100,6 +100,6 @@ private:
     char* _buf;  ///< buffer for incomming data
 };
 
-}}}  // namespace lsst::qserv::wpublish
+}  // namespace lsst::qserv::wpublish
 
 #endif  // LSST_QSERV_WPUBLISH_QSERV_REQUEST_H

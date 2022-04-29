@@ -38,12 +38,12 @@
 #include "mysql/MySqlConfig.h"
 
 // Forward declarations
-namespace lsst { namespace qserv { namespace sql {
+namespace lsst::qserv::sql {
 class SqlConnection;
-}}}  // namespace lsst::qserv::sql
+}  // namespace lsst::qserv::sql
 
 // This header declarations
-namespace lsst { namespace qserv { namespace wpublish {
+namespace lsst::qserv::wpublish {
 
 /// Exception class for reporting problems with parameter values
 class InvalidParamError : public std::runtime_error {
@@ -135,6 +135,6 @@ private:
 /// @return databases and chunks known to 'lhs' and which are not in 'rhs
 ChunkInventory::ExistMap operator-(ChunkInventory const& lhs, ChunkInventory const& rhs);
 
-}}}  // namespace lsst::qserv::wpublish
+}  // namespace lsst::qserv::wpublish
 
 #endif  // LSST_QSERV_WPUBLISH_CHUNKINVENTORY_H

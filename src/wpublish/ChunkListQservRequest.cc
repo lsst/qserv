@@ -49,7 +49,7 @@ wpublish::ChunkListQservRequest::Status translate(proto::WorkerCommandUpdateChun
 }
 }  // namespace
 
-namespace lsst { namespace qserv { namespace wpublish {
+namespace lsst::qserv::wpublish {
 
 string ChunkListQservRequest::status2str(Status status) {
     switch (status) {
@@ -157,4 +157,4 @@ RebuildChunkListQservRequest::RebuildChunkListQservRequest(bool reload,
                                                            ChunkListQservRequest::CallbackType onFinish)
         : ChunkListQservRequest(true, reload, onFinish) {}
 
-}}}  // namespace lsst::qserv::wpublish
+}  // namespace lsst::qserv::wpublish

@@ -46,7 +46,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.wpublish.AddChunkGroupCommand");
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace wpublish {
+namespace lsst::qserv::wpublish {
 
 AddChunkGroupCommand::AddChunkGroupCommand(shared_ptr<wbase::SendChannel> const& sendChannel,
                                            shared_ptr<ChunkInventory> const& chunkInventory,
@@ -127,4 +127,4 @@ void AddChunkGroupCommand::run() {
     LOGS(_log, LOG_LVL_DEBUG, context << "** SENT **");
 }
 
-}}}  // namespace lsst::qserv::wpublish
+}  // namespace lsst::qserv::wpublish
