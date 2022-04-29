@@ -26,7 +26,7 @@
 
 #include <string>
 
-namespace lsst { namespace qserv { namespace css {
+namespace lsst::qserv::css {
 
 /// A container for match-table metadata.
 struct MatchTableParams {
@@ -52,6 +52,6 @@ struct MatchTableParams {
     bool isMatchTable() const { return not dirTable1.empty(); }
 };
 
-}}}  // namespace lsst::qserv::css
+}  // namespace lsst::qserv::css
 
 #endif  // LSST_QSERV_CSS_MATCHTABLEPARAMS_H

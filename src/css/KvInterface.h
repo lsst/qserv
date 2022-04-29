@@ -37,7 +37,7 @@
 #include <string>
 #include <vector>
 
-namespace lsst { namespace qserv { namespace css {
+namespace lsst::qserv::css {
 
 class KvInterface {
 public:
@@ -145,6 +145,6 @@ protected:
                              bool throwIfKeyNotFound) = 0;
 };
 
-}}}  // namespace lsst::qserv::css
+}  // namespace lsst::qserv::css
 
 #endif  // LSST_QSERV_CSS_KVINTERFACE_H

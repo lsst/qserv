@@ -41,7 +41,7 @@
 #include "sql/SqlErrorObject.h"
 #include "util/Issue.h"
 
-namespace lsst { namespace qserv { namespace css {
+namespace lsst::qserv::css {
 
 /**
  * Base class for CSS run-time errors, represents a generic CSS run-time error.
@@ -245,6 +245,6 @@ public:
     virtual std::string typeName() const override { return "ConfigError"; }
 };
 
-}}}  // namespace lsst::qserv::css
+}  // namespace lsst::qserv::css
 
 #endif  // LSST_QSERV_CSSERROR_H

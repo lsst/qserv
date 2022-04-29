@@ -23,12 +23,14 @@
 #define LSST_QSERV_CSS_PARTTABLEPARAMS_H
 
 // System headers
+#include <string>
+#include <vector>
 
 // Third-party headers
 
 // Qserv headers
 
-namespace lsst { namespace qserv { namespace css {
+namespace lsst::qserv::css {
 
 /// @addtogroup css
 
@@ -97,6 +99,6 @@ struct PartTableParams {
     }
 };
 
-}}}  // namespace lsst::qserv::css
+}  // namespace lsst::qserv::css
 
 #endif  // LSST_QSERV_CSS_PARTTABLEPARAMS_H

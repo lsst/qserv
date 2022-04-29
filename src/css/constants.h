@@ -24,7 +24,7 @@
 #ifndef LSST_QSERV_CSS_CONSTANTS_H
 #define LSST_QSERV_CSS_CONSTANTS_H
 
-namespace lsst { namespace qserv { namespace css {
+namespace lsst::qserv::css {
 
 // Current version of metadata store.
 // VERSION and VERSION_KEY are used by qservAdmin.py and css/Facade .
@@ -66,6 +66,6 @@ char const NODE_STATE_ACTIVE[] = "ACTIVE";
 /// Node state, "ACTIVE" means can be used for regular work
 char const NODE_STATE_INACTIVE[] = "INACTIVE";
 
-}}}  // namespace lsst::qserv::css
+}  // namespace lsst::qserv::css
 
 #endif  // LSST_QSERV_CSS_CONSTANTS_H

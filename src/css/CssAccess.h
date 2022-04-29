@@ -41,7 +41,7 @@
 #include "css/StripingParams.h"
 #include "css/TableParams.h"
 
-namespace lsst { namespace qserv { namespace css {
+namespace lsst::qserv::css {
 
 class EmptyChunks;
 class DbInterfaceMySql;
@@ -557,6 +557,6 @@ private:
     std::shared_ptr<EmptyChunks> _emptyChunks;  ///< Cache of empty chunks.
 };
 
-}}}  // namespace lsst::qserv::css
+}  // namespace lsst::qserv::css
 
 #endif  // LSST_QSERV_CSS_CSSACCESS_H

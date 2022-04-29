@@ -42,7 +42,7 @@
 // Local headers
 #include "css/KvInterface.h"
 
-namespace lsst { namespace qserv { namespace css {
+namespace lsst::qserv::css {
 
 class KvInterfaceImplMem : public KvInterface {
 public:
@@ -74,6 +74,6 @@ private:
     bool _readOnly = false;
 };
 
-}}}  // namespace lsst::qserv::css
+}  // namespace lsst::qserv::css
 
 #endif  // LSST_QSERV_CSS_INTERFACEIMPLMEM_H

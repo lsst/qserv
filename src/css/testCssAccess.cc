@@ -29,7 +29,7 @@
 
 using namespace std;
 
-namespace lsst { namespace qserv { namespace css {
+namespace lsst::qserv::css {
 
 shared_ptr<KvInterface> initKVI() {
     vector<pair<string, string>> kv;
@@ -837,4 +837,4 @@ BOOST_AUTO_TEST_CASE(testCssVersion) {
 
 BOOST_AUTO_TEST_SUITE_END()
 
-}}}  // namespace lsst::qserv::css
+}  // namespace lsst::qserv::css

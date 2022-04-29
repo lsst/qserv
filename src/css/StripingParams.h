@@ -24,7 +24,7 @@
 #ifndef LSST_QSERV_CSS_STRIPINGPARAMS_H
 #define LSST_QSERV_CSS_STRIPINGPARAMS_H
 
-namespace lsst { namespace qserv { namespace css {
+namespace lsst::qserv::css {
 
 class StripingParams {
 public:
@@ -40,6 +40,6 @@ public:
     double overlap;  // default overlap for tables that do not specify their own overlap
 };
 
-}}}  // namespace lsst::qserv::css
+}  // namespace lsst::qserv::css
 
 #endif  // LSST_QSERV_CSS_STRIPINGPARAMS_H

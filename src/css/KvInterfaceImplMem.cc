@@ -72,7 +72,7 @@ std::string norm_key(std::string const& key) {
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace css {
+namespace lsst::qserv::css {
 
 /**
  * Initialize the interface.
@@ -306,4 +306,4 @@ std::shared_ptr<KvInterfaceImplMem> KvInterfaceImplMem::clone() const {
     return newOne;
 }
 
-}}}  // namespace lsst::qserv::css
+}  // namespace lsst::qserv::css

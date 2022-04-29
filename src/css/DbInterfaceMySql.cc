@@ -49,7 +49,7 @@ namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.css.DbInterfaceMySql");
 }  // namespace
 
-namespace lsst { namespace qserv {
+namespace lsst::qserv {
 
 namespace {
 
@@ -120,4 +120,4 @@ set<int> DbInterfaceMySql::getEmptyChunks(string const& dbName) {
 }
 
 }  // namespace css
-}}  // namespace lsst::qserv
+}  // namespace lsst::qserv

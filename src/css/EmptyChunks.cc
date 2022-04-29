@@ -53,7 +53,7 @@ string makeFilename(string const& db) { return "empty_" + lsst::qserv::sanitizeN
 
 }  // anonymous namespace
 
-namespace lsst { namespace qserv { namespace css {
+namespace lsst::qserv::css {
 
 shared_ptr<IntSet const> EmptyChunks::getEmpty(string const& db) {
     lock_guard<mutex> lock(_setsMutex);
@@ -119,4 +119,4 @@ IntSet EmptyChunks::_populate(string const& db) {
     return s;
 }
 
-}}}  // namespace lsst::qserv::css
+}  // namespace lsst::qserv::css

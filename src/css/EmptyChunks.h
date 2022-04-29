@@ -42,7 +42,7 @@
 // Qserv headers
 #include "global/intTypes.h"
 
-namespace lsst { namespace qserv { namespace css {
+namespace lsst::qserv::css {
 
 class DbInterfaceMySql;
 
@@ -94,6 +94,6 @@ private:
     mutable std::mutex _setsMutex;
 };
 
-}}}  // namespace lsst::qserv::css
+}  // namespace lsst::qserv::css
 
 #endif  // LSST_QSERV_CSS_EMPTYCHUNKS_H

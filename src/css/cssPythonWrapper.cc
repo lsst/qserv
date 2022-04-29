@@ -44,7 +44,7 @@
 namespace py = pybind11;
 using namespace pybind11::literals;
 
-namespace lsst { namespace qserv { namespace css {
+namespace lsst::qserv::css {
 
 PYBIND11_MODULE(cssLib, mod) {
     py::class_<KvInterface, std::shared_ptr<KvInterface>>(mod, "KvInterface")
@@ -192,4 +192,4 @@ PYBIND11_MODULE(cssLib, mod) {
     mod.attr("NODE_STATE_INACTIVE") = NODE_STATE_INACTIVE;
 }
 
-}}}  // namespace lsst::qserv::css
+}  // namespace lsst::qserv::css

@@ -41,7 +41,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.css.CssConfig");
 
 }
 
-namespace lsst { namespace qserv { namespace css {
+namespace lsst::qserv::css {
 
 CssConfig::CssConfig(util::ConfigStore const& configStore) try
         : _technology(configStore.get("technology")),
@@ -70,4 +70,4 @@ std::ostream& operator<<(std::ostream& out, CssConfig const& cssConfig) {
     return out;
 }
 
-}}}  // namespace lsst::qserv::css
+}  // namespace lsst::qserv::css

@@ -112,7 +112,7 @@ std::string norm_key(std::string const& key) {
 
 }  // anonymous namespace
 
-namespace lsst { namespace qserv { namespace css {
+namespace lsst::qserv::css {
 
 class KvTransaction : public sql::SqlTransactionScope {
 public:
@@ -652,4 +652,4 @@ std::string KvInterfaceImplMySql::_escapeSqlString(std::string const& str) {
     return escapedStr;
 }
 
-}}}  // namespace lsst::qserv::css
+}  // namespace lsst::qserv::css

@@ -36,7 +36,7 @@
 #include "mysql/MySqlConfig.h"
 #include "sql/SqlConnection.h"
 
-namespace lsst { namespace qserv { namespace css {
+namespace lsst::qserv::css {
 
 /// This class is used to connect to tabular data in a mysql database.
 class DbInterfaceMySql {
@@ -66,6 +66,6 @@ private:
     std::mutex _dbMutex;  ///< Synchronizes access to certain DB operations
 };
 
-}}}  // namespace lsst::qserv::css
+}  // namespace lsst::qserv::css
 
 #endif  // LSST_QSERV_CSS_DBINTERFACEMYSQL_H

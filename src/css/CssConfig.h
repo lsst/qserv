@@ -31,7 +31,7 @@
 #include "mysql/MySqlConfig.h"
 #include "util/ConfigStore.h"
 
-namespace lsst { namespace qserv { namespace css {
+namespace lsst::qserv::css {
 
 /**
  *  Provide all configuration parameters for a Qserv CSS instance
@@ -101,6 +101,6 @@ private:
     mysql::MySqlConfig const _mySqlConfig;
 };
 
-}}}  // namespace lsst::qserv::css
+}  // namespace lsst::qserv::css
 
 #endif  // LSST_QSERV_CSS_CSSCONFIG_H

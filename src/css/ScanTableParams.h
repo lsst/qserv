@@ -26,7 +26,7 @@
 
 #include <string>
 
-namespace lsst { namespace qserv { namespace css {
+namespace lsst::qserv::css {
 
 /// A container for shared scan-table metadata.
 struct ScanTableParams {
@@ -37,6 +37,6 @@ struct ScanTableParams {
     int scanRating{0};      ///< Speed of shared scan. 1-fast, 2-medium, 3-slow
 };
 
-}}}  // namespace lsst::qserv::css
+}  // namespace lsst::qserv::css
 
 #endif  // LSST_QSERV_CSS_SCANTABLEPARAMS_H

@@ -30,7 +30,7 @@
 // Qserv headers
 #include "css/constants.h"
 
-namespace lsst { namespace qserv { namespace css {
+namespace lsst::qserv::css {
 
 /// @addtogroup css
 
@@ -54,6 +54,6 @@ struct NodeParams {
     bool isActive() const { return state == NODE_STATE_ACTIVE; }
 };
 
-}}}  // namespace lsst::qserv::css
+}  // namespace lsst::qserv::css
 
 #endif  // LSST_QSERV_CSS_NODEPARAMS_H

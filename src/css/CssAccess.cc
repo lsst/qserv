@@ -60,7 +60,7 @@ std::string const _packedKeyName(".packed.json");
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace css {
+namespace lsst::qserv::css {
 
 std::shared_ptr<CssAccess> CssAccess::createFromStream(std::istream& stream,
                                                        std::string const& emptyChunkPath, bool readOnly) {
@@ -1047,4 +1047,4 @@ std::string CssAccess::getEmptyChunksSchema(std::string const& dbName) {
     return DbInterfaceMySql::getEmptyChunksSchema(dbName);
 }
 
-}}}  // namespace lsst::qserv::css
+}  // namespace lsst::qserv::css

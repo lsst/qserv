@@ -42,11 +42,11 @@
 #include "mysql/MySqlConfig.h"
 
 // Forward declarations
-namespace lsst { namespace qserv { namespace sql {
+namespace lsst::qserv::sql {
 class SqlConnection;
-}}}  // namespace lsst::qserv::sql
+}  // namespace lsst::qserv::sql
 
-namespace lsst { namespace qserv { namespace css {
+namespace lsst::qserv::css {
 
 class KvTransaction;
 
@@ -142,6 +142,6 @@ private:
     bool _readOnly;
 };
 
-}}}  // namespace lsst::qserv::css
+}  // namespace lsst::qserv::css
 
 #endif  // LSST_QSERV_CSS_KVINTERFACEIMPLMYSQL_H
