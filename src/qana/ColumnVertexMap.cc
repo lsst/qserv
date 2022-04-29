@@ -45,7 +45,7 @@ namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.qana.ColumnVertexMap");
 }
 
-namespace lsst { namespace qserv { namespace qana {
+namespace lsst::qserv::qana {
 
 ColumnVertexMap::Entry::Entry(ColumnRefConstPtr const& c, Vertex* t) : cr(c), vertices(1, t) {}
 
@@ -185,4 +185,4 @@ bool ColumnRefEq::operator()(query::ColumnRef const& a, query::ColumnRef const& 
     return a.getTableAlias() == b.getTableAlias() && a.getColumn() == b.getColumn();
 }
 
-}}}  // namespace lsst::qserv::qana
+}  // namespace lsst::qserv::qana

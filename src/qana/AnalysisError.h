@@ -26,7 +26,7 @@
 // System headers
 #include <stdexcept>
 
-namespace lsst { namespace qserv { namespace qana {
+namespace lsst::qserv::qana {
 
 /// AnalysisError is a trivial exception for query analys problems
 class AnalysisError : public std::runtime_error {
@@ -39,6 +39,6 @@ class AnalysisBug : public AnalysisError {
 public:
     explicit AnalysisBug(std::string const& msg) : AnalysisError("Bug:" + msg) {}
 };
-}}}  // namespace lsst::qserv::qana
+}  // namespace lsst::qserv::qana
 
 #endif  // LSST_QSERV_QANA_ANALYSISERROR_H

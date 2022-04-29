@@ -57,7 +57,7 @@ void appendColumnRefs(std::string const& column, std::string const& database, st
 
 }  // anonymous namespace
 
-namespace lsst { namespace qserv { namespace qana {
+namespace lsst::qserv::qana {
 
 void TableInfo::dump(std::ostream& os) const {
     os << "TI(" << database << "." << table << " kind=" << kind << ")";
@@ -201,4 +201,4 @@ bool ChildTableInfo::isEqPredAdmissible(MatchTableInfo const& t, std::string con
     return admissible;
 }
 
-}}}  // namespace lsst::qserv::qana
+}  // namespace lsst::qserv::qana

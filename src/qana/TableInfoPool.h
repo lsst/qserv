@@ -33,16 +33,16 @@
 #include <vector>
 
 // Forward declarations
-namespace lsst { namespace qserv {
+namespace lsst::qserv {
 namespace css {
 class CssAccess;
 }
 namespace qana {
 struct TableInfo;
 }
-}}  // namespace lsst::qserv
+}  // namespace lsst::qserv
 
-namespace lsst { namespace qserv { namespace qana {
+namespace lsst::qserv::qana {
 
 /// `TableInfoPool` is a factory and pool of owned, immutable `TableInfo`
 /// objects.
@@ -90,6 +90,6 @@ private:
     Pool _pool;
 };
 
-}}}  // namespace lsst::qserv::qana
+}  // namespace lsst::qserv::qana
 
 #endif  // LSST_QSERV_QANA_TABLEINFOPOOL_H

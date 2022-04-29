@@ -43,7 +43,7 @@
 #include "query/SelectStmt.h"
 #include "query/WhereClause.h"
 
-namespace lsst { namespace qserv { namespace qana {
+namespace lsst::qserv::qana {
 
 ////////////////////////////////////////////////////////////////////////
 // WherePlugin declaration
@@ -70,4 +70,4 @@ void WherePlugin::applyLogical(query::SelectStmt& stmt, query::QueryContext&) {
     }
 }
 
-}}}  // namespace lsst::qserv::qana
+}  // namespace lsst::qserv::qana

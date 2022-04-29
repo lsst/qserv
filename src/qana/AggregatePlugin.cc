@@ -56,7 +56,7 @@ namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.qana.AggregatePlugin");
 }
 
-namespace lsst { namespace qserv { namespace qana {
+namespace lsst::qserv::qana {
 
 inline query::ValueExprPtr newExprFromAlias(std::string const& alias) {
     std::shared_ptr<query::ColumnRef> cr = std::make_shared<query::ColumnRef>("", "", alias);
@@ -203,4 +203,4 @@ void AggregatePlugin::applyPhysical(QueryPlugin::Plan& plan, query::QueryContext
     }
 }
 
-}}}  // namespace lsst::qserv::qana
+}  // namespace lsst::qserv::qana

@@ -147,7 +147,7 @@ void matchTableRefs(lsst::qserv::query::QueryContext& context, CLAUSE_T& clause,
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace qana {
+namespace lsst::qserv::qana {
 
 ////////////////////////////////////////////////////////////////////////
 // TablePlugin implementation
@@ -298,4 +298,4 @@ void TablePlugin::_setAlias(std::shared_ptr<query::TableRef> const& tableRef, qu
     }
 }
 
-}}}  // namespace lsst::qserv::qana
+}  // namespace lsst::qserv::qana

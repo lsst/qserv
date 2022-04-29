@@ -29,7 +29,7 @@
 // Qserv headers
 #include "proto/ScanTableInfo.h"
 
-namespace lsst { namespace qserv { namespace qana {
+namespace lsst::qserv::qana {
 
 /// ScanTablePlugin is a query plugin that detects the "scan tables"
 /// of a query. A scan table is a partitioned table that must be
@@ -60,6 +60,6 @@ private:
     int _interactiveChunkLimit;
 };
 
-}}}  // namespace lsst::qserv::qana
+}  // namespace lsst::qserv::qana
 
 #endif  // LSST_QSERV_QANA_SCANTABLEPLUGIN_H

@@ -72,11 +72,11 @@
 #include "global/constants.h"  // for SUBCHUNKDB_PREFIX
 
 // Forward declarations
-namespace lsst { namespace qserv { namespace query {
+namespace lsst::qserv::query {
 class ColumnRef;
-}}}  // namespace lsst::qserv::query
+}  // namespace lsst::qserv::query
 
-namespace lsst { namespace qserv { namespace qana {
+namespace lsst::qserv::qana {
 
 typedef std::shared_ptr<query::ColumnRef const> ColumnRefConstPtr;
 
@@ -240,6 +240,6 @@ struct MatchTableInfo : TableInfo {
     void dump(std::ostream& os) const override;
 };
 
-}}}  // namespace lsst::qserv::qana
+}  // namespace lsst::qserv::qana
 
 #endif  // LSST_QSERV_QANA_TABLEINFO_H

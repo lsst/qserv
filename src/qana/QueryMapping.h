@@ -38,7 +38,7 @@
 #include "global/DbTable.h"
 
 // Forward declarations
-namespace lsst { namespace qserv {
+namespace lsst::qserv {
 namespace query {
 class QueryTemplate;
 }
@@ -46,9 +46,9 @@ namespace qproc {
 struct ChunkSpec;
 class ChunkSpecSingle;
 }  // namespace qproc
-}}  // namespace lsst::qserv
+}  // namespace lsst::qserv
 
-namespace lsst { namespace qserv { namespace qana {
+namespace lsst::qserv::qana {
 
 /// QueryMapping is a value class that stores a mapping that can be
 /// consulted for a partitioning-strategy-agnostic query generation
@@ -97,6 +97,6 @@ private:
     DbTableSet _subChunkTables;
 };
 
-}}}  // namespace lsst::qserv::qana
+}  // namespace lsst::qserv::qana
 
 #endif  // LSST_QSERV_QANA_QUERYMAPPING_H

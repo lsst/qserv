@@ -41,7 +41,7 @@
 #ifndef LSST_QSERV_QANA_CHECKAGGREGATION_H_
 #define LSST_QSERV_QANA_CHECKAGGREGATION_H_
 
-namespace lsst { namespace qserv { namespace qana {
+namespace lsst::qserv::qana {
 
 /**
  * Functor class to check if a FactorOp is related to a SQL aggregation
@@ -72,6 +72,6 @@ public:
     bool& hasAgg;
 };
 
-}}} /* namespace lsst::qserv::qana */
+} /* namespace lsst::qserv::qana */
 
 #endif /* LSST_QSERV_QANA_CHECKAGGREGATION_H_ */

@@ -36,7 +36,7 @@
 // Local headers
 #include "query/ColumnRef.h"
 
-namespace lsst { namespace qserv { namespace qana {
+namespace lsst::qserv::qana {
 
 typedef std::shared_ptr<query::ColumnRef const> ColumnRefConstPtr;
 struct Vertex;
@@ -185,6 +185,6 @@ inline void ColumnVertexMap::_init(Vertex& v, InputIterator first, InputIterator
     std::sort(_entries.begin(), _entries.end(), ColumnRefLt());
 }
 
-}}}  // namespace lsst::qserv::qana
+}  // namespace lsst::qserv::qana
 
 #endif  // LSST_QSERV_QANA_COLUMNVERTEXMAP_H

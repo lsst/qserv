@@ -58,7 +58,7 @@ namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.qana.DuplSelectExprPlugin");
 }
 
-namespace lsst { namespace qserv { namespace qana {
+namespace lsst::qserv::qana {
 
 std::string const DuplSelectExprPlugin::EXCEPTION_MSG =
         "Duplicate names detected in select expression,"
@@ -146,4 +146,4 @@ void DuplSelectExprPlugin::applyLogical(query::SelectStmt& stmt, query::QueryCon
     }
 }
 
-}}}  // namespace lsst::qserv::qana
+}  // namespace lsst::qserv::qana

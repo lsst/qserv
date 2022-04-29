@@ -45,7 +45,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.query.QueryMapping");
 
 }
 
-namespace lsst { namespace qserv { namespace qana {
+namespace lsst::qserv::qana {
 
 std::string const replace(std::string const& s, std::string const& pat, std::string const& value) {
     std::string result;
@@ -164,4 +164,4 @@ bool QueryMapping::hasParameter(Parameter p) const {
     return false;
 }
 
-}}}  // namespace lsst::qserv::qana
+}  // namespace lsst::qserv::qana

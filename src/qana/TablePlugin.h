@@ -27,11 +27,11 @@
 #include "qana/QueryPlugin.h"
 
 // Forward declarations
-namespace lsst { namespace qserv { namespace query {
+namespace lsst::qserv::query {
 class TableRef;
-}}}  // namespace lsst::qserv::query
+}  // namespace lsst::qserv::query
 
-namespace lsst { namespace qserv { namespace qana {
+namespace lsst::qserv::qana {
 
 class QueryMapping;
 
@@ -67,6 +67,6 @@ private:
     std::string _dominantDb;
 };
 
-}}}  // namespace lsst::qserv::qana
+}  // namespace lsst::qserv::qana
 
 #endif  // LSST_QSERV_QANA_TABLEPLUGIN_H

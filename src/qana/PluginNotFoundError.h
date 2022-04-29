@@ -36,7 +36,7 @@
 #include <sstream>
 #include <string>
 
-namespace lsst { namespace qserv { namespace qana {
+namespace lsst::qserv::qana {
 
 /// PluginNotFoundError is an exception class thrown when a plugin is requested
 /// by a name that has not been registered.
@@ -55,6 +55,6 @@ private:
     std::string _descr;
 };
 
-}}}  // namespace lsst::qserv::qana
+}  // namespace lsst::qserv::qana
 
 #endif  // LSST_QSERV_QANA_PLUGINNOTFOUNDERROR_H

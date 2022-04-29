@@ -37,12 +37,12 @@
 #include "query/typedefs.h"
 
 // Forward declarations
-namespace lsst { namespace qserv { namespace query {
+namespace lsst::qserv::query {
 class SelectStmt;
 class QueryContext;
-}}}  // namespace lsst::qserv::query
+}  // namespace lsst::qserv::query
 
-namespace lsst { namespace qserv { namespace qana {
+namespace lsst::qserv::qana {
 
 using query::SelectStmtPtrVector;
 
@@ -117,6 +117,6 @@ public:
     bool const hasMerge;
 };
 
-}}}  // namespace lsst::qserv::qana
+}  // namespace lsst::qserv::qana
 
 #endif  // LSST_QSERV_QANA_QUERYPLUGIN_H

@@ -47,7 +47,7 @@
 #include "query/typedefs.h"
 #include "util/MultiError.h"
 
-namespace lsst { namespace qserv { namespace qana {
+namespace lsst::qserv::qana {
 
 namespace test {
 class DuplSelectExprPluginTestHelper;
@@ -115,6 +115,6 @@ private:
     util::MultiError getDuplicateAndPosition(StringVector const& v) const;
 };
 
-}}}  // namespace lsst::qserv::qana
+}  // namespace lsst::qserv::qana
 
 #endif

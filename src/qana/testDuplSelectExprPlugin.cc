@@ -41,7 +41,7 @@
 #define BOOST_TEST_MODULE SelectList
 #include <boost/test/unit_test.hpp>
 
-namespace lsst { namespace qserv { namespace qana {
+namespace lsst::qserv::qana {
 
 namespace test {
 
@@ -97,4 +97,4 @@ BOOST_AUTO_TEST_CASE(getDuplicateAndPosition) {
 
 BOOST_AUTO_TEST_SUITE_END()
 
-}}}  // namespace lsst::qserv::qana
+}  // namespace lsst::qserv::qana

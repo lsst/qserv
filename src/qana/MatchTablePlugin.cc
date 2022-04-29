@@ -64,7 +64,7 @@ using lsst::qserv::query::ValueExpr;
 using lsst::qserv::query::ValueFactor;
 using lsst::qserv::query::WhereClause;
 
-namespace lsst { namespace qserv { namespace qana {
+namespace lsst::qserv::qana {
 
 /// MatchTablePlugin fixes up queries on match tables which are not joins
 /// so that they do not return duplicate rows potentially introduced by
@@ -157,4 +157,4 @@ void MatchTablePlugin::applyLogical(query::SelectStmt& stmt, query::QueryContext
     }
 }
 
-}}}  // namespace lsst::qserv::qana
+}  // namespace lsst::qserv::qana

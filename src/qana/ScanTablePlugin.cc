@@ -54,7 +54,7 @@ namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.qana.ScanTablePlugin");
 }
 
-namespace lsst { namespace qserv { namespace qana {
+namespace lsst::qserv::qana {
 
 ////////////////////////////////////////////////////////////////////////
 // ScanTablePlugin implementation
@@ -219,4 +219,4 @@ proto::ScanInfo ScanTablePlugin::_findScanTables(query::SelectStmt& stmt, query:
     return scanInfo;
 }
 
-}}}  // namespace lsst::qserv::qana
+}  // namespace lsst::qserv::qana

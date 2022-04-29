@@ -449,7 +449,7 @@ void handleSecondaryIndex(query::WhereClause& whereClause, query::QueryContext& 
 
 }  // anonymous namespace
 
-namespace lsst { namespace qserv { namespace qana {
+namespace lsst::qserv::qana {
 
 ////////////////////////////////////////////////////////////////////////
 // QservRestrictorPlugin implementation
@@ -502,4 +502,4 @@ void QservRestrictorPlugin::applyPhysical(QueryPlugin::Plan& p, query::QueryCont
     // Probably nothing is needed here...
 }
 
-}}}  // namespace lsst::qserv::qana
+}  // namespace lsst::qserv::qana

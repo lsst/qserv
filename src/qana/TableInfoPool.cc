@@ -56,7 +56,7 @@ struct TableInfoLt {
 };
 }  // namespace
 
-namespace lsst { namespace qserv { namespace qana {
+namespace lsst::qserv::qana {
 
 TableInfo const* TableInfoPool::get(std::string const& db, std::string const& table) {
     std::string const& db_ = db.empty() ? _defaultDb : db;
@@ -170,4 +170,4 @@ TableInfo const* TableInfoPool::_insert(std::unique_ptr<TableInfo const> t) {
     return nullptr;
 }
 
-}}}  // namespace lsst::qserv::qana
+}  // namespace lsst::qserv::qana

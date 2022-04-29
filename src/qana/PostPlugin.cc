@@ -61,7 +61,7 @@ namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.qana.PostPlugin");
 }
 
-namespace lsst { namespace qserv { namespace qana {
+namespace lsst::qserv::qana {
 
 ////////////////////////////////////////////////////////////////////////
 // PostPlugin implementation
@@ -122,4 +122,4 @@ void PostPlugin::applyPhysical(QueryPlugin::Plan& plan, query::QueryContext& con
     }
 }
 
-}}}  // namespace lsst::qserv::qana
+}  // namespace lsst::qserv::qana

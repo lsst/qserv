@@ -30,7 +30,7 @@
 // Local headers
 #include "AnalysisError.h"
 
-namespace lsst { namespace qserv { namespace qana {
+namespace lsst::qserv::qana {
 
 /// `InvalidTableError` is thrown for queries referencing mis-configured or
 /// non-existent tables.
@@ -40,6 +40,6 @@ public:
     explicit InvalidTableError(char const* what) : AnalysisError(what) {}
 };
 
-}}}  // namespace lsst::qserv::qana
+}  // namespace lsst::qserv::qana
 
 #endif  // LSST_QSERV_QANA_INVALIDTABLEERROR_H

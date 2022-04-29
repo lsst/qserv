@@ -62,7 +62,7 @@ namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.qana.RelationGraph");
 }
 
-namespace lsst { namespace qserv { namespace qana {
+namespace lsst::qserv::qana {
 
 using query::AndTerm;
 using query::BoolFactor;
@@ -1089,4 +1089,4 @@ void RelationGraph::swap(RelationGraph& g) {
     _map.swap(g._map);
 }
 
-}}}  // namespace lsst::qserv::qana
+}  // namespace lsst::qserv::qana

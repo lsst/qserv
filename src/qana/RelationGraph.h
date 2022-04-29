@@ -491,7 +491,7 @@
 #include "query/typedefs.h"
 
 // Forward declarations
-namespace lsst { namespace qserv {
+namespace lsst::qserv {
 namespace query {
 class ColumnRef;
 class QueryContext;
@@ -501,9 +501,9 @@ namespace qana {
 class QueryMapping;
 class TableInfoPool;
 }  // namespace qana
-}}  // namespace lsst::qserv
+}  // namespace lsst::qserv
 
-namespace lsst { namespace qserv { namespace qana {
+namespace lsst::qserv::qana {
 
 using query::SelectStmtPtrVector;
 
@@ -650,6 +650,6 @@ private:
     bool _validate();
 };
 
-}}}  // namespace lsst::qserv::qana
+}  // namespace lsst::qserv::qana
 
 #endif  // LSST_QSERV_QANA_RELATIONGRAPH_H

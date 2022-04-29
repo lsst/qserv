@@ -27,7 +27,7 @@
 #include "qana/QueryPlugin.h"
 #include "query/AggOp.h"
 
-namespace lsst { namespace qserv { namespace qana {
+namespace lsst::qserv::qana {
 
 /// AggregatePlugin primarily operates in
 /// the second phase of query manipulation. It rewrites the
@@ -52,6 +52,6 @@ private:
     query::AggOp::Mgr _aMgr;
 };
 
-}}}  // namespace lsst::qserv::qana
+}  // namespace lsst::qserv::qana
 
 #endif  // LSST_QSERV_QANA_AGGREGATEPLUGIN_H
