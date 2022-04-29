@@ -39,11 +39,11 @@
 #include "query/typedefs.h"
 
 // forward declarations
-namespace lsst { namespace qserv { namespace qproc {
+namespace lsst::qserv::qproc {
 class SecondaryIndex;
-}}}  // namespace lsst::qserv::qproc
+}  // namespace lsst::qserv::qproc
 
-namespace lsst { namespace qserv { namespace qproc {
+namespace lsst::qserv::qproc {
 
 class IndexMap {
 public:
@@ -79,5 +79,5 @@ private:
     std::shared_ptr<SecondaryIndex> _si;
 };
 
-}}}     // namespace lsst::qserv::qproc
+}     // namespace lsst::qserv::qproc
 #endif  // LSST_QSERV_QPROC_INDEXMAP_H

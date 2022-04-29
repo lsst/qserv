@@ -59,7 +59,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.qproc.SecondaryIndex");
 
 }  // anonymous namespace
 
-namespace lsst { namespace qserv { namespace qproc {
+namespace lsst::qserv::qproc {
 
 class SecondaryIndex::Backend {
 public:
@@ -162,4 +162,4 @@ ChunkSpecVector SecondaryIndex::lookup(query::SecIdxRestrictorVec const& restric
     }
 }
 
-}}}  // namespace lsst::qserv::qproc
+}  // namespace lsst::qserv::qproc

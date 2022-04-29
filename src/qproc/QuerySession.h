@@ -51,7 +51,7 @@
 #include "sql/SqlConfig.h"
 
 // Forward declarations
-namespace lsst { namespace qserv {
+namespace lsst::qserv {
 namespace css {
 class StripingParams;
 }
@@ -59,9 +59,9 @@ namespace query {
 class SelectStmt;
 class QueryContext;
 }  // namespace query
-}}  // namespace lsst::qserv
+}  // namespace lsst::qserv
 
-namespace lsst { namespace qserv { namespace qproc {
+namespace lsst::qserv::qproc {
 
 ///  QuerySession contains state and behavior for operating on user queries. It
 ///  contains much of the query analysis-side responsibility, including the text
@@ -264,6 +264,6 @@ private:
  */
 std::ostream& operator<<(std::ostream& out, QuerySession const& querySession);
 
-}}}  // namespace lsst::qserv::qproc
+}  // namespace lsst::qserv::qproc
 
 #endif  // LSST_QSERV_QPROC_QUERYSESSION_H

@@ -103,7 +103,7 @@ std::string printParallel(lsst::qserv::query::SelectStmtPtrVector const& p) {
               << "    needsMerge:" << (needsMerge() ? "true" : "false"));
 }  // namespace
 
-namespace lsst { namespace qserv { namespace qproc {
+namespace lsst::qserv::qproc {
 
 ////////////////////////////////////////////////////////////////////////
 // class QuerySession
@@ -447,4 +447,4 @@ std::shared_ptr<ChunkQuerySpec> QuerySession::_buildFragment(query::QueryTemplat
     return first;
 }
 
-}}}  // namespace lsst::qserv::qproc
+}  // namespace lsst::qserv::qproc

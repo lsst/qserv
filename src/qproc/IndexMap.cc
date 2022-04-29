@@ -74,7 +74,7 @@ lsst::qserv::qproc::ChunkSpec convertSgSubChunks(SubChunks const& sc) {
 
 }  // anonymous namespace
 
-namespace lsst { namespace qserv { namespace qproc {
+namespace lsst::qserv::qproc {
 
 typedef std::vector<std::shared_ptr<Region> > RegionPtrVector;
 
@@ -192,4 +192,4 @@ ChunkSpecVector IndexMap::getChunks(query::AreaRestrictorVecPtr const& areaRestr
     }
 }
 
-}}}  // namespace lsst::qserv::qproc
+}  // namespace lsst::qserv::qproc

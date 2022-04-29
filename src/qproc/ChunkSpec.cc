@@ -47,7 +47,7 @@ namespace {  // File-scope helpers
 int const GOOD_SUBCHUNK_COUNT = 20;
 }  // namespace
 
-namespace lsst { namespace qserv { namespace qproc {
+namespace lsst::qserv::qproc {
 
 std::ostream& operator<<(std::ostream& os, ChunkSpec const& c) {
     os << "ChunkSpec("
@@ -247,4 +247,4 @@ std::ostream& operator<<(std::ostream& os, ChunkSpecSingle const& c) {
     return os;
 }
 
-}}}  // namespace lsst::qserv::qproc
+}  // namespace lsst::qserv::qproc

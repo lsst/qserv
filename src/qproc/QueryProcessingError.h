@@ -26,7 +26,7 @@
 // System headers
 #include <stdexcept>
 
-namespace lsst { namespace qserv { namespace qproc {
+namespace lsst::qserv::qproc {
 
 /// QueryProcessingError marks an runtime error in query processing.
 class QueryProcessingError : public std::runtime_error {
@@ -34,6 +34,6 @@ public:
     explicit QueryProcessingError(char const* msg) : std::runtime_error(msg) {}
     explicit QueryProcessingError(std::string const& msg) : std::runtime_error(msg) {}
 };
-}}}  // namespace lsst::qserv::qproc
+}  // namespace lsst::qserv::qproc
 
 #endif  // LSST_QSERV_QPROC_QUERYPROCESSINGERROR_H

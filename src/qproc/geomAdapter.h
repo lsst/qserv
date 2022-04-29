@@ -43,7 +43,7 @@
 #include "css/StripingParams.h"
 #include "qproc/QueryProcessingError.h"
 
-namespace lsst { namespace qserv { namespace qproc {
+namespace lsst::qserv::qproc {
 
 inline std::shared_ptr<lsst::sphgeom::Box> getBoxFromParams(std::vector<double> const& params) {
     if (params.size() != 4) {
@@ -101,6 +101,6 @@ inline std::shared_ptr<lsst::sphgeom::ConvexPolygon> getConvexPolyFromParams(
     return std::make_shared<lsst::sphgeom::ConvexPolygon>(uv3);
 }
 
-}}}  // namespace lsst::qserv::qproc
+}  // namespace lsst::qserv::qproc
 
 #endif  // LSST_QSERV_QPROC_GEOMADAPTER_H

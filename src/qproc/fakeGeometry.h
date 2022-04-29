@@ -39,7 +39,7 @@
 #include "css/StripingParams.h"
 #include "qproc/QueryProcessingBug.h"
 
-namespace lsst { namespace qserv { namespace qproc {
+namespace lsst::qserv::qproc {
 
 // Temporary
 typedef double Coordinate;
@@ -130,6 +130,6 @@ public:
     int _subStripes;
 };
 
-}}}  // namespace lsst::qserv::qproc
+}  // namespace lsst::qserv::qproc
 
 #endif  // LSST_QSERV_CCONTROL_FAKEGEOMETRY_H

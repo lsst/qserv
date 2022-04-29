@@ -39,7 +39,7 @@
 #include "qproc/ChunkSpec.h"
 #include "query/typedefs.h"
 
-namespace lsst { namespace qserv { namespace qproc {
+namespace lsst::qserv::qproc {
 
 /**
  *  SecondaryIndex handles lookups into Qserv secondary index.
@@ -70,6 +70,6 @@ private:
     std::shared_ptr<Backend> _backend;
 };
 
-}}}  // namespace lsst::qserv::qproc
+}  // namespace lsst::qserv::qproc
 
 #endif  // LSST_QSERV_QPROC_SECONDARYINDEX_H

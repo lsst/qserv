@@ -41,7 +41,7 @@
 #include "proto/worker.pb.h"
 #include "qmeta/types.h"
 
-namespace lsst { namespace qserv { namespace qproc {
+namespace lsst::qserv::qproc {
 
 class ChunkQuerySpec;
 
@@ -71,6 +71,6 @@ private:
     uint64_t const _session;
 };
 
-}}}  // namespace lsst::qserv::qproc
+}  // namespace lsst::qserv::qproc
 
 #endif  // LSST_QSERV_QPROC_TASKMSGFACTORY_H

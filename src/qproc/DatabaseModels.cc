@@ -43,7 +43,7 @@ namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.qproc.DatabaseModels");
 }
 
-namespace lsst { namespace qserv { namespace qproc {
+namespace lsst::qserv::qproc {
 
 DatabaseModels::Ptr DatabaseModels::create(std::map<std::string, std::string> const& cfgMapMaster,
                                            sql::SqlConfig const& sqlCfgLocal) {
@@ -95,4 +95,4 @@ vector<string> DatabaseModels::listColumns(string const& dbName, string const& t
     }
 }
 
-}}}  // namespace lsst::qserv::qproc
+}  // namespace lsst::qserv::qproc

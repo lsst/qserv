@@ -50,7 +50,7 @@ namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.qproc.TaskMsgFactory");
 }
 
-namespace lsst { namespace qserv { namespace qproc {
+namespace lsst::qserv::qproc {
 
 std::shared_ptr<proto::TaskMsg> TaskMsgFactory::_makeMsg(ChunkQuerySpec const& chunkQuerySpec,
                                                          std::string const& chunkResultName, QueryId queryId,
@@ -147,4 +147,4 @@ void TaskMsgFactory::serializeMsg(ChunkQuerySpec const& s, std::string const& ch
     m->SerializeToOstream(&os);
 }
 
-}}}  // namespace lsst::qserv::qproc
+}  // namespace lsst::qserv::qproc

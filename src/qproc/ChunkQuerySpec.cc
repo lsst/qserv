@@ -41,7 +41,7 @@
 // Qserv headers
 #include "util/IterableFormatter.h"
 
-namespace lsst { namespace qserv { namespace qproc {
+namespace lsst::qserv::qproc {
 
 ////////////////////////////////////////////////////////////////////////
 // class ChunkQuerySpec
@@ -57,4 +57,4 @@ std::ostream& operator<<(std::ostream& os, ChunkQuerySpec const& c) {
     return os;
 }
 
-}}}  // namespace lsst::qserv::qproc
+}  // namespace lsst::qserv::qproc

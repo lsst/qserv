@@ -41,7 +41,7 @@
 #include "global/stringTypes.h"
 #include "proto/ScanTableInfo.h"
 
-namespace lsst { namespace qserv { namespace qproc {
+namespace lsst::qserv::qproc {
 
 /// ChunkQuerySpec is a value class that bundles a set of queries with their
 /// dependent db, chunkId, and set of subChunkIds. It has a pointer to another
@@ -73,6 +73,6 @@ public:
 
 std::ostream& operator<<(std::ostream& os, ChunkQuerySpec const& c);
 
-}}}  // namespace lsst::qserv::qproc
+}  // namespace lsst::qserv::qproc
 
 #endif  // LSST_QSERV_QPROC_CHUNKQUERYSPEC_H

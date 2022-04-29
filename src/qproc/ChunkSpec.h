@@ -39,7 +39,7 @@
 // Qserv headers
 #include "global/intTypes.h"
 
-namespace lsst { namespace qserv { namespace qproc {
+namespace lsst::qserv::qproc {
 
 /// ChunkSpec is a value class that bundles the per-chunk information that is
 /// used to compose a concrete chunk query for a specific chunk from an input
@@ -117,6 +117,6 @@ public:
 };
 std::ostream& operator<<(std::ostream& os, ChunkSpecSingle const& c);
 
-}}}  // namespace lsst::qserv::qproc
+}  // namespace lsst::qserv::qproc
 
 #endif  // LSST_QSERV_QPROC_CHUNKSPEC_H
