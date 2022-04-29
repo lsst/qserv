@@ -90,7 +90,7 @@ string getErrorText(XrdSsiErrInfo& e) {
 
 }  // anonymous namespace
 
-namespace lsst { namespace qserv { namespace qdisp {
+namespace lsst::qserv::qdisp {
 
 ////////////////////////////////////////////////////////////////////////
 // class Executive implementation
@@ -613,4 +613,4 @@ void Executive::_printState(ostream& os) {
     }
 }
 
-}}}  // namespace lsst::qserv::qdisp
+}  // namespace lsst::qserv::qdisp

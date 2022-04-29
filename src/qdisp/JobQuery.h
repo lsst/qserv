@@ -37,7 +37,7 @@
 #include "qdisp/ResponseHandler.h"
 #include "util/InstanceCount.h"
 
-namespace lsst { namespace qserv { namespace qdisp {
+namespace lsst::qserv::qdisp {
 
 class QdispPool;
 class QueryRequest;
@@ -132,6 +132,6 @@ protected:
     std::shared_ptr<QdispPool> _qdispPool;
 };
 
-}}}  // namespace lsst::qserv::qdisp
+}  // namespace lsst::qserv::qdisp
 
 #endif /* LSST_QSERV_QDISP_JOBQUERY_H_ */

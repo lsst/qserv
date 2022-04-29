@@ -33,7 +33,7 @@
 
 // Local headers
 
-namespace lsst { namespace qserv { namespace qdisp {
+namespace lsst::qserv::qdisp {
 
 class Executive;
 
@@ -67,6 +67,6 @@ private:
     static std::string _myRName;
 };
 
-}}}  // namespace lsst::qserv::qdisp
+}  // namespace lsst::qserv::qdisp
 
 #endif

@@ -30,7 +30,7 @@
 #include <string>
 #include <time.h>
 
-namespace lsst { namespace qserv { namespace qdisp {
+namespace lsst::qserv::qdisp {
 
 /** Monitor execution of a chunk query against an SSI ressource
  *
@@ -108,6 +108,6 @@ std::ostream& operator<<(std::ostream& os, JobStatus const& es);
 std::ostream& operator<<(std::ostream& os, JobStatus::Info const& inf);
 std::ostream& operator<<(std::ostream& os, JobStatus::State const& state);
 
-}}}  // namespace lsst::qserv::qdisp
+}  // namespace lsst::qserv::qdisp
 
 #endif  // LSST_QSERV_QDISP_JOBSTATUS_H

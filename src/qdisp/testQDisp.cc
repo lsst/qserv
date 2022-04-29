@@ -70,7 +70,7 @@ public:
     int _chunkId;
 };
 
-namespace lsst { namespace qserv { namespace qproc {
+namespace lsst::qserv::qproc {
 
 // Normally, there's one TaskMsgFactory that all jobs in a user query share.
 // In this case, there's one MockTaskMsgFactory per job with a payload specific
@@ -85,7 +85,7 @@ public:
     std::string mockPayload;
 };
 
-}}}  // namespace lsst::qserv::qproc
+}  // namespace lsst::qserv::qproc
 
 qdisp::JobDescription::Ptr makeMockJobDescription(qdisp::Executive::Ptr const& ex, int sequence,
                                                   ResourceUnit const& ru, std::string msg,

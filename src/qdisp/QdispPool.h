@@ -32,7 +32,7 @@
 // Qserv headers
 #include "util/ThreadPool.h"
 
-namespace lsst { namespace qserv { namespace qdisp {
+namespace lsst::qserv::qdisp {
 
 class PriorityQueue;
 
@@ -193,6 +193,6 @@ private:
     util::ThreadPool::Ptr _pool;
 };
 
-}}}  // namespace lsst::qserv::qdisp
+}  // namespace lsst::qserv::qdisp
 
 #endif /* LSST_QSERV_QDISP_QDISPPOOL_H_ */

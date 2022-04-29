@@ -29,7 +29,7 @@
 #include <mutex>
 #include <string>
 
-namespace lsst { namespace qserv { namespace qdisp {
+namespace lsst::qserv::qdisp {
 
 /// This class only allows the last _maxRunningCount elements
 /// to run at any given time. The _runningCount is decremented
@@ -104,6 +104,6 @@ private:
     std::mutex _qMtx;
 };
 
-}}}  // namespace lsst::qserv::qdisp
+}  // namespace lsst::qserv::qdisp
 
 #endif  // LSST_QSERV_QDISP_PSEUDOFIFO_H

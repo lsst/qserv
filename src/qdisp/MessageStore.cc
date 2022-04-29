@@ -41,7 +41,7 @@ namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.qdisp.MessageStore");
 }
 
-namespace lsst { namespace qserv { namespace qdisp {
+namespace lsst::qserv::qdisp {
 
 ////////////////////////////////////////////////////////////////////////
 // public
@@ -78,4 +78,4 @@ int MessageStore::messageCount(int code) const {
     return count;
 }
 
-}}}  // namespace lsst::qserv::qdisp
+}  // namespace lsst::qserv::qdisp

@@ -40,7 +40,7 @@ namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.qdisp.JobQuery");
 }  // anonymous namespace
 
-namespace lsst { namespace qserv { namespace qdisp {
+namespace lsst::qserv::qdisp {
 
 JobQuery::JobQuery(Executive::Ptr const& executive, JobDescription::Ptr const& jobDescription,
                    JobStatus::Ptr const& jobStatus, std::shared_ptr<MarkCompleteFunc> const& markCompleteFunc,
@@ -173,4 +173,4 @@ std::ostream& operator<<(std::ostream& os, JobQuery const& jq) {
     return os << "{" << jq.getIdStr() << jq._jobDescription << " " << *jq._jobStatus << "}";
 }
 
-}}}  // namespace lsst::qserv::qdisp
+}  // namespace lsst::qserv::qdisp

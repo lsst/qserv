@@ -59,7 +59,7 @@ namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.qdisp.QueryRequest");
 }
 
-namespace lsst { namespace qserv { namespace qdisp {
+namespace lsst::qserv::qdisp {
 
 // Run action() when the system expects to have time to accept data.
 class QueryRequest::AskForResponseDataCmd : public PriorityCommand {
@@ -729,4 +729,4 @@ string QueryRequest::getSsiErr(XrdSsiErrInfo const& eInfo, int* eCode) {
     return os.str();
 }
 
-}}}  // namespace lsst::qserv::qdisp
+}  // namespace lsst::qserv::qdisp

@@ -25,7 +25,7 @@
 // System headers
 #include <memory>
 
-namespace lsst { namespace qserv { namespace qdisp {
+namespace lsst::qserv::qdisp {
 
 class QdispPool;
 
@@ -66,6 +66,6 @@ private:
     std::shared_ptr<qdisp::PseudoFifo> _queryRequestPseudoFifo;
 };
 
-}}}  // namespace lsst::qserv::qdisp
+}  // namespace lsst::qserv::qdisp
 
 #endif  // LSST_QSERV_SHAREDRESOURCES_H

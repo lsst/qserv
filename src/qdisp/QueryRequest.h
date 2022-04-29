@@ -39,7 +39,7 @@
 #include "qdisp/JobQuery.h"
 #include "qdisp/QdispPool.h"
 
-namespace lsst { namespace qserv { namespace qdisp {
+namespace lsst::qserv::qdisp {
 
 /// Bad response received from SSI API
 class BadResponseError : public std::exception {
@@ -176,6 +176,6 @@ private:
 
 std::ostream& operator<<(std::ostream& os, QueryRequest const& r);
 
-}}}  // namespace lsst::qserv::qdisp
+}  // namespace lsst::qserv::qdisp
 
 #endif  // LSST_QSERV_QDISP_QUERYREQUEST_H

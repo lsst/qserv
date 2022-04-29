@@ -45,7 +45,7 @@ namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.qdisp.JobDescription");
 }
 
-namespace lsst { namespace qserv { namespace qdisp {
+namespace lsst::qserv::qdisp {
 
 JobDescription::JobDescription(qmeta::CzarId czarId, QueryId qId, int jobId, ResourceUnit const& resource,
                                shared_ptr<ResponseHandler> const& respHandler,
@@ -102,4 +102,4 @@ ostream& operator<<(ostream& os, JobDescription const& jd) {
     return os;
 }
 
-}}}  // namespace lsst::qserv::qdisp
+}  // namespace lsst::qserv::qdisp

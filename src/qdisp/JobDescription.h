@@ -39,7 +39,7 @@
 
 // Forward declarations
 
-namespace lsst { namespace qserv {
+namespace lsst::qserv {
 
 namespace qproc {
 
@@ -118,6 +118,6 @@ private:
 std::ostream& operator<<(std::ostream& os, JobDescription const& jd);
 
 }  // namespace qdisp
-}}  // namespace lsst::qserv
+}  // namespace lsst::qserv
 
 #endif /* LSST_QSERV_QDISP_JOBDESCRIPTION_H_ */

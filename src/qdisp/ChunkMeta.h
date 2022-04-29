@@ -28,7 +28,7 @@
 #include <string>
 #include <vector>
 
-namespace lsst { namespace qserv { namespace qdisp {
+namespace lsst::qserv::qdisp {
 
 class ChunkMetaEntry {
 public:
@@ -66,6 +66,6 @@ private:
     EntryVector _entries;
 };
 
-}}}  // namespace lsst::qserv::qdisp
+}  // namespace lsst::qserv::qdisp
 
 #endif  // LSST_QSERV_QDISP_CHUNKMETA_H

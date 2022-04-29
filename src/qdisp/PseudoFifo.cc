@@ -36,7 +36,7 @@ namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.qdsip.PseudoFifo");
 }
 
-namespace lsst { namespace qserv { namespace qdisp {
+namespace lsst::qserv::qdisp {
 
 uint32_t PseudoFifo::Element::seq = 0;
 
@@ -76,4 +76,4 @@ void PseudoFifo::_runSomeElements() {
     LOGS(_log, LOG_LVL_DEBUG, "end _runningCount=" << _runningCount);
 }
 
-}}}  // namespace lsst::qserv::qdisp
+}  // namespace lsst::qserv::qdisp

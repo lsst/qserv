@@ -32,7 +32,7 @@
 // Qserv headers
 #include "util/Error.h"
 
-namespace lsst { namespace qserv { namespace qdisp {
+namespace lsst::qserv::qdisp {
 
 class JobQuery;
 
@@ -90,6 +90,6 @@ private:
 
 inline std::ostream& operator<<(std::ostream& os, ResponseHandler const& r) { return r.print(os); }
 
-}}}  // namespace lsst::qserv::qdisp
+}  // namespace lsst::qserv::qdisp
 
 #endif  // LSST_QSERV_QDISP_RESPONSEHANDLER_H

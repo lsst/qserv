@@ -240,7 +240,7 @@ private:
 };
 }  // namespace
 
-namespace lsst { namespace qserv { namespace qdisp {
+namespace lsst::qserv::qdisp {
 
 std::string XrdSsiServiceMock::_myRName;
 
@@ -317,4 +317,4 @@ void XrdSsiServiceMock::ProcessRequest(XrdSsiRequest& reqRef, XrdSsiResource& re
     }
 }
 
-}}}  // namespace lsst::qserv::qdisp
+}  // namespace lsst::qserv::qdisp

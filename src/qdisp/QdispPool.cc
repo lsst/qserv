@@ -35,7 +35,7 @@ namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.qdisp.QdispPool");
 }
 
-namespace lsst { namespace qserv { namespace qdisp {
+namespace lsst::qserv::qdisp {
 
 ///< @Return true if the queue could be added.
 bool PriorityQueue::addPriQueue(int priority, int minRunning, int maxRunning) {
@@ -247,4 +247,4 @@ QdispPool::QdispPool(bool unitTest) {
     }
 }
 
-}}}  // namespace lsst::qserv::qdisp
+}  // namespace lsst::qserv::qdisp

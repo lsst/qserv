@@ -46,7 +46,7 @@ namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.qdisp.JobStatus");
 }
 
-namespace lsst { namespace qserv { namespace qdisp {
+namespace lsst::qserv::qdisp {
 
 JobStatus::Info::Info() : state(UNKNOWN), stateCode(0) { stateTime = ::time(NULL); }
 
@@ -122,4 +122,4 @@ std::ostream& operator<<(std::ostream& os, JobStatus::Info const& info) {
     return os;
 }
 
-}}}  // namespace lsst::qserv::qdisp
+}  // namespace lsst::qserv::qdisp

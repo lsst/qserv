@@ -51,7 +51,7 @@
 // Forward declarations
 class XrdSsiService;
 
-namespace lsst { namespace qserv {
+namespace lsst::qserv {
 
 namespace qmeta {
 class QStatus;
@@ -262,6 +262,6 @@ private:
 };
 
 }  // namespace qdisp
-}}  // namespace lsst::qserv
+}  // namespace lsst::qserv
 
 #endif  // LSST_QSERV_QDISP_EXECUTIVE_H

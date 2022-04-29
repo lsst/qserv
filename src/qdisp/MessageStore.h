@@ -41,7 +41,7 @@
 // Qserv headers
 #include "global/constants.h"
 
-namespace lsst { namespace qserv { namespace qdisp {
+namespace lsst::qserv::qdisp {
 
 struct QueryMessage {
     QueryMessage(int chunkId_, int code_, std::string description_, std::time_t timestamp_,
@@ -101,6 +101,6 @@ private:
     std::vector<QueryMessage> _queryMessages;
 };
 
-}}}  // namespace lsst::qserv::qdisp
+}  // namespace lsst::qserv::qdisp
 
 #endif  // LSST_QSERV_QDISP_MESSAGESTORE_H
