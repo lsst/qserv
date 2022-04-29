@@ -117,7 +117,7 @@ std::unordered_map<std::string, const std::string> contentTypesByExtension = {
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace qhttp {
+namespace lsst::qserv::qhttp {
 
 Response::Response(std::shared_ptr<Server> const server, std::shared_ptr<ip::tcp::socket> const socket,
                    DoneCallback const& doneCallback)
@@ -205,4 +205,4 @@ void Response::_write() {
     });
 }
 
-}}}  // namespace lsst::qserv::qhttp
+}  // namespace lsst::qserv::qhttp

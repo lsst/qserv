@@ -56,7 +56,7 @@ struct PathToken {
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace qhttp {
+namespace lsst::qserv::qhttp {
 
 //
 // ----- NOTE TO READERS: The internals of Path::parse and Path::updateParamsFromMatch here are a fairly
@@ -179,4 +179,4 @@ void Path::updateParamsFromMatch(Request::Ptr const& request, boost::smatch cons
     }
 }
 
-}}}  // namespace lsst::qserv::qhttp
+}  // namespace lsst::qserv::qhttp

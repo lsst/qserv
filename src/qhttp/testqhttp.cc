@@ -219,7 +219,7 @@ void CurlMulti::perform(int msecs) {
 
 }  // namespace
 
-namespace lsst { namespace qserv {
+namespace lsst::qserv {
 
 //
 //----- The test fixture instantiates a qhttp server and a boost::asio::io_service to run it,
@@ -771,4 +771,4 @@ BOOST_FIXTURE_TEST_CASE(ajax, QhttpFixture) {
     t3.join();
 }
 
-}}  // namespace lsst::qserv
+}  // namespace lsst::qserv

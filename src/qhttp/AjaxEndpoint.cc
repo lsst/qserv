@@ -37,7 +37,7 @@ namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.qhttp");
 }
 
-namespace lsst { namespace qserv { namespace qhttp {
+namespace lsst::qserv::qhttp {
 
 AjaxEndpoint::AjaxEndpoint(std::shared_ptr<Server> const server) : _server(std::move(server)) {}
 
@@ -63,4 +63,4 @@ void AjaxEndpoint::update(std::string const& json) {
     _pendingResponses.clear();
 }
 
-}}}  // namespace lsst::qserv::qhttp
+}  // namespace lsst::qserv::qhttp

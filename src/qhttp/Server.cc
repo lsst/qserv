@@ -54,7 +54,7 @@ namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.qhttp");
 }
 
-namespace lsst { namespace qserv { namespace qhttp {
+namespace lsst::qserv::qhttp {
 
 Server::Ptr Server::create(asio::io_service& io_service, unsigned short port, int backlog) {
     return std::shared_ptr<Server>(new Server(io_service, port, backlog));
@@ -324,4 +324,4 @@ void Server::_dispatchRequest(Request::Ptr request, Response::Ptr response) {
     response->sendStatus(404);
 }
 
-}}}  // namespace lsst::qserv::qhttp
+}  // namespace lsst::qserv::qhttp

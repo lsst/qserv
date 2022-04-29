@@ -38,7 +38,7 @@ namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.qhttp");
 }
 
-namespace lsst { namespace qserv { namespace qhttp {
+namespace lsst::qserv::qhttp {
 
 void StaticContent::add(Server& server, std::string const& pattern, std::string const& rootDirectory) {
     fs::path rootPath;
@@ -91,4 +91,4 @@ void StaticContent::add(Server& server, std::string const& pattern, std::string 
     });
 }
 
-}}}  // namespace lsst::qserv::qhttp
+}  // namespace lsst::qserv::qhttp

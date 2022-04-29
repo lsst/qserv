@@ -40,7 +40,7 @@ namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.qhttp");
 }
 
-namespace lsst { namespace qserv { namespace qhttp {
+namespace lsst::qserv::qhttp {
 
 Request::Request(std::shared_ptr<Server> const server, std::shared_ptr<ip::tcp::socket> const socket)
         : content(&_requestbuf), _server(std::move(server)), _socket(std::move(socket)) {
@@ -163,4 +163,4 @@ std::string Request::_percentDecode(std::string const& encoded, bool exceptPathD
     return decoded;
 }
 
-}}}  // namespace lsst::qserv::qhttp
+}  // namespace lsst::qserv::qhttp
