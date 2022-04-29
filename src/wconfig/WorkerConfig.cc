@@ -41,7 +41,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.wconfig.WorkerConfig");
 
 }
 
-namespace lsst { namespace qserv { namespace wconfig {
+namespace lsst::qserv::wconfig {
 
 WorkerConfig::WorkerConfig(const util::ConfigStore& configStore)
         : _memManClass(configStore.get("memman.class", "MemManReal")),
@@ -104,4 +104,4 @@ std::ostream& operator<<(std::ostream& out, WorkerConfig const& workerConfig) {
     return out;
 }
 
-}}}  // namespace lsst::qserv::wconfig
+}  // namespace lsst::qserv::wconfig

@@ -32,7 +32,7 @@
 #include "mysql/MySqlConfig.h"
 #include "util/ConfigStore.h"
 
-namespace lsst { namespace qserv { namespace wconfig {
+namespace lsst::qserv::wconfig {
 
 /**
  *  Provide all configuration parameters for a Qserv worker instance
@@ -269,6 +269,6 @@ private:
     int const _maxPerQid;
 };
 
-}}}  // namespace lsst::qserv::wconfig
+}  // namespace lsst::qserv::wconfig
 
 #endif  // LSST_QSERV_WCONFIG_WORKERCONFIG_H
