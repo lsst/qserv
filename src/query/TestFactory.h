@@ -32,7 +32,7 @@
 #include "sql/SqlConfig.h"
 
 // Forward declarations
-namespace lsst { namespace qserv {
+namespace lsst::qserv {
 namespace css {
 class CssAccess;
 }
@@ -40,9 +40,9 @@ namespace query {
 class QueryContext;
 class SelectStmt;
 }  // namespace query
-}}  // namespace lsst::qserv
+}  // namespace lsst::qserv
 
-namespace lsst { namespace qserv { namespace query {
+namespace lsst::qserv::query {
 
 /// TestFactory is a factory for non-parsed query representation objects
 class TestFactory {
@@ -62,6 +62,6 @@ private:
     static void addWhere(std::shared_ptr<SelectStmt> const& stmt);
 };
 
-}}}  // namespace lsst::qserv::query
+}  // namespace lsst::qserv::query
 
 #endif  // LSST_QSERV_QUERY_TESTFACTORY_H

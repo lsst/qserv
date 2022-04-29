@@ -37,7 +37,7 @@
 #include "query/ValueFactor.h"
 #include "query/WhereClause.h"
 
-namespace lsst { namespace qserv { namespace query {
+namespace lsst::qserv::query {
 
 std::string TestFactory::getDefaultDbName() { return "Somedb"; }
 
@@ -128,4 +128,4 @@ std::shared_ptr<SelectStmt> TestFactory::newSimpleStmt() {
     return stmt;
 }
 
-}}}  // namespace lsst::qserv::query
+}  // namespace lsst::qserv::query

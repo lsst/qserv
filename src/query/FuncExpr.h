@@ -41,11 +41,11 @@
 #include "query/typedefs.h"
 
 // Forward declarations
-namespace lsst { namespace qserv { namespace query {
+namespace lsst::qserv::query {
 class QueryTemplate;
-}}}  // namespace lsst::qserv::query
+}  // namespace lsst::qserv::query
 
-namespace lsst { namespace qserv { namespace query {
+namespace lsst::qserv::query {
 
 // FuncExpr is a function expression, e.g., foo(1,2,bar)
 class FuncExpr {
@@ -105,6 +105,6 @@ private:
 std::ostream& output(std::ostream& os, ValueExprPtrVector const& vel);
 void renderList(QueryTemplate& qt, ValueExprPtrVector const& vel);
 
-}}}  // namespace lsst::qserv::query
+}  // namespace lsst::qserv::query
 
 #endif  // LSST_QSERV_QUERY_FUNCEXPR_H

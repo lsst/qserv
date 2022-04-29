@@ -36,13 +36,13 @@
 #include "query/typedefs.h"
 
 // Forward declarations
-namespace lsst { namespace qserv { namespace query {
+namespace lsst::qserv::query {
 class QueryTemplate;
 class ColumnRef;
 class ValueExpr;
-}}}  // namespace lsst::qserv::query
+}  // namespace lsst::qserv::query
 
-namespace lsst { namespace qserv { namespace query {
+namespace lsst::qserv::query {
 
 /// BoolFactorTerm is a term in a in a BoolFactor
 class BoolFactorTerm {
@@ -90,6 +90,6 @@ protected:
     virtual void dbgPrint(std::ostream& os) const = 0;
 };
 
-}}}  // namespace lsst::qserv::query
+}  // namespace lsst::qserv::query
 
 #endif  // LSST_QSERV_QUERY_BOOLFACTORTERM_H

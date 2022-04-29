@@ -27,7 +27,7 @@
 #include "query/CopyTerms.h"
 #include "util/IterableFormatter.h"
 
-namespace lsst { namespace qserv { namespace query {
+namespace lsst::qserv::query {
 
 void OrTerm::renderTo(QueryTemplate& qt) const { renderList(qt, _terms, "OR"); }
 
@@ -64,4 +64,4 @@ bool OrTerm::operator==(const BoolTerm& rhs) const {
     return util::vectorPtrCompare<BoolTerm>(_terms, rhsOrTerm->_terms);
 }
 
-}}}  // namespace lsst::qserv::query
+}  // namespace lsst::qserv::query

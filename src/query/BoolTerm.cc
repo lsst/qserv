@@ -45,7 +45,7 @@
 #include "query/ValueExpr.h"
 #include "util/IterableFormatter.h"
 
-namespace lsst { namespace qserv { namespace query {
+namespace lsst::qserv::query {
 
 std::ostream& operator<<(std::ostream& os, BoolTerm const& bt) {
     bt.dbgPrint(os);
@@ -100,4 +100,4 @@ void BoolTerm::renderList(QueryTemplate& qt, std::vector<std::shared_ptr<BoolFac
 
 std::shared_ptr<BoolTerm> BoolTerm::copySyntax() const { return std::shared_ptr<BoolTerm>(); }
 
-}}}  // namespace lsst::qserv::query
+}  // namespace lsst::qserv::query

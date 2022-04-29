@@ -41,7 +41,7 @@
 #include "query/ValueExpr.h"
 #include "query/ValueFactor.h"
 
-namespace lsst { namespace qserv { namespace query {
+namespace lsst::qserv::query {
 
 ////////////////////////////////////////////////////////////////////////
 // AggOp specializations
@@ -209,4 +209,4 @@ std::string AggOp::Mgr::getAggName(std::string const& name) {
     return ss.str();
 }
 
-}}}  // namespace lsst::qserv::query
+}  // namespace lsst::qserv::query

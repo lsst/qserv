@@ -33,13 +33,13 @@
 #include "query/TableRef.h"
 
 // Forward declarations
-namespace lsst { namespace qserv { namespace query {
+namespace lsst::qserv::query {
 class QueryTemplate;
 class BoolTerm;
 class ColumnRef;
-}}}  // namespace lsst::qserv::query
+}  // namespace lsst::qserv::query
 
-namespace lsst { namespace qserv { namespace query {
+namespace lsst::qserv::query {
 
 /// JoinRef combines a join_spec with the target join table.
 /// e.g., in FROM Alice a LEFT JOIN Bob b USING(fooColumn)
@@ -85,6 +85,6 @@ private:
     std::shared_ptr<JoinSpec> _spec;
 };
 
-}}}  // namespace lsst::qserv::query
+}  // namespace lsst::qserv::query
 
 #endif  // LSST_QSERV_QUERY_JOINREF_H

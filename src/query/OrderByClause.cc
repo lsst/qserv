@@ -66,7 +66,7 @@ char const* getOrderStr(OrderByTerm::Order o) {
 
 }  // anonymous namespace
 
-namespace lsst { namespace qserv { namespace query {
+namespace lsst::qserv::query {
 
 class OrderByTerm::render : public std::unary_function<OrderByTerm, void> {
 public:
@@ -208,4 +208,4 @@ bool OrderByClause::operator==(const OrderByClause& rhs) const {
     return util::ptrVectorCompare<OrderByTerm>(_terms, rhs._terms);
 }
 
-}}}  // namespace lsst::qserv::query
+}  // namespace lsst::qserv::query

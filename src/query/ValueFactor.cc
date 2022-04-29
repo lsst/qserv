@@ -52,7 +52,7 @@
 #include "query/TableRef.h"
 #include "query/ValueExpr.h"
 
-namespace lsst { namespace qserv { namespace query {
+namespace lsst::qserv::query {
 
 ValueFactor::ValueFactor(std::shared_ptr<ColumnRef> const& columnRef)
         : _type(COLUMNREF), _columnRef(columnRef) {}
@@ -255,4 +255,4 @@ void ValueFactor::_reset() {
     _constVal.clear();
 }
 
-}}}  // namespace lsst::qserv::query
+}  // namespace lsst::qserv::query

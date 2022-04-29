@@ -24,7 +24,7 @@
 #ifndef LSST_QSERV_QUERY_COPYTERMS_H
 #define LSST_QSERV_QUERY_COPYTERMS_H
 
-namespace lsst { namespace qserv { namespace query {
+namespace lsst::qserv::query {
 
 struct syntaxCopy {
     inline BoolTerm::Ptr operator()(BoolTerm::Ptr const& t) { return t ? t->copySyntax() : BoolTerm::Ptr(); }
@@ -45,6 +45,6 @@ inline void copyTerms(List& dest, List const& src) {
     std::transform(src.begin(), src.end(), std::back_inserter(dest), Copy());
 }
 
-}}}  // namespace lsst::qserv::query
+}  // namespace lsst::qserv::query
 
 #endif  // LSST_QSERV_QUERY_COPYTERMS_H

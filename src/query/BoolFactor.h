@@ -31,13 +31,13 @@
 #include "query/BoolTerm.h"
 
 // Forward declarations
-namespace lsst { namespace qserv { namespace query {
+namespace lsst::qserv::query {
 class BoolFactorTerm;
 class ColumnRef;
 class ValueExpr;
-}}}  // namespace lsst::qserv::query
+}  // namespace lsst::qserv::query
 
-namespace lsst { namespace qserv { namespace query {
+namespace lsst::qserv::query {
 
 /// BoolFactor is a plain factor in a BoolTerm.
 class BoolFactor : public BoolTerm {
@@ -116,6 +116,6 @@ private:
     bool _checkParen(std::vector<std::shared_ptr<BoolFactorTerm>>& terms);
 };
 
-}}}  // namespace lsst::qserv::query
+}  // namespace lsst::qserv::query
 
 #endif  // LSST_QSERV_QUERY_BOOLFACOTR_H

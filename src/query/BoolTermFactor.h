@@ -32,12 +32,12 @@
 #include "query/ColumnRef.h"
 
 // Forward declarations
-namespace lsst { namespace qserv { namespace query {
+namespace lsst::qserv::query {
 class BoolTerm;
 class ValueExpr;
-}}}  // namespace lsst::qserv::query
+}  // namespace lsst::qserv::query
 
-namespace lsst { namespace qserv { namespace query {
+namespace lsst::qserv::query {
 
 /// BoolTermFactor is a bool factor term that contains a bool term. Occurs often
 /// when parentheses are used within a bool term. The parenthetical group is an
@@ -80,6 +80,6 @@ protected:
     void dbgPrint(std::ostream& os) const override;
 };
 
-}}}  // namespace lsst::qserv::query
+}  // namespace lsst::qserv::query
 
 #endif  // LSST_QSERV_QUERY_BOOLTERMFACTOR_H

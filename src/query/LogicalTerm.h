@@ -26,7 +26,7 @@
 
 #include "query/BoolTerm.h"
 
-namespace lsst { namespace qserv { namespace query {
+namespace lsst::qserv::query {
 
 class BoolFactor;
 class ColumnRef;
@@ -73,6 +73,6 @@ public:
     std::vector<std::shared_ptr<BoolTerm>> _terms;
 };
 
-}}}  // namespace lsst::qserv::query
+}  // namespace lsst::qserv::query
 
 #endif  // LSST_QSERV_QUERY_LOGICALTERM_H

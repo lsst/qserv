@@ -28,7 +28,7 @@
 #include "query/BoolFactorTerm.h"
 #include "query/QueryTemplate.h"
 
-namespace lsst { namespace qserv { namespace query {
+namespace lsst::qserv::query {
 
 BoolFactorTerm::Ptr PassTerm::copySyntax() const {
     PassTerm* p = new PassTerm;
@@ -54,4 +54,4 @@ std::ostream& PassTerm::putStream(std::ostream& os) const { return os << _text; 
 
 void PassTerm::renderTo(QueryTemplate& qt) const { qt.append(_text); }
 
-}}}  // namespace lsst::qserv::query
+}  // namespace lsst::qserv::query

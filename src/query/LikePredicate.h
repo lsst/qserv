@@ -28,13 +28,13 @@
 #include "query/Predicate.h"
 
 // Forward declarations
-namespace lsst { namespace qserv { namespace query {
+namespace lsst::qserv::query {
 class ColumnRef;
 class ValueExpr;
 class QueryTemplate;
-}}}  // namespace lsst::qserv::query
+}  // namespace lsst::qserv::query
 
-namespace lsst { namespace qserv { namespace query {
+namespace lsst::qserv::query {
 
 /// LikePredicate is a Predicate involving a row value compared to a pattern
 /// (pattern is a char-valued value expression
@@ -70,6 +70,6 @@ protected:
     void dbgPrint(std::ostream& os) const override;
 };
 
-}}}  // namespace lsst::qserv::query
+}  // namespace lsst::qserv::query
 
 #endif  // LSST_QSERV_QUERY_LIKEPREDICATE_H

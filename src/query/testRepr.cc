@@ -50,7 +50,7 @@
 #define BOOST_TEST_MODULE QueryRepr_1
 #include "boost/test/unit_test.hpp"
 
-namespace lsst { namespace qserv { namespace query {
+namespace lsst::qserv::query {
 
 namespace test = boost::test_tools;
 
@@ -229,4 +229,4 @@ BOOST_AUTO_TEST_CASE(DM_737_REGRESSION) {
 
 BOOST_AUTO_TEST_SUITE_END()
 
-}}}  // namespace lsst::qserv::query
+}  // namespace lsst::qserv::query

@@ -41,11 +41,11 @@
 #include "query/typedefs.h"
 
 // Forward declarations
-namespace lsst { namespace qserv { namespace query {
+namespace lsst::qserv::query {
 class QueryTemplate;
-}}}  // namespace lsst::qserv::query
+}  // namespace lsst::qserv::query
 
-namespace lsst { namespace qserv { namespace query {
+namespace lsst::qserv::query {
 
 /// OrderByTerm is an element of an OrderByClause
 class OrderByTerm {
@@ -114,6 +114,6 @@ private:
     std::shared_ptr<std::vector<OrderByTerm>> _terms;
 };
 
-}}}  // namespace lsst::qserv::query
+}  // namespace lsst::qserv::query
 
 #endif  // LSST_QSERV_QUERY_ORDERBYCLAUSE_H

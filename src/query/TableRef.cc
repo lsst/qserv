@@ -58,7 +58,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.query.TableRef");
 
 }  // anonymous namespace
 
-namespace lsst { namespace qserv { namespace query {
+namespace lsst::qserv::query {
 
 TableRef::TableRef() {}
 
@@ -275,4 +275,4 @@ void TableRef::_verify() const {
     }
 }
 
-}}}  // Namespace lsst::qserv::query
+}  // Namespace lsst::qserv::query

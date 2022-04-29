@@ -39,11 +39,11 @@
 #include "query/TableRef.h"
 
 // Forward declarations
-namespace lsst { namespace qserv { namespace query {
+namespace lsst::qserv::query {
 class QueryTemplate;
-}}}  // namespace lsst::qserv::query
+}  // namespace lsst::qserv::query
 
-namespace lsst { namespace qserv { namespace query {
+namespace lsst::qserv::query {
 
 /// ColumnRef is an abstract value class holding a parsed single _column ref.
 /// Note when setting database, table, and column:
@@ -113,6 +113,6 @@ private:
     std::string _column;
 };
 
-}}}  // namespace lsst::qserv::query
+}  // namespace lsst::qserv::query
 
 #endif  // LSST_QSERV_QUERY_COLUMNREF_H

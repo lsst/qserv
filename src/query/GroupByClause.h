@@ -40,11 +40,11 @@
 #include "query/typedefs.h"
 
 // Forward declarations
-namespace lsst { namespace qserv { namespace query {
+namespace lsst::qserv::query {
 class QueryTemplate;
-}}}  // namespace lsst::qserv::query
+}  // namespace lsst::qserv::query
 
-namespace lsst { namespace qserv { namespace query {
+namespace lsst::qserv::query {
 
 // GroupByTerm is a element of a GroupByClause
 class GroupByTerm {
@@ -106,6 +106,6 @@ private:
     std::shared_ptr<List> _terms;
 };
 
-}}}  // namespace lsst::qserv::query
+}  // namespace lsst::qserv::query
 
 #endif  // LSST_QSERV_QUERY_GROUPBYCLAUSE_H

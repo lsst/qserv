@@ -36,12 +36,12 @@
 #include "query/BoolTerm.h"
 
 // Forward declarations
-namespace lsst { namespace qserv { namespace query {
+namespace lsst::qserv::query {
 class BoolTerm;
 class QueryTemplate;
-}}}  // namespace lsst::qserv::query
+}  // namespace lsst::qserv::query
 
-namespace lsst { namespace qserv { namespace query {
+namespace lsst::qserv::query {
 
 /// HavingClause: a representation of SQL HAVING. Support for this construct is
 /// incomplete.
@@ -67,6 +67,6 @@ private:
     std::shared_ptr<BoolTerm> _tree;
 };
 
-}}}  // namespace lsst::qserv::query
+}  // namespace lsst::qserv::query
 
 #endif  // LSST_QSERV_QUERY_HAVINGCLAUSE_H

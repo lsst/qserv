@@ -29,7 +29,7 @@
 #include "query/QueryTemplate.h"
 #include "query/ValueExpr.h"
 
-namespace lsst { namespace qserv { namespace query {
+namespace lsst::qserv::query {
 
 void BetweenPredicate::findColumnRefs(std::vector<std::shared_ptr<ColumnRef>>& vector) const {
     if (value) {
@@ -98,4 +98,4 @@ bool BetweenPredicate::operator==(const BoolFactorTerm& rhs) const {
            util::ptrCompare<ValueExpr>(maxValue, rhsBetweenPredicate->maxValue);
 }
 
-}}}  // namespace lsst::qserv::query
+}  // namespace lsst::qserv::query

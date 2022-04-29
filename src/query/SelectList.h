@@ -39,15 +39,15 @@
 #include "query/ValueExpr.h"
 
 // Forward declarations
-namespace lsst { namespace qserv { namespace query {
+namespace lsst::qserv::query {
 class ColumnRefNodeMap;
 class ColumnAliasMap;
 class QueryTemplate;
 class BoolTerm;
 class GroupByClause;
-}}}  // namespace lsst::qserv::query
+}  // namespace lsst::qserv::query
 
-namespace lsst { namespace qserv { namespace query {
+namespace lsst::qserv::query {
 
 /// SelectList is the SELECT... portion of a SELECT...FROM...
 /// SelectList contains a list of the ValueExprs that are representative of the
@@ -87,6 +87,6 @@ private:
     std::shared_ptr<ValueExprPtrVector> _valueExprList;
 };
 
-}}}  // namespace lsst::qserv::query
+}  // namespace lsst::qserv::query
 
 #endif  // LSST_QSERV_QUERY_SELECTLIST_H

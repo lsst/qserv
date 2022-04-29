@@ -28,7 +28,7 @@
 #include "query/QueryTemplate.h"
 #include "util/IterableFormatter.h"
 
-namespace lsst { namespace qserv { namespace query {
+namespace lsst::qserv::query {
 
 std::ostream& PassListTerm::putStream(std::ostream& os) const {
     std::copy(_terms.begin(), _terms.end(), std::ostream_iterator<std::string>(os, " "));
@@ -72,4 +72,4 @@ bool PassListTerm::operator==(const BoolFactorTerm& rhs) const {
     return _terms == rhsTerm->_terms;
 }
 
-}}}  // namespace lsst::qserv::query
+}  // namespace lsst::qserv::query

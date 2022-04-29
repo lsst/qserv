@@ -85,7 +85,7 @@ std::string const& stringAt(std::vector<std::string> const& stringVec, unsigned 
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace query {
+namespace lsst::qserv::query {
 
 std::ostream& operator<<(std::ostream& os, AreaRestrictor const& q) {
     os << q.sqlFragment();
@@ -327,4 +327,4 @@ std::shared_ptr<sphgeom::Region> AreaRestrictorPoly::getRegion() const {
     return qproc::getConvexPolyFromParams(_numericParams);
 }
 
-}}}  // namespace lsst::qserv::query
+}  // namespace lsst::qserv::query

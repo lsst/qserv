@@ -32,7 +32,7 @@
 #include "query/QueryTemplate.h"
 #include "query/ValueExpr.h"
 
-namespace lsst { namespace qserv { namespace query {
+namespace lsst::qserv::query {
 
 void NullPredicate::findColumnRefs(std::vector<std::shared_ptr<ColumnRef>>& vector) const {
     if (value) {
@@ -77,4 +77,4 @@ bool NullPredicate::operator==(BoolFactorTerm const& rhs) const {
     return hasNot == rhsNullPredicate->hasNot && util::ptrCompare<ValueExpr>(value, rhsNullPredicate->value);
 }
 
-}}}  // namespace lsst::qserv::query
+}  // namespace lsst::qserv::query

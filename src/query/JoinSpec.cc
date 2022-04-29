@@ -35,7 +35,7 @@
 #include "query/ColumnRef.h"
 #include "query/QueryTemplate.h"
 
-namespace lsst { namespace qserv { namespace query {
+namespace lsst::qserv::query {
 
 inline bool isInconsistent(JoinSpec const& s) { return s.getOn() && s.getUsing(); }
 
@@ -94,4 +94,4 @@ bool JoinSpec::operator==(const JoinSpec& rhs) const {
            util::ptrCompare<BoolTerm>(_onTerm, rhs._onTerm);
 }
 
-}}}  // namespace lsst::qserv::query
+}  // namespace lsst::qserv::query

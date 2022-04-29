@@ -41,13 +41,13 @@
 #include "util/PointerCompare.h"
 
 // Forward declarations
-namespace lsst { namespace qserv { namespace query {
+namespace lsst::qserv::query {
 class BoolFactorTerm;
 class QueryTemplate;
 class ValueExpr;
-}}}  // namespace lsst::qserv::query
+}  // namespace lsst::qserv::query
 
-namespace lsst { namespace qserv { namespace query {
+namespace lsst::qserv::query {
 
 /// BoolTerm is a representation of a boolean-valued term in a SQL WHERE
 class BoolTerm {
@@ -146,6 +146,6 @@ protected:
                     std::string const& sep) const;
 };
 
-}}}  // namespace lsst::qserv::query
+}  // namespace lsst::qserv::query
 
 #endif  // LSST_QSERV_QUERY_BOOLTERM_H

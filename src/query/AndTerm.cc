@@ -29,7 +29,7 @@
 #include "query/CopyTerms.h"
 #include "util/IterableFormatter.h"
 
-namespace lsst { namespace qserv { namespace query {
+namespace lsst::qserv::query {
 
 std::shared_ptr<BoolTerm> AndTerm::copySyntax() const {
     std::shared_ptr<AndTerm> at = std::make_shared<AndTerm>();
@@ -67,4 +67,4 @@ std::shared_ptr<BoolTerm> AndTerm::clone() const {
     return t;
 }
 
-}}}  // namespace lsst::qserv::query
+}  // namespace lsst::qserv::query

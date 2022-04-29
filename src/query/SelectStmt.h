@@ -39,15 +39,15 @@
 #include "query/QueryTemplate.h"
 
 // Forward declarations
-namespace lsst { namespace qserv { namespace query {
+namespace lsst::qserv::query {
 class SelectList;
 class FromList;
 class WhereClause;
 class GroupByClause;
 class HavingClause;
-}}}  // namespace lsst::qserv::query
+}  // namespace lsst::qserv::query
 
-namespace lsst { namespace qserv { namespace query {
+namespace lsst::qserv::query {
 
 // SelectStmt contains extracted information about a particular parsed
 // SQL select statement. It is not responsible for performing
@@ -173,6 +173,6 @@ private:
                               // sort, limit
 };
 
-}}}  // namespace lsst::qserv::query
+}  // namespace lsst::qserv::query
 
 #endif  // LSST_QSERV_QUERY_SELECTSTMT_H

@@ -41,7 +41,7 @@
 #include "query/typedefs.h"
 
 // Forward declarations
-namespace lsst { namespace qserv {
+namespace lsst::qserv {
 namespace parser {
 class WhereFactory;
 }
@@ -55,9 +55,9 @@ class OrTerm;
 class QueryTemplate;
 class ValueExpr;
 }  // namespace query
-}}  // namespace lsst::qserv
+}  // namespace lsst::qserv
 
-namespace lsst { namespace qserv { namespace query {
+namespace lsst::qserv::query {
 
 /// WhereClause is a SQL WHERE containing AreaRestrictors and a BoolTerm tree.
 class WhereClause {
@@ -119,6 +119,6 @@ private:
     AreaRestrictorVecPtr _restrs{std::make_shared<AreaRestrictorVec>()};
 };
 
-}}}  // namespace lsst::qserv::query
+}  // namespace lsst::qserv::query
 
 #endif  // LSST_QSERV_QUERY_WHERECLAUSE_H

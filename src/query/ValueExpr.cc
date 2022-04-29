@@ -63,7 +63,7 @@ namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.query.ValueExpr");
 }
 
-namespace lsst { namespace qserv { namespace query {
+namespace lsst::qserv::query {
 
 std::ostream& output(std::ostream& os, ValueExprPtrVector const& vel) {
     std::copy(vel.begin(), vel.end(), std::ostream_iterator<ValueExprPtr>(os, ";"));
@@ -465,4 +465,4 @@ void cloneValueExprPtrVector(ValueExprPtrVector& dest, ValueExprPtrVector const&
     std::transform(src.begin(), src.end(), dest.begin(), _copyValueExpr());
 }
 
-}}}  // namespace lsst::qserv::query
+}  // namespace lsst::qserv::query

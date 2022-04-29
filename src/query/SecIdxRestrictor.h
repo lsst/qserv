@@ -35,15 +35,15 @@
 #include <vector>
 
 // Forward declarations
-namespace lsst { namespace qserv { namespace query {
+namespace lsst::qserv::query {
 class BetweenPredicate;
 class ColumnRef;
 class CompPredicate;
 class InPredicate;
 class QueryTemplate;
-}}}  // namespace lsst::qserv::query
+}  // namespace lsst::qserv::query
 
-namespace lsst { namespace qserv { namespace query {
+namespace lsst::qserv::query {
 
 /// SecIdxRestrictor is a Qserv spatial restrictor element that is used to signal dependencies on
 /// spatially-partitioned tables that make use of the secondary index.
@@ -184,6 +184,6 @@ private:
     std::shared_ptr<query::InPredicate> _inPredicate;  //< the comparison for this restrictor.
 };
 
-}}}  // namespace lsst::qserv::query
+}  // namespace lsst::qserv::query
 
 #endif  // LSST_QSERV_QUERY_SECIDXRESTRICTOR_H

@@ -37,7 +37,7 @@
 #include "query/QueryTemplate.h"
 #include "query/ValueExpr.h"
 
-namespace lsst { namespace qserv { namespace query {
+namespace lsst::qserv::query {
 
 std::ostream& operator<<(std::ostream& os, SecIdxRestrictor const& q) {
     QueryTemplate qt;
@@ -122,4 +122,4 @@ std::string SecIdxInRestrictor::getSecIdxLookupQuery(std::string const& secondar
            secondaryIndexTable + "`" + " WHERE " + boost::lexical_cast<std::string>(qt);
 }
 
-}}}  // namespace lsst::qserv::query
+}  // namespace lsst::qserv::query

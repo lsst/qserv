@@ -39,7 +39,7 @@
 #include "util/IterableFormatter.h"
 #include "util/PointerCompare.h"
 
-namespace lsst { namespace qserv { namespace query {
+namespace lsst::qserv::query {
 
 bool FromList::isJoin() const {
     if (_tableRefs) {
@@ -116,4 +116,4 @@ std::ostream& operator<<(std::ostream& os, FromList const* fromList) {
     return os;
 }
 
-}}}  // namespace lsst::qserv::query
+}  // namespace lsst::qserv::query

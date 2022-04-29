@@ -27,7 +27,7 @@
 #include "query/BoolFactorTerm.h"
 #include "query/LogicalTerm.h"
 
-namespace lsst { namespace qserv { namespace query {
+namespace lsst::qserv::query {
 
 /// PassTerm is a catch-all boolean factor term that can be safely passed
 /// without further analysis or manipulation.
@@ -69,6 +69,6 @@ protected:
     void dbgPrint(std::ostream& os) const override;
 };
 
-}}}  // namespace lsst::qserv::query
+}  // namespace lsst::qserv::query
 
 #endif  // LSST_QSERV_QUERY_PASSTERM_H

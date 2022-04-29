@@ -29,7 +29,7 @@
 #include "query/QueryTemplate.h"
 #include "query/ValueExpr.h"
 
-namespace lsst { namespace qserv { namespace query {
+namespace lsst::qserv::query {
 
 void LikePredicate::findColumnRefs(std::vector<std::shared_ptr<ColumnRef>>& vector) const {
     if (value != nullptr) {
@@ -85,4 +85,4 @@ bool LikePredicate::operator==(BoolFactorTerm const& rhs) const {
            hasNot == rhsLikePredicate->hasNot;
 }
 
-}}}  // namespace lsst::qserv::query
+}  // namespace lsst::qserv::query

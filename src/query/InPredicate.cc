@@ -33,7 +33,7 @@
 #include "query/ValueExpr.h"
 #include "util/IterableFormatter.h"
 
-namespace lsst { namespace qserv { namespace query {
+namespace lsst::qserv::query {
 
 namespace {
 
@@ -105,4 +105,4 @@ bool InPredicate::operator==(BoolFactorTerm const& rhs) const {
            hasNot == rhsInPredicate->hasNot;
 }
 
-}}}  // namespace lsst::qserv::query
+}  // namespace lsst::qserv::query

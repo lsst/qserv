@@ -35,12 +35,12 @@
 #include <vector>
 
 // Forward declarations
-namespace lsst { namespace qserv { namespace query {
+namespace lsst::qserv::query {
 class ColumnRef;
 class TableRefAux;
-}}}  // namespace lsst::qserv::query
+}  // namespace lsst::qserv::query
 
-namespace lsst { namespace qserv { namespace query {
+namespace lsst::qserv::query {
 
 /// QueryTemplate
 ///
@@ -215,6 +215,6 @@ private:
     bool _useColumnOnly{false};    // if true, ColumnRef won't print db or table, only column name.
 };
 
-}}}  // namespace lsst::qserv::query
+}  // namespace lsst::qserv::query
 
 #endif  // LSST_QSERV_QUERY_QUERYTEMPLATE_H

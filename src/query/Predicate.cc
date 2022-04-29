@@ -31,11 +31,11 @@
 // Class header
 #include "query/Predicate.h"
 
-namespace lsst { namespace qserv { namespace query {
+namespace lsst::qserv::query {
 
 std::ostream& operator<<(std::ostream& os, Predicate const& bt) {
     bt.dbgPrint(os);
     return os;
 }
 
-}}}  // namespace lsst::qserv::query
+}  // namespace lsst::qserv::query

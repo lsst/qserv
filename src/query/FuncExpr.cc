@@ -45,7 +45,7 @@
 #include "util/IterableFormatter.h"
 #include "util/PointerCompare.h"
 
-namespace lsst { namespace qserv { namespace query {
+namespace lsst::qserv::query {
 
 const std::string& FuncExpr::getName() const { return _name; }
 
@@ -122,4 +122,4 @@ bool FuncExpr::operator==(const FuncExpr& rhs) const {
     return _name == rhs._name && util::vectorPtrCompare<ValueExpr>(params, rhs.params);
 }
 
-}}}  // namespace lsst::qserv::query
+}  // namespace lsst::qserv::query

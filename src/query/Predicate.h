@@ -38,7 +38,7 @@
 // Local headers
 #include "query/BoolFactorTerm.h"
 
-namespace lsst { namespace qserv { namespace query {
+namespace lsst::qserv::query {
 
 ///  Predicate is a representation of a SQL predicate.
 /// predicate :
@@ -68,6 +68,6 @@ public:
     BoolFactorTerm::Ptr copySyntax() const override { return BoolFactorTerm::Ptr(); }
 };
 
-}}}  // namespace lsst::qserv::query
+}  // namespace lsst::qserv::query
 
 #endif  // LSST_QSERV_QUERY_PREDICATE_H

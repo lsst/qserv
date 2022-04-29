@@ -39,7 +39,7 @@
 #include "query/QueryTemplate.h"
 #include "util/PointerCompare.h"
 
-namespace lsst { namespace qserv { namespace query {
+namespace lsst::qserv::query {
 
 ////////////////////////////////////////////////////////////////////////
 // HavingClause
@@ -92,4 +92,4 @@ bool HavingClause::operator==(const HavingClause& rhs) const {
     return util::ptrCompare<BoolTerm>(_tree, rhs._tree);
 }
 
-}}}  // namespace lsst::qserv::query
+}  // namespace lsst::qserv::query

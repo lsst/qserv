@@ -34,7 +34,7 @@
 #include "query/ValueExpr.h"
 #include "util/IterableFormatter.h"
 
-namespace lsst { namespace qserv { namespace query {
+namespace lsst::qserv::query {
 
 std::ostream& BoolFactor::putStream(std::ostream& os) const { return QueryTemplate::renderDbg(os, *this); }
 
@@ -197,4 +197,4 @@ void BoolFactor::addParenthesis() {
     _terms.push_back(rightParen);
 }
 
-}}}  // namespace lsst::qserv::query
+}  // namespace lsst::qserv::query

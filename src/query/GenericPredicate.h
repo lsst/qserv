@@ -27,7 +27,7 @@
 // Local headers
 #include "query/Predicate.h"
 
-namespace lsst { namespace qserv { namespace query {
+namespace lsst::qserv::query {
 
 /// GenericPredicate is a Predicate whose structure whose semantic meaning
 /// is unimportant for qserv
@@ -41,6 +41,6 @@ public:
     BoolFactorTerm::Ptr copySyntax() const override { return clone(); }
 };
 
-}}}  // namespace lsst::qserv::query
+}  // namespace lsst::qserv::query
 
 #endif  // LSST_QSERV_QUERY_GENERICPREDICATE_H

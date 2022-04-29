@@ -51,7 +51,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.query.ColumnRef");
 
 }
 
-namespace lsst { namespace qserv { namespace query {
+namespace lsst::qserv::query {
 
 std::ostream& operator<<(std::ostream& os, ColumnRef const& cr) {
     os << "ColumnRef(";
@@ -176,4 +176,4 @@ void ColumnRef::_verify() const {
     }
 }
 
-}}}  // namespace lsst::qserv::query
+}  // namespace lsst::qserv::query

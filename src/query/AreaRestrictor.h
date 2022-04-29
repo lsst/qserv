@@ -30,17 +30,15 @@
 #include <vector>
 
 // Forward declarations
-namespace lsst {
-namespace sphgeom {
+namespace lsst::sphgeom {
 class Region;
 }
-namespace qserv { namespace query {
+namespace lsst::qserv::query {
 class BoolFactor;
 class QueryTemplate;
-}}  // namespace qserv::query
-}  // namespace lsst
+}
 
-namespace lsst { namespace qserv { namespace query {
+namespace lsst::qserv::query {
 
 /// AreaRestrictor is a Qserv spatial restrictor element that is used to signal dependencies on
 /// spatially-partitioned tables that make use of spatial indexing.
@@ -201,6 +199,6 @@ private:
     std::vector<double> const _numericParams;
 };
 
-}}}  // namespace lsst::qserv::query
+}  // namespace lsst::qserv::query
 
 #endif  // LSST_QSERV_QUERY_AREARESTRICTOR_H

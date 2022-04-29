@@ -33,7 +33,7 @@
 #include "query/QueryTemplate.h"
 #include "query/ValueExpr.h"
 
-namespace lsst { namespace qserv { namespace query {
+namespace lsst::qserv::query {
 
 void CompPredicate::findColumnRefs(std::vector<std::shared_ptr<ColumnRef>>& vector) const {
     if (left) {
@@ -164,4 +164,4 @@ BoolFactorTerm::Ptr CompPredicate::clone() const {
     return std::make_shared<CompPredicate>(left->clone(), op, right->clone());
 }
 
-}}}  // namespace lsst::qserv::query
+}  // namespace lsst::qserv::query

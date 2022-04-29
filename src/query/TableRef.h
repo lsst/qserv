@@ -42,13 +42,13 @@
 #include "query/QueryTemplate.h"
 
 // Forward declarations
-namespace lsst { namespace qserv { namespace query {
+namespace lsst::qserv::query {
 class QueryTemplate;
 class JoinSpec;
 class JoinRef;
-}}}  // namespace lsst::qserv::query
+}  // namespace lsst::qserv::query
 
-namespace lsst { namespace qserv { namespace query {
+namespace lsst::qserv::query {
 
 typedef std::vector<std::shared_ptr<JoinRef> > JoinRefPtrVector;
 
@@ -181,6 +181,6 @@ public:
 typedef std::vector<TableRef::Ptr> TableRefList;
 typedef std::shared_ptr<TableRefList> TableRefListPtr;
 
-}}}  // namespace lsst::qserv::query
+}  // namespace lsst::qserv::query
 
 #endif  // LSST_QSERV_QUERY_TABLEREF_H

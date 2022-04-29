@@ -27,7 +27,7 @@
 // Qserv headers
 #include "util/PointerCompare.h"
 
-namespace lsst { namespace qserv { namespace query {
+namespace lsst::qserv::query {
 
 std::ostream& JoinRef::putStream(std::ostream& os) const {
     QueryTemplate t;
@@ -143,4 +143,4 @@ bool JoinRef::operator==(const JoinRef& rhs) const {
            _isNatural == rhs._isNatural && util::ptrCompare<JoinSpec>(_spec, rhs._spec);
 }
 
-}}}  // namespace lsst::qserv::query
+}  // namespace lsst::qserv::query

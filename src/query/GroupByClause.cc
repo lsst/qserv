@@ -42,7 +42,7 @@
 #include "query/ValueExpr.h"
 #include "util/IterableFormatter.h"
 
-namespace lsst { namespace qserv { namespace query {
+namespace lsst::qserv::query {
 
 ////////////////////////////////////////////////////////////////////////
 // GroupByTerm
@@ -134,4 +134,4 @@ bool GroupByClause::operator==(const GroupByClause& rhs) const {
     return util::ptrDequeCompare<GroupByTerm>(_terms, rhs._terms);
 }
 
-}}}  // namespace lsst::qserv::query
+}  // namespace lsst::qserv::query

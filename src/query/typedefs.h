@@ -36,7 +36,7 @@
 // System headers
 #include <vector>
 
-namespace lsst { namespace qserv { namespace query {
+namespace lsst::qserv::query {
 
 class ValueExpr;
 typedef std::shared_ptr<ValueExpr> ValueExprPtr;
@@ -56,6 +56,6 @@ class SecIdxRestrictor;
 typedef std::vector<std::shared_ptr<SecIdxRestrictor>> SecIdxRestrictorVec;
 typedef std::shared_ptr<SecIdxRestrictorVec> SecIdxRestrictorVecPtr;
 
-}}}  // namespace lsst::qserv::query
+}  // namespace lsst::qserv::query
 
 #endif /* LSST_QSERV_QUERY_TYPES_H_ */

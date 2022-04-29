@@ -43,14 +43,14 @@
 #include "util/PointerCompare.h"
 
 // Forward declarations
-namespace lsst { namespace qserv { namespace query {
+namespace lsst::qserv::query {
 class FuncExpr;
 class QueryTemplate;
 class TableRef;
 class ValueFactor;
-}}}  // namespace lsst::qserv::query
+}  // namespace lsst::qserv::query
 
-namespace lsst { namespace qserv { namespace query {
+namespace lsst::qserv::query {
 
 /// ValueExpr is a general value expression in a SQL statement. It is allowed to
 /// have an alias and a single level of ValueFactors joined by arithmetic
@@ -269,6 +269,6 @@ public:
 
 void cloneValueExprPtrVector(ValueExprPtrVector& dest, ValueExprPtrVector const& src);
 
-}}}  // namespace lsst::qserv::query
+}  // namespace lsst::qserv::query
 
 #endif  // LSST_QSERV_QUERY_VALUEEXPR_H

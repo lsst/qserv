@@ -52,7 +52,7 @@
 #include "util/PointerCompare.h"
 #include "util/IterableFormatter.h"
 
-namespace lsst { namespace qserv { namespace query {
+namespace lsst::qserv::query {
 
 std::ostream& operator<<(std::ostream& os, WhereClause const& wc) {
     os << "WhereClause(" << wc._rootOrTerm;
@@ -231,4 +231,4 @@ bool WhereClause::operator==(WhereClause const& rhs) const {
 
 void WhereClause::resetRestrs() { _restrs = std::make_shared<AreaRestrictorVec>(); }
 
-}}}  // namespace lsst::qserv::query
+}  // namespace lsst::qserv::query

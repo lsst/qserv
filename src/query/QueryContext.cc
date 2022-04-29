@@ -49,7 +49,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.query.QueryContext");
 
 }
 
-namespace lsst { namespace qserv { namespace query {
+namespace lsst::qserv::query {
 
 bool QueryContext::addUsedTableRef(std::shared_ptr<query::TableRef> const& tableRef) {
     if (nullptr == tableRef) {
@@ -223,4 +223,4 @@ bool QueryContext::TableRefSetLessThan::operator()(std::shared_ptr<query::TableR
     return *lhs < *rhs;
 }
 
-}}}  // namespace lsst::qserv::query
+}  // namespace lsst::qserv::query

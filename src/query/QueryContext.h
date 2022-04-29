@@ -46,7 +46,7 @@
 #include "util/CIUtils.h"
 
 // Forward declarations
-namespace lsst { namespace qserv {
+namespace lsst::qserv {
 namespace query {
 class AreaRestrictor;
 class ColumnRef;
@@ -56,9 +56,9 @@ class TableRef;
 namespace qproc {
 class DatabaseModels;
 }
-}}  // namespace lsst::qserv
+}  // namespace lsst::qserv
 
-namespace lsst { namespace qserv { namespace query {
+namespace lsst::qserv::query {
 
 /// QueryContext is a value container for query state related to analyzing,
 /// rewriting, and generating queries. It is the primary mechanism for
@@ -203,6 +203,6 @@ private:
     std::vector<std::shared_ptr<query::ValueExpr>> _usedValueExprs;  ///< ValueExprs from the SELECT list
 };
 
-}}}  // namespace lsst::qserv::query
+}  // namespace lsst::qserv::query
 
 #endif  // LSST_QSERV_QUERY_QUERYCONTEXT_H

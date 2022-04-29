@@ -27,7 +27,7 @@
 #include <memory>
 #include <vector>
 
-namespace lsst { namespace qserv { namespace query {
+namespace lsst::qserv::query {
 
 template <typename T>
 bool isSubsetOf(std::vector<std::shared_ptr<T>> const& a, std::vector<std::shared_ptr<T>> const& b) {
@@ -56,6 +56,6 @@ bool isSubsetOf(std::vector<T> const& a, std::vector<T> const& b) {
     return true;
 }
 
-}}}  // namespace lsst::qserv::query
+}  // namespace lsst::qserv::query
 
 #endif  // LSST_QSERV_QUERY_SUBSETHELPER_H

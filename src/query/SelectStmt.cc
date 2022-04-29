@@ -81,7 +81,7 @@ inline void copySyntaxIf(std::shared_ptr<T>& dest, std::shared_ptr<T> source) {
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace query {
+namespace lsst::qserv::query {
 
 ////////////////////////////////////////////////////////////////////////
 // class SelectStmt
@@ -196,4 +196,4 @@ std::ostream& operator<<(std::ostream& os, SelectStmt const& selectStmt) {
     return os;
 }
 
-}}}  // namespace lsst::qserv::query
+}  // namespace lsst::qserv::query

@@ -60,7 +60,7 @@
 #include "util/PointerCompare.h"
 #include "util/IterableFormatter.h"
 
-namespace lsst { namespace qserv { namespace query {
+namespace lsst::qserv::query {
 
 template <typename T>
 struct renderWithSep {
@@ -129,4 +129,4 @@ bool SelectList::operator==(const SelectList& rhs) {
     return util::ptrVectorPtrCompare<ValueExpr>(_valueExprList, rhs._valueExprList);
 }
 
-}}}  // namespace lsst::qserv::query
+}  // namespace lsst::qserv::query

@@ -29,7 +29,7 @@
 #include "query/ColumnRef.h"
 #include "query/QueryTemplate.h"
 
-namespace lsst { namespace qserv { namespace query {
+namespace lsst::qserv::query {
 
 std::ostream& LogicalTerm::putStream(std::ostream& os) const { return QueryTemplate::renderDbg(os, *this); }
 
@@ -82,4 +82,4 @@ void LogicalTerm::findColumnRefs(std::vector<std::shared_ptr<ColumnRef>>& vector
     }
 }
 
-}}}  // namespace lsst::qserv::query
+}  // namespace lsst::qserv::query

@@ -36,13 +36,13 @@
 #include <memory>
 
 // Forward declarations
-namespace lsst { namespace qserv { namespace query {
+namespace lsst::qserv::query {
 class QueryTemplate;
 class BoolTerm;
 class ColumnRef;
-}}}  // namespace lsst::qserv::query
+}  // namespace lsst::qserv::query
 
-namespace lsst { namespace qserv { namespace query {
+namespace lsst::qserv::query {
 
 /// JoinSpec is a parsed join spec.
 /// join_spec :
@@ -90,6 +90,6 @@ private:
     std::shared_ptr<BoolTerm> _onTerm;
 };
 
-}}}  // namespace lsst::qserv::query
+}  // namespace lsst::qserv::query
 
 #endif  // LSST_QSERV_QUERY_JOINSPEC_H

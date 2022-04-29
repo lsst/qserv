@@ -43,7 +43,7 @@
 #include "query/ColumnRef.h"
 #include "query/TableRef.h"
 
-namespace lsst { namespace qserv { namespace query {
+namespace lsst::qserv::query {
 
 ////////////////////////////////////////////////////////////////////////
 // QueryTemplate::Entry subclasses
@@ -204,4 +204,4 @@ QueryTemplate::GetAliasMode QueryTemplate::getTableAliasMode() const {
     return DONT_USE;  // should never get here but to satisfy the compiler.
 }
 
-}}}  // namespace lsst::qserv::query
+}  // namespace lsst::qserv::query

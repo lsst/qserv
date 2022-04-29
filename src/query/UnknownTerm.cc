@@ -27,7 +27,7 @@
 // Qserv headers
 #include "query/QueryTemplate.h"
 
-namespace lsst { namespace qserv { namespace query {
+namespace lsst::qserv::query {
 
 void UnknownTerm::dbgPrint(std::ostream& os) const { os << "UnknownTerm()"; }
 
@@ -41,4 +41,4 @@ std::shared_ptr<BoolTerm> UnknownTerm::clone() const {
     return std::make_shared<UnknownTerm>();  // TODO what is unknown now?
 }
 
-}}}  // namespace lsst::qserv::query
+}  // namespace lsst::qserv::query

@@ -27,7 +27,7 @@
 // Qserv headers
 #include "query/LogicalTerm.h"
 
-namespace lsst { namespace qserv { namespace query {
+namespace lsst::qserv::query {
 
 /// AndTerm is a set of AND-connected BoolTerms
 class AndTerm : public LogicalTerm {
@@ -78,6 +78,6 @@ protected:
     void dbgPrint(std::ostream& os) const override;
 };
 
-}}}  // namespace lsst::qserv::query
+}  // namespace lsst::qserv::query
 
 #endif  // LSST_QSERV_QUERY_ANDTERM_H

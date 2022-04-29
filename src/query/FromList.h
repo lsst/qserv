@@ -36,11 +36,11 @@
 #include "query/TableRef.h"
 
 // Forward declarations
-namespace lsst { namespace qserv { namespace parser {
+namespace lsst::qserv::parser {
 class FromFactory;
-}}}  // namespace lsst::qserv::parser
+}  // namespace lsst::qserv::parser
 
-namespace lsst { namespace qserv { namespace query {
+namespace lsst::qserv::query {
 
 // FromList is a representation of SQL FROM.
 class FromList {
@@ -74,6 +74,6 @@ private:
     TableRefListPtr _tableRefs;
 };
 
-}}}  // namespace lsst::qserv::query
+}  // namespace lsst::qserv::query
 
 #endif  // LSST_QSERV_QUERY_FROMLIST_H

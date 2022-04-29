@@ -39,14 +39,14 @@
 #include "query/ColumnRef.h"
 
 // Forward declarations
-namespace lsst { namespace qserv { namespace query {
+namespace lsst::qserv::query {
 class QueryTemplate;
 class FuncExpr;
 class ValueExpr;  // To support nested expressions.
 class ValueFactor;
-}}}  // namespace lsst::qserv::query
+}  // namespace lsst::qserv::query
 
-namespace lsst { namespace qserv { namespace query {
+namespace lsst::qserv::query {
 
 typedef std::shared_ptr<ValueFactor> ValueFactorPtr;
 
@@ -157,6 +157,6 @@ public:
     QueryTemplate& _qt;
 };
 
-}}}  // namespace lsst::qserv::query
+}  // namespace lsst::qserv::query
 
 #endif  // LSST_QSERV_QUERY_VALUEFACTOR_H

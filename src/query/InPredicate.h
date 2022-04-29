@@ -32,13 +32,13 @@
 #include "query/Predicate.h"
 
 // Forward declarations
-namespace lsst { namespace qserv { namespace query {
+namespace lsst::qserv::query {
 class ColumnRef;
 class ValueExpr;
 class QueryTemplate;
-}}}  // namespace lsst::qserv::query
+}  // namespace lsst::qserv::query
 
-namespace lsst { namespace qserv { namespace query {
+namespace lsst::qserv::query {
 
 /// InPredicate is a Predicate comparing a row value to a set
 class InPredicate : public Predicate {
@@ -71,6 +71,6 @@ protected:
     void dbgPrint(std::ostream& os) const override;
 };
 
-}}}  // namespace lsst::qserv::query
+}  // namespace lsst::qserv::query
 
 #endif  // LSST_QSERV_QUERY_INPREDICATE_H

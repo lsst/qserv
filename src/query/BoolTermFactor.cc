@@ -27,7 +27,7 @@
 // Qserv headers
 #include "query/BoolTerm.h"
 
-namespace lsst { namespace qserv { namespace query {
+namespace lsst::qserv::query {
 
 std::ostream& BoolTermFactor::putStream(std::ostream& os) const {
     if (_term) {
@@ -86,4 +86,4 @@ void BoolTermFactor::findColumnRefs(ColumnRef::Vector& vector) const {
     }
 }
 
-}}}  // namespace lsst::qserv::query
+}  // namespace lsst::qserv::query

@@ -27,7 +27,7 @@
 // Qserv headers
 #include "query/BoolTerm.h"
 
-namespace lsst { namespace qserv { namespace query {
+namespace lsst::qserv::query {
 
 /// UnknownTerm is a catch-all term intended to help the framework pass-through
 /// syntax that is not analyzed, modified, or manipulated in Qserv.
@@ -51,6 +51,6 @@ protected:
     void dbgPrint(std::ostream& os) const override;
 };
 
-}}}  // namespace lsst::qserv::query
+}  // namespace lsst::qserv::query
 
 #endif  // LSST_QSERV_QUERY_UNKNOWNTERM_H
