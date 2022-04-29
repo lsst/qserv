@@ -60,7 +60,7 @@ CompareMap _cMap;
 
 }  // anonymous namespace
 
-namespace lsst { namespace qserv { namespace sql {
+namespace lsst::qserv::sql {
 
 bool sqlShouldSeparate(std::string const& s, int last, int next) {
     if (_cMap.isSeparatingWord(s)) return true;
@@ -82,4 +82,4 @@ bool sqlShouldSeparate(std::string const& s, int last, int next) {
             ;
 }
 
-}}}  // namespace lsst::qserv::sql
+}  // namespace lsst::qserv::sql

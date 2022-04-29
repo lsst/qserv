@@ -32,7 +32,7 @@
 // LSST headers
 #include "lsst/log/Log.h"
 
-namespace lsst { namespace qserv {
+namespace lsst::qserv {
 
 std::string makeByteStreamAnnotated(char const* tag, char const* buf, int bufLen) {
     std::ostringstream os;
@@ -59,4 +59,4 @@ std::string const& getHostname() {
     return cachedHostname;
 }
 
-}}  // namespace lsst::qserv
+}  // namespace lsst::qserv

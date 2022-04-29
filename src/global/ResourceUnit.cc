@@ -29,7 +29,7 @@
 #include <iostream>
 #include <sstream>
 
-namespace lsst { namespace qserv {
+namespace lsst::qserv {
 
 //////////////////////////////////////////////////////////////////////
 // lsst::qserv::ResourceUnit::Tokenizer
@@ -265,4 +265,4 @@ std::ostream& operator<<(std::ostream& os, ResourceUnit const& ru) {
     return os << "Resource(" << ru.path() << ")";
 }
 
-}}  // namespace lsst::qserv
+}  // namespace lsst::qserv

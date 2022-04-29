@@ -27,7 +27,7 @@
  *
  */
 
-namespace lsst { namespace qserv {
+namespace lsst::qserv {
 const char CHUNK_COLUMN[] = "chunkId";
 const char SUB_CHUNK_COLUMN[] = "subChunkId";
 const int DUMMY_CHUNK = 1234567890;
@@ -68,5 +68,5 @@ const int NOTSET = -1;
  */
 enum MessageSeverity { MSG_INFO = 1, MSG_ERROR };
 
-}}      // namespace lsst::qserv
+}      // namespace lsst::qserv
 #endif  // LSST_QSERV_CONSTANTS_H

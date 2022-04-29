@@ -32,7 +32,7 @@
 #include <cctype>
 #include <sstream>
 
-namespace lsst { namespace qserv {
+namespace lsst::qserv {
 
 /// @return true if a string is safe enough to use as a name in our SQL dialect.
 bool inline isNameSafe(std::string::value_type const& c) {
@@ -73,5 +73,5 @@ std::string toString(A&& a) {
     return os.str();
 }
 
-}}      // namespace lsst::qserv
+}      // namespace lsst::qserv
 #endif  // LSST_QSERV_STRINGUTIL_H

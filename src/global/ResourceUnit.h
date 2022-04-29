@@ -31,7 +31,7 @@
 // Qserv headers
 #include "global/constants.h"  // For DUMMY_CHUNK
 
-namespace lsst { namespace qserv {
+namespace lsst::qserv {
 
 /// ResourceUnit contains a name for an XrdSsi-resolvable resource unit.
 ////
@@ -112,6 +112,6 @@ public:
     virtual bool operator()(ResourceUnit const& ru) = 0;
 };
 
-}}  // namespace lsst::qserv
+}  // namespace lsst::qserv
 
 #endif  // LSST_QSERV_RESOURCEUNIT_H

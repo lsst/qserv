@@ -30,7 +30,7 @@
 #include <set>
 #include <vector>
 
-namespace lsst { namespace qserv {
+namespace lsst::qserv {
 typedef std::set<int> IntSet;
 typedef std::vector<int> IntVector;
 typedef std::vector<int32_t> Int32Vector;
@@ -59,5 +59,5 @@ public:
     }
 };
 
-}}      // namespace lsst::qserv
+}      // namespace lsst::qserv
 #endif  // LSST_QSERV_INTTYPES_H

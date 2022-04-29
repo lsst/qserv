@@ -31,12 +31,12 @@
 #include <string>
 #include <vector>
 
-namespace lsst { namespace qserv {
+namespace lsst::qserv {
 typedef std::map<std::string, std::string> StringMap;
 typedef std::map<std::string, StringMap> StringMapMap;
 typedef std::pair<std::string, std::string> StringPair;
 typedef std::vector<StringPair> StringPairVector;
 typedef std::vector<std::string> StringVector;
 
-}}      // namespace lsst::qserv
+}      // namespace lsst::qserv
 #endif  // LSST_QSERV_STRINGTYPES_H
