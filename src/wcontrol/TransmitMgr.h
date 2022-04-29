@@ -35,7 +35,7 @@
 // Qserv headers
 #include "global/intTypes.h"
 
-namespace lsst { namespace qserv { namespace wcontrol {
+namespace lsst::qserv::wcontrol {
 
 class TransmitLock;
 class QidMgr;
@@ -169,6 +169,6 @@ private:
     QueryId const _qid;
 };
 
-}}}  // namespace lsst::qserv::wcontrol
+}  // namespace lsst::qserv::wcontrol
 
 #endif  // LSST_QSERV_WCONTROL_TRANSMITMGR_H

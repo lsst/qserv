@@ -36,7 +36,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.wcontrol.SqlConnMgr");
 
 using namespace std;
 
-namespace lsst { namespace qserv { namespace wcontrol {
+namespace lsst::qserv::wcontrol {
 
 SqlConnMgr::ConnType SqlConnMgr::_take(bool scanQuery,
                                        std::shared_ptr<wbase::SendChannelShared> const& sendChannelShared,
@@ -153,4 +153,4 @@ SqlConnLock::SqlConnLock(SqlConnMgr& sqlConnMgr, bool scanQuery,
     _connType = _sqlConnMgr._take(scanQuery, sendChannelShared, firstChannelSqlConn);
 }
 
-}}}  // namespace lsst::qserv::wcontrol
+}  // namespace lsst::qserv::wcontrol

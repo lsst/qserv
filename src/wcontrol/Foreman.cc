@@ -54,7 +54,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.wcontrol.Foreman");
 
 using namespace std;
 
-namespace lsst { namespace qserv { namespace wcontrol {
+namespace lsst::qserv::wcontrol {
 
 Foreman::Foreman(Scheduler::Ptr const& scheduler, unsigned int poolSize, unsigned int maxPoolThreads,
                  mysql::MySqlConfig const& mySqlConfig, wpublish::QueriesAndChunks::Ptr const& queries,
@@ -148,4 +148,4 @@ nlohmann::json Foreman::statusToJson() {
     return status;
 }
 
-}}}  // namespace lsst::qserv::wcontrol
+}  // namespace lsst::qserv::wcontrol

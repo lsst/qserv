@@ -35,7 +35,7 @@ namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.wcontrol.TransmitMgr");
 }
 
-namespace lsst { namespace qserv { namespace wcontrol {
+namespace lsst::qserv::wcontrol {
 
 // _mapMtx must be locked before calling, except for constructor.
 void QidMgr::_setMaxCount(int uniqueQidCount) {
@@ -163,4 +163,4 @@ ostream& TransmitMgr::dumpBase(ostream& os) const {
 
 ostream& operator<<(ostream& os, TransmitMgr const& mgr) { return mgr.dump(os); }
 
-}}}  // namespace lsst::qserv::wcontrol
+}  // namespace lsst::qserv::wcontrol

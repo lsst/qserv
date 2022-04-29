@@ -33,7 +33,7 @@
 
 // Qserv headers
 
-namespace lsst { namespace qserv {
+namespace lsst::qserv {
 
 namespace wbase {
 class SendChannelShared;
@@ -123,6 +123,6 @@ private:
 };
 
 }  // namespace wcontrol
-}}  // namespace lsst::qserv
+}  // namespace lsst::qserv
 
 #endif  // LSST_QSERV_WCONTROL_TRANSMITMGR_H

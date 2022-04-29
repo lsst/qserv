@@ -36,13 +36,13 @@
 #include "wpublish/QueriesAndChunks.h"
 
 // Forward declarations
-namespace lsst { namespace qserv { namespace wdb {
+namespace lsst::qserv::wdb {
 class SQLBackend;
 class ChunkResourceMgr;
 class QueryRunner;
-}}}  // namespace lsst::qserv::wdb
+}  // namespace lsst::qserv::wdb
 
-namespace lsst { namespace qserv { namespace wcontrol {
+namespace lsst::qserv::wcontrol {
 
 class SqlConnMgr;
 class TransmitMgr;
@@ -121,6 +121,6 @@ private:
     std::shared_ptr<wcontrol::TransmitMgr> _transmitMgr;
 };
 
-}}}  // namespace lsst::qserv::wcontrol
+}  // namespace lsst::qserv::wcontrol
 
 #endif  // LSST_QSERV_WCONTROL_FOREMAN_H
