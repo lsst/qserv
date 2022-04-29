@@ -32,7 +32,7 @@
 #include "sql/SqlConnection.h"
 #include "sql/SqlErrorObject.h"
 
-namespace lsst { namespace qserv { namespace sql {
+namespace lsst::qserv::sql {
 
 /// @addtogroup sql
 
@@ -96,6 +96,6 @@ private:
     SqlBulkInsert& operator=(SqlBulkInsert const&) = delete;
 };
 
-}}}  // namespace lsst::qserv::sql
+}  // namespace lsst::qserv::sql
 
 #endif  // LSST_QSERV_SQL_SQLBULKINSERT_H

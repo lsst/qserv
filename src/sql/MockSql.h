@@ -31,7 +31,7 @@
 #include "sql/SqlConnection.h"
 #include "sql/SqlException.h"
 
-namespace lsst { namespace qserv { namespace sql {
+namespace lsst::qserv::sql {
 
 class MockSql : public SqlConnection {
 public:
@@ -150,6 +150,6 @@ private:
     DbTableColumns _dbTableColumns;
 };
 
-}}}  // namespace lsst::qserv::sql
+}  // namespace lsst::qserv::sql
 
 #endif  // LSST_QSERV_SQL_MOCKSQL_H

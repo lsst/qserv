@@ -45,7 +45,7 @@
 #include "sql/SqlErrorObject.h"
 
 // Forward declarations
-namespace lsst { namespace qserv {
+namespace lsst::qserv {
 namespace mysql {
 class MySqlConnection;
 }
@@ -54,9 +54,9 @@ class MySqlConnection;
 class SqlConnectionFactory;
 class SqlResults;
 }  // namespace sql
-}}  // namespace lsst::qserv
+}  // namespace lsst::qserv
 
-namespace lsst { namespace qserv { namespace sql {
+namespace lsst::qserv::sql {
 
 class MySqlResultIter : public SqlResultIter {
 public:
@@ -165,6 +165,6 @@ private:
     std::shared_ptr<mysql::MySqlConnection> _connection;
 };
 
-}}}  // namespace lsst::qserv::sql
+}  // namespace lsst::qserv::sql
 
 #endif  // LSST_QSERV_SQL_MYSQLCONNECTION_H

@@ -31,7 +31,7 @@
 #include "sql/SqlConfig.h"
 #include "sql/SqlConnection.h"
 
-namespace lsst { namespace qserv { namespace sql {
+namespace lsst::qserv::sql {
 
 std::shared_ptr<SqlConnection> SqlConnectionFactory::make(SqlConfig const& cfg) {
     if (SqlConfig::MOCK == cfg.type) {
@@ -44,4 +44,4 @@ std::shared_ptr<SqlConnection> SqlConnectionFactory::make(mysql::MySqlConfig con
     return make(SqlConfig(cfg));
 }
 
-}}}  // namespace lsst::qserv::sql
+}  // namespace lsst::qserv::sql

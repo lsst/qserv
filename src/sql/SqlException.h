@@ -31,7 +31,7 @@
 // Qserv headers
 #include "util/Issue.h"
 
-namespace lsst { namespace qserv { namespace sql {
+namespace lsst::qserv::sql {
 
 class SqlException : public util::Issue {
 public:
@@ -56,6 +56,6 @@ public:
     virtual ~NoSuchTable() = default;
 };
 
-}}}  // namespace lsst::qserv::sql
+}  // namespace lsst::qserv::sql
 
 #endif  // LSST_QSERV_SQL_SQLEXCEPTION_H

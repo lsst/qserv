@@ -44,11 +44,11 @@
 #include "sql/SqlErrorObject.h"
 
 // Forward declarations
-namespace lsst { namespace qserv { namespace sql {
+namespace lsst::qserv::sql {
 class SqlResults;
-}}}  // namespace lsst::qserv::sql
+}  // namespace lsst::qserv::sql
 
-namespace lsst { namespace qserv { namespace sql {
+namespace lsst::qserv::sql {
 
 class SqlResultIter {
 public:
@@ -144,6 +144,6 @@ protected:
     SqlConnection() = default;
 };
 
-}}}  // namespace lsst::qserv::sql
+}  // namespace lsst::qserv::sql
 
 #endif  // LSST_QSERV_SQL_SQLCONNECTION_H

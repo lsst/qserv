@@ -29,7 +29,7 @@
 
 // Qserv headers
 
-namespace lsst { namespace qserv { namespace sql {
+namespace lsst::qserv::sql {
 
 // Constructor
 SqlTransaction::SqlTransaction(SqlConnection& conn, SqlErrorObject& errObj) : _conn(conn), _doCleanup(false) {
@@ -59,4 +59,4 @@ bool SqlTransaction::abort(SqlErrorObject& errObj) {
     return not errObj.isSet();
 }
 
-}}}  // namespace lsst::qserv::sql
+}  // namespace lsst::qserv::sql

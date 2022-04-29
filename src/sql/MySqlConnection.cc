@@ -55,7 +55,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.sql.MySqlConnection");
 
 }  // anonymous namespace
 
-namespace lsst { namespace qserv { namespace sql {
+namespace lsst::qserv::sql {
 
 ////////////////////////////////////////////////////////////////////////
 // class MySqlResultIter
@@ -425,4 +425,4 @@ bool MySqlConnection::_setErrorObject(SqlErrorObject& errObj, std::string const&
     return false;
 }
 
-}}}  // namespace lsst::qserv::sql
+}  // namespace lsst::qserv::sql

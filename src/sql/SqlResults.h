@@ -42,7 +42,7 @@
 #include "sql/SqlErrorObject.h"
 #include "sql/Schema.h"
 
-namespace lsst { namespace qserv { namespace sql {
+namespace lsst::qserv::sql {
 
 namespace detail {
 
@@ -112,6 +112,6 @@ private:
     unsigned long long _affectedRows;
 };
 
-}}}  // namespace lsst::qserv::sql
+}  // namespace lsst::qserv::sql
 
 #endif  // LSST_QSERV_SQL_SQLRESULTS_H

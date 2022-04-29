@@ -30,7 +30,7 @@
 #include "SqlConnection.h"
 #include "SqlErrorObject.h"
 
-namespace lsst { namespace qserv { namespace sql {
+namespace lsst::qserv::sql {
 
 /// @addtogroup sql
 
@@ -90,6 +90,6 @@ private:
     bool _doCleanup;
 };
 
-}}}  // namespace lsst::qserv::sql
+}  // namespace lsst::qserv::sql
 
 #endif  // LSST_QSERV_SQL_SQLTRANSACTION_H

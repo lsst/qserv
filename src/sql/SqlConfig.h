@@ -24,11 +24,14 @@
 #ifndef LSST_QSERV_SQL_SQLCONFIG_H
 #define LSST_QSERV_SQL_SQLCONFIG_H
 
+#include <string>
+#include <vector>
+
 // Qserv headers
 #include "mysql/MySqlConfig.h"  // Our goal is to remove MySqlConfig and replace the class with a URL string
                                 // that contains the same information.
 
-namespace lsst { namespace qserv { namespace sql {
+namespace lsst::qserv::sql {
 
 class SqlConfig {
 public:
@@ -56,6 +59,6 @@ private:
     SqlConfig() = default;
 };
 
-}}}  // namespace lsst::qserv::sql
+}  // namespace lsst::qserv::sql
 
 #endif  // LSST_QSERV_SQL_SQLCONFIG_H

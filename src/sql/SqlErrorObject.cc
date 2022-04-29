@@ -27,7 +27,7 @@
 // System headers
 #include <sstream>
 
-namespace lsst { namespace qserv { namespace sql {
+namespace lsst::qserv::sql {
 
 std::string SqlErrorObject::printErrMsg() const {
     if (isSet()) {
@@ -38,4 +38,4 @@ std::string SqlErrorObject::printErrMsg() const {
     return "";
 }
 
-}}}  // namespace lsst::qserv::sql
+}  // namespace lsst::qserv::sql

@@ -30,7 +30,7 @@
 // Qserv headers
 #include "sql/SqlResults.h"
 
-namespace lsst { namespace qserv { namespace sql {
+namespace lsst::qserv::sql {
 
 // Constructors
 SqlBulkInsert::SqlBulkInsert(SqlConnection* conn, std::string const& table,
@@ -123,4 +123,4 @@ bool SqlBulkInsert::flush(SqlErrorObject& errObj) {
     return true;
 }
 
-}}}  // namespace lsst::qserv::sql
+}  // namespace lsst::qserv::sql

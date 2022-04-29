@@ -30,7 +30,7 @@ namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.util.SqlTransactionStd");
 }
 
-namespace lsst { namespace qserv { namespace sql {
+namespace lsst::qserv::sql {
 
 void SqlTransactionScope::verify() {
     if (errObj.isSet()) {
@@ -70,4 +70,4 @@ void SqlTransactionScope::abort() {
     }
 }
 
-}}}  // namespace lsst::qserv::sql
+}  // namespace lsst::qserv::sql

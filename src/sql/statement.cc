@@ -43,7 +43,7 @@ LOG_LOGGER getLogger() {
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace sql {
+namespace lsst::qserv::sql {
 
 std::string formCreateTable(std::string const& table, sql::Schema const& s) {
     if (table.empty()) {
@@ -134,4 +134,4 @@ std::string formLoadInfile(std::string const& table, std::string const& virtFile
     return os.str();
 }
 
-}}}  // namespace lsst::qserv::sql
+}  // namespace lsst::qserv::sql

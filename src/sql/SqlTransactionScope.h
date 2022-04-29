@@ -32,7 +32,7 @@
 #include "sql/SqlTransaction.h"
 #include "util/Issue.h"
 
-namespace lsst { namespace qserv { namespace sql {
+namespace lsst::qserv::sql {
 
 /// An RAII class for handling transactions.
 // All child classes should call SqlTransactionScope::create<T> to make
@@ -83,6 +83,6 @@ protected:
     sql::SqlTransaction trans;
 };
 
-}}}  // namespace lsst::qserv::sql
+}  // namespace lsst::qserv::sql
 
 #endif /* LSST_QSERV_SQL_SQLTRANSACTIONSCOPE_H */

@@ -27,7 +27,7 @@
 // Standard
 #include <string>
 
-namespace lsst { namespace qserv { namespace sql {
+namespace lsst::qserv::sql {
 /// SqlErrorObject should be considered for inheriting from util::Error
 class SqlErrorObject {
 public:
@@ -59,7 +59,7 @@ private:
     std::string _errMsg;  // error message
 };
 
-}}}  // namespace lsst::qserv::sql
+}  // namespace lsst::qserv::sql
 
 // Local Variables:
 // mode:c++

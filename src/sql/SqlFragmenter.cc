@@ -32,7 +32,7 @@
 
 #include "sql/SqlFragmenter.h"
 
-namespace lsst { namespace qserv { namespace sql {
+namespace lsst::qserv::sql {
 
 // Constants
 const std::string SqlFragmenter::_delimiter = ";\n";
@@ -101,4 +101,4 @@ void SqlFragmenter::_advance() {
     }
 }
 
-}}}  // namespace lsst::qserv::sql
+}  // namespace lsst::qserv::sql

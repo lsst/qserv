@@ -32,7 +32,7 @@
 // Qserv headers
 #include "mysql/SchemaFactory.h"
 
-namespace lsst { namespace qserv { namespace sql {
+namespace lsst::qserv::sql {
 
 namespace detail {
 
@@ -199,4 +199,4 @@ sql::Schema SqlResults::makeSchema(SqlErrorObject& errObj) {
     return schema;
 }
 
-}}}  // namespace lsst::qserv::sql
+}  // namespace lsst::qserv::sql

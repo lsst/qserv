@@ -27,7 +27,7 @@
 // Qserv headers
 #include "sql/MockSql.h"
 
-namespace lsst { namespace qserv {
+namespace lsst::qserv {
 
 typedef std::vector<StringVector> StringVectorVector;
 
@@ -60,4 +60,4 @@ bool MockSql::escapeString(std::string const& rawString, std::string& escapedStr
 }
 
 }  // namespace sql
-}}  // namespace lsst::qserv
+}  // namespace lsst::qserv
