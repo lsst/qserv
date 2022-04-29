@@ -32,12 +32,12 @@
 #include <vector>
 
 // Forward declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 class DatabaseInfo;
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * The utility class encapsulating various operations with file systems.
@@ -403,6 +403,6 @@ private:
     std::map<std::string, std::unique_ptr<FileCsComputeEngine>> _processed;
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_REPLICA_FILEUTILS_H

@@ -39,7 +39,7 @@ namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.EventLogger");
 }
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 EventLogger::EventLogger(Controller::Ptr const& controller, string const& name)
         : _controller(controller), _name(name) {}
@@ -111,4 +111,4 @@ void EventLogger::logJobFinishedEvent(string const& typeName, Job::Ptr const& jo
     logEvent(event);
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

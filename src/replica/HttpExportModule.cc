@@ -66,7 +66,7 @@ struct TableSpec {
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 void HttpExportModule::process(Controller::Ptr const& controller, string const& taskName,
                                HttpProcessorConfig const& processorConfig, qhttp::Request::Ptr const& req,
@@ -219,4 +219,4 @@ json HttpExportModule::_getTables() {
     }
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

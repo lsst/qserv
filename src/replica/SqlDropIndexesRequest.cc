@@ -36,7 +36,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.SqlDropIndexesRequest");
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 SqlDropIndexesRequest::Ptr SqlDropIndexesRequest::create(
         ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service,
@@ -74,4 +74,4 @@ void SqlDropIndexesRequest::notify(util::Lock const& lock) {
     notifyDefaultImpl<SqlDropIndexesRequest>(lock, _onFinish);
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

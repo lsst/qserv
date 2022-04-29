@@ -38,7 +38,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.HttpSvc");
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 HttpSvc::HttpSvc(ServiceProvider::Ptr const& serviceProvider, uint16_t port, unsigned int backlog,
                  size_t numThreads)
@@ -87,4 +87,4 @@ void HttpSvc::stop() {
     _httpServer->stop();
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

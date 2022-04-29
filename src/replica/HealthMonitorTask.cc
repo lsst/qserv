@@ -31,7 +31,7 @@
 
 using namespace std;
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 HealthMonitorTask::Ptr HealthMonitorTask::create(Controller::Ptr const& controller,
                                                  Task::AbnormalTerminationCallbackType const& onTerminated,
@@ -230,4 +230,4 @@ void HealthMonitorTask::_logFinishedEvent(ClusterHealthJob::Ptr const& job) cons
     logEvent(event);
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

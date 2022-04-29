@@ -36,7 +36,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.SqlGrantAccessRequest");
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 SqlGrantAccessRequest::Ptr SqlGrantAccessRequest::create(ServiceProvider::Ptr const& serviceProvider,
                                                          boost::asio::io_service& io_service,
@@ -70,4 +70,4 @@ void SqlGrantAccessRequest::notify(util::Lock const& lock) {
     notifyDefaultImpl<SqlGrantAccessRequest>(lock, _onFinish);
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

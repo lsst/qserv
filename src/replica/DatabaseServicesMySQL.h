@@ -39,7 +39,7 @@
 #include "util/Mutex.h"
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class DatabaseServicesMySQL is a MySQL_specific implementation of the database
@@ -362,6 +362,6 @@ private:
     mutable util::Mutex _mtx;
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_REPLICA_DATABASESERVICESMYSQL_H

@@ -36,7 +36,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.SqlCreateTablesRequest");
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 SqlCreateTablesRequest::Ptr SqlCreateTablesRequest::create(
         ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service,
@@ -81,4 +81,4 @@ void SqlCreateTablesRequest::notify(util::Lock const& lock) {
     notifyDefaultImpl<SqlCreateTablesRequest>(lock, _onFinish);
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

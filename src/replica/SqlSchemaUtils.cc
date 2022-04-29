@@ -72,7 +72,7 @@ vector<string> splitBy(const string& str, char delim = ' ') {
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 list<SqlColDef> SqlSchemaUtils::readFromTextFile(string const& fileName) {
     list<SqlColDef> columns;
@@ -106,4 +106,4 @@ vector<SqlIndexColumn> SqlSchemaUtils::readIndexSpecFromTextFile(string const& f
     return columns;
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

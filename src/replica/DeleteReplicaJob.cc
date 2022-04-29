@@ -46,7 +46,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.DeleteReplicaJob");
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 string DeleteReplicaJob::typeName() { return "DeleteReplicaJob"; }
 
@@ -293,4 +293,4 @@ void DeleteReplicaJob::_onRequestFinish(DeleteRequest::Ptr const& request) {
     }
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

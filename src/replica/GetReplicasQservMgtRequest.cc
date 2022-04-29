@@ -46,7 +46,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.GetReplicasQservMgtRequest");
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 GetReplicasQservMgtRequest::Ptr GetReplicasQservMgtRequest::create(
         ServiceProvider::Ptr const& serviceProvider, string const& worker, string const& databaseFamily,
@@ -165,4 +165,4 @@ void GetReplicasQservMgtRequest::notify(util::Lock const& lock) {
     notifyDefaultImpl<GetReplicasQservMgtRequest>(lock, _onFinish);
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

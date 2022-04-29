@@ -69,7 +69,7 @@ bool in(Request::ExtendedState val, vector<Request::ExtendedState> const& col) {
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 DatabaseServicesMySQL::DatabaseServicesMySQL(Configuration::Ptr const& configuration)
         : DatabaseServices(),
@@ -2236,4 +2236,4 @@ void DatabaseServicesMySQL::deleteTableRowStats(string const& database, string c
 
 string DatabaseServicesMySQL::_context(string const& func) { return "DatabaseServicesMySQL::" + func + " "; }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

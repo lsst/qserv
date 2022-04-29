@@ -31,12 +31,12 @@
 #include "replica/Common.h"
 
 // Forward declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 class TransactionInfo;
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class TransactionsApp implements a tool for testing super-transactions.
@@ -79,6 +79,6 @@ private:
                                ///  transactions (0 means no pages)
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif /* LSST_QSERV_REPLICA_TRANSACTIONAPP_H */

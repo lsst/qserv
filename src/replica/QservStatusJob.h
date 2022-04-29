@@ -36,7 +36,7 @@
 #include "replica/ServiceManagementRequest.h"
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * This data structure represents status responses from Qserv workers
@@ -172,6 +172,6 @@ private:
     size_t _numFinished = 0;
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_REPLICA_QSERVSTATUSJOB_H

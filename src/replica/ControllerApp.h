@@ -33,7 +33,7 @@
 #include "replica/Request.h"
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class ControllerApp implements a tool for testing all known types of
@@ -189,6 +189,6 @@ private:
     std::string _indexFileName;
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif /* LSST_QSERV_REPLICA_CONTROLLERAPP_H */

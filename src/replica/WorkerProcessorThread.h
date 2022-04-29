@@ -28,12 +28,12 @@
 #include <thread>
 
 // Forward declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 class WorkerProcessor;
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class WorkerProcessorThread is a thread-based request processing engine
@@ -120,6 +120,6 @@ private:
     std::atomic<bool> _stop;
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_REPLICA_WORKERPROCESSORTHREAD_H

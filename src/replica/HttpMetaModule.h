@@ -33,7 +33,7 @@
 #include "replica/ServiceProvider.h"
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class HttpMetaModule implements a handler for the metadata queries
@@ -76,6 +76,6 @@ private:
     std::string const _context;
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_HTTPMETAMODULE_H

@@ -34,7 +34,7 @@
 using namespace std;
 using json = nlohmann::json;
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 string const HttpClientConfig::category = "worker-http-file-reader";
 
@@ -179,4 +179,4 @@ void HttpClient::_errorChecked(string const& scope, CURLcode errnum) {
 
 void HttpClient::_store(char const* ptr, size_t nchars) { _onDataRead(ptr, nchars); }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

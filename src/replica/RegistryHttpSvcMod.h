@@ -34,12 +34,12 @@
 #include "replica/ServiceProvider.h"
 
 // Forward declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 class RegistryWorkers;
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class RegistryHttpSvcMod processes worker registration requests made
@@ -112,6 +112,6 @@ private:
     RegistryWorkers& _workers;
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_REGISTRYHTTPSVCMOD_H

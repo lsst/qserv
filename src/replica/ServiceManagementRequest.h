@@ -45,12 +45,12 @@
 #include "replica/ServiceManagementRequestBase.h"
 
 // Forward declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 class Messenger;
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 // ========================================================================
 //   Customizations for specific request types require dedicated policies
@@ -161,6 +161,6 @@ typedef ServiceManagementRequest<ServiceRequestsRequestPolicy> ServiceRequestsRe
 typedef ServiceManagementRequest<ServiceDrainRequestPolicy> ServiceDrainRequest;
 typedef ServiceManagementRequest<ServiceReconfigRequestPolicy> ServiceReconfigRequest;
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_REPLICA_SERVICEMANAGEMENTREQUEST_H

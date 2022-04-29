@@ -34,7 +34,7 @@
 #include "replica/SqlJobResult.h"
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class AbortTransactionJob represents a tool which will issue and track
@@ -139,6 +139,6 @@ private:
     SqlJobResult _resultData;
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_REPLICA_ABORTTRANSACTIONJOB_H

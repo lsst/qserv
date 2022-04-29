@@ -32,7 +32,7 @@
 #include "lsst/log/Log.h"
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class FileServerApp runs an instance of a file server on behalf of
@@ -75,6 +75,6 @@ private:
     LOG_LOGGER _log;
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif /* LSST_QSERV_REPLICA_FILESERVERAPP_H */

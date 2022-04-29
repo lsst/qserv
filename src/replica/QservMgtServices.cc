@@ -49,7 +49,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.QservMgtServices");
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 //////////////////////////////////////////////////////////////////////////////////
 //////////////////////////  QservMgtRequestWrapperImpl  //////////////////////////
@@ -387,4 +387,4 @@ XrdSsiService* QservMgtServices::_xrdSsiService() {
     return _service;
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

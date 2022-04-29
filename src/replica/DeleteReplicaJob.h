@@ -34,7 +34,7 @@
 #include "replica/DeleteRequest.h"
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * The structure DeleteReplicaJobResult represents a combined result received
@@ -199,6 +199,6 @@ private:
     DeleteReplicaJobResult _replicaData;
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_REPLICA_DELETEREPLICAJOB_H

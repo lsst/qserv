@@ -36,7 +36,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.SqlEnableDbRequest");
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 SqlEnableDbRequest::Ptr SqlEnableDbRequest::create(ServiceProvider::Ptr const& serviceProvider,
                                                    boost::asio::io_service& io_service, string const& worker,
@@ -67,4 +67,4 @@ void SqlEnableDbRequest::notify(util::Lock const& lock) {
     notifyDefaultImpl<SqlEnableDbRequest>(lock, _onFinish);
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

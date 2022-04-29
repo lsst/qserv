@@ -47,7 +47,7 @@ bool const enableServiceProvider = true;
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 DeleteWorkerApp::Ptr DeleteWorkerApp::create(int argc, char* argv[]) {
     return Ptr(new DeleteWorkerApp(argc, argv));
@@ -84,4 +84,4 @@ int DeleteWorkerApp::runImpl() {
     return 0;
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

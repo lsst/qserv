@@ -35,7 +35,7 @@
 #include "replica/IngestClient.h"
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class FileIngestApp implements a tool which acts as a catalog data loading
@@ -192,6 +192,6 @@ private:
     bool _verbose = false;  /// Print various stats upon a completion of the ingest
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif /* LSST_QSERV_REPLICA_FILEINGESTAPP_H */

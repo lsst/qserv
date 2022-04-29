@@ -41,7 +41,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.FindAllJob");
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 string FindAllJob::typeName() { return "FindAllJob"; }
 
@@ -347,4 +347,4 @@ void FindAllJob::_onRequestFinish(FindAllRequest::Ptr const& request) {
     }
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

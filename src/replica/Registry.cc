@@ -45,7 +45,7 @@ string context(string const& func) { return "REGISTRY " + func + " "; }
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 Registry::Ptr Registry::create(ServiceProvider::Ptr const& serviceProvider) {
     return Ptr(new Registry(serviceProvider));
@@ -126,4 +126,4 @@ json Registry::_request(string const& method, string const& resource, json const
     return response;
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

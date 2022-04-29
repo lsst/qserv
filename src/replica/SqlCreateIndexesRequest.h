@@ -34,7 +34,7 @@
 #include "replica/SqlRequest.h"
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class SqlCreateIndexesRequest represents Controller-side requests for initiating
@@ -102,6 +102,6 @@ private:
     CallbackType _onFinish;  ///< @note is reset when the request finishes
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_REPLICA_SQLCREATEINDEXESREQUEST_H

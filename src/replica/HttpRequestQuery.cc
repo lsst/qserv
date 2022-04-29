@@ -28,7 +28,7 @@
 
 using namespace std;
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 HttpRequestQuery::HttpRequestQuery(std::unordered_map<std::string, std::string> const& query)
         : _query(query) {}
@@ -133,4 +133,4 @@ double HttpRequestQuery::requiredDouble(string const& param) const {
 
 bool HttpRequestQuery::has(std::string const& param) const { return _query.find(param) != _query.end(); }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

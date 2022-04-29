@@ -41,12 +41,12 @@
 #include "replica/IndexRequest.h"
 
 // Forward declarations
-namespace lsst { namespace qserv { namespace replica { namespace database { namespace mysql {
+namespace lsst::qserv::replica::database::mysql {
 class Connection;
-}}}}}  // namespace lsst::qserv::replica::database::mysql
+}  // namespace lsst::qserv::replica::database::mysql
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * The structure IndexJobResult represents a combined result received
@@ -266,6 +266,6 @@ private:
     size_t _completeChunks = 0;  ///< Is incremented for each processed (regardless of results) chunk.
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_REPLICA_INDEXJOB_H

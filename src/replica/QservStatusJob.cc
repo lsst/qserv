@@ -41,7 +41,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.QservStatusJob");
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 string QservStatusJob::typeName() { return "QservStatusJob"; }
 
@@ -149,4 +149,4 @@ void QservStatusJob::_onRequestFinish(GetStatusQservMgtRequest::Ptr const& reque
     if (++_numFinished == _numStarted) finish(lock, ExtendedState::SUCCESS);
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

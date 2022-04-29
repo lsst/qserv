@@ -32,7 +32,7 @@
 #include "wpublish/TestEchoQservRequest.h"
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class TestEchoQservMgtRequest implements a special kind of requests
@@ -113,6 +113,6 @@ private:
     std::string _dataEcho;
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_REPLICA_TESTECHOQSERVMGTREQUEST_H

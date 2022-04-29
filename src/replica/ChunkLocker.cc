@@ -29,7 +29,7 @@
 
 using namespace std;
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 ///////////////////////////////////////
 //                Chunk              //
@@ -149,4 +149,4 @@ list<Chunk> ChunkLocker::release(string const& owner) {
     return chunks;
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

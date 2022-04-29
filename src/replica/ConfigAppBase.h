@@ -29,7 +29,7 @@
 #include "replica/Configuration.h"
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class ConfigAppBase is a base class for applications working with
@@ -76,6 +76,6 @@ private:
     bool _verticalSeparator = false;  ///< print vertical separator in tables
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif /* LSST_QSERV_REPLICA_CONFIGAPPBASE_H */

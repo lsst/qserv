@@ -36,7 +36,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.SqlRemoveTablePartitionsRequest");
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 SqlRemoveTablePartitionsRequest::Ptr SqlRemoveTablePartitionsRequest::create(
         ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service,
@@ -71,4 +71,4 @@ void SqlRemoveTablePartitionsRequest::notify(util::Lock const& lock) {
     notifyDefaultImpl<SqlRemoveTablePartitionsRequest>(lock, _onFinish);
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

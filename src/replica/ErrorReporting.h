@@ -34,7 +34,7 @@
 #include "replica/Common.h"
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Print a report on a state of requests
@@ -66,6 +66,6 @@ void reportRequestState(COLLECTION const& requests, std::ostream& os) {
        << std::endl;
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_REPLICA_ERRORREPORTING_H

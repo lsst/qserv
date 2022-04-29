@@ -36,12 +36,12 @@
 // Qserv headers
 #include "replica/Common.h"
 // Forward declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 class DatabaseFamilyInfo;
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class DatabaseInfo encapsulates various parameters describing databases.
@@ -154,6 +154,6 @@ public:
 
 std::ostream& operator<<(std::ostream& os, DatabaseInfo const& info);
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_REPLICA_CONFIGDATABASE_H

@@ -34,12 +34,12 @@
 #include "replica/SqlRowStatsJob.h"
 
 // Forward declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 class DatabaseInfo;
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class HttpIngestModule provides a support ingesting catalogs
@@ -296,6 +296,6 @@ private:
     static std::string const _partitionByColumnType;
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_HTTPINGESTMODULE_H

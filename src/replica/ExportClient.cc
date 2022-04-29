@@ -46,7 +46,7 @@ size_t const defaultBufferCapacity = 1024 * 1024;
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 ExportClient::Ptr ExportClient::connect(string const& workerHost, uint16_t workerPort,
                                         string const& databaseName, string const& tableName,
@@ -258,4 +258,4 @@ void ExportClient::_closeConnection() {
     _socket.close(ec);
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

@@ -41,7 +41,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.WorkerSqlRequest");
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 WorkerSqlRequest::Ptr WorkerSqlRequest::create(ServiceProvider::Ptr const& serviceProvider,
                                                string const& worker, string const& id, int priority,
@@ -443,4 +443,4 @@ ProtocolResponseSqlResultSet* WorkerSqlRequest::_currentResultSet(util::Lock con
 
 bool WorkerSqlRequest::_batchMode() const { return _request.has_batch_mode() and _request.batch_mode(); }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

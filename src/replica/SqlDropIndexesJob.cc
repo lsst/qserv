@@ -40,7 +40,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.SqlDropIndexesJob");
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 string SqlDropIndexesJob::typeName() { return "SqlDropIndexesJob"; }
 
@@ -110,4 +110,4 @@ void SqlDropIndexesJob::notify(util::Lock const& lock) {
     notifyDefaultImpl<SqlDropIndexesJob>(lock, _onFinish);
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

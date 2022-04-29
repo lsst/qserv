@@ -50,7 +50,7 @@ bool const enableServiceProvider = false;
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 HttpClientApp::Ptr HttpClientApp::create(int argc, char* argv[]) {
     return Ptr(new HttpClientApp(argc, argv));
@@ -172,4 +172,4 @@ int HttpClientApp::runImpl() {
     return 0;
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

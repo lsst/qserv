@@ -51,7 +51,7 @@ vector<string> const transactionStates = {"IS_STARTING",  "STARTED",       "IS_F
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 TransactionsApp::Ptr TransactionsApp::create(int argc, char* argv[]) {
     return Ptr(new TransactionsApp(argc, argv));
@@ -158,4 +158,4 @@ void TransactionsApp::_print(TransactionInfo const& info) const {
     _print(collection);
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

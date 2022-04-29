@@ -36,7 +36,7 @@
 #include "replica/ReplicationRequest.h"
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * The structure FixUpJobResult represents a combined result received
@@ -182,6 +182,6 @@ private:
     FixUpJobResult _replicaData;
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_REPLICA_FIXUPJOB_H

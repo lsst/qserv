@@ -44,7 +44,7 @@ string senderIpAddr(qhttp::Request::Ptr const& req) {
 }
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 void RegistryHttpSvcMod::process(ServiceProvider::Ptr const& serviceProvider, RegistryWorkers& workers,
                                  qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp,
@@ -111,4 +111,4 @@ json RegistryHttpSvcMod::_deleteWorker() {
     return json::object({{"workers", _workers.workers()}});
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

@@ -45,7 +45,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.ServiceProvider");
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 ServiceProvider::Ptr ServiceProvider::create(string const& configUrl, string const& instanceId,
                                              string const& authKey, string const& adminAuthKey) {
@@ -165,4 +165,4 @@ void ServiceProvider::stop() {
 
 string ServiceProvider::_context() const { return "SERVICE-PROVIDER  "; }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

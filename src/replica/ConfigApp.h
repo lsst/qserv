@@ -29,12 +29,12 @@
 #include "replica/ConfigAppBase.h"
 
 // Forward declarations
-namespace lsst { namespace qserv { namespace replica { namespace detail {
+namespace lsst::qserv::replica::detail {
 class Command;
-}}}}  // namespace lsst::qserv::replica::detail
+}  // namespace lsst::qserv::replica::detail
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class ConfigApp implements a tool for inspecting/modifying configuration
@@ -202,6 +202,6 @@ private:
     std::string _longitudeColName;
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif /* LSST_QSERV_REPLICA_CONFIGAPP_H */

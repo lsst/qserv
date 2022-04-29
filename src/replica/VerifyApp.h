@@ -25,7 +25,7 @@
 #include "replica/Application.h"
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class VerifyApp implements a tool which runs the replica verification algorithm
@@ -66,6 +66,6 @@ private:
     bool _computeCheckSum = false;
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif /* LSST_QSERV_REPLICA_VERIFYAPP_H */

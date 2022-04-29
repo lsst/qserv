@@ -43,7 +43,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.SqlDisableDbJob");
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 string SqlDisableDbJob::typeName() { return "SqlDisableDbJob"; }
 
@@ -94,4 +94,4 @@ void SqlDisableDbJob::notify(util::Lock const& lock) {
     notifyDefaultImpl<SqlDisableDbJob>(lock, _onFinish);
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

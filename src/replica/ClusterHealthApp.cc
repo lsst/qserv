@@ -49,7 +49,7 @@ bool const enableServiceProvider = true;
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 ClusterHealthApp::Ptr ClusterHealthApp::create(int argc, char* argv[]) {
     return Ptr(new ClusterHealthApp(argc, argv));
@@ -115,4 +115,4 @@ int ClusterHealthApp::runImpl() {
     return 0;
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

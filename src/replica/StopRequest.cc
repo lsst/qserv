@@ -27,7 +27,7 @@
 
 using namespace std;
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 // -------------------------------------------------
 // --------- StopReplicationRequestPolicy ----------
@@ -178,4 +178,4 @@ void StopSqlRequestPolicy::extractTargetRequestParams(ResponseMessageType const&
     }
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

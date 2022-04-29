@@ -33,7 +33,7 @@
 #include "replica/HttpModule.h"
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class HttpExportModule provides support exporting tables
@@ -77,6 +77,6 @@ private:
     nlohmann::json _getTables();
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_HTTPEXPORTMODULE_H

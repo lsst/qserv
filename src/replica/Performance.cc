@@ -42,7 +42,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.Performance");
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 uint64_t PerformanceUtils::now() {
     return chrono::duration_cast<chrono::milliseconds>(chrono::system_clock::now().time_since_epoch())
@@ -125,4 +125,4 @@ ostream& operator<<(ostream& os, WorkerPerformance const& p) {
     return os;
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

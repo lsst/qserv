@@ -35,12 +35,12 @@
 #include <string>
 
 // Forward declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 class ProtocolPerformance;
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Structure PerformanceUtils provides utilities shared by all classes in this scope
@@ -148,6 +148,6 @@ public:
 
 std::ostream& operator<<(std::ostream& os, WorkerPerformance const& p);
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_REPLICA_PERFORMANCE_H

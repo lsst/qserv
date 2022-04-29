@@ -42,7 +42,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.ExportServer");
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 ExportServer::Ptr ExportServer::create(ServiceProvider::Ptr const& serviceProvider,
                                        string const& workerName) {
@@ -97,4 +97,4 @@ void ExportServer::_handleAccept(ExportServerConnection::Ptr const& connection,
     _beginAccept();
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

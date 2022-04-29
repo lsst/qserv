@@ -37,12 +37,12 @@
 #include "util/Mutex.h"
 
 // Forward declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 class ProtocolBuffer;
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class Messenger provides a communication interface for sending/receiving messages
@@ -152,6 +152,6 @@ private:
     std::map<std::string, MessengerConnector::Ptr> _workerConnector;
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_REPLICA_MESSENGER_H

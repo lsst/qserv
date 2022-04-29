@@ -48,7 +48,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.SqlJob");
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 SqlJob::SqlJob(uint64_t maxRows, bool allWorkers, Controller::Ptr const& controller,
                string const& parentJobId, std::string const& jobName, int priority, bool ignoreNonPartitioned,
@@ -319,4 +319,4 @@ bool SqlJob::_isPartitioned(string const& database, string const& table) const {
                            "'.'" + table + "'");
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

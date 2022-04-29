@@ -35,7 +35,7 @@
 #include "replica/DeleteReplicaJob.h"
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Structure MoveReplicaJobResult represents a combined result received
@@ -209,6 +209,6 @@ private:
     MoveReplicaJobResult _replicaData;
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_REPLICA_MOVEREPLICAJOB_H

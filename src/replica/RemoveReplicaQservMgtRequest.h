@@ -32,7 +32,7 @@
 #include "wpublish/ChunkGroupQservRequest.h"
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class RemoveReplicaQservMgtRequest implements a request notifying Qserv workers
@@ -110,6 +110,6 @@ private:
     wpublish::RemoveChunkGroupQservRequest::Ptr _qservRequest;
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_REPLICA_REMOVEREPLICAQSERVMGTREQUEST_H

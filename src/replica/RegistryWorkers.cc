@@ -28,7 +28,7 @@
 using namespace std;
 using json = nlohmann::json;
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 void RegistryWorkers::insert(json const& worker) {
     string const context = "RegistryWorkers::" + string(__func__) + " ";
@@ -59,4 +59,4 @@ json RegistryWorkers::workers() const {
     return _workers;
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

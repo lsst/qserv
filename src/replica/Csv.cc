@@ -71,7 +71,7 @@ char parseParam(string const& name, string const& value, vector<string> const& a
 }
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica { namespace csv {
+namespace lsst::qserv::replica::csv {
 
 string const Dialect::defaultFieldsTerminatedBy = R"(\t)";
 string const Dialect::defaultFieldsEnclosedBy =
@@ -164,4 +164,4 @@ void Parser::parse(char const* inBuf, size_t inBufSize, bool flush,
     }
 }
 
-}}}}  // namespace lsst::qserv::replica::csv
+}  // namespace lsst::qserv::replica::csv

@@ -82,7 +82,7 @@ T parse(string const& context, json const& jsonObj, string const& key, T minValu
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 list<FileIngestApp::FileIngestSpec> FileIngestApp::parseFileList(json const& jsonObj, bool shortFormat,
                                                                  TransactionId transactionId,
@@ -399,4 +399,4 @@ void FileIngestApp::_ingest(FileIngestSpec const& file) const {
     }
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

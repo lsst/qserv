@@ -42,7 +42,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.FixUpJob");
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 string FixUpJob::typeName() { return "FixUpJob"; }
 
@@ -299,4 +299,4 @@ size_t FixUpJob::_launchNext(util::Lock const& lock, string const& destinationWo
     return numLaunched;
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

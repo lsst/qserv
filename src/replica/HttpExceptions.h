@@ -29,7 +29,7 @@
 #include "nlohmann/json.hpp"
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class HttpError represents exceptions thrown by HTTP modules in case of
@@ -71,6 +71,6 @@ private:
  */
 void raiseRetryAllowedError(std::string const& scope, std::string const& error, long httpErrCode = 0);
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_HTTPEXCEPTIONS_H

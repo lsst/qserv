@@ -96,7 +96,7 @@ bool readMessage(boost::asio::ip::tcp::socket& socket, shared_ptr<ProtocolBuffer
 }
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 size_t ExportServerConnection::networkBufSizeBytes = 1024 * 1024;
 
@@ -403,4 +403,4 @@ void ExportServerConnection::_closeFile() {
     }
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

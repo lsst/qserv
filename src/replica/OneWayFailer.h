@@ -25,7 +25,7 @@
 #include <atomic>
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * This class maintains a boolean state which can go in one direction
@@ -48,6 +48,6 @@ private:
     std::atomic<bool> _failed{false};
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif /* LSST_QSERV_REPLICA_ONEWAYFAILER_H */

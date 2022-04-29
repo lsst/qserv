@@ -32,7 +32,7 @@
 #include "replica/Application.h"
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class MessengerTestApp implements a tool which tests the Messenger Network
@@ -143,6 +143,6 @@ private:
     uint64_t _prevEventsReportMs = 0;  ///< The last time the event report was made
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif /* LSST_QSERV_REPLICA_MESSENGERTESTAPP_H */

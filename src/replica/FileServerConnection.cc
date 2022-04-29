@@ -92,7 +92,7 @@ bool readMessage(boost::asio::ip::tcp::socket& socket, shared_ptr<ProtocolBuffer
 }
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 FileServerConnection::Ptr FileServerConnection::create(ServiceProvider::Ptr const& serviceProvider,
                                                        string const& workerName,
@@ -291,4 +291,4 @@ void FileServerConnection::_dataSent(boost::system::error_code const& ec, size_t
     _sendData();
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

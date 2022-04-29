@@ -43,7 +43,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.IngestRequestMgr");
 string const context_ = "INGEST-REQUEST-MGR  ";
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 IngestRequestMgr::Ptr IngestRequestMgr::create(ServiceProvider::Ptr const& serviceProvider,
                                                string const& workerName) {
@@ -284,4 +284,4 @@ void IngestRequestMgr::completed(unsigned int id) {
     _inProgress.erase(id);
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

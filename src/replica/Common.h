@@ -41,7 +41,7 @@
 #include "util/Mutex.h"
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /// The number of the 'overflow' chunks
 unsigned int const overflowChunkNumber = 1234567890;
@@ -361,6 +361,6 @@ unsigned int stoui(std::string const& str, size_t* idx = 0, int base = 10);
  */
 std::vector<std::string> strsplit(std::string const& str, char delimiter = ' ');
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_REPLICA_COMMON_H

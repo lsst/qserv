@@ -38,7 +38,7 @@
 #include "replica/ServiceProvider.h"
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class FileServer is used for handling incoming connections to
@@ -107,6 +107,6 @@ private:
     boost::asio::ip::tcp::acceptor _acceptor;
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_REPLICA_FILESERVER_H

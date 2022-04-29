@@ -33,7 +33,7 @@
 #include "replica/protocol.pb.h"
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica { namespace csv {
+namespace lsst::qserv::replica::csv {
 
 /// The maximum number of characters (including the terminator character) in a row.
 constexpr size_t const MAX_ROW_LENGTH = 16 * 1024 * 1024;
@@ -203,6 +203,6 @@ private:
     bool _inEscapeMode = false;  ///< for counting escapes while processing the input stream
 };
 
-}}}}  // namespace lsst::qserv::replica::csv
+}  // namespace lsst::qserv::replica::csv
 
 #endif  // LSST_QSERV_REPLICA_CSV_H

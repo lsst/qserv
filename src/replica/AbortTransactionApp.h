@@ -29,7 +29,7 @@
 #include "replica/Common.h"
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class AbortTransactionApp implements a tool which aborts a transaction by dropping
@@ -66,6 +66,6 @@ private:
     unsigned int _reportLevel = 0;
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif /* LSST_QSERV_REPLICA_ABORTTRANSACTIONAPP_H */

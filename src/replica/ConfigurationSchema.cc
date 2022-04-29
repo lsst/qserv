@@ -40,7 +40,7 @@ int const max_listen_connections = boost::asio::socket_base::max_listen_connecti
 int const num_threads = std::thread::hardware_concurrency();
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * The schema definition is nested dictionary in which the top-level key reprsents
@@ -417,4 +417,4 @@ json ConfigurationSchema::_attributeValueJson(string const& category, string con
                            "." + param + ".");
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

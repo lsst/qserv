@@ -40,7 +40,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.SqlCreateIndexesJob");
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 string SqlCreateIndexesJob::typeName() { return "SqlCreateIndexesJob"; }
 
@@ -125,4 +125,4 @@ void SqlCreateIndexesJob::notify(util::Lock const& lock) {
     notifyDefaultImpl<SqlCreateIndexesJob>(lock, _onFinish);
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

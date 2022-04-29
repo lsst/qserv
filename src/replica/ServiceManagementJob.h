@@ -35,7 +35,7 @@
 #include "replica/ServiceProvider.h"
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * The structure ServiceManagementJobResult represents a combined result received
@@ -233,6 +233,6 @@ typedef ServiceManagementJob<ServiceResumeRequest> ServiceResumeJob;
 typedef ServiceManagementJob<ServiceDrainRequest> ServiceDrainJob;
 typedef ServiceManagementJob<ServiceReconfigRequest> ServiceReconfigJob;
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_REPLICA_SERVICEMANAGEMENTJOB_H

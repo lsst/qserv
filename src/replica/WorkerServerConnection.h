@@ -35,7 +35,7 @@
 #include "replica/WorkerProcessor.h"
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class WorkerServerConnection is used for handling connections from
@@ -245,6 +245,6 @@ private:
     std::shared_ptr<ProtocolBuffer> _bufferPtr;
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_REPLICA_WORKERSERVERCONNECTION_H

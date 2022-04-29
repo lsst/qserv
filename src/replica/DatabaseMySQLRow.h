@@ -41,15 +41,15 @@
 #include "replica/DatabaseMySQLExceptions.h"
 
 // Forward declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 class ProtocolResponseSqlRow;
-namespace database { namespace mysql {
+namespace database::mysql {
 class Connection;
-}}   // namespace database::mysql
-}}}  // namespace lsst::qserv::replica
+}   // namespace database::mysql
+}  // namespace lsst::qserv::replica
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica { namespace database { namespace mysql {
+namespace lsst::qserv::replica::database::mysql {
 
 /**
  * Class Row represents the current row obtained from the last result set.
@@ -249,6 +249,6 @@ private:
     std::vector<Cell> _index2cell;
 };
 
-}}}}}  // namespace lsst::qserv::replica::database::mysql
+}  // namespace lsst::qserv::replica::database::mysql
 
 #endif  // LSST_QSERV_REPLICA_DATABASEMYSQLROW_H

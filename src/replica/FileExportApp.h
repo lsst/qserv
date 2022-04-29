@@ -35,7 +35,7 @@
 
 // This header declarations
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class FileExportApp implements a tool which acts as a client of
@@ -145,6 +145,6 @@ private:
     bool _verbose = false;  /// Print various stats upon a completion of the export
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif /* LSST_QSERV_REPLICA_FILEEXPORTAPP_H */

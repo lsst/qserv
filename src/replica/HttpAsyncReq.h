@@ -38,7 +38,7 @@
 #include "util/Mutex.h"
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * @brief Class HttpAsyncReq represents a simple asynchronous interface for
@@ -295,6 +295,6 @@ private:
     mutable util::Mutex _mtx;
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_HTTPASYNCREQ_H

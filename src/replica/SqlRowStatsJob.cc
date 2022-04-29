@@ -40,7 +40,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.SqlRowStatsJob");
 uint64_t const unlimitedMaxRows = 0;
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 string SqlRowStatsJob::typeName() { return "SqlRowStatsJob"; }
 
@@ -314,4 +314,4 @@ bool SqlRowStatsJob::_process(string const& context_, bool isPartitioned, SqlJob
     return succeeded;
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

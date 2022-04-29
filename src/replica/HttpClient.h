@@ -31,7 +31,7 @@
 #include "nlohmann/json.hpp"
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class HttpClientConfig encapsulates configuration parameters related to 'libcurl'
@@ -259,6 +259,6 @@ private:
     curl_slist* _hlist = nullptr;
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_HTTPCLIENT_H

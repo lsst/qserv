@@ -40,7 +40,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.WorkerProcessorThread");
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 WorkerProcessorThread::Ptr WorkerProcessorThread::create(WorkerProcessorPtr const& processor) {
     static unsigned int id = 0;
@@ -128,4 +128,4 @@ void WorkerProcessorThread::_stopped() {
     _processor->_processorThreadStopped(shared_from_this());
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

@@ -34,7 +34,7 @@
 #include "replica/SemanticMaps.h"
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * The structure QservGetReplicasJobResult represents a combined result received
@@ -189,6 +189,6 @@ private:
     QservGetReplicasJobResult _replicaData;
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_REPLICA_QSERV_GETREPLICASJOB_H

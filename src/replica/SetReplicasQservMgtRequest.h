@@ -33,7 +33,7 @@
 #include "wpublish/SetChunkListQservRequest.h"
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class SetReplicasQservMgtRequest implements a request for setting new
@@ -126,6 +126,6 @@ private:
     QservReplicaCollection _replicas;
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_REPLICA_SETREPLICASQSERVMGTREQUEST_H

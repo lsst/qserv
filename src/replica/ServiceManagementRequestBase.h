@@ -34,12 +34,12 @@
 #include "replica/RequestMessenger.h"
 
 // Forward declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 class Messenger;
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Structure ServiceState encapsulates various parameters representing the state
@@ -148,6 +148,6 @@ private:
     ServiceState _serviceState;
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_REPLICA_SERVICEMANAGEMENTREQUESTBASE_H

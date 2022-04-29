@@ -27,7 +27,7 @@
 
 using namespace std;
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 size_t const ProtocolBuffer::DESIRED_LIMIT = 2000000;
 size_t const ProtocolBuffer::HARD_LIMIT = 64000000;
@@ -93,4 +93,4 @@ uint32_t ProtocolBuffer::parseLength() const {
     return ntohl(*(reinterpret_cast<uint32_t const*>(_data)));
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

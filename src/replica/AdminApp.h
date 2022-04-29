@@ -30,7 +30,7 @@
 #include "replica/Common.h"
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class AdminApp implements a Controller application for launching
@@ -81,6 +81,6 @@ private:
     bool _verticalSeparator = false;
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif /* LSST_QSERV_REPLICA_ADMINAPP_H */

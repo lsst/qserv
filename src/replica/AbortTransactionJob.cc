@@ -43,7 +43,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.AbortTransactionJob");
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 string AbortTransactionJob::typeName() { return "AbortTransactionJob"; }
 
@@ -193,4 +193,4 @@ void AbortTransactionJob::_onChildJobFinish(SqlDeleteTablePartitionJob::Ptr cons
     }
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

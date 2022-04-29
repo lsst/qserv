@@ -32,7 +32,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.SqlRowStatsRequest");
 const uint64_t unlimitedMaxRows = 0;
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 SqlRowStatsRequest::Ptr SqlRowStatsRequest::create(ServiceProvider::Ptr const& serviceProvider,
                                                    boost::asio::io_service& io_service, string const& worker,
@@ -68,4 +68,4 @@ void SqlRowStatsRequest::notify(util::Lock const& lock) {
     notifyDefaultImpl<SqlRowStatsRequest>(lock, _onFinish);
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

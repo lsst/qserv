@@ -36,7 +36,7 @@ string const description = "This application calculates and prints a checksum of
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 CheckSumApp::Ptr CheckSumApp::create(int argc, char* argv[]) { return Ptr(new CheckSumApp(argc, argv)); }
 
@@ -65,4 +65,4 @@ int CheckSumApp::runImpl() {
     return 0;
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

@@ -34,13 +34,13 @@
 #include "replica/Csv.h"
 
 // Forward declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 class ProtocolBuffer;
 class ProtocolIngestResponse;
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class IngestClientError represents exceptions thrown by IngestClient
@@ -202,6 +202,6 @@ private:
     size_t _sizeBytes = 0;       /// The number of bytes read from an input file
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_REPLICA_INGESTCLIENT_H

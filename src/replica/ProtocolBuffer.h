@@ -27,7 +27,7 @@
 #include <stdexcept>
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class ProtocolBuffer is a helper class encapsulating serialization,
@@ -182,6 +182,6 @@ private:
     size_t _size;
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_REPLICA_PROTOCOLBUFFER_H

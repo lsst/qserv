@@ -90,7 +90,7 @@ string senderIpAddr(qhttp::Request::Ptr const& req) {
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 QhttpTestApp::Ptr QhttpTestApp::create(int argc, char* argv[]) { return Ptr(new QhttpTestApp(argc, argv)); }
 
@@ -215,4 +215,4 @@ int QhttpTestApp::runImpl() {
     return 0;
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

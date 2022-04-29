@@ -29,7 +29,7 @@
 #include "replica/Application.h"
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class QservWorkerPingApp represents a command-line tool for testing a communication
@@ -79,6 +79,6 @@ private:
     bool _verbose = false;  ///< For reporting a progress of the testing.
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif /* LSST_QSERV_REPLICA_QSERVWORKERPINGAPP_H */

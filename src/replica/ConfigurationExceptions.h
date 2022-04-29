@@ -31,7 +31,7 @@
 #include <string>
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 /**
  * The class ConfigError is the base class representing exceptions thrown by
  * the Configuration service.
@@ -62,6 +62,6 @@ class ConfigTypeMismatch : public ConfigError {
 public:
     using ConfigError::ConfigError;
 };
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_REPLICA_CONFIGURATIONEXCEPTIONS_H

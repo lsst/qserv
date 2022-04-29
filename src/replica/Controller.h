@@ -41,7 +41,7 @@
 #include "util/Mutex.h"
 
 // Forward declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 class ReplicationRequest;
 class DeleteRequest;
@@ -151,10 +151,10 @@ using ServiceStatusRequest = ServiceManagementRequest<ServiceStatusRequestPolicy
 using ServiceRequestsRequest = ServiceManagementRequest<ServiceRequestsRequestPolicy>;
 using ServiceDrainRequest = ServiceManagementRequest<ServiceDrainRequestPolicy>;
 using ServiceReconfigRequest = ServiceManagementRequest<ServiceReconfigRequestPolicy>;
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class ControllerIdentity encapsulates various attributes which identify
@@ -606,6 +606,6 @@ private:
     std::map<std::string, std::shared_ptr<RequestWrapper>> _registry;
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_REPLICA_CONTROLLER_H

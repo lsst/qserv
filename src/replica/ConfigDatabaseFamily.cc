@@ -32,7 +32,7 @@
 using namespace std;
 using json = nlohmann::json;
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 DatabaseFamilyInfo::DatabaseFamilyInfo(json const& obj) {
     string const context = "DatabaseFamilyInfo::DatabaseFamilyInfo(json): ";
@@ -68,4 +68,4 @@ ostream& operator<<(ostream& os, DatabaseFamilyInfo const& info) {
     return os;
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

@@ -36,12 +36,12 @@
 #include "replica/protocol.pb.h"
 
 // Forward declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 class Messenger;
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Abstract class SqlRequest is a base class for a family of the Controller-side
@@ -142,6 +142,6 @@ private:
     SqlResultSet _responseData;
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_REPLICA_SQLREQUEST_H

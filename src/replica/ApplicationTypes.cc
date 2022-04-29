@@ -29,7 +29,7 @@
 
 using namespace std;
 
-namespace lsst { namespace qserv { namespace replica { namespace detail {
+namespace lsst::qserv::replica::detail {
 
 ParserError::ParserError(util::Issue::Context const& ctx, string const& message)
         : util::Issue(ctx, string(__func__) + ": " + message) {}
@@ -452,4 +452,4 @@ string Parser::serializeArguments() const {
     return os.str();
 }
 
-}}}}  // namespace lsst::qserv::replica::detail
+}  // namespace lsst::qserv::replica::detail

@@ -31,7 +31,7 @@
 using namespace std;
 using json = nlohmann::json;
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 void IngestHttpSvcMod::process(ServiceProvider::Ptr const& serviceProvider,
                                IngestRequestMgr::Ptr const& ingestRequestMgr, string const& workerName,
@@ -169,4 +169,4 @@ IngestRequest::Ptr IngestHttpSvcMod::_createRequst(bool async) const {
     return request;
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

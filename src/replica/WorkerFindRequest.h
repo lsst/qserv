@@ -29,12 +29,12 @@
 #include "replica/WorkerRequest.h"
 
 // Forward declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 class MultiFileCsComputeEngine;
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class WorkerFindRequest represents a context and a state of replica lookup
@@ -144,6 +144,6 @@ private:
  */
 typedef WorkerFindRequestPOSIX WorkerFindRequestFS;
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_REPLICA_WORKERFINDREQUEST_H

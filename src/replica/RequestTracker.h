@@ -33,7 +33,7 @@
 #include "replica/Request.h"
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class RequestTrackerBase is a base class implements a type-independent
@@ -232,6 +232,6 @@ protected:
     virtual void resetImpl() override;
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_REPLICA_REQUESTTRACKER_H

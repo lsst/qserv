@@ -25,7 +25,7 @@
 using namespace std;
 using json = nlohmann::json;
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 map<string, set<string>> ConfigTestData::parameters() {
     return map<string, set<string>>(
@@ -295,4 +295,4 @@ json ConfigTestData::data() {
     return obj;
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

@@ -33,12 +33,12 @@
 #include "replica/HttpModule.h"
 
 // Forward declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 class TransactionInfo;
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class HttpIngestTransModule provides a support for managing "super-transactions"
@@ -137,6 +137,6 @@ private:
     NamedMutexRegistry& _transactionMutexRegistry;
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_HTTPINGESTTRANSMODULE_H

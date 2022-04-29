@@ -48,7 +48,7 @@ bool const enableServiceProvider = true;
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 MoveApp::Ptr MoveApp::create(int argc, char* argv[]) { return Ptr(new MoveApp(argc, argv)); }
 
@@ -95,4 +95,4 @@ int MoveApp::runImpl() {
     return 0;
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

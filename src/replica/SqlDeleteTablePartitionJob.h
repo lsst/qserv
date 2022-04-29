@@ -34,7 +34,7 @@
 #include "replica/SqlJob.h"
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class SqlDeleteTablePartitionJob represents a tool that will broadcast
@@ -123,6 +123,6 @@ private:
     std::set<std::string> _workers;
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_REPLICA_SQLDELETETABLEPARTITIONJOB_H

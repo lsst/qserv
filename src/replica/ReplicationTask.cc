@@ -31,7 +31,7 @@
 
 using namespace std;
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 ReplicationTask::Ptr ReplicationTask::create(Controller::Ptr const& controller,
                                              Task::AbnormalTerminationCallbackType const& onTerminated,
@@ -79,4 +79,4 @@ ReplicationTask::ReplicationTask(Controller::Ptr const& controller,
           _numReplicas(numReplicas),
           _purge(purge) {}
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

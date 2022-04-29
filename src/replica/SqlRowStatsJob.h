@@ -35,7 +35,7 @@
 #include "replica/SqlJob.h"
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class SqlRowStatsJob represents a tool which will broadcast batches of
@@ -166,6 +166,6 @@ private:
     std::set<std::string> _workers;
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_REPLICA_SQLROWSTATSJOB_H

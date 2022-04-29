@@ -54,7 +54,7 @@ bool const enableServiceProvider = true;
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 IndexApp::Ptr IndexApp::create(int argc, char* argv[]) { return Ptr(new IndexApp(argc, argv)); }
 
@@ -147,4 +147,4 @@ int IndexApp::runImpl() {
     return 0;
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

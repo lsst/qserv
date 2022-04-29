@@ -30,7 +30,7 @@
 #include "nlohmann/json.hpp"
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class WorkerInfo encapsulates various parameters describing a worker.
@@ -139,6 +139,6 @@ public:
 
 std::ostream& operator<<(std::ostream& os, WorkerInfo const& info);
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_REPLICA_CONFIGWORKER_H

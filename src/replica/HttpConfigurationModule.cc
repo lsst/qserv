@@ -57,7 +57,7 @@ json meta4general(Configuration::Ptr const& config) {
 }
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 void HttpConfigurationModule::process(Controller::Ptr const& controller, string const& taskName,
                                       HttpProcessorConfig const& processorConfig,
@@ -268,4 +268,4 @@ json HttpConfigurationModule::_addTable() {
     return result;
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

@@ -36,16 +36,16 @@
 #include "util/Mutex.h"
 
 // Forward declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 class Configuration;
 class DatabaseServices;
 class Messenger;
 class QservMgtServices;
 class Registry;
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class ServiceProvider hosts various services used by both workers
@@ -216,6 +216,6 @@ private:
     mutable util::Mutex _mtx;
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_REPLICA_SERVICEPROVIDER_H

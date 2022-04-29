@@ -25,7 +25,7 @@
 #include "replica/Application.h"
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class SyncApp implements a tool which synchronizes
@@ -67,6 +67,6 @@ private:
     bool _force = false;
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif /* LSST_QSERV_REPLICA_SYNCAPP_H */

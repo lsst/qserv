@@ -38,7 +38,7 @@ namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.HttpModuleBase");
 }
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 HttpModuleBase::HttpModuleBase(string const& authKey, string const& adminAuthKey,
                                qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp)
@@ -110,4 +110,4 @@ void HttpModuleBase::_enforceAuthorization() {
                     " in the request. Please, provide one.");
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

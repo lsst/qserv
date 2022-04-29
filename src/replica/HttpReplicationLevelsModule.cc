@@ -39,7 +39,7 @@
 using namespace std;
 using json = nlohmann::json;
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 // Initialize static members
 
@@ -266,4 +266,4 @@ json HttpReplicationLevelsModule::executeImpl(string const& subModuleName) {
     return _replicationLevelReport;
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

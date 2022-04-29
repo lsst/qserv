@@ -35,7 +35,7 @@
 #include "replica/ConfigurationSchema.h"
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * The class for parsing and loading a configuration from the JSON object.
@@ -92,6 +92,6 @@ private:
     std::map<std::string, DatabaseInfo>& _databases;
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_REPLICA_CONFIGPARSERJSON_H

@@ -38,7 +38,7 @@
 using namespace std;
 using json = nlohmann::json;
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 // Initialize static members
 
@@ -208,4 +208,4 @@ json HttpCatalogsModule::_databaseStats(string const& database) const {
     return result;
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

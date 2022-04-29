@@ -38,7 +38,7 @@ namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.Messenger");
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 Messenger::Ptr Messenger::create(ServiceProvider::Ptr const& serviceProvider,
                                  boost::asio::io_service& io_service) {
@@ -86,4 +86,4 @@ MessengerConnector::Ptr const& Messenger::_connector(string const& worker) {
 
 string Messenger::_context(string const& worker) { return "MESSENGER [worker=" + worker + "]  "; }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

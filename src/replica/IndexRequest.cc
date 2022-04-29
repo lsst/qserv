@@ -50,7 +50,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.IndexRequest");
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 void IndexInfo::print(string const& fileName) const {
     if (fileName.empty()) {
@@ -276,4 +276,4 @@ list<pair<string, string>> IndexRequest::extendedPersistentState() const {
     return result;
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

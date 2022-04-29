@@ -50,7 +50,7 @@ bool const enableServiceProvider = true;
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 AbortTransactionApp::Ptr AbortTransactionApp::create(int argc, char* argv[]) {
     return Ptr(new AbortTransactionApp(argc, argv));
@@ -139,4 +139,4 @@ int AbortTransactionApp::runImpl() {
     return job->extendedState() == Job::SUCCESS ? 0 : 1;
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

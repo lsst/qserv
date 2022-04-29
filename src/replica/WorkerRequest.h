@@ -39,7 +39,7 @@
 #include "util/Mutex.h"
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Structure WorkerRequestCancelled represent an exception thrown when
@@ -355,6 +355,6 @@ struct WorkerRequestCompare {
     }
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_REPLICA_WORKERREQUEST_H

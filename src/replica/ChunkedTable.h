@@ -26,7 +26,7 @@
 #include <string>
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class ChunkedTable represents a utility for parsing and building
@@ -93,6 +93,6 @@ private:
     std::string _name;
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_REPLICA_CHUNKEDTABLE_H

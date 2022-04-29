@@ -26,12 +26,12 @@
 #include "replica/Common.h"
 
 // Forward declaratons
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 class TableRowStats;
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class DatabaseTestApp implements a tool for testing the DatabaseServices API
@@ -98,6 +98,6 @@ private:
     bool _verticalSeparator = false;
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif /* LSST_QSERV_REPLICA_DATABASETESTAPP_H */

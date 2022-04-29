@@ -122,7 +122,7 @@ string rowCountersTable(string const& database, string const& table) {
 }
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 string const HttpIngestModule::_partitionByColumn = "qserv_trans_id";
 string const HttpIngestModule::_partitionByColumnType = "INT NOT NULL";
@@ -1410,4 +1410,4 @@ void HttpIngestModule::_qservSync(DatabaseInfo const& databaseInfo, bool allWork
     }
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

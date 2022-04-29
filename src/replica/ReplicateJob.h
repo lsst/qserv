@@ -34,7 +34,7 @@
 #include "replica/ReplicaInfo.h"
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * The structure ReplicateJobResult represents a combined result received
@@ -218,6 +218,6 @@ protected:
     ReplicateJobResult _replicaData;
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_REPLICA_REPLICATEJOB_H

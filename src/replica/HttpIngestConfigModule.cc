@@ -34,7 +34,7 @@
 using namespace std;
 using json = nlohmann::json;
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 void HttpIngestConfigModule::process(Controller::Ptr const& controller, string const& taskName,
                                      HttpProcessorConfig const& processorConfig,
@@ -160,4 +160,4 @@ json HttpIngestConfigModule::_update() {
     return json::object();
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

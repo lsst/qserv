@@ -30,7 +30,7 @@
 #include "replica/WorkerRequest.h"
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class WorkerFindAllRequest represents a context and a state of replicas lookup
@@ -133,6 +133,6 @@ private:
  */
 typedef WorkerFindAllRequestPOSIX WorkerFindAllRequestFS;
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_REPLICA_WORKERFINDALLREQUEST_H

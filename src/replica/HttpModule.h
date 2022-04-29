@@ -34,17 +34,17 @@
 #include "replica/HttpProcessorConfig.h"
 
 // Forward declarations
-namespace lsst { namespace qserv {
+namespace lsst::qserv {
 namespace css {
 class CssAccess;
 }
-namespace replica { namespace database { namespace mysql {
+namespace replica::database::mysql {
 class Connection;
-}}}  // namespace replica::database::mysql
-}}   // namespace lsst::qserv
+}  // namespace replica::database::mysql
+}   // namespace lsst::qserv
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class HttpModule is a base class for requests processing modules
@@ -132,6 +132,6 @@ private:
     HttpProcessorConfig const _processorConfig;
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_HTTPMODULE_H

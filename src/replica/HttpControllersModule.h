@@ -32,7 +32,7 @@
 #include "replica/HttpModule.h"
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class HttpControllersModule implements a handler for the worker
@@ -75,6 +75,6 @@ private:
     nlohmann::json _eventLogDict();
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_HTTPCONTROLLESRMODULE_H

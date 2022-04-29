@@ -30,7 +30,7 @@
 #include "replica/WorkerRequest.h"
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class WorkerEchoRequest implements test requests within the worker servers.
@@ -104,6 +104,6 @@ typedef WorkerEchoRequest WorkerEchoRequestFS;
 /// Class WorkerEchoRequest provides an actual implementation
 typedef WorkerEchoRequest WorkerEchoRequestPOSIX;
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_REPLICA_WORKERECHOREQUEST_H

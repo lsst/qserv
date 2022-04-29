@@ -26,7 +26,7 @@
 #include <unordered_map>
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class HttpRequestQuery implements a parser for parameters passed into
@@ -82,6 +82,6 @@ private:
     std::unordered_map<std::string, std::string> _query;
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_HTTPREQUESTQUERY_H

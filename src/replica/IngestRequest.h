@@ -37,12 +37,12 @@
 #include "util/Mutex.h"
 
 // Forward declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 class HttpClientConfig;
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class IngestRequestInterrupted respresents exceptions thrown by the request
@@ -189,6 +189,6 @@ private:
     std::atomic<bool> _cancelled{false};  ///< Set by calling the public method cancel()
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_REPLICA_INGESTREQUEST_H

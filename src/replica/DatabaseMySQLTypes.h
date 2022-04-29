@@ -31,7 +31,7 @@
 #include "replica/FileUtils.h"
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica { namespace database { namespace mysql {
+namespace lsst::qserv::replica::database::mysql {
 /**
  * Class ConnectionParams encapsulates connection parameters to
  * a MySQL server. If constructed using the default constructor
@@ -181,6 +181,6 @@ public:
     std::string message;
 };
 
-}}}}}  // namespace lsst::qserv::replica::database::mysql
+}  // namespace lsst::qserv::replica::database::mysql
 
 #endif  // LSST_QSERV_REPLICA_DATABASEMYSQLTYPES_H

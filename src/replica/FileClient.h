@@ -43,12 +43,12 @@
 #include "replica/ServiceProvider.h"
 
 // Forward declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 class ProtocolBuffer;
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class FileClientError represents exceptions thrown by FileClient on errors
@@ -207,6 +207,6 @@ private:
     bool _eof;
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_REPLICA_FILECLIENT_H

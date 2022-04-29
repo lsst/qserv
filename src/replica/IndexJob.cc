@@ -52,7 +52,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.IndexJob");
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 json IndexJobResult::toJson() const {
     json result;
@@ -525,4 +525,4 @@ void IndexJob::_rollbackTransaction(string const& func) {
     }
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

@@ -40,7 +40,7 @@ bool const enableServiceProvider = true;
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 RegistryHttpApp::Ptr RegistryHttpApp::create(int argc, char* argv[]) {
     return Ptr(new RegistryHttpApp(argc, argv));
@@ -56,4 +56,4 @@ int RegistryHttpApp::runImpl() {
     return 0;
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

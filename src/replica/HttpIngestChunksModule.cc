@@ -121,7 +121,7 @@ string leastLoadedWorker(map<string, size_t>& worker2replicasCache,
 }
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 util::Mutex HttpIngestChunksModule::_ingestManagementMtx;
 
@@ -479,4 +479,4 @@ void HttpIngestChunksModule::_registerNewChunk(string const& worker, string cons
     controller()->serviceProvider()->databaseServices()->saveReplicaInfo(newReplica);
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

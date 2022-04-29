@@ -32,7 +32,7 @@
 #include "replica/SetReplicasQservMgtRequest.h"
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * The structure QservSyncJobResult represents a combined result received
@@ -195,6 +195,6 @@ private:
     QservSyncJobResult _replicaData;
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_REPLICA_QSERVSYNCJOB_H

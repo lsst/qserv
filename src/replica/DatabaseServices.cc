@@ -44,7 +44,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.DatabaseServices");
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 json ControllerEvent::toJson() const {
     json event;
@@ -368,4 +368,4 @@ TransactionContribInfo DatabaseServices::loadedTransactionContrib(
     return updateTransactionContrib(info);
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

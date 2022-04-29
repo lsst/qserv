@@ -38,7 +38,7 @@
 #include "replica/HttpRequestQuery.h"
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /// The enumeration type which is used for configuring/enforcing
 /// module's authorization requirements.
@@ -199,6 +199,6 @@ private:
     HttpRequestBody _body;
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_HTTPMODULEBASE_H

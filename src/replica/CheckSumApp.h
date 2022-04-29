@@ -29,7 +29,7 @@
 #include "replica/Application.h"
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class CheckSumApp implements calculates and prints a checksum of a file.
@@ -74,6 +74,6 @@ private:
     bool _incremental;
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif /* LSST_QSERV_REPLICA_CHECKSUMAPP_H */

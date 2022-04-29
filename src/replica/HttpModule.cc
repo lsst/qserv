@@ -44,7 +44,7 @@ namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.HttpModule");
 }
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 HttpModule::HttpModule(Controller::Ptr const& controller, string const& taskName,
                        HttpProcessorConfig const& processorConfig, qhttp::Request::Ptr const& req,
@@ -127,4 +127,4 @@ DatabaseInfo HttpModule::getDatabaseInfo(string const& func, bool throwIfPublish
     return databaseInfo;
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

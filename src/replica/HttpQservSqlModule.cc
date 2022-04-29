@@ -32,7 +32,7 @@
 using namespace std;
 using json = nlohmann::json;
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 void HttpQservSqlModule::process(Controller::Ptr const& controller, string const& taskName,
                                  HttpProcessorConfig const& processorConfig, qhttp::Request::Ptr const& req,
@@ -79,4 +79,4 @@ json HttpQservSqlModule::_execute() {
     return result;
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

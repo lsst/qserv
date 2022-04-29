@@ -32,7 +32,7 @@
 #include "replica/HttpModule.h"
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class HttpConfigurationModule implements a handler for reporting
@@ -146,6 +146,6 @@ private:
     nlohmann::json _addTable();
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_HTTPCONFIGURATIONMODULE_H

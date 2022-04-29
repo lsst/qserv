@@ -30,12 +30,12 @@
 #include "replica/ServiceProvider.h"
 
 // Forward declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 class RegistryWorkers;
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class RegistryHttpSvc is used for handling incoming REST API requests to
@@ -80,6 +80,6 @@ private:
     std::unique_ptr<RegistryWorkers> _workers;
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_REPLICA_REGISTRYHTTPSVC_H

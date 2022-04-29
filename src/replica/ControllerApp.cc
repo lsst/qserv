@@ -125,7 +125,7 @@ private:
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 ControllerApp::Ptr ControllerApp::create(int argc, char* argv[]) {
     return Ptr(new ControllerApp(argc, argv));
@@ -753,4 +753,4 @@ Request::Ptr ControllerApp::_launchStopRequest(Controller::Ptr const& controller
     throw logic_error("ControllerApp::" + string(__func__) + "  unsupported request: " + _affectedRequest);
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

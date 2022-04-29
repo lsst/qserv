@@ -48,7 +48,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.StopRequest");
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 StopRequestBase::StopRequestBase(ServiceProvider::Ptr const& serviceProvider,
                                  boost::asio::io_service& io_service, char const* requestTypeName,
@@ -178,4 +178,4 @@ list<pair<string, string>> StopRequestBase::extendedPersistentState() const {
     return result;
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

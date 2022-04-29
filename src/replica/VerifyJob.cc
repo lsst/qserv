@@ -42,7 +42,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.VerifyJob");
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 ///////////////////////////////////////////////////
 ///                ReplicaDiff                  ///
@@ -351,4 +351,4 @@ void VerifyJob::_nextReplicas(util::Lock const& lock, vector<ReplicaInfo>& repli
     controller()->serviceProvider()->databaseServices()->findOldestReplicas(replicas, numReplicas);
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

@@ -43,17 +43,17 @@
 #include "util/Mutex.h"
 
 // Forward declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 class Configuration;
 class ControllerIdentity;
 class NamedMutexRegistry;
 class QservMgtRequest;
 class Performance;
 class Request;
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class DatabaseServicesError is an exception class for reporting errors
@@ -1260,6 +1260,6 @@ protected:
     }
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_REPLICA_DATABASESERVICES_H

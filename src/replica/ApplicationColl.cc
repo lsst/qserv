@@ -28,7 +28,7 @@
 
 using namespace std;
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 int ApplicationColl::run(int argc, char* argv[]) const {
     if (argc < 2) {
@@ -68,4 +68,4 @@ void ApplicationColl::_printUsage(string const& err) const {
     cerr << usage << endl;
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

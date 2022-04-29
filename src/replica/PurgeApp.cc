@@ -49,7 +49,7 @@ bool const enableServiceProvider = true;
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 PurgeApp::Ptr PurgeApp::create(int argc, char* argv[]) { return Ptr(new PurgeApp(argc, argv)); }
 
@@ -84,4 +84,4 @@ int PurgeApp::runImpl() {
     return job->extendedState() == Job::SUCCESS ? 0 : 1;
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

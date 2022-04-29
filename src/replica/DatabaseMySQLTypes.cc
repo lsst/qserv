@@ -42,7 +42,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.DatabaseMySQL");
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica { namespace database { namespace mysql {
+namespace lsst::qserv::replica::database::mysql {
 
 /////////////////////////////////////////////////////
 //                ConnectionParams                 //
@@ -138,4 +138,4 @@ Function const Function::LAST_INSERT_ID{"LAST_INSERT_ID()"};
 
 Function::Function(string const& name_) : DoNotProcess(name_) {}
 
-}}}}}  // namespace lsst::qserv::replica::database::mysql
+}  // namespace lsst::qserv::replica::database::mysql

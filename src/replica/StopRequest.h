@@ -51,12 +51,12 @@
 #include "replica/StopRequestBase.h"
 
 // Forward declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 class IndexInfo;
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 // ========================================================================
 //   Customizations for specific request types require dedicated policies
@@ -352,6 +352,6 @@ typedef StopRequest<StopSqlRequestPolicy> StopSqlDeleteTableRequest;
 typedef StopRequest<StopSqlRequestPolicy> StopSqlRemoveTablePartitionsRequest;
 typedef StopRequest<StopSqlRequestPolicy> StopSqlDeleteTablePartitionRequest;
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_REPLICA_STOPREQUEST_H

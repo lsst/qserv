@@ -25,7 +25,7 @@
 #include "replica/Application.h"
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class MoveApp implements a tool which runs the rebalancing algorithm
@@ -79,6 +79,6 @@ private:
     size_t _pageSize = 20;
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif /* LSST_QSERV_REPLICA_MOVEAPP_H */

@@ -87,7 +87,7 @@ void printPlan(RebalanceJobResult const& r) {
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 RebalanceApp::Ptr RebalanceApp::create(int argc, char* argv[]) { return Ptr(new RebalanceApp(argc, argv)); }
 
@@ -128,4 +128,4 @@ int RebalanceApp::runImpl() {
     return 0;
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

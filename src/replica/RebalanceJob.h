@@ -34,7 +34,7 @@
 #include "replica/MoveReplicaJob.h"
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * The structure RebalanceJobResult represents a combined result received
@@ -275,6 +275,6 @@ private:
     RebalanceJobResult _replicaData;
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_REPLICA_REBALANCEJOB_H

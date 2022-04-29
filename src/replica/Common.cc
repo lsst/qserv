@@ -38,7 +38,7 @@
 using namespace std;
 using namespace nlohmann;
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 string status2string(ProtocolStatusExt status) { return ProtocolStatusExt_Name(status); }
 
@@ -370,4 +370,4 @@ vector<string> strsplit(string const& str, char delimiter) {
     return words;
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

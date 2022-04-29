@@ -58,7 +58,7 @@ namespace {
 string const taskName = "HTTP-PROCESSOR";
 }
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 HttpProcessor::Ptr HttpProcessor::create(Controller::Ptr const& controller,
                                          HttpProcessorConfig const& processorConfig,
@@ -429,4 +429,4 @@ void HttpProcessor::registerServices() {
     }
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

@@ -36,7 +36,7 @@
 #include "replica/ServiceProvider.h"
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class ExportServerConnection is used in the server-side implementation of
@@ -207,6 +207,6 @@ private:
     size_t _totalNumRowsSent = 0;  ///< The number of rows sent so far
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_REPLICA_EXPORTSERVERCONNECTION_H

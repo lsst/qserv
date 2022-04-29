@@ -31,7 +31,7 @@
 
 using namespace std;
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 DeleteWorkerTask::Ptr DeleteWorkerTask::create(Controller::Ptr const& controller,
                                                Task::AbnormalTerminationCallbackType const& onTerminated,
@@ -88,4 +88,4 @@ void DeleteWorkerTask::_logFinishedEvent(DeleteWorkerJob::Ptr const& job) const 
     logEvent(event);
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

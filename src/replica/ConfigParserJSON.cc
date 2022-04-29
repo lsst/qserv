@@ -31,7 +31,7 @@
 using namespace std;
 using json = nlohmann::json;
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 ConfigParserJSON::ConfigParserJSON(json& data, map<string, WorkerInfo>& workers,
                                    map<string, DatabaseFamilyInfo>& databaseFamilies,
@@ -149,4 +149,4 @@ void ConfigParserJSON::parse(json const& obj) {
     }
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

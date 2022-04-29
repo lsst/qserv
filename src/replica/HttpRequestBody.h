@@ -33,7 +33,7 @@
 #include "qhttp/Server.h"
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Helper class HttpRequestBody parses a body of an HTTP request
@@ -211,6 +211,6 @@ private:
     }
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_HTTPREQUESTBODY_H

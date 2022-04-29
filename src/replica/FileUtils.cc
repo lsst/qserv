@@ -81,7 +81,7 @@ size_t const maxFileNameLength = 255;
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 ///////////////////////////
 //    class FileUtils    //
@@ -402,4 +402,4 @@ bool MultiFileCsComputeEngine::execute() {
     return false;
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

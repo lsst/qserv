@@ -29,7 +29,7 @@
 #include "replica/Common.h"
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class SqlApp implements a tool which executes the same SQL
@@ -101,6 +101,6 @@ private:
                                                   ///  state of the row counters.
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif /* LSST_QSERV_REPLICA_SQLAPP_H */

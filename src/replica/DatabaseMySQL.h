@@ -61,12 +61,12 @@
 #include "util/Mutex.h"
 
 // Forward declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 class ProtocolResponseSqlField;
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica { namespace database { namespace mysql {
+namespace lsst::qserv::replica::database::mysql {
 
 /**
  * Class Connection provides the main API to the database.
@@ -1112,6 +1112,6 @@ private:
     ConnectionPool::Ptr _pool;
 };
 
-}}}}}  // namespace lsst::qserv::replica::database::mysql
+}  // namespace lsst::qserv::replica::database::mysql
 
 #endif  // LSST_QSERV_REPLICA_DATABASEMYSQL_H

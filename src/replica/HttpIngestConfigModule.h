@@ -33,7 +33,7 @@
 #include "replica/HttpModule.h"
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class HttpIngestConfigModule provides a support for configuring catalog
@@ -77,6 +77,6 @@ private:
     nlohmann::json _update();
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_HTTPINGESTCONFIGMODULE_H

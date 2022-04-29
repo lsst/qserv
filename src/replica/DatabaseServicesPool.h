@@ -38,7 +38,7 @@
 #include "replica/DatabaseServices.h"
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class DatabaseServicesPool is a pool of service objects.
@@ -248,6 +248,6 @@ private:
     std::condition_variable _available;
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_REPLICA_DATABASESERVICESPOOL_H

@@ -56,7 +56,7 @@ void incrementBy(json& obj, string const& key, T const val) {
 }
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 void HttpIngestTransModule::process(Controller::Ptr const& controller,
                                     NamedMutexRegistry& transactionMutexRegistry, string const& taskName,
@@ -602,4 +602,4 @@ json HttpIngestTransModule::_getTransactionContributions(TransactionInfo const& 
     return resultJson;
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

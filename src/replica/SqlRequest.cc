@@ -50,7 +50,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.SqlRequest");
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 void SqlRequest::extendedPrinter(Ptr const& ptr) {
     Request::defaultPrinter(ptr);
@@ -255,4 +255,4 @@ void SqlRequest::savePersistentState(util::Lock const& lock) {
     controller()->serviceProvider()->databaseServices()->saveState(*this, performance(lock));
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

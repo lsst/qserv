@@ -42,7 +42,7 @@ namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.Application");
 }
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 Application::Application(int argc, const char* const argv[], string const& description,
                          bool const injectDatabaseOptions, bool const boostProtobufVersionCheck,
@@ -223,4 +223,4 @@ void Application::_assertValidOption(string const& func, bool option, string con
     }
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

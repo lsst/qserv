@@ -46,7 +46,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.WorkerFindAllRequest");
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 ///////////////////////////////////////////////////////////////
 ///////////////////// WorkerFindAllRequest ////////////////////
@@ -206,4 +206,4 @@ bool WorkerFindAllRequestPOSIX::execute() {
     return true;
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

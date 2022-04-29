@@ -42,7 +42,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.PurgeJob");
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 string PurgeJob::typeName() { return "PurgeJob"; }
 
@@ -398,4 +398,4 @@ size_t PurgeJob::_launchNext(util::Lock const& lock, string const& targetWorker,
     }
     return numLaunched;
 }
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

@@ -29,7 +29,7 @@
 #include "replica/Application.h"
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class WorkerApp implements represents a worker service.
@@ -84,6 +84,6 @@ private:
     bool _doNotCreateMissingFolders = false;
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif /* LSST_QSERV_REPLICA_WORKERAPP_H */

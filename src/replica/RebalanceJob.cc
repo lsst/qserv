@@ -44,7 +44,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.RebalanceJob");
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 string RebalanceJob::typeName() { return "RebalanceJob"; }
 
@@ -617,4 +617,4 @@ size_t RebalanceJob::_launchNextJobs(util::Lock const& lock, size_t numJobs) {
     return numJobsLaunched;
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

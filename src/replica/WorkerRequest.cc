@@ -55,7 +55,7 @@ lsst::qserv::replica::SuccessRateGenerator successRateGenerator(0.9);
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 util::Mutex WorkerRequest::_mtxDataFolderOperations;
 
@@ -283,4 +283,4 @@ void WorkerRequest::_expired(boost::system::error_code const& ec) {
     _onExpired = nullptr;
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

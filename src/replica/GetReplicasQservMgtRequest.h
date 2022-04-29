@@ -33,7 +33,7 @@
 #include "wpublish/GetChunkListQservRequest.h"
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class GetReplicasQservMgtRequest implements a request retrieving a list of
@@ -124,6 +124,6 @@ private:
     QservReplicaCollection _replicas;
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_REPLICA_GET_REPLICAS_QSERVMGTREQUEST_H

@@ -31,7 +31,7 @@
 #include "replica/Application.h"
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class FileReadApp implements a tool which acts as a read-only client of
@@ -77,6 +77,6 @@ private:
     std::vector<uint8_t> _buf;  ///< The data buffer for receiving data records from a file server.
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif /* LSST_QSERV_REPLICA_FILEREADAPP_H */

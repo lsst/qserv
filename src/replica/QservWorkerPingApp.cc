@@ -50,7 +50,7 @@ bool const enableServiceProvider = true;
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 QservWorkerPingApp::Ptr QservWorkerPingApp::create(int argc, char* argv[]) {
     return Ptr(new QservWorkerPingApp(argc, argv));
@@ -141,4 +141,4 @@ int QservWorkerPingApp::runImpl() {
     return 0;
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

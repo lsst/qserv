@@ -31,7 +31,7 @@
 #include "replica/WorkerRequest.h"
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class WorkerDeleteRequest represents a context and a state of replica deletion
@@ -135,6 +135,6 @@ private:
  */
 typedef WorkerDeleteRequestPOSIX WorkerDeleteRequestFS;
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_REPLICA_WORKERDELETEREQUEST_H

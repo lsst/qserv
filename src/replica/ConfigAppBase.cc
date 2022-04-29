@@ -42,7 +42,7 @@ bool const enableServiceProvider = false;
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 ConfigAppBase::ConfigAppBase(int argc, char* argv[], string const& description)
         : Application(argc, argv, description, injectDatabaseOptions, boostProtobufVersionCheck,
@@ -222,4 +222,4 @@ void ConfigAppBase::dumpDatabasesAsTable(string const& indent, string const& cap
     cout << endl;
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

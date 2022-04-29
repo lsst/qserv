@@ -32,7 +32,7 @@
 #include "replica/HttpModule.h"
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class HttpRequestsModule implements a handler for pulling info on
@@ -72,6 +72,6 @@ private:
     nlohmann::json _oneRequest();
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_HTTPREQUESTSMODULE_H

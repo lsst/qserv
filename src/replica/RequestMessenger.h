@@ -34,7 +34,7 @@
 #include "replica/ServiceProvider.h"
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class RequestMessenger is a base class for a family of requests within
@@ -74,6 +74,6 @@ protected:
     Messenger::Ptr const _messenger;
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_REPLICA_REQUESTMESSENGER_H

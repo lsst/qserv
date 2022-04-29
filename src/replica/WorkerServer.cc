@@ -42,7 +42,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.WorkerServer");
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 WorkerServer::Ptr WorkerServer::create(ServiceProvider::Ptr const& serviceProvider,
                                        WorkerRequestFactory& requestFactory, string const& workerName) {
@@ -95,4 +95,4 @@ void WorkerServer::_handleAccept(WorkerServerConnection::Ptr const& connection,
     _beginAccept();
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

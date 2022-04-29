@@ -133,7 +133,7 @@ string workers2str(map<string, size_t> const& worker2idx, set<string> const& wor
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 ChunksApp::Ptr ChunksApp::create(int argc, char* argv[]) { return Ptr(new ChunksApp(argc, argv)); }
 
@@ -370,4 +370,4 @@ int ChunksApp::runImpl() {
     return 0;
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

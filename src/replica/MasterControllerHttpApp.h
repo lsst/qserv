@@ -33,7 +33,7 @@
 #include "replica/ReplicationTask.h"
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class MasterControllerHttpApp implements the Replication Controller which
@@ -158,6 +158,6 @@ private:
     DeleteWorkerTask::Ptr _deleteWorkerTask;
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif /* LSST_QSERV_MASTERCONTROLLERHTTPAPP_H */

@@ -25,7 +25,7 @@
 #include "replica/Task.h"
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class
@@ -100,6 +100,6 @@ private:
     bool _purge;
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_REPLICATIONTASK_H

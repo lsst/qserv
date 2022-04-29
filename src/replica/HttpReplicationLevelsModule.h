@@ -34,7 +34,7 @@
 #include "util/Mutex.h"
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class HttpReplicationLevelsModule implements a handler for the replication
@@ -81,6 +81,6 @@ private:
     static util::Mutex _replicationLevelMtx;
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_HTTPREPLICATIONLEVELSMODULE_H

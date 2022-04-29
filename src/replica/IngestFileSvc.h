@@ -31,7 +31,7 @@
 #include "replica/ServiceProvider.h"
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class IngestFileSvc is used in the server-side implementations of
@@ -114,6 +114,6 @@ private:
     size_t _totalNumRows = 0;  ///< The number of rows received and recorded
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_REPLICA_INGESTFILESVC_H

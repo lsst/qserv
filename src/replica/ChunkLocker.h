@@ -31,7 +31,7 @@
 #include "util/Mutex.h"
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Structure Chunk is an abstraction grouping together database families and
@@ -235,6 +235,6 @@ private:
     mutable util::Mutex _mtx;
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_REPLICA_CHUNKLOCKER_H

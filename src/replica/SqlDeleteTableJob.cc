@@ -40,7 +40,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.SqlDeleteTableJob");
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 string SqlDeleteTableJob::typeName() { return "SqlDeleteTableJob"; }
 
@@ -103,4 +103,4 @@ void SqlDeleteTableJob::notify(util::Lock const& lock) {
     notifyDefaultImpl<SqlDeleteTableJob>(lock, _onFinish);
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

@@ -45,7 +45,7 @@ bool const enableServiceProvider = true;
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 MySQLTestApp::Ptr MySQLTestApp::create(int argc, char* argv[]) { return Ptr(new MySQLTestApp(argc, argv)); }
 
@@ -260,4 +260,4 @@ string MySQLTestApp::_getQuery() const {
     return query;
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

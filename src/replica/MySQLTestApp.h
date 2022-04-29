@@ -30,7 +30,7 @@
 #include "replica/DatabaseMySQL.h"
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class MySQLTestApp implements a tool for testing the MySQL API used by
@@ -125,6 +125,6 @@ private:
     database::mysql::Connection::Ptr _conn;
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif /* LSST_QSERV_REPLICA_MYSQLTESTAPP_H */

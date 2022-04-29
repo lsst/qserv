@@ -42,7 +42,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.FileServer");
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 FileServer::Ptr FileServer::create(ServiceProvider::Ptr const& serviceProvider, string const& workerName) {
     return FileServer::Ptr(new FileServer(serviceProvider, workerName));
@@ -97,4 +97,4 @@ void FileServer::_handleAccept(FileServerConnection::Ptr const& connection,
     _beginAccept();
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

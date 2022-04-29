@@ -30,7 +30,7 @@
 #include "replica/Task.h"
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class DeleteWorkerTask represents a task which evicts a single worker
@@ -112,6 +112,6 @@ private:
     bool const _permanentDelete;
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_DELETEWORKERTASK_H

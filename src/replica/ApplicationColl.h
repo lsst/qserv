@@ -27,7 +27,7 @@
 #include <string>
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class ApplicationColl represents a collection of application launchers. It's meant
@@ -81,6 +81,6 @@ private:
     std::map<std::string, std::shared_ptr<AppLauncherBase>> _coll;
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_REPLICA_APPLICATIONCOLL_H

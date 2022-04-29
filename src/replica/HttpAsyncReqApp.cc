@@ -62,7 +62,7 @@ string vector2str(vector<std::string> const& v) {
 }
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 HttpAsyncReqApp::Ptr HttpAsyncReqApp::create(int argc, char* argv[]) {
     return Ptr(new HttpAsyncReqApp(argc, argv));
@@ -178,4 +178,4 @@ void HttpAsyncReqApp::_dump(shared_ptr<HttpAsyncReq> const& ptr, ostream* osPtr)
     }
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

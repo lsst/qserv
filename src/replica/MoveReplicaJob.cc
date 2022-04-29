@@ -39,7 +39,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.MoveReplicaJob");
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 string MoveReplicaJob::typeName() { return "MoveReplicaJob"; }
 
@@ -227,4 +227,4 @@ void MoveReplicaJob::_onDeleteJobFinish() {
     finish(lock, _deleteReplicaJob->extendedState());
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

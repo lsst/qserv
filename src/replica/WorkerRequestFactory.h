@@ -31,7 +31,7 @@
 #include "replica/WorkerRequest.h"
 
 // Forward declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 class ProtocolRequestIndex;
 class ProtocolRequestSql;
 class WorkerDeleteRequest;
@@ -41,13 +41,13 @@ class WorkerFindRequest;
 class WorkerIndexRequest;
 class WorkerSqlRequest;
 class WorkerReplicationRequest;
-namespace database { namespace mysql {
+namespace database::mysql {
 class ConnectionPool;
-}}   // namespace database::mysql
-}}}  // namespace lsst::qserv::replica
+}   // namespace database::mysql
+}  // namespace lsst::qserv::replica
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class WorkerRequestFactoryBase is an abstract base class for a family of
@@ -217,6 +217,6 @@ protected:
     WorkerRequestFactoryBase const* _ptr;
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_REPLICA_WORKERREQUESTFACTORY_H

@@ -35,7 +35,7 @@
 #include <vector>
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * The namespace providing core implementations for a family
@@ -595,6 +595,6 @@ size_t count(WorkerDatabaseChunkMap<T> const& d) {
 
 }  // namespace SemanticMaps
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_REPLICA_SEMANTICMAPS_H

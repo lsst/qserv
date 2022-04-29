@@ -49,7 +49,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.WorkerIndexRequest");
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 WorkerIndexRequest::Ptr WorkerIndexRequest::create(ServiceProvider::Ptr const& serviceProvider,
                                                    ConnectionPoolPtr const& connectionPool,
@@ -270,4 +270,4 @@ bool WorkerIndexRequest::_readFile() {
     return true;
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

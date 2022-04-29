@@ -39,7 +39,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.FileClient");
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 FileClient::Ptr FileClient::instance(ServiceProvider::Ptr const& serviceProvider, string const& workerHost,
                                      uint16_t workerPort, string const& databaseName, string const& fileName,
@@ -240,4 +240,4 @@ size_t FileClient::read(uint8_t* buf, size_t bufSize) {
     return num;
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

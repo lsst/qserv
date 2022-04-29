@@ -33,7 +33,7 @@
 #include "replica/HttpModule.h"
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class HttpIngestIndexModule manages the "secondary" indexes in Qserv.
@@ -71,6 +71,6 @@ private:
     nlohmann::json _buildSecondaryIndex();
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_HTTPINGESTINDEXMODULE_H

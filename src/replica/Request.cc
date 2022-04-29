@@ -49,7 +49,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.Request");
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 atomic<size_t> Request::_numClassInstances(0);
 
@@ -330,4 +330,4 @@ void Request::setState(util::Lock const& lock, State newState, ExtendedState new
     savePersistentState(lock);
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

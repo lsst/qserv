@@ -225,7 +225,7 @@ public:
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 ConfigTestApp::Ptr ConfigTestApp::create(int argc, char* argv[]) {
     return Ptr(new ConfigTestApp(argc, argv));
@@ -1029,4 +1029,4 @@ bool ConfigTestApp::_testTables() {
     return success;
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

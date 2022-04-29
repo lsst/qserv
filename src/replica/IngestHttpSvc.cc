@@ -43,7 +43,7 @@ string const context_ = "INGEST-HTTP-SVC  ";
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.IngestHttpSvc");
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 IngestHttpSvc::Ptr IngestHttpSvc::create(ServiceProvider::Ptr const& serviceProvider,
                                          string const& workerName) {
@@ -117,4 +117,4 @@ void IngestHttpSvc::registerServices() {
     }
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

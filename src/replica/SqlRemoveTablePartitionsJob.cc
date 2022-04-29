@@ -40,7 +40,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.SqlRemoveTablePartitionsJob");
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 string SqlRemoveTablePartitionsJob::typeName() { return "SqlRemoveTablePartitionsJob"; }
 
@@ -111,4 +111,4 @@ void SqlRemoveTablePartitionsJob::notify(util::Lock const& lock) {
     notifyDefaultImpl<SqlRemoveTablePartitionsJob>(lock, _onFinish);
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

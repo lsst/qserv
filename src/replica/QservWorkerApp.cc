@@ -48,7 +48,7 @@ bool const enableServiceProvider = true;
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 QservWorkerApp::Ptr QservWorkerApp::create(int argc, char* argv[]) {
     return Ptr(new QservWorkerApp(argc, argv));
@@ -199,4 +199,4 @@ void QservWorkerApp::_dump(QservReplicaCollection const& collection) const {
     table.print(cout, false, false, _pageSize, _pageSize != 0);
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

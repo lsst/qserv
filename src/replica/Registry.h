@@ -34,7 +34,7 @@
 #include "replica/ServiceProvider.h"
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class Registry is the client API for comunications with the worker registration
@@ -105,6 +105,6 @@ private:
     std::string _baseUrl;
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_REPLICA_REGISTRY_H

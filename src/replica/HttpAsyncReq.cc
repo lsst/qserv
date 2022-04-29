@@ -57,7 +57,7 @@ http::verb method2verb(string const& method) {
 }
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 string HttpAsyncReq::state2str(State state) {
     switch (state) {
@@ -380,4 +380,4 @@ void HttpAsyncReq::_logError(string const& prefix, boost::system::error_code con
                 << ec.message() << "]");
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

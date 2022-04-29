@@ -50,7 +50,7 @@ bool const enableServiceProvider = true;
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 MessengerTestApp::Ptr MessengerTestApp::create(int argc, char* argv[]) {
     return Ptr(new MessengerTestApp(argc, argv));
@@ -192,4 +192,4 @@ void MessengerTestApp::_reportEvents(unique_lock<mutex> const& lock) {
     }
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

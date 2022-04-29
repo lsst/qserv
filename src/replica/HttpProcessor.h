@@ -34,7 +34,7 @@
 #include "replica/NamedMutexRegistry.h"
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class HttpProcessor processes requests from the built-in HTTP server.
@@ -85,6 +85,6 @@ private:
     NamedMutexRegistry _transactionMutexRegistry;
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_HTTPPROCESSOR_H

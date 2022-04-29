@@ -83,7 +83,7 @@ bool const enableServiceProvider = true;
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 MasterControllerHttpApp::Ptr MasterControllerHttpApp::create(int argc, char* argv[]) {
     return Ptr(new MasterControllerHttpApp(argc, argv));
@@ -342,4 +342,4 @@ void MasterControllerHttpApp::_assertIsStarted(string const& func) const {
     }
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

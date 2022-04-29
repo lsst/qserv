@@ -33,7 +33,7 @@
 #include "replica/ServiceProvider.h"
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class HttpSvc is a base class for HTTP servers of various components of the system.
@@ -110,6 +110,6 @@ private:
     qhttp::Server::Ptr _httpServer;
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_REPLICA_HTTPSVC_H

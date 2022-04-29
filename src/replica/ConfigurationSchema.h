@@ -32,7 +32,7 @@
 #include "nlohmann/json.hpp"
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 namespace detail {
 
 template <typename T>
@@ -181,6 +181,6 @@ private:
     static nlohmann::json const _schemaJson;
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_REPLICA_CONFIGURATIONSCHEMA_H

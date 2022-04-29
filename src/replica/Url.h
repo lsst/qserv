@@ -26,7 +26,7 @@
 #include <string>
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class Url is a helper class for parsing and validating URLs.
@@ -110,6 +110,6 @@ private:
     std::string _target;      ///< the target part of the url
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_URL_H

@@ -48,7 +48,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.FindAllRequest");
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 FindAllRequest::Ptr FindAllRequest::create(ServiceProvider::Ptr const& serviceProvider,
                                            boost::asio::io_service& io_service, string const& worker,
@@ -241,4 +241,4 @@ list<pair<string, string>> FindAllRequest::extendedPersistentState() const {
     return result;
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

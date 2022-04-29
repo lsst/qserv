@@ -29,13 +29,13 @@
 #include "replica/WorkerRequest.h"
 
 // Forward declarations
-namespace lsst { namespace qserv { namespace replica { namespace database { namespace mysql {
+namespace lsst::qserv::replica::database::mysql {
 class Connection;
 class ConnectionPool;
-}}}}}  // namespace lsst::qserv::replica::database::mysql
+}  // namespace lsst::qserv::replica::database::mysql
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class WorkerIndexRequest queries a director table (the whole or just one MySQL
@@ -140,6 +140,6 @@ typedef WorkerIndexRequest WorkerIndexRequestFS;
 /// Class WorkerIndexRequest provides an actual implementation
 typedef WorkerIndexRequest WorkerIndexRequestPOSIX;
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_REPLICA_WORKERINDEXREQUEST_H

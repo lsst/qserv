@@ -58,7 +58,7 @@ void dumpRequestInfo(ostream& os, vector<ProtocolServiceResponseInfo> const& req
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 ///////////////////////////////////
 //         ServiceState          //
@@ -240,4 +240,4 @@ void ServiceManagementRequestBase::savePersistentState(util::Lock const& lock) {
     controller()->serviceProvider()->databaseServices()->saveState(*this, performance(lock));
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

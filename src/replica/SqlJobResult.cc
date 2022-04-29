@@ -31,7 +31,7 @@
 using namespace std;
 using namespace nlohmann;
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 void SqlJobResult::merge(SqlJobResult const& other) {
     for (auto&& otherWorkerItr : other.resultSets) {
@@ -126,4 +126,4 @@ util::ColumnTablePrinter SqlJobResult::summaryToColumnTable(string const& captio
     return table;
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

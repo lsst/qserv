@@ -42,7 +42,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.DisposeRequest");
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 DisposeRequestResult::DisposeRequestResult(ProtocolResponseDispose const& message) {
     for (int idx = 0; idx < message.ids_size(); ++idx) {
@@ -143,4 +143,4 @@ void DisposeRequest::notify(util::Lock const& lock) {
     notifyDefaultImpl<DisposeRequest>(lock, _onFinish);
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

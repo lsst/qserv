@@ -46,7 +46,7 @@ string ec2str(boost::system::error_code const& ec) {
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 string MessengerConnector::_state2string(MessengerConnector::State state) {
     switch (state) {
@@ -539,4 +539,4 @@ string MessengerConnector::_context() const {
     return "MESSENGER-CONNECTION [worker=" + _worker + ", state=" + _state2string(_state) + "]  ";
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

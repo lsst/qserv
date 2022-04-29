@@ -40,12 +40,12 @@
 #include "nlohmann/json.hpp"
 
 // Forward declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 class ProtocolReplicaInfo;
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class ReplicaInfo represents a status of a replica received from
@@ -364,6 +364,6 @@ bool diff(QservReplicaCollection const& one, QservReplicaCollection const& two,
 bool diff2(QservReplicaCollection const& one, QservReplicaCollection const& two,
            QservReplicaCollection& inFirstOnly, QservReplicaCollection& inSecondOnly);
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_REPLICA_REPLICAINFO_H

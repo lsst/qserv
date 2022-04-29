@@ -36,7 +36,7 @@
 #include "replica/DatabaseMySQL.h"
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * The class for parsing and loading the persistent configuration stored in MySQL.
@@ -133,6 +133,6 @@ private:
     database::mysql::Row _row;
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_REPLICA_CONFIGPARSERMYSQL_H

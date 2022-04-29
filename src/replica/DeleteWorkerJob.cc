@@ -46,7 +46,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.DeleteWorkerJob");
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 string DeleteWorkerJob::typeName() { return "DeleteWorkerJob"; }
 
@@ -320,4 +320,4 @@ void DeleteWorkerJob::notify(util::Lock const& lock) {
     notifyDefaultImpl<DeleteWorkerJob>(lock, _onFinish);
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

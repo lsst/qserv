@@ -47,7 +47,7 @@ size_t const defaultBufferCapacity = 1024;
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 IngestClient::Ptr IngestClient::connect(string const& workerHost, uint16_t workerPort,
                                         TransactionId transactionId, string const& tableName,
@@ -266,4 +266,4 @@ void IngestClient::_closeConnection() {
     _socket.close(ec);
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

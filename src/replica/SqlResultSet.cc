@@ -44,7 +44,7 @@ void addField(json& fieldsJson, char const* name, T const& value, char const* de
 }
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 string SqlResultSet::ResultSet::Field::type2string() const {
     switch (type) {
@@ -295,4 +295,4 @@ ostream& operator<<(ostream& os, SqlResultSet const& info) {
     return os;
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

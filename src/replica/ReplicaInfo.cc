@@ -74,7 +74,7 @@ void setInfoImpl(ReplicaInfo const& ri, ProtocolReplicaInfo* info) {
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 const size_t ReplicaInfo::FileInfo::_extSize = string(".MYD").size();
 const size_t ReplicaInfo::FileInfo::_overlapSize = string("FullOverlap").size();
@@ -444,4 +444,4 @@ bool diff2(QservReplicaCollection const& one, QservReplicaCollection const& two,
     return notEqual1 or notEqual2;
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

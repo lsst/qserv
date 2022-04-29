@@ -97,7 +97,7 @@ bool readMessage(boost::asio::ip::tcp::socket& socket, shared_ptr<ProtocolBuffer
 }
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 size_t IngestSvcConn::networkBufSizeBytes = 1024 * 1024;
 
@@ -336,4 +336,4 @@ void IngestSvcConn::_reply(ProtocolIngestResponse::Status status, string const& 
     _sendResponse();
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

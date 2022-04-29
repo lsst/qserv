@@ -96,7 +96,7 @@ private:
 };
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 IngestRequest::Ptr IngestRequest::create(ServiceProvider::Ptr const& serviceProvider,
                                          string const& workerName, TransactionId transactionId,
@@ -523,4 +523,4 @@ HttpClientConfig IngestRequest::_clientConfig() const {
     return clientConfig;
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

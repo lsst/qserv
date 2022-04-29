@@ -34,7 +34,7 @@
 #include "util/Mutex.h"
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class HttpIngestChunksModule provides a support for registering new chunks
@@ -110,6 +110,6 @@ private:
     static util::Mutex _ingestManagementMtx;  /// Synchronized access to the chunk management operations
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_HTTPINGESTCHUNKSMODULE_H

@@ -34,13 +34,13 @@
 #include "replica/ServiceProvider.h"
 
 // Forward declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 class IngestRequest;
 class TransactionContribInfo;
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Exceptions of this class are thrown when no requests matching the desired
@@ -191,6 +191,6 @@ private:
     std::map<unsigned int, std::shared_ptr<IngestRequest>> _output;
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_REPLICA_INGESTREQUESTMGR_H

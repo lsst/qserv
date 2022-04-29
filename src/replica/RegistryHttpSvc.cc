@@ -36,7 +36,7 @@ namespace {
 string const context_ = "REGISTRY-HTTP-SVC ";
 }
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 RegistryHttpSvc::Ptr RegistryHttpSvc::create(ServiceProvider::Ptr const& serviceProvider) {
     return RegistryHttpSvc::Ptr(new RegistryHttpSvc(serviceProvider));
@@ -74,4 +74,4 @@ void RegistryHttpSvc::registerServices() {
                                 }}});
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

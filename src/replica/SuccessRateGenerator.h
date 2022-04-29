@@ -28,7 +28,7 @@
 #include "util/Mutex.h"
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * The SuccessRateGenerator provides a facility for generating a sequence
@@ -85,6 +85,6 @@ private:
     mutable util::Mutex _generatorMtx;
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_REPLICA_SUCCESSRATEGENERATOR_H

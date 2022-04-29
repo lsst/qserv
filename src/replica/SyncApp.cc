@@ -51,7 +51,7 @@ bool const enableServiceProvider = true;
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 SyncApp::Ptr SyncApp::create(int argc, char* argv[]) { return Ptr(new SyncApp(argc, argv)); }
 
@@ -102,4 +102,4 @@ int SyncApp::runImpl() {
     return 0;
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

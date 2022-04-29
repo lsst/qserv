@@ -36,7 +36,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.SqlDisableDbRequest");
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 SqlDisableDbRequest::Ptr SqlDisableDbRequest::create(ServiceProvider::Ptr const& serviceProvider,
                                                      boost::asio::io_service& io_service,
@@ -68,4 +68,4 @@ void SqlDisableDbRequest::notify(util::Lock const& lock) {
     notifyDefaultImpl<SqlDisableDbRequest>(lock, _onFinish);
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

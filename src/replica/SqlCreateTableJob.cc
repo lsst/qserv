@@ -43,7 +43,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.SqlCreateTableJob");
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 string SqlCreateTableJob::typeName() { return "SqlCreateTableJob"; }
 
@@ -107,4 +107,4 @@ void SqlCreateTableJob::notify(util::Lock const& lock) {
     notifyDefaultImpl<SqlCreateTableJob>(lock, _onFinish);
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

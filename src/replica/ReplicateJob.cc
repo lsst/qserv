@@ -44,7 +44,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.ReplicateJob");
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 string ReplicateJob::typeName() { return "ReplicateJob"; }
 
@@ -534,4 +534,4 @@ size_t ReplicateJob::_launchNextJobs(util::Lock const& lock, size_t numJobs) {
     return numJobsLaunched;
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

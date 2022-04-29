@@ -25,7 +25,7 @@
 #include <string>
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class HttpProcessorConfig captures a configuration of the HTTP service
@@ -68,6 +68,6 @@ public:
     std::string httpRoot;
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_HTTPPROCESSORCONFIG_H

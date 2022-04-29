@@ -128,7 +128,7 @@ void tracker(weak_ptr<Controller> const& controller, string const& context) {
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 ostream& operator<<(ostream& os, ControllerIdentity const& identity) {
     os << "ControllerIdentity(id=" << identity.id << ",host=" << identity.host << ",pid=" << identity.pid
@@ -491,4 +491,4 @@ void Controller::_logManagementRequest(string const& requestName, string const& 
          _context(__func__) << "  workerName: " << workerName << "  requestName: " << requestName);
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

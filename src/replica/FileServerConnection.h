@@ -42,7 +42,7 @@
 #include "replica/ServiceProvider.h"
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class FileServerConnection is used for handling file read requests from
@@ -193,6 +193,6 @@ private:
     uint8_t* _fileBuf;
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_REPLICA_FILESERVERCONNECTION_H

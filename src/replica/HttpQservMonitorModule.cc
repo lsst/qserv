@@ -112,7 +112,7 @@ void extractQInfo(database::mysql::Connection::Ptr const& conn, json& result) {
 }
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 void HttpQservMonitorModule::process(Controller::Ptr const& controller, string const& taskName,
                                      HttpProcessorConfig const& processorConfig,
@@ -449,4 +449,4 @@ json HttpQservMonitorModule::_chunkInfo(set<int> const& chunks) const {
     return result;
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

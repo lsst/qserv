@@ -37,7 +37,7 @@
 #include "nlohmann/json.hpp"
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class SqlResultSet represents a result set received from a remote worker
@@ -198,6 +198,6 @@ public:
 
 std::ostream& operator<<(std::ostream& os, SqlResultSet const& info);
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_REPLICA_SQLRESULTSET_H

@@ -43,7 +43,7 @@ bool columnInSchema(string const& colName, list<SqlColDef> const& columns) {
 }
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 DatabaseInfo::DatabaseInfo(json const& obj, map<string, DatabaseFamilyInfo> const& families) {
     string const context = "DatabaseInfo::DatabaseInfo(json): ";
@@ -320,4 +320,4 @@ ostream& operator<<(ostream& os, DatabaseInfo const& info) {
     return os;
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

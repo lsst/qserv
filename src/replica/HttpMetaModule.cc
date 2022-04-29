@@ -32,7 +32,7 @@
 using namespace std;
 using json = nlohmann::json;
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 unsigned int const HttpMetaModule::version = 8;
 
@@ -64,4 +64,4 @@ json HttpMetaModule::_version() {
     return result;
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

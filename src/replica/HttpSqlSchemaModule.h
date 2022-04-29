@@ -33,7 +33,7 @@
 #include "replica/HttpModule.h"
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class HttpSqlSchemaModule manages table schemas.
@@ -76,6 +76,6 @@ private:
     nlohmann::json _alterTableSchema();
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_HTTPSQLSCHEMAMODULE_H

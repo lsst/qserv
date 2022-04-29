@@ -30,7 +30,7 @@
 #include "replica/FindRequest.h"
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class ReplicaDiff represents a difference between two replica information
@@ -258,6 +258,6 @@ private:
     std::map<std::string, FindRequest::Ptr> _requests;
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_REPLICA_VERIFYJOB_H

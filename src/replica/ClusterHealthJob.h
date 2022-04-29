@@ -33,7 +33,7 @@
 #include "replica/TestEchoQservMgtRequest.h"
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class ClusterHealth captures the summary status of services within a cluster
@@ -204,6 +204,6 @@ private:
     size_t _numFinished = 0;
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_REPLICA_CLUSTERHEALTHJOB_H

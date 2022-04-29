@@ -33,7 +33,7 @@
 
 // This header declarations
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class AddReplicaQservMgtRequest implements a request notifying Qserv workers
@@ -104,6 +104,6 @@ private:
     wpublish::AddChunkGroupQservRequest::Ptr _qservRequest;
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_REPLICA_ADDREPLICAQSERVMGTREQUEST_H

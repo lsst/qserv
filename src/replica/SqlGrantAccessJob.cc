@@ -43,7 +43,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.SqlGrantAccessJob");
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 string SqlGrantAccessJob::typeName() { return "SqlGrantAccessJob"; }
 
@@ -98,4 +98,4 @@ void SqlGrantAccessJob::notify(util::Lock const& lock) {
     notifyDefaultImpl<SqlGrantAccessJob>(lock, _onFinish);
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

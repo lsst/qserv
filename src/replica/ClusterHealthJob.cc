@@ -42,7 +42,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.ClusterHealthJob");
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 // ----------------------
 //  Class: ClusterHealth
@@ -234,4 +234,4 @@ void ClusterHealthJob::_onRequestFinish(TestEchoQservMgtRequest::Ptr const& requ
     if (++_numFinished == _numStarted) finish(lock, ExtendedState::SUCCESS);
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

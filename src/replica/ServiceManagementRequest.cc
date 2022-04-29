@@ -24,7 +24,7 @@
 
 using namespace std;
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 char const* ServiceSuspendRequestPolicy::requestName() { return "SERVICE_SUSPEND"; }
 
@@ -62,4 +62,4 @@ ProtocolServiceRequestType ServiceReconfigRequestPolicy::requestType() {
     return ProtocolServiceRequestType::SERVICE_RECONFIG;
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

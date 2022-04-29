@@ -35,7 +35,7 @@
 #include "replica/Common.h"
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class MessageQueue is the priority-based queue for storing shared pointers
@@ -147,6 +147,6 @@ private:
     std::map<int, std::list<std::shared_ptr<T>>> _priority2lane;
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_REPLICA_MESSAGEQUEUE_H

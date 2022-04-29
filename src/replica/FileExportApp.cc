@@ -76,7 +76,7 @@ T parse(string const& context, json const& jsonObj, string const& key, T minValu
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 list<FileExportApp::FileExportSpec> FileExportApp::parseFileList(json const& jsonObj) {
     string const context = "FileExportApp::" + string(__func__) + "  ";
@@ -250,4 +250,4 @@ void FileExportApp::_export(FileExportSpec const& file) const {
     }
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

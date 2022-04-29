@@ -31,7 +31,7 @@
 
 using namespace std;
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 Url::Url(string const& url) : _url(url) { _translate(); }
 
@@ -127,4 +127,4 @@ void Url::_translate() {
     throw invalid_argument(_error(__func__, "invalid url '" + _url + "'"));
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

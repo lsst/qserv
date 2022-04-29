@@ -95,7 +95,7 @@ bool readLength(string const& context, boost::asio::ip::tcp::socket& socket,
 }
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 atomic<unsigned int> WorkerServerConnection::_connectionIdSeries{0};
 
@@ -509,4 +509,4 @@ void WorkerServerConnection::_sent(boost::system::error_code const& ec, size_t b
     _receive();
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

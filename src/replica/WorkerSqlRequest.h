@@ -32,12 +32,12 @@
 #include "replica/WorkerRequest.h"
 
 // Forward declarations
-namespace lsst { namespace qserv { namespace replica { namespace database { namespace mysql {
+namespace lsst::qserv::replica::database::mysql {
 class Connection;
-}}}}}  // namespace lsst::qserv::replica::database::mysql
+}  // namespace lsst::qserv::replica::database::mysql
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class WorkerSqlRequest executes queries against the worker database
@@ -166,6 +166,6 @@ typedef WorkerSqlRequest WorkerSqlRequestFS;
 /// Class WorkerSqlRequest provides an actual implementation
 typedef WorkerSqlRequest WorkerSqlRequestPOSIX;
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_REPLICA_WORKERSQLREQUEST_H

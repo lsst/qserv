@@ -36,7 +36,7 @@
 #include "replica/ServiceProvider.h"
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class IngestSvcConn is used in the server-side implementation of
@@ -228,6 +228,6 @@ private:
     std::unique_ptr<csv::Parser> _parser;
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_REPLICA_INGESTSVCCONN_H

@@ -33,7 +33,7 @@
 #include "util/Mutex.h"
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class HealthMonitorTask represents a task which monitors a status of
@@ -167,6 +167,6 @@ private:
     uint64_t _prevUpdateTimeMs;
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_HEALTHMONITORTASK_H

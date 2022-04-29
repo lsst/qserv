@@ -45,7 +45,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.WorkerDeleteRequest");
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 //////////////////////////////////////////////////////////////
 ///////////////////// WorkerDeleteRequest ////////////////////
@@ -153,4 +153,4 @@ bool WorkerDeleteRequestPOSIX::execute() {
     return true;
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

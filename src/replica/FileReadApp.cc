@@ -46,7 +46,7 @@ bool const enableServiceProvider = true;
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 FileReadApp::Ptr FileReadApp::create(int argc, char* argv[]) { return Ptr(new FileReadApp(argc, argv)); }
 
@@ -118,4 +118,4 @@ int FileReadApp::runImpl() {
     return 1;
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

@@ -95,7 +95,7 @@ void dump(vector<ReplicaInfo> const& replicas) {
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 DatabaseTestApp::Ptr DatabaseTestApp::create(int argc, char* argv[]) {
     return Ptr(new DatabaseTestApp(argc, argv));
@@ -300,4 +300,4 @@ void DatabaseTestApp::_dump(TableRowStats const& stats) {
     table.print(cout, topSeparator, bottomSeparator, _pageSize, repeatedHeader);
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

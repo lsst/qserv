@@ -59,7 +59,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.WorkerApp");
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 WorkerApp::Ptr WorkerApp::create(int argc, char* argv[]) { return Ptr(new WorkerApp(argc, argv)); }
 
@@ -164,4 +164,4 @@ void WorkerApp::_verifyCreateFolders() const {
     FileUtils::verifyFolders("WORKER", folders, !_doNotCreateMissingFolders);
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

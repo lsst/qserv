@@ -50,12 +50,12 @@
 #include "replica/StatusRequestBase.h"
 
 // Forward declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 class IndexInfo;
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 // ========================================================================
 //   Customizations for specific request types require dedicated policies
@@ -363,6 +363,6 @@ typedef StatusRequest<StatusSqlRequestPolicy> StatusSqlDeleteTableRequest;
 typedef StatusRequest<StatusSqlRequestPolicy> StatusSqlRemoveTablePartitionsRequest;
 typedef StatusRequest<StatusSqlRequestPolicy> StatusSqlDeleteTablePartitionRequest;
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_REPLICA_STATUSREQUEST_H

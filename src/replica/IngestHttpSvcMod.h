@@ -36,7 +36,7 @@
 #include "replica/ServiceProvider.h"
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class IngestHttpSvcMod processes chunk/table contribution requests made over HTTP.
@@ -131,6 +131,6 @@ private:
     std::string const _workerName;
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_INGESTHTTPSVCMOD_H

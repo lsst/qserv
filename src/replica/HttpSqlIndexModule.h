@@ -33,7 +33,7 @@
 #include "replica/HttpModule.h"
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class HttpSqlIndexModule manages table indexes on the published catalogs.
@@ -86,6 +86,6 @@ private:
     nlohmann::json _dropIndexes();
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_HTTPSQLINDEXMODULE_H

@@ -35,7 +35,7 @@
 #include "replica/ProtocolBuffer.h"
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class ExportClientError represents exceptions thrown by ExportClient
@@ -236,6 +236,6 @@ private:
     size_t _totalNumRows = 0;    /// The number of received received from a server so far
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_REPLICA_EXPORTCLIENT_H

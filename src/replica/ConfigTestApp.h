@@ -28,7 +28,7 @@
 #include "replica/ConfigAppBase.h"
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class ConfigTestApp implements an application for testing the configuration
@@ -72,6 +72,6 @@ private:
     std::string _testScope = "ALL";
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif /* LSST_QSERV_REPLICA_CONFIGTESTAPP_H */

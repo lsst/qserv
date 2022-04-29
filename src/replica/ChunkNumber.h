@@ -45,7 +45,7 @@
 #include "lsst/sphgeom/Chunker.h"
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class ChunkNumberValidator represents an abstract interface for chunk
@@ -294,6 +294,6 @@ private:
 /// Print the chunk number onto a stream
 std::ostream& operator<<(std::ostream& os, ChunkNumber const& chunkNumber);
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_REPLICA_CHUNKNUMBER_H

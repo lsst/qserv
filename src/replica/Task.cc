@@ -33,7 +33,7 @@
 
 using namespace std;
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 TaskError::TaskError(util::Issue::Context const& ctx, string const& message)
         : util::Issue(ctx, "Task: " + message) {}
@@ -148,4 +148,4 @@ void Task::_startImpl() {
     }
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

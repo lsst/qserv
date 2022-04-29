@@ -42,7 +42,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.AddReplicaQservMgtRequest");
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 AddReplicaQservMgtRequest::Ptr AddReplicaQservMgtRequest::create(
         ServiceProvider::Ptr const& serviceProvider, string const& worker, unsigned int chunk,
@@ -133,4 +133,4 @@ void AddReplicaQservMgtRequest::notify(util::Lock const& lock) {
     notifyDefaultImpl<AddReplicaQservMgtRequest>(lock, _onFinish);
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

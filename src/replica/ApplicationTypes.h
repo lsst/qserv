@@ -43,12 +43,12 @@
 #include "util/Issue.h"
 
 // Forward declarations
-namespace lsst { namespace qserv { namespace replica { namespace detail {
+namespace lsst::qserv::replica::detail {
 class Parser;
-}}}}  // namespace lsst::qserv::replica::detail
+}  // namespace lsst::qserv::replica::detail
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica { namespace detail {
+namespace lsst::qserv::replica::detail {
 
 /**
  * Class ParserError represents exceptions throw by the command-line parser
@@ -864,6 +864,6 @@ private:
     std::string _helpStr;
 };
 
-}}}}  // namespace lsst::qserv::replica::detail
+}  // namespace lsst::qserv::replica::detail
 
 #endif  // LSST_QSERV_REPLICA_APPLICATION_TYPES_H

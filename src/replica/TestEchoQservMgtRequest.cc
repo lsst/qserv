@@ -46,7 +46,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.TestEchoQservMgtRequest");
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 TestEchoQservMgtRequest::Ptr TestEchoQservMgtRequest::create(
         ServiceProvider::Ptr const& serviceProvider, string const& worker, string const& data,
@@ -134,4 +134,4 @@ void TestEchoQservMgtRequest::notify(util::Lock const& lock) {
 
 void TestEchoQservMgtRequest::_setData(util::Lock const& lock, string const& data) { _dataEcho = data; }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

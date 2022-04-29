@@ -48,7 +48,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.WorkerRequestFactory");
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 ///////////////////////////////////////////////////////////////////
 ///////////////////// WorkerRequestFactoryBase ////////////////////
@@ -383,4 +383,4 @@ WorkerIndexRequest::Ptr WorkerRequestFactory::createIndexRequest(
     return ptr;
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

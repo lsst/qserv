@@ -47,7 +47,7 @@ bool const enableServiceProvider = true;
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 VerifyApp::Ptr VerifyApp::create(int argc, char* argv[]) { return Ptr(new VerifyApp(argc, argv)); }
 
@@ -98,4 +98,4 @@ int VerifyApp::runImpl() {
     return 0;
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

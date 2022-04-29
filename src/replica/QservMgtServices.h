@@ -41,7 +41,7 @@
 class XrdSsiService;
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * For exceptions thrown on unrecoverable connection failures to XRootD/SSI services.
@@ -253,6 +253,6 @@ private:
     mutable util::Mutex _mtx;
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_REPLICA_QSERVMGTSERVICES_H

@@ -43,7 +43,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.QservSyncJob");
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 string QservSyncJob::typeName() { return "QservSyncJob"; }
 
@@ -218,4 +218,4 @@ void QservSyncJob::_onRequestFinish(SetReplicasQservMgtRequest::Ptr const& reque
     }
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

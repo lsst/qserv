@@ -33,12 +33,12 @@
 #include "replica/WorkerServerConnection.h"
 
 // Forward declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 class WorkerRequestFactory;
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class WorkerServer is used for handling incoming connections to
@@ -142,6 +142,6 @@ private:
     boost::asio::ip::tcp::acceptor _acceptor;
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_REPLICA_WORKERSERVER_H

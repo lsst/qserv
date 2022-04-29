@@ -32,7 +32,7 @@
 #include "replica/ServiceProvider.h"
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class Application is a utility base class for building command-line
@@ -183,6 +183,6 @@ private:
     ServiceProvider::Ptr _serviceProvider;
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_REPLICA_APPLICATION_H

@@ -55,7 +55,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.Job");
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 atomic<size_t> Job::_numClassInstances(0);
 
@@ -353,4 +353,4 @@ void Job::_expired(boost::system::error_code const& ec) {
     finish(lock, ExtendedState::TIMEOUT_EXPIRED);
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

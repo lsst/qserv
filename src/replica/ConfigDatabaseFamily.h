@@ -31,12 +31,12 @@
 #include "nlohmann/json.hpp"
 
 // Forward declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 class ChunkNumberValidator;
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class DatabaseFamilyInfo encapsulates various parameters describing
@@ -66,6 +66,6 @@ public:
 
 std::ostream& operator<<(std::ostream& os, DatabaseFamilyInfo const& info);
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_REPLICA_CONFIGDATABASEFAMILY_H

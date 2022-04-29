@@ -32,7 +32,7 @@
 using namespace std;
 using json = nlohmann::json;
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 int const ConfigParserMySQL::expectedSchemaVersion = 9;
 
@@ -194,4 +194,4 @@ void ConfigParserMySQL::_parseDatabases() {
     }
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

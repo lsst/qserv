@@ -30,7 +30,7 @@
 #include "replica/ReplicaInfo.h"
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class QservWorkerApp represents a command-line tool for operations
@@ -119,6 +119,6 @@ private:
     size_t _pageSize = 0;
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif /* LSST_QSERV_REPLICA_QSERVWORKERAPP_H */

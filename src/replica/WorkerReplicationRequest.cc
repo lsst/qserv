@@ -46,7 +46,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.WorkerReplicationRequest");
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 ///////////////////////////////////////////////////////////////////
 ///////////////////// WorkerReplicationRequest ////////////////////
@@ -768,4 +768,4 @@ void WorkerReplicationRequestFS::_releaseResources(util::Lock const& lock) {
     }
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

@@ -25,7 +25,7 @@
 #include "replica/Application.h"
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class PurgeApp implements a tool which purges excess replicas for all chunks of
@@ -72,6 +72,6 @@ private:
     size_t _pageSize = 20;
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif /* LSST_QSERV_REPLICA_PURGEAPP_H */

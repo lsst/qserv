@@ -40,7 +40,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.WorkerEchoRequest");
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 WorkerEchoRequest::Ptr WorkerEchoRequest::create(ServiceProvider::Ptr const& serviceProvider,
                                                  string const& worker, string const& id, int priority,
@@ -108,4 +108,4 @@ bool WorkerEchoRequest::execute() {
     return false;
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

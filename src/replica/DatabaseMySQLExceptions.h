@@ -34,7 +34,7 @@
 #include <string>
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica { namespace database { namespace mysql {
+namespace lsst::qserv::replica::database::mysql {
 
 /**
  * Class Error represents a family of exceptions which are specific
@@ -238,6 +238,6 @@ public:
     using Error::Error;
 };
 
-}}}}}  // namespace lsst::qserv::replica::database::mysql
+}  // namespace lsst::qserv::replica::database::mysql
 
 #endif  // LSST_QSERV_REPLICA_DATABASEMYSQLEXCEPTIONS_H

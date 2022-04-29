@@ -42,7 +42,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.IngestSvc");
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 IngestSvc::Ptr IngestSvc::create(ServiceProvider::Ptr const& serviceProvider, string const& workerName) {
     return IngestSvc::Ptr(new IngestSvc(serviceProvider, workerName));
@@ -94,4 +94,4 @@ void IngestSvc::_handleAccept(IngestSvcConn::Ptr const& connection, boost::syste
     _beginAccept();
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

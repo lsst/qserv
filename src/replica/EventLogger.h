@@ -30,12 +30,12 @@
 #include "replica/Job.h"
 
 // Forward declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 struct ControllerEvent;
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class EventLogger is the base class for logging Controller events on behalf
@@ -109,6 +109,6 @@ protected:
     std::string const _name;
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_REPLICA_EVENTLOGGER_H

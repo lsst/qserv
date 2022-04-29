@@ -28,7 +28,7 @@
 
 using namespace std;
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 RequestTrackerBase::RequestTrackerBase(ostream& os, bool progressReport, bool errorReport)
         : _numLaunched(0),
@@ -98,4 +98,4 @@ list<Request::Ptr> AnyRequestTracker::getRequests() const { return requests; }
 
 void AnyRequestTracker::resetImpl() { requests.clear(); }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

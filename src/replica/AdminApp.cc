@@ -47,7 +47,7 @@ bool const enableServiceProvider = true;
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 AdminApp::Ptr AdminApp::create(int argc, char* argv[]) { return Ptr(new AdminApp(argc, argv)); }
 
@@ -210,4 +210,4 @@ int AdminApp::runImpl() {
     return 0;
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

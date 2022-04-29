@@ -36,7 +36,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.SqlQueryRequest");
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 SqlQueryRequest::Ptr SqlQueryRequest::create(ServiceProvider::Ptr const& serviceProvider,
                                              boost::asio::io_service& io_service, string const& worker,
@@ -70,4 +70,4 @@ void SqlQueryRequest::notify(util::Lock const& lock) {
     notifyDefaultImpl<SqlQueryRequest>(lock, _onFinish);
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

@@ -47,7 +47,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.DatabaseMySQL");
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica { namespace database { namespace mysql {
+namespace lsst::qserv::replica::database::mysql {
 
 atomic<size_t> Connection::_nextId{0};
 
@@ -797,4 +797,4 @@ ConnectionHandler::~ConnectionHandler() {
     if (nullptr != _pool) _pool->release(conn);
 }
 
-}}}}}  // namespace lsst::qserv::replica::database::mysql
+}  // namespace lsst::qserv::replica::database::mysql

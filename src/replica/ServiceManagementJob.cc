@@ -37,7 +37,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.ServiceManagementBaseJob");
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 string ServiceManagementBaseJob::typeName() { return "ServiceManagementBaseJob"; }
 
@@ -112,4 +112,4 @@ void ServiceManagementBaseJob::onRequestFinish(ServiceManagementRequestBase::Ptr
     }
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

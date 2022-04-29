@@ -49,7 +49,7 @@ void parseOptional(T& dest, json const& obj, string const& attr) {
 }
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 WorkerInfo::WorkerInfo(json const& obj) {
     string const context = "WorkerInfo::WorkerInfo(json): ";
@@ -117,4 +117,4 @@ ostream& operator<<(ostream& os, WorkerInfo const& info) {
     return os;
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

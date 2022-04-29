@@ -32,7 +32,7 @@
 
 using namespace std;
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 // ------------------------------------------------------------
 // ------------------- ChunkNumberValidator -------------------
@@ -148,4 +148,4 @@ ostream& operator<<(ostream& os, ChunkNumber const& chunkNumber) {
     return os;
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

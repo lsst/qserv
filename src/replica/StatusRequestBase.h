@@ -33,7 +33,7 @@
 #include "replica/ServiceProvider.h"
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class StatusRequestBase represents the base class for a family of requests
@@ -118,6 +118,6 @@ private:
     ProtocolQueuedRequestType const _targetRequestType;
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_REPLICA_STATUSREQUESTBASE_H

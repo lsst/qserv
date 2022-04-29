@@ -25,7 +25,7 @@
 #include "replica/Application.h"
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class RegistryHttpApp implements represents the worker registration
@@ -63,6 +63,6 @@ private:
     RegistryHttpApp(int argc, char* argv[]);
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif /* LSST_QSERV_REPLICA_REGISTRYHTTPAPP_H */

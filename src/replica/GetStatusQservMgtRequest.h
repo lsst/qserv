@@ -35,7 +35,7 @@
 #include "wpublish/GetStatusQservRequest.h"
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class GetStatusQservMgtRequest is a request for obtaining various info
@@ -111,6 +111,6 @@ private:
     nlohmann::json _info;
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_REPLICA_GETSTATUSQSERVMGTREQUEST_H

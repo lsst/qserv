@@ -43,7 +43,7 @@ bool const enableServiceProvider = true;
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 FileServerApp::Ptr FileServerApp::create(int argc, char* argv[]) {
     return Ptr(new FileServerApp(argc, argv));
@@ -78,4 +78,4 @@ int FileServerApp::runImpl() {
     return 0;
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

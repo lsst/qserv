@@ -33,7 +33,7 @@
 #include "replica/HttpModule.h"
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class HttpWorkerStatusModule implements a handler for the worker
@@ -68,6 +68,6 @@ private:
     std::weak_ptr<HealthMonitorTask> const _healthMonitorTask;
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_HTTPWORKERSTATUSMODULE_H

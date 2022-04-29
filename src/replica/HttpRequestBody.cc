@@ -28,7 +28,7 @@
 using namespace std;
 using json = nlohmann::json;
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 HttpRequestBody::HttpRequestBody(qhttp::Request::Ptr const& req) : objJson(json::object()) {
     // This way of parsing the optional body allows requests which have no body.
@@ -64,4 +64,4 @@ bool HttpRequestBody::has(json const& obj, string const& name) const {
 
 bool HttpRequestBody::has(string const& name) const { return has(objJson, name); }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

@@ -33,12 +33,12 @@
 #include "replica/RequestMessenger.h"
 
 // Forward declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 class Messenger;
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class FindRequest represents a transient state of the replica lookup
@@ -145,6 +145,6 @@ private:
     ReplicaInfo _replicaInfo;
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_REPLICA_FINDREQUEST_H

@@ -104,7 +104,7 @@ json result2json(SqlJobResult const& jobResultSet, string const& context) {
 }
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 void HttpSqlIndexModule::process(Controller::Ptr const& controller, string const& taskName,
                                  HttpProcessorConfig const& processorConfig, qhttp::Request::Ptr const& req,
@@ -284,4 +284,4 @@ json HttpSqlIndexModule::_dropIndexes() {
     return json::object();
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

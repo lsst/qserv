@@ -45,7 +45,7 @@
 #include "util/Mutex.h"
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class Job is a base class for a family of replication jobs within
@@ -434,6 +434,6 @@ private:
     std::condition_variable _onFinishCv;
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_REPLICA_JOB_H

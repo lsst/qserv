@@ -40,7 +40,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.DatabaseServicesPool");
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 // ======================
 // == ServiceAllocator ==
@@ -399,4 +399,4 @@ void DatabaseServicesPool::_releaseService(DatabaseServices::Ptr const& service)
     _available.notify_one();
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

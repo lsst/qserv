@@ -40,7 +40,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.SqlGetIndexesJob");
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 string SqlGetIndexesJob::typeName() { return "SqlGetIndexesJob"; }
 
@@ -107,4 +107,4 @@ void SqlGetIndexesJob::notify(util::Lock const& lock) {
     notifyDefaultImpl<SqlGetIndexesJob>(lock, _onFinish);
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

@@ -76,7 +76,7 @@ bool ifDuplicateRequest(PROTOCOL_RESPONSE_TYPE& response, WorkerRequest::Ptr con
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 string WorkerProcessor::state2string(State state) {
     switch (state) {
@@ -865,4 +865,4 @@ void WorkerProcessor::_setInfo(WorkerRequest::Ptr const& request, ProtocolRespon
     ptr->setInfo(response);
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

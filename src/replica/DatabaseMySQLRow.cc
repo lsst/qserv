@@ -72,7 +72,7 @@ bool getAsNumber(Row const& row, K key, T& value) {
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica { namespace database { namespace mysql {
+namespace lsst::qserv::replica::database::mysql {
 
 ///////////////////////////////////////
 //                Row                //
@@ -204,4 +204,4 @@ void Row::exportRow(ProtocolResponseSqlRow* ptr) const {
     }
 }
 
-}}}}}  // namespace lsst::qserv::replica::database::mysql
+}  // namespace lsst::qserv::replica::database::mysql

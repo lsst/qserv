@@ -57,7 +57,7 @@ database::mysql::ConnectionParams connectionParams(string const& connectionUrl, 
 }
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 // These (static) data members are allowed to be changed, and they are set
 // globally for an application (process).
@@ -749,4 +749,4 @@ DatabaseInfo& Configuration::_publishDatabase(util::Lock const& lock, string con
     return databseInfo;
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

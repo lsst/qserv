@@ -61,7 +61,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.IngestFileSvc");
 string const context = "INGEST-FILE-SVC ";
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 IngestFileSvc::IngestFileSvc(ServiceProvider::Ptr const& serviceProvider, string const& workerName)
         : _serviceProvider(serviceProvider), _workerName(workerName) {}
@@ -348,4 +348,4 @@ void IngestFileSvc::closeFile() {
     }
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

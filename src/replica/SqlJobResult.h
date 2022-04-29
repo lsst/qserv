@@ -35,7 +35,7 @@
 #include "nlohmann/json.hpp"
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class SqlJobResult represents a combined result received from worker
@@ -109,6 +109,6 @@ public:
                                                   bool verticalSeparator = true) const;
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_REPLICA_SQLJOBRESULT_H

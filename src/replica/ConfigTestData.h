@@ -30,7 +30,7 @@
 #include "nlohmann/json.hpp"
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * This utility class ConfigTestData provides inputs for testing the Configuration
@@ -49,6 +49,6 @@ public:
     static nlohmann::json data();
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_REPLICA_CONFIGTESTDATA_H

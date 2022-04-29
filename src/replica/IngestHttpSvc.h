@@ -31,12 +31,12 @@
 #include "replica/ServiceProvider.h"
 
 // Forward declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 class IngestRequestMgr;
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class IngestHttpSvc is used for handling incoming REST API requests for
@@ -91,6 +91,6 @@ private:
     std::vector<std::unique_ptr<std::thread>> _threads;
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_REPLICA_INGESTHTTPSVC_H

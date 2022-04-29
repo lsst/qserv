@@ -33,7 +33,7 @@
 #include "replica/HttpModule.h"
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class HttpQservMonitorModule implements a handler for reporting
@@ -112,6 +112,6 @@ private:
     nlohmann::json _chunkInfo(std::set<int> const& chunks) const;
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_HTTPQSERVMONITORMODULE_H

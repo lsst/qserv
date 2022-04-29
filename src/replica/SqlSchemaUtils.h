@@ -30,7 +30,7 @@
 #include "replica/Common.h"
 
 // This header declarations
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Utility class SqlSchemaUtils hosts tools for manipulating schema(s).
@@ -77,6 +77,6 @@ public:
     static std::vector<SqlIndexColumn> readIndexSpecFromTextFile(std::string const& fileName);
 };
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif /* LSST_QSERV_REPLICA_SQLSCHEMAUTILS_H */

@@ -66,7 +66,7 @@ bool const enableServiceProvider = true;
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 SqlApp::Ptr SqlApp::create(int argc, char* argv[]) { return Ptr(new SqlApp(argc, argv)); }
 
@@ -396,4 +396,4 @@ int SqlApp::runImpl() {
     return job->extendedState() == Job::SUCCESS ? 0 : 1;
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

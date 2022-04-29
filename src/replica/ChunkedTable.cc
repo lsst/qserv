@@ -28,7 +28,7 @@
 
 using namespace std;
 
-namespace lsst { namespace qserv { namespace replica {
+namespace lsst::qserv::replica {
 
 ChunkedTable::ChunkedTable(string const& baseName, unsigned int chunk, bool overlap)
         : _baseName(baseName),
@@ -90,4 +90,4 @@ void ChunkedTable::_assertValid() const {
     }
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
