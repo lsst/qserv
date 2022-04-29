@@ -43,7 +43,7 @@
 
 // This header declarations
 
-namespace lsst { namespace qserv { namespace proto {
+namespace lsst::qserv::proto {
 
 /**
  * Class FrameBufferError is used for throwing exceptions on various
@@ -248,6 +248,6 @@ private:
     size_t _size;
 };
 
-}}}  // namespace lsst::qserv::proto
+}  // namespace lsst::qserv::proto
 
 #endif  // LSST_QSERV_PROTO_FRAME_BUFFER_H

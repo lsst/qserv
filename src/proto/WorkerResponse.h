@@ -28,7 +28,7 @@
 #include "proto/worker.pb.h"
 #include "util/InstanceCount.h"
 
-namespace lsst { namespace qserv { namespace proto {
+namespace lsst::qserv::proto {
 
 struct WorkerResponse {
     unsigned char headerSize;
@@ -36,6 +36,6 @@ struct WorkerResponse {
     Result result;
 };
 
-}}}  // namespace lsst::qserv::proto
+}  // namespace lsst::qserv::proto
 
 #endif  // #define LSST_QSERV_PROTO_WORKERRESPONSE_H

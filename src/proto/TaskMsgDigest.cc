@@ -42,7 +42,7 @@ namespace {
 char hexChar[16] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
 }
 
-namespace lsst { namespace qserv { namespace proto {
+namespace lsst::qserv::proto {
 
 std::string hashTaskMsg(TaskMsg const& m) {
     unsigned char hashVal[MD5_DIGEST_LENGTH];
@@ -59,4 +59,4 @@ std::string hashTaskMsg(TaskMsg const& m) {
     return std::string(output);
 }
 
-}}}  // namespace lsst::qserv::proto
+}  // namespace lsst::qserv::proto

@@ -38,7 +38,7 @@
 #include "proto/ProtoImporter.h"
 #include "proto/WorkerResponse.h"
 
-namespace lsst { namespace qserv { namespace proto {
+namespace lsst::qserv::proto {
 
 class ProtoHeaderWrap {
 public:
@@ -53,6 +53,6 @@ public:
     static size_t getProtoHeaderSize();
 };
 
-}}}  // namespace lsst::qserv::proto
+}  // namespace lsst::qserv::proto
 
 #endif

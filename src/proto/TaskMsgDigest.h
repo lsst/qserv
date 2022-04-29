@@ -27,13 +27,13 @@
 // System headers
 #include <string>
 
-namespace lsst { namespace qserv { namespace proto {
+namespace lsst::qserv::proto {
 
 // Forward
 class TaskMsg;
 
 std::string hashTaskMsg(TaskMsg const& m);
 
-}}}  // namespace lsst::qserv::proto
+}  // namespace lsst::qserv::proto
 
 #endif  // LSST_QSERV_PROTO_TASKMSGDIGEST_H

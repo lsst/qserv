@@ -31,7 +31,7 @@
 // Qserv headers
 #include "proto/worker.pb.h"
 
-namespace lsst { namespace qserv { namespace proto {
+namespace lsst::qserv::proto {
 
 /// Structure to store shared scan information for a single table.
 ///
@@ -77,6 +77,6 @@ struct ScanInfo {
 std::ostream& operator<<(std::ostream& os, ScanTableInfo const& tbl);
 std::ostream& operator<<(std::ostream& os, ScanInfo const& info);
 
-}}}  // namespace lsst::qserv::proto
+}  // namespace lsst::qserv::proto
 
 #endif  // LSST_QSERV_PROTO_SCANTABLEINFO_H

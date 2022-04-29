@@ -28,7 +28,7 @@
 #include <memory>
 #include <string>
 
-namespace lsst { namespace qserv { namespace proto {
+namespace lsst::qserv::proto {
 
 /// FakeProtocolFixture is a utility class containing code for making fake
 /// versions of the protobufs messages used in Qserv. Its intent was
@@ -98,6 +98,6 @@ private:
     int _counter;
 };
 
-}}}  // namespace lsst::qserv::proto
+}  // namespace lsst::qserv::proto
 
 #endif  // #define LSST_QSERV_PROTO_FAKEPROTOCOLFIXTURE_H

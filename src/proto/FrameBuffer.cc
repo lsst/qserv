@@ -28,7 +28,7 @@
 
 // Qserv headers
 
-namespace lsst { namespace qserv { namespace proto {
+namespace lsst::qserv::proto {
 
 ///////////////////////////
 // Class FrameBufferView //
@@ -107,4 +107,4 @@ void FrameBuffer::extend(size_t newCapacityBytes) {
     _capacity = newCapacityBytes;
 }
 
-}}}  // namespace lsst::qserv::proto
+}  // namespace lsst::qserv::proto

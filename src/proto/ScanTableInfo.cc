@@ -31,7 +31,7 @@
 // Qserv headers
 #include "util/IterableFormatter.h"
 
-namespace lsst { namespace qserv { namespace proto {
+namespace lsst::qserv::proto {
 
 /// @return 0 if equal, -1 if this < rhs, 1 if this > rhs
 int ScanTableInfo::compare(ScanTableInfo const& rhs) const {
@@ -98,4 +98,4 @@ std::ostream& operator<<(std::ostream& os, ScanInfo const& info) {
     return os;
 }
 
-}}}  // namespace lsst::qserv::proto
+}  // namespace lsst::qserv::proto

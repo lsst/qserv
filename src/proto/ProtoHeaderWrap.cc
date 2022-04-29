@@ -34,7 +34,7 @@ namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.parser.ProtoHeaderWrap");
 }
 
-namespace lsst { namespace qserv { namespace proto {
+namespace lsst::qserv::proto {
 
 // 255 is the maximum size of the proto header and we need 1 byte for message size.
 const size_t ProtoHeaderWrap::PROTO_HEADER_SIZE = 256;
@@ -66,4 +66,4 @@ bool ProtoHeaderWrap::unwrap(std::shared_ptr<WorkerResponse>& response, std::vec
     return true;
 }
 
-}}}  // namespace lsst::qserv::proto
+}  // namespace lsst::qserv::proto
