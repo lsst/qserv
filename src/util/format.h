@@ -30,7 +30,7 @@
 #include <string>
 #include <vector>
 
-namespace lsst { namespace qserv { namespace util {
+namespace lsst::qserv::util {
 
 inline unsigned char hexChar(unsigned char i) {
     if (i < 10)
@@ -145,6 +145,6 @@ std::ostream& operator<<(std::ostream& os, PosFormat const& pf) {
     return os;
 }
 
-}}}  // namespace lsst::qserv::util
+}  // namespace lsst::qserv::util
 
 #endif  // LSST_QSERV_UTIL_FORMAT_H

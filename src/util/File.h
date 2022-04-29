@@ -28,7 +28,7 @@
 
 // This header declarations
 
-namespace lsst { namespace qserv { namespace util {
+namespace lsst::qserv::util {
 
 /**
  * Class File is a utility class providing convenient operations with files.
@@ -59,6 +59,6 @@ public:
     static std::vector<std::string> getLines(std::string const& fileName, bool assertNotEmpty = false);
 };
 
-}}}  // namespace lsst::qserv::util
+}  // namespace lsst::qserv::util
 
 #endif  // LSST_QSERV_UTIL_FILE_H

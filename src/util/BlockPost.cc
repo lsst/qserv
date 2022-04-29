@@ -30,7 +30,7 @@
 #include <string>
 #include <thread>
 
-namespace lsst { namespace qserv { namespace util {
+namespace lsst::qserv::util {
 
 BlockPost::BlockPost(int minMilliseconds, int maxMilliseconds)
         : _rd(), _gen(_rd()), _distr(minMilliseconds, maxMilliseconds) {
@@ -60,4 +60,4 @@ int BlockPost::next() {
     return _distr(_gen);
 }
 
-}}}  // namespace lsst::qserv::util
+}  // namespace lsst::qserv::util

@@ -36,7 +36,7 @@
 // System headers
 #include <string>
 
-namespace lsst { namespace qserv { namespace util {
+namespace lsst::qserv::util {
 
 /**
  * List of known Qserv errors
@@ -102,6 +102,6 @@ private:
     int _status;
 };
 
-}}}  // namespace lsst::qserv::util
+}  // namespace lsst::qserv::util
 
 #endif /* LSST_QSERV_UTIL_ERROR_H_ */

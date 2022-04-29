@@ -38,7 +38,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.util.StringToVector");
 
 }
 
-namespace lsst { namespace qserv { namespace util {
+namespace lsst::qserv::util {
 
 vector<string> StringHelper::splitString(string const& original, string const& separator) {
     vector<string> result;
@@ -81,4 +81,4 @@ vector<int> StringHelper::getIntVectFromStr(string const& str, string const& sep
     return result;
 }
 
-}}}  // namespace lsst::qserv::util
+}  // namespace lsst::qserv::util

@@ -33,7 +33,7 @@
 
 // This header declarations
 
-namespace lsst { namespace qserv { namespace util {
+namespace lsst::qserv::util {
 
 /**
  * Class Mutex extends the standard class std::mutex with extra methods.
@@ -152,6 +152,6 @@ private:
     std::string _context;
 };
 
-}}}  // namespace lsst::qserv::util
+}  // namespace lsst::qserv::util
 
 #endif  // LSST_QSERV_UTIL_MUTEX_H

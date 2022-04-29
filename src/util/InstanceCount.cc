@@ -14,7 +14,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.util.InstanceCount");
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace util {
+namespace lsst::qserv::util {
 
 std::map<std::string, int> InstanceCount::_instances;
 std::recursive_mutex InstanceCount::_mx;
@@ -64,4 +64,4 @@ std::ostream& operator<<(std::ostream& os, InstanceCount const& instanceCount) {
     return os;
 }
 
-}}}  // namespace lsst::qserv::util
+}  // namespace lsst::qserv::util

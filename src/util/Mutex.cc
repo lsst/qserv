@@ -36,7 +36,7 @@ namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.util.Mutex");
 }
 
-namespace lsst { namespace qserv { namespace util {
+namespace lsst::qserv::util {
 
 mutex Mutex::_lockedIdMtx;
 set<unsigned int> Mutex::_lockedId;
@@ -65,4 +65,4 @@ void Lock::_unlock() {
     _mutex.unlock();
 }
 
-}}}  // namespace lsst::qserv::util
+}  // namespace lsst::qserv::util

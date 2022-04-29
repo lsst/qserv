@@ -41,7 +41,7 @@
 
 // Qserv headers
 
-namespace lsst { namespace qserv { namespace util {
+namespace lsst::qserv::util {
 
 /**
  *  Read, store and provide read-only access for a key-value list
@@ -133,6 +133,6 @@ private:
     std::map<std::string, std::string> const _configMap;
 };
 
-}}}  // namespace lsst::qserv::util
+}  // namespace lsst::qserv::util
 
 #endif /* LSST_QSERV_UTIL_CONFIGSTORE_H */

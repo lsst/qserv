@@ -28,7 +28,7 @@
 #include <stdexcept>
 #include <iomanip>
 
-namespace lsst { namespace qserv { namespace util {
+namespace lsst::qserv::util {
 
 ColumnTablePrinter::ColumnTablePrinter(std::string const& caption, std::string const& indent,
                                        bool verticalSeparator)
@@ -129,4 +129,4 @@ void ColumnTablePrinter::_rightUppendCellsToRows(std::string const& title,
     }
 }
 
-}}}  // namespace lsst::qserv::util
+}  // namespace lsst::qserv::util

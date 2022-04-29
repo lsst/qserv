@@ -29,7 +29,7 @@
 #include <iterator>
 #include <sstream>
 
-namespace lsst { namespace qserv { namespace util {
+namespace lsst::qserv::util {
 
 std::string MultiError::toString() const {
     std::ostringstream oss;
@@ -72,4 +72,4 @@ std::ostream& operator<<(std::ostream& out, MultiError const& multiError) {
     return out;
 }
 
-}}}  // namespace lsst::qserv::util
+}  // namespace lsst::qserv::util

@@ -46,7 +46,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.util.ConfigStore");
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace util {
+namespace lsst::qserv::util {
 
 std::map<std::string, std::string> const ConfigStore::_parseIniFile(std::string const& configFilePath) {
     // read it into a ptree
@@ -137,4 +137,4 @@ std::ostream& operator<<(std::ostream& out, ConfigStore const& config) {
     return out;
 }
 
-}}}  // namespace lsst::qserv::util
+}  // namespace lsst::qserv::util

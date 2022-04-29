@@ -31,7 +31,7 @@
 // Third-party headers
 #include "boost/format.hpp"
 
-namespace lsst { namespace qserv { namespace util {
+namespace lsst::qserv::util {
 
 std::string makeUrl(char const* hostport, char const* typeStr, int chunk) {
     std::stringstream s;
@@ -86,4 +86,4 @@ std::string makeUrl(char const* hostport, char const* typeStr, std::string const
 #endif
 }
 
-}}}  // namespace lsst::qserv::util
+}  // namespace lsst::qserv::util

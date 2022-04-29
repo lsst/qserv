@@ -39,7 +39,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.util.File");
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace util {
+namespace lsst::qserv::util {
 
 vector<string> File::getLines(string const& fileName, bool assertNotEmpty) {
     string const context = "File::" + string(__func__) + "  ";
@@ -77,4 +77,4 @@ vector<string> File::getLines(string const& fileName, bool assertNotEmpty) {
     return result;
 }
 
-}}}  // namespace lsst::qserv::util
+}  // namespace lsst::qserv::util

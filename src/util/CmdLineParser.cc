@@ -32,7 +32,7 @@
 
 // Qserv headers
 
-namespace lsst { namespace qserv { namespace util {
+namespace lsst::qserv::util {
 
 bool CmdLineParser::in(std::string const& val, std::vector<std::string> const& col) {
     return col.end() != std::find(col.begin(), col.end(), val);
@@ -220,4 +220,4 @@ void CmdLineParser::parse() {
         }
     }
 }
-}}}  // namespace lsst::qserv::util
+}  // namespace lsst::qserv::util

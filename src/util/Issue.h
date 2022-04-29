@@ -30,7 +30,7 @@
 // evil macro
 #define ERR_LOC lsst::qserv::util::Issue::Context(__FILE__, __LINE__, __func__)
 
-namespace lsst { namespace qserv { namespace util {
+namespace lsst::qserv::util {
 
 /// @addtogroup util
 
@@ -92,6 +92,6 @@ private:
     std::string _fullMessage;  /// Message string plus context
 };
 
-}}}  // namespace lsst::qserv::util
+}  // namespace lsst::qserv::util
 
 #endif  // LSST_QSERV_UTIL_ISSUE_H

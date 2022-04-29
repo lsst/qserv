@@ -37,7 +37,7 @@
 // Qserv headers
 #include "util/EventThread.h"
 
-namespace lsst { namespace qserv { namespace util {
+namespace lsst::qserv::util {
 
 class ThreadPool;
 
@@ -190,5 +190,5 @@ private:
     mutable std::mutex _mxPool{};         ///< Protects _poolThreadCount, _cvPool, _mxPool
 };
 
-}}}     // namespace lsst::qserv::util
+}     // namespace lsst::qserv::util
 #endif  // LSST_QSERV_UTIL_THREADPOOL_H_

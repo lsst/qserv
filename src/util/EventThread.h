@@ -37,7 +37,7 @@
 // Qserv headers
 #include "util/Command.h"
 
-namespace lsst { namespace qserv { namespace util {
+namespace lsst::qserv::util {
 
 ///
 // The classes in this header are meant to provide the basis for easy to use event
@@ -209,6 +209,6 @@ private:
     std::thread _tJoiner;                        ///< Thread where joining will happen.
 };
 
-}}}  // namespace lsst::qserv::util
+}  // namespace lsst::qserv::util
 
 #endif /* LSST_QSERV_UTIL_EVENTTHREAD_H_ */

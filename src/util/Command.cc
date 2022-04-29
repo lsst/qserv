@@ -33,7 +33,7 @@ namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.util.Command");
 }
 
-namespace lsst { namespace qserv { namespace util {
+namespace lsst::qserv::util {
 
 /// Set status to COMPLETE and notify everyone waiting for a status change.
 void Tracker::setComplete() {
@@ -70,4 +70,4 @@ void Command::setFunc(std::function<void(CmdData*)> func) {
 /// this function must be called or the lambda will keep this object alive.
 void Command::resetFunc() { setFunc(nullptr); }
 
-}}}  // namespace lsst::qserv::util
+}  // namespace lsst::qserv::util

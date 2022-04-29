@@ -31,7 +31,7 @@
 // Qserv headers
 #include "util/Command.h"
 
-namespace lsst { namespace qserv { namespace util {
+namespace lsst::qserv::util {
 
 /// Functions to help with string processing.
 class StringHelper {
@@ -50,6 +50,6 @@ public:
                                               bool throwOnError = true, int defaultVal = 0);
 };
 
-}}}  // namespace lsst::qserv::util
+}  // namespace lsst::qserv::util
 
 #endif  // LSST_QSERV_UTIL_STRINGHELPER_H

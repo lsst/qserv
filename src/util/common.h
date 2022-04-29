@@ -36,7 +36,7 @@
 #include <sstream>
 #include <string>
 
-namespace lsst { namespace qserv { namespace util {
+namespace lsst::qserv::util {
 
 template <class Map>
 typename Map::mapped_type const& getFromMap(Map const& m, typename Map::key_type const& key,
@@ -170,6 +170,6 @@ std::string prettyCharBuf(C* c, unsigned int bufLen, unsigned int edge) {
     return os.str();
 }
 
-}}}  // namespace lsst::qserv::util
+}  // namespace lsst::qserv::util
 
 #endif  // LSST_QSERV_UTIL_COMMON_H

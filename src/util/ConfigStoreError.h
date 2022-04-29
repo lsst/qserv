@@ -38,7 +38,7 @@
 
 // Qserv headers
 
-namespace lsst { namespace qserv { namespace util {
+namespace lsst::qserv::util {
 
 /**
  * Base class for ConfigStore run-time errors, represents a generic ConfigStore run-time error.
@@ -67,6 +67,6 @@ public:
     }
 };
 
-}}}  // namespace lsst::qserv::util
+}  // namespace lsst::qserv::util
 
 #endif  // LSST_QSERV_CONFIGSTOREERROR_H

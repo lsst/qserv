@@ -39,7 +39,7 @@
 
 // This header declarations
 
-namespace lsst { namespace qserv { namespace util {
+namespace lsst::qserv::util {
 
 /**
  * Class ColumnTablePrinter is a pretty-printer for column-based tables.
@@ -284,6 +284,6 @@ private:
     std::list<std::string> _rows;
 };
 
-}}}  // namespace lsst::qserv::util
+}  // namespace lsst::qserv::util
 
 #endif  // LSST_QSERV_UTIL_TABLEPRINTER_H

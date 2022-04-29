@@ -41,7 +41,7 @@ namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.util.WorkQueue");
 }
 
-namespace lsst { namespace qserv { namespace util {
+namespace lsst::qserv::util {
 
 ////////////////////////////////////////////////////////////////////////
 // class WorkQueue::Runner
@@ -164,7 +164,7 @@ void WorkQueue::_dropQueue(bool final) {
     if (final) _isDead = true;
 }
 
-}}}  // namespace lsst::qserv::util
+}  // namespace lsst::qserv::util
 
 //////////////////////////////////////////////////////////////////////
 // Test code

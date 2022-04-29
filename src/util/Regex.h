@@ -29,7 +29,7 @@
 #include <regex.h>
 #include <string>
 
-namespace lsst { namespace qserv { namespace util {
+namespace lsst::qserv::util {
 
 class Regex {
 public:
@@ -99,6 +99,6 @@ private:
     regex_t _regex;
 };
 
-}}}  // namespace lsst::qserv::util
+}  // namespace lsst::qserv::util
 
 #endif  // LSST_QSERV_UTIL_REGEX_H

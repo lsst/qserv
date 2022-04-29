@@ -41,7 +41,7 @@
 // Qserv headers
 #include "util/Error.h"
 
-namespace lsst { namespace qserv { namespace util {
+namespace lsst::qserv::util {
 
 /** @class
  * @brief Implement a generic error container for Qserv
@@ -95,6 +95,6 @@ private:
     std::vector<Error> _errorVector;
 };
 
-}}}  // namespace lsst::qserv::util
+}  // namespace lsst::qserv::util
 
 #endif /* LSST_QSERV_UTIL_MULTIERROR_H */

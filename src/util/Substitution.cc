@@ -28,7 +28,7 @@
 #include <map>
 #include <vector>
 
-namespace lsst { namespace qserv { namespace util {
+namespace lsst::qserv::util {
 
 Substitution::Substitution(std::string template_, std::string const& delim, bool shouldFinalize)
         : _template(template_), _shouldFinalize(shouldFinalize) {
@@ -100,4 +100,4 @@ void Substitution::_build(std::string const& delim) {
     }
 }
 
-}}}  // namespace lsst::qserv::util
+}  // namespace lsst::qserv::util

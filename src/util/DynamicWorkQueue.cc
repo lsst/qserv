@@ -33,7 +33,7 @@
 #include <sys/time.h>
 #include <thread>
 
-namespace lsst { namespace qserv { namespace util {
+namespace lsst::qserv::util {
 
 // A linked list of Callable objects associated with a specific session.
 struct DynamicWorkQueue::Queue {
@@ -312,4 +312,4 @@ bool DynamicWorkQueue::_shouldDecreaseThreadCount() const {
            _numThreads - _minThreads > _sessions.size() * _minThreadsPerSession;
 }
 
-}}}  // namespace lsst::qserv::util
+}  // namespace lsst::qserv::util

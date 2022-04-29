@@ -33,7 +33,7 @@
 
 // This header declarations
 
-namespace lsst { namespace qserv { namespace util {
+namespace lsst::qserv::util {
 
 /**
  * The BlockPost provides a facility for blocking a calling thread
@@ -96,6 +96,6 @@ private:
     std::mutex _generatorMtx;  // for thread safety
 };
 
-}}}  // namespace lsst::qserv::util
+}  // namespace lsst::qserv::util
 
 #endif  // LSST_QSERV_UTIL_BLOCKPOST_H

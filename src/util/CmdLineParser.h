@@ -38,7 +38,7 @@
 
 // This header declarations
 
-namespace lsst { namespace qserv { namespace util {
+namespace lsst::qserv::util {
 
 /**
  * The command line parser class for the command-line applications.
@@ -274,6 +274,6 @@ private:
     std::vector<std::string> _parameter;
 };
 
-}}}  // namespace lsst::qserv::util
+}  // namespace lsst::qserv::util
 
 #endif  // LSST_QSERV_UTIL_CMD_LINE_PARSER_H

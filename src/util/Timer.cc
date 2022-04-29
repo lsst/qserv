@@ -36,7 +36,7 @@ namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.util.Timer");
 }
 
-namespace lsst { namespace qserv { namespace util {
+namespace lsst::qserv::util {
 
 std::ostream& Timer::write(std::ostream& os, struct ::timeval const& time) {
     char buf[64];
@@ -131,4 +131,4 @@ std::string TimerHistogram::_getString(std::string const& note) {
     return os.str();
 }
 
-}}}  // namespace lsst::qserv::util
+}  // namespace lsst::qserv::util

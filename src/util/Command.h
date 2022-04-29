@@ -32,7 +32,7 @@
 #include <memory>
 #include <mutex>
 
-namespace lsst { namespace qserv { namespace util {
+namespace lsst::qserv::util {
 
 /// Tracker provides an interface for indicating an action is complete.
 ///
@@ -98,6 +98,6 @@ public:
     void actionComplete(CmdData*) override { setComplete(); };
 };
 
-}}}  // namespace lsst::qserv::util
+}  // namespace lsst::qserv::util
 
 #endif /* CORE_MODULES_UTIL_COMMAND_H_ */

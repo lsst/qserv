@@ -26,7 +26,7 @@
 // System headers
 #include <sstream>
 
-namespace lsst { namespace qserv { namespace util {
+namespace lsst::qserv::util {
 
 Issue::Context::Context(char const* file, int line, char const* func)
         : _file(file), _func(func), _line(line) {}
@@ -49,4 +49,4 @@ Issue::~Issue() throw() {}
 // Implements std::exception::what()
 char const* Issue::what() const throw() { return _fullMessage.c_str(); }
 
-}}}  // namespace lsst::qserv::util
+}  // namespace lsst::qserv::util

@@ -29,7 +29,7 @@
 #include <string>
 #include <vector>
 
-namespace lsst { namespace qserv { namespace util {
+namespace lsst::qserv::util {
 
 /// class Substitution : Simply performs substitution on a template
 /// string using a supplied string-to-string mapping.  Optimized for
@@ -68,6 +68,6 @@ private:
     bool _shouldFinalize;
 };
 
-}}}  // namespace lsst::qserv::util
+}  // namespace lsst::qserv::util
 
 #endif  // LSST_QSERV_UTIL_SUBSTITUTION_H

@@ -30,7 +30,7 @@
 
 // external headers
 
-namespace lsst { namespace qserv { namespace util {
+namespace lsst::qserv::util {
 
 /// Class used to temporarily change the priority of the thread it is on.
 /// It requires root privileges for this class to change anything.
@@ -57,6 +57,6 @@ private:
     int _originalPolicy{SCHED_OTHER};  ///< Normal scheduling policy.
 };
 
-}}}  // namespace lsst::qserv::util
+}  // namespace lsst::qserv::util
 
 #endif /* CORE_MODULES_UTIL_THREADPRIORITY_H_ */

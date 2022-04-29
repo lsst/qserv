@@ -36,7 +36,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.util.Error");
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace util {
+namespace lsst::qserv::util {
 
 Error::Error(int code, std::string const& msg, int status) : _code(code), _msg(msg), _status(status) {
     if (_code != ErrorCode::NONE || _msg != "" || _status != ErrorCode::NONE) {
@@ -56,4 +56,4 @@ std::ostream& operator<<(std::ostream& out, Error const& error) {
     return out;
 }
 
-}}}  // namespace lsst::qserv::util
+}  // namespace lsst::qserv::util

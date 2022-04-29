@@ -31,7 +31,7 @@
 
 // LSST headers
 
-namespace lsst { namespace qserv { namespace util {
+namespace lsst::qserv::util {
 
 ///  class WorkQueue -- A class that implements a fixed-size
 ///  thread-pool for performing tasks.  No pre-emption, so if all
@@ -85,6 +85,6 @@ private:
     RunnerDeque _runners;
 };
 
-}}}  // namespace lsst::qserv::util
+}  // namespace lsst::qserv::util
 
 #endif  // LSST_QSERV_UTIL_WORKQUEUE_H

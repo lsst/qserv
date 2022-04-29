@@ -41,7 +41,7 @@
 #include <vector>
 #include <memory>
 
-namespace lsst { namespace qserv { namespace util {
+namespace lsst::qserv::util {
 
 template <typename T>
 bool ptrCompare(std::shared_ptr<T> const& lhs, std::shared_ptr<T> const& rhs) {
@@ -118,6 +118,6 @@ struct Compare {
     bool operator()(int a, std::shared_ptr<T> const& b) const { return a < *b; }
 };
 
-}}}  // namespace lsst::qserv::util
+}  // namespace lsst::qserv::util
 
 #endif  // LSST_QSERV_UTIL_POINTER_COMPARE_H

@@ -31,7 +31,7 @@
 // Third party headers
 #include <boost/algorithm/string.hpp>
 
-namespace lsst { namespace qserv { namespace util {
+namespace lsst::qserv::util {
 
 //----- Case-insensitive hash and comparison functionals for std::string,
 //      can be used for instantiation of case-insensitive standard containers.
@@ -46,6 +46,6 @@ struct ci_pred {
     bool operator()(std::string const& lhs, std::string const& rhs) const { return boost::iequals(lhs, rhs); }
 };
 
-}}}  // namespace lsst::qserv::util
+}  // namespace lsst::qserv::util
 
 #endif  // LSST_QSERV_UTIL_CIUTILS_H

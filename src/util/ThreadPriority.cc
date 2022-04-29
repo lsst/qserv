@@ -35,7 +35,7 @@ namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.util.ThreadPriority");
 }
 
-namespace lsst { namespace qserv { namespace util {
+namespace lsst::qserv::util {
 
 void ThreadPriority::storeOriginalValues() {
     getCurrentValues(_originalPriority, _originalPolicy);
@@ -67,4 +67,4 @@ int ThreadPriority::setPriorityPolicy(int newPriority, int newPolicy) {
     return result;
 }
 
-}}}  // namespace lsst::qserv::util
+}  // namespace lsst::qserv::util

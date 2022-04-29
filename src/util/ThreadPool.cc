@@ -38,7 +38,7 @@ namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.util.ThreadPool");
 }
 
-namespace lsst { namespace qserv { namespace util {
+namespace lsst::qserv::util {
 
 /// PoolEventThread factory to ensure shared_this.
 PoolEventThread::Ptr PoolEventThread::newPoolEventThread(std::shared_ptr<ThreadPool> const& threadPool,
@@ -313,4 +313,4 @@ bool ThreadPool::atMaxThreadPoolCount() {
     return atMax;
 }
 
-}}}  // namespace lsst::qserv::util
+}  // namespace lsst::qserv::util

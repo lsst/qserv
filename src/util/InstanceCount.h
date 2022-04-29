@@ -8,7 +8,7 @@
 #include <mutex>
 #include <string>
 
-namespace lsst { namespace qserv { namespace util {
+namespace lsst::qserv::util {
 
 /// This a utility class to track the number of instances of any class where it is a member.
 //
@@ -33,6 +33,6 @@ private:
     void _increment(std::string const& source);
 };
 
-}}}  // namespace lsst::qserv::util
+}  // namespace lsst::qserv::util
 
 #endif  // LSST_QSERV_UTIL_INSTANCECOUNT_H

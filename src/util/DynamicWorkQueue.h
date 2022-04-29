@@ -30,7 +30,7 @@
 #include <mutex>
 #include <set>
 
-namespace lsst { namespace qserv { namespace util {
+namespace lsst::qserv::util {
 
 /// A dynamic work queue is a pool of threads created with some initial
 /// number of threads (by default 0). As work is added, threads are created,
@@ -117,6 +117,6 @@ private:
     friend struct Runner;
 };
 
-}}}  // namespace lsst::qserv::util
+}  // namespace lsst::qserv::util
 
 #endif  // LSST_QSERV_CCONTROL_DYNAMICWORKQUEUE_H

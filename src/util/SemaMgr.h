@@ -32,7 +32,7 @@
 
 // Qserv headers
 
-namespace lsst { namespace qserv { namespace util {
+namespace lsst::qserv::util {
 
 /// This class (with SemaLock) is used to limit the number of simultaneous
 /// connections to MySQL for merging the results.
@@ -96,6 +96,6 @@ private:
     SemaMgr& _semaMgr;
 };
 
-}}}  // namespace lsst::qserv::util
+}  // namespace lsst::qserv::util
 
 #endif  // LSST_QSERV_UTIL_SEMAMGR_H

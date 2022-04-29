@@ -34,7 +34,7 @@
 
 // external headers
 
-namespace lsst { namespace qserv { namespace util {
+namespace lsst::qserv::util {
 
 /// Provide a thread safe method for incrementing a sequence number.
 ///
@@ -123,6 +123,6 @@ protected:
     T _flag;
 };
 
-}}}  // namespace lsst::qserv::util
+}  // namespace lsst::qserv::util
 
 #endif /* CORE_MODULES_UTIL_THREADSAFE_H_ */

@@ -38,7 +38,7 @@ namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.util.EventThread");
 }
 
-namespace lsst { namespace qserv { namespace util {
+namespace lsst::qserv::util {
 
 void CommandQueue::queCmd(std::vector<Command::Ptr> const& cmds) {
     {
@@ -128,4 +128,4 @@ void EventThreadJoiner::addThread(EventThread::Ptr const& eventThread) {
     _eventThreads.push(eventThread);
 }
 
-}}}  // namespace lsst::qserv::util
+}  // namespace lsst::qserv::util

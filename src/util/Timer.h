@@ -32,7 +32,7 @@
 #include <mutex>
 #include <vector>
 
-namespace lsst { namespace qserv { namespace util {
+namespace lsst::qserv::util {
 
 /// A dirt-simple class for instrumenting ops in qserv.
 struct Timer {
@@ -122,6 +122,6 @@ private:
     uint64_t _totalCount{0};
 };
 
-}}}  // namespace lsst::qserv::util
+}  // namespace lsst::qserv::util
 
 #endif  // LSST_QSERV_UTIL_TIMER_H
