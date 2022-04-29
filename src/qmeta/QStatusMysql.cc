@@ -48,7 +48,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.qmeta.QStatusMysql");
 
 }
 
-namespace lsst { namespace qserv { namespace qmeta {
+namespace lsst::qserv::qmeta {
 
 QStatusMysql::QStatusMysql(mysql::MySqlConfig const& mysqlConf)
         : QStatus(), _conn(sql::SqlConnectionFactory::make(mysqlConf)) {}
@@ -141,4 +141,4 @@ void QStatusMysql::queryStatsTmpRemove(QueryId queryId) {
     trans->commit();
 }
 
-}}}  // namespace lsst::qserv::qmeta
+}  // namespace lsst::qserv::qmeta

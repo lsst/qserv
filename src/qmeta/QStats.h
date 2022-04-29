@@ -29,7 +29,7 @@
 // Qserv headers
 #include "qmeta/types.h"
 
-namespace lsst { namespace qserv { namespace qmeta {
+namespace lsst::qserv::qmeta {
 
 /// Contains query completion statistics for a running query.
 /// The object is only meant for returning function results in a reasonable form.
@@ -51,6 +51,6 @@ struct QStats {
     std::time_t lastUpdate{0};  ///< Last time this row was updated.
 };
 
-}}}  // namespace lsst::qserv::qmeta
+}  // namespace lsst::qserv::qmeta
 
 #endif  // LSST_QSERV_QMETA_QSTATS_H

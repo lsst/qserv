@@ -32,11 +32,11 @@
 #include "qmeta/QMeta.h"
 
 // Forward declarations
-namespace lsst { namespace qserv { namespace sql {
+namespace lsst::qserv::sql {
 class SqlConnection;
-}}}  // namespace lsst::qserv::sql
+}  // namespace lsst::qserv::sql
 
-namespace lsst { namespace qserv { namespace qmeta {
+namespace lsst::qserv::qmeta {
 
 /// @addtogroup qmeta
 
@@ -263,6 +263,6 @@ private:
     std::mutex _dbMutex;  ///< Synchronizes access to certain DB operations
 };
 
-}}}  // namespace lsst::qserv::qmeta
+}  // namespace lsst::qserv::qmeta
 
 #endif  // LSST_QSERV_QMETA_QMETAMYSQL_H

@@ -38,7 +38,7 @@
 namespace py = pybind11;
 using namespace pybind11::literals;
 
-namespace lsst { namespace qserv { namespace qmeta {
+namespace lsst::qserv::qmeta {
 
 PYBIND11_MODULE(qmetaLib, mod) {
     py::class_<QInfo> clsQInfo(mod, "QInfo");
@@ -110,4 +110,4 @@ PYBIND11_MODULE(qmetaLib, mod) {
     py::register_exception<ConsistencyError>(mod, "ConsistencyError", clsQMetaError.ptr());
 }
 
-}}}  // namespace lsst::qserv::qmeta
+}  // namespace lsst::qserv::qmeta

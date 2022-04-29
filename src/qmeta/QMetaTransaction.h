@@ -30,7 +30,7 @@
 #include "sql/SqlErrorObject.h"
 #include "sql/SqlTransactionScope.h"
 
-namespace lsst { namespace qserv { namespace qmeta {
+namespace lsst::qserv::qmeta {
 
 /// @addtogroup qmeta
 
@@ -60,6 +60,6 @@ private:
     QMetaTransaction(sql::SqlConnection& conn) : sql::SqlTransactionScope(conn) {}
 };
 
-}}}  // namespace lsst::qserv::qmeta
+}  // namespace lsst::qserv::qmeta
 
 #endif  // LSST_QSERV_QMETA_QMETATRANSACTION_H

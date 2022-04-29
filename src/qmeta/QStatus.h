@@ -33,7 +33,7 @@
 #include "qmeta/QStats.h"
 #include "qmeta/types.h"
 
-namespace lsst { namespace qserv { namespace qmeta {
+namespace lsst::qserv::qmeta {
 
 /// This class is used to track temporary status information.
 /// Currently, this only consists of how many chunks have been completed
@@ -71,6 +71,6 @@ protected:
     QStatus() = default;
 };
 
-}}}  // namespace lsst::qserv::qmeta
+}  // namespace lsst::qserv::qmeta
 
 #endif  // LSST_QSERV_QMETA_QSTATUS_H

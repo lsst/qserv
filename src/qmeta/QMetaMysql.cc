@@ -85,7 +85,7 @@ QInfo::QStatus string2status(char const* statusStr) {
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace qmeta {
+namespace lsst::qserv::qmeta {
 
 // Constructors
 QMetaMysql::QMetaMysql(mysql::MySqlConfig const& mysqlConf)
@@ -801,4 +801,4 @@ void QMetaMysql::saveResultQuery(QueryId queryId, std::string const& query) {
     trans->commit();
 }
 
-}}}  // namespace lsst::qserv::qmeta
+}  // namespace lsst::qserv::qmeta

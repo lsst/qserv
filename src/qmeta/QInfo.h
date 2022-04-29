@@ -29,7 +29,7 @@
 // Qserv headers
 #include "qmeta/types.h"
 
-namespace lsst { namespace qserv { namespace qmeta {
+namespace lsst::qserv::qmeta {
 
 /// @addtogroup qmeta
 
@@ -157,6 +157,6 @@ private:
     std::time_t _returned;       // Time when query result was sent to client, 0 if not sent yet.
 };
 
-}}}  // namespace lsst::qserv::qmeta
+}  // namespace lsst::qserv::qmeta
 
 #endif  // LSST_QSERV_QMETA_QINFO_H

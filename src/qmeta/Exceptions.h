@@ -32,7 +32,7 @@
 #include "sql/SqlErrorObject.h"
 #include "util/Issue.h"
 
-namespace lsst { namespace qserv { namespace qmeta {
+namespace lsst::qserv::qmeta {
 
 /// @addtogroup qmeta
 
@@ -127,6 +127,6 @@ public:
     virtual std::string typeName() const override { return "ConfigError"; }
 };
 
-}}}  // namespace lsst::qserv::qmeta
+}  // namespace lsst::qserv::qmeta
 
 #endif  // LSST_QSERV_QMETA_EXCEPTIONS_H

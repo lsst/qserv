@@ -35,7 +35,7 @@
 #include "qmeta/QStats.h"
 #include "qmeta/types.h"
 
-namespace lsst { namespace qserv { namespace qmeta {
+namespace lsst::qserv::qmeta {
 
 /// @addtogroup qmeta
 
@@ -281,6 +281,6 @@ protected:
     QMeta() {}
 };
 
-}}}  // namespace lsst::qserv::qmeta
+}  // namespace lsst::qserv::qmeta
 
 #endif  // LSST_QSERV_QMETA_QMETA_H

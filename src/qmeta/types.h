@@ -31,7 +31,7 @@
 // Qserv headers
 #include "global/intTypes.h"
 
-namespace lsst { namespace qserv { namespace qmeta {
+namespace lsst::qserv::qmeta {
 
 /*
  * typedefs for commonly used types.
@@ -40,6 +40,6 @@ namespace lsst { namespace qserv { namespace qmeta {
 /// Typedef for Czar ID in query metadata.
 typedef std::uint32_t CzarId;
 
-}}}  // namespace lsst::qserv::qmeta
+}  // namespace lsst::qserv::qmeta
 
 #endif  // LSST_QSERV_QMETA_TYPES_H

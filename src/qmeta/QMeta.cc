@@ -23,7 +23,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.qmeta.QMeta");
 
 }
 
-namespace lsst { namespace qserv { namespace qmeta {
+namespace lsst::qserv::qmeta {
 
 shared_ptr<QMeta> QMeta::createFromConfig(map<string, string> const& config) {
     LOGS(_log, LOG_LVL_DEBUG, "Create QMeta instance from config map");
@@ -57,4 +57,4 @@ shared_ptr<QMeta> QMeta::createFromConfig(map<string, string> const& config) {
     }
 }
 
-}}}  // namespace lsst::qserv::qmeta
+}  // namespace lsst::qserv::qmeta

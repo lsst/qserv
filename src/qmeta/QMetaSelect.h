@@ -32,7 +32,7 @@
 #include "mysql/MySqlConfig.h"
 #include "sql/SqlResults.h"
 
-namespace lsst { namespace qserv { namespace qmeta {
+namespace lsst::qserv::qmeta {
 
 /// @addtogroup qmeta
 
@@ -77,6 +77,6 @@ protected:
     std::shared_ptr<sql::SqlConnection> _conn;
 };
 
-}}}  // namespace lsst::qserv::qmeta
+}  // namespace lsst::qserv::qmeta
 
 #endif  // LSST_QSERV_QMETA_QMETASELECT_H
