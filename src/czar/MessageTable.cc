@@ -64,7 +64,7 @@ std::string const unlockTmpl("UNLOCK TABLES");
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace czar {
+namespace lsst::qserv::czar {
 
 // Constructors
 MessageTable::MessageTable(std::string const& tableName, mysql::MySqlConfig const& resultConfig)
@@ -136,4 +136,4 @@ void MessageTable::_saveQueryMessages(ccontrol::UserQuery::Ptr const& userQuery)
     }
 }
 
-}}}  // namespace lsst::qserv::czar
+}  // namespace lsst::qserv::czar

@@ -33,11 +33,11 @@
 #include "global/stringTypes.h"
 #include "mysql/MySqlConfig.h"
 
-namespace lsst { namespace qserv { namespace sql {
+namespace lsst::qserv::sql {
 class SqlConnection;
-}}}  // namespace lsst::qserv::sql
+}  // namespace lsst::qserv::sql
 
-namespace lsst { namespace qserv { namespace czar {
+namespace lsst::qserv::czar {
 
 /// @addtogroup czar
 
@@ -71,6 +71,6 @@ private:
     std::shared_ptr<sql::SqlConnection> _sqlConn;
 };
 
-}}}  // namespace lsst::qserv::czar
+}  // namespace lsst::qserv::czar
 
 #endif  // LSST_QSERV_CZAR_MESSAGETABLE_H

@@ -56,7 +56,7 @@ void QservLogger(struct timeval const& mtime, unsigned long tID, const char* msg
 bool dummy = XrdSsiLogger::SetMCB(QservLogger, XrdSsiLogger::mcbClient);
 }  // namespace
 
-namespace lsst { namespace qserv { namespace czar {
+namespace lsst::qserv::czar {
 
 CzarConfig::CzarConfig(util::ConfigStore const& configStore)
         : _mySqlResultConfig(configStore.get("resultdb.user", "qsmaster"),
@@ -104,4 +104,4 @@ std::ostream& operator<<(std::ostream& out, CzarConfig const& czarConfig) {
     return out;
 }
 
-}}}  // namespace lsst::qserv::czar
+}  // namespace lsst::qserv::czar

@@ -71,7 +71,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.czar.Czar");
 
 }  // anonymous namespace
 
-namespace lsst { namespace qserv { namespace czar {
+namespace lsst::qserv::czar {
 
 Czar::Ptr Czar::_czar;
 
@@ -450,4 +450,4 @@ void Czar::removeOldResultTables() {
     _oldTableRemovalThread = std::move(t);
 }
 
-}}}  // namespace lsst::qserv::czar
+}  // namespace lsst::qserv::czar

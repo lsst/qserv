@@ -30,7 +30,7 @@
 #include "mysql/MySqlConfig.h"
 #include "util/ConfigStore.h"
 
-namespace lsst { namespace qserv { namespace czar {
+namespace lsst::qserv::czar {
 
 /**
  *  Provide all configuration parameters for a Qserv Czar instance
@@ -198,6 +198,6 @@ private:
     int const _qReqPseudoFifoMaxRunning;
 };
 
-}}}  // namespace lsst::qserv::czar
+}  // namespace lsst::qserv::czar
 
 #endif  // LSST_QSERV_CZAR_CZARCONFIG_H

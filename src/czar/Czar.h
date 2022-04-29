@@ -45,7 +45,7 @@
 #include "util/ConfigStore.h"
 #include "util/Timer.h"
 
-namespace lsst { namespace qserv {
+namespace lsst::qserv {
 
 namespace qdisp {
 class PseudoFifo;
@@ -164,6 +164,6 @@ private:
 };
 
 }  // namespace czar
-}}  // namespace lsst::qserv
+}  // namespace lsst::qserv
 
 #endif  // LSST_QSERV_CZAR_CZAR_H
