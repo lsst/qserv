@@ -59,7 +59,7 @@ namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.tests.QueryAnaHelper");
 }
 
-namespace lsst { namespace qserv { namespace tests {
+namespace lsst::qserv::tests {
 
 ParseRunner::Ptr QueryAnaHelper::getParser(std::string const& stmt) {
     auto p = std::make_shared<ParseRunner>(stmt);
@@ -127,4 +127,4 @@ std::vector<std::string> QueryAnaHelper::getInternalQueries(QuerySession::Test& 
     return queries;
 }
 
-}}}  // namespace lsst::qserv::tests
+}  // namespace lsst::qserv::tests

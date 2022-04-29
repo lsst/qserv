@@ -48,7 +48,7 @@ std::string mapBuffer(testKvMap);
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace tests {
+namespace lsst::qserv::tests {
 
 struct QueryAnaFixture {
     // To learn how to dump the map, see qserv/core/css/KvInterfaceImplMem.cc
@@ -62,6 +62,6 @@ struct QueryAnaFixture {
     QueryAnaHelper queryAnaHelper;
 };
 
-}}}  // namespace lsst::qserv::tests
+}  // namespace lsst::qserv::tests
 
 #endif  // LSST_QSERV_TESTS_QUERYANAFIXTURE_H

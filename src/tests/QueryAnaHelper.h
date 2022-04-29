@@ -40,7 +40,7 @@
 #include "qproc/QuerySession.h"
 #include "util/IterableFormatter.h"
 
-namespace lsst { namespace qserv { namespace tests {
+namespace lsst::qserv::tests {
 
 /**
  *  @brief Test tools used by qproc::testQueryAna* units tests
@@ -83,6 +83,6 @@ struct QueryAnaHelper {
     std::shared_ptr<qproc::QuerySession> querySession;
 };
 
-}}}  // namespace lsst::qserv::tests
+}  // namespace lsst::qserv::tests
 
 #endif  // LSST_QSERV_TESTS_QUERYANAHELPER_H
