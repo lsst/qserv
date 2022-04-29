@@ -32,18 +32,17 @@
 #include "util/common.h"
 
 // Forward declarations
-namespace lsst { namespace qserv {
-namespace ccontrol {
+namespace lsst::qserv::ccontrol {
 class ParseListener;
 class UserQuery;
 class UserQueryResources;
-}  // namespace ccontrol
-namespace query {
+}
+
+namespace lsst::qserv::query {
 class SelectStmt;
 }
-}}  // namespace lsst::qserv
 
-namespace lsst { namespace qserv { namespace ccontrol {
+namespace lsst::qserv::ccontrol {
 
 /// ParseRunner drives the antlr4-based SQL parser.
 class ParseRunner {
@@ -109,6 +108,6 @@ private:
     std::shared_ptr<ParseListener> _listener;
 };
 
-}}}  // namespace lsst::qserv::ccontrol
+}  // namespace lsst::qserv::ccontrol
 
 #endif  // LSST_QSERV_PARSER_PARSERUNNER_H

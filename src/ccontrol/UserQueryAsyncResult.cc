@@ -41,7 +41,7 @@ namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.ccontrol.UserQueryAsyncResult");
 }
 
-namespace lsst { namespace qserv { namespace ccontrol {
+namespace lsst::qserv::ccontrol {
 
 // Constructors
 UserQueryAsyncResult::UserQueryAsyncResult(QueryId queryId, qmeta::CzarId qMetaCzarId,
@@ -195,4 +195,4 @@ std::string UserQueryAsyncResult::getResultLocation() const { return "table:" + 
 
 std::string UserQueryAsyncResult::getResultQuery() const { return _qInfo.resultQuery(); }
 
-}}}  // namespace lsst::qserv::ccontrol
+}  // namespace lsst::qserv::ccontrol

@@ -31,19 +31,20 @@
 #include "qmeta/QInfo.h"
 #include "qmeta/types.h"
 
-namespace lsst { namespace qserv {
-namespace qdisp {
+namespace lsst::qserv::qdisp {
 class MessageStore;
 }
-namespace qmeta {
+
+namespace lsst::qserv::qmeta {
 class QMeta;
 }
-namespace sql {
+
+namespace lsst::qserv::sql {
 class SqlConnection;
 }
-}}  // namespace lsst::qserv
 
-namespace lsst { namespace qserv { namespace ccontrol {
+
+namespace lsst::qserv::ccontrol {
 
 /// @addtogroup ccontrol
 
@@ -117,6 +118,6 @@ private:
     QueryState _qState = UNKNOWN;
 };
 
-}}}  // namespace lsst::qserv::ccontrol
+}  // namespace lsst::qserv::ccontrol
 
 #endif  // LSST_QSERV_CCONTROL_USERQUERYASYNCRESULT_H

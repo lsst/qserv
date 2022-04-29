@@ -57,7 +57,7 @@ std::string g_nextResultTableId(std::string const& userQueryId) {
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace ccontrol {
+namespace lsst::qserv::ccontrol {
 
 // Constructor
 UserQueryProcessList::UserQueryProcessList(std::shared_ptr<query::SelectStmt> const& statement,
@@ -245,4 +245,4 @@ void UserQueryProcessList::discard() {
     // no resources
 }
 
-}}}  // namespace lsst::qserv::ccontrol
+}  // namespace lsst::qserv::ccontrol

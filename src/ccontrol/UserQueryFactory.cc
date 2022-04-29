@@ -69,7 +69,7 @@ namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.ccontrol.UserQueryFactory");
 }
 
-namespace lsst { namespace qserv { namespace ccontrol {
+namespace lsst::qserv::ccontrol {
 
 std::shared_ptr<UserQuerySharedResources> makeUserQuerySharedResources(
         czar::CzarConfig const& czarConfig, std::shared_ptr<qproc::DatabaseModels> const& dbModels,
@@ -261,4 +261,4 @@ UserQuery::Ptr UserQueryFactory::newUserQuery(std::string const& aQuery, std::st
     }
 }
 
-}}}  // namespace lsst::qserv::ccontrol
+}  // namespace lsst::qserv::ccontrol

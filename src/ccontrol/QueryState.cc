@@ -24,7 +24,7 @@
 // Class header
 #include "ccontrol/QueryState.h"
 
-namespace lsst { namespace qserv { namespace ccontrol {
+namespace lsst::qserv::ccontrol {
 
 std::string const& getQueryStateString(QueryState const& qs) {
     static const std::string unknown("unknown");
@@ -47,4 +47,4 @@ std::string const& getQueryStateString(QueryState const& qs) {
             return unknown;
     }
 }
-}}}  // namespace lsst::qserv::ccontrol
+}  // namespace lsst::qserv::ccontrol

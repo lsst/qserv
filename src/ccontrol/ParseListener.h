@@ -34,22 +34,21 @@ class CommonTokenStream;
 class ParserRuleContext;
 }  // namespace antlr4
 
-namespace lsst { namespace qserv {
-namespace ccontrol {
+namespace lsst::qserv::ccontrol {
 class Adapter;
 class RootAdapter;
 class UserQuery;
 class UserQueryResources;
-}  // namespace ccontrol
-namespace query {
+}
+
+namespace lsst::qserv::query {
 class SelectStmt;
 }
-}}  // namespace lsst::qserv
 
 // QSMySqlLexer is an antlr4-generated file; not in a namespace.
 class QSMySqlLexer;
 
-namespace lsst { namespace qserv { namespace ccontrol {
+namespace lsst::qserv::ccontrol {
 
 class ParseListener : public QSMySqlParserListener {
 public:
@@ -1794,6 +1793,6 @@ private:
     std::shared_ptr<ccontrol::UserQueryResources> _queryResources;
 };
 
-}}}  // namespace lsst::qserv::ccontrol
+}  // namespace lsst::qserv::ccontrol
 
 #endif  // LSST_QSERV_CCONTROL_PARSELISTENER_H

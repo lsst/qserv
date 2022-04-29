@@ -29,7 +29,7 @@
 
 #include "antlr4-runtime.h"
 
-namespace lsst { namespace qserv { namespace ccontrol {
+namespace lsst::qserv::ccontrol {
 
 // get the query string for the portion of the query represented in the given context
 static std::string getQueryString(antlr4::ParserRuleContext* ctx) {
@@ -49,6 +49,6 @@ std::string getTypeName(T obj) {
     return abi::__cxa_demangle(typeid(obj).name(), 0, 0, &status);
 }
 
-}}}  // namespace lsst::qserv::ccontrol
+}  // namespace lsst::qserv::ccontrol
 
 #endif  // LSST_QSERV_CCONTROL_PARSEHELPERS_H

@@ -42,11 +42,11 @@
 #include "qmeta/types.h"
 
 // Forward decl
-namespace lsst { namespace qserv { namespace qdisp {
+namespace lsst::qserv::qdisp {
 class MessageStore;
-}}}  // namespace lsst::qserv::qdisp
+}  // namespace lsst::qserv::qdisp
 
-namespace lsst { namespace qserv { namespace ccontrol {
+namespace lsst::qserv::ccontrol {
 
 /// UserQuery : interface for user query data. Not thread-safe, although
 /// its delegates are thread-safe as appropriate.
@@ -103,6 +103,6 @@ public:
     virtual std::string getResultQuery() const { return std::string(); }
 };
 
-}}}  // namespace lsst::qserv::ccontrol
+}  // namespace lsst::qserv::ccontrol
 
 #endif  // LSST_QSERV_CCONTROL_USERQUERY_H

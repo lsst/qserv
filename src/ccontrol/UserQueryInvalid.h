@@ -37,7 +37,7 @@
 
 // Forward decl
 
-namespace lsst { namespace qserv { namespace ccontrol {
+namespace lsst::qserv::ccontrol {
 
 /// UserQueryInvalid : implementation of the UserQuery which is used
 /// to indicate invalid queries.
@@ -76,6 +76,6 @@ private:
     std::shared_ptr<qdisp::MessageStore> _messageStore;
 };
 
-}}}  // namespace lsst::qserv::ccontrol
+}  // namespace lsst::qserv::ccontrol
 
 #endif  // LSST_QSERV_CCONTROL_USERQUERYINVALID_H

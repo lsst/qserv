@@ -38,11 +38,11 @@
 #include "ccontrol/QueryState.h"
 #include "global/intTypes.h"
 
-namespace lsst { namespace qserv { namespace qdisp {
+namespace lsst::qserv::qdisp {
 class MessageStore;
-}}}  // namespace lsst::qserv::qdisp
+}  // namespace lsst::qserv::qdisp
 
-namespace lsst { namespace qserv { namespace ccontrol {
+namespace lsst::qserv::ccontrol {
 
 // UserQueryQservManager is for handling queries with the form `CALL QSERV_MANAGER("...")`
 class UserQueryQservManager : public UserQuery {
@@ -90,6 +90,6 @@ private:
     std::string _resultDb;
 };
 
-}}}  // namespace lsst::qserv::ccontrol
+}  // namespace lsst::qserv::ccontrol
 
 #endif  // LSST_QSERV_CCONTROL_USERQUERYQSERVMANAGER_H

@@ -96,7 +96,7 @@ boost::regex _callRe(R"(^call\s+.+$)",
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace ccontrol {
+namespace lsst::qserv::ccontrol {
 
 /// Returns true if query is DROP DATABASE
 bool UserQueryType::isDropDb(std::string const& query, std::string& dbName) {
@@ -221,4 +221,4 @@ bool UserQueryType::isCall(std::string const& query) {
     return boost::regex_match(query, _callRe);
 }
 
-}}}  // namespace lsst::qserv::ccontrol
+}  // namespace lsst::qserv::ccontrol

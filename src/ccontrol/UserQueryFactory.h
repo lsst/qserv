@@ -42,26 +42,29 @@
 #include "global/stringTypes.h"
 #include "qdisp/SharedResources.h"
 
-namespace lsst { namespace qserv {
-namespace ccontrol {
+namespace lsst::qserv::ccontrol {
 class UserQuery;
 class UserQuerySharedResources;
-}  // namespace ccontrol
-namespace czar {
+}
+
+namespace lsst::qserv::czar {
 class CzarConfig;
 }
-namespace qdisp {
+
+namespace lsst::qserv::qdisp {
 class ExecutiveConfig;
 }
-namespace qproc {
+
+namespace lsst::qserv::qproc {
 class DatabaseModels;
 }
-namespace query {
+
+namespace lsst::qserv::query {
 class SelectStmt;
 }
-}}  // namespace lsst::qserv
 
-namespace lsst { namespace qserv { namespace ccontrol {
+
+namespace lsst::qserv::ccontrol {
 
 ///  UserQueryFactory breaks construction of user queries into two phases:
 ///  creation/configuration of the factory and construction of the
@@ -88,6 +91,6 @@ private:
     std::shared_ptr<qdisp::ExecutiveConfig> _executiveConfig;
 };
 
-}}}  // namespace lsst::qserv::ccontrol
+}  // namespace lsst::qserv::ccontrol
 
 #endif  // LSST_QSERV_CCONTROL_USERQUERYFACTORY_H

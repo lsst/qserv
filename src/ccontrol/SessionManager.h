@@ -39,7 +39,7 @@
 #include <map>
 #include <mutex>
 
-namespace lsst { namespace qserv { namespace ccontrol {
+namespace lsst::qserv::ccontrol {
 
 template <typename Value>
 class SessionManager {
@@ -91,6 +91,6 @@ private:
     int _nextId;
 };
 
-}}}  // namespace lsst::qserv::ccontrol
+}  // namespace lsst::qserv::ccontrol
 
 #endif  // LSST_QSERV_CCONTROL_SESSIONMANAGER_H

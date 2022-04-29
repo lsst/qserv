@@ -44,7 +44,7 @@ namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.ccontrol.UserQueryDrop");
 }
 
-namespace lsst { namespace qserv { namespace ccontrol {
+namespace lsst::qserv::ccontrol {
 
 // Constructor
 UserQueryDrop::UserQueryDrop(std::shared_ptr<css::CssAccess> const& css, std::string const& dbName,
@@ -204,4 +204,4 @@ bool UserQueryDrop::_checkStatus() {
     return true;
 }
 
-}}}  // namespace lsst::qserv::ccontrol
+}  // namespace lsst::qserv::ccontrol

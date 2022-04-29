@@ -48,34 +48,37 @@
 #include "qproc/ChunkSpec.h"
 
 // Forward declarations
-namespace lsst { namespace qserv {
-namespace qdisp {
+namespace lsst::qserv::qdisp {
 class Executive;
 class MessageStore;
 class QdispPool;
-}  // namespace qdisp
-namespace qmeta {
+}
+
+namespace lsst::qserv::qmeta {
 class QMeta;
 }
-namespace qproc {
+
+namespace lsst::qserv::qproc {
 class DatabaseModels;
 class QuerySession;
 class SecondaryIndex;
-}  // namespace qproc
-namespace query {
+}
+
+namespace lsst::qserv::query {
 class ColumnRef;
 class SelectStmt;
-}  // namespace query
-namespace rproc {
+}
+
+namespace lsst::qserv::rproc {
 class InfileMerger;
 class InfileMergerConfig;
-}  // namespace rproc
-namespace util {
+}
+
+namespace lsst::qserv::util {
 class SemaMgr;
 }
-}}  // namespace lsst::qserv
 
-namespace lsst { namespace qserv { namespace ccontrol {
+namespace lsst::qserv::ccontrol {
 
 /// UserQuerySelect : implementation of the UserQuery for regular SELECT statements.
 class UserQuerySelect : public UserQuery {
@@ -185,6 +188,6 @@ private:
     bool _async;                      ///< true for async query
 };
 
-}}}  // namespace lsst::qserv::ccontrol
+}  // namespace lsst::qserv::ccontrol
 
 #endif  // LSST_QSERV_CCONTROL_USERQUERYSELECT_H

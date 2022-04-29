@@ -30,37 +30,42 @@
 #include "qmeta/types.h"
 #include "mysql/MySqlConfig.h"
 
-namespace lsst { namespace qserv {
-namespace ccontrol {
+namespace lsst::qserv::ccontrol {
 class UserQueryResources;
 }
-namespace css {
+
+namespace lsst::qserv::css {
 class CssAccess;
 }
-namespace czar {
+
+namespace lsst::qserv::czar {
 class CzarConfig;
 }
-namespace mysql {
+
+namespace lsst::qserv::mysql {
 class MySqlConfig;
 }
-namespace qmeta {
+
+namespace lsst::qserv::qmeta {
 class QMeta;
 class QStatus;
 class QMetaSelect;
-}  // namespace qmeta
-namespace qproc {
+}
+
+namespace lsst::qserv::qproc {
 class DatabaseModels;
 class SecondaryIndex;
-}  // namespace qproc
-namespace sql {
+}
+
+namespace lsst::qserv::sql {
 class SqlConnection;
 }
-namespace util {
+
+namespace lsst::qserv::util {
 class SemaMgr;
 }
-}}  // namespace lsst::qserv
 
-namespace lsst { namespace qserv { namespace ccontrol {
+namespace lsst::qserv::ccontrol {
 
 /**
  * UserQueryResources owns the Czar resources that are useful to & shared among UserQuery instances.
@@ -121,6 +126,6 @@ public:
     std::string resultDb;
 };
 
-}}}  // namespace lsst::qserv::ccontrol
+}  // namespace lsst::qserv::ccontrol
 
 #endif  // LSST_QSERV_CCONTROL_USERQUERYRESOURCES_H

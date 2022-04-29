@@ -38,7 +38,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.ccontrol.UserQueryQservManager");
 
 }
 
-namespace lsst { namespace qserv { namespace ccontrol {
+namespace lsst::qserv::ccontrol {
 
 UserQueryQservManager::UserQueryQservManager(std::shared_ptr<UserQueryResources> const& queryResources,
                                              std::string const& value)
@@ -86,4 +86,4 @@ std::string UserQueryQservManager::getResultQuery() const {
     return ret;
 }
 
-}}}  // namespace lsst::qserv::ccontrol
+}  // namespace lsst::qserv::ccontrol

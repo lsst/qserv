@@ -26,13 +26,13 @@
 // Qserv headers
 #include "global/ConfigError.h"
 
-namespace lsst { namespace qserv { namespace ccontrol {
+namespace lsst::qserv::ccontrol {
 
 /// ConfigError : error in qserv configuration detected by the czar controller
 class ConfigError : public lsst::qserv::ConfigError {
 public:
     ConfigError(std::string const& msg) : lsst::qserv::ConfigError(msg) {}
 };
-}}}  // namespace lsst::qserv::ccontrol
+}  // namespace lsst::qserv::ccontrol
 
 #endif  // LSST_QSERV_CCONTROL_CONFIGERROR_H

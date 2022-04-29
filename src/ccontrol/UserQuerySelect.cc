@@ -108,7 +108,7 @@ namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.ccontrol.UserQuerySelect");
 }  // namespace
 
-namespace lsst { namespace qserv {
+namespace lsst::qserv {
 
 /// A class that can be used to parameterize a ProtoImporter<TaskMsg> for
 /// debugging purposes
@@ -616,4 +616,4 @@ void UserQuerySelect::_qMetaAddChunks(std::vector<int> const& chunks) {
 std::string UserQuerySelect::getQueryIdString() const { return _queryIdStr; }
 
 }  // namespace ccontrol
-}}  // namespace lsst::qserv
+}  // namespace lsst::qserv

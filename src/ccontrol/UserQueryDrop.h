@@ -35,19 +35,20 @@
 #include "qmeta/types.h"
 
 // Forward decl
-namespace lsst { namespace qserv {
-namespace css {
+namespace lsst::qserv::css {
 class CssAccess;
 }
-namespace qmeta {
+
+namespace lsst::qserv::qmeta {
 class QMeta;
 }
-namespace sql {
+
+namespace lsst::qserv::sql {
 class SqlConnection;
 }
-}}  // namespace lsst::qserv
 
-namespace lsst { namespace qserv { namespace ccontrol {
+
+namespace lsst::qserv::ccontrol {
 
 /// UserQueryDrop : implementation of the UserQuery for DROP statements.
 class UserQueryDrop : public UserQuery {
@@ -105,6 +106,6 @@ private:
     int _sessionId;  ///< External reference number
 };
 
-}}}  // namespace lsst::qserv::ccontrol
+}  // namespace lsst::qserv::ccontrol
 
 #endif  // LSST_QSERV_CCONTROL_USERQUERYDROP_H

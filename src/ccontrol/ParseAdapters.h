@@ -77,7 +77,7 @@
 #include "query/WhereClause.h"
 #include "util/IterableFormatter.h"
 
-namespace lsst { namespace qserv { namespace ccontrol {
+namespace lsst::qserv::ccontrol {
 
 // Adapter is the base class for factory classes that exist at nodes in the antlr4 parse tree. (The idea
 // behind the name "Adapter" is that each Adapter subclass "adapts" the parameters of the parse tree node to
@@ -2819,6 +2819,6 @@ public:
     std::string name() const override { return getTypeName(this); }
 };
 
-}}}  // namespace lsst::qserv::ccontrol
+}  // namespace lsst::qserv::ccontrol
 
 #endif  // LSST_QSERV_CCONTROL_PARSEADAPTERS_H

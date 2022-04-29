@@ -30,7 +30,7 @@
 #include "czar/CzarConfig.h"
 #include "util/SemaMgr.h"
 
-namespace lsst { namespace qserv { namespace ccontrol {
+namespace lsst::qserv::ccontrol {
 
 UserQuerySharedResources::UserQuerySharedResources(
         czar::CzarConfig const& czarConfig_, std::shared_ptr<css::CssAccess> const& css_,
@@ -63,4 +63,4 @@ std::shared_ptr<UserQueryResources> UserQuerySharedResources::makeUserQueryResou
     return std::make_shared<UserQueryResources>(*this, userQueryId, resultDb);
 }
 
-}}}  // namespace lsst::qserv::ccontrol
+}  // namespace lsst::qserv::ccontrol

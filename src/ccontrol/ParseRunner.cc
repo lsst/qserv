@@ -94,7 +94,7 @@ private:
 
 }  // namespace
 
-namespace lsst { namespace qserv { namespace ccontrol {
+namespace lsst::qserv::ccontrol {
 
 std::shared_ptr<query::SelectStmt> ParseRunner::makeSelectStmt(std::string const& statement) {
     auto parser = std::make_shared<ParseRunner>(statement);
@@ -130,4 +130,4 @@ std::shared_ptr<query::SelectStmt> ParseRunner::getSelectStmt() { return _listen
 
 std::shared_ptr<UserQuery> ParseRunner::getUserQuery() { return _listener->getUserQuery(); }
 
-}}}  // namespace lsst::qserv::ccontrol
+}  // namespace lsst::qserv::ccontrol

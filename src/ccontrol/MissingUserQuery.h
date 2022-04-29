@@ -36,7 +36,7 @@
 // Third party headers
 #include "boost/lexical_cast.hpp"
 
-namespace lsst { namespace qserv { namespace ccontrol {
+namespace lsst::qserv::ccontrol {
 
 /// An error of trying to retrieve a non-existent UserQuery by id
 class MissingUserQuery : public std::exception {
@@ -50,6 +50,6 @@ private:
     std::string const _s;
 };
 
-}}}  // namespace lsst::qserv::ccontrol
+}  // namespace lsst::qserv::ccontrol
 
 #endif  // LSST_QSERV_CCONTROL_MISSINGUSERQUERY_H

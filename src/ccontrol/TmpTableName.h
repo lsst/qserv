@@ -32,7 +32,7 @@
 #include "global/intTypes.h"
 #include "util/StringHash.h"
 
-namespace lsst { namespace qserv { namespace ccontrol {
+namespace lsst::qserv::ccontrol {
 
 /// TmpTableName : a generator for temporary table names for chunk results.
 /// All member variables must be immutable.
@@ -55,6 +55,6 @@ private:
     std::string const _prefix;
 };
 
-}}}  // namespace lsst::qserv::ccontrol
+}  // namespace lsst::qserv::ccontrol
 
 #endif  // LSST_QSERV_CCONTROL_TMPTABLENAME_H

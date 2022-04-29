@@ -23,8 +23,8 @@
 
 #include "ccontrol/ParseAdapters.h"
 
-namespace lsst { namespace qserv { namespace ccontrol {
+namespace lsst::qserv::ccontrol {
 
 LOG_LOGGER Adapter::_log = LOG_GET("lsst.qserv.ccontrol.ParseAdapters");
 
-}}}  // namespace lsst::qserv::ccontrol
+}  // namespace lsst::qserv::ccontrol

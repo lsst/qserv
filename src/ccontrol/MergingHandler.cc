@@ -54,7 +54,7 @@ namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.ccontrol.MergingHandler");
 }
 
-namespace lsst { namespace qserv { namespace ccontrol {
+namespace lsst::qserv::ccontrol {
 
 ////////////////////////////////////////////////////////////////////////
 // MergingHandler public
@@ -276,4 +276,4 @@ bool MergingHandler::_verifyResult(BufPtr const& bufPtr, int blen) {
     return true;
 }
 
-}}}  // namespace lsst::qserv::ccontrol
+}  // namespace lsst::qserv::ccontrol

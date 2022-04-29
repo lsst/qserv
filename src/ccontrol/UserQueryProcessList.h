@@ -36,19 +36,19 @@
 #include "qmeta/types.h"
 
 // Forward decl
-namespace lsst { namespace qserv {
-namespace qmeta {
+namespace lsst::qserv::qmeta {
 class QMeta;
 }
-namespace query {
+
+namespace lsst::qserv::query {
 class SelectStmt;
 }
-namespace sql {
+
+namespace lsst::qserv::sql {
 class SqlConnection;
 }
-}}  // namespace lsst::qserv
 
-namespace lsst { namespace qserv { namespace ccontrol {
+namespace lsst::qserv::ccontrol {
 
 /// UserQueryProcessList : implementation of the UserQuery for SHOWPROCESS statements.
 class UserQueryProcessList : public UserQuery {
@@ -129,6 +129,6 @@ private:
     std::string _resultDb;
 };
 
-}}}  // namespace lsst::qserv::ccontrol
+}  // namespace lsst::qserv::ccontrol
 
 #endif  // LSST_QSERV_CCONTROL_USERQUERYPROCESSLIST_H

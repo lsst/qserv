@@ -32,7 +32,7 @@ namespace antlr4 {
 class ParserRuleContext;
 }
 
-namespace lsst { namespace qserv {
+namespace lsst::qserv {
 namespace ccontrol {
 class UserQuery;
 }
@@ -57,9 +57,9 @@ class ValueExpr;
 class ValueFactor;
 class WhereClause;
 }  // namespace query
-}}  // namespace lsst::qserv
+}  // namespace lsst::qserv
 
-namespace lsst { namespace qserv { namespace ccontrol {
+namespace lsst::qserv::ccontrol {
 
 // Callback Handler (CBH) classes define the interface of a 'parent' ParseAdapter node that may be called
 // by the child node. This allows the child to call the parent with Qserv Intermediate Representation (IR)
@@ -425,6 +425,6 @@ public:
     virtual void handleFunctionNameBase(std::string const& name) = 0;
 };
 
-}}}  // namespace lsst::qserv::ccontrol
+}  // namespace lsst::qserv::ccontrol
 
 #endif  // LSST_QSERV_CCONTROL_PARSEADAPTERSCBH_H

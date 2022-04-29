@@ -41,7 +41,7 @@
 // Local headers
 #include "global/stringTypes.h"
 
-namespace lsst { namespace qserv { namespace ccontrol {
+namespace lsst::qserv::ccontrol {
 
 /// ConfigMap is a lightweight facade on top of a basic std::map that performs
 /// type coercion. Qserv components querying configuration values use this class
@@ -91,6 +91,6 @@ private:
     StringMap const& _m;
 };
 
-}}}  // namespace lsst::qserv::ccontrol
+}  // namespace lsst::qserv::ccontrol
 
 #endif  // LSST_QSERV_CCONTROL_CONFIGMAP_H

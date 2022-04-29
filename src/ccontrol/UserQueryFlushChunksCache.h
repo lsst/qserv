@@ -31,16 +31,16 @@
 #include "ccontrol/UserQuery.h"
 
 // Forward decl
-namespace lsst { namespace qserv {
-namespace css {
+namespace lsst::qserv::css {
 class CssAccess;
 }
-namespace sql {
+
+namespace lsst::qserv::sql {
 class SqlConnection;
 }
-}}  // namespace lsst::qserv
 
-namespace lsst { namespace qserv { namespace ccontrol {
+
+namespace lsst::qserv::ccontrol {
 
 /// @addtogroup ccontrol
 
@@ -94,6 +94,6 @@ private:
     std::shared_ptr<qdisp::MessageStore> _messageStore;
 };
 
-}}}  // namespace lsst::qserv::ccontrol
+}  // namespace lsst::qserv::ccontrol
 
 #endif  // LSST_QSERV_CCONTROL_USERQUERYFLUSHCHUNKSCACHE_H

@@ -33,7 +33,7 @@
 #include "qdisp/ResponseHandler.h"
 
 // Forward decl
-namespace lsst { namespace qserv {
+namespace lsst::qserv {
 class MsgReceiver;
 namespace proto {
 struct WorkerResponse;
@@ -41,9 +41,9 @@ struct WorkerResponse;
 namespace rproc {
 class InfileMerger;
 }
-}}  // namespace lsst::qserv
+}  // namespace lsst::qserv
 
-namespace lsst { namespace qserv { namespace ccontrol {
+namespace lsst::qserv::ccontrol {
 
 /// MergingHandler is an implementation of a ResponseHandler that implements
 /// czar-side knowledge of the worker's response protocol. It leverages XrdSsi's
@@ -117,6 +117,6 @@ private:
     std::set<int> _jobIds;
 };
 
-}}}  // namespace lsst::qserv::ccontrol
+}  // namespace lsst::qserv::ccontrol
 
 #endif  // LSST_QSERV_CCONTROL_MERGINGHANDLER_H

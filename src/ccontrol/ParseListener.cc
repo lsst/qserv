@@ -124,7 +124,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.ccontrol.ParseListener");
         throw parser::adapter_execution_error("Error parsing query, near \"" + queryString + '"');           \
     }
 
-namespace lsst { namespace qserv { namespace ccontrol {
+namespace lsst::qserv::ccontrol {
 
 ParseListener::VecPairStr ParseListener::getTokenPairs(antlr4::CommonTokenStream& tokens,
                                                        QSMySqlLexer const& lexer) {
@@ -752,4 +752,4 @@ UNHANDLED(DataTypeBase)
 IGNORED_WARN(KeywordsCanBeId, "Keyword reused as ID")  // todo emit a warning?
 ENTER_EXIT_PARENT(FunctionNameBase)
 
-}}}  // namespace lsst::qserv::ccontrol
+}  // namespace lsst::qserv::ccontrol

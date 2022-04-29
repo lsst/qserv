@@ -31,7 +31,7 @@
 // Qserv headers
 #include "global/intTypes.h"
 
-namespace lsst { namespace qserv { namespace ccontrol {
+namespace lsst::qserv::ccontrol {
 
 /// @addtogroup ccontrol
 
@@ -100,6 +100,6 @@ public:
     static bool isCall(std::string const& query);
 };
 
-}}}  // namespace lsst::qserv::ccontrol
+}  // namespace lsst::qserv::ccontrol
 
 #endif  // LSST_QSERV_CCONTROL_USERQUERYTYPE_H
