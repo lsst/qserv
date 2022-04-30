@@ -36,7 +36,7 @@ class Region;
 namespace lsst::qserv::query {
 class BoolFactor;
 class QueryTemplate;
-}
+}  // namespace lsst::qserv::query
 
 namespace lsst::qserv::query {
 

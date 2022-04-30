@@ -41,7 +41,7 @@ class CssAccess;
 namespace replica::database::mysql {
 class Connection;
 }  // namespace replica::database::mysql
-}   // namespace lsst::qserv
+}  // namespace lsst::qserv
 
 // This header declarations
 namespace lsst::qserv::replica {

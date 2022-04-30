@@ -43,7 +43,7 @@ class WorkerSqlRequest;
 class WorkerReplicationRequest;
 namespace database::mysql {
 class ConnectionPool;
-}   // namespace database::mysql
+}  // namespace database::mysql
 }  // namespace lsst::qserv::replica
 
 // This header declarations

@@ -140,5 +140,5 @@ private:
     std::atomic<bool> _mlocking{false};  // Flag indicating mlock is being called.
 };
 
-}     // namespace lsst::qserv::memman
+}  // namespace lsst::qserv::memman
 #endif  // LSST_QSERV_MEMMAN_MEMFILE_H

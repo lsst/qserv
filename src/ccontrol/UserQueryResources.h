@@ -50,12 +50,12 @@ namespace lsst::qserv::qmeta {
 class QMeta;
 class QStatus;
 class QMetaSelect;
-}
+}  // namespace lsst::qserv::qmeta
 
 namespace lsst::qserv::qproc {
 class DatabaseModels;
 class SecondaryIndex;
-}
+}  // namespace lsst::qserv::qproc
 
 namespace lsst::qserv::sql {
 class SqlConnection;

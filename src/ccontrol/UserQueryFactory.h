@@ -45,7 +45,7 @@
 namespace lsst::qserv::ccontrol {
 class UserQuery;
 class UserQuerySharedResources;
-}
+}  // namespace lsst::qserv::ccontrol
 
 namespace lsst::qserv::czar {
 class CzarConfig;
@@ -62,7 +62,6 @@ class DatabaseModels;
 namespace lsst::qserv::query {
 class SelectStmt;
 }
-
 
 namespace lsst::qserv::ccontrol {
 

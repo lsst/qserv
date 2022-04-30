@@ -73,5 +73,5 @@ std::string toString(A&& a) {
     return os.str();
 }
 
-}      // namespace lsst::qserv
+}  // namespace lsst::qserv
 #endif  // LSST_QSERV_STRINGUTIL_H

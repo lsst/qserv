@@ -38,5 +38,5 @@ public:
     static sql::Schema newFromResult(MYSQL_RES* result);
 };
 
-}     // namespace lsst::qserv::mysql
+}  // namespace lsst::qserv::mysql
 #endif  // LSST_QSERV_MYSQL_SCHEMAFACTORY_H

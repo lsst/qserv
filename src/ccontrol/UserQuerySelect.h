@@ -52,7 +52,7 @@ namespace lsst::qserv::qdisp {
 class Executive;
 class MessageStore;
 class QdispPool;
-}
+}  // namespace lsst::qserv::qdisp
 
 namespace lsst::qserv::qmeta {
 class QMeta;
@@ -62,17 +62,17 @@ namespace lsst::qserv::qproc {
 class DatabaseModels;
 class QuerySession;
 class SecondaryIndex;
-}
+}  // namespace lsst::qserv::qproc
 
 namespace lsst::qserv::query {
 class ColumnRef;
 class SelectStmt;
-}
+}  // namespace lsst::qserv::query
 
 namespace lsst::qserv::rproc {
 class InfileMerger;
 class InfileMergerConfig;
-}
+}  // namespace lsst::qserv::rproc
 
 namespace lsst::qserv::util {
 class SemaMgr;

@@ -87,5 +87,5 @@ private:
     int _alwaysLock{false};
 };
 
-}     // namespace lsst::qserv::memman
+}  // namespace lsst::qserv::memman
 #endif  // LSST_QSERV_MEMMAN_MEMMANNONE_H

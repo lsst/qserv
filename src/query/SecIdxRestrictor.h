@@ -118,7 +118,7 @@ protected:
 private:
     std::shared_ptr<query::CompPredicate> _compPredicate;  //< the comparison for this restrictor.
     bool _useLeft;  //< true if the secondary index column is on the left of the ComPredicate (false for
-                    //right)
+                    // right)
 };
 
 class SecIdxBetweenRestrictor : public SecIdxRestrictor {

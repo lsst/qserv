@@ -161,5 +161,5 @@ private:
     int const _jobIdMysqlType;
 };
 
-}     // namespace lsst::qserv::rproc
+}  // namespace lsst::qserv::rproc
 #endif  // LSST_QSERV_RPROC_PROTOROWBUFFER_H

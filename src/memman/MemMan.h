@@ -219,5 +219,5 @@ protected:
     static uint64_t lockLimit;
 };
 
-}     // namespace lsst::qserv::memman
+}  // namespace lsst::qserv::memman
 #endif  // LSST_QSERV_MEMMAN_MEMMAN_H

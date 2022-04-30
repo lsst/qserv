@@ -80,5 +80,5 @@ public:
     virtual std::string dump() const = 0;
 };
 
-}     // namespace lsst::qserv::mysql
+}  // namespace lsst::qserv::mysql
 #endif  // LSST_QSERV_MYSQL_ROWBUFFER_H

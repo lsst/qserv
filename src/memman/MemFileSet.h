@@ -161,5 +161,5 @@ private:
     std::atomic<bool> _mtxLocked;  // true -> _setMutex is locked
 };
 
-}     // namespace lsst::qserv::memman
+}  // namespace lsst::qserv::memman
 #endif  // LSST_QSERV_MEMMAN_MEMFILESET_H

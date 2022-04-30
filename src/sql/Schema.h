@@ -76,5 +76,5 @@ inline std::ostream& operator<<(std::ostream& os, Schema const& s) {
     return os;
 }
 
-}     // namespace lsst::qserv::sql
+}  // namespace lsst::qserv::sql
 #endif  // LSST_QSERV_SQL_SCHEMA_H

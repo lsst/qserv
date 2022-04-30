@@ -38,5 +38,5 @@ typedef std::pair<std::string, std::string> StringPair;
 typedef std::vector<StringPair> StringPairVector;
 typedef std::vector<std::string> StringVector;
 
-}      // namespace lsst::qserv
+}  // namespace lsst::qserv
 #endif  // LSST_QSERV_STRINGTYPES_H

@@ -187,5 +187,5 @@ IterableFormatter<typename Iterable::const_iterator> ptrPrintable(std::shared_pt
     }
 }
 
-}     // namespace lsst::qserv::util
+}  // namespace lsst::qserv::util
 #endif  // LSST_QSERV_UTIL_ITERABLERFORMATTER_H

@@ -36,7 +36,7 @@ namespace lsst::qserv::ccontrol {
 class ParseListener;
 class UserQuery;
 class UserQueryResources;
-}
+}  // namespace lsst::qserv::ccontrol
 
 namespace lsst::qserv::query {
 class SelectStmt;

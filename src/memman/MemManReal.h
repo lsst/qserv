@@ -75,5 +75,5 @@ private:
     uint32_t _numFlexFiles;  // Ditto
 };
 
-}     // namespace lsst::qserv::memman
+}  // namespace lsst::qserv::memman
 #endif  // LSST_QSERV_MEMMAN_MEMMANREAL_H

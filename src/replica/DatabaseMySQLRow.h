@@ -45,7 +45,7 @@ namespace lsst::qserv::replica {
 class ProtocolResponseSqlRow;
 namespace database::mysql {
 class Connection;
-}   // namespace database::mysql
+}  // namespace database::mysql
 }  // namespace lsst::qserv::replica
 
 // This header declarations

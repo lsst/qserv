@@ -59,5 +59,5 @@ public:
     }
 };
 
-}      // namespace lsst::qserv
+}  // namespace lsst::qserv
 #endif  // LSST_QSERV_INTTYPES_H

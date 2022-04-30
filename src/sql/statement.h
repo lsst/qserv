@@ -53,5 +53,5 @@ std::string formLoadInfile(std::string const& table, std::string const& virtFile
 std::string formLoadInfile(std::string const& table, std::string const& virtFile,
                            InsertColumnVector const& icv);
 
-}     // namespace lsst::qserv::sql
+}  // namespace lsst::qserv::sql
 #endif  // LSST_QSERV_SQL_STATEMENT_H

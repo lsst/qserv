@@ -79,5 +79,5 @@ private:
     std::shared_ptr<SecondaryIndex> _si;
 };
 
-}     // namespace lsst::qserv::qproc
+}  // namespace lsst::qserv::qproc
 #endif  // LSST_QSERV_QPROC_INDEXMAP_H

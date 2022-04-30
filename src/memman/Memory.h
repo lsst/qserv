@@ -262,5 +262,5 @@ private:
 
     static std::mutex _mlockMtx;  // Prevent multiple concurrent mlock calls.
 };
-}     // namespace lsst::qserv::memman
+}  // namespace lsst::qserv::memman
 #endif  // LSST_QSERV_MEMMAN_MEMORY_H

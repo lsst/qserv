@@ -108,5 +108,5 @@ private:
 };
 
 }  // namespace wbase
-}      // namespace lsst::qserv
+}  // namespace lsst::qserv
 #endif  // LSST_QSERV_WBASE_SENDCHANNEL_H

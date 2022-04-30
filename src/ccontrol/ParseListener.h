@@ -39,7 +39,7 @@ class Adapter;
 class RootAdapter;
 class UserQuery;
 class UserQueryResources;
-}
+}  // namespace lsst::qserv::ccontrol
 
 namespace lsst::qserv::query {
 class SelectStmt;

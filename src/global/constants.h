@@ -68,5 +68,5 @@ const int NOTSET = -1;
  */
 enum MessageSeverity { MSG_INFO = 1, MSG_ERROR };
 
-}      // namespace lsst::qserv
+}  // namespace lsst::qserv
 #endif  // LSST_QSERV_CONSTANTS_H

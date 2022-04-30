@@ -33,5 +33,5 @@ enum QueryState { UNKNOWN, WAITING, DISPATCHED, SUCCESS, ERROR };
 /// @return a string representation of the QueryState
 std::string const& getQueryStateString(QueryState const& qs);
 
-}     // namespace lsst::qserv::ccontrol
+}  // namespace lsst::qserv::ccontrol
 #endif  // LSST_QSERV_CCONTROL_QUERYSTATE_H

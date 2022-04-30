@@ -47,7 +47,6 @@ namespace lsst::qserv::sql {
 class SqlConnection;
 }
 
-
 namespace lsst::qserv::ccontrol {
 
 /// UserQueryDrop : implementation of the UserQuery for DROP statements.

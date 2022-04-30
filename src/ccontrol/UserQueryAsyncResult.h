@@ -43,7 +43,6 @@ namespace lsst::qserv::sql {
 class SqlConnection;
 }
 
-
 namespace lsst::qserv::ccontrol {
 
 /// @addtogroup ccontrol
