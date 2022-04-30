@@ -45,8 +45,7 @@
 #include "util/ConfigStore.h"
 #include "util/Timer.h"
 
-namespace lsst {
-namespace qserv {
+namespace lsst::qserv {
 
 namespace qdisp {
 class PseudoFifo;
@@ -78,8 +77,7 @@ public:
      *               provided as "db" key.
      * @return Structure with info about submitted query.
      */
-    SubmitResult submitQuery(std::string const& query,
-                             std::map<std::string, std::string> const& hints);
+    SubmitResult submitQuery(std::string const& query, std::map<std::string, std::string> const& hints);
 
     /**
      * Process a kill query command (experimental).
@@ -108,9 +106,7 @@ public:
     static Ptr getCzar() { return _czar; }
 
     /// Return a pointer to QdispSharedResources
-    qdisp::SharedResources::Ptr getQdispSharedResources() {
-        return _qdispSharedResources;
-    }
+    qdisp::SharedResources::Ptr getQdispSharedResources() { return _qdispSharedResources; }
 
     /// Remove all old tables in the qservResult database.
     void removeOldResultTables();
@@ -120,7 +116,6 @@ public:
     bool getQueryDistributionTestVer() { return _queryDistributionTestVer; }
 
 protected:
-
 private:
     /// Private constructor for singleton.
     Czar(std::string const& configPath, std::string const& czarName);
@@ -132,46 +127,43 @@ private:
     void _cleanupQueryHistory();
 
     /// Clean query maps from expired entries, add new query
-    void _updateQueryHistory(std::string const& clientId,
-                             int threadId,
-                             ccontrol::UserQuery::Ptr const& uq);
+    void _updateQueryHistory(std::string const& clientId, int threadId, ccontrol::UserQuery::Ptr const& uq);
 
     /// Create and fill async result table
-    void _makeAsyncResult(std::string const& asyncResultTable,
-                          QueryId queryId,
-                          std::string const& resultLoc);
+    void _makeAsyncResult(std::string const& asyncResultTable, QueryId queryId, std::string const& resultLoc);
 
-    static Ptr _czar; ///< Pointer to single instance of the Czar.
+    static Ptr _czar;  ///< Pointer to single instance of the Czar.
 
     // combines client name (ID) and its thread ID into one unique ID
     typedef std::pair<std::string, int> ClientThreadId;
     typedef std::map<ClientThreadId, std::weak_ptr<ccontrol::UserQuery>> ClientToQuery;
     typedef std::map<QueryId, std::weak_ptr<ccontrol::UserQuery>> IdToQuery;
 
-    std::string const _czarName;        ///< Unique czar name
+    std::string const _czarName;  ///< Unique czar name
     CzarConfig const _czarConfig;
 
-    std::atomic<uint64_t> _idCounter;   ///< Query/task identifier for next query
+    std::atomic<uint64_t> _idCounter;  ///< Query/task identifier for next query
     std::unique_ptr<ccontrol::UserQueryFactory> _uqFactory;
-    ClientToQuery _clientToQuery;       ///< maps client ID to query
-    IdToQuery _idToQuery;               ///< maps query ID to query (for currently running queries)
-    std::mutex _mutex;                  ///< protects _uqFactory, _clientToQuery, and _idToQuery
+    ClientToQuery _clientToQuery;  ///< maps client ID to query
+    IdToQuery _idToQuery;          ///< maps query ID to query (for currently running queries)
+    std::mutex _mutex;             ///< protects _uqFactory, _clientToQuery, and _idToQuery
 
     /// Thread pool for handling Responses from XrdSsi,
     /// the PsuedoFifo to prevent czar from calling most recent requests,
     /// and any other resources for use by query executives.
     qdisp::SharedResources::Ptr _qdispSharedResources;
 
-    util::Timer _lastRemovedTimer; ///< Timer to limit table deletions.
-    std::mutex _lastRemovedMtx;    ///< protects _lastRemovedTimer
+    util::Timer _lastRemovedTimer;  ///< Timer to limit table deletions.
+    std::mutex _lastRemovedMtx;     ///< protects _lastRemovedTimer
 
     /// Prevents multiple concurrent calls to _removeOldTables().
     std::atomic<bool> _removingOldTables{false};
-    std::thread _oldTableRemovalThread; ///< thread needs to remain valid while running.
+    std::thread _oldTableRemovalThread;  ///< thread needs to remain valid while running.
 
-    bool _queryDistributionTestVer; ///< True if config says this is distribution test version.
+    bool _queryDistributionTestVer;  ///< True if config says this is distribution test version.
 };
 
-}}} // namespace lsst::qserv::czar
+}  // namespace czar
+}  // namespace lsst::qserv
 
-#endif // LSST_QSERV_CZAR_CZAR_H
+#endif  // LSST_QSERV_CZAR_CZAR_H

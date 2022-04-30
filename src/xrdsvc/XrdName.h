@@ -28,9 +28,7 @@
 #include <cstdlib>
 #include <string>
 
-namespace lsst {
-namespace qserv {
-namespace xrdsvc {
+namespace lsst::qserv::xrdsvc {
 
 /// XrdName is a small class that helps extract the name of a running xrootd (or
 /// cmsd) instance. It does this by checking an environment variable that is
@@ -38,24 +36,26 @@ namespace xrdsvc {
 class XrdName {
 public:
     XrdName() {
-        char const * name = std::getenv("XRDNAME");
+        char const* name = std::getenv("XRDNAME");
         _setName(name ? name : "unknown");
     }
 
-    std::string const & getName() const { return _name; }
+    std::string const& getName() const { return _name; }
 
 private:
-    void _setName(char const * name) {
+    void _setName(char const* name) {
         _name.clear();
         // Discard non alpha-numeric characters other than '_'
-        for (char const * s = name; *s != '\0'; ++s) {
-            if (std::isalnum(*s) || *s == '_') { _name.push_back(*s); }
+        for (char const* s = name; *s != '\0'; ++s) {
+            if (std::isalnum(*s) || *s == '_') {
+                _name.push_back(*s);
+            }
         }
     }
 
     std::string _name;
 };
 
-}}} // namespace lsst::qserv::xrdfs
+}  // namespace lsst::qserv::xrdsvc
 
-#endif // LSST_QSERV_XRDFS_XRDNAME_H
+#endif  // LSST_QSERV_XRDFS_XRDNAME_H

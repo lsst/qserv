@@ -26,8 +26,7 @@
 // System headers
 #include <stdexcept>
 
-namespace lsst {
-namespace qserv {
+namespace lsst::qserv {
 
 /// UnsupportedError is indicates use of an unsupported API
 class UnsupportedError : public std::runtime_error {
@@ -35,6 +34,6 @@ public:
     explicit UnsupportedError(char const* msg) : std::runtime_error(msg) {}
     explicit UnsupportedError(std::string const& msg) : std::runtime_error(msg) {}
 };
-}} // namespace lsst::qserv
+}  // namespace lsst::qserv
 
-#endif // LSST_QSERV_UNSUPPORTEDERROR_H
+#endif  // LSST_QSERV_UNSUPPORTEDERROR_H

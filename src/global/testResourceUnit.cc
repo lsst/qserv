@@ -38,45 +38,35 @@ struct Fixture {
     Fixture() : dummy(0) {}
 
     int dummy;
-    ~Fixture(void) {};
+    ~Fixture(void){};
 };
 int const MAGIC_SIZE = 80;
 
 BOOST_FIXTURE_TEST_SUITE(Suite, Fixture)
 
 BOOST_AUTO_TEST_CASE(Garbage) {
-    char p[][MAGIC_SIZE] = { // Convert to std vector list init when available
-        // Missing chunk number
-        "/chk/qservTest_case01_qserv",
-        "/chk/abc/",
-        // Bad resource type
-        "/chk2/abc",
-        "/abc/",
-        "/abc/chk/g",
-        // Missing/bad params
-        "/q",
-        "/q/",
-        "/q/Hello",
-        "/result",
-        "/result/"
-        };
+    char p[][MAGIC_SIZE] = {// Convert to std vector list init when available
+                            // Missing chunk number
+                            "/chk/qservTest_case01_qserv", "/chk/abc/",
+                            // Bad resource type
+                            "/chk2/abc", "/abc/", "/abc/chk/g",
+                            // Missing/bad params
+                            "/q", "/q/", "/q/Hello", "/result", "/result/"};
     int const pSize = 10;
-    for(auto i=p, e=p+pSize; i != e; ++i) {
+    for (auto i = p, e = p + pSize; i != e; ++i) {
         ResourceUnit r(*i);
-        BOOST_CHECK_MESSAGE(
-            r.unitType() == ResourceUnit::GARBAGE,
-            std::string("Expected garbage: ") + *i);
+        BOOST_CHECK_MESSAGE(r.unitType() == ResourceUnit::GARBAGE, std::string("Expected garbage: ") + *i);
     }
 }
 
 BOOST_AUTO_TEST_CASE(DbChunk) {
     char p[][MAGIC_SIZE] = {
-        "/chk/qservTest_case01_qserv/123",
-        "/chk/abc/456",
+            "/chk/qservTest_case01_qserv/123",
+            "/chk/abc/456",
     };
     int const pSize = 2;
     std::vector<ResourceUnit> r;
-    for(auto i=p, e=p+pSize; i != e; ++i) {
+    for (auto i = p, e = p + pSize; i != e; ++i) {
         r.push_back(ResourceUnit(*i));
         BOOST_CHECK_EQUAL(r.back().unitType(), ResourceUnit::DBCHUNK);
     }

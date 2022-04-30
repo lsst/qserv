@@ -28,19 +28,15 @@
 #include <string>
 #include <vector>
 
-namespace lsst {
-namespace qserv {
-namespace qdisp {
+namespace lsst::qserv::qdisp {
 
 class ChunkMetaEntry {
 public:
-    ChunkMetaEntry(std::string const& db_,
-                   std::string const& table_,
-                   int chunkLevel_)
-        : db(db_), table(table_), chunkLevel(chunkLevel_)
-        { }
+    ChunkMetaEntry(std::string const& db_, std::string const& table_, int chunkLevel_)
+            : db(db_), table(table_), chunkLevel(chunkLevel_) {}
     std::string getTable() const { return table; }
     int getChunkLevel() const { return chunkLevel; }
+
 private:
     std::string db;
     std::string table;
@@ -65,10 +61,11 @@ public:
 
     // Const access (to create chunk mapping setup TableNamer)
     EntryVector const& getEntries() const { return _entries; }
+
 private:
     EntryVector _entries;
 };
 
-}}} // namespace lsst::qserv::qdisp
+}  // namespace lsst::qserv::qdisp
 
-#endif // LSST_QSERV_QDISP_CHUNKMETA_H
+#endif  // LSST_QSERV_QDISP_CHUNKMETA_H

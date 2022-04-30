@@ -28,25 +28,19 @@
 #include <thread>
 
 // Forward declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
-    class WorkerProcessor;
-}}}  // Forward declarations
+namespace lsst::qserv::replica {
+class WorkerProcessor;
+}  // namespace lsst::qserv::replica
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
 /**
-  * Class WorkerProcessorThread is a thread-based request processing engine
-  * for replication requests within worker-side services.
-  */
+ * Class WorkerProcessorThread is a thread-based request processing engine
+ * for replication requests within worker-side services.
+ */
 class WorkerProcessorThread : public std::enable_shared_from_this<WorkerProcessorThread> {
-
 public:
-
     /// Smart reference to objects of the class
     typedef std::shared_ptr<WorkerProcessorThread> Ptr;
 
@@ -57,14 +51,14 @@ public:
      * Static factory method is needed to prevent issue with the lifespan
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
-     * 
+     *
      * @param processor
      *   pointer to the processor which launched this thread. This pointer
      *   will be used for making call backs to the processor on the completed
      *   or rejected requests.
      *
      * @return
-     *   pointer to the created object 
+     *   pointer to the created object
      */
     static Ptr create(WorkerProcessorPtr const& processor);
 
@@ -103,31 +97,29 @@ public:
     std::string context() const { return "THREAD: " + std::to_string(_id) + "  "; }
 
 private:
-
     /// @see WorkerProcessorThread::create()
-    WorkerProcessorThread(WorkerProcessorPtr const& processor,
-                          unsigned int id);
+    WorkerProcessorThread(WorkerProcessorPtr const& processor, unsigned int id);
 
     /**
      * Event handler called by the thread when it's about to stop
      */
     void _stopped();
- 
+
     // Input parameters
 
     WorkerProcessorPtr const _processor;
 
-    /// The identifier of this thread object   
+    /// The identifier of this thread object
     unsigned int const _id;
 
     /// The processing thread is created on demand when calling method run()
     std::unique_ptr<std::thread> _thread;
-    
+
     /// The flag to be raised to tell the running thread to stop.
     /// The thread will reset this flag when it finishes.
     std::atomic<bool> _stop;
 };
 
-}}} // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_WORKERPROCESSORTHREAD_H
+#endif  // LSST_QSERV_REPLICA_WORKERPROCESSORTHREAD_H

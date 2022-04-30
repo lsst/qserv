@@ -21,7 +21,6 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-
 // Class header
 #include "PassListTerm.h"
 
@@ -29,22 +28,16 @@
 #include "query/QueryTemplate.h"
 #include "util/IterableFormatter.h"
 
-
-namespace lsst {
-namespace qserv {
-namespace query {
-
+namespace lsst::qserv::query {
 
 std::ostream& PassListTerm::putStream(std::ostream& os) const {
-    std::copy(_terms.begin(), _terms.end(),
-              std::ostream_iterator<std::string>(os, " "));
+    std::copy(_terms.begin(), _terms.end(), std::ostream_iterator<std::string>(os, " "));
     return os;
 }
 
-
 void PassListTerm::renderTo(QueryTemplate& qt) const {
     qt.append("(");
-    bool isFirst=true;
+    bool isFirst = true;
     for (auto&& str : _terms) {
         if (!isFirst) {
             qt.append(",");
@@ -55,13 +48,11 @@ void PassListTerm::renderTo(QueryTemplate& qt) const {
     qt.append(")");
 }
 
-
 BoolFactorTerm::Ptr PassListTerm::clone() const {
     auto p = std::make_shared<PassListTerm>();
     std::copy(_terms.begin(), _terms.end(), std::back_inserter(p->_terms));
     return p;
 }
-
 
 BoolFactorTerm::Ptr PassListTerm::copySyntax() const {
     auto p = std::make_shared<PassListTerm>();
@@ -69,19 +60,16 @@ BoolFactorTerm::Ptr PassListTerm::copySyntax() const {
     return p;
 }
 
-
 void PassListTerm::dbgPrint(std::ostream& os) const {
     os << "PassListTerm(" << util::printable(_terms, "", "") << ")";
 }
 
-
 bool PassListTerm::operator==(const BoolFactorTerm& rhs) const {
-    auto rhsTerm = dynamic_cast<PassListTerm const *>(&rhs);
+    auto rhsTerm = dynamic_cast<PassListTerm const*>(&rhs);
     if (nullptr == rhsTerm) {
         return false;
     }
     return _terms == rhsTerm->_terms;
 }
 
-
-}}} // namespace lsst::qserv::query
+}  // namespace lsst::qserv::query

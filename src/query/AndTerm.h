@@ -21,19 +21,13 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-
 #ifndef LSST_QSERV_QUERY_ANDTERM_H
 #define LSST_QSERV_QUERY_ANDTERM_H
-
 
 // Qserv headers
 #include "query/LogicalTerm.h"
 
-
-namespace lsst {
-namespace qserv {
-namespace query {
-
+namespace lsst::qserv::query {
 
 /// AndTerm is a set of AND-connected BoolTerms
 class AndTerm : public LogicalTerm {
@@ -72,7 +66,7 @@ public:
      * @brief Used with merge(BoolTerm, MergeBehavior) to indicate if terms from the other AndTerm should be
      * before or after the terms from this term.
      */
-    enum MergeBehavior {PREPEND, APPEND};
+    enum MergeBehavior { PREPEND, APPEND };
 
     /// Like `merge(BoolTerm)` but can be told what order this term and the other term.
     bool merge(BoolTerm const& other, MergeBehavior mergeBehavior);
@@ -84,7 +78,6 @@ protected:
     void dbgPrint(std::ostream& os) const override;
 };
 
+}  // namespace lsst::qserv::query
 
-}}} // namespace lsst::qserv::query
-
-#endif // LSST_QSERV_QUERY_ANDTERM_H
+#endif  // LSST_QSERV_QUERY_ANDTERM_H

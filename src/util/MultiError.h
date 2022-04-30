@@ -41,9 +41,7 @@
 // Qserv headers
 #include "util/Error.h"
 
-namespace lsst {
-namespace qserv {
-namespace util {
+namespace lsst::qserv::util {
 
 /** @class
  * @brief Implement a generic error container for Qserv
@@ -52,9 +50,8 @@ namespace util {
  * util::Error operator << is used for output.
  *
  */
-class MultiError: public std::exception {
+class MultiError : public std::exception {
 public:
-
     /** Return a string representation of the object
      *
      * Can be used in the log
@@ -72,8 +69,7 @@ public:
      */
     std::string toOneLineString() const;
 
-    virtual ~MultiError() throw () {
-    }
+    virtual ~MultiError() throw() {}
 
     /** Overload output operator for this class
      *
@@ -81,8 +77,7 @@ public:
      * @param multiError
      * @return an output stream, with no newline at the end
      */
-    friend std::ostream& operator<<(std::ostream &out,
-                                    MultiError const& multiError);
+    friend std::ostream& operator<<(std::ostream& out, MultiError const& multiError);
 
     bool empty() const;
 
@@ -94,12 +89,12 @@ public:
 
     std::vector<Error>::const_reference back() const;
 
-    void push_back (const std::vector<Error>::value_type& val);
+    void push_back(const std::vector<Error>::value_type& val);
 
 private:
     std::vector<Error> _errorVector;
 };
 
-}}} // namespace lsst::qserv::util
+}  // namespace lsst::qserv::util
 
 #endif /* LSST_QSERV_UTIL_MULTIERROR_H */

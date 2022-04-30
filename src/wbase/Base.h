@@ -37,49 +37,45 @@
 class XrdSysError;
 class XrdSysLogger;
 class XrdSfsAio;
-namespace lsst {
-namespace qserv {
+namespace lsst::qserv {
 namespace proto {
-    class TaskMsg;
+class TaskMsg;
 }
 namespace wbase {
-    class StringBuffer;
-    class StringBuffer2;
-}}} // End of forward declarations
+class StringBuffer;
+class StringBuffer2;
+}  // namespace wbase
+}  // namespace lsst::qserv
 
-
-namespace lsst {
-namespace qserv {
-namespace wbase {
+namespace lsst::qserv::wbase {
 
 typedef long long StringBufferOffset;
 typedef int StringBufferSize;
 
 // Constants
-extern std::string DUMP_BASE; // Non-const to allow runtime-update via config
+extern std::string DUMP_BASE;  // Non-const to allow runtime-update via config
 extern std::string const CREATE_SUBCHUNK_SCRIPT;
 extern std::string const CLEANUP_SUBCHUNK_SCRIPT;
 extern std::string const CREATE_DUMMY_SUBCHUNK_SCRIPT;
 
 // Result-writing
-void updateResultPath(char const* resultPath=0);
+void updateResultPath(char const* resultPath = 0);
 void clearResultPath();
 
 class StringBuffer {
 public:
     StringBuffer() {}
     ~StringBuffer() { reset(); }
-    void addBuffer(StringBufferOffset offset, char const* buffer,
-                   StringBufferSize bufferSize);
+    void addBuffer(StringBufferOffset offset, char const* buffer, StringBufferSize bufferSize);
     std::string getStr() const;
     StringBufferOffset getLength() const;
     std::string getDigest() const;
     void reset();
+
 private:
     struct Fragment {
-        Fragment(StringBufferOffset offset_, char const* buffer_,
-                 StringBufferSize bufferSize_)
-            : offset(offset_), buffer(buffer_), bufferSize(bufferSize_) {}
+        Fragment(StringBufferOffset offset_, char const* buffer_, StringBufferSize bufferSize_)
+                : offset(offset_), buffer(buffer_), bufferSize(bufferSize_) {}
 
         StringBufferOffset offset;
         char const* buffer;
@@ -97,12 +93,12 @@ class StringBuffer2 {
 public:
     StringBuffer2() {}
     ~StringBuffer2() { reset(); }
-    void addBuffer(StringBufferOffset offset, char const* buffer,
-                   StringBufferSize bufferSize);
+    void addBuffer(StringBufferOffset offset, char const* buffer, StringBufferSize bufferSize);
     std::string getStr() const;
     StringBufferOffset getLength() const;
     char const* getData() const;
     void reset();
+
 private:
     void _setSize(unsigned size);
     std::mutex _mutex;
@@ -111,8 +107,8 @@ private:
     unsigned _bytesWritten{0};
 };
 
-}}} // namespace lsst::qserv::wbase
+}  // namespace lsst::qserv::wbase
 
 typedef boost::format Pformat;
 
-#endif // LSST_QSERV_WBASE_BASE_H
+#endif  // LSST_QSERV_WBASE_BASE_H

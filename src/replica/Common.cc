@@ -38,42 +38,39 @@
 using namespace std;
 using namespace nlohmann;
 
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
-string status2string(ProtocolStatusExt status) {
-    return ProtocolStatusExt_Name(status);
-}
-
+string status2string(ProtocolStatusExt status) { return ProtocolStatusExt_Name(status); }
 
 string overlapSelector2str(ChunkOverlapSelector selector) {
-    switch(selector) {
-        case ChunkOverlapSelector::CHUNK: return "CHUNK";
-        case ChunkOverlapSelector::OVERLAP: return "OVERLAP";
-        case ChunkOverlapSelector::CHUNK_AND_OVERLAP: return "CHUNK_AND_OVERLAP";
+    switch (selector) {
+        case ChunkOverlapSelector::CHUNK:
+            return "CHUNK";
+        case ChunkOverlapSelector::OVERLAP:
+            return "OVERLAP";
+        case ChunkOverlapSelector::CHUNK_AND_OVERLAP:
+            return "CHUNK_AND_OVERLAP";
     }
     throw invalid_argument(
-            "lsst::qserv::replica::" + string(__func__) + " unhandled selector: "
-            + to_string(static_cast<typename std::underlying_type<ChunkOverlapSelector>::type>(selector)));
+            "lsst::qserv::replica::" + string(__func__) + " unhandled selector: " +
+            to_string(static_cast<typename std::underlying_type<ChunkOverlapSelector>::type>(selector)));
 }
-
 
 ostream& operator<<(ostream& os, ChunkOverlapSelector selector) {
     os << overlapSelector2str(selector);
     return os;
 }
 
-
 ChunkOverlapSelector str2overlapSelector(string const& str) {
-    if (str == "CHUNK") return ChunkOverlapSelector::CHUNK;
-    else if (str == "OVERLAP") return ChunkOverlapSelector::OVERLAP;
-    else if (str == "CHUNK_AND_OVERLAP") return ChunkOverlapSelector::CHUNK_AND_OVERLAP;
-    throw invalid_argument(
-            "lsst::qserv::replica::" + string(__func__) + " the input string '" + str
-            + "' doesn't match any selector.");
+    if (str == "CHUNK")
+        return ChunkOverlapSelector::CHUNK;
+    else if (str == "OVERLAP")
+        return ChunkOverlapSelector::OVERLAP;
+    else if (str == "CHUNK_AND_OVERLAP")
+        return ChunkOverlapSelector::CHUNK_AND_OVERLAP;
+    throw invalid_argument("lsst::qserv::replica::" + string(__func__) + " the input string '" + str +
+                           "' doesn't match any selector.");
 }
-
 
 ////////////////////////////////////////////
 //                Generators              //
@@ -87,77 +84,90 @@ string Generators::uniqueId() {
     return boost::uuids::to_string(id);
 }
 
-
 ////////////////////////////////////////////
 //        Parameters of requests          //
 ////////////////////////////////////////////
 
 ReplicationRequestParams::ReplicationRequestParams(ProtocolRequestReplicate const& request)
-    :   database(request.database()),
-        chunk(request.chunk()),
-        sourceWorker(request.worker()),
-        sourceWorkerHost(request.worker_host()),
-        sourceWorkerPort(request.worker_port()),
-        sourceWorkerDataDir(request.worker_data_dir()) {
-}
-
+        : database(request.database()),
+          chunk(request.chunk()),
+          sourceWorker(request.worker()),
+          sourceWorkerHost(request.worker_host()),
+          sourceWorkerPort(request.worker_port()),
+          sourceWorkerDataDir(request.worker_data_dir()) {}
 
 DeleteRequestParams::DeleteRequestParams(ProtocolRequestDelete const& request)
-    :   database(request.database()),
-        chunk(request.chunk()) {
-}
-
+        : database(request.database()), chunk(request.chunk()) {}
 
 FindRequestParams::FindRequestParams(ProtocolRequestFind const& request)
-    :   database(request.database()),
-        chunk(request.chunk()) {
-}
-
+        : database(request.database()), chunk(request.chunk()) {}
 
 FindAllRequestParams::FindAllRequestParams(ProtocolRequestFindAll const& request)
-    :   database(request.database()) {
-}
-
+        : database(request.database()) {}
 
 EchoRequestParams::EchoRequestParams(ProtocolRequestEcho const& request)
-    :   data(request.data()),
-        delay(request.delay()) {
-}
+        : data(request.data()), delay(request.delay()) {}
 
-
-SqlRequestParams::SqlRequestParams(ProtocolRequestSql const& request)
-    :   maxRows(request.max_rows()) {
-
+SqlRequestParams::SqlRequestParams(ProtocolRequestSql const& request) : maxRows(request.max_rows()) {
     auto const requestType = request.type();
     switch (requestType) {
-        case ProtocolRequestSql::QUERY:                     type = QUERY; break;
-        case ProtocolRequestSql::CREATE_DATABASE:           type = CREATE_DATABASE; break;
-        case ProtocolRequestSql::DROP_DATABASE:             type = DROP_DATABASE; break;
-        case ProtocolRequestSql::ENABLE_DATABASE:           type = ENABLE_DATABASE; break;
-        case ProtocolRequestSql::DISABLE_DATABASE:          type = DISABLE_DATABASE; break;
-        case ProtocolRequestSql::GRANT_ACCESS:              type = GRANT_ACCESS; break;
-        case ProtocolRequestSql::CREATE_TABLE:              type = CREATE_TABLE; break;
-        case ProtocolRequestSql::DROP_TABLE:                type = DROP_TABLE; break;
-        case ProtocolRequestSql::REMOVE_TABLE_PARTITIONING: type = REMOVE_TABLE_PARTITIONING; break;
-        case ProtocolRequestSql::DROP_TABLE_PARTITION:      type = DROP_TABLE_PARTITION; break;
-        case ProtocolRequestSql::GET_TABLE_INDEX:           type = GET_TABLE_INDEX; break;
-        case ProtocolRequestSql::CREATE_TABLE_INDEX:        type = CREATE_TABLE_INDEX; break;
-        case ProtocolRequestSql::DROP_TABLE_INDEX:          type = DROP_TABLE_INDEX; break;
-        case ProtocolRequestSql::ALTER_TABLE:               type = ALTER_TABLE; break;
-        case ProtocolRequestSql::TABLE_ROW_STATS:           type = TABLE_ROW_STATS; break;
+        case ProtocolRequestSql::QUERY:
+            type = QUERY;
+            break;
+        case ProtocolRequestSql::CREATE_DATABASE:
+            type = CREATE_DATABASE;
+            break;
+        case ProtocolRequestSql::DROP_DATABASE:
+            type = DROP_DATABASE;
+            break;
+        case ProtocolRequestSql::ENABLE_DATABASE:
+            type = ENABLE_DATABASE;
+            break;
+        case ProtocolRequestSql::DISABLE_DATABASE:
+            type = DISABLE_DATABASE;
+            break;
+        case ProtocolRequestSql::GRANT_ACCESS:
+            type = GRANT_ACCESS;
+            break;
+        case ProtocolRequestSql::CREATE_TABLE:
+            type = CREATE_TABLE;
+            break;
+        case ProtocolRequestSql::DROP_TABLE:
+            type = DROP_TABLE;
+            break;
+        case ProtocolRequestSql::REMOVE_TABLE_PARTITIONING:
+            type = REMOVE_TABLE_PARTITIONING;
+            break;
+        case ProtocolRequestSql::DROP_TABLE_PARTITION:
+            type = DROP_TABLE_PARTITION;
+            break;
+        case ProtocolRequestSql::GET_TABLE_INDEX:
+            type = GET_TABLE_INDEX;
+            break;
+        case ProtocolRequestSql::CREATE_TABLE_INDEX:
+            type = CREATE_TABLE_INDEX;
+            break;
+        case ProtocolRequestSql::DROP_TABLE_INDEX:
+            type = DROP_TABLE_INDEX;
+            break;
+        case ProtocolRequestSql::ALTER_TABLE:
+            type = ALTER_TABLE;
+            break;
+        case ProtocolRequestSql::TABLE_ROW_STATS:
+            type = TABLE_ROW_STATS;
+            break;
         default:
-            throw runtime_error(
-                    "SqlRequestParams::" + string(__func__) +
-                    "  unsupported request type: " + ProtocolRequestSql_Type_Name(requestType));
+            throw runtime_error("SqlRequestParams::" + string(__func__) +
+                                "  unsupported request type: " + ProtocolRequestSql_Type_Name(requestType));
     }
-    if (request.has_query())    query    = request.query();
-    if (request.has_user())     user     = request.user();
+    if (request.has_query()) query = request.query();
+    if (request.has_user()) user = request.user();
     if (request.has_password()) password = request.password();
     if (request.has_database()) database = request.database();
-    if (request.has_table())    table    = request.table();
-    if (request.has_engine())   engine   = request.engine();
+    if (request.has_table()) table = request.table();
+    if (request.has_engine()) engine = request.engine();
     if (request.has_partition_by_column()) partitionByColumn = request.partition_by_column();
-    if (request.has_transaction_id())      transactionId     = request.transaction_id();
+    if (request.has_transaction_id()) transactionId = request.transaction_id();
 
     for (int index = 0; index < request.columns_size(); ++index) {
         auto const& column = request.columns(index);
@@ -175,89 +185,115 @@ SqlRequestParams::SqlRequestParams(ProtocolRequestSql const& request)
         auto const& column = request.index_columns(i);
         indexColumns.emplace_back(column.name(), column.length(), column.ascending());
     }
-
 }
-
 
 string SqlRequestParams::type2str() const {
     switch (type) {
-        case QUERY:                     return "QUERY";
-        case CREATE_DATABASE:           return "CREATE_DATABASE";
-        case DROP_DATABASE:             return "DROP_DATABASE";
-        case ENABLE_DATABASE:           return "ENABLE_DATABASE";
-        case DISABLE_DATABASE:          return "DISABLE_DATABASE";
-        case GRANT_ACCESS:              return "GRANT_ACCESS";
-        case CREATE_TABLE:              return "CREATE_TABLE";
-        case DROP_TABLE:                return "DROP_TABLE";
-        case REMOVE_TABLE_PARTITIONING: return "REMOVE_TABLE_PARTITIONING";
-        case DROP_TABLE_PARTITION:      return "DROP_TABLE_PARTITION";
-        case GET_TABLE_INDEX:           return "GET_TABLE_INDEX";
-        case CREATE_TABLE_INDEX:        return "CREATE_TABLE_INDEX";
-        case DROP_TABLE_INDEX:          return "DROP_TABLE_INDEX";
-        case ALTER_TABLE:               return "ALTER_TABLE";
-        case TABLE_ROW_STATS:           return "TABLE_ROW_STATS";
+        case QUERY:
+            return "QUERY";
+        case CREATE_DATABASE:
+            return "CREATE_DATABASE";
+        case DROP_DATABASE:
+            return "DROP_DATABASE";
+        case ENABLE_DATABASE:
+            return "ENABLE_DATABASE";
+        case DISABLE_DATABASE:
+            return "DISABLE_DATABASE";
+        case GRANT_ACCESS:
+            return "GRANT_ACCESS";
+        case CREATE_TABLE:
+            return "CREATE_TABLE";
+        case DROP_TABLE:
+            return "DROP_TABLE";
+        case REMOVE_TABLE_PARTITIONING:
+            return "REMOVE_TABLE_PARTITIONING";
+        case DROP_TABLE_PARTITION:
+            return "DROP_TABLE_PARTITION";
+        case GET_TABLE_INDEX:
+            return "GET_TABLE_INDEX";
+        case CREATE_TABLE_INDEX:
+            return "CREATE_TABLE_INDEX";
+        case DROP_TABLE_INDEX:
+            return "DROP_TABLE_INDEX";
+        case ALTER_TABLE:
+            return "ALTER_TABLE";
+        case TABLE_ROW_STATS:
+            return "TABLE_ROW_STATS";
     }
-    throw runtime_error(
-            "SqlRequestParams::" + string(__func__) + "  unsupported request type");
+    throw runtime_error("SqlRequestParams::" + string(__func__) + "  unsupported request type");
 }
-
 
 SqlRequestParams::IndexSpec::IndexSpec(ProtocolRequestSql::IndexSpec spec) {
     switch (spec) {
-        case ProtocolRequestSql::DEFAULT:  { _spec = IndexSpec::DEFAULT;  break; }
-        case ProtocolRequestSql::UNIQUE:   { _spec = IndexSpec::UNIQUE;   break; }
-        case ProtocolRequestSql::FULLTEXT: { _spec = IndexSpec::FULLTEXT; break; }
-        case ProtocolRequestSql::SPATIAL:  { _spec = IndexSpec::SPATIAL;  break; }
+        case ProtocolRequestSql::DEFAULT: {
+            _spec = IndexSpec::DEFAULT;
+            break;
+        }
+        case ProtocolRequestSql::UNIQUE: {
+            _spec = IndexSpec::UNIQUE;
+            break;
+        }
+        case ProtocolRequestSql::FULLTEXT: {
+            _spec = IndexSpec::FULLTEXT;
+            break;
+        }
+        case ProtocolRequestSql::SPATIAL: {
+            _spec = IndexSpec::SPATIAL;
+            break;
+        }
         default:
-            throw invalid_argument(
-                    "SqlRequestParams::IndexSpec::" + string(__func__) +
-                    "  unsupported protocol index specification: '"
-                    + ProtocolRequestSql_IndexSpec_Name(spec) + "'");
+            throw invalid_argument("SqlRequestParams::IndexSpec::" + string(__func__) +
+                                   "  unsupported protocol index specification: '" +
+                                   ProtocolRequestSql_IndexSpec_Name(spec) + "'");
     }
 }
-
 
 SqlRequestParams::IndexSpec::IndexSpec(string const& str) {
-    if      (str == "DEFAULT")  { _spec = IndexSpec::DEFAULT;  }
-    else if (str == "UNIQUE")   { _spec = IndexSpec::UNIQUE;   }
-    else if (str == "FULLTEXT") { _spec = IndexSpec::FULLTEXT; }
-    else if (str == "SPATIAL")  { _spec = IndexSpec::SPATIAL;  }
-    else {
-        throw invalid_argument(
-                "SqlRequestParams::IndexSpec::" + string(__func__)
-                + "  unsupported index specification: '" + str + "'");
+    if (str == "DEFAULT") {
+        _spec = IndexSpec::DEFAULT;
+    } else if (str == "UNIQUE") {
+        _spec = IndexSpec::UNIQUE;
+    } else if (str == "FULLTEXT") {
+        _spec = IndexSpec::FULLTEXT;
+    } else if (str == "SPATIAL") {
+        _spec = IndexSpec::SPATIAL;
+    } else {
+        throw invalid_argument("SqlRequestParams::IndexSpec::" + string(__func__) +
+                               "  unsupported index specification: '" + str + "'");
     }
 }
-
 
 string SqlRequestParams::IndexSpec::str() const {
     switch (_spec) {
-        case IndexSpec::DEFAULT:  return "DEFAULT";
-        case IndexSpec::UNIQUE:   return "UNIQUE";
-        case IndexSpec::FULLTEXT: return "FULLTEXT";
-        case IndexSpec::SPATIAL:  return "SPATIAL";
+        case IndexSpec::DEFAULT:
+            return "DEFAULT";
+        case IndexSpec::UNIQUE:
+            return "UNIQUE";
+        case IndexSpec::FULLTEXT:
+            return "FULLTEXT";
+        case IndexSpec::SPATIAL:
+            return "SPATIAL";
     }
-    throw runtime_error(
-            "SqlRequestParams::IndexSpec::" + string(__func__)
-            + "  unsupported index specification");
+    throw runtime_error("SqlRequestParams::IndexSpec::" + string(__func__) +
+                        "  unsupported index specification");
 }
-
 
 ProtocolRequestSql::IndexSpec SqlRequestParams::IndexSpec::protocol() const {
     switch (_spec) {
-        case IndexSpec::DEFAULT:  return ProtocolRequestSql::DEFAULT;
-        case IndexSpec::UNIQUE:   return ProtocolRequestSql::UNIQUE;
-        case IndexSpec::FULLTEXT: return ProtocolRequestSql::FULLTEXT;
-        case IndexSpec::SPATIAL:  return ProtocolRequestSql::SPATIAL;
+        case IndexSpec::DEFAULT:
+            return ProtocolRequestSql::DEFAULT;
+        case IndexSpec::UNIQUE:
+            return ProtocolRequestSql::UNIQUE;
+        case IndexSpec::FULLTEXT:
+            return ProtocolRequestSql::FULLTEXT;
+        case IndexSpec::SPATIAL:
+            return ProtocolRequestSql::SPATIAL;
     }
-    throw runtime_error(
-            "SqlRequestParams::IndexSpec::" + string(__func__) +
-            "  unsupported index specification: '" + str() + "'");
+    throw runtime_error("SqlRequestParams::IndexSpec::" + string(__func__) +
+                        "  unsupported index specification: '" + str() + "'");
 }
 
-
 ostream& operator<<(ostream& os, SqlRequestParams const& params) {
-
     // Make the output to look like a serialized JSON object to allow parsing
     // log files using standard tools.
 
@@ -275,7 +311,7 @@ ostream& operator<<(ostream& os, SqlRequestParams const& params) {
     objParams["batchMode"] = params.batchMode ? 1 : 0;
 
     json objParamsColumns = json::array();
-    for (auto&& coldef: params.columns) {
+    for (auto&& coldef : params.columns) {
         json objColDef;
         objColDef["name"] = coldef.name;
         objColDef["type"] = coldef.type;
@@ -284,7 +320,7 @@ ostream& operator<<(ostream& os, SqlRequestParams const& params) {
     objParams["columns"] = objParamsColumns;
 
     json objParamsTables = json::array();
-    for (auto&& table: params.tables) {
+    for (auto&& table : params.tables) {
         objParamsTables.push_back(table);
     }
     objParams["tables"] = objParamsTables;
@@ -293,7 +329,7 @@ ostream& operator<<(ostream& os, SqlRequestParams const& params) {
     objParams["index_comment"] = params.indexComment;
 
     json objParamsIndexColumns = json::array();
-    for (auto&& column: params.indexColumns) {
+    for (auto&& column : params.indexColumns) {
         json objColumn;
         objColumn["name"] = column.name;
         objColumn["length"] = column.length;
@@ -309,22 +345,17 @@ ostream& operator<<(ostream& os, SqlRequestParams const& params) {
     return os;
 }
 
-
 IndexRequestParams::IndexRequestParams(ProtocolRequestIndex const& request)
-    :   database(request.database()),
-        chunk(request.chunk()),
-        hasTransactions(request.has_transactions()),
-        transactionId(request.transaction_id()) {
-}
-
-
+        : database(request.database()),
+          chunk(request.chunk()),
+          hasTransactions(request.has_transactions()),
+          transactionId(request.transaction_id()) {}
 
 unsigned int stoui(string const& str, size_t* idx, int base) {
     unsigned long u = stoul(str, idx, base);
     if (u > numeric_limits<unsigned int>::max()) throw out_of_range(str);
     return static_cast<unsigned int>(u);
 }
-
 
 vector<string> strsplit(string const& str, char delimiter) {
     vector<string> words;
@@ -339,4 +370,4 @@ vector<string> strsplit(string const& str, char delimiter) {
     return words;
 }
 
-}}} // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

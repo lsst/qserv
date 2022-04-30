@@ -33,36 +33,25 @@
 
 using namespace std;
 
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
-TaskError::TaskError(util::Issue::Context const& ctx,
-                     string const& message)
-    :   util::Issue(ctx, "Task: " + message) {
-}
-
+TaskError::TaskError(util::Issue::Context const& ctx, string const& message)
+        : util::Issue(ctx, "Task: " + message) {}
 
 bool Task::start() {
-
     debug("starting...");
 
     util::Lock lock(_mtx, context() + __func__);
 
     if (_isRunning.exchange(true)) return true;
 
-    thread t(bind(
-        &Task::_startImpl,
-        shared_from_this()
-    ));
+    thread t(bind(&Task::_startImpl, shared_from_this()));
     t.detach();
-    
+
     return false;
 }
 
-
 bool Task::stop() {
- 
     debug("stopping...");
 
     util::Lock lock(_mtx, context() + __func__);
@@ -74,9 +63,7 @@ bool Task::stop() {
     return false;
 }
 
-
 bool Task::startAndWait(WaitEvaluatorType const& abortWait) {
-
     bool const wasRunning = start();
 
     auto self = shared_from_this();
@@ -86,44 +73,29 @@ bool Task::startAndWait(WaitEvaluatorType const& abortWait) {
         if ((nullptr != abortWait) and abortWait(self)) break;
         blockPost.wait();
     }
-    
+
     return wasRunning;
 }
 
-
-Task::Task(
-        Controller::Ptr const& controller,
-        string const& name,
-        Task::AbnormalTerminationCallbackType const& onTerminated,
-        unsigned int const waitIntervalSec)
-    :   EventLogger(controller,
-                    name),
-        _onTerminated(onTerminated),
-        _waitIntervalSec(waitIntervalSec),
-        _isRunning(false),
-        _stopRequested(false),
-        _numFinishedJobs(0),
-        _log(LOG_GET("lsst.qserv.replica.Task")) {
-
+Task::Task(Controller::Ptr const& controller, string const& name,
+           Task::AbnormalTerminationCallbackType const& onTerminated, unsigned int const waitIntervalSec)
+        : EventLogger(controller, name),
+          _onTerminated(onTerminated),
+          _waitIntervalSec(waitIntervalSec),
+          _isRunning(false),
+          _stopRequested(false),
+          _numFinishedJobs(0),
+          _log(LOG_GET("lsst.qserv.replica.Task")) {
     debug("created");
 }
 
+string Task::context() const { return _name + " "; }
 
-string Task::context() const {
-    return _name + " ";
+void Task::sync(unsigned int qservSyncTimeoutSec, bool forceQservSync) {
+    launch<QservSyncJob>(PRIORITY_NORMAL, qservSyncTimeoutSec, forceQservSync);
 }
-
-
-void Task::sync(unsigned int qservSyncTimeoutSec,
-                bool forceQservSync) {
-    launch<QservSyncJob>(PRIORITY_NORMAL,
-                         qservSyncTimeoutSec,
-                         forceQservSync);
-}
-
 
 void Task::_startImpl() {
-
     // By design of this class, any but TaskStopped exceptions thrown
     // by a subclass-specific method called below will be interpreted as
     // the "abnormal" termination condition to be reported via an optional
@@ -135,8 +107,7 @@ void Task::_startImpl() {
         logOnStartEvent();
         onStart();
 
-        util::BlockPost blockPost(1000 * _waitIntervalSec,
-                                  1000 * _waitIntervalSec + 1);
+        util::BlockPost blockPost(1000 * _waitIntervalSec, 1000 * _waitIntervalSec + 1);
 
         while (not stopRequested() and onRun()) {
             blockPost.wait();
@@ -168,16 +139,13 @@ void Task::_startImpl() {
     // a parameter of the callback.
 
     util::Lock lock(_mtx, context() + __func__);
-    
+
     _stopRequested = false;
-    _isRunning     = false;
+    _isRunning = false;
 
     if (terminated) {
-        serviceProvider()->io_service().post(bind(
-            _onTerminated,
-            shared_from_this()
-        ));
+        serviceProvider()->io_service().post(bind(_onTerminated, shared_from_this()));
     }
 }
 
-}}} // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

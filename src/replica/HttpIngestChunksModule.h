@@ -34,16 +34,14 @@
 #include "util/Mutex.h"
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class HttpIngestChunksModule provides a support for registering new chunks
  * (or querying chunk disposition) in the Replication system as needed during
  * catalog ingest.
  */
-class HttpIngestChunksModule: public HttpModule {
+class HttpIngestChunksModule : public HttpModule {
 public:
     typedef std::shared_ptr<HttpIngestChunksModule> Ptr;
 
@@ -56,13 +54,10 @@ public:
      *
      * @throws std::invalid_argument for unknown values of parameter 'subModuleName'
      */
-    static void process(Controller::Ptr const& controller,
-                        std::string const& taskName,
-                        HttpProcessorConfig const& processorConfig,
-                        qhttp::Request::Ptr const& req,
-                        qhttp::Response::Ptr const& resp,
-                        std::string const& subModuleName=std::string(),
-                        HttpAuthType const authType=HttpAuthType::NONE);
+    static void process(Controller::Ptr const& controller, std::string const& taskName,
+                        HttpProcessorConfig const& processorConfig, qhttp::Request::Ptr const& req,
+                        qhttp::Response::Ptr const& resp, std::string const& subModuleName = std::string(),
+                        HttpAuthType const authType = HttpAuthType::NONE);
 
     HttpIngestChunksModule() = delete;
     HttpIngestChunksModule(HttpIngestChunksModule const&) = delete;
@@ -74,10 +69,8 @@ protected:
     nlohmann::json executeImpl(std::string const& subModuleName) final;
 
 private:
-    HttpIngestChunksModule(Controller::Ptr const& controller,
-                           std::string const& taskName,
-                           HttpProcessorConfig const& processorConfig,
-                           qhttp::Request::Ptr const& req,
+    HttpIngestChunksModule(Controller::Ptr const& controller, std::string const& taskName,
+                           HttpProcessorConfig const& processorConfig, qhttp::Request::Ptr const& req,
                            qhttp::Response::Ptr const& resp);
 
     /**
@@ -107,9 +100,7 @@ private:
      * @param database  The name of the database the chunk belongs to.
      * @param chunk     The number of a chunk to be registered.
      */
-    void _registerNewChunk(std::string const& worker,
-                           std::string const& database,
-                           unsigned int chunk) const;
+    void _registerNewChunk(std::string const& worker, std::string const& database, unsigned int chunk) const;
 
     /**
      * Return a chunks allocation map for a database.
@@ -118,7 +109,7 @@ private:
 
     static util::Mutex _ingestManagementMtx;  /// Synchronized access to the chunk management operations
 };
-    
-}}} // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_HTTPINGESTCHUNKSMODULE_H
+}  // namespace lsst::qserv::replica
+
+#endif  // LSST_QSERV_HTTPINGESTCHUNKSMODULE_H

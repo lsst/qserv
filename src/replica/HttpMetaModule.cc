@@ -32,45 +32,29 @@
 using namespace std;
 using json = nlohmann::json;
 
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
 unsigned int const HttpMetaModule::version = 8;
 
-
-void HttpMetaModule::process(ServiceProvider::Ptr const& serviceProvider,
-                             string const& context,
-                             qhttp::Request::Ptr const& req,
-                             qhttp::Response::Ptr const& resp,
-                             string const& subModuleName,
-                             HttpAuthType const authType) {
+void HttpMetaModule::process(ServiceProvider::Ptr const& serviceProvider, string const& context,
+                             qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp,
+                             string const& subModuleName, HttpAuthType const authType) {
     HttpMetaModule module(serviceProvider, context, req, resp);
     module.execute(subModuleName, authType);
 }
 
-
-HttpMetaModule::HttpMetaModule(ServiceProvider::Ptr const& serviceProvider,
-                               string const& context,
-                               qhttp::Request::Ptr const& req,
-                               qhttp::Response::Ptr const& resp)
-    :   HttpModuleBase(serviceProvider->authKey(), serviceProvider->adminAuthKey(), req, resp),
-        _context(context) {
-}
-
+HttpMetaModule::HttpMetaModule(ServiceProvider::Ptr const& serviceProvider, string const& context,
+                               qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp)
+        : HttpModuleBase(serviceProvider->authKey(), serviceProvider->adminAuthKey(), req, resp),
+          _context(context) {}
 
 json HttpMetaModule::executeImpl(string const& subModuleName) {
     if (subModuleName == "VERSION") return _version();
-    throw invalid_argument(
-            context() + "::" + string(__func__) +
-            "  unsupported sub-module: '" + subModuleName + "'");
+    throw invalid_argument(context() + "::" + string(__func__) + "  unsupported sub-module: '" +
+                           subModuleName + "'");
 }
 
-
-string HttpMetaModule::context() const {
-    return _context;
-}
-
+string HttpMetaModule::context() const { return _context; }
 
 json HttpMetaModule::_version() {
     debug(__func__);
@@ -80,4 +64,4 @@ json HttpMetaModule::_version() {
     return result;
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

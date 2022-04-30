@@ -32,14 +32,10 @@
 // Local headers
 #include "qhttp/Server.h"
 
-namespace lsst {
-namespace qserv {
-namespace qhttp {
+namespace lsst::qserv::qhttp {
 
-class StaticContent
-{
+class StaticContent {
 public:
-
     //----- StaticContent is a specialized Handler to handle the common case of serving a tree of static
     //      content rooted beneath a single file system directory.  add() will add an instance to the
     //      specified Server which will responding to GET requests on URL's that prefix match the pattern
@@ -50,9 +46,8 @@ public:
     //      preference to calling the add() method here directly.
 
     static void add(Server& server, std::string const& path, std::string const& rootDirectory);
-
 };
 
-}}} // namespace lsst::qserv::qhttp
+}  // namespace lsst::qserv::qhttp
 
-#endif // LSST_QSER_QHTTP_STATICCONTENT_H
+#endif  // LSST_QSER_QHTTP_STATICCONTENT_H

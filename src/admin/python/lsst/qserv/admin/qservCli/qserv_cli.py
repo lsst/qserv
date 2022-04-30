@@ -52,6 +52,7 @@ from .opt import (
     build_container_name_option,
     build_image_ev,
     build_image_option,
+    clang_format_option,
     cmake_option,
     compose_file_option,
     dashboard_port_option,
@@ -201,6 +202,7 @@ def show_qserv_environment(
 @make_option()
 @unit_test_option()
 @mypy_option()
+@clang_format_option()
 @do_build_image_option()
 @jobs_option()
 @dry_option()
@@ -213,6 +215,7 @@ def build(
     run_cmake: bool,
     run_make: bool,
     run_mypy: bool,
+    clang_format_mode: str,
     user_build_image: str,
     qserv_image: str,
     run_base_image: str,
@@ -232,6 +235,7 @@ def build(
         run_cmake=run_cmake,
         run_make=run_make,
         run_mypy=run_mypy,
+        clang_format_mode=clang_format_mode,
         user_build_image=user_build_image,
         qserv_image=qserv_image,
         run_base_image=run_base_image,

@@ -37,10 +37,7 @@
 #include "sql/SqlConfig.h"
 #include "sql/SqlConnection.h"
 
-
-namespace lsst {
-namespace qserv {
-namespace qproc {
+namespace lsst::qserv::qproc {
 
 /// This class allows access to model versions of the databases kept in qserv. The models
 /// are empty databases that have the same schema as the databases in qserv and the models
@@ -89,9 +86,9 @@ private:
 
     std::shared_ptr<sql::SqlConnection> _sqlConnMaster;
     std::shared_ptr<sql::SqlConnection> _sqlConnLocal;
-    std:: mutex _sqlMutex; ///< protects _sqlConnMaster, _sqlConnLocal
+    std::mutex _sqlMutex;  ///< protects _sqlConnMaster, _sqlConnLocal
 };
 
-}}} // namespace lsst::qserv::qproc
+}  // namespace lsst::qserv::qproc
 
-#endif // LSST_QSERV_QPROC_DATABASEMODELS_H
+#endif  // LSST_QSERV_QPROC_DATABASEMODELS_H

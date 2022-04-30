@@ -29,19 +29,13 @@
 #include "replica/WorkerRequest.h"
 
 // Forward declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
-namespace database {
-namespace mysql {
-    class Connection;
-    class ConnectionPool;
-}}}}} // Forward declaration
+namespace lsst::qserv::replica::database::mysql {
+class Connection;
+class ConnectionPool;
+}  // namespace lsst::qserv::replica::database::mysql
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class WorkerIndexRequest queries a director table (the whole or just one MySQL
@@ -76,13 +70,9 @@ public:
      * @param request ProtoBuf body of the request
      * @return pointer to the created object
      */
-    static Ptr create(ServiceProvider::Ptr const& serviceProvider,
-                      ConnectionPoolPtr const& connectionPool,
-                      std::string const& worker,
-                      std::string const& id,
-                      int priority,
-                      ExpirationCallbackType const& onExpired,
-                      unsigned int requestExpirationIvalSec,
+    static Ptr create(ServiceProvider::Ptr const& serviceProvider, ConnectionPoolPtr const& connectionPool,
+                      std::string const& worker, std::string const& id, int priority,
+                      ExpirationCallbackType const& onExpired, unsigned int requestExpirationIvalSec,
                       ProtocolRequestIndex const& request);
 
     WorkerIndexRequest() = delete;
@@ -104,15 +94,10 @@ public:
     bool execute() override;
 
 private:
-    WorkerIndexRequest(ServiceProvider::Ptr const& serviceProvider,
-                       ConnectionPoolPtr const& connectionPool,
-                       std::string const& worker,
-                       std::string const& id,
-                       int priority,
-                       ExpirationCallbackType const& onExpired,
-                       unsigned int requestExpirationIvalSec,
+    WorkerIndexRequest(ServiceProvider::Ptr const& serviceProvider, ConnectionPoolPtr const& connectionPool,
+                       std::string const& worker, std::string const& id, int priority,
+                       ExpirationCallbackType const& onExpired, unsigned int requestExpirationIvalSec,
                        ProtocolRequestIndex const& request);
-
 
     /**
      * The query generator uses parameters of a request to compose
@@ -127,7 +112,7 @@ private:
 
     /**
      * Read the content of the file into memory
-     * 
+     *
      * @return 'true' if the file has been successfully read into memory
      */
     bool _readFile();
@@ -141,9 +126,9 @@ private:
     std::string _error;
 
     /// The name of a temporary file into which the TSV/CSV dump will be made.
-    /// This file will get deleted when 
+    /// This file will get deleted when
     std::string _fileName;
-    
+
     /// In-memory storage for the content of the file upon a successful completion
     /// of the data extraction query.
     std::string _data;
@@ -155,6 +140,6 @@ typedef WorkerIndexRequest WorkerIndexRequestFS;
 /// Class WorkerIndexRequest provides an actual implementation
 typedef WorkerIndexRequest WorkerIndexRequestPOSIX;
 
-}}} // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_WORKERINDEXREQUEST_H
+#endif  // LSST_QSERV_REPLICA_WORKERINDEXREQUEST_H

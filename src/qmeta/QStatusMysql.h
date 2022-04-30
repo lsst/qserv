@@ -31,18 +31,12 @@
 #include "mysql/MySqlConfig.h"
 #include "qmeta/QStatus.h"
 
-
 // Forward declarations
-namespace lsst {
-namespace qserv {
-namespace sql {
-    class SqlConnection;
-}}}
+namespace lsst::qserv::sql {
+class SqlConnection;
+}  // namespace lsst::qserv::sql
 
-
-namespace lsst {
-namespace qserv {
-namespace qmeta {
+namespace lsst::qserv::qmeta {
 
 class QStatusMysql : public QStatus {
 public:
@@ -70,10 +64,9 @@ public:
 
 private:
     std::shared_ptr<sql::SqlConnection> _conn;
-    std::mutex _dbMutex;    ///< Synchronizes access to certain DB operations
-
+    std::mutex _dbMutex;  ///< Synchronizes access to certain DB operations
 };
 
-}}} // namespace lsst::qserv::qmeta
+}  // namespace lsst::qserv::qmeta
 
-#endif // LSST_QSERV_QMETA_QSTATUSMYSQL_H
+#endif  // LSST_QSERV_QMETA_QSTATUSMYSQL_H

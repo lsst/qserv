@@ -31,21 +31,17 @@
 #include "replica/Common.h"
 
 // Forward declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
-    class TransactionInfo;
-}}}
+namespace lsst::qserv::replica {
+class TransactionInfo;
+}  // namespace lsst::qserv::replica
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class TransactionsApp implements a tool for testing super-transactions.
  */
-class TransactionsApp: public Application {
+class TransactionsApp : public Application {
 public:
     typedef std::shared_ptr<TransactionsApp> Ptr;
 
@@ -76,13 +72,13 @@ private:
     std::string _operation;     ///< An operation over transactions
     std::string _databaseName;  ///< The name of a database associated with a transaction(s))
 
-    TransactionId _id = 0;      ///< A unique identifier of an existing transaction
-    std::string _state;         ///< The new state of an existing transaction. 
+    TransactionId _id = 0;  ///< A unique identifier of an existing transaction
+    std::string _state;     ///< The new state of an existing transaction.
 
-    size_t _sqlPageSize = 20;   ///< The number of rows per page printed in a table of
-                                ///  transactions (0 means no pages)
+    size_t _sqlPageSize = 20;  ///< The number of rows per page printed in a table of
+                               ///  transactions (0 means no pages)
 };
 
-}}} // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif /* LSST_QSERV_REPLICA_TRANSACTIONAPP_H */

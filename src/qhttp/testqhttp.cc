@@ -47,14 +47,9 @@ namespace fs = boost::filesystem;
 
 namespace {
 
+void initMDC() { LOG_MDC("LWP", std::to_string(lsst::log::lwpID())); }
 
-void initMDC() {
-    LOG_MDC("LWP", std::to_string(lsst::log::lwpID()));
-}
-
-
-void compareWithFile(std::string const& content, std::string const& file)
-{
+void compareWithFile(std::string const& content, std::string const& file) {
     std::ifstream f(file);
     BOOST_TEST(f.good());
     std::stringstream s;
@@ -62,30 +57,25 @@ void compareWithFile(std::string const& content, std::string const& file)
     BOOST_TEST(s.str() == content);
 }
 
-
-std::string printParams(lsst::qserv::qhttp::Request::Ptr const& req)
-{
+std::string printParams(lsst::qserv::qhttp::Request::Ptr const& req) {
     std::map<std::string, std::string> pparams;
-    for(auto const& pparam: req->params) {
+    for (auto const& pparam : req->params) {
         pparams[pparam.first] = pparam.first + "=" + pparam.second;
     }
     std::map<std::string, std::string> pquerys;
-    for(auto const& pquery: req->query) {
+    for (auto const& pquery : req->query) {
         pquerys[pquery.first] = pquery.first + "=" + pquery.second;
     }
-    return std::string("params[") + boost::join(pparams | boost::adaptors::map_values, ",") + "] "
-        + "query[" + boost::join(pquerys | boost::adaptors::map_values, ",") + "]";
+    return std::string("params[") + boost::join(pparams | boost::adaptors::map_values, ",") + "] " +
+           "query[" + boost::join(pquerys | boost::adaptors::map_values, ",") + "]";
 }
 
-
-size_t writeToString(char* ptr, size_t size, size_t nmemb, void* userdata)
-{
+size_t writeToString(char* ptr, size_t size, size_t nmemb, void* userdata) {
     size_t nchars = size * nmemb;
     std::string* str = reinterpret_cast<std::string*>(userdata);
     str->append(ptr, nchars);
     return nchars;
 }
-
 
 //
 //----- CurlEasy is a helper class for issuing HTTP requests and validating responses using the
@@ -93,54 +83,36 @@ size_t writeToString(char* ptr, size_t size, size_t nmemb, void* userdata)
 //      for API details.
 //
 
-class CurlEasy
-{
+class CurlEasy {
 public:
-
     CurlEasy();
     ~CurlEasy();
 
-    CurlEasy& setup(
-        std::string const& method,
-        std::string const& url,
-        std::string const& data,
-        std::initializer_list<std::string> headers = {}
-    );
+    CurlEasy& setup(std::string const& method, std::string const& url, std::string const& data,
+                    std::initializer_list<std::string> headers = {});
 
     CurlEasy& perform();
 
-    CurlEasy& validate(
-        int responseCode,
-        std::string const& contentType
-    );
+    CurlEasy& validate(int responseCode, std::string const& contentType);
 
     CURL* hcurl;
-    curl_slist *hlist;
+    curl_slist* hlist;
     std::string recdContent;
 };
 
-
-CurlEasy::CurlEasy()
-{
+CurlEasy::CurlEasy() {
     hcurl = curl_easy_init();
-    BOOST_TEST(hcurl != static_cast<CURL *>(nullptr));
+    BOOST_TEST(hcurl != static_cast<CURL*>(nullptr));
     hlist = nullptr;
 }
 
-
-CurlEasy::~CurlEasy()
-{
+CurlEasy::~CurlEasy() {
     curl_slist_free_all(hlist);
     curl_easy_cleanup(hcurl);
 }
 
-
-CurlEasy& CurlEasy::setup(
-    std::string const& method,
-    std::string const& url,
-    std::string const& data,
-    std::initializer_list<std::string> headers)
-{
+CurlEasy& CurlEasy::setup(std::string const& method, std::string const& url, std::string const& data,
+                          std::initializer_list<std::string> headers) {
     BOOST_TEST(curl_easy_setopt(hcurl, CURLOPT_URL, url.c_str()) == CURLE_OK);
 
     if (method == "GET") {
@@ -156,7 +128,7 @@ CurlEasy& CurlEasy::setup(
 
     curl_slist_free_all(hlist);
     hlist = nullptr;
-    for(auto& header: headers) {
+    for (auto& header : headers) {
         hlist = curl_slist_append(hlist, header.c_str());
     }
     BOOST_TEST(curl_easy_setopt(hcurl, CURLOPT_HTTPHEADER, hlist) == CURLE_OK);
@@ -168,20 +140,14 @@ CurlEasy& CurlEasy::setup(
     return *this;
 }
 
-
-CurlEasy& CurlEasy::perform()
-{
+CurlEasy& CurlEasy::perform() {
     BOOST_TEST(curl_easy_perform(hcurl) == CURLE_OK);
     return *this;
 }
 
-
-CurlEasy& CurlEasy::validate(
-    int responseCode,
-    std::string const& contentType)
-{
+CurlEasy& CurlEasy::validate(int responseCode, std::string const& contentType) {
     long recdResponseCode;
-    char *recdContentType = nullptr;
+    char* recdContentType = nullptr;
     double recdContentLength;
 
     BOOST_TEST(curl_easy_getinfo(hcurl, CURLINFO_RESPONSE_CODE, &recdResponseCode) == CURLE_OK);
@@ -196,17 +162,14 @@ CurlEasy& CurlEasy::validate(
     return *this;
 }
 
-
 //
 //----- CurlMutli is a helper class for managing multiple concurrent HTTP requests within a
 //      single thread, using the libcurl "Multi" API.  Works with the "CurlEasy" class above.
 //      http://curl.haxx.se/libcurl/c/libcurl-multi.html for API details.
 //
 
-class CurlMulti
-{
+class CurlMulti {
 public:
-
     CurlMulti();
     ~CurlMulti();
 
@@ -217,38 +180,27 @@ public:
     std::map<CURL*, std::function<void()>> handlers;
 };
 
-
-CurlMulti::CurlMulti()
-{
+CurlMulti::CurlMulti() {
     hcurlm = curl_multi_init();
-    BOOST_TEST(hcurlm != static_cast<CURLM *>(nullptr));
+    BOOST_TEST(hcurlm != static_cast<CURLM*>(nullptr));
 }
 
+CurlMulti::~CurlMulti() { curl_multi_cleanup(hcurlm); }
 
-CurlMulti::~CurlMulti()
-{
-    curl_multi_cleanup(hcurlm);
-}
-
-
-void CurlMulti::add(CurlEasy& c, std::function<void()> const& handler)
-{
+void CurlMulti::add(CurlEasy& c, std::function<void()> const& handler) {
     handlers[c.hcurl] = handler;
     BOOST_TEST(curl_multi_add_handle(hcurlm, c.hcurl) == CURLM_OK);
 }
 
-
-void CurlMulti::perform(int msecs)
-{
+void CurlMulti::perform(int msecs) {
     auto end = std::chrono::steady_clock::now() + std::chrono::milliseconds(msecs);
-    while(std::chrono::steady_clock::now() < end) {
-
+    while (std::chrono::steady_clock::now() < end) {
         int runningHandles = 0;
         BOOST_TEST(curl_multi_perform(hcurlm, &runningHandles) == CURLM_OK);
 
         int msgsInQueue;
-        CURLMsg *msg;
-        while((msg = curl_multi_info_read(hcurlm, &msgsInQueue)) != nullptr) {
+        CURLMsg* msg;
+        while ((msg = curl_multi_info_read(hcurlm, &msgsInQueue)) != nullptr) {
             BOOST_TEST(curl_multi_remove_handle(hcurlm, msg->easy_handle) == CURLM_OK);
             auto hit = handlers.find(msg->easy_handle);
             if (hit != handlers.end()) hit->second();
@@ -265,71 +217,62 @@ void CurlMulti::perform(int msecs)
     }
 }
 
-} // anon. namespace
+}  // namespace
 
-namespace lsst {
-namespace qserv {
+namespace lsst::qserv {
 
 //
 //----- The test fixture instantiates a qhttp server and a boost::asio::io_service to run it,
 //      manages a thread that runs the io_service, and handles global init and cleanup of libcurl.
 //
 
-struct QhttpFixture
-{
-    QhttpFixture()
-    : logLevel("DEBUG")
-    {
+struct QhttpFixture {
+    QhttpFixture() : logLevel("DEBUG") {
         server = qhttp::Server::create(service, 0);
         BOOST_TEST(curl_global_init(CURL_GLOBAL_DEFAULT) == CURLE_OK);
 
         static char const* opts = "d:l:";
-        static struct option lopts[] = {
-            {"data", required_argument, nullptr, 'd'},
-            {"log-level", required_argument, nullptr, 'l'},
-            {nullptr, 0, nullptr, 0}
-        };
+        static struct option lopts[] = {{"data", required_argument, nullptr, 'd'},
+                                        {"log-level", required_argument, nullptr, 'l'},
+                                        {nullptr, 0, nullptr, 0}};
 
-        auto &argc = boost::unit_test::framework::master_test_suite().argc;
-        auto &argv = boost::unit_test::framework::master_test_suite().argv;
+        auto& argc = boost::unit_test::framework::master_test_suite().argc;
+        auto& argv = boost::unit_test::framework::master_test_suite().argv;
 
         int opt;
         optind = 1;
-        while((opt = getopt_long(argc, argv, opts, lopts, nullptr)) != -1) {
-            switch(opt) {
-            case 'd':
-                dataDir = optarg;
-                break;
-            case 'l':
-                logLevel = optarg;
-                break;
-            default:
-                break;
+        while ((opt = getopt_long(argc, argv, opts, lopts, nullptr)) != -1) {
+            switch (opt) {
+                case 'd':
+                    dataDir = optarg;
+                    break;
+                case 'l':
+                    logLevel = optarg;
+                    break;
+                default:
+                    break;
             }
         }
 
         LOG_MDC_INIT(initMDC);
-        LOG_CONFIG_PROP(
-            std::string("log4j.rootLogger=") + logLevel + ", CONSOLE\n"
-            "log4j.appender.CONSOLE=org.apache.log4j.ConsoleAppender\n"
-            "log4j.appender.CONSOLE.layout=org.apache.log4j.PatternLayout\n"
-            "log4j.appender.CONSOLE.layout.ConversionPattern="
-                "%d{yyyy-MM-ddTHH:mm:ss.SSSZ} LWP %-5X{LWP} %-5p %c{1} %m%n"
-        );
+        LOG_CONFIG_PROP(std::string("log4j.rootLogger=") + logLevel +
+                        ", CONSOLE\n"
+                        "log4j.appender.CONSOLE=org.apache.log4j.ConsoleAppender\n"
+                        "log4j.appender.CONSOLE.layout=org.apache.log4j.PatternLayout\n"
+                        "log4j.appender.CONSOLE.layout.ConversionPattern="
+                        "%d{yyyy-MM-ddTHH:mm:ss.SSSZ} LWP %-5X{LWP} %-5p %c{1} %m%n");
     }
 
-    void start()
-    {
+    void start() {
         server->start();
         urlPrefix = "http://localhost:" + std::to_string(server->getPort()) + "/";
-        serviceThread = std::thread([this](){
+        serviceThread = std::thread([this]() {
             asio::io_service::work work(service);
             service.run();
         });
     }
 
-    ~QhttpFixture()
-    {
+    ~QhttpFixture() {
         server->stop();
         service.stop();
         serviceThread.join();
@@ -342,12 +285,8 @@ struct QhttpFixture
     //      reply using synchronous asio and regexps directly.
     //
 
-    std::string asioHttpGet(
-        std::string const& path,
-        int responseCode,
-        std::string const& contentType,
-        std::string const invalidContentLength = "")
-    {
+    std::string asioHttpGet(std::string const& path, int responseCode, std::string const& contentType,
+                            std::string const invalidContentLength = "") {
         boost::system::error_code ec;
 
         ip::tcp::endpoint endpoint(ip::address::from_string("127.0.0.1"), server->getPort());
@@ -372,13 +311,13 @@ struct QhttpFixture
 
         std::string line;
         std::map<std::string, std::string> header;
-        static boost::regex respRe{"^[^ \\r]+ ([0-9]+) .*\\r$"}; // e.g. "HTTP/1.1 200 OK"
+        static boost::regex respRe{"^[^ \\r]+ ([0-9]+) .*\\r$"};  // e.g. "HTTP/1.1 200 OK"
         boost::smatch respMatch;
         if (getline(resp, line) && boost::regex_match(line, respMatch, respRe)) {
             BOOST_TEST(stoi(respMatch[1].str()) == responseCode);
-            static boost::regex headerRe{"^([^:\\r]+): ?([^\\r]*)\\r$"}; // e.g. "header: value"
+            static boost::regex headerRe{"^([^:\\r]+): ?([^\\r]*)\\r$"};  // e.g. "header: value"
             boost::smatch headerMatch;
-            while(getline(resp, line) && boost::regex_match(line, headerMatch, headerRe)) {
+            while (getline(resp, line) && boost::regex_match(line, headerMatch, headerRe)) {
                 header[headerMatch[1]] = headerMatch[2];
             }
         }
@@ -403,14 +342,11 @@ struct QhttpFixture
     std::string logLevel;
 };
 
-
-BOOST_FIXTURE_TEST_CASE(request_timeout, QhttpFixture)
-{
+BOOST_FIXTURE_TEST_CASE(request_timeout, QhttpFixture) {
     //----- set up server with a handler on "/" and a request timeout of 20ms
 
-    server->addHandler("GET", "/", [](qhttp::Request::Ptr req, qhttp::Response::Ptr resp){
-        resp->sendStatus(200);
-    });
+    server->addHandler("GET", "/",
+                       [](qhttp::Request::Ptr req, qhttp::Response::Ptr resp) { resp->sendStatus(200); });
 
     server->setRequestTimeout(std::chrono::milliseconds(20));
     start();
@@ -445,14 +381,12 @@ BOOST_FIXTURE_TEST_CASE(request_timeout, QhttpFixture)
     BOOST_TEST(num_read_after_timeout == (size_t)0);
 }
 
-
-BOOST_FIXTURE_TEST_CASE(shutdown, QhttpFixture)
-{
+BOOST_FIXTURE_TEST_CASE(shutdown, QhttpFixture) {
     //----- set up server with a handler on "/" that counts invocations
 
     int invocations = 0;
 
-    server->addHandler("GET", "/", [&invocations](qhttp::Request::Ptr req, qhttp::Response::Ptr resp){
+    server->addHandler("GET", "/", [&invocations](qhttp::Request::Ptr req, qhttp::Response::Ptr resp) {
         ++invocations;
         resp->sendStatus(200);
     });
@@ -483,16 +417,12 @@ BOOST_FIXTURE_TEST_CASE(shutdown, QhttpFixture)
     BOOST_TEST(invocations == 3);
 }
 
-
-BOOST_FIXTURE_TEST_CASE(case_insensitive_headers, QhttpFixture)
-{
+BOOST_FIXTURE_TEST_CASE(case_insensitive_headers, QhttpFixture) {
     //----- server with handler that checks for same header in multiple cases
 
-    server->addHandler("GET", "/", [](qhttp::Request::Ptr req, qhttp::Response::Ptr resp){
-        if ((req->header["foobar"] == "baz")
-            && (req->header["FOOBAR"] == "baz")
-            && (req->header["FooBar"] == "baz"))
-        {
+    server->addHandler("GET", "/", [](qhttp::Request::Ptr req, qhttp::Response::Ptr resp) {
+        if ((req->header["foobar"] == "baz") && (req->header["FOOBAR"] == "baz") &&
+            (req->header["FooBar"] == "baz")) {
             resp->sendStatus(200);
         } else {
             resp->sendStatus(500);
@@ -508,23 +438,19 @@ BOOST_FIXTURE_TEST_CASE(case_insensitive_headers, QhttpFixture)
     curl.setup("GET", urlPrefix, "", {"FOOBAR: baz"}).perform().validate(200, "text/html");
 }
 
-
-BOOST_FIXTURE_TEST_CASE(percent_decoding, QhttpFixture)
-{
+BOOST_FIXTURE_TEST_CASE(percent_decoding, QhttpFixture) {
     //----- server with handlers to catch potential encoded "/" dispatch error
     //      and param echoing to check param decode
 
     server->addHandler("GET", R"(/path-with-/-and-\?)",
-        [](qhttp::Request::Ptr req, qhttp::Response::Ptr resp){
-            resp->send("percent-encoded '/' dispatch error", "text/plain");
-        }
-    );
+                       [](qhttp::Request::Ptr req, qhttp::Response::Ptr resp) {
+                           resp->send("percent-encoded '/' dispatch error", "text/plain");
+                       });
 
     server->addHandler("GET", R"(/path-with-\/-and-\?)",
-        [](qhttp::Request::Ptr req, qhttp::Response::Ptr resp){
-            resp->send(printParams(req), "text/plain");
-        }
-    );
+                       [](qhttp::Request::Ptr req, qhttp::Response::Ptr resp) {
+                           resp->send(printParams(req), "text/plain");
+                       });
 
     start();
     CurlEasy curl;
@@ -536,9 +462,7 @@ BOOST_FIXTURE_TEST_CASE(percent_decoding, QhttpFixture)
     BOOST_TEST(curl.recdContent == "params[] query[key-with-==value-with-&,key2=value2]");
 }
 
-
-BOOST_FIXTURE_TEST_CASE(static_content, QhttpFixture)
-{
+BOOST_FIXTURE_TEST_CASE(static_content, QhttpFixture) {
     //----- test invalid root directory
 
     BOOST_CHECK_THROW(server->addStaticContent("/*", "/doesnotexist"), fs::filesystem_error);
@@ -571,7 +495,7 @@ BOOST_FIXTURE_TEST_CASE(static_content, QhttpFixture)
 
     //----- test redirect for directory w/o trailing "/"
 
-    char *redirect = nullptr;
+    char* redirect = nullptr;
     curl.setup("GET", urlPrefix + "css", "").perform().validate(301, "text/html");
     BOOST_TEST(curl.recdContent.find("301") != std::string::npos);
     BOOST_TEST(curl_easy_getinfo(curl.hcurl, CURLINFO_REDIRECT_URL, &redirect) == CURLE_OK);
@@ -583,9 +507,7 @@ BOOST_FIXTURE_TEST_CASE(static_content, QhttpFixture)
     BOOST_TEST(curl.recdContent.find("404") != std::string::npos);
 }
 
-
-BOOST_FIXTURE_TEST_CASE(relative_url_containment, QhttpFixture)
-{
+BOOST_FIXTURE_TEST_CASE(relative_url_containment, QhttpFixture) {
     server->addStaticContent("/*", dataDir);
 
     start();
@@ -608,29 +530,24 @@ BOOST_FIXTURE_TEST_CASE(relative_url_containment, QhttpFixture)
     BOOST_TEST(content.find("403") != std::string::npos);
 }
 
-
-BOOST_FIXTURE_TEST_CASE(exception_handling, QhttpFixture)
-{
+BOOST_FIXTURE_TEST_CASE(exception_handling, QhttpFixture) {
     boost::system::error_code ec;
     std::string content;
 
     server->addStaticContent("/etc/*", "/etc/");
 
-    server->addHandler("GET", "/throw/:errno", [](qhttp::Request::Ptr req, qhttp::Response::Ptr resp){
-        int ev = std::stoi(req->params["errno"]); // will throw if can't parse int
+    server->addHandler("GET", "/throw/:errno", [](qhttp::Request::Ptr req, qhttp::Response::Ptr resp) {
+        int ev = std::stoi(req->params["errno"]);  // will throw if can't parse int
         throw(boost::system::system_error(ev, boost::system::generic_category()));
     });
 
-    server->addHandler("GET", "/throw-after-send", [](qhttp::Request::Ptr req, qhttp::Response::Ptr resp){
+    server->addHandler("GET", "/throw-after-send", [](qhttp::Request::Ptr req, qhttp::Response::Ptr resp) {
         resp->sendStatus(200);
         throw std::runtime_error("test");
     });
 
     server->addHandler("GET", "/invalid-content-length",
-        [](qhttp::Request::Ptr req, qhttp::Response::Ptr resp){
-            resp->sendStatus(200);
-        }
-    );
+                       [](qhttp::Request::Ptr req, qhttp::Response::Ptr resp) { resp->sendStatus(200); });
 
     start();
 
@@ -679,24 +596,20 @@ BOOST_FIXTURE_TEST_CASE(exception_handling, QhttpFixture)
     BOOST_TEST(content.find("400") != std::string::npos);
 }
 
-
-BOOST_FIXTURE_TEST_CASE(handler_dispatch, QhttpFixture)
-{
-    auto testHandler = [](std::string const &name) {
+BOOST_FIXTURE_TEST_CASE(handler_dispatch, QhttpFixture) {
+    auto testHandler = [](std::string const& name) {
         return [name](qhttp::Request::Ptr req, qhttp::Response::Ptr resp) {
             resp->send(name + " " + printParams(req), "text/plain");
         };
     };
 
-    server->addHandlers({
-        {"GET",    "/api/v1/foos",           testHandler("Handler1")},
-        {"POST",   "/api/v1/foos",           testHandler("Handler2")},
-        {"PUT",    "/api/v1/bars",           testHandler("Handler3")},
-        {"PATCH",  "/api/v1/bars",           testHandler("Handler4")},
-        {"DELETE", "/api/v1/bars",           testHandler("Handler5")},
-        {"GET",    "/api/v1/foos/:foo",      testHandler("Handler6")},
-        {"GET",    "/api/v1/foos/:foo/:bar", testHandler("Handler7")}
-    });
+    server->addHandlers({{"GET", "/api/v1/foos", testHandler("Handler1")},
+                         {"POST", "/api/v1/foos", testHandler("Handler2")},
+                         {"PUT", "/api/v1/bars", testHandler("Handler3")},
+                         {"PATCH", "/api/v1/bars", testHandler("Handler4")},
+                         {"DELETE", "/api/v1/bars", testHandler("Handler5")},
+                         {"GET", "/api/v1/foos/:foo", testHandler("Handler6")},
+                         {"GET", "/api/v1/foos/:foo/:bar", testHandler("Handler7")}});
 
     start();
 
@@ -726,7 +639,9 @@ BOOST_FIXTURE_TEST_CASE(handler_dispatch, QhttpFixture)
 
     curl.setup("GET", urlPrefix + "api/v1/foos?bar=baz", "").perform().validate(200, "text/plain");
     BOOST_TEST(curl.recdContent == "Handler1 params[] query[bar=baz]");
-    curl.setup("GET", urlPrefix + "api/v1/foos?bar=bop&bar=baz&bip=bap", "").perform().validate(200, "text/plain");
+    curl.setup("GET", urlPrefix + "api/v1/foos?bar=bop&bar=baz&bip=bap", "")
+            .perform()
+            .validate(200, "text/plain");
     BOOST_TEST(curl.recdContent == "Handler1 params[] query[bar=baz,bip=bap]");
 
     //----- Test path captures
@@ -737,9 +652,7 @@ BOOST_FIXTURE_TEST_CASE(handler_dispatch, QhttpFixture)
     BOOST_TEST(curl.recdContent == "Handler7 params[bar=glorp,foo=gleep] query[]");
 }
 
-
-BOOST_FIXTURE_TEST_CASE(ajax, QhttpFixture)
-{
+BOOST_FIXTURE_TEST_CASE(ajax, QhttpFixture) {
     auto ajax1 = server->addAjaxEndpoint("/ajax/foo");
     auto ajax2 = server->addAjaxEndpoint("/ajax/bar");
 
@@ -754,8 +667,8 @@ BOOST_FIXTURE_TEST_CASE(ajax, QhttpFixture)
     //      incrementing the closed over counter on each iteration.
     //
 
-    using Handler = std::function<void ()>;
-    using HandlerFactory = std::function<Handler (CurlEasy& c, std::string const& r, int& n)>;
+    using Handler = std::function<void()>;
+    using HandlerFactory = std::function<Handler(CurlEasy & c, std::string const& r, int& n)>;
 
     HandlerFactory ajaxHandler = [&m, &ajaxHandler](CurlEasy& c, std::string const& r, int& n) {
         return [&m, &c, r, &n, &ajaxHandler]() {
@@ -813,7 +726,7 @@ BOOST_FIXTURE_TEST_CASE(ajax, QhttpFixture)
         done1 = true;
     });
 
-    while(!done1) m.perform(25);
+    while (!done1) m.perform(25);
     m.perform(25);
 
     BOOST_TEST(n1 == 2);
@@ -844,7 +757,7 @@ BOOST_FIXTURE_TEST_CASE(ajax, QhttpFixture)
         done3 = true;
     });
 
-    while(!done2 || !done3) m.perform(25);
+    while (!done2 || !done3) m.perform(25);
     m.perform(25);
 
     BOOST_TEST(n1 == 4);
@@ -858,4 +771,4 @@ BOOST_FIXTURE_TEST_CASE(ajax, QhttpFixture)
     t3.join();
 }
 
-}} // namespace lsst::qserv
+}  // namespace lsst::qserv

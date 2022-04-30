@@ -38,62 +38,58 @@ using namespace std;
 namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.SqlRowStatsJob");
 uint64_t const unlimitedMaxRows = 0;
-} /// namespace
+}  // namespace
 
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
 string SqlRowStatsJob::typeName() { return "SqlRowStatsJob"; }
 
-
 string SqlRowStatsJob::policy2str(SqlRowStatsJob::StateUpdatePolicy policy) {
-    switch(policy) {
-        case StateUpdatePolicy::DISABLED: return "DISABLED";
-        case StateUpdatePolicy::ENABLED:  return "ENABLED";
-        case StateUpdatePolicy::FORCED:   return "FORCED";
+    switch (policy) {
+        case StateUpdatePolicy::DISABLED:
+            return "DISABLED";
+        case StateUpdatePolicy::ENABLED:
+            return "ENABLED";
+        case StateUpdatePolicy::FORCED:
+            return "FORCED";
     }
     throw invalid_argument("SqlRowStatsJob::" + string(__func__) + ": unsupported policy.");
 }
 
-
 SqlRowStatsJob::StateUpdatePolicy SqlRowStatsJob::str2policy(string const& str) {
-    if      (str == "DISABLED") return StateUpdatePolicy::DISABLED;
-    else if (str == "ENABLED")  return StateUpdatePolicy::ENABLED;
-    else if (str == "FORCED")   return StateUpdatePolicy::FORCED;
-    throw invalid_argument(
-            "SqlRowStatsJob::" + string(__func__) + ": '" + str + "' is not a valid policy.");
+    if (str == "DISABLED")
+        return StateUpdatePolicy::DISABLED;
+    else if (str == "ENABLED")
+        return StateUpdatePolicy::ENABLED;
+    else if (str == "FORCED")
+        return StateUpdatePolicy::FORCED;
+    throw invalid_argument("SqlRowStatsJob::" + string(__func__) + ": '" + str + "' is not a valid policy.");
 }
 
-
-SqlRowStatsJob::Ptr SqlRowStatsJob::create(
-        string const& database, string const& table, ChunkOverlapSelector overlapSelector,
-        SqlRowStatsJob::StateUpdatePolicy stateUpdatePolicy, bool allWorkers,
-        Controller::Ptr const& controller, string const& parentJobId,
-        CallbackType const& onFinish, int priority) {
-    return Ptr(new SqlRowStatsJob(
-            database, table, overlapSelector, stateUpdatePolicy, allWorkers, controller,
-            parentJobId, onFinish, priority));
+SqlRowStatsJob::Ptr SqlRowStatsJob::create(string const& database, string const& table,
+                                           ChunkOverlapSelector overlapSelector,
+                                           SqlRowStatsJob::StateUpdatePolicy stateUpdatePolicy,
+                                           bool allWorkers, Controller::Ptr const& controller,
+                                           string const& parentJobId, CallbackType const& onFinish,
+                                           int priority) {
+    return Ptr(new SqlRowStatsJob(database, table, overlapSelector, stateUpdatePolicy, allWorkers, controller,
+                                  parentJobId, onFinish, priority));
 }
 
+SqlRowStatsJob::SqlRowStatsJob(string const& database, string const& table,
+                               ChunkOverlapSelector overlapSelector,
+                               SqlRowStatsJob::StateUpdatePolicy stateUpdatePolicy, bool allWorkers,
+                               Controller::Ptr const& controller, string const& parentJobId,
+                               CallbackType const& onFinish, int priority)
+        : SqlJob(::unlimitedMaxRows, allWorkers, controller, parentJobId, "SQL_TABLE_ROW_STATS", priority),
+          _database(database),
+          _table(table),
+          _overlapSelector(overlapSelector),
+          _stateUpdatePolicy(stateUpdatePolicy),
+          _onFinish(onFinish) {}
 
-SqlRowStatsJob::SqlRowStatsJob(
-        string const& database, string const& table, ChunkOverlapSelector overlapSelector,
-        SqlRowStatsJob::StateUpdatePolicy stateUpdatePolicy, bool allWorkers,
-        Controller::Ptr const& controller, string const& parentJobId,
-        CallbackType const& onFinish, int priority)
-    :   SqlJob(::unlimitedMaxRows, allWorkers, controller, parentJobId,
-               "SQL_TABLE_ROW_STATS", priority),
-        _database(database),
-        _table(table),
-        _overlapSelector(overlapSelector),
-        _stateUpdatePolicy(stateUpdatePolicy),
-        _onFinish(onFinish) {
-}
-
-
-list<pair<string,string>> SqlRowStatsJob::extendedPersistentState() const {
-    list<pair<string,string>> result;
+list<pair<string, string>> SqlRowStatsJob::extendedPersistentState() const {
+    list<pair<string, string>> result;
     result.emplace_back("database", database());
     result.emplace_back("table", table());
     result.emplace_back("overlap_selector", overlapSelector2str(overlapSelector()));
@@ -102,10 +98,8 @@ list<pair<string,string>> SqlRowStatsJob::extendedPersistentState() const {
     return result;
 }
 
-
-list<SqlRequest::Ptr> SqlRowStatsJob::launchRequests(
-        util::Lock const& lock, string const& worker, size_t maxRequestsPerWorker) {
-
+list<SqlRequest::Ptr> SqlRowStatsJob::launchRequests(util::Lock const& lock, string const& worker,
+                                                     size_t maxRequestsPerWorker) {
     list<SqlRequest::Ptr> requests;
     if (maxRequestsPerWorker == 0) return requests;
 
@@ -116,7 +110,7 @@ list<SqlRequest::Ptr> SqlRowStatsJob::launchRequests(
     // Only the requested subset of tables is going to be processed at the worker.
     bool const allTables = false;
     vector<string> tables2process;
-    switch(overlapSelector()) {
+    switch (overlapSelector()) {
         case ChunkOverlapSelector::CHUNK:
             tables2process = workerTables(worker, database(), table(), allTables, false);
             break;
@@ -126,8 +120,8 @@ list<SqlRequest::Ptr> SqlRowStatsJob::launchRequests(
         case ChunkOverlapSelector::CHUNK_AND_OVERLAP: {
             tables2process = workerTables(worker, database(), table(), allTables, false);
             auto overlaps = workerTables(worker, database(), table(), allTables, true);
-            tables2process.insert(tables2process.end(),
-                    std::make_move_iterator(overlaps.begin()), std::make_move_iterator(overlaps.end()));
+            tables2process.insert(tables2process.end(), std::make_move_iterator(overlaps.begin()),
+                                  std::make_move_iterator(overlaps.end()));
             break;
         }
     }
@@ -136,37 +130,30 @@ list<SqlRequest::Ptr> SqlRowStatsJob::launchRequests(
     // the requests for the current worker.
     bool const keepTracking = true;
     auto const self = shared_from_base<SqlRowStatsJob>();
-    for (auto&& tables: distributeTables(tables2process, maxRequestsPerWorker)) {
+    for (auto&& tables : distributeTables(tables2process, maxRequestsPerWorker)) {
         requests.push_back(controller()->sqlRowStats(
                 worker, database(), tables,
-                [self] (SqlRowStatsRequest::Ptr const& request) { self->onRequestFinish(request); },
+                [self](SqlRowStatsRequest::Ptr const& request) { self->onRequestFinish(request); },
                 priority(), keepTracking, id()));
     }
     return requests;
 }
 
-
-void SqlRowStatsJob::stopRequest(
-        util::Lock const& lock, SqlRequest::Ptr const& request) {
+void SqlRowStatsJob::stopRequest(util::Lock const& lock, SqlRequest::Ptr const& request) {
     stopRequestDefaultImpl<StopSqlGetIndexesRequest>(lock, request);
 }
-
 
 void SqlRowStatsJob::notify(util::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "[" << typeName() << "]");
     notifyDefaultImpl<SqlRowStatsJob>(lock, _onFinish);
 }
 
-
-void SqlRowStatsJob::processResultAndFinish(
-        util::Lock const& lock, ExtendedState extendedState) {
-
+void SqlRowStatsJob::processResultAndFinish(util::Lock const& lock, ExtendedState extendedState) {
     string const context_ = context() + string(__func__) + " ";
 
     bool const isForced = stateUpdatePolicy() == StateUpdatePolicy::FORCED;
-    if (isForced || (stateUpdatePolicy() == StateUpdatePolicy::ENABLED &&
-                     extendedState == ExtendedState::SUCCESS)) {
-
+    if (isForced ||
+        (stateUpdatePolicy() == StateUpdatePolicy::ENABLED && extendedState == ExtendedState::SUCCESS)) {
         // Scan results (ignore failed requests) and store them in the intermediate
         // collection of the counters defined below. Each table replica encountered
         // by the scanner in a context of a table and a transaction will be
@@ -180,12 +167,13 @@ void SqlRowStatsJob::processResultAndFinish(
                 controller()->serviceProvider()->config()->databaseInfo(database()).isPartitioned(table());
 
         bool dataError = false;
-        getResultData(lock).iterate([&](
-                SqlJobResult::Worker const& worker, SqlJobResult::Scope const& internalTable,
-                SqlResultSet::ResultSet const& resultSet) {
-            bool const succeeded = _process(context_, isPartitioned, worker, internalTable, resultSet, counters);
+        getResultData(lock).iterate([&](SqlJobResult::Worker const& worker,
+                                        SqlJobResult::Scope const& internalTable,
+                                        SqlResultSet::ResultSet const& resultSet) {
+            bool const succeeded =
+                    _process(context_, isPartitioned, worker, internalTable, resultSet, counters);
             dataError = dataError || !succeeded;
-         });
+        });
         if (dataError) {
             finish(lock, ExtendedState::BAD_RESULT);
             return;
@@ -199,38 +187,41 @@ void SqlRowStatsJob::processResultAndFinish(
         bool counterMismatchDetected = false;
         uint64_t const updateTime = PerformanceUtils::now();
         TableRowStats stats(database(), table());
-        for (auto const& tableItr: counters) {
+        for (auto const& tableItr : counters) {
             string const& internalTable = tableItr.first;
             auto const& transactions = tableItr.second;
             size_t numReplicas = numeric_limits<size_t>::max();
-            for (auto const& transItr: transactions) {
+            for (auto const& transItr : transactions) {
                 TransactionId const transactionId = transItr.first;
                 auto const& replicas = transItr.second;
                 if (numReplicas == numeric_limits<size_t>::max()) {
                     numReplicas = replicas.size();
                 } else if (numReplicas != replicas.size()) {
-                    LOGS(_log, LOG_LVL_ERROR, context_ << "replicas don't match in table: " << internalTable
-                         << " for transactionId: " << transactionId);
+                    LOGS(_log, LOG_LVL_ERROR,
+                         context_ << "replicas don't match in table: " << internalTable
+                                  << " for transactionId: " << transactionId);
                     counterMismatchDetected = true;
                     break;
                 }
                 size_t numRows = numeric_limits<size_t>::max();
-                for (size_t counter: replicas) {
+                for (size_t counter : replicas) {
                     if (numRows == numeric_limits<size_t>::max()) {
                         numRows = counter;
                     } else if (numRows != counter) {
-                        LOGS(_log, LOG_LVL_ERROR, context_ << "row counts don't match in table: " << internalTable
-                            << " for transactionId: " << transactionId);
+                        LOGS(_log, LOG_LVL_ERROR,
+                             context_ << "row counts don't match in table: " << internalTable
+                                      << " for transactionId: " << transactionId);
                         counterMismatchDetected = true;
                         break;
                     }
                     if (isPartitioned) {
                         ChunkedTable const chunkedTable(internalTable);
-                        stats.entries.emplace_back(TableRowStatsEntry(
-                                transactionId, chunkedTable.chunk(), chunkedTable.overlap(), numRows, updateTime));
+                        stats.entries.emplace_back(TableRowStatsEntry(transactionId, chunkedTable.chunk(),
+                                                                      chunkedTable.overlap(), numRows,
+                                                                      updateTime));
                     } else {
-                        stats.entries.emplace_back(TableRowStatsEntry(
-                                transactionId, 0, false, numRows, updateTime));
+                        stats.entries.emplace_back(
+                                TableRowStatsEntry(transactionId, 0, false, numRows, updateTime));
                     }
                 }
             }
@@ -244,8 +235,9 @@ void SqlRowStatsJob::processResultAndFinish(
         try {
             controller()->serviceProvider()->databaseServices()->saveTableRowStats(stats);
         } catch (exception const& ex) {
-            LOGS(_log, LOG_LVL_ERROR, context_ << "failed to update row counts in a scope of database: '"
-                 << database() << ", table: " << table() << ", ex: " << ex.what());
+            LOGS(_log, LOG_LVL_ERROR,
+                 context_ << "failed to update row counts in a scope of database: '" << database()
+                          << ", table: " << table() << ", ex: " << ex.what());
             finish(lock, ExtendedState::FAILED);
             return;
         }
@@ -253,16 +245,15 @@ void SqlRowStatsJob::processResultAndFinish(
     finish(lock, extendedState);
 }
 
-
-bool SqlRowStatsJob::_process(
-        string const& context_, bool isPartitioned, SqlJobResult::Worker const& worker,
-        SqlJobResult::Scope const& internalTable, SqlResultSet::ResultSet const& resultSet,
-        map<string, map<TransactionId, vector<size_t>>>& counters) const {
-
+bool SqlRowStatsJob::_process(string const& context_, bool isPartitioned, SqlJobResult::Worker const& worker,
+                              SqlJobResult::Scope const& internalTable,
+                              SqlResultSet::ResultSet const& resultSet,
+                              map<string, map<TransactionId, vector<size_t>>>& counters) const {
     bool const succeeded = true;
-    auto const reportResultThatHas = [&] (string const& problem) {
-        LOGS(_log, LOG_LVL_ERROR, context_ << "result set received from worker '"
-                << worker << "' for table '" << internalTable << "' has " << problem);
+    auto const reportResultThatHas = [&](string const& problem) {
+        LOGS(_log, LOG_LVL_ERROR,
+             context_ << "result set received from worker '" << worker << "' for table '" << internalTable
+                      << "' has " << problem);
     };
 
     // This scenario is possible in the FORCED mode. And we're guaranteed
@@ -293,10 +284,11 @@ bool SqlRowStatsJob::_process(
     if (resultSet.fields.size() != 2 || resultSet.fields[0].name != "qserv_trans_id" ||
         resultSet.fields[1].name != "num_rows") {
         reportResultThatHas("unexpected format");
-        LOGS(_log, LOG_LVL_ERROR, context_ << "rows.size(): " << resultSet.rows.size()
-                << " fields.size(): " << resultSet.fields.size()
-                << " fields[0].name: " << (resultSet.fields.size() > 0 ? resultSet.fields[0].name : "")
-                << " fields[1].name: " << (resultSet.fields.size() > 1 ? resultSet.fields[1].name : ""));
+        LOGS(_log, LOG_LVL_ERROR,
+             context_ << "rows.size(): " << resultSet.rows.size()
+                      << " fields.size(): " << resultSet.fields.size() << " fields[0].name: "
+                      << (resultSet.fields.size() > 0 ? resultSet.fields[0].name : "") << " fields[1].name: "
+                      << (resultSet.fields.size() > 1 ? resultSet.fields[1].name : ""));
         return !succeeded;
     }
     if (resultSet.rows.empty()) {
@@ -304,7 +296,7 @@ bool SqlRowStatsJob::_process(
         // even if it has 0 rows. The default transaction 0 will be used in this case.
         counters[internalTable][0].push_back(0);
     } else {
-        for (auto&& row: resultSet.rows) {
+        for (auto&& row : resultSet.rows) {
             if (row.nulls[0] || row.nulls[1]) {
                 reportResultThatHas("unexpected NULL values");
                 return !succeeded;
@@ -322,7 +314,4 @@ bool SqlRowStatsJob::_process(
     return succeeded;
 }
 
-}}} // namespace lsst::qserv::replica
-
-
-
+}  // namespace lsst::qserv::replica

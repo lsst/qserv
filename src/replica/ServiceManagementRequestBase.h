@@ -34,16 +34,12 @@
 #include "replica/RequestMessenger.h"
 
 // Forward declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
-    class Messenger;
-}}}  // Forward declarations
+namespace lsst::qserv::replica {
+class Messenger;
+}  // namespace lsst::qserv::replica
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Structure ServiceState encapsulates various parameters representing the state
@@ -51,13 +47,8 @@ namespace replica {
  * upon the completion of the request.
  */
 struct ServiceState {
-
     // Its state
-    enum State {
-        SUSPEND_IN_PROGRESS = 0,
-        SUSPENDED = 1,
-        RUNNING = 2
-    };
+    enum State { SUSPEND_IN_PROGRESS = 0, SUSPENDED = 1, RUNNING = 2 };
     State state;
 
     /// The back-end technology
@@ -80,11 +71,11 @@ struct ServiceState {
     std::string state2string() const;
 
     /// Set parameter values from a protobuf object
-    void set (const ProtocolServiceResponse &message);
+    void set(const ProtocolServiceResponse& message);
 };
 
 /// Overloaded streaming operator for type ServiceState
-std::ostream& operator<< (std::ostream &os, const ServiceState &ss);
+std::ostream& operator<<(std::ostream& os, const ServiceState& ss);
 
 /**
  * Class ServiceManagementRequestBase is the base class for a family of requests
@@ -95,7 +86,7 @@ std::ostream& operator<< (std::ostream &os, const ServiceState &ss);
  *   of the protocol. All final customizations and type-specific operations are
  *   provided via a generic subclass.
  */
-class ServiceManagementRequestBase: public RequestMessenger {
+class ServiceManagementRequestBase : public RequestMessenger {
 public:
     typedef std::shared_ptr<ServiceManagementRequestBase> Ptr;
 
@@ -114,7 +105,7 @@ public:
 
     /**
      * Make an extended print of the request which would include a result set.
-     * The method will also make a call to Request::defaultPrinter(). 
+     * The method will also make a call to Request::defaultPrinter().
      * @param ptr  An object to be printed.
      */
     static void extendedPrinter(Ptr const& ptr);
@@ -131,12 +122,9 @@ protected:
      * @param messenger  The messaging service for workers.
      */
     ServiceManagementRequestBase(ServiceProvider::Ptr const& serviceProvider,
-                                 boost::asio::io_service& io_service,
-                                 char const* requestName,
-                                 std::string const& worker,
-                                 ProtocolServiceRequestType requestType,
-                                 int priority,
-                                 std::shared_ptr<Messenger> const& messenger);
+                                 boost::asio::io_service& io_service, char const* requestName,
+                                 std::string const& worker, ProtocolServiceRequestType requestType,
+                                 int priority, std::shared_ptr<Messenger> const& messenger);
 
     /// @see Request::startImpl()
     void startImpl(util::Lock const& lock) final;
@@ -150,7 +138,7 @@ private:
      * @param success 'true' indicates a successful response from a worker.
      * @param message  A response message from the worker service (if success is 'true').
      */
-    void _analyze(bool success,  ProtocolServiceResponse const& message);
+    void _analyze(bool success, ProtocolServiceResponse const& message);
 
     /// Request type
     ProtocolServiceRequestType const _requestType;
@@ -160,6 +148,6 @@ private:
     ServiceState _serviceState;
 };
 
-}}} // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_SERVICEMANAGEMENTREQUESTBASE_H
+#endif  // LSST_QSERV_REPLICA_SERVICEMANAGEMENTREQUESTBASE_H

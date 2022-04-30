@@ -33,22 +33,18 @@
 #include "replica/HttpModule.h"
 
 // Forward declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
-    class TransactionInfo;
-}}} // namespace lsst::qserv::replica
+namespace lsst::qserv::replica {
+class TransactionInfo;
+}  // namespace lsst::qserv::replica
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class HttpIngestTransModule provides a support for managing "super-transactions"
  * in the Replication system as needed during catalog ingest.
  */
-class HttpIngestTransModule: public HttpModule {
+class HttpIngestTransModule : public HttpModule {
 public:
     typedef std::shared_ptr<HttpIngestTransModule> Ptr;
 
@@ -62,14 +58,11 @@ public:
      *
      * @throws std::invalid_argument for unknown values of parameter 'subModuleName'
      */
-    static void process(Controller::Ptr const& controller,
-                        NamedMutexRegistry& transactionMutexRegistry,
-                        std::string const& taskName,
-                        HttpProcessorConfig const& processorConfig,
-                        qhttp::Request::Ptr const& req,
-                        qhttp::Response::Ptr const& resp,
-                        std::string const& subModuleName=std::string(),
-                        HttpAuthType const authType=HttpAuthType::NONE);
+    static void process(Controller::Ptr const& controller, NamedMutexRegistry& transactionMutexRegistry,
+                        std::string const& taskName, HttpProcessorConfig const& processorConfig,
+                        qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp,
+                        std::string const& subModuleName = std::string(),
+                        HttpAuthType const authType = HttpAuthType::NONE);
 
     HttpIngestTransModule() = delete;
     HttpIngestTransModule(HttpIngestTransModule const&) = delete;
@@ -81,12 +74,9 @@ protected:
     nlohmann::json executeImpl(std::string const& subModuleName) final;
 
 private:
-    HttpIngestTransModule(Controller::Ptr const& controller,
-                          NamedMutexRegistry& transactionMutexRegistry,
-                          std::string const& taskName,
-                          HttpProcessorConfig const& processorConfig,
-                          qhttp::Request::Ptr const& req,
-                          qhttp::Response::Ptr const& resp);
+    HttpIngestTransModule(Controller::Ptr const& controller, NamedMutexRegistry& transactionMutexRegistry,
+                          std::string const& taskName, HttpProcessorConfig const& processorConfig,
+                          qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp);
 
     /// Get info on super-transactions
     nlohmann::json _getTransactions();
@@ -102,16 +92,15 @@ private:
 
     /**
      * @brief Log controller events for the transaction management operations.
-     * 
+     *
      * @param operation The name of the operation.
      * @param status The completion status of the operation.
      * @param id The unique identifier of the transaction affected by the operation.
      * @param database The name of a database associated with the transaction.
      * @param msg The optional error message in case if the operation failed.
      */
-    void _logTransactionMgtEvent(std::string const& operation, std::string const& status,
-                                 TransactionId id, std::string const& database, 
-                                 std::string const& msg=std::string()) const;
+    void _logTransactionMgtEvent(std::string const& operation, std::string const& status, TransactionId id,
+                                 std::string const& database, std::string const& msg = std::string()) const;
 
     /**
      * Extend an existing "secondary index" table by adding a MySQL partition
@@ -120,19 +109,17 @@ private:
      * @param transactionId unique identifier of a super-transaction
      * @param directorTable the name of the director table to build the index for
      */
-    void _addPartitionToSecondaryIndex(DatabaseInfo const& databaseInfo,
-                                       TransactionId transactionId,
+    void _addPartitionToSecondaryIndex(DatabaseInfo const& databaseInfo, TransactionId transactionId,
                                        std::string const& directorTable) const;
 
-   /**
+    /**
      * Shrink an existing "secondary index" table by removing a MySQL partition
      * corresponding to the specified transaction identifier from the table.
      * @param databaseInfo defines a scope of the operation
      * @param transactionId unique identifier of a super-transaction
      * @param directorTable the name of the director table to remove the index from
      */
-    void _removePartitionFromSecondaryIndex(DatabaseInfo const& databaseInfo,
-                                            TransactionId transactionId,
+    void _removePartitionFromSecondaryIndex(DatabaseInfo const& databaseInfo, TransactionId transactionId,
                                             std::string const& directorTable) const;
 
     /**
@@ -149,7 +136,7 @@ private:
     /// management operations performed by the module.
     NamedMutexRegistry& _transactionMutexRegistry;
 };
-    
-}}} // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_HTTPINGESTTRANSMODULE_H
+}  // namespace lsst::qserv::replica
+
+#endif  // LSST_QSERV_HTTPINGESTTRANSMODULE_H

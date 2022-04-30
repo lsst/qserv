@@ -25,9 +25,7 @@
 #include "replica/Application.h"
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class PurgeApp implements a tool which purges excess replicas for all chunks of
@@ -35,7 +33,7 @@ namespace replica {
  * doing so, the application will make the best effort to leave worker nodes as
  * balanced as possible, and it will also preserve chunk collocation.
  */
-class PurgeApp: public Application {
+class PurgeApp : public Application {
 public:
     typedef std::shared_ptr<PurgeApp> Ptr;
 
@@ -48,11 +46,11 @@ public:
      */
     static Ptr create(int argc, char* argv[]);
 
-    PurgeApp()=delete;
-    PurgeApp(PurgeApp const&)=delete;
-    PurgeApp& operator=(PurgeApp const&)=delete;
+    PurgeApp() = delete;
+    PurgeApp(PurgeApp const&) = delete;
+    PurgeApp& operator=(PurgeApp const&) = delete;
 
-    ~PurgeApp() final=default;
+    ~PurgeApp() final = default;
 
 protected:
     /// @see Application::runImpl()
@@ -74,6 +72,6 @@ private:
     size_t _pageSize = 20;
 };
 
-}}} // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif /* LSST_QSERV_REPLICA_PURGEAPP_H */

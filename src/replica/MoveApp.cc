@@ -37,82 +37,48 @@ using namespace std;
 namespace {
 
 string const description =
-    "This application makes the best effort to ensure replicas are distributed"
-    " equally among the worker nodes. And while doing so the re-balancing algorithm"
-    " will both preserve the replication level of chunks and to keep the chunk"
-    " collocation intact.";
+        "This application makes the best effort to ensure replicas are distributed"
+        " equally among the worker nodes. And while doing so the re-balancing algorithm"
+        " will both preserve the replication level of chunks and to keep the chunk"
+        " collocation intact.";
 
 bool const injectDatabaseOptions = true;
 bool const boostProtobufVersionCheck = true;
 bool const enableServiceProvider = true;
 
-} /// namespace
+}  // namespace
 
+namespace lsst::qserv::replica {
 
-namespace lsst {
-namespace qserv {
-namespace replica {
-
-MoveApp::Ptr MoveApp::create(int argc, char* argv[]) {
-    return Ptr(new MoveApp(argc, argv));
-}
-
+MoveApp::Ptr MoveApp::create(int argc, char* argv[]) { return Ptr(new MoveApp(argc, argv)); }
 
 MoveApp::MoveApp(int argc, char* argv[])
-    :   Application(
-            argc, argv,
-            ::description,
-            ::injectDatabaseOptions,
-            ::boostProtobufVersionCheck,
-            ::enableServiceProvider
-        ) {
-
+        : Application(argc, argv, ::description, ::injectDatabaseOptions, ::boostProtobufVersionCheck,
+                      ::enableServiceProvider) {
     // Configure the command line parser
 
-    parser().required(
-        "database-family",
-        "The name of a database family.",
-        _databaseFamily
-    ).required(
-        "chunk",
-        "The chunk to be affected by the operation.",
-        _chunk
-    ).required(
-        "source-worker",
-        "The name of a worker which has the replica to be moved.",
-        _sourceWorker
-    ).required(
-        "destination-worker",
-        "The name of a worker where the replica will be moved (must not"
-        " be the same worker as the source one).",
-        _destinationWorker
-    ).flag(
-        "purge",
-        "Purge the input replica at the source worker upon a successful"
-        " completion of the operation.",
-        _purge
-    ).option(
-        "tables-page-size",
-        "The number of rows in the table of replicas (0 means no pages).",
-        _pageSize
-    );
+    parser().required("database-family", "The name of a database family.", _databaseFamily)
+            .required("chunk", "The chunk to be affected by the operation.", _chunk)
+            .required("source-worker", "The name of a worker which has the replica to be moved.",
+                      _sourceWorker)
+            .required("destination-worker",
+                      "The name of a worker where the replica will be moved (must not"
+                      " be the same worker as the source one).",
+                      _destinationWorker)
+            .flag("purge",
+                  "Purge the input replica at the source worker upon a successful"
+                  " completion of the operation.",
+                  _purge)
+            .option("tables-page-size", "The number of rows in the table of replicas (0 means no pages).",
+                    _pageSize);
 }
 
-
 int MoveApp::runImpl() {
-
     string const noParentJobId;
-    auto const job = MoveReplicaJob::create(
-        _databaseFamily,
-        _chunk,
-        _sourceWorker,
-        _destinationWorker,
-        _purge,
-        Controller::create(serviceProvider()),
-        noParentJobId,
-        nullptr,    // no callback
-        PRIORITY_NORMAL
-    );
+    auto const job = MoveReplicaJob::create(_databaseFamily, _chunk, _sourceWorker, _destinationWorker,
+                                            _purge, Controller::create(serviceProvider()), noParentJobId,
+                                            nullptr,  // no callback
+                                            PRIORITY_NORMAL);
     job->start();
     job->wait();
 
@@ -129,4 +95,4 @@ int MoveApp::runImpl() {
     return 0;
 }
 
-}}} // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

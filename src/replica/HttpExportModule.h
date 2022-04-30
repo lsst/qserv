@@ -33,15 +33,13 @@
 #include "replica/HttpModule.h"
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class HttpExportModule provides support exporting tables
  * from Qserv.
  */
-class HttpExportModule: public HttpModule {
+class HttpExportModule : public HttpModule {
 public:
     typedef std::shared_ptr<HttpExportModule> Ptr;
 
@@ -56,13 +54,10 @@ public:
      *
      * @throws std::invalid_argument for unknown values of parameter 'subModuleName'
      */
-    static void process(Controller::Ptr const& controller,
-                        std::string const& taskName,
-                        HttpProcessorConfig const& processorConfig,
-                        qhttp::Request::Ptr const& req,
-                        qhttp::Response::Ptr const& resp,
-                        std::string const& subModuleName=std::string(),
-                        HttpAuthType const authType=HttpAuthType::NONE);
+    static void process(Controller::Ptr const& controller, std::string const& taskName,
+                        HttpProcessorConfig const& processorConfig, qhttp::Request::Ptr const& req,
+                        qhttp::Response::Ptr const& resp, std::string const& subModuleName = std::string(),
+                        HttpAuthType const authType = HttpAuthType::NONE);
 
     HttpExportModule() = delete;
     HttpExportModule(HttpExportModule const&) = delete;
@@ -74,16 +69,14 @@ protected:
     nlohmann::json executeImpl(std::string const& subModuleName) final;
 
 private:
-    HttpExportModule(Controller::Ptr const& controller,
-                     std::string const& taskName,
-                     HttpProcessorConfig const& processorConfig,
-                     qhttp::Request::Ptr const& req,
+    HttpExportModule(Controller::Ptr const& controller, std::string const& taskName,
+                     HttpProcessorConfig const& processorConfig, qhttp::Request::Ptr const& req,
                      qhttp::Response::Ptr const& resp);
 
     /// @return Service locations for table(s).
     nlohmann::json _getTables();
 };
-    
-}}} // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_HTTPEXPORTMODULE_H
+}  // namespace lsst::qserv::replica
+
+#endif  // LSST_QSERV_HTTPEXPORTMODULE_H

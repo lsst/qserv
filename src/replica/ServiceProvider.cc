@@ -43,30 +43,21 @@ namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.ServiceProvider");
 
-} /// namespace
+}  // namespace
 
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
-ServiceProvider::Ptr ServiceProvider::create(string const& configUrl,
-                                             string const& instanceId,
-                                             string const& authKey,
-                                             string const& adminAuthKey) {
+ServiceProvider::Ptr ServiceProvider::create(string const& configUrl, string const& instanceId,
+                                             string const& authKey, string const& adminAuthKey) {
     return ServiceProvider::Ptr(new ServiceProvider(configUrl, instanceId, authKey, adminAuthKey));
 }
 
-
-ServiceProvider::ServiceProvider(string const& configUrl,
-                                 string const& instanceId,
-                                 string const& authKey,
+ServiceProvider::ServiceProvider(string const& configUrl, string const& instanceId, string const& authKey,
                                  string const& adminAuthKey)
-    :   _configuration(Configuration::load(configUrl)),
-        _instanceId(instanceId),
-        _authKey(authKey),
-        _adminAuthKey(adminAuthKey) {
-}
-
+        : _configuration(Configuration::load(configUrl)),
+          _instanceId(instanceId),
+          _authKey(authKey),
+          _adminAuthKey(adminAuthKey) {}
 
 DatabaseServices::Ptr const& ServiceProvider::databaseServices() {
     util::Lock lock(_mtx, _context() + __func__);
@@ -76,7 +67,6 @@ DatabaseServices::Ptr const& ServiceProvider::databaseServices() {
     return _databaseServices;
 }
 
-
 QservMgtServices::Ptr const& ServiceProvider::qservMgtServices() {
     util::Lock lock(_mtx, _context() + __func__);
     if (_qservMgtServices == nullptr) {
@@ -84,7 +74,6 @@ QservMgtServices::Ptr const& ServiceProvider::qservMgtServices() {
     }
     return _qservMgtServices;
 }
-
 
 Messenger::Ptr const& ServiceProvider::messenger() {
     util::Lock lock(_mtx, _context() + __func__);
@@ -94,7 +83,6 @@ Messenger::Ptr const& ServiceProvider::messenger() {
     return _messenger;
 }
 
-
 Registry::Ptr const& ServiceProvider::registry() {
     util::Lock lock(_mtx, _context() + __func__);
     if (_registry == nullptr) {
@@ -103,14 +91,11 @@ Registry::Ptr const& ServiceProvider::registry() {
     return _registry;
 }
 
-
 shared_ptr<util::Mutex> ServiceProvider::getNamedMutex(string const& name) {
     return _namedMutexRegistry.get(name);
 }
 
-
 void ServiceProvider::run() {
-
     LOGS(_log, LOG_LVL_DEBUG, _context() << __func__);
 
     util::Lock lock(_mtx, _context() + __func__);
@@ -127,31 +112,22 @@ void ServiceProvider::run() {
 
     _threads.clear();
     for (size_t i = 0; i < config()->get<size_t>("controller", "num-threads"); ++i) {
-        _threads.push_back(
-            make_unique<thread>(
-                [self] () {
-
-                    // This will prevent the I/O service from exiting the .run()
-                    // method event when it will run out of any requests to process.
-                    // Unless the service will be explicitly stopped.
-                    self->_io_service.run();
-                }
-            )
-        );
+        _threads.push_back(make_unique<thread>([self]() {
+            // This will prevent the I/O service from exiting the .run()
+            // method event when it will run out of any requests to process.
+            // Unless the service will be explicitly stopped.
+            self->_io_service.run();
+        }));
     }
 }
 
-
 bool ServiceProvider::isRunning() const {
-
     util::Lock lock(_mtx, _context() + __func__);
 
     return not _threads.empty();
 }
 
-
 void ServiceProvider::stop() {
-
     LOGS(_log, LOG_LVL_DEBUG, _context() << __func__);
 
     util::Lock lock(_mtx, _context() + __func__);
@@ -175,7 +151,7 @@ void ServiceProvider::stop() {
     // At this point all outstanding requests should finish and all threads
     // should stop as well.
 
-    for (auto&& t: _threads) {
+    for (auto&& t : _threads) {
         t->join();
     }
 
@@ -187,9 +163,6 @@ void ServiceProvider::stop() {
     _threads.clear();
 }
 
+string ServiceProvider::_context() const { return "SERVICE-PROVIDER  "; }
 
-string ServiceProvider::_context() const {
-    return "SERVICE-PROVIDER  ";
-}
-
-}}} // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

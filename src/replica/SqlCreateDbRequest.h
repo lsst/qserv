@@ -30,15 +30,13 @@
 #include "replica/SqlRequest.h"
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class SqlCreateDbRequest represents Controller-side requests for initiating
  * queries for creating databases at a remote worker nodes.
  */
-class SqlCreateDbRequest: public SqlRequest {
+class SqlCreateDbRequest : public SqlRequest {
 public:
     typedef std::shared_ptr<SqlCreateDbRequest> Ptr;
 
@@ -70,14 +68,9 @@ public:
      * @param messenger  An service for communications with workers.
      * @return A pointer to the created object.
      */
-    static Ptr create(ServiceProvider::Ptr const& serviceProvider,
-                      boost::asio::io_service& io_service,
-                      std::string const& worker,
-                      std::string const& database,
-                      CallbackType const& onFinish,
-                      int priority,
-                      bool keepTracking,
-                      std::shared_ptr<Messenger> const& messenger);
+    static Ptr create(ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service,
+                      std::string const& worker, std::string const& database, CallbackType const& onFinish,
+                      int priority, bool keepTracking, std::shared_ptr<Messenger> const& messenger);
 
 protected:
     /// @see Request::notify()
@@ -85,18 +78,13 @@ protected:
 
 private:
     /// @see SqlCreateDbRequest::create()
-    SqlCreateDbRequest(ServiceProvider::Ptr const& serviceProvider,
-                       boost::asio::io_service& io_service,
-                       std::string const& worker,
-                       std::string const& database,
-                       CallbackType const& onFinish,
-                       int priority,
-                       bool keepTracking,
-                       std::shared_ptr<Messenger> const& messenger);
+    SqlCreateDbRequest(ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service,
+                       std::string const& worker, std::string const& database, CallbackType const& onFinish,
+                       int priority, bool keepTracking, std::shared_ptr<Messenger> const& messenger);
 
-    CallbackType _onFinish; ///< @note is reset when the request finishes
+    CallbackType _onFinish;  ///< @note is reset when the request finishes
 };
 
-}}} // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_SQLCREATEDBREQUEST_H
+#endif  // LSST_QSERV_REPLICA_SQLCREATEDBREQUEST_H

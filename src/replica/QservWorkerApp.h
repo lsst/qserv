@@ -30,15 +30,13 @@
 #include "replica/ReplicaInfo.h"
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class QservWorkerApp represents a command-line tool for operations
  * with Qserv workers.
  */
-class QservWorkerApp: public Application {
+class QservWorkerApp : public Application {
 public:
     typedef std::shared_ptr<QservWorkerApp> Ptr;
 
@@ -51,11 +49,11 @@ public:
      */
     static Ptr create(int argc, char* argv[]);
 
-    QservWorkerApp()=delete;
-    QservWorkerApp(QservWorkerApp const&)=delete;
-    QservWorkerApp& operator=(QservWorkerApp const&)=delete;
+    QservWorkerApp() = delete;
+    QservWorkerApp(QservWorkerApp const&) = delete;
+    QservWorkerApp& operator=(QservWorkerApp const&) = delete;
 
-    ~QservWorkerApp() override=default;
+    ~QservWorkerApp() override = default;
 
 protected:
     /// @see Application::runImpl()
@@ -81,13 +79,12 @@ private:
      * @param databases collection of unique database names found in the input files. The collection
      *   will be populated upon a successful completion of the method.
      */
-    void _readInFile(QservReplicaCollection& replicas,
-                     std::vector<std::string>& databases) const;
+    void _readInFile(QservReplicaCollection& replicas, std::vector<std::string>& databases) const;
 
     /**
-      * Print a collection of replicas
-      * @param collection
-      */
+     * Print a collection of replicas
+     * @param collection
+     */
     void _dump(QservReplicaCollection const& collection) const;
 
     /// The name of a command (the first mandatory parameter)
@@ -112,7 +109,7 @@ private:
     /// replica removal regardless of the replica usage status
     bool _forceRemove = false;
 
-    /// Limit a scope of operations to a subset of chunks which are in use 
+    /// Limit a scope of operations to a subset of chunks which are in use
     bool _inUseOnly = false;
 
     /// The flag (if set) for "printing the vertical separator when displaying tabular data in reports
@@ -122,6 +119,6 @@ private:
     size_t _pageSize = 0;
 };
 
-}}} // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif /* LSST_QSERV_REPLICA_QSERVWORKERAPP_H */

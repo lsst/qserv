@@ -29,65 +29,64 @@
 // Third party headers
 #include "nlohmann/json.hpp"
 
-
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class WorkerInfo encapsulates various parameters describing a worker.
  */
 class WorkerInfo {
 public:
-    std::string name;           // The logical name of a worker
+    std::string name;  // The logical name of a worker
 
-    bool isEnabled  = true;     // The worker is allowed to participate in the replication operations
-    bool isReadOnly = false;    // The worker can only serve as a source of replicas.
-                                // New replicas can't be placed on it.
+    bool isEnabled = true;    // The worker is allowed to participate in the replication operations
+    bool isReadOnly = false;  // The worker can only serve as a source of replicas.
+                              // New replicas can't be placed on it.
 
-    std::string svcHost;        // The host name (or IP address) of the worker service
-    uint16_t    svcPort = 0;    // The port number of the worker service
+    std::string svcHost;   // The host name (or IP address) of the worker service
+    uint16_t svcPort = 0;  // The port number of the worker service
 
-    std::string fsHost;         // The host name (or IP address) of the file service for the worker
-    uint16_t    fsPort = 0;     // The port number for the file service for the worker
+    std::string fsHost;   // The host name (or IP address) of the file service for the worker
+    uint16_t fsPort = 0;  // The port number for the file service for the worker
 
-    std::string dataDir;        // An absolute path to the data directory under which the MySQL
-                                // database folders are residing.
+    std::string dataDir;  // An absolute path to the data directory under which the MySQL
+                          // database folders are residing.
 
-    std::string loaderHost;     // The host name (or IP address) of the ingest (loader) service
-    uint16_t    loaderPort = 0; // The port number of the ingest service
+    std::string loaderHost;   // The host name (or IP address) of the ingest (loader) service
+    uint16_t loaderPort = 0;  // The port number of the ingest service
 
-    std::string loaderTmpDir;   // An absolute path to the temporary directory which would be used
-                                // by the service. The folder must be write-enabled for a user
-                                // under which the service will be run.
+    std::string loaderTmpDir;  // An absolute path to the temporary directory which would be used
+                               // by the service. The folder must be write-enabled for a user
+                               // under which the service will be run.
 
-    std::string exporterHost;       // The host name (or IP address) of the data exporting service
-    uint16_t    exporterPort = 0;   // The port number of the data exporting service
+    std::string exporterHost;   // The host name (or IP address) of the data exporting service
+    uint16_t exporterPort = 0;  // The port number of the data exporting service
 
-    std::string exporterTmpDir;     // An absolute path to the temporary directory which would be used
-                                    // by the service. The folder must be write-enabled for a user
-                                    // under which the service will be run.
+    std::string exporterTmpDir;  // An absolute path to the temporary directory which would be used
+                                 // by the service. The folder must be write-enabled for a user
+                                 // under which the service will be run.
 
-    std::string httpLoaderHost;     // The host name (or IP address) of the HTTP-based ingest (loader) service
-    uint16_t    httpLoaderPort = 0; // The port number of the HTTP-based ingest service
+    std::string httpLoaderHost;   // The host name (or IP address) of the HTTP-based ingest (loader) service
+    uint16_t httpLoaderPort = 0;  // The port number of the HTTP-based ingest service
 
-    std::string httpLoaderTmpDir;   // An absolute path to the temporary directory which would be used
-                                    // by the HTTP-based service. The folder must be write-enabled for a user
-                                    // under which the service will be run.
+    std::string httpLoaderTmpDir;  // An absolute path to the temporary directory which would be used
+                                   // by the HTTP-based service. The folder must be write-enabled for a user
+                                   // under which the service will be run.
 
     /**
      * This function treats its numeric input as a tri-state variable, where
      * any negative value means no user input was provided, 0 value represents
      * the boolean 'false', and any other positive number represents 'true'.
-     * 
+     *
      * @param in  The tri-state input number to be evaluated.
      * @param out A reference to the output variable to be updated if required
-     *   conditions are met. 
+     *   conditions are met.
      */
     static void update(int const in, bool& out) {
-        if (in == 0) out = false;
-        else if (in > 0) out = true;
+        if (in == 0)
+            out = false;
+        else if (in > 0)
+            out = true;
     }
 
     /**
@@ -97,7 +96,7 @@ public:
      *
      * @param in  The input string to be evaluated.
      * @param out A reference to the output variable to be updated if required
-     *   conditions are met. 
+     *   conditions are met.
      */
     static void update(std::string const& in, std::string& out) {
         if (!in.empty()) out = in;
@@ -110,7 +109,7 @@ public:
      *
      * @param in  The input number to be evaluated.
      * @param out A reference to the output variable to be updated if required
-     *   conditions are met. 
+     *   conditions are met.
      */
     static void update(uint16_t const in, uint16_t& out) {
         if (in != 0) out = in;
@@ -140,6 +139,6 @@ public:
 
 std::ostream& operator<<(std::ostream& os, WorkerInfo const& info);
 
-}}} // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_CONFIGWORKER_H
+#endif  // LSST_QSERV_REPLICA_CONFIGWORKER_H

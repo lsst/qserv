@@ -21,10 +21,8 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-
 #ifndef LSST_QSERV_QUERY_JOINREF_H
 #define LSST_QSERV_QUERY_JOINREF_H
-
 
 // System headers
 #include <iostream>
@@ -34,21 +32,14 @@
 #include "query/JoinSpec.h"
 #include "query/TableRef.h"
 
-
 // Forward declarations
-namespace lsst {
-namespace qserv {
-namespace query {
-    class QueryTemplate;
-    class BoolTerm;
-    class ColumnRef;
-}}} // End of forward declarations
+namespace lsst::qserv::query {
+class QueryTemplate;
+class BoolTerm;
+class ColumnRef;
+}  // namespace lsst::qserv::query
 
-
-namespace lsst {
-namespace qserv {
-namespace query {
-
+namespace lsst::qserv::query {
 
 /// JoinRef combines a join_spec with the target join table.
 /// e.g., in FROM Alice a LEFT JOIN Bob b USING(fooColumn)
@@ -63,15 +54,10 @@ namespace query {
 class JoinRef {
 public:
     typedef std::shared_ptr<JoinRef> Ptr;
-    enum Type {DEFAULT, INNER, LEFT, RIGHT, FULL, CROSS, UNION};
+    enum Type { DEFAULT, INNER, LEFT, RIGHT, FULL, CROSS, UNION };
 
-    JoinRef(TableRef::Ptr right_,
-            Type jt, bool isNatural_,
-            std::shared_ptr<JoinSpec> spec_)
-        : _right(right_),
-          _joinType(jt),
-          _isNatural(isNatural_),
-          _spec(spec_) {}
+    JoinRef(TableRef::Ptr right_, Type jt, bool isNatural_, std::shared_ptr<JoinSpec> spec_)
+            : _right(right_), _joinType(jt), _isNatural(isNatural_), _spec(spec_) {}
 
     bool isNatural() const { return _isNatural; }
     Type getJoinType() const { return _joinType; }
@@ -99,7 +85,6 @@ private:
     std::shared_ptr<JoinSpec> _spec;
 };
 
+}  // namespace lsst::qserv::query
 
-}}} // namespace lsst::qserv::query
-
-#endif // LSST_QSERV_QUERY_JOINREF_H
+#endif  // LSST_QSERV_QUERY_JOINREF_H

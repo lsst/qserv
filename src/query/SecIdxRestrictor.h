@@ -21,38 +21,29 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 /**
-  * @file
-  *
-  * @author Daniel L. Wang, SLAC
-  */
-
+ * @file
+ *
+ * @author Daniel L. Wang, SLAC
+ */
 
 #ifndef LSST_QSERV_QUERY_SECIDXRESTRICTOR_H
 #define LSST_QSERV_QUERY_SECIDXRESTRICTOR_H
-
 
 // System headers
 #include <memory>
 #include <string>
 #include <vector>
 
-
 // Forward declarations
-namespace lsst {
-namespace qserv {
-namespace query {
-    class BetweenPredicate;
-    class ColumnRef;
-    class CompPredicate;
-    class InPredicate;
-    class QueryTemplate;
-}}} // End of forward declarations
+namespace lsst::qserv::query {
+class BetweenPredicate;
+class ColumnRef;
+class CompPredicate;
+class InPredicate;
+class QueryTemplate;
+}  // namespace lsst::qserv::query
 
-
-namespace lsst {
-namespace qserv {
-namespace query {
-
+namespace lsst::qserv::query {
 
 /// SecIdxRestrictor is a Qserv spatial restrictor element that is used to signal dependencies on
 /// spatially-partitioned tables that make use of the secondary index.
@@ -95,7 +86,6 @@ protected:
     virtual bool isEqual(const SecIdxRestrictor& rhs) const = 0;
 };
 
-
 class SecIdxCompRestrictor : public SecIdxRestrictor {
 public:
     SecIdxCompRestrictor() = default;
@@ -111,8 +101,7 @@ public:
     std::shared_ptr<query::ColumnRef const> getSecIdxColumnRef() const override;
 
     std::string getSecIdxLookupQuery(std::string const& secondaryIndexDb,
-                                     std::string const& secondaryIndexTable,
-                                     std::string const& chunkColumn,
+                                     std::string const& secondaryIndexTable, std::string const& chunkColumn,
                                      std::string const& subChunkColumn) const override;
 
     std::shared_ptr<const query::CompPredicate> getCompPredicate() const { return _compPredicate; }
@@ -127,10 +116,10 @@ protected:
     bool isEqual(const SecIdxRestrictor& rhs) const override;
 
 private:
-    std::shared_ptr<query::CompPredicate> _compPredicate; //< the comparison for this restrictor.
-    bool _useLeft; //< true if the secondary index column is on the left of the ComPredicate (false for right)
+    std::shared_ptr<query::CompPredicate> _compPredicate;  //< the comparison for this restrictor.
+    bool _useLeft;  //< true if the secondary index column is on the left of the ComPredicate (false for
+                    // right)
 };
-
 
 class SecIdxBetweenRestrictor : public SecIdxRestrictor {
 public:
@@ -147,8 +136,7 @@ public:
     std::shared_ptr<query::ColumnRef const> getSecIdxColumnRef() const override;
 
     std::string getSecIdxLookupQuery(std::string const& secondaryIndexDb,
-                                     std::string const& secondaryIndexTable,
-                                     std::string const& chunkColumn,
+                                     std::string const& secondaryIndexTable, std::string const& chunkColumn,
                                      std::string const& subChunkColumn) const override;
 
 protected:
@@ -166,13 +154,11 @@ private:
     std::shared_ptr<query::BetweenPredicate> _betweenPredicate;
 };
 
-
 class SecIdxInRestrictor : public SecIdxRestrictor {
 public:
     SecIdxInRestrictor() = default;
 
-    SecIdxInRestrictor(std::shared_ptr<query::InPredicate> inPredicate)
-            : _inPredicate(inPredicate) {}
+    SecIdxInRestrictor(std::shared_ptr<query::InPredicate> inPredicate) : _inPredicate(inPredicate) {}
 
     /**
      * @brief Serialze this instance as SQL to the QueryTemplate.
@@ -181,8 +167,9 @@ public:
 
     std::shared_ptr<query::ColumnRef const> getSecIdxColumnRef() const override;
 
-    std::string getSecIdxLookupQuery(std::string const& secondaryIndexDb, std::string const& secondaryIndexTable,
-                                     std::string const& chunkColumn, std::string const& subChunkColumn) const override;
+    std::string getSecIdxLookupQuery(std::string const& secondaryIndexDb,
+                                     std::string const& secondaryIndexTable, std::string const& chunkColumn,
+                                     std::string const& subChunkColumn) const override;
 
 protected:
     /**
@@ -194,10 +181,9 @@ protected:
     bool isEqual(const SecIdxRestrictor& rhs) const override;
 
 private:
-    std::shared_ptr<query::InPredicate> _inPredicate; //< the comparison for this restrictor.
+    std::shared_ptr<query::InPredicate> _inPredicate;  //< the comparison for this restrictor.
 };
 
+}  // namespace lsst::qserv::query
 
-}}} // namespace lsst::qserv::query
-
-#endif // LSST_QSERV_QUERY_SECIDXRESTRICTOR_H
+#endif  // LSST_QSERV_QUERY_SECIDXRESTRICTOR_H

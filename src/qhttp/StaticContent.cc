@@ -35,34 +35,29 @@ namespace errc = boost::system::errc;
 namespace fs = boost::filesystem;
 
 namespace {
-    LOG_LOGGER _log = LOG_GET("lsst.qserv.qhttp");
+LOG_LOGGER _log = LOG_GET("lsst.qserv.qhttp");
 }
 
-namespace lsst {
-namespace qserv {
-namespace qhttp {
+namespace lsst::qserv::qhttp {
 
-
-void StaticContent::add(Server& server, std::string const& pattern, std::string const& rootDirectory)
-{
+void StaticContent::add(Server& server, std::string const& pattern, std::string const& rootDirectory) {
     fs::path rootPath;
 
     try {
-        rootPath = fs::canonical(rootDirectory); // may throw fs::filesystem_error
+        rootPath = fs::canonical(rootDirectory);  // may throw fs::filesystem_error
         if (!fs::is_directory(rootPath)) {
             throw fs::filesystem_error("boost::filesystem::is_directory", rootDirectory,
-                errc::make_error_code(errc::not_a_directory));
+                                       errc::make_error_code(errc::not_a_directory));
         }
     }
 
-    catch(fs::filesystem_error const& e) {
+    catch (fs::filesystem_error const& e) {
         // If anything unexpected happened, log here and rethrow
         LOGLS_ERROR(_log, logger(&server) << "failed adding static content: " << e.what());
         throw e;
     }
 
     server.addHandler("GET", pattern, [rootPath](Request::Ptr request, Response::Ptr response) {
-
         // Defend against relative paths attempting to traverse above root directory.
         fs::path requestPath = rootPath;
         requestPath /= request->params["0"];
@@ -96,4 +91,4 @@ void StaticContent::add(Server& server, std::string const& pattern, std::string 
     });
 }
 
-}}} // namespace lsst::qserv::qhttp
+}  // namespace lsst::qserv::qhttp

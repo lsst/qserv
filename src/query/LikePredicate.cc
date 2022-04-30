@@ -21,7 +21,6 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-
 // Class header
 #include "query/LikePredicate.h"
 
@@ -30,11 +29,7 @@
 #include "query/QueryTemplate.h"
 #include "query/ValueExpr.h"
 
-
-namespace lsst {
-namespace qserv {
-namespace query {
-
+namespace lsst::qserv::query {
 
 void LikePredicate::findColumnRefs(std::vector<std::shared_ptr<ColumnRef>>& vector) const {
     if (value != nullptr) {
@@ -45,40 +40,32 @@ void LikePredicate::findColumnRefs(std::vector<std::shared_ptr<ColumnRef>>& vect
     }
 }
 
-
-std::ostream& LikePredicate::putStream(std::ostream& os) const {
-    return QueryTemplate::renderDbg(os, *this);
-}
-
+std::ostream& LikePredicate::putStream(std::ostream& os) const { return QueryTemplate::renderDbg(os, *this); }
 
 void LikePredicate::renderTo(QueryTemplate& qt) const {
     ValueExpr::render r(qt, false);
     r.applyToQT(value);
-    if (hasNot) { qt.append("NOT"); }
+    if (hasNot) {
+        qt.append("NOT");
+    }
     qt.append("LIKE");
     r.applyToQT(charValue);
 }
-
 
 void LikePredicate::findValueExprs(std::vector<std::shared_ptr<ValueExpr>>& vector) const {
     vector.push_back(value);
     vector.push_back(charValue);
 }
 
-
 void LikePredicate::findValueExprRefs(ValueExprPtrRefVector& vector) {
     vector.push_back(value);
     vector.push_back(charValue);
 }
 
-
 BoolFactorTerm::Ptr LikePredicate::clone() const {
-    return std::make_shared<LikePredicate>(
-        ((nullptr != value) ? value->clone() : nullptr),
-        ((nullptr != charValue) ? charValue->clone() : nullptr),
-        hasNot);
+    return std::make_shared<LikePredicate>(((nullptr != value) ? value->clone() : nullptr),
+                                           ((nullptr != charValue) ? charValue->clone() : nullptr), hasNot);
 }
-
 
 void LikePredicate::dbgPrint(std::ostream& os) const {
     os << "LikePredicate(";
@@ -88,9 +75,8 @@ void LikePredicate::dbgPrint(std::ostream& os) const {
     os << ")";
 }
 
-
 bool LikePredicate::operator==(BoolFactorTerm const& rhs) const {
-    auto rhsLikePredicate = dynamic_cast<LikePredicate const *>(&rhs);
+    auto rhsLikePredicate = dynamic_cast<LikePredicate const*>(&rhs);
     if (nullptr == rhsLikePredicate) {
         return false;
     }
@@ -99,5 +85,4 @@ bool LikePredicate::operator==(BoolFactorTerm const& rhs) const {
            hasNot == rhsLikePredicate->hasNot;
 }
 
-
-}}} // namespace lsst::qserv::query
+}  // namespace lsst::qserv::query

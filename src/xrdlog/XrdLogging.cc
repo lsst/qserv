@@ -39,21 +39,17 @@
 /******************************************************************************/
 /*                L o g g i n g   I n t e r c e p t   H o o k                 */
 /******************************************************************************/
-  
+
 namespace {
 
 const char* origin;
 
-void QservLogger(struct timeval const& mtime,
-                 unsigned long         tID,
-                 const char*           msg,
-                 int                   mlen) {
-
+void QservLogger(struct timeval const& mtime, unsigned long tID, const char* msg, int mlen) {
     static log4cxx::spi::LocationInfo xrdLoc(origin, "<xrdssi>", 0);
     static LOG_LOGGER myLog = LOG_GET("lsst.qserv.xrdssi.msgs");
 
     if (myLog.isInfoEnabled()) {
-        while (mlen && msg[mlen-1] == '\n') --mlen;  // strip all trailing newlines
+        while (mlen && msg[mlen - 1] == '\n') --mlen;  // strip all trailing newlines
         std::string theMsg(msg, mlen);
         lsst::log::Log::MDC("LWP", std::to_string(tID));
         myLog.logMsg(log4cxx::Level::getInfo(), xrdLoc, theMsg);
@@ -72,4 +68,4 @@ XrdSsiLogger::MCB_t& ConfigLog() {
 }
 
 bool dummy = XrdSsiLogger::SetMCB(ConfigLog(), XrdSsiLogger::mcbServer);
-}
+}  // namespace

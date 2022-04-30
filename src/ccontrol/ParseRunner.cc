@@ -21,7 +21,6 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-
 // Class header
 #include "ccontrol/ParseRunner.h"
 
@@ -41,11 +40,9 @@
 // must come after QSMySqlLexer & Parser because of namespace collision
 #include "lsst/log/Log.h"
 
-
 namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.ccontrol.ParseRunner");
-
 
 class Antlr4ErrorStrategy : public antlr4::DefaultErrorStrategy {
 public:
@@ -55,73 +52,62 @@ public:
     Antlr4ErrorStrategy& operator=(Antlr4ErrorStrategy const&) = delete;
 
 private:
-    void recover(antlr4::Parser *recognizer, std::exception_ptr e) override {
-        LOGS(_log, LOG_LVL_ERROR, __FUNCTION__ <<
-                " antlr4 could not make a parse tree out of the input statement:" << _statement);
-        throw lsst::qserv::parser::ParseException(std::string("Failed to instantiate query: \"") + _statement + '"');
+    void recover(antlr4::Parser* recognizer, std::exception_ptr e) override {
+        LOGS(_log, LOG_LVL_ERROR,
+             __FUNCTION__ << " antlr4 could not make a parse tree out of the input statement:" << _statement);
+        throw lsst::qserv::parser::ParseException(std::string("Failed to instantiate query: \"") +
+                                                  _statement + '"');
     }
 
-    antlr4::Token* recoverInline(antlr4::Parser *recognizer) override {
-        LOGS(_log, LOG_LVL_ERROR, __FUNCTION__ <<
-                " antlr4 could not make a parse tree out of the input statement:" << _statement);
-        throw lsst::qserv::parser::ParseException(std::string("Failed to instantiate query: \"") + _statement + '"');
+    antlr4::Token* recoverInline(antlr4::Parser* recognizer) override {
+        LOGS(_log, LOG_LVL_ERROR,
+             __FUNCTION__ << " antlr4 could not make a parse tree out of the input statement:" << _statement);
+        throw lsst::qserv::parser::ParseException(std::string("Failed to instantiate query: \"") +
+                                                  _statement + '"');
     }
 
-    void sync(antlr4::Parser *recognizer) override {
+    void sync(antlr4::Parser* recognizer) override {
         // we want this function to be a no-op so we override it.
     }
 
     std::string const& _statement;
 };
 
-
 class NonRecoveringQSMySqlLexer : public QSMySqlLexer {
 public:
-    explicit NonRecoveringQSMySqlLexer(antlr4::CharStream *input, std::string const & statement)
-        : QSMySqlLexer(input), _statement(statement) {}
+    explicit NonRecoveringQSMySqlLexer(antlr4::CharStream* input, std::string const& statement)
+            : QSMySqlLexer(input), _statement(statement) {}
     NonRecoveringQSMySqlLexer() = delete;
     NonRecoveringQSMySqlLexer(NonRecoveringQSMySqlLexer const&) = delete;
     NonRecoveringQSMySqlLexer& operator=(NonRecoveringQSMySqlLexer const&) = delete;
 
-
 private:
-    virtual void recover(const antlr4::LexerNoViableAltException &e) {
-        LOGS(_log, LOG_LVL_ERROR, __FUNCTION__ <<
-                "antlr4 could not tokenize the input statement:" << _statement);
-        throw lsst::qserv::parser::ParseException(std::string("Failed to instantiate query: \"") + _statement
-            + '"');
+    virtual void recover(const antlr4::LexerNoViableAltException& e) {
+        LOGS(_log, LOG_LVL_ERROR,
+             __FUNCTION__ << "antlr4 could not tokenize the input statement:" << _statement);
+        throw lsst::qserv::parser::ParseException(std::string("Failed to instantiate query: \"") +
+                                                  _statement + '"');
     }
 
     std::string const& _statement;
 };
 
+}  // namespace
 
-} // namespace
-
-
-namespace lsst {
-namespace qserv {
-namespace ccontrol {
-
+namespace lsst::qserv::ccontrol {
 
 std::shared_ptr<query::SelectStmt> ParseRunner::makeSelectStmt(std::string const& statement) {
     auto parser = std::make_shared<ParseRunner>(statement);
     return parser->getSelectStmt();
 }
 
-
-ParseRunner::ParseRunner(std::string const& statement)
-    :_statement(statement) {
-    run();
-}
-
+ParseRunner::ParseRunner(std::string const& statement) : _statement(statement) { run(); }
 
 ParseRunner::ParseRunner(std::string const& statement,
                          std::shared_ptr<UserQueryResources> const& queryResources)
-    :_statement(statement), _queryResources(queryResources) {
+        : _statement(statement), _queryResources(queryResources) {
     run();
 }
-
 
 void ParseRunner::run() {
     _listener = std::make_shared<ParseListener>(_statement, _queryResources);
@@ -130,24 +116,18 @@ void ParseRunner::run() {
     NonRecoveringQSMySqlLexer lexer(&input, _statement);
     CommonTokenStream tokens(&lexer);
     tokens.fill();
-    LOGS(_log, LOG_LVL_TRACE, "Parsed tokens:" << util::printable(ParseListener::getTokenPairs(tokens, lexer)));
+    LOGS(_log, LOG_LVL_TRACE,
+         "Parsed tokens:" << util::printable(ParseListener::getTokenPairs(tokens, lexer)));
     QSMySqlParser parser(&tokens);
     parser.setErrorHandler(std::make_shared<Antlr4ErrorStrategy>(_statement));
-    tree::ParseTree *tree = parser.root();
+    tree::ParseTree* tree = parser.root();
     tree::ParseTreeWalker walker;
     antlr4::tree::ParseTreeListener* listener = _listener.get();
     walker.walk(listener, tree);
 }
 
+std::shared_ptr<query::SelectStmt> ParseRunner::getSelectStmt() { return _listener->getSelectStatement(); }
 
-std::shared_ptr<query::SelectStmt> ParseRunner::getSelectStmt() {
-    return _listener->getSelectStatement();
-}
+std::shared_ptr<UserQuery> ParseRunner::getUserQuery() { return _listener->getUserQuery(); }
 
-
-std::shared_ptr<UserQuery> ParseRunner::getUserQuery() {
-    return _listener->getUserQuery();
-}
-
-
-}}} // namespace lsst::qserv::ccontrol
+}  // namespace lsst::qserv::ccontrol

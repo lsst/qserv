@@ -21,38 +21,34 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-
 #ifndef LSST_QSERV_CCONTROL_PARSEHELPERS_H
 #define LSST_QSERV_CCONTROL_PARSEHELPERS_H
-
 
 #include <cxxabi.h>
 #include <string>
 
 #include "antlr4-runtime.h"
 
-namespace lsst {
-namespace qserv {
-namespace ccontrol {
+namespace lsst::qserv::ccontrol {
 
 // get the query string for the portion of the query represented in the given context
 static std::string getQueryString(antlr4::ParserRuleContext* ctx) {
     return ctx->getStart()->getInputStream()->getText(
-        antlr4::misc::Interval(ctx->getStart()->getStartIndex(), ctx->getStop()->getStopIndex()));
+            antlr4::misc::Interval(ctx->getStart()->getStartIndex(), ctx->getStop()->getStopIndex()));
 }
 
 template <typename T>
 std::string getTypeName() {
     int status;
-    return abi::__cxa_demangle(typeid(T).name(),0,0,&status);
+    return abi::__cxa_demangle(typeid(T).name(), 0, 0, &status);
 }
 
 template <typename T>
 std::string getTypeName(T obj) {
     int status;
-    return abi::__cxa_demangle(typeid(obj).name(),0,0,&status);
+    return abi::__cxa_demangle(typeid(obj).name(), 0, 0, &status);
 }
 
-}}}
+}  // namespace lsst::qserv::ccontrol
 
-#endif // LSST_QSERV_CCONTROL_PARSEHELPERS_H
+#endif  // LSST_QSERV_CCONTROL_PARSEHELPERS_H

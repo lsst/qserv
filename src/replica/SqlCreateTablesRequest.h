@@ -34,9 +34,7 @@
 #include "replica/SqlRequest.h"
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class SqlCreateTablesRequest represents Controller-side requests for initiating
@@ -44,7 +42,7 @@ namespace replica {
  *
  * @note all tables created by the operation will have exactly the same schema.
  */
-class SqlCreateTablesRequest: public SqlRequest {
+class SqlCreateTablesRequest : public SqlRequest {
 public:
     typedef std::shared_ptr<SqlCreateTablesRequest> Ptr;
 
@@ -85,39 +83,27 @@ public:
      * @param messenger An interface for communicating with workers.
      * @return A pointer to the created object.
      */
-    static Ptr create(ServiceProvider::Ptr const& serviceProvider,
-                      boost::asio::io_service& io_service,
-                      std::string const& worker,
-                      std::string const& database,
-                      std::vector<std::string> const& tables,
-                      std::string const& engine,
-                      std::string const& partitionByColumn,
-                      std::list<SqlColDef> const& columns,
-                      CallbackType const& onFinish,
-                      int priority,
-                      bool keepTracking,
+    static Ptr create(ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service,
+                      std::string const& worker, std::string const& database,
+                      std::vector<std::string> const& tables, std::string const& engine,
+                      std::string const& partitionByColumn, std::list<SqlColDef> const& columns,
+                      CallbackType const& onFinish, int priority, bool keepTracking,
                       std::shared_ptr<Messenger> const& messenger);
 
 protected:
     void notify(util::Lock const& lock) final;
 
 private:
-    SqlCreateTablesRequest(ServiceProvider::Ptr const& serviceProvider,
-                           boost::asio::io_service& io_service,
-                           std::string const& worker,
-                           std::string const& database,
-                           std::vector<std::string> const& tables,
-                           std::string const& engine,
-                           std::string const& partitionByColumn,
-                           std::list<SqlColDef> const& columns,
-                           CallbackType const& onFinish,
-                           int priority,
-                           bool keepTracking,
+    SqlCreateTablesRequest(ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service,
+                           std::string const& worker, std::string const& database,
+                           std::vector<std::string> const& tables, std::string const& engine,
+                           std::string const& partitionByColumn, std::list<SqlColDef> const& columns,
+                           CallbackType const& onFinish, int priority, bool keepTracking,
                            std::shared_ptr<Messenger> const& messenger);
 
-    CallbackType _onFinish; ///< @note is reset when the request finishes
+    CallbackType _onFinish;  ///< @note is reset when the request finishes
 };
 
-}}} // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_SQLCREATETABLESREQUEST_H
+#endif  // LSST_QSERV_REPLICA_SQLCREATETABLESREQUEST_H

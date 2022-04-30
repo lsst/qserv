@@ -34,9 +34,7 @@
 #include "replica/SqlJob.h"
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class SqlDropIndexesJob represents a tool which will broadcast batches of
@@ -49,7 +47,7 @@ namespace replica {
  * the corresponding chunk tables for all chunks associated with the corresponding
  * workers, as well as so called "dummy chunk" tables.
  */
-class SqlDropIndexesJob: public SqlJob {
+class SqlDropIndexesJob : public SqlJob {
 public:
     /// The pointer type for instances of the class
     typedef std::shared_ptr<SqlDropIndexesJob> Ptr;
@@ -83,15 +81,9 @@ public:
      * @param priority The priority level of the job.
      * @return A pointer to the created object.
      */
-    static Ptr create(std::string const& database,
-                      std::string const& table,
-                      bool overlap,
-                      std::string const& indexName,
-                      bool allWorkers,
-                      Controller::Ptr const& controller,
-                      std::string const& parentJobId,
-                      CallbackType const& onFinish,
-                      int priority);
+    static Ptr create(std::string const& database, std::string const& table, bool overlap,
+                      std::string const& indexName, bool allWorkers, Controller::Ptr const& controller,
+                      std::string const& parentJobId, CallbackType const& onFinish, int priority);
 
     SqlDropIndexesJob() = delete;
     SqlDropIndexesJob(SqlDropIndexesJob const&) = delete;
@@ -104,28 +96,20 @@ public:
     bool overlap() const { return _overlap; }
     std::string const& indexName() const { return _indexName; }
 
-    std::list<std::pair<std::string,std::string>> extendedPersistentState() const final;
+    std::list<std::pair<std::string, std::string>> extendedPersistentState() const final;
 
 protected:
     void notify(util::Lock const& lock) final;
 
-    std::list<SqlRequest::Ptr> launchRequests(util::Lock const& lock,
-                                              std::string const& worker,
+    std::list<SqlRequest::Ptr> launchRequests(util::Lock const& lock, std::string const& worker,
                                               size_t maxRequestsPerWorker) final;
 
-    void stopRequest(util::Lock const& lock,
-                     SqlRequest::Ptr const& request) final;
+    void stopRequest(util::Lock const& lock, SqlRequest::Ptr const& request) final;
 
 private:
-    SqlDropIndexesJob(std::string const& database,
-                      std::string const& table,
-                      bool overlap,
-                      std::string const& indexName,
-                      bool allWorkers,
-                      Controller::Ptr const& controller,
-                      std::string const& parentJobId,
-                      CallbackType const& onFinish,
-                      int priority);
+    SqlDropIndexesJob(std::string const& database, std::string const& table, bool overlap,
+                      std::string const& indexName, bool allWorkers, Controller::Ptr const& controller,
+                      std::string const& parentJobId, CallbackType const& onFinish, int priority);
 
     // Input parameters
 
@@ -134,7 +118,7 @@ private:
     bool const _overlap;
     std::string const _indexName;
 
-    CallbackType _onFinish;     /// @note is reset when the job finishes
+    CallbackType _onFinish;  /// @note is reset when the job finishes
 
     /// A registry of workers to mark those for which request has been sent.
     /// The registry prevents duplicate requests because exactly one
@@ -142,6 +126,6 @@ private:
     std::set<std::string> _workers;
 };
 
-}}} // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_SQLDROPINDEXESJOB_H
+#endif  // LSST_QSERV_REPLICA_SQLDROPINDEXESJOB_H

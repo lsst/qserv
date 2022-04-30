@@ -33,22 +33,18 @@
 #include "replica/RequestMessenger.h"
 
 // Forward declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
-    class Messenger;
-}}}  // Forward declarations
+namespace lsst::qserv::replica {
+class Messenger;
+}  // namespace lsst::qserv::replica
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
 /**
-  * Class FindRequest represents a transient state of the replica lookup
-  * requests within the master controller for deleting replicas.
-  */
-class FindRequest: public RequestMessenger  {
+ * Class FindRequest represents a transient state of the replica lookup
+ * requests within the master controller for deleting replicas.
+ */
+class FindRequest : public RequestMessenger {
 public:
     typedef std::shared_ptr<FindRequest> Ptr;
 
@@ -61,9 +57,9 @@ public:
 
     ~FindRequest() final = default;
 
-    std::string const& database() const        { return _database; }
-    unsigned int       chunk() const           { return _chunk; }
-    bool               computeCheckSum() const { return _computeCheckSum; }
+    std::string const& database() const { return _database; }
+    unsigned int chunk() const { return _chunk; }
+    bool computeCheckSum() const { return _computeCheckSum; }
 
     /// @return target request specific parameters
     FindRequestParams const& targetRequestParams() const { return _targetRequestParams; }
@@ -95,19 +91,13 @@ public:
      * @param messenger an interface for communicating with workers
      * @return pointer to the created object
      */
-    static Ptr create(ServiceProvider::Ptr const& serviceProvider,
-                      boost::asio::io_service& io_service,
-                      std::string const& worker,
-                      std::string const& database,
-                      unsigned int chunk,
-                      bool computeCheckSum,
-                      CallbackType const& onFinish,
-                      int priority,
-                      bool keepTracking,
+    static Ptr create(ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service,
+                      std::string const& worker, std::string const& database, unsigned int chunk,
+                      bool computeCheckSum, CallbackType const& onFinish, int priority, bool keepTracking,
                       std::shared_ptr<Messenger> const& messenger);
 
     /// @see Request::extendedPersistentState()
-    std::list<std::pair<std::string,std::string>> extendedPersistentState() const final;
+    std::list<std::pair<std::string, std::string>> extendedPersistentState() const final;
 
 protected:
     /// @see Request::startImpl()
@@ -123,15 +113,9 @@ protected:
     void awaken(boost::system::error_code const& ec) final;
 
 private:
-    FindRequest(ServiceProvider::Ptr const& serviceProvider,
-                boost::asio::io_service& io_service,
-                std::string const& worker,
-                std::string const& database,
-                unsigned int chunk,
-                bool computeCheckSum,
-                CallbackType const& onFinish,
-                int priority,
-                bool keepTracking,
+    FindRequest(ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service,
+                std::string const& worker, std::string const& database, unsigned int chunk,
+                bool computeCheckSum, CallbackType const& onFinish, int priority, bool keepTracking,
                 std::shared_ptr<Messenger> const& messenger);
 
     /**
@@ -147,13 +131,12 @@ private:
      */
     void _analyze(bool success, ProtocolResponseFind const& message);
 
-
     // Input parameters
 
-    std::string  const _database;
+    std::string const _database;
     unsigned int const _chunk;
-    bool const         _computeCheckSum;
-    CallbackType       _onFinish;       ///< @note is reset when the request finishes
+    bool const _computeCheckSum;
+    CallbackType _onFinish;  ///< @note is reset when the request finishes
 
     /// Request-specific parameters of the target request
     FindRequestParams _targetRequestParams;
@@ -162,6 +145,6 @@ private:
     ReplicaInfo _replicaInfo;
 };
 
-}}} // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_FINDREQUEST_H
+#endif  // LSST_QSERV_REPLICA_FINDREQUEST_H

@@ -43,60 +43,33 @@ namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.WorkerFindRequest");
 
-} /// namespace
+}  // namespace
 
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
 ////////////////////////////////////////////////////////////
 ///////////////////// WorkerFindRequest ////////////////////
 ////////////////////////////////////////////////////////////
 
-WorkerFindRequest::Ptr WorkerFindRequest::create(
-        ServiceProvider::Ptr const& serviceProvider,
-        string const& worker,
-        string const& id,
-        int priority,
-        ExpirationCallbackType const& onExpired,
-        unsigned int requestExpirationIvalSec,
-        ProtocolRequestFind const& request) {
-    return WorkerFindRequest::Ptr(new WorkerFindRequest(
-        serviceProvider,
-        worker,
-        id,
-        priority,
-        onExpired,
-        requestExpirationIvalSec,
-        request
-    ));
+WorkerFindRequest::Ptr WorkerFindRequest::create(ServiceProvider::Ptr const& serviceProvider,
+                                                 string const& worker, string const& id, int priority,
+                                                 ExpirationCallbackType const& onExpired,
+                                                 unsigned int requestExpirationIvalSec,
+                                                 ProtocolRequestFind const& request) {
+    return WorkerFindRequest::Ptr(new WorkerFindRequest(serviceProvider, worker, id, priority, onExpired,
+                                                        requestExpirationIvalSec, request));
 }
 
-
-WorkerFindRequest::WorkerFindRequest(
-        ServiceProvider::Ptr const& serviceProvider,
-        string const& worker,
-        string const& id,
-        int priority,
-        ExpirationCallbackType const& onExpired,
-        unsigned int requestExpirationIvalSec,
-        ProtocolRequestFind const& request)
-    :   WorkerRequest(
-            serviceProvider,
-            worker,
-            "FIND",
-            id,
-            priority,
-            onExpired,
-            requestExpirationIvalSec),
-        _request(request) {
-
+WorkerFindRequest::WorkerFindRequest(ServiceProvider::Ptr const& serviceProvider, string const& worker,
+                                     string const& id, int priority, ExpirationCallbackType const& onExpired,
+                                     unsigned int requestExpirationIvalSec,
+                                     ProtocolRequestFind const& request)
+        : WorkerRequest(serviceProvider, worker, "FIND", id, priority, onExpired, requestExpirationIvalSec),
+          _request(request) {
     serviceProvider->config()->assertDatabaseIsValid(request.database());
 }
 
-
 void WorkerFindRequest::setInfo(ProtocolResponseFind& response) const {
-
     LOGS(_log, LOG_LVL_DEBUG, context(__func__));
 
     util::Lock lock(_mtx, context(__func__));
@@ -107,12 +80,8 @@ void WorkerFindRequest::setInfo(ProtocolResponseFind& response) const {
     *(response.mutable_request()) = _request;
 }
 
-
 bool WorkerFindRequest::execute() {
-
-    LOGS(_log, LOG_LVL_DEBUG, context(__func__)
-         << "  database: " << database()
-         << "  chunk: "    << chunk());
+    LOGS(_log, LOG_LVL_DEBUG, context(__func__) << "  database: " << database() << "  chunk: " << chunk());
 
     util::Lock lock(_mtx, context(__func__));
 
@@ -120,65 +89,36 @@ bool WorkerFindRequest::execute() {
 
     bool completed = WorkerRequest::execute();
     if (completed) {
-        _replicaInfo = ReplicaInfo(ReplicaInfo::COMPLETE,
-                                   worker(),
-                                   database(),
-                                   chunk(),
-                                   PerformanceUtils::now(),
-                                   ReplicaInfo::FileInfoCollection());
+        _replicaInfo = ReplicaInfo(ReplicaInfo::COMPLETE, worker(), database(), chunk(),
+                                   PerformanceUtils::now(), ReplicaInfo::FileInfoCollection());
     }
     return completed;
 }
-
 
 /////////////////////////////////////////////////////////////////
 ///////////////////// WorkerFindRequestPOSIX ////////////////////
 /////////////////////////////////////////////////////////////////
 
-WorkerFindRequestPOSIX::Ptr WorkerFindRequestPOSIX::create(
-        ServiceProvider::Ptr const& serviceProvider,
-        string const& worker,
-        string const& id,
-        int priority,
-        ExpirationCallbackType const& onExpired,
-        unsigned int requestExpirationIvalSec,
-        ProtocolRequestFind const& request) {
+WorkerFindRequestPOSIX::Ptr WorkerFindRequestPOSIX::create(ServiceProvider::Ptr const& serviceProvider,
+                                                           string const& worker, string const& id,
+                                                           int priority,
+                                                           ExpirationCallbackType const& onExpired,
+                                                           unsigned int requestExpirationIvalSec,
+                                                           ProtocolRequestFind const& request) {
     return WorkerFindRequestPOSIX::Ptr(new WorkerFindRequestPOSIX(
-        serviceProvider,
-        worker,
-        id,
-        priority,
-        onExpired,
-        requestExpirationIvalSec,
-        request
-    ));
+            serviceProvider, worker, id, priority, onExpired, requestExpirationIvalSec, request));
 }
 
-
-WorkerFindRequestPOSIX::WorkerFindRequestPOSIX(
-        ServiceProvider::Ptr const& serviceProvider,
-        string const& worker,
-        string const& id,
-        int priority,
-        ExpirationCallbackType const& onExpired,
-        unsigned int requestExpirationIvalSec,
-        ProtocolRequestFind const& request)
-    :   WorkerFindRequest(
-            serviceProvider,
-            worker,
-            id,
-            priority,
-            onExpired,
-            requestExpirationIvalSec,
-            request) {
-}
-
+WorkerFindRequestPOSIX::WorkerFindRequestPOSIX(ServiceProvider::Ptr const& serviceProvider,
+                                               string const& worker, string const& id, int priority,
+                                               ExpirationCallbackType const& onExpired,
+                                               unsigned int requestExpirationIvalSec,
+                                               ProtocolRequestFind const& request)
+        : WorkerFindRequest(serviceProvider, worker, id, priority, onExpired, requestExpirationIvalSec,
+                            request) {}
 
 bool WorkerFindRequestPOSIX::execute() {
-
-    LOGS(_log, LOG_LVL_DEBUG, context(__func__)
-         << "  database: " << database()
-         << "  chunk: "    << chunk());
+    LOGS(_log, LOG_LVL_DEBUG, context(__func__) << "  database: " << database() << "  chunk: " << chunk());
 
     util::Lock lock(_mtx, context(__func__));
 
@@ -203,10 +143,9 @@ bool WorkerFindRequestPOSIX::execute() {
     // code duplication.
 
     WorkerRequest::ErrorContext errorContext;
-    boost::system::error_code   ec;
+    boost::system::error_code ec;
 
     if (not computeCheckSum() or not _csComputeEnginePtr) {
-
         auto const config = _serviceProvider->config();
         DatabaseInfo const databaseInfo = config->databaseInfo(database());
 
@@ -214,18 +153,14 @@ bool WorkerFindRequestPOSIX::execute() {
 
         util::Lock dataFolderLock(_mtxDataFolderOperations, context(__func__));
 
-        fs::path        const dataDir = fs::path(config->get<string>("worker", "data-dir")) / database();
-        fs::file_status const stat    = fs::status(dataDir, ec);
+        fs::path const dataDir = fs::path(config->get<string>("worker", "data-dir")) / database();
+        fs::file_status const stat = fs::status(dataDir, ec);
 
-        errorContext = errorContext
-            or reportErrorIf(
-                    stat.type() == fs::status_error,
-                    ProtocolStatusExt::FOLDER_STAT,
-                    "failed to check the status of directory: " + dataDir.string())
-            or reportErrorIf(
-                    not fs::exists(stat),
-                    ProtocolStatusExt::NO_FOLDER,
-                    "the directory does not exists: " + dataDir.string());
+        errorContext = errorContext or
+                       reportErrorIf(stat.type() == fs::status_error, ProtocolStatusExt::FOLDER_STAT,
+                                     "failed to check the status of directory: " + dataDir.string()) or
+                       reportErrorIf(not fs::exists(stat), ProtocolStatusExt::NO_FOLDER,
+                                     "the directory does not exists: " + dataDir.string());
 
         if (errorContext.failed) {
             setStatus(lock, ProtocolStatus::FAILED, errorContext.extendedStatus);
@@ -243,54 +178,39 @@ bool WorkerFindRequestPOSIX::execute() {
         // - assume the successful completion otherwise and adjust the replica
         //   information record accordingly, depending on the findings.
 
+        ReplicaInfo::FileInfoCollection
+                fileInfoCollection;  // file info if not using the incremental processing
+        vector<string> files;        // file paths registered for the incremental processing
 
-        ReplicaInfo::FileInfoCollection fileInfoCollection; // file info if not using the incremental processing
-        vector<string> files;   // file paths registered for the incremental processing
-
-        for (auto&& file: FileUtils::partitionedFiles(databaseInfo, chunk())) {
-
-            fs::path        const path = dataDir / file;
+        for (auto&& file : FileUtils::partitionedFiles(databaseInfo, chunk())) {
+            fs::path const path = dataDir / file;
             fs::file_status const stat = fs::status(path, ec);
 
-            errorContext = errorContext
-                or reportErrorIf(
-                        stat.type() == fs::status_error,
-                        ProtocolStatusExt::FILE_STAT,
-                        "failed to check the status of file: " + path.string());
+            errorContext = errorContext or
+                           reportErrorIf(stat.type() == fs::status_error, ProtocolStatusExt::FILE_STAT,
+                                         "failed to check the status of file: " + path.string());
 
             if (fs::exists(stat)) {
-
                 if (not computeCheckSum()) {
-
                     // Get file size & mtime right away
 
                     uint64_t const size = fs::file_size(path, ec);
-                    errorContext = errorContext
-                        or reportErrorIf(
-                                ec.value() != 0,
-                                ProtocolStatusExt::FILE_SIZE,
-                                "failed to read file size: " + path.string());
+                    errorContext =
+                            errorContext or reportErrorIf(ec.value() != 0, ProtocolStatusExt::FILE_SIZE,
+                                                          "failed to read file size: " + path.string());
 
                     const time_t mtime = fs::last_write_time(path, ec);
-                    errorContext = errorContext
-                        or reportErrorIf(
-                                ec.value() != 0,
-                                ProtocolStatusExt::FILE_MTIME,
-                                "failed to read file mtime: " + path.string());
+                    errorContext =
+                            errorContext or reportErrorIf(ec.value() != 0, ProtocolStatusExt::FILE_MTIME,
+                                                          "failed to read file mtime: " + path.string());
 
-                    fileInfoCollection.emplace_back(
-                        ReplicaInfo::FileInfo({
-                            file,
-                            size,
-                            mtime,
-                            "",     /* cs */
-                            0,      /* beginTransferTime */
-                            0,      /* endTransferTime */
-                            size    /* inSize */
-                        })
-                    );
+                    fileInfoCollection.emplace_back(ReplicaInfo::FileInfo({
+                            file, size, mtime, "", /* cs */
+                            0,                     /* beginTransferTime */
+                            0,                     /* endTransferTime */
+                            size                   /* inSize */
+                    }));
                 } else {
-
                     // Register this file for the incremental processing
                     files.push_back(path.string());
                 }
@@ -303,23 +223,16 @@ bool WorkerFindRequestPOSIX::execute() {
 
         // If that's so then finalize the operation right away
         if (not computeCheckSum()) {
-
             ReplicaInfo::Status status = ReplicaInfo::Status::NOT_FOUND;
             if (fileInfoCollection.size())
-                status = FileUtils::partitionedFiles(
-                                        databaseInfo,
-                                        chunk()).size() == fileInfoCollection.size() ?
-                                            ReplicaInfo::Status::COMPLETE :
-                                            ReplicaInfo::Status::INCOMPLETE;
+                status =
+                        FileUtils::partitionedFiles(databaseInfo, chunk()).size() == fileInfoCollection.size()
+                                ? ReplicaInfo::Status::COMPLETE
+                                : ReplicaInfo::Status::INCOMPLETE;
 
             // Fill in the info on the chunk before finishing the operation
-            _replicaInfo = ReplicaInfo(
-                status,
-                worker(),
-                database(),
-                chunk(),
-                PerformanceUtils::now(),
-                fileInfoCollection);
+            _replicaInfo = ReplicaInfo(status, worker(), database(), chunk(), PerformanceUtils::now(),
+                                       fileInfoCollection);
 
             setStatus(lock, ProtocolStatus::SUCCESS);
 
@@ -333,38 +246,27 @@ bool WorkerFindRequestPOSIX::execute() {
     // Next (or the first) iteration in the incremental approach
     bool finished = true;
     try {
-
         finished = _csComputeEnginePtr->execute();
         if (finished) {
-
             // Extract statistics
             ReplicaInfo::FileInfoCollection fileInfoCollection;
 
             auto const fileNames = _csComputeEnginePtr->fileNames();
-            for (auto&& file: fileNames) {
-
+            for (auto&& file : fileNames) {
                 const fs::path path(file);
 
                 uint64_t const size = _csComputeEnginePtr->bytes(file);
 
                 time_t const mtime = fs::last_write_time(path, ec);
-                errorContext = errorContext
-                    or reportErrorIf(
-                            ec.value() != 0,
-                            ProtocolStatusExt::FILE_MTIME,
-                            "failed to read file mtime: " + path.string());
+                errorContext = errorContext or reportErrorIf(ec.value() != 0, ProtocolStatusExt::FILE_MTIME,
+                                                             "failed to read file mtime: " + path.string());
 
-                fileInfoCollection.emplace_back(
-                    ReplicaInfo::FileInfo({
-                        path.filename().string(),
-                        size,
-                        mtime,
-                        to_string(_csComputeEnginePtr->cs(file)),
-                        0,      /* beginTransferTime */
-                        0,      /* endTransferTime */
-                        size    /* inSize */
-                    })
-                );
+                fileInfoCollection.emplace_back(ReplicaInfo::FileInfo({
+                        path.filename().string(), size, mtime, to_string(_csComputeEnginePtr->cs(file)),
+                        0,   /* beginTransferTime */
+                        0,   /* endTransferTime */
+                        size /* inSize */
+                }));
             }
             if (errorContext.failed) {
                 setStatus(lock, ProtocolStatus::FAILED, errorContext.extendedStatus);
@@ -373,36 +275,24 @@ bool WorkerFindRequestPOSIX::execute() {
 
             // Fnalize the operation
 
-            DatabaseInfo const databaseInfo =
-                _serviceProvider->config()->databaseInfo(database());
+            DatabaseInfo const databaseInfo = _serviceProvider->config()->databaseInfo(database());
 
             ReplicaInfo::Status status = ReplicaInfo::Status::NOT_FOUND;
             if (fileInfoCollection.size())
-                status = FileUtils::partitionedFiles(
-                                        databaseInfo,
-                                        chunk()).size() == fileNames.size() ?
-                                            ReplicaInfo::Status::COMPLETE :
-                                            ReplicaInfo::Status::INCOMPLETE;
+                status = FileUtils::partitionedFiles(databaseInfo, chunk()).size() == fileNames.size()
+                                 ? ReplicaInfo::Status::COMPLETE
+                                 : ReplicaInfo::Status::INCOMPLETE;
 
             // Fill in the info on the chunk before finishing the operation
-            _replicaInfo = ReplicaInfo(
-                status,
-                worker(),
-                database(),
-                chunk(),
-                PerformanceUtils::now(),
-                fileInfoCollection);
+            _replicaInfo = ReplicaInfo(status, worker(), database(), chunk(), PerformanceUtils::now(),
+                                       fileInfoCollection);
 
             setStatus(lock, ProtocolStatus::SUCCESS);
         }
 
     } catch (exception const& ex) {
         WorkerRequest::ErrorContext errorContext;
-        errorContext = errorContext
-            or reportErrorIf(
-                    true,
-                    ProtocolStatusExt::FILE_READ,
-                    ex.what());
+        errorContext = errorContext or reportErrorIf(true, ProtocolStatusExt::FILE_READ, ex.what());
 
         setStatus(lock, ProtocolStatus::FAILED, errorContext.extendedStatus);
     }
@@ -414,4 +304,4 @@ bool WorkerFindRequestPOSIX::execute() {
     return finished;
 }
 
-}}} // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

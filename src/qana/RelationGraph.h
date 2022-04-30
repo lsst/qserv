@@ -478,7 +478,7 @@
 #include <vector>
 
 // Third-party headers
-#include "boost/math/special_functions/fpclassify.hpp" // for isnan, isinf
+#include "boost/math/special_functions/fpclassify.hpp"  // for isnan, isinf
 
 // Local headers
 #include "ColumnVertexMap.h"
@@ -491,22 +491,19 @@
 #include "query/typedefs.h"
 
 // Forward declarations
-namespace lsst {
-namespace qserv {
+namespace lsst::qserv {
 namespace query {
-    class ColumnRef;
-    class QueryContext;
-    class SelectStmt;
-}
+class ColumnRef;
+class QueryContext;
+class SelectStmt;
+}  // namespace query
 namespace qana {
-    class QueryMapping;
-    class TableInfoPool;
-}}}
+class QueryMapping;
+class TableInfoPool;
+}  // namespace qana
+}  // namespace lsst::qserv
 
-
-namespace lsst {
-namespace qserv {
-namespace qana {
+namespace lsst::qserv::qana {
 
 using query::SelectStmtPtrVector;
 
@@ -527,7 +524,7 @@ struct Vertex;
 /// that can link them. Only one of the edge vertices is stored; the other owns
 /// the `Edge` and is therefore implicitly available.
 struct Edge {
-    Vertex* vertex; // unowned
+    Vertex* vertex;  // unowned
     double angSep;
 
     Edge() : vertex(0), angSep(0.0) {}
@@ -539,9 +536,7 @@ struct Edge {
     bool operator!=(Edge const& p) const { return vertex != p.vertex; }
 };
 
-
 std::ostream& operator<<(std::ostream& out, Edge const& edge);
-
 
 /// A `Vertex` corresponds to an in-query partitioned table reference. A
 /// reference to the underlying table metadata and a list of edges (join
@@ -564,12 +559,8 @@ struct Vertex {
     /// vertex in the relation graph, and will never contain a loop.
     std::vector<Edge> edges;
 
-    Vertex(query::TableRef& t, TableInfo const* i) :
-        tr(t),
-        info(i),
-        next(0),
-        overlap(std::numeric_limits<double>::infinity())
-    {}
+    Vertex(query::TableRef& t, TableInfo const* i)
+            : tr(t), info(i), next(0), overlap(std::numeric_limits<double>::infinity()) {}
 
     /// `insert` adds the given join predicate to the set of predicates
     /// involving this table reference. If a predicate between the same
@@ -601,9 +592,7 @@ struct Vertex {
     }
 };
 
-
 std::ostream& operator<<(std::ostream& out, Vertex const& vertex);
-
 
 /// A relation graph consists of a list of vertices, representing the
 /// partitioned table references of a query, linked by an edge for each join
@@ -624,22 +613,20 @@ public:
 
     /// This constructor creates a relation graph from a query.
     /// If the query is not evaluable, an exception is thrown.
-    RelationGraph(query::SelectStmt& stmt,
-                  TableInfoPool& pool);
+    RelationGraph(query::SelectStmt& stmt, TableInfoPool& pool);
 
     /// `empty` returns `true` if this graph has no vertices.
     bool empty() const { return _vertices.empty(); }
 
     /// `rewrite` rewrites the input query into a set of output queries.
-    void rewrite(SelectStmtPtrVector& outputs,
-                 QueryMapping& mapping);
+    void rewrite(SelectStmtPtrVector& outputs, QueryMapping& mapping);
 
     void swap(RelationGraph& g);
 
 private:
     std::list<Vertex> _vertices;
     ColumnVertexMap _map;
-    query::SelectStmt* _query; // unowned
+    query::SelectStmt* _query;  // unowned
 
     // Not implemented
     RelationGraph(RelationGraph const&);
@@ -650,18 +637,12 @@ private:
     RelationGraph(query::TableRef& tr, TableInfo const* info);
     RelationGraph(query::TableRef::Ptr const& tr, TableInfoPool& pool);
 
-    size_t _addOnEqEdges(query::BoolTerm::Ptr on,
-                         bool outer,
-                         RelationGraph& g);
+    size_t _addOnEqEdges(query::BoolTerm::Ptr on, bool outer, RelationGraph& g);
     size_t _addNaturalEqEdges(bool outer, RelationGraph& g);
-    size_t _addUsingEqEdges(query::ColumnRef const& c,
-                            bool outer,
-                            RelationGraph& g);
+    size_t _addUsingEqEdges(query::ColumnRef const& c, bool outer, RelationGraph& g);
     size_t _addWhereEqEdges(query::BoolTerm::Ptr where);
     size_t _addSpEdges(query::BoolTerm::Ptr bt);
-    void _fuse(query::JoinRef::Type joinType,
-               bool natural,
-               query::JoinSpec::Ptr const& joinSpec,
+    void _fuse(query::JoinRef::Type joinType, bool natural, query::JoinSpec::Ptr const& joinSpec,
                RelationGraph& g);
     void _dumpGraph() const;
 
@@ -669,6 +650,6 @@ private:
     bool _validate();
 };
 
-}}} // namespace lsst::qserv::qana
+}  // namespace lsst::qserv::qana
 
-#endif // LSST_QSERV_QANA_RELATIONGRAPH_H
+#endif  // LSST_QSERV_QANA_RELATIONGRAPH_H

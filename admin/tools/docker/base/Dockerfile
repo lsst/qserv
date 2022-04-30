@@ -25,6 +25,8 @@ RUN dnf install -y 'dnf-command(config-manager)' \
         apr-util-devel \
         bash-completion \
         boost-devel \
+        clang \
+        clang-tools-extra \
         docker-ce-cli \
         flex \
         gcc-c++ \

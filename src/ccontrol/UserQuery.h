@@ -24,12 +24,12 @@
 #ifndef LSST_QSERV_CCONTROL_USERQUERY_H
 #define LSST_QSERV_CCONTROL_USERQUERY_H
 /**
-  * @file
-  *
-  * @brief Umbrella container for user query state
-   *
-  * @author Daniel L. Wang, SLAC
-  */
+ * @file
+ *
+ * @brief Umbrella container for user query state
+ *
+ * @author Daniel L. Wang, SLAC
+ */
 
 // System headers
 #include <memory>
@@ -42,23 +42,16 @@
 #include "qmeta/types.h"
 
 // Forward decl
-namespace lsst {
-namespace qserv {
-namespace qdisp {
-    class MessageStore;
-}}}
+namespace lsst::qserv::qdisp {
+class MessageStore;
+}  // namespace lsst::qserv::qdisp
 
-
-namespace lsst {
-namespace qserv {
-namespace ccontrol {
-
+namespace lsst::qserv::ccontrol {
 
 /// UserQuery : interface for user query data. Not thread-safe, although
 /// its delegates are thread-safe as appropriate.
 class UserQuery {
 public:
-
     typedef std::shared_ptr<UserQuery> Ptr;
 
     virtual ~UserQuery() {}
@@ -110,6 +103,6 @@ public:
     virtual std::string getResultQuery() const { return std::string(); }
 };
 
-}}} // namespace lsst::qserv:ccontrol
+}  // namespace lsst::qserv::ccontrol
 
-#endif // LSST_QSERV_CCONTROL_USERQUERY_H
+#endif  // LSST_QSERV_CCONTROL_USERQUERY_H

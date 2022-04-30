@@ -25,15 +25,13 @@
 #include "replica/Application.h"
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class VerifyApp implements a tool which runs the replica verification algorithm
  * for all known replicas across all ENABLED workers.
  */
-class VerifyApp: public Application {
+class VerifyApp : public Application {
 public:
     typedef std::shared_ptr<VerifyApp> Ptr;
 
@@ -46,11 +44,11 @@ public:
      */
     static Ptr create(int argc, char* argv[]);
 
-    VerifyApp()=delete;
-    VerifyApp(VerifyApp const&)=delete;
-    VerifyApp& operator=(VerifyApp const&)=delete;
+    VerifyApp() = delete;
+    VerifyApp(VerifyApp const&) = delete;
+    VerifyApp& operator=(VerifyApp const&) = delete;
 
-    ~VerifyApp() final=default;
+    ~VerifyApp() final = default;
 
 protected:
     /// @see Application::runImpl()
@@ -65,10 +63,9 @@ private:
 
     /// Automatically compute and store in the database check/control sums of
     /// the replica's files.
-    bool _computeCheckSum  = false;
-
+    bool _computeCheckSum = false;
 };
 
-}}} // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif /* LSST_QSERV_REPLICA_VERIFYAPP_H */

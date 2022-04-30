@@ -32,10 +32,7 @@
 #include <memory>
 #include <mutex>
 
-
-namespace lsst {
-namespace qserv {
-namespace util {
+namespace lsst::qserv::util {
 
 /// Tracker provides an interface for indicating an action is complete.
 ///
@@ -48,6 +45,7 @@ public:
     void setComplete();
     bool isFinished();
     void waitComplete();
+
 private:
     Status _trStatus{Status::INPROGRESS};
     std::mutex _trMutex;
@@ -57,9 +55,8 @@ private:
 /// Base class to allow arbitrary data to be passed to or returned from
 /// Command::action.
 struct CmdData {
-    virtual ~CmdData() {};
+    virtual ~CmdData(){};
 };
-
 
 /// Base class for commands. Can be used with functions as is or
 /// as a base class when data is needed.
@@ -73,18 +70,17 @@ public:
     Command(Command const&) = delete;
     Command& operator=(Command const&) = delete;
 
-    virtual void action(CmdData *data) {
-        _func(data);
-    };
+    virtual void action(CmdData* data) { _func(data); };
     virtual void actionComplete(CmdData*) {}
-    void runAction(CmdData *data) {
+    void runAction(CmdData* data) {
         action(data);
         actionComplete(data);
     }
     void setFunc(std::function<void(CmdData*)> func);
     void resetFunc();
+
 protected:
-    std::function<void(CmdData*)> _func = [](CmdData*){;};
+    std::function<void(CmdData*)> _func = [](CmdData*) { ; };
 };
 
 /// Extension of Command that can notify other threads when its
@@ -94,16 +90,14 @@ public:
     using Ptr = std::shared_ptr<CommandTracked>;
     CommandTracked() = default;
     explicit CommandTracked(std::function<void(CmdData*)> func) : Command(func) {}
-    ~CommandTracked() override  = default;
+    ~CommandTracked() override = default;
 
     CommandTracked(CommandTracked const&) = delete;
     CommandTracked& operator=(CommandTracked const&) = delete;
 
-    void actionComplete(CmdData*) override {
-        setComplete();
-    };
+    void actionComplete(CmdData*) override { setComplete(); };
 };
 
-}}} // namespace
+}  // namespace lsst::qserv::util
 
 #endif /* CORE_MODULES_UTIL_COMMAND_H_ */

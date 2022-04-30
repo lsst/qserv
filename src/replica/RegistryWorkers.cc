@@ -28,9 +28,7 @@
 using namespace std;
 using json = nlohmann::json;
 
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
 void RegistryWorkers::insert(json const& worker) {
     string const context = "RegistryWorkers::" + string(__func__) + " ";
@@ -46,7 +44,6 @@ void RegistryWorkers::insert(json const& worker) {
     _workers[id] = worker;
 }
 
-
 void RegistryWorkers::remove(std::string const& id) {
     string const context = "RegistryWorkers::" + string(__func__) + " ";
     if (id.empty()) {
@@ -56,11 +53,10 @@ void RegistryWorkers::remove(std::string const& id) {
     _workers.erase(id);
 }
 
-
 json RegistryWorkers::workers() const {
     string const context = "RegistryWorkers::" + string(__func__) + " ";
     util::Lock const lock(_mtx, context);
     return _workers;
 }
 
-}}} // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

@@ -65,28 +65,23 @@ std::atomic<int> totCount(0);
 
 bool _aOK = true;
 
-enum RespType {RESP_BADREQ, RESP_DATA, RESP_ERROR, RESP_ERRNR,
-               RESP_STREAM, RESP_STRERR};
+enum RespType { RESP_BADREQ, RESP_DATA, RESP_ERROR, RESP_ERRNR, RESP_STREAM, RESP_STRERR };
 
 class Agent : public XrdSsiResponder, public XrdSsiStream {
 public:
-
-    void Finished(XrdSsiRequest&        rqstR,
-                  XrdSsiRespInfo const& rInfo,
-                  bool cancel) override {
-        const char *how = (cancel ? " cancelled" : "");
-        LOGS(_log, LOG_LVL_DEBUG, "Finished: " << _rNum
-                                  << " rName=" << _rName << how);
+    void Finished(XrdSsiRequest& rqstR, XrdSsiRespInfo const& rInfo, bool cancel) override {
+        const char* how = (cancel ? " cancelled" : "");
+        LOGS(_log, LOG_LVL_DEBUG, "Finished: " << _rNum << " rName=" << _rName << how);
         _rrMutex.lock();
         UnBindRequest();
         if (cancel) canCount++;
         finCount++;
         _isFIN = true;
         if (_active) {
-           _rrMutex.unlock();
+            _rrMutex.unlock();
         } else {
-           _rrMutex.unlock();
-           delete this;
+            _rrMutex.unlock();
+            delete this;
         }
     }
 
@@ -95,49 +90,50 @@ public:
 
         // We may have been cancelled before being able to reply
         //
-        if (_isCancelled(true)) return; // we are locked now
+        if (_isCancelled(true)) return;  // we are locked now
 
         // Do requested reply
         //
-        switch(rType) {
-             case RESP_DATA:
-                  _ReplyData();
-                  break;
-             case RESP_ERRNR:
-                  _reqP->doNotRetry();
-                  // Fallthrough
-             case RESP_ERROR:
-                  _ReplyError();
-                  break;
-             case RESP_STRERR:
-                  _noData = true;
-                  _reqP->doNotRetry();  // Kill retries on stream errors
-                  _ReplyStream();
-                  break;
-             default:
-                  _reqP->doNotRetry();
-                  _ReplyError("Bad mock request!", 13);
-                  break;
+        switch (rType) {
+            case RESP_DATA:
+                _ReplyData();
+                break;
+            case RESP_ERRNR:
+                _reqP->doNotRetry();
+                // Fallthrough
+            case RESP_ERROR:
+                _ReplyError();
+                break;
+            case RESP_STRERR:
+                _noData = true;
+                _reqP->doNotRetry();  // Kill retries on stream errors
+                _ReplyStream();
+                break;
+            default:
+                _reqP->doNotRetry();
+                _ReplyError("Bad mock request!", 13);
+                break;
         }
         _isCancelled(false);
     }
 
-    bool SetBuff(XrdSsiErrInfo& eRef, char* buff, int  blen) override {
-
+    bool SetBuff(XrdSsiErrInfo& eRef, char* buff, int blen) override {
         // We may have been cancelled while waiting
         //
         if (_isCancelled(true)) return false;
-        std::thread (&Agent::_StrmResp, this, &eRef, buff, blen).detach();
+        std::thread(&Agent::_StrmResp, this, &eRef, buff, blen).detach();
         _rrMutex.unlock();
         return true;
     }
 
-    Agent(lsst::qserv::qdisp::QueryRequest* rP,
-          std::string const& rname, int rnum) :
-         XrdSsiStream(XrdSsiStream::isPassive),
-         _reqP(rP), _rName(rname), _rNum(rnum), _noData(true),
-         _isFIN(false), _active(true) {
-
+    Agent(lsst::qserv::qdisp::QueryRequest* rP, std::string const& rname, int rnum)
+            : XrdSsiStream(XrdSsiStream::isPassive),
+              _reqP(rP),
+              _rName(rname),
+              _rNum(rnum),
+              _noData(true),
+              _isFIN(false),
+              _active(true) {
         // Initialize a null message we will return as a response
         //
         _protoHeader = google::protobuf::Arena::CreateMessage<lsst::qserv::proto::ProtoHeader>(_arena.get());
@@ -158,13 +154,12 @@ public:
     ~Agent() {}
 
 private:
-
     bool _isCancelled(bool activate) {
         if (activate) _rrMutex.lock();
         if (_isFIN) {
-           _rrMutex.unlock();
-           delete this;
-           return true;
+            _rrMutex.unlock();
+            delete this;
+            return true;
         }
         _active = activate;
         if (!activate) _rrMutex.unlock();
@@ -176,7 +171,7 @@ private:
         SetResponse(_rspBuf.data(), _rspBuf.size());
     }
 
-    void _ReplyError(const char* eMsg="Mock Request Ignored!", int eNum=17) {
+    void _ReplyError(const char* eMsg = "Mock Request Ignored!", int eNum = 17) {
         SetErrResponse(eMsg, eNum);
     }
 
@@ -189,8 +184,7 @@ private:
     }
 
     void _StrmResp(XrdSsiErrInfo* eP, char* buff, int blen) {
-        std::cerr<<"Stream: cleint asks for " <<blen <<" bytes, have "
-                 <<_bLen <<'\n' <<std::flush;
+        std::cerr << "Stream: cleint asks for " << blen << " bytes, have " << _bLen << '\n' << std::flush;
         bool last;
 
         // Check for cancellation while we were waiting
@@ -205,12 +199,14 @@ private:
             eP->Set("Mock stream error!", 17);
         } else {
             if (_bLen <= blen) {
-                memcpy(buff, _msgBuf.data()+_bOff, _bLen);
-                blen = _bLen; _bLen = 0;
+                memcpy(buff, _msgBuf.data() + _bOff, _bLen);
+                blen = _bLen;
+                _bLen = 0;
                 last = true;
             } else {
-                memcpy(buff, _msgBuf.data()+_bOff,  blen);
-                _bOff += blen; _bLen -= blen;
+                memcpy(buff, _msgBuf.data() + _bOff, blen);
+                _bOff += blen;
+                _bLen -= blen;
                 last = false;
             }
         }
@@ -227,39 +223,36 @@ private:
         return SetMetadata(_metadata.data(), _metadata.size());
     }
 
-
     std::recursive_mutex _rrMutex;
     lsst::qserv::qdisp::QueryRequest* _reqP;
     std::string _rName;
     std::string _rspBuf;
     std::string _msgBuf;
-    int         _bOff;
-    int         _bLen;
-    int         _rNum;
-    bool        _noData;
-    bool        _isFIN;
-    bool        _active;
+    int _bOff;
+    int _bLen;
+    int _rNum;
+    bool _noData;
+    bool _isFIN;
+    bool _active;
     std::string _metadata;
     lsst::qserv::proto::ProtoHeader* _protoHeader;
     std::unique_ptr<google::protobuf::Arena> _arena{make_unique<google::protobuf::Arena>()};
 };
-}
+}  // namespace
 
-namespace lsst {
-namespace qserv {
-namespace qdisp {
+namespace lsst::qserv::qdisp {
 
 std::string XrdSsiServiceMock::_myRName;
 
-int  XrdSsiServiceMock::getCount() {return totCount;}
+int XrdSsiServiceMock::getCount() { return totCount; }
 
-int  XrdSsiServiceMock::getCanCount() {return canCount;}
+int XrdSsiServiceMock::getCanCount() { return canCount; }
 
-int  XrdSsiServiceMock::getFinCount() {return finCount;}
+int XrdSsiServiceMock::getFinCount() { return finCount; }
 
-int  XrdSsiServiceMock::getReqCount() {return reqCount;}
+int XrdSsiServiceMock::getReqCount() { return reqCount; }
 
-bool XrdSsiServiceMock::isAOK() {return _aOK;}
+bool XrdSsiServiceMock::isAOK() { return _aOK; }
 
 void XrdSsiServiceMock::Reset() {
     canCount = 0;
@@ -267,31 +260,26 @@ void XrdSsiServiceMock::Reset() {
     reqCount = 0;
 }
 
-void XrdSsiServiceMock::setGo(bool go) {_go.exchangeNotify(go);}
+void XrdSsiServiceMock::setGo(bool go) { _go.exchangeNotify(go); }
 
-void XrdSsiServiceMock::ProcessRequest(XrdSsiRequest  &reqRef,
-                                       XrdSsiResource &resRef) {
-    static struct {const char *cmd; RespType rType;} reqTab[] = {
-           {"respdata",   RESP_DATA},
-           {"resperror",  RESP_ERROR},
-           {"resperrnr",  RESP_ERRNR},
-           {"respstream", RESP_STREAM},
-           {"respstrerr", RESP_STRERR},
-           {0, RESP_BADREQ}
-    };
+void XrdSsiServiceMock::ProcessRequest(XrdSsiRequest& reqRef, XrdSsiResource& resRef) {
+    static struct {
+        const char* cmd;
+        RespType rType;
+    } reqTab[] = {{"respdata", RESP_DATA},     {"resperror", RESP_ERROR},   {"resperrnr", RESP_ERRNR},
+                  {"respstream", RESP_STREAM}, {"respstrerr", RESP_STRERR}, {0, RESP_BADREQ}};
 
     int reqNum = totCount++;
 
     // Check if we should verify the resource name
     //
     if (_myRName.size() && _myRName != resRef.rName) {
-       LOGS_DEBUG("Expected rname " <<_myRName <<" got " <<resRef.rName
-                  <<" from req #" <<reqNum);
-       _aOK = false;
+        LOGS_DEBUG("Expected rname " << _myRName << " got " << resRef.rName << " from req #" << reqNum);
+        _aOK = false;
     }
 
     // Get the query request object for this request and process it.
-    QueryRequest * r = dynamic_cast<QueryRequest *>(&reqRef);
+    QueryRequest* r = dynamic_cast<QueryRequest*>(&reqRef);
     if (r) {
         Agent* aP = new Agent(r, resRef.rName, reqNum);
         RespType doResp;
@@ -302,20 +290,20 @@ void XrdSsiServiceMock::ProcessRequest(XrdSsiRequest  &reqRef,
         //
         std::string reqStr;
         int reqLen;
-        const char *reqData = r->GetRequest(reqLen);
+        const char* reqData = r->GetRequest(reqLen);
         if (reqData != nullptr) reqStr.assign(reqData, reqLen);
         reqData = reqStr.c_str();
 
         // Convert request to response type
         //
         int i = 0;
-        while(reqTab[i].cmd && strcmp(reqTab[i].cmd, reqData)) i++;
+        while (reqTab[i].cmd && strcmp(reqTab[i].cmd, reqData)) i++;
         if (reqTab[i].cmd) {
-           doResp = reqTab[i].rType;
+            doResp = reqTab[i].rType;
         } else {
-           LOGS_DEBUG("Unknown request '" <<reqData <<"' from req #" <<reqNum);
-           _aOK = false;
-           doResp = RESP_BADREQ;
+            LOGS_DEBUG("Unknown request '" << reqData << "' from req #" << reqNum);
+            _aOK = false;
+            doResp = RESP_BADREQ;
         }
 
         // Release the request buffer (typically a no-op)
@@ -325,8 +313,8 @@ void XrdSsiServiceMock::ProcessRequest(XrdSsiRequest  &reqRef,
         // Schedule a response
         //
         reqCount++;
-        std::thread (&Agent::Reply, aP, doResp).detach();
+        std::thread(&Agent::Reply, aP, doResp).detach();
     }
 }
 
-}}} // namespace
+}  // namespace lsst::qserv::qdisp

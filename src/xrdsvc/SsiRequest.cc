@@ -56,18 +56,16 @@ namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.xrdsvc.SsiRequest");
 }
 
-namespace lsst {
-namespace qserv {
-namespace xrdsvc {
+namespace lsst::qserv::xrdsvc {
 
 std::shared_ptr<wpublish::ResourceMonitor> SsiRequest::_resourceMonitor(new wpublish::ResourceMonitor());
 
-SsiRequest::~SsiRequest () {
+SsiRequest::~SsiRequest() {
     LOGS(_log, LOG_LVL_DEBUG, "~SsiRequest()");
     UnBindRequest();
 }
 
-void SsiRequest::reportError (std::string const& errStr) {
+void SsiRequest::reportError(std::string const& errStr) {
     LOGS(_log, LOG_LVL_WARN, errStr);
     replyError(errStr, EINVAL);
     ReleaseRequestBuffer();
@@ -80,7 +78,7 @@ void SsiRequest::execute(XrdSsiRequest& req) {
 
     LOGS(_log, LOG_LVL_DEBUG, "Execute request, resource=" << _resourceName);
 
-    char *reqData = nullptr;
+    char* reqData = nullptr;
     int reqSize;
     t.start();
     reqData = req.GetRequest(reqSize);
@@ -108,7 +106,6 @@ void SsiRequest::execute(XrdSsiRequest& req) {
     // Process the request
     switch (ru.unitType()) {
         case ResourceUnit::DBCHUNK: {
-
             // Increment the counter of the database/chunk resources in use
             _resourceMonitor->increment(_resourceName);
 
@@ -116,8 +113,7 @@ void SsiRequest::execute(XrdSsiRequest& req) {
             // more data.
             LOGS(_log, LOG_LVL_DEBUG, "Decoding TaskMsg of size " << reqSize);
             auto taskMsg = std::make_shared<proto::TaskMsg>();
-            if (!taskMsg->ParseFromArray(reqData, reqSize) ||
-                !taskMsg->IsInitialized()) {
+            if (!taskMsg->ParseFromArray(reqData, reqSize) || !taskMsg->IsInitialized()) {
                 reportError("Failed to decode TaskMsg on resource db=" + ru.db() +
                             " chunkId=" + std::to_string(ru.chunk()));
                 return;
@@ -125,23 +121,21 @@ void SsiRequest::execute(XrdSsiRequest& req) {
 
             QSERV_LOGCONTEXT_QUERY_JOB(taskMsg->queryid(), taskMsg->jobid());
 
-            if (!taskMsg->has_db() || !taskMsg->has_chunkid()
-                || (ru.db()    != taskMsg->db())
-                || (ru.chunk() != taskMsg->chunkid())) {
+            if (!taskMsg->has_db() || !taskMsg->has_chunkid() || (ru.db() != taskMsg->db()) ||
+                (ru.chunk() != taskMsg->chunkid())) {
                 reportError("Mismatched db/chunk in TaskMsg on resource db=" + ru.db() +
-                        " chunkId=" + std::to_string(ru.chunk()));
+                            " chunkId=" + std::to_string(ru.chunk()));
                 return;
             }
 
-            if (not (taskMsg->has_queryid() && taskMsg->has_jobid()
-                     && taskMsg->has_scaninteractive() && taskMsg->has_attemptcount()
-                     && taskMsg->has_czarid())) {
-                reportError(std::string("taskMsg missing required field ")
-                          + " queryid:" + std::to_string(taskMsg->has_queryid())
-                          + " jobid:" + std::to_string(taskMsg->has_jobid())
-                          + " scaninteractive:" + std::to_string(taskMsg->has_scaninteractive())
-                          + " attemptcount:" + std::to_string(taskMsg->has_attemptcount())
-                          + " czarid:" + std::to_string(taskMsg->has_czarid()));
+            if (not(taskMsg->has_queryid() && taskMsg->has_jobid() && taskMsg->has_scaninteractive() &&
+                    taskMsg->has_attemptcount() && taskMsg->has_czarid())) {
+                reportError(std::string("taskMsg missing required field ") +
+                            " queryid:" + std::to_string(taskMsg->has_queryid()) +
+                            " jobid:" + std::to_string(taskMsg->has_jobid()) +
+                            " scaninteractive:" + std::to_string(taskMsg->has_scaninteractive()) +
+                            " attemptcount:" + std::to_string(taskMsg->has_attemptcount()) +
+                            " czarid:" + std::to_string(taskMsg->has_czarid()));
                 return;
             }
 
@@ -151,19 +145,19 @@ void SsiRequest::execute(XrdSsiRequest& req) {
             // reference to this SsiRequest inside the reply channel for the task,
             // and after the call to BindRequest.
             auto sendChannelBase = std::make_shared<wbase::SendChannel>(shared_from_this());
-            auto sendChannel = wbase::SendChannelShared::create(sendChannelBase, _transmitMgr, taskMsg->czarid());
+            auto sendChannel =
+                    wbase::SendChannelShared::create(sendChannelBase, _transmitMgr, taskMsg->czarid());
             auto tasks = wbase::Task::createTasks(taskMsg, sendChannel);
 
             ReleaseRequestBuffer();
             t.start();
-            _processor->processTasks(tasks); // Queues tasks to be run later.
+            _processor->processTasks(tasks);  // Queues tasks to be run later.
             t.stop();
-            LOGS(_log, LOG_LVL_DEBUG, "Enqueued TaskMsg for " << ru << " in "
-                                      << t.getElapsed() << " seconds");
+            LOGS(_log, LOG_LVL_DEBUG,
+                 "Enqueued TaskMsg for " << ru << " in " << t.getElapsed() << " seconds");
             break;
         }
         case ResourceUnit::WORKER: {
-
             LOGS(_log, LOG_LVL_DEBUG, "Parsing WorkerCommand for resource=" << _resourceName);
 
             wbase::WorkerCommand::Ptr const command = parseWorkerCommand(reqData, reqSize);
@@ -172,7 +166,7 @@ void SsiRequest::execute(XrdSsiRequest& req) {
             // The buffer must be released before submitting commands for
             // further processing.
             ReleaseRequestBuffer();
-            _processor->processCommand(command);    // Queues the command to be run later.
+            _processor->processCommand(command);  // Queues the command to be run later.
 
             LOGS(_log, LOG_LVL_DEBUG, "Enqueued WorkerCommand for resource=" << _resourceName);
 
@@ -189,14 +183,11 @@ void SsiRequest::execute(XrdSsiRequest& req) {
 }
 
 wbase::WorkerCommand::Ptr SsiRequest::parseWorkerCommand(char const* reqData, int reqSize) {
-
-    wbase::SendChannel::Ptr const sendChannel =
-        std::make_shared<wbase::SendChannel>(shared_from_this());
+    wbase::SendChannel::Ptr const sendChannel = std::make_shared<wbase::SendChannel>(shared_from_this());
 
     wbase::WorkerCommand::Ptr command;
 
     try {
-
         // reqData has the entire request, so we can unpack it without waiting for
         // more data.
         proto::FrameBufferView view(reqData, reqSize);
@@ -204,92 +195,62 @@ wbase::WorkerCommand::Ptr SsiRequest::parseWorkerCommand(char const* reqData, in
         proto::WorkerCommandH header;
         view.parse(header);
 
-        LOGS(_log, LOG_LVL_DEBUG, "WorkerCommandH: command=" <<
-             proto::WorkerCommandH_Command_Name(header.command()) <<
-             " resource=" << _resourceName);
+        LOGS(_log, LOG_LVL_DEBUG,
+             "WorkerCommandH: command=" << proto::WorkerCommandH_Command_Name(header.command())
+                                        << " resource=" << _resourceName);
 
         switch (header.command()) {
             case proto::WorkerCommandH::TEST_ECHO: {
-
                 proto::WorkerCommandTestEchoM echo;
                 view.parse(echo);
 
-                command = std::make_shared<wpublish::TestEchoCommand>(
-                                sendChannel,
-                                echo.value());
+                command = std::make_shared<wpublish::TestEchoCommand>(sendChannel, echo.value());
                 break;
             }
             case proto::WorkerCommandH::ADD_CHUNK_GROUP:
             case proto::WorkerCommandH::REMOVE_CHUNK_GROUP: {
-
                 proto::WorkerCommandChunkGroupM group;
                 view.parse(group);
 
                 std::vector<std::string> dbs;
-                for (int i = 0, num = group.dbs_size(); i < num; ++i)
-                    dbs.push_back(group.dbs(i));
+                for (int i = 0, num = group.dbs_size(); i < num; ++i) dbs.push_back(group.dbs(i));
 
-                int  const chunk = group.chunk();
+                int const chunk = group.chunk();
                 bool const force = group.force();
 
                 if (header.command() == proto::WorkerCommandH::ADD_CHUNK_GROUP)
-                    command = std::make_shared<wpublish::AddChunkGroupCommand>(
-                                    sendChannel,
-                                    _chunkInventory,
-                                    _mySqlConfig,
-                                    chunk,
-                                    dbs);
+                    command = std::make_shared<wpublish::AddChunkGroupCommand>(sendChannel, _chunkInventory,
+                                                                               _mySqlConfig, chunk, dbs);
                 else
                     command = std::make_shared<wpublish::RemoveChunkGroupCommand>(
-                                    sendChannel,
-                                    _chunkInventory,
-                                    _resourceMonitor,
-                                    _mySqlConfig,
-                                    chunk,
-                                    dbs,
-                                    force);
+                            sendChannel, _chunkInventory, _resourceMonitor, _mySqlConfig, chunk, dbs, force);
                 break;
-
             }
             case proto::WorkerCommandH::UPDATE_CHUNK_LIST: {
-
                 proto::WorkerCommandUpdateChunkListM message;
                 view.parse(message);
 
                 if (message.rebuild())
                     command = std::make_shared<wpublish::RebuildChunkListCommand>(
-                                    sendChannel,
-                                    _chunkInventory,
-                                    _mySqlConfig,
-                                    message.reload());
+                            sendChannel, _chunkInventory, _mySqlConfig, message.reload());
                 else
-                    command = std::make_shared<wpublish::ReloadChunkListCommand>(
-                                    sendChannel,
-                                    _chunkInventory,
-                                    _mySqlConfig);
+                    command = std::make_shared<wpublish::ReloadChunkListCommand>(sendChannel, _chunkInventory,
+                                                                                 _mySqlConfig);
                 break;
             }
             case proto::WorkerCommandH::GET_CHUNK_LIST: {
-
-                command = std::make_shared<wpublish::GetChunkListCommand>(
-                                    sendChannel,
-                                    _chunkInventory,
-                                    _resourceMonitor);
+                command = std::make_shared<wpublish::GetChunkListCommand>(sendChannel, _chunkInventory,
+                                                                          _resourceMonitor);
                 break;
             }
             case proto::WorkerCommandH::SET_CHUNK_LIST: {
-
                 proto::WorkerCommandSetChunkListM message;
                 view.parse(message);
 
                 std::vector<wpublish::SetChunkListCommand::Chunk> chunks;
                 for (int i = 0, num = message.chunks_size(); i < num; ++i) {
-                    chunks.push_back(
-                        wpublish::SetChunkListCommand::Chunk{
-                            message.chunks(i).db(),
-                            message.chunks(i).chunk()
-                        }
-                    );
+                    chunks.push_back(wpublish::SetChunkListCommand::Chunk{message.chunks(i).db(),
+                                                                          message.chunks(i).chunk()});
                 }
                 std::vector<std::string> databases;
                 for (int i = 0, num = message.databases_size(); i < num; ++i) {
@@ -297,39 +258,30 @@ wbase::WorkerCommand::Ptr SsiRequest::parseWorkerCommand(char const* reqData, in
                 }
                 bool const force = message.force();
 
-                command = std::make_shared<wpublish::SetChunkListCommand>(
-                                    sendChannel,
-                                    _chunkInventory,
-                                    _resourceMonitor,
-                                    _mySqlConfig,
-                                    chunks,
-                                    databases,
-                                    force);
+                command = std::make_shared<wpublish::SetChunkListCommand>(sendChannel, _chunkInventory,
+                                                                          _resourceMonitor, _mySqlConfig,
+                                                                          chunks, databases, force);
                 break;
             }
             case proto::WorkerCommandH::GET_STATUS: {
-                command = std::make_shared<wpublish::GetStatusCommand>(
-                                sendChannel,
-                                _processor,
-                                _resourceMonitor);
+                command = std::make_shared<wpublish::GetStatusCommand>(sendChannel, _processor,
+                                                                       _resourceMonitor);
                 break;
             }
             default:
-                reportError("Unsupported command " +
-                            proto::WorkerCommandH_Command_Name(header.command()) +
+                reportError("Unsupported command " + proto::WorkerCommandH_Command_Name(header.command()) +
                             " found in WorkerCommandH on worker resource=" + _resourceName);
                 break;
         }
 
     } catch (proto::FrameBufferError const& ex) {
-        reportError("Failed to decode a worker management command, error: " +
-                    std::string(ex.what()));
+        reportError("Failed to decode a worker management command, error: " + std::string(ex.what()));
     }
     return command;
 }
 
 /// Called by SSI to free resources.
-void SsiRequest::Finished(XrdSsiRequest& req, XrdSsiRespInfo const& rinfo, bool cancel) { // Step 8
+void SsiRequest::Finished(XrdSsiRequest& req, XrdSsiRespInfo const& rinfo, bool cancel) {  // Step 8
     if (cancel) {
         // Try to cancel the task, if there is one.
         auto task = _task.lock();
@@ -352,20 +304,30 @@ void SsiRequest::Finished(XrdSsiRequest& req, XrdSsiRespInfo const& rinfo, bool 
         }
     }
 
-
-
     auto keepAlive = freeSelfKeepAlive();
 
     // No buffers allocated, so don't need to free.
     // We can release/unlink the file now
     const char* type = "";
-    switch(rinfo.rType) {
-    case XrdSsiRespInfo::isNone: type = "type=isNone"; break;
-    case XrdSsiRespInfo::isData: type = "type=isData"; break;
-    case XrdSsiRespInfo::isError: type = "type=isError"; break;
-    case XrdSsiRespInfo::isFile: type = "type=isFile"; break;
-    case XrdSsiRespInfo::isStream: type = "type=isStream"; break;
-    case XrdSsiRespInfo::isHandle: type = "type=isHandle"; break;
+    switch (rinfo.rType) {
+        case XrdSsiRespInfo::isNone:
+            type = "type=isNone";
+            break;
+        case XrdSsiRespInfo::isData:
+            type = "type=isData";
+            break;
+        case XrdSsiRespInfo::isError:
+            type = "type=isError";
+            break;
+        case XrdSsiRespInfo::isFile:
+            type = "type=isFile";
+            break;
+        case XrdSsiRespInfo::isStream:
+            type = "type=isStream";
+            break;
+        case XrdSsiRespInfo::isHandle:
+            type = "type=isHandle";
+            break;
     }
 
     // Decrement the counter of the database/chunk resources in use
@@ -401,7 +363,6 @@ bool SsiRequest::replyError(std::string const& msg, int code) {
     return true;
 }
 
-
 bool SsiRequest::replyFile(int fd, long long fSize) {
     util::Timer t;
     t.start();
@@ -410,24 +371,23 @@ bool SsiRequest::replyFile(int fd, long long fSize) {
         LOGS(_log, LOG_LVL_DEBUG, "file posted ok");
     } else {
         if (s == XrdSsiResponder::notActive) {
-            LOGS(_log, LOG_LVL_ERROR, "DANGER: Couldn't post response file of length="
-                 << fSize << ", responder not active.");
+            LOGS(_log, LOG_LVL_ERROR,
+                 "DANGER: Couldn't post response file of length=" << fSize << ", responder not active.");
         } else {
             LOGS(_log, LOG_LVL_ERROR, "DANGER: Couldn't post response file of length=" << fSize);
         }
         replyError("Internal error posting response file", 1);
         t.stop();
-        return false; // call must handle everything else.
+        return false;  // call must handle everything else.
     }
     t.stop();
     LOGS(_log, LOG_LVL_DEBUG, "replyFile took " << t.getElapsed() << " seconds");
     return true;
 }
 
-
 bool SsiRequest::replyStream(StreamBuffer::Ptr const& sBuf, bool last, int scsSeq) {
-    LOGS(_log, LOG_LVL_DEBUG, "replyStream, checking stream size=" << sBuf->getSize()
-                              << " last=" << last << " scsseq=" << scsSeq);
+    LOGS(_log, LOG_LVL_DEBUG,
+         "replyStream, checking stream size=" << sBuf->getSize() << " last=" << last << " scsseq=" << scsSeq);
 
     // Normally, XrdSsi would call Recycle() when it is done with sBuf, but if this function
     // returns false, then it must call Recycle(). Otherwise, the scheduler will likely
@@ -460,34 +420,31 @@ bool SsiRequest::replyStream(StreamBuffer::Ptr const& sBuf, bool last, int scsSe
     return true;
 }
 
-
-bool SsiRequest::sendMetadata(const char *buf, int blen) {
+bool SsiRequest::sendMetadata(const char* buf, int blen) {
     Status stat = SetMetadata(buf, blen);
     switch (stat) {
-    case XrdSsiResponder::wasPosted:
-        return true;
-    case XrdSsiResponder::notActive:
-        LOGS(_log, LOG_LVL_ERROR, "failed to setMetadata notActive");
-        break;
-    case XrdSsiResponder::notPosted:
-        LOGS(_log, LOG_LVL_ERROR, "failed to setMetadata notPosted blen=" << blen);
-        break;
-    default:
-        LOGS(_log, LOG_LVL_ERROR, "failed to setMetadata unkown state blen=" << blen);
+        case XrdSsiResponder::wasPosted:
+            return true;
+        case XrdSsiResponder::notActive:
+            LOGS(_log, LOG_LVL_ERROR, "failed to setMetadata notActive");
+            break;
+        case XrdSsiResponder::notPosted:
+            LOGS(_log, LOG_LVL_ERROR, "failed to setMetadata notPosted blen=" << blen);
+            break;
+        default:
+            LOGS(_log, LOG_LVL_ERROR, "failed to setMetadata unkown state blen=" << blen);
     }
     return false;
 }
-
 
 SsiRequest::Ptr SsiRequest::freeSelfKeepAlive() {
     Ptr keepAlive = std::move(_selfKeepAlive);
     return keepAlive;
 }
 
-
 uint64_t SsiRequest::getSeq() const {
     if (_stream == nullptr) return 0;
     return _stream->getSeq();
 }
 
-}}} // namespace
+}  // namespace lsst::qserv::xrdsvc

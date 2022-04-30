@@ -23,25 +23,25 @@
  */
 
 /**
-  * @file
-  *
-  * @brief Unit test for the MySql implementation of the Common State System Interface.
-  *
-  *
-  * This is a unittest for the KvInterfaceImplMySql class, geared for testing remote server connections.
-  *
-  * The test requires ~/.lsst/KvInterfaceImplMySql-testRemote.txt config file with the following:
-  * [mysql]
-  * user     = <username>
-  * passwd = <passwd> # this is optional
-  * host     = <host>
-  * port     = <port>
-  *
-  * It is sufficient if the user has normal privileges.
-  *
-  * @Author Nathan Pease, SLAC
-  *
-  */
+ * @file
+ *
+ * @brief Unit test for the MySql implementation of the Common State System Interface.
+ *
+ *
+ * This is a unittest for the KvInterfaceImplMySql class, geared for testing remote server connections.
+ *
+ * The test requires ~/.lsst/KvInterfaceImplMySql-testRemote.txt config file with the following:
+ * [mysql]
+ * user     = <username>
+ * passwd = <passwd> # this is optional
+ * host     = <host>
+ * port     = <port>
+ *
+ * It is sufficient if the user has normal privileges.
+ *
+ * @Author Nathan Pease, SLAC
+ *
+ */
 
 // System headers
 #include <iomanip>
@@ -75,13 +75,13 @@ using lsst::qserv::sql::SqlErrorObject;
 
 namespace {
 
-
-// todo this is copied directly from testQMeta.cc. Perhaps it could be made generic and put in a shared location?
+// todo this is copied directly from testQMeta.cc. Perhaps it could be made generic and put in a shared
+// location?
 struct TestDBGuard {
-    TestDBGuard()
-    : connected(false) {
+    TestDBGuard() : connected(false) {
         boost::property_tree::ptree pt;
-        std::string iniFileLoc = std::getenv("HOME") + std::string("/.lsst/KvInterfaceImplMySql-testRemote.txt");
+        std::string iniFileLoc =
+                std::getenv("HOME") + std::string("/.lsst/KvInterfaceImplMySql-testRemote.txt");
         boost::property_tree::ini_parser::read_ini(iniFileLoc, pt);
         std::cout << "iniFileLoc:" << iniFileLoc << std::endl;
         sqlConfig.hostname = pt.get<std::string>("mysql.host");
@@ -120,7 +120,7 @@ struct TestDBGuard {
         SqlErrorObject errObj;
         sqlConn->runQuery(buffer, errObj);
         if (not errObj.isSet()) {
-           connected = true;
+            connected = true;
         }
     }
 
@@ -134,10 +134,9 @@ struct TestDBGuard {
     bool connected;
 };
 
-} // namespace
+}  // namespace
 
-struct PerTestFixture
-{
+struct PerTestFixture {
     PerTestFixture() {
         kvInterface = std::make_shared<KvInterfaceImplMySql>(testDB.sqlConfig);
         sqlConn = SqlConnectionFactory::make(testDB.sqlConfig);
@@ -152,9 +151,11 @@ struct PerTestFixture
 
 TestDBGuard PerTestFixture::testDB;
 
-
-#define CHECK_CONNECTION() if (not isConnected()) { BOOST_WARN_MESSAGE(false, "Not connected, can not run test case."); return; }
-
+#define CHECK_CONNECTION()                                                  \
+    if (not isConnected()) {                                                \
+        BOOST_WARN_MESSAGE(false, "Not connected, can not run test case."); \
+        return;                                                             \
+    }
 
 BOOST_FIXTURE_TEST_SUITE(SqlKVInterfaceConnectionTestSuite, PerTestFixture)
 
@@ -176,7 +177,6 @@ BOOST_AUTO_TEST_CASE(CreateAndGetKV) {
     BOOST_CHECK_EQUAL(kvInterface->get("/CreateAndGetKV/testKey"), "testValue");
 }
 
-
 BOOST_AUTO_TEST_CASE(CreateUnique) {
     CHECK_CONNECTION();
 
@@ -184,26 +184,25 @@ BOOST_AUTO_TEST_CASE(CreateUnique) {
     std::string key;
 
     BOOST_CHECK_NO_THROW(key = kvInterface->create(pfx, "uniqueValue1", true));
-    BOOST_CHECK_EQUAL(key, pfx+"0000000001");
+    BOOST_CHECK_EQUAL(key, pfx + "0000000001");
     BOOST_CHECK_EQUAL(kvInterface->get(key), "uniqueValue1");
 
     // try to confuse it by adding non-numeric keys
-    BOOST_CHECK_NO_THROW(key = kvInterface->create(pfx+"01234567ab", ""));
-    BOOST_CHECK_NO_THROW(key = kvInterface->create(pfx+"abcdefghij", ""));
+    BOOST_CHECK_NO_THROW(key = kvInterface->create(pfx + "01234567ab", ""));
+    BOOST_CHECK_NO_THROW(key = kvInterface->create(pfx + "abcdefghij", ""));
 
-    for (int i = 0; i != 10; ++ i) {
+    for (int i = 0; i != 10; ++i) {
         std::ostringstream str;
-        str << pfx << std::setfill('0') << std::setw(10) << i+2;
+        str << pfx << std::setfill('0') << std::setw(10) << i + 2;
         BOOST_CHECK_NO_THROW(key = kvInterface->create(pfx, "", true));
         BOOST_CHECK_EQUAL(key, str.str());
     }
 
     // this should reset unique to higher value
-    BOOST_CHECK_NO_THROW(key = kvInterface->create(pfx+"0000001234", ""));
+    BOOST_CHECK_NO_THROW(key = kvInterface->create(pfx + "0000001234", ""));
     BOOST_CHECK_NO_THROW(key = kvInterface->create(pfx, "", true));
-    BOOST_CHECK_EQUAL(key, pfx+"0000001235");
+    BOOST_CHECK_EQUAL(key, pfx + "0000001235");
 }
-
 
 BOOST_AUTO_TEST_CASE(GetRootChildren) {
     std::vector<std::string> children;
@@ -230,7 +229,6 @@ BOOST_AUTO_TEST_CASE(SetAndGetChildren) {
     BOOST_CHECK_EQUAL(children[2], "child2");
 }
 
-
 BOOST_AUTO_TEST_CASE(Get) {
     CHECK_CONNECTION();
 
@@ -238,24 +236,23 @@ BOOST_AUTO_TEST_CASE(Get) {
     BOOST_CHECK_EQUAL(kvInterface->get("/Get", "my default value"), "my default value");
 }
 
-
 BOOST_AUTO_TEST_CASE(GetChildrenForParentThatDoesNotExist) {
     CHECK_CONNECTION();
 
     std::vector<std::string> children;
-    BOOST_CHECK_THROW(children = kvInterface->getChildren("/GetChildrenForParentThatDoesNotExist"), lsst::qserv::css::NoSuchKey);
+    BOOST_CHECK_THROW(children = kvInterface->getChildren("/GetChildrenForParentThatDoesNotExist"),
+                      lsst::qserv::css::NoSuchKey);
     BOOST_CHECK_EQUAL(children.size(), 0U);
 }
-
 
 BOOST_AUTO_TEST_CASE(CreateDuplicateKV) {
     CHECK_CONNECTION();
 
     BOOST_REQUIRE_NO_THROW(kvInterface->create("/CreateDuplicateKV", "a value"));
     // verify that adding a key a second time does not throw
-    BOOST_CHECK_THROW(kvInterface->create("/CreateDuplicateKV", "another value"), lsst::qserv::css::KeyExistsError);
+    BOOST_CHECK_THROW(kvInterface->create("/CreateDuplicateKV", "another value"),
+                      lsst::qserv::css::KeyExistsError);
 }
-
 
 BOOST_AUTO_TEST_CASE(Exists) {
     CHECK_CONNECTION();
@@ -268,7 +265,6 @@ BOOST_AUTO_TEST_CASE(Exists) {
     BOOST_REQUIRE_EQUAL(kvInterface->exists("/Exists"), true);
 }
 
-
 BOOST_AUTO_TEST_CASE(Delete) {
     CHECK_CONNECTION();
 
@@ -276,7 +272,6 @@ BOOST_AUTO_TEST_CASE(Delete) {
     BOOST_REQUIRE_NO_THROW(kvInterface->deleteKey("/Delete"));
     BOOST_REQUIRE_THROW(kvInterface->deleteKey("/Delete"), lsst::qserv::css::NoSuchKey);
 }
-
 
 BOOST_AUTO_TEST_CASE(RecursiveAddAndDelete) {
     CHECK_CONNECTION();
@@ -302,7 +297,6 @@ BOOST_AUTO_TEST_CASE(RecursiveAddAndDelete) {
     BOOST_CHECK_EQUAL(kvInterface->exists("/RecursiveDelete/child/b"), false);
 }
 
-
 BOOST_AUTO_TEST_CASE(Set) {
     CHECK_CONNECTION();
 
@@ -316,7 +310,6 @@ BOOST_AUTO_TEST_CASE(Set) {
     BOOST_CHECK_EQUAL(kvInterface->get("/Set"), "toANewValue");
 }
 
-
 BOOST_AUTO_TEST_CASE(SetRecursive) {
     CHECK_CONNECTION();
 
@@ -327,7 +320,6 @@ BOOST_AUTO_TEST_CASE(SetRecursive) {
     BOOST_CHECK_EQUAL(kvInterface->get("/SetRecursive/a/long/key"), "a value");
 }
 
-
 BOOST_AUTO_TEST_CASE(KeyTooLong) {
     CHECK_CONNECTION();
 
@@ -335,7 +327,6 @@ BOOST_AUTO_TEST_CASE(KeyTooLong) {
     BOOST_CHECK_THROW(kvInterface->set(tooLongKey, "to value"), lsst::qserv::css::CssError);
     BOOST_CHECK_EQUAL(kvInterface->exists(tooLongKey), false);
 }
-
 
 BOOST_AUTO_TEST_CASE(InvalidSql) {
     CHECK_CONNECTION();

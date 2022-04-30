@@ -41,14 +41,11 @@
 #define BOOST_TEST_MODULE AreaRestrictor
 #include "boost/test/unit_test.hpp"
 
-
 using namespace lsst::qserv;
 using namespace lsst::qserv::query;
 using namespace std;
 
-
 BOOST_AUTO_TEST_SUITE(Suite)
-
 
 BOOST_AUTO_TEST_CASE(BoxRender) {
     auto restrictor = AreaRestrictorBox("1", "2", "3", "4");
@@ -76,7 +73,6 @@ BOOST_AUTO_TEST_CASE(PolyRender) {
     BOOST_CHECK_EQUAL(restrictor4.sqlFragment(), "qserv_areaspec_poly(1,2,3,4,5,6,7,8)");
 }
 
-
 BOOST_AUTO_TEST_CASE(BoxIncorrectParams) {
     BOOST_CHECK_THROW(AreaRestrictorBox({"1", "2", "3"}), logic_error);
     BOOST_CHECK_THROW(AreaRestrictorBox({"1", "2", "3", "4", "5"}), logic_error);
@@ -84,7 +80,6 @@ BOOST_AUTO_TEST_CASE(BoxIncorrectParams) {
     vector<string> args({"1", "2", "3", "a"});
     BOOST_CHECK_THROW(auto obj = AreaRestrictorBox(args), invalid_argument);
 }
-
 
 BOOST_AUTO_TEST_CASE(CircleIncorrectParams) {
     BOOST_CHECK_THROW(AreaRestrictorCircle({"1", "2"}), logic_error);
@@ -94,7 +89,6 @@ BOOST_AUTO_TEST_CASE(CircleIncorrectParams) {
     BOOST_CHECK_THROW(auto obj = AreaRestrictorCircle(args), invalid_argument);
 }
 
-
 BOOST_AUTO_TEST_CASE(EllipseIncorrectParams) {
     BOOST_CHECK_THROW(AreaRestrictorEllipse({"1", "2", "3", "4"}), logic_error);
     BOOST_CHECK_THROW(AreaRestrictorEllipse({"1", "2", "3", "4", "5", "6"}), logic_error);
@@ -102,7 +96,6 @@ BOOST_AUTO_TEST_CASE(EllipseIncorrectParams) {
     vector<string> args({"a", "2", "3", "4", "5"});
     BOOST_CHECK_THROW(auto obj = AreaRestrictorEllipse(args), invalid_argument);
 }
-
 
 BOOST_AUTO_TEST_CASE(PolyIncorrectParams) {
     BOOST_CHECK_THROW(AreaRestrictorPoly({"1"}), logic_error);
@@ -113,11 +106,10 @@ BOOST_AUTO_TEST_CASE(PolyIncorrectParams) {
     BOOST_CHECK_THROW(auto obj = AreaRestrictorPoly(args), invalid_argument);
 }
 
-
 BOOST_AUTO_TEST_CASE(BoxToSciSql) {
     auto restrictor = AreaRestrictorBox("1", "2", "3", "4");
-    auto boolFactor = restrictor.asSciSqlFactor("table",
-            make_pair<string, string>("chunkColumn1", "chunkColumn2"));
+    auto boolFactor =
+            restrictor.asSciSqlFactor("table", make_pair<string, string>("chunkColumn1", "chunkColumn2"));
     BOOST_REQUIRE(boolFactor != nullptr);
     QueryTemplate qt;
     boolFactor->renderTo(qt);
@@ -125,11 +117,10 @@ BOOST_AUTO_TEST_CASE(BoxToSciSql) {
                       "scisql_s2PtInBox(`table`.`chunkColumn1`,`table`.`chunkColumn2`,1,2,3,4)=1");
 }
 
-
 BOOST_AUTO_TEST_CASE(CircleToSciSql) {
     auto restrictor = AreaRestrictorCircle("1", "2", "3");
-    auto boolFactor = restrictor.asSciSqlFactor("table",
-            make_pair<string, string>("chunkColumn1", "chunkColumn2"));
+    auto boolFactor =
+            restrictor.asSciSqlFactor("table", make_pair<string, string>("chunkColumn1", "chunkColumn2"));
     BOOST_REQUIRE(boolFactor != nullptr);
     QueryTemplate qt;
     boolFactor->renderTo(qt);
@@ -137,11 +128,10 @@ BOOST_AUTO_TEST_CASE(CircleToSciSql) {
                       "scisql_s2PtInCircle(`table`.`chunkColumn1`,`table`.`chunkColumn2`,1,2,3)=1");
 }
 
-
 BOOST_AUTO_TEST_CASE(EllipseToSciSql) {
     auto restrictor = AreaRestrictorEllipse("1", "2", "3", "4", "5");
-    auto boolFactor = restrictor.asSciSqlFactor("table",
-            make_pair<string, string>("chunkColumn1", "chunkColumn2"));
+    auto boolFactor =
+            restrictor.asSciSqlFactor("table", make_pair<string, string>("chunkColumn1", "chunkColumn2"));
     BOOST_REQUIRE(boolFactor != nullptr);
     QueryTemplate qt;
     boolFactor->renderTo(qt);
@@ -149,18 +139,16 @@ BOOST_AUTO_TEST_CASE(EllipseToSciSql) {
                       "scisql_s2PtInEllipse(`table`.`chunkColumn1`,`table`.`chunkColumn2`,1,2,3,4,5)=1");
 }
 
-
 BOOST_AUTO_TEST_CASE(PolyToSciSql) {
     auto restrictor = AreaRestrictorPoly({"1", "2", "3", "4", "5", "6", "7", "8"});
-    auto boolFactor = restrictor.asSciSqlFactor("table",
-            make_pair<string, string>("chunkColumn1", "chunkColumn2"));
+    auto boolFactor =
+            restrictor.asSciSqlFactor("table", make_pair<string, string>("chunkColumn1", "chunkColumn2"));
     BOOST_REQUIRE(boolFactor != nullptr);
     QueryTemplate qt;
     boolFactor->renderTo(qt);
     BOOST_CHECK_EQUAL(qt.sqlFragment(),
-            "scisql_s2PtInCPoly(`table`.`chunkColumn1`,`table`.`chunkColumn2`,1,2,3,4,5,6,7,8)=1");
+                      "scisql_s2PtInCPoly(`table`.`chunkColumn1`,`table`.`chunkColumn2`,1,2,3,4,5,6,7,8)=1");
 }
-
 
 BOOST_AUTO_TEST_CASE(BoxToRegion) {
     auto restrictor = AreaRestrictorBox("1", "2", "3", "4");
@@ -173,7 +161,6 @@ BOOST_AUTO_TEST_CASE(BoxToRegion) {
     BOOST_CHECK_EQUAL(*boxRegion, *compRegion);
 }
 
-
 BOOST_AUTO_TEST_CASE(CircleToRegion) {
     auto restrictor = AreaRestrictorCircle("1", "2", "3");
     auto region = restrictor.getRegion();
@@ -184,7 +171,6 @@ BOOST_AUTO_TEST_CASE(CircleToRegion) {
     BOOST_REQUIRE(compRegion != nullptr);
     BOOST_CHECK_EQUAL(*circleRegion, *compRegion);
 }
-
 
 BOOST_AUTO_TEST_CASE(EllipseToRegion) {
     auto restrictor = AreaRestrictorEllipse("1", "2", "3", "4", "5");
@@ -197,7 +183,6 @@ BOOST_AUTO_TEST_CASE(EllipseToRegion) {
     BOOST_CHECK_EQUAL(*ellipseRegion, *compRegion);
 }
 
-
 BOOST_AUTO_TEST_CASE(PolyToRegion) {
     auto restrictor = AreaRestrictorPoly({"1", "2", "3", "4", "5", "6", "7", "8"});
     auto region = restrictor.getRegion();
@@ -208,7 +193,6 @@ BOOST_AUTO_TEST_CASE(PolyToRegion) {
     BOOST_REQUIRE(compRegion != nullptr);
     BOOST_CHECK_EQUAL(*polyRegion, *compRegion);
 }
-
 
 BOOST_AUTO_TEST_CASE(IsEqual) {
     shared_ptr<AreaRestrictor> restrictor1 = make_shared<AreaRestrictorBox>("1", "2", "3", "4");
@@ -249,6 +233,5 @@ BOOST_AUTO_TEST_CASE(IsEqual) {
     restrictor2 = make_shared<AreaRestrictorPoly>(polyArgs);
     BOOST_CHECK_EQUAL(*restrictor1 == *restrictor2, false);
 }
-
 
 BOOST_AUTO_TEST_SUITE_END()

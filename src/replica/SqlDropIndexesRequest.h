@@ -34,15 +34,13 @@
 #include "replica/SqlRequest.h"
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class SqlDropIndexesRequest represents Controller-side requests for initiating
  * queries for dropping table indexes at remote worker nodes.
  */
-class SqlDropIndexesRequest: public SqlRequest {
+class SqlDropIndexesRequest : public SqlRequest {
 public:
     typedef std::shared_ptr<SqlDropIndexesRequest> Ptr;
 
@@ -77,35 +75,25 @@ public:
      *
      * @return A pointer to the created object.
      */
-    static Ptr create(ServiceProvider::Ptr const& serviceProvider,
-                      boost::asio::io_service& io_service,
-                      std::string const& worker,
-                      std::string const& database,
-                      std::vector<std::string> const& tables,
-                      std::string const& indexName,
-                      CallbackType const& onFinish,
-                      int priority,
-                      bool keepTracking,
+    static Ptr create(ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service,
+                      std::string const& worker, std::string const& database,
+                      std::vector<std::string> const& tables, std::string const& indexName,
+                      CallbackType const& onFinish, int priority, bool keepTracking,
                       std::shared_ptr<Messenger> const& messenger);
 
 protected:
     void notify(util::Lock const& lock) final;
 
 private:
-    SqlDropIndexesRequest(ServiceProvider::Ptr const& serviceProvider,
-                          boost::asio::io_service& io_service,
-                          std::string const& worker,
-                          std::string const& database,
-                          std::vector<std::string> const& tables,
-                          std::string const& indexName,
-                          CallbackType const& onFinish,
-                          int priority,
-                          bool keepTracking,
+    SqlDropIndexesRequest(ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service,
+                          std::string const& worker, std::string const& database,
+                          std::vector<std::string> const& tables, std::string const& indexName,
+                          CallbackType const& onFinish, int priority, bool keepTracking,
                           std::shared_ptr<Messenger> const& messenger);
 
-    CallbackType _onFinish; ///< @note is reset when the request finishes
+    CallbackType _onFinish;  ///< @note is reset when the request finishes
 };
 
-}}} // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_SQLDROPINDEXESREQUEST_H
+#endif  // LSST_QSERV_REPLICA_SQLDROPINDEXESREQUEST_H

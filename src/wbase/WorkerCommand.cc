@@ -36,23 +36,16 @@ namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.wbase.WorkerCommand");
 
-} // annonymous namespace
+}  // namespace
 
-namespace lsst {
-namespace qserv {
-namespace wbase {
+namespace lsst::qserv::wbase {
 
-WorkerCommand::WorkerCommand(SendChannel::Ptr const& sendChannel)
-    :   _sendChannel(sendChannel) {
-    
+WorkerCommand::WorkerCommand(SendChannel::Ptr const& sendChannel) : _sendChannel(sendChannel) {
     // Register a function which will run a subclass-specific
     // implementation of method run()
-    setFunc([this] (util::CmdData* data) {
-        this->run();
-    });
+    setFunc([this](util::CmdData* data) { this->run(); });
 }
 
-WorkerCommand::~WorkerCommand() {
-}
+WorkerCommand::~WorkerCommand() {}
 
-}}} // namespace lsst::qserv::wbase
+}  // namespace lsst::qserv::wbase

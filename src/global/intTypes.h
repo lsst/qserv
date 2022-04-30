@@ -22,16 +22,15 @@
  */
 #ifndef LSST_QSERV_INTTYPES_H
 #define LSST_QSERV_INTTYPES_H
- /**
-  * @brief  Global int types
-  *
-  */
+/**
+ * @brief  Global int types
+ *
+ */
 #include <stdint.h>
 #include <set>
 #include <vector>
 
-namespace lsst {
-namespace qserv {
+namespace lsst::qserv {
 typedef std::set<int> IntSet;
 typedef std::vector<int> IntVector;
 typedef std::vector<int32_t> Int32Vector;
@@ -45,7 +44,7 @@ public:
     /// Returns a standardized user query id string.
     /// @parameter qid - query id number.
     /// @parameter invalid - true, qid is not a valid user query id.
-    static std::string makeIdStr(QueryId qid, bool invalid=false) {
+    static std::string makeIdStr(QueryId qid, bool invalid = false) {
         if (invalid) return "QI=?:";
         return "QI=" + std::to_string(qid) + ":";
     }
@@ -54,12 +53,11 @@ public:
     /// @parameter qid - query id number.
     /// @parameter jobId - the job id number.
     /// @parameter invalid - true, qid is not a valid user query id.
-    static std::string makeIdStr(QueryId qid, int jobId, bool invalid=false) {
+    static std::string makeIdStr(QueryId qid, int jobId, bool invalid = false) {
         if (invalid) return makeIdStr(qid, true) + "?;";
         return makeIdStr(qid) + std::to_string(jobId) + ";";
     }
 };
 
-
-}}
-#endif // LSST_QSERV_INTTYPES_H
+}  // namespace lsst::qserv
+#endif  // LSST_QSERV_INTTYPES_H

@@ -32,14 +32,12 @@
 // LSST headers
 #include "lsst/log/Log.h"
 
-namespace lsst {
-namespace qserv {
+namespace lsst::qserv {
 
-std::string
-makeByteStreamAnnotated(char const* tag, char const*buf, int bufLen) {
+std::string makeByteStreamAnnotated(char const* tag, char const* buf, int bufLen) {
     std::ostringstream os;
     os << tag << "(" << bufLen << ")[";
-    for(int i=0; i < bufLen; ++i) {
+    for (int i = 0; i < bufLen; ++i) {
         os << (int)buf[i] << ",";
     }
     os << "]";
@@ -47,13 +45,13 @@ makeByteStreamAnnotated(char const* tag, char const*buf, int bufLen) {
 }
 
 std::string initHostName() {
-        char buf[_SC_HOST_NAME_MAX+1];
-        buf[_SC_HOST_NAME_MAX] = '\0';
-        if (gethostname(buf, sizeof buf - 1) != 0) {
-            LOGS_ERROR("gethostname failed errno=" << errno);
-            return std::string("");
-        }
-        return std::string(buf);
+    char buf[_SC_HOST_NAME_MAX + 1];
+    buf[_SC_HOST_NAME_MAX] = '\0';
+    if (gethostname(buf, sizeof buf - 1) != 0) {
+        LOGS_ERROR("gethostname failed errno=" << errno);
+        return std::string("");
+    }
+    return std::string(buf);
 }
 
 std::string const& getHostname() {
@@ -61,4 +59,4 @@ std::string const& getHostname() {
     return cachedHostname;
 }
 
-}} // namespace lsst::qserv
+}  // namespace lsst::qserv

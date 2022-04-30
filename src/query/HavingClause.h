@@ -21,15 +21,13 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 /**
-  * @file
-  *
-  * @author Daniel L. Wang, SLAC
-  */
-
+ * @file
+ *
+ * @author Daniel L. Wang, SLAC
+ */
 
 #ifndef LSST_QSERV_QUERY_HAVINGCLAUSE_H
 #define LSST_QSERV_QUERY_HAVINGCLAUSE_H
-
 
 // System headers
 #include <memory>
@@ -37,20 +35,13 @@
 // Local headers
 #include "query/BoolTerm.h"
 
-
 // Forward declarations
-namespace lsst {
-namespace qserv {
-namespace query {
-    class BoolTerm;
-    class QueryTemplate;
-}}}
+namespace lsst::qserv::query {
+class BoolTerm;
+class QueryTemplate;
+}  // namespace lsst::qserv::query
 
-
-namespace lsst {
-namespace qserv {
-namespace query {
-
+namespace lsst::qserv::query {
 
 /// HavingClause: a representation of SQL HAVING. Support for this construct is
 /// incomplete.
@@ -59,8 +50,7 @@ public:
     HavingClause() {}
     ~HavingClause() {}
 
-    HavingClause(std::shared_ptr<BoolTerm> const & tree)
-        : _tree(tree) {}
+    HavingClause(std::shared_ptr<BoolTerm> const& tree) : _tree(tree) {}
 
     std::string getGenerated() const;
     void renderTo(QueryTemplate& qt) const;
@@ -77,8 +67,6 @@ private:
     std::shared_ptr<BoolTerm> _tree;
 };
 
+}  // namespace lsst::qserv::query
 
-}}} // namespace lsst::qserv::query
-
-#endif // LSST_QSERV_QUERY_HAVINGCLAUSE_H
-
+#endif  // LSST_QSERV_QUERY_HAVINGCLAUSE_H

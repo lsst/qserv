@@ -29,28 +29,28 @@
 // Qserv headers
 #include "qmeta/types.h"
 
-namespace lsst {
-namespace qserv {
-namespace qmeta {
+namespace lsst::qserv::qmeta {
 
 /// Contains query completion statistics for a running query.
 /// The object is only meant for returning function results in a reasonable form.
 struct QStats {
     QStats() {}
-    QStats(QueryId const& queryId_, int totalChunks_, int completedChunks_,
-           std::time_t begin_, std::time_t lastUpdate_)
-        : queryId(queryId_), totalChunks(totalChunks_), completedChunks(completedChunks_),
-          begin(begin_), lastUpdate(lastUpdate_) {}
+    QStats(QueryId const& queryId_, int totalChunks_, int completedChunks_, std::time_t begin_,
+           std::time_t lastUpdate_)
+            : queryId(queryId_),
+              totalChunks(totalChunks_),
+              completedChunks(completedChunks_),
+              begin(begin_),
+              lastUpdate(lastUpdate_) {}
     // Default operators and destructor should be fine.
 
-
-    QueryId queryId{0}; ///< Query Id
-    int totalChunks{0}; ///< Total number of chunks to be searched by the query.
-    int completedChunks{0}; ///< Number of chunks that have been searched.
-    std::time_t begin{0}; ///< Time the query was started.
-    std::time_t lastUpdate{0}; ///< Last time this row was updated.
+    QueryId queryId{0};         ///< Query Id
+    int totalChunks{0};         ///< Total number of chunks to be searched by the query.
+    int completedChunks{0};     ///< Number of chunks that have been searched.
+    std::time_t begin{0};       ///< Time the query was started.
+    std::time_t lastUpdate{0};  ///< Last time this row was updated.
 };
 
-}}} // namespace lsst::qserv::qmeta
+}  // namespace lsst::qserv::qmeta
 
-#endif // LSST_QSERV_QMETA_QSTATS_H
+#endif  // LSST_QSERV_QMETA_QSTATS_H

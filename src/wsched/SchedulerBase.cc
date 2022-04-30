@@ -31,33 +31,23 @@
 // Qserv headers
 #include "wsched/BlendScheduler.h"
 
-
 namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.wsched.ScanScheduler");
 }
 
-namespace lsst {
-namespace qserv {
-namespace wsched {
+namespace lsst::qserv::wsched {
 
 /// Set priority to use when starting next chunk.
-void SchedulerBase::setPriority(int priority) {
-    _priority = priority;
-}
-
+void SchedulerBase::setPriority(int priority) { _priority = priority; }
 
 /// Return to default priority for next chunk.
-void SchedulerBase::setPriorityDefault() {
-    _priority = _priorityDefault;
-}
-
+void SchedulerBase::setPriorityDefault() { _priority = _priorityDefault; }
 
 int SchedulerBase::_incrCountForUserQuery(QueryId queryId, int sz) {
     std::lock_guard<std::mutex> lock(_countsMutex);
     _totalTaskCount += sz;
     return _userQueryCounts[queryId] += sz;
 }
-
 
 int SchedulerBase::_decrCountForUserQuery(QueryId queryId) {
     std::lock_guard<std::mutex> lock(_countsMutex);
@@ -75,18 +65,15 @@ int SchedulerBase::_decrCountForUserQuery(QueryId queryId) {
     return count;
 }
 
-
 int SchedulerBase::getUserQueriesInQ() {
     std::lock_guard<std::mutex> lock(_countsMutex);
     return _userQueryCounts.size();
 }
 
-
 void SchedulerBase::_incrChunkTaskCount(int chunkId) {
     std::lock_guard<std::mutex> lock(_countsMutex);
     ++_chunkTasks[chunkId];
 }
-
 
 void SchedulerBase::_decrChunkTaskCount(int chunkId) {
     // Decrement the count for this user query and remove the entry if count is 0.
@@ -100,18 +87,16 @@ void SchedulerBase::_decrChunkTaskCount(int chunkId) {
     }
 }
 
-
 int SchedulerBase::getActiveChunkCount() {
     std::lock_guard<std::mutex> lock(_countsMutex);
     return _chunkTasks.size();
 }
 
-
 std::string SchedulerBase::chunkStatusStr() {
     std::ostringstream os;
     std::lock_guard<std::mutex> lock(_countsMutex);
-    os << getName() << " q=" << getTotalTaskCount() <<" ActChunks=" << _chunkTasks.size() << " ";
-    for (auto const& entry:_chunkTasks) {
+    os << getName() << " q=" << getTotalTaskCount() << " ActChunks=" << _chunkTasks.size() << " ";
+    for (auto const& entry : _chunkTasks) {
         int chunkId = entry.first;
         int count = entry.second;
         os << "(" << chunkId << ":" << count << ")";
@@ -123,7 +108,7 @@ nlohmann::json SchedulerBase::statusToJson() {
     nlohmann::json status;
     status["name"] = getName();
     status["priority"] = getPriority();
-    
+
     status["num_tasks_in_queue"] = getSize();
     status["num_tasks_in_flight"] = getInFlight();
 
@@ -131,14 +116,14 @@ nlohmann::json SchedulerBase::statusToJson() {
     nlohmann::json chunkToNumTasks = nlohmann::json::array();
     {
         std::lock_guard<std::mutex> lock(_countsMutex);
-        for (auto&& entry: _userQueryCounts) {
+        for (auto&& entry : _userQueryCounts) {
             queryIdToCount.push_back({entry.first, entry.second});
         }
-        for (auto&& entry: _chunkTasks) {
+        for (auto&& entry : _chunkTasks) {
             chunkToNumTasks.push_back({entry.first, entry.second});
         }
     }
-    status["query_id_to_count"]  = queryIdToCount;
+    status["query_id_to_count"] = queryIdToCount;
     status["chunk_to_num_tasks"] = chunkToNumTasks;
     return status;
 }
@@ -148,11 +133,10 @@ void SchedulerBase::setMaxActiveChunks(int maxActive) {
     _maxActiveChunks = maxActive;
 }
 
-
 bool SchedulerBase::chunkAlreadyActive(int chunkId) {
     std::lock_guard<std::mutex> lock(_countsMutex);
     auto iter = _chunkTasks.find(chunkId);
-    return iter != _chunkTasks.end(); // return true if chunkId was found.
+    return iter != _chunkTasks.end();  // return true if chunkId was found.
 }
 
-}}} // namespace lsst::qserv::wsched
+}  // namespace lsst::qserv::wsched

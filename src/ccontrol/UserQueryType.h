@@ -31,9 +31,7 @@
 // Qserv headers
 #include "global/intTypes.h"
 
-namespace lsst {
-namespace qserv {
-namespace ccontrol {
+namespace lsst::qserv::ccontrol {
 
 /// @addtogroup ccontrol
 
@@ -43,9 +41,8 @@ namespace ccontrol {
  *  @brief Helper class for parsing queries and determining their types.
  */
 
-class UserQueryType  {
+class UserQueryType {
 public:
-
     /// Returns true if query is DROP DATABASE
     static bool isDropDb(std::string const& query, std::string& dbName);
 
@@ -101,9 +98,8 @@ public:
      *  Returns true if query is CALL ...
      */
     static bool isCall(std::string const& query);
-
 };
 
-}}} // namespace lsst::qserv::ccontrol
+}  // namespace lsst::qserv::ccontrol
 
-#endif // LSST_QSERV_CCONTROL_USERQUERYTYPE_H
+#endif  // LSST_QSERV_CCONTROL_USERQUERYTYPE_H

@@ -36,16 +36,13 @@
 #include "replica/ReplicationRequest.h"
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * The structure FixUpJobResult represents a combined result received
  * from worker services upon a completion of the job.
  */
 struct FixUpJobResult {
-
     /// Results reported by workers upon the successful completion
     /// of the corresponding requests
     std::list<ReplicaInfo> replicas;
@@ -58,14 +55,14 @@ struct FixUpJobResult {
 };
 
 /**
-  * Class FixUpJob represents a tool which will fix chunk collocation within
-  * a specified database family. Note that the current implementation of
-  * the class won't take into consideration the minimum replication level
-  * (if any) configured for the family. Also note that as a results of
-  * the ('fixup') operation chunks may get a higher number of replicas
-  * then others (not affected by the operation).
-  */
-class FixUpJob : public Job  {
+ * Class FixUpJob represents a tool which will fix chunk collocation within
+ * a specified database family. Note that the current implementation of
+ * the class won't take into consideration the minimum replication level
+ * (if any) configured for the family. Also note that as a results of
+ * the ('fixup') operation chunks may get a higher number of replicas
+ * then others (not affected by the operation).
+ */
+class FixUpJob : public Job {
 public:
     /// The pointer type for instances of the class
     typedef std::shared_ptr<FixUpJob> Ptr;
@@ -88,11 +85,8 @@ public:
      * @param priority Priority level of the job
      * @return pointer to the created object
      */
-    static Ptr create(std::string const& databaseFamily,
-                      Controller::Ptr const& controller,
-                      std::string const& parentJobId,
-                      CallbackType const& onFinish,
-                      int priority);
+    static Ptr create(std::string const& databaseFamily, Controller::Ptr const& controller,
+                      std::string const& parentJobId, CallbackType const& onFinish, int priority);
 
     FixUpJob() = delete;
     FixUpJob(FixUpJob const&) = delete;
@@ -118,8 +112,8 @@ public:
      */
     FixUpJobResult const& getReplicaData() const;
 
-    std::list<std::pair<std::string,std::string>> extendedPersistentState() const final;
-    std::list<std::pair<std::string,std::string>> persistentLogData() const final;
+    std::list<std::pair<std::string, std::string>> extendedPersistentState() const final;
+    std::list<std::pair<std::string, std::string>> persistentLogData() const final;
 
 protected:
     void startImpl(util::Lock const& lock) final;
@@ -127,11 +121,8 @@ protected:
     void notify(util::Lock const& lock) final;
 
 private:
-    FixUpJob(std::string const& databaseFamily,
-             Controller::Ptr const& controller,
-             std::string const& parentJobId,
-             CallbackType const& onFinish,
-             int priority);
+    FixUpJob(std::string const& databaseFamily, Controller::Ptr const& controller,
+             std::string const& parentJobId, CallbackType const& onFinish, int priority);
 
     /**
      * The callback function to be invoked on a completion of the precursor job
@@ -148,7 +139,7 @@ private:
     // Input parameters
 
     std::string const _databaseFamily;
-    CallbackType      _onFinish;        /// @note is reset when the job finishes
+    CallbackType _onFinish;  /// @note is reset when the job finishes
 
     /// The chained job to be completed first in order to figure out
     /// replica disposition.
@@ -158,15 +149,13 @@ private:
      * Analyze the work queue for the specified worker and launch up to
      * the specified number of the replication requests for the worker. The method
      * will eliminate input tasks from the work queue as it goes.
-     * 
+     *
      * @param lock The lock to be be held for the thread safety of the operation
      * @param destinationWorker The name of a replica receiving worker
      * @param maxRequests The maximum number of requests to be launched
      * @return The number of requests launched or 0 if no tasks existed for the worker.
      */
-    size_t _launchNext(util::Lock const& lock,
-                       std::string const& destinationWorker,
-                       size_t maxRequests);
+    size_t _launchNext(util::Lock const& lock, std::string const& destinationWorker, size_t maxRequests);
 
     /// Structure ReplicationTask encapsulates a task to be schedule for executing
     /// as a replication request.
@@ -176,7 +165,7 @@ private:
         std::string database;
         unsigned int chunk;
     };
-    
+
     /// A collection of tasks to be executed for each destination worker.
     /// The collection is populated once, based on results reported by
     /// the "precursor" job. The tasks are pulled from the collection and turned
@@ -186,13 +175,13 @@ private:
     /// A collection of launched requests implementing the operation
     std::list<ReplicationRequest::Ptr> _requests;
 
-    size_t _numFinished = 0;    ///< the total number of finished requests
-    size_t _numSuccess  = 0;    ///< the number of successfully completed requests
+    size_t _numFinished = 0;  ///< the total number of finished requests
+    size_t _numSuccess = 0;   ///< the number of successfully completed requests
 
     /// The result of the operation (gets updated as requests are finishing)
     FixUpJobResult _replicaData;
 };
 
-}}} // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_FIXUPJOB_H
+#endif  // LSST_QSERV_REPLICA_FIXUPJOB_H

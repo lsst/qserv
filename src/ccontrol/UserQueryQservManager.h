@@ -21,10 +21,8 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-
 #ifndef LSST_QSERV_CCONTROL_USERQUERYQSERVMANAGER_H
 #define LSST_QSERV_CCONTROL_USERQUERYQSERVMANAGER_H
-
 
 // System headers
 #include <memory>
@@ -40,24 +38,17 @@
 #include "ccontrol/QueryState.h"
 #include "global/intTypes.h"
 
+namespace lsst::qserv::qdisp {
+class MessageStore;
+}  // namespace lsst::qserv::qdisp
 
-namespace lsst {
-namespace qserv {
-namespace qdisp {
-    class MessageStore;
-}}}
-
-
-namespace lsst {
-namespace qserv {
-namespace ccontrol {
-
+namespace lsst::qserv::ccontrol {
 
 // UserQueryQservManager is for handling queries with the form `CALL QSERV_MANAGER("...")`
 class UserQueryQservManager : public UserQuery {
 public:
-
-    UserQueryQservManager(std::shared_ptr<UserQueryResources> const& queryResources, std::string const& value);
+    UserQueryQservManager(std::shared_ptr<UserQueryResources> const& queryResources,
+                          std::string const& value);
 
     ~UserQueryQservManager() override = default;
 
@@ -99,6 +90,6 @@ private:
     std::string _resultDb;
 };
 
-}}} // namespace lsst::qserv:ccontrol
+}  // namespace lsst::qserv::ccontrol
 
-#endif // LSST_QSERV_CCONTROL_USERQUERYQSERVMANAGER_H
+#endif  // LSST_QSERV_CCONTROL_USERQUERYQSERVMANAGER_H

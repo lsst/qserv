@@ -26,9 +26,7 @@
 #include <string>
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class ChunkedTable represents a utility for parsing and building
@@ -36,7 +34,6 @@ namespace replica {
  */
 class ChunkedTable {
 public:
-
     // Default construction, copy and assignment semantics is needed
     // for storing objects of the class in the value-based containers.
 
@@ -45,9 +42,7 @@ public:
     ChunkedTable& operator=(ChunkedTable const&) = default;
 
     /// Construct the object from the components
-    ChunkedTable(std::string const& baseName,
-                 unsigned int chunk,
-                 bool overlap=false);
+    ChunkedTable(std::string const& baseName, unsigned int chunk, bool overlap = false);
 
     /**
      * Construct the object from the full name of the table
@@ -98,6 +93,6 @@ private:
     std::string _name;
 };
 
-}}} // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_CHUNKEDTABLE_H
+#endif  // LSST_QSERV_REPLICA_CHUNKEDTABLE_H

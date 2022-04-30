@@ -34,26 +34,21 @@
 #include "replica/ServiceProvider.h"
 
 // Forward declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
-    class IngestRequest;
-    class TransactionContribInfo;
-}}} // namespace lsst::qserv::replica
+namespace lsst::qserv::replica {
+class IngestRequest;
+class TransactionContribInfo;
+}  // namespace lsst::qserv::replica
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Exceptions of this class are thrown when no requests matching the desired
  * criteria were found in the request manager collections.
  */
-class IngestRequestNotFound: public std::runtime_error {
+class IngestRequestNotFound : public std::runtime_error {
     using std::runtime_error::runtime_error;
 };
-
 
 /**
  * Class IngestRequestMgr The manager maintains a collection of the ASYNC requests
@@ -78,7 +73,7 @@ class IngestRequestNotFound: public std::runtime_error {
  *   requests that have been processed (cancelled or failed).
  *
  * Requests are processed in the same (FIFO) order they're registered in the manager.
- * 
+ *
  * Requests stored in the output collection stay in there either until they're claimed
  * by the REST services, or until they expire (if requests have an explicitly set
  * expiration timeout), or if they're cleared by the expiration timer which is set
@@ -86,7 +81,7 @@ class IngestRequestNotFound: public std::runtime_error {
  *
  * @note All public methods of the class are thread-safe (synchronized).
  */
-class IngestRequestMgr: public std::enable_shared_from_this<IngestRequestMgr> {
+class IngestRequestMgr : public std::enable_shared_from_this<IngestRequestMgr> {
 public:
     typedef std::shared_ptr<IngestRequestMgr> Ptr;
 
@@ -116,7 +111,7 @@ public:
 
     /**
      * Submit a new ingest request.
-     * 
+     *
      * - The request will be registered in the input queue.
      * - A state of the request will be validated before the registration.
      *   The method may also throw exceptions if the request won't be in a proper state.
@@ -127,7 +122,7 @@ public:
 
     /**
      * Cancel a request by its unique identifier.
-     * 
+     *
      * - The request has to exist and be found in any of three collections.
      * - Requests found in the output queue can't be cancelled.
      * - Requests in the final stage of the processing while the data are already being
@@ -136,10 +131,10 @@ public:
      *   will be set to TransactionContribInfo::Status::CANCELLED. Requests that
      *   had been found completed by the time when the cancellation request was
      *   made the current status of the request will be retained. Cancellation operations
-     *   for requests in the latter states are also considered as successfull. 
+     *   for requests in the latter states are also considered as successfull.
      *   It's up to a caller of the method to inspect the returned object descriptor to
      *   see the actual status of the request.
-     * - The method may also throw exception should any problem happened while 
+     * - The method may also throw exception should any problem happened while
      *   the method using other services (the Replication system's database, etc.).
      *
      * @param id The unique identifier of a request to be cancelled.
@@ -177,8 +172,7 @@ public:
 
 private:
     /// @see method IngestRequestMgr::creeate()
-    IngestRequestMgr(ServiceProvider::Ptr const& serviceProvider,
-                     std::string const& workerName);
+    IngestRequestMgr(ServiceProvider::Ptr const& serviceProvider, std::string const& workerName);
 
     // Input parameters
     ServiceProvider::Ptr const _serviceProvider;
@@ -186,7 +180,7 @@ private:
 
     /// The mutex for enforcing thread safety of the class's public API and
     /// internal operations.
-     mutable std::mutex _mtx;
+    mutable std::mutex _mtx;
 
     /// The condition variable for notifying requests processing threads waiting for
     /// the next request that is ready to be processed.
@@ -197,6 +191,6 @@ private:
     std::map<unsigned int, std::shared_ptr<IngestRequest>> _output;
 };
 
-}}} // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_INGESTREQUESTMGR_H
+#endif  // LSST_QSERV_REPLICA_INGESTREQUESTMGR_H

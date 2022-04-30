@@ -35,9 +35,7 @@
 #include "memman/MemMan.h"
 #include "memman/MemFile.h"
 
-namespace lsst {
-namespace qserv {
-namespace memman {
+namespace lsst::qserv::memman {
 
 class Memory;
 
@@ -47,7 +45,6 @@ class Memory;
 
 class MemFileSet {
 public:
-
     //-----------------------------------------------------------------------------
     //! @brief Add a file to a file set.
     //!
@@ -61,7 +58,7 @@ public:
     //! @return !0        Corresponding file not added, errno value returned.
     //-----------------------------------------------------------------------------
 
-    int    add(std::string const& tabname, int chunk, bool iFile, bool mustLK);
+    int add(std::string const& tabname, int chunk, bool iFile, bool mustLK);
 
     //-----------------------------------------------------------------------------
     //! @brief Determine ownership.
@@ -72,7 +69,7 @@ public:
     //! @return false Ownership does not match.
     //-----------------------------------------------------------------------------
 
-    bool   isOwner(Memory const& memory) {return &memory == &_memory;}
+    bool isOwner(Memory const& memory) { return &memory == &_memory; }
 
     //-----------------------------------------------------------------------------
     //! @bried Lock all of the required tables in a table set and as many
@@ -86,7 +83,7 @@ public:
     //! @return !0 A required file could not be locked, errno value is returned.
     //-----------------------------------------------------------------------------
 
-    int    lockAll(bool strict);
+    int lockAll(bool strict);
 
     //-----------------------------------------------------------------------------
     //! @bried Map all of the required tables in a table set and as many
@@ -96,7 +93,7 @@ public:
     //! @return !0 A required file could not be mapped, errno value is returned.
     //-----------------------------------------------------------------------------
 
-    int    mapAll();
+    int mapAll();
 
     //-----------------------------------------------------------------------------
     //! @brief Control serial access to this object. When obtaining a lock,
@@ -111,7 +108,7 @@ public:
 
     bool serialize(bool dolok) {
         if (dolok) {
-            _setMutex.lock(); 
+            _setMutex.lock();
             _mtxLocked = true;
         } else {
             if (_mtxLocked) {
@@ -140,26 +137,29 @@ public:
     //-----------------------------------------------------------------------------
 
     MemFileSet(Memory& memory, int numLock, int numFlex, int chunk)
-              : _memory(memory), _lockBytes(0), _numFiles(0), _chunk(chunk),
-                _lockSeconds(0.0), _mtxLocked(false) {
-                _lockFiles.reserve(numLock);
-                _flexFiles.reserve(numFlex);
-              }
+            : _memory(memory),
+              _lockBytes(0),
+              _numFiles(0),
+              _chunk(chunk),
+              _lockSeconds(0.0),
+              _mtxLocked(false) {
+        _lockFiles.reserve(numLock);
+        _flexFiles.reserve(numFlex);
+    }
 
     ~MemFileSet();
 
 private:
-    std::mutex            _setMutex;
-    Memory&               _memory;
+    std::mutex _setMutex;
+    Memory& _memory;
     std::vector<MemFile*> _lockFiles;
     std::vector<MemFile*> _flexFiles;
-    uint64_t              _lockBytes;     // Total bytes locked
-    uint32_t              _numFiles;
-    int                   _chunk;
-    double                _lockSeconds;   // Number of seconds spent locking all files.
-    std::atomic<bool>     _mtxLocked;     // true -> _setMutex is locked
+    uint64_t _lockBytes;  // Total bytes locked
+    uint32_t _numFiles;
+    int _chunk;
+    double _lockSeconds;           // Number of seconds spent locking all files.
+    std::atomic<bool> _mtxLocked;  // true -> _setMutex is locked
 };
 
-}}} // namespace lsst:qserv:memman
+}  // namespace lsst::qserv::memman
 #endif  // LSST_QSERV_MEMMAN_MEMFILESET_H
-

@@ -58,39 +58,41 @@ struct ProtocolFixture : public lsst::qserv::proto::FakeProtocolFixture {
     ~ProtocolFixture(void) {}
 
     bool compareTaskMsgs(lsst::qserv::proto::TaskMsg& t1, lsst::qserv::proto::TaskMsg& t2) {
-        bool nonFragEq = (t1.session() == t2.session())
-            && (t1.chunkid() == t2.chunkid())
-            && (t1.db() == t2.db());
+        bool nonFragEq =
+                (t1.session() == t2.session()) && (t1.chunkid() == t2.chunkid()) && (t1.db() == t2.db());
 
         bool sTablesEq = t1.scantable_size() == t2.scantable_size();
-        for(int i=0; i < t1.scantable_size(); ++i) {
+        for (int i = 0; i < t1.scantable_size(); ++i) {
             auto const& sTbl1 = t1.scantable(i);
             auto const& sTbl2 = t2.scantable(i);
-            bool eq = (sTbl1.db().compare(sTbl2.db()) == 0
-                       && sTbl1.table() == sTbl2.table()
-                       && sTbl1.lockinmemory() == sTbl2.lockinmemory()
-                       && sTbl1.scanrating() == sTbl2.scanrating());
+            bool eq = (sTbl1.db().compare(sTbl2.db()) == 0 && sTbl1.table() == sTbl2.table() &&
+                       sTbl1.lockinmemory() == sTbl2.lockinmemory() &&
+                       sTbl1.scanrating() == sTbl2.scanrating());
             sTablesEq = sTablesEq && eq;
         }
 
         bool fEqual = (t1.fragment_size() == t2.fragment_size());
-        for(int i=0; i < t1.fragment_size(); ++i) {
-            fEqual = fEqual && compareFragment(t1.fragment(i),
-                                               t2.fragment(i));
+        for (int i = 0; i < t1.fragment_size(); ++i) {
+            fEqual = fEqual && compareFragment(t1.fragment(i), t2.fragment(i));
         }
         return nonFragEq && fEqual && sTablesEq;
     }
 
     bool compareSubchunk(lsst::qserv::proto::TaskMsg_Subchunk const& s1,
                          lsst::qserv::proto::TaskMsg_Subchunk const& s2) {
-        if (s1.database() != s2.database()) { return false; }
-        if (s1.dbtbl_size() != s2.dbtbl_size()) { return false; }
-        for(int i=0; i < s1.dbtbl_size(); ++i) {
-            if (s1.dbtbl(i).db() != s2.dbtbl(i).db()
-                && s1.dbtbl(i).tbl() != s2.dbtbl(i).tbl()) return false;
+        if (s1.database() != s2.database()) {
+            return false;
         }
-        if (s1.id_size() != s2.id_size()) { return false; }
-        for(int i=0; i < s1.id_size(); ++i) {
+        if (s1.dbtbl_size() != s2.dbtbl_size()) {
+            return false;
+        }
+        for (int i = 0; i < s1.dbtbl_size(); ++i) {
+            if (s1.dbtbl(i).db() != s2.dbtbl(i).db() && s1.dbtbl(i).tbl() != s2.dbtbl(i).tbl()) return false;
+        }
+        if (s1.id_size() != s2.id_size()) {
+            return false;
+        }
+        for (int i = 0; i < s1.id_size(); ++i) {
             if (s1.id(i) != s2.id(i)) return false;
         }
         return true;
@@ -100,24 +102,28 @@ struct ProtocolFixture : public lsst::qserv::proto::FakeProtocolFixture {
                          lsst::qserv::proto::TaskMsg_Fragment const& f2) {
         bool qEqual = true;
         if (f1.query_size() == f2.query_size()) {
-            for(int i=0; i < f1.query_size(); ++i) {
+            for (int i = 0; i < f1.query_size(); ++i) {
                 if (f1.query(i) != f2.query(i)) return false;
             }
-        } else { return false; }
+        } else {
+            return false;
+        }
         bool sEqual = true;
         if (f1.has_subchunks()) {
             if (f2.has_subchunks()) {
                 sEqual = sEqual && compareSubchunk(f1.subchunks(), f2.subchunks());
-            } else { sEqual = false; }
-        } else if (f2.has_subchunks()) { sEqual = false; }
+            } else {
+                sEqual = false;
+            }
+        } else if (f2.has_subchunks()) {
+            sEqual = false;
+        }
         return qEqual && sEqual;
     }
 
     bool compareProtoHeaders(lsst::qserv::proto::ProtoHeader const& p1,
-                              lsst::qserv::proto::ProtoHeader const& p2) {
-        return ((p1.protocol() == p2.protocol())
-                && (p1.size() == p2.size())
-                && (p1.md5() == p2.md5()));
+                             lsst::qserv::proto::ProtoHeader const& p2) {
+        return ((p1.protocol() == p2.protocol()) && (p1.size() == p2.size()) && (p1.md5() == p2.md5()));
     }
 
     int counter;
@@ -161,8 +167,7 @@ BOOST_AUTO_TEST_CASE(MsgBuffer) {
     r1->SerializeToOstream(&ss);
 
     std::string raw(ss.str());
-    gio::ArrayInputStream input(raw.data(),
-                                raw.size());
+    gio::ArrayInputStream input(raw.data(), raw.size());
     gio::CodedInputStream coded(&input);
     std::unique_ptr<lsst::qserv::proto::ProtoHeader> r2(new lsst::qserv::proto::ProtoHeader());
     BOOST_CHECK(r1.get());
@@ -222,7 +227,7 @@ BOOST_AUTO_TEST_CASE(ScanTableInfo) {
     BOOST_CHECK(stiG.compare(stiG) == 0);
     BOOST_CHECK(stiH.compare(stiH) == 0);
 
-    lsst::qserv::proto::ScanTableInfo::ListOf list = { stiE, stiH, stiC, stiD, stiB, stiA, stiG, stiF };
+    lsst::qserv::proto::ScanTableInfo::ListOf list = {stiE, stiH, stiC, stiD, stiB, stiA, stiG, stiF};
     lsst::qserv::proto::ScanInfo scanInfo;
     scanInfo.infoTables = list;
     scanInfo.sortTablesSlowestFirst();
@@ -236,7 +241,5 @@ BOOST_AUTO_TEST_CASE(ScanTableInfo) {
     BOOST_CHECK(scanInfo.infoTables[j++].compare(stiB) == 0);
     BOOST_CHECK(scanInfo.infoTables[j++].compare(stiA) == 0);
 }
-
-
 
 BOOST_AUTO_TEST_SUITE_END()

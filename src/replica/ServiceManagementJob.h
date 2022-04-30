@@ -35,16 +35,13 @@
 #include "replica/ServiceProvider.h"
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * The structure ServiceManagementJobResult represents a combined result received
  * from worker services upon a completion of the job.
  */
 struct ServiceManagementJobResult {
-
     /// Result sets for each worker
     std::map<std::string, ServiceState> serviceState;
 
@@ -57,7 +54,7 @@ struct ServiceManagementJobResult {
  * managing worker services. The request will be broadcast to all workers of a setup.
  * Results will be collected into the above defined data structure.
  */
-class ServiceManagementBaseJob : public Job  {
+class ServiceManagementBaseJob : public Job {
 public:
     /// The pointer type for instances of the class
     typedef std::shared_ptr<ServiceManagementBaseJob> Ptr;
@@ -96,7 +93,6 @@ public:
     ServiceManagementJobResult const& getResultData() const;
 
 protected:
-
     /// @see Job::startImpl()
     void startImpl(util::Lock const& lock) final;
 
@@ -127,12 +123,9 @@ protected:
      * @param priority
      *   defines the job priority
      */
-    ServiceManagementBaseJob(std::string const& requestName,
-                             bool allWorkers,
-                             unsigned int requestExpirationIvalSec,
-                             Controller::Ptr const& controller,
-                             std::string const& parentJobId,
-                             int priority);
+    ServiceManagementBaseJob(std::string const& requestName, bool allWorkers,
+                             unsigned int requestExpirationIvalSec, Controller::Ptr const& controller,
+                             std::string const& parentJobId, int priority);
 
     /**
      * Submit type-specific request
@@ -149,10 +142,9 @@ protected:
     void onRequestFinish(ServiceManagementRequestBase::Ptr const& request);
 
 private:
-
     // Input parameters
 
-    bool const   _allWorkers;
+    bool const _allWorkers;
     unsigned int _requestExpirationIvalSec;
 
     /// A collection of requests implementing the operation
@@ -166,14 +158,13 @@ private:
     ServiceManagementJobResult _resultData;
 };
 
-
 /**
  * Class ServiceManagementJob is a generic implementation for a family of requests
  * managing worker services. Types of the requests are specified via the template
  * parameter of the class. The request will be broadcast to all workers of a setup.
  */
-template<class REQUEST>
-class ServiceManagementJob : public ServiceManagementBaseJob  {
+template <class REQUEST>
+class ServiceManagementJob : public ServiceManagementBaseJob {
 public:
     /// The pointer type for instances of the class
     typedef std::shared_ptr<ServiceManagementJob<REQUEST>> Ptr;
@@ -193,20 +184,11 @@ public:
      *
      * @see ServiceManagementBaseJob::ServiceManagementBaseJob()
      */
-    static Ptr create(bool allWorkers,
-                      unsigned int requestExpirationIvalSec,
-                      Controller::Ptr const& controller,
-                      std::string const& parentJobId,
-                      CallbackType const& onFinish,
-                      int priority) {
-        return Ptr(
-            new ServiceManagementJob(
-                allWorkers,
-                requestExpirationIvalSec,
-                controller,
-                parentJobId,
-                onFinish,
-                priority));
+    static Ptr create(bool allWorkers, unsigned int requestExpirationIvalSec,
+                      Controller::Ptr const& controller, std::string const& parentJobId,
+                      CallbackType const& onFinish, int priority) {
+        return Ptr(new ServiceManagementJob(allWorkers, requestExpirationIvalSec, controller, parentJobId,
+                                            onFinish, priority));
     }
 
     // Default construction and copy semantics are prohibited
@@ -218,7 +200,6 @@ public:
     ~ServiceManagementJob() final = default;
 
 protected:
-
     void notify(util::Lock const& lock) final {
         notifyDefaultImpl<ServiceManagementJob<REQUEST>>(lock, _onFinish);
     }
@@ -227,46 +208,31 @@ protected:
     ServiceManagementRequestBase::Ptr submitRequest(std::string const& worker) final {
         auto const self = shared_from_base<ServiceManagementJob<REQUEST>>();
         return controller()->template workerServiceRequest<REQUEST>(
-            worker,
-            [self] (typename REQUEST::Ptr const& ptr) {
-                self->onRequestFinish(ptr);
-            },
-            priority(),
-            id(),
-            requestExpirationIvalSec()
-        );
+                worker, [self](typename REQUEST::Ptr const& ptr) { self->onRequestFinish(ptr); }, priority(),
+                id(), requestExpirationIvalSec());
     }
 
 private:
-
     /// @see ServiceManagementJob::create())
-    ServiceManagementJob(bool allWorkers,
-                         unsigned int requestExpirationIvalSec,
-                         Controller::Ptr const& controller,
-                         std::string const& parentJobId,
-                         CallbackType const& onFinish,
-                         int priority)
-        :   ServiceManagementBaseJob(REQUEST::Policy::requestName(),
-                                     allWorkers,
-                                     requestExpirationIvalSec,
-                                     controller,
-                                     parentJobId,
-                                     priority),
-            _onFinish(onFinish) {
-    }
+    ServiceManagementJob(bool allWorkers, unsigned int requestExpirationIvalSec,
+                         Controller::Ptr const& controller, std::string const& parentJobId,
+                         CallbackType const& onFinish, int priority)
+            : ServiceManagementBaseJob(REQUEST::Policy::requestName(), allWorkers, requestExpirationIvalSec,
+                                       controller, parentJobId, priority),
+              _onFinish(onFinish) {}
 
     // Input parameters
 
-    CallbackType _onFinish;    /// @note is reset when the job finishes
+    CallbackType _onFinish;  /// @note is reset when the job finishes
 };
 
-typedef ServiceManagementJob<ServiceStatusRequest>   ServiceStatusJob;
+typedef ServiceManagementJob<ServiceStatusRequest> ServiceStatusJob;
 typedef ServiceManagementJob<ServiceRequestsRequest> ServiceRequestsJob;
-typedef ServiceManagementJob<ServiceSuspendRequest>  ServiceSuspendJob;
-typedef ServiceManagementJob<ServiceResumeRequest>   ServiceResumeJob;
-typedef ServiceManagementJob<ServiceDrainRequest>    ServiceDrainJob;
+typedef ServiceManagementJob<ServiceSuspendRequest> ServiceSuspendJob;
+typedef ServiceManagementJob<ServiceResumeRequest> ServiceResumeJob;
+typedef ServiceManagementJob<ServiceDrainRequest> ServiceDrainJob;
 typedef ServiceManagementJob<ServiceReconfigRequest> ServiceReconfigJob;
 
-}}} // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_SERVICEMANAGEMENTJOB_H
+#endif  // LSST_QSERV_REPLICA_SERVICEMANAGEMENTJOB_H

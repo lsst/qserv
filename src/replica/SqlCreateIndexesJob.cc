@@ -38,82 +38,44 @@ namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.SqlCreateIndexesJob");
 
-} /// namespace
+}  // namespace
 
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
 string SqlCreateIndexesJob::typeName() { return "SqlCreateIndexesJob"; }
 
-
 SqlCreateIndexesJob::Ptr SqlCreateIndexesJob::create(
-        string const& database,
-        string const& table,
-        bool overlap,
-        SqlRequestParams::IndexSpec const& indexSpec,
-        string const& indexName,
-        string const& indexComment,
-        vector<SqlIndexColumn> const& indexColumns,
-        bool allWorkers,
-        bool ignoreDuplicateKey,
-        Controller::Ptr const& controller,
-        string const& parentJobId,
-        CallbackType const& onFinish,
+        string const& database, string const& table, bool overlap,
+        SqlRequestParams::IndexSpec const& indexSpec, string const& indexName, string const& indexComment,
+        vector<SqlIndexColumn> const& indexColumns, bool allWorkers, bool ignoreDuplicateKey,
+        Controller::Ptr const& controller, string const& parentJobId, CallbackType const& onFinish,
         int priority) {
-    return Ptr(new SqlCreateIndexesJob(
-        database,
-        table,
-        overlap,
-        indexSpec,
-        indexName,
-        indexComment,
-        indexColumns,
-        allWorkers,
-        ignoreDuplicateKey,
-        controller,
-        parentJobId,
-        onFinish,
-        priority
-    ));
+    return Ptr(new SqlCreateIndexesJob(database, table, overlap, indexSpec, indexName, indexComment,
+                                       indexColumns, allWorkers, ignoreDuplicateKey, controller, parentJobId,
+                                       onFinish, priority));
 }
 
+SqlCreateIndexesJob::SqlCreateIndexesJob(string const& database, string const& table, bool overlap,
+                                         SqlRequestParams::IndexSpec const& indexSpec,
+                                         string const& indexName, string const& indexComment,
+                                         vector<SqlIndexColumn> const& indexColumns, bool allWorkers,
+                                         bool ignoreDuplicateKey, Controller::Ptr const& controller,
+                                         string const& parentJobId, CallbackType const& onFinish,
+                                         int priority)
+        : SqlJob(0, allWorkers, controller, parentJobId, "SQL_CREATE_TABLE_INDEXES", priority,
+                 false, /* ignoreNonPartitioned */
+                 ignoreDuplicateKey),
+          _database(database),
+          _table(table),
+          _overlap(overlap),
+          _indexSpec(indexSpec),
+          _indexName(indexName),
+          _indexComment(indexComment),
+          _indexColumns(indexColumns),
+          _onFinish(onFinish) {}
 
-SqlCreateIndexesJob::SqlCreateIndexesJob(
-        string const& database,
-        string const& table,
-        bool overlap,
-        SqlRequestParams::IndexSpec const& indexSpec,
-        string const& indexName,
-        string const& indexComment,
-        vector<SqlIndexColumn> const& indexColumns,
-        bool allWorkers,
-        bool ignoreDuplicateKey,
-        Controller::Ptr const& controller,
-        string const& parentJobId,
-        CallbackType const& onFinish,
-        int priority)
-    :   SqlJob(0,
-               allWorkers,
-               controller,
-               parentJobId,
-               "SQL_CREATE_TABLE_INDEXES",
-               priority,
-               false, /* ignoreNonPartitioned */
-               ignoreDuplicateKey),
-        _database(database),
-        _table(table),
-        _overlap(overlap),
-        _indexSpec(indexSpec),
-        _indexName(indexName),
-        _indexComment(indexComment),
-        _indexColumns(indexColumns),
-        _onFinish(onFinish) {
-}
-
-
-list<pair<string,string>> SqlCreateIndexesJob::extendedPersistentState() const {
-    list<pair<string,string>> result;
+list<pair<string, string>> SqlCreateIndexesJob::extendedPersistentState() const {
+    list<pair<string, string>> result;
     result.emplace_back("database", database());
     result.emplace_back("table", table());
     result.emplace_back("overlap", bool2str(overlap()));
@@ -126,10 +88,8 @@ list<pair<string,string>> SqlCreateIndexesJob::extendedPersistentState() const {
     return result;
 }
 
-
-list<SqlRequest::Ptr> SqlCreateIndexesJob::launchRequests(util::Lock const& lock,
-                                                         string const& worker,
-                                                         size_t maxRequestsPerWorker) {
+list<SqlRequest::Ptr> SqlCreateIndexesJob::launchRequests(util::Lock const& lock, string const& worker,
+                                                          size_t maxRequestsPerWorker) {
     list<SqlRequest::Ptr> requests;
 
     if (maxRequestsPerWorker == 0) return requests;
@@ -145,40 +105,24 @@ list<SqlRequest::Ptr> SqlCreateIndexesJob::launchRequests(util::Lock const& lock
     // Divide tables into subsets allocated to the "batch" requests. Then launch
     // the requests for the current worker.
     auto const self = shared_from_base<SqlCreateIndexesJob>();
-    for (auto&& tables: distributeTables(tables2process, maxRequestsPerWorker)) {
-        requests.push_back(
-            controller()->sqlCreateTableIndexes(
-                worker,
-                database(),
-                tables,
-                indexSpec(),
-                indexName(),
-                indexComment(),
-                indexColumns(),
-                [self] (SqlCreateIndexesRequest::Ptr const& request) {
-                    self->onRequestFinish(request);
-                },
-                priority(),
-                true,   /* keepTracking*/
-                id()    /* jobId */
-            )
-        );
+    for (auto&& tables : distributeTables(tables2process, maxRequestsPerWorker)) {
+        requests.push_back(controller()->sqlCreateTableIndexes(
+                worker, database(), tables, indexSpec(), indexName(), indexComment(), indexColumns(),
+                [self](SqlCreateIndexesRequest::Ptr const& request) { self->onRequestFinish(request); },
+                priority(), true, /* keepTracking*/
+                id()              /* jobId */
+                ));
     }
     return requests;
 }
 
-
-void SqlCreateIndexesJob::stopRequest(util::Lock const& lock,
-                                      SqlRequest::Ptr const& request) {
+void SqlCreateIndexesJob::stopRequest(util::Lock const& lock, SqlRequest::Ptr const& request) {
     stopRequestDefaultImpl<StopSqlCreateIndexesRequest>(lock, request);
 }
-
 
 void SqlCreateIndexesJob::notify(util::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "[" << typeName() << "]");
     notifyDefaultImpl<SqlCreateIndexesJob>(lock, _onFinish);
 }
 
-}}} // namespace lsst::qserv::replica
-
-
+}  // namespace lsst::qserv::replica

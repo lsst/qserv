@@ -23,9 +23,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.qmeta.QMeta");
 
 }
 
-namespace lsst {
-namespace qserv {
-namespace qmeta {
+namespace lsst::qserv::qmeta {
 
 shared_ptr<QMeta> QMeta::createFromConfig(map<string, string> const& config) {
     LOGS(_log, LOG_LVL_DEBUG, "Create QMeta instance from config map");
@@ -42,17 +40,15 @@ shared_ptr<QMeta> QMeta::createFromConfig(map<string, string> const& config) {
     if (technology == "mysql") {
         try {
             // extract all optional values from map
-            mysql::MySqlConfig mysqlConfig(configStore.get("username"),
-               configStore.get("password"),
-               configStore.get("hostname"),
-               configStore.getInt("port"),
-               configStore.get("socket"),
-               configStore.get("database"));
+            mysql::MySqlConfig mysqlConfig(configStore.get("username"), configStore.get("password"),
+                                           configStore.get("hostname"), configStore.getInt("port"),
+                                           configStore.get("socket"), configStore.get("database"));
 
-                LOGS(_log, LOG_LVL_DEBUG, "Create QMeta instance with mysql store");
-                return make_shared<QMetaMysql>(mysqlConfig);
+            LOGS(_log, LOG_LVL_DEBUG, "Create QMeta instance with mysql store");
+            return make_shared<QMetaMysql>(mysqlConfig);
         } catch (util::ConfigStoreError const& exc) {
-            LOGS(_log, LOG_LVL_DEBUG, "Exception launched while creating MySQL configuration: " << exc.what());
+            LOGS(_log, LOG_LVL_DEBUG,
+                 "Exception launched while creating MySQL configuration: " << exc.what());
             throw ConfigError(ERR_LOC, exc.what());
         }
     } else {
@@ -61,4 +57,4 @@ shared_ptr<QMeta> QMeta::createFromConfig(map<string, string> const& config) {
     }
 }
 
-}}} // namespace lsst::qserv::qmeta
+}  // namespace lsst::qserv::qmeta

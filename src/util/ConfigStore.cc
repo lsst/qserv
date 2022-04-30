@@ -40,21 +40,15 @@
 // LSST headers
 #include "lsst/log/Log.h"
 
-
-namespace { // File-scope helpers
+namespace {  // File-scope helpers
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.util.ConfigStore");
 
-} // namespace
+}  // namespace
 
-
-namespace lsst {
-namespace qserv {
-namespace util {
-
+namespace lsst::qserv::util {
 
 std::map<std::string, std::string> const ConfigStore::_parseIniFile(std::string const& configFilePath) {
-
     // read it into a ptree
     boost::property_tree::ptree pt;
     boost::property_tree::ini_parser::read_ini(configFilePath, pt);
@@ -62,9 +56,9 @@ std::map<std::string, std::string> const ConfigStore::_parseIniFile(std::string 
     std::map<std::string, std::string> configMap;
 
     // flatten
-    for (auto& sectionPair: pt) {
+    for (auto& sectionPair : pt) {
         auto& section = sectionPair.first;
-        for (auto& itemPair: sectionPair.second) {
+        for (auto& itemPair : sectionPair.second) {
             auto& item = itemPair.first;
             auto& value = itemPair.second.data();
             configMap.insert(std::make_pair(section + "." + item, value));
@@ -76,51 +70,48 @@ std::map<std::string, std::string> const ConfigStore::_parseIniFile(std::string 
 
 std::string ConfigStore::getRequired(std::string const& key) const {
     std::map<std::string, std::string>::const_iterator i = _configMap.find(key);
-    if(i != _configMap.end()) {
+    if (i != _configMap.end()) {
         return i->second;
     } else {
-        LOGS( _log, LOG_LVL_WARN, "[" << key << "] does not exist in configuration");
+        LOGS(_log, LOG_LVL_WARN, "[" << key << "] does not exist in configuration");
         throw KeyNotFoundError(key);
     }
 }
 
-std::string ConfigStore::get(std::string const& key,
-                             std::string const& defaultValue) const {
+std::string ConfigStore::get(std::string const& key, std::string const& defaultValue) const {
     std::map<std::string, std::string>::const_iterator i = _configMap.find(key);
-    if(i != _configMap.end()) {
+    if (i != _configMap.end()) {
         return i->second;
     } else {
-        LOGS( _log, LOG_LVL_DEBUG, "[" << key << "] key not found, using default value: \"" << defaultValue << "\"");
+        LOGS(_log, LOG_LVL_DEBUG,
+             "[" << key << "] key not found, using default value: \"" << defaultValue << "\"");
         return defaultValue;
     }
 }
-
 
 int ConfigStore::getInt(std::string const& key, int const& defaultValue) const {
     try {
         return getIntRequired(key);
     } catch (util::KeyNotFoundError const& e) {
-        LOGS( _log, LOG_LVL_DEBUG, "Returning default value: \"" << defaultValue << "\"");
+        LOGS(_log, LOG_LVL_DEBUG, "Returning default value: \"" << defaultValue << "\"");
     }
     return defaultValue;
 }
 
-
 int ConfigStore::getIntRequired(std::string const& key) const {
-	std::map<std::string, std::string>::const_iterator i = _configMap.find(key);
+    std::map<std::string, std::string>::const_iterator i = _configMap.find(key);
     if (i != _configMap.end() and not i->second.empty()) {
         try {
             // tried to use std::stoi() here but it returns OK for strings like "0xFSCK"
             return boost::lexical_cast<int>(i->second);
         } catch (boost::bad_lexical_cast const& exc) {
-            LOGS( _log, LOG_LVL_WARN, "Unable to cast string \"" << i->second << "\" to integer");
+            LOGS(_log, LOG_LVL_WARN, "Unable to cast string \"" << i->second << "\" to integer");
             throw InvalidIntegerValue(key, i->second);
         }
     }
-    LOGS( _log, LOG_LVL_DEBUG, "[" << key << "] key does not exist or has empty string value");
+    LOGS(_log, LOG_LVL_DEBUG, "[" << key << "] key does not exist or has empty string value");
     throw util::KeyNotFoundError(key);
 }
-
 
 std::map<std::string, std::string> ConfigStore::getSectionConfigMap(std::string sectionName) const {
     // find all css.* parameters and copy to new map (dropping css.)
@@ -135,16 +126,15 @@ std::map<std::string, std::string> ConfigStore::getSectionConfigMap(std::string 
     return sectionConfigMap;
 }
 
-
 /** Overload output operator for this class
  *
  * @param out
  * @param config
  * @return an output stream
  */
-std::ostream& operator<<(std::ostream &out, ConfigStore const& config) {
+std::ostream& operator<<(std::ostream& out, ConfigStore const& config) {
     out << util::printable(config._configMap);
     return out;
 }
 
-}}} // namespace lsst::qserv::util
+}  // namespace lsst::qserv::util

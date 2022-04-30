@@ -21,15 +21,13 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 /**
-  * @file
-  *
-  * @author Daniel L. Wang, SLAC
-  */
-
+ * @file
+ *
+ * @author Daniel L. Wang, SLAC
+ */
 
 #ifndef LSST_QSERV_QUERY_VALUEEXPR_H
 #define LSST_QSERV_QUERY_VALUEEXPR_H
-
 
 // System headers
 #include <iostream>
@@ -44,22 +42,15 @@
 #include "query/QueryTemplate.h"
 #include "util/PointerCompare.h"
 
-
 // Forward declarations
-namespace lsst {
-namespace qserv {
-namespace query {
-    class FuncExpr;
-    class QueryTemplate;
-    class TableRef;
-    class ValueFactor;
-}}} // End of forward declarations
+namespace lsst::qserv::query {
+class FuncExpr;
+class QueryTemplate;
+class TableRef;
+class ValueFactor;
+}  // namespace lsst::qserv::query
 
-
-namespace lsst {
-namespace qserv {
-namespace query {
-
+namespace lsst::qserv::query {
 
 /// ValueExpr is a general value expression in a SQL statement. It is allowed to
 /// have an alias and a single level of ValueFactors joined by arithmetic
@@ -70,11 +61,24 @@ public:
     //        DIV is the `DIV` operator, "Division; integer quotient of operands" as specified by MySQL.
     //        THE BIT_ values are bitwise operators: BIT_SHIFT_LEFT is <<, BIT_SHIFT_RIGHT is >>,
     //        BIT_AND is &, BIT_OR is |, BIT_XOR is ^.
-    enum Op {NONE=200, UNKNOWN, PLUS, MINUS, MULTIPLY, DIVIDE, DIV, MOD, MODULO,
-        BIT_SHIFT_LEFT, BIT_SHIFT_RIGHT, BIT_AND, BIT_OR, BIT_XOR};
+    enum Op {
+        NONE = 200,
+        UNKNOWN,
+        PLUS,
+        MINUS,
+        MULTIPLY,
+        DIVIDE,
+        DIV,
+        MOD,
+        MODULO,
+        BIT_SHIFT_LEFT,
+        BIT_SHIFT_RIGHT,
+        BIT_AND,
+        BIT_OR,
+        BIT_XOR
+    };
     struct FactorOp {
-        explicit FactorOp(std::shared_ptr<ValueFactor> factor_, Op op_=NONE)
-            : factor(factor_), op(op_) {}
+        explicit FactorOp(std::shared_ptr<ValueFactor> factor_, Op op_ = NONE) : factor(factor_), op(op_) {}
         FactorOp() : op(NONE) {}
         std::shared_ptr<ValueFactor> factor;
         Op op;
@@ -208,7 +212,6 @@ public:
      */
     std::string sqlFragmentNoQuotes(QueryTemplate::SetAliasMode aliasMode) const;
 
-
     ValueExprPtr clone() const;
     friend std::ostream& operator<<(std::ostream& os, ValueExpr const& ve);
     friend std::ostream& operator<<(std::ostream& os, ValueExpr const* ve);
@@ -245,36 +248,27 @@ public:
 private:
     std::string _alias;
     FactorOpVector _factorOps;
-    bool _aliasIsUserDefined = false; /// true if the alias was defined by the user in the select statement.
+    bool _aliasIsUserDefined = false;  /// true if the alias was defined by the user in the select statement.
 };
-
 
 /// A helper functor for rendering to QueryTemplates
 class ValueExpr::render {
 public:
-    render(QueryTemplate& qt, bool needsComma, bool isProtected=false)
-        : _qt(qt),
-          _needsComma(needsComma),
-          _isProtected(isProtected),
-          _count(0) {}
+    render(QueryTemplate& qt, bool needsComma, bool isProtected = false)
+            : _qt(qt), _needsComma(needsComma), _isProtected(isProtected), _count(0) {}
     void applyToQT(ValueExpr const& ve);
     void applyToQT(ValueExpr const* vep) {
-        if(vep) applyToQT(*vep); }
-    void applyToQT(std::shared_ptr<ValueExpr> const& vep) {
-        applyToQT(vep.get()); }
+        if (vep) applyToQT(*vep);
+    }
+    void applyToQT(std::shared_ptr<ValueExpr> const& vep) { applyToQT(vep.get()); }
     QueryTemplate& _qt;
     bool _needsComma;
     bool _isProtected;
     int _count;
 };
 
+void cloneValueExprPtrVector(ValueExprPtrVector& dest, ValueExprPtrVector const& src);
 
-void cloneValueExprPtrVector(ValueExprPtrVector& dest,
-                             ValueExprPtrVector const& src);
+}  // namespace lsst::qserv::query
 
-
-
-
-}}} // namespace lsst::qserv::query
-
-#endif // LSST_QSERV_QUERY_VALUEEXPR_H
+#endif  // LSST_QSERV_QUERY_VALUEEXPR_H

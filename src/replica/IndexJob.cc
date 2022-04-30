@@ -50,19 +50,17 @@ namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.IndexJob");
 
-} /// namespace
+}  // namespace
 
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
 json IndexJobResult::toJson() const {
     json result;
-    for (auto&& workerItr: error) {
+    for (auto&& workerItr : error) {
         string const& worker = workerItr.first;
         result[worker] = json::object();
         json& workerJson = result[worker];
-        for (auto&& chunksItr: workerItr.second) {
+        for (auto&& chunksItr : workerItr.second) {
             unsigned int chunk = chunksItr.first;
             string const& errorMessage = chunksItr.second;
             workerJson[chunk] = errorMessage;
@@ -71,91 +69,59 @@ json IndexJobResult::toJson() const {
     return result;
 }
 
-
 string IndexJob::typeName() { return "IndexJob"; }
-
 
 string IndexJob::toString(Destination destination) {
     switch (destination) {
-        case DISCARD: return "DISCARD";
-        case FILE:    return "FILE";
-        case FOLDER:  return "FOLDER";
-        case TABLE:   return "TABLE";
+        case DISCARD:
+            return "DISCARD";
+        case FILE:
+            return "FILE";
+        case FOLDER:
+            return "FOLDER";
+        case TABLE:
+            return "TABLE";
     }
-    throw range_error(
-            typeName() + "::" + string(__func__) + "  unhandled value of the parameter");
+    throw range_error(typeName() + "::" + string(__func__) + "  unhandled value of the parameter");
 }
-
 
 IndexJob::Destination IndexJob::fromString(string const& str) {
     if (str == "DISCARD") return Destination::DISCARD;
-    if (str == "FILE")    return Destination::FILE;
-    if (str == "FOLDER")  return Destination::FOLDER;
-    if (str == "TABLE")   return Destination::TABLE;
-    throw invalid_argument(
-            typeName() + "::" + string(__func__) + "  input value '" + str +
-            "' doesn't match any known option of the enumerator");
+    if (str == "FILE") return Destination::FILE;
+    if (str == "FOLDER") return Destination::FOLDER;
+    if (str == "TABLE") return Destination::TABLE;
+    throw invalid_argument(typeName() + "::" + string(__func__) + "  input value '" + str +
+                           "' doesn't match any known option of the enumerator");
 }
 
-
-IndexJob::Ptr IndexJob::create(string const& database,
-                               string const& directorTable,
-                               bool hasTransactions,
-                               TransactionId transactionId,
-                               bool allWorkers,
-                               Destination destination,
-                               string const& destinationPath,
-                               bool localFile,
-                               Controller::Ptr const& controller,
-                               string const& parentJobId,
-                               CallbackType const& onFinish,
-                               int priority) {
-    return Ptr(new IndexJob(
-        database,
-        directorTable,
-        hasTransactions,
-        transactionId,
-        allWorkers,
-        destination,
-        destinationPath,
-        localFile,
-        controller,
-        parentJobId,
-        onFinish,
-        priority
-    ));
+IndexJob::Ptr IndexJob::create(string const& database, string const& directorTable, bool hasTransactions,
+                               TransactionId transactionId, bool allWorkers, Destination destination,
+                               string const& destinationPath, bool localFile,
+                               Controller::Ptr const& controller, string const& parentJobId,
+                               CallbackType const& onFinish, int priority) {
+    return Ptr(new IndexJob(database, directorTable, hasTransactions, transactionId, allWorkers, destination,
+                            destinationPath, localFile, controller, parentJobId, onFinish, priority));
 }
 
-
-IndexJob::IndexJob(string const& database,
-                   string const& directorTable,
-                   bool hasTransactions,
-                   TransactionId transactionId,
-                   bool allWorkers,
-                   Destination destination,
-                   string const& destinationPath,
-                   bool localFile,
-                   Controller::Ptr const& controller,
-                   string const& parentJobId,
-                   CallbackType const& onFinish,
-                   int priority)
-    :   Job(controller, parentJobId, "INDEX", priority),
-        _directorTable(directorTable),
-        _hasTransactions(hasTransactions),
-        _transactionId(transactionId),
-        _allWorkers(allWorkers),
-        _destination(destination),
-        _destinationPath(destinationPath),
-        _localFile(localFile),
-        _onFinish(onFinish) {
-
+IndexJob::IndexJob(string const& database, string const& directorTable, bool hasTransactions,
+                   TransactionId transactionId, bool allWorkers, Destination destination,
+                   string const& destinationPath, bool localFile, Controller::Ptr const& controller,
+                   string const& parentJobId, CallbackType const& onFinish, int priority)
+        : Job(controller, parentJobId, "INDEX", priority),
+          _directorTable(directorTable),
+          _hasTransactions(hasTransactions),
+          _transactionId(transactionId),
+          _allWorkers(allWorkers),
+          _destination(destination),
+          _destinationPath(destinationPath),
+          _localFile(localFile),
+          _onFinish(onFinish) {
     // Get and verify database status
     try {
         _databaseInfo = controller->serviceProvider()->config()->databaseInfo(database);
         if (!_databaseInfo.isDirector(directorTable)) {
-            throw runtime_error(
-                context() + "::" + string(__func__) + " no such director table '" + directorTable
-                + "' in the database: '" + database + "'.");
+            throw runtime_error(context() + "::" + string(__func__) + " no such director table '" +
+                                directorTable + "' in the database: '" + database + "'.");
         }
     } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR, ex.what());
@@ -163,11 +129,7 @@ IndexJob::IndexJob(string const& database,
     }
 }
 
-
-IndexJob::~IndexJob() {
-    _rollbackTransaction(__func__);
-}
-
+IndexJob::~IndexJob() { _rollbackTransaction(__func__); }
 
 Job::Progress IndexJob::progress() const {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
@@ -175,21 +137,17 @@ Job::Progress IndexJob::progress() const {
     return Progress{_completeChunks, _totalChunks};
 }
 
-
 IndexJobResult const& IndexJob::getResultData() const {
-
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     if (state() == State::FINISHED) return _resultData;
 
-    throw logic_error(
-            typeName() + "::" + string(__func__) +
-            "  the method can't be called while the job hasn't finished");
+    throw logic_error(typeName() + "::" + string(__func__) +
+                      "  the method can't be called while the job hasn't finished");
 }
 
-
-list<std::pair<string,string>> IndexJob::extendedPersistentState() const {
-    list<pair<string,string>> result;
+list<std::pair<string, string>> IndexJob::extendedPersistentState() const {
+    list<pair<string, string>> result;
     result.emplace_back("database", database());
     result.emplace_back("directorTable", directorTable());
     result.emplace_back("has_transactions", bool2str(hasTransactions()));
@@ -201,31 +159,24 @@ list<std::pair<string,string>> IndexJob::extendedPersistentState() const {
     return result;
 }
 
-
-list<pair<string,string>> IndexJob::persistentLogData() const {
-
+list<pair<string, string>> IndexJob::persistentLogData() const {
     // Report failed chunks only
 
-    list<pair<string,string>> result;
-    for (auto&& workerItr: getResultData().error) {
+    list<pair<string, string>> result;
+    for (auto&& workerItr : getResultData().error) {
         auto&& worker = workerItr.first;
-        for (auto&& chunkItr: workerItr.second) {
+        for (auto&& chunkItr : workerItr.second) {
             auto&& chunk = chunkItr.first;
             auto&& error = chunkItr.second;
             if (not error.empty()) {
-                result.emplace_back(
-                    "worker=" + worker + " chunk=" + to_string(chunk),
-                    "error=" + error
-                );
+                result.emplace_back("worker=" + worker + " chunk=" + to_string(chunk), "error=" + error);
             }
         }
     }
     return result;
 }
 
-
 void IndexJob::startImpl(util::Lock const& lock) {
-
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     // ------------------------
@@ -233,9 +184,8 @@ void IndexJob::startImpl(util::Lock const& lock) {
     // ------------------------
 
     auto const databaseServices = controller()->serviceProvider()->databaseServices();
-    auto const workerNames = allWorkers() ?
-        controller()->serviceProvider()->config()->allWorkers() :
-        controller()->serviceProvider()->config()->workers();
+    auto const workerNames = allWorkers() ? controller()->serviceProvider()->config()->allWorkers()
+                                          : controller()->serviceProvider()->config()->workers();
 
     // Initialize a collection of chunks grouped by workers, in a way which
     // would make an attempt to keep requests equally (as much as that's possible)
@@ -254,8 +204,7 @@ void IndexJob::startImpl(util::Lock const& lock) {
     bool const includeFileInfo = false;     // to speed up the query as we don't need file info
 
     map<unsigned int, list<string>> chunk2workers;
-    for (auto&& worker: workerNames) {
-
+    for (auto&& worker : workerNames) {
         // Scan for chunk replicas at the worker. The algorithm fills the data structure
         // used by the planner algorithm. The scanner has two flavors that depend on the input
         // parameters to the class.
@@ -276,25 +225,19 @@ void IndexJob::startImpl(util::Lock const& lock) {
             // Locate all contributions into the table made at the given worker.
             vector<TransactionContribInfo> const contribs =
                     databaseServices->transactionContribs(transactionId(), directorTable(), worker);
-            for (auto&& contrib: contribs) {
+            for (auto&& contrib : contribs) {
                 chunkAndWorker.insert(make_pair(contrib.chunk, contrib.worker));
             }
 
             // Transform findings into the input data structure used by the planner.
-            for (auto const& elem: chunkAndWorker) {
+            for (auto const& elem : chunkAndWorker) {
                 chunk2workers[elem.first].push_back(elem.second);
             }
         } else {
             vector<ReplicaInfo> replicas;
-            databaseServices->findWorkerReplicas(
-                replicas,
-                worker,
-                database(),
-                unusedAllDatabases,
-                unusedIsPublished,
-                includeFileInfo
-            );
-            for (auto&& replica: replicas) {
+            databaseServices->findWorkerReplicas(replicas, worker, database(), unusedAllDatabases,
+                                                 unusedIsPublished, includeFileInfo);
+            for (auto&& replica : replicas) {
                 chunk2workers[replica.chunk()].push_back(replica.worker());
             }
         }
@@ -311,8 +254,7 @@ void IndexJob::startImpl(util::Lock const& lock) {
     // in which chunks are being processed by the algorithm. Consider
     // a more sophisticated implementation which would be bias-free.
 
-    for (auto&& itr: chunk2workers) {
-
+    for (auto&& itr : chunk2workers) {
         unsigned int const chunk = itr.first;
         auto&& workers = itr.second;
 
@@ -320,7 +262,7 @@ void IndexJob::startImpl(util::Lock const& lock) {
         // are residing.
         string worker;
         size_t minNumChunks = numeric_limits<size_t>::max();
-        for (auto&& candidateWorker: workers) {
+        for (auto&& candidateWorker : workers) {
             auto const numChunksAtCandidate = _chunks[candidateWorker].size();
             if (numChunksAtCandidate < minNumChunks) {
                 worker = candidateWorker;
@@ -346,11 +288,11 @@ void IndexJob::startImpl(util::Lock const& lock) {
     // another batch of the data extraction requests while results of the
     // previous batch were being sent back to the Controller.
 
-    size_t const maxRequestsPerWorker =
-        8 * controller()->serviceProvider()->config()->get<size_t>("worker", "num-svc-processing-threads");
+    size_t const maxRequestsPerWorker = 8 * controller()->serviceProvider()->config()->get<size_t>(
+                                                    "worker", "num-svc-processing-threads");
 
-    for (auto&& worker: workerNames) {
-        for (auto&& ptr: _launchRequests(lock, worker, maxRequestsPerWorker)) {
+    for (auto&& worker : workerNames) {
+        for (auto&& ptr : _launchRequests(lock, worker, maxRequestsPerWorker)) {
             _requests[ptr->id()] = ptr;
         }
     }
@@ -361,9 +303,7 @@ void IndexJob::startImpl(util::Lock const& lock) {
     if (_requests.size() == 0) finish(lock, ExtendedState::SUCCESS);
 }
 
-
 void IndexJob::cancelImpl(util::Lock const& lock) {
-
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     // The algorithm will also clear resources taken by various
@@ -375,17 +315,13 @@ void IndexJob::cancelImpl(util::Lock const& lock) {
     // job the request cancellation should be also followed (where it makes a sense)
     // by stopping the request at corresponding worker service.
 
-    for (auto&& itr: _requests) {
+    for (auto&& itr : _requests) {
         auto&& ptr = itr.second;
         ptr->cancel();
         if (ptr->state() != Request::State::FINISHED) {
-            controller()->stopById<StopIndexRequest>(
-                ptr->worker(),
-                ptr->id(),
-                nullptr,    /* onFinish */
-                priority(),
-                true,       /* keepTracking */
-                id()        /* jobId */
+            controller()->stopById<StopIndexRequest>(ptr->worker(), ptr->id(), nullptr, /* onFinish */
+                                                     priority(), true,                  /* keepTracking */
+                                                     id()                               /* jobId */
             );
         }
     }
@@ -393,15 +329,12 @@ void IndexJob::cancelImpl(util::Lock const& lock) {
     _rollbackTransaction(__func__);
 }
 
-
 void IndexJob::notify(util::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
     notifyDefaultImpl<IndexJob>(lock, _onFinish);
 }
 
-
 void IndexJob::_onRequestFinish(IndexRequest::Ptr const& request) {
-
     // NOTE: this algorithm assumes "zero tolerance" to failures - any failure
     // in executing requests or processing data of the requests would result in
     // the job termination. The only exception from this rule is a scenario
@@ -440,7 +373,7 @@ void IndexJob::_onRequestFinish(IndexRequest::Ptr const& request) {
     // workers busy in case of a non-negligible latency in processing data of
     // requests.
 
-    for (auto&& ptr: _launchRequests(lock, request->worker())) {
+    for (auto&& ptr : _launchRequests(lock, request->worker())) {
         _requests[ptr->id()] = ptr;
     }
 
@@ -462,30 +395,24 @@ void IndexJob::_onRequestFinish(IndexRequest::Ptr const& request) {
             return;
         }
     }
-    
+
     // Evaluate for the completion condition of the job.
     if (_requests.size() == 0) finish(lock, ExtendedState::SUCCESS);
 }
 
-
-void IndexJob::_processRequestData(util::Lock const& lock,
-                                   IndexRequest::Ptr const& request) {
-
-    auto const writeIntoFile = [](string const& fileName,
-                                  ios::openmode mode,
-                                  string const& data) {
+void IndexJob::_processRequestData(util::Lock const& lock, IndexRequest::Ptr const& request) {
+    auto const writeIntoFile = [](string const& fileName, ios::openmode mode, string const& data) {
         ofstream f(fileName, mode);
         if (not f.good()) {
-            throw runtime_error(
-                    typeName() + "::_processRequestData"  +
-                    "  failed to open/create/append file: " + fileName);
+            throw runtime_error(typeName() + "::_processRequestData" +
+                                "  failed to open/create/append file: " + fileName);
         }
         f << data;
         f.close();
     };
     switch (_destination) {
-
-        case DISCARD: break;
+        case DISCARD:
+            break;
 
         case FILE: {
             if (_destinationPath.empty()) {
@@ -496,14 +423,12 @@ void IndexJob::_processRequestData(util::Lock const& lock,
             break;
         }
         case FOLDER: {
-            string const filePath =
-                (_destinationPath.empty() ? "." : _destinationPath) + "/" +
-                database() + "_" + to_string(request->chunk()) + ".tsv";
-            writeIntoFile(filePath, ios::out|ios::trunc, request->responseData().data);
+            string const filePath = (_destinationPath.empty() ? "." : _destinationPath) + "/" + database() +
+                                    "_" + to_string(request->chunk()) + ".tsv";
+            writeIntoFile(filePath, ios::out | ios::trunc, request->responseData().data);
             break;
         }
         case TABLE: {
-
             auto const config = controller()->serviceProvider()->config();
 
             // ATTENTION: all exceptions which may be potentially thrown are
@@ -516,27 +441,24 @@ void IndexJob::_processRequestData(util::Lock const& lock,
             //
             // TODO: consider using the named pipe (FIFO)
 
-            string const filePath =
-                config->get<string>("database", "qserv-master-tmp-dir") + "/" + database() + "_" +
-                to_string(request->chunk()) +
-                (_hasTransactions ? "_p" + to_string(_transactionId) : "");
-            writeIntoFile(filePath, ios::out|ios::trunc, request->responseData().data);
+            string const filePath = config->get<string>("database", "qserv-master-tmp-dir") + "/" +
+                                    database() + "_" + to_string(request->chunk()) +
+                                    (_hasTransactions ? "_p" + to_string(_transactionId) : "");
+            writeIntoFile(filePath, ios::out | ios::trunc, request->responseData().data);
 
             // Open the database connection if this is the first batch of data
             if (nullptr == _conn) {
                 _conn = database::mysql::Connection::open(
-                        Configuration::qservCzarDbParams(lsst::qserv::SEC_INDEX_DB)
-                );
+                        Configuration::qservCzarDbParams(lsst::qserv::SEC_INDEX_DB));
             }
-            string const query =
-                "LOAD DATA" + string(_localFile ? " LOCAL" : "") + " INFILE " + _conn->sqlValue(filePath) +
-                " INTO TABLE " + _conn->sqlId(_destinationPath);
+            string const query = "LOAD DATA" + string(_localFile ? " LOCAL" : "") + " INFILE " +
+                                 _conn->sqlValue(filePath) + " INTO TABLE " + _conn->sqlId(_destinationPath);
 
             _conn->execute([&](decltype(_conn) conn) {
                 conn->begin();
                 conn->execute(query);
                 // Loading operations based on this mechanism won't result in throwing exceptions in
-                // case of certain types of problems encountered during the loading, such as 
+                // case of certain types of problems encountered during the loading, such as
                 // out-of-range data, duplicate keys, etc. These errors are reported as warnings
                 // which need to be retrieved using a special call to the database API.
                 if (_localFile) {
@@ -544,37 +466,36 @@ void IndexJob::_processRequestData(util::Lock const& lock,
                     if (!warnings.empty()) {
                         auto const& w = warnings.front();
                         throw database::mysql::Error(
-                                "query: " + query + " failed with total number of problems: " + to_string(warnings.size())
-                                + ", first problem (Level,Code,Message) was: " + w.level + "," + to_string(w.code)
-                                + "," + w.message);
+                                "query: " + query +
+                                " failed with total number of problems: " + to_string(warnings.size()) +
+                                ", first problem (Level,Code,Message) was: " + w.level + "," +
+                                to_string(w.code) + "," + w.message);
                     }
                 }
                 conn->commit();
             });
-            
+
             // Make the best attempt to get rid of the temporary file. Ignore any errors
             // for now. Just report them.
             boost::system::error_code ec;
             fs::remove(fs::path(filePath), ec);
             if (ec.value() != 0) {
-                LOGS(_log, LOG_LVL_ERROR, context() << "::" << __func__ << "  "
-                     << "failed to remove the temporary file '" << filePath);
+                LOGS(_log, LOG_LVL_ERROR,
+                     context() << "::" << __func__ << "  "
+                               << "failed to remove the temporary file '" << filePath);
             }
             break;
         }
         default:
-            throw range_error(
-                    typeName() + "::" + string(__func__) +
-                    "  unsupported destination: " + toString(_destination));
+            throw range_error(typeName() + "::" + string(__func__) +
+                              "  unsupported destination: " + toString(_destination));
     }
 }
 
-
-list<IndexRequest::Ptr> IndexJob::_launchRequests(util::Lock const& lock,
-                                                  string const& worker,
+list<IndexRequest::Ptr> IndexJob::_launchRequests(util::Lock const& lock, string const& worker,
                                                   size_t maxRequests) {
     list<IndexRequest::Ptr> requests;
-    
+
     // Create as many requests as specified by the corresponding parameter of
     // the method or as many as are still available for the specified
     // worker (not to exceed the limit) by popping chunk numbers from the worker's
@@ -583,39 +504,25 @@ list<IndexRequest::Ptr> IndexJob::_launchRequests(util::Lock const& lock,
     auto const self = shared_from_base<IndexJob>();
 
     while (_chunks[worker].size() > 0 and requests.size() < maxRequests) {
-
         auto const chunk = _chunks[worker].front();
         _chunks[worker].pop();
 
-        requests.push_back(
-            controller()->index(
-                worker,
-                database(),
-                directorTable(),
-                chunk,
-                hasTransactions(),
-                transactionId(),
-                [self] (IndexRequest::Ptr const& request) {
-                    self->_onRequestFinish(request);
-                },
-                priority(),
-                true,   /* keepTracking*/
-                id()    /* jobId */
-            )
-        );
+        requests.push_back(controller()->index(
+                worker, database(), directorTable(), chunk, hasTransactions(), transactionId(),
+                [self](IndexRequest::Ptr const& request) { self->_onRequestFinish(request); }, priority(),
+                true, /* keepTracking*/
+                id()  /* jobId */
+                ));
     }
     return requests;
 }
 
-
 void IndexJob::_rollbackTransaction(string const& func) {
     try {
-        if ((nullptr != _conn) and _conn->inTransaction()) _conn->rollback(); 
+        if ((nullptr != _conn) and _conn->inTransaction()) _conn->rollback();
     } catch (exception const& ex) {
-        LOGS(_log, LOG_LVL_ERROR, context() << func
-             << "  transaction rollback failed, ex: " << ex.what());
+        LOGS(_log, LOG_LVL_ERROR, context() << func << "  transaction rollback failed, ex: " << ex.what());
     }
 }
 
-
-}}} // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

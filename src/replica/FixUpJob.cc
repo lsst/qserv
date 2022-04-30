@@ -40,78 +40,51 @@ namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.FixUpJob");
 
-} /// namespace
+}  // namespace
 
-namespace lsst {
-namespace qserv {
-namespace replica {
-
+namespace lsst::qserv::replica {
 
 string FixUpJob::typeName() { return "FixUpJob"; }
 
-
-FixUpJob::Ptr FixUpJob::create(string const& databaseFamily,
-                               Controller::Ptr const& controller,
-                               string const& parentJobId,
-                               CallbackType const& onFinish,
-                               int priority) {
-    return FixUpJob::Ptr(
-        new FixUpJob(databaseFamily,
-                     controller,
-                     parentJobId,
-                     onFinish,
-                     priority));
+FixUpJob::Ptr FixUpJob::create(string const& databaseFamily, Controller::Ptr const& controller,
+                               string const& parentJobId, CallbackType const& onFinish, int priority) {
+    return FixUpJob::Ptr(new FixUpJob(databaseFamily, controller, parentJobId, onFinish, priority));
 }
 
-
-FixUpJob::FixUpJob(string const& databaseFamily,
-                   Controller::Ptr const& controller,
-                   string const& parentJobId,
-                   CallbackType const& onFinish,
-                   int priority)
-    :   Job(controller,
-            parentJobId,
-            "FIXUP",
-            priority),
-        _databaseFamily(databaseFamily),
-        _onFinish(onFinish) {
-}
-
+FixUpJob::FixUpJob(string const& databaseFamily, Controller::Ptr const& controller, string const& parentJobId,
+                   CallbackType const& onFinish, int priority)
+        : Job(controller, parentJobId, "FIXUP", priority),
+          _databaseFamily(databaseFamily),
+          _onFinish(onFinish) {}
 
 FixUpJobResult const& FixUpJob::getReplicaData() const {
-
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     if (state() == State::FINISHED) return _replicaData;
 
-    throw logic_error(
-            typeName() + "::" + string(__func__) +
-            "  the method can't be called while the job hasn't finished");
+    throw logic_error(typeName() + "::" + string(__func__) +
+                      "  the method can't be called while the job hasn't finished");
 }
 
-
-list<pair<string,string>> FixUpJob::extendedPersistentState() const {
-    list<pair<string,string>> result;
+list<pair<string, string>> FixUpJob::extendedPersistentState() const {
+    list<pair<string, string>> result;
     result.emplace_back("database_family", databaseFamily());
     return result;
 }
 
-
-list<pair<string,string>> FixUpJob::persistentLogData() const {
-
-    list<pair<string,string>> result;
+list<pair<string, string>> FixUpJob::persistentLogData() const {
+    list<pair<string, string>> result;
 
     auto&& replicaData = getReplicaData();
 
     // Report workers failed to respond to the requests
 
-    for (auto&& workerInfo: replicaData.workers) {
+    for (auto&& workerInfo : replicaData.workers) {
         auto&& worker = workerInfo.first;
         auto const numFailedRequests = workerInfo.second;
         if (numFailedRequests != 0) {
-            result.emplace_back(
-                "failed-worker", "worker=" + worker
-                + " num-failed-requests=" + to_string(numFailedRequests));
+            result.emplace_back("failed-worker",
+                                "worker=" + worker + " num-failed-requests=" + to_string(numFailedRequests));
         }
     }
 
@@ -121,18 +94,16 @@ list<pair<string,string>> FixUpJob::persistentLogData() const {
     //     the total number of chunks created on the workers as a result
     //     of the operation
 
-    map<string,
-        map<string,
-            size_t>> workerCategoryCounter;
+    map<string, map<string, size_t>> workerCategoryCounter;
 
-    for (auto&& info: replicaData.replicas) {
+    for (auto&& info : replicaData.replicas) {
         workerCategoryCounter[info.worker()]["created-chunks"]++;
     }
-    for (auto&& workerItr: workerCategoryCounter) {
+    for (auto&& workerItr : workerCategoryCounter) {
         auto&& worker = workerItr.first;
         string val = "worker=" + worker;
 
-        for (auto&& categoryItr: workerItr.second) {
+        for (auto&& categoryItr : workerItr.second) {
             auto&& category = categoryItr.first;
             size_t const counter = categoryItr.second;
             val += " " + category + "=" + to_string(counter);
@@ -142,34 +113,22 @@ list<pair<string,string>> FixUpJob::persistentLogData() const {
     return result;
 }
 
-
 void FixUpJob::startImpl(util::Lock const& lock) {
-
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     // Launch the chained job to get chunk disposition
 
     auto self = shared_from_base<FixUpJob>();
-    bool const saveReplicInfo = true;           // always save the replica info in a database because
-                                                // the algorithm depends on it.
-    bool const allWorkers = false;              // only consider enabled workers
+    bool const saveReplicInfo = true;  // always save the replica info in a database because
+                                       // the algorithm depends on it.
+    bool const allWorkers = false;     // only consider enabled workers
     _findAllJob = FindAllJob::create(
-        databaseFamily(),
-        saveReplicInfo,
-        allWorkers,
-        controller(),
-        id(),
-        [self] (FindAllJob::Ptr job) {
-            self->_onPrecursorJobFinish();
-        },
-        priority()
-    );
+            databaseFamily(), saveReplicInfo, allWorkers, controller(), id(),
+            [self](FindAllJob::Ptr job) { self->_onPrecursorJobFinish(); }, priority());
     _findAllJob->start();
 }
 
-
 void FixUpJob::cancelImpl(util::Lock const& lock) {
-
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     // The algorithm will also clear resources taken by various
@@ -184,30 +143,23 @@ void FixUpJob::cancelImpl(util::Lock const& lock) {
     // job the request cancellation should be also followed (where it makes a sense)
     // by stopping the request at corresponding worker service.
 
-    for (auto&& ptr: _requests) {
+    for (auto&& ptr : _requests) {
         ptr->cancel();
         if (ptr->state() != Request::State::FINISHED)
-            controller()->stopById<StopReplicationRequest>(
-                ptr->worker(),
-                ptr->id(),
-                nullptr,    /* onFinish */
-                priority(),
-                true,       /* keepTracking */
-                id()        /* jobId */);
+            controller()->stopById<StopReplicationRequest>(ptr->worker(), ptr->id(), nullptr, /* onFinish */
+                                                           priority(), true, /* keepTracking */
+                                                           id() /* jobId */);
     }
     _destinationWorker2tasks.clear();
     _requests.clear();
 }
-
 
 void FixUpJob::notify(util::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
     notifyDefaultImpl<FixUpJob>(lock, _onFinish);
 }
 
-
 void FixUpJob::_onPrecursorJobFinish() {
-
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     if (state() == State::FINISHED) return;
@@ -228,12 +180,12 @@ void FixUpJob::_onPrecursorJobFinish() {
     // co-location for under-represented chunks
 
     FindAllJobResult const& replicaData = _findAllJob->getReplicaData();
-    for (auto&& chunk2workers: replicaData.isColocated) {
+    for (auto&& chunk2workers : replicaData.isColocated) {
         unsigned int chunk = chunk2workers.first;
 
-        for (auto&& worker2colocated: chunk2workers.second) {
+        for (auto&& worker2colocated : chunk2workers.second) {
             string const& destinationWorker = worker2colocated.first;
-            bool   const  isColocated       = worker2colocated.second;
+            bool const isColocated = worker2colocated.second;
 
             if (isColocated) continue;
 
@@ -242,49 +194,40 @@ void FixUpJob::_onPrecursorJobFinish() {
             // a complete chunk for the database and which (the worker) is not the same
             // as the current one and submit the replication request.
 
-            for (auto&& database: replicaData.databases.at(chunk)) {
-
-                if (not replicaData.chunks.chunk(chunk)
-                                          .database(database)
-                                          .workerExists(destinationWorker)) {
-
+            for (auto&& database : replicaData.databases.at(chunk)) {
+                if (not replicaData.chunks.chunk(chunk).database(database).workerExists(destinationWorker)) {
                     // Finding a source worker first
                     string sourceWorker;
-                    for (auto&& worker: replicaData.complete.at(chunk).at(database)) {
+                    for (auto&& worker : replicaData.complete.at(chunk).at(database)) {
                         if (worker != destinationWorker) {
                             sourceWorker = worker;
                             break;
                         }
                     }
                     if (sourceWorker.empty()) {
-
-                        LOGS(_log, LOG_LVL_ERROR, context()
-                             << __func__ << "  failed to find a source worker for chunk: "
-                             << chunk << " and database: " << database);
+                        LOGS(_log, LOG_LVL_ERROR,
+                             context() << __func__ << "  failed to find a source worker for chunk: " << chunk
+                                       << " and database: " << database);
 
                         finish(lock, ExtendedState::FAILED);
                         return;
                     }
 
                     // Register the replica creation task which will turn into a job.
-                    _destinationWorker2tasks[destinationWorker].emplace(ReplicationTask{
-                        destinationWorker,
-                        sourceWorker,
-                        database,
-                        chunk
-                    });
+                    _destinationWorker2tasks[destinationWorker].emplace(
+                            ReplicationTask{destinationWorker, sourceWorker, database, chunk});
                 }
             }
         }
     }
-    
+
     // Launch the initial batch of requests in the number which won't exceed
     // the number of the service processing threads at each worker multiplied
     // by the number of workers involved into the operation.
     size_t const maxRequestsPerWorker =
-        controller()->serviceProvider()->config()->get<size_t>("worker", "num-svc-processing-threads");
+            controller()->serviceProvider()->config()->get<size_t>("worker", "num-svc-processing-threads");
 
-    for (auto&& itr: _destinationWorker2tasks) {
+    for (auto&& itr : _destinationWorker2tasks) {
         auto&& destinationWorker = itr.first;
         _launchNext(lock, destinationWorker, maxRequestsPerWorker);
     }
@@ -295,15 +238,14 @@ void FixUpJob::_onPrecursorJobFinish() {
     }
 }
 
-
 void FixUpJob::_onRequestFinish(ReplicationRequest::Ptr const& request) {
+    string const database = request->database();
+    string const worker = request->worker();
+    unsigned int const chunk = request->chunk();
 
-    string       const database = request->database();
-    string       const worker   = request->worker();
-    unsigned int const chunk    = request->chunk();
-
-    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << " "
-         << " database=" << database << " worker=" << worker << " chunk=" << chunk);
+    LOGS(_log, LOG_LVL_DEBUG,
+         context() << __func__ << " "
+                   << " database=" << database << " worker=" << worker << " chunk=" << chunk);
 
     if (state() == State::FINISHED) return;
 
@@ -324,17 +266,12 @@ void FixUpJob::_onRequestFinish(ReplicationRequest::Ptr const& request) {
     // last request in flight and no more are ready to be lunched.
     if (0 == _launchNext(lock, worker, 1)) {
         if (_numFinished == _requests.size()) {
-            finish(lock, _numSuccess == _numFinished ? ExtendedState::SUCCESS :
-                                                       ExtendedState::FAILED);
+            finish(lock, _numSuccess == _numFinished ? ExtendedState::SUCCESS : ExtendedState::FAILED);
         }
     }
 }
 
-
-size_t FixUpJob::_launchNext(util::Lock const& lock,
-                             string const& destinationWorker,
-                             size_t maxRequests) {
-
+size_t FixUpJob::_launchNext(util::Lock const& lock, string const& destinationWorker, size_t maxRequests) {
     if (maxRequests == 0) return 0;
 
     auto const self = shared_from_base<FixUpJob>();
@@ -342,7 +279,6 @@ size_t FixUpJob::_launchNext(util::Lock const& lock,
 
     size_t numLaunched = 0;
     for (size_t i = 0; i < maxRequests; ++i) {
-
         if (tasks.size() == 0) break;
 
         // Launch the replication request and register it for further
@@ -351,22 +287,16 @@ size_t FixUpJob::_launchNext(util::Lock const& lock,
         ReplicationTask const& task = tasks.front();
 
         _requests.push_back(controller()->replicate(
-            task.destinationWorker,
-            task.sourceWorker,
-            task.database,
-            task.chunk,
-            [self] (ReplicationRequest::Ptr const& ptr) {
-                self->_onRequestFinish(ptr);
-            },
-            0,      /* priority */
-            true,   /* keepTracking */
-            true,   /* allowDuplicate */
-            id()    /* jobId */
-        ));
+                task.destinationWorker, task.sourceWorker, task.database, task.chunk,
+                [self](ReplicationRequest::Ptr const& ptr) { self->_onRequestFinish(ptr); }, 0, /* priority */
+                true, /* keepTracking */
+                true, /* allowDuplicate */
+                id()  /* jobId */
+                ));
         tasks.pop();
         numLaunched++;
     }
     return numLaunched;
 }
 
-}}} // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

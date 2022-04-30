@@ -44,17 +44,11 @@
 #include "sql/SqlErrorObject.h"
 
 // Forward declarations
-namespace lsst {
-namespace qserv {
-namespace sql {
-    class SqlResults;
-}}}
+namespace lsst::qserv::sql {
+class SqlResults;
+}  // namespace lsst::qserv::sql
 
-
-namespace lsst {
-namespace qserv {
-namespace sql {
-
+namespace lsst::qserv::sql {
 
 class SqlResultIter {
 public:
@@ -64,19 +58,18 @@ public:
 
     virtual StringVector const& operator*() const = 0;
 
-    virtual SqlResultIter& operator++() = 0; // pre-increment iterator advance.
+    virtual SqlResultIter& operator++() = 0;  // pre-increment iterator advance.
 
-    virtual bool done() const = 0; // Would like to relax LSST standard 3-4 for iterator classes
+    virtual bool done() const = 0;  // Would like to relax LSST standard 3-4 for iterator classes
 
 protected:
     SqlResultIter() = default;
 };
 
-
 /// class SqlConnection : Class for interacting with a MySQL database.
 class SqlConnection {
 public:
-    virtual ~SqlConnection() {};
+    virtual ~SqlConnection(){};
 
     virtual void reset(mysql::MySqlConfig const& sc) = 0;
 
@@ -97,28 +90,20 @@ public:
 
     virtual bool dbExists(std::string const& dbName, SqlErrorObject&) = 0;
 
-    virtual bool createDb(std::string const& dbName, SqlErrorObject&,
-                          bool failIfExists=true) = 0;
+    virtual bool createDb(std::string const& dbName, SqlErrorObject&, bool failIfExists = true) = 0;
 
-    virtual bool createDbAndSelect(std::string const& dbName,
-                                   SqlErrorObject&,
-                                   bool failIfExists=true) = 0;
+    virtual bool createDbAndSelect(std::string const& dbName, SqlErrorObject&, bool failIfExists = true) = 0;
 
-    virtual bool dropDb(std::string const& dbName, SqlErrorObject&, bool failIfDoesNotExist=true) = 0;
+    virtual bool dropDb(std::string const& dbName, SqlErrorObject&, bool failIfDoesNotExist = true) = 0;
 
-    virtual bool tableExists(std::string const& tableName,
-                             SqlErrorObject&,
-                             std::string const& dbName="") = 0;
+    virtual bool tableExists(std::string const& tableName, SqlErrorObject&,
+                             std::string const& dbName = "") = 0;
 
-    virtual bool dropTable(std::string const& tableName,
-                           SqlErrorObject&,
-                           bool failIfDoesNotExist=true,
-                           std::string const& dbName="") = 0;
+    virtual bool dropTable(std::string const& tableName, SqlErrorObject&, bool failIfDoesNotExist = true,
+                           std::string const& dbName = "") = 0;
 
-    virtual bool listTables(std::vector<std::string>&,
-                            SqlErrorObject&,
-                            std::string const& prefixed="",
-                            std::string const& dbName="") = 0;
+    virtual bool listTables(std::vector<std::string>&, SqlErrorObject&, std::string const& prefixed = "",
+                            std::string const& dbName = "") = 0;
 
     /**
      * @brief Get the names of the columns in the given db and table
@@ -130,8 +115,7 @@ public:
      * @param tableName The name of the table to look in.
      * @return std::vector<std::string> The column names.
      */
-    virtual std::vector<std::string> listColumns(std::string const& dbName,
-                                                 std::string const& tableName) = 0;
+    virtual std::vector<std::string> listColumns(std::string const& dbName, std::string const& tableName) = 0;
 
     virtual std::string getActiveDbName() const = 0;
 
@@ -160,7 +144,6 @@ protected:
     SqlConnection() = default;
 };
 
-}}}
+}  // namespace lsst::qserv::sql
 
-
-#endif // LSST_QSERV_SQL_SQLCONNECTION_H
+#endif  // LSST_QSERV_SQL_SQLCONNECTION_H

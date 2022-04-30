@@ -38,14 +38,11 @@
 // Qserv headers
 #include "czar/Czar.h"
 
-
 namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.proxy.czarProxy");
 
-void initMDC() {
-    LOG_MDC("LWP", std::to_string(lsst::log::lwpID()));
-}
+void initMDC() { LOG_MDC("LWP", std::to_string(lsst::log::lwpID())); }
 
 std::shared_ptr<lsst::qserv::czar::Czar> _czar;
 
@@ -53,14 +50,11 @@ std::shared_ptr<lsst::qserv::czar::Czar> _czar;
 // happen simultaneously from several threads.
 std::mutex _czarMutex;
 
-}
+}  // namespace
 
-namespace lsst {
-namespace qserv {
-namespace proxy {
+namespace lsst::qserv::proxy {
 
-void
-initCzar(std::string const& czarName) {
+void initCzar(std::string const& czarName) {
     std::lock_guard<std::mutex> lock(_czarMutex);
 
     // ignore repeated calls (they are hard to filter on mysql-proxy side)
@@ -93,34 +87,28 @@ initCzar(std::string const& czarName) {
     _czar = czar::Czar::createCzar(qConfig, name);
 }
 
-
-czar::SubmitResult
-submitQuery(std::string const& query, std::map<std::string, std::string> const& hints) {
+czar::SubmitResult submitQuery(std::string const& query, std::map<std::string, std::string> const& hints) {
     if (not ::_czar) {
         throw std::runtime_error("czarProxy/submitQuery(): czar instance not initialized");
     }
     return ::_czar->submitQuery(query, hints);
 }
 
-void
-killQuery(std::string const& query, std::string const& clientId) {
+void killQuery(std::string const& query, std::string const& clientId) {
     if (not ::_czar) {
         throw std::runtime_error("czarProxy/killQuery(): czar instance not initialized");
     }
     ::_czar->killQuery(query, clientId);
 }
 
-void log(std::string const& loggername, std::string const& level,
-         std::string const& filename, std::string const& funcname,
-         unsigned int lineno, std::string const& message) {
+void log(std::string const& loggername, std::string const& level, std::string const& filename,
+         std::string const& funcname, unsigned int lineno, std::string const& message) {
     auto logger = lsst::log::Log::getLogger(loggername);
     auto levelPtr = log4cxx::Level::toLevel(level);
     if (logger.isEnabledFor(levelPtr->toInt())) {
-        logger.logMsg(levelPtr,
-                      log4cxx::spi::LocationInfo(filename.c_str(), funcname.c_str(), lineno),
+        logger.logMsg(levelPtr, log4cxx::spi::LocationInfo(filename.c_str(), funcname.c_str(), lineno),
                       message);
     }
 }
 
-
-}}} // namespace lsst::qserv::proxy
+}  // namespace lsst::qserv::proxy

@@ -28,15 +28,13 @@
 #include "replica/Application.h"
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class ChunksApp implements a tool which launches a single job Controller in order
  * to acquire, analyze and reports chunk disposition within a database family.
  */
-class ChunksApp: public Application {
+class ChunksApp : public Application {
 public:
     typedef std::shared_ptr<ChunksApp> Ptr;
 
@@ -49,11 +47,11 @@ public:
      */
     static Ptr create(int argc, char* argv[]);
 
-    ChunksApp()=delete;
-    ChunksApp(ChunksApp const&)=delete;
-    ChunksApp& operator=(ChunksApp const&)=delete;
+    ChunksApp() = delete;
+    ChunksApp(ChunksApp const&) = delete;
+    ChunksApp& operator=(ChunksApp const&) = delete;
 
-    ~ChunksApp() override=default;
+    ~ChunksApp() override = default;
 
 protected:
     /// @see Application::runImpl()
@@ -62,7 +60,6 @@ protected:
 private:
     /// @see ChunksApp::create()
     ChunksApp(int argc, char* argv[]);
-
 
     /// The name of a database family
     std::string _databaseFamily;
@@ -86,6 +83,6 @@ private:
     size_t _pageSize = 20;
 };
 
-}}} // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif /* LSST_QSERV_REPLICA_CHUNKSAPP_H */

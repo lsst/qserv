@@ -34,80 +34,44 @@ namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.SqlDropIndexesRequest");
 
-} /// namespace
+}  // namespace
 
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
 SqlDropIndexesRequest::Ptr SqlDropIndexesRequest::create(
-        ServiceProvider::Ptr const& serviceProvider,
-        boost::asio::io_service& io_service,
-        string const& worker,
-        string const& database,
-        vector<string> const& tables,
-        string const& indexName,
-        CallbackType const& onFinish,
-        int priority,
-        bool keepTracking,
+        ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service,
+        string const& worker, string const& database, vector<string> const& tables, string const& indexName,
+        CallbackType const& onFinish, int priority, bool keepTracking,
         shared_ptr<Messenger> const& messenger) {
-
-    return Ptr(new SqlDropIndexesRequest(
-        serviceProvider,
-        io_service,
-        worker,
-        database,
-        tables,
-        indexName,
-        onFinish,
-        priority,
-        keepTracking,
-        messenger
-    ));
+    return Ptr(new SqlDropIndexesRequest(serviceProvider, io_service, worker, database, tables, indexName,
+                                         onFinish, priority, keepTracking, messenger));
 }
 
-
-SqlDropIndexesRequest::SqlDropIndexesRequest(
-        ServiceProvider::Ptr const& serviceProvider,
-        boost::asio::io_service& io_service,
-        string const& worker,
-        string const& database,
-        vector<string> const& tables,
-        string const& indexName,
-        CallbackType const& onFinish,
-        int priority,
-        bool keepTracking,
-        shared_ptr<Messenger> const& messenger)
-    :   SqlRequest(
-            serviceProvider,
-            io_service,
-            "SQL_DROP_TABLE_INDEXES",
-            worker,
-            0,          /* maxRows */
-            priority,
-            keepTracking,
-            messenger
-        ),
-        _onFinish(onFinish) {
-
+SqlDropIndexesRequest::SqlDropIndexesRequest(ServiceProvider::Ptr const& serviceProvider,
+                                             boost::asio::io_service& io_service, string const& worker,
+                                             string const& database, vector<string> const& tables,
+                                             string const& indexName, CallbackType const& onFinish,
+                                             int priority, bool keepTracking,
+                                             shared_ptr<Messenger> const& messenger)
+        : SqlRequest(serviceProvider, io_service, "SQL_DROP_TABLE_INDEXES", worker, 0, /* maxRows */
+                     priority, keepTracking, messenger),
+          _onFinish(onFinish) {
     // Finish initializing the request body's content
     requestBody.set_type(ProtocolRequestSql::DROP_TABLE_INDEX);
     requestBody.set_database(database);
     requestBody.clear_tables();
-    for (auto&& table: tables) {
+    for (auto&& table : tables) {
         requestBody.add_tables(table);
     }
     requestBody.set_index_name(indexName);
     requestBody.set_batch_mode(true);
 }
 
-
 void SqlDropIndexesRequest::notify(util::Lock const& lock) {
-
-    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ <<
-        "[" << ProtocolRequestSql_Type_Name(requestBody.type()) << "]");
+    LOGS(_log, LOG_LVL_DEBUG,
+         context() << __func__ << "[" << ProtocolRequestSql_Type_Name(requestBody.type()) << "]");
 
     notifyDefaultImpl<SqlDropIndexesRequest>(lock, _onFinish);
 }
 
-}}} // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

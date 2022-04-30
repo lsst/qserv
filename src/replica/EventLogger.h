@@ -30,16 +30,12 @@
 #include "replica/Job.h"
 
 // Forward declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
-    struct ControllerEvent;
-}}} // Forward declarations
+namespace lsst::qserv::replica {
+struct ControllerEvent;
+}  // namespace lsst::qserv::replica
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class EventLogger is the base class for logging Controller events on behalf
@@ -47,7 +43,6 @@ namespace replica {
  */
 class EventLogger {
 public:
-
     // Default construction and copy semantics is prohibited
 
     EventLogger() = delete;
@@ -63,7 +58,6 @@ public:
     std::string const& name() const { return _name; }
 
 protected:
-
     /**
      * The constructor is available to subclasses only
      *
@@ -71,8 +65,7 @@ protected:
      * @param name  the name of a task/activity (used for logging info into
      *              the log stream, and for logging events into the persistent log)
      */
-    EventLogger(Controller::Ptr const& controller,
-                std::string const& name);
+    EventLogger(Controller::Ptr const& controller, std::string const& name);
 
     /// Log an event in the persistent log
     void logEvent(ControllerEvent& event) const;
@@ -85,7 +78,7 @@ protected:
 
     /**
      * Log an event to report the termination of the task.
-     * 
+     *
      * @param msg  error message to be reported
      */
     void logOnTerminatedEvent(std::string const& msg) const;
@@ -97,8 +90,7 @@ protected:
      * @param job       pointer to the job
      * @param family    the name of a database family
      */
-    void logJobStartedEvent(std::string const& typeName,
-                            Job::Ptr const& job,
+    void logJobStartedEvent(std::string const& typeName, Job::Ptr const& job,
                             std::string const& family) const;
 
     /**
@@ -108,16 +100,15 @@ protected:
      * @param job       pointer to the job
      * @param family    the name of a database family
      */
-    void logJobFinishedEvent(std::string const& typeName,
-                             Job::Ptr const& job,
+    void logJobFinishedEvent(std::string const& typeName, Job::Ptr const& job,
                              std::string const& family) const;
 
     // Input parameters
 
     Controller::Ptr const _controller;
-    std::string     const _name;
+    std::string const _name;
 };
-    
-}}} // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_EVENTLOGGER_H
+}  // namespace lsst::qserv::replica
+
+#endif  // LSST_QSERV_REPLICA_EVENTLOGGER_H

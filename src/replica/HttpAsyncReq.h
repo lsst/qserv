@@ -38,17 +38,15 @@
 #include "util/Mutex.h"
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * @brief Class HttpAsyncReq represents a simple asynchronous interface for
  * communicating over the HTTP protocol.
- * 
+ *
  * The implementation of the class invokes a user-supplied callback (lambda) function
  * upon a completion or a failure of the request.
- * 
+ *
  * Here is an example of using the class to pull a file and dump its content on
  * to the standard output stream:
  * @code
@@ -69,7 +67,7 @@ namespace replica {
  *   reader->start();
  *   io_service.run();
  * @code
- * 
+ *
  * @note Once the start() method gets called w/o throwing an exception, the algorithm
  *   can make repeated attempts to establish a connection to the Web server even if
  *   the server's host and/or port won't be resolved, or if the connection attempts
@@ -82,24 +80,24 @@ namespace replica {
  * @note The implementation will open and close a new connection for each request.
  * @note The implementation doesn't support TLS/SSL-based HTTPS protocol.
  */
-class HttpAsyncReq: public std::enable_shared_from_this<HttpAsyncReq> {
+class HttpAsyncReq : public std::enable_shared_from_this<HttpAsyncReq> {
 public:
     /// The function type for notifications on the completion of the operation.
     typedef std::function<void(std::shared_ptr<HttpAsyncReq> const&)> CallbackType;
 
-    enum class State: int {
-        CREATED = 0,        ///< The object was created and no request was initiated.
-        IN_PROGRESS,        ///< The request is still in progress
-        FINISHED,           ///< Final state: the request was deliver to the server and
-                            ///  a valid server response was received.
-        FAILED,             ///< Final state: failed to deliver the request to the server or
-                            ///  receive a valid server response.
-        BODY_LIMIT_ERROR,   ///< Final state: the operation failed because the response's body
-                            ///  is larger than requested.
-        CANCELLED,          ///< Final state: the request was explicitly cancelled before
-                            ///  it had a chance to finish.
-        EXPIRED             ///< Final state: the request was aborted  before it had
-                            ///  a chance to finish due to the timeout expiration.
+    enum class State : int {
+        CREATED = 0,       ///< The object was created and no request was initiated.
+        IN_PROGRESS,       ///< The request is still in progress
+        FINISHED,          ///< Final state: the request was deliver to the server and
+                           ///  a valid server response was received.
+        FAILED,            ///< Final state: failed to deliver the request to the server or
+                           ///  receive a valid server response.
+        BODY_LIMIT_ERROR,  ///< Final state: the operation failed because the response's body
+                           ///  is larger than requested.
+        CANCELLED,         ///< Final state: the request was explicitly cancelled before
+                           ///  it had a chance to finish.
+        EXPIRED            ///< Final state: the request was aborted  before it had
+                           ///  a chance to finish due to the timeout expiration.
     };
 
     /// @return The string representation of the state.
@@ -138,15 +136,14 @@ public:
      * @throw std::invalid_argument If empty or invalid values of the input parameters
      *   were provided.
      */
-    static std::shared_ptr<HttpAsyncReq> create(
-            boost::asio::io_service& io_service,
-            CallbackType const& onFinish,
-            std::string const& method,
-            std::string const& url,
-            std::string const& data=std::string(),
-            std::unordered_map<std::string, std::string> const& headers=std::unordered_map<std::string, std::string>(),
-            size_t maxResponseBodySize=0,
-            unsigned int expirationIvalSec=0);
+    static std::shared_ptr<HttpAsyncReq> create(boost::asio::io_service& io_service,
+                                                CallbackType const& onFinish, std::string const& method,
+                                                std::string const& url,
+                                                std::string const& data = std::string(),
+                                                std::unordered_map<std::string, std::string> const& headers =
+                                                        std::unordered_map<std::string, std::string>(),
+                                                size_t maxResponseBodySize = 0,
+                                                unsigned int expirationIvalSec = 0);
 
     /// Non-trivial destructor is needed to free up allocated resources.
     virtual ~HttpAsyncReq();
@@ -202,18 +199,14 @@ public:
 
 private:
     /// @see HttpAsyncReq::create()
-    HttpAsyncReq(boost::asio::io_service& io_service,
-                 CallbackType const& onFinish,
-                 std::string const& method,
-                 std::string const& url,
-                 std::string const& data,
-                 std::unordered_map<std::string, std::string> const& headers,
-                 size_t maxResponseBodySize,
+    HttpAsyncReq(boost::asio::io_service& io_service, CallbackType const& onFinish, std::string const& method,
+                 std::string const& url, std::string const& data,
+                 std::unordered_map<std::string, std::string> const& headers, size_t maxResponseBodySize,
                  unsigned int expirationIvalSec);
 
     /**
      * @brief Verify the desired state against the current one.
-     * 
+     *
      * @param lock The lock to be held of _mtx.
      * @param context The calling context.
      * @param desiredStates The desired states (may be more than one) to be verified.
@@ -248,7 +241,7 @@ private:
      * @param finalState The final state to be set.
      * @param error (Optional) The error message to be set.
      */
-    void _finish(util::Lock const& lock, State finalState, std::string const& error=std::string());
+    void _finish(util::Lock const& lock, State finalState, std::string const& error = std::string());
 
     // Data members.
 
@@ -302,6 +295,6 @@ private:
     mutable util::Mutex _mtx;
 };
 
-}}} // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_HTTPASYNCREQ_H
+#endif  // LSST_QSERV_HTTPASYNCREQ_H

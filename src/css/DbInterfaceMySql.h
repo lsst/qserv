@@ -22,8 +22,6 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-
-
 #ifndef LSST_QSERV_CSS_DBINTERFACEMYSQL_H
 #define LSST_QSERV_CSS_DBINTERFACEMYSQL_H
 
@@ -38,15 +36,11 @@
 #include "mysql/MySqlConfig.h"
 #include "sql/SqlConnection.h"
 
-namespace lsst {
-namespace qserv {
-namespace css {
-
+namespace lsst::qserv::css {
 
 /// This class is used to connect to tabular data in a mysql database.
 class DbInterfaceMySql {
 public:
-
     /// @param mysqlConf: Configuration object for mysql connection
     explicit DbInterfaceMySql(mysql::MySqlConfig const& mysqlConf);
 
@@ -69,10 +63,9 @@ public:
 
 private:
     std::shared_ptr<sql::SqlConnection> _conn;
-    std::mutex _dbMutex;    ///< Synchronizes access to certain DB operations
-
+    std::mutex _dbMutex;  ///< Synchronizes access to certain DB operations
 };
 
-}}} // namespace lsst::qserv::css
+}  // namespace lsst::qserv::css
 
-#endif // LSST_QSERV_CSS_DBINTERFACEMYSQL_H
+#endif  // LSST_QSERV_CSS_DBINTERFACEMYSQL_H

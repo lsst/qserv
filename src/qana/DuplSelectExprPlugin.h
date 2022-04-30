@@ -47,12 +47,10 @@
 #include "query/typedefs.h"
 #include "util/MultiError.h"
 
-namespace lsst {
-namespace qserv {
-namespace qana {
+namespace lsst::qserv::qana {
 
 namespace test {
-    class DuplSelectExprPluginTestHelper;
+class DuplSelectExprPluginTestHelper;
 }
 
 /**
@@ -65,11 +63,11 @@ namespace test {
  */
 class DuplSelectExprPlugin : public QueryPlugin {
     /**
-      * Used to test private method
-      */
+     * Used to test private method
+     */
     friend class test::DuplSelectExprPluginTestHelper;
-public:
 
+public:
     /**
      * Template for exception message returned by Qserv
      */
@@ -92,12 +90,11 @@ public:
     void applyLogical(query::SelectStmt& stmt, query::QueryContext&) override;
 
     /**
-    * Return the name of the plugin class for logging.
-    */
+     * Return the name of the plugin class for logging.
+     */
     std::string name() const override { return "DuplSelectExprPlugin"; }
 
 private:
-
     /**
      * Returns duplicate select expressions names found in an SQL query
      *
@@ -118,6 +115,6 @@ private:
     util::MultiError getDuplicateAndPosition(StringVector const& v) const;
 };
 
-}}} // namespace lsst::qserv::qana
+}  // namespace lsst::qserv::qana
 
 #endif

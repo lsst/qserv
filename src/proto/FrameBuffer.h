@@ -43,24 +43,17 @@
 
 // This header declarations
 
-namespace lsst {
-namespace qserv {
-namespace proto {
+namespace lsst::qserv::proto {
 
 /**
  * Class FrameBufferError is used for throwing exceptions on various
  * ubnormal conditions seen in the implementations of the buffer
  * classes.
  */
-struct FrameBufferError
-    :   std::runtime_error {
-
+struct FrameBufferError : std::runtime_error {
     /// Normal constructor of the exception class
-    FrameBufferError(std::string const& msg)
-        :   std::runtime_error(msg) {
-    }
+    FrameBufferError(std::string const& msg) : std::runtime_error(msg) {}
 };
-
 
 /**
  * The helper class encapsulating deserialization operations with Google
@@ -70,20 +63,17 @@ struct FrameBufferError
  *
  *   4-bytes: frame header containing 'N' - the length of a message
  *   N-bytes: the message serialized as a Protobuf object
- *   ... 
+ *   ...
  */
 class FrameBufferView {
-
 public:
-
     /**
      * Construct the buffer
      *
      * @param data - pointer to the data blob to be parsed
      * @param size - the length (bytes) in the data blob
      */
-    explicit FrameBufferView(char const* data,
-                             size_t      size);
+    explicit FrameBufferView(char const* data, size_t size);
 
     // Default construction and copy semantics are proxibited
 
@@ -111,27 +101,23 @@ public:
      */
     template <class T>
     void parse(T& message) {
-
         uint32_t const messageLength = parseLength();
 
         if (_size - (_next - _data) < messageLength)
-            throw FrameBufferError(
-                    "FrameBufferView::parse() ** not enough data (" + std::to_string(_size - (_next - _data)) +
-                    " bytes instead of " + std::to_string(messageLength) + " to be interpreted as the message");
+            throw FrameBufferError("FrameBufferView::parse() ** not enough data (" +
+                                   std::to_string(_size - (_next - _data)) + " bytes instead of " +
+                                   std::to_string(messageLength) + " to be interpreted as the message");
 
-        if (not message.ParseFromArray(_next, messageLength) ||
-            not message.IsInitialized()) {
-            throw FrameBufferError(
-                    "FrameBufferView::parse() ** message deserialization failed **");
-         }
+        if (not message.ParseFromArray(_next, messageLength) || not message.IsInitialized()) {
+            throw FrameBufferError("FrameBufferView::parse() ** message deserialization failed **");
+        }
 
         // Move the pointer to the next message (if any)
         _next += messageLength;
     }
 
 private:
-
-   /**
+    /**
      * Parse and deserialize the length of a message from the frame header
      * at a curren position of the data pointer.
      * If succeeded the method will also advance the current pointer within
@@ -149,22 +135,18 @@ private:
     uint32_t parseLength();
 
 private:
-
     char const* _data;  // start of the data blob
     char const* _next;  // start of the next message within the blob
 
     size_t _size;
 };
 
-
 /**
  * The helper class encapsulating serialization operations
  * with Google protobuf objects.
  */
 class FrameBuffer {
-
 public:
-
     /// The default capacity of teh buffer
     static const size_t DEFAULT_SIZE;
 
@@ -177,7 +159,7 @@ public:
     /**
      * Construct the buffer of the specified initial capacity (bytes).
      */
-    explicit FrameBuffer(size_t capacity=DEFAULT_SIZE);
+    explicit FrameBuffer(size_t capacity = DEFAULT_SIZE);
 
     // Copy semantics are proxibited
 
@@ -207,7 +189,7 @@ public:
      * capacity is insufficient to accomodate the requested size the buffer
      * will be extended. In the later case its previous content (if any) will
      * be preserved.
-     * 
+     *
      * The method will throw one of these exceptions:
      *
      *   std::overflow_error
@@ -215,7 +197,7 @@ public:
      *
      * @param newSizeBytes - new size (bytes) of the buffer
      */
-    void resize(size_t newSizeBytes=0);
+    void resize(size_t newSizeBytes = 0);
 
     /**
      * Add a message into the buffer. The message will be preceeed
@@ -233,8 +215,7 @@ public:
      */
     template <class T>
     void serialize(T const& message) {
-        
-        uint32_t const headerLength  = sizeof(uint32_t);
+        uint32_t const headerLength = sizeof(uint32_t);
         uint32_t const messageLength = message.ByteSizeLong();
 
         // Make sure we have enough space to accomodate the frame header
@@ -250,10 +231,9 @@ public:
             throw FrameBufferError("FrameBuffer::serialize()  ** message serialization failed **");
 
         _size += messageLength;
-    } 
+    }
 
 private:
-
     /**
      * Ensure the buffer capacity is no less than the specified number of bytes.
      * Extend it otherwise. The previous contents (as per its 'size') of the buffer
@@ -262,13 +242,12 @@ private:
     void extend(size_t newCapacityBytes);
 
 private:
-
-    char* _data;      // start of the allocated buffer
+    char* _data;  // start of the allocated buffer
 
     size_t _capacity;
     size_t _size;
 };
 
-}}} // namespace lsst::qserv::proto
+}  // namespace lsst::qserv::proto
 
-#endif // LSST_QSERV_PROTO_FRAME_BUFFER_H
+#endif  // LSST_QSERV_PROTO_FRAME_BUFFER_H

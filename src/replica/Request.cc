@@ -47,84 +47,85 @@ namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.Request");
 
-} /// namespace
+}  // namespace
 
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
 atomic<size_t> Request::_numClassInstances(0);
 
-
 string Request::state2string(State state) {
     switch (state) {
-        case CREATED:     return "CREATED";
-        case IN_PROGRESS: return "IN_PROGRESS";
-        case FINISHED:    return "FINISHED";
+        case CREATED:
+            return "CREATED";
+        case IN_PROGRESS:
+            return "IN_PROGRESS";
+        case FINISHED:
+            return "FINISHED";
     }
-    throw logic_error(
-            "Request::" + string(__func__) + "(State)  incomplete implementation");
+    throw logic_error("Request::" + string(__func__) + "(State)  incomplete implementation");
 }
-
 
 string Request::state2string(ExtendedState state) {
     switch (state) {
-        case NONE:                 return "NONE";
-        case SUCCESS:              return "SUCCESS";
-        case CLIENT_ERROR:         return "CLIENT_ERROR";
-        case SERVER_BAD:           return "SERVER_BAD";
-        case SERVER_ERROR:         return "SERVER_ERROR";
-        case SERVER_CREATED:       return "SERVER_CREATED";
-        case SERVER_QUEUED:        return "SERVER_QUEUED";
-        case SERVER_IN_PROGRESS:   return "SERVER_IN_PROGRESS";
-        case SERVER_IS_CANCELLING: return "SERVER_IS_CANCELLING";
-        case SERVER_CANCELLED:     return "SERVER_CANCELLED";
-        case TIMEOUT_EXPIRED:      return "TIMEOUT_EXPIRED";
-        case CANCELLED:            return "CANCELLED";
+        case NONE:
+            return "NONE";
+        case SUCCESS:
+            return "SUCCESS";
+        case CLIENT_ERROR:
+            return "CLIENT_ERROR";
+        case SERVER_BAD:
+            return "SERVER_BAD";
+        case SERVER_ERROR:
+            return "SERVER_ERROR";
+        case SERVER_CREATED:
+            return "SERVER_CREATED";
+        case SERVER_QUEUED:
+            return "SERVER_QUEUED";
+        case SERVER_IN_PROGRESS:
+            return "SERVER_IN_PROGRESS";
+        case SERVER_IS_CANCELLING:
+            return "SERVER_IS_CANCELLING";
+        case SERVER_CANCELLED:
+            return "SERVER_CANCELLED";
+        case TIMEOUT_EXPIRED:
+            return "TIMEOUT_EXPIRED";
+        case CANCELLED:
+            return "CANCELLED";
     }
-    throw logic_error(
-            "Request::" + string(__func__) + "(ExtendedState)  incomplete implementation");
+    throw logic_error("Request::" + string(__func__) + "(ExtendedState)  incomplete implementation");
 }
-
 
 string Request::state2string(State state, ExtendedState extendedState) {
     return state2string(state) + "::" + state2string(extendedState);
 }
 
-
-string Request::state2string(State state, ExtendedState extendedState, replica::ProtocolStatusExt serverStatus) {
+string Request::state2string(State state, ExtendedState extendedState,
+                             replica::ProtocolStatusExt serverStatus) {
     return state2string(state, extendedState) + "::" + replica::status2string(serverStatus);
 }
 
-
-Request::Request(ServiceProvider::Ptr const& serviceProvider,
-                 boost::asio::io_service& io_service,
-                 string const& type,
-                 string const& worker,
-                 int  priority,
-                 bool keepTracking,
-                 bool allowDuplicate,
-                 bool disposeRequired)
-    :   _serviceProvider(serviceProvider),
-        _type(type),
-        _id(Generators::uniqueId()),
-        _worker(worker),
-        _priority(priority),
-        _keepTracking(keepTracking),
-        _allowDuplicate(allowDuplicate),
-        _disposeRequired(disposeRequired),
-        _state(CREATED),
-        _extendedState(NONE),
-        _extendedServerStatus(ProtocolStatusExt::NONE),
-        _bufferPtr(new ProtocolBuffer(
-                serviceProvider->config()->get<size_t>("common", "request-buf-size-bytes"))),
-        _workerInfo(serviceProvider->config()->workerInfo(worker)),
-        _timerIvalSec(serviceProvider->config()->get<unsigned int>("common", "request-retry-interval-sec")),
-        _timer(io_service),
-        _requestExpirationIvalSec(serviceProvider->config()->get<unsigned int>(
-                "controller", "request-timeout-sec")),
-        _requestExpirationTimer(io_service) {
-
+Request::Request(ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service,
+                 string const& type, string const& worker, int priority, bool keepTracking,
+                 bool allowDuplicate, bool disposeRequired)
+        : _serviceProvider(serviceProvider),
+          _type(type),
+          _id(Generators::uniqueId()),
+          _worker(worker),
+          _priority(priority),
+          _keepTracking(keepTracking),
+          _allowDuplicate(allowDuplicate),
+          _disposeRequired(disposeRequired),
+          _state(CREATED),
+          _extendedState(NONE),
+          _extendedServerStatus(ProtocolStatusExt::NONE),
+          _bufferPtr(new ProtocolBuffer(
+                  serviceProvider->config()->get<size_t>("common", "request-buf-size-bytes"))),
+          _workerInfo(serviceProvider->config()->workerInfo(worker)),
+          _timerIvalSec(serviceProvider->config()->get<unsigned int>("common", "request-retry-interval-sec")),
+          _timer(io_service),
+          _requestExpirationIvalSec(
+                  serviceProvider->config()->get<unsigned int>("controller", "request-timeout-sec")),
+          _requestExpirationTimer(io_service) {
     _serviceProvider->config()->assertWorkerIsValid(worker);
 
     // This report is used solely for debugging purposes to allow tracking
@@ -133,30 +134,22 @@ Request::Request(ServiceProvider::Ptr const& serviceProvider,
     LOGS(_log, LOG_LVL_DEBUG, context() << "constructed  instances: " << _numClassInstances);
 }
 
-
 Request::~Request() {
     --_numClassInstances;
     LOGS(_log, LOG_LVL_DEBUG, context() << "destructed   instances: " << _numClassInstances);
 }
-
 
 string Request::state2string() const {
     util::Lock lock(_mtx, context() + __func__);
     return state2string(state(), extendedState()) + "::" + replica::status2string(extendedServerStatus());
 }
 
-
 string Request::context() const {
-    return "REQUEST " + id() + "  " + type() +
-           "  " + state2string(state(), extendedState()) +
+    return "REQUEST " + id() + "  " + type() + "  " + state2string(state(), extendedState()) +
            "::" + replica::status2string(extendedServerStatus()) + "  ";
 }
 
-
-string const& Request::remoteId() const {
-    return _duplicateRequestId.empty() ? _id : _duplicateRequestId;
-}
-
+string const& Request::remoteId() const { return _duplicateRequestId.empty() ? _id : _duplicateRequestId; }
 
 unsigned int Request::nextTimeIvalMsec() {
     auto result = _currentTimeIvalMsec;
@@ -164,17 +157,12 @@ unsigned int Request::nextTimeIvalMsec() {
     return result;
 }
 
-
 Performance Request::performance() const {
     util::Lock lock(_mtx, context() + __func__);
     return performance(lock);
 }
 
-
-Performance Request::performance(util::Lock const& lock) const {
-    return _performance;
-}
-
+Performance Request::performance(util::Lock const& lock) const { return _performance; }
 
 string Request::toString(bool extended) const {
     ostringstream oss;
@@ -187,17 +175,15 @@ string Request::toString(bool extended) const {
         << "  remoteId: " << remoteId() << "\n"
         << "  performance: " << performance() << "\n";
     if (extended) {
-        for (auto&& kv: extendedPersistentState()) {
+        for (auto&& kv : extendedPersistentState()) {
             oss << "  " << kv.first << ": " << kv.second << "\n";
         }
     }
     return oss.str();
 }
 
-
-void Request::start(shared_ptr<Controller> const& controller,
-                    string const& jobId, unsigned int requestExpirationIvalSec) {
-
+void Request::start(shared_ptr<Controller> const& controller, string const& jobId,
+                    unsigned int requestExpirationIvalSec) {
     util::Lock lock(_mtx, context() + __func__);
 
     assertState(lock, CREATED, context() + __func__);
@@ -206,16 +192,16 @@ void Request::start(shared_ptr<Controller> const& controller,
     if (requestExpirationIvalSec) {
         _requestExpirationIvalSec = requestExpirationIvalSec;
     }
-    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  _requestExpirationIvalSec: "
-         << _requestExpirationIvalSec);
+    LOGS(_log, LOG_LVL_DEBUG,
+         context() << __func__ << "  _requestExpirationIvalSec: " << _requestExpirationIvalSec);
 
     // Build optional associations with the corresponding Controller and the job
     //
     // NOTE: this is done only once, the first time a non-trivial value
     // of each parameter is presented to the method.
 
-    if (not _controller    and     controller)    _controller = controller;
-    if (    _jobId.empty() and not jobId.empty()) _jobId      = jobId;
+    if (not _controller and controller) _controller = controller;
+    if (_jobId.empty() and not jobId.empty()) _jobId = jobId;
 
     _performance.setUpdateStart();
 
@@ -234,9 +220,7 @@ void Request::start(shared_ptr<Controller> const& controller,
     setState(lock, IN_PROGRESS);
 }
 
-
 void Request::wait() {
- 
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     if (_finished) return;
@@ -245,21 +229,17 @@ void Request::wait() {
     _onFinishCv.wait(onFinishLock, [&] { return _finished; });
 }
 
-
 string const& Request::jobId() const {
     if (state() == State::CREATED) {
-        throw logic_error(
-                "Request::" + string(__func__) +
-                "  the Job Id is not available because the request has not started yet");
+        throw logic_error("Request::" + string(__func__) +
+                          "  the Job Id is not available because the request has not started yet");
     }
     return _jobId;
 }
 
-
 void Request::expired(boost::system::error_code const& ec) {
-
-    LOGS(_log, LOG_LVL_DEBUG, context() << __func__
-         << (ec == boost::asio::error::operation_aborted ? "  ** ABORTED **" : ""));
+    LOGS(_log, LOG_LVL_DEBUG,
+         context() << __func__ << (ec == boost::asio::error::operation_aborted ? "  ** ABORTED **" : ""));
 
     // Ignore this event if the timer was aborted
     if (ec == boost::asio::error::operation_aborted) return;
@@ -271,9 +251,7 @@ void Request::expired(boost::system::error_code const& ec) {
     finish(lock, TIMEOUT_EXPIRED);
 }
 
-
 void Request::cancel() {
-
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     if (state() == State::FINISHED) return;
@@ -282,7 +260,6 @@ void Request::cancel() {
 
     finish(lock, CANCELLED);
 }
-
 
 void Request::keepTrackingOrFinish(util::Lock const& lock, ExtendedState extendedState) {
     if (keepTracking()) {
@@ -293,14 +270,11 @@ void Request::keepTrackingOrFinish(util::Lock const& lock, ExtendedState extende
     }
 }
 
-
 void Request::awaken(boost::system::error_code const& ec) {
     throw runtime_error(context() + string(__func__) + "  the default implementation is not allowed.");
 }
 
-
 void Request::finish(util::Lock const& lock, ExtendedState extendedState) {
-
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     // Check if it's not too late for this operation
@@ -327,7 +301,6 @@ void Request::finish(util::Lock const& lock, ExtendedState extendedState) {
     _onFinishCv.notify_all();
 }
 
-
 bool Request::isAborted(boost::system::error_code const& ec) const {
     if (ec == boost::asio::error::operation_aborted) {
         LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  ** ABORTED **");
@@ -336,19 +309,15 @@ bool Request::isAborted(boost::system::error_code const& ec) const {
     return false;
 }
 
-
 void Request::assertState(util::Lock const& lock, State desiredState, string const& context) const {
     if (desiredState != state()) {
-        throw logic_error(
-                context + ": wrong state " + state2string(state()) + " instead of " +
-                state2string(desiredState));
+        throw logic_error(context + ": wrong state " + state2string(state()) + " instead of " +
+                          state2string(desiredState));
     }
 }
 
-
-void Request::setState(util::Lock const& lock, State newState, ExtendedState newExtendedState)
-{
-    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  "  << state2string(newState, newExtendedState));
+void Request::setState(util::Lock const& lock, State newState, ExtendedState newExtendedState) {
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  " << state2string(newState, newExtendedState));
 
     // ATTENTION: ensure the top-level state is the last to change in
     // in the transient state transition in order to guarantee a consistent
@@ -361,4 +330,4 @@ void Request::setState(util::Lock const& lock, State newState, ExtendedState new
     savePersistentState(lock);
 }
 
-}}} // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

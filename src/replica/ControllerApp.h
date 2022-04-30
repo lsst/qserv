@@ -33,15 +33,13 @@
 #include "replica/Request.h"
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class ControllerApp implements a tool for testing all known types of
  * the Controller requests.
  */
-class ControllerApp: public Application {
+class ControllerApp : public Application {
 public:
     typedef std::shared_ptr<ControllerApp> Ptr;
 
@@ -54,11 +52,11 @@ public:
      */
     static Ptr create(int argc, char* argv[]);
 
-    ControllerApp()=delete;
-    ControllerApp(ControllerApp const&)=delete;
-    ControllerApp& operator=(ControllerApp const&)=delete;
+    ControllerApp() = delete;
+    ControllerApp(ControllerApp const&) = delete;
+    ControllerApp& operator=(ControllerApp const&) = delete;
 
-    ~ControllerApp() override=default;
+    ~ControllerApp() override = default;
 
 protected:
     int runImpl() final;
@@ -122,10 +120,10 @@ private:
     /// A database password for establishing a connection with the worker's database
     std::string _sqlPassword;
 
-    /// The name of a database 
+    /// The name of a database
     std::string _sqlDatabase;
 
-    /// The name of a table 
+    /// The name of a table
     std::string _sqlTable;
 
     /// The name of a MySQL engine for tables to be created
@@ -177,7 +175,7 @@ private:
     /// to requests which change the replica disposition at a worker, and only
     /// for those requests which are still in the worker's queues.
     bool _allowDuplicates = false;
-    
+
     /// Do not save the replica info in the database if set to 'true'
     bool _doNotSaveReplicaInfo = false;
 
@@ -191,6 +189,6 @@ private:
     std::string _indexFileName;
 };
 
-}}} // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif /* LSST_QSERV_REPLICA_CONTROLLERAPP_H */

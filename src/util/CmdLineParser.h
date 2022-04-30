@@ -38,9 +38,7 @@
 
 // This header declarations
 
-namespace lsst {
-namespace qserv {
-namespace util {
+namespace lsst::qserv::util {
 
 /**
  * The command line parser class for the command-line applications.
@@ -62,17 +60,14 @@ namespace util {
  *   --<option>=
  */
 class CmdLineParser {
-
 public:
-
     /**
      * Return 'true' if the specified string is found in the collection.
      *
      * @param val - a string to be evaluated
      * @param col - a collection
      */
-    static bool in(std::string const&              val,
-                   std::vector<std::string> const& col);
+    static bool in(std::string const& val, std::vector<std::string> const& col);
 
     // Default construction and copy semantics are proxibited
 
@@ -87,9 +82,7 @@ public:
      * @param argv  - the vector of arguments
      * @param usage - the command line argument syntax to be printed
      */
-    CmdLineParser(int                argc,
-                  const char* const* argv,
-                  std::string const& usage);
+    CmdLineParser(int argc, const char* const* argv, std::string const& usage);
 
     /// Destructor
     ~CmdLineParser() = default;
@@ -98,7 +91,7 @@ public:
      * Return 'true' if the specified flag was found in the command line
      *
      * @param name - the name of a flag
-     * @param 
+     * @param
      */
     bool flag(std::string const& name) const;
 
@@ -112,10 +105,8 @@ public:
      * @param defaultValue - a default value of the option
      */
     template <class V>
-    V option(std::string const& name,
-             V const&            defaultValue) const {
-
-        return optionImpl (name, defaultValue);
+    V option(std::string const& name, V const& defaultValue) const {
+        return optionImpl(name, defaultValue);
     }
 
     /**
@@ -127,21 +118,20 @@ public:
      * @param posBegin - starting position (default: 1)
      */
     template <class V>
-    void parameters(std::vector<V>& vals, unsigned int posBegin=1) const {
+    void parameters(std::vector<V>& vals, unsigned int posBegin = 1) const {
         // Skipping the command path
         size_t const size = _parameter.size();
         if (posBegin >= size) {
             vals.resize(0);
             return;
         }
-        vals.resize(size-posBegin);
-        for (size_t pos=posBegin; pos < size; ++pos)
-            parameterImpl(pos, vals[pos-posBegin]);
+        vals.resize(size - posBegin);
+        for (size_t pos = posBegin; pos < size; ++pos) parameterImpl(pos, vals[pos - posBegin]);
     }
 
     /// @return collection of positional parameters (except the command name itself)
     template <class V>
-    std::vector<V> parameters(unsigned int posBegin=1) const {
+    std::vector<V> parameters(unsigned int posBegin = 1) const {
         std::vector<V> vals;
         parameters(vals, posBegin);
         return vals;
@@ -171,8 +161,7 @@ public:
      * @param pos           - position number starting with 0
      * @param allowedValues - a collection of possible values
      */
-    std::string parameterRestrictedBy(unsigned int                    pos,
-                                      std::vector<std::string> const& allowedValues) const;
+    std::string parameterRestrictedBy(unsigned int pos, std::vector<std::string> const& allowedValues) const;
 
     /**
      * Dump parsed flags, options and parameters into the specified stream
@@ -182,7 +171,6 @@ public:
     void dump(std::ostream& os) const;
 
 private:
-
     /// Parse the command line
     void parse();
 
@@ -191,32 +179,28 @@ private:
      *
      * @see method CmdLineParser::option()
      */
-    bool optionImpl(std::string const& name,
-                    bool const&         defaultValue) const;
+    bool optionImpl(std::string const& name, bool const& defaultValue) const;
 
     /**
      * Implement option lookup for the integer type
      *
      * @see method CmdLineParser::option()
      */
-    int optionImpl(std::string const& name,
-                   int const&         defaultValue) const;
+    int optionImpl(std::string const& name, int const& defaultValue) const;
 
     /**
      * Implement option lookup for the integer type
      *
      * @see method CmdLineParser::option()
      */
-    unsigned int optionImpl(std::string const&  name,
-                            unsigned int const& defaultValue) const;
- 
+    unsigned int optionImpl(std::string const& name, unsigned int const& defaultValue) const;
+
     /**
      * Implement option lookup for the string type
      *
      * @see method CmdLineParser::option()
      */
-    std::string optionImpl(std::string const& name,
-                           std::string const& defaultValue) const;
+    std::string optionImpl(std::string const& name, std::string const& defaultValue) const;
 
     /**
      * Implement positional parameter lookup for the boolean type
@@ -224,11 +208,10 @@ private:
      * @param pos - position number starting with 0
      * @param val - a value to be set upon the successfull completion
      *              of the method
-     * 
+     *
      * @see method CmdLineParser::parameter()
      */
-    void parameterImpl(unsigned int pos,
-                       bool&        val) const;
+    void parameterImpl(unsigned int pos, bool& val) const;
 
     /**
      * Implement positional parameter lookup for the integer type
@@ -236,11 +219,10 @@ private:
      * @param pos - position number starting with 0
      * @param val - a value to be set upon the successfull completion
      *              of the method
-     * 
+     *
      * @see method CmdLineParser::parameter()
      */
-    void parameterImpl(unsigned int pos,
-                       int&         val) const;
+    void parameterImpl(unsigned int pos, int& val) const;
 
     /**
      * Implement positional parameter lookup for the unsigned integer type
@@ -248,11 +230,10 @@ private:
      * @param pos - position number starting with 0
      * @param val - a value to be set upon the successfull completion
      *              of the method
-     * 
+     *
      * @see method CmdLineParser::parameter()
      */
-    void parameterImpl(unsigned int  pos,
-                       unsigned int& val) const;
+    void parameterImpl(unsigned int pos, unsigned int& val) const;
 
     /**
      * Implement positional parameter lookup for the unsigned long integer type
@@ -260,11 +241,10 @@ private:
      * @param pos - position number starting with 0
      * @param val - a value to be set upon the successfull completion
      *              of the method
-     * 
+     *
      * @see method CmdLineParser::parameter()
      */
-    void parameterImpl(unsigned int   pos,
-                       unsigned long& val) const;
+    void parameterImpl(unsigned int pos, unsigned long& val) const;
 
     /**
      * Implement positional parameter lookup for the string type
@@ -272,14 +252,12 @@ private:
      * @param pos - position number starting with 0
      * @param val - a value to be set upon the successfull completion
      *              of the method
-     * 
+     *
      * @see method CmdLineParser::parameter()
      */
-    void parameterImpl(unsigned int pos,
-                       std::string& val) const;
+    void parameterImpl(unsigned int pos, std::string& val) const;
 
 private:
-    
     /// Command line arguments to be parsed
     std::vector<std::string> _argv;
 
@@ -294,9 +272,8 @@ private:
 
     /// Positional parameters
     std::vector<std::string> _parameter;
-
 };
 
-}}} // namespace lsst::qserv::util
+}  // namespace lsst::qserv::util
 
-#endif // LSST_QSERV_UTIL_CMD_LINE_PARSER_H
+#endif  // LSST_QSERV_UTIL_CMD_LINE_PARSER_H

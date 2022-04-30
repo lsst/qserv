@@ -36,66 +36,42 @@ namespace {
 string const context_ = "REGISTRY-HTTP-SVC ";
 }
 
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
-RegistryHttpSvc::Ptr RegistryHttpSvc::create(
-        ServiceProvider::Ptr const& serviceProvider) {
+RegistryHttpSvc::Ptr RegistryHttpSvc::create(ServiceProvider::Ptr const& serviceProvider) {
     return RegistryHttpSvc::Ptr(new RegistryHttpSvc(serviceProvider));
 }
 
-
-RegistryHttpSvc::RegistryHttpSvc(
-        ServiceProvider::Ptr const& serviceProvider)
-    :   HttpSvc(serviceProvider,
-                serviceProvider->config()->get<uint16_t>("registry", "port"),
-                serviceProvider->config()->get<unsigned int>("registry", "max-listen-conn"),
-                serviceProvider->config()->get<size_t>("registry", "threads")),
-        _workers(new RegistryWorkers()) {
-}
-
+RegistryHttpSvc::RegistryHttpSvc(ServiceProvider::Ptr const& serviceProvider)
+        : HttpSvc(serviceProvider, serviceProvider->config()->get<uint16_t>("registry", "port"),
+                  serviceProvider->config()->get<unsigned int>("registry", "max-listen-conn"),
+                  serviceProvider->config()->get<size_t>("registry", "threads")),
+          _workers(new RegistryWorkers()) {}
 
 string const& RegistryHttpSvc::context() const { return ::context_; }
 
-
 void RegistryHttpSvc::registerServices() {
     auto const self = shared_from_base<RegistryHttpSvc>();
-    httpServer()->addHandlers({
-        {"GET", "/meta/version",
-            [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
-                HttpMetaModule::process(
-                        self->serviceProvider(), ::context_,
-                        req, resp,
-                        "VERSION");
-            }
-        },
-        {"GET", "/workers",
-            [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
-                RegistryHttpSvcMod::process(
-                        self->serviceProvider(), *(self->_workers),
-                        req, resp,
-                        "WORKERS",
-                        HttpAuthType::NONE);
-            }
-        },
-        {"POST", "/worker",
-            [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
-                RegistryHttpSvcMod::process(
-                        self->serviceProvider(), *(self->_workers),
-                        req, resp,
-                        "ADD-WORKER");
-            }
-        },
-        {"DELETE", "/worker/:name",
-            [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
-                RegistryHttpSvcMod::process(
-                        self->serviceProvider(), *(self->_workers),
-                        req, resp,
-                        "DELETE-WORKER");
-            }
-        }
-    });
+    httpServer()->addHandlers({{"GET", "/meta/version",
+                                [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
+                                    HttpMetaModule::process(self->serviceProvider(), ::context_, req, resp,
+                                                            "VERSION");
+                                }},
+                               {"GET", "/workers",
+                                [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
+                                    RegistryHttpSvcMod::process(self->serviceProvider(), *(self->_workers),
+                                                                req, resp, "WORKERS", HttpAuthType::NONE);
+                                }},
+                               {"POST", "/worker",
+                                [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
+                                    RegistryHttpSvcMod::process(self->serviceProvider(), *(self->_workers),
+                                                                req, resp, "ADD-WORKER");
+                                }},
+                               {"DELETE", "/worker/:name",
+                                [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
+                                    RegistryHttpSvcMod::process(self->serviceProvider(), *(self->_workers),
+                                                                req, resp, "DELETE-WORKER");
+                                }}});
 }
 
-}}} // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

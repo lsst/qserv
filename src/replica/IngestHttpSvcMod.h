@@ -36,15 +36,13 @@
 #include "replica/ServiceProvider.h"
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class IngestHttpSvcMod processes chunk/table contribution requests made over HTTP.
  * The class is used by the HTTP server build into the worker Ingest service.
  */
-class IngestHttpSvcMod: public HttpModuleBase {
+class IngestHttpSvcMod : public HttpModuleBase {
 public:
     IngestHttpSvcMod() = delete;
     IngestHttpSvcMod(IngestHttpSvcMod const&) = delete;
@@ -73,17 +71,15 @@ public:
      * @param ingestRequestMgr The manager for handling ASYNC requests.
      * @param req The HTTP request.
      * @param resp The HTTP response channel.
-     * @param subModuleName The name of a submodule to be called. 
+     * @param subModuleName The name of a submodule to be called.
      * @param authType The authorization requirements for the module
      * @throws std::invalid_argument for unknown values of parameter 'subModuleName'
      */
     static void process(ServiceProvider::Ptr const& serviceProvider,
-                        IngestRequestMgr::Ptr const& ingestRequestMgr,
-                        std::string const& workerName,
-                        qhttp::Request::Ptr const& req,
-                        qhttp::Response::Ptr const& resp,
+                        IngestRequestMgr::Ptr const& ingestRequestMgr, std::string const& workerName,
+                        qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp,
                         std::string const& subModuleName,
-                        HttpAuthType const authType=HttpAuthType::REQUIRED);
+                        HttpAuthType const authType = HttpAuthType::REQUIRED);
 
 protected:
     /// @see HttpModuleBase::context()
@@ -95,10 +91,8 @@ protected:
 private:
     /// @see method IngestHttpSvcMod::create()
     IngestHttpSvcMod(ServiceProvider::Ptr const& serviceProvider,
-                     IngestRequestMgr::Ptr const& ingestRequestMgr,
-                     std::string const& workerName,
-                     qhttp::Request::Ptr const& req,
-                     qhttp::Response::Ptr const& resp);
+                     IngestRequestMgr::Ptr const& ingestRequestMgr, std::string const& workerName,
+                     qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp);
 
     /// Process a table contribution request (SYNC).
     nlohmann::json _syncProcessRequest() const;
@@ -129,14 +123,14 @@ private:
      * @param async The optional type of a request to be created.
      * @return A pointer to the created request.
      */
-    IngestRequest::Ptr _createRequst(bool async=false) const;
+    IngestRequest::Ptr _createRequst(bool async = false) const;
 
     // Input parameters
     ServiceProvider::Ptr const _serviceProvider;
     IngestRequestMgr::Ptr const _ingestRequestMgr;
     std::string const _workerName;
 };
-    
-}}} // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_INGESTHTTPSVCMOD_H
+}  // namespace lsst::qserv::replica
+
+#endif  // LSST_QSERV_INGESTHTTPSVCMOD_H

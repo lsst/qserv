@@ -39,9 +39,7 @@
 #include "replica/SqlRequest.h"
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class SqlJob is a base class for a family of jobs which broadcast the same
@@ -82,7 +80,7 @@ public:
      */
     SqlJobResult const& getResultData() const;
 
-    virtual std::list<std::pair<std::string,std::string>> persistentLogData() const final;
+    virtual std::list<std::pair<std::string, std::string>> persistentLogData() const final;
 
     /**
      * Analyze a result set of a job for a presence of errors and report them if any.
@@ -128,14 +126,9 @@ protected:
      *   errors tables for which ProtocolStatusExt::DUPLICATE_KEY was reported.
      *   The flag can be useful for tables in which the index may already exist.
      */
-    SqlJob(uint64_t maxRows,
-           bool allWorkers,
-           Controller::Ptr const& controller,
-           std::string const& parentJobId,
-           std::string const& jobName,
-           int priority,
-           bool ignoreNonPartitioned=false,
-           bool ignoreDuplicateKey=false);
+    SqlJob(uint64_t maxRows, bool allWorkers, Controller::Ptr const& controller,
+           std::string const& parentJobId, std::string const& jobName, int priority,
+           bool ignoreNonPartitioned = false, bool ignoreDuplicateKey = false);
 
     virtual void startImpl(util::Lock const& lock) final;
     virtual void cancelImpl(util::Lock const& lock) final;
@@ -156,32 +149,25 @@ protected:
      * @param maxRequestsPerWorker The maximum number of requests to be launched per each worker.
      * @return A collection of requests launched.
      */
-    virtual std::list<SqlRequest::Ptr> launchRequests(util::Lock const& lock,
-                                                      std::string const& worker,
-                                                      size_t maxRequestsPerWorker=1) = 0;
+    virtual std::list<SqlRequest::Ptr> launchRequests(util::Lock const& lock, std::string const& worker,
+                                                      size_t maxRequestsPerWorker = 1) = 0;
 
     /**
      * This method lets a request type-specific subclass to stop requests
      * of the corresponding subtype.
      */
-    virtual void stopRequest(util::Lock const& lock,
-                             SqlRequest::Ptr const& request) = 0;
+    virtual void stopRequest(util::Lock const& lock, SqlRequest::Ptr const& request) = 0;
 
     /**
      * This method is called by subclass-specific implementations of
      * the virtual method SqlJob::stopRequest in order to reduce code
      * duplication.
      */
-    template<class REQUEST>
-    void stopRequestDefaultImpl(util::Lock const& lock,
-                                SqlRequest::Ptr const& request) const {
-        controller()->stopById<REQUEST>(
-            request->worker(),
-            request->id(),
-            nullptr,    /* onFinish */
-            priority(),
-            true,       /* keepTracking */
-            id()        /* jobId */
+    template <class REQUEST>
+    void stopRequestDefaultImpl(util::Lock const& lock, SqlRequest::Ptr const& request) const {
+        controller()->stopById<REQUEST>(request->worker(), request->id(), nullptr, /* onFinish */
+                                        priority(), true,                          /* keepTracking */
+                                        id()                                       /* jobId */
         );
     }
 
@@ -203,7 +189,7 @@ protected:
      * Find out which tables corresponding to the name are expected to exist
      * at the worker as per the Configuration and persistent records for
      * the replicas (for the partitioned tables only). Normally this method
-     * is expected to return a single entry for the regular tables, and 
+     * is expected to return a single entry for the regular tables, and
      * multiple entries for the partitioned tables (which includes prototype
      * tables, special "overflow" tables, and chunk-specific tables).
      *
@@ -223,18 +209,16 @@ protected:
      * @return A collection of tables found.
      * @throw std::invalid_argument If the database or a table isn't valid.
      */
-    std::vector<std::string> workerTables(std::string const& worker,
-                                          std::string const& database,
-                                          std::string const& table,
-                                          bool allTables=true,
-                                          bool overlapTablesOnly=false) const;
+    std::vector<std::string> workerTables(std::string const& worker, std::string const& database,
+                                          std::string const& table, bool allTables = true,
+                                          bool overlapTablesOnly = false) const;
 
     /**
      * This version of the table locator method searches for tables where actual
      * contributions (successful or not) were attempted in a context of the given
      * transaction. The operation relies upon the persistent records for the transaction
      * contributions.
-     * 
+     *
      * @param worker The unique identifier of a worker hosting the tables.
      * @param transactionId The unique identifier of the transaction.
      * @param table The base name of a table.
@@ -251,11 +235,9 @@ protected:
      * @return A collection of tables found.
      * @throw std::invalid_argument If the database or a table isn't valid.
      */
-    std::vector<std::string> workerTables(std::string const& worker,
-                                          TransactionId const& transactionId,
-                                          std::string const& table,
-                                          bool allTables=true,
-                                          bool overlapTablesOnly=false) const;
+    std::vector<std::string> workerTables(std::string const& worker, TransactionId const& transactionId,
+                                          std::string const& table, bool allTables = true,
+                                          bool overlapTablesOnly = false) const;
 
     /**
      * The algorithm will distribute tables between the specified number of
@@ -267,9 +249,8 @@ protected:
      * @param numBins The total number of bins for distributing tables,
      * @return Tables distributed between the bins.
      */
-    static std::vector<std::vector<std::string>> distributeTables(
-            std::vector<std::string> const& allTables,
-            size_t numBins);
+    static std::vector<std::vector<std::string>> distributeTables(std::vector<std::string> const& allTables,
+                                                                  size_t numBins);
 
     /**
      * @brief Get a copy of the result data object in its current state, even if it's
@@ -280,7 +261,6 @@ protected:
     SqlJobResult getResultData(util::Lock const& lock) const { return _resultData; }
 
 private:
-
     /**
      * Verify if the database and the table are known to the Configuration,
      * and obtain the partitioning status of the table.
@@ -288,15 +268,14 @@ private:
      * @return A value of 'true' if this is the partitioned table.
      * @throw std::invalid_argument If the database or a table isn't valid.
      */
-    bool _isPartitioned(std::string const& database,
-                        std::string const& table) const;
+    bool _isPartitioned(std::string const& database, std::string const& table) const;
 
     // Input parameters
 
     uint64_t const _maxRows;
-    bool     const _allWorkers;
-    bool     const _ignoreNonPartitioned;
-    bool     const _ignoreDuplicateKey;
+    bool const _allWorkers;
+    bool const _ignoreNonPartitioned;
+    bool const _ignoreDuplicateKey;
 
     /// A collection of requests implementing the operation
     std::vector<SqlRequest::Ptr> _requests;
@@ -309,6 +288,6 @@ private:
     SqlJobResult _resultData;
 };
 
-}}} // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_SQLJOB_H
+#endif  // LSST_QSERV_REPLICA_SQLJOB_H

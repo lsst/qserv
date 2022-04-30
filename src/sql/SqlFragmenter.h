@@ -26,9 +26,7 @@
 // System headers
 #include <string>
 
-namespace lsst {
-namespace qserv {
-namespace sql {
+namespace lsst::qserv::sql {
 
 // SqlFragmenter: Simple iteration over pieces of a longer batch
 // of sql statements.
@@ -41,6 +39,7 @@ public:
     bool isDone() const { return _pNext == _qEnd; }
     Piece const& getNextPiece();
     unsigned getCount() const { return _count; }
+
 private:
     void _advance();
 
@@ -56,6 +55,6 @@ private:
     Piece _current;
 };
 
-}}} // namespace lsst::qserv::sql
+}  // namespace lsst::qserv::sql
 
-#endif // LSST_QSERV_SQL_SQLFRAGMENTER_H
+#endif  // LSST_QSERV_SQL_SQLFRAGMENTER_H

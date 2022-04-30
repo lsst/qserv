@@ -48,11 +48,9 @@ namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.IndexRequest");
 
-} /// namespace
+}  // namespace
 
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
 void IndexInfo::print(string const& fileName) const {
     if (fileName.empty()) {
@@ -61,13 +59,13 @@ void IndexInfo::print(string const& fileName) const {
     }
     ofstream file(fileName);
     if (not file.good()) {
-        LOGS(_log, LOG_LVL_DEBUG, "IndexInfo::" << __func__ << " "
-            << "failed to open the file: " << fileName);
+        LOGS(_log, LOG_LVL_DEBUG,
+             "IndexInfo::" << __func__ << " "
+                           << "failed to open the file: " << fileName);
         return;
     }
     file << data;
 }
-
 
 ostream& operator<<(ostream& os, IndexInfo const& info) {
     os << "IndexInfo {error:'" << info.error << "',"
@@ -75,81 +73,43 @@ ostream& operator<<(ostream& os, IndexInfo const& info) {
     return os;
 }
 
-
 IndexRequest::Ptr IndexRequest::create(ServiceProvider::Ptr const& serviceProvider,
-                                       boost::asio::io_service& io_service,
-                                       string const& worker,
-                                       string const& database,
-                                       string const& directorTable,
-                                       unsigned int chunk,
-                                       bool hasTransactions,
-                                       TransactionId transactionId,
-                                       CallbackType const& onFinish,
-                                       int priority,
-                                       bool keepTracking,
+                                       boost::asio::io_service& io_service, string const& worker,
+                                       string const& database, string const& directorTable,
+                                       unsigned int chunk, bool hasTransactions, TransactionId transactionId,
+                                       CallbackType const& onFinish, int priority, bool keepTracking,
                                        shared_ptr<Messenger> const& messenger) {
-    return IndexRequest::Ptr(new IndexRequest(serviceProvider,
-        io_service,
-        worker,
-        database,
-        directorTable,
-        chunk,
-        hasTransactions,
-        transactionId,
-        onFinish,
-        priority,
-        keepTracking,
-        messenger
-    ));
+    return IndexRequest::Ptr(new IndexRequest(serviceProvider, io_service, worker, database, directorTable,
+                                              chunk, hasTransactions, transactionId, onFinish, priority,
+                                              keepTracking, messenger));
 }
 
-
-IndexRequest::IndexRequest(ServiceProvider::Ptr const& serviceProvider,
-                           boost::asio::io_service& io_service,
-                           string const& worker,
-                           string const& database,
-                           string const& directorTable,
-                           unsigned int chunk,
-                           bool hasTransactions,
-                           TransactionId transactionId,
-                           CallbackType const& onFinish,
-                           int priority,
-                           bool keepTracking,
+IndexRequest::IndexRequest(ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service,
+                           string const& worker, string const& database, string const& directorTable,
+                           unsigned int chunk, bool hasTransactions, TransactionId transactionId,
+                           CallbackType const& onFinish, int priority, bool keepTracking,
                            shared_ptr<Messenger> const& messenger)
-    :   RequestMessenger(serviceProvider,
-                         io_service,
-                         "INDEX",
-                         worker,
-                         priority,
-                         keepTracking,
-                         false, // allowDuplicate
-                         true,  // disposeRequired
-                         messenger),
-        _database(database),
-        _directorTable(directorTable),
-        _chunk(chunk),
-        _hasTransactions(hasTransactions),
-        _transactionId(transactionId),
-        _onFinish(onFinish) {
-
+        : RequestMessenger(serviceProvider, io_service, "INDEX", worker, priority, keepTracking,
+                           false,  // allowDuplicate
+                           true,   // disposeRequired
+                           messenger),
+          _database(database),
+          _directorTable(directorTable),
+          _chunk(chunk),
+          _hasTransactions(hasTransactions),
+          _transactionId(transactionId),
+          _onFinish(onFinish) {
     Request::serviceProvider()->config()->assertDatabaseIsValid(database);
 }
 
-
-IndexInfo const& IndexRequest::responseData() const {
-    return _indexInfo;
-}
-
+IndexInfo const& IndexRequest::responseData() const { return _indexInfo; }
 
 void IndexRequest::startImpl(util::Lock const& lock) {
-
-    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << " "
-         << " worker: "          << worker()
-         << " database: "        << database()
-         << " directorTable: "   << directorTable()
-         << " chunk: "           << chunk()
-         << " hasTransactions: " << (hasTransactions() ? "true" : "false")
-         << " transactionId: "   << transactionId());
+    LOGS(_log, LOG_LVL_DEBUG,
+         context() << __func__ << " "
+                   << " worker: " << worker() << " database: " << database()
+                   << " directorTable: " << directorTable() << " chunk: " << chunk() << " hasTransactions: "
+                   << (hasTransactions() ? "true" : "false") << " transactionId: " << transactionId());
 
     // Serialize the Request message header and the request itself into
     // the network buffer.
@@ -178,9 +138,7 @@ void IndexRequest::startImpl(util::Lock const& lock) {
     _send(lock);
 }
 
-
 void IndexRequest::awaken(boost::system::error_code const& ec) {
-
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     if (isAborted(ec)) return;
@@ -211,21 +169,17 @@ void IndexRequest::awaken(boost::system::error_code const& ec) {
     _send(lock);
 }
 
-
 void IndexRequest::_send(util::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
     auto self = shared_from_base<IndexRequest>();
     messenger()->send<ProtocolResponseIndex>(
-        worker(), id(), priority(), buffer(),
-        [self] (string const& id, bool success, ProtocolResponseIndex const& response) {
-            self->_analyze(success, response);
-        }
-    );
+            worker(), id(), priority(), buffer(),
+            [self](string const& id, bool success, ProtocolResponseIndex const& response) {
+                self->_analyze(success, response);
+            });
 }
 
-
 void IndexRequest::_analyze(bool success, ProtocolResponseIndex const& message) {
-
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  success=" << (success ? "true" : "false"));
 
     // This method is called on behalf of an asynchronous callback fired
@@ -258,14 +212,13 @@ void IndexRequest::_analyze(bool success, ProtocolResponseIndex const& message) 
     // Always extract extended data regardless of the completion status
     // reported by the worker service.
     _indexInfo.error = message.error();
-    _indexInfo.data  = message.data();
+    _indexInfo.data = message.data();
 
     // Extract target request type-specific parameters from the response
     if (message.has_request()) {
         _targetRequestParams = IndexRequestParams(message.request());
     }
     switch (message.status()) {
-
         case ProtocolStatus::SUCCESS:
             finish(lock, SUCCESS);
             break;
@@ -299,32 +252,28 @@ void IndexRequest::_analyze(bool success, ProtocolResponseIndex const& message) 
             break;
 
         default:
-            throw logic_error(
-                    "IndexRequest::" + string(__func__) + " unknown status '" +
-                    ProtocolStatus_Name(message.status()) + "' received from server");
+            throw logic_error("IndexRequest::" + string(__func__) + " unknown status '" +
+                              ProtocolStatus_Name(message.status()) + "' received from server");
     }
 }
-
 
 void IndexRequest::notify(util::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
     notifyDefaultImpl<IndexRequest>(lock, _onFinish);
 }
 
-
 void IndexRequest::savePersistentState(util::Lock const& lock) {
     controller()->serviceProvider()->databaseServices()->saveState(*this, performance(lock));
 }
 
-
-list<pair<string,string>> IndexRequest::extendedPersistentState() const {
-    list<pair<string,string>> result;
-    result.emplace_back("database",         database());
-    result.emplace_back("director_table",   directorTable());
-    result.emplace_back("chunk",            to_string(chunk()));
+list<pair<string, string>> IndexRequest::extendedPersistentState() const {
+    list<pair<string, string>> result;
+    result.emplace_back("database", database());
+    result.emplace_back("director_table", directorTable());
+    result.emplace_back("chunk", to_string(chunk()));
     result.emplace_back("has_transactions", bool2str(hasTransactions()));
-    result.emplace_back("transaction_id",   to_string(transactionId()));
+    result.emplace_back("transaction_id", to_string(transactionId()));
     return result;
 }
 
-}}} // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

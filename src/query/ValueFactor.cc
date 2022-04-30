@@ -21,18 +21,17 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 /**
-  * @file
-  *
-  * @brief ValueFactor can be thought of the "ValueExpr" portion of a
-  * ValueExpr. A ValueFactor is an element that evaluates to a
-  * non-boolean value. ValueExprs bundle ValueFactors together with
-  * conjunctions and allow tagging with an aliases. ValueFactors do
-  * not have aliases. Value factor is a concept borrowed from the
-  * SQL92 grammer.
-  *
-  * @author Daniel L. Wang, SLAC
-  */
-
+ * @file
+ *
+ * @brief ValueFactor can be thought of the "ValueExpr" portion of a
+ * ValueExpr. A ValueFactor is an element that evaluates to a
+ * non-boolean value. ValueExprs bundle ValueFactors together with
+ * conjunctions and allow tagging with an aliases. ValueFactors do
+ * not have aliases. Value factor is a concept borrowed from the
+ * SQL92 grammer.
+ *
+ * @author Daniel L. Wang, SLAC
+ */
 
 // Class header
 #include "query/ValueFactor.h"
@@ -53,36 +52,23 @@
 #include "query/TableRef.h"
 #include "query/ValueExpr.h"
 
-namespace lsst {
-namespace qserv {
-namespace query {
-
+namespace lsst::qserv::query {
 
 ValueFactor::ValueFactor(std::shared_ptr<ColumnRef> const& columnRef)
-        : _type(COLUMNREF)
-        , _columnRef(columnRef)
-{}
+        : _type(COLUMNREF), _columnRef(columnRef) {}
 
-
-ValueFactor::ValueFactor(std::string const& constVal)
-        : _type(CONST)
-        , _constVal(constVal) {
-    auto&& removeFrom = std::find_if(_constVal.rbegin(), _constVal.rend(),
-            [](unsigned char c) {return !std::isspace(c);}).base();
+ValueFactor::ValueFactor(std::string const& constVal) : _type(CONST), _constVal(constVal) {
+    auto&& removeFrom = std::find_if(_constVal.rbegin(), _constVal.rend(), [](unsigned char c) {
+                            return !std::isspace(c);
+                        }).base();
     _constVal.erase(removeFrom, _constVal.end());
 }
 
-
-ValueFactor::ValueFactor(std::shared_ptr<FuncExpr> const& funcExpr)
-        : _type(FUNCTION)
-        , _funcExpr(funcExpr) {
-}
-
+ValueFactor::ValueFactor(std::shared_ptr<FuncExpr> const& funcExpr) : _type(FUNCTION), _funcExpr(funcExpr) {}
 
 ValueFactorPtr ValueFactor::newColumnRefFactor(std::shared_ptr<ColumnRef const> cr) {
     return std::make_shared<ValueFactor>(std::make_shared<ColumnRef>(*cr));
 }
-
 
 ValueFactorPtr ValueFactor::newStarFactor(std::string const& table) {
     ValueFactorPtr term = std::make_shared<ValueFactor>();
@@ -93,14 +79,12 @@ ValueFactorPtr ValueFactor::newStarFactor(std::string const& table) {
     return term;
 }
 
-
 ValueFactorPtr ValueFactor::newFuncFactor(std::shared_ptr<FuncExpr> const& fe) {
     ValueFactorPtr term = std::make_shared<ValueFactor>();
     term->_type = FUNCTION;
     term->_funcExpr = fe;
     return term;
 }
-
 
 ValueFactorPtr ValueFactor::newAggFactor(std::shared_ptr<FuncExpr> const& fe) {
     ValueFactorPtr term = std::make_shared<ValueFactor>();
@@ -109,44 +93,39 @@ ValueFactorPtr ValueFactor::newAggFactor(std::shared_ptr<FuncExpr> const& fe) {
     return term;
 }
 
-
-ValueFactorPtr
-ValueFactor::newConstFactor(std::string const& alnum) {
+ValueFactorPtr ValueFactor::newConstFactor(std::string const& alnum) {
     return std::make_shared<ValueFactor>(alnum);
 }
 
-
-ValueFactorPtr
-ValueFactor::newExprFactor(std::shared_ptr<ValueExpr> const& ve) {
+ValueFactorPtr ValueFactor::newExprFactor(std::shared_ptr<ValueExpr> const& ve) {
     ValueFactorPtr factor = std::make_shared<ValueFactor>();
     factor->_type = EXPR;
     factor->_valueExpr = ve;
     return factor;
 }
 
-
 void ValueFactor::findColumnRefs(ColumnRef::Vector& vector) const {
-    switch(_type) {
-    case COLUMNREF:
-        vector.push_back(_columnRef);
-        break;
-    case FUNCTION:
-    case AGGFUNC:
-        _funcExpr->findColumnRefs(vector);
-        break;
-    case STAR:
-        break;
-    case CONST:
-        break;
-    case EXPR:
-        _valueExpr->findColumnRefs(vector);
-        break;
-    default: break;
+    switch (_type) {
+        case COLUMNREF:
+            vector.push_back(_columnRef);
+            break;
+        case FUNCTION:
+        case AGGFUNC:
+            _funcExpr->findColumnRefs(vector);
+            break;
+        case STAR:
+            break;
+        case CONST:
+            break;
+        case EXPR:
+            _valueExpr->findColumnRefs(vector);
+            break;
+        default:
+            break;
     }
 }
 
-
-ValueFactorPtr ValueFactor::clone() const{
+ValueFactorPtr ValueFactor::clone() const {
     ValueFactorPtr expr = std::make_shared<ValueFactor>(*this);
     // Clone refs.
     if (_columnRef.get()) {
@@ -161,7 +140,6 @@ ValueFactorPtr ValueFactor::clone() const{
     return expr;
 }
 
-
 std::ostream& operator<<(std::ostream& os, ValueFactor const& ve) {
     os << "ValueFactor(";
     if (ve._columnRef != nullptr) {
@@ -172,9 +150,9 @@ std::ostream& operator<<(std::ostream& os, ValueFactor const& ve) {
         } else if (ValueFactor::FUNCTION == ve._type) {
             os << "query::ValueFactor::FUNCTION, ";
         }
-        os <<  ve._funcExpr;
+        os << ve._funcExpr;
     } else if (ve._valueExpr != nullptr) {
-        os <<  ve._valueExpr;
+        os << ve._valueExpr;
     } else if (ve._type == ValueFactor::STAR) {
         os << "STAR";
         if (nullptr != ve._tableStar) {
@@ -187,69 +165,75 @@ std::ostream& operator<<(std::ostream& os, ValueFactor const& ve) {
     return os;
 }
 
-
 std::ostream& operator<<(std::ostream& os, ValueFactor const* ve) {
     if (!ve) return os << "nullptr";
     return os << *ve;
 }
 
-
 void ValueFactor::render::applyToQT(ValueFactor const& ve) {
-    switch(ve._type) {
-    case ValueFactor::COLUMNREF: ve._columnRef->renderTo(_qt); break;
-    case ValueFactor::FUNCTION: ve._funcExpr->renderTo(_qt); break;
-    case ValueFactor::AGGFUNC: ve._funcExpr->renderTo(_qt); break;
-    case ValueFactor::STAR:
-        if (nullptr != ve._tableStar) {
-            QueryTemplate qt(_qt.getAliasMode());
-            TableRef::render render(qt);
-            render.applyToQT(ve._tableStar);
-            _qt.append(boost::lexical_cast<std::string>(qt) + ".*");
-        } else {
-            _qt.append("*");
-        }
-        break;
-    case ValueFactor::CONST: _qt.append(ve._constVal); break;
-    case ValueFactor::EXPR:
-        { ValueExpr::render r(_qt, false);
+    switch (ve._type) {
+        case ValueFactor::COLUMNREF:
+            ve._columnRef->renderTo(_qt);
+            break;
+        case ValueFactor::FUNCTION:
+            ve._funcExpr->renderTo(_qt);
+            break;
+        case ValueFactor::AGGFUNC:
+            ve._funcExpr->renderTo(_qt);
+            break;
+        case ValueFactor::STAR:
+            if (nullptr != ve._tableStar) {
+                QueryTemplate qt(_qt.getAliasMode());
+                TableRef::render render(qt);
+                render.applyToQT(ve._tableStar);
+                _qt.append(boost::lexical_cast<std::string>(qt) + ".*");
+            } else {
+                _qt.append("*");
+            }
+            break;
+        case ValueFactor::CONST:
+            _qt.append(ve._constVal);
+            break;
+        case ValueFactor::EXPR: {
+            ValueExpr::render r(_qt, false);
             r.applyToQT(ve._valueExpr);
-        }
-        break;
-    default: break;
+        } break;
+        default:
+            break;
     }
 }
 
-
 bool ValueFactor::operator==(const ValueFactor& rhs) const {
-    return (_type == rhs._type &&
-            util::ptrCompare<ColumnRef>(_columnRef, rhs._columnRef) &&
+    return (_type == rhs._type && util::ptrCompare<ColumnRef>(_columnRef, rhs._columnRef) &&
             util::ptrCompare<FuncExpr>(_funcExpr, rhs._funcExpr) &&
-            util::ptrCompare<ValueExpr>(_valueExpr, rhs._valueExpr) &&
-            _constVal == rhs._constVal);
+            util::ptrCompare<ValueExpr>(_valueExpr, rhs._valueExpr) && _constVal == rhs._constVal);
 }
 
-
 bool ValueFactor::isSubsetOf(ValueFactor const& rhs) const {
-    if (_type != rhs._type)
-        return false;
-    switch(_type) {
-        default: throw std::logic_error("unhandled factor op type");
-        case NONE:      return true;
-        case COLUMNREF: return _columnRef->isSubsetOf(rhs._columnRef);
-        case FUNCTION:  return _funcExpr->isSubsetOf(*rhs._funcExpr);
-        case AGGFUNC:   return _funcExpr->isSubsetOf(*rhs._funcExpr);
+    if (_type != rhs._type) return false;
+    switch (_type) {
+        default:
+            throw std::logic_error("unhandled factor op type");
+        case NONE:
+            return true;
+        case COLUMNREF:
+            return _columnRef->isSubsetOf(rhs._columnRef);
+        case FUNCTION:
+            return _funcExpr->isSubsetOf(*rhs._funcExpr);
+        case AGGFUNC:
+            return _funcExpr->isSubsetOf(*rhs._funcExpr);
         case STAR:
-            if (nullptr == _tableStar && nullptr == rhs._tableStar)
-                return true;
+            if (nullptr == _tableStar && nullptr == rhs._tableStar) return true;
             if (nullptr != _tableStar && nullptr != rhs._tableStar)
                 return _tableStar->isSubsetOf(*rhs._tableStar);
             else
                 return false;
-        case CONST:     return _constVal == rhs._constVal;
-        case EXPR:      return _valueExpr->isSubsetOf(*rhs._valueExpr);
+        case CONST:
+            return _constVal == rhs._constVal;
+        case EXPR:
+            return _valueExpr->isSubsetOf(*rhs._valueExpr);
     }
 }
-
 
 void ValueFactor::set(std::shared_ptr<ValueExpr> const& valueExpr) {
     _reset();
@@ -257,14 +241,11 @@ void ValueFactor::set(std::shared_ptr<ValueExpr> const& valueExpr) {
     _type = EXPR;
 }
 
-
 void ValueFactor::setStar(std::shared_ptr<TableRef> const& tableRef) {
     _reset();
     _tableStar = tableRef;
     _type = STAR;
 }
-
-
 
 void ValueFactor::_reset() {
     _type = NONE;
@@ -274,5 +255,4 @@ void ValueFactor::_reset() {
     _constVal.clear();
 }
 
-
-}}} // namespace lsst::qserv::query
+}  // namespace lsst::qserv::query

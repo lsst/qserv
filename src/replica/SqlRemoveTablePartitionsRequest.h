@@ -31,15 +31,13 @@
 #include "replica/SqlRequest.h"
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class SqlRemoveTablePartitionsRequest represents Controller-side requests for initiating
  * queries for removing MySQL partitions from tables at a remote worker nodes.
  */
-class SqlRemoveTablePartitionsRequest: public SqlRequest  {
+class SqlRemoveTablePartitionsRequest : public SqlRequest {
 public:
     typedef std::shared_ptr<SqlRemoveTablePartitionsRequest> Ptr;
 
@@ -72,33 +70,24 @@ public:
      * @param messenger interface for communicating with workers
      * @return a pointer to the created object
      */
-    static Ptr create(ServiceProvider::Ptr const& serviceProvider,
-                      boost::asio::io_service& io_service,
-                      std::string const& worker,
-                      std::string const& database,
-                      std::vector<std::string> const& tables,
-                      CallbackType const& onFinish,
-                      int priority,
-                      bool keepTracking,
-                      std::shared_ptr<Messenger> const& messenger);
+    static Ptr create(ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service,
+                      std::string const& worker, std::string const& database,
+                      std::vector<std::string> const& tables, CallbackType const& onFinish, int priority,
+                      bool keepTracking, std::shared_ptr<Messenger> const& messenger);
 
 protected:
     void notify(util::Lock const& lock) final;
 
 private:
     SqlRemoveTablePartitionsRequest(ServiceProvider::Ptr const& serviceProvider,
-                                    boost::asio::io_service& io_service,
-                                    std::string const& worker,
-                                    std::string const& database,
-                                    std::vector<std::string> const& tables,
-                                    CallbackType const& onFinish,
-                                    int priority,
-                                    bool keepTracking,
+                                    boost::asio::io_service& io_service, std::string const& worker,
+                                    std::string const& database, std::vector<std::string> const& tables,
+                                    CallbackType const& onFinish, int priority, bool keepTracking,
                                     std::shared_ptr<Messenger> const& messenger);
 
-    CallbackType _onFinish; ///< @note is reset when the request finishes
+    CallbackType _onFinish;  ///< @note is reset when the request finishes
 };
 
-}}} // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_SQLREMOVETABLEPARTITIONSREQUEST_H
+#endif  // LSST_QSERV_REPLICA_SQLREMOVETABLEPARTITIONSREQUEST_H

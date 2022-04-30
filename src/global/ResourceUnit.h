@@ -29,10 +29,9 @@
 #include <string>
 
 // Qserv headers
-#include "global/constants.h" // For DUMMY_CHUNK
+#include "global/constants.h"  // For DUMMY_CHUNK
 
-namespace lsst {
-namespace qserv {
+namespace lsst::qserv {
 
 /// ResourceUnit contains a name for an XrdSsi-resolvable resource unit.
 ////
@@ -46,7 +45,7 @@ namespace qserv {
 class ResourceUnit {
 public:
     class Checker;
-    enum UnitType {GARBAGE, DBCHUNK, CQUERY, UNKNOWN, RESULT, WORKER};
+    enum UnitType { GARBAGE, DBCHUNK, CQUERY, UNKNOWN, RESULT, WORKER };
 
     ResourceUnit() : _unitType(GARBAGE), _chunk(-1) {}
 
@@ -56,9 +55,9 @@ public:
     std::string path() const;
 
     // Retrieve elements of the path.
-    UnitType unitType() const {return _unitType;}
-    std::string db() const {return _db;}
-    int chunk() const {return _chunk;}
+    UnitType unitType() const { return _unitType; }
+    std::string db() const { return _db; }
+    int chunk() const { return _chunk; }
     std::string hashName() const { return _hashName; }
 
     /// Lookup extended path variables (?k=val syntax)
@@ -74,10 +73,10 @@ public:
     static std::string makeWorkerPath(std::string const& id);
 
     // Setup a path of a certain type.
-    void setAsDbChunk(std::string const& db, int chunk=DUMMY_CHUNK);
+    void setAsDbChunk(std::string const& db, int chunk = DUMMY_CHUNK);
 
     // Compatibility types
-    void setAsCquery(std::string const& db, int chunk=DUMMY_CHUNK);
+    void setAsCquery(std::string const& db, int chunk = DUMMY_CHUNK);
     void setAsResult(std::string const& hashName);
 
     // Optional specifiers may not be supported by XrdSsi
@@ -92,13 +91,13 @@ private:
     void _ingestKeyStr(std::string const& keyStr);
     bool _markGarbageIfDone(Tokenizer& t);
 
-    UnitType _unitType; //< Type of unit
-    std::string _db; //< for CQUERY and DBCHUNK types
-    int _chunk; //< for CQUERY and DBCHUNK types
-    std::string _hashName; //< for RESULT and WORKER types
+    UnitType _unitType;     //< Type of unit
+    std::string _db;        //< for CQUERY and DBCHUNK types
+    int _chunk;             //< for CQUERY and DBCHUNK types
+    std::string _hashName;  //< for RESULT and WORKER types
 
     typedef std::map<std::string, std::string> VarMap;
-    VarMap _vars; //< Key-value specifiers
+    VarMap _vars;  //< Key-value specifiers
 
     static char const _pathSep = '/';
     static char const _varSep = '?';
@@ -113,6 +112,6 @@ public:
     virtual bool operator()(ResourceUnit const& ru) = 0;
 };
 
-}} // namespace lsst::qserv
+}  // namespace lsst::qserv
 
-#endif // LSST_QSERV_RESOURCEUNIT_H
+#endif  // LSST_QSERV_RESOURCEUNIT_H

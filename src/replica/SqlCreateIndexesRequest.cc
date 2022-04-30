@@ -34,83 +34,44 @@ namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.SqlCreateIndexesRequest");
 
-} /// namespace
+}  // namespace
 
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
 SqlCreateIndexesRequest::Ptr SqlCreateIndexesRequest::create(
-        ServiceProvider::Ptr const& serviceProvider,
-        boost::asio::io_service& io_service,
-        string const& worker,
-        string const& database,
-        vector<string> const& tables,
-        SqlRequestParams::IndexSpec const& indexSpec,
-        string const& indexName,
-        string const& indexComment,
-        vector<SqlIndexColumn> const& indexColumns,
-        CallbackType const& onFinish,
-        int priority,
-        bool keepTracking,
-        shared_ptr<Messenger> const& messenger) {
-
-    return Ptr(new SqlCreateIndexesRequest(
-        serviceProvider,
-        io_service,
-        worker,
-        database,
-        tables,
-        indexSpec,
-        indexName,
-        indexComment,
-        indexColumns,
-        onFinish,
-        priority,
-        keepTracking,
-        messenger
-    ));
+        ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service,
+        string const& worker, string const& database, vector<string> const& tables,
+        SqlRequestParams::IndexSpec const& indexSpec, string const& indexName, string const& indexComment,
+        vector<SqlIndexColumn> const& indexColumns, CallbackType const& onFinish, int priority,
+        bool keepTracking, shared_ptr<Messenger> const& messenger) {
+    return Ptr(new SqlCreateIndexesRequest(serviceProvider, io_service, worker, database, tables, indexSpec,
+                                           indexName, indexComment, indexColumns, onFinish, priority,
+                                           keepTracking, messenger));
 }
 
-
-SqlCreateIndexesRequest::SqlCreateIndexesRequest(
-        ServiceProvider::Ptr const& serviceProvider,
-        boost::asio::io_service& io_service,
-        string const& worker,
-        string const& database,
-        vector<string> const& tables,
-        SqlRequestParams::IndexSpec const& indexSpec,
-        string const& indexName,
-        string const& indexComment,
-        vector<SqlIndexColumn> const& indexColumns,
-        CallbackType const& onFinish,
-        int priority,
-        bool keepTracking,
-        shared_ptr<Messenger> const& messenger)
-    :   SqlRequest(
-            serviceProvider,
-            io_service,
-            "SQL_CREATE_TABLE_INDEXES",
-            worker,
-            0,          /* maxRows */
-            priority,
-            keepTracking,
-            messenger
-        ),
-        _onFinish(onFinish) {
-
+SqlCreateIndexesRequest::SqlCreateIndexesRequest(ServiceProvider::Ptr const& serviceProvider,
+                                                 boost::asio::io_service& io_service, string const& worker,
+                                                 string const& database, vector<string> const& tables,
+                                                 SqlRequestParams::IndexSpec const& indexSpec,
+                                                 string const& indexName, string const& indexComment,
+                                                 vector<SqlIndexColumn> const& indexColumns,
+                                                 CallbackType const& onFinish, int priority,
+                                                 bool keepTracking, shared_ptr<Messenger> const& messenger)
+        : SqlRequest(serviceProvider, io_service, "SQL_CREATE_TABLE_INDEXES", worker, 0, /* maxRows */
+                     priority, keepTracking, messenger),
+          _onFinish(onFinish) {
     // Finish initializing the request body's content
     requestBody.set_type(ProtocolRequestSql::CREATE_TABLE_INDEX);
     requestBody.set_database(database);
     requestBody.clear_tables();
-    for (auto&& table: tables) {
+    for (auto&& table : tables) {
         requestBody.add_tables(table);
     }
     requestBody.set_index_spec(indexSpec.protocol());
     requestBody.set_index_name(indexName);
     requestBody.set_index_comment(indexComment);
     requestBody.clear_index_columns();
-    for (auto&& column: indexColumns) {
+    for (auto&& column : indexColumns) {
         auto out = requestBody.add_index_columns();
         out->set_name(column.name);
         out->set_length(column.length);
@@ -119,13 +80,11 @@ SqlCreateIndexesRequest::SqlCreateIndexesRequest(
     requestBody.set_batch_mode(true);
 }
 
-
 void SqlCreateIndexesRequest::notify(util::Lock const& lock) {
-
-    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ <<
-        "[" << ProtocolRequestSql_Type_Name(requestBody.type()) << "]");
+    LOGS(_log, LOG_LVL_DEBUG,
+         context() << __func__ << "[" << ProtocolRequestSql_Type_Name(requestBody.type()) << "]");
 
     notifyDefaultImpl<SqlCreateIndexesRequest>(lock, _onFinish);
 }
 
-}}} // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

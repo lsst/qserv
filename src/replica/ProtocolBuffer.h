@@ -27,18 +27,14 @@
 #include <stdexcept>
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class ProtocolBuffer is a helper class encapsulating serialization,
  * de-serialization operations with Google Protobuf objects.
  */
 class ProtocolBuffer {
-
 public:
-
     /// Google Protobuf buffers are more efficient below this size (bytes)
     static size_t const DESIRED_LIMIT;
 
@@ -67,7 +63,7 @@ public:
     char* data() { return _data; }
 
     /// @return the maximum capacity (bytes) of the buffer
-    size_t capacity () const { return _capacity; }
+    size_t capacity() const { return _capacity; }
 
     /**
      * @return
@@ -90,7 +86,7 @@ public:
      * @throws std::overflow_error
      *   if the buffer doesn't have enough space to accommodate the request
      */
-    void resize(size_t newSizeBytes=0);
+    void resize(size_t newSizeBytes = 0);
 
     /**
      * Add a message into the buffer. The message will be preceded
@@ -101,13 +97,12 @@ public:
      *
      * @throws std::overflow_error
      *   if the buffer doesn't have enough space to accommodate the data
-     * 
+     *
      * @throws std::runtime_error
      *   if the serialization failed
      */
     template <class T>
     void serialize(T const& message) {
-
         uint32_t const bytes = message.ByteSizeLong();
 
         // Make sure we have enough space to accommodate the frame length
@@ -116,7 +111,7 @@ public:
         _extend(_size + sizeof(uint32_t) + bytes);
 
         // Serialize the message header carrying the length of the message
-    
+
         *(reinterpret_cast<uint32_t*>(_data + _size)) = htonl(bytes);
         _size += sizeof(uint32_t);
 
@@ -126,7 +121,7 @@ public:
             throw std::runtime_error("message serialization failed");
         }
         _size += bytes;
-    } 
+    }
 
     /**
      * Parse and de-serialize the length of a message from the frame header
@@ -169,7 +164,6 @@ public:
     }
 
 private:
-
     /**
      * Ensure the buffer capacity is no less than the specified number of bytes.
      * Extend it otherwise. The previous contents (as per its 'size') of the buffer
@@ -180,15 +174,14 @@ private:
      */
     void _extend(size_t newCapacityBytes);
 
-
     // Data members
 
-    char *_data;
+    char* _data;
 
     size_t _capacity;
     size_t _size;
 };
 
-}}} // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_PROTOCOLBUFFER_H
+#endif  // LSST_QSERV_REPLICA_PROTOCOLBUFFER_H

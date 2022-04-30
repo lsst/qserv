@@ -38,63 +38,38 @@ using namespace std;
 namespace {
 
 string const description =
-    "This application disable a worker from any active use in a replication setup."
-    " All chunks hosted by  the worker node will be distributed across the cluster.";
+        "This application disable a worker from any active use in a replication setup."
+        " All chunks hosted by  the worker node will be distributed across the cluster.";
 
 bool const injectDatabaseOptions = true;
 bool const boostProtobufVersionCheck = true;
 bool const enableServiceProvider = true;
 
-} /// namespace
+}  // namespace
 
-
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
 DeleteWorkerApp::Ptr DeleteWorkerApp::create(int argc, char* argv[]) {
     return Ptr(new DeleteWorkerApp(argc, argv));
 }
 
-
 DeleteWorkerApp::DeleteWorkerApp(int argc, char* argv[])
-    :   Application(
-            argc, argv,
-            ::description,
-            ::injectDatabaseOptions,
-            ::boostProtobufVersionCheck,
-            ::enableServiceProvider
-        ) {
-
+        : Application(argc, argv, ::description, ::injectDatabaseOptions, ::boostProtobufVersionCheck,
+                      ::enableServiceProvider) {
     // Configure the command line parser
 
-    parser().required(
-        "worker",
-        "The name of a worker to be deleted.",
-        _workerName
-    ).flag(
-        "permanent-delete",
-        "Permanently delete a worker from the Configuration.",
-        _permanentDelete
-    ).option(
-        "tables-page-size",
-        "The number of rows in the table of replicas (0 means no pages).",
-        _pageSize
-    );
+    parser().required("worker", "The name of a worker to be deleted.", _workerName)
+            .flag("permanent-delete", "Permanently delete a worker from the Configuration.", _permanentDelete)
+            .option("tables-page-size", "The number of rows in the table of replicas (0 means no pages).",
+                    _pageSize);
 }
 
-
 int DeleteWorkerApp::runImpl() {
-
     string const noParentJobId;
-    auto const job = DeleteWorkerJob::create(
-        _workerName,
-        _permanentDelete,
-        Controller::create(serviceProvider()),
-        noParentJobId,
-        nullptr,        // no callback
-        PRIORITY_NORMAL
-    );
+    auto const job = DeleteWorkerJob::create(_workerName, _permanentDelete,
+                                             Controller::create(serviceProvider()), noParentJobId,
+                                             nullptr,  // no callback
+                                             PRIORITY_NORMAL);
     job->start();
     job->wait();
 
@@ -109,4 +84,4 @@ int DeleteWorkerApp::runImpl() {
     return 0;
 }
 
-}}} // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

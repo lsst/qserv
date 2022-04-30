@@ -38,61 +38,31 @@ namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.SqlGetIndexesJob");
 
-} /// namespace
+}  // namespace
 
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
 string SqlGetIndexesJob::typeName() { return "SqlGetIndexesJob"; }
 
-
-SqlGetIndexesJob::Ptr SqlGetIndexesJob::create(
-        string const& database,
-        string const& table,
-        bool overlap,
-        bool allWorkers,
-        Controller::Ptr const& controller,
-        string const& parentJobId,
-        CallbackType const& onFinish,
-        int priority) {
-    return Ptr(new SqlGetIndexesJob(
-        database,
-        table,
-        overlap,
-        allWorkers,
-        controller,
-        parentJobId,
-        onFinish,
-        priority
-    ));
+SqlGetIndexesJob::Ptr SqlGetIndexesJob::create(string const& database, string const& table, bool overlap,
+                                               bool allWorkers, Controller::Ptr const& controller,
+                                               string const& parentJobId, CallbackType const& onFinish,
+                                               int priority) {
+    return Ptr(new SqlGetIndexesJob(database, table, overlap, allWorkers, controller, parentJobId, onFinish,
+                                    priority));
 }
 
+SqlGetIndexesJob::SqlGetIndexesJob(string const& database, string const& table, bool overlap, bool allWorkers,
+                                   Controller::Ptr const& controller, string const& parentJobId,
+                                   CallbackType const& onFinish, int priority)
+        : SqlJob(0, allWorkers, controller, parentJobId, "SQL_GET_TABLE_INDEXES", priority),
+          _database(database),
+          _table(table),
+          _overlap(overlap),
+          _onFinish(onFinish) {}
 
-SqlGetIndexesJob::SqlGetIndexesJob(
-        string const& database,
-        string const& table,
-        bool overlap,
-        bool allWorkers,
-        Controller::Ptr const& controller,
-        string const& parentJobId,
-        CallbackType const& onFinish,
-        int priority)
-    :   SqlJob(0,
-               allWorkers,
-               controller,
-               parentJobId,
-               "SQL_GET_TABLE_INDEXES",
-               priority),
-        _database(database),
-        _table(table),
-        _overlap(overlap),
-        _onFinish(onFinish) {
-}
-
-
-list<pair<string,string>> SqlGetIndexesJob::extendedPersistentState() const {
-    list<pair<string,string>> result;
+list<pair<string, string>> SqlGetIndexesJob::extendedPersistentState() const {
+    list<pair<string, string>> result;
     result.emplace_back("database", database());
     result.emplace_back("table", table());
     result.emplace_back("overlap", bool2str(overlap()));
@@ -100,10 +70,8 @@ list<pair<string,string>> SqlGetIndexesJob::extendedPersistentState() const {
     return result;
 }
 
-
-list<SqlRequest::Ptr> SqlGetIndexesJob::launchRequests(util::Lock const& lock,
-                                                         string const& worker,
-                                                         size_t maxRequestsPerWorker) {
+list<SqlRequest::Ptr> SqlGetIndexesJob::launchRequests(util::Lock const& lock, string const& worker,
+                                                       size_t maxRequestsPerWorker) {
     list<SqlRequest::Ptr> requests;
 
     if (maxRequestsPerWorker == 0) return requests;
@@ -119,37 +87,24 @@ list<SqlRequest::Ptr> SqlGetIndexesJob::launchRequests(util::Lock const& lock,
     // Divide tables into subsets allocated to the "batch" requests. Then launch
     // the requests for the current worker.
     auto const self = shared_from_base<SqlGetIndexesJob>();
-    for (auto&& tables: distributeTables(tables2process, maxRequestsPerWorker)) {
-        requests.push_back(
-            controller()->sqlGetTableIndexes(
-                worker,
-                database(),
-                tables,
-                [self] (SqlGetIndexesRequest::Ptr const& request) {
-                    self->onRequestFinish(request);
-                },
-                priority(),
-                true,   /* keepTracking*/
-                id()    /* jobId */
-            )
-        );
+    for (auto&& tables : distributeTables(tables2process, maxRequestsPerWorker)) {
+        requests.push_back(controller()->sqlGetTableIndexes(
+                worker, database(), tables,
+                [self](SqlGetIndexesRequest::Ptr const& request) { self->onRequestFinish(request); },
+                priority(), true, /* keepTracking*/
+                id()              /* jobId */
+                ));
     }
     return requests;
 }
 
-
-void SqlGetIndexesJob::stopRequest(util::Lock const& lock,
-                                   SqlRequest::Ptr const& request) {
+void SqlGetIndexesJob::stopRequest(util::Lock const& lock, SqlRequest::Ptr const& request) {
     stopRequestDefaultImpl<StopSqlGetIndexesRequest>(lock, request);
 }
-
 
 void SqlGetIndexesJob::notify(util::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "[" << typeName() << "]");
     notifyDefaultImpl<SqlGetIndexesJob>(lock, _onFinish);
 }
 
-}}} // namespace lsst::qserv::replica
-
-
-
+}  // namespace lsst::qserv::replica

@@ -19,7 +19,6 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-
 #ifndef LSST_QSERV_QDISP_PSEUDOFIFO_H
 #define LSST_QSERV_QDISP_PSEUDOFIFO_H
 
@@ -30,9 +29,7 @@
 #include <mutex>
 #include <string>
 
-namespace lsst {
-namespace qserv {
-namespace qdisp {
+namespace lsst::qserv::qdisp {
 
 /// This class only allows the last _maxRunningCount elements
 /// to run at any given time. The _runningCount is decremented
@@ -65,8 +62,8 @@ public:
         void wait();
         void go();
 
-        static uint32_t seq; ///< Static source for sequence ids.
-        uint32_t const sid;  ///< Sequence id.
+        static uint32_t seq;  ///< Static source for sequence ids.
+        uint32_t const sid;   ///< Sequence id.
 
     private:
         bool _go = false;
@@ -74,7 +71,6 @@ public:
         std::condition_variable _eCv;
         PseudoFifo& _pseudoF;
     };
-
 
     PseudoFifo() = delete;
     PseudoFifo(int maxRunningCount) : _maxRunningCount(maxRunningCount) {}
@@ -108,6 +104,6 @@ private:
     std::mutex _qMtx;
 };
 
-}}} // namespace lsst::qserv::qdisp
+}  // namespace lsst::qserv::qdisp
 
-#endif // LSST_QSERV_QDISP_PSEUDOFIFO_H
+#endif  // LSST_QSERV_QDISP_PSEUDOFIFO_H

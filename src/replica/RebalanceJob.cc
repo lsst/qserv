@@ -42,75 +42,50 @@ namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.RebalanceJob");
 
-} /// namespace
+}  // namespace
 
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
 string RebalanceJob::typeName() { return "RebalanceJob"; }
 
-RebalanceJob::Ptr RebalanceJob::create(
-                            string const& databaseFamily,
-                            bool estimateOnly,
-                            Controller::Ptr const& controller,
-                            string const& parentJobId,
-                            CallbackType const& onFinish,
-                            int priority) {
+RebalanceJob::Ptr RebalanceJob::create(string const& databaseFamily, bool estimateOnly,
+                                       Controller::Ptr const& controller, string const& parentJobId,
+                                       CallbackType const& onFinish, int priority) {
     return RebalanceJob::Ptr(
-        new RebalanceJob(databaseFamily,
-                         estimateOnly,
-                         controller,
-                         parentJobId,
-                         onFinish,
-                         priority));
+            new RebalanceJob(databaseFamily, estimateOnly, controller, parentJobId, onFinish, priority));
 }
 
-
-RebalanceJob::RebalanceJob(string const& databaseFamily,
-                           bool estimateOnly,
-                           Controller::Ptr const& controller,
-                           string const& parentJobId,
-                           CallbackType const& onFinish,
-                           int priority)
-    :   Job(controller,
-            parentJobId,
-            "REBALANCE",
-            priority),
-        _databaseFamily(databaseFamily),
-        _estimateOnly(estimateOnly),
-        _onFinish(onFinish) {
-}
-
+RebalanceJob::RebalanceJob(string const& databaseFamily, bool estimateOnly, Controller::Ptr const& controller,
+                           string const& parentJobId, CallbackType const& onFinish, int priority)
+        : Job(controller, parentJobId, "REBALANCE", priority),
+          _databaseFamily(databaseFamily),
+          _estimateOnly(estimateOnly),
+          _onFinish(onFinish) {}
 
 RebalanceJobResult const& RebalanceJob::getReplicaData() const {
-
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     if (state() == State::FINISHED) return _replicaData;
 
-    throw logic_error(
-            "RebalanceJob::" + string(__func__) + "  the method can't be called while "
-            " the job hasn't finished");
+    throw logic_error("RebalanceJob::" + string(__func__) +
+                      "  the method can't be called while "
+                      " the job hasn't finished");
 }
 
-
-list<pair<string,string>> RebalanceJob::extendedPersistentState() const {
-    list<pair<string,string>> result;
+list<pair<string, string>> RebalanceJob::extendedPersistentState() const {
+    list<pair<string, string>> result;
     result.emplace_back("database_family", databaseFamily());
     return result;
 }
 
-
-list<pair<string,string>> RebalanceJob::persistentLogData() const {
-
-    list<pair<string,string>> result;
+list<pair<string, string>> RebalanceJob::persistentLogData() const {
+    list<pair<string, string>> result;
 
     auto&& replicaData = getReplicaData();
 
     // Report workers failed to respond to the requests
 
-    for (auto&& workerInfo: replicaData.workers) {
+    for (auto&& workerInfo : replicaData.workers) {
         auto&& worker = workerInfo.first;
 
         bool const responded = workerInfo.second;
@@ -129,21 +104,19 @@ list<pair<string,string>> RebalanceJob::persistentLogData() const {
     //     the total number of chunks deleted from the workers as a result
     //     of the operation
 
-    map<string,
-        map<string,
-            size_t>> workerCategoryCounter;
+    map<string, map<string, size_t>> workerCategoryCounter;
 
-    for (auto&& info: replicaData.createdReplicas) {
+    for (auto&& info : replicaData.createdReplicas) {
         workerCategoryCounter[info.worker()]["created-chunks"]++;
     }
-    for (auto&& info: replicaData.deletedReplicas) {
+    for (auto&& info : replicaData.deletedReplicas) {
         workerCategoryCounter[info.worker()]["deleted-chunks"]++;
     }
-    for (auto&& workerItr: workerCategoryCounter) {
+    for (auto&& workerItr : workerCategoryCounter) {
         auto&& worker = workerItr.first;
         string val = "worker=" + worker;
 
-        for (auto&& categoryItr: workerItr.second) {
+        for (auto&& categoryItr : workerItr.second) {
             auto&& category = categoryItr.first;
             size_t const counter = categoryItr.second;
             val += " " + category + "=" + to_string(counter);
@@ -153,35 +126,23 @@ list<pair<string,string>> RebalanceJob::persistentLogData() const {
     return result;
 }
 
-
 void RebalanceJob::startImpl(util::Lock const& lock) {
-
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     // Launch the chained job to get chunk disposition
 
     auto self = shared_from_base<RebalanceJob>();
 
-    bool const saveReplicInfo = true;           // always save the replica info in a database because
-                                                // the algorithm depends on it.
-    bool const allWorkers = false;              // only consider enabled workers
+    bool const saveReplicInfo = true;  // always save the replica info in a database because
+                                       // the algorithm depends on it.
+    bool const allWorkers = false;     // only consider enabled workers
     _findAllJob = FindAllJob::create(
-        databaseFamily(),
-        saveReplicInfo,
-        allWorkers,
-        controller(),
-        id(),
-        [self] (FindAllJob::Ptr job) {
-            self->_onPrecursorJobFinish();
-        },
-        priority()
-    );
+            databaseFamily(), saveReplicInfo, allWorkers, controller(), id(),
+            [self](FindAllJob::Ptr job) { self->_onPrecursorJobFinish(); }, priority());
     _findAllJob->start();
 }
 
-
 void RebalanceJob::cancelImpl(util::Lock const& lock) {
-
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     // The algorithm will also clear resources taken by various
@@ -194,23 +155,20 @@ void RebalanceJob::cancelImpl(util::Lock const& lock) {
 
     _jobs.clear();
 
-    for (auto&& ptr: _activeJobs) ptr->cancel();
+    for (auto&& ptr : _activeJobs) ptr->cancel();
     _activeJobs.clear();
 
     _numLaunched = 0;
     _numFinished = 0;
-    _numSuccess  = 0;
+    _numSuccess = 0;
 }
-
 
 void RebalanceJob::notify(util::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
     notifyDefaultImpl<RebalanceJob>(lock, _onFinish);
 }
 
-
 void RebalanceJob::_onPrecursorJobFinish() {
-
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     if (state() == State::FINISHED) return;
@@ -224,9 +182,7 @@ void RebalanceJob::_onPrecursorJobFinish() {
     // under relaxed condition.
 
     if (_findAllJob->extendedState() != ExtendedState::SUCCESS) {
-
-        LOGS(_log, LOG_LVL_ERROR, context() << __func__
-             << "  failed due to the precursor job failure");
+        LOGS(_log, LOG_LVL_ERROR, context() << __func__ << "  failed due to the precursor job failure");
 
         finish(lock, ExtendedState::FAILED);
         return;
@@ -240,33 +196,30 @@ void RebalanceJob::_onPrecursorJobFinish() {
     // Compute key parameters of the algorithm by counting the number of 'useful'
     // workers and 'good' chunks.
 
-    _replicaData.totalWorkers    = 0;     // not counting workers which failed to report chunks
-    _replicaData.totalGoodChunks = 0;     // good chunks reported by the precursor job
+    _replicaData.totalWorkers = 0;     // not counting workers which failed to report chunks
+    _replicaData.totalGoodChunks = 0;  // good chunks reported by the precursor job
 
-    for (auto&& entry: replicaData.workers) {
-        bool const  reported = entry.second;
+    for (auto&& entry : replicaData.workers) {
+        bool const reported = entry.second;
         if (reported) {
             _replicaData.totalWorkers++;
         }
     }
-    for (auto&& chunkEntry: replicaData.isGood) {
-
+    for (auto&& chunkEntry : replicaData.isGood) {
         unsigned int const chunk = chunkEntry.first;
 
         // skip the special chunk which must be present on all workers
         if (chunk == replica::overflowChunkNumber) continue;
 
-        for (auto&& workerEntry: chunkEntry.second) {
-            bool const  isGood = workerEntry.second;
+        for (auto&& workerEntry : chunkEntry.second) {
+            bool const isGood = workerEntry.second;
             if (isGood) {
                 _replicaData.totalGoodChunks++;
             }
         }
     }
     if (not _replicaData.totalWorkers or not _replicaData.totalGoodChunks) {
-
-        LOGS(_log, LOG_LVL_DEBUG, context() << __func__
-             << "  no eligible 'good' chunks found");
+        LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  no eligible 'good' chunks found");
 
         finish(lock, ExtendedState::SUCCESS);
         return;
@@ -274,10 +227,9 @@ void RebalanceJob::_onPrecursorJobFinish() {
 
     _replicaData.avgChunks = _replicaData.totalGoodChunks / _replicaData.totalWorkers;
     if (not _replicaData.avgChunks) {
-
-        LOGS(_log, LOG_LVL_DEBUG, context() << __func__
-             << "  the average number of 'good' chunks per worker is 0. "
-             << "This won't trigger the operation");
+        LOGS(_log, LOG_LVL_DEBUG,
+             context() << __func__ << "  the average number of 'good' chunks per worker is 0. "
+                       << "This won't trigger the operation");
 
         finish(lock, ExtendedState::SUCCESS);
         return;
@@ -291,28 +243,28 @@ void RebalanceJob::_onPrecursorJobFinish() {
     // IMPORTANT: the map be updated by the planner as it will be deciding
     // on new destinations for the moved chunks.
 
-    map<string,                   // worker
-        map<unsigned int,         // chunk
-            bool>> worker2chunks;
+    map<string,            // worker
+        map<unsigned int,  // chunk
+            bool>>
+            worker2chunks;
 
-    for (auto&& entry: replicaData.workers) {
-        string const& worker   = entry.first;
-        bool   const  reported = entry.second;
+    for (auto&& entry : replicaData.workers) {
+        string const& worker = entry.first;
+        bool const reported = entry.second;
         if (reported) {
-            worker2chunks[worker] = map<unsigned int,bool>();
+            worker2chunks[worker] = map<unsigned int, bool>();
         }
     }
-    for (auto chunk: replicaData.chunks.chunkNumbers()) {
-
+    for (auto chunk : replicaData.chunks.chunkNumbers()) {
         // skip the special chunk which must be present on all workers
         if (chunk == replica::overflowChunkNumber) continue;
 
         auto chunkMap = replicaData.chunks.chunk(chunk);
 
-        for (auto&& database: chunkMap.databaseNames()) {
+        for (auto&& database : chunkMap.databaseNames()) {
             auto databaseMap = chunkMap.database(database);
 
-            for (auto&& worker: databaseMap.workerNames()) {
+            for (auto&& worker : databaseMap.workerNames()) {
                 worker2chunks[worker][chunk] = true;
             }
         }
@@ -326,26 +278,24 @@ void RebalanceJob::_onPrecursorJobFinish() {
     // have any good (or any) chunks. We need to included those later into
     // a collection of the underpopulated workers.
 
-    map<string,
-        vector<unsigned int>> worker2goodChunks;
+    map<string, vector<unsigned int>> worker2goodChunks;
 
-    for (auto&& entry: replicaData.workers) {
-        string const& worker   = entry.first;
-        bool   const  reported = entry.second;
+    for (auto&& entry : replicaData.workers) {
+        string const& worker = entry.first;
+        bool const reported = entry.second;
         if (reported) {
             worker2goodChunks[worker] = vector<unsigned int>();
         }
     }
-    for (auto&& chunkEntry: replicaData.isGood) {
-
+    for (auto&& chunkEntry : replicaData.isGood) {
         unsigned int const chunk = chunkEntry.first;
 
         // skip the special chunk which must be present on all workers
         if (chunk == replica::overflowChunkNumber) continue;
 
-        for (auto&& workerEntry: chunkEntry.second) {
+        for (auto&& workerEntry : chunkEntry.second) {
             string const& worker = workerEntry.first;
-            bool   const  isGood = workerEntry.second;
+            bool const isGood = workerEntry.second;
             if (isGood) {
                 worker2goodChunks[worker].push_back(chunk);
             }
@@ -359,31 +309,24 @@ void RebalanceJob::_onPrecursorJobFinish() {
     // NOTE: this collection will be sorted (descending order) based on
     // the total number of chunks per each worker entry.
 
-    vector<pair<string,
-                vector<unsigned int>>> sourceWorkers;
+    vector<pair<string, vector<unsigned int>>> sourceWorkers;
 
-    for (auto&& entry: worker2goodChunks) {
+    for (auto&& entry : worker2goodChunks) {
         size_t const numChunks = entry.second.size();
         if (numChunks > _replicaData.avgChunks) {
             sourceWorkers.push_back(entry);
         }
     }
     if (not sourceWorkers.size()) {
-
-        LOGS(_log, LOG_LVL_DEBUG, context() << __func__
-             << "  no overloaded 'source' workers found");
+        LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  no overloaded 'source' workers found");
 
         finish(lock, ExtendedState::SUCCESS);
         return;
     }
-    sort(
-        sourceWorkers.begin(),
-        sourceWorkers.end(),
-        [] (pair<string, vector<unsigned int>> const& a,
-            pair<string, vector<unsigned int>> const& b) {
-            return b.second.size() < a.second.size();
-        }
-    );
+    sort(sourceWorkers.begin(), sourceWorkers.end(),
+         [](pair<string, vector<unsigned int>> const& a, pair<string, vector<unsigned int>> const& b) {
+             return b.second.size() < a.second.size();
+         });
 
     // Get a disposition of the destination workers along with the number
     // of available slots for chunks which can be hosted by the workers
@@ -391,23 +334,18 @@ void RebalanceJob::_onPrecursorJobFinish() {
     // such (candidate) worker must be strictly below the previously computed
     // average.
 
-    vector<pair<string,
-                size_t>> destinationWorkers;
+    vector<pair<string, size_t>> destinationWorkers;
 
-    for (auto&& entry: worker2goodChunks) {
-        string const worker    = entry.first;
+    for (auto&& entry : worker2goodChunks) {
+        string const worker = entry.first;
         size_t const numChunks = entry.second.size();
 
         if (numChunks < _replicaData.avgChunks) {
-            destinationWorkers.push_back(
-                make_pair(worker,
-                          _replicaData.avgChunks - numChunks));
+            destinationWorkers.push_back(make_pair(worker, _replicaData.avgChunks - numChunks));
         }
     }
     if (not destinationWorkers.size()) {
-
-        LOGS(_log, LOG_LVL_DEBUG, context() << __func__
-             << "  no under-loaded 'destination' workers found");
+        LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  no under-loaded 'destination' workers found");
 
         finish(lock, ExtendedState::SUCCESS);
         return;
@@ -439,42 +377,36 @@ void RebalanceJob::_onPrecursorJobFinish() {
 
     _replicaData.plan.clear();
 
-    for (auto&& sourceWorkerEntry: sourceWorkers) {
-
-        string               const& sourceWorker   = sourceWorkerEntry.first;
-        vector<unsigned int> const& chunks         = sourceWorkerEntry.second;
+    for (auto&& sourceWorkerEntry : sourceWorkers) {
+        string const& sourceWorker = sourceWorkerEntry.first;
+        vector<unsigned int> const& chunks = sourceWorkerEntry.second;
 
         // This number (below) will get decremented in the chunks loop later when
         // looking for chunks to be moved elsewhere.
         size_t numExtraChunks = chunks.size() - _replicaData.avgChunks;
 
-        LOGS(_log, LOG_LVL_DEBUG, context() << __func__
-             << "  sourceWorker: " << sourceWorker
-             << " numExtraChunks: " << numExtraChunks);
+        LOGS(_log, LOG_LVL_DEBUG,
+             context() << __func__ << "  sourceWorker: " << sourceWorker
+                       << " numExtraChunks: " << numExtraChunks);
 
-        for (unsigned int chunk: chunks) {
-
+        for (unsigned int chunk : chunks) {
             if (not numExtraChunks) break;
 
             // Always sort the collection in the descending order to make sure
             // least populated workers are considered first
-            sort(
-                destinationWorkers.begin(),
-                destinationWorkers.end(),
-                [] (pair<string, size_t> const& a,
-                    pair<string, size_t> const& b) {
-                    return b.second < a.second;
-                }
-            );
+            sort(destinationWorkers.begin(), destinationWorkers.end(),
+                 [](pair<string, size_t> const& a, pair<string, size_t> const& b) {
+                     return b.second < a.second;
+                 });
 
             // Search for a candidate worker where to move this chunk to
             //
             // IMPLEMENTTION NOTES: using non-constant references in the loop to allow
             // updates to the number of slots
 
-            for (auto&& destinationWorkerEntry: destinationWorkers) {
+            for (auto&& destinationWorkerEntry : destinationWorkers) {
                 string const& destinationWorker = destinationWorkerEntry.first;
-                size_t&       numSlots          = destinationWorkerEntry.second;
+                size_t& numSlots = destinationWorkerEntry.second;
 
                 // Are there any available slots on the worker?
                 if (not numSlots) continue;
@@ -513,25 +445,16 @@ void RebalanceJob::_onPrecursorJobFinish() {
 
     auto self = shared_from_base<RebalanceJob>();
 
-    for (auto&& chunkEntry: _replicaData.plan) {
+    for (auto&& chunkEntry : _replicaData.plan) {
         unsigned int const chunk = chunkEntry.first;
-        for (auto&& sourceWorkerEntry: chunkEntry.second) {
-            string const& sourceWorker      = sourceWorkerEntry.first;
+        for (auto&& sourceWorkerEntry : chunkEntry.second) {
+            string const& sourceWorker = sourceWorkerEntry.first;
             string const& destinationWorker = sourceWorkerEntry.second;
 
             auto job = MoveReplicaJob::create(
-                databaseFamily(),
-                chunk,
-                sourceWorker,
-                destinationWorker,
-                true,   /* purge */
-                controller(),
-                id(),
-                [self](MoveReplicaJob::Ptr job) {
-                    self->_onJobFinish(job);
-                },
-                priority()
-            );
+                    databaseFamily(), chunk, sourceWorker, destinationWorker, true, /* purge */
+                    controller(), id(), [self](MoveReplicaJob::Ptr job) { self->_onJobFinish(job); },
+                    priority());
             _jobs.push_back(job);
         }
     }
@@ -550,32 +473,30 @@ void RebalanceJob::_onPrecursorJobFinish() {
     // processing threads.
 
     set<string> uniqueDestinationWorkers;
-    for (auto&& ptr: _jobs) {
+    for (auto&& ptr : _jobs) {
         uniqueDestinationWorkers.insert(ptr->destinationWorker());
     }
-    size_t const numJobs = uniqueDestinationWorkers.size() *
-        controller()->serviceProvider()->config()->get<size_t>("worker", "num-svc-processing-threads");
+    size_t const numJobs =
+            uniqueDestinationWorkers.size() *
+            controller()->serviceProvider()->config()->get<size_t>("worker", "num-svc-processing-threads");
 
     size_t const numJobsLaunched = _launchNextJobs(lock, numJobs);
     if (0 != numJobsLaunched) {
         _numLaunched += numJobsLaunched;
     } else {
-        LOGS(_log, LOG_LVL_ERROR, context() << __func__
-             << "  unexpected failure when launching " << numJobs
-             << " replica migration jobs");
+        LOGS(_log, LOG_LVL_ERROR,
+             context() << __func__ << "  unexpected failure when launching " << numJobs
+                       << " replica migration jobs");
         _jobs.clear();
         finish(lock, ExtendedState::FAILED);
     }
 }
 
-
 void RebalanceJob::_onJobFinish(MoveReplicaJob::Ptr const& job) {
-
-    LOGS(_log, LOG_LVL_DEBUG, context() << __func__
-         << "  databaseFamily="    << databaseFamily()
-         << "  chunk="             << job->chunk()
-         << "  sourceWorker="      << job->sourceWorker()
-         << "  destinationWorker=" << job->destinationWorker());
+    LOGS(_log, LOG_LVL_DEBUG,
+         context() << __func__ << "  databaseFamily=" << databaseFamily() << "  chunk=" << job->chunk()
+                   << "  sourceWorker=" << job->sourceWorker()
+                   << "  destinationWorker=" << job->destinationWorker());
 
     if (state() == State::FINISHED) {
         _activeJobs.remove(job);
@@ -604,20 +525,20 @@ void RebalanceJob::_onJobFinish(MoveReplicaJob::Ptr const& job) {
 
         MoveReplicaJobResult const& replicaData = job->getReplicaData();
 
-        for (auto&& replica: replicaData.createdReplicas) {
+        for (auto&& replica : replicaData.createdReplicas) {
             _replicaData.createdReplicas.emplace_back(replica);
         }
-        for (auto&& databaseEntry: replicaData.createdChunks.at(job->chunk())) {
-            string      const& database = databaseEntry.first;
-            ReplicaInfo const& replica  = databaseEntry.second.at(job->destinationWorker());
+        for (auto&& databaseEntry : replicaData.createdChunks.at(job->chunk())) {
+            string const& database = databaseEntry.first;
+            ReplicaInfo const& replica = databaseEntry.second.at(job->destinationWorker());
             _replicaData.createdChunks[job->chunk()][database][job->destinationWorker()] = replica;
         }
-        for (auto&& replica: replicaData.deletedReplicas) {
+        for (auto&& replica : replicaData.deletedReplicas) {
             _replicaData.deletedReplicas.emplace_back(replica);
         }
-        for (auto&& databaseEntry: replicaData.deletedChunks.at(job->chunk())) {
-            string      const& database = databaseEntry.first;
-            ReplicaInfo const& replica  = databaseEntry.second.at(job->sourceWorker());
+        for (auto&& databaseEntry : replicaData.deletedChunks.at(job->chunk())) {
+            string const& database = databaseEntry.first;
+            ReplicaInfo const& replica = databaseEntry.second.at(job->sourceWorker());
             _replicaData.deletedChunks[job->chunk()][database][job->sourceWorker()] = replica;
         }
     }
@@ -628,21 +549,16 @@ void RebalanceJob::_onJobFinish(MoveReplicaJob::Ptr const& job) {
     if (numJobsLaunched != 0) {
         _numLaunched += numJobsLaunched;
     } else {
-
         // Evaluate the status of on-going operations to see if the job
         // has finished.
 
         if (_numFinished == _numLaunched) {
-            finish(lock, _numSuccess == _numLaunched ? ExtendedState::SUCCESS
-                                                     : ExtendedState::FAILED);
+            finish(lock, _numSuccess == _numLaunched ? ExtendedState::SUCCESS : ExtendedState::FAILED);
         }
     }
 }
 
-
-size_t RebalanceJob::_launchNextJobs(util::Lock const& lock,
-                                     size_t numJobs) {
-
+size_t RebalanceJob::_launchNextJobs(util::Lock const& lock, size_t numJobs) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  numJobs=" << numJobs);
 
     // Compute the number of jobs which are already active at both ends
@@ -651,18 +567,17 @@ size_t RebalanceJob::_launchNextJobs(util::Lock const& lock,
     map<string, size_t> numAtDest;
     map<string, size_t> numAtSrc;
 
-    for (auto&& ptr: _activeJobs) {
+    for (auto&& ptr : _activeJobs) {
         numAtDest[ptr->destinationWorker()]++;
-        numAtSrc [ptr->sourceWorker()]++;
+        numAtSrc[ptr->sourceWorker()]++;
     }
-    
+
     // Try to fulfill the request (to submit the given number of jobs)
     // by evaluating best candidates using an algorithm explained
     // within the loop below.
-    
+
     size_t numJobsLaunched = 0;
     for (size_t i = 0; i < numJobs; ++i) {
-
         // THE LOAD BALANCING ALGORITHM:
         //
         //   The algorithms evaluates candidates (pairs of (dstWorker,srcWorker))
@@ -678,19 +593,17 @@ size_t RebalanceJob::_launchNextJobs(util::Lock const& lock,
         size_t minLoad = numeric_limits<unsigned long long>::max();
         MoveReplicaJob::Ptr job;
 
-        for (auto&& ptr: _jobs) {            
-            size_t const load = numAtDest[ptr->destinationWorker()] +
-                                numAtSrc [ptr->sourceWorker()];
+        for (auto&& ptr : _jobs) {
+            size_t const load = numAtDest[ptr->destinationWorker()] + numAtSrc[ptr->sourceWorker()];
             if (load <= minLoad) {
                 minLoad = load;
                 job = ptr;
             }
         }
         if (nullptr != job) {
-
             // Update occupancy of the worker nodes at both ends
             numAtDest[job->destinationWorker()]++;
-            numAtSrc [job->sourceWorker()]++;
+            numAtSrc[job->sourceWorker()]++;
 
             // Move the job into another queue
             _activeJobs.push_back(job);
@@ -704,4 +617,4 @@ size_t RebalanceJob::_launchNextJobs(util::Lock const& lock,
     return numJobsLaunched;
 }
 
-}}} // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

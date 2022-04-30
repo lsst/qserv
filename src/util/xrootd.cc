@@ -31,28 +31,21 @@
 // Third-party headers
 #include "boost/format.hpp"
 
+namespace lsst::qserv::util {
 
-namespace lsst {
-namespace qserv {
-namespace util {
-
-std::string
-makeUrl(char const* hostport, char const* typeStr, int chunk) {
+std::string makeUrl(char const* hostport, char const* typeStr, int chunk) {
     std::stringstream s;
     s << chunk;
     // boost::format version is 5x slower.
-    //std::string s = (boost::format("%d") % chunk).str();
+    // std::string s = (boost::format("%d") % chunk).str();
     return makeUrl(hostport, typeStr, s.str());
 }
 
-std::string
-makeUrl(char const* hostport, std::string const& path) {
+std::string makeUrl(char const* hostport, std::string const& path) {
     return makeUrl(hostport, nullptr, path);
 }
 
-std::string
-makeUrl(char const* hostport, char const* typeStr,
-        std::string const& s, char mode) {
+std::string makeUrl(char const* hostport, char const* typeStr, std::string const& s, char mode) {
     // typeStr is either "query" or "result"
     if (!hostport) {
         hostport = ::getenv("QSERV_XRD");
@@ -77,8 +70,7 @@ makeUrl(char const* hostport, char const* typeStr,
         user += ".";
         user += mode;
     }
-    ret.reserve(pfx.size() + user.size() + 1 + 2 + 1
-                + tstr.size() + s.size());
+    ret.reserve(pfx.size() + user.size() + 1 + 2 + 1 + tstr.size() + s.size());
     ret += pfx;
     ret += user;
     ret += "@";
@@ -88,10 +80,10 @@ makeUrl(char const* hostport, char const* typeStr,
         ret += "/";
         ret += typeStr;
         ret += "/";
-    } // else: assume s contains leading "/"
+    }  // else: assume s contains leading "/"
     ret += s;
     return ret;
 #endif
 }
 
-}}} // namespace lsst::qserv::util
+}  // namespace lsst::qserv::util

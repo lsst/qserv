@@ -21,19 +21,13 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-
 #ifndef LSST_QSERV_QUERY_SUBSETHELPER_H
 #define LSST_QSERV_QUERY_SUBSETHELPER_H
-
 
 #include <memory>
 #include <vector>
 
-
-namespace lsst {
-namespace qserv {
-namespace query {
-
+namespace lsst::qserv::query {
 
 template <typename T>
 bool isSubsetOf(std::vector<std::shared_ptr<T>> const& a, std::vector<std::shared_ptr<T>> const& b) {
@@ -41,8 +35,9 @@ bool isSubsetOf(std::vector<std::shared_ptr<T>> const& a, std::vector<std::share
         return false;
     }
     size_t size = a.size();
-    for (size_t i=0; i<size; ++i) {
-        if (not a[i]->isSubsetOf(*b[i])) // nptodo pass in function to call? rename to for_each_i or something?
+    for (size_t i = 0; i < size; ++i) {
+        if (not a[i]->isSubsetOf(
+                    *b[i]))  // nptodo pass in function to call? rename to for_each_i or something?
             return false;
     }
     return true;
@@ -54,14 +49,13 @@ bool isSubsetOf(std::vector<T> const& a, std::vector<T> const& b) {
         return false;
     }
     size_t size = a.size();
-    for (size_t i=0; i<size; ++i) {
-        if (not a[i].isSubsetOf(b[i])) // nptodo pass in function to call? rename to for_each_i or something?
+    for (size_t i = 0; i < size; ++i) {
+        if (not a[i].isSubsetOf(b[i]))  // nptodo pass in function to call? rename to for_each_i or something?
             return false;
     }
     return true;
 }
 
+}  // namespace lsst::qserv::query
 
-}}} // namespace lsst::qserv::query
-
-#endif // LSST_QSERV_QUERY_SUBSETHELPER_H
+#endif  // LSST_QSERV_QUERY_SUBSETHELPER_H

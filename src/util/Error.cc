@@ -30,27 +30,20 @@
 // LSST headers
 #include "lsst/log/Log.h"
 
-
-namespace { // File-scope helpers
+namespace {  // File-scope helpers
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.util.Error");
 
-} // namespace
+}  // namespace
 
+namespace lsst::qserv::util {
 
-namespace lsst {
-namespace qserv {
-namespace util {
-
-
-Error::Error(int code, std::string const& msg, int status) :
-    _code(code), _msg(msg), _status(status) {
+Error::Error(int code, std::string const& msg, int status) : _code(code), _msg(msg), _status(status) {
     if (_code != ErrorCode::NONE || _msg != "" || _status != ErrorCode::NONE) {
         // Flushing output as it is likely that this exception will not be caught.
         LOGS(_log, LOG_LVL_ERROR, "Error " << *this << std::endl);
     }
 }
-
 
 /** Overload output operator for this class
  *
@@ -58,9 +51,9 @@ Error::Error(int code, std::string const& msg, int status) :
  * @param multiError
  * @return an output stream
  */
-std::ostream& operator<<(std::ostream &out, Error const& error) {
+std::ostream& operator<<(std::ostream& out, Error const& error) {
     out << "[" << error._code << "] " << error._msg;
     return out;
 }
 
-}}} // namespace lsst::qserv::util
+}  // namespace lsst::qserv::util

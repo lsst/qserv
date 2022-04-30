@@ -34,18 +34,12 @@
 #include "wsched/SchedulerBase.h"
 
 // Forward declarations
-namespace lsst {
-namespace qserv {
-namespace wsched {
-    class GroupScheduler;
-    class ScanScheduler;
-}}} // End of forward declarations
+namespace lsst::qserv::wsched {
+class GroupScheduler;
+class ScanScheduler;
+}  // namespace lsst::qserv::wsched
 
-
-namespace lsst {
-namespace qserv {
-namespace wsched {
-
+namespace lsst::qserv::wsched {
 
 // Class to pass control commands to the pool thread.
 // The scheduler doesn't know what to do with commands that aren't associated with
@@ -61,7 +55,6 @@ private:
     std::deque<util::Command::Ptr> _qu{};
     std::mutex _mx{};
 };
-
 
 /// BlendScheduler is a scheduler that places queries in one of
 /// 4 sub-schedulers. Interactive queries are placed on the GroupScheduler
@@ -100,12 +93,10 @@ public:
     using Ptr = std::shared_ptr<BlendScheduler>;
 
     // This scheduler will have difficulty with less than 11 threads.
-    static int getMinPoolSize(){ return 11; }
+    static int getMinPoolSize() { return 11; }
 
-    BlendScheduler(std::string const& name,
-                   wpublish::QueriesAndChunks::Ptr const& queries,
-                   int subSchedMaxThreads,
-                   std::shared_ptr<GroupScheduler> const& group,
+    BlendScheduler(std::string const& name, wpublish::QueriesAndChunks::Ptr const& queries,
+                   int subSchedMaxThreads, std::shared_ptr<GroupScheduler> const& group,
                    std::shared_ptr<ScanScheduler> const& snailScheduler,
                    std::vector<std::shared_ptr<ScanScheduler>> const& scanSchedulers);
 
@@ -125,7 +116,7 @@ public:
     std::size_t getSize() const override;
     int getInFlight() const override;
     bool ready() override;
-    int applyAvailableThreads(int tempMax) override { return tempMax;} //< does nothing
+    int applyAvailableThreads(int tempMax) override { return tempMax; }  //< does nothing
 
     int calcAvailableTheads();
 
@@ -143,26 +134,27 @@ private:
     bool _ready();
     void _sortScanSchedulers();
     void _logChunkStatus();
-    ControlCommandQueue _ctrlCmdQueue; ///< Needed for changing thread pool size.
+    ControlCommandQueue _ctrlCmdQueue;  ///< Needed for changing thread pool size.
 
-    int _schedMaxThreads; ///< maximum number of threads that can run.
+    int _schedMaxThreads;  ///< maximum number of threads that can run.
 
     // Sub-schedulers.
-    std::shared_ptr<GroupScheduler> _group;    ///< group scheduler
-    std::shared_ptr<ScanScheduler> _scanSnail; ///< extremely slow scheduler.
-    std::vector<SchedulerBase::Ptr> _schedulers; ///< list of all schedulers including _group and _scanSnail
-    mutable std::mutex _schedMtx; ///< Protects _schedulers. NEVER lock this before util::CommandQueue::mx.
+    std::shared_ptr<GroupScheduler> _group;       ///< group scheduler
+    std::shared_ptr<ScanScheduler> _scanSnail;    ///< extremely slow scheduler.
+    std::vector<SchedulerBase::Ptr> _schedulers;  ///< list of all schedulers including _group and _scanSnail
+    mutable std::mutex _schedMtx;  ///< Protects _schedulers. NEVER lock this before util::CommandQueue::mx.
 
-    std::atomic<bool> _infoChanged{true}; //< Used to limit debug logging.
+    std::atomic<bool> _infoChanged{true};  //< Used to limit debug logging.
 
-    wpublish::QueriesAndChunks::Ptr _queries; /// UserQuery statistics.
+    wpublish::QueriesAndChunks::Ptr _queries;  /// UserQuery statistics.
 
-    std::atomic<bool> _prioritizeByInFlight{false}; // Schedulers with more tasks inflight get lower priority.
-    SchedulerBase::Ptr _readySched; //< Pointer to the scheduler with a ready task.
+    std::atomic<bool> _prioritizeByInFlight{
+            false};                  // Schedulers with more tasks inflight get lower priority.
+    SchedulerBase::Ptr _readySched;  //< Pointer to the scheduler with a ready task.
 };
 
-}}} // namespace lsst::qserv::wsched
+}  // namespace lsst::qserv::wsched
 
-extern lsst::qserv::wsched::BlendScheduler* dbgBlendScheduler; ///< A symbol for gdb
+extern lsst::qserv::wsched::BlendScheduler* dbgBlendScheduler;  ///< A symbol for gdb
 
-#endif // LSST_QSERV_WSCHED_BLENDSCHEDULER_H
+#endif  // LSST_QSERV_WSCHED_BLENDSCHEDULER_H

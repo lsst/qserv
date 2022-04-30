@@ -20,14 +20,13 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
- /**
-  * @file
-  *
-  * @brief Test functions and structures used in QueryAnalysis tests
-  *
-  * @author Fabrice Jammes, IN2P3/SLAC
-  */
-
+/**
+ * @file
+ *
+ * @brief Test functions and structures used in QueryAnalysis tests
+ *
+ * @author Fabrice Jammes, IN2P3/SLAC
+ */
 
 #ifndef LSST_QSERV_TESTS_QUERYANAFIXTURE_H
 #define LSST_QSERV_TESTS_QUERYANAFIXTURE_H
@@ -41,34 +40,28 @@
 #include "tests/testKvMap.h"
 #include "tests/QueryAnaHelper.h"
 
-
 namespace {
 
 int cfgNum = 0;
 std::string defaultDb = "LSST";
 std::string mapBuffer(testKvMap);
 
-}
+}  // namespace
 
-
-namespace lsst {
-namespace qserv {
-namespace tests {
+namespace lsst::qserv::tests {
 
 struct QueryAnaFixture {
     // To learn how to dump the map, see qserv/core/css/KvInterfaceImplMem.cc
     // Use admin/examples/testMap_generateMap
 
     QueryAnaFixture()
-        : qsTest(cfgNum, css::CssAccess::createFromData(mapBuffer, "."), defaultDb,
-                 sql::SqlConfig(sql::SqlConfig::MOCK)) {
-    };
+            : qsTest(cfgNum, css::CssAccess::createFromData(mapBuffer, "."), defaultDb,
+                     sql::SqlConfig(sql::SqlConfig::MOCK)){};
 
     qproc::QuerySession::Test qsTest;
     QueryAnaHelper queryAnaHelper;
 };
 
-}}} // namespace lsst::qserv::tests
+}  // namespace lsst::qserv::tests
 
-
-#endif // LSST_QSERV_TESTS_QUERYANAFIXTURE_H
+#endif  // LSST_QSERV_TESTS_QUERYANAFIXTURE_H

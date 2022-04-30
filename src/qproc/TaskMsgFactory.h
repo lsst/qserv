@@ -24,12 +24,12 @@
 #ifndef LSST_QSERV_QPROC_TASKMSGFACTORY_H
 #define LSST_QSERV_QPROC_TASKMSGFACTORY_H
 /**
-  * @file
-  *
-  * @brief TaskMsgFactory is a factory for TaskMsg (protobuf) objects.
-  *
-  * @author Daniel L. Wang, SLAC
-  */
+ * @file
+ *
+ * @brief TaskMsgFactory is a factory for TaskMsg (protobuf) objects.
+ *
+ * @author Daniel L. Wang, SLAC
+ */
 
 // System headers
 #include <iostream>
@@ -41,9 +41,7 @@
 #include "proto/worker.pb.h"
 #include "qmeta/types.h"
 
-namespace lsst {
-namespace qserv {
-namespace qproc {
+namespace lsst::qserv::qproc {
 
 class ChunkQuerySpec;
 
@@ -57,15 +55,11 @@ public:
     virtual ~TaskMsgFactory() {}
 
     /// Construct a TaskMsg and serialize it to a stream
-    virtual void serializeMsg(ChunkQuerySpec const& s,
-                      std::string const& chunkResultName,
-                      QueryId queryId, int jobId, int attemptCount,
-                      qmeta::CzarId czarId,
-                      std::ostream& os);
+    virtual void serializeMsg(ChunkQuerySpec const& s, std::string const& chunkResultName, QueryId queryId,
+                              int jobId, int attemptCount, qmeta::CzarId czarId, std::ostream& os);
 
 private:
-    std::shared_ptr<proto::TaskMsg> _makeMsg(ChunkQuerySpec const& s,
-                                             std::string const& chunkResultName,
+    std::shared_ptr<proto::TaskMsg> _makeMsg(ChunkQuerySpec const& s, std::string const& chunkResultName,
                                              QueryId queryId, int jobId, int attemptCount,
                                              qmeta::CzarId czarId);
 
@@ -77,7 +71,6 @@ private:
     uint64_t const _session;
 };
 
-}}} // namespace lsst::qserv::qproc
+}  // namespace lsst::qserv::qproc
 
-#endif // LSST_QSERV_QPROC_TASKMSGFACTORY_H
-
+#endif  // LSST_QSERV_QPROC_TASKMSGFACTORY_H

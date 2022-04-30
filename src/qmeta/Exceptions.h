@@ -1,7 +1,7 @@
-/* 
+/*
  * LSST Data Management System
  * Copyright 2015 AURA/LSST.
- * 
+ *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
  *
@@ -9,14 +9,14 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
- * You should have received a copy of the LSST License Statement and 
- * the GNU General Public License along with this program.  If not, 
+ *
+ * You should have received a copy of the LSST License Statement and
+ * the GNU General Public License along with this program.  If not,
  * see <https://www.lsstcorp.org/LegalNotices/>.
  */
 #ifndef LSST_QSERV_QMETA_EXCEPTIONS_H
@@ -32,9 +32,7 @@
 #include "sql/SqlErrorObject.h"
 #include "util/Issue.h"
 
-namespace lsst {
-namespace qserv {
-namespace qmeta {
+namespace lsst::qserv::qmeta {
 
 /// @addtogroup qmeta
 
@@ -46,9 +44,7 @@ namespace qmeta {
 
 class QMetaError : public util::Issue {
 public:
-    QMetaError(util::Issue::Context const& ctx, std::string const& message)
-        : util::Issue(ctx, message)
-    {}
+    QMetaError(util::Issue::Context const& ctx, std::string const& message) : util::Issue(ctx, message) {}
 
     // this name will be used to find corresponding Python exception type
     virtual std::string typeName() const { return "CssError"; }
@@ -58,8 +54,7 @@ public:
 class CzarNameError : public QMetaError {
 public:
     CzarNameError(util::Issue::Context const& ctx, std::string const& name)
-        : QMetaError(ctx, "Czar is not registered in metadata: " + name)
-    {}
+            : QMetaError(ctx, "Czar is not registered in metadata: " + name) {}
 
     virtual std::string typeName() const override { return "CzarNameError"; }
 };
@@ -68,8 +63,8 @@ public:
 class CzarIdError : public QMetaError {
 public:
     CzarIdError(util::Issue::Context const& ctx, CzarId id)
-        : QMetaError(ctx, "Czar ID is not registered in metadata: " + boost::lexical_cast<std::string>(id))
-    {}
+            : QMetaError(ctx,
+                         "Czar ID is not registered in metadata: " + boost::lexical_cast<std::string>(id)) {}
 
     virtual std::string typeName() const override { return "CzarIdError"; }
 };
@@ -78,8 +73,8 @@ public:
 class QueryIdError : public QMetaError {
 public:
     QueryIdError(util::Issue::Context const& ctx, QueryId id)
-        : QMetaError(ctx, "Query ID is not registered in metadata: " + boost::lexical_cast<std::string>(id))
-    {}
+            : QMetaError(ctx,
+                         "Query ID is not registered in metadata: " + boost::lexical_cast<std::string>(id)) {}
 
     virtual std::string typeName() const override { return "QueryIdError"; }
 };
@@ -88,10 +83,9 @@ public:
 class ChunkIdError : public QMetaError {
 public:
     ChunkIdError(util::Issue::Context const& ctx, QueryId queryId, int chunkId)
-        : QMetaError(ctx, "Chunk ID is not registered in metadata: " +
-                    boost::lexical_cast<std::string>(chunkId) + " query id:" +
-                    boost::lexical_cast<std::string>(queryId))
-    {}
+            : QMetaError(ctx, "Chunk ID is not registered in metadata: " +
+                                      boost::lexical_cast<std::string>(chunkId) +
+                                      " query id:" + boost::lexical_cast<std::string>(queryId)) {}
 
     virtual std::string typeName() const override { return "ChunkIdError"; }
 };
@@ -100,9 +94,8 @@ public:
 class SqlError : public QMetaError {
 public:
     SqlError(util::Issue::Context const& ctx, sql::SqlErrorObject const& sqlErr)
-        : QMetaError(ctx, "Error from mysql: (" + boost::lexical_cast<std::string>(sqlErr.errNo()) +
-                    ") " + sqlErr.errMsg())
-    {}
+            : QMetaError(ctx, "Error from mysql: (" + boost::lexical_cast<std::string>(sqlErr.errNo()) +
+                                      ") " + sqlErr.errMsg()) {}
 
     virtual std::string typeName() const override { return "SqlError"; }
 };
@@ -111,8 +104,7 @@ public:
 class MissingTableError : public QMetaError {
 public:
     MissingTableError(util::Issue::Context const& ctx, std::string const& table)
-        : QMetaError(ctx, "Query metadata table is missing: " + table)
-    {}
+            : QMetaError(ctx, "Query metadata table is missing: " + table) {}
 
     virtual std::string typeName() const override { return "MissingTableError"; }
 };
@@ -121,8 +113,7 @@ public:
 class ConsistencyError : public QMetaError {
 public:
     ConsistencyError(util::Issue::Context const& ctx, std::string const& msg)
-        : QMetaError(ctx, "Metadata consistency error: " + msg)
-    {}
+            : QMetaError(ctx, "Metadata consistency error: " + msg) {}
 
     virtual std::string typeName() const override { return "ConsistencyError"; }
 };
@@ -131,11 +122,11 @@ public:
 class ConfigError : public QMetaError {
 public:
     explicit ConfigError(util::Issue::Context const& ctx, std::string const& msg)
-        : QMetaError(ctx, "Invalid config: " + msg) {}
+            : QMetaError(ctx, "Invalid config: " + msg) {}
 
     virtual std::string typeName() const override { return "ConfigError"; }
 };
 
-}}} // namespace lsst::qserv::qmeta
+}  // namespace lsst::qserv::qmeta
 
-#endif // LSST_QSERV_QMETA_EXCEPTIONS_H
+#endif  // LSST_QSERV_QMETA_EXCEPTIONS_H

@@ -33,69 +33,54 @@
 using namespace std;
 using json = nlohmann::json;
 
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
-void HttpRequestsModule::process(Controller::Ptr const& controller,
-                                 string const& taskName,
-                                 HttpProcessorConfig const& processorConfig,
-                                 qhttp::Request::Ptr const& req,
-                                 qhttp::Response::Ptr const& resp,
-                                 string const& subModuleName,
+void HttpRequestsModule::process(Controller::Ptr const& controller, string const& taskName,
+                                 HttpProcessorConfig const& processorConfig, qhttp::Request::Ptr const& req,
+                                 qhttp::Response::Ptr const& resp, string const& subModuleName,
                                  HttpAuthType const authType) {
     HttpRequestsModule module(controller, taskName, processorConfig, req, resp);
     module.execute(subModuleName, authType);
 }
 
-
-HttpRequestsModule::HttpRequestsModule(Controller::Ptr const& controller,
-                                       string const& taskName,
+HttpRequestsModule::HttpRequestsModule(Controller::Ptr const& controller, string const& taskName,
                                        HttpProcessorConfig const& processorConfig,
-                                       qhttp::Request::Ptr const& req,
-                                       qhttp::Response::Ptr const& resp)
-    :   HttpModule(controller, taskName, processorConfig, req, resp) {
-}
-
+                                       qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp)
+        : HttpModule(controller, taskName, processorConfig, req, resp) {}
 
 json HttpRequestsModule::executeImpl(string const& subModuleName) {
-    if (subModuleName.empty()) return _requests();
-    else if (subModuleName == "SELECT-ONE-BY-ID") return _oneRequest();
-    throw invalid_argument(
-            context() + "::" + string(__func__) +
-            "  unsupported sub-module: '" + subModuleName + "'");
+    if (subModuleName.empty())
+        return _requests();
+    else if (subModuleName == "SELECT-ONE-BY-ID")
+        return _oneRequest();
+    throw invalid_argument(context() + "::" + string(__func__) + "  unsupported sub-module: '" +
+                           subModuleName + "'");
 }
-
 
 json HttpRequestsModule::_requests() {
     debug(__func__);
 
-    string   const jobId         = query().optionalString("job_id");
+    string const jobId = query().optionalString("job_id");
     uint64_t const fromTimeStamp = query().optionalUInt64("from");
-    uint64_t const toTimeStamp   = query().optionalUInt64("to", numeric_limits<uint64_t>::max());
-    size_t   const maxEntries    = query().optionalUInt64("max_entries");
+    uint64_t const toTimeStamp = query().optionalUInt64("to", numeric_limits<uint64_t>::max());
+    size_t const maxEntries = query().optionalUInt64("max_entries");
 
-    debug(__func__, "job_id="      +           jobId);
-    debug(__func__, "from="        + to_string(fromTimeStamp));
-    debug(__func__, "to="          + to_string(toTimeStamp));
+    debug(__func__, "job_id=" + jobId);
+    debug(__func__, "from=" + to_string(fromTimeStamp));
+    debug(__func__, "to=" + to_string(toTimeStamp));
     debug(__func__, "max_entries=" + to_string(maxEntries));
 
-    auto const requests =
-        controller()->serviceProvider()->databaseServices()->requests(
-            jobId,
-            fromTimeStamp,
-            toTimeStamp,
-            maxEntries);
+    auto const requests = controller()->serviceProvider()->databaseServices()->requests(
+            jobId, fromTimeStamp, toTimeStamp, maxEntries);
 
     json requestsJson;
-    for (auto&& info: requests) {
+    for (auto&& info : requests) {
         requestsJson.push_back(info.toJson());
     }
     json result;
     result["requests"] = requestsJson;
     return result;
 }
-
 
 json HttpRequestsModule::_oneRequest() {
     debug(__func__);
@@ -110,4 +95,4 @@ json HttpRequestsModule::_oneRequest() {
     }
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

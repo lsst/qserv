@@ -47,22 +47,18 @@ namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.ServiceManagementRequest");
 
 /// Dump a collection of request descriptions onto the output stream
-void dumpRequestInfo(ostream& os,
-                     vector<ProtocolServiceResponseInfo> const& requests) {
-
+void dumpRequestInfo(ostream& os, vector<ProtocolServiceResponseInfo> const& requests) {
     for (auto&& r : requests) {
-        os  << "\n"
-            << "    type:     " << ProtocolQueuedRequestType_Name(r.queued_type()) << "\n"
-            << "    id:       " << r.id() << "\n"
-            << "    priority: " << r.priority() << "\n";
+        os << "\n"
+           << "    type:     " << ProtocolQueuedRequestType_Name(r.queued_type()) << "\n"
+           << "    id:       " << r.id() << "\n"
+           << "    priority: " << r.priority() << "\n";
     }
 }
 
-} /// namespace
+}  // namespace
 
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
 ///////////////////////////////////
 //         ServiceState          //
@@ -70,22 +66,21 @@ namespace replica {
 
 string ServiceState::state2string() const {
     switch (state) {
-        case SUSPEND_IN_PROGRESS: return "SUSPEND_IN_PROGRESS";
-        case SUSPENDED:           return "SUSPENDED";
-        case RUNNING:             return "RUNNING";
-    default:
-        throw runtime_error(
-                "ServiceState::" + string(__func__) + "  unhandled state: " +
-                to_string(state));
+        case SUSPEND_IN_PROGRESS:
+            return "SUSPEND_IN_PROGRESS";
+        case SUSPENDED:
+            return "SUSPENDED";
+        case RUNNING:
+            return "RUNNING";
+        default:
+            throw runtime_error("ServiceState::" + string(__func__) +
+                                "  unhandled state: " + to_string(state));
     }
     return string();
 }
 
-
 void ServiceState::set(ProtocolServiceResponse const& message) {
-
     switch (message.service_state()) {
-
         case ProtocolServiceResponse::SUSPEND_IN_PROGRESS:
             state = ServiceState::State::SUSPEND_IN_PROGRESS;
             break;
@@ -99,16 +94,15 @@ void ServiceState::set(ProtocolServiceResponse const& message) {
             break;
 
         default:
-            throw runtime_error(
-                    "ServiceState::" + string(__func__) +
-                    "  service state found in protocol is unknown");
+            throw runtime_error("ServiceState::" + string(__func__) +
+                                "  service state found in protocol is unknown");
     }
     technology = message.technology();
-    startTime  = message.start_time();
+    startTime = message.start_time();
 
-    numNewRequests        = message.num_new_requests();
+    numNewRequests = message.num_new_requests();
     numInProgressRequests = message.num_in_progress_requests();
-    numFinishedRequests   = message.num_finished_requests();
+    numFinishedRequests = message.num_finished_requests();
 
     for (int num = message.new_requests_size(), idx = 0; idx < num; ++idx) {
         newRequests.emplace_back(message.new_requests(idx));
@@ -117,45 +111,40 @@ void ServiceState::set(ProtocolServiceResponse const& message) {
         inProgressRequests.emplace_back(message.in_progress_requests(idx));
     }
     for (int num = message.finished_requests_size(), idx = 0; idx < num; ++idx) {
-       finishedRequests.emplace_back(message.finished_requests(idx));
+        finishedRequests.emplace_back(message.finished_requests(idx));
     }
 }
 
-
 ostream& operator<<(ostream& os, ServiceState const& ss) {
-
     unsigned int const secondsAgo = (PerformanceUtils::now() - ss.startTime) / 1000.0f;
 
-    os  << "ServiceState:\n"
-        << "\n  Summary:\n\n"
-        << "    service state:              " << ss.state2string() << "\n"
-        << "    technology:                 " << ss.technology << "\n"
-        << "    start time [ms]:            " << ss.startTime << " (" << secondsAgo << " seconds ago)\n"
-        << "    total new requests:         " << ss.numNewRequests << "\n"
-        << "    total in-progress requests: " << ss.numInProgressRequests << "\n"
-        << "    total finished requests:    " << ss.numFinishedRequests << "\n";
+    os << "ServiceState:\n"
+       << "\n  Summary:\n\n"
+       << "    service state:              " << ss.state2string() << "\n"
+       << "    technology:                 " << ss.technology << "\n"
+       << "    start time [ms]:            " << ss.startTime << " (" << secondsAgo << " seconds ago)\n"
+       << "    total new requests:         " << ss.numNewRequests << "\n"
+       << "    total in-progress requests: " << ss.numInProgressRequests << "\n"
+       << "    total finished requests:    " << ss.numFinishedRequests << "\n";
 
-    os  << "\n  New:\n";
+    os << "\n  New:\n";
     ::dumpRequestInfo(os, ss.newRequests);
 
-    os  << "\n  In-Progress:\n";
+    os << "\n  In-Progress:\n";
     ::dumpRequestInfo(os, ss.inProgressRequests);
 
-    os  << "\n  Finished:\n";
+    os << "\n  Finished:\n";
     ::dumpRequestInfo(os, ss.finishedRequests);
 
     return os;
 }
-
 
 void ServiceManagementRequestBase::extendedPrinter(Ptr const& ptr) {
     Request::defaultPrinter(ptr);
     cout << ptr->getServiceState();
 }
 
-
 ServiceState const& ServiceManagementRequestBase::getServiceState() const {
-
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     switch (Request::state()) {
@@ -170,35 +159,24 @@ ServiceState const& ServiceManagementRequestBase::getServiceState() const {
         default:
             break;
     }
-    throw logic_error(
-            "ServiceManagementRequestBase::" + string(__func__) +
-            "  not allowed in the current state of the request");
+    throw logic_error("ServiceManagementRequestBase::" + string(__func__) +
+                      "  not allowed in the current state of the request");
 }
 
-
-ServiceManagementRequestBase::ServiceManagementRequestBase(
-                                    ServiceProvider::Ptr const& serviceProvider,
-                                    boost::asio::io_service& io_service,
-                                    char const* requestName,
-                                    string const& worker,
-                                    ProtocolServiceRequestType requestType,
-                                    int priority,
-                                    shared_ptr<Messenger> const& messenger)
-    :   RequestMessenger(serviceProvider,
-                         io_service,
-                         requestName,
-                         worker,
-                         priority,
-                         false, // keepTracking
-                         false, // allowDuplicate
-                         false, // disposeRequired
-                         messenger),
-        _requestType(requestType) {
-}
-
+ServiceManagementRequestBase::ServiceManagementRequestBase(ServiceProvider::Ptr const& serviceProvider,
+                                                           boost::asio::io_service& io_service,
+                                                           char const* requestName, string const& worker,
+                                                           ProtocolServiceRequestType requestType,
+                                                           int priority,
+                                                           shared_ptr<Messenger> const& messenger)
+        : RequestMessenger(serviceProvider, io_service, requestName, worker, priority,
+                           false,  // keepTracking
+                           false,  // allowDuplicate
+                           false,  // disposeRequired
+                           messenger),
+          _requestType(requestType) {}
 
 void ServiceManagementRequestBase::startImpl(util::Lock const& lock) {
-
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     // Serialize the Request message header and the request itself into
@@ -217,16 +195,13 @@ void ServiceManagementRequestBase::startImpl(util::Lock const& lock) {
     // Send the message
     auto self = shared_from_base<ServiceManagementRequestBase>();
     messenger()->send<ProtocolServiceResponse>(
-        worker(), id(), priority(), buffer(),
-        [self] (string const& id, bool success, ProtocolServiceResponse const& response) {
-            self->_analyze(success, response);
-        }
-    );
+            worker(), id(), priority(), buffer(),
+            [self](string const& id, bool success, ProtocolServiceResponse const& response) {
+                self->_analyze(success, response);
+            });
 }
 
-
 void ServiceManagementRequestBase::_analyze(bool success, ProtocolServiceResponse const& message) {
-
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  success=" << (success ? "true" : "false"));
 
     // This method is called on behalf of an asynchronous callback fired
@@ -248,7 +223,6 @@ void ServiceManagementRequestBase::_analyze(bool success, ProtocolServiceRespons
 
     // Capture the general status of the operation.
     switch (message.status()) {
-
         case ProtocolStatus::SUCCESS:
             // Transfer the state of the remote service into a local data member
             // before initiating state transition of the request object.
@@ -262,9 +236,8 @@ void ServiceManagementRequestBase::_analyze(bool success, ProtocolServiceRespons
     }
 }
 
-
 void ServiceManagementRequestBase::savePersistentState(util::Lock const& lock) {
     controller()->serviceProvider()->databaseServices()->saveState(*this, performance(lock));
 }
 
-}}} // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

@@ -32,15 +32,13 @@
 #include "replica/HttpModule.h"
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class HttpConfigurationModule implements a handler for reporting
  * various info on or modifying Configuration of the Replication system.
  */
-class HttpConfigurationModule: public HttpModule {
+class HttpConfigurationModule : public HttpModule {
 public:
     typedef std::shared_ptr<HttpConfigurationModule> Ptr;
 
@@ -61,13 +59,10 @@ public:
      *
      * @throws std::invalid_argument for unknown values of parameter 'subModuleName'
      */
-    static void process(Controller::Ptr const& controller,
-                        std::string const& taskName,
-                        HttpProcessorConfig const& processorConfig,
-                        qhttp::Request::Ptr const& req,
-                        qhttp::Response::Ptr const& resp,
-                        std::string const& subModuleName=std::string(),
-                        HttpAuthType const authType=HttpAuthType::NONE);
+    static void process(Controller::Ptr const& controller, std::string const& taskName,
+                        HttpProcessorConfig const& processorConfig, qhttp::Request::Ptr const& req,
+                        qhttp::Response::Ptr const& resp, std::string const& subModuleName = std::string(),
+                        HttpAuthType const authType = HttpAuthType::NONE);
 
     HttpConfigurationModule() = delete;
     HttpConfigurationModule(HttpConfigurationModule const&) = delete;
@@ -79,10 +74,8 @@ protected:
     nlohmann::json executeImpl(std::string const& subModuleName) final;
 
 private:
-    HttpConfigurationModule(Controller::Ptr const& controller,
-                            std::string const& taskName,
-                            HttpProcessorConfig const& processorConfig,
-                            qhttp::Request::Ptr const& req,
+    HttpConfigurationModule(Controller::Ptr const& controller, std::string const& taskName,
+                            HttpProcessorConfig const& processorConfig, qhttp::Request::Ptr const& req,
                             qhttp::Response::Ptr const& resp);
 
     /**
@@ -152,7 +145,7 @@ private:
      */
     nlohmann::json _addTable();
 };
-    
-}}} // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_HTTPCONFIGURATIONMODULE_H
+}  // namespace lsst::qserv::replica
+
+#endif  // LSST_QSERV_HTTPCONFIGURATIONMODULE_H

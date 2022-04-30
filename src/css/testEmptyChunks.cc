@@ -32,7 +32,6 @@
 // Local headers
 #include "css/EmptyChunks.h"
 
-
 // Boost unit test header
 #define BOOST_TEST_MODULE testEmptyChunks
 #include <boost/test/unit_test.hpp>
@@ -61,9 +60,7 @@ struct DummyFile {
         writeFile("TestTwo", 100, 200);
         writeFile(NULL, 1000, 1010);
     }
-    ~DummyFile() {
-        rmDir();
-    }
+    ~DummyFile() { rmDir(); }
     void mkDir() {
         // Slightly dangerous: invoke OS system interpreter
         // Doesn't seem worth it to be more precise for a unit test.
@@ -84,11 +81,11 @@ struct DummyFile {
         std::string filename = _path;
         if (dbname) {
             filename = filename + "/empty_" + dbname + ".txt";
-        }  else {
+        } else {
             filename = _fallback;
         }
         std::ofstream os(filename.c_str());
-        for(int i=begin; i < end; ++i) {
+        for (int i = begin; i < end; ++i) {
             os << i << std::endl;
         }
         os.close();
@@ -98,11 +95,8 @@ struct DummyFile {
 };
 
 struct Fixture {
-    Fixture() {
-
-    }
-    ~Fixture() {
-    }
+    Fixture() {}
+    ~Fixture() {}
     DummyFile dummyFile;
 };
 
@@ -123,7 +117,6 @@ BOOST_AUTO_TEST_CASE(Basic) {
     BOOST_CHECK(ec.isEmpty("TestOne", 3));
     BOOST_CHECK(ec.isEmpty("TestTwo", 103));
     BOOST_CHECK(ec.isEmpty("Default", 1003));
-
 }
 
 BOOST_AUTO_TEST_SUITE_END()

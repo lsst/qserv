@@ -41,17 +41,13 @@ namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.qdisp.MessageStore");
 }
 
-namespace lsst {
-namespace qserv {
-namespace qdisp {
+namespace lsst::qserv::qdisp {
 
 ////////////////////////////////////////////////////////////////////////
 // public
 ////////////////////////////////////////////////////////////////////////
 
-void MessageStore::addMessage(int chunkId, int code,
-                              std::string const& description,
-                              MessageSeverity severity,
+void MessageStore::addMessage(int chunkId, int code, std::string const& description, MessageSeverity severity,
                               std::time_t timestamp) {
     if (timestamp == std::time_t(0)) {
         timestamp = std::time(nullptr);
@@ -69,21 +65,17 @@ void MessageStore::addErrorMessage(std::string const& description) {
     addMessage(NOTSET, NOTSET, description, MessageSeverity::MSG_ERROR);
 }
 
-QueryMessage MessageStore::getMessage(int idx) const {
-    return _queryMessages.at(idx);
-}
+QueryMessage MessageStore::getMessage(int idx) const { return _queryMessages.at(idx); }
 
-int MessageStore::messageCount() const {
-    return _queryMessages.size();
-}
+int MessageStore::messageCount() const { return _queryMessages.size(); }
 
 int MessageStore::messageCount(int code) const {
     int count = 0;
-    for (std::vector<QueryMessage>::const_iterator i = _queryMessages.begin();
-         i != _queryMessages.end(); ++i) {
+    for (std::vector<QueryMessage>::const_iterator i = _queryMessages.begin(); i != _queryMessages.end();
+         ++i) {
         if (i->code == code) count++;
     }
     return count;
 }
 
-}}} // namespace lsst::qserv::qdisp
+}  // namespace lsst::qserv::qdisp

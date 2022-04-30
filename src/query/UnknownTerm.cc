@@ -21,42 +21,24 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-
 // Class header
 #include "UnknownTerm.h"
 
 // Qserv headers
 #include "query/QueryTemplate.h"
 
+namespace lsst::qserv::query {
 
-namespace lsst {
-namespace qserv {
-namespace query {
+void UnknownTerm::dbgPrint(std::ostream& os) const { os << "UnknownTerm()"; }
 
+bool UnknownTerm::operator==(const BoolTerm& rhs) const { return true; }
 
-void UnknownTerm::dbgPrint(std::ostream& os) const {
-    os << "UnknownTerm()";
-}
+std::ostream& UnknownTerm::putStream(std::ostream& os) const { return os << "--UNKNOWNTERM--"; }
 
-
-bool UnknownTerm::operator==(const BoolTerm& rhs) const {
-    return true;
-}
-
-
-std::ostream& UnknownTerm::putStream(std::ostream& os) const {
-    return os << "--UNKNOWNTERM--";
-}
-
-
-void UnknownTerm::renderTo(QueryTemplate& qt) const {
-    qt.append("unknown");
-}
-
+void UnknownTerm::renderTo(QueryTemplate& qt) const { qt.append("unknown"); }
 
 std::shared_ptr<BoolTerm> UnknownTerm::clone() const {
-    return  std::make_shared<UnknownTerm>(); // TODO what is unknown now?
+    return std::make_shared<UnknownTerm>();  // TODO what is unknown now?
 }
 
-
-}}} // namespace lsst::qserv::query
+}  // namespace lsst::qserv::query

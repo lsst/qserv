@@ -29,7 +29,7 @@
 #include <cassert>
 #include <limits>
 #include <mutex>
-#include <string.h> // for memcpy
+#include <string.h>  // for memcpy
 
 // Third-party headers
 #include <mysql/mysql.h>
@@ -41,26 +41,20 @@
 #include "mysql/LocalInfileError.h"
 #include "mysql/RowBuffer.h"
 
-
 namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.mysql.LocalInfile");
 
 }
 
-
-
-namespace lsst {
-namespace qserv {
-namespace mysql {
+namespace lsst::qserv::mysql {
 
 ////////////////////////////////////////////////////////////////////////
 // LocalInfile implementation
 ////////////////////////////////////////////////////////////////////////
-int const infileBufferSize = 1024*1024; // 1M buffer
+int const infileBufferSize = 1024 * 1024;  // 1M buffer
 
-LocalInfile::LocalInfile(char const* filename, MYSQL_RES* result)
-    : _filename(filename) {
+LocalInfile::LocalInfile(char const* filename, MYSQL_RES* result) : _filename(filename) {
     // Should have buffer >= sizeof(single row)
     const int defaultBuffer = infileBufferSize;
     _buffer = new char[defaultBuffer];
@@ -71,10 +65,8 @@ LocalInfile::LocalInfile(char const* filename, MYSQL_RES* result)
     _rowBuffer = RowBuffer::newResRowBuffer(result);
 }
 
-LocalInfile::LocalInfile(char const* filename,
-                         std::shared_ptr<RowBuffer> rowBuffer)
-    : _filename(filename),
-      _rowBuffer(rowBuffer) {
+LocalInfile::LocalInfile(char const* filename, std::shared_ptr<RowBuffer> rowBuffer)
+        : _filename(filename), _rowBuffer(rowBuffer) {
     // Should have buffer >= sizeof(single row)
     const int defaultBuffer = infileBufferSize;
     _buffer = new char[defaultBuffer];
@@ -95,7 +87,7 @@ int LocalInfile::read(char* buf, unsigned int bufLen) {
     // Read into *buf
     unsigned copySize = bufLen;
     unsigned copied = 0;
-    if (_leftoverSize) { // Try the leftovers first
+    if (_leftoverSize) {  // Try the leftovers first
         if (copySize > _leftoverSize) {
             copySize = _leftoverSize;
         }
@@ -106,7 +98,7 @@ int LocalInfile::read(char* buf, unsigned int bufLen) {
         _leftover += copySize;
         _leftoverSize -= copySize;
     }
-    if (bufLen > 0) { // continue?
+    if (bufLen > 0) {  // continue?
         // Leftover couldn't satisfy bufLen, so it's empty.
         // Re-fill the buffer.
 
@@ -114,7 +106,7 @@ int LocalInfile::read(char* buf, unsigned int bufLen) {
         if (fetchSize == 0) {
             return copied;
         }
-        if (fetchSize > bufLen) { // Fetched more than the buffer
+        if (fetchSize > bufLen) {  // Fetched more than the buffer
             copySize = bufLen;
         } else {
             copySize = fetchSize;
@@ -139,43 +131,31 @@ int LocalInfile::getError(char* buf, unsigned int bufLen) {
     return 0;
 }
 
-
 void LocalInfile::Mgr::attach(MYSQL* mysql) {
-    mysql_set_local_infile_handler(mysql,
-                                   local_infile_init,
-                                   local_infile_read,
-                                   local_infile_end,
-                                   local_infile_error,
-                                   this);
+    mysql_set_local_infile_handler(mysql, local_infile_init, local_infile_read, local_infile_end,
+                                   local_infile_error, this);
 }
 
-
-void LocalInfile::Mgr::detachReset(MYSQL* mysql) {
-    mysql_set_local_infile_default(mysql);
-}
-
+void LocalInfile::Mgr::detachReset(MYSQL* mysql) { mysql_set_local_infile_default(mysql); }
 
 void LocalInfile::Mgr::prepareSrc(std::string const& filename, MYSQL_RES* result) {
     setBuffer(filename, RowBuffer::newResRowBuffer(result));
 }
 
-
 std::string LocalInfile::Mgr::prepareSrc(MYSQL_RES* result) {
     return insertBuffer(RowBuffer::newResRowBuffer(result));
 }
-
 
 std::string LocalInfile::Mgr::prepareSrc(std::shared_ptr<RowBuffer> const& rowBuffer) {
     LOGS(_log, LOG_LVL_TRACE, "rowBuffer=" << rowBuffer->dump());
     return insertBuffer(rowBuffer);
 }
 
-
 // mysql_local_infile_handler interface
-int LocalInfile::Mgr::local_infile_init(void **ptr, const char *filename, void *userdata) {
+int LocalInfile::Mgr::local_infile_init(void** ptr, const char* filename, void* userdata) {
     assert(userdata);
     LocalInfile::Mgr* m = static_cast<LocalInfile::Mgr*>(userdata);
-    RowBuffer::Ptr rb= m->get(std::string(filename));
+    RowBuffer::Ptr rb = m->get(std::string(filename));
     assert(rb);
     LocalInfile* lf = new LocalInfile(filename, rb);
     *ptr = lf;
@@ -186,26 +166,24 @@ int LocalInfile::Mgr::local_infile_init(void **ptr, const char *filename, void *
     // userdata points at attached LocalInfileShared
 }
 
-int LocalInfile::Mgr::local_infile_read(void *ptr, char *buf, unsigned int buf_len) {
+int LocalInfile::Mgr::local_infile_read(void* ptr, char* buf, unsigned int buf_len) {
     return static_cast<LocalInfile*>(ptr)->read(buf, buf_len);
 }
 
-void LocalInfile::Mgr::local_infile_end(void *ptr) {
+void LocalInfile::Mgr::local_infile_end(void* ptr) {
     LocalInfile* lf = static_cast<LocalInfile*>(ptr);
     delete lf;
 }
 
-int LocalInfile::Mgr::local_infile_error(void *ptr, char *error_msg, unsigned int error_msg_len) {
+int LocalInfile::Mgr::local_infile_error(void* ptr, char* error_msg, unsigned int error_msg_len) {
     return static_cast<LocalInfile*>(ptr)->getError(error_msg, error_msg_len);
 }
-
 
 std::string LocalInfile::Mgr::insertBuffer(std::shared_ptr<RowBuffer> const& rb) {
     std::string f = _nextFilename();
     _set(f, rb);
     return f;
 }
-
 
 void LocalInfile::Mgr::setBuffer(std::string const& s, std::shared_ptr<RowBuffer> const& rb) {
     bool newElem = _set(s, rb);
@@ -214,14 +192,14 @@ void LocalInfile::Mgr::setBuffer(std::string const& s, std::shared_ptr<RowBuffer
     }
 }
 
-
 RowBuffer::Ptr LocalInfile::Mgr::get(std::string const& s) {
     std::lock_guard<std::mutex> lock(_mapMutex);
     RowBufferMap::iterator i = _map.find(s);
-    if (i == _map.end()) { return std::shared_ptr<RowBuffer>(); }
+    if (i == _map.end()) {
+        return std::shared_ptr<RowBuffer>();
+    }
     return i->second;
 }
-
 
 std::string LocalInfile::Mgr::_nextFilename() {
     static std::atomic<std::uint64_t> sequence(0);
@@ -231,12 +209,10 @@ std::string LocalInfile::Mgr::_nextFilename() {
     return os.str();
 }
 
-
 bool LocalInfile::Mgr::_set(std::string const& s, std::shared_ptr<RowBuffer> const& rb) {
     std::lock_guard<std::mutex> lock(_mapMutex);
     auto res = _map.insert(std::pair<std::string, std::shared_ptr<RowBuffer>>(s, rb));
     return res.second;
 }
 
-
-}}} // namespace lsst::qserv::mysql
+}  // namespace lsst::qserv::mysql

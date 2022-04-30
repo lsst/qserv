@@ -21,7 +21,6 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-
 // Class header
 #include "global/DbTable.h"
 
@@ -29,13 +28,11 @@
 
 // LSST headers
 
-namespace lsst {
-namespace qserv {
+namespace lsst::qserv {
 
 std::ostream& operator<<(std::ostream& os, DbTable const& dbTable) {
     os << dbTable.db << "." << dbTable.table;
     return os;
 }
 
-
-}} // namespace lsst::qserv
+}  // namespace lsst::qserv

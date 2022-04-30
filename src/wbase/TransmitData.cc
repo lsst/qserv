@@ -47,19 +47,16 @@ namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.wbase.TransmitData");
 }
 
-namespace lsst {
-namespace qserv {
-namespace wbase {
+namespace lsst::qserv::wbase {
 
 std::atomic<int> seqSource{0};
 
 TransmitData::TransmitData(qmeta::CzarId const& czarId_, shared_ptr<google::protobuf::Arena> const& arena,
                            std::string const& idStr)
-    : _czarId(czarId_), _arena(arena), _idStr(idStr), _trSeq(seqSource++) {
+        : _czarId(czarId_), _arena(arena), _idStr(idStr), _trSeq(seqSource++) {
     _header = _createHeader();
     _result = _createResult();
 }
-
 
 TransmitData::Ptr TransmitData::createTransmitData(qmeta::CzarId const& czarId_, string const& idStr) {
     shared_ptr<google::protobuf::Arena> arena = make_shared<google::protobuf::Arena>();
@@ -67,11 +64,10 @@ TransmitData::Ptr TransmitData::createTransmitData(qmeta::CzarId const& czarId_,
     return ptr;
 }
 
-
 /// Note: _trMtx must be held before calling this.
 proto::ProtoHeader* TransmitData::_createHeader() {
     proto::ProtoHeader* hdr = google::protobuf::Arena::CreateMessage<proto::ProtoHeader>(_arena.get());
-    hdr->set_protocol(2); // protocol 2: row-by-row message
+    hdr->set_protocol(2);  // protocol 2: row-by-row message
     hdr->set_size(0);
     hdr->set_md5(util::StringHash::getMd5("", 0));
     hdr->set_wname(getHostname());
@@ -80,15 +76,13 @@ proto::ProtoHeader* TransmitData::_createHeader() {
     return hdr;
 }
 
-
 proto::Result* TransmitData::_createResult() {
     proto::Result* rst = google::protobuf::Arena::CreateMessage<proto::Result>(_arena.get());
     return rst;
 }
 
-
-void TransmitData::attachNextHeader(TransmitData::Ptr const& nextTr, bool reallyLast,
-                                    uint32_t seq, int scsSeq) {
+void TransmitData::attachNextHeader(TransmitData::Ptr const& nextTr, bool reallyLast, uint32_t seq,
+                                    int scsSeq) {
     lock_guard<mutex> lock(_trMtx);
     if (_result == nullptr) {
         throw util::Bug(ERR_LOC, _idStr + "_transmitLoop() had nullptr result!");
@@ -103,8 +97,8 @@ void TransmitData::attachNextHeader(TransmitData::Ptr const& nextTr, bool really
     } else {
         // Need the header from the next TransmitData object in the queue.
         // Using public version to lock its mutex.
-        LOGS(_log, LOG_LVL_TRACE, _dump() << "attachNextHeader reallyLast=" << reallyLast
-                                  << " next=" << nextTr->dump());
+        LOGS(_log, LOG_LVL_TRACE,
+             _dump() << "attachNextHeader reallyLast=" << reallyLast << " next=" << nextTr->dump());
         // next _tMtx is not locked, so call public member
         nextHeaderString = nextTr->makeHeaderString(reallyLast, seq, scsSeq);
     }
@@ -112,12 +106,10 @@ void TransmitData::attachNextHeader(TransmitData::Ptr const& nextTr, bool really
     _dataMsg += proto::ProtoHeaderWrap::wrap(nextHeaderString);
 }
 
-
 string TransmitData::makeHeaderString(bool reallyLast, uint32_t seq, int scsSeq) {
     lock_guard<mutex> lock(_trMtx);
     return _makeHeaderString(reallyLast, seq, scsSeq);
 }
-
 
 string TransmitData::_makeHeaderString(bool reallyLast, uint32_t seq, int scsSeq) {
     // Note: _trMtx must be held before calling this.
@@ -137,24 +129,21 @@ string TransmitData::_makeHeaderString(bool reallyLast, uint32_t seq, int scsSeq
     return headerString;
 }
 
-
 string TransmitData::getHeaderString(uint32_t seq, int scsSeq) {
     lock_guard<mutex> lock(_trMtx);
     proto::ProtoHeader* thisPHdr = _header;
     thisPHdr->set_seq(seq);
-    thisPHdr->set_scsseq(scsSeq); // should always be 0
+    thisPHdr->set_scsseq(scsSeq);  // should always be 0
     string thisHeaderString;
     thisPHdr->SerializeToString(&thisHeaderString);
     return thisHeaderString;
 }
-
 
 xrdsvc::StreamBuffer::Ptr TransmitData::getStreamBuffer() {
     lock_guard<mutex> lock(_trMtx);
     // createWithMove invalidates _dataMsg
     return xrdsvc::StreamBuffer::createWithMove(_dataMsg);
 }
-
 
 void TransmitData::_buildHeader(bool largeResult) {
     LOGS(_log, LOG_LVL_DEBUG, _idStr << "TransmitData::_buildHeader");
@@ -167,16 +156,15 @@ void TransmitData::_buildHeader(bool largeResult) {
     _header->set_endnodata(false);
 }
 
-
 void TransmitData::buildDataMsg(Task const& task, bool largeResult, util::MultiError& multiErr) {
     lock_guard<mutex> lock(_trMtx);
     _buildDataMsg(task, largeResult, multiErr);
 }
 
-
 void TransmitData::_buildDataMsg(Task const& task, bool largeResult, util::MultiError& multiErr) {
     QSERV_LOGCONTEXT_QUERY_JOB(task.getQueryId(), task.getJobId());
-    LOGS(_log, LOG_LVL_INFO, _idStr << "TransmitData::_buildDataMsg rowCount=" << _rowCount << " tSize=" << _tSize);
+    LOGS(_log, LOG_LVL_INFO,
+         _idStr << "TransmitData::_buildDataMsg rowCount=" << _rowCount << " tSize=" << _tSize);
     assert(_result != nullptr);
 
     _result->set_rowcount(_rowCount);
@@ -196,7 +184,6 @@ void TransmitData::_buildDataMsg(Task const& task, bool largeResult, util::Multi
     _buildHeader(largeResult);
 }
 
-
 void TransmitData::initResult(Task& task, std::vector<SchemaCol>& schemaCols) {
     lock_guard<mutex> lock(_trMtx);
     _result->set_queryid(task.getQueryId());
@@ -211,23 +198,18 @@ void TransmitData::initResult(Task& task, std::vector<SchemaCol>& schemaCols) {
     }
 }
 
-
-bool TransmitData::hasErrormsg() const {
-    return _result->has_errormsg();
-}
-
+bool TransmitData::hasErrormsg() const { return _result->has_errormsg(); }
 
 void TransmitData::addSchemaCols(std::vector<SchemaCol>& schemaCols) {
     lock_guard<mutex> lock(_trMtx);
     _addSchemaCols(schemaCols);
 }
 
-
 void TransmitData::_addSchemaCols(std::vector<SchemaCol>& schemaCols) {
     // Load schema from _schemaCols into _result, this should only happen once
     // per TransmitData object.
     if (_schemaColsSet.exchange(true) == false) {
-        for(auto&& col:schemaCols) {
+        for (auto&& col : schemaCols) {
             proto::ColumnSchema* cs = _result->mutable_rowschema()->add_columnschema();
             cs->set_name(col.colName);
             cs->set_sqltype(col.colSqlType);
@@ -238,8 +220,7 @@ void TransmitData::_addSchemaCols(std::vector<SchemaCol>& schemaCols) {
     }
 }
 
-
-bool TransmitData::fillRows(MYSQL_RES* mResult, int numFields, size_t &sz) {
+bool TransmitData::fillRows(MYSQL_RES* mResult, int numFields, size_t& sz) {
     lock_guard<mutex> lock(_trMtx);
     MYSQL_ROW row;
 
@@ -249,7 +230,7 @@ bool TransmitData::fillRows(MYSQL_RES* mResult, int numFields, size_t &sz) {
     while ((row = mysql_fetch_row(mResult))) {
         auto lengths = mysql_fetch_lengths(mResult);
         proto::RowBundle* rawRow = _result->add_row();
-        for(int i=0; i < numFields; ++i) {
+        for (int i = 0; i < numFields; ++i) {
             if (row[i]) {
                 rawRow->add_column(row[i], lengths[i]);
                 rawRow->add_isnull(false);
@@ -271,12 +252,10 @@ bool TransmitData::fillRows(MYSQL_RES* mResult, int numFields, size_t &sz) {
     return true;
 }
 
-
 int TransmitData::getResultSize() const {
     lock_guard<mutex> lock(_trMtx);
     return _dataMsg.size();
 }
-
 
 string TransmitData::_dump() const {
     string str = string(" trDump ") + _idStr + " trSeq=" + to_string(_trSeq) + " hdr=";
@@ -289,6 +268,4 @@ string TransmitData::_dump() const {
     return str;
 }
 
-
-}}} // namespace lsst::qserv::wbase
-
+}  // namespace lsst::qserv::wbase

@@ -26,15 +26,11 @@
 
 #include "lsst/log/Log.h"
 
-
 namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.util.SqlTransactionStd");
 }
 
-namespace lsst {
-namespace qserv {
-namespace sql {
-
+namespace lsst::qserv::sql {
 
 void SqlTransactionScope::verify() {
     if (errObj.isSet()) {
@@ -43,39 +39,35 @@ void SqlTransactionScope::verify() {
     }
 }
 
-
 SqlTransactionScope::~SqlTransactionScope() {
     // instead of just destroying SqlTransaction instance we call abort and see
     // if error happens. We cannot throw here but we can print a message.
     if (trans.isActive()) {
         if (not trans.abort(errObj)) {
-            LOGS(_log, LOG_LVL_ERROR, "Failed to abort transaction: mysql error: ("
-                 << errObj.errNo() << ") " << errObj.errMsg());
+            LOGS(_log, LOG_LVL_ERROR,
+                 "Failed to abort transaction: mysql error: (" << errObj.errNo() << ") " << errObj.errMsg());
         }
     }
 }
 
-
 void SqlTransactionScope::throwException(util::Issue::Context const& ctx, std::string const& msg) {
-    throw util::Issue(ctx, msg + " mysql(" +std::to_string(errObj.errNo()) + " " + errObj.errMsg() + ")");
+    throw util::Issue(ctx, msg + " mysql(" + std::to_string(errObj.errNo()) + " " + errObj.errMsg() + ")");
 }
 
-
-void  SqlTransactionScope::commit() {
+void SqlTransactionScope::commit() {
     if (not trans.commit(errObj)) {
-        LOGS(_log, LOG_LVL_ERROR, "Failed to commit transaction: mysql error: ("
-             << errObj.errNo() << ") " << errObj.errMsg());
+        LOGS(_log, LOG_LVL_ERROR,
+             "Failed to commit transaction: mysql error: (" << errObj.errNo() << ") " << errObj.errMsg());
         throwException(ERR_LOC, "Failed to commit transaction");
     }
 }
 
-
 void SqlTransactionScope::abort() {
     if (not trans.abort(errObj)) {
-        LOGS(_log, LOG_LVL_ERROR, "Failed to abort transaction: mysql error: ("
-             << errObj.errNo() << ")" << errObj.errMsg());
+        LOGS(_log, LOG_LVL_ERROR,
+             "Failed to abort transaction: mysql error: (" << errObj.errNo() << ")" << errObj.errMsg());
         throwException(ERR_LOC, "Failed to abort transaction");
     }
 }
 
-}}} // namespace lsst::qserv::sql
+}  // namespace lsst::qserv::sql

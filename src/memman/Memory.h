@@ -31,9 +31,7 @@
 #include <string>
 #include <unistd.h>
 
-namespace lsst {
-namespace qserv {
-namespace memman {
+namespace lsst::qserv::memman {
 
 //-----------------------------------------------------------------------------
 //! @brief Memory information object describing memory requirements or errors.
@@ -50,7 +48,7 @@ public:
     //! @return =0 the object is valid there is no error.
     //-----------------------------------------------------------------------------
 
-    int    errCode() {return (_memSize == 0 ? _errCode : 0);}
+    int errCode() { return (_memSize == 0 ? _errCode : 0); }
 
     //-----------------------------------------------------------------------------
     //! @brief Check if this object is valid.
@@ -58,7 +56,7 @@ public:
     //! @return True if object is valid and false otherwise.
     //-----------------------------------------------------------------------------
 
-    bool   isValid() {return _memSize != 0;}
+    bool isValid() { return _memSize != 0; }
 
     //-----------------------------------------------------------------------------
     //! @brief Set error code.
@@ -66,7 +64,10 @@ public:
     //! @param  eNum   - The error code number.
     //-----------------------------------------------------------------------------
 
-    void   setErrCode(int eNum) {_memSize = 0; _errCode = eNum;}
+    void setErrCode(int eNum) {
+        _memSize = 0;
+        _errCode = eNum;
+    }
 
     //-----------------------------------------------------------------------------
     //! @brief Return size of the file.
@@ -75,7 +76,7 @@ public:
     //! @return =0 this object is not valid.
     //-----------------------------------------------------------------------------
 
-    uint64_t size() {return _memSize;}
+    uint64_t size() { return _memSize; }
 
     //-----------------------------------------------------------------------------
     //! @brief Return the time it took to mlock the file in seconds.
@@ -85,14 +86,16 @@ public:
 
     double mlockTime() { return _mlockTime; }
 
-    MemInfo() : _memAddr((void *)-1) {}
-   ~MemInfo() {}
+    MemInfo() : _memAddr((void*)-1) {}
+    ~MemInfo() {}
 
 private:
-
-    union {void  *_memAddr; int _errCode;};
-    uint64_t      _memSize{0};     //!< If contains 0 then _errCode is valid.
-    double        _mlockTime{0.0}; ///< Time for mlock call to complete.
+    union {
+        void* _memAddr;
+        int _errCode;
+    };
+    uint64_t _memSize{0};    //!< If contains 0 then _errCode is valid.
+    double _mlockTime{0.0};  ///< Time for mlock call to complete.
 };
 
 //-----------------------------------------------------------------------------
@@ -106,7 +109,6 @@ private:
 
 class Memory {
 public:
-
     //-----------------------------------------------------------------------------
     //! Obtain number of bytes free (this takes into account reserved bytes).
     //!
@@ -140,10 +142,7 @@ public:
     //! @return File path to the desired file system object.
     //-----------------------------------------------------------------------------
 
-    std::string filePath(std::string const& dbTable,
-                         int chunk,
-                         bool isIndex=false
-                        );
+    std::string filePath(std::string const& dbTable, int chunk, bool isIndex = false);
 
     //-----------------------------------------------------------------------------
     //! @brief Lock a database file in memory.
@@ -155,7 +154,7 @@ public:
     //! @return !0     - Memory not locked, retuned value is the errno.
     //-----------------------------------------------------------------------------
 
-    int     memLock(MemInfo& mInfo, bool isFlex);
+    int memLock(MemInfo& mInfo, bool isFlex);
 
     //-----------------------------------------------------------------------------
     //! @brief Map a database file in memory.
@@ -177,7 +176,7 @@ public:
     //! @param  islkd   - When true, update locked memory statistics.
     //-----------------------------------------------------------------------------
 
-    void    memRel(MemInfo& mInfo, bool islkd);
+    void memRel(MemInfo& mInfo, bool islkd);
 
     //-----------------------------------------------------------------------------
     //! @brief Reserve memory for future locking.
@@ -185,10 +184,10 @@ public:
     //! @param  memSZ   - Bytes of memory to reserve.
     //-----------------------------------------------------------------------------
 
-    void    memReserve(uint64_t memSZ) {
-                       std::lock_guard<std::mutex> guard(_memMutex);
-                       _rsvBytes += memSZ;
-                      }
+    void memReserve(uint64_t memSZ) {
+        std::lock_guard<std::mutex> guard(_memMutex);
+        _rsvBytes += memSZ;
+    }
 
     //-----------------------------------------------------------------------------
     //! @brief Restore memory previously reserved.
@@ -197,11 +196,13 @@ public:
     //! @param  memSZ   - Bytes of memory to release.
     //-----------------------------------------------------------------------------
 
-    void    memRestore(uint64_t memSZ) {
-                       std::lock_guard<std::mutex> guard(_memMutex);
-                       if (_rsvBytes <= memSZ) _rsvBytes = 0;
-                          else _rsvBytes -= memSZ;
-                      }
+    void memRestore(uint64_t memSZ) {
+        std::lock_guard<std::mutex> guard(_memMutex);
+        if (_rsvBytes <= memSZ)
+            _rsvBytes = 0;
+        else
+            _rsvBytes -= memSZ;
+    }
 
     //-----------------------------------------------------------------------------
     //! @bried Obtain memory statistics.
@@ -220,14 +221,14 @@ public:
 
     MemStats statistics() {
         MemStats mStats;
-        mStats.bytesMax      = _maxBytes;
+        mStats.bytesMax = _maxBytes;
         _memMutex.lock();
         mStats.bytesReserved = _rsvBytes;
-        mStats.bytesLocked   = _lokBytes;
+        mStats.bytesLocked = _lokBytes;
         _memMutex.unlock();
-        mStats.numMapErrors  = _numMapErrs;
-        mStats.numLokErrors  = _numLokErrs;
-        mStats.numFlexFiles  = _flexNum;
+        mStats.numMapErrors = _numMapErrs;
+        mStats.numLokErrors = _numLokErrs;
+        mStats.numFlexFiles = _flexNum;
         return mStats;
     }
 
@@ -239,24 +240,27 @@ public:
     //-----------------------------------------------------------------------------
 
     Memory(std::string const& dbDir, uint64_t memSZ)
-          : _dbDir(dbDir), _maxBytes(memSZ), _lokBytes(0), _rsvBytes(0),
-            _numMapErrs(0), _numLokErrs(0), _flexNum(0) {}
+            : _dbDir(dbDir),
+              _maxBytes(memSZ),
+              _lokBytes(0),
+              _rsvBytes(0),
+              _numMapErrs(0),
+              _numLokErrs(0),
+              _flexNum(0) {}
 
     ~Memory() {}
 
 private:
+    std::string _dbDir;
+    std::mutex _memMutex;
+    uint64_t _maxBytes;  // Set at construction time
+    uint64_t _lokBytes;  // Protected by _memMutex
+    uint64_t _rsvBytes;  // Ditto
+    std::atomic_uint _numMapErrs;
+    std::atomic_uint _numLokErrs;
+    std::atomic_uint _flexNum;
 
-    std::string        _dbDir;
-    std::mutex         _memMutex;
-    uint64_t           _maxBytes;    // Set at construction time
-    uint64_t           _lokBytes;    // Protected by _memMutex
-    uint64_t           _rsvBytes;    // Ditto
-    std::atomic_uint   _numMapErrs;
-    std::atomic_uint   _numLokErrs;
-    std::atomic_uint   _flexNum;
-
-    static std::mutex  _mlockMtx;    // Prevent multiple concurrent mlock calls.
+    static std::mutex _mlockMtx;  // Prevent multiple concurrent mlock calls.
 };
-}}} // namespace lsst:qserv:memman
+}  // namespace lsst::qserv::memman
 #endif  // LSST_QSERV_MEMMAN_MEMORY_H
-

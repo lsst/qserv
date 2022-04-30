@@ -69,26 +69,20 @@
 #include <vector>
 
 // Qserv headers
-#include "global/constants.h" // for SUBCHUNKDB_PREFIX
+#include "global/constants.h"  // for SUBCHUNKDB_PREFIX
 
 // Forward declarations
-namespace lsst {
-namespace qserv {
-namespace query {
-    class ColumnRef;
-}}}
+namespace lsst::qserv::query {
+class ColumnRef;
+}  // namespace lsst::qserv::query
 
-
-namespace lsst {
-namespace qserv {
-namespace qana {
+namespace lsst::qserv::qana {
 
 typedef std::shared_ptr<query::ColumnRef const> ColumnRefConstPtr;
 
 struct DirTableInfo;
 struct ChildTableInfo;
 struct MatchTableInfo;
-
 
 /// `TableInfo` is a base class for table metadata. A subclass is provided
 /// for each [kind of table](\ref table_types) supported by Qserv except
@@ -101,14 +95,11 @@ struct TableInfo {
     std::string const table;
     Kind const kind;
 
-    TableInfo(std::string const& db, std::string const& t, Kind k) :
-        database(db), table(t), kind(k) {}
+    TableInfo(std::string const& db, std::string const& t, Kind k) : database(db), table(t), kind(k) {}
 
     virtual ~TableInfo() {}
 
-    bool operator==(TableInfo const& t) const {
-        return database == t.database && table == t.table;
-    }
+    bool operator==(TableInfo const& t) const { return database == t.database && table == t.table; }
     bool operator<(TableInfo const& t) const {
         int c = table.compare(t.table);
         return c < 0 || (c == 0 && database < t.database);
@@ -116,9 +107,7 @@ struct TableInfo {
 
     /// `makeColumnRefs` returns all possible references to join columns
     /// from this table.
-    virtual std::vector<ColumnRefConstPtr> const makeColumnRefs(
-        std::string const& tableAlias) const
-    {
+    virtual std::vector<ColumnRefConstPtr> const makeColumnRefs(std::string const& tableAlias) const {
         return std::vector<ColumnRefConstPtr>();
     }
 
@@ -128,40 +117,26 @@ struct TableInfo {
     /// infer the partition of rows in one table from the partition of rows in
     /// another. The `outer` flag indicates whether the predicate occurs in the
     /// ON clause of an outer join.
-    virtual bool isEqPredAdmissible(TableInfo const& t,
-                                    std::string const& a,
-                                    std::string const& b,
+    virtual bool isEqPredAdmissible(TableInfo const& t, std::string const& a, std::string const& b,
                                     bool outer) const {
         return false;
     }
-    virtual bool isEqPredAdmissible(DirTableInfo const& t,
-                                    std::string const& a,
-                                    std::string const& b,
+    virtual bool isEqPredAdmissible(DirTableInfo const& t, std::string const& a, std::string const& b,
                                     bool outer) const {
         return false;
     }
-    virtual bool isEqPredAdmissible(ChildTableInfo const& t,
-                                    std::string const& a,
-                                    std::string const& b,
+    virtual bool isEqPredAdmissible(ChildTableInfo const& t, std::string const& a, std::string const& b,
                                     bool outer) const {
         return false;
     }
-    virtual bool isEqPredAdmissible(MatchTableInfo const& t,
-                                    std::string const& a,
-                                    std::string const& b,
+    virtual bool isEqPredAdmissible(MatchTableInfo const& t, std::string const& a, std::string const& b,
                                     bool outer) const {
         return false;
     }
 
-    std::string const getSubChunkDb() const {
-        return SUBCHUNKDB_PREFIX + database + "_" + CHUNK_TAG;
-    }
-    std::string const getChunkTemplate() const {
-        return table + "_" + CHUNK_TAG;
-    }
-    std::string const getSubChunkTemplate() const {
-        return table + "_" + CHUNK_TAG + "_" + SUBCHUNK_TAG;
-    }
+    std::string const getSubChunkDb() const { return SUBCHUNKDB_PREFIX + database + "_" + CHUNK_TAG; }
+    std::string const getChunkTemplate() const { return table + "_" + CHUNK_TAG; }
+    std::string const getSubChunkTemplate() const { return table + "_" + CHUNK_TAG + "_" + SUBCHUNK_TAG; }
     std::string const getOverlapTemplate() const {
         return table + "FullOverlap_" + CHUNK_TAG + "_" + SUBCHUNK_TAG;
     }
@@ -169,49 +144,37 @@ struct TableInfo {
     virtual void dump(std::ostream& os) const;
 };
 
-inline
-std::ostream&
-operator<<(std::ostream& os, TableInfo const& ti) {
+inline std::ostream& operator<<(std::ostream& os, TableInfo const& ti) {
     ti.dump(os);
     return os;
 }
 
 /// `DirTableInfo` contains metadata for director tables.
 struct DirTableInfo : TableInfo {
-    std::string pk;  ///< `pk` is the name of the director's primary key column.
-    std::string lon; ///< `lon` is the name of the director's longitude column.
-    std::string lat; ///< `lat` is the name of the director's latitude column.
+    std::string pk;   ///< `pk` is the name of the director's primary key column.
+    std::string lon;  ///< `lon` is the name of the director's longitude column.
+    std::string lat;  ///< `lat` is the name of the director's latitude column.
     int32_t partitioningId;
     double overlap;  ///< overlap value for partitioning of this table
 
-    DirTableInfo(std::string const& db, std::string const& t, double o) :
-        TableInfo(db, t, DIRECTOR), partitioningId(0), overlap(o) {}
+    DirTableInfo(std::string const& db, std::string const& t, double o)
+            : TableInfo(db, t, DIRECTOR), partitioningId(0), overlap(o) {}
 
-    std::vector<ColumnRefConstPtr> const makeColumnRefs(
-        std::string const& tableAlias) const override;
+    std::vector<ColumnRefConstPtr> const makeColumnRefs(std::string const& tableAlias) const override;
 
-    bool isEqPredAdmissible(TableInfo const& t,
-                            std::string const& a,
-                            std::string const& b,
+    bool isEqPredAdmissible(TableInfo const& t, std::string const& a, std::string const& b,
                             bool outer) const override {
         // double dispatch
         return t.isEqPredAdmissible(*this, b, a, outer);
     }
-    bool isEqPredAdmissible(DirTableInfo const& t,
-                            std::string const& a,
-                            std::string const& b,
+    bool isEqPredAdmissible(DirTableInfo const& t, std::string const& a, std::string const& b,
                             bool outer) const override;
-    bool isEqPredAdmissible(ChildTableInfo const& t,
-                            std::string const& a,
-                            std::string const& b,
+    bool isEqPredAdmissible(ChildTableInfo const& t, std::string const& a, std::string const& b,
                             bool outer) const override;
-    bool isEqPredAdmissible(MatchTableInfo const& t,
-                            std::string const& a,
-                            std::string const& b,
+    bool isEqPredAdmissible(MatchTableInfo const& t, std::string const& a, std::string const& b,
                             bool outer) const override;
     void dump(std::ostream& os) const override;
 };
-
 
 /// `ChildTableInfo` contains metadata for child tables.
 struct ChildTableInfo : TableInfo {
@@ -221,38 +184,27 @@ struct ChildTableInfo : TableInfo {
     /// `fk` is the name of the foreign key column referencing `director->pk`.
     std::string fk;
 
-    ChildTableInfo(std::string const& db, std::string const& t) :
-        TableInfo(db, t, CHILD), director(0) {}
+    ChildTableInfo(std::string const& db, std::string const& t) : TableInfo(db, t, CHILD), director(0) {}
 
-    std::vector<ColumnRefConstPtr> const makeColumnRefs(
-        std::string const& tableAlias) const override;
+    std::vector<ColumnRefConstPtr> const makeColumnRefs(std::string const& tableAlias) const override;
 
-    bool isEqPredAdmissible(TableInfo const& t,
-                            std::string const& a,
-                            std::string const& b,
+    bool isEqPredAdmissible(TableInfo const& t, std::string const& a, std::string const& b,
                             bool outer) const override {
         // double dispatch
         return t.isEqPredAdmissible(*this, b, a, outer);
     }
-    bool isEqPredAdmissible(DirTableInfo const& t,
-                            std::string const& a,
-                            std::string const& b,
+    bool isEqPredAdmissible(DirTableInfo const& t, std::string const& a, std::string const& b,
                             bool outer) const override {
         // take advantage of symmetry to avoid code stutter
         return t.isEqPredAdmissible(*this, b, a, outer);
     }
-    bool isEqPredAdmissible(ChildTableInfo const& t,
-                            std::string const& a,
-                            std::string const& b,
+    bool isEqPredAdmissible(ChildTableInfo const& t, std::string const& a, std::string const& b,
                             bool outer) const override;
-    bool isEqPredAdmissible(MatchTableInfo const& t,
-                            std::string const& a,
-                            std::string const& b,
+    bool isEqPredAdmissible(MatchTableInfo const& t, std::string const& a, std::string const& b,
                             bool outer) const override;
 
     void dump(std::ostream& os) const override;
 };
-
 
 /// `MatchTableInfo` contains metadata for child tables.
 struct MatchTableInfo : TableInfo {
@@ -262,31 +214,24 @@ struct MatchTableInfo : TableInfo {
     /// `fk` is the pair of names for the foreign key columns referencing
     /// `director.first->pk` and `director.second->pk`.
     std::pair<std::string, std::string> fk;
-    double angSep; ///< allowed angular separation between objects in director tables
+    double angSep;  ///< allowed angular separation between objects in director tables
 
-    MatchTableInfo(std::string const& db, std::string const& t, double sep) :
-        TableInfo(db, t, MATCH), director(), angSep(sep) {}
+    MatchTableInfo(std::string const& db, std::string const& t, double sep)
+            : TableInfo(db, t, MATCH), director(), angSep(sep) {}
 
-    std::vector<ColumnRefConstPtr> const makeColumnRefs(
-        std::string const& tableAlias) const override;
+    std::vector<ColumnRefConstPtr> const makeColumnRefs(std::string const& tableAlias) const override;
 
-    bool isEqPredAdmissible(TableInfo const& t,
-                            std::string const& a,
-                            std::string const& b,
+    bool isEqPredAdmissible(TableInfo const& t, std::string const& a, std::string const& b,
                             bool outer) const override {
         // double dispatch
         return t.isEqPredAdmissible(*this, b, a, outer);
     }
-    bool isEqPredAdmissible(DirTableInfo const& t,
-                            std::string const& a,
-                            std::string const& b,
+    bool isEqPredAdmissible(DirTableInfo const& t, std::string const& a, std::string const& b,
                             bool outer) const override {
         // take advantage of symmetry to avoid code stutter
         return t.isEqPredAdmissible(*this, b, a, outer);
     }
-    bool isEqPredAdmissible(ChildTableInfo const& t,
-                            std::string const& a,
-                            std::string const& b,
+    bool isEqPredAdmissible(ChildTableInfo const& t, std::string const& a, std::string const& b,
                             bool outer) const override {
         // take advantage of symmetry to avoid code stutter
         return t.isEqPredAdmissible(*this, b, a, outer);
@@ -295,6 +240,6 @@ struct MatchTableInfo : TableInfo {
     void dump(std::ostream& os) const override;
 };
 
-}}} // namespace lsst::qserv::qana
+}  // namespace lsst::qserv::qana
 
-#endif // LSST_QSERV_QANA_TABLEINFO_H
+#endif  // LSST_QSERV_QANA_TABLEINFO_H

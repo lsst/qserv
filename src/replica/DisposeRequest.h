@@ -34,16 +34,12 @@
 #include "replica/RequestMessenger.h"
 
 // Forward declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
-    class Messenger;
-}}}  // Forward declarations
+namespace lsst::qserv::replica {
+class Messenger;
+}  // namespace lsst::qserv::replica
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class DisposeRequestResult represents a result of the operation
@@ -68,14 +64,13 @@ public:
     std::vector<Status> ids;
 };
 
-
 /**
  * Class DisposeRequest represents Controller-side requests for "garbage
  * collecting" requests at workers.
  *
- * @note Requests of this type don't have any persistent states. 
+ * @note Requests of this type don't have any persistent states.
  */
-class DisposeRequest: public RequestMessenger  {
+class DisposeRequest : public RequestMessenger {
 public:
     typedef std::shared_ptr<DisposeRequest> Ptr;
 
@@ -120,13 +115,9 @@ public:
      *
      * @return pointer to the created object
      */
-    static Ptr create(ServiceProvider::Ptr const& serviceProvider,
-                      boost::asio::io_service& io_service,
-                      std::string const& worker,
-                      std::vector<std::string> const& targetIds,
-                      CallbackType const& onFinish,
-                      int  priority,
-                      bool keepTracking,
+    static Ptr create(ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service,
+                      std::string const& worker, std::vector<std::string> const& targetIds,
+                      CallbackType const& onFinish, int priority, bool keepTracking,
                       std::shared_ptr<Messenger> const& messenger);
 
 protected:
@@ -141,13 +132,9 @@ protected:
     void savePersistentState(util::Lock const& lock) final {}
 
 private:
-    DisposeRequest(ServiceProvider::Ptr const& serviceProvider,
-                   boost::asio::io_service& io_service,
-                   std::string const& worker,
-                   std::vector<std::string> const& targetIds,
-                   CallbackType const& onFinish,
-                   int  priority,
-                   bool keepTracking,
+    DisposeRequest(ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service,
+                   std::string const& worker, std::vector<std::string> const& targetIds,
+                   CallbackType const& onFinish, int priority, bool keepTracking,
                    std::shared_ptr<Messenger> const& messenger);
 
     /**
@@ -168,13 +155,13 @@ private:
 
     std::vector<std::string> const _targetIds;
 
-    CallbackType _onFinish; ///< @note is reset when the request finishes
+    CallbackType _onFinish;  ///< @note is reset when the request finishes
 
     /// The transient representation of the data received from a worker
     /// upon a successful completion of a request.
     DisposeRequestResult _responseData;
 };
 
-}}} // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_DISPOSEREQUEST_H
+#endif  // LSST_QSERV_REPLICA_DISPOSEREQUEST_H

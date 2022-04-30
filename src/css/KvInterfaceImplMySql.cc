@@ -23,13 +23,12 @@
  */
 
 /**
-  * @file KvInterfaceImplMySql.h
-  *
-  * @brief Interface to the Central State System - MySql-based implementation.
-  *
-  * @Author Nathan Pease, SLAC
-  */
-
+ * @file KvInterfaceImplMySql.h
+ *
+ * @brief Interface to the Central State System - MySql-based implementation.
+ *
+ * @Author Nathan Pease, SLAC
+ */
 
 // Class header
 #include "css/KvInterfaceImplMySql.h"
@@ -73,9 +72,9 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.css.KvInterfaceImplMySql");
 
 const char KEY_PATH_DELIMITER('/');
 
+using lsst::qserv::css::CssError;
 using lsst::qserv::sql::SqlErrorObject;
 using lsst::qserv::sql::SqlResults;
-using lsst::qserv::css::CssError;
 
 /**
  * @brief Helper for getting the value from an INT row
@@ -111,11 +110,9 @@ std::string norm_key(std::string const& key) {
     return path;
 }
 
-} // anonymous namespace
+}  // anonymous namespace
 
-namespace lsst {
-namespace qserv {
-namespace css {
+namespace lsst::qserv::css {
 
 class KvTransaction : public sql::SqlTransactionScope {
 public:
@@ -129,24 +126,22 @@ public:
 
     /// Override to throw an appropriate exception.
     void throwException(util::Issue::Context const& ctx, std::string const& msg) override {
-        throw util::Issue(ctx, msg + " mysql(" +std::to_string(errObj.errNo()) + " " + errObj.errMsg() + ")");
+        throw util::Issue(ctx,
+                          msg + " mysql(" + std::to_string(errObj.errNo()) + " " + errObj.errMsg() + ")");
     }
 
     friend sql::SqlTransactionScope;
+
 protected:
     /// Constructor - create with sql::SqlTransactionScope::create<KvTransaction>
     KvTransaction(sql::SqlConnection& conn) : sql::SqlTransactionScope(conn) {}
 };
 
-
 KvInterfaceImplMySql::KvInterfaceImplMySql(mysql::MySqlConfig const& mysqlConf, bool readOnly)
-: _conn(sql::SqlConnectionFactory::make(mysqlConf)), _readOnly(readOnly) {
-}
+        : _conn(sql::SqlConnectionFactory::make(mysqlConf)), _readOnly(readOnly) {}
 
-
-void
-KvInterfaceImplMySql::_findParentId(std::string const& childKvKey, bool* hasParent, unsigned int* parentKvId,
-                                    KvTransaction const& transaction) {
+void KvInterfaceImplMySql::_findParentId(std::string const& childKvKey, bool* hasParent,
+                                         unsigned int* parentKvId, KvTransaction const& transaction) {
     if (not transaction.isActive()) {
         throw CssError(ERR_LOC, "A transaction must active here.");
     }
@@ -160,10 +155,10 @@ KvInterfaceImplMySql::_findParentId(std::string const& childKvKey, bool* hasPare
         return;
     }
 
-    // Keys should always start with the delimiter and since we validate all keys created it should always be there.
-    // However when looking for parent keys we do pull keys from the database, and there is some possibility the
-    // values have been tampered with and the first delimiter removed.
-    // It's easy enough to check for that condition here, so do a quick sanity check:
+    // Keys should always start with the delimiter and since we validate all keys created it should always be
+    // there. However when looking for parent keys we do pull keys from the database, and there is some
+    // possibility the values have been tampered with and the first delimiter removed. It's easy enough to
+    // check for that condition here, so do a quick sanity check:
     if (childKvKey == "/" or 0 != childKvKey.find_first_of(KEY_PATH_DELIMITER)) {
         LOGS(_log, LOG_LVL_ERROR, "_findParentId - badly formatted childKvKey:" << childKvKey);
         throw CssError(ERR_LOC, "_findParentId - invalid childKvKey");
@@ -171,7 +166,8 @@ KvInterfaceImplMySql::_findParentId(std::string const& childKvKey, bool* hasPare
 
     size_t loc = childKvKey.find_last_of(KEY_PATH_DELIMITER);
     std::string const parentKey(childKvKey, 0, loc);
-    std::string query = str(boost::format("SELECT kvId FROM kvData WHERE kvKey='%1%'") % _escapeSqlString(parentKey));
+    std::string query =
+            str(boost::format("SELECT kvId FROM kvData WHERE kvKey='%1%'") % _escapeSqlString(parentKey));
     sql::SqlResults results;
     sql::SqlErrorObject errObj;
     if (not _conn->runQuery(query, results, errObj)) {
@@ -187,9 +183,7 @@ KvInterfaceImplMySql::_findParentId(std::string const& childKvKey, bool* hasPare
     }
 }
 
-
-std::string
-KvInterfaceImplMySql::create(std::string const& key, std::string const& value, bool unique) {
+std::string KvInterfaceImplMySql::create(std::string const& key, std::string const& value, bool unique) {
     if (_readOnly) {
         throw ReadonlyCss(ERR_LOC);
     }
@@ -206,9 +200,10 @@ KvInterfaceImplMySql::create(std::string const& key, std::string const& value, b
         // Key can contain characters which are special to SQL pattern matching
         // so instead of simple pattern matching we are doing pretty complicated
         // substring operations. This may kill indexing so it's not very efficient.
-        const char* qTemplate = "SELECT RIGHT(kvKey, 10) FROM kvData WHERE "
-                        "LENGTH(kvKey) = %1%+10 AND LEFT(kvKey, %1%) = '%2%'";
-        std::string query = (boost::format(qTemplate)  % path.size() % _escapeSqlString(path)).str();
+        const char* qTemplate =
+                "SELECT RIGHT(kvKey, 10) FROM kvData WHERE "
+                "LENGTH(kvKey) = %1%+10 AND LEFT(kvKey, %1%) = '%2%'";
+        std::string query = (boost::format(qTemplate) % path.size() % _escapeSqlString(path)).str();
 
         // run query
         sql::SqlErrorObject errObj;
@@ -223,7 +218,7 @@ KvInterfaceImplMySql::create(std::string const& key, std::string const& value, b
 
         // look at results
         int uniqueId = 0;
-        for (auto& row: results) {
+        for (auto& row : results) {
             char* eptr;
             int val = strtol(row[0].first, &eptr, 10);
             if (*eptr == '\0') {
@@ -235,7 +230,7 @@ KvInterfaceImplMySql::create(std::string const& key, std::string const& value, b
 
         // try to create key until succeed
         while (true) {
-            ++ uniqueId;
+            ++uniqueId;
             std::ostringstream str;
             str << std::setfill('0') << std::setw(10) << uniqueId;
             path = norm_key(key) + str.str();
@@ -255,9 +250,8 @@ KvInterfaceImplMySql::create(std::string const& key, std::string const& value, b
     return path;
 }
 
-
-unsigned int
-KvInterfaceImplMySql::_create(std::string const& key, std::string const& value, bool updateIfExists, KvTransaction const& transaction) {
+unsigned int KvInterfaceImplMySql::_create(std::string const& key, std::string const& value,
+                                           bool updateIfExists, KvTransaction const& transaction) {
     if (not transaction.isActive()) {
         throw CssError(ERR_LOC, "A transaction must active here.");
     }
@@ -273,24 +267,26 @@ KvInterfaceImplMySql::_create(std::string const& key, std::string const& value, 
         fmQuery = boost::format("INSERT INTO kvData (kvKey, kvVal, parentKvId) VALUES ('%1%', '%2%', '%3%')");
         fmQuery % _escapeSqlString(key) % _escapeSqlString(value) % parentKvId;
     } else {
-        fmQuery = boost::format("INSERT INTO kvData (kvKey, kvVal) VALUES ('%1%', '%2%')"); // leave parentKvId NULL
+        fmQuery = boost::format(
+                "INSERT INTO kvData (kvKey, kvVal) VALUES ('%1%', '%2%')");  // leave parentKvId NULL
         fmQuery % _escapeSqlString(key) % _escapeSqlString(value);
     }
     if (updateIfExists) {
-        fmQuery = boost::format("%1% ON DUPLICATE KEY UPDATE kvVal='%2%'") % fmQuery % _escapeSqlString(value);
+        fmQuery =
+                boost::format("%1% ON DUPLICATE KEY UPDATE kvVal='%2%'") % fmQuery % _escapeSqlString(value);
     }
     std::string query = fmQuery.str();
     sql::SqlErrorObject errObj;
     if (not _conn->runQuery(query, errObj)) {
         switch (errObj.errNo()) {
-        default:
-            throw CssError(ERR_LOC, errObj);
-            break;
+            default:
+                throw CssError(ERR_LOC, errObj);
+                break;
 
-        case ER_DUP_ENTRY:
-            LOGS(_log, LOG_LVL_ERROR, "_create - SQL INSERT INTO failed: " << query);
-            throw KeyExistsError(ERR_LOC, errObj);
-            break;
+            case ER_DUP_ENTRY:
+                LOGS(_log, LOG_LVL_ERROR, "_create - SQL INSERT INTO failed: " << query);
+                throw KeyExistsError(ERR_LOC, errObj);
+                break;
         }
     }
 
@@ -299,9 +295,7 @@ KvInterfaceImplMySql::_create(std::string const& key, std::string const& value, 
     return kvId;
 }
 
-
-void
-KvInterfaceImplMySql::set(std::string const& key, std::string const& value) {
+void KvInterfaceImplMySql::set(std::string const& key, std::string const& value) {
     if (_readOnly) {
         throw ReadonlyCss(ERR_LOC);
     }
@@ -312,11 +306,10 @@ KvInterfaceImplMySql::set(std::string const& key, std::string const& value) {
     transaction->commit();
 }
 
-
-bool
-KvInterfaceImplMySql::exists(std::string const& key) {
+bool KvInterfaceImplMySql::exists(std::string const& key) {
     auto transaction = KvTransaction::create(*_conn);
-    std::string query = str(boost::format("SELECT COUNT(*) FROM kvData WHERE kvKey='%1%'") % _escapeSqlString(key));
+    std::string query =
+            str(boost::format("SELECT COUNT(*) FROM kvData WHERE kvKey='%1%'") % _escapeSqlString(key));
     sql::SqlErrorObject errObj;
     sql::SqlResults results;
     LOGS(_log, LOG_LVL_DEBUG, "exists - executing query: " << query);
@@ -339,16 +332,15 @@ KvInterfaceImplMySql::exists(std::string const& key) {
     return 1 == count;
 }
 
-std::map<std::string, std::string>
-KvInterfaceImplMySql::getMany(std::vector<std::string> const& keys) {
-    for (auto& key: keys) {
+std::map<std::string, std::string> KvInterfaceImplMySql::getMany(std::vector<std::string> const& keys) {
+    for (auto& key : keys) {
         _validateKey(norm_key(key));
     }
 
     // build query
     std::string query = "SELECT kvKey, kvVal FROM kvData WHERE kvKey IN (";
     bool first = true;
-    for (auto& key: keys) {
+    for (auto& key : keys) {
         if (not first) query += ", ";
         first = false;
         query += '"';
@@ -371,7 +363,7 @@ KvInterfaceImplMySql::getMany(std::vector<std::string> const& keys) {
 
     // copy results
     std::map<std::string, std::string> res;
-    for (auto& row: results) {
+    for (auto& row : results) {
         // row is the vector of pair<char const*, unsigned long>
         // key cannot be NULL, but value could be?
         const char* key = row[0].first;
@@ -383,8 +375,7 @@ KvInterfaceImplMySql::getMany(std::vector<std::string> const& keys) {
     return res;
 }
 
-std::vector<std::string>
-KvInterfaceImplMySql::getChildren(std::string const& parentKey) {
+std::vector<std::string> KvInterfaceImplMySql::getChildren(std::string const& parentKey) {
     std::string key = norm_key(parentKey);
 
     _validateKey(key);
@@ -395,9 +386,10 @@ KvInterfaceImplMySql::getChildren(std::string const& parentKey) {
 
     // trim off the parent key, leaving only the last item in the path.
     for (std::vector<std::string>::iterator strItr = strVec.begin(); strItr != strVec.end(); ++strItr) {
-        size_t loc = strItr->find_last_of(KEY_PATH_DELIMITER)+1;
+        size_t loc = strItr->find_last_of(KEY_PATH_DELIMITER) + 1;
         if (strItr->size() == loc) {
-            // technically this shouldn't happen because keys shoudln't end with '/', but a little safety does not hurt...
+            // technically this shouldn't happen because keys shoudln't end with '/', but a little safety does
+            // not hurt...
             continue;
         }
         *strItr = strItr->substr(loc, strItr->size());
@@ -405,10 +397,7 @@ KvInterfaceImplMySql::getChildren(std::string const& parentKey) {
     return strVec;
 }
 
-
-std::map<std::string, std::string>
-KvInterfaceImplMySql::getChildrenValues(std::string const& parentKey) {
-
+std::map<std::string, std::string> KvInterfaceImplMySql::getChildrenValues(std::string const& parentKey) {
     std::string key = norm_key(parentKey);
 
     _validateKey(key);
@@ -422,19 +411,20 @@ KvInterfaceImplMySql::getChildrenValues(std::string const& parentKey) {
         }
     }
 
-    std::string query = str(boost::format("SELECT kvKey, kvVal FROM kvData WHERE parentKvId='%1%'") % parentId);
+    std::string query =
+            str(boost::format("SELECT kvKey, kvVal FROM kvData WHERE parentKvId='%1%'") % parentId);
     sql::SqlErrorObject errObj;
     sql::SqlResults results;
     LOGS(_log, LOG_LVL_DEBUG, "getChildrenValues - executing query: " << query);
     if (not _conn->runQuery(query, results, errObj)) {
         std::stringstream ss;
-        ss << "getChildrenValues - " << query << " failed with err: "  << errObj.errMsg() << std::ends;
+        ss << "getChildrenValues - " << query << " failed with err: " << errObj.errMsg() << std::ends;
         LOGS(_log, LOG_LVL_ERROR, ss.str());
         throw CssError(ERR_LOC, ss.str());
     }
 
     std::map<std::string, std::string> res;
-    for (auto& row: results) {
+    for (auto& row : results) {
         if (row[0].first[0] == '\0') {
             // skip root key, and this should not happen at all
             continue;
@@ -444,7 +434,8 @@ KvInterfaceImplMySql::getChildrenValues(std::string const& parentKey) {
         // remove prefix up to last path delimiter
         std::string::size_type loc = key.find_last_of(KEY_PATH_DELIMITER) + 1;
         if (key.size() == loc) {
-            // technically this shouldn't happen because keys shouldn't end with '/', but a little safety does not hurt...
+            // technically this shouldn't happen because keys shouldn't end with '/', but a little safety does
+            // not hurt...
             continue;
         }
         key.erase(0, loc);
@@ -458,9 +449,8 @@ KvInterfaceImplMySql::getChildrenValues(std::string const& parentKey) {
     return res;
 }
 
-
-std::vector<std::string>
-KvInterfaceImplMySql::_getChildrenFullPath(std::string const& parentKey, KvTransaction const& transaction) {
+std::vector<std::string> KvInterfaceImplMySql::_getChildrenFullPath(std::string const& parentKey,
+                                                                    KvTransaction const& transaction) {
     if (not transaction.isActive()) {
         throw CssError(ERR_LOC, "A transaction must active here.");
     }
@@ -487,8 +477,8 @@ KvInterfaceImplMySql::_getChildrenFullPath(std::string const& parentKey, KvTrans
     std::vector<std::string> strVec;
     if (not results.extractFirstColumn(strVec, errObj)) {
         std::stringstream ss;
-        ss << "_getChildrenFullPath - failed to extract children from "
-           << query << " failed with err: " << errObj.errMsg() << std::ends;
+        ss << "_getChildrenFullPath - failed to extract children from " << query
+           << " failed with err: " << errObj.errMsg() << std::ends;
         LOGS(_log, LOG_LVL_ERROR, ss.str());
         throw CssError(ERR_LOC, ss.str());
     }
@@ -496,9 +486,7 @@ KvInterfaceImplMySql::_getChildrenFullPath(std::string const& parentKey, KvTrans
     return strVec;
 }
 
-
-void
-KvInterfaceImplMySql::deleteKey(std::string const& keyArg) {
+void KvInterfaceImplMySql::deleteKey(std::string const& keyArg) {
     if (_readOnly) {
         throw ReadonlyCss(ERR_LOC);
     }
@@ -510,9 +498,7 @@ KvInterfaceImplMySql::deleteKey(std::string const& keyArg) {
     transaction->commit();
 }
 
-
 std::string KvInterfaceImplMySql::dumpKV(std::string const& key) {
-
     // It's better to make them ordered so that /key comes before /key/subkey
     std::string query = "SELECT kvKey, kvVal FROM kvData ORDER BY kvKey";
 
@@ -531,7 +517,7 @@ std::string KvInterfaceImplMySql::dumpKV(std::string const& key) {
     // copy results into property tree
     const string pfx(norm_key(key) + "/");
     ptree::ptree tree;
-    for (auto& row: results) {
+    for (auto& row : results) {
         // filter the key, note that root key which is empty string will
         // be filtered out because pfx is never empty
         if (boost::starts_with(row[0].first, pfx)) {
@@ -553,9 +539,7 @@ std::string KvInterfaceImplMySql::dumpKV(std::string const& key) {
     return str.str();
 }
 
-
-void
-KvInterfaceImplMySql::_delete(std::string const& key, KvTransaction const& transaction) {
+void KvInterfaceImplMySql::_delete(std::string const& key, KvTransaction const& transaction) {
     if (not transaction.isActive()) {
         throw CssError(ERR_LOC, "A transaction must active here.");
     }
@@ -582,23 +566,21 @@ KvInterfaceImplMySql::_delete(std::string const& key, KvTransaction const& trans
         LOGS(_log, LOG_LVL_ERROR, "deleteKey - failed (no such key) running query:" << query);
         throw NoSuchKey(ERR_LOC, errObj);
     } else if (affectedRows > 1) {
-        LOGS(_log, LOG_LVL_ERROR, "deleteKey - failed (too many (" << affectedRows
-             << ") rows deleted) running query: " << query);
+        LOGS(_log, LOG_LVL_ERROR,
+             "deleteKey - failed (too many (" << affectedRows << ") rows deleted) running query: " << query);
         throw CssError(ERR_LOC, "deleteKey - unexpectedly deleted more than 1 row.");
     }
-
 }
 
-
-std::string
-KvInterfaceImplMySql::_get(std::string const& keyArg, std::string const& defaultValue, bool throwIfKeyNotFound) {
-
+std::string KvInterfaceImplMySql::_get(std::string const& keyArg, std::string const& defaultValue,
+                                       bool throwIfKeyNotFound) {
     std::string key = norm_key(keyArg);
     auto transaction = KvTransaction::create(*_conn);
 
     std::string val;
     sql::SqlErrorObject errObj;
-    std::string query = str(boost::format("SELECT kvVal FROM kvData WHERE kvKey='%1%'") % _escapeSqlString(key));
+    std::string query =
+            str(boost::format("SELECT kvVal FROM kvData WHERE kvKey='%1%'") % _escapeSqlString(key));
     sql::SqlResults results;
     if (not _conn->runQuery(query, results, errObj)) {
         LOGS(_log, LOG_LVL_ERROR, "_get - query failed: " << query);
@@ -619,13 +601,14 @@ KvInterfaceImplMySql::_get(std::string const& keyArg, std::string const& default
     return val;
 }
 
-
-bool KvInterfaceImplMySql::_getIdFromServer(std::string const& key, unsigned int* id, KvTransaction const& transaction) {
+bool KvInterfaceImplMySql::_getIdFromServer(std::string const& key, unsigned int* id,
+                                            KvTransaction const& transaction) {
     if (not transaction.isActive()) {
         throw CssError(ERR_LOC, "A transaction must active here.");
     }
 
-    std::string query = str(boost::format("SELECT kvId FROM kvData WHERE kvKey='%1%'") % _escapeSqlString(key));
+    std::string query =
+            str(boost::format("SELECT kvId FROM kvData WHERE kvKey='%1%'") % _escapeSqlString(key));
     sql::SqlResults results;
     sql::SqlErrorObject errObj;
     if (not _conn->runQuery(query, results, errObj)) {
@@ -641,7 +624,6 @@ bool KvInterfaceImplMySql::_getIdFromServer(std::string const& key, unsigned int
     return true;
 }
 
-
 void KvInterfaceImplMySql::_validateKey(std::string const& key) {
     // There is no need for a transaction here.
 
@@ -652,14 +634,12 @@ void KvInterfaceImplMySql::_validateKey(std::string const& key) {
     // - key is less than max length
     // - first character should be a delimiter
     // - last character should not be a delimiter
-    if (key.size() > KvInterface::MAX_KEY_LENGTH ||
-            key.find_first_of(KEY_PATH_DELIMITER) != 0 ||
-            key.find_last_of(KEY_PATH_DELIMITER) == key.size()-1) {
+    if (key.size() > KvInterface::MAX_KEY_LENGTH || key.find_first_of(KEY_PATH_DELIMITER) != 0 ||
+        key.find_last_of(KEY_PATH_DELIMITER) == key.size() - 1) {
         LOGS(_log, LOG_LVL_DEBUG, "create - rejecting key: " << key);
         throw CssError(ERR_LOC, "invalid key");
     }
 }
-
 
 std::string KvInterfaceImplMySql::_escapeSqlString(std::string const& str) {
     // There is no need for a transaction here.
@@ -672,4 +652,4 @@ std::string KvInterfaceImplMySql::_escapeSqlString(std::string const& str) {
     return escapedStr;
 }
 
-}}} // namespace lsst::qserv::css
+}  // namespace lsst::qserv::css

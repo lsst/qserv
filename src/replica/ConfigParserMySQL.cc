@@ -32,28 +32,21 @@
 using namespace std;
 using json = nlohmann::json;
 
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
 int const ConfigParserMySQL::expectedSchemaVersion = 9;
 
-
-ConfigParserMySQL::ConfigParserMySQL(database::mysql::Connection::Ptr const& conn,
-                                     json& data,
+ConfigParserMySQL::ConfigParserMySQL(database::mysql::Connection::Ptr const& conn, json& data,
                                      map<string, WorkerInfo>& workers,
                                      map<string, DatabaseFamilyInfo>& databaseFamilies,
                                      map<string, DatabaseInfo>& databases)
-    :   _conn(conn),
-        _data(data),
-        _workers(workers),
-        _databaseFamilies(databaseFamilies),
-        _databases(databases) {
-}
-
+        : _conn(conn),
+          _data(data),
+          _workers(workers),
+          _databaseFamilies(databaseFamilies),
+          _databases(databases) {}
 
 void ConfigParserMySQL::parse() {
-
     _parseVersion();
 
     // Parse groupped parameters
@@ -62,32 +55,30 @@ void ConfigParserMySQL::parse() {
     _parseDatabases();
 }
 
-
 void ConfigParserMySQL::_parseVersion() {
     string const table = "QMetadata";
     string const databaseTableSql = _conn->sqlId(_conn->connectionParams().database, table);
     if (!_conn->tableExists(table)) {
-        throw ConfigVersionMismatch(
-                _context + " the metadata table " + databaseTableSql + " doesn't exist.");
+        throw ConfigVersionMismatch(_context + " the metadata table " + databaseTableSql + " doesn't exist.");
     }
     string const colname = "value";
     int version;
-    bool const isNotNull = _conn->executeSingleValueSelect(
-            "SELECT " + _conn->sqlId(colname) + " FROM " + databaseTableSql + " WHERE "
-            + _conn->sqlEqual("metakey", "version"),
-            colname, version);
+    bool const isNotNull =
+            _conn->executeSingleValueSelect("SELECT " + _conn->sqlId(colname) + " FROM " + databaseTableSql +
+                                                    " WHERE " + _conn->sqlEqual("metakey", "version"),
+                                            colname, version);
     if (!isNotNull) {
-        throw ConfigVersionMismatch(
-                _context + " the metadata table " + databaseTableSql + " doesn't have the schema version.");
+        throw ConfigVersionMismatch(_context + " the metadata table " + databaseTableSql +
+                                    " doesn't have the schema version.");
     }
     if (version != expectedSchemaVersion) {
-        throw ConfigVersionMismatch(
-                _context + " schema version " + to_string(version) + " found in the metadata table "
-                + databaseTableSql + " doesn't match the required version " + to_string(expectedSchemaVersion) + ".",
-                version, expectedSchemaVersion);
+        throw ConfigVersionMismatch(_context + " schema version " + to_string(version) +
+                                            " found in the metadata table " + databaseTableSql +
+                                            " doesn't match the required version " +
+                                            to_string(expectedSchemaVersion) + ".",
+                                    version, expectedSchemaVersion);
     }
 }
-
 
 void ConfigParserMySQL::_parseWorkers() {
     _conn->execute("SELECT * FROM " + _conn->sqlId("config_worker"));
@@ -99,7 +90,6 @@ void ConfigParserMySQL::_parseWorkers() {
         _workers[info.name] = info;
     }
 }
-
 
 void ConfigParserMySQL::_parseDatabaseFamilies() {
     _conn->execute("SELECT * FROM " + _conn->sqlId("config_database_family"));
@@ -113,7 +103,6 @@ void ConfigParserMySQL::_parseDatabaseFamilies() {
         _databaseFamilies[info.name] = info;
     }
 }
-
 
 void ConfigParserMySQL::_parseDatabases() {
     _conn->execute("SELECT * FROM " + _conn->sqlId("config_database"));
@@ -134,24 +123,26 @@ void ConfigParserMySQL::_parseDatabases() {
             info.directorTable[table] = _parseParam<string>("director_table");
             info.directorTableKey[table] = _parseParam<string>("director_key");
             if (info.directorTableKey[table].empty()) {
-                throw ConfigError(
-                    _context + " the key 'director_key' of the partitioned table: '"
-                    + table + "' is empty.");
+                throw ConfigError(_context + " the key 'director_key' of the partitioned table: '" + table +
+                                  "' is empty.");
             }
             info.latitudeColName[table] = _parseParam<string>("latitude_key");
             info.longitudeColName[table] = _parseParam<string>("longitude_key");
             if (info.directorTable[table].empty()) {
                 if (info.latitudeColName[table].empty() || info.longitudeColName[table].empty()) {
-                    throw ConfigError(
-                        _context + " one of the spatial coordinate keys 'latitude_key' or 'longitude_key'"
-                        " of the director table: '" + table + "' is empty.");
+                    throw ConfigError(_context +
+                                      " one of the spatial coordinate keys 'latitude_key' or 'longitude_key'"
+                                      " of the director table: '" +
+                                      table + "' is empty.");
                 }
             } else {
                 if (info.latitudeColName[table].empty() != info.longitudeColName[table].empty()) {
-                    throw ConfigError(
-                        _context + " inconsistent definition of the spatial coordinate keys 'latitude_key'"
-                        " and 'longitude_key' of the dependent table: '" + table + "'. Both keys need to be"
-                        " either empty or be defined.");
+                    throw ConfigError(_context +
+                                      " inconsistent definition of the spatial coordinate keys 'latitude_key'"
+                                      " and 'longitude_key' of the dependent table: '" +
+                                      table +
+                                      "'. Both keys need to be"
+                                      " either empty or be defined.");
                 }
             }
             info.partitionedTables.push_back(table);
@@ -162,24 +153,22 @@ void ConfigParserMySQL::_parseDatabases() {
 
     // Validate referential integrity between the "director" and "dependent" tables
     // to ensure each dependent table has a valid "director".
-    for (auto&& databaseItr: _databases) {
+    for (auto&& databaseItr : _databases) {
         string const& database = databaseItr.first;
         DatabaseInfo& info = databaseItr.second;
-        for (auto&& itr: info.directorTable) {
+        for (auto&& itr : info.directorTable) {
             string const& table = itr.first;
             string const& director = itr.second;
             if (!director.empty()) {
                 if (!info.directorTable.count(director)) {
-                    throw ConfigError(
-                        _context + " the director table '" + director + "' of database '" + database
-                        + "' required by the dependent table '" + table
-                        + "' is not found in the configuration.");
+                    throw ConfigError(_context + " the director table '" + director + "' of database '" +
+                                      database + "' required by the dependent table '" + table +
+                                      "' is not found in the configuration.");
                 } else {
                     if (!info.directorTable.at(director).empty()) {
-                        throw ConfigError(
-                            _context + " the table: '" + table + "' of database '" + database
-                            + "' is defined as depending on another dependent table '" + director
-                            + "' instead of a valid director table.");
+                        throw ConfigError(_context + " the table: '" + table + "' of database '" + database +
+                                          "' is defined as depending on another dependent table '" +
+                                          director + "' instead of a valid director table.");
                     }
                 }
             }
@@ -187,25 +176,22 @@ void ConfigParserMySQL::_parseDatabases() {
     }
 
     // Read schema for each table (if available)
-    for (auto&& databaseItr: _databases) {
+    for (auto&& databaseItr : _databases) {
         string const& database = databaseItr.first;
         DatabaseInfo& info = databaseItr.second;
-        for (auto&& table: info.tables()) {
+        for (auto&& table : info.tables()) {
             list<SqlColDef>& columns = info.columns[table];
-            _conn->execute(
-                "SELECT "     + _conn->sqlId("col_name") + "," + _conn->sqlId("col_type") +
-                "  FROM "     + _conn->sqlId("config_database_table_schema") +
-                "  WHERE "    + _conn->sqlEqual("database", database) +
-                "    AND "    + _conn->sqlEqual("table", table) +
-                "  ORDER BY " + _conn->sqlId("col_position") + " ASC");
+            _conn->execute("SELECT " + _conn->sqlId("col_name") + "," + _conn->sqlId("col_type") + "  FROM " +
+                           _conn->sqlId("config_database_table_schema") + "  WHERE " +
+                           _conn->sqlEqual("database", database) + "    AND " +
+                           _conn->sqlEqual("table", table) + "  ORDER BY " + _conn->sqlId("col_position") +
+                           " ASC");
             while (_conn->next(_row)) {
-                columns.push_back(SqlColDef(
-                        _parseParam<string>("col_name"),
-                        _parseParam<string>("col_type")
-                ));
+                columns.push_back(
+                        SqlColDef(_parseParam<string>("col_name"), _parseParam<string>("col_type")));
             }
         }
     }
 }
 
-}}} // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

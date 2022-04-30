@@ -30,15 +30,13 @@
 #include "replica/WorkerRequest.h"
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
 /**
-  * Class WorkerEchoRequest implements test requests within the worker servers.
-  * Requests of this type don't have any side effects (in terms of modifying
-  * any files or databases).
-  */
+ * Class WorkerEchoRequest implements test requests within the worker servers.
+ * Requests of this type don't have any side effects (in terms of modifying
+ * any files or databases).
+ */
 class WorkerEchoRequest : public WorkerRequest {
 public:
     typedef std::shared_ptr<WorkerEchoRequest> Ptr;
@@ -63,13 +61,9 @@ public:
      * @param request ProtoBuf body of the request
      * @return pointer to the created object
      */
-    static Ptr create(ServiceProvider::Ptr const& serviceProvider,
-                      std::string const& worker,
-                      std::string const& id,
-                      int priority,
-                      ExpirationCallbackType const& onExpired,
-                      unsigned int requestExpirationIvalSec,
-                      ProtocolRequestEcho const& request);
+    static Ptr create(ServiceProvider::Ptr const& serviceProvider, std::string const& worker,
+                      std::string const& id, int priority, ExpirationCallbackType const& onExpired,
+                      unsigned int requestExpirationIvalSec, ProtocolRequestEcho const& request);
 
     WorkerEchoRequest() = delete;
     WorkerEchoRequest(WorkerEchoRequest const&) = delete;
@@ -82,7 +76,7 @@ public:
     std::string const& data() const { return _request.data(); }
 
     uint64_t delay() const { return _request.delay(); }
-    
+
     /**
      * Extract request status into the Protobuf response object.
      * @param response Protobuf response to be initialized
@@ -92,13 +86,9 @@ public:
     bool execute() override;
 
 protected:
-    WorkerEchoRequest(ServiceProvider::Ptr const& serviceProvider,
-                      std::string const& worker,
-                      std::string const& id,
-                      int priority,
-                      ExpirationCallbackType const& onExpired,
-                      unsigned int requestExpirationIvalSec,
-                      ProtocolRequestEcho const& request);
+    WorkerEchoRequest(ServiceProvider::Ptr const& serviceProvider, std::string const& worker,
+                      std::string const& id, int priority, ExpirationCallbackType const& onExpired,
+                      unsigned int requestExpirationIvalSec, ProtocolRequestEcho const& request);
 
     // Input parameters
 
@@ -114,6 +104,6 @@ typedef WorkerEchoRequest WorkerEchoRequestFS;
 /// Class WorkerEchoRequest provides an actual implementation
 typedef WorkerEchoRequest WorkerEchoRequestPOSIX;
 
-}}} // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_WORKERECHOREQUEST_H
+#endif  // LSST_QSERV_REPLICA_WORKERECHOREQUEST_H

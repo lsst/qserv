@@ -36,18 +36,13 @@
 #include <sstream>
 #include <string>
 
-
-namespace lsst {
-namespace qserv {
-namespace util {
+namespace lsst::qserv::util {
 
 template <class Map>
-typename Map::mapped_type const&
-getFromMap(Map const& m,
-           typename Map::key_type const& key,
-           typename Map::mapped_type const& defValue) {
+typename Map::mapped_type const& getFromMap(Map const& m, typename Map::key_type const& key,
+                                            typename Map::mapped_type const& defValue) {
     typename Map::const_iterator i = m.find(key);
-    if(i == m.end()) {
+    if (i == m.end()) {
         return defValue;
     } else {
         return i->second;
@@ -59,7 +54,7 @@ void forEachMapped(Map const& m, Func& f) {
     typename Map::const_iterator b = m.begin();
     typename Map::const_iterator e = m.end();
     typename Map::const_iterator i;
-    for(i = b; i != e; ++i) {
+    for (i = b; i != e; ++i) {
         f(i->second);
     }
 }
@@ -69,7 +64,7 @@ void forEachFirst(Map const& m, Func& f) {
     typename Map::const_iterator b = m.begin();
     typename Map::const_iterator e = m.end();
     typename Map::const_iterator i;
-    for(i = b; i != e; ++i) {
+    for (i = b; i != e; ++i) {
         f(i->first);
     }
 }
@@ -79,18 +74,18 @@ void forEachFirst(Map const& m, Func& f, Filter& filter) {
     typename Map::const_iterator b = m.begin();
     typename Map::const_iterator e = m.end();
     typename Map::const_iterator i;
-    for(i = b; i != e; ++i) {
-        if(filter(*i)) {
+    for (i = b; i != e; ++i) {
+        if (filter(*i)) {
             f(i->first);
         }
     }
 }
 
 template <class C>
-std::ostream& printList(std::ostream &os, char const* label, C const& c) {
+std::ostream& printList(std::ostream& os, char const* label, C const& c) {
     typename C::const_iterator i;
     os << label << ": ";
-    for(i = c.begin(); i != c.end(); ++i) {
+    for (i = c.begin(); i != c.end(); ++i) {
         os << **i << ", ";
     }
     return os;
@@ -100,7 +95,7 @@ template <typename C>
 std::string prettyCharList(C const& c) {
     std::ostringstream os;
     os << "[";
-    for(auto i = c.begin(); i != c.end();) {
+    for (auto i = c.begin(); i != c.end();) {
         int val = *i;
         os << val;
         if (++i == c.end()) {
@@ -122,7 +117,7 @@ std::string prettyCharList(C const& c, unsigned int edge) {
     auto sz = c.size();
     os << "[";
     auto j = sz;
-    for(j = 0; j < sz && j < edge; ++j) {
+    for (j = 0; j < sz && j < edge; ++j) {
         auto val = static_cast<int>(c[j]);
         os << "[" << j << "]=" << val;
         if (j < sz - 1) {
@@ -135,7 +130,7 @@ std::string prettyCharList(C const& c, unsigned int edge) {
             j = sz - edge;
         }
     }
-    for(;j < sz; ++j) {
+    for (; j < sz; ++j) {
         int val = c[j];
         os << "[" << j << "]=" << val;
         if (j < sz - 1) {
@@ -151,7 +146,7 @@ std::string prettyCharBuf(C* c, unsigned int bufLen, unsigned int edge) {
     std::ostringstream os;
     os << "[";
     unsigned int j;
-    for(j = 0; j < bufLen && j < edge; ++j) {
+    for (j = 0; j < bufLen && j < edge; ++j) {
         auto val = static_cast<int>(c[j]);
         os << "[" << j << "]=" << val;
         if (j < bufLen - 1) {
@@ -164,10 +159,10 @@ std::string prettyCharBuf(C* c, unsigned int bufLen, unsigned int edge) {
             j = bufLen - edge;
         }
     }
-    for(;j < bufLen; ++j) {
+    for (; j < bufLen; ++j) {
         int val = c[j];
         os << "[" << j << "]=" << val;
-        if (j < bufLen -1) {
+        if (j < bufLen - 1) {
             os << ", ";
         }
     }
@@ -175,7 +170,6 @@ std::string prettyCharBuf(C* c, unsigned int bufLen, unsigned int edge) {
     return os.str();
 }
 
+}  // namespace lsst::qserv::util
 
-}}} // namespace lsst::qserv::util
-
-#endif // LSST_QSERV_UTIL_COMMON_H
+#endif  // LSST_QSERV_UTIL_COMMON_H

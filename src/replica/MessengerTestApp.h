@@ -32,9 +32,7 @@
 #include "replica/Application.h"
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class MessengerTestApp implements a tool which tests the Messenger Network
@@ -43,7 +41,7 @@ namespace replica {
  *
  * @see class EchoRequest
  */
-class MessengerTestApp: public Application {
+class MessengerTestApp : public Application {
 public:
     typedef std::shared_ptr<MessengerTestApp> Ptr;
 
@@ -56,11 +54,11 @@ public:
      */
     static Ptr create(int argc, char* argv[]);
 
-    MessengerTestApp()=delete;
-    MessengerTestApp(MessengerTestApp const&)=delete;
-    MessengerTestApp& operator=(MessengerTestApp const&)=delete;
+    MessengerTestApp() = delete;
+    MessengerTestApp(MessengerTestApp const&) = delete;
+    MessengerTestApp& operator=(MessengerTestApp const&) = delete;
 
-    virtual ~MessengerTestApp() final=default;
+    virtual ~MessengerTestApp() final = default;
 
 protected:
     /// @see Application::runImpl()
@@ -76,9 +74,7 @@ private:
      * @param timeMs A timestamp of the event to be reported.
      * @param event An event to be reported.
      */
-    void _logEvent(std::unique_lock<std::mutex> const& lock,
-                   uint64_t timeMs,
-                   std::string const& event);
+    void _logEvent(std::unique_lock<std::mutex> const& lock, uint64_t timeMs, std::string const& event);
 
     /// Report events (if enabled).
     /// @param lock A lock on mutex _mtx to be held before callin the method.
@@ -123,7 +119,7 @@ private:
     /// is 0 then events won't be reported.
     unsigned int _eventsReportIvalSec = 1;
 
-    /// Enable extended reporting on sending requests and analysing responses. 
+    /// Enable extended reporting on sending requests and analysing responses.
     bool _reportRequestEvents = false;
 
     // Synchronization primitives for tracking active requests
@@ -132,8 +128,8 @@ private:
     std::mutex _mtx;
     std::condition_variable _onNumActiveCv;
 
-    int _numActive = 0;     // The current number of the active (in-flight) requests.
-    int _numFinished = 0;   // Total number of finished requests regardless of the state.
+    int _numActive = 0;    // The current number of the active (in-flight) requests.
+    int _numFinished = 0;  // Total number of finished requests regardless of the state.
     int _numSuccess = 0;
     int _numExpired = 0;
     int _numFailed = 0;
@@ -144,9 +140,9 @@ private:
     // entries are deleted by the later method after reporting.
     std::list<std::pair<uint64_t, std::string>> _eventLog;
 
-    uint64_t _prevEventsReportMs = 0;   ///< The last time the event report was made
+    uint64_t _prevEventsReportMs = 0;  ///< The last time the event report was made
 };
 
-}}} // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif /* LSST_QSERV_REPLICA_MESSENGERTESTAPP_H */

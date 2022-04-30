@@ -39,53 +39,26 @@ namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.WorkerSqlRequest");
 
-} /// namespace
+}  // namespace
 
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
-WorkerSqlRequest::Ptr WorkerSqlRequest::create(
-        ServiceProvider::Ptr const& serviceProvider,
-        string const& worker,
-        string const& id,
-        int priority,
-        ExpirationCallbackType const& onExpired,
-        unsigned int requestExpirationIvalSec,
-        ProtocolRequestSql const& request) {
-    return WorkerSqlRequest::Ptr(new WorkerSqlRequest(serviceProvider,
-        worker,
-        id,
-        priority,
-        onExpired,
-        requestExpirationIvalSec,
-        request
-    ));
+WorkerSqlRequest::Ptr WorkerSqlRequest::create(ServiceProvider::Ptr const& serviceProvider,
+                                               string const& worker, string const& id, int priority,
+                                               ExpirationCallbackType const& onExpired,
+                                               unsigned int requestExpirationIvalSec,
+                                               ProtocolRequestSql const& request) {
+    return WorkerSqlRequest::Ptr(new WorkerSqlRequest(serviceProvider, worker, id, priority, onExpired,
+                                                      requestExpirationIvalSec, request));
 }
 
-
-WorkerSqlRequest::WorkerSqlRequest(
-        ServiceProvider::Ptr const& serviceProvider,
-        string const& worker,
-        string const& id,
-        int priority,
-        ExpirationCallbackType const& onExpired,
-        unsigned int requestExpirationIvalSec,
-        ProtocolRequestSql const& request)
-    :   WorkerRequest(
-            serviceProvider,
-            worker,
-            "SQL",
-            id,
-            priority,
-            onExpired,
-            requestExpirationIvalSec),
-        _request(request) {
-}
-
+WorkerSqlRequest::WorkerSqlRequest(ServiceProvider::Ptr const& serviceProvider, string const& worker,
+                                   string const& id, int priority, ExpirationCallbackType const& onExpired,
+                                   unsigned int requestExpirationIvalSec, ProtocolRequestSql const& request)
+        : WorkerRequest(serviceProvider, worker, "SQL", id, priority, onExpired, requestExpirationIvalSec),
+          _request(request) {}
 
 void WorkerSqlRequest::setInfo(ProtocolResponseSql& response) const {
-
     LOGS(_log, LOG_LVL_DEBUG, context(__func__));
     util::Lock lock(_mtx, context(__func__));
 
@@ -104,25 +77,22 @@ void WorkerSqlRequest::setInfo(ProtocolResponseSql& response) const {
     *(response.mutable_request()) = _request;
 }
 
-
 bool WorkerSqlRequest::execute() {
-
     string const context_ = "WorkerSqlRequest::" + context(__func__);
     LOGS(_log, LOG_LVL_DEBUG, context_);
     util::Lock lock(_mtx, context_);
 
     switch (status()) {
-        case ProtocolStatus::IN_PROGRESS: break;
+        case ProtocolStatus::IN_PROGRESS:
+            break;
         case ProtocolStatus::IS_CANCELLING:
             setStatus(lock, ProtocolStatus::CANCELLED);
             throw WorkerRequestCancelled();
         default:
-            throw logic_error(
-                    context_  + "  not allowed while in state: " +
-                    WorkerRequest::status2string(status()));
+            throw logic_error(context_ +
+                              "  not allowed while in state: " + WorkerRequest::status2string(status()));
     }
     try {
-
         // Pre-create the default result-set message before any operations with
         // the database service. This is needed to report errors.
         auto currentResultSet = _response.add_result_sets();
@@ -139,7 +109,6 @@ bool WorkerSqlRequest::execute() {
         // a few known (and somewhat expected) MySQL errors w/o aborting
         // the whole request.
         if (_batchMode()) {
-
             // Count the number of failures for proper error reporting on
             // the current request.
             size_t numFailures = 0;
@@ -151,7 +120,7 @@ bool WorkerSqlRequest::execute() {
                 // the default result set created earlier. Otherwise create
                 // a new one.
                 if (i > 0) currentResultSet = _response.add_result_sets();
-                currentResultSet->set_scope(table);      
+                currentResultSet->set_scope(table);
 
                 try {
                     database::mysql::ConnectionHandler const h(connection);
@@ -161,32 +130,32 @@ bool WorkerSqlRequest::execute() {
                         if (query.mutexName.empty()) {
                             conn_->execute(query.query);
                         } else {
-                            util::Lock const lock(serviceProvider()->getNamedMutex(query.mutexName), context_);
+                            util::Lock const lock(serviceProvider()->getNamedMutex(query.mutexName),
+                                                  context_);
                             conn_->execute(query.query);
                         }
                         _extractResultSet(lock, conn_);
                         conn_->commit();
                     });
-                } catch(database::mysql::ER_NO_SUCH_TABLE_ const& ex) {
+                } catch (database::mysql::ER_NO_SUCH_TABLE_ const& ex) {
                     ++numFailures;
                     currentResultSet->set_status_ext(ProtocolStatusExt::NO_SUCH_TABLE);
                     currentResultSet->set_error(ex.what());
 
-                } catch(database::mysql::ER_PARTITION_MGMT_ON_NONPARTITIONED_ const& ex) {
+                } catch (database::mysql::ER_PARTITION_MGMT_ON_NONPARTITIONED_ const& ex) {
                     ++numFailures;
                     currentResultSet->set_status_ext(ProtocolStatusExt::NOT_PARTITIONED_TABLE);
                     currentResultSet->set_error(ex.what());
 
-                } catch(database::mysql::ER_DUP_KEYNAME_ const& ex) {
+                } catch (database::mysql::ER_DUP_KEYNAME_ const& ex) {
                     ++numFailures;
                     currentResultSet->set_status_ext(ProtocolStatusExt::DUPLICATE_KEY);
                     currentResultSet->set_error(ex.what());
 
-                } catch(database::mysql::ER_CANT_DROP_FIELD_OR_KEY_ const& ex) {
+                } catch (database::mysql::ER_CANT_DROP_FIELD_OR_KEY_ const& ex) {
                     ++numFailures;
                     currentResultSet->set_status_ext(ProtocolStatusExt::CANT_DROP_KEY);
                     currentResultSet->set_error(ex.what());
-
                 }
             }
             if (numFailures > 0) {
@@ -202,7 +171,7 @@ bool WorkerSqlRequest::execute() {
             database::mysql::ConnectionHandler const h(connection);
             h.conn->execute([&](decltype(h.conn) const& conn_) {
                 conn_->begin();
-                for (auto const& query: _queries(conn_)) {
+                for (auto const& query : _queries(conn_)) {
                     if (query.mutexName.empty()) {
                         conn_->execute(query.query);
                     } else {
@@ -216,19 +185,19 @@ bool WorkerSqlRequest::execute() {
             setStatus(lock, ProtocolStatus::SUCCESS);
         }
 
-    } catch(database::mysql::ER_NO_SUCH_TABLE_ const& ex) {
+    } catch (database::mysql::ER_NO_SUCH_TABLE_ const& ex) {
         _reportFailure(lock, ProtocolStatusExt::NO_SUCH_TABLE, ex.what());
 
-    } catch(database::mysql::ER_PARTITION_MGMT_ON_NONPARTITIONED_ const& ex) {
+    } catch (database::mysql::ER_PARTITION_MGMT_ON_NONPARTITIONED_ const& ex) {
         _reportFailure(lock, ProtocolStatusExt::NOT_PARTITIONED_TABLE, ex.what());
 
-    } catch(database::mysql::ER_DUP_KEYNAME_ const& ex) {
+    } catch (database::mysql::ER_DUP_KEYNAME_ const& ex) {
         _reportFailure(lock, ProtocolStatusExt::DUPLICATE_KEY, ex.what());
 
-    } catch(database::mysql::ER_CANT_DROP_FIELD_OR_KEY_ const& ex) {
+    } catch (database::mysql::ER_CANT_DROP_FIELD_OR_KEY_ const& ex) {
         _reportFailure(lock, ProtocolStatusExt::CANT_DROP_KEY, ex.what());
 
-    } catch(database::mysql::Error const& ex) {
+    } catch (database::mysql::Error const& ex) {
         _reportFailure(lock, ProtocolStatusExt::MYSQL_ERROR, ex.what());
 
     } catch (invalid_argument const& ex) {
@@ -243,9 +212,7 @@ bool WorkerSqlRequest::execute() {
     return true;
 }
 
-
 database::mysql::Connection::Ptr WorkerSqlRequest::_connector() const {
-
     // A choice of credential for connecting to the database service depends
     // on a type of the request. For the sake of greater security, arbitrary
     // queries require a client to explicitly provide the credentials.
@@ -260,51 +227,38 @@ database::mysql::Connection::Ptr WorkerSqlRequest::_connector() const {
     return database::mysql::Connection::open(connectionParams);
 }
 
-
 vector<Query> WorkerSqlRequest::_queries(database::mysql::Connection::Ptr const& conn) const {
-
     vector<Query> queries;
 
     string const qservChunksTable = conn->sqlId("qservw_worker", "Chunks");
     string const qservDbsTable = conn->sqlId("qservw_worker", "Dbs");
 
     switch (_request.type()) {
-
         case ProtocolRequestSql::QUERY:
             queries.emplace_back(Query(_request.query()));
             break;
 
         case ProtocolRequestSql::CREATE_DATABASE:
-            queries.emplace_back(Query(
-                "CREATE DATABASE IF NOT EXISTS " + conn->sqlId(_request.database())
-            ));
+            queries.emplace_back(Query("CREATE DATABASE IF NOT EXISTS " + conn->sqlId(_request.database())));
             break;
 
         case ProtocolRequestSql::DROP_DATABASE:
-            queries.emplace_back(Query(
-                "DROP DATABASE IF EXISTS " + conn->sqlId(_request.database())
-            ));
+            queries.emplace_back(Query("DROP DATABASE IF EXISTS " + conn->sqlId(_request.database())));
             break;
 
         case ProtocolRequestSql::ENABLE_DATABASE:
 
             // Using REPLACE instead of INSERT to avoid hitting the DUPLICATE KEY error
             // if such entry already exists in the table.
-            queries.emplace_back(Query(
-                "REPLACE INTO " + qservDbsTable +
-                " VALUES ("    + conn->sqlValue(_request.database()) + ")"
-            ));
+            queries.emplace_back(Query("REPLACE INTO " + qservDbsTable + " VALUES (" +
+                                       conn->sqlValue(_request.database()) + ")"));
             break;
 
         case ProtocolRequestSql::DISABLE_DATABASE:
-            queries.emplace_back(Query(
-                "DELETE FROM " + qservChunksTable +
-                " WHERE "      + conn->sqlEqual("db", _request.database())
-            ));
-            queries.emplace_back(Query(
-                "DELETE FROM " + qservDbsTable +
-                " WHERE "      + conn->sqlEqual("db", _request.database())
-            ));
+            queries.emplace_back(Query("DELETE FROM " + qservChunksTable + " WHERE " +
+                                       conn->sqlEqual("db", _request.database())));
+            queries.emplace_back(Query("DELETE FROM " + qservDbsTable + " WHERE " +
+                                       conn->sqlEqual("db", _request.database())));
             break;
 
         case ProtocolRequestSql::GRANT_ACCESS:
@@ -320,10 +274,8 @@ vector<Query> WorkerSqlRequest::_queries(database::mysql::Connection::Ptr const&
             // Hence removing quotes from '*' an commenting the following statement:
             //   return "GRANT ALL ON " + conn->sqlId(_request.database()) + "." + conn->sqlId("*") +
             //          " TO " + conn->sqlValue(_request.user()) + "@" + conn->sqlValue("localhost");
-            queries.emplace_back(Query(
-                "GRANT ALL ON " + conn->sqlId(_request.database()) + ".* TO " +
-                conn->sqlValue(_request.user()) + "@" + conn->sqlValue("localhost")
-            ));
+            queries.emplace_back(Query("GRANT ALL ON " + conn->sqlId(_request.database()) + ".* TO " +
+                                       conn->sqlValue(_request.user()) + "@" + conn->sqlValue("localhost")));
             break;
 
         default:
@@ -336,10 +288,7 @@ vector<Query> WorkerSqlRequest::_queries(database::mysql::Connection::Ptr const&
     return queries;
 }
 
-
-Query WorkerSqlRequest::_query(database::mysql::Connection::Ptr const& conn,
-                               string const& table) const {
-
+Query WorkerSqlRequest::_query(database::mysql::Connection::Ptr const& conn, string const& table) const {
     string const databaseTable = conn->sqlId(_request.database(), table);
 
     switch (_request.type()) {
@@ -360,26 +309,24 @@ Query WorkerSqlRequest::_query(database::mysql::Connection::Ptr const& conn,
                 query += " PARTITION BY LIST (" + conn->sqlId(partitionByColumn) +
                          ") (PARTITION `p0` VALUES IN (0) ENGINE = " + _request.engine() + ")";
             }
-            return Query(query,
-                         databaseTable);
+            return Query(query, databaseTable);
         }
 
         case ProtocolRequestSql::DROP_TABLE:
-            return Query("DROP TABLE IF EXISTS " + databaseTable,
-                         databaseTable);
+            return Query("DROP TABLE IF EXISTS " + databaseTable, databaseTable);
 
         case ProtocolRequestSql::DROP_TABLE_PARTITION:
-            return Query("ALTER TABLE " + databaseTable + " DROP PARTITION IF EXISTS "
-                         + conn->sqlPartitionId(_request.transaction_id()),
+            return Query("ALTER TABLE " + databaseTable + " DROP PARTITION IF EXISTS " +
+                                 conn->sqlPartitionId(_request.transaction_id()),
                          databaseTable);
 
         case ProtocolRequestSql::REMOVE_TABLE_PARTITIONING:
-            return Query("ALTER TABLE " + databaseTable + " REMOVE PARTITIONING",
-                         databaseTable);
+            return Query("ALTER TABLE " + databaseTable + " REMOVE PARTITIONING", databaseTable);
 
         case ProtocolRequestSql::CREATE_TABLE_INDEX: {
-            string const spec = _request.index_spec() == ProtocolRequestSql::DEFAULT ?
-                    "" : ProtocolRequestSql_IndexSpec_Name(_request.index_spec());
+            string const spec = _request.index_spec() == ProtocolRequestSql::DEFAULT
+                                        ? ""
+                                        : ProtocolRequestSql_IndexSpec_Name(_request.index_spec());
             string keys;
             for (int i = 0; i < _request.index_columns_size(); ++i) {
                 auto const& key = _request.index_columns(i);
@@ -388,9 +335,9 @@ Query WorkerSqlRequest::_query(database::mysql::Connection::Ptr const& conn,
                 if (key.length() != 0) keys += "(" + to_string(key.length()) + ")";
                 keys += key.ascending() ? " ASC" : " DESC";
             }
-            return Query("CREATE " + spec + " INDEX " + conn->sqlId(_request.index_name())
-                         + " ON " + databaseTable + " (" + keys + ")"
-                         + " COMMENT " + conn->sqlValue(_request.index_comment()),
+            return Query("CREATE " + spec + " INDEX " + conn->sqlId(_request.index_name()) + " ON " +
+                                 databaseTable + " (" + keys + ")" + " COMMENT " +
+                                 conn->sqlValue(_request.index_comment()),
                          databaseTable);
         }
 
@@ -402,8 +349,7 @@ Query WorkerSqlRequest::_query(database::mysql::Connection::Ptr const& conn,
             return Query("SHOW INDEXES FROM " + databaseTable);
 
         case ProtocolRequestSql::ALTER_TABLE:
-            return Query("ALTER TABLE " + databaseTable + " " + _request.alter_spec(),
-                         databaseTable);
+            return Query("ALTER TABLE " + databaseTable + " " + _request.alter_spec(), databaseTable);
 
         case ProtocolRequestSql::TABLE_ROW_STATS: {
             // The transaction identifier column is not required to be present in
@@ -413,20 +359,20 @@ Query WorkerSqlRequest::_query(database::mysql::Connection::Ptr const& conn,
             // information schema. If the column isn't present then the default transaction
             // identifier 0 will be injected into the result set.
             string const colname = "count";
-            string const query =
-                    "SELECT COUNT(*) AS " + conn->sqlId(colname) + " FROM information_schema.COLUMNS "
-                    + "WHERE " + conn->sqlEqual("TABLE_SCHEMA", _request.database())
-                    +  " AND " + conn->sqlEqual("TABLE_NAME",   table) +
-                    +  " AND " + conn->sqlEqual("COLUMN_NAME", "qserv_trans_id");
+            string const query = "SELECT COUNT(*) AS " + conn->sqlId(colname) +
+                                 " FROM information_schema.COLUMNS " + "WHERE " +
+                                 conn->sqlEqual("TABLE_SCHEMA", _request.database()) + " AND " +
+                                 conn->sqlEqual("TABLE_NAME", table) + +" AND " +
+                                 conn->sqlEqual("COLUMN_NAME", "qserv_trans_id");
             int count = 0;
             conn->executeSingleValueSelect(query, colname, count);
             if (count == 0) {
-                return Query("SELECT 0 AS " + conn->sqlId("qserv_trans_id")
-                             + ",COUNT(*) AS " + conn->sqlId("num_rows") + " FROM " + databaseTable);
+                return Query("SELECT 0 AS " + conn->sqlId("qserv_trans_id") + ",COUNT(*) AS " +
+                             conn->sqlId("num_rows") + " FROM " + databaseTable);
             }
-            return Query("SELECT " + conn->sqlId("qserv_trans_id")
-                         + ",COUNT(*) AS " + conn->sqlId("num_rows") + " FROM " + databaseTable
-                         + " GROUP BY " + conn->sqlId("qserv_trans_id"));
+            return Query("SELECT " + conn->sqlId("qserv_trans_id") + ",COUNT(*) AS " +
+                         conn->sqlId("num_rows") + " FROM " + databaseTable + " GROUP BY " +
+                         conn->sqlId("qserv_trans_id"));
         }
         default:
             throw invalid_argument(
@@ -435,10 +381,8 @@ Query WorkerSqlRequest::_query(database::mysql::Connection::Ptr const& conn,
     }
 }
 
-
 void WorkerSqlRequest::_extractResultSet(util::Lock const& lock,
                                          database::mysql::Connection::Ptr const& conn) {
-
     LOGS(_log, LOG_LVL_DEBUG, context(__func__));
 
     auto resultSet = _currentResultSet(lock);
@@ -452,7 +396,7 @@ void WorkerSqlRequest::_extractResultSet(util::Lock const& lock,
     resultSet->set_has_result(conn->hasResult());
 
     if (conn->hasResult()) {
-        for (size_t i=0; i < conn->numFields(); ++i) {
+        for (size_t i = 0; i < conn->numFields(); ++i) {
             conn->exportField(resultSet->add_fields(), i);
         }
         size_t numRowsProcessed = 0;
@@ -460,9 +404,8 @@ void WorkerSqlRequest::_extractResultSet(util::Lock const& lock,
         while (conn->next(row)) {
             if (_request.max_rows() != 0) {
                 if (numRowsProcessed >= _request.max_rows()) {
-                    throw out_of_range(
-                            "WorkerSqlRequest::" + context(__func__) + "  max_rows=" +
-                            to_string(_request.max_rows()) + " limit exceeded");
+                    throw out_of_range("WorkerSqlRequest::" + context(__func__) +
+                                       "  max_rows=" + to_string(_request.max_rows()) + " limit exceeded");
                 }
                 ++numRowsProcessed;
             }
@@ -471,11 +414,8 @@ void WorkerSqlRequest::_extractResultSet(util::Lock const& lock,
     }
 }
 
-
-void WorkerSqlRequest::_reportFailure(util::Lock const& lock,
-                                      ProtocolStatusExt statusExt,
+void WorkerSqlRequest::_reportFailure(util::Lock const& lock, ProtocolStatusExt statusExt,
                                       string const& error) {
-
     LOGS(_log, LOG_LVL_ERROR, context(__func__) << "  exception: " << error);
 
     // Note that the actual reason for a query to fail is recorded in its
@@ -488,24 +428,19 @@ void WorkerSqlRequest::_reportFailure(util::Lock const& lock,
     resultSet->set_status_ext(statusExt);
     resultSet->set_error(error);
 
-    setStatus(lock, ProtocolStatus::FAILED,
-              _batchMode() ? statusExt : ProtocolStatusExt::MULTIPLE);
+    setStatus(lock, ProtocolStatus::FAILED, _batchMode() ? statusExt : ProtocolStatusExt::MULTIPLE);
 }
-
 
 ProtocolResponseSqlResultSet* WorkerSqlRequest::_currentResultSet(util::Lock const& lock) {
     auto const numResultSets = _response.result_sets_size();
     if (numResultSets < 1) {
-        throw logic_error(
-                "WorkerSqlRequest::" + context(__func__)
-                + " the operation is not allowed in this state");
+        throw logic_error("WorkerSqlRequest::" + context(__func__) +
+                          " the operation is not allowed in this state");
     }
-    return _response.mutable_result_sets(numResultSets - 1);;
+    return _response.mutable_result_sets(numResultSets - 1);
+    ;
 }
 
+bool WorkerSqlRequest::_batchMode() const { return _request.has_batch_mode() and _request.batch_mode(); }
 
-bool WorkerSqlRequest::_batchMode() const {
-    return _request.has_batch_mode() and _request.batch_mode();
-}
-
-}}} // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

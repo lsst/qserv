@@ -34,16 +34,13 @@
 #include "replica/ReplicateJob.h"
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * The structure DeleteWorkerJobResult represents a combined result received
  * from worker services upon a completion of the job.
  */
 struct DeleteWorkerJobResult {
-
     /// New replicas created upon successful completion of the request
     FamilyChunkDatabaseWorkerInfo chunks;
 
@@ -52,37 +49,35 @@ struct DeleteWorkerJobResult {
 };
 
 /**
-  * Class DeleteWorkerJob represents a tool which will disable a worker
-  * from any active use in a replication setup. All chunks hosted by
-  * the worker node will be distributed across the cluster.
-  *
-  * Specific steps made by the job:
-  * 1. check the status of the worker service (SYNC, short timeout),
-  *    1.1 if it responds then:
-  *        1.1.0 memorize the status of the worker service (may need it later)
-  *        1.1.1 drain all requests on that service (SYNC, short timeout)
-  *        1.1.2 submit FindAllRequsts against the worker for all known databases
-  *              to refresh a list of replicas on that node (ASYNC)
-  *        1.1.3 when all requests finish then stop the worker service (SYNC, short timeout)
-  *        1.1.4 proceed to step 2
-  *     1.2 otherwise:
-  *        1.2.1 proceed to step 2
-  * 2. change the status of the worker
-  *    2.1 disable worker in the configuration
-  *    2.2 update a disposition of chunks across the rest of the cluster (ASYNC)
-  * 3. launch the replication job ReplicateJob (ASYNC, long timeout)
-  * 4. analyze results when the job will finish a report on which replicas were
-  *    made and which could not be made will be prepared. See structure DeleteWorkerJobResult
-  *    defined above for specific details.
-  *    4.1 load a list of affected worker's replicas from the database
-  *    4.2 if such orphans found check 1.0 to see if the worker service could
-  *        be reactivated to pull those missing replicas from that node
-  *        TBC...
-  */
-class DeleteWorkerJob : public Job  {
-
+ * Class DeleteWorkerJob represents a tool which will disable a worker
+ * from any active use in a replication setup. All chunks hosted by
+ * the worker node will be distributed across the cluster.
+ *
+ * Specific steps made by the job:
+ * 1. check the status of the worker service (SYNC, short timeout),
+ *    1.1 if it responds then:
+ *        1.1.0 memorize the status of the worker service (may need it later)
+ *        1.1.1 drain all requests on that service (SYNC, short timeout)
+ *        1.1.2 submit FindAllRequsts against the worker for all known databases
+ *              to refresh a list of replicas on that node (ASYNC)
+ *        1.1.3 when all requests finish then stop the worker service (SYNC, short timeout)
+ *        1.1.4 proceed to step 2
+ *     1.2 otherwise:
+ *        1.2.1 proceed to step 2
+ * 2. change the status of the worker
+ *    2.1 disable worker in the configuration
+ *    2.2 update a disposition of chunks across the rest of the cluster (ASYNC)
+ * 3. launch the replication job ReplicateJob (ASYNC, long timeout)
+ * 4. analyze results when the job will finish a report on which replicas were
+ *    made and which could not be made will be prepared. See structure DeleteWorkerJobResult
+ *    defined above for specific details.
+ *    4.1 load a list of affected worker's replicas from the database
+ *    4.2 if such orphans found check 1.0 to see if the worker service could
+ *        be reactivated to pull those missing replicas from that node
+ *        TBC...
+ */
+class DeleteWorkerJob : public Job {
 public:
-
     /// The pointer type for instances of the class
     typedef std::shared_ptr<DeleteWorkerJob> Ptr;
 
@@ -116,12 +111,8 @@ public:
      * @param priority
      *   the priority level of the job
      */
-    static Ptr create(std::string const& worker,
-                      bool permanentDelete,
-                      Controller::Ptr const& controller,
-                      std::string const& parentJobId,
-                      CallbackType const& onFinish,
-                      int priority);
+    static Ptr create(std::string const& worker, bool permanentDelete, Controller::Ptr const& controller,
+                      std::string const& parentJobId, CallbackType const& onFinish, int priority);
 
     // Default construction and copy semantics are prohibited
 
@@ -159,13 +150,12 @@ public:
     DeleteWorkerJobResult const& getReplicaData() const;
 
     /// @see Job::extendedPersistentState()
-    std::list<std::pair<std::string,std::string>> extendedPersistentState() const final;
+    std::list<std::pair<std::string, std::string>> extendedPersistentState() const final;
 
     /// @see Job::persistentLogData()
-    std::list<std::pair<std::string,std::string>> persistentLogData() const final;
+    std::list<std::pair<std::string, std::string>> persistentLogData() const final;
 
 protected:
-
     /// @see Job::startImpl()
     void startImpl(util::Lock const& lock) final;
 
@@ -176,14 +166,9 @@ protected:
     void notify(util::Lock const& lock) final;
 
 private:
-
     /// @see DeleteWorkerJob::create()
-    DeleteWorkerJob(std::string const& worker,
-                    bool permanentDelete,
-                    Controller::Ptr const& controller,
-                    std::string const& parentJobId,
-                    CallbackType const& onFinish,
-                    int priority);
+    DeleteWorkerJob(std::string const& worker, bool permanentDelete, Controller::Ptr const& controller,
+                    std::string const& parentJobId, CallbackType const& onFinish, int priority);
 
     /**
      * Begin the actual sequence of actions for removing the worker
@@ -210,16 +195,15 @@ private:
      */
     void _onJobFinish(ReplicateJob::Ptr const& job);
 
-
     // Input parameters
 
     std::string const _worker;
-    bool        const _permanentDelete;
-    CallbackType      _onFinish;        /// @note is reset when the job finishes
+    bool const _permanentDelete;
+    CallbackType _onFinish;  /// @note is reset when the job finishes
 
-    size_t _numLaunched = 0;    ///< the total number of requests launched
-    size_t _numFinished = 0;    ///< the total number of finished requests
-    size_t _numSuccess  = 0;    ///< the number of successfully completed requests
+    size_t _numLaunched = 0;  ///< the total number of requests launched
+    size_t _numFinished = 0;  ///< the total number of finished requests
+    size_t _numSuccess = 0;   ///< the number of successfully completed requests
 
     /// A collection of requests (one per a database) to be launched against
     /// the affected worker in order to get the latest state of the worker's
@@ -235,6 +219,6 @@ private:
     DeleteWorkerJobResult _replicaData;
 };
 
-}}} // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_DELETEWORKERJOB_H
+#endif  // LSST_QSERV_REPLICA_DELETEWORKERJOB_H

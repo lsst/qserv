@@ -47,57 +47,32 @@ namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.WorkerIndexRequest");
 
-} /// namespace
+}  // namespace
 
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
-WorkerIndexRequest::Ptr WorkerIndexRequest::create(
-        ServiceProvider::Ptr const& serviceProvider,
-        ConnectionPoolPtr const& connectionPool,
-        string const& worker,
-        string const& id,
-        int priority,
-        ExpirationCallbackType const& onExpired,
-        unsigned int requestExpirationIvalSec,
-        ProtocolRequestIndex const& request) {
-    return WorkerIndexRequest::Ptr(new WorkerIndexRequest(serviceProvider,
-        connectionPool,
-        worker,
-        id,
-        priority,
-        onExpired,
-        requestExpirationIvalSec,
-        request
-    ));
+WorkerIndexRequest::Ptr WorkerIndexRequest::create(ServiceProvider::Ptr const& serviceProvider,
+                                                   ConnectionPoolPtr const& connectionPool,
+                                                   string const& worker, string const& id, int priority,
+                                                   ExpirationCallbackType const& onExpired,
+                                                   unsigned int requestExpirationIvalSec,
+                                                   ProtocolRequestIndex const& request) {
+    return WorkerIndexRequest::Ptr(new WorkerIndexRequest(serviceProvider, connectionPool, worker, id,
+                                                          priority, onExpired, requestExpirationIvalSec,
+                                                          request));
 }
 
-
-WorkerIndexRequest::WorkerIndexRequest(
-        ServiceProvider::Ptr const& serviceProvider,
-        ConnectionPoolPtr const& connectionPool,
-        string const& worker,
-        string const& id,
-        int priority,
-        ExpirationCallbackType const& onExpired,
-        unsigned int requestExpirationIvalSec,
-        ProtocolRequestIndex const& request)
-    :   WorkerRequest(
-            serviceProvider,
-            worker,
-            "INDEX",
-            id,
-            priority,
-            onExpired,
-            requestExpirationIvalSec),
-        _connectionPool(connectionPool),
-        _request(request) {
-}
-
+WorkerIndexRequest::WorkerIndexRequest(ServiceProvider::Ptr const& serviceProvider,
+                                       ConnectionPoolPtr const& connectionPool, string const& worker,
+                                       string const& id, int priority,
+                                       ExpirationCallbackType const& onExpired,
+                                       unsigned int requestExpirationIvalSec,
+                                       ProtocolRequestIndex const& request)
+        : WorkerRequest(serviceProvider, worker, "INDEX", id, priority, onExpired, requestExpirationIvalSec),
+          _connectionPool(connectionPool),
+          _request(request) {}
 
 void WorkerIndexRequest::setInfo(ProtocolResponseIndex& response) const {
-
     LOGS(_log, LOG_LVL_DEBUG, context(__func__));
 
     util::Lock lock(_mtx, context(__func__));
@@ -109,40 +84,39 @@ void WorkerIndexRequest::setInfo(ProtocolResponseIndex& response) const {
     *(response.mutable_request()) = _request;
 }
 
-
 bool WorkerIndexRequest::execute() {
-
     LOGS(_log, LOG_LVL_DEBUG, context(__func__));
 
     util::Lock lock(_mtx, context(__func__));
 
     switch (status()) {
-        case ProtocolStatus::IN_PROGRESS: break;
+        case ProtocolStatus::IN_PROGRESS:
+            break;
         case ProtocolStatus::IS_CANCELLING:
             setStatus(lock, ProtocolStatus::CANCELLED);
             throw WorkerRequestCancelled();
         default:
-            throw logic_error(
-                    "WorkerIndexRequest::" + context(__func__) + "  not allowed while in state: " +
-                    WorkerRequest::status2string(status()));
+            throw logic_error("WorkerIndexRequest::" + context(__func__) +
+                              "  not allowed while in state: " + WorkerRequest::status2string(status()));
     }
     try {
         auto const config = serviceProvider()->config();
-        auto const databaseInfo = config->databaseInfo(_request.database());    
+        auto const databaseInfo = config->databaseInfo(_request.database());
 
         // Create a folder (if it still doesn't exist) where the temporary files will be placed
         // NOTE: this folder is supposed to be seen by the worker's MySQL/MariaDB server, and it
         // must be write-enabled for an account under which the service is run.
 
         boost::system::error_code ec;
-        fs::path const tmpDirPath = fs::path(config->get<string>("worker", "loader-tmp-dir")) / databaseInfo.name;
+        fs::path const tmpDirPath =
+                fs::path(config->get<string>("worker", "loader-tmp-dir")) / databaseInfo.name;
         fs::create_directory(tmpDirPath, ec);
         if (ec.value() != 0) {
             _error = "failed to create folder '" + tmpDirPath.string();
             LOGS(_log, LOG_LVL_ERROR, context(__func__) << "  " << _error);
             setStatus(lock, ProtocolStatus::FAILED, ProtocolStatusExt::FOLDER_CREATE);
         }
- 
+
         // The name of a temporary file where the index data will be dumped into
         auto const tmpFileName = fs::unique_path("%%%%-%%%%-%%%%-%%%%.tsv", ec);
         if (ec.value() != 0) {
@@ -150,7 +124,7 @@ bool WorkerIndexRequest::execute() {
             LOGS(_log, LOG_LVL_ERROR, context(__func__) << "  " << _error);
             setStatus(lock, ProtocolStatus::FAILED, ProtocolStatusExt::FILE_CREATE);
         }
-        _fileName = (tmpDirPath / tmpFileName).string(); 
+        _fileName = (tmpDirPath / tmpFileName).string();
 
         // Connect to the worker database
         // Manage the new connection via the RAII-style handler to ensure the transaction
@@ -161,28 +135,30 @@ bool WorkerIndexRequest::execute() {
 
         auto self = shared_from_base<WorkerIndexRequest>();
         bool fileReadSuccess = false;
-        h.conn->execute([self,&fileReadSuccess](decltype(h.conn) const& conn) {
+        h.conn->execute([self, &fileReadSuccess](decltype(h.conn) const& conn) {
             conn->begin();
             conn->execute(self->_query(conn));
             fileReadSuccess = self->_readFile();
             conn->commit();
         });
-        if (fileReadSuccess) setStatus(lock, ProtocolStatus::SUCCESS);
-        else                 setStatus(lock, ProtocolStatus::FAILED, ProtocolStatusExt::FILE_READ);
+        if (fileReadSuccess)
+            setStatus(lock, ProtocolStatus::SUCCESS);
+        else
+            setStatus(lock, ProtocolStatus::FAILED, ProtocolStatusExt::FILE_READ);
 
-    } catch(database::mysql::ER_NO_SUCH_TABLE_ const& ex) {
+    } catch (database::mysql::ER_NO_SUCH_TABLE_ const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context(__func__) << "  MySQL error: " << ex.what());
         _error = ex.what();
         setStatus(lock, ProtocolStatus::FAILED, ProtocolStatusExt::NO_SUCH_TABLE);
-    } catch(database::mysql::ER_PARTITION_MGMT_ON_NONPARTITIONED_ const& ex) {
+    } catch (database::mysql::ER_PARTITION_MGMT_ON_NONPARTITIONED_ const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context(__func__) << "  MySQL error: " << ex.what());
         _error = ex.what();
         setStatus(lock, ProtocolStatus::FAILED, ProtocolStatusExt::NOT_PARTITIONED_TABLE);
-    } catch(database::mysql::ER_UNKNOWN_PARTITION_ const& ex) {
+    } catch (database::mysql::ER_UNKNOWN_PARTITION_ const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context(__func__) << "  MySQL error: " << ex.what());
         _error = ex.what();
         setStatus(lock, ProtocolStatus::FAILED, ProtocolStatusExt::NO_SUCH_PARTITION);
-    } catch(database::mysql::Error const& ex) {
+    } catch (database::mysql::Error const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context(__func__) << "  MySQL error: " << ex.what());
         _error = ex.what();
         setStatus(lock, ProtocolStatus::FAILED, ProtocolStatusExt::MYSQL_ERROR);
@@ -202,32 +178,26 @@ bool WorkerIndexRequest::execute() {
     return true;
 }
 
-
-
 string WorkerIndexRequest::_query(database::mysql::Connection::Ptr const& conn) const {
-
     auto const config = serviceProvider()->config();
     auto const databaseInfo = config->databaseInfo(_request.database());
     string const& directorTable = _request.director_table();
 
     if (!databaseInfo.isDirector(directorTable)) {
-        throw invalid_argument(
-                "table '" + directorTable + "' is not been configured as director in database '" +
-                databaseInfo.name + "'");
-
+        throw invalid_argument("table '" + directorTable +
+                               "' is not been configured as director in database '" + databaseInfo.name +
+                               "'");
     }
     if ((databaseInfo.directorTableKey.count(directorTable) == 0) or
         databaseInfo.directorTableKey.at(directorTable).empty()) {
-        throw invalid_argument(
-                "director table '" + directorTable + "' has not been properly configured in database '" +
-                databaseInfo.name + "'");
+        throw invalid_argument("director table '" + directorTable +
+                               "' has not been properly configured in database '" + databaseInfo.name + "'");
     }
     string const& directorTableKey = databaseInfo.directorTableKey.at(directorTable);
 
     if (0 == databaseInfo.columns.count(directorTable)) {
-        throw invalid_argument(
-                "no schema found for director table '" + directorTable +
-                "' of database '" + databaseInfo.name + "'");
+        throw invalid_argument("no schema found for director table '" + directorTable + "' of database '" +
+                               databaseInfo.name + "'");
     }
 
     // Find types required by the secondary index table's columns
@@ -237,15 +207,16 @@ string WorkerIndexRequest::_query(database::mysql::Connection::Ptr const& conn) 
     string directorTableKeyType;
     string subChunkIdColNameType;
 
-    for (auto&& coldef: databaseInfo.columns.at(directorTable)) {
-        if      (not qservTransId.empty() and coldef.name == qservTransId) qservTransIdType = coldef.type;
-        else if (coldef.name == directorTableKey) directorTableKeyType = coldef.type;
-        else if (coldef.name == lsst::qserv::SUB_CHUNK_COLUMN) subChunkIdColNameType = coldef.type;
+    for (auto&& coldef : databaseInfo.columns.at(directorTable)) {
+        if (not qservTransId.empty() and coldef.name == qservTransId)
+            qservTransIdType = coldef.type;
+        else if (coldef.name == directorTableKey)
+            directorTableKeyType = coldef.type;
+        else if (coldef.name == lsst::qserv::SUB_CHUNK_COLUMN)
+            subChunkIdColNameType = coldef.type;
     }
-    if ((not qservTransId.empty() and qservTransIdType.empty()) or
-        directorTableKeyType.empty() or
+    if ((not qservTransId.empty() and qservTransIdType.empty()) or directorTableKeyType.empty() or
         subChunkIdColNameType.empty()) {
-
         throw invalid_argument(
                 "column definitions for the Object identifier or sub-chunk identifier"
                 " columns are missing in the director table schema for table '" +
@@ -254,33 +225,25 @@ string WorkerIndexRequest::_query(database::mysql::Connection::Ptr const& conn) 
 
     // NOTE: injecting the chunk number into each row of the result set because
     // the chunk-id column is optional.
-    string const columnsEscaped =
-        (qservTransId.empty() ? string() : conn->sqlId(qservTransId) + ",") +
-        conn->sqlId(directorTableKey) + "," +
-        to_string(_request.chunk()) + "," +
-        conn->sqlId(lsst::qserv::SUB_CHUNK_COLUMN);
+    string const columnsEscaped = (qservTransId.empty() ? string() : conn->sqlId(qservTransId) + ",") +
+                                  conn->sqlId(directorTableKey) + "," + to_string(_request.chunk()) + "," +
+                                  conn->sqlId(lsst::qserv::SUB_CHUNK_COLUMN);
 
-    string const databaseTableEscaped =
-        conn->sqlId(databaseInfo.name) + "." +
-        conn->sqlId(directorTable + "_" + to_string(_request.chunk()));
+    string const databaseTableEscaped = conn->sqlId(databaseInfo.name) + "." +
+                                        conn->sqlId(directorTable + "_" + to_string(_request.chunk()));
 
     string const partitionRestrictorEscaped =
-        qservTransId.empty() ? string() : "PARTITION (" + conn->sqlPartitionId(_request.transaction_id()) + ")";
+            qservTransId.empty() ? string()
+                                 : "PARTITION (" + conn->sqlPartitionId(_request.transaction_id()) + ")";
 
-    string const orderByEscaped =
-        (qservTransId.empty() ? string() : conn->sqlId(qservTransId) + ",") +
-        conn->sqlId(directorTableKey);
+    string const orderByEscaped = (qservTransId.empty() ? string() : conn->sqlId(qservTransId) + ",") +
+                                  conn->sqlId(directorTableKey);
 
-    return
-        "SELECT " + columnsEscaped +
-        "  FROM " + databaseTableEscaped + " " + partitionRestrictorEscaped +
-        "  ORDER BY " + orderByEscaped +
-        "  INTO OUTFILE " + conn->sqlValue(_fileName);
+    return "SELECT " + columnsEscaped + "  FROM " + databaseTableEscaped + " " + partitionRestrictorEscaped +
+           "  ORDER BY " + orderByEscaped + "  INTO OUTFILE " + conn->sqlValue(_fileName);
 }
 
-
 bool WorkerIndexRequest::_readFile() {
-
     LOGS(_log, LOG_LVL_DEBUG, context(__func__));
 
     // Open the stream to 'lock' the file.
@@ -307,4 +270,4 @@ bool WorkerIndexRequest::_readFile() {
     return true;
 }
 
-}}} // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

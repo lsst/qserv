@@ -36,22 +36,18 @@
 #include "replica/RequestMessenger.h"
 
 // Forward declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
-    class Messenger;
-}}}  // Forward declarations
+namespace lsst::qserv::replica {
+class Messenger;
+}  // namespace lsst::qserv::replica
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
 /**
-  * Class ReplicationRequest represents a transient state of requests
-  * within the master controller for creating replicas.
-  */
-class ReplicationRequest: public RequestMessenger  {
+ * Class ReplicationRequest represents a transient state of requests
+ * within the master controller for creating replicas.
+ */
+class ReplicationRequest : public RequestMessenger {
 public:
     typedef std::shared_ptr<ReplicationRequest> Ptr;
 
@@ -64,8 +60,8 @@ public:
 
     ~ReplicationRequest() final = default;
 
-    std::string const& database()     const { return _database; }
-    unsigned int       chunk()        const { return _chunk; }
+    std::string const& database() const { return _database; }
+    unsigned int chunk() const { return _chunk; }
     std::string const& sourceWorker() const { return _sourceWorker; }
 
     /// @return target request specific parameters
@@ -98,20 +94,13 @@ public:
      * @param messenger worker messaging service
      * @return pointer to the created object
      */
-    static Ptr create(ServiceProvider::Ptr const& serviceProvider,
-                      boost::asio::io_service& io_service,
-                      std::string const& worker,
-                      std::string const& sourceWorker,
-                      std::string const& database,
-                      unsigned int chunk,
-                      bool allowDuplicate,
-                      CallbackType const& onFinish,
-                      int priority,
-                      bool keepTracking,
-                      std::shared_ptr<Messenger> const& messenger);
+    static Ptr create(ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service,
+                      std::string const& worker, std::string const& sourceWorker, std::string const& database,
+                      unsigned int chunk, bool allowDuplicate, CallbackType const& onFinish, int priority,
+                      bool keepTracking, std::shared_ptr<Messenger> const& messenger);
 
     /// @see Request::extendedPersistentState()
-    std::list<std::pair<std::string,std::string>> extendedPersistentState() const override;
+    std::list<std::pair<std::string, std::string>> extendedPersistentState() const override;
 
 protected:
     /// @see Request::startImpl()
@@ -128,16 +117,10 @@ protected:
 
 private:
     /// @see ReplicationRequest::create()
-    ReplicationRequest(ServiceProvider::Ptr const& serviceProvider,
-                       boost::asio::io_service& io_service,
-                       std::string const& worker,
-                       std::string const& sourceWorker,
-                       std::string const& database,
-                       unsigned int  chunk,
-                       bool allowDuplicate,
-                       CallbackType const& onFinish,
-                       int priority,
-                       bool keepTracking,
+    ReplicationRequest(ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service,
+                       std::string const& worker, std::string const& sourceWorker,
+                       std::string const& database, unsigned int chunk, bool allowDuplicate,
+                       CallbackType const& onFinish, int priority, bool keepTracking,
                        std::shared_ptr<Messenger> const& messenger);
 
     /**
@@ -155,10 +138,10 @@ private:
 
     // Input parameters
 
-    std::string  const _database;
+    std::string const _database;
     unsigned int const _chunk;
-    std::string  const _sourceWorker;
-    CallbackType       _onFinish;       ///< @note reset when the request is finished
+    std::string const _sourceWorker;
+    CallbackType _onFinish;  ///< @note reset when the request is finished
 
     /// Request-specific parameters of the target request
     ReplicationRequestParams _targetRequestParams;
@@ -167,6 +150,6 @@ private:
     ReplicaInfo _replicaInfo;
 };
 
-}}} // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_REPLICATIONREQUEST_H
+#endif  // LSST_QSERV_REPLICA_REPLICATIONREQUEST_H

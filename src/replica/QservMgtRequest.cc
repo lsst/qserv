@@ -45,110 +45,96 @@ namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.QservMgtRequest");
 
-} /// namespace
+}  // namespace
 
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
 atomic<size_t> QservMgtRequest::_numClassInstances(0);
 
-
 string QservMgtRequest::state2string(State state) {
     switch (state) {
-        case State::CREATED:     return "CREATED";
-        case State::IN_PROGRESS: return "IN_PROGRESS";
-        case State::FINISHED:    return "FINISHED";
+        case State::CREATED:
+            return "CREATED";
+        case State::IN_PROGRESS:
+            return "IN_PROGRESS";
+        case State::FINISHED:
+            return "FINISHED";
     }
-    throw logic_error(
-           "QservMgtRequest::" + string(__func__) + "(State)  incomplete implementation");
+    throw logic_error("QservMgtRequest::" + string(__func__) + "(State)  incomplete implementation");
 }
-
 
 string QservMgtRequest::state2string(ExtendedState state) {
     switch (state) {
-        case ExtendedState::NONE:                return "NONE";
-        case ExtendedState::SUCCESS:             return "SUCCESS";
-        case ExtendedState::CONFIG_ERROR:        return "CONFIG_ERROR";
-        case ExtendedState::SERVER_BAD:          return "SERVER_BAD";
-        case ExtendedState::SERVER_CHUNK_IN_USE: return "SERVER_CHUNK_IN_USE";
-        case ExtendedState::SERVER_ERROR:        return "SERVER_ERROR";
-        case ExtendedState::SERVER_BAD_RESPONSE: return "SERVER_BAD_RESPONSE";
-        case ExtendedState::TIMEOUT_EXPIRED:     return "TIMEOUT_EXPIRED";
-        case ExtendedState::CANCELLED:           return "CANCELLED";
+        case ExtendedState::NONE:
+            return "NONE";
+        case ExtendedState::SUCCESS:
+            return "SUCCESS";
+        case ExtendedState::CONFIG_ERROR:
+            return "CONFIG_ERROR";
+        case ExtendedState::SERVER_BAD:
+            return "SERVER_BAD";
+        case ExtendedState::SERVER_CHUNK_IN_USE:
+            return "SERVER_CHUNK_IN_USE";
+        case ExtendedState::SERVER_ERROR:
+            return "SERVER_ERROR";
+        case ExtendedState::SERVER_BAD_RESPONSE:
+            return "SERVER_BAD_RESPONSE";
+        case ExtendedState::TIMEOUT_EXPIRED:
+            return "TIMEOUT_EXPIRED";
+        case ExtendedState::CANCELLED:
+            return "CANCELLED";
     }
-    throw logic_error(
-            "QservMgtRequest::" + string(__func__) + "(ExtendedState)  incomplete implementation");
+    throw logic_error("QservMgtRequest::" + string(__func__) + "(ExtendedState)  incomplete implementation");
 }
 
-
-QservMgtRequest::QservMgtRequest(ServiceProvider::Ptr const& serviceProvider,
-                                 string const& type,
+QservMgtRequest::QservMgtRequest(ServiceProvider::Ptr const& serviceProvider, string const& type,
                                  string const& worker)
-    :   _serviceProvider(serviceProvider),
-        _type(type),
-        _id(Generators::uniqueId()),
-        _worker(worker),
-        _state(State::CREATED),
-        _extendedState(ExtendedState::NONE),
-        _service(nullptr),
-        _requestExpirationIvalSec(serviceProvider->config()->get<unsigned int>(
-                "xrootd", "request-timeout-sec")),
-        _requestExpirationTimer(serviceProvider->io_service()) {
-
+        : _serviceProvider(serviceProvider),
+          _type(type),
+          _id(Generators::uniqueId()),
+          _worker(worker),
+          _state(State::CREATED),
+          _extendedState(ExtendedState::NONE),
+          _service(nullptr),
+          _requestExpirationIvalSec(
+                  serviceProvider->config()->get<unsigned int>("xrootd", "request-timeout-sec")),
+          _requestExpirationTimer(serviceProvider->io_service()) {
     // This report is used solely for debugging purposes to allow tracking
     // potential memory leaks within applications.
     ++_numClassInstances;
     LOGS(_log, LOG_LVL_DEBUG, context() << "constructed  instances: " << _numClassInstances);
 }
 
-
 QservMgtRequest::~QservMgtRequest() {
     --_numClassInstances;
     LOGS(_log, LOG_LVL_DEBUG, context() << "destructed   instances: " << _numClassInstances);
 }
-
 
 string QservMgtRequest::state2string() const {
     util::Lock lock(_mtx, context() + __func__);
     return state2string(state(), extendedState()) + "::" + serverError(lock);
 }
 
-
 string QservMgtRequest::serverError() const {
     util::Lock lock(_mtx, context() + __func__);
     return serverError(lock);
 }
 
-
-string QservMgtRequest::serverError(util::Lock const& lock) const {
-    return _serverError;
-}
-
+string QservMgtRequest::serverError(util::Lock const& lock) const { return _serverError; }
 
 string QservMgtRequest::context() const {
-    return id() +
-        "  " + type() +
-        "  " + state2string(state(), extendedState()) +
-        "  ";
+    return id() + "  " + type() + "  " + state2string(state(), extendedState()) + "  ";
 }
-
 
 Performance QservMgtRequest::performance() const {
     util::Lock lock(_mtx, context() + __func__);
     return performance(lock);
 }
 
+Performance QservMgtRequest::performance(util::Lock const& lock) const { return _performance; }
 
-Performance QservMgtRequest::performance(util::Lock const& lock) const {
-    return _performance;
-}
-
-
-void QservMgtRequest::start(XrdSsiService* service,
-                            string const& jobId,
+void QservMgtRequest::start(XrdSsiService* service, string const& jobId,
                             unsigned int requestExpirationIvalSec) {
-
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     util::Lock lock(_mtx, "QservMgtRequest::" + string(__func__));
@@ -162,31 +148,27 @@ void QservMgtRequest::start(XrdSsiService* service,
 
     // Check if configuration parameters are valid
 
-    if (not (serviceProvider()->config()->isKnownWorker(worker()) and
-             (service != nullptr))) {
+    if (not(serviceProvider()->config()->isKnownWorker(worker()) and (service != nullptr))) {
+        LOGS(_log, LOG_LVL_ERROR,
+             context() << __func__ << "  ** MISCONFIGURED ** "
+                       << " worker: '" << worker() << "'"
+                       << " XrdSsiService pointer: " << service);
 
-        LOGS(_log, LOG_LVL_ERROR, context() << __func__
-             << "  ** MISCONFIGURED ** "
-             << " worker: '" << worker() << "'"
-             << " XrdSsiService pointer: " << service);
+        setState(lock, State::FINISHED, ExtendedState::CONFIG_ERROR);
 
-        setState(lock,
-                 State::FINISHED,
-                 ExtendedState::CONFIG_ERROR);
-        
         notify(lock);
         return;
     }
-  
+
     // Build associations with the corresponding service and
     // the job (optional)
 
     _service = service;
     _jobId = jobId;
-      
+
     // Change the default values of the expiration ival if requested
     // before starting the timer.
-  
+
     if (0 != requestExpirationIvalSec) {
         _requestExpirationIvalSec = requestExpirationIvalSec;
     }
@@ -203,13 +185,10 @@ void QservMgtRequest::start(XrdSsiService* service,
 
     if (state() == State::FINISHED) return;
 
-    setState(lock,
-             State::IN_PROGRESS);
+    setState(lock, State::IN_PROGRESS);
 }
 
-
 void QservMgtRequest::wait() {
- 
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     if (state() == State::FINISHED) return;
@@ -218,21 +197,17 @@ void QservMgtRequest::wait() {
     _onFinishCv.wait(onFinishLock, [&] { return _finished; });
 }
 
-
 string const& QservMgtRequest::jobId() const {
     if (_state == State::CREATED) {
-        throw logic_error(
-                "Job::" + string(__func__) +
-                "  the Job Id is not available because the request has not started yet");
+        throw logic_error("Job::" + string(__func__) +
+                          "  the Job Id is not available because the request has not started yet");
     }
     return _jobId;
 }
 
-
 void QservMgtRequest::expired(boost::system::error_code const& ec) {
-
-    LOGS(_log, LOG_LVL_DEBUG, context() << __func__
-         << (ec == boost::asio::error::operation_aborted ? "  ** ABORTED **" : ""));
+    LOGS(_log, LOG_LVL_DEBUG,
+         context() << __func__ << (ec == boost::asio::error::operation_aborted ? "  ** ABORTED **" : ""));
 
     // Ignore this event if the timer was aborted
 
@@ -247,9 +222,7 @@ void QservMgtRequest::expired(boost::system::error_code const& ec) {
     finish(lock, ExtendedState::TIMEOUT_EXPIRED);
 }
 
-
 void QservMgtRequest::cancel() {
-
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     if (state() == State::FINISHED) return;
@@ -261,11 +234,7 @@ void QservMgtRequest::cancel() {
     finish(lock, ExtendedState::CANCELLED);
 }
 
-
-void QservMgtRequest::finish(util::Lock const& lock,
-                             ExtendedState extendedState,
-                             string const& serverError) {
-
+void QservMgtRequest::finish(util::Lock const& lock, ExtendedState extendedState, string const& serverError) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     // Set the optional server error state as well
@@ -279,9 +248,7 @@ void QservMgtRequest::finish(util::Lock const& lock,
     // Set new state to make sure all event handlers will recognize
     // this scenario and avoid making any modifications to the request's state.
 
-    setState(lock,
-             State::FINISHED,
-             extendedState);
+    setState(lock, State::FINISHED, extendedState);
 
     // Close all operations on BOOST ASIO if needed
 
@@ -307,23 +274,15 @@ void QservMgtRequest::finish(util::Lock const& lock,
     _onFinishCv.notify_all();
 }
 
-
-void QservMgtRequest::assertState(State desiredState,
-                                  string const& context) const {
+void QservMgtRequest::assertState(State desiredState, string const& context) const {
     if (desiredState != state()) {
-        throw logic_error(
-                context + ": wrong state " + state2string(state()) + " instead of " +
-                state2string(desiredState));
+        throw logic_error(context + ": wrong state " + state2string(state()) + " instead of " +
+                          state2string(desiredState));
     }
 }
 
-
-void QservMgtRequest::setState(util::Lock const& lock,
-                               State newState,
-                               ExtendedState newExtendedState) {
-
-    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  "
-         << state2string(newState, newExtendedState));
+void QservMgtRequest::setState(util::Lock const& lock, State newState, ExtendedState newExtendedState) {
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  " << state2string(newState, newExtendedState));
 
     // IMPORTANT: the top-level state is the last to be set when performing
     // the state transition to insure clients will get a consistent view onto
@@ -336,4 +295,4 @@ void QservMgtRequest::setState(util::Lock const& lock,
     serviceProvider()->databaseServices()->saveState(*this, _performance, _serverError);
 }
 
-}}} // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

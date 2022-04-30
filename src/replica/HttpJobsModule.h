@@ -32,15 +32,13 @@
 #include "replica/HttpModule.h"
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class HttpJobsModule implements a handler for pulling info on
  * the Replication system's Jobs.
  */
-class HttpJobsModule: public HttpModule {
+class HttpJobsModule : public HttpModule {
 public:
     typedef std::shared_ptr<HttpJobsModule> Ptr;
 
@@ -51,13 +49,10 @@ public:
      *
      * @throws std::invalid_argument for unknown values of parameter 'subModuleName'
      */
-    static void process(Controller::Ptr const& controller,
-                        std::string const& taskName,
-                        HttpProcessorConfig const& processorConfig,
-                        qhttp::Request::Ptr const& req,
-                        qhttp::Response::Ptr const& resp,
-                        std::string const& subModuleName=std::string(),
-                        HttpAuthType const authType=HttpAuthType::NONE);
+    static void process(Controller::Ptr const& controller, std::string const& taskName,
+                        HttpProcessorConfig const& processorConfig, qhttp::Request::Ptr const& req,
+                        qhttp::Response::Ptr const& resp, std::string const& subModuleName = std::string(),
+                        HttpAuthType const authType = HttpAuthType::NONE);
 
     HttpJobsModule() = delete;
     HttpJobsModule(HttpJobsModule const&) = delete;
@@ -69,16 +64,14 @@ protected:
     nlohmann::json executeImpl(std::string const& subModuleName) final;
 
 private:
-    HttpJobsModule(Controller::Ptr const& controller,
-                   std::string const& taskName,
-                   HttpProcessorConfig const& processorConfig,
-                   qhttp::Request::Ptr const& req,
+    HttpJobsModule(Controller::Ptr const& controller, std::string const& taskName,
+                   HttpProcessorConfig const& processorConfig, qhttp::Request::Ptr const& req,
                    qhttp::Response::Ptr const& resp);
 
     nlohmann::json _jobs();
     nlohmann::json _oneJob();
 };
-    
-}}} // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_HTTPJOBSMODULE_H
+}  // namespace lsst::qserv::replica
+
+#endif  // LSST_QSERV_HTTPJOBSMODULE_H

@@ -33,26 +33,21 @@
 #include "replica/HttpModule.h"
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class HttpWorkerStatusModule implements a handler for the worker
  * status requests.
  */
-class HttpWorkerStatusModule: public HttpModule {
+class HttpWorkerStatusModule : public HttpModule {
 public:
     typedef std::shared_ptr<HttpWorkerStatusModule> Ptr;
 
-    static void process(Controller::Ptr const& controller,
-                        std::string const& taskName,
-                        HttpProcessorConfig const& processorConfig,
-                        qhttp::Request::Ptr const& req,
-                        qhttp::Response::Ptr const& resp,
-                        HealthMonitorTask::Ptr const& healthMonitorTask,
-                        std::string const& subModuleName=std::string(),
-                        HttpAuthType const authType=HttpAuthType::NONE);
+    static void process(Controller::Ptr const& controller, std::string const& taskName,
+                        HttpProcessorConfig const& processorConfig, qhttp::Request::Ptr const& req,
+                        qhttp::Response::Ptr const& resp, HealthMonitorTask::Ptr const& healthMonitorTask,
+                        std::string const& subModuleName = std::string(),
+                        HttpAuthType const authType = HttpAuthType::NONE);
 
     HttpWorkerStatusModule() = delete;
     HttpWorkerStatusModule(HttpWorkerStatusModule const&) = delete;
@@ -64,18 +59,15 @@ protected:
     nlohmann::json executeImpl(std::string const& subModuleName) final;
 
 private:
-    HttpWorkerStatusModule(Controller::Ptr const& controller,
-                           std::string const& taskName,
-                           HttpProcessorConfig const& processorConfig,
-                           qhttp::Request::Ptr const& req,
-                           qhttp::Response::Ptr const& resp,
-                           HealthMonitorTask::Ptr const& healthMonitorTask);
+    HttpWorkerStatusModule(Controller::Ptr const& controller, std::string const& taskName,
+                           HttpProcessorConfig const& processorConfig, qhttp::Request::Ptr const& req,
+                           qhttp::Response::Ptr const& resp, HealthMonitorTask::Ptr const& healthMonitorTask);
 
     // Input parameters
 
     std::weak_ptr<HealthMonitorTask> const _healthMonitorTask;
 };
-    
-}}} // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_HTTPWORKERSTATUSMODULE_H
+}  // namespace lsst::qserv::replica
+
+#endif  // LSST_QSERV_HTTPWORKERSTATUSMODULE_H

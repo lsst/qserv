@@ -21,17 +21,15 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 /**
-  * @file
-  *
-  * @brief WhereClause is a parsed SQL WHERE; AreaRestrictor a spatial restrictor.
-  *
-  * @author Daniel L. Wang, SLAC
-  */
-
+ * @file
+ *
+ * @brief WhereClause is a parsed SQL WHERE; AreaRestrictor a spatial restrictor.
+ *
+ * @author Daniel L. Wang, SLAC
+ */
 
 #ifndef LSST_QSERV_QUERY_WHERECLAUSE_H
 #define LSST_QSERV_QUERY_WHERECLAUSE_H
-
 
 // System headers
 #include <iostream>
@@ -43,27 +41,23 @@
 #include "query/typedefs.h"
 
 // Forward declarations
-namespace lsst {
-namespace qserv {
+namespace lsst::qserv {
 namespace parser {
-    class WhereFactory;
+class WhereFactory;
 }
 namespace query {
-    class AndTerm;
-    class AreaRestrictor;
-    class BoolTerm;
-    class ColumnRef;
-    class LogicalTerm;
-    class OrTerm;
-    class QueryTemplate;
-    class ValueExpr;
-}}} // End of forward declarations
+class AndTerm;
+class AreaRestrictor;
+class BoolTerm;
+class ColumnRef;
+class LogicalTerm;
+class OrTerm;
+class QueryTemplate;
+class ValueExpr;
+}  // namespace query
+}  // namespace lsst::qserv
 
-
-namespace lsst {
-namespace qserv {
-namespace query {
-
+namespace lsst::qserv::query {
 
 /// WhereClause is a SQL WHERE containing AreaRestrictors and a BoolTerm tree.
 class WhereClause {
@@ -71,17 +65,12 @@ public:
     WhereClause() = default;
 
     // Construct a WhereClause that has the given OrTerm as its root term.
-    WhereClause(std::shared_ptr<query::OrTerm> rootOrTerm,
-                AreaRestrictorVecPtr areaRestrictor=nullptr)
-            : _rootOrTerm(rootOrTerm)
-            , _restrs(areaRestrictor)
-    {}
+    WhereClause(std::shared_ptr<query::OrTerm> rootOrTerm, AreaRestrictorVecPtr areaRestrictor = nullptr)
+            : _rootOrTerm(rootOrTerm), _restrs(areaRestrictor) {}
 
     ~WhereClause() = default;
 
-    AreaRestrictorVecPtr getRestrs() const {
-        return _restrs;
-    }
+    AreaRestrictorVecPtr getRestrs() const { return _restrs; }
 
     /**
      * @brief Determine if there are any AreaRestrictors in the WHERE clause.
@@ -127,10 +116,9 @@ private:
     friend class parser::WhereFactory;
 
     std::shared_ptr<OrTerm> _rootOrTerm;
-    AreaRestrictorVecPtr _restrs { std::make_shared<AreaRestrictorVec>() };
+    AreaRestrictorVecPtr _restrs{std::make_shared<AreaRestrictorVec>()};
 };
 
+}  // namespace lsst::qserv::query
 
-}}} // namespace lsst::qserv::query
-
-#endif // LSST_QSERV_QUERY_WHERECLAUSE_H
+#endif  // LSST_QSERV_QUERY_WHERECLAUSE_H

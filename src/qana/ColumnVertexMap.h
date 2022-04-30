@@ -36,9 +36,7 @@
 // Local headers
 #include "query/ColumnRef.h"
 
-namespace lsst {
-namespace qserv {
-namespace qana {
+namespace lsst::qserv::qana {
 
 typedef std::shared_ptr<query::ColumnRef const> ColumnRefConstPtr;
 struct Vertex;
@@ -81,7 +79,7 @@ class ColumnVertexMap {
 public:
     struct Entry {
         ColumnRefConstPtr cr;
-        std::vector<Vertex*> vertices; // unowned
+        std::vector<Vertex*> vertices;  // unowned
 
         Entry() {}
         Entry(ColumnRefConstPtr const& c, Vertex* t);
@@ -102,9 +100,7 @@ public:
         _init(v, first, last);
     }
 
-    void swap(ColumnVertexMap& m) {
-        _entries.swap(m._entries);
-    }
+    void swap(ColumnVertexMap& m) { _entries.swap(m._entries); }
 
     /// `find` returns the vertices for table references corresponding to the
     /// given column reference. An empty vector is returned for unrecognized
@@ -122,20 +118,17 @@ public:
     /// - Otherwise, table references for `c` from both maps are concatenated
     ///   unless `c` is already ambiguous in either map, in which case an
     ///   exception is thrown.
-    void fuse(ColumnVertexMap& m,
-              bool natural,
-              std::vector<std::string> const& cols);
+    void fuse(ColumnVertexMap& m, bool natural, std::vector<std::string> const& cols);
 
     /// `computeCommonColumns` returns all unqualified column names that are
     /// common to this map and `m`. If any such column is ambiguous in either
     /// map, an exception is thrown.
-    std::vector<std::string> const computeCommonColumns(
-        ColumnVertexMap const& m) const;
+    std::vector<std::string> const computeCommonColumns(ColumnVertexMap const& m) const;
 
 private:
     friend std::ostream& operator<<(std::ostream& os, ColumnVertexMap const& cvm);
 
-    std::vector<Entry> _entries; // sorted
+    std::vector<Entry> _entries;  // sorted
 
     // Not implemented
     ColumnVertexMap(ColumnVertexMap const&);
@@ -145,33 +138,24 @@ private:
     inline void _init(Vertex& v, InputIterator first, InputIterator last);
 };
 
-
 std::ostream& operator<<(std::ostream& os, ColumnVertexMap::Entry const& e);
-
 
 /// `ColumnRefLt` is a less-than comparison functor for column references
 /// and ColumnVertexMap::Entry objects.
 struct ColumnRefLt {
     bool operator()(query::ColumnRef const& a, query::ColumnRef const& b) const;
 
-    bool operator()(ColumnVertexMap::Entry const& a,
-                    ColumnVertexMap::Entry const& b) const {
+    bool operator()(ColumnVertexMap::Entry const& a, ColumnVertexMap::Entry const& b) const {
         return (*this)(*a.cr, *b.cr);
     }
-    bool operator()(query::ColumnRef const& a,
-                    ColumnVertexMap::Entry const& b) const {
+    bool operator()(query::ColumnRef const& a, ColumnVertexMap::Entry const& b) const {
         return (*this)(a, *b.cr);
     }
-    bool operator()(ColumnVertexMap::Entry const& a,
-                    query::ColumnRef const& b) const {
+    bool operator()(ColumnVertexMap::Entry const& a, query::ColumnRef const& b) const {
         return (*this)(*a.cr, b);
     }
-    bool operator()(ColumnRefConstPtr const& a,
-                    ColumnRefConstPtr const& b) const {
-        return (*this)(*a, *b);
-    }
+    bool operator()(ColumnRefConstPtr const& a, ColumnRefConstPtr const& b) const { return (*this)(*a, *b); }
 };
-
 
 /// `ColumnRefEq` is an equality comparison functor that is compatible with
 /// ColumnRefLt, meaning that two objects are equal iff neither is less than
@@ -179,40 +163,28 @@ struct ColumnRefLt {
 struct ColumnRefEq {
     bool operator()(query::ColumnRef const& a, query::ColumnRef const& b) const;
 
-    bool operator()(ColumnVertexMap::Entry const& a,
-                    ColumnVertexMap::Entry const& b) const {
+    bool operator()(ColumnVertexMap::Entry const& a, ColumnVertexMap::Entry const& b) const {
         return (*this)(*a.cr, *b.cr);
     }
-    bool operator()(query::ColumnRef const& a,
-                    ColumnVertexMap::Entry const& b) const {
+    bool operator()(query::ColumnRef const& a, ColumnVertexMap::Entry const& b) const {
         return (*this)(a, *b.cr);
     }
-    bool operator()(ColumnVertexMap::Entry const& a,
-                    query::ColumnRef const& b) const {
+    bool operator()(ColumnVertexMap::Entry const& a, query::ColumnRef const& b) const {
         return (*this)(*a.cr, b);
     }
-    bool operator()(ColumnRefConstPtr const& a,
-                    ColumnRefConstPtr const& b) const {
-        return (*this)(*a, *b);
-    }
+    bool operator()(ColumnRefConstPtr const& a, ColumnRefConstPtr const& b) const { return (*this)(*a, *b); }
 };
 
-inline void swap(ColumnVertexMap::Entry& a,
-                 ColumnVertexMap::Entry& b) {
-    a.swap(b);
-}
+inline void swap(ColumnVertexMap::Entry& a, ColumnVertexMap::Entry& b) { a.swap(b); }
 
 template <typename InputIterator>
-inline void ColumnVertexMap::_init(Vertex& v,
-                                   InputIterator first,
-                                   InputIterator last)
-{
+inline void ColumnVertexMap::_init(Vertex& v, InputIterator first, InputIterator last) {
     for (; first != last; ++first) {
         _entries.push_back(Entry(*first, &v));
     }
     std::sort(_entries.begin(), _entries.end(), ColumnRefLt());
 }
 
-}}} // namespace lsst::qserv::qana
+}  // namespace lsst::qserv::qana
 
-#endif // LSST_QSERV_QANA_COLUMNVERTEXMAP_H
+#endif  // LSST_QSERV_QANA_COLUMNVERTEXMAP_H

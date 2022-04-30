@@ -54,11 +54,8 @@ using namespace lsst::qserv;
 
 BOOST_AUTO_TEST_SUITE(Suite)
 
-
 struct ParseErrorQueryInfo {
-    ParseErrorQueryInfo(std::string const & q, std::string const & m)
-    : query(q), errorMessage(m)
-    {}
+    ParseErrorQueryInfo(std::string const& q, std::string const& m) : query(q), errorMessage(m) {}
 
     std::string query;
     std::string errorMessage;
@@ -69,53 +66,54 @@ std::ostream& operator<<(std::ostream& os, ParseErrorQueryInfo const& i) {
     return os;
 }
 
+static const std::vector<ParseErrorQueryInfo> PARSE_ERROR_QUERIES = {
+        // "UNION JOIN" is not expected to parse.
+        ParseErrorQueryInfo(
+                "SELECT s1.foo, s2.foo AS s2_foo FROM Source s1 UNION JOIN Source s2 WHERE s1.bar = s2.bar;",
+                "ParseException:Failed to instantiate query: \"SELECT s1.foo, s2.foo AS s2_foo FROM Source "
+                "s1 UNION "
+                "JOIN Source s2 WHERE s1.bar = s2.bar;\""),
 
-static const std::vector< ParseErrorQueryInfo > PARSE_ERROR_QUERIES = {
-    // "UNION JOIN" is not expected to parse.
-    ParseErrorQueryInfo(
-        "SELECT s1.foo, s2.foo AS s2_foo FROM Source s1 UNION JOIN Source s2 WHERE s1.bar = s2.bar;",
-        "ParseException:Failed to instantiate query: \"SELECT s1.foo, s2.foo AS s2_foo FROM Source s1 UNION "
-        "JOIN Source s2 WHERE s1.bar = s2.bar;\""),
+        // The qserv manual says:
+        // "Expressions/functions in ORDER BY clauses are not allowed
+        // In SQL92 ORDER BY is limited to actual table columns, thus expressions or functions in ORDER BY are
+        // rejected. This is true for Qserv too.
+        ParseErrorQueryInfo("SELECT objectId, iE1_SG, ABS(iE1_SG) FROM Object WHERE iE1_SG between -0.1 and "
+                            "0.1 ORDER BY ABS(iE1_SG)",
+                            "ParseException:Error parsing query, near \"ABS(iE1_SG)\", qserv does not "
+                            "support functions in ORDER BY."),
 
-    // The qserv manual says:
-    // "Expressions/functions in ORDER BY clauses are not allowed
-    // In SQL92 ORDER BY is limited to actual table columns, thus expressions or functions in ORDER BY are
-    // rejected. This is true for Qserv too.
-    ParseErrorQueryInfo(
-        "SELECT objectId, iE1_SG, ABS(iE1_SG) FROM Object WHERE iE1_SG between -0.1 and 0.1 ORDER BY ABS(iE1_SG)",
-        "ParseException:Error parsing query, near \"ABS(iE1_SG)\", qserv does not support functions in ORDER BY."),
+        ParseErrorQueryInfo("SELECT foo from Filter f limit 5 garbage query !#$%!#$",
+                            "ParseException:Failed to instantiate query: \"SELECT foo from Filter f limit 5 "
+                            "garbage query !#$%!#$\""),
 
-    ParseErrorQueryInfo(
-        "SELECT foo from Filter f limit 5 garbage query !#$%!#$",
-        "ParseException:Failed to instantiate query: \"SELECT foo from Filter f limit 5 garbage query !#$%!#$\""),
+        ParseErrorQueryInfo("SELECT foo from Filter f limit 5 garbage query !#$%!#$",
+                            "ParseException:Failed to instantiate query: \"SELECT foo from Filter f limit 5 "
+                            "garbage query !#$%!#$\""),
 
-    ParseErrorQueryInfo(
-        "SELECT foo from Filter f limit 5 garbage query !#$%!#$",
-        "ParseException:Failed to instantiate query: \"SELECT foo from Filter f limit 5 garbage query !#$%!#$\""),
+        ParseErrorQueryInfo("SELECT foo from Filter f limit 5; garbage query !#$%!#$",
+                            "ParseException:Failed to instantiate query: \"SELECT foo from Filter f limit 5; "
+                            "garbage query !#$%!#$\""),
 
-    ParseErrorQueryInfo(
-        "SELECT foo from Filter f limit 5; garbage query !#$%!#$",
-        "ParseException:Failed to instantiate query: \"SELECT foo from Filter f limit 5; garbage query !#$%!#$\""),
+        ParseErrorQueryInfo(
+                "SELECT count(*) AS n, AVG(ra_PS), AVG(decl_PS), _chunkId FROM Object GROUP BY _chunkId;",
+                "ParseException:Error parsing query, near \"_chunkId\", Identifiers in Qserv may not start "
+                "with an underscore."),
 
-    ParseErrorQueryInfo(
-        "SELECT count(*) AS n, AVG(ra_PS), AVG(decl_PS), _chunkId FROM Object GROUP BY _chunkId;",
-        "ParseException:Error parsing query, near \"_chunkId\", Identifiers in Qserv may not start with an underscore."),
+        ParseErrorQueryInfo(
+                "LECT sce.filterName,sce.field "
+                "FROM LSST.Science_Ccd_Exposure AS sce "
+                "WHERE sce.field=535 AND sce.camcol LIKE '%' ",
+                "ParseException:Failed to instantiate query: \"LECT sce.filterName,sce.field "
+                "FROM LSST.Science_Ccd_Exposure AS sce WHERE sce.field=535 AND sce.camcol LIKE '%' \""),
 
-    ParseErrorQueryInfo(
-        "LECT sce.filterName,sce.field "
-            "FROM LSST.Science_Ccd_Exposure AS sce "
-            "WHERE sce.field=535 AND sce.camcol LIKE '%' ",
-        "ParseException:Failed to instantiate query: \"LECT sce.filterName,sce.field "
-            "FROM LSST.Science_Ccd_Exposure AS sce WHERE sce.field=535 AND sce.camcol LIKE '%' \""),
-
-    // per testQueryAnaGeneral: CASE in column spec is illegal.
-    ParseErrorQueryInfo(
-        "SELECT  COUNT(*) AS totalCount, "
-           "SUM(CASE WHEN (typeId=3) THEN 1 ELSE 0 END) AS galaxyCount "
-           "FROM Object WHERE rFlux_PS > 10;",
-       "ParseException:qserv can not parse query, near \"CASE WHEN (typeId=3) THEN 1 ELSE 0 END\""),
+        // per testQueryAnaGeneral: CASE in column spec is illegal.
+        ParseErrorQueryInfo(
+                "SELECT  COUNT(*) AS totalCount, "
+                "SUM(CASE WHEN (typeId=3) THEN 1 ELSE 0 END) AS galaxyCount "
+                "FROM Object WHERE rFlux_PS > 10;",
+                "ParseException:qserv can not parse query, near \"CASE WHEN (typeId=3) THEN 1 ELSE 0 END\""),
 };
-
 
 BOOST_DATA_TEST_CASE(expected_parse_error, PARSE_ERROR_QUERIES, queryInfo) {
     auto querySession = qproc::QuerySession();
@@ -153,34 +151,27 @@ BOOST_AUTO_TEST_CASE(testUserQueryType) {
         const char* query;
         const char* db;
         const char* table;
-    } drop_table_ok[] = {
-        {"DROP TABLE DB.TABLE", "DB", "TABLE"},
-        {"DROP TABLE DB.TABLE;", "DB", "TABLE"},
-        {"DROP TABLE DB.TABLE ;", "DB", "TABLE"},
-        {"DROP TABLE `DB`.`TABLE` ", "DB", "TABLE"},
-        {"DROP TABLE \"DB\".\"TABLE\"", "DB", "TABLE"},
-        {"DROP TABLE TABLE", "", "TABLE"},
-        {"DROP TABLE `TABLE`", "", "TABLE"},
-        {"DROP TABLE \"TABLE\"", "", "TABLE"},
-        {"drop\ttable\nDB.TABLE ;", "DB", "TABLE"}
-    };
+    } drop_table_ok[] = {{"DROP TABLE DB.TABLE", "DB", "TABLE"},
+                         {"DROP TABLE DB.TABLE;", "DB", "TABLE"},
+                         {"DROP TABLE DB.TABLE ;", "DB", "TABLE"},
+                         {"DROP TABLE `DB`.`TABLE` ", "DB", "TABLE"},
+                         {"DROP TABLE \"DB\".\"TABLE\"", "DB", "TABLE"},
+                         {"DROP TABLE TABLE", "", "TABLE"},
+                         {"DROP TABLE `TABLE`", "", "TABLE"},
+                         {"DROP TABLE \"TABLE\"", "", "TABLE"},
+                         {"drop\ttable\nDB.TABLE ;", "DB", "TABLE"}};
 
-    for (auto test: drop_table_ok) {
+    for (auto test : drop_table_ok) {
         std::string db, table;
         BOOST_CHECK(UserQueryType::isDropTable(test.query, db, table));
         BOOST_CHECK_EQUAL(db, test.db);
         BOOST_CHECK_EQUAL(table, test.table);
     }
 
-    const char* drop_table_fail[] = {
-        "DROP DATABASE DB",
-        "DROP TABLE",
-        "DROP TABLE TABLE; DROP IT;",
-        "DROP TABLE 'DB'.'TABLE'",
-        "DROP TABLE db%.TABLE",
-        "UNDROP TABLE X"
-    };
-    for (auto test: drop_table_fail) {
+    const char* drop_table_fail[] = {"DROP DATABASE DB",           "DROP TABLE",
+                                     "DROP TABLE TABLE; DROP IT;", "DROP TABLE 'DB'.'TABLE'",
+                                     "DROP TABLE db%.TABLE",       "UNDROP TABLE X"};
+    for (auto test : drop_table_fail) {
         std::string db, table;
         BOOST_CHECK(not UserQueryType::isDropTable(test, db, table));
     }
@@ -188,34 +179,27 @@ BOOST_AUTO_TEST_CASE(testUserQueryType) {
     struct {
         const char* query;
         const char* db;
-    } drop_db_ok[] = {
-        {"DROP DATABASE DB", "DB"},
-        {"DROP SCHEMA DB ", "DB"},
-        {"DROP DATABASE DB;", "DB"},
-        {"DROP SCHEMA DB ; ", "DB"},
-        {"DROP DATABASE `DB` ", "DB"},
-        {"DROP SCHEMA \"DB\"", "DB"},
-        {"drop\tdatabase\nd_b ;", "d_b"}
-    };
-    for (auto test: drop_db_ok) {
+    } drop_db_ok[] = {{"DROP DATABASE DB", "DB"},      {"DROP SCHEMA DB ", "DB"},
+                      {"DROP DATABASE DB;", "DB"},     {"DROP SCHEMA DB ; ", "DB"},
+                      {"DROP DATABASE `DB` ", "DB"},   {"DROP SCHEMA \"DB\"", "DB"},
+                      {"drop\tdatabase\nd_b ;", "d_b"}};
+    for (auto test : drop_db_ok) {
         std::string db;
         BOOST_CHECK(UserQueryType::isDropDb(test.query, db));
         BOOST_CHECK_EQUAL(db, test.db);
     }
 
-    const char* drop_db_fail[] = {
-        "DROP TABLE DB",
-        "DROP DB",
-        "DROP DATABASE",
-        "DROP DATABASE DB;;",
-        "DROP SCHEMA DB; DROP IT;",
-        "DROP SCHEMA DB.TABLE",
-        "DROP SCHEMA 'DB'",
-        "DROP DATABASE db%",
-        "UNDROP DATABASE X",
-        "UN DROP DATABASE X"
-    };
-    for (auto test: drop_db_fail) {
+    const char* drop_db_fail[] = {"DROP TABLE DB",
+                                  "DROP DB",
+                                  "DROP DATABASE",
+                                  "DROP DATABASE DB;;",
+                                  "DROP SCHEMA DB; DROP IT;",
+                                  "DROP SCHEMA DB.TABLE",
+                                  "DROP SCHEMA 'DB'",
+                                  "DROP DATABASE db%",
+                                  "UNDROP DATABASE X",
+                                  "UN DROP DATABASE X"};
+    for (auto test : drop_db_fail) {
         std::string db;
         BOOST_CHECK(not UserQueryType::isDropDb(test, db));
     }
@@ -224,65 +208,62 @@ BOOST_AUTO_TEST_CASE(testUserQueryType) {
         const char* query;
         const char* db;
     } flush_empty_ok[] = {
-        {"FLUSH QSERV_CHUNKS_CACHE", ""},
-        {"FLUSH QSERV_CHUNKS_CACHE\t ", ""},
-        {"FLUSH QSERV_CHUNKS_CACHE;", ""},
-        {"FLUSH QSERV_CHUNKS_CACHE ; ", ""},
-        {"FLUSH QSERV_CHUNKS_CACHE FOR DB", "DB"},
-        {"FLUSH QSERV_CHUNKS_CACHE FOR `DB`", "DB"},
-        {"FLUSH QSERV_CHUNKS_CACHE FOR \"DB\"", "DB"},
-        {"FLUSH QSERV_CHUNKS_CACHE FOR DB ; ", "DB"},
-        {"flush qserv_chunks_cache for `d_b`", "d_b"},
-        {"flush\nqserv_chunks_CACHE\tfor \t d_b", "d_b"},
+            {"FLUSH QSERV_CHUNKS_CACHE", ""},
+            {"FLUSH QSERV_CHUNKS_CACHE\t ", ""},
+            {"FLUSH QSERV_CHUNKS_CACHE;", ""},
+            {"FLUSH QSERV_CHUNKS_CACHE ; ", ""},
+            {"FLUSH QSERV_CHUNKS_CACHE FOR DB", "DB"},
+            {"FLUSH QSERV_CHUNKS_CACHE FOR `DB`", "DB"},
+            {"FLUSH QSERV_CHUNKS_CACHE FOR \"DB\"", "DB"},
+            {"FLUSH QSERV_CHUNKS_CACHE FOR DB ; ", "DB"},
+            {"flush qserv_chunks_cache for `d_b`", "d_b"},
+            {"flush\nqserv_chunks_CACHE\tfor \t d_b", "d_b"},
     };
-    for (auto test: flush_empty_ok) {
+    for (auto test : flush_empty_ok) {
         std::string db;
         BOOST_CHECK(UserQueryType::isFlushChunksCache(test.query, db));
         BOOST_CHECK_EQUAL(db, test.db);
     }
 
     const char* flush_empty_fail[] = {
-        "FLUSH QSERV CHUNKS CACHE",
-        "UNFLUSH QSERV_CHUNKS_CACHE",
-        "FLUSH QSERV_CHUNKS_CACHE DB",
-        "FLUSH QSERV_CHUNKS_CACHE FOR",
-        "FLUSH QSERV_CHUNKS_CACHE FROM DB",
-        "FLUSH QSERV_CHUNKS_CACHE FOR DB.TABLE",
+            "FLUSH QSERV CHUNKS CACHE",         "UNFLUSH QSERV_CHUNKS_CACHE",
+            "FLUSH QSERV_CHUNKS_CACHE DB",      "FLUSH QSERV_CHUNKS_CACHE FOR",
+            "FLUSH QSERV_CHUNKS_CACHE FROM DB", "FLUSH QSERV_CHUNKS_CACHE FOR DB.TABLE",
     };
-    for (auto test: flush_empty_fail) {
+    for (auto test : flush_empty_fail) {
         std::string db;
         BOOST_CHECK(not UserQueryType::isFlushChunksCache(test, db));
     }
 
     const char* show_proclist_ok[] = {
-        "SHOW PROCESSLIST",
-        "show processlist",
-        "show    PROCESSLIST",
+            "SHOW PROCESSLIST",
+            "show processlist",
+            "show    PROCESSLIST",
     };
-    for (auto test: show_proclist_ok) {
+    for (auto test : show_proclist_ok) {
         bool full;
         BOOST_CHECK(UserQueryType::isShowProcessList(test, full));
         BOOST_CHECK(not full);
     }
 
     const char* show_full_proclist_ok[] = {
-        "SHOW FULL PROCESSLIST",
-        "show full   processlist",
-        "show FULL PROCESSLIST",
+            "SHOW FULL PROCESSLIST",
+            "show full   processlist",
+            "show FULL PROCESSLIST",
     };
-    for (auto test: show_full_proclist_ok) {
+    for (auto test : show_full_proclist_ok) {
         bool full;
         BOOST_CHECK(UserQueryType::isShowProcessList(test, full));
         BOOST_CHECK(full);
     }
 
     const char* show_proclist_fail[] = {
-        "show PROCESS",
-        "SHOW PROCESS LIST",
-        "show fullprocesslist",
-        "show full process list",
+            "show PROCESS",
+            "SHOW PROCESS LIST",
+            "show fullprocesslist",
+            "show full process list",
     };
-    for (auto test: show_proclist_fail) {
+    for (auto test : show_proclist_fail) {
         bool full;
         BOOST_CHECK(not UserQueryType::isShowProcessList(test, full));
     }
@@ -291,11 +272,11 @@ BOOST_AUTO_TEST_CASE(testUserQueryType) {
         const char* db;
         const char* table;
     } proclist_table_ok[] = {
-        {"INFORMATION_SCHEMA", "PROCESSLIST"},
-        {"information_schema", "processlist"},
-        {"Information_Schema", "ProcessList"},
+            {"INFORMATION_SCHEMA", "PROCESSLIST"},
+            {"information_schema", "processlist"},
+            {"Information_Schema", "ProcessList"},
     };
-    for (auto test: proclist_table_ok) {
+    for (auto test : proclist_table_ok) {
         BOOST_CHECK(UserQueryType::isProcessListTable(test.db, test.table));
     }
 
@@ -303,11 +284,11 @@ BOOST_AUTO_TEST_CASE(testUserQueryType) {
         const char* db;
         const char* table;
     } proclist_table_fail[] = {
-        {"INFORMATIONSCHEMA", "PROCESSLIST"},
-        {"information_schema", "process_list"},
-        {"Information Schema", "Process List"},
+            {"INFORMATIONSCHEMA", "PROCESSLIST"},
+            {"information_schema", "process_list"},
+            {"Information Schema", "Process List"},
     };
-    for (auto test: proclist_table_fail) {
+    for (auto test : proclist_table_fail) {
         BOOST_CHECK(not UserQueryType::isProcessListTable(test.db, test.table));
     }
 
@@ -315,28 +296,24 @@ BOOST_AUTO_TEST_CASE(testUserQueryType) {
         const char* query;
         int id;
     } kill_query_ok[] = {
-        {"KILL 100", 100},
-        {"KilL 101  ", 101},
-        {"kill   102  ", 102},
-        {"KILL QUERY 100", 100},
-        {"kill\tquery   100   ", 100},
-        {"KILL CONNECTION 100", 100},
-        {"KILL \t CONNECTION   100  ", 100},
+            {"KILL 100", 100},
+            {"KilL 101  ", 101},
+            {"kill   102  ", 102},
+            {"KILL QUERY 100", 100},
+            {"kill\tquery   100   ", 100},
+            {"KILL CONNECTION 100", 100},
+            {"KILL \t CONNECTION   100  ", 100},
     };
-    for (auto test: kill_query_ok) {
+    for (auto test : kill_query_ok) {
         int threadId;
         BOOST_CHECK(UserQueryType::isKill(test.query, threadId));
         BOOST_CHECK_EQUAL(threadId, test.id);
     }
 
     const char* kill_query_fail[] = {
-        "NOT KILL 100",
-        "KILL SESSION 100 ",
-        "KILL QID100",
-        "KILL 100Q ",
-        "KILL QUIERY=100 ",
+            "NOT KILL 100", "KILL SESSION 100 ", "KILL QID100", "KILL 100Q ", "KILL QUIERY=100 ",
     };
-    for (auto test: kill_query_fail) {
+    for (auto test : kill_query_fail) {
         int threadId;
         BOOST_CHECK(not UserQueryType::isKill(test, threadId));
     }
@@ -345,28 +322,23 @@ BOOST_AUTO_TEST_CASE(testUserQueryType) {
         const char* query;
         QueryId id;
     } cancel_ok[] = {
-        {"CANCEL 100", 100},
-        {"CAnCeL 101  ", 101},
-        {"cancel \t  102  ", 102},
+            {"CANCEL 100", 100},
+            {"CAnCeL 101  ", 101},
+            {"cancel \t  102  ", 102},
     };
-    for (auto test: cancel_ok) {
+    for (auto test : cancel_ok) {
         QueryId queryId;
         BOOST_CHECK(UserQueryType::isCancel(test.query, queryId));
         BOOST_CHECK_EQUAL(queryId, test.id);
     }
 
     const char* cancel_fail[] = {
-        "NOT CANCLE 100",
-        "CANCEL QUERY 100 ",
-        "CANCEL q100",
-        "cancel 100Q ",
-        "cancel QUIERY=100 ",
+            "NOT CANCLE 100", "CANCEL QUERY 100 ", "CANCEL q100", "cancel 100Q ", "cancel QUIERY=100 ",
     };
-    for (auto test: cancel_fail) {
+    for (auto test : cancel_fail) {
         QueryId queryId;
         BOOST_CHECK(not UserQueryType::isCancel(test, queryId));
     }
-
 }
 
 BOOST_AUTO_TEST_SUITE_END()

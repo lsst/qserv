@@ -21,15 +21,15 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
- /**
-  * @file
-  *
-  * @brief Test C++ parsing and query analysis logic for select expressions
-  * with an "ORDER BY" clause.
-  *
-  *
-  * @author Fabrice Jammes, IN2P3/SLAC
-  */
+/**
+ * @file
+ *
+ * @brief Test C++ parsing and query analysis logic for select expressions
+ * with an "ORDER BY" clause.
+ *
+ *
+ * @author Fabrice Jammes, IN2P3/SLAC
+ */
 
 // System headers
 #include <memory>
@@ -66,10 +66,10 @@ using lsst::qserv::tests::QueryAnaFixture;
 ////////////////////////////////////////////////////////////////////////
 BOOST_FIXTURE_TEST_SUITE(OrderBy, QueryAnaFixture)
 
-
 BOOST_AUTO_TEST_CASE(SecondaryIndex) {
     std::string stmt = "select * from Object where objectIdObjTest in (2,3145,9999);";
-    qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Object", {"objectIdObjTest"}}}}}));
+    qsTest.sqlConfig =
+            SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Object", {"objectIdObjTest"}}}}}));
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
@@ -79,27 +79,29 @@ BOOST_AUTO_TEST_CASE(SecondaryIndex) {
     BOOST_REQUIRE(context->secIdxRestrictors->front());
     auto inRestrictor = std::dynamic_pointer_cast<SecIdxInRestrictor>(context->secIdxRestrictors->front());
     BOOST_REQUIRE(inRestrictor != nullptr);
-    BOOST_REQUIRE_EQUAL(inRestrictor->getSecIdxLookupQuery(lsst::qserv::SEC_INDEX_DB, "LSST__Object",
-                        lsst::qserv::CHUNK_COLUMN, lsst::qserv::SUB_CHUNK_COLUMN),
-        "SELECT `" + std::string(lsst::qserv::CHUNK_COLUMN) + "`, `" +
-        std::string(lsst::qserv::SUB_CHUNK_COLUMN) +
-        "` FROM `" + std::string(lsst::qserv::SEC_INDEX_DB) +
-        "`.`LSST__Object` WHERE `objectIdObjTest` IN(2,3145,9999)");
+    BOOST_REQUIRE_EQUAL(
+            inRestrictor->getSecIdxLookupQuery(lsst::qserv::SEC_INDEX_DB, "LSST__Object",
+                                               lsst::qserv::CHUNK_COLUMN, lsst::qserv::SUB_CHUNK_COLUMN),
+            "SELECT `" + std::string(lsst::qserv::CHUNK_COLUMN) + "`, `" +
+                    std::string(lsst::qserv::SUB_CHUNK_COLUMN) + "` FROM `" +
+                    std::string(lsst::qserv::SEC_INDEX_DB) +
+                    "`.`LSST__Object` WHERE `objectIdObjTest` IN(2,3145,9999)");
 }
 
-
 BOOST_AUTO_TEST_CASE(CountIn) {
-    std::string stmt = "select COUNT(*) AS N FROM Source WHERE objectId IN(386950783579546, 386942193651348);";
+    std::string stmt =
+            "select COUNT(*) AS N FROM Source WHERE objectId IN(386950783579546, 386942193651348);";
     qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Source", {"objectId"}}}}}));
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
-    std::string expectedParallel = "SELECT COUNT(*) AS `QS1_COUNT` FROM `LSST`.`Source_100` AS `LSST.Source` "
-                                   "WHERE `LSST.Source`.`objectId` IN(386950783579546,386942193651348)";
+    std::string expectedParallel =
+            "SELECT COUNT(*) AS `QS1_COUNT` FROM `LSST`.`Source_100` AS `LSST.Source` "
+            "WHERE `LSST.Source`.`objectId` IN(386950783579546,386942193651348)";
     std::string expectedMerge = "SELECT SUM(`QS1_COUNT`) AS `N` FROM `LSST`.`Source` AS `LSST.Source`";
     auto queries = queryAnaHelper.getInternalQueries(qsTest, stmt);
     BOOST_CHECK_EQUAL(queries[0], expectedParallel);
     BOOST_CHECK_EQUAL(queries[1], expectedMerge);
-    for(auto i = queryAnaHelper.querySession->cQueryBegin(), e = queryAnaHelper.querySession->cQueryEnd();
-        i != e; ++i) {
+    for (auto i = queryAnaHelper.querySession->cQueryBegin(), e = queryAnaHelper.querySession->cQueryEnd();
+         i != e; ++i) {
         auto queryTemplates = queryAnaHelper.querySession->makeQueryTemplates();
         auto cs = queryAnaHelper.querySession->buildChunkQuerySpec(queryTemplates, *i);
         LOGS_DEBUG("Chunk spec: " << *cs);
@@ -110,10 +112,10 @@ BOOST_AUTO_TEST_CASE(CountIn) {
     BOOST_CHECK(context->hasChunks());
 }
 
-
 BOOST_AUTO_TEST_CASE(RestrictorObjectIdAlias) {
     std::string stmt = "select * from Object as o1 where objectIdObjTest IN (2,3145,9999);";
-    qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Object", {"objectIdObjTest"}}}}}));
+    qsTest.sqlConfig =
+            SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Object", {"objectIdObjTest"}}}}}));
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
@@ -123,12 +125,13 @@ BOOST_AUTO_TEST_CASE(RestrictorObjectIdAlias) {
     BOOST_REQUIRE(context->secIdxRestrictors->front());
     auto inRestrictor = std::dynamic_pointer_cast<SecIdxInRestrictor>(context->secIdxRestrictors->front());
     BOOST_REQUIRE(inRestrictor != nullptr);
-    BOOST_REQUIRE_EQUAL(inRestrictor->getSecIdxLookupQuery(lsst::qserv::SEC_INDEX_DB, "LSST__Object",
-                        lsst::qserv::CHUNK_COLUMN, lsst::qserv::SUB_CHUNK_COLUMN),
-        "SELECT `" + std::string(lsst::qserv::CHUNK_COLUMN) + "`, `" +
-        std::string(lsst::qserv::SUB_CHUNK_COLUMN) +
-        "` FROM `" + std::string(lsst::qserv::SEC_INDEX_DB) +
-        "`.`LSST__Object` WHERE `objectIdObjTest` IN(2,3145,9999)");
+    BOOST_REQUIRE_EQUAL(
+            inRestrictor->getSecIdxLookupQuery(lsst::qserv::SEC_INDEX_DB, "LSST__Object",
+                                               lsst::qserv::CHUNK_COLUMN, lsst::qserv::SUB_CHUNK_COLUMN),
+            "SELECT `" + std::string(lsst::qserv::CHUNK_COLUMN) + "`, `" +
+                    std::string(lsst::qserv::SUB_CHUNK_COLUMN) + "` FROM `" +
+                    std::string(lsst::qserv::SEC_INDEX_DB) +
+                    "`.`LSST__Object` WHERE `objectIdObjTest` IN(2,3145,9999)");
 }
 
 BOOST_AUTO_TEST_SUITE_END()

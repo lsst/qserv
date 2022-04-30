@@ -26,7 +26,7 @@
 // System headers
 #include <iostream>
 #include <string>
-#include <unistd.h> // for getpass
+#include <unistd.h>  // for getpass
 
 // Third-party headers
 #include "boost/lexical_cast.hpp"
@@ -51,7 +51,6 @@ using namespace lsst::qserv::sql;
 #define FULL_TABLE_NAME DB_NAME "." TABLE_NAME
 
 namespace {
-
 
 struct TestDBGuard {
     TestDBGuard() {
@@ -83,11 +82,10 @@ struct TestDBGuard {
     MySqlConfig sqlConfig;
 };
 
-}
+}  // namespace
 
 struct PerTestFixture {
     PerTestFixture() : sqlConn(SqlConnectionFactory::make(testDB.sqlConfig)) {
-
         // create table (must be InnoDB)
         std::string query = "CREATE TABLE " FULL_TABLE_NAME " (X INT, Y INT) ENGINE=InnoDB";
         SqlErrorObject errObj;
@@ -109,17 +107,16 @@ TestDBGuard PerTestFixture::testDB;
 BOOST_FIXTURE_TEST_SUITE(SqlTransactionTestSuite, PerTestFixture)
 
 BOOST_AUTO_TEST_CASE(riiaTest) {
-
     // do transactions riia-style, they automatically abort
 
-    for (int i = 0; i != 3; ++ i){
+    for (int i = 0; i != 3; ++i) {
         SqlErrorObject errObj;
 
         SqlTransaction trans(*sqlConn, errObj);
         BOOST_CHECK(not errObj.isSet());
 
         std::string i_str = boost::lexical_cast<std::string>(i);
-        std::string j_str = boost::lexical_cast<std::string>(i*100);
+        std::string j_str = boost::lexical_cast<std::string>(i * 100);
         std::string query = "INSERT INTO " FULL_TABLE_NAME " (X, Y) VALUES(" + i_str + ", " + j_str + ")";
         BOOST_CHECK(sqlConn->runQuery(query, errObj));
 
@@ -140,21 +137,19 @@ BOOST_AUTO_TEST_CASE(riiaTest) {
         BOOST_CHECK_EQUAL(rows.size(), 1U);
         BOOST_CHECK_EQUAL(rows[0], "0");
     }
-
 }
 
 BOOST_AUTO_TEST_CASE(commitTest) {
-
     // explicit commit
 
-    for (int i = 0; i != 3; ++ i){
+    for (int i = 0; i != 3; ++i) {
         SqlErrorObject errObj;
 
         SqlTransaction trans(*sqlConn, errObj);
         BOOST_CHECK(not errObj.isSet());
 
         std::string i_str = boost::lexical_cast<std::string>(i);
-        std::string j_str = boost::lexical_cast<std::string>(i*100);
+        std::string j_str = boost::lexical_cast<std::string>(i * 100);
         std::string query = "INSERT INTO " FULL_TABLE_NAME " (X, Y) VALUES(" + i_str + ", " + j_str + ")";
         BOOST_CHECK(sqlConn->runQuery(query, errObj));
 
@@ -177,21 +172,19 @@ BOOST_AUTO_TEST_CASE(commitTest) {
         BOOST_CHECK_EQUAL(rows.size(), 1U);
         BOOST_CHECK_EQUAL(rows[0], "3");
     }
-
 }
 
 BOOST_AUTO_TEST_CASE(abortTest) {
-
     // explicit abort
 
-    for (int i = 0; i != 3; ++ i){
+    for (int i = 0; i != 3; ++i) {
         SqlErrorObject errObj;
 
         SqlTransaction trans(*sqlConn, errObj);
         BOOST_CHECK(not errObj.isSet());
 
         std::string i_str = boost::lexical_cast<std::string>(i);
-        std::string j_str = boost::lexical_cast<std::string>(i*100);
+        std::string j_str = boost::lexical_cast<std::string>(i * 100);
         std::string query = "INSERT INTO " FULL_TABLE_NAME " (X, Y) VALUES(" + i_str + ", " + j_str + ")";
         BOOST_CHECK(sqlConn->runQuery(query, errObj));
 
@@ -214,21 +207,19 @@ BOOST_AUTO_TEST_CASE(abortTest) {
         BOOST_CHECK_EQUAL(rows.size(), 1U);
         BOOST_CHECK_EQUAL(rows[0], "0");
     }
-
 }
 
 BOOST_AUTO_TEST_CASE(mixedTest) {
-
     // explicit abort/commit
 
-    for (int i = 0; i != 10; ++ i){
+    for (int i = 0; i != 10; ++i) {
         SqlErrorObject errObj;
 
         SqlTransaction trans(*sqlConn, errObj);
         BOOST_CHECK(not errObj.isSet());
 
         std::string i_str = boost::lexical_cast<std::string>(i);
-        std::string j_str = boost::lexical_cast<std::string>(i*100);
+        std::string j_str = boost::lexical_cast<std::string>(i * 100);
         std::string query = "INSERT INTO " FULL_TABLE_NAME " (X, Y) VALUES(" + i_str + ", " + j_str + ")";
         BOOST_CHECK(sqlConn->runQuery(query, errObj));
 
@@ -255,7 +246,6 @@ BOOST_AUTO_TEST_CASE(mixedTest) {
         BOOST_CHECK_EQUAL(rows.size(), 1U);
         BOOST_CHECK_EQUAL(rows[0], "5");
     }
-
 }
 
 BOOST_AUTO_TEST_SUITE_END()

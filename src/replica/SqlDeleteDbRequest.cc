@@ -34,66 +34,37 @@ namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.SqlDeleteDbRequest");
 
-} /// namespace
+}  // namespace
 
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
-SqlDeleteDbRequest::Ptr SqlDeleteDbRequest::create(
-        ServiceProvider::Ptr const& serviceProvider,
-        boost::asio::io_service& io_service,
-        string const& worker,
-        std::string const& database,
-        CallbackType const& onFinish,
-        int priority,
-        bool keepTracking,
-        shared_ptr<Messenger> const& messenger) {
-
-    return Ptr(new SqlDeleteDbRequest(
-        serviceProvider,
-        io_service,
-        worker,
-        database,
-        onFinish,
-        priority,
-        keepTracking,
-        messenger
-    ));
+SqlDeleteDbRequest::Ptr SqlDeleteDbRequest::create(ServiceProvider::Ptr const& serviceProvider,
+                                                   boost::asio::io_service& io_service, string const& worker,
+                                                   std::string const& database, CallbackType const& onFinish,
+                                                   int priority, bool keepTracking,
+                                                   shared_ptr<Messenger> const& messenger) {
+    return Ptr(new SqlDeleteDbRequest(serviceProvider, io_service, worker, database, onFinish, priority,
+                                      keepTracking, messenger));
 }
 
-
-SqlDeleteDbRequest::SqlDeleteDbRequest(
-        ServiceProvider::Ptr const& serviceProvider,
-        boost::asio::io_service& io_service,
-        string const& worker,
-        std::string const& database,
-        CallbackType const& onFinish,
-        int priority,
-        bool keepTracking,
-        shared_ptr<Messenger> const& messenger)
-    :   SqlRequest(serviceProvider,
-                   io_service,
-                   "SQL_DROP_DATABASE",
-                   worker,
-                   0 /* maxRows */,
-                   priority,
-                   keepTracking,
-                   messenger),
-        _onFinish(onFinish) {
-
+SqlDeleteDbRequest::SqlDeleteDbRequest(ServiceProvider::Ptr const& serviceProvider,
+                                       boost::asio::io_service& io_service, string const& worker,
+                                       std::string const& database, CallbackType const& onFinish,
+                                       int priority, bool keepTracking,
+                                       shared_ptr<Messenger> const& messenger)
+        : SqlRequest(serviceProvider, io_service, "SQL_DROP_DATABASE", worker, 0 /* maxRows */, priority,
+                     keepTracking, messenger),
+          _onFinish(onFinish) {
     // Finish initializing the request body's content
     requestBody.set_type(ProtocolRequestSql::DROP_DATABASE);
     requestBody.set_database(database);
 }
 
-
 void SqlDeleteDbRequest::notify(util::Lock const& lock) {
-
-    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ <<
-        "[" << ProtocolRequestSql_Type_Name(requestBody.type()) << "]");
+    LOGS(_log, LOG_LVL_DEBUG,
+         context() << __func__ << "[" << ProtocolRequestSql_Type_Name(requestBody.type()) << "]");
 
     notifyDefaultImpl<SqlDeleteDbRequest>(lock, _onFinish);
 }
 
-}}} // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

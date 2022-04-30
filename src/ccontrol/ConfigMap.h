@@ -24,12 +24,12 @@
 #ifndef LSST_QSERV_CCONTROL_CONFIGMAP_H
 #define LSST_QSERV_CCONTROL_CONFIGMAP_H
 /**
-  * @file
-  *
-  * @brief Configuration handling for the Czar
-   *
-  * @author Daniel L. Wang, SLAC
-  */
+ * @file
+ *
+ * @brief Configuration handling for the Czar
+ *
+ * @author Daniel L. Wang, SLAC
+ */
 
 // System headers
 #include <memory>
@@ -41,9 +41,7 @@
 // Local headers
 #include "global/stringTypes.h"
 
-namespace lsst {
-namespace qserv {
-namespace ccontrol {
+namespace lsst::qserv::ccontrol {
 
 /// ConfigMap is a lightweight facade on top of a basic std::map that performs
 /// type coercion. Qserv components querying configuration values use this class
@@ -56,11 +54,10 @@ public:
     ConfigMap(StringMap const& m) : _m(m) {}
 
     /// @return the string value for a key, defaulting to defaultValue
-    inline std::string get(std::string const& key,
-                           std::string const& errorMsg,
+    inline std::string get(std::string const& key, std::string const& errorMsg,
                            std::string const& defaultValue) {
         StringMap::const_iterator i = _m.find(key);
-        if(i != _m.end()) {
+        if (i != _m.end()) {
             return i->second;
         } else {
             return defaultValue;
@@ -69,12 +66,10 @@ public:
 
     /// @return the typed value for a key, defaulting to defaultValue
     template <typename T>
-    inline T getTyped(std::string const& key,
-                      std::string const& errorMsg,
-                      T const& defaultValue) {
+    inline T getTyped(std::string const& key, std::string const& errorMsg, T const& defaultValue) {
         static std::string const sentinel(")))))))ConfigMap");
         std::string res = get(key, errorMsg, sentinel);
-        if(res != sentinel) {
+        if (res != sentinel) {
             return _coerce<T>(res, defaultValue);
         }
         return defaultValue;
@@ -83,7 +78,7 @@ public:
     StringMap const& getMap() const { return _m; }
 
 private:
-    template<typename T>
+    template <typename T>
     inline T _coerce(std::string const& s, T defaultValue) {
         try {
             return boost::lexical_cast<T>(s);
@@ -91,10 +86,11 @@ private:
             return defaultValue;
         }
     }
+
 private:
     StringMap const& _m;
 };
 
-}}} // namespace lsst::qserv:ccontrol
+}  // namespace lsst::qserv::ccontrol
 
-#endif // LSST_QSERV_CCONTROL_CONFIGMAP_H
+#endif  // LSST_QSERV_CCONTROL_CONFIGMAP_H

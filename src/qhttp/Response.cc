@@ -49,70 +49,83 @@ namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.qhttp");
 
 std::map<unsigned int, const std::string> responseStringsByCode = {
-    {100, "Continue"},                          {101, "Switching Protocols"},
-    {102, "Processing"},                        {200, "OK"},
-    {201, "Created"},                           {202, "Accepted"},
-    {203, "Non-Authoritative Information"},     {204, "No Content"},
-    {205, "Reset Content"},                     {206, "Partial Content"},
-    {207, "Multi-Status"},                      {208, "Already Reported"},
-    {226, "IM Used"},                           {300, "Multiple Choices"},
-    {301, "Moved Permanently"},                 {302, "Found"},
-    {303, "See Other"},                         {304, "Not Modified"},
-    {305, "Use Proxy"},                         {307, "Temporary Redirect"},
-    {308, "Permanent Redirect"},                {400, "Bad Request"},
-    {401, "Unauthorized"},                      {402, "Payment Required"},
-    {403, "Forbidden"},                         {404, "Not Found"},
-    {405, "Method Not Allowed"},                {406, "Not Acceptable"},
-    {407, "Proxy Authentication Required"},     {408, "Request Timeout"},
-    {409, "Conflict"},                          {410, "Gone"},
-    {411, "Length Required"},                   {412, "Precondition Failed"},
-    {413, "Payload Too Large"},                 {414, "URI Too Long"},
-    {415, "Unsupported Media Type"},            {416, "Range Not Satisfiable"},
-    {417, "Expectation Failed"},                {421, "Misdirected Request"},
-    {422, "Unprocessable Entity"},              {423, "Locked"},
-    {424, "Failed Dependency"},                 {426, "Upgrade Required"},
-    {428, "Precondition Required"},             {429, "Too Many Requests"},
-    {431, "Request Header Fields Too Large"},   {500, "Internal Server Error"},
-    {501, "Not Implemented"},                   {502, "Bad Gateway"},
-    {503, "Service Unavailable"},               {504, "Gateway Timeout"},
-    {505, "HTTP Version Not Supported"},        {506, "Variant Also Negotiates"},
-    {507, "Insufficient Storage"},              {508, "Loop Detected"},
-    {510, "Not Extended"},                      {511, "Network Authentication Required"},
+        {100, "Continue"},
+        {101, "Switching Protocols"},
+        {102, "Processing"},
+        {200, "OK"},
+        {201, "Created"},
+        {202, "Accepted"},
+        {203, "Non-Authoritative Information"},
+        {204, "No Content"},
+        {205, "Reset Content"},
+        {206, "Partial Content"},
+        {207, "Multi-Status"},
+        {208, "Already Reported"},
+        {226, "IM Used"},
+        {300, "Multiple Choices"},
+        {301, "Moved Permanently"},
+        {302, "Found"},
+        {303, "See Other"},
+        {304, "Not Modified"},
+        {305, "Use Proxy"},
+        {307, "Temporary Redirect"},
+        {308, "Permanent Redirect"},
+        {400, "Bad Request"},
+        {401, "Unauthorized"},
+        {402, "Payment Required"},
+        {403, "Forbidden"},
+        {404, "Not Found"},
+        {405, "Method Not Allowed"},
+        {406, "Not Acceptable"},
+        {407, "Proxy Authentication Required"},
+        {408, "Request Timeout"},
+        {409, "Conflict"},
+        {410, "Gone"},
+        {411, "Length Required"},
+        {412, "Precondition Failed"},
+        {413, "Payload Too Large"},
+        {414, "URI Too Long"},
+        {415, "Unsupported Media Type"},
+        {416, "Range Not Satisfiable"},
+        {417, "Expectation Failed"},
+        {421, "Misdirected Request"},
+        {422, "Unprocessable Entity"},
+        {423, "Locked"},
+        {424, "Failed Dependency"},
+        {426, "Upgrade Required"},
+        {428, "Precondition Required"},
+        {429, "Too Many Requests"},
+        {431, "Request Header Fields Too Large"},
+        {500, "Internal Server Error"},
+        {501, "Not Implemented"},
+        {502, "Bad Gateway"},
+        {503, "Service Unavailable"},
+        {504, "Gateway Timeout"},
+        {505, "HTTP Version Not Supported"},
+        {506, "Variant Also Negotiates"},
+        {507, "Insufficient Storage"},
+        {508, "Loop Detected"},
+        {510, "Not Extended"},
+        {511, "Network Authentication Required"},
 };
-
 
 std::unordered_map<std::string, const std::string> contentTypesByExtension = {
-    {".css", "text/css"},
-    {".gif", "image/gif"},
-    {".htm", "text/html"},
-    {".html", "text/html"},
-    {".jpg", "image/jpeg"},
-    {".js", "application/javascript"},
-    {".png", "image/png"},
+        {".css", "text/css"},   {".gif", "image/gif"},  {".htm", "text/html"},
+        {".html", "text/html"}, {".jpg", "image/jpeg"}, {".js", "application/javascript"},
+        {".png", "image/png"},
 };
 
-} // anon namespace
+}  // namespace
 
+namespace lsst::qserv::qhttp {
 
-namespace lsst {
-namespace qserv {
-namespace qhttp {
-
-Response::Response(
-    std::shared_ptr<Server> const server,
-    std::shared_ptr<ip::tcp::socket> const socket,
-    DoneCallback const& doneCallback)
-:
-    _server(std::move(server)),
-    _socket(std::move(socket)),
-    _doneCallback(doneCallback)
-{
+Response::Response(std::shared_ptr<Server> const server, std::shared_ptr<ip::tcp::socket> const socket,
+                   DoneCallback const& doneCallback)
+        : _server(std::move(server)), _socket(std::move(socket)), _doneCallback(doneCallback) {
     _transmissionStarted.clear();
 }
 
-
-void Response::sendStatus(unsigned int status)
-{
+void Response::sendStatus(unsigned int status) {
     this->status = status;
     std::string statusStr = responseStringsByCode[status];
     std::ostringstream entStr;
@@ -125,9 +138,7 @@ void Response::sendStatus(unsigned int status)
     send(entStr.str());
 }
 
-
-void Response::send(std::string const& content, std::string const& contentType)
-{
+void Response::send(std::string const& content, std::string const& contentType) {
     headers["Content-Type"] = contentType;
     headers["Content-Length"] = std::to_string(content.length());
 
@@ -136,9 +147,7 @@ void Response::send(std::string const& content, std::string const& contentType)
     _write();
 }
 
-
-void Response::sendFile(fs::path const& path)
-{
+void Response::sendFile(fs::path const& path) {
     auto ct = contentTypesByExtension.find(path.extension().string());
     headers["Content-Type"] = (ct != contentTypesByExtension.end()) ? ct->second : "text/plain";
     headers["Content-Length"] = std::to_string(fs::file_size(path));
@@ -147,8 +156,8 @@ void Response::sendFile(fs::path const& path)
     // top-level handler in Server::_dispatchRequest().
     fs::ifstream responseFile(path);
     if (!responseFile) {
-        LOGLS_ERROR(_log, logger(_server) << logger(_socket)
-            << "open failed for " << path << ": " << std::strerror(errno));
+        LOGLS_ERROR(_log, logger(_server) << logger(_socket) << "open failed for " << path << ": "
+                                          << std::strerror(errno));
         throw(boost::system::system_error(errno, boost::system::generic_category()));
     }
 
@@ -157,9 +166,7 @@ void Response::sendFile(fs::path const& path)
     _write();
 }
 
-
-std::string Response::_headers() const
-{
+std::string Response::_headers() const {
     std::ostringstream headerst;
     headerst << "HTTP/1.1 ";
 
@@ -172,34 +179,30 @@ std::string Response::_headers() const
     LOGLS_INFO(_log, logger(_server) << logger(_socket) << headerst.str() << " + " << length << " bytes");
 
     headerst << "\r\n";
-    for(auto const& h : headers) {
+    for (auto const& h : headers) {
         headerst << h.first << ": " << h.second << "\r\n";
     }
 
     return headerst.str();
 }
 
-
-void Response::_write()
-{
+void Response::_write() {
     if (_transmissionStarted.test_and_set()) {
-        LOGLS_ERROR(_log, logger(_server) << logger(_socket)
-            << "handler logic error: multiple responses sent");
+        LOGLS_ERROR(_log, logger(_server)
+                                  << logger(_socket) << "handler logic error: multiple responses sent");
         return;
     }
 
     auto self = shared_from_this();
-    asio::async_write(*_socket, _responsebuf,
-        [self](boost::system::error_code const& ec, std::size_t sent) {
-            if (ec) {
-                LOGLS_ERROR(_log, logger(self->_server) << logger(self->_socket)
-                    << "write failed: " << ec.message());
-            }
-            if (self->_doneCallback) {
-                self->_doneCallback(ec, sent);
-            }
+    asio::async_write(*_socket, _responsebuf, [self](boost::system::error_code const& ec, std::size_t sent) {
+        if (ec) {
+            LOGLS_ERROR(_log, logger(self->_server)
+                                      << logger(self->_socket) << "write failed: " << ec.message());
         }
-    );
+        if (self->_doneCallback) {
+            self->_doneCallback(ec, sent);
+        }
+    });
 }
 
-}}} // namespace lsst::qserv::qhttp
+}  // namespace lsst::qserv::qhttp

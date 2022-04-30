@@ -28,10 +28,7 @@
 #include <memory>
 #include <string>
 
-
-namespace lsst {
-namespace qserv {
-namespace proto {
+namespace lsst::qserv::proto {
 
 /// ProtoImporter
 /// Minimal-copy import of an arbitrary proto msg from a raw buffer.
@@ -61,6 +58,6 @@ public:
     }
 };
 
-}}} // lsst::qserv::proto
+}  // namespace lsst::qserv::proto
 
-#endif // #define LSST_QSERV_PROTO_PROTOIMPORTER_H
+#endif  // #define LSST_QSERV_PROTO_PROTOIMPORTER_H

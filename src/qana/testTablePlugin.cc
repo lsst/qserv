@@ -20,11 +20,11 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-  /**
-  *
-  * @brief Simple testing for QueryPlugin implementations
-  *
-  */
+/**
+ *
+ * @brief Simple testing for QueryPlugin implementations
+ *
+ */
 
 // System headers
 #include <fstream>
@@ -57,14 +57,14 @@
 using namespace lsst::qserv;
 using lsst::qserv::query::TestFactory;
 
-
 struct TestFixture {
     TestFixture(void)
             : schemaCfg(sql::SqlConfig(sql::SqlConfig::MockDbTableColumns(
-            {{"Somedb", {{"Object", {"objectId", "ra_PS", "decl_PS", "rFlux_PS_Sigma"}}}},
-             {"Very_Long_Database_Name_So_That_It_And_The", {{"Table_are_65_char_long", {"ColumnName"}}}},
-             {"Long_Db_Name_So_That_It_And_The", {{"TandC_are_65_char_long", {"ColumnName"}}}}}))) {
-        std::string kvMapPath = "./core/modules/qana/testPlugins.kvmap"; // (from testPlugins was: FIXME ??)
+                      {{"Somedb", {{"Object", {"objectId", "ra_PS", "decl_PS", "rFlux_PS_Sigma"}}}},
+                       {"Very_Long_Database_Name_So_That_It_And_The",
+                        {{"Table_are_65_char_long", {"ColumnName"}}}},
+                       {"Long_Db_Name_So_That_It_And_The", {{"TandC_are_65_char_long", {"ColumnName"}}}}}))) {
+        std::string kvMapPath = "./core/modules/qana/testPlugins.kvmap";  // (from testPlugins was: FIXME ??)
         std::ifstream stream(kvMapPath);
         css = lsst::qserv::css::CssAccess::createFromStream(stream, ".");
     }
@@ -86,12 +86,10 @@ struct TestFixture {
     sql::SqlConfig schemaCfg;
 };
 
-
 BOOST_FIXTURE_TEST_SUITE(Suite, TestFixture)
 
-
 void REQUIRE_IS_COLUMN_REF(std::vector<std::shared_ptr<query::ValueExpr>> const& valueExprs, int count) {
-    if (count >=0) {
+    if (count >= 0) {
         BOOST_REQUIRE_EQUAL(valueExprs.size(), size_t(count));
     }
     for (auto&& valueExpr : valueExprs) {
@@ -100,15 +98,9 @@ void REQUIRE_IS_COLUMN_REF(std::vector<std::shared_ptr<query::ValueExpr>> const&
 }
 
 struct TestData {
-    TestData(std::string const& stmt_,
-             std::string const& db_,
-             std::string const& table_,
+    TestData(std::string const& stmt_, std::string const& db_, std::string const& table_,
              std::string const& tableAlias_)
-    : stmt(stmt_)
-    , expectedDb(db_)
-    , expectedTable(table_)
-    , expectedTableAlias(tableAlias_)
-    {}
+            : stmt(stmt_), expectedDb(db_), expectedTable(table_), expectedTableAlias(tableAlias_) {}
 
     std::string stmt;
     std::string expectedDb;
@@ -126,43 +118,44 @@ std::ostream& operator<<(std::ostream& os, TestData const& testData) {
     return os;
 }
 
-static const std::vector<TestData> statements_1 {
-    TestData("SELECT        objectId FROM Object ORDER BY        objectId",
-             TestFactory::getDefaultDbName(), "Object", TestFactory::getDefaultDbName() + ".Object"),
-    TestData("SELECT        objectId FROM Object ORDER BY Object.objectId",
-             TestFactory::getDefaultDbName(), "Object", TestFactory::getDefaultDbName() + ".Object"),
-    TestData("SELECT Object.objectId FROM Object ORDER BY        objectId",
-             TestFactory::getDefaultDbName(), "Object", TestFactory::getDefaultDbName() + ".Object"),
-    TestData("SELECT Object.objectId FROM Object ORDER BY Object.objectId",
-             TestFactory::getDefaultDbName(), "Object", TestFactory::getDefaultDbName() + ".Object"),
+static const std::vector<TestData> statements_1{
+        TestData("SELECT        objectId FROM Object ORDER BY        objectId",
+                 TestFactory::getDefaultDbName(), "Object", TestFactory::getDefaultDbName() + ".Object"),
+        TestData("SELECT        objectId FROM Object ORDER BY Object.objectId",
+                 TestFactory::getDefaultDbName(), "Object", TestFactory::getDefaultDbName() + ".Object"),
+        TestData("SELECT Object.objectId FROM Object ORDER BY        objectId",
+                 TestFactory::getDefaultDbName(), "Object", TestFactory::getDefaultDbName() + ".Object"),
+        TestData("SELECT Object.objectId FROM Object ORDER BY Object.objectId",
+                 TestFactory::getDefaultDbName(), "Object", TestFactory::getDefaultDbName() + ".Object"),
 
-    TestData("SELECT o.objectId FROM Object o ORDER BY o.objectId",
-             TestFactory::getDefaultDbName(), "Object", "o"),
-    TestData("SELECT   objectId FROM Object o ORDER BY o.objectId",
-             TestFactory::getDefaultDbName(), "Object", "o"),
-    TestData("SELECT o.objectId FROM Object o ORDER BY   objectId",
-             TestFactory::getDefaultDbName(), "Object", "o"),
-    TestData("SELECT   objectId FROM Object o ORDER BY   objectId",
-             TestFactory::getDefaultDbName(), "Object", "o"),
+        TestData("SELECT o.objectId FROM Object o ORDER BY o.objectId", TestFactory::getDefaultDbName(),
+                 "Object", "o"),
+        TestData("SELECT   objectId FROM Object o ORDER BY o.objectId", TestFactory::getDefaultDbName(),
+                 "Object", "o"),
+        TestData("SELECT o.objectId FROM Object o ORDER BY   objectId", TestFactory::getDefaultDbName(),
+                 "Object", "o"),
+        TestData("SELECT   objectId FROM Object o ORDER BY   objectId", TestFactory::getDefaultDbName(),
+                 "Object", "o"),
 
-    TestData("SELECT Object.objectId FROM Object o ORDER BY      o.objectId",
-             TestFactory::getDefaultDbName(), "Object", "o"),
-    TestData("SELECT        objectId FROM Object o ORDER BY Object.objectId",
-             TestFactory::getDefaultDbName(), "Object", "o"),
+        TestData("SELECT Object.objectId FROM Object o ORDER BY      o.objectId",
+                 TestFactory::getDefaultDbName(), "Object", "o"),
+        TestData("SELECT        objectId FROM Object o ORDER BY Object.objectId",
+                 TestFactory::getDefaultDbName(), "Object", "o"),
 
-    TestData("SELECT ColumnName FROM "
-                 "Very_Long_Database_Name_So_That_It_And_The.Table_are_65_char_long " // 65 chars long; 1 more than the limit in TablePlugin::MYSQL_FIELD_MAX_LEN
-                 "ORDER BY ColumnName",
-             "Very_Long_Database_Name_So_That_It_And_The", "Table_are_65_char_long", "tableRefAlias_0"),
+        TestData(
+                "SELECT ColumnName FROM "
+                "Very_Long_Database_Name_So_That_It_And_The.Table_are_65_char_long "  // 65 chars long; 1 more
+                                                                                      // than the limit in
+                                                                                      // TablePlugin::MYSQL_FIELD_MAX_LEN
+                "ORDER BY ColumnName",
+                "Very_Long_Database_Name_So_That_It_And_The", "Table_are_65_char_long", "tableRefAlias_0"),
 
 };
-
 
 // Test that the SelectStmt is rewritten by the TablePlugin so that the TableRef in the FROM list is the
 // same as the one in the SELECT list, and that the ValueExpr in the SELECT list is the same as the one
 // in the ORDER BY clause.
 BOOST_DATA_TEST_CASE(PluginRewrite_1, statements_1, s) {
-
     auto&& selectStmt = makeStmtAndRunLogical(s.stmt);
 
     auto&& fromTableRefList = selectStmt->getFromList().getTableRefList();
@@ -181,30 +174,30 @@ BOOST_DATA_TEST_CASE(PluginRewrite_1, statements_1, s) {
     BOOST_REQUIRE_EQUAL(fromTableRefs.size(), size_t(1));
     BOOST_REQUIRE_EQUAL(*selColRef->getTableRef(), *fromTableRefList[0]);
 
-    // verify there is 1 value expr in the order by list, and that it is the same as the ValueExpr in the select list.
+    // verify there is 1 value expr in the order by list, and that it is the same as the ValueExpr in the
+    // select list.
     std::vector<std::shared_ptr<query::ValueExpr>> orderByValExprList;
     selectStmt->getOrderBy().findValueExprs(orderByValExprList);
     BOOST_REQUIRE_EQUAL(orderByValExprList.size(), size_t(1));
     BOOST_REQUIRE_EQUAL(*selValExprList[0], *orderByValExprList[0]);
 }
 
-
 BOOST_AUTO_TEST_CASE(PluginRewrite_2) {
     auto&& selectStmt = makeStmtAndRunLogical(
-        "SELECT v.objectId, v.ra_PS, v.decl_PS "
-        "FROM Object v, Object o "
-        "WHERE o.objectId = 90030275138483 AND "
-               "o.objectId != v.objectId AND "
-               "scisql_angSep(v.ra_PS, v.decl_PS, o.ra_PS, o.decl_PS) < 0.016666 "
-               "AND v.rFlux_PS_Sigma > 1e-32"
-        "ORDER BY v.objectId");
+            "SELECT v.objectId, v.ra_PS, v.decl_PS "
+            "FROM Object v, Object o "
+            "WHERE o.objectId = 90030275138483 AND "
+            "o.objectId != v.objectId AND "
+            "scisql_angSep(v.ra_PS, v.decl_PS, o.ra_PS, o.decl_PS) < 0.016666 "
+            "AND v.rFlux_PS_Sigma > 1e-32"
+            "ORDER BY v.objectId");
 
     auto&& selValExprList = *selectStmt->getSelectList().getValueExprList();
     REQUIRE_IS_COLUMN_REF(selValExprList, 3);
     auto&& fromTableRefs = selectStmt->getFromList().getTableRefList();
     BOOST_REQUIRE_EQUAL(fromTableRefs.size(), size_t(2));
     // verify all 3 of the select val expr tables now point to the one from table 'v'.
-    for (int i = 0; i<3; ++i) {
+    for (int i = 0; i < 3; ++i) {
         BOOST_REQUIRE_EQUAL(*selValExprList[i]->getColumnRef()->getTableRef(), *fromTableRefs[0]);
     }
 
@@ -216,15 +209,13 @@ BOOST_AUTO_TEST_CASE(PluginRewrite_2) {
     BOOST_TEST_MESSAGE("ORDER BY:" << util::printable(orderByValExprList));
 }
 
-
 BOOST_AUTO_TEST_CASE(LongValueExpr) {
     // Select list item is 65 chars long; 1 more than the limit in TablePlugin::MYSQL_FIELD_MAX_LEN
-    std::string stmt = "SELECT Long_Db_Name_So_That_It_And_The.TandC_are_65_char_long.ColumnName "
-                       "FROM Long_Db_Name_So_That_It_And_The.TandC_are_65_char_long";
+    std::string stmt =
+            "SELECT Long_Db_Name_So_That_It_And_The.TandC_are_65_char_long.ColumnName "
+            "FROM Long_Db_Name_So_That_It_And_The.TandC_are_65_char_long";
     auto selectStmt = makeStmtAndRunLogical(stmt);
     BOOST_REQUIRE_EQUAL((*selectStmt->getSelectList().getValueExprList())[0]->getAlias(), "valueExprAlias_0");
-
 }
-
 
 BOOST_AUTO_TEST_SUITE_END()

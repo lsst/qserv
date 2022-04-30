@@ -31,32 +31,18 @@
 
 using namespace std;
 
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
-ReplicationTask::Ptr ReplicationTask::create(
-        Controller::Ptr const& controller,
-        Task::AbnormalTerminationCallbackType const& onTerminated,
-        unsigned int qservSyncTimeoutSec,
-        unsigned int replicationIntervalSec,
-        unsigned int numReplicas,
-        bool purge) {
-    return Ptr(
-        new ReplicationTask(
-            controller,
-            onTerminated,
-            qservSyncTimeoutSec,
-            replicationIntervalSec,
-            numReplicas,
-            purge
-        )
-    );
+ReplicationTask::Ptr ReplicationTask::create(Controller::Ptr const& controller,
+                                             Task::AbnormalTerminationCallbackType const& onTerminated,
+                                             unsigned int qservSyncTimeoutSec,
+                                             unsigned int replicationIntervalSec, unsigned int numReplicas,
+                                             bool purge) {
+    return Ptr(new ReplicationTask(controller, onTerminated, qservSyncTimeoutSec, replicationIntervalSec,
+                                   numReplicas, purge));
 }
 
-
 bool ReplicationTask::onRun() {
-
     bool const saveReplicaInfo = true;
     bool const allWorkers = false;
     int const priority =
@@ -84,21 +70,13 @@ bool ReplicationTask::onRun() {
     return true;
 }
 
-
 ReplicationTask::ReplicationTask(Controller::Ptr const& controller,
                                  Task::AbnormalTerminationCallbackType const& onTerminated,
-                                 unsigned int qservSyncTimeoutSec,
-                                 unsigned int replicationIntervalSec,
-                                 unsigned int numReplicas,
-                                 bool purge)
-    :   Task(controller,
-             "REPLICATION-THREAD  ",
-             onTerminated,
-            replicationIntervalSec
-        ),
-        _qservSyncTimeoutSec(qservSyncTimeoutSec),
-        _numReplicas(numReplicas),
-        _purge(purge) {
-}
+                                 unsigned int qservSyncTimeoutSec, unsigned int replicationIntervalSec,
+                                 unsigned int numReplicas, bool purge)
+        : Task(controller, "REPLICATION-THREAD  ", onTerminated, replicationIntervalSec),
+          _qservSyncTimeoutSec(qservSyncTimeoutSec),
+          _numReplicas(numReplicas),
+          _purge(purge) {}
 
-}}} // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

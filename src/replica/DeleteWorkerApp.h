@@ -25,16 +25,14 @@
 #include "replica/Application.h"
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class DeleteWorkerApp implements a tool which disables a worker
  * from any active use in a replication setup. All chunks hosted by
  * the worker node will be distributed across the cluster.
  */
-class DeleteWorkerApp: public Application {
+class DeleteWorkerApp : public Application {
 public:
     typedef std::shared_ptr<DeleteWorkerApp> Ptr;
 
@@ -47,11 +45,11 @@ public:
      */
     static Ptr create(int argc, char* argv[]);
 
-    DeleteWorkerApp()=delete;
-    DeleteWorkerApp(DeleteWorkerApp const&)=delete;
-    DeleteWorkerApp& operator=(DeleteWorkerApp const&)=delete;
+    DeleteWorkerApp() = delete;
+    DeleteWorkerApp(DeleteWorkerApp const&) = delete;
+    DeleteWorkerApp& operator=(DeleteWorkerApp const&) = delete;
 
-    ~DeleteWorkerApp() override=default;
+    ~DeleteWorkerApp() override = default;
 
 protected:
     /// @see Application::runImpl()
@@ -71,6 +69,6 @@ private:
     size_t _pageSize = 20;
 };
 
-}}} // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif /* LSST_QSERV_REPLICA_DELETEWORKERAPP_H */

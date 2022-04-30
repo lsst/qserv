@@ -43,21 +43,17 @@
 #include "util/Mutex.h"
 
 // Forward declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
-    class Configuration;
-    class ControllerIdentity;
-    class NamedMutexRegistry;
-    class QservMgtRequest;
-    class Performance;
-    class Request;
-}}}  // Forward declarations
+namespace lsst::qserv::replica {
+class Configuration;
+class ControllerIdentity;
+class NamedMutexRegistry;
+class QservMgtRequest;
+class Performance;
+class Request;
+}  // namespace lsst::qserv::replica
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class DatabaseServicesError is an exception class for reporting errors
@@ -65,38 +61,33 @@ namespace replica {
  */
 class DatabaseServicesError : public std::runtime_error {
 public:
-    DatabaseServicesError(std::string const& msg)
-        :   std::runtime_error(std::string(__func__) + ": " + msg) {
-    }
+    DatabaseServicesError(std::string const& msg) : std::runtime_error(std::string(__func__) + ": " + msg) {}
 };
-
 
 /**
  * Class DatabaseServicesNotFound is an exception class for reporting content
  * which can't be found in the database.
  */
-class DatabaseServicesNotFound: public std::runtime_error {
-public :
+class DatabaseServicesNotFound : public std::runtime_error {
+public:
     DatabaseServicesNotFound(std::string const& msg)
-        :   std::runtime_error(std::string(__func__) + ": " + msg) {
-    }
+            : std::runtime_error(std::string(__func__) + ": " + msg) {}
 };
-
 
 /**
  * Class ControllerEvent encapsulating various info on events logged
  * by Controllers. These objects are retrieved from the persistent logs.
- * 
+ *
  * @see DatabaseServices::logControllerEvent
  * @see DatabaseServices::readControllerEvents
  */
 class ControllerEvent {
 public:
-    uint32_t id = 0;    /// A unique identifier of the event in the persistent log.
-                        /// Note, that a value of this field is retrieved from the database. 
+    uint32_t id = 0;  /// A unique identifier of the event in the persistent log.
+                      /// Note, that a value of this field is retrieved from the database.
 
-    std::string controllerId;   /// Unique identifier of the Controller instance
-    uint64_t    timeStamp = 0;  /// 64-bit timestamp (ms) of the event
+    std::string controllerId;  /// Unique identifier of the Controller instance
+    uint64_t timeStamp = 0;    /// 64-bit timestamp (ms) of the event
 
     std::string task;       /// The name of a Controller task defining a scope of the operation
     std::string operation;  /// The name of an operation (request, job, other action)
@@ -111,20 +102,19 @@ public:
     nlohmann::json toJson() const;
 };
 
-
 /**
  * Class ControllerInfo encapsulates a persistent state of the Controller
  * object fetched from the database.
  */
 class ControllerInfo {
 public:
-    std::string id; /// Unique identifier of the Controller instance
+    std::string id;  /// Unique identifier of the Controller instance
 
-    uint64_t started = 0;   /// 64-bit timestamp (ms) for its start time
+    uint64_t started = 0;  /// 64-bit timestamp (ms) for its start time
 
-    std::string hostname;   /// The name of a host where the Controller was run
+    std::string hostname;  /// The name of a host where the Controller was run
 
-    int pid = 0;    /// the PID of the Controller's process
+    int pid = 0;  /// the PID of the Controller's process
 
     /**
      * Translate an instance into a JSON object
@@ -134,9 +124,8 @@ public:
      *
      * @return JSON representation of the object
      */
-    nlohmann::json toJson(bool isCurrent=false) const;
+    nlohmann::json toJson(bool isCurrent = false) const;
 };
-
 
 /**
  * Class RequestInfo encapsulates a persistent state of the Request (its
@@ -144,12 +133,12 @@ public:
  */
 class RequestInfo {
 public:
-    std::string id;     /// Unique identifier of the Request instance
-    std::string jobId;  /// Unique identifier of the parent Job instance
-    std::string name;   /// The name (actually - its specific type) of the request
-    std::string worker; /// The name of a worker where the request was sent
+    std::string id;      /// Unique identifier of the Request instance
+    std::string jobId;   /// Unique identifier of the parent Job instance
+    std::string name;    /// The name (actually - its specific type) of the request
+    std::string worker;  /// The name of a worker where the request was sent
 
-    int priority = 0;   /// The priority level
+    int priority = 0;  /// The priority level
 
     std::string state;          /// The primary state
     std::string extendedState;  /// The secondary state
@@ -164,14 +153,13 @@ public:
     uint64_t workerReceiveTime = 0;
     uint64_t workerStartTime = 0;
     uint64_t workerFinishTime = 0;
-    
+
     /// The optional collection (key-value pairs) of extended attributes
     std::list<std::pair<std::string, std::string>> kvInfo;
 
     /// @return JSON representation of the object
     nlohmann::json toJson() const;
 };
-
 
 /**
  * Class JobInfo encapsulates a persistent state of the Job (its
@@ -186,11 +174,12 @@ public:
     std::string state;          /// The primary state
     std::string extendedState;  /// The secondary state
 
-    uint64_t beginTime = 0;     /// The timestamp (ms) when the job started
-    uint64_t endTime = 0;       /// The timestamp (ms) when the job finished
-    uint64_t heartbeatTime = 0; /// The optional timestamp (ms) when the job refreshed its state as "still alive"
+    uint64_t beginTime = 0;  /// The timestamp (ms) when the job started
+    uint64_t endTime = 0;    /// The timestamp (ms) when the job finished
+    uint64_t heartbeatTime =
+            0;  /// The optional timestamp (ms) when the job refreshed its state as "still alive"
 
-    int priority = PRIORITY_NORMAL; /// The priority level
+    int priority = PRIORITY_NORMAL;  /// The priority level
 
     std::list<std::pair<std::string, std::string>> kvInfo;  /// The optional collection (key-value pairs)
                                                             /// of extended attributes
@@ -198,7 +187,6 @@ public:
     /// @return JSON representation of the object
     nlohmann::json toJson() const;
 };
-
 
 /**
  * Class TransactionInfo encapsulates a persistent state of the "super-transaction"
@@ -212,16 +200,16 @@ public:
     /// Allowed states for the transaction.
     /// See the implementation of method TransactionInfo::stateTransitionIsAllowed
     /// for possible state transitions in this FSA.
-    enum class State: int {
-        IS_STARTING = 0,    ///< the initial (and transitional) state, next states: (START, START_FAILED)
-        STARTED,            ///< the active state allowing data ingests, next states: (IS_FINISHING, IS_ABORTING)
-        IS_FINISHING,       ///< the transitonal state, next states: (FINISHED, FINISH_FAILED, IS_ABORTING)
-        IS_ABORTING,        ///< the transitonal state, next states: (ABORTED, ABORT_FAILED)
-        FINISHED,           ///< the final successfull) state
-        ABORTED,            ///< the final unsuccessfull state
-        START_FAILED,       ///< the failed (inactive) state, next states: (IS_ABORTING)
-        FINISH_FAILED,      ///< the failed (inactive) state, next states: (IS_ABORTING)
-        ABORT_FAILED        ///< the failed (inactive) state, next states: (IS_ABORTING)
+    enum class State : int {
+        IS_STARTING = 0,  ///< the initial (and transitional) state, next states: (START, START_FAILED)
+        STARTED,        ///< the active state allowing data ingests, next states: (IS_FINISHING, IS_ABORTING)
+        IS_FINISHING,   ///< the transitonal state, next states: (FINISHED, FINISH_FAILED, IS_ABORTING)
+        IS_ABORTING,    ///< the transitonal state, next states: (ABORTED, ABORT_FAILED)
+        FINISHED,       ///< the final successfull) state
+        ABORTED,        ///< the final unsuccessfull state
+        START_FAILED,   ///< the failed (inactive) state, next states: (IS_ABORTING)
+        FINISH_FAILED,  ///< the failed (inactive) state, next states: (IS_ABORTING)
+        ABORT_FAILED    ///< the failed (inactive) state, next states: (IS_ABORTING)
     };
 
     static State string2state(std::string const& str);
@@ -240,15 +228,15 @@ public:
     /// The current state of the transaction
     State state = State::IS_STARTING;
 
-    uint64_t beginTime = 0;         ///< The timestamp (milliseconds) when it was created (IS_STARTING).
-    uint64_t startTime = 0;         ///< The timestamp (milliseconds) when it started (STARTED).
-    uint64_t transitionTime = 0;    ///< The timestamp (milliseconds) when a transition
-                                    ///  commit (IS_FINISHING) / abort (IS_ABORTING) was initiated.
-    uint64_t endTime = 0;           ///< The timestamp (milliseconds) is set after transitioning
-                                    ///  into the final states (FINISHED, ABORTED) or the failed states
-                                    ///  (START_FAILED, FINISH_FAILED, ABORT_FAILED). The timestamp is
-                                    ///  reset to 0 when the transaction is moved from either
-                                    ///  of the failed states into the transitional state IS_ABORTING.
+    uint64_t beginTime = 0;       ///< The timestamp (milliseconds) when it was created (IS_STARTING).
+    uint64_t startTime = 0;       ///< The timestamp (milliseconds) when it started (STARTED).
+    uint64_t transitionTime = 0;  ///< The timestamp (milliseconds) when a transition
+                                  ///  commit (IS_FINISHING) / abort (IS_ABORTING) was initiated.
+    uint64_t endTime = 0;         ///< The timestamp (milliseconds) is set after transitioning
+                                  ///  into the final states (FINISHED, ABORTED) or the failed states
+                                  ///  (START_FAILED, FINISH_FAILED, ABORT_FAILED). The timestamp is
+                                  ///  reset to 0 when the transaction is moved from either
+                                  ///  of the failed states into the transitional state IS_ABORTING.
 
     /// @return 'true' if the object is in the valid state (was retrieved from the database).
     bool isValid() const;
@@ -281,7 +269,7 @@ public:
         /// The unique identifier of the event
         TransactionEventId id = std::numeric_limits<TransactionEventId>::max();
 
-        /// A state of a transaction when the event was recorded 
+        /// A state of a transaction when the event was recorded
         State transactionState = State::IS_STARTING;
 
         /// The name of the event
@@ -310,7 +298,6 @@ public:
     nlohmann::json toJson() const;
 };
 
-
 /**
  * Class TransactionContribInfo encapsulates a contribution into a table made
  * at a worker in a scope of the "super-transaction".
@@ -329,24 +316,20 @@ public:
     /// The unique identifier of a parent transaction.
     TransactionId transactionId = std::numeric_limits<TransactionId>::max();
 
-    std::string worker;         ///< The name name of a worker
+    std::string worker;  ///< The name name of a worker
 
-    std::string database;       ///< The name of a database
-    std::string table;          ///< The base name of a table where the contribution was made
+    std::string database;  ///< The name of a database
+    std::string table;     ///< The base name of a table where the contribution was made
 
-    unsigned int chunk = 0;     ///< (optional) The chunk number (partitioned tables only)
-    bool isOverlap = false;     ///< (optional) A flavor of the chunked table (partitioned tables only)
+    unsigned int chunk = 0;  ///< (optional) The chunk number (partitioned tables only)
+    bool isOverlap = false;  ///< (optional) A flavor of the chunked table (partitioned tables only)
 
-    std::string url;            ///< The data source specification
+    std::string url;  ///< The data source specification
 
     // The type selector is used in the where the tri-state is required.
-    enum TypeSelector {
-        SYNC,
-        ASYNC,
-        SYNC_OR_ASYNC
-    };
+    enum TypeSelector { SYNC, ASYNC, SYNC_OR_ASYNC };
 
-    bool async = false;         ///< The type of the request
+    bool async = false;  ///< The type of the request
 
     // Parameters needed for parsing the contribution.
 
@@ -362,8 +345,8 @@ public:
     // These counters are set only in case of the successful completion of the request
     // indicated by the status code 'FINISHED'.
 
-    uint64_t numBytes = 0;      ///< The total number of bytes read from the source
-    uint64_t numRows = 0;       ///< The total number of rows read from the source
+    uint64_t numBytes = 0;  ///< The total number of bytes read from the source
+    uint64_t numRows = 0;   ///< The total number of rows read from the source
 
     // -------------------------------------------------------------------------------
     // These data members are meant to be used for tracking the on-going or completion
@@ -392,25 +375,26 @@ public:
     //
     //   'loadTime'
     //    A time when loading of the (preprocessed) input file into MySQL finished or
-    //    failed. Should the latter be the case the status code 'LOAD_FAILED' will be set. 
+    //    failed. Should the latter be the case the status code 'LOAD_FAILED' will be set.
     //
 
-    uint64_t createTime = 0;    ///< The timestamp (milliseconds) when the request was received
-    uint64_t startTime = 0;     ///< The timestamp (milliseconds) when the request processing started
-    uint64_t readTime = 0;      ///< The timestamp (milliseconds) when finished reading/preprocessing the input file
-    uint64_t loadTime = 0;      ///< The timestamp (milliseconds) when finished loading the file into MySQL
+    uint64_t createTime = 0;  ///< The timestamp (milliseconds) when the request was received
+    uint64_t startTime = 0;   ///< The timestamp (milliseconds) when the request processing started
+    uint64_t readTime =
+            0;  ///< The timestamp (milliseconds) when finished reading/preprocessing the input file
+    uint64_t loadTime = 0;  ///< The timestamp (milliseconds) when finished loading the file into MySQL
 
     /// The current (or completion) status of the ingest operation.
     /// @note The completion status value 'CANCELLED' is meant to be used
     //    for processing requests in the asynchronous mode.
-    enum class Status:int {
-        IN_PROGRESS = 0,    // The transient state of a request before it's FINISHED or failed
-        CREATE_FAILED,      // The request was received and rejected right away (incorrect parameters, etc.)
-        START_FAILED,       // The request couldn't start after being pulled from a queue due to changed conditions
-        READ_FAILED,        // Reading/preprocessing of the input file failed
-        LOAD_FAILED,        // Loading into MySQL failed
-        CANCELLED,          // The request was explicitly cancelled by the ingest workflow (ASYNC)
-        FINISHED            // The request succeeded
+    enum class Status : int {
+        IN_PROGRESS = 0,  // The transient state of a request before it's FINISHED or failed
+        CREATE_FAILED,    // The request was received and rejected right away (incorrect parameters, etc.)
+        START_FAILED,  // The request couldn't start after being pulled from a queue due to changed conditions
+        READ_FAILED,   // Reading/preprocessing of the input file failed
+        LOAD_FAILED,   // Loading into MySQL failed
+        CANCELLED,     // The request was explicitly cancelled by the ingest workflow (ASYNC)
+        FINISHED       // The request succeeded
     } status;
 
     /// The temportary file that was created to store pre-processed content of the input
@@ -421,9 +405,9 @@ public:
 
     // The error context (if any).
 
-    int httpError = 0;      ///< An HTTP response code, if applies to the request
-    int systemError = 0;    ///< The UNIX errno captured at a point where a problem occurred
-    std::string error;      ///< The human-readable explanation of the error
+    int httpError = 0;    ///< An HTTP response code, if applies to the request
+    int systemError = 0;  ///< The UNIX errno captured at a point where a problem occurred
+    std::string error;    ///< The human-readable explanation of the error
 
     /// @return The string representation of the status code.
     /// @throws std::invalid_argument If the status code isn't supported by the implementation.
@@ -442,12 +426,12 @@ public:
 
     /// @return JSON representation of the object
     nlohmann::json toJson() const;
+
 private:
-    static std::map<TransactionContribInfo::Status,std::string> const _transactionContribStatus2str;
+    static std::map<TransactionContribInfo::Status, std::string> const _transactionContribStatus2str;
     static std::map<std::string, TransactionContribInfo::Status> const _transactionContribStr2status;
     static std::vector<TransactionContribInfo::Status> const _transactionContribStatusCodes;
 };
-
 
 /**
  * Class DatabaseIngestParam encapsulate a persistent state of the database ingest
@@ -455,15 +439,14 @@ private:
  */
 class DatabaseIngestParam {
 public:
-    std::string database;   /// The name of a database for which a parameter is defined
-    std::string category;   /// The name of the parameter's category.
-    std::string param;      /// The name of the parameter.
-    std::string value;      /// A value of the parameter.
+    std::string database;  /// The name of a database for which a parameter is defined
+    std::string category;  /// The name of the parameter's category.
+    std::string param;     /// The name of the parameter.
+    std::string value;     /// A value of the parameter.
 
     /// @return JSON representation of the object
     nlohmann::json toJson() const;
 };
-
 
 /**
  * Row counter for the table entry.
@@ -471,14 +454,13 @@ public:
 class TableRowStatsEntry {
 public:
     TransactionId transactionId = 0;
-    unsigned int chunk = 0;     ///< The optional parameter for the "regular" tables.
-    bool isOverlap = false;     ///< The optional parameter for the "regular" tables.
+    unsigned int chunk = 0;  ///< The optional parameter for the "regular" tables.
+    bool isOverlap = false;  ///< The optional parameter for the "regular" tables.
     size_t numRows = 0;
     uint64_t updateTime = 0;
 
-    TableRowStatsEntry(
-            TransactionId transactionId_, unsigned int chunk_, bool isOverlap_,
-            size_t numRows_, uint64_t updateTime_);
+    TableRowStatsEntry(TransactionId transactionId_, unsigned int chunk_, bool isOverlap_, size_t numRows_,
+                       uint64_t updateTime_);
 
     TableRowStatsEntry() = default;
     TableRowStatsEntry(TableRowStatsEntry const&) = default;
@@ -489,15 +471,14 @@ public:
     nlohmann::json toJson() const;
 };
 
-
 /**
  * Class TableRowStats represents a containers for the statistics captured
  * in a scope of a table.
  */
 class TableRowStats {
 public:
-    std::string database;   /// The name of a database.
-    std::string table;      /// The base name of a table.
+    std::string database;  /// The name of a database.
+    std::string table;     /// The base name of a table.
     std::list<TableRowStatsEntry> entries;
 
     TableRowStats(std::string const& database_, std::string const& table_);
@@ -511,19 +492,18 @@ public:
     nlohmann::json toJson() const;
 };
 
-
 /**
-  * Class DatabaseServices is a high-level interface to the database services
-  * for replication entities: Controller, Job and Request.
-  *
-  * This is also a base class for database technology-specific implementations
-  * of the service.
-  *
-  * Methods of this class may through database-specific exceptions, as well
-  * as general purpose exceptions explained in their documentation
-  * below.
-  */
-class DatabaseServices: public std::enable_shared_from_this<DatabaseServices> {
+ * Class DatabaseServices is a high-level interface to the database services
+ * for replication entities: Controller, Job and Request.
+ *
+ * This is also a base class for database technology-specific implementations
+ * of the service.
+ *
+ * Methods of this class may through database-specific exceptions, as well
+ * as general purpose exceptions explained in their documentation
+ * below.
+ */
+class DatabaseServices : public std::enable_shared_from_this<DatabaseServices> {
 public:
     /// The pointer type for instances of the class
     typedef std::shared_ptr<DatabaseServices> Ptr;
@@ -559,8 +539,7 @@ public:
      *
      * @throws std::logic_error if this Controller's state is already found in a database
      */
-    virtual void saveState(ControllerIdentity const& identity,
-                           uint64_t startTime) = 0;
+    virtual void saveState(ControllerIdentity const& identity, uint64_t startTime) = 0;
 
     /**
      * Save the state of the Job. This operation can be called many times for
@@ -575,7 +554,7 @@ public:
      * @param job
      *   reference to a Job object
      */
-     virtual void updateHeartbeatTime(Job const& job) = 0;
+    virtual void updateHeartbeatTime(Job const& job) = 0;
 
     /**
      * Save the state of the QservMgtRequest. This operation can be called many times for
@@ -588,8 +567,7 @@ public:
      * @param performance a reference to a Performance object
      * @param serverError a server error message (if any)
      */
-    virtual void saveState(QservMgtRequest const& request,
-                           Performance const& performance,
+    virtual void saveState(QservMgtRequest const& request, Performance const& performance,
                            std::string const& serverError) = 0;
 
     /**
@@ -602,8 +580,7 @@ public:
      * @param request a reference to a Request object
      * @param performance a reference to a Performance object
      */
-    virtual void saveState(Request const& request,
-                           Performance const& performance) = 0;
+    virtual void saveState(Request const& request, Performance const& performance) = 0;
 
     /**
      * Update a state of a target request.
@@ -616,8 +593,7 @@ public:
      * @param targetRequestPerformance performance counters of a target request
      *   obtained from a worker
      */
-    virtual void updateRequestState(Request const& request,
-                                    std::string const& targetRequestId,
+    virtual void updateRequestState(Request const& request, std::string const& targetRequestId,
                                     Performance const& targetRequestPerformance) = 0;
 
     /**
@@ -643,8 +619,7 @@ public:
      * @param infoCollection a collection of replicas
      * @throw std::invalid_argument if the database is unknown or empty
      */
-    virtual void saveReplicaInfoCollection(std::string const& worker,
-                                           std::string const& database,
+    virtual void saveReplicaInfoCollection(std::string const& worker, std::string const& database,
                                            ReplicaInfoCollection const& infoCollection) = 0;
 
     /**
@@ -666,11 +641,9 @@ public:
      * @param isPublished (optional) a flag which is used if flag 'all' is set to 'false'
      *   to narrow a collection of databases included into the search.
      */
-    virtual void findOldestReplicas(std::vector<ReplicaInfo>& replicas,
-                                    size_t maxReplicas=1,
-                                    bool enabledWorkersOnly=true,
-                                    bool allDatabases=false,
-                                    bool isPublished=true) = 0;
+    virtual void findOldestReplicas(std::vector<ReplicaInfo>& replicas, size_t maxReplicas = 1,
+                                    bool enabledWorkersOnly = true, bool allDatabases = false,
+                                    bool isPublished = true) = 0;
 
     /**
      * Find all replicas for the specified chunk and the database.
@@ -688,11 +661,9 @@ public:
      *
      * @throw std::invalid_argument if the database is unknown or empty
      */
-    virtual void findReplicas(std::vector<ReplicaInfo>& replicas,
-                              unsigned int chunk,
-                              std::string const& database,
-                              bool enabledWorkersOnly=true,
-                              bool includeFileInfo=true) = 0;
+    virtual void findReplicas(std::vector<ReplicaInfo>& replicas, unsigned int chunk,
+                              std::string const& database, bool enabledWorkersOnly = true,
+                              bool includeFileInfo = true) = 0;
 
     /**
      * Find all replicas for the specified collection of chunks and the database.
@@ -711,11 +682,9 @@ public:
      *
      * @throw std::invalid_argument if the database is unknown or empty
      */
-    virtual void findReplicas(std::vector<ReplicaInfo>& replicas,
-                              std::vector<unsigned int> const& chunks,
-                              std::string const& database,
-                              bool enabledWorkersOnly=true,
-                              bool includeFileInfo=true) = 0;
+    virtual void findReplicas(std::vector<ReplicaInfo>& replicas, std::vector<unsigned int> const& chunks,
+                              std::string const& database, bool enabledWorkersOnly = true,
+                              bool includeFileInfo = true) = 0;
 
     /**
      * Find all replicas for the specified worker and a database (or all
@@ -741,12 +710,9 @@ public:
      * @throw std::invalid_argument if the worker name is empty,
      *   or if the database family is unknown (if provided)
      */
-    virtual void findWorkerReplicas(std::vector<ReplicaInfo>& replicas,
-                                    std::string const& worker,
-                                    std::string const& database=std::string(),
-                                    bool allDatabases=false,
-                                    bool isPublished=true,
-                                    bool includeFileInfo=true) = 0;
+    virtual void findWorkerReplicas(std::vector<ReplicaInfo>& replicas, std::string const& worker,
+                                    std::string const& database = std::string(), bool allDatabases = false,
+                                    bool isPublished = true, bool includeFileInfo = true) = 0;
 
     /**
      * Find the number of replicas for the specified worker and a database (or all
@@ -771,10 +737,8 @@ public:
      * @throw std::invalid_argument if the worker name is empty,
      *   or if the database family is unknown (if provided)
      */
-    virtual uint64_t numWorkerReplicas(std::string const& worker,
-                                       std::string const& database=std::string(),
-                                       bool allDatabases=false,
-                                       bool isPublished=true) = 0;
+    virtual uint64_t numWorkerReplicas(std::string const& worker, std::string const& database = std::string(),
+                                       bool allDatabases = false, bool isPublished = true) = 0;
 
     /**
      * Find all replicas for the specified chunk on a worker.
@@ -797,12 +761,10 @@ public:
      * @throw std::invalid_argument if the worker name is empty,
      *   or if the database family is unknown (if provided)
      */
-    virtual void findWorkerReplicas(std::vector<ReplicaInfo>& replicas,
-                                    unsigned int chunk,
+    virtual void findWorkerReplicas(std::vector<ReplicaInfo>& replicas, unsigned int chunk,
                                     std::string const& worker,
-                                    std::string const& databaseFamily=std::string(),
-                                    bool allDatabases=false,
-                                    bool isPublished=true) = 0;
+                                    std::string const& databaseFamily = std::string(),
+                                    bool allDatabases = false, bool isPublished = true) = 0;
 
     /**
      * Find all replicas for the specified the database.
@@ -817,9 +779,8 @@ public:
      *
      * @throw std::invalid_argument if the database is unknown or empty
      */
-    virtual void findDatabaseReplicas(std::vector<ReplicaInfo>& replicas,
-                                      std::string const& database,
-                                      bool enabledWorkersOnly=true) = 0;
+    virtual void findDatabaseReplicas(std::vector<ReplicaInfo>& replicas, std::string const& database,
+                                      bool enabledWorkersOnly = true) = 0;
 
     /**
      * Find all unique chunk numbers for the specified the database.
@@ -834,9 +795,8 @@ public:
      *
      * @throw std::invalid_argument if the database is unknown or empty
      */
-    virtual void findDatabaseChunks(std::vector<unsigned int>& chunks,
-                                    std::string const& database,
-                                    bool enabledWorkersOnly=true) = 0;
+    virtual void findDatabaseChunks(std::vector<unsigned int>& chunks, std::string const& database,
+                                    bool enabledWorkersOnly = true) = 0;
 
     /**
      * @note the so called 'overflow' chunks will be implicitly excluded
@@ -857,9 +817,8 @@ public:
      *   in the optional collection was not found in the configuration.
      */
     virtual std::map<unsigned int, size_t> actualReplicationLevel(
-                                                std::string const& database,
-                                                std::vector<std::string> const& workersToExclude =
-                                                    std::vector<std::string>()) = 0;
+            std::string const& database,
+            std::vector<std::string> const& workersToExclude = std::vector<std::string>()) = 0;
 
     /**
      * Locate so called 'orphan' chunks which only exist on a specific set of
@@ -908,13 +867,10 @@ public:
      * @return a collection of events found within the specified time interval
      */
     virtual std::list<ControllerEvent> readControllerEvents(
-                                            std::string const& controllerId=std::string(),
-                                            uint64_t fromTimeStamp=0,
-                                            uint64_t toTimeStamp=std::numeric_limits<uint64_t>::max(),
-                                            size_t maxEntries=0,
-                                            std::string const& task=std::string(),
-                                            std::string const& operation=std::string(),
-                                            std::string const& operationStatus=std::string()) = 0;
+            std::string const& controllerId = std::string(), uint64_t fromTimeStamp = 0,
+            uint64_t toTimeStamp = std::numeric_limits<uint64_t>::max(), size_t maxEntries = 0,
+            std::string const& task = std::string(), std::string const& operation = std::string(),
+            std::string const& operationStatus = std::string()) = 0;
 
     /**
      * @param controllerId (optional) a unique identifier of a Controller whose events will
@@ -924,15 +880,15 @@ public:
      * @return a dictionary of distinct values of the controller's event attributes
      *   obtained from the persistent log.
      */
-    virtual nlohmann::json readControllerEventDict(std::string const& controllerId=std::string()) = 0;
+    virtual nlohmann::json readControllerEventDict(std::string const& controllerId = std::string()) = 0;
 
     /**
      * Find an information on a controller.
-     * 
+     *
      * @param id a unique identifier of the Controller
-     * 
+     *
      * @return the description of the Controller
-     * 
+     *
      * @throws DatabaseServicesNotFound if no Controller was found for
      *   the specified identifier
      */
@@ -949,25 +905,24 @@ public:
      * @return a collection of controllers descriptors sorted by the start time in
      *   in the descent order
      */
-    virtual std::list<ControllerInfo> controllers(
-                                        uint64_t fromTimeStamp=0,
-                                        uint64_t toTimeStamp=std::numeric_limits<uint64_t>::max(),
-                                        size_t maxEntries=0) = 0;
+    virtual std::list<ControllerInfo> controllers(uint64_t fromTimeStamp = 0,
+                                                  uint64_t toTimeStamp = std::numeric_limits<uint64_t>::max(),
+                                                  size_t maxEntries = 0) = 0;
 
     /**
      * Find an information on a request.
-     * 
+     *
      * @param id a unique identifier of a request
-     * 
+     *
      * @return the description of the request
-     * 
+     *
      * @throws DatabaseServicesNotFound if no request was found for the specified identifier
      */
     virtual RequestInfo request(std::string const& id) = 0;
-    
+
     /**
      * Find an information on requests in the specified scope
-     * 
+     *
      * @param jobId a unique identifier of a parent job
      * @param fromTimeStamp (optional) the oldest (inclusive) timestamp for the search
      * @param toTimeStamp (optional) the most recent (inclusive) timestamp for the search
@@ -977,18 +932,17 @@ public:
      * @return a collection of request descriptors sorted by the creation time in
      *   in the descent order
      */
-    virtual std::list<RequestInfo> requests(std::string const& jobId="",
-                                            uint64_t fromTimeStamp=0,
-                                            uint64_t toTimeStamp=std::numeric_limits<uint64_t>::max(),
-                                            size_t maxEntries=0) = 0;
-    
+    virtual std::list<RequestInfo> requests(std::string const& jobId = "", uint64_t fromTimeStamp = 0,
+                                            uint64_t toTimeStamp = std::numeric_limits<uint64_t>::max(),
+                                            size_t maxEntries = 0) = 0;
+
     /**
      * Find an information on a job
-     * 
+     *
      * @param id a unique identifier of a job
-     * 
+     *
      * @return the description of the job
-     * 
+     *
      * @throws DatabaseServicesNotFound if no job was found for the specified identifier
      */
     virtual JobInfo job(std::string const& id) = 0;
@@ -1006,37 +960,35 @@ public:
      * @return a collection of jobs descriptors sorted by the start time in
      *   in the descent order
      */
-    virtual std::list<JobInfo> jobs(std::string const& controllerId="",
-                                    std::string const& parentJobId="",
-                                    uint64_t fromTimeStamp=0,
-                                    uint64_t toTimeStamp=std::numeric_limits<uint64_t>::max(),
-                                    size_t maxEntries=0) = 0;
+    virtual std::list<JobInfo> jobs(std::string const& controllerId = "", std::string const& parentJobId = "",
+                                    uint64_t fromTimeStamp = 0,
+                                    uint64_t toTimeStamp = std::numeric_limits<uint64_t>::max(),
+                                    size_t maxEntries = 0) = 0;
 
     /// @param id the unique identifier of a transaction
     /// @param includeContext (optional) flag that (if 'true') would pull the transacion context
     /// @param includeLog (optional) flag that (if 'true') would pull the transacion log (events)
     /// @return a description of a super-transaction
     /// @throws DatabaseServicesNotFound if no such transaction found
-    virtual TransactionInfo transaction(TransactionId id,
-                                        bool includeContext=false,
-                                        bool includeLog=false) = 0;
+    virtual TransactionInfo transaction(TransactionId id, bool includeContext = false,
+                                        bool includeLog = false) = 0;
 
     /// @param databaseName (optional) the name of a database
     /// @param includeContext (optional) flag that (if 'true') would pull the transacion context
     /// @param includeLog (optional) flag that (if 'true') would pull the transacion log (events)
     /// @return a collection of super-transactions (all of them or for the specified database only)
     /// @throws std::invalid_argument if database name is not valid
-    virtual std::vector<TransactionInfo> transactions(std::string const& databaseName=std::string(),
-                                                      bool includeContext=false,
-                                                      bool includeLog=false) = 0;
+    virtual std::vector<TransactionInfo> transactions(std::string const& databaseName = std::string(),
+                                                      bool includeContext = false,
+                                                      bool includeLog = false) = 0;
 
     /// @param state the desired state of the transactions
     /// @param includeContext (optional) flag that (if 'true') would pull the transacion context
     /// @param includeLog (optional) flag that (if 'true') would pull the transacion log (events)
     /// @return a collection of super-transactions (all of them or for the specified database only)
     virtual std::vector<TransactionInfo> transactions(TransactionInfo::State state,
-                                                      bool includeContext=false,
-                                                      bool includeLog=false) = 0;
+                                                      bool includeContext = false,
+                                                      bool includeLog = false) = 0;
 
     /// @param databaseName the name of a database
     /// @param namedMutexRegistry the registry for acquiring named mutex to be locked by the method
@@ -1050,15 +1002,15 @@ public:
     /// @param transactionContext (optional) a user-define context explaining the transaction.
     ///   Note that a serialized value of this attribute could be as large as 16 MB as defined by
     ///   MySQL type 'MEDIUMBLOB', Longer strings will be automatically truncated.
-    /// @return a descriptor of the new super-transaction 
+    /// @return a descriptor of the new super-transaction
     /// @throws std::invalid_argument if database name is not valid, or if a value
     ///   of parameter 'transactionContext' is not a valid JSON object.
     /// @throws std::logic_error if super-transactions are not allowed for the database
     /// @see ServiceProvider::getNamedMutex
-    virtual TransactionInfo createTransaction(std::string const& databaseName,
-                                              NamedMutexRegistry& namedMutexRegistry,
-                                              std::unique_ptr<util::Lock>& namedMutexLock,
-                                              nlohmann::json const& transactionContext=nlohmann::json::object()) = 0;
+    virtual TransactionInfo createTransaction(
+            std::string const& databaseName, NamedMutexRegistry& namedMutexRegistry,
+            std::unique_ptr<util::Lock>& namedMutexLock,
+            nlohmann::json const& transactionContext = nlohmann::json::object()) = 0;
 
     /// @brief Update the state of a transaction
     /// @param id the unique identifier of a transaction
@@ -1069,8 +1021,7 @@ public:
     /// @throws DatabaseServicesNotFound if no such transaction found
     /// @throws std::logic_error for values of the newState parameters that aren't allowed
     ///   in the current state of the transaction
-    virtual TransactionInfo updateTransaction(TransactionId id,
-                                              TransactionInfo::State newState) = 0;
+    virtual TransactionInfo updateTransaction(TransactionId id, TransactionInfo::State newState) = 0;
 
     /// @brief Update or reset the context attribute of a transaction
     /// @param id the unique identifier of a transaction
@@ -1081,8 +1032,8 @@ public:
     ///   is not a valid JSON object.
     /// @note this operation is allowed on transactions in any state
     /// @note the empty input object will reset the context in the database
-    virtual TransactionInfo updateTransaction(TransactionId id,
-                                              nlohmann::json const& transactionContext=nlohmann::json::object()) = 0;
+    virtual TransactionInfo updateTransaction(
+            TransactionId id, nlohmann::json const& transactionContext = nlohmann::json::object()) = 0;
 
     /// @brief Log life-time events for a transaction
     /// @param id the unique identifier of a transaction
@@ -1092,8 +1043,8 @@ public:
     /// @return an updated descriptor of the transactions that includes the requested modification
     /// @throws DatabaseServicesNotFound if no such transaction found
     /// @throws std::invalid_argument for incorrect values of the input parameters
-    virtual TransactionInfo updateTransaction(TransactionId id,
-                                              std::unordered_map<std::string, nlohmann::json> const& events) = 0;
+    virtual TransactionInfo updateTransaction(
+            TransactionId id, std::unordered_map<std::string, nlohmann::json> const& events) = 0;
 
     /// @brief The convenience method for logging single events
     /// @param id the unique identifier of a transaction
@@ -1102,29 +1053,27 @@ public:
     /// @return an updated descriptor of the transactions that includes the requested modification
     /// @throws DatabaseServicesNotFound if no such transaction found
     /// @throws std::invalid_argument for incorrect values of the input parameters
-    TransactionInfo updateTransaction(TransactionId id,
-                                      std::string const& eventName,
-                                      nlohmann::json const& eventData=nlohmann::json::object()) {
-        return this->updateTransaction(id, std::unordered_map<std::string, nlohmann::json>({
-            {eventName, eventData}
-        }));
+    TransactionInfo updateTransaction(TransactionId id, std::string const& eventName,
+                                      nlohmann::json const& eventData = nlohmann::json::object()) {
+        return this->updateTransaction(
+                id, std::unordered_map<std::string, nlohmann::json>({{eventName, eventData}}));
     }
 
     /// @return the desired contribution into a super-transaction (if found)
     /// @param id a unique identifier of the contribution
     /// @throws DatabaseServicesNotFound if no contribution was found for the specified identifier
     virtual TransactionContribInfo transactionContrib(unsigned int id) = 0;
- 
+
     /// @return contributions into a super-transaction for the given selectors
     /// @param transactionId a unique identifier of the transaction
     /// @param table (optional) the base name of a table (all tables if not provided)
     /// @param worker (optional) the name of a worker (all workers if not provided)
     /// @param typeSelector (optional) type of the contributions
-    virtual std::vector<TransactionContribInfo> transactionContribs(TransactionId transactionId,
-                                                                    std::string const& table=std::string(),
-                                                                    std::string const& worker=std::string(),
-                                                                    TransactionContribInfo::TypeSelector typeSelector=
-                                                                            TransactionContribInfo::TypeSelector::SYNC_OR_ASYNC) = 0;
+    virtual std::vector<TransactionContribInfo> transactionContribs(
+            TransactionId transactionId, std::string const& table = std::string(),
+            std::string const& worker = std::string(),
+            TransactionContribInfo::TypeSelector typeSelector =
+                    TransactionContribInfo::TypeSelector::SYNC_OR_ASYNC) = 0;
 
     /// @return contributions into a super-transaction for the given selectors
     /// @param transactionId a unique identifier of the transaction
@@ -1132,23 +1081,22 @@ public:
     /// @param table (optional) the base name of a table (all tables if not provided)
     /// @param worker (optional) the name of a worker (all workers if not provided)
     /// @param typeSelector (optional) type of the contributions
-    virtual std::vector<TransactionContribInfo> transactionContribs(TransactionId transactionId,
-                                                                    TransactionContribInfo::Status status,
-                                                                    std::string const& table=std::string(),
-                                                                    std::string const& worker=std::string(),
-                                                                    TransactionContribInfo::TypeSelector typeSelector=
-                                                                            TransactionContribInfo::TypeSelector::SYNC_OR_ASYNC) = 0;
+    virtual std::vector<TransactionContribInfo> transactionContribs(
+            TransactionId transactionId, TransactionContribInfo::Status status,
+            std::string const& table = std::string(), std::string const& worker = std::string(),
+            TransactionContribInfo::TypeSelector typeSelector =
+                    TransactionContribInfo::TypeSelector::SYNC_OR_ASYNC) = 0;
 
     /// @return contributions into super-transactions for the given selectors
     /// @param database the name of a database
     /// @param table (optional) the base name of a table (all tables if not provided)
     /// @param worker (optional) the name of a worker (all workers if not provided)
     /// @param typeSelector (optional) type of the contributions
-    virtual std::vector<TransactionContribInfo> transactionContribs(std::string const& database,
-                                                                    std::string const& table=std::string(),
-                                                                    std::string const& worker=std::string(),
-                                                                    TransactionContribInfo::TypeSelector typeSelector=
-                                                                            TransactionContribInfo::TypeSelector::SYNC_OR_ASYNC) = 0;
+    virtual std::vector<TransactionContribInfo> transactionContribs(
+            std::string const& database, std::string const& table = std::string(),
+            std::string const& worker = std::string(),
+            TransactionContribInfo::TypeSelector typeSelector =
+                    TransactionContribInfo::TypeSelector::SYNC_OR_ASYNC) = 0;
 
     /**
      * Insert the initial record on the contribution.
@@ -1165,10 +1113,10 @@ public:
      *
      * @return The initial record on the contribution.
      */
-    virtual TransactionContribInfo createdTransactionContrib(TransactionContribInfo const& info,
-                                                             bool failed=false,
-                                                             TransactionContribInfo::Status statusOnFailed=
-                                                                    TransactionContribInfo::Status::CREATE_FAILED) = 0;
+    virtual TransactionContribInfo createdTransactionContrib(
+            TransactionContribInfo const& info, bool failed = false,
+            TransactionContribInfo::Status statusOnFailed =
+                    TransactionContribInfo::Status::CREATE_FAILED) = 0;
 
     /**
      * Update the persistent status of the contribution to indicate that it started
@@ -1178,7 +1126,7 @@ public:
      * will be switched to the final state 'START_FAILED'. In case of a failure
      * the following attributes from the input object will be also synced: 'httpError',
      * 'systemError', 'error', 'retryAllowed'.
-     * 
+     *
      * @note The next method to be called to indicate further progress (unless failed)
      * on processing the contribution should be 'readTransactionContrib'.
      *
@@ -1187,10 +1135,9 @@ public:
      *
      * @return The updated record on the contribution.
      */
-    TransactionContribInfo startedTransactionContrib(TransactionContribInfo info,
-                                                     bool failed=false,
-                                                     TransactionContribInfo::Status statusOnFailed=
-                                                            TransactionContribInfo::Status::START_FAILED);
+    TransactionContribInfo startedTransactionContrib(
+            TransactionContribInfo info, bool failed = false,
+            TransactionContribInfo::Status statusOnFailed = TransactionContribInfo::Status::START_FAILED);
 
     /**
      * Update the persistent status of the contribution to indicate that it the input
@@ -1200,7 +1147,7 @@ public:
      * will be switched to the final state 'READ_FAILED'. In case of a failure
      * the following attributes from the input object will be also synced: 'httpError',
      * 'systemError', 'error', 'retryAllowed'.
-     * 
+     *
      * @note The next method to be called to indicate further progress (unless failed)
      * on processing the contribution should be 'loadedTransactionContrib'.
      *
@@ -1208,10 +1155,9 @@ public:
      * @param failed (optional) The flag which if set to 'true' would indicate a error
      * @return The updated record on the contribution.
      */
-    TransactionContribInfo readTransactionContrib(TransactionContribInfo info,
-                                                  bool failed=false,
-                                                  TransactionContribInfo::Status statusOnFailed=
-                                                        TransactionContribInfo::Status::READ_FAILED);
+    TransactionContribInfo readTransactionContrib(
+            TransactionContribInfo info, bool failed = false,
+            TransactionContribInfo::Status statusOnFailed = TransactionContribInfo::Status::READ_FAILED);
 
     /**
      * Update the persistent status of the contribution to indicate that it the input
@@ -1221,7 +1167,7 @@ public:
      * will be switched to the final state 'LOAD_FAILED'. In case of a failure
      * the following attributes from the input object will be also synced: 'httpError',
      * 'systemError', 'error', 'retryAllowed'.
-     * 
+     *
      * @note This is the final method to be called to indicate a progress
      * on processing the contribution.
      *
@@ -1229,10 +1175,9 @@ public:
      * @param failed (optional) The flag which if set to 'true' would indicate a error
      * @return The updated record on the contribution.
      */
-    TransactionContribInfo loadedTransactionContrib(TransactionContribInfo info,
-                                                    bool failed=false,
-                                                    TransactionContribInfo::Status statusOnFailed=
-                                                            TransactionContribInfo::Status::LOAD_FAILED);
+    TransactionContribInfo loadedTransactionContrib(
+            TransactionContribInfo info, bool failed = false,
+            TransactionContribInfo::Status statusOnFailed = TransactionContribInfo::Status::LOAD_FAILED);
 
     /**
      * Update mutable parameters of the contribution request in the database.
@@ -1243,8 +1188,7 @@ public:
 
     /// @return A descriptor of the parameter
     /// @throws DatabaseServicesNotFound If no such parameter found.
-    virtual DatabaseIngestParam ingestParam(std::string const& database,
-                                            std::string const& category,
+    virtual DatabaseIngestParam ingestParam(std::string const& database, std::string const& category,
                                             std::string const& param) = 0;
 
     /**
@@ -1257,24 +1201,22 @@ public:
      * @return A collection the parameter descriptors.
      */
     virtual std::vector<DatabaseIngestParam> ingestParams(std::string const& database,
-                                                          std::string const& category=std::string()) = 0;
+                                                          std::string const& category = std::string()) = 0;
 
     /**
      * Save or update a value of a parameter.
-     * 
+     *
      * @param database The name of a database.
      * @param category The name of a parameter's category.
      * @param param The name of the parameter to be saved.
      * @param value A value of the parameter.
      */
-    virtual void saveIngestParam(std::string const& database,
-                                 std::string const& category,
-                                 std::string const& param,
-                                 std::string const& value) = 0;
+    virtual void saveIngestParam(std::string const& database, std::string const& category,
+                                 std::string const& param, std::string const& value) = 0;
 
     /**
      * Save or update a value of a parameter.
-     * 
+     *
      * @param info A descriptor (including its value) of the parameter.
      */
     void saveIngestParam(DatabaseIngestParam const& info) {
@@ -1289,9 +1231,8 @@ public:
      *   If the default value is used then entries accross all transactions
      *   will be reported.
      */
-    virtual TableRowStats tableRowStats(std::string const& database,
-                                        std::string const& table,
-                                        TransactionId transactionId=0) = 0;
+    virtual TableRowStats tableRowStats(std::string const& database, std::string const& table,
+                                        TransactionId transactionId = 0) = 0;
 
     /**
      * Save/update statistics of a table.
@@ -1307,10 +1248,9 @@ public:
      */
     virtual void deleteTableRowStats(
             std::string const& database, std::string const& table,
-            ChunkOverlapSelector overlapSelector=ChunkOverlapSelector::CHUNK_AND_OVERLAP) = 0;
+            ChunkOverlapSelector overlapSelector = ChunkOverlapSelector::CHUNK_AND_OVERLAP) = 0;
 
 protected:
-
     DatabaseServices() = default;
 
     /// @return shared pointer of the desired subclass (no dynamic type checking)
@@ -1320,6 +1260,6 @@ protected:
     }
 };
 
-}}} // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_DATABASESERVICES_H
+#endif  // LSST_QSERV_REPLICA_DATABASESERVICES_H

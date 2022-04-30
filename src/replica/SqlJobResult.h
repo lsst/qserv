@@ -35,9 +35,7 @@
 #include "nlohmann/json.hpp"
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class SqlJobResult represents a combined result received from worker
@@ -59,7 +57,7 @@ public:
 
     typedef std::string Worker;
     typedef std::string Scope;
-    typedef std::function<void(Worker,Scope,SqlResultSet::ResultSet)> OnResultVisitCallback;
+    typedef std::function<void(Worker, Scope, SqlResultSet::ResultSet)> OnResultVisitCallback;
 
     /**
      * Iterate over the result sets.
@@ -90,11 +88,10 @@ public:
      * These could be "table", "database", etc. It's printed in the header of
      * the second column of the table.
      */
-    util::ColumnTablePrinter toColumnTable(std::string const& caption=std::string(),
-                                           std::string const& indent=std::string(),
-                                           bool verticalSeparator=true,
-                                           bool reportAll=true,
-                                           std::string const& scopeName="") const;
+    util::ColumnTablePrinter toColumnTable(std::string const& caption = std::string(),
+                                           std::string const& indent = std::string(),
+                                           bool verticalSeparator = true, bool reportAll = true,
+                                           std::string const& scopeName = "") const;
 
     /**
      * Package results into a summary table which will have the following columns:
@@ -107,11 +104,11 @@ public:
      * the method are the same as for the constructor of the table printer class.
      * @see class util::ColumnTablePrinter
      */
-    util::ColumnTablePrinter summaryToColumnTable(std::string const& caption=std::string(),
-                                                  std::string const& indent=std::string(),
-                                                  bool verticalSeparator=true) const;
+    util::ColumnTablePrinter summaryToColumnTable(std::string const& caption = std::string(),
+                                                  std::string const& indent = std::string(),
+                                                  bool verticalSeparator = true) const;
 };
 
-}}} // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_SQLJOBRESULT_H
+#endif  // LSST_QSERV_REPLICA_SQLJOBRESULT_H

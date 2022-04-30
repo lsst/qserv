@@ -36,34 +36,33 @@ namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.util.Mutex");
 }
 
-namespace lsst {
-namespace qserv {
-namespace util {
+namespace lsst::qserv::util {
 
 mutex Mutex::_lockedIdMtx;
 set<unsigned int> Mutex::_lockedId;
 
-
 void Lock::_lock() {
     if (!_context.empty()) {
-        LOGS(_log, LOG_LVL_DEBUG, _context << "  LOCK[" << _mutex.id() << "]:1 "
-             << "  LOCKED: " << util::printable(Mutex::lockedId(), "", "", " "));
+        LOGS(_log, LOG_LVL_DEBUG,
+             _context << "  LOCK[" << _mutex.id() << "]:1 "
+                      << "  LOCKED: " << util::printable(Mutex::lockedId(), "", "", " "));
     }
     assert(!_mutex.lockedByCaller());
     _mutex.lock();
     if (!_context.empty()) {
-        LOGS(_log, LOG_LVL_DEBUG, _context << "  LOCK[" << _mutex.id() << "]:2 "
-             << "  LOCKED: " << util::printable(Mutex::lockedId(), "", "", " "));
+        LOGS(_log, LOG_LVL_DEBUG,
+             _context << "  LOCK[" << _mutex.id() << "]:2 "
+                      << "  LOCKED: " << util::printable(Mutex::lockedId(), "", "", " "));
     }
 }
 
-
 void Lock::_unlock() {
     if (!_context.empty()) {
-        LOGS(_log, LOG_LVL_DEBUG, _context << "  LOCK[" << _mutex.id() << "]:3 "
-             << "  LOCKED: " << util::printable(Mutex::lockedId(), "", "", " "));
+        LOGS(_log, LOG_LVL_DEBUG,
+             _context << "  LOCK[" << _mutex.id() << "]:3 "
+                      << "  LOCKED: " << util::printable(Mutex::lockedId(), "", "", " "));
     }
     _mutex.unlock();
 }
 
-}}} // namespace lsst::qserv::util
+}  // namespace lsst::qserv::util

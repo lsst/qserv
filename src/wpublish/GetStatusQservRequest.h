@@ -31,22 +31,18 @@
 // Qserv headers
 #include "wpublish/QservRequest.h"
 
-namespace lsst {
-namespace qserv {
-namespace wpublish {
+namespace lsst::qserv::wpublish {
 
 /**
  * Class GetStatusQservRequest represents a request returning various info
  * on the on-going status of a Qserv worker.
  */
 class GetStatusQservRequest : public QservRequest {
-
 public:
-
     /// Completion status of the operation
     enum Status {
-        SUCCESS,    // successful completion of a request
-        ERROR       // an error occurred during command execution
+        SUCCESS,  // successful completion of a request
+        ERROR     // an error occurred during command execution
     };
 
     /// @return string representation of a status
@@ -57,10 +53,9 @@ public:
 
     /// The callback function type to be used for notifications on
     /// the operation completion.
-    using CallbackType =
-        std::function<void(Status,                  // completion status
-                           std::string const&,      // error message
-                           std::string const&)>;    // worker info received (if success)
+    using CallbackType = std::function<void(Status,                // completion status
+                                            std::string const&,    // error message
+                                            std::string const&)>;  // worker info received (if success)
 
     /**
      * Static factory method is needed to prevent issues with the lifespan
@@ -71,7 +66,7 @@ public:
      *                  (successful or not) of the request.
      * @return  smart pointer to the object of the class
      */
-    static Ptr create(CallbackType onFinish=nullptr);
+    static Ptr create(CallbackType onFinish = nullptr);
 
     // Default construction and copy semantics is prohibited
     GetStatusQservRequest() = delete;
@@ -81,7 +76,6 @@ public:
     ~GetStatusQservRequest() override;
 
 protected:
-
     /**
      * @param onFinish  function to be called upon the completion of a request
      */
@@ -94,12 +88,11 @@ protected:
     void onError(std::string const& error) override;
 
 private:
-
     // Parameters of the object
 
     CallbackType _onFinish;
 };
 
-}}} // namespace lsst::qserv::wpublish
+}  // namespace lsst::qserv::wpublish
 
-#endif // LSST_QSERV_WPUBLISH_GET_STATUS_QSERV_REQUEST_H
+#endif  // LSST_QSERV_WPUBLISH_GET_STATUS_QSERV_REQUEST_H

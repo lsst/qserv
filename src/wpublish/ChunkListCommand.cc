@@ -47,34 +47,26 @@ namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.wpublish.ChunkListCommand");
 
 /// Print the inventory status onto the logging stream
-void dumpInventory(lsst::qserv::wpublish::ChunkInventory const& inventory,
-                   string const& context) {
+void dumpInventory(lsst::qserv::wpublish::ChunkInventory const& inventory, string const& context) {
     ostringstream os;
     inventory.dbgPrint(os);
     LOGS(_log, LOG_LVL_TRACE, context << os.str());
 }
 
-} // annonymous namespace
+}  // namespace
 
-namespace lsst {
-namespace qserv {
-namespace wpublish {
+namespace lsst::qserv::wpublish {
 
 ChunkListCommand::ChunkListCommand(shared_ptr<wbase::SendChannel> const& sendChannel,
                                    shared_ptr<ChunkInventory> const& chunkInventory,
-                                   mysql::MySqlConfig const& mySqlConfig,
-                                   bool rebuild,
-                                   bool reload)
-    :   wbase::WorkerCommand(sendChannel),
-        _chunkInventory(chunkInventory),
-        _mySqlConfig(mySqlConfig),
-        _rebuild(rebuild),
-        _reload(reload) {
-}
-
+                                   mysql::MySqlConfig const& mySqlConfig, bool rebuild, bool reload)
+        : wbase::WorkerCommand(sendChannel),
+          _chunkInventory(chunkInventory),
+          _mySqlConfig(mySqlConfig),
+          _rebuild(rebuild),
+          _reload(reload) {}
 
 void ChunkListCommand::_reportError(string const& message) {
-
     LOGS(_log, LOG_LVL_ERROR, "ChunkListCommand::" << __func__ << "  " << message);
 
     proto::WorkerCommandUpdateChunkListR reply;
@@ -87,9 +79,7 @@ void ChunkListCommand::_reportError(string const& message) {
     _sendChannel->sendStream(xrdsvc::StreamBuffer::createWithMove(str), true);
 }
 
-
 void ChunkListCommand::run() {
-
     string const context = "ChunkListCommand::" + string(__func__) + "  ";
 
     LOGS(_log, LOG_LVL_DEBUG, context);
@@ -111,7 +101,6 @@ void ChunkListCommand::run() {
 
     // Rebuild the transient list and notify the caller if requested
     if (_reload) {
-
         // Load the new map from the database into a local variable
         ChunkInventory newChunkInventory;
         try {
@@ -121,29 +110,30 @@ void ChunkListCommand::run() {
             _reportError("database operation failed: " + string(ex.what()));
             return;
         }
-        ::dumpInventory(*_chunkInventory,  context + "_chunkInventory: ");
+        ::dumpInventory(*_chunkInventory, context + "_chunkInventory: ");
         ::dumpInventory(newChunkInventory, context + "newChunkInventory: ");
 
         // Compare two maps and worker identifiers to see which resources were
         // were added or removed. Then Update the current map and notify XRootD
         // accordingly.
 
-        ChunkInventory::ExistMap const removedChunks = *_chunkInventory  - newChunkInventory;
-        ChunkInventory::ExistMap const addedChunks   = newChunkInventory - *_chunkInventory;
+        ChunkInventory::ExistMap const removedChunks = *_chunkInventory - newChunkInventory;
+        ChunkInventory::ExistMap const addedChunks = newChunkInventory - *_chunkInventory;
 
-        xrdsvc::SsiProviderServer* providerServer = dynamic_cast<xrdsvc::SsiProviderServer*>(XrdSsiProviderLookup);
-        XrdSsiCluster*             clusterManager = providerServer->GetClusterManager();
+        xrdsvc::SsiProviderServer* providerServer =
+                dynamic_cast<xrdsvc::SsiProviderServer*>(XrdSsiProviderLookup);
+        XrdSsiCluster* clusterManager = providerServer->GetClusterManager();
 
         if (not removedChunks.empty()) {
-
-            for (auto&& entry: removedChunks) {
+            for (auto&& entry : removedChunks) {
                 string const& database = entry.first;
 
-                for (int chunk: entry.second) {
+                for (int chunk : entry.second) {
                     string const resource = "/chk/" + database + "/" + to_string(chunk);
 
-                    LOGS(_log, LOG_LVL_DEBUG, context << "removing resource: " << resource <<
-                         " in DataContext=" << clusterManager->DataContext());
+                    LOGS(_log, LOG_LVL_DEBUG,
+                         context << "removing resource: " << resource
+                                 << " in DataContext=" << clusterManager->DataContext());
 
                     try {
                         // Notify XRootD/cmsd and (depending on a mode) modify the provider's copy
@@ -169,15 +159,15 @@ void ChunkListCommand::run() {
             }
         }
         if (not addedChunks.empty()) {
-
-            for (auto&& entry: addedChunks) {
+            for (auto&& entry : addedChunks) {
                 string const& database = entry.first;
 
-                for (int chunk: entry.second) {
+                for (int chunk : entry.second) {
                     string const resource = "/chk/" + database + "/" + to_string(chunk);
 
-                    LOGS(_log, LOG_LVL_DEBUG, context + "adding resource: " << resource <<
-                         " in DataContext=" << clusterManager->DataContext());
+                    LOGS(_log, LOG_LVL_DEBUG,
+                         context + "adding resource: " << resource << " in DataContext="
+                                                       << clusterManager->DataContext());
 
                     try {
                         // Notify XRootD/cmsd and (depending on a mode) modify the provider's copy
@@ -210,4 +200,4 @@ void ChunkListCommand::run() {
     LOGS(_log, LOG_LVL_DEBUG, context << "** SENT **");
 }
 
-}}} // namespace lsst::qserv::wpublish
+}  // namespace lsst::qserv::wpublish

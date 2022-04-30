@@ -20,9 +20,9 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
- /**
-  * @brief test Mutex
-  */
+/**
+ * @brief test Mutex
+ */
 
 // System headers
 #include <atomic>
@@ -51,7 +51,7 @@ string thisThreadId2str() {
     ss << this_thread::get_id();
     return ss.str();
 }
-}
+}  // namespace
 
 BOOST_AUTO_TEST_SUITE(Suite)
 
@@ -83,7 +83,7 @@ BOOST_AUTO_TEST_CASE(MutexTest) {
         bool wasLockedBeforeBy1 = false;
         bool wasLockedAfterBy1 = false;
         thread thr1([&mtx, &wasLockedBeforeBy1, &wasLockedAfterBy1]() {
-            BlockPost blockPost(10,20);
+            BlockPost blockPost(10, 20);
             blockPost.wait();
             wasLockedBeforeBy1 = mtx.lockedByCaller();
             lock_guard<Mutex> const lock(mtx);
@@ -92,7 +92,7 @@ BOOST_AUTO_TEST_CASE(MutexTest) {
         bool wasLockedBeforeBy2 = false;
         bool wasLockedAfterBy2 = false;
         thread thr2([&mtx, &wasLockedBeforeBy2, &wasLockedAfterBy2]() {
-            BlockPost blockPost(10,20);
+            BlockPost blockPost(10, 20);
             blockPost.wait();
             wasLockedBeforeBy2 = mtx.lockedByCaller();
             lock_guard<Mutex> const lock(mtx);
@@ -113,15 +113,15 @@ BOOST_AUTO_TEST_CASE(MutexTest) {
         unsigned int const steps = 1024;
         unsigned int const numThreads = min(2U, thread::hardware_concurrency());
         vector<unique_ptr<thread>> threads(numThreads);
-        for (auto&& t: threads) {
-            t = make_unique<thread>([&mtx, &counter](){
+        for (auto&& t : threads) {
+            t = make_unique<thread>([&mtx, &counter]() {
                 for (unsigned int i = 0; i < steps; ++i) {
                     lock_guard<Mutex> const lock(mtx);
                     ++counter;
                 }
             });
         }
-        for (auto&& t: threads) {
+        for (auto&& t : threads) {
             t->join();
         }
         BOOST_CHECK_EQUAL(counter, steps * numThreads);
@@ -159,12 +159,12 @@ BOOST_AUTO_TEST_CASE(LockTest1) {
     for (int i = 0; i < 100; ++i) {
         Mutex mtx;
         thread thr1([&mtx]() {
-            BlockPost blockPost(10,20);
+            BlockPost blockPost(10, 20);
             blockPost.wait();
             Lock const lock(mtx, "LockTest1: thread 1");
         });
         thread thr2([&mtx]() {
-            BlockPost blockPost(10,20);
+            BlockPost blockPost(10, 20);
             blockPost.wait();
             Lock const lock(mtx, "LockTest1: thread 2");
         });
@@ -180,22 +180,21 @@ BOOST_AUTO_TEST_CASE(LockTest1) {
         unsigned int const steps = 1024;
         unsigned int const numThreads = min(2U, thread::hardware_concurrency());
         vector<unique_ptr<thread>> threads(numThreads);
-        for (auto&& t: threads) {
-            t = make_unique<thread>([&mtx, &counter](){
+        for (auto&& t : threads) {
+            t = make_unique<thread>([&mtx, &counter]() {
                 for (unsigned int i = 0; i < steps; ++i) {
                     Lock const lock(mtx, "LockTest1: thread " + thisThreadId2str());
                     ++counter;
                 }
             });
         }
-        for (auto&& t: threads) {
+        for (auto&& t : threads) {
             t->join();
         }
         BOOST_CHECK_EQUAL(counter, steps * numThreads);
     }
     LOGS_DEBUG("LockTest1 ends");
 }
-
 
 BOOST_AUTO_TEST_CASE(LockTest2) {
     // Test locking a mutex created in dynamic memory and owned by
@@ -251,15 +250,15 @@ BOOST_AUTO_TEST_CASE(LockTest2) {
         unsigned int const steps = 1024;
         unsigned int const numThreads = min(2U, thread::hardware_concurrency());
         vector<unique_ptr<thread>> threads(numThreads);
-        for (auto&& t: threads) {
-            t = make_unique<thread>([mtx, &counter](){
+        for (auto&& t : threads) {
+            t = make_unique<thread>([mtx, &counter]() {
                 for (unsigned int i = 0; i < steps; ++i) {
                     Lock const lock(mtx, "LockTest2: thread " + thisThreadId2str());
                     ++counter;
                 }
             });
         }
-        for (auto&& t: threads) {
+        for (auto&& t : threads) {
             t->join();
         }
         BOOST_CHECK_EQUAL(counter, steps * numThreads);

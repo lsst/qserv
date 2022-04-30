@@ -32,22 +32,17 @@
 #include "nlohmann/json.hpp"
 
 // Forward declarations
-namespace lsst {
-namespace qserv {
-namespace wbase {
+namespace lsst::qserv::wbase {
 
 class Task;
 class WorkerCommand;
 
-}}} // End of forward declarations
+}  // namespace lsst::qserv::wbase
 
-namespace lsst {
-namespace qserv {
-namespace wbase {
+namespace lsst::qserv::wbase {
 
 /// MsgProcessor implementations handle incoming Task objects.
 struct MsgProcessor {
-
     virtual ~MsgProcessor() {}
 
     /// Process a group of query processing tasks.
@@ -60,6 +55,6 @@ struct MsgProcessor {
     virtual nlohmann::json statusToJson() = 0;
 };
 
-}}} // namespace lsst::qserv::wbase
+}  // namespace lsst::qserv::wbase
 
-#endif // LSST_QSERV_WBASE_MSG_PROCESSOR_H
+#endif  // LSST_QSERV_WBASE_MSG_PROCESSOR_H

@@ -21,10 +21,8 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-
 #ifndef LSST_QSERV_QUERY_PASSLISTTERM_H
 #define LSST_QSERV_QUERY_PASSLISTTERM_H
-
 
 // System headers
 #include <string>
@@ -33,20 +31,13 @@
 // Qserv headers
 #include "query/BoolFactorTerm.h"
 
-
 // Forward declarations
-namespace lsst {
-namespace qserv {
-namespace query {
-    class ColumnRef;
-    class ValueExpr;
-}}} // End of forward declarations
+namespace lsst::qserv::query {
+class ColumnRef;
+class ValueExpr;
+}  // namespace lsst::qserv::query
 
-
-namespace lsst {
-namespace qserv {
-namespace query {
-
+namespace lsst::qserv::query {
 
 /// PassListTerm is like a PassTerm, but holds a list of passing strings
 class PassListTerm : public BoolFactorTerm {
@@ -83,7 +74,6 @@ protected:
     void dbgPrint(std::ostream& os) const override;
 };
 
+}  // namespace lsst::qserv::query
 
-}}} // namespace lsst::qserv::query
-
-#endif // LSST_QSERV_QUERY_PASSLISTTERM_H
+#endif  // LSST_QSERV_QUERY_PASSLISTTERM_H

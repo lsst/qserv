@@ -42,34 +42,24 @@ string senderIpAddr(qhttp::Request::Ptr const& req) {
     ss << req->remoteAddr.address();
     return ss.str();
 }
-}
+}  // namespace
 
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
-void RegistryHttpSvcMod::process(
-        ServiceProvider::Ptr const& serviceProvider, RegistryWorkers& workers,
-        qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp,
-        string const& subModuleName, HttpAuthType const authType) {
+void RegistryHttpSvcMod::process(ServiceProvider::Ptr const& serviceProvider, RegistryWorkers& workers,
+                                 qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp,
+                                 string const& subModuleName, HttpAuthType const authType) {
     RegistryHttpSvcMod module(serviceProvider, workers, req, resp);
     module.execute(subModuleName, authType);
 }
 
+RegistryHttpSvcMod::RegistryHttpSvcMod(ServiceProvider::Ptr const& serviceProvider, RegistryWorkers& workers,
+                                       qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp)
+        : HttpModuleBase(serviceProvider->authKey(), serviceProvider->adminAuthKey(), req, resp),
+          _serviceProvider(serviceProvider),
+          _workers(workers) {}
 
-RegistryHttpSvcMod::RegistryHttpSvcMod(
-        ServiceProvider::Ptr const& serviceProvider, RegistryWorkers& workers,
-        qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp)
-        :   HttpModuleBase(serviceProvider->authKey(), serviceProvider->adminAuthKey(), req, resp),
-            _serviceProvider(serviceProvider),
-            _workers(workers) {
-}
-
-
-string RegistryHttpSvcMod::context() const {
-    return "REGISTRY-HTTP-SVC ";
-}
-
+string RegistryHttpSvcMod::context() const { return "REGISTRY-HTTP-SVC "; }
 
 json RegistryHttpSvcMod::executeImpl(string const& subModuleName) {
     debug(__func__, "subModuleName: '" + subModuleName + "'");
@@ -79,25 +69,21 @@ json RegistryHttpSvcMod::executeImpl(string const& subModuleName) {
         return _getWorkers();
     } else {
         _enforceInstanceId(context_, body().required<string>("instance_id"));
-        if (subModuleName == "ADD-WORKER") return _addWorker();
-        else if (subModuleName == "DELETE-WORKER") return _deleteWorker();
+        if (subModuleName == "ADD-WORKER")
+            return _addWorker();
+        else if (subModuleName == "DELETE-WORKER")
+            return _deleteWorker();
     }
     throw invalid_argument(context_ + "unsupported sub-module: '" + subModuleName + "'");
 }
 
-
 void RegistryHttpSvcMod::_enforceInstanceId(string const& context_, string const& instanceId) const {
     if (_serviceProvider->instanceId() == instanceId) return;
-    throw invalid_argument(
-            context_ + "Qserv instance identifier mismatch. Client sent '" + instanceId
-            + "' instead of '" + _serviceProvider->instanceId() + "'.");
+    throw invalid_argument(context_ + "Qserv instance identifier mismatch. Client sent '" + instanceId +
+                           "' instead of '" + _serviceProvider->instanceId() + "'.");
 }
 
-
-json RegistryHttpSvcMod::_getWorkers() const {
-    return json::object({{"workers", _workers.workers()}});
-}
-
+json RegistryHttpSvcMod::_getWorkers() const { return json::object({{"workers", _workers.workers()}}); }
 
 json RegistryHttpSvcMod::_addWorker() {
     json worker = body().required<json>("worker");
@@ -114,10 +100,9 @@ json RegistryHttpSvcMod::_addWorker() {
     worker["host"] = host;
     worker["logged_time"] = loggedTime;
 
-    _workers.insert(worker); 
+    _workers.insert(worker);
     return json::object({{"workers", _workers.workers()}});
 }
-
 
 json RegistryHttpSvcMod::_deleteWorker() {
     string const name = params().at("name");
@@ -126,4 +111,4 @@ json RegistryHttpSvcMod::_deleteWorker() {
     return json::object({{"workers", _workers.workers()}});
 }
 
-}}} // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

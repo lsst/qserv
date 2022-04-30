@@ -41,19 +41,15 @@
 class XrdSsiService;
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
-
+namespace lsst::qserv::replica {
 
 /**
  * For exceptions thrown on unrecoverable connection failures to XRootD/SSI services.
  */
-class QservMgtConnectionError: public std::runtime_error {
+class QservMgtConnectionError : public std::runtime_error {
 public:
     using std::runtime_error::runtime_error;
 };
-
 
 /**
  * Structure QservMgtRequestWrapper is an abstract base for implementing requests
@@ -78,10 +74,10 @@ struct QservMgtRequestWrapper {
 };
 
 /**
-  * Class QservMgtServices is a high-level interface to the Qserv management
-  * services used by the replication system.
-  */
-class QservMgtServices: public std::enable_shared_from_this<QservMgtServices> {
+ * Class QservMgtServices is a high-level interface to the Qserv management
+ * services used by the replication system.
+ */
+class QservMgtServices : public std::enable_shared_from_this<QservMgtServices> {
 public:
     typedef std::shared_ptr<QservMgtServices> Ptr;
 
@@ -118,12 +114,9 @@ public:
      *   nullptr otherwise.
      */
     AddReplicaQservMgtRequest::Ptr addReplica(
-            unsigned int chunk,
-            std::vector<std::string> const& databases,
-            std::string const& worker,
-            AddReplicaQservMgtRequest::CallbackType const& onFinish=nullptr,
-            std::string const& jobId="",
-            unsigned int requestExpirationIvalSec=0);
+            unsigned int chunk, std::vector<std::string> const& databases, std::string const& worker,
+            AddReplicaQservMgtRequest::CallbackType const& onFinish = nullptr, std::string const& jobId = "",
+            unsigned int requestExpirationIvalSec = 0);
 
     /**
      * Notify Qserv worker on a removal of a replica
@@ -142,13 +135,9 @@ public:
      *   nullptr otherwise.
      */
     RemoveReplicaQservMgtRequest::Ptr removeReplica(
-            unsigned int chunk,
-            std::vector<std::string> const& databases,
-            std::string const& worker,
-            bool force,
-            RemoveReplicaQservMgtRequest::CallbackType const& onFinish=nullptr,
-            std::string const& jobId="",
-            unsigned int requestExpirationIvalSec=0);
+            unsigned int chunk, std::vector<std::string> const& databases, std::string const& worker,
+            bool force, RemoveReplicaQservMgtRequest::CallbackType const& onFinish = nullptr,
+            std::string const& jobId = "", unsigned int requestExpirationIvalSec = 0);
     /**
      * Fetch replicas known to a Qserv worker
      *
@@ -165,12 +154,9 @@ public:
      *   nullptr otherwise.
      */
     GetReplicasQservMgtRequest::Ptr getReplicas(
-            std::string const& databaseFamily,
-            std::string const& worker,
-            bool inUseOnly=false,
-            std::string const& jobId="",
-            GetReplicasQservMgtRequest::CallbackType const& onFinish=nullptr,
-            unsigned int requestExpirationIvalSec=0);
+            std::string const& databaseFamily, std::string const& worker, bool inUseOnly = false,
+            std::string const& jobId = "", GetReplicasQservMgtRequest::CallbackType const& onFinish = nullptr,
+            unsigned int requestExpirationIvalSec = 0);
 
     /**
      * Enable a collection of replicas at a Qserv worker
@@ -190,13 +176,10 @@ public:
      *   nullptr otherwise.
      */
     SetReplicasQservMgtRequest::Ptr setReplicas(
-            std::string const& worker,
-            QservReplicaCollection const& newReplicas,
-            std::vector<std::string> const& databases,
-            bool force=false,
-            std::string const& jobId="",
-            SetReplicasQservMgtRequest::CallbackType const& onFinish=nullptr,
-            unsigned int requestExpirationIvalSec=0);
+            std::string const& worker, QservReplicaCollection const& newReplicas,
+            std::vector<std::string> const& databases, bool force = false, std::string const& jobId = "",
+            SetReplicasQservMgtRequest::CallbackType const& onFinish = nullptr,
+            unsigned int requestExpirationIvalSec = 0);
 
     /**
      * Send a data string to a Qserv worker and get the same string in response
@@ -211,11 +194,10 @@ public:
      * @return  A pointer to the request object if the request was made. Return
      *   nullptr otherwise.
      */
-    TestEchoQservMgtRequest::Ptr echo(std::string const& worker,
-                                      std::string const& data,
-                                      std::string const& jobId="",
-                                      TestEchoQservMgtRequest::CallbackType const& onFinish=nullptr,
-                                      unsigned int requestExpirationIvalSec=0);
+    TestEchoQservMgtRequest::Ptr echo(std::string const& worker, std::string const& data,
+                                      std::string const& jobId = "",
+                                      TestEchoQservMgtRequest::CallbackType const& onFinish = nullptr,
+                                      unsigned int requestExpirationIvalSec = 0);
 
     /**
      * Request detailed status of a Qserv worker
@@ -229,13 +211,11 @@ public:
      * @return  A pointer to the request object if the request was made. Return
      *   nullptr otherwise.
      */
-    GetStatusQservMgtRequest::Ptr status(std::string const& worker,
-                                         std::string const& jobId="",
-                                         GetStatusQservMgtRequest::CallbackType const& onFinish=nullptr,
-                                         unsigned int requestExpirationIvalSec=0);
+    GetStatusQservMgtRequest::Ptr status(std::string const& worker, std::string const& jobId = "",
+                                         GetStatusQservMgtRequest::CallbackType const& onFinish = nullptr,
+                                         unsigned int requestExpirationIvalSec = 0);
 
 private:
-
     /**
      * @param serviceProvider Is required for accessing configuration parameters.
      */
@@ -273,6 +253,6 @@ private:
     mutable util::Mutex _mtx;
 };
 
-}}} // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_QSERVMGTSERVICES_H
+#endif  // LSST_QSERV_REPLICA_QSERVMGTSERVICES_H

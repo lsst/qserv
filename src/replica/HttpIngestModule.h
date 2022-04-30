@@ -34,22 +34,18 @@
 #include "replica/SqlRowStatsJob.h"
 
 // Forward declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
-    class DatabaseInfo;
-}}} // Forward declarations
+namespace lsst::qserv::replica {
+class DatabaseInfo;
+}  // namespace lsst::qserv::replica
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class HttpIngestModule provides a support ingesting catalogs
  * into Qserv.
  */
-class HttpIngestModule: public HttpModule {
+class HttpIngestModule : public HttpModule {
 public:
     typedef std::shared_ptr<HttpIngestModule> Ptr;
 
@@ -72,13 +68,10 @@ public:
      *
      * @throws std::invalid_argument for unknown values of parameter 'subModuleName'
      */
-    static void process(Controller::Ptr const& controller,
-                        std::string const& taskName,
-                        HttpProcessorConfig const& processorConfig,
-                        qhttp::Request::Ptr const& req,
-                        qhttp::Response::Ptr const& resp,
-                        std::string const& subModuleName=std::string(),
-                        HttpAuthType const authType=HttpAuthType::NONE);
+    static void process(Controller::Ptr const& controller, std::string const& taskName,
+                        HttpProcessorConfig const& processorConfig, qhttp::Request::Ptr const& req,
+                        qhttp::Response::Ptr const& resp, std::string const& subModuleName = std::string(),
+                        HttpAuthType const authType = HttpAuthType::NONE);
 
     HttpIngestModule() = delete;
     HttpIngestModule(HttpIngestModule const&) = delete;
@@ -90,10 +83,8 @@ protected:
     nlohmann::json executeImpl(std::string const& subModuleName) final;
 
 private:
-    HttpIngestModule(Controller::Ptr const& controller,
-                     std::string const& taskName,
-                     HttpProcessorConfig const& processorConfig,
-                     qhttp::Request::Ptr const& req,
+    HttpIngestModule(Controller::Ptr const& controller, std::string const& taskName,
+                     HttpProcessorConfig const& processorConfig, qhttp::Request::Ptr const& req,
                      qhttp::Response::Ptr const& resp);
 
     /// Get info on select databases
@@ -132,10 +123,10 @@ private:
     /**
      * @brief Scan internal tables of a given table to collect row counters
      *   and return this information to a caller.
-     * 
+     *
      * Depending on parameters of the method, the service may also update
      * the persistent state of the counters in the Replication systems database
-     * and deploy the counters at Qserv's czar database. 
+     * and deploy the counters at Qserv's czar database.
      */
     nlohmann::json _scanTableStats();
 
@@ -160,10 +151,10 @@ private:
      *   submitted by the method.
      * @return nlohmann::json The extended error object that will be empty of no errors ocurred.
      */
-    nlohmann::json _scanTableStatsImpl(
-            std::string const& database, std::string const& table, ChunkOverlapSelector overlapSelector,
-            SqlRowStatsJob::StateUpdatePolicy stateUpdatePolicy, bool deployAtQserv,
-            bool forceRescan, bool allWorkers, int priority);
+    nlohmann::json _scanTableStatsImpl(std::string const& database, std::string const& table,
+                                       ChunkOverlapSelector overlapSelector,
+                                       SqlRowStatsJob::StateUpdatePolicy stateUpdatePolicy,
+                                       bool deployAtQserv, bool forceRescan, bool allWorkers, int priority);
 
     /// Delete existing stats on the row counters
     nlohmann::json _deleteTableStats();
@@ -182,14 +173,13 @@ private:
 
     /**
      * @brief Retreive and validate database and table names from the service's URL.
-     * 
+     *
      * @param func A scope from which the method is called (for logging and error reporting).
      * @param database The name of a database.
      * @param table The name of a table.
      * @throws std::invalid_argument For unknown databases or tables.
      */
-    void _getRequiredParameters(
-            std::string const& func, std::string& database, std::string& table);
+    void _getRequiredParameters(std::string const& func, std::string& database, std::string& table);
 
     /**
      * Grant SELECT authorizations for the new database to Qserv
@@ -199,8 +189,7 @@ private:
      * @param allWorkers  'true' if all workers should be involved into the operation
      * @throws HttpError if the operation failed
      */
-    void _grantDatabaseAccess(DatabaseInfo const& databaseInfo,
-                              bool allWorkers) const;
+    void _grantDatabaseAccess(DatabaseInfo const& databaseInfo, bool allWorkers) const;
 
     /**
      * Enable this database in Qserv workers by adding an entry
@@ -210,8 +199,7 @@ private:
      * @param allWorkers 'true' if all workers should be involved into the operation
      * @throws HttpError if the operation failed
      */
-    void _enableDatabase(DatabaseInfo const& databaseInfo,
-                         bool allWorkers) const;
+    void _enableDatabase(DatabaseInfo const& databaseInfo, bool allWorkers) const;
 
     /**
      * The optional fix-up for missing chunked tables applied by the database publishing
@@ -224,8 +212,7 @@ private:
      * @param allWorkers 'true' if all workers should be involved into the operation
      * @throws HttpError if the operation failed
      */
-    void _createMissingChunkTables(DatabaseInfo const& databaseInfo,
-                                   bool allWorkers) const;
+    void _createMissingChunkTables(DatabaseInfo const& databaseInfo, bool allWorkers) const;
 
     /**
      * Consolidate MySQL partitioned tables at workers by removing partitions.
@@ -234,8 +221,7 @@ private:
      * @param allWorkers 'true' if all workers should be involved into the operation
      * @throws HttpError if operation failed
      */
-    void _removeMySQLPartitions(DatabaseInfo const& databaseInfo,
-                                bool allWorkers) const;
+    void _removeMySQLPartitions(DatabaseInfo const& databaseInfo, bool allWorkers) const;
 
     /**
      * Publish database in the Qserv master database. This involves the following
@@ -258,9 +244,7 @@ private:
      * @return An object representing a result of the operation (empty chunk list
      *   file/table name, number of chunks) in case of successful completion.
      */
-    nlohmann::json _buildEmptyChunksListImpl(std::string const& database,
-                                             bool force,
-                                             bool tableImpl) const;
+    nlohmann::json _buildEmptyChunksListImpl(std::string const& database, bool force, bool tableImpl) const;
 
     /**
      * This method will tell all (or a subset of) workers to reload cache Configuration
@@ -273,8 +257,7 @@ private:
      * @param workerResponseTimeoutSec  do not wait longer than the specified number of seconds
      * @return non-empty string to indicate a error
      */
-    std::string _reconfigureWorkers(DatabaseInfo const& databaseInfo,
-                                    bool allWorkers,
+    std::string _reconfigureWorkers(DatabaseInfo const& databaseInfo, bool allWorkers,
                                     unsigned int workerResponseTimeoutSec) const;
 
     /**
@@ -285,8 +268,7 @@ private:
      * @param databaseInfo defines a scope of the operation
      * @param directorTable the name of the director table
      */
-    void _createSecondaryIndex(DatabaseInfo const& databaseInfo,
-                               std::string const& directorTable) const;
+    void _createSecondaryIndex(DatabaseInfo const& databaseInfo, std::string const& directorTable) const;
 
     /**
      * Remove MySQL partitions from the "secondary index" table by turning it
@@ -294,8 +276,7 @@ private:
      * @param databaseInfo  defines a scope of the operation
      * @param directorTable the name of the director table
      */
-    void _consolidateSecondaryIndex(DatabaseInfo const& databaseInfo,
-                                    std::string const& directorTable) const;
+    void _consolidateSecondaryIndex(DatabaseInfo const& databaseInfo, std::string const& directorTable) const;
 
     /**
      * This operation is called in a context of publishing new databases.
@@ -307,8 +288,7 @@ private:
      * @param allWorkers 'true' if all workers should be involved into the operation
      * @throws HttpError if the operation failed
      */
-    void _qservSync(DatabaseInfo const& databaseInfo,
-                    bool allWorkers) const;
+    void _qservSync(DatabaseInfo const& databaseInfo, bool allWorkers) const;
 
     // The name and a type of a special column for the super-transaction-based ingest
 
@@ -316,6 +296,6 @@ private:
     static std::string const _partitionByColumnType;
 };
 
-}}} // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_HTTPINGESTMODULE_H
+#endif  // LSST_QSERV_HTTPINGESTMODULE_H

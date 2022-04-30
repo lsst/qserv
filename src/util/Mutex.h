@@ -33,16 +33,13 @@
 
 // This header declarations
 
-namespace lsst {
-namespace qserv {
-namespace util {
+namespace lsst::qserv::util {
 
 /**
  * Class Mutex extends the standard class std::mutex with extra methods.
  */
-class Mutex: public std::mutex {
+class Mutex : public std::mutex {
 public:
-
     /// @return identifiers of locked mutexes
     static std::set<unsigned int> lockedId() {
         // make a consistent snapshot of the collection to be returned
@@ -72,9 +69,7 @@ public:
     unsigned int id() const { return _id; }
 
     /// @return true if the mutex is locked by the caller of this method
-    bool lockedByCaller() const {
-        return _holder == std::this_thread::get_id();
-    }
+    bool lockedByCaller() const { return _holder == std::this_thread::get_id(); }
 
 private:
     /// @return next identifier in a global series
@@ -103,7 +98,6 @@ private:
     std::atomic<std::thread::id> _holder;
 };
 
-
 /**
  * Class Lock is designed to completement the above defined class Mutex.
  * The current implementation of the class is very similar to std::lock_guard.
@@ -124,10 +118,8 @@ public:
      * @param mutex A mutex object to be locked.
      * @param context A context in which the lock is acquired.
      */
-    explicit Lock(Mutex& mutex,
-                  std::string const& context=std::string())
-        :   _mutex(mutex),
-            _context(context) {
+    explicit Lock(Mutex& mutex, std::string const& context = std::string())
+            : _mutex(mutex), _context(context) {
         _lock();
     }
 
@@ -140,11 +132,8 @@ public:
      * @param mutex A mutex object to be locked.
      * @param context A context in which the lock is acquired.
      */
-    explicit Lock(std::shared_ptr<Mutex> const& mutexPtr,
-                  std::string const& context=std::string())
-        :   _mutexPtr(mutexPtr),
-            _mutex(*mutexPtr),
-            _context(context) {
+    explicit Lock(std::shared_ptr<Mutex> const& mutexPtr, std::string const& context = std::string())
+            : _mutexPtr(mutexPtr), _mutex(*mutexPtr), _context(context) {
         _lock();
     }
 
@@ -163,6 +152,6 @@ private:
     std::string _context;
 };
 
-}}} // namespace lsst::qserv::util
+}  // namespace lsst::qserv::util
 
-#endif // LSST_QSERV_UTIL_MUTEX_H
+#endif  // LSST_QSERV_UTIL_MUTEX_H

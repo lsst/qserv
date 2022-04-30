@@ -22,12 +22,12 @@
  */
 
 /**
-  * @file
-  *
-  * @brief RunTimeErrors for ConfigStore.
-  *
-  * @Author Fabrice Jammes, IN2P3
-  */
+ * @file
+ *
+ * @brief RunTimeErrors for ConfigStore.
+ *
+ * @Author Fabrice Jammes, IN2P3
+ */
 
 #ifndef LSST_QSERV_CONFIGSTOREERROR_H
 #define LSST_QSERV_CONFIGSTOREERROR_H
@@ -38,18 +38,14 @@
 
 // Qserv headers
 
-namespace lsst {
-namespace qserv {
-namespace util {
+namespace lsst::qserv::util {
 
 /**
  * Base class for ConfigStore run-time errors, represents a generic ConfigStore run-time error.
  */
 class ConfigStoreError : public std::runtime_error {
 public:
-    explicit ConfigStoreError(std::string const& msg)
-        : std::runtime_error(msg) {}
-
+    explicit ConfigStoreError(std::string const& msg) : std::runtime_error(msg) {}
 };
 
 /**
@@ -58,7 +54,7 @@ public:
 class KeyNotFoundError : public ConfigStoreError {
 public:
     explicit KeyNotFoundError(std::string const& key)
-        : ConfigStoreError("Missing configuration key: [" + key + "]") {}
+            : ConfigStoreError("Missing configuration key: [" + key + "]") {}
 };
 
 /**
@@ -67,9 +63,10 @@ public:
 class InvalidIntegerValue : public ConfigStoreError {
 public:
     InvalidIntegerValue(std::string const& key, std::string const& value)
-        : ConfigStoreError("Configuration key [" + key + "] has invalid integer value: '" + value +"'") {}
+            : ConfigStoreError("Configuration key [" + key + "] has invalid integer value: '" + value + "'") {
+    }
 };
 
-}}} // namespace lsst::qserv::util
+}  // namespace lsst::qserv::util
 
-#endif // LSST_QSERV_CONFIGSTOREERROR_H
+#endif  // LSST_QSERV_CONFIGSTOREERROR_H

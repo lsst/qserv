@@ -45,39 +45,35 @@
 #include "util/SemaMgr.h"
 
 // Forward declarations
-namespace lsst {
-namespace qserv {
+namespace lsst::qserv {
 namespace czar {
-    class CzarConfig;
+class CzarConfig;
 }
 namespace mysql {
-    class MysqlConfig;
+class MysqlConfig;
 }
 namespace proto {
-    class ProtoHeader;
-    class Result;
-    struct WorkerResponse;
-}
+class ProtoHeader;
+class Result;
+struct WorkerResponse;
+}  // namespace proto
 namespace qdisp {
-    class MessageStore;
+class MessageStore;
 }
 namespace qproc {
-    class DatabaseModels;
+class DatabaseModels;
 }
 namespace query {
-    class SelectStmt;
+class SelectStmt;
 }
 namespace sql {
-    class Schema;
-    class SqlConnection;
-    class SqlResults;
-}
-}} // End of forward declarations
+class Schema;
+class SqlConnection;
+class SqlResults;
+}  // namespace sql
+}  // namespace lsst::qserv
 
-
-namespace lsst {
-namespace qserv {
-namespace rproc {
+namespace lsst::qserv::rproc {
 
 /** \typedef InfileMergerError Store InfileMerger error code.
  *
@@ -93,8 +89,7 @@ class InfileMergerConfig {
 public:
     InfileMergerConfig() = delete;
     InfileMergerConfig(czar::CzarConfig const& czarConfig_, mysql::MySqlConfig const& mySqlConfig_)
-        :  czarConfig(czarConfig_), mySqlConfig(mySqlConfig_) {
-    }
+            : czarConfig(czarConfig_), mySqlConfig(mySqlConfig_) {}
 
     // for final result, and imported result
     czar::CzarConfig const& czarConfig;
@@ -102,7 +97,6 @@ public:
     std::string targetTable;
     std::shared_ptr<query::SelectStmt> mergeStmt;
 };
-
 
 /// This class is used to remove invalid rows from cancelled job attempts.
 /// Removing the invalid rows from the result table can be very expensive,
@@ -120,7 +114,7 @@ public:
     using deleteFuncType = std::function<bool(jASetType const&)>;
 
     InvalidJobAttemptMgr() {}
-    void setDeleteFunc(deleteFuncType func) {_deleteFunc = func; }
+    void setDeleteFunc(deleteFuncType func) { _deleteFunc = func; }
 
     /// @return true if jobIdAttempt is invalid.
     /// Wait if rows need to be deleted.
@@ -130,12 +124,11 @@ public:
     bool incrConcurrentMergeCount(int jobIdAttempt);
     void decrConcurrentMergeCount();
 
-
     /// @return true if query results are valid. If it returns false, the query results are invalid.
     /// This function will stop all merging to the result table and delete all invalid
     /// rows in the table. If it returns false, invalid rows remain in the result table,
     /// and the query should probably be cancelled.
-    bool holdMergingForRowDelete(std::string const& msg="");
+    bool holdMergingForRowDelete(std::string const& msg = "");
 
     /// @return true if jobIdAttempt is in the invalid set.
     bool isJobAttemptInvalid(int jobIdAttempt);
@@ -146,15 +139,15 @@ private:
     /// Precondition: must hold _iJAMtx before calling.
     /// @return true if jobIdAttempt is in the invalid set.
     bool _isJobAttemptInvalid(int jobIdAttempt);
-    void _cleanupIJA(); ///< Helper to send notice to all waiting on _cv.
+    void _cleanupIJA();  ///< Helper to send notice to all waiting on _cv.
 
     std::mutex _iJAMtx;
-    jASetType _invalidJobAttempts; ///< Set of job-attempts that failed.
-    jASetType _invalidJAWithRows;  ///< Set of job-attempts that failed and have rows in result table.
-    jASetType _jobIdAttemptsHaveRows; ///< Set of job-attempts that have rows in result table.
+    jASetType _invalidJobAttempts;     ///< Set of job-attempts that failed.
+    jASetType _invalidJAWithRows;      ///< Set of job-attempts that failed and have rows in result table.
+    jASetType _jobIdAttemptsHaveRows;  ///< Set of job-attempts that have rows in result table.
     int _concurrentMergeCount{0};
     bool _waitFlag{false};
-    std::condition_variable  _cv;
+    std::condition_variable _cv;
     deleteFuncType _deleteFunc;
 };
 
@@ -179,11 +172,7 @@ public:
     InfileMerger& operator=(InfileMerger const&) = delete;
     ~InfileMerger();
 
-    enum DbEngine {
-        MYISAM,
-        INNODB,
-        MEMORY
-    };
+    enum DbEngine { MYISAM, INNODB, MEMORY };
 
     std::string engineToStr(InfileMerger::DbEngine engine);
 
@@ -204,7 +193,7 @@ public:
     /// @return error details if finalize() returns false
     InfileMergerError const& getError() const { return _error; }
     /// @return final target table name  storing results after post processing
-    std::string getTargetTable() const {return _config.targetTable; }
+    std::string getTargetTable() const { return _config.targetTable; }
     /// Finalize a "merge" and perform postprocessing
     bool finalize();
     /// Check if the object has completed all processing.
@@ -273,14 +262,14 @@ private:
 
     bool _setupConnectionInnoDb(mysql::MySqlConnection& mySConn);
 
-    InfileMergerConfig _config; ///< Configuration
-    DbEngine _dbEngine = MYISAM; ///< ENGINE used for aggregating results.
-    std::shared_ptr<sql::SqlConnection> _sqlConn; ///< SQL connection
-    std::string _mergeTable; ///< Table for result loading
-    InfileMergerError _error; ///< Error state
-    bool _isFinished = false; ///< Completed?
-    std::mutex _sqlMutex; ///< Protection for SQL connection
-    size_t _getResultTableSizeMB(); ///< Return the size of the result table in MB.
+    InfileMergerConfig _config;                    ///< Configuration
+    DbEngine _dbEngine = MYISAM;                   ///< ENGINE used for aggregating results.
+    std::shared_ptr<sql::SqlConnection> _sqlConn;  ///< SQL connection
+    std::string _mergeTable;                       ///< Table for result loading
+    InfileMergerError _error;                      ///< Error state
+    bool _isFinished = false;                      ///< Completed?
+    std::mutex _sqlMutex;                          ///< Protection for SQL connection
+    size_t _getResultTableSizeMB();                ///< Return the size of the result table in MB.
 
     /**
      * @brief Put a "jobId" column first in the provided schema.
@@ -302,29 +291,30 @@ private:
     std::mutex _mysqlMutex;
     mysql::LocalInfile::Mgr _infileMgr;
 
-    std::shared_ptr<qproc::DatabaseModels> _databaseModels; ///< Used to create result table.
+    std::shared_ptr<qproc::DatabaseModels> _databaseModels;  ///< Used to create result table.
 
-    std::mutex _queryIdStrMtx; ///< protects _queryIdStr
+    std::mutex _queryIdStrMtx;  ///< protects _queryIdStr
     std::atomic<bool> _queryIdStrSet{false};
-    std::string _queryIdStr{"QI=?"}; ///< Unknown until results start coming back from workers.
+    std::string _queryIdStr{"QI=?"};  ///< Unknown until results start coming back from workers.
 
-    std::string _jobIdColName; ///< Name of the jobId column in the result table.
-    int const _jobIdMysqlType{MYSQL_TYPE_LONG}; ///< 4 byte integer.
-    std::string const _jobIdSqlType{"INT(9)"}; ///< The 9 only affects '0' padding with ZEROFILL.
+    std::string _jobIdColName;                   ///< Name of the jobId column in the result table.
+    int const _jobIdMysqlType{MYSQL_TYPE_LONG};  ///< 4 byte integer.
+    std::string const _jobIdSqlType{"INT(9)"};   ///< The 9 only affects '0' padding with ZEROFILL.
 
     InvalidJobAttemptMgr _invalidJobAttemptMgr;
     bool _deleteInvalidRows(std::set<int> const& jobIdAttempts);
-    int const _maxSqlConnectionAttempts = 10; ///< maximum number of times to retry connecting to the SQL database.
+    int const _maxSqlConnectionAttempts =
+            10;  ///< maximum number of times to retry connecting to the SQL database.
 
     /// Variable to track result size. Each
-    size_t const _maxResultTableSizeBytes; ///< Max result table size in bytes.
-    size_t _totalResultSize = 0; ///< Size of result so far in bytes.
-    std::map<int, size_t> _perJobResultSize; ///< Result size for each job
-    std::mutex _mtxResultSizeMtx; ///< Protects _perJobResultSize and _totalResultSize.
+    size_t const _maxResultTableSizeBytes;    ///< Max result table size in bytes.
+    size_t _totalResultSize = 0;              ///< Size of result so far in bytes.
+    std::map<int, size_t> _perJobResultSize;  ///< Result size for each job
+    std::mutex _mtxResultSizeMtx;             ///< Protects _perJobResultSize and _totalResultSize.
 
-    std::shared_ptr<util::SemaMgr> _semaMgrConn; ///< Used to limit the number of open mysql connections.
+    std::shared_ptr<util::SemaMgr> _semaMgrConn;  ///< Used to limit the number of open mysql connections.
 };
 
-}}} // namespace lsst::qserv::rproc
+}  // namespace lsst::qserv::rproc
 
-#endif // LSST_QSERV_RPROC_INFILEMERGER_H
+#endif  // LSST_QSERV_RPROC_INFILEMERGER_H

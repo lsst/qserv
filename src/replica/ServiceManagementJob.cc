@@ -35,51 +35,36 @@ namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.ServiceManagementBaseJob");
 
-} /// namespace
+}  // namespace
 
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
 string ServiceManagementBaseJob::typeName() { return "ServiceManagementBaseJob"; }
 
-ServiceManagementBaseJob::ServiceManagementBaseJob(
-        string const& requestName,
-        bool allWorkers,
-        unsigned int requestExpirationIvalSec,
-        Controller::Ptr const& controller,
-        string const& parentJobId,
-        int priority)
-    :   Job(controller,
-            parentJobId,
-            requestName,
-            priority),
-        _allWorkers(allWorkers),
-        _requestExpirationIvalSec(requestExpirationIvalSec) {
-}
-
+ServiceManagementBaseJob::ServiceManagementBaseJob(string const& requestName, bool allWorkers,
+                                                   unsigned int requestExpirationIvalSec,
+                                                   Controller::Ptr const& controller,
+                                                   string const& parentJobId, int priority)
+        : Job(controller, parentJobId, requestName, priority),
+          _allWorkers(allWorkers),
+          _requestExpirationIvalSec(requestExpirationIvalSec) {}
 
 ServiceManagementJobResult const& ServiceManagementBaseJob::getResultData() const {
-
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     if (state() == State::FINISHED) return _resultData;
 
-    throw logic_error(
-            "ServiceManagementBaseJob::" + string(__func__) +
-            "  the method can't be called while the job hasn't finished");
+    throw logic_error("ServiceManagementBaseJob::" + string(__func__) +
+                      "  the method can't be called while the job hasn't finished");
 }
 
-
 void ServiceManagementBaseJob::startImpl(util::Lock const& lock) {
-
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
-    auto const workerNames = allWorkers() ?
-        controller()->serviceProvider()->config()->allWorkers() :
-        controller()->serviceProvider()->config()->workers();
+    auto const workerNames = allWorkers() ? controller()->serviceProvider()->config()->allWorkers()
+                                          : controller()->serviceProvider()->config()->workers();
 
-    for (auto&& worker: workerNames) {
+    for (auto&& worker : workerNames) {
         _resultData.serviceState[worker] = ServiceState();
         _resultData.workers[worker] = false;
         _requests.push_back(submitRequest(worker));
@@ -91,24 +76,18 @@ void ServiceManagementBaseJob::startImpl(util::Lock const& lock) {
     if (_requests.size() == 0) finish(lock, ExtendedState::SUCCESS);
 }
 
-
 void ServiceManagementBaseJob::cancelImpl(util::Lock const& lock) {
-
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
-    for (auto&& ptr: _requests) ptr->cancel();
+    for (auto&& ptr : _requests) ptr->cancel();
     _requests.clear();
     _numFinished = 0;
 }
 
-
 void ServiceManagementBaseJob::onRequestFinish(ServiceManagementRequestBase::Ptr const& request) {
-
-    LOGS(_log, LOG_LVL_DEBUG, context() << __func__
-         << "  worker=" << request->worker()
-         << " id=" << request->id()
-         << " type=" << request->type()
-         << " state=" << request->state2string());
+    LOGS(_log, LOG_LVL_DEBUG,
+         context() << __func__ << "  worker=" << request->worker() << " id=" << request->id()
+                   << " type=" << request->type() << " state=" << request->state2string());
 
     if (state() == State::FINISHED) return;
 
@@ -126,14 +105,11 @@ void ServiceManagementBaseJob::onRequestFinish(ServiceManagementRequestBase::Ptr
     // Check for the completion condition of the job
     if (_requests.size() == _numFinished) {
         size_t const numSucceeded = count_if(
-            _requests.begin(), _requests.end(),
-            [](ServiceManagementRequestBase::Ptr const& ptr) {
-                return ptr->extendedState() == Request::ExtendedState::SUCCESS;
-            }
-        );
-        finish(lock, numSucceeded == _numFinished ? ExtendedState::SUCCESS :
-                                                    ExtendedState::FAILED);
+                _requests.begin(), _requests.end(), [](ServiceManagementRequestBase::Ptr const& ptr) {
+                    return ptr->extendedState() == Request::ExtendedState::SUCCESS;
+                });
+        finish(lock, numSucceeded == _numFinished ? ExtendedState::SUCCESS : ExtendedState::FAILED);
     }
 }
 
-}}} // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

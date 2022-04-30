@@ -21,7 +21,6 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-
 #ifndef LSST_QSERV_QUERY_NULLPREDICATE_H
 #define LSST_QSERV_QUERY_NULLPREDICATE_H
 
@@ -33,30 +32,23 @@
 #include "query/Predicate.h"
 
 // Forward declarations
-namespace lsst {
-namespace qserv {
-namespace query {
-    class ColumnRef;
-    class ValueExpr;
-    class QueryTemplate;
-}}} // End of forward declarations
+namespace lsst::qserv::query {
+class ColumnRef;
+class ValueExpr;
+class QueryTemplate;
+}  // namespace lsst::qserv::query
 
-
-namespace lsst {
-namespace qserv {
-namespace query {
-
+namespace lsst::qserv::query {
 
 /// NullPredicate is a Predicate involving a row value compared to NULL
 class NullPredicate : public Predicate {
 public:
     typedef std::shared_ptr<NullPredicate> Ptr;
 
-    NullPredicate()
-    : hasNot(false) {}
+    NullPredicate() : hasNot(false) {}
 
     NullPredicate(std::shared_ptr<ValueExpr> const& valueExpr, bool hasNotNull)
-    : value(valueExpr), hasNot(hasNotNull) {}
+            : value(valueExpr), hasNot(hasNotNull) {}
 
     ~NullPredicate() override = default;
 
@@ -72,7 +64,7 @@ public:
     BoolFactorTerm::Ptr copySyntax() const override { return clone(); }
     bool operator==(BoolFactorTerm const& rhs) const override;
 
-    static int reverseOp(int op); // Reverses operator token
+    static int reverseOp(int op);  // Reverses operator token
 
     // FIXME these members should be private, or at least protected. Jira issue DM-17306
     std::shared_ptr<ValueExpr> value;
@@ -82,7 +74,6 @@ protected:
     void dbgPrint(std::ostream& os) const override;
 };
 
+}  // namespace lsst::qserv::query
 
-}}} // namespace lsst::qserv::query
-
-#endif // LSST_QSERV_QUERY_NULLPREDICATE_H
+#endif  // LSST_QSERV_QUERY_NULLPREDICATE_H

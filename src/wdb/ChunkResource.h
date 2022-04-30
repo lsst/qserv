@@ -23,14 +23,14 @@
 
 #ifndef LSST_QSERV_WDB_CHUNKRESOURCE_H
 #define LSST_QSERV_WDB_CHUNKRESOURCE_H
- /**
-  * @file
-  *
-  * @brief ChunkResource tracks which chunks are needed. Right now, it is used
-  * to manage subchunk creation.
-  *
-  * @author Daniel L. Wang, SLAC
-  */
+/**
+ * @file
+ *
+ * @brief ChunkResource tracks which chunks are needed. Right now, it is used
+ * to manage subchunk creation.
+ *
+ * @author Daniel L. Wang, SLAC
+ */
 
 // System headers
 #include <deque>
@@ -50,19 +50,16 @@
 #include "wdb/SQLBackend.h"
 
 // Forward declarations
-namespace lsst {
-namespace qserv {
+namespace lsst::qserv {
 namespace proto {
-    class TaskMsg_Fragment;
+class TaskMsg_Fragment;
 }
 namespace wdb {
-    class Task;
-}}} // End of forward declarations
+class Task;
+}
+}  // namespace lsst::qserv
 
-
-namespace lsst {
-namespace qserv {
-namespace wdb {
+namespace lsst::qserv::wdb {
 
 class ChunkEntry;
 class ChunkResourceMgr;
@@ -72,7 +69,7 @@ class ChunkResourceMgr;
 /// same resource.
 class ChunkResource {
 public:
-    class Info; // Internal metadata for the resource.
+    class Info;  // Internal metadata for the resource.
     ~ChunkResource();
 
     std::string const& getDb() const;
@@ -83,14 +80,14 @@ public:
     friend class ChunkResourceMgr;
     ChunkResource(ChunkResource const& cr);
     ChunkResource& operator=(ChunkResource const& cr);
+
 private:
     ChunkResource(ChunkResourceMgr* mgr);
     ChunkResource(ChunkResourceMgr* mgr, Info* info);
 
-    ChunkResourceMgr *_mgr; ///< Do not delete, not owner.
+    ChunkResourceMgr* _mgr;  ///< Do not delete, not owner.
     std::unique_ptr<Info> _info;
 };
-
 
 /// ChunkResourceMgr is a lightweight manager for holding reservations on subchunks.
 class ChunkResourceMgr {
@@ -114,9 +111,8 @@ public:
     /// block until they are.
     /// @return a ChunkResource which should be used for releasing the
     /// reservation.
-    ChunkResource acquire(std::string const& db, int chunkId,
-                          DbTableSet const& DbTableSet, IntVector const& subChunks);
-
+    ChunkResource acquire(std::string const& db, int chunkId, DbTableSet const& DbTableSet,
+                          IntVector const& subChunks);
 
     /// Release a reservation. Currently, block until the resource has been
     /// released if the resource is no longer needed by anyone.
@@ -145,9 +141,9 @@ private:
     // Consider having separate mutexes for each db's map if contention becomes
     // a problem.
     std::shared_ptr<SQLBackend> _backend;
-    std::mutex _mapMutex; // Do not alter map without this mutex
+    std::mutex _mapMutex;  // Do not alter map without this mutex
 };
 
-}}} // namespace lsst::qserv::wdb
+}  // namespace lsst::qserv::wdb
 
-#endif // LSST_QSERV_WDB_CHUNKRESOURCE_H
+#endif  // LSST_QSERV_WDB_CHUNKRESOURCE_H

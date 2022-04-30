@@ -30,20 +30,18 @@
 #include "util/EventThread.h"
 #include "wcontrol/Foreman.h"
 
-namespace lsst {
-namespace qserv {
-namespace wsched {
+namespace lsst::qserv::wsched {
 
 class FifoScheduler : public wcontrol::Scheduler {
 public:
     typedef std::shared_ptr<FifoScheduler> Ptr;
 
-    FifoScheduler() {};
+    FifoScheduler(){};
     virtual ~FifoScheduler() {}
 
     std::string getName() const override { return std::string("FifoSched"); }
 };
 
-}}} // namespace lsst::qserv::wsched
+}  // namespace lsst::qserv::wsched
 
-#endif // LSST_QSERV_WSCHED_FIFOSCHEDULER_H
+#endif  // LSST_QSERV_WSCHED_FIFOSCHEDULER_H

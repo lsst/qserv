@@ -25,9 +25,7 @@
 #include <string>
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class HttpProcessorConfig captures a configuration of the HTTP service
@@ -37,15 +35,14 @@ namespace replica {
 class HttpProcessorConfig {
 public:
     /// The normal and the default constructor
-    explicit HttpProcessorConfig(unsigned int workerResponseTimeoutSec_=0,
-                                 unsigned int qservSyncTimeoutSec_=0,
-                                 unsigned int workerReconfigTimeoutSec_=0,
-                                 std::string const& httpRoot_=std::string())
-        :   workerResponseTimeoutSec(workerResponseTimeoutSec_),
-            qservSyncTimeoutSec(qservSyncTimeoutSec_),
-            workerReconfigTimeoutSec(workerReconfigTimeoutSec_),
-            httpRoot(httpRoot_) {
-    }
+    explicit HttpProcessorConfig(unsigned int workerResponseTimeoutSec_ = 0,
+                                 unsigned int qservSyncTimeoutSec_ = 0,
+                                 unsigned int workerReconfigTimeoutSec_ = 0,
+                                 std::string const& httpRoot_ = std::string())
+            : workerResponseTimeoutSec(workerResponseTimeoutSec_),
+              qservSyncTimeoutSec(qservSyncTimeoutSec_),
+              workerReconfigTimeoutSec(workerReconfigTimeoutSec_),
+              httpRoot(httpRoot_) {}
     HttpProcessorConfig(HttpProcessorConfig const&) = default;
     HttpProcessorConfig& operator=(HttpProcessorConfig const&) = default;
 
@@ -70,7 +67,7 @@ public:
     /// HTTP service.
     std::string httpRoot;
 };
-    
-}}} // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_HTTPPROCESSORCONFIG_H
+}  // namespace lsst::qserv::replica
+
+#endif  // LSST_QSERV_HTTPPROCESSORCONFIG_H

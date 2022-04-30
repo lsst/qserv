@@ -21,10 +21,8 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-
 #ifndef LSST_QSERV_PARSER_PARSERUNNER_H
 #define LSST_QSERV_PARSER_PARSERUNNER_H
-
 
 // System headers
 #include <memory>
@@ -34,27 +32,21 @@
 #include "util/common.h"
 
 // Forward declarations
-namespace lsst {
-namespace qserv {
-namespace ccontrol {
-    class ParseListener;
-    class UserQuery;
-    class UserQueryResources;
+namespace lsst::qserv::ccontrol {
+class ParseListener;
+class UserQuery;
+class UserQueryResources;
+}  // namespace lsst::qserv::ccontrol
+
+namespace lsst::qserv::query {
+class SelectStmt;
 }
-namespace query {
-    class SelectStmt;
-}}} // End of forward declarations
 
-
-namespace lsst {
-namespace qserv {
-namespace ccontrol {
-
+namespace lsst::qserv::ccontrol {
 
 /// ParseRunner drives the antlr4-based SQL parser.
 class ParseRunner {
 public:
-
     /**
      * @brief Construct a new Parse Runner object. Runs the parse.
      *
@@ -116,7 +108,6 @@ private:
     std::shared_ptr<ParseListener> _listener;
 };
 
+}  // namespace lsst::qserv::ccontrol
 
-}}} // namespace lsst::qserv::ccontrol
-
-#endif // LSST_QSERV_PARSER_PARSERUNNER_H
+#endif  // LSST_QSERV_PARSER_PARSERUNNER_H

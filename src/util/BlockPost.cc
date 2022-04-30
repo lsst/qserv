@@ -25,23 +25,19 @@
 
 // System headers
 #include <chrono>
-#include <ratio>        // std::milli
+#include <ratio>  // std::milli
 #include <stdexcept>
 #include <string>
 #include <thread>
 
-namespace lsst {
-namespace qserv {
-namespace util {
+namespace lsst::qserv::util {
 
 BlockPost::BlockPost(int minMilliseconds, int maxMilliseconds)
-    :   _rd(),
-        _gen(_rd()),
-        _distr(minMilliseconds, maxMilliseconds) {
+        : _rd(), _gen(_rd()), _distr(minMilliseconds, maxMilliseconds) {
     if ((minMilliseconds < 0) || (minMilliseconds >= maxMilliseconds))
         throw std::invalid_argument(
-                    "BlockPost::" + std::string(__func__) + " - invalid range of milliseconds provided: ["
-                    + std::to_string(minMilliseconds) + ".." + std::to_string(maxMilliseconds) + "]");
+                "BlockPost::" + std::string(__func__) + " - invalid range of milliseconds provided: [" +
+                std::to_string(minMilliseconds) + ".." + std::to_string(maxMilliseconds) + "]");
 }
 
 int BlockPost::wait() {
@@ -52,15 +48,10 @@ int BlockPost::wait() {
 
 int BlockPost::wait(int milliseconds) {
     if (milliseconds < 0)
-        throw std::invalid_argument(
-                "BlockPost::" + std::string(__func__) + "(milliseconds) - invalid number of milliseconds");
+        throw std::invalid_argument("BlockPost::" + std::string(__func__) +
+                                    "(milliseconds) - invalid number of milliseconds");
     std::this_thread::sleep_for(
-        std::chrono::duration<long, std::milli>(
-            std::chrono::milliseconds(
-                milliseconds
-            )
-        )
-    );
+            std::chrono::duration<long, std::milli>(std::chrono::milliseconds(milliseconds)));
     return milliseconds;
 }
 
@@ -68,5 +59,5 @@ int BlockPost::next() {
     std::lock_guard<std::mutex> lock(_generatorMtx);
     return _distr(_gen);
 }
-    
-}}} // namespace lsst::qserv::util
+
+}  // namespace lsst::qserv::util

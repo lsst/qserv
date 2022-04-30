@@ -32,15 +32,13 @@
 #include "lsst/log/Log.h"
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class FileServerApp runs an instance of a file server on behalf of
  * the specified (via a command line parameter) worker.
  */
-class FileServerApp: public Application {
+class FileServerApp : public Application {
 public:
     typedef std::shared_ptr<FileServerApp> Ptr;
 
@@ -53,11 +51,11 @@ public:
      */
     static Ptr create(int argc, char* argv[]);
 
-    FileServerApp()=delete;
-    FileServerApp(FileServerApp const&)=delete;
-    FileServerApp& operator=(FileServerApp const&)=delete;
+    FileServerApp() = delete;
+    FileServerApp(FileServerApp const&) = delete;
+    FileServerApp& operator=(FileServerApp const&) = delete;
 
-    ~FileServerApp() override=default;
+    ~FileServerApp() override = default;
 
 protected:
     /// @see Application::runImpl()
@@ -77,6 +75,6 @@ private:
     LOG_LOGGER _log;
 };
 
-}}} // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif /* LSST_QSERV_REPLICA_FILESERVERAPP_H */

@@ -51,8 +51,7 @@
 // Forward declarations
 class XrdSsiService;
 
-namespace lsst {
-namespace qserv {
+namespace lsst::qserv {
 
 namespace qmeta {
 class QStatus;
@@ -72,14 +71,13 @@ class PseudoFifo;
 struct ExecutiveConfig {
     typedef std::shared_ptr<ExecutiveConfig> Ptr;
     ExecutiveConfig(std::string const& serviceUrl_, int secsBetweenChunkUpdates_)
-        : serviceUrl(serviceUrl_), secondsBetweenChunkUpdates(secsBetweenChunkUpdates_) {}
-    ExecutiveConfig(int,int) : serviceUrl(getMockStr()) {}
+            : serviceUrl(serviceUrl_), secondsBetweenChunkUpdates(secsBetweenChunkUpdates_) {}
+    ExecutiveConfig(int, int) : serviceUrl(getMockStr()) {}
 
-    std::string serviceUrl; ///< XrdSsi service URL, e.g. localhost:1094
-    int secondsBetweenChunkUpdates; ///< Seconds between QMeta chunk updates.
+    std::string serviceUrl;          ///< XrdSsi service URL, e.g. localhost:1094
+    int secondsBetweenChunkUpdates;  ///< Seconds between QMeta chunk updates.
     static std::string getMockStr() { return "Mock"; }
 };
-
 
 /// class Executive manages the execution of jobs for a UserQuery, while
 /// maintaining minimal information about the jobs themselves.
@@ -92,8 +90,9 @@ public:
     /// If c->serviceUrl == ExecutiveConfig::getMockStr(), then use XrdSsiServiceMock
     /// instead of a real XrdSsiService
     static Executive::Ptr create(ExecutiveConfig const& c, std::shared_ptr<MessageStore> const& ms,
-                SharedResources::Ptr const& sharedResources, std::shared_ptr<qmeta::QStatus> const& qMeta,
-                std::shared_ptr<qproc::QuerySession> const& querySession);
+                                 SharedResources::Ptr const& sharedResources,
+                                 std::shared_ptr<qmeta::QStatus> const& qMeta,
+                                 std::shared_ptr<qproc::QuerySession> const& querySession);
 
     ~Executive();
 
@@ -106,7 +105,6 @@ public:
     /// Waits for all jobs on _jobStartCmdList to start. This should not be called
     /// before ALL jobs have been added to the pool.
     void waitForAllJobsToStart();
-
 
     /// Block until execution is completed
     /// @return true if execution was successful
@@ -127,7 +125,7 @@ public:
     void setScanInteractive(bool interactive) { _scanInteractive = interactive; }
 
     /// @return number of items in flight.
-    int getNumInflight(); // non-const, requires a mutex.
+    int getNumInflight();  // non-const, requires a mutex.
 
     /// @return a description of the current execution progress.
     std::string getProgressDesc() const;
@@ -157,8 +155,7 @@ public:
 
 private:
     Executive(ExecutiveConfig const& c, std::shared_ptr<MessageStore> const& ms,
-              SharedResources::Ptr const& sharedResources,
-              std::shared_ptr<qmeta::QStatus> const& qStatus,
+              SharedResources::Ptr const& sharedResources, std::shared_ptr<qmeta::QStatus> const& qStatus,
               std::shared_ptr<qproc::QuerySession> const& querySession);
 
     void _setup();
@@ -183,33 +180,33 @@ private:
     // for debugging
     void _printState(std::ostream& os);
 
-    ExecutiveConfig _config; ///< Personal copy of config
+    ExecutiveConfig _config;  ///< Personal copy of config
     std::atomic<bool> _empty{true};
-    std::shared_ptr<MessageStore> _messageStore; ///< MessageStore for logging
+    std::shared_ptr<MessageStore> _messageStore;  ///< MessageStore for logging
 
     /// RPC interface, static to avoid getting every time a user query starts and separate
     /// from _xrdSsiService to avoid conflicts with XrdSsiServiceMock.
-    XrdSsiService* _xrdSsiService; ///< RPC interface
-    JobMap _jobMap; ///< Contains information about all jobs.
-    JobMap _incompleteJobs; ///< Map of incomplete jobs.
+    XrdSsiService* _xrdSsiService;  ///< RPC interface
+    JobMap _jobMap;                 ///< Contains information about all jobs.
+    JobMap _incompleteJobs;         ///< Map of incomplete jobs.
     /// How many jobs are used in this query. 1 avoids possible 0 of 0 jobs completed race condition.
     /// The correct value is set when it is available.
     std::atomic<int> _totalJobs{1};
-    QdispPool::Ptr _qdispPool; ///< Shared thread pool for handling commands to and from workers.
+    QdispPool::Ptr _qdispPool;  ///< Shared thread pool for handling commands to and from workers.
 
     /// Used to prevent czar from calling the most recent (and possibly critcal) QueryRequests first.
     std::shared_ptr<PseudoFifo> _queryRequestPseudoFifo;
 
-    std::deque<PriorityCommand::Ptr> _jobStartCmdList; ///< list of jobs to start.
+    std::deque<PriorityCommand::Ptr> _jobStartCmdList;  ///< list of jobs to start.
 
     /** Execution errors */
     util::MultiError _multiError;
 
-    std::atomic<int> _requestCount; ///< Count of submitted jobs
-    util::Flag<bool> _cancelled{false}; ///< Has execution been cancelled.
+    std::atomic<int> _requestCount;      ///< Count of submitted jobs
+    util::Flag<bool> _cancelled{false};  ///< Has execution been cancelled.
 
     // Mutexes
-    std::mutex _incompleteJobsMutex; ///< protect incompleteJobs map.
+    std::mutex _incompleteJobsMutex;  ///< protect incompleteJobs map.
 
     /** Used to record execution errors */
     mutable std::mutex _errorsMutex;
@@ -217,18 +214,18 @@ private:
     std::condition_variable _allJobsComplete;
     mutable std::recursive_mutex _jobMapMtx;
 
-    QueryId _id{0}; ///< Unique identifier for this query.
+    QueryId _id{0};  ///< Unique identifier for this query.
     std::string _idStr{QueryIdHelper::makeIdStr(0, true)};
-    //util::InstanceCount _instC{"Executive"};
+    // util::InstanceCount _instC{"Executive"};
 
     std::shared_ptr<qmeta::QStatus> _qMeta;
     /// Last time Executive updated QMeta, defaults to epoch for clock.
     std::chrono::system_clock::time_point _lastQMetaUpdate;
     /// Minimum number of seconds between QMeta chunk updates (set by config)
     std::chrono::seconds _secondsBetweenQMetaUpdates{60};
-    std::mutex _lastQMetaMtx; ///< protects _lastQMetaUpdate.
+    std::mutex _lastQMetaMtx;  ///< protects _lastQMetaUpdate.
 
-    bool _scanInteractive = false; ///< true for interactive scans.
+    bool _scanInteractive = false;  ///< true for interactive scans.
 
     /// True if enough rows were read to satisfy a LIMIT query with
     /// no ORDER BY or GROUP BY clauses.
@@ -236,7 +233,7 @@ private:
 
     std::atomic<int64_t> _totalResultRows{0};
     std::weak_ptr<qproc::QuerySession> _querySession;
-    int64_t _limit = 0; ///< Limit to number of rows to return. 0 means no limit.
+    int64_t _limit = 0;  ///< Limit to number of rows to return. 0 means no limit.
 
     ///< true if query can be returned as soon as _limit rows have been read.
     bool _limitApplies = false;
@@ -264,6 +261,7 @@ private:
     int _jobId;
 };
 
-}}} // namespace lsst::qserv::qdisp
+}  // namespace qdisp
+}  // namespace lsst::qserv
 
-#endif // LSST_QSERV_QDISP_EXECUTIVE_H
+#endif  // LSST_QSERV_QDISP_EXECUTIVE_H

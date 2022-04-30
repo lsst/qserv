@@ -38,38 +38,35 @@ using namespace lsst::qserv::replica;
 namespace {
 
 bool columnInSchema(string const& colName, list<SqlColDef> const& columns) {
-    return columns.end() != find_if(
-            columns.begin(), columns.end(),
-            [&colName] (SqlColDef const& coldef) { return coldef.name == colName; });
+    return columns.end() != find_if(columns.begin(), columns.end(),
+                                    [&colName](SqlColDef const& coldef) { return coldef.name == colName; });
 }
-} // namespace
+}  // namespace
 
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
-DatabaseInfo::DatabaseInfo(json const& obj,
-                           map<string, DatabaseFamilyInfo> const& families) {
+DatabaseInfo::DatabaseInfo(json const& obj, map<string, DatabaseFamilyInfo> const& families) {
     string const context = "DatabaseInfo::DatabaseInfo(json): ";
-    if (obj.empty()) return;    // the default construction
+    if (obj.empty()) return;  // the default construction
     if (!obj.is_object()) throw invalid_argument(context + "a JSON object is required.");
     try {
         name = obj.at("database").get<string>();
         family = obj.at("family_name").get<string>();
         if (families.count(family) == 0) {
-            throw invalid_argument(
-                    context + "unknown family name '" + family + "' specified in the JSON object.");
+            throw invalid_argument(context + "unknown family name '" + family +
+                                   "' specified in the JSON object.");
         }
-        isPublished  = obj.at("is_published").get<int>() != 0;
+        isPublished = obj.at("is_published").get<int>() != 0;
         if (obj.count("tables") != 0) {
-            for (auto&& itr: obj.at("tables").items()) {
+            for (auto&& itr : obj.at("tables").items()) {
                 string const& table = itr.key();
                 json const& tableJson = itr.value();
                 if (table != tableJson.at("name").get<string>()) {
-                    throw invalid_argument(
-                            context + "the table name '" + table + "' found in a dictionary of the database's " + name 
-                            + "' tables is not consistent within the table's name '" + tableJson.at("name").get<string>()
-                            + "' within the JSON object representing the table.");
+                    throw invalid_argument(context + "the table name '" + table +
+                                           "' found in a dictionary of the database's " + name +
+                                           "' tables is not consistent within the table's name '" +
+                                           tableJson.at("name").get<string>() +
+                                           "' within the JSON object representing the table.");
                 }
                 bool const isPartitioned = tableJson.at("is_partitioned").get<int>() != 0;
                 if (isPartitioned) {
@@ -79,26 +76,25 @@ DatabaseInfo::DatabaseInfo(json const& obj,
                     string const latitudeCol = tableJson.at("latitude_key").get<string>();
                     string const longitudeCol = tableJson.at("longitude_key").get<string>();
                     if (directorKey.empty()) {
-                        throw invalid_argument(
-                            context + "the director key of the partitioned table '" + table
-                            + "' can't be empty.");
+                        throw invalid_argument(context + "the director key of the partitioned table '" +
+                                               table + "' can't be empty.");
                     }
                     if (director.empty()) {
                         if (latitudeCol.empty()) {
-                            throw invalid_argument(
-                                context + "the latitude column of the director table '" + table
-                                + "' can't be empty.");
+                            throw invalid_argument(context + "the latitude column of the director table '" +
+                                                   table + "' can't be empty.");
                         }
                         if (longitudeCol.empty()) {
-                            throw invalid_argument(
-                                context + "the longitude column of the director table '" + table
-                                + "' can't be empty.");
+                            throw invalid_argument(context + "the longitude column of the director table '" +
+                                                   table + "' can't be empty.");
                         }
                     } else {
                         if (latitudeCol.empty() != longitudeCol.empty()) {
-                            throw invalid_argument(
-                                context + "inconsistent values of the latitude and longitude columns of the dependent table '"
-                                + table + "'. The columns must be both defined or not defined.");
+                            throw invalid_argument(context +
+                                                   "inconsistent values of the latitude and longitude "
+                                                   "columns of the dependent table '" +
+                                                   table +
+                                                   "'. The columns must be both defined or not defined.");
                         }
                     }
                     directorTable[table] = director;
@@ -111,13 +107,13 @@ DatabaseInfo::DatabaseInfo(json const& obj,
             }
         }
         if (obj.count("columns") != 0) {
-            for (auto&& itr: obj.at("columns").items()) {
+            for (auto&& itr : obj.at("columns").items()) {
                 auto&& table = itr.key();
                 auto&& columnsJson = itr.value();
                 list<SqlColDef>& tableColumns = columns[table];
-                for (auto&& coldefJson: columnsJson) {
-                    tableColumns.push_back(
-                        SqlColDef(coldefJson.at("name").get<string>(), coldefJson.at("type").get<string>()));
+                for (auto&& coldefJson : columnsJson) {
+                    tableColumns.push_back(SqlColDef(coldefJson.at("name").get<string>(),
+                                                     coldefJson.at("type").get<string>()));
                 }
             }
         }
@@ -126,23 +122,20 @@ DatabaseInfo::DatabaseInfo(json const& obj,
     }
 }
 
-
 vector<string> DatabaseInfo::tables() const {
     vector<string> result = partitionedTables;
     result.insert(result.end(), regularTables.begin(), regularTables.end());
     return result;
 }
 
-
 vector<std::string> DatabaseInfo::directorTables() const {
     vector<string> result;
-    for (auto&& itr: directorTable) {
+    for (auto&& itr : directorTable) {
         // "Director" tables can't have "directors"
         if (itr.second.empty()) result.push_back(itr.first);
     }
     return result;
 }
-
 
 json DatabaseInfo::toJson() const {
     json infoJson;
@@ -150,27 +143,22 @@ json DatabaseInfo::toJson() const {
     infoJson["family_name"] = family;
     infoJson["is_published"] = isPublished ? 1 : 0;
     infoJson["tables"] = json::object();
-    for (auto&& name: partitionedTables) {
-        infoJson["tables"][name] = json::object({
-            {"name", name},
-            {"is_partitioned", 1},
-            {"director", directorTable.at(name)},
-            {"director_key", directorTableKey.at(name)},
-            {"latitude_key", latitudeColName.at(name)},
-            {"longitude_key", longitudeColName.at(name)}
-        });
+    for (auto&& name : partitionedTables) {
+        infoJson["tables"][name] = json::object({{"name", name},
+                                                 {"is_partitioned", 1},
+                                                 {"director", directorTable.at(name)},
+                                                 {"director_key", directorTableKey.at(name)},
+                                                 {"latitude_key", latitudeColName.at(name)},
+                                                 {"longitude_key", longitudeColName.at(name)}});
     }
-    for (auto&& name: regularTables) {
-        infoJson["tables"][name] = json::object({
-            {"name", name},
-            {"is_partitioned", 0}
-        });
+    for (auto&& name : regularTables) {
+        infoJson["tables"][name] = json::object({{"name", name}, {"is_partitioned", 0}});
     }
-    for (auto&& columnsEntry: columns) {
+    for (auto&& columnsEntry : columns) {
         string const& table = columnsEntry.first;
         auto const& coldefs = columnsEntry.second;
         json coldefsJson;
-        for (auto&& coldef: coldefs) {
+        for (auto&& coldef : coldefs) {
             json coldefJson;
             coldefJson["name"] = coldef.name;
             coldefJson["type"] = coldef.type;
@@ -181,44 +169,37 @@ json DatabaseInfo::toJson() const {
     return infoJson;
 }
 
-
 string DatabaseInfo::schema4css(string const& table) const {
     string schema;
-    for (auto const& coldef: columns.at(table)) {
+    for (auto const& coldef : columns.at(table)) {
         schema += string(schema.empty() ? "(" : ", ") + "`" + coldef.name + "` " + coldef.type;
     }
     schema += ")";
     return schema;
 }
 
-
 bool DatabaseInfo::isPartitioned(string const& table) const {
-    if (partitionedTables.cend() != find(partitionedTables.cbegin(), partitionedTables.cend(), table)) return true;
+    if (partitionedTables.cend() != find(partitionedTables.cbegin(), partitionedTables.cend(), table))
+        return true;
     if (regularTables.cend() != find(regularTables.cbegin(), regularTables.cend(), table)) return false;
-    throw invalid_argument(
-            "DatabaseInfo::" + string(__func__) +
-            "no such table '" + table + "' found in database '" + name + "'");
+    throw invalid_argument("DatabaseInfo::" + string(__func__) + "no such table '" + table +
+                           "' found in database '" + name + "'");
 }
-
 
 bool DatabaseInfo::isDirector(string const& table) const {
     return isPartitioned(table) && directorTable.at(table).empty();
 }
 
-
 bool DatabaseInfo::hasTable(std::string const& table) const {
-    for (auto const collection: {&partitionedTables, &regularTables}) {
+    for (auto const collection : {&partitionedTables, &regularTables}) {
         if (collection->cend() != find(collection->cbegin(), collection->cend(), table)) return true;
     }
     return false;
 }
 
-
-void DatabaseInfo::addTable(
-        string const& table, list<SqlColDef> const& columns_,
-        bool isPartitioned, bool isDirector, string const& directorTable_, string const& directorTableKey_,
-        string const& latitudeColName_, string const& longitudeColName_) {
-
+void DatabaseInfo::addTable(string const& table, list<SqlColDef> const& columns_, bool isPartitioned,
+                            bool isDirector, string const& directorTable_, string const& directorTableKey_,
+                            string const& latitudeColName_, string const& longitudeColName_) {
     string const context = "DatabaseInfo::" + string(__func__) + " ";
 
     if (hasTable(table)) {
@@ -235,9 +216,9 @@ void DatabaseInfo::addTable(
 
         if (isDirector) {
             if (!directorTable_.empty()) {
-                throw invalid_argument(
-                        context + "the director table '" + table +
-                        "' can't be the dependent table of another director table '" + directorTable_ + "'.");
+                throw invalid_argument(context + "the director table '" + table +
+                                       "' can't be the dependent table of another director table '" +
+                                       directorTable_ + "'.");
             }
 
             // This column is required for all partitioned tables for materializing
@@ -258,7 +239,8 @@ void DatabaseInfo::addTable(
             if (directors.cend() == find(directors.cbegin(), directors.cend(), directorTable_)) {
                 throw invalid_argument(
                         context + "the dependent  table '" + table + "' requires the director table '" +
-                        directorTable_ + "' that is not registered yet in Qserv. Please, make sure the"
+                        directorTable_ +
+                        "' that is not registered yet in Qserv. Please, make sure the"
                         " director tables get registered before the corresponding dependent tables.");
             }
 
@@ -276,19 +258,21 @@ void DatabaseInfo::addTable(
         partitionedTables.push_back(table);
 
         // Verify if the special columns exist in the schema provided the method
-        for (auto&& entry: colDefs) {
+        for (auto&& entry : colDefs) {
             string const& role = entry.first;
             string const& colName = entry.second;
             if (colName.empty()) {
-                throw invalid_argument(
-                        context + "a valid column name must be provided"
-                        " for the '" + role + "' parameter of the partitioned table");
+                throw invalid_argument(context +
+                                       "a valid column name must be provided"
+                                       " for the '" +
+                                       role + "' parameter of the partitioned table");
             }
             if (!columnInSchema(colName, columns_)) {
-                throw invalid_argument(
-                        context + "no matching column found in the provided"
-                        " schema for name '" + colName + " as required by parameter '" + role +
-                        "' of the partitioned table: '" + table + "'");
+                throw invalid_argument(context +
+                                       "no matching column found in the provided"
+                                       " schema for name '" +
+                                       colName + " as required by parameter '" + role +
+                                       "' of the partitioned table: '" + table + "'");
             }
         }
 
@@ -306,18 +290,17 @@ void DatabaseInfo::addTable(
     columns[table] = columns_;
 }
 
-
 void DatabaseInfo::removeTable(std::string const& table) {
     string const context = "DatabaseInfo::" + string(__func__) + " ";
     bool const partitioned = isPartitioned(table);
     bool const director = isDirector(table);
     if (partitioned) {
         if (director) {
-            for (auto const& itr: directorTable) {
+            for (auto const& itr : directorTable) {
                 if (itr.second == table) {
-                    throw invalid_argument(
-                            context + "can't removed the director table '" + table
-                            + "' because it has dependent tables, including '" + itr.second + "'.");
+                    throw invalid_argument(context + "can't removed the director table '" + table +
+                                           "' because it has dependent tables, including '" + itr.second +
+                                           "'.");
                 }
             }
         }
@@ -327,15 +310,14 @@ void DatabaseInfo::removeTable(std::string const& table) {
         latitudeColName.erase(table);
         longitudeColName.erase(table);
     } else {
-       regularTables.erase(find(regularTables.begin(), regularTables.end(), table));
+        regularTables.erase(find(regularTables.begin(), regularTables.end(), table));
     }
     columns.erase(table);
 }
 
-
-ostream& operator <<(ostream& os, DatabaseInfo const& info) {
-    os  << "DatabaseInfo: " << info.toJson().dump();
+ostream& operator<<(ostream& os, DatabaseInfo const& info) {
+    os << "DatabaseInfo: " << info.toJson().dump();
     return os;
 }
 
-}}} // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

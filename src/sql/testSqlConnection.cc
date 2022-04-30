@@ -21,11 +21,10 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-
 // System headers
 #include <iostream>
 #include <string>
-#include <unistd.h> // for getpass
+#include <unistd.h>  // for getpass
 
 // Third-party headers
 
@@ -38,7 +37,6 @@
 #define BOOST_TEST_MODULE SqlConnection_1
 #include <boost/test/unit_test.hpp>
 
-
 namespace test = boost::test_tools;
 
 using lsst::qserv::mysql::MySqlConfig;
@@ -48,31 +46,30 @@ using lsst::qserv::sql::SqlErrorObject;
 using lsst::qserv::sql::SqlResultIter;
 using lsst::qserv::sql::SqlResults;
 
-
 namespace {
 
 inline std::string makeCreateTable(std::string const& t) {
     std::stringstream ss;
-    ss <<  "CREATE TABLE " << t << " (o1 int)";
+    ss << "CREATE TABLE " << t << " (o1 int)";
     return ss.str();
 }
 
-inline std::string makeShowTables(std::string const& dbName=std::string()) {
+inline std::string makeShowTables(std::string const& dbName = std::string()) {
     std::stringstream ss;
-    ss <<  "SHOW TABLES ";
-    if (!dbName.empty()) { ss << "IN " << dbName; }
+    ss << "SHOW TABLES ";
+    if (!dbName.empty()) {
+        ss << "IN " << dbName;
+    }
     return ss.str();
 }
 
 class createIntTable {
 public:
-    createIntTable(std::shared_ptr<SqlConnection> const& sqlConn_,
-                   SqlErrorObject& errObj_)
-        : sqlConn(sqlConn_), errObj(errObj_) {}
-
+    createIntTable(std::shared_ptr<SqlConnection> const& sqlConn_, SqlErrorObject& errObj_)
+            : sqlConn(sqlConn_), errObj(errObj_) {}
 
     void operator()(std::string const& s) {
-        if ( !sqlConn->runQuery(makeCreateTable(s), errObj) ) {
+        if (!sqlConn->runQuery(makeCreateTable(s), errObj)) {
             BOOST_FAIL(errObj.printErrMsg());
         }
     }
@@ -80,12 +77,11 @@ public:
     SqlErrorObject& errObj;
 };
 
-
-} // anonymous namespace
+}  // anonymous namespace
 
 struct PerTestFixture {
     PerTestFixture() {
-        if ( sqlConfig.username.empty() ) {
+        if (sqlConfig.username.empty()) {
             sqlConfig.hostname = "";
             sqlConfig.dbName = "";
             sqlConfig.port = 0;
@@ -97,7 +93,7 @@ struct PerTestFixture {
         }
         sqlConn = SqlConnectionFactory::make(sqlConfig);
     }
-    ~PerTestFixture () {}
+    ~PerTestFixture() {}
     std::shared_ptr<SqlConnection> sqlConn;
     static lsst::qserv::mysql::MySqlConfig sqlConfig;
 };
@@ -112,15 +108,15 @@ BOOST_AUTO_TEST_CASE(CreateAndDropDb) {
     // this database should not exist
     BOOST_CHECK_EQUAL(sqlConn->dbExists(dbN, errObj), false);
     // create it now
-    if ( !sqlConn->createDb(dbN, errObj) ) {
+    if (!sqlConn->createDb(dbN, errObj)) {
         BOOST_FAIL(errObj.printErrMsg());
     }
     // this database should exist now
-    if ( !sqlConn->dbExists(dbN, errObj) ) {
+    if (!sqlConn->dbExists(dbN, errObj)) {
         BOOST_FAIL(errObj.printErrMsg());
     }
     // drop it
-    if ( !sqlConn->dropDb(dbN, errObj) ) {
+    if (!sqlConn->dropDb(dbN, errObj)) {
         BOOST_FAIL(errObj.printErrMsg());
     }
     // this database should not exist now
@@ -136,14 +132,14 @@ BOOST_AUTO_TEST_CASE(TableExists) {
     SqlErrorObject errObj;
 
     // create 2 dbs
-    if ( !sqlConn->createDb(dbN1, errObj) ) {
+    if (!sqlConn->createDb(dbN1, errObj)) {
         BOOST_FAIL(errObj.printErrMsg());
     }
-    if ( !sqlConn->createDb(dbN2, errObj) ) {
+    if (!sqlConn->createDb(dbN2, errObj)) {
         BOOST_FAIL(errObj.printErrMsg());
     }
     // select db to use
-    if ( !sqlConn->selectDb(dbN1, errObj) ) {
+    if (!sqlConn->selectDb(dbN1, errObj)) {
         BOOST_FAIL(errObj.printErrMsg());
     }
     // check if table exists in default db
@@ -153,16 +149,17 @@ BOOST_AUTO_TEST_CASE(TableExists) {
     // check if table exists in dbN2
     BOOST_CHECK_EQUAL(sqlConn->tableExists(tNa, errObj, dbN2), false);
     // create table (in dbN1)
-    ss.str(""); ss <<  "CREATE TABLE " << tNa << " (i int)";
-    if ( !sqlConn->runQuery(ss.str(), errObj) ) {
+    ss.str("");
+    ss << "CREATE TABLE " << tNa << " (i int)";
+    if (!sqlConn->runQuery(ss.str(), errObj)) {
         BOOST_FAIL(errObj.printErrMsg());
     }
     // check if table tN exists in default db (it should)
-    if ( !sqlConn->tableExists(tNa, errObj) ) {
+    if (!sqlConn->tableExists(tNa, errObj)) {
         BOOST_FAIL(errObj.printErrMsg());
     }
     // check if table tN exists in dbN1 (it should)
-    if ( !sqlConn->tableExists(tNa, errObj, dbN1) ) {
+    if (!sqlConn->tableExists(tNa, errObj, dbN1)) {
         BOOST_FAIL(errObj.printErrMsg());
     }
     // check if table tN exists in dbN2 (it should NOT)
@@ -180,53 +177,49 @@ BOOST_AUTO_TEST_CASE(TableExists) {
 
 BOOST_AUTO_TEST_CASE(ListTables) {
     std::string dbN = "one_xysdfed34d";
-    std::string tList[] = {
-        "object_1", "object_2", "object_3",
-        "source_1", "source_2" };
+    std::string tList[] = {"object_1", "object_2", "object_3", "source_1", "source_2"};
     int const tListLen = 5;
     SqlErrorObject errObj;
     std::vector<std::string> v;
 
     // create db and select it as default
-    if ( !sqlConn->createDbAndSelect(dbN, errObj) ) {
+    if (!sqlConn->createDbAndSelect(dbN, errObj)) {
         BOOST_FAIL(errObj.printErrMsg());
     }
 
     // create tables
-    std::for_each(tList, tList + tListLen,
-                  createIntTable(sqlConn, errObj));
+    std::for_each(tList, tList + tListLen, createIntTable(sqlConn, errObj));
 
     // try creating exiting table, should fail
-    if ( sqlConn->runQuery(makeCreateTable(tList[0]), errObj) ) {
-        BOOST_FAIL("Creating table " + makeCreateTable(tList[0])
-                   +" should fail, but it didn't. Received this: "
-                   + errObj.printErrMsg());
+    if (sqlConn->runQuery(makeCreateTable(tList[0]), errObj)) {
+        BOOST_FAIL("Creating table " + makeCreateTable(tList[0]) +
+                   " should fail, but it didn't. Received this: " + errObj.printErrMsg());
     }
     // list all tables, should get 5
-    if ( !sqlConn->listTables(v, errObj) ) {
+    if (!sqlConn->listTables(v, errObj)) {
         BOOST_FAIL(errObj.printErrMsg());
     }
     BOOST_CHECK_EQUAL(v.size(), 5U);
 
     // list "object" tables, should get 3
-    if ( !sqlConn->listTables(v, errObj, "object_") ) {
+    if (!sqlConn->listTables(v, errObj, "object_")) {
         BOOST_FAIL(errObj.printErrMsg());
     }
     BOOST_CHECK_EQUAL(v.size(), 3U);
 
     // list "source" tables, should get 2
-    if ( !sqlConn->listTables(v, errObj, "source_") ) {
+    if (!sqlConn->listTables(v, errObj, "source_")) {
         BOOST_FAIL(errObj.printErrMsg());
     }
     BOOST_CHECK_EQUAL(v.size(), 2U);
 
     // list nonExisting tables, should get 0
-    if ( !sqlConn->listTables(v, errObj, "whatever") ) {
+    if (!sqlConn->listTables(v, errObj, "whatever")) {
         BOOST_FAIL(errObj.printErrMsg());
     }
     BOOST_CHECK_EQUAL(v.size(), 0U);
     // drop db
-    if ( !sqlConn->dropDb(dbN, errObj) ) {
+    if (!sqlConn->dropDb(dbN, errObj)) {
         BOOST_FAIL(errObj.printErrMsg());
     }
 }
@@ -235,26 +228,23 @@ BOOST_AUTO_TEST_CASE(UnbufferedQuery) {
     sqlConn = SqlConnectionFactory::make(sqlConfig);
     // Setup for "list tables"
     std::string dbN = "one_xysdfed34d";
-    std::string tList[] = {
-        "object_1", "object_2", "object_3",
-        "source_1", "source_2" };
+    std::string tList[] = {"object_1", "object_2", "object_3", "source_1", "source_2"};
     int const tListLen = 5;
     SqlErrorObject errObj;
     std::vector<std::string> v;
 
     // create db and select it as default
-    if ( !sqlConn->createDbAndSelect(dbN, errObj) ) {
+    if (!sqlConn->createDbAndSelect(dbN, errObj)) {
         BOOST_FAIL(errObj.printErrMsg());
     }
 
     // create tables
-    std::for_each(tList, tList + tListLen,
-                  createIntTable(sqlConn, errObj));
+    std::for_each(tList, tList + tListLen, createIntTable(sqlConn, errObj));
 
     std::shared_ptr<SqlResultIter> ri;
     ri = sqlConn->getQueryIter(makeShowTables());
-    int i=0;
-    for(; !ri->done(); ++*ri, ++i) { // Assume mysql is order-preserving.
+    int i = 0;
+    for (; !ri->done(); ++*ri, ++i) {  // Assume mysql is order-preserving.
         std::string column0 = (**ri)[0];
         BOOST_CHECK_EQUAL(tList[i], column0);
         BOOST_CHECK(i < tListLen);
@@ -262,7 +252,7 @@ BOOST_AUTO_TEST_CASE(UnbufferedQuery) {
     BOOST_CHECK_EQUAL(i, tListLen);
 
     // drop db
-    if ( !sqlConn->dropDb(dbN, errObj) ) {
+    if (!sqlConn->dropDb(dbN, errObj)) {
         BOOST_FAIL(errObj.printErrMsg());
     }
 }
@@ -275,7 +265,7 @@ BOOST_AUTO_TEST_CASE(RowIter) {
     SqlResults results;
 
     // create db and select it as default
-    if ( !sqlConn->createDbAndSelect(dbN, errObj) ) {
+    if (!sqlConn->createDbAndSelect(dbN, errObj)) {
         BOOST_FAIL(errObj.printErrMsg());
     }
 
@@ -286,14 +276,12 @@ BOOST_AUTO_TEST_CASE(RowIter) {
     }
 
     // fill with some data
-    const char* queries[] = {
-            "INSERT INTO one_xysdfed34d (x, y) VALUES (1, 1)",
-            "INSERT INTO one_xysdfed34d (x, y) VALUES (3, NULL)",
-            "INSERT INTO one_xysdfed34d (x, y) VALUES (NULL, 999)",
-            "INSERT INTO one_xysdfed34d (x, y) VALUES (2, 3)"
-    };
+    const char* queries[] = {"INSERT INTO one_xysdfed34d (x, y) VALUES (1, 1)",
+                             "INSERT INTO one_xysdfed34d (x, y) VALUES (3, NULL)",
+                             "INSERT INTO one_xysdfed34d (x, y) VALUES (NULL, 999)",
+                             "INSERT INTO one_xysdfed34d (x, y) VALUES (2, 3)"};
     unsigned nRows = sizeof queries / sizeof queries[0];
-    for (unsigned i = 0; i != nRows; ++ i) {
+    for (unsigned i = 0; i != nRows; ++i) {
         if (!sqlConn->runQuery(queries[i], errObj)) {
             BOOST_FAIL(errObj.printErrMsg());
         }
@@ -306,7 +294,7 @@ BOOST_AUTO_TEST_CASE(RowIter) {
     }
 
     std::vector<std::pair<std::string, std::string> > output;
-    for (SqlResults::iterator itr = results.begin(); itr != results.end(); ++ itr) {
+    for (SqlResults::iterator itr = results.begin(); itr != results.end(); ++itr) {
         SqlResults::value_type const& row = *itr;
         BOOST_CHECK_EQUAL(row.size(), 2U);
         std::string x(row[0].first ? row[0].first : "_NULL_");
@@ -329,10 +317,9 @@ BOOST_AUTO_TEST_CASE(RowIter) {
     BOOST_CHECK_EQUAL(output[3].second, "999");
 
     // drop db
-    if ( !sqlConn->dropDb(dbN, errObj) ) {
+    if (!sqlConn->dropDb(dbN, errObj)) {
         BOOST_FAIL(errObj.printErrMsg());
     }
 }
-
 
 BOOST_AUTO_TEST_SUITE_END()

@@ -41,18 +41,12 @@
 #include "replica/IndexRequest.h"
 
 // Forward declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
-namespace database {
-namespace mysql {
-    class Connection;
-}}}}}
+namespace lsst::qserv::replica::database::mysql {
+class Connection;
+}  // namespace lsst::qserv::replica::database::mysql
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * The structure IndexJobResult represents a combined result received
@@ -60,9 +54,10 @@ namespace replica {
  */
 struct IndexJobResult {
     /// MySQL-specific errors (if any) for chunks are stored in this map
-    std::map<std::string,           // worker
-             std::map<unsigned int, // chunk
-                      std::string>> error;
+    std::map<std::string,            // worker
+             std::map<unsigned int,  // chunk
+                      std::string>>
+            error;
     /// @return JSON representation of the object as {<worker>:{<chunk>:<error>}}
     nlohmann::json toJson() const;
 };
@@ -73,7 +68,7 @@ struct IndexJobResult {
  * the workers. Results are either dumped into the specified folder or
  * directly loaded into the "secondary index" of a database.
  */
-class IndexJob: public Job  {
+class IndexJob : public Job {
 public:
     typedef std::shared_ptr<IndexJob> Ptr;
 
@@ -85,10 +80,10 @@ public:
 
     /// Possible destinations where the harvested data would go
     enum Destination {
-        DISCARD,    // do nothing with the data
-        FILE,       // write all data into a file
-        FOLDER,     // write each chunk's data as a separate file at a folder
-        TABLE       // write into the specified or standard "secondary index" table
+        DISCARD,  // do nothing with the data
+        FILE,     // write all data into a file
+        FOLDER,   // write each chunk's data as a separate file at a folder
+        TABLE     // write into the specified or standard "secondary index" table
     };
 
     /// @return the string representation for a value of the Destination option
@@ -140,18 +135,10 @@ public:
      * @param onFinish a function to be called upon a completion of the job
      * @param priority the priority level of the job
      */
-    static Ptr create(std::string const& database,
-                      std::string const& directorTable,
-                      bool hasTransactions,
-                      TransactionId transactionId,
-                      bool allWorkers,
-                      Destination destination,
-                      std::string const& destinationPath,
-                      bool localFile,
-                      Controller::Ptr const& controller,
-                      std::string const& parentJobId,
-                      CallbackType const& onFinish,
-                      int priority);
+    static Ptr create(std::string const& database, std::string const& directorTable, bool hasTransactions,
+                      TransactionId transactionId, bool allWorkers, Destination destination,
+                      std::string const& destinationPath, bool localFile, Controller::Ptr const& controller,
+                      std::string const& parentJobId, CallbackType const& onFinish, int priority);
 
     // Default construction and copy semantics are prohibited
 
@@ -165,14 +152,14 @@ public:
 
     // Trivial get methods
 
-    std::string const& database()        const { return _databaseInfo.name; }
-    std::string const& directorTable()   const { return _directorTable; }
-    bool               hasTransactions() const { return _hasTransactions; }
-    TransactionId      transactionId()   const { return _transactionId; }
-    bool               allWorkers()      const { return _allWorkers; }
-    Destination        destination()     const { return _destination; }
+    std::string const& database() const { return _databaseInfo.name; }
+    std::string const& directorTable() const { return _directorTable; }
+    bool hasTransactions() const { return _hasTransactions; }
+    TransactionId transactionId() const { return _transactionId; }
+    bool allWorkers() const { return _allWorkers; }
+    Destination destination() const { return _destination; }
     std::string const& destinationPath() const { return _destinationPath; }
-    bool               localFile()       const { return _localFile; }
+    bool localFile() const { return _localFile; }
 
     /// @see Job::progress
     virtual Job::Progress progress() const override;
@@ -189,8 +176,8 @@ public:
      */
     IndexJobResult const& getResultData() const;
 
-    std::list<std::pair<std::string,std::string>> extendedPersistentState() const final;
-    std::list<std::pair<std::string,std::string>> persistentLogData() const final;
+    std::list<std::pair<std::string, std::string>> extendedPersistentState() const final;
+    std::list<std::pair<std::string, std::string>> persistentLogData() const final;
 
 protected:
     void startImpl(util::Lock const& lock) final;
@@ -200,18 +187,10 @@ protected:
     void notify(util::Lock const& lock) final;
 
 private:
-    IndexJob(std::string const& database,
-             std::string const& directorTable,
-             bool hasTransactions,
-             TransactionId transactionId,
-             bool allWorkers,
-             Destination destination,
-             std::string const& destinationPath,
-             bool localFile,
-             Controller::Ptr const& controller,
-             std::string const& parentJobId,
-             CallbackType const& onFinish,
-             int priority);
+    IndexJob(std::string const& database, std::string const& directorTable, bool hasTransactions,
+             TransactionId transactionId, bool allWorkers, Destination destination,
+             std::string const& destinationPath, bool localFile, Controller::Ptr const& controller,
+             std::string const& parentJobId, CallbackType const& onFinish, int priority);
 
     /**
      * The callback function to be invoked on a completion of requests
@@ -227,8 +206,7 @@ private:
      *   the object's state
      * @param request the request to extract the data to be processed
      */
-    void _processRequestData(util::Lock const& lock,
-                             IndexRequest::Ptr const& request);
+    void _processRequestData(util::Lock const& lock, IndexRequest::Ptr const& request);
 
     /**
      * Launch a batch of requests with a total number not to exceed the specified
@@ -240,9 +218,8 @@ private:
      * @param maxRequests the maximum number of requests to be launched
      * @return a collection of requests launched
      */
-    std::list<IndexRequest::Ptr> _launchRequests(util::Lock const& lock,
-                                                 std::string const& worker,
-                                                 size_t maxRequests=1);
+    std::list<IndexRequest::Ptr> _launchRequests(util::Lock const& lock, std::string const& worker,
+                                                 size_t maxRequests = 1);
 
     /**
      * Roll back a database transaction should the one be still open
@@ -256,26 +233,26 @@ private:
 private:
     // Input parameters
 
-    std::string   const _directorTable;
-    bool          const _hasTransactions;
+    std::string const _directorTable;
+    bool const _hasTransactions;
     TransactionId const _transactionId;
-    bool          const _allWorkers;
-    Destination   const _destination;
-    std::string   const _destinationPath;
-    bool          const _localFile;
+    bool const _allWorkers;
+    Destination const _destination;
+    std::string const _destinationPath;
+    bool const _localFile;
 
-    CallbackType _onFinish;     /// @note is reset when the job finishes
+    CallbackType _onFinish;  /// @note is reset when the job finishes
 
-    DatabaseInfo _databaseInfo; /// Initialized by the c-tor
+    DatabaseInfo _databaseInfo;  /// Initialized by the c-tor
 
     /// A collection of chunks to be processed at specific workers
     std::map<std::string, std::queue<unsigned int>> _chunks;
 
-    /// A collection of the in-flight requests (request id is the key) 
+    /// A collection of the in-flight requests (request id is the key)
     std::map<std::string, IndexRequest::Ptr> _requests;
 
     /// Database connector is initialized for Destination::TABLE upon arrival
-    /// of the very first batch of data. A separate transaction is started 
+    /// of the very first batch of data. A separate transaction is started
     /// to load each bunch of data received from workers. The transaction (if
     /// any is still open) is automatically aborted by the destructor or
     /// the request cancellation.
@@ -285,10 +262,10 @@ private:
     IndexJobResult _resultData;
 
     // Job progression counters
-    size_t _totalChunks = 0;    ///< The total number of chunks is set when the job is starting.
-    size_t _completeChunks = 0; ///< Is incremented for each processed (regardless of results) chunk.
+    size_t _totalChunks = 0;     ///< The total number of chunks is set when the job is starting.
+    size_t _completeChunks = 0;  ///< Is incremented for each processed (regardless of results) chunk.
 };
 
-}}} // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_INDEXJOB_H
+#endif  // LSST_QSERV_REPLICA_INDEXJOB_H

@@ -47,17 +47,13 @@ using namespace std;
 
 namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.css.DbInterfaceMySql");
-} // namespace
+}  // namespace
 
-
-
-namespace lsst {
-namespace qserv {
+namespace lsst::qserv {
 
 namespace {
 
-class DbITransaction : public sql::SqlTransactionScope
-{
+class DbITransaction : public sql::SqlTransactionScope {
 public:
     using Ptr = shared_ptr<DbITransaction>;
 
@@ -69,20 +65,18 @@ public:
     }
 
     friend sql::SqlTransactionScope;
+
 protected:
     /// Constructor - create with sql::SqlTransactionScope::create<DbITransaction>
     explicit DbITransaction(sql::SqlConnection& conn) : sql::SqlTransactionScope(conn) {}
 };
 
-} // namespace
-
+}  // namespace
 
 namespace css {
 
 DbInterfaceMySql::DbInterfaceMySql(mysql::MySqlConfig const& mysqlConf)
-    : _conn(sql::SqlConnectionFactory::make(mysqlConf)) {
-}
-
+        : _conn(sql::SqlConnectionFactory::make(mysqlConf)) {}
 
 set<int> DbInterfaceMySql::getEmptyChunks(string const& dbName) {
     string const funcName(__func__);
@@ -113,7 +107,7 @@ set<int> DbInterfaceMySql::getEmptyChunks(string const& dbName) {
 
     // Create the set
     set<int> emptyChunkSet;
-    for (auto const& j:emptyChunks) {
+    for (auto const& j : emptyChunks) {
         try {
             emptyChunkSet.insert(std::stoi(j));
         } catch (std::logic_error const& e) {
@@ -125,6 +119,5 @@ set<int> DbInterfaceMySql::getEmptyChunks(string const& dbName) {
     return emptyChunkSet;
 }
 
-}}} // namespace lsst::qserv::css
-
-
+}  // namespace css
+}  // namespace lsst::qserv

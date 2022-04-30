@@ -30,9 +30,7 @@
 #include "replica/Task.h"
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class DeleteWorkerTask represents a task which evicts a single worker
@@ -41,9 +39,7 @@ namespace replica {
  * removal of a worker could be a lengthy process.
  */
 class DeleteWorkerTask : public Task {
-
 public:
-
     /// The pointer type for instances of the class
     typedef std::shared_ptr<DeleteWorkerTask> Ptr;
 
@@ -81,21 +77,17 @@ public:
      *   the smart pointer to a new object
      */
     static Ptr create(Controller::Ptr const& controller,
-                      Task::AbnormalTerminationCallbackType const& onTerminated,
-                      std::string const& worker,
+                      Task::AbnormalTerminationCallbackType const& onTerminated, std::string const& worker,
                       bool permanentDelete);
 
 protected:
-
     /// @see Task::onStart()
     void onStart() override;
 
 private:
-
     /// @see DeleteWorkerTask::create()
     DeleteWorkerTask(Controller::Ptr const& controller,
-                     Task::AbnormalTerminationCallbackType const& onTerminated,
-                     std::string const& worker,
+                     Task::AbnormalTerminationCallbackType const& onTerminated, std::string const& worker,
                      bool permanentDelete);
 
     /**
@@ -114,13 +106,12 @@ private:
      */
     void _logFinishedEvent(DeleteWorkerJob::Ptr const& job) const;
 
-
     // Input parameters
 
     std::string const _worker;
-    bool        const _permanentDelete;
+    bool const _permanentDelete;
 };
-    
-}}} // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_DELETEWORKERTASK_H
+}  // namespace lsst::qserv::replica
+
+#endif  // LSST_QSERV_DELETEWORKERTASK_H

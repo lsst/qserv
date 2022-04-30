@@ -21,7 +21,6 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-
 #ifndef LSST_QSERV_UTIL_STRINGHELPER_H
 #define LSST_QSERV_UTIL_STRINGHELPER_H
 
@@ -32,14 +31,11 @@
 // Qserv headers
 #include "util/Command.h"
 
-namespace lsst {
-namespace qserv {
-namespace util {
+namespace lsst::qserv::util {
 
 /// Functions to help with string processing.
 class StringHelper {
 public:
-
     /// @return a vector of strings resulting from splitting 'str' into separate strings
     /// using 'separator' as the delimiter.
     /// TODO: If other return types are needed, make a template version.
@@ -51,10 +47,9 @@ public:
     /// If throwOnError is false, the default value will be used for that entry and nothing will be thrown.
     /// TODO: If other return types are needed, make a template version.
     static std::vector<int> getIntVectFromStr(std::string const& str, std::string const& separator,
-            bool throwOnError=true, int defaultVal=0);
-
+                                              bool throwOnError = true, int defaultVal = 0);
 };
 
-}}} // namespace lsst::qserv::util
+}  // namespace lsst::qserv::util
 
-#endif // LSST_QSERV_UTIL_STRINGHELPER_H
+#endif  // LSST_QSERV_UTIL_STRINGHELPER_H

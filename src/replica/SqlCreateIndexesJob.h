@@ -34,9 +34,7 @@
 #include "replica/SqlJob.h"
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class SqlCreateIndexesJob represents a tool which will broadcast batches of
@@ -49,7 +47,7 @@ namespace replica {
  * the corresponding chunk tables for all chunks associated with the corresponding
  * workers, as well as so called "dummy chunk" tables.
  */
-class SqlCreateIndexesJob: public SqlJob {
+class SqlCreateIndexesJob : public SqlJob {
 public:
     /// The pointer type for instances of the class
     typedef std::shared_ptr<SqlCreateIndexesJob> Ptr;
@@ -82,26 +80,18 @@ public:
      *   involved into the operation.
      * @param ignoreDuplicateKey The flag which if 'true' then don't report as
      *   errors tables for which ProtocolStatusExt::DUPLICATE_KEY was reported.
-     *   The flag can be useful for tables in which the index may already exist. 
+     *   The flag can be useful for tables in which the index may already exist.
      * @param controller This is needed launching requests and accessing the Configuration.
      * @param parentJobId An identifier of a parent job.
      * @param onFinish A callback function to be called upon a completion of the job.
      * @param priority The priority level of the job.
      * @return A pointer to the created object.
      */
-    static Ptr create(std::string const& database,
-                      std::string const& table,
-                      bool overlap,
-                      SqlRequestParams::IndexSpec const& indexSpec,
-                      std::string const& indexName,
-                      std::string const& indexComment,
-                      std::vector<SqlIndexColumn> const& indexColumns,
-                      bool allWorkers,
-                      bool ignoreDuplicateKey,
-                      Controller::Ptr const& controller,
-                      std::string const& parentJobId,
-                      CallbackType const& onFinish,
-                      int priority);
+    static Ptr create(std::string const& database, std::string const& table, bool overlap,
+                      SqlRequestParams::IndexSpec const& indexSpec, std::string const& indexName,
+                      std::string const& indexComment, std::vector<SqlIndexColumn> const& indexColumns,
+                      bool allWorkers, bool ignoreDuplicateKey, Controller::Ptr const& controller,
+                      std::string const& parentJobId, CallbackType const& onFinish, int priority);
 
     SqlCreateIndexesJob() = delete;
     SqlCreateIndexesJob(SqlCreateIndexesJob const&) = delete;
@@ -117,32 +107,22 @@ public:
     std::string const& indexComment() const { return _indexComment; }
     std::vector<SqlIndexColumn> const& indexColumns() const { return _indexColumns; }
 
-    std::list<std::pair<std::string,std::string>> extendedPersistentState() const final;
+    std::list<std::pair<std::string, std::string>> extendedPersistentState() const final;
 
 protected:
     void notify(util::Lock const& lock) final;
 
-    std::list<SqlRequest::Ptr> launchRequests(util::Lock const& lock,
-                                              std::string const& worker,
+    std::list<SqlRequest::Ptr> launchRequests(util::Lock const& lock, std::string const& worker,
                                               size_t maxRequestsPerWorker) final;
 
-    void stopRequest(util::Lock const& lock,
-                     SqlRequest::Ptr const& request) final;
+    void stopRequest(util::Lock const& lock, SqlRequest::Ptr const& request) final;
 
 private:
-    SqlCreateIndexesJob(std::string const& database,
-                        std::string const& table,
-                        bool overlap,
-                        SqlRequestParams::IndexSpec const& indexSpec,
-                        std::string const& indexName,
-                        std::string const& indexComment,
-                        std::vector<SqlIndexColumn> const& indexColumns,
-                        bool allWorkers,
-                        bool ignoreDuplicateKey,
-                        Controller::Ptr const& controller,
-                        std::string const& parentJobId,
-                        CallbackType const& onFinish,
-                        int priority);
+    SqlCreateIndexesJob(std::string const& database, std::string const& table, bool overlap,
+                        SqlRequestParams::IndexSpec const& indexSpec, std::string const& indexName,
+                        std::string const& indexComment, std::vector<SqlIndexColumn> const& indexColumns,
+                        bool allWorkers, bool ignoreDuplicateKey, Controller::Ptr const& controller,
+                        std::string const& parentJobId, CallbackType const& onFinish, int priority);
 
     // Input parameters
 
@@ -154,7 +134,7 @@ private:
     std::string const _indexComment;
     std::vector<SqlIndexColumn> const _indexColumns;
 
-    CallbackType _onFinish;     /// @note is reset when the job finishes
+    CallbackType _onFinish;  /// @note is reset when the job finishes
 
     /// A registry of workers to mark those for which request has been sent.
     /// The registry prevents duplicate requests because exactly one
@@ -162,6 +142,6 @@ private:
     std::set<std::string> _workers;
 };
 
-}}} // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_SQLCREATETABLESJOB_H
+#endif  // LSST_QSERV_REPLICA_SQLCREATETABLESJOB_H

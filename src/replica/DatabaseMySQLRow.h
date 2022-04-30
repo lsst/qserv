@@ -41,21 +41,15 @@
 #include "replica/DatabaseMySQLExceptions.h"
 
 // Forward declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
-    class ProtocolResponseSqlRow;
-namespace database {
-namespace mysql {
-    class Connection;
-}}}}} // Forward declarations
+namespace lsst::qserv::replica {
+class ProtocolResponseSqlRow;
+namespace database::mysql {
+class Connection;
+}  // namespace database::mysql
+}  // namespace lsst::qserv::replica
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
-namespace database {
-namespace mysql {
+namespace lsst::qserv::replica::database::mysql {
 
 /**
  * Class Row represents the current row obtained from the last result set.
@@ -89,9 +83,7 @@ namespace mysql {
  *
  */
 class Row {
-
 public:
-
     /// Class Connection is allowed to initialize the valid content of rows
     friend class Connection;
 
@@ -132,7 +124,7 @@ public:
 
     // These methods will return 'true' if the specified field is NULL
 
-    bool isNull(size_t             columnIdx)  const;
+    bool isNull(size_t columnIdx) const;
     bool isNull(std::string const& columnName) const;
 
     // Type-specific data extractors/converters for values of fields.
@@ -172,7 +164,7 @@ public:
 
     // Strings
 
-    bool get(size_t      columnIdx,         std::string& value) const;
+    bool get(size_t columnIdx, std::string& value) const;
     bool get(std::string const& columnName, std::string& value) const;
 
     // Unsigned integer types
@@ -180,38 +172,38 @@ public:
     bool get(size_t columnIdx, uint64_t& value) const;
     bool get(size_t columnIdx, uint32_t& value) const;
     bool get(size_t columnIdx, uint16_t& value) const;
-    bool get(size_t columnIdx, uint8_t&  value) const;
+    bool get(size_t columnIdx, uint8_t& value) const;
 
     bool get(std::string const& columnName, uint64_t& value) const;
     bool get(std::string const& columnName, uint32_t& value) const;
     bool get(std::string const& columnName, uint16_t& value) const;
-    bool get(std::string const& columnName, uint8_t&  value) const;
+    bool get(std::string const& columnName, uint8_t& value) const;
 
     // Signed integer types
 
     bool get(size_t columnIdx, int64_t& value) const;
     bool get(size_t columnIdx, int32_t& value) const;
     bool get(size_t columnIdx, int16_t& value) const;
-    bool get(size_t columnIdx, int8_t&  value) const;
+    bool get(size_t columnIdx, int8_t& value) const;
 
     bool get(std::string const& columnName, int64_t& value) const;
     bool get(std::string const& columnName, int32_t& value) const;
     bool get(std::string const& columnName, int16_t& value) const;
-    bool get(std::string const& columnName, int8_t&  value) const;
+    bool get(std::string const& columnName, int8_t& value) const;
 
     // Floating point types
 
-    bool get(size_t columnIdx, float&  value) const;
+    bool get(size_t columnIdx, float& value) const;
     bool get(size_t columnIdx, double& value) const;
 
-    bool get(std::string const& columnName, float&  value) const;
+    bool get(std::string const& columnName, float& value) const;
     bool get(std::string const& columnName, double& value) const;
 
     // Other types
 
     bool get(size_t columnIdx, bool& value) const;
 
-    bool get(std::string const& columnName, bool&  value) const;
+    bool get(std::string const& columnName, bool& value) const;
 
     /**
      * @return
@@ -236,14 +228,13 @@ public:
      *
      * @param ptr
      *   a valid pointer to the Protobuf object to be populated.
-     * 
+     *
      * @param std::invalid_argument
      *   if the input pointer is 0
      */
     void exportRow(ProtocolResponseSqlRow* ptr) const;
 
 private:
-
     /**
      *  Mapping column names to the indexes
      *
@@ -258,6 +249,6 @@ private:
     std::vector<Cell> _index2cell;
 };
 
-}}}}} // namespace lsst::qserv::replica::database::mysql
+}  // namespace lsst::qserv::replica::database::mysql
 
-#endif // LSST_QSERV_REPLICA_DATABASEMYSQLROW_H
+#endif  // LSST_QSERV_REPLICA_DATABASEMYSQLROW_H

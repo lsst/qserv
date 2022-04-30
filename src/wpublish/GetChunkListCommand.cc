@@ -39,23 +39,18 @@ namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.wpublish.GetChunkListCommand");
 
-} // anonymous namespace
+}  // anonymous namespace
 
-namespace lsst {
-namespace qserv {
-namespace wpublish {
+namespace lsst::qserv::wpublish {
 
 GetChunkListCommand::GetChunkListCommand(shared_ptr<wbase::SendChannel> const& sendChannel,
                                          shared_ptr<ChunkInventory> const& chunkInventory,
                                          shared_ptr<ResourceMonitor> const& resourceMonitor)
-    :   wbase::WorkerCommand(sendChannel),
-        _chunkInventory(chunkInventory),
-        _resourceMonitor(resourceMonitor) {
-}
-
+        : wbase::WorkerCommand(sendChannel),
+          _chunkInventory(chunkInventory),
+          _resourceMonitor(resourceMonitor) {}
 
 void GetChunkListCommand::run() {
-
     LOGS(_log, LOG_LVL_DEBUG, "GetChunkListCommand::" << __func__);
 
     proto::WorkerCommandGetChunkListR reply;
@@ -63,10 +58,10 @@ void GetChunkListCommand::run() {
 
     ChunkInventory::ExistMap const existMap = _chunkInventory->existMap();
 
-    for (auto&& entry: existMap) {
+    for (auto&& entry : existMap) {
         string const& db = entry.first;
 
-        for (int chunk: entry.second) {
+        for (int chunk : entry.second) {
             proto::WorkerCommandChunk* ptr = reply.add_chunks();
             ptr->set_db(db);
             ptr->set_chunk(chunk);
@@ -81,4 +76,4 @@ void GetChunkListCommand::run() {
     LOGS(_log, LOG_LVL_DEBUG, "GetChunkListCommand::" << __func__ << "  ** SENT **");
 }
 
-}}} // namespace lsst::qserv::wpublish
+}  // namespace lsst::qserv::wpublish

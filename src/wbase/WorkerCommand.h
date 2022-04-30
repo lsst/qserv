@@ -34,27 +34,20 @@
 #include "util/Command.h"
 
 // Forward declarations
-namespace lsst {
-namespace qserv {
-namespace wbase {
+namespace lsst::qserv::wbase {
 class SendChannel;
-}}} // End of forward declarations
+}  // namespace lsst::qserv::wbase
 
-namespace lsst {
-namespace qserv {
-namespace wbase {
+namespace lsst::qserv::wbase {
 
 /**
-  * Class WorkerCommand is the base class for a family of various worker
-  * management commmands.
-  */
-class WorkerCommand
-    :   public util::Command {
-
+ * Class WorkerCommand is the base class for a family of various worker
+ * management commmands.
+ */
+class WorkerCommand : public util::Command {
 public:
-
     /// The smart pointer type to objects of the class
-    using Ptr =  std::shared_ptr<WorkerCommand>;
+    using Ptr = std::shared_ptr<WorkerCommand>;
 
     // The default construction and copy semantics are prohibited
     WorkerCommand& operator=(const WorkerCommand&) = delete;
@@ -73,15 +66,13 @@ public:
     /**
      * The code which will be execute by specific subclasses of this abstract class
      */
-    virtual void run ()=0;
+    virtual void run() = 0;
 
 protected:
-
     std::shared_ptr<SendChannel> _sendChannel;  ///< For result reporting
-    proto::FrameBuffer           _frameBuf;     ///< Buffer for serializing a response
-
+    proto::FrameBuffer _frameBuf;               ///< Buffer for serializing a response
 };
 
-}}} // namespace lsst::qserv::wbase
+}  // namespace lsst::qserv::wbase
 
-#endif // LSST_QSERV_WBASE_WORKER_COMMAND_H
+#endif  // LSST_QSERV_WBASE_WORKER_COMMAND_H

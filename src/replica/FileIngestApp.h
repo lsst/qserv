@@ -35,15 +35,13 @@
 #include "replica/IngestClient.h"
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class FileIngestApp implements a tool which acts as a catalog data loading
  * client of the Replication system's catalog data ingest server.
  */
-class FileIngestApp: public Application {
+class FileIngestApp : public Application {
 public:
     typedef std::shared_ptr<FileIngestApp> Ptr;
 
@@ -52,12 +50,12 @@ public:
      * be ingested.
      */
     struct FileIngestSpec {
-        std::string   workerHost;           /// The host name or an IP address of a worker
-        uint16_t      workerPort = 0;       /// The port number of the Ingest Service
-        TransactionId transactionId = 0;    /// An identifier of the super-transaction
-        std::string   tableName;            /// The base name of a table to be ingested
-        std::string   tableType;            /// The type of the table. Allowed options: 'P' or 'R'
-        std::string   inFileName;           /// The name of a local file to be ingested
+        std::string workerHost;           /// The host name or an IP address of a worker
+        uint16_t workerPort = 0;          /// The port number of the Ingest Service
+        TransactionId transactionId = 0;  /// An identifier of the super-transaction
+        std::string tableName;            /// The base name of a table to be ingested
+        std::string tableType;            /// The type of the table. Allowed options: 'P' or 'R'
+        std::string inFileName;           /// The name of a local file to be ingested
     };
 
     /**
@@ -109,11 +107,10 @@ public:
      * @throws std::invalid_argument if the string can't be parsed, or if strings
      *   don't have a valid payload in the shortFormat=false mode.
      */
-    static std::list<FileIngestSpec> parseFileList(nlohmann::json const& jsonObj,
-                                                   bool shortFormat=false,
-                                                   TransactionId transactionId=0,
-                                                   std::string const& tableName=std::string(),
-                                                   std::string const& tableType=std::string());
+    static std::list<FileIngestSpec> parseFileList(nlohmann::json const& jsonObj, bool shortFormat = false,
+                                                   TransactionId transactionId = 0,
+                                                   std::string const& tableName = std::string(),
+                                                   std::string const& tableType = std::string());
 
     /**
      * Structure ChunkContribution represents attributes of a chunk contribution
@@ -187,14 +184,14 @@ private:
 
     size_t _recordSizeBytes = IngestClient::defaultRecordSizeBytes;
 
-    FileIngestSpec _file;       /// File specification for the single file ingest ('FILE'))
+    FileIngestSpec _file;  /// File specification for the single file ingest ('FILE'))
 
-    std::string _inFileName;    /// The name of a file to read from.
-    std::string _outFileName;   /// The name of a file to write into.
+    std::string _inFileName;   /// The name of a file to read from.
+    std::string _outFileName;  /// The name of a file to write into.
 
-    bool _verbose = false;      /// Print various stats upon a completion of the ingest
+    bool _verbose = false;  /// Print various stats upon a completion of the ingest
 };
 
-}}} // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif /* LSST_QSERV_REPLICA_FILEINGESTAPP_H */

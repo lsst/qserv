@@ -59,7 +59,6 @@ bool isValidExtention(string const& str) {
     return extensions.end() != find(extensions.begin(), extensions.end(), str);
 }
 
-
 /**
  * Evaluate if an input string corresponds to a valid partitioned table
  * or its variant.
@@ -69,11 +68,8 @@ bool isValidExtention(string const& str) {
  *
  * @return 'true' if this is a valid table name
  */
-bool isValidPartitionedTable(
-            string const& str,
-            DatabaseInfo const& databaseInfo) {
-
-    for (auto&& table: databaseInfo.partitionedTables) {
+bool isValidPartitionedTable(string const& str, DatabaseInfo const& databaseInfo) {
+    for (auto&& table : databaseInfo.partitionedTables) {
         if (str == table) return true;
         if (str == table + "FullOverlap") return true;
     }
@@ -83,11 +79,9 @@ bool isValidPartitionedTable(
 // The conservative limit for most file systems
 size_t const maxFileNameLength = 255;
 
-} // namespace
+}  // namespace
 
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
 ///////////////////////////
 //    class FileUtils    //
@@ -95,58 +89,50 @@ namespace replica {
 
 mutex FileUtils::_tmpFileMtx;
 
-vector<string> FileUtils::partitionedFiles(DatabaseInfo const& databaseInfo,
-                                           unsigned int chunk) {
-
+vector<string> FileUtils::partitionedFiles(DatabaseInfo const& databaseInfo, unsigned int chunk) {
     vector<string> result;
 
     string const chunkSuffix = "_" + to_string(chunk);
 
-    for (auto&& table: databaseInfo.partitionedTables) {
-
+    for (auto&& table : databaseInfo.partitionedTables) {
         string const file = table + chunkSuffix;
-        for (auto&& ext: ::extensions) {
+        for (auto&& ext : ::extensions) {
             result.push_back(file + "." + ext);
         }
         string const fileOverlap = table + "FullOverlap" + chunkSuffix;
-        for (auto&& ext: ::extensions) {
+        for (auto&& ext : ::extensions) {
             result.push_back(fileOverlap + "." + ext);
         }
     }
     return result;
 }
 
-
 vector<string> FileUtils::regularFiles(DatabaseInfo const& databaseInfo) {
-
     vector<string> result;
 
     for (auto&& table : databaseInfo.regularTables) {
         string const filename = table;
-        for (auto&& ext: ::extensions) {
+        for (auto&& ext : ::extensions) {
             result.push_back(filename + "." + ext);
         }
     }
     return result;
 }
 
-
-bool FileUtils::parsePartitionedFile(tuple<string, unsigned int, string> &parsed,
-                                     string  const& fileName,
+bool FileUtils::parsePartitionedFile(tuple<string, unsigned int, string>& parsed, string const& fileName,
                                      DatabaseInfo const& databaseInfo) {
-
     // Find the extension of the file and evaluate it if found
 
     string::size_type const posBeforeExention = fileName.rfind('.');
-    if (posBeforeExention == string::npos) return false;               // not found
+    if (posBeforeExention == string::npos) return false;  // not found
 
-    string const extention = fileName.substr(posBeforeExention + 1);   // excluding '.'
-    if (!::isValidExtention(extention)) return false;                       // unknown file extension
+    string const extention = fileName.substr(posBeforeExention + 1);  // excluding '.'
+    if (!::isValidExtention(extention)) return false;                 // unknown file extension
 
     // Find and parse the chunk number
 
     string::size_type const posBeforeChunk = fileName.rfind('_');
-    if (posBeforeChunk == string::npos) return false;  // not found
+    if (posBeforeChunk == string::npos) return false;       // not found
     if (posBeforeChunk >= posBeforeExention) return false;  // no room for chunk
 
     unsigned int chunk;
@@ -166,27 +152,20 @@ bool FileUtils::parsePartitionedFile(tuple<string, unsigned int, string> &parsed
     return true;
 }
 
-
-uint64_t FileUtils::compute_cs(string const& fileName,
-                               size_t recordSizeBytes) {
-
+uint64_t FileUtils::compute_cs(string const& fileName, size_t recordSizeBytes) {
     if (fileName.empty()) {
-        throw invalid_argument(
-                "FileUtils::" + string(__func__) +
-                "  empty file name passed into the method");
+        throw invalid_argument("FileUtils::" + string(__func__) + "  empty file name passed into the method");
     }
     if (not recordSizeBytes or (recordSizeBytes > MAX_RECORD_SIZE_BYTES)) {
-        throw invalid_argument(
-                "FileUtils::" + string(__func__) + "  invalid record size " +
-                to_string(recordSizeBytes) + "passed into the method");
+        throw invalid_argument("FileUtils::" + string(__func__) + "  invalid record size " +
+                               to_string(recordSizeBytes) + "passed into the method");
     }
     FILE* fp = fopen(fileName.c_str(), "rb");
     if (not fp) {
-        throw runtime_error(
-                "FileUtils::" + string(__func__) + string("  file open error: ") +
-                strerror(errno) + string(", file: ") + fileName);
+        throw runtime_error("FileUtils::" + string(__func__) + string("  file open error: ") +
+                            strerror(errno) + string(", file: ") + fileName);
     }
-    uint8_t *buf = new uint8_t[recordSizeBytes];
+    uint8_t* buf = new uint8_t[recordSizeBytes];
 
     uint64_t cs = 0;
     size_t num;
@@ -196,30 +175,22 @@ uint64_t FileUtils::compute_cs(string const& fileName,
         }
     }
     if (ferror(fp)) {
-        const string err =
-             "FileUtils::" + string(__func__) + string("  file read error: ") +
-            strerror(errno) + string(", file: ") + fileName;
+        const string err = "FileUtils::" + string(__func__) + string("  file read error: ") +
+                           strerror(errno) + string(", file: ") + fileName;
         fclose(fp);
-        delete [] buf;
+        delete[] buf;
         throw runtime_error(err);
     }
     fclose(fp);
-    delete [] buf;
+    delete[] buf;
 
     return cs;
 }
 
+string FileUtils::getEffectiveUser() { return string(getpwuid(geteuid())->pw_name); }
 
-string FileUtils::getEffectiveUser() {
-    return string(getpwuid(geteuid())->pw_name);
-}
-
-
-string FileUtils::createTemporaryFile(string const& baseDir,
-                                      string const& filePrefix,
-                                      string const& model,
-                                      string const& fileSuffix,
-                                      unsigned int maxRetries) {
+string FileUtils::createTemporaryFile(string const& baseDir, string const& filePrefix, string const& model,
+                                      string const& fileSuffix, unsigned int maxRetries) {
     string const context = "FileUtils::" + string(__func__) + "  ";
 
     if (model.empty()) {
@@ -228,9 +199,8 @@ string FileUtils::createTemporaryFile(string const& baseDir,
 
     string const pattern = filePrefix + model + fileSuffix;
     if (pattern.size() > maxFileNameLength) {
-        throw range_error(
-                context + "file name length " + to_string(pattern.size())
-                + " exceeds a limit of " + to_string(maxFileNameLength) + " characters.");
+        throw range_error(context + "file name length " + to_string(pattern.size()) + " exceeds a limit of " +
+                          to_string(maxFileNameLength) + " characters.");
     }
     if (maxRetries < 1) {
         throw invalid_argument(context + "maxRetries can't be less than 1.");
@@ -240,13 +210,11 @@ string FileUtils::createTemporaryFile(string const& baseDir,
 
     unsigned int numRetriesLeft = maxRetries;
     while (numRetriesLeft-- > 0) {
-
         // Generate a unique file path
         fs::path const uniqueFileName = fs::unique_path(pattern, errCode);
         if (errCode.value() != 0) {
-            throw runtime_error(
-                    context + "failed to generate a unique name for model: '" + model
-                    + "', error: " + errCode.message());
+            throw runtime_error(context + "failed to generate a unique name for model: '" + model +
+                                "', error: " + errCode.message());
         }
         string const filePath = baseDir + (baseDir.empty() ? "" : "/") + uniqueFileName.string();
 
@@ -258,32 +226,27 @@ string FileUtils::createTemporaryFile(string const& baseDir,
 
         fs::file_status const stat = fs::status(filePath, errCode);
         if (stat.type() == fs::status_error) {
-            throw runtime_error(
-                    context + "failed to check a status of the temporary file: '" + filePath
-                    + "', error: " + errCode.message());
+            throw runtime_error(context + "failed to check a status of the temporary file: '" + filePath +
+                                "', error: " + errCode.message());
         }
         if (fs::exists(stat)) continue;
 
         // Create the file
         ofstream file(filePath, ofstream::out);
         if (not file.is_open()) {
-            throw runtime_error(
-                    context + "failed to create the temporary file: " + filePath);
+            throw runtime_error(context + "failed to create the temporary file: " + filePath);
         }
         file.close();
         return filePath;
     }
-    throw runtime_error(
-            "exceeded the maximum number of retries: " + to_string(maxRetries)
-            + " to create a temporary file for pattern: '" + pattern + "'.");
+    throw runtime_error("exceeded the maximum number of retries: " + to_string(maxRetries) +
+                        " to create a temporary file for pattern: '" + pattern + "'.");
 }
 
-
-void FileUtils::verifyFolders(string const& requestorContext,
-                              vector<string> const& folders,
+void FileUtils::verifyFolders(string const& requestorContext, vector<string> const& folders,
                               bool createMissingFolders) {
     string const context = "FileUtils::" + string(__func__) + "(" + requestorContext + ") ";
-    for (auto&& folder: folders) {
+    for (auto&& folder : folders) {
         if (folder.empty()) {
             throw invalid_argument(context + " the empty folder name found in the collection.");
         }
@@ -295,11 +258,9 @@ void FileUtils::verifyFolders(string const& requestorContext,
         if (createMissingFolders) {
             if (!fs::create_directories(path, ec)) {
                 if (ec.value() != 0) {
-                    throw runtime_error(
-                            context + " failed to create folder '" + folder
-                            + "' or its intermediate subfolders, error: " + ec.message());
+                    throw runtime_error(context + " failed to create folder '" + folder +
+                                        "' or its intermediate subfolders, error: " + ec.message());
                 }
-
             }
         }
 
@@ -308,56 +269,41 @@ void FileUtils::verifyFolders(string const& requestorContext,
         try {
             string const tmpFileName = createTemporaryFile(folder, ".test-write-permissions-");
             fs::remove(fs::path(tmpFileName), ec);
-         } catch(exception const& ex) {
-                throw runtime_error(
-                        context + " failed to create the temporary file at folder '" + folder
-                        + "' to test write permissions for the folder, ex: " + ex.what());
-         }
+        } catch (exception const& ex) {
+            throw runtime_error(context + " failed to create the temporary file at folder '" + folder +
+                                "' to test write permissions for the folder, ex: " + ex.what());
+        }
     }
 }
-
 
 /////////////////////////////////////
 //    class FileCsComputeEngine    //
 /////////////////////////////////////
 
-FileCsComputeEngine::FileCsComputeEngine(string const& fileName,
-                                         size_t recordSizeBytes)
-    :   _fileName(fileName),
-        _recordSizeBytes(recordSizeBytes),
-        _fp(0),
-        _buf(0),
-        _bytes(0),
-        _cs(0) {
-
+FileCsComputeEngine::FileCsComputeEngine(string const& fileName, size_t recordSizeBytes)
+        : _fileName(fileName), _recordSizeBytes(recordSizeBytes), _fp(0), _buf(0), _bytes(0), _cs(0) {
     if (_fileName.empty()) {
         throw invalid_argument("FileCsComputeEngine:  empty file name");
     }
     if (not _recordSizeBytes or (_recordSizeBytes > FileUtils::MAX_RECORD_SIZE_BYTES)) {
-        throw invalid_argument(
-                "FileCsComputeEngine:  invalid record size " + to_string(_recordSizeBytes));
+        throw invalid_argument("FileCsComputeEngine:  invalid record size " + to_string(_recordSizeBytes));
     }
     _fp = fopen(_fileName.c_str(), "rb");
     if (not _fp) {
-        throw runtime_error(
-                string("FileCsComputeEngine:  file open error: ") + strerror(errno) +
-                string(", file: ") + _fileName);
+        throw runtime_error(string("FileCsComputeEngine:  file open error: ") + strerror(errno) +
+                            string(", file: ") + _fileName);
     }
     _buf = new uint8_t[_recordSizeBytes];
 }
 
-
 FileCsComputeEngine::~FileCsComputeEngine() {
-    if (_fp)  fclose(_fp);
-    if (_buf) delete [] _buf;
+    if (_fp) fclose(_fp);
+    if (_buf) delete[] _buf;
 }
 
-
 bool FileCsComputeEngine::execute() {
-
     if (not _fp) {
-        throw logic_error(
-                "FileCsComputeEngine::" + string(__func__) + "  file is already closed");
+        throw logic_error("FileCsComputeEngine::" + string(__func__) + "  file is already closed");
     }
     size_t const num = fread(_buf, sizeof(uint8_t), _recordSizeBytes, _fp);
     if (num) {
@@ -370,15 +316,13 @@ bool FileCsComputeEngine::execute() {
 
     // I/O error?
     if (ferror(_fp)) {
-        string const err =
-            string("FileCsComputeEngine::") + string(__func__) +
-            string(" file read error: ") + strerror(errno) + string(", file: ") +
-            _fileName;
+        string const err = string("FileCsComputeEngine::") + string(__func__) + string(" file read error: ") +
+                           strerror(errno) + string(", file: ") + _fileName;
 
         fclose(_fp);
         _fp = nullptr;
 
-        delete [] _buf;
+        delete[] _buf;
         _buf = nullptr;
 
         throw runtime_error(err);
@@ -388,29 +332,23 @@ bool FileCsComputeEngine::execute() {
     fclose(_fp);
     _fp = nullptr;
 
-    delete [] _buf;
+    delete[] _buf;
     _buf = nullptr;
 
     return true;
 }
 
-
 //////////////////////////////////////////
 //    class MultiFileCsComputeEngine    //
 //////////////////////////////////////////
 
-MultiFileCsComputeEngine::~MultiFileCsComputeEngine() {
-}
+MultiFileCsComputeEngine::~MultiFileCsComputeEngine() {}
 
-
-MultiFileCsComputeEngine::MultiFileCsComputeEngine(vector<string> const& fileNames,
-                                                   size_t recordSizeBytes)
-    :   _fileNames(fileNames),
-        _recordSizeBytes(recordSizeBytes) {
-
+MultiFileCsComputeEngine::MultiFileCsComputeEngine(vector<string> const& fileNames, size_t recordSizeBytes)
+        : _fileNames(fileNames), _recordSizeBytes(recordSizeBytes) {
     if (not recordSizeBytes or (_recordSizeBytes > FileUtils::MAX_RECORD_SIZE_BYTES)) {
-        throw invalid_argument(
-                "MultiFileCsComputeEngine:  invalid record size " + to_string(_recordSizeBytes));
+        throw invalid_argument("MultiFileCsComputeEngine:  invalid record size " +
+                               to_string(_recordSizeBytes));
     }
 
     // This will be the very first file (if any) to be processed
@@ -418,64 +356,50 @@ MultiFileCsComputeEngine::MultiFileCsComputeEngine(vector<string> const& fileNam
 
     // Open the very first file to be read if the input collection is not empty
     if (_currentFileItr != _fileNames.end()) {
-        _processed[*_currentFileItr].reset(
-            new FileCsComputeEngine(*_currentFileItr, _recordSizeBytes));
+        _processed[*_currentFileItr].reset(new FileCsComputeEngine(*_currentFileItr, _recordSizeBytes));
     }
 }
 
-
 bool MultiFileCsComputeEngine::processed(string const& fileName) const {
-
-    if (_fileNames.end() == find(_fileNames.begin(),
-                                 _fileNames.end(),
-                                 fileName)) {
-        throw invalid_argument(
-                "MultiFileCsComputeEngine::" + string(__func__) +
-                " unknown file: " + fileName);
+    if (_fileNames.end() == find(_fileNames.begin(), _fileNames.end(), fileName)) {
+        throw invalid_argument("MultiFileCsComputeEngine::" + string(__func__) +
+                               " unknown file: " + fileName);
     }
     return _processed.count(fileName);
 }
 
-
-size_t  MultiFileCsComputeEngine::bytes(string const& fileName) const {
+size_t MultiFileCsComputeEngine::bytes(string const& fileName) const {
     if (not processed(fileName)) {
-        throw logic_error(
-                "MultiFileCsComputeEngine::" + string(__func__) +
-                "  the file hasn't been processed: " + fileName);
+        throw logic_error("MultiFileCsComputeEngine::" + string(__func__) +
+                          "  the file hasn't been processed: " + fileName);
     }
     return _processed.at(fileName)->bytes();
 }
 
-
 uint64_t MultiFileCsComputeEngine::cs(string const& fileName) const {
     if (not processed(fileName)) {
-        throw logic_error(
-                "MultiFileCsComputeEngine::" + string(__func__) +
-                "  the file hasn't been processed: " + fileName);
+        throw logic_error("MultiFileCsComputeEngine::" + string(__func__) +
+                          "  the file hasn't been processed: " + fileName);
     }
     return _processed.at(fileName)->cs();
 }
 
-
 bool MultiFileCsComputeEngine::execute() {
-
     // All files have been processed
     if (_fileNames.end() == _currentFileItr) return true;
 
     // Process possible EOF of the current or any subsequent files
     // while there is any data or until running out of files.
     while (_processed[*_currentFileItr]->execute()) {
-
         // Move to the next file if any. If no more files then finish.
         ++_currentFileItr;
         if (_fileNames.end() == _currentFileItr) return true;
 
         // Open that file and expect it to be read at the next iteration
         // of this loop
-        _processed[*_currentFileItr].reset(
-            new FileCsComputeEngine(*_currentFileItr, _recordSizeBytes));
+        _processed[*_currentFileItr].reset(new FileCsComputeEngine(*_currentFileItr, _recordSizeBytes));
     }
     return false;
 }
 
-}}} // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

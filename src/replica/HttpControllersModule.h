@@ -32,15 +32,13 @@
 #include "replica/HttpModule.h"
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class HttpControllersModule implements a handler for the worker
  * status requests.
  */
-class HttpControllersModule: public HttpModule {
+class HttpControllersModule : public HttpModule {
 public:
     typedef std::shared_ptr<HttpControllersModule> Ptr;
 
@@ -53,13 +51,10 @@ public:
      *
      * @throws std::invalid_argument for unknown values of parameter 'subModuleName'
      */
-    static void process(Controller::Ptr const& controller,
-                        std::string const& taskName,
-                        HttpProcessorConfig const& processorConfig,
-                        qhttp::Request::Ptr const& req,
-                        qhttp::Response::Ptr const& resp,
-                        std::string const& subModuleName=std::string(),
-                        HttpAuthType const authType=HttpAuthType::NONE);
+    static void process(Controller::Ptr const& controller, std::string const& taskName,
+                        HttpProcessorConfig const& processorConfig, qhttp::Request::Ptr const& req,
+                        qhttp::Response::Ptr const& resp, std::string const& subModuleName = std::string(),
+                        HttpAuthType const authType = HttpAuthType::NONE);
 
     HttpControllersModule() = delete;
     HttpControllersModule(HttpControllersModule const&) = delete;
@@ -71,17 +66,15 @@ protected:
     nlohmann::json executeImpl(std::string const& subModuleName) final;
 
 private:
-    HttpControllersModule(Controller::Ptr const& controller,
-                          std::string const& taskName,
-                          HttpProcessorConfig const& processorConfig,
-                          qhttp::Request::Ptr const& req,
+    HttpControllersModule(Controller::Ptr const& controller, std::string const& taskName,
+                          HttpProcessorConfig const& processorConfig, qhttp::Request::Ptr const& req,
                           qhttp::Response::Ptr const& resp);
 
     nlohmann::json _controllers();
     nlohmann::json _oneController();
     nlohmann::json _eventLogDict();
 };
-    
-}}} // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_HTTPCONTROLLESRMODULE_H
+}  // namespace lsst::qserv::replica
+
+#endif  // LSST_QSERV_HTTPCONTROLLESRMODULE_H

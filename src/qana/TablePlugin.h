@@ -26,18 +26,12 @@
 // Qserv headers
 #include "qana/QueryPlugin.h"
 
-
 // Forward declarations
-namespace lsst {
-namespace qserv {
-namespace query {
-    class TableRef;
-}}}
+namespace lsst::qserv::query {
+class TableRef;
+}  // namespace lsst::qserv::query
 
-
-namespace lsst {
-namespace qserv {
-namespace qana {
+namespace lsst::qserv::qana {
 
 class QueryMapping;
 
@@ -65,9 +59,7 @@ private:
 
     void _setAlias(std::shared_ptr<query::TableRef> const& tableRef, query::QueryContext& context);
 
-    int _rewriteTables(SelectStmtPtrVector& outList,
-                       query::SelectStmt& in,
-                       query::QueryContext& context,
+    int _rewriteTables(SelectStmtPtrVector& outList, query::SelectStmt& in, query::QueryContext& context,
                        std::shared_ptr<qana::QueryMapping>& mapping);
 
     unsigned int _nextValueExprAlias;
@@ -75,6 +67,6 @@ private:
     std::string _dominantDb;
 };
 
-}}} // namespace lsst::qserv::qana
+}  // namespace lsst::qserv::qana
 
-#endif // LSST_QSERV_QANA_TABLEPLUGIN_H
+#endif  // LSST_QSERV_QANA_TABLEPLUGIN_H

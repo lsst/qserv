@@ -29,9 +29,7 @@
 // Qserv headers
 #include "qmeta/types.h"
 
-namespace lsst {
-namespace qserv {
-namespace qmeta {
+namespace lsst::qserv::qmeta {
 
 /// @addtogroup qmeta
 
@@ -43,7 +41,6 @@ namespace qmeta {
 
 class QInfo {
 public:
-
     /**
      *  Constants for query types.
      */
@@ -57,10 +54,10 @@ public:
      *  Constants for query status.
      */
     enum QStatus {
-        EXECUTING,    ///< Query is currently executing (or being prepared)
-        COMPLETED,    ///< Query execution completed successfully
-        FAILED,       ///< Query execution failed
-        ABORTED       ///< Query execution was intentionally aborted
+        EXECUTING,  ///< Query is currently executing (or being prepared)
+        COMPLETED,  ///< Query execution completed successfully
+        FAILED,     ///< Query execution failed
+        ABORTED     ///< Query execution was intentionally aborted
     };
 
     /// Default constructor
@@ -82,22 +79,24 @@ public:
      *  @param completed: Time when query finished execution, 0 if not finished.
      *  @param returned: Time when query result was sent to client, 0 if not sent yet.
      */
-    QInfo(QType qType, CzarId czarId, std::string const& user,
-          std::string const& qText, std::string const& qTemplate,
-          std::string const& qMerge,
-          std::string const& resultLoc, std::string const& msgTableName,
-          std::string const& resultQuery,
-          QStatus qStatus = EXECUTING,
-          std::time_t submitted = std::time_t(0),
-          std::time_t completed = std::time_t(0),
+    QInfo(QType qType, CzarId czarId, std::string const& user, std::string const& qText,
+          std::string const& qTemplate, std::string const& qMerge, std::string const& resultLoc,
+          std::string const& msgTableName, std::string const& resultQuery, QStatus qStatus = EXECUTING,
+          std::time_t submitted = std::time_t(0), std::time_t completed = std::time_t(0),
           std::time_t returned = std::time_t(0))
-        : _qType(qType), _qStatus(qStatus), _czarId(czarId), _user(user),
-          _qText(qText), _qTemplate(qTemplate), _qMerge(qMerge),
-          _resultLoc(resultLoc),
-          _msgTableName(msgTableName), _resultQuery(resultQuery), _submitted(submitted),
-          _completed(completed), _returned(returned)
-    {}
-
+            : _qType(qType),
+              _qStatus(qStatus),
+              _czarId(czarId),
+              _user(user),
+              _qText(qText),
+              _qTemplate(qTemplate),
+              _qMerge(qMerge),
+              _resultLoc(resultLoc),
+              _msgTableName(msgTableName),
+              _resultQuery(resultQuery),
+              _submitted(submitted),
+              _completed(completed),
+              _returned(returned) {}
 
     /// Returns query type
     QType queryType() const { return _qType; }
@@ -139,28 +138,25 @@ public:
     std::time_t returned() const { return _returned; }
 
     /// Return query execution time in seconds
-    std::time_t duration() const {
-        return _completed != 0 ? _completed - _submitted : 0;
-    }
+    std::time_t duration() const { return _completed != 0 ? _completed - _submitted : 0; }
 
 private:
-
-    QType _qType;           // Query type, one of QType constants
-    QStatus _qStatus;       // Query processing status
-    CzarId _czarId;         // Czar ID, non-negative number.
-    std::string _user;      // User name for user who issued the query.
-    std::string _qText;     // Original query text as given by user.
-    std::string _qTemplate; // Query template used to build per-chunk queries.
-    std::string _qMerge;    // Aggregate query to be executed on results table, possibly empty.
-    std::string _qProxyOrderBy; // ORDER BY clause for proxy-side SELECT statement, possibly empty.
-    std::string _resultLoc; // Location of query result, e.g. table:result_12345
-    std::string _msgTableName; // Name of the message table for this query
-    std::string _resultQuery; // The query for qserv-proxy to execute to get results.
-    std::time_t _submitted; // Time when query was submitted (seconds since epoch).
-    std::time_t _completed; // Time when query finished execution, 0 if not finished.
-    std::time_t _returned;  // Time when query result was sent to client, 0 if not sent yet.
+    QType _qType;                // Query type, one of QType constants
+    QStatus _qStatus;            // Query processing status
+    CzarId _czarId;              // Czar ID, non-negative number.
+    std::string _user;           // User name for user who issued the query.
+    std::string _qText;          // Original query text as given by user.
+    std::string _qTemplate;      // Query template used to build per-chunk queries.
+    std::string _qMerge;         // Aggregate query to be executed on results table, possibly empty.
+    std::string _qProxyOrderBy;  // ORDER BY clause for proxy-side SELECT statement, possibly empty.
+    std::string _resultLoc;      // Location of query result, e.g. table:result_12345
+    std::string _msgTableName;   // Name of the message table for this query
+    std::string _resultQuery;    // The query for qserv-proxy to execute to get results.
+    std::time_t _submitted;      // Time when query was submitted (seconds since epoch).
+    std::time_t _completed;      // Time when query finished execution, 0 if not finished.
+    std::time_t _returned;       // Time when query result was sent to client, 0 if not sent yet.
 };
 
-}}} // namespace lsst::qserv::qmeta
+}  // namespace lsst::qserv::qmeta
 
-#endif // LSST_QSERV_QMETA_QINFO_H
+#endif  // LSST_QSERV_QMETA_QINFO_H

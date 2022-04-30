@@ -21,43 +21,43 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 /**
-  * @file
-  *
-  * @brief Interface for managing the execution of user queries, that is,
-  * queries as they are submitted by the user. The generation of smaller
-  * chunk-level queries is handled here or by delegate classes.
-  *
-  * Basic usage:
-  *
-  * After constructing a UserQuery object ...
-  *
-  * getRestrictors() -- retrieve restrictors to be passed to spatial region selection code in another layer.
-  *
-  * getDominantDb() -- retrieve the "dominantDb", that is, the database whose
-  * partitioning will be used for chunking and dispatch.
-  *
-  * getDbStriping() -- retrieve the striping parameters of the dominantDb.
-  *
-  * getError() -- See if there are errors
-  *
-  * getExecDesc() -- see how execution is progressing
-  *
-  * addChunk() -- Add a chunk number (and subchunks, as appropriate) to be
-  * dispatched during submit(). The czar uses getRestrictors and getDbStriping
-  * to query a region selector over a chunk number generator and an emptychunks
-  * list to compute the relevant chunk numbers.
-  *
-  * submit() -- send the query (in generated fragments) to the cluster for
-  * execution.
-  *
-  * join() -- block until query execution is complete (or encounters errors)
-  *
-  * kill() -- stop a query in progress
-  *
-  * discard() -- release resources for this query.
-  *
-  * @author Daniel L. Wang, SLAC
-  */
+ * @file
+ *
+ * @brief Interface for managing the execution of user queries, that is,
+ * queries as they are submitted by the user. The generation of smaller
+ * chunk-level queries is handled here or by delegate classes.
+ *
+ * Basic usage:
+ *
+ * After constructing a UserQuery object ...
+ *
+ * getRestrictors() -- retrieve restrictors to be passed to spatial region selection code in another layer.
+ *
+ * getDominantDb() -- retrieve the "dominantDb", that is, the database whose
+ * partitioning will be used for chunking and dispatch.
+ *
+ * getDbStriping() -- retrieve the striping parameters of the dominantDb.
+ *
+ * getError() -- See if there are errors
+ *
+ * getExecDesc() -- see how execution is progressing
+ *
+ * addChunk() -- Add a chunk number (and subchunks, as appropriate) to be
+ * dispatched during submit(). The czar uses getRestrictors and getDbStriping
+ * to query a region selector over a chunk number generator and an emptychunks
+ * list to compute the relevant chunk numbers.
+ *
+ * submit() -- send the query (in generated fragments) to the cluster for
+ * execution.
+ *
+ * join() -- block until query execution is complete (or encounters errors)
+ *
+ * kill() -- stop a query in progress
+ *
+ * discard() -- release resources for this query.
+ *
+ * @author Daniel L. Wang, SLAC
+ */
 
 // Class header
 #include "ccontrol/UserQuerySelect.h"
@@ -106,19 +106,16 @@
 
 namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.ccontrol.UserQuerySelect");
-} // namespace
+}  // namespace
 
-namespace lsst {
-namespace qserv {
+namespace lsst::qserv {
 
 /// A class that can be used to parameterize a ProtoImporter<TaskMsg> for
 /// debugging purposes
 class ProtoPrinter {
 public:
     ProtoPrinter() {}
-    virtual void operator()(std::shared_ptr<proto::TaskMsg> m) {
-        std::cout << "Got taskmsg ok";
-    }
+    virtual void operator()(std::shared_ptr<proto::TaskMsg> m) { std::cout << "Got taskmsg ok"; }
     virtual ~ProtoPrinter() {}
 };
 
@@ -127,11 +124,10 @@ public:
 class ChunkMsgReceiver : public MsgReceiver {
 public:
     virtual void operator()(int code, std::string const& msg) {
-            messageStore->addMessage(chunkId, code, msg);
-        }
-    static std::shared_ptr<ChunkMsgReceiver>
-    newInstance(int chunkId,
-                std::shared_ptr<qdisp::MessageStore> ms) {
+        messageStore->addMessage(chunkId, code, msg);
+    }
+    static std::shared_ptr<ChunkMsgReceiver> newInstance(int chunkId,
+                                                         std::shared_ptr<qdisp::MessageStore> ms) {
         std::shared_ptr<ChunkMsgReceiver> r = std::make_shared<ChunkMsgReceiver>();
         r->chunkId = chunkId;
         r->messageStore = ms;
@@ -155,23 +151,24 @@ UserQuerySelect::UserQuerySelect(std::shared_ptr<qproc::QuerySession> const& qs,
                                  std::shared_ptr<qproc::SecondaryIndex> const& secondaryIndex,
                                  std::shared_ptr<qmeta::QMeta> const& queryMetadata,
                                  std::shared_ptr<qmeta::QStatus> const& queryStatsData,
-                                 std::shared_ptr<util::SemaMgr> const& semaMgrConn,
-                                 qmeta::CzarId czarId,
-                                 std::string const& errorExtra,
-                                 bool async,
-                                 std::string const& resultDb)
-    :  _qSession(qs), _messageStore(messageStore), _executive(executive),
-       _databaseModels(dbModels), _infileMergerConfig(infileMergerConfig),
-       _secondaryIndex(secondaryIndex),
-       _queryMetadata(queryMetadata), _queryStatsData(queryStatsData),
-       _semaMgrConn(semaMgrConn),
-       _qMetaCzarId(czarId),
-       _errorExtra(errorExtra), _resultDb(resultDb), _async(async) {
-}
+                                 std::shared_ptr<util::SemaMgr> const& semaMgrConn, qmeta::CzarId czarId,
+                                 std::string const& errorExtra, bool async, std::string const& resultDb)
+        : _qSession(qs),
+          _messageStore(messageStore),
+          _executive(executive),
+          _databaseModels(dbModels),
+          _infileMergerConfig(infileMergerConfig),
+          _secondaryIndex(secondaryIndex),
+          _queryMetadata(queryMetadata),
+          _queryStatsData(queryStatsData),
+          _semaMgrConn(semaMgrConn),
+          _qMetaCzarId(czarId),
+          _errorExtra(errorExtra),
+          _resultDb(resultDb),
+          _async(async) {}
 
 std::string UserQuerySelect::getError() const {
-    std::string div = (_errorExtra.size() && _qSession->getError().size())
-        ? " " : "";
+    std::string div = (_errorExtra.size() && _qSession->getError().size()) ? " " : "";
     return _qSession->getError() + div + _errorExtra;
 }
 
@@ -188,7 +185,7 @@ void UserQuerySelect::kill() {
             if (exec != nullptr) {
                 exec->squash();
             }
-        } catch(UserQueryError const &e) {
+        } catch (UserQueryError const& e) {
             // Silence merger discarding errors, because this object is being
             // released. Client no longer cares about merger errors.
         }
@@ -196,12 +193,7 @@ void UserQuerySelect::kill() {
     }
 }
 
-
-std::string
-UserQuerySelect::_getResultOrderBy() const {
-    return _qSession->getResultOrderBy();
-}
-
+std::string UserQuerySelect::_getResultOrderBy() const { return _qSession->getResultOrderBy(); }
 
 std::string UserQuerySelect::getResultQuery() const {
     query::SelectList selectList;
@@ -214,17 +206,16 @@ std::string UserQuerySelect::getResultQuery() const {
             sql::Schema schema;
             if (not _infileMerger->getSchemaForQueryResults(starStmt, schema)) {
                 _errorExtra = "Internal error getting schema for query results:" +
-                    _infileMerger->getError().getMsg();
+                              _infileMerger->getError().getMsg();
             }
             for (auto const& column : schema.columns) {
                 selectList.addValueExpr(query::ValueExpr::newColumnExpr(column.name));
             }
         } else {
             // Add a column that describes the top-level ValueExpr.
-            // If the value is a column ref _and_ there was not a user defined alias, then the TablePlugin will
-            // have assigned an alias that included the table name. We don't want that table name to appear
-            // in the results in that case, so just assign the column.
-            // Otherwise, use the alias.
+            // If the value is a column ref _and_ there was not a user defined alias, then the TablePlugin
+            // will have assigned an alias that included the table name. We don't want that table name to
+            // appear in the results in that case, so just assign the column. Otherwise, use the alias.
             std::shared_ptr<query::ValueExpr> newValueExpr;
             if (valueExpr->isColumnRef() && not valueExpr->getAliasIsUserDefined()) {
                 newValueExpr = query::ValueExpr::newColumnExpr(valueExpr->getAlias());
@@ -243,8 +234,8 @@ std::string UserQuerySelect::getResultQuery() const {
     query::QueryTemplate qt(query::QueryTemplate::DEFINE_VALUE_ALIAS_USE_TABLE_ALIAS);
     selectList.renderTo(qt);
 
-    std::string resultQuery =  "SELECT " + qt.sqlFragment() + " FROM " + _resultDb + "."
-        + getResultTableName();
+    std::string resultQuery =
+            "SELECT " + qt.sqlFragment() + " FROM " + _resultDb + "." + getResultTableName();
     std::string orderBy = _getResultOrderBy();
     if (not orderBy.empty()) {
         resultQuery += " " + orderBy;
@@ -252,7 +243,6 @@ std::string UserQuerySelect::getResultQuery() const {
     LOGS(_log, LOG_LVL_DEBUG, "made result query:" << resultQuery);
     return resultQuery;
 }
-
 
 /// Begin running on all chunks added so far.
 void UserQuerySelect::submit() {
@@ -271,8 +261,9 @@ void UserQuerySelect::submit() {
 
     auto queryTemplates = _qSession->makeQueryTemplates();
 
-    LOGS(_log, LOG_LVL_DEBUG, "first query template:" <<
-        (queryTemplates.size() > 0 ? queryTemplates[0].sqlFragment() : "none produced."));
+    LOGS(_log, LOG_LVL_DEBUG,
+         "first query template:" << (queryTemplates.size() > 0 ? queryTemplates[0].sqlFragment()
+                                                               : "none produced."));
 
     // Writing query for each chunk, stop if query is cancelled.
     // attempt to change priority, requires root
@@ -292,16 +283,13 @@ void UserQuerySelect::submit() {
 
     _executive->setScanInteractive(_qSession->getScanInteractive());
 
-    for(auto i = _qSession->cQueryBegin(), e = _qSession->cQueryEnd();
-            i != e && !_executive->getCancelled(); ++i) {
+    for (auto i = _qSession->cQueryBegin(), e = _qSession->cQueryEnd(); i != e && !_executive->getCancelled();
+         ++i) {
         auto& chunkSpec = *i;
 
-        std::function<void(util::CmdData*)> funcBuildJob =
-                [this, sequence,     // sequence must be a copy
-                 &chunkSpec, &queryTemplates,
-                 &chunks, &chunksMtx, &ttn,
-                 &taskMsgFactory](util::CmdData*) {
-
+        std::function<void(util::CmdData*)> funcBuildJob = [this, sequence,  // sequence must be a copy
+                                                            &chunkSpec, &queryTemplates, &chunks, &chunksMtx,
+                                                            &ttn, &taskMsgFactory](util::CmdData*) {
             QSERV_LOGCONTEXT_QUERY(_qMetaQueryId);
 
             qproc::ChunkQuerySpec::Ptr cs;
@@ -315,10 +303,10 @@ void UserQuerySelect::submit() {
             std::shared_ptr<ChunkMsgReceiver> cmr = ChunkMsgReceiver::newInstance(cs->chunkId, _messageStore);
             ResourceUnit ru;
             ru.setAsDbChunk(cs->db, cs->chunkId);
-            qdisp::JobDescription::Ptr jobDesc = qdisp::JobDescription::create(_qMetaCzarId,
-                    _executive->getId(), sequence, ru,
-                    std::make_shared<MergingHandler>(cmr, _infileMerger, chunkResultName),
-                    taskMsgFactory, cs, chunkResultName);
+            qdisp::JobDescription::Ptr jobDesc = qdisp::JobDescription::create(
+                    _qMetaCzarId, _executive->getId(), sequence, ru,
+                    std::make_shared<MergingHandler>(cmr, _infileMerger, chunkResultName), taskMsgFactory, cs,
+                    chunkResultName);
             _executive->add(jobDesc);
         };
 
@@ -342,25 +330,23 @@ void UserQuerySelect::submit() {
     }
 }
 
-
 /// Block until a submit()'ed query completes.
 /// @return the QueryState indicating success or failure
 QueryState UserQuerySelect::join() {
-    bool successful = _executive->join(); // Wait for all data
+    bool successful = _executive->join();  // Wait for all data
     // Since all data are in, run final SQL commands like GROUP BY.
     if (!_infileMerger->finalize()) {
         successful = false;
         LOGS(_log, LOG_LVL_ERROR, "InfileMerger::finalize failed");
         // Error: 1105 SQLSTATE: HY000 (ER_UNKNOWN_ERROR) Message: Unknown error
-        _messageStore->addMessage(-1, 1105, "Failure while merging result",
-                MessageSeverity::MSG_ERROR);
+        _messageStore->addMessage(-1, 1105, "Failure while merging result", MessageSeverity::MSG_ERROR);
     }
     try {
         _discardMerger();
     } catch (std::exception const& exc) {
         // exception here means error in qserv logic, we do not want to leak
         // it or expose it to user, just dump it to log
-        LOGS(_log, LOG_LVL_ERROR, "exception from _discardMerger: "<< exc.what());
+        LOGS(_log, LOG_LVL_ERROR, "exception from _discardMerger: " << exc.what());
     }
     if (successful) {
         _qMetaUpdateStatus(qmeta::QInfo::COMPLETED);
@@ -403,7 +389,7 @@ void UserQuerySelect::discard() {
     _qSession.reset();
     try {
         _discardMerger();
-    } catch(UserQueryError const &e) {
+    } catch (UserQueryError const& e) {
         // Silence merger discarding errors, because this object is being released.
         // client no longer cares about merger errors.
     }
@@ -415,10 +401,12 @@ void UserQuerySelect::setupMerger() {
     LOGS(_log, LOG_LVL_TRACE, "Setup merger");
     _infileMergerConfig->targetTable = _resultTable;
     _infileMergerConfig->mergeStmt = _qSession->getMergeStmt();
-    LOGS(_log, LOG_LVL_DEBUG, "setting mergeStmt:" <<
-        (_infileMergerConfig->mergeStmt != nullptr ?
-            _infileMergerConfig->mergeStmt->getQueryTemplate().sqlFragment() : "nullptr"));
-    _infileMerger = std::make_shared<rproc::InfileMerger>(*_infileMergerConfig, _databaseModels, _semaMgrConn);
+    LOGS(_log, LOG_LVL_DEBUG,
+         "setting mergeStmt:" << (_infileMergerConfig->mergeStmt != nullptr
+                                          ? _infileMergerConfig->mergeStmt->getQueryTemplate().sqlFragment()
+                                          : "nullptr"));
+    _infileMerger =
+            std::make_shared<rproc::InfileMerger>(*_infileMergerConfig, _databaseModels, _semaMgrConn);
 
     auto&& preFlightStmt = _qSession->getPreFlightStmt();
     if (preFlightStmt == nullptr) {
@@ -435,7 +423,6 @@ void UserQuerySelect::setupMerger() {
 
     _infileMerger->setMergeStmtFromList(_infileMergerConfig->mergeStmt);
 }
-
 
 void UserQuerySelect::_expandSelectStarInMergeStatment(std::shared_ptr<query::SelectStmt> const& mergeStmt) {
     if (nullptr != mergeStmt) {
@@ -468,10 +455,7 @@ void UserQuerySelect::_expandSelectStarInMergeStatment(std::shared_ptr<query::Se
     }
 }
 
-
-void UserQuerySelect::saveResultQuery() {
-    _queryMetadata->saveResultQuery(_qMetaQueryId, getResultQuery());
-}
+void UserQuerySelect::saveResultQuery() { _queryMetadata->saveResultQuery(_qMetaQueryId, getResultQuery()); }
 
 void UserQuerySelect::setupChunking() {
     LOGS(_log, LOG_LVL_TRACE, "Setup chunking");
@@ -502,16 +486,14 @@ void UserQuerySelect::setupChunking() {
         qproc::ChunkSpecVector csv;
         if (areaRestrictors != nullptr || secIdxRestrictors != nullptr) {
             csv = im->getChunks(areaRestrictors, secIdxRestrictors);
-        } else { // Unrestricted: full-sky
+        } else {  // Unrestricted: full-sky
             csv = im->getAllChunks();
         }
 
         LOGS(_log, LOG_LVL_TRACE, "Chunk specs: " << util::printable(csv));
         // Filter out empty chunks
-        for(qproc::ChunkSpecVector::const_iterator i=csv.begin(), e=csv.end();
-            i != e;
-            ++i) {
-            if (eSet->count(i->chunkId) == 0) { // chunk not in empty?
+        for (qproc::ChunkSpecVector::const_iterator i = csv.begin(), e = csv.end(); i != e; ++i) {
+            if (eSet->count(i->chunkId) == 0) {  // chunk not in empty?
                 _qSession->addChunk(*i);
             }
         }
@@ -522,14 +504,13 @@ void UserQuerySelect::setupChunking() {
 }
 
 // register query in qmeta database
-void UserQuerySelect::qMetaRegister(std::string const& resultLocation, std::string const& msgTableName)
-{
+void UserQuerySelect::qMetaRegister(std::string const& resultLocation, std::string const& msgTableName) {
     qmeta::QInfo::QType qType = _async ? qmeta::QInfo::ASYNC : qmeta::QInfo::SYNC;
-    std::string user = "anonymous";    // we do not have access to that info yet
+    std::string user = "anonymous";  // we do not have access to that info yet
 
     std::string qTemplate;
     auto const& stmtVector = _qSession->getStmtParallel();
-    for (auto itr = stmtVector.begin(); itr != stmtVector.end(); ++ itr) {
+    for (auto itr = stmtVector.begin(); itr != stmtVector.end(); ++itr) {
         auto stmt = *itr;
         if (stmt) {
             if (not qTemplate.empty()) {
@@ -551,19 +532,19 @@ void UserQuerySelect::qMetaRegister(std::string const& resultLocation, std::stri
         // Special token #QID# is replaced with query ID later.
         _resultLoc = "table:result_#QID#";
     }
-    qmeta::QInfo qInfo(qType, _qMetaCzarId, user, _qSession->getOriginal(),
-                       qTemplate, qMerge, _resultLoc, msgTableName, "");
+    qmeta::QInfo qInfo(qType, _qMetaCzarId, user, _qSession->getOriginal(), qTemplate, qMerge, _resultLoc,
+                       msgTableName, "");
 
     // find all table names used by statement (which appear in FROM ... [JOIN ...])
     qmeta::QMeta::TableNames tableNames;
     const auto& tables = _qSession->getStmt().getFromList().getTableRefList();
-    for (auto itr = tables.begin(); itr != tables.end(); ++ itr) {
+    for (auto itr = tables.begin(); itr != tables.end(); ++itr) {
         // add table name
         tableNames.push_back(std::make_pair((*itr)->getDb(), (*itr)->getTable()));
 
         // add its joins if any
         const auto& joins = (*itr)->getJoins();
-        for (auto jtr = joins.begin(); jtr != joins.end(); ++ jtr) {
+        for (auto jtr = joins.begin(); jtr != joins.end(); ++jtr) {
             const auto& right = (*jtr)->getRight();
             if (right) {
                 tableNames.push_back(std::make_pair(right->getDb(), right->getTable()));
@@ -599,7 +580,7 @@ void UserQuerySelect::qMetaRegister(std::string const& resultLocation, std::stri
 
     // Note that ordering is important here, this check must happen after
     // query is registered in qmeta
-    for (auto itr = tableNames.begin(); itr != tableNames.end(); ++ itr) {
+    for (auto itr = tableNames.begin(); itr != tableNames.end(); ++itr) {
         if (not _qSession->containsTable(itr->first, itr->second)) {
             // table either does not exist or it is being deleted, we must stop
             // here but we must mark query as failed
@@ -615,10 +596,8 @@ void UserQuerySelect::qMetaRegister(std::string const& resultLocation, std::stri
     }
 }
 
-
 // update query status in QMeta
-void UserQuerySelect::_qMetaUpdateStatus(qmeta::QInfo::QStatus qStatus)
-{
+void UserQuerySelect::_qMetaUpdateStatus(qmeta::QInfo::QStatus qStatus) {
     _queryMetadata->completeQuery(_qMetaQueryId, qStatus);
     // Remove the row for temporary query statistics.
     try {
@@ -629,15 +608,12 @@ void UserQuerySelect::_qMetaUpdateStatus(qmeta::QInfo::QStatus qStatus)
 }
 
 // add chunk information to qmeta
-void UserQuerySelect::_qMetaAddChunks(std::vector<int> const& chunks)
-{
+void UserQuerySelect::_qMetaAddChunks(std::vector<int> const& chunks) {
     _queryMetadata->addChunks(_qMetaQueryId, chunks);
 }
 
-
 /// Return this query's QueryId string.
-std::string UserQuerySelect::getQueryIdString() const {
-    return _queryIdStr;
-}
+std::string UserQuerySelect::getQueryIdString() const { return _queryIdStr; }
 
-}}} // lsst::qserv::ccontrol
+}  // namespace ccontrol
+}  // namespace lsst::qserv

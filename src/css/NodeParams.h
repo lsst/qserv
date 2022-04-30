@@ -30,10 +30,7 @@
 // Qserv headers
 #include "css/constants.h"
 
-
-namespace lsst {
-namespace qserv {
-namespace css {
+namespace lsst::qserv::css {
 
 /// @addtogroup css
 
@@ -45,19 +42,18 @@ namespace css {
 
 struct NodeParams {
     NodeParams() : port(0) {}
-    NodeParams(std::string const& type_, std::string const& host_,
-               int port_, std::string const& state_) :
-                   type(type_), host(host_), port(port_), state(state_) {}
+    NodeParams(std::string const& type_, std::string const& host_, int port_, std::string const& state_)
+            : type(type_), host(host_), port(port_), state(state_) {}
 
-    std::string type;    ///< Node type, e.g. "worker" or "czar"
-    std::string host;    ///< Host name or IP address
-    int port;            ///< Port number of wmgr service
-    std::string state;   ///< Node state, e.g. "ACTIVE" or "INACTIVE"
+    std::string type;   ///< Node type, e.g. "worker" or "czar"
+    std::string host;   ///< Host name or IP address
+    int port;           ///< Port number of wmgr service
+    std::string state;  ///< Node state, e.g. "ACTIVE" or "INACTIVE"
 
     // returns true if node is active
     bool isActive() const { return state == NODE_STATE_ACTIVE; }
 };
 
-}}} // namespace lsst::qserv::css
+}  // namespace lsst::qserv::css
 
-#endif // LSST_QSERV_CSS_NODEPARAMS_H
+#endif  // LSST_QSERV_CSS_NODEPARAMS_H

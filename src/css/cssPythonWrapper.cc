@@ -44,135 +44,122 @@
 namespace py = pybind11;
 using namespace pybind11::literals;
 
-namespace lsst {
-namespace qserv {
-namespace css {
+namespace lsst::qserv::css {
 
 PYBIND11_MODULE(cssLib, mod) {
-
     py::class_<KvInterface, std::shared_ptr<KvInterface>>(mod, "KvInterface")
-        .def("create", &KvInterface::create)
-        .def("set", &KvInterface::set)
-        .def("exists", &KvInterface::exists)
-        .def("get", (std::string (KvInterface::*)(std::string const&))&KvInterface::get,
-                "key"_a)
-        .def("get", (std::string (KvInterface::*)(std::string const&, std::string const&))&KvInterface::get,
-                "key"_a, "defaultValue"_a)
-        .def("getMany", &KvInterface::getMany)
-        .def("getChildren", &KvInterface::getChildren)
-        .def("getChildrenValues", &KvInterface::getChildrenValues)
-        .def("deleteKey", &KvInterface::deleteKey)
-        .def("dumpKV", &KvInterface::dumpKV)
-        ;
+            .def("create", &KvInterface::create)
+            .def("set", &KvInterface::set)
+            .def("exists", &KvInterface::exists)
+            .def("get", (std::string(KvInterface::*)(std::string const&)) & KvInterface::get, "key"_a)
+            .def("get",
+                 (std::string(KvInterface::*)(std::string const&, std::string const&)) & KvInterface::get,
+                 "key"_a, "defaultValue"_a)
+            .def("getMany", &KvInterface::getMany)
+            .def("getChildren", &KvInterface::getChildren)
+            .def("getChildrenValues", &KvInterface::getChildrenValues)
+            .def("deleteKey", &KvInterface::deleteKey)
+            .def("dumpKV", &KvInterface::dumpKV);
 
     py::class_<MatchTableParams>(mod, "MatchTableParams")
-        .def(py::init<>())
-        .def(py::init<std::string const&, std::string const&, std::string const&,
-                std::string const&, std::string const&, double>())
-        .def("isMatchTable", &MatchTableParams::isMatchTable)
-        .def_readwrite("dirTable1", &MatchTableParams::dirTable1)
-        .def_readwrite("dirColName1", &MatchTableParams::dirColName1)
-        .def_readwrite("dirTable2", &MatchTableParams::dirTable2)
-        .def_readwrite("dirColName2", &MatchTableParams::dirColName2)
-        .def_readwrite("flagColName", &MatchTableParams::flagColName)
-        .def_readwrite("angSep", &MatchTableParams::angSep)
-        ;
+            .def(py::init<>())
+            .def(py::init<std::string const&, std::string const&, std::string const&, std::string const&,
+                          std::string const&, double>())
+            .def("isMatchTable", &MatchTableParams::isMatchTable)
+            .def_readwrite("dirTable1", &MatchTableParams::dirTable1)
+            .def_readwrite("dirColName1", &MatchTableParams::dirColName1)
+            .def_readwrite("dirTable2", &MatchTableParams::dirTable2)
+            .def_readwrite("dirColName2", &MatchTableParams::dirColName2)
+            .def_readwrite("flagColName", &MatchTableParams::flagColName)
+            .def_readwrite("angSep", &MatchTableParams::angSep);
 
     py::class_<NodeParams>(mod, "NodeParams")
-        .def(py::init<>())
-        .def(py::init<std::string const&, std::string const&, int, std::string const&>())
-        .def("isActive", &NodeParams::isActive)
-        .def_readwrite("type", &NodeParams::type)
-        .def_readwrite("host", &NodeParams::host)
-        .def_readwrite("port", &NodeParams::port)
-        .def_readwrite("state", &NodeParams::state)
-        ;
+            .def(py::init<>())
+            .def(py::init<std::string const&, std::string const&, int, std::string const&>())
+            .def("isActive", &NodeParams::isActive)
+            .def_readwrite("type", &NodeParams::type)
+            .def_readwrite("host", &NodeParams::host)
+            .def_readwrite("port", &NodeParams::port)
+            .def_readwrite("state", &NodeParams::state);
 
     py::class_<PartTableParams>(mod, "PartTableParams")
-        .def(py::init<>())
-        .def(py::init<std::string const&, std::string const&, std::string const&,
-                std::string const&, std::string const&, double, bool, bool>())
-        .def("isPartitioned", &PartTableParams::isPartitioned)
-        .def("isChunked", &PartTableParams::isChunked)
-        .def("isSubChunked", &PartTableParams::isSubChunked)
-        .def("chunkLevel", &PartTableParams::chunkLevel)
-        .def("partitionCols", &PartTableParams::partitionCols)
-        .def("secIndexColNames", &PartTableParams::secIndexColNames)
-        .def_readwrite("dirDb", &PartTableParams::dirDb)
-        .def_readwrite("dirTable", &PartTableParams::dirTable)
-        .def_readwrite("dirColName", &PartTableParams::dirColName)
-        .def_readwrite("latColName", &PartTableParams::latColName)
-        .def_readwrite("lonColName", &PartTableParams::lonColName)
-        .def_readwrite("overlap", &PartTableParams::overlap)
-        .def_readwrite("partitioned", &PartTableParams::partitioned)
-        .def_readwrite("subChunks", &PartTableParams::subChunks)
-        ;
+            .def(py::init<>())
+            .def(py::init<std::string const&, std::string const&, std::string const&, std::string const&,
+                          std::string const&, double, bool, bool>())
+            .def("isPartitioned", &PartTableParams::isPartitioned)
+            .def("isChunked", &PartTableParams::isChunked)
+            .def("isSubChunked", &PartTableParams::isSubChunked)
+            .def("chunkLevel", &PartTableParams::chunkLevel)
+            .def("partitionCols", &PartTableParams::partitionCols)
+            .def("secIndexColNames", &PartTableParams::secIndexColNames)
+            .def_readwrite("dirDb", &PartTableParams::dirDb)
+            .def_readwrite("dirTable", &PartTableParams::dirTable)
+            .def_readwrite("dirColName", &PartTableParams::dirColName)
+            .def_readwrite("latColName", &PartTableParams::latColName)
+            .def_readwrite("lonColName", &PartTableParams::lonColName)
+            .def_readwrite("overlap", &PartTableParams::overlap)
+            .def_readwrite("partitioned", &PartTableParams::partitioned)
+            .def_readwrite("subChunks", &PartTableParams::subChunks);
 
     py::class_<ScanTableParams>(mod, "ScanTableParams")
-        .def(py::init<>())
-        .def(py::init<bool, int>())
-        .def_readwrite("lockInMem", &ScanTableParams::lockInMem)
-        .def_readwrite("scanRating", &ScanTableParams::scanRating)
-        ;
+            .def(py::init<>())
+            .def(py::init<bool, int>())
+            .def_readwrite("lockInMem", &ScanTableParams::lockInMem)
+            .def_readwrite("scanRating", &ScanTableParams::scanRating);
 
     py::class_<StripingParams>(mod, "StripingParams")
-        .def(py::init<>())
-        .def(py::init<int, int, int, double>())
-        .def_readwrite("stripes", &StripingParams::stripes)
-        .def_readwrite("subStripes", &StripingParams::subStripes)
-        .def_readwrite("partitioningId", &StripingParams::partitioningId)
-        .def_readwrite("overlap", &StripingParams::overlap)
-        ;
+            .def(py::init<>())
+            .def(py::init<int, int, int, double>())
+            .def_readwrite("stripes", &StripingParams::stripes)
+            .def_readwrite("subStripes", &StripingParams::subStripes)
+            .def_readwrite("partitioningId", &StripingParams::partitioningId)
+            .def_readwrite("overlap", &StripingParams::overlap);
 
     py::class_<TableParams>(mod, "TableParams")
-        .def(py::init<>())
-        .def_readwrite("match", &TableParams::match)
-        .def_readwrite("partitioning", &TableParams::partitioning)
-        .def_readwrite("sharedScan", &TableParams::sharedScan)
-        ;
+            .def(py::init<>())
+            .def_readwrite("match", &TableParams::match)
+            .def_readwrite("partitioning", &TableParams::partitioning)
+            .def_readwrite("sharedScan", &TableParams::sharedScan);
 
     py::class_<CssAccess, std::shared_ptr<CssAccess>>(mod, "CssAccess")
-        .def_static("createFromData", &CssAccess::createFromData,
-                "data"_a, "emptyChunkPath"_a, "readOnly"_a = false)
-        .def_static("createFromConfig", &CssAccess::createFromConfig,
-                "config"_a, "emptyChunkPath"_a, "readOnly"_a = false)
-        .def_static("cssVersion", &CssAccess::cssVersion)
-        .def("getDbNames", &CssAccess::getDbNames)
-        .def("getDbStatus", &CssAccess::getDbStatus)
-        .def("setDbStatus", &CssAccess::setDbStatus)
-        .def("containsDb", &CssAccess::containsDb)
-        .def("getDbStriping", &CssAccess::getDbStriping)
-        .def("createDb", &CssAccess::createDb)
-        .def("createDbLike", &CssAccess::createDbLike)
-        .def("dropDb", &CssAccess::dropDb)
-        .def("getTableNames", &CssAccess::getTableNames,
-                "dbName"_a, "readyOnly"_a=true)
-        .def("getTableStatus", &CssAccess::getTableStatus)
-        .def("setTableStatus", &CssAccess::setTableStatus)
-        .def("containsTable", &CssAccess::containsTable,
-                "dbName"_a, "tableName"_a, "readyOnly"_a=true)
-        .def("getMatchTableParams", &CssAccess::getMatchTableParams)
-        .def("getPartTableParams", &CssAccess::getPartTableParams)
-        .def("getScanTableParams", &CssAccess::getScanTableParams)
-        .def("getTableParams", &CssAccess::getTableParams)
-        .def("createTable", &CssAccess::createTable)
-        .def("createMatchTable", &CssAccess::createMatchTable)
-        .def("dropTable", &CssAccess::dropTable)
-        .def("getNodeNames", &CssAccess::getNodeNames)
-        .def("getNodeParams", &CssAccess::getNodeParams)
-        .def("getAllNodeParams", &CssAccess::getAllNodeParams)
-        .def("addNode", &CssAccess::addNode)
-        .def("setNodeState", &CssAccess::setNodeState)
-        .def("deleteNode", &CssAccess::deleteNode)
-        .def("addChunk", &CssAccess::addChunk)
-        .def("deleteChunk", &CssAccess::deleteChunk)
-        .def("getChunks", &CssAccess::getChunks)
-        // getEmptyChunks is intentionally skipped, not used by Python code
-        //.def("getEmptyChunks", &CssAccess::getEmptyChunks)
-        .def("getKvI", &CssAccess::getKvI)
-        .def("getEmptyChunksTableName", &CssAccess::getEmptyChunksTableName)
-        .def("getEmptyChunksSchema", &CssAccess::getEmptyChunksSchema)
-        ;
+            .def_static("createFromData", &CssAccess::createFromData, "data"_a, "emptyChunkPath"_a,
+                        "readOnly"_a = false)
+            .def_static("createFromConfig", &CssAccess::createFromConfig, "config"_a, "emptyChunkPath"_a,
+                        "readOnly"_a = false)
+            .def_static("cssVersion", &CssAccess::cssVersion)
+            .def("getDbNames", &CssAccess::getDbNames)
+            .def("getDbStatus", &CssAccess::getDbStatus)
+            .def("setDbStatus", &CssAccess::setDbStatus)
+            .def("containsDb", &CssAccess::containsDb)
+            .def("getDbStriping", &CssAccess::getDbStriping)
+            .def("createDb", &CssAccess::createDb)
+            .def("createDbLike", &CssAccess::createDbLike)
+            .def("dropDb", &CssAccess::dropDb)
+            .def("getTableNames", &CssAccess::getTableNames, "dbName"_a, "readyOnly"_a = true)
+            .def("getTableStatus", &CssAccess::getTableStatus)
+            .def("setTableStatus", &CssAccess::setTableStatus)
+            .def("containsTable", &CssAccess::containsTable, "dbName"_a, "tableName"_a, "readyOnly"_a = true)
+            .def("getMatchTableParams", &CssAccess::getMatchTableParams)
+            .def("getPartTableParams", &CssAccess::getPartTableParams)
+            .def("getScanTableParams", &CssAccess::getScanTableParams)
+            .def("getTableParams", &CssAccess::getTableParams)
+            .def("createTable", &CssAccess::createTable)
+            .def("createMatchTable", &CssAccess::createMatchTable)
+            .def("dropTable", &CssAccess::dropTable)
+            .def("getNodeNames", &CssAccess::getNodeNames)
+            .def("getNodeParams", &CssAccess::getNodeParams)
+            .def("getAllNodeParams", &CssAccess::getAllNodeParams)
+            .def("addNode", &CssAccess::addNode)
+            .def("setNodeState", &CssAccess::setNodeState)
+            .def("deleteNode", &CssAccess::deleteNode)
+            .def("addChunk", &CssAccess::addChunk)
+            .def("deleteChunk", &CssAccess::deleteChunk)
+            .def("getChunks", &CssAccess::getChunks)
+            // getEmptyChunks is intentionally skipped, not used by Python code
+            //.def("getEmptyChunks", &CssAccess::getEmptyChunks)
+            .def("getKvI", &CssAccess::getKvI)
+            .def("getEmptyChunksTableName", &CssAccess::getEmptyChunksTableName)
+            .def("getEmptyChunksSchema", &CssAccess::getEmptyChunksSchema);
 
     static py::exception<CssError> CssError(mod, "CssError");
     py::register_exception<NoSuchDb>(mod, "NoSuchDb", CssError.ptr());
@@ -203,7 +190,6 @@ PYBIND11_MODULE(cssLib, mod) {
     mod.attr("KEY_STATUS_FAILED_PFX") = KEY_STATUS_FAILED_PFX;
     mod.attr("NODE_STATE_ACTIVE") = NODE_STATE_ACTIVE;
     mod.attr("NODE_STATE_INACTIVE") = NODE_STATE_INACTIVE;
-
 }
 
-}}} // namespace lsst::qserv::css
+}  // namespace lsst::qserv::css

@@ -18,9 +18,9 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
- /**
-  * @brief Test data types shared by all classes of the module.
-  */
+/**
+ * @brief Test data types shared by all classes of the module.
+ */
 
 // System headers
 #include <string>
@@ -49,19 +49,19 @@ BOOST_AUTO_TEST_CASE(CommonTypesTest) {
         BOOST_CHECK_EQUAL(overlapSelector2str(ChunkOverlapSelector::OVERLAP), "OVERLAP");
         BOOST_CHECK_EQUAL(overlapSelector2str(ChunkOverlapSelector::CHUNK_AND_OVERLAP), "CHUNK_AND_OVERLAP");
     });
-    BOOST_CHECK_THROW({
-        overlapSelector2str(static_cast<ChunkOverlapSelector>(0));
-    }, invalid_argument);
+    BOOST_CHECK_THROW({ overlapSelector2str(static_cast<ChunkOverlapSelector>(0)); }, invalid_argument);
 
     BOOST_REQUIRE_NO_THROW({
         BOOST_CHECK_EQUAL(str2overlapSelector("CHUNK"), ChunkOverlapSelector::CHUNK);
         BOOST_CHECK_EQUAL(str2overlapSelector("OVERLAP"), ChunkOverlapSelector::OVERLAP);
         BOOST_CHECK_EQUAL(str2overlapSelector("CHUNK_AND_OVERLAP"), ChunkOverlapSelector::CHUNK_AND_OVERLAP);
     });
-    BOOST_CHECK_THROW({
-        str2overlapSelector("");
-        str2overlapSelector("ABC");
-    }, invalid_argument);
+    BOOST_CHECK_THROW(
+            {
+                str2overlapSelector("");
+                str2overlapSelector("ABC");
+            },
+            invalid_argument);
 
     LOGS_INFO("CommonTypesTest test ends");
 }

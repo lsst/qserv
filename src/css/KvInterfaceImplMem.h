@@ -22,13 +22,13 @@
  */
 
 /**
-  * @file
-  *
-  * @brief Interface to the Common State System - in memory key-value based
-  * implementation.
-  *
-  * @Author Jacek Becla, SLAC
-  */
+ * @file
+ *
+ * @brief Interface to the Common State System - in memory key-value based
+ * implementation.
+ *
+ * @Author Jacek Becla, SLAC
+ */
 
 #ifndef LSST_QSERV_CSS_KVINTERFACEIMPLMEM_H
 #define LSST_QSERV_CSS_KVINTERFACEIMPLMEM_H
@@ -42,34 +42,30 @@
 // Local headers
 #include "css/KvInterface.h"
 
-
-namespace lsst {
-namespace qserv {
-namespace css {
+namespace lsst::qserv::css {
 
 class KvInterfaceImplMem : public KvInterface {
 public:
-    explicit KvInterfaceImplMem(bool readOnly=false) : _readOnly(readOnly) {}
-    explicit KvInterfaceImplMem(std::istream& mapStream, bool readOnly=false);
-    explicit KvInterfaceImplMem(std::string const& filename, bool readOnly=false);
+    explicit KvInterfaceImplMem(bool readOnly = false) : _readOnly(readOnly) {}
+    explicit KvInterfaceImplMem(std::istream& mapStream, bool readOnly = false);
+    explicit KvInterfaceImplMem(std::string const& filename, bool readOnly = false);
 
     virtual ~KvInterfaceImplMem();
 
     virtual std::string create(std::string const& key, std::string const& value,
-                               bool unique=false) override;
+                               bool unique = false) override;
     virtual void set(std::string const& key, std::string const& value) override;
     virtual bool exists(std::string const& key) override;
     virtual std::map<std::string, std::string> getMany(std::vector<std::string> const& keys) override;
     virtual std::vector<std::string> getChildren(std::string const& key) override;
     virtual std::map<std::string, std::string> getChildrenValues(std::string const& key) override;
     virtual void deleteKey(std::string const& key) override;
-    virtual std::string dumpKV(std::string const& key=std::string()) override;
+    virtual std::string dumpKV(std::string const& key = std::string()) override;
 
     std::shared_ptr<KvInterfaceImplMem> clone() const;
 
 protected:
-    virtual std::string _get(std::string const& key,
-                             std::string const& defaultValue,
+    virtual std::string _get(std::string const& key, std::string const& defaultValue,
                              bool throwIfKeyNotFound) override;
 
 private:
@@ -78,6 +74,6 @@ private:
     bool _readOnly = false;
 };
 
-}}} // namespace lsst::qserv::css
+}  // namespace lsst::qserv::css
 
-#endif // LSST_QSERV_CSS_INTERFACEIMPLMEM_H
+#endif  // LSST_QSERV_CSS_INTERFACEIMPLMEM_H

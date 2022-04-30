@@ -33,15 +33,13 @@
 #include "replica/ServiceProvider.h"
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
 /**
-  * Class StatusRequestBase represents the base class for a family of requests
-  * pulling a status of on-going operation.
-  */
-class StatusRequestBase: public RequestMessenger {
+ * Class StatusRequestBase represents the base class for a family of requests
+ * pulling a status of on-going operation.
+ */
+class StatusRequestBase : public RequestMessenger {
 public:
     typedef std::shared_ptr<StatusRequestBase> Ptr;
 
@@ -73,14 +71,9 @@ protected:
      * @param keepTracking  Keep tracking the request before it finishes or fails.
      * @param messenger  A service for communicating with workers.
      */
-    StatusRequestBase(ServiceProvider::Ptr const& serviceProvider,
-                      boost::asio::io_service& io_service,
-                      char const* requestName,
-                      std::string const& worker,
-                      std::string const& targetRequestId,
-                      ProtocolQueuedRequestType targetRequestType,
-                      int priority,
-                      bool keepTracking,
+    StatusRequestBase(ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service,
+                      char const* requestName, std::string const& worker, std::string const& targetRequestId,
+                      ProtocolQueuedRequestType targetRequestType, int priority, bool keepTracking,
                       std::shared_ptr<Messenger> const& messenger);
 
     /// @see Request::startImpl()
@@ -100,19 +93,19 @@ protected:
      * @param success 'true' indicates a successful response from a worker
      * @param status a response from the worker service (only valid if success is 'true')
      */
-    void analyze(bool success, ProtocolStatus status=ProtocolStatus::FAILED);
+    void analyze(bool success, ProtocolStatus status = ProtocolStatus::FAILED);
 
-     /**
-      * Initiate request-specific operation with the persistent state service
-      * to store replica status.
-      */
-     virtual void saveReplicaInfo() = 0;
+    /**
+     * Initiate request-specific operation with the persistent state service
+     * to store replica status.
+     */
+    virtual void saveReplicaInfo() = 0;
 
     /// The performance of the target operation (updated by subclasses)
     Performance _targetPerformance;
 
 private:
-   /**
+    /**
      * Serialize request data into a network buffer and send the message to a worker.
      * @param lock  A lock on Request::_mtx must be acquired before calling this method.
      */
@@ -125,6 +118,6 @@ private:
     ProtocolQueuedRequestType const _targetRequestType;
 };
 
-}}} // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_STATUSREQUESTBASE_H
+#endif  // LSST_QSERV_REPLICA_STATUSREQUESTBASE_H

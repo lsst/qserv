@@ -22,12 +22,12 @@
  */
 
 /**
-  * @file
-  *
-  * @brief Abstract Interface to the Common State System.
-  *
-  * @Author Jacek Becla, SLAC
-  */
+ * @file
+ *
+ * @brief Abstract Interface to the Common State System.
+ *
+ * @Author Jacek Becla, SLAC
+ */
 
 #ifndef LSST_QSERV_CSS_KVINTERFACE_H
 #define LSST_QSERV_CSS_KVINTERFACE_H
@@ -37,13 +37,10 @@
 #include <string>
 #include <vector>
 
-namespace lsst {
-namespace qserv {
-namespace css {
+namespace lsst::qserv::css {
 
 class KvInterface {
 public:
-
     /**
      * Sets a max length for kvKey.
      * If it is changed it must also be changed in the
@@ -51,7 +48,7 @@ public:
      */
     static const unsigned int MAX_KEY_LENGTH = 255;
 
-    virtual ~KvInterface() {};
+    virtual ~KvInterface(){};
 
     /**
      * Create a slash-delimited key-value pair.
@@ -67,9 +64,7 @@ public:
      * @throws KeyExistsError if the key already exists
      * @throws CssError for other problems (e.g., a connection error is detected).
      */
-    virtual std::string create(std::string const& key,
-                               std::string const& value,
-                               bool unique=false) = 0;
+    virtual std::string create(std::string const& key, std::string const& value, bool unique = false) = 0;
 
     /**
      * Set a key/value pair. If the key already exists, its value is
@@ -91,9 +86,7 @@ public:
      * @throws CssError if there are any other problems, e.g., a connection
      * error is detected).
      */
-    std::string get(std::string const& key) {
-        return _get(key, std::string(), true);
-    }
+    std::string get(std::string const& key) { return _get(key, std::string(), true); }
 
     /**
      * Returns value for a given key, defaultValue if the key does not exist.
@@ -101,8 +94,7 @@ public:
      * @throws CssError if there are any other problems, e.g., a connection
      * error is detected).
      */
-    std::string get(std::string const& key,
-                    std::string const& defaultValue) {
+    std::string get(std::string const& key, std::string const& defaultValue) {
         return _get(key, defaultValue, false);
     }
 
@@ -145,15 +137,14 @@ public:
      *  Result can be fed to CssAccess::createFromData() method to create
      *  a new instance with the copy of CSS data.
      */
-    virtual std::string dumpKV(std::string const& key=std::string()) = 0;
+    virtual std::string dumpKV(std::string const& key = std::string()) = 0;
 
 protected:
     KvInterface() {}
-    virtual std::string _get(std::string const& key,
-                             std::string const& defaultValue,
+    virtual std::string _get(std::string const& key, std::string const& defaultValue,
                              bool throwIfKeyNotFound) = 0;
 };
 
-}}} // namespace lsst::qserv::css
+}  // namespace lsst::qserv::css
 
-#endif // LSST_QSERV_CSS_KVINTERFACE_H
+#endif  // LSST_QSERV_CSS_KVINTERFACE_H

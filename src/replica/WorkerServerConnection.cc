@@ -39,13 +39,11 @@ using namespace lsst::qserv::replica;
 
 namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.WorkerServerConnection");
-} /// namespace
+}  // namespace
 
 namespace {
 
-bool isErrorCode(string const& context,
-                 boost::system::error_code const& ec,
-                 string const& scope) {
+bool isErrorCode(string const& context, boost::system::error_code const& ec, string const& scope) {
     if (ec.value() != 0) {
         if (ec == boost::asio::error::eof) {
             LOGS(_log, LOG_LVL_DEBUG, context << scope << "  ** CLOSED **");
@@ -57,30 +55,19 @@ bool isErrorCode(string const& context,
     return false;
 }
 
-
-bool readIntoBuffer(string const& context,
-                    boost::asio::ip::tcp::socket& socket,
-                    shared_ptr<ProtocolBuffer> const& ptr,
-                    size_t bytes) {
-    ptr->resize(bytes);     // make sure the buffer has enough space to accommodate
-                            // the data of the message.
+bool readIntoBuffer(string const& context, boost::asio::ip::tcp::socket& socket,
+                    shared_ptr<ProtocolBuffer> const& ptr, size_t bytes) {
+    ptr->resize(bytes);  // make sure the buffer has enough space to accommodate
+                         // the data of the message.
     boost::system::error_code ec;
-    boost::asio::read(
-        socket,
-        boost::asio::buffer(ptr->data(), bytes),
-        boost::asio::transfer_at_least(bytes),
-        ec
-    );
+    boost::asio::read(socket, boost::asio::buffer(ptr->data(), bytes), boost::asio::transfer_at_least(bytes),
+                      ec);
     return not ::isErrorCode(context, ec, __func__);
 }
 
-
 template <class T>
-bool readMessage(string const& context,
-                 boost::asio::ip::tcp::socket& socket,
-                 shared_ptr<ProtocolBuffer> const& ptr,
-                 size_t bytes,
-                 T& message) {
+bool readMessage(string const& context, boost::asio::ip::tcp::socket& socket,
+                 shared_ptr<ProtocolBuffer> const& ptr, size_t bytes, T& message) {
     LOGS(_log, LOG_LVL_DEBUG, context << __func__ << " bytes=" << bytes);
     try {
         if (readIntoBuffer(context, socket, ptr, bytes)) {
@@ -93,11 +80,8 @@ bool readMessage(string const& context,
     return false;
 }
 
-
-bool readLength(string const& context,
-                boost::asio::ip::tcp::socket& socket,
-                shared_ptr<ProtocolBuffer> const& ptr,
-                uint32_t& bytes) {
+bool readLength(string const& context, boost::asio::ip::tcp::socket& socket,
+                shared_ptr<ProtocolBuffer> const& ptr, uint32_t& bytes) {
     LOGS(_log, LOG_LVL_DEBUG, context << __func__);
     try {
         if (readIntoBuffer(context, socket, ptr, sizeof(uint32_t))) {
@@ -109,39 +93,30 @@ bool readLength(string const& context,
     }
     return false;
 }
-}   // namespace
+}  // namespace
 
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
 atomic<unsigned int> WorkerServerConnection::_connectionIdSeries{0};
 
-WorkerServerConnection::Ptr WorkerServerConnection::create(
-                                    ServiceProvider::Ptr const& serviceProvider,
-                                    WorkerProcessor::Ptr const& processor,
-                                    boost::asio::io_service& io_service) {
-    return WorkerServerConnection::Ptr(
-        new WorkerServerConnection(
-            serviceProvider,
-            processor,
-            io_service));
+WorkerServerConnection::Ptr WorkerServerConnection::create(ServiceProvider::Ptr const& serviceProvider,
+                                                           WorkerProcessor::Ptr const& processor,
+                                                           boost::asio::io_service& io_service) {
+    return WorkerServerConnection::Ptr(new WorkerServerConnection(serviceProvider, processor, io_service));
 }
-
 
 WorkerServerConnection::WorkerServerConnection(ServiceProvider::Ptr const& serviceProvider,
                                                WorkerProcessor::Ptr const& processor,
                                                boost::asio::io_service& io_service)
-    :   _serviceProvider(serviceProvider),
-        _connectionId(_connectionIdSeries++),
-        _context("WORKER-SERVER-CONNECTION[" + to_string(_connectionId) + "]  "),
-        _processor(processor),
-        _socket(io_service),
-        _bufferPtr(make_shared<ProtocolBuffer>(
-                serviceProvider->config()->get<size_t>("common", "request-buf-size-bytes"))) {
+        : _serviceProvider(serviceProvider),
+          _connectionId(_connectionIdSeries++),
+          _context("WORKER-SERVER-CONNECTION[" + to_string(_connectionId) + "]  "),
+          _processor(processor),
+          _socket(io_service),
+          _bufferPtr(make_shared<ProtocolBuffer>(
+                  serviceProvider->config()->get<size_t>("common", "request-buf-size-bytes"))) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << " CREATED");
 }
-
 
 WorkerServerConnection::~WorkerServerConnection() {
     boost::system::error_code ec;
@@ -150,14 +125,9 @@ WorkerServerConnection::~WorkerServerConnection() {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << " DELETED");
 }
 
-
-void WorkerServerConnection::beginProtocol() {
-    _receive();
-}
-
+void WorkerServerConnection::beginProtocol() { _receive(); }
 
 void WorkerServerConnection::_receive() {
-
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     // Start with receiving the fixed length frame carrying
@@ -171,21 +141,14 @@ void WorkerServerConnection::_receive() {
     const size_t bytes = sizeof(uint32_t);
     _bufferPtr->resize(bytes);
 
-    boost::asio::async_read(
-        _socket,
-        boost::asio::buffer(_bufferPtr->data(), bytes),
-        boost::asio::transfer_at_least(bytes),
-        bind(&WorkerServerConnection::_received, shared_from_this(), _1, _2)
-    );
+    boost::asio::async_read(_socket, boost::asio::buffer(_bufferPtr->data(), bytes),
+                            boost::asio::transfer_at_least(bytes),
+                            bind(&WorkerServerConnection::_received, shared_from_this(), _1, _2));
 }
 
-
-void WorkerServerConnection::_received(boost::system::error_code const& ec,
-                                       size_t bytes_transferred) {
-
-    LOGS(_log, LOG_LVL_DEBUG, context() << __func__
-         << " ec=" << ec.value()
-         << " bytes_transferred=" << bytes_transferred);
+void WorkerServerConnection::_received(boost::system::error_code const& ec, size_t bytes_transferred) {
+    LOGS(_log, LOG_LVL_DEBUG,
+         context() << __func__ << " ec=" << ec.value() << " bytes_transferred=" << bytes_transferred);
 
     if (::isErrorCode(context(), ec, __func__)) return;
 
@@ -200,22 +163,25 @@ void WorkerServerConnection::_received(boost::system::error_code const& ec,
     //   request codes are obtained from the corresponding members
 
     switch (hdr.type()) {
-        case ProtocolRequestHeader::QUEUED:  _processQueuedRequest(    hdr); break;
-        case ProtocolRequestHeader::REQUEST: _processManagementRequest(hdr); break;
-        case ProtocolRequestHeader::SERVICE: _processServiceRequest(   hdr); break;
+        case ProtocolRequestHeader::QUEUED:
+            _processQueuedRequest(hdr);
+            break;
+        case ProtocolRequestHeader::REQUEST:
+            _processManagementRequest(hdr);
+            break;
+        case ProtocolRequestHeader::SERVICE:
+            _processServiceRequest(hdr);
+            break;
         default:
-            throw logic_error(
-                    "WorkerServerConnection::" + string(__func__) + " unhandled request class: '" +
-                    ProtocolRequestHeader::RequestType_Name(hdr.type()));
+            throw logic_error("WorkerServerConnection::" + string(__func__) + " unhandled request class: '" +
+                              ProtocolRequestHeader::RequestType_Name(hdr.type()));
     }
 }
 
-
 void WorkerServerConnection::_processQueuedRequest(ProtocolRequestHeader const& hdr) {
-
-    LOGS(_log, LOG_LVL_DEBUG, context() << __func__
-         << " id=" << hdr.id()
-         << " type=" << ProtocolQueuedRequestType_Name(hdr.queued_type()));
+    LOGS(_log, LOG_LVL_DEBUG,
+         context() << __func__ << " id=" << hdr.id()
+                   << " type=" << ProtocolQueuedRequestType_Name(hdr.queued_type()));
 
     // Read the request length
     uint32_t bytes;
@@ -223,7 +189,6 @@ void WorkerServerConnection::_processQueuedRequest(ProtocolRequestHeader const& 
 
     switch (hdr.queued_type()) {
         case ProtocolQueuedRequestType::REPLICA_CREATE: {
-
             // Read the request body
             ProtocolRequestReplicate request;
             if (not ::readMessage(context(), _socket, _bufferPtr, bytes, request)) return;
@@ -236,7 +201,6 @@ void WorkerServerConnection::_processQueuedRequest(ProtocolRequestHeader const& 
             break;
         }
         case ProtocolQueuedRequestType::REPLICA_DELETE: {
-
             // Read the request body
             ProtocolRequestDelete request;
             if (not ::readMessage(context(), _socket, _bufferPtr, bytes, request)) return;
@@ -249,7 +213,6 @@ void WorkerServerConnection::_processQueuedRequest(ProtocolRequestHeader const& 
             break;
         }
         case ProtocolQueuedRequestType::REPLICA_FIND: {
-
             // Read the request body
             ProtocolRequestFind request;
             if (not ::readMessage(context(), _socket, _bufferPtr, bytes, request)) return;
@@ -262,7 +225,6 @@ void WorkerServerConnection::_processQueuedRequest(ProtocolRequestHeader const& 
             break;
         }
         case ProtocolQueuedRequestType::REPLICA_FIND_ALL: {
-
             // Read the request body
             ProtocolRequestFindAll request;
             if (not ::readMessage(context(), _socket, _bufferPtr, bytes, request)) return;
@@ -275,7 +237,6 @@ void WorkerServerConnection::_processQueuedRequest(ProtocolRequestHeader const& 
             break;
         }
         case ProtocolQueuedRequestType::TEST_ECHO: {
-
             // Read the request body
             ProtocolRequestEcho request;
             if (not ::readMessage(context(), _socket, _bufferPtr, bytes, request)) return;
@@ -288,7 +249,6 @@ void WorkerServerConnection::_processQueuedRequest(ProtocolRequestHeader const& 
             break;
         }
         case ProtocolQueuedRequestType::INDEX: {
-
             // Read the request body
             ProtocolRequestIndex request;
             if (not ::readMessage(context(), _socket, _bufferPtr, bytes, request)) return;
@@ -301,7 +261,6 @@ void WorkerServerConnection::_processQueuedRequest(ProtocolRequestHeader const& 
             break;
         }
         case ProtocolQueuedRequestType::SQL: {
-
             // Read the request body
             ProtocolRequestSql request;
             if (not ::readMessage(context(), _socket, _bufferPtr, bytes, request)) return;
@@ -314,18 +273,15 @@ void WorkerServerConnection::_processQueuedRequest(ProtocolRequestHeader const& 
             break;
         }
         default:
-            throw logic_error(
-                    "WorkerServerConnection::" + string(__func__) + "  unhandled request type: '" +
-                    ProtocolQueuedRequestType_Name(hdr.queued_type()));
+            throw logic_error("WorkerServerConnection::" + string(__func__) + "  unhandled request type: '" +
+                              ProtocolQueuedRequestType_Name(hdr.queued_type()));
     }
 }
 
-
 void WorkerServerConnection::_processManagementRequest(ProtocolRequestHeader const& hdr) {
-
-    LOGS(_log, LOG_LVL_DEBUG, context() << __func__
-         << " id=" << hdr.id()
-         << " type=" << ProtocolManagementRequestType_Name(hdr.management_type()));
+    LOGS(_log, LOG_LVL_DEBUG,
+         context() << __func__ << " id=" << hdr.id()
+                   << " type=" << ProtocolManagementRequestType_Name(hdr.management_type()));
 
     // Read the request length
     uint32_t bytes;
@@ -333,9 +289,7 @@ void WorkerServerConnection::_processManagementRequest(ProtocolRequestHeader con
         return;
     }
     switch (hdr.management_type()) {
-
         case ProtocolManagementRequestType::REQUEST_STOP: {
-
             // Read the request body
             ProtocolRequestStop request;
             if (not ::readMessage(context(), _socket, _bufferPtr, bytes, request)) return;
@@ -384,14 +338,13 @@ void WorkerServerConnection::_processManagementRequest(ProtocolRequestHeader con
                     break;
                 }
                 default:
-                    throw logic_error(
-                            "WorkerServerConnection::" + string(__func__) + "  unhandled request type: '" +
-                            ProtocolQueuedRequestType_Name(request.queued_type()));
+                    throw logic_error("WorkerServerConnection::" + string(__func__) +
+                                      "  unhandled request type: '" +
+                                      ProtocolQueuedRequestType_Name(request.queued_type()));
             }
             break;
         }
         case ProtocolManagementRequestType::REQUEST_STATUS: {
-
             // Read the request body
             ProtocolRequestStatus request;
             if (not ::readMessage(context(), _socket, _bufferPtr, bytes, request)) return;
@@ -440,18 +393,17 @@ void WorkerServerConnection::_processManagementRequest(ProtocolRequestHeader con
                     break;
                 }
                 default:
-                    throw logic_error(
-                            "WorkerServerConnection::" + string(__func__) + "  unhandled request type: '" +
-                            ProtocolQueuedRequestType_Name(request.queued_type()));
+                    throw logic_error("WorkerServerConnection::" + string(__func__) +
+                                      "  unhandled request type: '" +
+                                      ProtocolQueuedRequestType_Name(request.queued_type()));
             }
             break;
         }
         case ProtocolManagementRequestType::REQUEST_DISPOSE: {
-
             // Read the request body
             ProtocolRequestDispose request;
             if (not ::readMessage(context(), _socket, _bufferPtr, bytes, request)) return;
- 
+
             ProtocolResponseDispose response;
             if (_verifyInstance(hdr, response)) {
                 for (int i = 0; i < request.ids_size(); ++i) {
@@ -465,18 +417,15 @@ void WorkerServerConnection::_processManagementRequest(ProtocolRequestHeader con
             break;
         }
         default:
-            throw logic_error(
-                    "WorkerServerConnection::" + string(__func__) + "  unhandled request type: '" +
-                    ProtocolManagementRequestType_Name(hdr.management_type()));
+            throw logic_error("WorkerServerConnection::" + string(__func__) + "  unhandled request type: '" +
+                              ProtocolManagementRequestType_Name(hdr.management_type()));
     }
 }
 
-
 void WorkerServerConnection::_processServiceRequest(ProtocolRequestHeader const& hdr) {
-
-    LOGS(_log, LOG_LVL_DEBUG, context() << __func__
-         << " id=" << hdr.id()
-         << " type=" << ProtocolServiceRequestType_Name(hdr.service_type()));
+    LOGS(_log, LOG_LVL_DEBUG,
+         context() << __func__ << " id=" << hdr.id()
+                   << " type=" << ProtocolServiceRequestType_Name(hdr.service_type()));
 
     ProtocolServiceResponse response;
 
@@ -489,102 +438,70 @@ void WorkerServerConnection::_processServiceRequest(ProtocolRequestHeader const&
     response.set_allocated_performance(performance.info().release());
 
     if (_verifyInstance(hdr, response)) {
-
         switch (hdr.service_type()) {
             case ProtocolServiceRequestType::SERVICE_SUSPEND: {
                 // This operation is allowed to be asynchronous as it may take
                 // extra time for the processor's threads to finish on-going processing
                 _processor->stop();
-                _processor->setServiceResponse(
-                      response,
-                      hdr.id(),
-                      _processor->state() == WorkerProcessor::State::STATE_IS_RUNNING ?
-                          ProtocolStatus::FAILED :
-                          ProtocolStatus::SUCCESS
-                );
+                _processor->setServiceResponse(response, hdr.id(),
+                                               _processor->state() == WorkerProcessor::State::STATE_IS_RUNNING
+                                                       ? ProtocolStatus::FAILED
+                                                       : ProtocolStatus::SUCCESS);
                 break;
             }
             case ProtocolServiceRequestType::SERVICE_RESUME: {
                 // This is a synchronous operation. The state transition request should happen
                 // (or be denied) instantaneously.
                 _processor->run();
-                _processor->setServiceResponse(
-                      response,
-                      hdr.id(),
-                      _processor->state() == WorkerProcessor::State::STATE_IS_RUNNING ?
-                          ProtocolStatus::SUCCESS :
-                          ProtocolStatus::FAILED);
+                _processor->setServiceResponse(response, hdr.id(),
+                                               _processor->state() == WorkerProcessor::State::STATE_IS_RUNNING
+                                                       ? ProtocolStatus::SUCCESS
+                                                       : ProtocolStatus::FAILED);
                 break;
             }
             case ProtocolServiceRequestType::SERVICE_STATUS: {
-                _processor->setServiceResponse(
-                      response,
-                      hdr.id(),
-                      ProtocolStatus::SUCCESS);
+                _processor->setServiceResponse(response, hdr.id(), ProtocolStatus::SUCCESS);
                 break;
             }
             case ProtocolServiceRequestType::SERVICE_REQUESTS: {
-                const bool extendedReport = true;   // to return detailed info on all known
-                                                    // replica-related requests
-                _processor->setServiceResponse(
-                      response,
-                      hdr.id(),
-                      ProtocolStatus::SUCCESS,
-                      extendedReport);
+                const bool extendedReport = true;  // to return detailed info on all known
+                                                   // replica-related requests
+                _processor->setServiceResponse(response, hdr.id(), ProtocolStatus::SUCCESS, extendedReport);
                 break;
             }
             case ProtocolServiceRequestType::SERVICE_DRAIN: {
-                const bool extendedReport = true;   // to return detailed info on all known
-                                                    // replica-related requests
+                const bool extendedReport = true;  // to return detailed info on all known
+                                                   // replica-related requests
                 _processor->drain();
-                _processor->setServiceResponse(
-                      response,
-                      hdr.id(),
-                      ProtocolStatus::SUCCESS,
-                      extendedReport);
+                _processor->setServiceResponse(response, hdr.id(), ProtocolStatus::SUCCESS, extendedReport);
                 break;
             }
             case ProtocolServiceRequestType::SERVICE_RECONFIG: {
-                const bool extendedReport = true;   // to return detailed info on all known
-                                                    // replica-related requests
+                const bool extendedReport = true;  // to return detailed info on all known
+                                                   // replica-related requests
                 _processor->reconfig();
-                _processor->setServiceResponse(
-                      response,
-                      hdr.id(),
-                      ProtocolStatus::SUCCESS,
-                      extendedReport);
+                _processor->setServiceResponse(response, hdr.id(), ProtocolStatus::SUCCESS, extendedReport);
                 break;
             }
             default:
-                throw logic_error(
-                        "WorkerServerConnection::" + string(__func__) + "  unhandled request type: '" +
-                        ProtocolServiceRequestType_Name(hdr.service_type()));
+                throw logic_error("WorkerServerConnection::" + string(__func__) +
+                                  "  unhandled request type: '" +
+                                  ProtocolServiceRequestType_Name(hdr.service_type()));
         }
     }
     _reply(hdr.id(), response);
 }
 
-
 void WorkerServerConnection::_send(string const& id) {
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << " id=" << id << " size=" << _bufferPtr->size());
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << __func__
-         << " id=" << id
-         << " size=" << _bufferPtr->size());
-
-    boost::asio::async_write(
-        _socket,
-        boost::asio::buffer(_bufferPtr->data(), _bufferPtr->size()),
-        bind(&WorkerServerConnection::_sent, shared_from_this(), _1, _2)
-    );
+    boost::asio::async_write(_socket, boost::asio::buffer(_bufferPtr->data(), _bufferPtr->size()),
+                             bind(&WorkerServerConnection::_sent, shared_from_this(), _1, _2));
 }
 
-
-void WorkerServerConnection::_sent(boost::system::error_code const& ec,
-                                   size_t bytes_transferred) {
-
-    LOGS(_log, LOG_LVL_DEBUG, context() << __func__
-         << " ec=" << ec.value()
-         << " bytes_transferred=" << bytes_transferred);
+void WorkerServerConnection::_sent(boost::system::error_code const& ec, size_t bytes_transferred) {
+    LOGS(_log, LOG_LVL_DEBUG,
+         context() << __func__ << " ec=" << ec.value() << " bytes_transferred=" << bytes_transferred);
 
     if (::isErrorCode(context(), ec, __func__)) return;
 
@@ -592,4 +509,4 @@ void WorkerServerConnection::_sent(boost::system::error_code const& ec,
     _receive();
 }
 
-}}} // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

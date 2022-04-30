@@ -30,29 +30,25 @@
 #include "wbase/WorkerCommand.h"
 
 // Forward declarations
-namespace lsst {
-namespace qserv {
+namespace lsst::qserv {
 namespace wbase {
-    class MsgProcessor;
-    class SendChannel;
-}
+class MsgProcessor;
+class SendChannel;
+}  // namespace wbase
 namespace wpublish {
-    class ResourceMonitor;
-}}}
+class ResourceMonitor;
+}
+}  // namespace lsst::qserv
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace wpublish {
+namespace lsst::qserv::wpublish {
 
 /**
  * Class GetStatusCommand returns various info on the on-going status of
  * a Qserv worker.
  */
 class GetStatusCommand : public wbase::WorkerCommand {
-
 public:
-
     // The default construction and copy semantics are prohibited
     GetStatusCommand& operator=(GetStatusCommand const&) = delete;
     GetStatusCommand(GetStatusCommand const&) = delete;
@@ -72,13 +68,12 @@ public:
     void run() override;
 
 private:
-
     // Parameters of the object
 
     std::shared_ptr<wbase::MsgProcessor> const _processor;
     std::shared_ptr<ResourceMonitor> _resourceMonitor;
 };
 
-}}} // namespace lsst::qserv::wpublish
+}  // namespace lsst::qserv::wpublish
 
-#endif // LSST_QSERV_WPUBLISH_GET_STATUS_COMMAND_H
+#endif  // LSST_QSERV_WPUBLISH_GET_STATUS_COMMAND_H

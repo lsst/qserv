@@ -31,60 +31,43 @@
 
 using namespace std;
 
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
-Url::Url(string const& url)
-    :   _url(url) {
-    _translate();
-}
-
+Url::Url(string const& url) : _url(url) { _translate(); }
 
 string const& Url::fileHost() const {
     if (_scheme == FILE) return _fileHost;
     throw logic_error(_error(__func__, "not a file resource."));
 }
 
-
 string const& Url::filePath() const {
     if (_scheme == FILE) return _filePath;
     throw logic_error(_error(__func__, "not a file resource."));
 }
-
 
 string const& Url::host() const {
     if (_scheme != FILE) return _host;
     throw logic_error(_error(__func__, "not an HTTP/HTTPS resource."));
 }
 
-
 uint16_t Url::port() const {
     if (_scheme != FILE) return _port;
     throw logic_error(_error(__func__, "not an HTTP/HTTPS resource."));
 }
-
 
 string const& Url::target() const {
     if (_scheme != FILE) return _target;
     throw logic_error(_error(__func__, "not an HTTP/HTTPS resource."));
 }
 
-
-string Url::_error(string const& func, string const& msg) {
-    return "Url::" + func + ": " + msg;
-}
-
+string Url::_error(string const& func, string const& msg) { return "Url::" + func + ": " + msg; }
 
 void Url::_translate() {
     if (_url.empty()) throw invalid_argument(_error(__func__, "url is empty."));
 
     static map<string, Scheme> const schemes = {
-        {"file://", Scheme::FILE},
-        {"http://", Scheme::HTTP},
-        {"https://", Scheme::HTTPS}
-    };
-    for (auto&& itr: schemes) {
+            {"file://", Scheme::FILE}, {"http://", Scheme::HTTP}, {"https://", Scheme::HTTPS}};
+    for (auto&& itr : schemes) {
         string const& prefix = itr.first;
         Scheme const scheme = itr.second;
         if ((_url.length() > prefix.length()) && (_url.substr(0, prefix.length()) == prefix)) {
@@ -144,4 +127,4 @@ void Url::_translate() {
     throw invalid_argument(_error(__func__, "invalid url '" + _url + "'"));
 }
 
-}}} // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

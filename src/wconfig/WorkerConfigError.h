@@ -26,9 +26,7 @@
 // System headers
 #include <stdexcept>
 
-namespace lsst {
-namespace qserv {
-namespace wconfig {
+namespace lsst::qserv::wconfig {
 
 /// ConfigError indicates a worker configuration error
 class WorkerConfigError : public std::runtime_error {
@@ -37,6 +35,6 @@ public:
     explicit WorkerConfigError(std::string const& msg) : std::runtime_error(msg) {}
 };
 
-}}} // namespace lsst::qserv::wconfig
+}  // namespace lsst::qserv::wconfig
 
-#endif // LSST_QSERV_WCONFIG_WORKERCONFIGERROR_H
+#endif  // LSST_QSERV_WCONFIG_WORKERCONFIGERROR_H

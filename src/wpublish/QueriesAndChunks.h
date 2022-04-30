@@ -30,21 +30,19 @@
 #include "wbase/Task.h"
 
 // Forward declarations
-namespace lsst {
-namespace qserv {
+namespace lsst::qserv {
 namespace wsched {
-    class SchedulerBase;
-    class BlendScheduler;
-    class ScanScheduler;
-}
+class SchedulerBase;
+class BlendScheduler;
+class ScanScheduler;
+}  // namespace wsched
 namespace wpublish {
-    class QueriesAndChunks;
-}}}
+class QueriesAndChunks;
+}
+}  // namespace lsst::qserv
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace wpublish {
+namespace lsst::qserv::wpublish {
 
 /// Statistics for a single user query.
 class QueryStatistics {
@@ -73,12 +71,12 @@ private:
     int _size = 0;
     int _tasksCompleted = 0;
     int _tasksRunning = 0;
-    int _tasksBooted = 0;   ///< Number of Tasks booted for being too slow.
+    int _tasksBooted = 0;                   ///< Number of Tasks booted for being too slow.
     std::atomic<bool> _queryBooted{false};  ///< True when the entire query booted.
 
     double _totalTimeMinutes = 0.0;
 
-    std::map<int, wbase::Task::Ptr> _taskMap; ///< Map of Tasks keyed by job id.
+    std::map<int, wbase::Task::Ptr> _taskMap;  ///< Map of Tasks keyed by job id.
 };
 
 /// Statistics for a table in a chunk. Statistics are based on the slowest table in a query,
@@ -91,9 +89,9 @@ public:
 
     /// Contains statistics data for this table in this chunk.
     struct Data {
-        std::uint64_t tasksCompleted = 0;   ///< Number of Tasks that have completed on this chunk/table.
-        std::uint64_t tasksBooted = 0;  ///< Number of Tasks that have been booted for taking too long.
-        double avgCompletionTime = 0.0; ///< weighted average of completion time in minutes.
+        std::uint64_t tasksCompleted = 0;  ///< Number of Tasks that have completed on this chunk/table.
+        std::uint64_t tasksBooted = 0;     ///< Number of Tasks that have been booted for taking too long.
+        double avgCompletionTime = 0.0;    ///< weighted average of completion time in minutes.
     };
 
     static std::string makeTableName(std::string const& db, std::string const& table) {
@@ -113,16 +111,15 @@ public:
     friend std::ostream& operator<<(std::ostream& os, ChunkTableStats const& cts);
 
 private:
-    mutable std::mutex _dataMtx; ///< Protects _data.
+    mutable std::mutex _dataMtx;  ///< Protects _data.
     int const _chunkId;
     std::string const _scanTableName;
 
-    Data _data; ///< Statistics for this table in this chunk.
-    double _weightAvg = 49.0; ///< weight of previous average
-    double _weightNew = 1.0; ///< weight of new measurement
-    double _weightSum = _weightAvg + _weightNew;    ///< denominator
+    Data _data;                                   ///< Statistics for this table in this chunk.
+    double _weightAvg = 49.0;                     ///< weight of previous average
+    double _weightNew = 1.0;                      ///< weight of new measurement
+    double _weightSum = _weightAvg + _weightNew;  ///< denominator
 };
-
 
 /// Statistics for one chunk, including scan table statistics.
 class ChunkStatistics {
@@ -136,27 +133,26 @@ public:
 
     friend QueriesAndChunks;
     friend std::ostream& operator<<(std::ostream& os, ChunkStatistics const& cs);
+
 private:
     int const _chunkId;
-    mutable std::mutex _tStatsMtx; ///< protects _tableStats;
+    mutable std::mutex _tStatsMtx;  ///< protects _tableStats;
     /// Map of chunk scan table statistics indexed by slowest scan table name in query.
     std::map<std::string, ChunkTableStats::Ptr> _tableStats;
 };
-
 
 class QueriesAndChunks {
 public:
     using Ptr = std::shared_ptr<QueriesAndChunks>;
 
-    QueriesAndChunks(std::chrono::seconds deadAfter,
-                     std::chrono::seconds examineAfter, int maxTasksBooted);
+    QueriesAndChunks(std::chrono::seconds deadAfter, std::chrono::seconds examineAfter, int maxTasksBooted);
     virtual ~QueriesAndChunks();
 
     void setBlendScheduler(std::shared_ptr<wsched::BlendScheduler> const& blendsched);
     void setRequiredTasksCompleted(unsigned int value);
 
     std::vector<wbase::Task::Ptr> removeQueryFrom(QueryId const& qId,
-                   std::shared_ptr<wsched::SchedulerBase> const& sched);
+                                                  std::shared_ptr<wsched::SchedulerBase> const& sched);
     void removeDead();
     void removeDead(QueryStatistics::Ptr const& queryStats);
 
@@ -190,31 +186,30 @@ public:
 
 private:
     void _bootTask(QueryStatistics::Ptr const& uq, wbase::Task::Ptr const& task,
-                       std::shared_ptr<wsched::SchedulerBase> const& sched);
+                   std::shared_ptr<wsched::SchedulerBase> const& sched);
     ScanTableSumsMap _calcScanTableSums();
     void _finishedTaskForChunk(wbase::Task::Ptr const& task, double minutes);
 
-    mutable std::mutex _queryStatsMtx; ///< protects _queryStats;
-    std::map<QueryId, QueryStatistics::Ptr> _queryStats; ///< Map of Query stats indexed by QueryId.
+    mutable std::mutex _queryStatsMtx;                    ///< protects _queryStats;
+    std::map<QueryId, QueryStatistics::Ptr> _queryStats;  ///< Map of Query stats indexed by QueryId.
 
     mutable std::mutex _chunkMtx;
-    std::map<int, ChunkStatistics::Ptr> _chunkStats;///< Map of Chunk stats indexed by chunk id.
+    std::map<int, ChunkStatistics::Ptr> _chunkStats;  ///< Map of Chunk stats indexed by chunk id.
 
-    std::weak_ptr<wsched::BlendScheduler> _blendSched; ///< Pointer to the BlendScheduler.
+    std::weak_ptr<wsched::BlendScheduler> _blendSched;  ///< Pointer to the BlendScheduler.
 
     // Query removal thread members. A user query is dead if all its tasks are complete and it hasn't
     // been touched for a period of time.
     std::thread _removalThread;
-    std::atomic<bool> _loopRemoval{true};   ///< While true, check to see if any Queries can be removed.
+    std::atomic<bool> _loopRemoval{true};  ///< While true, check to see if any Queries can be removed.
     /// A user query must be complete and inactive this long before it can be considered dead.
     std::chrono::seconds _deadAfter = std::chrono::minutes(5);
 
-    std::mutex _deadMtx; ///< Protects _deadQueries.
-    std::mutex _newlyDeadMtx; ///< Protects _newlyDeadQueries.
+    std::mutex _deadMtx;       ///< Protects _deadQueries.
+    std::mutex _newlyDeadMtx;  ///< Protects _newlyDeadQueries.
     using DeadQueriesType = std::map<QueryId, QueryStatistics::Ptr>;
-    DeadQueriesType _deadQueries; ///< Map of user queries that might be dead.
+    DeadQueriesType _deadQueries;  ///< Map of user queries that might be dead.
     std::shared_ptr<DeadQueriesType> _newlyDeadQueries{new DeadQueriesType()};
-
 
     // Members for running a separate thread to examine all the running Tasks on the scan schedulers
     // and remove those that are taking too long (boot them). If too many Tasks in a single user query
@@ -233,7 +228,6 @@ private:
     unsigned int _requiredTasksCompleted = 50;
 };
 
+}  // namespace lsst::qserv::wpublish
 
-}}} // namespace lsst::qserv::wpublish
-
-#endif // LSST_QSERV_WPUBLISH_QUERIESANDCHUNKS_H
+#endif  // LSST_QSERV_WPUBLISH_QUERIESANDCHUNKS_H

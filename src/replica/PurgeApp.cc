@@ -38,67 +38,42 @@ using namespace std;
 namespace {
 
 string const description =
-    "This application purges excess replicas for all chunks of"
-    " a database family down to the minimally required replication level. And while"
-    " doing so, the application will make the best effort to leave worker nodes as"
-    " balanced as possible, and it will also preserve chunk collocation.";
+        "This application purges excess replicas for all chunks of"
+        " a database family down to the minimally required replication level. And while"
+        " doing so, the application will make the best effort to leave worker nodes as"
+        " balanced as possible, and it will also preserve chunk collocation.";
 
 bool const injectDatabaseOptions = true;
 bool const boostProtobufVersionCheck = true;
 bool const enableServiceProvider = true;
 
-} /// namespace
+}  // namespace
 
+namespace lsst::qserv::replica {
 
-namespace lsst {
-namespace qserv {
-namespace replica {
-
-PurgeApp::Ptr PurgeApp::create(int argc, char* argv[]) {
-    return Ptr(new PurgeApp(argc, argv));
-}
-
+PurgeApp::Ptr PurgeApp::create(int argc, char* argv[]) { return Ptr(new PurgeApp(argc, argv)); }
 
 PurgeApp::PurgeApp(int argc, char* argv[])
-    :   Application(
-            argc, argv,
-            ::description,
-            ::injectDatabaseOptions,
-            ::boostProtobufVersionCheck,
-            ::enableServiceProvider
-        ) {
-
+        : Application(argc, argv, ::description, ::injectDatabaseOptions, ::boostProtobufVersionCheck,
+                      ::enableServiceProvider) {
     // Configure the command line parser
 
-    parser().required(
-        "database-family",
-        "The name of a database family",
-        _databaseFamily
-    ).option(
-        "replicas",
-        "The maximum number of replicas to be left for each chunk (leaving"
-        " it to the default value 0 will pull the actual value of the parameter"
-        " from the Configuration).",
-        _replicas
-    ).option(
-        "tables-page-size",
-        "The number of rows in the table of replicas (0 means no pages).",
-        _pageSize
-    );
+    parser().required("database-family", "The name of a database family", _databaseFamily)
+            .option("replicas",
+                    "The maximum number of replicas to be left for each chunk (leaving"
+                    " it to the default value 0 will pull the actual value of the parameter"
+                    " from the Configuration).",
+                    _replicas)
+            .option("tables-page-size", "The number of rows in the table of replicas (0 means no pages).",
+                    _pageSize);
 }
 
-
 int PurgeApp::runImpl() {
-
     string const noParentJobId;
-    auto const job = PurgeJob::create(
-        _databaseFamily,
-        _replicas,
-        Controller::create(serviceProvider()),
-        noParentJobId,
-        nullptr,    // no callback
-        PRIORITY_NORMAL
-    );
+    auto const job =
+            PurgeJob::create(_databaseFamily, _replicas, Controller::create(serviceProvider()), noParentJobId,
+                             nullptr,  // no callback
+                             PRIORITY_NORMAL);
     job->start();
     job->wait();
 
@@ -109,4 +84,4 @@ int PurgeApp::runImpl() {
     return job->extendedState() == Job::SUCCESS ? 0 : 1;
 }
 
-}}} // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

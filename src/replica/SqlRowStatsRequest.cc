@@ -30,46 +30,42 @@ using namespace std;
 namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.SqlRowStatsRequest");
 const uint64_t unlimitedMaxRows = 0;
-} /// namespace
+}  // namespace
 
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
-SqlRowStatsRequest::Ptr SqlRowStatsRequest::create(
-        ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service,
-        string const& worker, string const& database, vector<string> const& tables,
-        CallbackType const& onFinish, int priority, bool keepTracking,
-        shared_ptr<Messenger> const& messenger) {
-    return Ptr(new SqlRowStatsRequest(
-            serviceProvider, io_service, worker, database, tables,
-            onFinish, priority, keepTracking, messenger));
+SqlRowStatsRequest::Ptr SqlRowStatsRequest::create(ServiceProvider::Ptr const& serviceProvider,
+                                                   boost::asio::io_service& io_service, string const& worker,
+                                                   string const& database, vector<string> const& tables,
+                                                   CallbackType const& onFinish, int priority,
+                                                   bool keepTracking,
+                                                   shared_ptr<Messenger> const& messenger) {
+    return Ptr(new SqlRowStatsRequest(serviceProvider, io_service, worker, database, tables, onFinish,
+                                      priority, keepTracking, messenger));
 }
 
-
-SqlRowStatsRequest::SqlRowStatsRequest(
-        ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service,
-        string const& worker, string const& database, vector<string> const& tables,
-        CallbackType const& onFinish, int priority, bool keepTracking,
-        shared_ptr<Messenger> const& messenger)
-    :   SqlRequest(serviceProvider, io_service, "SQL_TABLE_ROW_STATS", worker,
-                   ::unlimitedMaxRows, priority, keepTracking, messenger),
-        _onFinish(onFinish) {
+SqlRowStatsRequest::SqlRowStatsRequest(ServiceProvider::Ptr const& serviceProvider,
+                                       boost::asio::io_service& io_service, string const& worker,
+                                       string const& database, vector<string> const& tables,
+                                       CallbackType const& onFinish, int priority, bool keepTracking,
+                                       shared_ptr<Messenger> const& messenger)
+        : SqlRequest(serviceProvider, io_service, "SQL_TABLE_ROW_STATS", worker, ::unlimitedMaxRows, priority,
+                     keepTracking, messenger),
+          _onFinish(onFinish) {
     // Finish initializing the request body's content
     requestBody.set_type(ProtocolRequestSql::TABLE_ROW_STATS);
     requestBody.set_database(database);
     requestBody.clear_tables();
-    for (auto&& table: tables) {
+    for (auto&& table : tables) {
         requestBody.add_tables(table);
     }
     requestBody.set_batch_mode(true);
 }
 
-
 void SqlRowStatsRequest::notify(util::Lock const& lock) {
-    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ <<
-        "[" << ProtocolRequestSql_Type_Name(requestBody.type()) << "]");
+    LOGS(_log, LOG_LVL_DEBUG,
+         context() << __func__ << "[" << ProtocolRequestSql_Type_Name(requestBody.type()) << "]");
     notifyDefaultImpl<SqlRowStatsRequest>(lock, _onFinish);
 }
 
-}}} // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

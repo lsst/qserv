@@ -38,9 +38,7 @@
 #include "boost/utility.hpp"
 #include <mysql/mysql.h>
 
-namespace lsst {
-namespace qserv {
-namespace mysql {
+namespace lsst::qserv::mysql {
 
 // Forward
 class MySqlConfig;
@@ -58,7 +56,6 @@ public:
     void closeMySqlConn();
     bool connect();
 
-
     /**
      *  Check MySQL connection for a given configuration
      *
@@ -68,20 +65,29 @@ public:
 
     bool connected() const { return _isConnected; }
     // instance destruction invalidates this return value
-    MYSQL* getMySql() { return _mysql;}
+    MYSQL* getMySql() { return _mysql; }
     MySqlConfig const& getMySqlConfig() const { return *_sqlConfig; }
 
     bool queryUnbuffered(std::string const& query);
     int cancel();
 
     MYSQL_RES* getResult() { return _mysql_res; }
-    void freeResult() { mysql_free_result(_mysql_res); _mysql_res = nullptr; }
+    void freeResult() {
+        mysql_free_result(_mysql_res);
+        _mysql_res = nullptr;
+    }
     int getResultFieldCount() {
         assert(_mysql);
         return mysql_field_count(_mysql);
     }
-    unsigned int getErrno() const { assert(_mysql); return mysql_errno(_mysql); }
-    const std::string getError() const { assert(_mysql); return std::string(mysql_error(_mysql)); }
+    unsigned int getErrno() const {
+        assert(_mysql);
+        return mysql_errno(_mysql);
+    }
+    const std::string getError() const {
+        assert(_mysql);
+        return std::string(mysql_error(_mysql));
+    }
     MySqlConfig const& getConfig() const { return *_sqlConfig; }
     bool selectDb(std::string const& dbName);
 
@@ -97,12 +103,11 @@ private:
     MYSQL_RES* _mysql_res;
     bool _isConnected;
     std::shared_ptr<MySqlConfig> _sqlConfig;
-    bool _isExecuting; ///< true during mysql_real_query and mysql_use_result
-    bool _interrupted; ///< true if cancellation requested
+    bool _isExecuting;  ///< true during mysql_real_query and mysql_use_result
+    bool _interrupted;  ///< true if cancellation requested
     std::mutex _interruptMutex;
 };
 
-}}} // namespace lsst::qserv::mysql
+}  // namespace lsst::qserv::mysql
 
-#endif // LSST_QSERV_MYSQL_MYSQLCONNECTION_H
-
+#endif  // LSST_QSERV_MYSQL_MYSQLCONNECTION_H

@@ -21,24 +21,15 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-
 #include "OrTerm.h"
-
 
 #include "query/BoolFactorTerm.h"
 #include "query/CopyTerms.h"
 #include "util/IterableFormatter.h"
 
+namespace lsst::qserv::query {
 
-namespace lsst {
-namespace qserv {
-namespace query {
-
-
-void OrTerm::renderTo(QueryTemplate& qt) const {
-    renderList(qt, _terms, "OR");
-}
-
+void OrTerm::renderTo(QueryTemplate& qt) const { renderList(qt, _terms, "OR"); }
 
 std::shared_ptr<BoolTerm> OrTerm::clone() const {
     std::shared_ptr<OrTerm> ot = std::make_shared<OrTerm>();
@@ -46,18 +37,13 @@ std::shared_ptr<BoolTerm> OrTerm::clone() const {
     return ot;
 }
 
-
 std::shared_ptr<OrTerm> OrTerm::copy() const {
     auto orTerm = std::make_shared<OrTerm>();
     copyTerms<BoolTerm::PtrVector, syntaxCopy>(orTerm->_terms, _terms);
     return orTerm;
 }
 
-
-std::shared_ptr<BoolTerm> OrTerm::copySyntax() const {
-    return copy();
-}
-
+std::shared_ptr<BoolTerm> OrTerm::copySyntax() const { return copy(); }
 
 bool OrTerm::merge(const BoolTerm& other) {
     auto otherOr = dynamic_cast<const OrTerm*>(&other);
@@ -68,19 +54,14 @@ bool OrTerm::merge(const BoolTerm& other) {
     return true;
 }
 
-
-void OrTerm::dbgPrint(std::ostream& os) const {
-    os << "OrTerm(" << util::printable(_terms, "", "") << ")";
-}
-
+void OrTerm::dbgPrint(std::ostream& os) const { os << "OrTerm(" << util::printable(_terms, "", "") << ")"; }
 
 bool OrTerm::operator==(const BoolTerm& rhs) const {
-    auto rhsOrTerm = dynamic_cast<OrTerm const *>(&rhs);
+    auto rhsOrTerm = dynamic_cast<OrTerm const*>(&rhs);
     if (nullptr == rhsOrTerm) {
         return false;
     }
     return util::vectorPtrCompare<BoolTerm>(_terms, rhsOrTerm->_terms);
 }
 
-
-}}} // namespace lsst::qserv::query
+}  // namespace lsst::qserv::query

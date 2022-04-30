@@ -41,50 +41,33 @@ namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.AbortTransactionJob");
 
-} /// namespace
+}  // namespace
 
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
 string AbortTransactionJob::typeName() { return "AbortTransactionJob"; }
 
-
-AbortTransactionJob::Ptr AbortTransactionJob::create(TransactionId transactionId,
-                                                     bool allWorkers,
+AbortTransactionJob::Ptr AbortTransactionJob::create(TransactionId transactionId, bool allWorkers,
                                                      Controller::Ptr const& controller,
-                                                     string const& parentJobId,
-                                                     CallbackType const& onFinish,
+                                                     string const& parentJobId, CallbackType const& onFinish,
                                                      int priority) {
     return AbortTransactionJob::Ptr(
-            new AbortTransactionJob(
-                transactionId, allWorkers, controller, parentJobId,
-                onFinish, priority
-            ));
+            new AbortTransactionJob(transactionId, allWorkers, controller, parentJobId, onFinish, priority));
 }
 
-
-AbortTransactionJob::AbortTransactionJob(TransactionId transactionId,
-                                         bool allWorkers,
-                                         Controller::Ptr const& controller,
-                                         string const& parentJobId,
-                                         CallbackType const& onFinish,
-                                         int priority)
-    :   Job(controller,
-            parentJobId,
-            "ABORT_TRANSACTION",
-            priority),
-        _transactionId(transactionId),
-        _allWorkers(allWorkers),
-        _onFinish(onFinish) {
-}
-
+AbortTransactionJob::AbortTransactionJob(TransactionId transactionId, bool allWorkers,
+                                         Controller::Ptr const& controller, string const& parentJobId,
+                                         CallbackType const& onFinish, int priority)
+        : Job(controller, parentJobId, "ABORT_TRANSACTION", priority),
+          _transactionId(transactionId),
+          _allWorkers(allWorkers),
+          _onFinish(onFinish) {}
 
 Job::Progress AbortTransactionJob::progress() const {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
     util::Lock lock(_mtx, context() + __func__);
     Progress jobProgress{0ULL, 0ULL};
-    for (auto const& job: _jobs) {
+    for (auto const& job : _jobs) {
         Progress const subJobProgress = job->progress();
         jobProgress.complete += subJobProgress.complete;
         jobProgress.total += subJobProgress.total;
@@ -92,43 +75,32 @@ Job::Progress AbortTransactionJob::progress() const {
     return jobProgress;
 }
 
-
 SqlJobResult const& AbortTransactionJob::getResultData() const {
     LOGS(_log, LOG_LVL_TRACE, context() << __func__);
     if (state() == State::FINISHED) return _resultData;
-    throw logic_error(
-            "AbortTransactionJob::" + string(__func__) +
-            "  the method can't be called until the job hasn't finished");
+    throw logic_error("AbortTransactionJob::" + string(__func__) +
+                      "  the method can't be called until the job hasn't finished");
 }
 
-
-list<pair<string,string>> AbortTransactionJob::extendedPersistentState() const {
-    list<pair<string,string>> result;
+list<pair<string, string>> AbortTransactionJob::extendedPersistentState() const {
+    list<pair<string, string>> result;
     result.emplace_back("transaction_id", to_string(transactionId()));
     result.emplace_back("all_workers", bool2str(allWorkers()));
     return result;
 }
 
-
-list<pair<string,string>> AbortTransactionJob::persistentLogData() const {
-    list<pair<string,string>> result;
-    _resultData.iterate([&result](SqlJobResult::Worker const& worker,
-                                  SqlJobResult::Scope const& table,
+list<pair<string, string>> AbortTransactionJob::persistentLogData() const {
+    list<pair<string, string>> result;
+    _resultData.iterate([&result](SqlJobResult::Worker const& worker, SqlJobResult::Scope const& table,
                                   SqlResultSet::ResultSet const& resultSet) {
-        result.emplace_back(
-            "status",
-            "worker=" + worker +
-            " table=" + table +
-            " completed=" + bool2str(resultSet.extendedStatus == ProtocolStatusExt::NONE) +
-            " error=" + resultSet.error
-        );
+        result.emplace_back("status", "worker=" + worker + " table=" + table + " completed=" +
+                                              bool2str(resultSet.extendedStatus == ProtocolStatusExt::NONE) +
+                                              " error=" + resultSet.error);
     });
     return result;
 }
 
-
 void AbortTransactionJob::startImpl(util::Lock const& lock) {
-
     string const context_ = context() + string(__func__) + "  ";
     LOGS(_log, LOG_LVL_TRACE, context_);
 
@@ -140,8 +112,9 @@ void AbortTransactionJob::startImpl(util::Lock const& lock) {
     try {
         transactionInfo = serviceProvider->databaseServices()->transaction(_transactionId);
     } catch (exception const& ex) {
-        LOGS(_log, LOG_LVL_ERROR, context_ << "failed to located the transaction: "
-             << _transactionId << ", exception: " << ex.what());
+        LOGS(_log, LOG_LVL_ERROR,
+             context_ << "failed to located the transaction: " << _transactionId
+                      << ", exception: " << ex.what());
         finish(lock, ExtendedState::CONFIG_ERROR);
         return;
     }
@@ -155,14 +128,14 @@ void AbortTransactionJob::startImpl(util::Lock const& lock) {
     try {
         databaseInfo = serviceProvider->config()->databaseInfo(transactionInfo.database);
     } catch (exception const& ex) {
-        LOGS(_log, LOG_LVL_ERROR, context_ << "failed to locate the database: '"
-             << transactionInfo.database << "', exception: " << ex.what());
+        LOGS(_log, LOG_LVL_ERROR,
+             context_ << "failed to locate the database: '" << transactionInfo.database
+                      << "', exception: " << ex.what());
         finish(lock, ExtendedState::CONFIG_ERROR);
         return;
     }
     if (databaseInfo.isPublished) {
-        LOGS(_log, LOG_LVL_ERROR, context_ << "database " << databaseInfo.name
-             << " is already PUBLISHED");
+        LOGS(_log, LOG_LVL_ERROR, context_ << "database " << databaseInfo.name << " is already PUBLISHED");
         finish(lock, ExtendedState::CONFIG_ERROR);
         return;
     }
@@ -172,16 +145,10 @@ void AbortTransactionJob::startImpl(util::Lock const& lock) {
 
     auto self = shared_from_base<AbortTransactionJob>();
 
-    for (auto&& table: databaseInfo.tables()) {
-        auto job = SqlDeleteTablePartitionJob::create(
-            _transactionId,
-            table,
-            _allWorkers,
-            controller(),
-            id(),
-            bind(&AbortTransactionJob::_onChildJobFinish, self, _1),
-            priority()
-        );
+    for (auto&& table : databaseInfo.tables()) {
+        auto job = SqlDeleteTablePartitionJob::create(_transactionId, table, _allWorkers, controller(), id(),
+                                                      bind(&AbortTransactionJob::_onChildJobFinish, self, _1),
+                                                      priority());
         job->start();
         _jobs.push_back(job);
     }
@@ -190,25 +157,20 @@ void AbortTransactionJob::startImpl(util::Lock const& lock) {
     }
 }
 
-
 void AbortTransactionJob::cancelImpl(util::Lock const& lock) {
     LOGS(_log, LOG_LVL_TRACE, context() << __func__);
-    for (auto&& job: _jobs) {
+    for (auto&& job : _jobs) {
         job->cancel();
     }
 }
-
 
 void AbortTransactionJob::notify(util::Lock const& lock) {
     LOGS(_log, LOG_LVL_TRACE, context() << __func__);
     notifyDefaultImpl<AbortTransactionJob>(lock, _onFinish);
 }
 
-
 void AbortTransactionJob::_onChildJobFinish(SqlDeleteTablePartitionJob::Ptr const& job) {
-
-    LOGS(_log, LOG_LVL_TRACE, context() << __func__
-         << "  table=" << job->table() << " id=" << job->id());
+    LOGS(_log, LOG_LVL_TRACE, context() << __func__ << "  table=" << job->table() << " id=" << job->id());
 
     if (state() == State::FINISHED) return;
 
@@ -227,9 +189,8 @@ void AbortTransactionJob::_onChildJobFinish(SqlDeleteTablePartitionJob::Ptr cons
     _resultData.merge(job->getResultData());
 
     if (_numFinished == _jobs.size()) {
-        finish(lock, _numSuccess == _numFinished ? ExtendedState::SUCCESS
-                                                 : ExtendedState::FAILED);
+        finish(lock, _numSuccess == _numFinished ? ExtendedState::SUCCESS : ExtendedState::FAILED);
     }
 }
 
-}}} // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

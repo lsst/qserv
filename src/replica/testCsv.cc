@@ -18,9 +18,9 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
- /**
-  * @brief test ReplicaInfo
-  */
+/**
+ * @brief test ReplicaInfo
+ */
 
 // Third-party headers
 
@@ -79,14 +79,16 @@ BOOST_AUTO_TEST_CASE(TestCsvDialect) {
         BOOST_CHECK_EQUAL(dialect.linesTerminatedBy(), '\n');
         BOOST_CHECK(!dialect.sqlOptions().empty());
     });
-    BOOST_REQUIRE_THROW({
-        csv::DialectInput emptyDialectInput;
-        emptyDialectInput.fieldsTerminatedBy.clear();
-        emptyDialectInput.fieldsEnclosedBy.clear();
-        emptyDialectInput.fieldsEscapedBy.clear();
-        emptyDialectInput.linesTerminatedBy.clear();
-        csv::Dialect const dialect(emptyDialectInput);
-    }, std::invalid_argument);
+    BOOST_REQUIRE_THROW(
+            {
+                csv::DialectInput emptyDialectInput;
+                emptyDialectInput.fieldsTerminatedBy.clear();
+                emptyDialectInput.fieldsEnclosedBy.clear();
+                emptyDialectInput.fieldsEscapedBy.clear();
+                emptyDialectInput.linesTerminatedBy.clear();
+                csv::Dialect const dialect(emptyDialectInput);
+            },
+            std::invalid_argument);
     LOGS_INFO("TestCsvDialect test ends");
 }
 
@@ -95,44 +97,46 @@ BOOST_AUTO_TEST_CASE(TestCsvParser) {
     csv::Dialect const dialect;
     csv::Parser parser(dialect);
     vector<string> const in = {
-        "Line 1\nLine 2\nNon-terminated line ",
-        "3\nLine 4\nNon-terminated line 5",
-        "\nLine 6\nLine 7 ends with the escaped terminator \\\n",
-        "\n\n\n\n\n",
-        "Line 8 has escaped terminator \\\n in the middle\n"
-        "\\\n\\\n",
-        "Line 9 starts with 2 escaped terminators and ends with 1 escaped terminator\\",
-        "\n\nLine 10",
-        "\nLine 11 has escaped escape followed by the non-escaped terminator in the end\\\\\n",
-        "Line 12",
+            "Line 1\nLine 2\nNon-terminated line ",
+            "3\nLine 4\nNon-terminated line 5",
+            "\nLine 6\nLine 7 ends with the escaped terminator \\\n",
+            "\n\n\n\n\n",
+            "Line 8 has escaped terminator \\\n in the middle\n"
+            "\\\n\\\n",
+            "Line 9 starts with 2 escaped terminators and ends with 1 escaped terminator\\",
+            "\n\nLine 10",
+            "\nLine 11 has escaped escape followed by the non-escaped terminator in the end\\\\\n",
+            "Line 12",
     };
     vector<string> lines;
     for (size_t i = 0, size = in.size(); i < size; ++i) {
         bool const flush = (i == size - 1);
-        parser.parse(in[i].data(), in[i].size(), flush, [&lines](char const* out, size_t size) {
-            lines.emplace_back(string(out, size));
-        });
+        parser.parse(in[i].data(), in[i].size(), flush,
+                     [&lines](char const* out, size_t size) { lines.emplace_back(string(out, size)); });
     }
-    for (auto const& line: lines) {
+    for (auto const& line : lines) {
         LOGS_INFO("TestCsv: " + line);
     }
     BOOST_CHECK_EQUAL(parser.numLines(), 16ULL);
     BOOST_CHECK_EQUAL(parser.numLines(), lines.size());
-    BOOST_CHECK_EQUAL(lines[0],  string("Line 1\n"));
-    BOOST_CHECK_EQUAL(lines[1],  string("Line 2\n"));
-    BOOST_CHECK_EQUAL(lines[2],  string("Non-terminated line 3\n"));
-    BOOST_CHECK_EQUAL(lines[3],  string("Line 4\n"));
-    BOOST_CHECK_EQUAL(lines[4],  string("Non-terminated line 5\n"));
-    BOOST_CHECK_EQUAL(lines[5],  string("Line 6\n"));
-    BOOST_CHECK_EQUAL(lines[6],  string("Line 7 ends with the escaped terminator \\\n\n"));
-    BOOST_CHECK_EQUAL(lines[7],  string("\n"));
-    BOOST_CHECK_EQUAL(lines[8],  string("\n"));
-    BOOST_CHECK_EQUAL(lines[9],  string("\n"));
+    BOOST_CHECK_EQUAL(lines[0], string("Line 1\n"));
+    BOOST_CHECK_EQUAL(lines[1], string("Line 2\n"));
+    BOOST_CHECK_EQUAL(lines[2], string("Non-terminated line 3\n"));
+    BOOST_CHECK_EQUAL(lines[3], string("Line 4\n"));
+    BOOST_CHECK_EQUAL(lines[4], string("Non-terminated line 5\n"));
+    BOOST_CHECK_EQUAL(lines[5], string("Line 6\n"));
+    BOOST_CHECK_EQUAL(lines[6], string("Line 7 ends with the escaped terminator \\\n\n"));
+    BOOST_CHECK_EQUAL(lines[7], string("\n"));
+    BOOST_CHECK_EQUAL(lines[8], string("\n"));
+    BOOST_CHECK_EQUAL(lines[9], string("\n"));
     BOOST_CHECK_EQUAL(lines[10], string("\n"));
     BOOST_CHECK_EQUAL(lines[11], string("Line 8 has escaped terminator \\\n in the middle\n"));
-    BOOST_CHECK_EQUAL(lines[12], string("\\\n\\\nLine 9 starts with 2 escaped terminators and ends with 1 escaped terminator\\\n\n"));
+    BOOST_CHECK_EQUAL(lines[12], string("\\\n\\\nLine 9 starts with 2 escaped terminators and ends with 1 "
+                                        "escaped terminator\\\n\n"));
     BOOST_CHECK_EQUAL(lines[13], string("Line 10\n"));
-    BOOST_CHECK_EQUAL(lines[14], string("Line 11 has escaped escape followed by the non-escaped terminator in the end\\\\\n"));
+    BOOST_CHECK_EQUAL(
+            lines[14],
+            string("Line 11 has escaped escape followed by the non-escaped terminator in the end\\\\\n"));
     BOOST_CHECK_EQUAL(lines[15], string("Line 12"));
     LOGS_INFO("TestCsvParser test ends");
 }

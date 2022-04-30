@@ -24,20 +24,13 @@
 
 using namespace std;
 
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
-SuccessRateGenerator::SuccessRateGenerator(double successRate)
-    :   _rd(),
-        _gen(_rd()),
-        _distr(successRate) {
-}
-
+SuccessRateGenerator::SuccessRateGenerator(double successRate) : _rd(), _gen(_rd()), _distr(successRate) {}
 
 bool SuccessRateGenerator::success() {
     lock_guard<util::Mutex> lock(_generatorMtx);
     return _distr(_gen);
 }
 
-}}} // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

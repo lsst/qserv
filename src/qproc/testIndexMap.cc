@@ -21,13 +21,13 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
- /**
-  * @file
-  *
-  * @brief Test SecondaryIndex and IndexMap operations.
-  *
-  * @author Daniel L. Wang, SLAC
-  */
+/**
+ * @file
+ *
+ * @brief Test SecondaryIndex and IndexMap operations.
+ *
+ * @author Daniel L. Wang, SLAC
+ */
 
 // System headers
 #include <algorithm>
@@ -55,22 +55,19 @@
 #define BOOST_TEST_MODULE IndexMap
 #include <boost/test/unit_test.hpp>
 
-
 namespace test = boost::test_tools;
 
 using namespace lsst::qserv;
 
+using lsst::qserv::IntVector;
 using lsst::qserv::qproc::ChunkSpec;
 using lsst::qserv::qproc::ChunkSpecVector;
 using lsst::qserv::qproc::SecondaryIndex;
-using lsst::qserv::IntVector;
 
 struct Fixture {
-    Fixture(void) :
-        si() {
-    }
+    Fixture(void) : si() {}
 
-    ~Fixture(void) { };
+    ~Fixture(void){};
 
     SecondaryIndex si;
     // TODO: IndexMap with fake secondary index: see DM-4047
@@ -83,14 +80,12 @@ struct Fixture {
 BOOST_FIXTURE_TEST_SUITE(Suite, Fixture)
 
 BOOST_AUTO_TEST_CASE(SecLookup) {
-    std::vector<std::string> vals = {"111", "112","113"};
+    std::vector<std::string> vals = {"111", "112", "113"};
     std::vector<std::shared_ptr<query::ValueExpr>> inCandidates = {
-        query::ValueExpr::newSimple(query::ValueFactor::newConstFactor("386950783579546")),
-        query::ValueExpr::newSimple(query::ValueFactor::newConstFactor("386942193651348"))};
+            query::ValueExpr::newSimple(query::ValueFactor::newConstFactor("386950783579546")),
+            query::ValueExpr::newSimple(query::ValueFactor::newConstFactor("386942193651348"))};
     auto inPredicate = std::make_shared<query::InPredicate>(
-        query::ValueExpr::newColumnExpr("LSST", "Object", "", "objectId"),
-        inCandidates,
-        false);
+            query::ValueExpr::newColumnExpr("LSST", "Object", "", "objectId"), inCandidates, false);
     ChunkSpecVector csv = si.lookup({std::make_shared<query::SecIdxInRestrictor>(inPredicate)});
     // Verify the values produced by the SecondaryIndex FakeBackend...
     // (The only thing this really verifies is that a secondary index restrictor instance was passed in to

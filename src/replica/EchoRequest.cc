@@ -47,67 +47,37 @@ namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.EchoRequest");
 
-} /// namespace
+}  // namespace
 
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
 EchoRequest::Ptr EchoRequest::create(ServiceProvider::Ptr const& serviceProvider,
-                                     boost::asio::io_service& io_service,
-                                     string const& worker,
-                                     string const& data,
-                                     uint64_t delay,
-                                     CallbackType const& onFinish,
-                                     int priority,
-                                     bool keepTracking,
+                                     boost::asio::io_service& io_service, string const& worker,
+                                     string const& data, uint64_t delay, CallbackType const& onFinish,
+                                     int priority, bool keepTracking,
                                      shared_ptr<Messenger> const& messenger) {
-    return EchoRequest::Ptr(new EchoRequest(serviceProvider,
-        io_service,
-        worker,
-        data,
-        delay,
-        onFinish,
-        priority,
-        keepTracking,
-        messenger
-    ));
+    return EchoRequest::Ptr(new EchoRequest(serviceProvider, io_service, worker, data, delay, onFinish,
+                                            priority, keepTracking, messenger));
 }
 
-
-EchoRequest::EchoRequest(ServiceProvider::Ptr const& serviceProvider,
-                         boost::asio::io_service& io_service,
-                         string const& worker,
-                         string const& data,
-                         uint64_t delay,
-                         CallbackType const& onFinish,
-                         int  priority,
-                         bool keepTracking,
+EchoRequest::EchoRequest(ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service,
+                         string const& worker, string const& data, uint64_t delay,
+                         CallbackType const& onFinish, int priority, bool keepTracking,
                          shared_ptr<Messenger> const& messenger)
-    :   RequestMessenger(serviceProvider,
-                         io_service,
-                         "TEST_ECHO",
-                         worker,
-                         priority,
-                         keepTracking,
-                         false, // allowDuplicate
-                         true,  // disposeRequired
-                         messenger),
-        _data(data),
-        _delay(delay),
-        _onFinish(onFinish) {
-}
+        : RequestMessenger(serviceProvider, io_service, "TEST_ECHO", worker, priority, keepTracking,
+                           false,  // allowDuplicate
+                           true,   // disposeRequired
+                           messenger),
+          _data(data),
+          _delay(delay),
+          _onFinish(onFinish) {}
 
-
-string const& EchoRequest::responseData() const {
-    return _responseData;
-}
-
+string const& EchoRequest::responseData() const { return _responseData; }
 
 void EchoRequest::startImpl(util::Lock const& lock) {
-
-    LOGS(_log, LOG_LVL_DEBUG, context() << __func__
-         << "  worker: " << worker() << " data.length: " << data().size() << " delay: " << delay());
+    LOGS(_log, LOG_LVL_DEBUG,
+         context() << __func__ << "  worker: " << worker() << " data.length: " << data().size()
+                   << " delay: " << delay());
 
     // Serialize the Request message header and the request itself into
     // the network buffer.
@@ -133,9 +103,7 @@ void EchoRequest::startImpl(util::Lock const& lock) {
     _send(lock);
 }
 
-
 void EchoRequest::awaken(boost::system::error_code const& ec) {
-
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     if (isAborted(ec)) return;
@@ -166,21 +134,17 @@ void EchoRequest::awaken(boost::system::error_code const& ec) {
     _send(lock);
 }
 
-
 void EchoRequest::_send(util::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
     auto self = shared_from_base<EchoRequest>();
     messenger()->send<ProtocolResponseEcho>(
-        worker(), id(), priority(), buffer(),
-        [self] (string const& id, bool success, ProtocolResponseEcho const& response) {
-            self->_analyze(success, response);
-        }
-    );
+            worker(), id(), priority(), buffer(),
+            [self](string const& id, bool success, ProtocolResponseEcho const& response) {
+                self->_analyze(success, response);
+            });
 }
 
-
 void EchoRequest::_analyze(bool success, ProtocolResponseEcho const& message) {
-
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  success=" << (success ? "true" : "false"));
 
     // This method is called on behalf of an asynchronous callback fired
@@ -252,30 +216,26 @@ void EchoRequest::_analyze(bool success, ProtocolResponseEcho const& message) {
             break;
 
         default:
-            throw logic_error(
-                    "EchoRequest::" + string(__func__) + "  unknown status '" +
-                    ProtocolStatus_Name(message.status()) + "' received from server");
+            throw logic_error("EchoRequest::" + string(__func__) + "  unknown status '" +
+                              ProtocolStatus_Name(message.status()) + "' received from server");
     }
 }
-
 
 void EchoRequest::notify(util::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
     notifyDefaultImpl<EchoRequest>(lock, _onFinish);
 }
 
-
 void EchoRequest::savePersistentState(util::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
     controller()->serviceProvider()->databaseServices()->saveState(*this, performance(lock));
 }
 
-
-list<pair<string,string>> EchoRequest::extendedPersistentState() const {
-    list<pair<string,string>> result;
-    result.emplace_back("data_length_bytes",  to_string(data().size()));
+list<pair<string, string>> EchoRequest::extendedPersistentState() const {
+    list<pair<string, string>> result;
+    result.emplace_back("data_length_bytes", to_string(data().size()));
     result.emplace_back("delay_milliseconds", to_string(delay()));
     return result;
 }
 
-}}} // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

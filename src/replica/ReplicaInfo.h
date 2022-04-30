@@ -40,53 +40,44 @@
 #include "nlohmann/json.hpp"
 
 // Forward declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
-    class ProtocolReplicaInfo;
-}}}  // Forward declarations
+namespace lsst::qserv::replica {
+class ProtocolReplicaInfo;
+}  // namespace lsst::qserv::replica
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
 /**
-  * Class ReplicaInfo represents a status of a replica received from
-  * the corresponding worker service.
-  *
-  * Note that this class can only be constructed from an object of
-  * the corresponding Protobuf type. And there is a complementary operation
-  * for translating the state of this class's object into an object of
-  * the same Protobuf type.
-  */
+ * Class ReplicaInfo represents a status of a replica received from
+ * the corresponding worker service.
+ *
+ * Note that this class can only be constructed from an object of
+ * the corresponding Protobuf type. And there is a complementary operation
+ * for translating the state of this class's object into an object of
+ * the same Protobuf type.
+ */
 class ReplicaInfo {
 public:
-
     class FileInfo {
     public:
+        std::string name;   /// The short name
+        uint64_t size = 0;  /// The current (or final) size (bytes)
+        std::time_t mtime =
+                0;       /// The (file content) modification timestamp in seconds (since the UNIX Epoch)
+        std::string cs;  /// The control/check sum of the file's content
 
-        std::string name;       /// The short name
-        uint64_t size = 0;      /// The current (or final) size (bytes)
-        std::time_t mtime = 0;  /// The (file content) modification timestamp in seconds (since the UNIX Epoch)
-        std::string cs;         /// The control/check sum of the file's content
+        uint64_t beginTransferTime =
+                0;  /// The time in milliseconds when the file creation began (where applies)
+        uint64_t endTransferTime = 0;  /// The time in milliseconds when the file creation finished
+                                       ///  or when the last recording to the file was made (where applies)
 
-        uint64_t beginTransferTime = 0; /// The time in milliseconds when the file creation began (where applies)
-        uint64_t endTransferTime = 0;   /// The time in milliseconds when the file creation finished
-                                        ///  or when the last recording to the file was made (where applies)
-
-        uint64_t inSize = 0;    /// Of the input file
+        uint64_t inSize = 0;  /// Of the input file
 
         bool operator==(FileInfo const& other) const {
-            return
-                name == other.name and
-                size == other.size and
-                cs   == other.cs;
+            return name == other.name and size == other.size and cs == other.cs;
         }
 
-        bool operator!=(FileInfo const& other) const {
-            return not operator==(other);
-        }
+        bool operator!=(FileInfo const& other) const { return not operator==(other); }
 
         /// @return the base name of a partitioned table (regardless if this is an overlap)
         std::string baseTable() const;
@@ -104,38 +95,25 @@ public:
         nlohmann::json toJson() const;
 
     private:
-
         /// @return table name with chunk (if any) and file extension removed
         std::string _removeChunkAndExt() const;
 
-        static const size_t _extSize;       /// the size of the MYISAM tables file extensions
-        static const size_t _overlapSize;   /// the size of the "FullOverlap" marker in table names
+        static const size_t _extSize;      /// the size of the MYISAM tables file extensions
+        static const size_t _overlapSize;  /// the size of the "FullOverlap" marker in table names
     };
     typedef std::vector<FileInfo> FileInfoCollection;
 
-    enum Status {
-        NOT_FOUND,
-        CORRUPT,
-        INCOMPLETE,
-        COMPLETE
-    };
+    enum Status { NOT_FOUND, CORRUPT, INCOMPLETE, COMPLETE };
 
     static std::string status2string(Status status);
 
     /// _status = NOT_FOUND
     ReplicaInfo();
 
-    ReplicaInfo(Status status,
-                std::string const& worker,
-                std::string const& database,
-                unsigned int chunk,
-                uint64_t verifyTime,
-                FileInfoCollection const& fileInfo);
+    ReplicaInfo(Status status, std::string const& worker, std::string const& database, unsigned int chunk,
+                uint64_t verifyTime, FileInfoCollection const& fileInfo);
 
-    ReplicaInfo(Status status,
-                std::string const& worker,
-                std::string const& database,
-                unsigned int chunk,
+    ReplicaInfo(Status status, std::string const& worker, std::string const& database, unsigned int chunk,
                 uint64_t verifyTime);
 
     explicit ReplicaInfo(ProtocolReplicaInfo const* info);
@@ -150,7 +128,7 @@ public:
 
     Status status() const { return _status; }
 
-    std::string const& worker() const   { return _worker; }
+    std::string const& worker() const { return _worker; }
     std::string const& database() const { return _database; }
 
     unsigned int chunk() const { return _chunk; }
@@ -189,24 +167,17 @@ public:
     void setInfo(ProtocolReplicaInfo* info) const;
 
     bool operator==(ReplicaInfo const& other) const {
-        return
-            _status   == other._status and
-            _worker   == other._worker and
-            _database == other._database and
-            _chunk    == other._chunk and
-            _equalFileCollections(other);
+        return _status == other._status and _worker == other._worker and _database == other._database and
+               _chunk == other._chunk and _equalFileCollections(other);
     }
 
-    bool operator!=(ReplicaInfo const& other) const {
-        return not operator==(other);
-    }
+    bool operator!=(ReplicaInfo const& other) const { return not operator==(other); }
 
     /// @return JSON representation of the object
     nlohmann::json toJson() const;
 
 private:
-
-    bool _equalFileCollections(ReplicaInfo const& other) const;    
+    bool _equalFileCollections(ReplicaInfo const& other) const;
 
     Status _status;
 
@@ -228,42 +199,37 @@ typedef std::vector<ReplicaInfo> ReplicaInfoCollection;
 
 std::ostream& operator<<(std::ostream& os, ReplicaInfoCollection const& ric);
 
-
 /**
  * The type which groups ReplicaInfo by:
  *
  *   <chunk number>, <database>, <worker>
  */
-typedef std::map<unsigned int,          // chunk
-         std::map<std::string,          // database
-                  std::map<std::string, // worker
-                           ReplicaInfo>>> ChunkDatabaseWorkerReplicaInfo;
-
+typedef std::map<unsigned int,                   // chunk
+                 std::map<std::string,           // database
+                          std::map<std::string,  // worker
+                                   ReplicaInfo>>>
+        ChunkDatabaseWorkerReplicaInfo;
 
 /**
  * Pretty-print the collection of replicas as a table
- * 
+ *
  * @param caption
  *   The table caption to be printed before the table
- * 
+ *
  * @param prefix
  *   The prefix string to be printed at the beginning of each line
- * 
+ *
  * @param collection
  *   The collection to be printed
- * 
+ *
  * @param os
  *   The output stream where to direct the output to
- * 
+ *
  * @param pageSize
  *   The optional number of rows in the table (0 means no pagination)
  */
-void printAsTable(std::string const& caption,
-                  std::string const& prefix,
-                  ChunkDatabaseWorkerReplicaInfo const& collection,
-                  std::ostream& os,
-                  size_t pageSize=0);
-
+void printAsTable(std::string const& caption, std::string const& prefix,
+                  ChunkDatabaseWorkerReplicaInfo const& collection, std::ostream& os, size_t pageSize = 0);
 
 /**
  * The type which groups ReplicaInfo by:
@@ -272,93 +238,78 @@ void printAsTable(std::string const& caption,
  */
 typedef std::map<unsigned int,          // chunk
                  std::map<std::string,  // database
-                          ReplicaInfo>> ChunkDatabaseReplicaInfo;
-
+                          ReplicaInfo>>
+        ChunkDatabaseReplicaInfo;
 
 /**
  * Pretty-print the collection of replicas as a table
- * 
+ *
  * @param caption
  *   The table caption to be printed before the table
- * 
+ *
  * @param prefix
  *   The prefix string to be printed at the beginning of each line
- * 
+ *
  * @param collection
  *   The collection to be printed
- * 
+ *
  * @param os
  *   The output stream where to direct the output to
- * 
+ *
  * @param pageSize
  *   The optional number of rows in the table (0 means no pagination)
  */
-void printAsTable(std::string const& caption,
-                  std::string const& prefix,
-                  ChunkDatabaseReplicaInfo const& collection,
-                  std::ostream& os,
-                  size_t pageSize=0);
-
+void printAsTable(std::string const& caption, std::string const& prefix,
+                  ChunkDatabaseReplicaInfo const& collection, std::ostream& os, size_t pageSize = 0);
 
 /**
  * The type which groups ReplicaInfo by:
  *
  *   <database family>, <chunk number>, <database>, <worker>
  */
-typedef std::map<std::string,                               // database family
-                 std::map<unsigned int,                     // chunk
-                          std::map<std::string,             // database
-                                   std::map<std::string,    // worker
-                                            ReplicaInfo>>>> FamilyChunkDatabaseWorkerInfo;
-
+typedef std::map<std::string,                             // database family
+                 std::map<unsigned int,                   // chunk
+                          std::map<std::string,           // database
+                                   std::map<std::string,  // worker
+                                            ReplicaInfo>>>>
+        FamilyChunkDatabaseWorkerInfo;
 
 /**
  * Pretty-print the collection of replicas as a table
- * 
+ *
  * @param caption
  *   The table caption to be printed before the table
- * 
+ *
  * @param prefix
  *   The prefix string to be printed at the beginning of each line
- * 
+ *
  * @param collection
  *   The collection to be printed
- * 
+ *
  * @param os
  *   The output stream where to direct the output to
- * 
+ *
  * @param pageSize
  *   The optional number of rows in the table (0 means no pagination)
  */
-void printAsTable(std::string const& caption,
-                  std::string const& prefix,
-                  FamilyChunkDatabaseWorkerInfo const& collection,
-                  std::ostream& os,
-                  size_t pageSize=0);
-
+void printAsTable(std::string const& caption, std::string const& prefix,
+                  FamilyChunkDatabaseWorkerInfo const& collection, std::ostream& os, size_t pageSize = 0);
 
 /**
  * Structure QservReplica represents replica entries used in communications
  * with Qserv workers management services.
  */
 struct QservReplica {
-
     unsigned int chunk;
-    std::string  database;
+    std::string database;
     unsigned int useCount;
 
-    QservReplica(unsigned int       chunk_,
-                 std::string const& database_,
-                 unsigned int       useCount_)
-        :   chunk   (chunk_),
-            database(database_),
-            useCount(useCount_) {
-    }
+    QservReplica(unsigned int chunk_, std::string const& database_, unsigned int useCount_)
+            : chunk(chunk_), database(database_), useCount(useCount_) {}
 };
 
 /// The type definition for a collection of Qserv replicas
 typedef std::vector<QservReplica> QservReplicaCollection;
-
 
 /**
  * One-directional comparison of the replica collections reported by Qserv workers
@@ -381,8 +332,7 @@ typedef std::vector<QservReplica> QservReplicaCollection;
  *
  * @return 'true' if different
  */
-bool diff(QservReplicaCollection const& one,
-          QservReplicaCollection const& two,
+bool diff(QservReplicaCollection const& one, QservReplicaCollection const& two,
           QservReplicaCollection& inFirstOnly);
 
 /**
@@ -411,11 +361,9 @@ bool diff(QservReplicaCollection const& one,
  *
  * @return 'true' if different
  */
-bool diff2(QservReplicaCollection const& one,
-           QservReplicaCollection const& two,
-           QservReplicaCollection& inFirstOnly,
-           QservReplicaCollection& inSecondOnly);
+bool diff2(QservReplicaCollection const& one, QservReplicaCollection const& two,
+           QservReplicaCollection& inFirstOnly, QservReplicaCollection& inSecondOnly);
 
-}}} // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_REPLICAINFO_H
+#endif  // LSST_QSERV_REPLICA_REPLICAINFO_H

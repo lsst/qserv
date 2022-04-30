@@ -26,9 +26,7 @@
 #include <unordered_map>
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class HttpRequestQuery implements a parser for parameters passed into
@@ -41,7 +39,7 @@ namespace replica {
  *    could be translated from a string into a value of the required type.
  *    Otherwise these methods will throw exceptions std::invalid_argument (for
  *    the missing parameters) or std::out_of_range (for invalid input values).
- * 
+ *
  * "optional<type>"
  *    methods have an additional argument "defaultValue" which carries
  *    a value to be returned if the parameter wasn't found. Note that these
@@ -49,8 +47,7 @@ namespace replica {
  */
 class HttpRequestQuery {
 public:
-
-    explicit HttpRequestQuery(std::unordered_map<std::string,std::string> const& query);
+    explicit HttpRequestQuery(std::unordered_map<std::string, std::string> const& query);
 
     HttpRequestQuery() = default;
     HttpRequestQuery(HttpRequestQuery const&) = default;
@@ -60,37 +57,31 @@ public:
 
     std::string requiredString(std::string const& param) const;
     std::string optionalString(std::string const& param,
-                               std::string const& defaultValue=std::string()) const;
+                               std::string const& defaultValue = std::string()) const;
 
     uint16_t requiredUInt16(std::string const& param) const;
-    uint16_t optionalUInt16(std::string const& param,
-                            uint16_t defaultValue=0) const;
+    uint16_t optionalUInt16(std::string const& param, uint16_t defaultValue = 0) const;
 
     uint64_t requiredUInt64(std::string const& param) const;
-    uint64_t optionalUInt64(std::string const& param,
-                            uint64_t defaultValue=0) const;
+    uint64_t optionalUInt64(std::string const& param, uint64_t defaultValue = 0) const;
 
-    int optionalInt(std::string const& param,
-                    int defaultValue=-1) const;
+    int optionalInt(std::string const& param, int defaultValue = -1) const;
 
     unsigned int requiredUInt(std::string const& param) const;
-    unsigned int optionalUInt(std::string const& param,
-                              unsigned int defaultValue=0) const;
+    unsigned int optionalUInt(std::string const& param, unsigned int defaultValue = 0) const;
 
     bool requiredBool(std::string const& param) const;
-    bool optionalBool(std::string const& param,
-                      bool defaultValue=false) const;
+    bool optionalBool(std::string const& param, bool defaultValue = false) const;
 
     double requiredDouble(std::string const& param) const;
 
     bool has(std::string const& param) const;
 
 private:
-
     /// The input map of parameters
-    std::unordered_map<std::string,std::string> _query;
+    std::unordered_map<std::string, std::string> _query;
 };
 
-}}} // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_HTTPREQUESTQUERY_H
+#endif  // LSST_QSERV_HTTPREQUESTQUERY_H

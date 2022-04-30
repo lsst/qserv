@@ -40,19 +40,16 @@ namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.Performance");
 
-} /// namespace
+}  // namespace
 
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
 uint64_t PerformanceUtils::now() {
-    return chrono::duration_cast<chrono::milliseconds>(
-                chrono::system_clock::now().time_since_epoch()).count();
+    return chrono::duration_cast<chrono::milliseconds>(chrono::system_clock::now().time_since_epoch())
+            .count();
 }
 
 string PerformanceUtils::toDateTimeString(chrono::milliseconds const& millisecondsSinceEpoch) {
-
     chrono::time_point<chrono::system_clock> const point(millisecondsSinceEpoch);
     auto const timer = chrono::system_clock::to_time_t(point);
     auto broken_time = *localtime(&timer);
@@ -63,23 +60,19 @@ string PerformanceUtils::toDateTimeString(chrono::milliseconds const& millisecon
     return ss.str();
 }
 
-
 Performance::Performance()
-    :   c_create_time(PerformanceUtils::now()),
-        c_start_time(0),
-        w_receive_time(0),
-        w_start_time(0),
-        w_finish_time(0),
-        c_finish_time(0) {
-}
-
+        : c_create_time(PerformanceUtils::now()),
+          c_start_time(0),
+          w_receive_time(0),
+          w_start_time(0),
+          w_finish_time(0),
+          c_finish_time(0) {}
 
 void Performance::update(ProtocolPerformance const& workerPerformanceInfo) {
     w_receive_time = workerPerformanceInfo.receive_time();
-    w_start_time   = workerPerformanceInfo.start_time();
-    w_finish_time  = workerPerformanceInfo.finish_time();
+    w_start_time = workerPerformanceInfo.start_time();
+    w_finish_time = workerPerformanceInfo.finish_time();
 }
-
 
 uint64_t Performance::setUpdateStart() {
     uint64_t const t = c_start_time;
@@ -87,33 +80,23 @@ uint64_t Performance::setUpdateStart() {
     return t;
 }
 
-
 uint64_t Performance::setUpdateFinish() {
     uint64_t const t = c_finish_time;
     c_finish_time = PerformanceUtils::now();
     return t;
 }
 
-
 ostream& operator<<(ostream& os, Performance const& p) {
-    os  << "Performance "
-        << " c.create:"   << p.c_create_time
-        << " c.start:"    << p.c_start_time
-        << " w.receive:"  << p.w_receive_time
-        << " w.start:"    << p.w_start_time
-        << " w.finish:"   << p.w_finish_time
-        << " c.finish:"   << p.c_finish_time
-        << " length.sec:" << (p.c_finish_time ? (p.c_finish_time - p.c_start_time)/1000. : '*');
+    os << "Performance "
+       << " c.create:" << p.c_create_time << " c.start:" << p.c_start_time
+       << " w.receive:" << p.w_receive_time << " w.start:" << p.w_start_time
+       << " w.finish:" << p.w_finish_time << " c.finish:" << p.c_finish_time
+       << " length.sec:" << (p.c_finish_time ? (p.c_finish_time - p.c_start_time) / 1000. : '*');
     return os;
 }
 
-
 WorkerPerformance::WorkerPerformance()
-    :   receive_time(PerformanceUtils::now()),
-        start_time(0),
-        finish_time(0) {
-}
-
+        : receive_time(PerformanceUtils::now()), start_time(0), finish_time(0) {}
 
 uint64_t WorkerPerformance::setUpdateStart() {
     uint64_t const t = start_time;
@@ -121,13 +104,11 @@ uint64_t WorkerPerformance::setUpdateStart() {
     return t;
 }
 
-
 uint64_t WorkerPerformance::setUpdateFinish() {
     uint64_t const t = finish_time;
     finish_time = PerformanceUtils::now();
     return t;
 }
-
 
 unique_ptr<ProtocolPerformance> WorkerPerformance::info() const {
     auto ptr = make_unique<ProtocolPerformance>();
@@ -137,14 +118,11 @@ unique_ptr<ProtocolPerformance> WorkerPerformance::info() const {
     return ptr;
 }
 
-
 ostream& operator<<(ostream& os, WorkerPerformance const& p) {
-    os  << "WorkerPerformance "
-        << " receive:"    << p.receive_time
-        << " start:"      << p.start_time
-        << " finish:"     << p.finish_time
-        << " length.sec:" << (p.finish_time ? (p.finish_time - p.receive_time)/1000. : '*');
+    os << "WorkerPerformance "
+       << " receive:" << p.receive_time << " start:" << p.start_time << " finish:" << p.finish_time
+       << " length.sec:" << (p.finish_time ? (p.finish_time - p.receive_time) / 1000. : '*');
     return os;
 }
 
-}}} // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

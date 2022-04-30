@@ -62,9 +62,7 @@ namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.qana.RelationGraph");
 }
 
-namespace lsst {
-namespace qserv {
-namespace qana {
+namespace lsst::qserv::qana {
 
 using query::AndTerm;
 using query::BoolFactor;
@@ -81,15 +79,14 @@ using query::QueryTemplate;
 using query::SelectStmt;
 using query::TableRef;
 using query::TableRefList;
-using query::ValueExprPtrVector;
 using query::ValueExprPtr;
+using query::ValueExprPtrVector;
 using query::ValueFactor;
 using query::ValueFactorPtr;
 
-
 std::ostream& operator<<(std::ostream& out, Vertex const& vertex) {
-    out << "Vertex(" <<
-        "TableRef:" << vertex.tr << ", ";
+    out << "Vertex("
+        << "TableRef:" << vertex.tr << ", ";
     if (vertex.info != nullptr) {
         vertex.info->dump(out);
         out << ", ";
@@ -98,10 +95,9 @@ std::ostream& operator<<(std::ostream& out, Vertex const& vertex) {
         out << *vertex.next << ", ";
     }
     out << "overlap:" << vertex.overlap;
-    out <<  ")";
+    out << ")";
     return out;
 }
-
 
 std::ostream& operator<<(std::ostream& out, Edge const& edge) {
     out << "Edge(angSep:" << edge.angSep << ", vertex";
@@ -114,12 +110,11 @@ std::ostream& operator<<(std::ostream& out, Edge const& edge) {
     return out;
 }
 
-
 // ----------------------------------------------------------------
 // Vertex implementation
 
 void Vertex::insert(Edge const& e) {
-    LOGS(_log, LOG_LVL_TRACE, "Vertex::" <<__FUNCTION__ << "(" << this << ")" << e);
+    LOGS(_log, LOG_LVL_TRACE, "Vertex::" << __FUNCTION__ << "(" << this << ")" << e);
     typedef std::vector<Edge>::iterator Iter;
     // Look for an existing edge incident to the same vertex as e using
     // binary search.
@@ -160,7 +155,6 @@ void Vertex::insert(Edge const& e) {
     }
 }
 
-
 // ----------------------------------------------------------------
 // RelationGraph implementation
 
@@ -173,8 +167,8 @@ namespace {
 BoolTerm::Ptr findFirstNonTrivialChild(BoolTerm::Ptr tree) {
     LOGS(_log, LOG_LVL_TRACE, __FUNCTION__);
     while (true) {
-        AndTerm* at = dynamic_cast<AndTerm *>(tree.get());
-        OrTerm* ot = dynamic_cast<OrTerm *>(tree.get());
+        AndTerm* at = dynamic_cast<AndTerm*>(tree.get());
+        OrTerm* ot = dynamic_cast<OrTerm*>(tree.get());
         if (at && at->_terms.size() == 1) {
             tree = at->_terms.front();
         } else if (ot && ot->_terms.size() == 1) {
@@ -215,17 +209,15 @@ void verifyColumnRef(ColumnRef const& c) {
         throw std::logic_error("Parser/query analysis bug: ColumnRef with an empty column name.");
     }
     if (c.getTableAlias().empty()) {
-        throw std::logic_error("Query analysis bug: the column ref " + c.sqlFragment() + " is expected to "
+        throw std::logic_error("Query analysis bug: the column ref " + c.sqlFragment() +
+                               " is expected to "
                                "have an aliased table name.");
     }
 }
 
 /// `verifyJoin` throws an exception if the given join parameters are invalid
 /// or unsupported.
-void verifyJoin(JoinRef::Type joinType,
-                bool natural,
-                JoinSpec::Ptr const& joinSpec)
-{
+void verifyJoin(JoinRef::Type joinType, bool natural, JoinSpec::Ptr const& joinSpec) {
     LOGS(_log, LOG_LVL_TRACE, __FUNCTION__);
     switch (joinType) {
         case JoinRef::UNION:
@@ -233,35 +225,32 @@ void verifyJoin(JoinRef::Type joinType,
             // "table1 FULL OUTER JOIN table2 ON FALSE". It is deprecated in
             // SQL99 and removed from SQL2003. Bail out because MySQL supports
             // neither union nor full outer joins.
-            throw QueryNotEvaluableError(
-                "UNION JOIN queries are not currently supported.");
+            throw QueryNotEvaluableError("UNION JOIN queries are not currently supported.");
         case JoinRef::FULL:
             // MySQL does not support full outer joins. Though it is possible
             // to rewrite a full outer join as a UNION of a LEFT and RIGHT join
             // (in the absence of aggregation), this is complicated and likely
             // slow, so bail out.
-            throw QueryNotEvaluableError(
-                "FULL OUTER JOIN queries are not currently supported.");
+            throw QueryNotEvaluableError("FULL OUTER JOIN queries are not currently supported.");
         case JoinRef::CROSS:
             if (natural || joinSpec) {
                 throw std::logic_error(
-                    "Parser/query analysis bug: a CROSS JOIN cannot be "
-                    "NATURAL or have an ON or USING clause.");
+                        "Parser/query analysis bug: a CROSS JOIN cannot be "
+                        "NATURAL or have an ON or USING clause.");
             }
             break;
-        case JoinRef::DEFAULT: // fallthrough
-        case JoinRef::INNER:   // fallthrough
-        case JoinRef::LEFT:    // fallthrough
+        case JoinRef::DEFAULT:  // fallthrough
+        case JoinRef::INNER:    // fallthrough
+        case JoinRef::LEFT:     // fallthrough
         case JoinRef::RIGHT:
             if (natural && joinSpec) {
                 throw std::logic_error(
-                    "Parser/query analysis bug: a JOIN cannot be NATURAL "
-                    "and have an ON or USING clause.");
+                        "Parser/query analysis bug: a JOIN cannot be NATURAL "
+                        "and have an ON or USING clause.");
             }
             break;
         default:
-            throw std::logic_error(
-                "Parser/query analysis bug: unrecognized join type.");
+            throw std::logic_error("Parser/query analysis bug: unrecognized join type.");
     }
 }
 
@@ -269,14 +258,10 @@ void verifyJoin(JoinRef::Type joinType,
 /// from the table reference in `a` and `cb` from `b` is admissible, and
 /// adds corresponding `Edge` objects to each vertex if so. The number of
 /// edges added, 0 or 1, is returned.
-size_t addEqEdge(std::string const& ca,
-                 std::string const& cb,
-                 bool outer,
-                 Vertex* a,
-                 Vertex* b)
-{
-    LOGS(_log, LOG_LVL_TRACE, __FUNCTION__ << " columnA:" << ca << ", columnB:" << cb <<
-        ", outer:" << outer << ", vertexA:" << a << ", vertexB:" << b);
+size_t addEqEdge(std::string const& ca, std::string const& cb, bool outer, Vertex* a, Vertex* b) {
+    LOGS(_log, LOG_LVL_TRACE,
+         __FUNCTION__ << " columnA:" << ca << ", columnB:" << cb << ", outer:" << outer << ", vertexA:" << a
+                      << ", vertexB:" << b);
     if (a == b) {
         // Loops are useless for query analysis.
         return 0;
@@ -306,7 +291,7 @@ double getNumericConst(ValueExprPtr const& ve) {
     if (!vf || vf->getType() != ValueFactor::CONST) {
         return std::numeric_limits<double>::quiet_NaN();
     }
-    char *e = nullptr;
+    char* e = nullptr;
     double a = std::strtod(vf->getConstVal().c_str(), &e);
     if (e == vf->getConstVal().c_str()) {
         // conversion error - non-numeric constant
@@ -338,9 +323,7 @@ FuncExpr::Ptr getAngSepFunc(ValueExprPtr const& ve) {
 /// `getEqColumnRefs` returns the pair of column references in the equality
 /// predicate embedded in the given boolean factor. If that is not what
 /// the given boolean term corresponds to, a pair of nulls is returned instead.
-std::pair<ColumnRef::Ptr, ColumnRef::Ptr> const getEqColumnRefs(
-    BoolTerm::Ptr const& bt)
-{
+std::pair<ColumnRef::Ptr, ColumnRef::Ptr> const getEqColumnRefs(BoolTerm::Ptr const& bt) {
     LOGS(_log, LOG_LVL_TRACE, __FUNCTION__);
     std::pair<ColumnRef::Ptr, ColumnRef::Ptr> p;
     // Look for a BoolFactor containing a single CompPredicate.
@@ -349,8 +332,7 @@ std::pair<ColumnRef::Ptr, ColumnRef::Ptr> const getEqColumnRefs(
         LOGS(_log, LOG_LVL_TRACE, __FUNCTION__ << " returning " << p.first << ", " << p.second);
         return p;
     }
-    CompPredicate::Ptr cp =
-        std::dynamic_pointer_cast<CompPredicate>(bf->_terms.front());
+    CompPredicate::Ptr cp = std::dynamic_pointer_cast<CompPredicate>(bf->_terms.front());
     if (!cp || cp->op != query::CompPredicate::EQUALS_OP) {
         LOGS(_log, LOG_LVL_TRACE, __FUNCTION__ << " returning " << p.first << ", " << p.second);
         return p;
@@ -367,19 +349,14 @@ std::pair<ColumnRef::Ptr, ColumnRef::Ptr> const getEqColumnRefs(
     auto ret = std::make_pair(l, r);
     LOGS(_log, LOG_LVL_TRACE, __FUNCTION__ << " returning " << ret.first << ", " << ret.second);
     return ret;
-
 }
 
-} // anonymous namespace
-
+}  // anonymous namespace
 
 /// `_addOnEqEdges` adds a graph edge for each admissible top-level equality
 /// predicate extracted from the ON clause of the join between table references
 /// in this graph and `g`. The number of admissible predicates is returned.
-size_t RelationGraph::_addOnEqEdges(BoolTerm::Ptr on,
-                                    bool outer,
-                                    RelationGraph& g)
-{
+size_t RelationGraph::_addOnEqEdges(BoolTerm::Ptr on, bool outer, RelationGraph& g) {
     LOGS(_log, LOG_LVL_TRACE, __FUNCTION__ << " " << *on << ", outer:" << outer);
     size_t numEdges = 0;
     on = findFirstNonTrivialChild(on);
@@ -399,20 +376,26 @@ size_t RelationGraph::_addOnEqEdges(BoolTerm::Ptr on,
     }
     // Lookup column references in graphs being joined together
     std::vector<Vertex*> const& a1 = _map.find(*c.first);
-    LOGS(_log, LOG_LVL_TRACE, __FUNCTION__ << " found vertex a1 " << util::printable(a1) << " for column:" << *c.first);
+    LOGS(_log, LOG_LVL_TRACE,
+         __FUNCTION__ << " found vertex a1 " << util::printable(a1) << " for column:" << *c.first);
     std::vector<Vertex*> const& b1 = g._map.find(*c.first);
-    LOGS(_log, LOG_LVL_TRACE, __FUNCTION__ << " found vertex b1 " << util::printable(b1) << " for column:" << *c.first);
+    LOGS(_log, LOG_LVL_TRACE,
+         __FUNCTION__ << " found vertex b1 " << util::printable(b1) << " for column:" << *c.first);
     std::vector<Vertex*> const& a2 = _map.find(*c.second);
-    LOGS(_log, LOG_LVL_TRACE, __FUNCTION__ << " found vertex a2 " << util::printable(a2) << " for column:" << *c.second);
+    LOGS(_log, LOG_LVL_TRACE,
+         __FUNCTION__ << " found vertex a2 " << util::printable(a2) << " for column:" << *c.second);
     std::vector<Vertex*> const& b2 = g._map.find(*c.second);
-    LOGS(_log, LOG_LVL_TRACE, __FUNCTION__ << " found vertex b2 " << util::printable(b2) << " for column:" << *c.second);
+    LOGS(_log, LOG_LVL_TRACE,
+         __FUNCTION__ << " found vertex b2 " << util::printable(b2) << " for column:" << *c.second);
     if ((!a1.empty() && !b1.empty()) || (!a2.empty() && !b2.empty())) {
         // At least one column reference was found in both graphs
         QueryTemplate qt;
-        if (a1.empty()) { c.first->renderTo(qt); }
-        else { c.second->renderTo(qt); }
-        throw QueryNotEvaluableError("Column reference " + qt.sqlFragment() +
-                                     " is ambiguous");
+        if (a1.empty()) {
+            c.first->renderTo(qt);
+        } else {
+            c.second->renderTo(qt);
+        }
+        throw QueryNotEvaluableError("Column reference " + qt.sqlFragment() + " is ambiguous");
     }
     if ((a1.empty() && b1.empty()) || (a2.empty() && b2.empty())) {
         // At least one column reference wasn't found
@@ -450,8 +433,7 @@ size_t RelationGraph::_addOnEqEdges(BoolTerm::Ptr on,
     typedef std::vector<Vertex*>::const_iterator VertIter;
     for (VertIter i1 = v1.begin(), e1 = v1.end(); i1 != e1; ++i1) {
         for (VertIter i2 = v2.begin(), e2 = v2.end(); i2 != e2; ++i2) {
-            numEdges += addEqEdge(
-                c.first->getColumn(), c.second->getColumn(), outer, *i1, *i2);
+            numEdges += addEqEdge(c.first->getColumn(), c.second->getColumn(), outer, *i1, *i2);
         }
     }
 
@@ -462,8 +444,7 @@ size_t RelationGraph::_addOnEqEdges(BoolTerm::Ptr on,
 /// `_addNaturalEqEdges` adds an edge for each (implicit) admissible equality
 /// predicate in the natural join between table references from this graph and
 /// `g`. The number of admissible predicates is returned.
-size_t RelationGraph::_addNaturalEqEdges(bool outer, RelationGraph& g)
-{
+size_t RelationGraph::_addNaturalEqEdges(bool outer, RelationGraph& g) {
     LOGS(_log, LOG_LVL_TRACE, __FUNCTION__);
     typedef std::vector<std::string>::const_iterator ColIter;
     typedef std::vector<Vertex*>::const_iterator VertIter;
@@ -471,7 +452,7 @@ size_t RelationGraph::_addNaturalEqEdges(bool outer, RelationGraph& g)
     // Find interesting unqualified column names that are shared between
     // the vertices of this graph and g.
     std::vector<std::string> const cols = _map.computeCommonColumns(g._map);
-    std::string const _; // an empty string
+    std::string const _;  // an empty string
     size_t numEdges = 0;
     for (ColIter c = cols.begin(), e = cols.end(); c != e; ++c) {
         // Lookup the vertices for each shared column, and add edges between
@@ -491,16 +472,12 @@ size_t RelationGraph::_addNaturalEqEdges(bool outer, RelationGraph& g)
 /// `_addUsingEqEdges` adds an edge for each admissible equality predicate
 /// implied by the USING clause of a join between table references from this
 /// graph and `g`. The number of admissible predicates is returned.
-size_t RelationGraph::_addUsingEqEdges(ColumnRef const& c,
-                                       bool outer,
-                                       RelationGraph& g)
-{
+size_t RelationGraph::_addUsingEqEdges(ColumnRef const& c, bool outer, RelationGraph& g) {
     LOGS(_log, LOG_LVL_TRACE, __FUNCTION__);
     typedef std::vector<Vertex*>::const_iterator VertIter;
 
     if (!c.getDb().empty() || !c.getTable().empty()) {
-        throw QueryNotEvaluableError(
-            "USING clause contains qualified column name");
+        throw QueryNotEvaluableError("USING clause contains qualified column name");
     }
     // Lookup the vertices for the unqualified column reference in both graphs,
     // and add edges for each possible vertex pair.
@@ -518,8 +495,7 @@ size_t RelationGraph::_addUsingEqEdges(ColumnRef const& c,
 /// `_addWhereEqEdges` adds an edge for each admissible top-level equality
 /// predicate extracted from the WHERE clause of a query. The number of
 /// admissible predicates is returned.
-size_t RelationGraph::_addWhereEqEdges(BoolTerm::Ptr where)
-{
+size_t RelationGraph::_addWhereEqEdges(BoolTerm::Ptr where) {
     LOGS(_log, LOG_LVL_TRACE, __FUNCTION__ << ", where:" << *where);
     size_t numEdges = 0;
     where = findFirstNonTrivialChild(where);
@@ -545,8 +521,7 @@ size_t RelationGraph::_addWhereEqEdges(BoolTerm::Ptr where)
     typedef std::vector<Vertex*>::const_iterator VertIter;
     for (VertIter i1 = v1.begin(), e1 = v1.end(); i1 != e1; ++i1) {
         for (VertIter i2 = v2.begin(), e2 = v2.end(); i2 != e2; ++i2) {
-            numEdges += addEqEdge(
-                c.first->getColumn(), c.second->getColumn(), false, *i1, *i2);
+            numEdges += addEqEdge(c.first->getColumn(), c.second->getColumn(), false, *i1, *i2);
         }
     }
     return numEdges;
@@ -555,8 +530,7 @@ size_t RelationGraph::_addWhereEqEdges(BoolTerm::Ptr where)
 /// `_addSpEdges` creates a graph edge for each admissible top-level spatial
 /// predicate extracted from the given boolean term. The number of admissible
 /// predicates is returned.
-size_t RelationGraph::_addSpEdges(BoolTerm::Ptr bt)
-{
+size_t RelationGraph::_addSpEdges(BoolTerm::Ptr bt) {
     LOGS(_log, LOG_LVL_TRACE, __FUNCTION__ << " boolTerm:" << *bt);
     size_t numEdges = 0;
     bt = findFirstNonTrivialChild(bt);
@@ -574,8 +548,7 @@ size_t RelationGraph::_addSpEdges(BoolTerm::Ptr bt)
     if (!bf || bf->_terms.size() != 1) {
         return 0;
     }
-    CompPredicate::Ptr cp =
-        std::dynamic_pointer_cast<CompPredicate>(bf->_terms.front());
+    CompPredicate::Ptr cp = std::dynamic_pointer_cast<CompPredicate>(bf->_terms.front());
     if (!cp) {
         return 0;
     }
@@ -584,12 +557,12 @@ size_t RelationGraph::_addSpEdges(BoolTerm::Ptr bt)
     FuncExpr::Ptr fe;
     double angSep = std::numeric_limits<double>::quiet_NaN();
     switch (cp->op) {
-        case query::CompPredicate::LESS_THAN_OP: // fallthrough
+        case query::CompPredicate::LESS_THAN_OP:  // fallthrough
         case query::CompPredicate::LESS_THAN_OR_EQUALS_OP:
             fe = getAngSepFunc(cp->left);
             angSep = getNumericConst(cp->right);
             break;
-        case query::CompPredicate::GREATER_THAN_OP: // fallthrough
+        case query::CompPredicate::GREATER_THAN_OP:  // fallthrough
         case query::CompPredicate::GREATER_THAN_OR_EQUALS_OP:
             angSep = getNumericConst(cp->left);
             fe = getAngSepFunc(cp->right);
@@ -648,8 +621,8 @@ size_t RelationGraph::_addSpEdges(BoolTerm::Ptr bt)
         return 0;
     }
     // Check that the arguments map to the proper director spatial columns
-    if (cr[0]->getColumn() != d1->lon || cr[1]->getColumn() != d1->lat ||
-        cr[2]->getColumn() != d2->lon || cr[3]->getColumn() != d2->lat) {
+    if (cr[0]->getColumn() != d1->lon || cr[1]->getColumn() != d1->lat || cr[2]->getColumn() != d2->lon ||
+        cr[3]->getColumn() != d2->lat) {
         return 0;
     }
     // Check that both directors have the same partitioning
@@ -665,15 +638,11 @@ size_t RelationGraph::_addSpEdges(BoolTerm::Ptr bt)
 /// `_fuse` fuses the relation graph `g` into this one, adding edges
 /// for all admissible join predicates extracted from the given join
 /// parameters. `g` is emptied as a result.
-void RelationGraph::_fuse(JoinRef::Type joinType,
-                          bool natural,
-                          JoinSpec::Ptr const& joinSpec,
-                          RelationGraph& g)
-{
+void RelationGraph::_fuse(JoinRef::Type joinType, bool natural, JoinSpec::Ptr const& joinSpec,
+                          RelationGraph& g) {
     LOGS(_log, LOG_LVL_TRACE, __FUNCTION__);
     if (this == &g) {
-        throw std::logic_error(
-            "A RelationGraph cannot be join()ed with itself.");
+        throw std::logic_error("A RelationGraph cannot be join()ed with itself.");
     }
     verifyJoin(joinType, natural, joinSpec);
     // Deal with unpartitioned relations
@@ -689,8 +658,8 @@ void RelationGraph::_fuse(JoinRef::Type joinType,
         // seem worthwhile.
         if (joinType == JoinRef::LEFT) {
             throw QueryNotEvaluableError(
-                "Query contains a LEFT JOIN between unpartitioned and "
-                "partitioned tables.");
+                    "Query contains a LEFT JOIN between unpartitioned and "
+                    "partitioned tables.");
         }
         swap(g);
         return;
@@ -699,8 +668,8 @@ void RelationGraph::_fuse(JoinRef::Type joinType,
         // and B is unpartitioned.
         if (joinType == JoinRef::RIGHT) {
             throw QueryNotEvaluableError(
-                "Query contains a RIGHT JOIN between partitioned and "
-                "unpartitioned tables.");
+                    "Query contains a RIGHT JOIN between partitioned and "
+                    "unpartitioned tables.");
         }
         return;
     }
@@ -723,11 +692,12 @@ void RelationGraph::_fuse(JoinRef::Type joinType,
         // match on the right/left only requires looking at data from the
         // same partition. For inner joins, admissible predicates can be
         // provided later (e.g. in the WHERE clause).
-        throw QueryNotEvaluableError(
-            "Unable to evaluate query by joining only partition-local data");
+        throw QueryNotEvaluableError("Unable to evaluate query by joining only partition-local data");
     }
     // Splice g into this graph.
-    LOGS(_log, LOG_LVL_TRACE, __FUNCTION__ << " (" << this << ") splicing in verticies from (" << &g << "): " << util::printable(g._vertices));
+    LOGS(_log, LOG_LVL_TRACE,
+         __FUNCTION__ << " (" << this << ") splicing in verticies from (" << &g
+                      << "): " << util::printable(g._vertices));
     _vertices.splice(_vertices.end(), g._vertices);
     _map.fuse(g._map, natural, usingCols);
     // Add spatial edges
@@ -739,9 +709,7 @@ void RelationGraph::_fuse(JoinRef::Type joinType,
 /// This constructor creates a relation graph for a single partitioned
 /// table reference.
 /// `matchAngSep` - assumed angular separation for match tables
-RelationGraph::RelationGraph(TableRef& tr, TableInfo const* info) :
-    _query(0)
-{
+RelationGraph::RelationGraph(TableRef& tr, TableInfo const* info) : _query(0) {
     typedef std::vector<ColumnRefConstPtr>::const_iterator Iter;
 
     if (!info) {
@@ -753,8 +721,9 @@ RelationGraph::RelationGraph(TableRef& tr, TableInfo const* info) :
         _map.swap(m);
     } else {
         double matchAngSep = static_cast<MatchTableInfo const&>(*info).angSep;
-        LOGS(_log, LOG_LVL_TRACE, "RelationGraph ctor: match table tr=\"" << tr << "\" info=" << *info
-                << " matchAngSep=" << matchAngSep);
+        LOGS(_log, LOG_LVL_TRACE,
+             "RelationGraph ctor: match table tr=\"" << tr << "\" info=" << *info
+                                                     << " matchAngSep=" << matchAngSep);
         // Decompose match table references into a pair of vertices - one for
         // each foreign key in the match table.
         _vertices.push_back(Vertex(tr, info));
@@ -766,8 +735,7 @@ RelationGraph::RelationGraph(TableRef& tr, TableInfo const* info) :
         _vertices.front().insert(Edge(&_vertices.back(), matchAngSep));
         _vertices.back().insert(Edge(&_vertices.front(), matchAngSep));
         // Split column references for the match table reference across vertices.
-        std::vector<ColumnRefConstPtr> refs =
-            info->makeColumnRefs(tr.getAlias());
+        std::vector<ColumnRefConstPtr> refs = info->makeColumnRefs(tr.getAlias());
         std::sort(refs.begin(), refs.end(), ColumnRefLt());
         Iter begin = refs.begin();
         Iter middle = begin;
@@ -779,7 +747,7 @@ RelationGraph::RelationGraph(TableRef& tr, TableInfo const* info) :
         }
         ColumnVertexMap m1(_vertices.front(), begin, middle);
         ColumnVertexMap m2(_vertices.back(), middle, end);
-        std::vector<std::string> _; // an empty column name list
+        std::vector<std::string> _;  // an empty column name list
         m1.fuse(m2, false, _);
         _map.swap(m1);
     }
@@ -787,13 +755,11 @@ RelationGraph::RelationGraph(TableRef& tr, TableInfo const* info) :
 
 /// This constructor creates a relation graph for a `TableRef`
 /// and its constituent joins.
-RelationGraph::RelationGraph(TableRef::Ptr const& tr, TableInfoPool& pool) :
-    _query(0)
-{
+RelationGraph::RelationGraph(TableRef::Ptr const& tr, TableInfoPool& pool) : _query(0) {
     if (!tr) {
         throw std::logic_error(
-            "Parser/query analysis bug: NULL TableRef pointer "
-            "passed to RelationGraph constructor.");
+                "Parser/query analysis bug: NULL TableRef pointer "
+                "passed to RelationGraph constructor.");
     }
     LOGS(_log, LOG_LVL_TRACE, "RelationGraph ctor: tr=" << *tr);
 
@@ -816,15 +782,14 @@ RelationGraph::RelationGraph(TableRef::Ptr const& tr, TableInfoPool& pool) :
     swap(g);
 }
 
-
 namespace {
 
 /// A singly-linked list of vertices, with link storage embedded directly
 /// in the Vertex struct. This allows relation graph traversal to proceed
 /// without memory allocation.
 struct VertexQueue {
-    Vertex* head; // unowned
-    Vertex* tail; // unowned
+    Vertex* head;  // unowned
+    Vertex* tail;  // unowned
 
     VertexQueue() : head(0), tail(0) {}
 
@@ -861,8 +826,7 @@ struct VertexQueue {
 
 /// `computeMinimumOverlap` visits every vertex linked to `v` via one or more
 /// paths and computes its minimum required overlap.
-void computeMinimumOverlap(Vertex& vtx)
-{
+void computeMinimumOverlap(Vertex& vtx) {
     LOGS(_log, LOG_LVL_TRACE, __FUNCTION__);
     typedef std::vector<Edge>::const_iterator Iter;
 
@@ -886,8 +850,7 @@ void computeMinimumOverlap(Vertex& vtx)
             double availableOverlap = 0.0;
             if (u->info->kind == TableInfo::DIRECTOR) {
                 availableOverlap = static_cast<DirTableInfo const&>(*u->info).overlap;
-            } else if (u->info->kind == TableInfo::MATCH &&
-                 v->info->kind == TableInfo::MATCH) {
+            } else if (u->info->kind == TableInfo::MATCH && v->info->kind == TableInfo::MATCH) {
                 availableOverlap = static_cast<MatchTableInfo const&>(*u->info).angSep;
             }
             // The overlap required for u is the overlap required for v plus
@@ -910,8 +873,7 @@ void computeMinimumOverlap(Vertex& vtx)
             // then either the query is not evaluable or we will reach u via
             // some other path that has smaller required overlap, so again
             // there is no reason to visit u.
-            if (requiredOverlap <= availableOverlap &&
-                requiredOverlap < prevRequiredOverlap) {
+            if (requiredOverlap <= availableOverlap && requiredOverlap < prevRequiredOverlap) {
                 // Set the required overlap for u and add it to the
                 // vertex visitation queue.
                 u->overlap = requiredOverlap;
@@ -922,8 +884,7 @@ void computeMinimumOverlap(Vertex& vtx)
 }
 
 /// `isEvaluable` returns `true` if no graph vertex requires infinite overlap.
-bool isEvaluable(std::list<Vertex> const& vertices)
-{
+bool isEvaluable(std::list<Vertex> const& vertices) {
     LOGS(_log, LOG_LVL_TRACE, __FUNCTION__);
     typedef std::list<Vertex>::const_iterator Iter;
     for (Iter v = vertices.begin(), e = vertices.end(); v != e; ++v) {
@@ -935,8 +896,7 @@ bool isEvaluable(std::list<Vertex> const& vertices)
 }
 
 /// `resetVertices` sets the required overlap of all graph vertices to ∞.
-void resetVertices(std::list<Vertex>& vertices)
-{
+void resetVertices(std::list<Vertex>& vertices) {
     LOGS(_log, LOG_LVL_TRACE, __FUNCTION__);
     typedef std::list<Vertex>::iterator Iter;
     for (Iter v = vertices.begin(), e = vertices.end(); v != e; ++v) {
@@ -944,16 +904,14 @@ void resetVertices(std::list<Vertex>& vertices)
     }
 }
 
-} // anonymous namespace
-
+}  // anonymous namespace
 
 /// `_validate` searches for a graph traversal that proves the input query
 /// is evaluable.
-bool RelationGraph::_validate()
-{
+bool RelationGraph::_validate() {
     LOGS(_log, LOG_LVL_TRACE, __FUNCTION__);
     size_t numStarts = 0;
-    for (Vertex& vtx: _vertices) {
+    for (Vertex& vtx : _vertices) {
         if (vtx.info->kind != TableInfo::MATCH) {
             ++numStarts;
             resetVertices(_vertices);
@@ -975,21 +933,17 @@ bool RelationGraph::_validate()
     return false;
 }
 
-RelationGraph::RelationGraph(SelectStmt& stmt, TableInfoPool& pool) :
-    _query(&stmt)
-{
+RelationGraph::RelationGraph(SelectStmt& stmt, TableInfoPool& pool) : _query(&stmt) {
     LOGS(_log, LOG_LVL_TRACE, "RelationGraph ctor: stmt=" << stmt.getQueryTemplate());
 
     // Check that at least one thing is being selected.
-    if (!stmt.getSelectList().getValueExprList() ||
-        stmt.getSelectList().getValueExprList()->empty()) {
+    if (!stmt.getSelectList().getValueExprList() || stmt.getSelectList().getValueExprList()->empty()) {
         throw QueryNotEvaluableError("Query has no select list");
     }
     // Check that the FROM clause isn't empty.
     TableRefList const& refs = stmt.getFromList().getTableRefList();
     if (refs.empty()) {
-        throw QueryNotEvaluableError(
-            "Query must include at least one table reference");
+        throw QueryNotEvaluableError("Query must include at least one table reference");
     }
     // Build a graph for the first entry in the from list
     RelationGraph g(refs.front(), pool);
@@ -1018,8 +972,8 @@ RelationGraph::RelationGraph(SelectStmt& stmt, TableInfoPool& pool) :
 
     if (!g._validate()) {
         throw QueryNotEvaluableError(
-            "Query involves partitioned table joins that Qserv does not "
-            "know how to evaluate using only partition-local data");
+                "Query involves partitioned table joins that Qserv does not "
+                "know how to evaluate using only partition-local data");
     }
 
     swap(g);
@@ -1030,23 +984,21 @@ void RelationGraph::_dumpGraph() const {
     if (LOG_CHECK_LVL(_log, LOG_LVL_TRACE)) {
         LOGS(_log, LOG_LVL_TRACE, "RelationGraph:");
         std::map<Vertex const*, int> vtxId;
-        for (auto&& vtx: _vertices) {
+        for (auto&& vtx : _vertices) {
             int id = vtxId.size();
             vtxId[&vtx] = id;
             LOGS(_log, LOG_LVL_TRACE, "   vertex " << id << " info=" << *vtx.info);
         }
-        for (auto&& vtx: _vertices) {
-            for (auto&& edge: vtx.edges) {
-                LOGS(_log, LOG_LVL_TRACE, "   edge " << vtxId[&vtx] << " <-> "
-                        << vtxId[edge.vertex] << " angSep=" << edge.angSep);
+        for (auto&& vtx : _vertices) {
+            for (auto&& edge : vtx.edges) {
+                LOGS(_log, LOG_LVL_TRACE,
+                     "   edge " << vtxId[&vtx] << " <-> " << vtxId[edge.vertex] << " angSep=" << edge.angSep);
             }
         }
     }
 }
 
-void RelationGraph::rewrite(SelectStmtPtrVector& outputs,
-                            QueryMapping& mapping)
-{
+void RelationGraph::rewrite(SelectStmtPtrVector& outputs, QueryMapping& mapping) {
     LOGS(_log, LOG_LVL_TRACE, __FUNCTION__);
     typedef std::list<Vertex>::iterator ListIter;
 
@@ -1090,8 +1042,9 @@ void RelationGraph::rewrite(SelectStmtPtrVector& outputs,
         return;
     }
     if (overlapRefs.size() > MAX_TABLE_REFS_WITH_OVERLAP) {
-        throw QueryNotEvaluableError("Query contains too many table "
-                                     "references that require overlap");
+        throw QueryNotEvaluableError(
+                "Query contains too many table "
+                "references that require overlap");
     }
 
     // Rewrite director table references not requiring overlap as their
@@ -1130,12 +1083,10 @@ void RelationGraph::rewrite(SelectStmtPtrVector& outputs,
     }
 }
 
-
 void RelationGraph::swap(RelationGraph& g) {
     LOGS(_log, LOG_LVL_TRACE, __FUNCTION__);
     _vertices.swap(g._vertices);
     _map.swap(g._map);
 }
 
-
-}}} // namespace lsst::qserv::qana
+}  // namespace lsst::qserv::qana

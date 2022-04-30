@@ -35,20 +35,17 @@
 
 namespace {
 
-std::string escapeString(std::string const& str)
-{
+std::string escapeString(std::string const& str) {
     static boost::regex escapeRe{R"(([.[{}()\*+?|^$]))"};
     return regex_replace(str, escapeRe, R"(\1)");
 }
 
-std::string escapeGroup(std::string const& str)
-{
+std::string escapeGroup(std::string const& str) {
     static boost::regex escapeRe{R"(([=!:$/()]))"};
     return regex_replace(str, escapeRe, R"(\1)");
 }
 
-struct PathToken
-{
+struct PathToken {
     std::string name;
     std::string prefix;
     std::string delimeter;
@@ -57,11 +54,9 @@ struct PathToken
     std::string pattern;
 };
 
-} // anon. namespace
+}  // namespace
 
-namespace lsst {
-namespace qserv {
-namespace qhttp {
+namespace lsst::qserv::qhttp {
 
 //
 // ----- NOTE TO READERS: The internals of Path::parse and Path::updateParamsFromMatch here are a fairly
@@ -69,19 +64,17 @@ namespace qhttp {
 //       see that link for examples of supported path syntax analyzed by the regexps and code below.
 //
 
-void Path::parse(std::string const& pattern)
-{
+void Path::parse(std::string const& pattern) {
     static boost::regex patternRe{
-        // Match escaped characters that would otherwise appear in future matches.
-        // This allows the user to escape special characters that won't transform.
-        R"((\\.)|)"
-        // Match Express-style parameters and un-named parameters with a prefix
-        // and optional suffixes. Matches appear as:
-        // "/:test(\\d+)?" => [ "/", "test", "\d+", -----, "?", --- ]
-        // "/route(\\d+)"  => [ ---, ------, -----, "\d+", ---, --- ]
-        // "/*"            => [ "/", ------, -----, -----, ---, "*" ]
-        R"((/)?(?:(?::(\w+)(?:\(((?:\\.|[^()])+)\))?|\(((?:\\.|[^()])+)\))([+*?])?|(\*)))"
-    };
+            // Match escaped characters that would otherwise appear in future matches.
+            // This allows the user to escape special characters that won't transform.
+            R"((\\.)|)"
+            // Match Express-style parameters and un-named parameters with a prefix
+            // and optional suffixes. Matches appear as:
+            // "/:test(\\d+)?" => [ "/", "test", "\d+", -----, "?", --- ]
+            // "/route(\\d+)"  => [ ---, ------, -----, "\d+", ---, --- ]
+            // "/*"            => [ "/", ------, -----, -----, ---, "*" ]
+            R"((/)?(?:(?::(\w+)(?:\(((?:\\.|[^()])+)\))?|\(((?:\\.|[^()])+)\))([+*?])?|(\*)))"};
 
     int key = 0;
     std::string path;
@@ -89,13 +82,13 @@ void Path::parse(std::string const& pattern)
 
     auto end = boost::sregex_iterator{};
     auto last = pattern.begin();
-    for(auto i=boost::make_regex_iterator(pattern, patternRe); i!=end; ++i) {
-        auto& escaped  = (*i)[1];
-        auto& prefix   = (*i)[2];
-        auto& name     = (*i)[3];
-        auto& capture  = (*i)[4];
-        auto& group    = (*i)[5];
-        auto& suffix   = (*i)[6];
+    for (auto i = boost::make_regex_iterator(pattern, patternRe); i != end; ++i) {
+        auto& escaped = (*i)[1];
+        auto& prefix = (*i)[2];
+        auto& name = (*i)[3];
+        auto& capture = (*i)[4];
+        auto& group = (*i)[5];
+        auto& suffix = (*i)[6];
         auto& asterisk = (*i)[7];
 
         last = (*i)[0].second;
@@ -105,7 +98,6 @@ void Path::parse(std::string const& pattern)
 
         // Handle explicitly escaped characters
         if (escaped.matched) {
-
             // If we let intra-element literal slashes into the path matcher, they would be ambiguous with
             // path element delimiters, which are also represented as literal slashes in the matcher.
             // Instead, we force intra-element literal slashes to be lower-case percent-encoded in the
@@ -131,18 +123,16 @@ void Path::parse(std::string const& pattern)
 
         // Add a segment for the matched part
         segments.resize(segments.size() + 1);
-        auto &token = boost::get<PathToken>(segments.back());
+        auto& token = boost::get<PathToken>(segments.back());
         token.name = name.matched ? name : std::to_string(key++);
         token.prefix = prefix;
         token.delimeter = prefix.matched ? prefix.str()[0] : '/';
         token.optional = (suffix == "?") || (suffix == "*");
         token.repeat = (suffix == "+") || (suffix == "*");
-        token.pattern = escapeGroup(
-            capture.matched ? capture
-            : group.matched ? group
-            : asterisk.matched ? ".*"
-            : (std::string("[^") + token.delimeter + "]+?")
-        );
+        token.pattern = escapeGroup(capture.matched    ? capture
+                                    : group.matched    ? group
+                                    : asterisk.matched ? ".*"
+                                                       : (std::string("[^") + token.delimeter + "]+?"));
     }
 
     // Scoop up any trailing chars after last match
@@ -156,7 +146,7 @@ void Path::parse(std::string const& pattern)
     }
 
     std::string route = "^";
-    for(auto& segment: segments) {
+    for (auto& segment : segments) {
         if (segment.type() == typeid(std::string)) {
             route += escapeString(boost::get<std::string>(segment));
         } else {
@@ -183,13 +173,10 @@ void Path::parse(std::string const& pattern)
     regex = route;
 }
 
-
-void Path::updateParamsFromMatch(Request::Ptr const& request, boost::smatch const& pathMatch)
-{
-    for(size_t i=0; i<paramNames.size(); ++i) {
-        request->params[paramNames[i]] = pathMatch[i+1];
+void Path::updateParamsFromMatch(Request::Ptr const& request, boost::smatch const& pathMatch) {
+    for (size_t i = 0; i < paramNames.size(); ++i) {
+        request->params[paramNames[i]] = pathMatch[i + 1];
     }
 }
 
-
-}}} // namespace lsst::qserv::qhttp
+}  // namespace lsst::qserv::qhttp

@@ -27,7 +27,6 @@
 
 // Third-party headers
 
-
 // LSST headers
 #include "lsst/log/Log.h"
 
@@ -37,17 +36,14 @@
 
 namespace {
 
-    LOG_LOGGER getLogger() {
-        static LOG_LOGGER logger = LOG_GET("lsst.qserv.sql.statement");
-        return logger;
-    }
+LOG_LOGGER getLogger() {
+    static LOG_LOGGER logger = LOG_GET("lsst.qserv.sql.statement");
+    return logger;
+}
 
+}  // namespace
 
-} // anonymous
-
-namespace lsst {
-namespace qserv {
-namespace sql {
+namespace lsst::qserv::sql {
 
 std::string formCreateTable(std::string const& table, sql::Schema const& s) {
     if (table.empty()) {
@@ -56,7 +52,7 @@ std::string formCreateTable(std::string const& table, sql::Schema const& s) {
     std::ostringstream os;
     os << "CREATE TABLE " << table << " (";
     ColumnsIter b, i, e;
-    for(i=b=s.columns.begin(), e=s.columns.end(); i != e; ++i) {
+    for (i = b = s.columns.begin(), e = s.columns.end(); i != e; ++i) {
         if (i != b) {
             os << ",";
         }
@@ -69,7 +65,7 @@ std::string formCreateTable(std::string const& table, sql::Schema const& s) {
 std::shared_ptr<InsertColumnVector> newInsertColumnVector(Schema const& s) {
     std::shared_ptr<InsertColumnVector> icv = std::make_shared<InsertColumnVector>();
     ColumnsIter b, i, e;
-    for(i=b=s.columns.begin(), e=s.columns.end(); i != e; ++i) {
+    for (i = b = s.columns.begin(), e = s.columns.end(); i != e; ++i) {
         InsertColumn ic;
         ic.column = i->name;
         if (i->colType.sqlType.find("BLOB") != std::string::npos) {
@@ -82,30 +78,23 @@ std::shared_ptr<InsertColumnVector> newInsertColumnVector(Schema const& s) {
     return icv;
 }
 
-std::string formLoadInfile(std::string const& table,
-                           std::string const& virtFile) {
-    auto sql = "LOAD DATA LOCAL INFILE '" + virtFile + "' INTO TABLE " + table
-            + " FIELDS ENCLOSED BY '\\\''";
+std::string formLoadInfile(std::string const& table, std::string const& virtFile) {
+    auto sql = "LOAD DATA LOCAL INFILE '" + virtFile + "' INTO TABLE " + table + " FIELDS ENCLOSED BY '\\\''";
     LOGS(getLogger(), LOG_LVL_TRACE, "Load query: " << sql);
     return sql;
 }
 
 inline bool needClause(InsertColumnVector const& icv) {
-    for(InsertColumnVector::const_iterator i=icv.begin(), e=icv.end();
-        i != e; ++i) {
+    for (InsertColumnVector::const_iterator i = icv.begin(), e = icv.end(); i != e; ++i) {
         if (!i->hexColumn.empty()) {
             return true;
         }
     }
     return false;
 }
-inline std::ostream& addSingleQuoted(std::ostream& os, std::string const& s) {
-    return os << "'" << s << "'";
-}
-std::string formLoadInfile(std::string const& table,
-                           std::string const& virtFile,
+inline std::ostream& addSingleQuoted(std::ostream& os, std::string const& s) { return os << "'" << s << "'"; }
+std::string formLoadInfile(std::string const& table, std::string const& virtFile,
                            InsertColumnVector const& icv) {
-
     // Output should look something like this:
     // "LOAD DATA INFILE 'path.txt'
     // INTO TABLE mytable (column1, column2, @hexColumn3)
@@ -113,14 +102,14 @@ std::string formLoadInfile(std::string const& table,
 
     // Check icv to see if we need to hex/unhex
     if (!needClause(icv)) {
-        return formLoadInfile(table, virtFile); // Use simpler version
+        return formLoadInfile(table, virtFile);  // Use simpler version
     }
     std::ostringstream os;
     os << formLoadInfile(table, virtFile) << " (";
     // Input column list
     InsertColumnVector setColumns;
     InsertColumnVector::const_iterator i, b, e;
-    for(i=b=icv.begin(), e=icv.end(); i != e; ++i) {
+    for (i = b = icv.begin(), e = icv.end(); i != e; ++i) {
         if (i != b) {
             os << ",";
         }
@@ -133,15 +122,16 @@ std::string formLoadInfile(std::string const& table,
     }
     os << ") ";
     // Fixup SET statements
-    for(i=b=setColumns.begin(), e=setColumns.end(); i != e; ++i) {
+    for (i = b = setColumns.begin(), e = setColumns.end(); i != e; ++i) {
         if (i != b) {
             os << ", ";
         }
         os << "SET ";
         addSingleQuoted(os, i->column);
-        os << "=UNHEX(" << "@" << i->hexColumn << ")";
+        os << "=UNHEX("
+           << "@" << i->hexColumn << ")";
     }
     return os.str();
 }
 
-}}} // namespace lsst::qserv::sql
+}  // namespace lsst::qserv::sql

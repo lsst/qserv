@@ -43,15 +43,13 @@ ApplicationColl getAppColl() {
     coll.add<FileServerApp>("SERVER");
     return coll;
 }
-}   // namespace
-
+}  // namespace
 
 int main(int argc, char* argv[]) {
     try {
         return getAppColl().run(argc, argv);
     } catch (exception const& ex) {
-        cerr << argv[0] << ": the application '" << argv[1] << "' failed, exception: "
-             << ex.what() << endl;
+        cerr << argv[0] << ": the application '" << argv[1] << "' failed, exception: " << ex.what() << endl;
         return 1;
     }
 }

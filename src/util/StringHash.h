@@ -27,9 +27,7 @@
 // System headers
 #include <string>
 
-namespace lsst {
-namespace qserv {
-namespace util {
+namespace lsst::qserv::util {
 
 /// Small wrappers for computing hashes
 class StringHash {
@@ -42,6 +40,6 @@ public:
     static std::string getSha256(char const* buffer, int bufferSize);
 };
 
-}}} // namespace lsst::qserv::util
+}  // namespace lsst::qserv::util
 
-#endif // LSST_QSERV_UTIL_STRINGHASH_H
+#endif  // LSST_QSERV_UTIL_STRINGHASH_H

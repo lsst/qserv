@@ -21,7 +21,6 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-
 // Class header
 #include "query/BoolFactor.h"
 
@@ -35,16 +34,9 @@
 #include "query/ValueExpr.h"
 #include "util/IterableFormatter.h"
 
+namespace lsst::qserv::query {
 
-namespace lsst {
-namespace qserv {
-namespace query {
-
-
-std::ostream& BoolFactor::putStream(std::ostream& os) const {
-    return QueryTemplate::renderDbg(os, *this);
-}
-
+std::ostream& BoolFactor::putStream(std::ostream& os) const { return QueryTemplate::renderDbg(os, *this); }
 
 void BoolFactor::renderTo(QueryTemplate& qt) const {
     std::string s;
@@ -53,7 +45,6 @@ void BoolFactor::renderTo(QueryTemplate& qt) const {
     }
     renderList(qt, _terms, s);
 }
-
 
 bool BoolFactor::_reduceTerms(std::vector<std::shared_ptr<BoolFactorTerm>>& newTerms,
                               std::vector<std::shared_ptr<BoolFactorTerm>>& oldTerms) {
@@ -93,15 +84,20 @@ bool BoolFactor::_reduceTerms(std::vector<std::shared_ptr<BoolFactorTerm>>& newT
     return hasReduction;
 }
 
-
 bool BoolFactor::_checkParen(std::vector<std::shared_ptr<BoolFactorTerm>>& terms) {
-    if (terms.size() != 3) { return false; }
+    if (terms.size() != 3) {
+        return false;
+    }
 
     auto pt = std::dynamic_pointer_cast<PassTerm>(terms.front());
-    if (nullptr == pt || (pt->_text != "(")) { return false; }
+    if (nullptr == pt || (pt->_text != "(")) {
+        return false;
+    }
 
     pt = std::dynamic_pointer_cast<PassTerm>(terms.back());
-    if (nullptr == pt || (pt->_text != ")")) { return false; }
+    if (nullptr == pt || (pt->_text != ")")) {
+        return false;
+    }
 
     auto boolTermFactorPtr = std::dynamic_pointer_cast<BoolTermFactor>(terms[1]);
     if (nullptr == boolTermFactorPtr) {
@@ -109,12 +105,11 @@ bool BoolFactor::_checkParen(std::vector<std::shared_ptr<BoolFactorTerm>>& terms
     }
     auto logicalTermPtr = std::dynamic_pointer_cast<LogicalTerm>(boolTermFactorPtr->_term);
     if (nullptr != logicalTermPtr) {
-        return false; // don't remove parens from an AND or an OR.
+        return false;  // don't remove parens from an AND or an OR.
     }
 
     return true;
 }
-
 
 std::shared_ptr<BoolTerm> BoolFactor::getReduced() {
     // Get reduced versions of my children.
@@ -134,14 +129,12 @@ std::shared_ptr<BoolTerm> BoolFactor::getReduced() {
     }
 }
 
-
 std::shared_ptr<BoolTerm> BoolFactor::clone() const {
     auto t = std::make_shared<BoolFactor>();
     t->_hasNot = _hasNot;
     copyTerms<BoolFactorTerm::PtrVector, deepCopy>(t->_terms, _terms);
     return t;
 }
-
 
 std::shared_ptr<BoolTerm> BoolFactor::copySyntax() const {
     auto bf = std::make_shared<BoolFactor>();
@@ -150,7 +143,6 @@ std::shared_ptr<BoolTerm> BoolFactor::copySyntax() const {
     return bf;
 }
 
-
 void BoolFactor::dbgPrint(std::ostream& os) const {
     os << "BoolFactor(";
     os << (_hasNot ? "IS_NOT" : "IS") << ", ";
@@ -158,11 +150,9 @@ void BoolFactor::dbgPrint(std::ostream& os) const {
     os << ")";
 }
 
-
 void BoolFactor::addBoolFactorTerm(std::shared_ptr<BoolFactorTerm> boolFactorTerm) {
     _terms.push_back(boolFactorTerm);
 }
-
 
 void BoolFactor::findValueExprs(std::vector<std::shared_ptr<ValueExpr>>& vector) const {
     for (auto&& boolFactorTerm : _terms) {
@@ -172,7 +162,6 @@ void BoolFactor::findValueExprs(std::vector<std::shared_ptr<ValueExpr>>& vector)
     }
 }
 
-
 void BoolFactor::findValueExprRefs(ValueExprPtrRefVector& vector) {
     for (auto&& boolFactorTerm : _terms) {
         if (boolFactorTerm) {
@@ -181,7 +170,6 @@ void BoolFactor::findValueExprRefs(ValueExprPtrRefVector& vector) {
     }
 }
 
-
 void BoolFactor::findColumnRefs(std::vector<std::shared_ptr<ColumnRef>>& vector) const {
     for (auto&& boolFactorTerm : _terms) {
         if (boolFactorTerm) {
@@ -189,7 +177,6 @@ void BoolFactor::findColumnRefs(std::vector<std::shared_ptr<ColumnRef>>& vector)
         }
     }
 }
-
 
 bool BoolFactor::operator==(const BoolTerm& rhs) const {
     auto rhsBoolFactor = dynamic_cast<const BoolFactor*>(&rhs);
@@ -202,7 +189,6 @@ bool BoolFactor::operator==(const BoolTerm& rhs) const {
     return util::vectorPtrCompare<BoolFactorTerm>(_terms, rhsBoolFactor->_terms);
 }
 
-
 // prepend _terms with an open parenthesis PassTerm and append it with a close parenthesis PassTerm.
 void BoolFactor::addParenthesis() {
     auto leftParen = std::make_shared<PassTerm>("(");
@@ -211,5 +197,4 @@ void BoolFactor::addParenthesis() {
     _terms.push_back(rightParen);
 }
 
-
-}}} // namespace lsst::qserv::query
+}  // namespace lsst::qserv::query

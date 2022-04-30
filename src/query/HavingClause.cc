@@ -21,68 +21,52 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 /**
-  * @file
-  *
-  * @brief Implementation of HavingClause
-  *
-  * @author Daniel L. Wang, SLAC
-  */
-
+ * @file
+ *
+ * @brief Implementation of HavingClause
+ *
+ * @author Daniel L. Wang, SLAC
+ */
 
 // Class header
 #include "query/HavingClause.h"
 
-
 // System headers
 #include <iostream>
-
 
 // Qserv headers
 #include "query/BoolTerm.h"
 #include "query/QueryTemplate.h"
 #include "util/PointerCompare.h"
 
-
-namespace lsst {
-namespace qserv {
-namespace query {
-
+namespace lsst::qserv::query {
 
 ////////////////////////////////////////////////////////////////////////
 // HavingClause
 ////////////////////////////////////////////////////////////////////////
-std::ostream&
-operator<<(std::ostream& os, HavingClause const& c) {
+std::ostream& operator<<(std::ostream& os, HavingClause const& c) {
     os << "HavingClause(" << c._tree << ")";
     return os;
 }
 
-
-std::ostream&
-operator<<(std::ostream& os, HavingClause const* c) {
+std::ostream& operator<<(std::ostream& os, HavingClause const* c) {
     (nullptr == c) ? os << "nullptr" : os << *c;
     return os;
 }
 
-
-std::string
-HavingClause::getGenerated() const {
+std::string HavingClause::getGenerated() const {
     QueryTemplate qt;
     renderTo(qt);
     return qt.sqlFragment();
 }
 
-
-void
-HavingClause::renderTo(QueryTemplate& qt) const {
+void HavingClause::renderTo(QueryTemplate& qt) const {
     if (_tree.get()) {
         _tree->renderTo(qt);
     }
 }
 
-
-std::shared_ptr<HavingClause>
-HavingClause::clone() const {
+std::shared_ptr<HavingClause> HavingClause::clone() const {
     std::shared_ptr<HavingClause> hc = std::make_shared<HavingClause>();
     if (_tree) {
         hc->_tree = _tree->clone();
@@ -90,27 +74,22 @@ HavingClause::clone() const {
     return hc;
 }
 
+std::shared_ptr<HavingClause> HavingClause::copySyntax() { return std::make_shared<HavingClause>(*this); }
 
-std::shared_ptr<HavingClause>
-HavingClause::copySyntax() {
-    return std::make_shared<HavingClause>(*this);
+void HavingClause::findValueExprs(ValueExprPtrVector& list) const {
+    if (_tree) {
+        _tree->findValueExprs(list);
+    }
 }
-
-
-void
-HavingClause::findValueExprs(ValueExprPtrVector& list) const {
-    if (_tree) { _tree->findValueExprs(list); }
-}
-
 
 void HavingClause::findValueExprRefs(ValueExprPtrRefVector& list) {
-    if (_tree) { _tree->findValueExprRefs(list); }
+    if (_tree) {
+        _tree->findValueExprRefs(list);
+    }
 }
-
 
 bool HavingClause::operator==(const HavingClause& rhs) const {
     return util::ptrCompare<BoolTerm>(_tree, rhs._tree);
 }
 
-
-}}} // namespace lsst::qserv::query
+}  // namespace lsst::qserv::query

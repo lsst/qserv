@@ -48,18 +48,16 @@ namespace {
  * @return the name of a worker which has the least number of replicas
  * among workers mentioned in the input collection of workers.
  */
-template<typename COLLECTION_OF_WORKERS>
+template <typename COLLECTION_OF_WORKERS>
 string leastLoadedWorker(DatabaseServices::Ptr const& databaseServices,
                          COLLECTION_OF_WORKERS const& workers) {
     string worker;
     string const noSpecificDatabase;
-    bool   const allDatabases = true;
+    bool const allDatabases = true;
     size_t numReplicas = numeric_limits<size_t>::max();
-    for (auto&& candidateWorker: workers) {
+    for (auto&& candidateWorker : workers) {
         size_t const num =
-            databaseServices->numWorkerReplicas(candidateWorker,
-                                                noSpecificDatabase,
-                                                allDatabases);
+                databaseServices->numWorkerReplicas(candidateWorker, noSpecificDatabase, allDatabases);
         if (num < numReplicas) {
             numReplicas = num;
             worker = candidateWorker;
@@ -68,12 +66,11 @@ string leastLoadedWorker(DatabaseServices::Ptr const& databaseServices,
     return worker;
 }
 
-
 /**
  * The optimized version of the previously defined function will
  * re-use and update the transient replica disposition cache when
  * selecting a candidate worker. Each worker's entry in the cache
- * will be populated from the database first time 
+ * will be populated from the database first time
  *
  * @param worker2replicasCache  the cache of replica disposition for workers
  * @param databaseServices  the service used for pulling the initial replica
@@ -85,25 +82,20 @@ string leastLoadedWorker(DatabaseServices::Ptr const& databaseServices,
  *   has been exceeded in all workers. Note that the empty string value
  *   needs to be treated as an abnormal condition.
  */
-template<typename COLLECTION_OF_WORKERS>
-string leastLoadedWorker(map<string,size_t>& worker2replicasCache,
+template <typename COLLECTION_OF_WORKERS>
+string leastLoadedWorker(map<string, size_t>& worker2replicasCache,
                          DatabaseServices::Ptr const& databaseServices,
                          COLLECTION_OF_WORKERS const& workers) {
     string worker;
     string const noSpecificDatabase;
     bool const allDatabases = true;
     size_t numReplicas = numeric_limits<size_t>::max();
-    for (auto&& candidateWorker: workers) {
+    for (auto&& candidateWorker : workers) {
         auto itr = worker2replicasCache.find(candidateWorker);
         if (worker2replicasCache.end() == itr) {
-            pair<decltype(itr),bool> itrSuccess = worker2replicasCache.insert({
-                candidateWorker,
-                databaseServices->numWorkerReplicas(
-                    candidateWorker,
-                    noSpecificDatabase,
-                    allDatabases
-                )
-            });
+            pair<decltype(itr), bool> itrSuccess = worker2replicasCache.insert(
+                    {candidateWorker,
+                     databaseServices->numWorkerReplicas(candidateWorker, noSpecificDatabase, allDatabases)});
             itr = itrSuccess.first;
         }
         if (itr->second < numReplicas) {
@@ -127,47 +119,36 @@ string leastLoadedWorker(map<string,size_t>& worker2replicasCache,
     worker2replicasCache[worker]++;
     return worker;
 }
-}
+}  // namespace
 
-
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
 util::Mutex HttpIngestChunksModule::_ingestManagementMtx;
 
-
-void HttpIngestChunksModule::process(Controller::Ptr const& controller,
-                                     string const& taskName,
+void HttpIngestChunksModule::process(Controller::Ptr const& controller, string const& taskName,
                                      HttpProcessorConfig const& processorConfig,
-                                     qhttp::Request::Ptr const& req,
-                                     qhttp::Response::Ptr const& resp,
-                                     string const& subModuleName,
-                                     HttpAuthType const authType) {
+                                     qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp,
+                                     string const& subModuleName, HttpAuthType const authType) {
     HttpIngestChunksModule module(controller, taskName, processorConfig, req, resp);
     module.execute(subModuleName, authType);
 }
 
-
-HttpIngestChunksModule::HttpIngestChunksModule(
-            Controller::Ptr const& controller,
-            string const& taskName,
-            HttpProcessorConfig const& processorConfig,
-            qhttp::Request::Ptr const& req,
-            qhttp::Response::Ptr const& resp)
-    :   HttpModule(controller, taskName, processorConfig, req, resp) {
-}
-
+HttpIngestChunksModule::HttpIngestChunksModule(Controller::Ptr const& controller, string const& taskName,
+                                               HttpProcessorConfig const& processorConfig,
+                                               qhttp::Request::Ptr const& req,
+                                               qhttp::Response::Ptr const& resp)
+        : HttpModule(controller, taskName, processorConfig, req, resp) {}
 
 json HttpIngestChunksModule::executeImpl(string const& subModuleName) {
-    if (subModuleName == "ADD-CHUNK") return _addChunk();
-    else if (subModuleName == "ADD-CHUNK-LIST") return _addChunks();
-    else if (subModuleName == "GET-CHUNK-LIST") return _getChunks();
-    throw invalid_argument(
-            context() + "::" + string(__func__) +
-            "  unsupported sub-module: '" + subModuleName + "'");
+    if (subModuleName == "ADD-CHUNK")
+        return _addChunk();
+    else if (subModuleName == "ADD-CHUNK-LIST")
+        return _addChunks();
+    else if (subModuleName == "GET-CHUNK-LIST")
+        return _getChunks();
+    throw invalid_argument(context() + "::" + string(__func__) + "  unsupported sub-module: '" +
+                           subModuleName + "'");
 }
-
 
 json HttpIngestChunksModule::_addChunk() {
     debug(__func__);
@@ -205,11 +186,10 @@ json HttpIngestChunksModule::_addChunk() {
     bool const enabledWorkersOnly = true;
     bool const includeFileInfo = false;
     vector<ReplicaInfo> replicas;
-    databaseServices->findReplicas(replicas, chunk, databaseInfo.name,
-                                   enabledWorkersOnly, includeFileInfo);
+    databaseServices->findReplicas(replicas, chunk, databaseInfo.name, enabledWorkersOnly, includeFileInfo);
     if (replicas.size() > 1) {
         json replicasJson = json::array();
-        for (auto&& replica: replicas) {
+        for (auto&& replica : replicas) {
             replicasJson.push_back(replica.toJson());
         }
         json extendedError;
@@ -219,7 +199,6 @@ json HttpIngestChunksModule::_addChunk() {
     if (replicas.size() == 1) {
         worker = replicas[0].worker();
     } else {
-
         // Search chunk in all databases of the same family to see
         // which workers may have replicas of the same chunk.
         // The idea here is to ensure the 'chunk colocation' requirements
@@ -229,16 +208,14 @@ json HttpIngestChunksModule::_addChunk() {
         bool const allDatabases = true;
 
         set<string> candidateWorkers;
-        for (auto&& database: config->databases(databaseInfo.family, allDatabases)) {
+        for (auto&& database : config->databases(databaseInfo.family, allDatabases)) {
             vector<ReplicaInfo> replicas;
-            databaseServices->findReplicas(replicas, chunk, database,
-                                           enabledWorkersOnly, includeFileInfo);
-            for (auto&& replica: replicas) {
+            databaseServices->findReplicas(replicas, chunk, database, enabledWorkersOnly, includeFileInfo);
+            for (auto&& replica : replicas) {
                 candidateWorkers.insert(replica.worker());
             }
         }
         if (not candidateWorkers.empty()) {
-
             // Among those workers which have been found to have replicas with
             // the same chunk pick the one which has the least number of replicas
             // (of any chunks in any databases). The goal here is to ensure all
@@ -251,10 +228,9 @@ json HttpIngestChunksModule::_addChunk() {
             worker = ::leastLoadedWorker(databaseServices, candidateWorkers);
 
         } else {
-
             // We got here because no database within the family has a chunk
             // with this number. Hence we need to pick some least loaded worker
-            // among all known workers. 
+            // among all known workers.
 
             worker = ::leastLoadedWorker(databaseServices, config->workers());
         }
@@ -278,13 +254,12 @@ json HttpIngestChunksModule::_addChunk() {
 
     json result;
     result["location"]["worker"] = workerInfo.name;
-    result["location"]["host"]   = workerInfo.loaderHost;
-    result["location"]["port"]   = workerInfo.loaderPort;
+    result["location"]["host"] = workerInfo.loaderHost;
+    result["location"]["port"] = workerInfo.loaderPort;
     result["location"]["http_host"] = workerInfo.httpLoaderHost;
     result["location"]["http_port"] = workerInfo.httpLoaderPort;
     return result;
 }
-
 
 json HttpIngestChunksModule::_addChunks() {
     debug(__func__);
@@ -302,7 +277,7 @@ json HttpIngestChunksModule::_addChunks() {
     // partitioning scheme.
     ChunkNumberQservValidator const validator(databaseFamilyInfo.numStripes,
                                               databaseFamilyInfo.numSubStripes);
-    for (auto const chunk: chunks) {
+    for (auto const chunk : chunks) {
         if (not validator.valid(chunk)) {
             throw HttpError(__func__, "chunk " + to_string(chunk) + " is not valid");
         }
@@ -317,11 +292,10 @@ json HttpIngestChunksModule::_addChunks() {
     bool const enabledWorkersOnly = true;
     bool const includeFileInfo = false;
     vector<ReplicaInfo> replicas;
-    databaseServices->findReplicas(replicas, chunks, databaseInfo.name,
-                                   enabledWorkersOnly, includeFileInfo);
+    databaseServices->findReplicas(replicas, chunks, databaseInfo.name, enabledWorkersOnly, includeFileInfo);
 
     map<unsigned int, vector<ReplicaInfo>> chunk2replicas;
-    for (auto&& replica: replicas) {
+    for (auto&& replica : replicas) {
         auto const chunk = replica.chunk();
         chunk2replicas[chunk].push_back(move(replica));
     }
@@ -338,11 +312,10 @@ json HttpIngestChunksModule::_addChunks() {
     bool const allDatabases = true;
     auto const databases = config->databases(databaseInfo.family, allDatabases);
 
-    map<string,size_t> worker2replicasCache;
+    map<string, size_t> worker2replicasCache;
 
     map<unsigned int, string> chunk2worker;
-    for (auto const chunk: chunks) {
-
+    for (auto const chunk : chunks) {
         vector<ReplicaInfo> const& replicas = chunk2replicas[chunk];
 
         if (replicas.size() > 1) {
@@ -351,7 +324,6 @@ json HttpIngestChunksModule::_addChunks() {
         if (replicas.size() == 1) {
             chunk2worker[chunk] = replicas[0].worker();
         } else {
-
             // Search chunk in all databases of the same family to see
             // which workers may have replicas of the same chunk.
             // The idea here is to ensure the 'chunk colocation' requirements
@@ -366,16 +338,15 @@ json HttpIngestChunksModule::_addChunks() {
             // store.
 
             set<string> candidateWorkers;
-            for (auto&& database: databases) {
+            for (auto&& database : databases) {
                 vector<ReplicaInfo> replicas;
-                databaseServices->findReplicas(replicas, chunk, database,
-                                               enabledWorkersOnly, includeFileInfo);
-                for (auto&& replica: replicas) {
+                databaseServices->findReplicas(replicas, chunk, database, enabledWorkersOnly,
+                                               includeFileInfo);
+                for (auto&& replica : replicas) {
                     candidateWorkers.insert(replica.worker());
                 }
             }
             if (not candidateWorkers.empty()) {
-
                 // Among those workers which have been found to have replicas with
                 // the same chunk pick the one which has the least number of replicas
                 // (of any chunks in any databases). The goal here is to ensure all
@@ -385,17 +356,16 @@ json HttpIngestChunksModule::_addChunks() {
                 // purely on the replica count, not on the amount of data residing
                 // in the workers databases.
 
-                chunk2worker[chunk] = ::leastLoadedWorker(
-                        worker2replicasCache, databaseServices, candidateWorkers);
+                chunk2worker[chunk] =
+                        ::leastLoadedWorker(worker2replicasCache, databaseServices, candidateWorkers);
 
             } else {
-
                 // We got here because no database within the family has a chunk
                 // with this number. Hence we need to pick some least loaded worker
-                // among all known workers. 
+                // among all known workers.
 
-                chunk2worker[chunk] = ::leastLoadedWorker(
-                        worker2replicasCache, databaseServices, config->workers());
+                chunk2worker[chunk] =
+                        ::leastLoadedWorker(worker2replicasCache, databaseServices, config->workers());
             }
             _registerNewChunk(chunk2worker[chunk], databaseInfo.name, chunk);
         }
@@ -424,16 +394,15 @@ json HttpIngestChunksModule::_addChunks() {
     json result;
     result["location"] = json::array();
 
-    for (auto const chunk: chunks) {
-
+    for (auto const chunk : chunks) {
         // Pull connection parameters of the loader for the worker
         auto const workerInfo = config->workerInfo(chunk2worker[chunk]);
 
         json workerResult;
-        workerResult["chunk"]  = chunk;
+        workerResult["chunk"] = chunk;
         workerResult["worker"] = workerInfo.name;
-        workerResult["host"]   = workerInfo.loaderHost;
-        workerResult["port"]   = workerInfo.loaderPort;
+        workerResult["host"] = workerInfo.loaderHost;
+        workerResult["port"] = workerInfo.loaderPort;
         workerResult["http_host"] = workerInfo.httpLoaderHost;
         workerResult["http_port"] = workerInfo.httpLoaderPort;
 
@@ -441,7 +410,6 @@ json HttpIngestChunksModule::_addChunks() {
     }
     return result;
 }
-
 
 json HttpIngestChunksModule::_getChunks() {
     debug(__func__);
@@ -465,26 +433,25 @@ json HttpIngestChunksModule::_getChunks() {
     json result;
     result["replica"] = json::array();
 
-    for (auto const& replica: replicas) {
-
+    for (auto const& replica : replicas) {
         json replicaResult;
         replicaResult["chunk"] = replica.chunk();
-        replicaResult["worker"] = replica.worker(); 
+        replicaResult["worker"] = replica.worker();
 
         // Initialize required attributes to the default values (all 0) for all
         // relevant tables.
-        for (auto&& table: databaseInfo.partitionedTables) {
-            replicaResult[table]["overlap_rows"] = 0;          // TBC when available
+        for (auto&& table : databaseInfo.partitionedTables) {
+            replicaResult[table]["overlap_rows"] = 0;  // TBC when available
             replicaResult[table]["overlap_data_size"] = 0;
             replicaResult[table]["overlap_index_size"] = 0;
 
-            replicaResult[table]["rows"] = 0;                  // TBC when available
+            replicaResult[table]["rows"] = 0;  // TBC when available
             replicaResult[table]["data_size"] = 0;
             replicaResult[table]["index_size"] = 0;
         }
 
         // fetch and report actual values of the attributes.
-        for (auto&& file: replica.fileInfo()) {
+        for (auto&& file : replica.fileInfo()) {
             auto& replicaTableResult = replicaResult[file.baseTable()];
             if (file.isOverlap()) {
                 if (file.isData()) {
@@ -505,18 +472,11 @@ json HttpIngestChunksModule::_getChunks() {
     return result;
 }
 
-
-void HttpIngestChunksModule::_registerNewChunk(string const& worker,
-                                               string const& database,
+void HttpIngestChunksModule::_registerNewChunk(string const& worker, string const& database,
                                                unsigned int chunk) const {
     auto const verifyTime = PerformanceUtils::now();
-    ReplicaInfo const newReplica(
-            ReplicaInfo::Status::COMPLETE,
-            worker,
-            database,
-            chunk,
-            verifyTime);
+    ReplicaInfo const newReplica(ReplicaInfo::Status::COMPLETE, worker, database, chunk, verifyTime);
     controller()->serviceProvider()->databaseServices()->saveReplicaInfo(newReplica);
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

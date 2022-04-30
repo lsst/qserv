@@ -37,63 +37,46 @@ using namespace std;
 namespace {
 
 string const description =
-    "This application probes and reports a status of the Replication system's"
-    " and Qserv workers to see if they respond within the specified (or implied)"
-    " timeout. Set some small value to the configuration parameter"
-    " --controller-request-timeout-sec to avoid waiting for too long due to"
-    " non-responsive workers.";
+        "This application probes and reports a status of the Replication system's"
+        " and Qserv workers to see if they respond within the specified (or implied)"
+        " timeout. Set some small value to the configuration parameter"
+        " --controller-request-timeout-sec to avoid waiting for too long due to"
+        " non-responsive workers.";
 
 bool const injectDatabaseOptions = true;
 bool const boostProtobufVersionCheck = true;
 bool const enableServiceProvider = true;
 
-} /// namespace
+}  // namespace
 
-
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
 ClusterHealthApp::Ptr ClusterHealthApp::create(int argc, char* argv[]) {
     return Ptr(new ClusterHealthApp(argc, argv));
 }
 
-
 ClusterHealthApp::ClusterHealthApp(int argc, char* argv[])
-    :   Application(
-            argc, argv,
-            ::description,
-            ::injectDatabaseOptions,
-            ::boostProtobufVersionCheck,
-            ::enableServiceProvider
-        ) {
-
+        : Application(argc, argv, ::description, ::injectDatabaseOptions, ::boostProtobufVersionCheck,
+                      ::enableServiceProvider) {
     // Configure the command line parser
 
-    parser().flag(
-        "all-workers",
-        "Extend a scope of the operation to probes all known workers instead of"
-        " just the ENABLED ones.",
-        _allWorkers);
+    parser().flag("all-workers",
+                  "Extend a scope of the operation to probes all known workers instead of"
+                  " just the ENABLED ones.",
+                  _allWorkers);
 }
 
-
 int ClusterHealthApp::runImpl() {
-
     // Send probes to workers of both types
 
     // Zero value is set to let the job use a value of the configuration parameter:
     // ("controller", "request-timeout-sec")
     unsigned int const defaultTimeoutSec = 0U;
     string const noParentJobId;
-    auto const job = ClusterHealthJob::create(
-        defaultTimeoutSec,
-        _allWorkers,
-        Controller::create(serviceProvider()),
-        noParentJobId,
-        nullptr,        // no callback
-        PRIORITY_NORMAL
-    );
+    auto const job = ClusterHealthJob::create(defaultTimeoutSec, _allWorkers,
+                                              Controller::create(serviceProvider()), noParentJobId,
+                                              nullptr,  // no callback
+                                              PRIORITY_NORMAL);
     job->start();
     job->wait();
 
@@ -102,28 +85,27 @@ int ClusterHealthApp::runImpl() {
     cout << "ClusterHealth::" + string(__func__) + " job finished: " << job->state2string() << endl;
 
     if (job->extendedState() == Job::ExtendedState::SUCCESS) {
-
         auto&& health = job->clusterHealth();
 
-        map<string, map<string,string>> worker2status;
-        for (auto&& entry: health.qserv()) {
+        map<string, map<string, string>> worker2status;
+        for (auto&& entry : health.qserv()) {
             worker2status[entry.first]["qserv"] = entry.second ? "UP" : "*";
         }
-        for (auto&& entry: health.replication()) {
+        for (auto&& entry : health.replication()) {
             worker2status[entry.first]["replication"] = entry.second ? "UP" : "*";
         }
         vector<string> columnWorker;
         vector<string> columnQserv;
         vector<string> columnReplica;
-        for (auto&& entry: worker2status) {
-            columnWorker .push_back(entry.first);
-            columnQserv  .push_back(entry.second["qserv"]);
+        for (auto&& entry : worker2status) {
+            columnWorker.push_back(entry.first);
+            columnQserv.push_back(entry.second["qserv"]);
             columnReplica.push_back(entry.second["replication"]);
         }
         util::ColumnTablePrinter table("STATUS", "  ", false);
 
-        table.addColumn("worker",      columnWorker,  util::ColumnTablePrinter::LEFT);
-        table.addColumn("qserv",       columnQserv,   util::ColumnTablePrinter::LEFT);
+        table.addColumn("worker", columnWorker, util::ColumnTablePrinter::LEFT);
+        table.addColumn("qserv", columnQserv, util::ColumnTablePrinter::LEFT);
         table.addColumn("replication", columnReplica, util::ColumnTablePrinter::LEFT);
 
         cout << endl;
@@ -133,4 +115,4 @@ int ClusterHealthApp::runImpl() {
     return 0;
 }
 
-}}} // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

@@ -21,10 +21,8 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-
 #ifndef LSST_QSERV_QUERY_BOOLTERMFACTOR_H
 #define LSST_QSERV_QUERY_BOOLTERMFACTOR_H
-
 
 // System headers
 #include <ostream>
@@ -33,20 +31,13 @@
 #include "query/BoolFactorTerm.h"
 #include "query/ColumnRef.h"
 
-
 // Forward declarations
-namespace lsst {
-namespace qserv {
-namespace query {
-    class BoolTerm;
-    class ValueExpr;
-}}} // End of forward declarations
+namespace lsst::qserv::query {
+class BoolTerm;
+class ValueExpr;
+}  // namespace lsst::qserv::query
 
-
-namespace lsst {
-namespace qserv {
-namespace query {
-
+namespace lsst::qserv::query {
 
 /// BoolTermFactor is a bool factor term that contains a bool term. Occurs often
 /// when parentheses are used within a bool term. The parenthetical group is an
@@ -62,7 +53,7 @@ public:
     BoolFactorTerm::Ptr clone() const override;
 
     /// Make a shallow copy of this term.
-     BoolFactorTerm::Ptr copySyntax() const override;
+    BoolFactorTerm::Ptr copySyntax() const override;
 
     /// Write a human-readable version of this instance to the ostream for debug output.
     std::ostream& putStream(std::ostream& os) const override;
@@ -89,7 +80,6 @@ protected:
     void dbgPrint(std::ostream& os) const override;
 };
 
+}  // namespace lsst::qserv::query
 
-}}} // namespace lsst::qserv::query
-
-#endif // LSST_QSERV_QUERY_BOOLTERMFACTOR_H
+#endif  // LSST_QSERV_QUERY_BOOLTERMFACTOR_H

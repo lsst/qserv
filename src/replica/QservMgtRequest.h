@@ -42,15 +42,13 @@
 class XrdSsiService;
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class QservMgtRequest is a base class for a family of the Qserv worker
  * management requests within the master server.
  */
-class QservMgtRequest: public std::enable_shared_from_this<QservMgtRequest>  {
+class QservMgtRequest : public std::enable_shared_from_this<QservMgtRequest> {
 public:
     typedef std::shared_ptr<QservMgtRequest> Ptr;
 
@@ -112,9 +110,8 @@ public:
     static std::string state2string(ExtendedState state);
 
     /// @return the string representation of the combined state
-    static std::string state2string(State state,
-                                    ExtendedState extendedState) {
-        return state2string(state) + "::" +state2string(extendedState);
+    static std::string state2string(State state, ExtendedState extendedState) {
+        return state2string(state) + "::" + state2string(extendedState);
     }
 
     QservMgtRequest() = delete;
@@ -172,9 +169,8 @@ public:
      *                   allowing to override the default value of
      *                   the corresponding parameter from the Configuration.
      */
-    void start(XrdSsiService* service,
-               std::string const& jobId="",
-               unsigned int requestExpirationIvalSec=0);
+    void start(XrdSsiService* service, std::string const& jobId = "",
+               unsigned int requestExpirationIvalSec = 0);
 
     /// Wait for the completion of the request
     void wait();
@@ -193,8 +189,8 @@ public:
      * @return A dictionary of parameters and the corresponding values to
      *   be stored in a database for a request.
      */
-    virtual std::list<std::pair<std::string,std::string>> extendedPersistentState() const {
-        return std::list<std::pair<std::string,std::string>>();
+    virtual std::list<std::pair<std::string, std::string>> extendedPersistentState() const {
+        return std::list<std::pair<std::string, std::string>>();
     }
 
 protected:
@@ -204,8 +200,7 @@ protected:
      * @param type The type name of he request (used for debugging and error reporting).
      * @param worker The name of a worker.
      */
-    QservMgtRequest(ServiceProvider::Ptr const& serviceProvider,
-                    std::string const& type,
+    QservMgtRequest(ServiceProvider::Ptr const& serviceProvider, std::string const& type,
                     std::string const& worker);
 
     /// @return A shared pointer of the desired subclass (no dynamic type checking).
@@ -244,9 +239,7 @@ protected:
      * @param extendedState The new extended state.
      * @param serverError (optional) error message from a Qserv worker service.
      */
-    void finish(util::Lock const& lock,
-                ExtendedState extendedState,
-                std::string const& serverError="");
+    void finish(util::Lock const& lock, ExtendedState extendedState, std::string const& serverError = "");
 
     /**
      * This method is supposed to be provided by subclasses
@@ -293,16 +286,14 @@ protected:
      * @param onFinish A callback function (if set) to be called.
      */
     template <class T>
-    void notifyDefaultImpl(util::Lock const& lock,
-                           typename T::CallbackType& onFinish) {    
+    void notifyDefaultImpl(util::Lock const& lock, typename T::CallbackType& onFinish) {
         if (nullptr != onFinish) {
             // Clearing the stored callback after finishing the up-stream notification
             // has two purposes:
             // 1. it guaranties (exactly) one time notification
             // 2. it breaks the up-stream dependency on a caller object if a shared
             //    pointer to the object was mentioned as the lambda-function's closure
-            serviceProvider()->io_service().post(
-                std::bind(std::move(onFinish), shared_from_base<T>()));
+            serviceProvider()->io_service().post(std::bind(std::move(onFinish), shared_from_base<T>()));
             onFinish = nullptr;
         }
     }
@@ -331,8 +322,7 @@ protected:
      * @param state The primary state of the request.
      * @param extendedState The extended state of the request.
      */
-    void setState(util::Lock const& lock, State state,
-                  ExtendedState extendedState=ExtendedState::NONE);
+    void setState(util::Lock const& lock, State state, ExtendedState extendedState = ExtendedState::NONE);
 
     /**
      * @param lock A lock on QservMgtRequest::_mtx must be acquired before calling this method.
@@ -364,7 +354,7 @@ private:
 
     // Two-level state of a request
 
-    std::atomic<State>         _state;
+    std::atomic<State> _state;
     std::atomic<ExtendedState> _extendedState;
 
     /// Error message (if any) reported by the remote service
@@ -385,7 +375,7 @@ private:
     ///
     /// If the time has a chance to expire then the request would finish
     /// with status: FINISHED::TIMEOUT_EXPIRED.
-    unsigned int                _requestExpirationIvalSec;
+    unsigned int _requestExpirationIvalSec;
     boost::asio::deadline_timer _requestExpirationTimer;
 
     // Synchronization primitives for implementing QservMgtRequest::wait()
@@ -395,6 +385,6 @@ private:
     std::condition_variable _onFinishCv;
 };
 
-}}} // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_QSERVMGTREQUEST_H
+#endif  // LSST_QSERV_REPLICA_QSERVMGTREQUEST_H

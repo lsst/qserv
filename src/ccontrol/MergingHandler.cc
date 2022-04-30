@@ -43,8 +43,8 @@
 #include "util/common.h"
 #include "util/StringHash.h"
 
-using lsst::qserv::proto::ProtoImporter;
 using lsst::qserv::proto::ProtoHeader;
+using lsst::qserv::proto::ProtoImporter;
 using lsst::qserv::proto::Result;
 using lsst::qserv::proto::WorkerResponse;
 
@@ -54,98 +54,100 @@ namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.ccontrol.MergingHandler");
 }
 
-
-namespace lsst {
-namespace qserv {
-namespace ccontrol {
-
+namespace lsst::qserv::ccontrol {
 
 ////////////////////////////////////////////////////////////////////////
 // MergingHandler public
 ////////////////////////////////////////////////////////////////////////
-MergingHandler::MergingHandler(
-    std::shared_ptr<MsgReceiver> msgReceiver,
-    std::shared_ptr<rproc::InfileMerger> merger,
-    std::string const& tableName)
-    : _msgReceiver{msgReceiver}, _infileMerger{merger}, _tableName{tableName},
-      _response{new WorkerResponse()} {
+MergingHandler::MergingHandler(std::shared_ptr<MsgReceiver> msgReceiver,
+                               std::shared_ptr<rproc::InfileMerger> merger, std::string const& tableName)
+        : _msgReceiver{msgReceiver},
+          _infileMerger{merger},
+          _tableName{tableName},
+          _response{new WorkerResponse()} {
     _initState();
 }
 
-MergingHandler::~MergingHandler() {
-    LOGS(_log, LOG_LVL_DEBUG, "~MergingHandler()");
-}
+MergingHandler::~MergingHandler() { LOGS(_log, LOG_LVL_DEBUG, "~MergingHandler()"); }
 
 const char* MergingHandler::getStateStr(MsgState const& state) {
-    switch(state) {
-    case MsgState::HEADER_WAIT: return "HEADER_WAIT";
-    case MsgState::RESULT_WAIT: return "RESULT_WAIT";
-    case MsgState::RESULT_RECV: return "RESULT_RECV";
-    case MsgState::HEADER_ERR:  return "HEADER_ERR";
-    case MsgState::RESULT_ERR:  return "RESULT_ERR";
+    switch (state) {
+        case MsgState::HEADER_WAIT:
+            return "HEADER_WAIT";
+        case MsgState::RESULT_WAIT:
+            return "RESULT_WAIT";
+        case MsgState::RESULT_RECV:
+            return "RESULT_RECV";
+        case MsgState::HEADER_ERR:
+            return "HEADER_ERR";
+        case MsgState::RESULT_ERR:
+            return "RESULT_ERR";
     }
     return "unknown";
 }
 
-
-bool MergingHandler::flush(int bLen, BufPtr const& bufPtr, bool& last, bool& largeResult,
-                           int& nextBufSize, int& resultRows) {
-    LOGS(_log, LOG_LVL_DEBUG, "From:" << _wName << " flush state="
-         << getStateStr(_state) << " blen=" << bLen << " last=" << last);
+bool MergingHandler::flush(int bLen, BufPtr const& bufPtr, bool& last, bool& largeResult, int& nextBufSize,
+                           int& resultRows) {
+    LOGS(_log, LOG_LVL_DEBUG,
+         "From:" << _wName << " flush state=" << getStateStr(_state) << " blen=" << bLen << " last=" << last);
     resultRows = 0;
 
     if (bLen < 0) {
         throw util::Bug(ERR_LOC, "MergingHandler invalid blen=" + to_string(bLen) + " from " + _wName);
     }
 
-    switch(_state) {
-    case MsgState::HEADER_WAIT:
-        _response->headerSize = static_cast<unsigned char>((*bufPtr)[0]);
-        if (!proto::ProtoHeaderWrap::unwrap(_response, *bufPtr)) {
-            std::string sErr = "From:" + _wName + "Error decoding proto header for " + getStateStr(_state);
-            _setError(ccontrol::MSG_RESULT_DECODE, sErr);
-            _state = MsgState::HEADER_ERR;
-            return false;
-        }
-        if (_wName == "~") {
-            _wName = _response->protoHeader.wname();
-        }
-
-        {
-            nextBufSize    = _response->protoHeader.size();
-            largeResult    = _response->protoHeader.largeresult();
-            bool endNoData = _response->protoHeader.endnodata();
-            int seq = -1;
-            int scsSeq = -1;
-            if (_response->protoHeader.has_seq()) {
-                seq = _response->protoHeader.seq();
+    switch (_state) {
+        case MsgState::HEADER_WAIT:
+            _response->headerSize = static_cast<unsigned char>((*bufPtr)[0]);
+            if (!proto::ProtoHeaderWrap::unwrap(_response, *bufPtr)) {
+                std::string sErr =
+                        "From:" + _wName + "Error decoding proto header for " + getStateStr(_state);
+                _setError(ccontrol::MSG_RESULT_DECODE, sErr);
+                _state = MsgState::HEADER_ERR;
+                return false;
             }
-            if (_response->protoHeader.has_scsseq()) {
-                scsSeq = _response->protoHeader.scsseq();
+            if (_wName == "~") {
+                _wName = _response->protoHeader.wname();
             }
-            LOGS(_log, LOG_LVL_DEBUG, "HEADER_WAIT: From:" << _wName
-                << " nextBufSize=" << nextBufSize << " largeResult=" << largeResult
-                << " endNoData=" << endNoData << " seq=" << seq << " scsseq=" << scsSeq);
 
-            _state = MsgState::RESULT_WAIT;
-            if (endNoData || nextBufSize == 0) {
-                if (!endNoData || nextBufSize != 0 ) {
-                    throw util::Bug(ERR_LOC, "inconsistent msg termination endNoData=" + std::to_string(endNoData)
-                                    + " nextBufSize=" + std::to_string(nextBufSize));
+            {
+                nextBufSize = _response->protoHeader.size();
+                largeResult = _response->protoHeader.largeresult();
+                bool endNoData = _response->protoHeader.endnodata();
+                int seq = -1;
+                int scsSeq = -1;
+                if (_response->protoHeader.has_seq()) {
+                    seq = _response->protoHeader.seq();
                 }
-                // Nothing to merge, but some bookkeeping needs to be done.
-                _infileMerger->mergeCompleteFor(_jobIds);
-                last = true;
-                _state = MsgState::RESULT_RECV;
+                if (_response->protoHeader.has_scsseq()) {
+                    scsSeq = _response->protoHeader.scsseq();
+                }
+                LOGS(_log, LOG_LVL_DEBUG,
+                     "HEADER_WAIT: From:" << _wName << " nextBufSize=" << nextBufSize
+                                          << " largeResult=" << largeResult << " endNoData=" << endNoData
+                                          << " seq=" << seq << " scsseq=" << scsSeq);
+
+                _state = MsgState::RESULT_WAIT;
+                if (endNoData || nextBufSize == 0) {
+                    if (!endNoData || nextBufSize != 0) {
+                        throw util::Bug(ERR_LOC, "inconsistent msg termination endNoData=" +
+                                                         std::to_string(endNoData) +
+                                                         " nextBufSize=" + std::to_string(nextBufSize));
+                    }
+                    // Nothing to merge, but some bookkeeping needs to be done.
+                    _infileMerger->mergeCompleteFor(_jobIds);
+                    last = true;
+                    _state = MsgState::RESULT_RECV;
+                }
             }
-        }
-        return true;
-    case MsgState::RESULT_WAIT:
-        {
+            return true;
+        case MsgState::RESULT_WAIT: {
             nextBufSize = proto::ProtoHeaderWrap::getProtoHeaderSize();
             auto jobQuery = getJobQuery().lock();
-            if (!_verifyResult(bufPtr, bLen)) { return false; }
-            if (!_setResult(bufPtr, bLen)) { // This sets _response->result
+            if (!_verifyResult(bufPtr, bLen)) {
+                return false;
+            }
+            if (!_setResult(bufPtr, bLen)) {  // This sets _response->result
                 LOGS(_log, LOG_LVL_WARN, "setResult failure " << _wName);
                 return false;
             }
@@ -161,27 +163,25 @@ bool MergingHandler::flush(int bLen, BufPtr const& bufPtr, bool& last, bool& lar
             _response.reset(new WorkerResponse());
             return success;
         }
-    case MsgState::RESULT_RECV:
-        // We shouldn't wind up here. _buffer.size(0) and last=true should end communication.
-        [[fallthrough]];
-    case MsgState::HEADER_ERR:
-        [[fallthrough]];
-    case MsgState::RESULT_ERR:
-         {
+        case MsgState::RESULT_RECV:
+            // We shouldn't wind up here. _buffer.size(0) and last=true should end communication.
+            [[fallthrough]];
+        case MsgState::HEADER_ERR:
+            [[fallthrough]];
+        case MsgState::RESULT_ERR: {
             std::ostringstream eos;
-            eos << "Unexpected message From:" << _wName << " flush state="
-                << getStateStr(_state) << " last=" << last;
+            eos << "Unexpected message From:" << _wName << " flush state=" << getStateStr(_state)
+                << " last=" << last;
             LOGS(_log, LOG_LVL_ERROR, eos.str());
             _setError(ccontrol::MSG_RESULT_ERROR, eos.str());
-         }
-        return false;
-    default:
-        break;
+        }
+            return false;
+        default:
+            break;
     }
     _setError(ccontrol::MSG_RESULT_ERROR, "Unexpected message (invalid)");
     return false;
 }
-
 
 void MergingHandler::errorFlush(std::string const& msg, int code) {
     _setError(code, msg);
@@ -190,9 +190,7 @@ void MergingHandler::errorFlush(std::string const& msg, int code) {
     LOGS(_log, LOG_LVL_ERROR, "Error receiving result.");
 }
 
-bool MergingHandler::finished() const {
-    return _flushed;
-}
+bool MergingHandler::finished() const { return _flushed; }
 
 bool MergingHandler::reset() {
     // If we've pushed any bits to the merger successfully, we have to undo them
@@ -200,7 +198,7 @@ bool MergingHandler::reset() {
     // begun merging. If we implement the ability to retract a partial result
     // merge, then we can use it and do something better.
     if (_flushed) {
-        return false; // Can't reset if we have already pushed state.
+        return false;  // Can't reset if we have already pushed state.
     }
     _initState();
     return true;
@@ -213,10 +211,8 @@ void MergingHandler::prepScrubResults(int jobId, int attemptCount) {
     if (_infileMerger) _infileMerger->prepScrub(jobId, attemptCount);
 }
 
-
 std::ostream& MergingHandler::print(std::ostream& os) const {
-    return os << "MergingRequester(" << _tableName << ", flushed="
-              << (_flushed ? "true)" : "false)") ;
+    return os << "MergingRequester(" << _tableName << ", flushed=" << (_flushed ? "true)" : "false)");
 }
 ////////////////////////////////////////////////////////////////////////
 // MergingRequester private
@@ -280,5 +276,4 @@ bool MergingHandler::_verifyResult(BufPtr const& bufPtr, int blen) {
     return true;
 }
 
-
-}}} // lsst::qserv::ccontrol
+}  // namespace lsst::qserv::ccontrol

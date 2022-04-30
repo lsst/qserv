@@ -42,10 +42,7 @@
 #include "sql/SqlErrorObject.h"
 #include "sql/Schema.h"
 
-
-namespace lsst {
-namespace qserv {
-namespace sql {
+namespace lsst::qserv::sql {
 
 namespace detail {
 
@@ -55,7 +52,7 @@ namespace detail {
  *  if the column value is NONE.
  */
 class SqlResults_Iterator : public std::iterator<std::input_iterator_tag,
-                                   std::vector<std::pair<char const*, unsigned long> > > {
+                                                 std::vector<std::pair<char const*, unsigned long> > > {
 public:
     SqlResults_Iterator();
     SqlResults_Iterator(std::vector<MYSQL_RES*> const& results);
@@ -75,44 +72,30 @@ private:
     std::vector<MYSQL_RES*> _results;
     value_type _value;
 };
-}
+}  // namespace detail
 
 class SqlResults : boost::noncopyable {
 public:
-
     typedef detail::SqlResults_Iterator iterator;
     typedef detail::SqlResults_Iterator const_iterator;
     typedef iterator::value_type value_type;
 
-    SqlResults(bool discardImmediately=false)
-        :_discardImmediately(discardImmediately)
-        , _affectedRows(0) {}
-    ~SqlResults() {freeResults();}
+    SqlResults(bool discardImmediately = false) : _discardImmediately(discardImmediately), _affectedRows(0) {}
+    ~SqlResults() { freeResults(); }
 
     void addResult(MYSQL_RES* r);
-    void setAffectedRows(unsigned long long count) {
-        _affectedRows = count;
-    }
+    void setAffectedRows(unsigned long long count) { _affectedRows = count; }
     // Get number of affected rows for UPDATE/DELETE/INSERT,
     // do not use it for SELECT
-    unsigned long long getAffectedRows() const {
-        return _affectedRows;
-    }
+    unsigned long long getAffectedRows() const { return _affectedRows; }
     bool extractFirstValue(std::string&, SqlErrorObject&);
-    bool extractFirstColumn(std::vector<std::string>&,
-                            SqlErrorObject&);
-    bool extractFirst2Columns(std::vector<std::string>&, //FIXME: generalize
-                              std::vector<std::string>&,
-                              SqlErrorObject&);
-    bool extractFirst3Columns(std::vector<std::string>&, //FIXME: generalize
-                              std::vector<std::string>&,
-                              std::vector<std::string>&,
-                              SqlErrorObject&);
-    bool extractFirst4Columns(std::vector<std::string>&,
-                              std::vector<std::string>&,
-                              std::vector<std::string>&,
-                              std::vector<std::string>&,
-                              SqlErrorObject&);
+    bool extractFirstColumn(std::vector<std::string>&, SqlErrorObject&);
+    bool extractFirst2Columns(std::vector<std::string>&,  // FIXME: generalize
+                              std::vector<std::string>&, SqlErrorObject&);
+    bool extractFirst3Columns(std::vector<std::string>&,  // FIXME: generalize
+                              std::vector<std::string>&, std::vector<std::string>&, SqlErrorObject&);
+    bool extractFirst4Columns(std::vector<std::string>&, std::vector<std::string>&, std::vector<std::string>&,
+                              std::vector<std::string>&, SqlErrorObject&);
     void freeResults();
 
     /// Return row iterator
@@ -129,6 +112,6 @@ private:
     unsigned long long _affectedRows;
 };
 
-}}} // namespace lsst::qserv:: sql
+}  // namespace lsst::qserv::sql
 
-#endif // LSST_QSERV_SQL_SQLRESULTS_H
+#endif  // LSST_QSERV_SQL_SQLRESULTS_H

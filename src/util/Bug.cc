@@ -32,14 +32,11 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.util");
 
 }
 
-
-namespace lsst {
-namespace qserv {
-namespace util {
+namespace lsst::qserv::util {
 
 Bug::Bug(util::Issue::Context const& ctx, std::string const& msg) : util::Issue(ctx, msg) {
     // Log the error immediately so it appears in the thread that is throwing.
     LOGS(_log, LOG_LVL_ERROR, "Bug:" << msg);
 }
 
-}}} // namespace lsst::qserv
+}  // namespace lsst::qserv::util

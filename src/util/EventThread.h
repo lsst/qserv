@@ -37,9 +37,7 @@
 // Qserv headers
 #include "util/Command.h"
 
-namespace lsst {
-namespace qserv {
-namespace util {
+namespace lsst::qserv::util {
 
 ///
 // The classes in this header are meant to provide the basis for easy to use event
@@ -73,13 +71,12 @@ namespace util {
 // ThreadPool is that the command is too slow for that scheduler.
 //
 
-
 /// A queue of Commands meant to drive an EventThread.
 ///
 class CommandQueue {
 public:
     using Ptr = std::shared_ptr<CommandQueue>;
-    virtual ~CommandQueue() {};
+    virtual ~CommandQueue(){};
     /// Queue a command object in a thread safe way and signal any threads
     /// waiting on the queue that a command is available.
     virtual void queCmd(Command::Ptr const& cmd) {
@@ -87,7 +84,7 @@ public:
             std::lock_guard<std::mutex> lock(_mx);
             _qu.push_back(cmd);
         }
-        notify(false); // notify all=false
+        notify(false);  // notify all=false
     };
 
     /// Atomically queue all commands in cmds.
@@ -95,10 +92,10 @@ public:
 
     /// Get a command off the queue.
     /// If wait is true, wait until a message is available.
-    virtual Command::Ptr getCmd(bool wait=true) {
+    virtual Command::Ptr getCmd(bool wait = true) {
         std::unique_lock<std::mutex> lock(_mx);
         if (wait) {
-            _cv.wait(lock, [this](){return !_qu.empty();});
+            _cv.wait(lock, [this]() { return !_qu.empty(); });
         }
         if (_qu.empty()) {
             return nullptr;
@@ -114,7 +111,7 @@ public:
     }
 
     /// Notify all threads waiting on this queue, or just 1 if all is false.
-    virtual void notify(bool all=true) {
+    virtual void notify(bool all = true) {
         if (all) {
             _cv.notify_all();
         } else {
@@ -122,13 +119,13 @@ public:
         }
     }
 
-    virtual void commandStart(Command::Ptr const&) {}; //< Derived methods must be thread safe.
-    virtual void commandFinish(Command::Ptr const&) {}; //< Derived methods must be thread safe.
+    virtual void commandStart(Command::Ptr const&){};   //< Derived methods must be thread safe.
+    virtual void commandFinish(Command::Ptr const&){};  //< Derived methods must be thread safe.
 
 protected:
     std::deque<Command::Ptr> _qu{};
-    std::condition_variable  _cv{};
-    mutable std::mutex       _mx{};
+    std::condition_variable _cv{};
+    mutable std::mutex _mx{};
 };
 
 /// An event driven thread, the event loop is in handleCmds().
@@ -143,9 +140,9 @@ public:
     EventThread& operator=(EventThread const&) = delete;
     virtual ~EventThread() {}
 
-    void handleCmds(); //< Event loop!!!
+    void handleCmds();  //< Event loop!!!
     void join() { _t.join(); }
-    void run(); ///< Run this EventThread.
+    void run();  ///< Run this EventThread.
 
     /// Put a Command on this EventThread's queue.
     void queCmd(Command::Ptr cmd) {
@@ -156,7 +153,7 @@ public:
     /// Queues and action that will stop the EventThread that answers it.
     virtual void queEnd() {
         struct MsgEnd : public Command {
-            void action(CmdData *data) override {
+            void action(CmdData* data) override {
                 auto thisEventThread = dynamic_cast<EventThread*>(data);
                 if (thisEventThread != nullptr) {
                     thisEventThread->_loop = false;
@@ -170,22 +167,21 @@ public:
     Command* getCurrentCommand() const { return _currentCommand; }
 
 protected:
-    virtual void startup() {}  ///< Things to do when the thread is starting up.
-    virtual void finishup() {} ///< things to do when the thread is closing down.
-    virtual void specialActions(Command::Ptr const& cmd) {} ///< Things to do before running a command.
-    void callCommandFinish(Command::Ptr const& cmd); //< Limit commandFinish() to be called once per loop.
+    virtual void startup() {}   ///< Things to do when the thread is starting up.
+    virtual void finishup() {}  ///< things to do when the thread is closing down.
+    virtual void specialActions(Command::Ptr const& cmd) {}  ///< Things to do before running a command.
+    void callCommandFinish(Command::Ptr const& cmd);  //< Limit commandFinish() to be called once per loop.
 
-    CommandQueue::Ptr _q{std::make_shared<CommandQueue>()}; ///< Queue of commands.
-    std::thread _t;            //< Our thread.
-    std::atomic<bool> _loop {true}; //< Keep running the event loop while this is true.
-    std::atomic<bool> _commandFinishCalled{false}; //< flag to prevent multiple calls to commandFinish.
-    Command::Ptr _getCurrentCommandPtr() const { return _cmd; } //< not thread safe.
+    CommandQueue::Ptr _q{std::make_shared<CommandQueue>()};  ///< Queue of commands.
+    std::thread _t;                                          //< Our thread.
+    std::atomic<bool> _loop{true};                  //< Keep running the event loop while this is true.
+    std::atomic<bool> _commandFinishCalled{false};  //< flag to prevent multiple calls to commandFinish.
+    Command::Ptr _getCurrentCommandPtr() const { return _cmd; }  //< not thread safe.
 
 private:
     Command::Ptr _cmd;
     std::atomic<Command*> _currentCommand{nullptr};
 };
-
 
 /// This class is used to join threads that are no longer wanted by their original owners. In
 /// most cases, this means a ThreadPool no longer wants them. The threads are added to a queue
@@ -205,17 +201,14 @@ public:
     bool joinable() { return _tJoiner.joinable(); }
 
 private:
-    std::atomic<bool> _continue{true}; ///< Stop checking
+    std::atomic<bool> _continue{true};  ///< Stop checking
     std::atomic<int> _count{0};
-    std::chrono::milliseconds _sleepTime{1000}; ///< Wait time before checking, only if queue is empty.
-    std::queue<EventThread::Ptr> _eventThreads; ///< Queue of EventThreads that need joining.
-    std::mutex _mtxJoiner; ///< Protects _eventThreads
-    std::thread _tJoiner; ///< Thread where joining will happen.
+    std::chrono::milliseconds _sleepTime{1000};  ///< Wait time before checking, only if queue is empty.
+    std::queue<EventThread::Ptr> _eventThreads;  ///< Queue of EventThreads that need joining.
+    std::mutex _mtxJoiner;                       ///< Protects _eventThreads
+    std::thread _tJoiner;                        ///< Thread where joining will happen.
 };
 
-}}} // namespace lsst:qserv:util
-
-
-
+}  // namespace lsst::qserv::util
 
 #endif /* LSST_QSERV_UTIL_EVENTTHREAD_H_ */

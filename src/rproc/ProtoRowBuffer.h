@@ -26,16 +26,12 @@
 // System headers
 #include <limits>
 
-
 // Qserv headers
 #include "mysql/RowBuffer.h"
 #include "proto/worker.pb.h"
 #include "sql/Schema.h"
 
-namespace lsst {
-namespace qserv {
-namespace rproc {
-
+namespace lsst::qserv::rproc {
 
 /// ProtoRowBuffer is an implementation of RowBuffer designed to allow a
 /// LocalInfile object to use a Protobufs Result message as a row source
@@ -61,34 +57,55 @@ public:
     /// @return the number of bytes written to dest
     template <typename Iter, typename CIter>
     static inline int escapeString(Iter destBegin, CIter srcBegin, CIter srcEnd) {
-        //mysql_real_escape_string(_mysql, cursor, col, r.lengths[i]);
+        // mysql_real_escape_string(_mysql, cursor, col, r.lengths[i]);
         // empty string isn't escaped
         if (srcEnd == srcBegin) return 0;
         assert(srcEnd - srcBegin > 0);
         assert(srcEnd - srcBegin < std::numeric_limits<int>::max() / 2);
         Iter destI = destBegin;
-        for(CIter i = srcBegin; i != srcEnd; ++i) {
-            switch(*i) {
-              case '\0':   *destI++ = '\\'; *destI++ = '0'; break;
-              case '\b':   *destI++ = '\\'; *destI++ = 'b'; break;
-              case '\n':   *destI++ = '\\'; *destI++ = 'n'; break;
-              case '\r':   *destI++ = '\\'; *destI++ = 'r'; break;
-              case '\t':   *destI++ = '\\'; *destI++ = 't'; break;
-              case '\032': *destI++ = '\\'; *destI++ = 'Z'; break;
-              case '\\': {
-                  auto const nextI = i + 1;
-                  if (srcEnd == nextI) {
-                      *destI++ = *i;
-                  } else if (*nextI != 'N') {
-                      *destI++ = '\\'; *destI++ = '\\';
-                  } else {
-                      // in this case don't modify anything, because Null (\N) is not treated by escaping in
-                      // this context.
-                      *destI++ = *i;
-                  }
-                  break;
-              }
-              default: *destI++ = *i; break;
+        for (CIter i = srcBegin; i != srcEnd; ++i) {
+            switch (*i) {
+                case '\0':
+                    *destI++ = '\\';
+                    *destI++ = '0';
+                    break;
+                case '\b':
+                    *destI++ = '\\';
+                    *destI++ = 'b';
+                    break;
+                case '\n':
+                    *destI++ = '\\';
+                    *destI++ = 'n';
+                    break;
+                case '\r':
+                    *destI++ = '\\';
+                    *destI++ = 'r';
+                    break;
+                case '\t':
+                    *destI++ = '\\';
+                    *destI++ = 't';
+                    break;
+                case '\032':
+                    *destI++ = '\\';
+                    *destI++ = 'Z';
+                    break;
+                case '\\': {
+                    auto const nextI = i + 1;
+                    if (srcEnd == nextI) {
+                        *destI++ = *i;
+                    } else if (*nextI != 'N') {
+                        *destI++ = '\\';
+                        *destI++ = '\\';
+                    } else {
+                        // in this case don't modify anything, because Null (\N) is not treated by escaping in
+                        // this context.
+                        *destI++ = *i;
+                    }
+                    break;
+                }
+                default:
+                    *destI++ = *i;
+                    break;
             }
         }
         return destI - destBegin;
@@ -100,8 +117,7 @@ public:
         int existingSize = dest.size();
         dest.resize(existingSize + 2 + 2 * rawColumn.size());
         dest[existingSize] = '\'';
-        int valSize = escapeString(dest.begin() + existingSize + 1,
-                                   rawColumn.begin(), rawColumn.end());
+        int valSize = escapeString(dest.begin() + existingSize + 1, rawColumn.begin(), rawColumn.end());
         dest[existingSize + 1 + valSize] = '\'';
         dest.resize(existingSize + 2 + valSize);
         return 2 + valSize;
@@ -117,36 +133,33 @@ private:
         int sizeBefore = dest.size();
         // Add jobId
         dest.insert(dest.end(), _jobIdStr.begin(), _jobIdStr.end());
-        for(int ci=0, ce=rb.column_size(); ci != ce; ++ci) {
+        for (int ci = 0, ce = rb.column_size(); ci != ce; ++ci) {
             dest.insert(dest.end(), _colSep.begin(), _colSep.end());
             if (!rb.isnull(ci)) {
                 copyColumn(dest, rb.column(ci));
             } else {
-                dest.insert(dest.end(), _nullToken.begin(), _nullToken.end() );
+                dest.insert(dest.end(), _nullToken.begin(), _nullToken.end());
             }
         }
         return dest.size() - sizeBefore;
     }
 
+    std::string _colSep;     ///< Column separator
+    std::string _rowSep;     ///< Row separator
+    std::string _nullToken;  ///< Null indicator (e.g. \N)
+    proto::Result& _result;  ///< Ref to Resultmessage
 
-    std::string _colSep; ///< Column separator
-    std::string _rowSep; ///< Row separator
-    std::string _nullToken; ///< Null indicator (e.g. \N)
-    proto::Result& _result; ///< Ref to Resultmessage
-
-    sql::Schema _schema; ///< Schema object
-    int _rowIdx; ///< Row index
-    int _rowTotal; ///< Total row count
-    std::vector<char> _currentRow; ///< char buffer representing current row.
+    sql::Schema _schema;            ///< Schema object
+    int _rowIdx;                    ///< Row index
+    int _rowTotal;                  ///< Total row count
+    std::vector<char> _currentRow;  ///< char buffer representing current row.
 
     /// Name and type for jobId column in result table. Passed from InfileMerger.
-    std::string _jobIdStr; ///< String form of jobId.
+    std::string _jobIdStr;  ///< String form of jobId.
     std::string const _jobIdColName;
     std::string const _jobIdSqlType;
     int const _jobIdMysqlType;
 };
 
-
-
-}}} // namespace lsst::qserv::rproc
-#endif // LSST_QSERV_RPROC_PROTOROWBUFFER_H
+}  // namespace lsst::qserv::rproc
+#endif  // LSST_QSERV_RPROC_PROTOROWBUFFER_H

@@ -28,9 +28,7 @@
 #include "util/Mutex.h"
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * The SuccessRateGenerator provides a facility for generating a sequence
@@ -43,9 +41,7 @@ namespace replica {
  * THREAD SAFETY: the generator is thread-safe.
  */
 class SuccessRateGenerator {
-
 public:
-
     // Default construction and copy semantics are prohibited
 
     SuccessRateGenerator() = delete;
@@ -62,8 +58,8 @@ public:
      *
      * @param successRate
      *   probability density for 'success'
-    */
-    explicit SuccessRateGenerator(double successRate=0.5);
+     */
+    explicit SuccessRateGenerator(double successRate = 0.5);
 
     ~SuccessRateGenerator() = default;
 
@@ -75,7 +71,6 @@ public:
     bool success();
 
 private:
-
     /// The random device is needed to obtain a seed for the random
     /// number engine.
     std::random_device _rd;
@@ -90,6 +85,6 @@ private:
     mutable util::Mutex _generatorMtx;
 };
 
-}}} // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_SUCCESSRATEGENERATOR_H
+#endif  // LSST_QSERV_REPLICA_SUCCESSRATEGENERATOR_H

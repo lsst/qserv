@@ -33,9 +33,7 @@
 #include "replica/Request.h"
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class RequestTrackerBase is a base class implements a type-independent
@@ -82,8 +80,7 @@ protected:
      * @param errorReport (optional) flag that triggers detailed error reporting after
      *   the completion of the operation.
      */
-    explicit RequestTrackerBase(std::ostream& os, bool progressReport=true,
-                                bool errorReport=false);
+    explicit RequestTrackerBase(std::ostream& os, bool progressReport = true, bool errorReport = false);
 
     /**
      * The method to be implemented by a subclass in order to print
@@ -105,9 +102,9 @@ protected:
     // to avoid race condition between the onFinish() callbacks executed within
     // the Controller's thread and this thread.
 
-    std::atomic<size_t> _numLaunched;   ///< the total number of requests launched
-    std::atomic<size_t> _numFinished;   ///< the total number of finished requests
-    std::atomic<size_t> _numSuccess;    ///< the number of successfully completed requests
+    std::atomic<size_t> _numLaunched;  ///< the total number of requests launched
+    std::atomic<size_t> _numFinished;  ///< the total number of finished requests
+    std::atomic<size_t> _numSuccess;   ///< the number of successfully completed requests
 
 private:
     // Input parameters
@@ -123,7 +120,7 @@ private:
  * the template parameter of the class.
  */
 template <class T>
-class CommonRequestTracker: public RequestTrackerBase {
+class CommonRequestTracker : public RequestTrackerBase {
 public:
     /// All requests that were launched
     std::list<typename T::Ptr> requests;
@@ -140,10 +137,8 @@ public:
      * @param errorReport (optional) flag that triggers detailed error reporting after
      *   the completion of the operation.
      */
-    explicit CommonRequestTracker(std::ostream& os, bool progressReport=true,
-                                  bool errorReport=false)
-        :   RequestTrackerBase(os, progressReport, errorReport) {
-    }
+    explicit CommonRequestTracker(std::ostream& os, bool progressReport = true, bool errorReport = false)
+            : RequestTrackerBase(os, progressReport, errorReport) {}
     virtual ~CommonRequestTracker() override = default;
 
     /**
@@ -171,7 +166,9 @@ public:
     /// @see RequestTrackerBase::getRequests
     virtual std::list<Request::Ptr> getRequests() const override {
         std::list<Request::Ptr> result;
-        for (auto&& ptr: requests) { result.push_back(ptr); }
+        for (auto&& ptr : requests) {
+            result.push_back(ptr);
+        }
         return result;
     }
 
@@ -185,12 +182,11 @@ protected:
     virtual void resetImpl() override { requests.clear(); }
 };
 
-
 /**
  * Class AnyRequestTracker implements a type-aware request tracker for
  * a collection of heterogeneous requests.
  */
-class AnyRequestTracker: public RequestTrackerBase {
+class AnyRequestTracker : public RequestTrackerBase {
 public:
     /// All requests that were launched
     std::list<Request::Ptr> requests;
@@ -207,8 +203,7 @@ public:
      * @param errorReport (optional) flag that triggers detailed error reporting after
      *   the completion of the operation.
      */
-    explicit AnyRequestTracker(std::ostream& os, bool progressReport=true,
-                               bool errorReport=false);
+    explicit AnyRequestTracker(std::ostream& os, bool progressReport = true, bool errorReport = false);
 
     virtual ~AnyRequestTracker() override = default;
 
@@ -237,6 +232,6 @@ protected:
     virtual void resetImpl() override;
 };
 
-}}} // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_REQUESTTRACKER_H
+#endif  // LSST_QSERV_REPLICA_REQUESTTRACKER_H

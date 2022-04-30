@@ -27,44 +27,37 @@
 // Qserv headers
 #include "sql/MockSql.h"
 
-namespace lsst {
-namespace qserv {
+namespace lsst::qserv {
 
 typedef std::vector<StringVector> StringVectorVector;
 
-namespace { // anonymous
+namespace {  // anonymous
 StringVectorVector vec;
 }
 
 namespace sql {
 // class MockSql Implementation
 
-std::shared_ptr<SqlResultIter>
-MockSql::getQueryIter(std::string const& query) {
+std::shared_ptr<SqlResultIter> MockSql::getQueryIter(std::string const& query) {
     typedef StringVectorVector::const_iterator SubIter;
     std::shared_ptr<Iter<SubIter> > iter = std::make_shared<Iter<SubIter> >(vec.begin(), vec.end());
     return iter;
 }
-
 
 unsigned long long MockSql::getInsertId() const {
     throw std::runtime_error("MockSql::getInsertId is not supported.");
     return 0;
 }
 
-
 std::string MockSql::escapeString(std::string const& rawString) const {
     throw std::runtime_error("MockSql::escapeString is not supported.");
     return std::string();
 }
 
-
-bool MockSql::escapeString(std::string const& rawString, std::string& escapedString,
-                            SqlErrorObject& errObj) {
+bool MockSql::escapeString(std::string const& rawString, std::string& escapedString, SqlErrorObject& errObj) {
     throw std::runtime_error("MockSql::escapeString is not supported.");
     return false;
 }
 
-
-} // namespace sql
-}} // namespace lsst::qserv
+}  // namespace sql
+}  // namespace lsst::qserv

@@ -24,67 +24,42 @@
 
 using namespace std;
 
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
-char const* ServiceSuspendRequestPolicy::requestName() {
-    return "SERVICE_SUSPEND";
-}
+char const* ServiceSuspendRequestPolicy::requestName() { return "SERVICE_SUSPEND"; }
 
-
-ProtocolServiceRequestType ServiceSuspendRequestPolicy::requestType () {
+ProtocolServiceRequestType ServiceSuspendRequestPolicy::requestType() {
     return ProtocolServiceRequestType::SERVICE_SUSPEND;
 }
 
-
-char const* ServiceResumeRequestPolicy::requestName() {
-    return "SERVICE_RESUME";
-}
-
+char const* ServiceResumeRequestPolicy::requestName() { return "SERVICE_RESUME"; }
 
 ProtocolServiceRequestType ServiceResumeRequestPolicy::requestType() {
     return ProtocolServiceRequestType::SERVICE_RESUME;
 }
 
-
-char const* ServiceStatusRequestPolicy::requestName() {
-    return "SERVICE_STATUS";
-}
-
+char const* ServiceStatusRequestPolicy::requestName() { return "SERVICE_STATUS"; }
 
 ProtocolServiceRequestType ServiceStatusRequestPolicy::requestType() {
     return ProtocolServiceRequestType::SERVICE_STATUS;
 }
 
-
-char const* ServiceRequestsRequestPolicy::requestName() {
-    return "SERVICE_REQUESTS";
-}
-
+char const* ServiceRequestsRequestPolicy::requestName() { return "SERVICE_REQUESTS"; }
 
 ProtocolServiceRequestType ServiceRequestsRequestPolicy::requestType() {
     return ProtocolServiceRequestType::SERVICE_REQUESTS;
 }
 
-
-char const* ServiceDrainRequestPolicy::requestName() {
-    return "SERVICE_DRAIN";
-}
-
+char const* ServiceDrainRequestPolicy::requestName() { return "SERVICE_DRAIN"; }
 
 ProtocolServiceRequestType ServiceDrainRequestPolicy::requestType() {
     return ProtocolServiceRequestType::SERVICE_DRAIN;
 }
 
-
-char const* ServiceReconfigRequestPolicy::requestName() {
-    return "SERVICE_RECONFIG";
-}
-
+char const* ServiceReconfigRequestPolicy::requestName() { return "SERVICE_RECONFIG"; }
 
 ProtocolServiceRequestType ServiceReconfigRequestPolicy::requestType() {
     return ProtocolServiceRequestType::SERVICE_RECONFIG;
 }
 
-}}} // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

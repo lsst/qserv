@@ -20,13 +20,13 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
- /**
-  * @file
-  *
-  * @brief Task is a bundle of query task fields
-  *
-  * @author Daniel L. Wang, SLAC
-  */
+/**
+ * @file
+ *
+ * @brief Task is a bundle of query task fields
+ *
+ * @author Daniel L. Wang, SLAC
+ */
 
 // Class header
 #include "wbase/Task.h"
@@ -51,16 +51,15 @@ namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.wbase.Task");
 
-std::ostream&
-dump(std::ostream& os,
-    lsst::qserv::proto::TaskMsg_Fragment const& f) {
-    os << "frag: " << "q=";
-    for(int i=0; i < f.query_size(); ++i) {
+std::ostream& dump(std::ostream& os, lsst::qserv::proto::TaskMsg_Fragment const& f) {
+    os << "frag: "
+       << "q=";
+    for (int i = 0; i < f.query_size(); ++i) {
         os << f.query(i) << ",";
     }
     if (f.has_subchunks()) {
         os << " sc=";
-        for(int i=0; i < f.subchunks().id_size(); ++i) {
+        for (int i = 0; i < f.subchunks().id_size(); ++i) {
             os << f.subchunks().id(i) << ",";
         }
     }
@@ -68,48 +67,52 @@ dump(std::ostream& os,
     return os;
 }
 
-} // annonymous namespace
+}  // namespace
 
-namespace lsst {
-namespace qserv {
-namespace wbase {
+namespace lsst::qserv::wbase {
 
 // Task::ChunkEqual functor
 bool Task::ChunkEqual::operator()(Task::Ptr const& x, Task::Ptr const& y) {
-    if (!x || !y) { return false; }
-    if ((!x->msg) || (!y->msg)) { return false; }
-    return x->msg->has_chunkid() && y->msg->has_chunkid()
-        && x->msg->chunkid()  == y->msg->chunkid();
+    if (!x || !y) {
+        return false;
+    }
+    if ((!x->msg) || (!y->msg)) {
+        return false;
+    }
+    return x->msg->has_chunkid() && y->msg->has_chunkid() && x->msg->chunkid() == y->msg->chunkid();
 }
 
 // Task::PtrChunkIdGreater functor
 bool Task::ChunkIdGreater::operator()(Task::Ptr const& x, Task::Ptr const& y) {
-    if (!x || !y) { return false; }
-    if ((!x->msg) || (!y->msg)) { return false; }
-    return x->msg->chunkid()  > y->msg->chunkid();
+    if (!x || !y) {
+        return false;
+    }
+    if ((!x->msg) || (!y->msg)) {
+        return false;
+    }
+    return x->msg->chunkid() > y->msg->chunkid();
 }
-
 
 std::string const Task::defaultUser = "qsmaster";
 IdSet Task::allIds{};
 
 std::atomic<uint32_t> taskSequence{0};
 
-
 /// When the constructor is called, there is not enough information
 /// available to define the action to take when this task is run, so
 /// Command::setFunc() is used set the action later. This is why
 /// the util::CommandThreadPool is not called here.
 Task::Task(TaskMsgPtr const& t, std::string const& query, int fragmentNumber,
-        std::shared_ptr<SendChannelShared> const& sc)
-    : msg(t), _sendChannel(sc),
-      _tSeq(++taskSequence),
-      _qId(t->queryid()), _jId(t->jobid()), _attemptCount(t->attemptcount()),
-      _idStr(makeIdStr()),
-      _queryString(query),
-      _queryFragmentNum(fragmentNumber) {
-
-
+           std::shared_ptr<SendChannelShared> const& sc)
+        : msg(t),
+          _sendChannel(sc),
+          _tSeq(++taskSequence),
+          _qId(t->queryid()),
+          _jId(t->jobid()),
+          _attemptCount(t->attemptcount()),
+          _idStr(makeIdStr()),
+          _queryString(query),
+          _queryFragmentNum(fragmentNumber) {
     hash = hashTaskMsg(*t);
 
     if (t->has_user()) {
@@ -120,11 +123,13 @@ Task::Task(TaskMsgPtr const& t, std::string const& query, int fragmentNumber,
     timestr[0] = '\0';
 
     allIds.add(std::to_string(_qId) + "_" + std::to_string(_jId));
-    LOGS(_log, LOG_LVL_DEBUG, "Task(...) " << "this=" << this << " : " << allIds);
+    LOGS(_log, LOG_LVL_DEBUG,
+         "Task(...) "
+                 << "this=" << this << " : " << allIds);
 
     // Determine which major tables this task will use.
     int const size = msg->scantable_size();
-    for(int j=0; j < size; ++j) {
+    for (int j = 0; j < size; ++j) {
         _scanInfo.infoTables.push_back(proto::ScanTableInfo(msg->scantable(j)));
     }
     _scanInfo.scanRating = msg->scanpriority();
@@ -137,7 +142,6 @@ Task::~Task() {
     LOGS(_log, LOG_LVL_TRACE, "~Task() : " << allIds);
 }
 
-
 std::vector<Task::Ptr> Task::createTasks(std::shared_ptr<proto::TaskMsg> const& taskMsg,
                                          std::shared_ptr<wbase::SendChannelShared> const& sendChannel) {
     QSERV_LOGCONTEXT_QUERY_JOB(taskMsg->queryid(), taskMsg->jobid());
@@ -148,9 +152,9 @@ std::vector<Task::Ptr> Task::createTasks(std::shared_ptr<proto::TaskMsg> const& 
     if (fragmentCount < 1) {
         throw util::Bug(ERR_LOC, "Task::createTasks No fragments to execute in TaskMsg");
     }
-    for (int fragNum=0; fragNum<fragmentCount; ++fragNum) {
+    for (int fragNum = 0; fragNum < fragmentCount; ++fragNum) {
         proto::TaskMsg_Fragment const& fragment = taskMsg->fragment(fragNum);
-        for (const std::string queryStr: fragment.query()) {
+        for (const std::string queryStr : fragment.query()) {
             // fragment.has_subchunks() == true and fragment.subchunks().id().empty() == false
             // is apparently valid and must go to the else clause.
             // TODO: Look into the creation of fragment on the czar as this is not intuitive.
@@ -163,19 +167,17 @@ std::vector<Task::Ptr> Task::createTasks(std::shared_ptr<proto::TaskMsg> const& 
                 }
             } else {
                 auto task = std::make_shared<wbase::Task>(taskMsg, queryStr, fragNum, sendChannel);
-                //TODO: Maybe? Is it better to move fragment info from
+                // TODO: Maybe? Is it better to move fragment info from
                 //      ChunkResource getResourceFragment(int i) to here???
                 //      It looks like Task should contain a ChunkResource::Info object
                 //      which could help clean up ChunkResource and related classes.
                 vect.push_back(task);
             }
-
         }
     }
     sendChannel->setTaskCount(vect.size());
     return vect;
 }
-
 
 /// @return the chunkId for this task. If the task has no chunkId, return -1.
 int Task::getChunkId() {
@@ -185,7 +187,6 @@ int Task::getChunkId() {
     return -1;
 }
 
-
 /// Flag the Task as cancelled, try to stop the SQL query, and try to remove it from the schedule.
 void Task::cancel() {
     LOGS(_log, LOG_LVL_INFO, "Task::cancel " << _idStr);
@@ -193,7 +194,7 @@ void Task::cancel() {
         // Was already cancelled.
         return;
     }
-    auto qr = _taskQueryRunner; // Need a copy in case _taskQueryRunner is reset.
+    auto qr = _taskQueryRunner;  // Need a copy in case _taskQueryRunner is reset.
     if (qr != nullptr) {
         qr->cancel();
     }
@@ -221,21 +222,19 @@ bool Task::checkCancelled() {
     return _cancelled;
 }
 
-
 /// @return true if task has already been cancelled.
 bool Task::setTaskQueryRunner(TaskQueryRunner::Ptr const& taskQueryRunner) {
     _taskQueryRunner = taskQueryRunner;
     return checkCancelled();
 }
 
-void Task::freeTaskQueryRunner(TaskQueryRunner *tqr){
+void Task::freeTaskQueryRunner(TaskQueryRunner* tqr) {
     if (_taskQueryRunner.get() == tqr) {
         _taskQueryRunner.reset();
     } else {
         LOGS(_log, LOG_LVL_WARN, "Task::freeTaskQueryRunner pointer didn't match!");
     }
 }
-
 
 /// Set values associated with the Task being put on the queue.
 void Task::queued(std::chrono::system_clock::time_point const& now) {
@@ -244,12 +243,10 @@ void Task::queued(std::chrono::system_clock::time_point const& now) {
     _queueTime = now;
 }
 
-
 Task::State Task::getState() const {
     std::lock_guard<std::mutex> lock(_stateMtx);
     return _state;
 }
-
 
 /// Set values associated with the Task being started.
 void Task::started(std::chrono::system_clock::time_point const& now) {
@@ -257,7 +254,6 @@ void Task::started(std::chrono::system_clock::time_point const& now) {
     _state = State::RUNNING;
     _startTime = now;
 }
-
 
 /// Set values associated with the Task being finished.
 /// @return milliseconds to complete the Task, system clock time.
@@ -277,7 +273,6 @@ std::chrono::milliseconds Task::finished(std::chrono::system_clock::time_point c
     return duration;
 }
 
-
 /// @return the amount of time spent so far on the task in milliseconds.
 std::chrono::milliseconds Task::getRunTime() const {
     std::chrono::milliseconds duration{0};
@@ -293,7 +288,6 @@ std::chrono::milliseconds Task::getRunTime() const {
     return duration;
 }
 
-
 /// Wait for MemMan to finish reserving resources. The mlock call can take several seconds
 /// and only one mlock call can be running at a time. Further, queries finish slightly faster
 /// if they are mlock'ed in the same order they were scheduled, hence the ulockEvents
@@ -302,16 +296,16 @@ void Task::waitForMemMan() {
     if (_memMan != nullptr) {
         if (_memMan->lock(_memHandle, true)) {
             int errorCode = (errno == EAGAIN ? ENOMEM : errno);
-            LOGS(_log, LOG_LVL_WARN, "mlock err=" << errorCode <<
-                    " " <<_memMan->getStatistics().logString() <<
-                    " " << _memMan->getStatus(_memHandle).logString());
+            LOGS(_log, LOG_LVL_WARN,
+                 "mlock err=" << errorCode << " " << _memMan->getStatistics().logString() << " "
+                              << _memMan->getStatus(_memHandle).logString());
         }
-        LOGS(_log, LOG_LVL_DEBUG, "waitForMemMan " <<_memMan->getStatistics().logString() <<
-                                  " " << _memMan->getStatus(_memHandle).logString());
+        LOGS(_log, LOG_LVL_DEBUG,
+             "waitForMemMan " << _memMan->getStatistics().logString() << " "
+                              << _memMan->getStatus(_memHandle).logString());
     }
     _safeToMoveRunning = true;
 }
-
 
 memman::MemMan::Status Task::getMemHandleStatus() {
     if (_memMan == nullptr || !hasMemHandle()) {
@@ -320,17 +314,12 @@ memman::MemMan::Status Task::getMemHandleStatus() {
     return _memMan->getStatus(_memHandle);
 }
 
-
 std::ostream& operator<<(std::ostream& os, Task const& t) {
     proto::TaskMsg& m = *t.msg;
     os << "Task: "
-       << "msg: " << t._idStr
-       << " session=" << m.session()
-       << " chunk=" << m.chunkid()
-       << " db=" << m.db()
-       << " entry time=" << t.timestr
-       << " ";
-    for(int i=0; i < m.fragment_size(); ++i) {
+       << "msg: " << t._idStr << " session=" << m.session() << " chunk=" << m.chunkid() << " db=" << m.db()
+       << " entry time=" << t.timestr << " ";
+    for (int i = 0; i < m.fragment_size(); ++i) {
         dump(os, m.fragment(i));
         os << " ";
     }
@@ -339,12 +328,12 @@ std::ostream& operator<<(std::ostream& os, Task const& t) {
 
 std::ostream& operator<<(std::ostream& os, IdSet const& idSet) {
     // Limiting output as number of entries can be very large.
-    int maxDisp = idSet.maxDisp; // only affects the amount of data printed.
+    int maxDisp = idSet.maxDisp;  // only affects the amount of data printed.
     std::lock_guard<std::mutex> lock(idSet.mx);
     os << "showing " << maxDisp << " of count=" << idSet._ids.size() << " ";
     bool first = true;
     int i = 0;
-    for(auto id: idSet._ids) {
+    for (auto id : idSet._ids) {
         if (!first) {
             os << ", ";
         } else {
@@ -356,4 +345,4 @@ std::ostream& operator<<(std::ostream& os, IdSet const& idSet) {
     return os;
 }
 
-}}} // namespace lsst::qserv::wbase
+}  // namespace lsst::qserv::wbase

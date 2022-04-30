@@ -31,28 +31,26 @@
 // Qserv headers
 #include "wcontrol/Foreman.h"
 
-
-namespace lsst {
-namespace qserv {
-namespace wsched {
-
+namespace lsst::qserv::wsched {
 
 class BlendScheduler;
-
 
 class SchedulerBase : public wcontrol::Scheduler {
 public:
     using Ptr = std::shared_ptr<SchedulerBase>;
 
-    static int getMaxPriority(){ return 1000000000; }
+    static int getMaxPriority() { return 1000000000; }
 
-    SchedulerBase(std::string const& name, int maxThreads, int maxReserve,
-                  int maxActiveChunks, int priority) :
-        _name{name}, _maxReserve{maxReserve}, _maxReserveDefault{maxReserve},
-        _maxThreads{maxThreads}, _maxThreadsAdj{maxThreads},
-        _priority{priority}, _priorityDefault{priority} {
-            setMaxActiveChunks(maxActiveChunks);
-        }
+    SchedulerBase(std::string const& name, int maxThreads, int maxReserve, int maxActiveChunks, int priority)
+            : _name{name},
+              _maxReserve{maxReserve},
+              _maxReserveDefault{maxReserve},
+              _maxThreads{maxThreads},
+              _maxThreadsAdj{maxThreads},
+              _priority{priority},
+              _priorityDefault{priority} {
+        setMaxActiveChunks(maxActiveChunks);
+    }
     virtual ~SchedulerBase() {}
     SchedulerBase(SchedulerBase const&) = delete;
     SchedulerBase& operator=(SchedulerBase const&) = delete;
@@ -61,19 +59,19 @@ public:
 
     /// @return the number of tasks in flight.
     virtual int getInFlight() const { return _inFlight; }
-    virtual std::size_t getSize() const =0; ///< @return the number of tasks in the queue (not in flight).
-    virtual bool ready()=0; ///< @return true if the scheduler is ready to provide a Task.
-    int getUserQueriesInQ(); ///< @return number of UserQueries in the queue.
-    int getActiveChunkCount(); ///< @return number of chunks being queried.
+    virtual std::size_t getSize() const = 0;  ///< @return the number of tasks in the queue (not in flight).
+    virtual bool ready() = 0;                 ///< @return true if the scheduler is ready to provide a Task.
+    int getUserQueriesInQ();                  ///< @return number of UserQueries in the queue.
+    int getActiveChunkCount();                ///< @return number of chunks being queried.
     int getMaxActiveChunks() const { return _maxActiveChunks; }
     void setMaxActiveChunks(int maxActive);
-    bool chunkAlreadyActive(int chunkId); ///< Return true if chunkId currently has queries being run on it.
+    bool chunkAlreadyActive(int chunkId);  ///< Return true if chunkId currently has queries being run on it.
 
     /// Methods for altering priority.
     // Hooks for changing this schedulers priority/reserved threads.
-    int  getPriority() { return _priority; }
-    void setPriority(int priority); ///< Priority to use starting next chunk
-    void setPriorityDefault();      ///< Return to default priority next chunk
+    int getPriority() { return _priority; }
+    void setPriority(int priority);  ///< Priority to use starting next chunk
+    void setPriorityDefault();       ///< Return to default priority next chunk
     int getMaxReserve() { return _maxReserve; }
     virtual void setMaxReserve(int maxReserve) { _maxReserve = maxReserve; }
     void restoreMaxReserve() { setMaxReserve(_maxReserveDefault); }
@@ -93,14 +91,12 @@ public:
     /// If it has 1 or 2 Tasks running, it asks for 2 threads to be reserved so the queries
     /// do not get interrupted, or in the case of 1 Task, a second Task can be started right away.
     /// If 3 or more Tasks are running it still asks for 2 to be reserved.
-    virtual int desiredThreadReserve() {
-        return std::min(_inFlight + 1, _maxReserve);
-    }
+    virtual int desiredThreadReserve() { return std::min(_inFlight + 1, _maxReserve); }
 
     /// Return maximum number of Tasks this scheduler can have inFlight.
     virtual int maxInFlight() { return std::min(_maxThreads, _maxThreadsAdj); }
 
-    std::string chunkStatusStr(); //< @return a string
+    std::string chunkStatusStr();  //< @return a string
 
     /// @return a JSON representation of the object's status for the monitoring
     nlohmann::json statusToJson();
@@ -112,7 +108,6 @@ public:
     /// Most schedulers do not support this operation. Currently only supports
     /// moving from/to ScanSchedulers.
     bool removeTask(wbase::Task::Ptr const& task, bool removeRunning) override { return false; }
-
 
     void setDefaultPosition(int val) { _defaultPosition = val; }
     int getDefaultPosition() const { return _defaultPosition; }
@@ -127,19 +122,19 @@ protected:
     /// @return the new count for queryId.
     int _decrCountForUserQuery(QueryId queryId);
 
-    void _incrChunkTaskCount(int chunkId); //< Increase the count of Tasks working on this chunk.
-    void _decrChunkTaskCount(int chunkId); //< Decrease the count of Tasks working on this chunk.
+    void _incrChunkTaskCount(int chunkId);  //< Increase the count of Tasks working on this chunk.
+    void _decrChunkTaskCount(int chunkId);  //< Decrease the count of Tasks working on this chunk.
 
-    std::string const _name{}; //< Name of this scheduler.
-    int _maxReserve = 1;    //< Number of threads this scheduler would like to have reserved for its use.
+    std::string const _name{};  //< Name of this scheduler.
+    int _maxReserve = 1;        //< Number of threads this scheduler would like to have reserved for its use.
     int _maxReserveDefault = 1;
-    int _maxThreads = 1;    //< Maximum number of threads for this scheduler to have inFlight.
-    int _maxThreadsAdj = 1; //< Maximum number of threads to have inFlight adjusted for available pool.
+    int _maxThreads = 1;     //< Maximum number of threads for this scheduler to have inFlight.
+    int _maxThreadsAdj = 1;  //< Maximum number of threads to have inFlight adjusted for available pool.
 
-    int _priority; ///< Current priority, higher value - higher priority
+    int _priority;  ///< Current priority, higher value - higher priority
     int _priorityDefault;
 
-    std::atomic<int> _inFlight{0}; //< Number of Tasks running.
+    std::atomic<int> _inFlight{0};  //< Number of Tasks running.
 
 private:
     /// The true purpose of _userQuerycount is to track how many different UserQuery's are on the queue.
@@ -148,14 +143,14 @@ private:
 
     std::atomic<int> _totalTaskCount{0};
 
-    std::map<int, int> _chunkTasks; ///< Number of tasks in each chunk actively being queried.
-    std::mutex _countsMutex; ///< Protects _userQueryCounts and _chunkTasks.
+    std::map<int, int> _chunkTasks;  ///< Number of tasks in each chunk actively being queried.
+    std::mutex _countsMutex;         ///< Protects _userQueryCounts and _chunkTasks.
     // TODO: Decide to keep or remove _maxActiveChunks and related code. This depends primarily
     //       on 'everything' scheduler limits/needs.
-    int _maxActiveChunks; ///< Limit the number of chunks this scheduler can work on at one time.
-    int _defaultPosition{10}; ///< Position of this scheduler in the list of schedulers.
+    int _maxActiveChunks;      ///< Limit the number of chunks this scheduler can work on at one time.
+    int _defaultPosition{10};  ///< Position of this scheduler in the list of schedulers.
 };
 
-}}} // namespace lsst::qserv::wsched
+}  // namespace lsst::qserv::wsched
 
 #endif /* LSST_QSERV_WSCHED_SCHEDULERBASE_H_ */

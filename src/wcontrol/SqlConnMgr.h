@@ -33,9 +33,7 @@
 
 // Qserv headers
 
-
-namespace lsst {
-namespace qserv {
+namespace lsst::qserv {
 
 namespace wbase {
 class SendChannelShared;
@@ -57,32 +55,26 @@ class SqlConnLock;
 ///
 class SqlConnMgr {
 public:
-
-    enum ConnType {
-        INTERACTIVE = 0,
-        SCAN = 1,
-        SHARED = 2
-    };
+    enum ConnType { INTERACTIVE = 0, SCAN = 1, SHARED = 2 };
 
     using Ptr = std::shared_ptr<SqlConnMgr>;
     SqlConnMgr(int maxSqlConnections, int maxScanSqlConnections) {
-        if (maxSqlConnections <= 1
-            || maxScanSqlConnections <= 1
-            || maxSqlConnections < maxScanSqlConnections) {
+        if (maxSqlConnections <= 1 || maxScanSqlConnections <= 1 ||
+            maxSqlConnections < maxScanSqlConnections) {
             throw std::invalid_argument(
-                std::string("SqlConnMgr maxSqlConnections must be >= maxScanSqlConnections ")
-                          + " and both must be greater than 1."
-                          + " maxSqlConnections=" + std::to_string(maxSqlConnections)
-                          + " maxScanSqlConnections=" + std::to_string(maxScanSqlConnections));
+                    std::string("SqlConnMgr maxSqlConnections must be >= maxScanSqlConnections ") +
+                    " and both must be greater than 1." +
+                    " maxSqlConnections=" + std::to_string(maxSqlConnections) +
+                    " maxScanSqlConnections=" + std::to_string(maxScanSqlConnections));
         }
-        //TODO Change configuration files to use normal values.
+        // TODO Change configuration files to use normal values.
         _maxSqlScanConnections = maxScanSqlConnections;
         _maxSqlSharedConnections = maxSqlConnections - maxScanSqlConnections;
         if (_maxSqlSharedConnections <= _maxSqlScanConnections) {
             throw std::invalid_argument(
-               std::string("_maxSqlSharedConnections must be greater than _maxSqlScanConnections")
-                         + " maxSqlConnections=" + std::to_string(maxSqlConnections)
-                         + " maxScanSqlConnections=" + std::to_string(maxScanSqlConnections));
+                    std::string("_maxSqlSharedConnections must be greater than _maxSqlScanConnections") +
+                    " maxSqlConnections=" + std::to_string(maxSqlConnections) +
+                    " maxScanSqlConnections=" + std::to_string(maxScanSqlConnections));
         }
     }
     SqlConnMgr() = delete;
@@ -94,28 +86,25 @@ public:
     int getSqlScanConnCount() { return _sqlScanConnCount; }
     int getSqlSharedConnCount() { return _sqlSharedConnCount; }
 
-    virtual std::ostream& dump(std::ostream &os) const;
+    virtual std::ostream& dump(std::ostream& os) const;
     std::string dump() const;
-    friend std::ostream& operator<<(std::ostream &out, SqlConnMgr const& mgr);
+    friend std::ostream& operator<<(std::ostream& out, SqlConnMgr const& mgr);
 
     friend class SqlConnLock;
 
 private:
-    ConnType _take(bool scanQuery,
-                   std::shared_ptr<wbase::SendChannelShared> const& sendChannelShared,
+    ConnType _take(bool scanQuery, std::shared_ptr<wbase::SendChannelShared> const& sendChannelShared,
                    bool firstChannelSqlConn);
     void _release(ConnType connType);
 
     std::atomic<int> _totalCount{0};
-    std::atomic<int> _sqlScanConnCount{0}; ///< Current number of new scan SQL conections
+    std::atomic<int> _sqlScanConnCount{0};    ///< Current number of new scan SQL conections
     std::atomic<int> _sqlSharedConnCount{0};  ///< Current number of shared and interactive SQL connections.
-    int _maxSqlScanConnections; ///< max number of connections for new shared scans
-    int _maxSqlSharedConnections; ///< max number of connections for shared connection scans and interactive.
+    int _maxSqlScanConnections;               ///< max number of connections for new shared scans
+    int _maxSqlSharedConnections;  ///< max number of connections for shared connection scans and interactive.
     std::mutex _mtx;
     std::condition_variable _tCv;
 };
-
-
 
 /// RAII class to support SqlConnMgr
 class SqlConnLock {
@@ -133,6 +122,7 @@ private:
     SqlConnMgr::ConnType _connType;
 };
 
-}}} // namespace lsst::qserv::wcontrol
+}  // namespace wcontrol
+}  // namespace lsst::qserv
 
-#endif // LSST_QSERV_WCONTROL_TRANSMITMGR_H
+#endif  // LSST_QSERV_WCONTROL_TRANSMITMGR_H

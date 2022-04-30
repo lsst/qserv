@@ -23,14 +23,13 @@
 #ifndef LSST_QSERV_MSGRECEIVER_H
 #define LSST_QSERV_MSGRECEIVER_H
 /**
-  * @author Daniel L. Wang, SLAC
-  */
+ * @author Daniel L. Wang, SLAC
+ */
 
 // System headers
 #include <string>
 
-namespace lsst {
-namespace qserv {
+namespace lsst::qserv {
 
 /// MsgReceiver : a functor for receiving simple messages. Used to encapsulate
 /// the most basic error reporting so that downstream objects can report errors
@@ -41,6 +40,6 @@ public:
     virtual void operator()(int code, std::string const& msg) = 0;
 };
 
-}} // namespace lsst::qserv
+}  // namespace lsst::qserv
 
-#endif // LSST_QSERV_MSGRECEIVER_H
+#endif  // LSST_QSERV_MSGRECEIVER_H

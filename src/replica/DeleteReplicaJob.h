@@ -34,16 +34,13 @@
 #include "replica/DeleteRequest.h"
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * The structure DeleteReplicaJobResult represents a combined result received
  * from worker services upon a completion of the job.
  */
 struct DeleteReplicaJobResult {
-
     /**
      * Results reported by workers upon the successful completion
      * of the replica deletion requests
@@ -51,20 +48,19 @@ struct DeleteReplicaJobResult {
     std::list<ReplicaInfo> replicas;
 
     /// Replica deletion results grouped by: chunk number, database, worker
-    std::map<unsigned int,                  // chunk
-             std::map<std::string,          // database
-                      std::map<std::string, // source worker
-                               ReplicaInfo>>> chunks;
+    std::map<unsigned int,                   // chunk
+             std::map<std::string,           // database
+                      std::map<std::string,  // source worker
+                               ReplicaInfo>>>
+            chunks;
 };
 
 /**
-  * Class DeleteReplicaJob represents a tool which will delete a chunk replica
-  * from a worker.
-  */
-class DeleteReplicaJob : public Job  {
-
+ * Class DeleteReplicaJob represents a tool which will delete a chunk replica
+ * from a worker.
+ */
+class DeleteReplicaJob : public Job {
 public:
-
     /// The pointer type for instances of the class
     typedef std::shared_ptr<DeleteReplicaJob> Ptr;
 
@@ -103,13 +99,9 @@ public:
      * @return
      *   pointer to the created object
      */
-    static Ptr create(std::string const& databaseFamily,
-                      unsigned int chunk,
-                      std::string const& worker,
-                      Controller::Ptr const& controller,
-                      std::string const& parentJobId,
-                      CallbackType const& onFinish,
-                      int priority);
+    static Ptr create(std::string const& databaseFamily, unsigned int chunk, std::string const& worker,
+                      Controller::Ptr const& controller, std::string const& parentJobId,
+                      CallbackType const& onFinish, int priority);
 
     // Default construction and copy semantics are prohibited
 
@@ -150,13 +142,12 @@ public:
     DeleteReplicaJobResult const& getReplicaData() const;
 
     /// @see Job::extendedPersistentState()
-    std::list<std::pair<std::string,std::string>> extendedPersistentState() const final;
+    std::list<std::pair<std::string, std::string>> extendedPersistentState() const final;
 
     /// @see Job::persistentLogData()
-    std::list<std::pair<std::string,std::string>> persistentLogData() const final;
+    std::list<std::pair<std::string, std::string>> persistentLogData() const final;
 
 protected:
-
     /// @see Job::startImpl()
     void startImpl(util::Lock const& lock) final;
 
@@ -167,15 +158,10 @@ protected:
     void notify(util::Lock const& lock) final;
 
 private:
-
     /// @see DeleteReplicaJob::create()
-    DeleteReplicaJob(std::string const& databaseFamily,
-                     unsigned int chunk,
-                     std::string const& worker,
-                     Controller::Ptr const& controller,
-                     std::string const& parentJobId,
-                     CallbackType const& onFinish,
-                     int priority);
+    DeleteReplicaJob(std::string const& databaseFamily, unsigned int chunk, std::string const& worker,
+                     Controller::Ptr const& controller, std::string const& parentJobId,
+                     CallbackType const& onFinish, int priority);
 
     /**
      * Initiate a process of removing the replica from the source worker
@@ -194,13 +180,12 @@ private:
      */
     void _onRequestFinish(DeleteRequest::Ptr const& request);
 
-
     // Input parameters
 
-    std::string  const _databaseFamily;
+    std::string const _databaseFamily;
     unsigned int const _chunk;
-    std::string  const _worker;
-    CallbackType       _onFinish;       /// @note is reset when the job finishes
+    std::string const _worker;
+    CallbackType _onFinish;  /// @note is reset when the job finishes
 
     /// Cached replicas for determining which databases have contributions in the chunk
     std::vector<ReplicaInfo> _replicas;
@@ -208,12 +193,12 @@ private:
     /// A collection of the replica deletion requests implementing the operation
     std::vector<DeleteRequest::Ptr> _requests;
 
-    size_t _numRequestsFinished = 0;    // gets incremented for each completed request
-    size_t _numRequestsSuccess  = 0;    // gets incremented for each successfully completed request
+    size_t _numRequestsFinished = 0;  // gets incremented for each completed request
+    size_t _numRequestsSuccess = 0;   // gets incremented for each successfully completed request
 
     DeleteReplicaJobResult _replicaData;
 };
 
-}}} // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_DELETEREPLICAJOB_H
+#endif  // LSST_QSERV_REPLICA_DELETEREPLICAJOB_H

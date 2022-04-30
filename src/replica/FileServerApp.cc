@@ -34,58 +34,37 @@ using namespace std;
 namespace {
 
 string const description =
-    "This is an application which runs a read-only file server"
-    " on behalf of a Replication system's worker.";
+        "This is an application which runs a read-only file server"
+        " on behalf of a Replication system's worker.";
 
 bool const injectDatabaseOptions = true;
 bool const boostProtobufVersionCheck = true;
 bool const enableServiceProvider = true;
 
-} /// namespace
+}  // namespace
 
-
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
 FileServerApp::Ptr FileServerApp::create(int argc, char* argv[]) {
     return Ptr(new FileServerApp(argc, argv));
 }
 
-
 FileServerApp::FileServerApp(int argc, char* argv[])
-    :   Application(
-            argc, argv,
-            ::description,
-            ::injectDatabaseOptions,
-            ::boostProtobufVersionCheck,
-            ::enableServiceProvider
-        ),
-        _log(LOG_GET("lsst.qserv.replica.tools.qserv-replica-file-server")) {
-
+        : Application(argc, argv, ::description, ::injectDatabaseOptions, ::boostProtobufVersionCheck,
+                      ::enableServiceProvider),
+          _log(LOG_GET("lsst.qserv.replica.tools.qserv-replica-file-server")) {
     // Configure the command line parser
 
-    parser().required(
-        "worker",
-        "The name of a worker for which the server will be run.",
-        _workerName
-    ).flag(
-        "verbose",
-        "Enable the periodic 'heartbeat' printouts.",
-        _verbose
-    );
+    parser().required("worker", "The name of a worker for which the server will be run.", _workerName)
+            .flag("verbose", "Enable the periodic 'heartbeat' printouts.", _verbose);
 }
 
-
 int FileServerApp::runImpl() {
-
     FileServer::Ptr const server = FileServer::create(serviceProvider(), _workerName);
 
-    thread serverLauncherThread([server] () {
-        server->run();
-    });
+    thread serverLauncherThread([server]() { server->run(); });
     serverLauncherThread.detach();
-    
+
     // Block the current thread while periodically printing the "heartbeat"
     // report after a random delay in an interval of [1,5] seconds
 
@@ -99,4 +78,4 @@ int FileServerApp::runImpl() {
     return 0;
 }
 
-}}} // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

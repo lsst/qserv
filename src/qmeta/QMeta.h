@@ -35,10 +35,7 @@
 #include "qmeta/QStats.h"
 #include "qmeta/types.h"
 
-
-namespace lsst {
-namespace qserv {
-namespace qmeta {
+namespace lsst::qserv::qmeta {
 
 /// @addtogroup qmeta
 
@@ -50,7 +47,6 @@ namespace qmeta {
 
 class QMeta {
 public:
-
     /**
      *  Type for representing the list of tables, first item in pair is
      *  database name, second is table name.
@@ -137,8 +133,7 @@ public:
      *                 (e.g. for interactive queries).
      *  @return: Query ID, non-negative number
      */
-    virtual QueryId registerQuery(QInfo const& qInfo,
-                                  TableNames const& tables) = 0;
+    virtual QueryId registerQuery(QInfo const& qInfo, TableNames const& tables) = 0;
 
     /**
      *  @brief Add list of chunks to query.
@@ -159,9 +154,7 @@ public:
      *  @param chunk:     Chunk number.
      *  @param xrdEndpoint:  Worker xrootd communication endpoint ("host:port").
      */
-    virtual void assignChunk(QueryId queryId,
-                             int chunk,
-                             std::string const& xrdEndpoint) = 0;
+    virtual void assignChunk(QueryId queryId, int chunk, std::string const& xrdEndpoint) = 0;
 
     /**
      *  @brief Mark chunk as completed.
@@ -196,7 +189,6 @@ public:
      */
     virtual void finishQuery(QueryId queryId) = 0;
 
-
     /**
      *  @brief Generic interface for finding queries.
      *
@@ -223,12 +215,10 @@ public:
      *                    (default) return all queries.
      *  @return: List of query IDs.
      */
-    virtual std::vector<QueryId> findQueries(CzarId czarId=0,
-                                             QInfo::QType qType=QInfo::ANY,
-                                             std::string const& user=std::string(),
-                                             std::vector<QInfo::QStatus> const& status=std::vector<QInfo::QStatus>(),
-                                             int completed=-1,
-                                             int returned=-1) = 0;
+    virtual std::vector<QueryId> findQueries(
+            CzarId czarId = 0, QInfo::QType qType = QInfo::ANY, std::string const& user = std::string(),
+            std::vector<QInfo::QStatus> const& status = std::vector<QInfo::QStatus>(), int completed = -1,
+            int returned = -1) = 0;
 
     /**
      *  @brief Find all pending queries for given czar.
@@ -289,10 +279,8 @@ public:
 protected:
     // Default constructor
     QMeta() {}
-
 };
 
+}  // namespace lsst::qserv::qmeta
 
-}}} // namespace lsst::qserv::qmeta
-
-#endif // LSST_QSERV_QMETA_QMETA_H
+#endif  // LSST_QSERV_QMETA_QMETA_H

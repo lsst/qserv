@@ -33,23 +33,19 @@
 #include "replica/RequestMessenger.h"
 
 // Forward declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
-    class Messenger;
-}}}  // Forward declarations
+namespace lsst::qserv::replica {
+class Messenger;
+}  // namespace lsst::qserv::replica
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
 /**
-  * Class EchoRequest represents Controller-side requests for testing
-  * the controller-worker protocol and the worker-side framework.
-  * These requests have no side effects.
-  */
-class EchoRequest: public RequestMessenger  {
+ * Class EchoRequest represents Controller-side requests for testing
+ * the controller-worker protocol and the worker-side framework.
+ * These requests have no side effects.
+ */
+class EchoRequest : public RequestMessenger {
 public:
     typedef std::shared_ptr<EchoRequest> Ptr;
 
@@ -62,8 +58,8 @@ public:
 
     ~EchoRequest() final = default;
 
-    std::string const& data()  const { return _data; }
-    uint64_t           delay() const { return _delay; }
+    std::string const& data() const { return _data; }
+    uint64_t delay() const { return _delay; }
 
     /// @return target request specific parameters
     EchoRequestParams const& targetRequestParams() const { return _targetRequestParams; }
@@ -92,18 +88,13 @@ public:
      * @param messenger interface for communicating with workers
      * @return pointer to the created object
      */
-    static Ptr create(ServiceProvider::Ptr const& serviceProvider,
-                      boost::asio::io_service& io_service,
-                      std::string const& worker,
-                      std::string const& data,
-                      uint64_t delay,
-                      CallbackType const& onFinish,
-                      int  priority,
-                      bool keepTracking,
+    static Ptr create(ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service,
+                      std::string const& worker, std::string const& data, uint64_t delay,
+                      CallbackType const& onFinish, int priority, bool keepTracking,
                       std::shared_ptr<Messenger> const& messenger);
 
     /// @see Request::extendedPersistentState()
-    std::list<std::pair<std::string,std::string>> extendedPersistentState() const override;
+    std::list<std::pair<std::string, std::string>> extendedPersistentState() const override;
 
 protected:
     /// @see Request::startImpl()
@@ -120,14 +111,9 @@ protected:
 
 private:
     /// @see EchoRequest::create()
-    EchoRequest(ServiceProvider::Ptr const& serviceProvider,
-                boost::asio::io_service& io_service,
-                std::string const& worker,
-                std::string const& data,
-                uint64_t delay,
-                CallbackType const& onFinish,
-                int  priority,
-                bool keepTracking,
+    EchoRequest(ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service,
+                std::string const& worker, std::string const& data, uint64_t delay,
+                CallbackType const& onFinish, int priority, bool keepTracking,
                 std::shared_ptr<Messenger> const& messenger);
 
     /**
@@ -146,8 +132,8 @@ private:
     // Input parameters
 
     std::string const _data;
-    uint64_t    const _delay;
-    CallbackType      _onFinish;    ///< @note is reset when the request finishes
+    uint64_t const _delay;
+    CallbackType _onFinish;  ///< @note is reset when the request finishes
 
     /// Request-specific parameters of the target request
     EchoRequestParams _targetRequestParams;
@@ -156,6 +142,6 @@ private:
     std::string _responseData;
 };
 
-}}} // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_ECHOREQUEST_H
+#endif  // LSST_QSERV_REPLICA_ECHOREQUEST_H

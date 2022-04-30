@@ -33,16 +33,12 @@
 #include "replica/RequestMessenger.h"
 
 // Forward declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
-    class Messenger;
-}}}  // Forward declarations
+namespace lsst::qserv::replica {
+class Messenger;
+}  // namespace lsst::qserv::replica
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  *  Structure IndexInfo represents a result of the requests
@@ -55,7 +51,7 @@ struct IndexInfo {
      * Print index data into a file.
      * @param fileName  the name or a file or 'std::cout' if it's empty
      */
-    void print(std::string const& fileName=std::string()) const;
+    void print(std::string const& fileName = std::string()) const;
 };
 
 std::ostream& operator<<(std::ostream& os, IndexInfo const& info);
@@ -64,7 +60,7 @@ std::ostream& operator<<(std::ostream& os, IndexInfo const& info);
  * Class IndexRequest extracts and returns data to be loaded into
  * the "secondary index"
  */
-class IndexRequest: public RequestMessenger  {
+class IndexRequest : public RequestMessenger {
 public:
     typedef std::shared_ptr<IndexRequest> Ptr;
 
@@ -77,11 +73,11 @@ public:
 
     ~IndexRequest() final = default;
 
-    std::string const& database()        const { return _database; }
-    std::string const& directorTable()   const { return _directorTable; }
-    unsigned int       chunk()           const { return _chunk; }
-    bool               hasTransactions() const { return _hasTransactions; }
-    TransactionId      transactionId()   const { return _transactionId; }
+    std::string const& database() const { return _database; }
+    std::string const& directorTable() const { return _directorTable; }
+    unsigned int chunk() const { return _chunk; }
+    bool hasTransactions() const { return _hasTransactions; }
+    TransactionId transactionId() const { return _transactionId; }
 
     /// @return target request specific parameters
     IndexRequestParams const& targetRequestParams() const { return _targetRequestParams; }
@@ -119,20 +115,13 @@ public:
      * @param messenger  an interface for communicating with workers
      * @return  pointer to the created object
      */
-    static Ptr create(ServiceProvider::Ptr const& serviceProvider,
-                      boost::asio::io_service& io_service,
-                      std::string const& worker,
-                      std::string const& database,
-                      std::string const& directorTable,
-                      unsigned int chunk,
-                      bool hasTransactions,
-                      TransactionId transactionId,
-                      CallbackType const& onFinish,
-                      int  priority,
-                      bool keepTracking,
-                      std::shared_ptr<Messenger> const& messenger);
+    static Ptr create(ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service,
+                      std::string const& worker, std::string const& database,
+                      std::string const& directorTable, unsigned int chunk, bool hasTransactions,
+                      TransactionId transactionId, CallbackType const& onFinish, int priority,
+                      bool keepTracking, std::shared_ptr<Messenger> const& messenger);
 
-    std::list<std::pair<std::string,std::string>> extendedPersistentState() const final;
+    std::list<std::pair<std::string, std::string>> extendedPersistentState() const final;
 
 protected:
     /// @see Request::startImpl()
@@ -148,17 +137,10 @@ protected:
     void awaken(boost::system::error_code const& ec) final;
 
 private:
-    IndexRequest(ServiceProvider::Ptr const& serviceProvider,
-                 boost::asio::io_service& io_service,
-                 std::string const& worker,
-                 std::string const& database,
-                 std::string const& directorTable,
-                 unsigned int chunk,
-                 bool hasTransactions,
-                 TransactionId transactionId,
-                 CallbackType const& onFinish,
-                 int  priority,
-                 bool keepTracking,
+    IndexRequest(ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service,
+                 std::string const& worker, std::string const& database, std::string const& directorTable,
+                 unsigned int chunk, bool hasTransactions, TransactionId transactionId,
+                 CallbackType const& onFinish, int priority, bool keepTracking,
                  std::shared_ptr<Messenger> const& messenger);
 
     /**
@@ -176,12 +158,12 @@ private:
 
     // Input parameters
 
-    std::string   const _database;
-    std::string   const _directorTable;
-    unsigned int  const _chunk;
-    bool          const _hasTransactions;
+    std::string const _database;
+    std::string const _directorTable;
+    unsigned int const _chunk;
+    bool const _hasTransactions;
     TransactionId const _transactionId;
-    CallbackType        _onFinish;
+    CallbackType _onFinish;
 
     /// Request-specific parameters of the target request
     IndexRequestParams _targetRequestParams;
@@ -190,6 +172,6 @@ private:
     IndexInfo _indexInfo;
 };
 
-}}} // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_INDEXREQUEST_H
+#endif  // LSST_QSERV_REPLICA_INDEXREQUEST_H

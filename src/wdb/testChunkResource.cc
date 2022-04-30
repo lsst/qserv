@@ -20,11 +20,11 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-  /**
-  * @brief Simple testing for class ChunkResource
-  *
-  * @author Daniel L. Wang, SLAC
-  */
+/**
+ * @brief Simple testing for class ChunkResource
+ *
+ * @author Daniel L. Wang, SLAC
+ */
 
 // System headers
 #include <iostream>
@@ -39,14 +39,13 @@
 
 namespace test = boost::test_tools;
 
-using lsst::qserv::wdb::FakeBackend;
 using lsst::qserv::wdb::ChunkResource;
 using lsst::qserv::wdb::ChunkResourceMgr;
+using lsst::qserv::wdb::FakeBackend;
 
 struct Fixture {
-
     Fixture() {
-        for(int i=11; i<16; ++i) {
+        for (int i = 11; i < 16; ++i) {
             subchunks.push_back(i);
         }
         thedb = "Snowden";
@@ -60,11 +59,9 @@ struct Fixture {
     lsst::qserv::DbTableSet tables;
 };
 
-
 BOOST_FIXTURE_TEST_SUITE(All, Fixture)
 
 BOOST_AUTO_TEST_CASE(Basic) {
-
     auto backend = std::make_shared<FakeBackend>();
     std::shared_ptr<ChunkResourceMgr> crm = ChunkResourceMgr::newMgr(backend);
     BOOST_CHECK(backend->fakeSet.empty());
@@ -76,7 +73,7 @@ BOOST_AUTO_TEST_CASE(Basic) {
 
         subchunks = {28, 33};
         ChunkResource cr12345sub(crm->acquire(thedb, 12345, tables, subchunks));
-        BOOST_CHECK(backend->fakeSet.size() == 4); // 2 tables * 2 subchunks
+        BOOST_CHECK(backend->fakeSet.size() == 4);  // 2 tables * 2 subchunks
         BOOST_CHECK(crm->getRefCount(thedb, 12345) == 2);
         {
             ChunkResource foo = cr12345;
@@ -107,7 +104,7 @@ BOOST_AUTO_TEST_CASE(TwoChunk) {
     auto backend = std::make_shared<FakeBackend>();
     std::shared_ptr<ChunkResourceMgr> crm = ChunkResourceMgr::newMgr(backend);
     int scarray[] = {11, 12, 13, 14, 15};
-    std::vector<int> subchunks(scarray, scarray+5);
+    std::vector<int> subchunks(scarray, scarray + 5);
     std::string thedb("Snowden");
     lsst::qserv::DbTableSet tables;
     tables.emplace(lsst::qserv::DbTable(thedb, "hello"));
@@ -124,7 +121,7 @@ BOOST_AUTO_TEST_CASE(TwoChunk) {
         ChunkResource cr12345sub(crm->acquire(thedb, 1, tables, subchunks));
         BOOST_CHECK(crm->getRefCount(thedb, 12345) == 1);
         BOOST_CHECK(crm->getRefCount(thedb, 1) == 1);
-        BOOST_CHECK(backend->fakeSet.size() == 10); // 2 tables * 5 subchunks
+        BOOST_CHECK(backend->fakeSet.size() == 10);  // 2 tables * 5 subchunks
 
         ChunkResource foo = cr12345sub;
         BOOST_CHECK(crm->getRefCount(thedb, 12345) == 1);

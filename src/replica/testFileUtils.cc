@@ -48,22 +48,19 @@ bool fileExistsAndEmpty(string const& filePath) {
     boost::system::error_code errCode;
     const bool result = fs::exists(filePath, errCode);
     if (errCode.value() != 0) {
-        throw runtime_error(
-                string(__func__) + "failed to obtain a status of the temporary file: '" + filePath
-                + "', error: " + errCode.message());
+        throw runtime_error(string(__func__) + "failed to obtain a status of the temporary file: '" +
+                            filePath + "', error: " + errCode.message());
     }
     if (0 != fs::file_size(filePath)) {
-        throw runtime_error(
-                string(__func__) + "the temporary file: '" + filePath + "' is not empty");
+        throw runtime_error(string(__func__) + "the temporary file: '" + filePath + "' is not empty");
     }
     return result;
 }
-}
+}  // namespace
 
 BOOST_AUTO_TEST_SUITE(Suite)
 
 BOOST_AUTO_TEST_CASE(FileUtils_createTemporaryFile) {
-
     LOGS_INFO("FileUtils::createTemporaryFile test begins");
 
     string const baseDir = "/tmp";
@@ -98,18 +95,17 @@ BOOST_AUTO_TEST_CASE(FileUtils_createTemporaryFile) {
     // Test if throws when the model is empty
     prefix = string();
     model = string();
-    BOOST_CHECK_THROW({
-        filePath = FileUtils::createTemporaryFile(baseDir, prefix, model);
-    }, invalid_argument);
+    BOOST_CHECK_THROW({ filePath = FileUtils::createTemporaryFile(baseDir, prefix, model); },
+                      invalid_argument);
 
     // Test if throws when the maximum number of retries is less than 1
     prefix = string();
     model = "%%%%-%%%%-%%%%-%%%%";
     suffix = string();
     unsigned int maxRetries = 0;
-    BOOST_CHECK_THROW({
-        filePath = FileUtils::createTemporaryFile(baseDir, prefix, model, suffix, maxRetries);
-    }, invalid_argument);
+    BOOST_CHECK_THROW(
+            { filePath = FileUtils::createTemporaryFile(baseDir, prefix, model, suffix, maxRetries); },
+            invalid_argument);
 
     // The following test pre-creates 16 files based on a fact that a single
     // letter '%' in the temporary model is replaced with a single character
@@ -117,10 +113,8 @@ BOOST_AUTO_TEST_CASE(FileUtils_createTemporaryFile) {
     // file creation utility to fail on any of of those 16 files due to
     // exceeding the total number of retries.
 
-    vector<string> const digits = {
-        "0", "1", "2", "3", "4", "5", "6", "7", "8", "9",
-        "a", "b", "c", "d", "e", "f"
-    };
+    vector<string> const digits = {"0", "1", "2", "3", "4", "5", "6", "7",
+                                   "8", "9", "a", "b", "c", "d", "e", "f"};
 
     string baseFilePath;
     BOOST_REQUIRE_NO_THROW({
@@ -131,7 +125,7 @@ BOOST_AUTO_TEST_CASE(FileUtils_createTemporaryFile) {
             throw;
         }
     });
-    for (auto&& d: digits) {
+    for (auto&& d : digits) {
         string const filePath = baseFilePath + "-" + d;
         ofstream file(filePath);
         LOGS_INFO("FileUtils::createTemporaryFile pre-creating file: " + filePath);
@@ -140,16 +134,15 @@ BOOST_AUTO_TEST_CASE(FileUtils_createTemporaryFile) {
 
     suffix = string();
     maxRetries = digits.size();
-    for (auto&& d: digits) {
+    for (auto&& d : digits) {
         string const filePath = baseFilePath + "-" + d;
         LOGS_INFO("FileUtils::createTemporaryFile creating a temporary file: " + filePath);
-        BOOST_CHECK_THROW({
-            FileUtils::createTemporaryFile(baseFilePath, "-", "%", suffix, maxRetries);
-        }, runtime_error);
+        BOOST_CHECK_THROW({ FileUtils::createTemporaryFile(baseFilePath, "-", "%", suffix, maxRetries); },
+                          runtime_error);
     }
 
     fs::remove(baseFilePath, errCode);
-    for (auto&& d: digits) {
+    for (auto&& d : digits) {
         string const filePath = baseFilePath + "-" + d;
         fs::remove(filePath, errCode);
     }
@@ -157,22 +150,17 @@ BOOST_AUTO_TEST_CASE(FileUtils_createTemporaryFile) {
 }
 
 BOOST_AUTO_TEST_CASE(FileUtils_verifyFolders) {
-
     LOGS_INFO("FileUtils::verifyFolders test begins");
 
     bool const createMissingFolders = true;
 
     {
         vector<string> const folders = {string()};
-        BOOST_CHECK_THROW({
-            FileUtils::verifyFolders("TEST", folders);
-        }, invalid_argument);
+        BOOST_CHECK_THROW({ FileUtils::verifyFolders("TEST", folders); }, invalid_argument);
     }
     {
         vector<string> const folders = {"relative/path"};
-        BOOST_CHECK_THROW({
-            FileUtils::verifyFolders("TEST", folders);
-        }, invalid_argument);
+        BOOST_CHECK_THROW({ FileUtils::verifyFolders("TEST", folders); }, invalid_argument);
     }
 
     string const pattern = "/tmp/test-folder-%%%%-%%%%-%%%%-%%%%";
@@ -185,24 +173,21 @@ BOOST_AUTO_TEST_CASE(FileUtils_verifyFolders) {
     bool success = false;
 
     while (numRetriesLeft-- > 0) {
-
         boost::system::error_code ec;
 
         // Generate a unique path for the folder to be tested/created
         fs::path const uniqueFolderPath = fs::unique_path(pattern, ec);
         if (ec.value() != 0) {
-            throw runtime_error(
-                    "Failed to generate a unique name for pattern: '" + pattern
-                    + "', error: " + ec.message());
+            throw runtime_error("Failed to generate a unique name for pattern: '" + pattern +
+                                "', error: " + ec.message());
         }
 
         // Make sure the folder (or a file) doesn't exist. Otherwise make another
         // attempt.
         fs::file_status const stat = fs::status(uniqueFolderPath, ec);
         if (stat.type() == fs::status_error) {
-            throw runtime_error(
-                    "Failed to check a status of the temporary folder: '" + uniqueFolderPath.string()
-                    + "', error: " + ec.message());
+            throw runtime_error("Failed to check a status of the temporary folder: '" +
+                                uniqueFolderPath.string() + "', error: " + ec.message());
         }
         if (fs::exists(stat)) continue;
 
@@ -211,23 +196,17 @@ BOOST_AUTO_TEST_CASE(FileUtils_verifyFolders) {
         // At the very first run of the method do not attempt to create
         // the missing folder.
         vector<string> const folders = {uniqueFolderPath.string()};
-        BOOST_CHECK_THROW({
-            FileUtils::verifyFolders("TEST", folders, !createMissingFolders);
-        }, exception);
+        BOOST_CHECK_THROW({ FileUtils::verifyFolders("TEST", folders, !createMissingFolders); }, exception);
 
         // Now launch the method to force create the folder.
-        BOOST_REQUIRE_NO_THROW({
-            FileUtils::verifyFolders("TEST", folders, createMissingFolders);
-        });
+        BOOST_REQUIRE_NO_THROW({ FileUtils::verifyFolders("TEST", folders, createMissingFolders); });
 
         // Make another run w/o attempting creating a folder
-        BOOST_REQUIRE_NO_THROW({
-            FileUtils::verifyFolders("TEST", folders, !createMissingFolders);
-        });
+        BOOST_REQUIRE_NO_THROW({ FileUtils::verifyFolders("TEST", folders, !createMissingFolders); });
 
         // Now, make the best attempt to delete the folder. Ignore any errors.
         fs::remove(fs::path(uniqueFolderPath), ec);
- 
+
         success = true;
         break;
     }

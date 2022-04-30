@@ -20,12 +20,12 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-  /**
-  * @brief Simple testing for class QueryRunner
-  * Requires some setup, and assumes some access to a mysqld
-  *
-  * @author Daniel L. Wang, SLAC
-  */
+/**
+ * @brief Simple testing for class QueryRunner
+ * Requires some setup, and assumes some access to a mysqld
+ *
+ * @author Daniel L. Wang, SLAC
+ */
 
 // Qserv headers
 #include "proto/worker.pb.h"
@@ -55,8 +55,8 @@ using lsst::qserv::proto::ProtoHeader;
 using lsst::qserv::proto::ProtoImporter;
 using lsst::qserv::proto::Result;
 using lsst::qserv::proto::TaskMsg;
-using lsst::qserv::proto::TaskMsg_Subchunk;
 using lsst::qserv::proto::TaskMsg_Fragment;
+using lsst::qserv::proto::TaskMsg_Subchunk;
 
 using lsst::qserv::wbase::SendChannel;
 using lsst::qserv::wbase::SendChannelShared;
@@ -75,8 +75,8 @@ struct Fixture {
         shared_ptr<TaskMsg> t = make_shared<TaskMsg>();
         t->set_protocol(2);
         t->set_session(123456);
-        t->set_chunkid(3240); // hardcoded
-        t->set_db("LSST"); // hardcoded
+        t->set_chunkid(3240);  // hardcoded
+        t->set_db("LSST");     // hardcoded
         auto scanTbl = t->add_scantable();
         scanTbl->set_db("LSST");
         scanTbl->set_table("Object");
@@ -100,7 +100,7 @@ struct Fixture {
         string socket = "SET ME HERE";
         MySqlConfig mySqlConfig(user, password, socket);
         if (not MySqlConnection::checkConnection(mySqlConfig)) {
-            throw runtime_error("Unable to connect to MySQL database with params: "+mySqlConfig.toString());
+            throw runtime_error("Unable to connect to MySQL database with params: " + mySqlConfig.toString());
         }
         return mySqlConfig;
     }
@@ -139,7 +139,7 @@ BOOST_AUTO_TEST_CASE(Output) {
     int remain = out.size() - 1;
     lsst::qserv::proto::ProtoHeader ph;
     BOOST_REQUIRE(ProtoImporter<ProtoHeader>::setMsgFrom(ph, cursor, phSize));
-    cursor += phSize; // Advance to Result msg
+    cursor += phSize;  // Advance to Result msg
     remain -= phSize;
     BOOST_CHECK_EQUAL(remain, ph.size());
     ph.PrintDebugString();

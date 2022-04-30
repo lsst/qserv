@@ -35,27 +35,23 @@
 #include "qmeta/types.h"
 
 // Forward decl
-namespace lsst {
-namespace qserv {
-namespace css {
+namespace lsst::qserv::css {
 class CssAccess;
 }
-namespace qmeta {
+
+namespace lsst::qserv::qmeta {
 class QMeta;
 }
-namespace sql {
+
+namespace lsst::qserv::sql {
 class SqlConnection;
-}}}
+}
 
-
-namespace lsst {
-namespace qserv {
-namespace ccontrol {
+namespace lsst::qserv::ccontrol {
 
 /// UserQueryDrop : implementation of the UserQuery for DROP statements.
 class UserQueryDrop : public UserQuery {
 public:
-
     /**
      *  @param css:           CSS interface
      *  @param dbName:        Name of the database
@@ -65,12 +61,9 @@ public:
      *  @param queryMetadata: QMeta interface
      *  @param qMetaCzarId:   Czar ID in QMeta database
      */
-    UserQueryDrop(std::shared_ptr<css::CssAccess> const& css,
-                  std::string const& dbName,
-                  std::string const& tableName,
-                  sql::SqlConnection* resultDbConn,
-                  std::shared_ptr<qmeta::QMeta> const& queryMetadata,
-                  qmeta::CzarId qMetaCzarId);
+    UserQueryDrop(std::shared_ptr<css::CssAccess> const& css, std::string const& dbName,
+                  std::string const& tableName, sql::SqlConnection* resultDbConn,
+                  std::shared_ptr<qmeta::QMeta> const& queryMetadata, qmeta::CzarId qMetaCzarId);
 
     UserQueryDrop(UserQueryDrop const&) = delete;
     UserQueryDrop& operator=(UserQueryDrop const&) = delete;
@@ -95,11 +88,9 @@ public:
     virtual void discard() override;
 
     // Delegate objects
-    virtual std::shared_ptr<qdisp::MessageStore> getMessageStore() override {
-        return _messageStore; }
+    virtual std::shared_ptr<qdisp::MessageStore> getMessageStore() override { return _messageStore; }
 
 private:
-
     /// Check the status of item to be dropped
     bool _checkStatus();
 
@@ -108,13 +99,12 @@ private:
     std::string const _tableName;
     sql::SqlConnection* _resultDbConn;
     std::shared_ptr<qmeta::QMeta> _queryMetadata;
-    qmeta::CzarId const _qMetaCzarId;   ///< Czar ID in QMeta database
+    qmeta::CzarId const _qMetaCzarId;  ///< Czar ID in QMeta database
     QueryState _qState;
     std::shared_ptr<qdisp::MessageStore> _messageStore;
-    int _sessionId; ///< External reference number
-
+    int _sessionId;  ///< External reference number
 };
 
-}}} // namespace lsst::qserv:ccontrol
+}  // namespace lsst::qserv::ccontrol
 
-#endif // LSST_QSERV_CCONTROL_USERQUERYDROP_H
+#endif  // LSST_QSERV_CCONTROL_USERQUERYDROP_H

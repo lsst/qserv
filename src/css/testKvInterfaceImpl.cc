@@ -22,17 +22,17 @@
  */
 
 /**
-  * @file
-  *
-  * @brief Unit test for the implementations of the Common State System Interface.
-  *
-  * @Author Jacek Becla, SLAC
-  */
+ * @file
+ *
+ * @brief Unit test for the implementations of the Common State System Interface.
+ *
+ * @Author Jacek Becla, SLAC
+ */
 
 // System headers
-#include <algorithm> // sort
-#include <cstddef>   // nullptr
-#include <cstdlib>   // rand, srand
+#include <algorithm>  // sort
+#include <cstddef>    // nullptr
+#include <cstdlib>    // rand, srand
 #include <iostream>
 #include <sstream>
 #include <stdexcept>
@@ -61,8 +61,7 @@ struct KvInterfaceFixture {
         v2 = "secondOne";
     };
 
-    ~KvInterfaceFixture(void) {
-    };
+    ~KvInterfaceFixture(void){};
 
     void doIt(lsst::qserv::css::KvInterface* kvI) {
         kvI->create(prefix, v1);
@@ -75,9 +74,9 @@ struct KvInterfaceFixture {
 
         std::vector<std::string> v = kvI->getChildren(prefix);
         BOOST_CHECK(2 == v.size());
-        std::sort (v.begin(), v.end());
-        BOOST_CHECK(v[0]=="xyzA");
-        BOOST_CHECK(v[1]=="xyzB");
+        std::sort(v.begin(), v.end());
+        BOOST_CHECK(v[0] == "xyzA");
+        BOOST_CHECK(v[1] == "xyzB");
 
         kvI->deleteKey(k1);
         BOOST_CHECK(kvI->get(k1, "xyz4") == "xyz4");
@@ -91,10 +90,10 @@ struct KvInterfaceFixture {
         // test unique
         std::string key;
         BOOST_CHECK_NO_THROW(key = kvI->create(k4, "uniqueValue", true));
-        BOOST_CHECK_EQUAL(key, k4+"0000000001");
+        BOOST_CHECK_EQUAL(key, k4 + "0000000001");
         BOOST_CHECK_EQUAL(kvI->get(key), "uniqueValue");
         BOOST_CHECK_NO_THROW(key = kvI->create(k4, "", true));
-        BOOST_CHECK_EQUAL(key, k4+"0000000002");
+        BOOST_CHECK_EQUAL(key, k4 + "0000000002");
 
         delete kvI;
     }

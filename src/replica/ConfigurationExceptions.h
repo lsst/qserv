@@ -31,14 +31,12 @@
 #include <string>
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 /**
  * The class ConfigError is the base class representing exceptions thrown by
  * the Configuration service.
  */
-class ConfigError: public std::runtime_error {
+class ConfigError : public std::runtime_error {
 public:
     using std::runtime_error::runtime_error;
 };
@@ -47,15 +45,12 @@ public:
  * The class ConfigVersionMismatch represents exceptions thrown on the expected versus
  * actual version mismatch of the configuration found in the peristent store.
  */
-class ConfigVersionMismatch: public ConfigError {
+class ConfigVersionMismatch : public ConfigError {
 public:
     int const version;
     int const requiredVersion;
-    explicit ConfigVersionMismatch(std::string const& msg, int version_=0, int requiredVersion_=0)
-        :   ConfigError(msg),
-            version(version_),
-            requiredVersion(requiredVersion_) {
-    }
+    explicit ConfigVersionMismatch(std::string const& msg, int version_ = 0, int requiredVersion_ = 0)
+            : ConfigError(msg), version(version_), requiredVersion(requiredVersion_) {}
 };
 
 /**
@@ -63,10 +58,10 @@ public:
  * of the parameter values if the expected type of a parameter doesn't match the actual
  * one stored in the configuration.
  */
-class ConfigTypeMismatch: public ConfigError {
+class ConfigTypeMismatch : public ConfigError {
 public:
     using ConfigError::ConfigError;
 };
-}}} // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_CONFIGURATIONEXCEPTIONS_H
+#endif  // LSST_QSERV_REPLICA_CONFIGURATIONEXCEPTIONS_H

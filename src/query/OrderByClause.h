@@ -21,18 +21,16 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 /**
-  * @file
-  *
-  * @brief OrderByClause is a representation of a SQL ORDER BY clause.  It
-  * consists of OrderByTerm objects.
-  *
-  * @author Daniel L. Wang, SLAC
-  */
-
+ * @file
+ *
+ * @brief OrderByClause is a representation of a SQL ORDER BY clause.  It
+ * consists of OrderByTerm objects.
+ *
+ * @author Daniel L. Wang, SLAC
+ */
 
 #ifndef LSST_QSERV_QUERY_ORDERBYCLAUSE_H
 #define LSST_QSERV_QUERY_ORDERBYCLAUSE_H
-
 
 // System headers
 #include <deque>
@@ -42,34 +40,22 @@
 // Local headers
 #include "query/typedefs.h"
 
-
 // Forward declarations
-namespace lsst {
-namespace qserv {
-namespace query {
-    class QueryTemplate;
-}}} // End of forward declarations
+namespace lsst::qserv::query {
+class QueryTemplate;
+}  // namespace lsst::qserv::query
 
-
-namespace lsst {
-namespace qserv {
-namespace query {
-
+namespace lsst::qserv::query {
 
 /// OrderByTerm is an element of an OrderByClause
 class OrderByTerm {
 public:
-    enum Order {DEFAULT, ASC, DESC};
+    enum Order { DEFAULT, ASC, DESC };
     class render;
 
     OrderByTerm() : _order(DEFAULT) {}
-    OrderByTerm(std::shared_ptr<ValueExpr> val,
-                Order order=DEFAULT,
-                std::string collate=std::string())
-    : _expr(val)
-    , _order(order)
-    , _collate(collate)
-    {}
+    OrderByTerm(std::shared_ptr<ValueExpr> val, Order order = DEFAULT, std::string collate = std::string())
+            : _expr(val), _order(order), _collate(collate) {}
 
     OrderByTerm(OrderByTerm const& rhs);
 
@@ -92,7 +78,6 @@ private:
     Order _order;
     std::string _collate;
 };
-
 
 /// OrderByClause is a parsed SQL ORDER BY ... clause
 class OrderByClause {
@@ -125,11 +110,10 @@ private:
     friend std::ostream& operator<<(std::ostream& os, OrderByClause const& oc);
     friend std::ostream& operator<<(std::ostream& os, OrderByClause const* oc);
 
-    void _addTerm(OrderByTerm const& t) {_terms->push_back(t); }
+    void _addTerm(OrderByTerm const& t) { _terms->push_back(t); }
     std::shared_ptr<std::vector<OrderByTerm>> _terms;
 };
 
+}  // namespace lsst::qserv::query
 
-}}} // namespace lsst::qserv::query
-
-#endif // LSST_QSERV_QUERY_ORDERBYCLAUSE_H
+#endif  // LSST_QSERV_QUERY_ORDERBYCLAUSE_H

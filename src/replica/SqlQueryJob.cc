@@ -41,62 +41,30 @@ namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.SqlQueryJob");
 
-} /// namespace
+}  // namespace
 
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
 string SqlQueryJob::typeName() { return "SqlQueryJob"; }
 
-
-SqlQueryJob::Ptr SqlQueryJob::create(string const& query,
-                                     string const& user,
-                                     string const& password,
-                                     uint64_t maxRows,
-                                     bool allWorkers,
-                                     Controller::Ptr const& controller,
-                                     string const& parentJobId,
-                                     CallbackType const& onFinish,
-                                     int priority) {
-    return Ptr(new SqlQueryJob(
-        query,
-        user,
-        password,
-        maxRows,
-        allWorkers,
-        controller,
-        parentJobId,
-        onFinish,
-        priority
-    ));
+SqlQueryJob::Ptr SqlQueryJob::create(string const& query, string const& user, string const& password,
+                                     uint64_t maxRows, bool allWorkers, Controller::Ptr const& controller,
+                                     string const& parentJobId, CallbackType const& onFinish, int priority) {
+    return Ptr(new SqlQueryJob(query, user, password, maxRows, allWorkers, controller, parentJobId, onFinish,
+                               priority));
 }
 
+SqlQueryJob::SqlQueryJob(string const& query, string const& user, string const& password, uint64_t maxRows,
+                         bool allWorkers, Controller::Ptr const& controller, string const& parentJobId,
+                         CallbackType const& onFinish, int priority)
+        : SqlJob(maxRows, allWorkers, controller, parentJobId, "SQL_QUERY", priority),
+          _query(query),
+          _user(user),
+          _password(password),
+          _onFinish(onFinish) {}
 
-SqlQueryJob::SqlQueryJob(string const& query,
-                         string const& user,
-                         string const& password,
-                         uint64_t maxRows,
-                         bool allWorkers,
-                         Controller::Ptr const& controller,
-                         string const& parentJobId,
-                         CallbackType const& onFinish,
-                         int priority)
-    :   SqlJob(maxRows,
-               allWorkers,
-               controller,
-               parentJobId,
-               "SQL_QUERY",
-               priority),
-        _query(query),
-        _user(user),
-        _password(password),
-        _onFinish(onFinish) {
-}
-
-
-list<pair<string,string>> SqlQueryJob::extendedPersistentState() const {
-    list<pair<string,string>> result;
+list<pair<string, string>> SqlQueryJob::extendedPersistentState() const {
+    list<pair<string, string>> result;
     result.emplace_back("query", query());
     result.emplace_back("user", user());
     result.emplace_back("max_rows", to_string(maxRows()));
@@ -104,47 +72,32 @@ list<pair<string,string>> SqlQueryJob::extendedPersistentState() const {
     return result;
 }
 
-
-list<SqlRequest::Ptr> SqlQueryJob::launchRequests(util::Lock const& lock,
-                                                  string const& worker,
+list<SqlRequest::Ptr> SqlQueryJob::launchRequests(util::Lock const& lock, string const& worker,
                                                   size_t maxRequestsPerWorker) {
-
     // Launch exactly one request per worker unless it was already
     // launched earlier
 
     list<SqlRequest::Ptr> requests;
     if (not _workers.count(worker) and maxRequestsPerWorker != 0) {
         auto const self = shared_from_base<SqlQueryJob>();
-        requests.push_back(
-            controller()->sqlQuery(
-                worker,
-                query(),
-                user(),
-                password(),
-                maxRows(),
-                [self] (SqlQueryRequest::Ptr const& request) {
-                    self->onRequestFinish(request);
-                },
-                priority(),
-                true,   /* keepTracking*/
-                id()    /* jobId */
-            )
-        );
+        requests.push_back(controller()->sqlQuery(
+                worker, query(), user(), password(), maxRows(),
+                [self](SqlQueryRequest::Ptr const& request) { self->onRequestFinish(request); }, priority(),
+                true, /* keepTracking*/
+                id()  /* jobId */
+                ));
         _workers.insert(worker);
     }
     return requests;
 }
 
-
-void SqlQueryJob::stopRequest(util::Lock const& lock,
-                              SqlRequest::Ptr const& request) {
+void SqlQueryJob::stopRequest(util::Lock const& lock, SqlRequest::Ptr const& request) {
     stopRequestDefaultImpl<StopSqlQueryRequest>(lock, request);
 }
-
 
 void SqlQueryJob::notify(util::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "[" << typeName() << "]");
     notifyDefaultImpl<SqlQueryJob>(lock, _onFinish);
 }
 
-}}} // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

@@ -34,13 +34,10 @@
 #include "util/InstanceCount.h"
 
 // Third-party headers
-#include "XrdSsi/XrdSsiErrInfo.hh" // required by XrdSsiStream
+#include "XrdSsi/XrdSsiErrInfo.hh"  // required by XrdSsiStream
 #include "XrdSsi/XrdSsiStream.hh"
 
-namespace lsst {
-namespace qserv {
-namespace xrdsvc {
-
+namespace lsst::qserv::xrdsvc {
 
 /// StreamBuffer is a single use buffer for transferring data packets
 /// to XrdSsi.
@@ -52,8 +49,8 @@ public:
 
     // Copying this would be very confusing for something waiting for Recycle().
     StreamBuffer() = delete;
-    StreamBuffer(StreamBuffer const&) = delete;
-    StreamBuffer& operator=(StreamBuffer const&) = delete;
+    StreamBuffer(StreamBuffer const &) = delete;
+    StreamBuffer &operator=(StreamBuffer const &) = delete;
 
     /// Factory function, because this should be able to delete itself when Recycle() is called.
     /// The constructor uses move to avoid copying the string.
@@ -91,17 +88,16 @@ private:
     std::condition_variable _cv;
     bool _doneWithThis = false;
     bool _cancelled = false;
-    Ptr _selfKeepAlive; ///< keep this object alive until after Recycle() is called.
-    //util::InstanceCount _ic{"StreamBuffer"}; ///< Useful as it indicates amount of waiting for czar.
+    Ptr _selfKeepAlive;  ///< keep this object alive until after Recycle() is called.
+    // util::InstanceCount _ic{"StreamBuffer"}; ///< Useful as it indicates amount of waiting for czar.
 
     // Members associated with limiting memory use.
-    static std::atomic<int64_t> _totalBytes; ///< Total bytes currently in use by all StreamBuffer instances.
+    static std::atomic<int64_t> _totalBytes;  ///< Total bytes currently in use by all StreamBuffer instances.
     static std::atomic<int64_t> _maxTotalBytes;
     static std::mutex _createMtx;
     static std::condition_variable _createCv;
 };
 
+}  // namespace lsst::qserv::xrdsvc
 
-}}} // namespace lsst::qserv::xrdsvc
-
-#endif // LSST_QSERV_XRDSVC_STREAMBUFFER_H
+#endif  // LSST_QSERV_XRDSVC_STREAMBUFFER_H

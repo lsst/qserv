@@ -20,35 +20,31 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
- /**
-  * @file
-  *
-  * @brief SqlFragmenter breaks up a single string containing several
-  * SQL statements into one or more fragments, in the effort to avoid
-  * MySQL protocol limits for submitted query length.
-  *
-  * @author Daniel L. Wang, SLAC
-  */
+/**
+ * @file
+ *
+ * @brief SqlFragmenter breaks up a single string containing several
+ * SQL statements into one or more fragments, in the effort to avoid
+ * MySQL protocol limits for submitted query length.
+ *
+ * @author Daniel L. Wang, SLAC
+ */
 
 #include "sql/SqlFragmenter.h"
 
-namespace lsst {
-namespace qserv {
-namespace sql {
+namespace lsst::qserv::sql {
 
 // Constants
 const std::string SqlFragmenter::_delimiter = ";\n";
 
 SqlFragmenter::SqlFragmenter(std::string const& query)
-    : _query(query),
-      _pNext(0),
-      _qEnd(query.length()),
-      _sizeTarget(1024), // too little?
-      _count(0)
-{}
+        : _query(query),
+          _pNext(0),
+          _qEnd(query.length()),
+          _sizeTarget(1024),  // too little?
+          _count(0) {}
 
-SqlFragmenter::Piece const&
-SqlFragmenter::getNextPiece() {
+SqlFragmenter::Piece const& SqlFragmenter::getNextPiece() {
     if (_pNext == _qEnd) {
         _current.first = 0;
         return _current;
@@ -57,8 +53,7 @@ SqlFragmenter::getNextPiece() {
     return _current;
 }
 
-void
-SqlFragmenter::_advance() {
+void SqlFragmenter::_advance() {
     std::string::size_type begin = _pNext;
     std::string::size_type end;
     std::string::size_type searchTarget;
@@ -72,29 +67,32 @@ SqlFragmenter::_advance() {
         } else {
             // Look forward instead of backward.
             end = _query.find(_delimiter, begin + _sizeTarget);
-            if (end != std::string::npos) { // Found?
+            if (end != std::string::npos) {  // Found?
                 end += _delimiter.size();
-            } else { // Not found bkwd/fwd. Use end.
+            } else {  // Not found bkwd/fwd. Use end.
                 end = _qEnd;
             }
         }
-    } else { // Remaining is small. Don't split further.
+    } else {  // Remaining is small. Don't split further.
         end = _qEnd;
     }
     // Backoff whitepace or null.
     int pos = end;
     char c = _query[pos];
-    while((c == '\0') || (c == '\n')
-          || (c == ' ') || (c == '\t')) { c = _query[--pos];}
+    while ((c == '\0') || (c == '\n') || (c == ' ') || (c == '\t')) {
+        c = _query[--pos];
+    }
     // Watch out for queries not terminated by semicolon.
-    if (c!= ';') {++pos;} // A non-semicolon, non-whitespace-->valuable.
+    if (c != ';') {
+        ++pos;
+    }  // A non-semicolon, non-whitespace-->valuable.
 
     if (pos > (int)begin) {
         // create piece:
         _current.first = _query.data() + begin;
         _current.second = pos - (int)begin;
     }
-    _pNext = end; // Advance for next iteration
+    _pNext = end;  // Advance for next iteration
     // Catch empty strings.
     if (_current.second && _current.first[0] != '\0') {
         ++_count;
@@ -103,4 +101,4 @@ SqlFragmenter::_advance() {
     }
 }
 
-}}} // namespace lsst::qserv::sql
+}  // namespace lsst::qserv::sql

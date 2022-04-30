@@ -31,32 +31,28 @@
 // Qserv headers
 #include "wpublish/QservRequest.h"
 
-namespace lsst {
-namespace qserv {
-namespace wpublish {
+namespace lsst::qserv::wpublish {
 
 /**
-  * Class GetChunkListQservRequest implements the client-side requests
-  * the Qserv worker services for a status of chunk lists.
-  */
+ * Class GetChunkListQservRequest implements the client-side requests
+ * the Qserv worker services for a status of chunk lists.
+ */
 class GetChunkListQservRequest : public QservRequest {
-
 public:
-
     /// Completion status of the operation
     enum Status {
-        SUCCESS,    // successful completion of a request
-        ERROR       // an error occured during command execution
+        SUCCESS,  // successful completion of a request
+        ERROR     // an error occured during command execution
     };
 
     /// @return string representation of a status
-    static std::string status2str (Status status);
+    static std::string status2str(Status status);
 
     /// Struct Chunk a value type encapsulating a chunk number and the name
     /// of a database
     struct Chunk {
         unsigned int chunk;
-        std::string  database;
+        std::string database;
         unsigned int use_count;
     };
 
@@ -68,10 +64,9 @@ public:
 
     /// The callback function type to be used for notifications on
     /// the operation completion.
-    using CallbackType =
-        std::function<void(Status,                      // completion status
-                           std::string const&,          // error message
-                           ChunkCollection const&)>;    // chunks (if success)
+    using CallbackType = std::function<void(Status,                    // completion status
+                                            std::string const&,        // error message
+                                            ChunkCollection const&)>;  // chunks (if success)
 
     /**
      * Static factory method is needed to prevent issues with the lifespan
@@ -83,8 +78,7 @@ public:
      *                   (successful or not) of the request.
      * @return smart pointer to the object of the class
      */
-    static Ptr create(bool inUseOnly,
-                      CallbackType onFinish = nullptr);
+    static Ptr create(bool inUseOnly, CallbackType onFinish = nullptr);
 
     // Default construction and copy semantics are prohibited
     GetChunkListQservRequest() = delete;
@@ -94,14 +88,12 @@ public:
     ~GetChunkListQservRequest() override;
 
 protected:
-
     /**
      * @param inUseOnly  only report chunks which are in use
      * @param onFinish   optional callback function to be called upon the completion
      *                   (successful or not) of the request.
      */
-    GetChunkListQservRequest(bool inUseOnly,
-                             CallbackType onFinish);
+    GetChunkListQservRequest(bool inUseOnly, CallbackType onFinish);
 
     void onRequest(proto::FrameBuffer& buf) override;
 
@@ -110,13 +102,12 @@ protected:
     void onError(std::string const& error) override;
 
 private:
-
     // Parameters of the object
 
     bool _inUseOnly;
     CallbackType _onFinish;
 };
 
-}}} // namespace lsst::qserv::wpublish
+}  // namespace lsst::qserv::wpublish
 
-#endif // LSST_QSERV_WPUBLISH_GET_CHUNK_LIST_QSERV_REQUEST_H
+#endif  // LSST_QSERV_WPUBLISH_GET_CHUNK_LIST_QSERV_REQUEST_H

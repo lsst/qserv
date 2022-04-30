@@ -40,85 +40,73 @@ using namespace lsst::qserv;
 
 wpublish::ChunkGroupQservRequest::Status translate(proto::WorkerCommandChunkGroupR::Status status) {
     switch (status) {
-        case proto::WorkerCommandChunkGroupR::SUCCESS: return wpublish::ChunkGroupQservRequest::SUCCESS;
-        case proto::WorkerCommandChunkGroupR::INVALID: return wpublish::ChunkGroupQservRequest::INVALID;
-        case proto::WorkerCommandChunkGroupR::IN_USE:  return wpublish::ChunkGroupQservRequest::IN_USE;
-        case proto::WorkerCommandChunkGroupR::ERROR:   return wpublish::ChunkGroupQservRequest::ERROR;
+        case proto::WorkerCommandChunkGroupR::SUCCESS:
+            return wpublish::ChunkGroupQservRequest::SUCCESS;
+        case proto::WorkerCommandChunkGroupR::INVALID:
+            return wpublish::ChunkGroupQservRequest::INVALID;
+        case proto::WorkerCommandChunkGroupR::IN_USE:
+            return wpublish::ChunkGroupQservRequest::IN_USE;
+        case proto::WorkerCommandChunkGroupR::ERROR:
+            return wpublish::ChunkGroupQservRequest::ERROR;
     }
-    throw domain_error(
-            "ChunkGroupQservRequest::" + string(__func__) + "  no match for Protobuf status: " +
-            proto::WorkerCommandChunkGroupR_Status_Name(status));
+    throw domain_error("ChunkGroupQservRequest::" + string(__func__) + "  no match for Protobuf status: " +
+                       proto::WorkerCommandChunkGroupR_Status_Name(status));
 }
 
 }  // namespace
 
-namespace lsst {
-namespace qserv {
-namespace wpublish {
+namespace lsst::qserv::wpublish {
 
 string ChunkGroupQservRequest::status2str(Status status) {
     switch (status) {
-        case SUCCESS: return "SUCCESS";
-        case INVALID: return "INVALID";
-        case IN_USE:  return "IN_USE";
-        case ERROR:   return "ERROR";
+        case SUCCESS:
+            return "SUCCESS";
+        case INVALID:
+            return "INVALID";
+        case IN_USE:
+            return "IN_USE";
+        case ERROR:
+            return "ERROR";
     }
-    throw domain_error(
-            "ChunkGroupQservRequest::" + string(__func__) + "  no match for status: " +
-            to_string(status));
+    throw domain_error("ChunkGroupQservRequest::" + string(__func__) +
+                       "  no match for status: " + to_string(status));
 }
 
-ChunkGroupQservRequest::ChunkGroupQservRequest(bool add,
-                                               unsigned int  chunk,
-                                               vector<string> const& databases,
-                                               bool force,
-                                               CallbackType onFinish)
-    :   _add(add),
-        _chunk(chunk),
-        _databases(databases),
-        _force(force),
-        _onFinish(onFinish){
-
-    LOGS(_log, LOG_LVL_DEBUG, "ChunkGroupQservRequest[" << (_add ? "add" : "remove")
-         << "]   ** CONSTRUCTED **");
+ChunkGroupQservRequest::ChunkGroupQservRequest(bool add, unsigned int chunk, vector<string> const& databases,
+                                               bool force, CallbackType onFinish)
+        : _add(add), _chunk(chunk), _databases(databases), _force(force), _onFinish(onFinish) {
+    LOGS(_log, LOG_LVL_DEBUG,
+         "ChunkGroupQservRequest[" << (_add ? "add" : "remove") << "]   ** CONSTRUCTED **");
 }
 
-
-ChunkGroupQservRequest::~ChunkGroupQservRequest () {
-    LOGS(_log, LOG_LVL_DEBUG, "ChunkGroupQservRequest[" << (_add ? "add" : "remove")
-         << "]  ** DELETED **");
+ChunkGroupQservRequest::~ChunkGroupQservRequest() {
+    LOGS(_log, LOG_LVL_DEBUG, "ChunkGroupQservRequest[" << (_add ? "add" : "remove") << "]  ** DELETED **");
 }
-
 
 void ChunkGroupQservRequest::onRequest(proto::FrameBuffer& buf) {
-
     proto::WorkerCommandH header;
-    header.set_command(_add ?
-                       proto::WorkerCommandH::ADD_CHUNK_GROUP :
-                       proto::WorkerCommandH::REMOVE_CHUNK_GROUP);
+    header.set_command(_add ? proto::WorkerCommandH::ADD_CHUNK_GROUP
+                            : proto::WorkerCommandH::REMOVE_CHUNK_GROUP);
     buf.serialize(header);
 
     proto::WorkerCommandChunkGroupM message;
     message.set_chunk(_chunk);
-    for (auto const& database: _databases) {
+    for (auto const& database : _databases) {
         message.add_dbs(database);
     }
     message.set_force(_force);
     buf.serialize(message);
 }
 
-
 void ChunkGroupQservRequest::onResponse(proto::FrameBufferView& view) {
-
     proto::WorkerCommandChunkGroupR reply;
     view.parse(reply);
 
-    LOGS(_log, LOG_LVL_DEBUG, "ChunkGroupQservRequest[" << (_add ? "add" : "remove")
-         << "** SERVICE REPLY **  status: "
-         << proto::WorkerCommandChunkGroupR_Status_Name(reply.status()));
+    LOGS(_log, LOG_LVL_DEBUG,
+         "ChunkGroupQservRequest[" << (_add ? "add" : "remove") << "** SERVICE REPLY **  status: "
+                                   << proto::WorkerCommandChunkGroupR_Status_Name(reply.status()));
 
     if (nullptr != _onFinish) {
-
         // Clearing the stored callback after finishing the up-stream notification
         // has two purposes:
         //
@@ -128,16 +116,12 @@ void ChunkGroupQservRequest::onResponse(proto::FrameBufferView& view) {
 
         auto onFinish = move(_onFinish);
         _onFinish = nullptr;
-        onFinish(::translate(reply.status()),
-                 reply.error());
+        onFinish(::translate(reply.status()), reply.error());
     }
 }
-
 
 void ChunkGroupQservRequest::onError(string const& error) {
-
     if (nullptr != _onFinish) {
-
         // Clearing the stored callback after finishing the up-stream notification
         // has two purposes:
         //
@@ -147,58 +131,30 @@ void ChunkGroupQservRequest::onError(string const& error) {
 
         auto onFinish = move(_onFinish);
         _onFinish = nullptr;
-        onFinish(Status::ERROR,
-                 error);
+        onFinish(Status::ERROR, error);
     }
 }
 
-
-AddChunkGroupQservRequest::Ptr AddChunkGroupQservRequest::create(
-                                        unsigned int chunk,
-                                        vector<string> const& databases,
-                                        CallbackType onFinish) {
-    return AddChunkGroupQservRequest::Ptr(
-        new AddChunkGroupQservRequest(chunk,
-                                      databases,
-                                      onFinish));
+AddChunkGroupQservRequest::Ptr AddChunkGroupQservRequest::create(unsigned int chunk,
+                                                                 vector<string> const& databases,
+                                                                 CallbackType onFinish) {
+    return AddChunkGroupQservRequest::Ptr(new AddChunkGroupQservRequest(chunk, databases, onFinish));
 }
 
+AddChunkGroupQservRequest::AddChunkGroupQservRequest(unsigned int chunk, vector<string> const& databases,
+                                                     CallbackType onFinish)
+        : ChunkGroupQservRequest(true, chunk, databases, false, onFinish) {}
 
-AddChunkGroupQservRequest::AddChunkGroupQservRequest(
-                                    unsigned int chunk,
-                                    vector<string> const& databases,
-                                    CallbackType onFinish)
-    :   ChunkGroupQservRequest(true,
-                               chunk,
-                               databases,
-                               false,
-                               onFinish) {
-}
-
-
-RemoveChunkGroupQservRequest::Ptr RemoveChunkGroupQservRequest::create(
-                                            unsigned int chunk,
-                                            vector<string> const& databases,
-                                            bool force,
-                                            CallbackType onFinish) {
+RemoveChunkGroupQservRequest::Ptr RemoveChunkGroupQservRequest::create(unsigned int chunk,
+                                                                       vector<string> const& databases,
+                                                                       bool force, CallbackType onFinish) {
     return RemoveChunkGroupQservRequest::Ptr(
-        new RemoveChunkGroupQservRequest(chunk,
-                                         databases,
-                                         force,
-                                         onFinish));
+            new RemoveChunkGroupQservRequest(chunk, databases, force, onFinish));
 }
 
+RemoveChunkGroupQservRequest::RemoveChunkGroupQservRequest(unsigned int chunk,
+                                                           vector<string> const& databases, bool force,
+                                                           CallbackType onFinish)
+        : ChunkGroupQservRequest(false, chunk, databases, force, onFinish) {}
 
-RemoveChunkGroupQservRequest::RemoveChunkGroupQservRequest(
-                                    unsigned int chunk,
-                                    vector<string> const& databases,
-                                    bool force,
-                                    CallbackType onFinish)
-    :   ChunkGroupQservRequest(false,
-                               chunk,
-                               databases,
-                               force,
-                               onFinish) {
-}
-
-}}} // namespace lsst::qserv::wpublish
+}  // namespace lsst::qserv::wpublish

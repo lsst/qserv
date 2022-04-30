@@ -26,23 +26,17 @@
 // System headers
 #include <sstream>
 
-
-namespace lsst {
-namespace qserv {
-namespace util {
+namespace lsst::qserv::util {
 
 Issue::Context::Context(char const* file, int line, char const* func)
-    : _file(file), _func(func), _line(line) {
-}
+        : _file(file), _func(func), _line(line) {}
 
-void
-Issue::Context::print(std::ostream& out) const {
+void Issue::Context::print(std::ostream& out) const {
     out << "in function " << _func << " at " << _file << ":" << _line;
 }
 
-Issue::Issue(Context const& ctx, std::string const& message)
-    : _message(message), _fullMessage() {
-    std::ostringstream str ;
+Issue::Issue(Context const& ctx, std::string const& message) : _message(message), _fullMessage() {
+    std::ostringstream str;
     str << message << " [";
     ctx.print(str);
     str << ']';
@@ -50,13 +44,9 @@ Issue::Issue(Context const& ctx, std::string const& message)
 }
 
 // Destructor
-Issue::~Issue() throw() {
-}
+Issue::~Issue() throw() {}
 
 // Implements std::exception::what()
-char const*
-Issue::what() const throw() {
-  return _fullMessage.c_str();
-}
+char const* Issue::what() const throw() { return _fullMessage.c_str(); }
 
-}}} // namespace lsst::qserv::util
+}  // namespace lsst::qserv::util

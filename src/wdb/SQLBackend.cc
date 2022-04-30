@@ -21,7 +21,6 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-
 // Class header
 #include "wdb/SQLBackend.h"
 
@@ -50,52 +49,42 @@ std::string makeUuid() {
     return boost::uuids::to_string(id);
 }
 
-} // anonymous namespace
+}  // anonymous namespace
 
+namespace lsst::qserv::wdb {
 
-namespace lsst {
-namespace qserv {
-namespace wdb {
-
-
-SQLBackend::SQLBackend() : _uid(makeUuid()) {
-}
-
+SQLBackend::SQLBackend() : _uid(makeUuid()) {}
 
 SQLBackend::SQLBackend(mysql::MySqlConfig const& mc)
-  : _sqlConn(sql::SqlConnectionFactory::make(sql::SqlConfig(mc))), _uid(makeUuid()) {
+        : _sqlConn(sql::SqlConnectionFactory::make(sql::SqlConfig(mc))), _uid(makeUuid()) {
     std::lock_guard<std::mutex> lock(_mtx);
     _memLockAcquire();
- }
-
+}
 
 SQLBackend::~SQLBackend() {
     std::lock_guard<std::mutex> lock(_mtx);
     _memLockRelease();
 }
 
-
 std::ostream& operator<<(std::ostream& os, ScTable const& st) {
-    return os << SUBCHUNKDB_PREFIX << st.dbTable.db << "_" << st.chunkId << "."
-              << st.dbTable.table << "_" << st.subChunkId;
+    return os << SUBCHUNKDB_PREFIX << st.dbTable.db << "_" << st.chunkId << "." << st.dbTable.table << "_"
+              << st.subChunkId;
 }
-
 
 bool SQLBackend::load(ScTableVector const& v, sql::SqlErrorObject& err) {
     using namespace lsst::qserv::wbase;
     std::lock_guard<std::mutex> lock(_mtx);
     _memLockRequireOwnership();
-    for(ScTableVector::const_iterator i=v.begin(), e=v.end();
-            i != e; ++i) {
+    for (ScTableVector::const_iterator i = v.begin(), e = v.end(); i != e; ++i) {
         std::string const* createScript = nullptr;
         if (i->chunkId == DUMMY_CHUNK) {
             createScript = &CREATE_DUMMY_SUBCHUNK_SCRIPT;
         } else {
             createScript = &CREATE_SUBCHUNK_SCRIPT;
         }
-        std::string create = (boost::format(*createScript)
-            % i->dbTable.db % i->dbTable.table % SUB_CHUNK_COLUMN
-                % i->chunkId % i->subChunkId).str();
+        std::string create = (boost::format(*createScript) % i->dbTable.db % i->dbTable.table %
+                              SUB_CHUNK_COLUMN % i->chunkId % i->subChunkId)
+                                     .str();
 
         if (!_sqlConn->runQuery(create, err)) {
             LOGS(_log, LOG_LVL_ERROR, "sql query err=" << err.errMsg() << " with '" << create << "'");
@@ -106,34 +95,32 @@ bool SQLBackend::load(ScTableVector const& v, sql::SqlErrorObject& err) {
     return true;
 }
 
-
 void SQLBackend::discard(ScTableVector const& v) {
     std::lock_guard<std::mutex> lock(_mtx);
     _discard(v.begin(), v.end());
 }
-
 
 void SQLBackend::memLockRequireOwnership() {
     std::lock_guard<std::mutex> lock(_mtx);
     _memLockRequireOwnership();
 }
 
-
 void SQLBackend::_memLockRequireOwnership() {
     // Must hold _mtx
     if (_memLockStatus() != LOCKED_OURS) {
-        _exitDueToConflict("memLockRequireOwnership could not verify this program owned the memory table lock, Exiting.");
+        _exitDueToConflict(
+                "memLockRequireOwnership could not verify this program owned the memory table lock, "
+                "Exiting.");
     }
 }
 
-
-void SQLBackend::_discard(ScTableVector::const_iterator begin,
-              ScTableVector::const_iterator end) {
+void SQLBackend::_discard(ScTableVector::const_iterator begin, ScTableVector::const_iterator end) {
     // Must hold _mtx
     _memLockRequireOwnership();
-    for(ScTableVector::const_iterator i=begin, e=end; i != e; ++i) {
-        std::string discard = (boost::format(lsst::qserv::wbase::CLEANUP_SUBCHUNK_SCRIPT)
-                % i->dbTable.db % i->dbTable.table % i->chunkId % i->subChunkId).str();
+    for (ScTableVector::const_iterator i = begin, e = end; i != e; ++i) {
+        std::string discard = (boost::format(lsst::qserv::wbase::CLEANUP_SUBCHUNK_SCRIPT) % i->dbTable.db %
+                               i->dbTable.table % i->chunkId % i->subChunkId)
+                                      .str();
         sql::SqlErrorObject err;
         if (!_sqlConn->runQuery(discard, err)) {
             throw err;
@@ -160,17 +147,20 @@ SQLBackend::LockStatus SQLBackend::_memLockStatus() {
     if (!_sqlConn->runQuery(sql, results, err)) {
         // Assuming UNLOCKED should be safe as either it must be LOCKED_OURS to continue
         // or we are about to try to lock. Failure to lock will cause the program to exit.
-        LOGS(_log, LOG_LVL_WARN, "memLockStatus query failed, assuming UNLOCKED. " << sql << " err=" << err.printErrMsg());
+        LOGS(_log, LOG_LVL_WARN,
+             "memLockStatus query failed, assuming UNLOCKED. " << sql << " err=" << err.printErrMsg());
         return UNLOCKED;
     }
     std::string uidStr;
     if (!results.extractFirstValue(uidStr, err)) {
-        LOGS(_log, LOG_LVL_WARN, "memLockStatus unexpected results, assuming LOCKED_OTHER. err=" << err.printErrMsg());
+        LOGS(_log, LOG_LVL_WARN,
+             "memLockStatus unexpected results, assuming LOCKED_OTHER. err=" << err.printErrMsg());
         return LOCKED_OTHER;
     }
     if (uidStr != _uid) {
-        LOGS(_log, LOG_LVL_WARN, "memLockStatus LOCKED_OTHER wrong uid. Expected "
-             << _uid << " got " << uidStr << " err=" << err.printErrMsg());
+        LOGS(_log, LOG_LVL_WARN,
+             "memLockStatus LOCKED_OTHER wrong uid. Expected " << _uid << " got " << uidStr
+                                                               << " err=" << err.printErrMsg());
         return LOCKED_OTHER;
     }
     return LOCKED_OURS;
@@ -196,7 +186,8 @@ void SQLBackend::_memLockAcquire() {
 
     // Lock the memory tables.
     std::string sql = "CREATE DATABASE IF NOT EXISTS " + _lockDb + ";";
-    sql += "CREATE TABLE IF NOT EXISTS " + _lockDbTbl + " ( keyId INT UNIQUE, uid VARCHAR(255) ) ENGINE = MEMORY;";
+    sql += "CREATE TABLE IF NOT EXISTS " + _lockDbTbl +
+           " ( keyId INT UNIQUE, uid VARCHAR(255) ) ENGINE = MEMORY;";
     _execLockSql(sql);
     // The following 2 lines will cause the new worker to always take the lock.
     sql = "TRUNCATE TABLE " + _lockDbTbl;
@@ -217,7 +208,7 @@ void SQLBackend::_memLockAcquire() {
     }
     std::vector<std::string> databases;
     results.extractFirstColumn(databases, err);
-    for (auto iter=databases.begin(), end=databases.end(); iter != end;) {
+    for (auto iter = databases.begin(), end = databases.end(); iter != end;) {
         // Delete in blocks of 50 to save time.
         std::string dropDb = "";
         int count = 0;
@@ -225,7 +216,7 @@ void SQLBackend::_memLockAcquire() {
             std::string db = *iter;
             ++iter;
             // Check that the name is actually a match to subChunkPrefix and not a wild card match.
-            if (db.compare(0, subChunkPrefix.length(), subChunkPrefix)==0 ) {
+            if (db.compare(0, subChunkPrefix.length(), subChunkPrefix) == 0) {
                 dropDb += "DROP DATABASE " + db + ";";
                 ++count;
             }
@@ -257,13 +248,11 @@ void SQLBackend::_exitDueToConflict(const std::string& msg) {
     exit(EXIT_FAILURE);
 }
 
-
 bool FakeBackend::load(ScTableVector const& v, sql::SqlErrorObject& err) {
     using namespace lsst::qserv::wbase;
     std::ostringstream os;
     os << "Pretending to load:";
-    std::copy(v.begin(), v.end(),
-            std::ostream_iterator<ScTable>(os, ","));
+    std::copy(v.begin(), v.end(), std::ostream_iterator<ScTable>(os, ","));
     os << std::endl;
     LOGS(_log, LOG_LVL_DEBUG, os.str());
     for (auto& scTbl : v) {
@@ -273,22 +262,18 @@ bool FakeBackend::load(ScTableVector const& v, sql::SqlErrorObject& err) {
     return true;
 }
 
-
 void FakeBackend::discard(ScTableVector const& v) {
-    for(auto const& scTbl : v) {
+    for (auto const& scTbl : v) {
         fakeSet.erase(makeFakeKey(scTbl));
     }
     _discard(v.begin(), v.end());
 }
 
-
-void FakeBackend::_discard(ScTableVector::const_iterator begin,
-              ScTableVector::const_iterator end) {
+void FakeBackend::_discard(ScTableVector::const_iterator begin, ScTableVector::const_iterator end) {
     std::ostringstream os;
     os << "Pretending to discard:";
     std::copy(begin, end, std::ostream_iterator<ScTable>(os, ","));
     LOGS(_log, LOG_LVL_DEBUG, os.str());
 }
 
-}}} // namespace lsst::qserv::wdb
-
+}  // namespace lsst::qserv::wdb

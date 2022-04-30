@@ -33,15 +33,13 @@
 #include "wpublish/GetChunkListQservRequest.h"
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class GetReplicasQservMgtRequest implements a request retrieving a list of
  * replicas known to Qserv workers.
  */
-class GetReplicasQservMgtRequest: public QservMgtRequest  {
+class GetReplicasQservMgtRequest : public QservMgtRequest {
 public:
     typedef std::shared_ptr<GetReplicasQservMgtRequest> Ptr;
 
@@ -67,11 +65,9 @@ public:
      * @param onFinish (optional) callback function to be called upon request completion.
      * @return A pointer to the created object.
      */
-    static Ptr create(ServiceProvider::Ptr const& serviceProvider,
-                      std::string const& worker,
-                      std::string const& databaseFamily,
-                      bool inUseOnly=false,
-                      CallbackType const& onFinish=nullptr);
+    static Ptr create(ServiceProvider::Ptr const& serviceProvider, std::string const& worker,
+                      std::string const& databaseFamily, bool inUseOnly = false,
+                      CallbackType const& onFinish = nullptr);
 
     /// @return name of a database family
     std::string const& databaseFamily() const { return _databaseFamily; }
@@ -87,7 +83,7 @@ public:
     QservReplicaCollection const& replicas() const;
 
     /// @see QservMgtRequest::extendedPersistentState()
-    std::list<std::pair<std::string,std::string>> extendedPersistentState() const override;
+    std::list<std::pair<std::string, std::string>> extendedPersistentState() const override;
 
 protected:
     /// @see QservMgtRequest::startImpl
@@ -101,27 +97,25 @@ protected:
 
 private:
     /// @see GetReplicasQservMgtRequest::create()
-    GetReplicasQservMgtRequest(ServiceProvider::Ptr const& serviceProvider,
-                               std::string const& worker,
-                               std::string const& databaseFamily,
-                               bool inUseOnly,
+    GetReplicasQservMgtRequest(ServiceProvider::Ptr const& serviceProvider, std::string const& worker,
+                               std::string const& databaseFamily, bool inUseOnly,
                                CallbackType const& onFinish);
 
     /**
      * Carry over results of the request into a local collection. Filter results
      * by databases participating in the family.
-     * 
+     *
      * @param lock A lock on QservMgtRequest::_mtx must be acquired before calling this method
      * @param collection The input collection of replicas.
      */
     void _setReplicas(util::Lock const& lock,
-                     wpublish::GetChunkListQservRequest::ChunkCollection const& collection);
+                      wpublish::GetChunkListQservRequest::ChunkCollection const& collection);
 
-    // Input parameters  
+    // Input parameters
 
     std::string const _databaseFamily;
-    bool        const _inUseOnly;
-    CallbackType      _onFinish;    /// @note is reset when the request finishes
+    bool const _inUseOnly;
+    CallbackType _onFinish;  /// @note is reset when the request finishes
 
     /// A request to the remote services
     wpublish::GetChunkListQservRequest::Ptr _qservRequest;
@@ -130,6 +124,6 @@ private:
     QservReplicaCollection _replicas;
 };
 
-}}} // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_GET_REPLICAS_QSERVMGTREQUEST_H
+#endif  // LSST_QSERV_REPLICA_GET_REPLICAS_QSERVMGTREQUEST_H

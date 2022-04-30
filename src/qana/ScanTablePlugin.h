@@ -29,10 +29,7 @@
 // Qserv headers
 #include "proto/ScanTableInfo.h"
 
-
-namespace lsst {
-namespace qserv {
-namespace qana {
+namespace lsst::qserv::qana {
 
 /// ScanTablePlugin is a query plugin that detects the "scan tables"
 /// of a query. A scan table is a partitioned table that must be
@@ -58,12 +55,11 @@ public:
     std::string name() const override { return "ScanTablePlugin"; }
 
 private:
-    proto::ScanInfo _findScanTables(query::SelectStmt& stmt,
-                                    query::QueryContext& context);
+    proto::ScanInfo _findScanTables(query::SelectStmt& stmt, query::QueryContext& context);
     proto::ScanInfo _scanInfo;
     int _interactiveChunkLimit;
 };
 
-}}} // namespace lsst::qserv::qana
+}  // namespace lsst::qserv::qana
 
-#endif // LSST_QSERV_QANA_SCANTABLEPLUGIN_H
+#endif  // LSST_QSERV_QANA_SCANTABLEPLUGIN_H

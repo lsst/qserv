@@ -32,32 +32,26 @@
 #include <vector>
 
 // Forward declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
-    class DatabaseInfo;
-}}}  // Forward declarations
+namespace lsst::qserv::replica {
+class DatabaseInfo;
+}  // namespace lsst::qserv::replica
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
 /**
-  * The utility class encapsulating various operations with file systems.
-  *
-  * @note
+ * The utility class encapsulating various operations with file systems.
+ *
+ * @note
  *   This class can't be instantiated
-  */
+ */
 class FileUtils {
-
 public:
-
     /// The default number of bytes to be read during file I/O operations
-    static constexpr size_t DEFAULT_RECORD_SIZE_BYTES = 1024*1024;
+    static constexpr size_t DEFAULT_RECORD_SIZE_BYTES = 1024 * 1024;
 
     /// The maximum number of bytes to be read during file I/O operations
-    static constexpr size_t MAX_RECORD_SIZE_BYTES = 1024*1024*1024;
+    static constexpr size_t MAX_RECORD_SIZE_BYTES = 1024 * 1024 * 1024;
 
     // Default construction and copy semantics are prohibited
 
@@ -78,8 +72,7 @@ public:
      *   list of all file names representing partitioned tables
      *   of a database and a chunk.
      */
-    static std::vector<std::string> partitionedFiles(DatabaseInfo const& databaseInfo,
-                                                     unsigned int chunk);
+    static std::vector<std::string> partitionedFiles(DatabaseInfo const& databaseInfo, unsigned int chunk);
 
     /**
      * @param databaseInfo
@@ -119,8 +112,7 @@ public:
      *   where applies), the number of a chunk, and its extension (w/o the dot)
      */
     static bool parsePartitionedFile(std::tuple<std::string, unsigned int, std::string>& parsed,
-                                     std::string const& fileName,
-                                     DatabaseInfo const& databaseInfo);
+                                     std::string const& fileName, DatabaseInfo const& databaseInfo);
 
     /**
      * Compute a simple control sum on the specified file
@@ -142,7 +134,7 @@ public:
      *   is 0 or too huge (more than FileUtils::MAX_RECORD_SIZE_BYTES)
      */
     static uint64_t compute_cs(std::string const& fileName,
-                               size_t recordSizeBytes=DEFAULT_RECORD_SIZE_BYTES);
+                               size_t recordSizeBytes = DEFAULT_RECORD_SIZE_BYTES);
 
     /// @return user account under which the current process runs
     static std::string getEffectiveUser();
@@ -154,7 +146,7 @@ public:
      * @code
      * <baseDir>/<filePrefix><model-replaced-with-random-text><fileSuffix>
      * @code
-     * 
+     *
      * @param baseDir a location where the file will get created
      * @param prefix (optional) file name prefix
      * @param model (optional) random patter as as required by boost::filesystem::unique_path
@@ -167,10 +159,10 @@ public:
      *   or if the maximum number of retries exceeded.
      */
     static std::string createTemporaryFile(std::string const& baseDir,
-                                           std::string const& prefix=std::string(),
-                                           std::string const& model="%%%%-%%%%-%%%%-%%%%",
-                                           std::string const& suffix=std::string(),
-                                           unsigned int maxRetries=1);
+                                           std::string const& prefix = std::string(),
+                                           std::string const& model = "%%%%-%%%%-%%%%-%%%%",
+                                           std::string const& suffix = std::string(),
+                                           unsigned int maxRetries = 1);
 
     /**
      * Check if each folder (given by its absolute path) in the input collection exists
@@ -186,9 +178,8 @@ public:
      * @throws std::runtime_error if any folder can't be created, or if it's not
      *   write-enabled for the effective current user
      */
-    static void verifyFolders(std::string const& requestorContext,
-                              std::vector<std::string> const& folders,
-                              bool createMissingFolders=false);
+    static void verifyFolders(std::string const& requestorContext, std::vector<std::string> const& folders,
+                              bool createMissingFolders = false);
 
 private:
     /// For thread synchronization of the temporary file creation
@@ -196,29 +187,27 @@ private:
 };
 
 /**
-  * Class FileCsComputeEngine incrementally computes a control sum of
-  * the file content.
-  *
-  * Here is how the engine is supposed to be used:
-  *
-  * @code
-  *   try {
-  *       FileCsComputeEngine eng("myfile.dat");
-  *       while (eng.execute()) {
-  *           ctd::cout << "bytes read: " << eng.bytes() << "\n"
-  *                     << "running cs: " << eng.cs() << "\n";
-  *       }
-  *       std::cout << "total bytes read: " << eng.bytes() << "\n"
-  *                 << "final cs:         " << eng.cs() << "\n";
-  *   } catch (std::exception const& ex) {
-  *       std::cerr << ex.what() << std::endl;
-  *   }
-  * @endcode
+ * Class FileCsComputeEngine incrementally computes a control sum of
+ * the file content.
+ *
+ * Here is how the engine is supposed to be used:
+ *
+ * @code
+ *   try {
+ *       FileCsComputeEngine eng("myfile.dat");
+ *       while (eng.execute()) {
+ *           ctd::cout << "bytes read: " << eng.bytes() << "\n"
+ *                     << "running cs: " << eng.cs() << "\n";
+ *       }
+ *       std::cout << "total bytes read: " << eng.bytes() << "\n"
+ *                 << "final cs:         " << eng.cs() << "\n";
+ *   } catch (std::exception const& ex) {
+ *       std::cerr << ex.what() << std::endl;
+ *   }
+ * @endcode
  */
 class FileCsComputeEngine {
-
 public:
-
     // Default construction and copy semantics are prohibited
 
     FileCsComputeEngine() = delete;
@@ -252,11 +241,11 @@ public:
      *   is 0 or too huge (more than FileUtils::MAX_RECORD_SIZE_BYTES)
      */
     explicit FileCsComputeEngine(std::string const& fileName,
-                                 size_t recordSizeBytes=FileUtils::DEFAULT_RECORD_SIZE_BYTES);
+                                 size_t recordSizeBytes = FileUtils::DEFAULT_RECORD_SIZE_BYTES);
 
     /// @return the name of the file
     std::string const& fileName() const { return _fileName; }
-    
+
     /// @return the number of bytes read so far
     size_t bytes() const { return _bytes; }
 
@@ -278,7 +267,6 @@ public:
     bool execute();
 
 private:
-
     /// The name of an input file
     std::string const _fileName;
 
@@ -293,21 +281,17 @@ private:
 
     /// The number of bytes read so far
     size_t _bytes;
-    
+
     /// The running (and the final one the file is fully read) control sum
     uint64_t _cs;
 };
-
-
 
 /**
  * Class MultiFileCsComputeEngine would compute control sums and measure file sizes
  * for each file in a collection (of files).
  */
 class MultiFileCsComputeEngine {
-
 public:
-
     // Default construction and copy semantics are prohibited
 
     MultiFileCsComputeEngine() = delete;
@@ -328,17 +312,16 @@ public:
      *
      * @throws std::runtime_error
      *   if there was a problem with opening the first file
-     * 
+     *
      * @throws std::invalid_argument
      *   if the record size is 0 or too huge (more than FileUtils::MAX_RECORD_SIZE_BYTES)
      */
-    explicit MultiFileCsComputeEngine(
-                std::vector<std::string> const& fileNames,
-                size_t recordSizeBytes=FileUtils::DEFAULT_RECORD_SIZE_BYTES);
+    explicit MultiFileCsComputeEngine(std::vector<std::string> const& fileNames,
+                                      size_t recordSizeBytes = FileUtils::DEFAULT_RECORD_SIZE_BYTES);
 
     /// @return the names of the files
     std::vector<std::string> const& fileNames() const { return _fileNames; }
-    
+
     /**
      * Check the status of a file
      *
@@ -372,22 +355,22 @@ public:
      */
     size_t bytes(std::string const& fileName) const;
 
-   /**
-    * Get the compute/check sum of a file
-    *
-    * @param fileName
-    *   the name of a file
-    *
-    * @return
-    *   the running (and the final one the file is fully read) control
-    *   sum for the specified file.
-    *
-    * @throw std::invalid_argument
-    *   unknown file name
-    *
-    * @throw std::logic_error
-    *   if the file hasn't been processed
-    */
+    /**
+     * Get the compute/check sum of a file
+     *
+     * @param fileName
+     *   the name of a file
+     *
+     * @return
+     *   the running (and the final one the file is fully read) control
+     *   sum for the specified file.
+     *
+     * @throw std::invalid_argument
+     *   unknown file name
+     *
+     * @throw std::logic_error
+     *   if the file hasn't been processed
+     */
     uint64_t cs(std::string const& fileName) const;
 
     /**
@@ -405,7 +388,6 @@ public:
     bool execute();
 
 private:
-
     /// The names of files to be processed
     std::vector<std::string> const _fileNames;
 
@@ -421,6 +403,6 @@ private:
     std::map<std::string, std::unique_ptr<FileCsComputeEngine>> _processed;
 };
 
-}}} // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_FILEUTILS_H
+#endif  // LSST_QSERV_REPLICA_FILEUTILS_H

@@ -41,27 +41,18 @@
 #include "query/QueryTemplate.h"
 #include "util/IterableFormatter.h"
 
-
 namespace {
-    LOG_LOGGER _log = LOG_GET("lsst.qserv.qana.ColumnVertexMap");
+LOG_LOGGER _log = LOG_GET("lsst.qserv.qana.ColumnVertexMap");
 }
 
+namespace lsst::qserv::qana {
 
-namespace lsst {
-namespace qserv {
-namespace qana {
-
-
-ColumnVertexMap::Entry::Entry(ColumnRefConstPtr const& c, Vertex* t) :
-    cr(c), vertices(1, t) {
-}
-
+ColumnVertexMap::Entry::Entry(ColumnRefConstPtr const& c, Vertex* t) : cr(c), vertices(1, t) {}
 
 void ColumnVertexMap::Entry::swap(Entry& e) {
     cr.swap(e.cr);
     vertices.swap(e.vertices);
 }
-
 
 ColumnVertexMap::ColumnVertexMap(Vertex& v) {
     LOGS(_log, LOG_LVL_TRACE, __FUNCTION__);
@@ -69,31 +60,25 @@ ColumnVertexMap::ColumnVertexMap(Vertex& v) {
     _init(v, c.begin(), c.end());
 }
 
-std::vector<Vertex*> const& ColumnVertexMap::find(
-    query::ColumnRef const& c) const
-{
+std::vector<Vertex*> const& ColumnVertexMap::find(query::ColumnRef const& c) const {
     typedef std::vector<Entry>::const_iterator Iter;
     std::vector<Vertex*> static const NONE;
 
-    std::pair<Iter,Iter> p = std::equal_range(
-        _entries.begin(), _entries.end(), c, ColumnRefLt());
+    std::pair<Iter, Iter> p = std::equal_range(_entries.begin(), _entries.end(), c, ColumnRefLt());
     if (p.first == p.second) {
         return NONE;
     } else if (p.first->isAmbiguous()) {
         query::QueryTemplate qt;
         c.renderTo(qt);
-        throw QueryNotEvaluableError("Column reference " + qt.sqlFragment() +
-                                     " is ambiguous");
+        throw QueryNotEvaluableError("Column reference " + qt.sqlFragment() + " is ambiguous");
     }
     return p.first->vertices;
 }
 
-void ColumnVertexMap::fuse(ColumnVertexMap& m,
-                           bool natural,
-                           std::vector<std::string> const& cols)
-{
-    LOGS(_log, LOG_LVL_TRACE, __FUNCTION__ << " " << m << ", natural:" << natural <<
-        ", cols:" << util::printable(cols) << " into this:" << *this);
+void ColumnVertexMap::fuse(ColumnVertexMap& m, bool natural, std::vector<std::string> const& cols) {
+    LOGS(_log, LOG_LVL_TRACE,
+         __FUNCTION__ << " " << m << ", natural:" << natural << ", cols:" << util::printable(cols)
+                      << " into this:" << *this);
     typedef std::vector<Entry>::iterator EntryIter;
     typedef std::vector<std::string>::const_iterator StringIter;
 
@@ -102,8 +87,7 @@ void ColumnVertexMap::fuse(ColumnVertexMap& m,
     // entries with entries from m.
     _entries.resize(s + m._entries.size());
     EntryIter middle = _entries.begin() + s;
-    for (EntryIter i = m._entries.begin(), e = m._entries.end(), o = middle;
-         i != e; ++i, ++o) {
+    for (EntryIter i = m._entries.begin(), e = m._entries.end(), o = middle; i != e; ++i, ++o) {
         o->swap(*i);
     }
     m._entries.clear();
@@ -113,8 +97,8 @@ void ColumnVertexMap::fuse(ColumnVertexMap& m,
     // remove the duplicates by merging them.
     if (!_entries.empty()) {
         ColumnRefEq eq;
-        EntryIter cur = _entries.begin(); // Current entry
-        EntryIter i = cur; // Entry to compare to *cur
+        EntryIter cur = _entries.begin();  // Current entry
+        EntryIter i = cur;                 // Entry to compare to *cur
         EntryIter end = _entries.end();
         StringIter firstCol = cols.begin();
         StringIter endCol = cols.end();
@@ -128,14 +112,11 @@ void ColumnVertexMap::fuse(ColumnVertexMap& m,
                     // join or using column, so mark it as ambiguous.
                     cur->markAmbiguous();
                 } else if (cur->isAmbiguous() || i->isAmbiguous()) {
-                    throw QueryNotEvaluableError(
-                        "Join column " + cur->cr->getColumn() + " is ambiguous");
+                    throw QueryNotEvaluableError("Join column " + cur->cr->getColumn() + " is ambiguous");
                 } else {
                     // Add the vertices from i to the current entry (for
                     // natural join and using columns).
-                    cur->vertices.insert(cur->vertices.end(),
-                                         i->vertices.begin(),
-                                         i->vertices.end());
+                    cur->vertices.insert(cur->vertices.end(), i->vertices.begin(), i->vertices.end());
                 }
             } else {
                 ++cur;
@@ -150,9 +131,7 @@ void ColumnVertexMap::fuse(ColumnVertexMap& m,
     }
 }
 
-std::vector<std::string> const ColumnVertexMap::computeCommonColumns(
-    ColumnVertexMap const& m) const
-{
+std::vector<std::string> const ColumnVertexMap::computeCommonColumns(ColumnVertexMap const& m) const {
     LOGS(_log, LOG_LVL_TRACE, __FUNCTION__);
     typedef std::vector<Entry>::const_iterator EntryIter;
     std::vector<std::string> cols;
@@ -173,8 +152,7 @@ std::vector<std::string> const ColumnVertexMap::computeCommonColumns(
                 // If the reference is unqualified and unambiguous in
                 // both entry lists, add it to the list of common columns.
                 if (i->isAmbiguous() || j->isAmbiguous()) {
-                    throw QueryNotEvaluableError(
-                        "Join column " + i->cr->getColumn() + " is ambiguous");
+                    throw QueryNotEvaluableError("Join column " + i->cr->getColumn() + " is ambiguous");
                 }
                 cols.push_back(i->cr->getColumn());
             }
@@ -185,21 +163,17 @@ std::vector<std::string> const ColumnVertexMap::computeCommonColumns(
     return cols;
 }
 
-
 std::ostream& operator<<(std::ostream& os, ColumnVertexMap::Entry const& e) {
     os << "Entry(" << *e.cr << util::printable(e.vertices) << ")";
     return os;
 }
-
 
 std::ostream& operator<<(std::ostream& os, ColumnVertexMap const& cvm) {
     os << "ColumnVertexMap(" << util::printable(cvm._entries) << ")";
     return os;
 }
 
-
-bool ColumnRefLt::operator()(query::ColumnRef const& a,
-                             query::ColumnRef const& b) const {
+bool ColumnRefLt::operator()(query::ColumnRef const& a, query::ColumnRef const& b) const {
     int c = a.getColumn().compare(b.getColumn());
     if (c == 0) {
         c = a.getTableAlias().compare(b.getTableAlias());
@@ -207,11 +181,8 @@ bool ColumnRefLt::operator()(query::ColumnRef const& a,
     return c < 0;
 }
 
-
-bool ColumnRefEq::operator()(query::ColumnRef const& a,
-                             query::ColumnRef const& b) const {
-    return a.getTableAlias() == b.getTableAlias() &&
-           a.getColumn() == b.getColumn();
+bool ColumnRefEq::operator()(query::ColumnRef const& a, query::ColumnRef const& b) const {
+    return a.getTableAlias() == b.getTableAlias() && a.getColumn() == b.getColumn();
 }
 
-}}} // namespace lsst::qserv::qana
+}  // namespace lsst::qserv::qana

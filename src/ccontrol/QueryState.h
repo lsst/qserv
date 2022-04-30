@@ -25,15 +25,13 @@
 #define LSST_QSERV_CCONTROL_QUERYSTATE_H
 #include <string>
 
-namespace lsst {
-namespace qserv {
-namespace ccontrol {
+namespace lsst::qserv::ccontrol {
 
 /// High-level user query state constants
-enum QueryState {UNKNOWN, WAITING, DISPATCHED, SUCCESS, ERROR};
+enum QueryState { UNKNOWN, WAITING, DISPATCHED, SUCCESS, ERROR };
 
 /// @return a string representation of the QueryState
 std::string const& getQueryStateString(QueryState const& qs);
 
-}}}
-#endif // LSST_QSERV_CCONTROL_QUERYSTATE_H
+}  // namespace lsst::qserv::ccontrol
+#endif  // LSST_QSERV_CCONTROL_QUERYSTATE_H

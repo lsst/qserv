@@ -32,15 +32,13 @@
 #include "replica/SqlJob.h"
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class SqlRemoveTablePartitionsJob represents a tool that will broadcast
  * the same request for removing MySQL partitions from existing table from all
  * worker databases of a setup.
- * 
+ *
  * Note, that the algorithm treats regular and partitioned tables quite differently.
  * For the regular tables it will indeed broadcast exactly the same request
  * (to the exact table specified as the corresponding parameter of the job)
@@ -51,9 +49,9 @@ namespace replica {
  * requests will be generated for such table. For example, if the table name is:
  *
  *   'Object'
- * 
+ *
  * and the following table replicas existed for the table at a time of the request:
- * 
+ *
  *    worker | chunk
  *   --------+-----------------------
  *      A    |  123
@@ -65,7 +63,7 @@ namespace replica {
  *
  * then the low-level requests will be sent for the following tables to
  * the corresponding workers:
- * 
+ *
  *    worker | table
  *   --------+-----------------------
  *      A    | Object
@@ -107,7 +105,7 @@ public:
      *   not in the 'READ-ONLY' sub-state will be involved into the operation.
      * @param ignoreNonPartitioned if 'true' then don't report as errors tables
      *   that don't have MySQL partitions. Those partitions may have already been
-     *   removed by a previous attempt to run this algorithm. 
+     *   removed by a previous attempt to run this algorithm.
      * @param controller is needed launching requests and accessing the Configuration
      * @param parentJobId an identifier of the parent job
      * @param onFinish a callback function to be called upon a completion
@@ -115,14 +113,9 @@ public:
      * @param priority defines the job priority
      * @return a pointer to the created object
      */
-    static Ptr create(std::string const& database,
-                      std::string const& table,
-                      bool allWorkers,
-                      bool ignoreNonPartitioned,
-                      Controller::Ptr const& controller,
-                      std::string const& parentJobId,
-                      CallbackType const& onFinish,
-                      int priority);
+    static Ptr create(std::string const& database, std::string const& table, bool allWorkers,
+                      bool ignoreNonPartitioned, Controller::Ptr const& controller,
+                      std::string const& parentJobId, CallbackType const& onFinish, int priority);
 
     SqlRemoveTablePartitionsJob() = delete;
     SqlRemoveTablePartitionsJob(SqlRemoveTablePartitionsJob const&) = delete;
@@ -133,36 +126,29 @@ public:
     // Trivial get methods
 
     std::string const& database() const { return _database; }
-    std::string const& table()    const { return _table; }
+    std::string const& table() const { return _table; }
 
-    std::list<std::pair<std::string,std::string>> extendedPersistentState() const final;
+    std::list<std::pair<std::string, std::string>> extendedPersistentState() const final;
 
 protected:
     void notify(util::Lock const& lock) final;
 
-    std::list<SqlRequest::Ptr> launchRequests(util::Lock const& lock,
-                                              std::string const& worker,
+    std::list<SqlRequest::Ptr> launchRequests(util::Lock const& lock, std::string const& worker,
                                               size_t maxRequestsPerWorker) final;
 
-    void stopRequest(util::Lock const& lock,
-                     SqlRequest::Ptr const& request) final;
+    void stopRequest(util::Lock const& lock, SqlRequest::Ptr const& request) final;
 
 private:
-    SqlRemoveTablePartitionsJob(std::string const& database,
-                                std::string const& table,
-                                bool allWorkers,
-                                bool ignoreNonPartitioned,
-                                Controller::Ptr const& controller,
-                                std::string const& parentJobId,
-                                CallbackType const& onFinish,
-                                int priority);
+    SqlRemoveTablePartitionsJob(std::string const& database, std::string const& table, bool allWorkers,
+                                bool ignoreNonPartitioned, Controller::Ptr const& controller,
+                                std::string const& parentJobId, CallbackType const& onFinish, int priority);
 
     // Input parameters
 
     std::string const _database;
     std::string const _table;
 
-    CallbackType _onFinish;     /// @note is reset when the job finishes
+    CallbackType _onFinish;  /// @note is reset when the job finishes
 
     /// A registry of workers to mark the ones that has been processed.
     /// The registry prevents duplicate requests because exactly one
@@ -170,6 +156,6 @@ private:
     std::set<std::string> _workers;
 };
 
-}}} // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_SQLREMOVETABLEPARTITIONSJOB_H
+#endif  // LSST_QSERV_REPLICA_SQLREMOVETABLEPARTITIONSJOB_H

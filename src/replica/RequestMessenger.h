@@ -34,15 +34,13 @@
 #include "replica/ServiceProvider.h"
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
 /**
-  * Class RequestMessenger is a base class for a family of requests within
-  * the replication Controller server.
-  */
-class RequestMessenger : public Request  {
+ * Class RequestMessenger is a base class for a family of requests within
+ * the replication Controller server.
+ */
+class RequestMessenger : public Request {
 public:
     /// The pointer type for instances of the class
     typedef std::shared_ptr<RequestMessenger> Ptr;
@@ -61,27 +59,21 @@ protected:
      * @see class Request for an explanation of other parameters.
      * @return A pointer to the created object.
      */
-    RequestMessenger(ServiceProvider::Ptr const& serviceProvider,
-                     boost::asio::io_service& io_service,
-                     std::string const& type,
-                     std::string const& worker,
-                     int  priority,
-                     bool keepTracking,
-                     bool allowDuplicate,
-                     bool disposeRequired,
-                     Messenger::Ptr const& messenger);
+    RequestMessenger(ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service,
+                     std::string const& type, std::string const& worker, int priority, bool keepTracking,
+                     bool allowDuplicate, bool disposeRequired, Messenger::Ptr const& messenger);
 
     /// @return pointer to the messaging service
     Messenger::Ptr const& messenger() const { return _messenger; }
 
     /// @see Request::finishImpl()
     void finishImpl(util::Lock const& lock) override;
-    
+
     // Input parameters
 
     Messenger::Ptr const _messenger;
 };
 
-}}} // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_REQUESTMESSENGER_H
+#endif  // LSST_QSERV_REPLICA_REQUESTMESSENGER_H

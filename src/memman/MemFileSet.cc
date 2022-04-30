@@ -31,22 +31,23 @@
 #include "memman/MemFile.h"
 #include "memman/Memory.h"
 
-namespace lsst {
-namespace qserv {
-namespace memman {
+namespace lsst::qserv::memman {
 
 /******************************************************************************/
 /*                            D e s t r u c t o r                             */
 /******************************************************************************/
-  
-MemFileSet::~MemFileSet() {
 
+MemFileSet::~MemFileSet() {
     // Unreference every fle in our file set. This action will also cause
     // memory to be unlocked if no one else is using the file then the file
     // object will be deleted as well.
     //
-    for (auto mfP : _lockFiles) {mfP->release();}
-    for (auto mfP : _flexFiles) {mfP->release();}
+    for (auto mfP : _lockFiles) {
+        mfP->release();
+    }
+    for (auto mfP : _flexFiles) {
+        mfP->release();
+    }
 
     // Unlock this file set if it is locked
     //
@@ -57,9 +58,7 @@ MemFileSet::~MemFileSet() {
 /*                                   a d d                                    */
 /******************************************************************************/
 
-int MemFileSet::add(std::string const& tabname, int chunk,
-                    bool iFile, bool mustLK) {
-
+int MemFileSet::add(std::string const& tabname, int chunk, bool iFile, bool mustLK) {
     std::string fPath(_memory.filePath(tabname, chunk, iFile));
 
     // Obtain a memory file object for this table and chunk
@@ -77,13 +76,12 @@ int MemFileSet::add(std::string const& tabname, int chunk,
     _numFiles++;
     return 0;
 }
-  
+
 /******************************************************************************/
 /*                               l o c k A l l                                */
 /******************************************************************************/
 
 int MemFileSet::lockAll(bool strict) {
-
     MemFile::MLResult mlResult;
     uint64_t totLocked = 0;
     double totMlockSeconds = 0.0;
@@ -122,13 +120,11 @@ int MemFileSet::lockAll(bool strict) {
     return 0;
 }
 
-  
 /******************************************************************************/
 /*                                m a p A l l                                 */
 /******************************************************************************/
 
 int MemFileSet::mapAll() {
-
     int rc;
 
     // Try to map all of the required tables. Any failure is considered fatal.
@@ -158,12 +154,10 @@ int MemFileSet::mapAll() {
 /******************************************************************************/
 /*                                s t a t u s                                 */
 /******************************************************************************/
-  
-MemMan::Status MemFileSet::status() {
 
+MemMan::Status MemFileSet::status() {
     MemMan::Status myStatus(_lockBytes, _lockSeconds, _numFiles, _chunk);
 
     return myStatus;
 }
-}}} // namespace lsst:qserv:memman
-
+}  // namespace lsst::qserv::memman

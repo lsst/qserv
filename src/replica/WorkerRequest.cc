@@ -53,59 +53,42 @@ lsst::qserv::util::BlockPost incrementIvalMillisec(1000, 2000);
 /// Random generator of success/failure rates
 lsst::qserv::replica::SuccessRateGenerator successRateGenerator(0.9);
 
-} /// namespace
+}  // namespace
 
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
 util::Mutex WorkerRequest::_mtxDataFolderOperations;
 
+string WorkerRequest::status2string(ProtocolStatus status) { return ProtocolStatus_Name(status); }
 
-string WorkerRequest::status2string(ProtocolStatus status) {
-    return ProtocolStatus_Name(status);
-}
-
-
-string WorkerRequest::status2string(ProtocolStatus status,
-                                    ProtocolStatusExt extendedStatus) {
+string WorkerRequest::status2string(ProtocolStatus status, ProtocolStatusExt extendedStatus) {
     return status2string(status) + "::" + replica::status2string(extendedStatus);
 }
 
+WorkerRequest::WorkerRequest(ServiceProvider::Ptr const& serviceProvider, string const& worker,
+                             string const& type, string const& id, int priority,
+                             ExpirationCallbackType const& onExpired, unsigned int requestExpirationIvalSec)
+        : _serviceProvider(serviceProvider),
+          _worker(worker),
+          _type(type),
+          _id(id),
+          _priority(priority),
+          _onExpired(onExpired),
+          _requestExpirationIvalSec(
+                  requestExpirationIvalSec == 0
+                          ? serviceProvider->config()->get<unsigned int>("controller", "request-timeout-sec")
+                          : requestExpirationIvalSec),
+          _requestExpirationTimer(serviceProvider->io_service()),
+          _status(ProtocolStatus::CREATED),
+          _extendedStatus(ProtocolStatusExt::NONE),
+          _performance(),
+          _durationMillisec(0) {}
 
-WorkerRequest::WorkerRequest(ServiceProvider::Ptr const& serviceProvider,
-                             string const& worker,
-                             string const& type,
-                             string const& id,
-                             int priority,
-                             ExpirationCallbackType const& onExpired,
-                             unsigned int requestExpirationIvalSec)
-    :   _serviceProvider(serviceProvider),
-        _worker(worker),
-        _type(type),
-        _id(id),
-        _priority(priority),
-        _onExpired(onExpired),
-        _requestExpirationIvalSec(requestExpirationIvalSec == 0
-            ? serviceProvider->config()->get<unsigned int>("controller", "request-timeout-sec")
-            : requestExpirationIvalSec),
-        _requestExpirationTimer(serviceProvider->io_service()),
-        _status(ProtocolStatus::CREATED),
-        _extendedStatus(ProtocolStatusExt::NONE),
-        _performance(),
-        _durationMillisec(0) {
-}
+WorkerRequest::~WorkerRequest() { dispose(); }
 
-
-WorkerRequest::~WorkerRequest() {
-    dispose();
-}
-
-
-WorkerRequest::ErrorContext WorkerRequest::reportErrorIf(
-                                                bool errorCondition,
-                                                ProtocolStatusExt extendedStatus,
-                                                string const& errorMsg) {
+WorkerRequest::ErrorContext WorkerRequest::reportErrorIf(bool errorCondition,
+                                                         ProtocolStatusExt extendedStatus,
+                                                         string const& errorMsg) {
     WorkerRequest::ErrorContext errorContext;
     if (errorCondition) {
         errorContext.failed = true;
@@ -115,9 +98,8 @@ WorkerRequest::ErrorContext WorkerRequest::reportErrorIf(
     return errorContext;
 }
 
-
 void WorkerRequest::init() {
-    LOGS(_log, LOG_LVL_DEBUG, context(__func__));    
+    LOGS(_log, LOG_LVL_DEBUG, context(__func__));
     util::Lock lock(_mtx, context(__func__));
 
     if (status() != ProtocolStatus::CREATED) return;
@@ -129,14 +111,14 @@ void WorkerRequest::init() {
         _requestExpirationTimer.expires_from_now(boost::posix_time::seconds(_requestExpirationIvalSec));
         _requestExpirationTimer.async_wait(bind(&WorkerRequest::_expired, shared_from_this(), _1));
 
-        LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  started expiration timer with "
-             << " _requestExpirationIvalSec: " << _requestExpirationIvalSec);
+        LOGS(_log, LOG_LVL_DEBUG,
+             context() << __func__ << "  started expiration timer with "
+                       << " _requestExpirationIvalSec: " << _requestExpirationIvalSec);
     }
 }
 
-
 void WorkerRequest::start() {
-    LOGS(_log, LOG_LVL_DEBUG, context(__func__));    
+    LOGS(_log, LOG_LVL_DEBUG, context(__func__));
     util::Lock lock(_mtx, context(__func__));
 
     switch (status()) {
@@ -144,12 +126,10 @@ void WorkerRequest::start() {
             setStatus(lock, ProtocolStatus::IN_PROGRESS);
             break;
         default:
-            throw logic_error(
-                    context(__func__) + "  not allowed while in status: " +
-                    WorkerRequest::status2string(status()));
+            throw logic_error(context(__func__) +
+                              "  not allowed while in status: " + WorkerRequest::status2string(status()));
     }
 }
-
 
 bool WorkerRequest::execute() {
     LOGS(_log, LOG_LVL_DEBUG, context(__func__));
@@ -159,28 +139,24 @@ bool WorkerRequest::execute() {
     // while making a progress through increments of random duration of time.
     // Success/failure modes will be also simulated using the corresponding generator.
 
-   switch (status()) {
+    switch (status()) {
         case ProtocolStatus::IN_PROGRESS:
             break;
         case ProtocolStatus::IS_CANCELLING:
             setStatus(lock, ProtocolStatus::CANCELLED);
             throw WorkerRequestCancelled();
         default:
-            throw logic_error(
-                    context(__func__) + "  not allowed while in status: " +
-                    WorkerRequest::status2string(status()));
+            throw logic_error(context(__func__) +
+                              "  not allowed while in status: " + WorkerRequest::status2string(status()));
     }
 
     _durationMillisec += ::incrementIvalMillisec.wait();
 
     if (_durationMillisec < ::maxDurationMillisec) return false;
 
-    setStatus(lock, ::successRateGenerator.success() ?
-                        ProtocolStatus::SUCCESS :
-                        ProtocolStatus::FAILED);
+    setStatus(lock, ::successRateGenerator.success() ? ProtocolStatus::SUCCESS : ProtocolStatus::FAILED);
     return true;
 }
-
 
 void WorkerRequest::cancel() {
     LOGS(_log, LOG_LVL_DEBUG, context(__func__));
@@ -205,7 +181,6 @@ void WorkerRequest::cancel() {
     }
 }
 
-
 void WorkerRequest::rollback() {
     LOGS(_log, LOG_LVL_DEBUG, context(__func__));
     util::Lock lock(_mtx, context(__func__));
@@ -220,44 +195,39 @@ void WorkerRequest::rollback() {
             throw WorkerRequestCancelled();
             break;
         default:
-            throw logic_error(
-                    context(__func__) + "  not allowed while in status: " +
-                    WorkerRequest::status2string(status()));
+            throw logic_error(context(__func__) +
+                              "  not allowed while in status: " + WorkerRequest::status2string(status()));
     }
 }
 
-
 void WorkerRequest::stop() {
-    LOGS(_log, LOG_LVL_DEBUG, context(__func__));    
+    LOGS(_log, LOG_LVL_DEBUG, context(__func__));
     util::Lock lock(_mtx, context(__func__));
     setStatus(lock, ProtocolStatus::CREATED);
 }
 
-
 void WorkerRequest::dispose() noexcept {
-    LOGS(_log, LOG_LVL_DEBUG, context(__func__));    
+    LOGS(_log, LOG_LVL_DEBUG, context(__func__));
     util::Lock lock(_mtx, context(__func__));
     if (_requestExpirationIvalSec != 0) {
         try {
             _requestExpirationTimer.cancel();
         } catch (exception const& ex) {
-            LOGS(_log, LOG_LVL_DEBUG, context(__func__)
-                 << "  request expiration couldn't be cancelled, ex: " << ex.what());
+            LOGS(_log, LOG_LVL_DEBUG,
+                 context(__func__) << "  request expiration couldn't be cancelled, ex: " << ex.what());
         }
     }
 }
 
-
-void WorkerRequest::setStatus(util::Lock const& lock,
-                              ProtocolStatus status,
+void WorkerRequest::setStatus(util::Lock const& lock, ProtocolStatus status,
                               ProtocolStatusExt extendedStatus) {
-    LOGS(_log, LOG_LVL_DEBUG, context(__func__) << "  "
-         << WorkerRequest::status2string(_status, _extendedStatus) << " -> "
-         << WorkerRequest::status2string( status,  extendedStatus));
+    LOGS(_log, LOG_LVL_DEBUG,
+         context(__func__) << "  " << WorkerRequest::status2string(_status, _extendedStatus) << " -> "
+                           << WorkerRequest::status2string(status, extendedStatus));
 
     switch (status) {
         case ProtocolStatus::CREATED:
-            _performance.start_time  = 0;
+            _performance.start_time = 0;
             _performance.finish_time = 0;
             break;
         case ProtocolStatus::IN_PROGRESS:
@@ -281,9 +251,7 @@ void WorkerRequest::setStatus(util::Lock const& lock,
             _performance.setUpdateFinish();
             break;
         default:
-            throw logic_error(
-                    context(__func__) + "  unhandled status: " +
-                    to_string(status));
+            throw logic_error(context(__func__) + "  unhandled status: " + to_string(status));
     }
 
     // ATTENTION: the top-level status is the last to be modified in
@@ -294,10 +262,9 @@ void WorkerRequest::setStatus(util::Lock const& lock,
     _status = status;
 }
 
-
 void WorkerRequest::_expired(boost::system::error_code const& ec) {
-    LOGS(_log, LOG_LVL_DEBUG, context() << __func__
-         << (ec == boost::asio::error::operation_aborted ? "  ** ABORTED **" : ""));
+    LOGS(_log, LOG_LVL_DEBUG,
+         context() << __func__ << (ec == boost::asio::error::operation_aborted ? "  ** ABORTED **" : ""));
     util::Lock lock(_mtx, context(__func__));
 
     // Clearing the stored callback after finishing the up-stream notification
@@ -316,4 +283,4 @@ void WorkerRequest::_expired(boost::system::error_code const& ec) {
     _onExpired = nullptr;
 }
 
-}}} // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

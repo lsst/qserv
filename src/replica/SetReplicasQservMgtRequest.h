@@ -33,15 +33,13 @@
 #include "wpublish/SetChunkListQservRequest.h"
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class SetReplicasQservMgtRequest implements a request for setting new
  * collections Qserv workers.
  */
-class SetReplicasQservMgtRequest: public QservMgtRequest  {
+class SetReplicasQservMgtRequest : public QservMgtRequest {
 public:
     typedef std::shared_ptr<SetReplicasQservMgtRequest> Ptr;
 
@@ -67,12 +65,9 @@ public:
      *   the operation are in use.
      * @param onFinish A callback function to be called upon request completion.
      */
-    static Ptr create(ServiceProvider::Ptr const& serviceProvider,
-                      std::string const& worker,
-                      QservReplicaCollection const& newReplicas,
-                      std::vector<std::string> const& databases,
-                      bool force=false,
-                      CallbackType const& onFinish=nullptr);
+    static Ptr create(ServiceProvider::Ptr const& serviceProvider, std::string const& worker,
+                      QservReplicaCollection const& newReplicas, std::vector<std::string> const& databases,
+                      bool force = false, CallbackType const& onFinish = nullptr);
 
     /// @return collection of new replicas to be set at the Qserv worker
     QservReplicaCollection const& newReplicas() const { return _newReplicas; }
@@ -89,7 +84,7 @@ public:
     QservReplicaCollection const& replicas() const;
 
     /// @see QservMgtRequest::extendedPersistentState()
-    std::list<std::pair<std::string,std::string>> extendedPersistentState() const final;
+    std::list<std::pair<std::string, std::string>> extendedPersistentState() const final;
 
 protected:
     /// @see QservMgtRequest::startImpl
@@ -103,11 +98,9 @@ protected:
 
 private:
     /// @see SetReplicasQservMgtRequest::create()
-    SetReplicasQservMgtRequest(ServiceProvider::Ptr const& serviceProvider,
-                               std::string const& worker,
+    SetReplicasQservMgtRequest(ServiceProvider::Ptr const& serviceProvider, std::string const& worker,
                                QservReplicaCollection const& newReplicas,
-                               std::vector<std::string> const& databases,
-                               bool force,
+                               std::vector<std::string> const& databases, bool force,
                                CallbackType const& onFinish);
 
     /**
@@ -123,7 +116,7 @@ private:
     QservReplicaCollection const _newReplicas;
     std::vector<std::string> const _databases;
 
-    bool const   _force;
+    bool const _force;
     CallbackType _onFinish;
 
     /// A request to the remote services.
@@ -133,6 +126,6 @@ private:
     QservReplicaCollection _replicas;
 };
 
-}}} // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_SETREPLICASQSERVMGTREQUEST_H
+#endif  // LSST_QSERV_REPLICA_SETREPLICASQSERVMGTREQUEST_H

@@ -28,22 +28,18 @@
 
 // This header declarations
 
-namespace lsst {
-namespace qserv {
-namespace util {
+namespace lsst::qserv::util {
 
 /**
  * Class File is a utility class providing convenient operations with files.
  */
 class File {
-
 public:
-    
     // Instances of this class can't be constructed
 
     File() = delete;
     File(File const&) = delete;
-    File & operator=(File const&) = delete;
+    File& operator=(File const&) = delete;
     ~File() = delete;
 
     /**
@@ -59,11 +55,10 @@ public:
      * @throws std::runtime_error    if the file can't be open
      * @throws std::range_error      if the optional flag `assertNotEmpty` is set and the file is empty
      */
-    /// 
-    static std::vector<std::string> getLines(std::string const& fileName,
-                                             bool assertNotEmpty=false);
+    ///
+    static std::vector<std::string> getLines(std::string const& fileName, bool assertNotEmpty = false);
 };
 
-}}} // namespace lsst::qserv::util
+}  // namespace lsst::qserv::util
 
-#endif // LSST_QSERV_UTIL_FILE_H
+#endif  // LSST_QSERV_UTIL_FILE_H

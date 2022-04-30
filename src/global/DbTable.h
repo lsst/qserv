@@ -21,7 +21,6 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-
 #ifndef LSST_QSERV_GLOBAL_DBTABLE_H
 #define LSST_QSERV_GLOBAL_DBTABLE_H
 
@@ -30,10 +29,7 @@
 #include <set>
 #include <string>
 
-
-namespace lsst {
-namespace qserv {
-
+namespace lsst::qserv {
 
 struct DbTable {
     DbTable(std::string const& db_, std::string const& table_) : db(db_), table(table_) {}
@@ -54,8 +50,6 @@ struct DbTable {
 
 typedef std::set<DbTable> DbTableSet;
 
-}} // namespace lsst::qserv
+}  // namespace lsst::qserv
 
-
-
-#endif // LSST_QSERV_GLOBAL_DBTABLE_H
+#endif  // LSST_QSERV_GLOBAL_DBTABLE_H

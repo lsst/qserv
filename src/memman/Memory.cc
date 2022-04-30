@@ -41,19 +41,16 @@ namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.memman.Memory");
 }
 
-namespace lsst {
-namespace qserv {
-namespace memman {
+namespace lsst::qserv::memman {
 
 std::mutex Memory::_mlockMtx;
 
 /******************************************************************************/
 /*                              f i l e I n f o                               */
 /******************************************************************************/
-  
-MemInfo Memory::fileInfo(std::string const& fPath) {
 
-    MemInfo     fInfo;
+MemInfo Memory::fileInfo(std::string const& fPath) {
+    MemInfo fInfo;
     struct stat sBuff;
 
     // Simply issue a stat() to get the size
@@ -75,16 +72,14 @@ MemInfo Memory::fileInfo(std::string const& fPath) {
 /*                              f i l e P a t h                               */
 /******************************************************************************/
 
-std::string Memory::filePath(std::string const& dbTable,
-                             int chunk, bool isIndex) {
-
+std::string Memory::filePath(std::string const& dbTable, int chunk, bool isIndex) {
     std::string fPath;
 
-    // Construct name and return it. The format here is DB-specific and may need 
+    // Construct name and return it. The format here is DB-specific and may need
     // to change if something other than mySQL is being used.
     //
     fPath.reserve(_dbDir.size() + dbTable.size() + 16);
-    fPath  = _dbDir;
+    fPath = _dbDir;
     fPath += '/';
     fPath += dbTable;
     fPath += '_';
@@ -99,7 +94,6 @@ std::string Memory::filePath(std::string const& dbTable,
 util::TimerHistogram mlockHisto("mlock Hist", {1, 10, 20, 40});
 
 int Memory::memLock(MemInfo& mInfo, bool isFlex) {
-
     // Verify that this is a valid mapping
     //
     if (!mInfo.isValid()) return EFAULT;
@@ -112,12 +106,14 @@ int Memory::memLock(MemInfo& mInfo, bool isFlex) {
         std::lock_guard<std::mutex> lg(_mlockMtx);
         LOGS(_log, LOG_LVL_DEBUG, "mlock start");
         timer.start();
-        if (mInfo._memSize == 0) result = 0;
-           else result = mlock(mInfo._memAddr, mInfo._memSize);
+        if (mInfo._memSize == 0)
+            result = 0;
+        else
+            result = mlock(mInfo._memAddr, mInfo._memSize);
         timer.stop();
     }
     mInfo._mlockTime = timer.getElapsed();
-    auto logMsg = mlockHisto.addTime(mInfo._mlockTime, LOG_CHECK_DEBUG() ? "a":"");
+    auto logMsg = mlockHisto.addTime(mInfo._mlockTime, LOG_CHECK_DEBUG() ? "a" : "");
     LOGS(_log, LOG_LVL_DEBUG, logMsg);
 
     if (!result) {
@@ -136,12 +132,11 @@ int Memory::memLock(MemInfo& mInfo, bool isFlex) {
 /******************************************************************************/
 /*                               m a p F i l e                                */
 /******************************************************************************/
-  
-MemInfo Memory::mapFile(std::string const& fPath) {
 
-    MemInfo     mInfo;
+MemInfo Memory::mapFile(std::string const& fPath) {
+    MemInfo mInfo;
     struct stat sBuff;
-    int         fdNum;
+    int fdNum;
 
     // We first open the file. we currently open this R/W because we want to
     // disable copy on write operations when we memory map the file.
@@ -183,22 +178,22 @@ MemInfo Memory::mapFile(std::string const& fPath) {
 /******************************************************************************/
 /*                                m e m R e l                                 */
 /******************************************************************************/
-  
-void Memory::memRel(MemInfo& mInfo, bool islkd) {
 
+void Memory::memRel(MemInfo& mInfo, bool islkd) {
     // If this is a valid object then unmap/unlock it (munmap does it for us).
     //
     if (mInfo._memSize > 0 && mInfo._memAddr != MAP_FAILED) {
         munmap(mInfo._memAddr, mInfo._memSize);
         if (islkd) {
             _memMutex.lock();
-            if (_lokBytes > mInfo._memSize) _lokBytes -= mInfo._memSize;
-            else _lokBytes = 0;
+            if (_lokBytes > mInfo._memSize)
+                _lokBytes -= mInfo._memSize;
+            else
+                _lokBytes = 0;
             _memMutex.unlock();
         }
         mInfo._memSize = 0;
         mInfo._memAddr = MAP_FAILED;
     }
 }
-}}} // namespace lsst:qserv:memman
-
+}  // namespace lsst::qserv::memman

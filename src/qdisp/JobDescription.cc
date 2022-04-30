@@ -45,28 +45,27 @@ namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.qdisp.JobDescription");
 }
 
+namespace lsst::qserv::qdisp {
 
-namespace lsst {
-namespace qserv {
-namespace qdisp {
-
-
-JobDescription::JobDescription(qmeta::CzarId czarId, QueryId qId, int jobId,
-    ResourceUnit const& resource,
-    shared_ptr<ResponseHandler> const& respHandler,
-    shared_ptr<qproc::TaskMsgFactory> const& taskMsgFactory,
-    shared_ptr<qproc::ChunkQuerySpec> const& chunkQuerySpec,
-    string const& chunkResultName, bool mock)
-    : _czarId(czarId), _queryId(qId), _jobId(jobId), _qIdStr(QueryIdHelper::makeIdStr(_queryId, _jobId)),
-      _resource(resource), _respHandler(respHandler),
-     _taskMsgFactory(taskMsgFactory), _chunkQuerySpec(chunkQuerySpec), _chunkResultName(chunkResultName),
-     _mock(mock) {
-}
-
+JobDescription::JobDescription(qmeta::CzarId czarId, QueryId qId, int jobId, ResourceUnit const& resource,
+                               shared_ptr<ResponseHandler> const& respHandler,
+                               shared_ptr<qproc::TaskMsgFactory> const& taskMsgFactory,
+                               shared_ptr<qproc::ChunkQuerySpec> const& chunkQuerySpec,
+                               string const& chunkResultName, bool mock)
+        : _czarId(czarId),
+          _queryId(qId),
+          _jobId(jobId),
+          _qIdStr(QueryIdHelper::makeIdStr(_queryId, _jobId)),
+          _resource(resource),
+          _respHandler(respHandler),
+          _taskMsgFactory(taskMsgFactory),
+          _chunkQuerySpec(chunkQuerySpec),
+          _chunkResultName(chunkResultName),
+          _mock(mock) {}
 
 bool JobDescription::incrAttemptCountScrubResults() {
     if (_attemptCount >= 0) {
-        _respHandler->prepScrubResults(_jobId, _attemptCount); // Registers the job-attempt as invalid
+        _respHandler->prepScrubResults(_jobId, _attemptCount);  // Registers the job-attempt as invalid
     }
     ++_attemptCount;
     if (_attemptCount > MAX_JOB_ATTEMPTS) {
@@ -77,13 +76,12 @@ bool JobDescription::incrAttemptCountScrubResults() {
     return true;
 }
 
-
 void JobDescription::buildPayload() {
     ostringstream os;
-    _taskMsgFactory->serializeMsg(*_chunkQuerySpec, _chunkResultName, _queryId, _jobId, _attemptCount, _czarId, os);
+    _taskMsgFactory->serializeMsg(*_chunkQuerySpec, _chunkResultName, _queryId, _jobId, _attemptCount,
+                                  _czarId, os);
     _payloads[_attemptCount] = os.str();
 }
-
 
 bool JobDescription::verifyPayload() const {
     proto::ProtoImporter<proto::TaskMsg> pi;
@@ -94,21 +92,14 @@ bool JobDescription::verifyPayload() const {
     return true;
 }
 
+bool JobDescription::getScanInteractive() const { return _chunkQuerySpec->scanInteractive; }
 
-bool JobDescription::getScanInteractive() const {
-    return _chunkQuerySpec->scanInteractive;
-}
-
-
-int JobDescription::getScanRating() const {
-    return _chunkQuerySpec->scanInfo.scanRating;
-}
-
+int JobDescription::getScanRating() const { return _chunkQuerySpec->scanInfo.scanRating; }
 
 ostream& operator<<(ostream& os, JobDescription const& jd) {
-    os << "job(id=" << jd._jobId << " payloads.size=" << jd._payloads.size()
-       << " ru=" << jd._resource.path() << " attemptCount="  << jd._attemptCount << ")";
+    os << "job(id=" << jd._jobId << " payloads.size=" << jd._payloads.size() << " ru=" << jd._resource.path()
+       << " attemptCount=" << jd._attemptCount << ")";
     return os;
 }
 
-}}} // namespace
+}  // namespace lsst::qserv::qdisp

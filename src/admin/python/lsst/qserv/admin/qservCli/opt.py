@@ -794,3 +794,17 @@ mypy_option = partial(
     help="Run mypy on python files.",
     default=True,
 )
+
+
+clang_format_option = partial(
+    click.option,
+    "--clang-format",
+    "clang_format_mode",
+    type=click.Choice(["CHECK", "REFORMAT", "OFF"], case_sensitive=False),
+    callback=lambda ctx, par, val: val.lower(),
+    help="If CHECK, check C++ files with clang-format and fail if any changes are needed. "
+         "If REFORMAT, run clang-format on C++ files (will reformat files)."
+         "If OFF, do not run clang-format.",
+    default="OFF",
+    show_default=True,
+)

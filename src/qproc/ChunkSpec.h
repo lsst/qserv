@@ -23,12 +23,12 @@
 #ifndef LSST_QSERV_QPROC_CHUNKSPEC_H
 #define LSST_QSERV_QPROC_CHUNKSPEC_H
 /**
-  * @file
-  *
-  * @brief ChunkSpec, ChunkSpecFragmenter, and ChunkSpecSingle declarations
-  *
-  * @author Daniel L. Wang, SLAC
-  */
+ * @file
+ *
+ * @brief ChunkSpec, ChunkSpecFragmenter, and ChunkSpecSingle declarations
+ *
+ * @author Daniel L. Wang, SLAC
+ */
 
 // System headers
 #include <ostream>
@@ -39,9 +39,7 @@
 // Qserv headers
 #include "global/intTypes.h"
 
-namespace lsst {
-namespace qserv {
-namespace qproc {
+namespace lsst::qserv::qproc {
 
 /// ChunkSpec is a value class that bundles the per-chunk information that is
 /// used to compose a concrete chunk query for a specific chunk from an input
@@ -53,11 +51,9 @@ public:
     static int32_t const CHUNKID_INVALID = -1;
 
     ChunkSpec() : chunkId(CHUNKID_INVALID) {}
-    ChunkSpec(int chunkId_, Int32Vector const& subChunks_)
-        : chunkId(chunkId_), subChunks(subChunks_) {}
+    ChunkSpec(int chunkId_, Int32Vector const& subChunks_) : chunkId(chunkId_), subChunks(subChunks_) {}
 
-
-    int32_t chunkId; ///< ChunkId of interest
+    int32_t chunkId;  ///< ChunkId of interest
     /// Subchunks of interest; empty indicates all subchunks are involved.
     Int32Vector subChunks;
 
@@ -78,9 +74,8 @@ public:
     bool operator<(ChunkSpec const& rhs) const;
     bool operator==(ChunkSpec const& rhs) const;
 
-
     // For testing
-    static ChunkSpec makeFake(int chunkId, bool withSubChunks=false);
+    static ChunkSpec makeFake(int chunkId, bool withSubChunks = false);
 };
 std::ostream& operator<<(std::ostream& os, ChunkSpec const& c);
 
@@ -104,11 +99,11 @@ public:
     ChunkSpec get() const;
     void next();
     bool isDone();
+
 private:
     typedef std::vector<int32_t>::const_iterator Iter;
     ChunkSpec _original;
     Iter _pos;
-
 };
 /// A specification of ChunkSpec with only one subChunk
 /// TODO: Consider renaming this. (SubChunkSpec?)
@@ -122,7 +117,6 @@ public:
 };
 std::ostream& operator<<(std::ostream& os, ChunkSpecSingle const& c);
 
-}}} // namespace lsst::qserv::qproc
+}  // namespace lsst::qserv::qproc
 
-#endif // LSST_QSERV_QPROC_CHUNKSPEC_H
-
+#endif  // LSST_QSERV_QPROC_CHUNKSPEC_H

@@ -54,10 +54,9 @@
 // time or it will refuse to use the shared library. As the library is never
 // unloaded, the object does not need to be deleted.
 //
-XrdSsiProvider *XrdSsiProviderServer =
-                new  lsst::qserv::xrdsvc::SsiProviderServer;
+XrdSsiProvider* XrdSsiProviderServer = new lsst::qserv::xrdsvc::SsiProviderServer;
 
-XrdSsiProvider *XrdSsiProviderLookup = XrdSsiProviderServer;
+XrdSsiProvider* XrdSsiProviderLookup = XrdSsiProviderServer;
 
 namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.xrdsvc.SsiProvider");
@@ -67,10 +66,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.xrdsvc.SsiProvider");
 /*                            D e s t r u c t o r                             */
 /******************************************************************************/
 
-
-namespace lsst {
-namespace qserv {
-namespace xrdsvc {
+namespace lsst::qserv::xrdsvc {
 
 SsiProviderServer::~SsiProviderServer() {}
 
@@ -78,26 +74,23 @@ SsiProviderServer::~SsiProviderServer() {}
 /*                                  I n i t                                   */
 /******************************************************************************/
 
-bool SsiProviderServer::Init(XrdSsiLogger* logP,  XrdSsiCluster* clsP,
-                             std::string   cfgFn, std::string    parms,
-                             int           argc,  char**         argv) {
-
+bool SsiProviderServer::Init(XrdSsiLogger* logP, XrdSsiCluster* clsP, std::string cfgFn, std::string parms,
+                             int argc, char** argv) {
     lsst::qserv::xrdsvc::XrdName x;
 
     if (argc != 2) {
-        LOGS( _log, LOG_LVL_TRACE, "argc: " << argc);
-        LOGS( _log, LOG_LVL_FATAL, "Incorrect xrdssi configuration, launch "
-                "xrootd with option '-+xrdssi /path/to/xrdssi/cfg/file'");
+        LOGS(_log, LOG_LVL_TRACE, "argc: " << argc);
+        LOGS(_log, LOG_LVL_FATAL,
+             "Incorrect xrdssi configuration, launch "
+             "xrootd with option '-+xrdssi /path/to/xrdssi/cfg/file'");
         exit(EXIT_FAILURE);
     }
 
-    LOGS( _log, LOG_LVL_DEBUG, "Qserv xrdssi plugin configuration file: "
-        << argv[1]);
+    LOGS(_log, LOG_LVL_DEBUG, "Qserv xrdssi plugin configuration file: " << argv[1]);
 
     std::string workerConfigFile = argv[1];
     wconfig::WorkerConfig workerConfig(workerConfigFile);
-    LOGS( _log, LOG_LVL_DEBUG, "Qserv xrdssi plugin configuration: "
-        << workerConfig);
+    LOGS(_log, LOG_LVL_DEBUG, "Qserv xrdssi plugin configuration: " << workerConfig);
 
     // Save the ssi logger as it places messages in another file than our log.
     //
@@ -150,14 +143,11 @@ bool SsiProviderServer::Init(XrdSsiLogger* logP,  XrdSsiCluster* clsP,
 /*                         Q u e r y R e s o u r c e                          */
 /******************************************************************************/
 
-XrdSsiProvider::rStat SsiProviderServer::QueryResource(char const* rName,
-                                                       char const* contact) {
-
+XrdSsiProvider::rStat SsiProviderServer::QueryResource(char const* rName, char const* contact) {
     // Validate resource name based on its proposed type
 
     ResourceUnit ru(rName);
     if (ru.unitType() == ResourceUnit::DBCHUNK) {
-
         // Extract db and chunk from path and validate result
 
         // If the chunk exists on our node then tell the caller it is here.
@@ -165,13 +155,12 @@ XrdSsiProvider::rStat SsiProviderServer::QueryResource(char const* rName,
             LOGS(_log, LOG_LVL_DEBUG, "SsiProvider Query " << rName << " present");
             return isPresent;
         }
-    
+
         // Tell the caller we do not have the chunk.
         LOGS(_log, LOG_LVL_DEBUG, "SsiProvider Query " << rName << " absent");
         return notPresent;
 
     } else if (ru.unitType() == ResourceUnit::WORKER) {
-
         // Extract the worker name and alidate it against the one which is
         // provided through the inventory
         if (not _chunkInventory.id().empty() and _chunkInventory.id() == ru.hashName()) {
@@ -188,13 +177,11 @@ XrdSsiProvider::rStat SsiProviderServer::QueryResource(char const* rName,
     return notPresent;
 }
 
-void SsiProviderServer::ResourceAdded(const char *rName) {
-
+void SsiProviderServer::ResourceAdded(const char* rName) {
     // Handle resource based on its proposed type
 
     ResourceUnit ru(rName);
     if (ru.unitType() == ResourceUnit::DBCHUNK) {
-
         // Extract db and chunk from path and add the resource to the chunk
         // inventory
         _chunkInventory.add(ru.db(), ru.chunk());
@@ -202,7 +189,6 @@ void SsiProviderServer::ResourceAdded(const char *rName) {
         return;
 
     } else if (ru.unitType() == ResourceUnit::WORKER) {
-
         // Replace the unique identifier of the worker with the new one
         _chunkInventory.resetId(ru.hashName());
         LOGS(_log, LOG_LVL_DEBUG, "SsiProvider ResourceAdded " << rName);
@@ -211,13 +197,11 @@ void SsiProviderServer::ResourceAdded(const char *rName) {
     LOGS(_log, LOG_LVL_DEBUG, "SsiProvider ResourceAdded " << rName << " invalid");
 }
 
-void SsiProviderServer::ResourceRemoved(const char *rName) {
-
+void SsiProviderServer::ResourceRemoved(const char* rName) {
     // Handle resource based on its proposed type
 
     ResourceUnit ru(rName);
     if (ru.unitType() == ResourceUnit::DBCHUNK) {
-
         // Extract db and chunk from path and add the resource to the chunk
         // inventory
         _chunkInventory.remove(ru.db(), ru.chunk());
@@ -225,7 +209,6 @@ void SsiProviderServer::ResourceRemoved(const char *rName) {
         return;
 
     } else if (ru.unitType() == ResourceUnit::WORKER) {
-
         // Clear the unique identifier of the worker to prevent any incoming
         // requests to the worker
         _chunkInventory.resetId("");
@@ -235,4 +218,4 @@ void SsiProviderServer::ResourceRemoved(const char *rName) {
     LOGS(_log, LOG_LVL_DEBUG, "SsiProvider ResourceRemoved " << rName << " invalid");
 }
 
-}}} // namespace lsst::qserv::xrdsvc
+}  // namespace lsst::qserv::xrdsvc

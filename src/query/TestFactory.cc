@@ -21,7 +21,6 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-
 // Class header
 #include "query/TestFactory.h"
 
@@ -38,24 +37,14 @@
 #include "query/ValueFactor.h"
 #include "query/WhereClause.h"
 
+namespace lsst::qserv::query {
 
-namespace lsst {
-namespace qserv {
-namespace query {
+std::string TestFactory::getDefaultDbName() { return "Somedb"; }
 
+std::string TestFactory::getDefaultUserName() { return "alice"; }
 
-std::string TestFactory::getDefaultDbName() {
-    return "Somedb";
-}
-
-
-std::string TestFactory::getDefaultUserName() {
-    return "alice";
-}
-
-
-std::shared_ptr<QueryContext>
-TestFactory::newContext(std::shared_ptr<css::CssAccess> css, sql::SqlConfig const& schemaCfg) {
+std::shared_ptr<QueryContext> TestFactory::newContext(std::shared_ptr<css::CssAccess> css,
+                                                      sql::SqlConfig const& schemaCfg) {
     auto dbModels = qproc::DatabaseModels::create(schemaCfg, schemaCfg);
     std::shared_ptr<QueryContext> context = std::make_shared<QueryContext>("NoDb", css, dbModels);
     context->defaultDb = getDefaultDbName();
@@ -63,13 +52,12 @@ TestFactory::newContext(std::shared_ptr<css::CssAccess> css, sql::SqlConfig cons
     return context;
 }
 
-
 void TestFactory::addSelectField(std::shared_ptr<SelectStmt> const& stmt, StringVector const& fields) {
     std::shared_ptr<SelectList> sl = std::make_shared<SelectList>();
 
     typedef StringVector::const_iterator It;
     for (It i = fields.begin(), e = fields.end(); i != e; ++i) {
-        std::shared_ptr<ColumnRef> cr = std::make_shared<ColumnRef>("","","foo");
+        std::shared_ptr<ColumnRef> cr = std::make_shared<ColumnRef>("", "", "foo");
         ValueFactorPtr fact(ValueFactor::newColumnRefFactor(cr));
         ValueExprPtr expr = std::make_shared<ValueExpr>();
         expr->getFactorOps().push_back(ValueExpr::FactorOp(fact));
@@ -79,7 +67,6 @@ void TestFactory::addSelectField(std::shared_ptr<SelectStmt> const& stmt, String
     stmt->setSelectList(sl);
 }
 
-
 void TestFactory::addFrom(std::shared_ptr<SelectStmt> const& stmt) {
     TableRefListPtr refp = std::make_shared<TableRefList>();
     TableRef::Ptr tr = std::make_shared<TableRef>("", "Bar", "b");
@@ -88,15 +75,14 @@ void TestFactory::addFrom(std::shared_ptr<SelectStmt> const& stmt) {
     stmt->setFromList(fl);
 }
 
-
 void TestFactory::addWhere(std::shared_ptr<SelectStmt> const& stmt) {
     std::shared_ptr<WhereClause> wc = std::make_shared<WhereClause>();
     CompPredicate::Ptr cp = std::make_shared<CompPredicate>();
-    cp->left = std::make_shared<ValueExpr>(); // baz
-    ValueFactorPtr fact = ValueFactor::newColumnRefFactor(std::make_shared<ColumnRef>("","b","baz"));
+    cp->left = std::make_shared<ValueExpr>();  // baz
+    ValueFactorPtr fact = ValueFactor::newColumnRefFactor(std::make_shared<ColumnRef>("", "b", "baz"));
     cp->left->getFactorOps().push_back(ValueExpr::FactorOp(fact));
     cp->op = CompPredicate::lookupOp("==");
-    cp->right = std::make_shared<ValueExpr>(); // 42
+    cp->right = std::make_shared<ValueExpr>();  // 42
     fact = ValueFactor::newConstFactor("42");
     cp->right->getFactorOps().push_back(ValueExpr::FactorOp(fact));
     BoolFactor::Ptr bfactor = std::make_shared<BoolFactor>();
@@ -105,9 +91,7 @@ void TestFactory::addWhere(std::shared_ptr<SelectStmt> const& stmt) {
     stmt->setWhereClause(wc);
 }
 
-
-std::shared_ptr<SelectStmt>
-TestFactory::newDuplSelectExprStmt() {
+std::shared_ptr<SelectStmt> TestFactory::newDuplSelectExprStmt() {
     // Create a "SELECT foo f FROM Bar b WHERE b.baz=42;
     std::shared_ptr<SelectStmt> stmt = std::make_shared<SelectStmt>();
 
@@ -126,9 +110,7 @@ TestFactory::newDuplSelectExprStmt() {
     return stmt;
 }
 
-
-std::shared_ptr<SelectStmt>
-TestFactory::newSimpleStmt() {
+std::shared_ptr<SelectStmt> TestFactory::newSimpleStmt() {
     // Create a "SELECT foo FROM Bar b WHERE b.baz=42;
     std::shared_ptr<SelectStmt> stmt = std::make_shared<SelectStmt>();
 
@@ -146,5 +128,4 @@ TestFactory::newSimpleStmt() {
     return stmt;
 }
 
-
-}}} // lsst::qserv::query
+}  // namespace lsst::qserv::query

@@ -41,36 +41,24 @@ using namespace std;
 using json = nlohmann::json;
 
 namespace {
-    LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.HttpModule");
+LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.HttpModule");
 }
 
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
-HttpModule::HttpModule(Controller::Ptr const& controller,
-                       string const& taskName,
-                       HttpProcessorConfig const& processorConfig,
-                       qhttp::Request::Ptr const& req,
+HttpModule::HttpModule(Controller::Ptr const& controller, string const& taskName,
+                       HttpProcessorConfig const& processorConfig, qhttp::Request::Ptr const& req,
                        qhttp::Response::Ptr const& resp)
-    :   EventLogger(controller, taskName),
-        HttpModuleBase(controller->serviceProvider()->authKey(),
-                       controller->serviceProvider()->adminAuthKey(),
-                       req,
-                       resp),
-        _processorConfig(processorConfig) {
-}
+        : EventLogger(controller, taskName),
+          HttpModuleBase(controller->serviceProvider()->authKey(),
+                         controller->serviceProvider()->adminAuthKey(), req, resp),
+          _processorConfig(processorConfig) {}
 
-
-string HttpModule::context() const {
-    return name() + " ";
-}
-
+string HttpModule::context() const { return name() + " "; }
 
 database::mysql::Connection::Ptr HttpModule::qservMasterDbConnection(string const& database) const {
     return database::mysql::Connection::open(Configuration::qservCzarDbParams(database));
 }
-
 
 shared_ptr<css::CssAccess> HttpModule::qservCssAccess(bool readOnly) const {
     auto const config = controller()->serviceProvider()->config();
@@ -88,12 +76,11 @@ shared_ptr<css::CssAccess> HttpModule::qservCssAccess(bool readOnly) const {
     return css::CssAccess::createFromConfig(cssConfig, config->get<string>("controller", "empty-chunks-dir"));
 }
 
-
 bool HttpModule::autoBuildSecondaryIndex(string const& database) const {
     auto const databaseServices = controller()->serviceProvider()->databaseServices();
     try {
         DatabaseIngestParam const paramInfo =
-            databaseServices->ingestParam(database, "secondary-index", "auto-build");
+                databaseServices->ingestParam(database, "secondary-index", "auto-build");
         return paramInfo.value != "0";
     } catch (DatabaseServicesNotFound const& ex) {
         info(__func__, "the secondary index auto-build mode was not specified");
@@ -101,19 +88,17 @@ bool HttpModule::autoBuildSecondaryIndex(string const& database) const {
     return false;
 }
 
-
 bool HttpModule::localLoadSecondaryIndex(string const& database) const {
     auto const databaseServices = controller()->serviceProvider()->databaseServices();
     try {
         DatabaseIngestParam const paramInfo =
-            databaseServices->ingestParam(database, "secondary-index", "local-load");
+                databaseServices->ingestParam(database, "secondary-index", "local-load");
         return paramInfo.value != "0";
     } catch (DatabaseServicesNotFound const& ex) {
         info(__func__, "the secondary index local-load mode was not specified");
     }
     return false;
 }
-
 
 DatabaseInfo HttpModule::getDatabaseInfo(string const& func, bool throwIfPublished) const {
     debug(func);
@@ -124,9 +109,9 @@ DatabaseInfo HttpModule::getDatabaseInfo(string const& func, bool throwIfPublish
         database = body().required<string>("database");
     } else {
         if (!body().has("transaction_id")) {
-            throw invalid_argument(
-                    context() + "::" + func + " this service expects either 'database' or "
-                    " 'transaction_id' to be provided to define a scope of the request.");
+            throw invalid_argument(context() + "::" + func +
+                                   " this service expects either 'database' or "
+                                   " 'transaction_id' to be provided to define a scope of the request.");
         }
         TransactionId const transactionId = body().required<TransactionId>("transaction_id");
         debug(func, "transactionId=" + to_string(transactionId));
@@ -137,10 +122,9 @@ DatabaseInfo HttpModule::getDatabaseInfo(string const& func, bool throwIfPublish
 
     auto const databaseInfo = config->databaseInfo(database);
     if (throwIfPublished && databaseInfo.isPublished) {
-        throw HttpError(
-                context() + "::" + func, "database '" + databaseInfo.name + " is already published.");
+        throw HttpError(context() + "::" + func, "database '" + databaseInfo.name + " is already published.");
     }
     return databaseInfo;
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

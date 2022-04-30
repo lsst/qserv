@@ -30,15 +30,12 @@
 using namespace std;
 using namespace nlohmann;
 
-namespace lsst {
-namespace qserv {
-namespace wpublish {
+namespace lsst::qserv::wpublish {
 
 void ResourceMonitor::increment(string const& resource) {
     lock_guard<mutex> lock(_mtx);
     _resourceCounter[resource]++;
 }
-
 
 void ResourceMonitor::decrement(string const& resource) {
     lock_guard<mutex> lock(_mtx);
@@ -46,34 +43,30 @@ void ResourceMonitor::decrement(string const& resource) {
     if (not --(_resourceCounter[resource])) _resourceCounter.erase(resource);
 }
 
-
 unsigned int ResourceMonitor::count(string const& resource) const {
     lock_guard<mutex> lock(_mtx);
     return _resourceCounter.count(resource) ? _resourceCounter.at(resource) : 0;
 }
 
-
 unsigned int ResourceMonitor::count(int chunk, string const& db) const {
     return count(ResourceUnit::makePath(chunk, db));
 }
 
-
 unsigned int ResourceMonitor::count(int chunk, vector<string> const& dbs) const {
     unsigned int result = 0;
-    for (string const& db: dbs) {
+    for (string const& db : dbs) {
         result += count(chunk, db);
     }
     return result;
 }
 
-
 json ResourceMonitor::statusToJson() const {
     lock_guard<mutex> lock(_mtx);
     json result = json::array();
-    for (auto&& entry: _resourceCounter) {
+    for (auto&& entry : _resourceCounter) {
         result.push_back({entry.first, entry.second});
     }
     return result;
 }
 
-}}} // namespace lsst::qserv::wpublish
+}  // namespace lsst::qserv::wpublish

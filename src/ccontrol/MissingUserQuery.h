@@ -23,10 +23,10 @@
 #ifndef LSST_QSERV_CCONTROL_MISSINGUSERQUERY_H
 #define LSST_QSERV_CCONTROL_MISSINGUSERQUERY_H
 /**
-  * @file
-  *
-  * @author Daniel L. Wang, SLAC
-  */
+ * @file
+ *
+ * @author Daniel L. Wang, SLAC
+ */
 
 // System headers
 #include <exception>
@@ -36,23 +36,20 @@
 // Third party headers
 #include "boost/lexical_cast.hpp"
 
-namespace lsst {
-namespace qserv {
-namespace ccontrol {
+namespace lsst::qserv::ccontrol {
 
 /// An error of trying to retrieve a non-existent UserQuery by id
 class MissingUserQuery : public std::exception {
 public:
     explicit MissingUserQuery(int id)
-        : _s("Invalid UserQuery["
-             + boost::lexical_cast<std::string>(id) +  "]") {
-    }
+            : _s("Invalid UserQuery[" + boost::lexical_cast<std::string>(id) + "]") {}
     virtual ~MissingUserQuery() throw() {}
     virtual const char* what() const throw() { return _s.c_str(); }
+
 private:
     std::string const _s;
 };
 
-}}} // namespace lsst::qserv::ccontrol
+}  // namespace lsst::qserv::ccontrol
 
-#endif // LSST_QSERV_CCONTROL_MISSINGUSERQUERY_H
+#endif  // LSST_QSERV_CCONTROL_MISSINGUSERQUERY_H

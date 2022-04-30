@@ -33,9 +33,7 @@
 
 // This header declarations
 
-namespace lsst {
-namespace qserv {
-namespace util {
+namespace lsst::qserv::util {
 
 /**
  * The BlockPost provides a facility for blocking a calling thread
@@ -50,7 +48,7 @@ class BlockPost {
 public:
     BlockPost() = delete;
     BlockPost(BlockPost const&) = delete;
-    BlockPost & operator=(BlockPost const&) = delete;
+    BlockPost& operator=(BlockPost const&) = delete;
 
     /**
      * Normal constructor
@@ -61,7 +59,7 @@ public:
      *
      * @param minMilliseconds - the lower limit of the series
      * @param maxMilliseconds - the upper limit of the series
-    */
+     */
     BlockPost(int minMilliseconds, int maxMilliseconds);
 
     /// Destructor
@@ -91,13 +89,13 @@ private:
     int next();
 
 private:
-    std::random_device              _rd;    // Will be used to obtain a seed for the random number engine
-    std::mt19937                    _gen;   // Standard mersenne_twister_engine seeded with rd()
+    std::random_device _rd;  // Will be used to obtain a seed for the random number engine
+    std::mt19937 _gen;       // Standard mersenne_twister_engine seeded with rd()
     std::uniform_int_distribution<> _distr;
 
-    std::mutex _generatorMtx;   // for thread safety
+    std::mutex _generatorMtx;  // for thread safety
 };
 
-}}} // namespace lsst::qserv::util
+}  // namespace lsst::qserv::util
 
-#endif // LSST_QSERV_UTIL_BLOCKPOST_H
+#endif  // LSST_QSERV_UTIL_BLOCKPOST_H

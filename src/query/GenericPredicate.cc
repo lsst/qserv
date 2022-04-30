@@ -21,20 +21,14 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-
 // Class header
 #include "query/GenericPredicate.h"
 
-
-namespace lsst {
-namespace qserv {
-namespace query {
-
+namespace lsst::qserv::query {
 
 BoolFactorTerm::Ptr GenericPredicate::clone() const {
-    //return BfTerm::Ptr(new GenericPredicate());
+    // return BfTerm::Ptr(new GenericPredicate());
     return BoolFactorTerm::Ptr();
 }
 
-
-}}} // namespace lsst::qserv::query
+}  // namespace lsst::qserv::query

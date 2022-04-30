@@ -34,16 +34,13 @@
 #include "replica/ReplicaInfo.h"
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * The structure ReplicateJobResult represents a combined result received
  * from worker services upon a completion of the job.
  */
 struct ReplicateJobResult {
-
     /// Results reported by workers upon the successful completion
     /// of the corresponding replica creation jobs
     std::list<ReplicaInfo> replicas;
@@ -57,13 +54,11 @@ struct ReplicateJobResult {
 };
 
 /**
-  * Class ReplicateJob represents a tool which will increase the minimum
-  * number of each chunk's replica up to the requested level.
-  */
-class ReplicateJob : public Job  {
-
+ * Class ReplicateJob represents a tool which will increase the minimum
+ * number of each chunk's replica up to the requested level.
+ */
+class ReplicateJob : public Job {
 public:
-
     /// The pointer type for instances of the class
     typedef std::shared_ptr<ReplicateJob> Ptr;
 
@@ -101,12 +96,9 @@ public:
      * @return
      *   pointer to the created object
      */
-    static Ptr create(std::string const& databaseFamily,
-                      unsigned int numReplicas,
-                      Controller::Ptr const& controller,
-                      std::string const& parentJobId,
-                      CallbackType const& onFinish,
-                      int priority);
+    static Ptr create(std::string const& databaseFamily, unsigned int numReplicas,
+                      Controller::Ptr const& controller, std::string const& parentJobId,
+                      CallbackType const& onFinish, int priority);
 
     // Default construction and copy semantics are prohibited
 
@@ -148,13 +140,12 @@ public:
     ReplicateJobResult const& getReplicaData() const;
 
     /// @see Job::extendedPersistentState()
-    std::list<std::pair<std::string,std::string>> extendedPersistentState() const final;
+    std::list<std::pair<std::string, std::string>> extendedPersistentState() const final;
 
     /// @see Job::persistentLogData()
-    std::list<std::pair<std::string,std::string>> persistentLogData() const final;
+    std::list<std::pair<std::string, std::string>> persistentLogData() const final;
 
 protected:
-
     /// @see Job::startImpl()
     void startImpl(util::Lock const& lock) final;
 
@@ -165,14 +156,10 @@ protected:
     void notify(util::Lock const& lock) final;
 
 private:
-
     /// @see ReplicateJob::create()
-    ReplicateJob(std::string const& databaseFamily,
-                 unsigned int numReplicas,
-                 Controller::Ptr const& controller,
-                 std::string const& parentJobId,
-                 CallbackType const& onFinish,
-                 int priority);
+    ReplicateJob(std::string const& databaseFamily, unsigned int numReplicas,
+                 Controller::Ptr const& controller, std::string const& parentJobId,
+                 CallbackType const& onFinish, int priority);
 
     /**
      * The callback function to be invoked on a completion of the precursor job
@@ -204,16 +191,14 @@ private:
      * @retun
      *   actual number of submitted jobs
      */
-    size_t _launchNextJobs(util::Lock const& lock,
-                           size_t numJobs);
+    size_t _launchNextJobs(util::Lock const& lock, size_t numJobs);
 
 protected:
-
     // Input parameters
 
-    std::string  const _databaseFamily;
+    std::string const _databaseFamily;
     unsigned int const _numReplicas;
-    CallbackType       _onFinish;       /// @note is reset when the job finishes
+    CallbackType _onFinish;  /// @note is reset when the job finishes
 
     /// The chained job to be completed first in order to figure out
     /// replica disposition.
@@ -225,14 +210,14 @@ protected:
     /// Jobs which are already active
     std::list<CreateReplicaJob::Ptr> _activeJobs;
 
-    size_t _numLaunched = 0;    ///< the total number of replica creation jobs launched
-    size_t _numFinished = 0;    ///< the total number of finished jobs
-    size_t _numSuccess  = 0;    ///< the number of successfully completed jobs
+    size_t _numLaunched = 0;  ///< the total number of replica creation jobs launched
+    size_t _numFinished = 0;  ///< the total number of finished jobs
+    size_t _numSuccess = 0;   ///< the number of successfully completed jobs
 
     /// The result of the operation (gets updated as jobs are finishing)
     ReplicateJobResult _replicaData;
 };
 
-}}} // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_REPLICATEJOB_H
+#endif  // LSST_QSERV_REPLICA_REPLICATEJOB_H

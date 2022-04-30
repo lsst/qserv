@@ -27,9 +27,7 @@
 #include "util/EventThread.h"
 #include "wsched/SchedulerBase.h"
 
-namespace lsst {
-namespace qserv {
-namespace wsched {
+namespace lsst::qserv::wsched {
 
 /// A container to hold commands for a single chunk.
 /// Similar to util::CommandQueue but it doesn't need the condition variable or mutex.
@@ -51,8 +49,8 @@ public:
 protected:
     bool _hasChunkId{false};
     int _chunkId{0};
-    int _maxAccepted{1}; ///< maximum number of commands to accept in this object.
-    int _accepted{0}; ///< number of commands accepted.
+    int _maxAccepted{1};  ///< maximum number of commands to accept in this object.
+    int _accepted{0};     ///< number of commands accepted.
     std::deque<wbase::Task::Ptr> _tasks;
 };
 
@@ -64,8 +62,7 @@ class GroupScheduler : public SchedulerBase {
 public:
     typedef std::shared_ptr<GroupScheduler> Ptr;
 
-    GroupScheduler(std::string const& name,
-                   int maxThreads, int maxReserve, int maxGroupSize, int priority);
+    GroupScheduler(std::string const& name, int maxThreads, int maxReserve, int maxGroupSize, int priority);
     virtual ~GroupScheduler() {}
 
     bool empty();
@@ -85,7 +82,6 @@ public:
     bool ready() override;
     std::size_t getSize() const override;
 
-
 private:
     /// util::CommandQueue::_mx must be locked before calling this function.
     /// @param keepInThisGroup - set to true is this item must remain in the same group.
@@ -98,6 +94,6 @@ private:
     int _maxGroupSize{1};
 };
 
-}}} // namespace lsst::qserv::wsched
+}  // namespace lsst::qserv::wsched
 
-#endif // LSST_QSERV_WSCHED_GROUPSCHEDULER_H
+#endif  // LSST_QSERV_WSCHED_GROUPSCHEDULER_H

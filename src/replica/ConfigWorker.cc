@@ -47,11 +47,9 @@ template <typename T>
 void parseOptional(T& dest, json const& obj, string const& attr) {
     if (auto const itr = obj.find(attr); itr != obj.end()) dest = itr->get<T>();
 }
-}
+}  // namespace
 
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
 WorkerInfo::WorkerInfo(json const& obj) {
     string const context = "WorkerInfo::WorkerInfo(json): ";
@@ -82,11 +80,10 @@ WorkerInfo::WorkerInfo(json const& obj) {
     }
 }
 
-
 json WorkerInfo::toJson() const {
     json infoJson;
     infoJson["name"] = name;
-    infoJson["is-enabled"] = isEnabled  ? 1 : 0;
+    infoJson["is-enabled"] = isEnabled ? 1 : 0;
     infoJson["is-read-only"] = isReadOnly ? 1 : 0;
     infoJson["svc-host"] = svcHost;
     infoJson["svc-port"] = svcPort;
@@ -105,28 +102,19 @@ json WorkerInfo::toJson() const {
     return infoJson;
 }
 
-
 bool WorkerInfo::operator==(WorkerInfo const& other) const {
-    return  tie(name,
-                isEnabled, isReadOnly,
-                svcHost, svcPort,
-                fsHost, fsPort, dataDir,
-                loaderHost, loaderPort, loaderTmpDir,
-                exporterHost, exporterPort, exporterTmpDir,
-                httpLoaderHost, httpLoaderPort, httpLoaderTmpDir) ==
-            tie(other.name,
-                other.isEnabled, other.isReadOnly,
-                other.svcHost, other.svcPort,
-                other.fsHost, other.fsPort, other.dataDir,
-                other.loaderHost, other.loaderPort, other.loaderTmpDir,
-                other.exporterHost, other.exporterPort, other.exporterTmpDir,
-                other.httpLoaderHost, other.httpLoaderPort, other.httpLoaderTmpDir);
+    return tie(name, isEnabled, isReadOnly, svcHost, svcPort, fsHost, fsPort, dataDir, loaderHost, loaderPort,
+               loaderTmpDir, exporterHost, exporterPort, exporterTmpDir, httpLoaderHost, httpLoaderPort,
+               httpLoaderTmpDir) == tie(other.name, other.isEnabled, other.isReadOnly, other.svcHost,
+                                        other.svcPort, other.fsHost, other.fsPort, other.dataDir,
+                                        other.loaderHost, other.loaderPort, other.loaderTmpDir,
+                                        other.exporterHost, other.exporterPort, other.exporterTmpDir,
+                                        other.httpLoaderHost, other.httpLoaderPort, other.httpLoaderTmpDir);
 }
 
-
 ostream& operator<<(ostream& os, WorkerInfo const& info) {
-    os  << "WorkerInfo: " << info.toJson().dump();
+    os << "WorkerInfo: " << info.toJson().dump();
     return os;
 }
 
-}}} // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

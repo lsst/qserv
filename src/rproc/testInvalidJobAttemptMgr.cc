@@ -21,7 +21,6 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-
 // Class header
 #include "rproc/InfileMerger.h"
 
@@ -35,9 +34,7 @@
 #define BOOST_TEST_MODULE InvalidJobAttemptMgr_1
 #include <boost/test/unit_test.hpp>
 
-
 LOG_LOGGER _log = LOG_GET("lsst.qserv.rproc.testInvalidJobAttemptMgr");
-
 
 namespace test = boost::test_tools;
 
@@ -45,17 +42,15 @@ namespace rproc = lsst::qserv::rproc;
 
 struct Fixture {
     Fixture(void) {}
-    ~Fixture(void) { }
+    ~Fixture(void) {}
 };
 
 class MockResult {
 public:
     MockResult() {
-        iJAMgr.setDeleteFunc(
-            [this](rproc::InvalidJobAttemptMgr::jASetType const& jobAttempts) -> bool {
-                return deleteFunc(jobAttempts);
-            }
-        );
+        iJAMgr.setDeleteFunc([this](rproc::InvalidJobAttemptMgr::jASetType const& jobAttempts) -> bool {
+            return deleteFunc(jobAttempts);
+        });
     }
 
     bool deleteFunc(std::set<int> const& jobAttempts) {
@@ -75,7 +70,7 @@ public:
 
     void insert(int begin, int end) {
         tableExists_ = true;
-        for (int j=begin; j <= end; ++j) {
+        for (int j = begin; j <= end; ++j) {
             if (!iJAMgr.incrConcurrentMergeCount(j)) {
                 {
                     std::lock_guard<std::mutex> lck(mtx);
@@ -108,7 +103,7 @@ BOOST_AUTO_TEST_CASE(InvalidJob) {
 
     LOGS_DEBUG("test: Check if row removed from results.");
     mRes.insert(0, 20);
-    unsigned int expectedSize = 20; // 21 - 1 for delRow0
+    unsigned int expectedSize = 20;  // 21 - 1 for delRow0
     BOOST_CHECK(mRes.testSet.find(delRow0) == mRes.testSet.end());
     BOOST_CHECK(mRes.testSet.size() == expectedSize);
 
@@ -130,7 +125,7 @@ BOOST_AUTO_TEST_CASE(InvalidJob) {
     BOOST_CHECK(mRes.testSet.size() == expectedSize);
 
     LOGS_DEBUG("test: Check to make sure delete is not called on row that has not been added.");
-    int delRow2 = 37; // Does not exist in result set.
+    int delRow2 = 37;  // Does not exist in result set.
     BOOST_CHECK(mRes.testSet.find(delRow2) == mRes.testSet.end());
     mRes.deleteCalled_ = false;
     mRes.iJAMgr.prepScrub(delRow2);
@@ -138,18 +133,16 @@ BOOST_AUTO_TEST_CASE(InvalidJob) {
     BOOST_CHECK(mRes.deleteCalled_ == false);
 
     LOGS_DEBUG("Concurrent test");
-    auto insertFunc = [&mRes](int b, int e) {
-        mRes.insert(b, e);
-    };
+    auto insertFunc = [&mRes](int b, int e) { mRes.insert(b, e); };
 
     std::vector<std::shared_ptr<std::thread>> tVect;
     int concurrent = 50;
     int count = 5000;
-    for(int j=0; j < concurrent; ++j) {
+    for (int j = 0; j < concurrent; ++j) {
         std::shared_ptr<std::thread> t(new std::thread(insertFunc, 0, count));
         tVect.push_back(t);
-        expectedSize += count - 2; // count +1 for including 0, -1 for delRow0,
-                                   // -1 for delRow1, -1 for delRow2
+        expectedSize += count - 2;  // count +1 for including 0, -1 for delRow0,
+                                    // -1 for delRow1, -1 for delRow2
     }
 
     int delRow3 = 42;
@@ -181,7 +174,5 @@ BOOST_AUTO_TEST_CASE(InvalidJob) {
     BOOST_CHECK(mRes.testSet.find(count) != mRes.testSet.end());
     // LOGS_DEBUG("testSet=" << mRes.dumpTestSet());
 }
-
-
 
 BOOST_AUTO_TEST_SUITE_END()

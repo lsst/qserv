@@ -32,16 +32,12 @@
 // Local headers
 #include "qhttp/Response.h"
 
-namespace lsst {
-namespace qserv {
-namespace qhttp {
+namespace lsst::qserv::qhttp {
 
 class Server;
 
-class AjaxEndpoint
-{
+class AjaxEndpoint {
 public:
-
     using Ptr = std::shared_ptr<AjaxEndpoint>;
 
     //----- AjaxEndpoint is a specialized Handler to handle the common AJAX programming technique.
@@ -54,19 +50,17 @@ public:
     //      called in preference to calling the add() method here directly.
 
     static Ptr add(Server& server, std::string const& path);
-    void update(std::string const& json); // thread-safe
+    void update(std::string const& json);  // thread-safe
 
 private:
-
     AjaxEndpoint(std::shared_ptr<Server> const server);
 
     std::shared_ptr<Server> const _server;
 
     std::vector<Response::Ptr> _pendingResponses;
     std::mutex _pendingResponsesMutex;
-
 };
 
-}}} // namespace lsst::qserv::qhttp
+}  // namespace lsst::qserv::qhttp
 
-#endif // LSST_QSERV_QHTTP_AJAXENDPOINT_H
+#endif  // LSST_QSERV_QHTTP_AJAXENDPOINT_H

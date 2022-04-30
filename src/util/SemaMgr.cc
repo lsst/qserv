@@ -26,7 +26,6 @@
 
 // System headers
 
-
 // LSST headers
 #include "lsst/log/Log.h"
 
@@ -36,17 +35,12 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.util.SemaMgr");
 
 }
 
-namespace lsst {
-namespace qserv {
-namespace util {
+namespace lsst::qserv::util {
 
-std::ostream& SemaMgr::dump(std::ostream &os) const {
-    os << "(totalCount=" << _totalCount
-       << " usedcount=" << _usedCount
-       << " max=" << _max << ")";
+std::ostream& SemaMgr::dump(std::ostream& os) const {
+    os << "(totalCount=" << _totalCount << " usedcount=" << _usedCount << " max=" << _max << ")";
     return os;
 }
-
 
 std::string SemaMgr::dump() const {
     std::ostringstream os;
@@ -54,10 +48,6 @@ std::string SemaMgr::dump() const {
     return os.str();
 }
 
+std::ostream& operator<<(std::ostream& os, SemaMgr const& semaMgr) { return semaMgr.dump(os); }
 
-std::ostream& operator<<(std::ostream &os, SemaMgr const& semaMgr) {
-    return semaMgr.dump(os);
-}
-
-
-}}} // namespace lsst::qserv::util
+}  // namespace lsst::qserv::util

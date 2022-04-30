@@ -21,7 +21,6 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-
 // Class header
 #include "query/PassTerm.h"
 
@@ -29,11 +28,7 @@
 #include "query/BoolFactorTerm.h"
 #include "query/QueryTemplate.h"
 
-
-namespace lsst {
-namespace qserv {
-namespace query {
-
+namespace lsst::qserv::query {
 
 BoolFactorTerm::Ptr PassTerm::copySyntax() const {
     PassTerm* p = new PassTerm;
@@ -41,31 +36,22 @@ BoolFactorTerm::Ptr PassTerm::copySyntax() const {
     return BoolFactorTerm::Ptr(p);
 }
 
-
 void PassTerm::dbgPrint(std::ostream& os) const {
     os << "PassTerm(\"";
     os << _text;
     os << "\")";
 }
 
-
 bool PassTerm::operator==(const BoolFactorTerm& rhs) const {
-    auto rhsPassTerm = dynamic_cast<PassTerm const *>(&rhs);
+    auto rhsPassTerm = dynamic_cast<PassTerm const*>(&rhs);
     if (nullptr == rhsPassTerm) {
         return false;
     }
     return _text == rhsPassTerm->_text;
 }
 
+std::ostream& PassTerm::putStream(std::ostream& os) const { return os << _text; }
 
-std::ostream& PassTerm::putStream(std::ostream& os) const {
-    return os << _text;
-}
+void PassTerm::renderTo(QueryTemplate& qt) const { qt.append(_text); }
 
-
-void PassTerm::renderTo(QueryTemplate& qt) const {
-    qt.append(_text);
-}
-
-
-}}} // namespace lsst::qserv::query
+}  // namespace lsst::qserv::query

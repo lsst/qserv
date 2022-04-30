@@ -33,25 +33,20 @@
 #include "util/Mutex.h"
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class HttpCatalogsModule implements a handler for the database
  * catalog requests.
  */
-class HttpCatalogsModule: public HttpModule {
+class HttpCatalogsModule : public HttpModule {
 public:
     typedef std::shared_ptr<HttpCatalogsModule> Ptr;
 
-    static void process(Controller::Ptr const& controller,
-                       std::string const& taskName,
-                       HttpProcessorConfig const& processorConfig,
-                       qhttp::Request::Ptr const& req,
-                       qhttp::Response::Ptr const& resp,
-                       std::string const& subModuleName=std::string(),
-                       HttpAuthType const authType=HttpAuthType::NONE);
+    static void process(Controller::Ptr const& controller, std::string const& taskName,
+                        HttpProcessorConfig const& processorConfig, qhttp::Request::Ptr const& req,
+                        qhttp::Response::Ptr const& resp, std::string const& subModuleName = std::string(),
+                        HttpAuthType const authType = HttpAuthType::NONE);
 
     HttpCatalogsModule() = delete;
     HttpCatalogsModule(HttpCatalogsModule const&) = delete;
@@ -63,10 +58,8 @@ protected:
     nlohmann::json executeImpl(std::string const& subModuleName) final;
 
 private:
-    HttpCatalogsModule(Controller::Ptr const& controller,
-                       std::string const& taskName,
-                       HttpProcessorConfig const& processorConfig,
-                       qhttp::Request::Ptr const& req,
+    HttpCatalogsModule(Controller::Ptr const& controller, std::string const& taskName,
+                       HttpProcessorConfig const& processorConfig, qhttp::Request::Ptr const& req,
                        qhttp::Response::Ptr const& resp);
 
     /**
@@ -87,7 +80,7 @@ private:
     /// Protects the catalog stats cache
     static util::Mutex _catalogsMtx;
 };
-    
-}}} // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_HTTPCATALOGSMODULE_H
+}  // namespace lsst::qserv::replica
+
+#endif  // LSST_QSERV_HTTPCATALOGSMODULE_H

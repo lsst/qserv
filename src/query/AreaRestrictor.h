@@ -21,33 +21,24 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-
 #ifndef LSST_QSERV_QUERY_AREARESTRICTOR_H
 #define LSST_QSERV_QUERY_AREARESTRICTOR_H
-
 
 // System headers
 #include <memory>
 #include <string>
 #include <vector>
 
-
 // Forward declarations
-namespace lsst {
-namespace sphgeom {
-    class Region;
+namespace lsst::sphgeom {
+class Region;
 }
-namespace qserv {
-namespace query {
-    class BoolFactor;
-    class QueryTemplate;
-}}} // End of forward declarations
+namespace lsst::qserv::query {
+class BoolFactor;
+class QueryTemplate;
+}  // namespace lsst::qserv::query
 
-
-namespace lsst {
-namespace qserv {
-namespace query {
-
+namespace lsst::qserv::query {
 
 /// AreaRestrictor is a Qserv spatial restrictor element that is used to signal dependencies on
 /// spatially-partitioned tables that make use of spatial indexing.
@@ -73,8 +64,8 @@ public:
      * @param chunkColumns The columns names in the table to use in the scisql function.
      * @return std::shared_ptr<query::BoolFactor> The Qserv IR element that describes the scisql function.
      */
-    virtual std::shared_ptr<query::BoolFactor> asSciSqlFactor(std::string const& tableAlias,
-            std::pair<std::string, std::string> const& chunkColumns) const = 0;
+    virtual std::shared_ptr<query::BoolFactor> asSciSqlFactor(
+            std::string const& tableAlias, std::pair<std::string, std::string> const& chunkColumns) const = 0;
 
     /**
      * @brief Get the Region for this area spec object.
@@ -102,19 +93,17 @@ protected:
     virtual bool isEqual(const AreaRestrictor& rhs) const = 0;
 };
 
-
-class AreaRestrictorBox : public AreaRestrictor{
+class AreaRestrictorBox : public AreaRestrictor {
 public:
-    AreaRestrictorBox(std::string const& lonMinDegree,
-                      std::string const& latMinDegree,
-                      std::string const& lonMaxDegree,
-                      std::string const& latMaxDegree);
+    AreaRestrictorBox(std::string const& lonMinDegree, std::string const& latMinDegree,
+                      std::string const& lonMaxDegree, std::string const& latMaxDegree);
 
     AreaRestrictorBox(std::vector<std::string> const& parameters);
 
     void renderTo(QueryTemplate& qt) const override;
 
-    std::shared_ptr<query::BoolFactor> asSciSqlFactor(std::string const& tableAlias,
+    std::shared_ptr<query::BoolFactor> asSciSqlFactor(
+            std::string const& tableAlias,
             std::pair<std::string, std::string> const& chunkColumns) const override;
 
     std::shared_ptr<sphgeom::Region> getRegion() const override;
@@ -130,20 +119,19 @@ private:
     std::vector<double> const _numericParams;
 };
 
-
-class AreaRestrictorCircle : public AreaRestrictor{
+class AreaRestrictorCircle : public AreaRestrictor {
 public:
     virtual ~AreaRestrictorCircle() = default;
 
-    AreaRestrictorCircle(std::string const& centerLonDegree,
-                         std::string const& centerLatDegree,
+    AreaRestrictorCircle(std::string const& centerLonDegree, std::string const& centerLatDegree,
                          std::string const& radiusDegree);
 
     AreaRestrictorCircle(std::vector<std::string> const& parameters);
 
     void renderTo(QueryTemplate& qt) const override;
 
-    std::shared_ptr<query::BoolFactor> asSciSqlFactor(std::string const& tableAlias,
+    std::shared_ptr<query::BoolFactor> asSciSqlFactor(
+            std::string const& tableAlias,
             std::pair<std::string, std::string> const& chunkColumns) const override;
 
     std::shared_ptr<sphgeom::Region> getRegion() const override;
@@ -158,13 +146,11 @@ private:
     std::vector<double> const _numericParams;
 };
 
-
-class AreaRestrictorEllipse : public AreaRestrictor{
+class AreaRestrictorEllipse : public AreaRestrictor {
 public:
     virtual ~AreaRestrictorEllipse() = default;
 
-    AreaRestrictorEllipse(std::string const& centerLonDegree,
-                          std::string const& centerLatDegree,
+    AreaRestrictorEllipse(std::string const& centerLonDegree, std::string const& centerLatDegree,
                           std::string const& semiMajorAxisAngleArcsec,
                           std::string const& semiMinorAxisAngleArcsec,
                           std::string const& positionAngleDegree);
@@ -173,7 +159,8 @@ public:
 
     void renderTo(QueryTemplate& qt) const override;
 
-    std::shared_ptr<query::BoolFactor> asSciSqlFactor(std::string const& tableAlias,
+    std::shared_ptr<query::BoolFactor> asSciSqlFactor(
+            std::string const& tableAlias,
             std::pair<std::string, std::string> const& chunkColumns) const override;
 
     std::shared_ptr<sphgeom::Region> getRegion() const override;
@@ -190,8 +177,7 @@ private:
     std::vector<double> const _numericParams;
 };
 
-
-class AreaRestrictorPoly : public AreaRestrictor{
+class AreaRestrictorPoly : public AreaRestrictor {
 public:
     virtual ~AreaRestrictorPoly() = default;
 
@@ -199,7 +185,8 @@ public:
 
     void renderTo(QueryTemplate& qt) const override;
 
-    std::shared_ptr<query::BoolFactor> asSciSqlFactor(std::string const& tableAlias,
+    std::shared_ptr<query::BoolFactor> asSciSqlFactor(
+            std::string const& tableAlias,
             std::pair<std::string, std::string> const& chunkColumns) const override;
 
     std::shared_ptr<sphgeom::Region> getRegion() const override;
@@ -212,7 +199,6 @@ private:
     std::vector<double> const _numericParams;
 };
 
+}  // namespace lsst::qserv::query
 
-}}} // namespace lsst::qserv::query
-
-#endif // LSST_QSERV_QUERY_AREARESTRICTOR_H
+#endif  // LSST_QSERV_QUERY_AREARESTRICTOR_H

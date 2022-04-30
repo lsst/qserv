@@ -43,16 +43,12 @@
 #include "replica/ServiceProvider.h"
 
 // Forward declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
-    class ProtocolBuffer;
-}}}  // Forward declarations
+namespace lsst::qserv::replica {
+class ProtocolBuffer;
+}  // namespace lsst::qserv::replica
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class FileClientError represents exceptions thrown by FileClient on errors
@@ -63,10 +59,10 @@ public:
 };
 
 /**
-  * Class FileClient is a client-side API for the point-to-point file migration
-  * service.
-  */
-class FileClient: public std::enable_shared_from_this<FileClient>  {
+ * Class FileClient is a client-side API for the point-to-point file migration
+ * service.
+ */
+class FileClient : public std::enable_shared_from_this<FileClient> {
 public:
     /// The pointer type for instances of the class
     typedef std::shared_ptr<FileClient> Ptr;
@@ -83,17 +79,9 @@ public:
      * @param databaseName the name of a database the file belongs to
      * @param fileName the file to read or examine
      */
-    static Ptr open(ServiceProvider::Ptr const& serviceProvider,
-                    std::string const& workerHost,
-                    uint16_t workerPort,
-                    std::string const& databaseName,
-                    std::string const& fileName) {
-
-        return instance(serviceProvider,
-                        workerHost,
-                        workerPort,
-                        databaseName,
-                        fileName,
+    static Ptr open(ServiceProvider::Ptr const& serviceProvider, std::string const& workerHost,
+                    uint16_t workerPort, std::string const& databaseName, std::string const& fileName) {
+        return instance(serviceProvider, workerHost, workerPort, databaseName, fileName,
                         true /* readContent */);
     }
 
@@ -115,17 +103,9 @@ public:
      * @param databaseName the name of a database the file belongs to
      * @param fileName the file to read or examine
      */
-    static Ptr stat(ServiceProvider::Ptr const& serviceProvider,
-                    std::string const& workerHost,
-                    uint16_t workerPort,
-                    std::string const& databaseName,
-                    std::string const& fileName) {
-
-        return instance(serviceProvider,
-                        workerHost,
-                        workerPort,
-                        databaseName,
-                        fileName,
+    static Ptr stat(ServiceProvider::Ptr const& serviceProvider, std::string const& workerHost,
+                    uint16_t workerPort, std::string const& databaseName, std::string const& fileName) {
+        return instance(serviceProvider, workerHost, workerPort, databaseName, fileName,
                         false /* do NOT readContent */);
     }
 
@@ -133,7 +113,7 @@ public:
 
     FileClient() = delete;
     FileClient(FileClient const&) = delete;
-    FileClient &operator=(FileClient const&) = delete;
+    FileClient& operator=(FileClient const&) = delete;
 
     ~FileClient() = default;
 
@@ -166,7 +146,6 @@ public:
     size_t read(uint8_t* buf, size_t bufSize);
 
 private:
-
     /**
      * Open a file in the requested mode and return a smart pointer to an object
      * of this class. If the operation is successful then a valid pointer will
@@ -179,19 +158,13 @@ private:
      * @see FileClient::open()
      * @see FileClient::stat()
      */
-    static Ptr instance(ServiceProvider::Ptr const& serviceProvider,
-                        std::string const& workerHost,
-                        uint16_t workerPort,
-                        std::string const& databaseName,
-                        std::string const& fileName,
+    static Ptr instance(ServiceProvider::Ptr const& serviceProvider, std::string const& workerHost,
+                        uint16_t workerPort, std::string const& databaseName, std::string const& fileName,
                         bool readContent);
 
     /// @see FileClient::instance()
-    FileClient(ServiceProvider::Ptr const& serviceProvider,
-               std::string const& workerHost,
-               uint16_t workerPort,
-               std::string const& databaseName,
-               std::string const& fileName,
+    FileClient(ServiceProvider::Ptr const& serviceProvider, std::string const& workerHost,
+               uint16_t workerPort, std::string const& databaseName, std::string const& fileName,
                bool readContent);
 
     /**
@@ -203,9 +176,9 @@ private:
     // Input parameters
 
     std::string const _workerHost;
-    uint16_t    const _workerPort;
+    uint16_t const _workerPort;
     std::string const _fileName;
-    bool        const _readContent;
+    bool const _readContent;
 
     /// Cached connection string for error reporting an debugging
     std::string const _workerHostPort;
@@ -221,7 +194,7 @@ private:
 
     // The mutable state of the object
 
-    boost::asio::io_service      _io_service;
+    boost::asio::io_service _io_service;
     boost::asio::ip::tcp::socket _socket;
 
     /// The size of the file in bytes (to be determined after contacting a server)
@@ -234,6 +207,6 @@ private:
     bool _eof;
 };
 
-}}} // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_FILECLIENT_H
+#endif  // LSST_QSERV_REPLICA_FILECLIENT_H

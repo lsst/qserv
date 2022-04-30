@@ -22,12 +22,12 @@
  */
 
 /**
-  * @file
-  *
-  * @brief TaskMsgFactory is a factory for TaskMsg (protobuf) objects.
-  *
-  * @author Daniel L. Wang, SLAC
-  */
+ * @file
+ *
+ * @brief TaskMsgFactory is a factory for TaskMsg (protobuf) objects.
+ *
+ * @author Daniel L. Wang, SLAC
+ */
 
 // Class header
 #include "qproc/TaskMsgFactory.h"
@@ -50,17 +50,15 @@ namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.qproc.TaskMsgFactory");
 }
 
-namespace lsst {
-namespace qserv {
-namespace qproc {
-
+namespace lsst::qserv::qproc {
 
 std::shared_ptr<proto::TaskMsg> TaskMsgFactory::_makeMsg(ChunkQuerySpec const& chunkQuerySpec,
-                                                         std::string const& chunkResultName,
-                                                         QueryId queryId, int jobId, int attemptCount,
-                                                         qmeta::CzarId czarId) {
+                                                         std::string const& chunkResultName, QueryId queryId,
+                                                         int jobId, int attemptCount, qmeta::CzarId czarId) {
     std::string resultTable("Asdfasfd");
-    if (!chunkResultName.empty()) { resultTable = chunkResultName; }
+    if (!chunkResultName.empty()) {
+        resultTable = chunkResultName;
+    }
     auto taskMsg = std::make_shared<proto::TaskMsg>();
     // shared
     taskMsg->set_session(_session);
@@ -73,14 +71,14 @@ std::shared_ptr<proto::TaskMsg> TaskMsgFactory::_makeMsg(ChunkQuerySpec const& c
     // scanTables (for shared scans)
     // check if more than 1 db in scanInfo
     std::string db;
-    for(auto const& sTbl : chunkQuerySpec.scanInfo.infoTables) {
+    for (auto const& sTbl : chunkQuerySpec.scanInfo.infoTables) {
         if (db.empty()) {
             db = sTbl.db;
         }
     }
 
-    for(auto const& sTbl : chunkQuerySpec.scanInfo.infoTables) {
-        lsst::qserv::proto::TaskMsg_ScanTable *msgScanTbl = taskMsg->add_scantable();
+    for (auto const& sTbl : chunkQuerySpec.scanInfo.infoTables) {
+        lsst::qserv::proto::TaskMsg_ScanTable* msgScanTbl = taskMsg->add_scantable();
         sTbl.copyToScanTable(msgScanTbl);
     }
 
@@ -93,64 +91,60 @@ std::shared_ptr<proto::TaskMsg> TaskMsgFactory::_makeMsg(ChunkQuerySpec const& c
     // TODO refactor to simplify
     if (chunkQuerySpec.nextFragment.get()) {
         ChunkQuerySpec const* sPtr = &chunkQuerySpec;
-        while(sPtr) {
+        while (sPtr) {
             LOGS(_log, LOG_LVL_TRACE, "nextFragment");
-            for(unsigned int t=0;t<(sPtr->queries).size();t++){
+            for (unsigned int t = 0; t < (sPtr->queries).size(); t++) {
                 LOGS(_log, LOG_LVL_TRACE, (sPtr->queries).at(t));
             }
             // Linked fragments will not have valid subChunkTables vectors,
             // So, we reuse the root fragment's vector.
-            _addFragment(*taskMsg, resultTable, chunkQuerySpec.subChunkTables,
-                         sPtr->subChunkIds, sPtr->queries);
+            _addFragment(*taskMsg, resultTable, chunkQuerySpec.subChunkTables, sPtr->subChunkIds,
+                         sPtr->queries);
             sPtr = sPtr->nextFragment.get();
         }
     } else {
         LOGS(_log, LOG_LVL_TRACE, "no nextFragment");
-        for(unsigned int t=0;t<(chunkQuerySpec.queries).size();t++){
+        for (unsigned int t = 0; t < (chunkQuerySpec.queries).size(); t++) {
             LOGS(_log, LOG_LVL_TRACE, (chunkQuerySpec.queries).at(t));
         }
-        _addFragment(*taskMsg, resultTable, chunkQuerySpec.subChunkTables,
-                     chunkQuerySpec.subChunkIds, chunkQuerySpec.queries);
+        _addFragment(*taskMsg, resultTable, chunkQuerySpec.subChunkTables, chunkQuerySpec.subChunkIds,
+                     chunkQuerySpec.queries);
     }
     return taskMsg;
 }
 
-
 void TaskMsgFactory::_addFragment(proto::TaskMsg& taskMsg, std::string const& resultName,
-                                  DbTableSet const& subChunkTables,
-                                  std::vector<int> const& subChunkIds,
+                                  DbTableSet const& subChunkTables, std::vector<int> const& subChunkIds,
                                   std::vector<std::string> const& queries) {
-     proto::TaskMsg::Fragment* frag = taskMsg.add_fragment();
-     frag->set_resulttable(resultName);
+    proto::TaskMsg::Fragment* frag = taskMsg.add_fragment();
+    frag->set_resulttable(resultName);
 
-     for(auto& qry : queries)  {
-         frag->add_query(qry);
-     }
+    for (auto& qry : queries) {
+        frag->add_query(qry);
+    }
 
-     proto::TaskMsg_Subchunk sc;
+    proto::TaskMsg_Subchunk sc;
 
-     // Add the db+table pairs to the subchunk.
-     for(auto& tbl : subChunkTables) {
-         proto::TaskMsg_Subchunk_DbTbl* dbTbl = sc.add_dbtbl();
-         dbTbl->set_db(tbl.db);
-         dbTbl->set_tbl(tbl.table);
-         LOGS(_log, LOG_LVL_TRACE, "added dbtbl=" << tbl.db << "." << tbl.table);
-     }
+    // Add the db+table pairs to the subchunk.
+    for (auto& tbl : subChunkTables) {
+        proto::TaskMsg_Subchunk_DbTbl* dbTbl = sc.add_dbtbl();
+        dbTbl->set_db(tbl.db);
+        dbTbl->set_tbl(tbl.table);
+        LOGS(_log, LOG_LVL_TRACE, "added dbtbl=" << tbl.db << "." << tbl.table);
+    }
 
-     for(auto& subChunkId : subChunkIds) {
-         sc.add_id(subChunkId);
-     }
+    for (auto& subChunkId : subChunkIds) {
+        sc.add_id(subChunkId);
+    }
 
-     frag->mutable_subchunks()->CopyFrom(sc);
+    frag->mutable_subchunks()->CopyFrom(sc);
 }
 
-
-void TaskMsgFactory::serializeMsg(ChunkQuerySpec const& s,
-                                  std::string const& chunkResultName,
+void TaskMsgFactory::serializeMsg(ChunkQuerySpec const& s, std::string const& chunkResultName,
                                   QueryId queryId, int jobId, int attemptCount, qmeta::CzarId czarId,
                                   std::ostream& os) {
     std::shared_ptr<proto::TaskMsg> m = _makeMsg(s, chunkResultName, queryId, jobId, attemptCount, czarId);
     m->SerializeToOstream(&os);
 }
 
-}}} // namespace lsst::qserv::qproc
+}  // namespace lsst::qserv::qproc

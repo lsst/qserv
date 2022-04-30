@@ -34,9 +34,7 @@ namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.parser.ProtoHeaderWrap");
 }
 
-namespace lsst {
-namespace qserv {
-namespace proto {
+namespace lsst::qserv::proto {
 
 // 255 is the maximum size of the proto header and we need 1 byte for message size.
 const size_t ProtoHeaderWrap::PROTO_HEADER_SIZE = 256;
@@ -46,17 +44,14 @@ const size_t ProtoHeaderWrap::PROTOBUFFER_DESIRED_LIMIT = 2000000;
 // A single Google protobuffer can't be larger than this.
 const size_t ProtoHeaderWrap::PROTOBUFFER_HARD_LIMIT = 64000000;
 
-
-size_t ProtoHeaderWrap::getProtoHeaderSize() {
-    return PROTO_HEADER_SIZE;
-}
+size_t ProtoHeaderWrap::getProtoHeaderSize() { return PROTO_HEADER_SIZE; }
 
 std::string ProtoHeaderWrap::wrap(std::string const& protoHeaderString) {
     char phSize = static_cast<char>(protoHeaderString.size());
     std::string msgBuf{phSize};
     msgBuf += protoHeaderString;
     while (msgBuf.size() < PROTO_HEADER_SIZE) {
-        msgBuf +='0'; // pad the buffer
+        msgBuf += '0';  // pad the buffer
     }
     LOGS(_log, LOG_LVL_TRACE, "msgBuf size=" << msgBuf.size() << " --> " << util::prettyCharList(msgBuf, 5));
     return msgBuf;
@@ -71,4 +66,4 @@ bool ProtoHeaderWrap::unwrap(std::shared_ptr<WorkerResponse>& response, std::vec
     return true;
 }
 
-}}} // namespace lsst::qserv::proto
+}  // namespace lsst::qserv::proto

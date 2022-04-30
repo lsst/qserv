@@ -33,22 +33,18 @@
 #include "replica/RequestMessenger.h"
 
 // Forward declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
-    class Messenger;
-}}}  // Forward declarations
+namespace lsst::qserv::replica {
+class Messenger;
+}  // namespace lsst::qserv::replica
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
 /**
-  * Class FindAllRequest represents known replicas lookup requests within
-  * the master controller.
-  */
-class FindAllRequest: public RequestMessenger  {
+ * Class FindAllRequest represents known replicas lookup requests within
+ * the master controller.
+ */
+class FindAllRequest : public RequestMessenger {
 public:
     typedef std::shared_ptr<FindAllRequest> Ptr;
 
@@ -94,19 +90,13 @@ public:
      * @param messenger an interface for communicating with workers
      * @return pointer to the created object
      */
-    static Ptr create(ServiceProvider::Ptr const& serviceProvider,
-                      boost::asio::io_service& io_service,
-                      std::string const& worker,
-                      std::string const& database,
-                      bool saveReplicaInfo,
-                      CallbackType const& onFinish,
-                      int  priority,
-                      bool keepTracking,
+    static Ptr create(ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service,
+                      std::string const& worker, std::string const& database, bool saveReplicaInfo,
+                      CallbackType const& onFinish, int priority, bool keepTracking,
                       std::shared_ptr<Messenger> const& messenger);
 
-
     /// @see Request::extendedPersistentState()
-    std::list<std::pair<std::string,std::string>> extendedPersistentState() const final;
+    std::list<std::pair<std::string, std::string>> extendedPersistentState() const final;
 
 protected:
     /// @see Request::startImpl()
@@ -123,14 +113,9 @@ protected:
 
 private:
     /// @see FindAllRequest::create()
-    FindAllRequest(ServiceProvider::Ptr const& serviceProvider,
-                   boost::asio::io_service& io_service,
-                   std::string const& worker,
-                   std::string const& database,
-                   bool saveReplicaInfo,
-                   CallbackType const& onFinish,
-                   int  priority,
-                   bool keepTracking,
+    FindAllRequest(ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service,
+                   std::string const& worker, std::string const& database, bool saveReplicaInfo,
+                   CallbackType const& onFinish, int priority, bool keepTracking,
                    std::shared_ptr<Messenger> const& messenger);
 
     /**
@@ -149,8 +134,8 @@ private:
     // Input parameters
 
     std::string const _database;
-    bool        const _saveReplicaInfo;
-    CallbackType      _onFinish;
+    bool const _saveReplicaInfo;
+    CallbackType _onFinish;
 
     /// Request-specific parameters of the target request
     FindAllRequestParams _targetRequestParams;
@@ -159,6 +144,6 @@ private:
     ReplicaInfoCollection _replicaInfoCollection;
 };
 
-}}} // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_FINDALLREQUEST_H
+#endif  // LSST_QSERV_REPLICA_FINDALLREQUEST_H

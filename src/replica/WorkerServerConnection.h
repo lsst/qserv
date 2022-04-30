@@ -35,23 +35,21 @@
 #include "replica/WorkerProcessor.h"
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
 /**
-  * Class WorkerServerConnection is used for handling connections from
-  * remote clients. One instance of the class serves one client at a time.
-  *
-  * Objects of this class are instantiated by WorkerServer. After that
-  * the server calls this class's method beginProtocol() which starts
-  * a series of asynchronous operations to communicate with remote client.
-  * When all details of an incoming request are obtained from the client
-  * the connection object forwards this request for actual processing
-  * to an instance of the WorkerProcessor class. A response resieved from
-  * the processor is serialized and sent back (asynchronously) to
-  * the client.
-  */
+ * Class WorkerServerConnection is used for handling connections from
+ * remote clients. One instance of the class serves one client at a time.
+ *
+ * Objects of this class are instantiated by WorkerServer. After that
+ * the server calls this class's method beginProtocol() which starts
+ * a series of asynchronous operations to communicate with remote client.
+ * When all details of an incoming request are obtained from the client
+ * the connection object forwards this request for actual processing
+ * to an instance of the WorkerProcessor class. A response resieved from
+ * the processor is serialized and sent back (asynchronously) to
+ * the client.
+ */
 class WorkerServerConnection : public std::enable_shared_from_this<WorkerServerConnection> {
 public:
     typedef std::shared_ptr<WorkerServerConnection> Ptr;
@@ -67,8 +65,7 @@ public:
      *
      * @return A pointer to the new object created by the factory.
      */
-    static Ptr create(ServiceProvider::Ptr const& serviceProvider,
-                      WorkerProcessor::Ptr const& processor,
+    static Ptr create(ServiceProvider::Ptr const& serviceProvider, WorkerProcessor::Ptr const& processor,
                       boost::asio::io_service& io_service);
 
     WorkerServerConnection() = delete;
@@ -85,10 +82,10 @@ public:
     /**
      * Begin communicating asynchronously with a client. This is essentially
      * an RPC protocol which runs in a loop this sequence of steps:
-     * 
+     *
      *   - ASYNC: read a frame header of a request
      *   -  SYNC: read the request header (request type, etc.)
-     *   -  SYNC: read the request body (depends on a type of the request) 
+     *   -  SYNC: read the request body (depends on a type of the request)
      *   - ASYNC: write a frame header of a reply to the request
      *            then write the reply itself
      *
@@ -102,15 +99,14 @@ public:
      *   will require two things: 1) to ensure enough we have enough buffer space
      *   allocated, and 2) to tell the asynchronous reader function how many bytes
      *   exactly are we going to read.
-     * 
+     *
      * The chain ends when a client disconnects or when an error condition is met.
      */
     void beginProtocol();
 
 private:
     /// @see WorkerServerConnection::create()
-    WorkerServerConnection(ServiceProvider::Ptr const& serviceProvider,
-                           WorkerProcessor::Ptr const& processor,
+    WorkerServerConnection(ServiceProvider::Ptr const& serviceProvider, WorkerProcessor::Ptr const& processor,
                            boost::asio::io_service& io_service);
 
     /// @return A context string for error reporting and logging purposes.
@@ -130,8 +126,7 @@ private:
      * @param ec  А error condition to be checked for.
      * @param bytes_transferred  Тhe number of bytes received (if successful).
      */
-    void _received(boost::system::error_code const& ec,
-                   size_t bytes_transferred);
+    void _received(boost::system::error_code const& ec, size_t bytes_transferred);
 
     /**
      * Process queued requests (REPLICATE, DELETE, FIND, FIND-ALL, ECHO, etc.)
@@ -185,16 +180,15 @@ private:
      * @param ec  A error condition to be checked for.
      * @param bytes_transferred  The number of bytes sent (if successful).
      */
-    void _sent(boost::system::error_code const& ec,
-               size_t bytes_transferred);
+    void _sent(boost::system::error_code const& ec, size_t bytes_transferred);
 
     /**
      * Verify if the name of a Qserv instance found in the request header matches
      * the one expected by the worker. If that's not the case then fill out
      * the response message with error codes explaining the problem.
-     * 
+     *
      * @note This method is compatible with responses sent for the queued messages.
-     * 
+     *
      * @param hdr  A request header message.
      * @param response  A response to be pre-filled with error codes in case if
      *   a mismatching instance found in the protocol header.
@@ -205,7 +199,8 @@ private:
     template <class RESPONSE>
     bool _verifyInstance(ProtocolRequestHeader const& hdr, RESPONSE& response) const {
         if (hdr.instance_id() == _serviceProvider->instanceId()) return true;
-        WorkerProcessor::setDefaultResponse(response, ProtocolStatus::BAD, ProtocolStatusExt::FOREIGN_INSTANCE);
+        WorkerProcessor::setDefaultResponse(response, ProtocolStatus::BAD,
+                                            ProtocolStatusExt::FOREIGN_INSTANCE);
         return false;
     }
 
@@ -226,16 +221,18 @@ private:
         response.set_status_ext(ProtocolStatusExt::FOREIGN_INSTANCE);
         return false;
     }
-    
+
     // Input parameters
 
     ServiceProvider::Ptr const _serviceProvider;
 
     // Data strctures related to unique identifiers of connections.
 
-    static std::atomic<unsigned int> _connectionIdSeries;   ///< The generator of unique connection identifiers.
-    unsigned int const _connectionId;   ///< A unique identifier of the current connection.
-    std::string const _context; ///< A string for logging and error reporting (includes connection identifier).
+    static std::atomic<unsigned int>
+            _connectionIdSeries;       ///< The generator of unique connection identifiers.
+    unsigned int const _connectionId;  ///< A unique identifier of the current connection.
+    std::string const
+            _context;  ///< A string for logging and error reporting (includes connection identifier).
 
     /// This is pointer onto an object where the requests would
     /// get processed.
@@ -248,6 +245,6 @@ private:
     std::shared_ptr<ProtocolBuffer> _bufferPtr;
 };
 
-}}} // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_WORKERSERVERCONNECTION_H
+#endif  // LSST_QSERV_REPLICA_WORKERSERVERCONNECTION_H

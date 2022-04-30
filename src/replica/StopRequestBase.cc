@@ -46,34 +46,21 @@ namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.StopRequest");
 
-} /// namespace
+}  // namespace
 
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
 StopRequestBase::StopRequestBase(ServiceProvider::Ptr const& serviceProvider,
-                                 boost::asio::io_service& io_service,
-                                 char const* requestTypeName,
-                                 string const& worker,
-                                 string const& targetRequestId,
-                                 ProtocolQueuedRequestType targetRequestType,
-                                 int priority,
-                                 bool keepTracking,
+                                 boost::asio::io_service& io_service, char const* requestTypeName,
+                                 string const& worker, string const& targetRequestId,
+                                 ProtocolQueuedRequestType targetRequestType, int priority, bool keepTracking,
                                  shared_ptr<Messenger> const& messenger)
-    :   RequestMessenger(serviceProvider,
-                         io_service,
-                         requestTypeName,
-                         worker,
-                         priority,
-                         keepTracking,
-                         false, // allowDuplicate
-                         false, // disposeRequired
-                         messenger),
-        _targetRequestId(targetRequestId),
-        _targetRequestType(targetRequestType) {
-}
-
+        : RequestMessenger(serviceProvider, io_service, requestTypeName, worker, priority, keepTracking,
+                           false,  // allowDuplicate
+                           false,  // disposeRequired
+                           messenger),
+          _targetRequestId(targetRequestId),
+          _targetRequestType(targetRequestType) {}
 
 string StopRequestBase::toString(bool extended) const {
     ostringstream oss(Request::toString(extended));
@@ -82,15 +69,12 @@ string StopRequestBase::toString(bool extended) const {
     return oss.str();
 }
 
-
 void StopRequestBase::startImpl(util::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
     _sendImpl(lock);
 }
 
-
 void StopRequestBase::awaken(boost::system::error_code const& ec) {
-
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     if (isAborted(ec)) return;
@@ -102,9 +86,7 @@ void StopRequestBase::awaken(boost::system::error_code const& ec) {
     _sendImpl(lock);
 }
 
-
 void StopRequestBase::_sendImpl(util::Lock const& lock) {
-
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     // Serialize the Stop message header and the request itself into
@@ -129,9 +111,7 @@ void StopRequestBase::_sendImpl(util::Lock const& lock) {
     send(lock);
 }
 
-
 void StopRequestBase::analyze(bool success, ProtocolStatus status) {
-
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  success=" << (success ? "true" : "false"));
 
     // This method is called on behalf of an asynchronous callback fired
@@ -149,7 +129,6 @@ void StopRequestBase::analyze(bool success, ProtocolStatus status) {
     }
 
     switch (status) {
-
         case ProtocolStatus::SUCCESS:
             saveReplicaInfo();
             finish(lock, SUCCESS);
@@ -184,22 +163,19 @@ void StopRequestBase::analyze(bool success, ProtocolStatus status) {
             break;
 
         default:
-            throw logic_error(
-                    "StopRequestBase::" + string(__func__) + "  unknown status '" +
-                    ProtocolStatus_Name(status) + "' received from server");
+            throw logic_error("StopRequestBase::" + string(__func__) + "  unknown status '" +
+                              ProtocolStatus_Name(status) + "' received from server");
     }
 }
-
 
 void StopRequestBase::savePersistentState(util::Lock const& lock) {
     controller()->serviceProvider()->databaseServices()->saveState(*this, performance(lock));
 }
 
-
-list<pair<string,string>> StopRequestBase::extendedPersistentState() const {
-    list<pair<string,string>> result;
+list<pair<string, string>> StopRequestBase::extendedPersistentState() const {
+    list<pair<string, string>> result;
     result.emplace_back("target_request_id", targetRequestId());
     return result;
 }
 
-}}} // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

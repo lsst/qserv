@@ -21,14 +21,10 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-
 #include "ccontrol/ParseAdapters.h"
 
-
-namespace lsst {
-namespace qserv {
-namespace ccontrol {
+namespace lsst::qserv::ccontrol {
 
 LOG_LOGGER Adapter::_log = LOG_GET("lsst.qserv.ccontrol.ParseAdapters");
 
-}}} // lsst::qserv::ccontrol
+}  // namespace lsst::qserv::ccontrol

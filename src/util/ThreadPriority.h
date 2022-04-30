@@ -30,18 +30,13 @@
 
 // external headers
 
-
-namespace lsst {
-namespace qserv {
-namespace util {
-
+namespace lsst::qserv::util {
 
 /// Class used to temporarily change the priority of the thread it is on.
 /// It requires root privileges for this class to change anything.
 class ThreadPriority {
 public:
-
-    explicit ThreadPriority(pthread_t const& pthreadH) : _pthreadHandle(pthreadH) {}
+    explicit ThreadPriority(pthread_t const &pthreadH) : _pthreadHandle(pthreadH) {}
 
     ~ThreadPriority() = default;
 
@@ -52,18 +47,16 @@ public:
     void getCurrentValues(sched_param &sch, int &policy);
 
     /// If newPriority is non-zero, the policy must be a real-time policy, like SCHED_FIFO.
-    int setPriorityPolicy(int newPriority, int newPolicy=SCHED_FIFO);
+    int setPriorityPolicy(int newPriority, int newPolicy = SCHED_FIFO);
 
-    int restoreOriginalValues() {
-        return setPriorityPolicy(_originalPriority, _originalPolicy);
-    }
+    int restoreOriginalValues() { return setPriorityPolicy(_originalPriority, _originalPolicy); }
 
 private:
-    pthread_t _pthreadHandle;         ///< Thread that has its priority changed.
-    int _originalPriority{0};         ///< Standard priority for all non real-time policies
-    int _originalPolicy{SCHED_OTHER}; ///< Normal scheduling policy.
+    pthread_t _pthreadHandle;          ///< Thread that has its priority changed.
+    int _originalPriority{0};          ///< Standard priority for all non real-time policies
+    int _originalPolicy{SCHED_OTHER};  ///< Normal scheduling policy.
 };
 
-}}} // namespace
+}  // namespace lsst::qserv::util
 
 #endif /* CORE_MODULES_UTIL_THREADPRIORITY_H_ */

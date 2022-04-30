@@ -30,21 +30,17 @@
 // Qserv headers
 #include "sql/SqlResults.h"
 
-namespace lsst {
-namespace qserv {
-namespace sql {
+namespace lsst::qserv::sql {
 
 // Constructors
-SqlBulkInsert::SqlBulkInsert(SqlConnection* conn,
-                             std::string const& table,
+SqlBulkInsert::SqlBulkInsert(SqlConnection* conn, std::string const& table,
                              std::vector<std::string> const& columns)
-    : _conn(conn), _maxSize(0), _insert(), _buffer()
-{
+        : _conn(conn), _maxSize(0), _insert(), _buffer() {
     // Build initial INSERT
     _insert = "INSERT INTO ";
     _insert += table;
     char sep = '(';
-    for (auto const& column: columns) {
+    for (auto const& column : columns) {
         _insert += sep;
         _insert += '`';
         _insert += column;
@@ -55,9 +51,7 @@ SqlBulkInsert::SqlBulkInsert(SqlConnection* conn,
 }
 
 // Insert one more row
-bool
-SqlBulkInsert::addRow(std::vector<std::string> const& values, SqlErrorObject& errObj) {
-
+bool SqlBulkInsert::addRow(std::vector<std::string> const& values, SqlErrorObject& errObj) {
     if (_maxSize == 0) {
         // get max. buffer size
         std::string query = "SELECT @@session.max_allowed_packet";
@@ -79,13 +73,13 @@ SqlBulkInsert::addRow(std::vector<std::string> const& values, SqlErrorObject& er
             _maxSize -= 64;
         } else {
             // some safe default
-            _maxSize = 16*1024;
+            _maxSize = 16 * 1024;
         }
     }
 
     // get the size of row to be inserted
     unsigned rowSize = 0;
-    for (auto&& val: values) {
+    for (auto&& val : values) {
         rowSize += val.size();
     }
     // plus parens and commas as in ",(val,val,val)"
@@ -108,7 +102,7 @@ SqlBulkInsert::addRow(std::vector<std::string> const& values, SqlErrorObject& er
 
     // add values
     char sep = '(';
-    for (auto&& val: values) {
+    for (auto&& val : values) {
         _buffer += sep;
         _buffer += val;
         sep = ',';
@@ -129,4 +123,4 @@ bool SqlBulkInsert::flush(SqlErrorObject& errObj) {
     return true;
 }
 
-}}} // namespace lsst::qserv::sql
+}  // namespace lsst::qserv::sql

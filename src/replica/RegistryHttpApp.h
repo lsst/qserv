@@ -25,19 +25,17 @@
 #include "replica/Application.h"
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class RegistryHttpApp implements represents the worker registration
  * service that's used by the workers to report themselves and by the controllers
  * to locate connection and configuration parameters of the workers. The service can be
  * used to obtain the run-time status of the workers for the system monitoring purposes.
- * 
+ *
  * The service is implemented as the REST/HTTP server.
  */
-class RegistryHttpApp: public Application {
+class RegistryHttpApp : public Application {
 public:
     typedef std::shared_ptr<RegistryHttpApp> Ptr;
 
@@ -65,6 +63,6 @@ private:
     RegistryHttpApp(int argc, char* argv[]);
 };
 
-}}} // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif /* LSST_QSERV_REPLICA_REGISTRYHTTPAPP_H */

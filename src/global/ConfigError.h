@@ -26,15 +26,13 @@
 // System headers
 #include <stdexcept>
 
-namespace lsst {
-namespace qserv {
+namespace lsst::qserv {
 
 /// ConfigError : an error in qserv configuration
 class ConfigError : public std::runtime_error {
 public:
-    ConfigError(std::string const& msg)
-        : std::runtime_error(msg) {}
+    ConfigError(std::string const& msg) : std::runtime_error(msg) {}
 };
-}} // namespace lsst::qserv
+}  // namespace lsst::qserv
 
-#endif // LSST_QSERV_CONFIGERROR_H
+#endif  // LSST_QSERV_CONFIGERROR_H

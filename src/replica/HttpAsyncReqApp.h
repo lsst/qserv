@@ -28,16 +28,12 @@
 #include <ostream>
 
 // Forward declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
-    class HttpAsyncReq;
-}}} // namespace lsst::qserv::replica
+namespace lsst::qserv::replica {
+class HttpAsyncReq;
+}  // namespace lsst::qserv::replica
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class HttpAsyncReqApp implements a tool that sends requests to a Web server over
@@ -49,7 +45,7 @@ namespace replica {
  * @see class HttpClient
  * @see class HttpClientApp
  */
-class HttpAsyncReqApp: public Application {
+class HttpAsyncReqApp : public Application {
 public:
     typedef std::shared_ptr<HttpAsyncReqApp> Ptr;
 
@@ -62,11 +58,11 @@ public:
      */
     static Ptr create(int argc, char* argv[]);
 
-    HttpAsyncReqApp()=delete;
-    HttpAsyncReqApp(HttpAsyncReqApp const&)=delete;
-    HttpAsyncReqApp& operator=(HttpAsyncReqApp const&)=delete;
+    HttpAsyncReqApp() = delete;
+    HttpAsyncReqApp(HttpAsyncReqApp const&) = delete;
+    HttpAsyncReqApp& operator=(HttpAsyncReqApp const&) = delete;
 
-    virtual ~HttpAsyncReqApp() override=default;
+    virtual ~HttpAsyncReqApp() override = default;
 
 protected:
     /// @see Application::runImpl()
@@ -91,6 +87,6 @@ private:
     bool _body = false;
 };
 
-}}} // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif /* LSST_QSERV_REPLICA_HTTPASYNCREQAPP_H */

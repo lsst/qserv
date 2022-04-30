@@ -32,9 +32,7 @@
 // Qserv headers
 #include "util/ThreadPool.h"
 
-namespace lsst {
-namespace qserv {
-namespace qdisp {
+namespace lsst::qserv::qdisp {
 
 class PriorityQueue;
 
@@ -45,10 +43,10 @@ public:
     explicit PriorityCommand(std::function<void(util::CmdData*)> func) : CommandTracked(func) {}
     ~PriorityCommand() override = default;
     friend PriorityQueue;
-private:
-    int _priority{0}; // Need to know what queue this was placed on.
-};
 
+private:
+    int _priority{0};  // Need to know what queue this was placed on.
+};
 
 /// FIFO priority queue. Elements with the same priority are handled in
 /// a FIFO manner. Lower integer values are higher priority.
@@ -67,15 +65,14 @@ public:
         /// A snapshot status of the queue for logging or monitoring purposes.
         struct Stats {
             Stats(int priority_, size_t size_, int running_)
-               : priority(priority_), size(size_), running(running_)
-            {}
+                    : priority(priority_), size(size_), running(running_) {}
             int priority;
             size_t size;
             int running;
         };
 
-        explicit PriQ(int priority, int minRunning, int maxRunning) :
-            _priority(priority), _minRunning(minRunning), _maxRunning(maxRunning) {}
+        explicit PriQ(int priority, int minRunning, int maxRunning)
+                : _priority(priority), _minRunning(minRunning), _maxRunning(maxRunning) {}
         ~PriQ() override = default;
         int getPriority() const { return _priority; }
         int getMinRunning() const { return _minRunning; }
@@ -83,17 +80,16 @@ public:
 
         Stats stats() const { return Stats(_priority, const_cast<PriQ*>(this)->size(), running); }
 
-        std::atomic<int> running{0}; ///< number of jobs of this priority currently running.
+        std::atomic<int> running{0};  ///< number of jobs of this priority currently running.
     private:
-        int const _priority;   ///< priority value of this queue
-        int const _minRunning; ///< minimum number of threads (unless nothing on this queue to run)
-        int const _maxRunning; ///< maximum number of threads for this PriQ to use.
+        int const _priority;    ///< priority value of this queue
+        int const _minRunning;  ///< minimum number of threads (unless nothing on this queue to run)
+        int const _maxRunning;  ///< maximum number of threads for this PriQ to use.
     };
 
     PriorityQueue() = delete;
     PriorityQueue(PriorityQueue const&) = delete;
     PriorityQueue& operator=(PriorityQueue const&) = delete;
-
 
     PriorityQueue(int defaultPriority, int minRunning, int maxRunning) : _defaultPriority(defaultPriority) {
         _queues[_defaultPriority] = std::make_shared<PriQ>(_defaultPriority, minRunning, maxRunning);
@@ -107,7 +103,7 @@ public:
 
     void queCmd(PriorityCommand::Ptr const& cmd, int priority);
 
-    util::Command::Ptr getCmd(bool wait=true) override;
+    util::Command::Ptr getCmd(bool wait = true) override;
     void prepareShutdown();
 
     void commandStart(util::Command::Ptr const& cmd) override;
@@ -184,9 +180,7 @@ public:
 
     /// Lower priority numbers are higher priority.
     /// Invalid priorities get the lowest priority (high priority number).
-    void queCmd(PriorityCommand::Ptr const& cmd, int priority) {
-        _prQueue->queCmd(cmd, priority);
-    }
+    void queCmd(PriorityCommand::Ptr const& cmd, int priority) { _prQueue->queCmd(cmd, priority); }
 
     /// Commands on queue's with priority lower than default may not be run.
     void shutdownPool() {
@@ -199,7 +193,6 @@ private:
     util::ThreadPool::Ptr _pool;
 };
 
-
-}}} // namespace lsst::qserv::disp
+}  // namespace lsst::qserv::qdisp
 
 #endif /* LSST_QSERV_QDISP_QDISPPOOL_H_ */

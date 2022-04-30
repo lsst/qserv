@@ -39,76 +39,50 @@ namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.QservStatusJob");
 
-} /// namespace
+}  // namespace
 
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
 string QservStatusJob::typeName() { return "QservStatusJob"; }
 
-QservStatusJob::Ptr QservStatusJob::create(unsigned int timeoutSec,
-                                           bool allWorkers,
-                                           Controller::Ptr const& controller,
-                                           string const& parentJobId,
-                                           CallbackType const& onFinish,
-                                           int priority) {
+QservStatusJob::Ptr QservStatusJob::create(unsigned int timeoutSec, bool allWorkers,
+                                           Controller::Ptr const& controller, string const& parentJobId,
+                                           CallbackType const& onFinish, int priority) {
     return QservStatusJob::Ptr(
-        new QservStatusJob(timeoutSec,
-                           allWorkers,
-                           controller,
-                           parentJobId,
-                           onFinish,
-                           priority));
+            new QservStatusJob(timeoutSec, allWorkers, controller, parentJobId, onFinish, priority));
 }
 
-
-QservStatusJob::QservStatusJob(unsigned int timeoutSec,
-                               bool allWorkers,
-                               Controller::Ptr const& controller,
-                               string const& parentJobId,
-                               CallbackType const& onFinish,
-                               int priority)
-    :   Job(controller,
-            parentJobId,
-            "QSERV_STATUS",
-            priority),
-        _timeoutSec(timeoutSec == 0
-                ? controller->serviceProvider()->config()->get<unsigned int>("controller", "request-timeout-sec")
-                : timeoutSec),
-        _allWorkers(allWorkers),
-        _onFinish(onFinish) {
-}
-
+QservStatusJob::QservStatusJob(unsigned int timeoutSec, bool allWorkers, Controller::Ptr const& controller,
+                               string const& parentJobId, CallbackType const& onFinish, int priority)
+        : Job(controller, parentJobId, "QSERV_STATUS", priority),
+          _timeoutSec(timeoutSec == 0 ? controller->serviceProvider()->config()->get<unsigned int>(
+                                                "controller", "request-timeout-sec")
+                                      : timeoutSec),
+          _allWorkers(allWorkers),
+          _onFinish(onFinish) {}
 
 QservStatus const& QservStatusJob::qservStatus() const {
- 
     util::Lock lock(_mtx, context() + __func__);
- 
+
     if (state() == State::FINISHED) return _qservStatus;
 
-    throw logic_error(
-            context() + string(__func__) + "  can't use this operation before finishing the job");
+    throw logic_error(context() + string(__func__) + "  can't use this operation before finishing the job");
 }
 
-
-list<pair<string,string>> QservStatusJob::extendedPersistentState() const {
-    list<pair<string,string>> result;
+list<pair<string, string>> QservStatusJob::extendedPersistentState() const {
+    list<pair<string, string>> result;
     result.emplace_back("timeout_sec", to_string(timeoutSec()));
     result.emplace_back("all_workers", bool2str(allWorkers()));
     return result;
 }
 
+list<pair<string, string>> QservStatusJob::persistentLogData() const {
+    list<pair<string, string>> result;
 
-list<pair<string,string>> QservStatusJob::persistentLogData() const {
-
-    list<pair<string,string>> result;
-
-    for (auto&& entry: qservStatus().workers) {
-
+    for (auto&& entry : qservStatus().workers) {
         auto worker = entry.first;
         auto responded = entry.second;
-        
+
         if (not responded) {
             result.emplace_back("failed-worker", worker);
         }
@@ -116,64 +90,51 @@ list<pair<string,string>> QservStatusJob::persistentLogData() const {
     return result;
 }
 
-
 void QservStatusJob::startImpl(util::Lock const& lock) {
-
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     auto self = shared_from_base<QservStatusJob>();
 
-    auto workers = allWorkers()
-        ? controller()->serviceProvider()->config()->allWorkers()
-        : controller()->serviceProvider()->config()->workers();
+    auto workers = allWorkers() ? controller()->serviceProvider()->config()->allWorkers()
+                                : controller()->serviceProvider()->config()->workers();
 
-    for (auto const& worker: workers) {
-
+    for (auto const& worker : workers) {
         _qservStatus.workers[worker] = false;
         _qservStatus.info[worker] = json::object();
 
         auto const request = controller()->serviceProvider()->qservMgtServices()->status(
-            worker,
-            id(),   /* jobId */
-            [self] (GetStatusQservMgtRequest::Ptr request) {
-                self->_onRequestFinish(request);
-            },
-            timeoutSec()
-        );
+                worker, id(), /* jobId */
+                [self](GetStatusQservMgtRequest::Ptr request) { self->_onRequestFinish(request); },
+                timeoutSec());
         _requests[request->id()] = request;
         ++_numStarted;
     }
-    
+
     // Finish right away if no workers were configured yet
 
     if (0 == _numStarted) finish(lock, ExtendedState::SUCCESS);
 }
 
-
 void QservStatusJob::cancelImpl(util::Lock const& lock) {
-
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
-    for (auto&& entry: _requests) {
+    for (auto&& entry : _requests) {
         auto const& request = entry.second;
         request->cancel();
     }
     _requests.clear();
 }
 
-
 void QservStatusJob::notify(util::Lock const& lock) {
-
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     notifyDefaultImpl<QservStatusJob>(lock, _onFinish);
 }
 
-
 void QservStatusJob::_onRequestFinish(GetStatusQservMgtRequest::Ptr const& request) {
-
-    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "[qserv]"
-         << "  worker=" << request->worker());
+    LOGS(_log, LOG_LVL_DEBUG,
+         context() << __func__ << "[qserv]"
+                   << "  worker=" << request->worker());
 
     if (state() == State::FINISHED) return;
 
@@ -188,4 +149,4 @@ void QservStatusJob::_onRequestFinish(GetStatusQservMgtRequest::Ptr const& reque
     if (++_numFinished == _numStarted) finish(lock, ExtendedState::SUCCESS);
 }
 
-}}} // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

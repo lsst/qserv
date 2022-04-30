@@ -21,17 +21,15 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 /**
-  * @file
-  *
-  * @brief Declarations for TableRefN and subclasses SimpleTableN and JoinRefN
-  *
-  * @author Daniel L. Wang, SLAC
-  */
-
+ * @file
+ *
+ * @brief Declarations for TableRefN and subclasses SimpleTableN and JoinRefN
+ *
+ * @author Daniel L. Wang, SLAC
+ */
 
 #ifndef LSST_QSERV_QUERY_TABLEREF_H
 #define LSST_QSERV_QUERY_TABLEREF_H
-
 
 // System headers
 #include <iostream>
@@ -43,30 +41,23 @@
 // Local headers
 #include "query/QueryTemplate.h"
 
-
 // Forward declarations
-namespace lsst {
-namespace qserv {
-namespace query {
-    class QueryTemplate;
-    class JoinSpec;
-    class JoinRef;
-}}} // End of forward declarations
+namespace lsst::qserv::query {
+class QueryTemplate;
+class JoinSpec;
+class JoinRef;
+}  // namespace lsst::qserv::query
 
-
-namespace lsst {
-namespace qserv {
-namespace query {
-
+namespace lsst::qserv::query {
 
 typedef std::vector<std::shared_ptr<JoinRef> > JoinRefPtrVector;
-
 
 /// TableRefN is a parsed table reference node
 // table_ref :
 //   table_ref_aux (options{greedy=true;}:qualified_join | cross_join)*
 // table_ref_aux :
-//   (n:table_name | /*derived_table*/q:table_subquery) ((as:"as")? c:correlation_name (LEFT_PAREN derived_column_list RIGHT_PAREN)?)?
+//   (n:table_name | /*derived_table*/q:table_subquery) ((as:"as")? c:correlation_name (LEFT_PAREN
+//   derived_column_list RIGHT_PAREN)?)?
 class TableRef {
 public:
     typedef std::shared_ptr<TableRef> Ptr;
@@ -104,7 +95,7 @@ public:
      *
      * @param defaultDb the default database to assign, or an empty string for no default.
      */
-    void verifyPopulated(std::string const& defaultDb=std::string());
+    void verifyPopulated(std::string const& defaultDb = std::string());
 
     /**
      * @brief Find out if this TableRef is the same as another TableRef, where the database & column fields
@@ -141,12 +132,12 @@ public:
     class Func {
     public:
         virtual ~Func() {}
-        virtual void operator()(TableRef& t)=0;
+        virtual void operator()(TableRef& t) = 0;
     };
     class FuncC {
-     public:
+    public:
         virtual ~FuncC() {}
-        virtual void operator()(TableRef const& t)=0;
+        virtual void operator()(TableRef const& t) = 0;
     };
     void apply(Func& f);
     void apply(FuncC& f) const;
@@ -175,24 +166,21 @@ private:
     friend std::ostream& operator<<(std::ostream& os, TableRef const* refN);
 };
 
-
 class TableRef::render {
 public:
     render(QueryTemplate& qt) : _qt(qt), _count(0) {}
     void applyToQT(TableRef const& trn);
     inline void applyToQT(TableRef::Ptr const trn) {
-        if(trn != nullptr) applyToQT(*trn);
+        if (trn != nullptr) applyToQT(*trn);
     }
     QueryTemplate& _qt;
     int _count;
 };
 
-
 // Containers
 typedef std::vector<TableRef::Ptr> TableRefList;
 typedef std::shared_ptr<TableRefList> TableRefListPtr;
 
+}  // namespace lsst::qserv::query
 
-}}} // namespace lsst::qserv::query
-
-#endif // LSST_QSERV_QUERY_TABLEREF_H
+#endif  // LSST_QSERV_QUERY_TABLEREF_H

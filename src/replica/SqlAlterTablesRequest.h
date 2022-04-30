@@ -34,15 +34,13 @@
 #include "replica/SqlRequest.h"
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class SqlAlterTablesRequest represents Controller-side requests for initiating
  * queries for altering tables using 'ALTER TABLE <table> ...' at remote worker nodes.
  */
-class SqlAlterTablesRequest: public SqlRequest {
+class SqlAlterTablesRequest : public SqlRequest {
 public:
     typedef std::shared_ptr<SqlAlterTablesRequest> Ptr;
 
@@ -71,35 +69,25 @@ public:
      * @param messenger An interface for communicating with workers.
      * @return A smart pointer to the created object.
      */
-    static Ptr create(ServiceProvider::Ptr const& serviceProvider,
-                      boost::asio::io_service& io_service,
-                      std::string const& worker,
-                      std::string const& database,
-                      std::vector<std::string> const& tables,
-                      std::string const& alterSpec,
-                      CallbackType const& onFinish,
-                      int priority,
-                      bool keepTracking,
+    static Ptr create(ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service,
+                      std::string const& worker, std::string const& database,
+                      std::vector<std::string> const& tables, std::string const& alterSpec,
+                      CallbackType const& onFinish, int priority, bool keepTracking,
                       std::shared_ptr<Messenger> const& messenger);
 
 protected:
     void notify(util::Lock const& lock) final;
 
 private:
-    SqlAlterTablesRequest(ServiceProvider::Ptr const& serviceProvider,
-                          boost::asio::io_service& io_service,
-                          std::string const& worker,
-                          std::string const& database,
-                          std::vector<std::string> const& tables,
-                          std::string const& alterSpec,
-                          CallbackType const& onFinish,
-                          int priority,
-                          bool keepTracking,
+    SqlAlterTablesRequest(ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service,
+                          std::string const& worker, std::string const& database,
+                          std::vector<std::string> const& tables, std::string const& alterSpec,
+                          CallbackType const& onFinish, int priority, bool keepTracking,
                           std::shared_ptr<Messenger> const& messenger);
 
-    CallbackType _onFinish; ///< @note is reset when the request finishes
+    CallbackType _onFinish;  ///< @note is reset when the request finishes
 };
 
-}}} // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_SQLALTERTABLESREQUEST_H
+#endif  // LSST_QSERV_REPLICA_SQLALTERTABLESREQUEST_H

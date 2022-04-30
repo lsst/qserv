@@ -21,19 +21,15 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-
 // Qserv headers
 #include "ccontrol/UserQueryType.h"
-
 
 // Boost unit test header
 #define BOOST_TEST_MODULE UserQueryType
 #include <boost/test/unit_test.hpp>
 #include <boost/test/data/test_case.hpp>
 
-
 using namespace lsst::qserv;
-
 
 BOOST_AUTO_TEST_SUITE(Suite)
 

@@ -29,36 +29,26 @@ using namespace std;
 
 namespace {
 string const description =
-    "This application runs the worker registration service "
-    "that's used by the workers to report themselves and by the controllers to locate "
-    "connection and configuration parameters of the workers. The service can be used "
-    "to obtain the run-time status of the workers for the system monitoring purposes";
+        "This application runs the worker registration service "
+        "that's used by the workers to report themselves and by the controllers to locate "
+        "connection and configuration parameters of the workers. The service can be used "
+        "to obtain the run-time status of the workers for the system monitoring purposes";
 
 bool const injectDatabaseOptions = true;
 bool const boostProtobufVersionCheck = false;
 bool const enableServiceProvider = true;
 
-} /// namespace
+}  // namespace
 
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
 RegistryHttpApp::Ptr RegistryHttpApp::create(int argc, char* argv[]) {
     return Ptr(new RegistryHttpApp(argc, argv));
 }
 
-
 RegistryHttpApp::RegistryHttpApp(int argc, char* argv[])
-    :   Application(
-            argc, argv,
-            ::description,
-            ::injectDatabaseOptions,
-            ::boostProtobufVersionCheck,
-            ::enableServiceProvider
-        ) {
-}
-
+        : Application(argc, argv, ::description, ::injectDatabaseOptions, ::boostProtobufVersionCheck,
+                      ::enableServiceProvider) {}
 
 int RegistryHttpApp::runImpl() {
     auto const svc = RegistryHttpSvc::create(serviceProvider());
@@ -66,4 +56,4 @@ int RegistryHttpApp::runImpl() {
     return 0;
 }
 
-}}} // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

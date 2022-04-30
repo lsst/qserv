@@ -41,9 +41,7 @@
 #include "css/StripingParams.h"
 #include "css/TableParams.h"
 
-namespace lsst {
-namespace qserv {
-namespace css {
+namespace lsst::qserv::css {
 
 class EmptyChunks;
 class DbInterfaceMySql;
@@ -72,7 +70,6 @@ class KvInterface;
 
 class CssAccess {
 public:
-
     /**
      *  Create CssAccess instance from existing key-value data in a stream.
      *
@@ -199,9 +196,7 @@ public:
      * @throws ReadonlyCss: if CSS is using read-only storage
      * @throws CssError: for all other errors
      */
-    void createDb(std::string const& dbName,
-                  StripingParams const& striping,
-                  std::string const& storageClass,
+    void createDb(std::string const& dbName, StripingParams const& striping, std::string const& storageClass,
                   std::string const& releaseStatus);
 
     /**
@@ -212,8 +207,7 @@ public:
      * @throws ReadonlyCss: if CSS is using read-only storage
      * @throws CssError: for all other errors
      */
-    void createDbLike(std::string const& dbName,
-                      std::string const& templateDbName);
+    void createDbLike(std::string const& dbName, std::string const& templateDbName);
 
     /**
      * @brief Deletes database from CSS.
@@ -234,7 +228,7 @@ public:
      * @throws NoSuchDb: if database does not exist
      * @throws CssError: for all other errors
      */
-    std::vector<std::string> getTableNames(std::string const& dbName, bool readyOnly=true) const;
+    std::vector<std::string> getTableNames(std::string const& dbName, bool readyOnly = true) const;
 
     /**
      * @brief Returns status information for all table in a database.
@@ -268,7 +262,7 @@ public:
      * @throws NoSuchDb: if database does not exist
      * @throws CssError: for all other errors
      */
-    bool containsTable(std::string const& dbName, std::string const& tableName, bool readyOnly=true) const;
+    bool containsTable(std::string const& dbName, std::string const& tableName, bool readyOnly = true) const;
 
     /**
      * @brief Returns table schema.
@@ -289,7 +283,8 @@ public:
      * @throws NoSuchTable: if table (or database) does not exist
      * @throws CssError: for all other errors
      */
-    void setTableSchema(std::string const& dbName, std::string const& tableName, std::string const& schema) const;
+    void setTableSchema(std::string const& dbName, std::string const& tableName,
+                        std::string const& schema) const;
 
     /**
      * @brief Returns match table metadata.
@@ -301,8 +296,7 @@ public:
      * @throws NoSuchTable: if table (or database) does not exist
      * @throws CssError: for all other errors
      */
-    MatchTableParams getMatchTableParams(std::string const& dbName,
-                                         std::string const& tableName) const;
+    MatchTableParams getMatchTableParams(std::string const& dbName, std::string const& tableName) const;
 
     /**
      * @brief Returns partitioning table metadata.
@@ -314,8 +308,7 @@ public:
      * @throws NoSuchTable: if table (or database) does not exist
      * @throws CssError: for all other errors
      */
-    PartTableParams getPartTableParams(std::string const& dbName,
-                                       std::string const& tableName) const;
+    PartTableParams getPartTableParams(std::string const& dbName, std::string const& tableName) const;
 
     /**
      * @brief Returns shared scan table metadata.
@@ -327,8 +320,7 @@ public:
      * @throws NoSuchTable: if table (or database) does not exist
      * @throws CssError: for all other errors
      */
-    ScanTableParams getScanTableParams(std::string const& dbName,
-                                       std::string const& tableName) const;
+    ScanTableParams getScanTableParams(std::string const& dbName, std::string const& tableName) const;
 
     /**
      * @brief Returns complete table metadata.
@@ -355,11 +347,8 @@ public:
      * @throws ReadonlyCss: if CSS is using read-only storage
      * @throws CssError: for all other errors
      */
-    void createTable(std::string const& dbName,
-                     std::string const& tableName,
-                     std::string const& schema,
-                     PartTableParams const& partParams,
-                     ScanTableParams const& scanParams);
+    void createTable(std::string const& dbName, std::string const& tableName, std::string const& schema,
+                     PartTableParams const& partParams, ScanTableParams const& scanParams);
 
     /**
      * @brief Create new table in a database.
@@ -373,9 +362,7 @@ public:
      * @throws ReadonlyCss: if CSS is using read-only storage
      * @throws CssError: for all other errors
      */
-    void createMatchTable(std::string const& dbName,
-                          std::string const& tableName,
-                          std::string const& schema,
+    void createMatchTable(std::string const& dbName, std::string const& tableName, std::string const& schema,
                           MatchTableParams const& matchParams);
 
     /**
@@ -459,9 +446,7 @@ public:
      * @throws ReadonlyCss: if CSS is using read-only storage
      * @throws CssError: for all CSS errors
      */
-    void addChunk(std::string const& dbName,
-                  std::string const& tableName,
-                  int chunk,
+    void addChunk(std::string const& dbName, std::string const& tableName, int chunk,
                   std::vector<std::string> const& nodeNames);
 
     /**
@@ -476,10 +461,8 @@ public:
      * @throws ReadonlyCss: if CSS is using read-only storage
      * @throws CssError: for all CSS errors
      */
-    void deleteChunk(std::string const& dbName,
-                     std::string const& tableName,
-                     int chunk);
- 
+    void deleteChunk(std::string const& dbName, std::string const& tableName, int chunk);
+
     /**
      * @brief Returns metadata for all chunks of given table.
      *
@@ -519,12 +502,9 @@ public:
     std::string getEmptyChunksSchema(std::string const& dbName);
 
 protected:
-
     // Construct from Key-value and database instances.
-    CssAccess(std::shared_ptr<KvInterface> const& kvInterface,
-              std::shared_ptr<DbInterfaceMySql> const& dbI,
-              std::string const& emptyChunkPath,
-              std::string const& prefix);
+    CssAccess(std::shared_ptr<KvInterface> const& kvInterface, std::shared_ptr<DbInterfaceMySql> const& dbI,
+              std::string const& emptyChunkPath, std::string const& prefix);
 
     // Methods below are protected only for testing purposes so that one can
     // subclass CssAccess and expose these methods for testing
@@ -547,8 +527,7 @@ protected:
      * is supported, keys with more complex values are ignored. For empty
      * data string it returns empty map.
      */
-    static std::map<std::string, std::string> _unpackJson(std::string const& key,
-                                                          std::string const& data);
+    static std::map<std::string, std::string> _unpackJson(std::string const& key, std::string const& data);
 
     /**
      *  Store data as a single packed key.
@@ -560,29 +539,24 @@ protected:
      *  unexpected value it throws VersionMismatchError. If version key
      *  is missing and mustExist is true it throws VersionMissingError.
      */
-    void _checkVersion(bool mustExist=true) const;
+    void _checkVersion(bool mustExist = true) const;
 
 private:
-
-    void _fillPartTableParams(std::map<std::string, std::string>& paramMap,
-                              PartTableParams& params,
+    void _fillPartTableParams(std::map<std::string, std::string>& paramMap, PartTableParams& params,
                               std::string const& tableKey) const;
-    void _fillMatchTableParams(std::map<std::string, std::string>& paramMap,
-                               MatchTableParams& params,
+    void _fillMatchTableParams(std::map<std::string, std::string>& paramMap, MatchTableParams& params,
                                std::string const& tableKey) const;
-    void _fillScanTableParams(std::map<std::string, std::string>& paramMap,
-                              ScanTableParams& params,
+    void _fillScanTableParams(std::map<std::string, std::string>& paramMap, ScanTableParams& params,
                               std::string const& tableKey) const;
 
 private:
-
     std::shared_ptr<KvInterface> _kvI;
     std::shared_ptr<DbInterfaceMySql> _dbI;
-    std::string _prefix;    // optional prefix, for isolating tests from production
-    mutable bool _versionOk;   // True if version is checked (and is OK)
-    std::shared_ptr<EmptyChunks> _emptyChunks; ///< Cache of empty chunks.
+    std::string _prefix;                        // optional prefix, for isolating tests from production
+    mutable bool _versionOk;                    // True if version is checked (and is OK)
+    std::shared_ptr<EmptyChunks> _emptyChunks;  ///< Cache of empty chunks.
 };
 
-}}} // namespace lsst::qserv::css
+}  // namespace lsst::qserv::css
 
-#endif // LSST_QSERV_CSS_CSSACCESS_H
+#endif  // LSST_QSERV_CSS_CSSACCESS_H

@@ -41,15 +41,12 @@ namespace fs = boost::filesystem;
 namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.IngestRequestMgr");
 string const context_ = "INGEST-REQUEST-MGR  ";
-}
+}  // namespace
 
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
 IngestRequestMgr::Ptr IngestRequestMgr::create(ServiceProvider::Ptr const& serviceProvider,
                                                string const& workerName) {
-
     IngestRequestMgr::Ptr ptr(new IngestRequestMgr(serviceProvider, workerName));
 
     // ---------------------------------
@@ -60,32 +57,27 @@ IngestRequestMgr::Ptr IngestRequestMgr::create(ServiceProvider::Ptr const& servi
     // left before the service was shut down. The algorithms looks for
     // contributions in the open transactions.
     auto const databaseServices = serviceProvider->databaseServices();
-    bool const cleanupOnResume = serviceProvider->config()->get<unsigned int>("worker", "async-loader-cleanup-on-resume") != 0;
-    bool const autoResume = serviceProvider->config()->get<unsigned int>("worker", "async-loader-auto-resume") != 0;
-    string const anyTable; 
+    bool const cleanupOnResume =
+            serviceProvider->config()->get<unsigned int>("worker", "async-loader-cleanup-on-resume") != 0;
+    bool const autoResume =
+            serviceProvider->config()->get<unsigned int>("worker", "async-loader-auto-resume") != 0;
+    string const anyTable;
 
     // Contribution requests are sorted (ASC) by the creation time globally across
     // all transaction to ensure the eligible requests will be auto-resumed
     // in the original order.
     vector<TransactionContribInfo> contribsByCreateTimeASC;
     auto const transactions = databaseServices->transactions(TransactionInfo::State::STARTED);
-    for (auto const& trans: transactions) {
-        auto const contribs =
-                databaseServices->transactionContribs(
-                        trans.id,
-                        TransactionContribInfo::Status::IN_PROGRESS,
-                        anyTable,
-                        workerName,
-                        TransactionContribInfo::TypeSelector::ASYNC);
-        contribsByCreateTimeASC.insert(
-                contribsByCreateTimeASC.end(),
-                contribs.cbegin(),
-                contribs.cend());
+    for (auto const& trans : transactions) {
+        auto const contribs = databaseServices->transactionContribs(
+                trans.id, TransactionContribInfo::Status::IN_PROGRESS, anyTable, workerName,
+                TransactionContribInfo::TypeSelector::ASYNC);
+        contribsByCreateTimeASC.insert(contribsByCreateTimeASC.end(), contribs.cbegin(), contribs.cend());
     }
     sort(contribsByCreateTimeASC.begin(), contribsByCreateTimeASC.end(),
-            [] (TransactionContribInfo const& a, TransactionContribInfo const& b) {
-                return a.createTime < b.createTime;
-            });
+         [](TransactionContribInfo const& a, TransactionContribInfo const& b) {
+             return a.createTime < b.createTime;
+         });
 
     bool const failed = true;
     char const* errorStart =
@@ -100,8 +92,7 @@ IngestRequestMgr::Ptr IngestRequestMgr::create(ServiceProvider::Ptr const& servi
             "Loading into MySQL was interrupted when the service was restarted."
             " Resuming requests at this stage is not possible.";
 
-    for (auto& contrib: contribsByCreateTimeASC) {
-
+    for (auto& contrib : contribsByCreateTimeASC) {
         // Make the best effort to clean up the temporary files (if any) left after previous
         // run of the unfinished requests. Requests that are eligible to be resumed will
         // open new empty files as they will be being processed.
@@ -109,8 +100,9 @@ IngestRequestMgr::Ptr IngestRequestMgr::create(ServiceProvider::Ptr const& servi
             boost::system::error_code ec;
             fs::remove(contrib.tmpFile, ec);
             if (ec.value() != 0) {
-                LOGS(_log, LOG_LVL_WARN, context_ << "file removal failed for: '" << contrib.tmpFile
-                    << "', error: '" << ec.message() << "', ec: " + to_string(ec.value()));
+                LOGS(_log, LOG_LVL_WARN,
+                     context_ << "file removal failed for: '" << contrib.tmpFile << "', error: '"
+                              << ec.message() << "', ec: " + to_string(ec.value()));
             }
         }
 
@@ -160,8 +152,8 @@ IngestRequestMgr::Ptr IngestRequestMgr::create(ServiceProvider::Ptr const& servi
             // the auto-resume policy.
             contrib.error = errorLoadingIntoMySQL;
             contrib.retryAllowed = false;
-            databaseServices->loadedTransactionContrib(
-                    contrib, failed, TransactionContribInfo::Status::LOAD_FAILED);
+            databaseServices->loadedTransactionContrib(contrib, failed,
+                                                       TransactionContribInfo::Status::LOAD_FAILED);
             continue;
         }
         if (contrib.startTime != 0) {
@@ -174,8 +166,8 @@ IngestRequestMgr::Ptr IngestRequestMgr::create(ServiceProvider::Ptr const& servi
                 // Cancel at reading the input data phase
                 contrib.error = errorReadData;
                 contrib.retryAllowed = true;
-                databaseServices->readTransactionContrib(
-                        contrib, failed, TransactionContribInfo::Status::READ_FAILED);
+                databaseServices->readTransactionContrib(contrib, failed,
+                                                         TransactionContribInfo::Status::READ_FAILED);
             }
         } else {
             // Opening the input source might get interupted by the restart.
@@ -186,29 +178,22 @@ IngestRequestMgr::Ptr IngestRequestMgr::create(ServiceProvider::Ptr const& servi
                 // Cancel at the starting phase
                 contrib.error = errorStart;
                 contrib.retryAllowed = true;
-                databaseServices->startedTransactionContrib(
-                        contrib, failed, TransactionContribInfo::Status::START_FAILED);
+                databaseServices->startedTransactionContrib(contrib, failed,
+                                                            TransactionContribInfo::Status::START_FAILED);
             }
         }
     }
     return ptr;
 }
 
-
-IngestRequestMgr::IngestRequestMgr(ServiceProvider::Ptr const& serviceProvider,
-                                  string const& workerName)
-        :   _serviceProvider(serviceProvider),
-            _workerName(workerName) {
-}
-
+IngestRequestMgr::IngestRequestMgr(ServiceProvider::Ptr const& serviceProvider, string const& workerName)
+        : _serviceProvider(serviceProvider), _workerName(workerName) {}
 
 TransactionContribInfo IngestRequestMgr::find(unsigned int id) {
     unique_lock<mutex> lock(_mtx);
-    auto const inputItr = find_if(
-        _input.cbegin(),
-        _input.cend(),
-        [id](auto const& request) { return request->transactionContribInfo().id == id; }
-    );
+    auto const inputItr = find_if(_input.cbegin(), _input.cend(), [id](auto const& request) {
+        return request->transactionContribInfo().id == id;
+    });
     if (inputItr != _input.cend()) {
         return (*inputItr)->transactionContribInfo();
     }
@@ -225,21 +210,17 @@ TransactionContribInfo IngestRequestMgr::find(unsigned int id) {
     } catch (DatabaseServicesNotFound const& ex) {
         ;
     }
-    throw IngestRequestNotFound(
-            context_ + string(__func__) + " request " + to_string(id) + " was not found");
+    throw IngestRequestNotFound(context_ + string(__func__) + " request " + to_string(id) + " was not found");
 }
-
 
 void IngestRequestMgr::submit(IngestRequest::Ptr const& request) {
     if (request == nullptr) {
-        throw invalid_argument(
-                context_ + string(__func__) + " null pointer passed into the method");
+        throw invalid_argument(context_ + string(__func__) + " null pointer passed into the method");
     }
     auto const contrib = request->transactionContribInfo();
     if ((contrib.status != TransactionContribInfo::Status::IN_PROGRESS) || (contrib.startTime != 0)) {
-        throw logic_error(
-                context_ + string(__func__) + " request " + to_string(contrib.id)
-                + " has already been processed");
+        throw logic_error(context_ + string(__func__) + " request " + to_string(contrib.id) +
+                          " has already been processed");
     }
     unique_lock<mutex> lock(_mtx);
     _input.push_front(request);
@@ -247,14 +228,11 @@ void IngestRequestMgr::submit(IngestRequest::Ptr const& request) {
     _cv.notify_one();
 }
 
-
 TransactionContribInfo IngestRequestMgr::cancel(unsigned int id) {
     unique_lock<mutex> lock(_mtx);
-    auto const inputItr = find_if(
-        _input.cbegin(),
-        _input.cend(),
-        [id](auto const& request) { return request->transactionContribInfo().id == id; }
-    );
+    auto const inputItr = find_if(_input.cbegin(), _input.cend(), [id](auto const& request) {
+        return request->transactionContribInfo().id == id;
+    });
     if (inputItr != _input.cend()) {
         // Forced cancellation for requests that haven't been started.
         // This is the deterministic cancellation scenario as the request is
@@ -280,11 +258,8 @@ TransactionContribInfo IngestRequestMgr::cancel(unsigned int id) {
         // A client will receive the actual completion status of the request.
         return outputItr->second->transactionContribInfo();
     }
-    throw IngestRequestNotFound(
-            context_ + string(__func__) + " request " + to_string(id) + " was not found");
-
+    throw IngestRequestNotFound(context_ + string(__func__) + " request " + to_string(id) + " was not found");
 }
-
 
 IngestRequest::Ptr IngestRequestMgr::next() {
     unique_lock<mutex> lock(_mtx);
@@ -297,17 +272,16 @@ IngestRequest::Ptr IngestRequestMgr::next() {
     return request;
 }
 
-
 void IngestRequestMgr::completed(unsigned int id) {
     string const context = context_ + string(__func__) + " ";
     unique_lock<mutex> lock(_mtx);
     auto const inProgressItr = _inProgress.find(id);
     if (inProgressItr == _inProgress.cend()) {
-        throw IngestRequestNotFound(
-                context_ + string(__func__) + " request " + to_string(id) + " was not found");
+        throw IngestRequestNotFound(context_ + string(__func__) + " request " + to_string(id) +
+                                    " was not found");
     }
     _output[id] = inProgressItr->second;
     _inProgress.erase(id);
 }
 
-}}} // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

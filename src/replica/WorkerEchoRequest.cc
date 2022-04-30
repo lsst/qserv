@@ -38,55 +38,29 @@ namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.WorkerEchoRequest");
 
-} /// namespace
+}  // namespace
 
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
-WorkerEchoRequest::Ptr WorkerEchoRequest::create(
-        ServiceProvider::Ptr const& serviceProvider,
-        string const& worker,
-        string const& id,
-        int priority,
-        ExpirationCallbackType const& onExpired,
-        unsigned int requestExpirationIvalSec,
-        ProtocolRequestEcho const& request) {
-    return WorkerEchoRequest::Ptr(new WorkerEchoRequest(
-        serviceProvider,
-        worker,
-        id,
-        priority,
-        onExpired,
-        requestExpirationIvalSec,
-        request
-     ));
+WorkerEchoRequest::Ptr WorkerEchoRequest::create(ServiceProvider::Ptr const& serviceProvider,
+                                                 string const& worker, string const& id, int priority,
+                                                 ExpirationCallbackType const& onExpired,
+                                                 unsigned int requestExpirationIvalSec,
+                                                 ProtocolRequestEcho const& request) {
+    return WorkerEchoRequest::Ptr(new WorkerEchoRequest(serviceProvider, worker, id, priority, onExpired,
+                                                        requestExpirationIvalSec, request));
 }
 
-
-WorkerEchoRequest::WorkerEchoRequest(
-        ServiceProvider::Ptr const& serviceProvider,
-        string const& worker,
-        string const& id,
-        int priority,
-        ExpirationCallbackType const& onExpired,
-        unsigned int requestExpirationIvalSec,
-        ProtocolRequestEcho const& request)
-    :   WorkerRequest(
-            serviceProvider,
-            worker,
-            "TEST_ECHO",
-            id,
-            priority,
-            onExpired,
-            requestExpirationIvalSec),
-        _request(request),
-        _delayLeft(request.delay()) {
-}
-
+WorkerEchoRequest::WorkerEchoRequest(ServiceProvider::Ptr const& serviceProvider, string const& worker,
+                                     string const& id, int priority, ExpirationCallbackType const& onExpired,
+                                     unsigned int requestExpirationIvalSec,
+                                     ProtocolRequestEcho const& request)
+        : WorkerRequest(serviceProvider, worker, "TEST_ECHO", id, priority, onExpired,
+                        requestExpirationIvalSec),
+          _request(request),
+          _delayLeft(request.delay()) {}
 
 void WorkerEchoRequest::setInfo(ProtocolResponseEcho& response) const {
-
     LOGS(_log, LOG_LVL_DEBUG, context(__func__));
 
     util::Lock lock(_mtx, context(__func__));
@@ -97,16 +71,12 @@ void WorkerEchoRequest::setInfo(ProtocolResponseEcho& response) const {
     *(response.mutable_request()) = _request;
 }
 
-
 bool WorkerEchoRequest::execute() {
-
-    LOGS(_log, LOG_LVL_DEBUG, context(__func__)
-         << "  delay:" << delay() << " _delayLeft:" << _delayLeft);
+    LOGS(_log, LOG_LVL_DEBUG, context(__func__) << "  delay:" << delay() << " _delayLeft:" << _delayLeft);
 
     util::Lock lock(_mtx, context(__func__));
 
     switch (status()) {
-
         case ProtocolStatus::IN_PROGRESS:
             break;
 
@@ -118,9 +88,8 @@ bool WorkerEchoRequest::execute() {
             throw WorkerRequestCancelled();
 
         default:
-            throw logic_error(
-                    context(__func__) + "  not allowed while in state: " +
-                    WorkerRequest::status2string(status()));
+            throw logic_error(context(__func__) +
+                              "  not allowed while in state: " + WorkerRequest::status2string(status()));
     }
 
     // Block the thread for the random number of milliseconds in the interval
@@ -139,4 +108,4 @@ bool WorkerEchoRequest::execute() {
     return false;
 }
 
-}}} // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

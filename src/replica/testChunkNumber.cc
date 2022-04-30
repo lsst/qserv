@@ -18,9 +18,9 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
- /**
-  * @brief test ChunkLocker
-  */
+/**
+ * @brief test ChunkLocker
+ */
 
 // System headers
 #include <sstream>
@@ -45,7 +45,6 @@ using namespace lsst::qserv::replica;
 BOOST_AUTO_TEST_SUITE(Suite)
 
 BOOST_AUTO_TEST_CASE(ChunkNumberTest) {
-
     LOGS_INFO("ChunkNumber test begins");
 
     // -------------------------
@@ -61,15 +60,14 @@ BOOST_AUTO_TEST_CASE(ChunkNumberTest) {
     // Test policy interfaces
     // ----------------------
 
-    unsigned int const beginRange = 10,
-                         endRange = 20;
+    unsigned int const beginRange = 10, endRange = 20;
 
     ChunkNumberValidator::Ptr const validator10to20 =
-        make_shared<ChunkNumberSingleRangeValidator>(beginRange, endRange);
+            make_shared<ChunkNumberSingleRangeValidator>(beginRange, endRange);
 
     // Overflow values are always valid
 
-    BOOST_CHECK(validator10to20->valid(   validator10to20->overflowValue()));
+    BOOST_CHECK(validator10to20->valid(validator10to20->overflowValue()));
     BOOST_CHECK(validator10to20->overflow(validator10to20->overflowValue()));
 
     // All values within a range (inclusive at both ends) are also valid
@@ -166,20 +164,20 @@ BOOST_AUTO_TEST_CASE(ChunkNumberTest) {
     ChunkNumber const chunk11(11, validator10to20);
 
     BOOST_CHECK(chunk10 != chunk11);
-    BOOST_CHECK(chunk10  < chunk11);
+    BOOST_CHECK(chunk10 < chunk11);
 
     BOOST_CHECK(chunk10 == 10);
     BOOST_CHECK(chunk10 != 11);
-    BOOST_CHECK(chunk10  < 11);
+    BOOST_CHECK(chunk10 < 11);
 
     BOOST_CHECK(chunk10.value() == 10);
     BOOST_CHECK(chunk10.value() != 11);
-    BOOST_CHECK(chunk10.value()  < 11);
+    BOOST_CHECK(chunk10.value() < 11);
 
     // Compare chunks constructed with different validators
 
     ChunkNumberSingleRangeValidator::Ptr const otherValidator10to20 =
-        make_shared<ChunkNumberSingleRangeValidator>(beginRange, endRange);
+            make_shared<ChunkNumberSingleRangeValidator>(beginRange, endRange);
 
     BOOST_CHECK(*otherValidator10to20 != *validator10to20);
 
@@ -188,13 +186,13 @@ BOOST_AUTO_TEST_CASE(ChunkNumberTest) {
 
     BOOST_CHECK_THROW(chunk10 == otherChunk10, ChunkNumberNotValid);
     BOOST_CHECK_THROW(chunk10 != otherChunk11, ChunkNumberNotValid);
-    BOOST_CHECK_THROW(chunk10  < otherChunk11, ChunkNumberNotValid);
+    BOOST_CHECK_THROW(chunk10 < otherChunk11, ChunkNumberNotValid);
 
     // Though, these tests should be fine
 
     BOOST_CHECK(otherChunk10.value() == chunk10.value());
     BOOST_CHECK(otherChunk10.value() != chunk11.value());
-    BOOST_CHECK(otherChunk10.value()  < chunk11.value());
+    BOOST_CHECK(otherChunk10.value() < chunk11.value());
 
     // Testing the streaming operator
 

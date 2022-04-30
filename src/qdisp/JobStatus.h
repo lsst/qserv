@@ -30,9 +30,7 @@
 #include <string>
 #include <time.h>
 
-namespace lsst {
-namespace qserv {
-namespace qdisp {
+namespace lsst::qserv::qdisp {
 
 /** Monitor execution of a chunk query against an SSI ressource
  *
@@ -53,14 +51,19 @@ public:
     // TODO: these shouldn't be exposed, and so shouldn't be user-level error
     // codes, but maybe we can be clever and avoid an ugly remap/translation
     // with msgCode.h. 1201-1289 (inclusive) are free and MSG_FINALIZED==2000
-    enum State { UNKNOWN=0,
-                 REQUEST=1203,
-                 RESPONSE_READY, RESPONSE_ERROR,
-                 RESPONSE_DATA, RESPONSE_DATA_NACK,
-                 RESPONSE_DONE,
-                 RESULT_ERROR,
-                 MERGE_ERROR,
-                 CANCEL, COMPLETE=2000};
+    enum State {
+        UNKNOWN = 0,
+        REQUEST = 1203,
+        RESPONSE_READY,
+        RESPONSE_ERROR,
+        RESPONSE_DATA,
+        RESPONSE_DATA_NACK,
+        RESPONSE_DONE,
+        RESULT_ERROR,
+        MERGE_ERROR,
+        CANCEL,
+        COMPLETE = 2000
+    };
 
     /** Report a state transition by updating JobStatus::Info attributes
      *  with its input parameters values
@@ -76,16 +79,16 @@ public:
      *  - resourceUnit should be extracted from Info (beware of mutex)
      *  - Info should be put in a vector
      */
-    void updateInfo(std::string const& idMsg, State s, int code=0, std::string const& desc="");
+    void updateInfo(std::string const& idMsg, State s, int code = 0, std::string const& desc = "");
 
     struct Info {
         Info();
         // More detailed debugging may store a vector of states, appending
         // with each invocation of report().
-        State state; ///< Actual state
-        time_t stateTime; ///< Last modified timestamp
-        int stateCode; ///< Code associated with state (e.g. xrd or mysql error code)
-        std::string stateDesc; ///< Textual description
+        State state;            ///< Actual state
+        time_t stateTime;       ///< Last modified timestamp
+        int stateCode;          ///< Code associated with state (e.g. xrd or mysql error code)
+        std::string stateDesc;  ///< Textual description
     };
 
     Info getInfo() const {
@@ -93,19 +96,18 @@ public:
         return _info;
     }
 
-
     static std::string stateStr(JobStatus::State const& state);
 
     friend std::ostream& operator<<(std::ostream& os, JobStatus const& es);
 
 private:
     Info _info;
-    mutable std::mutex _mutex; ///< Mutex to guard concurrent updates
+    mutable std::mutex _mutex;  ///< Mutex to guard concurrent updates
 };
 std::ostream& operator<<(std::ostream& os, JobStatus const& es);
 std::ostream& operator<<(std::ostream& os, JobStatus::Info const& inf);
 std::ostream& operator<<(std::ostream& os, JobStatus::State const& state);
 
-}}} // namespace lsst::qserv::qdisp
+}  // namespace lsst::qserv::qdisp
 
-#endif // LSST_QSERV_QDISP_JOBSTATUS_H
+#endif  // LSST_QSERV_QDISP_JOBSTATUS_H

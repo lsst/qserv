@@ -41,16 +41,12 @@
 #include "lsst/log/Log.h"
 
 // Forward declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
-    struct ControllerEvent;
-}}} // Forward declarations
+namespace lsst::qserv::replica {
+struct ControllerEvent;
+}  // namespace lsst::qserv::replica
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class TaskError represents exceptions throw by the method
@@ -58,8 +54,7 @@ namespace replica {
  */
 class TaskError : public util::Issue {
 public:
-    TaskError(util::Issue::Context const& ctx,
-              std::string const& message);
+    TaskError(util::Issue::Context const& ctx, std::string const& message);
 };
 
 /**
@@ -70,9 +65,7 @@ public:
  */
 class TaskStopped : public std::runtime_error {
 public:
-    TaskStopped()
-        :   std::runtime_error("task stopped") {
-    }
+    TaskStopped() : std::runtime_error("task stopped") {}
 };
 
 /**
@@ -81,11 +74,8 @@ public:
  * the activities, notifying clients on abnormal termination of the activities,
  * as well as an infrastructure supporting an implementation of these activities.
  */
-class Task: public EventLogger,
-            public std::enable_shared_from_this<Task> {
-
+class Task : public EventLogger, public std::enable_shared_from_this<Task> {
 public:
-
     /// The pointer type for instances of the class
     typedef std::shared_ptr<Task> Ptr;
 
@@ -139,10 +129,9 @@ public:
      *   (optional) this functional will be repeatedly (once a second) called
      *   while tracking the task's status
      */
-    bool startAndWait(WaitEvaluatorType const& abortWait=nullptr);
+    bool startAndWait(WaitEvaluatorType const& abortWait = nullptr);
 
 protected:
-
     /**
      * The constructor is available to subclasses only
      *
@@ -156,15 +145,13 @@ protected:
      * @param onTerminated
      *   callback function to be called upon abnormal termination
      *   of the task
-     * 
+     *
      * @param waitIntervalSec
      *   the number of seconds to wait before calling subclass-specific
      *   method onRun.
      */
-    Task(Controller::Ptr const& controller,
-         std::string const& name,
-         AbnormalTerminationCallbackType const& onTerminated,
-         unsigned int waitIntervalSec);
+    Task(Controller::Ptr const& controller, std::string const& name,
+         AbnormalTerminationCallbackType const& onTerminated, unsigned int waitIntervalSec);
 
     /// @return a shared pointer of the desired subclass (no dynamic type checking)
     template <class T>
@@ -181,7 +168,7 @@ protected:
      *   be interpreted as abnormal termination of the task. Eventually this will
      *   also result in calling the 'onTerminated' callback if the one was provided
      *   to the constructor of the class.
-     * 
+     *
      * @throws
      *   TaskStopped when the task cancellation request was detected
      */
@@ -228,9 +215,7 @@ protected:
      * @param msg
      *   a message to be logged
      */
-    void info(std::string const& msg) {
-        LOGS(_log, LOG_LVL_INFO, context() << msg);
-    }
+    void info(std::string const& msg) { LOGS(_log, LOG_LVL_INFO, context() << msg); }
 
     /**
      * Log a message into the Logger's LOG_LVL_DEBUG stream
@@ -238,9 +223,7 @@ protected:
      * @param msg
      *   a message to be logged
      */
-    void debug(std::string const& msg) {
-        LOGS(_log, LOG_LVL_DEBUG, context() << msg);
-    }
+    void debug(std::string const& msg) { LOGS(_log, LOG_LVL_DEBUG, context() << msg); }
 
     /**
      * Log a message into the Logger's LOG_LVL_ERROR stream
@@ -248,9 +231,7 @@ protected:
      * @param msg
      *   a message to be logged
      */
-    void error(std::string const& msg) {
-        LOGS(_log, LOG_LVL_ERROR, context() << msg);
-    }
+    void error(std::string const& msg) { LOGS(_log, LOG_LVL_ERROR, context() << msg); }
 
     /**
      * Launch and track a job of the specified type per each known database
@@ -260,9 +241,8 @@ protected:
      * @param Fargs  Job-specific variadic parameters.
      * @throws  TaskStopped when the task cancellation request was detected
      */
-    template <class T, typename...Targs>
+    template <class T, typename... Targs>
     void launch(int priority, Targs... Fargs) {
-
         info(T::typeName());
 
         // Launch the jobs
@@ -274,18 +254,14 @@ protected:
 
         std::string const parentJobId;  // no parent for these jobs
 
-        for (auto&& family: serviceProvider()->config()->databaseFamilies()) {
+        for (auto&& family : serviceProvider()->config()->databaseFamilies()) {
             auto job = T::create(
-                family,
-                Fargs...,
-                controller(),
-                parentJobId,
-                [self](typename T::Ptr const& job) {
-                    self->_numFinishedJobs++;
-                    // FIXME: analyze job status and report it here
-                },
-                priority
-            );
+                    family, Fargs..., controller(), parentJobId,
+                    [self](typename T::Ptr const& job) {
+                        self->_numFinishedJobs++;
+                        // FIXME: analyze job status and report it here
+                    },
+                    priority);
             job->start();
             jobs.push_back(job);
 
@@ -294,16 +270,14 @@ protected:
 
         // Track the completion of all jobs
 
-        track<T>(T::typeName(),
-                 jobs,
-                 _numFinishedJobs);
-        
-        for (auto&& job: jobs) {
+        track<T>(T::typeName(), jobs, _numFinishedJobs);
+
+        for (auto&& job : jobs) {
             logJobFinishedEvent(T::typeName(), job, job->databaseFamily());
         }
     }
 
-   /**
+    /**
      * Launch Qserv synchronization jobs.
      * @param qservSyncTimeoutSec  The number of seconds to wait before a completion of
      *   the synchronization operation.
@@ -311,8 +285,7 @@ protected:
      * @throws TaskStopped when the task cancellation request was detected.
      * @see QservSyncJob
      */
-    void sync(unsigned int qservSyncTimeoutSec,
-              bool forceQservSync=false);
+    void sync(unsigned int qservSyncTimeoutSec, bool forceQservSync = false);
 
     /**
      * Track the completion of all jobs. Also monitor the task cancellation
@@ -330,17 +303,15 @@ protected:
      *   the counter of completed jobs
      */
     template <class T>
-    void track(std::string const& typeName,
-               std::vector<typename T::Ptr> const& jobs,
+    void track(std::string const& typeName, std::vector<typename T::Ptr> const& jobs,
                std::atomic<size_t> const& numFinishedJobs) {
-
         info(typeName + ": tracking started");
-    
+
         util::BlockPost blockPost(1000, 1001);  // ~1 second wait time between iterations
-    
+
         while (numFinishedJobs != jobs.size()) {
             if (stopRequested()) {
-                for (auto&& job: jobs) {
+                for (auto&& job : jobs) {
                     job->cancel();
                 }
                 info(typeName + ": tracking aborted");
@@ -352,7 +323,6 @@ protected:
     }
 
 private:
-
     /**
      * This method is launched by the task when it starts
      */
@@ -365,7 +335,7 @@ private:
     AbnormalTerminationCallbackType _onTerminated;
 
     /// The number of seconds to wait before calling subclass-specific
-    /// method onRun 
+    /// method onRun
     unsigned int const _waitIntervalSec;
 
     /// The flag indicating if it's already running
@@ -383,7 +353,7 @@ private:
     /// For guarding the object's state
     util::Mutex _mtx;
 };
-    
-}}} // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_TASK_H
+}  // namespace lsst::qserv::replica
+
+#endif  // LSST_QSERV_REPLICA_TASK_H

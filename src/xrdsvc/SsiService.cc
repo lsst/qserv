@@ -59,27 +59,22 @@
 
 using namespace std;
 
-class XrdPosixCallBack; // Forward.
+class XrdPosixCallBack;  // Forward.
 
 namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.xrdsvc.SsiService");
 
 // add LWP to MDC in log messages
-void initMDC() {
-    LOG_MDC("LWP", to_string(lsst::log::lwpID()));
-}
+void initMDC() { LOG_MDC("LWP", to_string(lsst::log::lwpID())); }
 int dummyInitMDC = LOG_MDC_INIT(initMDC);
 
-}
+}  // namespace
 
-namespace lsst {
-namespace qserv {
-namespace xrdsvc {
+namespace lsst::qserv::xrdsvc {
 
 SsiService::SsiService(XrdSsiLogger* log, wconfig::WorkerConfig const& workerConfig)
-    : _mySqlConfig(workerConfig.getMySqlConfig()) {
+        : _mySqlConfig(workerConfig.getMySqlConfig()) {
     LOGS(_log, LOG_LVL_DEBUG, "SsiService starting...");
-
 
     if (not mysql::MySqlConnection::checkConnection(_mySqlConfig)) {
         LOGS(_log, LOG_LVL_FATAL, "Unable to connect to MySQL using configuration:" << _mySqlConfig);
@@ -89,13 +84,15 @@ SsiService::SsiService(XrdSsiLogger* log, wconfig::WorkerConfig const& workerCon
 
     string cfgMemMan = workerConfig.getMemManClass();
     memman::MemMan::Ptr memMan;
-    if (cfgMemMan  == "MemManReal") {
+    if (cfgMemMan == "MemManReal") {
         // Default to 1 gigabyte
-        uint64_t memManSize = workerConfig.getMemManSizeMb()*1000000;
-        LOGS(_log, LOG_LVL_DEBUG, "Using MemManReal with memManSizeMb=" << workerConfig.getMemManSizeMb()
-            << " location=" <<  workerConfig.getMemManLocation());
-        memMan = shared_ptr<memman::MemMan>(memman::MemMan::create(memManSize, workerConfig.getMemManLocation()));
-    } else if (cfgMemMan == "MemManNone"){
+        uint64_t memManSize = workerConfig.getMemManSizeMb() * 1000000;
+        LOGS(_log, LOG_LVL_DEBUG,
+             "Using MemManReal with memManSizeMb=" << workerConfig.getMemManSizeMb()
+                                                   << " location=" << workerConfig.getMemManLocation());
+        memMan = shared_ptr<memman::MemMan>(
+                memman::MemMan::create(memManSize, workerConfig.getMemManLocation()));
+    } else if (cfgMemMan == "MemManNone") {
         memMan = make_shared<memman::MemManNone>(1, false);
     } else {
         LOGS(_log, LOG_LVL_ERROR, "Unrecognized memory manager " << cfgMemMan);
@@ -112,14 +109,14 @@ SsiService::SsiService(XrdSsiLogger* log, wconfig::WorkerConfig const& workerCon
     // poolSize should be greater than either GroupScheduler::maxThreads or ScanScheduler::maxThreads
     unsigned int maxThread = poolSize;
     int maxReserve = 2;
-    auto group = make_shared<wsched::GroupScheduler>(
-        "SchedGroup", maxThread, maxReserve,
-        workerConfig.getMaxGroupSize(), wsched::SchedulerBase::getMaxPriority());
+    auto group = make_shared<wsched::GroupScheduler>("SchedGroup", maxThread, maxReserve,
+                                                     workerConfig.getMaxGroupSize(),
+                                                     wsched::SchedulerBase::getMaxPriority());
 
     int const fastest = lsst::qserv::proto::ScanInfo::Rating::FASTEST;
-    int const fast    = lsst::qserv::proto::ScanInfo::Rating::FAST;
-    int const medium  = lsst::qserv::proto::ScanInfo::Rating::MEDIUM;
-    int const slow    = lsst::qserv::proto::ScanInfo::Rating::SLOW;
+    int const fast = lsst::qserv::proto::ScanInfo::Rating::FAST;
+    int const medium = lsst::qserv::proto::ScanInfo::Rating::MEDIUM;
+    int const slow = lsst::qserv::proto::ScanInfo::Rating::SLOW;
     int const slowest = lsst::qserv::proto::ScanInfo::Rating::SLOWEST;
     double fastScanMaxMinutes = (double)workerConfig.getScanMaxMinutesFast();
     double medScanMaxMinutes = (double)workerConfig.getScanMaxMinutesMed();
@@ -127,27 +124,26 @@ SsiService::SsiService(XrdSsiLogger* log, wconfig::WorkerConfig const& workerCon
     double snailScanMaxMinutes = (double)workerConfig.getScanMaxMinutesSnail();
     int maxTasksBootedPerUserQuery = workerConfig.getMaxTasksBootedPerUserQuery();
     vector<wsched::ScanScheduler::Ptr> scanSchedulers{
-        make_shared<wsched::ScanScheduler>(
-            "SchedSlow", maxThread, workerConfig.getMaxReserveSlow(), workerConfig.getPrioritySlow(),
-            workerConfig.getMaxActiveChunksSlow(), memMan, medium+1, slow, slowScanMaxMinutes),
-        make_shared<wsched::ScanScheduler>(
-           "SchedFast", maxThread, workerConfig.getMaxReserveFast(), workerConfig.getPriorityFast(),
-           workerConfig.getMaxActiveChunksFast(), memMan, fastest, fast, fastScanMaxMinutes),
-        make_shared<wsched::ScanScheduler>(
-            "SchedMed", maxThread, workerConfig.getMaxReserveMed(), workerConfig.getPriorityMed(),
-            workerConfig.getMaxActiveChunksMed(), memMan, fast+1, medium, medScanMaxMinutes),
+            make_shared<wsched::ScanScheduler>(
+                    "SchedSlow", maxThread, workerConfig.getMaxReserveSlow(), workerConfig.getPrioritySlow(),
+                    workerConfig.getMaxActiveChunksSlow(), memMan, medium + 1, slow, slowScanMaxMinutes),
+            make_shared<wsched::ScanScheduler>(
+                    "SchedFast", maxThread, workerConfig.getMaxReserveFast(), workerConfig.getPriorityFast(),
+                    workerConfig.getMaxActiveChunksFast(), memMan, fastest, fast, fastScanMaxMinutes),
+            make_shared<wsched::ScanScheduler>(
+                    "SchedMed", maxThread, workerConfig.getMaxReserveMed(), workerConfig.getPriorityMed(),
+                    workerConfig.getMaxActiveChunksMed(), memMan, fast + 1, medium, medScanMaxMinutes),
     };
 
     auto snail = make_shared<wsched::ScanScheduler>(
-        "SchedSnail", maxThread, workerConfig.getMaxReserveSnail(), workerConfig.getPrioritySnail(),
-        workerConfig.getMaxActiveChunksSnail(), memMan, slow+1, slowest, snailScanMaxMinutes);
+            "SchedSnail", maxThread, workerConfig.getMaxReserveSnail(), workerConfig.getPrioritySnail(),
+            workerConfig.getMaxActiveChunksSnail(), memMan, slow + 1, slowest, snailScanMaxMinutes);
 
-    wpublish::QueriesAndChunks::Ptr queries =
-        make_shared<wpublish::QueriesAndChunks>(chrono::minutes(5), chrono::minutes(5),
-                maxTasksBootedPerUserQuery);
-    wsched::BlendScheduler::Ptr blendSched = make_shared<wsched::BlendScheduler>("BlendSched", queries,
-            maxThread, group, snail, scanSchedulers);
-    blendSched->setPrioritizeByInFlight(false); // TODO: set in configuration file.
+    wpublish::QueriesAndChunks::Ptr queries = make_shared<wpublish::QueriesAndChunks>(
+            chrono::minutes(5), chrono::minutes(5), maxTasksBootedPerUserQuery);
+    wsched::BlendScheduler::Ptr blendSched = make_shared<wsched::BlendScheduler>(
+            "BlendSched", queries, maxThread, group, snail, scanSchedulers);
+    blendSched->setPrioritizeByInFlight(false);  // TODO: set in configuration file.
     queries->setBlendScheduler(blendSched);
 
     unsigned int requiredTasksCompleted = workerConfig.getRequiredTasksCompleted();
@@ -164,19 +160,17 @@ SsiService::SsiService(XrdSsiLogger* log, wconfig::WorkerConfig const& workerCon
     LOGS(_log, LOG_LVL_WARN, "config transmitMgr" << *_transmitMgr);
     LOGS(_log, LOG_LVL_WARN, "maxPoolThreads=" << maxPoolThreads);
 
-    _foreman = make_shared<wcontrol::Foreman>(
-        blendSched, poolSize, maxPoolThreads, workerConfig.getMySqlConfig(),
-        queries, sqlConnMgr, _transmitMgr);
+    _foreman =
+            make_shared<wcontrol::Foreman>(blendSched, poolSize, maxPoolThreads,
+                                           workerConfig.getMySqlConfig(), queries, sqlConnMgr, _transmitMgr);
 }
 
-SsiService::~SsiService() {
-    LOGS(_log, LOG_LVL_DEBUG, "SsiService dying.");
-}
+SsiService::~SsiService() { LOGS(_log, LOG_LVL_DEBUG, "SsiService dying."); }
 
-void SsiService::ProcessRequest(XrdSsiRequest &reqRef, XrdSsiResource &resRef) {
+void SsiService::ProcessRequest(XrdSsiRequest& reqRef, XrdSsiResource& resRef) {
     LOGS(_log, LOG_LVL_DEBUG, "Got request call where rName is: " << resRef.rName);
-    auto request = SsiRequest::newSsiRequest(resRef.rName, _chunkInventory,
-                                             _foreman, _mySqlConfig, _transmitMgr);
+    auto request =
+            SsiRequest::newSsiRequest(resRef.rName, _chunkInventory, _foreman, _mySqlConfig, _transmitMgr);
 
     // Continue execution in the session object as SSI gave us a new thread.
     // Object deletes itself when finished is called.
@@ -199,5 +193,4 @@ void SsiService::_initInventory() {
     LOGS(_log, LOG_LVL_DEBUG, os.str());
 }
 
-
-}}} // namespace
+}  // namespace lsst::qserv::xrdsvc

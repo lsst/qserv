@@ -36,10 +36,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.wcontrol.SqlConnMgr");
 
 using namespace std;
 
-namespace lsst {
-namespace qserv {
-namespace wcontrol {
-
+namespace lsst::qserv::wcontrol {
 
 SqlConnMgr::ConnType SqlConnMgr::_take(bool scanQuery,
                                        std::shared_ptr<wbase::SendChannelShared> const& sendChannelShared,
@@ -65,7 +62,7 @@ SqlConnMgr::ConnType SqlConnMgr::_take(bool scanQuery,
         }
     }
 
-    _tCv.wait(uLock, [this, scanQuery, sendChannelShared, connType](){
+    _tCv.wait(uLock, [this, scanQuery, sendChannelShared, connType]() {
         bool ok = false;
         switch (connType) {
             case INTERACTIVE:
@@ -104,7 +101,6 @@ SqlConnMgr::ConnType SqlConnMgr::_take(bool scanQuery,
     return connType;
 }
 
-
 void SqlConnMgr::_release(SqlConnMgr::ConnType connType) {
     // The sendChannelShared count does not get decremented. Once it has started
     // transmitting sendChannelShared must be allowed to continue or xrootd could
@@ -132,16 +128,12 @@ void SqlConnMgr::_release(SqlConnMgr::ConnType connType) {
     _tCv.notify_all();
 }
 
-
-ostream& SqlConnMgr::dump(ostream &os) const {
-    os << "(totalCount=" << _totalCount
-       << " sqlScanConnCount=" << _sqlScanConnCount
-       << ":max=" << _maxSqlScanConnections
-       << " sqlSharedConnCount=" << _sqlSharedConnCount
+ostream& SqlConnMgr::dump(ostream& os) const {
+    os << "(totalCount=" << _totalCount << " sqlScanConnCount=" << _sqlScanConnCount
+       << ":max=" << _maxSqlScanConnections << " sqlSharedConnCount=" << _sqlSharedConnCount
        << ":max=" << _maxSqlSharedConnections << ")";
     return os;
 }
-
 
 string SqlConnMgr::dump() const {
     ostringstream os;
@@ -149,15 +141,11 @@ string SqlConnMgr::dump() const {
     return os.str();
 }
 
-
-ostream& operator<<(ostream &os, SqlConnMgr const& mgr) {
-    return mgr.dump(os);
-}
-
+ostream& operator<<(ostream& os, SqlConnMgr const& mgr) { return mgr.dump(os); }
 
 SqlConnLock::SqlConnLock(SqlConnMgr& sqlConnMgr, bool scanQuery,
-            std::shared_ptr<wbase::SendChannelShared> const& sendChannelShared)
-  : _sqlConnMgr(sqlConnMgr) {
+                         std::shared_ptr<wbase::SendChannelShared> const& sendChannelShared)
+        : _sqlConnMgr(sqlConnMgr) {
     bool firstChannelSqlConn = true;
     if (sendChannelShared != nullptr) {
         firstChannelSqlConn = sendChannelShared->getFirstChannelSqlConn();
@@ -165,5 +153,4 @@ SqlConnLock::SqlConnLock(SqlConnMgr& sqlConnMgr, bool scanQuery,
     _connType = _sqlConnMgr._take(scanQuery, sendChannelShared, firstChannelSqlConn);
 }
 
-
-}}} // namespace lsst::qserv::wcontrol
+}  // namespace lsst::qserv::wcontrol

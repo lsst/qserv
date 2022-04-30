@@ -40,49 +40,32 @@ namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.DatabaseMySQL");
 
-}   // namespace
+}  // namespace
 
-namespace lsst {
-namespace qserv {
-namespace replica {
-namespace database {
-namespace mysql {
+namespace lsst::qserv::replica::database::mysql {
 
 /////////////////////////////////////////////////////
 //                ConnectionParams                 //
 /////////////////////////////////////////////////////
 
 ConnectionParams::ConnectionParams()
-    :   host("localhost"),
-        port(3306),
-        user(replica::FileUtils::getEffectiveUser()),
-        password(""),
-        database("") {
-}
+        : host("localhost"),
+          port(3306),
+          user(replica::FileUtils::getEffectiveUser()),
+          password(""),
+          database("") {}
 
+ConnectionParams::ConnectionParams(string const& host_, uint16_t port_, string const& user_,
+                                   string const& password_, string const& database_)
+        : host(host_), port(port_), user(user_), password(password_), database(database_) {}
 
-ConnectionParams::ConnectionParams(string const& host_,
-                                   uint16_t port_,
-                                   string const& user_,
-                                   string const& password_,
-                                   string const& database_)
-    :   host(host_),
-        port(port_),
-        user(user_),
-        password(password_),
-        database(database_) {
-}
-
-
-ConnectionParams ConnectionParams::parse(string const& params,
-                                         string const& defaultHost,
-                                         uint16_t defaultPort,
-                                         string const& defaultUser,
+ConnectionParams ConnectionParams::parse(string const& params, string const& defaultHost,
+                                         uint16_t defaultPort, string const& defaultUser,
                                          string const& defaultPassword) {
-
     string const context = "ConnectionParams::" + string(__func__) + "  ";
 
-    regex  re("^[ ]*mysql://([^:]+)?(:([^:]?.*[^@]?))?@([^:^/]+)?(:([0-9]+))?(/([^ ]+))[ ]*$", regex::extended);
+    regex re("^[ ]*mysql://([^:]+)?(:([^:]?.*[^@]?))?@([^:^/]+)?(:([0-9]+))?(/([^ ]+))[ ]*$",
+             regex::extended);
     smatch match;
 
     if (not regex_search(params, match, re)) {
@@ -95,16 +78,16 @@ ConnectionParams ConnectionParams::parse(string const& params,
     ConnectionParams connectionParams;
 
     string const user = match[1].str();
-    connectionParams.user  = user.empty() ? defaultUser : user;
+    connectionParams.user = user.empty() ? defaultUser : user;
 
     string const password = match[3].str();
-    connectionParams.password = password.empty() ?  defaultPassword : password;
+    connectionParams.password = password.empty() ? defaultPassword : password;
 
     string const host = match[4].str();
-    connectionParams.host  = host.empty() ? defaultHost : host;
+    connectionParams.host = host.empty() ? defaultHost : host;
 
     string const port = match[6].str();
-    connectionParams.port  = port.empty() ?  defaultPort : (uint16_t)stoul(port);
+    connectionParams.port = port.empty() ? defaultPort : (uint16_t)stoul(port);
 
     // no default option for the database
     connectionParams.database = match[8].str();
@@ -114,37 +97,30 @@ ConnectionParams ConnectionParams::parse(string const& params,
 
     LOGS(_log, LOG_LVL_DEBUG, context << connectionParams);
 
-
     return connectionParams;
 }
 
-
 string ConnectionParams::toString(bool showPassword) const {
-    return string("mysql://") + user + ":" + (showPassword ? password : string("xxxxxx")) + "@" +
-           host + ":" + to_string(port) + "/" + database;
+    return string("mysql://") + user + ":" + (showPassword ? password : string("xxxxxx")) + "@" + host + ":" +
+           to_string(port) + "/" + database;
 }
 
-
 bool ConnectionParams::operator==(ConnectionParams const& rhs) const {
-    return tie(    host,     port,     user,     password,     database) ==
+    return tie(host, port, user, password, database) ==
            tie(rhs.host, rhs.port, rhs.user, rhs.password, rhs.database);
 }
 
-
 ostream& operator<<(ostream& os, ConnectionParams const& params) {
-    os  << "DatabaseMySQL::ConnectionParams " << "(" << params.toString() << ")";
+    os << "DatabaseMySQL::ConnectionParams "
+       << "(" << params.toString() << ")";
     return os;
 }
-
 
 //////////////////////////////////////////////////
 //                DoNotProcess                  //
 //////////////////////////////////////////////////
 
-DoNotProcess::DoNotProcess(string const& name_)
-    :   name(name_) {
-}
-
+DoNotProcess::DoNotProcess(string const& name_) : name(name_) {}
 
 /////////////////////////////////////////////
 //                Keyword                  //
@@ -152,11 +128,7 @@ DoNotProcess::DoNotProcess(string const& name_)
 
 Keyword const Keyword::SQL_NULL{"NULL"};
 
-
-Keyword::Keyword(string const& name_)
-    :   DoNotProcess(name_) {
-}
-
+Keyword::Keyword(string const& name_) : DoNotProcess(name_) {}
 
 /////////////////////////////////////////////
 //                Function                 //
@@ -164,9 +136,6 @@ Keyword::Keyword(string const& name_)
 
 Function const Function::LAST_INSERT_ID{"LAST_INSERT_ID()"};
 
+Function::Function(string const& name_) : DoNotProcess(name_) {}
 
-Function::Function(string const& name_)
-    :   DoNotProcess(name_) {
-}
-
-}}}}} // namespace lsst::qserv::replica::database::mysql
+}  // namespace lsst::qserv::replica::database::mysql

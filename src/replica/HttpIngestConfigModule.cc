@@ -34,39 +34,30 @@
 using namespace std;
 using json = nlohmann::json;
 
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
-void HttpIngestConfigModule::process(Controller::Ptr const& controller,
-                                     string const& taskName,
+void HttpIngestConfigModule::process(Controller::Ptr const& controller, string const& taskName,
                                      HttpProcessorConfig const& processorConfig,
-                                     qhttp::Request::Ptr const& req,
-                                     qhttp::Response::Ptr const& resp,
-                                     string const& subModuleName,
-                                     HttpAuthType const authType) {
+                                     qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp,
+                                     string const& subModuleName, HttpAuthType const authType) {
     HttpIngestConfigModule module(controller, taskName, processorConfig, req, resp);
     module.execute(subModuleName, authType);
 }
 
-
-HttpIngestConfigModule::HttpIngestConfigModule(Controller::Ptr const& controller,
-                                               string const& taskName,
+HttpIngestConfigModule::HttpIngestConfigModule(Controller::Ptr const& controller, string const& taskName,
                                                HttpProcessorConfig const& processorConfig,
                                                qhttp::Request::Ptr const& req,
                                                qhttp::Response::Ptr const& resp)
-    :   HttpModule(controller, taskName, processorConfig, req, resp) {
-}
-
+        : HttpModule(controller, taskName, processorConfig, req, resp) {}
 
 json HttpIngestConfigModule::executeImpl(string const& subModuleName) {
-    if (subModuleName == "GET") return _get();
-    else if (subModuleName == "UPDATE") return _update();
-    throw invalid_argument(
-            context() + "::" + string(__func__) +
-            "  unsupported sub-module: '" + subModuleName + "'");
+    if (subModuleName == "GET")
+        return _get();
+    else if (subModuleName == "UPDATE")
+        return _update();
+    throw invalid_argument(context() + "::" + string(__func__) + "  unsupported sub-module: '" +
+                           subModuleName + "'");
 }
-
 
 json HttpIngestConfigModule::_get() {
     debug(__func__);
@@ -83,21 +74,24 @@ json HttpIngestConfigModule::_get() {
 
     auto const getInt = [&databaseServices, &databaseInfo](json& obj, string const& key) {
         try {
-            obj[key] = stoi(databaseServices->ingestParam(
-                    databaseInfo.name, HttpClientConfig::category, key).value);
-        } catch (DatabaseServicesNotFound const&) {}
+            obj[key] = stoi(
+                    databaseServices->ingestParam(databaseInfo.name, HttpClientConfig::category, key).value);
+        } catch (DatabaseServicesNotFound const&) {
+        }
     };
     auto const getLong = [&databaseServices, &databaseInfo](json& obj, string const& key) {
         try {
-            obj[key] = stol(databaseServices->ingestParam(
-                    databaseInfo.name, HttpClientConfig::category, key).value);
-        } catch (DatabaseServicesNotFound const&) {}
+            obj[key] = stol(
+                    databaseServices->ingestParam(databaseInfo.name, HttpClientConfig::category, key).value);
+        } catch (DatabaseServicesNotFound const&) {
+        }
     };
     auto const getStr = [&databaseServices, &databaseInfo](json& obj, string const& key) {
         try {
-            obj[key] = databaseServices->ingestParam(
-                    databaseInfo.name, HttpClientConfig::category, key).value;
-        } catch (DatabaseServicesNotFound const&) {}
+            obj[key] =
+                    databaseServices->ingestParam(databaseInfo.name, HttpClientConfig::category, key).value;
+        } catch (DatabaseServicesNotFound const&) {
+        }
     };
 
     json result({{"database", databaseInfo.name}});
@@ -122,7 +116,6 @@ json HttpIngestConfigModule::_get() {
     return json({{"config", result}});
 }
 
-
 json HttpIngestConfigModule::_update() {
     string const context = __func__;
     debug(context);
@@ -136,11 +129,7 @@ json HttpIngestConfigModule::_update() {
 
     auto const update = [&](string const& key, string const& val) {
         debug(context, key + "=" + val);
-        databaseServices->saveIngestParam(
-            databaseInfo.name,
-            HttpClientConfig::category,
-            key,
-            val);
+        databaseServices->saveIngestParam(databaseInfo.name, HttpClientConfig::category, key, val);
     };
     auto const updateInt = [&](string const& key) {
         if (body().has(key)) update(key, to_string(body().required<int>(key)));
@@ -171,4 +160,4 @@ json HttpIngestConfigModule::_update() {
     return json::object();
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

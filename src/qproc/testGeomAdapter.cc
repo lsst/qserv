@@ -34,19 +34,13 @@
 #define BOOST_TEST_MODULE GeomAdapter
 #include <boost/test/unit_test.hpp>
 
-
 namespace test = boost::test_tools;
 
 using namespace lsst::qserv;
 
-
 BOOST_AUTO_TEST_SUITE(Suite)
 
-
-BOOST_AUTO_TEST_CASE(arcsecToDegrees) {
-    BOOST_CHECK_EQUAL(qproc::arcsecToDegrees(1.), 1./3600.);
-}
-
+BOOST_AUTO_TEST_CASE(arcsecToDegrees) { BOOST_CHECK_EQUAL(qproc::arcsecToDegrees(1.), 1. / 3600.); }
 
 BOOST_AUTO_TEST_CASE(boxValidParams) {
     auto box = qproc::getBoxFromParams({1.1, 2.1, 3.0, 1.3});
@@ -55,16 +49,13 @@ BOOST_AUTO_TEST_CASE(boxValidParams) {
     BOOST_CHECK_EQUAL(*box, box2);
 }
 
-
 BOOST_AUTO_TEST_CASE(boxTooFewParameters) {
     BOOST_CHECK_THROW(qproc::getBoxFromParams({1.1, 1.2, 2.1}), qproc::QueryProcessingError);
 }
 
-
 BOOST_AUTO_TEST_CASE(boxTooManyParameters) {
     BOOST_CHECK_THROW(qproc::getBoxFromParams({1.1, 1.2, 2.1, 2.0, 1.3}), qproc::QueryProcessingError);
 }
-
 
 BOOST_AUTO_TEST_CASE(circleValidParams) {
     auto circle = qproc::getCircleFromParams({1.1, 2.1, 3.0});
@@ -75,46 +66,40 @@ BOOST_AUTO_TEST_CASE(circleValidParams) {
     BOOST_CHECK_EQUAL(*circle, circle2);
 }
 
-
 BOOST_AUTO_TEST_CASE(circleTooFewParameters) {
     BOOST_CHECK_THROW(qproc::getCircleFromParams({1.1, 1.2}), qproc::QueryProcessingError);
 }
-
 
 BOOST_AUTO_TEST_CASE(circleTooManyParameters) {
     BOOST_CHECK_THROW(qproc::getCircleFromParams({1.1, 1.2, 2.1, 2.0}), qproc::QueryProcessingError);
 }
 
-
 BOOST_AUTO_TEST_CASE(ellipseValidParams) {
     auto ellipse = qproc::getEllipseFromParams({1.1, 1.2, 2.1, 2.0, 1.3});
-    auto ellipse2 = lsst::sphgeom::Ellipse(
-            lsst::sphgeom::UnitVector3d(lsst::sphgeom::LonLat::fromDegrees(1.1, 1.2)),
-            lsst::sphgeom::Angle::fromDegrees(qproc::arcsecToDegrees(2.1)),
-            lsst::sphgeom::Angle::fromDegrees(qproc::arcsecToDegrees(2.0)),
-            lsst::sphgeom::Angle::fromDegrees(1.3));
+    auto ellipse2 =
+            lsst::sphgeom::Ellipse(lsst::sphgeom::UnitVector3d(lsst::sphgeom::LonLat::fromDegrees(1.1, 1.2)),
+                                   lsst::sphgeom::Angle::fromDegrees(qproc::arcsecToDegrees(2.1)),
+                                   lsst::sphgeom::Angle::fromDegrees(qproc::arcsecToDegrees(2.0)),
+                                   lsst::sphgeom::Angle::fromDegrees(1.3));
     BOOST_REQUIRE(ellipse != nullptr);
     BOOST_CHECK_EQUAL(*ellipse, ellipse2);
 }
-
 
 BOOST_AUTO_TEST_CASE(ellispeTooFewParameters) {
     BOOST_CHECK_THROW(qproc::getEllipseFromParams({1.1, 1.2, 2.1, 2.0}), qproc::QueryProcessingError);
 }
 
-
 BOOST_AUTO_TEST_CASE(ellispeTooManyParameters) {
-    BOOST_CHECK_THROW(qproc::getEllipseFromParams({1.1, 1.2, 2.1, 2.0, 1.3, 1.4}), qproc::QueryProcessingError);
+    BOOST_CHECK_THROW(qproc::getEllipseFromParams({1.1, 1.2, 2.1, 2.0, 1.3, 1.4}),
+                      qproc::QueryProcessingError);
 }
-
 
 BOOST_AUTO_TEST_CASE(convexPolyValidParams) {
     std::vector<double> parameters = {1.1, 1.2, 1.3, 1.4, 1.5, 1.6};
     auto poly = qproc::getConvexPolyFromParams(parameters);
     BOOST_REQUIRE(poly != nullptr);
     std::vector<lsst::sphgeom::UnitVector3d> uv3;
-    std::vector<std::pair<double, double>> rawParameters = {
-        {1.1, 1.2}, {1.3, 1.4}, {1.5, 1.6}};
+    std::vector<std::pair<double, double>> rawParameters = {{1.1, 1.2}, {1.3, 1.4}, {1.5, 1.6}};
     for (auto const& paramPair : rawParameters) {
         lsst::sphgeom::LonLat vx = lsst::sphgeom::LonLat::fromDegrees(paramPair.first, paramPair.second);
         uv3.push_back(lsst::sphgeom::UnitVector3d(vx));
@@ -123,15 +108,13 @@ BOOST_AUTO_TEST_CASE(convexPolyValidParams) {
     BOOST_CHECK_EQUAL(*poly, poly2);
 }
 
-
 BOOST_AUTO_TEST_CASE(convexPolyTooFewParameters) {
     BOOST_CHECK_THROW(qproc::getConvexPolyFromParams({1., 2., 3., 4., 5.}), qproc::QueryProcessingError);
 }
 
-
 BOOST_AUTO_TEST_CASE(convexPolyOddNumParameters) {
-    BOOST_CHECK_THROW(qproc::getConvexPolyFromParams({1., 2., 3., 4., 5., 6., 7.}), qproc::QueryProcessingError);
+    BOOST_CHECK_THROW(qproc::getConvexPolyFromParams({1., 2., 3., 4., 5., 6., 7.}),
+                      qproc::QueryProcessingError);
 }
-
 
 BOOST_AUTO_TEST_SUITE_END()

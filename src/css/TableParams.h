@@ -31,9 +31,7 @@
 #include "css/PartTableParams.h"
 #include "css/ScanTableParams.h"
 
-namespace lsst {
-namespace qserv {
-namespace css {
+namespace lsst::qserv::css {
 
 /// @addtogroup css
 
@@ -47,13 +45,11 @@ namespace css {
  */
 
 struct TableParams {
-
-    MatchTableParams match;          ///< match metadata
-    PartTableParams partitioning;    ///< partitioning metadata
-    ScanTableParams sharedScan;      ///< shared scan metadata
-
+    MatchTableParams match;        ///< match metadata
+    PartTableParams partitioning;  ///< partitioning metadata
+    ScanTableParams sharedScan;    ///< shared scan metadata
 };
 
-}}} // namespace lsst::qserv::css
+}  // namespace lsst::qserv::css
 
-#endif // LSST_QSERV_CSS_TABLEPARAMS_H
+#endif  // LSST_QSERV_CSS_TABLEPARAMS_H

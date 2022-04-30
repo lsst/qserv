@@ -21,13 +21,12 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 /**
-  * @file
-  *
-  * @brief class ColumnRef implementation
-  *
-  * @author Daniel L. Wang, SLAC
-  */
-
+ * @file
+ *
+ * @brief class ColumnRef implementation
+ *
+ * @author Daniel L. Wang, SLAC
+ */
 
 // Class header
 #include "query/ColumnRef.h"
@@ -46,18 +45,13 @@
 #include "query/QueryTemplate.h"
 #include "query/TableRef.h"
 
-
 namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.query.ColumnRef");
 
 }
 
-
-namespace lsst {
-namespace qserv {
-namespace query {
-
+namespace lsst::qserv::query {
 
 std::ostream& operator<<(std::ostream& os, ColumnRef const& cr) {
     os << "ColumnRef(";
@@ -66,7 +60,6 @@ std::ostream& operator<<(std::ostream& os, ColumnRef const& cr) {
     os << ")";
     return os;
 }
-
 
 std::ostream& operator<<(std::ostream& os, ColumnRef const* cr) {
     if (nullptr == cr) {
@@ -77,30 +70,24 @@ std::ostream& operator<<(std::ostream& os, ColumnRef const* cr) {
     return os;
 }
 
-
-ColumnRef::ColumnRef(std::string column_)
-    : _tableRef(std::make_shared<TableRef>()), _column(column_) {
+ColumnRef::ColumnRef(std::string column_) : _tableRef(std::make_shared<TableRef>()), _column(column_) {
     _verify();
 }
-
 
 ColumnRef::ColumnRef(std::string db_, std::string table_, std::string column_)
         : _tableRef(std::make_shared<TableRef>(db_, table_, "")), _column(column_) {
     _verify();
 }
 
-
 ColumnRef::ColumnRef(std::string db_, std::string table_, std::string tableAlias_, std::string column_)
-    : _tableRef(std::make_shared<TableRef>(db_, table_, tableAlias_)), _column(column_) {
+        : _tableRef(std::make_shared<TableRef>(db_, table_, tableAlias_)), _column(column_) {
     _verify();
 }
-
 
 ColumnRef::ColumnRef(std::shared_ptr<TableRef> const& table, std::string const& column)
-    : _tableRef(table), _column(column) {
+        : _tableRef(table), _column(column) {
     _verify();
 }
-
 
 void ColumnRef::setDb(std::string const& db) {
     LOGS(_log, LOG_LVL_TRACE, *this << "; set db:" << db);
@@ -108,13 +95,11 @@ void ColumnRef::setDb(std::string const& db) {
     _verify();
 }
 
-
 void ColumnRef::setTable(std::string const& table) {
     LOGS(_log, LOG_LVL_TRACE, *this << "; set table:" << table);
     _tableRef->setTable(table);
     _verify();
 }
-
 
 void ColumnRef::setTable(std::shared_ptr<TableRef> const& tableRef) {
     LOGS(_log, LOG_LVL_TRACE, *this << "; set table:" << *tableRef);
@@ -125,23 +110,15 @@ void ColumnRef::setTable(std::shared_ptr<TableRef> const& tableRef) {
     _verify();
 }
 
-
 void ColumnRef::setColumn(std::string const& column) {
     LOGS(_log, LOG_LVL_TRACE, *this << "; set column:" << column);
     _column = column;
     _verify();
 }
 
+void ColumnRef::renderTo(QueryTemplate& qt) const { qt.append(*this); }
 
-void ColumnRef::renderTo(QueryTemplate& qt) const {
-    qt.append(*this);
-}
-
-
-bool ColumnRef::isSubsetOf(const ColumnRef::Ptr & rhs) const {
-    return isSubsetOf(*rhs);
-}
-
+bool ColumnRef::isSubsetOf(const ColumnRef::Ptr& rhs) const { return isSubsetOf(*rhs); }
 
 bool ColumnRef::isColumnOnly() const {
     if (_tableRef->hasDb() || _tableRef->hasTable() || _tableRef->hasAlias()) {
@@ -149,7 +126,6 @@ bool ColumnRef::isColumnOnly() const {
     }
     return true;
 }
-
 
 bool ColumnRef::isSubsetOf(ColumnRef const& rhs) const {
     if (not _tableRef->isSubsetOf(*rhs._tableRef)) {
@@ -166,7 +142,6 @@ bool ColumnRef::isSubsetOf(ColumnRef const& rhs) const {
     return true;
 }
 
-
 bool ColumnRef::isAliasedBy(ColumnRef const& rhs) const {
     if (_column != rhs._column) {
         return false;
@@ -174,13 +149,11 @@ bool ColumnRef::isAliasedBy(ColumnRef const& rhs) const {
     return _tableRef->isAliasedBy(*rhs._tableRef);
 }
 
-
 bool ColumnRef::isComplete() const {
-    if (_column.empty()) // should not be possible, but for completeness we check it.
+    if (_column.empty())  // should not be possible, but for completeness we check it.
         return false;
     return _tableRef->isComplete();
 }
-
 
 std::string ColumnRef::sqlFragment() const {
     QueryTemplate qt;
@@ -188,16 +161,13 @@ std::string ColumnRef::sqlFragment() const {
     return boost::lexical_cast<std::string>(qt);
 }
 
-
 bool ColumnRef::operator==(const ColumnRef& rhs) const {
     return std::tie(*_tableRef, _column) == std::tie(*rhs._tableRef, rhs._column);
 }
 
-
 bool ColumnRef::operator<(const ColumnRef& rhs) const {
     return std::tie(*_tableRef, _column) < std::tie(*rhs._tableRef, rhs._column);
 }
-
 
 void ColumnRef::_verify() const {
     // table verification is performed when setting the db & table
@@ -206,6 +176,4 @@ void ColumnRef::_verify() const {
     }
 }
 
-
-
-}}} // namespace lsst::qserv::query
+}  // namespace lsst::qserv::query

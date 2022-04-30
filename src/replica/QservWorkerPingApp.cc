@@ -40,68 +40,44 @@ using namespace std;
 namespace {
 
 string const description =
-    "This is an application for testing a communication"
-    " path with Qserv workers. The application will be sending multiple requests"
-    " containing a string that is expected to be echoed back by a worker.";
+        "This is an application for testing a communication"
+        " path with Qserv workers. The application will be sending multiple requests"
+        " containing a string that is expected to be echoed back by a worker.";
 
 bool const injectDatabaseOptions = false;
 bool const boostProtobufVersionCheck = true;
 bool const enableServiceProvider = true;
 
-} /// namespace
+}  // namespace
 
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
 QservWorkerPingApp::Ptr QservWorkerPingApp::create(int argc, char* argv[]) {
     return Ptr(new QservWorkerPingApp(argc, argv));
 }
 
-
 QservWorkerPingApp::QservWorkerPingApp(int argc, char* argv[])
-    :   Application(
-            argc, argv,
-            ::description,
-            ::injectDatabaseOptions,
-            ::boostProtobufVersionCheck,
-            ::enableServiceProvider
-        ) {
-
-    parser().required(
-        "worker",
-        "The name of a Qserv worker.",
-        _worker
-    ).required(
-        "data",
-        "The data string to be sent to the worker.",
-        _data
-    ).option(
-        "num-requests",
-        "The total number of requests to be launched. The parameter must be set"
-        "to 1 or greater",
-        _numRequests
-    ).option(
-        "max-requests",
-        "The maximum number of requests to be in flight at any moment. The parameter must be set"
-        "to 1 or greater",
-        _maxRequests
-    ).option(
-        "expiration-ival-sec",
-        "Request expiration interval. Requests will be cancelled if no response"
-        " received before the specified timeout expires. Zero value of the parameter"
-        " corresponds to the corresponding default set in the configuration.",
-        _requestExpirationIvalSec
-    ).flag(
-        "verbose",
-        "For reporting a progress of the testing.",
-        _verbose
-    );
+        : Application(argc, argv, ::description, ::injectDatabaseOptions, ::boostProtobufVersionCheck,
+                      ::enableServiceProvider) {
+    parser().required("worker", "The name of a Qserv worker.", _worker)
+            .required("data", "The data string to be sent to the worker.", _data)
+            .option("num-requests",
+                    "The total number of requests to be launched. The parameter must be set"
+                    "to 1 or greater",
+                    _numRequests)
+            .option("max-requests",
+                    "The maximum number of requests to be in flight at any moment. The parameter must be set"
+                    "to 1 or greater",
+                    _maxRequests)
+            .option("expiration-ival-sec",
+                    "Request expiration interval. Requests will be cancelled if no response"
+                    " received before the specified timeout expires. Zero value of the parameter"
+                    " corresponds to the corresponding default set in the configuration.",
+                    _requestExpirationIvalSec)
+            .flag("verbose", "For reporting a progress of the testing.", _verbose);
 }
 
-
 int QservWorkerPingApp::runImpl() {
-
     if (_numRequests < 1) {
         cerr << "error: parameter 'num-requests' should have a value of 1 or higher." << endl;
         return 1;
@@ -119,24 +95,20 @@ int QservWorkerPingApp::runImpl() {
     mutex mtx;
     condition_variable cv;
 
-    auto const logEvent = [&](unique_lock<mutex> const& lock,
-                              TestEchoQservMgtRequest::Ptr const& request,
+    auto const logEvent = [&](unique_lock<mutex> const& lock, TestEchoQservMgtRequest::Ptr const& request,
                               string const& event) {
         if (!_verbose) return;
-        cout << "active: "  << setw(6) << numActive
-             << "success: " << setw(6) << numSuccess
-             << "failed: "  << setw(6) << numFailed
-             << " id=" << request->id() << " state=" << request->state2string()
-             << " " << event << endl;
+        cout << "active: " << setw(6) << numActive << "success: " << setw(6) << numSuccess
+             << "failed: " << setw(6) << numFailed << " id=" << request->id()
+             << " state=" << request->state2string() << " " << event << endl;
     };
 
-    auto const onStart = [&] (unique_lock<mutex> const& lock,
-                              TestEchoQservMgtRequest::Ptr const& request) {
+    auto const onStart = [&](unique_lock<mutex> const& lock, TestEchoQservMgtRequest::Ptr const& request) {
         numActive++;
         logEvent(lock, request, "started");
     };
 
-    auto const onFinish = [&] (TestEchoQservMgtRequest::Ptr const& request) {
+    auto const onFinish = [&](TestEchoQservMgtRequest::Ptr const& request) {
         {
             unique_lock<mutex> lock(mtx);
             numActive--;
@@ -151,10 +123,8 @@ int QservWorkerPingApp::runImpl() {
     };
 
     for (size_t i = 0; i < _numRequests; ++i) {
-        auto const request = serviceProvider()->qservMgtServices()->echo(
-                _worker, _data, noParentJobId,
-                onFinish,
-                _requestExpirationIvalSec);
+        auto const request = serviceProvider()->qservMgtServices()->echo(_worker, _data, noParentJobId,
+                                                                         onFinish, _requestExpirationIvalSec);
         unique_lock<mutex> lock(mtx);
         onStart(lock, request);
         cv.wait(lock, [&] { return numActive < _maxRequests; });
@@ -165,12 +135,10 @@ int QservWorkerPingApp::runImpl() {
     while (numActive > 0) {
         util::BlockPost::wait(sleepTimeMs);
         unique_lock<mutex> lock(mtx);
-        cout << "active: "  << setw(6) << numActive
-             << "success: " << setw(6) << numSuccess
-             << "failed: "  << setw(6) << numFailed
-             << endl;
+        cout << "active: " << setw(6) << numActive << "success: " << setw(6) << numSuccess
+             << "failed: " << setw(6) << numFailed << endl;
     }
     return 0;
 }
 
-}}} // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

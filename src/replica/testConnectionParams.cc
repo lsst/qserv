@@ -37,7 +37,6 @@ using namespace lsst::qserv::replica;
 BOOST_AUTO_TEST_SUITE(Suite)
 
 BOOST_AUTO_TEST_CASE(ConnectionParamsTest) {
-
     LOGS_INFO("ConnectionParamsTest test begins");
 
     bool const showPassword = true;
@@ -48,38 +47,30 @@ BOOST_AUTO_TEST_CASE(ConnectionParamsTest) {
     BOOST_CHECK(defaultConstructed.user == FileUtils::getEffectiveUser());
     BOOST_CHECK(defaultConstructed.password == "");
     BOOST_CHECK(defaultConstructed.database == "");
-    BOOST_CHECK(
-        defaultConstructed.toString() == "mysql://" + FileUtils::getEffectiveUser()
-        + ":xxxxxx@localhost:3306/"
-    );
-    BOOST_CHECK(
-        defaultConstructed.toString(showPassword) == "mysql://" + FileUtils::getEffectiveUser()
-        + ":@localhost:3306/"
-    );
+    BOOST_CHECK(defaultConstructed.toString() ==
+                "mysql://" + FileUtils::getEffectiveUser() + ":xxxxxx@localhost:3306/");
+    BOOST_CHECK(defaultConstructed.toString(showPassword) ==
+                "mysql://" + FileUtils::getEffectiveUser() + ":@localhost:3306/");
 
-    string   const host = "Host-A";
+    string const host = "Host-A";
     uint16_t const port = 23306;
-    string   const user = "qserv";
-    string   const password = "CHANGEME";
-    string   const database = "test";
+    string const user = "qserv";
+    string const password = "CHANGEME";
+    string const database = "test";
     database::mysql::ConnectionParams const normallyConstructed(host, port, user, password, database);
     BOOST_CHECK(normallyConstructed.host == host);
     BOOST_CHECK(normallyConstructed.port == port);
     BOOST_CHECK(normallyConstructed.user == user);
     BOOST_CHECK(normallyConstructed.password == password);
     BOOST_CHECK(normallyConstructed.database == database);
-    BOOST_CHECK(
-        normallyConstructed.toString() ==  "mysql://" + user + ":xxxxxx@" + host
-        + ":" + to_string(port) + "/" + database
-    );
-    BOOST_CHECK(
-        normallyConstructed.toString(showPassword) == "mysql://" + user + ":" + password
-        + "@" + host + ":" + to_string(port) + "/" + database
-    );
+    BOOST_CHECK(normallyConstructed.toString() ==
+                "mysql://" + user + ":xxxxxx@" + host + ":" + to_string(port) + "/" + database);
+    BOOST_CHECK(normallyConstructed.toString(showPassword) ==
+                "mysql://" + user + ":" + password + "@" + host + ":" + to_string(port) + "/" + database);
 
     database::mysql::ConnectionParams const copyConstructed(normallyConstructed);
     BOOST_CHECK(copyConstructed == normallyConstructed);
-    BOOST_CHECK(not (copyConstructed != normallyConstructed));
+    BOOST_CHECK(not(copyConstructed != normallyConstructed));
     BOOST_CHECK(normallyConstructed == copyConstructed);
 
     database::mysql::ConnectionParams assigned;
@@ -91,19 +82,18 @@ BOOST_AUTO_TEST_CASE(ConnectionParamsTest) {
     // the constructor. These default values will be used through the rest
     // of the parser tests.
 
-    string   const defaultHost = "Host-A";
+    string const defaultHost = "Host-A";
     uint16_t const defaultPort = 23306;
-    string   const defaultUser = "qserv";
-    string   const defaultPassword = "CHANGEME";
+    string const defaultUser = "qserv";
+    string const defaultPassword = "CHANGEME";
 
     database::mysql::ConnectionParams parsed;
     BOOST_REQUIRE_NO_THROW({
         string const conn = "mysql://@/test";
         LOGS_INFO("ConnectionParamsTest  input:  '" << conn << "'");
         try {
-            parsed = database::mysql::ConnectionParams::parse(
-                conn, defaultHost, defaultPort, defaultUser, defaultPassword
-            );
+            parsed = database::mysql::ConnectionParams::parse(conn, defaultHost, defaultPort, defaultUser,
+                                                              defaultPassword);
         } catch (exception const& ex) {
             LOGS_INFO("ConnectionParamsTest  unexpected exception: " << ex.what());
             throw;
@@ -115,14 +105,11 @@ BOOST_AUTO_TEST_CASE(ConnectionParamsTest) {
         BOOST_CHECK(parsed.user == defaultUser);
         BOOST_CHECK(parsed.password == defaultPassword);
         BOOST_CHECK(parsed.database == "test");
-        BOOST_CHECK(
-            parsed.toString() == "mysql://" + defaultUser + ":xxxxxx@" + defaultHost
-            + ":" + to_string(defaultPort) + "/test"
-        );
-        BOOST_CHECK(
-            parsed.toString(showPassword) == "mysql://" + defaultUser + ":" + defaultPassword
-            + "@" + defaultHost + ":" + to_string(defaultPort) + "/test"
-        );
+        BOOST_CHECK(parsed.toString() == "mysql://" + defaultUser + ":xxxxxx@" + defaultHost + ":" +
+                                                 to_string(defaultPort) + "/test");
+        BOOST_CHECK(parsed.toString(showPassword) == "mysql://" + defaultUser + ":" + defaultPassword + "@" +
+                                                             defaultHost + ":" + to_string(defaultPort) +
+                                                             "/test");
     });
 
     // Similar to the previous one except spaces added at both ends of
@@ -133,9 +120,8 @@ BOOST_AUTO_TEST_CASE(ConnectionParamsTest) {
         string const conn = "  mysql://@/test ";
         LOGS_INFO("ConnectionParamsTest  input:  '" << conn << "'");
         try {
-            equallyParsed = database::mysql::ConnectionParams::parse(
-                conn, defaultHost, defaultPort, defaultUser, defaultPassword
-            );
+            equallyParsed = database::mysql::ConnectionParams::parse(conn, defaultHost, defaultPort,
+                                                                     defaultUser, defaultPassword);
         } catch (exception const& ex) {
             LOGS_INFO("ConnectionParamsTest  unexpected exception: " << ex.what());
             throw;
@@ -147,14 +133,11 @@ BOOST_AUTO_TEST_CASE(ConnectionParamsTest) {
         BOOST_CHECK(equallyParsed.user == defaultUser);
         BOOST_CHECK(equallyParsed.password == defaultPassword);
         BOOST_CHECK(equallyParsed.database == "test");
-        BOOST_CHECK(
-            equallyParsed.toString() == "mysql://" + defaultUser + ":xxxxxx@" + defaultHost
-            + ":" + to_string(defaultPort) + "/test"
-        );
-        BOOST_CHECK(
-            equallyParsed.toString(showPassword) == "mysql://" + defaultUser + ":" + defaultPassword
-            + "@" + defaultHost + ":" + to_string(defaultPort) + "/test"
-        );
+        BOOST_CHECK(equallyParsed.toString() == "mysql://" + defaultUser + ":xxxxxx@" + defaultHost + ":" +
+                                                        to_string(defaultPort) + "/test");
+        BOOST_CHECK(equallyParsed.toString(showPassword) == "mysql://" + defaultUser + ":" + defaultPassword +
+                                                                    "@" + defaultHost + ":" +
+                                                                    to_string(defaultPort) + "/test");
     });
     BOOST_CHECK(equallyParsed == parsed);
 
@@ -166,9 +149,8 @@ BOOST_AUTO_TEST_CASE(ConnectionParamsTest) {
         LOGS_INFO("ConnectionParamsTest  input:  '" << conn << "'");
         database::mysql::ConnectionParams parsed;
         try {
-            parsed = database::mysql::ConnectionParams::parse(
-                conn, defaultHost, defaultPort, defaultUser, defaultPassword
-            );
+            parsed = database::mysql::ConnectionParams::parse(conn, defaultHost, defaultPort, defaultUser,
+                                                              defaultPassword);
         } catch (exception const& ex) {
             LOGS_INFO("ConnectionParamsTest  unexpected exception: " << ex.what());
             throw;
@@ -180,12 +162,9 @@ BOOST_AUTO_TEST_CASE(ConnectionParamsTest) {
         BOOST_CHECK(parsed.user == "qsreplica");
         BOOST_CHECK(parsed.password == defaultPassword);
         BOOST_CHECK(parsed.database == "test");
-        BOOST_CHECK(
-            parsed.toString() == "mysql://qsreplica:xxxxxx@Host-B:13306/test"
-        );
-        BOOST_CHECK(
-            parsed.toString(showPassword) == "mysql://qsreplica:" + defaultPassword + "@Host-B:13306/test"
-        );
+        BOOST_CHECK(parsed.toString() == "mysql://qsreplica:xxxxxx@Host-B:13306/test");
+        BOOST_CHECK(parsed.toString(showPassword) ==
+                    "mysql://qsreplica:" + defaultPassword + "@Host-B:13306/test");
     });
     BOOST_REQUIRE_NO_THROW({
         // Missing port
@@ -193,9 +172,8 @@ BOOST_AUTO_TEST_CASE(ConnectionParamsTest) {
         LOGS_INFO("ConnectionParamsTest  input:  '" << conn << "'");
         database::mysql::ConnectionParams parsed;
         try {
-            parsed = database::mysql::ConnectionParams::parse(
-                conn, defaultHost, defaultPort, defaultUser, defaultPassword
-            );
+            parsed = database::mysql::ConnectionParams::parse(conn, defaultHost, defaultPort, defaultUser,
+                                                              defaultPassword);
         } catch (exception const& ex) {
             LOGS_INFO("ConnectionParamsTest  unexpected exception: " << ex.what());
             throw;
@@ -207,13 +185,10 @@ BOOST_AUTO_TEST_CASE(ConnectionParamsTest) {
         BOOST_CHECK(parsed.user == "qsreplica");
         BOOST_CHECK(parsed.password == "CHANGEMETOO");
         BOOST_CHECK(parsed.database == "test");
-        BOOST_CHECK(
-            parsed.toString() == "mysql://qsreplica:xxxxxx@Host-B:" + to_string(defaultPort) + "/test"
-        );
-        BOOST_CHECK(
-            parsed.toString(showPassword) == "mysql://qsreplica:CHANGEMETOO@Host-B:" + to_string(defaultPort)
-            + "/test"
-        );
+        BOOST_CHECK(parsed.toString() ==
+                    "mysql://qsreplica:xxxxxx@Host-B:" + to_string(defaultPort) + "/test");
+        BOOST_CHECK(parsed.toString(showPassword) ==
+                    "mysql://qsreplica:CHANGEMETOO@Host-B:" + to_string(defaultPort) + "/test");
     });
     BOOST_REQUIRE_NO_THROW({
         // Missing user
@@ -221,9 +196,8 @@ BOOST_AUTO_TEST_CASE(ConnectionParamsTest) {
         LOGS_INFO("ConnectionParamsTest  input:  '" << conn << "'");
         database::mysql::ConnectionParams parsed;
         try {
-            parsed = database::mysql::ConnectionParams::parse(
-                conn, defaultHost, defaultPort, defaultUser, defaultPassword
-            );
+            parsed = database::mysql::ConnectionParams::parse(conn, defaultHost, defaultPort, defaultUser,
+                                                              defaultPassword);
         } catch (exception const& ex) {
             LOGS_INFO("ConnectionParamsTest  unexpected exception: " << ex.what());
             throw;
@@ -235,12 +209,9 @@ BOOST_AUTO_TEST_CASE(ConnectionParamsTest) {
         BOOST_CHECK(parsed.user == defaultUser);
         BOOST_CHECK(parsed.password == "CHANGEMETOO");
         BOOST_CHECK(parsed.database == "test");
-        BOOST_CHECK(
-            parsed.toString() == "mysql://" + defaultUser + ":xxxxxx@Host-B:13306/test"
-        );
-        BOOST_CHECK(
-            parsed.toString(showPassword) == "mysql://" + defaultUser + ":CHANGEMETOO@Host-B:13306/test"
-        );
+        BOOST_CHECK(parsed.toString() == "mysql://" + defaultUser + ":xxxxxx@Host-B:13306/test");
+        BOOST_CHECK(parsed.toString(showPassword) ==
+                    "mysql://" + defaultUser + ":CHANGEMETOO@Host-B:13306/test");
     });
     BOOST_REQUIRE_NO_THROW({
         // Missing user & password
@@ -248,9 +219,8 @@ BOOST_AUTO_TEST_CASE(ConnectionParamsTest) {
         LOGS_INFO("ConnectionParamsTest  input:  '" << conn << "'");
         database::mysql::ConnectionParams parsed;
         try {
-            parsed = database::mysql::ConnectionParams::parse(
-                conn, defaultHost, defaultPort, defaultUser, defaultPassword
-            );
+            parsed = database::mysql::ConnectionParams::parse(conn, defaultHost, defaultPort, defaultUser,
+                                                              defaultPassword);
         } catch (exception const& ex) {
             LOGS_INFO("ConnectionParamsTest  unexpected exception: " << ex.what());
             throw;
@@ -262,13 +232,9 @@ BOOST_AUTO_TEST_CASE(ConnectionParamsTest) {
         BOOST_CHECK(parsed.user == defaultUser);
         BOOST_CHECK(parsed.password == defaultPassword);
         BOOST_CHECK(parsed.database == "test");
-        BOOST_CHECK(
-            parsed.toString() == "mysql://" + defaultUser + ":xxxxxx@Host-B:13306/test"
-        );
-        BOOST_CHECK(
-            parsed.toString(showPassword) == "mysql://" + defaultUser + ":" + defaultPassword
-            + "@Host-B:13306/test"
-        );
+        BOOST_CHECK(parsed.toString() == "mysql://" + defaultUser + ":xxxxxx@Host-B:13306/test");
+        BOOST_CHECK(parsed.toString(showPassword) ==
+                    "mysql://" + defaultUser + ":" + defaultPassword + "@Host-B:13306/test");
     });
 
     // Parsing a connection string with all components provided
@@ -278,9 +244,8 @@ BOOST_AUTO_TEST_CASE(ConnectionParamsTest) {
         LOGS_INFO("ConnectionParamsTest  input:  '" << conn << "'");
         database::mysql::ConnectionParams parsed;
         try {
-            parsed = database::mysql::ConnectionParams::parse(
-                conn, defaultHost, defaultPort, defaultUser, defaultPassword
-            );
+            parsed = database::mysql::ConnectionParams::parse(conn, defaultHost, defaultPort, defaultUser,
+                                                              defaultPassword);
         } catch (exception const& ex) {
             LOGS_INFO("ConnectionParamsTest  unexpected exception: " << ex.what());
             throw;
@@ -292,12 +257,8 @@ BOOST_AUTO_TEST_CASE(ConnectionParamsTest) {
         BOOST_CHECK(parsed.user == "qsreplica");
         BOOST_CHECK(parsed.password == "CHANGEMETOO");
         BOOST_CHECK(parsed.database == "test");
-        BOOST_CHECK(
-            parsed.toString() == "mysql://qsreplica:xxxxxx@Host-B:13306/test"
-        );
-        BOOST_CHECK(
-            parsed.toString(showPassword) == "mysql://qsreplica:CHANGEMETOO@Host-B:13306/test"
-        );
+        BOOST_CHECK(parsed.toString() == "mysql://qsreplica:xxxxxx@Host-B:13306/test");
+        BOOST_CHECK(parsed.toString(showPassword) == "mysql://qsreplica:CHANGEMETOO@Host-B:13306/test");
     });
 
     // Test exception throwing if the database name is missing in
@@ -305,19 +266,20 @@ BOOST_AUTO_TEST_CASE(ConnectionParamsTest) {
     // thrown again to improve the error reporting (what causes
     // the exceptions).
 
-    BOOST_CHECK_THROW({
-        string const conn = "mysql://@";
-        LOGS_INFO("ConnectionParamsTest  input:  '" << conn << "'");
-        database::mysql::ConnectionParams parsed;
-        try {
-            parsed = database::mysql::ConnectionParams::parse(
-                conn, defaultHost, defaultPort, defaultUser, defaultPassword
-            );
-        } catch (exception const& ex) {
-            LOGS_INFO("ConnectionParamsTest  expected exception: " << ex.what());
-            throw;
-        }
-    }, invalid_argument);
+    BOOST_CHECK_THROW(
+            {
+                string const conn = "mysql://@";
+                LOGS_INFO("ConnectionParamsTest  input:  '" << conn << "'");
+                database::mysql::ConnectionParams parsed;
+                try {
+                    parsed = database::mysql::ConnectionParams::parse(conn, defaultHost, defaultPort,
+                                                                      defaultUser, defaultPassword);
+                } catch (exception const& ex) {
+                    LOGS_INFO("ConnectionParamsTest  expected exception: " << ex.what());
+                    throw;
+                }
+            },
+            invalid_argument);
 
     LOGS_INFO("ConnectionParamsTest test ends");
 }

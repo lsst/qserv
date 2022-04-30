@@ -30,9 +30,7 @@
 #include <mutex>
 #include <set>
 
-namespace lsst {
-namespace qserv {
-namespace util {
+namespace lsst::qserv::util {
 
 /// A dynamic work queue is a pool of threads created with some initial
 /// number of threads (by default 0). As work is added, threads are created,
@@ -45,13 +43,16 @@ namespace util {
 /// share of the available threads.
 class DynamicWorkQueue {
     struct Queue;
-    struct QueuePtrCmp { bool operator()(Queue const *, Queue const *) const; };
+    struct QueuePtrCmp {
+        bool operator()(Queue const *, Queue const *) const;
+    };
     struct Runner;
+
 public:
     /// Functor encapsulating a unit of work.
     class Callable {
     public:
-        Callable() : _next(0) { }
+        Callable() : _next(0) {}
 
         /// Must halt current operation.
         virtual ~Callable() { _next = 0; }
@@ -60,39 +61,38 @@ public:
         virtual void operator()() = 0;
 
         /// Halt while running or otherwise.
-        virtual void abort() { }
+        virtual void abort() {}
 
         /// Cleanup. Must not throw.
-        virtual void cancel() { }
+        virtual void cancel() {}
 
     private:
-        Callable * _next; // Embedded singly linked-list pointer; not owned.
+        Callable *_next;  // Embedded singly linked-list pointer; not owned.
         friend class DynamicWorkQueue;
         friend struct DynamicWorkQueue::Queue;
     };
 
-    DynamicWorkQueue(
-        size_t minThreads,           ///< Minimum # of threads overall.
-        size_t minThreadsPerSession, ///< Minimum # of threads per session.
-        size_t maxThreads,           ///< Maximum # of threads overall.
-        size_t initThreads = 0);     ///< # of threads to create up front.
+    DynamicWorkQueue(size_t minThreads,            ///< Minimum # of threads overall.
+                     size_t minThreadsPerSession,  ///< Minimum # of threads per session.
+                     size_t maxThreads,            ///< Maximum # of threads overall.
+                     size_t initThreads = 0);      ///< # of threads to create up front.
 
     ~DynamicWorkQueue();
 
     /// Add `callable` to the queue, associating it with `session`.
     /// Ownership of `callable` is transfered from the caller to the queue.
-    void add(void const * session, Callable * callable);
+    void add(void const *session, Callable *callable);
 
     /// Remove and `cancel()` any `Callable` objects associated with `session`
     /// from this queue.
-    void cancelQueued(void const * session);
+    void cancelQueued(void const *session);
 
 private:
     // Disable copy-construction and assignment.
     DynamicWorkQueue(DynamicWorkQueue const &);
-    DynamicWorkQueue & operator=(DynamicWorkQueue const &);
+    DynamicWorkQueue &operator=(DynamicWorkQueue const &);
 
-    static void _startRunner(DynamicWorkQueue& dwq);
+    static void _startRunner(DynamicWorkQueue &dwq);
 
     typedef std::map<void const *, Queue *> SessionQueueMap;
     typedef std::set<Queue *, QueuePtrCmp> QueueSet;
@@ -117,6 +117,6 @@ private:
     friend struct Runner;
 };
 
-}}} // namespace lsst::qserv::util
+}  // namespace lsst::qserv::util
 
-#endif // LSST_QSERV_CCONTROL_DYNAMICWORKQUEUE_H
+#endif  // LSST_QSERV_CCONTROL_DYNAMICWORKQUEUE_H

@@ -30,9 +30,7 @@
 #include "replica/FindRequest.h"
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class ReplicaDiff represents a difference between two replica information
@@ -46,9 +44,7 @@ namespace replica {
  * of the replica differences could be also reported.
  */
 class ReplicaDiff {
-
 public:
-
     /**
      * Default constructor create an object which exhibits "no difference"
      * behavior.
@@ -64,8 +60,7 @@ public:
      * @param replica2
      *   `a reference to the the 'newer' replica object
      */
-    ReplicaDiff(ReplicaInfo const& replica1,
-                ReplicaInfo const& replica2);
+    ReplicaDiff(ReplicaInfo const& replica1, ReplicaInfo const& replica2);
 
     ReplicaDiff(ReplicaDiff const&) = default;
     ReplicaDiff& operator=(ReplicaDiff const&) = default;
@@ -96,20 +91,19 @@ public:
 
     // Specific tests
 
-    bool statusMismatch()    const { return _statusMismatch; }
-    bool numFilesMismatch()  const { return _numFilesMismatch; }
+    bool statusMismatch() const { return _statusMismatch; }
+    bool numFilesMismatch() const { return _numFilesMismatch; }
     bool fileNamesMismatch() const { return _fileNamesMismatch; }
-    bool fileSizeMismatch()  const { return _fileSizeMismatch; }
-    bool fileCsMismatch()    const { return _fileCsMismatch; }
+    bool fileSizeMismatch() const { return _fileSizeMismatch; }
+    bool fileCsMismatch() const { return _fileCsMismatch; }
     bool fileMtimeMismatch() const { return _fileMtimeMismatch; }
 
     /// @return a compact string representation of the failed tests
     std::string const& flags2string() const;
 
 private:
-
-    ReplicaInfo _replica1; ///< older replia
-    ReplicaInfo _replica2; ///< newer replica
+    ReplicaInfo _replica1;  ///< older replia
+    ReplicaInfo _replica2;  ///< newer replica
 
     bool _notEqual;
     bool _statusMismatch;
@@ -119,28 +113,26 @@ private:
     bool _fileCsMismatch;
     bool _fileMtimeMismatch;
 
-    mutable std::string _flags;     ///< computed and cached first time requested
+    mutable std::string _flags;  ///< computed and cached first time requested
 };
 
 /// Overloaded streaming operator for type ReplicaDiff
 std::ostream& operator<<(std::ostream& os, ReplicaDiff const& ri);
 
 /**
-  * Class VerifyJob represents a tool which will find go over all replicas
-  * of all chunks and databases on all worker nodes, check if replicas still
-  * exist, then verify a status of each replica. The new status will be compared
-  * against the one which exists in the database. This will include:
-  *   - file sizes
-  *   - modification timestamps of files
-  *   - control/check sums of files belonging to the replicas
-  *
-  * Any differences will get reported to a subscriber via a specific callback
-  * function. The new status of a replica will be also recorded within the database.
-  */
-class VerifyJob : public Job  {
-
+ * Class VerifyJob represents a tool which will find go over all replicas
+ * of all chunks and databases on all worker nodes, check if replicas still
+ * exist, then verify a status of each replica. The new status will be compared
+ * against the one which exists in the database. This will include:
+ *   - file sizes
+ *   - modification timestamps of files
+ *   - control/check sums of files belonging to the replicas
+ *
+ * Any differences will get reported to a subscriber via a specific callback
+ * function. The new status of a replica will be also recorded within the database.
+ */
+class VerifyJob : public Job {
 public:
-
     /// The pointer type for instances of the class
     typedef std::shared_ptr<VerifyJob> Ptr;
 
@@ -148,9 +140,7 @@ public:
     typedef std::function<void(Ptr)> CallbackType;
 
     /// The function type for notifications on the completion of the request
-    typedef std::function<void(Ptr,
-                               ReplicaDiff const&,
-                               std::vector<ReplicaDiff> const&)> CallbackTypeOnDiff;
+    typedef std::function<void(Ptr, ReplicaDiff const&, std::vector<ReplicaDiff> const&)> CallbackTypeOnDiff;
 
     /// @return the unique name distinguishing this class from other types of jobs
     static std::string typeName();
@@ -188,13 +178,9 @@ public:
      * @throws std::invalid_argument
      *   if maxReplicas is 0
      */
-    static Ptr create(size_t maxReplicas,
-                      bool computeCheckSum,
-                      CallbackTypeOnDiff const& onReplicaDifference,
-                      Controller::Ptr const& controller,
-                      std::string const& parentJobId,
-                      CallbackType const& onFinish,
-                      int priority);
+    static Ptr create(size_t maxReplicas, bool computeCheckSum, CallbackTypeOnDiff const& onReplicaDifference,
+                      Controller::Ptr const& controller, std::string const& parentJobId,
+                      CallbackType const& onFinish, int priority);
 
     // Default construction and copy semantics are prohibited
 
@@ -211,10 +197,9 @@ public:
     bool computeCheckSum() const { return _computeCheckSum; }
 
     /// @see Job::extendedPersistentState()
-    std::list<std::pair<std::string,std::string>> extendedPersistentState() const override;
+    std::list<std::pair<std::string, std::string>> extendedPersistentState() const override;
 
 protected:
-
     /// @see Job::startImpl()
     void startImpl(util::Lock const& lock) final;
 
@@ -225,14 +210,9 @@ protected:
     void notify(util::Lock const& lock) final;
 
 private:
-
     /// @see VerifyJob::create()
-    VerifyJob(size_t maxReplicas,
-              bool computeCheckSum,
-              CallbackTypeOnDiff const& onReplicaDifference,
-              Controller::Ptr const& controller,
-              std::string const& parentJobId,
-              CallbackType const& onFinish,
+    VerifyJob(size_t maxReplicas, bool computeCheckSum, CallbackTypeOnDiff const& onReplicaDifference,
+              Controller::Ptr const& controller, std::string const& parentJobId, CallbackType const& onFinish,
               int priority);
 
     /**
@@ -256,15 +236,12 @@ private:
      *   a desired number of replicas to be pulled from the database
      *   for processing.
      */
-    void _nextReplicas(util::Lock const& lock,
-                       std::vector<ReplicaInfo>& replicas,
-                       size_t numReplicas);
-
+    void _nextReplicas(util::Lock const& lock, std::vector<ReplicaInfo>& replicas, size_t numReplicas);
 
     // Input parameters
 
     size_t const _maxReplicas;
-    bool   const _computeCheckSum;
+    bool const _computeCheckSum;
 
     /// Client-defined function to be called upon the completion of the job
     /// @note is reset when the job finishes
@@ -281,6 +258,6 @@ private:
     std::map<std::string, FindRequest::Ptr> _requests;
 };
 
-}}} // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_VERIFYJOB_H
+#endif  // LSST_QSERV_REPLICA_VERIFYJOB_H

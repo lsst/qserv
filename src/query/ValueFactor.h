@@ -21,14 +21,12 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 /**
-  * @file
-  *
-  * @author Daniel L. Wang, SLAC
-  */
-
+ * @file
+ *
+ * @author Daniel L. Wang, SLAC
+ */
 
 // ValueFactor is a term in a ValueExpr's "term (term_op term)*" phrase
-
 
 #ifndef LSST_QSERV_QUERY_VALUEFACTOR_H
 #define LSST_QSERV_QUERY_VALUEFACTOR_H
@@ -40,25 +38,17 @@
 // Local headers
 #include "query/ColumnRef.h"
 
-
 // Forward declarations
-namespace lsst {
-namespace qserv {
-namespace query {
-    class QueryTemplate;
-    class FuncExpr;
-    class ValueExpr; // To support nested expressions.
-    class ValueFactor;
-}}} // End of forward declarations
+namespace lsst::qserv::query {
+class QueryTemplate;
+class FuncExpr;
+class ValueExpr;  // To support nested expressions.
+class ValueFactor;
+}  // namespace lsst::qserv::query
 
-
-namespace lsst {
-namespace qserv {
-namespace query {
-
+namespace lsst::qserv::query {
 
 typedef std::shared_ptr<ValueFactor> ValueFactorPtr;
-
 
 /// ValueFactor is some kind of value that can exist in a column. It can be
 /// logical (i.e. a column name) or physical (a constant number or value).
@@ -66,14 +56,21 @@ class ValueFactor {
 public:
     enum Type { NONE, COLUMNREF, FUNCTION, AGGFUNC, STAR, CONST, EXPR };
     static std::string getTypeString(Type t) {
-        switch(t) {
-        case NONE:      return "NONE";
-        case COLUMNREF: return "COLUMNREF";
-        case FUNCTION:  return "FUNCTION";
-        case AGGFUNC:   return "AGGFUNC";
-        case STAR:      return "STAR";
-        case CONST:     return "CONST";
-        case EXPR:      return "EXPR";
+        switch (t) {
+            case NONE:
+                return "NONE";
+            case COLUMNREF:
+                return "COLUMNREF";
+            case FUNCTION:
+                return "FUNCTION";
+            case AGGFUNC:
+                return "AGGFUNC";
+            case STAR:
+                return "STAR";
+            case CONST:
+                return "CONST";
+            case EXPR:
+                return "EXPR";
         }
         return "unknown";
     }
@@ -135,37 +132,31 @@ public:
     bool isSubsetOf(ValueFactor const& rhs) const;
 
 private:
-
     /// Clear this object - drop all its parameters
     void _reset();
 
     Type _type{NONE};
-    std::shared_ptr<ColumnRef> _columnRef; //< the value when _type == COLUMNREF
-    std::shared_ptr<FuncExpr> _funcExpr; //< the value when _type == FUNCTION or AGGFUNC
-    std::shared_ptr<ValueExpr> _valueExpr; //< the value when _type == EXPR
-    std::string _constVal; //< the value when _type == CONST
+    std::shared_ptr<ColumnRef> _columnRef;  //< the value when _type == COLUMNREF
+    std::shared_ptr<FuncExpr> _funcExpr;    //< the value when _type == FUNCTION or AGGFUNC
+    std::shared_ptr<ValueExpr> _valueExpr;  //< the value when _type == EXPR
+    std::string _constVal;                  //< the value when _type == CONST
     // when _type == STAR, _tableStar can be null or can contain table info for a table-qualified value
     // e.g. "Object.*". Qserv does not currently allow a database in this expression and the database field
     // must be empty.
     std::shared_ptr<TableRef> _tableStar;
-
 };
-
 
 class ValueFactor::render {
 public:
     render(QueryTemplate& qt) : _qt(qt) {}
     void applyToQT(ValueFactor const& ve);
     void applyToQT(ValueFactor const* vep) {
-        if(vep) applyToQT(*vep);
+        if (vep) applyToQT(*vep);
     }
-    void applyToQT(std::shared_ptr<ValueFactor> const& vep) {
-        applyToQT(vep.get());
-    }
+    void applyToQT(std::shared_ptr<ValueFactor> const& vep) { applyToQT(vep.get()); }
     QueryTemplate& _qt;
 };
 
+}  // namespace lsst::qserv::query
 
-}}} // namespace lsst::qserv::query
-
-#endif // LSST_QSERV_QUERY_VALUEFACTOR_H
+#endif  // LSST_QSERV_QUERY_VALUEFACTOR_H

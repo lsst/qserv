@@ -30,15 +30,13 @@
 #include "replica/DatabaseMySQL.h"
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class MySQLTestApp implements a tool for testing the MySQL API used by
  * the Replication system implementation.
  */
-class MySQLTestApp: public Application {
+class MySQLTestApp : public Application {
 public:
     typedef std::shared_ptr<MySQLTestApp> Ptr;
 
@@ -51,11 +49,11 @@ public:
      */
     static Ptr create(int argc, char* argv[]);
 
-    MySQLTestApp()=delete;
-    MySQLTestApp(MySQLTestApp const&)=delete;
-    MySQLTestApp& operator=(MySQLTestApp const&)=delete;
+    MySQLTestApp() = delete;
+    MySQLTestApp(MySQLTestApp const&) = delete;
+    MySQLTestApp& operator=(MySQLTestApp const&) = delete;
 
-    ~MySQLTestApp() final=default;
+    ~MySQLTestApp() final = default;
 
 protected:
     /// @see Application::runImpl()
@@ -94,7 +92,7 @@ private:
      */
     void _executeQueryWait(std::string const& query) const;
 
-    /// @return return a query to be read from the standard input or from a file 
+    /// @return return a query to be read from the standard input or from a file
     std::string _getQuery() const;
 
     /// The name of a test
@@ -119,7 +117,7 @@ private:
 
     /// The number of iterations (the times the same operation would be repeated))
     unsigned int _numIter = 1;
-    
+
     /// The optional delay between iterations
     unsigned int _iterDelayMillisec = 0;
 
@@ -127,6 +125,6 @@ private:
     database::mysql::Connection::Ptr _conn;
 };
 
-}}} // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif /* LSST_QSERV_REPLICA_MYSQLTESTAPP_H */

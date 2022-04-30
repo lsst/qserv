@@ -31,9 +31,7 @@
 // Qserv headers
 #include "proto/worker.pb.h"
 
-namespace lsst {
-namespace qserv {
-namespace proto {
+namespace lsst::qserv::proto {
 
 /// Structure to store shared scan information for a single table.
 ///
@@ -41,15 +39,16 @@ struct ScanTableInfo {
     using ListOf = std::vector<ScanTableInfo>;
 
     ScanTableInfo(std::string const& db_, std::string const& table_) : db(db_), table(table_) {}
-    ScanTableInfo(std::string const& db_, std::string const& table_,
-                  bool lockInMemory_, int scanRating_) :
-                  db{db_}, table{table_}, lockInMemory{lockInMemory_}, scanRating{scanRating_} {}
-    ScanTableInfo(TaskMsg_ScanTable const& scanTbl) :
-                  db{scanTbl.db()}, table{scanTbl.table()},
-                  lockInMemory{scanTbl.lockinmemory()}, scanRating{scanTbl.scanrating()} {}
+    ScanTableInfo(std::string const& db_, std::string const& table_, bool lockInMemory_, int scanRating_)
+            : db{db_}, table{table_}, lockInMemory{lockInMemory_}, scanRating{scanRating_} {}
+    ScanTableInfo(TaskMsg_ScanTable const& scanTbl)
+            : db{scanTbl.db()},
+              table{scanTbl.table()},
+              lockInMemory{scanTbl.lockinmemory()},
+              scanRating{scanTbl.scanrating()} {}
 
     /// Copy contents of this object into a TaskMsg_ScanTable object.
-    void copyToScanTable(TaskMsg_ScanTable *msgScanTbl) const {
+    void copyToScanTable(TaskMsg_ScanTable* msgScanTbl) const {
         msgScanTbl->set_db(db);
         msgScanTbl->set_table(table);
         msgScanTbl->set_lockinmemory(lockInMemory);
@@ -60,8 +59,8 @@ struct ScanTableInfo {
 
     std::string db;
     std::string table;
-    bool lockInMemory {false};
-    int  scanRating    {0};
+    bool lockInMemory{false};
+    int scanRating{0};
 };
 
 struct ScanInfo {
@@ -75,10 +74,9 @@ struct ScanInfo {
     int scanRating{Rating::FASTEST};
 };
 
-
 std::ostream& operator<<(std::ostream& os, ScanTableInfo const& tbl);
 std::ostream& operator<<(std::ostream& os, ScanInfo const& info);
 
-}}} // namespace lsst::qserv::proto
+}  // namespace lsst::qserv::proto
 
-#endif // LSST_QSERV_PROTO_SCANTABLEINFO_H
+#endif  // LSST_QSERV_PROTO_SCANTABLEINFO_H

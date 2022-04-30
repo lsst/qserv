@@ -33,10 +33,7 @@ namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.util.Command");
 }
 
-namespace lsst {
-namespace qserv {
-namespace util {
-
+namespace lsst::qserv::util {
 
 /// Set status to COMPLETE and notify everyone waiting for a status change.
 void Tracker::setComplete() {
@@ -56,14 +53,14 @@ bool Tracker::isFinished() {
 /// Wait until this Tracker's action is complete.
 void Tracker::waitComplete() {
     std::unique_lock<std::mutex> lock(_trMutex);
-    _trCV.wait(lock, [this](){return _trStatus == Status::COMPLETE;});
+    _trCV.wait(lock, [this]() { return _trStatus == Status::COMPLETE; });
 }
 
 /// Change the function called when the Command is activated.
 /// nullptr is replaced with a nop function.
 void Command::setFunc(std::function<void(CmdData*)> func) {
     if (func == nullptr) {
-        _func = [](CmdData*){;};
+        _func = [](CmdData*) { ; };
     } else {
         _func = func;
     }
@@ -71,8 +68,6 @@ void Command::setFunc(std::function<void(CmdData*)> func) {
 
 /// If _func is a lambda with a captured shared_ptr to this command,
 /// this function must be called or the lambda will keep this object alive.
-void Command::resetFunc() {
-    setFunc(nullptr);
-}
+void Command::resetFunc() { setFunc(nullptr); }
 
-}}} // namespace
+}  // namespace lsst::qserv::util

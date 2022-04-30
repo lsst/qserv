@@ -37,14 +37,12 @@
 #include "wbase/SendChannel.h"
 #include "wbase/TransmitData.h"
 
-
-namespace lsst {
-namespace qserv {
+namespace lsst::qserv {
 
 namespace wcontrol {
 class TransmitMgr;
 class TransmitLock;
-}
+}  // namespace wcontrol
 
 namespace wbase {
 
@@ -78,15 +76,14 @@ class SendChannelShared {
 public:
     using Ptr = std::shared_ptr<SendChannelShared>;
 
-    static std::atomic<uint64_t> scsSeqId; ///< Source for unique _scsId numbers
+    static std::atomic<uint64_t> scsSeqId;  ///< Source for unique _scsId numbers
 
-    SendChannelShared()=delete;
+    SendChannelShared() = delete;
     SendChannelShared(SendChannelShared const&) = delete;
     SendChannelShared& operator=(SendChannelShared const&) = delete;
 
     static Ptr create(SendChannel::Ptr const& sendChannel,
-                      std::shared_ptr<wcontrol::TransmitMgr> const& transmitMgr,
-                      qmeta::CzarId czarId);
+                      std::shared_ptr<wcontrol::TransmitMgr> const& transmitMgr, qmeta::CzarId czarId);
 
     ~SendChannelShared();
 
@@ -111,7 +108,7 @@ public:
     }
 
     /// @see SendChannel::sendStream
-    bool sendStream(xrdsvc::StreamBuffer::Ptr const& sBuf, bool last, int scsSeq=-1) {
+    bool sendStream(xrdsvc::StreamBuffer::Ptr const& sBuf, bool last, int scsSeq = -1) {
         std::lock_guard<std::mutex> sLock(_streamMutex);
         return _sendStream(sBuf, last, scsSeq);
     }
@@ -127,7 +124,6 @@ public:
         if (_sendChannel == nullptr) return true;
         return _sendChannel->isDead();
     }
-
 
     /// Set the number of Tasks that will be sent using this SendChannel.
     /// This should not be changed once set.
@@ -163,7 +159,6 @@ public:
     /// @return true if this is the first time this function has been called.
     bool getFirstChannelSqlConn() { return _firstChannelSqlConn.exchange(false); }
 
-
     /// Set the schemaCols. All tasks using this send channel should have
     /// the same schema.
     void setSchemaCols(Task& task, std::vector<SchemaCol>& schemaCols);
@@ -175,7 +170,7 @@ public:
     /// if appropriate.
     /// @ return true if there was an error.
     bool buildAndTransmitResult(MYSQL_RES* mResult, int numFields, Task& task, bool largeResult,
-            util::MultiError& multiErr, std::atomic<bool>& cancelled, bool &readRowsOk);
+                                util::MultiError& multiErr, std::atomic<bool>& cancelled, bool& readRowsOk);
 
     /// @return a log worthy string describing _transmitData.
     std::string dumpTr() const;
@@ -183,40 +178,31 @@ public:
 private:
     /// Private constructor to protect shared pointer integrity.
     SendChannelShared(SendChannel::Ptr const& sendChannel,
-                      std::shared_ptr<wcontrol::TransmitMgr> const& transmitMgr,
-                      qmeta::CzarId czarId);
+                      std::shared_ptr<wcontrol::TransmitMgr> const& transmitMgr, qmeta::CzarId czarId);
 
     /// Wrappers for SendChannel public functions that may need to be used
     /// by threads.
     /// @see SendChannel::send
     /// Note: _streamLock must be held before calling this function.
-    bool _send(char const* buf, int bufLen) {
-        return _sendChannel->send(buf, bufLen);
-    }
+    bool _send(char const* buf, int bufLen) { return _sendChannel->send(buf, bufLen); }
 
     /// @see SendChannel::sendError
     /// Note: _streamLock must be held before calling this function.
-    bool _sendError(std::string const& msg, int code) {
-        return _sendChannel->sendError(msg, code);
-    }
+    bool _sendError(std::string const& msg, int code) { return _sendChannel->sendError(msg, code); }
 
     /// @see SendChannel::sendFile
     /// Note: _streamLock must be held before calling this function.
-    bool _sendFile(int fd, SendChannel::Size fSize) {
-        return _sendChannel->sendFile(fd, fSize);
-    }
+    bool _sendFile(int fd, SendChannel::Size fSize) { return _sendChannel->sendFile(fd, fSize); }
 
     /// @see SendChannel::sendStream
     /// Note: _streamLock must be held before calling this function.
-    bool _sendStream(xrdsvc::StreamBuffer::Ptr const& sBuf, bool last, int scsSeq=-1) {
+    bool _sendStream(xrdsvc::StreamBuffer::Ptr const& sBuf, bool last, int scsSeq = -1) {
         return _sendChannel->sendStream(sBuf, last, scsSeq);
     }
 
     /// @see SendChannel::kill
     /// Note: _streamLock must be held before calling this function.
     bool _kill(std::string const& note);
-
-
 
     /// @return a new TransmitData::Ptr object.
     TransmitData::Ptr _createTransmit(Task& task);
@@ -235,8 +221,8 @@ private:
     /// and crash.
     /// @return true if transmit was added successfully.
     /// @see SendChannelShared::_transmit code for further explanation.
-    bool _addTransmit(bool cancelled, bool erred, bool lastIn,
-                      TransmitData::Ptr const& tData, int qId, int jId);
+    bool _addTransmit(bool cancelled, bool erred, bool lastIn, TransmitData::Ptr const& tData, int qId,
+                      int jId);
 
     /// Encode TransmitData items from _transmitQueue and pass them to XrdSsi
     /// to be sent to the czar.
@@ -252,9 +238,8 @@ private:
     /// 'last' should only be true if this is the last buffer to be sent with this _sendChannel.
     /// 'note' is just a log note about what/who is sending the buffer.
     /// @return true if the buffer was sent.
-    bool _sendBuf(std::lock_guard<std::mutex> const& streamLock,
-                  xrdsvc::StreamBuffer::Ptr& streamBuf, bool last,
-                  std::string const& note, int scsSeq);
+    bool _sendBuf(std::lock_guard<std::mutex> const& streamLock, xrdsvc::StreamBuffer::Ptr& streamBuf,
+                  bool last, std::string const& note, int scsSeq);
 
     /// Prepare the transmit data and then call _addTransmit.
     bool _prepTransmit(Task& task, bool cancelled, bool lastIn);
@@ -262,32 +247,31 @@ private:
     /// @see dumpTr()
     std::string _dumpTr() const;
 
-
     /// streamMutex is used to protect _lastCount and messages that are sent
     /// using SendChannelShared.
     std::mutex _streamMutex;
 
-    std::queue<TransmitData::Ptr> _transmitQueue; ///< Queue of data to be encoded and sent.
-    std::mutex _queueMtx; ///< protects _transmitQueue
+    std::queue<TransmitData::Ptr> _transmitQueue;  ///< Queue of data to be encoded and sent.
+    std::mutex _queueMtx;                          ///< protects _transmitQueue
 
     /// metadata buffer. Once set, it cannot change until after Finish() has been called.
     std::string _metadataBuf;
 
-    int _taskCount = 0; ///< The number of tasks to be sent over this SendChannel.
-    int _lastCount = 0; ///< The number of 'last' buffers received.
-    std::atomic<bool> _lastRecvd{false}; ///< The truly 'last' transmit message is in the queue.
-    std::atomic<bool> _firstTransmit{true}; ///< True until the first transmit has been sent.
+    int _taskCount = 0;                      ///< The number of tasks to be sent over this SendChannel.
+    int _lastCount = 0;                      ///< The number of 'last' buffers received.
+    std::atomic<bool> _lastRecvd{false};     ///< The truly 'last' transmit message is in the queue.
+    std::atomic<bool> _firstTransmit{true};  ///< True until the first transmit has been sent.
 
-    SendChannel::Ptr _sendChannel; ///< Used to pass encoded information to XrdSsi.
+    SendChannel::Ptr _sendChannel;  ///< Used to pass encoded information to XrdSsi.
 
-    std::atomic<bool> _firstTransmitLock{true}; ///< True until the first thread tries to lock transmitLock.
-    std::shared_ptr<wcontrol::TransmitLock> _transmitLock; ///< Hold onto transmitLock until finished.
-    std::mutex _transmitLockMtx; ///< protects access to _transmitLock.
+    std::atomic<bool> _firstTransmitLock{true};  ///< True until the first thread tries to lock transmitLock.
+    std::shared_ptr<wcontrol::TransmitLock> _transmitLock;  ///< Hold onto transmitLock until finished.
+    std::mutex _transmitLockMtx;                            ///< protects access to _transmitLock.
     std::condition_variable _transmitLockCv;
-    std::shared_ptr<wcontrol::TransmitMgr> _transmitMgr; ///< Pointer to the TransmitMgr
-    qmeta::CzarId const _czarId; ///< id of the czar that requested this task(s).
-    uint64_t const _scsId; ///< id number for this SendChannelShared
-    std::atomic<uint32_t> _scsSeq{0}; ///< SendChannelSharedsequence number for transmit.
+    std::shared_ptr<wcontrol::TransmitMgr> _transmitMgr;  ///< Pointer to the TransmitMgr
+    qmeta::CzarId const _czarId;                          ///< id of the czar that requested this task(s).
+    uint64_t const _scsId;                                ///< id number for this SendChannelShared
+    std::atomic<uint32_t> _scsSeq{0};                     ///< SendChannelSharedsequence number for transmit.
 
     /// The number of sql connections opened to handle the Tasks using this SendChannelShared.
     /// Once this is greater than 0, this object needs free access to sql connections to avoid
@@ -300,10 +284,11 @@ private:
     std::vector<SchemaCol> _schemaCols;
     std::atomic<bool> _schemaColsSet{false};
 
-    std::shared_ptr<TransmitData> _transmitData; ///< TransmitData object
-    mutable std::mutex _tMtx; ///< protects _transmitData
+    std::shared_ptr<TransmitData> _transmitData;  ///< TransmitData object
+    mutable std::mutex _tMtx;                     ///< protects _transmitData
 };
 
-}}} // namespace lsst::qserv::wbase
+}  // namespace wbase
+}  // namespace lsst::qserv
 
-#endif // LSST_QSERV_WBASE_SENDCHANNELSHARED_H
+#endif  // LSST_QSERV_WBASE_SENDCHANNELSHARED_H

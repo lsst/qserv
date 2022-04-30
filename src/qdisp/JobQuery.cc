@@ -38,28 +38,24 @@
 
 namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.qdisp.JobQuery");
-} // anonymous namespace
+}  // anonymous namespace
 
-namespace lsst {
-namespace qserv {
-namespace qdisp {
-
+namespace lsst::qserv::qdisp {
 
 JobQuery::JobQuery(Executive::Ptr const& executive, JobDescription::Ptr const& jobDescription,
-                   JobStatus::Ptr const& jobStatus,
-                   std::shared_ptr<MarkCompleteFunc> const& markCompleteFunc,
-                   QueryId qid) :
-          _executive(executive), _jobDescription(jobDescription),
-          _markCompleteFunc(markCompleteFunc), _jobStatus(jobStatus),
+                   JobStatus::Ptr const& jobStatus, std::shared_ptr<MarkCompleteFunc> const& markCompleteFunc,
+                   QueryId qid)
+        : _executive(executive),
+          _jobDescription(jobDescription),
+          _markCompleteFunc(markCompleteFunc),
+          _jobStatus(jobStatus),
           _qid(qid),
           _idStr(QueryIdHelper::makeIdStr(qid, getIdInt())) {
     _qdispPool = executive->getQdispPool();
     LOGS(_log, LOG_LVL_TRACE, "JobQuery desc=" << _jobDescription);
 }
 
-JobQuery::~JobQuery() {
-    LOGS(_log, LOG_LVL_DEBUG, "~JobQuery");
-}
+JobQuery::~JobQuery() { LOGS(_log, LOG_LVL_DEBUG, "~JobQuery"); }
 
 /** Attempt to run the job on a worker.
  * @return - false if it can not setup the job or the maximum number of attempts has been reached.
@@ -77,9 +73,8 @@ bool JobQuery::runJob() {
     bool handlerReset = _jobDescription->respHandler()->reset();
     if (!(cancelled || superfluous) && handlerReset) {
         auto criticalErr = [this, &executive](std::string const& msg) {
-            LOGS(_log, LOG_LVL_ERROR, msg << " "
-                 << _jobDescription << " Canceling user query!");
-            executive->squash(); // This should kill all jobs in this user query.
+            LOGS(_log, LOG_LVL_ERROR, msg << " " << _jobDescription << " Canceling user query!");
+            executive->squash();  // This should kill all jobs in this user query.
         };
 
         LOGS(_log, LOG_LVL_DEBUG, "runJob checking attempt=" << _jobDescription->getAttemptCount());
@@ -109,13 +104,13 @@ bool JobQuery::runJob() {
         std::shared_ptr<JobQuery> jq(shared_from_this());
         _inSsi = true;
         if (executive->startQuery(jq)) {
-           _jobStatus->updateInfo(_idStr, JobStatus::REQUEST);
-           return true;
+            _jobStatus->updateInfo(_idStr, JobStatus::REQUEST);
+            return true;
         }
         _inSsi = false;
     }
-    LOGS(_log, (superfluous ? LOG_LVL_DEBUG : LOG_LVL_WARN), "runJob failed. cancelled=" << cancelled
-              << " reset=" << handlerReset);
+    LOGS(_log, (superfluous ? LOG_LVL_DEBUG : LOG_LVL_WARN),
+         "runJob failed. cancelled=" << cancelled << " reset=" << handlerReset);
     return false;
 }
 
@@ -139,7 +134,7 @@ bool JobQuery::cancel(bool superfluous) {
         }
         if (!cancelled) {
             std::ostringstream os;
-            os << _idStr << " cancel QueryRequest=" << _queryRequestPtr ;
+            os << _idStr << " cancel QueryRequest=" << _queryRequestPtr;
             LOGS(_log, LOG_LVL_DEBUG, os.str());
             if (!superfluous) {
                 getDescription()->respHandler()->errorFlush(os.str(), -1);
@@ -160,7 +155,6 @@ bool JobQuery::cancel(bool superfluous) {
     return false;
 }
 
-
 /// @return true if this job's executive has been cancelled.
 /// There is enough delay between the executive being cancelled and the executive
 /// cancelling all the jobs that it makes a difference. If either the executive,
@@ -170,7 +164,7 @@ bool JobQuery::isQueryCancelled() {
     auto exec = _executive.lock();
     if (exec == nullptr) {
         LOGS(_log, LOG_LVL_WARN, "_executive == nullptr");
-        return true; // Safer to assume the worst.
+        return true;  // Safer to assume the worst.
     }
     return exec->getCancelled();
 }
@@ -179,5 +173,4 @@ std::ostream& operator<<(std::ostream& os, JobQuery const& jq) {
     return os << "{" << jq.getIdStr() << jq._jobDescription << " " << *jq._jobStatus << "}";
 }
 
-
-}}} // end namespace
+}  // namespace lsst::qserv::qdisp

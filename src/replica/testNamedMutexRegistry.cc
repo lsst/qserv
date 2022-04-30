@@ -60,10 +60,7 @@ public:
      * @param from The minimum value of the distribution.
      * @param to The minimum value of the distribution.
      */
-    explicit RandomUniformIndex(size_t from, size_t to)
-        :   _rd(),
-            _gen(_rd()),
-            _distrib(from, to) {
+    explicit RandomUniformIndex(size_t from, size_t to) : _rd(), _gen(_rd()), _distrib(from, to) {
         assert(from <= to);
     }
     RandomUniformIndex(RandomUniformIndex const&) = delete;
@@ -93,25 +90,24 @@ private:
     uniform_int_distribution<size_t> _distrib;
     map<size_t, size_t> _stats;
 };
-}
+}  // namespace
 
 BOOST_AUTO_TEST_SUITE(Suite)
 
 BOOST_AUTO_TEST_CASE(NamedMutexRegistryTest1) {
-
     LOGS_INFO("NamedMutexRegistryTest1 BEGIN");
 
     // Test non-throwing constructor
-    BOOST_REQUIRE_NO_THROW({
-        NamedMutexRegistry registry;
-    });
+    BOOST_REQUIRE_NO_THROW({ NamedMutexRegistry registry; });
 
     // Method get() should throw if the empty string is passed as the name of
     // a mutex.
-    BOOST_CHECK_THROW({
-        NamedMutexRegistry registry;
-        registry.get(string());
-    }, invalid_argument);
+    BOOST_CHECK_THROW(
+            {
+                NamedMutexRegistry registry;
+                registry.get(string());
+            },
+            invalid_argument);
 
     // Method get() should not throw if called more than one time in a row for the same
     // name of a mutex.
@@ -140,29 +136,26 @@ BOOST_AUTO_TEST_CASE(NamedMutexRegistryTest1) {
 }
 
 BOOST_AUTO_TEST_CASE(NamedMutexRegistryTest2) {
-
     LOGS_INFO("NamedMutexRegistryTest2 BEGIN");
 
     // Test the correctness of the registry using a non-atomic
     // counter to be incremented after acquiring a lock.
     unique_ptr<NamedMutexRegistry> registry;
-    BOOST_REQUIRE_NO_THROW({
-        registry = make_unique<NamedMutexRegistry>();
-    });
+    BOOST_REQUIRE_NO_THROW({ registry = make_unique<NamedMutexRegistry>(); });
     if (registry != nullptr) {
         unsigned int counter = 0;
         unsigned int const steps = 1024;
         unsigned int const numThreads = min(2U, thread::hardware_concurrency());
         vector<unique_ptr<thread>> threads(numThreads);
-        for (auto&& thr: threads) {
-            thr = make_unique<thread>([&](){
+        for (auto&& thr : threads) {
+            thr = make_unique<thread>([&]() {
                 for (unsigned int i = 0; i < steps; ++i) {
                     util::Lock const lock(registry->get("a"), __func__);
                     ++counter;
                 }
             });
         }
-        for (auto&& thr: threads) {
+        for (auto&& thr : threads) {
             thr->join();
         }
         BOOST_CHECK_EQUAL(counter, steps * numThreads);
@@ -171,7 +164,6 @@ BOOST_AUTO_TEST_CASE(NamedMutexRegistryTest2) {
 }
 
 BOOST_AUTO_TEST_CASE(NamedMutexRegistryTest3) {
-
     // The optional test that makes use a lot of CPU resources. The test would
     // be running far greater number of threads than the number of the hardware threads
     // available on a machine. The test is excluded from the default run mode of the application
@@ -204,25 +196,23 @@ BOOST_AUTO_TEST_CASE(NamedMutexRegistryTest3) {
         unsigned int numMutexes;
         unsigned int numLocksPerThread;
         unsigned int numThreads;
-        int keepLockTimeMs;                 // if 0 then release lock immediately
-        int waitAfterReleaseLockTimeMs;     // if 0 then acquire another lock immediately
+        int keepLockTimeMs;              // if 0 then release lock immediately
+        int waitAfterReleaseLockTimeMs;  // if 0 then acquire another lock immediately
     };
 
     auto test = [](TestPlan const& plan) {
-
         LOGS_INFO("NamedMutexRegistryTest3 [" << plan.name << "] BEGIN");
         LOGS_INFO("NamedMutexRegistryTest3 [" << plan.name << "] numMutexes: " << plan.numMutexes);
-        LOGS_INFO("NamedMutexRegistryTest3 [" << plan.name << "] numLocksPerThread: " << plan.numLocksPerThread);
+        LOGS_INFO("NamedMutexRegistryTest3 [" << plan.name
+                                              << "] numLocksPerThread: " << plan.numLocksPerThread);
         LOGS_INFO("NamedMutexRegistryTest3 [" << plan.name << "] numThreads: " << plan.numThreads);
         LOGS_INFO("NamedMutexRegistryTest3 [" << plan.name << "] keepLockTimeMs: " << plan.keepLockTimeMs);
-        LOGS_INFO("NamedMutexRegistryTest3 [" << plan.name << "] waitAfterReleaseLockTimeMs: " << plan.waitAfterReleaseLockTimeMs);
+        LOGS_INFO("NamedMutexRegistryTest3 ["
+                  << plan.name << "] waitAfterReleaseLockTimeMs: " << plan.waitAfterReleaseLockTimeMs);
 
         unique_ptr<NamedMutexRegistry> registry;
-        BOOST_REQUIRE_NO_THROW({
-            registry = make_unique<NamedMutexRegistry>();
-        });
+        BOOST_REQUIRE_NO_THROW({ registry = make_unique<NamedMutexRegistry>(); });
         if (registry != nullptr) {
-
             // Contexts simulate data objects (simple counters) protected by mutexes.
             struct KeyCounterContext {
                 string const key = Generators::uniqueId();
@@ -236,11 +226,11 @@ BOOST_AUTO_TEST_CASE(NamedMutexRegistryTest3) {
             RandomUniformIndex index(0, contexts.size() - 1);
 
             vector<unique_ptr<thread>> threads(plan.numThreads);
-            for (auto&& thr: threads) {
+            for (auto&& thr : threads) {
                 thr = make_unique<thread>([&]() {
-
                     // For generating delays in the specified interval of milliseconds.
-                    util::BlockPost delay(0, max(1, max(plan.keepLockTimeMs, plan.waitAfterReleaseLockTimeMs)));
+                    util::BlockPost delay(0,
+                                          max(1, max(plan.keepLockTimeMs, plan.waitAfterReleaseLockTimeMs)));
 
                     for (unsigned int i = 0; i < plan.numLocksPerThread; ++i) {
                         size_t const idx = index.next();
@@ -264,7 +254,7 @@ BOOST_AUTO_TEST_CASE(NamedMutexRegistryTest3) {
                     }
                 });
             }
-            for (auto&& thr: threads) {
+            for (auto&& thr : threads) {
                 thr->join();
             }
 
@@ -275,8 +265,8 @@ BOOST_AUTO_TEST_CASE(NamedMutexRegistryTest3) {
                 auto&& context = contexts[idx];
                 size_t const keyUseCounter = index.stats(idx);
                 LOGS_INFO("NamedMutexRegistryTest3 [" << plan.name << "] key: " << context.key
-                        << " counter: " << context.counter
-                        << " keyUseCounter: " << keyUseCounter);
+                                                      << " counter: " << context.counter
+                                                      << " keyUseCounter: " << keyUseCounter);
                 BOOST_CHECK_EQUAL(context.counter, keyUseCounter);
             }
 

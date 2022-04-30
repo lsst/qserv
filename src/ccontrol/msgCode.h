@@ -26,26 +26,23 @@
 #ifndef LSST_QSERV_CCONTROL_MSGCODE_H
 #define LSST_QSERV_CCONTROL_MSGCODE_H
 
-namespace lsst {
-namespace qserv {
-namespace ccontrol {
+namespace lsst::qserv::ccontrol {
 
 // Codes for czar C++ layer are >= 1000.
 // (<1000 reserved for Python layer.)
-const int MSG_MGR_ADD       = 1200;
+const int MSG_MGR_ADD = 1200;
 const int MSG_XRD_OPEN_FAIL = 1290;
-const int MSG_XRD_WRITE     = 1300;
-const int MSG_XRD_READ      = 1400;
-const int MSG_RESULT_MD5    = 1420;
+const int MSG_XRD_WRITE = 1300;
+const int MSG_XRD_READ = 1400;
+const int MSG_RESULT_MD5 = 1420;
 const int MSG_RESULT_DECODE = 1430;
-const int MSG_RESULT_ERROR  = 1470;
-const int MSG_MERGE_ERROR   = 1480;
-const int MSG_MERGED        = 1500;
-const int MSG_ERASED        = 1600;
+const int MSG_RESULT_ERROR = 1470;
+const int MSG_MERGE_ERROR = 1480;
+const int MSG_MERGED = 1500;
+const int MSG_ERASED = 1600;
 const int MSG_EXEC_SQUASHED = 1990;
-const int MSG_FINALIZED     = 2000;
+const int MSG_FINALIZED = 2000;
 
-}}} // namespace lsst::qserv::ccontrol
+}  // namespace lsst::qserv::ccontrol
 
-#endif // LSST_QSERV_CCONTROL_MSGCODE_H
-
+#endif  // LSST_QSERV_CCONTROL_MSGCODE_H

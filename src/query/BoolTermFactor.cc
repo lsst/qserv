@@ -21,67 +21,64 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-
 // Class header
 #include "BoolTermFactor.h"
 
 // Qserv headers
 #include "query/BoolTerm.h"
 
-
-namespace lsst {
-namespace qserv {
-namespace query {
-
+namespace lsst::qserv::query {
 
 std::ostream& BoolTermFactor::putStream(std::ostream& os) const {
-    if (_term) { return _term->putStream(os); }
+    if (_term) {
+        return _term->putStream(os);
+    }
     return os;
 }
 
-
 void BoolTermFactor::renderTo(QueryTemplate& qt) const {
-    if (_term) { _term->renderTo(qt); }
+    if (_term) {
+        _term->renderTo(qt);
+    }
 }
-
 
 BoolFactorTerm::Ptr BoolTermFactor::clone() const {
     BoolTermFactor* p = new BoolTermFactor;
-    if (_term) { p->_term = _term->clone(); }
+    if (_term) {
+        p->_term = _term->clone();
+    }
     return BoolFactorTerm::Ptr(p);
 }
-
 
 BoolFactorTerm::Ptr BoolTermFactor::copySyntax() const {
     BoolTermFactor* p = new BoolTermFactor;
-    if (_term) { p->_term = _term->copySyntax(); }
+    if (_term) {
+        p->_term = _term->copySyntax();
+    }
     return BoolFactorTerm::Ptr(p);
 }
 
-
-void BoolTermFactor::dbgPrint(std::ostream& os) const {
-    os << "BoolTermFactor(" << _term << ")";
-}
-
+void BoolTermFactor::dbgPrint(std::ostream& os) const { os << "BoolTermFactor(" << _term << ")"; }
 
 bool BoolTermFactor::operator==(BoolFactorTerm const& rhs) const {
-    auto rhsTerm = dynamic_cast<BoolTermFactor const *>(&rhs);
+    auto rhsTerm = dynamic_cast<BoolTermFactor const*>(&rhs);
     if (nullptr == rhsTerm) {
         return false;
     }
     return util::ptrCompare<BoolTerm>(_term, rhsTerm->_term);
 }
 
-
 void BoolTermFactor::findValueExprs(std::vector<std::shared_ptr<ValueExpr>>& vector) const {
-    if (_term) { _term->findValueExprs(vector); }
+    if (_term) {
+        _term->findValueExprs(vector);
+    }
 }
-
 
 void BoolTermFactor::findValueExprRefs(ValueExprPtrRefVector& vector) {
-    if (_term) { _term->findValueExprRefs(vector); }
+    if (_term) {
+        _term->findValueExprRefs(vector);
+    }
 }
-
 
 void BoolTermFactor::findColumnRefs(ColumnRef::Vector& vector) const {
     if (_term) {
@@ -89,5 +86,4 @@ void BoolTermFactor::findColumnRefs(ColumnRef::Vector& vector) const {
     }
 }
 
-
-}}} // namespace lsst::qserv::query
+}  // namespace lsst::qserv::query

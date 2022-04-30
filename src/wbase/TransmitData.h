@@ -33,15 +33,12 @@
 #include "proto/ProtoHeaderWrap.h"
 #include "qmeta/types.h"
 
-
-namespace google {
-namespace protobuf {
+namespace google::protobuf {
 class Arena;
-}}
+}  // namespace google::protobuf
 
 // This header declarations
-namespace lsst {
-namespace qserv {
+namespace lsst::qserv {
 
 namespace util {
 class MultiError;
@@ -55,21 +52,18 @@ namespace wbase {
 
 class Task;
 
-
 /// This class stores properties for one column in the schema.
 class SchemaCol {
 public:
     SchemaCol() = default;
     SchemaCol(SchemaCol const&) = default;
     SchemaCol& operator=(SchemaCol const&) = default;
-    SchemaCol(std::string name, std::string sqltype, int mysqltype) :
-        colName(name), colSqlType(sqltype), colMysqlType(mysqltype) {
-    }
+    SchemaCol(std::string name, std::string sqltype, int mysqltype)
+            : colName(name), colSqlType(sqltype), colMysqlType(mysqltype) {}
     std::string colName;
-    std::string colSqlType; ///< sqltype for the column
-    int colMysqlType = 0; ///< MySQL type number
+    std::string colSqlType;  ///< sqltype for the column
+    int colMysqlType = 0;    ///< MySQL type number
 };
-
 
 /// This class is used to store information needed for one transmit.
 /// The data may be for result rows or an error message.
@@ -114,7 +108,7 @@ public:
     /// return false.
     /// @return false if there ARE MORE ROWS left in mResult.
     ///         true if there are no more rows remaining in mResult.
-    bool fillRows(MYSQL_RES* mResult, int numFields, size_t &sz);
+    bool fillRows(MYSQL_RES* mResult, int numFields, size_t& sz);
 
     /// Add the schema to this TransmitData object.
     /// The schema is always the same for a query, so it will only be added the
@@ -178,11 +172,11 @@ private:
 
     qmeta::CzarId const _czarId;
 
-    mutable std::mutex _trMtx; ///< Protects all private member variables.
-    std::atomic<bool> _schemaColsSet{false}; ///< Set to true when schema columns are set.
+    mutable std::mutex _trMtx;                ///< Protects all private member variables.
+    std::atomic<bool> _schemaColsSet{false};  ///< Set to true when schema columns are set.
 
-    unsigned int _rowCount = 0; ///< Number of rows in the _result so far.
-    size_t _tSize = 0; ///< Approximate number of bytes in the _result so far.
+    unsigned int _rowCount = 0;  ///< Number of rows in the _result so far.
+    size_t _tSize = 0;           ///< Approximate number of bytes in the _result so far.
 
     /// Create a result using our arena.
     /// This does not set the 'result' member of this object for consistency.
@@ -192,10 +186,10 @@ private:
 
     std::string const _idStr;
 
-    int const _trSeq; ///< Identifier for this object, used for debugging.
-
+    int const _trSeq;  ///< Identifier for this object, used for debugging.
 };
 
-}}} // namespace lsst::qserv::wbase
+}  // namespace wbase
+}  // namespace lsst::qserv
 
-#endif // LSST_QSERV_WBASE_TRANSMITDATA_H
+#endif  // LSST_QSERV_WBASE_TRANSMITDATA_H

@@ -28,13 +28,9 @@
 using namespace std;
 using json = nlohmann::json;
 
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
-HttpRequestBody::HttpRequestBody(qhttp::Request::Ptr const& req)
-    :   objJson(json::object()) {
-
+HttpRequestBody::HttpRequestBody(qhttp::Request::Ptr const& req) : objJson(json::object()) {
     // This way of parsing the optional body allows requests which have no body.
 
     string const contentType = req->header["Content-Type"];
@@ -46,31 +42,26 @@ HttpRequestBody::HttpRequestBody(qhttp::Request::Ptr const& req)
             try {
                 objJson = json::parse(content);
                 if (objJson.is_null() or objJson.is_object()) return;
-            } catch(...) {
+            } catch (...) {
                 // Not really interested in knowing specific details of the exception.
                 // All what matters here is that the string can't be parsed into
                 // a valid JSON object. This will be reported via another exception
                 // after this block ends.
                 ;
             }
-            throw invalid_argument(
-                    "invalid format of the request body. A simple JSON object was expected");
+            throw invalid_argument("invalid format of the request body. A simple JSON object was expected");
         }
     }
 }
 
-
 bool HttpRequestBody::has(json const& obj, string const& name) const {
     if (not obj.is_object()) {
-        throw invalid_argument(
-                "HttpRequestBody::" + string(__func__) + " parameter 'obj' is not a valid JSON object");
+        throw invalid_argument("HttpRequestBody::" + string(__func__) +
+                               " parameter 'obj' is not a valid JSON object");
     }
     return obj.find(name) != obj.end();
 }
 
+bool HttpRequestBody::has(string const& name) const { return has(objJson, name); }
 
-bool HttpRequestBody::has(string const& name) const {
-    return has(objJson, name);
-}
-
-}}} // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

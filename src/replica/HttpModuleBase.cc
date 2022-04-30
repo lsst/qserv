@@ -35,31 +35,18 @@ using namespace std;
 using json = nlohmann::json;
 
 namespace {
-    LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.HttpModuleBase");
+LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.HttpModuleBase");
 }
 
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
-HttpModuleBase::HttpModuleBase(string const& authKey,
-                               string const& adminAuthKey,
-                               qhttp::Request::Ptr const& req,
-                               qhttp::Response::Ptr const& resp)
-    :   _authKey(authKey),
-        _adminAuthKey(adminAuthKey),
-        _req(req),
-        _resp(resp),
-        _query(req->query) {
-}
+HttpModuleBase::HttpModuleBase(string const& authKey, string const& adminAuthKey,
+                               qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp)
+        : _authKey(authKey), _adminAuthKey(adminAuthKey), _req(req), _resp(resp), _query(req->query) {}
 
+HttpModuleBase::~HttpModuleBase() {}
 
-HttpModuleBase::~HttpModuleBase() {
-}
-
-
-void HttpModuleBase::execute(string const& subModuleName,
-                             HttpAuthType const authType) {
+void HttpModuleBase::execute(string const& subModuleName, HttpAuthType const authType) {
     try {
         _body = HttpRequestBody(_req);
         if (authType == HttpAuthType::REQUIRED) _enforceAuthorization();
@@ -76,25 +63,13 @@ void HttpModuleBase::execute(string const& subModuleName,
     }
 }
 
+void HttpModuleBase::info(string const& msg) const { LOGS(_log, LOG_LVL_INFO, context() << msg); }
 
-void HttpModuleBase::info(string const& msg) const {
-    LOGS(_log, LOG_LVL_INFO, context() << msg);
-}
+void HttpModuleBase::debug(string const& msg) const { LOGS(_log, LOG_LVL_DEBUG, context() << msg); }
 
+void HttpModuleBase::error(string const& msg) const { LOGS(_log, LOG_LVL_ERROR, context() << msg); }
 
-void HttpModuleBase::debug(string const& msg) const {
-    LOGS(_log, LOG_LVL_DEBUG, context() << msg);
-}
-
-
-void HttpModuleBase::error(string const& msg) const {
-    LOGS(_log, LOG_LVL_ERROR, context() << msg);
-}
-
-
-void HttpModuleBase::_sendError(string const& func,
-                                string const& errorMsg,
-                                json const& errorExt) const {
+void HttpModuleBase::_sendError(string const& func, string const& errorMsg, json const& errorExt) const {
     error(func, errorMsg);
     json result;
     result["success"] = 0;
@@ -103,7 +78,6 @@ void HttpModuleBase::_sendError(string const& func,
     resp()->send(result.dump(), "application/json");
 }
 
-
 void HttpModuleBase::_sendData(json& result) {
     result["success"] = 1;
     result["error"] = "";
@@ -111,14 +85,13 @@ void HttpModuleBase::_sendData(json& result) {
     resp()->send(result.dump(), "application/json");
 }
 
-
 void HttpModuleBase::_enforceAuthorization() {
     if (body().has("admin_auth_key")) {
         auto const adminAuthKey = body().required<string>("admin_auth_key");
         if (adminAuthKey != _adminAuthKey) {
-            throw AuthError(
-                    context() + "administrator's authorization key 'admin_auth_key' in the request"
-                    " doesn't match the one in server configuration");
+            throw AuthError(context() +
+                            "administrator's authorization key 'admin_auth_key' in the request"
+                            " doesn't match the one in server configuration");
         }
         _isAdmin = true;
         return;
@@ -126,15 +99,15 @@ void HttpModuleBase::_enforceAuthorization() {
     if (body().has("auth_key")) {
         auto const authKey = body().required<string>("auth_key");
         if (authKey != _authKey) {
-            throw AuthError(
-                    context() + "authorization key 'auth_key' in the request doesn't match"
-                    " the one in server configuration");
+            throw AuthError(context() +
+                            "authorization key 'auth_key' in the request doesn't match"
+                            " the one in server configuration");
         }
         return;
     }
-    throw AuthError(
-            context() + "none of the authorization keys 'auth_key' or 'admin_auth_key' was found"
-            " in the request. Please, provide one.");
+    throw AuthError(context() +
+                    "none of the authorization keys 'auth_key' or 'admin_auth_key' was found"
+                    " in the request. Please, provide one.");
 }
 
-}}}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

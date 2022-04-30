@@ -20,13 +20,13 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
- /**
-  * @file
-  *
-  * @brief Test functions and structures used in QueryAnalysis tests
-  *
-  * @author Fabrice Jammes, IN2P3/SLAC
-  */
+/**
+ * @file
+ *
+ * @brief Test functions and structures used in QueryAnalysis tests
+ *
+ * @author Fabrice Jammes, IN2P3/SLAC
+ */
 
 // Class header
 #include "QueryAnaHelper.h"
@@ -51,7 +51,6 @@
 using lsst::qserv::ccontrol::ParseRunner;
 using lsst::qserv::qproc::ChunkQuerySpec;
 using lsst::qserv::qproc::ChunkSpec;
-using lsst::qserv::qproc::ChunkSpec;
 using lsst::qserv::qproc::QuerySession;
 using lsst::qserv::query::SelectStmt;
 using lsst::qserv::util::printable;
@@ -60,19 +59,15 @@ namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.tests.QueryAnaHelper");
 }
 
-namespace lsst {
-namespace qserv {
-namespace tests {
+namespace lsst::qserv::tests {
 
-ParseRunner::Ptr QueryAnaHelper::getParser(std::string const & stmt) {
+ParseRunner::Ptr QueryAnaHelper::getParser(std::string const& stmt) {
     auto p = std::make_shared<ParseRunner>(stmt);
     return p;
 }
 
 std::shared_ptr<QuerySession> QueryAnaHelper::buildQuerySession(QuerySession::Test qsTest,
-                                                                std::string const & stmt,
-                                                                bool expectError) {
-
+                                                                std::string const& stmt, bool expectError) {
     querySession = std::make_shared<QuerySession>(qsTest);
     auto stmtIR = querySession->parseQuery(stmt);
     if (nullptr == stmtIR) {
@@ -96,7 +91,6 @@ std::shared_ptr<QuerySession> QueryAnaHelper::buildQuerySession(QuerySession::Te
     return querySession;
 }
 
-
 std::string QueryAnaHelper::buildFirstParallelQuery(bool withSubChunks) {
     querySession->addChunk(ChunkSpec::makeFake(100, withSubChunks));
     auto i = querySession->cQueryBegin();
@@ -107,13 +101,12 @@ std::string QueryAnaHelper::buildFirstParallelQuery(bool withSubChunks) {
     auto& chunkSpec = *i;
     auto queryTemplates = querySession->makeQueryTemplates();
     auto first = querySession->buildChunkQuerySpec(queryTemplates, chunkSpec);
-    std::string const & firstParallelQuery = first->queries[0];
+    std::string const& firstParallelQuery = first->queries[0];
     LOGS(_log, LOG_LVL_TRACE, "First parallel query: " << firstParallelQuery);
     return firstParallelQuery;
 }
 
-std::vector<std::string> QueryAnaHelper::getInternalQueries(
-        QuerySession::Test& t, std::string const & stmt) {
+std::vector<std::string> QueryAnaHelper::getInternalQueries(QuerySession::Test& t, std::string const& stmt) {
     std::vector<std::string> queries;
     buildQuerySession(t, stmt);
 
@@ -123,8 +116,7 @@ std::vector<std::string> QueryAnaHelper::getInternalQueries(
 
     if (querySession->needsMerge()) {
         sql = querySession->getMergeStmt()->getQueryTemplate().sqlFragment();
-    }
-    else {
+    } else {
         sql = "";
     }
     queries.push_back(sql);
@@ -135,4 +127,4 @@ std::vector<std::string> QueryAnaHelper::getInternalQueries(
     return queries;
 }
 
-}}} // namespace lsst::qserv::tests
+}  // namespace lsst::qserv::tests

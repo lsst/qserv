@@ -37,13 +37,11 @@ namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.qmeta.QMetaTransaction");
 }
 
-namespace lsst {
-namespace qserv {
-namespace qmeta {
+namespace lsst::qserv::qmeta {
 
 void QMetaTransaction::throwException(util::Issue::Context const& ctx, std::string const& msg) {
     LOGS(_log, LOG_LVL_WARN, " QMetaTransaction::throwException " + msg);
     throw SqlError(ctx, errObj);
 }
 
-}}} // namespace lsst::qserv::qmeta
+}  // namespace lsst::qserv::qmeta

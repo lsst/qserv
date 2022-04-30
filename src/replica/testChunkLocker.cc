@@ -18,9 +18,9 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
- /**
-  * @brief test ChunkLocker
-  */
+/**
+ * @brief test ChunkLocker
+ */
 
 // System headers
 #include <thread>
@@ -44,7 +44,6 @@ using namespace lsst::qserv::replica;
 BOOST_AUTO_TEST_SUITE(Suite)
 
 BOOST_AUTO_TEST_CASE(ChunkLockerTest) {
-
     LOGS_INFO("ChunkLocker test begins");
 
     // Basic tests of structure Chunk
@@ -57,16 +56,16 @@ BOOST_AUTO_TEST_CASE(ChunkLockerTest) {
     Chunk chunk1{"test", 123UL};
 
     BOOST_CHECK(chunk == chunk1);
-    BOOST_CHECK((not (chunk < chunk1)) and (not (chunk1 < chunk)));
+    BOOST_CHECK((not(chunk < chunk1)) and (not(chunk1 < chunk)));
 
     Chunk chunk2{"test", 124UL};
     Chunk chunk3{"test", 125UL};
     Chunk chunk4{"prod", 125UL};
 
-    BOOST_CHECK(not (chunk1 == chunk2));
+    BOOST_CHECK(not(chunk1 == chunk2));
     BOOST_CHECK(chunk1 < chunk2);
 
-    BOOST_CHECK(not (chunk3 == chunk4));
+    BOOST_CHECK(not(chunk3 == chunk4));
     BOOST_CHECK(chunk4 < chunk3);
 
     // Tests of the empty locker
@@ -143,7 +142,6 @@ BOOST_AUTO_TEST_CASE(ChunkLockerTest) {
 
     unsigned int const concurrency = thread::hardware_concurrency();
     if (concurrency > 1) {
-
         LOGS_INFO("ChunkLocker run thread-safety test: hardware concurrency " << concurrency);
 
         unsigned int const num = 200000UL;
@@ -157,33 +155,29 @@ BOOST_AUTO_TEST_CASE(ChunkLockerTest) {
         // Any deviations will be accounted for and returned into the main thread
         // via dictionary 'numTestsFailedByOwner'.
 
-        auto ingest = [&locker,&numTestsFailedByOwner](string const& thisOwner,
-                                                       string const& otherOwner,
-                                                       unsigned int const num) {
+        auto ingest = [&locker, &numTestsFailedByOwner](string const& thisOwner, string const& otherOwner,
+                                                        unsigned int const num) {
             size_t numTestsFailed = 0UL;
             for (unsigned int i = 0UL; i < num; ++i) {
-
                 Chunk const chunk{"test", i};
                 string owner;
 
-                bool const passed =
-                    locker.lock(chunk, thisOwner) or
-                    (locker.isLocked(chunk, owner) and (otherOwner == owner));
+                bool const passed = locker.lock(chunk, thisOwner) or
+                                    (locker.isLocked(chunk, owner) and (otherOwner == owner));
 
                 if (not passed) numTestsFailed++;
-
             }
             numTestsFailedByOwner[thisOwner] = numTestsFailed;
         };
-        thread t1(ingest, "qserv", "root",  num);
-        thread t2(ingest, "root",  "qserv", num);
+        thread t1(ingest, "qserv", "root", num);
+        thread t2(ingest, "root", "qserv", num);
         t1.join();
         t2.join();
 
         // Test and report failures
 
         BOOST_CHECK_EQUAL(numTestsFailedByOwner["qserv"], 0UL);
-        BOOST_CHECK_EQUAL(numTestsFailedByOwner["root"],  0UL);
+        BOOST_CHECK_EQUAL(numTestsFailedByOwner["root"], 0UL);
 
         // Analyze the content of the locker
 
@@ -193,7 +187,7 @@ BOOST_AUTO_TEST_CASE(ChunkLockerTest) {
         BOOST_CHECK((1 <= numOwners) and (numOwners <= 2));
 
         unsigned int numChunks = 0UL;
-        for (auto&& entry: ownerToChunks) {
+        for (auto&& entry : ownerToChunks) {
             numChunks += entry.second.size();
         }
         BOOST_CHECK_EQUAL(numChunks, num);

@@ -21,29 +21,20 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-
 #ifndef LSST_QSERV_QUERY_COMPPREDICATE_H
 #define LSST_QSERV_QUERY_COMPPREDICATE_H
-
 
 // Local headers
 #include "query/Predicate.h"
 
-
 // Forward declarations
-namespace lsst {
-namespace qserv {
-namespace query {
-    class ColumnRef;
-    class ValueExpr;
-    class QueryTemplate;
-}}} // End of forward declarations
+namespace lsst::qserv::query {
+class ColumnRef;
+class ValueExpr;
+class QueryTemplate;
+}  // namespace lsst::qserv::query
 
-
-namespace lsst {
-namespace qserv {
-namespace query {
-
+namespace lsst::qserv::query {
 
 /// CompPredicate is a Predicate involving a row value compared to another row value.
 /// (literals can be row values)
@@ -66,8 +57,8 @@ public:
 
     /// Construct a CompPredicate that owns the given args and uses them for its expression.
     CompPredicate(std::shared_ptr<ValueExpr> const& iLeft, OpType iOp,
-            std::shared_ptr<ValueExpr> const& iRight)
-        : left(iLeft), op(iOp), right(iRight) {}
+                  std::shared_ptr<ValueExpr> const& iRight)
+            : left(iLeft), op(iOp), right(iRight) {}
 
     ~CompPredicate() override = default;
 
@@ -82,21 +73,19 @@ public:
     BoolFactorTerm::Ptr copySyntax() const override { return clone(); }
     bool operator==(BoolFactorTerm const& rhs) const override;
 
-
     static OpType lookupOp(char const* op);
 
     static const char* opTypeToStr(CompPredicate::OpType op);
     static const char* opTypeToEnumStr(CompPredicate::OpType op);
 
     std::shared_ptr<ValueExpr> left;
-    OpType op; // Parser token type of operator
+    OpType op;  // Parser token type of operator
     std::shared_ptr<ValueExpr> right;
 
 protected:
     void dbgPrint(std::ostream& os) const override;
 };
 
+}  // namespace lsst::qserv::query
 
-}}} // namespace lsst::qserv::query
-
-#endif // LSST_QSERV_QUERY_COMPPREDICATE_H
+#endif  // LSST_QSERV_QUERY_COMPPREDICATE_H

@@ -29,17 +29,13 @@
 #include "replica/Application.h"
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class CheckSumApp implements calculates and prints a checksum of a file.
  */
 class CheckSumApp : public Application {
-
 public:
-
     /// The pointer type for instances of the class
     typedef std::shared_ptr<CheckSumApp> Ptr;
 
@@ -64,15 +60,12 @@ public:
     ~CheckSumApp() override = default;
 
 protected:
-
     /// @see Application::runImpl()
     int runImpl() final;
 
 private:
-
     /// @see CheckSumApp::create()
     CheckSumApp(int argc, char* argv[]);
-
 
     /// The name of a worker
     std::string _file;
@@ -81,6 +74,6 @@ private:
     bool _incremental;
 };
 
-}}} // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
 #endif /* LSST_QSERV_REPLICA_CHECKSUMAPP_H */

@@ -24,26 +24,21 @@
 #ifndef LSST_QSERV_SQL_SQLCONNECTIONFACTORY_H
 #define LSST_QSERV_SQL_SQLCONNECTIONFACTORY_H
 
-
 // System headers
 #include <memory>
 
-
 // Forward declarations
-namespace lsst {
-namespace qserv {
+namespace lsst::qserv {
 namespace mysql {
-    class MySqlConfig;
+class MySqlConfig;
 }
 namespace sql {
-    class SqlConnection;
-    class SqlConfig;
-}}}
+class SqlConnection;
+class SqlConfig;
+}  // namespace sql
+}  // namespace lsst::qserv
 
-
-namespace lsst {
-namespace qserv {
-namespace sql {
+namespace lsst::qserv::sql {
 
 class SqlConnectionFactory {
 public:
@@ -61,8 +56,6 @@ public:
     static std::shared_ptr<SqlConnection> make(mysql::MySqlConfig const& cfg);
 };
 
+}  // namespace lsst::qserv::sql
 
-}}}
-
-
-#endif // LSST_QSERV_SQL_SQLCONNECTIONFACTORY_H
+#endif  // LSST_QSERV_SQL_SQLCONNECTIONFACTORY_H

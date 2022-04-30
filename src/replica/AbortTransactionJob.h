@@ -34,9 +34,7 @@
 #include "replica/SqlJobResult.h"
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class AbortTransactionJob represents a tool which will issue and track
@@ -46,7 +44,7 @@ namespace replica {
  * a select (sub-)set of workers. Result sets are collected into an object
  * of class SqlJobResult.
  */
-class AbortTransactionJob : public Job  {
+class AbortTransactionJob : public Job {
 public:
     /// The pointer type for instances of the class
     typedef std::shared_ptr<AbortTransactionJob> Ptr;
@@ -75,12 +73,8 @@ public:
      * @param priority the the priority level of the job
      * @return pointer to the created object
      */
-    static Ptr create(TransactionId transactionId,
-                      bool allWorkers,
-                      Controller::Ptr const& controller,
-                      std::string const& parentJobId,
-                      CallbackType const& onFinish,
-                      int priority);
+    static Ptr create(TransactionId transactionId, bool allWorkers, Controller::Ptr const& controller,
+                      std::string const& parentJobId, CallbackType const& onFinish, int priority);
 
     AbortTransactionJob() = delete;
     AbortTransactionJob(AbortTransactionJob const&) = delete;
@@ -110,9 +104,9 @@ public:
      */
     SqlJobResult const& getResultData() const;
 
-    std::list<std::pair<std::string,std::string>> extendedPersistentState() const final;
+    std::list<std::pair<std::string, std::string>> extendedPersistentState() const final;
 
-    std::list<std::pair<std::string,std::string>> persistentLogData() const final;
+    std::list<std::pair<std::string, std::string>> persistentLogData() const final;
 
 protected:
     void startImpl(util::Lock const& lock) final;
@@ -120,22 +114,18 @@ protected:
     void notify(util::Lock const& lock) final;
 
 private:
-    AbortTransactionJob(TransactionId transactionId,
-                        bool allWorkers,
-                        Controller::Ptr const& controller,
-                        std::string const& parentJobId,
-                        CallbackType const& onFinish,
-                        int priority);
+    AbortTransactionJob(TransactionId transactionId, bool allWorkers, Controller::Ptr const& controller,
+                        std::string const& parentJobId, CallbackType const& onFinish, int priority);
 
     void _onChildJobFinish(SqlDeleteTablePartitionJob::Ptr const& job);
- 
+
     // Input parameters
 
     TransactionId const _transactionId;
     bool const _allWorkers;
 
-    CallbackType _onFinish;     /// @note is reset when the job finishes
-    
+    CallbackType _onFinish;  /// @note is reset when the job finishes
+
     /// A collection of the child jobs which are either in flight, or finished
     std::list<SqlDeleteTablePartitionJob::Ptr> _jobs;
 
@@ -149,6 +139,6 @@ private:
     SqlJobResult _resultData;
 };
 
-}}} // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_ABORTTRANSACTIONJOB_H
+#endif  // LSST_QSERV_REPLICA_ABORTTRANSACTIONJOB_H

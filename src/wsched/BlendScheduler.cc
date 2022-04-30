@@ -20,14 +20,14 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
- /**
-  * @file
-  *
-  * @brief A scheduler implementation that limits disk scans to one at
-  * a time, but allows multiple queries to share I/O.
-  *
-  * @author Daniel L. Wang, SLAC
-  */
+/**
+ * @file
+ *
+ * @brief A scheduler implementation that limits disk scans to one at
+ * a time, but allows multiple queries to share I/O.
+ *
+ * @author Daniel L. Wang, SLAC
+ */
 
 // Class header
 #include "wsched/BlendScheduler.h"
@@ -63,30 +63,29 @@ namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.wsched.BlendScheduler");
 }
 
-namespace lsst {
-namespace qserv {
-namespace wsched {
+namespace lsst::qserv::wsched {
 
-BlendScheduler* dbgBlendScheduler=nullptr; ///< A symbol for gdb
+BlendScheduler* dbgBlendScheduler = nullptr;  ///< A symbol for gdb
 
 ////////////////////////////////////////////////////////////////////////
 // class BlendScheduler
 ////////////////////////////////////////////////////////////////////////
 
-BlendScheduler::BlendScheduler(string const& name,
-                               wpublish::QueriesAndChunks::Ptr const& queries,
-                               int schedMaxThreads,
-                               shared_ptr<GroupScheduler> const& group,
+BlendScheduler::BlendScheduler(string const& name, wpublish::QueriesAndChunks::Ptr const& queries,
+                               int schedMaxThreads, shared_ptr<GroupScheduler> const& group,
                                shared_ptr<ScanScheduler> const& snailScheduler,
                                vector<shared_ptr<ScanScheduler>> const& scanSchedulers)
-    : SchedulerBase{name, 0, 0, 0, 0}, _schedMaxThreads{schedMaxThreads},
-      _group{group}, _scanSnail{snailScheduler}, _queries{queries} {
+        : SchedulerBase{name, 0, 0, 0, 0},
+          _schedMaxThreads{schedMaxThreads},
+          _group{group},
+          _scanSnail{snailScheduler},
+          _queries{queries} {
     dbgBlendScheduler = this;
     // If these are not defined, there is no point in continuing.
     assert(_group);
     assert(_scanSnail);
     int position = 0;
-    _schedulers.push_back(_group); // _group scheduler must be first in the list.
+    _schedulers.push_back(_group);  // _group scheduler must be first in the list.
     _group->setDefaultPosition(position++);
     for (auto const& sched : scanSchedulers) {
         _schedulers.push_back(sched);
@@ -94,13 +93,12 @@ BlendScheduler::BlendScheduler(string const& name,
     }
     _schedulers.push_back(_scanSnail);
     _scanSnail->setDefaultPosition(position++);
-    assert(_schedulers.size() >= 2); // Must have at least _group and _scanSnail in the list.
+    assert(_schedulers.size() >= 2);  // Must have at least _group and _scanSnail in the list.
     _sortScanSchedulers();
     for (auto const& sched : _schedulers) {
         LOGS(_log, LOG_LVL_DEBUG, "Scheduler " << _name << " found scheduler " << sched->getName());
     }
 }
-
 
 void BlendScheduler::_sortScanSchedulers() {
     auto lessThan = [this](SchedulerBase::Ptr const& a, SchedulerBase::Ptr const& b) -> bool {
@@ -136,13 +134,11 @@ void BlendScheduler::_sortScanSchedulers() {
     LOGS(_log, LOG_LVL_DEBUG, str);
 }
 
-
 void BlendScheduler::queCmd(util::Command::Ptr const& cmd) {
     std::vector<util::Command::Ptr> vect;
     vect.push_back(cmd);
     queCmd(vect);
 }
-
 
 void BlendScheduler::queCmd(std::vector<util::Command::Ptr> const& cmds) {
     // Do the book keeping and determine which queue the tasks in 'cmds'
@@ -164,7 +160,7 @@ void BlendScheduler::queCmd(std::vector<util::Command::Ptr> const& cmds) {
                 util::LockGuardTimed guard(util::CommandQueue::_mx, "BlendScheduler::queCmd a");
                 _ctrlCmdQueue.queCmd(cmd);
             }
-            notify(true); // notify all=true
+            notify(true);  // notify all=true
             continue;
         }
 
@@ -185,8 +181,9 @@ void BlendScheduler::queCmd(std::vector<util::Command::Ptr> const& cmds) {
             bool interactive = task->getScanInteractive();
             if (scanTables.size() <= 0 || interactive) {
                 // If there are no scan tables, no point in putting on a shared scan.
-                LOGS(_log, LOG_LVL_DEBUG, "Blend chose group scanTables.size=" << scanTables.size()
-                        << " interactive=" << interactive);
+                LOGS(_log, LOG_LVL_DEBUG,
+                     "Blend chose group scanTables.size=" << scanTables.size()
+                                                          << " interactive=" << interactive);
                 onInteractive = true;
                 targSched = _group;
             } else {
@@ -200,7 +197,7 @@ void BlendScheduler::queCmd(std::vector<util::Command::Ptr> const& cmds) {
                     }
                     LOGS(_log, LOG_LVL_DEBUG, ss.str());
                 }
-                {   // Find the scheduler responsible for this 'scanPriority'.
+                {  // Find the scheduler responsible for this 'scanPriority'.
                     lock_guard<mutex> lg(_schedMtx);
                     for (auto const& sched : _schedulers) {
                         ScanScheduler::Ptr scan = dynamic_pointer_cast<ScanScheduler>(sched);
@@ -220,8 +217,7 @@ void BlendScheduler::queCmd(std::vector<util::Command::Ptr> const& cmds) {
                 if (targSched == nullptr) {
                     // Task wasn't assigned with a scheduler, assuming it is terribly slow.
                     // Assign it to the slowest scheduler so it does the least damage to other queries.
-                    LOGS_WARN("Task had unexpected scanRating="
-                            << scanPriority << " adding to scanSnail");
+                    LOGS_WARN("Task had unexpected scanRating=" << scanPriority << " adding to scanSnail");
                     targSched = _scanSnail;
                 }
             }
@@ -230,18 +226,18 @@ void BlendScheduler::queCmd(std::vector<util::Command::Ptr> const& cmds) {
         task->setTaskScheduler(targSched);
         _queries->queuedTask(task);
         taskCmds.push_back(task);
-        LOGS(_log, LOG_LVL_INFO, "BlendScheduler::queCmd<vect> added tid=" << task->getIdStr()
-                                 << " sched=" << targSched->getName());
+        LOGS(_log, LOG_LVL_INFO,
+             "BlendScheduler::queCmd<vect> added tid=" << task->getIdStr()
+                                                       << " sched=" << targSched->getName());
     }
 
     if (!taskCmds.empty()) {
         LOGS(_log, LOG_LVL_DEBUG, "Blend queCmd");
         targSched->queCmd(taskCmds);
         _infoChanged = true;
-        notify(true); // notify all=true
+        notify(true);  // notify all=true
     }
 }
-
 
 void BlendScheduler::commandStart(util::Command::Ptr const& cmd) {
     auto t = dynamic_pointer_cast<wbase::Task>(cmd);
@@ -283,9 +279,8 @@ void BlendScheduler::commandFinish(util::Command::Ptr const& cmd) {
     _infoChanged = true;
     _logChunkStatus();
     _queries->finishedTask(t);
-    notify(true); // notify all=true
+    notify(true);  // notify all=true
 }
-
 
 bool BlendScheduler::ready() {
     bool ready = false;
@@ -294,11 +289,10 @@ bool BlendScheduler::ready() {
         ready = _ready();
     }
     if (ready) {
-        notify(false); // notify all=false
+        notify(false);  // notify all=false
     }
     return ready;
 }
-
 
 /// Returns true when any sub-scheduler has a command ready.
 /// Precondition util::CommandQueue::_mx must be locked when this is called.
@@ -323,7 +317,7 @@ bool BlendScheduler::_ready() {
             ready = sched->ready();
             if (changed && LOG_CHECK_LVL(_log, LOG_LVL_DEBUG)) {
                 os << sched->getName() << "(r=" << ready << " sz=" << sched->getSize()
-                       << " fl=" << sched-> getInFlight() << " avail=" << availableThreads << ") ";
+                   << " fl=" << sched->getInFlight() << " avail=" << availableThreads << ") ";
             }
             if (ready) {
                 _readySched = sched;
@@ -341,7 +335,6 @@ bool BlendScheduler::_ready() {
     }
     return ready;
 }
-
 
 util::Command::Ptr BlendScheduler::getCmd(bool wait) {
     util::Timer timeToLock;
@@ -372,9 +365,9 @@ util::Command::Ptr BlendScheduler::getCmd(bool wait) {
             cmd = _readySched->getCmd(false);
             if (cmd != nullptr) {
                 wbase::Task::Ptr task = dynamic_pointer_cast<wbase::Task>(cmd);
-                LOGS(_log, LOG_LVL_DEBUG, "Blend getCmd() using cmd from " << _readySched->getName()
-                        << " chunkId=" << task->getChunkId()
-                        << " QID=" << task->getIdStr());
+                LOGS(_log, LOG_LVL_DEBUG,
+                     "Blend getCmd() using cmd from " << _readySched->getName() << " chunkId="
+                                                      << task->getChunkId() << " QID=" << task->getIdStr());
             }
             _readySched.reset();
             _sortScanSchedulers();
@@ -389,13 +382,15 @@ util::Command::Ptr BlendScheduler::getCmd(bool wait) {
     if (cmd != nullptr) {
         _infoChanged = true;
         _logChunkStatus();
-        notify(false); // notify all=false
+        notify(false);  // notify all=false
     }
     // returning nullptr is acceptable.
     timeHeld.stop();
     totalTimeHeld += timeHeld.getElapsed();
-    LOGS(_log, LOG_LVL_DEBUG, "lockTime BlendScheduler::getCmd ready toLock=" << timeToLock.getElapsed() <<
-                              " held=" << timeHeld.getElapsed() << " totalHeld=" << totalTimeHeld);
+    LOGS(_log, LOG_LVL_DEBUG,
+         "lockTime BlendScheduler::getCmd ready toLock=" << timeToLock.getElapsed()
+                                                         << " held=" << timeHeld.getElapsed()
+                                                         << " totalHeld=" << totalTimeHeld);
     return cmd;
 }
 
@@ -403,8 +398,7 @@ util::Command::Ptr BlendScheduler::getCmd(bool wait) {
 int BlendScheduler::_getAdjustedMaxThreads(int oldAdjMax, int inFlight) {
     int newAdjMax = oldAdjMax - max(inFlight - 1, 0);
     if (newAdjMax < 1) {
-        LOGS(_log, LOG_LVL_ERROR,
-             "_getAdjustedMaxThreadsgetCmd() too low newAdjMax=" << newAdjMax);
+        LOGS(_log, LOG_LVL_ERROR, "_getAdjustedMaxThreadsgetCmd() too low newAdjMax=" << newAdjMax);
         newAdjMax = 1;
     }
     return newAdjMax;
@@ -446,7 +440,6 @@ int BlendScheduler::getInFlight() const {
     return inFlight;
 }
 
-
 void BlendScheduler::_logChunkStatus() {
     if (LOG_CHECK_LVL(_log, LOG_LVL_INFO)) {
         string str;
@@ -460,7 +453,6 @@ void BlendScheduler::_logChunkStatus() {
     }
 }
 
-
 nlohmann::json BlendScheduler::statusToJson() {
     nlohmann::json status;
     status["name"] = getName();
@@ -470,7 +462,7 @@ nlohmann::json BlendScheduler::statusToJson() {
     nlohmann::json schedulers = nlohmann::json::array();
     {
         lock_guard<mutex> lg(_schedMtx);
-        for (auto&& sched: _schedulers) {
+        for (auto&& sched : _schedulers) {
             schedulers.push_back(sched->statusToJson());
         }
     }
@@ -478,31 +470,28 @@ nlohmann::json BlendScheduler::statusToJson() {
     return status;
 }
 
-
-bool BlendScheduler::isScanSnail(SchedulerBase::Ptr const& scan) {
-    return scan == _scanSnail;
-}
-
+bool BlendScheduler::isScanSnail(SchedulerBase::Ptr const& scan) { return scan == _scanSnail; }
 
 int BlendScheduler::moveUserQueryToSnail(QueryId qId, SchedulerBase::Ptr const& source) {
     if (source == _scanSnail) {
-        LOGS(_log, LOG_LVL_INFO, QueryIdHelper::makeIdStr(qId)
-             << " moveUserQueryToSnail can't move, query is already on snail.");
+        LOGS(_log, LOG_LVL_INFO,
+             QueryIdHelper::makeIdStr(qId) << " moveUserQueryToSnail can't move, query is already on snail.");
         // TODO: send a message back to czar asking to cancel query
         return 0;
     }
     return moveUserQuery(qId, source, _scanSnail);
 }
 
-
 int BlendScheduler::moveUserQuery(QueryId qId, SchedulerBase::Ptr const& source,
                                   SchedulerBase::Ptr const& destination) {
-    LOGS(_log, LOG_LVL_DEBUG, "moveUserQuery " << QueryIdHelper::makeIdStr(qId)
-         << " source=" << ((source == nullptr) ? "NULL" : source->getName())
-         << " dest=" << ((destination == nullptr) ? "NULL" : destination->getName()));
-    int count = 0; // Number of Tasks that were moved.
+    LOGS(_log, LOG_LVL_DEBUG,
+         "moveUserQuery " << QueryIdHelper::makeIdStr(qId)
+                          << " source=" << ((source == nullptr) ? "NULL" : source->getName())
+                          << " dest=" << ((destination == nullptr) ? "NULL" : destination->getName()));
+    int count = 0;  // Number of Tasks that were moved.
     if (destination == nullptr) {
-        LOGS(_log, LOG_LVL_WARN, QueryIdHelper::makeIdStr(qId) << " moveUserQuery destination can not be nullptr");
+        LOGS(_log, LOG_LVL_WARN,
+             QueryIdHelper::makeIdStr(qId) << " moveUserQuery destination can not be nullptr");
         return count;
     }
     // Go through the Tasks in the query and remove any that are not already on the 'destination'.
@@ -519,12 +508,10 @@ int BlendScheduler::moveUserQuery(QueryId qId, SchedulerBase::Ptr const& source,
     return count;
 }
 
-
 void ControlCommandQueue::queCmd(util::Command::Ptr const& cmd) {
     lock_guard<mutex> lock{_mx};
     _qu.push_back(cmd);
 }
-
 
 util::Command::Ptr ControlCommandQueue::getCmd() {
     lock_guard<mutex> lock{_mx};
@@ -536,10 +523,9 @@ util::Command::Ptr ControlCommandQueue::getCmd() {
     return cmd;
 }
 
-
 bool ControlCommandQueue::ready() {
     lock_guard<mutex> lock{_mx};
     return !_qu.empty();
 }
 
-}}} // namespace lsst::qserv::wsched
+}  // namespace lsst::qserv::wsched

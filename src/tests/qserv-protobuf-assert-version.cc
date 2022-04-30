@@ -34,8 +34,7 @@ namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.tests.tests_protobuf_version");
 }
 
-int main (int arc, char const* argv[]) {
-
+int main(int arc, char const* argv[]) {
     LOGS(_log, LOG_LVL_INFO, "testing a version of the Protobuf library");
 
     // Verify that the version of the library that we linked against is

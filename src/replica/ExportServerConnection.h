@@ -36,9 +36,7 @@
 #include "replica/ServiceProvider.h"
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class ExportServerConnection is used in the server-side implementation of
@@ -76,8 +74,7 @@ public:
      * the service)
      * @param io_service service object for the network I/O operations
      */
-    static Ptr create(ServiceProvider::Ptr const& serviceProvider,
-                      std::string const& workerName,
+    static Ptr create(ServiceProvider::Ptr const& serviceProvider, std::string const& workerName,
                       boost::asio::io_service& io_service);
 
     ExportServerConnection() = delete;
@@ -97,8 +94,7 @@ public:
     void beginProtocol();
 
 private:
-    ExportServerConnection(ServiceProvider::Ptr const& serviceProvider,
-                           std::string const& workerName,
+    ExportServerConnection(ServiceProvider::Ptr const& serviceProvider, std::string const& workerName,
                            boost::asio::io_service& io_service);
 
     /// Initiate (ASYNC) read of the handshake request from a client
@@ -115,15 +111,14 @@ private:
      * @param ec A error code to be evaluated.
      * @param bytes_transferred  The number of bytes received from a client.
      */
-    void _handshakeReceived(boost::system::error_code const& ec,
-                            size_t bytes_transferred);
+    void _handshakeReceived(boost::system::error_code const& ec, size_t bytes_transferred);
 
     /**
      * Initiate a reply (ASYNC) to a client to the "handshake" request.
      *
      * @param error  An optional message to be delivered to a client.
      */
-    void _sendHandshakeResponse(std::string const& error=std::string());
+    void _sendHandshakeResponse(std::string const& error = std::string());
 
     /**
      * The callback on finishing (either successfully or not) of the asynchronous response
@@ -132,8 +127,7 @@ private:
      * @param ec A error code to be evaluated.
      * @param bytes_transferred  The number of bytes received from a client.
      */
-    void _handshakeResponseSent(boost::system::error_code const& ec,
-                                size_t bytes_transferred);
+    void _handshakeResponseSent(boost::system::error_code const& ec, size_t bytes_transferred);
 
     /// Initiate (ASYNC) read of the next data request from a client
     void _receiveDataRequest();
@@ -147,9 +141,7 @@ private:
      * @param ec A error code to be evaluated.
      * @param bytes_transferred  The number of bytes received from a client.
      */
-    void _dataRequestReceived(boost::system::error_code const& ec,
-                              size_t bytes_transferred);
-
+    void _dataRequestReceived(boost::system::error_code const& ec, size_t bytes_transferred);
 
     /**
      * The callback on finishing (either successfully or not) of the asynchronous response
@@ -159,8 +151,7 @@ private:
      * @param ec A error code to be evaluated.
      * @param bytes_transferred  The number of bytes received from a client.
      */
-    void _dataResponseSent(boost::system::error_code const& ec,
-                           size_t bytes_transferred);
+    void _dataResponseSent(boost::system::error_code const& ec, size_t bytes_transferred);
 
     /**
      * Send back a message with status FAILED and the error message.
@@ -169,7 +160,7 @@ private:
      * @param handshakeError  If the flag is set to 'true' then a client needs to be informed
      *   on a problem occured during the initial handshake.
      */
-    void _failed(std::string const& error, bool handshakeError=false) {
+    void _failed(std::string const& error, bool handshakeError = false) {
         _closeFile();
         if (handshakeError) _sendHandshakeResponse(error);
     }
@@ -183,7 +174,7 @@ private:
     // Input parameters
 
     ServiceProvider::Ptr const _serviceProvider;
-    std::string          const _workerName;
+    std::string const _workerName;
 
     /// A socket for communication with clients
     boost::asio::ip::tcp::socket _socket;
@@ -195,11 +186,11 @@ private:
     // Parameters defining a scope of the operation are set from the handshake
     // request received from a client.
 
-    std::string   _database;
-    std::string   _table;
-    unsigned int  _chunk = 0;
-    bool          _isOverlap = false;
-    char          _columnSeparator = ',';
+    std::string _database;
+    std::string _table;
+    unsigned int _chunk = 0;
+    bool _isOverlap = false;
+    char _columnSeparator = ',';
 
     /// The database descriptor and the state of the table are set after receiving
     /// and validating a handshake message from a client.
@@ -209,13 +200,13 @@ private:
     // A file for temporary storing a TSV/CSV dump of a table before (while)
     // sending its content to a client.
 
-    std::string   _fileName;    ///< An absolute path name for the file
-    std::ifstream _file;        ///< The input file stream
+    std::string _fileName;  ///< An absolute path name for the file
+    std::ifstream _file;    ///< The input file stream
 
-    size_t _fileSizeBytes = 0;      ///< The total number of bytes in the file
-    size_t _totalNumRowsSent = 0;   ///< The number of rows sent so far
+    size_t _fileSizeBytes = 0;     ///< The total number of bytes in the file
+    size_t _totalNumRowsSent = 0;  ///< The number of rows sent so far
 };
 
-}}} // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_EXPORTSERVERCONNECTION_H
+#endif  // LSST_QSERV_REPLICA_EXPORTSERVERCONNECTION_H

@@ -43,7 +43,6 @@
 ////////////////////////////////////////////////////////////////////////
 std::string const mysqlNull("\\N");
 
-
 namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.rproc.ProtoRowBuffer");
@@ -61,32 +60,28 @@ std::string printCharVect(std::vector<char> const& cVect) {
     return str;
 }
 
-} // namespace
+}  // namespace
 
-
-namespace lsst {
-namespace qserv {
-namespace rproc {
+namespace lsst::qserv::rproc {
 
 ProtoRowBuffer::ProtoRowBuffer(proto::Result& res, int jobId, std::string const& jobIdColName,
                                std::string const& jobIdSqlType, int jobIdMysqlType)
-    : _colSep("\t"),
-      _rowSep("\n"),
-      _nullToken("\\N"),
-      _result(res),
-      _rowIdx(0),
-      _rowTotal(res.row_size()),
-      _currentRow(0),
-      _jobIdColName(jobIdColName),
-      _jobIdSqlType(jobIdSqlType),
-      _jobIdMysqlType(jobIdMysqlType) {
+        : _colSep("\t"),
+          _rowSep("\n"),
+          _nullToken("\\N"),
+          _result(res),
+          _rowIdx(0),
+          _rowTotal(res.row_size()),
+          _currentRow(0),
+          _jobIdColName(jobIdColName),
+          _jobIdSqlType(jobIdSqlType),
+          _jobIdMysqlType(jobIdMysqlType) {
     _jobIdStr = std::string("'") + std::to_string(jobId) + "'";
     _initSchema();
     if (_result.row_size() > 0) {
         _initCurrentRow();
     }
 }
-
 
 /// Fetch a up to a single row from from the Result message
 unsigned ProtoRowBuffer::fetch(char* buffer, unsigned bufLen) {
@@ -95,7 +90,7 @@ unsigned ProtoRowBuffer::fetch(char* buffer, unsigned bufLen) {
         memcpy(buffer, &_currentRow[0], bufLen);
         _currentRow.erase(_currentRow.begin(), _currentRow.begin() + bufLen);
         fetched = bufLen;
-    } else { // Want more than we have.
+    } else {  // Want more than we have.
         if (_currentRow.size()) {
             memcpy(buffer, &_currentRow[0], _currentRow.size());
             fetched = _currentRow.size();
@@ -120,7 +115,7 @@ void ProtoRowBuffer::_initSchema() {
     _schema.columns.push_back(jobIdCol);
 
     proto::RowSchema const& prs = _result.rowschema();
-    for(int i=0, e=prs.columnschema_size(); i != e; ++i) {
+    for (int i = 0, e = prs.columnschema_size(); i != e; ++i) {
         proto::ColumnSchema const& pcs = prs.columnschema(i);
         sql::ColSchema cs;
         if (pcs.has_name()) {
@@ -137,7 +132,6 @@ void ProtoRowBuffer::_initSchema() {
     }
 }
 
-
 std::string ProtoRowBuffer::dump() const {
     std::string str("ProtoRowBuffer schema(");
     for (auto sCol : _schema.columns) {
@@ -150,7 +144,6 @@ std::string ProtoRowBuffer::dump() const {
     str += ")";
     return str;
 }
-
 
 /// Import the next row into the buffer
 void ProtoRowBuffer::_readNextRow() {
@@ -165,14 +158,12 @@ void ProtoRowBuffer::_readNextRow() {
     LOGS(_log, LOG_LVL_TRACE, "_currentrow=" << printCharVect(_currentRow));
 }
 
-
 /// Setup the row byte buffer
 void ProtoRowBuffer::_initCurrentRow() {
     // Copy row and reserve 2x size.
     int rowSize = _copyRowBundle(_currentRow, _result.row(_rowIdx));
-    LOGS(_log, LOG_LVL_TRACE, "init _rowIdx=" <<_rowIdx << " _currentrow=" << printCharVect(_currentRow));
-    _currentRow.reserve(rowSize*2); // for future usage
+    LOGS(_log, LOG_LVL_TRACE, "init _rowIdx=" << _rowIdx << " _currentrow=" << printCharVect(_currentRow));
+    _currentRow.reserve(rowSize * 2);  // for future usage
 }
 
-
-}}} // lsst::qserv::mysql
+}  // namespace lsst::qserv::rproc

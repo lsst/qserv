@@ -78,20 +78,18 @@
 namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.qana.TablePlugin");
 
-
 #define MYSQL_FIELD_MAX_LEN 64
 
-
 template <typename CLAUSE_T>
-void matchValueExprs(lsst::qserv::query::QueryContext& context, CLAUSE_T & clause, bool matchIsRequired) {
+void matchValueExprs(lsst::qserv::query::QueryContext& context, CLAUSE_T& clause, bool matchIsRequired) {
     lsst::qserv::query::ValueExprPtrRefVector valueExprRefs;
     clause.findValueExprRefs(valueExprRefs);
     for (auto&& valueExprRef : valueExprRefs) {
         auto&& valueExprMatch = context.getValueExprMatch(valueExprRef.get());
         if (nullptr != valueExprMatch) {
-            LOGS(_log, LOG_LVL_TRACE, __FUNCTION__ << " replacing valueExpr " << *valueExprRef.get() <<
-                    " in " << clause <<
-                    " with " << *valueExprMatch);
+            LOGS(_log, LOG_LVL_TRACE,
+                 __FUNCTION__ << " replacing valueExpr " << *valueExprRef.get() << " in " << clause
+                              << " with " << *valueExprMatch);
             valueExprRef.get() = valueExprMatch;
         } else if (matchIsRequired) {
             std::ostringstream os;
@@ -100,7 +98,6 @@ void matchValueExprs(lsst::qserv::query::QueryContext& context, CLAUSE_T & claus
         }
     }
 }
-
 
 void matchTableRefs(lsst::qserv::query::QueryContext& context,
                     std::vector<std::shared_ptr<lsst::qserv::query::ColumnRef>>& columnRefs,
@@ -114,18 +111,17 @@ void matchTableRefs(lsst::qserv::query::QueryContext& context,
                 throw std::logic_error(os.str());
             }
         } else {
-            LOGS(_log, LOG_LVL_TRACE, __FUNCTION__ << " replacing tableRef in " << *columnRef << " with " << *tableRefMatch);
+            LOGS(_log, LOG_LVL_TRACE,
+                 __FUNCTION__ << " replacing tableRef in " << *columnRef << " with " << *tableRefMatch);
             columnRef->setTable(tableRefMatch);
         }
     }
 }
 
-
 // Change the contents of the ValueExprs to use the TableRef objects that are stored in the context, instead
 // of allowing these ValueExprs to own their own unique TableRef objects.
 void matchTableRefs(lsst::qserv::query::QueryContext& context,
-                    lsst::qserv::query::ValueExprPtrVector& valueExprs,
-                    bool matchIsRequired) {
+                    lsst::qserv::query::ValueExprPtrVector& valueExprs, bool matchIsRequired) {
     for (auto&& valueExpr : valueExprs) {
         if (valueExpr->isStar()) {
             auto valueFactor = valueExpr->getFactor();
@@ -142,28 +138,21 @@ void matchTableRefs(lsst::qserv::query::QueryContext& context,
     }
 }
 
-
 template <typename CLAUSE_T>
-void matchTableRefs(lsst::qserv::query::QueryContext& context, CLAUSE_T & clause, bool matchIsRequired) {
+void matchTableRefs(lsst::qserv::query::QueryContext& context, CLAUSE_T& clause, bool matchIsRequired) {
     lsst::qserv::query::ValueExprPtrVector valueExprs;
     clause.findValueExprs(valueExprs);
     matchTableRefs(context, valueExprs, matchIsRequired);
 }
 
+}  // namespace
 
-} // namespace
-
-namespace lsst {
-namespace qserv {
-namespace qana {
-
+namespace lsst::qserv::qana {
 
 ////////////////////////////////////////////////////////////////////////
 // TablePlugin implementation
 ////////////////////////////////////////////////////////////////////////
-void
-TablePlugin::applyLogical(query::SelectStmt& stmt,
-                          query::QueryContext& context) {
+void TablePlugin::applyLogical(query::SelectStmt& stmt, query::QueryContext& context) {
     LOGS(_log, LOG_LVL_TRACE, "applyLogical begin:\n\t" << stmt.getQueryTemplate() << "\n\t" << stmt);
     query::FromList& fromList = stmt.getFromList();
     context.collectTopLevelTableSchema(fromList);
@@ -203,7 +192,7 @@ TablePlugin::applyLogical(query::SelectStmt& stmt,
     }
 
     std::for_each(fromListTableRefs.begin(), fromListTableRefs.end(),
-        [&](query::TableRef::Ptr const& tableRef) { _setAlias(tableRef, context); });
+                  [&](query::TableRef::Ptr const& tableRef) { _setAlias(tableRef, context); });
 
     // update the dominant db in the context ("dominant" is not the same as the default db)
     if (fromListTableRefs.size() > 0) {
@@ -249,10 +238,7 @@ TablePlugin::applyLogical(query::SelectStmt& stmt,
     LOGS(_log, LOG_LVL_TRACE, "applyLogical end:\n\t" << stmt.getQueryTemplate() << "\n\t" << stmt);
 }
 
-void
-TablePlugin::applyPhysical(QueryPlugin::Plan& p,
-                           query::QueryContext& context)
-{
+void TablePlugin::applyPhysical(QueryPlugin::Plan& p, query::QueryContext& context) {
     TableInfoPool pool(context.defaultDb, *context.css);
     if (!context.queryMapping) {
         context.queryMapping = std::make_shared<QueryMapping>();
@@ -262,13 +248,14 @@ TablePlugin::applyPhysical(QueryPlugin::Plan& p,
         auto stmt = p.stmtParallel.front();
         p.stmtPreFlight = std::make_shared<query::SelectStmt>(stmt->getSelectList().clone(),
                                                               stmt->getFromList().clone());
-        LOGS(_log, LOG_LVL_TRACE, "set local worker query:" << p.stmtPreFlight->getQueryTemplate().sqlFragment());
+        LOGS(_log, LOG_LVL_TRACE,
+             "set local worker query:" << p.stmtPreFlight->getQueryTemplate().sqlFragment());
     }
 
     // Process each entry in the parallel select statement set.
     typedef SelectStmtPtrVector::iterator Iter;
     SelectStmtPtrVector newList;
-    for(Iter i=p.stmtParallel.begin(), e=p.stmtParallel.end(); i != e; ++i) {
+    for (Iter i = p.stmtParallel.begin(), e = p.stmtParallel.end(); i != e; ++i) {
         RelationGraph g(**i, pool);
         g.rewrite(newList, *context.queryMapping);
     }
@@ -276,25 +263,21 @@ TablePlugin::applyPhysical(QueryPlugin::Plan& p,
     p.stmtParallel.swap(newList);
 }
 
-
 std::string TablePlugin::_getNextValueExprAlias() {
     return "valueExprAlias_" + std::to_string(_nextValueExprAlias++);
 }
 
-
 std::string TablePlugin::_getNextTableRefAlias() {
     return "tableRefAlias_" + std::to_string(_nextTableRefAlias++);
 }
-
 
 void TablePlugin::_setAlias(std::shared_ptr<query::TableRef> const& tableRef, query::QueryContext& context) {
     if (nullptr == tableRef) {
         return;
     }
     if (not tableRef->hasAlias()) {
-        std::string alias = tableRef->hasDb() ?
-                tableRef->getDb() + "." + tableRef->getTable() :
-                tableRef->getTable();
+        std::string alias =
+                tableRef->hasDb() ? tableRef->getDb() + "." + tableRef->getTable() : tableRef->getTable();
         if (alias.size() > MYSQL_FIELD_MAX_LEN) {
             alias = _getNextTableRefAlias();
         }
@@ -315,5 +298,4 @@ void TablePlugin::_setAlias(std::shared_ptr<query::TableRef> const& tableRef, qu
     }
 }
 
-
-}}} // namespace lsst::qserv::qana
+}  // namespace lsst::qserv::qana

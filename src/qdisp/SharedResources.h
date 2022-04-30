@@ -19,16 +19,13 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-
 #ifndef LSST_QSERV_SHAREDRESOURCES_H
 #define LSST_QSERV_SHAREDRESOURCES_H
 
 // System headers
 #include <memory>
 
-namespace lsst {
-namespace qserv {
-namespace qdisp {
+namespace lsst::qserv::qdisp {
 
 class QdispPool;
 
@@ -43,7 +40,7 @@ public:
     using Ptr = std::shared_ptr<SharedResources>;
 
     static Ptr create(std::shared_ptr<qdisp::QdispPool> const& qdispPool,
-               std::shared_ptr<qdisp::PseudoFifo> const& queryRequestPseudoFifo) {
+                      std::shared_ptr<qdisp::PseudoFifo> const& queryRequestPseudoFifo) {
         return Ptr(new SharedResources(qdispPool, queryRequestPseudoFifo));
     }
 
@@ -52,18 +49,14 @@ public:
     SharedResources& operator=(SharedResources const&) = delete;
     ~SharedResources() = default;
 
-    std::shared_ptr<qdisp::QdispPool> getQdispPool() {
-        return _qdispPool;
-    }
+    std::shared_ptr<qdisp::QdispPool> getQdispPool() { return _qdispPool; }
 
-    std::shared_ptr<qdisp::PseudoFifo> getQueryRequestPseudoFifo() {
-        return _queryRequestPseudoFifo;
-    }
+    std::shared_ptr<qdisp::PseudoFifo> getQueryRequestPseudoFifo() { return _queryRequestPseudoFifo; }
 
 private:
     SharedResources(std::shared_ptr<qdisp::QdispPool> const& qdispPool,
-                    std::shared_ptr<qdisp::PseudoFifo> const& queryRequestPseudoFifo) :
-        _qdispPool(qdispPool), _queryRequestPseudoFifo(queryRequestPseudoFifo) {}
+                    std::shared_ptr<qdisp::PseudoFifo> const& queryRequestPseudoFifo)
+            : _qdispPool(qdispPool), _queryRequestPseudoFifo(queryRequestPseudoFifo) {}
 
     /// Thread pool for handling Responses from XrdSsi.
     std::shared_ptr<qdisp::QdispPool> _qdispPool;
@@ -73,6 +66,6 @@ private:
     std::shared_ptr<qdisp::PseudoFifo> _queryRequestPseudoFifo;
 };
 
-}}} // namespace lsst::qserv::qdisp
+}  // namespace lsst::qserv::qdisp
 
-#endif // LSST_QSERV_SHAREDRESOURCES_H
+#endif  // LSST_QSERV_SHAREDRESOURCES_H

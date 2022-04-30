@@ -33,9 +33,7 @@
 #include "replica/TestEchoQservMgtRequest.h"
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class ClusterHealth captures the summary status of services within a cluster
@@ -96,15 +94,14 @@ private:
     std::map<std::string, bool> _qserv;
 };
 
-
 /**
-  * Class ClusterHealthJob represents a tool which will send probes to the Replication
-  * worker services and Qserv (if enabled) services of all worker nodes. Upon its
-  * completion the job will report a status of each service.
-  *
-  * The job is implemented not to have any side effects on either class of services.
-  */
-class ClusterHealthJob: public Job  {
+ * Class ClusterHealthJob represents a tool which will send probes to the Replication
+ * worker services and Qserv (if enabled) services of all worker nodes. Upon its
+ * completion the job will report a status of each service.
+ *
+ * The job is implemented not to have any side effects on either class of services.
+ */
+class ClusterHealthJob : public Job {
 public:
     typedef std::shared_ptr<ClusterHealthJob> Ptr;
 
@@ -130,12 +127,8 @@ public:
      * @param priority  The priority of the job.
      * @return  A pointer to the created object.
      */
-    static Ptr create(unsigned int timeoutSec,
-                      bool allWorkers,
-                      Controller::Ptr const& controller,
-                      std::string const& parentJobId,
-                      CallbackType const& onFinish,
-                      int priority);
+    static Ptr create(unsigned int timeoutSec, bool allWorkers, Controller::Ptr const& controller,
+                      std::string const& parentJobId, CallbackType const& onFinish, int priority);
 
     ClusterHealthJob() = delete;
     ClusterHealthJob(ClusterHealthJob const&) = delete;
@@ -157,10 +150,10 @@ public:
     ClusterHealth const& clusterHealth() const;
 
     /// @see Job::extendedPersistentState()
-    std::list<std::pair<std::string,std::string>> extendedPersistentState() const override;
+    std::list<std::pair<std::string, std::string>> extendedPersistentState() const override;
 
     /// @see Job::persistentLogData()
-    std::list<std::pair<std::string,std::string>> persistentLogData() const final;
+    std::list<std::pair<std::string, std::string>> persistentLogData() const final;
 
 protected:
     /// @see Job::startImpl()
@@ -174,12 +167,8 @@ protected:
 
 private:
     /// @see ClusterHealthJob::create()
-    ClusterHealthJob(unsigned int timeoutSec,
-                     bool allWorkers,
-                     Controller::Ptr const& controller,
-                     std::string const& parentJobId,
-                     CallbackType const& onFinish,
-                     int priority);
+    ClusterHealthJob(unsigned int timeoutSec, bool allWorkers, Controller::Ptr const& controller,
+                     std::string const& parentJobId, CallbackType const& onFinish, int priority);
 
     /**
      * The callback function to be invoked on a completion of the Replication worker probes.
@@ -196,15 +185,15 @@ private:
     // Input parameters
 
     unsigned int const _timeoutSec;
-    bool         const _allWorkers;
-    CallbackType       _onFinish;
+    bool const _allWorkers;
+    CallbackType _onFinish;
 
     /// Requests sent to the Replication workers registered by their identifiers
     std::map<std::string, ServiceStatusRequest::Ptr> _requests;
 
     /// Requests sent to the Qserv workers registered by their identifiers
     std::map<std::string, TestEchoQservMgtRequest::Ptr> _qservRequests;
-    
+
     /// Result to be returned
     ClusterHealth _health;
 
@@ -215,6 +204,6 @@ private:
     size_t _numFinished = 0;
 };
 
-}}} // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_REPLICA_CLUSTERHEALTHJOB_H
+#endif  // LSST_QSERV_REPLICA_CLUSTERHEALTHJOB_H

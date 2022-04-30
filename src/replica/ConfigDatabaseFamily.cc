@@ -32,9 +32,7 @@
 using namespace std;
 using json = nlohmann::json;
 
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
 DatabaseFamilyInfo::DatabaseFamilyInfo(json const& obj) {
     string const context = "DatabaseFamilyInfo::DatabaseFamilyInfo(json): ";
@@ -51,11 +49,9 @@ DatabaseFamilyInfo::DatabaseFamilyInfo(json const& obj) {
     } catch (exception const& ex) {
         throw invalid_argument(context + "the JSON object is not valid, ex: " + string(ex.what()));
     }
-    chunkNumberValidator = make_shared<ChunkNumberQservValidator>(
-            static_cast<int32_t>(numStripes),
-            static_cast<int32_t>(numSubStripes));
+    chunkNumberValidator = make_shared<ChunkNumberQservValidator>(static_cast<int32_t>(numStripes),
+                                                                  static_cast<int32_t>(numSubStripes));
 }
-
 
 json DatabaseFamilyInfo::toJson() const {
     json infoJson;
@@ -67,10 +63,9 @@ json DatabaseFamilyInfo::toJson() const {
     return infoJson;
 }
 
-
-ostream& operator <<(ostream& os, DatabaseFamilyInfo const& info) {
-    os  << "DatabaseFamilyInfo: " << info.toJson().dump();
+ostream& operator<<(ostream& os, DatabaseFamilyInfo const& info) {
+    os << "DatabaseFamilyInfo: " << info.toJson().dump();
     return os;
 }
 
-}}} // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::replica

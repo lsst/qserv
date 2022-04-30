@@ -40,7 +40,6 @@
 #include "sql/SqlConnectionFactory.h"
 #include "sql/SqlResults.h"
 
-
 using namespace std;
 
 namespace {
@@ -49,23 +48,19 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.qmeta.QStatusMysql");
 
 }
 
-namespace lsst {
-namespace qserv {
-namespace qmeta {
-
+namespace lsst::qserv::qmeta {
 
 QStatusMysql::QStatusMysql(mysql::MySqlConfig const& mysqlConf)
-  : QStatus(), _conn(sql::SqlConnectionFactory::make(mysqlConf)) {
-}
-
+        : QStatus(), _conn(sql::SqlConnectionFactory::make(mysqlConf)) {}
 
 void QStatusMysql::queryStatsTmpRegister(QueryId queryId, int totalChunks) {
     lock_guard<mutex> sync(_dbMutex);
     auto trans = QMetaTransaction::create(*_conn);
     sql::SqlErrorObject errObj;
-    string query = "INSERT INTO QStatsTmp (queryId, totalChunks, completedChunks, queryBegin, lastUpdate) "
-                   "VALUES ( " + to_string(queryId) + ", " + to_string(totalChunks) +
-                   ", 0, NOW(), NOW())";
+    string query =
+            "INSERT INTO QStatsTmp (queryId, totalChunks, completedChunks, queryBegin, lastUpdate) "
+            "VALUES ( " +
+            to_string(queryId) + ", " + to_string(totalChunks) + ", 0, NOW(), NOW())";
 
     LOGS(_log, LOG_LVL_DEBUG, "Executing query: " << query);
     if (not _conn->runQuery(query, errObj)) {
@@ -77,13 +72,12 @@ void QStatusMysql::queryStatsTmpRegister(QueryId queryId, int totalChunks) {
     trans->commit();
 }
 
-
 void QStatusMysql::queryStatsTmpChunkUpdate(QueryId queryId, int completedChunks) {
     lock_guard<mutex> sync(_dbMutex);
     auto trans = QMetaTransaction::create(*_conn);
     sql::SqlErrorObject errObj;
     string query = "UPDATE QStatsTmp SET completedChunks = " + to_string(completedChunks) +
-                    ", lastUpdate = NOW() WHERE queryId =" + to_string(queryId);
+                   ", lastUpdate = NOW() WHERE queryId =" + to_string(queryId);
 
     LOGS(_log, LOG_LVL_DEBUG, "Executing query: " << query);
     if (not _conn->runQuery(query, errObj)) {
@@ -95,15 +89,16 @@ void QStatusMysql::queryStatsTmpChunkUpdate(QueryId queryId, int completedChunks
     trans->commit();
 }
 
-
 QStats QStatusMysql::queryStatsTmpGet(QueryId queryId) {
     lock_guard<mutex> sync(_dbMutex);
     auto trans = QMetaTransaction::create(*_conn);
     sql::SqlErrorObject errObj;
     sql::SqlResults results;
-    string query = "SELECT queryId, totalChunks, completedChunks, "
-                   "UNIX_TIMESTAMP(queryBegin), UNIX_TIMESTAMP(lastUpdate) "
-                   "FROM QStatsTmp WHERE queryId= " +  to_string(queryId);
+    string query =
+            "SELECT queryId, totalChunks, completedChunks, "
+            "UNIX_TIMESTAMP(queryBegin), UNIX_TIMESTAMP(lastUpdate) "
+            "FROM QStatsTmp WHERE queryId= " +
+            to_string(queryId);
     LOGS(_log, LOG_LVL_DEBUG, "Executing query: " << query);
     if (not _conn->runQuery(query, results, errObj)) {
         LOGS(_log, LOG_LVL_ERROR, "SQL query failed: " << query);
@@ -119,16 +114,15 @@ QStats QStatusMysql::queryStatsTmpGet(QueryId queryId) {
     // make sure that iterator does not move until we are done with row
     sql::SqlResults::value_type const& row = *rowIter;
 
-    QueryId qId         = boost::lexical_cast<QueryId>(row[0].first);
-    int totalChunks     = boost::lexical_cast<int>(row[1].first);
+    QueryId qId = boost::lexical_cast<QueryId>(row[0].first);
+    int totalChunks = boost::lexical_cast<int>(row[1].first);
     int completedChunks = boost::lexical_cast<int>(row[2].first);
-    time_t begin        = boost::lexical_cast<time_t>(row[3].first);
-    time_t lastUpdate   = boost::lexical_cast<time_t>(row[4].first);
+    time_t begin = boost::lexical_cast<time_t>(row[3].first);
+    time_t lastUpdate = boost::lexical_cast<time_t>(row[4].first);
 
     trans->commit();
     return QStats(qId, totalChunks, completedChunks, begin, lastUpdate);
 }
-
 
 void QStatusMysql::queryStatsTmpRemove(QueryId queryId) {
     lock_guard<mutex> sync(_dbMutex);
@@ -147,4 +141,4 @@ void QStatusMysql::queryStatsTmpRemove(QueryId queryId) {
     trans->commit();
 }
 
-}}} // namespace lsst::qserv::qmeta
+}  // namespace lsst::qserv::qmeta

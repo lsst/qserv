@@ -57,19 +57,21 @@ BOOST_AUTO_TEST_SUITE(Suite)
  */
 BOOST_AUTO_TEST_CASE(prettyPrint) {
     std::string s;
-    for(auto c='a'; c <= 'z'; ++c) {
+    for (auto c = 'a'; c <= 'z'; ++c) {
         s += c;
     }
 
-    std::string expectedList{"[97, 98, 99, 100, 101, 102, 103, 104, 105, 106, 107, 108, 109, "
-        "110, 111, 112, 113, 114, 115, 116, 117, 118, 119, 120, 121, 122]"};
+    std::string expectedList{
+            "[97, 98, 99, 100, 101, 102, 103, 104, 105, 106, 107, 108, 109, "
+            "110, 111, 112, 113, 114, 115, 116, 117, 118, 119, 120, 121, 122]"};
     auto strList = util::prettyCharList(s);
     LOGS_DEBUG("strList=" << strList);
     BOOST_CHECK(strList.compare(expectedList) == 0);
 
-    std::string expectedList13{"[[0]=97, [1]=98, [2]=99, [3]=100, [4]=101, [5]=102, [6]=103, [7]=104, "
-        "[8]=105, [9]=106, [10]=107, [11]=108, [12]=109, [13]=110, [14]=111, [15]=112, [16]=113, "
-        "[17]=114, [18]=115, [19]=116, [20]=117, [21]=118, [22]=119, [23]=120, [24]=121, [25]=122]"};
+    std::string expectedList13{
+            "[[0]=97, [1]=98, [2]=99, [3]=100, [4]=101, [5]=102, [6]=103, [7]=104, "
+            "[8]=105, [9]=106, [10]=107, [11]=108, [12]=109, [13]=110, [14]=111, [15]=112, [16]=113, "
+            "[17]=114, [18]=115, [19]=116, [20]=117, [21]=118, [22]=119, [23]=120, [24]=121, [25]=122]"};
     auto strList13 = util::prettyCharList(s, 13);
     LOGS_DEBUG("strList13=" << strList13);
     BOOST_CHECK(strList13.compare(expectedList13) == 0);
@@ -152,11 +154,11 @@ BOOST_AUTO_TEST_CASE(stringToVector) {
         BOOST_CHECK(vect.size() == j);
     }
     {
-        bool caught=false;
+        bool caught = false;
         try {
             auto vect = util::StringHelper::getIntVectFromStr("987:23:x:1:-123", ":");
         } catch (std::invalid_argument const& e) {
-            caught=true;
+            caught = true;
         }
         BOOST_CHECK(caught);
     }
@@ -189,6 +191,5 @@ BOOST_AUTO_TEST_CASE(stringToVector) {
     BOOST_REQUIRE(output.is_equal(expected_err_msg));
 }
 */
-
 
 BOOST_AUTO_TEST_SUITE_END()

@@ -31,52 +31,36 @@
 
 using namespace std;
 
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
-HealthMonitorTask::Ptr HealthMonitorTask::create(
-        Controller::Ptr const& controller,
-        Task::AbnormalTerminationCallbackType const& onTerminated,
-        WorkerEvictCallbackType const& onWorkerEvictTimeout,
-        unsigned int workerEvictTimeoutSec,
-        unsigned int workerResponseTimeoutSec,
-        unsigned int healthProbeIntervalSec) {
-    return Ptr(
-        new HealthMonitorTask(
-            controller,
-            onTerminated,
-            onWorkerEvictTimeout,
-            workerEvictTimeoutSec,
-            workerResponseTimeoutSec,
-            healthProbeIntervalSec
-        )
-    );
+HealthMonitorTask::Ptr HealthMonitorTask::create(Controller::Ptr const& controller,
+                                                 Task::AbnormalTerminationCallbackType const& onTerminated,
+                                                 WorkerEvictCallbackType const& onWorkerEvictTimeout,
+                                                 unsigned int workerEvictTimeoutSec,
+                                                 unsigned int workerResponseTimeoutSec,
+                                                 unsigned int healthProbeIntervalSec) {
+    return Ptr(new HealthMonitorTask(controller, onTerminated, onWorkerEvictTimeout, workerEvictTimeoutSec,
+                                     workerResponseTimeoutSec, healthProbeIntervalSec));
 }
-
 
 HealthMonitorTask::WorkerResponseDelay HealthMonitorTask::workerResponseDelay() const {
     util::Lock lock(_mtx, "HealthMonitorTask::" + string(__func__));
     return _workerServiceNoResponseSec;
 }
 
-
 void HealthMonitorTask::onStart() {
- 
     string const context = "HealthMonitorTask::" + string(__func__);
 
     util::Lock lock(_mtx, context);
 
-    for (auto&& worker: serviceProvider()->config()->allWorkers()) {
+    for (auto&& worker : serviceProvider()->config()->allWorkers()) {
         _workerServiceNoResponseSec[worker]["qserv"] = 0;
         _workerServiceNoResponseSec[worker]["replication"] = 0;
     }
     _prevUpdateTimeMs = PerformanceUtils::now();
 }
 
-
 bool HealthMonitorTask::onRun() {
- 
     string const context = "HealthMonitorTask::" + string(__func__);
 
     // Probe hosts. Wait for completion or expiration of the job
@@ -90,18 +74,11 @@ bool HealthMonitorTask::onRun() {
     string const noParentJobId;
 
     vector<ClusterHealthJob::Ptr> jobs;
-    jobs.emplace_back(
-        ClusterHealthJob::create(
-            _workerResponseTimeoutSec,
-            true, /* allWorkers */
-            controller(),
-            noParentJobId,
-            [self](ClusterHealthJob::Ptr const& job) {
-                self->_numFinishedJobs++;
-            },
-            serviceProvider()->config()->get<int>("controller", "health-monitor-priority-level")
-        )
-    );
+    jobs.emplace_back(ClusterHealthJob::create(
+            _workerResponseTimeoutSec, true, /* allWorkers */
+            controller(), noParentJobId,
+            [self](ClusterHealthJob::Ptr const& job) { self->_numFinishedJobs++; },
+            serviceProvider()->config()->get<int>("controller", "health-monitor-priority-level")));
     jobs[0]->start();
 
     _logStartedEvent(jobs[0]);
@@ -119,8 +96,7 @@ bool HealthMonitorTask::onRun() {
     {
         util::Lock lock(_mtx, context);
 
-        for (auto&& entry: jobs[0]->clusterHealth().qserv()) {
-
+        for (auto&& entry : jobs[0]->clusterHealth().qserv()) {
             auto worker = entry.first;
             auto responded = entry.second;
 
@@ -128,12 +104,11 @@ bool HealthMonitorTask::onRun() {
                 _workerServiceNoResponseSec[worker]["qserv"] = 0;
             } else {
                 _workerServiceNoResponseSec[worker]["qserv"] += workerResponseDelaySec;
-                info("no response from Qserv at worker '" +worker + "' for " +
+                info("no response from Qserv at worker '" + worker + "' for " +
                      to_string(_workerServiceNoResponseSec[worker]["qserv"]) + " seconds");
             }
         }
-        for (auto&& entry: jobs[0]->clusterHealth().replication()) {
-
+        for (auto&& entry : jobs[0]->clusterHealth().replication()) {
             auto worker = entry.first;
             auto responded = entry.second;
 
@@ -155,9 +130,8 @@ bool HealthMonitorTask::onRun() {
     // (including the evicted ones) which are offline.
     size_t numEnabledWorkersOffline = 0;
 
-    for (auto&& entry: _workerServiceNoResponseSec) {
-
-        auto worker     = entry.first;
+    for (auto&& entry : _workerServiceNoResponseSec) {
+        auto worker = entry.first;
         auto workerInfo = serviceProvider()->config()->workerInfo(worker);
 
         // Both services on the worker must be offline for a duration of
@@ -165,7 +139,6 @@ bool HealthMonitorTask::onRun() {
 
         if (entry.second.at("replication") >= _workerEvictTimeoutSec) {
             if (entry.second.at("qserv") >= _workerEvictTimeoutSec) {
-
                 // Only the ENABLED workers are considered for eviction
 
                 if (workerInfo.isEnabled) {
@@ -196,13 +169,11 @@ bool HealthMonitorTask::onRun() {
     // The problem may require a manual repair.
 
     switch (workers2evict.size()) {
-
         case 0:
             break;
 
         case 1:
             if (1 == numEnabledWorkersOffline) {
-
                 // Upstream notification on the evicted worker
                 _onWorkerEvictTimeout(workers2evict[0]);
 
@@ -223,51 +194,40 @@ bool HealthMonitorTask::onRun() {
     return true;
 }
 
-
-HealthMonitorTask::HealthMonitorTask(
-        Controller::Ptr const& controller,
-        Task::AbnormalTerminationCallbackType const& onTerminated,
-        WorkerEvictCallbackType const& onWorkerEvictTimeout,
-        unsigned int workerEvictTimeoutSec,
-        unsigned int workerResponseTimeoutSec,
-        unsigned int healthProbeIntervalSec)
-    :   Task(controller,
-             "HEALTH-MONITOR  ",
-             onTerminated,
-             healthProbeIntervalSec
-        ),
-        _onWorkerEvictTimeout(onWorkerEvictTimeout),
-        _workerEvictTimeoutSec(workerEvictTimeoutSec),
-        _workerResponseTimeoutSec(workerResponseTimeoutSec),
-        _numFinishedJobs(0),
-        _prevUpdateTimeMs(0) {
-}
-
+HealthMonitorTask::HealthMonitorTask(Controller::Ptr const& controller,
+                                     Task::AbnormalTerminationCallbackType const& onTerminated,
+                                     WorkerEvictCallbackType const& onWorkerEvictTimeout,
+                                     unsigned int workerEvictTimeoutSec,
+                                     unsigned int workerResponseTimeoutSec,
+                                     unsigned int healthProbeIntervalSec)
+        : Task(controller, "HEALTH-MONITOR  ", onTerminated, healthProbeIntervalSec),
+          _onWorkerEvictTimeout(onWorkerEvictTimeout),
+          _workerEvictTimeoutSec(workerEvictTimeoutSec),
+          _workerResponseTimeoutSec(workerResponseTimeoutSec),
+          _numFinishedJobs(0),
+          _prevUpdateTimeMs(0) {}
 
 void HealthMonitorTask::_logStartedEvent(ClusterHealthJob::Ptr const& job) const {
-
     ControllerEvent event;
 
     event.operation = job->typeName();
-    event.status    = "STARTED";
-    event.jobId     = job->id();
+    event.status = "STARTED";
+    event.jobId = job->id();
 
     event.kvInfo.emplace_back("worker-response-timeout", to_string(_workerResponseTimeoutSec));
 
     logEvent(event);
 }
 
-
 void HealthMonitorTask::_logFinishedEvent(ClusterHealthJob::Ptr const& job) const {
-
     ControllerEvent event;
 
     event.operation = job->typeName();
-    event.status    = job->state2string();
-    event.jobId     = job->id();
-    event.kvInfo    = job->persistentLogData();
+    event.status = job->state2string();
+    event.jobId = job->id();
+    event.kvInfo = job->persistentLogData();
 
     logEvent(event);
 }
-    
-}}} // namespace lsst::qserv::replica
+
+}  // namespace lsst::qserv::replica

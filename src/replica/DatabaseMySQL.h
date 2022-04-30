@@ -61,23 +61,17 @@
 #include "util/Mutex.h"
 
 // Forward declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
-    class ProtocolResponseSqlField;
-}}} // Forward declarations
+namespace lsst::qserv::replica {
+class ProtocolResponseSqlField;
+}  // namespace lsst::qserv::replica
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
-namespace database {
-namespace mysql {
+namespace lsst::qserv::replica::database::mysql {
 
 /**
  * Class Connection provides the main API to the database.
  */
-class Connection: public std::enable_shared_from_this<Connection> {
+class Connection : public std::enable_shared_from_this<Connection> {
 public:
     typedef std::shared_ptr<Connection> Ptr;
 
@@ -115,17 +109,17 @@ public:
      *    do {
      *        try {
      *            conn = Connection::open(params);
-     *            
+     *
      *        } catch (ConnectError const& ex) {
      *            cerr << "connection attempt failed: " << ex.what << endl;
      *            delayBetweenReconnects.wait();
      *            cerr << "reconnecting..." << endl;
-     *            
+     *
      *        } catch (ConnectTimeoutError const& ex) {
      *            cerr << "connection attempt expired after: " << ex.timeoutSec() << " seconds "
      *                 << "due to: " << ex.what << endl;
      *            throw;
-     *            
+     *
      *        } catch (Error const& ex) {
      *            cerr << "connection attempt failed: " << ex.what << endl;
      *            throw;
@@ -137,7 +131,7 @@ public:
      *
      * @return a valid object if the connection attempt succeeded (no nullptr
      *   to be returned under any circumstances)
-     * 
+     *
      * @throw ConnectTimeoutError is thrown only if the automatic reconnects
      *   are allowed to indicate that connection attempts to a server
      *   failed to be established within the specified timeout
@@ -162,7 +156,7 @@ public:
      *   the Configuration parameter: Configuration::databaseConnectTimeoutSec()
      * @note The same value of the timeout would be also assumed if the connection
      *   is lost when executing queries or pulling the result sets.
-     * 
+     *
      * @param connectionParams
      * @param allowReconnects  if 'true' then multiple reconnection attempts will be allowed
      * @param connectTimeoutSec  maximum number of seconds to wait before a connection with
@@ -174,9 +168,8 @@ public:
      * @see Configuration::databaseConnectTimeoutSec()
      * @see Connection::open()
      */
-    static Ptr open2(ConnectionParams const& connectionParams,
-                     bool allowReconnects=false,
-                     unsigned int connectTimeoutSec=0);
+    static Ptr open2(ConnectionParams const& connectionParams, bool allowReconnects = false,
+                     unsigned int connectTimeoutSec = 0);
 
     Connection() = delete;
     Connection(Connection const&) = delete;
@@ -198,7 +191,7 @@ public:
 
     /**
      * @brief Check if the table exists in a scope of a database.
-     * 
+     *
      * The name of the database can be specified in the optional parameter
      * \param proposedDatabase. If the value of the parameter will be found
      * empty the current database (the one specified in the ConnectionParams
@@ -210,19 +203,21 @@ public:
      * @throws std::invalid_argument If the name of the table is empty.
      * @throws Error If no valid database could be deduced from any source.
      */
-    bool tableExists(std::string const& table, std::string const& proposedDatabase=std::string());
+    bool tableExists(std::string const& table, std::string const& proposedDatabase = std::string());
 
     // -------------------------------------------------
     // Helper methods for simplifying query preparation
     // -------------------------------------------------
 
     template <typename T>
-    std::string sqlValue(T const&            val) const { return std::to_string(val); }
-    std::string sqlValue(std::string const&  val) const { return "'" + escape(val) + "'"; }
-    std::string sqlValue(char const*         val) const { return sqlValue(std::string(val)); }
+    std::string sqlValue(T const& val) const {
+        return std::to_string(val);
+    }
+    std::string sqlValue(std::string const& val) const { return "'" + escape(val) + "'"; }
+    std::string sqlValue(char const* val) const { return sqlValue(std::string(val)); }
     std::string sqlValue(DoNotProcess const& val) const { return val.name; }
-    std::string sqlValue(Keyword      const& val) const { return val.name; }
-    std::string sqlValue(Function     const& val) const { return val.name; }
+    std::string sqlValue(Keyword const& val) const { return val.name; }
+    std::string sqlValue(Function const& val) const { return val.name; }
 
     std::string sqlValue(std::vector<std::string> const& coll) const;
 
@@ -245,10 +240,8 @@ public:
 
     /// The next step in the variadic recursion when at least one value is
     /// still available
-    template <typename T, typename ...Targs>
-    void sqlValues(std::string& sql,
-                   T val,
-                   Targs... Fargs) const {
+    template <typename T, typename... Targs>
+    void sqlValues(std::string& sql, T val, Targs... Fargs) const {
         bool const last = sizeof...(Fargs) - 1 < 0;
         std::ostringstream ss;
         ss << (sql.empty() ? "(" : (last ? "" : ",")) << sqlValue(val);
@@ -274,7 +267,7 @@ public:
      *   ('st\'r','c',123,24.5)
      * @code
      */
-    template <typename...Targs>
+    template <typename... Targs>
     std::string sqlPackValues(Targs... Fargs) const {
         std::string sql;
         sqlValues(sql, Fargs...);
@@ -291,12 +284,11 @@ public:
      * @param tableName the name of a table
      * @param Fargs the variadic list of values to be inserted
      */
-    template <typename...Targs>
-    std::string sqlInsertQuery(std::string const& tableName,
-                               Targs... Fargs) const {
+    template <typename... Targs>
+    std::string sqlInsertQuery(std::string const& tableName, Targs... Fargs) const {
         std::ostringstream qs;
-        qs  << "INSERT INTO " << sqlId(tableName) << " "
-            << "VALUES "      << sqlPackValues(Fargs...);
+        qs << "INSERT INTO " << sqlId(tableName) << " "
+           << "VALUES " << sqlPackValues(Fargs...);
         return qs.str();
     }
 
@@ -335,14 +327,12 @@ public:
      *   and surrounded by single quotes.
      */
     template <typename T>
-    std::string sqlBinaryOperator(std::string const& col,
-                                  T const& val,
-                                  char const* op) const {
+    std::string sqlBinaryOperator(std::string const& col, T const& val, char const* op) const {
         std::ostringstream ss;
         ss << sqlId(col) << op << sqlValue(val);
         return ss.str();
     }
-    
+
     /**
      * @return "<quoted-col> = <escaped-quoted-value>"
      * @see Connection::sqlBinaryOperator()
@@ -401,10 +391,8 @@ public:
     void sqlPackPair(std::string&) const {}
 
     /// Recursive variadic function (overloaded for column names given as std::string)
-    template <typename T, typename...Targs>
-    void sqlPackPair(std::string& sql,
-                     std::pair<std::string,T> colVal,
-                     Targs... Fargs) const {
+    template <typename T, typename... Targs>
+    void sqlPackPair(std::string& sql, std::pair<std::string, T> colVal, Targs... Fargs) const {
         std::string const& col = colVal.first;
         T const& val = colVal.second;
         std::ostringstream ss;
@@ -413,13 +401,10 @@ public:
         sqlPackPair(sql, Fargs...);
     }
 
-
     /// Recursive variadic function (overloaded for column names given as char const*)
-    template <typename T, typename...Targs>
-    void sqlPackPair(std::string& sql,
-                     std::pair<char const*,T> colVal,
-                     Targs... Fargs) const {
-        std::string const  col = colVal.first;
+    template <typename T, typename... Targs>
+    void sqlPackPair(std::string& sql, std::pair<char const*, T> colVal, Targs... Fargs) const {
+        std::string const col = colVal.first;
         T const& val = colVal.second;
         std::ostringstream ss;
         ss << (sql.empty() ? "" : (sizeof...(Fargs) - 1 < 0 ? "" : ",")) << sqlEqual(col, val);
@@ -453,7 +438,7 @@ public:
      *
      * @param Fargs the variadic list of values to be inserted
      */
-    template <typename...Targs>
+    template <typename... Targs>
     std::string sqlPackPairs(Targs... Fargs) const {
         std::string sql;
         sqlPackPair(sql, Fargs...);
@@ -471,13 +456,11 @@ public:
      * @return `col` IN (<val1>,<val2>,<val3>,,,)
      */
     template <typename T>
-    std::string sqlIn(std::string const& col,
-                      T const& values) const {
+    std::string sqlIn(std::string const& col, T const& values) const {
         std::ostringstream ss;
         ss << sqlId(col) << " IN (";
-        int num=0;
-        for (auto&& val: values)
-            ss << (num++ ? "," : "") << sqlValue(val);
+        int num = 0;
+        for (auto&& val : values) ss << (num++ ? "," : "") << sqlValue(val);
         ss << ")";
         return ss.str();
     }
@@ -519,14 +502,12 @@ public:
      * @param Fargs the variadic list of values to be inserted
      * @return well-formed SQL statement
      */
-    template <typename...Targs>
-    std::string sqlSimpleUpdateQuery(std::string const& tableName,
-                                     std::string const& condition,
+    template <typename... Targs>
+    std::string sqlSimpleUpdateQuery(std::string const& tableName, std::string const& condition,
                                      Targs... Fargs) const {
         std::ostringstream qs;
-        qs  << "UPDATE " << sqlId(tableName)       << " "
-            << "SET "    << sqlPackPairs(Fargs...) << " "
-            << (condition.empty() ? "" : "WHERE " + condition);
+        qs << "UPDATE " << sqlId(tableName) << " "
+           << "SET " << sqlPackPairs(Fargs...) << " " << (condition.empty() ? "" : "WHERE " + condition);
         return qs.str();
     }
 
@@ -566,7 +547,7 @@ public:
      *
      * @param query query to be executed
      * @return a smart pointer to self to allow chained calls
-     * 
+     *
      * @throw std::invalid_argument for empty query strings
      * @throw ER_DUP_ENTRY_ for attempts to insert rows with duplicate keys
      * @throw Error for any other MySQL specific errors
@@ -597,9 +578,8 @@ public:
      * @throw ER_DUP_ENTRY_ for attempts to insert rows with duplicate keys
      * @throw Error for any other MySQL specific errors
      */
-    template <typename...Targs>
-    Connection::Ptr executeInsertQuery(std::string const& tableName,
-                                       Targs... Fargs) {
+    template <typename... Targs>
+    Connection::Ptr executeInsertQuery(std::string const& tableName, Targs... Fargs) {
         return execute(sqlInsertQuery(tableName, Fargs...));
     }
 
@@ -627,13 +607,10 @@ public:
      * @throw std::invalid_argument for empty query strings
      * @throw Error for any MySQL specific errors
      */
-    template <typename...Targs>
-    Connection::Ptr executeSimpleUpdateQuery(std::string const& tableName,
-                                             std::string const& condition,
+    template <typename... Targs>
+    Connection::Ptr executeSimpleUpdateQuery(std::string const& tableName, std::string const& condition,
                                              Targs... Fargs) {
-        return execute(sqlSimpleUpdateQuery(tableName,
-                                            condition,
-                                            Fargs...));
+        return execute(sqlSimpleUpdateQuery(tableName, condition, Fargs...));
     }
 
     /**
@@ -673,7 +650,7 @@ public:
      *              << "within the specified (or implicitly assumed) "
      *                 "timeout: " << ex.timeoutSec() << endl;
      *     } catch (Error const& ex) {
-     *         cerr << "failed due to an unrecoverable error: " << ex.what() 
+     *         cerr << "failed due to an unrecoverable error: " << ex.what()
      *     }
      * @code
      *
@@ -697,7 +674,7 @@ public:
      * @throw MaxReconnectsExceeded for multiple failed attempts (due to connection losses
      *   and subsequent reconnects) to execute the user function. And the number of the attempts
      *   exceeded a limit set by parameter 'maxReconnects'.
-     * 
+     *
      * @throw Error the general exception for any MySQL specific errors. A client code may also
      *   catch specific subclasses (other than ConnectError or ConnectTimeoutError) of that class
      *   if needed.
@@ -711,9 +688,8 @@ public:
      * @see Configuration::setDatabaseConnectTimeoutSec()
      * @see Connection::open()
      */
-    Connection::Ptr execute(std::function<void(Ptr)> const& script,
-                            unsigned int maxReconnects=0,
-                            unsigned int timeoutSec=0);
+    Connection::Ptr execute(std::function<void(Ptr)> const& script, unsigned int maxReconnects = 0,
+                            unsigned int timeoutSec = 0);
 
     /**
      * Execute a script within its own transaction to be automatically started and commited.
@@ -738,9 +714,8 @@ public:
      * @see Connection::execute()
      */
     Connection::Ptr executeInOwnTransaction(std::function<void(Ptr)> const& script,
-                                            unsigned int maxReconnects=0,
-                                            unsigned int timeoutSec=0,
-                                            unsigned int maxRetriesOnDeadLock=0);
+                                            unsigned int maxReconnects = 0, unsigned int timeoutSec = 0,
+                                            unsigned int maxRetriesOnDeadLock = 0);
 
     /**
      * This is just a convenience method for a typical use case.
@@ -750,7 +725,7 @@ public:
      *   to insert new data into a database.
      * @param updateScript user-provided function (the callable) to be executed as
      *   as the failover solution to update existing data in the database if the first
-     *   script fails due to the ER_DUP_ENTRY_ exception. 
+     *   script fails due to the ER_DUP_ENTRY_ exception.
      * @param maxReconnects
      *   (optional) maximum number of reconnects allowed
      *   If 0 is passed as a value pf the parameter then the default
@@ -768,9 +743,8 @@ public:
      */
     Connection::Ptr executeInsertOrUpdate(std::function<void(Ptr)> const& insertScript,
                                           std::function<void(Ptr)> const& updateScript,
-                                          unsigned int maxReconnects=0,
-                                          unsigned int timeoutSec=0,
-                                          unsigned int maxRetriesOnDeadLock=0);
+                                          unsigned int maxReconnects = 0, unsigned int timeoutSec = 0,
+                                          unsigned int maxRetriesOnDeadLock = 0);
 
     /**
      * @return 'true' if the last successful query returned a result set
@@ -796,7 +770,7 @@ public:
 
     /**
      * Fill a Protobuf object representing a field
-     * 
+     *
      * @note The method can be called only upon a successful completion of a query
      *   which has a result set. Otherwise it will throw an exception.
      *
@@ -862,10 +836,8 @@ public:
      * @return 'true' if the value is not NULL
      */
     template <typename T>
-    bool executeSingleValueSelect(std::string const& query,
-                                  std::string const& col,
-                                  T& val,
-                                  bool noMoreThanOne=true) {
+    bool executeSingleValueSelect(std::string const& query, std::string const& col, T& val,
+                                  bool noMoreThanOne = true) {
         std::string const context_ = "DatabaseMySQL::" + std::string(__func__) + "  ";
         execute(query);
         if (!hasResult()) {
@@ -882,8 +854,10 @@ public:
             ++numRows;
         }
         switch (numRows) {
-            case 0: throw EmptyResultSetError(context_ + "result set is empty.");
-            case 1: return isNotNull;
+            case 0:
+                throw EmptyResultSetError(context_ + "result set is empty.");
+            case 1:
+                return isNotNull;
             default:
                 if (!noMoreThanOne) return isNotNull;
         }
@@ -899,9 +873,8 @@ public:
      * @return A collection of values.
      */
     template <typename T>
-    std::vector<T> executeAllValuesSelect(std::string const& query,
-                                          std::string const& col,
-                                          T const& defaultVal=T()) {
+    std::vector<T> executeAllValuesSelect(std::string const& query, std::string const& col,
+                                          T const& defaultVal = T()) {
         std::string const context_ = "DatabaseMySQL::" + std::string(__func__) + "  ";
         std::vector<T> coll;
         execute(query);
@@ -940,13 +913,11 @@ public:
     std::list<Warning> warnings();
 
 private:
-
     /**
      * @see Connection::open()
      * @see Connection::open2()
      */
-    Connection(ConnectionParams const& connectionParams,
-               unsigned int connectTimeoutSec);
+    Connection(ConnectionParams const& connectionParams, unsigned int connectTimeoutSec);
 
     /**
      * Keep trying to connect to a server until either a timeout expires, or
@@ -979,8 +950,7 @@ private:
      *   the corresponding key constraint
      * @throw Error for some other error not listed above
      */
-    void _processLastError(std::string const& context,
-                           bool instantAutoReconnect=true);
+    void _processLastError(std::string const& context, bool instantAutoReconnect = true);
 
     /**
      * The method is to ensure that the transaction is in the desired state.
@@ -995,15 +965,16 @@ private:
      */
     void _assertQueryContext() const;
 
-    static std::atomic<size_t> _nextId;         // The next available connector identifier in the generator's sequence
-    size_t const _id;                           // Unique identifier of this connector
-    ConnectionParams const _connectionParams;   // Parameters of the connection
-    unsigned int _connectTimeoutSec;            // Time to wait between reconnection attempts
-    std::string _lastQuery;                     // The last SQL statement
-    bool _inTransaction;                        // Transaction status
-    MYSQL* _mysql;                              // MySQL connection
-    unsigned long _mysqlThreadId;               // Thread ID of the current connection
-    unsigned long _connectionAttempt;           // The counter of attempts between successful reconnects
+    static std::atomic<size_t>
+            _nextId;   // The next available connector identifier in the generator's sequence
+    size_t const _id;  // Unique identifier of this connector
+    ConnectionParams const _connectionParams;  // Parameters of the connection
+    unsigned int _connectTimeoutSec;           // Time to wait between reconnection attempts
+    std::string _lastQuery;                    // The last SQL statement
+    bool _inTransaction;                       // Transaction status
+    MYSQL* _mysql;                             // MySQL connection
+    unsigned long _mysqlThreadId;              // Thread ID of the current connection
+    unsigned long _connectionAttempt;          // The counter of attempts between successful reconnects
 
     // A result set of the last successful query
 
@@ -1013,7 +984,7 @@ private:
     std::vector<std::string> _columnNames;
     std::map<std::string, size_t> _name2index;
 
-    std::string _charSetName;   // of the current connection
+    std::string _charSetName;  // of the current connection
 
     // The row object gets updated after fetching each row of the result set.
     // It's required to be cached here to ensure at least the same lifespan as
@@ -1021,14 +992,13 @@ private:
     MYSQL_ROW _row;
 };
 
-
 /**
  * Class ConnectionPool manages a pool of the similarly configured persistent
  * database connection. The number of connections is determined by the corresponding
  * Configuration parameter. Connections will be added to the pool (up to that limit)
  * on demand. This ensures that the class constructor is not blocking in case if
  * (or while) the corresponding MySQL/MariaDB service is not responding.
- * 
+ *
  * @note This class is meant to be used indirectly by passing its instances
  *   to the constructor of class ConnectionHandler.
  * @see class ConnectionHandler
@@ -1040,7 +1010,7 @@ public:
     /**
      * The static factory object creates a pool and sets the maximum number
      * of connections.
-     * 
+     *
      * @note this is a non-blocking method. In particular, No connection attempts
      *   will be made by this method.
      *
@@ -1048,8 +1018,7 @@ public:
      * @param maxConnections  the maximum number of connections managed by the pool
      * @return smart pointer to the newly created object
      */
-    static Ptr create(ConnectionParams const& params,
-                      size_t maxConnections);
+    static Ptr create(ConnectionParams const& params, size_t maxConnections);
 
     ConnectionPool() = delete;
     ConnectionPool(ConnectionPool const&) = delete;
@@ -1074,9 +1043,8 @@ public:
     void release(Connection::Ptr const& conn);
 
 private:
-   /// @see ConnectionPool::create
-    ConnectionPool(ConnectionParams const& params,
-                   size_t maxConnections);
+    /// @see ConnectionPool::create
+    ConnectionPool(ConnectionParams const& params, size_t maxConnections);
 
     // Input parameters
 
@@ -1093,13 +1061,12 @@ private:
     /// internal operations. The mutex is locked by methods ConnectionPool::allocate()
     /// and ConnectionPool::release() when moving connection objects between
     /// the lists (defined above).
-     mutable std::mutex _mtx;
+    mutable std::mutex _mtx;
 
     /// The condition variable for notifying client threads waiting for the next
     /// available connection.
     std::condition_variable _available;
 };
-
 
 /**
  * Class ConnectionHandler implements the RAII method of handling database
@@ -1145,6 +1112,6 @@ private:
     ConnectionPool::Ptr _pool;
 };
 
-}}}}} // namespace lsst::qserv::replica::database::mysql
+}  // namespace lsst::qserv::replica::database::mysql
 
-#endif // LSST_QSERV_REPLICA_DATABASEMYSQL_H
+#endif  // LSST_QSERV_REPLICA_DATABASEMYSQL_H

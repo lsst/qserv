@@ -36,10 +36,7 @@
 #include "wsched/ChunkTaskCollection.h"
 #include "wsched/SchedulerBase.h"
 
-namespace lsst {
-namespace qserv {
-namespace wsched {
-
+namespace lsst::qserv::wsched {
 
 /// A class to store Tasks for a specific chunk.
 /// Tasks are normally placed on _activeTasks, but will be added
@@ -50,11 +47,7 @@ namespace wsched {
 class ChunkTasks {
 public:
     using Ptr = std::shared_ptr<ChunkTasks>;
-    enum class ReadyState {
-        READY = 0,
-        NOT_READY = 1,
-        NO_RESOURCES = 2
-    };
+    enum class ReadyState { READY = 0, NOT_READY = 1, NO_RESOURCES = 2 };
     static std::string toStr(ReadyState);
 
     ChunkTasks(int chunkId, memman::MemMan::Ptr const& memMan) : _chunkId{chunkId}, _memMan{memMan} {}
@@ -68,10 +61,10 @@ public:
     ReadyState ready(bool useFlexibleLock);
     void taskComplete(wbase::Task::Ptr const& task);
 
-    void movePendingToActive(); ///< Move all pending Tasks to _activeTasks.
-    bool readyToAdvance(); ///< @return true if active Tasks for this chunk are done.
-    void setActive(bool active=true); ///< Flag current requests so new requests will be pending.
-    bool setResourceStarved(bool starved); ///< hook for tracking starvation.
+    void movePendingToActive();             ///< Move all pending Tasks to _activeTasks.
+    bool readyToAdvance();                  ///< @return true if active Tasks for this chunk are done.
+    void setActive(bool active = true);     ///< Flag current requests so new requests will be pending.
+    bool setResourceStarved(bool starved);  ///< hook for tracking starvation.
     std::size_t size() const { return _activeTasks.size() + _pendingTasks.size(); }
     int getChunkId() { return _chunkId; }
 
@@ -87,7 +80,9 @@ public:
     public:
         // Using a greater than comparison function results in a minimum value heap.
         static bool compareFunc(wbase::Task::Ptr const& x, wbase::Task::Ptr const& y) {
-            if(!x || !y) { return false; }
+            if (!x || !y) {
+                return false;
+            }
             // compare scanInfo (slower scans first)
             int siComp = x->getScanInfo().compareTables(y->getScanInfo());
             return siComp < 0;
@@ -100,25 +95,22 @@ public:
         }
         bool empty() const { return _tasks.empty(); }
         size_t size() const { return _tasks.size(); }
-        void heapify() {
-            std::make_heap(_tasks.begin(), _tasks.end(), compareFunc);
-        }
+        void heapify() { std::make_heap(_tasks.begin(), _tasks.end(), compareFunc); }
 
         std::vector<wbase::Task::Ptr> _tasks;
     };
 
 private:
-    int _chunkId;                    ///< Chunk Id for all Tasks in this instance.
-    bool _active{false};            ///< True when this is the active chunk.
-    bool _resourceStarved{false};   ///< True when advancement is prevented by lack of memory.
-    wbase::Task::Ptr              _readyTask{nullptr}; ///< Task that is ready to run with memory reserved.
-    SlowTableHeap                 _activeTasks;        ///< All Tasks must be put on this before they can run.
-    std::vector<wbase::Task::Ptr> _pendingTasks;       ///< Task that should not be run until later.
-    std::set<wbase::Task*>        _inFlightTasks;      ///< Set of Tasks that this chunk has in flight.
+    int _chunkId;                                 ///< Chunk Id for all Tasks in this instance.
+    bool _active{false};                          ///< True when this is the active chunk.
+    bool _resourceStarved{false};                 ///< True when advancement is prevented by lack of memory.
+    wbase::Task::Ptr _readyTask{nullptr};         ///< Task that is ready to run with memory reserved.
+    SlowTableHeap _activeTasks;                   ///< All Tasks must be put on this before they can run.
+    std::vector<wbase::Task::Ptr> _pendingTasks;  ///< Task that should not be run until later.
+    std::set<wbase::Task*> _inFlightTasks;        ///< Set of Tasks that this chunk has in flight.
 
     memman::MemMan::Ptr _memMan;
 };
-
 
 /// This class queues Tasks by their chunkId and tables rating and names.
 /// New Tasks are queued with other Tasks with the same chunkId and then by shared
@@ -141,10 +133,10 @@ public:
     /// Only erase() will invalidate and iterator with std::map.
     using ChunkMap = std::map<int, ChunkTasks::Ptr>;
 
-    enum {READY, NOT_READY, NO_RESOURCES};
+    enum { READY, NOT_READY, NO_RESOURCES };
 
-    ChunkTasksQueue(SchedulerBase *scheduler, memman::MemMan::Ptr const& memMan) :
-        _memMan{memMan}, _scheduler{scheduler} {}
+    ChunkTasksQueue(SchedulerBase* scheduler, memman::MemMan::Ptr const& memMan)
+            : _memMan{memMan}, _scheduler{scheduler} {}
     ChunkTasksQueue(ChunkTasksQueue const&) = delete;
     ChunkTasksQueue& operator=(ChunkTasksQueue const&) = delete;
 
@@ -157,7 +149,7 @@ public:
     void taskComplete(wbase::Task::Ptr const& task) override;
 
     bool setResourceStarved(bool starved) override;
-    int getActiveChunkId(); ///< return the active chunk id, or -1 if there isn't one.
+    int getActiveChunkId();  ///< return the active chunk id, or -1 if there isn't one.
 
     wbase::Task::Ptr removeTask(wbase::Task::Ptr const& task) override;
 
@@ -169,19 +161,19 @@ public:
 private:
     bool _ready(bool useFlexibleLock);
     bool _empty() const { return _chunkMap.empty(); }
-    std::string _queueInfo() const; ///< _mapMx must be locked before calling
+    std::string _queueInfo() const;  ///< _mapMx must be locked before calling
 
-    mutable std::mutex _mapMx; ///< Protects _chunkMap, _activeChunk, and _readyChunk.
-    ChunkMap _chunkMap; ///< map by chunk Id.
-    ChunkMap::iterator _activeChunk{_chunkMap.end()}; ///< points at the active ChunkTasks in _chunkList
-    ChunkTasks::Ptr _readyChunk{nullptr}; ///< Chunk with the task that's ready to run.
+    mutable std::mutex _mapMx;                         ///< Protects _chunkMap, _activeChunk, and _readyChunk.
+    ChunkMap _chunkMap;                                ///< map by chunk Id.
+    ChunkMap::iterator _activeChunk{_chunkMap.end()};  ///< points at the active ChunkTasks in _chunkList
+    ChunkTasks::Ptr _readyChunk{nullptr};              ///< Chunk with the task that's ready to run.
 
     memman::MemMan::Ptr _memMan;
-    std::atomic<int> _taskCount{0}; ///< Count of all tasks currently in _chunkMap.
+    std::atomic<int> _taskCount{0};  ///< Count of all tasks currently in _chunkMap.
     bool _resourceStarved{false};
-    SchedulerBase* _scheduler; ///< Pointer to scheduler that owns this. This can be nullptr.
+    SchedulerBase* _scheduler;  ///< Pointer to scheduler that owns this. This can be nullptr.
 };
 
-}}} // namespace lsst::qserv::wsched
+}  // namespace lsst::qserv::wsched
 
-#endif // LSST_QSERV_WSCHED_CHUNKTASKLIST_H
+#endif  // LSST_QSERV_WSCHED_CHUNKTASKLIST_H

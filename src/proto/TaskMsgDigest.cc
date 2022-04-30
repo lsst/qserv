@@ -31,7 +31,7 @@
 #define COMMON_DIGEST_FOR_OPENSSL
 #include <CommonCrypto/CommonDigest.h>
 #define MD5 CC_MD5
-#else // Linux?
+#else  // Linux?
 #include <openssl/md5.h>
 #endif
 
@@ -39,31 +39,24 @@
 #include "proto/worker.pb.h"
 
 namespace {
-    char hexChar[16] = {'0', '1', '2', '3',
-                        '4', '5', '6', '7',
-                        '8', '9', 'a', 'b',
-                        'c', 'd', 'e', 'f'};
+char hexChar[16] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
 }
 
-namespace lsst {
-namespace qserv {
-namespace proto {
+namespace lsst::qserv::proto {
 
-std::string
-hashTaskMsg(TaskMsg const& m) {
+std::string hashTaskMsg(TaskMsg const& m) {
     unsigned char hashVal[MD5_DIGEST_LENGTH];
-    char output[MD5_DIGEST_LENGTH*2 + 1];
+    char output[MD5_DIGEST_LENGTH * 2 + 1];
     std::string str;
 
-    m.SerializeToString(&str); // Use whole, serialized message
-    MD5(reinterpret_cast<unsigned char const*>(str.data()),
-        str.size(), hashVal);
-    for(int i=0; i < MD5_DIGEST_LENGTH; ++i) {
-        output[i*2] = hexChar[(hashVal[i] >> 4) & 0x0F];
-        output[i*2 + 1] = hexChar[hashVal[i] & 0x0F];
+    m.SerializeToString(&str);  // Use whole, serialized message
+    MD5(reinterpret_cast<unsigned char const*>(str.data()), str.size(), hashVal);
+    for (int i = 0; i < MD5_DIGEST_LENGTH; ++i) {
+        output[i * 2] = hexChar[(hashVal[i] >> 4) & 0x0F];
+        output[i * 2 + 1] = hexChar[hashVal[i] & 0x0F];
     }
-    output[MD5_DIGEST_LENGTH*2] = '\0';
+    output[MD5_DIGEST_LENGTH * 2] = '\0';
     return std::string(output);
 }
 
-}}} // namespace lsst::qserv::proto
+}  // namespace lsst::qserv::proto

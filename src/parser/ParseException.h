@@ -23,10 +23,10 @@
 #ifndef LSST_QSERV_PARSER_PARSEEXCEPTION_H
 #define LSST_QSERV_PARSER_PARSEEXCEPTION_H
 /**
-  * @file
-  *
-  * @author Daniel L. Wang, SLAC
-  */
+ * @file
+ *
+ * @author Daniel L. Wang, SLAC
+ */
 
 // System headers
 #include <stdexcept>
@@ -35,10 +35,7 @@
 // Qserv headers
 #include "util/Bug.h"
 
-
-namespace lsst {
-namespace qserv {
-namespace parser {
+namespace lsst::qserv::parser {
 
 /// ParseException is a trivial exception for Qserv parse problems.
 /// ParseExceptions automatically retrieves basic information from the ANTLR
@@ -54,7 +51,6 @@ public:
     explicit ParseException(std::string const& msg);
 };
 
-
 // antlr4 parse exception; this may be raised during listening if there is an error in the enter/exit
 // functions. It may happen because an unanticipated SQL statement was entered into qserv and we don't yet
 // have the proper handling for it set up yet.
@@ -63,14 +59,12 @@ public:
     using ParseException::ParseException;
 };
 
-
 // antlr4 parse exception; thrown in the case of unexpected events during the parse.
 class adapter_execution_error : public ParseException {
 public:
     using ParseException::ParseException;
 };
 
+}  // namespace lsst::qserv::parser
 
-}}} // namespace lsst::qserv::parser
-
-#endif // LSST_QSERV_PARSER_PARSEEXCEPTION_H
+#endif  // LSST_QSERV_PARSER_PARSEEXCEPTION_H

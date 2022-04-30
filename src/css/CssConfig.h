@@ -31,9 +31,7 @@
 #include "mysql/MySqlConfig.h"
 #include "util/ConfigStore.h"
 
-namespace lsst {
-namespace qserv {
-namespace css {
+namespace lsst::qserv::css {
 
 /**
  *  Provide all configuration parameters for a Qserv CSS instance
@@ -47,15 +45,13 @@ namespace css {
  */
 class CssConfig {
 public:
-
     /**
      *  Create CssConfig instance from a collection of (key, value)
      *
      *  @param configMap: a collection of (key, value)
      */
     CssConfig(std::map<std::string, std::string> const& configMap)
-        : CssConfig(util::ConfigStore(configMap)) {
-    }
+            : CssConfig(util::ConfigStore(configMap)) {}
 
     CssConfig(CssConfig const&) = delete;
     CssConfig& operator=(CssConfig const&) = delete;
@@ -66,11 +62,9 @@ public:
      * @param workerConfig
      * @return an output stream
      */
-    friend std::ostream& operator<<(std::ostream &out, CssConfig const& cssConfig);
+    friend std::ostream& operator<<(std::ostream& out, CssConfig const& cssConfig);
 
-    mysql::MySqlConfig const& getMySqlConfig() const {
-        return _mySqlConfig;
-    }
+    mysql::MySqlConfig const& getMySqlConfig() const { return _mySqlConfig; }
 
     /* Get key-value data used to initialize CSS
      *
@@ -78,30 +72,23 @@ public:
      *
      * @return key-value data used to initialize CSS
      */
-    std::string const& getData() const {
-        return _data;
-    }
+    std::string const& getData() const { return _data; }
 
     /* Get key-value data used to initialize CSS
-         *
-         * @see testData variable in core/modules/css/testCssAccess.c for example
-         *
-         * @return key-value data used to initialize CSS
-         */
-    std::string const& getFile() const {
-        return _file;
-    }
+     *
+     * @see testData variable in core/modules/css/testCssAccess.c for example
+     *
+     * @return key-value data used to initialize CSS
+     */
+    std::string const& getFile() const { return _file; }
 
     /* Get CSS technology
      *
      * @return CSS technology name
      */
-    std::string const& getTechnology() const {
-        return _technology;
-    }
+    std::string const& getTechnology() const { return _technology; }
 
 private:
-
     CssConfig(util::ConfigStore const& configStore);
 
     std::string const _technology;
@@ -112,9 +99,8 @@ private:
 
     // used by "mysql" technology
     mysql::MySqlConfig const _mySqlConfig;
-
 };
 
-}}} // namespace lsst::qserv::css
+}  // namespace lsst::qserv::css
 
-#endif // LSST_QSERV_CSS_CSSCONFIG_H
+#endif  // LSST_QSERV_CSS_CSSCONFIG_H

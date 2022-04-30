@@ -33,14 +33,12 @@
 #include "replica/HttpModule.h"
 
 // This header declarations
-namespace lsst {
-namespace qserv {
-namespace replica {
+namespace lsst::qserv::replica {
 
 /**
  * Class HttpSqlSchemaModule manages table schemas.
  */
-class HttpSqlSchemaModule: public HttpModule {
+class HttpSqlSchemaModule : public HttpModule {
 public:
     typedef std::shared_ptr<HttpSqlSchemaModule> Ptr;
 
@@ -52,13 +50,10 @@ public:
      *
      * @throws std::invalid_argument for unknown values of parameter 'subModuleName'
      */
-    static void process(Controller::Ptr const& controller,
-                        std::string const& taskName,
-                        HttpProcessorConfig const& processorConfig,
-                        qhttp::Request::Ptr const& req,
-                        qhttp::Response::Ptr const& resp,
-                        std::string const& subModuleName=std::string(),
-                        HttpAuthType const authType=HttpAuthType::NONE);
+    static void process(Controller::Ptr const& controller, std::string const& taskName,
+                        HttpProcessorConfig const& processorConfig, qhttp::Request::Ptr const& req,
+                        qhttp::Response::Ptr const& resp, std::string const& subModuleName = std::string(),
+                        HttpAuthType const authType = HttpAuthType::NONE);
 
     HttpSqlSchemaModule() = delete;
     HttpSqlSchemaModule(HttpSqlSchemaModule const&) = delete;
@@ -70,10 +65,8 @@ protected:
     nlohmann::json executeImpl(std::string const& subModuleName) final;
 
 private:
-    HttpSqlSchemaModule(Controller::Ptr const& controller,
-                        std::string const& taskName,
-                        HttpProcessorConfig const& processorConfig,
-                        qhttp::Request::Ptr const& req,
+    HttpSqlSchemaModule(Controller::Ptr const& controller, std::string const& taskName,
+                        HttpProcessorConfig const& processorConfig, qhttp::Request::Ptr const& req,
                         qhttp::Response::Ptr const& resp);
 
     /// Pull table schema from Qserv master database's 'INFORMATION_SCHEMA'
@@ -82,7 +75,7 @@ private:
     /// Implement 'ALTER TABLE <table> ...'
     nlohmann::json _alterTableSchema();
 };
-    
-}}} // namespace lsst::qserv::replica
 
-#endif // LSST_QSERV_HTTPSQLSCHEMAMODULE_H
+}  // namespace lsst::qserv::replica
+
+#endif  // LSST_QSERV_HTTPSQLSCHEMAMODULE_H
