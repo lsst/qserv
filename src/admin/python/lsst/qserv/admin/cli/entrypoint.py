@@ -423,6 +423,7 @@ def delete_database(repl_ctrl_uri: str, database: str, admin: bool) -> None:
     default=czar_cfg_template,
     show_default=True,
 )
+@log_cfg_file_option()
 @targs_options()
 @cmd_options()
 @options_file_option()
@@ -441,6 +442,7 @@ def proxy(ctx: click.Context, **kwargs: Any) -> None:
         czar_cfg_file=targs["czar_cfg_file"],
         czar_cfg_path=targs["czar_cfg_path"],
         cmd=targs["cmd"],
+        log_cfg_file=targs["log_cfg_file"]
     )
 
 

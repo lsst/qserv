@@ -548,6 +548,7 @@ def enter_proxy(
     proxy_cfg_path: str,
     czar_cfg_file: str,
     czar_cfg_path: str,
+    log_cfg_file: str,
     cmd: str,
 ) -> None:
     """Entrypoint script for the proxy container.
@@ -571,6 +572,8 @@ def enter_proxy(
         Path to the czar config file.
     czar_cfg_path : `str`
         Location to render the czar config file.
+    log_cfg_file : `str`
+        Location of the log4cxx config file.
     cmd : `str`
         The jinja2 template for the command for this function to execute.
     """
@@ -587,6 +590,7 @@ def enter_proxy(
         block=True,
     )
 
+    _log.info("Using log4cxx config file at %s", log_cfg_file)
 
     save_template_cfg(targs)
     save_template_cfg(
@@ -597,6 +601,7 @@ def enter_proxy(
             "czar_db_host": url.host or "",
             "czar_db_port": url.port or "",
             "czar_db_socket": url.query.get("socket", ""),
+            "log_config_file": log_cfg_file
         }
     )
 
