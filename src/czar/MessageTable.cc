@@ -125,8 +125,7 @@ void MessageTable::_saveQueryMessages(ccontrol::UserQuery::Ptr const& userQuery)
 
         char const* severity = (qm.severity == MSG_INFO ? "INFO" : "ERROR");
         std::string query = (boost::format(::writeTmpl) % _tableName % qm.chunkId % qm.code %
-                             _sqlConn->escapeString(qm.description) % severity % qm.timestamp)
-                                    .str();
+                             _sqlConn->escapeString(qm.description) % severity % qm.timestamp).str();
         sql::SqlErrorObject sqlErr;
         if (not _sqlConn->runQuery(query, sqlErr)) {
             SqlError exc(ERR_LOC, "Failure updating message table", sqlErr);

@@ -254,11 +254,17 @@ public:
      */
     void saveResultQuery(QueryId queryId, std::string const& query) override;
 
+    /// @see QMeta::addQueryMessages()
+    void addQueryMessages(QueryId queryId, std::shared_ptr<qdisp::MessageStore> const& msgStore) override;
+
 protected:
     ///  Check that all necessary tables exist
     void _checkDb();
 
 private:
+    /// Add qMsg to the permanent message table.
+    void _addQueryMessage(QueryId queryId, qdisp::QueryMessage const& qMsg);
+
     std::shared_ptr<sql::SqlConnection> _conn;
     std::mutex _dbMutex;  ///< Synchronizes access to certain DB operations
 };

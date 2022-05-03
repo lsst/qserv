@@ -348,6 +348,10 @@ QueryState UserQuerySelect::join() {
         // it or expose it to user, just dump it to log
         LOGS(_log, LOG_LVL_ERROR, "exception from _discardMerger: " << exc.what());
     }
+
+    // Update the permanent message table.
+    _qMetaUpdateMessages();
+
     if (successful) {
         _qMetaUpdateStatus(qmeta::QInfo::COMPLETED);
         LOGS(_log, LOG_LVL_INFO, "Joined everything (success)");
@@ -361,6 +365,7 @@ QueryState UserQuerySelect::join() {
         LOGS(_log, LOG_LVL_ERROR, "Joined everything (failure!)");
         return ERROR;
     }
+
 }
 
 /// Release resources held by the merger
@@ -605,6 +610,18 @@ void UserQuerySelect::_qMetaUpdateStatus(qmeta::QInfo::QStatus qStatus) {
     } catch (qmeta::SqlError const&) {
         LOGS(_log, LOG_LVL_WARN, "queryStatsTmp remove failed " << _queryIdStr);
     }
+}
+
+void UserQuerySelect::_qMetaUpdateMessages() {
+    // message table
+
+    auto msgStore = getMessageStore();
+    try {
+        _queryMetadata->addQueryMessages(_qMetaQueryId, msgStore);
+    } catch (qmeta::SqlError const& ex) {
+        LOGS(_log, LOG_LVL_ERROR, "UserQuerySelect::_qMetaUpdateMessages failed " << ex.what());
+    }
+
 }
 
 // add chunk information to qmeta

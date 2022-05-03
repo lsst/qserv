@@ -18,6 +18,7 @@ target_sources(qana PRIVATE
 )
 
 target_link_libraries(qana PUBLIC
+    qserv_meta
     log
 )
 

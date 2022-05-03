@@ -162,6 +162,7 @@ private:
     void _discardMerger();
     void _qMetaUpdateStatus(qmeta::QInfo::QStatus qStatus);
     void _qMetaAddChunks(std::vector<int> const& chunks);
+    void _qMetaUpdateMessages();
 
     // Delegate classes
     std::shared_ptr<qproc::QuerySession> _qSession;

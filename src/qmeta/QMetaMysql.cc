@@ -34,16 +34,19 @@
 #include "lsst/log/Log.h"
 
 // Qserv headers
+#include "qdisp/MessageStore.h"
 #include "qmeta/Exceptions.h"
 #include "qmeta/QMetaTransaction.h"
 #include "sql/SqlConnection.h"
 #include "sql/SqlConnectionFactory.h"
 #include "sql/SqlResults.h"
 
+using namespace std;
+
 namespace {
 
 // Current version of QMeta schema
-char const VERSION_STR[] = "4";
+char const VERSION_STR[] = "5";
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.qmeta.QMetaMysql");
 
@@ -98,15 +101,15 @@ QMetaMysql::QMetaMysql(mysql::MySqlConfig const& mysqlConf)
 QMetaMysql::~QMetaMysql() {}
 
 // Return czar ID given czar "name".
-CzarId QMetaMysql::getCzarID(std::string const& name) {
-    std::lock_guard<std::mutex> sync(_dbMutex);
+CzarId QMetaMysql::getCzarID(string const& name) {
+    lock_guard<mutex> sync(_dbMutex);
 
     auto trans = QMetaTransaction::create(*_conn);
 
     // run query
     sql::SqlErrorObject errObj;
     sql::SqlResults results;
-    std::string const query = "SELECT czarId FROM QCzar WHERE czar = '" + name + "'";
+    string const query = "SELECT czarId FROM QCzar WHERE czar = '" + name + "'";
     LOGS(_log, LOG_LVL_DEBUG, "Executing query: " << query);
     if (not _conn->runQuery(query, results, errObj)) {
         LOGS(_log, LOG_LVL_ERROR, "SQL query failed: " << query);
@@ -114,7 +117,7 @@ CzarId QMetaMysql::getCzarID(std::string const& name) {
     }
 
     // get results of the query
-    std::vector<std::string> ids;
+    vector<string> ids;
     if (not results.extractFirstColumn(ids, errObj)) {
         LOGS(_log, LOG_LVL_ERROR, "Failed to extract czar ID from query result");
         throw SqlError(ERR_LOC, errObj);
@@ -128,7 +131,7 @@ CzarId QMetaMysql::getCzarID(std::string const& name) {
         return 0;
     } else if (ids.size() > 1) {
         throw ConsistencyError(ERR_LOC, "More than one czar ID found for czar name " + name + ": " +
-                                                boost::lexical_cast<std::string>(ids.size()));
+                                                boost::lexical_cast<string>(ids.size()));
     } else {
         LOGS(_log, LOG_LVL_DEBUG, "Found czar ID: " << ids[0]);
         return boost::lexical_cast<CzarId>(ids[0]);
@@ -136,15 +139,15 @@ CzarId QMetaMysql::getCzarID(std::string const& name) {
 }
 
 // Register new czar, return czar ID.
-CzarId QMetaMysql::registerCzar(std::string const& name) {
-    std::lock_guard<std::mutex> sync(_dbMutex);
+CzarId QMetaMysql::registerCzar(string const& name) {
+    lock_guard<mutex> sync(_dbMutex);
 
     auto trans = QMetaTransaction::create(*_conn);
 
     // check if czar is already defined
     sql::SqlErrorObject errObj;
     sql::SqlResults results;
-    std::string query = "SELECT czarId FROM QCzar WHERE czar = '" + name + "'";
+    string query = "SELECT czarId FROM QCzar WHERE czar = '" + name + "'";
     LOGS(_log, LOG_LVL_DEBUG, "Executing query: " << query);
     if (not _conn->runQuery(query, results, errObj)) {
         LOGS(_log, LOG_LVL_ERROR, "SQL query failed: " << query);
@@ -152,7 +155,7 @@ CzarId QMetaMysql::registerCzar(std::string const& name) {
     }
 
     // get results of the query
-    std::vector<std::string> ids;
+    vector<string> ids;
     if (not results.extractFirstColumn(ids, errObj)) {
         LOGS(_log, LOG_LVL_ERROR, "Failed to extract czar ID from query result");
         throw SqlError(ERR_LOC, errObj);
@@ -162,7 +165,7 @@ CzarId QMetaMysql::registerCzar(std::string const& name) {
     CzarId czarId = 0;
     if (ids.size() > 1) {
         throw ConsistencyError(ERR_LOC, "More than one czar ID found for czar name " + name + ": " +
-                                                boost::lexical_cast<std::string>(ids.size()));
+                                                boost::lexical_cast<string>(ids.size()));
     } else if (ids.empty()) {
         // no such czar, make new one
         LOGS(_log, LOG_LVL_DEBUG, "Create new czar with name: " << name);
@@ -199,15 +202,15 @@ CzarId QMetaMysql::registerCzar(std::string const& name) {
 
 // Mark specified czar as active or inactive.
 void QMetaMysql::setCzarActive(CzarId czarId, bool active) {
-    std::lock_guard<std::mutex> sync(_dbMutex);
+    lock_guard<mutex> sync(_dbMutex);
 
     auto trans = QMetaTransaction::create(*_conn);
 
     // run query
     sql::SqlErrorObject errObj;
     sql::SqlResults results;
-    std::string const query = "UPDATE QCzar SET active = b'" + std::string(active ? "1" : "0") +
-                              "' WHERE czarId = " + boost::lexical_cast<std::string>(czarId);
+    string const query = "UPDATE QCzar SET active = b'" + string(active ? "1" : "0") +
+                              "' WHERE czarId = " + boost::lexical_cast<string>(czarId);
     LOGS(_log, LOG_LVL_DEBUG, "Executing query: " << query);
     if (not _conn->runQuery(query, results, errObj)) {
         LOGS(_log, LOG_LVL_ERROR, "SQL query failed: " << query);
@@ -219,8 +222,8 @@ void QMetaMysql::setCzarActive(CzarId czarId, bool active) {
         throw CzarIdError(ERR_LOC, czarId);
     } else if (results.getAffectedRows() > 1) {
         throw ConsistencyError(ERR_LOC, "More than one row updated for czar ID " +
-                                                boost::lexical_cast<std::string>(czarId) + ": " +
-                                                boost::lexical_cast<std::string>(results.getAffectedRows()));
+                                                boost::lexical_cast<string>(czarId) + ": " +
+                                                boost::lexical_cast<string>(results.getAffectedRows()));
     }
 
     trans->commit();
@@ -228,17 +231,17 @@ void QMetaMysql::setCzarActive(CzarId czarId, bool active) {
 
 // Cleanup of query status.
 void QMetaMysql::cleanup(CzarId czarId) {
-    std::lock_guard<std::mutex> sync(_dbMutex);
+    lock_guard<mutex> sync(_dbMutex);
 
     auto trans = QMetaTransaction::create(*_conn);
 
     // run query
     sql::SqlErrorObject errObj;
     sql::SqlResults results;
-    std::string const query =
+    string const query =
             "UPDATE QInfo SET status = 'ABORTED', completed = NOW() "
             " WHERE czarId = " +
-            boost::lexical_cast<std::string>(czarId) + " AND status = 'EXECUTING'";
+            boost::lexical_cast<string>(czarId) + " AND status = 'EXECUTING'";
     LOGS(_log, LOG_LVL_DEBUG, "Executing query: " << query);
     if (not _conn->runQuery(query, results, errObj)) {
         LOGS(_log, LOG_LVL_ERROR, "SQL query failed: " << query);
@@ -250,29 +253,29 @@ void QMetaMysql::cleanup(CzarId czarId) {
 
 // Register new query.
 QueryId QMetaMysql::registerQuery(QInfo const& qInfo, TableNames const& tables) {
-    std::lock_guard<std::mutex> sync(_dbMutex);
+    lock_guard<mutex> sync(_dbMutex);
 
     auto trans = QMetaTransaction::create(*_conn);
 
     // build query
     sql::SqlErrorObject errObj;
-    std::string const qType(qInfo.queryType() == QInfo::SYNC ? "'SYNC'" : "'ASYNC'");
-    std::string const user = "'" + _conn->escapeString(qInfo.user()) + "'";
-    std::string const queryText = "'" + _conn->escapeString(qInfo.queryText()) + "'";
-    std::string const queryTemplate = "'" + _conn->escapeString(qInfo.queryTemplate()) + "'";
-    std::string const resultLocation = "'" + _conn->escapeString(qInfo.resultLocation()) + "'";
-    std::string const msgTableName = "'" + _conn->escapeString(qInfo.msgTableName()) + "'";
-    std::string qMerge = "NULL";
-    std::string resultQuery = "'" + _conn->escapeString(qInfo.resultQuery()) + "'";
+    string const qType(qInfo.queryType() == QInfo::SYNC ? "'SYNC'" : "'ASYNC'");
+    string const user = "'" + _conn->escapeString(qInfo.user()) + "'";
+    string const queryText = "'" + _conn->escapeString(qInfo.queryText()) + "'";
+    string const queryTemplate = "'" + _conn->escapeString(qInfo.queryTemplate()) + "'";
+    string const resultLocation = "'" + _conn->escapeString(qInfo.resultLocation()) + "'";
+    string const msgTableName = "'" + _conn->escapeString(qInfo.msgTableName()) + "'";
+    string qMerge = "NULL";
+    string resultQuery = "'" + _conn->escapeString(qInfo.resultQuery()) + "'";
     if (not qInfo.mergeQuery().empty()) {
         qMerge = "'" + _conn->escapeString(qInfo.mergeQuery()) + "'";
     }
-    std::string query =
+    string query =
             "INSERT INTO QInfo (qType, czarId, user, query, qTemplate, qMerge, "
             "status, messageTable, resultLocation, resultQuery) VALUES (";
     query += qType;
     query += ", ";
-    query += boost::lexical_cast<std::string>(qInfo.czarId());
+    query += boost::lexical_cast<string>(qInfo.czarId());
     query += ", ";
     query += user;
     query += ", ";
@@ -301,10 +304,10 @@ QueryId QMetaMysql::registerQuery(QInfo const& qInfo, TableNames const& tables) 
 
     // register all tables, first remove all duplicates from a list
     TableNames uniqueTables = tables;
-    auto end = std::unique(uniqueTables.begin(), uniqueTables.end());
+    auto end = unique(uniqueTables.begin(), uniqueTables.end());
     for (auto itr = uniqueTables.begin(); itr != end; ++itr) {
         query = "INSERT INTO QTable (queryId, dbName, tblName) VALUES (";
-        query += boost::lexical_cast<std::string>(queryId);
+        query += boost::lexical_cast<string>(queryId);
         query += ", '";
         query += _conn->escapeString(itr->first);
         query += "', '";
@@ -325,18 +328,18 @@ QueryId QMetaMysql::registerQuery(QInfo const& qInfo, TableNames const& tables) 
 }
 
 // Add list of chunks to query.
-void QMetaMysql::addChunks(QueryId queryId, std::vector<int> const& chunks) {
-    std::lock_guard<std::mutex> sync(_dbMutex);
+void QMetaMysql::addChunks(QueryId queryId, vector<int> const& chunks) {
+    lock_guard<mutex> sync(_dbMutex);
 
     auto trans = QMetaTransaction::create(*_conn);
 
     // register all tables
     sql::SqlErrorObject errObj;
-    for (std::vector<int>::const_iterator itr = chunks.begin(); itr != chunks.end(); ++itr) {
-        std::string query = "INSERT INTO QWorker (queryId, chunk) VALUES (";
-        query += boost::lexical_cast<std::string>(queryId);
+    for (vector<int>::const_iterator itr = chunks.begin(); itr != chunks.end(); ++itr) {
+        string query = "INSERT INTO QWorker (queryId, chunk) VALUES (";
+        query += boost::lexical_cast<string>(queryId);
         query += ", ";
-        query += boost::lexical_cast<std::string>(*itr);
+        query += boost::lexical_cast<string>(*itr);
         query += ")";
 
         LOGS(_log, LOG_LVL_DEBUG, "Executing query: " << query);
@@ -350,19 +353,19 @@ void QMetaMysql::addChunks(QueryId queryId, std::vector<int> const& chunks) {
 }
 
 // Assign or re-assign chunk to a worker.
-void QMetaMysql::assignChunk(QueryId queryId, int chunk, std::string const& xrdEndpoint) {
-    std::lock_guard<std::mutex> sync(_dbMutex);
+void QMetaMysql::assignChunk(QueryId queryId, int chunk, string const& xrdEndpoint) {
+    lock_guard<mutex> sync(_dbMutex);
 
     auto trans = QMetaTransaction::create(*_conn);
 
     // find and update chunk info
     sql::SqlErrorObject errObj;
-    std::string query = "UPDATE QWorker SET wxrd = '";
+    string query = "UPDATE QWorker SET wxrd = '";
     query += _conn->escapeString(xrdEndpoint);
     query += "', submitted = NOW() WHERE queryId = ";
-    query += boost::lexical_cast<std::string>(queryId);
+    query += boost::lexical_cast<string>(queryId);
     query += " AND chunk = ";
-    query += boost::lexical_cast<std::string>(chunk);
+    query += boost::lexical_cast<string>(chunk);
 
     LOGS(_log, LOG_LVL_DEBUG, "Executing query: " << query);
     sql::SqlResults results;
@@ -376,9 +379,9 @@ void QMetaMysql::assignChunk(QueryId queryId, int chunk, std::string const& xrdE
         throw ChunkIdError(ERR_LOC, queryId, chunk);
     } else if (results.getAffectedRows() > 1) {
         throw ConsistencyError(ERR_LOC, "More than one row updated for query/chunk ID " +
-                                                boost::lexical_cast<std::string>(queryId) + "/" +
-                                                boost::lexical_cast<std::string>(chunk) + ": " +
-                                                boost::lexical_cast<std::string>(results.getAffectedRows()));
+                                                boost::lexical_cast<string>(queryId) + "/" +
+                                                boost::lexical_cast<string>(chunk) + ": " +
+                                                boost::lexical_cast<string>(results.getAffectedRows()));
     }
 
     trans->commit();
@@ -386,16 +389,16 @@ void QMetaMysql::assignChunk(QueryId queryId, int chunk, std::string const& xrdE
 
 // Mark chunk as completed.
 void QMetaMysql::finishChunk(QueryId queryId, int chunk) {
-    std::lock_guard<std::mutex> sync(_dbMutex);
+    lock_guard<mutex> sync(_dbMutex);
 
     auto trans = QMetaTransaction::create(*_conn);
 
     // find and update query info
     sql::SqlErrorObject errObj;
-    std::string query = "UPDATE QWorker SET completed = NOW() WHERE queryId = ";
-    query += boost::lexical_cast<std::string>(queryId);
+    string query = "UPDATE QWorker SET completed = NOW() WHERE queryId = ";
+    query += boost::lexical_cast<string>(queryId);
     query += " AND chunk = ";
-    query += boost::lexical_cast<std::string>(chunk);
+    query += boost::lexical_cast<string>(chunk);
 
     LOGS(_log, LOG_LVL_DEBUG, "Executing query: " << query);
     sql::SqlResults results;
@@ -409,9 +412,9 @@ void QMetaMysql::finishChunk(QueryId queryId, int chunk) {
         throw ChunkIdError(ERR_LOC, queryId, chunk);
     } else if (results.getAffectedRows() > 1) {
         throw ConsistencyError(ERR_LOC, "More than one row updated for query/chunk ID " +
-                                                boost::lexical_cast<std::string>(queryId) + "/" +
-                                                boost::lexical_cast<std::string>(chunk) + ": " +
-                                                boost::lexical_cast<std::string>(results.getAffectedRows()));
+                                                boost::lexical_cast<string>(queryId) + "/" +
+                                                boost::lexical_cast<string>(chunk) + ": " +
+                                                boost::lexical_cast<string>(results.getAffectedRows()));
     }
 
     trans->commit();
@@ -419,15 +422,15 @@ void QMetaMysql::finishChunk(QueryId queryId, int chunk) {
 
 // Mark query as completed or failed.
 void QMetaMysql::completeQuery(QueryId queryId, QInfo::QStatus qStatus) {
-    std::lock_guard<std::mutex> sync(_dbMutex);
+    lock_guard<mutex> sync(_dbMutex);
 
     auto trans = QMetaTransaction::create(*_conn);
 
     // find and update query info
-    std::string query = "UPDATE QInfo SET completed = NOW(), status = ";
+    string query = "UPDATE QInfo SET completed = NOW(), status = ";
     query += ::status2string(qStatus);
     query += " WHERE queryId = ";
-    query += boost::lexical_cast<std::string>(queryId);
+    query += boost::lexical_cast<string>(queryId);
 
     LOGS(_log, LOG_LVL_DEBUG, "Executing query: " << query);
     sql::SqlErrorObject errObj;
@@ -442,8 +445,8 @@ void QMetaMysql::completeQuery(QueryId queryId, QInfo::QStatus qStatus) {
         throw QueryIdError(ERR_LOC, queryId);
     } else if (results.getAffectedRows() > 1) {
         throw ConsistencyError(ERR_LOC, "More than one row updated for query ID " +
-                                                boost::lexical_cast<std::string>(queryId) + ": " +
-                                                boost::lexical_cast<std::string>(results.getAffectedRows()));
+                                                boost::lexical_cast<string>(queryId) + ": " +
+                                                boost::lexical_cast<string>(results.getAffectedRows()));
     }
 
     trans->commit();
@@ -451,13 +454,13 @@ void QMetaMysql::completeQuery(QueryId queryId, QInfo::QStatus qStatus) {
 
 // Mark query as finished and returned to client.
 void QMetaMysql::finishQuery(QueryId queryId) {
-    std::lock_guard<std::mutex> sync(_dbMutex);
+    lock_guard<mutex> sync(_dbMutex);
 
     auto trans = QMetaTransaction::create(*_conn);
 
     // find and update chunk info
-    std::string query = "UPDATE QInfo SET returned = NOW() WHERE queryId = ";
-    query += boost::lexical_cast<std::string>(queryId);
+    string query = "UPDATE QInfo SET returned = NOW() WHERE queryId = ";
+    query += boost::lexical_cast<string>(queryId);
 
     LOGS(_log, LOG_LVL_DEBUG, "Executing query: " << query);
     sql::SqlErrorObject errObj;
@@ -472,37 +475,37 @@ void QMetaMysql::finishQuery(QueryId queryId) {
         throw QueryIdError(ERR_LOC, queryId);
     } else if (results.getAffectedRows() > 1) {
         throw ConsistencyError(ERR_LOC, "More than one row updated for query ID " +
-                                                boost::lexical_cast<std::string>(queryId) + ": " +
-                                                boost::lexical_cast<std::string>(results.getAffectedRows()));
+                                                boost::lexical_cast<string>(queryId) + ": " +
+                                                boost::lexical_cast<string>(results.getAffectedRows()));
     }
 
     trans->commit();
 }
 
 // Generic interface for finding queries.
-std::vector<QueryId> QMetaMysql::findQueries(CzarId czarId, QInfo::QType qType, std::string const& user,
-                                             std::vector<QInfo::QStatus> const& status, int completed,
+vector<QueryId> QMetaMysql::findQueries(CzarId czarId, QInfo::QType qType, string const& user,
+                                             vector<QInfo::QStatus> const& status, int completed,
                                              int returned) {
-    std::lock_guard<std::mutex> sync(_dbMutex);
+    lock_guard<mutex> sync(_dbMutex);
 
-    std::vector<QueryId> result;
+    vector<QueryId> result;
 
     auto trans = QMetaTransaction::create(*_conn);
 
     // all conditions for query
-    std::vector<std::string> cond;
+    vector<string> cond;
     if (czarId != 0) {
-        cond.push_back("czarId = " + boost::lexical_cast<std::string>(czarId));
+        cond.push_back("czarId = " + boost::lexical_cast<string>(czarId));
     }
     if (qType != QInfo::ANY) {
-        std::string const qTypeStr(qType == QInfo::SYNC ? "SYNC" : "ASYNC");
+        string const qTypeStr(qType == QInfo::SYNC ? "SYNC" : "ASYNC");
         cond.push_back("qType = '" + qTypeStr + "'");
     }
     if (not user.empty()) {
         cond.push_back("user = '" + _conn->escapeString(user) + "'");
     }
     if (not status.empty()) {
-        std::string condStr = "status IN (";
+        string condStr = "status IN (";
         for (auto itr = status.begin(), end = status.end(); itr != end; ++itr) {
             if (itr != status.begin()) condStr += ", ";
             condStr += status2string(*itr);
@@ -520,7 +523,7 @@ std::vector<QueryId> QMetaMysql::findQueries(CzarId czarId, QInfo::QType qType, 
     // run query
     sql::SqlErrorObject errObj;
     sql::SqlResults results;
-    std::string query = "SELECT queryId FROM QInfo";
+    string query = "SELECT queryId FROM QInfo";
     for (auto itr = cond.begin(), end = cond.end(); itr != end; ++itr) {
         if (itr == cond.begin()) {
             query += " WHERE ";
@@ -536,7 +539,7 @@ std::vector<QueryId> QMetaMysql::findQueries(CzarId czarId, QInfo::QType qType, 
     }
 
     // get results of the query
-    std::vector<std::string> ids;
+    vector<string> ids;
     if (not results.extractFirstColumn(ids, errObj)) {
         LOGS(_log, LOG_LVL_ERROR, "Failed to extract query ID from query result");
         throw SqlError(ERR_LOC, errObj);
@@ -547,24 +550,24 @@ std::vector<QueryId> QMetaMysql::findQueries(CzarId czarId, QInfo::QType qType, 
     // convert strings to numbers
     result.reserve(ids.size());
     std::transform(ids.begin(), ids.end(), std::back_inserter(result),
-                   boost::lexical_cast<QueryId, std::string>);
+                   boost::lexical_cast<QueryId, string>);
 
     return result;
 }
 
 // Find all pending queries.
-std::vector<QueryId> QMetaMysql::getPendingQueries(CzarId czarId) {
-    std::vector<QueryId> result;
+vector<QueryId> QMetaMysql::getPendingQueries(CzarId czarId) {
+    vector<QueryId> result;
 
-    std::lock_guard<std::mutex> sync(_dbMutex);
+    lock_guard<mutex> sync(_dbMutex);
 
     auto trans = QMetaTransaction::create(*_conn);
 
     // run query
     sql::SqlErrorObject errObj;
     sql::SqlResults results;
-    std::string query = "SELECT queryId FROM QInfo WHERE czarId = ";
-    query += boost::lexical_cast<std::string>(czarId);
+    string query = "SELECT queryId FROM QInfo WHERE czarId = ";
+    query += boost::lexical_cast<string>(czarId);
     query += " AND returned IS NULL";
     LOGS(_log, LOG_LVL_DEBUG, "Executing query: " << query);
     if (not _conn->runQuery(query, results, errObj)) {
@@ -573,7 +576,7 @@ std::vector<QueryId> QMetaMysql::getPendingQueries(CzarId czarId) {
     }
 
     // get results of the query
-    std::vector<std::string> ids;
+    vector<string> ids;
     if (not results.extractFirstColumn(ids, errObj)) {
         LOGS(_log, LOG_LVL_ERROR, "Failed to extract query ID from query result");
         throw SqlError(ERR_LOC, errObj);
@@ -584,26 +587,26 @@ std::vector<QueryId> QMetaMysql::getPendingQueries(CzarId czarId) {
     // convert strings to numbers
     result.reserve(ids.size());
     std::transform(ids.begin(), ids.end(), std::back_inserter(result),
-                   boost::lexical_cast<QueryId, std::string>);
+                   boost::lexical_cast<QueryId, string>);
 
     return result;
 }
 
 // Get full query information.
 QInfo QMetaMysql::getQueryInfo(QueryId queryId) {
-    std::lock_guard<std::mutex> sync(_dbMutex);
+    lock_guard<mutex> sync(_dbMutex);
 
     auto trans = QMetaTransaction::create(*_conn);
 
     // run query
     sql::SqlErrorObject errObj;
     sql::SqlResults results;
-    std::string query =
+    string query =
             "SELECT qType, czarId, user, query, qTemplate, qMerge, resultQuery, status,"
             " UNIX_TIMESTAMP(submitted), UNIX_TIMESTAMP(completed), UNIX_TIMESTAMP(returned), "
             " messageTable, resultLocation"
             " FROM QInfo WHERE queryId = ";
-    query += boost::lexical_cast<std::string>(queryId);
+    query += boost::lexical_cast<string>(queryId);
     LOGS(_log, LOG_LVL_DEBUG, "Executing query: " << query);
     if (not _conn->runQuery(query, results, errObj)) {
         LOGS(_log, LOG_LVL_ERROR, "SQL query failed: " << query);
@@ -623,24 +626,24 @@ QInfo QMetaMysql::getQueryInfo(QueryId queryId) {
     QInfo::QType qType = QInfo::SYNC;
     if (strcmp(row[0].first, "ASYNC") == 0) qType = QInfo::ASYNC;
     CzarId czarId = boost::lexical_cast<CzarId>(row[1].first);
-    std::string user(row[2].first);
-    std::string rQuery(row[3].first);
-    std::string qTemplate(row[4].first);
-    std::string qMerge(row[5].first ? row[5].first : "");
-    std::string resultQuery(row[6].first);
+    string user(row[2].first);
+    string rQuery(row[3].first);
+    string qTemplate(row[4].first);
+    string qMerge(row[5].first ? row[5].first : "");
+    string resultQuery(row[6].first);
     QInfo::QStatus qStatus = ::string2status(row[7].first);
     std::time_t submitted(row[8].first ? boost::lexical_cast<std::time_t>(row[8].first) : std::time_t(0));
     std::time_t completed(row[9].first ? boost::lexical_cast<std::time_t>(row[9].first) : std::time_t(0));
     std::time_t returned(row[10].first ? boost::lexical_cast<std::time_t>(row[10].first) : std::time_t(0));
-    std::string messageTable(row[11].first ? row[11].first : "");
-    std::string resultLocation(row[12].first ? row[12].first : "");
+    string messageTable(row[11].first ? row[11].first : "");
+    string resultLocation(row[12].first ? row[12].first : "");
     // result location may contain #QID# token to be replaced with query ID
-    boost::replace_all(resultLocation, "#QID#", std::to_string(queryId));
+    boost::replace_all(resultLocation, "#QID#", to_string(queryId));
 
     if (++rowIter != results.end()) {
         // something else found
         throw ConsistencyError(ERR_LOC, "More than one row returned for query ID " +
-                                                boost::lexical_cast<std::string>(queryId));
+                                                boost::lexical_cast<string>(queryId));
     }
 
     trans->commit();
@@ -650,17 +653,17 @@ QInfo QMetaMysql::getQueryInfo(QueryId queryId) {
 }
 
 // Get queries which use specified database.
-std::vector<QueryId> QMetaMysql::getQueriesForDb(std::string const& dbName) {
-    std::vector<QueryId> result;
+vector<QueryId> QMetaMysql::getQueriesForDb(string const& dbName) {
+    vector<QueryId> result;
 
-    std::lock_guard<std::mutex> sync(_dbMutex);
+    lock_guard<mutex> sync(_dbMutex);
 
     auto trans = QMetaTransaction::create(*_conn);
 
     // run query
     sql::SqlErrorObject errObj;
     sql::SqlResults results;
-    std::string query = "SELECT QInfo.queryId FROM QInfo NATURAL JOIN QTable WHERE QTable.dbName = '";
+    string query = "SELECT QInfo.queryId FROM QInfo NATURAL JOIN QTable WHERE QTable.dbName = '";
     query += _conn->escapeString(dbName);
     query += "' AND QInfo.completed IS NULL";
     LOGS(_log, LOG_LVL_DEBUG, "Executing query: " << query);
@@ -670,7 +673,7 @@ std::vector<QueryId> QMetaMysql::getQueriesForDb(std::string const& dbName) {
     }
 
     // get results of the query
-    std::vector<std::string> ids;
+    vector<string> ids;
     if (not results.extractFirstColumn(ids, errObj)) {
         LOGS(_log, LOG_LVL_ERROR, "Failed to extract query ID from query result");
         throw SqlError(ERR_LOC, errObj);
@@ -681,23 +684,23 @@ std::vector<QueryId> QMetaMysql::getQueriesForDb(std::string const& dbName) {
     // convert strings to numbers
     result.reserve(ids.size());
     std::transform(ids.begin(), ids.end(), std::back_inserter(result),
-                   boost::lexical_cast<QueryId, std::string>);
+                   boost::lexical_cast<QueryId, string>);
 
     return result;
 }
 
 // Get queries which use specified table.
-std::vector<QueryId> QMetaMysql::getQueriesForTable(std::string const& dbName, std::string const& tableName) {
-    std::vector<QueryId> result;
+vector<QueryId> QMetaMysql::getQueriesForTable(string const& dbName, string const& tableName) {
+    vector<QueryId> result;
 
-    std::lock_guard<std::mutex> sync(_dbMutex);
+    lock_guard<mutex> sync(_dbMutex);
 
     auto trans = QMetaTransaction::create(*_conn);
 
     // run query
     sql::SqlErrorObject errObj;
     sql::SqlResults results;
-    std::string query = "SELECT QInfo.queryId FROM QInfo NATURAL JOIN QTable WHERE QTable.dbName = '";
+    string query = "SELECT QInfo.queryId FROM QInfo NATURAL JOIN QTable WHERE QTable.dbName = '";
     query += _conn->escapeString(dbName);
     query += "' AND QTable.tblName = '";
     query += _conn->escapeString(tableName);
@@ -709,7 +712,7 @@ std::vector<QueryId> QMetaMysql::getQueriesForTable(std::string const& dbName, s
     }
 
     // get results of the query
-    std::vector<std::string> ids;
+    vector<string> ids;
     if (not results.extractFirstColumn(ids, errObj)) {
         LOGS(_log, LOG_LVL_ERROR, "Failed to extract query ID from query result");
         throw SqlError(ERR_LOC, errObj);
@@ -720,7 +723,7 @@ std::vector<QueryId> QMetaMysql::getQueriesForTable(std::string const& dbName, s
     // convert strings to numbers
     result.reserve(ids.size());
     std::transform(ids.begin(), ids.end(), std::back_inserter(result),
-                   boost::lexical_cast<QueryId, std::string>);
+                   boost::lexical_cast<QueryId, string>);
 
     return result;
 }
@@ -729,7 +732,7 @@ std::vector<QueryId> QMetaMysql::getQueriesForTable(std::string const& dbName, s
 void QMetaMysql::_checkDb() {
     // this is only called from constructor, no locking is needed here
 
-    std::vector<std::string> tables;
+    vector<string> tables;
     sql::SqlErrorObject errObj;
     if (not _conn->listTables(tables, errObj)) {
         // likely failed to connect to server or database is missing
@@ -753,14 +756,14 @@ void QMetaMysql::_checkDb() {
 
     // check schema version
     sql::SqlResults results;
-    std::string query = "SELECT value FROM QMetadata WHERE metakey = 'version'";
+    string query = "SELECT value FROM QMetadata WHERE metakey = 'version'";
     if (not _conn->runQuery(query, results, errObj)) {
         LOGS(_log, LOG_LVL_ERROR, "SQL query failed: " << query);
         throw SqlError(ERR_LOC, errObj);
     }
 
     // expect one record, will throw if different number of records in result
-    std::string value;
+    string value;
     if (not results.extractFirstValue(value, errObj)) {
         throw ConsistencyError(ERR_LOC,
                                "QMetadata table may be missing 'version' record: " + errObj.errMsg());
@@ -769,20 +772,20 @@ void QMetaMysql::_checkDb() {
     // compare versions
     if (value != ::VERSION_STR) {
         throw ConsistencyError(ERR_LOC, "QMeta version mismatch, expecting version " +
-                                                std::string(::VERSION_STR) + ", database schema version is " +
+                                                string(::VERSION_STR) + ", database schema version is " +
                                                 value);
     }
 }
 
-void QMetaMysql::saveResultQuery(QueryId queryId, std::string const& query) {
-    std::lock_guard<std::mutex> sync(_dbMutex);
+void QMetaMysql::saveResultQuery(QueryId queryId, string const& query) {
+    lock_guard<mutex> sync(_dbMutex);
 
     auto trans = QMetaTransaction::create(*_conn);
 
     // find and update query info
-    std::string sqlQuery = "UPDATE QInfo SET resultQuery = \"" + _conn->escapeString(query);
+    string sqlQuery = "UPDATE QInfo SET resultQuery = \"" + _conn->escapeString(query);
     sqlQuery += "\" WHERE queryId = ";
-    sqlQuery += boost::lexical_cast<std::string>(queryId);
+    sqlQuery += boost::lexical_cast<string>(queryId);
 
     LOGS(_log, LOG_LVL_DEBUG, "Executing query: " << sqlQuery);
     sql::SqlErrorObject errObj;
@@ -797,11 +800,59 @@ void QMetaMysql::saveResultQuery(QueryId queryId, std::string const& query) {
         throw QueryIdError(ERR_LOC, queryId);
     } else if (results.getAffectedRows() > 1) {
         throw ConsistencyError(ERR_LOC, "More than one row updated for query ID " +
-                                                boost::lexical_cast<std::string>(queryId) + ": " +
-                                                boost::lexical_cast<std::string>(results.getAffectedRows()));
+                                                boost::lexical_cast<string>(queryId) + ": " +
+                                                boost::lexical_cast<string>(results.getAffectedRows()));
     }
 
     trans->commit();
+}
+
+void QMetaMysql::addQueryMessages(QueryId queryId, shared_ptr<qdisp::MessageStore> const& msgStore) {
+    int msgCount = msgStore->messageCount();
+    // &&& a bit of code duplication between this and MessageTable::_saveQueryMessages
+    for (int i = 0; i != msgCount; ++i) {
+         qdisp::QueryMessage const& qMsg = msgStore->getMessage(i);
+
+         try {
+             _addQueryMessage(queryId, qMsg);
+         } catch (qmeta::SqlError const& ex) {
+             LOGS(_log, LOG_LVL_ERROR, "UserQuerySelect::_qMetaUpdateMessages failed " << ex.what());
+         }
+    }
+}
+
+void QMetaMysql::_addQueryMessage(QueryId queryId, qdisp::QueryMessage const& qMsg) {
+    lock_guard<mutex> sync(_dbMutex);
+
+    auto trans = QMetaTransaction::create(*_conn);
+
+    // build query
+    std::string severity = (qMsg.severity == MSG_INFO ? "INFO" : "ERROR");
+
+    string query =
+            "INSERT INTO QMessages (queryId, chunkId, code, message, severity, timestamp) VALUES (";
+    query += boost::lexical_cast<string>(queryId);
+    query += ", ";
+    query += boost::lexical_cast<string>(qMsg.chunkId);
+    query += ", ";
+    query += _conn->escapeString(severity);
+    query += ", ";
+    query += _conn->escapeString(qMsg.description);
+    query += ", ";
+    query += boost::lexical_cast<string>(qMsg.timestamp);
+    query += ")";
+
+    // run query
+    sql::SqlErrorObject errObj;
+    LOGS(_log, LOG_LVL_DEBUG, "Executing query: " << query);
+    if (not _conn->runQuery(query, errObj)) {
+        LOGS(_log, LOG_LVL_ERROR, "SQL addQueryMessage query failed: " << query);
+        throw SqlError(ERR_LOC, errObj);
+    }
+
+    trans->commit();
+    LOGS(_log, LOG_LVL_DEBUG, "_addQueryMessage:" << query);
+
 }
 
 }  // namespace lsst::qserv::qmeta

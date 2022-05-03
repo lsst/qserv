@@ -178,10 +178,30 @@ CREATE TABLE IF NOT EXISTS `QMetadata` (
 ENGINE = InnoDB
 COMMENT = 'Metadata about database as a whole, bunch of key-value pairs';
 
+-- -----------------------------------------------------
+-- Table `QMetaMessages`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `QMessages` (
+  `queryId` BIGINT NOT NULL COMMENT 'Query identifier, foreign key into QueryInfo table',
+  `chunkId` INT COMMENT 'chunkId`,
+  `code` SMALLINT COMMENT 'Error code',
+  `message` MEDIUMTEXT NOT NULL COMMENT 'Message generated while executing queryId',
+  `severity` ENUM('INFO', 'ERROR') COMMENT 'severity of the message INFO or ERROR',
+  `timestamp` FLOAT COMMENT 'time of error message',
+  PRIMARY KEY (`queryId`),
+  CONSTRAINT `QMessages_qid`
+    FOREIGN KEY (`queryId`)
+    REFERENCES `QInfo` (`queryId`)
+    ON DELETE CASCADE
+    ON UPDATE CASCADE)
+ENGINE = InnoDB
+COMMENT = 'Table of messages generated during queries.';
+
 -- Update version on every schema change.
 -- Version 0 corresponds to initial QMeta release and it had no
 -- QMetadata table at all.
 -- Version 1 introduced QMetadata table and altered schema for QInfo table
 -- Version 2 added query progress data to ProcessList tables.
 -- Version 3 added storing the result query in QMeta.
-INSERT INTO `QMetadata` (`metakey`, `value`) VALUES ('version', '4');
+INSERT INTO `QMetadata` (`metakey`, `value`) VALUES ('version', '5');
+
