@@ -9,10 +9,10 @@ target_sources(qserv_meta PRIVATE
 )
 
 target_link_libraries(qserv_meta PUBLIC
+    qdisp
     qserv_common
     log
     mysqlclient_r
-    qdisp
 )
 
 install(TARGETS qserv_meta)
@@ -22,7 +22,6 @@ add_executable(testQMeta testQMeta.cc)
 
 target_link_libraries(testQMeta
     qserv_meta
-    qdisp
     Boost::unit_test_framework
     Threads::Threads
 )

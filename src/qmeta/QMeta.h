@@ -36,9 +36,9 @@
 #include "qmeta/types.h"
 
 namespace lsst::qserv::qdisp {
-    class MessageStore;
-    class QueryMessage;
-} // namespace lsst::qserv::qdisp
+class MessageStore;
+class QueryMessage;
+}  // namespace lsst::qserv::qdisp
 
 namespace lsst::qserv::qmeta {
 
@@ -282,7 +282,7 @@ public:
     virtual void saveResultQuery(QueryId queryId, std::string const& query) = 0;
 
     /// Write messages/errors generated during the query to the QMessages table.
-    virtual void addQueryMessages(QueryId queryId, std::shared_ptr<qdisp::MessageStore> const& msgStore);
+    virtual void addQueryMessages(QueryId queryId, std::shared_ptr<qdisp::MessageStore> const& msgStore) = 0;
 
 protected:
     // Default constructor

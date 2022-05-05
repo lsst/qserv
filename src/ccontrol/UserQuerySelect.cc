@@ -365,7 +365,6 @@ QueryState UserQuerySelect::join() {
         LOGS(_log, LOG_LVL_ERROR, "Joined everything (failure!)");
         return ERROR;
     }
-
 }
 
 /// Release resources held by the merger
@@ -621,7 +620,6 @@ void UserQuerySelect::_qMetaUpdateMessages() {
     } catch (qmeta::SqlError const& ex) {
         LOGS(_log, LOG_LVL_ERROR, "UserQuerySelect::_qMetaUpdateMessages failed " << ex.what());
     }
-
 }
 
 // add chunk information to qmeta
