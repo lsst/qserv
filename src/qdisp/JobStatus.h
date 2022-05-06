@@ -30,6 +30,9 @@
 #include <string>
 #include <time.h>
 
+// qserv headers
+#include "global/constants.h"
+
 namespace lsst::qserv::qdisp {
 
 /** Monitor execution of a chunk query against an SSI ressource
@@ -79,16 +82,19 @@ public:
      *  - resourceUnit should be extracted from Info (beware of mutex)
      *  - Info should be put in a vector
      */
-    void updateInfo(std::string const& idMsg, State s, int code = 0, std::string const& desc = "");
+    void updateInfo(std::string const& idMsg, State s, std::string const& source, int code = 0,
+                    std::string const& desc = "", MessageSeverity severity = MSG_INFO);
 
     struct Info {
         Info();
         // More detailed debugging may store a vector of states, appending
         // with each invocation of report().
-        State state;            ///< Actual state
-        time_t stateTime;       ///< Last modified timestamp
-        int stateCode;          ///< Code associated with state (e.g. xrd or mysql error code)
-        std::string stateDesc;  ///< Textual description
+        State state;                          ///< Actual state
+        time_t stateTime;                     ///< Last modified timestamp
+        int stateCode;                        ///< Code associated with state (e.g. xrd or mysql error code)
+        std::string stateDesc;                ///< Textual description
+        std::string source = "";              ///< Source of the current state.
+        MessageSeverity severity = MSG_INFO;  ///< Severity of the message.
     };
 
     Info getInfo() const {

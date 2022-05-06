@@ -307,7 +307,13 @@ void Executive::markCompleted(int jobId, bool success) {
             lock_guard<recursive_mutex> lockJobMap(_jobMapMtx);
             auto job = _jobMap[jobId];
             string id = job->getIdStr() + "<>" + idStr;
-            job->getStatus()->updateInfo(id, JobStatus::RESULT_ERROR, err.getCode(), err.getMsg());
+            auto jState = job->getStatus()->getInfo().state;
+            // Don't overwrite existing error states.
+            if (jState != JobStatus::CANCEL && jState != JobStatus::RESPONSE_ERROR &&
+                jState != JobStatus::RESULT_ERROR && jState != JobStatus::MERGE_ERROR) {
+                job->getStatus()->updateInfo(id, JobStatus::RESULT_ERROR, "EXEC", err.getCode(),
+                                             err.getMsg());
+            }
         }
         {
             lock_guard<mutex> lock(_errorsMutex);
@@ -525,13 +531,14 @@ void Executive::_updateProxyMessages() {
                 os << " (" << info.stateDesc << ")";
             }
             os << " " << info.stateTime;
-            _messageStore->addMessage(job->getDescription()->resource().chunk(), info.state, os.str());
+            _messageStore->addMessage(job->getDescription()->resource().chunk(), info.source, info.state,
+                                      os.str(), info.severity);
         }
     }
     {
         lock_guard<mutex> lock(_errorsMutex);
         if (not _multiError.empty()) {
-            _messageStore->addErrorMessage(_multiError.toString());
+            _messageStore->addErrorMessage("MULTIERROR", _multiError.toString());
         }
     }
 }

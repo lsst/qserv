@@ -65,12 +65,12 @@ UserQueryAsyncResult::UserQueryAsyncResult(QueryId queryId, qmeta::CzarId qMetaC
     } catch (qmeta::QueryIdError const& exc) {
         std::string message = "No job found for ID=" + std::to_string(queryId);
         LOGS(_log, LOG_LVL_DEBUG, message);
-        _messageStore->addErrorMessage(message);
+        _messageStore->addErrorMessage("SYSTEM", message);
     } catch (std::exception const& exc) {
         LOGS(_log, LOG_LVL_ERROR, "error in querying QMeta: " << exc.what());
         std::string message = "Internal failure, error in querying QMeta: ";
         message += exc.what();
-        _messageStore->addErrorMessage(message);
+        _messageStore->addErrorMessage("SYSTEM", message);
     }
 }
 
@@ -91,7 +91,7 @@ void UserQueryAsyncResult::submit() {
     if (_qInfo.czarId() != _qMetaCzarId) {
         // TODO: tell user which czar was it?
         std::string message = "Query originated from different czar";
-        _messageStore->addErrorMessage(message);
+        _messageStore->addErrorMessage("SYSTEM", message);
         return;
     }
 
@@ -104,7 +104,7 @@ void UserQueryAsyncResult::submit() {
     if (_qInfo.queryStatus() != qmeta::QInfo::COMPLETED) {
         std::string message = "Query is still executing (or FAILED)";
         LOGS(_log, LOG_LVL_DEBUG, message);
-        _messageStore->addErrorMessage(message);
+        _messageStore->addErrorMessage("SYSTEM", message);
         return;
     }
 
@@ -112,7 +112,7 @@ void UserQueryAsyncResult::submit() {
     if (_qInfo.resultLocation().compare(0, 6, "table:") != 0) {
         std::string message = "Cannot return result as it is not stored in table.";
         LOGS(_log, LOG_LVL_DEBUG, message);
-        _messageStore->addErrorMessage(message);
+        _messageStore->addErrorMessage("SYSTEM", message);
         return;
     }
     std::string const resultTableName = _qInfo.resultLocation().substr(6);
@@ -123,7 +123,7 @@ void UserQueryAsyncResult::submit() {
         !_resultDbConn->tableExists(resultTableName, sqlErrObj)) {
         std::string message = "Result or message table does not exist, result is likely expired.";
         LOGS(_log, LOG_LVL_DEBUG, message);
-        _messageStore->addErrorMessage(message);
+        _messageStore->addErrorMessage("SYSTEM", message);
         return;
     }
 
@@ -134,7 +134,7 @@ void UserQueryAsyncResult::submit() {
     if (!_resultDbConn->runQuery(query, sqlResults, sqlErrObj)) {
         LOGS(_log, LOG_LVL_ERROR, "Failed to retrieve message table data: " << sqlErrObj.errMsg());
         std::string message = "Failed to retrieve message table data.";
-        _messageStore->addErrorMessage(message);
+        _messageStore->addErrorMessage("SYSTEM_SQL", message);
         return;
     }
 
@@ -148,11 +148,11 @@ void UserQueryAsyncResult::submit() {
             std::string sevStr = row[3].first;
             float timestamp = boost::lexical_cast<float>(row[4].first);
             MessageSeverity sev = sevStr == "INFO" ? MSG_INFO : MSG_ERROR;
-            _messageStore->addMessage(chunkId, code, message, sev, std::time_t(timestamp));
+            _messageStore->addMessage(chunkId, "DUPLICATE", code, message, sev, std::time_t(timestamp));
         } catch (std::exception const& exc) {
             LOGS(_log, LOG_LVL_ERROR, "Error reading message table data: " << exc.what());
             std::string message = "Error reading message table data.";
-            _messageStore->addErrorMessage(message);
+            _messageStore->addErrorMessage("SYSTEM", message);
             return;
         }
         ++count;

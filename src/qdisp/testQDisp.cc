@@ -265,10 +265,10 @@ BOOST_AUTO_TEST_CASE(MessageStore) {
     LOGS_DEBUG("MessageStore test start");
     qdisp::MessageStore ms;
     BOOST_CHECK(ms.messageCount() == 0);
-    ms.addMessage(123, 456, "test1");
+    ms.addMessage(123, "EXECUTIVE", 456, "test1");
     std::string str("test2");
-    ms.addMessage(124, -12, str);
-    ms.addMessage(86, -12, "test3");
+    ms.addMessage(124, "EXECUTIVE", -12, str);
+    ms.addMessage(86, "EXECUTIVE", -12, "test3");
     BOOST_CHECK(ms.messageCount() == 3);
     BOOST_CHECK(ms.messageCount(-12) == 2);
     qdisp::QueryMessage qm = ms.getMessage(1);

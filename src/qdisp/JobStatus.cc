@@ -50,7 +50,8 @@ namespace lsst::qserv::qdisp {
 
 JobStatus::Info::Info() : state(UNKNOWN), stateCode(0) { stateTime = ::time(NULL); }
 
-void JobStatus::updateInfo(std::string const& idMsg, JobStatus::State s, int code, std::string const& desc) {
+void JobStatus::updateInfo(std::string const& idMsg, JobStatus::State s, std::string const& source, int code,
+                           std::string const& desc, MessageSeverity severity) {
     std::lock_guard<std::mutex> lock(_mutex);
 
     LOGS(_log, LOG_LVL_DEBUG, idMsg << " Updating state to: " << s << " code=" << code << " " << desc);
@@ -58,6 +59,8 @@ void JobStatus::updateInfo(std::string const& idMsg, JobStatus::State s, int cod
     _info.state = s;
     _info.stateCode = code;
     _info.stateDesc = desc;
+    _info.source = source;
+    _info.severity = severity;
 }
 
 std::string JobStatus::stateStr(JobStatus::State const& state) {
@@ -118,7 +121,8 @@ std::ostream& operator<<(std::ostream& os, JobStatus::Info const& info) {
     // localtime_r() is thread-safe
     ::strftime(date_buf, date_buf_len, "%FT%T%z", ::localtime_r(&info.stateTime, &tmp_tm));
 
-    os << ": " << date_buf << ", " << info.state << ", " << info.stateCode << ", " << info.stateDesc;
+    os << ": " << date_buf << ", " << info.state << ", " << info.source << ", " << info.stateCode << ", "
+       << info.stateDesc << ", " << info.severity;
     return os;
 }
 

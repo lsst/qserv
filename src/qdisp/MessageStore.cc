@@ -47,22 +47,23 @@ namespace lsst::qserv::qdisp {
 // public
 ////////////////////////////////////////////////////////////////////////
 
-void MessageStore::addMessage(int chunkId, int code, std::string const& description, MessageSeverity severity,
+void MessageStore::addMessage(int chunkId, std::string const& msgSource, int code,
+                              std::string const& description, MessageSeverity severity,
                               std::time_t timestamp) {
     if (timestamp == std::time_t(0)) {
         timestamp = std::time(nullptr);
     }
     auto level = code < 0 ? LOG_LVL_ERROR : LOG_LVL_DEBUG;
-    LOGS(_log, level, "Add msg: " << chunkId << " " << code << " " << description);
+    LOGS(_log, level, "Add msg: " << chunkId << " " << msgSource << " " << code << " " << description);
     {
         std::lock_guard<std::mutex> lock(_storeMutex);
         _queryMessages.insert(_queryMessages.end(),
-                              QueryMessage(chunkId, code, description, timestamp, severity));
+                              QueryMessage(chunkId, msgSource, code, description, timestamp, severity));
     }
 }
 
-void MessageStore::addErrorMessage(std::string const& description) {
-    addMessage(NOTSET, NOTSET, description, MessageSeverity::MSG_ERROR);
+void MessageStore::addErrorMessage(std::string const& msgSource, std::string const& description) {
+    addMessage(NOTSET, msgSource, NOTSET, description, MessageSeverity::MSG_ERROR);
 }
 
 QueryMessage MessageStore::getMessage(int idx) const { return _queryMessages.at(idx); }

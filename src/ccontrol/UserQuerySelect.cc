@@ -124,7 +124,7 @@ public:
 class ChunkMsgReceiver : public MsgReceiver {
 public:
     virtual void operator()(int code, std::string const& msg) {
-        messageStore->addMessage(chunkId, code, msg);
+        messageStore->addMessage(chunkId, "CHUNK", code, msg);
     }
     static std::shared_ptr<ChunkMsgReceiver> newInstance(int chunkId,
                                                          std::shared_ptr<qdisp::MessageStore> ms) {
@@ -339,7 +339,8 @@ QueryState UserQuerySelect::join() {
         successful = false;
         LOGS(_log, LOG_LVL_ERROR, "InfileMerger::finalize failed");
         // Error: 1105 SQLSTATE: HY000 (ER_UNKNOWN_ERROR) Message: Unknown error
-        _messageStore->addMessage(-1, 1105, "Failure while merging result", MessageSeverity::MSG_ERROR);
+        _messageStore->addMessage(-1, "MERGE", 1105, "Failure while merging result",
+                                  MessageSeverity::MSG_ERROR);
     }
     try {
         _discardMerger();
@@ -572,7 +573,7 @@ void UserQuerySelect::qMetaRegister(std::string const& resultLocation, std::stri
     } else {
         // we only support results going to tables for now, abort for anything else
         std::string const msg = "Unexpected result location '" + _resultLoc + "'";
-        _messageStore->addMessage(-1, 1146, msg, MessageSeverity::MSG_ERROR);
+        _messageStore->addMessage(-1, "SYSTEM", 1146, msg, MessageSeverity::MSG_ERROR);
         throw UserQueryError(getQueryIdString() + _errorExtra);
     }
 
@@ -594,7 +595,7 @@ void UserQuerySelect::qMetaRegister(std::string const& resultLocation, std::stri
             // error condition, only prints error message to the log. To communicate
             // error message to caller we need to set _errorExtra
             std::string const msg = "Table '" + itr->first + "." + itr->second + "' does not exist";
-            _messageStore->addMessage(-1, 1146, msg, MessageSeverity::MSG_ERROR);
+            _messageStore->addMessage(-1, "SYSTEM", 1146, msg, MessageSeverity::MSG_ERROR);
             throw UserQueryError(getQueryIdString() + _errorExtra);
         }
     }

@@ -803,17 +803,33 @@ void QMetaMysql::saveResultQuery(QueryId queryId, string const& query) {
 
 void QMetaMysql::addQueryMessages(QueryId queryId, shared_ptr<qdisp::MessageStore> const& msgStore) {
     int msgCount = msgStore->messageCount();
+    int cancelCount = 0;
     for (int i = 0; i != msgCount; ++i) {
         qdisp::QueryMessage const& qMsg = msgStore->getMessage(i);
         try {
-            _addQueryMessage(queryId, qMsg);
+            _addQueryMessage(queryId, qMsg, cancelCount);
         } catch (qmeta::SqlError const& ex) {
             LOGS(_log, LOG_LVL_ERROR, "UserQuerySelect::_qMetaUpdateMessages failed " << ex.what());
         }
     }
+    // Add the total number of cancel messages received.
+    if (cancelCount > 0) {
+        qdisp::QueryMessage qm(-1, "CANCELTOTAL", 0, string("total=") + to_string(cancelCount),
+                               std::time(nullptr), MessageSeverity::MSG_INFO);
+        _addQueryMessage(queryId, qm, cancelCount);
+    }
 }
 
-void QMetaMysql::_addQueryMessage(QueryId queryId, qdisp::QueryMessage const& qMsg) {
+void QMetaMysql::_addQueryMessage(QueryId queryId, qdisp::QueryMessage const& qMsg, int& cancelCount) {
+    // Don't add duplicate messages.
+    if (qMsg.msgSource == "DUPLICATE") return;
+    // Don't add MULTIERROR as it's all duplicates.
+    if (qMsg.msgSource == "MULTIERROR") return;
+    // Limit dont't add individual "CANCEL" messages.
+    if (qMsg.msgSource == "CANCEL") {
+        ++cancelCount;
+        return;
+    }
     lock_guard<mutex> sync(_dbMutex);
 
     auto trans = QMetaTransaction::create(*_conn);
@@ -821,18 +837,16 @@ void QMetaMysql::_addQueryMessage(QueryId queryId, qdisp::QueryMessage const& qM
     // build query
     std::string severity = (qMsg.severity == MSG_INFO ? "INFO" : "ERROR");
 
-    string query = "INSERT INTO QMessages (queryId, chunkId, code, severity, message, timestamp) VALUES (";
+    string query =
+            "INSERT INTO QMessages (queryId, msgSource, chunkId, code, severity, message, timestamp) VALUES "
+            "(";
     query += boost::lexical_cast<string>(queryId);
-    query += ", ";
-    query += boost::lexical_cast<string>(qMsg.chunkId);
-    query += ", ";
-    query += boost::lexical_cast<string>(qMsg.code);
-    query += ", \"";
-    query += _conn->escapeString(severity);
-    query += "\", \"";
-    query += _conn->escapeString(qMsg.description);
-    query += "\", ";
-    query += boost::lexical_cast<string>(qMsg.timestamp);
+    query += ", \"" + _conn->escapeString(qMsg.msgSource) + "\"";
+    query += ", " + boost::lexical_cast<string>(qMsg.chunkId);
+    query += ", " + boost::lexical_cast<string>(qMsg.code);
+    query += ", \"" + _conn->escapeString(severity) + "\"";
+    query += ", \"" + _conn->escapeString(qMsg.description) + "\"";
+    query += ", " + boost::lexical_cast<string>(qMsg.timestamp);
     query += ")";
 
     // run query

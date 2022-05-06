@@ -44,15 +44,17 @@
 namespace lsst::qserv::qdisp {
 
 struct QueryMessage {
-    QueryMessage(int chunkId_, int code_, std::string description_, std::time_t timestamp_,
-                 MessageSeverity severity_)
+    QueryMessage(int chunkId_, std::string const& msgSource_, int code_, std::string description_,
+                 std::time_t timestamp_, MessageSeverity severity_)
             : chunkId(chunkId_),
+              msgSource(msgSource_),
               code(code_),
               description(description_),
               timestamp(timestamp_),
               severity(severity_) {}
 
     int chunkId;
+    std::string msgSource;
     int code;
     std::string description;
     std::time_t timestamp;
@@ -77,7 +79,7 @@ public:
      * @param description text of the message
      * @param severity_ message severity level, default to MSG_INFO
      */
-    void addMessage(int chunkId, int code, std::string const& description,
+    void addMessage(int chunkId, std::string const& msgSource, int code, std::string const& description,
                     MessageSeverity severity_ = MessageSeverity::MSG_INFO,
                     std::time_t timestamp = std::time_t(0));
 
@@ -91,7 +93,7 @@ public:
      *
      * @param description text of the message
      */
-    void addErrorMessage(std::string const& description);
+    void addErrorMessage(std::string const& msgSource, std::string const& description);
     QueryMessage getMessage(int idx) const;
     int messageCount() const;
     int messageCount(int code) const;

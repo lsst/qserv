@@ -138,7 +138,7 @@ void UserQueryProcessList::submit() {
         LOGS(_log, LOG_LVL_ERROR, "error in querying QMeta: " << exc.what());
         std::string message = "Internal failure, error in querying QMeta: ";
         message += exc.what();
-        _messageStore->addMessage(-1, 1051, message, MessageSeverity::MSG_ERROR);
+        _messageStore->addMessage(-1, "PROCESSLIST", 1051, message, MessageSeverity::MSG_ERROR);
         _qState = ERROR;
         return;
     }
@@ -149,7 +149,7 @@ void UserQueryProcessList::submit() {
     if (errObj.isSet()) {
         LOGS(_log, LOG_LVL_ERROR, "failed to extract schema from result: " << errObj.errMsg());
         std::string message = "Internal failure, failed to extract schema from result: " + errObj.errMsg();
-        _messageStore->addMessage(-1, 1051, message, MessageSeverity::MSG_ERROR);
+        _messageStore->addMessage(-1, "PROCESSLIST", 1051, message, MessageSeverity::MSG_ERROR);
         _qState = ERROR;
         return;
     }
@@ -171,7 +171,7 @@ void UserQueryProcessList::submit() {
     if (!_resultDbConn->runQuery(createTable, errObj)) {
         LOGS(_log, LOG_LVL_ERROR, "failed to create result table: " << errObj.errMsg());
         std::string message = "Internal failure, failed to create result table: " + errObj.errMsg();
-        _messageStore->addMessage(-1, 1051, message, MessageSeverity::MSG_ERROR);
+        _messageStore->addMessage(-1, "PROCESSLIST", 1051, message, MessageSeverity::MSG_ERROR);
         _qState = ERROR;
         return;
     }
@@ -209,7 +209,7 @@ void UserQueryProcessList::submit() {
         if (!bulkInsert.addRow(values, errObj)) {
             LOGS(_log, LOG_LVL_ERROR, "error updating result table: " << errObj.errMsg());
             std::string message = "Internal failure, error updating result table: " + errObj.errMsg();
-            _messageStore->addMessage(-1, 1051, message, MessageSeverity::MSG_ERROR);
+            _messageStore->addMessage(-1, "PROCESSLIST", 1051, message, MessageSeverity::MSG_ERROR);
             _qState = ERROR;
             return;
         }
@@ -217,7 +217,7 @@ void UserQueryProcessList::submit() {
     if (!bulkInsert.flush(errObj)) {
         LOGS(_log, LOG_LVL_ERROR, "error updating result table: " << errObj.errMsg());
         std::string message = "Internal failure, error updating result table: " + errObj.errMsg();
-        _messageStore->addMessage(-1, 1051, message, MessageSeverity::MSG_ERROR);
+        _messageStore->addMessage(-1, "PROCESSLIST", 1051, message, MessageSeverity::MSG_ERROR);
         _qState = ERROR;
         return;
     }
