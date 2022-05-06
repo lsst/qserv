@@ -442,7 +442,7 @@ def proxy(ctx: click.Context, **kwargs: Any) -> None:
         czar_cfg_file=targs["czar_cfg_file"],
         czar_cfg_path=targs["czar_cfg_path"],
         cmd=targs["cmd"],
-        log_cfg_file=targs["log_cfg_file"]
+        log_cfg_file=targs["log_cfg_file"],
     )
 
 
