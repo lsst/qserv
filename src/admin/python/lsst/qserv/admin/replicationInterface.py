@@ -27,7 +27,7 @@ import os
 from requests import delete, get, post, put
 from requests.exceptions import ConnectionError
 import subprocess
-from typing import Any, Callable, Dict, Generator, List, NamedTuple, Tuple
+from typing import Any, Callable, Dict, Generator, List, Optional, NamedTuple, Tuple
 from urllib.parse import urlparse
 
 
@@ -369,7 +369,7 @@ class ReplicationInterface:
             )
         _log.debug("ingest file res: %s", res)
 
-    def build_table_stats(self, database: str, tables: List[str]) -> None:
+    def build_table_stats(self, database: str, tables: List[str], instance_id: Optional[str]) -> None:
         for table in tables:
             _log.debug("build table stats for %s.%s", database, table)
             _post(
@@ -383,7 +383,7 @@ class ReplicationInterface:
                         force_rescan=1,
                         auth_key="",
                         admin_auth_key="",
-                        instance_id="qserv_proj",
+                        instance_id=instance_id,
                     ),
                 ),
             )

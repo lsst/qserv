@@ -249,7 +249,13 @@ class LoadDb:
         # config file.
         self.ingest_table_t = os.path.join(self.root, load_db_cfg["ingest"]["table"])
 
+        # bool, indicates if the replicaiton-ingest system should build table
+        # stats or not.
         self.build_table_stats = load_db_cfg.get("build_table_stats", False)
+
+        # str, optional, the name of the qserv instance id, used by the
+        # replication-ingest system.
+        self.instance_id = load_db_cfg.get("instance_id", None)
 
     @property
     def name(self) -> str:
@@ -400,7 +406,11 @@ def _load_database(load_db: LoadDb, ref_db_uri: str, ref_db_admin: str, repl_ctr
 
     repl.publish_database(load_db.name)
     if load_db.build_table_stats:
-        repl.build_table_stats(load_db.name, load_db.tables)
+        if not load_db.instance_id:
+            raise RuntimeError(
+                "To build table stats, instance_id must contain a non-empty value."
+            )
+        repl.build_table_stats(load_db.name, load_db.tables, load_db.instance_id)
 
 
 def _remove_database(case_data: Dict[Any, Any], ref_db_connection: str, repl_ctrl_uri: str) -> None:
