@@ -802,7 +802,13 @@ def _run(
     return result.returncode
 
 
-def delete_database(repl_ctrl_uri: str, database: str, admin: bool) -> None:
+def delete_database(
+    repl_ctrl_uri: str,
+    database: str,
+    admin: bool,
+    auth_key: str,
+    admin_auth_key: str,
+) -> None:
     """Remove a database from qserv.
 
     Parameters
@@ -813,12 +819,16 @@ def delete_database(repl_ctrl_uri: str, database: str, admin: bool) -> None:
         The name of the database to delete.
     admin : `bool`
         True if the admin auth key should be used.
+    auth_key : `str`
+        The authorizaiton key for the replication-ingest system.
+    admin_auth_key : `str`
+        The admin authorizaiton key for the replication-ingest system.
     """
-    repl = ReplicationInterface(repl_ctrl_uri)
+    repl = ReplicationInterface(repl_ctrl_uri, auth_key, admin_auth_key)
     repl.delete_database(database, admin)
 
 
-def load_simple(repl_ctrl_uri: str) -> None:
+def load_simple(repl_ctrl_uri: str, auth_key: str) -> None:
     """Load a simple predefined database into qserv.
 
     The database is called "test101" and have a table called Object with one row.
@@ -827,47 +837,43 @@ def load_simple(repl_ctrl_uri: str) -> None:
     ----------
     repl_ctrl_uri : `str`
         The uri to the replication controller service.
+    auth_key : `str`
+        The authorizaiton key for the replication-ingest system.
     """
-    repl = ReplicationInterface(repl_ctrl_uri)
+    repl = ReplicationInterface(repl_ctrl_uri, auth_key)
 
     database = "test101"
 
     repl.ingest_database(
-        database_json=json.dumps(
-            {
-                "database": database,
-                "num_stripes": 340,
-                "num_sub_stripes": 3,
-                "overlap": 0.01667,
-                "auto_build_secondary_index": 1,
-                "local_load_secondary_index": 1,
-                "auth_key": "",
-            }
+        dict(
+            database=database,
+            num_stripes=340,
+            num_sub_stripes=3,
+            overlap=0.01667,
+            auto_build_secondary_index=1,
+            local_load_secondary_index=1,
         ),
     )
     repl.ingest_table_config(
-        table_json=json.dumps(
-            {
-                "database": database,
-                "table": "Object",
-                "is_partitioned": 1,
-                "chunk_id_key": "chunkId",
-                "sub_chunk_id_key": "subChunkId",
-                "is_director": 1,
-                "director_key": "objectId",
-                "latitude_key": "dec",
-                "longitude_key": "ra",
-                "schema": [
-                    {"name": "objectId", "type": "BIGINT NOT NULL"},
-                    {"name": "ra", "type": "DOUBLE NOT NULL"},
-                    {"name": "dec", "type": "DOUBLE NOT NULL"},
-                    {"name": "property", "type": "DOUBLE"},
-                    {"name": "chunkId", "type": "INT UNSIGNED NOT NULL"},
-                    {"name": "subChunkId", "type": "INT UNSIGNED NOT NULL"},
-                ],
-                "auth_key": "",
-            }
-        ),
+        dict(
+            database=database,
+            table="Object",
+            is_partitioned=1,
+            chunk_id_key="chunkId",
+            sub_chunk_id_key="subChunkId",
+            is_director=1,
+            director_key="objectId",
+            latitude_key="dec",
+            longitude_key="ra",
+            schema=[
+                {"name": "objectId", "type": "BIGINT NOT NULL"},
+                {"name": "ra", "type": "DOUBLE NOT NULL"},
+                {"name": "dec", "type": "DOUBLE NOT NULL"},
+                {"name": "property", "type": "DOUBLE"},
+                {"name": "chunkId", "type": "INT UNSIGNED NOT NULL"},
+                {"name": "subChunkId", "type": "INT UNSIGNED NOT NULL"},
+            ],
+        )
     )
     transaction_id = repl.start_transaction(database=database)
     chunk_location = repl.ingest_chunk_config(transaction_id, "0")

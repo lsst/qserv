@@ -20,6 +20,7 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import backoff
+import copy
 from .qserv_backoff import max_backoff_sec, on_backoff
 import json
 import logging
@@ -182,14 +183,23 @@ class ReplicationInterface:
     ----------
     repl_ctrl_uri : `str`
         The uri to the replication controller service.
+    auth_key : `str`
+        The authorizaiton key for the replication-ingest system.
     """
 
     class CommandError(RuntimeError):
         """Raised when the call to the replication system returns not-success."""
         pass
 
-    def __init__(self, repl_ctrl_uri: str):
+    def __init__(
+        self,
+        repl_ctrl_uri: str,
+        auth_key: Optional[str] = None,
+        admin_auth_key: Optional[str] = None
+    ):
         self.repl_ctrl = urlparse(repl_ctrl_uri)
+        self.auth_key = auth_key
+        self.admin_auth_key = admin_auth_key
         _log.debug(f"ReplicationInterface %s", self.repl_ctrl)
 
     def version(self) -> str:
@@ -201,18 +211,24 @@ class ReplicationInterface:
         )
         return str(res["version"])
 
-    def ingest_database(self, database_json: str) -> None:
+    def ingest_database(self, database_json: Dict[Any, Any]) -> None:
         _log.debug("ingest_database json: %s", database_json)
+        dj = copy.copy(database_json) # todo input var name needs changing
+        dj["auth_key"] = self.auth_key
+        js = json.dumps(dj)
         _post(
             url=f"http://{self.repl_ctrl.hostname}:{self.repl_ctrl.port}/ingest/database",
-            data=database_json,
+            data=js,
         )
 
-    def ingest_table_config(self, table_json: str) -> None:
+    def ingest_table_config(self, table_json: Dict[Any, Any]) -> None:
         _log.debug("ingest_table_config: %s", table_json)
+        dj = copy.copy(table_json) # todo name needs changing
+        dj["auth_key"] = self.auth_key
+        js = json.dumps(dj)
         _post(
             url=f"http://{self.repl_ctrl.hostname}:{self.repl_ctrl.port}/ingest/table",
-            data=table_json,
+            data=js,
         )
 
     def start_transaction(self, database: str) -> int:
@@ -231,7 +247,7 @@ class ReplicationInterface:
         _log.debug("start_transaction database: %s", database)
         res = _post(
             url=f"http://{self.repl_ctrl.hostname}:{self.repl_ctrl.port}/ingest/trans",
-            data=json.dumps(dict(database=database, auth_key="")),
+            data=json.dumps(dict(database=database, auth_key=self.auth_key)),
         )
         return int(res["databases"][database]["transactions"][0]["id"])
 
@@ -246,7 +262,7 @@ class ReplicationInterface:
         _log.debug("commit_transaction transaction_id: %s", transaction_id)
         res = _put(
             url=f"http://{self.repl_ctrl.hostname}:{self.repl_ctrl.port}/ingest/trans/{transaction_id}?abort=0",
-            data=json.dumps(dict(auth_key="")),
+            data=json.dumps(dict(auth_key=self.auth_key)),
         )
 
     def ingest_chunk_config(self, transaction_id: int, chunk_id: str) -> ChunkLocation:
@@ -267,7 +283,7 @@ class ReplicationInterface:
         """
         res = _post(
             url=f"http://{self.repl_ctrl.hostname}:{self.repl_ctrl.port}/ingest/chunk",
-            data=json.dumps(dict(transaction_id=transaction_id, chunk=chunk_id, auth_key="")),
+            data=json.dumps(dict(transaction_id=transaction_id, chunk=chunk_id, auth_key=self.auth_key)),
         )
         return ChunkLocation(chunk_id, res["location"]["host"], res["location"]["port"])
 
@@ -288,7 +304,7 @@ class ReplicationInterface:
         """
         res = _post(
             url=f"http://{self.repl_ctrl.hostname}:{self.repl_ctrl.port}/ingest/chunks",
-            data=json.dumps(dict(transaction_id=transaction_id, chunks=chunk_ids, auth_key="")),
+            data=json.dumps(dict(transaction_id=transaction_id, chunks=chunk_ids, auth_key=self.auth_key)),
         )
         return [ChunkLocation(l["chunk"], l["host"], str(l["port"])) for l in res["location"]]
 
@@ -309,7 +325,7 @@ class ReplicationInterface:
         _log.debug("ingest_regular_table transaction_id: %s", transaction_id)
         res = _get(
             url=f"http://{self.repl_ctrl.hostname}:{self.repl_ctrl.port}/ingest/regular",
-            data=json.dumps(dict(auth_key="", transaction_id=transaction_id)),
+            data=json.dumps(dict(auth_key=self.auth_key, transaction_id=transaction_id)),
         )
         return [RegularLocation(location["host"], str(location["port"])) for location in res["locations"]]
 
@@ -339,6 +355,8 @@ class ReplicationInterface:
         partitioned : bool, optional
             True if the data is partitioned into chunks, by default False
         """
+        if not self.auth_key:
+            raise RuntimeError("auth_key must be set to ingest a data file.")
         args = [
             "qserv-replica-file",
             "INGEST",
@@ -354,6 +372,9 @@ class ReplicationInterface:
             "--fields-terminated-by={terminator}".format(
                 terminator="\\t" if data_file.endswith("tsv") else ","
             ),
+            f"--auth-key={self.auth_key}",
+            # "--admin-auth-key",
+            # self.admin_auth_key,
         ]
         _log.debug("ingest file args: %s", args)
         res = subprocess.run(
@@ -369,7 +390,12 @@ class ReplicationInterface:
             )
         _log.debug("ingest file res: %s", res)
 
-    def build_table_stats(self, database: str, tables: List[str], instance_id: Optional[str]) -> None:
+    def build_table_stats(
+        self,
+        database: str,
+        tables: List[str],
+        instance_id: Optional[str],
+    ) -> None:
         for table in tables:
             _log.debug("build table stats for %s.%s", database, table)
             _post(
@@ -381,8 +407,8 @@ class ReplicationInterface:
                         row_counters_deploy_at_qserv=1,
                         row_counters_state_update_policy="ENABLED",
                         force_rescan=1,
-                        auth_key="",
-                        admin_auth_key="",
+                        auth_key=self.auth_key,
+                        admin_auth_key=self.admin_auth_key,
                         instance_id=instance_id,
                     ),
                 ),
@@ -399,7 +425,7 @@ class ReplicationInterface:
         _log.debug("publish_database database: %s", database)
         _put(
             url=f"http://{self.repl_ctrl.hostname}:{self.repl_ctrl.port}/ingest/database/{database}",
-            data=json.dumps(dict(auth_key="")),
+            data=json.dumps(dict(auth_key=self.auth_key)),
         )
 
     def ingest_chunks_data(
@@ -433,7 +459,9 @@ class ReplicationInterface:
             chunk_info = json.load(f)
 
         # Create locations for the chunk configs (repl system calls this "ingest" chunk)
-        locations = self.ingest_chunk_configs(transaction_id, [chunk["id"] for chunk in chunk_info["chunks"]])
+        locations = self.ingest_chunk_configs(
+            transaction_id, [chunk["id"] for chunk in chunk_info["chunks"]],
+        )
 
         # Ingest the chunk files:
         # Helpful note: Generator type decl is Generator[yield, send, return],
@@ -502,7 +530,11 @@ class ReplicationInterface:
                 partitioned=False,
             )
 
-    def delete_database(self, database: str, admin: bool) -> None:
+    def delete_database(
+        self,
+        database: str,
+        admin: bool,
+    ) -> None:
         """Delete a database.
 
         Parameters
@@ -512,7 +544,7 @@ class ReplicationInterface:
         admin : `bool`
             True if the admin auth key should be used.
         """
-        data = dict(admin_auth_key="") if admin else dict(auth_key="")
+        data = dict(admin_auth_key=self.admin_auth_key) if admin else dict(auth_key=self.auth_key)
         _log.debug("delete_database database:%s, data:%s", database, data)
 
         def warn_if_not_exist(res: Dict[Any, Any], url: str) -> None:

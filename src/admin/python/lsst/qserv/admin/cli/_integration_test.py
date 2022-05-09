@@ -181,6 +181,8 @@ def run_integration_tests(
             ref_db_uri=tests_data["reference-db-uri"],
             test_cases_data=tests_data["test_cases"],
             ref_db_admin=tests_data["reference-db-admin-uri"],
+            auth_key=tests_data["repl-auth-key"],
+            admin_auth_key=tests_data["repl-admin-auth-key"],
             cases=cases,
         )
 
@@ -190,6 +192,8 @@ def run_integration_tests(
             ref_db_uri=tests_data["reference-db-uri"],
             test_cases_data=tests_data["test_cases"],
             ref_db_admin=tests_data["reference-db-admin-uri"],
+            auth_key=tests_data["repl-auth-key"],
+            admin_auth_key=tests_data["repl-admin-auth-key"],
             cases=cases,
             load=load,
         )

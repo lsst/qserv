@@ -52,6 +52,8 @@ from .options import (
     options_file_option,
     mysql_monitor_password_option,
     reload_option,
+    repl_admin_auth_key_option,
+    repl_auth_key_option,
     repl_connection_option,
     run_option,
     run_tests_option,
@@ -304,13 +306,14 @@ def entrypoint(log_level: str) -> None:
 
 
 @entrypoint.command()
+@repl_auth_key_option()
 @click.argument("repl_ctrl_uri")
-def load_simple(repl_ctrl_uri: str) -> None:
+def load_simple(repl_ctrl_uri: str, repl_auth_key: str) -> None:
     """Load a small test dataset into qserv.
 
     REPL_CTRL_URI is the uri to the replication controller.
     """
-    script.load_simple(repl_ctrl_uri)
+    script.load_simple(repl_ctrl_uri, auth_key=repl_auth_key)
 
 
 @entrypoint.command()
@@ -361,7 +364,15 @@ def integration_test(
     help="Use the admin insetad of user auth key.",
     is_flag=True,
 )
-def delete_database(repl_ctrl_uri: str, database: str, admin: bool) -> None:
+@repl_auth_key_option()
+@repl_admin_auth_key_option()
+def delete_database(
+    repl_ctrl_uri: str,
+    database: str,
+    admin: bool,
+    repl_auth_key: str,
+    repl_admin_auth_key: str,
+) -> None:
     """Remove a database.
 
     It is NOT recommended to use this for integration test data; because the
@@ -377,7 +388,13 @@ def delete_database(repl_ctrl_uri: str, database: str, admin: bool) -> None:
 
     REPL_CTRL_URI is the uri to the replication controller.
     """
-    script.delete_database(repl_ctrl_uri=repl_ctrl_uri, database=database, admin=admin)
+    script.delete_database(
+        repl_ctrl_uri=repl_ctrl_uri,
+        database=database,
+        admin=admin,
+        auth_key=repl_auth_key,
+        admin_auth_key=repl_admin_auth_key,
+    )
 
 
 @entrypoint.command(help=f"Start as a qserv proxy node.\n\n{socket_option_description}")

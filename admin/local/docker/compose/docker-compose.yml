@@ -138,6 +138,8 @@ services:
           --repl-connection mysql://qsreplica@repl-mgr-db:3306/qservReplica
           --
           --instance-id=qserv_proj
+          --auth-key=replauthkey
+          --admin-auth-key=repladminauthkey
           --registry-host=repl-mgr-registry
           --debug
         environment:
@@ -228,6 +230,8 @@ services:
           --repl-connection mysql://qsreplica@repl-mgr-db:3306/qservReplica
           --
           --instance-id=qserv_proj
+          --auth-key=replauthkey
+          --admin-auth-key=repladminauthkey
           --registry-host=repl-mgr-registry
           --debug
         environment:
@@ -366,6 +370,8 @@ services:
           --qserv-czar-db=mysql://root:CHANGEME@czar-db:3306/qservMeta
           --
           --instance-id=qserv_proj
+          --auth-key=replauthkey
+          --admin-auth-key=repladminauthkey
           --xrootd-host=manager-xrootd
           --registry-host=repl-mgr-registry
           --controller-auto-register-workers=1
@@ -392,6 +398,8 @@ services:
           --db-admin-uri mysql://root:CHANGEME@repl-mgr-db:3306/qservReplica
           --
           --instance-id=qserv_proj
+          --auth-key=replauthkey
+          --admin-auth-key=repladminauthkey
           --debug
         environment:
             << : *log-environment

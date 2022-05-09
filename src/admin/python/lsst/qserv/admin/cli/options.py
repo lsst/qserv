@@ -288,3 +288,17 @@ log_cfg_file_option = partial(
     default="/config-etc/log/log.cnf",
     show_default=True,
 )
+
+
+repl_auth_key_option = partial(
+    click.option,
+    "--repl-auth-key",
+    help="The authorizaiton key for the replication-ingest system."
+)
+
+
+repl_admin_auth_key_option = partial(
+    click.option,
+    "--repl-admin-auth-key",
+    help="The admin authorizaiton key for the replication-ingest system."
+)

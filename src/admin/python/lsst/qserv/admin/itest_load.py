@@ -321,7 +321,14 @@ def _partition(staging_dir: str, table: LoadTable, data_file: str) -> None:
         f.write(partition_info)
 
 
-def _load_database(load_db: LoadDb, ref_db_uri: str, ref_db_admin: str, repl_ctrl_uri: str) -> None:
+def _load_database(
+    load_db: LoadDb,
+    ref_db_uri: str,
+    ref_db_admin: str,
+    repl_ctrl_uri: str,
+    auth_key: str,
+    admin_auth_key: str,
+) -> None:
     """Load a database.
 
     Parameters
@@ -334,9 +341,13 @@ def _load_database(load_db: LoadDb, ref_db_uri: str, ref_db_admin: str, repl_ctr
         URI to the reference db for the admin user.
     repl_ctrl_uri : `str`
         URI to the replication controller.
+    auth_key : `str`
+        The authorizaiton key for the replication-ingest system.
+    admin_auth_key : `str`
+        The admin authorizaiton key for the replication-ingest system.
     """
-    _log.info(f"Loading database %s for test %s", load_db.name, load_db.id)
-    repl = ReplicationInterface(repl_ctrl_uri)
+    _log.info(f"Loading database %s for test %s auth_key %s admin_auth_key %s", load_db.name, load_db.id, auth_key, admin_auth_key)
+    repl = ReplicationInterface(repl_ctrl_uri, auth_key, admin_auth_key)
 
     @backoff.on_exception(
         exception=ReplicationInterface.CommandError,
@@ -345,7 +356,7 @@ def _load_database(load_db: LoadDb, ref_db_uri: str, ref_db_admin: str, repl_ctr
         max_time=max_backoff_sec,
     )
     def do_ingest_database() -> None:
-        repl.ingest_database(json.dumps(load_db.ingest_db_cfg))
+        repl.ingest_database(load_db.ingest_db_cfg)
 
     do_ingest_database()
 
@@ -384,7 +395,7 @@ def _load_database(load_db: LoadDb, ref_db_uri: str, ref_db_admin: str, repl_ctr
                     max_time=max_backoff_sec,
                 )
                 def do_ingest_table_config() -> None:
-                    repl.ingest_table_config(json.dumps(table.ingest_config))
+                    repl.ingest_table_config(table.ingest_config)
 
                 do_ingest_table_config()
 
@@ -413,7 +424,13 @@ def _load_database(load_db: LoadDb, ref_db_uri: str, ref_db_admin: str, repl_ctr
         repl.build_table_stats(load_db.name, load_db.tables, load_db.instance_id)
 
 
-def _remove_database(case_data: Dict[Any, Any], ref_db_connection: str, repl_ctrl_uri: str) -> None:
+def _remove_database(
+    case_data: Dict[Any, Any],
+    ref_db_connection: str,
+    repl_ctrl_uri: str,
+    auth_key: str,
+    admin_auth_key: str,
+) -> None:
     """Remove an integration test database.
 
     Parameters
@@ -424,11 +441,15 @@ def _remove_database(case_data: Dict[Any, Any], ref_db_connection: str, repl_ctr
         URI to the reference db.
     repl_ctrl_uri : str
         URI to the replication controller.
+    auth_key : `str`
+        The authorizaiton key for the replication-ingest system.
+    admin_auth_key : `str`
+        The admin authorizaiton key for the replication-ingest system.
     """
     _log.debug("_remove_database %s", case_data)
     remove_db = LoadDb(case_data)
 
-    repl = ReplicationInterface(repl_ctrl_uri)
+    repl = ReplicationInterface(repl_ctrl_uri, auth_key, admin_auth_key)
     repl.delete_database(remove_db.name, admin=True)
 
     sql = f"DROP DATABASE IF EXISTS {remove_db.name}"
@@ -473,6 +494,8 @@ def load(
     ref_db_admin: str,
     load: Optional[bool],
     cases: Optional[List[str]],
+    auth_key: str,
+    admin_auth_key: str,
     remove: bool = False,
 ) -> None:
     """Partition and ingest integration test data into qserv.
@@ -494,6 +517,10 @@ def load(
         database matches the qserv database.)
     cases : `list` [`str`], optional
         Restrict loading to these test cases if provided.
+    auth_key : `str`
+        The authorizaiton key for the replication-ingest system.
+    admin_auth_key : `str`
+        The admin authorizaiton key for the replication-ingest system.
     remove : bool, optional
         Instead of loading the databases, remove them. By default False
 
@@ -508,7 +535,7 @@ def load(
     for case_data in cases_data:
         load_db = LoadDb(case_data)
         if load == True or (load is None and load_db.name not in qserv_dbs):
-            _load_database(load_db, ref_db_uri, ref_db_admin, repl_ctrl_uri)
+            _load_database(load_db, ref_db_uri, ref_db_admin, repl_ctrl_uri, auth_key, admin_auth_key)
 
 
 def remove(
@@ -516,6 +543,8 @@ def remove(
     ref_db_uri: str,
     test_cases_data: List[Dict[Any, Any]],
     ref_db_admin: str,
+    auth_key: str,
+    admin_auth_key: str,
     cases: Optional[List[str]] = None,
 ) -> None:
     """Remove integration test data from qserv.
@@ -526,4 +555,4 @@ def remove(
     """
     cases_data = _get_cases(cases, test_cases_data)
     for case_data in cases_data:
-        _remove_database(case_data, ref_db_admin, repl_ctrl_uri)
+        _remove_database(case_data, ref_db_admin, repl_ctrl_uri, auth_key, admin_auth_key)
