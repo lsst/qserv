@@ -128,7 +128,7 @@ struct ColTypeFactory {
                 _setString(f);
                 break;
             case MYSQL_TYPE_GEOMETRY:
-                sqlType = "GEOM??";
+                sqlType = "GEOMETRY";
                 break;  // point, linestring, etc.
             default:
                 break;
