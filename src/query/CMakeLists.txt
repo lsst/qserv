@@ -13,7 +13,6 @@ target_sources(query PRIVATE
     CompPredicate.cc
     FromList.cc
     FuncExpr.cc
-    GenericPredicate.cc
     GroupByClause.cc
     HavingClause.cc
     InPredicate.cc
