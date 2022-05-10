@@ -2183,7 +2183,9 @@ public:
 
     void handlePredicateExpression(std::shared_ptr<query::ValueExpr> const& valueExpr,
                                    antlr4::ParserRuleContext* childCtx) override {
-        assert_execution_condition(false, "Unhandled PredicateExpression with ValueExpr.", _ctx);
+        auto boolFactorTerm = std::make_shared<query::ValueExprPredicate>(valueExpr);
+        auto boolTerm = std::make_shared<query::BoolFactor>(boolFactorTerm);
+        _terms.push_back(boolTerm);
     }
 
     void handleQservFunctionSpec(std::string const& functionName,
