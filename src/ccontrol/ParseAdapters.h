@@ -73,6 +73,7 @@
 #include "query/TableRef.h"
 #include "query/typedefs.h"
 #include "query/ValueExpr.h"
+#include "query/ValueExprPredicate.h"
 #include "query/ValueFactor.h"
 #include "query/WhereClause.h"
 #include "util/IterableFormatter.h"
@@ -489,8 +490,12 @@ public:
         _addBoolTerm(boolTerm, childCtx);
     }
 
-    void handlePredicateExpression(std::shared_ptr<query::ValueExpr> const& valueExpr) override {
-        assert_execution_condition(false, "Unhandled valueExpr predicateExpression.", _ctx);
+    // in this case called by expressionAtomPredicate
+    void handlePredicateExpression(std::shared_ptr<query::ValueExpr> const& valueExpr,
+                                   antlr4::ParserRuleContext* childCtx) override {
+        auto boolFactorTerm = std::make_shared<query::ValueExprPredicate>(valueExpr);
+        auto boolTerm = std::make_shared<query::BoolFactor>(boolFactorTerm);
+        _addBoolTerm(boolTerm, childCtx);
     }
 
     void handleLogicalExpression(std::shared_ptr<query::LogicalTerm> const& logicalTerm,
@@ -1005,7 +1010,7 @@ public:
         if (_boolTerm != nullptr) {
             lockedParent()->handlePredicateExpression(_boolTerm, _ctx);
         } else {
-            lockedParent()->handlePredicateExpression(_valueExpr);
+            lockedParent()->handlePredicateExpression(_valueExpr, _ctx);
         }
     }
 
@@ -1198,7 +1203,8 @@ public:
         assert_execution_condition(false, "unexpected BoolFactor callback", _ctx);
     }
 
-    void handlePredicateExpression(std::shared_ptr<query::ValueExpr> const& valueExpr) override {
+    void handlePredicateExpression(std::shared_ptr<query::ValueExpr> const& valueExpr,
+                                   antlr4::ParserRuleContext* childCtx) override {
         assert_execution_condition(nullptr == _valueExpr, "expected exactly one ValueExpr callback", _ctx);
         assertNotSupported(__FUNCTION__, valueExpr->isFunction() == false,
                            "qserv does not support functions in ORDER BY.", _ctx);
@@ -1253,7 +1259,8 @@ public:
         _on = _getNestedBoolTerm(boolTerm);
     }
 
-    void handlePredicateExpression(std::shared_ptr<query::ValueExpr> const& valueExpr) override {
+    void handlePredicateExpression(std::shared_ptr<query::ValueExpr> const& valueExpr,
+                                   antlr4::ParserRuleContext* childCtx) override {
         assert_execution_condition(false, "Unexpected PredicateExpression ValueExpr callback.", _ctx);
     }
 
@@ -1498,7 +1505,8 @@ public:
         assert_execution_condition(false, "unexpected call to handlePredicateExpression(BoolTerm).", _ctx);
     }
 
-    void handlePredicateExpression(std::shared_ptr<query::ValueExpr> const& valueExpr) override {
+    void handlePredicateExpression(std::shared_ptr<query::ValueExpr> const& valueExpr,
+                                   antlr4::ParserRuleContext* childCtx) override {
         assert_execution_condition(nullptr == _valueExpr,
                                    "valueExpr must be set only once in SelectExpressionElementAdapter.",
                                    _ctx);
@@ -1539,7 +1547,8 @@ public:
         assert_execution_condition(false, "Unexpected PredicateExpression BoolTerm callback.", _ctx);
     }
 
-    void handlePredicateExpression(std::shared_ptr<query::ValueExpr> const& valueExpr) override {
+    void handlePredicateExpression(std::shared_ptr<query::ValueExpr> const& valueExpr,
+                                   antlr4::ParserRuleContext* childCtx) override {
         _valueExpr = valueExpr;
     }
 
@@ -1779,7 +1788,8 @@ public:
         assert_execution_condition(false, "Unhandled PredicateExpression with BoolTerm.", _ctx);
     }
 
-    void handlePredicateExpression(std::shared_ptr<query::ValueExpr> const& valueExpr) override {
+    void handlePredicateExpression(std::shared_ptr<query::ValueExpr> const& valueExpr,
+                                   antlr4::ParserRuleContext* childCtx) override {
         _expressions.push_back(valueExpr);
     }
 
@@ -2083,7 +2093,8 @@ public:
         assert_execution_condition(false, "Unhandled PredicateExpression with BoolTerm.", _ctx);
     }
 
-    void handlePredicateExpression(std::shared_ptr<query::ValueExpr> const& valueExpr) override {
+    void handlePredicateExpression(std::shared_ptr<query::ValueExpr> const& valueExpr,
+                                   antlr4::ParserRuleContext* childCtx) override {
         _args.push_back(valueExpr);
     }
 
@@ -2134,7 +2145,8 @@ public:
         assert_execution_condition(nullptr != _boolFactor, "Could not cast BoolTerm to a BoolFactor.", _ctx);
     }
 
-    void handlePredicateExpression(std::shared_ptr<query::ValueExpr> const& valueExpr) override {
+    void handlePredicateExpression(std::shared_ptr<query::ValueExpr> const& valueExpr,
+                                   antlr4::ParserRuleContext* childCtx) override {
         assert_execution_condition(false, "Unhandled PredicateExpression with ValueExpr.", _ctx);
     }
 
@@ -2169,7 +2181,8 @@ public:
         _terms.push_back(boolTerm);
     }
 
-    void handlePredicateExpression(std::shared_ptr<query::ValueExpr> const& valueExpr) override {
+    void handlePredicateExpression(std::shared_ptr<query::ValueExpr> const& valueExpr,
+                                   antlr4::ParserRuleContext* childCtx) override {
         assert_execution_condition(false, "Unhandled PredicateExpression with ValueExpr.", _ctx);
     }
 
@@ -2450,7 +2463,8 @@ public:
         _boolTerm = orBoolFactor;
     }
 
-    void handlePredicateExpression(std::shared_ptr<query::ValueExpr> const& valueExpr) override {
+    void handlePredicateExpression(std::shared_ptr<query::ValueExpr> const& valueExpr,
+                                   antlr4::ParserRuleContext* childCtx) override {
         trace_callback_info(__FUNCTION__, *valueExpr);
         assert_execution_condition(nullptr == _valueExpr && nullptr == _boolTerm,
                                    "unexpected ValueExpr callback.", _ctx);

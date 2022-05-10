@@ -35,6 +35,7 @@ target_sources(query PRIVATE
     TestFactory.cc
     UnknownTerm.cc
     ValueExpr.cc
+    ValueExprPredicate.cc
     ValueFactor.cc
     WhereClause.cc
 )
