@@ -722,43 +722,24 @@ def entrypoint_help(
 
 @qserv.command(help=f"""Check if an image is in dockerhub.
 
-    IMAGE is the image type, can be one of build, mariadb, or run-base.
+    IMAGE is the image name + tag.
 
     Mostly this is useful for CI, so base image builds can be skipped for
     base images that are already already on dockerhub.
 
     Dockerhub credentials must be provided in the environment variables
     QSERV_DH_USER and QSERV_DH_TOKEN.
-
-    --tag may be used to look for a specific image tag. If not provided, the
-    default tag will use "git describe" of the SHA when the related dockerfiles
-    most recently changed. Defaults for the different image types are:
-
-    build-base: {ImageName("build-base").tag}
-
-    run-base: {ImageName("run-base").tag}
-
-    mariadb: {ImageName("mariadb").tag}
     """
 )
-@click.argument(
-    "IMAGE",
-    type=click.Choice(["build-base", "mariadb", "run-base"], case_sensitive=False)
-)
-@click.option(
-    "--tag",
-    help="The image tag to check for. "
-    "If not provided will use the default described above.",
-)
-def dh_image_exists(image: str, tag: Optional[str]) -> None:
-    imageName = ImageName(image)
+@click.argument("IMAGE")
+def dh_image_exists(image: str) -> None:
     user = dh_user_ev.val()
     token = dh_token_ev.val()
     if not (user and token):
         click.echo("QSERV_DH_USER and QSERV_DH_TOKEN must be set to use this command.")
         return
     click.echo(images.dh_image_exists(
-        imageName.name_with_tag(tag) if tag else imageName.tagged_name,
+        image,
         user,
         token,
     ))

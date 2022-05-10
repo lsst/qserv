@@ -10,12 +10,67 @@ on:
 
 jobs:
 
+  image-names:
+    # This job works around an issue with actions/checkout @v2 and @v3 where if
+    # a workflow is triggered by an annotated tag push, the tag may not be
+    # visible to git in the cloned repository. The issue for that problem is at
+    # https://github.com/actions/checkout/issues/290
+    # The workaround implemented here does two things:
+    # 1. After checking out the repo, there is a step in this job that force
+    #    fetches tags. This ensures that all tags are available locally.
+    # 2. Image names are determined and saved. These image names are derived
+    #    from the certain files and tags in the repo. Dependant jobs use the
+    #    images names stored in this job.
+    # Image names must be cached after force fetching tags in a single job
+    # instead of force fetching tags in each job because if a new release tag is
+    # pushed while a workflow is running it's possible the derived image names
+    # could change from job to job, breaking the running workflow in a difficult
+    # to understand way.
+    name: Save image names
+    runs-on: ubuntu-20.04
+    outputs:
+      build-image: ${{ steps.image-names.outputs.build-image }}
+      user-build-image: ${{ steps.image-names.outputs.user-build-image }}
+      run-base-image: ${{ steps.image-names.outputs.run-base-image }}
+      mariadb-image: ${{ steps.image-names.outputs.mariadb-image }}
+      qserv-image: ${{ steps.image-names.outputs.qserv-image }}
+
+    steps:
+      - name: Install python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.x'
+
+      - name: Install click
+        run: |
+          python -m pip install --upgrade pip
+          pip install click pyyaml requests
+
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0  # 0 is "all history and branch tags"
+
+      - name: force update tags
+        run: git fetch --force --tags
+
+      - name: Save image names
+        id: image-names
+        run: |
+          echo "::set-output name=build-image::$(./admin/local/cli/qserv env --build-image) "
+          echo "::set-output name=user-build-image::$(./admin/local/cli/qserv env --user-build-image) "
+          echo "::set-output name=run-base-image::$(./admin/local/cli/qserv env --run-base-image) "
+          echo "::set-output name=mariadb-image::$(./admin/local/cli/qserv env --mariadb-image) "
+          echo "::set-output name=qserv-image::$(./admin/local/cli/qserv env --qserv-image) "
+
   update-base-images:
     name: Update base images
     runs-on: ubuntu-20.04
+    needs: image-names
     outputs:
       build-rebuilt: ${{ steps.rebuild.outputs.build-rebuilt }}
       run-base-rebuilt: ${{ steps.rebuild.outputs.run-base-rebuilt }}
+
     steps:
 
       - name: Install python
@@ -29,7 +84,7 @@ jobs:
           pip install click pyyaml requests
 
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           fetch-depth: 0  # 0 is "all history and branch tags"
 
@@ -42,11 +97,12 @@ jobs:
       - name: Rebuild and push build image if needed
         id: rebuild
         run: |
-          if [[ $(./admin/local/cli/qserv --log-level DEBUG dh-image-exists build-base) == "True" ]]; then
+          if [[ $(./admin/local/cli/qserv --log-level DEBUG dh-image-exists ${{ needs.image-names.outputs.build-image }}) == "True" ]]; then
             echo "Build image already on docker hub; skipping..."
             echo "::set-output name=build-rebuilt::False"
           else
-            ./admin/local/cli/qserv --log-level DEBUG build-build-image --push-image
+            ./admin/local/cli/qserv --log-level DEBUG build-build-image --push-image \
+            --build-image ${{ needs.image-names.outputs.build-image }}
             echo "::set-output name=build-rebuilt::True"
           fi
         env:
@@ -55,11 +111,12 @@ jobs:
 
       - name: Rebuild and push run base image if needed
         run: |
-          if [[ $(./admin/local/cli/qserv --log-level DEBUG dh-image-exists run-base) == "True" ]]; then
+          if [[ $(./admin/local/cli/qserv --log-level DEBUG dh-image-exists ${{ needs.image-names.outputs.run-base-image }}) == "True" ]]; then
             echo "Run base image already on docker hub; skipping..."
             echo "::set-output name=run-base-rebuilt::False"
           else
-            ./admin/local/cli/qserv --log-level DEBUG build-run-base-image --push-image
+            ./admin/local/cli/qserv --log-level DEBUG build-run-base-image --push-image \
+            --run-base-image ${{ needs.image-names.outputs.run-base-image }}
             echo "::set-output name=run-base-rebuilt::True"
           fi
         env:
@@ -69,6 +126,7 @@ jobs:
   update-mariadb-image:
     name: Update MariaDB image
     runs-on: ubuntu-20.04
+    needs: image-names
     outputs:
       rebuilt: ${{ steps.rebuild.outputs.rebuilt }}
     steps:
@@ -84,7 +142,7 @@ jobs:
           pip install click pyyaml requests
 
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           fetch-depth: 0  # 0 is "all history and branch tags"
 
@@ -97,11 +155,11 @@ jobs:
       - name: Rebuild and push if needed
         id: rebuild
         run: |
-          if [[ $(./admin/local/cli/qserv --log-level DEBUG dh-image-exists mariadb) == "True" ]]; then
+          if [[ $(./admin/local/cli/qserv --log-level DEBUG dh-image-exists ${{ needs.image-names.outputs.mariadb-image }}) == "True" ]]; then
             echo "MariaDB image already on docker hub; skipping..."
             echo "::set-output name=rebuilt::False"
           else
-            ./admin/local/cli/qserv --log-level DEBUG build-mariadb-image --push-image
+            ./admin/local/cli/qserv --log-level DEBUG build-mariadb-image --push-image --mariadb-image ${{ needs.image-names.outputs.mariadb-image }}
             echo "::set-output name=rebuilt::True"
           fi
         env:
@@ -111,7 +169,7 @@ jobs:
   documentation:
     name: Documentation
     runs-on: ubuntu-20.04
-    needs: update-base-images
+    needs: [image-names, update-base-images]
     steps:
 
       - name: Install python
@@ -125,10 +183,10 @@ jobs:
           pip install click pyyaml requests
 
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
-          fetch-depth: 0  # 0 is "all history and branch tags"
           submodules: true
+          fetch-depth: 0  # 0 is "all history and branch tags"
 
       - name: Check for changes
         uses: dorny/paths-filter@v2
@@ -142,12 +200,15 @@ jobs:
         if: needs.update-base-images.outputs.build-rebuilt == 'True' || steps.filter.outputs.docs == 'true'
         run: |
           ./admin/local/cli/qserv --log-level DEBUG build-user-build-image \
-          --group docker_outer
+          --group docker_outer \
+          --build-image ${{ needs.image-names.outputs.build-image }} \
+          --user-build-image ${{ needs.image-names.outputs.user-build-image }}
 
       - name: Build and publish
         if: needs.update-base-images.outputs.build-rebuilt == 'True' || steps.filter.outputs.docs == 'true'
         run: |
-          ./admin/local/cli/qserv build-docs --cmake --linkcheck --upload
+          ./admin/local/cli/qserv build-docs --cmake --linkcheck --upload \
+          --user-build-image ${{ needs.image-names.outputs.user-build-image }}
         env:
           QSERV_LTD_USERNAME: ${{ secrets.LTD_USERNAME }}
           QSERV_LTD_PASSWORD: ${{ secrets.LTD_PASSWORD }}
@@ -159,7 +220,7 @@ jobs:
   update-run-image:
     name: Update Qserv image
     runs-on: ubuntu-20.04
-    needs: update-base-images
+    needs: [image-names, update-base-images]
     steps:
 
       - name: Install python
@@ -173,7 +234,7 @@ jobs:
           pip install click pyyaml requests
 
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           fetch-depth: 0  # 0 is "all history and branch tags"
 
@@ -186,11 +247,16 @@ jobs:
       - name: Prepare user build image
         run: |
           ./admin/local/cli/qserv --log-level DEBUG build-user-build-image \
-          --group docker_outer
+          --group docker_outer \
+          --build-image ${{ needs.image-names.outputs.build-image }} \
+          --user-build-image ${{ needs.image-names.outputs.user-build-image }}
 
       - name: Build lite-qserv image
         run: |
           ./admin/local/cli/qserv --log-level DEBUG build \
+          --qserv-image ${{ needs.image-names.outputs.qserv-image }} \
+          --run-base-image ${{ needs.image-names.outputs.run-base-image }} \
+          --user-build-image ${{ needs.image-names.outputs.user-build-image }} \
           --pull-image \
           --push-image \
           --clang-format CHECK \
@@ -202,7 +268,7 @@ jobs:
   compose-integration-tests:
     name: Integration tests (compose)
     runs-on: ubuntu-20.04
-    needs: [update-mariadb-image, update-run-image]
+    needs: [image-names, update-mariadb-image, update-run-image]
     steps:
 
       - name: Install python
@@ -216,7 +282,7 @@ jobs:
           pip install click pyyaml requests
 
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           fetch-depth: 0  # 0 is "all history and branch tags"
 
@@ -228,12 +294,16 @@ jobs:
 
       - name: Launch qserv
         run: |
-          ./admin/local/cli/qserv --log-level DEBUG up
+          ./admin/local/cli/qserv --log-level DEBUG up \
+          --qserv-image ${{ needs.image-names.outputs.qserv-image }} \
+          --mariadb-image ${{ needs.image-names.outputs.mariadb-image }}
 
       - name: Run integration tests
         run: |
           ./admin/local/cli/qserv --log-level DEBUG itest \
-          --wait 180
+          --wait 180 \
+          --qserv-image ${{ needs.image-names.outputs.qserv-image }} \
+          --mariadb-image ${{ needs.image-names.outputs.mariadb-image }}
 
       - name: Remove integration test volumes
         run: |
