@@ -13,7 +13,6 @@ target_sources(query PRIVATE
     CompPredicate.cc
     FromList.cc
     FuncExpr.cc
-    GenericPredicate.cc
     GroupByClause.cc
     HavingClause.cc
     InPredicate.cc
@@ -36,6 +35,7 @@ target_sources(query PRIVATE
     TestFactory.cc
     UnknownTerm.cc
     ValueExpr.cc
+    ValueExprPredicate.cc
     ValueFactor.cc
     WhereClause.cc
 )

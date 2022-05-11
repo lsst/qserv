@@ -264,7 +264,8 @@ class PredicateExpressionCBH : public BaseCBH {
 public:
     virtual void handlePredicateExpression(std::shared_ptr<query::BoolTerm> const& boolTerm,
                                            antlr4::ParserRuleContext* childCtx) = 0;
-    virtual void handlePredicateExpression(std::shared_ptr<query::ValueExpr> const& valueExpr) = 0;
+    virtual void handlePredicateExpression(std::shared_ptr<query::ValueExpr> const& valueExpr,
+                                           antlr4::ParserRuleContext* childCtx) = 0;
 };
 
 class ConstantCBH : public BaseCBH {

@@ -6,7 +6,6 @@ target_include_directories(ccontrol PRIVATE
 )
 
 target_sources(ccontrol PRIVATE
-    A4UserQueryFactory.cc
     MergingHandler.cc
     ParseAdapters.cc
     ParseListener.cc
