@@ -804,27 +804,36 @@ void QMetaMysql::saveResultQuery(QueryId queryId, string const& query) {
 void QMetaMysql::addQueryMessages(QueryId queryId, shared_ptr<qdisp::MessageStore> const& msgStore) {
     int msgCount = msgStore->messageCount();
     int cancelCount = 0;
+    int completeCount = 0;
     for (int i = 0; i != msgCount; ++i) {
         qdisp::QueryMessage const& qMsg = msgStore->getMessage(i);
         try {
-            _addQueryMessage(queryId, qMsg, cancelCount);
+            _addQueryMessage(queryId, qMsg, cancelCount, completeCount);
         } catch (qmeta::SqlError const& ex) {
             LOGS(_log, LOG_LVL_ERROR, "UserQuerySelect::_qMetaUpdateMessages failed " << ex.what());
         }
     }
     // Add the total number of cancel messages received.
     if (cancelCount > 0) {
-        qdisp::QueryMessage qm(-1, "CANCELTOTAL", 0, string("total=") + to_string(cancelCount),
+        qdisp::QueryMessage qm(-1, "CANCELTOTAL", 0,
+                               string("cancelled_count=") + to_string(cancelCount) +
+                                       " completed_count=" + to_string(completeCount),
                                std::time(nullptr), MessageSeverity::MSG_INFO);
-        _addQueryMessage(queryId, qm, cancelCount);
+        _addQueryMessage(queryId, qm, cancelCount, completeCount);
     }
 }
 
-void QMetaMysql::_addQueryMessage(QueryId queryId, qdisp::QueryMessage const& qMsg, int& cancelCount) {
+void QMetaMysql::_addQueryMessage(QueryId queryId, qdisp::QueryMessage const& qMsg, int& cancelCount,
+                                  int& completeCount) {
     // Don't add duplicate messages.
     if (qMsg.msgSource == "DUPLICATE") return;
     // Don't add MULTIERROR as it's all duplicates.
     if (qMsg.msgSource == "MULTIERROR") return;
+    // Don't add COMPLETE messages as no one is interested.
+    if (qMsg.msgSource == "COMPLETE") {
+        ++completeCount;
+        return;
+    }
     // Limit dont't add individual "CANCEL" messages.
     if (qMsg.msgSource == "CANCEL") {
         ++cancelCount;

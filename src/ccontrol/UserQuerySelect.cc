@@ -342,6 +342,7 @@ QueryState UserQuerySelect::join() {
         _messageStore->addMessage(-1, "MERGE", 1105, "Failure while merging result",
                                   MessageSeverity::MSG_ERROR);
     }
+    _executive->updateProxyMessages();
     try {
         _discardMerger();
     } catch (std::exception const& exc) {

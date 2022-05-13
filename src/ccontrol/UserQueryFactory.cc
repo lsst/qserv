@@ -211,7 +211,7 @@ UserQuery::Ptr UserQueryFactory::newUserQuery(std::string const& aQuery, std::st
     if (UserQueryType::isSubmit(query, stripped)) {
         // SUBMIT is only allowed with SELECT for now, complain if anything else is there
         if (!UserQueryType::isSelect(stripped)) {
-            auto uq = std::make_shared<UserQueryInvalid>("Invalid or unsupported query: " + query);
+            auto uq = std::make_shared<UserQueryInvalid>("SUBMIT only valid with SELECT queries: " + query);
             return uq;
         }
         async = true;
@@ -279,6 +279,8 @@ UserQuery::Ptr UserQueryFactory::newUserQuery(std::string const& aQuery, std::st
             sessionValid = false;
         }
         if (!qs->getError().empty()) {
+            // The `qs` object is passed to the UserQuerySelect object below,
+            // so the errors do not need to be added to `errorExtra`.
             LOGS(_log, LOG_LVL_ERROR, "Invalid query: " << qs->getError());
             sessionValid = false;
         }
@@ -293,6 +295,8 @@ UserQuery::Ptr UserQueryFactory::newUserQuery(std::string const& aQuery, std::st
                     _userQuerySharedResources->czarConfig, _userQuerySharedResources->mysqlResultConfig);
         }
 
+        // This, effectively invalid, UserQuerySelect object should report errors from both `errorExtra`
+        // and errors that the QuerySession `qs` has stored internally.
         auto uq = std::make_shared<UserQuerySelect>(
                 qs, messageStore, executive, _userQuerySharedResources->databaseModels, infileMergerConfig,
                 _userQuerySharedResources->secondaryIndex, _userQuerySharedResources->queryMetadata,

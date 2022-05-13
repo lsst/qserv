@@ -65,7 +65,17 @@ struct QueryMessage {
  *
  * For each SQL query, these messages are stored in a MySQL message table
  * so that mysql-proxy can retrieve it and log it or send error messages
- * to client.
+ * to client. These messages are also stored in QMeta in the QMessages
+ * table.
+ *
+ * `msgSource` is used to help sort the messages into appropriate
+ * categories. "COMPLETE", "MULITERROR", and "CANCEL" are reserved
+ * for specific cases.
+ * "MULTIERROR" - is a combined error message that is placed in the
+ *      messages_# table specific to the query and is sent to the user
+ *      by the proxy. This is not added to QMessages.
+ * "COMPLETE" - indicates that there were no problems with a particular job.
+ * "CANCEL" - indicates the job was cancelled by the system
  */
 class MessageStore {
 public:

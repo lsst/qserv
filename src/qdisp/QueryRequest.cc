@@ -538,7 +538,7 @@ void QueryRequest::_processData(JobQuery::Ptr const& jq, int blen, bool xrdLast)
                  "processData disagreement between last=" << last << " and xrdLast=" << xrdLast);
         }
         if (last) {
-            jq->getStatus()->updateInfo(_jobIdStr, JobStatus::COMPLETE, "MERGE");
+            jq->getStatus()->updateInfo(_jobIdStr, JobStatus::COMPLETE, "COMPLETE");
             _finish();
             // At this point all blocks for this job have been read, there's no point in
             // having XrdSsi wait for anything.

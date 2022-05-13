@@ -263,7 +263,8 @@ protected:
 
 private:
     /// Add qMsg to the permanent message table.
-    void _addQueryMessage(QueryId queryId, qdisp::QueryMessage const& qMsg, int& cancelCount);
+    void _addQueryMessage(QueryId queryId, qdisp::QueryMessage const& qMsg, int& cancelCount,
+                          int& completeCount);
 
     std::shared_ptr<sql::SqlConnection> _conn;
     std::mutex _dbMutex;  ///< Synchronizes access to certain DB operations

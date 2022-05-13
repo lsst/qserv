@@ -59,6 +59,9 @@ std::vector<Error>::size_type MultiError::size() const { return _errorVector.siz
 void MultiError::push_back(const std::vector<Error>::value_type& val) { _errorVector.push_back(val); }
 
 std::ostream& operator<<(std::ostream& out, MultiError const& multiError) {
+    // This string is meant to be provided to end users on a failure, so
+    // there is an attempt made to reduce extraneous information.
+
     // To get numerous '[0]' entries in the output under control...
     // Put all errors in a map, and count how many times each occurs.
     std::map<string, int> errMap;
@@ -74,7 +77,7 @@ std::ostream& operator<<(std::ostream& out, MultiError const& multiError) {
         }
     }
 
-    // Write the map to out
+    // Write the map to `out`
     bool firstLoop = true;
     for (auto const& elem : errMap) {
         int count = elem.second;
