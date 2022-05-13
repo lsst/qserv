@@ -27,6 +27,7 @@
 // System headers
 #include <cassert>
 #include <cstdlib>
+#include <memory>
 #include <string>
 
 // Third-party headers
@@ -45,6 +46,8 @@
 #include "ccontrol/UserQueryProcessList.h"
 #include "ccontrol/UserQueryResources.h"
 #include "ccontrol/UserQuerySelect.h"
+#include "ccontrol/UserQuerySelectCountStar.h"
+#include "ccontrol/UserQuerySet.h"
 #include "ccontrol/UserQueryType.h"
 #include "css/CssAccess.h"
 #include "css/KvInterfaceImplMem.h"
@@ -71,6 +74,93 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.ccontrol.UserQueryFactory");
 
 namespace lsst::qserv::ccontrol {
 
+using userQuerySharedResourcesPtr = std::shared_ptr<UserQuerySharedResources>;
+
+/**
+ * @brief Determine if the table name in the FROM statement refers to PROCESSLIST table.
+ *
+ * @param stmt SelectStmt representing the query.
+ * @param defaultDb Default database name, may be empty.
+ * @return true if the query refers only to the PROCESSLIST table.
+ * @return false if the query does not refer only to the PROCESSLIST table.
+ */
+bool _stmtRefersToProcessListTable(query::SelectStmt::Ptr& stmt, std::string defaultDb) {
+    auto const& tableRefList = stmt->getFromList().getTableRefList();
+    if (tableRefList.size() != 1) return false;
+    auto const& tblRef = tableRefList[0];
+    std::string const& db = tblRef->getDb().empty() ? defaultDb : tblRef->getDb();
+    if (UserQueryType::isProcessListTable(db, tblRef->getTable())) return true;
+    return false;
+}
+
+/**
+ * @brief Make a UserQueryProcessList (or UserQueryInvalid) from given parameters.
+ *
+ * @param stmt The SelectStmt representing the query.
+ * @param sharedResources Resources used by UserQueryFactory to create UserQueries.
+ * @param userQueryId Unique string identifying the query.
+ * @param resultDb Name of the databse that will contain results.
+ * @param aQuery The original query string.
+ * @param async If the query is to be run asynchronously.
+ * @return std::shared_ptr<UserQuery>, will be a UserQueryProcessList or UserQueryInvalid.
+ */
+std::shared_ptr<UserQuery> _makeUserQueryProcessList(query::SelectStmt::Ptr& stmt,
+                                                     userQuerySharedResourcesPtr& sharedResources,
+                                                     std::string const& userQueryId,
+                                                     std::string const& resultDb, std::string const& aQuery,
+                                                     bool async) {
+    if (async) {
+        // no point supporting async for these
+        auto uq = std::make_shared<UserQueryInvalid>("SUBMIT is not allowed with query: " + aQuery);
+        return uq;
+    }
+    LOGS(_log, LOG_LVL_DEBUG, "SELECT query is a PROCESSLIST");
+    try {
+        return std::make_shared<UserQueryProcessList>(stmt, sharedResources->resultDbConn.get(),
+                                                      sharedResources->qMetaSelect,
+                                                      sharedResources->qMetaCzarId, userQueryId, resultDb);
+    } catch (std::exception const& exc) {
+        return std::make_shared<UserQueryInvalid>(exc.what());
+    }
+}
+
+/**
+ * @brief Determine if the qmeta database has a metadata table with chunks & row
+ *        counts that represents the table in the FROM statement for a SELECT
+ *        COUNT(*) query.
+ *
+ * @param stmt The SelectStmt representing the query.
+ * @param sharedResources Resources used by UserQueryFactory to create UserQueries.
+ * @param defaultDb Default database name, may be empty.
+ * @param rowsTable Output variable, will be set to the name of the rows table if it
+ *                  exists, otherwise will be set to an empty string.
+ * @return true if the qmeta table containing the row counts is present in qmeta.
+ * @return false if the table is not present in qmeta.
+ */
+bool qmetaHasDataForSelectCountStarQuery(query::SelectStmt::Ptr const& stmt,
+                                         userQuerySharedResourcesPtr& sharedResources,
+                                         std::string const& defaultDb, std::string& rowsTable) {
+    auto const& tableRefList = stmt->getFromList().getTableRefList();
+    // by definition a simple COUNT(*) should have exactly one table ref.
+    assert(tableRefList.size() > 0);
+    auto const& tableRefPtr = tableRefList[0];
+    assert(tableRefPtr != nullptr);
+    auto fromDb = tableRefPtr->getDb();
+    if (fromDb.empty()) {
+        fromDb = defaultDb;
+    }
+    auto const& fromTable = tableRefPtr->getTable();
+    rowsTable = fromDb + "__" + fromTable + "__rows";
+    // TODO consider using QMetaSelect instead of making a new connection.
+    auto cnx = sql::SqlConnectionFactory::make(sharedResources->czarConfig.getMySqlQmetaConfig());
+    sql::SqlErrorObject err;
+    auto tableExists = cnx->tableExists(rowsTable, err);
+    LOGS(_log, LOG_LVL_DEBUG,
+         *stmt << " rows table: " << rowsTable << (tableExists ? " exists" : " does not exist"));
+    if (not tableExists) rowsTable = "";
+    return tableExists;
+}
+
 std::shared_ptr<UserQuerySharedResources> makeUserQuerySharedResources(
         czar::CzarConfig const& czarConfig, std::shared_ptr<qproc::DatabaseModels> const& dbModels,
         std::string const& czarName) {
@@ -89,7 +179,8 @@ std::shared_ptr<UserQuerySharedResources> makeUserQuerySharedResources(
 ////////////////////////////////////////////////////////////////////////
 UserQueryFactory::UserQueryFactory(czar::CzarConfig const& czarConfig,
                                    qproc::DatabaseModels::Ptr const& dbModels, std::string const& czarName)
-        : _userQuerySharedResources(makeUserQuerySharedResources(czarConfig, dbModels, czarName)) {
+        : _userQuerySharedResources(makeUserQuerySharedResources(czarConfig, dbModels, czarName)),
+          _useQservRowCounterOptimization(true) {
     _executiveConfig = std::make_shared<qdisp::ExecutiveConfig>(
             czarConfig.getXrootdFrontendUrl(), czarConfig.getQMetaSecondsBetweenChunkUpdates());
 
@@ -147,27 +238,31 @@ UserQuery::Ptr UserQueryFactory::newUserQuery(std::string const& aQuery, std::st
         auto stmt = parser->getSelectStmt();
 
         // handle special database/table names
-        auto&& tblRefList = stmt->getFromList().getTableRefList();
-        if (tblRefList.size() == 1) {
-            auto&& tblRef = tblRefList[0];
-            std::string const db = tblRef->getDb().empty() ? defaultDb : tblRef->getDb();
-            if (UserQueryType::isProcessListTable(db, tblRef->getTable())) {
-                if (async) {
-                    // no point supporting async for these
-                    auto uq =
-                            std::make_shared<UserQueryInvalid>("SUBMIT is not allowed with query: " + aQuery);
-                    return uq;
-                }
-                LOGS(_log, LOG_LVL_DEBUG, "SELECT query is a PROCESSLIST");
-                try {
-                    return std::make_shared<UserQueryProcessList>(
-                            stmt, _userQuerySharedResources->resultDbConn.get(),
-                            _userQuerySharedResources->qMetaSelect, _userQuerySharedResources->qMetaCzarId,
-                            userQueryId, resultDb);
-                } catch (std::exception const& exc) {
-                    return std::make_shared<UserQueryInvalid>(exc.what());
-                }
-            }
+        if (_stmtRefersToProcessListTable(stmt, defaultDb)) {
+            return _makeUserQueryProcessList(stmt, _userQuerySharedResources, userQueryId, resultDb, aQuery,
+                                             async);
+        }
+
+        /// Determine if a SelectStmt is a simple COUNT(*) query and can be run as an optimized query.
+        /// It may not be runnable as an optimzed simple COUNT(*) query because:
+        /// * The queryMeta tables do not have the required information.
+        /// * The option to run optimized COUNT(*) queries is turned off.
+        /// * It is not a COUNT(*) query.
+        /// * It is a COUNT(*) query but is too complex for the simple optimization.
+        std::string rowsTable;
+        std::string countSpelling;
+        LOGS(_log, LOG_LVL_DEBUG,
+             "UseQservRowCounterOptimization: is " << (_useQservRowCounterOptimization ? "on" : "off")
+                                                   << ".");
+        if (_useQservRowCounterOptimization && UserQueryType::isSimpleCountStar(stmt, countSpelling) &&
+            qmetaHasDataForSelectCountStarQuery(stmt, _userQuerySharedResources, defaultDb, rowsTable)) {
+            LOGS(_log, LOG_LVL_DEBUG, "make UserQuerySelectCountStar");
+            auto uq = std::make_shared<UserQuerySelectCountStar>(
+                    query, _userQuerySharedResources->resultDbConn, _userQuerySharedResources->qMetaSelect,
+                    _userQuerySharedResources->queryMetadata, userQueryId, rowsTable, resultDb, countSpelling,
+                    _userQuerySharedResources->qMetaCzarId, async);
+            uq->qMetaRegister(resultLocation, msgTableName);
+            return uq;
         }
 
         // This is a regular SELECT for qserv
@@ -254,6 +349,22 @@ UserQuery::Ptr UserQueryFactory::newUserQuery(std::string const& aQuery, std::st
         auto parser = std::make_shared<ParseRunner>(
                 query, _userQuerySharedResources->makeUserQueryResources(userQueryId, resultDb));
         return parser->getUserQuery();
+    } else if (UserQueryType::isSet(query)) {
+        ParseRunner::Ptr parser;
+        try {
+            parser = std::make_shared<ParseRunner>(query);
+        } catch (parser::ParseException& e) {
+            return std::make_shared<UserQueryInvalid>(std::string("ParseException:") + e.what());
+        }
+        auto uq = parser->getUserQuery();
+        auto setQuery = std::static_pointer_cast<UserQuerySet>(uq);
+        if (setQuery->varName() == "QSERV_ROW_COUNTER_OPTIMIZATION") {
+            _useQservRowCounterOptimization = setQuery->varValue() != "0" ? true : false;
+            LOGS(_log, LOG_LVL_INFO,
+                 "Set SELECT COUNT(*) row count optimization to "
+                         << (_useQservRowCounterOptimization ? "ON" : "OFF"));
+        }
+        return uq;
     } else {
         // something that we don't recognize
         auto uq = std::make_shared<UserQueryInvalid>("Invalid or unsupported query: " + query);

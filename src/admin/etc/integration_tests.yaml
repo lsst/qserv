@@ -11,8 +11,16 @@ qserv-testdata-test-case-dir: datasets
 # The location where itest query results will be written. (After writing they
 # are evaluated/compared by the itest tool)
 testdata-output: /qserv/data/
+# The auth key and admin auth key for the replication-ingest system. If running
+# integration tests with docker-compose, it must match the --auth-key and
+# --admin-auth-key values passed to the replication system executables in the
+# docker-compose file.
+repl-auth-key: "replauthkey"
+repl-admin-auth-key: "repladminauthkey"
 test_cases:
   - id: case01
+    instance_id: qserv_proj
+    build_table_stats: True
     root: /tmp/qserv/itest_src/datasets/case01
     data: data/{table_name}.tsv.gz
     schema: data/schema/{table_name}.schema

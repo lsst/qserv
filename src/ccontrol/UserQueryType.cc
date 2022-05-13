@@ -31,6 +31,11 @@
 
 // LSST headers
 #include "lsst/log/Log.h"
+#include "query/FromList.h"
+#include "query/SelectStmt.h"
+#include "query/SelectList.h"
+#include "query/TableRef.h"
+#include "query/ValueExpr.h"
 
 namespace {
 
@@ -93,6 +98,10 @@ boost::regex _cancelRe(R"(^cancel\s+(\d+)\s*$)",
 // Note that parens around whole string are not part of the regex but raw string literal
 boost::regex _callRe(R"(^call\s+.+$)",
                      boost::regex::ECMAScript | boost::regex::icase | boost::regex::optimize);
+
+// regex for SET
+// Note that parens around whole string are not part of the regex but raw string literal
+boost::regex _setRe(R"(^set\s+.+$)", boost::regex::ECMAScript | boost::regex::icase | boost::regex::optimize);
 
 }  // namespace
 
@@ -219,6 +228,36 @@ bool UserQueryType::isCancel(std::string const& query, QueryId& queryId) {
 bool UserQueryType::isCall(std::string const& query) {
     LOGS(_log, LOG_LVL_TRACE, "isCall: " << query);
     return boost::regex_match(query, _callRe);
+}
+
+bool UserQueryType::isSimpleCountStar(std::shared_ptr<query::SelectStmt> const& stmt, std::string& spelling) {
+    if (stmt->hasWhereClause() || stmt->hasLimit() || stmt->hasOrderBy() || stmt->hasGroupBy() ||
+        stmt->hasHaving()) {
+        return false;
+    }
+    auto& selectList = stmt->getSelectList();
+    auto valueExprVec = selectList.getValueExprList();
+    if (valueExprVec == nullptr) return false;
+    if (valueExprVec->size() != 1) return false;
+    if (not(*valueExprVec)[0]->isCountStar(&spelling)) return false;
+    auto& fromList = stmt->getFromList();
+    auto& tableRefVec = fromList.getTableRefList();
+    if (tableRefVec.size() != 1) return false;
+    if (not tableRefVec[0]->isSimple())  // do not allow JOIN
+        return false;
+
+    return true;
+}
+
+/// Returns true if query is SET
+bool UserQueryType::isSet(std::string const& query) {
+    LOGS(_log, LOG_LVL_TRACE, "isSet: " << query);
+    boost::smatch sm;
+    bool match = boost::regex_match(query, sm, _setRe);
+    if (match) {
+        LOGS(_log, LOG_LVL_TRACE, "isSet: match");
+    }
+    return match;
 }
 
 }  // namespace lsst::qserv::ccontrol

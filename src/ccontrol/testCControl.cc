@@ -122,6 +122,40 @@ BOOST_DATA_TEST_CASE(expected_parse_error, PARSE_ERROR_QUERIES, queryInfo) {
     BOOST_REQUIRE_EQUAL(querySession.getError(), queryInfo.errorMessage);
 }
 
+BOOST_AUTO_TEST_CASE(testSimpleCountStar) {
+    using lsst::qserv::ccontrol::UserQueryType;
+    auto querySession = qproc::QuerySession();
+    std::string spelling;
+
+    // test identifying a simple COUNT(*) query - only COUNT(*) and a FROM statement.
+    auto selectStmt = querySession.parseQuery("SELECT COUNT(*) FROM mydb.mytable");
+    BOOST_TEST(UserQueryType::isSimpleCountStar(selectStmt, spelling) == true);
+    BOOST_REQUIRE_EQUAL(spelling, "COUNT");
+    // test lower case
+    selectStmt = querySession.parseQuery("select count(*) from mydb.mytable");
+    BOOST_TEST(UserQueryType::isSimpleCountStar(selectStmt, spelling) == true);
+    BOOST_REQUIRE_EQUAL(spelling, "count");
+    // test mixed case
+    selectStmt = querySession.parseQuery("select cOuNt(*) from mydb.mytable");
+    BOOST_TEST(UserQueryType::isSimpleCountStar(selectStmt, spelling) == true);
+    BOOST_REQUIRE_EQUAL(spelling, "cOuNt");
+
+    // any WHERE, LIMIT, ORDER BY, GROUP BY, OR HAVING disqalifies the statement from being a simple COUNT(*)
+    selectStmt = querySession.parseQuery("SELECT COUNT(*) FROM mydb.mytable WHERE foo = bar");
+    BOOST_TEST(UserQueryType::isSimpleCountStar(selectStmt, spelling) == false);
+    selectStmt = querySession.parseQuery("SELECT COUNT(*) FROM mydb.mytable LIMIT 5");
+    BOOST_TEST(UserQueryType::isSimpleCountStar(selectStmt, spelling) == false);
+    selectStmt = querySession.parseQuery("SELECT COUNT(*) FROM mydb.mytable GROUP BY foo");
+    BOOST_TEST(UserQueryType::isSimpleCountStar(selectStmt, spelling) == false);
+    selectStmt = querySession.parseQuery("SELECT COUNT(*) FROM mydb.mytable HAVING foo > 42");
+    BOOST_TEST(UserQueryType::isSimpleCountStar(selectStmt, spelling) == false);
+    selectStmt = querySession.parseQuery("SELECT COUNT(*) FROM mydb.mytable LIMIT 42");
+    BOOST_TEST(UserQueryType::isSimpleCountStar(selectStmt, spelling) == false);
+    // without COUNT(*) disqualifies
+    selectStmt = querySession.parseQuery("SELECT foo FROM mydb.mytable");
+    BOOST_TEST(UserQueryType::isSimpleCountStar(selectStmt, spelling) == false);
+}
+
 BOOST_AUTO_TEST_CASE(testUserQueryType) {
     using lsst::qserv::ccontrol::UserQueryType;
 

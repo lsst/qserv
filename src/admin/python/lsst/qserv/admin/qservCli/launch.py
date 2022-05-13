@@ -814,30 +814,26 @@ def run_build(
     qserv_build_root: str,
     user_build_image: str,
     user: str,
+    debuggable: bool,
+    mode: str,
     dry: bool,
 ) -> None:
     """Same as qserv_cli.run_build"""
-    args = [
-        "docker",
-        "run",
-        "--init",
-        "--rm",
-        "-it",
-        "--name",
-        build_container_name,
-        "-u",
-        user,
-        "--mount",
-        root_mount(qserv_root, qserv_build_root, user),
-        "-w",
-        build_dir(qserv_build_root.format(user=user)),
-        user_build_image,
-        "/bin/bash",
-    ]
+    rm = mode == "temp"  # rm only for the "temp" mode
+    enter = mode == "temp"  # enter only for "temp" mode
+    cmd = (
+        f"docker run --init {'--rm' if rm else ''} {'-it' if enter else ''} --name {build_container_name} "
+        f"-u {user} "
+        f"{'' if enter else '-d'} --mount {root_mount(qserv_root, qserv_build_root, user)} "
+        f"{'--cap-add sys_admin --cap-add sys_ptrace --security-opt seccomp=unconfined' if debuggable else ''} "
+        f"-w {build_dir(qserv_build_root.format(user=user))} {user_build_image} "
+        f"{'/bin/bash' if enter else ''}"
+    )
     if dry:
-        print(" ".join(args))
+        print(cmd)
     else:
-        _log.debug('Running "%s"', " ".join(args))
+        args = cmd.split()
+        _log.debug('Running "%s"', cmd)
         subprocess.run(args)
 
 

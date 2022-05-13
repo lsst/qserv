@@ -48,6 +48,7 @@
 #include "ccontrol/ParseHelpers.h"
 #include "ccontrol/ParseListener.h"
 #include "ccontrol/UserQueryQservManager.h"
+#include "ccontrol/UserQuerySet.h"
 #include "parser/ParseException.h"
 #include "query/AndTerm.h"
 #include "query/BetweenPredicate.h"
@@ -228,7 +229,7 @@ private:
     std::weak_ptr<CBH> _parent;
 };
 
-class RootAdapter : public Adapter, public DmlStatementCBH {
+class RootAdapter : public Adapter, public DmlStatementCBH, public AdministrationStatementCBH {
 public:
     RootAdapter() : _ctx(nullptr), _parserListener(nullptr) {}
 
@@ -242,6 +243,10 @@ public:
 
     void handleDmlStatement(std::shared_ptr<ccontrol::UserQuery> const& userQuery) override {
         _userQuery = userQuery;
+    }
+
+    virtual void handleAdministrationStatement(std::string const& var, std::string const& val) override {
+        _userQuery = std::make_shared<UserQuerySet>(var, val);
     }
 
     void checkContext() const override {
@@ -1133,6 +1138,33 @@ public:
     std::string name() const override { return getTypeName(this); }
 };
 
+class AdministrationStatementAdapter
+        : public AdapterT<AdministrationStatementCBH, QSMySqlParser::AdministrationStatementContext>,
+          public SetVariableCBH {
+public:
+    using AdapterT::AdapterT;
+
+    void checkContext() const override {
+        // The statements supported by the administration statement are mutually
+        // exclusive. We only support the SET statement, so we only need to verify
+        // that this call is a SET statement - all others will be nullptr.
+        assertNotSupported(__FUNCTION__, _ctx->setStatement() != nullptr, "Not supported.", _ctx);
+    }
+
+    virtual void handleVariable(std::string const& varName, std::string const& varValue) {
+        _varName = varName;
+        _varValue = varValue;
+    }
+
+    void onExit() override { lockedParent()->handleAdministrationStatement(_varName, _varValue); }
+
+    std::string name() const override { return getTypeName(this); }
+
+private:
+    std::string _varName;
+    std::string _varValue;
+};
+
 class CallStatementAdapter : public AdapterT<CallStatementCBH, QSMySqlParser::CallStatementContext>,
                              public ConstantCBH {
 public:
@@ -1594,6 +1626,67 @@ public:
     }
 
     std::string name() const override { return getTypeName(this); }
+};
+
+class SetVariableAdapter : public AdapterT<SetVariableCBH, QSMySqlParser::SetVariableContext>,
+                           public PredicateExpressionCBH,
+                           public VariableClauseCBH {
+public:
+    using AdapterT::AdapterT;
+
+    void checkContext() const override {
+        assertNotSupported(__FUNCTION__, _ctx->variableClause().size() == 1,
+                           "Only a single SET variable assignment is supported.", _ctx);
+    }
+
+    void handleVariableClause(std::string const& varName) override { _varName = varName; }
+
+    void handlePredicateExpression(std::shared_ptr<query::BoolTerm> const& boolTerm,
+                                   antlr4::ParserRuleContext* childCtx) override {
+        assertNotSupported(__FUNCTION__, false, "Bool values are not supported in SET statements.", _ctx);
+    }
+
+    void handlePredicateExpression(std::shared_ptr<query::ValueExpr> const& valueExpr,
+                                   antlr4::ParserRuleContext* childCtx) override {
+        assertNotSupported(__FUNCTION__, valueExpr->isConstVal(), "Only const values are supported in SET.",
+                           _ctx);
+        _varValue = valueExpr->getConstVal();
+    }
+
+    void onExit() override { lockedParent()->handleVariable(_varName, _varValue); }
+
+    std::string name() const override { return getTypeName(this); }
+
+private:
+    std::string _varName;
+    std::string _varValue;
+};
+
+class VariableClauseAdapter : public AdapterT<VariableClauseCBH, QSMySqlParser::VariableClauseContext>,
+                              public UidCBH {
+public:
+    using AdapterT::AdapterT;
+
+    void checkContext() const override {
+        // Currently we only support setting GLOBAL variables.
+        assertNotSupported(__FUNCTION__, _ctx->LOCAL_ID() == nullptr, "LOCAL_ID is not supported", _ctx);
+        assertNotSupported(__FUNCTION__, _ctx->GLOBAL_ID() == nullptr, "GLOBAL_ID is not supported", _ctx);
+        assertNotSupported(__FUNCTION__, _ctx->SESSION() == nullptr, "SESSION is not supported.", _ctx);
+        assertNotSupported(__FUNCTION__, _ctx->AT_SIGN().empty(), "AT_SIGN is not supported", _ctx);
+
+        // Verify that the GLOBAL var *is* being used.
+        assertNotSupported(__FUNCTION__, _ctx->GLOBAL() != nullptr, "Variable assignment must include GLOBAL",
+                           _ctx);
+    }
+
+    void handleUid(std::string const& uidString) override { _varName = uidString; }
+
+    void onExit() override { lockedParent()->handleVariableClause(_varName); }
+
+    std::string name() const override { return getTypeName(this); }
+
+private:
+    std::string _varName;
 };
 
 class SimpleIdAdapter : public AdapterT<SimpleIdCBH, QSMySqlParser::SimpleIdContext>,
