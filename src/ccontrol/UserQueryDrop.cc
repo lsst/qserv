@@ -88,7 +88,7 @@ void UserQueryDrop::submit() {
     } else {
         query = "DROP TABLE " + _dbName + "." + _tableName;
     }
-    qmeta::QInfo qInfo(qType, _qMetaCzarId, user, query, "", "", "", "", "");
+    qmeta::QInfo qInfo(qType, _qMetaCzarId, user, query, "", "", "", "", "", 0);
     qmeta::QMeta::TableNames tableNames;
     QueryId qMetaQueryId = 0;
     try {

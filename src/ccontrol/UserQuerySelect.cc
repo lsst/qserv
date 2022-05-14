@@ -538,8 +538,11 @@ void UserQuerySelect::qMetaRegister(std::string const& resultLocation, std::stri
         // Special token #QID# is replaced with query ID later.
         _resultLoc = "table:result_#QID#";
     }
+
+    int chunkCount = _qSession->getChunksSize();
+
     qmeta::QInfo qInfo(qType, _qMetaCzarId, user, _qSession->getOriginal(), qTemplate, qMerge, _resultLoc,
-                       msgTableName, "");
+                       msgTableName, "", chunkCount);
 
     // find all table names used by statement (which appear in FROM ... [JOIN ...])
     qmeta::QMeta::TableNames tableNames;

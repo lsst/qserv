@@ -138,7 +138,8 @@ void MessageTable::_saveQueryMessages(ccontrol::UserQuery::Ptr const& userQuery)
     cMsg += multiErrStr;
     LOGS(_log, LOG_LVL_DEBUG, " MULTIERROR:" << cMsg);
     std::string summaryQ = (boost::format(::writeTmpl) % _tableName % "-1" % "-1" %
-                            _sqlConn->escapeString(cMsg) % severity % std::time(nullptr)).str();
+                            _sqlConn->escapeString(cMsg) % severity % std::time(nullptr))
+                                   .str();
     sql::SqlErrorObject sqlE;
     if (not _sqlConn->runQuery(summaryQ, sqlE)) {
         SqlError exc(ERR_LOC, "Failure updating message table", sqlE);

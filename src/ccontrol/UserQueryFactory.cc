@@ -303,8 +303,8 @@ UserQuery::Ptr UserQueryFactory::newUserQuery(std::string const& aQuery, std::st
                 _userQuerySharedResources->queryStatsData, _userQuerySharedResources->semaMgrConnections,
                 _userQuerySharedResources->qMetaCzarId, errorExtra, async, resultDb);
         if (sessionValid) {
-            uq->qMetaRegister(resultLocation, msgTableName);
             uq->setupChunking();
+            uq->qMetaRegister(resultLocation, msgTableName);
             uq->setupMerger();
             uq->saveResultQuery();
         }

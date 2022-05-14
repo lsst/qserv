@@ -272,7 +272,15 @@ QueryId QMetaMysql::registerQuery(QInfo const& qInfo, TableNames const& tables) 
     }
     string query =
             "INSERT INTO QInfo (qType, czarId, user, query, qTemplate, qMerge, "
+/* &&&
+< HEAD
             "status, messageTable, resultLocation, resultQuery) VALUES (";
+=======
+            "status, messageTable, resultLocation, chunkCount) VALUES (";
+> Added columns for resultBytes and resultRows to QInfo.
+*/
+            "status, messageTable, resultLocation, resultQuery, chunkCount) VALUES (";
+
     query += qType;
     query += ", ";
     query += boost::lexical_cast<string>(qInfo.czarId());
@@ -289,7 +297,16 @@ QueryId QMetaMysql::registerQuery(QInfo const& qInfo, TableNames const& tables) 
     query += ", ";
     query += resultLocation;
     query += ", ";
+/* &&&
+< HEAD
     query += resultQuery;
+=======
+    query += boost::lexical_cast<string>(qInfo.chunkCount());
+> Added columns for resultBytes and resultRows to QInfo.
+*/
+    query += resultQuery;
+    query += ", ";
+    query += boost::lexical_cast<string>(qInfo.chunkCount());
     query += ")";
 
     // run query
@@ -601,7 +618,7 @@ QInfo QMetaMysql::getQueryInfo(QueryId queryId) {
     string query =
             "SELECT qType, czarId, user, query, qTemplate, qMerge, resultQuery, status,"
             " UNIX_TIMESTAMP(submitted), UNIX_TIMESTAMP(completed), UNIX_TIMESTAMP(returned), "
-            " messageTable, resultLocation"
+            " messageTable, resultLocation, chunkCount"
             " FROM QInfo WHERE queryId = ";
     query += boost::lexical_cast<string>(queryId);
     LOGS(_log, LOG_LVL_DEBUG, "Executing query: " << query);
@@ -634,6 +651,7 @@ QInfo QMetaMysql::getQueryInfo(QueryId queryId) {
     std::time_t returned(row[10].first ? boost::lexical_cast<std::time_t>(row[10].first) : std::time_t(0));
     string messageTable(row[11].first ? row[11].first : "");
     string resultLocation(row[12].first ? row[12].first : "");
+    int chunkCount = boost::lexical_cast<int>(row[13].first);
     // result location may contain #QID# token to be replaced with query ID
     boost::replace_all(resultLocation, "#QID#", to_string(queryId));
 
@@ -646,7 +664,7 @@ QInfo QMetaMysql::getQueryInfo(QueryId queryId) {
     trans->commit();
 
     return QInfo(qType, czarId, user, rQuery, qTemplate, qMerge, resultLocation, messageTable, resultQuery,
-                 qStatus, submitted, completed, returned);
+                 chunkCount, qStatus, submitted, completed, returned);
 }
 
 // Get queries which use specified database.

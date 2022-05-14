@@ -21,3 +21,12 @@ CREATE TABLE IF NOT EXISTS `QMessages` (
 ENGINE = InnoDB
 COMMENT = 'Table of messages generated during queries.';
 
+
+--
+-- Add the chunkCount column to QInfo.
+--  
+ALTER TABLE `QInfo` 
+  ADD `chunkCount` INT,
+  ADD `resultBytes` INT DEFAULT 0,
+  ADD `resultRows` INT DEFAULT 0;
+  

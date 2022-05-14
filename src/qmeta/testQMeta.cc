@@ -142,7 +142,7 @@ BOOST_AUTO_TEST_CASE(messWithQueries) {
 
     // resister one query
     QInfo qinfo(QInfo::SYNC, cid1, "user1", "SELECT * from Object", "SELECT * from Object_{}",
-                "SELECT Merge ' query", "result_#QID#", "message_12345", "SELECT obj FROM result_#QID#");
+                "SELECT Merge ' query", "result_#QID#", "message_12345", "SELECT obj FROM result_#QID#", 26);
     QMeta::TableNames tables(1, std::make_pair("TestDB", "Object"));
     lsst::qserv::QueryId qid1 = qMeta->registerQuery(qinfo, tables);
     BOOST_CHECK(qid1 != 0U);
@@ -163,6 +163,7 @@ BOOST_AUTO_TEST_CASE(messWithQueries) {
     BOOST_CHECK_EQUAL(qinfo1.completed(), std::time_t(0));
     BOOST_CHECK_EQUAL(qinfo1.returned(), std::time_t(0));
     BOOST_CHECK_EQUAL(qinfo1.duration(), std::time_t(0));
+    BOOST_CHECK_EQUAL(qinfo1.chunkCount(), qinfo.chunkCount());
 
     // get running queries
     std::vector<lsst::qserv::QueryId> queries = qMeta->getPendingQueries(cid1);
@@ -252,13 +253,13 @@ BOOST_AUTO_TEST_CASE(messWithQueries2) {
     BOOST_CHECK(cid2 != 0U);
 
     // resister few queries
-    QInfo qinfo(QInfo::SYNC, cid1, "user1", "SELECT * from Object", "SELECT * from Object_{}", "", "", "",
-                "");
+    QInfo qinfo(QInfo::SYNC, cid1, "user1", "SELECT * from Object", "SELECT * from Object_{}", "", "", "", "",
+                40);
     QMeta::TableNames tables(1, std::make_pair("TestDB", "Object"));
     lsst::qserv::QueryId qid1 = qMeta->registerQuery(qinfo, tables);
     lsst::qserv::QueryId qid2 = qMeta->registerQuery(qinfo, tables);
     qinfo = QInfo(QInfo::ASYNC, cid2, "user2", "SELECT * from Object", "SELECT * from Object_{}", "", "", "",
-                  "");
+                  "", 30);
     lsst::qserv::QueryId qid3 = qMeta->registerQuery(qinfo, tables);
     lsst::qserv::QueryId qid4 = qMeta->registerQuery(qinfo, tables);
 
@@ -298,13 +299,13 @@ BOOST_AUTO_TEST_CASE(messWithTables) {
     BOOST_CHECK(cid2 != 0U);
 
     // resister few queries
-    QInfo qinfo(QInfo::SYNC, cid1, "user1", "SELECT * from Object", "SELECT * from Object_{}", "", "", "",
-                "");
+    QInfo qinfo(QInfo::SYNC, cid1, "user1", "SELECT * from Object", "SELECT * from Object_{}", "", "", "", "",
+                0);
     QMeta::TableNames tables(1, std::make_pair("TestDB", "Object"));
     lsst::qserv::QueryId qid1 = qMeta->registerQuery(qinfo, tables);
     lsst::qserv::QueryId qid2 = qMeta->registerQuery(qinfo, tables);
     qinfo = QInfo(QInfo::ASYNC, cid2, "user2", "SELECT * from Object", "SELECT * from Object_{}", "", "", "",
-                  "");
+                  "", 7);
     tables.push_back(std::make_pair("TestDB", "Source"));
     lsst::qserv::QueryId qid3 = qMeta->registerQuery(qinfo, tables);
     lsst::qserv::QueryId qid4 = qMeta->registerQuery(qinfo, tables);
@@ -345,8 +346,8 @@ BOOST_AUTO_TEST_CASE(messWithChunks) {
     BOOST_CHECK(cid2 != 0U);
 
     // resister one query
-    QInfo qinfo(QInfo::SYNC, cid1, "user1", "SELECT * from Object", "SELECT * from Object_{}", "", "", "",
-                "");
+    QInfo qinfo(QInfo::SYNC, cid1, "user1", "SELECT * from Object", "SELECT * from Object_{}", "", "", "", "",
+                0);
     QMeta::TableNames tables;
     tables.push_back(std::make_pair("TestDB", "Object"));
     lsst::qserv::QueryId qid1 = qMeta->registerQuery(qinfo, tables);
