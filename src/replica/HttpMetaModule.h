@@ -74,6 +74,7 @@ private:
     nlohmann::json _version();
 
     std::string const _context;
+    std::string const _instanceId;
 };
 
 }  // namespace lsst::qserv::replica
