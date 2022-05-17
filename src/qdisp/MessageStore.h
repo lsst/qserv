@@ -69,13 +69,15 @@ struct QueryMessage {
  * table.
  *
  * `msgSource` is used to help sort the messages into appropriate
- * categories. "COMPLETE", "MULITERROR", and "CANCEL" are reserved
- * for specific cases.
+ * categories. "COMPLETE", "MULITERROR", "EXECFAIL", and "CANCEL" are
+ * reserved for specific cases.
  * "MULTIERROR" - is a combined error message that is placed in the
  *      messages_# table specific to the query and is sent to the user
  *      by the proxy. This is not added to QMessages.
  * "COMPLETE" - indicates that there were no problems with a particular job.
  * "CANCEL" - indicates the job was cancelled by the system
+ * "EXECFAIL" - indicates that a job has been killed by the executive
+ *      because merging or a different job failed.
  */
 class MessageStore {
 public:

@@ -271,13 +271,6 @@ QueryId QMetaMysql::registerQuery(QInfo const& qInfo, TableNames const& tables) 
     }
     string query =
             "INSERT INTO QInfo (qType, czarId, user, query, qTemplate, qMerge, "
-/* &&&
-< HEAD
-            "status, messageTable, resultLocation, resultQuery) VALUES (";
-=======
-            "status, messageTable, resultLocation, chunkCount) VALUES (";
-> Added columns for resultBytes and resultRows to QInfo.
-*/
             "status, messageTable, resultLocation, resultQuery, chunkCount) VALUES (";
 
     query += qType;
@@ -296,14 +289,6 @@ QueryId QMetaMysql::registerQuery(QInfo const& qInfo, TableNames const& tables) 
     query += ", ";
     query += resultLocation;
     query += ", ";
-<<<<<<< HEAD
-/* &&&
-< HEAD
-    query += resultQuery;
-=======
-    query += boost::lexical_cast<string>(qInfo.chunkCount());
-> Added columns for resultBytes and resultRows to QInfo.
-*/
     query += resultQuery;
     query += ", ";
     query += to_string(qInfo.chunkCount());

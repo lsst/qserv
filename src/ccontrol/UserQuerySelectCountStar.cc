@@ -81,7 +81,8 @@ void UserQuerySelectCountStar::submit() {
         results = _qMetaSelect->select(query);
     } catch (std::exception const& exc) {
         LOGS(_log, LOG_LVL_ERROR, "Failed while querying QMeta: " << exc.what());
-        _messageStore->addMessage(-1, 1051, "Internal error querying metadata.", MessageSeverity::MSG_ERROR);
+        _messageStore->addMessage(-1, "COUNTSTAR", 1051, "Internal error querying metadata.",
+                                  MessageSeverity::MSG_ERROR);
         _qState = ERROR;
         return;
     }
@@ -92,7 +93,7 @@ void UserQuerySelectCountStar::submit() {
     if (not results->extractFirstColumn(values, errObj)) {
         LOGS(_log, LOG_LVL_ERROR,
              "Failed to extract chunk row counts from query result: " << errObj.errMsg());
-        _messageStore->addMessage(-1, 1051, "Internal error extracting chunk row counts.",
+        _messageStore->addMessage(-1, "COUNTSTAR", 1051, "Internal error extracting chunk row counts.",
                                   MessageSeverity::MSG_ERROR);
         _qState = ERROR;
         return;
@@ -106,7 +107,8 @@ void UserQuerySelectCountStar::submit() {
         } catch (bad_lexical_cast const& exc) {
             LOGS(_log, LOG_LVL_ERROR,
                  "Failed to convert chunk row count \"" << value << "\" to unsigned int: " << exc.what(););
-            _messageStore->addMessage(-1, 1051, "Internal error converting chunk row count to unsigned int.",
+            _messageStore->addMessage(-1, "COUNTSTAR", 1051,
+                                      "Internal error converting chunk row count to unsigned int.",
                                       MessageSeverity::MSG_ERROR);
             _qState = ERROR;
             return;
@@ -118,7 +120,7 @@ void UserQuerySelectCountStar::submit() {
     LOGS(_log, LOG_LVL_DEBUG, "creating result table: " << createTable);
     if (!_resultDbConn->runQuery(createTable, errObj)) {
         LOGS(_log, LOG_LVL_ERROR, "Failed to create result table: " << errObj.errMsg());
-        _messageStore->addMessage(-1, 1051, "Internal error, failed to create result table.",
+        _messageStore->addMessage(-1, "COUNTSTAR", 1051, "Internal error, failed to create result table.",
                                   MessageSeverity::MSG_ERROR);
         _qState = ERROR;
         return;
@@ -131,7 +133,8 @@ void UserQuerySelectCountStar::submit() {
     } catch (bad_lexical_cast const& exc) {
         LOGS(_log, LOG_LVL_ERROR,
              "Failed to convert the row count \"" << row_count << "\" to string: " << exc.what());
-        _messageStore->addMessage(-1, 1051, "Internal error converting total row count to string.",
+        _messageStore->addMessage(-1, "COUNTSTAR", 1051,
+                                  "Internal error converting total row count to string.",
                                   MessageSeverity::MSG_ERROR);
         _qState = ERROR;
         return;
@@ -140,7 +143,7 @@ void UserQuerySelectCountStar::submit() {
     LOGS(_log, LOG_LVL_DEBUG, "inserting row count into result table: " << insertRow);
     if (!_resultDbConn->runQuery(insertRow, errObj)) {
         LOGS(_log, LOG_LVL_ERROR, "Failed to insert row count into result table: " << errObj.errMsg());
-        _messageStore->addMessage(-1, 1051,
+        _messageStore->addMessage(-1, "COUNTSTAR", 1051,
                                   "Internal failure, failed to insert the row count into the result table.",
                                   MessageSeverity::MSG_ERROR);
         _qState = ERROR;
@@ -160,8 +163,9 @@ void UserQuerySelectCountStar::qMetaRegister(std::string const& resultLocation,
     std::string user = "anonymous";  // we do not have access to that info yet
     std::string qTemplate = "template";
     std::string qMerge = "merge";
+    int chunkCount = 0;
     qmeta::QInfo qInfo(qType, _qMetaCzarId, user, _query, qTemplate, qMerge, getResultLocation(),
-                       msgTableName, getResultQuery());
+                       msgTableName, getResultQuery(), chunkCount);
     qmeta::QMeta::TableNames tableNames;
     _qMetaQueryId = _queryMetadata->registerQuery(qInfo, tableNames);
 }
