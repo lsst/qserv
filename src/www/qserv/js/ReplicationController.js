@@ -75,11 +75,13 @@ function(CSSLoader,
           <th style="text-align:left" scope="row">id</th><td style="text-align:left"><pre id="id">Loading...</pre></td>
           <th style="text-align:left" scope="row">Host</th><td style="text-align:left"><pre id="hostname">Loading...</pre></td>
           <th style="text-align:left" scope="row">API version</th><td style="text-align:left"><pre id="api-version">Loading...</pre></td>
+          <th style="text-align:left" scope="row">Instance Id</th><td style="text-align:left"><pre id="instance-id">Loading...</pre></td>
         </tr>
         <tr>
           <th style="text-align:left" scope="row">Started</th><td style="text-align:left"><pre id="started">Loading...</pre></td>
           <th style="text-align:left" scope="row">PID</th><td style="text-align:left"><pre id="pid">Loading...</pre></td>
           <th style="text-align:left" scope="row">Database schema version</th><td style="text-align:left"><pre id="database-schema-version">Loading...</pre></td>
+          <th>&nbsp;</tr>
         </tr>
       </tbody>
     </table>
@@ -374,6 +376,7 @@ function(CSSLoader,
                 {},
                 (data) => {
                     this._setStatusVal("api-version", data.version);
+                    this._setStatusVal("instance-id", data.instance_id);
                     this._setStatusVal("database-schema-version", data.database_schema_version);
                     onLoaded();
                 },

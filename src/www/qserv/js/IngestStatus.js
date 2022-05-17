@@ -175,7 +175,7 @@ function(CSSLoader,
         _load_transactions() {
             const current_database = this._get_database();
             if (!current_database) {
-                this._on_failure("No databases exist yet in this instance of Qserv");
+                this._on_failure("No databases found in this status category");
                 return;
             }
             Fwk.web_service_GET(
@@ -198,6 +198,7 @@ function(CSSLoader,
         _on_failure(msg) {
             this._status().html(`<span style="color:maroon">${msg}</span>`);
             this._database().html('');
+            this._disable_selectors(false);
             this._status().removeClass('updating');
             this._loading = false;
         }
@@ -267,17 +268,17 @@ function(CSSLoader,
                 let transactionInfo = databaseInfo.transactions[transactionIdx];
                 databaseNumTrans[transactionInfo.state]++;
 
-                // For other summary data ignore transactions that has been aborted
-                if (transactionInfo.state === 'STARTED') continue;
+                // For other summary data ignore transactions that have been aborted, or failed in
+                // other ways.
+                if (!_.contains(['IS_STARTING', 'STARTED', 'IS_FINISHING', 'FINISHED'], transactionInfo.state)) continue;
 
-                let summary = transactionInfo.contrib.summary;
-
+                const summary = transactionInfo.contrib.summary;
                 databaseDataSize += summary.data_size_gb;
                 databaseNumRows  += summary.num_rows;
                 for (let status in summary.num_files_by_status) {
                     databaseNumFilesByStatus[status] += summary.num_files_by_status[status];
                 }
-                let thisFirstContribTime = summary.first_contrib_begin;
+                const thisFirstContribTime = summary.first_contrib_begin;
                 if (thisFirstContribTime > 0) {
                     firstIngestTime = firstIngestTime === 0 ?
                         thisFirstContribTime : Math.min(firstIngestTime, thisFirstContribTime);
@@ -289,7 +290,7 @@ function(CSSLoader,
                     baseTableName[table] = table;
                     // This object has data for both chunk and chunk overlaps. So we need
                     // to absorbe both.
-                    let tableInfo = summary.table[table];
+                    const tableInfo = summary.table[table];
                     if (_.has(tableStats, table)) {
                         tableStats[table].data  += tableInfo.data_size_gb;
                         tableStats[table].rows  += tableInfo.num_rows;
@@ -302,7 +303,7 @@ function(CSSLoader,
                         };
                     }
                     if (_.has(tableInfo, 'overlap')) {
-                        let tableOverlaps = table + '&nbsp;(overlaps)';
+                        const tableOverlaps = table + '&nbsp;(overlaps)';
                         baseTableName[tableOverlaps] = table;
                         if (_.has(tableStats, tableOverlaps)) {
                             tableStats[tableOverlaps].data  += tableInfo.overlap.data_size_gb;
@@ -320,10 +321,10 @@ function(CSSLoader,
 
                 // Collect per-worker-level stats
                 for (let worker in summary.worker) {
-                    let workerInfo = summary.worker[worker];
-                    let numWorkerFiles = workerInfo.num_regular_files +
-                                        workerInfo.num_chunk_files +
-                                        workerInfo.num_chunk_overlap_files;
+                    const workerInfo = summary.worker[worker];
+                    const numWorkerFiles = workerInfo.num_regular_files +
+                                           workerInfo.num_chunk_files +
+                                           workerInfo.num_chunk_overlap_files;
                     if (_.has(workerStats, worker)) {
                         workerStats[worker].data  += workerInfo.data_size_gb;
                         workerStats[worker].rows  += workerInfo.num_rows;

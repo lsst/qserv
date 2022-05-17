@@ -46,7 +46,8 @@ void HttpMetaModule::process(ServiceProvider::Ptr const& serviceProvider, string
 HttpMetaModule::HttpMetaModule(ServiceProvider::Ptr const& serviceProvider, string const& context,
                                qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp)
         : HttpModuleBase(serviceProvider->authKey(), serviceProvider->adminAuthKey(), req, resp),
-          _context(context) {}
+          _context(context),
+          _instanceId(serviceProvider->instanceId()) {}
 
 json HttpMetaModule::executeImpl(string const& subModuleName) {
     if (subModuleName == "VERSION") return _version();
@@ -61,6 +62,7 @@ json HttpMetaModule::_version() {
     json result;
     result["version"] = version;
     result["database_schema_version"] = ConfigParserMySQL::expectedSchemaVersion;
+    result["instance_id"] = _instanceId;
     return result;
 }
 
