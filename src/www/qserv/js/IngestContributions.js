@@ -396,7 +396,7 @@ function(CSSLoader,
         _load_transactions() {
             const current_database = this._get_database();
             if (!current_database) {
-                this._on_failure("No databases exist for selected status");
+                this._on_failure("No databases found in this status category");
                 return;
             }
             Fwk.web_service_GET(

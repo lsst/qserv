@@ -201,7 +201,7 @@ function(CSSLoader,
         _load_transactions() {
             const current_database = this._get_database();
             if (!current_database) {
-                this._on_failure("No databases exist yet in this instance of Qserv");
+                this._on_failure("No databases found in this status category");
                 return;
             }
             Fwk.web_service_GET(
@@ -224,6 +224,7 @@ function(CSSLoader,
         _on_failure(msg) {
             this._status().html(`<span style="color:maroon">${msg}</span>`);
             this._table().children('tbody').html('');
+            this._disable_selectors(false);
             this._status().removeClass('updating');
             this._loading = false;
         }

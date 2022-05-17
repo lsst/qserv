@@ -303,7 +303,7 @@ function(CSSLoader,
                     );
                     const current_database = this._get_database();
                     if (current_database) this._load_transactions(current_database);
-                    else this._on_failure('No databases in this category');                    
+                    else this._on_failure('No databases found in this status category');
                 },
                 (msg) => { this._on_failure(msg); }
             );
@@ -329,7 +329,7 @@ function(CSSLoader,
                     if (current_transaction) {
                         this._load_transaction_info(current_database, current_transaction);
                     } else {
-                        this._on_failure('No transactions in this database');
+                        this._on_failure('No transactions found in this database');
                     }
                 },
                 (msg) => { this._on_failure(msg); }
@@ -374,6 +374,7 @@ function(CSSLoader,
                     this.last_trans_id = info.id;
                 }
                 console.log("IngestTransactionsLog._display databaseInfo", transactions);
+                this._set_trans_info_state("state", `<pre class="${this._state2class(info.state)}">${info.state}</pre>`);
                 this._set_trans_info("begin_time", info.begin_time ? (new Date(info.begin_time)).toLocalTimeString('iso') : "");
                 this._set_trans_info("start_time", info.start_time ? (new Date(info.start_time)).toLocalTimeString('iso') : "");
                 this._set_trans_info("transition_time", info.transition_time ? (new Date(info.transition_time)).toLocalTimeString('iso') : "");
