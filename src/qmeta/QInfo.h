@@ -101,30 +101,9 @@ public:
               _completed(completed),
               _returned(returned) {}
 
-    /* &&&
-     QInfo(QInfo const& other) {
-        _qType=other._qType;
-        _qStatus=other._qStatus;
-        _czarId=other._czarId;
-        _user=other._user;
-        _qText=other._qText;
-        _qTemplate=other._qTemplate;
-        _qMerge=other._qMerge;
-        _resultLoc=other._resultLoc;
-        _msgTableName=other._msgTableName;
-        _resultQuery=other._resultQuery;
-        _chunkCount=other._chunkCount;
-        _submitted=other._submitted;
-        _completed=other._completed;
-        _returned=other._returned;
-    }
-
-
-    QInfo& operator=(QInfo const& other) {
-        QInfo nQInfo(other);
-        return nQInfo;
-    }
-    */
+    // This class requires copying. Defaults are currently sufficient.
+    QInfo(QInfo const&) = default;
+    QInfo& operator=(QInfo const&) = default;
 
     /// Returns query type
     QType queryType() const { return _qType; }

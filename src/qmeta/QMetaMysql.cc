@@ -130,8 +130,8 @@ CzarId QMetaMysql::getCzarID(string const& name) {
         LOGS(_log, LOG_LVL_DEBUG, "Result set is empty");
         return 0;
     } else if (ids.size() > 1) {
-        throw ConsistencyError(ERR_LOC, "More than one czar ID found for czar name " + name + ": " +
-                                                boost::lexical_cast<string>(ids.size()));
+        throw ConsistencyError(
+                ERR_LOC, "More than one czar ID found for czar name " + name + ": " + to_string(ids.size()));
     } else {
         LOGS(_log, LOG_LVL_DEBUG, "Found czar ID: " << ids[0]);
         return boost::lexical_cast<CzarId>(ids[0]);
@@ -164,8 +164,8 @@ CzarId QMetaMysql::registerCzar(string const& name) {
     // check number of results and convert to integer
     CzarId czarId = 0;
     if (ids.size() > 1) {
-        throw ConsistencyError(ERR_LOC, "More than one czar ID found for czar name " + name + ": " +
-                                                boost::lexical_cast<string>(ids.size()));
+        throw ConsistencyError(
+                ERR_LOC, "More than one czar ID found for czar name " + name + ": " + to_string(ids.size()));
     } else if (ids.empty()) {
         // no such czar, make new one
         LOGS(_log, LOG_LVL_DEBUG, "Create new czar with name: " << name);
@@ -210,7 +210,7 @@ void QMetaMysql::setCzarActive(CzarId czarId, bool active) {
     sql::SqlErrorObject errObj;
     sql::SqlResults results;
     string const query = "UPDATE QCzar SET active = b'" + string(active ? "1" : "0") +
-                         "' WHERE czarId = " + boost::lexical_cast<string>(czarId);
+                         "' WHERE czarId = " + to_string(czarId);
     LOGS(_log, LOG_LVL_DEBUG, "Executing query: " << query);
     if (not _conn->runQuery(query, results, errObj)) {
         LOGS(_log, LOG_LVL_ERROR, "SQL query failed: " << query);
@@ -221,9 +221,8 @@ void QMetaMysql::setCzarActive(CzarId czarId, bool active) {
     if (results.getAffectedRows() == 0) {
         throw CzarIdError(ERR_LOC, czarId);
     } else if (results.getAffectedRows() > 1) {
-        throw ConsistencyError(ERR_LOC, "More than one row updated for czar ID " +
-                                                boost::lexical_cast<string>(czarId) + ": " +
-                                                boost::lexical_cast<string>(results.getAffectedRows()));
+        throw ConsistencyError(ERR_LOC, "More than one row updated for czar ID " + to_string(czarId) + ": " +
+                                                to_string(results.getAffectedRows()));
     }
 
     trans->commit();
@@ -241,7 +240,7 @@ void QMetaMysql::cleanup(CzarId czarId) {
     string const query =
             "UPDATE QInfo SET status = 'ABORTED', completed = NOW() "
             " WHERE czarId = " +
-            boost::lexical_cast<string>(czarId) + " AND status = 'EXECUTING'";
+            to_string(czarId) + " AND status = 'EXECUTING'";
     LOGS(_log, LOG_LVL_DEBUG, "Executing query: " << query);
     if (not _conn->runQuery(query, results, errObj)) {
         LOGS(_log, LOG_LVL_ERROR, "SQL query failed: " << query);
@@ -283,7 +282,7 @@ QueryId QMetaMysql::registerQuery(QInfo const& qInfo, TableNames const& tables) 
 
     query += qType;
     query += ", ";
-    query += boost::lexical_cast<string>(qInfo.czarId());
+    query += to_string(qInfo.czarId());
     query += ", ";
     query += user;
     query += ", ";
@@ -297,6 +296,7 @@ QueryId QMetaMysql::registerQuery(QInfo const& qInfo, TableNames const& tables) 
     query += ", ";
     query += resultLocation;
     query += ", ";
+<<<<<<< HEAD
 /* &&&
 < HEAD
     query += resultQuery;
@@ -306,7 +306,7 @@ QueryId QMetaMysql::registerQuery(QInfo const& qInfo, TableNames const& tables) 
 */
     query += resultQuery;
     query += ", ";
-    query += boost::lexical_cast<string>(qInfo.chunkCount());
+    query += to_string(qInfo.chunkCount());
     query += ")";
 
     // run query
@@ -324,7 +324,7 @@ QueryId QMetaMysql::registerQuery(QInfo const& qInfo, TableNames const& tables) 
     auto end = unique(uniqueTables.begin(), uniqueTables.end());
     for (auto itr = uniqueTables.begin(); itr != end; ++itr) {
         query = "INSERT INTO QTable (queryId, dbName, tblName) VALUES (";
-        query += boost::lexical_cast<string>(queryId);
+        query += to_string(queryId);
         query += ", '";
         query += _conn->escapeString(itr->first);
         query += "', '";
@@ -354,9 +354,9 @@ void QMetaMysql::addChunks(QueryId queryId, vector<int> const& chunks) {
     sql::SqlErrorObject errObj;
     for (vector<int>::const_iterator itr = chunks.begin(); itr != chunks.end(); ++itr) {
         string query = "INSERT INTO QWorker (queryId, chunk) VALUES (";
-        query += boost::lexical_cast<string>(queryId);
+        query += to_string(queryId);
         query += ", ";
-        query += boost::lexical_cast<string>(*itr);
+        query += to_string(*itr);
         query += ")";
 
         LOGS(_log, LOG_LVL_DEBUG, "Executing query: " << query);
@@ -380,9 +380,9 @@ void QMetaMysql::assignChunk(QueryId queryId, int chunk, string const& xrdEndpoi
     string query = "UPDATE QWorker SET wxrd = '";
     query += _conn->escapeString(xrdEndpoint);
     query += "', submitted = NOW() WHERE queryId = ";
-    query += boost::lexical_cast<string>(queryId);
+    query += to_string(queryId);
     query += " AND chunk = ";
-    query += boost::lexical_cast<string>(chunk);
+    query += to_string(chunk);
 
     LOGS(_log, LOG_LVL_DEBUG, "Executing query: " << query);
     sql::SqlResults results;
@@ -395,10 +395,9 @@ void QMetaMysql::assignChunk(QueryId queryId, int chunk, string const& xrdEndpoi
     if (results.getAffectedRows() == 0) {
         throw ChunkIdError(ERR_LOC, queryId, chunk);
     } else if (results.getAffectedRows() > 1) {
-        throw ConsistencyError(ERR_LOC, "More than one row updated for query/chunk ID " +
-                                                boost::lexical_cast<string>(queryId) + "/" +
-                                                boost::lexical_cast<string>(chunk) + ": " +
-                                                boost::lexical_cast<string>(results.getAffectedRows()));
+        throw ConsistencyError(ERR_LOC, "More than one row updated for query/chunk ID " + to_string(queryId) +
+                                                "/" + to_string(chunk) + ": " +
+                                                to_string(results.getAffectedRows()));
     }
 
     trans->commit();
@@ -413,9 +412,9 @@ void QMetaMysql::finishChunk(QueryId queryId, int chunk) {
     // find and update query info
     sql::SqlErrorObject errObj;
     string query = "UPDATE QWorker SET completed = NOW() WHERE queryId = ";
-    query += boost::lexical_cast<string>(queryId);
+    query += to_string(queryId);
     query += " AND chunk = ";
-    query += boost::lexical_cast<string>(chunk);
+    query += to_string(chunk);
 
     LOGS(_log, LOG_LVL_DEBUG, "Executing query: " << query);
     sql::SqlResults results;
@@ -428,10 +427,9 @@ void QMetaMysql::finishChunk(QueryId queryId, int chunk) {
     if (results.getAffectedRows() == 0) {
         throw ChunkIdError(ERR_LOC, queryId, chunk);
     } else if (results.getAffectedRows() > 1) {
-        throw ConsistencyError(ERR_LOC, "More than one row updated for query/chunk ID " +
-                                                boost::lexical_cast<string>(queryId) + "/" +
-                                                boost::lexical_cast<string>(chunk) + ": " +
-                                                boost::lexical_cast<string>(results.getAffectedRows()));
+        throw ConsistencyError(ERR_LOC, "More than one row updated for query/chunk ID " + to_string(queryId) +
+                                                "/" + to_string(chunk) + ": " +
+                                                to_string(results.getAffectedRows()));
     }
 
     trans->commit();
@@ -447,7 +445,7 @@ void QMetaMysql::completeQuery(QueryId queryId, QInfo::QStatus qStatus) {
     string query = "UPDATE QInfo SET completed = NOW(), status = ";
     query += ::status2string(qStatus);
     query += " WHERE queryId = ";
-    query += boost::lexical_cast<string>(queryId);
+    query += to_string(queryId);
 
     LOGS(_log, LOG_LVL_DEBUG, "Executing query: " << query);
     sql::SqlErrorObject errObj;
@@ -461,9 +459,8 @@ void QMetaMysql::completeQuery(QueryId queryId, QInfo::QStatus qStatus) {
     if (results.getAffectedRows() == 0) {
         throw QueryIdError(ERR_LOC, queryId);
     } else if (results.getAffectedRows() > 1) {
-        throw ConsistencyError(ERR_LOC, "More than one row updated for query ID " +
-                                                boost::lexical_cast<string>(queryId) + ": " +
-                                                boost::lexical_cast<string>(results.getAffectedRows()));
+        throw ConsistencyError(ERR_LOC, "More than one row updated for query ID " + to_string(queryId) +
+                                                ": " + to_string(results.getAffectedRows()));
     }
 
     trans->commit();
@@ -477,7 +474,7 @@ void QMetaMysql::finishQuery(QueryId queryId) {
 
     // find and update chunk info
     string query = "UPDATE QInfo SET returned = NOW() WHERE queryId = ";
-    query += boost::lexical_cast<string>(queryId);
+    query += to_string(queryId);
 
     LOGS(_log, LOG_LVL_DEBUG, "Executing query: " << query);
     sql::SqlErrorObject errObj;
@@ -491,9 +488,8 @@ void QMetaMysql::finishQuery(QueryId queryId) {
     if (results.getAffectedRows() == 0) {
         throw QueryIdError(ERR_LOC, queryId);
     } else if (results.getAffectedRows() > 1) {
-        throw ConsistencyError(ERR_LOC, "More than one row updated for query ID " +
-                                                boost::lexical_cast<string>(queryId) + ": " +
-                                                boost::lexical_cast<string>(results.getAffectedRows()));
+        throw ConsistencyError(ERR_LOC, "More than one row updated for query ID " + to_string(queryId) +
+                                                ": " + to_string(results.getAffectedRows()));
     }
 
     trans->commit();
@@ -511,7 +507,7 @@ vector<QueryId> QMetaMysql::findQueries(CzarId czarId, QInfo::QType qType, strin
     // all conditions for query
     vector<string> cond;
     if (czarId != 0) {
-        cond.push_back("czarId = " + boost::lexical_cast<string>(czarId));
+        cond.push_back("czarId = " + to_string(czarId));
     }
     if (qType != QInfo::ANY) {
         string const qTypeStr(qType == QInfo::SYNC ? "SYNC" : "ASYNC");
@@ -582,7 +578,7 @@ vector<QueryId> QMetaMysql::getPendingQueries(CzarId czarId) {
     sql::SqlErrorObject errObj;
     sql::SqlResults results;
     string query = "SELECT queryId FROM QInfo WHERE czarId = ";
-    query += boost::lexical_cast<string>(czarId);
+    query += to_string(czarId);
     query += " AND returned IS NULL";
     LOGS(_log, LOG_LVL_DEBUG, "Executing query: " << query);
     if (not _conn->runQuery(query, results, errObj)) {
@@ -620,7 +616,7 @@ QInfo QMetaMysql::getQueryInfo(QueryId queryId) {
             " UNIX_TIMESTAMP(submitted), UNIX_TIMESTAMP(completed), UNIX_TIMESTAMP(returned), "
             " messageTable, resultLocation, chunkCount"
             " FROM QInfo WHERE queryId = ";
-    query += boost::lexical_cast<string>(queryId);
+    query += to_string(queryId);
     LOGS(_log, LOG_LVL_DEBUG, "Executing query: " << query);
     if (not _conn->runQuery(query, results, errObj)) {
         LOGS(_log, LOG_LVL_ERROR, "SQL query failed: " << query);
@@ -657,8 +653,7 @@ QInfo QMetaMysql::getQueryInfo(QueryId queryId) {
 
     if (++rowIter != results.end()) {
         // something else found
-        throw ConsistencyError(
-                ERR_LOC, "More than one row returned for query ID " + boost::lexical_cast<string>(queryId));
+        throw ConsistencyError(ERR_LOC, "More than one row returned for query ID " + to_string(queryId));
     }
 
     trans->commit();
@@ -797,7 +792,7 @@ void QMetaMysql::saveResultQuery(QueryId queryId, string const& query) {
     // find and update query info
     string sqlQuery = "UPDATE QInfo SET resultQuery = \"" + _conn->escapeString(query);
     sqlQuery += "\" WHERE queryId = ";
-    sqlQuery += boost::lexical_cast<string>(queryId);
+    sqlQuery += to_string(queryId);
 
     LOGS(_log, LOG_LVL_DEBUG, "Executing query: " << sqlQuery);
     sql::SqlErrorObject errObj;
@@ -811,9 +806,8 @@ void QMetaMysql::saveResultQuery(QueryId queryId, string const& query) {
     if (results.getAffectedRows() == 0) {
         throw QueryIdError(ERR_LOC, queryId);
     } else if (results.getAffectedRows() > 1) {
-        throw ConsistencyError(ERR_LOC, "More than one row updated for query ID " +
-                                                boost::lexical_cast<string>(queryId) + ": " +
-                                                boost::lexical_cast<string>(results.getAffectedRows()));
+        throw ConsistencyError(ERR_LOC, "More than one row updated for query ID " + to_string(queryId) +
+                                                ": " + to_string(results.getAffectedRows()));
     }
 
     trans->commit();
@@ -823,26 +817,28 @@ void QMetaMysql::addQueryMessages(QueryId queryId, shared_ptr<qdisp::MessageStor
     int msgCount = msgStore->messageCount();
     int cancelCount = 0;
     int completeCount = 0;
+    int execFailCount = 0;
     for (int i = 0; i != msgCount; ++i) {
         qdisp::QueryMessage const& qMsg = msgStore->getMessage(i);
         try {
-            _addQueryMessage(queryId, qMsg, cancelCount, completeCount);
+            _addQueryMessage(queryId, qMsg, cancelCount, completeCount, execFailCount);
         } catch (qmeta::SqlError const& ex) {
             LOGS(_log, LOG_LVL_ERROR, "UserQuerySelect::_qMetaUpdateMessages failed " << ex.what());
         }
     }
     // Add the total number of cancel messages received.
-    if (cancelCount > 0) {
+    if (cancelCount > 0 || execFailCount > 0) {
         qdisp::QueryMessage qm(-1, "CANCELTOTAL", 0,
-                               string("cancelled_count=") + to_string(cancelCount) +
-                                       " completed_count=" + to_string(completeCount),
+                               string("CANCEL_count=") + to_string(cancelCount) +
+                                       " EXECFAIL_count=" + to_string(execFailCount) +
+                                       " COMPLETE_count=" + to_string(completeCount),
                                std::time(nullptr), MessageSeverity::MSG_INFO);
-        _addQueryMessage(queryId, qm, cancelCount, completeCount);
+        _addQueryMessage(queryId, qm, cancelCount, completeCount, execFailCount);
     }
 }
 
 void QMetaMysql::_addQueryMessage(QueryId queryId, qdisp::QueryMessage const& qMsg, int& cancelCount,
-                                  int& completeCount) {
+                                  int& completeCount, int& execFailCount) {
     // Don't add duplicate messages.
     if (qMsg.msgSource == "DUPLICATE") return;
     // Don't add MULTIERROR as it's all duplicates.
@@ -852,11 +848,17 @@ void QMetaMysql::_addQueryMessage(QueryId queryId, qdisp::QueryMessage const& qM
         ++completeCount;
         return;
     }
-    // Limit dont't add individual "CANCEL" messages.
+    // Dont't add individual "CANCEL" messages.
     if (qMsg.msgSource == "CANCEL") {
         ++cancelCount;
         return;
     }
+    // EXECFAIL are messages that the executive has killed since something else happened.
+    if (qMsg.msgSource == "EXECFAIL") {
+        ++execFailCount;
+        return;
+    }
+
     lock_guard<mutex> sync(_dbMutex);
 
     auto trans = QMetaTransaction::create(*_conn);
@@ -867,13 +869,13 @@ void QMetaMysql::_addQueryMessage(QueryId queryId, qdisp::QueryMessage const& qM
     string query =
             "INSERT INTO QMessages (queryId, msgSource, chunkId, code, severity, message, timestamp) VALUES "
             "(";
-    query += boost::lexical_cast<string>(queryId);
+    query += to_string(queryId);
     query += ", \"" + _conn->escapeString(qMsg.msgSource) + "\"";
-    query += ", " + boost::lexical_cast<string>(qMsg.chunkId);
-    query += ", " + boost::lexical_cast<string>(qMsg.code);
+    query += ", " + to_string(qMsg.chunkId);
+    query += ", " + to_string(qMsg.code);
     query += ", \"" + _conn->escapeString(severity) + "\"";
     query += ", \"" + _conn->escapeString(qMsg.description) + "\"";
-    query += ", " + boost::lexical_cast<string>(qMsg.timestamp);
+    query += ", " + to_string(qMsg.timestamp);
     query += ")";
 
     // run query

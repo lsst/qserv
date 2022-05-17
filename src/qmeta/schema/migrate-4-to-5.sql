@@ -26,7 +26,7 @@ COMMENT = 'Table of messages generated during queries.';
 -- Add the chunkCount column to QInfo.
 --  
 ALTER TABLE `QInfo` 
-  ADD `chunkCount` INT,
-  ADD `resultBytes` INT DEFAULT 0,
-  ADD `resultRows` INT DEFAULT 0;
+  ADD `chunkCount` INT NOT NULL COMMENT 'number of chunks needed by the query',
+  ADD `resultBytes` INT DEFAULT 0 COMMENT 'number of bytes in the result',
+  ADD `resultRows` INT DEFAULT 0 COMMENT  'number of rows in the result',;
   

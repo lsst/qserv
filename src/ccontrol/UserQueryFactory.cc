@@ -211,8 +211,7 @@ UserQuery::Ptr UserQueryFactory::newUserQuery(std::string const& aQuery, std::st
     if (UserQueryType::isSubmit(query, stripped)) {
         // SUBMIT is only allowed with SELECT for now, complain if anything else is there
         if (!UserQueryType::isSelect(stripped)) {
-            auto uq = std::make_shared<UserQueryInvalid>("SUBMIT only valid with SELECT queries: " + query);
-            return uq;
+            return std::make_shared<UserQueryInvalid>("SUBMIT only valid with SELECT queries: " + query);
         }
         async = true;
         query = stripped;

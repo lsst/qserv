@@ -310,7 +310,7 @@ void Executive::markCompleted(int jobId, bool success) {
             // Don't overwrite existing error states.
             if (jState != JobStatus::CANCEL && jState != JobStatus::RESPONSE_ERROR &&
                 jState != JobStatus::RESULT_ERROR && jState != JobStatus::MERGE_ERROR) {
-                job->getStatus()->updateInfo(id, JobStatus::RESULT_ERROR, "EXEC", err.getCode(),
+                job->getStatus()->updateInfo(id, JobStatus::RESULT_ERROR, "EXECFAIL", err.getCode(),
                                              err.getMsg());
             }
         }

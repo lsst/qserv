@@ -539,7 +539,7 @@ void UserQuerySelect::qMetaRegister(std::string const& resultLocation, std::stri
         _resultLoc = "table:result_#QID#";
     }
 
-    int chunkCount = _qSession->getChunksSize();
+    int const chunkCount = _qSession->getChunksSize();
 
     qmeta::QInfo qInfo(qType, _qMetaCzarId, user, _qSession->getOriginal(), qTemplate, qMerge, _resultLoc,
                        msgTableName, "", chunkCount);
@@ -623,7 +623,7 @@ void UserQuerySelect::_qMetaUpdateMessages() {
     try {
         _queryMetadata->addQueryMessages(_qMetaQueryId, msgStore);
     } catch (qmeta::SqlError const& ex) {
-        LOGS(_log, LOG_LVL_ERROR, "UserQuerySelect::_qMetaUpdateMessages failed " << ex.what());
+        LOGS(_log, LOG_LVL_WARN, "UserQuerySelect::_qMetaUpdateMessages failed " << ex.what());
     }
 }
 
