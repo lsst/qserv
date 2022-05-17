@@ -205,48 +205,6 @@ def submodules_initalized(qserv_root: str) -> bool:
     return os.path.exists(os.path.join(qserv_root, f))
 
 
-def do_update_submodules(
-    qserv_root: str, qserv_build_root: str, build_image: str, user: str, dry: bool
-) -> None:
-    """Run 'git update submodules'.
-
-    Parameters
-    ----------
-    qserv_root : `str`
-        The path to the qserv source folder.
-    qserv_build_root : `str`
-        The path to mount the qserv source folder inside the build container.
-    build_image : `str`
-        The name of the build image to use to run cmake.
-    user : `str`
-        The name of the user to run the build container as.
-    dry : `bool`
-        If True do not run the command; print what would have been run.
-    """
-    args = [
-        "docker",
-        "run",
-        "--init",
-        "--rm",
-        "-u",
-        user,
-        "--mount",
-        root_mount(qserv_root, qserv_build_root, user),
-        "-w",
-        qserv_build_root.format(user=user),
-        build_image,
-        "git",
-        "submodule",
-        "update",
-        "--init",
-    ]
-    if dry:
-        print(" ".join(args))
-        return
-    _log.debug('Running "%s"', " ".join(args))
-    subproc.run(args)
-
-
 def cmake(
     qserv_root: str,
     qserv_build_root: str,
@@ -465,7 +423,6 @@ def build(
     do_build_image: bool,
     push_image: bool,
     pull_image: bool,
-    update_submodules: bool,
     user: str,
 ) -> None:
     """Build qserv and a new lite-qserv image.
@@ -503,10 +460,6 @@ def build(
         True if the lite-qserv image should be pushed to dockerhub.
     pull_image: `bool`
         Pull the lite-qserv image from dockerhub if it exists there.
-    update_submodules : `bool`
-        True if "git update submodules" should be run, False if Not, or None
-        if it should be run if it has not been run before, determined by the
-        absence/presense of a file populated by running it.
     user : `str`
         The name of the user to run the build container as.
     """
@@ -515,9 +468,6 @@ def build(
 
     if clang_format_mode != "off":
         clang_format(clang_format_mode, qserv_root, qserv_build_root, user_build_image, user, dry)
-
-    if update_submodules is True or (update_submodules is None and not submodules_initalized(qserv_root)):
-        do_update_submodules(qserv_root, qserv_build_root, user_build_image, user, dry)
 
     cmake(qserv_root, qserv_build_root, user_build_image, user, run_cmake, dry)
 

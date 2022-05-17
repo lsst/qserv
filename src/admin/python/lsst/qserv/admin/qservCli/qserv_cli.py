@@ -191,13 +191,6 @@ def show_qserv_environment(
 @user_build_image_option()
 @pull_image_option()
 @push_image_option()
-@click.option(
-    "--update-submodules/--no-update-submodules",
-    help="Force 'git update submodules --init' to be run, before running cmake. "
-    "By default runs if it has not been run yet.",
-    is_flag=True,
-    default=None,
-)
 @user_option()
 @cmake_option()
 @make_option()
@@ -223,7 +216,6 @@ def build(
     do_build_image: bool,
     push_image: bool,
     pull_image: bool,
-    update_submodules: bool,
     user: str,
 ) -> None:
     "Build qserv and make a new qserv run image."
@@ -243,7 +235,6 @@ def build(
         do_build_image=do_build_image,
         push_image=push_image,
         pull_image=pull_image,
-        update_submodules=update_submodules,
         user=user,
     )
 

@@ -81,7 +81,6 @@ def build_args(**kwargs):
         do_build_image=ANY,
         pull_image=ANY,
         push_image=ANY,
-        update_submodules=ANY,
         user=ANY,
         clang_format_mode=ANY,
     )
