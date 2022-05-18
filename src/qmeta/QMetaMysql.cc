@@ -91,8 +91,10 @@ QInfo::QStatus string2status(char const* statusStr) {
 namespace lsst::qserv::qmeta {
 
 // Constructors
-QMetaMysql::QMetaMysql(mysql::MySqlConfig const& mysqlConf)
+QMetaMysql::QMetaMysql(mysql::MySqlConfig const& mysqlConf, int maxMsgSourceStore)
         : QMeta(), _conn(sql::SqlConnectionFactory::make(mysqlConf)) {
+    // _maxMsgSourceStore must be >= 1
+    _maxMsgSourceStore = (maxMsgSourceStore < 1) ? 1 : maxMsgSourceStore;
     // Check that database is in consistent state
     _checkDb();
 }
@@ -803,10 +805,11 @@ void QMetaMysql::addQueryMessages(QueryId queryId, shared_ptr<qdisp::MessageStor
     int cancelCount = 0;
     int completeCount = 0;
     int execFailCount = 0;
+    map<string, ManyMsg> msgCountMap;
     for (int i = 0; i != msgCount; ++i) {
         qdisp::QueryMessage const& qMsg = msgStore->getMessage(i);
         try {
-            _addQueryMessage(queryId, qMsg, cancelCount, completeCount, execFailCount);
+            _addQueryMessage(queryId, qMsg, cancelCount, completeCount, execFailCount, msgCountMap);
         } catch (qmeta::SqlError const& ex) {
             LOGS(_log, LOG_LVL_ERROR, "UserQuerySelect::_qMetaUpdateMessages failed " << ex.what());
         }
@@ -814,16 +817,26 @@ void QMetaMysql::addQueryMessages(QueryId queryId, shared_ptr<qdisp::MessageStor
     // Add the total number of cancel messages received.
     if (cancelCount > 0 || execFailCount > 0) {
         qdisp::QueryMessage qm(-1, "CANCELTOTAL", 0,
-                               string("CANCEL_count=") + to_string(cancelCount) +
-                                       " EXECFAIL_count=" + to_string(execFailCount) +
-                                       " COMPLETE_count=" + to_string(completeCount),
+                               string("{\"CANCEL_count\":") + to_string(cancelCount) +
+                                       ", \"EXECFAIL_count\":" + to_string(execFailCount) +
+                                       ", \"COMPLETE_count\":" + to_string(completeCount) + "}",
                                std::time(nullptr), MessageSeverity::MSG_INFO);
-        _addQueryMessage(queryId, qm, cancelCount, completeCount, execFailCount);
+        _addQueryMessage(queryId, qm, cancelCount, completeCount, execFailCount, msgCountMap);
+    }
+
+    for (auto const& elem : msgCountMap) {
+        if (elem.second.count > _maxMsgSourceStore) {
+            string source = string("MANY_") + elem.first;
+            string desc = string("Too many of msgSource=") + elem.first +
+                          " to store all. Total=" + to_string(elem.second.count);
+            qdisp::QueryMessage qm(-1, source, 0, desc, std::time(nullptr), elem.second.severity);
+            _addQueryMessage(queryId, qm, cancelCount, completeCount, execFailCount, msgCountMap);
+        }
     }
 }
 
 void QMetaMysql::_addQueryMessage(QueryId queryId, qdisp::QueryMessage const& qMsg, int& cancelCount,
-                                  int& completeCount, int& execFailCount) {
+                                  int& completeCount, int& execFailCount, map<string, ManyMsg>& msgCountMap) {
     // Don't add duplicate messages.
     if (qMsg.msgSource == "DUPLICATE") return;
     // Don't add MULTIERROR as it's all duplicates.
@@ -842,6 +855,30 @@ void QMetaMysql::_addQueryMessage(QueryId queryId, qdisp::QueryMessage const& qM
     if (qMsg.msgSource == "EXECFAIL") {
         ++execFailCount;
         return;
+    }
+
+    auto iter = msgCountMap.find(qMsg.msgSource);
+    if (iter == msgCountMap.end()) {
+        msgCountMap[qMsg.msgSource] = ManyMsg(1, qMsg.severity);
+    } else {
+        ++(iter->second.count);
+        // If there's an error message, the error logic must be triggered,
+        // so the value of severity latches to MSG_ERROR.
+        bool severityChangedToError = false;
+        if (qMsg.severity == MSG_ERROR) {
+            if (iter->second.severity == MSG_INFO) {
+                severityChangedToError = true;
+            }
+            iter->second.severity = MSG_ERROR;
+        }
+        if (iter->second.count > _maxMsgSourceStore) {
+            // If severityChangedToError, then this message should be added to the table,
+            // since the first ERROR message of this msgSource is more important than
+            // the previous INFO messages.
+            if (not severityChangedToError) {
+                return;
+            }
+        }
     }
 
     lock_guard<mutex> sync(_dbMutex);

@@ -45,7 +45,8 @@ shared_ptr<QMeta> QMeta::createFromConfig(map<string, string> const& config) {
                                            configStore.get("socket"), configStore.get("database"));
 
             LOGS(_log, LOG_LVL_DEBUG, "Create QMeta instance with mysql store");
-            return make_shared<QMetaMysql>(mysqlConfig);
+            return make_shared<QMetaMysql>(mysqlConfig,
+                                           1);  // The 1, for maxMsgSourceStore, should have no effect here.
         } catch (util::ConfigStoreError const& exc) {
             LOGS(_log, LOG_LVL_DEBUG,
                  "Exception launched while creating MySQL configuration: " << exc.what());
