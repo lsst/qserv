@@ -34,6 +34,7 @@
 #include "lsst/log/Log.h"
 
 // Qserv headers
+#include "qdisp/JobStatus.h"
 #include "qdisp/MessageStore.h"
 #include "qmeta/Exceptions.h"
 #include "qmeta/QMetaTransaction.h"
@@ -820,16 +821,16 @@ void QMetaMysql::addQueryMessages(QueryId queryId, shared_ptr<qdisp::MessageStor
                                string("{\"CANCEL_count\":") + to_string(cancelCount) +
                                        ", \"EXECFAIL_count\":" + to_string(execFailCount) +
                                        ", \"COMPLETE_count\":" + to_string(completeCount) + "}",
-                               std::time(nullptr), MessageSeverity::MSG_INFO);
+                               qdisp::JobStatus::getNow(), MessageSeverity::MSG_INFO);
         _addQueryMessage(queryId, qm, cancelCount, completeCount, execFailCount, msgCountMap);
     }
 
     for (auto const& elem : msgCountMap) {
         if (elem.second.count > _maxMsgSourceStore) {
             string source = string("MANY_") + elem.first;
-            string desc = string("Too many of msgSource=") + elem.first +
-                          " to store all. Total=" + to_string(elem.second.count);
-            qdisp::QueryMessage qm(-1, source, 0, desc, std::time(nullptr), elem.second.severity);
+            string desc = string("{\"msgSource\":") + elem.first +
+                          ", \"count\":" + to_string(elem.second.count) + "}";
+            qdisp::QueryMessage qm(-1, source, 0, desc, qdisp::JobStatus::getNow(), elem.second.severity);
             _addQueryMessage(queryId, qm, cancelCount, completeCount, execFailCount, msgCountMap);
         }
     }
@@ -856,7 +857,6 @@ void QMetaMysql::_addQueryMessage(QueryId queryId, qdisp::QueryMessage const& qM
         ++execFailCount;
         return;
     }
-
     auto iter = msgCountMap.find(qMsg.msgSource);
     if (iter == msgCountMap.end()) {
         msgCountMap[qMsg.msgSource] = ManyMsg(1, qMsg.severity);
@@ -897,9 +897,8 @@ void QMetaMysql::_addQueryMessage(QueryId queryId, qdisp::QueryMessage const& qM
     query += ", " + to_string(qMsg.code);
     query += ", \"" + _conn->escapeString(severity) + "\"";
     query += ", \"" + _conn->escapeString(qMsg.description) + "\"";
-    query += ", " + to_string(qMsg.timestamp);
+    query += ", " + to_string(qdisp::JobStatus::timeToInt(qMsg.timestamp));
     query += ")";
-
     // run query
     sql::SqlErrorObject errObj;
     LOGS(_log, LOG_LVL_DEBUG, "Executing query: " << query);

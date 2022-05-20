@@ -33,6 +33,7 @@
 // Qserv headers
 #include "qmeta/Exceptions.h"
 #include "qmeta/QMeta.h"
+#include "qdisp/JobStatus.h"
 #include "qdisp/MessageStore.h"
 #include "sql/SqlConnection.h"
 #include "sql/SqlResults.h"
@@ -146,9 +147,11 @@ void UserQueryAsyncResult::submit() {
             int code = boost::lexical_cast<int>(row[1].first);
             std::string message = row[2].first;
             std::string sevStr = row[3].first;
-            float timestamp = boost::lexical_cast<float>(row[4].first);
+            int64_t timestampMilli = boost::lexical_cast<double>(row[4].first);
             MessageSeverity sev = sevStr == "INFO" ? MSG_INFO : MSG_ERROR;
-            _messageStore->addMessage(chunkId, "DUPLICATE", code, message, sev, std::time_t(timestamp));
+            qdisp::JobStatus::Clock::duration duration = std::chrono::milliseconds(timestampMilli);
+            qdisp::JobStatus::TimeType timestamp(duration);
+            _messageStore->addMessage(chunkId, "DUPLICATE", code, message, sev, timestamp);
         } catch (std::exception const& exc) {
             LOGS(_log, LOG_LVL_ERROR, "Error reading message table data: " << exc.what());
             std::string message = "Error reading message table data.";

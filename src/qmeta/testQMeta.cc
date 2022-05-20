@@ -100,7 +100,7 @@ struct TestDBGuard {
 
 struct PerTestFixture {
     PerTestFixture() {
-        qMeta = std::make_shared<QMetaMysql>(testDB.sqlConfig, 1);  //&&&
+        qMeta = std::make_shared<QMetaMysql>(testDB.sqlConfig, 1);
         sqlConn = SqlConnectionFactory::make(testDB.sqlConfig);
     }
 

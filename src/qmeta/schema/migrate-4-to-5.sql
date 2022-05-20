@@ -2,16 +2,16 @@
 -- Migration script from version 4 to version 5 of QMeta database:
 --
 -- -----------------------------------------------------
--- Table `QMetaMessages`
+-- Table `QMessages`
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `QMessages` (
   `queryId` BIGINT NOT NULL COMMENT 'Query identifier, foreign key into QueryInfo table',
-  `msgSource` CHAR(63) NOT NULL COMMENT 'Brief string describing the source PARSE, COMM, WORKER, etc',
+  `msgSource` VARCHAR(63) NOT NULL COMMENT 'Brief string describing the source PARSE, COMM, WORKER, etc',
   `chunkId` INT COMMENT 'chunkId',
   `code` SMALLINT COMMENT 'Error code',
   `message` MEDIUMTEXT NOT NULL COMMENT 'Message generated while executing queryId',
-  `severity` ENUM('INFO', 'ERROR') NOT NULL COMMENT 'severity of the message INFO or ERROR',
-  `timestamp` FLOAT COMMENT 'time of error message',
+  `severity` VARCHAR(256) NOT NULL COMMENT 'severity of the message INFO or ERROR',
+  `timestamp` BIGINT UNSIGNED NOT NULL COMMENT 'time of error message in milliseconds',
   INDEX `QMessages_qId_idx` (`queryId`),
   CONSTRAINT `QMessages_qid_fkey`
     FOREIGN KEY (`queryId`)

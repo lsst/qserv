@@ -49,7 +49,7 @@ std::string const createTmpl(
         "CREATE TABLE IF NOT EXISTS %1% "
         "(chunkId INT, code SMALLINT, message VARCHAR(" MAX_MESSAGE_LEN
         "), "
-        "severity ENUM ('INFO', 'ERROR'), timeStamp FLOAT)"
+        "severity ENUM ('INFO', 'ERROR'), timeStamp BIGINT UNSIGNED)"
         "ENGINE=MEMORY");
 
 std::string const createAndLockTmpl(createTmpl + "; LOCK TABLES %1% WRITE;");

@@ -36,6 +36,7 @@
 
 // Qserv headers
 #include "global/constants.h"
+#include "qdisp/JobStatus.h"
 
 namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.qdisp.MessageStore");
@@ -49,9 +50,9 @@ namespace lsst::qserv::qdisp {
 
 void MessageStore::addMessage(int chunkId, std::string const& msgSource, int code,
                               std::string const& description, MessageSeverity severity,
-                              std::time_t timestamp) {
-    if (timestamp == std::time_t(0)) {
-        timestamp = std::time(nullptr);
+                              JobStatus::TimeType timestamp) {
+    if (timestamp == JobStatus::TimeType()) {
+        timestamp = JobStatus::getNow();
     }
     auto level = code < 0 ? LOG_LVL_ERROR : LOG_LVL_DEBUG;
     LOGS(_log, level, "Add msg: " << chunkId << " " << msgSource << " " << code << " " << description);

@@ -524,9 +524,9 @@ void Executive::updateProxyMessages() {
             if (!info.stateDesc.empty()) {
                 os << " (" << info.stateDesc << ")";
             }
-            os << " " << info.stateTime;
+            os << " " << info.timeStr();
             _messageStore->addMessage(job->getDescription()->resource().chunk(), info.source, info.state,
-                                      os.str(), info.severity);
+                                      os.str(), info.severity, info.stateTime);
         }
     }
     {

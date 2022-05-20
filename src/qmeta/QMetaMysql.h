@@ -281,7 +281,7 @@ private:
     std::shared_ptr<sql::SqlConnection> _conn;
     std::mutex _dbMutex;  ///< Synchronizes access to certain DB operations
     /// Maximum number of each msgSource type to store for one user query.
-    int _maxMsgSourceStore = 3;  // &&& set from config
+    int _maxMsgSourceStore = 3;
 };
 
 }  // namespace lsst::qserv::qmeta

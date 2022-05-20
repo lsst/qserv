@@ -40,12 +40,13 @@
 
 // Qserv headers
 #include "global/constants.h"
+#include "qdisp/JobStatus.h"
 
 namespace lsst::qserv::qdisp {
 
 struct QueryMessage {
     QueryMessage(int chunkId_, std::string const& msgSource_, int code_, std::string description_,
-                 std::time_t timestamp_, MessageSeverity severity_)
+                 JobStatus::TimeType timestamp_, MessageSeverity severity_)
             : chunkId(chunkId_),
               msgSource(msgSource_),
               code(code_),
@@ -57,7 +58,7 @@ struct QueryMessage {
     std::string msgSource;
     int code;
     std::string description;
-    std::time_t timestamp;
+    JobStatus::TimeType timestamp;
     MessageSeverity severity;
 };
 
@@ -90,10 +91,11 @@ public:
      * @param code code of the message
      * @param description text of the message
      * @param severity_ message severity level, default to MSG_INFO
+     * @param timestamp milliseconds since the epoch (1970). Default is 0.
      */
     void addMessage(int chunkId, std::string const& msgSource, int code, std::string const& description,
                     MessageSeverity severity_ = MessageSeverity::MSG_INFO,
-                    std::time_t timestamp = std::time_t(0));
+                    JobStatus::TimeType timestamp = JobStatus::TimeType());
 
     /** Add an error message to this MessageStore
      *
