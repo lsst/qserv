@@ -28,5 +28,5 @@ COMMENT = 'Table of messages generated during queries.';
 ALTER TABLE `QInfo` 
   ADD `chunkCount` INT COMMENT 'number of chunks needed by the query',
   ADD `resultBytes` INT DEFAULT 0 COMMENT 'number of bytes in the result',
-  ADD `resultRows` INT DEFAULT 0 COMMENT  'number of rows in the result',;
+  ADD `resultRows` INT DEFAULT 0 COMMENT  'number of rows in the result';
   

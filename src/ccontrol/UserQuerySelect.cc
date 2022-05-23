@@ -463,7 +463,7 @@ void UserQuerySelect::_expandSelectStarInMergeStatment(std::shared_ptr<query::Se
 
 void UserQuerySelect::saveResultQuery() { _queryMetadata->saveResultQuery(_qMetaQueryId, getResultQuery()); }
 
-void UserQuerySelect::setupChunking() {
+void UserQuerySelect::_setupChunking() {
     LOGS(_log, LOG_LVL_TRACE, "Setup chunking");
     // Do not throw exceptions here, set _errorExtra .
     std::shared_ptr<qproc::IndexMap> im;
@@ -513,6 +513,9 @@ void UserQuerySelect::setupChunking() {
 void UserQuerySelect::qMetaRegister(std::string const& resultLocation, std::string const& msgTableName) {
     qmeta::QInfo::QType qType = _async ? qmeta::QInfo::ASYNC : qmeta::QInfo::SYNC;
     std::string user = "anonymous";  // we do not have access to that info yet
+
+    /// Chunking information is required before registering the query.
+    _setupChunking();
 
     std::string qTemplate;
     auto const& stmtVector = _qSession->getStmtParallel();

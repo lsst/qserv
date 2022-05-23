@@ -143,8 +143,6 @@ public:
     /// @return True if query is async query
     bool isAsync() const override { return _async; }
 
-    void setupChunking();
-
     /// set up the merge table (stores results from workers)
     /// @throw UserQueryError if the merge table can't be set up (maybe the user query is not valid?). The
     /// exception's what() message will be returned to the user.
@@ -163,6 +161,7 @@ private:
     void _qMetaUpdateStatus(qmeta::QInfo::QStatus qStatus);
     void _qMetaAddChunks(std::vector<int> const& chunks);
     void _qMetaUpdateMessages();
+    void _setupChunking();
 
     // Delegate classes
     std::shared_ptr<qproc::QuerySession> _qSession;

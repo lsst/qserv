@@ -111,8 +111,7 @@ std::shared_ptr<UserQuery> _makeUserQueryProcessList(query::SelectStmt::Ptr& stm
                                                      bool async) {
     if (async) {
         // no point supporting async for these
-        auto uq = std::make_shared<UserQueryInvalid>("SUBMIT is not allowed with query: " + aQuery);
-        return uq;
+        return std::make_shared<UserQueryInvalid>("SUBMIT is not allowed with query: " + aQuery);
     }
     LOGS(_log, LOG_LVL_DEBUG, "SELECT query is a PROCESSLIST");
     try {
@@ -303,7 +302,6 @@ UserQuery::Ptr UserQueryFactory::newUserQuery(std::string const& aQuery, std::st
                 _userQuerySharedResources->queryStatsData, _userQuerySharedResources->semaMgrConnections,
                 _userQuerySharedResources->qMetaCzarId, errorExtra, async, resultDb);
         if (sessionValid) {
-            uq->setupChunking();
             uq->qMetaRegister(resultLocation, msgTableName);
             uq->setupMerger();
             uq->saveResultQuery();
