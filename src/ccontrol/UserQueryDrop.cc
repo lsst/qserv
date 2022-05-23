@@ -114,7 +114,7 @@ void UserQueryDrop::submit() {
     } catch (css::NoSuchDb const& exc) {
         // Has it disappeared already?
         LOGS(_log, LOG_LVL_ERROR, "database disappeared from CSS");
-        std::string message = "Unknown database " + _dbName;
+        std::string message = std::string("Unknown database ") + _dbName;
         _messageStore->addMessage(-1, "CSS", 1051, message, MessageSeverity::MSG_ERROR);
         _qState = ERROR;
     } catch (css::NoSuchTable const& exc) {
