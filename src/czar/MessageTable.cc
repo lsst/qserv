@@ -49,7 +49,7 @@ std::string const createTmpl(
         "CREATE TABLE IF NOT EXISTS %1% "
         "(chunkId INT, code SMALLINT, message VARCHAR(" MAX_MESSAGE_LEN
         "), "
-        "severity ENUM ('INFO', 'ERROR'), timeStamp FLOAT)"
+        "severity ENUM ('INFO', 'ERROR'), timeStamp BIGINT UNSIGNED)"
         "ENGINE=MEMORY");
 
 std::string const createAndLockTmpl(createTmpl + "; LOCK TABLES %1% WRITE;");
@@ -114,25 +114,37 @@ void MessageTable::_saveQueryMessages(ccontrol::UserQuery::Ptr const& userQuery)
     }
 
     auto msgStore = userQuery->getMessageStore();
+    int completeCount = 0;
+    int cancelCount = 0;
+    std::string multiErrStr = "";
+    std::string severity = "INFO";
 
-    // copy all messages from query message store to a message table
+    // Collect information about the query and put it in the message table.
     int msgCount = msgStore->messageCount();
     for (int i = 0; i != msgCount; ++i) {
         const qdisp::QueryMessage& qm = msgStore->getMessage(i);
-        LOGS(_log, LOG_LVL_DEBUG,
-             "Insert in message table: [" << qm.description << ", " << qm.chunkId << ", " << qm.code << ", "
-                                          << qm.severity << ", " << qm.timestamp << "]");
-
-        char const* severity = (qm.severity == MSG_INFO ? "INFO" : "ERROR");
-        std::string query = (boost::format(::writeTmpl) % _tableName % qm.chunkId % qm.code %
-                             _sqlConn->escapeString(qm.description) % severity % qm.timestamp)
-                                    .str();
-        sql::SqlErrorObject sqlErr;
-        if (not _sqlConn->runQuery(query, sqlErr)) {
-            SqlError exc(ERR_LOC, "Failure updating message table", sqlErr);
-            LOGS(_log, LOG_LVL_ERROR, exc.message());
-            throw exc;
+        std::string src = qm.msgSource;
+        if (src == "COMPLETE") {
+            ++completeCount;
+        } else if (src == "CANCEL") {
+            ++cancelCount;
+        } else if (src == "MULTIERROR") {
+            multiErrStr += qm.description + "\n";
+            severity = "ERROR";
         }
+    }
+    std::string cMsg("Completed chunks=");
+    cMsg += std::to_string(completeCount) + " cancelled chunks=" + std::to_string(cancelCount) + "\n";
+    cMsg += multiErrStr;
+    LOGS(_log, LOG_LVL_DEBUG, " MULTIERROR:" << cMsg);
+    std::string summaryQ = (boost::format(::writeTmpl) % _tableName % "-1" % "-1" %
+                            _sqlConn->escapeString(cMsg) % severity % std::time(nullptr))
+                                   .str();
+    sql::SqlErrorObject sqlE;
+    if (not _sqlConn->runQuery(summaryQ, sqlE)) {
+        SqlError exc(ERR_LOC, "Failure updating message table", sqlE);
+        LOGS(_log, LOG_LVL_ERROR, exc.message());
+        throw exc;
     }
 }
 

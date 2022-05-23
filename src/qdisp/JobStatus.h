@@ -24,11 +24,15 @@
 #define LSST_QSERV_QDISP_JOBSTATUS_H
 
 // System headers
+#include <chrono>
 #include <fstream>
 #include <memory>
 #include <mutex>
 #include <string>
 #include <time.h>
+
+// qserv headers
+#include "global/constants.h"
 
 namespace lsst::qserv::qdisp {
 
@@ -46,6 +50,8 @@ namespace lsst::qserv::qdisp {
 class JobStatus {
 public:
     typedef std::shared_ptr<JobStatus> Ptr;
+    using Clock = std::chrono::system_clock;
+    using TimeType = std::chrono::time_point<Clock>;
     JobStatus() {}
 
     // TODO: these shouldn't be exposed, and so shouldn't be user-level error
@@ -65,6 +71,14 @@ public:
         COMPLETE = 2000
     };
 
+    /// Return time as milliseconds since the epoch.
+    static TimeType getNow();
+
+    /// Return a representation of the time as a string.
+    static std::string timeToString(TimeType const& inTime);
+
+    static uint64_t timeToInt(TimeType inTime);
+
     /** Report a state transition by updating JobStatus::Info attributes
      *  with its input parameters values
      *
@@ -79,16 +93,22 @@ public:
      *  - resourceUnit should be extracted from Info (beware of mutex)
      *  - Info should be put in a vector
      */
-    void updateInfo(std::string const& idMsg, State s, int code = 0, std::string const& desc = "");
+    void updateInfo(std::string const& idMsg, State s, std::string const& source, int code = 0,
+                    std::string const& desc = "", MessageSeverity severity = MSG_INFO);
 
     struct Info {
         Info();
         // More detailed debugging may store a vector of states, appending
         // with each invocation of report().
-        State state;            ///< Actual state
-        time_t stateTime;       ///< Last modified timestamp
-        int stateCode;          ///< Code associated with state (e.g. xrd or mysql error code)
-        std::string stateDesc;  ///< Textual description
+        State state;                          ///< Actual state
+        TimeType stateTime;                   ///< Last modified timestamp
+        int stateCode;                        ///< Code associated with state (e.g. xrd or mysql error code)
+        std::string stateDesc;                ///< Textual description
+        std::string source = "";              ///< Source of the current state.
+        MessageSeverity severity = MSG_INFO;  ///< Severity of the message.
+
+        uint64_t timeInt() const;     ///< Get time in millisec since the epoch
+        std::string timeStr() const;  ///< Get string representation of time.
     };
 
     Info getInfo() const {

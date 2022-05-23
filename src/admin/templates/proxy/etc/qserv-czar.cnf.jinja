@@ -32,6 +32,7 @@ maxsqlconnectionattempts = 10
 # maximum user query result size in MB
 maxtablesize_mb = 5100
 
+
 # database connection for QMeta database
 [qmeta]
 passwd =
@@ -40,6 +41,7 @@ unix_socket = {{ czar_db_socket }}
 host = {{ czar_db_host }}
 user = qsmaster
 port = {{ czar_db_port }}
+maxMsgSourceStore = 5
 
 # database connection for QStatusData
 # Using qmeta for now. May move this qservResult or make its own instance

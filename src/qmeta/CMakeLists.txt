@@ -9,6 +9,7 @@ target_sources(qserv_meta PRIVATE
 )
 
 target_link_libraries(qserv_meta PUBLIC
+    qdisp
     qserv_common
     log
     mysqlclient_r

@@ -111,8 +111,7 @@ std::shared_ptr<UserQuery> _makeUserQueryProcessList(query::SelectStmt::Ptr& stm
                                                      bool async) {
     if (async) {
         // no point supporting async for these
-        auto uq = std::make_shared<UserQueryInvalid>("SUBMIT is not allowed with query: " + aQuery);
-        return uq;
+        return std::make_shared<UserQueryInvalid>("SUBMIT is not allowed with query: " + aQuery);
     }
     LOGS(_log, LOG_LVL_DEBUG, "SELECT query is a PROCESSLIST");
     try {
@@ -169,7 +168,8 @@ std::shared_ptr<UserQuerySharedResources> makeUserQuerySharedResources(
             css::CssAccess::createFromConfig(czarConfig.getCssConfigMap(), czarConfig.getEmptyChunkPath()),
             czarConfig.getMySqlResultConfig(),
             std::make_shared<qproc::SecondaryIndex>(czarConfig.getMySqlQmetaConfig()),
-            std::make_shared<qmeta::QMetaMysql>(czarConfig.getMySqlQmetaConfig()),
+            std::make_shared<qmeta::QMetaMysql>(czarConfig.getMySqlQmetaConfig(),
+                                                czarConfig.getMaxMsgSourceStore()),
             std::make_shared<qmeta::QStatusMysql>(czarConfig.getMySqlQStatusDataConfig()),
             std::make_shared<qmeta::QMetaSelect>(czarConfig.getMySqlQmetaConfig()),
             sql::SqlConnectionFactory::make(czarConfig.getMySqlResultConfig()), dbModels, czarName,
@@ -211,8 +211,7 @@ UserQuery::Ptr UserQueryFactory::newUserQuery(std::string const& aQuery, std::st
     if (UserQueryType::isSubmit(query, stripped)) {
         // SUBMIT is only allowed with SELECT for now, complain if anything else is there
         if (!UserQueryType::isSelect(stripped)) {
-            auto uq = std::make_shared<UserQueryInvalid>("Invalid or unsupported query: " + query);
-            return uq;
+            return std::make_shared<UserQueryInvalid>("SUBMIT only valid with SELECT queries: " + query);
         }
         async = true;
         query = stripped;
@@ -279,6 +278,8 @@ UserQuery::Ptr UserQueryFactory::newUserQuery(std::string const& aQuery, std::st
             sessionValid = false;
         }
         if (!qs->getError().empty()) {
+            // The `qs` object is passed to the UserQuerySelect object below,
+            // so the errors do not need to be added to `errorExtra`.
             LOGS(_log, LOG_LVL_ERROR, "Invalid query: " << qs->getError());
             sessionValid = false;
         }
@@ -293,6 +294,8 @@ UserQuery::Ptr UserQueryFactory::newUserQuery(std::string const& aQuery, std::st
                     _userQuerySharedResources->czarConfig, _userQuerySharedResources->mysqlResultConfig);
         }
 
+        // This, effectively invalid, UserQuerySelect object should report errors from both `errorExtra`
+        // and errors that the QuerySession `qs` has stored internally.
         auto uq = std::make_shared<UserQuerySelect>(
                 qs, messageStore, executive, _userQuerySharedResources->databaseModels, infileMergerConfig,
                 _userQuerySharedResources->secondaryIndex, _userQuerySharedResources->queryMetadata,
@@ -300,7 +303,6 @@ UserQuery::Ptr UserQueryFactory::newUserQuery(std::string const& aQuery, std::st
                 _userQuerySharedResources->qMetaCzarId, errorExtra, async, resultDb);
         if (sessionValid) {
             uq->qMetaRegister(resultLocation, msgTableName);
-            uq->setupChunking();
             uq->setupMerger();
             uq->saveResultQuery();
         }

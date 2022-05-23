@@ -23,11 +23,13 @@
 #define LSST_QSERV_QMETA_QMETAMYSQL_H
 
 // System headers
+#include <map>
 #include <mutex>
 
 // Third-party headers
 
 // Qserv headers
+#include "global/constants.h"
 #include "mysql/MySqlConfig.h"
 #include "qmeta/QMeta.h"
 
@@ -51,7 +53,7 @@ public:
     /**
      *  @param mysqlConf: Configuration object for mysql connection
      */
-    QMetaMysql(mysql::MySqlConfig const& mysqlConf);
+    QMetaMysql(mysql::MySqlConfig const& mysqlConf, int maxMsgSourceStore);
 
     // Instances cannot be copied
     QMetaMysql(QMetaMysql const&) = delete;
@@ -254,13 +256,32 @@ public:
      */
     void saveResultQuery(QueryId queryId, std::string const& query) override;
 
+    /// @see QMeta::addQueryMessages()
+    void addQueryMessages(QueryId queryId, std::shared_ptr<qdisp::MessageStore> const& msgStore) override;
+
 protected:
     ///  Check that all necessary tables exist
     void _checkDb();
 
+    /// Simple class for storing information about multiple messages from a single source.
+    class ManyMsg {
+    public:
+        ManyMsg() = default;
+        ManyMsg(int count_, MessageSeverity severity_) : count(count_), severity(severity_) {}
+        int count = 0;
+        MessageSeverity severity = MSG_INFO;
+    };
+
 private:
+    /// Add qMsg to the permanent message table.
+    void _addQueryMessage(QueryId queryId, qdisp::QueryMessage const& qMsg, int& cancelCount,
+                          int& completeCount, int& execFailCount,
+                          std::map<std::string, ManyMsg>& msgCountMap);
+
     std::shared_ptr<sql::SqlConnection> _conn;
     std::mutex _dbMutex;  ///< Synchronizes access to certain DB operations
+    /// Maximum number of each msgSource type to store for one user query.
+    int _maxMsgSourceStore = 3;
 };
 
 }  // namespace lsst::qserv::qmeta

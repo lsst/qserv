@@ -60,10 +60,10 @@ PYBIND11_MODULE(qmetaLib, mod) {
 
     clsQInfo.def(py::init<>())
             .def(py::init<QInfo::QType, CzarId, std::string const&, std::string const&, std::string const&,
-                          std::string const&, std::string const&, std::string const&, std::string const&,
+                          std::string const&, std::string const&, std::string const&, std::string const&, int,
                           QInfo::QStatus, std::time_t, std::time_t, std::time_t>(),
                  "qType"_a, "czarId"_a, "user"_a, "qText"_a, "qTemplate"_a, "qMerge"_a, "resultLoc"_a,
-                 "msgTableName"_a, "resultQuery"_a, "qStatus"_a = QInfo::EXECUTING,
+                 "msgTableName"_a, "resultQuery"_a, "chunkCount"_a, "qStatus"_a = QInfo::EXECUTING,
                  "submitted"_a = std::time_t(0), "completed"_a = std::time_t(0), "returned"_a = std::time_t())
             .def("queryType", &QInfo::queryType)
             .def("queryStatus", &QInfo::queryStatus)
@@ -75,6 +75,7 @@ PYBIND11_MODULE(qmetaLib, mod) {
             .def("resultLocation", &QInfo::resultLocation)
             .def("msgTableName", &QInfo::msgTableName)
             .def("resultQuery", &QInfo::resultQuery)
+            .def("chunkCount", &QInfo::chunkCount)
             .def("submitted", &QInfo::submitted)
             .def("completed", &QInfo::completed)
             .def("returned", &QInfo::returned)

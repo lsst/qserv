@@ -124,7 +124,7 @@ public:
 class ChunkMsgReceiver : public MsgReceiver {
 public:
     virtual void operator()(int code, std::string const& msg) {
-        messageStore->addMessage(chunkId, code, msg);
+        messageStore->addMessage(chunkId, "CHUNK", code, msg);
     }
     static std::shared_ptr<ChunkMsgReceiver> newInstance(int chunkId,
                                                          std::shared_ptr<qdisp::MessageStore> ms) {
@@ -339,8 +339,10 @@ QueryState UserQuerySelect::join() {
         successful = false;
         LOGS(_log, LOG_LVL_ERROR, "InfileMerger::finalize failed");
         // Error: 1105 SQLSTATE: HY000 (ER_UNKNOWN_ERROR) Message: Unknown error
-        _messageStore->addMessage(-1, 1105, "Failure while merging result", MessageSeverity::MSG_ERROR);
+        _messageStore->addMessage(-1, "MERGE", 1105, "Failure while merging result",
+                                  MessageSeverity::MSG_ERROR);
     }
+    _executive->updateProxyMessages();
     try {
         _discardMerger();
     } catch (std::exception const& exc) {
@@ -348,6 +350,10 @@ QueryState UserQuerySelect::join() {
         // it or expose it to user, just dump it to log
         LOGS(_log, LOG_LVL_ERROR, "exception from _discardMerger: " << exc.what());
     }
+
+    // Update the permanent message table.
+    _qMetaUpdateMessages();
+
     if (successful) {
         _qMetaUpdateStatus(qmeta::QInfo::COMPLETED);
         LOGS(_log, LOG_LVL_INFO, "Joined everything (success)");
@@ -457,7 +463,7 @@ void UserQuerySelect::_expandSelectStarInMergeStatment(std::shared_ptr<query::Se
 
 void UserQuerySelect::saveResultQuery() { _queryMetadata->saveResultQuery(_qMetaQueryId, getResultQuery()); }
 
-void UserQuerySelect::setupChunking() {
+void UserQuerySelect::_setupChunking() {
     LOGS(_log, LOG_LVL_TRACE, "Setup chunking");
     // Do not throw exceptions here, set _errorExtra .
     std::shared_ptr<qproc::IndexMap> im;
@@ -508,6 +514,9 @@ void UserQuerySelect::qMetaRegister(std::string const& resultLocation, std::stri
     qmeta::QInfo::QType qType = _async ? qmeta::QInfo::ASYNC : qmeta::QInfo::SYNC;
     std::string user = "anonymous";  // we do not have access to that info yet
 
+    /// Chunking information is required before registering the query.
+    _setupChunking();
+
     std::string qTemplate;
     auto const& stmtVector = _qSession->getStmtParallel();
     for (auto itr = stmtVector.begin(); itr != stmtVector.end(); ++itr) {
@@ -532,8 +541,11 @@ void UserQuerySelect::qMetaRegister(std::string const& resultLocation, std::stri
         // Special token #QID# is replaced with query ID later.
         _resultLoc = "table:result_#QID#";
     }
+
+    int const chunkCount = _qSession->getChunksSize();
+
     qmeta::QInfo qInfo(qType, _qMetaCzarId, user, _qSession->getOriginal(), qTemplate, qMerge, _resultLoc,
-                       msgTableName, "");
+                       msgTableName, "", chunkCount);
 
     // find all table names used by statement (which appear in FROM ... [JOIN ...])
     qmeta::QMeta::TableNames tableNames;
@@ -568,7 +580,7 @@ void UserQuerySelect::qMetaRegister(std::string const& resultLocation, std::stri
     } else {
         // we only support results going to tables for now, abort for anything else
         std::string const msg = "Unexpected result location '" + _resultLoc + "'";
-        _messageStore->addMessage(-1, 1146, msg, MessageSeverity::MSG_ERROR);
+        _messageStore->addMessage(-1, "SYSTEM", 1146, msg, MessageSeverity::MSG_ERROR);
         throw UserQueryError(getQueryIdString() + _errorExtra);
     }
 
@@ -590,7 +602,7 @@ void UserQuerySelect::qMetaRegister(std::string const& resultLocation, std::stri
             // error condition, only prints error message to the log. To communicate
             // error message to caller we need to set _errorExtra
             std::string const msg = "Table '" + itr->first + "." + itr->second + "' does not exist";
-            _messageStore->addMessage(-1, 1146, msg, MessageSeverity::MSG_ERROR);
+            _messageStore->addMessage(-1, "SYSTEM", 1146, msg, MessageSeverity::MSG_ERROR);
             throw UserQueryError(getQueryIdString() + _errorExtra);
         }
     }
@@ -604,6 +616,17 @@ void UserQuerySelect::_qMetaUpdateStatus(qmeta::QInfo::QStatus qStatus) {
         _queryStatsData->queryStatsTmpRemove(_qMetaQueryId);
     } catch (qmeta::SqlError const&) {
         LOGS(_log, LOG_LVL_WARN, "queryStatsTmp remove failed " << _queryIdStr);
+    }
+}
+
+void UserQuerySelect::_qMetaUpdateMessages() {
+    // message table
+
+    auto msgStore = getMessageStore();
+    try {
+        _queryMetadata->addQueryMessages(_qMetaQueryId, msgStore);
+    } catch (qmeta::SqlError const& ex) {
+        LOGS(_log, LOG_LVL_WARN, "UserQuerySelect::_qMetaUpdateMessages failed " << ex.what());
     }
 }
 

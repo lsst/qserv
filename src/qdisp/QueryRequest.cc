@@ -279,7 +279,7 @@ bool QueryRequest::ProcessResponse(XrdSsiErrInfo const& eInfo, XrdSsiRespInfo co
         os << _jobIdStr << "ProcessResponse request failed " << getSsiErr(eInfo, nullptr) << " "
            << GetEndPoint();
         jq->getDescription()->respHandler()->errorFlush(os.str(), -1);
-        jq->getStatus()->updateInfo(_jobIdStr, JobStatus::RESPONSE_ERROR);
+        jq->getStatus()->updateInfo(_jobIdStr, JobStatus::RESPONSE_ERROR, "SSI");
         _errorFinish();
         return true;
     }
@@ -290,20 +290,21 @@ bool QueryRequest::ProcessResponse(XrdSsiErrInfo const& eInfo, XrdSsiRespInfo co
             break;
         case XrdSsiRespInfo::isData:  // Local-only for Mock tests!
             if (string(rInfo.buff, rInfo.blen) == "MockResponse") {
-                jq->getStatus()->updateInfo(_jobIdStr, JobStatus::COMPLETE);
+                jq->getStatus()->updateInfo(_jobIdStr, JobStatus::COMPLETE, "MOCK");
                 _finish();
                 return true;
             }
             errorDesc += "Unexpected XrdSsiRespInfo.rType == isData";
             break;
         case XrdSsiRespInfo::isError:
-            jq->getStatus()->updateInfo(_jobIdStr, JobStatus::RESPONSE_ERROR, rInfo.eNum, string(rInfo.eMsg));
+            jq->getStatus()->updateInfo(_jobIdStr, JobStatus::RESPONSE_ERROR, "SSI", rInfo.eNum,
+                                        string(rInfo.eMsg));
             return _importError(string(rInfo.eMsg), rInfo.eNum);
         case XrdSsiRespInfo::isFile:  // Local-only
             errorDesc += "Unexpected XrdSsiRespInfo.rType == isFile";
             break;
         case XrdSsiRespInfo::isStream:  // All remote requests
-            jq->getStatus()->updateInfo(_jobIdStr, JobStatus::RESPONSE_READY);
+            jq->getStatus()->updateInfo(_jobIdStr, JobStatus::RESPONSE_READY, "SSI");
             return _importStream(jq);
         default:
             errorDesc += "Out of range XrdSsiRespInfo.rType";
@@ -435,7 +436,7 @@ void QueryRequest::ProcessResponseData(XrdSsiErrInfo const& eInfo, char* buff, i
     if (blen < 0) {  // error, check errinfo object.
         int eCode;
         string reason(getSsiErr(eInfo, &eCode) + " " + GetEndPoint());
-        jq->getStatus()->updateInfo(_jobIdStr, JobStatus::RESPONSE_DATA_NACK, eCode, reason);
+        jq->getStatus()->updateInfo(_jobIdStr, JobStatus::RESPONSE_DATA_NACK, "SSI", eCode, reason);
         LOGS(_log, LOG_LVL_ERROR, "ProcessResponse[data] error(" << eCode << " " << reason << ")");
         jq->getDescription()->respHandler()->errorFlush(
                 "Couldn't retrieve response data:" + reason + " " + _jobIdStr, eCode);
@@ -447,7 +448,7 @@ void QueryRequest::ProcessResponseData(XrdSsiErrInfo const& eInfo, char* buff, i
         return;
     }
 
-    jq->getStatus()->updateInfo(_jobIdStr, JobStatus::RESPONSE_DATA);
+    jq->getStatus()->updateInfo(_jobIdStr, JobStatus::RESPONSE_DATA, "MERGE");
 
     // Handle the response in a separate thread so we can give this one back to XrdSsi.
     // _askForResponseDataCmd should call QueryRequest::_processData() next.
@@ -537,7 +538,7 @@ void QueryRequest::_processData(JobQuery::Ptr const& jq, int blen, bool xrdLast)
                  "processData disagreement between last=" << last << " and xrdLast=" << xrdLast);
         }
         if (last) {
-            jq->getStatus()->updateInfo(_jobIdStr, JobStatus::COMPLETE);
+            jq->getStatus()->updateInfo(_jobIdStr, JobStatus::COMPLETE, "COMPLETE");
             _finish();
             // At this point all blocks for this job have been read, there's no point in
             // having XrdSsi wait for anything.
@@ -563,7 +564,8 @@ void QueryRequest::_processData(JobQuery::Ptr const& jq, int blen, bool xrdLast)
 
 void QueryRequest::_flushError(JobQuery::Ptr const& jq) {
     ResponseHandler::Error err = jq->getDescription()->respHandler()->getError();
-    jq->getStatus()->updateInfo(_jobIdStr, JobStatus::MERGE_ERROR, err.getCode(), err.getMsg());
+    jq->getStatus()->updateInfo(_jobIdStr, JobStatus::MERGE_ERROR, "MERGE", err.getCode(), err.getMsg(),
+                                MSG_ERROR);
     _errorFinish(true);
 }
 
@@ -581,7 +583,7 @@ bool QueryRequest::cancel() {
         // Only call the following if the job is NOT already done.
         if (_finishStatus == ACTIVE) {
             auto jq = _jobQuery;
-            if (jq != nullptr) jq->getStatus()->updateInfo(_jobIdStr, JobStatus::CANCEL);
+            if (jq != nullptr) jq->getStatus()->updateInfo(_jobIdStr, JobStatus::CANCEL, "CANCEL");
         }
     }
     return _errorFinish(true);  // return true if errorFinish cancelled

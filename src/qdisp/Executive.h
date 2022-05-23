@@ -153,6 +153,10 @@ public:
     /// @return the value of _dataIgnoredCount
     int incrDataIgnoredCount() { return ++_dataIgnoredCount; }
 
+    /// Store job status and execution errors for the proxy and qservMeta QMessages.
+    /// @see python module lsst.qserv.czar.proxy.unlock()
+    void updateProxyMessages();
+
 private:
     Executive(ExecutiveConfig const& c, std::shared_ptr<MessageStore> const& ms,
               SharedResources::Ptr const& sharedResources, std::shared_ptr<qmeta::QStatus> const& qStatus,
@@ -165,8 +169,6 @@ private:
     void _unTrack(int refNum);
     bool _addJobToMap(std::shared_ptr<JobQuery> const& job);
     std::string _getIncompleteJobsString(int maxToList);
-
-    void _updateProxyMessages();
 
     void _waitAllUntilEmpty();
 

@@ -88,7 +88,7 @@ void UserQueryDrop::submit() {
     } else {
         query = "DROP TABLE " + _dbName + "." + _tableName;
     }
-    qmeta::QInfo qInfo(qType, _qMetaCzarId, user, query, "", "", "", "", "");
+    qmeta::QInfo qInfo(qType, _qMetaCzarId, user, query, "", "", "", "", "", 0);
     qmeta::QMeta::TableNames tableNames;
     QueryId qMetaQueryId = 0;
     try {
@@ -114,19 +114,19 @@ void UserQueryDrop::submit() {
     } catch (css::NoSuchDb const& exc) {
         // Has it disappeared already?
         LOGS(_log, LOG_LVL_ERROR, "database disappeared from CSS");
-        std::string message = "Unknown database " + _dbName;
-        _messageStore->addMessage(-1, 1051, message, MessageSeverity::MSG_ERROR);
+        std::string message = std::string("Unknown database ") + _dbName;
+        _messageStore->addMessage(-1, "CSS", 1051, message, MessageSeverity::MSG_ERROR);
         _qState = ERROR;
     } catch (css::NoSuchTable const& exc) {
         // Has it disappeared already?
         LOGS(_log, LOG_LVL_ERROR, "table disappeared from CSS");
         std::string message = "Unknown table " + _dbName + "." + _tableName;
-        _messageStore->addMessage(-1, 1051, message, MessageSeverity::MSG_ERROR);
+        _messageStore->addMessage(-1, "CSS", 1051, message, MessageSeverity::MSG_ERROR);
         _qState = ERROR;
     } catch (css::CssError const& exc) {
         LOGS(_log, LOG_LVL_ERROR, "CSS failure: " << exc.what());
         std::string message = "CSS error: " + std::string(exc.what());
-        _messageStore->addMessage(-1, 1051, message, MessageSeverity::MSG_ERROR);
+        _messageStore->addMessage(-1, "CSS", 1051, message, MessageSeverity::MSG_ERROR);
         _qState = ERROR;
     }
 
@@ -163,7 +163,7 @@ bool UserQueryDrop::_checkStatus() {
             LOGS(_log, LOG_LVL_DEBUG, "all db status: " << util::printable(statusMap));
             if (statusMap.count(_dbName) != 1) {
                 std::string message = "Unknown database " + _dbName;
-                _messageStore->addMessage(-1, 1051, message, MessageSeverity::MSG_ERROR);
+                _messageStore->addMessage(-1, "CSS", 1051, message, MessageSeverity::MSG_ERROR);
                 _qState = ERROR;
                 return false;
             }
@@ -171,7 +171,7 @@ bool UserQueryDrop::_checkStatus() {
             if (statusMap[_dbName] != css::KEY_STATUS_READY) {
                 std::string message =
                         "Unexpected status for database: " + _dbName + ": " + statusMap[_dbName];
-                _messageStore->addMessage(-1, 1051, message, MessageSeverity::MSG_ERROR);
+                _messageStore->addMessage(-1, "CSS", 1051, message, MessageSeverity::MSG_ERROR);
                 _qState = ERROR;
                 return false;
             }
@@ -181,7 +181,7 @@ bool UserQueryDrop::_checkStatus() {
             LOGS(_log, LOG_LVL_DEBUG, "all table status: " << util::printable(statusMap));
             if (statusMap.count(_tableName) != 1) {
                 std::string message = "Unknown table " + _dbName + "." + _tableName;
-                _messageStore->addMessage(-1, 1051, message, MessageSeverity::MSG_ERROR);
+                _messageStore->addMessage(-1, "CSS", 1051, message, MessageSeverity::MSG_ERROR);
                 _qState = ERROR;
                 return false;
             }
@@ -189,7 +189,7 @@ bool UserQueryDrop::_checkStatus() {
             if (statusMap[_tableName] != css::KEY_STATUS_READY) {
                 std::string message = "Unexpected status for table: " + _dbName + "." + _tableName + ": " +
                                       statusMap[_tableName];
-                _messageStore->addMessage(-1, 1051, message, MessageSeverity::MSG_ERROR);
+                _messageStore->addMessage(-1, "CSS", 1051, message, MessageSeverity::MSG_ERROR);
                 _qState = ERROR;
                 return false;
             }
@@ -197,7 +197,7 @@ bool UserQueryDrop::_checkStatus() {
     } catch (css::CssError const& exc) {
         LOGS(_log, LOG_LVL_ERROR, "css failure: " << exc.what());
         std::string message = "CSS error: " + std::string(exc.what());
-        _messageStore->addMessage(-1, 1051, message, MessageSeverity::MSG_ERROR);
+        _messageStore->addMessage(-1, "CSS", 1051, message, MessageSeverity::MSG_ERROR);
         _qState = ERROR;
         return false;
     }

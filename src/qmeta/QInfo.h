@@ -74,6 +74,8 @@ public:
      *  @param qMerge: Aggregate query to be executed on results table, possibly empty.
      *  @param resultLoc: Location of the query result.
      *  @param msgTableName: Name of the message table.
+     *  @param resultQuery: Result query.
+     *  @param chunkCount: Number of chunks need by the query.
      *  @param qStatus: Query processing status.
      *  @param submitted: Time when query was submitted (seconds since epoch).
      *  @param completed: Time when query finished execution, 0 if not finished.
@@ -81,9 +83,9 @@ public:
      */
     QInfo(QType qType, CzarId czarId, std::string const& user, std::string const& qText,
           std::string const& qTemplate, std::string const& qMerge, std::string const& resultLoc,
-          std::string const& msgTableName, std::string const& resultQuery, QStatus qStatus = EXECUTING,
-          std::time_t submitted = std::time_t(0), std::time_t completed = std::time_t(0),
-          std::time_t returned = std::time_t(0))
+          std::string const& msgTableName, std::string const& resultQuery, int chunkCount,
+          QStatus qStatus = EXECUTING, std::time_t submitted = std::time_t(0),
+          std::time_t completed = std::time_t(0), std::time_t returned = std::time_t(0))
             : _qType(qType),
               _qStatus(qStatus),
               _czarId(czarId),
@@ -94,9 +96,14 @@ public:
               _resultLoc(resultLoc),
               _msgTableName(msgTableName),
               _resultQuery(resultQuery),
+              _chunkCount(chunkCount),
               _submitted(submitted),
               _completed(completed),
               _returned(returned) {}
+
+    // This class requires copying. Defaults are currently sufficient.
+    QInfo(QInfo const&) = default;
+    QInfo& operator=(QInfo const&) = default;
 
     /// Returns query type
     QType queryType() const { return _qType; }
@@ -140,21 +147,25 @@ public:
     /// Return query execution time in seconds
     std::time_t duration() const { return _completed != 0 ? _completed - _submitted : 0; }
 
+    /// Return the number of chunks to be used to answer the query.
+    int chunkCount() const { return _chunkCount; }
+
 private:
-    QType _qType;                // Query type, one of QType constants
-    QStatus _qStatus;            // Query processing status
-    CzarId _czarId;              // Czar ID, non-negative number.
-    std::string _user;           // User name for user who issued the query.
-    std::string _qText;          // Original query text as given by user.
-    std::string _qTemplate;      // Query template used to build per-chunk queries.
-    std::string _qMerge;         // Aggregate query to be executed on results table, possibly empty.
-    std::string _qProxyOrderBy;  // ORDER BY clause for proxy-side SELECT statement, possibly empty.
-    std::string _resultLoc;      // Location of query result, e.g. table:result_12345
-    std::string _msgTableName;   // Name of the message table for this query
-    std::string _resultQuery;    // The query for qserv-proxy to execute to get results.
-    std::time_t _submitted;      // Time when query was submitted (seconds since epoch).
-    std::time_t _completed;      // Time when query finished execution, 0 if not finished.
-    std::time_t _returned;       // Time when query result was sent to client, 0 if not sent yet.
+    QType _qType;                ///< Query type, one of QType constants
+    QStatus _qStatus;            ///< Query processing status
+    CzarId _czarId;              ///< Czar ID, non-negative number.
+    std::string _user;           ///< User name for user who issued the query.
+    std::string _qText;          ///< Original query text as given by user.
+    std::string _qTemplate;      ///< Query template used to build per-chunk queries.
+    std::string _qMerge;         ///< Aggregate query to be executed on results table, possibly empty.
+    std::string _qProxyOrderBy;  ///< ORDER BY clause for proxy-side SELECT statement, possibly empty.
+    std::string _resultLoc;      ///< Location of query result, e.g. table:result_12345
+    std::string _msgTableName;   ///< Name of the message table for this query
+    std::string _resultQuery;    ///< The query for qserv-proxy to execute to get results.
+    int _chunkCount = 0;         ///< Number of chunks in the query.
+    std::time_t _submitted;      ///< Time when query was submitted (seconds since epoch).
+    std::time_t _completed;      ///< Time when query finished execution, 0 if not finished.
+    std::time_t _returned;       ///< Time when query result was sent to client, 0 if not sent yet.
 };
 
 }  // namespace lsst::qserv::qmeta

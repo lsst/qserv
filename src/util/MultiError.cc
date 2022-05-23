@@ -27,7 +27,10 @@
 // System headers
 #include <algorithm>
 #include <iterator>
+#include <map>
 #include <sstream>
+
+using namespace std;
 
 namespace lsst::qserv::util {
 
@@ -42,9 +45,9 @@ std::string MultiError::toOneLineString() const {
     if (!this->empty()) {
         if (this->size() > 1) {
             std::ostream_iterator<Error> string_it(oss, ", ");
-            std::copy(this->begin(), this->end() - 1, string_it);
+            std::copy(_errorVector.begin(), _errorVector.end() - 1, string_it);
         }
-        oss << this->back();
+        oss << _errorVector.back();
     }
     return oss.str();
 }
@@ -53,21 +56,44 @@ bool MultiError::empty() const { return _errorVector.empty(); }
 
 std::vector<Error>::size_type MultiError::size() const { return _errorVector.size(); }
 
-std::vector<Error>::const_iterator MultiError::begin() const { return _errorVector.begin(); }
-
-std::vector<Error>::const_iterator MultiError::end() const { return _errorVector.end(); }
-
-std::vector<Error>::const_reference MultiError::back() const { return _errorVector.back(); }
-
 void MultiError::push_back(const std::vector<Error>::value_type& val) { _errorVector.push_back(val); }
 
 std::ostream& operator<<(std::ostream& out, MultiError const& multiError) {
-    if (!multiError.empty()) {
-        if (multiError.size() > 1) {
-            std::ostream_iterator<Error> string_it(out, "\n");
-            std::copy(multiError.begin(), multiError.end() - 1, string_it);
+    // This string is meant to be provided to end users on a failure, so
+    // there is an attempt made to reduce extraneous information.
+
+    // To get numerous '[0]' entries in the output under control...
+    // Put all errors in a map, and count how many times each occurs.
+    std::map<string, int> errMap;
+    for (auto const& err : multiError._errorVector) {
+        stringstream sstrm;
+        sstrm << err;
+        string errStr = sstrm.str();
+        auto iter = errMap.find(errStr);
+        if (iter == errMap.end()) {
+            errMap[errStr] = 1;
+        } else {
+            iter->second += 1;
         }
-        out << multiError.back();
+    }
+
+    // Write the map to `out`
+    bool firstLoop = true;
+    for (auto const& elem : errMap) {
+        int count = elem.second;
+        if (firstLoop) {
+            firstLoop = false;
+        } else {
+            out << "\n";
+        }
+        out << elem.first;
+        if (count > 1) {
+            out << "   (Occurences = " << count << ")";
+        }
+
+        // Limit this to about 10,000 characters, as that's more than will
+        // likely be useful to end users.
+        if (out.tellp() > 10'000) break;
     }
     return out;
 }

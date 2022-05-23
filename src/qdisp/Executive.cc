@@ -269,7 +269,6 @@ bool Executive::join() {
              "Query execution failed: " << _requestCount << " jobs dispatched, but only " << sCount
                                         << " jobs completed");
     }
-    _updateProxyMessages();
     _empty = (sCount == _requestCount);
     LOGS(_log, LOG_LVL_DEBUG,
          "Flag set to _empty=" << _empty << ", sCount=" << sCount << ", requestCount=" << _requestCount);
@@ -307,7 +306,13 @@ void Executive::markCompleted(int jobId, bool success) {
             lock_guard<recursive_mutex> lockJobMap(_jobMapMtx);
             auto job = _jobMap[jobId];
             string id = job->getIdStr() + "<>" + idStr;
-            job->getStatus()->updateInfo(id, JobStatus::RESULT_ERROR, err.getCode(), err.getMsg());
+            auto jState = job->getStatus()->getInfo().state;
+            // Don't overwrite existing error states.
+            if (jState != JobStatus::CANCEL && jState != JobStatus::RESPONSE_ERROR &&
+                jState != JobStatus::RESULT_ERROR && jState != JobStatus::MERGE_ERROR) {
+                job->getStatus()->updateInfo(id, JobStatus::RESULT_ERROR, "EXECFAIL", err.getCode(),
+                                             err.getMsg());
+            }
         }
         {
             lock_guard<mutex> lock(_errorsMutex);
@@ -506,15 +511,10 @@ string Executive::_getIncompleteJobsString(int maxToList) {
     return os.str();
 }
 
-/** Store job status and execution errors in the current user query message store
- *
- * messageStore will be inserted in message table at the end of czar code
- * and is used to log/report error in mysql-proxy.
- *
- * @see python module lsst.qserv.czar.proxy.unlock()
- */
-void Executive::_updateProxyMessages() {
+void Executive::updateProxyMessages() {
     {
+        // Add all messages to the message store. These will
+        // be used to populate qservMeta.QMessages for this query.
         lock_guard<recursive_mutex> lockJobMap(_jobMapMtx);
         for (auto const& entry : _jobMap) {
             JobQuery::Ptr const& job = entry.second;
@@ -524,14 +524,19 @@ void Executive::_updateProxyMessages() {
             if (!info.stateDesc.empty()) {
                 os << " (" << info.stateDesc << ")";
             }
-            os << " " << info.stateTime;
-            _messageStore->addMessage(job->getDescription()->resource().chunk(), info.state, os.str());
+            os << " " << info.timeStr();
+            _messageStore->addMessage(job->getDescription()->resource().chunk(), info.source, info.state,
+                                      os.str(), info.severity, info.stateTime);
         }
     }
     {
         lock_guard<mutex> lock(_errorsMutex);
+        // If there were any errors, combine them into one string and add that to
+        // the _messageStore. This will be passed to the proxy for the user, if
+        // there's an error.
         if (not _multiError.empty()) {
-            _messageStore->addErrorMessage(_multiError.toString());
+            _messageStore->addErrorMessage("MULTIERROR", _multiError.toString());
+            LOGS(_log, LOG_LVL_INFO, "MULTIERROR:" << _multiError.toString());
         }
     }
 }

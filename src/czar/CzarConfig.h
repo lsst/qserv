@@ -135,6 +135,8 @@ public:
      */
     int getQMetaSecondsBetweenChunkUpdates() const { return _qMetaSecsBetweenChunkCompletionUpdates; }
 
+    int getMaxMsgSourceStore() const { return _maxMsgSourceStore; }
+
     /// Getters for result aggregation options.
     int getMaxTableSizeMB() const { return _maxTableSizeMB; }
     int getMaxSqlConnectionAttempts() const { return _maxSqlConnectionAttempts; }
@@ -186,6 +188,7 @@ private:
     int const _xrootdCBThreadsInit;
     int const _xrootdSpread;
     int const _qMetaSecsBetweenChunkCompletionUpdates;
+    int const _maxMsgSourceStore;  ///< Maximum number of messages to store per msgSource.
     int const _queryDistributionTestVer;
 
     // Parameters for QdispPool configuration

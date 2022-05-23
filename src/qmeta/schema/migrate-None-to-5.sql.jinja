@@ -48,6 +48,9 @@ CREATE TABLE IF NOT EXISTS `QInfo` (
   `messageTable` CHAR(63) NULL COMMENT 'Name of the message table for the ASYNC query',
   `resultLocation` TEXT NULL COMMENT 'Result destination - table name, file name, etc.',
   `resultQuery` MEDIUMTEXT NULL COMMENT 'Query to be used by mysqlproxy to get final results.',
+  `chunkCount` INT NOT NULL COMMENT 'number of chunks needed by the query',
+  `resultBytes` INT DEFAULT 0 COMMENT 'number of bytes in the result',
+  `resultRows` INT DEFAULT 0 COMMENT  'number of rows in the result',
   PRIMARY KEY (`queryId`),
   INDEX `QInfo_czarId_index` (`czarId` ASC),
   CONSTRAINT `QInfo_cid`
@@ -178,10 +181,31 @@ CREATE TABLE IF NOT EXISTS `QMetadata` (
 ENGINE = InnoDB
 COMMENT = 'Metadata about database as a whole, bunch of key-value pairs';
 
+-- -----------------------------------------------------
+-- Table `QMessages`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `QMessages` (
+  `queryId` BIGINT NOT NULL COMMENT 'Query identifier, foreign key into QueryInfo table',
+  `msgSource` VARCHAR(63) NOT NULL COMMENT 'Brief string describing the source PARSE, COMM, WORKER, etc',
+  `chunkId` INT COMMENT 'chunkId',
+  `code` SMALLINT COMMENT 'Error code',
+  `message` MEDIUMTEXT NOT NULL COMMENT 'Message generated while executing queryId',
+  `severity` VARCHAR(256) NOT NULL COMMENT 'severity of the message INFO or ERROR',
+  `timestamp` BIGINT UNSIGNED NOT NULL COMMENT 'time of error message in milliseconds',
+  INDEX `QMessages_qId_idx` (`queryId`),
+  CONSTRAINT `QMessages_qid_fkey`
+    FOREIGN KEY (`queryId`)
+    REFERENCES `QInfo` (`queryId`)
+    ON DELETE CASCADE
+    ON UPDATE CASCADE)
+ENGINE = InnoDB
+COMMENT = 'Table of messages generated during queries.';
+
 -- Update version on every schema change.
 -- Version 0 corresponds to initial QMeta release and it had no
 -- QMetadata table at all.
 -- Version 1 introduced QMetadata table and altered schema for QInfo table
 -- Version 2 added query progress data to ProcessList tables.
 -- Version 3 added storing the result query in QMeta.
-INSERT INTO `QMetadata` (`metakey`, `value`) VALUES ('version', '4');
+INSERT INTO `QMetadata` (`metakey`, `value`) VALUES ('version', '5');
+

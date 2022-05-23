@@ -36,6 +36,7 @@
 #include "qdisp/JobStatus.h"
 
 // System headers
+#include <chrono>
 #include <ctime>
 #include <iostream>
 
@@ -48,16 +49,19 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.qdisp.JobStatus");
 
 namespace lsst::qserv::qdisp {
 
-JobStatus::Info::Info() : state(UNKNOWN), stateCode(0) { stateTime = ::time(NULL); }
+JobStatus::Info::Info() : state(UNKNOWN), stateCode(0) { stateTime = getNow(); }
 
-void JobStatus::updateInfo(std::string const& idMsg, JobStatus::State s, int code, std::string const& desc) {
+void JobStatus::updateInfo(std::string const& idMsg, JobStatus::State s, std::string const& source, int code,
+                           std::string const& desc, MessageSeverity severity) {
     std::lock_guard<std::mutex> lock(_mutex);
 
     LOGS(_log, LOG_LVL_DEBUG, idMsg << " Updating state to: " << s << " code=" << code << " " << desc);
-    _info.stateTime = ::time(NULL);
+    _info.stateTime = getNow();
     _info.state = s;
     _info.stateCode = code;
     _info.stateDesc = desc;
+    _info.source = source;
+    _info.severity = severity;
 }
 
 std::string JobStatus::stateStr(JobStatus::State const& state) {
@@ -102,6 +106,27 @@ std::string JobStatus::stateStr(JobStatus::State const& state) {
     return msg;
 }
 
+JobStatus::TimeType JobStatus::getNow() { return std::chrono::system_clock::now(); }
+
+std::string JobStatus::timeToString(TimeType const& inTime) {
+    const int date_buf_len = sizeof "2011-10-08T07:07:09+0200";
+    char date_buf[date_buf_len];
+    struct tm tmpTm;
+    auto locTime = std::chrono::system_clock::to_time_t(inTime);
+    ::strftime(date_buf, date_buf_len, "%FT%T%z", ::localtime_r(&locTime, &tmpTm));
+    return date_buf;
+}
+
+std::string JobStatus::Info::timeStr() const { return timeToString(stateTime); }
+
+uint64_t JobStatus::timeToInt(TimeType inTime) {
+    auto dur = std::chrono::duration_cast<std::chrono::milliseconds>(inTime.time_since_epoch());
+    uint64_t val = dur.count();
+    return val;
+}
+
+uint64_t JobStatus::Info::timeInt() const { return timeToInt(stateTime); }
+
 std::ostream& operator<<(std::ostream& os, JobStatus::State const& state) {
     os << JobStatus::stateStr(state);
     return os;
@@ -110,15 +135,8 @@ std::ostream& operator<<(std::ostream& os, JobStatus::State const& state) {
 std::ostream& operator<<(std::ostream& os, JobStatus const& jobstatus) { return os << jobstatus.getInfo(); }
 
 std::ostream& operator<<(std::ostream& os, JobStatus::Info const& info) {
-    // At least 26 bytes, according to "man ctime", but might be too small.
-    const int date_buf_len = sizeof "2011-10-08T07:07:09+0200";
-    char date_buf[date_buf_len];
-    struct tm tmp_tm;
-    ::tzset();
-    // localtime_r() is thread-safe
-    ::strftime(date_buf, date_buf_len, "%FT%T%z", ::localtime_r(&info.stateTime, &tmp_tm));
-
-    os << ": " << date_buf << ", " << info.state << ", " << info.stateCode << ", " << info.stateDesc;
+    os << ": " << info.timeStr() << ", " << info.state << ", " << info.source << ", " << info.stateCode
+       << ", " << info.stateDesc << ", " << info.severity;
     return os;
 }
 

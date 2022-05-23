@@ -40,22 +40,25 @@
 
 // Qserv headers
 #include "global/constants.h"
+#include "qdisp/JobStatus.h"
 
 namespace lsst::qserv::qdisp {
 
 struct QueryMessage {
-    QueryMessage(int chunkId_, int code_, std::string description_, std::time_t timestamp_,
-                 MessageSeverity severity_)
+    QueryMessage(int chunkId_, std::string const& msgSource_, int code_, std::string description_,
+                 JobStatus::TimeType timestamp_, MessageSeverity severity_)
             : chunkId(chunkId_),
+              msgSource(msgSource_),
               code(code_),
               description(description_),
               timestamp(timestamp_),
               severity(severity_) {}
 
     int chunkId;
+    std::string msgSource;
     int code;
     std::string description;
-    std::time_t timestamp;
+    JobStatus::TimeType timestamp;
     MessageSeverity severity;
 };
 
@@ -63,7 +66,19 @@ struct QueryMessage {
  *
  * For each SQL query, these messages are stored in a MySQL message table
  * so that mysql-proxy can retrieve it and log it or send error messages
- * to client.
+ * to client. These messages are also stored in QMeta in the QMessages
+ * table.
+ *
+ * `msgSource` is used to help sort the messages into appropriate
+ * categories. "COMPLETE", "MULITERROR", "EXECFAIL", and "CANCEL" are
+ * reserved for specific cases.
+ * "MULTIERROR" - is a combined error message that is placed in the
+ *      messages_# table specific to the query and is sent to the user
+ *      by the proxy. This is not added to QMessages.
+ * "COMPLETE" - indicates that there were no problems with a particular job.
+ * "CANCEL" - indicates the job was cancelled by the system
+ * "EXECFAIL" - indicates that a job has been killed by the executive
+ *      because merging or a different job failed.
  */
 class MessageStore {
 public:
@@ -76,10 +91,11 @@ public:
      * @param code code of the message
      * @param description text of the message
      * @param severity_ message severity level, default to MSG_INFO
+     * @param timestamp milliseconds since the epoch (1970). Default is 0.
      */
-    void addMessage(int chunkId, int code, std::string const& description,
+    void addMessage(int chunkId, std::string const& msgSource, int code, std::string const& description,
                     MessageSeverity severity_ = MessageSeverity::MSG_INFO,
-                    std::time_t timestamp = std::time_t(0));
+                    JobStatus::TimeType timestamp = JobStatus::TimeType());
 
     /** Add an error message to this MessageStore
      *
@@ -91,7 +107,7 @@ public:
      *
      * @param description text of the message
      */
-    void addErrorMessage(std::string const& description);
+    void addErrorMessage(std::string const& msgSource, std::string const& description);
     QueryMessage getMessage(int idx) const;
     int messageCount() const;
     int messageCount(int code) const;

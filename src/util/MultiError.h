@@ -83,12 +83,6 @@ public:
 
     std::vector<Error>::size_type size() const;
 
-    std::vector<Error>::const_iterator begin() const;
-
-    std::vector<Error>::const_iterator end() const;
-
-    std::vector<Error>::const_reference back() const;
-
     void push_back(const std::vector<Error>::value_type& val);
 
 private:
