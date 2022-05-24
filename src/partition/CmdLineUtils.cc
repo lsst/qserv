@@ -128,7 +128,6 @@ void defineInputOptions(po::options_description& opts) {
 }
 
 InputLines const makeInputLines(ConfigStore const& config) {
-    typedef std::vector<std::string>::const_iterator Iter;
     size_t const blockSize = config.get<size_t>("mr.block-size");
     if (blockSize < 1 || blockSize > 1024) {
         throw std::runtime_error(

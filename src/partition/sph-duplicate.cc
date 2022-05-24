@@ -263,8 +263,6 @@ Worker::Worker(ConfigStore const& config)
           // defend against GCC PR21334
           _partIndexDir(dup()._partIndexDir.string().c_str()),
           _indexDir(dup()._indexDir.string().c_str()) {
-    typedef std::vector<std::string>::const_iterator StringIter;
-
     // Extract sampling fraction as well as PNRG seed.
     _seed = config.get<uint64_t>("sample.seed");
     double d = config.get<double>("sample.fraction");

@@ -20,7 +20,6 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-#define BOOST_TEST_DYN_LINK
 #define BOOST_TEST_MODULE FileUtils
 #include "boost/test/unit_test.hpp"
 

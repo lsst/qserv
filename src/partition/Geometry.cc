@@ -37,15 +37,15 @@ namespace {
 
 //  HTM triangles are subdivided into 4 sub-triangles as follows :
 //
-//             v2
-//              *
-//             / \
-//            /   \
-//       sv1 *-----* sv0
-//          / \   / \
-//         /   \ /   \
-//     v0 *-----*-----* v1
-//             sv2
+//             v2             |
+//              *             |
+//             / \            |
+//            /   \           |
+//       sv1 *-----* sv0      |
+//          / \   / \         |
+//         /   \ /   \        |
+//     v0 *-----*-----* v1    |
+//             sv2            |
 //
 //   -  vertices are unit magnitude 3-vectors
 //   -  edges are great circles on the unit sphere

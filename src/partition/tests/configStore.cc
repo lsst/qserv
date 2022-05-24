@@ -18,7 +18,6 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#define BOOST_TEST_DYN_LINK
 #define BOOST_TEST_MODULE ObjectIndex
 #include "boost/test/unit_test.hpp"
 

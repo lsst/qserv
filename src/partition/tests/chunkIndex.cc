@@ -23,7 +23,6 @@
 #include <cmath>
 #include <stdexcept>
 
-#define BOOST_TEST_DYN_LINK
 #define BOOST_TEST_MODULE ChunkIndex
 #include "boost/test/unit_test.hpp"
 
@@ -39,12 +38,6 @@ using std::vector;
 
 using lsst::partition::ChunkIndex;
 using lsst::partition::ChunkLocation;
-
-namespace {
-bool operator==(ChunkIndex::Entry const& e1, ChunkIndex::Entry const& e2) {
-    return e1.numRecords == e2.numRecords;
-}
-}  // namespace
 
 BOOST_AUTO_TEST_CASE(ChunkIndexTest) {
     ChunkIndex idx;

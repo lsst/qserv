@@ -23,7 +23,6 @@
 #include <stdio.h>
 #include <string.h>
 
-#define BOOST_TEST_DYN_LINK
 #define BOOST_TEST_MODULE MapReduce
 #include "boost/test/unit_test.hpp"
 

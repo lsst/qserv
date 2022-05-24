@@ -310,9 +310,6 @@ public:
             uint32_t id;
             is >> htm;
             is >> id;
-
-            if (id < 0) throw new std::range_error("illegal value found in the htmIdMap");
-
             _maxId[htm] = id;
         }
     }
