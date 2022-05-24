@@ -1,0 +1,46 @@
+{
+    "id": "refObjectId",
+    "part": {
+        "pos": "ra, decl",
+        "overlap": 0.01667
+    },
+    "out": {
+        "csv": {
+            "null": "\\N",
+            "delimiter": "\t",
+            "escape": "\\",
+            "no-quote": true
+        }
+    },
+    "in": {
+        "csv": {
+            "field": [
+                "refObjectId",
+                "isStar",
+                "ra",
+                "decl",
+                "gLat",
+                "gLon",
+                "sedName",
+                "uMag",
+                "gMag",
+                "rMag",
+                "iMag",
+                "zMag",
+                "yMag",
+                "muRa",
+                "muDecl",
+                "parallax",
+                "vRad",
+                "isVar",
+                "redshift",
+                "uCov",
+                "gCov",
+                "rCov",
+                "iCov",
+                "zCov",
+                "yCov"
+            ]
+        }
+    }
+}

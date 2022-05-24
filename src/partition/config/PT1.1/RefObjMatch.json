@@ -1,0 +1,47 @@
+{
+    "part": {
+        "pos1": "ra1, dec1",
+        "pos2": "ra2, dec2",
+        "flags": "partitioningFlags"
+    },
+    "in": {
+        "csv": {
+            "field": [
+                "refObjectId",
+                "objectId",
+                "refRa",
+                "refDec",
+                "angSep",
+                "nRefMatches",
+                "nObjMatches",
+                "closestToRef",
+                "closestToObj",
+                "flags",
+                "ra1",
+                "dec1",
+                "ra2",
+                "dec2"
+            ]
+        }
+    },
+    "out": {
+        "csv": {
+            "null": "\\N",
+            "delimiter": "\t",
+            "escape": "\\",
+            "no-quote": true,
+            "field": [
+                "refObjectId",
+                "objectId",
+                "refRa",
+                "refDec",
+                "angSep",
+                "nRefMatches",
+                "nObjMatches",
+                "closestToRef",
+                "closestToObj",
+                "flags"
+            ]
+        }
+    }
+}

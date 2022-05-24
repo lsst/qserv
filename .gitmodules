@@ -4,6 +4,3 @@
 [submodule "extern/log"]
 	path = extern/log
 	url = ../../lsst/log
-[submodule "extern/partition"]
-	path = extern/partition
-	url = ../../lsst/partition

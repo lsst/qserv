@@ -40,8 +40,8 @@
 #include "replica/ServiceProvider.h"
 
 // LSST headers
-#include "lsst/partition/Chunker.h"
-#include "lsst/partition/Geometry.h"
+#include "partition/Chunker.h"
+#include "partition/Geometry.h"
 #include "lsst/sphgeom/Chunker.h"
 
 using namespace std;

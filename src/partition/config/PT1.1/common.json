@@ -1,0 +1,11 @@
+{
+    "htm": {
+        "level": 8
+    },
+    "part": {
+        "num-stripes": 85,
+        "num-sub-stripes": 12,
+        "chunk": "chunkId",
+        "sub-chunk": "subChunkId"
+    }
+}
