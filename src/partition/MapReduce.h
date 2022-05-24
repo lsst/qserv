@@ -47,7 +47,7 @@
 #include "partition/Csv.h"
 #include "partition/InputLines.h"
 
-namespace lsst { namespace partition {
+namespace lsst::partition {
 
 /// A line of CSV formatted text at most MAX_LINE_SIZE characters long
 /// and a key of copy-constructible and less-than comparable type K.
@@ -728,6 +728,6 @@ public:
     explicit Job(ConfigStore const &config) : detail::JobImpl<WorkerT, typename WorkerT::Result>(config) {}
 };
 
-}}  // namespace lsst::partition
+}  // namespace lsst::partition
 
 #endif  // LSST_PARTITION_PROCESSINGFRAMEWORK_H

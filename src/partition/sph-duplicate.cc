@@ -47,7 +47,7 @@
 namespace fs = boost::filesystem;
 namespace po = boost::program_options;
 
-namespace lsst { namespace partition {
+namespace lsst::partition {
 
 class Worker;
 
@@ -588,7 +588,7 @@ boost::shared_ptr<ChunkIndex> const Duplicator::run(ConfigStore const& config) {
     return chunkIndex;
 }
 
-}}  // namespace lsst::partition
+}  // namespace lsst::partition
 
 static char const* help =
         "The spherical data duplicator generates partitioned data from an HTM index\n"

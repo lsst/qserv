@@ -42,11 +42,11 @@
 
 #include "Constants.h"
 
-namespace lsst { namespace partition {
+namespace lsst::partition {
 class ConfigStore;
-}}  // namespace lsst::partition
+}  // namespace lsst::partition
 
-namespace lsst { namespace partition { namespace csv {
+namespace lsst::partition::csv {
 
 /// A description of a CSV dialect. The following assumptions must hold:
 ///
@@ -364,6 +364,6 @@ inline std::string Editor::get<std::string>(int i) const {
     return get(i, true);
 }
 
-}}}  // namespace lsst::partition::csv
+}  // namespace lsst::partition::csv
 
 #endif  // LSST_PARTITION_CSV_CSV_H

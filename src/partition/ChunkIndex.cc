@@ -36,7 +36,7 @@
 
 namespace fs = boost::filesystem;
 
-namespace lsst { namespace partition {
+namespace lsst::partition {
 
 void ChunkIndex::Stats::clear() {
     n = 0;
@@ -344,4 +344,4 @@ void ChunkIndex::_computeStats() const {
     _modified = false;
 }
 
-}}  // namespace lsst::partition
+}  // namespace lsst::partition

@@ -33,11 +33,11 @@
 #include "FileUtils.h"
 #include "MapReduce.h"
 
-namespace lsst { namespace partition {
+namespace lsst::partition {
 class ConfigStore;
-}}  // namespace lsst::partition
+}  // namespace lsst::partition
 
-namespace lsst { namespace partition {
+namespace lsst::partition {
 
 /// Worker base class for the partitioner and duplicator which implements the
 /// reduction related half of the map-reduce API.
@@ -73,6 +73,6 @@ private:
     BufferedAppender _overlapChunkAppender;
 };
 
-}}  // namespace lsst::partition
+}  // namespace lsst::partition
 
 #endif  // LSST_PARTITION_CHUNKREDUCER_H

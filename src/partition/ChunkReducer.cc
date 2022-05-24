@@ -34,7 +34,7 @@
 namespace fs = boost::filesystem;
 namespace po = boost::program_options;
 
-namespace lsst { namespace partition {
+namespace lsst::partition {
 
 ChunkReducer::ChunkReducer(ConfigStore const& config)
         : _index(boost::make_shared<ChunkIndex>()),
@@ -103,4 +103,4 @@ void ChunkReducer::_makeFilePaths(int32_t chunkId) {
     _overlapChunkPath = p / (_prefix + suffix);
 }
 
-}}  // namespace lsst::partition
+}  // namespace lsst::partition

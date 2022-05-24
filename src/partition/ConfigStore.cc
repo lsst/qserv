@@ -33,7 +33,7 @@
 using namespace std;
 using json = nlohmann::json;
 
-namespace lsst { namespace partition {
+namespace lsst::partition {
 
 ConfigStore::ConfigStore(json const& config) : _config(json::object()) {
     string const context = "ConfigStore::" + string(__func__) + ": ";
@@ -131,4 +131,4 @@ json const& ConfigStore::_get(string const& path) const {
     return _config[pointer];
 }
 
-}}  // namespace lsst::partition
+}  // namespace lsst::partition

@@ -29,7 +29,7 @@
 
 namespace po = boost::program_options;
 
-namespace lsst { namespace partition {
+namespace lsst::partition {
 
 int segments(double latMin, double latMax, double width) {
     double lat = std::max(std::fabs(latMin), std::fabs(latMax));
@@ -363,4 +363,4 @@ void Chunker::_upDownOverlap(double lon, int32_t chunkId, int32_t stripe, int32_
     }
 }
 
-}}  // namespace lsst::partition
+}  // namespace lsst::partition

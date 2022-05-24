@@ -36,7 +36,7 @@
 namespace fs = boost::filesystem;
 namespace po = boost::program_options;
 
-namespace lsst { namespace partition {
+namespace lsst::partition {
 
 FieldNameResolver::~FieldNameResolver() { _editor = 0; }
 
@@ -240,4 +240,4 @@ std::vector<int32_t> const chunksToDuplicate(Chunker const& chunker, ConfigStore
     return chunker.getChunksIn(region, node, numNodes);
 }
 
-}}  // namespace lsst::partition
+}  // namespace lsst::partition

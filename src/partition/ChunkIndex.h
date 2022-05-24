@@ -37,7 +37,7 @@
 
 #include "Chunker.h"
 
-namespace lsst { namespace partition {
+namespace lsst::partition {
 
 /// A chunk index tracks how many records and overlap records are in each
 /// chunk and sub-chunk of a partitioned input data set. It also provides
@@ -202,6 +202,6 @@ inline std::ostream& operator<<(std::ostream& os, ChunkIndex const& idx) {
     return os;
 }
 
-}}  // namespace lsst::partition
+}  // namespace lsst::partition
 
 #endif  // LSST_PARTITION_CHUNKINDEX_H

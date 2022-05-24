@@ -37,11 +37,11 @@
 #include "Csv.h"
 #include "InputLines.h"
 
-namespace lsst { namespace partition {
+namespace lsst::partition {
 class ConfigStore;
-}}  // namespace lsst::partition
+}  // namespace lsst::partition
 
-namespace lsst { namespace partition {
+namespace lsst::partition {
 
 /// Helper class for mapping field names to indexes. The `resolve` method
 /// checks that a field exists, and optionally that the field name has not
@@ -100,6 +100,6 @@ void ensureOutputFieldExists(ConfigStore& config, std::string const& opt);
 /// the record count must be estimated.
 std::vector<int32_t> const chunksToDuplicate(Chunker const& chunker, ConfigStore const& config);
 
-}}  // namespace lsst::partition
+}  // namespace lsst::partition
 
 #endif  // LSST_PARTITION_CMDLINEUTILS_H

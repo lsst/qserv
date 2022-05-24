@@ -31,7 +31,7 @@
 
 namespace bmc = boost::math::constants;
 
-namespace lsst { namespace partition {
+namespace lsst::partition {
 
 namespace {
 
@@ -888,4 +888,4 @@ void SphericalBox::_findIds(std::vector<uint32_t> &ids,  // Storage for overlapp
     _findIds(ids, id * 4 + 3, level - 1, mChild);
 }
 
-}}  // namespace lsst::partition
+}  // namespace lsst::partition

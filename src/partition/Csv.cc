@@ -35,7 +35,7 @@
 
 namespace po = boost::program_options;
 
-namespace lsst { namespace partition { namespace csv {
+namespace lsst::partition::csv {
 
 // -- Dialect implementation ----
 
@@ -892,4 +892,4 @@ SPECIALIZE_GET_FP(double, d)
 #undef SPECIALIZE_GET_INT
 #undef SPECIALIZE_GET_FP
 
-}}}  // namespace lsst::partition::csv
+}  // namespace lsst::partition::csv

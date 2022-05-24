@@ -34,7 +34,7 @@
 #include "boost/filesystem.hpp"
 #include "boost/unordered_map.hpp"
 
-namespace lsst { namespace partition {
+namespace lsst::partition {
 
 /// An HTM index tracks how many records of an input data set are contained
 /// in all HTM triangles of a given subdivision level L. It also provides a
@@ -119,6 +119,6 @@ inline std::ostream& operator<<(std::ostream& os, HtmIndex const& idx) {
     return os;
 }
 
-}}  // namespace lsst::partition
+}  // namespace lsst::partition
 
 #endif  // LSST_PARTITION_HTMINDEX_H

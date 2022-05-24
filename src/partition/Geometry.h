@@ -36,7 +36,7 @@
 #include "Constants.h"
 #include "Vector.h"
 
-namespace lsst { namespace partition {
+namespace lsst::partition {
 
 /// Clamp `lon` to be at most 360 degrees. Any input satisfying
 ///
@@ -276,6 +276,6 @@ private:
     double _latMax;
 };
 
-}}  // namespace lsst::partition
+}  // namespace lsst::partition
 
 #endif  // LSST_PARTITION_GEOMETRY_H

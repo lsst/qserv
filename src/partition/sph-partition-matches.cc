@@ -69,7 +69,7 @@
 namespace fs = boost::filesystem;
 namespace po = boost::program_options;
 
-namespace lsst { namespace partition {
+namespace lsst::partition {
 
 /// Map-reduce worker class for partitioning spatial match pairs.
 ///
@@ -279,7 +279,7 @@ void Worker::_openFile(int32_t chunkId) {
 
 typedef Job<Worker> PartitionMatchesJob;
 
-}}  // namespace lsst::partition
+}  // namespace lsst::partition
 
 static char const* help =
         "The match partitioner partitions one or more input CSV files in\n"

@@ -38,12 +38,12 @@
 #include "partition/Csv.h"
 
 // Forward declarations
-namespace lsst { namespace partition {
+namespace lsst::partition {
 class ChunkLocation;
-}}  // namespace lsst::partition
+}  // namespace lsst::partition
 
 // This header declarations
-namespace lsst { namespace partition {
+namespace lsst::partition {
 
 /**
  * Class ObjectIndex is a singleton serving as a front-end to a specific implementation of
@@ -175,6 +175,6 @@ private:
     std::ofstream _outFile;
 };
 
-}}  // namespace lsst::partition
+}  // namespace lsst::partition
 
 #endif  // LSST_PARTITION_OBJECTINDEX_H

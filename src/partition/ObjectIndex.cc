@@ -32,7 +32,7 @@
 
 using namespace std;
 
-namespace lsst { namespace partition {
+namespace lsst::partition {
 
 ObjectIndex::~ObjectIndex() { close(); }
 
@@ -165,4 +165,4 @@ pair<int32_t, int32_t> ObjectIndex::read(string const& id) {
     return itr->second;
 }
 
-}}  // namespace lsst::partition
+}  // namespace lsst::partition

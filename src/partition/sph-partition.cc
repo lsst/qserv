@@ -46,7 +46,7 @@
 namespace fs = boost::filesystem;
 namespace po = boost::program_options;
 
-namespace lsst { namespace partition {
+namespace lsst::partition {
 
 class Worker : public ChunkReducer {
 public:
@@ -189,7 +189,7 @@ void Worker::defineOptions(po::options_description& opts) {
 
 typedef Job<Worker> PartitionJob;
 
-}}  // namespace lsst::partition
+}  // namespace lsst::partition
 
 static char const* help =
         "The spherical partitioner partitions one or more input CSV files in\n"

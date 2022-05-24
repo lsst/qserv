@@ -33,7 +33,7 @@
 #include "boost/filesystem.hpp"
 #include "boost/shared_ptr.hpp"
 
-namespace lsst { namespace partition {
+namespace lsst::partition {
 
 /// The InputLines class reads lines from a list of input text files in an IO
 /// efficient and parallel way. Each file is split up into blocks, where all
@@ -94,6 +94,6 @@ private:
     boost::shared_ptr<Impl> _impl;
 };
 
-}}  // namespace lsst::partition
+}  // namespace lsst::partition
 
 #endif  // LSST_PARTITION_INPUTLINES_H

@@ -47,7 +47,7 @@
 namespace fs = boost::filesystem;
 namespace po = boost::program_options;
 
-namespace lsst { namespace partition {
+namespace lsst::partition {
 
 /// An ID extracted from a CSV record, along with the HTM ID
 /// of the associated partitioning position.
@@ -227,7 +227,7 @@ void Worker::_openFiles(uint32_t htmId) {
 
 typedef Job<Worker> HtmIndexJob;
 
-}}  // namespace lsst::partition
+}  // namespace lsst::partition
 
 static char const* help =
         "The spherical HTM indexer indexes one or more input CSV files in\n"

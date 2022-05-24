@@ -35,7 +35,7 @@
 namespace fs = boost::filesystem;
 namespace this_thread = boost::this_thread;
 
-namespace lsst { namespace partition {
+namespace lsst::partition {
 
 namespace {
 
@@ -295,4 +295,4 @@ CharPtrPair const InputLines::read(char *buf) {
     return CharPtrPair(static_cast<char *>(0), static_cast<char *>(0));
 }
 
-}}  // namespace lsst::partition
+}  // namespace lsst::partition

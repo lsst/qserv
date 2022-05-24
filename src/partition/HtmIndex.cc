@@ -35,7 +35,7 @@
 
 namespace fs = boost::filesystem;
 
-namespace lsst { namespace partition {
+namespace lsst::partition {
 
 HtmIndex::HtmIndex(int level) : _numRecords(0), _map(), _keys(), _level(level) {
     if (level < 0 || level > HTM_MAX_LEVEL) {
@@ -194,4 +194,4 @@ void HtmIndex::_read(fs::path const& path) {
     }
 }
 
-}}  // namespace lsst::partition
+}  // namespace lsst::partition

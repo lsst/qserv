@@ -43,7 +43,7 @@
 namespace fs = boost::filesystem;
 namespace po = boost::program_options;
 
-namespace lsst { namespace partition {
+namespace lsst::partition {
 
 void defineOptions(po::options_description& opts) {
     po::options_description dup("\\________________ Duplication", 80);
@@ -157,7 +157,7 @@ boost::shared_ptr<ChunkIndex> const estimateStats(ConfigStore const& config) {
     return estimateStats(chunks, chunker, *index, *partIndex);
 }
 
-}}  // namespace lsst::partition
+}  // namespace lsst::partition
 
 static char const* help =
         "The spherical duplication statistics estimator estimates the row count\n"

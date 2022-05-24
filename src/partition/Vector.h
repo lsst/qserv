@@ -33,7 +33,7 @@
 
 #include <cmath>
 
-namespace lsst { namespace partition {
+namespace lsst::partition {
 
 /// A 3-component column vector.
 class Vector3d {
@@ -154,6 +154,6 @@ private:
     Vector3d _col[3];  ///< Matrix columns.
 };
 
-}}  // namespace lsst::partition
+}  // namespace lsst::partition
 
 #endif  // LSST_PARTITION_VECTOR_H

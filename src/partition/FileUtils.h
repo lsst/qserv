@@ -32,7 +32,7 @@
 #include "boost/filesystem.hpp"
 #include "boost/static_assert.hpp"
 
-namespace lsst { namespace partition {
+namespace lsst::partition {
 
 /// An input file. Safe for use from multiple threads.
 class InputFile {
@@ -159,6 +159,6 @@ inline uint64_t decode<uint64_t>(uint8_t const *buf) {
            (static_cast<uint64_t>(buf[6]) << 48) | (static_cast<uint64_t>(buf[7]) << 56);
 }
 
-}}  // namespace lsst::partition
+}  // namespace lsst::partition
 
 #endif  // LSST_PARTITION_FILEUTILS_H

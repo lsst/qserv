@@ -45,7 +45,7 @@
 #define CACHE_LINE_SIZE 64
 #endif
 
-namespace lsst { namespace partition {
+namespace lsst::partition {
 
 size_t const MiB = 1024 * 1024;
 size_t const GiB = 1024 * MiB;
@@ -57,6 +57,6 @@ double const EPSILON_DEG = 0.001 / 3600;                       ///< 1 mas
 /// Maximum HTM subdivision level such that an ID requires less than 32 bits.
 int const HTM_MAX_LEVEL = 13;
 
-}}  // namespace lsst::partition
+}  // namespace lsst::partition
 
 #endif  // LSST_PARTITION_CONSTANTS_H

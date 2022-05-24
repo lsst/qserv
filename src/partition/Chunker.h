@@ -37,11 +37,11 @@
 #include "Geometry.h"
 #include "Hash.h"
 
-namespace lsst { namespace partition {
+namespace lsst::partition {
 class ConfigStore;
-}}  // namespace lsst::partition
+}  // namespace lsst::partition
 
-namespace lsst { namespace partition {
+namespace lsst::partition {
 
 /// Compute the number of segments to divide the given latitude angle range
 /// (stripe) into. Two points in the latitude range separated by at least
@@ -174,6 +174,6 @@ private:
     boost::scoped_array<double> _alpha;
 };
 
-}}  // namespace lsst::partition
+}  // namespace lsst::partition
 
 #endif  // LSST_PARTITION_CHUNKER_H

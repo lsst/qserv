@@ -33,7 +33,7 @@
 #include "boost/program_options.hpp"
 #include "nlohmann/json.hpp"
 
-namespace lsst { namespace partition {
+namespace lsst::partition {
 /**
  * Objects of class ConfigTypeError are thrown when a client is attempting
  * incorrect types in the parameter type conversion.
@@ -42,9 +42,9 @@ class ConfigTypeError : public std::logic_error {
 public:
     using std::logic_error::logic_error;
 };
-}}  // namespace lsst::partition
+}  // namespace lsst::partition
 
-namespace lsst { namespace partition { namespace detail {
+namespace lsst::partition::detail {
 /**
  * Class Value is a utility class for type-safe conversion of parameters into
  * values of desired types.
@@ -113,9 +113,9 @@ public:
         }
     }
 };
-}}}  // namespace lsst::partition::detail
+}  // namespace lsst::partition::detail
 
-namespace lsst { namespace partition {
+namespace lsst::partition {
 /**
  * Class ConfigStore is a unified transient storage of the configuration parameters read
  * from the configuration files or command-line parameters.
@@ -276,6 +276,6 @@ private:
     /// Parameter storage
     nlohmann::json _config = nlohmann::json::object();
 };
-}}  // namespace lsst::partition
+}  // namespace lsst::partition
 
 #endif  // LSST_PARTITION_CONFIG_H
