@@ -33,8 +33,7 @@
 using namespace std;
 using json = nlohmann::json;
 
-namespace lsst {
-namespace partition {
+namespace lsst { namespace partition {
 
 ConfigStore::ConfigStore(json const& config) : _config(json::object()) {
     string const context = "ConfigStore::" + string(__func__) + ": ";
@@ -42,7 +41,6 @@ ConfigStore::ConfigStore(json const& config) : _config(json::object()) {
     if (!config.is_object()) throw invalid_argument(context + "config is not a valid JSON object");
     _config = config;
 }
-
 
 void ConfigStore::parse(string const& filename) {
     string const context = "ConfigStore::" + string(__func__) + ": ";
@@ -52,12 +50,11 @@ void ConfigStore::parse(string const& filename) {
     json config;
     try {
         file >> config;
-    } catch(...) {
+    } catch (...) {
         throw runtime_error(context + "file: '" + filename + "' doesn't have a valid JSON payload");
     }
     add(config);
 }
-
 
 void ConfigStore::add(json const& config) {
     string const context = "ConfigStore::" + string(__func__) + "(json): ";
@@ -66,10 +63,9 @@ void ConfigStore::add(json const& config) {
     _config.merge_patch(config);
 }
 
-
 void ConfigStore::add(boost::program_options::variables_map const& vm) {
     string const context = "ConfigStore::" + string(__func__) + "(boost::program_options): ";
-    for (auto&& e: vm) {
+    for (auto&& e : vm) {
         string const& path = e.first;
         // Interpret empty parameters as boolean flags
         if (e.second.empty()) {
@@ -98,24 +94,18 @@ void ConfigStore::add(boost::program_options::variables_map const& vm) {
         } else if (e.second.value().type() == typeid(double)) {
             set<double>(path, e.second.as<double>());
         } else {
-            throw ConfigTypeError(
-                context + "command-line parameter '" + path + "' has unsupported type: '"
-                + boost::core::demangle(e.second.value().type().name()) + "'");
+            throw ConfigTypeError(context + "command-line parameter '" + path + "' has unsupported type: '" +
+                                  boost::core::demangle(e.second.value().type().name()) + "'");
         }
     }
 }
 
-
-bool ConfigStore::has(string const& path) const {
-    return _config.contains(_path2pointer(path));
-}
-
+bool ConfigStore::has(string const& path) const { return _config.contains(_path2pointer(path)); }
 
 bool ConfigStore::flag(std::string const& path) const {
     if (!has(path)) return false;
     return get<bool>(path);
 }
-
 
 json::json_pointer ConfigStore::_path2pointer(string const& path) {
     string const context = "ConfigStore::" + string(__func__) + ": ";
@@ -126,12 +116,11 @@ json::json_pointer ConfigStore::_path2pointer(string const& path) {
         pointer.push_back(elem);
     }
     if (pointer.empty()) {
-        throw invalid_argument(
-                context + "path '" + path + "' can\'t be translated into a valid JSON pointer");
+        throw invalid_argument(context + "path '" + path +
+                               "' can\'t be translated into a valid JSON pointer");
     }
     return pointer;
 }
-
 
 json const& ConfigStore::_get(string const& path) const {
     string const context = "ConfigStore::" + string(__func__) + ": ";
@@ -142,4 +131,4 @@ json const& ConfigStore::_get(string const& path) const {
     return _config[pointer];
 }
 
-}} // namespace lsst::partition
+}}  // namespace lsst::partition

@@ -33,16 +33,16 @@
 
 namespace fs = boost::filesystem;
 
+using lsst::partition::HTM_MAX_LEVEL;
+using lsst::partition::HtmIndex;
 using std::exception;
 using std::vector;
-using lsst::partition::HtmIndex;
-using lsst::partition::HTM_MAX_LEVEL;
 
 BOOST_AUTO_TEST_CASE(HtmIndexTest) {
     BOOST_CHECK_THROW(HtmIndex(-1), exception);
     BOOST_CHECK_THROW(HtmIndex(HTM_MAX_LEVEL + 1), exception);
     HtmIndex idx(HTM_MAX_LEVEL);
-    uint32_t id = static_cast<uint32_t>(0x8) << (2*HTM_MAX_LEVEL);
+    uint32_t id = static_cast<uint32_t>(0x8) << (2 * HTM_MAX_LEVEL);
     BOOST_CHECK_EQUAL(idx.size(), 0u);
     BOOST_CHECK(idx.empty());
     BOOST_CHECK_EQUAL(idx.getLevel(), HTM_MAX_LEVEL);

@@ -35,36 +35,17 @@
 
 namespace fs = boost::filesystem;
 
+namespace lsst { namespace partition {
 
-namespace lsst {
-namespace partition {
-
-HtmIndex::HtmIndex(int level) :
-    _numRecords(0),
-    _map(),
-    _keys(),
-    _level(level)
-{
+HtmIndex::HtmIndex(int level) : _numRecords(0), _map(), _keys(), _level(level) {
     if (level < 0 || level > HTM_MAX_LEVEL) {
         throw std::runtime_error("Invalid HTM subdivision level.");
     }
 }
 
-HtmIndex::HtmIndex(fs::path const & path) :
-    _numRecords(0),
-    _map(),
-    _keys(),
-    _level(-1)
-{
-    _read(path);
-}
+HtmIndex::HtmIndex(fs::path const& path) : _numRecords(0), _map(), _keys(), _level(-1) { _read(path); }
 
-HtmIndex::HtmIndex(std::vector<fs::path> const & paths) :
-    _numRecords(0),
-    _map(),
-    _keys(),
-    _level(-1)
-{
+HtmIndex::HtmIndex(std::vector<fs::path> const& paths) : _numRecords(0), _map(), _keys(), _level(-1) {
     typedef std::vector<fs::path>::const_iterator Iter;
     if (paths.empty()) {
         throw std::runtime_error("Empty HTM index file list.");
@@ -74,14 +55,10 @@ HtmIndex::HtmIndex(std::vector<fs::path> const & paths) :
     }
 }
 
-HtmIndex::HtmIndex(HtmIndex const & idx) :
-    _numRecords(idx._numRecords),
-    _map(idx._map),
-    _keys(idx._keys),
-    _level(idx._level)
-{ }
+HtmIndex::HtmIndex(HtmIndex const& idx)
+        : _numRecords(idx._numRecords), _map(idx._map), _keys(idx._keys), _level(idx._level) {}
 
-HtmIndex::~HtmIndex() { }
+HtmIndex::~HtmIndex() {}
 
 uint32_t HtmIndex::mapToNonEmpty(uint32_t id) const {
     if (_map.empty()) {
@@ -102,10 +79,10 @@ uint32_t HtmIndex::mapToNonEmpty(uint32_t id) const {
     return _keys[hash(id) % _keys.size()];
 }
 
-void HtmIndex::write(fs::path const & path, bool truncate) const {
-    size_t const numBytes = _map.size()*ENTRY_SIZE;
+void HtmIndex::write(fs::path const& path, bool truncate) const {
+    size_t const numBytes = _map.size() * ENTRY_SIZE;
     boost::scoped_array<uint8_t> buf(new uint8_t[numBytes]);
-    uint8_t * b = buf.get();
+    uint8_t* b = buf.get();
     // Write out array of (HTM ID, record count) pairs.
     for (Map::const_iterator i = _map.begin(), e = _map.end(); i != e; ++i) {
         b = encode(b, i->first);
@@ -115,7 +92,7 @@ void HtmIndex::write(fs::path const & path, bool truncate) const {
     f.append(buf.get(), numBytes);
 }
 
-void HtmIndex::write(std::ostream & os) const {
+void HtmIndex::write(std::ostream& os) const {
     typedef std::vector<std::pair<uint32_t, uint64_t> >::const_iterator Iter;
     // Extract non-empty triangles and sort them by HTM ID.
     std::vector<std::pair<uint32_t, uint64_t> > tris;
@@ -126,23 +103,24 @@ void HtmIndex::write(std::ostream & os) const {
     std::sort(tris.begin(), tris.end());
     // Pretty-print the index in JSON format.
     os << "{\n"
-          "\"nrec\":      " << _numRecords << ",\n"
+          "\"nrec\":      "
+       << _numRecords
+       << ",\n"
           "\"triangles\": [\n";
     for (Iter b = tris.begin(), e = tris.end(), i = b; i != e; ++i) {
         if (i != b) {
             os << ",\n";
         }
-        os << "\t{\"id\":"   << std::setw(10) << i->first
-           << ", \"nrec\":"  << std::setw(8)  << i->second
-           << "}";
+        os << "\t{\"id\":" << std::setw(10) << i->first << ", \"nrec\":" << std::setw(8) << i->second << "}";
     }
     os << "\n]\n}";
 }
 
 void HtmIndex::add(uint32_t id, uint64_t numRecords) {
     if (htmLevel(id) != _level) {
-        throw std::runtime_error("HTM ID is invalid or has an inconsistent "
-                                 "subdivision level.");
+        throw std::runtime_error(
+                "HTM ID is invalid or has an inconsistent "
+                "subdivision level.");
     }
     if (numRecords > 0) {
         _keys.clear();
@@ -151,7 +129,7 @@ void HtmIndex::add(uint32_t id, uint64_t numRecords) {
     }
 }
 
-void HtmIndex::merge(HtmIndex const & idx) {
+void HtmIndex::merge(HtmIndex const& idx) {
     if (this == &idx) {
         return;
     }
@@ -159,8 +137,7 @@ void HtmIndex::merge(HtmIndex const & idx) {
         throw std::runtime_error("HTM index subdivision levels do not match.");
     }
     _keys.clear();
-    for (Map::const_iterator i = idx._map.begin(), e = idx._map.end();
-         i != e; ++i) {
+    for (Map::const_iterator i = idx._map.begin(), e = idx._map.end(); i != e; ++i) {
         _map[i->first] += i->second;
         _numRecords += i->second;
     }
@@ -172,7 +149,7 @@ void HtmIndex::clear() {
     _keys.clear();
 }
 
-void HtmIndex::swap(HtmIndex & idx) {
+void HtmIndex::swap(HtmIndex& idx) {
     using std::swap;
     if (this != &idx) {
         swap(_numRecords, idx._numRecords);
@@ -182,15 +159,15 @@ void HtmIndex::swap(HtmIndex & idx) {
     }
 }
 
-void HtmIndex::_read(fs::path const & path) {
+void HtmIndex::_read(fs::path const& path) {
     InputFile f(path);
     if (f.size() == 0 || f.size() % ENTRY_SIZE != 0) {
         throw std::runtime_error("Invalid HTM index file.");
     }
     boost::scoped_array<uint8_t> data(new uint8_t[f.size()]);
     f.read(data.get(), 0, f.size());
-    uint8_t const * b = data.get();
-    off_t const numTriangles = f.size()/ENTRY_SIZE;
+    uint8_t const* b = data.get();
+    off_t const numTriangles = f.size() / ENTRY_SIZE;
     _keys.clear();
     // Read array of (HTM ID, record count) pairs.
     for (off_t i = 0; i < numTriangles; ++i, b += ENTRY_SIZE) {
@@ -203,16 +180,18 @@ void HtmIndex::_read(fs::path const & path) {
         if (_level < 0) {
             _level = level;
         } else if (level != _level) {
-            throw std::runtime_error("HTM index subdivision levels do not "
-                                     "match.");
+            throw std::runtime_error(
+                    "HTM index subdivision levels do not "
+                    "match.");
         }
         if (numRecords == 0) {
-            throw std::runtime_error("HTM index file contains an empty "
-                                     "triangle.");
+            throw std::runtime_error(
+                    "HTM index file contains an empty "
+                    "triangle.");
         }
         _map[id] += numRecords;
         _numRecords += numRecords;
     }
 }
 
-}} // namespace lsst::partition
+}}  // namespace lsst::partition

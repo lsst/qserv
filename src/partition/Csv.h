@@ -42,15 +42,11 @@
 
 #include "Constants.h"
 
-namespace lsst {
-namespace partition {
-    class ConfigStore;
-}} // namespace lsst::partition
+namespace lsst { namespace partition {
+class ConfigStore;
+}}  // namespace lsst::partition
 
-namespace lsst {
-namespace partition {
-
-namespace csv {
+namespace lsst { namespace partition { namespace csv {
 
 /// A description of a CSV dialect. The following assumptions must hold:
 ///
@@ -100,55 +96,46 @@ public:
     /// Create a dialect with an explicit NULL string.
     /// To disable quoting, specify '\0' as the quote character. To disable
     /// escaping, specify '\0' as the escape character.
-    Dialect(std::string const & null,
-            char delimiter,
-            char escape,
-            char quote);
+    Dialect(std::string const &null, char delimiter, char escape, char quote);
 
     /// Create a dialect. The NULL string is set to "NULL" if quoting
     /// is enabled, "\N" if escaping enabled, and "" otherwise. To disable
     /// quoting, specify '\0' as the quote character. To disable escaping,
     /// specify '\0' as the escape character.
-    Dialect(char delimiter,
-            char escape,
-            char quote);
+    Dialect(char delimiter, char escape, char quote);
 
     /// Build a dialect from configuration variables with names given by the
     /// concatenation of prefix and "null", "delimiter", "escape",
     /// "no-escape", "quote" and "no-quote".
-    Dialect(ConfigStore const & config,
-            std::string const & prefix);
+    Dialect(ConfigStore const &config, std::string const &prefix);
 
-    Dialect(Dialect const & dialect);
+    Dialect(Dialect const &dialect);
 
     ~Dialect();
 
-    Dialect & operator=(Dialect const & dialect);
+    Dialect &operator=(Dialect const &dialect);
 
-    std::string const & getNull() const { return _null; }
+    std::string const &getNull() const { return _null; }
 
     char getDelimiter() const { return _delimiter; }
     char getEscape() const { return _escape; }
     char getQuote() const { return _quote; }
 
-    bool operator==(Dialect const & d) const {
-        return _null == d._null &&
-               _delimiter == d._delimiter &&
-               _escape == d._escape &&
-               _quote == d._quote;
+    bool operator==(Dialect const &d) const {
+        return _null == d._null && _delimiter == d._delimiter && _escape == d._escape && _quote == d._quote;
     }
 
     /// Is the encoded field value identical to the NULL string?
-    bool isNull(char const * value, size_t size) const {
+    bool isNull(char const *value, size_t size) const {
         return _null.compare(0, _null.size(), value, size) == 0;
     }
     /// Decode a value encoded in this dialect into `buf` and return the
     /// number of characters written. No more than MAX_FIELD_SIZE characters
     /// are written - if more are required an exception is thrown. Leading
     /// and trailing whitespace is preserved.
-    size_t decode(char * buf, char const * value, size_t size) const;
+    size_t decode(char *buf, char const *value, size_t size) const;
     /// Decode a field encoded in this dialect.
-    std::string const decode(char const * value, size_t size) const {
+    std::string const decode(char const *value, size_t size) const {
         char buf[MAX_FIELD_SIZE];
         size = decode(buf, value, size);
         return std::string(buf, size);
@@ -157,32 +144,25 @@ public:
     /// Encode a field according to this dialect into `buf` and return the
     /// number of characters written. No more than MAX_FIELD_SIZE characters
     /// are written - if more are required an exception is thrown.
-    size_t encode(char * buf, char const * value, size_t size) const;
+    size_t encode(char *buf, char const *value, size_t size) const;
     /// Encode a value in this dialect.
-    std::string const encode(char const * value, size_t size) const {
+    std::string const encode(char const *value, size_t size) const {
         char buf[MAX_FIELD_SIZE];
         size = encode(buf, value, size);
         return std::string(buf, size);
     }
 
     /// Define configuration variables for specifying a dialect.
-    static void defineOptions(
-        boost::program_options::options_description & opts,
-        std::string const & prefix);
+    static void defineOptions(boost::program_options::options_description &opts, std::string const &prefix);
 
 private:
-    static size_t const NUM_CHARS = 256; // Number of distinct character values.
+    static size_t const NUM_CHARS = 256;  // Number of distinct character values.
     static std::string const _prohibited;
     static uint8_t const _unescape[NUM_CHARS];
 
-    enum {
-        HAS_CRLF   = 0x1,
-        HAS_DELIM  = 0x2,
-        HAS_QUOTE  = 0x4,
-        HAS_ESCAPE = 0x8
-    };
+    enum { HAS_CRLF = 0x1, HAS_DELIM = 0x2, HAS_QUOTE = 0x4, HAS_ESCAPE = 0x8 };
 
-    int _scan(char const * value, size_t size) const;
+    int _scan(char const *value, size_t size) const;
     void _validate();
 
     std::string _null;
@@ -193,7 +173,6 @@ private:
     char _escape;
     char _quote;
 };
-
 
 /// \brief A class for producing an output CSV record from an input CSV record.
 ///
@@ -227,12 +206,10 @@ private:
 /// drop CSV fields, while simultaneously performing CSV format conversion.
 class Editor {
 public:
-    Editor(Dialect const & inputDialect,
-           Dialect const & outputDialect,
-           std::vector<std::string> const & inputFieldNames,
-           std::vector<std::string> const & outputFieldNames);
+    Editor(Dialect const &inputDialect, Dialect const &outputDialect,
+           std::vector<std::string> const &inputFieldNames, std::vector<std::string> const &outputFieldNames);
 
-    Editor(ConfigStore const & config);
+    Editor(ConfigStore const &config);
 
     ~Editor();
 
@@ -243,36 +220,32 @@ public:
     /// input line must remain live until the next call to `readRecord()`
     /// or editor destruction, whichever comes first. Raw input is never
     /// modified.
-    char const * readRecord(char const * begin, char const * end);
+    char const *readRecord(char const *begin, char const *end);
 
     /// Write the combination of the current input fields and any edits
     /// performed to `buf`, returning a pointer to the character following the
     /// last character written. At most `MAX_LINE_SIZE` bytes are written -
     /// if the output record is longer, an exception is thrown.
-    char * writeRecord(char * buf) const;
+    char *writeRecord(char *buf) const;
 
     // -- Metadata ----
 
-    Dialect const & getInputDialect()  const { return _inputDialect; }
-    Dialect const & getOutputDialect() const { return _outputDialect; }
+    Dialect const &getInputDialect() const { return _inputDialect; }
+    Dialect const &getOutputDialect() const { return _outputDialect; }
 
     /// Return the number of input fields `readRecord()` expects to find in
     /// a line of text.
     int getNumInputFields() const { return _numInputFields; }
     /// Return an index for the named field or -1 if no such field exists.
-    int getFieldIndex(std::string const & name) const {
+    int getFieldIndex(std::string const &name) const {
         FieldMap::const_iterator i = _fieldMap.find(name);
         return i == _fieldMap.end() ? -1 : i->second;
     }
 
     ///@{
     /// Is the given field an input field?
-    bool isInputField(int i) const {
-        return i >= 0 && i < _numInputFields;
-    }
-    bool isInputField(std::string const & name) const {
-        return isInputField(getFieldIndex(name));
-    }
+    bool isInputField(int i) const { return i >= 0 && i < _numInputFields; }
+    bool isInputField(std::string const &name) const { return isInputField(getFieldIndex(name)); }
     ///@}
 
     // -- Field access ----
@@ -285,33 +258,30 @@ public:
         if (i < 0 || i >= _numInputFields) {
             return true;
         }
-        Field const & f = _fields[i];
+        Field const &f = _fields[i];
         return _inputDialect.isNull(f.inputValue, f.inputSize);
     }
-    bool isNull(std::string const & name) const {
-        return isNull(getFieldIndex(name));
-    }
+    bool isNull(std::string const &name) const { return isNull(getFieldIndex(name)); }
     ///@}
 
     ///@{
     /// Return the value of an input field value as a string. The decode flag
     /// controls whether the encoded value is decoded prior to return.
     std::string const get(int i, bool decode) const;
-    std::string const get(std::string const & name, bool decode) const {
+    std::string const get(std::string const &name, bool decode) const {
         return get(getFieldIndex(name), decode);
     }
     ///@}
 
     ///@{
     /// Return the decoded and type converted value of an input field.
-    template <typename T> T get(int i) const {
-        BOOST_MPL_ASSERT(( boost::mpl::or_<
-            boost::is_integral<T>,
-            boost::is_floating_point<T>
-        > ));
+    template <typename T>
+    T get(int i) const {
+        BOOST_MPL_ASSERT((boost::mpl::or_<boost::is_integral<T>, boost::is_floating_point<T> >));
         return _get<T>(i);
     }
-    template <typename T> T get(std::string const & name) const {
+    template <typename T>
+    T get(std::string const &name) const {
         return get<T>(getFieldIndex(name));
     }
     ///@}
@@ -322,15 +292,13 @@ public:
     /// Set the value of an output field to NULL. Return true if the field was
     /// set, and false if it is not an output field and cannot be modified.
     bool setNull(int i);
-    bool setNull(std::string const & name) {
-        return setNull(getFieldIndex(name));
-    }
+    bool setNull(std::string const &name) { return setNull(getFieldIndex(name)); }
     ///@}
 
     ///@{
     /// Set the value of an output field. Return true if the field was set,
     /// and false if it is not an output field and cannot be modified.
-    bool set(int i, std::string const & value);
+    bool set(int i, std::string const &value);
     bool set(int i, bool value) { return set(i, value ? '\1' : '\0'); }
     bool set(int i, char value);
     bool set(int i, int value);
@@ -342,19 +310,19 @@ public:
     bool set(int i, float value);
     bool set(int i, double value);
 
-    template <typename T> bool set(std::string const & name, T value) {
+    template <typename T>
+    bool set(std::string const &name, T value) {
         return set(getFieldIndex(name), value);
     }
     ///@}
 
     /// Define configuration variables for CSV editing.
-    static void defineOptions(
-        boost::program_options::options_description & opts);
+    static void defineOptions(boost::program_options::options_description &opts);
 
 private:
     // Disable copy construction and assignment.
     Editor(Editor const &);
-    Editor & operator=(Editor const &);
+    Editor &operator=(Editor const &);
 
     typedef std::pair<char const *, char const *> CharConstPtrPair;
     typedef boost::unordered_map<std::string, int> FieldMap;
@@ -363,8 +331,8 @@ private:
         static uint16_t const DECODE = 0x01;
         static uint16_t const EDITED = 0x02;
 
-        char const * inputValue;
-        char * outputValue;
+        char const *inputValue;
+        char *outputValue;
         uint16_t inputSize;
         uint16_t outputSize;
         uint16_t flags;
@@ -373,10 +341,11 @@ private:
         ~Field();
     };
 
-    void _initialize(std::vector<std::string> const & inputFieldNames,
-                     std::vector<std::string> const & outputFieldNames);
-    CharConstPtrPair const _getFieldText(int i, char * buf) const;
-    template <typename T> T _get(int i) const;
+    void _initialize(std::vector<std::string> const &inputFieldNames,
+                     std::vector<std::string> const &outputFieldNames);
+    CharConstPtrPair const _getFieldText(int i, char *buf) const;
+    template <typename T>
+    T _get(int i) const;
 
     Dialect const _inputDialect;
     Dialect const _outputDialect;
@@ -390,12 +359,11 @@ private:
     FieldMap _fieldMap;
 };
 
-template <> inline std::string Editor::get<std::string>(int i) const {
+template <>
+inline std::string Editor::get<std::string>(int i) const {
     return get(i, true);
 }
 
-} // namespace csv
+}}}  // namespace lsst::partition::csv
 
-}} // namespace lsst::partition
-
-#endif // LSST_PARTITION_CSV_CSV_H
+#endif  // LSST_PARTITION_CSV_CSV_H

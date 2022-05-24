@@ -37,9 +37,7 @@
 
 #include "Chunker.h"
 
-
-namespace lsst {
-namespace partition {
+namespace lsst { namespace partition {
 
 /// A chunk index tracks how many records and overlap records are in each
 /// chunk and sub-chunk of a partitioned input data set. It also provides
@@ -57,12 +55,12 @@ public:
         uint64_t numRecords;
         uint64_t numOverlapRecords;
 
-        Entry() : numRecords(0), numOverlapRecords(0) { }
+        Entry() : numRecords(0), numOverlapRecords(0) {}
 
-        Entry & operator+=(Entry const & e) {
-             numRecords += e.numRecords;
-             numOverlapRecords += e.numOverlapRecords;
-             return *this;
+        Entry& operator+=(Entry const& e) {
+            numRecords += e.numRecords;
+            numOverlapRecords += e.numOverlapRecords;
+            return *this;
         }
     };
 
@@ -75,36 +73,36 @@ private:
 public:
     /// Summary statistics for chunks or sub-chunks.
     struct Stats {
-        uint64_t nrec;        ///< Total record count.
-        uint64_t n;           ///< Number of chunks or sub-chunks.
-        uint64_t min;         ///< Minimum record count.
-        uint64_t max;         ///< Maximum record count.
-        uint64_t quartile[3]; ///< Record count quartiles.
-        double mean;          ///< Mean record count.
-        double sigma;         ///< Standard deviation of the record count.
-        double skewness;      ///< Skewness of the record count.
-        double kurtosis;      ///< Kurtosis of the record count.
+        uint64_t nrec;         ///< Total record count.
+        uint64_t n;            ///< Number of chunks or sub-chunks.
+        uint64_t min;          ///< Minimum record count.
+        uint64_t max;          ///< Maximum record count.
+        uint64_t quartile[3];  ///< Record count quartiles.
+        double mean;           ///< Mean record count.
+        double sigma;          ///< Standard deviation of the record count.
+        double skewness;       ///< Skewness of the record count.
+        double kurtosis;       ///< Kurtosis of the record count.
 
         Stats() { clear(); }
         void clear();
         /// Compute statistics from population counts. Sorts `counts`
         /// in-place, but does not otherwise modify it.
-        void computeFrom(std::vector<uint64_t> & counts);
-        void write(std::ostream & os, std::string const & indent) const;
+        void computeFrom(std::vector<uint64_t>& counts);
+        void write(std::ostream& os, std::string const& indent) const;
     };
 
     /// Create an empty chunk index.
     ChunkIndex();
     /// Read a chunk index from a file.
-    explicit ChunkIndex(boost::filesystem::path const & path);
+    explicit ChunkIndex(boost::filesystem::path const& path);
     /// Read and merge a list of chunk index files.
-    explicit ChunkIndex(std::vector<boost::filesystem::path> const & paths);
+    explicit ChunkIndex(std::vector<boost::filesystem::path> const& paths);
 
-    ChunkIndex(ChunkIndex const & idx);
+    ChunkIndex(ChunkIndex const& idx);
 
     ~ChunkIndex();
 
-    ChunkIndex & operator=(ChunkIndex const & idx) {
+    ChunkIndex& operator=(ChunkIndex const& idx) {
         if (this != &idx) {
             ChunkIndex tmp(idx);
             swap(tmp);
@@ -113,9 +111,8 @@ public:
     }
 
     /// Return the number of records with the given location.
-    uint64_t operator()(ChunkLocation const & loc) const {
-        SubChunkIter i = _subChunks.find(
-            _key(loc.chunkId, loc.subChunkId));
+    uint64_t operator()(ChunkLocation const& loc) const {
+        SubChunkIter i = _subChunks.find(_key(loc.chunkId, loc.subChunkId));
         if (i == _subChunks.end()) {
             return 0u;
         }
@@ -123,7 +120,7 @@ public:
     }
 
     /// Return record counts for the given chunk.
-    Entry const & operator()(int32_t chunkId) const {
+    Entry const& operator()(int32_t chunkId) const {
         ChunkIter i = _chunks.find(chunkId);
         if (i == _chunks.end()) {
             return EMPTY;
@@ -132,7 +129,7 @@ public:
     }
 
     /// Return record counts for the given sub-chunk.
-    Entry const & operator()(int32_t chunkId, int32_t subChunkId) const {
+    Entry const& operator()(int32_t chunkId, int32_t subChunkId) const {
         SubChunkIter i = _subChunks.find(_key(chunkId, subChunkId));
         if (i == _subChunks.end()) {
             return EMPTY;
@@ -141,14 +138,14 @@ public:
     }
 
     /// Get summary statistics for chunks or overlap chunks.
-    Stats const & getChunkStats(bool overlap) {
+    Stats const& getChunkStats(bool overlap) {
         if (_modified) {
             _computeStats();
         }
         return overlap ? _overlapChunkStats : _chunkStats;
     }
     /// Get summary statistics for sub-chunks or overlap sub-chunks.
-    Stats const & getSubChunkStats(bool overlap) {
+    Stats const& getSubChunkStats(bool overlap) {
         if (_modified) {
             _computeStats();
         }
@@ -160,33 +157,33 @@ public:
     bool empty() const { return _chunks.empty(); }
 
     /// Write or append the index to a binary file.
-    void write(boost::filesystem::path const & path, bool truncate) const;
+    void write(boost::filesystem::path const& path, bool truncate) const;
     /// Write the index to a stream in human readable format. If
     /// `verbosity < 0`, print statistics only. If `verbosity = 0`,
     /// also print record counts for each chunk. If `verbosity > 0`,
     /// additionally print record counts for each sub-chunk (warning:
     /// output will be voluminous).
-    void write(std::ostream & os, int verbosity=0) const;
+    void write(std::ostream& os, int verbosity = 0) const;
 
     /// Add `n` records to the index.
-    void add(ChunkLocation const & loc, size_t n=1);
+    void add(ChunkLocation const& loc, size_t n = 1);
 
     /// Add or merge the entries in the given index with the entries in
     /// this one.
-    void merge(ChunkIndex const & idx);
+    void merge(ChunkIndex const& idx);
 
     void clear();
-    void swap(ChunkIndex & idx);
+    void swap(ChunkIndex& idx);
 
 private:
     static Entry const EMPTY;
-    static int const ENTRY_SIZE = 8*3;
+    static int const ENTRY_SIZE = 8 * 3;
 
     static int64_t _key(int32_t chunkId, int32_t subChunkId) {
         return (static_cast<int64_t>(chunkId) << 32) + subChunkId;
     }
 
-    void _read(boost::filesystem::path const & path);
+    void _read(boost::filesystem::path const& path);
     void _computeStats() const;
 
     ChunkMap _chunks;
@@ -199,14 +196,12 @@ private:
     Stats mutable _overlapSubChunkStats;
 };
 
-inline void swap(ChunkIndex & a, ChunkIndex & b) {
-    a.swap(b);
-}
-inline std::ostream & operator<<(std::ostream & os, ChunkIndex const & idx) {
+inline void swap(ChunkIndex& a, ChunkIndex& b) { a.swap(b); }
+inline std::ostream& operator<<(std::ostream& os, ChunkIndex const& idx) {
     idx.write(os, -1);
     return os;
 }
 
-}} // namespace lsst::partition
+}}  // namespace lsst::partition
 
-#endif // LSST_PARTITION_CHUNKINDEX_H
+#endif  // LSST_PARTITION_CHUNKINDEX_H

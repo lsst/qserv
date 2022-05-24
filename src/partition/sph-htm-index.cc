@@ -47,9 +47,7 @@
 namespace fs = boost::filesystem;
 namespace po = boost::program_options;
 
-
-namespace lsst {
-namespace partition {
+namespace lsst { namespace partition {
 
 /// An ID extracted from a CSV record, along with the HTM ID
 /// of the associated partitioning position.
@@ -58,27 +56,25 @@ struct Key {
     uint32_t htmId;
 };
 
-
 /// Minimize the size of `Record<Key>` by flattening `Key` fields into
 /// the record type.
-template <> struct Record<Key> {
+template <>
+struct Record<Key> {
     int64_t id;
     uint32_t htmId;
     uint32_t size;
-    char * data;
+    char* data;
 
-    Record() : id(0), htmId(0), size(0), data(0) { }
+    Record() : id(0), htmId(0), size(0), data(0) {}
 
-    explicit Record(Key const & k) :
-        id(k.id), htmId(k.htmId), size(0), data(0) { }
+    explicit Record(Key const& k) : id(k.id), htmId(k.htmId), size(0), data(0) {}
 
     /// Hash records by HTM ID.
     uint32_t hash() const { return partition::hash(htmId); }
 
     /// Order records by HTM ID.
-    bool operator<(Record const & r) const { return htmId < r.htmId; }
+    bool operator<(Record const& r) const { return htmId < r.htmId; }
 };
-
 
 /// Map-reduce worker class for HTM indexing.
 ///
@@ -94,22 +90,22 @@ template <> struct Record<Key> {
 /// and size for each HTM ID seen by that worker.
 class Worker : public WorkerBase<Key, HtmIndex> {
 public:
-    Worker(ConfigStore const & config);
+    Worker(ConfigStore const& config);
 
-    void map(char const * const begin, char const * const end, Silo & silo);
+    void map(char const* const begin, char const* const end, Silo& silo);
     void reduce(RecordIter const begin, RecordIter const end);
     void finish();
 
     boost::shared_ptr<HtmIndex> const result() { return _index; }
 
-    static void defineOptions(po::options_description & opts);
+    static void defineOptions(po::options_description& opts);
 
 private:
     void _openFiles(uint32_t htmId);
 
     csv::Editor _editor;
     int _idField;
-    std::pair<int,int> _pos;
+    std::pair<int, int> _pos;
     int _level;
     boost::shared_ptr<HtmIndex> _index;
     uint32_t _htmId;
@@ -120,27 +116,28 @@ private:
     BufferedAppender _ids;
 };
 
-Worker::Worker(ConfigStore const & config) :
-    _editor(config),
-    _idField(-1),
-    _pos(-1, -1),
-    _level(config.get<int>("htm.level")),
-    _index(boost::make_shared<HtmIndex>(_level)),
-    _htmId(0),
-    _numRecords(0),
-    _numNodes(config.get<uint32_t>("out.num-nodes")),
-    _outputDir(config.get<std::string>("out.dir").c_str()), // defend against GCC PR21334
-    _records(config.get<size_t>("mr.block-size")*MiB),
-    _ids(config.get<size_t>("mr.block-size")*MiB)
-{
+Worker::Worker(ConfigStore const& config)
+        : _editor(config),
+          _idField(-1),
+          _pos(-1, -1),
+          _level(config.get<int>("htm.level")),
+          _index(boost::make_shared<HtmIndex>(_level)),
+          _htmId(0),
+          _numRecords(0),
+          _numNodes(config.get<uint32_t>("out.num-nodes")),
+          _outputDir(config.get<std::string>("out.dir").c_str()),  // defend against GCC PR21334
+          _records(config.get<size_t>("mr.block-size") * MiB),
+          _ids(config.get<size_t>("mr.block-size") * MiB) {
     if (_numNodes == 0 || _numNodes > 99999u) {
-        throw std::runtime_error("The --out.num-nodes option value must be "
-                                 "between 1 and 99999.");
+        throw std::runtime_error(
+                "The --out.num-nodes option value must be "
+                "between 1 and 99999.");
     }
     // Map field names of interest to field indexes.
     if (!config.has("id") || !config.has("part.pos")) {
-        throw std::runtime_error("The --id and/or --part.pos "
-                                 "option was not specified.");
+        throw std::runtime_error(
+                "The --id and/or --part.pos "
+                "option was not specified.");
     }
     FieldNameResolver fields(_editor);
     std::string s = config.get<std::string>("id");
@@ -151,13 +148,10 @@ Worker::Worker(ConfigStore const & config) :
     _pos.second = fields.resolve("part.pos", s, p.second);
 }
 
-void Worker::map(char const * const begin,
-                 char const * const end,
-                 Worker::Silo & silo)
-{
+void Worker::map(char const* const begin, char const* const end, Worker::Silo& silo) {
     Key k;
     std::pair<double, double> sc;
-    char const * cur = begin;
+    char const* cur = begin;
     while (cur < end) {
         cur = _editor.readRecord(cur, end);
         k.id = _editor.get<int64_t>(_idField);
@@ -168,9 +162,7 @@ void Worker::map(char const * const begin,
     }
 }
 
-void Worker::reduce(Worker::RecordIter const begin,
-                    Worker::RecordIter const end)
-{
+void Worker::reduce(Worker::RecordIter const begin, Worker::RecordIter const end) {
     if (begin == end) {
         return;
     }
@@ -202,20 +194,14 @@ void Worker::finish() {
     _ids.close();
 }
 
-void Worker::defineOptions(po::options_description & opts) {
+void Worker::defineOptions(po::options_description& opts) {
     po::options_description indexing("\\_______________ HTM indexing", 80);
-    indexing.add_options()
-        ("htm.level", po::value<int>()->default_value(8),
-         "HTM index subdivision level.");
+    indexing.add_options()("htm.level", po::value<int>()->default_value(8), "HTM index subdivision level.");
     po::options_description part("\\_______________ Partitioning", 80);
-    part.add_options()
-        ("id",
-         po::value<std::string>(),
-         "The name of the record ID input field.")
-        ("part.pos",
-         po::value<std::string>(),
-         "The partitioning longitude and latitude angle field names, "
-         "separated by a comma.");
+    part.add_options()("id", po::value<std::string>(), "The name of the record ID input field.")(
+            "part.pos", po::value<std::string>(),
+            "The partitioning longitude and latitude angle field names, "
+            "separated by a comma.");
     opts.add(indexing).add(part);
     defineOutputOptions(opts);
     csv::Editor::defineOptions(opts);
@@ -228,39 +214,34 @@ void Worker::_openFiles(uint32_t htmId) {
         // Files go into a node-specific sub-directory.
         char subdir[32];
         uint32_t node = hash(htmId) % _numNodes;
-        std::snprintf(subdir, sizeof(subdir), "node_%05lu",
-                      static_cast<unsigned long>(node));
+        std::snprintf(subdir, sizeof(subdir), "node_%05lu", static_cast<unsigned long>(node));
         p = p / subdir;
         fs::create_directory(p);
     }
     char file[32];
-    std::snprintf(file, sizeof(file), "htm_%lx.txt",
-                  static_cast<unsigned long>(htmId));
+    std::snprintf(file, sizeof(file), "htm_%lx.txt", static_cast<unsigned long>(htmId));
     _records.open(p / fs::path(file), false);
-    std::snprintf(file, sizeof(file), "htm_%lx.ids",
-                  static_cast<unsigned long>(htmId));
+    std::snprintf(file, sizeof(file), "htm_%lx.ids", static_cast<unsigned long>(htmId));
     _ids.open(p / fs::path(file), false);
 }
 
-
 typedef Job<Worker> HtmIndexJob;
 
-}} // namespace lsst::partition
+}}  // namespace lsst::partition
 
+static char const* help =
+        "The spherical HTM indexer indexes one or more input CSV files in\n"
+        "preparation for the spherical data duplicator.\n"
+        "\n"
+        "An index can be built incrementally by running the indexer with\n"
+        "disjoint input file sets and the same output directory. Beware -\n"
+        "the output CSV format, HTM subdivision-level, and duplicator\n"
+        "node count MUST be identical between runs. Additionally, only one\n"
+        "indexer process should use a given output directory at a time.\n"
+        "If any of these conditions are not met, then the resulting\n"
+        "index will be corrupt and/or useless.\n";
 
-static char const * help =
-    "The spherical HTM indexer indexes one or more input CSV files in\n"
-    "preparation for the spherical data duplicator.\n"
-    "\n"
-    "An index can be built incrementally by running the indexer with\n"
-    "disjoint input file sets and the same output directory. Beware -\n"
-    "the output CSV format, HTM subdivision-level, and duplicator\n"
-    "node count MUST be identical between runs. Additionally, only one\n"
-    "indexer process should use a given output directory at a time.\n"
-    "If any of these conditions are not met, then the resulting\n"
-    "index will be corrupt and/or useless.\n";
-
-int main(int argc, char const * const * argv) {
+int main(int argc, char const* const* argv) {
     namespace part = lsst::partition;
     try {
         po::options_description options;
@@ -268,8 +249,7 @@ int main(int argc, char const * const * argv) {
         part::ConfigStore config = part::parseCommandLine(options, argc, argv, help);
         part::makeOutputDirectory(config, true);
         part::HtmIndexJob job(config);
-        boost::shared_ptr<part::HtmIndex> index =
-            job.run(part::makeInputLines(config));
+        boost::shared_ptr<part::HtmIndex> index = job.run(part::makeInputLines(config));
         if (!index->empty()) {
             fs::path d(config.get<std::string>("out.dir"));
             index->write(d / "htm_index.bin", false);
@@ -277,7 +257,7 @@ int main(int argc, char const * const * argv) {
         if (config.flag("verbose")) {
             std::cout << *index << std::endl;
         }
-    } catch (std::exception const & ex) {
+    } catch (std::exception const& ex) {
         std::cerr << ex.what() << std::endl;
         return EXIT_FAILURE;
     }

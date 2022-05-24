@@ -46,22 +46,21 @@
 namespace fs = boost::filesystem;
 namespace po = boost::program_options;
 
-namespace lsst {
-namespace partition {
+namespace lsst { namespace partition {
 
 class Worker : public ChunkReducer {
 public:
-    Worker(ConfigStore const & config);
+    Worker(ConfigStore const& config);
 
     /// Compute all partitioning locations of each input
     /// record and store an output record per-location.
-    void map(char const * const begin, char const * const end, Silo & silo);
+    void map(char const* const begin, char const* const end, Silo& silo);
 
-    static void defineOptions(po::options_description & opts);
+    static void defineOptions(po::options_description& opts);
 
 private:
     csv::Editor _editor;
-    std::pair<int,int> _pos;
+    std::pair<int, int> _pos;
     int _idField;
     int _chunkIdField;
     int _subChunkIdField;
@@ -73,16 +72,15 @@ private:
     bool _disableChunks;
 };
 
-Worker::Worker(ConfigStore const & config) :
-    ChunkReducer(config),
-    _editor(config),
-    _pos(-1, -1),
-    _idField(-1),
-    _chunkIdField(-1),
-    _subChunkIdField(-1),
-    _chunker(config),
-    _disableChunks(config.flag("part.disable-chunks"))
-{
+Worker::Worker(ConfigStore const& config)
+        : ChunkReducer(config),
+          _editor(config),
+          _pos(-1, -1),
+          _idField(-1),
+          _chunkIdField(-1),
+          _subChunkIdField(-1),
+          _chunker(config),
+          _disableChunks(config.flag("part.disable-chunks")) {
     if (!config.has("part.pos") && !config.has("part.id")) {
         throw std::runtime_error("Neither --part.pos not --part.id option were specified.");
     }
@@ -113,19 +111,18 @@ Worker::Worker(ConfigStore const & config) :
         // The RA/DEC partitioning will create and populate the "secondary" index if requested
         if (_idField != -1) {
             fs::path const outdir = config.get<std::string>("out.dir");
-            fs::path const indexpath = outdir / (config.get<std::string>("part.prefix") + "_object_index.txt");
-            ObjectIndex::instance().create(indexpath.string(), _editor, _idFieldName, _chunkIdFieldName, _subChunkIdFieldName);
+            fs::path const indexpath =
+                    outdir / (config.get<std::string>("part.prefix") + "_object_index.txt");
+            ObjectIndex::instance().create(indexpath.string(), _editor, _idFieldName, _chunkIdFieldName,
+                                           _subChunkIdFieldName);
         }
     }
 }
 
-void Worker::map(char const * const begin,
-                 char const * const end,
-                 Worker::Silo & silo)
-{
+void Worker::map(char const* const begin, char const* const end, Worker::Silo& silo) {
     typedef std::vector<ChunkLocation>::const_iterator LocIter;
     std::pair<double, double> sc;
-    char const * cur = begin;
+    char const* cur = begin;
     while (cur < end) {
         cur = _editor.readRecord(cur, end);
         if (_pos.first != -1) {
@@ -162,36 +159,27 @@ void Worker::map(char const * const begin,
     }
 }
 
-void Worker::defineOptions(po::options_description & opts) {
+void Worker::defineOptions(po::options_description& opts) {
     po::options_description part("\\_______________ Partitioning", 80);
-    part.add_options()
-        ("part.prefix",
-         po::value<std::string>()->default_value("chunk"),
-         "Chunk file name prefix.")
-        ("part.chunk",
-         po::value<std::string>(),
-         "Optional chunk ID output field name. This field name is appended "
-         "to the output field name list if it isn't already included.")
-        ("part.sub-chunk",
-         po::value<std::string>()->default_value("subChunkId"),
-         "Sub-chunk ID output field name. This field name is appended "
-         "to the output field name list if it isn't already included.")
-        ("part.id",
-         po::value<std::string>(),
-         "The name of a field which has an object identifier. If it's provided then"
-         "then the secondary index will be open or created.")
-        ("part.pos",
-         po::value<std::string>(),
-         "The partitioning longitude and latitude angle field names, "
-         "separated by a comma.")
-        ("part.id-url",
-         po::value<std::string>(),
-         "Universal resource locator for an existing secondary index.")
-        ("part.disable-chunks",
-         po::bool_switch()->default_value(false),
-         "This flag if present would disable making chunk files in the output folder. "
-         "It's meant to run the tool in the 'dry run' mode, validating input files, "
-         "generating the objectId-to-chunk/sub-chunk index map.");
+    part.add_options()("part.prefix", po::value<std::string>()->default_value("chunk"),
+                       "Chunk file name prefix.")(
+            "part.chunk", po::value<std::string>(),
+            "Optional chunk ID output field name. This field name is appended "
+            "to the output field name list if it isn't already included.")(
+            "part.sub-chunk", po::value<std::string>()->default_value("subChunkId"),
+            "Sub-chunk ID output field name. This field name is appended "
+            "to the output field name list if it isn't already included.")(
+            "part.id", po::value<std::string>(),
+            "The name of a field which has an object identifier. If it's provided then"
+            "then the secondary index will be open or created.")(
+            "part.pos", po::value<std::string>(),
+            "The partitioning longitude and latitude angle field names, "
+            "separated by a comma.")("part.id-url", po::value<std::string>(),
+                                     "Universal resource locator for an existing secondary index.")(
+            "part.disable-chunks", po::bool_switch()->default_value(false),
+            "This flag if present would disable making chunk files in the output folder. "
+            "It's meant to run the tool in the 'dry run' mode, validating input files, "
+            "generating the objectId-to-chunk/sub-chunk index map.");
     Chunker::defineOptions(part);
     opts.add(part);
     defineOutputOptions(opts);
@@ -201,26 +189,25 @@ void Worker::defineOptions(po::options_description & opts) {
 
 typedef Job<Worker> PartitionJob;
 
-}} // namespace lsst::partition
+}}  // namespace lsst::partition
 
+static char const* help =
+        "The spherical partitioner partitions one or more input CSV files in\n"
+        "preparation for loading into database worker nodes. This boils down to\n"
+        "assigning each input position to locations in a 2-level subdivision\n"
+        "scheme, where a location consists of a chunk and sub-chunk ID, and\n"
+        "then bucket-sorting input records into output files by chunk ID.\n"
+        "Chunk files can then be distributed to worker nodes for loading.\n"
+        "\n"
+        "A partitioned data-set can be built-up incrementally by running the\n"
+        "partitioner with disjoint input file sets and the same output directory.\n"
+        "Beware - the output CSV format, partitioning parameters, and worker\n"
+        "node count MUST be identical between runs. Additionally, only one\n"
+        "partitioner process should write to a given output directory at a\n"
+        "time. If any of these conditions are not met, then the resulting\n"
+        "chunk files will be corrupt and/or useless.\n";
 
-static char const * help =
-    "The spherical partitioner partitions one or more input CSV files in\n"
-    "preparation for loading into database worker nodes. This boils down to\n"
-    "assigning each input position to locations in a 2-level subdivision\n"
-    "scheme, where a location consists of a chunk and sub-chunk ID, and\n"
-    "then bucket-sorting input records into output files by chunk ID.\n"
-    "Chunk files can then be distributed to worker nodes for loading.\n"
-    "\n"
-    "A partitioned data-set can be built-up incrementally by running the\n"
-    "partitioner with disjoint input file sets and the same output directory.\n"
-    "Beware - the output CSV format, partitioning parameters, and worker\n"
-    "node count MUST be identical between runs. Additionally, only one\n"
-    "partitioner process should write to a given output directory at a\n"
-    "time. If any of these conditions are not met, then the resulting\n"
-    "chunk files will be corrupt and/or useless.\n";
-
-int main(int argc, char const * const * argv) {
+int main(int argc, char const* const* argv) {
     namespace part = lsst::partition;
 
     try {
@@ -231,8 +218,7 @@ int main(int argc, char const * const * argv) {
         part::ensureOutputFieldExists(config, "part.sub-chunk");
         part::makeOutputDirectory(config, true);
         part::PartitionJob job(config);
-        boost::shared_ptr<part::ChunkIndex> index =
-            job.run(part::makeInputLines(config));
+        boost::shared_ptr<part::ChunkIndex> index = job.run(part::makeInputLines(config));
         part::ObjectIndex::instance().close();
         if (!index->empty()) {
             fs::path d(config.get<std::string>("out.dir"));
@@ -245,7 +231,7 @@ int main(int argc, char const * const * argv) {
         } else {
             std::cout << *index << std::endl;
         }
-    } catch (std::exception const & ex) {
+    } catch (std::exception const& ex) {
         std::cerr << ex.what() << std::endl;
         return EXIT_FAILURE;
     }
@@ -255,4 +241,3 @@ int main(int argc, char const * const * argv) {
 // FIXME(smm): The partitioner should store essential parameters so that
 //             it can detect whether the same ones are used by incremental
 //             additions to a partitioned data-set.
-

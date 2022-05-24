@@ -29,7 +29,6 @@
 
 #include "partition/Csv.h"
 
-
 using std::runtime_error;
 using std::string;
 using std::vector;
@@ -38,25 +37,25 @@ using lsst::partition::csv::Dialect;
 using lsst::partition::csv::Editor;
 
 BOOST_AUTO_TEST_CASE(DialectTest) {
-    char const X[2] = { '\n', '\r' };
+    char const X[2] = {'\n', '\r'};
     BOOST_CHECK_THROW(Dialect('\0', '\\', '"'), runtime_error);
     for (size_t i = 0; i < 2; ++i) {
-        BOOST_CHECK_THROW(Dialect(X[i], '\\',  '"'), runtime_error);
-        BOOST_CHECK_THROW(Dialect(',',  X[i],  '"'), runtime_error);
-        BOOST_CHECK_THROW(Dialect(',',  '\\', X[i]), runtime_error);
+        BOOST_CHECK_THROW(Dialect(X[i], '\\', '"'), runtime_error);
+        BOOST_CHECK_THROW(Dialect(',', X[i], '"'), runtime_error);
+        BOOST_CHECK_THROW(Dialect(',', '\\', X[i]), runtime_error);
     }
     BOOST_CHECK_THROW(Dialect(',', ',', '"'), runtime_error);
     BOOST_CHECK_THROW(Dialect(',', '\\', ','), runtime_error);
     BOOST_CHECK_THROW(Dialect(',', '\\', '\\'), runtime_error);
     string x("0bfnrtvNZ");
     for (size_t i = 0; i < x.size(); ++i) {
-        BOOST_CHECK_THROW(Dialect(x[i], '\\',  '"'), runtime_error);
-        BOOST_CHECK_THROW(Dialect(',',  x[i],  '"'), runtime_error);
-        BOOST_CHECK_THROW(Dialect(',',  '\\', x[i]), runtime_error);
+        BOOST_CHECK_THROW(Dialect(x[i], '\\', '"'), runtime_error);
+        BOOST_CHECK_THROW(Dialect(',', x[i], '"'), runtime_error);
+        BOOST_CHECK_THROW(Dialect(',', '\\', x[i]), runtime_error);
     }
     BOOST_CHECK_THROW(Dialect("nil\n", '|', '\\', '"'), runtime_error);
     BOOST_CHECK_THROW(Dialect("nil\r", '|', '\\', '"'), runtime_error);
-    BOOST_CHECK_THROW(Dialect("nil|",  '|', '\\', '"'), runtime_error);
+    BOOST_CHECK_THROW(Dialect("nil|", '|', '\\', '"'), runtime_error);
 }
 
 BOOST_AUTO_TEST_CASE(CodingTest) {
@@ -68,18 +67,18 @@ BOOST_AUTO_TEST_CASE(CodingTest) {
     s = d.encode("None", 4);
     BOOST_CHECK_EQUAL(s, "\"None\"");
     BOOST_CHECK_EQUAL(d.decode(s.data(), s.size()), "None");
-    BOOST_CHECK_EQUAL(d.encode(0,0), "None");
+    BOOST_CHECK_EQUAL(d.encode(0, 0), "None");
     s = d.encode("|\\\"", 3);
     BOOST_CHECK_EQUAL(s, "\\|\\\\\\\"");
     s = d.encode("foo", 3);
     BOOST_CHECK_EQUAL(d.encode("foo", 3), "foo");
     BOOST_CHECK_EQUAL(d.decode("foo", 3), "foo");
-    BOOST_CHECK_EQUAL(d.decode("a\"b",3), "a\"b");
+    BOOST_CHECK_EQUAL(d.decode("a\"b", 3), "a\"b");
     BOOST_CHECK_EQUAL(d.decode("a\"\"", 3), "a\"\"");
-    BOOST_CHECK_EQUAL(d.decode("a\"\"b",4), "a\"\"b");
-    BOOST_CHECK_EQUAL(d.decode("\"a\"\"b\"",6), "a\"b");
-    BOOST_CHECK_EQUAL(d.decode("\"a",2), "a");
-    BOOST_CHECK_EQUAL(d.decode("\"\"a",3), "\"a");
+    BOOST_CHECK_EQUAL(d.decode("a\"\"b", 4), "a\"\"b");
+    BOOST_CHECK_EQUAL(d.decode("\"a\"\"b\"", 6), "a\"b");
+    BOOST_CHECK_EQUAL(d.decode("\"a", 2), "a");
+    BOOST_CHECK_EQUAL(d.decode("\"\"a", 3), "\"a");
 }
 
 BOOST_AUTO_TEST_CASE(CodingNoEscapeTest) {
@@ -92,17 +91,17 @@ BOOST_AUTO_TEST_CASE(CodingNoEscapeTest) {
     BOOST_CHECK_EQUAL(s, "'NULL'");
     BOOST_CHECK_EQUAL(d.decode(s.data(), s.size()), "NULL");
     BOOST_CHECK_EQUAL(d.encode(0, 0), "NULL");
-    BOOST_CHECK_THROW(d.encode("\n",1), runtime_error);
-    BOOST_CHECK_THROW(d.encode("\r",1), runtime_error);
-    BOOST_CHECK_EQUAL(d.encode("|",1), "'|'");
+    BOOST_CHECK_THROW(d.encode("\n", 1), runtime_error);
+    BOOST_CHECK_THROW(d.encode("\r", 1), runtime_error);
+    BOOST_CHECK_EQUAL(d.encode("|", 1), "'|'");
     BOOST_CHECK_EQUAL(d.decode("'|'", 3), "|");
-    BOOST_CHECK_EQUAL(d.encode("'",1), "''''");
-    BOOST_CHECK_EQUAL(d.decode("a'b",3), "a'b");
+    BOOST_CHECK_EQUAL(d.encode("'", 1), "''''");
+    BOOST_CHECK_EQUAL(d.decode("a'b", 3), "a'b");
     BOOST_CHECK_EQUAL(d.decode("a''", 3), "a''");
-    BOOST_CHECK_EQUAL(d.decode("a''b",4), "a''b");
-    BOOST_CHECK_EQUAL(d.decode("'a''b'",6), "a'b");
-    BOOST_CHECK_EQUAL(d.decode("'a",2), "a");
-    BOOST_CHECK_EQUAL(d.decode("''a",3), "'a");
+    BOOST_CHECK_EQUAL(d.decode("a''b", 4), "a''b");
+    BOOST_CHECK_EQUAL(d.decode("'a''b'", 6), "a'b");
+    BOOST_CHECK_EQUAL(d.decode("'a", 2), "a");
+    BOOST_CHECK_EQUAL(d.decode("''a", 3), "'a");
 }
 
 BOOST_AUTO_TEST_CASE(CodingNoQuoteTest) {
@@ -115,10 +114,10 @@ BOOST_AUTO_TEST_CASE(CodingNoQuoteTest) {
     BOOST_CHECK_EQUAL(s, "//N");
     BOOST_CHECK_EQUAL(d.decode(s.data(), s.size()), "/N");
     BOOST_CHECK_EQUAL(d.encode(0, 0), "/N");
-    BOOST_CHECK_EQUAL(d.encode("\n\r\b\t\v",5), "/n/r\b\t\v");
-    BOOST_CHECK_EQUAL(d.decode("/n/r/b/t/v",10), "\n\r\b\t\v");
-    BOOST_CHECK_EQUAL(d.encode(",",1), "/,");
-    BOOST_CHECK_EQUAL(d.decode("/,",2), ",");
+    BOOST_CHECK_EQUAL(d.encode("\n\r\b\t\v", 5), "/n/r\b\t\v");
+    BOOST_CHECK_EQUAL(d.decode("/n/r/b/t/v", 10), "\n\r\b\t\v");
+    BOOST_CHECK_EQUAL(d.encode(",", 1), "/,");
+    BOOST_CHECK_EQUAL(d.decode("/,", 2), ",");
 }
 
 BOOST_AUTO_TEST_CASE(EditorTest) {
@@ -155,19 +154,12 @@ BOOST_AUTO_TEST_CASE(EditorTest) {
     BOOST_CHECK_THROW(ed.get<unsigned long long>(1), runtime_error);
     BOOST_CHECK_THROW(ed.get<float>(0), runtime_error);
     BOOST_CHECK_THROW(ed.get<double>(0), runtime_error);
-    char const * x[6] = {
-         "foo",
-         "foo\n",
-         "foo\r",
-         "foo|bar|baz",
-         "",
-         "foo|bar\\"
-    };
+    char const* x[6] = {"foo", "foo\n", "foo\r", "foo|bar|baz", "", "foo|bar\\"};
     for (int i = 0; i < 6; ++i) {
         BOOST_CHECK_THROW(ed.readRecord(x[i], x[i] + strlen(x[i])), runtime_error);
     }
-    char const * r = "10000|3.1415926\r\n";
-    char const * e = r + strlen(r);
+    char const* r = "10000|3.1415926\r\n";
+    char const* e = r + strlen(r);
     BOOST_CHECK(ed.readRecord(r, e) == e);
     BOOST_CHECK_THROW(ed.get<char>(0), runtime_error);
     BOOST_CHECK_THROW(ed.get<unsigned char>(0), runtime_error);
@@ -198,14 +190,14 @@ BOOST_AUTO_TEST_CASE(EditorTranscodeTest) {
     onames.push_back("c");
     onames.push_back("d");
     Editor ed(in, out, inames, onames);
-    char const * s = "a|b,|/N";
-    char const * se = s + strlen(s);
+    char const* s = "a|b,|/N";
+    char const* se = s + strlen(s);
     BOOST_CHECK(ed.readRecord(s, se) == se);
     BOOST_CHECK_EQUAL(ed.get<string>("a"), "a");
     BOOST_CHECK_EQUAL(ed.get<string>("b"), "b,");
     BOOST_CHECK(ed.isNull("c"));
     ed.set(ed.getFieldIndex("d"), 5);
-    char * be = ed.writeRecord(buf);
+    char* be = ed.writeRecord(buf);
     *be = '\0';
     BOOST_CHECK_EQUAL(string("nil,a,nil,5\n"), buf);
 }

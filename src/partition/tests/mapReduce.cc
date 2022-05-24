@@ -37,8 +37,8 @@ namespace fs = boost::filesystem;
 namespace po = boost::program_options;
 namespace csv = lsst::partition::csv;
 
-using std::string;
 using boost::shared_ptr;
+using std::string;
 
 using lsst::partition::BufferedAppender;
 using lsst::partition::ConfigStore;
@@ -49,125 +49,130 @@ using lsst::partition::WorkerBase;
 
 namespace {
 
-    unsigned int const NUM_LINES = 1024*1024;
+unsigned int const NUM_LINES = 1024 * 1024;
 
-    /// Generate CSV files containing a total of NUM_LINES lines, where
-    /// each line consists of a single line number.
-    void buildInput(TempFile const & t1, TempFile const & t2) {
-        char buf[17];
-        unsigned int line;
-        BufferedAppender a(1*MiB);
-        a.open(t1.path(), true);
-        for (line = 0; line < NUM_LINES/3; ++line) {
-            snprintf(buf, sizeof(buf), "%15u\n", NUM_LINES - 1 - line);
-            a.append(buf, strlen(buf));
+/// Generate CSV files containing a total of NUM_LINES lines, where
+/// each line consists of a single line number.
+void buildInput(TempFile const &t1, TempFile const &t2) {
+    char buf[17];
+    unsigned int line;
+    BufferedAppender a(1 * MiB);
+    a.open(t1.path(), true);
+    for (line = 0; line < NUM_LINES / 3; ++line) {
+        snprintf(buf, sizeof(buf), "%15u\n", NUM_LINES - 1 - line);
+        a.append(buf, strlen(buf));
+    }
+    a.open(t2.path(), true);
+    for (; line < NUM_LINES; ++line) {
+        snprintf(buf, sizeof(buf), "%15u\n", NUM_LINES - 1 - line);
+        a.append(buf, strlen(buf));
+    }
+    a.close();
+}
+
+// Map-reduce key: a line number.
+struct Key {
+    uint32_t line;
+    uint32_t hash() const { return line; }
+    bool operator<(Key const &k) const { return line < k.line; }
+};
+
+// 2-bits per line that indicate whether a line has been mapped/reduced.
+// Failures are tracked with an overall pass/fail flag because BOOST_CHECK
+// is extremely slow.
+class Lines {
+public:
+    Lines() : _mapped(NUM_LINES, false), _reduced(NUM_LINES, false), _failed(false) {}
+    ~Lines() {}
+
+    void markMapped(uint32_t line) {
+        if (_mapped[line]) {
+            _failed = true;
         }
-        a.open(t2.path(), true);
-        for (; line < NUM_LINES; ++line) {
-            snprintf(buf, sizeof(buf), "%15u\n", NUM_LINES - 1 - line);
-            a.append(buf, strlen(buf));
-        }
-        a.close();
+        _mapped[line] = true;
     }
 
-    // Map-reduce key: a line number. 
-    struct Key {
-        uint32_t line;
-        uint32_t hash() const { return line; }
-        bool operator<(Key const & k) const { return line < k.line; }
-    };
-
-    // 2-bits per line that indicate whether a line has been mapped/reduced.
-    // Failures are tracked with an overall pass/fail flag because BOOST_CHECK
-    // is extremely slow.
-    class Lines {
-    public:
-        Lines() : _mapped(NUM_LINES, false), _reduced(NUM_LINES, false),
-                  _failed(false) { }
-        ~Lines() { }
-
-        void markMapped(uint32_t line) {
-            if (_mapped[line]) { _failed = true; }
-            _mapped[line] = true;
+    void markReduced(uint32_t line) {
+        if (_reduced[line]) {
+            _failed = true;
         }
+        _reduced[line] = true;
+    }
 
-        void markReduced(uint32_t line) {
-            if (_reduced[line]) { _failed = true; }
-            _reduced[line] = true;
-        }
-
-        void merge(Lines const & lines) {
-            _failed = _failed || lines._failed;
-            for (size_t i = 0; i < NUM_LINES; ++i) {
-                if (lines._mapped[i]) {
-                    if (_mapped[i]) { _failed = true; }
-                    _mapped[i] = true;
+    void merge(Lines const &lines) {
+        _failed = _failed || lines._failed;
+        for (size_t i = 0; i < NUM_LINES; ++i) {
+            if (lines._mapped[i]) {
+                if (_mapped[i]) {
+                    _failed = true;
                 }
-                if (lines._reduced[i]) {
-                    if (_reduced[i]) { _failed = true; }
-                    _reduced[i] = true;
+                _mapped[i] = true;
+            }
+            if (lines._reduced[i]) {
+                if (_reduced[i]) {
+                    _failed = true;
                 }
+                _reduced[i] = true;
             }
         }
+    }
 
-        void verify() {
-            for (size_t i = 0; i < NUM_LINES; ++i) {
-                if (!_mapped[i] || !_reduced[i]) { _failed = true; }
-            }
-            BOOST_CHECK(!_failed);
-        }
-
-    private:
-        std::vector<bool> _mapped;
-        std::vector<bool> _reduced;
-        bool _failed;
-    };
-    
-    class Worker : public WorkerBase<Key, Lines> {
-    public:
-        Worker(ConfigStore const & config) :
-            _editor(config), _lines(new Lines()) { }
-
-        void map(char const * beg, char const * end, Silo & silo) {
-            Key k;
-            while (beg < end) {
-                beg = _editor.readRecord(beg, end);
-                k.line = _editor.get<uint32_t>(0);
-                silo.add(k, _editor);
-                _lines->markMapped(k.line);
+    void verify() {
+        for (size_t i = 0; i < NUM_LINES; ++i) {
+            if (!_mapped[i] || !_reduced[i]) {
+                _failed = true;
             }
         }
+        BOOST_CHECK(!_failed);
+    }
 
-        void reduce(RecordIter beg, RecordIter end) {
-            for (; beg != end; ++beg) {
-                _lines->markReduced(beg->key.line);
-            }
+private:
+    std::vector<bool> _mapped;
+    std::vector<bool> _reduced;
+    bool _failed;
+};
+
+class Worker : public WorkerBase<Key, Lines> {
+public:
+    Worker(ConfigStore const &config) : _editor(config), _lines(new Lines()) {}
+
+    void map(char const *beg, char const *end, Silo &silo) {
+        Key k;
+        while (beg < end) {
+            beg = _editor.readRecord(beg, end);
+            k.line = _editor.get<uint32_t>(0);
+            silo.add(k, _editor);
+            _lines->markMapped(k.line);
         }
+    }
 
-        void finish() { }
-
-        shared_ptr<Lines> const result() { return _lines; }
-
-        static void defineOptions(po::options_description & opts) {
-            csv::Editor::defineOptions(opts);
+    void reduce(RecordIter beg, RecordIter end) {
+        for (; beg != end; ++beg) {
+            _lines->markReduced(beg->key.line);
         }
+    }
 
-    private:
-        csv::Editor _editor;
-        shared_ptr<Lines> _lines;
-    };
+    void finish() {}
 
-    typedef Job<Worker> TestJob;
+    shared_ptr<Lines> const result() { return _lines; }
 
-} // unnamed namespace
+    static void defineOptions(po::options_description &opts) { csv::Editor::defineOptions(opts); }
 
+private:
+    csv::Editor _editor;
+    shared_ptr<Lines> _lines;
+};
+
+typedef Job<Worker> TestJob;
+
+}  // unnamed namespace
 
 BOOST_AUTO_TEST_CASE(MapReduceTest) {
-    char const * argv[4] = {
-        "dummy",
-        "--in.csv.field=line",
-        "--mr.pool-size=8",
-        0,
+    char const *argv[4] = {
+            "dummy",
+            "--in.csv.field=line",
+            "--mr.pool-size=8",
+            0,
     };
     TempFile t1, t2;
     buildInput(t1, t2);
@@ -177,17 +182,17 @@ BOOST_AUTO_TEST_CASE(MapReduceTest) {
     po::options_description options;
     TestJob::defineOptions(options);
     for (char n = '1'; n < '8'; ++n) {
-        string s("--mr.num-workers="); s += n;
+        string s("--mr.num-workers=");
+        s += n;
         argv[3] = s.c_str();
         po::variables_map vm;
         // Older boost versions (1.41) require the const_cast.
-        po::store(po::parse_command_line(
-            4, const_cast<char **>(argv), options), vm);
+        po::store(po::parse_command_line(4, const_cast<char **>(argv), options), vm);
         po::notify(vm);
         ConfigStore config;
         config.add(vm);
         TestJob job(config);
-        InputLines input(paths, 1*MiB, false);
+        InputLines input(paths, 1 * MiB, false);
         shared_ptr<Lines> lines = job.run(input);
         lines->verify();
     }

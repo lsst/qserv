@@ -33,9 +33,7 @@
 #include "boost/filesystem.hpp"
 #include "boost/shared_ptr.hpp"
 
-
-namespace lsst {
-namespace partition {
+namespace lsst { namespace partition {
 
 /// The InputLines class reads lines from a list of input text files in an IO
 /// efficient and parallel way. Each file is split up into blocks, where all
@@ -64,17 +62,15 @@ namespace partition {
 class InputLines {
 public:
     /// Corresponds to no input. Useless unless assigned to.
-    InputLines() : _impl() { }
+    InputLines() : _impl() {}
 
     /// Read lines from a list of files at the given granularity, optionally
     /// ignoring the first line in each file. The user is responsible for
     /// ensuring that the file list contains no empty or duplicate entries.
     /// Note that `blockSize` is clamped to lie between 1MiB and 1GiB.
-    InputLines(std::vector<boost::filesystem::path> const & paths,
-               size_t blockSize,
-               bool skipFirstLine);
+    InputLines(std::vector<boost::filesystem::path> const &paths, size_t blockSize, bool skipFirstLine);
 
-    ~InputLines() { }
+    ~InputLines() {}
 
     /// Return the IO read block size in bytes.
     size_t getBlockSize() const;
@@ -90,7 +86,7 @@ public:
     /// pointers returned will both be NULL if and only if there is no more
     /// input left to read. Note that `buf` must have a capacity of at least
     /// getMinimumBufferCapacity() bytes.
-    std::pair<char *, char *> const read(char * buf);
+    std::pair<char *, char *> const read(char *buf);
 
 private:
     class Impl;
@@ -98,6 +94,6 @@ private:
     boost::shared_ptr<Impl> _impl;
 };
 
-}} // namespace lsst::partition
+}}  // namespace lsst::partition
 
-#endif // LSST_PARTITION_INPUTLINES_H
+#endif  // LSST_PARTITION_INPUTLINES_H

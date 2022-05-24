@@ -38,27 +38,25 @@
 #include "partition/Csv.h"
 
 // Forward declarations
-namespace lsst {
-namespace partition {
-    class ChunkLocation;
-}} // namespace lsst::partition
+namespace lsst { namespace partition {
+class ChunkLocation;
+}}  // namespace lsst::partition
 
 // This header declarations
-namespace lsst {
-namespace partition {
+namespace lsst { namespace partition {
 
 /**
  * Class ObjectIndex is a singleton serving as a front-end to a specific implementation of
  * the "secondary" index.
- * 
+ *
  * Objects of the class can be open in two modes:
  * - WRITE: for writing into an index file at the specified location.
  * - READ: reading from an index via the specified source.
- * 
+ *
  * Files written in the WRITE mode are open in the "append" mode, hence their previos
  * content won't be truncated. It's up to a client to ensure the files get removed if
  * the clean starting state is required.
- * 
+ *
  * The source specification in the READ node is a URL-style resource. Presently, only the file-based
  * resource is supported. Hence, the file URL is expected
  * to look like this:
@@ -82,14 +80,11 @@ public:
     ~ObjectIndex();
 
     /// Modes for opening the index.
-    enum Mode {
-        READ,
-        WRITE
-    };
+    enum Mode { READ, WRITE };
 
     /**
      * The factory method.
-     * 
+     *
      * @return  A reference to the underlining implementation of the index
      */
     static ObjectIndex& instance() {
@@ -105,7 +100,7 @@ public:
 
     /**
      * Open (or create) index for writing into a local file.
-     * 
+     *
      * @param fileName  A path to a local file to be open/created.
      * @param editor  A CSV "editor" which is used for formatting output products.
      * @param idFieldName  The name of an output field representing object identifiers.
@@ -114,34 +109,30 @@ public:
      * @throw std::invalid_argument  Invalid specificaton of the fields.
      * @throw std::runtime_error  If the file opening/creation operation failed for another reason.
      */
-    void create(std::string const& fileName,
-                csv::Editor const& editor,
-                std::string const& idFieldName,
-                std::string const& chunkIdFieldName,
-                std::string const& subChunkIdFieldName);
+    void create(std::string const& fileName, csv::Editor const& editor, std::string const& idFieldName,
+                std::string const& chunkIdFieldName, std::string const& subChunkIdFieldName);
 
     /**
      * Open the index.
-     * 
+     *
      * Note that parameter 'dialect' should be normally the same one which is
      * used for making output products of the partitioning tool. This is based on an assumption
      * that all products made by the partitioning tool in a context of a given catalog would be
-     * partitioned in the same way. If that's not the case 
+     * partitioned in the same way. If that's not the case
      *
      * @param url  An index specification.
      * @param dialect  A dialect for parsing index specifications.
      * @throw std::invalid_argument  Invalid specificaton of the index.
      * @throw std::runtime_error  Failed to open the index.
      */
-    void open(std::string const& url,
-              csv::Dialect const& dialect);
+    void open(std::string const& url, csv::Dialect const& dialect);
 
-    /// Close the index and release all resources associated with it. 
+    /// Close the index and release all resources associated with it.
     void close();
 
     /**
      * Write a record into the index.
-     * 
+     *
      * @param id  An identifier of an object.
      * @param location  A location of the object (including chunk and sub-chunk identifiers).
      * @throw std::logic_error  If the index was not created or if it's not open in Mode::WRITE.
@@ -151,14 +142,14 @@ public:
 
     /**
      * Locate chunkId and subChunkId for a given object identifier.
-     * 
+     *
      * @param id  An identifier to be located in the index.
      * @return A pair of a chunkId and a subChunkId for the identifier.
      * @throw std::logic_error  If the index is not open or if it's not open in Mode::READ.
      * @throw std::invalid_argument  Invalid value of the identifier.
      * @throw std::out_of_range  If the specified identifier wasn't found in the index.
      */
-    std::pair<int32_t,int32_t> read(std::string const& id);
+    std::pair<int32_t, int32_t> read(std::string const& id);
 
 private:
     ObjectIndex() = default;
@@ -172,7 +163,7 @@ private:
 
     // Attributes of the index open in Mode::READ
     std::string _inUrl;
-    std::map<std::string,std::pair<int32_t,int32_t>> _inIndexMap;
+    std::map<std::string, std::pair<int32_t, int32_t>> _inIndexMap;
 
     // Attributes of the index open in Mode::WRITE
     int _outIdField = -1;
@@ -184,6 +175,6 @@ private:
     std::ofstream _outFile;
 };
 
-}} // namespace lsst::partition
+}}  // namespace lsst::partition
 
-#endif // LSST_PARTITION_OBJECTINDEX_H
+#endif  // LSST_PARTITION_OBJECTINDEX_H

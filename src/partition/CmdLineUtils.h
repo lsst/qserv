@@ -37,13 +37,11 @@
 #include "Csv.h"
 #include "InputLines.h"
 
-namespace lsst {
-namespace partition {
-    class ConfigStore;
-}} // namespace lsst::partition
+namespace lsst { namespace partition {
+class ConfigStore;
+}}  // namespace lsst::partition
 
-namespace lsst {
-namespace partition {
+namespace lsst { namespace partition {
 
 /// Helper class for mapping field names to indexes. The `resolve` method
 /// checks that a field exists, and optionally that the field name has not
@@ -52,25 +50,20 @@ namespace partition {
 /// than one of them doesn't make sense.
 class FieldNameResolver {
 public:
-    FieldNameResolver(csv::Editor const & editor) : _editor(&editor) { }
+    FieldNameResolver(csv::Editor const& editor) : _editor(&editor) {}
     ~FieldNameResolver();
     /// Retrieve index of `fieldName`, where `fieldName` has been extracted
     /// from the value of the given option.
-    int resolve(std::string const & option,
-                std::string const & value,
-                std::string const & fieldName,
-                bool unique=true);
+    int resolve(std::string const& option, std::string const& value, std::string const& fieldName,
+                bool unique = true);
     /// Retrieve index of `fieldName`, where `fieldName` is the value of the
     /// given option.
-    int resolve(std::string const & option,
-                std::string const & fieldName,
-                bool unique=true)
-    {
+    int resolve(std::string const& option, std::string const& fieldName, bool unique = true) {
         return resolve(option, fieldName, fieldName, unique);
     }
 
 private:
-    csv::Editor const * _editor;
+    csv::Editor const* _editor;
     std::set<int> _fields;
 };
 
@@ -78,42 +71,35 @@ private:
 /// the results in `config` to be returned by the function. This function
 /// defines generic options `help`, `verbose`, and `config-file`. It handles
 /// `help` output and configuration file parsing for the caller.
-ConfigStore parseCommandLine(boost::program_options::options_description const & opts,
-                             int argc,
-                             char const * const * argv,
-                             char const * help);
+ConfigStore parseCommandLine(boost::program_options::options_description const& opts, int argc,
+                             char const* const* argv, char const* help);
 
 /// Parse an option value that contains a comma separated pair of field names,
 /// Leading/trailing whitespace is stripped from each name, and empty names are
 /// rejected.
-std::pair<std::string, std::string> const parseFieldNamePair(
-     std::string const & opt, std::string const & val);
+std::pair<std::string, std::string> const parseFieldNamePair(std::string const& opt, std::string const& val);
 
 /// Define the `in` option.
-void defineInputOptions(boost::program_options::options_description & opts);
+void defineInputOptions(boost::program_options::options_description& opts);
 
 /// Construct an InputLines object from input files and/or directories.
-InputLines const makeInputLines(ConfigStore const & config);
+InputLines const makeInputLines(ConfigStore const& config);
 
 /// Define the `out.dir` and `out.num-nodes` options.
-void defineOutputOptions(boost::program_options::options_description & opts);
+void defineOutputOptions(boost::program_options::options_description& opts);
 
 /// Handle output directory checking/creation. Assumes `defineOutputOptions()`
 /// has been used.
-void makeOutputDirectory(ConfigStore & config,
-                         bool mayExist);
+void makeOutputDirectory(ConfigStore& config, bool mayExist);
 
 /// Ensure that the field name given by the option `opt` is listed as an output
 /// field (in `out.csv.field`) by appending it if necessary.
-void ensureOutputFieldExists(ConfigStore & config,
-                             std::string const & opt);
+void ensureOutputFieldExists(ConfigStore& config, std::string const& opt);
 
 /// Compute the IDs of chunks for which data must be generated, or for which
 /// the record count must be estimated.
-std::vector<int32_t> const chunksToDuplicate(
-    Chunker const & chunker, ConfigStore const & config);
+std::vector<int32_t> const chunksToDuplicate(Chunker const& chunker, ConfigStore const& config);
 
-}} // namespace lsst::partition
+}}  // namespace lsst::partition
 
-#endif // LSST_PARTITION_CMDLINEUTILS_H
-
+#endif  // LSST_PARTITION_CMDLINEUTILS_H

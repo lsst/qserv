@@ -33,23 +33,18 @@
 #include "boost/program_options.hpp"
 #include "nlohmann/json.hpp"
 
-
-namespace lsst {
-namespace partition {
+namespace lsst { namespace partition {
 /**
  * Objects of class ConfigTypeError are thrown when a client is attempting
  * incorrect types in the parameter type conversion.
  */
-class ConfigTypeError: public std::logic_error {
+class ConfigTypeError : public std::logic_error {
 public:
     using std::logic_error::logic_error;
 };
-}} // namespace lsst::partition
+}}  // namespace lsst::partition
 
-
-namespace lsst {
-namespace partition {
-namespace detail {
+namespace lsst { namespace partition { namespace detail {
 /**
  * Class Value is a utility class for type-safe conversion of parameters into
  * values of desired types.
@@ -61,19 +56,17 @@ public:
         std::string const context = "ConfigStore::Value<T>::convert: ";
         try {
             return param.get<T>();
-        } catch(std::exception const& ex) {
-            throw lsst::partition::ConfigTypeError(
-                context + "incorrect type conversion for parameter: '" + path + "', details: "
-                + std::string(ex.what()));
+        } catch (std::exception const& ex) {
+            throw lsst::partition::ConfigTypeError(context + "incorrect type conversion for parameter: '" +
+                                                   path + "', details: " + std::string(ex.what()));
         }
     }
 };
 
-
 /**
  * Template specialization of the utility class Value for converting parameters of
  * the JSON array type into vectors.
- * 
+ *
  * @note the implementation of method convert() allows for nested convertion of
  *   the vector types. For example, it would support std::vector<std::vector<int>>, etc.
  */
@@ -86,13 +79,12 @@ public:
             throw lsst::partition::ConfigTypeError(context + "parameter: '" + path + "' is not an array.");
         }
         std::vector<T> v;
-        for (auto const& e: param) {
+        for (auto const& e : param) {
             v.push_back(Value<T>::convert(e, path));
         }
         return v;
     }
 };
-
 
 /**
  * Template specialization of the utility class Value to allow interpreting single
@@ -107,29 +99,27 @@ public:
             std::string const s = Value<std::string>::convert(param, path);
             if (s.size() != 1) {
                 throw lsst::partition::ConfigTypeError(
-                    context + "parameter: '" + path + "' is a string, but not the single-character one"
-                    " to allow interpreting it as a value of the 'char' type.");
+                        context + "parameter: '" + path +
+                        "' is a string, but not the single-character one"
+                        " to allow interpreting it as a value of the 'char' type.");
             }
             return s[0];
         }
         try {
             return param.get<char>();
-        } catch(std::exception const& ex) {
-            throw lsst::partition::ConfigTypeError(
-                context + "incorrect type conversion for parameter: '" + path + "', details: "
-                + std::string(ex.what()));
+        } catch (std::exception const& ex) {
+            throw lsst::partition::ConfigTypeError(context + "incorrect type conversion for parameter: '" +
+                                                   path + "', details: " + std::string(ex.what()));
         }
     }
 };
-}}} // namespace lsst::partition::detail
+}}}  // namespace lsst::partition::detail
 
-
-namespace lsst {
-namespace partition {
+namespace lsst { namespace partition {
 /**
  * Class ConfigStore is a unified transient storage of the configuration parameters read
  * from the configuration files or command-line parameters.
- * 
+ *
  * Parameters are fetched from the store using their "path" specification. The dot
  * character '.' is used for separating components of the path:
  * @code
@@ -172,12 +162,12 @@ public:
      * @param config  A JSON object to be used to initialize the store.
      * @throw std::invalid_argument  If the input value is not a JSON Object.
      */
-    explicit ConfigStore(nlohmann::json const& config=nlohmann::json::object());
+    explicit ConfigStore(nlohmann::json const& config = nlohmann::json::object());
 
     /**
      * Parse the content of the JSON file and merge parameters found in the file into
      * the object.
-     * 
+     *
      * It's allowed to call this method many times for the same or different files.
      * Parameters read from a file will be merged into the store.
      *
@@ -189,7 +179,7 @@ public:
 
     /**
      * Merge the content of the input JSON object into the store.
-     * 
+     *
      * It's allowed to call this method many times for the same or different objects.
      * Parameters read from the input object will be merged into the store.
      * Empty objects are allowed on the input.
@@ -220,7 +210,9 @@ public:
      * @throw std::invalid_argument The path is not valid.
      */
     template <typename T>
-    void set(std::string const& path, T const& value) { _config[_path2pointer(path)] = value; }
+    void set(std::string const& path, T const& value) {
+        _config[_path2pointer(path)] = value;
+    }
 
     /**
      * Extract a value of an existing parameter given its expected type.
@@ -231,7 +223,9 @@ public:
      * @throw ConfigStore  If using incorrect types in type conversion.
      */
     template <typename T>
-    T get(std::string const& path) const { return detail::Value<T>::convert(_get(path), path); }
+    T get(std::string const& path) const {
+        return detail::Value<T>::convert(_get(path), path);
+    }
 
     /**
      * Check if the specified parameter exists in the configuration.
@@ -282,6 +276,6 @@ private:
     /// Parameter storage
     nlohmann::json _config = nlohmann::json::object();
 };
-}} // namespace lsst::partition
+}}  // namespace lsst::partition
 
-#endif // LSST_PARTITION_CONFIG_H
+#endif  // LSST_PARTITION_CONFIG_H

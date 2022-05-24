@@ -34,9 +34,7 @@
 #include "boost/filesystem.hpp"
 #include "boost/unordered_map.hpp"
 
-
-namespace lsst {
-namespace partition {
+namespace lsst { namespace partition {
 
 /// An HTM index tracks how many records of an input data set are contained
 /// in all HTM triangles of a given subdivision level L. It also provides a
@@ -52,14 +50,14 @@ public:
     /// Create an empty HTM index at the given subdivision level.
     explicit HtmIndex(int level);
     /// Read an HTM index from a file.
-    explicit HtmIndex(boost::filesystem::path const & path);
+    explicit HtmIndex(boost::filesystem::path const& path);
     /// Read and merge a list of HTM index files.
-    explicit HtmIndex(std::vector<boost::filesystem::path> const & paths);
-    HtmIndex(HtmIndex const & idx);
+    explicit HtmIndex(std::vector<boost::filesystem::path> const& paths);
+    HtmIndex(HtmIndex const& idx);
 
     ~HtmIndex();
 
-    HtmIndex & operator=(HtmIndex const & idx) {
+    HtmIndex& operator=(HtmIndex const& idx) {
         if (this != &idx) {
             HtmIndex tmp(idx);
             swap(tmp);
@@ -87,9 +85,9 @@ public:
     uint32_t mapToNonEmpty(uint32_t id) const;
 
     /// Write or append the index to a binary file.
-    void write(boost::filesystem::path const & path, bool truncate) const;
+    void write(boost::filesystem::path const& path, bool truncate) const;
     /// Write the index to a stream in human readable format.
-    void write(std::ostream & os) const;
+    void write(std::ostream& os) const;
 
     /// Add or merge the given triangle with this index, returning a reference
     /// to the newly added or updated triangle.
@@ -97,32 +95,30 @@ public:
 
     /// Add or merge the triangles in the given index with the triangles in
     /// this one.
-    void merge(HtmIndex const & idx);
+    void merge(HtmIndex const& idx);
 
     void clear();
-    void swap(HtmIndex & idx);
+    void swap(HtmIndex& idx);
 
 private:
     typedef boost::unordered_map<uint32_t, uint64_t> Map;
 
-    static int const ENTRY_SIZE = 4 + 8; // HTM ID: 4 bytes, count: 8 bytes
+    static int const ENTRY_SIZE = 4 + 8;  // HTM ID: 4 bytes, count: 8 bytes
 
-    void _read(boost::filesystem::path const & path);
+    void _read(boost::filesystem::path const& path);
 
     uint64_t _numRecords;
     Map _map;
-    std::vector<uint32_t> mutable _keys; // derived from _map on-demand
+    std::vector<uint32_t> mutable _keys;  // derived from _map on-demand
     int _level;
 };
 
-inline void swap(HtmIndex & a, HtmIndex & b) {
-    a.swap(b);
-}
-inline std::ostream & operator<<(std::ostream & os, HtmIndex const & idx) {
+inline void swap(HtmIndex& a, HtmIndex& b) { a.swap(b); }
+inline std::ostream& operator<<(std::ostream& os, HtmIndex const& idx) {
     idx.write(os);
     return os;
 }
 
-}} // namespace lsst::partition
+}}  // namespace lsst::partition
 
-#endif // LSST_PARTITION_HTMINDEX_H
+#endif  // LSST_PARTITION_HTMINDEX_H

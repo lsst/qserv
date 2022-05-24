@@ -32,19 +32,12 @@
 
 using namespace std;
 
-namespace lsst {
-namespace partition {
+namespace lsst { namespace partition {
 
-ObjectIndex::~ObjectIndex() {
-    close();
-}
+ObjectIndex::~ObjectIndex() { close(); }
 
-
-void ObjectIndex::create(string const& fileName,
-                         csv::Editor const& editor,
-                         string const& idFieldName,
-                         string const& chunkIdFieldName,
-                         string const& subChunkIdFieldName) {
+void ObjectIndex::create(string const& fileName, csv::Editor const& editor, string const& idFieldName,
+                         string const& chunkIdFieldName, string const& subChunkIdFieldName) {
     string const context = "ObjectIndex::" + string(__func__) + ": ";
     lock_guard<mutex> lock(_mtx);
     if (_isOpen) return;
@@ -52,22 +45,26 @@ void ObjectIndex::create(string const& fileName,
         throw invalid_argument(context + "file name is empty");
     }
     if (idFieldName.empty() || chunkIdFieldName.empty() || subChunkIdFieldName.empty()) {
-        throw invalid_argument(
-            context + "at least one of the required field names isn't provided,"
-            " idFieldName='" + idFieldName + "', chunkIdFieldName='" + chunkIdFieldName + "',"
-            " subChunkIdFieldName='" + subChunkIdFieldName + "'");
+        throw invalid_argument(context +
+                               "at least one of the required field names isn't provided,"
+                               " idFieldName='" +
+                               idFieldName + "', chunkIdFieldName='" + chunkIdFieldName +
+                               "',"
+                               " subChunkIdFieldName='" +
+                               subChunkIdFieldName + "'");
     }
     _outFileName = fileName;
-    _outFile.open(_outFileName, ios_base::out|ios_base::app);
+    _outFile.open(_outFileName, ios_base::out | ios_base::app);
     if (not _outFile.good()) {
-        throw runtime_error(context + "failed to open/create index file: '" + _outFileName +  "'");
+        throw runtime_error(context + "failed to open/create index file: '" + _outFileName + "'");
     }
 
     // Initialize the editor which will be used for formatting text written into
     // the output file. Initialize indexes of the fields to optimize further operations
     // with the editor.
     vector<string> const fields = {idFieldName, chunkIdFieldName, subChunkIdFieldName};
-    _outEditorPtr.reset(new csv::Editor(editor.getOutputDialect(), editor.getOutputDialect(), fields, fields));
+    _outEditorPtr.reset(
+            new csv::Editor(editor.getOutputDialect(), editor.getOutputDialect(), fields, fields));
     _outIdField = _outEditorPtr->getFieldIndex(idFieldName);
     _outChunkIdField = _outEditorPtr->getFieldIndex(chunkIdFieldName);
     _outSubChunkIdField = _outEditorPtr->getFieldIndex(subChunkIdFieldName);
@@ -80,9 +77,7 @@ void ObjectIndex::create(string const& fileName,
     _isOpen = true;
 }
 
-
-void ObjectIndex::open(string const& url,
-                       csv::Dialect const& dialect) {
+void ObjectIndex::open(string const& url, csv::Dialect const& dialect) {
     string const context = "ObjectIndex::" + string(__func__) + ": ";
     lock_guard<mutex> lock(_mtx);
     if (_isOpen) return;
@@ -99,7 +94,7 @@ void ObjectIndex::open(string const& url,
     string const fileName = url.substr(scheme.length() - 1);
     ifstream inFile(fileName, ios_base::in);
     if (not inFile.good()) {
-        throw runtime_error(context + "failed to open index file: '" + fileName +  "'");
+        throw runtime_error(context + "failed to open index file: '" + fileName + "'");
     }
     // Field specifications in the index file are random as they don't have any actual
     // names in the input file. What really matters is that there should be at lest 3 fields, and
@@ -127,11 +122,10 @@ void ObjectIndex::open(string const& url,
     _isOpen = true;
 }
 
-
 void ObjectIndex::close() {
     lock_guard<mutex> lock(_mtx);
     if (not _isOpen) return;
-    switch(_mode) {
+    switch (_mode) {
         case Mode::READ:
             break;
         case Mode::WRITE:
@@ -143,14 +137,14 @@ void ObjectIndex::close() {
     _isOpen = false;
 }
 
-
 void ObjectIndex::write(string const& id, ChunkLocation const& location) {
     string const context = "ObjectIndex::" + string(__func__) + ": ";
     lock_guard<mutex> lock(_mtx);
     if (not _isOpen) throw logic_error(context + "index is not open");
     if (Mode::WRITE != _mode) throw logic_error(context + "index is not open in Mode::WRITE");
     if (id.empty()) throw invalid_argument(context + "empty identifier passed as a parameter");
-    if (location.chunkId < 0 || location.subChunkId < 0) throw invalid_argument(context + "invalid object location passed as a parameter");
+    if (location.chunkId < 0 || location.subChunkId < 0)
+        throw invalid_argument(context + "invalid object location passed as a parameter");
     _outEditorPtr->set(_outIdField, id);
     _outEditorPtr->set(_outChunkIdField, location.chunkId);
     _outEditorPtr->set(_outSubChunkIdField, location.subChunkId);
@@ -158,8 +152,7 @@ void ObjectIndex::write(string const& id, ChunkLocation const& location) {
     _outFile.write(_outBuf.get(), end - _outBuf.get());
 }
 
-
-pair<int32_t,int32_t> ObjectIndex::read(string const& id) {
+pair<int32_t, int32_t> ObjectIndex::read(string const& id) {
     string const context = "ObjectIndex::" + string(__func__) + ": ";
     lock_guard<mutex> lock(_mtx);
     if (not _isOpen) throw logic_error(context + "index is not open");
@@ -172,4 +165,4 @@ pair<int32_t,int32_t> ObjectIndex::read(string const& id) {
     return itr->second;
 }
 
-}} // namespace lsst::partition
+}}  // namespace lsst::partition

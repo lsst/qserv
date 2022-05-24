@@ -43,29 +43,20 @@ namespace fs = boost::filesystem;
 namespace po = boost::program_options;
 
 BOOST_AUTO_TEST_CASE(ConfigStoreTest) {
-
     // Constructors
 
-    BOOST_REQUIRE_NO_THROW({
-        ConfigStore const store;
-    });
+    BOOST_REQUIRE_NO_THROW({ ConfigStore const store; });
 
     json const emptyConfig;
-    BOOST_REQUIRE_NO_THROW({
-        ConfigStore const store(emptyConfig);
-    });
+    BOOST_REQUIRE_NO_THROW({ ConfigStore const store(emptyConfig); });
 
     json const emptyConfigObject = json::object();
-    BOOST_REQUIRE_NO_THROW({
-        ConfigStore const store(emptyConfigObject);
-    });
+    BOOST_REQUIRE_NO_THROW({ ConfigStore const store(emptyConfigObject); });
 
     auto const wrongConfig = R"(
         ["p1","p2"]
     )"_json;
-    BOOST_CHECK_THROW({
-        ConfigStore const store(wrongConfig);
-    }, std::invalid_argument);
+    BOOST_CHECK_THROW({ ConfigStore const store(wrongConfig); }, std::invalid_argument);
 
     auto const simpleConfig = R"(
         {
@@ -87,16 +78,16 @@ BOOST_AUTO_TEST_CASE(ConfigStoreTest) {
         }
     )"_json;
     std::unique_ptr<ConfigStore> simpleStorePtr;
-    BOOST_REQUIRE_NO_THROW({
-        simpleStorePtr.reset(new ConfigStore(simpleConfig));
-    });
+    BOOST_REQUIRE_NO_THROW({ simpleStorePtr.reset(new ConfigStore(simpleConfig)); });
 
     // Accessors
 
-    BOOST_CHECK_THROW({
-        // Empty path to a parameter isn't allowed
-        simpleStorePtr->has("");
-    }, std::invalid_argument);
+    BOOST_CHECK_THROW(
+            {
+                // Empty path to a parameter isn't allowed
+                simpleStorePtr->has("");
+            },
+            std::invalid_argument);
 
     BOOST_REQUIRE_NO_THROW({
         // Non-existing parameter
@@ -125,65 +116,49 @@ BOOST_AUTO_TEST_CASE(ConfigStoreTest) {
 
     // Locators for non-valid parameters
 
-    BOOST_CHECK_THROW({
-        // Empty path to a parameter isn't allowed
-        simpleStorePtr->get<std::string>("");
-    }, std::invalid_argument);
+    BOOST_CHECK_THROW(
+            {
+                // Empty path to a parameter isn't allowed
+                simpleStorePtr->get<std::string>("");
+            },
+            std::invalid_argument);
 
-    BOOST_CHECK_THROW({
-        // Non-existing parameter
-        simpleStorePtr->get<std::string>("a");
-    }, std::invalid_argument);
+    BOOST_CHECK_THROW(
+            {
+                // Non-existing parameter
+                simpleStorePtr->get<std::string>("a");
+            },
+            std::invalid_argument);
 
     // Locators and type conversion for valid parameters
 
-    BOOST_CHECK_THROW({
-        // Using an incorrect type to extract a value
-        simpleStorePtr->get<std::string>("n");
-    }, ConfigTypeError);
+    BOOST_CHECK_THROW(
+            {
+                // Using an incorrect type to extract a value
+                simpleStorePtr->get<std::string>("n");
+            },
+            ConfigTypeError);
 
-    BOOST_REQUIRE_NO_THROW({
-        simpleStorePtr->get<double>("n");
-    });
-    BOOST_REQUIRE_NO_THROW({
-        simpleStorePtr->get<std::string>("s");
-    });
- 
-    BOOST_REQUIRE_NO_THROW({
-        simpleStorePtr->get<std::string>("c");
-    });
+    BOOST_REQUIRE_NO_THROW({ simpleStorePtr->get<double>("n"); });
+    BOOST_REQUIRE_NO_THROW({ simpleStorePtr->get<std::string>("s"); });
+
+    BOOST_REQUIRE_NO_THROW({ simpleStorePtr->get<std::string>("c"); });
     BOOST_REQUIRE_NO_THROW({
         // A single-character string is allowed to be interpreted as a value of the 'char' type.
         // This would be required for parameters read from the JSON files since JSON doesn't
         // explicitly support the single character type.
         simpleStorePtr->get<char>("c");
     });
- 
-    BOOST_REQUIRE_NO_THROW({
-        simpleStorePtr->get<std::vector<std::string>>("v");
-    });
-    BOOST_REQUIRE_NO_THROW({
-        simpleStorePtr->get<int>("d.p1");
-    });
-    BOOST_REQUIRE_NO_THROW({
-        simpleStorePtr->get<std::string>("d.p2");
-    });
-    BOOST_REQUIRE_NO_THROW({
-        simpleStorePtr->get<std::vector<int>>("d.v1");
-    });
-    BOOST_REQUIRE_NO_THROW({
-        simpleStorePtr->get<std::vector<std::vector<int>>>("d.v2");
-    });
-    BOOST_REQUIRE_NO_THROW({
-        simpleStorePtr->get<std::string>("d.dd.pp");
-    });
-    BOOST_REQUIRE_NO_THROW({
-        simpleStorePtr->get<bool>("flag_true");
-    });
-    BOOST_REQUIRE_NO_THROW({
-        simpleStorePtr->get<bool>("flag_false");
-    });
- 
+
+    BOOST_REQUIRE_NO_THROW({ simpleStorePtr->get<std::vector<std::string>>("v"); });
+    BOOST_REQUIRE_NO_THROW({ simpleStorePtr->get<int>("d.p1"); });
+    BOOST_REQUIRE_NO_THROW({ simpleStorePtr->get<std::string>("d.p2"); });
+    BOOST_REQUIRE_NO_THROW({ simpleStorePtr->get<std::vector<int>>("d.v1"); });
+    BOOST_REQUIRE_NO_THROW({ simpleStorePtr->get<std::vector<std::vector<int>>>("d.v2"); });
+    BOOST_REQUIRE_NO_THROW({ simpleStorePtr->get<std::string>("d.dd.pp"); });
+    BOOST_REQUIRE_NO_THROW({ simpleStorePtr->get<bool>("flag_true"); });
+    BOOST_REQUIRE_NO_THROW({ simpleStorePtr->get<bool>("flag_false"); });
+
     BOOST_CHECK_EQUAL(simpleStorePtr->get<double>("n"), 1.1);
     BOOST_CHECK_EQUAL(simpleStorePtr->get<std::string>("s"), std::string("abc"));
     BOOST_CHECK_EQUAL(simpleStorePtr->get<std::string>("c"), std::string("\t"));
@@ -194,7 +169,7 @@ BOOST_AUTO_TEST_CASE(ConfigStoreTest) {
     BOOST_CHECK_EQUAL(simpleStorePtr->get<std::string>("c")[0], '\t');
 
     std::vector<std::string> const pv = simpleStorePtr->get<std::vector<std::string>>("v");
-    std::vector<std::string> const v = {"t","u","v"};
+    std::vector<std::string> const v = {"t", "u", "v"};
     BOOST_REQUIRE_NO_THROW({
         BOOST_CHECK_EQUAL(pv.size(), v.size());
         for (size_t i = 0, n = pv.size(); i < n; ++i) {
@@ -206,7 +181,7 @@ BOOST_AUTO_TEST_CASE(ConfigStoreTest) {
     BOOST_CHECK_EQUAL(simpleStorePtr->get<std::string>("d.p2"), std::string("xyz"));
 
     std::vector<int> const dpv1 = simpleStorePtr->get<std::vector<int>>("d.v1");
-    std::vector<int> const dv1 = {1,2,3,4};
+    std::vector<int> const dv1 = {1, 2, 3, 4};
     BOOST_REQUIRE_NO_THROW({
         BOOST_CHECK_EQUAL(dpv1.size(), dv1.size());
         for (size_t i = 0, n = dpv1.size(); i < n; ++i) {
@@ -214,7 +189,7 @@ BOOST_AUTO_TEST_CASE(ConfigStoreTest) {
         }
     });
     std::vector<std::vector<int>> const dpv2 = simpleStorePtr->get<std::vector<std::vector<int>>>("d.v2");
-    std::vector<std::vector<int>> const dv2 = {{1,2},{3,4}};
+    std::vector<std::vector<int>> const dv2 = {{1, 2}, {3, 4}};
     BOOST_REQUIRE_NO_THROW({
         BOOST_CHECK_EQUAL(dpv2.size(), dv2.size());
         for (size_t i = 0, n = dpv2.size(); i < n; ++i) {
@@ -233,19 +208,17 @@ BOOST_AUTO_TEST_CASE(ConfigStoreTest) {
     BOOST_CHECK_EQUAL(simpleStorePtr->flag("flag_false"), false);
 
     // Parameters which are not of type 'bool' should not be used as 'flags'
-    BOOST_REQUIRE_NO_THROW({
-        simpleStorePtr->get<std::string>("s");
-    });
-    BOOST_CHECK_THROW({
-        simpleStorePtr->flag("s");
-    }, std::exception);
+    BOOST_REQUIRE_NO_THROW({ simpleStorePtr->get<std::string>("s"); });
+    BOOST_CHECK_THROW({ simpleStorePtr->flag("s"); }, std::exception);
 
     // Adding new or modifying existing parameters
 
-    BOOST_CHECK_THROW({
-        // Empty path is not allowed
-        simpleStorePtr->set<int>("", 1);
-    }, std::invalid_argument);
+    BOOST_CHECK_THROW(
+            {
+                // Empty path is not allowed
+                simpleStorePtr->set<int>("", 1);
+            },
+            std::invalid_argument);
 
     BOOST_CHECK_EQUAL(simpleStorePtr->has("a"), false);
     BOOST_REQUIRE_NO_THROW({
@@ -256,31 +229,27 @@ BOOST_AUTO_TEST_CASE(ConfigStoreTest) {
     BOOST_CHECK_EQUAL(simpleStorePtr->get<int>("a"), 2);
 
     BOOST_CHECK_EQUAL(simpleStorePtr->get<double>("n"), 1.1);
-    BOOST_REQUIRE_NO_THROW({
-        simpleStorePtr->set<double>("n", 2.2);
-    });
+    BOOST_REQUIRE_NO_THROW({ simpleStorePtr->set<double>("n", 2.2); });
     BOOST_CHECK_EQUAL(simpleStorePtr->get<double>("n"), 2.2);
 
     BOOST_CHECK_EQUAL(simpleStorePtr->get<int>("d.p1"), 123);
-    BOOST_REQUIRE_NO_THROW({
-        simpleStorePtr->set<int>("d.p1", 456);
-    });
+    BOOST_REQUIRE_NO_THROW({ simpleStorePtr->set<int>("d.p1", 456); });
     BOOST_CHECK_EQUAL(simpleStorePtr->get<int>("d.p1"), 456);
 
     BOOST_CHECK_EQUAL(simpleStorePtr->has("d1.a"), false);
-    BOOST_REQUIRE_NO_THROW({
-        simpleStorePtr->set<int>("d1.a", 987);
-    });
+    BOOST_REQUIRE_NO_THROW({ simpleStorePtr->set<int>("d1.a", 987); });
     BOOST_CHECK_EQUAL(simpleStorePtr->has("d1.a"), true);
     BOOST_CHECK_EQUAL(simpleStorePtr->get<int>("d1.a"), 987);
- 
+
     // Test adding more parameters from a JSON object
 
-    json const simpleArray = json::array({1,2,3,4});
-    BOOST_CHECK_THROW({
-        // JSON arrays are not allowed
-        simpleStorePtr->add(simpleArray);
-    }, std::invalid_argument);
+    json const simpleArray = json::array({1, 2, 3, 4});
+    BOOST_CHECK_THROW(
+            {
+                // JSON arrays are not allowed
+                simpleStorePtr->add(simpleArray);
+            },
+            std::invalid_argument);
 
     auto const extendedConfig = R"(
         {
@@ -297,14 +266,11 @@ BOOST_AUTO_TEST_CASE(ConfigStoreTest) {
     BOOST_CHECK_EQUAL(simpleStorePtr->get<std::string>("s"), std::string("abc"));
     BOOST_CHECK_EQUAL(simpleStorePtr->get<int>("d.p1"), 456);
     BOOST_CHECK_EQUAL(simpleStorePtr->has("d.p3"), false);
-    BOOST_REQUIRE_NO_THROW({
-        simpleStorePtr->add(extendedConfig);
-    });
+    BOOST_REQUIRE_NO_THROW({ simpleStorePtr->add(extendedConfig); });
     BOOST_CHECK_EQUAL(simpleStorePtr->has("k"), true);
     BOOST_CHECK_EQUAL(simpleStorePtr->get<std::string>("s"), std::string("def"));
     BOOST_CHECK_EQUAL(simpleStorePtr->get<int>("d.p1"), 789);
     BOOST_CHECK_EQUAL(simpleStorePtr->get<std::string>("d.p3"), std::string("xyz"));
-
 
     // Test loading parameters from a JSON file
 
@@ -328,19 +294,19 @@ BOOST_AUTO_TEST_CASE(ConfigStoreTest) {
 
     ConfigStore anotherConfig;
 
-    BOOST_CHECK_THROW({
-        // Empty filenames aren't allowed
-        anotherConfig.parse("");
-    }, std::invalid_argument);
+    BOOST_CHECK_THROW(
+            {
+                // Empty filenames aren't allowed
+                anotherConfig.parse("");
+            },
+            std::invalid_argument);
 
     BOOST_CHECK_EQUAL(anotherConfig.has("a"), false);
     BOOST_CHECK_EQUAL(anotherConfig.has("b"), false);
     BOOST_CHECK_EQUAL(anotherConfig.has("c.d"), false);
     BOOST_CHECK_EQUAL(anotherConfig.has("c.e"), false);
     BOOST_CHECK_EQUAL(anotherConfig.has("c.f"), false);
-    BOOST_REQUIRE_NO_THROW({
-        anotherConfig.parse(filename);
-    });
+    BOOST_REQUIRE_NO_THROW({ anotherConfig.parse(filename); });
     BOOST_CHECK_EQUAL(anotherConfig.has("a"), true);
     BOOST_CHECK_EQUAL(anotherConfig.has("b"), true);
     BOOST_CHECK_EQUAL(anotherConfig.has("c.d"), true);
@@ -353,7 +319,7 @@ BOOST_AUTO_TEST_CASE(ConfigStoreTest) {
     BOOST_CHECK_EQUAL(anotherConfig.get<std::string>("c.e"), std::string("efg"));
 
     std::vector<std::string> const pcf = anotherConfig.get<std::vector<std::string>>("c.f");
-    std::vector<std::string> const cf = {"one","two","three"};
+    std::vector<std::string> const cf = {"one", "two", "three"};
     BOOST_REQUIRE_NO_THROW({
         BOOST_CHECK_EQUAL(pcf.size(), cf.size());
         for (size_t i = 0, n = pcf.size(); i < n; ++i) {
@@ -366,7 +332,7 @@ BOOST_AUTO_TEST_CASE(ConfigStoreTest) {
     po::variables_map vm;
     bool const defaulted = true;
     std::string a = "abcd";
-    std::vector<std::string> b = {"one","two","three","four"};
+    std::vector<std::string> b = {"one", "two", "three", "four"};
     char c = '\t';
     int d = 1;
     uint32_t e = 2U;
@@ -401,9 +367,7 @@ BOOST_AUTO_TEST_CASE(ConfigStoreTest) {
     BOOST_CHECK_EQUAL(nextConfig.has("dd.a"), false);
     BOOST_CHECK_EQUAL(nextConfig.has("f_true"), false);
     BOOST_CHECK_EQUAL(nextConfig.has("f_false"), false);
-    BOOST_REQUIRE_NO_THROW({
-        nextConfig.add(vm);
-    });
+    BOOST_REQUIRE_NO_THROW({ nextConfig.add(vm); });
     BOOST_CHECK_EQUAL(nextConfig.has("a"), true);
     BOOST_CHECK_EQUAL(nextConfig.has("b"), true);
     BOOST_CHECK_EQUAL(nextConfig.has("c"), true);
@@ -442,9 +406,7 @@ BOOST_AUTO_TEST_CASE(ConfigStoreTest) {
     vm.clear();
     vm.insert(make_pair(std::string("mt"), po::variable_value(boost::any(mt), defaulted)));
 
-    BOOST_CHECK_THROW({
-        nextConfig.add(vm);
-    }, ConfigTypeError);
+    BOOST_CHECK_THROW({ nextConfig.add(vm); }, ConfigTypeError);
 
     // Test for cases when values of existing parameters in the store should not
     // be updated from the command line option for default values of the parameters
@@ -496,4 +458,3 @@ BOOST_AUTO_TEST_CASE(ConfigStoreTest) {
     BOOST_CHECK_EQUAL(nextConfig.get<bool>("flag"), true);
     BOOST_CHECK_EQUAL(nextConfig.flag("flag"), true);
 }
-

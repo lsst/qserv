@@ -36,47 +36,45 @@
 #include "partition/FileUtils.h"
 
 namespace {
-    struct TempFile {
-        char name[7];
-        int fd;
+struct TempFile {
+    char name[7];
+    int fd;
 
-        TempFile() : name(), fd(-1) {
-            strcpy(name, "XXXXXX");
-            fd = mkstemp(name);
-            if (fd == -1) {
-                throw std::runtime_error("Failed to create temporary file.");
-            }
+    TempFile() : name(), fd(-1) {
+        strcpy(name, "XXXXXX");
+        fd = mkstemp(name);
+        if (fd == -1) {
+            throw std::runtime_error("Failed to create temporary file.");
         }
+    }
 
-        ~TempFile() {
-            if (fd != -1) {
-                unlink(name);
-                close(fd);
-            }
+    ~TempFile() {
+        if (fd != -1) {
+            unlink(name);
+            close(fd);
         }
+    }
 
-        boost::filesystem::path const path() const {
-            return boost::filesystem::path(name);
+    boost::filesystem::path const path() const { return boost::filesystem::path(name); }
+
+    void concatenate(TempFile const& t1, TempFile const& t2) {
+        using lsst::partition::InputFile;
+        using lsst::partition::OutputFile;
+
+        InputFile if1(t1.path());
+        InputFile if2(t2.path());
+        OutputFile of(path(), true);
+        size_t sz = static_cast<size_t>(std::max(if1.size(), if2.size()));
+        boost::shared_ptr<void> buf(malloc(sz), free);
+        if (!buf) {
+            throw std::bad_alloc();
         }
+        if1.read(buf.get(), 0, if1.size());
+        of.append(buf.get(), static_cast<size_t>(if1.size()));
+        if2.read(buf.get(), 0, if2.size());
+        of.append(buf.get(), static_cast<size_t>(if2.size()));
+    }
+};
+}  // namespace
 
-        void concatenate(TempFile const & t1, TempFile const & t2) {
-            using lsst::partition::InputFile;
-            using lsst::partition::OutputFile;
-
-            InputFile if1(t1.path());
-            InputFile if2(t2.path());
-            OutputFile of(path(), true);
-            size_t sz = static_cast<size_t>(std::max(if1.size(), if2.size()));
-            boost::shared_ptr<void> buf(malloc(sz), free);
-            if (!buf) {
-                throw std::bad_alloc();
-            }
-            if1.read(buf.get(), 0, if1.size());
-            of.append(buf.get(), static_cast<size_t>(if1.size()));
-            if2.read(buf.get(), 0, if2.size());
-            of.append(buf.get(), static_cast<size_t>(if2.size()));
-        }
-    };
-}
-
-#endif // TEMPFILE_H
+#endif  // TEMPFILE_H

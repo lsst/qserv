@@ -28,38 +28,35 @@
 
 /// Maximum supported size of a line of text (bytes).
 #ifndef MAX_LINE_SIZE
-#   define MAX_LINE_SIZE 65536 - 24
+#define MAX_LINE_SIZE 65536 - 24
 #endif
 
 /// Maximum supported size of a CSV field (bytes).
 #ifndef MAX_FIELD_SIZE
-#   define MAX_FIELD_SIZE 255
+#define MAX_FIELD_SIZE 255
 #endif
 
 #if MAX_FIELD_SIZE >= MAX_LINE_SIZE
-#   error Maximum field size must be strictly less than the maximum line size.
+#error Maximum field size must be strictly less than the maximum line size.
 #endif
 
 /// Size in bytes of a cache-line.
 #ifndef CACHE_LINE_SIZE
-#   define CACHE_LINE_SIZE 64
+#define CACHE_LINE_SIZE 64
 #endif
 
+namespace lsst { namespace partition {
 
-namespace lsst {
-namespace partition {
+size_t const MiB = 1024 * 1024;
+size_t const GiB = 1024 * MiB;
 
-size_t const MiB = 1024*1024;
-size_t const GiB = 1024*MiB;
-
-double const DEG_PER_RAD = 57.2957795130823208767981548141;   ///< 180/π
-double const RAD_PER_DEG = 0.0174532925199432957692369076849; ///< π/180
-double const EPSILON_DEG = 0.001 / 3600;                      ///< 1 mas
+double const DEG_PER_RAD = 57.2957795130823208767981548141;    ///< 180/π
+double const RAD_PER_DEG = 0.0174532925199432957692369076849;  ///< π/180
+double const EPSILON_DEG = 0.001 / 3600;                       ///< 1 mas
 
 /// Maximum HTM subdivision level such that an ID requires less than 32 bits.
 int const HTM_MAX_LEVEL = 13;
 
-}} // namespace lsst::partition
+}}  // namespace lsst::partition
 
-#endif // LSST_PARTITION_CONSTANTS_H
-
+#endif  // LSST_PARTITION_CONSTANTS_H

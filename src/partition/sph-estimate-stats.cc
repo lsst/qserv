@@ -43,69 +43,49 @@
 namespace fs = boost::filesystem;
 namespace po = boost::program_options;
 
+namespace lsst { namespace partition {
 
-namespace lsst {
-namespace partition {
-
-void defineOptions(po::options_description & opts) {
+void defineOptions(po::options_description& opts) {
     po::options_description dup("\\________________ Duplication", 80);
-    dup.add_options()
-        ("sample.fraction",
-         po::value<double>()->default_value(1.0),
-         "The fraction of input positions to include in the output.")
-        ("index",
-         po::value<std::string>(),
-         "HTM index file name for the data set to duplicate. May be "
-         "omitted, in which case --part.index is used as the HTM index "
-         "for both the input data set and for partitioning positions.")
-        ("lon-min",
-         po::value<double>()->default_value(0.0),
-         "Minimum longitude angle bound (deg) for the duplication region.")
-        ("lon-max",
-         po::value<double>()->default_value(360.0),
-         "Maximum longitude angle bound (deg) for the duplication region.")
-        ("lat-min",
-         po::value<double>()->default_value(-90.0),
-         "Minimum latitude angle bound (deg) for the duplication region.")
-        ("lat-max",
-         po::value<double>()->default_value(90.0),
-         "Maximum latitude angle bound (deg) for the duplication region.")
-        ("chunk-id",
-         po::value<std::vector<int32_t> >(),
-         "Optionally limit duplication to one or more chunks. If specified, "
-         "data will be duplicated for the given chunk(s) regardless of the "
-         "the duplication region and node.")
-        ("out.node",
-         po::value<uint32_t>(),
-         "Optionally limit duplication to chunks for the given output node. "
-         "A chunk is assigned to a node when the hash of the chunk ID modulo "
-         "the number of nodes is equal to the node number. If this option is "
-         "specified, its value must be less than --out.num-nodes. It is "
-         "ignored if --chunk-id is specified.");
+    dup.add_options()("sample.fraction", po::value<double>()->default_value(1.0),
+                      "The fraction of input positions to include in the output.")(
+            "index", po::value<std::string>(),
+            "HTM index file name for the data set to duplicate. May be "
+            "omitted, in which case --part.index is used as the HTM index "
+            "for both the input data set and for partitioning positions.")(
+            "lon-min", po::value<double>()->default_value(0.0),
+            "Minimum longitude angle bound (deg) for the duplication region.")(
+            "lon-max", po::value<double>()->default_value(360.0),
+            "Maximum longitude angle bound (deg) for the duplication region.")(
+            "lat-min", po::value<double>()->default_value(-90.0),
+            "Minimum latitude angle bound (deg) for the duplication region.")(
+            "lat-max", po::value<double>()->default_value(90.0),
+            "Maximum latitude angle bound (deg) for the duplication region.")(
+            "chunk-id", po::value<std::vector<int32_t> >(),
+            "Optionally limit duplication to one or more chunks. If specified, "
+            "data will be duplicated for the given chunk(s) regardless of the "
+            "the duplication region and node.")(
+            "out.node", po::value<uint32_t>(),
+            "Optionally limit duplication to chunks for the given output node. "
+            "A chunk is assigned to a node when the hash of the chunk ID modulo "
+            "the number of nodes is equal to the node number. If this option is "
+            "specified, its value must be less than --out.num-nodes. It is "
+            "ignored if --chunk-id is specified.");
     po::options_description part("\\_______________ Partitioning", 80);
-    part.add_options()
-        ("part.index",
-         po::value<std::string>(),
-         "HTM index of partitioning positions. For example, if duplicating "
-         "a source table partitioned on associated object RA and Dec, this "
-         "would be the name of the HTM index file for the object table. If "
-         "this option is omitted, then --index is used as the HTM index for "
-         "both the input and partitioning position data sets.")
-        ("part.prefix",
-         po::value<std::string>()->default_value("chunk"),
-         "Chunk file name prefix.");
+    part.add_options()("part.index", po::value<std::string>(),
+                       "HTM index of partitioning positions. For example, if duplicating "
+                       "a source table partitioned on associated object RA and Dec, this "
+                       "would be the name of the HTM index file for the object table. If "
+                       "this option is omitted, then --index is used as the HTM index for "
+                       "both the input and partitioning position data sets.")(
+            "part.prefix", po::value<std::string>()->default_value("chunk"), "Chunk file name prefix.");
     Chunker::defineOptions(part);
     opts.add(dup).add(part);
     defineOutputOptions(opts);
 }
 
-
-boost::shared_ptr<ChunkIndex> const estimateStats(
-    std::vector<int32_t> const & chunks,
-    Chunker const & chunker,
-    HtmIndex const & index,
-    HtmIndex const & partIndex)
-{
+boost::shared_ptr<ChunkIndex> const estimateStats(std::vector<int32_t> const& chunks, Chunker const& chunker,
+                                                  HtmIndex const& index, HtmIndex const& partIndex) {
     std::vector<int32_t> subChunks;
     std::vector<uint32_t> htmIds;
     boost::shared_ptr<ChunkIndex> chunkIndex(new ChunkIndex());
@@ -133,10 +113,10 @@ boost::shared_ptr<ChunkIndex> const estimateStats(
                 loc.chunkId = chunkId;
                 loc.subChunkId = subChunkId;
                 uint64_t inTri = index(sourceHtmId);
-                size_t inBox = static_cast<size_t>((x/a)*inTri);
+                size_t inBox = static_cast<size_t>((x / a) * inTri);
                 chunkIndex->add(loc, inBox);
                 double ox = std::max(std::min(tri.intersectionArea(overlapBox), a), x);
-                size_t inOverlap = static_cast<size_t>((ox/a)*inTri) - inBox;
+                size_t inOverlap = static_cast<size_t>((ox / a) * inTri) - inBox;
                 loc.overlap = true;
                 chunkIndex->add(loc, inOverlap);
             }
@@ -145,15 +125,15 @@ boost::shared_ptr<ChunkIndex> const estimateStats(
     return chunkIndex;
 }
 
-
-boost::shared_ptr<ChunkIndex> const estimateStats(ConfigStore const & config) {
+boost::shared_ptr<ChunkIndex> const estimateStats(ConfigStore const& config) {
     Chunker chunker(config);
     if (!config.has("index") && !config.has("part.index")) {
-        throw std::runtime_error("One or both of the --index and --part.index "
-                                 "options must be specified.");
+        throw std::runtime_error(
+                "One or both of the --index and --part.index "
+                "options must be specified.");
     }
     // Load HTM indexes
-    char const * opt = (config.has("index") ? "index" : "part.index");
+    char const* opt = (config.has("index") ? "index" : "part.index");
     fs::path indexPath(config.get<std::string>(opt));
     opt = (config.has("part.index") ? "part.index" : "index");
     fs::path partIndexPath(config.get<std::string>(opt));
@@ -165,27 +145,27 @@ boost::shared_ptr<ChunkIndex> const estimateStats(ConfigStore const & config) {
         partIndex = index;
     }
     if (index->getLevel() != partIndex->getLevel()) {
-        throw std::runtime_error("Subdivision levels of input index (--index) "
-                                 "and partitioning index (--part.index) do not "
-                                 "match.");
+        throw std::runtime_error(
+                "Subdivision levels of input index (--index) "
+                "and partitioning index (--part.index) do not "
+                "match.");
     }
     std::vector<int32_t> chunks = chunksToDuplicate(chunker, config);
     if (config.flag("verbose")) {
-        std::cerr << "Processing " << chunks.size() <<" chunks" << std::endl;
+        std::cerr << "Processing " << chunks.size() << " chunks" << std::endl;
     }
     return estimateStats(chunks, chunker, *index, *partIndex);
 }
 
-}} // namespace lsst::partition
+}}  // namespace lsst::partition
 
+static char const* help =
+        "The spherical duplication statistics estimator estimates the row count\n"
+        "for each chunk and sub-chunk in a duplicated data-set, allowing\n"
+        "partitioning parameters to be tuned without actually running the\n"
+        "duplicator.\n";
 
-static char const * help =
-    "The spherical duplication statistics estimator estimates the row count\n"
-    "for each chunk and sub-chunk in a duplicated data-set, allowing\n"
-    "partitioning parameters to be tuned without actually running the\n"
-    "duplicator.\n";
-
-int main(int argc, char const * const * argv) {
+int main(int argc, char const* const* argv) {
     namespace part = lsst::partition;
     try {
         po::options_description options;
@@ -204,7 +184,7 @@ int main(int argc, char const * const * argv) {
         } else {
             std::cout << *index << std::endl;
         }
-    } catch (std::exception const & ex) {
+    } catch (std::exception const& ex) {
         std::cerr << ex.what() << std::endl;
         return EXIT_FAILURE;
     }

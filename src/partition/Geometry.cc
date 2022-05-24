@@ -31,9 +31,7 @@
 
 namespace bmc = boost::math::constants;
 
-
-namespace lsst {
-namespace partition {
+namespace lsst { namespace partition {
 
 namespace {
 
@@ -98,20 +96,20 @@ Vector3d const X(1.0, 0.0, 0.0);
 Vector3d const Y(0.0, 1.0, 0.0);
 Vector3d const Z(0.0, 0.0, 1.0);
 
-Vector3d const NX(-1.0,  0.0,  0.0);
-Vector3d const NY( 0.0, -1.0,  0.0);
-Vector3d const NZ( 0.0,  0.0, -1.0);
+Vector3d const NX(-1.0, 0.0, 0.0);
+Vector3d const NY(0.0, -1.0, 0.0);
+Vector3d const NZ(0.0, 0.0, -1.0);
 
 // Vertex triplet for each HTM root triangle.
-Vector3d const * const htmRootVert[24] = {
-    &X,  &NZ, &Y,  // S0
-    &Y,  &NZ, &NX, // S1
-    &NX, &NZ, &NY, // S2
-    &NY, &NZ, &X,  // S3
-    &X,  &Z,  &NY, // N0
-    &NY, &Z,  &NX, // N1
-    &NX, &Z,  &Y,  // N2
-    &Y,  &Z,  &X   // N3
+Vector3d const *const htmRootVert[24] = {
+        &X,  &NZ, &Y,   // S0
+        &Y,  &NZ, &NX,  // S1
+        &NX, &NZ, &NY,  // S2
+        &NY, &NZ, &X,   // S3
+        &X,  &Z,  &NY,  // N0
+        &NY, &Z,  &NX,  // N1
+        &NX, &Z,  &Y,   // N2
+        &Y,  &Z,  &X    // N3
 };
 
 // Return the number of the HTM root triangle containing v.
@@ -137,8 +135,7 @@ inline uint32_t rootNumFor(Vector3d const &v) {
     }
 }
 
-} // unnamed namespace
-
+}  // unnamed namespace
 
 double reduceLon(double lon) {
     lon = fmod(lon, 360.0);
@@ -159,7 +156,7 @@ double maxAlpha(double r, double centerLat) {
         return 0.0;
     }
     double lat = clampLat(centerLat);
-    if (std::fabs(lat) + r > 90.0 - 1/3600.0) {
+    if (std::fabs(lat) + r > 90.0 - 1 / 3600.0) {
         return 180.0;
     }
     r *= RAD_PER_DEG;
@@ -178,9 +175,9 @@ uint32_t htmId(Vector3d const &v, int level) {
     if (level == 0) {
         return id + 8;
     }
-    Vector3d v0(*htmRootVert[id*3]);
-    Vector3d v1(*htmRootVert[id*3 + 1]);
-    Vector3d v2(*htmRootVert[id*3 + 2]);
+    Vector3d v0(*htmRootVert[id * 3]);
+    Vector3d v1(*htmRootVert[id * 3 + 1]);
+    Vector3d v2(*htmRootVert[id * 3 + 2]);
     id += 8;
     for (; level != 0; --level) {
         Vector3d const sv1 = (v2 + v0).normalized();
@@ -216,7 +213,7 @@ uint32_t htmId(Vector3d const &v, int level) {
 
 int htmLevel(uint32_t id) {
     if (id < 8) {
-        return -1; // invalid ID
+        return -1;  // invalid ID
     }
     // Set x = 2**(i + 1) - 1, where i is the index of the MSB of id.
     uint32_t x = id;
@@ -237,7 +234,7 @@ int htmLevel(uint32_t id) {
     uint32_t level = ((x * h01) >> 24) - 4;
     // Check that level is even, in range and that the 4 MSBs
     // of id are between 8 and 15.
-    if ((level & 1) != 0 || ((id >> level) & 0x8) == 0 || level > HTM_MAX_LEVEL*2) {
+    if ((level & 1) != 0 || ((id >> level) & 0x8) == 0 || level > HTM_MAX_LEVEL * 2) {
         return -1;
     }
     return static_cast<int>(level >> 1);
@@ -255,7 +252,7 @@ Vector3d const cartesian(std::pair<double, double> const &lonLat) {
 
 std::pair<double, double> const spherical(Vector3d const &v) {
     std::pair<double, double> sc(0.0, 0.0);
-    double d2 = v(0)*v(0) + v(1)*v(1);
+    double d2 = v(0) * v(0) + v(1) * v(1);
     if (d2 != 0.0) {
         double lon = std::atan2(v(1), v(0)) * DEG_PER_RAD;
         if (lon < 0.0) {
@@ -272,7 +269,7 @@ std::pair<double, double> const spherical(Vector3d const &v) {
     return sc;
 }
 
-double angSep(Vector3d const & v0, Vector3d const & v1) {
+double angSep(Vector3d const &v0, Vector3d const &v1) {
     double cs = v0.dot(v1);
     Vector3d n = v0.cross(v1);
     double ss = n.norm();
@@ -281,7 +278,6 @@ double angSep(Vector3d const & v0, Vector3d const & v1) {
     }
     return std::atan2(ss, cs);
 }
-
 
 // -- SphericalTriangle implementation ----
 
@@ -296,34 +292,34 @@ SphericalTriangle::SphericalTriangle(uint32_t id) : _m(), _mi() {
     // the immediate parent. Follow the subdivision instructions encoded in
     // in the ID until all bits in ID have been considered.
     uint32_t r = (id >> (level * 2)) - 8;
-    Vector3d v0(*htmRootVert[r*3]);
-    Vector3d v1(*htmRootVert[r*3 + 1]);
-    Vector3d v2(*htmRootVert[r*3 + 2]);
+    Vector3d v0(*htmRootVert[r * 3]);
+    Vector3d v1(*htmRootVert[r * 3 + 1]);
+    Vector3d v2(*htmRootVert[r * 3 + 2]);
     for (--level; level >= 0; --level) {
         uint32_t child = (id >> (level * 2)) & 0x3;
         Vector3d const sv0 = (v1 + v2).normalized();
         Vector3d const sv1 = (v2 + v0).normalized();
         Vector3d const sv2 = (v0 + v1).normalized();
         switch (child) {
-        case 0:
-            v1 = sv2;
-            v2 = sv1;
-            break;
-        case 1:
-            v0 = v1;
-            v1 = sv0;
-            v2 = sv2;
-            break;
-        case 2:
-            v0 = v2;
-            v1 = sv1;
-            v2 = sv0;
-            break;
-        case 3:
-            v0 = sv0;
-            v1 = sv1;
-            v2 = sv2;
-            break;
+            case 0:
+                v1 = sv2;
+                v2 = sv1;
+                break;
+            case 1:
+                v0 = v1;
+                v1 = sv0;
+                v2 = sv2;
+                break;
+            case 2:
+                v0 = v2;
+                v1 = sv1;
+                v2 = sv0;
+                break;
+            case 3:
+                v0 = sv0;
+                v1 = sv1;
+                v2 = sv2;
+                break;
         }
     }
     // Set column vectors of _m to triangle vertices.
@@ -333,15 +329,12 @@ SphericalTriangle::SphericalTriangle(uint32_t id) : _m(), _mi() {
     _mi = _m.inverse();
 }
 
-SphericalTriangle::SphericalTriangle(Vector3d const & v0,
-                                     Vector3d const & v1,
-                                     Vector3d const & v2) :
-   _m(), _mi()
-{
-   _m.col(0) = v0;
-   _m.col(1) = v1;
-   _m.col(2) = v2;
-   _mi = _m.inverse();
+SphericalTriangle::SphericalTriangle(Vector3d const &v0, Vector3d const &v1, Vector3d const &v2)
+        : _m(), _mi() {
+    _m.col(0) = v0;
+    _m.col(1) = v1;
+    _m.col(2) = v2;
+    _mi = _m.inverse();
 }
 
 double SphericalTriangle::area() const {
@@ -363,8 +356,7 @@ double SphericalTriangle::area() const {
     Vector3d p01 = (vertex(1) + vertex(0)).cross(vertex(1) - vertex(0));
     Vector3d p12 = (vertex(2) + vertex(1)).cross(vertex(2) - vertex(1));
     Vector3d p20 = (vertex(0) + vertex(2)).cross(vertex(0) - vertex(2));
-    return (2.0*bmc::pi<double>() -
-            angSep(p20, p01) - angSep(p01, p12) - angSep(p12, p20));
+    return (2.0 * bmc::pi<double>() - angSep(p20, p01) - angSep(p01, p12) - angSep(p12, p20));
 }
 
 // The area of intersection between a spherical box and a spherical triangle
@@ -435,35 +427,35 @@ double SphericalTriangle::area() const {
 namespace {
 
 // Intersect the input spherical convex polygon with the given half-space.
-size_t intersect(Vector3d const * inVe,  // input (vertex, edge) pair array
+size_t intersect(Vector3d const *inVe,   // input (vertex, edge) pair array
                  size_t numVerts,        // # of input vertices
-                 Vector3d const & plane, // plane normal of half-space
-                 Vector3d * outVe)       // output (vertex, edge) pair array
+                 Vector3d const &plane,  // plane normal of half-space
+                 Vector3d *outVe)        // output (vertex, edge) pair array
 {
     assert(numVerts > 1 && inVe != 0 && outVe != 0);
     size_t i = 0, j = numVerts - 1, n = 0;
-    bool inside = plane.dot(inVe[2*j]) >= 0.0;
+    bool inside = plane.dot(inVe[2 * j]) >= 0.0;
     for (; i < numVerts; j = i, ++i) {
-        if (plane.dot(inVe[2*i]) >= 0.0) {
+        if (plane.dot(inVe[2 * i]) >= 0.0) {
             if (!inside) {
                 // Edge crosses plane (outside to inside) - copy
                 // intersection to output polygon.
-                Vector3d edge = inVe[2*j + 1].normalized();
-                outVe[2*n] = (edge + plane).cross(edge - plane).normalized();
-                outVe[2*n + 1] = inVe[2*j + 1];
+                Vector3d edge = inVe[2 * j + 1].normalized();
+                outVe[2 * n] = (edge + plane).cross(edge - plane).normalized();
+                outVe[2 * n + 1] = inVe[2 * j + 1];
                 ++n;
                 inside = true;
             }
             // Copy vertex i to output polygon.
-            outVe[2*n] = inVe[2*i];
-            outVe[2*n + 1] = inVe[2*i + 1];
+            outVe[2 * n] = inVe[2 * i];
+            outVe[2 * n + 1] = inVe[2 * i + 1];
             ++n;
         } else if (inside) {
             // Edge crosses plane (inside to outside) -
             // copy intersection to output polygon.
-            Vector3d edge = inVe[2*j + 1].normalized();
-            outVe[2*n] = (plane + edge).cross(plane - edge).normalized();
-            outVe[2*n + 1] = plane;
+            Vector3d edge = inVe[2 * j + 1].normalized();
+            outVe[2 * n] = (plane + edge).cross(plane - edge).normalized();
+            outVe[2 * n + 1] = plane;
             ++n;
             inside = false;
         }
@@ -484,8 +476,7 @@ public:
     bool empty() const { return _numRanges == 0; }
     // Is this range list full? If so, extent() == 2π.
     bool full() const {
-        return _numRanges == 1 &&
-               _ranges[0].first == -bmc::pi<double>() &&
+        return _numRanges == 1 && _ranges[0].first == -bmc::pi<double>() &&
                _ranges[0].second == bmc::pi<double>();
     }
     void clear() { _numRanges = 0; }
@@ -549,11 +540,9 @@ double LonRangeList::extent() const {
 }
 
 // Compute the area of the input polygon intersected with zmin <= z <= zmax.
-double zArea(Vector3d const * inVe, // input (vertex, edge) pair array
+double zArea(Vector3d const *inVe,  // input (vertex, edge) pair array
              size_t numVerts,       // # of input vertices
-             double zmin,
-             double zmax)
-{
+             double zmin, double zmax) {
     // A = 2πχ(M) - Σ αᵥ - Σ cos(φᵤ) ∆θᵤ      (see above)
     double angle = 0.0;
     // bot and top maintain edges on the z=zmin (bot) and z=zmax (top) planes
@@ -568,33 +557,33 @@ double zArea(Vector3d const * inVe, // input (vertex, edge) pair array
     // and i are joined by an edge. The initial value of j is the last vertex in
     // the array, and the index of the normal for edge j,i is at index 2*j + 1.
     for (size_t i = 0, j = numVerts - 1; i < numVerts; j = i, ++i) {
-        double z = inVe[2*i](2);
+        double z = inVe[2 * i](2);
         // n is parallel to the edge plane normal (but does not necessarily
         // have unit norm).
-        Vector3d const & n = inVe[2*j + 1];
+        Vector3d const &n = inVe[2 * j + 1];
         if (z >= zmin && z <= zmax) {
             // Vertex i is in z-range; compute and accumulate turning angle αᵥ
             // at vertex v = i. Here αᵥ is just the angle between the normal
             // vectors of the 2 edge planes meeting at vertex i.
-            angle += angSep(n, inVe[2*i + 1]);
+            angle += angSep(n, inVe[2 * i + 1]);
         }
-        double u = n(0)*n(0) + n(1)*n(1);
-        double n2 = u + n(2)*n(2);
+        double u = n(0) * n(0) + n(1) * n(1);
+        double n2 = u + n(2) * n(2);
         if (u == 0.0) {
             assert(n(2) != 0.0);
             // Edge lies on x-y plane. The z=zmin and z=zmax small circles are
             // either completely inside or outside of the corresponding half-
             // space. If a small circle is outside, clear the corresponding
             // edge list.
-            if (n(2)*zmin <= 0.0) {
+            if (n(2) * zmin <= 0.0) {
                 bot.clear();
             }
-            if (n(2)*zmax <= 0.0) {
+            if (n(2) * zmax <= 0.0) {
                 top.clear();
             }
             continue;
         }
-        Vector3d const p(-n(0)*n(2), -n(1)*n(2), u);
+        Vector3d const p(-n(0) * n(2), -n(1) * n(2), u);
         Vector3d const nc(n(1), -n(0), 0.0);
 
         // See if z = zmin and edge j,i intersect. The intersection of the 2
@@ -602,8 +591,8 @@ double zArea(Vector3d const * inVe, // input (vertex, edge) pair array
         // intersection points on the unit sphere additionally have unit norm.
         // Together, these constraints give a quadratic equation for the
         // intersection point coordinates.
-        double z2 = zmin*zmin;
-        double v = u - n2*z2;
+        double z2 = zmin * zmin;
+        double v = u - n2 * z2;
         if (v > 0.0 && !bot.empty()) {
             // The quadratic equation for the intersection points has solutions,
             // and edges on z=zmin haven't been completely clipped away by other
@@ -612,14 +601,14 @@ double zArea(Vector3d const * inVe, // input (vertex, edge) pair array
             // Compute unnormalized intersection points v0, v1.
             Vector3d v0 = zmin * p + lambda * nc;
             Vector3d v1 = zmin * p - lambda * nc;
-            if (angSep(v0, v1) <= RAD_PER_DEG/36000.0) {
+            if (angSep(v0, v1) <= RAD_PER_DEG / 36000.0) {
                 // Angle between intersections is less than 100 milliarcsec. In
                 // this case, treat the great circle for the edge and the z=zmin
                 // small circle as tangent at a single degenerate intersection
                 // point. Again, the z=zmin small circle is either completely
                 // inside or outside the half-space corresponding to edge j,i.
                 // If it is outside, clear the z=zmin edge list.
-                if (n(2)*zmin < 0.0) {
+                if (n(2) * zmin < 0.0) {
                     bot.clear();
                 }
             } else {
@@ -629,14 +618,14 @@ double zArea(Vector3d const * inVe, // input (vertex, edge) pair array
                 // normal to vertex i.
                 Vector3d ncv0 = n.cross(v0);
                 Vector3d ncv1 = n.cross(v1);
-                if (ncv0.dot(inVe[2*j]) < 0.0 && ncv0.dot(inVe[2*i]) > 0.0) {
+                if (ncv0.dot(inVe[2 * j]) < 0.0 && ncv0.dot(inVe[2 * i]) > 0.0) {
                     // v0 lies on edge j,i. Because the intersection is with a
                     // convex polygon, this means that v0 must be on the boundary
                     // of the intersection region. Therefore, compute and
                     // accumulate turning angle αᵥ at vertex v = v0.
                     angle += angSep(ncv0, Vector3d(-v0(1), v0(0), 0.0));
                 }
-                if (ncv1.dot(inVe[2*j]) < 0.0 && ncv1.dot(inVe[2*i]) > 0.0) {
+                if (ncv1.dot(inVe[2 * j]) < 0.0 && ncv1.dot(inVe[2 * i]) > 0.0) {
                     // v1 lies on edge j,i - compute and accumulate turning
                     // angle αᵥ at vertex v = v1.
                     angle += angSep(ncv1, Vector3d(-v1(1), v1(0), 0.0));
@@ -646,7 +635,7 @@ double zArea(Vector3d const * inVe, // input (vertex, edge) pair array
                 // intersection of this edge half-space with z=zmin.
                 bot.clip(std::atan2(v0(1), v0(0)), std::atan2(v1(1), v1(0)));
             }
-        } else if (n(2)*zmin < 0.0) {
+        } else if (n(2) * zmin < 0.0) {
             // The great circle of the edge and the z=zmin small circle do not
             // intersect on the unit sphere. If the dot product of the edge plane
             // normal with (0, 0, zmin) is negative, then the small circle is
@@ -657,35 +646,35 @@ double zArea(Vector3d const * inVe, // input (vertex, edge) pair array
         // the same as for the z = zmin case, but there are subtle sign
         // differences in various computations. The detailed comments for the
         // z = zmin case are nevertheless relevant and are not repeated below.
-        z2 = zmax*zmax;
-        v = u - n2*z2;
+        z2 = zmax * zmax;
+        v = u - n2 * z2;
         if (v > 0.0 && !top.empty()) {
             double lambda = std::sqrt(v);
             // Compute unnormalized intersection points v0, v1.
             Vector3d v0 = zmax * p - lambda * nc;
             Vector3d v1 = zmax * p + lambda * nc;
-            if (angSep(v0, v1) <= RAD_PER_DEG/36000.0) {
+            if (angSep(v0, v1) <= RAD_PER_DEG / 36000.0) {
                 // Angle between intersections is less than 100 milliarcsec;
                 // treat this as a single degenerate intersection point.
-                if (n(2)*zmax < 0.0) {
+                if (n(2) * zmax < 0.0) {
                     top.clear();
                 }
             } else {
                 Vector3d ncv0 = n.cross(v0);
                 Vector3d ncv1 = n.cross(v1);
-                if (ncv0.dot(inVe[2*j]) < 0.0 && ncv0.dot(inVe[2*i]) > 0.0) {
+                if (ncv0.dot(inVe[2 * j]) < 0.0 && ncv0.dot(inVe[2 * i]) > 0.0) {
                     // v0 lies on edge j,i - compute and accumulate turning
                     // angle αᵥ at vertex v = v0.
                     angle += angSep(ncv0, Vector3d(v0(1), -v0(0), 0.0));
                 }
-                if (ncv1.dot(inVe[2*j]) < 0.0 && ncv1.dot(inVe[2*i]) > 0.0) {
+                if (ncv1.dot(inVe[2 * j]) < 0.0 && ncv1.dot(inVe[2 * i]) > 0.0) {
                     // v1 lies on edge j,i - compute and accumulate turning
                     // angle αᵥ at vertex v = v1.
                     angle += angSep(ncv1, Vector3d(v1(1), -v1(0), 0.0));
                 }
                 top.clip(std::atan2(v1(1), v1(0)), std::atan2(v0(1), v0(0)));
             }
-        } else if (n(2)*zmax < 0.0) {
+        } else if (n(2) * zmax < 0.0) {
             top.clear();
         }
     }
@@ -700,32 +689,30 @@ double zArea(Vector3d const * inVe, // input (vertex, edge) pair array
         chi = 0.0;
     }
     // Subtract Σ αᵥ and Σ cos(φᵤ) ∆θᵤ.
-    double area = 2.0*bmc::pi<double>()*chi - angle +
-                  top.extent()*zmax - bot.extent()*zmin;
+    double area = 2.0 * bmc::pi<double>() * chi - angle + top.extent() * zmax - bot.extent() * zmin;
     return area < 0.0 ? 0.0 : area;
 }
 
-} // unnamed namespace
+}  // unnamed namespace
 
-double SphericalTriangle::intersectionArea(SphericalBox const & box) const {
-    if (box.getLonMin() == box.getLonMax() ||
-        box.getLatMin() >= 90.0 - EPSILON_DEG ||
-        box.getLatMax() <= -90.0- + EPSILON_DEG) {
+double SphericalTriangle::intersectionArea(SphericalBox const &box) const {
+    if (box.getLonMin() == box.getLonMax() || box.getLatMin() >= 90.0 - EPSILON_DEG ||
+        box.getLatMax() <= -90.0 - +EPSILON_DEG) {
         // box is degenerate or very small.
         return 0.0;
     } else if (box.isFull()) {
         // box completely contains this triangle.
         return area();
     }
-    double const zmin = std::sin(box.getLatMin()*RAD_PER_DEG);
-    double const zmax = std::sin(box.getLatMax()*RAD_PER_DEG);
+    double const zmin = std::sin(box.getLatMin() * RAD_PER_DEG);
+    double const zmax = std::sin(box.getLatMax() * RAD_PER_DEG);
     if (zmin >= zmax) {
         return 0.0;
     }
-    Vector3d veBuf0[(3 + 2)*2];
-    Vector3d veBuf1[(3 + 2)*2];
-    Vector3d * in = veBuf0;
-    Vector3d * out = veBuf1;
+    Vector3d veBuf0[(3 + 2) * 2];
+    Vector3d veBuf1[(3 + 2) * 2];
+    Vector3d *in = veBuf0;
+    Vector3d *out = veBuf1;
     size_t numVerts = 3;
     // Populate in with (vertex, edge) pairs.
     in[0] = vertex(0);
@@ -741,14 +728,14 @@ double SphericalTriangle::intersectionArea(SphericalBox const & box) const {
             // Punt for now, because the intersection can be non-convex.
             // TODO(smm): split non-convex boxes into 2 convex boxes and sum
             //            their intersection areas to make this fully general.
-            throw std::runtime_error("Cannot compute triangle-box intersection "
-                                     "area: spherical box has longitude angle "
-                                     "extent > 180 deg.");
+            throw std::runtime_error(
+                    "Cannot compute triangle-box intersection "
+                    "area: spherical box has longitude angle "
+                    "extent > 180 deg.");
         }
         // Intersect with the half-space lon >= box.getLonMin().
         double lon = RAD_PER_DEG * box.getLonMin();
-        numVerts = intersect(
-            in, numVerts, Vector3d(-std::sin(lon), std::cos(lon), 0.0), out);
+        numVerts = intersect(in, numVerts, Vector3d(-std::sin(lon), std::cos(lon), 0.0), out);
         if (numVerts == 0) {
             return 0.0;
         }
@@ -758,8 +745,7 @@ double SphericalTriangle::intersectionArea(SphericalBox const & box) const {
         if (lonExtent < 180.0 - EPSILON_DEG) {
             // Intersect with the half-space lon <= box.getLonMax().
             lon = RAD_PER_DEG * box.getLonMax();
-            numVerts = intersect(
-                in, numVerts, Vector3d(std::sin(lon), -std::cos(lon), 0.0), out);
+            numVerts = intersect(in, numVerts, Vector3d(std::sin(lon), -std::cos(lon), 0.0), out);
             if (numVerts == 0) {
                 return 0.0;
             }
@@ -769,14 +755,9 @@ double SphericalTriangle::intersectionArea(SphericalBox const & box) const {
     return zArea(in, numVerts, zmin, zmax);
 }
 
-
 // -- SphericalBox implementation ----
 
-SphericalBox::SphericalBox(double lonMin,
-                           double lonMax,
-                           double latMin,
-                           double latMax)
-{
+SphericalBox::SphericalBox(double lonMin, double lonMax, double latMin, double latMax) {
     if (latMin > latMax) {
         throw std::runtime_error("Spherical box latitude angle max < min.");
     } else if (lonMax < lonMin && (lonMax < 0.0 || lonMin > 360.0)) {
@@ -793,23 +774,20 @@ SphericalBox::SphericalBox(double lonMin,
     _latMax = clampLat(latMax);
 }
 
-SphericalBox::SphericalBox(Vector3d const & v0,
-                           Vector3d const & v1,
-                           Vector3d const & v2)
-{
+SphericalBox::SphericalBox(Vector3d const &v0, Vector3d const &v1, Vector3d const &v2) {
     // Find the bounding circle of the triangle.
     Vector3d cv = v0 + v1 + v2;
     double r = angSep(cv, v0);
     r = std::max(r, angSep(cv, v1));
     r = std::max(r, angSep(cv, v2));
-    r = r*DEG_PER_RAD + 1/3600.0;
+    r = r * DEG_PER_RAD + 1 / 3600.0;
     // Construct the bounding box for the bounding circle. This is inexact,
     // but involves less code than a more accurate computation.
     std::pair<double, double> c = spherical(cv);
     double alpha = maxAlpha(r, c.second);
     _latMin = clampLat(c.second - r);
     _latMax = clampLat(c.second + r);
-    if (alpha > 180.0 - 1/3600.0) {
+    if (alpha > 180.0 - 1 / 3600.0) {
         _lonMin = 0.0;
         _lonMax = 360.0;
     } else {
@@ -831,15 +809,13 @@ SphericalBox::SphericalBox(Vector3d const & v0,
 
 void SphericalBox::expand(double radius) {
     if (radius < 0.0) {
-        throw std::runtime_error(
-            "Cannot expand spherical box by a negative angle.");
+        throw std::runtime_error("Cannot expand spherical box by a negative angle.");
     } else if (radius == 0.0) {
         return;
     }
     double const extent = getLonExtent();
-    double const alpha = maxAlpha(
-        radius, std::max(std::fabs(_latMin), std::fabs(_latMax)));
-    if (extent + 2.0 * alpha >= 360.0 - 1/3600.0) {
+    double const alpha = maxAlpha(radius, std::max(std::fabs(_latMin), std::fabs(_latMax)));
+    if (extent + 2.0 * alpha >= 360.0 - 1 / 3600.0) {
         _lonMin = 0.0;
         _lonMax = 360.0;
     } else {
@@ -860,19 +836,18 @@ void SphericalBox::expand(double radius) {
 }
 
 double SphericalBox::area() const {
-    return RAD_PER_DEG*getLonExtent() *
-           (std::sin(RAD_PER_DEG*_latMax) - std::sin(RAD_PER_DEG*_latMin));
+    return RAD_PER_DEG * getLonExtent() * (std::sin(RAD_PER_DEG * _latMax) - std::sin(RAD_PER_DEG * _latMin));
 }
 
-void SphericalBox::htmIds(std::vector<uint32_t> & ids, int level) const {
+void SphericalBox::htmIds(std::vector<uint32_t> &ids, int level) const {
     if (level < 0 || level > HTM_MAX_LEVEL) {
         throw std::runtime_error("Invalid HTM subdivision level.");
     }
     for (int r = 0; r < 8; ++r) {
         Matrix3d m;
-        m.col(0) = *htmRootVert[r*3];
-        m.col(1) = *htmRootVert[r*3 + 1];
-        m.col(2) = *htmRootVert[r*3 + 2];
+        m.col(0) = *htmRootVert[r * 3];
+        m.col(1) = *htmRootVert[r * 3 + 1];
+        m.col(2) = *htmRootVert[r * 3 + 2];
         _findIds(ids, r + 8, level, m);
     }
 }
@@ -880,11 +855,10 @@ void SphericalBox::htmIds(std::vector<uint32_t> & ids, int level) const {
 // Slow method for finding triangles overlapping a box. For the subdivision
 // levels and box sizes encountered in practice, this is very unlikely to be
 // a performance problem.
-void SphericalBox::_findIds(
-    std::vector<uint32_t> & ids, // Storage for overlapping triangle IDs.
-    uint32_t id,                 // HTM ID of triangle `m`.
-    int level,                   // Number of recursions remaining.
-    Matrix3d const & m) const    // Triangle vertices.
+void SphericalBox::_findIds(std::vector<uint32_t> &ids,  // Storage for overlapping triangle IDs.
+                            uint32_t id,                 // HTM ID of triangle `m`.
+                            int level,                   // Number of recursions remaining.
+                            Matrix3d const &m) const     // Triangle vertices.
 {
     if (!intersects(SphericalBox(m.col(0), m.col(1), m.col(2)))) {
         return;
@@ -899,19 +873,19 @@ void SphericalBox::_findIds(
     mChild.col(0) = m.col(0);
     mChild.col(1) = sv2;
     mChild.col(2) = sv1;
-    _findIds(ids, id*4, level - 1, mChild);
+    _findIds(ids, id * 4, level - 1, mChild);
     mChild.col(0) = m.col(1);
     mChild.col(1) = sv0;
     mChild.col(2) = sv2;
-    _findIds(ids, id*4 + 1, level - 1, mChild);
+    _findIds(ids, id * 4 + 1, level - 1, mChild);
     mChild.col(0) = m.col(2);
     mChild.col(1) = sv1;
     mChild.col(2) = sv0;
-    _findIds(ids, id*4 + 2, level - 1, mChild);
+    _findIds(ids, id * 4 + 2, level - 1, mChild);
     mChild.col(0) = sv0;
     mChild.col(1) = sv1;
     mChild.col(2) = sv2;
-    _findIds(ids, id*4 + 3, level - 1, mChild);
+    _findIds(ids, id * 4 + 3, level - 1, mChild);
 }
 
-}} // namespace lsst::partition
+}}  // namespace lsst::partition

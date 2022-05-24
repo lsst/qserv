@@ -41,11 +41,10 @@ using lsst::partition::ChunkIndex;
 using lsst::partition::ChunkLocation;
 
 namespace {
-    bool operator==(ChunkIndex::Entry const & e1,
-                    ChunkIndex::Entry const & e2) {
-        return e1.numRecords == e2.numRecords;
-    }
+bool operator==(ChunkIndex::Entry const& e1, ChunkIndex::Entry const& e2) {
+    return e1.numRecords == e2.numRecords;
 }
+}  // namespace
 
 BOOST_AUTO_TEST_CASE(ChunkIndexTest) {
     ChunkIndex idx;
@@ -126,15 +125,15 @@ struct ChunkIndexFixture {
         i2.add(loc, 1u);
     }
 
-    ~ChunkIndexFixture() { }
+    ~ChunkIndexFixture() {}
 
-    void checkMerge(ChunkIndex const & idx) {
-        BOOST_CHECK_EQUAL(idx(1,2).numRecords, 3u);
-        BOOST_CHECK_EQUAL(idx(1,2).numOverlapRecords, 2u);
-        BOOST_CHECK_EQUAL(idx(2,3).numRecords, 1u);
-        BOOST_CHECK_EQUAL(idx(2,3).numOverlapRecords, 1u);
-        BOOST_CHECK_EQUAL(idx(2,4).numRecords, 1u);
-        BOOST_CHECK_EQUAL(idx(2,4).numOverlapRecords, 0u);
+    void checkMerge(ChunkIndex const& idx) {
+        BOOST_CHECK_EQUAL(idx(1, 2).numRecords, 3u);
+        BOOST_CHECK_EQUAL(idx(1, 2).numOverlapRecords, 2u);
+        BOOST_CHECK_EQUAL(idx(2, 3).numRecords, 1u);
+        BOOST_CHECK_EQUAL(idx(2, 3).numOverlapRecords, 1u);
+        BOOST_CHECK_EQUAL(idx(2, 4).numRecords, 1u);
+        BOOST_CHECK_EQUAL(idx(2, 4).numOverlapRecords, 0u);
     }
 };
 

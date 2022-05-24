@@ -32,35 +32,32 @@
 #include "boost/filesystem.hpp"
 #include "boost/static_assert.hpp"
 
-
-namespace lsst {
-namespace partition {
+namespace lsst { namespace partition {
 
 /// An input file. Safe for use from multiple threads.
 class InputFile {
 public:
-    explicit InputFile(boost::filesystem::path const & path);
+    explicit InputFile(boost::filesystem::path const &path);
     ~InputFile();
 
     /// Return the size of the input file.
     off_t size() const { return _sz; }
 
     /// Return the path of the input file.
-    boost::filesystem::path const & path() const { return _path; }
+    boost::filesystem::path const &path() const { return _path; }
 
     /// Read a range of bytes into `buf`.
-    void read(void * buf, off_t off, size_t sz) const;
+    void read(void *buf, off_t off, size_t sz) const;
 
 private:
     // Disable copy construction and assignment.
     InputFile(InputFile const &);
-    InputFile & operator=(InputFile const &);
+    InputFile &operator=(InputFile const &);
 
     boost::filesystem::path _path;
     int _fd;
     off_t _sz;
 };
-
 
 /// An output file that can only be appended to, and which should only be
 /// used by a single thread at a time.
@@ -69,24 +66,23 @@ public:
     /// Open the given file for writing, creating it if necessary.
     /// Setting `truncate` to true will cause the file to be overwritten
     /// if it already exists.
-    OutputFile(boost::filesystem::path const & path, bool truncate);
+    OutputFile(boost::filesystem::path const &path, bool truncate);
     ~OutputFile();
 
     /// Return the path of the output file.
-    boost::filesystem::path const & path() const { return _path; }
+    boost::filesystem::path const &path() const { return _path; }
 
     /// Append `size` bytes from `buf` to the file.
-    void append(void const * buf, size_t size);
+    void append(void const *buf, size_t size);
 
 private:
     // Disable copy construction and assignment.
     OutputFile(OutputFile const &);
-    OutputFile & operator=(OutputFile const &);
+    OutputFile &operator=(OutputFile const &);
 
     boost::filesystem::path _path;
     int _fd;
 };
-
 
 /// A file writer which buffers data passed to append() in an attempt to
 /// maximize the size of each actual write to disk. The file being appended
@@ -97,13 +93,13 @@ public:
     ~BufferedAppender();
 
     /// Append `size` bytes from `buf` to the currently open file.
-    void append(void const * buf, size_t size);
+    void append(void const *buf, size_t size);
 
     /// Is there a currently open file? If not, calling `append()` is forbidden.
     bool isOpen() const { return _file != 0; }
 
     /// Close the currently open file and open a new one.
-    void open(boost::filesystem::path const & path, bool truncate);
+    void open(boost::filesystem::path const &path, bool truncate);
 
     /// Write any buffered data to the currently open file and close it.
     void close();
@@ -111,30 +107,30 @@ public:
 private:
     // Disable copy-construction and assignment.
     BufferedAppender(BufferedAppender const &);
-    BufferedAppender & operator=(BufferedAppender const &);
+    BufferedAppender &operator=(BufferedAppender const &);
 
-    uint8_t * _buf;
-    uint8_t * _end;
-    uint8_t * _cur;
-    OutputFile * _file;
+    uint8_t *_buf;
+    uint8_t *_end;
+    uint8_t *_cur;
+    OutputFile *_file;
 };
 
 // TODO(smm): the functions below should be moved to their own header.
 
 /// Encode a 32 bit integer as a little-endian sequence of 4 bytes. Return
 /// `buf + 4`.
-inline uint8_t * encode(uint8_t * buf, uint32_t x) {
-    buf[0] = static_cast<uint8_t>( x        & 0xff);
-    buf[1] = static_cast<uint8_t>((x >>  8) & 0xff);
+inline uint8_t *encode(uint8_t *buf, uint32_t x) {
+    buf[0] = static_cast<uint8_t>(x & 0xff);
+    buf[1] = static_cast<uint8_t>((x >> 8) & 0xff);
     buf[2] = static_cast<uint8_t>((x >> 16) & 0xff);
     buf[3] = static_cast<uint8_t>((x >> 24) & 0xff);
     return buf + 4;
 }
 /// Encode a 64 bit integer as a little-endian sequence of 8 bytes. Return
 /// `buf + 8`.
-inline uint8_t * encode(uint8_t * buf, uint64_t x) {
-    buf[0] = static_cast<uint8_t>( x        & 0xff);
-    buf[1] = static_cast<uint8_t>((x >>  8) & 0xff);
+inline uint8_t *encode(uint8_t *buf, uint64_t x) {
+    buf[0] = static_cast<uint8_t>(x & 0xff);
+    buf[1] = static_cast<uint8_t>((x >> 8) & 0xff);
     buf[2] = static_cast<uint8_t>((x >> 16) & 0xff);
     buf[3] = static_cast<uint8_t>((x >> 24) & 0xff);
     buf[4] = static_cast<uint8_t>((x >> 32) & 0xff);
@@ -144,28 +140,25 @@ inline uint8_t * encode(uint8_t * buf, uint64_t x) {
     return buf + 8;
 }
 
-template <typename T> inline T decode(uint8_t const *) {
+template <typename T>
+inline T decode(uint8_t const *) {
     BOOST_STATIC_ASSERT(sizeof(T) == 0);
 }
 /// Decode a little-endian sequence of 4 bytes to a 32-bit integer.
-template <> inline uint32_t decode<uint32_t>(uint8_t const * buf) {
-    return  static_cast<uint32_t>(buf[0]) |
-           (static_cast<uint32_t>(buf[1]) << 8) |
-           (static_cast<uint32_t>(buf[2]) << 16) |
-           (static_cast<uint32_t>(buf[3]) << 24);
+template <>
+inline uint32_t decode<uint32_t>(uint8_t const *buf) {
+    return static_cast<uint32_t>(buf[0]) | (static_cast<uint32_t>(buf[1]) << 8) |
+           (static_cast<uint32_t>(buf[2]) << 16) | (static_cast<uint32_t>(buf[3]) << 24);
 }
 /// Decode a little-endian sequence of 8 bytes to a 64-bit integer.
-template <> inline uint64_t decode<uint64_t>(uint8_t const * buf) {
-    return  static_cast<uint64_t>(buf[0]) |
-           (static_cast<uint64_t>(buf[1]) << 8) |
-           (static_cast<uint64_t>(buf[2]) << 16) |
-           (static_cast<uint64_t>(buf[3]) << 24) |
-           (static_cast<uint64_t>(buf[4]) << 32) |
-           (static_cast<uint64_t>(buf[5]) << 40) |
-           (static_cast<uint64_t>(buf[6]) << 48) |
-           (static_cast<uint64_t>(buf[7]) << 56);
+template <>
+inline uint64_t decode<uint64_t>(uint8_t const *buf) {
+    return static_cast<uint64_t>(buf[0]) | (static_cast<uint64_t>(buf[1]) << 8) |
+           (static_cast<uint64_t>(buf[2]) << 16) | (static_cast<uint64_t>(buf[3]) << 24) |
+           (static_cast<uint64_t>(buf[4]) << 32) | (static_cast<uint64_t>(buf[5]) << 40) |
+           (static_cast<uint64_t>(buf[6]) << 48) | (static_cast<uint64_t>(buf[7]) << 56);
 }
 
-}} // namespace lsst::partition
+}}  // namespace lsst::partition
 
-#endif // LSST_PARTITION_FILEUTILS_H
+#endif  // LSST_PARTITION_FILEUTILS_H

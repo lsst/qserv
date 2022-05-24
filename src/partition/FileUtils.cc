@@ -36,24 +36,20 @@
 
 namespace fs = boost::filesystem;
 
+namespace lsst { namespace partition {
 
-namespace lsst {
-namespace partition {
-
-InputFile::InputFile(fs::path const & path) : _path(path), _fd(-1), _sz(-1) {
+InputFile::InputFile(fs::path const &path) : _path(path), _fd(-1), _sz(-1) {
     char msg[1024];
     struct ::stat st;
     int fd = ::open(path.string().c_str(), O_RDONLY);
     if (fd == -1) {
         ::strerror_r(errno, msg, sizeof(msg));
-        throw std::runtime_error("open() failed [" + path.string() + "]: " +
-                                 msg);
+        throw std::runtime_error("open() failed [" + path.string() + "]: " + msg);
     }
     if (::fstat(fd, &st) != 0) {
         ::strerror_r(errno, msg, sizeof(msg));
         ::close(fd);
-        throw std::runtime_error("fstat() failed [" + path.string() + "]: " +
-                                 msg);
+        throw std::runtime_error("fstat() failed [" + path.string() + "]: " + msg);
     }
     _fd = fd;
     _sz = st.st_size;
@@ -62,25 +58,22 @@ InputFile::InputFile(fs::path const & path) : _path(path), _fd(-1), _sz(-1) {
 InputFile::~InputFile() {
     char msg[1024];
     if (_fd != -1 && ::close(_fd) != 0) {
-        ::snprintf(msg, sizeof(msg),  "close() failed [%s]",
-                   _path.string().c_str());
+        ::snprintf(msg, sizeof(msg), "close() failed [%s]", _path.string().c_str());
         ::perror(msg);
         ::exit(EXIT_FAILURE);
     }
 }
 
-void InputFile::read(void * buf, off_t off, size_t sz) const {
+void InputFile::read(void *buf, off_t off, size_t sz) const {
     char msg[1024];
-    uint8_t * cur = static_cast<uint8_t *>(buf);
+    uint8_t *cur = static_cast<uint8_t *>(buf);
     while (sz > 0) {
         ssize_t n = ::pread(_fd, cur, sz, off);
         if (n == 0) {
-            throw std::runtime_error("pread() received EOF [" + _path.string() +
-                                     "]");
+            throw std::runtime_error("pread() received EOF [" + _path.string() + "]");
         } else if (n < 0 && errno != EINTR) {
             ::strerror_r(errno, msg, sizeof(msg));
-            throw std::runtime_error("pread() failed [" + _path.string() +
-                                     "]: " + msg);
+            throw std::runtime_error("pread() failed [" + _path.string() + "]: " + msg);
         } else if (n > 0) {
             sz -= static_cast<size_t>(n);
             off += n;
@@ -89,28 +82,22 @@ void InputFile::read(void * buf, off_t off, size_t sz) const {
     }
 }
 
-
-OutputFile::OutputFile(fs::path const & path, bool truncate) :
-    _path(path), _fd(-1)
-{
+OutputFile::OutputFile(fs::path const &path, bool truncate) : _path(path), _fd(-1) {
     char msg[1024];
     int flags = O_CREAT | O_WRONLY;
     if (truncate) {
         flags |= O_TRUNC;
     }
-    int fd = ::open(path.string().c_str(), flags,
-                    S_IROTH | S_IRGRP | S_IRUSR | S_IWUSR);
+    int fd = ::open(path.string().c_str(), flags, S_IROTH | S_IRGRP | S_IRUSR | S_IWUSR);
     if (fd == -1) {
         ::strerror_r(errno, msg, sizeof(msg));
-        throw std::runtime_error("open() failed [" + path.string() + "]: " +
-                                 msg);
+        throw std::runtime_error("open() failed [" + path.string() + "]: " + msg);
     }
     if (!truncate) {
         if (::lseek(fd, 0, SEEK_END) < 0) {
             ::strerror_r(errno, msg, sizeof(msg));
             close(fd);
-            throw std::runtime_error("lseek() failed [" + path.string() +
-                                     "]: " + msg);
+            throw std::runtime_error("lseek() failed [" + path.string() + "]: " + msg);
         }
     }
     _fd = fd;
@@ -119,26 +106,24 @@ OutputFile::OutputFile(fs::path const & path, bool truncate) :
 OutputFile::~OutputFile() {
     char msg[1024];
     if (_fd != -1 && close(_fd) != 0) {
-        ::snprintf(msg, sizeof(msg), "close() failed [%s]",
-                   _path.string().c_str());
+        ::snprintf(msg, sizeof(msg), "close() failed [%s]", _path.string().c_str());
         ::perror(msg);
         ::exit(EXIT_FAILURE);
     }
 }
 
-void OutputFile::append(void const * buf, size_t sz) {
+void OutputFile::append(void const *buf, size_t sz) {
     char msg[1024];
     if (!buf || sz == 0) {
         return;
     }
-    char const * b = static_cast<char const *>(buf);
+    char const *b = static_cast<char const *>(buf);
     while (sz > 0) {
         ssize_t n = ::write(_fd, b, sz);
         if (n < 0) {
             if (errno != EINTR) {
                 ::strerror_r(errno, msg, sizeof(msg));
-                throw std::runtime_error("write() failed [" + _path.string() +
-                                         "]: " + msg);
+                throw std::runtime_error("write() failed [" + _path.string() + "]: " + msg);
             }
         } else {
             sz -= static_cast<size_t>(n);
@@ -147,10 +132,7 @@ void OutputFile::append(void const * buf, size_t sz) {
     }
 }
 
-
-BufferedAppender::BufferedAppender(size_t blockSize) :
-    _buf(0), _end(_buf + blockSize), _cur(0), _file(0)
-{ }
+BufferedAppender::BufferedAppender(size_t blockSize) : _buf(0), _end(_buf + blockSize), _cur(0), _file(0) {}
 
 BufferedAppender::~BufferedAppender() {
     close();
@@ -160,13 +142,13 @@ BufferedAppender::~BufferedAppender() {
     _cur = 0;
 }
 
-void BufferedAppender::append(void const * buf, size_t size) {
+void BufferedAppender::append(void const *buf, size_t size) {
     if (!_file) {
-        throw std::logic_error(std::string(
-            "BufferedAppender: append() called after "
-            "close() and/or before open().\n"));
+        throw std::logic_error(
+                std::string("BufferedAppender: append() called after "
+                            "close() and/or before open().\n"));
     }
-    uint8_t const * b = static_cast<uint8_t const *>(buf);
+    uint8_t const *b = static_cast<uint8_t const *>(buf);
     while (size > 0) {
         size_t n = std::min(size, static_cast<size_t>(_end - _cur));
         ::memcpy(_cur, b, n);
@@ -180,13 +162,13 @@ void BufferedAppender::append(void const * buf, size_t size) {
     }
 }
 
-void BufferedAppender::open(fs::path const & path, bool truncate) {
+void BufferedAppender::open(fs::path const &path, bool truncate) {
     close();
-    OutputFile * f = new OutputFile(path, truncate);
+    OutputFile *f = new OutputFile(path, truncate);
     if (!_buf) {
         // Allocate buffer.
         size_t sz = static_cast<size_t>(_end - _buf);
-        uint8_t * buf = static_cast<uint8_t *>(malloc(sz));
+        uint8_t *buf = static_cast<uint8_t *>(malloc(sz));
         if (!buf) {
             delete f;
             throw std::bad_alloc();
@@ -208,4 +190,4 @@ void BufferedAppender::close() {
     }
 }
 
-}} // namespace lsst::partition
+}}  // namespace lsst::partition

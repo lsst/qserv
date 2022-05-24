@@ -33,13 +33,11 @@
 #include "FileUtils.h"
 #include "MapReduce.h"
 
-namespace lsst {
-namespace partition {
-    class ConfigStore;
-}} // namespace lsst::partition
+namespace lsst { namespace partition {
+class ConfigStore;
+}}  // namespace lsst::partition
 
-namespace lsst {
-namespace partition {
+namespace lsst { namespace partition {
 
 /// Worker base class for the partitioner and duplicator which implements the
 /// reduction related half of the map-reduce API.
@@ -54,7 +52,7 @@ namespace partition {
 /// counts.
 class ChunkReducer : public WorkerBase<ChunkLocation, ChunkIndex> {
 public:
-    ChunkReducer(ConfigStore const & config);
+    ChunkReducer(ConfigStore const& config);
 
     void reduce(RecordIter const begin, RecordIter const end);
     void finish();
@@ -75,6 +73,6 @@ private:
     BufferedAppender _overlapChunkAppender;
 };
 
-}} // namespace lsst::partition
+}}  // namespace lsst::partition
 
-#endif // LSST_PARTITION_CHUNKREDUCER_H
+#endif  // LSST_PARTITION_CHUNKREDUCER_H

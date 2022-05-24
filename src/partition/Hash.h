@@ -28,8 +28,7 @@
 
 #include <stdint.h>
 
-namespace lsst {
-namespace partition {
+namespace lsst { namespace partition {
 
 /// 32-bit integer hash function from Brett Mulvey.
 /// See http://home.comcast.net/~bretm/hash/4.html
@@ -58,6 +57,6 @@ inline uint64_t hash(uint64_t x) {
     return x;
 }
 
-}} // namespace lsst::partition
+}}  // namespace lsst::partition
 
-#endif // LSST_PARTITION_HASH_H
+#endif  // LSST_PARTITION_HASH_H

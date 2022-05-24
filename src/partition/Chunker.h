@@ -37,13 +37,11 @@
 #include "Geometry.h"
 #include "Hash.h"
 
-namespace lsst {
-namespace partition {
-    class ConfigStore;
-}} // namespace lsst::partition
+namespace lsst { namespace partition {
+class ConfigStore;
+}}  // namespace lsst::partition
 
-namespace lsst {
-namespace partition {
+namespace lsst { namespace partition {
 
 /// Compute the number of segments to divide the given latitude angle range
 /// (stripe) into. Two points in the latitude range separated by at least
@@ -56,7 +54,6 @@ int segments(double latMin, double latMax, double width);
 /// longitude angle) segments. Latitude angles must be in units of degrees.
 double segmentWidth(double latMin, double latMax, int numSegments);
 
-
 /// A chunk location for a position on the sky.
 class ChunkLocation {
 public:
@@ -65,21 +62,18 @@ public:
     bool overlap = false;
 
     ChunkLocation() = default;
-    ChunkLocation(ChunkLocation const&) = default;
-    ChunkLocation& operator=(ChunkLocation const&) = default;
+    ChunkLocation(ChunkLocation const &) = default;
+    ChunkLocation &operator=(ChunkLocation const &) = default;
 
-    ChunkLocation(int32_t chunkId_, int32_t subChunkId_, bool overlap_) 
-        : chunkId(chunkId_), subChunkId(subChunkId_), overlap(overlap_) {}
+    ChunkLocation(int32_t chunkId_, int32_t subChunkId_, bool overlap_)
+            : chunkId(chunkId_), subChunkId(subChunkId_), overlap(overlap_) {}
 
     /// Hash chunk locations by chunk ID.
     uint32_t hash() const { return partition::hash(static_cast<uint32_t>(chunkId)); }
 
     /// Order chunk locations by chunk ID.
-    bool operator<(ChunkLocation const & loc) const {
-        return chunkId < loc.chunkId;
-    }
+    bool operator<(ChunkLocation const &loc) const { return chunkId < loc.chunkId; }
 };
-
 
 /// A Chunker locates points according to the following simple partitioning scheme.
 ///
@@ -95,11 +89,9 @@ public:
 /// sub-chunks, as well as for assigning chunks to (database worker) nodes.
 class Chunker {
 public:
-    Chunker(double overlap,
-            int32_t numStripes,
-            int32_t numSubStripesPerStripe);
+    Chunker(double overlap, int32_t numStripes, int32_t numSubStripesPerStripe);
 
-    Chunker(ConfigStore const & config);
+    Chunker(ConfigStore const &config);
 
     ~Chunker();
 
@@ -109,79 +101,60 @@ public:
     SphericalBox const getChunkBounds(int32_t chunkId) const;
 
     /// Return a bounding box for the given sub-chunk.
-    SphericalBox const getSubChunkBounds(int32_t chunkId,
-                                         int32_t subChunkId) const;
+    SphericalBox const getSubChunkBounds(int32_t chunkId, int32_t subChunkId) const;
 
     /// Find the non-overlap location of the given position.
-    ChunkLocation const locate(
-        std::pair<double, double> const & position) const;
+    ChunkLocation const locate(std::pair<double, double> const &position) const;
 
     /// Append the locations of the given position to the `locations` vector.
     /// If `chunkId` is negative, all locations are appended. Otherwise, only
     /// those in the corresponding chunk are appended.
-    void locate(std::pair<double, double> const & position,
-                int32_t chunkId,
-                std::vector<ChunkLocation> & locations) const;
+    void locate(std::pair<double, double> const &position, int32_t chunkId,
+                std::vector<ChunkLocation> &locations) const;
 
     /// Return the IDs of all chunks overlapping the given box and belonging
     /// to the given node. The target node is specified as an integer in the
     /// range `[0, numNodes)` and a chunk with ID C belongs to the node given
     /// by hash(C) modulo `numNodes`.
-    std::vector<int32_t> const getChunksIn(SphericalBox const & region,
-                                           uint32_t node,
+    std::vector<int32_t> const getChunksIn(SphericalBox const &region, uint32_t node,
                                            uint32_t numNodes) const;
 
     /// Return the IDs of all chunks overlapping the given box.
-    std::vector<int32_t> const getChunksIn(SphericalBox const & region) const {
+    std::vector<int32_t> const getChunksIn(SphericalBox const &region) const {
         return getChunksIn(region, 0u, 1u);
     }
 
     /// Append IDs for all sub-chunks of `chunkId` to `subChunks`.
-    void getSubChunks(std::vector<int32_t> & subChunks, int32_t chunkId) const;
+    void getSubChunks(std::vector<int32_t> &subChunks, int32_t chunkId) const;
 
     /// Define configuration variables for partitioning.
-    static void defineOptions(
-        boost::program_options::options_description & opts);
+    static void defineOptions(boost::program_options::options_description &opts);
 
 private:
     // Disable copy construction and assignment.
     Chunker(Chunker const &);
-    Chunker & operator=(Chunker const &);
+    Chunker &operator=(Chunker const &);
 
-    void _initialize(double overlap,
-                     int32_t numStripes,
-                     int32_t numSubStripesPerStripe);
+    void _initialize(double overlap, int32_t numStripes, int32_t numSubStripesPerStripe);
 
     // Conversion between IDs and indexes.
-    int32_t _getStripe(int32_t chunkId) const {
-        return chunkId / (2*_numStripes);
-    }
+    int32_t _getStripe(int32_t chunkId) const { return chunkId / (2 * _numStripes); }
     int32_t _getSubStripe(int32_t subChunkId, int32_t stripe) const {
-        return stripe*_numSubStripesPerStripe + subChunkId/_maxSubChunksPerChunk;
+        return stripe * _numSubStripesPerStripe + subChunkId / _maxSubChunksPerChunk;
     }
-    int32_t _getChunk(int32_t chunkId, int32_t stripe) const {
-        return chunkId - stripe*2*_numStripes;
+    int32_t _getChunk(int32_t chunkId, int32_t stripe) const { return chunkId - stripe * 2 * _numStripes; }
+    int32_t _getSubChunk(int32_t subChunkId, int32_t stripe, int32_t subStripe, int32_t chunk) const {
+        return subChunkId - (subStripe - stripe * _numSubStripesPerStripe) * _maxSubChunksPerChunk +
+               chunk * _numSubChunksPerChunk[subStripe];
     }
-    int32_t _getSubChunk(int32_t subChunkId, int32_t stripe,
-                         int32_t subStripe, int32_t chunk) const {
-        return subChunkId -
-               (subStripe - stripe*_numSubStripesPerStripe)*_maxSubChunksPerChunk +
-               chunk*_numSubChunksPerChunk[subStripe];
-    }
-    int32_t _getChunkId(int32_t stripe, int32_t chunk) const {
-        return stripe*2*_numStripes + chunk;
-    }
-    int32_t _getSubChunkId(int32_t stripe, int32_t subStripe,
-                           int32_t chunk, int32_t subChunk) const {
-        return (subStripe - stripe*_numSubStripesPerStripe)*_maxSubChunksPerChunk +
-               (subChunk - chunk*_numSubChunksPerChunk[subStripe]);
+    int32_t _getChunkId(int32_t stripe, int32_t chunk) const { return stripe * 2 * _numStripes + chunk; }
+    int32_t _getSubChunkId(int32_t stripe, int32_t subStripe, int32_t chunk, int32_t subChunk) const {
+        return (subStripe - stripe * _numSubStripesPerStripe) * _maxSubChunksPerChunk +
+               (subChunk - chunk * _numSubChunksPerChunk[subStripe]);
     }
 
-    void _upDownOverlap(double lon,
-                        int32_t chunkId,
-                        int32_t stripe,
-                        int32_t subStripe,
-                        std::vector<ChunkLocation> & locations) const;
+    void _upDownOverlap(double lon, int32_t chunkId, int32_t stripe, int32_t subStripe,
+                        std::vector<ChunkLocation> &locations) const;
 
     double _overlap;
     double _subStripeHeight;
@@ -201,6 +174,6 @@ private:
     boost::scoped_array<double> _alpha;
 };
 
-}} // namespace lsst::partition
+}}  // namespace lsst::partition
 
-#endif // LSST_PARTITION_CHUNKER_H
+#endif  // LSST_PARTITION_CHUNKER_H

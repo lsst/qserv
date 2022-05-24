@@ -47,9 +47,7 @@
 namespace fs = boost::filesystem;
 namespace po = boost::program_options;
 
-
-namespace lsst {
-namespace partition {
+namespace lsst { namespace partition {
 
 class Worker;
 
@@ -57,13 +55,13 @@ class Worker;
 // have access to internal state, but must never mutate it.
 class Duplicator {
 public:
-    Duplicator() : _blockSize(0), _level(-1) { }
+    Duplicator() : _blockSize(0), _level(-1) {}
 
-    boost::shared_ptr<ChunkIndex> const run(ConfigStore const & config);
+    boost::shared_ptr<ChunkIndex> const run(ConfigStore const& config);
 
 private:
     // A list of (HTM triangle, chunk ID) pairs.
-    typedef std::vector<std::pair<uint32_t, int32_t> > TargetList;
+    typedef std::vector<std::pair<uint32_t, int32_t>> TargetList;
     // A map from source HTM triangles to duplication target triangles/chunks.
     typedef boost::unordered_map<uint32_t, TargetList> TargetMap;
 
@@ -88,13 +86,12 @@ private:
 void Duplicator::_makeTargets(int32_t chunkId) {
     typedef std::vector<uint32_t>::const_iterator Iter;
     SphericalBox box(_chunker->getChunkBounds(chunkId));
-    box.expand(_chunker->getOverlap() + 1/3600.0); // 1 arcsec epsilon
+    box.expand(_chunker->getOverlap() + 1 / 3600.0);  // 1 arcsec epsilon
     std::vector<uint32_t> ids;
     box.htmIds(ids, _level);
     for (Iter i = ids.begin(), e = ids.end(); i != e; ++i) {
         uint32_t sourceHtmId = _partIndex->mapToNonEmpty(*i);
-        _targets[sourceHtmId].push_back(
-            std::pair<uint32_t, int32_t>(*i, chunkId));
+        _targets[sourceHtmId].push_back(std::pair<uint32_t, int32_t>(*i, chunkId));
     }
 }
 
@@ -105,21 +102,18 @@ InputLines const Duplicator::_makeInput() const {
     char file[32];
     std::vector<fs::path> paths;
     for (Iter i = _targets.begin(), e = _targets.end(); i != e; ++i) {
-        std::snprintf(file, sizeof(file), "htm_%lx.txt",
-                      static_cast<unsigned long>(i->first));
+        std::snprintf(file, sizeof(file), "htm_%lx.txt", static_cast<unsigned long>(i->first));
         paths.push_back(_indexDir / fs::path(file));
     }
-    return InputLines(paths, _blockSize*MiB, false);
+    return InputLines(paths, _blockSize * MiB, false);
 }
-
 
 // The global duplicator object.
 Duplicator duplicator;
 
 // Used by workers to access `duplicator`, forcing the compiler to verify
 // that workers never mutate Duplicator state.
-inline Duplicator const & dup() { return duplicator; }
-
+inline Duplicator const& dup() { return duplicator; }
 
 /// Functor for counting the number of IDs less than a given value.
 ///
@@ -145,16 +139,13 @@ inline Duplicator const & dup() { return duplicator; }
 /// search; this is just the number of records in A with ID less than J.
 class LessThanCounter {
 public:
-    LessThanCounter() : _htmId(0) { }
-    ~LessThanCounter() { }
+    LessThanCounter() : _htmId(0) {}
+    ~LessThanCounter() {}
 
-    void setup(HtmIndex const & index,
-               fs::path const & directory,
-               uint32_t const htmId);
+    void setup(HtmIndex const& index, fs::path const& directory, uint32_t const htmId);
 
     int64_t operator()(int64_t id) const {
-        std::vector<int64_t>::const_iterator p =
-            std::lower_bound(_ids.begin(), _ids.end(), id);
+        std::vector<int64_t>::const_iterator p = std::lower_bound(_ids.begin(), _ids.end(), id);
         if (p == _ids.end() || id != *p) {
             throw std::runtime_error("ID lookup failed.");
         }
@@ -166,21 +157,17 @@ private:
     uint32_t _htmId;
 };
 
-void LessThanCounter::setup(HtmIndex const & index,
-                            fs::path const & directory,
-                            uint32_t const htmId)
-{
+void LessThanCounter::setup(HtmIndex const& index, fs::path const& directory, uint32_t const htmId) {
     if (_htmId == htmId) {
         return;
     } else if (htmLevel(htmId) != index.getLevel()) {
         throw std::runtime_error("Invalid HTM ID.");
     }
     char file[32];
-    std::snprintf(file, sizeof(file), "htm_%lx.ids",
-                  static_cast<unsigned long>(htmId));
+    std::snprintf(file, sizeof(file), "htm_%lx.ids", static_cast<unsigned long>(htmId));
     InputFile f(directory / fs::path(file));
     size_t nrec = static_cast<size_t>(index(htmId));
-    size_t sz = 8*nrec;
+    size_t sz = 8 * nrec;
     if (static_cast<size_t>(f.size()) != sz) {
         throw std::runtime_error("Inconsistent ID file size.");
     }
@@ -189,20 +176,19 @@ void LessThanCounter::setup(HtmIndex const & index,
     _ids.reserve(nrec);
     f.read(data.get(), 0, sz);
     for (size_t i = 0; i < nrec; ++i) {
-        _ids.push_back(static_cast<int64_t>(decode<uint64_t>(&data[8*i])));
+        _ids.push_back(static_cast<int64_t>(decode<uint64_t>(&data[8 * i])));
     }
     std::sort(_ids.begin(), _ids.end());
 }
 
-
 /// Map-reduce worker class for the duplicator.
 class Worker : public ChunkReducer {
 public:
-    Worker(ConfigStore const & config);
+    Worker(ConfigStore const& config);
 
-    void map(char const * const begin, char const * const end, Silo & silo);
+    void map(char const* const begin, char const* const end, Silo& silo);
 
-    static void defineOptions(po::options_description & opts);
+    static void defineOptions(po::options_description& opts);
 
 private:
     // Decide whether or not to discard a record based solely on an
@@ -221,9 +207,7 @@ private:
     // TODO: It's unclear how well this approach works - there is likely
     // to be some statistical correlation between IDs and sky positions, and
     // the hashing function employed is weak (though cheap to compute).
-    bool _shouldDiscard(int64_t id) const {
-        return hash(static_cast<uint64_t>(id) ^ _seed) > _maxId;
-    }
+    bool _shouldDiscard(int64_t id) const { return hash(static_cast<uint64_t>(id) ^ _seed) > _maxId; }
 
     void _setup(uint32_t htmId);
 
@@ -234,17 +218,17 @@ private:
         int32_t chunkId;
         Matrix3d transform;
 
-        Target() : htmId(0), chunkId(-1), transform(Matrix3d::Identity()) { }
+        Target() : htmId(0), chunkId(-1), transform(Matrix3d::Identity()) {}
     };
 
     struct Pos {
-        Vector3d v; // Cartesian coordinates for (lon, lat).
-        int lon;    // Longitude angle field index.
-        int lat;    // Latitude angle field index.
-        bool null;  // Set to true if the lon or lat field value is NULL.
+        Vector3d v;  // Cartesian coordinates for (lon, lat).
+        int lon;     // Longitude angle field index.
+        int lat;     // Latitude angle field index.
+        bool null;   // Set to true if the lon or lat field value is NULL.
 
-        Pos() : v(0.0, 0.0, 0.0), lon(-1), lat(-1), null(false) { }
-        Pos(int i, int j) : v(0.0, 0.0, 0.0), lon(i), lat(j), null(false) { }
+        Pos() : v(0.0, 0.0, 0.0), lon(-1), lat(-1), null(false) {}
+        Pos(int i, int j) : v(0.0, 0.0, 0.0), lon(i), lat(j), null(false) {}
     };
 
     csv::Editor _editor;
@@ -266,28 +250,28 @@ private:
     boost::shared_ptr<LessThanCounter> _idsLessThan;
 };
 
-Worker::Worker(ConfigStore const & config) :
-    ChunkReducer(config),
-    _editor(config),
-    _partPos(),
-    _sourceHtmId(0),
-    _level(dup()._index->getLevel()),
-    _partIdField(-1),
-    _idField(-1),
-    _chunkIdField(-1),
-    _subChunkIdField(-1),
-    // defend against GCC PR21334
-    _partIndexDir(dup()._partIndexDir.string().c_str()),
-    _indexDir(dup()._indexDir.string().c_str())
-{
+Worker::Worker(ConfigStore const& config)
+        : ChunkReducer(config),
+          _editor(config),
+          _partPos(),
+          _sourceHtmId(0),
+          _level(dup()._index->getLevel()),
+          _partIdField(-1),
+          _idField(-1),
+          _chunkIdField(-1),
+          _subChunkIdField(-1),
+          // defend against GCC PR21334
+          _partIndexDir(dup()._partIndexDir.string().c_str()),
+          _indexDir(dup()._indexDir.string().c_str()) {
     typedef std::vector<std::string>::const_iterator StringIter;
 
     // Extract sampling fraction as well as PNRG seed.
     _seed = config.get<uint64_t>("sample.seed");
     double d = config.get<double>("sample.fraction");
     if (d <= 0.0 || d > 1.0) {
-        throw std::runtime_error("The --sample.fraction option value "
-                                 "must be in the range (0, 1].");
+        throw std::runtime_error(
+                "The --sample.fraction option value "
+                "must be in the range (0, 1].");
     }
     if (d == 1.0) {
         _maxId = std::numeric_limits<uint64_t>::max();
@@ -312,10 +296,9 @@ Worker::Worker(ConfigStore const & config) :
         // is identified as a position with --pos, it too is subjected to the
         // transformations that map (partitioningRa, partitioningDec) from
         // source to target HTM triangles.
-        for (auto&& s: config.get<std::vector<std::string>>("pos")) {
+        for (auto&& s : config.get<std::vector<std::string>>("pos")) {
             p = parseFieldNamePair("pos", s);
-            _pos.push_back(Pos(fields.resolve("pos", s, p.first),
-                               fields.resolve("pos", s, p.second)));
+            _pos.push_back(Pos(fields.resolve("pos", s, p.first), fields.resolve("pos", s, p.second)));
         }
     }
     // Optionally map primary and secondary key field names to field indexes.
@@ -344,16 +327,13 @@ Worker::Worker(ConfigStore const & config) :
     _subChunkIdField = fields.resolve("part.sub-chunk", s);
 }
 
-void Worker::map(char const * const begin,
-                 char const * const end,
-                 Worker::Silo & silo)
-{
+void Worker::map(char const* const begin, char const* const end, Worker::Silo& silo) {
     typedef std::vector<ChunkLocation>::const_iterator LocIter;
     typedef std::vector<Target>::const_iterator TgtIter;
     typedef std::vector<Pos>::iterator PosIter;
 
     uint32_t sourceHtmId = 0;
-    char const * cur = begin;
+    char const* cur = begin;
     while (cur < end) {
         cur = _editor.readRecord(cur, end);
         // Extract positions.
@@ -408,8 +388,7 @@ void Worker::map(char const * const begin,
             // added to baseId.
             int64_t baseId = static_cast<int64_t>(t->htmId) << 32;
             bool mustTransform = (sourceHtmId != t->htmId);
-            std::pair<double, double> pos =
-                mustTransform ? spherical(t->transform * _partPos.v) : sc;
+            std::pair<double, double> pos = mustTransform ? spherical(t->transform * _partPos.v) : sc;
             // Locate partitioning position
             _locations.clear();
             dup()._chunker->locate(pos, t->chunkId, _locations);
@@ -442,8 +421,7 @@ void Worker::map(char const * const begin,
             }
             // ... and store a copy of the output record in each location.
             // There can be more than one because of overlap.
-            for (LocIter l = _locations.begin(), le = _locations.end();
-                 l != le; ++l) {
+            for (LocIter l = _locations.begin(), le = _locations.end(); l != le; ++l) {
                 _editor.set(_chunkIdField, l->chunkId);
                 _editor.set(_subChunkIdField, l->subChunkId);
                 silo.add(*l, _editor);
@@ -463,7 +441,7 @@ void Worker::_setup(uint32_t htmId) {
     if (_idField >= 0 && _idField != _partIdField) {
         _idsLessThan->setup(*dup()._index, _indexDir, htmId);
     }
-    Duplicator::TargetList const & list = dup()._targets.at(htmId);
+    Duplicator::TargetList const& list = dup()._targets.at(htmId);
     Matrix3d const m = SphericalTriangle(htmId).getBarycentricTransform();
     _targets.clear();
     for (TargetIter i = list.begin(), e = list.end(); i != e; ++i) {
@@ -478,86 +456,65 @@ void Worker::_setup(uint32_t htmId) {
     _sourceHtmId = htmId;
 }
 
-void Worker::defineOptions(po::options_description & opts) {
+void Worker::defineOptions(po::options_description& opts) {
     po::options_description dup("\\________________ Duplication", 80);
-    dup.add_options()
-        ("sample.seed",
-         po::value<uint64_t>()->default_value(0),
-         "Seed value for sampling PRNG. The seeds used by cooperating "
-         "duplicators (e.g. if processing has been split over many nodes) "
-         "must be identical.")
-        ("sample.fraction",
-         po::value<double>()->default_value(1.0),
-         "The fraction of input positions to include in the output.")
-        ("index",
-         po::value<std::string>(),
-         "HTM index file name for the data set to duplicate. May be "
-         "omitted, in which case --part.index is used as the HTM index "
-         "for both the input data set and for partitioning positions.")
-        ("id",
-         po::value<std::string>(),
-         "Optional ID field name associated with input records. Note "
-         "that if --index and --part.index are identical, then either "
-         "--id and --part.id must match, or one must be omitted.")
-        ("pos",
-         po::value<std::vector<std::string> >(),
-         "Optional longitude and latitude angle field names, "
-         "separated by a comma. May be specified any number of times. "
-         "These field name pairs identify positions in addition to the "
-         "partitioning position fields (identified via --part.pos).")
-        ("lon-min",
-         po::value<double>()->default_value(0.0),
-         "Minimum longitude angle bound (deg) for the duplication region.")
-        ("lon-max",
-         po::value<double>()->default_value(360.0),
-         "Maximum longitude angle bound (deg) for the duplication region.")
-        ("lat-min",
-         po::value<double>()->default_value(-90.0),
-         "Minimum latitude angle bound (deg) for the duplication region.")
-        ("lat-max",
-         po::value<double>()->default_value(90.0),
-         "Maximum latitude angle bound (deg) for the duplication region.")
-        ("chunk-id",
-         po::value<std::vector<int32_t> >(),
-         "Optionally limit duplication to one or more chunks. If specified, "
-         "data will be duplicated for the given chunk(s) regardless of the "
-         "the duplication region and node.")
-        ("out.node",
-         po::value<uint32_t>(),
-         "Optionally limit duplication to chunks for the given output node. "
-         "A chunk is assigned to a node when the hash of the chunk ID modulo "
-         "the number of nodes is equal to the node number. If this option is "
-         "specified, its value must be less than --out.num-nodes. It is "
-         "ignored if --chunk-id is specified.");
+    dup.add_options()("sample.seed", po::value<uint64_t>()->default_value(0),
+                      "Seed value for sampling PRNG. The seeds used by cooperating "
+                      "duplicators (e.g. if processing has been split over many nodes) "
+                      "must be identical.")("sample.fraction", po::value<double>()->default_value(1.0),
+                                            "The fraction of input positions to include in the output.")(
+            "index", po::value<std::string>(),
+            "HTM index file name for the data set to duplicate. May be "
+            "omitted, in which case --part.index is used as the HTM index "
+            "for both the input data set and for partitioning positions.")(
+            "id", po::value<std::string>(),
+            "Optional ID field name associated with input records. Note "
+            "that if --index and --part.index are identical, then either "
+            "--id and --part.id must match, or one must be omitted.")(
+            "pos", po::value<std::vector<std::string>>(),
+            "Optional longitude and latitude angle field names, "
+            "separated by a comma. May be specified any number of times. "
+            "These field name pairs identify positions in addition to the "
+            "partitioning position fields (identified via --part.pos).")(
+            "lon-min", po::value<double>()->default_value(0.0),
+            "Minimum longitude angle bound (deg) for the duplication region.")(
+            "lon-max", po::value<double>()->default_value(360.0),
+            "Maximum longitude angle bound (deg) for the duplication region.")(
+            "lat-min", po::value<double>()->default_value(-90.0),
+            "Minimum latitude angle bound (deg) for the duplication region.")(
+            "lat-max", po::value<double>()->default_value(90.0),
+            "Maximum latitude angle bound (deg) for the duplication region.")(
+            "chunk-id", po::value<std::vector<int32_t>>(),
+            "Optionally limit duplication to one or more chunks. If specified, "
+            "data will be duplicated for the given chunk(s) regardless of the "
+            "the duplication region and node.")(
+            "out.node", po::value<uint32_t>(),
+            "Optionally limit duplication to chunks for the given output node. "
+            "A chunk is assigned to a node when the hash of the chunk ID modulo "
+            "the number of nodes is equal to the node number. If this option is "
+            "specified, its value must be less than --out.num-nodes. It is "
+            "ignored if --chunk-id is specified.");
     po::options_description part("\\_______________ Partitioning", 80);
-    part.add_options()
-        ("part.index",
-         po::value<std::string>(),
-         "HTM index of partitioning positions. For example, if duplicating "
-         "a source table partitioned on associated object RA and Dec, this "
-         "would be the name of the HTM index file for the object table. If "
-         "this option is omitted, then --index is used as the HTM index for "
-         "both the input and partitioning position data sets.")
-        ("part.id",
-         po::value<std::string>(),
-         "Optional ID field name associated with the partitioning position. "
-         "Note that if --index and --part.index are identical, then one of "
-         "--id and --part.id must be omitted, or both must match.")
-        ("part.prefix",
-         po::value<std::string>()->default_value("chunk"),
-         "Chunk file name prefix.")
-        ("part.chunk",
-         po::value<std::string>(),
-         "Optional chunk ID output field name. This field name is appended "
-         "to the output field name list if it isn't already included.")
-        ("part.sub-chunk",
-         po::value<std::string>()->default_value("subChunkId"),
-         "Sub-chunk ID output field name. This field field name is appended "
-         "to the output field name list if it isn't already included.")
-        ("part.pos",
-         po::value<std::string>(),
-         "The partitioning longitude and latitude angle field names, "
-         "separated by a comma.");
+    part.add_options()("part.index", po::value<std::string>(),
+                       "HTM index of partitioning positions. For example, if duplicating "
+                       "a source table partitioned on associated object RA and Dec, this "
+                       "would be the name of the HTM index file for the object table. If "
+                       "this option is omitted, then --index is used as the HTM index for "
+                       "both the input and partitioning position data sets.")(
+            "part.id", po::value<std::string>(),
+            "Optional ID field name associated with the partitioning position. "
+            "Note that if --index and --part.index are identical, then one of "
+            "--id and --part.id must be omitted, or both must match.")(
+            "part.prefix", po::value<std::string>()->default_value("chunk"), "Chunk file name prefix.")(
+            "part.chunk", po::value<std::string>(),
+            "Optional chunk ID output field name. This field name is appended "
+            "to the output field name list if it isn't already included.")(
+            "part.sub-chunk", po::value<std::string>()->default_value("subChunkId"),
+            "Sub-chunk ID output field name. This field field name is appended "
+            "to the output field name list if it isn't already included.")(
+            "part.pos", po::value<std::string>(),
+            "The partitioning longitude and latitude angle field names, "
+            "separated by a comma.");
     Chunker::defineOptions(part);
     opts.add(dup).add(part);
     defineOutputOptions(opts);
@@ -566,10 +523,7 @@ void Worker::defineOptions(po::options_description & opts) {
 
 typedef Job<Worker> DuplicateJob;
 
-
-boost::shared_ptr<ChunkIndex> const Duplicator::run(
-    ConfigStore const & config)
-{
+boost::shared_ptr<ChunkIndex> const Duplicator::run(ConfigStore const& config) {
     // Initialize state.
     boost::shared_ptr<Chunker> chunker(new Chunker(config));
     std::vector<int32_t> chunks = chunksToDuplicate(*chunker, config);
@@ -577,14 +531,16 @@ boost::shared_ptr<ChunkIndex> const Duplicator::run(
     DuplicateJob job(config);
     boost::shared_ptr<ChunkIndex> chunkIndex;
     if (!config.has("id") && !config.has("part.id")) {
-        throw std::runtime_error("One or both of the --id and --part.id "
-                                 "options must be specified.");
+        throw std::runtime_error(
+                "One or both of the --id and --part.id "
+                "options must be specified.");
     }
     if (!config.has("index") && !config.has("part.index")) {
-        throw std::runtime_error("One or both of the --index and --part.index "
-                                 "options must be specified.");
+        throw std::runtime_error(
+                "One or both of the --index and --part.index "
+                "options must be specified.");
     }
-    char const * opt = (config.has("index") ? "index" : "part.index");
+    char const* opt = (config.has("index") ? "index" : "part.index");
     fs::path indexPath(config.get<std::string>(opt));
     opt = (config.has("part.index") ? "part.index" : "index");
     fs::path partIndexPath(config.get<std::string>(opt));
@@ -595,17 +551,19 @@ boost::shared_ptr<ChunkIndex> const Duplicator::run(
         _partIndex = _index;
     }
     if (_index->getLevel() != _partIndex->getLevel()) {
-        throw std::runtime_error("Subdivision levels of input data set index "
-                                 "(--index) and partitioning position index "
-                                 "(--part.index) do not match.");
+        throw std::runtime_error(
+                "Subdivision levels of input data set index "
+                "(--index) and partitioning position index "
+                "(--part.index) do not match.");
     }
     _level = _index->getLevel();
     _indexDir = indexPath.parent_path();
     _partIndexDir = partIndexPath.parent_path();
     _blockSize = config.get<size_t>("mr.block-size");
     if (_blockSize == 0 || _blockSize > 1024) {
-        throw std::runtime_error("--mr.block-size must be between "
-                                 "1 and 1024 MiB.");
+        throw std::runtime_error(
+                "--mr.block-size must be between "
+                "1 and 1024 MiB.");
     }
     // Generate data for numWorkers chunks at a time.
     uint32_t const numWorkers = config.get<uint32_t>("mr.num-workers");
@@ -630,15 +588,14 @@ boost::shared_ptr<ChunkIndex> const Duplicator::run(
     return chunkIndex;
 }
 
-}} // namespace lsst::partition
+}}  // namespace lsst::partition
 
+static char const* help =
+        "The spherical data duplicator generates partitioned data from an HTM index\n"
+        "of an input data set by copying and rotating input data to \"fill in\"\n"
+        "parts of the sky not covered by the input.\n";
 
-static char const * help =
-    "The spherical data duplicator generates partitioned data from an HTM index\n"
-    "of an input data set by copying and rotating input data to \"fill in\"\n"
-    "parts of the sky not covered by the input.\n";
-
-int main(int argc, char const * const * argv) {
+int main(int argc, char const* const* argv) {
     namespace part = lsst::partition;
     try {
         po::options_description options;
@@ -659,10 +616,9 @@ int main(int argc, char const * const * argv) {
         } else {
             std::cout << *index << std::endl;
         }
-    } catch (std::exception const & ex) {
+    } catch (std::exception const& ex) {
         std::cerr << ex.what() << std::endl;
         return EXIT_FAILURE;
     }
     return EXIT_SUCCESS;
 }
-

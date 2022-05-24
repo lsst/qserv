@@ -34,28 +34,24 @@
 namespace fs = boost::filesystem;
 namespace po = boost::program_options;
 
+namespace lsst { namespace partition {
 
-namespace lsst {
-namespace partition {
-
-ChunkReducer::ChunkReducer(ConfigStore const & config) :
-    _index(boost::make_shared<ChunkIndex>()),
-    _chunkId(-1),
-    _numNodes(config.get<uint32_t>("out.num-nodes")),
-    _prefix(config.get<std::string>("part.prefix").c_str()), // defend against GCC PR21334
-    _outputDir(config.get<std::string>("out.dir").c_str()),  // defend against GCC PR21334
-    _chunkAppender(config.get<size_t>("mr.block-size")*MiB),
-    _overlapChunkAppender(config.get<size_t>("mr.block-size")*MiB)
-{
+ChunkReducer::ChunkReducer(ConfigStore const& config)
+        : _index(boost::make_shared<ChunkIndex>()),
+          _chunkId(-1),
+          _numNodes(config.get<uint32_t>("out.num-nodes")),
+          _prefix(config.get<std::string>("part.prefix").c_str()),  // defend against GCC PR21334
+          _outputDir(config.get<std::string>("out.dir").c_str()),   // defend against GCC PR21334
+          _chunkAppender(config.get<size_t>("mr.block-size") * MiB),
+          _overlapChunkAppender(config.get<size_t>("mr.block-size") * MiB) {
     if (_numNodes == 0 || _numNodes > 99999u) {
-        throw std::runtime_error("The --out.num-nodes option value must be "
-                                 "between 1 and 99999.");
+        throw std::runtime_error(
+                "The --out.num-nodes option value must be "
+                "between 1 and 99999.");
     }
 }
 
-void ChunkReducer::reduce(ChunkReducer::RecordIter const begin,
-                          ChunkReducer::RecordIter const end)
-{
+void ChunkReducer::reduce(ChunkReducer::RecordIter const begin, ChunkReducer::RecordIter const end) {
     if (begin == end) {
         return;
     }
@@ -96,18 +92,15 @@ void ChunkReducer::_makeFilePaths(int32_t chunkId) {
         // Files go into a node-specific sub-directory.
         char subdir[32];
         uint32_t node = hash(static_cast<uint32_t>(chunkId)) % _numNodes;
-        std::snprintf(subdir, sizeof(subdir), "node_%05lu",
-                      static_cast<unsigned long>(node));
+        std::snprintf(subdir, sizeof(subdir), "node_%05lu", static_cast<unsigned long>(node));
         p = p / subdir;
         fs::create_directory(p);
     }
     char suffix[32];
-    std::snprintf(suffix, sizeof(suffix), "_%ld.txt",
-             static_cast<long>(chunkId));
+    std::snprintf(suffix, sizeof(suffix), "_%ld.txt", static_cast<long>(chunkId));
     _chunkPath = p / (_prefix + suffix);
-    std::snprintf(suffix, sizeof(suffix), "_%ld_overlap.txt",
-             static_cast<long>(chunkId));
+    std::snprintf(suffix, sizeof(suffix), "_%ld_overlap.txt", static_cast<long>(chunkId));
     _overlapChunkPath = p / (_prefix + suffix);
 }
 
-}} // namespace lsst::partition
+}}  // namespace lsst::partition

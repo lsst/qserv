@@ -60,164 +60,184 @@ using lsst::partition::SphericalBox;
 using lsst::partition::SphericalTriangle;
 using lsst::partition::Vector3d;
 
-
-
 namespace {
 
-    void checkClose(Vector3d const & u, Vector3d const & v, double fraction) {
-        BOOST_CHECK_CLOSE_FRACTION(u.dot(v), u.norm()*v.norm(), fraction);
-    }
+void checkClose(Vector3d const& u, Vector3d const& v, double fraction) {
+    BOOST_CHECK_CLOSE_FRACTION(u.dot(v), u.norm() * v.norm(), fraction);
+}
 
-    void checkClose(pair<double, double> const & u,
-                    pair<double, double> const & v, double fraction) {
-        BOOST_CHECK_CLOSE_FRACTION(u.first, v.first, fraction);
-        BOOST_CHECK_CLOSE_FRACTION(u.second, v.second, fraction);
-    }
+void checkClose(pair<double, double> const& u, pair<double, double> const& v, double fraction) {
+    BOOST_CHECK_CLOSE_FRACTION(u.first, v.first, fraction);
+    BOOST_CHECK_CLOSE_FRACTION(u.second, v.second, fraction);
+}
 
-    // Given a unit vector v, construct 2 vectors n and e such that:
-    //  - all 3 vectors are orthonormal
-    //  - n is tangent (at v) to the great circle segment joining v
-    //    to the north pole, i.e. it is the "north" vector at v.
-    //  - e is the "east" vector at v.
-    // (n,e) thus form a basis for the plane tangent to the unit sphere at v.
-    void northEast(Vector3d & n, Vector3d & e, Vector3d const & v) {
-        n(0) = -v(0)*v(2);
-        n(1) = -v(1)*v(2);
-        n(2) = v(0)*v(0) + v(1)*v(1);
-        if (n(0) == 0.0 && n(1) == 0.0 && n(2) == 0.0) {
-           n(0) = -1.0;
-           e(0) = 0.0;
-           e(1) = 1.0;
-           e(2) = 0.0;
-        } else {
-           n = n.normalized();
-           e = n.cross(v).normalized();
+// Given a unit vector v, construct 2 vectors n and e such that:
+//  - all 3 vectors are orthonormal
+//  - n is tangent (at v) to the great circle segment joining v
+//    to the north pole, i.e. it is the "north" vector at v.
+//  - e is the "east" vector at v.
+// (n,e) thus form a basis for the plane tangent to the unit sphere at v.
+void northEast(Vector3d& n, Vector3d& e, Vector3d const& v) {
+    n(0) = -v(0) * v(2);
+    n(1) = -v(1) * v(2);
+    n(2) = v(0) * v(0) + v(1) * v(1);
+    if (n(0) == 0.0 && n(1) == 0.0 && n(2) == 0.0) {
+        n(0) = -1.0;
+        e(0) = 0.0;
+        e(1) = 1.0;
+        e(2) = 0.0;
+    } else {
+        n = n.normalized();
+        e = n.cross(v).normalized();
+    }
+}
+
+enum {
+    S0 = (0 + 8),
+    S00 = (0 + 8) * 4,
+    S01,
+    S02,
+    S03,
+    S1 = (1 + 8),
+    S10 = (1 + 8) * 4,
+    S11,
+    S12,
+    S13,
+    S2 = (2 + 8),
+    S20 = (2 + 8) * 4,
+    S21,
+    S22,
+    S23,
+    S3 = (3 + 8),
+    S30 = (3 + 8) * 4,
+    S31,
+    S32,
+    S33,
+    N0 = (4 + 8),
+    N00 = (4 + 8) * 4,
+    N01,
+    N02,
+    N03,
+    N1 = (5 + 8),
+    N10 = (5 + 8) * 4,
+    N11,
+    N12,
+    N13,
+    N2 = (6 + 8),
+    N20 = (6 + 8) * 4,
+    N21,
+    N22,
+    N23,
+    N3 = (7 + 8),
+    N30 = (7 + 8) * 4,
+    N31,
+    N32,
+    N33
+};
+
+size_t const NPOINTS = 38;
+double const C0 = 0.577350269189625764509148780503;  // √3/3
+double const C1 = 0.270598050073098492199861602684;  // 1 / (2*√(2 + √2))
+double const C2 = 0.923879532511286756128183189400;  // (1 + √2) / (√2 * √(2 + √2))
+
+Vector3d const _points[NPOINTS] = {
+        Vector3d(1, 0, 0),        //  x
+        Vector3d(0, 1, 0),        //  y
+        Vector3d(0, 0, 1),        //  z
+        Vector3d(-1, 0, 0),       // -x
+        Vector3d(0, -1, 0),       // -y
+        Vector3d(0, 0, -1),       // -z
+        Vector3d(C0, C0, C0),     // center of N3
+        Vector3d(-C0, C0, C0),    // center of N2
+        Vector3d(-C0, -C0, C0),   // center of N1
+        Vector3d(C0, -C0, C0),    // center of N0
+        Vector3d(C0, C0, -C0),    // center of S0
+        Vector3d(-C0, C0, -C0),   // center of S1
+        Vector3d(-C0, -C0, -C0),  // center of S2
+        Vector3d(C0, -C0, -C0),   // center of S3
+        Vector3d(C1, C1, C2),     // center of N31
+        Vector3d(C2, C1, C1),     // center of N32
+        Vector3d(C1, C2, C1),     // center of N30
+        Vector3d(-C1, C1, C2),    // center of N21
+        Vector3d(-C1, C2, C1),    // center of N22
+        Vector3d(-C2, C1, C1),    // center of N20
+        Vector3d(-C1, -C1, C2),   // center of N11
+        Vector3d(-C2, -C1, C1),   // center of N12
+        Vector3d(-C1, -C2, C1),   // center of N10
+        Vector3d(C1, -C1, C2),    // center of N01
+        Vector3d(C1, -C2, C1),    // center of N02
+        Vector3d(C2, -C1, C1),    // center of N00
+        Vector3d(C1, C1, -C2),    // center of S01
+        Vector3d(C2, C1, -C1),    // center of S00
+        Vector3d(C1, C2, -C1),    // center of S02
+        Vector3d(-C1, C1, -C2),   // center of S11
+        Vector3d(-C1, C2, -C1),   // center of S10
+        Vector3d(-C2, C1, -C1),   // center of S12
+        Vector3d(-C1, -C1, -C2),  // center of S21
+        Vector3d(-C2, -C1, -C1),  // center of S20
+        Vector3d(-C1, -C2, -C1),  // center of S22
+        Vector3d(C1, -C1, -C2),   // center of S31
+        Vector3d(C1, -C2, -C1),   // center of S30
+        Vector3d(C2, -C1, -C1),   // center of S32
+};
+
+uint32_t const _ids[NPOINTS] = {N32, N22, N31, N12, N02, S01, N33, N23, N13, N03, S03, S13, S23,
+                                S33, N31, N32, N30, N21, N22, N20, N11, N12, N10, N01, N02, N00,
+                                S01, S00, S02, S11, S10, S12, S21, S20, S22, S31, S30, S32};
+
+// Generate n points in a circle of radius r around (lon,lat).
+vector<pair<double, double> > const ngon(double lon, double lat, double r, int nv) {
+    vector<pair<double, double> > points;
+    Vector3d n, e, v = cartesian(lon, lat);
+    northEast(n, e, v);
+    double sinr = sin(r * RAD_PER_DEG);
+    double cosr = cos(r * RAD_PER_DEG);
+    double da = 360.0 / nv;
+    for (double a = 0; a < 360.0 - EPSILON_DEG; a += da) {
+        double sina = sin(a * RAD_PER_DEG);
+        double cosa = cos(a * RAD_PER_DEG);
+        Vector3d p = cosr * v + sinr * (cosa * e + sina * n);
+        points.push_back(spherical(p));
+    }
+    return points;
+}
+
+SphericalTriangle const tri(double lon, double lat, double r) {
+    vector<pair<double, double> > p = ngon(lon, lat, r, 3);
+    return SphericalTriangle(cartesian(p[0]), cartesian(p[1]), cartesian(p[2]));
+}
+
+// Find IDs of HTM triangles overlapping a box.
+vector<uint32_t> const htmIds(SphericalBox const& b, int level) {
+    std::set<uint32_t> ids;
+    double lon = b.getLonMin(), lat = b.getLatMin();
+    double deltaLon = b.getLonExtent() / 128;
+    double deltaLat = (b.getLatMax() - b.getLatMin()) / 128;
+    for (int i = 0; i < 128; ++i) {
+        for (int j = 0; j < 128; ++j) {
+            Vector3d v = cartesian(lon + deltaLon * i, lat + deltaLat * j);
+            ids.insert(htmId(v, level));
         }
     }
+    return vector<uint32_t>(ids.begin(), ids.end());
+}
 
-    enum {
-        S0 = (0 + 8), S00 = (0 + 8)*4, S01, S02, S03,
-        S1 = (1 + 8), S10 = (1 + 8)*4, S11, S12, S13,
-        S2 = (2 + 8), S20 = (2 + 8)*4, S21, S22, S23,
-        S3 = (3 + 8), S30 = (3 + 8)*4, S31, S32, S33,
-        N0 = (4 + 8), N00 = (4 + 8)*4, N01, N02, N03,
-        N1 = (5 + 8), N10 = (5 + 8)*4, N11, N12, N13,
-        N2 = (6 + 8), N20 = (6 + 8)*4, N21, N22, N23,
-        N3 = (7 + 8), N30 = (7 + 8)*4, N31, N32, N33
-    };
-
-    size_t const NPOINTS = 38;
-    double const C0 = 0.577350269189625764509148780503; // √3/3
-    double const C1 = 0.270598050073098492199861602684; // 1 / (2*√(2 + √2))
-    double const C2 = 0.923879532511286756128183189400; // (1 + √2) / (√2 * √(2 + √2))
-
-    Vector3d const _points[NPOINTS] = {
-        Vector3d(  1,  0,  0), //  x
-        Vector3d(  0,  1,  0), //  y
-        Vector3d(  0,  0,  1), //  z
-        Vector3d( -1,  0,  0), // -x
-        Vector3d(  0, -1,  0), // -y
-        Vector3d(  0,  0, -1), // -z
-        Vector3d( C0, C0, C0), // center of N3
-        Vector3d(-C0, C0, C0), // center of N2
-        Vector3d(-C0,-C0, C0), // center of N1
-        Vector3d( C0,-C0, C0), // center of N0
-        Vector3d( C0, C0,-C0), // center of S0
-        Vector3d(-C0, C0,-C0), // center of S1
-        Vector3d(-C0,-C0,-C0), // center of S2
-        Vector3d( C0,-C0,-C0), // center of S3
-        Vector3d( C1, C1, C2), // center of N31
-        Vector3d( C2, C1, C1), // center of N32
-        Vector3d( C1, C2, C1), // center of N30
-        Vector3d(-C1, C1, C2), // center of N21
-        Vector3d(-C1, C2, C1), // center of N22
-        Vector3d(-C2, C1, C1), // center of N20
-        Vector3d(-C1,-C1, C2), // center of N11
-        Vector3d(-C2,-C1, C1), // center of N12
-        Vector3d(-C1,-C2, C1), // center of N10
-        Vector3d( C1,-C1, C2), // center of N01
-        Vector3d( C1,-C2, C1), // center of N02
-        Vector3d( C2,-C1, C1), // center of N00
-        Vector3d( C1, C1,-C2), // center of S01
-        Vector3d( C2, C1,-C1), // center of S00
-        Vector3d( C1, C2,-C1), // center of S02
-        Vector3d(-C1, C1,-C2), // center of S11
-        Vector3d(-C1, C2,-C1), // center of S10
-        Vector3d(-C2, C1,-C1), // center of S12
-        Vector3d(-C1,-C1,-C2), // center of S21
-        Vector3d(-C2,-C1,-C1), // center of S20
-        Vector3d(-C1,-C2,-C1), // center of S22
-        Vector3d( C1,-C1,-C2), // center of S31
-        Vector3d( C1,-C2,-C1), // center of S30
-        Vector3d( C2,-C1,-C1), // center of S32
-    };
-
-    uint32_t const _ids[NPOINTS] = {
-        N32, N22, N31, N12, N02, S01,
-        N33, N23, N13, N03, S03, S13, S23, S33,
-        N31, N32, N30, N21, N22, N20, N11, N12,
-        N10, N01, N02, N00, S01, S00, S02, S11,
-        S10, S12, S21, S20, S22, S31, S30, S32
-    };
-
-    // Generate n points in a circle of radius r around (lon,lat).
-    vector<pair<double, double> > const ngon(
-        double lon, double lat, double r, int nv)
-    {
-        vector<pair<double, double> > points;
-        Vector3d n, e, v = cartesian(lon, lat);
-        northEast(n, e, v);
-        double sinr = sin(r * RAD_PER_DEG);
-        double cosr = cos(r * RAD_PER_DEG);
-        double da = 360.0/nv;
-        for (double a = 0; a < 360.0 - EPSILON_DEG; a += da) {
-            double sina = sin(a * RAD_PER_DEG);
-            double cosa = cos(a * RAD_PER_DEG);
-            Vector3d p = cosr * v + sinr * (cosa * e + sina * n);
-            points.push_back(spherical(p));
+bool isSubset(vector<uint32_t> const& v1, vector<uint32_t> const& v2) {
+    typedef vector<uint32_t>::const_iterator Iter;
+    Iter j = v2.begin(), je = v2.end();
+    for (Iter i = v1.begin(), ie = v1.end(); i != ie && j != je; ++i) {
+        for (; j != je && *i != *j; ++j) {
         }
-        return points;
     }
+    return j != je;
+}
 
-    SphericalTriangle const tri(double lon, double lat, double r) {
-        vector<pair<double, double> > p = ngon(lon, lat, r, 3);
-        return SphericalTriangle(cartesian(p[0]),
-                                 cartesian(p[1]),
-                                 cartesian(p[2]));
-    }
-
-    // Find IDs of HTM triangles overlapping a box.
-    vector<uint32_t> const htmIds(SphericalBox const & b, int level) {
-         std::set<uint32_t> ids;
-         double lon = b.getLonMin(), lat = b.getLatMin();
-         double deltaLon = b.getLonExtent() / 128;
-         double deltaLat = (b.getLatMax() - b.getLatMin()) / 128;
-         for (int i = 0; i < 128; ++i) {
-             for (int j = 0; j < 128; ++j) {
-                 Vector3d v = cartesian(
-                     lon + deltaLon*i, lat + deltaLat*j);
-                 ids.insert(htmId(v, level)); 
-             }
-         }
-         return vector<uint32_t>(ids.begin(), ids.end());
-    }
-
-    bool isSubset(vector<uint32_t> const & v1, vector<uint32_t> const & v2) {
-        typedef vector<uint32_t>::const_iterator Iter;
-        Iter j = v2.begin(), je = v2.end();
-        for (Iter i = v1.begin(), ie = v1.end(); i != ie && j != je; ++i) {
-            for (; j != je && *i != *j; ++j) { }
-        }
-        return j != je;
-    }
-
-} // unnamed namespace
-
+}  // unnamed namespace
 
 BOOST_AUTO_TEST_CASE(ClampLatTest) {
     BOOST_CHECK_EQUAL(clampLat(-91.0), -90.0);
-    BOOST_CHECK_EQUAL(clampLat( 91.0),  90.0);
-    BOOST_CHECK_EQUAL(clampLat( 89.0),  89.0);
+    BOOST_CHECK_EQUAL(clampLat(91.0), 90.0);
+    BOOST_CHECK_EQUAL(clampLat(89.0), 89.0);
 }
 
 BOOST_AUTO_TEST_CASE(MinDeltaLonTest) {
@@ -242,7 +262,7 @@ BOOST_AUTO_TEST_CASE(MaxAlphaTest) {
     BOOST_CHECK_THROW(maxAlpha(91.0, 0.0), exception);
     // Generate points in a circle of radius 1 deg and check that
     // each point has longitude within alpha of the center longitude.
-    vector<pair<double, double> > circle = ngon(0.0, 45.0, 1.0, 360*16);
+    vector<pair<double, double> > circle = ngon(0.0, 45.0, 1.0, 360 * 16);
     double alpha = maxAlpha(1.0, 45.0);
     for (size_t i = 0; i < circle.size(); ++i) {
         double lon = minDeltaLon(0.0, circle[i].first);
@@ -252,7 +272,7 @@ BOOST_AUTO_TEST_CASE(MaxAlphaTest) {
 
 BOOST_AUTO_TEST_CASE(HtmIdTest) {
     // Check corner cases.
-    Vector3d x(1,0,0);
+    Vector3d x(1, 0, 0);
     BOOST_CHECK_THROW(htmId(x, -1), exception);
     BOOST_CHECK_THROW(htmId(x, HTM_MAX_LEVEL + 1), exception);
     // Check test points.
@@ -272,35 +292,31 @@ BOOST_AUTO_TEST_CASE(HtmLevelTest) {
     }
     BOOST_CHECK_EQUAL(htmLevel(0x80), 2);
     for (int l = 0; l <= HTM_MAX_LEVEL; ++l) {
-        BOOST_CHECK_EQUAL(htmLevel(0x8 << (2*l)), l);
-        BOOST_CHECK_EQUAL(htmLevel(0x8 << (2*l + 1)), -1);
+        BOOST_CHECK_EQUAL(htmLevel(0x8 << (2 * l)), l);
+        BOOST_CHECK_EQUAL(htmLevel(0x8 << (2 * l + 1)), -1);
     }
 }
 
 BOOST_AUTO_TEST_CASE(CartesianTest) {
     double const f = 1e-15;
-    checkClose(cartesian( 90,  0), Vector3d( 0, 1, 0), f);
-    checkClose(cartesian(180,  0), Vector3d(-1, 0, 0), f);
-    checkClose(cartesian( 55, 90), Vector3d( 0, 0, 1), f);
-    checkClose(cartesian(999,-90), Vector3d( 0, 0,-1), f);
-    checkClose(cartesian( 45,  0)*2, Vector3d(sqrt(2.), sqrt(2.), 0), f);
-    checkClose(cartesian( 45, 45)*2, Vector3d(1, 1, sqrt(2.)), f);
+    checkClose(cartesian(90, 0), Vector3d(0, 1, 0), f);
+    checkClose(cartesian(180, 0), Vector3d(-1, 0, 0), f);
+    checkClose(cartesian(55, 90), Vector3d(0, 0, 1), f);
+    checkClose(cartesian(999, -90), Vector3d(0, 0, -1), f);
+    checkClose(cartesian(45, 0) * 2, Vector3d(sqrt(2.), sqrt(2.), 0), f);
+    checkClose(cartesian(45, 45) * 2, Vector3d(1, 1, sqrt(2.)), f);
 }
 
 BOOST_AUTO_TEST_CASE(SphericalTest) {
-    checkClose(pair<double, double>(45, 45),
-               spherical(1, 1, sqrt(2.)), 1e-15);
-    checkClose(pair<double, double>(45, -45),
-               spherical(1, 1, -sqrt(2.)), 1e-15);
+    checkClose(pair<double, double>(45, 45), spherical(1, 1, sqrt(2.)), 1e-15);
+    checkClose(pair<double, double>(45, -45), spherical(1, 1, -sqrt(2.)), 1e-15);
 }
 
 BOOST_AUTO_TEST_CASE(AngSepTest) {
     double const f = 1e-15;
-    BOOST_CHECK_CLOSE(
-        angSep(Vector3d(1,0,0), Vector3d(0,0,1)), 0.5*pi<double>(), f);
-    BOOST_CHECK_CLOSE(
-        angSep(Vector3d(1,-1,1), Vector3d(-1,1,-1)), pi<double>(), f);
-    BOOST_CHECK_EQUAL(angSep(Vector3d(1,1,1), Vector3d(1,1,1)), 0);
+    BOOST_CHECK_CLOSE(angSep(Vector3d(1, 0, 0), Vector3d(0, 0, 1)), 0.5 * pi<double>(), f);
+    BOOST_CHECK_CLOSE(angSep(Vector3d(1, -1, 1), Vector3d(-1, 1, -1)), pi<double>(), f);
+    BOOST_CHECK_EQUAL(angSep(Vector3d(1, 1, 1), Vector3d(1, 1, 1)), 0);
 }
 
 BOOST_AUTO_TEST_CASE(SphericalTriangleTransformTest) {
@@ -308,8 +324,8 @@ BOOST_AUTO_TEST_CASE(SphericalTriangleTransformTest) {
     Vector3d v;
     SphericalTriangle s03(S03);
     SphericalTriangle n13(N13);
-    Vector3d s03c( C0, C0,-C0);
-    Vector3d n13c(-C0,-C0, C0);
+    Vector3d s03c(C0, C0, -C0);
+    Vector3d n13c(-C0, -C0, C0);
     v = n13.getCartesianTransform() * (s03.getBarycentricTransform() * s03c);
     checkClose(v, n13c, f);
     v = s03.getCartesianTransform() * (n13.getBarycentricTransform() * n13c);
@@ -323,20 +339,17 @@ BOOST_AUTO_TEST_CASE(SphericalTriangleTransformTest) {
 
 BOOST_AUTO_TEST_CASE(SphericalTriangleAreaTest) {
     double const f = 1e-15;
-    SphericalTriangle t(Vector3d(0,1,0),
-                        Vector3d(0,0,1),
-                        Vector3d(1,0,0));
+    SphericalTriangle t(Vector3d(0, 1, 0), Vector3d(0, 0, 1), Vector3d(1, 0, 0));
     SphericalTriangle s0(S0);
     SphericalTriangle s00(S00);
     SphericalTriangle s01(S01);
     SphericalTriangle s02(S02);
     SphericalTriangle s03(S03);
     BOOST_CHECK_CLOSE_FRACTION(t.area(), s0.area(), f);
-    BOOST_CHECK_CLOSE_FRACTION(s0.area(), 0.5*pi<double>(), f);
+    BOOST_CHECK_CLOSE_FRACTION(s0.area(), 0.5 * pi<double>(), f);
     BOOST_CHECK_CLOSE_FRACTION(s00.area(), s01.area(), f);
     BOOST_CHECK_CLOSE_FRACTION(s01.area(), s02.area(), f);
-    BOOST_CHECK_CLOSE_FRACTION(
-        s0.area(), s00.area() + s01.area() + s02.area() + s03.area(), f);
+    BOOST_CHECK_CLOSE_FRACTION(s0.area(), s00.area() + s01.area() + s02.area() + s03.area(), f);
 }
 
 BOOST_AUTO_TEST_CASE(SphericalBoxTest) {
@@ -358,18 +371,17 @@ BOOST_AUTO_TEST_CASE(SphericalBoxTest) {
     b = SphericalBox(10, 20, 30, 40);
     BOOST_CHECK(!b.wraps());
     BOOST_CHECK_EQUAL(b.getLonExtent(), 10);
-    BOOST_CHECK_THROW(SphericalBox(0,1,1,-1), exception);
-    BOOST_CHECK_THROW(SphericalBox(370,0,0,1), exception);
+    BOOST_CHECK_THROW(SphericalBox(0, 1, 1, -1), exception);
+    BOOST_CHECK_THROW(SphericalBox(370, 0, 0, 1), exception);
 }
 
 BOOST_AUTO_TEST_CASE(SphericalBoxAreaTest) {
     SphericalBox b(0, 90, 0, 90);
-    BOOST_CHECK_CLOSE_FRACTION(b.area(), 0.5*pi<double>(), 1e-15);
+    BOOST_CHECK_CLOSE_FRACTION(b.area(), 0.5 * pi<double>(), 1e-15);
     b = SphericalBox(135, 180, -90, 90);
-    BOOST_CHECK_CLOSE_FRACTION(b.area(), 0.5*pi<double>(), 1e-15);
+    BOOST_CHECK_CLOSE_FRACTION(b.area(), 0.5 * pi<double>(), 1e-15);
     b = SphericalBox(-45, 45, -90, -45);
-    BOOST_CHECK_CLOSE_FRACTION(
-        b.area(), 0.5*pi<double>()*(1 - 0.5*sqrt(2.)), 1e-15);
+    BOOST_CHECK_CLOSE_FRACTION(b.area(), 0.5 * pi<double>() * (1 - 0.5 * sqrt(2.)), 1e-15);
 }
 
 BOOST_AUTO_TEST_CASE(SphericalBoxExpandTest) {
@@ -385,17 +397,16 @@ BOOST_AUTO_TEST_CASE(SphericalBoxExpandTest) {
     BOOST_CHECK_EQUAL(b.getLonMax(), 360);
     BOOST_CHECK_EQUAL(b.getLatMin(), 74);
     BOOST_CHECK_EQUAL(b.getLatMax(), 90);
-    b = SphericalBox(1,2,-89,89);
+    b = SphericalBox(1, 2, -89, 89);
     b.expand(2);
     BOOST_CHECK(b.isFull());
-    double const lon[2] = { 10, 20 };
-    double const lat[2] = { -35, 45 };
+    double const lon[2] = {10, 20};
+    double const lat[2] = {-35, 45};
     b = SphericalBox(lon[0], lon[1], lat[0], lat[1]);
     b.expand(10);
     for (int i = 0; i < 2; ++i) {
         for (int j = 0; j < 2; ++j) {
-            vector<pair<double, double> > circle = ngon(
-                lon[i], lat[j], 10 - EPSILON_DEG, 360);
+            vector<pair<double, double> > circle = ngon(lon[i], lat[j], 10 - EPSILON_DEG, 360);
             for (size_t k = 0; k < circle.size(); ++k) {
                 BOOST_CHECK(b.contains(circle[k]));
             }
@@ -405,13 +416,13 @@ BOOST_AUTO_TEST_CASE(SphericalBoxExpandTest) {
 
 BOOST_AUTO_TEST_CASE(SphericalBoxContainsTest) {
     SphericalBox b(10, 20, -1, 1);
-    BOOST_CHECK(b.contains(15,0));
-    BOOST_CHECK(!b.contains(25,0));
-    BOOST_CHECK(!b.contains(5,0));
-    BOOST_CHECK(!b.contains(15,2));
-    BOOST_CHECK(!b.contains(15,-2));
+    BOOST_CHECK(b.contains(15, 0));
+    BOOST_CHECK(!b.contains(25, 0));
+    BOOST_CHECK(!b.contains(5, 0));
+    BOOST_CHECK(!b.contains(15, 2));
+    BOOST_CHECK(!b.contains(15, -2));
     b = SphericalBox(-1, 1, -1, 1);
-    BOOST_CHECK(b.contains(359.5,0));
+    BOOST_CHECK(b.contains(359.5, 0));
 }
 
 BOOST_AUTO_TEST_CASE(SphericalBoxIntersectsTest) {
@@ -443,14 +454,14 @@ BOOST_AUTO_TEST_CASE(SphericalBoxHtmIdsTest) {
     ids.clear();
     b.htmIds(ids, 3);
     BOOST_CHECK(isSubset(htmIds(b, 3), ids));
-    b = SphericalBox(1,2,-1,1);
+    b = SphericalBox(1, 2, -1, 1);
     ids.clear();
     b.htmIds(ids, 7);
     BOOST_CHECK(isSubset(htmIds(b, 7), ids));
 }
 
 BOOST_AUTO_TEST_CASE(IntersectionAreaTest) {
-    double a = 0.5*pi<double>()*(1 - 0.5*sqrt(2.));
+    double a = 0.5 * pi<double>() * (1 - 0.5 * sqrt(2.));
     SphericalBox b(0, 360, 45, 90);
     SphericalTriangle t(N0);
     BOOST_CHECK_CLOSE_FRACTION(t.intersectionArea(b), a, 1e-12);
@@ -466,9 +477,7 @@ BOOST_AUTO_TEST_CASE(IntersectionAreaTest) {
     b = SphericalBox(0, 360, 89, 90);
     BOOST_CHECK_CLOSE_FRACTION(t.intersectionArea(b), b.area(), 1e-12);
     b = SphericalBox(-5, 5, -5, 5);
-    t = SphericalTriangle(cartesian(1,6),
-                          cartesian(-6,0),
-                          cartesian(1,-6));
+    t = SphericalTriangle(cartesian(1, 6), cartesian(-6, 0), cartesian(1, -6));
     a = t.intersectionArea(b);
     BOOST_CHECK_LT(a, t.area());
     BOOST_CHECK_LT(a, b.area());
