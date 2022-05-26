@@ -656,7 +656,6 @@ json HttpIngestModule::_deleteTable() {
     }
 
     // Remove table entry from czar's databases if it's still there
-
     try {
         if (cssAccess->containsDb(databaseInfo.name)) {
             if (cssAccess->containsTable(databaseInfo.name, table)) {
@@ -673,6 +672,20 @@ json HttpIngestModule::_deleteTable() {
     h.conn->executeInOwnTransaction([&databaseInfo, &table](decltype(h.conn) conn) {
         // Remove table entry from czar's MySQL
         conn->execute("DROP TABLE IF EXISTS " + conn->sqlId(databaseInfo.name, table));
+        // Remove the director index (if any)
+        if (databaseInfo.isDirector(table)) {
+            conn->execute("DROP TABLE IF EXISTS " +
+                          conn->sqlId("qservMeta", ::directorIndexTable(databaseInfo.name, table)));
+        }
+        // Remove the row counters table (if any)
+        try {
+            conn->execute("DROP TABLE IF EXISTS " +
+                            conn->sqlId("qservMeta", ::rowCountersTable(databaseInfo.name, table)));
+        } catch (invalid_argument const&) {
+            // This exception may be thrown by the table name generator if
+            // it couldn't build a correct name due to MySQL limitations.
+            ;
+        }
     });
 
     // Delete table entries at workers
