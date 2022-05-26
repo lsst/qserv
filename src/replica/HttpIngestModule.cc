@@ -420,7 +420,7 @@ json HttpIngestModule::_deleteDatabase() {
         }
     }
 
-    // Remove related database entries from czar's MySQL if anyting is still there
+    // Remove related database entries from czar's MySQL if anything is still there
     if (cssAccess->containsDb(databaseInfo.name)) {
         cssAccess->dropDb(databaseInfo.name);
     }
@@ -652,20 +652,6 @@ json HttpIngestModule::_deleteTable() {
             throw HttpError(__func__,
                             "deleting tables of published databases requires administrator's"
                             " privileges.");
-        }
-        auto const tableParams = cssAccess->getTableParams(databaseInfo.name, table);
-        if (tableParams.partitioning.dirTable == table) {
-            throw HttpError(__func__,
-                            "the director table can't be deleted from the published catalog"
-                            " w/o deleting the whole database.");
-        }
-    } else {
-        // This check is done agaist the internal data structure of the Replication/Ingest System
-        // since CSS is not populated before a database gets published.
-        if (databaseInfo.isDirector(table)) {
-            throw HttpError(__func__,
-                            "the director table can't be deleted from the un-published catalog"
-                            " w/o deleting the whole database.");
         }
     }
 
