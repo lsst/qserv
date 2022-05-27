@@ -173,7 +173,7 @@ json HttpIngestModule::_getDatabases() {
 
     auto const config = controller()->serviceProvider()->config();
 
-    // Leaving this name empty would result in scaning databases across all known
+    // Leaving this name empty would result in scanning databases across all known
     // families (instead of a single one) while applying the optional filter on
     // the publishing status of each candidate.
     //
@@ -304,11 +304,11 @@ json HttpIngestModule::_publishDatabase() {
     auto const config = controller()->serviceProvider()->config();
 
     auto const database = params().at("database");
-    bool const consolidateSecondayIndex = body().optional<int>("consolidate_secondary_index", 0) != 0;
+    bool const consolidateSecondaryIndex = body().optional<int>("consolidate_secondary_index", 0) != 0;
     bool const rowCountersDeployAtQserv = body().optional<int>("row_counters_deploy_at_qserv", 0) != 0;
 
     debug(__func__, "database=" + database);
-    debug(__func__, "consolidate_secondary_index=" + bool2str(consolidateSecondayIndex));
+    debug(__func__, "consolidate_secondary_index=" + bool2str(consolidateSecondaryIndex));
     debug(__func__, "row_counters_deploy_at_qserv=" + bool2str(rowCountersDeployAtQserv));
 
     auto const databaseInfo = config->databaseInfo(database);
@@ -328,20 +328,24 @@ json HttpIngestModule::_publishDatabase() {
 
     // The operation can be vetoed by the corresponding workflow parameter requested
     // by a catalog ingest workflow at the database creation time.
-    if (autoBuildSecondaryIndex(database) and consolidateSecondayIndex) {
+    if (autoBuildSecondaryIndex(database) and consolidateSecondaryIndex) {
         for (auto&& table : databaseInfo.directorTables()) {
+            // Skip tables that have been published.
+            if (databaseInfo.tableIsPublished.at(table)) continue;
             // This operation may take a while if the table has a large number of entries.
             _consolidateSecondaryIndex(databaseInfo, table);
         }
     }
 
-    // Note, this operation, depeniding on the amount of data ingested into
+    // Note, this operation, depending on the amount of data ingested into
     // the database's tables, could be quite lengthy. Failures reported in
     // a course of this operation will not affect the "success" status of
     // the publishing request since.
     if (rowCountersDeployAtQserv) {
         bool const forceRescan = true;  // Since doing the scan for the first time.
         for (auto&& table : databaseInfo.tables()) {
+            // Skip tables that have been published.
+            if (databaseInfo.tableIsPublished.at(table)) continue;
             json const errorExt = _scanTableStatsImpl(
                     database, table, ChunkOverlapSelector::CHUNK_AND_OVERLAP,
                     SqlRowStatsJob::StateUpdatePolicy::ENABLED, rowCountersDeployAtQserv, forceRescan,
@@ -356,11 +360,6 @@ json HttpIngestModule::_publishDatabase() {
     _createMissingChunkTables(databaseInfo, allWorkers);
     _removeMySQLPartitions(databaseInfo, allWorkers);
 
-    // This step is needed to get workers' Configuration in-sync with its
-    // persistent state.
-    auto const error = reconfigureWorkers(databaseInfo, allWorkers, workerReconfigTimeoutSec());
-    if (not error.empty()) throw HttpError(__func__, error);
-
     // Finalize setting the database in Qserv master to make the new catalog
     // visible to Qserv users.
     _publishDatabaseInMaster(databaseInfo);
@@ -372,6 +371,11 @@ json HttpIngestModule::_publishDatabase() {
     // workers.
     json result;
     result["database"] = config->publishDatabase(database).toJson();
+
+    // This step is needed to get workers' Configuration in-sync with its
+    // persistent state.
+    auto const error = reconfigureWorkers(databaseInfo, allWorkers, workerReconfigTimeoutSec());
+    if (not error.empty()) throw HttpError(__func__, error);
 
     // Run the chunks scanner to ensure new chunks are registered in the persistent
     // store of the Replication system and synchronized with the Qserv workers.
@@ -1045,6 +1049,8 @@ void HttpIngestModule::_createMissingChunkTables(DatabaseInfo const& databaseInf
     string const noParentJobId;
 
     for (auto&& table : databaseInfo.partitionedTables) {
+        // Skip tables that have been published.
+        if (databaseInfo.tableIsPublished.at(table)) continue;
         auto const columnsItr = databaseInfo.columns.find(table);
         if (columnsItr == databaseInfo.columns.cend()) {
             throw HttpError(__func__, "schema is empty for table: '" + table + "'");
@@ -1072,6 +1078,8 @@ void HttpIngestModule::_removeMySQLPartitions(DatabaseInfo const& databaseInfo, 
     string const noParentJobId;
     string error;
     for (auto const table : databaseInfo.tables()) {
+        // Skip tables that have been published.
+        if (databaseInfo.tableIsPublished.at(table)) continue;
         auto const job = SqlRemoveTablePartitionsJob::create(
                 databaseInfo.name, table, allWorkers, ignoreNonPartitioned, controller(), noParentJobId,
                 nullptr,
@@ -1103,6 +1111,8 @@ void HttpIngestModule::_publishDatabaseInMaster(DatabaseInfo const& databaseInfo
         // Statements for creating the database & table entries
         statements.push_back("CREATE DATABASE IF NOT EXISTS " + h.conn->sqlId(databaseInfo.name));
         for (auto const& table : databaseInfo.tables()) {
+            // Skip tables that have been published.
+            if (databaseInfo.tableIsPublished.at(table)) continue;
             string sql = "CREATE TABLE IF NOT EXISTS " + h.conn->sqlId(databaseInfo.name) + "." +
                          h.conn->sqlId(table) + " (";
             bool first = true;
@@ -1162,6 +1172,8 @@ void HttpIngestModule::_publishDatabaseInMaster(DatabaseInfo const& databaseInfo
 
     // Register tables which still hasn't been registered in CSS
     for (auto const& table : databaseInfo.regularTables) {
+        // Skip tables that have been published.
+        if (databaseInfo.tableIsPublished.at(table)) continue;
         if (not cssAccess->containsTable(databaseInfo.name, table)) {
             // Neither of those groups of parameters apply to the regular tables,
             // so we're leaving them default constructed.
@@ -1172,6 +1184,8 @@ void HttpIngestModule::_publishDatabaseInMaster(DatabaseInfo const& databaseInfo
         }
     }
     for (auto const& table : databaseInfo.partitionedTables) {
+        // Skip tables that have been published.
+        if (databaseInfo.tableIsPublished.at(table)) continue;
         if (not cssAccess->containsTable(databaseInfo.name, table)) {
             bool const isPartitioned = true;
 
