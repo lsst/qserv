@@ -92,7 +92,7 @@ json const ConfigurationSchema::_schemaJson = json::object(
              {"default", 2 * num_threads}}},
            {"heartbeat-ival-sec",
             {{"description",
-              "The hearbeat interval for interactions with the workers Registry service. Must be greater "
+              "The heartbeat interval for interactions with the workers Registry service. Must be greater "
               "than 0."},
              {"default", 5}}}}},
          {"controller",

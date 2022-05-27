@@ -30,6 +30,7 @@
 // Qserv headers
 #include "global/constants.h"
 #include "replica/ConfigDatabaseFamily.h"
+#include "replica/Performance.h"
 
 using namespace std;
 using json = nlohmann::json;
@@ -57,6 +58,8 @@ DatabaseInfo::DatabaseInfo(json const& obj, map<string, DatabaseFamilyInfo> cons
                                    "' specified in the JSON object.");
         }
         isPublished = obj.at("is_published").get<int>() != 0;
+        createTime = obj.at("create_time").get<uint64_t>();
+        publishTime = obj.at("publish_time").get<uint64_t>();
         if (obj.count("tables") != 0) {
             for (auto&& itr : obj.at("tables").items()) {
                 string const& table = itr.key();
@@ -104,6 +107,9 @@ DatabaseInfo::DatabaseInfo(json const& obj, map<string, DatabaseFamilyInfo> cons
                 } else {
                     regularTables.push_back(table);
                 }
+                tableIsPublished[table] = tableJson.at("is_published").get<int>() != 0;
+                tableCreateTime[table] = tableJson.at("create_time").get<uint64_t>();
+                tablePublishTime[table] = tableJson.at("publish_time").get<uint64_t>();
             }
         }
         if (obj.count("columns") != 0) {
@@ -142,6 +148,8 @@ json DatabaseInfo::toJson() const {
     infoJson["database"] = name;
     infoJson["family_name"] = family;
     infoJson["is_published"] = isPublished ? 1 : 0;
+    infoJson["create_time"] = createTime;
+    infoJson["publish_time"] = publishTime;
     infoJson["tables"] = json::object();
     for (auto&& name : partitionedTables) {
         infoJson["tables"][name] = json::object({{"name", name},
@@ -149,10 +157,16 @@ json DatabaseInfo::toJson() const {
                                                  {"director", directorTable.at(name)},
                                                  {"director_key", directorTableKey.at(name)},
                                                  {"latitude_key", latitudeColName.at(name)},
-                                                 {"longitude_key", longitudeColName.at(name)}});
+                                                 {"longitude_key", longitudeColName.at(name)},
+                                                 {"is_published", tableIsPublished.at(name) ? 1 : 0},
+                                                 {"create_time", tableCreateTime.at(name)},
+                                                 {"publish_time", tablePublishTime.at(name)}});
     }
     for (auto&& name : regularTables) {
-        infoJson["tables"][name] = json::object({{"name", name}, {"is_partitioned", 0}});
+        infoJson["tables"][name] = json::object({{"name", name}, {"is_partitioned", 0},
+                                                 {"is_published", tableIsPublished.at(name) ? 1 : 0},
+                                                 {"create_time", tableCreateTime.at(name)},
+                                                 {"publish_time", tablePublishTime.at(name)}});
     }
     for (auto&& columnsEntry : columns) {
         string const& table = columnsEntry.first;
@@ -288,6 +302,9 @@ void DatabaseInfo::addTable(string const& table, list<SqlColDef> const& columns_
         regularTables.push_back(table);
     }
     columns[table] = columns_;
+    tableIsPublished[table] = false;
+    tableCreateTime[table] = PerformanceUtils::now();
+    tablePublishTime[table] = 0ULL;
 }
 
 void DatabaseInfo::removeTable(std::string const& table) {
@@ -313,6 +330,9 @@ void DatabaseInfo::removeTable(std::string const& table) {
         regularTables.erase(find(regularTables.begin(), regularTables.end(), table));
     }
     columns.erase(table);
+    tableIsPublished.erase(table);
+    tableCreateTime.erase(table);
+    tablePublishTime.erase(table);
 }
 
 ostream& operator<<(ostream& os, DatabaseInfo const& info) {

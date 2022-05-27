@@ -30,6 +30,7 @@
 #include "replica/ConfigParserJSON.h"
 #include "replica/ConfigParserMySQL.h"
 #include "replica/DatabaseMySQLExceptions.h"
+#include "replica/Performance.h"
 #include "util/Timer.h"
 
 // LSST headers
@@ -512,11 +513,14 @@ DatabaseInfo Configuration::addDatabase(string const& database, std::string cons
     DatabaseInfo info;
     info.name = database;
     info.family = family;
-    info.isPublished = false;  // the new database can't be published at this time
+    info.isPublished = false;
+    info.createTime = PerformanceUtils::now();
+    info.publishTime = 0;
 
     if (_connectionPtr != nullptr) {
         _connectionPtr->executeInOwnTransaction([&info](decltype(_connectionPtr) conn) {
-            conn->executeInsertQuery("config_database", info.name, info.family, info.isPublished ? 1 : 0);
+            conn->executeInsertQuery("config_database", info.name, info.family, info.isPublished ? 1 : 0,
+                                     info.createTime, info.publishTime);
         });
     }
     _databases[info.name] = info;
@@ -558,7 +562,10 @@ DatabaseInfo Configuration::addTable(string const& database, string const& table
     if (_connectionPtr != nullptr) {
         _connectionPtr->executeInOwnTransaction([&](decltype(_connectionPtr) conn) {
             conn->executeInsertQuery("config_database_table", database, table, isPartitioned, directorTable,
-                                     directorTableKey, latitudeColName, longitudeColName);
+                                     directorTableKey, latitudeColName, longitudeColName,
+                                     databaseInfo.tableIsPublished.at(table) ? 1 : 0,
+                                     databaseInfo.tableCreateTime.at(table),
+                                     databaseInfo.tablePublishTime.at(table));
             int colPosition = 0;
             for (auto&& coldef : columns) {
                 conn->executeInsertQuery("config_database_table_schema", database, table,
@@ -735,20 +742,52 @@ DatabaseInfo& Configuration::_databaseInfo(util::Lock const& lock, string const&
 }
 
 DatabaseInfo& Configuration::_publishDatabase(util::Lock const& lock, string const& name, bool publish) {
-    DatabaseInfo& databseInfo = _databaseInfo(lock, name);
-    if (publish && databseInfo.isPublished) {
-        throw logic_error(_context(__func__) + " database '" + databseInfo.name + "' is already published.");
-    } else if (!publish && !databseInfo.isPublished) {
-        throw logic_error(_context(__func__) + " database '" + databseInfo.name + "' is not published.");
+    DatabaseInfo& databaseInfo = _databaseInfo(lock, name);
+    if (publish && databaseInfo.isPublished) {
+        throw logic_error(_context(__func__) + " database '" + databaseInfo.name + "' is already published.");
+    } else if (!publish && !databaseInfo.isPublished) {
+        throw logic_error(_context(__func__) + " database '" + databaseInfo.name + "' is not published.");
     }
-    if (_connectionPtr != nullptr) {
-        _connectionPtr->executeInOwnTransaction([&](decltype(_connectionPtr) conn) {
-            conn->executeSimpleUpdateQuery("config_database", conn->sqlEqual("database", databseInfo.name),
-                                           make_pair("is_published", publish ? 1 : 0));
-        });
+    if (publish) {
+        uint64_t const publishTime = PerformanceUtils::now();
+        // Firstly, publish all tables that were not published.
+        for (auto const& table : databaseInfo.tables()) {
+            if (_connectionPtr != nullptr) {
+                _connectionPtr->executeInOwnTransaction([&table,&databaseInfo,publishTime](decltype(_connectionPtr) conn) {
+                    conn->executeSimpleUpdateQuery("config_database_table",
+                                                   conn->sqlEqual("database", databaseInfo.name) + " AND " +
+                                                   conn->sqlEqual("table", table),
+                                                   make_pair("is_published", 1),
+                                                   make_pair("publish_time", publishTime));
+                });
+            }
+            if (!databaseInfo.tableIsPublished.at(table)) {
+                databaseInfo.tableIsPublished[table] = true;
+                databaseInfo.tablePublishTime[table] = publishTime;
+            }
+        }
+        // Then publish the database.
+        if (_connectionPtr != nullptr) {
+            _connectionPtr->executeInOwnTransaction([&](decltype(_connectionPtr) conn) {
+                conn->executeSimpleUpdateQuery("config_database", conn->sqlEqual("database", databaseInfo.name),
+                                               make_pair("is_published", 1),
+                                               make_pair("publish_time", publishTime));
+            });
+        }
+        databaseInfo.isPublished = true;
+        databaseInfo.publishTime = publishTime;
+    } else {
+        // Do not unpublish individual tables. The operation only affects
+        // the general status of the database to allow adding more tables.
+        if (_connectionPtr != nullptr) {
+            _connectionPtr->executeInOwnTransaction([&](decltype(_connectionPtr) conn) {
+                conn->executeSimpleUpdateQuery("config_database", conn->sqlEqual("database", databaseInfo.name),
+                                               make_pair("is_published", 0));
+            });
+        }
+        databaseInfo.isPublished = false;
     }
-    databseInfo.isPublished = publish;
-    return databseInfo;
+    return databaseInfo;
 }
 
 }  // namespace lsst::qserv::replica

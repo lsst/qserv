@@ -34,7 +34,7 @@ using json = nlohmann::json;
 
 namespace lsst::qserv::replica {
 
-int const ConfigParserMySQL::expectedSchemaVersion = 9;
+int const ConfigParserMySQL::expectedSchemaVersion = 10;
 
 ConfigParserMySQL::ConfigParserMySQL(database::mysql::Connection::Ptr const& conn, json& data,
                                      map<string, WorkerInfo>& workers,
@@ -111,6 +111,8 @@ void ConfigParserMySQL::_parseDatabases() {
         info.name = _parseParam<string>("database");
         info.family = _parseParam<string>("family_name");
         info.isPublished = _parseParam<int>("is_published") != 0;
+        info.createTime = _parseParam<uint64_t>("create_time");
+        info.publishTime = _parseParam<uint64_t>("publish_time");
         _databases[info.name] = info;
     }
     // Read database-specific table definitions and extend the corresponding database entries.
@@ -149,6 +151,10 @@ void ConfigParserMySQL::_parseDatabases() {
         } else {
             info.regularTables.push_back(table);
         }
+        info.tableIsPublished[table] = _parseParam<int>("is_published") != 0;
+        info.tableCreateTime[table] = _parseParam<uint64_t>("create_time");
+        info.tablePublishTime[table] = _parseParam<uint64_t>("publish_time");
+
     }
 
     // Validate referential integrity between the "director" and "dependent" tables

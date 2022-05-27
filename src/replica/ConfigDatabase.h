@@ -52,6 +52,8 @@ public:
     std::string family;  // The name of the database family.
 
     bool isPublished = false;  // The status of the database.
+    uint64_t createTime = 0;
+    uint64_t publishTime = 0;
 
     std::vector<std::string> partitionedTables;  // The names of the partitioned tables.
     std::vector<std::string> regularTables;      // The list of fully replicated tables.
@@ -90,14 +92,16 @@ public:
     // Empty values are allowed for the "dependent" tables since they must have
     // the direct association with the corresponding "director" tables via
     // the FK -> PK relation.
+    // Table names are used as keys in the dictionaries defined below.
 
-    std::map<std::string,  // table name
-             std::string>
-            latitudeColName;  // latitude (declination) column name
+    std::map<std::string, std::string> latitudeColName;
+    std::map<std::string, std::string> longitudeColName;
 
-    std::map<std::string,  // table name
-             std::string>
-            longitudeColName;  // longitude (right ascension) column name
+    // Publishing status of the tables.
+    // Table names are used as keys in the dictionaries defined below.
+    std::map<std::string, bool> tableIsPublished;
+    std::map<std::string, uint64_t> tableCreateTime;
+    std::map<std::string, uint64_t> tablePublishTime;
 
     /**
      * Construct from JSON.
