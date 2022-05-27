@@ -47,7 +47,6 @@
 #include "replica/HttpExceptions.h"
 #include "replica/QservSyncJob.h"
 #include "replica/ReplicaInfo.h"
-#include "replica/ServiceManagementJob.h"
 #include "replica/ServiceProvider.h"
 #include "replica/SqlCreateDbJob.h"
 #include "replica/SqlCreateTableJob.h"
@@ -289,7 +288,7 @@ json HttpIngestModule::_addDatabase() {
                                       to_string(enableLocalLoadSecondaryIndex ? 1 : 0));
 
     // Tell workers to reload their configurations
-    error = _reconfigureWorkers(databaseInfo, allWorkers, workerReconfigTimeoutSec());
+    error = reconfigureWorkers(databaseInfo, allWorkers, workerReconfigTimeoutSec());
     if (not error.empty()) throw HttpError(__func__, error);
 
     json result;
@@ -359,7 +358,7 @@ json HttpIngestModule::_publishDatabase() {
 
     // This step is needed to get workers' Configuration in-sync with its
     // persistent state.
-    auto const error = _reconfigureWorkers(databaseInfo, allWorkers, workerReconfigTimeoutSec());
+    auto const error = reconfigureWorkers(databaseInfo, allWorkers, workerReconfigTimeoutSec());
     if (not error.empty()) throw HttpError(__func__, error);
 
     // Finalize setting the database in Qserv master to make the new catalog
@@ -476,7 +475,7 @@ json HttpIngestModule::_deleteDatabase() {
 
     // This step is needed to get workers' Configuration in-sync with its
     // persistent state.
-    error = _reconfigureWorkers(databaseInfo, allWorkers, workerReconfigTimeoutSec());
+    error = reconfigureWorkers(databaseInfo, allWorkers, workerReconfigTimeoutSec());
     if (not error.empty()) throw HttpError(__func__, error);
 
     return json::object();
@@ -624,7 +623,7 @@ json HttpIngestModule::_addTable() {
 
     // This step is needed to get workers' Configuration in-sync with its
     // persistent state.
-    string const error = _reconfigureWorkers(databaseInfo, allWorkers, workerReconfigTimeoutSec());
+    string const error = reconfigureWorkers(databaseInfo, allWorkers, workerReconfigTimeoutSec());
     if (not error.empty()) throw HttpError(__func__, error);
 
     return result;
@@ -707,7 +706,7 @@ json HttpIngestModule::_deleteTable() {
 
     // This step is needed to get workers' Configuration in-sync with its
     // persistent state.
-    error = _reconfigureWorkers(databaseInfo, allWorkers, workerReconfigTimeoutSec());
+    error = reconfigureWorkers(databaseInfo, allWorkers, workerReconfigTimeoutSec());
     if (not error.empty()) throw HttpError(__func__, error);
 
     return json::object();
@@ -1278,29 +1277,6 @@ json HttpIngestModule::_buildEmptyChunksListImpl(string const& database, bool fo
     result["num_chunks_ingested"] = ingestedChunks.size();
     result["num_chunks_all"] = allChunks.size();
     return result;
-}
-
-string HttpIngestModule::_reconfigureWorkers(DatabaseInfo const& databaseInfo, bool allWorkers,
-                                             unsigned int workerResponseTimeoutSec) const {
-    string const noParentJobId;
-    auto const job = ServiceReconfigJob::create(
-            allWorkers, workerResponseTimeoutSec, controller(), noParentJobId, nullptr,
-            controller()->serviceProvider()->config()->get<int>("controller", "ingest-priority-level"));
-    job->start();
-    logJobStartedEvent(ServiceReconfigJob::typeName(), job, databaseInfo.family);
-    job->wait();
-    logJobFinishedEvent(ServiceReconfigJob::typeName(), job, databaseInfo.family);
-
-    string error;
-    auto const& resultData = job->getResultData();
-    for (auto&& itr : resultData.workers) {
-        auto&& worker = itr.first;
-        auto&& success = itr.second;
-        if (not success) {
-            error += "reconfiguration failed on worker: " + worker + " ";
-        }
-    }
-    return error;
 }
 
 void HttpIngestModule::_createSecondaryIndex(DatabaseInfo const& databaseInfo,

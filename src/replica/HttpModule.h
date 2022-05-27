@@ -39,6 +39,7 @@ namespace css {
 class CssAccess;
 }
 namespace replica::database::mysql {
+class DatabaseInfo;
 class Connection;
 }  // namespace replica::database::mysql
 }  // namespace lsst::qserv
@@ -85,6 +86,20 @@ protected:
     /// @param readOnly The open mode for the connection.
     /// @return A connection object for operations with Qserv CSS.
     std::shared_ptr<css::CssAccess> qservCssAccess(bool readOnly = false) const;
+
+    /**
+     * This method will tell all (or a subset of) workers to reload cache Configuration
+     * parameters. The operation is needed after significant changes in the Replication
+     * system's configuration occur, such as creating new databases or tables.
+     * This is to implement an explicit model of making workers aware about changes
+     * in the mostly static state of the system.
+     * @param databaseInfo  defines a scope of the operation (used for status and error reporting)
+     * @param allWorkers  'true' if all workers are involved into the operation
+     * @param workerResponseTimeoutSec  do not wait longer than the specified number of seconds
+     * @return non-empty string to indicate a error
+     */
+    std::string reconfigureWorkers(DatabaseInfo const& databaseInfo, bool allWorkers,
+                                   unsigned int workerResponseTimeoutSec) const;
 
     /**
      * Fetch a mode of building the "secondary index" as requested by a catalog
