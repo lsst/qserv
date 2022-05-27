@@ -509,14 +509,8 @@ DatabaseInfo Configuration::addDatabase(string const& database, std::string cons
     // This will throw an exception if the family isn't valid
     _databaseFamilyInfo(lock, family);
 
-    // When a new database is being added only these fields are considered.
-    DatabaseInfo info;
-    info.name = database;
-    info.family = family;
-    info.isPublished = false;
-    info.createTime = PerformanceUtils::now();
-    info.publishTime = 0;
-
+    // Create a new empty database.
+    DatabaseInfo const info = DatabaseInfo::create(database, family);
     if (_connectionPtr != nullptr) {
         _connectionPtr->executeInOwnTransaction([&info](decltype(_connectionPtr) conn) {
             conn->executeInsertQuery("config_database", info.name, info.family, info.isPublished ? 1 : 0,
