@@ -680,7 +680,7 @@ json HttpIngestModule::_deleteTable() {
         // Remove the row counters table (if any)
         try {
             conn->execute("DROP TABLE IF EXISTS " +
-                            conn->sqlId("qservMeta", ::rowCountersTable(databaseInfo.name, table)));
+                          conn->sqlId("qservMeta", ::rowCountersTable(databaseInfo.name, table)));
         } catch (invalid_argument const&) {
             // This exception may be thrown by the table name generator if
             // it couldn't build a correct name due to MySQL limitations.
