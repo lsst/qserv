@@ -264,8 +264,9 @@ void Configuration::setFromString(string const& category, string const& param, s
 
 void Configuration::_load(util::Lock const& lock, json const& obj, bool reset) {
     if (reset) {
-        _data = ConfigurationSchema::defaultConfigData();
         _workers.clear();
+        _databaseFamilies.clear();
+        _databases.clear();
     }
     _configUrl = string();
     _connectionPtr = nullptr;
@@ -281,8 +282,9 @@ void Configuration::_load(util::Lock const& lock, json const& obj, bool reset) {
 
 void Configuration::_load(util::Lock const& lock, string const& configUrl, bool reset) {
     if (reset) {
-        _data = ConfigurationSchema::defaultConfigData();
         _workers.clear();
+        _databaseFamilies.clear();
+        _databases.clear();
     }
     _configUrl = configUrl;
 
