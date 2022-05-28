@@ -55,7 +55,7 @@ class IngestRequestNotFound : public std::runtime_error {
  * processed by the Ingest system. Each worker service has an instance of the class.
  *
  * The corresponding REST services interact with the manager to order initiating
- * various operations, such as submiting new requests, inspecting a status of existing
+ * various operations, such as submitting new requests, inspecting a status of existing
  * requests, cancelling queued (or the on-going) requests on behalf of the user ingest
  * workflows. Requests are represented in the manager's implementation using class
  * 'IngestRequest'.
@@ -127,11 +127,11 @@ public:
      * - Requests found in the output queue can't be cancelled.
      * - Requests in the final stage of the processing while the data are already being
      *   ingested into the corresponding MySQL table can't be cancelled as well.
-     * - Upon the successfull completion of the operation the status of the request
+     * - Upon successful completion of the operation the status of the request
      *   will be set to TransactionContribInfo::Status::CANCELLED. Requests that
      *   had been found completed by the time when the cancellation request was
      *   made the current status of the request will be retained. Cancellation operations
-     *   for requests in the latter states are also considered as successfull.
+     *   for requests in the latter states are also considered as successful.
      *   It's up to a caller of the method to inspect the returned object descriptor to
      *   see the actual status of the request.
      * - The method may also throw exception should any problem happened while
@@ -171,7 +171,7 @@ public:
     void completed(unsigned int id);
 
 private:
-    /// @see method IngestRequestMgr::creeate()
+    /// @see method IngestRequestMgr::create()
     IngestRequestMgr(ServiceProvider::Ptr const& serviceProvider, std::string const& workerName);
 
     // Input parameters

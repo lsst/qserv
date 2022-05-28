@@ -45,7 +45,7 @@ class HttpClientConfig;
 namespace lsst::qserv::replica {
 
 /**
- * Class IngestRequestInterrupted respresents exceptions thrown by the request
+ * Class IngestRequestInterrupted represents exceptions thrown by the request
  * processing method IngestRequest::process() after terminating the request
  * either due to an explicit request cancellation or expiration.
  */
@@ -70,7 +70,7 @@ public:
      * The factory method for instantiating the request.
      *
      * - Parameters of the requests will be validated for validity and consistency.
-     * - Upon the successfull completion of the parameters checking stage the request
+     * - Upon successful completion of the parameters checking stage the request
      *   will be registered in the Replication/Ingest system's database and be ready for
      *   processing.
      * - Exceptions may be thrown by the method if any problems will be found
@@ -119,7 +119,7 @@ public:
      *   the method using other services (the Replication system's database, etc.).
      *
      * @param contrib The input parameters of the request.
-     * @throw std::logic_error If attemting to call the method while the processing is
+     * @throw std::logic_error If attempting to call the method while the processing is
      *   already in progress, or after the processing has finished.
      * @throw IngestRequestInterrupted if the request processing got cancelled
      */
@@ -175,7 +175,6 @@ private:
     // These variables are set after completing parameter validation
     std::unique_ptr<Url> _resource;
     csv::Dialect _dialect;
-    std::unique_ptr<csv::Parser> _parser;
 
     /// The flag is set by method process(), and once it's set it's never
     /// reset. The flag is used for coordinating state change with other methods

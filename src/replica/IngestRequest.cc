@@ -185,7 +185,7 @@ IngestRequest::IngestRequest(ServiceProvider::Ptr const& serviceProvider, string
     _contrib.httpHeaders = httpHeaders;
 
     // Prescreen parameters of the request to ensure they're valid in the given
-    // contex. Locate and check the state of the transaction. Refuse to proceed
+    // context. Locate and check the state of the transaction. Refuse to proceed
     // with the request should any issues were detected.
     string const context = ::context_ + string(__func__) + " ";
     bool const failed = true;
@@ -215,7 +215,6 @@ IngestRequest::IngestRequest(ServiceProvider::Ptr const& serviceProvider, string
                 throw invalid_argument(context + " unsupported url '" + _contrib.url + "'");
         }
         _dialect = csv::Dialect(dialectInput);
-        _parser.reset(new csv::Parser(_dialect));
     } catch (exception const& ex) {
         _contrib.error = string(ex.what());
         _contrib = databaseServices->createdTransactionContrib(_contrib, failed);
@@ -227,11 +226,10 @@ IngestRequest::IngestRequest(ServiceProvider::Ptr const& serviceProvider, string
 IngestRequest::IngestRequest(ServiceProvider::Ptr const& serviceProvider, string const& workerName,
                              TransactionContribInfo const& contrib)
         : IngestFileSvc(serviceProvider, workerName), _contrib(contrib) {
-    // This contructor assumes a valid contribution object obtained from a database
+    // This constructor assumes a valid contribution object obtained from a database
     // was passed into the method.
     _resource.reset(new Url(_contrib.url));
     _dialect = csv::Dialect(_contrib.dialectInput);
-    _parser.reset(new csv::Parser(_dialect));
 }
 
 TransactionContribInfo IngestRequest::transactionContribInfo() const {
@@ -421,6 +419,7 @@ void IngestRequest::_readLocalFile() {
         raiseRetryAllowedError(context, "failed to open the file '" + _resource->filePath() + "', error: '" +
                                                 strerror(errno) + "', errno: " + to_string(errno));
     }
+    auto parser = make_unique<csv::Parser>(_dialect);
     bool eof = false;
     do {
         eof = !infile.read(record.get(), defaultRecordSizeBytes);
@@ -432,7 +431,7 @@ void IngestRequest::_readLocalFile() {
         size_t const num = infile.gcount();
         _contrib.numBytes += num;
         // Flush the last record if the end of the file.
-        _parser->parse(record.get(), num, eof, [&](char const* buf, size_t size) {
+        parser->parse(record.get(), num, eof, [&](char const* buf, size_t size) {
             writeRowIntoFile(buf, size);
             _contrib.numRows++;
         });
@@ -475,16 +474,17 @@ void IngestRequest::_readRemoteFile() {
     }
 
     // Read and parse data from the data source
+    auto parser = make_unique<csv::Parser>(_dialect);
     bool const flush = true;
     HttpClient reader(_contrib.httpMethod, _contrib.url, _contrib.httpData, _contrib.httpHeaders,
                       clientConfig);
     reader.read([&](char const* record, size_t size) {
-        _parser->parse(record, size, !flush, reportRow);
+        parser->parse(record, size, !flush, reportRow);
         _contrib.numBytes += size;
     });
     // Flush the last non-terminated line stored in the parser (if any).
     string const emptyRecord;
-    _parser->parse(emptyRecord.data(), emptyRecord.size(), flush, reportRow);
+    parser->parse(emptyRecord.data(), emptyRecord.size(), flush, reportRow);
 }
 
 HttpClientConfig IngestRequest::_clientConfig() const {
