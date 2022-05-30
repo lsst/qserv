@@ -238,6 +238,10 @@ jobs:
         with:
           fetch-depth: 0  # 0 is "all history and branch tags"
 
+      - name : Update submodules
+        run: |
+          git submodule update --init
+
       - name: Login to DockerHub
         uses: docker/login-action@v1
         with:
