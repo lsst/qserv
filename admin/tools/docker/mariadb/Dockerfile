@@ -14,18 +14,16 @@
 FROM ubuntu:focal AS mariadb-scisql-builder
 
 RUN apt-get update \
-    && apt-get install -y software-properties-common \
-    && apt-key adv --fetch-keys 'https://mariadb.org/mariadb_release_signing_key.asc' \
-    && add-apt-repository 'deb [arch=amd64,arm64,ppc64el] http://mirrors.piconets.webwerks.in/mariadb-mirror/repo/10.4/ubuntu focal main' \
-    && apt-get update \
+    && apt-get install -y curl \
+    && curl -LsS https://r.mariadb.com/downloads/mariadb_repo_setup | bash -s -- --mariadb-server-version="mariadb-10.6" \
     && apt-get install -y g++ make git python3 libmariadb-dev \
-    && update-alternatives --install /usr/bin/python python /usr/bin/python3.8 2
+    && update-alternatives --install /usr/bin/python python /usr/bin/python3 0
 
 RUN cd /tmp \
     && git clone https://github.com/smonkewitz/scisql \
     && cd scisql \
-    && git checkout tags/0.3.9 -b 0.3.9 \
-    && ./configure --mysql-includes=/usr/include/mariadb \
+    && git checkout tags/0.3.11 -b 0.3.11 \
+    && ./configure \
     && make -j8 install
 
 RUN cd /tmp/scisql \
@@ -39,7 +37,7 @@ RUN chmod a+r /tmp/scisql/build/deploy.mysql
 
 #-------------------------------------------------------------------------------------------------------------
 # The 'mariadb-scisql' target layers just the runtime artifacts from the builder target above on top of an
-# off-the-shelf mariadb image.  This produces a generic "mariadb with scisql installed" container image. 
+# off-the-shelf mariadb image.  This produces a generic "mariadb with scisql installed" container image.
 #-------------------------------------------------------------------------------------------------------------
 
 FROM mariadb:10.6 AS mariadb-scisql
@@ -50,7 +48,7 @@ COPY --from=mariadb-scisql-builder /tmp/scisql/build/deploy.mysql /docker-entryp
 # The 'lite-mariadb' target further customizes the generic 'mariadb-scisql' image above by adding a 'qserv'
 # user, creating directories with appropriate ownership at locations expected to be used for bind-mounts in
 # the qserv operating environment, and setting the default runtime user to 'qserv'.  This image is the
-# artifact to be used for all MariaDB instantiations within a Qserv deployment.  
+# artifact to be used for all MariaDB instantiations within a Qserv deployment.
 #-------------------------------------------------------------------------------------------------------------
 
 FROM mariadb-scisql AS lite-mariadb
