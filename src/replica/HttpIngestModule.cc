@@ -849,9 +849,9 @@ json HttpIngestModule::_scanTableStatsImpl(string const& database, string const&
         auto const job = SqlRowStatsJob::create(databaseInfo.name, table, overlapSelector, stateUpdatePolicy,
                                                 allWorkers, controller(), noParentJobId, nullptr, priority);
         job->start();
-        logJobStartedEvent(SqlDisableDbJob::typeName(), job, databaseInfo.family);
+        logJobStartedEvent(SqlRowStatsJob::typeName(), job, databaseInfo.family);
         job->wait();
-        logJobFinishedEvent(SqlDisableDbJob::typeName(), job, databaseInfo.family);
+        logJobFinishedEvent(SqlRowStatsJob::typeName(), job, databaseInfo.family);
 
         if (job->extendedState() != Job::ExtendedState::SUCCESS) {
             json errorExt = json::object({{"operation", "Scan table row counters."},
