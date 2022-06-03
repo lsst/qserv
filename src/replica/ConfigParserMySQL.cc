@@ -154,7 +154,6 @@ void ConfigParserMySQL::_parseDatabases() {
         info.tableIsPublished[table] = _parseParam<int>("is_published") != 0;
         info.tableCreateTime[table] = _parseParam<uint64_t>("create_time");
         info.tablePublishTime[table] = _parseParam<uint64_t>("publish_time");
-
     }
 
     // Validate referential integrity between the "director" and "dependent" tables

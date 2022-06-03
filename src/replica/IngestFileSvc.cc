@@ -236,10 +236,10 @@ void IngestFileSvc::loadDataIntoTable() {
                 if (!_databaseInfo.tableIsPublished.at(table)) {
                     string const tablesToBePartitioned[] = {sqlTable, sqlFullOverlapTable};
                     for (auto&& table : tablesToBePartitioned) {
-                        tableMgtStatements.push_back(
-                                Query("ALTER TABLE " + table + " ADD PARTITION IF NOT EXISTS (PARTITION " +
-                                            sqlPartition + " VALUES IN (" + to_string(_transactionId) + "))",
-                                    table));
+                        tableMgtStatements.push_back(Query(
+                                "ALTER TABLE " + table + " ADD PARTITION IF NOT EXISTS (PARTITION " +
+                                        sqlPartition + " VALUES IN (" + to_string(_transactionId) + "))",
+                                table));
                     }
                 }
                 // An additional step for the current request's table

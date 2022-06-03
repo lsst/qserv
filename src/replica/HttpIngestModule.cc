@@ -89,7 +89,8 @@ string jobCompletionErrorIfAny(SqlJob::Ptr const& job, string const& prefix) {
         }
         default:
             // Job expiration, cancellation and other problems are reported here.
-            error += prefix + "failed, job: " + job->id() + ", extended state: " + Job::state2string(job->extendedState());
+            error += prefix + "failed, job: " + job->id() +
+                     ", extended state: " + Job::state2string(job->extendedState());
             break;
     }
 

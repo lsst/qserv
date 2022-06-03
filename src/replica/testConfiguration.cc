@@ -622,7 +622,7 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestReadingTables) {
     BOOST_CHECK(db1info.tableCreateTime.at("Table11") == 110);
     BOOST_CHECK(db1info.tablePublishTime.count("Table11") != 0);
     BOOST_CHECK(db1info.tablePublishTime.at("Table11") == 111);
- 
+
     tables = db1info.partitionedTables;
     sort(tables.begin(), tables.end());
     BOOST_CHECK(tables.size() == 1);

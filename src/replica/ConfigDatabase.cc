@@ -54,7 +54,6 @@ DatabaseInfo DatabaseInfo::create(string const& name, string const family) {
     return info;
 }
 
-
 DatabaseInfo DatabaseInfo::parse(json const& obj, map<string, DatabaseFamilyInfo> const& families) {
     string const context = "DatabaseInfo::DatabaseInfo(json): ";
     if (!obj.is_object()) throw invalid_argument(context + "a JSON object is required.");
@@ -63,7 +62,7 @@ DatabaseInfo DatabaseInfo::parse(json const& obj, map<string, DatabaseFamilyInfo
     DatabaseInfo info;
     try {
         info.name = obj.at("database").get<string>();
-        info.family= obj.at("family_name").get<string>();
+        info.family = obj.at("family_name").get<string>();
         if (families.count(info.family) == 0) {
             throw invalid_argument(context + "unknown family name '" + info.family +
                                    "' specified in the JSON object for the database '" + info.name + "'.");
@@ -175,7 +174,8 @@ json DatabaseInfo::toJson() const {
                                                  {"publish_time", tablePublishTime.at(name)}});
     }
     for (auto&& name : regularTables) {
-        infoJson["tables"][name] = json::object({{"name", name}, {"is_partitioned", 0},
+        infoJson["tables"][name] = json::object({{"name", name},
+                                                 {"is_partitioned", 0},
                                                  {"is_published", tableIsPublished.at(name) ? 1 : 0},
                                                  {"create_time", tableCreateTime.at(name)},
                                                  {"publish_time", tablePublishTime.at(name)}});

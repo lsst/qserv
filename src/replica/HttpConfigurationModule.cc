@@ -249,8 +249,7 @@ json HttpConfigurationModule::_unpublishDatabase() {
     auto const database = params().at("database");
     debug(__func__, "database=" + database);
     if (!isAdmin()) {
-        throw HttpError(__func__,
-                        "administrator's privileges are required to un-publish databases.");
+        throw HttpError(__func__, "administrator's privileges are required to un-publish databases.");
     }
     DatabaseInfo const databaseInfo = controller()->serviceProvider()->config()->unPublishDatabase(database);
     // This step is needed to get workers' Configuration in-sync with its

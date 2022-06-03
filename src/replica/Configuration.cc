@@ -555,11 +555,10 @@ DatabaseInfo Configuration::addTable(string const& database, string const& table
                           latitudeColName, longitudeColName);
     if (_connectionPtr != nullptr) {
         _connectionPtr->executeInOwnTransaction([&](decltype(_connectionPtr) conn) {
-            conn->executeInsertQuery("config_database_table", database, table, isPartitioned, directorTable,
-                                     directorTableKey, latitudeColName, longitudeColName,
-                                     databaseInfo.tableIsPublished.at(table) ? 1 : 0,
-                                     databaseInfo.tableCreateTime.at(table),
-                                     databaseInfo.tablePublishTime.at(table));
+            conn->executeInsertQuery(
+                    "config_database_table", database, table, isPartitioned, directorTable, directorTableKey,
+                    latitudeColName, longitudeColName, databaseInfo.tableIsPublished.at(table) ? 1 : 0,
+                    databaseInfo.tableCreateTime.at(table), databaseInfo.tablePublishTime.at(table));
             int colPosition = 0;
             for (auto&& coldef : columns) {
                 conn->executeInsertQuery("config_database_table_schema", database, table,
@@ -747,13 +746,14 @@ DatabaseInfo& Configuration::_publishDatabase(util::Lock const& lock, string con
         // Firstly, publish all tables that were not published.
         for (auto const& table : databaseInfo.tables()) {
             if (_connectionPtr != nullptr) {
-                _connectionPtr->executeInOwnTransaction([&table,&databaseInfo,publishTime](decltype(_connectionPtr) conn) {
-                    conn->executeSimpleUpdateQuery("config_database_table",
-                                                   conn->sqlEqual("database", databaseInfo.name) + " AND " +
-                                                   conn->sqlEqual("table", table),
-                                                   make_pair("is_published", 1),
-                                                   make_pair("publish_time", publishTime));
-                });
+                _connectionPtr->executeInOwnTransaction(
+                        [&table, &databaseInfo, publishTime](decltype(_connectionPtr) conn) {
+                            conn->executeSimpleUpdateQuery("config_database_table",
+                                                           conn->sqlEqual("database", databaseInfo.name) +
+                                                                   " AND " + conn->sqlEqual("table", table),
+                                                           make_pair("is_published", 1),
+                                                           make_pair("publish_time", publishTime));
+                        });
             }
             if (!databaseInfo.tableIsPublished.at(table)) {
                 databaseInfo.tableIsPublished[table] = true;
@@ -763,9 +763,9 @@ DatabaseInfo& Configuration::_publishDatabase(util::Lock const& lock, string con
         // Then publish the database.
         if (_connectionPtr != nullptr) {
             _connectionPtr->executeInOwnTransaction([&](decltype(_connectionPtr) conn) {
-                conn->executeSimpleUpdateQuery("config_database", conn->sqlEqual("database", databaseInfo.name),
-                                               make_pair("is_published", 1),
-                                               make_pair("publish_time", publishTime));
+                conn->executeSimpleUpdateQuery(
+                        "config_database", conn->sqlEqual("database", databaseInfo.name),
+                        make_pair("is_published", 1), make_pair("publish_time", publishTime));
             });
         }
         databaseInfo.isPublished = true;
@@ -775,7 +775,8 @@ DatabaseInfo& Configuration::_publishDatabase(util::Lock const& lock, string con
         // the general status of the database to allow adding more tables.
         if (_connectionPtr != nullptr) {
             _connectionPtr->executeInOwnTransaction([&](decltype(_connectionPtr) conn) {
-                conn->executeSimpleUpdateQuery("config_database", conn->sqlEqual("database", databaseInfo.name),
+                conn->executeSimpleUpdateQuery("config_database",
+                                               conn->sqlEqual("database", databaseInfo.name),
                                                make_pair("is_published", 0));
             });
         }
