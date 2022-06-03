@@ -100,11 +100,18 @@ json const ConfigurationSchema::_schemaJson = json::object(
             {{"description", "The number of threads managed by BOOST ASIO. Must be greater than 0."},
              {"default", 2 * num_threads}}},
            {"request-timeout-sec",
-            {{"description", "The default timeout for completing worker requests. Must be greater than 0."},
-             {"default", 3600}}},
+            {{"description", "The default timeout for completing worker requests. A value depends on"
+              " a scale of catalogs served by Qserv and ingested by the Replication/Ingest system."
+              " It's recommended to set this parameter to 3600 seconds or higher. The value must be"
+              " greater than 0."},
+             {"default", 28800}}},
            {"job-timeout-sec",
-            {{"description", "The default timeout for completing jobs. Must be greater than 0."},
-             {"default", 3600}}},
+            {{"description", "The default timeout for completing jobs. A value depends on"
+              " a scale of catalogs served by Qserv and ingested by the Replication/Ingest system."
+              " Some complex jobs run on the large catalogs may take many hours."
+              " It's recommended to set this parameter to 3600 seconds or higher. The value must be"
+              " greater than 0."},
+             {"default", 86400}}},
            {"job-heartbeat-sec",
             {{"description", "The heartbeat interval for jobs. A value of 0 disables heartbeats."},
              {"empty-allowed", 1},
