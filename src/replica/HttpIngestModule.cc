@@ -71,17 +71,28 @@ namespace {
 
 string jobCompletionErrorIfAny(SqlJob::Ptr const& job, string const& prefix) {
     string error;
-    if (job->extendedState() != Job::ExtendedState::SUCCESS) {
-        auto const& resultData = job->getResultData();
-        for (auto&& itr : resultData.resultSets) {
-            auto&& worker = itr.first;
-            for (auto&& result : itr.second) {
-                if (result.hasErrors()) {
-                    error += prefix + ", worker: " + worker + ",  error: " + result.firstError() + " ";
+    switch (job->extendedState()) {
+        case Job::ExtendedState::NONE:
+        case Job::ExtendedState::SUCCESS:
+            break;
+        case Job::ExtendedState::FAILED: {
+            auto const& resultData = job->getResultData();
+            for (auto&& itr : resultData.resultSets) {
+                auto&& worker = itr.first;
+                for (auto&& result : itr.second) {
+                    if (result.hasErrors()) {
+                        error += prefix + ", worker: " + worker + ",  error: " + result.firstError() + " ";
+                    }
                 }
             }
+            break;
         }
+        default:
+            // Job expiration, cancellation and other problems are reported here.
+            error += prefix + "failed, job: " + job->id() + ", extended state: " + Job::state2string(job->extendedState());
+            break;
     }
+
     return error;
 }
 
