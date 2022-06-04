@@ -70,14 +70,14 @@ json IngestHttpSvcMod::executeImpl(string const& subModuleName) {
 }
 
 json IngestHttpSvcMod::_syncProcessRequest() const {
-    auto const request = _createRequst();
+    auto const request = _createRequest();
     request->process();
     return json::object({{"contrib", request->transactionContribInfo().toJson()}});
 }
 
 json IngestHttpSvcMod::_asyncSubmitRequest() const {
     bool const async = true;
-    auto const request = _createRequst(async);
+    auto const request = _createRequest(async);
     _ingestRequestMgr->submit(request);
     return json::object({{"contrib", request->transactionContribInfo().toJson()}});
 }
@@ -125,7 +125,7 @@ json IngestHttpSvcMod::_asyncTransCancelRequests() const {
     return json::object({{"contribs", contribsJson}});
 }
 
-IngestRequest::Ptr IngestHttpSvcMod::_createRequst(bool async) const {
+IngestRequest::Ptr IngestHttpSvcMod::_createRequest(bool async) const {
     TransactionId const transactionId = body().required<TransactionId>("transaction_id");
     string const table = body().required<string>("table");
     unsigned int const chunk = body().required<unsigned int>("chunk");

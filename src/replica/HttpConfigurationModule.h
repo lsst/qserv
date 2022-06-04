@@ -54,6 +54,7 @@ public:
      *   ADD-DATABASE-FAMILY     for adding a new database family to the Configuration
      *   DELETE-DATABASE         for removing a known database from the Configuration
      *   ADD-DATABASE            for adding a new database to the Configuration
+     *   UNPUBLISH-DATABASE      for temporary change of the database status to be unpublished
      *   DELETE-TABLE            for removing a known database table from the Configuration
      *   ADD-TABLE               for adding a new database table to the Configuration
      *
@@ -132,6 +133,14 @@ private:
      * of the Replication system and reports back the new state of the system
      */
     nlohmann::json _addDatabase();
+
+    /**
+     * Process a request which puts a new database back into the unpublished state
+     * which would allow ingesting more tables into the database and exclude
+     * the database from the normal operations of the Replication system's replica
+     * scanning and management algorithms.
+     */
+    nlohmann::json _unpublishDatabase();
 
     /**
      * Process a request which removes an existing table from the Configuration

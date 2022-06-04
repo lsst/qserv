@@ -140,12 +140,12 @@ void AbortTransactionJob::startImpl(util::Lock const& lock) {
         return;
     }
 
-    // Submit a dedicated job for each table to process table instances on
+    // Submit a dedicated job for each unpublished table to process table instances on
     // a requested set of workers.
-
     auto self = shared_from_base<AbortTransactionJob>();
-
     for (auto&& table : databaseInfo.tables()) {
+        // Skip tables that have been published.
+        if (databaseInfo.tableIsPublished.at(table)) continue;
         auto job = SqlDeleteTablePartitionJob::create(_transactionId, table, _allWorkers, controller(), id(),
                                                       bind(&AbortTransactionJob::_onChildJobFinish, self, _1),
                                                       priority());

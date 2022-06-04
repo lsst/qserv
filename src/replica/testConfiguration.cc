@@ -606,6 +606,8 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestReadingTables) {
     BOOST_CHECK(db1info.name == "db1");
     BOOST_CHECK(db1info.family == "production");
     BOOST_CHECK(db1info.isPublished == true);
+    BOOST_CHECK(db1info.createTime == 10);
+    BOOST_CHECK(db1info.publishTime == 11);
     BOOST_CHECK(db1info.directorTable.count("Table11") != 0);
     BOOST_CHECK(db1info.directorTable.at("Table11").empty());
     BOOST_CHECK(db1info.directorTableKey.count("Table11") != 0);
@@ -614,6 +616,12 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestReadingTables) {
     BOOST_CHECK(db1info.latitudeColName.at("Table11") == "decl11");
     BOOST_CHECK(db1info.longitudeColName.count("Table11") != 0);
     BOOST_CHECK(db1info.longitudeColName.at("Table11") == "ra11");
+    BOOST_CHECK(db1info.tableIsPublished.count("Table11") != 0);
+    BOOST_CHECK(db1info.tableIsPublished.at("Table11") == true);
+    BOOST_CHECK(db1info.tableCreateTime.count("Table11") != 0);
+    BOOST_CHECK(db1info.tableCreateTime.at("Table11") == 110);
+    BOOST_CHECK(db1info.tablePublishTime.count("Table11") != 0);
+    BOOST_CHECK(db1info.tablePublishTime.at("Table11") == 111);
 
     tables = db1info.partitionedTables;
     sort(tables.begin(), tables.end());
@@ -643,6 +651,8 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestReadingTables) {
     BOOST_CHECK(db2info.name == "db2");
     BOOST_CHECK(db2info.family == "production");
     BOOST_CHECK(db2info.isPublished == true);
+    BOOST_CHECK(db2info.createTime == 20);
+    BOOST_CHECK(db2info.publishTime == 21);
     BOOST_CHECK(db2info.isDirector("Table21"));
     BOOST_CHECK(db2info.directorTable.count("Table21") != 0);
     BOOST_CHECK(db2info.directorTable.at("Table21").empty());
@@ -682,6 +692,8 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestReadingTables) {
     BOOST_CHECK(db3info.name == "db3");
     BOOST_CHECK(db3info.family == "production");
     BOOST_CHECK(db3info.isPublished == true);
+    BOOST_CHECK(db3info.createTime == 30);
+    BOOST_CHECK(db3info.publishTime == 31);
     BOOST_CHECK(db3info.isDirector("Table31"));
     BOOST_CHECK(db3info.directorTable.count("Table31") != 0);
     BOOST_CHECK(db3info.directorTable.at("Table31").empty());
@@ -731,7 +743,8 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestReadingTables) {
     BOOST_CHECK(db4info.name == "db4");
     BOOST_CHECK(db4info.family == "test");
     BOOST_CHECK(db4info.isPublished == true);
-
+    BOOST_CHECK(db4info.createTime == 40);
+    BOOST_CHECK(db4info.publishTime == 41);
     BOOST_CHECK(db4info.isDirector("Table41"));
     BOOST_CHECK(db4info.directorTable.count("Table41") != 0);
     BOOST_CHECK(db4info.directorTable.at("Table41").empty());
@@ -769,6 +782,8 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestReadingTables) {
     BOOST_CHECK(db5info.name == "db5");
     BOOST_CHECK(db5info.family == "test");
     BOOST_CHECK(db5info.isPublished == true);
+    BOOST_CHECK(db5info.createTime == 50);
+    BOOST_CHECK(db5info.publishTime == 51);
     BOOST_CHECK(db5info.isDirector("Table51"));
     BOOST_CHECK(db5info.directorTable.count("Table51") != 0);
     BOOST_CHECK(db5info.directorTable.at("Table51").empty());
@@ -797,6 +812,8 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestReadingTables) {
     BOOST_CHECK(db6info.name == "db6");
     BOOST_CHECK(db6info.family == "test");
     BOOST_CHECK(db6info.isPublished == false);
+    BOOST_CHECK(db6info.createTime == 60);
+    BOOST_CHECK(db6info.publishTime == 0);
     BOOST_CHECK(db6info.isDirector("Table61"));
     BOOST_CHECK(db6info.directorTable.count("Table61") != 0);
     BOOST_CHECK(db6info.directorTable.at("Table61").empty());
@@ -834,12 +851,17 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestAddingDatabases) {
         BOOST_CHECK(info.name == database);
         BOOST_CHECK(info.family == family);
         BOOST_CHECK(info.isPublished == false);
+        BOOST_CHECK(info.createTime != 0);
+        BOOST_CHECK(info.publishTime == 0);
         BOOST_CHECK(info.partitionedTables.empty());
         BOOST_CHECK(info.regularTables.empty());
         BOOST_CHECK(info.directorTable.empty());
         BOOST_CHECK(info.directorTableKey.empty());
         BOOST_CHECK(info.latitudeColName.empty());
         BOOST_CHECK(info.longitudeColName.empty());
+        BOOST_CHECK(info.tableIsPublished.empty());
+        BOOST_CHECK(info.tableCreateTime.empty());
+        BOOST_CHECK(info.tablePublishTime.empty());
         BOOST_CHECK(info.directorTables().empty());
         BOOST_CHECK_THROW(config->addDatabase(database, family), std::invalid_argument);
     }

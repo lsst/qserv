@@ -125,9 +125,10 @@ private:
 
     /**
      * Publish an existing database
+     * @param publish Set 'true' if the database is being published. Set 'false' otherwise.
      * @return A status code to be returned to the shell.
      */
-    int _publishDatabase();
+    int _publishDatabase(bool publish);
 
     /**
      * Delete an existing database

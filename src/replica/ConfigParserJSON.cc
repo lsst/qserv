@@ -137,9 +137,9 @@ void ConfigParserJSON::parse(json const& obj) {
             json const& inDatabase = itr.value();
             // Use this constructor to validate the schema. If it won't throw then
             // the input description is correct and can be placed into the output object.
-            // Note that the c-tor expects a collection of the database families to ensure
+            // Note that the parser expects a collection of the database families to ensure
             // an existing family name was provided in the input spec.
-            DatabaseInfo const info(inDatabase, _databaseFamilies);
+            DatabaseInfo const info = DatabaseInfo::parse(inDatabase, _databaseFamilies);
             if (database != info.name) {
                 throw invalid_argument(_context + "inconsistent definition for database: " + database +
                                        " in JSON object: " + inDatabase.dump());

@@ -47,7 +47,6 @@
 #include "replica/HttpExceptions.h"
 #include "replica/QservSyncJob.h"
 #include "replica/ReplicaInfo.h"
-#include "replica/ServiceManagementJob.h"
 #include "replica/ServiceProvider.h"
 #include "replica/SqlCreateDbJob.h"
 #include "replica/SqlCreateTableJob.h"
@@ -72,17 +71,29 @@ namespace {
 
 string jobCompletionErrorIfAny(SqlJob::Ptr const& job, string const& prefix) {
     string error;
-    if (job->extendedState() != Job::ExtendedState::SUCCESS) {
-        auto const& resultData = job->getResultData();
-        for (auto&& itr : resultData.resultSets) {
-            auto&& worker = itr.first;
-            for (auto&& result : itr.second) {
-                if (result.hasErrors()) {
-                    error += prefix + ", worker: " + worker + ",  error: " + result.firstError() + " ";
+    switch (job->extendedState()) {
+        case Job::ExtendedState::NONE:
+        case Job::ExtendedState::SUCCESS:
+            break;
+        case Job::ExtendedState::FAILED: {
+            auto const& resultData = job->getResultData();
+            for (auto&& itr : resultData.resultSets) {
+                auto&& worker = itr.first;
+                for (auto&& result : itr.second) {
+                    if (result.hasErrors()) {
+                        error += prefix + ", worker: " + worker + ",  error: " + result.firstError() + " ";
+                    }
                 }
             }
+            break;
         }
+        default:
+            // Job expiration, cancellation and other problems are reported here.
+            error += prefix + "failed, job: " + job->id() +
+                     ", extended state: " + Job::state2string(job->extendedState());
+            break;
     }
+
     return error;
 }
 
@@ -174,7 +185,7 @@ json HttpIngestModule::_getDatabases() {
 
     auto const config = controller()->serviceProvider()->config();
 
-    // Leaving this name empty would result in scaning databases across all known
+    // Leaving this name empty would result in scanning databases across all known
     // families (instead of a single one) while applying the optional filter on
     // the publishing status of each candidate.
     //
@@ -289,7 +300,7 @@ json HttpIngestModule::_addDatabase() {
                                       to_string(enableLocalLoadSecondaryIndex ? 1 : 0));
 
     // Tell workers to reload their configurations
-    error = _reconfigureWorkers(databaseInfo, allWorkers, workerReconfigTimeoutSec());
+    error = reconfigureWorkers(databaseInfo, allWorkers, workerReconfigTimeoutSec());
     if (not error.empty()) throw HttpError(__func__, error);
 
     json result;
@@ -305,11 +316,11 @@ json HttpIngestModule::_publishDatabase() {
     auto const config = controller()->serviceProvider()->config();
 
     auto const database = params().at("database");
-    bool const consolidateSecondayIndex = body().optional<int>("consolidate_secondary_index", 0) != 0;
+    bool const consolidateSecondaryIndex = body().optional<int>("consolidate_secondary_index", 0) != 0;
     bool const rowCountersDeployAtQserv = body().optional<int>("row_counters_deploy_at_qserv", 0) != 0;
 
     debug(__func__, "database=" + database);
-    debug(__func__, "consolidate_secondary_index=" + bool2str(consolidateSecondayIndex));
+    debug(__func__, "consolidate_secondary_index=" + bool2str(consolidateSecondaryIndex));
     debug(__func__, "row_counters_deploy_at_qserv=" + bool2str(rowCountersDeployAtQserv));
 
     auto const databaseInfo = config->databaseInfo(database);
@@ -329,20 +340,24 @@ json HttpIngestModule::_publishDatabase() {
 
     // The operation can be vetoed by the corresponding workflow parameter requested
     // by a catalog ingest workflow at the database creation time.
-    if (autoBuildSecondaryIndex(database) and consolidateSecondayIndex) {
+    if (autoBuildSecondaryIndex(database) and consolidateSecondaryIndex) {
         for (auto&& table : databaseInfo.directorTables()) {
+            // Skip tables that have been published.
+            if (databaseInfo.tableIsPublished.at(table)) continue;
             // This operation may take a while if the table has a large number of entries.
             _consolidateSecondaryIndex(databaseInfo, table);
         }
     }
 
-    // Note, this operation, depeniding on the amount of data ingested into
+    // Note, this operation, depending on the amount of data ingested into
     // the database's tables, could be quite lengthy. Failures reported in
     // a course of this operation will not affect the "success" status of
     // the publishing request since.
     if (rowCountersDeployAtQserv) {
         bool const forceRescan = true;  // Since doing the scan for the first time.
         for (auto&& table : databaseInfo.tables()) {
+            // Skip tables that have been published.
+            if (databaseInfo.tableIsPublished.at(table)) continue;
             json const errorExt = _scanTableStatsImpl(
                     database, table, ChunkOverlapSelector::CHUNK_AND_OVERLAP,
                     SqlRowStatsJob::StateUpdatePolicy::ENABLED, rowCountersDeployAtQserv, forceRescan,
@@ -357,11 +372,6 @@ json HttpIngestModule::_publishDatabase() {
     _createMissingChunkTables(databaseInfo, allWorkers);
     _removeMySQLPartitions(databaseInfo, allWorkers);
 
-    // This step is needed to get workers' Configuration in-sync with its
-    // persistent state.
-    auto const error = _reconfigureWorkers(databaseInfo, allWorkers, workerReconfigTimeoutSec());
-    if (not error.empty()) throw HttpError(__func__, error);
-
     // Finalize setting the database in Qserv master to make the new catalog
     // visible to Qserv users.
     _publishDatabaseInMaster(databaseInfo);
@@ -373,6 +383,11 @@ json HttpIngestModule::_publishDatabase() {
     // workers.
     json result;
     result["database"] = config->publishDatabase(database).toJson();
+
+    // This step is needed to get workers' Configuration in-sync with its
+    // persistent state.
+    auto const error = reconfigureWorkers(databaseInfo, allWorkers, workerReconfigTimeoutSec());
+    if (not error.empty()) throw HttpError(__func__, error);
 
     // Run the chunks scanner to ensure new chunks are registered in the persistent
     // store of the Replication system and synchronized with the Qserv workers.
@@ -476,7 +491,7 @@ json HttpIngestModule::_deleteDatabase() {
 
     // This step is needed to get workers' Configuration in-sync with its
     // persistent state.
-    error = _reconfigureWorkers(databaseInfo, allWorkers, workerReconfigTimeoutSec());
+    error = reconfigureWorkers(databaseInfo, allWorkers, workerReconfigTimeoutSec());
     if (not error.empty()) throw HttpError(__func__, error);
 
     return json::object();
@@ -624,7 +639,7 @@ json HttpIngestModule::_addTable() {
 
     // This step is needed to get workers' Configuration in-sync with its
     // persistent state.
-    string const error = _reconfigureWorkers(databaseInfo, allWorkers, workerReconfigTimeoutSec());
+    string const error = reconfigureWorkers(databaseInfo, allWorkers, workerReconfigTimeoutSec());
     if (not error.empty()) throw HttpError(__func__, error);
 
     return result;
@@ -707,7 +722,7 @@ json HttpIngestModule::_deleteTable() {
 
     // This step is needed to get workers' Configuration in-sync with its
     // persistent state.
-    error = _reconfigureWorkers(databaseInfo, allWorkers, workerReconfigTimeoutSec());
+    error = reconfigureWorkers(databaseInfo, allWorkers, workerReconfigTimeoutSec());
     if (not error.empty()) throw HttpError(__func__, error);
 
     return json::object();
@@ -835,9 +850,9 @@ json HttpIngestModule::_scanTableStatsImpl(string const& database, string const&
         auto const job = SqlRowStatsJob::create(databaseInfo.name, table, overlapSelector, stateUpdatePolicy,
                                                 allWorkers, controller(), noParentJobId, nullptr, priority);
         job->start();
-        logJobStartedEvent(SqlDisableDbJob::typeName(), job, databaseInfo.family);
+        logJobStartedEvent(SqlRowStatsJob::typeName(), job, databaseInfo.family);
         job->wait();
-        logJobFinishedEvent(SqlDisableDbJob::typeName(), job, databaseInfo.family);
+        logJobFinishedEvent(SqlRowStatsJob::typeName(), job, databaseInfo.family);
 
         if (job->extendedState() != Job::ExtendedState::SUCCESS) {
             json errorExt = json::object({{"operation", "Scan table row counters."},
@@ -1046,6 +1061,8 @@ void HttpIngestModule::_createMissingChunkTables(DatabaseInfo const& databaseInf
     string const noParentJobId;
 
     for (auto&& table : databaseInfo.partitionedTables) {
+        // Skip tables that have been published.
+        if (databaseInfo.tableIsPublished.at(table)) continue;
         auto const columnsItr = databaseInfo.columns.find(table);
         if (columnsItr == databaseInfo.columns.cend()) {
             throw HttpError(__func__, "schema is empty for table: '" + table + "'");
@@ -1073,6 +1090,8 @@ void HttpIngestModule::_removeMySQLPartitions(DatabaseInfo const& databaseInfo, 
     string const noParentJobId;
     string error;
     for (auto const table : databaseInfo.tables()) {
+        // Skip tables that have been published.
+        if (databaseInfo.tableIsPublished.at(table)) continue;
         auto const job = SqlRemoveTablePartitionsJob::create(
                 databaseInfo.name, table, allWorkers, ignoreNonPartitioned, controller(), noParentJobId,
                 nullptr,
@@ -1104,6 +1123,8 @@ void HttpIngestModule::_publishDatabaseInMaster(DatabaseInfo const& databaseInfo
         // Statements for creating the database & table entries
         statements.push_back("CREATE DATABASE IF NOT EXISTS " + h.conn->sqlId(databaseInfo.name));
         for (auto const& table : databaseInfo.tables()) {
+            // Skip tables that have been published.
+            if (databaseInfo.tableIsPublished.at(table)) continue;
             string sql = "CREATE TABLE IF NOT EXISTS " + h.conn->sqlId(databaseInfo.name) + "." +
                          h.conn->sqlId(table) + " (";
             bool first = true;
@@ -1163,6 +1184,8 @@ void HttpIngestModule::_publishDatabaseInMaster(DatabaseInfo const& databaseInfo
 
     // Register tables which still hasn't been registered in CSS
     for (auto const& table : databaseInfo.regularTables) {
+        // Skip tables that have been published.
+        if (databaseInfo.tableIsPublished.at(table)) continue;
         if (not cssAccess->containsTable(databaseInfo.name, table)) {
             // Neither of those groups of parameters apply to the regular tables,
             // so we're leaving them default constructed.
@@ -1173,6 +1196,8 @@ void HttpIngestModule::_publishDatabaseInMaster(DatabaseInfo const& databaseInfo
         }
     }
     for (auto const& table : databaseInfo.partitionedTables) {
+        // Skip tables that have been published.
+        if (databaseInfo.tableIsPublished.at(table)) continue;
         if (not cssAccess->containsTable(databaseInfo.name, table)) {
             bool const isPartitioned = true;
 
@@ -1278,29 +1303,6 @@ json HttpIngestModule::_buildEmptyChunksListImpl(string const& database, bool fo
     result["num_chunks_ingested"] = ingestedChunks.size();
     result["num_chunks_all"] = allChunks.size();
     return result;
-}
-
-string HttpIngestModule::_reconfigureWorkers(DatabaseInfo const& databaseInfo, bool allWorkers,
-                                             unsigned int workerResponseTimeoutSec) const {
-    string const noParentJobId;
-    auto const job = ServiceReconfigJob::create(
-            allWorkers, workerResponseTimeoutSec, controller(), noParentJobId, nullptr,
-            controller()->serviceProvider()->config()->get<int>("controller", "ingest-priority-level"));
-    job->start();
-    logJobStartedEvent(ServiceReconfigJob::typeName(), job, databaseInfo.family);
-    job->wait();
-    logJobFinishedEvent(ServiceReconfigJob::typeName(), job, databaseInfo.family);
-
-    string error;
-    auto const& resultData = job->getResultData();
-    for (auto&& itr : resultData.workers) {
-        auto&& worker = itr.first;
-        auto&& success = itr.second;
-        if (not success) {
-            error += "reconfiguration failed on worker: " + worker + " ";
-        }
-    }
-    return error;
 }
 
 void HttpIngestModule::_createSecondaryIndex(DatabaseInfo const& databaseInfo,

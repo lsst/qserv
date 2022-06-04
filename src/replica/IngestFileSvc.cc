@@ -230,14 +230,18 @@ void IngestFileSvc::loadDataIntoTable() {
                     tableMgtStatements.push_back(
                             Query("CREATE TABLE IF NOT EXISTS " + table + " LIKE " + sqlProtoTable, table));
                 }
-                string const tablesToBePartitioned[] = {sqlTable, sqlFullOverlapTable};
-                for (auto&& table : tablesToBePartitioned) {
-                    tableMgtStatements.push_back(
-                            Query("ALTER TABLE " + table + " ADD PARTITION IF NOT EXISTS (PARTITION " +
-                                          sqlPartition + " VALUES IN (" + to_string(_transactionId) + "))",
-                                  table));
+                // Skip this operation for tables that have already been been published. Note that published
+                // tables do not have MySQL partitions. Any attempts to add a partition to those tables will
+                // result in the MySQL failures.
+                if (!_databaseInfo.tableIsPublished.at(table)) {
+                    string const tablesToBePartitioned[] = {sqlTable, sqlFullOverlapTable};
+                    for (auto&& table : tablesToBePartitioned) {
+                        tableMgtStatements.push_back(Query(
+                                "ALTER TABLE " + table + " ADD PARTITION IF NOT EXISTS (PARTITION " +
+                                        sqlPartition + " VALUES IN (" + to_string(_transactionId) + "))",
+                                table));
+                    }
                 }
-
                 // An additional step for the current request's table
                 if (table == _table) {
                     auto const sqlDestinationTable = _isOverlap ? sqlFullOverlapTable : sqlTable;

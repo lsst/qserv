@@ -503,7 +503,7 @@ public:
     DatabaseInfo addDatabase(std::string const& database, std::string const& family);
 
     /**
-     * Change database status to be published.
+     * Change database status and all its tables to be published.
      *
      * @param name The name of a database.
      * @return An updated database descriptor.

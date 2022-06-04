@@ -47,6 +47,8 @@ CREATE TABLE IF NOT EXISTS `config_database` (
   `database`          VARCHAR(255)  NOT NULL ,
   `family_name`       VARCHAR(255)  NOT NULL ,
   `is_published`      BOOLEAN DEFAULT TRUE ,
+  `create_time`       BIGINT UNSIGNED NOT NULL DEFAULT 0 ,
+  `publish_time`      BIGINT UNSIGNED NOT NULL DEFAULT (UNIX_TIMESTAMP() * 1000) ,  -- the current time in milliseconds since EPOCH
   PRIMARY KEY (`database`) ,
   UNIQUE  KEY (`database`,`family_name`) ,  -- a database is allowed to belong to one family only
   CONSTRAINT `config_database_fk_1`
@@ -67,6 +69,9 @@ CREATE TABLE IF NOT EXISTS `config_database_table` (
   `director_key`    VARCHAR(255) DEFAULT "" , -- The name of the table's FK key linking to the PK of the `director` table (if any)
   `latitude_key`    VARCHAR(255) DEFAULT "" , -- The name for latitude (declination) column in this table
   `longitude_key`   VARCHAR(255) DEFAULT "" , -- The name for longitude (right ascension) column in this table
+  `is_published`    BOOLEAN DEFAULT TRUE ,
+  `create_time`     BIGINT UNSIGNED NOT NULL DEFAULT 0 ,
+  `publish_time`    BIGINT UNSIGNED NOT NULL DEFAULT (UNIX_TIMESTAMP() * 1000) ,  -- the current time in milliseconds since EPOCH
   PRIMARY KEY (`database`, `table`) ,
   CONSTRAINT `config_database_table_fk_1`
     FOREIGN KEY (`database` )
@@ -458,4 +463,4 @@ ENGINE = InnoDB
 COMMENT = 'Metadata about database as a whole, key-value pairs' ;
 
 -- Add record for schema version, migration script expects this record to exist
-INSERT INTO `QMetadata` (`metakey`, `value`) VALUES ('version', '9');
+INSERT INTO `QMetadata` (`metakey`, `value`) VALUES ('version', '10');

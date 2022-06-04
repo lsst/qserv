@@ -52,6 +52,8 @@ public:
     std::string family;  // The name of the database family.
 
     bool isPublished = false;  // The status of the database.
+    uint64_t createTime = 0;
+    uint64_t publishTime = 0;
 
     std::vector<std::string> partitionedTables;  // The names of the partitioned tables.
     std::vector<std::string> regularTables;      // The list of fully replicated tables.
@@ -90,14 +92,25 @@ public:
     // Empty values are allowed for the "dependent" tables since they must have
     // the direct association with the corresponding "director" tables via
     // the FK -> PK relation.
+    // Table names are used as keys in the dictionaries defined below.
 
-    std::map<std::string,  // table name
-             std::string>
-            latitudeColName;  // latitude (declination) column name
+    std::map<std::string, std::string> latitudeColName;
+    std::map<std::string, std::string> longitudeColName;
 
-    std::map<std::string,  // table name
-             std::string>
-            longitudeColName;  // longitude (right ascension) column name
+    // Publishing status of the tables.
+    // Table names are used as keys in the dictionaries defined below.
+    std::map<std::string, bool> tableIsPublished;
+    std::map<std::string, uint64_t> tableCreateTime;
+    std::map<std::string, uint64_t> tablePublishTime;
+
+    /**
+     * Construct an empty unpublished database object for the given name and the family.
+     * @note The create time of the database will be set to the current time.
+     * @param name The name of the database.
+     * @param family The name of the database family.
+     * @return The initialized database descriptor.
+     */
+    static DatabaseInfo create(std::string const& name, std::string const family);
 
     /**
      * Construct from JSON.
@@ -106,15 +119,15 @@ public:
      *   This is safe to do once if the object is pulled from the transient state
      *   of the configuration which is guaranteed to be complete. In other cases, where
      *   the input provided by a client the input needs to be sanitized.
-     * @param obj The optional object to be used of a source of the worker's state.
-     * @param families The optional collection of the database families to be used
-     *   for validating database definition when parsing from JSON=.
+     * @param obj The JSON object to be used of a source of the worker's state.
+     * @param families The collection of the database families to be used for validating
+     *   the database definition.
+     * @return The initialized database descriptor.
      * @throw std::invalid_argument If the input object can't be parsed, or if it has
      *   incorrect schema.
      */
-    explicit DatabaseInfo(nlohmann::json const& obj = nlohmann::json::object(),
-                          std::map<std::string, DatabaseFamilyInfo> const& families =
-                                  std::map<std::string, DatabaseFamilyInfo>());
+    static DatabaseInfo parse(nlohmann::json const& obj,
+                              std::map<std::string, DatabaseFamilyInfo> const& families);
 
     /// @return The JSON representation of the object.
     nlohmann::json toJson() const;

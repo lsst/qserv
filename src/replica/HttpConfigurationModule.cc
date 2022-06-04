@@ -30,6 +30,7 @@
 
 // Qserv headers
 #include "replica/Configuration.h"
+#include "replica/ConfigDatabase.h"
 #include "replica/ConfigurationSchema.h"
 #include "replica/DatabaseServices.h"
 #include "replica/HttpExceptions.h"
@@ -92,6 +93,8 @@ json HttpConfigurationModule::executeImpl(string const& subModuleName) {
         return _deleteDatabase();
     else if (subModuleName == "ADD-DATABASE")
         return _addDatabase();
+    else if (subModuleName == "UNPUBLISH-DATABASE")
+        return _unpublishDatabase();
     else if (subModuleName == "DELETE-TABLE")
         return _deleteTable();
     else if (subModuleName == "ADD-TABLE")
@@ -238,6 +241,24 @@ json HttpConfigurationModule::_addDatabase() {
     json result;
     result["config"]["databases"][database] =
             controller()->serviceProvider()->config()->addDatabase(database, family).toJson();
+    return result;
+}
+
+json HttpConfigurationModule::_unpublishDatabase() {
+    debug(__func__);
+    auto const database = params().at("database");
+    debug(__func__, "database=" + database);
+    if (!isAdmin()) {
+        throw HttpError(__func__, "administrator's privileges are required to un-publish databases.");
+    }
+    DatabaseInfo const databaseInfo = controller()->serviceProvider()->config()->unPublishDatabase(database);
+    // This step is needed to get workers' Configuration in-sync with its
+    // persistent state.
+    bool const allWorkers = true;
+    string const error = reconfigureWorkers(databaseInfo, allWorkers, workerReconfigTimeoutSec());
+    if (not error.empty()) throw HttpError(__func__, error);
+    json result;
+    result["config"]["databases"][database] = databaseInfo.toJson();
     return result;
 }
 

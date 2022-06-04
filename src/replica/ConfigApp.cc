@@ -72,7 +72,7 @@ ConfigApp::ConfigApp(int argc, char* argv[]) : ConfigAppBase(argc, argv, descrip
     parser().commands("command",
                       {"DUMP", "CONFIG_INIT_FILE", "UPDATE_WORKER", "ADD_WORKER", "DELETE_WORKER",
                        "ADD_DATABASE_FAMILY", "DELETE_DATABASE_FAMILY", "ADD_DATABASE", "PUBLISH_DATABASE",
-                       "DELETE_DATABASE", "ADD_TABLE", "DELETE_TABLE"},
+                       "UNPUBLISH_DATABASE", "DELETE_DATABASE", "ADD_TABLE", "DELETE_TABLE"},
                       _command);
 
     parser().command("DUMP")
@@ -161,7 +161,17 @@ ConfigApp::ConfigApp(int argc, char* argv[]) : ConfigAppBase(argc, argv, descrip
                     " the sufficient number of replicas (as defined by the corresponding parameter"
                     " in the databases's family definition) will be maintained. Note that databases"
                     " are published only after they're fully ingested. Normally, the change of the"
-                    " database status is made by the Ingest system, not by this tool.")
+                    " database status should be requested via the REST API of the Master Replication"
+                    " Controller, rather than using this tool.")
+            .required("name", "The name of an existing database.", _databaseInfo.name);
+
+    parser().command("UNPUBLISH_DATABASE")
+            .description(
+                    "Temporarily change the current status of the database as being 'un-published'"
+                    " in order to ingest more tables. Note that databases in this state won't be"
+                    " tracked by the Replication system to maintain the sufficient replication level."
+                    " Normally, the change of the database status should be requested via the REST API"
+                    " of the Master Replication Controller, rather than using this tool.")
             .required("name", "The name of an existing database.", _databaseInfo.name);
 
     parser().command("DELETE_DATABASE")
@@ -216,7 +226,8 @@ int ConfigApp::runSubclassImpl() {
     if (_command == "ADD_DATABASE_FAMILY") return _addFamily();
     if (_command == "DELETE_DATABASE_FAMILY") return _deleteFamily();
     if (_command == "ADD_DATABASE") return _addDatabase();
-    if (_command == "PUBLISH_DATABASE") return _publishDatabase();
+    if (_command == "PUBLISH_DATABASE") return _publishDatabase(true);
+    if (_command == "UNPUBLISH_DATABASE") return _publishDatabase(false);
     if (_command == "DELETE_DATABASE") return _deleteDatabase();
     if (_command == "ADD_TABLE") return _addTable();
     if (_command == "DELETE_TABLE") return _deleteTable();
@@ -323,9 +334,13 @@ int ConfigApp::_addDatabase() {
     return 0;
 }
 
-int ConfigApp::_publishDatabase() {
+int ConfigApp::_publishDatabase(bool publish) {
     try {
-        config()->publishDatabase(_databaseInfo.name);
+        if (publish) {
+            config()->publishDatabase(_databaseInfo.name);
+        } else {
+            config()->unPublishDatabase(_databaseInfo.name);
+        }
     } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR, "ConfigApp::" << __func__ << ": " << ex.what());
         throw;

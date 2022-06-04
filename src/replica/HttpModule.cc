@@ -25,10 +25,12 @@
 // Qserv headers
 #include "css/CssAccess.h"
 #include "replica/Configuration.h"
+#include "replica/ConfigDatabase.h"
 #include "replica/Controller.h"
 #include "replica/DatabaseMySQL.h"
 #include "replica/DatabaseServices.h"
 #include "replica/HttpExceptions.h"
+#include "replica/ServiceManagementJob.h"
 #include "replica/ServiceProvider.h"
 
 // LSST headers
@@ -74,6 +76,29 @@ shared_ptr<css::CssAccess> HttpModule::qservCssAccess(bool readOnly) const {
     cssConfig["password"] = connectionParams.password;
     cssConfig["database"] = connectionParams.database;
     return css::CssAccess::createFromConfig(cssConfig, config->get<string>("controller", "empty-chunks-dir"));
+}
+
+string HttpModule::reconfigureWorkers(DatabaseInfo const& databaseInfo, bool allWorkers,
+                                      unsigned int workerResponseTimeoutSec) const {
+    string const noParentJobId;
+    auto const job = ServiceReconfigJob::create(
+            allWorkers, workerResponseTimeoutSec, controller(), noParentJobId, nullptr,
+            controller()->serviceProvider()->config()->get<int>("controller", "ingest-priority-level"));
+    job->start();
+    logJobStartedEvent(ServiceReconfigJob::typeName(), job, databaseInfo.family);
+    job->wait();
+    logJobFinishedEvent(ServiceReconfigJob::typeName(), job, databaseInfo.family);
+
+    string error;
+    auto const& resultData = job->getResultData();
+    for (auto&& itr : resultData.workers) {
+        auto&& worker = itr.first;
+        auto&& success = itr.second;
+        if (not success) {
+            error += "reconfiguration failed on worker: " + worker + " ";
+        }
+    }
+    return error;
 }
 
 bool HttpModule::autoBuildSecondaryIndex(string const& database) const {

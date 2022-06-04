@@ -43,6 +43,7 @@ namespace lsst::qserv::replica {
  * is designed to work for all types of tables (regular or partitioned) across
  * a select (sub-)set of workers. Result sets are collected into an object
  * of class SqlJobResult.
+ * @note: only unpublished tables will be affected by the job.
  */
 class AbortTransactionJob : public Job {
 public:

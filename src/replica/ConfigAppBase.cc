@@ -145,6 +145,8 @@ void ConfigAppBase::dumpDatabasesAsTable(string const& indent, string const& cap
     vector<string> familyName;
     vector<string> databaseName;
     vector<string> isPublished;
+    vector<string> createTime;
+    vector<string> publishTime;
     vector<string> tableName;
     vector<string> isPartitioned;
     vector<string> isDirector;
@@ -152,6 +154,9 @@ void ConfigAppBase::dumpDatabasesAsTable(string const& indent, string const& cap
     vector<string> directorKey;
     vector<string> latitudeColName;
     vector<string> longitudeColName;
+    vector<string> tableIsPublished;
+    vector<string> tableCreateTime;
+    vector<string> tablePublishTime;
     vector<string> numColumns;
 
     string const noSpecificFamily;
@@ -162,6 +167,8 @@ void ConfigAppBase::dumpDatabasesAsTable(string const& indent, string const& cap
             familyName.push_back(di.family);
             databaseName.push_back(di.name);
             isPublished.push_back(di.isPublished ? "yes" : "no");
+            createTime.push_back(to_string(di.createTime));
+            publishTime.push_back(to_string(di.publishTime));
             tableName.push_back(table);
             isPartitioned.push_back("yes");
             if (di.isDirector(table)) {
@@ -174,12 +181,17 @@ void ConfigAppBase::dumpDatabasesAsTable(string const& indent, string const& cap
             directorKey.push_back(di.directorTableKey.at(table));
             latitudeColName.push_back(di.latitudeColName.at(table));
             longitudeColName.push_back(di.longitudeColName.at(table));
+            tableIsPublished.push_back(di.tableIsPublished.at(table) ? "yes" : "no");
+            tableCreateTime.push_back(to_string(di.tableCreateTime.at(table)));
+            tablePublishTime.push_back(to_string(di.tablePublishTime.at(table)));
             numColumns.push_back(to_string(di.columns.at(table).size()));
         }
         for (auto& table : di.regularTables) {
             familyName.push_back(di.family);
             databaseName.push_back(di.name);
             isPublished.push_back(di.isPublished ? "yes" : "no");
+            createTime.push_back(to_string(di.createTime));
+            publishTime.push_back(to_string(di.publishTime));
             tableName.push_back(table);
             isPartitioned.push_back("no");
             isDirector.push_back("no");
@@ -187,12 +199,17 @@ void ConfigAppBase::dumpDatabasesAsTable(string const& indent, string const& cap
             directorKey.push_back("");
             latitudeColName.push_back("");
             longitudeColName.push_back("");
+            tableIsPublished.push_back(di.tableIsPublished.at(table) ? "yes" : "no");
+            tableCreateTime.push_back(to_string(di.tableCreateTime.at(table)));
+            tablePublishTime.push_back(to_string(di.tablePublishTime.at(table)));
             numColumns.push_back(to_string(di.columns.at(table).size()));
         }
         if (di.partitionedTables.empty() and di.regularTables.empty()) {
             familyName.push_back(di.family);
             databaseName.push_back(di.name);
             isPublished.push_back(di.isPublished ? "yes" : "no");
+            createTime.push_back(to_string(di.createTime));
+            publishTime.push_back(to_string(di.publishTime));
             tableName.push_back("<no tables>");
             isPartitioned.push_back("n/a");
             isDirector.push_back("n/a");
@@ -200,6 +217,9 @@ void ConfigAppBase::dumpDatabasesAsTable(string const& indent, string const& cap
             directorKey.push_back("n/a");
             latitudeColName.push_back("n/a");
             longitudeColName.push_back("n/a");
+            tableIsPublished.push_back("n/a");
+            tableCreateTime.push_back("n/a");
+            tablePublishTime.push_back("n/a");
             numColumns.push_back("n/a");
         }
     }
@@ -209,6 +229,8 @@ void ConfigAppBase::dumpDatabasesAsTable(string const& indent, string const& cap
     table.addColumn("family", familyName, util::ColumnTablePrinter::LEFT);
     table.addColumn("database", databaseName, util::ColumnTablePrinter::LEFT);
     table.addColumn(":published", isPublished);
+    table.addColumn(":create-time", createTime);
+    table.addColumn(":publish-time", publishTime);
     table.addColumn("table", tableName, util::ColumnTablePrinter::LEFT);
     table.addColumn(":partitioned", isPartitioned);
     table.addColumn(":director", isDirector);
@@ -216,6 +238,9 @@ void ConfigAppBase::dumpDatabasesAsTable(string const& indent, string const& cap
     table.addColumn(":director-key", directorKey);
     table.addColumn(":latitude-key", latitudeColName);
     table.addColumn(":longitude-key", longitudeColName);
+    table.addColumn(":published", tableIsPublished);
+    table.addColumn(":create-time", tableCreateTime);
+    table.addColumn(":publish-time", tablePublishTime);
     table.addColumn(":num-columns", numColumns);
 
     table.print(cout, false, false);

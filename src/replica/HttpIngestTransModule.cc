@@ -217,6 +217,8 @@ json HttpIngestTransModule::_beginTransaction() {
         if (autoBuildSecondaryIndex(database)) {
             string const transEvent = "add dir idx part";
             for (auto&& directorTable : databaseInfo.directorTables()) {
+                // Skip tables that have been published.
+                if (databaseInfo.tableIsPublished.at(directorTable)) continue;
                 json transEventData = {{"table", directorTable}};
                 transaction = databaseServices->updateTransaction(transaction.id, "begin " + transEvent,
                                                                   transEventData);
@@ -344,7 +346,8 @@ json HttpIngestTransModule::_endTransaction() {
             if (autoBuildSecondaryIndex(database)) {
                 string const transEvent = "del dir idx part";
                 for (auto&& directorTable : databaseInfo.directorTables()) {
-                    ;
+                    // Skip tables that have been published.
+                    if (databaseInfo.tableIsPublished.at(directorTable)) continue;
                     json transEventData = {{"table", directorTable}};
                     transaction =
                             databaseServices->updateTransaction(id, "begin " + transEvent, transEventData);
@@ -372,6 +375,8 @@ json HttpIngestTransModule::_endTransaction() {
                         1000 * config->get<unsigned int>("controller", "ingest-job-monitor-ival-sec"));
                 string const transEvent = "bld dir idx";
                 for (auto&& directorTable : databaseInfo.directorTables()) {
+                    // Skip tables that have been published.
+                    if (databaseInfo.tableIsPublished.at(directorTable)) continue;
                     bool const hasTransactions = true;
                     string const destinationPath = database + "__" + directorTable;
                     auto const job = IndexJob::create(

@@ -30,6 +30,7 @@
 // Qserv headers
 #include "global/constants.h"
 #include "replica/ConfigDatabaseFamily.h"
+#include "replica/Performance.h"
 
 using namespace std;
 using json = nlohmann::json;
@@ -45,32 +46,44 @@ bool columnInSchema(string const& colName, list<SqlColDef> const& columns) {
 
 namespace lsst::qserv::replica {
 
-DatabaseInfo::DatabaseInfo(json const& obj, map<string, DatabaseFamilyInfo> const& families) {
+DatabaseInfo DatabaseInfo::create(string const& name, string const family) {
+    DatabaseInfo info;
+    info.name = name;
+    info.family = family;
+    info.createTime = PerformanceUtils::now();
+    return info;
+}
+
+DatabaseInfo DatabaseInfo::parse(json const& obj, map<string, DatabaseFamilyInfo> const& families) {
     string const context = "DatabaseInfo::DatabaseInfo(json): ";
-    if (obj.empty()) return;  // the default construction
     if (!obj.is_object()) throw invalid_argument(context + "a JSON object is required.");
+    if (obj.empty()) throw invalid_argument(context + "a JSON object is empty.");
+    if (families.empty()) throw invalid_argument(context + "a collection of families is empty.");
+    DatabaseInfo info;
     try {
-        name = obj.at("database").get<string>();
-        family = obj.at("family_name").get<string>();
-        if (families.count(family) == 0) {
-            throw invalid_argument(context + "unknown family name '" + family +
-                                   "' specified in the JSON object.");
+        info.name = obj.at("database").get<string>();
+        info.family = obj.at("family_name").get<string>();
+        if (families.count(info.family) == 0) {
+            throw invalid_argument(context + "unknown family name '" + info.family +
+                                   "' specified in the JSON object for the database '" + info.name + "'.");
         }
-        isPublished = obj.at("is_published").get<int>() != 0;
+        info.isPublished = obj.at("is_published").get<int>() != 0;
+        info.createTime = obj.at("create_time").get<uint64_t>();
+        info.publishTime = obj.at("publish_time").get<uint64_t>();
         if (obj.count("tables") != 0) {
             for (auto&& itr : obj.at("tables").items()) {
                 string const& table = itr.key();
                 json const& tableJson = itr.value();
                 if (table != tableJson.at("name").get<string>()) {
                     throw invalid_argument(context + "the table name '" + table +
-                                           "' found in a dictionary of the database's " + name +
+                                           "' found in a dictionary of the database's " + info.name +
                                            "' tables is not consistent within the table's name '" +
                                            tableJson.at("name").get<string>() +
                                            "' within the JSON object representing the table.");
                 }
                 bool const isPartitioned = tableJson.at("is_partitioned").get<int>() != 0;
                 if (isPartitioned) {
-                    partitionedTables.push_back(table);
+                    info.partitionedTables.push_back(table);
                     string const director = tableJson.at("director").get<string>();
                     string const directorKey = tableJson.at("director_key").get<string>();
                     string const latitudeCol = tableJson.at("latitude_key").get<string>();
@@ -97,20 +110,23 @@ DatabaseInfo::DatabaseInfo(json const& obj, map<string, DatabaseFamilyInfo> cons
                                                    "'. The columns must be both defined or not defined.");
                         }
                     }
-                    directorTable[table] = director;
-                    directorTableKey[table] = directorKey;
-                    latitudeColName[table] = latitudeCol;
-                    longitudeColName[table] = longitudeCol;
+                    info.directorTable[table] = director;
+                    info.directorTableKey[table] = directorKey;
+                    info.latitudeColName[table] = latitudeCol;
+                    info.longitudeColName[table] = longitudeCol;
                 } else {
-                    regularTables.push_back(table);
+                    info.regularTables.push_back(table);
                 }
+                info.tableIsPublished[table] = tableJson.at("is_published").get<int>() != 0;
+                info.tableCreateTime[table] = tableJson.at("create_time").get<uint64_t>();
+                info.tablePublishTime[table] = tableJson.at("publish_time").get<uint64_t>();
             }
         }
         if (obj.count("columns") != 0) {
             for (auto&& itr : obj.at("columns").items()) {
                 auto&& table = itr.key();
                 auto&& columnsJson = itr.value();
-                list<SqlColDef>& tableColumns = columns[table];
+                list<SqlColDef>& tableColumns = info.columns[table];
                 for (auto&& coldefJson : columnsJson) {
                     tableColumns.push_back(SqlColDef(coldefJson.at("name").get<string>(),
                                                      coldefJson.at("type").get<string>()));
@@ -120,6 +136,7 @@ DatabaseInfo::DatabaseInfo(json const& obj, map<string, DatabaseFamilyInfo> cons
     } catch (exception const& ex) {
         throw invalid_argument(context + "the JSON object is not valid, ex: " + string(ex.what()));
     }
+    return info;
 }
 
 vector<string> DatabaseInfo::tables() const {
@@ -142,6 +159,8 @@ json DatabaseInfo::toJson() const {
     infoJson["database"] = name;
     infoJson["family_name"] = family;
     infoJson["is_published"] = isPublished ? 1 : 0;
+    infoJson["create_time"] = createTime;
+    infoJson["publish_time"] = publishTime;
     infoJson["tables"] = json::object();
     for (auto&& name : partitionedTables) {
         infoJson["tables"][name] = json::object({{"name", name},
@@ -149,10 +168,17 @@ json DatabaseInfo::toJson() const {
                                                  {"director", directorTable.at(name)},
                                                  {"director_key", directorTableKey.at(name)},
                                                  {"latitude_key", latitudeColName.at(name)},
-                                                 {"longitude_key", longitudeColName.at(name)}});
+                                                 {"longitude_key", longitudeColName.at(name)},
+                                                 {"is_published", tableIsPublished.at(name) ? 1 : 0},
+                                                 {"create_time", tableCreateTime.at(name)},
+                                                 {"publish_time", tablePublishTime.at(name)}});
     }
     for (auto&& name : regularTables) {
-        infoJson["tables"][name] = json::object({{"name", name}, {"is_partitioned", 0}});
+        infoJson["tables"][name] = json::object({{"name", name},
+                                                 {"is_partitioned", 0},
+                                                 {"is_published", tableIsPublished.at(name) ? 1 : 0},
+                                                 {"create_time", tableCreateTime.at(name)},
+                                                 {"publish_time", tablePublishTime.at(name)}});
     }
     for (auto&& columnsEntry : columns) {
         string const& table = columnsEntry.first;
@@ -288,6 +314,9 @@ void DatabaseInfo::addTable(string const& table, list<SqlColDef> const& columns_
         regularTables.push_back(table);
     }
     columns[table] = columns_;
+    tableIsPublished[table] = false;
+    tableCreateTime[table] = PerformanceUtils::now();
+    tablePublishTime[table] = 0ULL;
 }
 
 void DatabaseInfo::removeTable(std::string const& table) {
@@ -313,6 +342,9 @@ void DatabaseInfo::removeTable(std::string const& table) {
         regularTables.erase(find(regularTables.begin(), regularTables.end(), table));
     }
     columns.erase(table);
+    tableIsPublished.erase(table);
+    tableCreateTime.erase(table);
+    tablePublishTime.erase(table);
 }
 
 ostream& operator<<(ostream& os, DatabaseInfo const& info) {

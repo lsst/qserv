@@ -123,7 +123,7 @@ private:
      * @param async The optional type of a request to be created.
      * @return A pointer to the created request.
      */
-    IngestRequest::Ptr _createRequst(bool async = false) const;
+    IngestRequest::Ptr _createRequest(bool async = false) const;
 
     // Input parameters
     ServiceProvider::Ptr const _serviceProvider;

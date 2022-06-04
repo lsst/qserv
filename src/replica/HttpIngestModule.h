@@ -52,16 +52,16 @@ public:
     /**
      * Supported values for parameter 'subModuleName':
      *
-     *   DATABASES                 for retreiving info on databases for specified criteria
+     *   DATABASES                 for retrieving info on databases for specified criteria
      *   ADD-DATABASE              for adding a new database for the data ingest
      *   PUBLISH-DATABASE          for publishing a database when data ingest is over
      *   DELETE-DATABASE           for deleting a database
-     *   TABLES                    for retreiving the names of tables in a scope of a database
+     *   TABLES                    for retrieving the names of tables in a scope of a database
      *   ADD-TABLE                 for adding a new table for the data ingest
      *   DELETE-TABLE              for deleting a table from a database'
      *   SCAN-TABLE-STATS          for scanning worker tables and obtaining row counters
      *   DELETE-TABLE-STATS        for deleting existing stats on row counters
-     *   TABLE-STATS               for retreiving existing stats on the row counters
+     *   TABLE-STATS               for retrieving existing stats on the row counters
      *   BUILD-CHUNK-LIST          for building (or rebuilding) an "empty chunk list"
      *   REGULAR                   for reporting connection parameters of the ingest servers
      *                             required to load the regular tables
@@ -245,20 +245,6 @@ private:
      *   file/table name, number of chunks) in case of successful completion.
      */
     nlohmann::json _buildEmptyChunksListImpl(std::string const& database, bool force, bool tableImpl) const;
-
-    /**
-     * This method will tell all (or a subset of) workers to reload cache Configuration
-     * parameters. The operation is needed after significant changes in the Replication
-     * system's configuration occur, such as creating new databases or tables.
-     * This is to implement an explicit model of making workers aware about changes
-     * in the mostly static state of the system.
-     * @param databaseInfo  defines a scope of the operation (used for status and error reporting)
-     * @param allWorkers  'true' if all workers are involved into the operation
-     * @param workerResponseTimeoutSec  do not wait longer than the specified number of seconds
-     * @return non-empty string to indicate a error
-     */
-    std::string _reconfigureWorkers(DatabaseInfo const& databaseInfo, bool allWorkers,
-                                    unsigned int workerResponseTimeoutSec) const;
 
     /**
      * Create an empty "secondary index" table partitioned using MySQL partitions.
