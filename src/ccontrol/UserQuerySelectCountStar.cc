@@ -100,10 +100,18 @@ void UserQuerySelectCountStar::submit() {
     }
 
     // Convert the column values to int and accumuate in row_count:
-    unsigned int row_count(0);
+    uint64_t row_count(0);
     for (auto const& value : values) {
         try {
-            row_count += lexical_cast<unsigned int>(value);
+            auto add_rows = lexical_cast<uint64_t>(value);
+            if (UINT64_MAX - row_count < add_rows) {
+                LOGS(_log, LOG_LVL_ERROR, "The number of rows exceeded capacity.");
+                _messageStore->addMessage(-1, "COUNTSTAR", 1051, "The number of rows exceeded capacity.",
+                                          MessageSeverity::MSG_ERROR);
+                _qState = ERROR;
+                return;
+            }
+            row_count += add_rows;
         } catch (bad_lexical_cast const& exc) {
             LOGS(_log, LOG_LVL_ERROR,
                  "Failed to convert chunk row count \"" << value << "\" to unsigned int: " << exc.what(););
@@ -116,7 +124,7 @@ void UserQuerySelectCountStar::submit() {
     }
 
     // Create a result table, with one column (row_count) and one row (the total number of rows):
-    std::string createTable = "CREATE TABLE " + _resultTableName + "(row_count INT)";
+    std::string createTable = "CREATE TABLE " + _resultTableName + "(row_count BIGINT UNSIGNED)";
     LOGS(_log, LOG_LVL_DEBUG, "creating result table: " << createTable);
     if (!_resultDbConn->runQuery(createTable, errObj)) {
         LOGS(_log, LOG_LVL_ERROR, "Failed to create result table: " << errObj.errMsg());
