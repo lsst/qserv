@@ -26,8 +26,8 @@ table#fwk-status-queries caption.updating {
     background-color: #ffeeba;
 }
 
-table#fwk-status-queries      tbody > tr:hover,
-table#fwk-status-queries-past tbody > tr:hover {
+table#fwk-status-queries      tbody > tr > td.query_toggler:hover,
+table#fwk-status-queries-past tbody > tr > td.query_toggler:hover {
     cursor:pointer;
 }
 table#fwk-status-queries      tbody pre.query.hidden,

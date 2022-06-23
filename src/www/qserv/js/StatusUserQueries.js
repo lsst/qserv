@@ -22,6 +22,7 @@ function(CSSLoader,
             super(name);
             this._queryId2Expanded = {};  // Store 'true' to allow persistent state for the expanded
                                           // queries between updates.
+            this._id2query = {};          // Store query text for each identifier
         }
 
         /**
@@ -95,6 +96,7 @@ function(CSSLoader,
           <th style="text-align:right;">ch[unks]</th>
           <th style="text-align:right;">ch/min</th>
           <th style="text-align:right;">qid</th>
+          <th style="text-align:center;"><i class="bi bi-clipboard-fill"></i></th>
           <th>query</th>
         </tr>
       </thead>
@@ -181,12 +183,12 @@ function(CSSLoader,
     <table class="table table-sm table-hover" id="fwk-status-queries-past">
       <thead class="thead-light">
         <tr>
-          <th class="sticky">&nbsp;</th>
           <th class="sticky">submitted</th>
           <th class="sticky">status</th>
           <th class="sticky" style="text-align:right;">elapsed</th>
           <th class="sticky">type</th>
           <th class="sticky" style="text-align:right;">qid</th>
+          <th class="sticky" style="text-align:center;"><i class="bi bi-clipboard-fill"></i></th>
           <th class="sticky">query</th>
         </tr>
       </thead>
@@ -315,12 +317,15 @@ function(CSSLoader,
          * Display the queries
          */
         _display(data) {
-            let queryTitle = "Click to toggle query formatting.";
+            this._id2query = {};
+            let queryToggleTitle = "Click to toggle query formatting.";
+            let queryCopyTitle = "Click to copy the query text to the clipboard.";
             let sqlFormatterConfig = {"language":"mysql","uppercase:":true,"indent":"  "};
             let queryStyle = "color:#4d4dff;";
             let html = '';
             for (let i in data.queries) {
                 let query = data.queries[i];
+                this._id2query[query.queryId] = query.query;
                 let progress = Math.floor(100. * query.completedChunks  / query.totalChunks);
                 let scheduler = _.isUndefined(query.scheduler) ? 'Loading...' : query.scheduler.substring('Sched'.length);
                 let scheduler_color = _.has(this._scheduler2color, scheduler) ?
@@ -339,11 +344,11 @@ function(CSSLoader,
                 let trend = this._trend(query.queryId, leftSeconds);
                 let performance = this._performance(query.completedChunks, query.samplingTime_sec - query.queryBegin_sec);
                 let expanded = (query.queryId in this._queryId2Expanded) && this._queryId2Expanded[query.queryId];
-                let row_class = expanded ? "row_expanded" : "row_compact";
+                let query_class = expanded ? "row_expanded" : "row_compact";
                 let query_compact_class  = expanded ? "hidden"  : "visible";
                 let query_expanded_class = expanded ? "visible" : "hidden";
                 html += `
-<tr class="${row_class}" id="${query.queryId}" title="${queryTitle}">
+<tr id="${query.queryId}">
   <td><pre>` + query.queryBegin + `</pre></td>
   <th scope="row">
     <div class="progress" style="height: 22px;">
@@ -358,58 +363,74 @@ function(CSSLoader,
   <th scope="row" style="text-align:right;  padding-left:10px;"><pre>${query.completedChunks}/${query.totalChunks}</pre></th>
   <td style="text-align:right;" ><pre>${performance}</pre></td>
   <th scope="row" style="text-align:right;"><pre>${query.queryId}</pre></th>
-  <td><pre class="query compact  ${query_compact_class}"  style="${queryStyle}">` + query.query + `</pre>
-      <pre class="query expanded ${query_expanded_class}" style="${queryStyle}">` + sqlFormatter.format(query.query, sqlFormatterConfig) + `</pre>
+  <td style="text-align:center; padding-top:0; padding-bottom:0">
+    <button class="btn btn-outline-dark btn-sm copy-query" style="height:20px; margin:0px;" title="${queryCopyTitle}"></button>
+  </td>
+  <td class="query_toggler ${query_class}" title="${queryToggleTitle}">
+    <pre class="query compact  ${query_compact_class}"  style="${queryStyle}">` + query.query + `</pre>
+    <pre class="query expanded ${query_expanded_class}" style="${queryStyle}">` + sqlFormatter.format(query.query, sqlFormatterConfig) + `</pre>
   </td>
 </tr>`;
             }
             let that = this;
             let toggleQueryDisplay = function(e) {
-                let tr = $(e.currentTarget);
-                let queryCompact  = tr.find("pre.query.compact");
-                let queryExpanded = tr.find("pre.query.expanded");
-                let queryId = tr.attr("id");
-                if (tr.hasClass("row_compact")) {
-                    tr.removeClass("row_compact").addClass("row_expanded");
+                let td = $(e.currentTarget);
+                let queryCompact  = td.find("pre.query.compact");
+                let queryExpanded = td.find("pre.query.expanded");
+                let queryId = td.parent().attr("id");
+                if (td.hasClass("row_compact")) {
+                    td.removeClass("row_compact").addClass("row_expanded");
                     queryCompact.removeClass("visible").addClass("hidden");
                     queryExpanded.removeClass("hidden").addClass("visible");
                     that._queryId2Expanded[queryId] = true;
                 } else {
-                    tr.removeClass("row_expanded").addClass("row_compact");
+                    td.removeClass("row_expanded").addClass("row_compact");
                     queryCompact.removeClass("hidden").addClass("visible");
                     queryExpanded.removeClass("visible").addClass("hidden");
                     that._queryId2Expanded[queryId] = false;
                 }
             };
-            this._tableQueries().children('tbody').html(html).children("tr").click(toggleQueryDisplay);
+            let copyQueryToClipboard = function(e) {
+              let button = $(e.currentTarget);
+              let queryId = button.parent().parent().attr("id");
+              let query = that._id2query[queryId];
+              navigator.clipboard.writeText(query,
+                  () => {},
+                  () => { alert("Failed to write the query to the clipboard. Please copy the text manually: " + query); }
+              );
+            };
+            let tbodyQueries = this._tableQueries().children('tbody').html(html);
+            tbodyQueries.find("td.query_toggler").click(toggleQueryDisplay);
+            tbodyQueries.find("button.copy-query").click(copyQueryToClipboard);
             html = '';
             for (let i in data.queries_past) {
                 let query = data.queries_past[i];
-console.log(query);
+                this._id2query[query.queryId] = query.query;
                 let elapsed = this._elapsed(query.completed_sec - query.submitted_sec);
                 let failed_query_class = query.status !== "COMPLETED" ? "table-danger" : "";
-                let attention = query.qType == 'ASYNC' ? `
-<svg class="bi" width="24" height="24" fill="currentColor">
-  <use xlink:href="assets/bootstrap-icons-1.5.0/bootstrap-icons.svg#exclamation-triangle-fill"/>
-</svg>` : '&nbsp';
                 let expanded = (query.queryId in this._queryId2Expanded) && this._queryId2Expanded[query.queryId];
-                let row_class = expanded ? "row_expanded" : "row_compact";
+                let query_class = expanded ? "row_expanded" : "row_compact";
                 let query_compact_class  = expanded ? "hidden"  : "visible";
                 let query_expanded_class = expanded ? "visible" : "hidden";
                 html += `
-<tr class="${failed_query_class} ${row_class}" id="${query.queryId}" title="${queryTitle}">
-  <td class="text-success">${attention}</td>
+<tr class="${failed_query_class}" id="${query.queryId}">
   <td style="padding-right:10px;"><pre>` + query.submitted + `</pre></td>
   <td style="padding-right:10px;"><pre>${query.status}</pre></td>
   <th style="text-align:right; padding-top:0;">${elapsed}</th>
   <td><pre>` + query.qType + `</pre></td>
-  <th scope="row" style="text-align:right;"><pre>${query.queryId}</pre></th>
-  <td><pre class="query compact ${query_compact_class}"  style="${queryStyle}">` + query.query + `</pre>
-      <pre class="query expanded ${query_expanded_class}" style="${queryStyle}">` + sqlFormatter.format(query.query, sqlFormatterConfig) + `</pre>
+  <th style="text-align:right;"><pre>${query.queryId}</pre></th>
+  <td style="text-align:right; padding-top:0; padding-bottom:0">
+    <button class="btn btn-outline-dark btn-sm copy-query" style="height:20px; margin:0px;" title="${queryCopyTitle}"></button>
+  </td>
+  <td class="query_toggler ${query_class}" title="${queryToggleTitle}">
+    <pre class="query compact ${query_compact_class}"  style="${queryStyle}">` + query.query + `</pre>
+    <pre class="query expanded ${query_expanded_class}" style="${queryStyle}">` + sqlFormatter.format(query.query, sqlFormatterConfig) + `</pre>
   </td>
 </tr>`;
             }
-            this._tablePastQueries().children('tbody').html(html).children("tr").click(toggleQueryDisplay);
+            let tbodyPastQueries = this._tablePastQueries().children('tbody').html(html);
+            tbodyPastQueries.find("td.query_toggler").click(toggleQueryDisplay);
+            tbodyPastQueries.find("button.copy-query").click(copyQueryToClipboard);
         }
         
         /**
