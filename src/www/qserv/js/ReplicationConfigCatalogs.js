@@ -70,19 +70,21 @@ function(CSSLoader,
     <table class="table table-sm table-hover table-borderless" id="fwk-controller-config-catalogs">
       <thead class="thead-light">
         <tr>
-          <th class="sticky">Family</th>
-          <th class="sticky">stripes</th>
-          <th class="sticky">sub-stripes</th>
-          <th class="sticky">repl level</th>
-          <th class="sticky">Database</th>
-          <th class="sticky">is pub-d</th>
-          <th class="sticky">Table</th>
-          <th class="sticky">is part-d</th>
-          <th class="sticky">is dir</th>
-          <th class="sticky">director table</th>
-          <th class="sticky">director key</th>
-          <th class="sticky">latitude key</th>
-          <th class="sticky">longitude key</th>
+          <th class="sticky">FAMILY</th>
+          <th class="sticky">strp</th>
+          <th class="sticky">substrp</th>
+          <th class="sticky">repl</th>
+          <th class="sticky">DATABASE</th>
+          <th class="sticky">pub</th>
+          <th class="sticky">TABLE</th>
+          <th class="sticky">part</th>
+          <th class="sticky">dir</th>
+          <th class="sticky">dir_table</th>
+          <th class="sticky">dir_key</th>
+          <th class="sticky">lat_key</th>
+          <th class="sticky">lon_key</th>
+          <th class="sticky">created</th>
+          <th class="sticky">published</th>
         </tr>
       </thead>
       <caption class="updating">Loading...</caption>
@@ -187,6 +189,8 @@ function(CSSLoader,
   <td><pre>${directorKey}</pre></td>
   <td><pre>${latitudeKey}</pre></td>
   <td><pre>${longitudeKey}</pre></td>
+  <td><pre class="timestamp">${(new Date(table.create_time)).toLocalTimeString('iso')}</pre></td>
+  <td><pre class="timestamp">${table.is_published ? (new Date(table.publish_time)).toLocalTimeString('iso') : ''}</pre></td>
 </tr>`;
                     }
                     familyHtml += `
