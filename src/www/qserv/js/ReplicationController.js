@@ -68,7 +68,7 @@ function(CSSLoader,
   </div>
 </div>
 <div class="row">
-  <div class="col col-md-7">
+  <div class="col col-md-8">
     <table class="table table-sm table-hover" id="fwk-controller-status">
       <tbody>
         <tr>
