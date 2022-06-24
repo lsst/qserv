@@ -28,3 +28,6 @@ table#fwk-controller-config-catalogs caption {
 table#fwk-controller-config-catalogs caption.updating {
     background-color: #ffeeba;
 }
+table#fwk-controller-config-catalogs tbody pre.timestamp {
+    color: maroon;
+}
