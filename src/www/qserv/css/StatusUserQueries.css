@@ -1,3 +1,10 @@
+#fwk-status-queries-controls {
+    margin-top: 1em;
+    padding-top: 0.5em;
+}
+#fwk-status-queries-controls label {
+    font-weight: bold;
+}
 table#fwk-status-queries      pre,
 table#fwk-status-queries-past pre {
     padding:    0;

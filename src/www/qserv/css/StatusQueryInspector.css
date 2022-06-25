@@ -1,0 +1,49 @@
+#fwk-status-query-controls label {
+    font-weight: bold;
+}
+#fwk-status-query-status #status {
+    text-align: right;
+}
+#fwk-status-query-status #status.updating {
+    background-color: #ffeeba;
+}
+#fwk-status-query-info tbody pre {
+    padding: 0;
+    margin: 0;
+}
+#fwk-status-query-info tbody pre.query-in-progress {
+    color: green;
+}
+#fwk-status-query-info tbody pre.query-failed {
+    color: red;
+}
+#fwk-status-query-info tbody pre.query-finished {
+    color: default;
+}
+#fwk-status-query-info textarea {
+    width: 100%;
+    height: 8.5em;
+    overflow-y: scroll;
+}
+#fwk-status-query-messages tbody pre {
+    padding: 0;
+    margin: 0;
+}
+table#fwk-status-query-messages .left-aligned {
+    text-align: left;
+}
+table#fwk-status-query-messages .center-aligned {
+    text-align: center;
+}
+table#fwk-status-query-messages .right-aligned {
+    text-align: right;
+}
+#fwk-status-query-messages tbody pre.severity-info {
+    color: default;
+}
+#fwk-status-query-messages tbody pre.severity-warn {
+    color: orange;
+}
+#fwk-status-query-messages tbody pre.severity-error {
+    color: red;
+}

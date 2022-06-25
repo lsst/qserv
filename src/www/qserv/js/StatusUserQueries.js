@@ -88,23 +88,23 @@ function(CSSLoader,
       </caption>
       <thead class="thead-light">
         <tr>
-          <th>started</th>
-          <th>progress</th>
-          <th>sched</th>
-          <th style="text-align:right;">elapsed</th>
-          <th style="text-align:right;">left (est.)</th>
-          <th style="text-align:right;">chunks</th>
-          <th style="text-align:right;">ch/min</th>
-          <th style="text-align:right;">qid</th>
+          <th>Started</th>
+          <th>Progress</th>
+          <th>Sched</th>
+          <th style="text-align:right;">Elapsed</th>
+          <th style="text-align:right;">Left (est.)</th>
+          <th style="text-align:right;">Chunks</th>
+          <th style="text-align:right;">Ch/min</th>
+          <th style="text-align:right;">QID</th>
           <th style="text-align:center;"><i class="bi bi-clipboard-fill"></i></th>
-          <th>query</th>
+          <th>Query</th>
         </tr>
       </thead>
       <tbody></tbody>
     </table>
   </div>
 </div>
-<div class="row">
+<div class="row" id="fwk-status-queries-controls">
   <div class="col">
     <h3>Search past queries</h3>
     <div class="form-row">
@@ -183,17 +183,18 @@ function(CSSLoader,
     <table class="table table-sm table-hover" id="fwk-status-queries-past">
       <thead class="thead-light">
         <tr>
-          <th class="sticky">submitted</th>
-          <th class="sticky">status</th>
-          <th class="sticky" style="text-align:right;">elapsed</th>
-          <th class="sticky">type</th>
-          <th class="sticky" style="text-align:right;">chunks</th>
-          <th class="sticky" style="text-align:right;">ch/min</th>
-          <th class="sticky" style="text-align:right;">rows</th>
-          <th class="sticky" style="text-align:right;">bytes</th>
-          <th class="sticky" style="text-align:right;">qid</th>
+          <th class="sticky">Submitted</th>
+          <th class="sticky">Status</th>
+          <th class="sticky" style="text-align:right;">Elapsed</th>
+          <th class="sticky">Type</th>
+          <th class="sticky" style="text-align:right;">Chunks</th>
+          <th class="sticky" style="text-align:right;">Ch/min</th>
+          <th class="sticky" style="text-align:right;">Rows</th>
+          <th class="sticky" style="text-align:right;">Bytes</th>
+          <th class="sticky" style="text-align:right;">QID</th>
           <th class="sticky" style="text-align:center;"><i class="bi bi-clipboard-fill"></i></th>
-          <th class="sticky">query</th>
+          <th class="sticky" style="text-align:center;"><i class="bi bi-info-circle-fill"></i></th>
+          <th class="sticky">Query</th>
         </tr>
       </thead>
       <tbody></tbody>
@@ -249,15 +250,6 @@ function(CSSLoader,
             }
             return this._form_control_obj[id];
         }
-        _disable_controls(disable) {
-            this._form_control('select', 'query-age').prop('disabled', disable);
-            this._form_control('select', 'query-status').prop('disabled', disable);
-            this._form_control('input',  'min-elapsed').prop('disabled', disable);
-            this._form_control('select', 'query-type').prop('disabled', disable);
-            this._form_control('select', 'max-queries').prop('disabled', disable);
-            this._form_control('select', 'update-interval').prop('disabled', disable);
-            this._form_control('button', 'reset-queries-form').prop('disabled', disable);
-        }
         _get_query_age()       { return this._form_control('select', 'query-age').val(); }
         _set_query_age(val)    { this._form_control('select', 'query-age').val(val); }
 
@@ -286,7 +278,6 @@ function(CSSLoader,
             this._loading = true;
 
             this._status().addClass('updating');
-            this._disable_controls(true);
 
             Fwk.web_service_GET(
                 "/replication/qserv/master/query",
@@ -305,13 +296,11 @@ function(CSSLoader,
                         Fwk.setLastUpdate(this._status());
                     }
                     this._status().removeClass('updating');
-                    this._disable_controls(false);
                     this._loading = false;
                 },
                 (msg) => {
                     this._status().html('<span style="color:maroon">No Response</span>');
                     this._status().removeClass('updating');
-                    this._disable_controls(false);
                     this._loading = false;
                 }
             );
@@ -324,6 +313,7 @@ function(CSSLoader,
             this._id2query = {};
             let queryToggleTitle = "Click to toggle query formatting.";
             let queryCopyTitle = "Click to copy the query text to the clipboard.";
+            let queryInspectTitle = "Click to see detailed info (progress, messages, etc.) on the query.";
             let sqlFormatterConfig = {"language":"mysql","uppercase:":true,"indent":"  "};
             let queryStyle = "color:#4d4dff;";
             let html = '';
@@ -395,13 +385,19 @@ function(CSSLoader,
                 }
             };
             let copyQueryToClipboard = function(e) {
-              let button = $(e.currentTarget);
-              let queryId = button.parent().parent().attr("id");
-              let query = that._id2query[queryId];
-              navigator.clipboard.writeText(query,
-                  () => {},
-                  () => { alert("Failed to write the query to the clipboard. Please copy the text manually: " + query); }
-              );
+                let button = $(e.currentTarget);
+                let queryId = button.parent().parent().attr("id");
+                let query = that._id2query[queryId];
+                navigator.clipboard.writeText(query,
+                    () => {},
+                    () => { alert("Failed to write the query to the clipboard. Please copy the text manually: " + query); }
+                );
+            };
+            let displayQuery  = function(e) {
+                let button = $(e.currentTarget);
+                let queryId = button.parent().parent().attr("id");
+                Fwk.find("Status", "Query Inspector").set_query_id(queryId);
+                Fwk.show("Status", "Query Inspector");
             };
             let tbodyQueries = this._tableQueries().children('tbody').html(html);
             tbodyQueries.find("td.query_toggler").click(toggleQueryDisplay);
@@ -431,6 +427,9 @@ function(CSSLoader,
   <td style="text-align:right; padding-top:0; padding-bottom:0">
     <button class="btn btn-outline-dark btn-sm copy-query" style="height:20px; margin:0px;" title="${queryCopyTitle}"></button>
   </td>
+  <td style="text-align:right; padding-top:0; padding-bottom:0">
+    <button class="btn btn-outline-info btn-sm inspect-query" style="height:20px; margin:0px;" title="${queryInspectTitle}"></button>
+  </td>
   <td class="query_toggler ${query_class}" title="${queryToggleTitle}">
     <pre class="query compact ${query_compact_class}"  style="${queryStyle}">` + query.query + `</pre>
     <pre class="query expanded ${query_expanded_class}" style="${queryStyle}">` + sqlFormatter.format(query.query, sqlFormatterConfig) + `</pre>
@@ -440,6 +439,7 @@ function(CSSLoader,
             let tbodyPastQueries = this._tablePastQueries().children('tbody').html(html);
             tbodyPastQueries.find("td.query_toggler").click(toggleQueryDisplay);
             tbodyPastQueries.find("button.copy-query").click(copyQueryToClipboard);
+            tbodyPastQueries.find("button.inspect-query").click(displayQuery);
         }
         
         /**
