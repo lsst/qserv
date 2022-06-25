@@ -22,6 +22,7 @@
 #define LSST_QSERV_HTTPQSERVMONITORMODULE_H
 
 // System headers
+#include <map>
 #include <memory>
 #include <set>
 #include <string>
@@ -30,6 +31,8 @@
 #include "nlohmann/json.hpp"
 
 // Qserv headers
+#include "global/intTypes.h"
+#include "replica/DatabaseMySQL.h"
 #include "replica/HttpModule.h"
 
 // This header declarations
@@ -96,6 +99,29 @@ private:
      * launched at Qserv.
      */
     nlohmann::json _userQuery();
+
+    /**
+     * @brief Extract info on the ongoing queries.
+     * @param conn Database connection to the Czar database.
+     * @param queryId2scheduler The map with optional entries indicating which schedulers
+     *   are used by Qserv workers for processing the corresponding queries.
+     * @return nlohmann::json A collection queries found in the database.
+     */
+    nlohmann::json _currentUserQueries(database::mysql::Connection::Ptr& conn,
+                                       std::map<QueryId, std::string> const& queryId2scheduler);
+
+    /**
+     * @brief Extract info on the user queries.
+     * @param conn Database connection to the Czar database.
+     * @param constraint The constraint for the connections to look for.
+     * @param limit4past The maximum number of queries to be reported.
+     * @param includeMessages If the flag is set to 'true' then persistent
+     *   messages reported by Czar for each query will be included into the result.
+     * @return nlohmann::json A collection queries found in the database for
+     *   the specified constraint.
+     */
+    nlohmann::json _pastUserQueries(database::mysql::Connection::Ptr& conn, std::string const& constraint,
+                                    unsigned int limit4past, bool includeMessages);
 
     /**
      * Find descriptions of queries
