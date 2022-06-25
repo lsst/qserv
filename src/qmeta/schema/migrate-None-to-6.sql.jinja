@@ -52,7 +52,13 @@ CREATE TABLE IF NOT EXISTS `QInfo` (
   `resultBytes` INT DEFAULT 0 COMMENT 'number of bytes in the result',
   `resultRows` INT DEFAULT 0 COMMENT  'number of rows in the result',
   PRIMARY KEY (`queryId`),
-  INDEX `QInfo_czarId_index` (`czarId` ASC),
+  KEY `QInfo_czarId_index` (`czarId`),
+  KEY `QInfo_status_index` (`status`),
+  KEY `QInfo_submitted_index` (`submitted`),
+  KEY `QInfo_completed_index` (`completed`),
+  KEY `QInfo_returned_index` (`returned`),
+  KEY `QInfo_qtype_index` (`qType`),
+  FULLTEXT KEY `QInfo_query_index` (`query`),
   CONSTRAINT `QInfo_cid`
     FOREIGN KEY (`czarId`)
     REFERENCES `QCzar` (`czarId`)
@@ -207,5 +213,5 @@ COMMENT = 'Table of messages generated during queries.';
 -- Version 1 introduced QMetadata table and altered schema for QInfo table
 -- Version 2 added query progress data to ProcessList tables.
 -- Version 3 added storing the result query in QMeta.
-INSERT INTO `QMetadata` (`metakey`, `value`) VALUES ('version', '5');
+INSERT INTO `QMetadata` (`metakey`, `value`) VALUES ('version', '6');
 
