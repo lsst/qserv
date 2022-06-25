@@ -93,7 +93,7 @@ function(CSSLoader,
           <th>sched</th>
           <th style="text-align:right;">elapsed</th>
           <th style="text-align:right;">left (est.)</th>
-          <th style="text-align:right;">ch[unks]</th>
+          <th style="text-align:right;">chunks</th>
           <th style="text-align:right;">ch/min</th>
           <th style="text-align:right;">qid</th>
           <th style="text-align:center;"><i class="bi bi-clipboard-fill"></i></th>
@@ -187,6 +187,10 @@ function(CSSLoader,
           <th class="sticky">status</th>
           <th class="sticky" style="text-align:right;">elapsed</th>
           <th class="sticky">type</th>
+          <th class="sticky" style="text-align:right;">chunks</th>
+          <th class="sticky" style="text-align:right;">ch/min</th>
+          <th class="sticky" style="text-align:right;">rows</th>
+          <th class="sticky" style="text-align:right;">bytes</th>
           <th class="sticky" style="text-align:right;">qid</th>
           <th class="sticky" style="text-align:center;"><i class="bi bi-clipboard-fill"></i></th>
           <th class="sticky">query</th>
@@ -408,6 +412,7 @@ function(CSSLoader,
                 this._id2query[query.queryId] = query.query;
                 let elapsed = this._elapsed(query.completed_sec - query.submitted_sec);
                 let failed_query_class = query.status !== "COMPLETED" ? "table-danger" : "";
+                let performance = this._performance(query.chunkCount, query.completed_sec - query.submitted_sec);
                 let expanded = (query.queryId in this._queryId2Expanded) && this._queryId2Expanded[query.queryId];
                 let query_class = expanded ? "row_expanded" : "row_compact";
                 let query_compact_class  = expanded ? "hidden"  : "visible";
@@ -418,6 +423,10 @@ function(CSSLoader,
   <td style="padding-right:10px;"><pre>${query.status}</pre></td>
   <th style="text-align:right; padding-top:0;">${elapsed}</th>
   <td><pre>` + query.qType + `</pre></td>
+  <th style="text-align:right;"><pre>${query.chunkCount}</pre></th>
+  <td style="text-align:right;" ><pre>${performance > 0 ? performance : ''}</pre></td>
+  <th style="text-align:right;"><pre>${query.resultRows}</pre></th>
+  <th style="text-align:right;"><pre>${query.resultBytes}</pre></th>
   <th style="text-align:right;"><pre>${query.queryId}</pre></th>
   <td style="text-align:right; padding-top:0; padding-bottom:0">
     <button class="btn btn-outline-dark btn-sm copy-query" style="height:20px; margin:0px;" title="${queryCopyTitle}"></button>
@@ -482,7 +491,7 @@ function(CSSLoader,
          * @returns {integer} the number of chunks per minute (or 0 if the totalSeconds is 0)
          */
         _performance(chunks, totalSeconds) {
-            if (chunks === 0 || totalSeconds === 0) return 0;
+            if (chunks === 0 || totalSeconds <= 0) return 0;
             return Math.floor(chunks / (totalSeconds / 60.));
         }
     }
