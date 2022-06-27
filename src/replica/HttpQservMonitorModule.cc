@@ -23,7 +23,6 @@
 #include "replica/HttpQservMonitorModule.h"
 
 // System headers
-#include <map>
 #include <sstream>
 #include <stdexcept>
 
@@ -31,9 +30,7 @@
 #include "boost/lexical_cast.hpp"
 
 // Qserv headers
-#include "global/intTypes.h"
 #include "replica/Configuration.h"
-#include "replica/DatabaseMySQL.h"
 #include "replica/DatabaseServices.h"
 #include "replica/QservMgtServices.h"
 #include "replica/QservStatusJob.h"
@@ -234,6 +231,9 @@ json HttpQservMonitorModule::_userQueries() {
     unsigned int const minElapsedSec = query().optionalUInt("min_elapsed_sec", 0);
     unsigned int const timeoutSec = query().optionalUInt("timeout_sec", workerResponseTimeoutSec());
     unsigned int const limit4past = query().optionalUInt("limit4past", 1);
+    string const searchPattern = query().optionalString("search_pattern", string());
+    bool const searchBooleanMode = query().optionalUInt("search_boolean_mode", 0) != 0;
+    bool const includeMessages = query().optionalUInt("include_messages", 0) != 0;
 
     debug(__func__, "query_status=" + queryStatus);
     debug(__func__, "query_type=" + queryType);
@@ -241,9 +241,12 @@ json HttpQservMonitorModule::_userQueries() {
     debug(__func__, "min_elapsed_sec=" + to_string(minElapsedSec));
     debug(__func__, "timeout_sec=" + to_string(timeoutSec));
     debug(__func__, "limit4past=" + to_string(limit4past));
+    debug(__func__, "search_pattern=" + searchPattern);
+    debug(__func__, "search_boolean_mode=" + bool2str(searchBooleanMode));
+    debug(__func__, "include_messages=" + bool2str(includeMessages));
 
     // Check which queries and in which schedulers are being executed
-    // by Qseev workers.
+    // by Qserv workers.
 
     bool const allWorkers = true;
     auto const job = QservStatusJob::create(timeoutSec, allWorkers, controller());
@@ -268,9 +271,54 @@ json HttpQservMonitorModule::_userQueries() {
         }
     }
 
+    // Connect to the master database. Manage the new connection via the RAII-style
+    // handler to ensure the transaction is automatically rolled-back in case of exceptions.
+    database::mysql::ConnectionHandler const h(
+            database::mysql::Connection::open(Configuration::qservCzarDbParams("qservMeta")));
+
+    // Get info on the ongoing queries
     json result;
-    result["queries"] = json::array();
-    result["queries_past"] = json::array();
+    h.conn->executeInOwnTransaction(
+            [&](auto conn) { result["queries"] = _currentUserQueries(conn, queryId2scheduler); });
+
+    // Get info on the past queries matching the specified criteria.
+    ostringstream constraint;
+    if (queryStatus.empty()) {
+        constraint << h.conn->sqlNotEqual("status", "EXECUTING");
+    } else {
+        constraint << h.conn->sqlEqual("status", queryStatus);
+    }
+    if (!queryType.empty()) {
+        constraint << " AND " + h.conn->sqlEqual("qType", queryType);
+    }
+    if (queryAgeSec > 0) {
+        constraint << "AND TIMESTAMPDIFF(SECOND," << h.conn->sqlId("submitted") << ",NOW()) > "
+                   << h.conn->sqlValue(queryAgeSec);
+    }
+    if (minElapsedSec > 0) {
+        constraint << " AND TIMESTAMPDIFF(SECOND," << h.conn->sqlId("submitted") << ","
+                   << h.conn->sqlId("completed") << ") > " << h.conn->sqlValue(minElapsedSec);
+    }
+    if (!searchPattern.empty()) {
+        string const mode = searchBooleanMode ? "BOOLEAN" : "NATURAL LANGUAGE";
+        constraint << " AND MATCH(" << h.conn->sqlId("query") << ") AGAINST("
+                   << h.conn->sqlValue(searchPattern) << " IN " << mode << " MODE)";
+    }
+    h.conn->executeInOwnTransaction([&](auto conn) {
+        result["queries_past"] = _pastUserQueries(conn, constraint.str(), limit4past, includeMessages);
+    });
+    return result;
+}
+
+json HttpQservMonitorModule::_userQuery() {
+    debug(__func__);
+    auto const queryId = stoull(params().at("id"));
+    bool const includeMessages = query().optionalUInt("include_messages", 0) != 0;
+
+    debug(__func__, "id=" + to_string(queryId));
+    debug(__func__, "include_messages=" + bool2str(includeMessages));
+
+    json result;
 
     // Connect to the master database
     // Manage the new connection via the RAII-style handler to ensure the transaction
@@ -279,29 +327,38 @@ json HttpQservMonitorModule::_userQueries() {
     database::mysql::ConnectionHandler const h(
             database::mysql::Connection::open(Configuration::qservCzarDbParams("qservMeta")));
 
-    // NOTE: the roll-back for this transaction will happen automatically. It will
-    // be done by the connection handler.
-    h.conn->begin();
-    h.conn->execute("SELECT " + h.conn->sqlId("QStatsTmp") +
-                    ".*,"
-                    "UNIX_TIMESTAMP(" +
-                    h.conn->sqlId("queryBegin") + ") AS " + h.conn->sqlId("queryBegin_sec") +
-                    ","
-                    "UNIX_TIMESTAMP(" +
-                    h.conn->sqlId("lastUpdate") + ") AS " + h.conn->sqlId("lastUpdate_sec") +
-                    ","
-                    "NOW() AS " +
-                    h.conn->sqlId("samplingTime") +
-                    ","
-                    "UNIX_TIMESTAMP(NOW()) AS " +
-                    h.conn->sqlId("samplingTime_sec") + "," + h.conn->sqlId("QInfo") + "." +
-                    h.conn->sqlId("query") + " FROM " + h.conn->sqlId("QStatsTmp") + "," +
-                    h.conn->sqlId("QInfo") + " WHERE " + h.conn->sqlId("QStatsTmp") + "." +
-                    h.conn->sqlId("queryId") + "=" + h.conn->sqlId("QInfo") + "." + h.conn->sqlId("queryId") +
-                    " ORDER BY " + h.conn->sqlId("QStatsTmp") + "." + h.conn->sqlId("queryBegin") + " DESC");
-    if (h.conn->hasResult()) {
+    h.conn->executeInOwnTransaction([&](auto conn) {
+        unsigned int const limit4past = 0;
+        result["queries_past"] =
+                _pastUserQueries(conn, conn->sqlEqual("queryId", queryId), limit4past, includeMessages);
+    });
+    return result;
+}
+
+json HttpQservMonitorModule::_currentUserQueries(database::mysql::Connection::Ptr& conn,
+                                                 map<QueryId, string> const& queryId2scheduler) {
+    conn->execute("SELECT " + conn->sqlId("QStatsTmp") +
+                  ".*,"
+                  "UNIX_TIMESTAMP(" +
+                  conn->sqlId("queryBegin") + ") AS " + conn->sqlId("queryBegin_sec") +
+                  ","
+                  "UNIX_TIMESTAMP(" +
+                  conn->sqlId("lastUpdate") + ") AS " + conn->sqlId("lastUpdate_sec") +
+                  ","
+                  "NOW() AS " +
+                  conn->sqlId("samplingTime") +
+                  ","
+                  "UNIX_TIMESTAMP(NOW()) AS " +
+                  conn->sqlId("samplingTime_sec") + "," + conn->sqlId("QInfo") + "." + conn->sqlId("query") +
+                  " FROM " + conn->sqlId("QStatsTmp") + "," + conn->sqlId("QInfo") + " WHERE " +
+                  conn->sqlId("QStatsTmp") + "." + conn->sqlId("queryId") + "=" + conn->sqlId("QInfo") + "." +
+                  conn->sqlId("queryId") + " ORDER BY " + conn->sqlId("QStatsTmp") + "." +
+                  conn->sqlId("queryBegin") + " DESC");
+
+    json result = json::array();
+    if (conn->hasResult()) {
         database::mysql::Row row;
-        while (h.conn->next(row)) {
+        while (conn->next(row)) {
             json resultRow;
             ::parseFieldIntoJson<QueryId>(__func__, row, "queryId", resultRow);
             ::parseFieldIntoJson<int>(__func__, row, "totalChunks", resultRow);
@@ -322,40 +379,29 @@ json HttpQservMonitorModule::_userQueries() {
             if (itr != queryId2scheduler.end()) {
                 resultRow["scheduler"] = itr->second;
             }
-            result["queries"].push_back(resultRow);
+            result.push_back(resultRow);
         }
     }
-    ostringstream constraint;
-    if (queryStatus.empty()) {
-        constraint << h.conn->sqlNotEqual("status", "EXECUTING");
-    } else {
-        constraint << h.conn->sqlEqual("status", queryStatus);
-    }
-    if (!queryType.empty()) {
-        constraint << " AND " + h.conn->sqlEqual("qType", queryType);
-    }
-    if (queryAgeSec > 0) {
-        constraint << "AND TIMESTAMPDIFF(SECOND," << h.conn->sqlId("submitted") << ",NOW()) > "
-                   << h.conn->sqlValue(queryAgeSec);
-    }
-    if (minElapsedSec > 0) {
-        constraint << " AND TIMESTAMPDIFF(SECOND," << h.conn->sqlId("submitted") << ","
-                   << h.conn->sqlId("completed") << ") > " << h.conn->sqlValue(minElapsedSec);
-    }
-    h.conn->execute(
+    return result;
+}
+
+json HttpQservMonitorModule::_pastUserQueries(database::mysql::Connection::Ptr& conn,
+                                              string const& constraint, unsigned int limit4past,
+                                              bool includeMessages) {
+    json result = json::array();
+    conn->execute(
             "SELECT *,"
             "UNIX_TIMESTAMP(" +
-            h.conn->sqlId("submitted") + ") AS " + h.conn->sqlId("submitted_sec") + "," + "UNIX_TIMESTAMP(" +
-            h.conn->sqlId("completed") + ") AS " + h.conn->sqlId("completed_sec") +
+            conn->sqlId("submitted") + ") AS " + conn->sqlId("submitted_sec") + "," + "UNIX_TIMESTAMP(" +
+            conn->sqlId("completed") + ") AS " + conn->sqlId("completed_sec") +
             ","
             "UNIX_TIMESTAMP(" +
-            h.conn->sqlId("returned") + ") AS " + h.conn->sqlId("returned_sec") + " FROM " +
-            h.conn->sqlId("QInfo") + " WHERE " + constraint.str() + " ORDER BY " +
-            h.conn->sqlId("submitted") + " DESC" +
-            (limit4past == 0 ? "" : " LIMIT " + to_string(limit4past)));
-    if (h.conn->hasResult()) {
+            conn->sqlId("returned") + ") AS " + conn->sqlId("returned_sec") + " FROM " +
+            conn->sqlId("QInfo") + " WHERE " + constraint + " ORDER BY " + conn->sqlId("submitted") +
+            " DESC" + (limit4past == 0 ? "" : " LIMIT " + to_string(limit4past)));
+    if (conn->hasResult()) {
         database::mysql::Row row;
-        while (h.conn->next(row)) {
+        while (conn->next(row)) {
             json resultRow;
             ::parseFieldIntoJson<QueryId>(__func__, row, "queryId", resultRow);
             ::parseFieldIntoJson<string>(__func__, row, "qType", resultRow);
@@ -374,17 +420,34 @@ json HttpQservMonitorModule::_userQueries() {
             ::parseFieldIntoJson<string>(__func__, row, "messageTable", resultRow, "");
             ::parseFieldIntoJson<string>(__func__, row, "resultLocation", resultRow, "");
             ::parseFieldIntoJson<string>(__func__, row, "resultQuery", resultRow, "");
-            result["queries_past"].push_back(resultRow);
+            ::parseFieldIntoJson<long>(__func__, row, "chunkCount", resultRow, 0);
+            ::parseFieldIntoJson<long>(__func__, row, "resultBytes", resultRow, 0);
+            ::parseFieldIntoJson<long>(__func__, row, "resultRows", resultRow, 0);
+            resultRow["messages"] = json::array();
+            result.push_back(resultRow);
+        }
+        if (includeMessages) {
+            for (auto& queryInfo : result) {
+                conn->execute("SELECT * FROM " + conn->sqlId("QMessages") + " WHERE " +
+                              conn->sqlEqual("queryId", queryInfo["queryId"].get<QueryId>()) + " ORDER BY " +
+                              conn->sqlId("timestamp") + " ASC");
+                if (conn->hasResult()) {
+                    while (conn->next(row)) {
+                        json resultRow;
+                        ::parseFieldIntoJson<QueryId>(__func__, row, "queryId", resultRow);
+                        ::parseFieldIntoJson<string>(__func__, row, "msgSource", resultRow);
+                        ::parseFieldIntoJson<int>(__func__, row, "chunkId", resultRow);
+                        ::parseFieldIntoJson<int>(__func__, row, "code", resultRow);
+                        ::parseFieldIntoJson<string>(__func__, row, "message", resultRow);
+                        ::parseFieldIntoJson<string>(__func__, row, "severity", resultRow);
+                        ::parseFieldIntoJson<uint64_t>(__func__, row, "timestamp", resultRow);
+                        queryInfo["messages"].push_back(resultRow);
+                    }
+                }
+            }
         }
     }
     return result;
-}
-
-json HttpQservMonitorModule::_userQuery() {
-    debug(__func__);
-    auto const id = stoull(params().at("id"));
-    debug(__func__, " id=" + to_string(id));
-    return json::object();
 }
 
 json HttpQservMonitorModule::_getQueries(json& workerInfo) const {

@@ -387,6 +387,15 @@ public:
         return sqlBinaryOperator(col, val, ">=");
     }
 
+    /**
+     * @return "<quoted-col> REGEXP <escaped-quoted-expr>"
+     */
+    std::string sqlRegexp(std::string const& col, std::string const& expr) const {
+        std::ostringstream ss;
+        ss << sqlId(col) << " REGEXP " << sqlValue(expr);
+        return ss.str();
+    }
+
     /// The base (the final function) to be called
     void sqlPackPair(std::string&) const {}
 
