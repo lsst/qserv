@@ -146,6 +146,17 @@ function(CSSLoader,
           <option value="ASYNC">ASYNC</option>
         </select>
       </div>
+      <div class="form-group col-md-2">
+        <label for="query-search-pattern">Search pattern:</label>
+        <input type="text" id="query-search-pattern" class="form-control form-control-selector" value="">
+      </div>
+      <div class="form-group col-md-1">
+        <label for="query-search-mode">Search mode:</label>
+        <select id="query-search-mode" class="form-control form-control-selector">
+          <option value="NATURAL" selected>NATURAL</option>
+          <option value="BOOLEAN">BOOLEAN</option>
+        </select>
+      </div>
       <div class="form-group col-md-1">
         <label for="max-queries">Max.queries:</label>
         <select id="max-queries" class="form-control form-control-selector">
@@ -210,6 +221,8 @@ function(CSSLoader,
                 this._set_query_status("");
                 this._set_min_elapsed("0");
                 this._set_query_type("");
+                this._set_query_search_pattern("");
+                this._set_query_search_mode("NATURAL");
                 this._set_max_queries("200");
                 this._load();
             });
@@ -262,6 +275,12 @@ function(CSSLoader,
         _get_query_type()      { return this._form_control('select', 'query-type').val(); }
         _set_query_type(val)   { this._form_control('select', 'query-type').val(val); }
 
+        _get_query_search_pattern()    { return this._form_control('input', 'query-search-pattern').val(); }
+        _set_query_search_pattern(val) { this._form_control('input', 'query-search-pattern').val(val); }
+
+        _get_query_search_mode()    { return this._form_control('select', 'query-search-mode').val(); }
+        _set_query_search_mode(val) { this._form_control('select', 'query-search-mode').val(val); }
+
         _get_max_queries()     { return this._form_control('select', 'max-queries').val(); }
         _set_max_queries(val)  { this._form_control('select', 'max-queries').val(val); }
         _update_interval_sec() { return this._form_control('select', 'update-interval').val(); }
@@ -285,6 +304,8 @@ function(CSSLoader,
                     query_status: this._get_query_status(),
                     min_elapsed_sec: this._get_min_elapsed(),
                     query_type: this._get_query_type(),
+                    search_pattern: this._get_query_search_pattern(),
+                    search_boolean_mode: this._get_query_search_mode() == "BOOLEAN" ? 1 : 0,
                     limit4past: this._get_max_queries(),
                     timeout_sec: StatusUserQueries.server_proc_timeout_sec()
                 },
