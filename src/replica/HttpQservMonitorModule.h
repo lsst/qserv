@@ -53,6 +53,7 @@ public:
      *   SELECT-WORKER-BY-NAME  for a specific worker
      *   QUERIES                for many queries (selected by various criteria)
      *   SELECT-QUERY-BY-ID     for a specific query
+     *   CSS-SHARED-SCAN        get CSS configurations of the shared scan for all tables
      *
      * @throws std::invalid_argument for unknown values of parameter 'subModuleName'
      */
@@ -130,6 +131,9 @@ private:
      * @return descriptions of the queries
      */
     nlohmann::json _getQueries(nlohmann::json& workerInfo) const;
+
+    /// @return The shared scan parameters of all partitioned tables (CSS)
+    nlohmann::json _cssSharedScan();
 
     /**
      * @param chunks  collection of chunks numbers to be expanded
