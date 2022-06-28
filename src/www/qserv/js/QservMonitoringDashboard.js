@@ -41,6 +41,7 @@ require([
     'qserv/StatusReplicationLevel',
     'qserv/StatusWorkers',
     'qserv/StatusUserQueries',
+    'qserv/QservCss',
     'qserv/QservWorkerSchedulers',
     'qserv/QservWorkerQueries',
     'qserv/ReplicationController',
@@ -70,6 +71,7 @@ function(CSSLoader,
          StatusReplicationLevel,
          StatusWorkers,
          StatusUserQueries,
+         QservCss,
          QservWorkerSchedulers,
          QservWorkerQueries,
          ReplicationController,
@@ -149,7 +151,8 @@ function(CSSLoader,
             {   name: 'Qserv Monitor',
                 apps: [
                     new QservWorkerSchedulers('Schedulers'),
-                    new QservWorkerQueries('Queries in Worker Queues')
+                    new QservWorkerQueries('Queries in Worker Queues'),
+                    new QservCss('CSS')
                 ]
             }
         ];

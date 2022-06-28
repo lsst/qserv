@@ -1,0 +1,33 @@
+table#fwk-qserv-css pre {
+    padding:    0;
+    margin:     0;
+}
+table#fwk-qserv-css tbody pre.database_table:hover {
+    cursor:pointer;
+}
+table#fwk-qserv-css tbody pre.database_table {
+    color:#007bff;
+}
+table#fwk-qserv-css th,
+table#fwk-qserv-css td {
+    vertical-align: middle;
+}
+table#fwk-qserv-css {
+    position: relative;
+}
+table#fwk-qserv-css > thead > tr > th.sticky {
+    position:sticky;
+    top:80px;
+    z-index:2;
+}
+table#fwk-qserv-css caption {
+    caption-side:   top;
+    text-align:     right;
+    padding-top:    0;
+}
+table#fwk-qserv-css caption.updating {
+    background-color: #ffeeba;
+}
+table#fwk-qserv-css tbody pre.timestamp {
+    color: maroon;
+}
