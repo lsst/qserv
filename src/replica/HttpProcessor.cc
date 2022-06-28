@@ -245,6 +245,12 @@ void HttpProcessor::registerServices() {
                                                                  self->_processorConfig, req, resp,
                                                                  "SELECT-QUERY-BY-ID");
                              });
+    httpServer()->addHandler("GET", "/replication/qserv/css/shared-scan",
+                             [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
+                                 HttpQservMonitorModule::process(self->controller(), self->name(),
+                                                                 self->_processorConfig, req, resp,
+                                                                 "CSS-SHARED-SCAN");
+                             });
     httpServer()->addHandler("GET", "/replication/sql/table/schema/:database/:table",
                              [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
                                  HttpSqlSchemaModule::process(self->controller(), self->name(),
