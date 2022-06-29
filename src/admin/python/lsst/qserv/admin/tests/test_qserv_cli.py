@@ -126,6 +126,33 @@ def itest_args(**kwargs):
     args.update(kwargs)
     return args
 
+def prepare_data_args(**kwargs):
+    """Get a safely-mutable dict of the launch.launch kwargs, with all the values set to ANY,
+    for use with mock.assert_called_with().
+
+    Parameters
+    ----------
+    **kwargs : dict [`str`: `Any`]
+        keyword argumets to override existing argments, or add new arguments if
+        applicable.
+
+    Returns
+    -------
+    arguments : `dict` [`str` : Union[`unittest.mock.ANY`, `Any`]]
+        A dict of arguments that can be changed with expected values.
+    """
+    args = dict(
+        qserv_root=ANY,
+        itest_container=ANY,
+        qserv_image=ANY,
+        itest_file=ANY,
+        dry=ANY,
+        project=ANY,
+    )
+    args.update(kwargs)
+    return args
+
+
 
 class QservCliTestCase(unittest.TestCase):
     """Tests features of the qserv command line interface."""
@@ -161,7 +188,7 @@ class QservCliTestCase(unittest.TestCase):
         build_mock.assert_called_with(**build_args(qserv_root=flag_root))
 
     @patch.object(launch, "itest", return_value=0)
-    def test_OptDefault_default(self, itest_mock):
+    def test_itest_OptDefault_default(self, itest_mock):
         """Verify that an `opt.OptDefault` option value can be inferred from its
         associated environment variable.
         """
@@ -175,8 +202,24 @@ class QservCliTestCase(unittest.TestCase):
             # folder.
             os.path.join(__file__, "../../../../../../../..")
         )
-        print(expected)
         itest_mock.assert_called_with(**itest_args(qserv_root=expected))
+
+    @patch.object(launch, "prepare_data", return_value=0)
+    def test_prepare_data_OptDefault_default(self, prepare_data_mock):
+        """Verify that an `opt.OptDefault` option value can be inferred from its
+        associated environment variable.
+        """
+        res = self.runner.invoke(qserv, ["prepare-data"], env=env_without_qserv())
+        self.assertEqual(res.exit_code, 0)
+        prepare_data_mock.assert_called_once()
+        expected = os.path.abspath(
+            # This is the location of the path *inside* the build container,
+            # because that's where the unit tests run. This is from the install
+            # location of the unit tests back up the tree to the root qserv
+            # folder.
+            os.path.join(__file__, "../../../../../../../..")
+        )
+        prepare_data_mock.assert_called_with(**prepare_data_args(qserv_root=expected))
 
     def test_env(self):
         """Test that `qserv env` runs without throwing.

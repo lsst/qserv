@@ -167,8 +167,9 @@ def run_integration_tests(
     if not os.path.exists(qserv_testdata_dir):
         raise RuntimeError("qserv_testdata sources are not present.")
 
-    wait_for_czar(tests_data["czar-db-admin-uri"])
-    wait_for_replication_system(tests_data["replication-controller-uri"])
+    if unload or load != False or reload or run_tests:
+        wait_for_czar(tests_data["czar-db-admin-uri"])
+        wait_for_replication_system(tests_data["replication-controller-uri"])
 
     # If unload is True, and load is not specified (default is `None`, means
     # "load if not loaded") then change load to False; do not reload.
@@ -218,3 +219,35 @@ def run_integration_tests(
         ran_tests=run_tests,
         compared_results=compare_results,
     )
+
+
+def prepare_data(
+    tests_yaml: str
+) -> bool:
+    """Top level script to unzip and partition test datasets
+
+    Parameters
+    ----------
+    tests_yaml : `str`
+        Path to the yaml file that contains the details about running the
+        tests. The files will be merged, higher index files get priority.
+
+    Returns
+    -------
+    success : `bool`
+        `True` if all query outputs were the same, otherwise `False`.
+    """
+    with open(tests_yaml) as f:
+        tests_data = yaml.safe_load(f.read())
+
+    qserv_testdata_dir = tests_data["qserv-testdata-dir"]
+
+    if not os.path.exists(qserv_testdata_dir):
+        raise RuntimeError("qserv_testdata sources are not present.")
+
+    itest_load.prepare_data(
+        test_cases_data=tests_data["test_cases"]
+    )
+
+    return True
+

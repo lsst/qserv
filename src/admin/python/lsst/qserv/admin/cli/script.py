@@ -901,6 +901,7 @@ def integration_test(
 ) -> ITestResults:
     if repl_connection is not None:
         _do_smig_block(admin_smig_dir, "replica", repl_connection)
+
     return _integration_test.run_integration_tests(
         unload=unload,
         load=load,
@@ -910,6 +911,14 @@ def integration_test(
         tests_yaml=tests_yaml,
         compare_results=compare_results,
         mysqld_user=mysqld_user_qserv,
+    )
+
+def prepare_data(
+    tests_yaml: str,
+) -> bool:
+
+    return _integration_test.prepare_data(
+        tests_yaml=tests_yaml
     )
 
 

@@ -113,6 +113,7 @@ help_order = [
     "update-schema",
     "itest",
     "itest-rm",
+    "prepare-data",
     "run-dev",
     "run-build",
     "run-debug",
@@ -571,6 +572,33 @@ def itest_rm(project: str, dry: bool) -> None:
     """Remove volumes created by itest."""
     launch.itest_rm(project, dry)
 
+@qserv.command()
+@qserv_image_option()
+@qserv_root_option()
+@project_option()
+@itest_container_name_option()
+@itest_file_option()
+@dry_option()
+def prepare_data(
+    qserv_root: str,
+    itest_container: str,
+    qserv_image: str,
+    itest_file: str,
+    dry: bool,
+    project: str,
+) -> None:
+    """Unzip and partition integration tests datasets.
+
+    Launches a lite-qserv container and uses it to prepare integration tests datasets."""
+    returncode = launch.prepare_data(
+        qserv_root=qserv_root,
+        itest_container=itest_container,
+        qserv_image=qserv_image,
+        itest_file=itest_file,
+        dry=dry,
+        project=project,
+    )
+    sys.exit(returncode)
 
 # These defaults match connection options used in
 # admin/local/docker/compose/docker-compose.yml
