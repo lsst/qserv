@@ -341,7 +341,7 @@ def integration_test(
 ) -> None:
     """Run integration tests using ingested test data.
 
-    TESTS_YAML is the yaml file paths that contains connection information & describes tests to load and run.
+    TESTS_YAML is the yaml file path that contains connection information and describes tests to load and run.
     """
 
     results = script.integration_test(

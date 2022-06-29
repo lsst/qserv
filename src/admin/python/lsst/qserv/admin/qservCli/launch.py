@@ -1151,7 +1151,6 @@ def prepare_data(
     itest_file: str,
     dry: bool,
     project: str,
-
 ) -> int:
     """Unzip and partition integration tests datasets.
 

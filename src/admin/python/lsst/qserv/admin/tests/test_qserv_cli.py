@@ -202,7 +202,6 @@ class QservCliTestCase(unittest.TestCase):
             # folder.
             os.path.join(__file__, "../../../../../../../..")
         )
-        print(expected)
         itest_mock.assert_called_with(**itest_args(qserv_root=expected))
 
     @patch.object(launch, "prepare_data", return_value=0)
@@ -220,7 +219,6 @@ class QservCliTestCase(unittest.TestCase):
             # folder.
             os.path.join(__file__, "../../../../../../../..")
         )
-        print(expected)
         prepare_data_mock.assert_called_with(**prepare_data_args(qserv_root=expected))
 
     def test_env(self):

@@ -332,13 +332,21 @@ def _partition(staging_dir: str, table: LoadTable, data_file: str) -> None:
 
 
 def _prep_table_data(load_table: LoadTable, dest_dir: str) ->  Tuple[str, str]:
-    """ Unzip and partition, if needed, input data for a table
+    """ Unzip and partition, if needed, input data for a table.
+
     Parameters
     ----------
     table : `LoadTable`
         Contains details about the table to which belong processed input files.
     dest_dir : `str`
-        Directory where input files will be unziped and partitioned
+        Directory where input files will be unziped and partitioned.
+
+    Returns
+    -------
+    staging_dir : `str`
+        The absolute path to a folder that has been used to stage files used during processing that do not need to be kept.
+    data_file : `str`
+        The absolute path to the file that contains the table data. (It may have been unzipped to a location different than in table.)
     """
     if load_table.is_gzipped:
         data_file = os.path.join(dest_dir, os.path.splitext(os.path.basename(load_table.data_file))[0])
@@ -539,7 +547,7 @@ def prepare_data(
             shutil.copy(ingest_table_json, dest_dir)
         _log.info("Preparing input dataset %s for test %s inside directory %s", load_db.name, load_db.id, dest_dir)
         for table in load_db.iter_tables():
-            staging_dir, data_file = _prep_table_data(table, dest_dir)
+            _prep_table_data(table, dest_dir)
 
     output_filename = os.path.join(qserv_data_dir, "datasets.tgz")
     _log.info("Archiving input datasets for integration tests to %s", output_filename)
