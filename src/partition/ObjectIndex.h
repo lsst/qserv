@@ -46,14 +46,14 @@ class ChunkLocation;
 namespace lsst::partition {
 
 /**
- * Class ObjectIndex is a singleton serving as a front-end to a specific implementation of
+ * Class ObjectIndex is the named singleton serving as a front-end to a specific implementation of
  * the "secondary" index.
  *
  * Objects of the class can be open in two modes:
  * - WRITE: for writing into an index file at the specified location.
  * - READ: reading from an index via the specified source.
  *
- * Files written in the WRITE mode are open in the "append" mode, hence their previos
+ * Files written in the WRITE mode are open in the "append" mode, hence their previous
  * content won't be truncated. It's up to a client to ensure the files get removed if
  * the clean starting state is required.
  *
@@ -66,7 +66,7 @@ namespace lsst::partition {
  * Normally the path specified in the resource would be a file which was produced
  * in the WRITE mode. The path could have a relative or absolute value. It could also be
  * located on a local or remote filesystem. Since the file would be read sequentially then
- * no specific requirements for file locking or direct access are imposed by this implemenation.
+ * no specific requirements for file locking or direct access are imposed by this implementation.
  *
  * All methods of the class are thread-safe.
  */
@@ -83,13 +83,22 @@ public:
     enum Mode { READ, WRITE };
 
     /**
-     * The factory method.
+     * The factory method for creating/accessing the named indexes.
      *
-     * @return  A reference to the underlining implementation of the index
+     * @param The optional name for the index.
+     * @return  A pointer to the underlining implementation of the index
      */
-    static ObjectIndex& instance() {
-        static ObjectIndex oi;
-        return oi;
+    static ObjectIndex* instance(std::string const& name = std::string()) {
+        static std::mutex mtx;
+        std::lock_guard<std::mutex> lock(mtx);
+        static std::map<std::string, std::unique_ptr<ObjectIndex>> oi;
+        if (auto itr = oi.find(name); itr != oi.end()) {
+            return itr->second.get();
+        } else {
+            auto obj = new ObjectIndex();
+            oi[name].reset(obj);
+            return obj;
+        }
     }
 
     /// @return A value of 'true' if the index is open or created.
@@ -106,7 +115,7 @@ public:
      * @param idFieldName  The name of an output field representing object identifiers.
      * @param chunkIdFieldName  The name of an output field representing chunk identifiers.
      * @param subChunkIdFieldName  The name of an output field representing sub-chunk identifiers.
-     * @throw std::invalid_argument  Invalid specificaton of the fields.
+     * @throw std::invalid_argument  Invalid specification of the fields.
      * @throw std::runtime_error  If the file opening/creation operation failed for another reason.
      */
     void create(std::string const& fileName, csv::Editor const& editor, std::string const& idFieldName,
@@ -122,7 +131,7 @@ public:
      *
      * @param url  An index specification.
      * @param dialect  A dialect for parsing index specifications.
-     * @throw std::invalid_argument  Invalid specificaton of the index.
+     * @throw std::invalid_argument  Invalid specification of the index.
      * @throw std::runtime_error  Failed to open the index.
      */
     void open(std::string const& url, csv::Dialect const& dialect);
@@ -158,7 +167,7 @@ private:
     bool _isOpen = false;
     Mode _mode = Mode::READ;
 
-    /// The mutex is usd for thread-safety of the public API
+    /// The mutex is used for thread-safety of the public API of the index instances
     std::mutex _mtx;
 
     // Attributes of the index open in Mode::READ
