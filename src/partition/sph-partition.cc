@@ -166,24 +166,25 @@ void Worker::map(char const* const begin, char const* const end, Worker::Silo& s
 void Worker::defineOptions(po::options_description& opts) {
     po::options_description part("\\_______________ Partitioning", 80);
     part.add_options()("part.prefix", po::value<std::string>()->default_value("chunk"),
-                       "Chunk file name prefix.")(
-            "part.chunk", po::value<std::string>(),
-            "Optional chunk ID output field name. This field name is appended "
-            "to the output field name list if it isn't already included.")(
-            "part.sub-chunk", po::value<std::string>()->default_value("subChunkId"),
-            "Sub-chunk ID output field name. This field name is appended "
-            "to the output field name list if it isn't already included.")(
-            "part.id", po::value<std::string>(),
-            "The name of a field which has an object identifier. If it's provided then"
-            "then the secondary index will be open or created.")(
-            "part.pos", po::value<std::string>(),
-            "The partitioning longitude and latitude angle field names, "
-            "separated by a comma.")("part.id-url", po::value<std::string>(),
-                                     "Universal resource locator for an existing secondary index.")(
-            "part.disable-chunks", po::bool_switch()->default_value(false),
-            "This flag if present would disable making chunk files in the output folder. "
-            "It's meant to run the tool in the 'dry run' mode, validating input files, "
-            "generating the objectId-to-chunk/sub-chunk index map.");
+                       "Chunk file name prefix.");
+    part.add_options()("part.chunk", po::value<std::string>(),
+                       "Optional chunk ID output field name. This field name is appended "
+                       "to the output field name list if it isn't already included.");
+    part.add_options()("part.sub-chunk", po::value<std::string>()->default_value("subChunkId"),
+                       "Sub-chunk ID output field name. This field name is appended "
+                       "to the output field name list if it isn't already included.");
+    part.add_options()("part.id", po::value<std::string>(),
+                       "The name of a field which has an object identifier. If it's provided then"
+                       "then the secondary index will be open or created.");
+    part.add_options()("part.pos", po::value<std::string>(),
+                       "The partitioning longitude and latitude angle field names, "
+                       "separated by a comma.");
+    part.add_options()("part.id-url", po::value<std::string>(),
+                       "Universal resource locator for an existing secondary index.");
+    part.add_options()("part.disable-chunks", po::bool_switch()->default_value(false),
+                       "This flag if present would disable making chunk files in the output folder. "
+                       "It's meant to run the tool in the 'dry run' mode, validating input files, "
+                       "generating the objectId-to-chunk/sub-chunk index map.");
     Chunker::defineOptions(part);
     opts.add(part);
     defineOutputOptions(opts);

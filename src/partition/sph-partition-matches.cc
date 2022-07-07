@@ -235,26 +235,26 @@ void Worker::finish() {
 void Worker::defineOptions(po::options_description& opts) {
     po::options_description part("\\_______________ Partitioning", 80);
     part.add_options()("part.prefix", po::value<std::string>()->default_value("chunk"),
-                       "Chunk file name prefix.")(
-            "part.chunk", po::value<std::string>(),
-            "Optional chunk ID output field name. This field name is appended "
-            "to the output field name list if it isn't already included.")(
-            "part.sub-chunk", po::value<std::string>()->default_value("subChunkId"),
-            "Sub-chunk ID output field name. This field field name is appended "
-            "to the output field name list if it isn't already included.")(
-            "part.pos1", po::value<std::string>(),
-            "The partitioning longitude and latitude angle field names of the "
-            "first matched entity, separated by a comma.")(
-            "part.pos2", po::value<std::string>(),
-            "The partitioning longitude and latitude angle field names of the "
-            "second matched entity, separated by a comma.")(
-            "part.flags", po::value<std::string>()->default_value("partitioningFlags"),
-            "The partitioning flags output field name. Bit 0, the LSB of the "
-            "field value, is set if the partition of the first entity in the "
-            "match is equal to the partition of the match pair. Likewise, bit "
-            "1 is set if the partition of the second entity is equal to the "
-            "partition of the match pair. This field name is appended to the "
-            "output field name list if it isn't already included.");
+                       "Chunk file name prefix.");
+    part.add_options()("part.chunk", po::value<std::string>(),
+                       "Optional chunk ID output field name. This field name is appended "
+                       "to the output field name list if it isn't already included.");
+    part.add_options()("part.sub-chunk", po::value<std::string>()->default_value("subChunkId"),
+                       "Sub-chunk ID output field name. This field field name is appended "
+                       "to the output field name list if it isn't already included.");
+    part.add_options()("part.pos1", po::value<std::string>(),
+                       "The partitioning longitude and latitude angle field names of the "
+                       "first matched entity, separated by a comma.");
+    part.add_options()("part.pos2", po::value<std::string>(),
+                       "The partitioning longitude and latitude angle field names of the "
+                       "second matched entity, separated by a comma.");
+    part.add_options()("part.flags", po::value<std::string>()->default_value("partitioningFlags"),
+                       "The partitioning flags output field name. Bit 0, the LSB of the "
+                       "field value, is set if the partition of the first entity in the "
+                       "match is equal to the partition of the match pair. Likewise, bit "
+                       "1 is set if the partition of the second entity is equal to the "
+                       "partition of the match pair. This field name is appended to the "
+                       "output field name list if it isn't already included.");
     Chunker::defineOptions(part);
     opts.add(part);
     defineOutputOptions(opts);

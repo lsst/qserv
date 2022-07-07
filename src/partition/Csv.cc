@@ -271,16 +271,17 @@ void Dialect::defineOptions(po::options_description &opts, std::string const &pr
                        "results in a dialect specific default - if quoting is enabled, "
                        "NULL is used. Otherwise, if escaping is enabled, \\N is used "
                        "(assuming \\ is the escape character). If neither is enabled, "
-                       "an empty string is used.")(
-            (prefix + "delimiter").c_str(), po::value<char>()->default_value('\t'),
-            "CSV field delimiter character. Cannot be '\\n' or '\\r'.")((prefix + "quote").c_str(),
-                                                                        po::value<char>()->default_value('"'),
-                                                                        "CSV field quoting character.")(
-            (prefix + "no-quote").c_str(), po::bool_switch()->default_value(false),
-            "Disable CSV field quoting.")((prefix + "escape").c_str(), po::value<char>()->default_value('\\'),
-                                          "CSV escape character.")((prefix + "no-escape").c_str(),
-                                                                   po::bool_switch()->default_value(false),
-                                                                   "Disable CSV character escaping.");
+                       "an empty string is used.");
+    opts.add_options()((prefix + "delimiter").c_str(), po::value<char>()->default_value('\t'),
+                       "CSV field delimiter character. Cannot be '\\n' or '\\r'.");
+    opts.add_options()((prefix + "quote").c_str(), po::value<char>()->default_value('"'),
+                       "CSV field quoting character.");
+    opts.add_options()((prefix + "no-quote").c_str(), po::bool_switch()->default_value(false),
+                       "Disable CSV field quoting.");
+    opts.add_options()((prefix + "escape").c_str(), po::value<char>()->default_value('\\'),
+                       "CSV escape character.");
+    opts.add_options()((prefix + "no-escape").c_str(), po::bool_switch()->default_value(false),
+                       "Disable CSV character escaping.");
 }
 
 // Scan the given string for occurrences of the CR, LF, escape, quote or

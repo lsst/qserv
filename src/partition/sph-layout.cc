@@ -139,21 +139,19 @@ char const* help =
 int main(int argc, char const* const* argv) {
     try {
         po::options_description desc("\\_______________ Layout", 80);
-        desc.add_options()
-
-                ("help,h", ::help)("verbose,v", "Produce verbose output.")
-
-                        ("part.num-stripes", po::value<int>()->default_value(85), "Chunk file name prefix.")(
-                                "part.num-sub-stripes", po::value<int>()->default_value(12),
-                                "The number of sub-stripes to divide each stripe into.")(
-                                "part.overlap", po::value<double>()->default_value(0.01),
-                                "Chunk/sub-chunk overlap radius (deg).")(
-                                "chunk2worker", po::value<std::string>(), "Chunk-to-worker map.")(
-                                "chunk", po::value<std::vector<int32_t>>(), "Chunk identifier.")(
-                                "min-chunk", po::value<int32_t>()->default_value(0),
-                                "Minimal chunk number in a range if no specific chunks wer epresented")(
-                                "max-chunk", po::value<int32_t>()->default_value(0),
-                                "Maximum chunk number in a range if no specific chunks wer epresented");
+        desc.add_options()("help,h", ::help)("verbose,v", "Produce verbose output.");
+        desc.add_options()("part.num-stripes", po::value<int>()->default_value(85),
+                           "Chunk file name prefix.");
+        desc.add_options()("part.num-sub-stripes", po::value<int>()->default_value(12),
+                           "The number of sub-stripes to divide each stripe into.");
+        desc.add_options()("part.overlap", po::value<double>()->default_value(0.01),
+                           "Chunk/sub-chunk overlap radius (deg).");
+        desc.add_options()("chunk2worker", po::value<std::string>(), "Chunk-to-worker map.");
+        desc.add_options()("chunk", po::value<std::vector<int32_t>>(), "Chunk identifier.");
+        desc.add_options()("min-chunk", po::value<int32_t>()->default_value(0),
+                           "Minimal chunk number in a range if no specific chunks were presented");
+        desc.add_options()("max-chunk", po::value<int32_t>()->default_value(0),
+                           "Maximum chunk number in a range if no specific chunks were presented");
 
         po::positional_options_description pos_descr;
         pos_descr.add("chunk", -1);

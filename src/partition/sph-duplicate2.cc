@@ -89,83 +89,63 @@ public:
                 "\n"
                 "OPTIONS AND PARAMETERS");
 
-        desc.add_options()
-
-                // General options
-
-                ("help,h", "Print this help")("debug,d", "Print debug info")("verbose,v",
-                                                                             "Produce verbose output.")
-
-                // Spatial configuration of the input
-
-                ("chunk,c", po::value<uint32_t>(),
-                 "Chunk identifier. The identifier may also be passed into the application "
-                 "as a positional parameter.")("part.num-stripes,s", po::value<int>()->default_value(85),
-                                               "The number of stripes.")(
-                        "part.num-sub-stripes,b", po::value<int>()->default_value(12),
-                        "The number of sub-stripes to divide each stripe into.")(
-                        "part.overlap,p", po::value<double>()->default_value(0.01),
-                        "Chunk/sub-chunk overlap radius (deg).")
-
-                // Table schema definitions (needed to parse the input TSV files)
-
-                ("coldef.object,O", po::value<std::string>(),
-                 "Input file with the names of all columns of the Object table.")(
-                        "coldef.source,S", po::value<std::string>(),
-                        "Input file with the names of all columns of the Source table.")(
-                        "coldef.forcedsource,F", po::value<std::string>(),
-                        "Input file with the names of all columns of the ForcedSource table.")
-
-                // Data folders
-
-                ("indir,i", po::value<std::string>(), "Input folder with TSV files")(
-                        "outdir,o", po::value<std::string>(), "Output folder for modified TSV files.")
-
-                // Parameters affecting the transformation process for the RA/DECL
-                // and primary keys.
-
-                ("duplicate.ra-shift,t", po::value<double>(),
-                 "Shift to the right in the RA dimension (degrees)")
-
-                        ("duplicate.htm-subdivision-level,l", po::value<int>()->default_value(0),
-                         "The number of HTM subdivision level to disambiguate Object IDs "
-                         "(in the range of 9 to 13.\n"
-                         "NOTE: this parameter and 'duplicate.htm-maps' are mutually exclusive")
-
-                                ("duplicate.htm-maps,m", po::value<std::string>(),
-                                 "The input folder with maps for object and source buckets "
-                                 "(max sub-IDs per htm8 bucket)\n")
-
-                                        ("duplicate.store-input,D",
-                                         "Store input rows in the output streams as well (if 'true')")
-
-                                                ("duplicate.force-new-keys,N",
-                                                 "Force the new 0-based sequence of the Object IDs for both "
-                                                 "duplicate "
-                                                 "and input objects when option 'duplicate.store-input' is "
-                                                 "used.\n"
-                                                 "NOTE: this parameter and 'duplicate.htm-maps' are mutually "
-                                                 "exclusive")
-
-                                                        ("duplicate.do-not-store,n",
-                                                         "The 'dry run' mode - do not write output files (if "
-                                                         "'true')")
-
-                // Options meant to reduce the amount of generated data. May be useful
-                // for debugging/verification purposes.
-
-                ("max-object-rows", po::value<size_t>()->default_value(0),
-                 "Read at most the specified number of input Object rows (if not 0)")
-
-                        ("max-source-rows", po::value<size_t>()->default_value(0),
-                         "Read at most the specified number of input Source rows (if not 0)")
-
-                                ("max-forcedsource-rows", po::value<size_t>()->default_value(0),
-                                 "Read at most the specified number of input ForcedSource rows (if not 0)")
-
-                                        ("where-object-id", po::value<uint64_t>()->default_value(0),
-                                         "Read all, process only  subset of rows related to that Object ID "
-                                         "(if not 0)");
+        // General options
+        desc.add_options()("help,h", "Print this help")("debug,d", "Print debug info");
+        desc.add_options()("verbose,v", "Produce verbose output.");
+        // Spatial configuration of the input
+        desc.add_options()("chunk,c", po::value<uint32_t>(),
+                           "Chunk identifier. The identifier may also be passed into the application "
+                           "as a positional parameter.");
+        desc.add_options()("part.num-stripes,s", po::value<int>()->default_value(85),
+                           "The number of stripes.");
+        desc.add_options()("part.num-sub-stripes,b", po::value<int>()->default_value(12),
+                           "The number of sub-stripes to divide each stripe into.");
+        desc.add_options()("part.overlap,p", po::value<double>()->default_value(0.01),
+                           "Chunk/sub-chunk overlap radius (deg).");
+        // Table schema definitions (needed to parse the input TSV files)
+        desc.add_options()("coldef.object,O", po::value<std::string>(),
+                           "Input file with the names of all columns of the Object table.");
+        desc.add_options()("coldef.source,S", po::value<std::string>(),
+                           "Input file with the names of all columns of the Source table.");
+        desc.add_options()("coldef.forcedsource,F", po::value<std::string>(),
+                           "Input file with the names of all columns of the ForcedSource table.");
+        // Data folders
+        desc.add_options()("indir,i", po::value<std::string>(), "Input folder with TSV files");
+        desc.add_options()("outdir,o", po::value<std::string>(), "Output folder for modified TSV files.");
+        // Parameters affecting the transformation process for the RA/DECL
+        // and primary keys.
+        desc.add_options()("duplicate.ra-shift,t", po::value<double>(),
+                           "Shift to the right in the RA dimension (degrees)");
+        desc.add_options()("duplicate.htm-subdivision-level,l", po::value<int>()->default_value(0),
+                           "The number of HTM subdivision level to disambiguate Object IDs "
+                           "(in the range of 9 to 13.\n"
+                           "NOTE: this parameter and 'duplicate.htm-maps' are mutually exclusive");
+        desc.add_options()("duplicate.htm-maps,m", po::value<std::string>(),
+                           "The input folder with maps for object and source buckets "
+                           "(max sub-IDs per htm8 bucket)\n");
+        desc.add_options()("duplicate.store-input,D",
+                           "Store input rows in the output streams as well (if 'true')");
+        desc.add_options()("duplicate.force-new-keys,N",
+                           "Force the new 0-based sequence of the Object IDs for both "
+                           "duplicate "
+                           "and input objects when option 'duplicate.store-input' is "
+                           "used.\n"
+                           "NOTE: this parameter and 'duplicate.htm-maps' are mutually "
+                           "exclusive");
+        desc.add_options()("duplicate.do-not-store,n",
+                           "The 'dry run' mode - do not write output files (if "
+                           "'true')");
+        // Options meant to reduce the amount of generated data. May be useful
+        // for debugging/verification purposes.
+        desc.add_options()("max-object-rows", po::value<size_t>()->default_value(0),
+                           "Read at most the specified number of input Object rows (if not 0)");
+        desc.add_options()("max-source-rows", po::value<size_t>()->default_value(0),
+                           "Read at most the specified number of input Source rows (if not 0)");
+        desc.add_options()("max-forcedsource-rows", po::value<size_t>()->default_value(0),
+                           "Read at most the specified number of input ForcedSource rows (if not 0)");
+        desc.add_options()("where-object-id", po::value<uint64_t>()->default_value(0),
+                           "Read all, process only  subset of rows related to that Object ID "
+                           "(if not 0)");
 
         po::positional_options_description chunk_descr;
         chunk_descr.add("chunk", -1);

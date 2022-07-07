@@ -246,11 +246,11 @@ void Chunker::getSubChunks(std::vector<int32_t>& subChunks, int32_t chunkId) con
 
 void Chunker::defineOptions(po::options_description& opts) {
     opts.add_options()("part.num-stripes", po::value<int32_t>()->default_value(18),
-                       "The number of latitude angle stripes to divide the sky into.")(
-            "part.num-sub-stripes", po::value<int32_t>()->default_value(100),
-            "The number of sub-stripes to divide each stripe into.")("part.overlap",
-                                                                     po::value<double>()->default_value(0.01),
-                                                                     "Chunk/sub-chunk overlap radius (deg).");
+                       "The number of latitude angle stripes to divide the sky into.");
+    opts.add_options()("part.num-sub-stripes", po::value<int32_t>()->default_value(100),
+                       "The number of sub-stripes to divide each stripe into.");
+    opts.add_options()("part.overlap", po::value<double>()->default_value(0.01),
+                       "Chunk/sub-chunk overlap radius (deg).");
 }
 
 void Chunker::_initialize(double overlap, int32_t numStripes, int32_t numSubStripesPerStripe) {

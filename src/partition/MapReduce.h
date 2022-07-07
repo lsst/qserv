@@ -484,14 +484,14 @@ void JobBase<DerivedT, WorkerT>::defineOptions(boost::program_options::options_d
     namespace po = boost::program_options;
     po::options_description mr("\\_________________ Map-Reduce", 80);
     mr.add_options()("mr.block-size", po::value<size_t>()->default_value(4),
-                     "The IO block size in MiB. Must be between 1 and 1024.")(
-            "mr.num-workers", po::value<uint32_t>()->default_value(1),
-            "The number of worker threads to use - must be at least 1.")(
-            "mr.pool-size", po::value<size_t>()->default_value(1024),
-            "Map-reduce memory pool size in MiB. This determines how much "
-            "data will be accumulated in memory prior to data reduction / "
-            "output. This is a soft limit, and so should probably not be "
-            "set to more than 75% of available system memory.");
+                     "The IO block size in MiB. Must be between 1 and 1024.");
+    mr.add_options()("mr.num-workers", po::value<uint32_t>()->default_value(1),
+                     "The number of worker threads to use - must be at least 1.");
+    mr.add_options()("mr.pool-size", po::value<size_t>()->default_value(1024),
+                     "Map-reduce memory pool size in MiB. This determines how much "
+                     "data will be accumulated in memory prior to data reduction / "
+                     "output. This is a soft limit, and so should probably not be "
+                     "set to more than 75% of available system memory.");
     opts.add(mr);
     WorkerT::defineOptions(opts);
 }

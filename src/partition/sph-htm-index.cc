@@ -198,10 +198,10 @@ void Worker::defineOptions(po::options_description& opts) {
     po::options_description indexing("\\_______________ HTM indexing", 80);
     indexing.add_options()("htm.level", po::value<int>()->default_value(8), "HTM index subdivision level.");
     po::options_description part("\\_______________ Partitioning", 80);
-    part.add_options()("id", po::value<std::string>(), "The name of the record ID input field.")(
-            "part.pos", po::value<std::string>(),
-            "The partitioning longitude and latitude angle field names, "
-            "separated by a comma.");
+    part.add_options()("id", po::value<std::string>(), "The name of the record ID input field.");
+    part.add_options()("part.pos", po::value<std::string>(),
+                       "The partitioning longitude and latitude angle field names, "
+                       "separated by a comma.");
     opts.add(indexing).add(part);
     defineOutputOptions(opts);
     csv::Editor::defineOptions(opts);
