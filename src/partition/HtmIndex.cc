@@ -23,6 +23,7 @@
 #include "partition/HtmIndex.h"
 
 #include <algorithm>
+#include <functional>
 #include <iomanip>
 #include <stdexcept>
 
@@ -31,7 +32,6 @@
 #include "partition/Constants.h"
 #include "partition/FileUtils.h"
 #include "partition/Geometry.h"
-#include "partition/Hash.h"
 
 namespace fs = boost::filesystem;
 
@@ -76,7 +76,7 @@ uint32_t HtmIndex::mapToNonEmpty(uint32_t id) const {
         }
         std::sort(_keys.begin(), _keys.end());
     }
-    return _keys[hash(id) % _keys.size()];
+    return _keys[std::hash<uint32_t>{}(id) % _keys.size()];
 }
 
 void HtmIndex::write(fs::path const& path, bool truncate) const {

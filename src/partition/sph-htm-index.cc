@@ -24,6 +24,7 @@
 /// \brief The HTM indexer.
 
 #include <cstdio>
+#include <functional>
 #include <iostream>
 #include <stdexcept>
 #include <string>
@@ -40,7 +41,6 @@
 #include "partition/Csv.h"
 #include "partition/FileUtils.h"
 #include "partition/Geometry.h"
-#include "partition/Hash.h"
 #include "partition/HtmIndex.h"
 #include "partition/MapReduce.h"
 
@@ -70,7 +70,7 @@ struct Record<Key> {
     explicit Record(Key const& k) : id(k.id), htmId(k.htmId), size(0), data(0) {}
 
     /// Hash records by HTM ID.
-    uint32_t hash() const { return partition::hash(htmId); }
+    uint32_t hash() const { return std::hash<uint32_t>{}(htmId); }
 
     /// Order records by HTM ID.
     bool operator<(Record const& r) const { return htmId < r.htmId; }
@@ -213,7 +213,7 @@ void Worker::_openFiles(uint32_t htmId) {
     if (_numNodes > 1) {
         // Files go into a node-specific sub-directory.
         char subdir[32];
-        uint32_t node = hash(htmId) % _numNodes;
+        uint32_t node = std::hash<uint32_t>{}(htmId) % _numNodes;
         std::snprintf(subdir, sizeof(subdir), "node_%05lu", static_cast<unsigned long>(node));
         p = p / subdir;
         fs::create_directory(p);

@@ -22,6 +22,7 @@
 
 #include "partition/Chunker.h"
 
+#include <functional>
 #include <stdexcept>
 
 #include "partition/ConfigStore.h"
@@ -224,7 +225,7 @@ std::vector<int32_t> const Chunker::getChunksIn(SphericalBox const& region, uint
     for (int32_t stripe = minStripe; stripe <= maxStripe; ++stripe) {
         for (int32_t chunk = 0; chunk < _numChunksPerStripe[stripe]; ++chunk) {
             int32_t const chunkId = _getChunkId(stripe, chunk);
-            if (hash(static_cast<uint32_t>(chunkId)) % numNodes == node) {
+            if (std::hash<uint32_t>{}(static_cast<uint32_t>(chunkId)) % numNodes == node) {
                 SphericalBox box = getChunkBounds(chunkId);
                 if (region.intersects(box)) {
                     chunks.push_back(chunkId);

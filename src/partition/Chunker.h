@@ -27,6 +27,7 @@
 #ifndef LSST_PARTITION_CHUNKER_H
 #define LSST_PARTITION_CHUNKER_H
 
+#include <functional>
 #include <stdint.h>
 #include <utility>
 #include <vector>
@@ -35,7 +36,6 @@
 #include "boost/scoped_array.hpp"
 
 #include "Geometry.h"
-#include "Hash.h"
 
 namespace lsst::partition {
 class ConfigStore;
@@ -69,7 +69,7 @@ public:
             : chunkId(chunkId_), subChunkId(subChunkId_), overlap(overlap_) {}
 
     /// Hash chunk locations by chunk ID.
-    uint32_t hash() const { return partition::hash(static_cast<uint32_t>(chunkId)); }
+    uint32_t hash() const { return std::hash<uint32_t>{}(static_cast<uint32_t>(chunkId)); }
 
     /// Order chunk locations by chunk ID.
     bool operator<(ChunkLocation const &loc) const { return chunkId < loc.chunkId; }

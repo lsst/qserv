@@ -47,6 +47,7 @@
 /// within the overlap radius of Vᵢ.
 
 #include <cstdio>
+#include <functional>
 #include <iostream>
 #include <stdexcept>
 #include <string>
@@ -267,7 +268,7 @@ void Worker::_openFile(int32_t chunkId) {
     if (_numNodes > 1) {
         // Files go into a node-specific sub-directory.
         char subdir[32];
-        uint32_t node = hash(static_cast<uint32_t>(chunkId)) % _numNodes;
+        uint32_t node = std::hash<uint32_t>{}(static_cast<uint32_t>(chunkId)) % _numNodes;
         std::snprintf(subdir, sizeof(subdir), "node_%05lu", static_cast<unsigned long>(node));
         p = p / subdir;
         fs::create_directory(p);

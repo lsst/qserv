@@ -23,8 +23,9 @@
 /// \file
 /// \brief The spherical data duplicator.
 
-#include <cstdio>
 #include <algorithm>
+#include <cstdio>
+#include <functional>
 #include <iostream>
 #include <limits>
 #include <stdexcept>
@@ -207,7 +208,9 @@ private:
     // TODO: It's unclear how well this approach works - there is likely
     // to be some statistical correlation between IDs and sky positions, and
     // the hashing function employed is weak (though cheap to compute).
-    bool _shouldDiscard(int64_t id) const { return hash(static_cast<uint64_t>(id) ^ _seed) > _maxId; }
+    bool _shouldDiscard(int64_t id) const {
+        return std::hash<uint64_t>{}(static_cast<uint64_t>(id) ^ _seed) > _maxId;
+    }
 
     void _setup(uint32_t htmId);
 
