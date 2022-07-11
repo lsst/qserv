@@ -57,17 +57,17 @@ ConfigStore parseCommandLine(po::options_description const& options, int argc, c
     ConfigStore config;
     // Define common options.
     po::options_description common("\\_____________________ Common", 80);
-    common.add_options()("help,h", po::bool_switch()->default_value(false), "Demystify program usage.")(
-            "verbose,v", po::bool_switch()->default_value(false), "Chatty output.")(
-            "config-file,c", po::value<std::vector<std::string>>(),
-            "The name of a configuration file containing program option values "
-            "in a JSON-like format. May be specified any number of times. If an "
-            "option is specified more than once, the first specification "
-            "usually takes precedence. Command line options have the highest "
-            "precedence, followed by configuration files, which are parsed in "
-            "the order specified on the command-line and should therefore be "
-            "listed in most to least specific order. Note that the config-file "
-            "option itself is not recognized inside of a configuration file.");
+    common.add_options()("help,h", po::bool_switch()->default_value(false), "Demystify program usage.");
+    common.add_options()("verbose,v", po::bool_switch()->default_value(false), "Chatty output.");
+    common.add_options()("config-file,c", po::value<std::vector<std::string>>(),
+                         "The name of a configuration file containing program option values "
+                         "in a JSON-like format. May be specified any number of times. If an "
+                         "option is specified more than once, the first specification "
+                         "usually takes precedence. Command line options have the highest "
+                         "precedence, followed by configuration files, which are parsed in "
+                         "the order specified on the command-line and should therefore be "
+                         "listed in most to least specific order. Note that the config-file "
+                         "option itself is not recognized inside of a configuration file.");
     po::options_description all;
     all.add(common).add(options);
     // Parse command line. Older boost versions (1.41) require the const_cast.
@@ -163,13 +163,13 @@ InputLines const makeInputLines(ConfigStore const& config) {
 
 void defineOutputOptions(po::options_description& opts) {
     po::options_description output("\\_____________________ Output", 80);
-    output.add_options()("out.dir", po::value<std::string>(), "The directory to write output files to.")(
-            "out.num-nodes", po::value<uint32_t>()->default_value(1u),
-            "The number of down-stream nodes that will be using the output "
-            "files. If this is more than 1, then output files are assigned to "
-            "nodes by hashing and are placed into a sub-directory of out.dir "
-            "named node_XXXXX, where XXXXX is a logical node ID between 0 and "
-            "out.num-nodes - 1.");
+    output.add_options()("out.dir", po::value<std::string>(), "The directory to write output files to.");
+    output.add_options()("out.num-nodes", po::value<uint32_t>()->default_value(1u),
+                         "The number of down-stream nodes that will be using the output "
+                         "files. If this is more than 1, then output files are assigned to "
+                         "nodes by hashing and are placed into a sub-directory of out.dir "
+                         "named node_XXXXX, where XXXXX is a logical node ID between 0 and "
+                         "out.num-nodes - 1.");
     opts.add(output);
 }
 

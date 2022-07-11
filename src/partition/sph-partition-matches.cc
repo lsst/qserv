@@ -47,6 +47,7 @@
 /// within the overlap radius of Vᵢ.
 
 #include <cstdio>
+#include <functional>
 #include <iostream>
 #include <stdexcept>
 #include <string>
@@ -65,6 +66,7 @@
 #include "partition/Csv.h"
 #include "partition/FileUtils.h"
 #include "partition/MapReduce.h"
+#include "partition/ObjectIndex.h"
 
 namespace fs = boost::filesystem;
 namespace po = boost::program_options;
@@ -97,11 +99,29 @@ public:
     static void defineOptions(po::options_description& opts);
 
 private:
+    // FIXME: The column 'flag' doesn't seem to be in use by the current version of Qserv.
+    // There is a possibility that the column is required for Q&A-ing the partitioning process
+    // of the RefMatch tables. Should this be a case consider schema migration of the RefMatch
+    // tables to store named variants of the MySQL type ENUM instead of the plain numbers.
+    static char const _FLAG_LEFT_MATCH = '1';
+    static char const _FLAG_RIGHT_MATCH = '2';
+    static char const _FLAG_FULL_MATCH = '3';
+
+    /// Partition by the director indexes of the references tables.
+    void _mapByObjectIndex(char const* const begin, char const* const end, Worker::Silo& silo);
+
+    /// Partition by RA/DEC found in the match table
+    void _mapByRaDec(char const* const begin, char const* const end, Worker::Silo& silo);
+
     void _openFile(int32_t chunkId);
 
     csv::Editor _editor;
     std::pair<int, int> _pos1;
     std::pair<int, int> _pos2;
+    std::string _id1FieldName;
+    std::string _id2FieldName;
+    int _id1Field;
+    int _id2Field;
     int _chunkIdField;
     int _subChunkIdField;
     int _flagsField;
@@ -112,12 +132,23 @@ private:
     fs::path _outputDir;
     std::string _prefix;
     BufferedAppender _chunk;
+    // Cached pointers to the indexes (if used by the class) are needed
+    // to avoid the extra performance penalty when calling the synchronized
+    // factory method of the class. It's safe to use the cache since the pointers
+    // are immutable.
+    ObjectIndex* _objectIndex1 = nullptr;
+    ObjectIndex* _objectIndex2 = nullptr;
+    bool _abortOnMissingId1 = false;
+    bool _abortOnMissingId2 = false;
+    bool _abortOnChunkMismatch = false;
 };
 
 Worker::Worker(ConfigStore const& config)
         : _editor(config),
           _pos1(-1, -1),
           _pos2(-1, -1),
+          _id1Field(-1),
+          _id2Field(-1),
           _chunkIdField(-1),
           _subChunkIdField(-1),
           _flagsField(-1),
@@ -127,27 +158,67 @@ Worker::Worker(ConfigStore const& config)
           _numNodes(config.get<uint32_t>("out.num-nodes")),
           _outputDir(config.get<std::string>("out.dir").c_str()),   // defend against GCC PR21334
           _prefix(config.get<std::string>("part.prefix").c_str()),  // defend against GCC PR21334
-          _chunk(config.get<size_t>("mr.block-size") * MiB) {
+          _chunk(config.get<size_t>("mr.block-size") * MiB),
+          _objectIndex1(ObjectIndex::instance("1")),
+          _objectIndex2(ObjectIndex::instance("2")),
+          _abortOnMissingId1(config.flag("part.id1-missing-abort")),
+          _abortOnMissingId2(config.flag("part.id2-missing-abort")),
+          _abortOnChunkMismatch(config.flag("part.chunk-mismatch-abort")) {
     if (_numNodes == 0 || _numNodes > 99999u) {
         throw std::runtime_error(
                 "The --out.num-nodes option value must be "
                 "between 1 and 99999.");
     }
     // Map field names of interest to field indexes.
-    if (!config.has("part.pos1") || !config.has("part.pos2")) {
-        throw std::runtime_error(
-                "The --part.pos1 and/or --part.pos2 "
-                "option was not specified.");
-    }
     FieldNameResolver fields(_editor);
-    std::string s = config.get<std::string>("part.pos1");
-    std::pair<std::string, std::string> p = parseFieldNamePair("part.pos1", s);
-    _pos1.first = fields.resolve("part.pos1", s, p.first);
-    _pos1.second = fields.resolve("part.pos1", s, p.second);
-    s = config.get<std::string>("part.pos2");
-    p = parseFieldNamePair("part.pos2", s);
-    _pos2.first = fields.resolve("part.pos2", s, p.first);
-    _pos2.second = fields.resolve("part.pos2", s, p.second);
+    if (config.has("part.pos1") != config.has("part.pos2")) {
+        throw std::runtime_error(
+                "Both options --part.pos1 and --part.pos2 "
+                "should be specified if either was provided.");
+    }
+    if (config.has("part.id1") != config.has("part.id2")) {
+        throw std::runtime_error(
+                "Both options --part.id1 and --part.id2 "
+                "should be specified if either was provided.");
+    }
+    if (config.has("part.pos1") && config.has("part.id1")) {
+        throw std::runtime_error(
+                "Pairs of options --part.pos1/--part.pos2 and --part.id1/--part.id2 "
+                "are mutually exclusive.");
+    }
+    if (!config.has("part.pos1") && !config.has("part.id1")) {
+        throw std::runtime_error(
+                "Neither pair of options --part.pos1/--part.pos2 or --part.id1/--part.id2 "
+                "was specified.");
+    }
+    std::string s;
+    if (config.has("part.pos1")) {
+        s = config.get<std::string>("part.pos1");
+        std::pair<std::string, std::string> p = parseFieldNamePair("part.pos1", s);
+        _pos1.first = fields.resolve("part.pos1", s, p.first);
+        _pos1.second = fields.resolve("part.pos1", s, p.second);
+        s = config.get<std::string>("part.pos2");
+        p = parseFieldNamePair("part.pos2", s);
+        _pos2.first = fields.resolve("part.pos2", s, p.first);
+        _pos2.second = fields.resolve("part.pos2", s, p.second);
+    } else {
+        _id1FieldName = config.get<std::string>("part.id1");
+        _id2FieldName = config.get<std::string>("part.id2");
+        _id1Field = fields.resolve("part.id1", _id1FieldName);
+        _id2Field = fields.resolve("part.id2", _id2FieldName);
+        // The objectID partitioning requires both input "secondary" indexes to exist
+        std::string const url1 = config.get<std::string>("part.id1-url");
+        if (url1.empty()) {
+            throw std::runtime_error("Secondary index URL --part.id1-url was not specified.");
+        }
+        std::string const url2 = config.get<std::string>("part.id2-url");
+        if (url2.empty()) {
+            throw std::runtime_error("Secondary index URL --part.id2-url was not specified.");
+        }
+        _objectIndex1->open(url1, _editor.getOutputDialect());
+        _objectIndex2->open(url2, _editor.getOutputDialect());
+    }
+    // Common parameters for both partitioning variants
     if (config.has("part.chunk")) {
         s = config.get<std::string>("part.chunk");
         _chunkIdField = fields.resolve("part.chunk", s);
@@ -159,56 +230,10 @@ Worker::Worker(ConfigStore const& config)
 }
 
 void Worker::map(char const* const begin, char const* const end, Worker::Silo& silo) {
-    std::pair<double, double> sc1, sc2;
-    ChunkLocation loc1, loc2;
-    char const* cur = begin;
-    while (cur < end) {
-        cur = _editor.readRecord(cur, end);
-        bool null1 = _editor.isNull(_pos1.first) || _editor.isNull(_pos1.second);
-        bool null2 = _editor.isNull(_pos2.first) || _editor.isNull(_pos2.second);
-        if (null1 && null2) {
-            throw std::runtime_error(
-                    "Both partitioning positions in a match "
-                    "record contain NULLs.");
-        }
-        if (!null1) {
-            sc1.first = _editor.get<double>(_pos1.first);
-            sc1.second = _editor.get<double>(_pos1.second);
-            loc1 = _chunker.locate(sc1);
-        }
-        if (!null2) {
-            sc2.first = _editor.get<double>(_pos2.first);
-            sc2.second = _editor.get<double>(_pos2.second);
-            loc2 = _chunker.locate(sc2);
-        }
-        if (!null1) {
-            _editor.set(_chunkIdField, loc1.chunkId);
-            _editor.set(_subChunkIdField, loc1.subChunkId);
-            if (!null2) {
-                // Both positions are valid.
-                if (angSep(cartesian(sc1), cartesian(sc2)) * DEG_PER_RAD >
-                    _chunker.getOverlap() - EPSILON_DEG) {
-                    throw std::runtime_error(
-                            "Partitioning positions in match "
-                            "record are separated by more "
-                            "than the overlap radius.");
-                }
-                if (loc1.chunkId == loc2.chunkId) {
-                    // Both positions are in the same chunk.
-                    _editor.set(_flagsField, '3');
-                    silo.add(loc1, _editor);
-                    continue;
-                }
-            }
-            _editor.set(_flagsField, '1');
-            silo.add(loc1, _editor);
-        }
-        if (!null2) {
-            _editor.set(_chunkIdField, loc2.chunkId);
-            _editor.set(_subChunkIdField, loc2.subChunkId);
-            _editor.set(_flagsField, '2');
-            silo.add(loc2, _editor);
-        }
+    if (_id1Field != -1) {
+        _mapByObjectIndex(begin, end, silo);
+    } else {
+        _mapByRaDec(begin, end, silo);
     }
 }
 
@@ -235,26 +260,49 @@ void Worker::finish() {
 void Worker::defineOptions(po::options_description& opts) {
     po::options_description part("\\_______________ Partitioning", 80);
     part.add_options()("part.prefix", po::value<std::string>()->default_value("chunk"),
-                       "Chunk file name prefix.")(
-            "part.chunk", po::value<std::string>(),
-            "Optional chunk ID output field name. This field name is appended "
-            "to the output field name list if it isn't already included.")(
-            "part.sub-chunk", po::value<std::string>()->default_value("subChunkId"),
-            "Sub-chunk ID output field name. This field field name is appended "
-            "to the output field name list if it isn't already included.")(
-            "part.pos1", po::value<std::string>(),
-            "The partitioning longitude and latitude angle field names of the "
-            "first matched entity, separated by a comma.")(
-            "part.pos2", po::value<std::string>(),
-            "The partitioning longitude and latitude angle field names of the "
-            "second matched entity, separated by a comma.")(
-            "part.flags", po::value<std::string>()->default_value("partitioningFlags"),
-            "The partitioning flags output field name. Bit 0, the LSB of the "
-            "field value, is set if the partition of the first entity in the "
-            "match is equal to the partition of the match pair. Likewise, bit "
-            "1 is set if the partition of the second entity is equal to the "
-            "partition of the match pair. This field name is appended to the "
-            "output field name list if it isn't already included.");
+                       "Chunk file name prefix.");
+    part.add_options()("part.chunk", po::value<std::string>(),
+                       "Optional chunk ID output field name. This field name is appended "
+                       "to the output field name list if it isn't already included.");
+    part.add_options()("part.sub-chunk", po::value<std::string>()->default_value("subChunkId"),
+                       "Sub-chunk ID output field name. This field field name is appended "
+                       "to the output field name list if it isn't already included.");
+    part.add_options()("part.pos1", po::value<std::string>(),
+                       "The partitioning longitude and latitude angle field names of the "
+                       "first matched entity, separated by a comma.");
+    part.add_options()("part.pos2", po::value<std::string>(),
+                       "The partitioning longitude and latitude angle field names of the "
+                       "second matched entity, separated by a comma.");
+    part.add_options()("part.id1", po::value<std::string>(),
+                       "The name of a field which has an object identifier. If it's provided "
+                       "then the secondary index will be open and used for partitioning.");
+    part.add_options()("part.id2", po::value<std::string>(),
+                       "The name of a field which has an object identifier. If it's provided "
+                       "then the secondary index will be open and used for partitioning.");
+    part.add_options()("part.id1-url", po::value<std::string>(),
+                       "Universal resource locator for an existing secondary index.");
+    part.add_options()("part.id2-url", po::value<std::string>(),
+                       "Universal resource locator for an existing secondary index.");
+    part.add_options()("part.id1-missing-abort", po::bool_switch()->default_value(false),
+                       "Abort processing if no entry was found in the index map for "
+                       "the identifier. Otherwise just complain and assume that no "
+                       "chunk info is available for the identifier.");
+    part.add_options()("part.id2-missing-abort", po::bool_switch()->default_value(false),
+                       "Abort processing if no entry was found in the index map for "
+                       "the identifier. Otherwise just complain and assume that no "
+                       "chunk info is available for the identifier.");
+    part.add_options()("part.chunk-mismatch-abort", po::bool_switch()->default_value(false),
+                       "Abort processing if the chunk numbers found in the index maps for "
+                       "the matched identifiers aren't the same. Otherwise just complain "
+                       "and assume that the matched objects are still within the specified "
+                       "overlap radius.");
+    part.add_options()("part.flags", po::value<std::string>()->default_value("partitioningFlags"),
+                       "The partitioning flags output field name. Bit 0, the LSB of the "
+                       "field value, is set if the partition of the first entity in the "
+                       "match is equal to the partition of the match pair. Likewise, bit "
+                       "1 is set if the partition of the second entity is equal to the "
+                       "partition of the match pair. This field name is appended to the "
+                       "output field name list if it isn't already included.");
     Chunker::defineOptions(part);
     opts.add(part);
     defineOutputOptions(opts);
@@ -262,12 +310,136 @@ void Worker::defineOptions(po::options_description& opts) {
     defineInputOptions(opts);
 }
 
+void Worker::_mapByObjectIndex(char const* const begin, char const* const end, Worker::Silo& silo) {
+    std::string id1, id2;
+    std::pair<int32_t, int32_t> chunkSubChunk1, chunkSubChunk2;
+    char const* cur = begin;
+    while (cur < end) {
+        cur = _editor.readRecord(cur, end);
+        bool null1 = _editor.isNull(_id1Field);
+        if (!null1) {
+            id1 = _editor.get(_id1Field, true);
+            try {
+                chunkSubChunk1 = _objectIndex1->read(id1);
+            } catch (std::out_of_range const&) {
+                std::string const msg = "No entry for identifier " + _id1FieldName + "=" + id1 +
+                                        " was found in the index map.";
+                if (_abortOnMissingId1) throw std::runtime_error(msg);
+                std::cerr << msg << std::endl;
+                null1 = true;
+            }
+        }
+        bool null2 = _editor.isNull(_id2Field);
+        if (!null2) {
+            id2 = _editor.get(_id2Field, true);
+            try {
+                chunkSubChunk2 = _objectIndex2->read(id2);
+            } catch (std::out_of_range const&) {
+                std::string const msg = "No entry for identifier " + _id2FieldName + "=" + id2 +
+                                        " was found in the index map.";
+                if (_abortOnMissingId2) throw std::runtime_error(msg);
+                std::cerr << msg << std::endl;
+                null2 = true;
+            }
+        }
+        if (null1 && null2) {
+            throw std::runtime_error(
+                    "Values of both identifiers in a match record are set to NULLs, or "
+                    "no entries for both identifiers were found in the index maps.");
+        }
+        if (!null1) {
+            int32_t const chunkId1 = chunkSubChunk1.first;
+            int32_t const subChunkId1 = chunkSubChunk1.second;
+            _editor.set(_chunkIdField, chunkId1);
+            _editor.set(_subChunkIdField, subChunkId1);
+            if (!null2) {
+                // Both positions are valid.
+                int32_t const chunkId2 = chunkSubChunk2.first;
+                if (chunkId1 == chunkId2) {
+                    // Both positions are in the same chunk.
+                    _editor.set(_flagsField, _FLAG_FULL_MATCH);
+                    silo.add(ChunkLocation(chunkId1, subChunkId1, false), _editor);
+                    continue;
+                } else {
+                    std::string const msg =
+                            "Chunk numbers found in the index maps for identifiers " + _id1FieldName + "=" +
+                            id1 + ",chunkId=" + std::to_string(chunkId1) + " and " + _id2FieldName + "=" +
+                            id2 + ",chunkId=" + std::to_string(chunkId2) + " do not match.";
+                    if (_abortOnChunkMismatch) throw std::runtime_error(msg);
+                    std::cerr << msg << std::endl;
+                }
+            }
+            _editor.set(_flagsField, _FLAG_LEFT_MATCH);
+            silo.add(ChunkLocation(chunkId1, subChunkId1, false), _editor);
+        }
+        if (!null2) {
+            int32_t const chunkId2 = chunkSubChunk2.first;
+            int32_t const subChunkId2 = chunkSubChunk2.second;
+            _editor.set(_chunkIdField, chunkId2);
+            _editor.set(_subChunkIdField, subChunkId2);
+            _editor.set(_flagsField, _FLAG_RIGHT_MATCH);
+            silo.add(ChunkLocation(chunkId2, subChunkId2, false), _editor);
+        }
+    }
+}
+
+void Worker::_mapByRaDec(char const* const begin, char const* const end, Worker::Silo& silo) {
+    std::pair<double, double> sc1, sc2;
+    char const* cur = begin;
+    while (cur < end) {
+        cur = _editor.readRecord(cur, end);
+        ChunkLocation loc1, loc2;
+        bool const null1 = _editor.isNull(_pos1.first) || _editor.isNull(_pos1.second);
+        bool const null2 = _editor.isNull(_pos2.first) || _editor.isNull(_pos2.second);
+        if (null1 && null2) {
+            throw std::runtime_error("Both partitioning positions in the match record contain NULLs.");
+        }
+        if (!null1) {
+            sc1.first = _editor.get<double>(_pos1.first);
+            sc1.second = _editor.get<double>(_pos1.second);
+            loc1 = _chunker.locate(sc1);
+        }
+        if (!null2) {
+            sc2.first = _editor.get<double>(_pos2.first);
+            sc2.second = _editor.get<double>(_pos2.second);
+            loc2 = _chunker.locate(sc2);
+        }
+        if (!null1) {
+            _editor.set(_chunkIdField, loc1.chunkId);
+            _editor.set(_subChunkIdField, loc1.subChunkId);
+            if (!null2) {
+                // Both positions are valid.
+                if (angSep(cartesian(sc1), cartesian(sc2)) * DEG_PER_RAD >
+                    _chunker.getOverlap() - EPSILON_DEG) {
+                    throw std::runtime_error(
+                            "Partitioning positions in match record are separated by more "
+                            "than the overlap radius.");
+                }
+                if (loc1.chunkId == loc2.chunkId) {
+                    // Both positions are in the same chunk.
+                    _editor.set(_flagsField, _FLAG_FULL_MATCH);
+                    silo.add(loc1, _editor);
+                    continue;
+                }
+            }
+            _editor.set(_flagsField, _FLAG_LEFT_MATCH);
+            silo.add(loc1, _editor);
+        }
+        if (!null2) {
+            _editor.set(_chunkIdField, loc2.chunkId);
+            _editor.set(_subChunkIdField, loc2.subChunkId);
+            _editor.set(_flagsField, _FLAG_RIGHT_MATCH);
+            silo.add(loc2, _editor);
+        }
+    }
+}
+
 void Worker::_openFile(int32_t chunkId) {
     fs::path p = _outputDir;
     if (_numNodes > 1) {
         // Files go into a node-specific sub-directory.
         char subdir[32];
-        uint32_t node = hash(static_cast<uint32_t>(chunkId)) % _numNodes;
+        uint32_t node = std::hash<uint32_t>{}(static_cast<uint32_t>(chunkId)) % _numNodes;
         std::snprintf(subdir, sizeof(subdir), "node_%05lu", static_cast<unsigned long>(node));
         p = p / subdir;
         fs::create_directory(p);

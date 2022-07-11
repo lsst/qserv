@@ -22,6 +22,7 @@
 
 #include "partition/Chunker.h"
 
+#include <functional>
 #include <stdexcept>
 
 #include "partition/ConfigStore.h"
@@ -224,7 +225,7 @@ std::vector<int32_t> const Chunker::getChunksIn(SphericalBox const& region, uint
     for (int32_t stripe = minStripe; stripe <= maxStripe; ++stripe) {
         for (int32_t chunk = 0; chunk < _numChunksPerStripe[stripe]; ++chunk) {
             int32_t const chunkId = _getChunkId(stripe, chunk);
-            if (hash(static_cast<uint32_t>(chunkId)) % numNodes == node) {
+            if (std::hash<uint32_t>{}(static_cast<uint32_t>(chunkId)) % numNodes == node) {
                 SphericalBox box = getChunkBounds(chunkId);
                 if (region.intersects(box)) {
                     chunks.push_back(chunkId);
@@ -246,11 +247,11 @@ void Chunker::getSubChunks(std::vector<int32_t>& subChunks, int32_t chunkId) con
 
 void Chunker::defineOptions(po::options_description& opts) {
     opts.add_options()("part.num-stripes", po::value<int32_t>()->default_value(18),
-                       "The number of latitude angle stripes to divide the sky into.")(
-            "part.num-sub-stripes", po::value<int32_t>()->default_value(100),
-            "The number of sub-stripes to divide each stripe into.")("part.overlap",
-                                                                     po::value<double>()->default_value(0.01),
-                                                                     "Chunk/sub-chunk overlap radius (deg).");
+                       "The number of latitude angle stripes to divide the sky into.");
+    opts.add_options()("part.num-sub-stripes", po::value<int32_t>()->default_value(100),
+                       "The number of sub-stripes to divide each stripe into.");
+    opts.add_options()("part.overlap", po::value<double>()->default_value(0.01),
+                       "Chunk/sub-chunk overlap radius (deg).");
 }
 
 void Chunker::_initialize(double overlap, int32_t numStripes, int32_t numSubStripesPerStripe) {

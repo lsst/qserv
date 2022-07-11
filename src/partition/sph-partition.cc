@@ -70,6 +70,9 @@ private:
     Chunker _chunker;
     std::vector<ChunkLocation> _locations;
     bool _disableChunks;
+    /// The cached pointer to the index (if the one is used by the class) is needed
+    /// to optimize operations with the index.
+    ObjectIndex* _objectIndex = nullptr;
 };
 
 Worker::Worker(ConfigStore const& config)
@@ -80,7 +83,8 @@ Worker::Worker(ConfigStore const& config)
           _chunkIdField(-1),
           _subChunkIdField(-1),
           _chunker(config),
-          _disableChunks(config.flag("part.disable-chunks")) {
+          _disableChunks(config.flag("part.disable-chunks")),
+          _objectIndex(ObjectIndex::instance()) {
     if (!config.has("part.pos") && !config.has("part.id")) {
         throw std::runtime_error("Neither --part.pos not --part.id option were specified.");
     }
@@ -106,15 +110,15 @@ Worker::Worker(ConfigStore const& config)
         if (url.empty()) {
             throw std::runtime_error("Secondary index URL --part.id-url was not specified.");
         }
-        ObjectIndex::instance().open(url, _editor.getOutputDialect());
+        _objectIndex->open(url, _editor.getOutputDialect());
     } else {
         // The RA/DEC partitioning will create and populate the "secondary" index if requested
         if (_idField != -1) {
-            fs::path const outdir = config.get<std::string>("out.dir");
-            fs::path const indexpath =
-                    outdir / (config.get<std::string>("part.prefix") + "_object_index.txt");
-            ObjectIndex::instance().create(indexpath.string(), _editor, _idFieldName, _chunkIdFieldName,
-                                           _subChunkIdFieldName);
+            fs::path const outDir = config.get<std::string>("out.dir");
+            fs::path const indexPath =
+                    outDir / (config.get<std::string>("part.prefix") + "_object_index.txt");
+            _objectIndex->create(indexPath.string(), _editor, _idFieldName, _chunkIdFieldName,
+                                 _subChunkIdFieldName);
         }
     }
 }
@@ -140,13 +144,13 @@ void Worker::map(char const* const begin, char const* const end, Worker::Silo& s
                 if (!_disableChunks) silo.add(*i, _editor);
                 // Populate the "secondary" index only for the non-overlap rows.
                 if (_idField != -1 && !i->overlap) {
-                    ObjectIndex::instance().write(_editor.get(_idField, true), *i);
+                    _objectIndex->write(_editor.get(_idField, true), *i);
                 }
             }
         } else if (_idField != -1) {
             // The objectId partitioning mode of a child table based on an existing
             // "secondary" index for the FK to the corresponding "director" table.
-            auto const chunkSubChunk = ObjectIndex::instance().read(_editor.get(_idField, true));
+            auto const chunkSubChunk = _objectIndex->read(_editor.get(_idField, true));
             int32_t const chunkId = chunkSubChunk.first;
             int32_t const subChunkId = chunkSubChunk.second;
             ChunkLocation location(chunkId, subChunkId, false);
@@ -162,24 +166,25 @@ void Worker::map(char const* const begin, char const* const end, Worker::Silo& s
 void Worker::defineOptions(po::options_description& opts) {
     po::options_description part("\\_______________ Partitioning", 80);
     part.add_options()("part.prefix", po::value<std::string>()->default_value("chunk"),
-                       "Chunk file name prefix.")(
-            "part.chunk", po::value<std::string>(),
-            "Optional chunk ID output field name. This field name is appended "
-            "to the output field name list if it isn't already included.")(
-            "part.sub-chunk", po::value<std::string>()->default_value("subChunkId"),
-            "Sub-chunk ID output field name. This field name is appended "
-            "to the output field name list if it isn't already included.")(
-            "part.id", po::value<std::string>(),
-            "The name of a field which has an object identifier. If it's provided then"
-            "then the secondary index will be open or created.")(
-            "part.pos", po::value<std::string>(),
-            "The partitioning longitude and latitude angle field names, "
-            "separated by a comma.")("part.id-url", po::value<std::string>(),
-                                     "Universal resource locator for an existing secondary index.")(
-            "part.disable-chunks", po::bool_switch()->default_value(false),
-            "This flag if present would disable making chunk files in the output folder. "
-            "It's meant to run the tool in the 'dry run' mode, validating input files, "
-            "generating the objectId-to-chunk/sub-chunk index map.");
+                       "Chunk file name prefix.");
+    part.add_options()("part.chunk", po::value<std::string>(),
+                       "Optional chunk ID output field name. This field name is appended "
+                       "to the output field name list if it isn't already included.");
+    part.add_options()("part.sub-chunk", po::value<std::string>()->default_value("subChunkId"),
+                       "Sub-chunk ID output field name. This field name is appended "
+                       "to the output field name list if it isn't already included.");
+    part.add_options()("part.id", po::value<std::string>(),
+                       "The name of a field which has an object identifier. If it's provided then"
+                       "then the secondary index will be open or created.");
+    part.add_options()("part.pos", po::value<std::string>(),
+                       "The partitioning longitude and latitude angle field names, "
+                       "separated by a comma.");
+    part.add_options()("part.id-url", po::value<std::string>(),
+                       "Universal resource locator for an existing secondary index.");
+    part.add_options()("part.disable-chunks", po::bool_switch()->default_value(false),
+                       "This flag if present would disable making chunk files in the output folder. "
+                       "It's meant to run the tool in the 'dry run' mode, validating input files, "
+                       "generating the objectId-to-chunk/sub-chunk index map.");
     Chunker::defineOptions(part);
     opts.add(part);
     defineOutputOptions(opts);
@@ -219,7 +224,7 @@ int main(int argc, char const* const* argv) {
         part::makeOutputDirectory(config, true);
         part::PartitionJob job(config);
         boost::shared_ptr<part::ChunkIndex> index = job.run(part::makeInputLines(config));
-        part::ObjectIndex::instance().close();
+        part::ObjectIndex::instance()->close();
         if (!index->empty()) {
             fs::path d(config.get<std::string>("out.dir"));
             fs::path f = config.get<std::string>("part.prefix") + "_index.bin";

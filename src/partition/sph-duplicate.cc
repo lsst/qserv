@@ -23,8 +23,9 @@
 /// \file
 /// \brief The spherical data duplicator.
 
-#include <cstdio>
 #include <algorithm>
+#include <cstdio>
+#include <functional>
 #include <iostream>
 #include <limits>
 #include <stdexcept>
@@ -207,7 +208,9 @@ private:
     // TODO: It's unclear how well this approach works - there is likely
     // to be some statistical correlation between IDs and sky positions, and
     // the hashing function employed is weak (though cheap to compute).
-    bool _shouldDiscard(int64_t id) const { return hash(static_cast<uint64_t>(id) ^ _seed) > _maxId; }
+    bool _shouldDiscard(int64_t id) const {
+        return std::hash<uint64_t>{}(static_cast<uint64_t>(id) ^ _seed) > _maxId;
+    }
 
     void _setup(uint32_t htmId);
 
@@ -460,59 +463,60 @@ void Worker::defineOptions(po::options_description& opts) {
                       "Seed value for sampling PRNG. The seeds used by cooperating "
                       "duplicators (e.g. if processing has been split over many nodes) "
                       "must be identical.")("sample.fraction", po::value<double>()->default_value(1.0),
-                                            "The fraction of input positions to include in the output.")(
-            "index", po::value<std::string>(),
-            "HTM index file name for the data set to duplicate. May be "
-            "omitted, in which case --part.index is used as the HTM index "
-            "for both the input data set and for partitioning positions.")(
-            "id", po::value<std::string>(),
-            "Optional ID field name associated with input records. Note "
-            "that if --index and --part.index are identical, then either "
-            "--id and --part.id must match, or one must be omitted.")(
-            "pos", po::value<std::vector<std::string>>(),
-            "Optional longitude and latitude angle field names, "
-            "separated by a comma. May be specified any number of times. "
-            "These field name pairs identify positions in addition to the "
-            "partitioning position fields (identified via --part.pos).")(
-            "lon-min", po::value<double>()->default_value(0.0),
-            "Minimum longitude angle bound (deg) for the duplication region.")(
-            "lon-max", po::value<double>()->default_value(360.0),
-            "Maximum longitude angle bound (deg) for the duplication region.")(
-            "lat-min", po::value<double>()->default_value(-90.0),
-            "Minimum latitude angle bound (deg) for the duplication region.")(
-            "lat-max", po::value<double>()->default_value(90.0),
-            "Maximum latitude angle bound (deg) for the duplication region.")(
-            "chunk-id", po::value<std::vector<int32_t>>(),
-            "Optionally limit duplication to one or more chunks. If specified, "
-            "data will be duplicated for the given chunk(s) regardless of the "
-            "the duplication region and node.")(
-            "out.node", po::value<uint32_t>(),
-            "Optionally limit duplication to chunks for the given output node. "
-            "A chunk is assigned to a node when the hash of the chunk ID modulo "
-            "the number of nodes is equal to the node number. If this option is "
-            "specified, its value must be less than --out.num-nodes. It is "
-            "ignored if --chunk-id is specified.");
+                                            "The fraction of input positions to include in the output.");
+    dup.add_options()("index", po::value<std::string>(),
+                      "HTM index file name for the data set to duplicate. May be "
+                      "omitted, in which case --part.index is used as the HTM index "
+                      "for both the input data set and for partitioning positions.");
+    dup.add_options()("id", po::value<std::string>(),
+                      "Optional ID field name associated with input records. Note "
+                      "that if --index and --part.index are identical, then either "
+                      "--id and --part.id must match, or one must be omitted.");
+    dup.add_options()("pos", po::value<std::vector<std::string>>(),
+                      "Optional longitude and latitude angle field names, "
+                      "separated by a comma. May be specified any number of times. "
+                      "These field name pairs identify positions in addition to the "
+                      "partitioning position fields (identified via --part.pos).");
+    dup.add_options()("lon-min", po::value<double>()->default_value(0.0),
+                      "Minimum longitude angle bound (deg) for the duplication region.");
+    dup.add_options()("lon-max", po::value<double>()->default_value(360.0),
+                      "Maximum longitude angle bound (deg) for the duplication region.");
+    dup.add_options()("lat-min", po::value<double>()->default_value(-90.0),
+                      "Minimum latitude angle bound (deg) for the duplication region.");
+    dup.add_options()("lat-max", po::value<double>()->default_value(90.0),
+                      "Maximum latitude angle bound (deg) for the duplication region.");
+    dup.add_options()("chunk-id", po::value<std::vector<int32_t>>(),
+                      "Optionally limit duplication to one or more chunks. If specified, "
+                      "data will be duplicated for the given chunk(s) regardless of the "
+                      "the duplication region and node.");
+    dup.add_options()("out.node", po::value<uint32_t>(),
+                      "Optionally limit duplication to chunks for the given output node. "
+                      "A chunk is assigned to a node when the hash of the chunk ID modulo "
+                      "the number of nodes is equal to the node number. If this option is "
+                      "specified, its value must be less than --out.num-nodes. It is "
+                      "ignored if --chunk-id is specified.");
     po::options_description part("\\_______________ Partitioning", 80);
     part.add_options()("part.index", po::value<std::string>(),
                        "HTM index of partitioning positions. For example, if duplicating "
                        "a source table partitioned on associated object RA and Dec, this "
                        "would be the name of the HTM index file for the object table. If "
                        "this option is omitted, then --index is used as the HTM index for "
-                       "both the input and partitioning position data sets.")(
-            "part.id", po::value<std::string>(),
-            "Optional ID field name associated with the partitioning position. "
-            "Note that if --index and --part.index are identical, then one of "
-            "--id and --part.id must be omitted, or both must match.")(
-            "part.prefix", po::value<std::string>()->default_value("chunk"), "Chunk file name prefix.")(
-            "part.chunk", po::value<std::string>(),
-            "Optional chunk ID output field name. This field name is appended "
-            "to the output field name list if it isn't already included.")(
-            "part.sub-chunk", po::value<std::string>()->default_value("subChunkId"),
-            "Sub-chunk ID output field name. This field field name is appended "
-            "to the output field name list if it isn't already included.")(
-            "part.pos", po::value<std::string>(),
-            "The partitioning longitude and latitude angle field names, "
-            "separated by a comma.");
+                       "both the input and partitioning position data sets.");
+    part.add_options()("part.id", po::value<std::string>(),
+                       "Optional ID field name associated with the partitioning position. "
+                       "Note that if --index and --part.index are identical, then one of "
+                       "--id and --part.id must be omitted, or both must match.");
+    part.add_options()("part.prefix", po::value<std::string>()->default_value("chunk"),
+                       "Chunk file name prefix.");
+    part.add_options()("part.chunk", po::value<std::string>(),
+                       "Optional chunk ID output field name. This field name is appended "
+                       "to the output field name list if it isn't already included.");
+    part.add_options()("part.sub-chunk", po::value<std::string>()->default_value("subChunkId"),
+                       "Sub-chunk ID output field name. This field field name is appended "
+                       "to the output field name list if it isn't already included.");
+    part.add_options()("part.pos", po::value<std::string>(),
+                       "The partitioning longitude and latitude angle field names, "
+                       "separated by a comma.");
     Chunker::defineOptions(part);
     opts.add(dup).add(part);
     defineOutputOptions(opts);

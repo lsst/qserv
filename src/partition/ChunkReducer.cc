@@ -23,13 +23,13 @@
 #include "partition/ChunkReducer.h"
 
 #include <cstdio>
+#include <functional>
 #include <stdexcept>
 #include <string>
 
 #include "boost/make_shared.hpp"
 
 #include "partition/ConfigStore.h"
-#include "partition/Hash.h"
 
 namespace fs = boost::filesystem;
 namespace po = boost::program_options;
@@ -91,7 +91,7 @@ void ChunkReducer::_makeFilePaths(int32_t chunkId) {
     if (_numNodes > 1) {
         // Files go into a node-specific sub-directory.
         char subdir[32];
-        uint32_t node = hash(static_cast<uint32_t>(chunkId)) % _numNodes;
+        uint32_t node = std::hash<uint32_t>{}(chunkId) % _numNodes;
         std::snprintf(subdir, sizeof(subdir), "node_%05lu", static_cast<unsigned long>(node));
         p = p / subdir;
         fs::create_directory(p);

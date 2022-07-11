@@ -48,37 +48,38 @@ namespace lsst::partition {
 void defineOptions(po::options_description& opts) {
     po::options_description dup("\\________________ Duplication", 80);
     dup.add_options()("sample.fraction", po::value<double>()->default_value(1.0),
-                      "The fraction of input positions to include in the output.")(
-            "index", po::value<std::string>(),
-            "HTM index file name for the data set to duplicate. May be "
-            "omitted, in which case --part.index is used as the HTM index "
-            "for both the input data set and for partitioning positions.")(
-            "lon-min", po::value<double>()->default_value(0.0),
-            "Minimum longitude angle bound (deg) for the duplication region.")(
-            "lon-max", po::value<double>()->default_value(360.0),
-            "Maximum longitude angle bound (deg) for the duplication region.")(
-            "lat-min", po::value<double>()->default_value(-90.0),
-            "Minimum latitude angle bound (deg) for the duplication region.")(
-            "lat-max", po::value<double>()->default_value(90.0),
-            "Maximum latitude angle bound (deg) for the duplication region.")(
-            "chunk-id", po::value<std::vector<int32_t> >(),
-            "Optionally limit duplication to one or more chunks. If specified, "
-            "data will be duplicated for the given chunk(s) regardless of the "
-            "the duplication region and node.")(
-            "out.node", po::value<uint32_t>(),
-            "Optionally limit duplication to chunks for the given output node. "
-            "A chunk is assigned to a node when the hash of the chunk ID modulo "
-            "the number of nodes is equal to the node number. If this option is "
-            "specified, its value must be less than --out.num-nodes. It is "
-            "ignored if --chunk-id is specified.");
+                      "The fraction of input positions to include in the output.");
+    dup.add_options()("index", po::value<std::string>(),
+                      "HTM index file name for the data set to duplicate. May be "
+                      "omitted, in which case --part.index is used as the HTM index "
+                      "for both the input data set and for partitioning positions.");
+    dup.add_options()("lon-min", po::value<double>()->default_value(0.0),
+                      "Minimum longitude angle bound (deg) for the duplication region.");
+    dup.add_options()("lon-max", po::value<double>()->default_value(360.0),
+                      "Maximum longitude angle bound (deg) for the duplication region.");
+    dup.add_options()("lat-min", po::value<double>()->default_value(-90.0),
+                      "Minimum latitude angle bound (deg) for the duplication region.");
+    dup.add_options()("lat-max", po::value<double>()->default_value(90.0),
+                      "Maximum latitude angle bound (deg) for the duplication region.");
+    dup.add_options()("chunk-id", po::value<std::vector<int32_t> >(),
+                      "Optionally limit duplication to one or more chunks. If specified, "
+                      "data will be duplicated for the given chunk(s) regardless of the "
+                      "the duplication region and node.");
+    dup.add_options()("out.node", po::value<uint32_t>(),
+                      "Optionally limit duplication to chunks for the given output node. "
+                      "A chunk is assigned to a node when the hash of the chunk ID modulo "
+                      "the number of nodes is equal to the node number. If this option is "
+                      "specified, its value must be less than --out.num-nodes. It is "
+                      "ignored if --chunk-id is specified.");
     po::options_description part("\\_______________ Partitioning", 80);
     part.add_options()("part.index", po::value<std::string>(),
                        "HTM index of partitioning positions. For example, if duplicating "
                        "a source table partitioned on associated object RA and Dec, this "
                        "would be the name of the HTM index file for the object table. If "
                        "this option is omitted, then --index is used as the HTM index for "
-                       "both the input and partitioning position data sets.")(
-            "part.prefix", po::value<std::string>()->default_value("chunk"), "Chunk file name prefix.");
+                       "both the input and partitioning position data sets.");
+    part.add_options()("part.prefix", po::value<std::string>()->default_value("chunk"),
+                       "Chunk file name prefix.");
     Chunker::defineOptions(part);
     opts.add(dup).add(part);
     defineOutputOptions(opts);
