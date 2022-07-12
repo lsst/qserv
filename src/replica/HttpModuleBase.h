@@ -128,6 +128,9 @@ protected:
     void debug(std::string const& msg) const;
     void debug(std::string const& context, std::string const& msg) const { debug(context + "  " + msg); }
 
+    void warn(std::string const& msg) const;
+    void warn(std::string const& context, std::string const& msg) const { warn(context + "  " + msg); }
+
     void error(std::string const& msg) const;
     void error(std::string const& context, std::string const& msg) const { error(context + "  " + msg); }
 
@@ -136,6 +139,33 @@ protected:
      *   The method is required to be implemented by a subclass.
      */
     virtual std::string context() const = 0;
+
+    /**
+     * @brief Check the API version in the request's query or its body.
+     *
+     * The version is specified in the optional attribute 'version'. If the attribute
+     * was found present in the request then its value would be required to be within
+     * the specified minimum and the implied maximum, that's the current version number
+     * of the REST API. In case if no version info was found in the request the method
+     * will simply note this and the service will report a lack of the version number
+     * in the "warning" attribute at the returned JSON object.
+     *
+     * The method will look for th eversion attribute in the query string of the "GET"
+     * requests. For requests that are called using methods "POIST", "PUT" or "DELETE"
+     * the attribute will be located in the requests's body.
+     *
+     * @note Services that are calling the method should adjust the minimum version
+     *   number to be the same as the current value in the implementation of
+     *   HttpMetaModule::version if the expected JSON schema of the corresponding
+     *   request changes.
+     * @see HttpMetaModule::version
+     *
+     * @param func The name of the calling context (it's used for error reporting).
+     * @param minVersion The minimum version number of the valid version range.
+     *
+     * @throw HttpError if a value of the attribute is not within the expected range.
+     */
+    void checkApiVersion(std::string const& func, unsigned int minVersion) const;
 
     /**
      * To implement a subclass-specific request processing.
@@ -197,6 +227,10 @@ private:
     /// The body of a request is initialized/parsed from the request before calling
     /// the overloaded method HttpModule::executeImpl.
     HttpRequestBody _body;
+
+    /// The optional warning message to be sent to a caller if the API version
+    /// number wasn't mentoned in the request.
+    mutable std::string _warningOnVersionMissing;
 };
 
 }  // namespace lsst::qserv::replica
