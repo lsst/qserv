@@ -132,6 +132,7 @@ json HttpSqlIndexModule::executeImpl(string const& subModuleName) {
 
 json HttpSqlIndexModule::_getIndexes() {
     debug(__func__);
+    checkApiVersion(__func__, 12);
 
     string const databaseName = body().required<string>("database");
     string const tableName = body().required<string>("table");
@@ -171,6 +172,7 @@ json HttpSqlIndexModule::_getIndexes() {
 
 json HttpSqlIndexModule::_createIndexes() {
     debug(__func__);
+    checkApiVersion(__func__, 12);
 
     string const databaseName = body().required<string>("database");
     string const tableName = body().required<string>("table");
@@ -248,6 +250,7 @@ json HttpSqlIndexModule::_createIndexes() {
 
 json HttpSqlIndexModule::_dropIndexes() {
     debug(__func__);
+    checkApiVersion(__func__, 12);
 
     string const databaseName = body().required<string>("database");
     string const tableName = body().required<string>("table");

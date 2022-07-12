@@ -55,6 +55,7 @@ json HttpQservSqlModule::executeImpl(string const& subModuleName) {
 
 json HttpQservSqlModule::_execute() {
     debug(__func__);
+    checkApiVersion(__func__, 12);
 
     auto const worker = body().required<string>("worker");
     auto const query = body().required<string>("query");

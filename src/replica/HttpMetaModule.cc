@@ -59,6 +59,7 @@ string HttpMetaModule::context() const { return _context; }
 
 json HttpMetaModule::_version() {
     debug(__func__);
+
     json result;
     result["version"] = version;
     result["database_schema_version"] = ConfigParserMySQL::expectedSchemaVersion;

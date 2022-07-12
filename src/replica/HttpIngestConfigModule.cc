@@ -61,6 +61,7 @@ json HttpIngestConfigModule::executeImpl(string const& subModuleName) {
 
 json HttpIngestConfigModule::_get() {
     debug(__func__);
+    checkApiVersion(__func__, 12);
 
     auto const config = controller()->serviceProvider()->config();
     auto const databaseServices = controller()->serviceProvider()->databaseServices();
@@ -121,18 +122,18 @@ json HttpIngestConfigModule::_get() {
 }
 
 json HttpIngestConfigModule::_update() {
-    string const context = __func__;
-    debug(context);
+    debug(__func__);
+    checkApiVersion(__func__, 12);
 
     auto const database = body().required<string>("database");
-    debug(context, "database=" + database);
+    debug(__func__, "database=" + database);
 
     auto const config = controller()->serviceProvider()->config();
     auto const databaseServices = controller()->serviceProvider()->databaseServices();
     auto const databaseInfo = config->databaseInfo(database);
 
     auto const update = [&](string const& key, string const& val) {
-        debug(context, key + "=" + val);
+        debug(__func__, key + "=" + val);
         databaseServices->saveIngestParam(databaseInfo.name, HttpClientConfig::category, key, val);
     };
     auto const updateInt = [&](string const& key) {

@@ -61,6 +61,7 @@ json HttpControllersModule::executeImpl(string const& subModuleName) {
 
 json HttpControllersModule::_controllers() {
     debug(__func__);
+    checkApiVersion(__func__, 12);
 
     uint64_t const fromTimeStamp = query().optionalUInt64("from");
     uint64_t const toTimeStamp = query().optionalUInt64("to", numeric_limits<uint64_t>::max());
@@ -91,6 +92,7 @@ json HttpControllersModule::_controllers() {
 
 json HttpControllersModule::_oneController() {
     debug(__func__);
+    checkApiVersion(__func__, 12);
 
     string const id = params().at("id");
     bool const log = query().optionalBool("log");
@@ -142,6 +144,8 @@ json HttpControllersModule::_oneController() {
 
 json HttpControllersModule::_eventLogDict() {
     debug(__func__);
+    checkApiVersion(__func__, 12);
+
     string const id = params().at("id");
     bool const logCurrentController = query().optionalBool("log_current_controller");
     debug(string(__func__) + " id=" + id);

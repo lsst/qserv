@@ -152,6 +152,7 @@ json HttpIngestChunksModule::executeImpl(string const& subModuleName) {
 
 json HttpIngestChunksModule::_addChunk() {
     debug(__func__);
+    checkApiVersion(__func__, 12);
 
     auto const databaseServices = controller()->serviceProvider()->databaseServices();
     auto const config = controller()->serviceProvider()->config();
@@ -265,6 +266,7 @@ json HttpIngestChunksModule::_addChunk() {
 
 json HttpIngestChunksModule::_addChunks() {
     debug(__func__);
+    checkApiVersion(__func__, 12);
 
     auto const databaseServices = controller()->serviceProvider()->databaseServices();
     auto const config = controller()->serviceProvider()->config();
@@ -417,6 +419,7 @@ json HttpIngestChunksModule::_addChunks() {
 
 json HttpIngestChunksModule::_getChunks() {
     debug(__func__);
+    checkApiVersion(__func__, 12);
 
     auto const databaseServices = controller()->serviceProvider()->databaseServices();
     auto const config = controller()->serviceProvider()->config();

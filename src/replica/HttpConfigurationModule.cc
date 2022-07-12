@@ -105,6 +105,8 @@ json HttpConfigurationModule::executeImpl(string const& subModuleName) {
 
 json HttpConfigurationModule::_get() {
     debug(__func__);
+    checkApiVersion(__func__, 12);
+
     auto const config = controller()->serviceProvider()->config();
     json result;
     result["config"] = config->toJson();
@@ -114,6 +116,8 @@ json HttpConfigurationModule::_get() {
 
 json HttpConfigurationModule::_updateGeneral() {
     debug(__func__);
+    checkApiVersion(__func__, 12);
+
     auto const config = controller()->serviceProvider()->config();
     string const category = body().required<string>("category");
     string const parameter = body().required<string>("parameter");
@@ -131,6 +135,7 @@ json HttpConfigurationModule::_updateGeneral() {
 
 json HttpConfigurationModule::_updateWorker() {
     debug(__func__);
+    checkApiVersion(__func__, 12);
 
     auto const config = controller()->serviceProvider()->config();
     auto const worker = params().at("worker");
@@ -157,6 +162,8 @@ json HttpConfigurationModule::_updateWorker() {
 
 json HttpConfigurationModule::_deleteWorker() {
     debug(__func__);
+    checkApiVersion(__func__, 12);
+
     auto const worker = params().at("worker");
     controller()->serviceProvider()->config()->deleteWorker(worker);
     return json::object();
@@ -164,6 +171,7 @@ json HttpConfigurationModule::_deleteWorker() {
 
 json HttpConfigurationModule::_addWorker() {
     debug(__func__);
+    checkApiVersion(__func__, 12);
 
     WorkerInfo info;
     info.name = body().required<string>("worker");
@@ -182,6 +190,8 @@ json HttpConfigurationModule::_addWorker() {
 
 json HttpConfigurationModule::_deleteFamily() {
     debug(__func__);
+    checkApiVersion(__func__, 12);
+
     auto const family = params().at("family");
     controller()->serviceProvider()->config()->deleteDatabaseFamily(family);
     return json::object();
@@ -189,6 +199,7 @@ json HttpConfigurationModule::_deleteFamily() {
 
 json HttpConfigurationModule::_addFamily() {
     debug(__func__);
+    checkApiVersion(__func__, 12);
 
     DatabaseFamilyInfo info;
     info.name = body().required<string>("name");
@@ -224,6 +235,8 @@ json HttpConfigurationModule::_addFamily() {
 
 json HttpConfigurationModule::_deleteDatabase() {
     debug(__func__);
+    checkApiVersion(__func__, 12);
+
     auto const database = params().at("database");
     controller()->serviceProvider()->config()->deleteDatabase(database);
     return json::object();
@@ -231,6 +244,7 @@ json HttpConfigurationModule::_deleteDatabase() {
 
 json HttpConfigurationModule::_addDatabase() {
     debug(__func__);
+    checkApiVersion(__func__, 12);
 
     string const database = body().required<string>("database");
     string const family = body().required<string>("family");
@@ -246,6 +260,8 @@ json HttpConfigurationModule::_addDatabase() {
 
 json HttpConfigurationModule::_unpublishDatabase() {
     debug(__func__);
+    checkApiVersion(__func__, 12);
+
     auto const database = params().at("database");
     debug(__func__, "database=" + database);
     if (!isAdmin()) {
@@ -264,6 +280,8 @@ json HttpConfigurationModule::_unpublishDatabase() {
 
 json HttpConfigurationModule::_deleteTable() {
     debug(__func__);
+    checkApiVersion(__func__, 12);
+
     auto const database = params().at("database");
     auto const table = params().at("table");
     json result;
@@ -274,6 +292,7 @@ json HttpConfigurationModule::_deleteTable() {
 
 json HttpConfigurationModule::_addTable() {
     debug(__func__);
+    checkApiVersion(__func__, 12);
 
     // FIXME: extend the service to accept all attributes of the table.
     // Create a method in the base class to extract standard attributes from

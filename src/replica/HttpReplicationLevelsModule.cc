@@ -76,11 +76,13 @@ json HttpReplicationLevelsModule::executeImpl(string const& subModuleName) {
 
 json HttpReplicationLevelsModule::_get() {
     debug(__func__);
+    checkApiVersion(__func__, 12);
     return _makeReport();
 }
 
 json HttpReplicationLevelsModule::_set() {
     debug(__func__);
+    checkApiVersion(__func__, 12);
     if (!isAdmin()) {
         throw HttpError(__func__, "administrator's privileges are required for changing replication levels.");
     }

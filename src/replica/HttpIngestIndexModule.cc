@@ -58,6 +58,7 @@ json HttpIngestIndexModule::executeImpl(string const& subModuleName) {
 
 json HttpIngestIndexModule::_buildSecondaryIndex() {
     debug(__func__);
+    checkApiVersion(__func__, 12);
 
     auto const databaseServices = controller()->serviceProvider()->databaseServices();
     auto const config = controller()->serviceProvider()->config();

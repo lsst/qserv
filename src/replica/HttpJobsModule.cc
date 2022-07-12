@@ -59,6 +59,7 @@ json HttpJobsModule::executeImpl(string const& subModuleName) {
 
 json HttpJobsModule::_jobs() {
     debug(__func__);
+    checkApiVersion(__func__, 12);
 
     string const controllerId = query().optionalString("controller_id");
     string const parentJobId = query().optionalString("parent_job_id");
@@ -88,6 +89,7 @@ json HttpJobsModule::_jobs() {
 
 json HttpJobsModule::_oneJob() {
     debug(__func__);
+    checkApiVersion(__func__, 12);
 
     auto const id = params().at("id");
     try {

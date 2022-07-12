@@ -52,6 +52,7 @@ HttpWorkerStatusModule::HttpWorkerStatusModule(Controller::Ptr const& controller
 
 json HttpWorkerStatusModule::executeImpl(string const& subModuleName) {
     debug(__func__);
+    checkApiVersion(__func__, 12);
 
     auto const healthMonitorTask = _healthMonitorTask.lock();
     if (nullptr == healthMonitorTask) {
