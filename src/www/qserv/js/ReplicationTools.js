@@ -2,11 +2,13 @@ define([
     'webfwk/CSSLoader',
     'webfwk/Fwk',
     'webfwk/FwkApplication',
+    'qserv/Common',
     'underscore'],
 
 function(CSSLoader,
          Fwk,
          FwkApplication,
+         Common,
          _) {
 
     CSSLoader.load('qserv/css/ReplicationTools.css');

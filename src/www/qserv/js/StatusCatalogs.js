@@ -2,10 +2,12 @@ define([
     'webfwk/CSSLoader',
     'webfwk/Fwk',
     'webfwk/FwkApplication',
+    'qserv/Common',
     'underscore'],
 function (CSSLoader,
         Fwk,
         FwkApplication,
+        Common,
         _) {
 
     CSSLoader.load('qserv/css/StatusCatalogs.css');
@@ -237,7 +239,7 @@ function (CSSLoader,
 
             Fwk.web_service_GET(
                 "/replication/catalogs",
-                {},
+                {version: Common.RestAPIVersion},
                 (data) => {
                     this._display(data.databases);
                     Fwk.setLastUpdate(this._databases().children('caption'));

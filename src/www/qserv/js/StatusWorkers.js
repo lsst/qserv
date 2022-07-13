@@ -2,11 +2,13 @@ define([
     'webfwk/CSSLoader',
     'webfwk/Fwk',
     'webfwk/FwkApplication',
+    'qserv/Common',
     'underscore'],
 
 function(CSSLoader,
          Fwk,
          FwkApplication,
+         Common,
          _) {
 
     CSSLoader.load('qserv/css/StatusWorkers.css');
@@ -143,7 +145,7 @@ function(CSSLoader,
             this._table().children('caption').addClass('updating');
             Fwk.web_service_GET(
                 "/replication/worker",
-                {},
+                {version: Common.RestAPIVersion},
                 (data) => {
                     let html = '';
                     for (let i in data.workers) {

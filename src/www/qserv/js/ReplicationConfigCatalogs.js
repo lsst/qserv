@@ -2,11 +2,13 @@ define([
     'webfwk/CSSLoader',
     'webfwk/Fwk',
     'webfwk/FwkApplication',
+    'qserv/Common',
     'underscore'],
 
 function(CSSLoader,
          Fwk,
          FwkApplication,
+         Common,
          _) {
 
     CSSLoader.load('qserv/css/ReplicationConfigCatalogs.css');
@@ -113,7 +115,7 @@ function(CSSLoader,
             this._table().children('caption').addClass('updating');
             Fwk.web_service_GET(
                 "/replication/config",
-                {},
+                {version: Common.RestAPIVersion},
                 (data) => {
                     this._display(data);
                     Fwk.setLastUpdate(this._table().children('caption'));
