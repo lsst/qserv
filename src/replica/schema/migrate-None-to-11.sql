@@ -66,7 +66,13 @@ CREATE TABLE IF NOT EXISTS `config_database_table` (
   `table`           VARCHAR(255)  NOT NULL ,
   `is_partitioned`  BOOLEAN NOT NULL ,
   `director_table`  VARCHAR(255) DEFAULT "" , -- The name of the corresponding 'director' table (if any)
+                                              -- or the first referenced 'director' table (if the current table is RefMatch)
   `director_key`    VARCHAR(255) DEFAULT "" , -- The name of the table's FK key linking to the PK of the `director` table (if any)
+                                              -- or the first referenced 'director' table's FK key (if the current table is RefMatch)
+  `director_table2` VARCHAR(255) DEFAULT "" , -- The name of the second referenced 'director' table (if the current table is RefMatch)
+  `director_key2`   VARCHAR(255) DEFAULT "" , -- The name of the second referenced 'director' table's FK key (if the current table is RefMatch)
+  `flag`            VARCHAR(255) DEFAULT "" , -- The name of a column for flags (if the current table is RefMatch)
+  `ang_sep`         DOUBLE       DEFAULT 0 ,  -- The angular separation parameter (if the current table is RefMatch)
   `latitude_key`    VARCHAR(255) DEFAULT "" , -- The name for latitude (declination) column in this table
   `longitude_key`   VARCHAR(255) DEFAULT "" , -- The name for longitude (right ascension) column in this table
   `is_published`    BOOLEAN DEFAULT TRUE ,
@@ -463,4 +469,4 @@ ENGINE = InnoDB
 COMMENT = 'Metadata about database as a whole, key-value pairs' ;
 
 -- Add record for schema version, migration script expects this record to exist
-INSERT INTO `QMetadata` (`metakey`, `value`) VALUES ('version', '10');
+INSERT INTO `QMetadata` (`metakey`, `value`) VALUES ('version', '11');
