@@ -158,7 +158,7 @@ private:
     std::string _format;
 
     /// Parameters of a worker to be updated
-    WorkerInfo _workerInfo;
+    WorkerInfo _worker;
 
     /// The flag for enabling a select worker. The default value of -1 or any
     /// negative number) means that the flag wasn't used. A value of 0 means - disable
@@ -172,35 +172,18 @@ private:
     int _workerReadOnly = -1;
 
     /// For database families
-    DatabaseFamilyInfo _familyInfo;
+    DatabaseFamilyInfo _family;
 
     /// For databases
-    DatabaseInfo _databaseInfo;
+    DatabaseInfo _database;
 
-    /// The name of a database"
-    std::string _database;
+    /// For tables
+    TableInfo _table;
 
-    /// The name of a table"
-    std::string _table;
-
-    /// 'false' for the regular tables, 'true' for the partitioned ones
-    bool _isPartitioned = false;
-
-    /// The flag indicating (if present) that this is a 'director' table of the database.
-    /// Note that this flag only applies to the partitioned tables.
-    bool _isDirector = false;
-
-    /// The name of a column in the 'director' table of the database.
-    /// Note that this option must be provided for the 'director' tables.
-    std::string _directorKey;
-
-    /// The name of an optional column in the 'partitioned' table representing
-    /// latitude (declination)
-    std::string _latitudeColName;
-
-    /// The name of an optional column in the 'partitioned' table representing
-    /// longitude (right ascension)
-    std::string _longitudeColName;
+    std::string _directorDatabaseTable;
+    std::string _directorDatabaseTable2;
+    std::string _primaryKeyColumn;
+    std::string _primaryKeyColumn2;
 };
 
 }  // namespace lsst::qserv::replica

@@ -164,16 +164,8 @@ void ExportServerConnection::_handshakeReceived(boost::system::error_code const&
         if (not _databaseInfo.isPublished) {
             throw invalid_argument("database '" + _databaseInfo.name + "' is not PUBLISHED");
         }
-        _isPartitioned =
-                _databaseInfo.partitionedTables.end() !=
-                find(_databaseInfo.partitionedTables.begin(), _databaseInfo.partitionedTables.end(), _table);
-        if (not _isPartitioned) {
-            if (_databaseInfo.regularTables.end() ==
-                find(_databaseInfo.regularTables.begin(), _databaseInfo.regularTables.end(), _table)) {
-                throw invalid_argument("no such table '" + _table + "' in a scope of database '" +
-                                       _databaseInfo.name + "'");
-            }
-        }
+        // The table locator will throw std::invalid_argument if the table is bnot valid
+        auto const table = _databaseInfo.findTable(_table);
 
         // The next test is for the partitioned tables, and it's meant to check if
         // the chunk number is valid and it's allocated to this worker. The test will

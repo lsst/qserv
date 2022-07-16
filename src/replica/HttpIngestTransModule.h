@@ -95,41 +95,42 @@ private:
      *
      * @param operation The name of the operation.
      * @param status The completion status of the operation.
-     * @param id The unique identifier of the transaction affected by the operation.
-     * @param database The name of a database associated with the transaction.
+     * @param transactionId The unique identifier of the transaction affected by the operation.
+     * @param databaseName The name of a database associated with the transaction.
      * @param msg The optional error message in case if the operation failed.
      */
-    void _logTransactionMgtEvent(std::string const& operation, std::string const& status, TransactionId id,
-                                 std::string const& database, std::string const& msg = std::string()) const;
+    void _logTransactionMgtEvent(std::string const& operation, std::string const& status,
+                                 TransactionId transactionId, std::string const& databaseName,
+                                 std::string const& msg = std::string()) const;
 
     /**
      * Extend an existing "secondary index" table by adding a MySQL partition
      * corresponding to the specified transaction identifier.
-     * @param databaseInfo defines a scope of the operation
+     * @param database the database descriptor defines a scope of the operation
      * @param transactionId unique identifier of a super-transaction
-     * @param directorTable the name of the director table to build the index for
+     * @param directorTableName the name of the director table to build the index for
      */
-    void _addPartitionToSecondaryIndex(DatabaseInfo const& databaseInfo, TransactionId transactionId,
-                                       std::string const& directorTable) const;
+    void _addPartitionToSecondaryIndex(DatabaseInfo const& database, TransactionId transactionId,
+                                       std::string const& directorTableName) const;
 
     /**
      * Shrink an existing "secondary index" table by removing a MySQL partition
      * corresponding to the specified transaction identifier from the table.
-     * @param databaseInfo defines a scope of the operation
+     * @param database the database descriptor defines a scope of the operation
      * @param transactionId unique identifier of a super-transaction
-     * @param directorTable the name of the director table to remove the index from
+     * @param directorTableName the name of the director table to remove the index from
      */
-    void _removePartitionFromSecondaryIndex(DatabaseInfo const& databaseInfo, TransactionId transactionId,
-                                            std::string const& directorTable) const;
+    void _removePartitionFromSecondaryIndex(DatabaseInfo const& database, TransactionId transactionId,
+                                            std::string const& directorTableName) const;
 
     /**
      * Extract contributions into a transaction.
-     * @param transactionInfo A transaction defining a scope of the request.
+     * @param transaction A transaction defining a scope of the request.
      * @param longContribFormat If 'true' then the method will also return info on
      *   the individual file contributions rather than just the summary info.
      * @return A JSON object.
      */
-    nlohmann::json _getTransactionContributions(TransactionInfo const& transactionInfo,
+    nlohmann::json _getTransactionContributions(TransactionInfo const& transaction,
                                                 bool longContribFormat) const;
 
     /// Named mutexes are used for acquiring exclusive transient locks on the transaction

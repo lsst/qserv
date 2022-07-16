@@ -409,53 +409,53 @@ public:
     /// @return names of known database families
     std::vector<std::string> databaseFamilies() const;
 
-    /// @param name The name of a family.
+    /// @param familyName The name of a family.
     /// @return 'true' if the specified database family is known to the configuration.
     /// @throw std::invalid_argument If the empty string passed as a value of the parameter.
-    bool isKnownDatabaseFamily(std::string const& name) const;
+    bool isKnownDatabaseFamily(std::string const& familyName) const;
 
     /**
-     * @param name The name of a family.
+     * @param familyName The name of a family.
      * @return The database family description.
      * @throw std::invalid_argument If the empty string passed as a value of the parameter, or
      *   if the specified entry was not found in the configuration.
      */
-    DatabaseFamilyInfo databaseFamilyInfo(std::string const& name) const;
+    DatabaseFamilyInfo databaseFamilyInfo(std::string const& familyName) const;
 
     /**
      * Register a new database family.
-     * @param info Parameters of the family.
+     * @param family Parameters of the family.
      * @return A description of the newly created database family.
      * @throw std::invalid_argument If the empty string passed as a value of the parameter,
      *   or if the input descriptor has incorrect parameters (empty name,
      *   0 values of the numbers of stripes or sub-stripes, or 0 value of the replication level), or
      *   if the specified entry already exists in the configuration.
      */
-    DatabaseFamilyInfo addDatabaseFamily(DatabaseFamilyInfo const& info);
+    DatabaseFamilyInfo addDatabaseFamily(DatabaseFamilyInfo const& family);
 
     /**
      * Delete an existing family.
      * @note In order to maintain consistency of the persistent state this operation will
      *   also delete all dependent databases from both the transient and (if configured)
      *   from the persistent store as well.
-     * @param name The name of a family.
+     * @param familyName The name of the family affected by the operation.
      * @throw std::invalid_argument If the empty string passed as a value of the parameter, or
      *   if the specified entry was not found in the configuration.
      */
-    void deleteDatabaseFamily(std::string const& name);
+    void deleteDatabaseFamily(std::string const& familyName);
 
     /**
-     * @param family The name of a database family.
+     * @param familyName The name of a database family.
      * @return The minimum number of chunk replicas for a database family.
      * @throw std::invalid_argument If the empty string passed as a value of the parameter, or
      *   if the specified entry was not found in the configuration.
      */
-    size_t replicationLevel(std::string const& family) const;
+    size_t replicationLevel(std::string const& familyName) const;
 
     /**
      * The selector for the names of the known database.
      *
-     * @param family The optional name of a database family.
+     * @param familyName The optional name of a database family.
      * @param allDatabases The optional flag which if set to 'true' will result
      *   in returning all known database entries regardless of their PUBLISHED
      *   status. Otherwise subset of databases as determined by the second flag
@@ -467,120 +467,97 @@ public:
      * @throw std::invalid_argument If the specified family (unless the empty string is passed
      *   into the method) was not found in the configuration.
      */
-    std::vector<std::string> databases(std::string const& family = std::string(), bool allDatabases = false,
-                                       bool isPublished = true) const;
+    std::vector<std::string> databases(std::string const& familyName = std::string(),
+                                       bool allDatabases = false, bool isPublished = true) const;
 
     /**
      * Make sure this database is known in the configuration
-     * @param name The name of a database.
+     * @param databaseName The name of a database.
      * @throws std::invalid_argument if the database is unknown
      */
-    void assertDatabaseIsValid(std::string const& name);
+    void assertDatabaseIsValid(std::string const& databaseName);
 
     /**
-     * @param name The name of a database.
+     * @param databaseName The name of a database.
      * @return 'true' if the specified database is known in the Configuration.
      */
-    bool isKnownDatabase(std::string const& name) const;
+    bool isKnownDatabase(std::string const& databaseName) const;
 
     /**
-     * @param name The name of a database.
+     * @param databaseName The name of a database.
      * @return A database descriptor.
      * @throw std::invalid_argument If the empty string passed as a value of the parameter, or
      *   if the specified entry was not found in the configuration.
      */
-    DatabaseInfo databaseInfo(std::string const& name) const;
+    DatabaseInfo databaseInfo(std::string const& databaseName) const;
 
     /**
      * Register a new database.
      * @note The database status will be put into being un-published.
-     * @param database The name of a database to be created.
-     * @param family The name of a family the database will join.
+     * @param databaseName The name of a database to be created.
+     * @param familyName The name of a family the database will join.
      * @return A database descriptor of the newly created database.
      * @throw std::invalid_argument If the name of a family or other required parameters
      *   are the empty strings, or if the specified entry already exists in the configuration.
      */
-    DatabaseInfo addDatabase(std::string const& database, std::string const& family);
+    DatabaseInfo addDatabase(std::string const& databaseName, std::string const& familyName);
 
     /**
      * Change database status and all its tables to be published.
      *
-     * @param name The name of a database.
+     * @param databaseName The name of a database.
      * @return An updated database descriptor.
      * @throw std::invalid_argument If the empty string passed as a value of the parameter, or
      *   if no such database exists in the configuration.
      *  @throw std::logic_error If the database is already published.
      */
-    DatabaseInfo publishDatabase(std::string const& name);
+    DatabaseInfo publishDatabase(std::string const& databaseName);
 
     /**
      * Change database status to be un-published.
-     * @param name The name of a database.
+     * @param databaseName The name of a database.
      * @return An updated database descriptor.
      * @throw std::invalid_argument If the empty string passed as a value of the parameter, or
      *   if no such database exists in the configuration.
      *  @throw std::logic_error If the database is not yet published.
      */
-    DatabaseInfo unPublishDatabase(std::string const& name);
+    DatabaseInfo unPublishDatabase(std::string const& databaseName);
 
     /**
      * Delete an existing database.
-     * @param name The name of a database to be deleted.
+     * @param databaseName The name of a database to be deleted.
      * @throw std::invalid_argument If the specified database doesn't exist, or
      *   if an empty string is passed as a parameter of the method.
      */
-    void deleteDatabase(std::string const& name);
+    void deleteDatabase(std::string const& databaseName);
 
     /**
      * Register a new table with a database.
-     * @param database The name of an existing database hosting the new table.
-     * @param table The name of a new table to be registered.
-     * @param isPartitioned A flag which is set 'true' if the table is partitioned.
-     * @param columns An (optional) column definitions (name,type) of the table.
-     * @param isDirectorTable An (optional) flag indicating if this is the "director"
-     *   table of the catalog. Note there could be only one such table in a catalog,
-     *   and this table must be "partitioned".
-     * @param directorTable The (optional) name of the director table.
-     *   The parameter only applies to the partitioned tables which are also the "dependent"
-     *   ones of some existing "director" table.
-     * @param directorTableKey The (optional) name of a column representing object identifiers.
-     *   The parameter only applies to the partitioned tables. For the "dependent" tables
-     *   this would be the FK for the corresponding PK of the "director" table.
-     *   The key is mandatory for the "director" tables only. The key is optional for
-     *   the "dependent" tables. If the key is empty then the "dependent" table won't
-     *   have any objectId-based association with any "director" table.
-     *   If provided (and allowed) the column must be found among the names of columns
-     *   specified in the parameter "columns".
-     * @param latitudeColName The (optional) name of a column which stores the latitude.
-     * @param longitudeColName The (optional) name of a column which stores the longitude.
+     * @param table_ The prototype table descriptor whose parameters are going to
+     *   be evaluated and corrected if needed before registering the table in
+     *   the Configuration.
      * @return A database descriptor of the updated database.
-     * @throw std::invalid_argument If the specified database doesn't exists, or
-     *   if the table already exists, or if either of those parameters are the empty
-     *   strings, or other required parameters have incorrect values or missing.
+     * @throw std::invalid_argument If the attributes of the table aren't complete,
+     *   or if there are any ambiguity in the values of the attributes.
      */
-    DatabaseInfo addTable(std::string const& database, std::string const& table, bool isPartitioned,
-                          std::list<SqlColDef> const& columns = std::list<SqlColDef>(),
-                          bool isDirectorTable = false, std::string const& directorTable = std::string(),
-                          std::string const& directorTableKey = std::string(),
-                          std::string const& latitudeColName = std::string(),
-                          std::string const& longitudeColName = std::string());
+    DatabaseInfo addTable(TableInfo const& table_);
 
     /**
      * Delete an existing table.
-     * @param database The name of an existing database hosting the table.
-     * @param table The name of an existing table to be deleted.
+     * @param databaseName The name of an existing database hosting the table.
+     * @param tableName The name of an existing table to be deleted.
      * @throw std::invalid_argument If the specified database doesn't exists, or
      *   if the table doesn't exist, or if either of those parameters are
      *   the empty strings.
      */
-    DatabaseInfo deleteTable(std::string const& database, std::string const& table);
+    DatabaseInfo deleteTable(std::string const& databaseName, std::string const& tableName);
 
     /**
      * Make sure this worker is known in the configuration
-     * @param name The name of a worker.
+     * @param workerName The name of a worker.
      * @throws std::invalid_argument if the worker is unknown
      */
-    void assertWorkerIsValid(std::string const& name);
+    void assertWorkerIsValid(std::string const& workerName);
 
     /**
      * Make sure workers are not known in the configuration and they're different.
@@ -592,18 +569,18 @@ public:
     void assertWorkersAreDifferent(std::string const& workerOneName, std::string const& workerTwoName);
 
     /**
-     * @param name The name of a worker.
+     * @param workerName The name of a worker.
      * @return 'true' if the specified worker is known to the configuration.
      */
-    bool isKnownWorker(std::string const& name) const;
+    bool isKnownWorker(std::string const& workerName) const;
 
     /**
-     * @param name The name of a worker.
+     * @param workerName The name of a worker.
      * @return A worker descriptor.
      * @throw std::invalid_argument If the specified worker was not found in
      *   the configuration.
      */
-    WorkerInfo workerInfo(std::string const& name) const;
+    WorkerInfo workerInfo(std::string const& workerName) const;
 
     /**
      * Register a new worker in the Configuration.
@@ -612,33 +589,34 @@ public:
      * @throw std::invalid_argument If the specified worker was not found in
      *   the configuration.
      */
-    WorkerInfo addWorker(WorkerInfo const& info);
+    WorkerInfo addWorker(WorkerInfo const& worker);
 
     /**
      * Completely remove the specified worker from the Configuration.
-     * @param name The name of a worker affected by the operation.
+     * @param workerName The name of a worker affected by the operation.
      * @throw std::invalid_argument If the specified worker was not found in
      *   the configuration.
      */
-    void deleteWorker(std::string const& name);
+    void deleteWorker(std::string const& workerName);
 
     /**
      * Disable the specified worker in the Configuration to exclude it from using
      * in any subsequent replication operations.
+     * @param workerName The name of a worker affected by the operation.
      * @throw std::invalid_argument If the specified worker was not found in
      *   the configuration.
      */
-    WorkerInfo disableWorker(std::string const& name);
+    WorkerInfo disableWorker(std::string const& workerName);
 
     /**
      * Update parameters of an existing worker in the transient store, and in
      * the persistent back-end as well (if any is associated with the Configuration object).
-     * @param info The new worker descriptor.
+     * @param worker The modified worker descriptor.
      * @return An updated worker descriptor.
      * @throw std::invalid_argument If the specified worker was not found in
      *   the configuration.
      */
-    WorkerInfo updateWorker(WorkerInfo const& info);
+    WorkerInfo updateWorker(WorkerInfo const& worker);
 
     /// @param showPassword If a value of the flag is 'false' then hash a password in the result.
     /// @return The JSON representation of the object.
@@ -715,17 +693,18 @@ private:
      * @param lock The lock on '_mtx' to be acquired prior to calling the method.
      * @return An updated worker description.
      */
-    WorkerInfo _updateWorker(util::Lock const& lock, WorkerInfo const& info);
+    WorkerInfo _updateWorker(util::Lock const& lock, WorkerInfo const& worker);
 
     /**
      * @param lock The lock on '_mtx' to be acquired prior to calling the method.
      * @return A family descriptor.
      * @throws std::invalid_argument If the name is empty or if no such entry exists.
      */
-    DatabaseFamilyInfo& _databaseFamilyInfo(util::Lock const& lock, std::string const& name);
+    DatabaseFamilyInfo& _databaseFamilyInfo(util::Lock const& lock, std::string const& familyName);
 
-    DatabaseFamilyInfo const& _databaseFamilyInfo(util::Lock const& lock, std::string const& name) const {
-        return const_cast<Configuration*>(this)->_databaseFamilyInfo(lock, name);
+    DatabaseFamilyInfo const& _databaseFamilyInfo(util::Lock const& lock,
+                                                  std::string const& familyName) const {
+        return const_cast<Configuration*>(this)->_databaseFamilyInfo(lock, familyName);
     }
 
     /**
@@ -733,21 +712,21 @@ private:
      * @return A database descriptor.
      * @throws std::invalid_argument If the name is empty or if no such entry exists.
      */
-    DatabaseInfo& _databaseInfo(util::Lock const& lock, std::string const& name);
+    DatabaseInfo& _databaseInfo(util::Lock const& lock, std::string const& databaseName);
 
-    DatabaseInfo const& _databaseInfo(util::Lock const& lock, std::string const& name) const {
-        return const_cast<Configuration*>(this)->_databaseInfo(lock, name);
+    DatabaseInfo const& _databaseInfo(util::Lock const& lock, std::string const& databaseName) const {
+        return const_cast<Configuration*>(this)->_databaseInfo(lock, databaseName);
     }
 
     /**
      * Update database publishing flag in the transient store and (optionally, if applies)
      * in the persistent store as well.
      * @param lock The lock on '_mtx' to be acquired prior to calling the method.
-     * @param name The name of a database entry to be updated.
+     * @param databaseName The name of a database entry to be updated.
      * @param publish The new state of the database.
      * @return An updated database descriptor.
      */
-    DatabaseInfo& _publishDatabase(util::Lock const& lock, std::string const& name, bool publish);
+    DatabaseInfo& _publishDatabase(util::Lock const& lock, std::string const& databaseName, bool publish);
 
     // Static parameters of the database connectors (read-write).
 

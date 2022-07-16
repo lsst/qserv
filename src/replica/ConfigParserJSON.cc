@@ -95,56 +95,32 @@ void ConfigParserJSON::parse(json const& obj) {
     // before databases in order to enforce the database-to-family referential
     // integrity.
     if (obj.count("workers") != 0) {
-        string const category = "workers";
-        json const& inCategoryObj = obj.at(category);
-        for (auto&& itr : inCategoryObj.items()) {
-            string const& worker = itr.key();
-            json const& inWorker = itr.value();
+        for (auto&& inWorker : obj.at("workers")) {
             // Use this constructor to validate the schema and to fill in the missing (optional)
             // parameters. If it won't throw then the input description is correct and can be placed
             // into the output object. Using defaults is needed to ensure the worker entry is
             // complete before storying in the transient state. Note that users of the API may rely
             // on the default values of some parameters of workers.
-            WorkerInfo const info(inWorker);
-            if (worker != info.name) {
-                throw invalid_argument(_context + "inconsistent definition for worker: " + worker +
-                                       " in JSON object: " + inWorker.dump());
-            }
-            _workers[worker] = info;
+            WorkerInfo const worker(inWorker);
+            _workers[worker.name] = worker;
         }
     }
     if (obj.count("database_families") != 0) {
-        string const category = "database_families";
-        json const& inCategoryObj = obj.at(category);
-        for (auto&& itr : inCategoryObj.items()) {
-            string const& family = itr.key();
-            json const& inFamily = itr.value();
+        for (auto&& inFamily : obj.at("database_families")) {
             // Use this constructor to validate the schema. If it won't throw then
             // the input description is correct and can be placed into the output object.
-            DatabaseFamilyInfo const info(inFamily);
-            if (family != info.name) {
-                throw invalid_argument(_context + "inconsistent definition for database family: " + family +
-                                       " in JSON object: " + inFamily.dump());
-            }
-            _databaseFamilies[family] = info;
+            DatabaseFamilyInfo const family(inFamily);
+            _databaseFamilies[family.name] = family;
         }
     }
     if (obj.count("databases") != 0) {
-        string const category = "databases";
-        json const& inCategoryObj = obj.at(category);
-        for (auto&& itr : inCategoryObj.items()) {
-            string const& database = itr.key();
-            json const& inDatabase = itr.value();
+        for (auto&& inDatabase : obj.at("databases")) {
             // Use this constructor to validate the schema. If it won't throw then
             // the input description is correct and can be placed into the output object.
             // Note that the parser expects a collection of the database families to ensure
             // an existing family name was provided in the input spec.
-            DatabaseInfo const info = DatabaseInfo::parse(inDatabase, _databaseFamilies);
-            if (database != info.name) {
-                throw invalid_argument(_context + "inconsistent definition for database: " + database +
-                                       " in JSON object: " + inDatabase.dump());
-            }
-            _databases[database] = info;
+            DatabaseInfo const database = DatabaseInfo::parse(inDatabase, _databaseFamilies, _databases);
+            _databases[database.name] = database;
         }
     }
 }

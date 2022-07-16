@@ -59,7 +59,7 @@ protected:
      * Open a file.
      *
      * @param transactionId  An identifier of a "super-transaction" defining a context of the operation.
-     * @param table  The base (or the final) name of a table where to upload the file.
+     * @param tableName  The base (or the final) name of a table where to upload the file.
      * @param dialect  The CSV dialect configured for interpreting the input stream, post-processing
      *   the data, and uploading the data into MySQL.
      * @param chunk  The number of a chunk (applies to partitioned tables only).
@@ -69,7 +69,7 @@ protected:
      * @throw invalid_argument  For incorrect parameters on the input.
      * @throw runtime_error  Error wile creating, or opening a file.
      */
-    std::string const& openFile(TransactionId transactionId, std::string const& table,
+    std::string const& openFile(TransactionId transactionId, std::string const& tableName,
                                 csv::Dialect const& dialect, unsigned int chunk = 0, bool isOverlap = false);
 
     /**
@@ -100,12 +100,11 @@ private:
 
     std::string _fileName;
     TransactionId _transactionId = 0;
-    std::string _table;
     csv::Dialect _dialect;
-    bool _isPartitioned = false;
     unsigned int _chunk = 0;
     bool _isOverlap = false;
-    DatabaseInfo _databaseInfo;  ///< Derived from the transaction identifier
+    DatabaseInfo _database;
+    TableInfo _table;
 
     std::string _transactionIdField;  ///< The terminated field to be prepend at each row
 

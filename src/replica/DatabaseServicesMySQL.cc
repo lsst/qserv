@@ -2220,7 +2220,7 @@ void DatabaseServicesMySQL::deleteTableRowStats(string const& database, string c
 
     string query = "DELETE FROM " + _conn->sqlId("stats_table_rows") + " WHERE " +
                    _conn->sqlEqual("database", database) + " AND " + _conn->sqlEqual("table", table);
-    if (_configuration->databaseInfo(database).isPartitioned(table) &&
+    if (_configuration->databaseInfo(database).findTable(table).isPartitioned &&
         overlapSelector != ChunkOverlapSelector::CHUNK_AND_OVERLAP) {
         query += " AND " +
                  _conn->sqlEqual("is_overlap", overlapSelector == ChunkOverlapSelector::OVERLAP ? 1 : 0);

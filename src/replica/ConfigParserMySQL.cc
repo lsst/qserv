@@ -34,7 +34,7 @@ using json = nlohmann::json;
 
 namespace lsst::qserv::replica {
 
-int const ConfigParserMySQL::expectedSchemaVersion = 10;
+int const ConfigParserMySQL::expectedSchemaVersion = 11;
 
 ConfigParserMySQL::ConfigParserMySQL(database::mysql::Connection::Ptr const& conn, json& data,
                                      map<string, WorkerInfo>& workers,
@@ -48,8 +48,6 @@ ConfigParserMySQL::ConfigParserMySQL(database::mysql::Connection::Ptr const& con
 
 void ConfigParserMySQL::parse() {
     _parseVersion();
-
-    // Parse groupped parameters
     _parseWorkers();
     _parseDatabaseFamilies();
     _parseDatabases();
@@ -61,12 +59,12 @@ void ConfigParserMySQL::_parseVersion() {
     if (!_conn->tableExists(table)) {
         throw ConfigVersionMismatch(_context + " the metadata table " + databaseTableSql + " doesn't exist.");
     }
-    string const colname = "value";
+    string const column = "value";
     int version;
     bool const isNotNull =
-            _conn->executeSingleValueSelect("SELECT " + _conn->sqlId(colname) + " FROM " + databaseTableSql +
+            _conn->executeSingleValueSelect("SELECT " + _conn->sqlId(column) + " FROM " + databaseTableSql +
                                                     " WHERE " + _conn->sqlEqual("metakey", "version"),
-                                            colname, version);
+                                            column, version);
     if (!isNotNull) {
         throw ConfigVersionMismatch(_context + " the metadata table " + databaseTableSql +
                                     " doesn't have the schema version.");
@@ -83,119 +81,90 @@ void ConfigParserMySQL::_parseVersion() {
 void ConfigParserMySQL::_parseWorkers() {
     _conn->execute("SELECT * FROM " + _conn->sqlId("config_worker"));
     while (_conn->next(_row)) {
-        WorkerInfo info;
-        info.name = _parseParam<string>("name");
-        info.isEnabled = _parseParam<int>("is_enabled") != 0;
-        info.isReadOnly = _parseParam<int>("is_read_only") != 0;
-        _workers[info.name] = info;
+        WorkerInfo worker;
+        worker.name = _parseParam<string>("name");
+        worker.isEnabled = _parseParam<int>("is_enabled") != 0;
+        worker.isReadOnly = _parseParam<int>("is_read_only") != 0;
+        _workers[worker.name] = worker;
     }
 }
 
 void ConfigParserMySQL::_parseDatabaseFamilies() {
     _conn->execute("SELECT * FROM " + _conn->sqlId("config_database_family"));
     while (_conn->next(_row)) {
-        DatabaseFamilyInfo info;
-        info.name = _parseParam<string>("name");
-        info.replicationLevel = _parseParam<unsigned int>("min_replication_level");
-        info.numStripes = _parseParam<unsigned int>("num_stripes");
-        info.numSubStripes = _parseParam<unsigned int>("num_sub_stripes");
-        info.overlap = _parseParam<double>("overlap");
-        _databaseFamilies[info.name] = info;
+        DatabaseFamilyInfo family;
+        family.name = _parseParam<string>("name");
+        family.replicationLevel = _parseParam<unsigned int>("min_replication_level");
+        family.numStripes = _parseParam<unsigned int>("num_stripes");
+        family.numSubStripes = _parseParam<unsigned int>("num_sub_stripes");
+        family.overlap = _parseParam<double>("overlap");
+        _databaseFamilies[family.name] = family;
     }
 }
 
 void ConfigParserMySQL::_parseDatabases() {
     _conn->execute("SELECT * FROM " + _conn->sqlId("config_database"));
     while (_conn->next(_row)) {
-        DatabaseInfo info;
-        info.name = _parseParam<string>("database");
-        info.family = _parseParam<string>("family_name");
-        info.isPublished = _parseParam<int>("is_published") != 0;
-        info.createTime = _parseParam<uint64_t>("create_time");
-        info.publishTime = _parseParam<uint64_t>("publish_time");
-        _databases[info.name] = info;
+        DatabaseInfo database;
+        database.name = _parseParam<string>("database");
+        database.family = _parseParam<string>("family_name");
+        database.isPublished = _parseParam<int>("is_published") != 0;
+        database.createTime = _parseParam<uint64_t>("create_time");
+        database.publishTime = _parseParam<uint64_t>("publish_time");
+        _databases[database.name] = database;
     }
+
     // Read database-specific table definitions and extend the corresponding database entries.
+    // Table definitions are going to be stored in the temporary collection to allow extending
+    // each definition later with the table schema before pushing the tables into the configuration.
+    list<TableInfo> tables;
     _conn->execute("SELECT * FROM " + _conn->sqlId("config_database_table"));
     while (_conn->next(_row)) {
-        string const database = _parseParam<string>("database");
-        string const table = _parseParam<string>("table");
-        DatabaseInfo& info = _databases[database];
-        if (_parseParam<int>("is_partitioned") != 0) {
-            info.directorTable[table] = _parseParam<string>("director_table");
-            info.directorTableKey[table] = _parseParam<string>("director_key");
-            if (info.directorTableKey[table].empty()) {
-                throw ConfigError(_context + " the key 'director_key' of the partitioned table: '" + table +
-                                  "' is empty.");
-            }
-            info.latitudeColName[table] = _parseParam<string>("latitude_key");
-            info.longitudeColName[table] = _parseParam<string>("longitude_key");
-            if (info.directorTable[table].empty()) {
-                if (info.latitudeColName[table].empty() || info.longitudeColName[table].empty()) {
-                    throw ConfigError(_context +
-                                      " one of the spatial coordinate keys 'latitude_key' or 'longitude_key'"
-                                      " of the director table: '" +
-                                      table + "' is empty.");
-                }
-            } else {
-                if (info.latitudeColName[table].empty() != info.longitudeColName[table].empty()) {
-                    throw ConfigError(_context +
-                                      " inconsistent definition of the spatial coordinate keys 'latitude_key'"
-                                      " and 'longitude_key' of the dependent table: '" +
-                                      table +
-                                      "'. Both keys need to be"
-                                      " either empty or be defined.");
-                }
-            }
-            info.partitionedTables.push_back(table);
-        } else {
-            info.regularTables.push_back(table);
-        }
-        info.tableIsPublished[table] = _parseParam<int>("is_published") != 0;
-        info.tableCreateTime[table] = _parseParam<uint64_t>("create_time");
-        info.tablePublishTime[table] = _parseParam<uint64_t>("publish_time");
+        TableInfo table;
+        table.name = _parseParam<string>("table");
+        table.database = _parseParam<string>("database");
+        table.isPublished = _parseParam<int>("is_published") != 0;
+        table.createTime = _parseParam<uint64_t>("create_time");
+        table.publishTime = _parseParam<uint64_t>("publish_time");
+        table.directorTable =
+                DirectorTableRef(_parseParam<string>("director_table"), _parseParam<string>("director_key"));
+        table.directorTable2 = DirectorTableRef(_parseParam<string>("director_table2"),
+                                                _parseParam<string>("director_key2"));
+        table.flagColName = _parseParam<string>("flag");
+        table.angSep = _parseParam<double>("ang_sep");
+        table.latitudeColName = _parseParam<string>("latitude_key");
+        table.longitudeColName = _parseParam<string>("longitude_key");
+        table.isPartitioned = _parseParam<int>("is_partitioned") != 0;
+        table.isDirector = table.isPartitioned && table.directorTable.tableName().empty() &&
+                           !table.directorTable.primaryKeyColumn().empty() && table.directorTable2.empty();
+        table.isRefMatch =
+                table.isPartitioned && !table.directorTable.empty() && !table.directorTable2.empty();
+        tables.emplace_back(table);
     }
 
-    // Validate referential integrity between the "director" and "dependent" tables
-    // to ensure each dependent table has a valid "director".
-    for (auto&& databaseItr : _databases) {
-        string const& database = databaseItr.first;
-        DatabaseInfo& info = databaseItr.second;
-        for (auto&& itr : info.directorTable) {
-            string const& table = itr.first;
-            string const& director = itr.second;
-            if (!director.empty()) {
-                if (!info.directorTable.count(director)) {
-                    throw ConfigError(_context + " the director table '" + director + "' of database '" +
-                                      database + "' required by the dependent table '" + table +
-                                      "' is not found in the configuration.");
-                } else {
-                    if (!info.directorTable.at(director).empty()) {
-                        throw ConfigError(_context + " the table: '" + table + "' of database '" + database +
-                                          "' is defined as depending on another dependent table '" +
-                                          director + "' instead of a valid director table.");
-                    }
-                }
-            }
+    // Read schema for each table.
+    for (auto&& table : tables) {
+        _conn->execute("SELECT " + _conn->sqlId("col_name") + "," + _conn->sqlId("col_type") + " FROM " +
+                       _conn->sqlId("config_database_table_schema") + " WHERE " +
+                       _conn->sqlEqual("database", table.database) + " AND " +
+                       _conn->sqlEqual("table", table.name) + " ORDER BY " + _conn->sqlId("col_position") +
+                       " ASC");
+        while (_conn->next(_row)) {
+            table.columns.push_back(
+                    SqlColDef(_parseParam<string>("col_name"), _parseParam<string>("col_type")));
         }
     }
 
-    // Read schema for each table (if available)
-    for (auto&& databaseItr : _databases) {
-        string const& database = databaseItr.first;
-        DatabaseInfo& info = databaseItr.second;
-        for (auto&& table : info.tables()) {
-            list<SqlColDef>& columns = info.columns[table];
-            _conn->execute("SELECT " + _conn->sqlId("col_name") + "," + _conn->sqlId("col_type") + "  FROM " +
-                           _conn->sqlId("config_database_table_schema") + "  WHERE " +
-                           _conn->sqlEqual("database", database) + "    AND " +
-                           _conn->sqlEqual("table", table) + "  ORDER BY " + _conn->sqlId("col_position") +
-                           " ASC");
-            while (_conn->next(_row)) {
-                columns.push_back(
-                        SqlColDef(_parseParam<string>("col_name"), _parseParam<string>("col_type")));
-            }
-        }
+    // Register tables in the configuration in two phases, starting with the "director"
+    // tables, and ending with the rest. Note that "directors" have to be known to
+    // the configuration before attempting to register the corresponding dependent tables.
+    // This algorithm will enforce the referential integrity between the partitioned tables.
+    // Pushing partitioned tables in the wrong order will fail the registration.
+    for (auto&& table : tables) {
+        if (table.isDirector) _databases[table.database].addTable(_databases, table);
+    }
+    for (auto&& table : tables) {
+        if (!table.isDirector) _databases[table.database].addTable(_databases, table);
     }
 }
 

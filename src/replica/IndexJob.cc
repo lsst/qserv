@@ -94,21 +94,22 @@ IndexJob::Destination IndexJob::fromString(string const& str) {
                            "' doesn't match any known option of the enumerator");
 }
 
-IndexJob::Ptr IndexJob::create(string const& database, string const& directorTable, bool hasTransactions,
-                               TransactionId transactionId, bool allWorkers, Destination destination,
-                               string const& destinationPath, bool localFile,
+IndexJob::Ptr IndexJob::create(string const& databaseName, string const& directorTableName,
+                               bool hasTransactions, TransactionId transactionId, bool allWorkers,
+                               Destination destination, string const& destinationPath, bool localFile,
                                Controller::Ptr const& controller, string const& parentJobId,
                                CallbackType const& onFinish, int priority) {
-    return Ptr(new IndexJob(database, directorTable, hasTransactions, transactionId, allWorkers, destination,
-                            destinationPath, localFile, controller, parentJobId, onFinish, priority));
+    return Ptr(new IndexJob(databaseName, directorTableName, hasTransactions, transactionId, allWorkers,
+                            destination, destinationPath, localFile, controller, parentJobId, onFinish,
+                            priority));
 }
 
-IndexJob::IndexJob(string const& database, string const& directorTable, bool hasTransactions,
+IndexJob::IndexJob(string const& databaseName, string const& directorTableName, bool hasTransactions,
                    TransactionId transactionId, bool allWorkers, Destination destination,
                    string const& destinationPath, bool localFile, Controller::Ptr const& controller,
                    string const& parentJobId, CallbackType const& onFinish, int priority)
         : Job(controller, parentJobId, "INDEX", priority),
-          _directorTable(directorTable),
+          _directorTableName(directorTableName),
           _hasTransactions(hasTransactions),
           _transactionId(transactionId),
           _allWorkers(allWorkers),
@@ -118,10 +119,10 @@ IndexJob::IndexJob(string const& database, string const& directorTable, bool has
           _onFinish(onFinish) {
     // Get and verify database status
     try {
-        _databaseInfo = controller->serviceProvider()->config()->databaseInfo(database);
-        if (!_databaseInfo.isDirector(directorTable)) {
+        _database = controller->serviceProvider()->config()->databaseInfo(databaseName);
+        if (!_database.findTable(directorTableName).isDirector) {
             throw runtime_error(context() + "::" + string(__func__) + " no such director table '" +
-                                directorTable + "' in the database: '" + database + "'.");
+                                directorTableName + "' in the database: '" + _database.name + "'.");
         }
     } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR, ex.what());

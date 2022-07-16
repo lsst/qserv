@@ -637,7 +637,7 @@ int ControllerApp::runImpl() {
 
     } else if ("SQL_TABLE_ROW_STATS" == _requestType) {
         auto const databaseInfo = controller->serviceProvider()->config()->databaseInfo(_sqlDatabase);
-        bool const isPartitioned = databaseInfo.isPartitioned(_sqlTable);
+        bool const isPartitioned = databaseInfo.findTable(_sqlTable).isPartitioned;
         vector<string> const tables = {
                 isPartitioned ? ChunkedTable(_sqlTable, _chunkNumber, _isOverlap).name() : _sqlTable};
         request = controller->sqlRowStats(_workerName, _sqlDatabase, tables, SqlRequest::extendedPrinter,

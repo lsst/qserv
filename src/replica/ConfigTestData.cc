@@ -123,248 +123,443 @@ json ConfigTestData::data() {
                                          {"http-loader-port", 55000},
                                          {"http-loader-tmp-dir", "/tmp"}});
 
-    // A configuration of this worker is complete as it has all required
-    // parameters.
-    obj["workers"]["worker-A"] = json::object({{"name", "worker-A"},
-                                               {"is-enabled", 1},
-                                               {"is-read-only", 0},
-                                               {"svc-host", "host-A"},
-                                               {"svc-port", 51001},
-                                               {"fs-host", "host-A"},
-                                               {"fs-port", 52001},
-                                               {"data-dir", "/data/A"},
-                                               {"loader-host", "host-A"},
-                                               {"loader-port", 53002},
-                                               {"loader-tmp-dir", "/tmp/A"},
-                                               {"exporter-host", "host-A"},
-                                               {"exporter-port", 53003},
-                                               {"exporter-tmp-dir", "/tmp/export/A"},
-                                               {"http-loader-host", "host-A"},
-                                               {"http-loader-port", 53004},
-                                               {"http-loader-tmp-dir", "/tmp/http/A"}});
-
-    // This configuration is incomplete. An assumption is that the corresponding
-    // defaults will be loaded when the Configuration class will be processing
-    // this definition.
-    obj["workers"]["worker-B"] = json::object({{"name", "worker-B"},
-                                               {"is-enabled", 1},
-                                               {"is-read-only", 1},
-                                               {"svc-host", "host-B"},
-                                               {"fs-host", "host-B"},
-                                               {"data-dir", "/data/B"},
-                                               {"loader-host", "host-B"},
-                                               {"exporter-host", "host-B"},
-                                               {"http-loader-host", "host-B"}});
-
-    // This configuration is incomplete. An assumption is that the corresponding
-    // defaults will be loaded when the Configuration class will be processing
-    // this definition.
-    obj["workers"]["worker-C"] = json::object({{"name", "worker-C"},
-                                               {"is-enabled", 0},
-                                               {"is-read-only", 0},
-                                               {"svc-host", "host-C"},
-                                               {"fs-host", "host-C"},
-                                               {"loader-host", "host-C"},
-                                               {"exporter-host", "host-C"},
-                                               {"http-loader-host", "host-C"}});
-    obj["database_families"]["production"] = json::object({{"name", "production"},
-                                                           {"min_replication_level", 10},
-                                                           {"num_stripes", 11},
-                                                           {"num_sub_stripes", 12},
-                                                           {"overlap", 0.01667}});
-    obj["database_families"]["test"] = json::object({{"name", "test"},
-                                                     {"min_replication_level", 13},
-                                                     {"num_stripes", 14},
-                                                     {"num_sub_stripes", 15},
-                                                     {"overlap", 0.001}});
-    obj["databases"]["db1"] = json::object({{"database", "db1"},
-                                            {"family_name", "production"},
-                                            {"is_published", 1},
-                                            {"create_time", 10},
-                                            {"publish_time", 11},
-                                            {"tables",
-                                             {{"Table11",
-                                               {{"name", "Table11"},
-                                                {"is_partitioned", 1},
-                                                {"director", ""},
-                                                {"director_key", "id11"},
-                                                {"latitude_key", "decl11"},
-                                                {"longitude_key", "ra11"},
-                                                {"is_published", 1},
-                                                {"create_time", 110},
-                                                {"publish_time", 111},
-                                                {"columns", {}}}},
-                                              {"MetaTable11",
-                                               {{"name", "MetaTable11"},
-                                                {"is_partitioned", 0},
-                                                {"is_published", 1},
-                                                {"create_time", 120},
-                                                {"publish_time", 121}}}}}});
-    obj["databases"]["db2"] = json::object({{"database", "db2"},
-                                            {"family_name", "production"},
-                                            {"is_published", 1},
-                                            {"create_time", 20},
-                                            {"publish_time", 21},
-                                            {"tables",
-                                             {{"Table21",
-                                               {{"name", "Table21"},
-                                                {"is_partitioned", 1},
-                                                {"director", ""},
-                                                {"director_key", "id21"},
-                                                {"latitude_key", "decl21"},
-                                                {"longitude_key", "ra21"},
-                                                {"is_published", 1},
-                                                {"create_time", 210},
-                                                {"publish_time", 211},
-                                                {"columns", {}}}},
-                                              {"Table22",
-                                               {{"name", "Table22"},
-                                                {"is_partitioned", 1},
-                                                {"director", "Table21"},
-                                                {"director_key", "id22"},
-                                                {"latitude_key", "decl22"},
-                                                {"longitude_key", "ra22"},
-                                                {"is_published", 1},
-                                                {"create_time", 220},
-                                                {"publish_time", 221},
-                                                {"columns", {}}}},
-                                              {"MetaTable21",
-                                               {{"name", "MetaTable21"},
-                                                {"is_partitioned", 0},
-                                                {"is_published", 1},
-                                                {"create_time", 2210},
-                                                {"publish_time", 2211}}},
-                                              {"MetaTable22",
-                                               {{"name", "MetaTable22"},
-                                                {"is_partitioned", 0},
-                                                {"is_published", 1},
-                                                {"create_time", 2220},
-                                                {"publish_time", 2221}}}}}});
-    obj["databases"]["db3"] = json::object({{"database", "db3"},
-                                            {"family_name", "production"},
-                                            {"is_published", 1},
-                                            {"create_time", 30},
-                                            {"publish_time", 31},
-                                            {"tables",
-                                             {{"Table31",
-                                               {{"name", "Table31"},
-                                                {"is_partitioned", 1},
-                                                {"director", ""},
-                                                {"director_key", "id31"},
-                                                {"latitude_key", "decl31"},
-                                                {"longitude_key", "ra31"},
-                                                {"is_published", 1},
-                                                {"create_time", 310},
-                                                {"publish_time", 311},
-                                                {"columns", {}}}},
-                                              {"Table32",
-                                               {{"name", "Table32"},
-                                                {"is_partitioned", 1},
-                                                {"director", "Table31"},
-                                                {"director_key", "id32"},
-                                                {"latitude_key", "decl32"},
-                                                {"longitude_key", "ra32"},
-                                                {"is_published", 1},
-                                                {"create_time", 320},
-                                                {"publish_time", 321},
-                                                {"columns", {}}}},
-                                              {"Table33",
-                                               {{"name", "Table33"},
-                                                {"is_partitioned", 1},
-                                                {"director", "Table31"},
-                                                {"director_key", "id33"},
-                                                {"latitude_key", ""},
-                                                {"longitude_key", ""},
-                                                {"is_published", 1},
-                                                {"create_time", 330},
-                                                {"publish_time", 331},
-                                                {"columns", {}}}},
-                                              {"MetaTable31",
-                                               {{"name", "MetaTable31"},
-                                                {"is_partitioned", 0},
-                                                {"is_published", 1},
-                                                {"create_time", 3310},
-                                                {"publish_time", 3311}}},
-                                              {"MetaTable32",
-                                               {{"name", "MetaTable32"},
-                                                {"is_partitioned", 0},
-                                                {"is_published", 1},
-                                                {"create_time", 3320},
-                                                {"publish_time", 3321}}},
-                                              {"MetaTable33",
-                                               {{"name", "MetaTable33"},
-                                                {"is_partitioned", 0},
-                                                {"is_published", 1},
-                                                {"create_time", 3330},
-                                                {"publish_time", 3331}}}}}});
-    obj["databases"]["db4"] = json::object({{"database", "db4"},
-                                            {"family_name", "test"},
-                                            {"is_published", 1},
-                                            {"create_time", 40},
-                                            {"publish_time", 41},
-                                            {"tables",
-                                             {{"Table41",
-                                               {{"name", "Table41"},
-                                                {"is_partitioned", 1},
-                                                {"director", ""},
-                                                {"director_key", "id41"},
-                                                {"latitude_key", "decl41"},
-                                                {"longitude_key", "ra41"},
-                                                {"is_published", 1},
-                                                {"create_time", 410},
-                                                {"publish_time", 4101},
-                                                {"columns", {}}}},
-                                              {"Table42",
-                                               {{"name", "Table42"},
-                                                {"is_partitioned", 1},
-                                                {"director", ""},
-                                                {"director_key", "id42"},
-                                                {"latitude_key", "decl42"},
-                                                {"longitude_key", "ra42"},
-                                                {"is_published", 1},
-                                                {"create_time", 420},
-                                                {"publish_time", 421},
-                                                {"columns", {}}}}}}});
-    obj["databases"]["db5"] = json::object({{"database", "db5"},
-                                            {"family_name", "test"},
-                                            {"is_published", 1},
-                                            {"create_time", 50},
-                                            {"publish_time", 51},
-                                            {"tables",
-                                             {{"Table51",
-                                               {{"name", "Table51"},
-                                                {"is_partitioned", 1},
-                                                {"director", ""},
-                                                {"director_key", "id51"},
-                                                {"latitude_key", "decl51"},
-                                                {"longitude_key", "ra51"},
-                                                {"is_published", 1},
-                                                {"create_time", 510},
-                                                {"publish_time", 511},
-                                                {"columns", {}}}}}}});
-    obj["databases"]["db6"] = json::object({{"database", "db6"},
-                                            {"family_name", "test"},
-                                            {"is_published", 0},
-                                            {"create_time", 60},
-                                            {"publish_time", 0},
-                                            {"tables",
-                                             {{"Table61",
-                                               {{"name", "Table61"},
-                                                {"is_partitioned", 1},
-                                                {"director", ""},
-                                                {"director_key", "id61"},
-                                                {"latitude_key", "decl61"},
-                                                {"longitude_key", "ra61"},
-                                                {"is_published", 0},
-                                                {"create_time", 610},
-                                                {"publish_time", 0},
-                                                {"columns", {}}}},
-                                              {"MetaTable61",
-                                               {{"name", "MetaTable61"},
-                                                {"is_partitioned", 0},
-                                                {"is_published", 1},
-                                                {"create_time", 6610},
-                                                {"publish_time", 6611}}}}}});
+    obj["workers"] = json::array();
+    {
+        // A configuration of this worker is complete as it has all required
+        // parameters.
+        json worker = json::object({{"name", "worker-A"},
+                                    {"is-enabled", 1},
+                                    {"is-read-only", 0},
+                                    {"svc-host", "host-A"},
+                                    {"svc-port", 51001},
+                                    {"fs-host", "host-A"},
+                                    {"fs-port", 52001},
+                                    {"data-dir", "/data/A"},
+                                    {"loader-host", "host-A"},
+                                    {"loader-port", 53002},
+                                    {"loader-tmp-dir", "/tmp/A"},
+                                    {"exporter-host", "host-A"},
+                                    {"exporter-port", 53003},
+                                    {"exporter-tmp-dir", "/tmp/export/A"},
+                                    {"http-loader-host", "host-A"},
+                                    {"http-loader-port", 53004},
+                                    {"http-loader-tmp-dir", "/tmp/http/A"}});
+        obj["workers"].emplace_back(worker);
+    }
+    {
+        // This configuration is incomplete. An assumption is that the corresponding
+        // defaults will be loaded when the Configuration class will be processing
+        // this definition.
+        json worker = json::object({{"name", "worker-B"},
+                                    {"is-enabled", 1},
+                                    {"is-read-only", 1},
+                                    {"svc-host", "host-B"},
+                                    {"fs-host", "host-B"},
+                                    {"data-dir", "/data/B"},
+                                    {"loader-host", "host-B"},
+                                    {"exporter-host", "host-B"},
+                                    {"http-loader-host", "host-B"}});
+        obj["workers"].emplace_back(worker);
+    }
+    {
+        // This configuration is incomplete. An assumption is that the corresponding
+        // defaults will be loaded when the Configuration class will be processing
+        // this definition.
+        json worker = json::object({{"name", "worker-C"},
+                                    {"is-enabled", 0},
+                                    {"is-read-only", 0},
+                                    {"svc-host", "host-C"},
+                                    {"fs-host", "host-C"},
+                                    {"loader-host", "host-C"},
+                                    {"exporter-host", "host-C"},
+                                    {"http-loader-host", "host-C"}});
+        obj["workers"].emplace_back(worker);
+    }
+    obj["database_families"] = json::array();
+    {
+        json family = json::object({{"name", "production"},
+                                    {"min_replication_level", 10},
+                                    {"num_stripes", 11},
+                                    {"num_sub_stripes", 12},
+                                    {"overlap", 0.01667}});
+        obj["database_families"].emplace_back(family);
+    }
+    {
+        json family = json::object({{"name", "test"},
+                                    {"min_replication_level", 13},
+                                    {"num_stripes", 14},
+                                    {"num_sub_stripes", 15},
+                                    {"overlap", 0.001}});
+        obj["database_families"].emplace_back(family);
+    }
+    obj["databases"] = json::array();
+    {
+        json database = json::object({{"database", "db1"},
+                                      {"family_name", "production"},
+                                      {"is_published", 1},
+                                      {"create_time", 10},
+                                      {"publish_time", 11},
+                                      {"tables", json::array()}});
+        {
+            json table = json::object({{"name", "Table11"},
+                                       {"is_partitioned", 1},
+                                       {"director_table", ""},
+                                       {"director_key", "id11"},
+                                       {"director_table2", ""},
+                                       {"director_key2", ""},
+                                       {"flag", ""},
+                                       {"ang_sep", 0.0},
+                                       {"latitude_key", "decl11"},
+                                       {"longitude_key", "ra11"},
+                                       {"is_published", 1},
+                                       {"create_time", 110},
+                                       {"publish_time", 111},
+                                       {"columns", json::array()}});
+            json& columns = table["columns"];
+            columns.emplace_back(json::object({{"name", "id11"}, {"type", "BIGINT NOT NULL"}}));
+            columns.emplace_back(json::object({{"name", "decl11"}, {"type", "DOUBLE NOT NULL"}}));
+            columns.emplace_back(json::object({{"name", "ra11"}, {"type", "DOUBLE NOT NULL"}}));
+            columns.emplace_back(json::object({{"name", "subChunkId"}, {"type", "INT NOT NULL"}}));
+            database["tables"].emplace_back(table);
+        }
+        {
+            json table = json::object({{"name", "MetaTable11"},
+                                       {"is_partitioned", 0},
+                                       {"is_published", 1},
+                                       {"create_time", 120},
+                                       {"publish_time", 121}});
+            database["tables"].emplace_back(table);
+        }
+        obj["databases"].emplace_back(database);
+    }
+    {
+        json database = json::object({{"database", "db2"},
+                                      {"family_name", "production"},
+                                      {"is_published", 1},
+                                      {"create_time", 20},
+                                      {"publish_time", 21},
+                                      {"tables", json::array()}});
+        {
+            json table = json::object({{"name", "Table21"},
+                                       {"is_partitioned", 1},
+                                       {"director_table", ""},
+                                       {"director_key", "id21"},
+                                       {"director_table2", ""},
+                                       {"director_key2", ""},
+                                       {"flag", ""},
+                                       {"ang_sep", 0.0},
+                                       {"latitude_key", "decl21"},
+                                       {"longitude_key", "ra21"},
+                                       {"is_published", 1},
+                                       {"create_time", 210},
+                                       {"publish_time", 211},
+                                       {"columns", json::array()}});
+            json& columns = table["columns"];
+            columns.emplace_back(json::object({{"name", "id21"}, {"type", "BIGINT NOT NULL"}}));
+            columns.emplace_back(json::object({{"name", "decl21"}, {"type", "DOUBLE NOT NULL"}}));
+            columns.emplace_back(json::object({{"name", "ra21"}, {"type", "DOUBLE NOT NULL"}}));
+            columns.emplace_back(json::object({{"name", "subChunkId"}, {"type", "INT NOT NULL"}}));
+            database["tables"].emplace_back(table);
+        }
+        {
+            json table = json::object({{"name", "Table22"},
+                                       {"is_partitioned", 1},
+                                       {"director_table", "Table21"},
+                                       {"director_key", "id22"},
+                                       {"director_table2", ""},
+                                       {"director_key2", ""},
+                                       {"flag", ""},
+                                       {"ang_sep", 0.0},
+                                       {"latitude_key", "decl22"},
+                                       {"longitude_key", "ra22"},
+                                       {"is_published", 1},
+                                       {"create_time", 220},
+                                       {"publish_time", 221},
+                                       {"columns", json::array()}});
+            json& columns = table["columns"];
+            columns.emplace_back(json::object({{"name", "id22"}, {"type", "BIGINT NOT NULL"}}));
+            columns.emplace_back(json::object({{"name", "decl22"}, {"type", "DOUBLE NOT NULL"}}));
+            columns.emplace_back(json::object({{"name", "ra22"}, {"type", "DOUBLE NOT NULL"}}));
+            database["tables"].emplace_back(table);
+        }
+        {
+            json table = json::object({{"name", "MetaTable21"},
+                                       {"is_partitioned", 0},
+                                       {"is_published", 1},
+                                       {"create_time", 2210},
+                                       {"publish_time", 2211}});
+            database["tables"].emplace_back(table);
+        }
+        {
+            json table = json::object({{"name", "MetaTable22"},
+                                       {"is_partitioned", 0},
+                                       {"is_published", 1},
+                                       {"create_time", 2220},
+                                       {"publish_time", 2221}});
+            database["tables"].emplace_back(table);
+        }
+        obj["databases"].emplace_back(database);
+    }
+    {
+        json database = json::object({{"database", "db3"},
+                                      {"family_name", "production"},
+                                      {"is_published", 1},
+                                      {"create_time", 30},
+                                      {"publish_time", 31},
+                                      {"tables", json::array()}});
+        {
+            json table = json::object({{"name", "Table31"},
+                                       {"is_partitioned", 1},
+                                       {"director_table", ""},
+                                       {"director_key", "id31"},
+                                       {"director_table2", ""},
+                                       {"director_key2", ""},
+                                       {"flag", ""},
+                                       {"ang_sep", 0.0},
+                                       {"latitude_key", "decl31"},
+                                       {"longitude_key", "ra31"},
+                                       {"is_published", 1},
+                                       {"create_time", 310},
+                                       {"publish_time", 311},
+                                       {"columns", json::array()}});
+            json& columns = table["columns"];
+            columns.emplace_back(json::object({{"name", "id31"}, {"type", "BIGINT NOT NULL"}}));
+            columns.emplace_back(json::object({{"name", "decl31"}, {"type", "DOUBLE NOT NULL"}}));
+            columns.emplace_back(json::object({{"name", "ra31"}, {"type", "DOUBLE NOT NULL"}}));
+            columns.emplace_back(json::object({{"name", "subChunkId"}, {"type", "INT NOT NULL"}}));
+            database["tables"].emplace_back(table);
+        }
+        {
+            json table = json::object({{"name", "Table32"},
+                                       {"is_partitioned", 1},
+                                       {"director_table", "Table31"},
+                                       {"director_key", "id32"},
+                                       {"director_table2", ""},
+                                       {"director_key2", ""},
+                                       {"flag", ""},
+                                       {"ang_sep", 0.0},
+                                       {"latitude_key", "decl32"},
+                                       {"longitude_key", "ra32"},
+                                       {"is_published", 1},
+                                       {"create_time", 320},
+                                       {"publish_time", 321},
+                                       {"columns", json::array()}});
+            json& columns = table["columns"];
+            columns.emplace_back(json::object({{"name", "id32"}, {"type", "BIGINT NOT NULL"}}));
+            columns.emplace_back(json::object({{"name", "decl32"}, {"type", "DOUBLE NOT NULL"}}));
+            columns.emplace_back(json::object({{"name", "ra32"}, {"type", "DOUBLE NOT NULL"}}));
+            database["tables"].emplace_back(table);
+        }
+        {
+            json table = json::object({{"name", "Table33"},
+                                       {"is_partitioned", 1},
+                                       {"director_table", "Table31"},
+                                       {"director_key", "id33"},
+                                       {"director_table2", ""},
+                                       {"director_key2", ""},
+                                       {"flag", ""},
+                                       {"ang_sep", 0.0},
+                                       {"latitude_key", ""},
+                                       {"longitude_key", ""},
+                                       {"is_published", 1},
+                                       {"create_time", 330},
+                                       {"publish_time", 331},
+                                       {"columns", json::array()}});
+            json& columns = table["columns"];
+            columns.emplace_back(json::object({{"name", "id33"}, {"type", "BIGINT NOT NULL"}}));
+            database["tables"].emplace_back(table);
+        }
+        {
+            json table = json::object({{"name", "MetaTable31"},
+                                       {"is_partitioned", 0},
+                                       {"is_published", 1},
+                                       {"create_time", 3310},
+                                       {"publish_time", 3311}});
+            database["tables"].emplace_back(table);
+        }
+        {
+            json table = json::object({{"name", "MetaTable32"},
+                                       {"is_partitioned", 0},
+                                       {"is_published", 1},
+                                       {"create_time", 3320},
+                                       {"publish_time", 3321}});
+            database["tables"].emplace_back(table);
+        }
+        {
+            json table = json::object({{"name", "MetaTable33"},
+                                       {"is_partitioned", 0},
+                                       {"is_published", 0},
+                                       {"create_time", 3330},
+                                       {"publish_time", 0}});
+            database["tables"].emplace_back(table);
+        }
+        obj["databases"].emplace_back(database);
+    }
+    {
+        json database = json::object({{"database", "db4"},
+                                      {"family_name", "test"},
+                                      {"is_published", 1},
+                                      {"create_time", 40},
+                                      {"publish_time", 41},
+                                      {"tables", json::array()}});
+        {
+            json table = json::object({{"name", "Table41"},
+                                       {"is_partitioned", 1},
+                                       {"director_table", ""},
+                                       {"director_key", "id41"},
+                                       {"director_table2", ""},
+                                       {"director_key2", ""},
+                                       {"flag", ""},
+                                       {"ang_sep", 0.0},
+                                       {"latitude_key", "decl41"},
+                                       {"longitude_key", "ra41"},
+                                       {"is_published", 1},
+                                       {"create_time", 410},
+                                       {"publish_time", 411},
+                                       {"columns", json::array()}});
+            json& columns = table["columns"];
+            columns.emplace_back(json::object({{"name", "id41"}, {"type", "BIGINT NOT NULL"}}));
+            columns.emplace_back(json::object({{"name", "decl41"}, {"type", "DOUBLE NOT NULL"}}));
+            columns.emplace_back(json::object({{"name", "ra41"}, {"type", "DOUBLE NOT NULL"}}));
+            columns.emplace_back(json::object({{"name", "subChunkId"}, {"type", "INT NOT NULL"}}));
+            database["tables"].emplace_back(table);
+        }
+        {
+            json table = json::object({{"name", "Table42"},
+                                       {"is_partitioned", 1},
+                                       {"director_table", ""},
+                                       {"director_key", "id42"},
+                                       {"director_table2", ""},
+                                       {"director_key2", ""},
+                                       {"flag", ""},
+                                       {"ang_sep", 0.0},
+                                       {"latitude_key", "decl42"},
+                                       {"longitude_key", "ra42"},
+                                       {"is_published", 1},
+                                       {"create_time", 420},
+                                       {"publish_time", 421},
+                                       {"columns", json::array()}});
+            json& columns = table["columns"];
+            columns.emplace_back(json::object({{"name", "id42"}, {"type", "BIGINT NOT NULL"}}));
+            columns.emplace_back(json::object({{"name", "decl42"}, {"type", "DOUBLE NOT NULL"}}));
+            columns.emplace_back(json::object({{"name", "ra42"}, {"type", "DOUBLE NOT NULL"}}));
+            columns.emplace_back(json::object({{"name", "subChunkId"}, {"type", "INT NOT NULL"}}));
+            database["tables"].emplace_back(table);
+        }
+        {
+            json table = json::object({{"name", "RefMatch43"},
+                                       {"is_partitioned", 1},
+                                       {"director_table", "Table41"},
+                                       {"director_key", "Table41_id"},
+                                       {"director_table2", "Table42"},
+                                       {"director_key2", "Table42_id"},
+                                       {"flag", "flag"},
+                                       {"ang_sep", 0.01},
+                                       {"latitude_key", ""},
+                                       {"longitude_key", ""},
+                                       {"is_published", 0},
+                                       {"create_time", 430},
+                                       {"publish_time", 0},
+                                       {"columns", json::array()}});
+            json& columns = table["columns"];
+            columns.emplace_back(json::object({{"name", "Table41_id"}, {"type", "BIGINT NOT NULL"}}));
+            columns.emplace_back(json::object({{"name", "Table42_id"}, {"type", "BIGINT NOT NULL"}}));
+            columns.emplace_back(json::object({{"name", "flag"}, {"type", "INT NOT NULL"}}));
+            database["tables"].emplace_back(table);
+        }
+        {
+            json table = json::object({{"name", "RefMatch44"},
+                                       {"is_partitioned", 1},
+                                       {"director_table", "db2.Table21"},
+                                       {"director_key", "Table21_id"},
+                                       {"director_table2", "db3.Table31"},
+                                       {"director_key2", "Table31_id"},
+                                       {"flag", "flag"},
+                                       {"ang_sep", 0.01667},
+                                       {"latitude_key", ""},
+                                       {"longitude_key", ""},
+                                       {"is_published", 0},
+                                       {"create_time", 440},
+                                       {"publish_time", 0},
+                                       {"columns", json::array()}});
+            json& columns = table["columns"];
+            columns.emplace_back(json::object({{"name", "Table21_id"}, {"type", "BIGINT NOT NULL"}}));
+            columns.emplace_back(json::object({{"name", "Table31_id"}, {"type", "BIGINT NOT NULL"}}));
+            columns.emplace_back(json::object({{"name", "flag"}, {"type", "INT NOT NULL"}}));
+            database["tables"].emplace_back(table);
+        }
+        obj["databases"].emplace_back(database);
+    }
+    {
+        json database = json::object({{"database", "db5"},
+                                      {"family_name", "test"},
+                                      {"is_published", 1},
+                                      {"create_time", 50},
+                                      {"publish_time", 51},
+                                      {"tables", json::array()}});
+        {
+            json table = json::object({{"name", "Table51"},
+                                       {"is_partitioned", 1},
+                                       {"director_table", ""},
+                                       {"director_key", "id51"},
+                                       {"director_table2", ""},
+                                       {"director_key2", ""},
+                                       {"flag", ""},
+                                       {"ang_sep", 0.0},
+                                       {"latitude_key", "decl51"},
+                                       {"longitude_key", "ra51"},
+                                       {"is_published", 1},
+                                       {"create_time", 510},
+                                       {"publish_time", 511},
+                                       {"columns", json::array()}});
+            json& columns = table["columns"];
+            columns.emplace_back(json::object({{"name", "id51"}, {"type", "BIGINT NOT NULL"}}));
+            columns.emplace_back(json::object({{"name", "decl51"}, {"type", "DOUBLE NOT NULL"}}));
+            columns.emplace_back(json::object({{"name", "ra51"}, {"type", "DOUBLE NOT NULL"}}));
+            columns.emplace_back(json::object({{"name", "subChunkId"}, {"type", "INT NOT NULL"}}));
+            database["tables"].emplace_back(table);
+        }
+        obj["databases"].emplace_back(database);
+    }
+    {
+        json database = json::object({{"database", "db6"},
+                                      {"family_name", "test"},
+                                      {"is_published", 0},
+                                      {"create_time", 60},
+                                      {"publish_time", 0},
+                                      {"tables", json::array()}});
+        {
+            json table = json::object({{"name", "Table61"},
+                                       {"is_partitioned", 1},
+                                       {"director_table", ""},
+                                       {"director_key", "id61"},
+                                       {"director_table2", ""},
+                                       {"director_key2", ""},
+                                       {"flag", ""},
+                                       {"ang_sep", 0.0},
+                                       {"latitude_key", "decl61"},
+                                       {"longitude_key", "ra61"},
+                                       {"is_published", 0},
+                                       {"create_time", 610},
+                                       {"publish_time", 0},
+                                       {"columns", json::array()}});
+            json& columns = table["columns"];
+            columns.emplace_back(json::object({{"name", "id61"}, {"type", "BIGINT NOT NULL"}}));
+            columns.emplace_back(json::object({{"name", "decl61"}, {"type", "DOUBLE NOT NULL"}}));
+            columns.emplace_back(json::object({{"name", "ra61"}, {"type", "DOUBLE NOT NULL"}}));
+            columns.emplace_back(json::object({{"name", "subChunkId"}, {"type", "INT NOT NULL"}}));
+            database["tables"].emplace_back(table);
+        }
+        {
+            json table = json::object({{"name", "MetaTable61"},
+                                       {"is_partitioned", 0},
+                                       {"is_published", 1},
+                                       {"create_time", 6610},
+                                       {"publish_time", 6611}});
+            database["tables"].emplace_back(table);
+        }
+        obj["databases"].emplace_back(database);
+    }
     return obj;
 }
 

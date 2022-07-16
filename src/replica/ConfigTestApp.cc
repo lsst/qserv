@@ -18,7 +18,6 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-
 // Class header
 #include "replica/ConfigTestApp.h"
 
@@ -63,7 +62,7 @@ string const VALUE_MISMATCH_STR = "VALUE MISMATCH";
 /**
  * The class ComparatorBase represents the base class for specific comparators
  * for workers, database families or databases. The class encapsulates common
- * aspects of the final comparatos.
+ * aspects of the final comparators.
  */
 class ComparatorBase {
 public:
@@ -211,15 +210,14 @@ public:
         verifyImpl("name", actual.name, desired.name);
         verifyImpl("family_name", actual.family, desired.family);
         verifyImpl("is_published", actual.isPublished, desired.isPublished);
-        verifyImpl("partitioned_tables.empty()", actual.partitionedTables.empty(),
-                   desired.partitionedTables.empty());
-        verifyImpl("regular_tables.empty()", actual.regularTables.empty(), desired.regularTables.empty());
-        verifyImpl("columns.empty()", actual.columns.empty(), desired.columns.empty());
-        verifyImpl("director_table.size()", actual.directorTable.size(), desired.directorTable.size());
-        verifyImpl("director_tables.size()", actual.directorTables().size(), desired.directorTables().size());
-        verifyImpl("director_key.size()", actual.directorTableKey.size(), desired.directorTableKey.size());
-        verifyImpl("latitude_key.size()", actual.latitudeColName.size(), desired.latitudeColName.size());
-        verifyImpl("longitude_key.size()", actual.longitudeColName.size(), desired.longitudeColName.size());
+        verifyImpl("tables.empty()", actual.tables().empty(), desired.tables().empty());
+        verifyImpl("partitioned_tables.empty()", actual.partitionedTables().empty(),
+                   desired.partitionedTables().empty());
+        verifyImpl("director_tables.empty()", actual.directorTables().empty(),
+                   desired.directorTables().empty());
+        verifyImpl("ref_match_tables.empty()", actual.refMatchTables().empty(),
+                   desired.refMatchTables().empty());
+        verifyImpl("regular_tables.empty()", actual.regularTables().empty(), desired.regularTables().empty());
     }
 };
 
@@ -859,20 +857,16 @@ bool ConfigTestApp::_testTables() {
         }
     }
 
-    auto const addTable = [&](string const& database, string const& table, bool isPartitioned,
-                              bool isDirector, string const& directorTable, string const& directorTableKey,
-                              string const& latitudeColName, string const& longitudeColName,
-                              list<SqlColDef> const& coldefs) -> bool {
+    auto const addTable = [&](TableInfo const& table) -> bool {
         try {
-            config()->addTable(database, table, isPartitioned, coldefs, isDirector, directorTable,
-                               directorTableKey, latitudeColName, longitudeColName);
+            config()->addTable(table);
             config()->reload();
-            DatabaseInfo const updatedDatabase = config()->databaseInfo(database);
+            DatabaseInfo const updatedDatabase = config()->databaseInfo(table.database);
             return true;
         } catch (exception const& ex) {
             cout << "\n";
             cout << indent << " ERROR: "
-                 << "failed to add table '" << table << "' to database '" << database
+                 << "failed to add table '" << table.name << "' to database '" << table.database
                  << "', ex: " << string(ex.what()) << ", ABORTING THE TEST OF TABLES\n";
             cout << "\n";
             return false;
@@ -881,33 +875,24 @@ bool ConfigTestApp::_testTables() {
 
     // Adding the first director table to the database. This is is going to be the "stand-alone"
     // director that won't have any dependents.
-    string const table1 = "director-1";
-    bool const isPartitioned1 = true;
-    bool isDirector1 = true;
-    string const directorTable1;
-    string const directorTableKey1 = "objectId";
-    string const latitudeColName1 = "decl";
-    string const longitudeColName1 = "ra";
-    list<SqlColDef> coldefs1;
-    coldefs1.emplace_back(directorTableKey1, "INT UNSIGNED");
-    coldefs1.emplace_back(latitudeColName1, "DOUBLE");
-    coldefs1.emplace_back(longitudeColName1, "DOUBLE");
-    coldefs1.emplace_back(lsst::qserv::SUB_CHUNK_COLUMN, "INT");
+    TableInfo table1;
+    table1.name = "director-1";
+    table1.database = database;
+    table1.isPartitioned = true;
+    table1.isDirector = true;
+    table1.directorTable = DirectorTableRef("", "objectId");
+    table1.latitudeColName = "decl";
+    table1.longitudeColName = "ra";
+    table1.columns.emplace_back(table1.directorTable.primaryKeyColumn(), "INT UNSIGNED");
+    table1.columns.emplace_back(table1.latitudeColName, "DOUBLE");
+    table1.columns.emplace_back(table1.longitudeColName, "DOUBLE");
+    table1.columns.emplace_back(lsst::qserv::SUB_CHUNK_COLUMN, "INT");
 
-    success = success && addTable(database, table1, isPartitioned1, isDirector1, directorTable1,
-                                  directorTableKey1, latitudeColName1, longitudeColName1, coldefs1);
+    success = success && addTable(table1);
     {
-        DatabaseInfo const databaseInfo = config()->databaseInfo(database);
-        auto const tables = databaseInfo.tables();
-        bool const passed = (tables.size() == 1) &&
-                            (find(tables.cbegin(), tables.cend(), table1) != tables.cend()) &&
-                            (databaseInfo.isPartitioned(table1) == isPartitioned1) &&
-                            (databaseInfo.isDirector(table1) == isDirector1) &&
-                            databaseInfo.directorTable.at(table1).empty() &&
-                            (databaseInfo.directorTableKey.at(table1) == directorTableKey1) &&
-                            (databaseInfo.latitudeColName.at(table1) == latitudeColName1) &&
-                            (databaseInfo.longitudeColName.at(table1) == longitudeColName1) &&
-                            (databaseInfo.columns.at(table1).size() == coldefs1.size());
+        DatabaseInfo const databaseInfo = config()->databaseInfo(table1.database);
+        bool passed = (databaseInfo.tables().size() == 1) && databaseInfo.tableExists(table1.name) &&
+                      (databaseInfo.findTable(table1.name) == table1);
         cout << (passed ? PASSED_STR : FAILED_STR) << " EXACTLY 1 TABLE SHOULD EXIST NOW"
              << "\n";
         dumpDatabasesAsTable(indent, "");
@@ -915,33 +900,24 @@ bool ConfigTestApp::_testTables() {
     }
 
     // Adding the second director table to the database. This table will have dependents.
-    string const table2 = "director-2";
-    bool const isPartitioned2 = true;
-    bool isDirector2 = true;
-    string const directorTable2;
-    string const directorTableKey2 = "id";
-    string const latitudeColName2 = "coord_decl";
-    string const longitudeColName2 = "coord_ra";
-    list<SqlColDef> coldefs2;
-    coldefs2.emplace_back(directorTableKey2, "INT UNSIGNED");
-    coldefs2.emplace_back(latitudeColName2, "DOUBLE");
-    coldefs2.emplace_back(longitudeColName2, "DOUBLE");
-    coldefs2.emplace_back(lsst::qserv::SUB_CHUNK_COLUMN, "INT");
+    TableInfo table2;
+    table2.name = "director-2";
+    table2.database = database;
+    table2.isPartitioned = true;
+    table2.isDirector = true;
+    table2.directorTable = DirectorTableRef("", "id");
+    table2.latitudeColName = "coord_decl";
+    table2.longitudeColName = "coord_ra";
+    table2.columns.emplace_back(table2.directorTable.primaryKeyColumn(), "INT UNSIGNED");
+    table2.columns.emplace_back(table2.latitudeColName, "DOUBLE");
+    table2.columns.emplace_back(table2.longitudeColName, "DOUBLE");
+    table2.columns.emplace_back(lsst::qserv::SUB_CHUNK_COLUMN, "INT");
 
-    success = success && addTable(database, table2, isPartitioned2, isDirector2, directorTable2,
-                                  directorTableKey2, latitudeColName2, longitudeColName2, coldefs2);
+    success = success && addTable(table2);
     {
-        DatabaseInfo const databaseInfo = config()->databaseInfo(database);
-        auto const tables = databaseInfo.tables();
-        bool const passed = (tables.size() == 2) &&
-                            (find(tables.cbegin(), tables.cend(), table2) != tables.cend()) &&
-                            (databaseInfo.isPartitioned(table2) == isPartitioned2) &&
-                            (databaseInfo.isDirector(table2) == isDirector2) &&
-                            databaseInfo.directorTable.at(table2).empty() &&
-                            (databaseInfo.directorTableKey.at(table2) == directorTableKey2) &&
-                            (databaseInfo.latitudeColName.at(table2) == latitudeColName2) &&
-                            (databaseInfo.longitudeColName.at(table2) == longitudeColName2) &&
-                            (databaseInfo.columns.at(table2).size() == coldefs2.size());
+        DatabaseInfo const databaseInfo = config()->databaseInfo(table2.database);
+        bool passed = (databaseInfo.tables().size() == 2) && databaseInfo.tableExists(table2.name) &&
+                      (databaseInfo.findTable(table2.name) == table2);
         cout << (passed ? PASSED_STR : FAILED_STR) << " EXACTLY 2 TABLES SHOULD EXIST NOW"
              << "\n";
         dumpDatabasesAsTable(indent, "");
@@ -949,30 +925,18 @@ bool ConfigTestApp::_testTables() {
     }
 
     // Adding the first dependent table connected to the second director.
-    string const table12 = "dependent-1-of-2";
-    bool const isPartitioned12 = true;
-    bool isDirector12 = false;
-    string const directorTable12 = "director-2";
-    string const directorTableKey12 = "director_id";
-    string const latitudeColName12 = "";
-    string const longitudeColName12 = "";
-    list<SqlColDef> coldefs12;
-    coldefs12.emplace_back(directorTableKey12, "INT UNSIGNED");
+    TableInfo table1of2;
+    table1of2.name = "dependent-1-of-2";
+    table1of2.database = database;
+    table1of2.isPartitioned = true;
+    table1of2.directorTable = DirectorTableRef("director-2", "director_id");
+    table1of2.columns.emplace_back(table1of2.directorTable.primaryKeyColumn(), "INT UNSIGNED");
 
-    success = success && addTable(database, table12, isPartitioned12, isDirector12, directorTable12,
-                                  directorTableKey12, latitudeColName12, longitudeColName12, coldefs12);
+    success = success && addTable(table1of2);
     {
         DatabaseInfo const databaseInfo = config()->databaseInfo(database);
-        auto const tables = databaseInfo.tables();
-        bool const passed = (tables.size() == 3) &&
-                            (find(tables.cbegin(), tables.cend(), table12) != tables.cend()) &&
-                            (databaseInfo.isPartitioned(table12) == isPartitioned12) &&
-                            (databaseInfo.isDirector(table12) == isDirector12) &&
-                            (databaseInfo.directorTable.at(table12) == directorTable12) &&
-                            (databaseInfo.directorTableKey.at(table12) == directorTableKey12) &&
-                            (databaseInfo.latitudeColName.at(table12) == latitudeColName12) &&
-                            (databaseInfo.longitudeColName.at(table12) == longitudeColName12) &&
-                            (databaseInfo.columns.at(table12).size() == coldefs12.size());
+        bool passed = (databaseInfo.tables().size() == 3) && databaseInfo.tableExists(table1of2.name) &&
+                      (databaseInfo.findTable(table1of2.name) == table1of2);
         cout << (passed ? PASSED_STR : FAILED_STR) << " EXACTLY 3 TABLES SHOULD EXIST NOW"
              << "\n";
         dumpDatabasesAsTable(indent, "");
@@ -980,32 +944,21 @@ bool ConfigTestApp::_testTables() {
     }
 
     // Adding the second dependent table connected to the second director.
-    string const table22 = "dependent-2-of-2";
-    bool const isPartitioned22 = true;
-    bool isDirector22 = false;
-    string const directorTable22 = "director-2";
-    string const directorTableKey22 = "director_id_key";
-    string const latitudeColName22 = "decl";
-    string const longitudeColName22 = "ra";
-    list<SqlColDef> coldefs22;
-    coldefs22.emplace_back(directorTableKey22, "INT UNSIGNED");
-    coldefs22.emplace_back(latitudeColName22, "DOUBLE");
-    coldefs22.emplace_back(longitudeColName22, "DOUBLE");
+    TableInfo table2of2;
+    table2of2.name = "dependent-2-of-2";
+    table2of2.isPartitioned = true;
+    table2of2.directorTable = DirectorTableRef("director-2", "director_id_key");
+    table2of2.latitudeColName = "decl";
+    table2of2.longitudeColName = "ra";
+    table2of2.columns.emplace_back(table2of2.directorTable.primaryKeyColumn(), "INT UNSIGNED");
+    table2of2.columns.emplace_back(table2of2.latitudeColName, "DOUBLE");
+    table2of2.columns.emplace_back(table2of2.longitudeColName, "DOUBLE");
 
-    success = success && addTable(database, table22, isPartitioned22, isDirector22, directorTable22,
-                                  directorTableKey22, latitudeColName22, longitudeColName22, coldefs22);
+    success = success && addTable(table2of2);
     {
-        DatabaseInfo const databaseInfo = config()->databaseInfo(database);
-        auto const tables = databaseInfo.tables();
-        bool const passed = (tables.size() == 4) &&
-                            (find(tables.cbegin(), tables.cend(), table22) != tables.cend()) &&
-                            (databaseInfo.isPartitioned(table22) == isPartitioned22) &&
-                            (databaseInfo.isDirector(table22) == isDirector22) &&
-                            (databaseInfo.directorTable.at(table22) == directorTable22) &&
-                            (databaseInfo.directorTableKey.at(table22) == directorTableKey22) &&
-                            (databaseInfo.latitudeColName.at(table22) == latitudeColName22) &&
-                            (databaseInfo.longitudeColName.at(table22) == longitudeColName22) &&
-                            (databaseInfo.columns.at(table22).size() == coldefs22.size());
+        DatabaseInfo const databaseInfo = config()->databaseInfo(table2of2.database);
+        bool passed = (databaseInfo.tables().size() == 4) && databaseInfo.tableExists(table2of2.name) &&
+                      (databaseInfo.findTable(table2of2.name) == table2of2);
         cout << (passed ? PASSED_STR : FAILED_STR) << " EXACTLY 4 TABLES SHOULD EXIST NOW"
              << "\n";
         dumpDatabasesAsTable(indent, "");

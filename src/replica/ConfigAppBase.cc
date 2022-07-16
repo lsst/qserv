@@ -150,8 +150,13 @@ void ConfigAppBase::dumpDatabasesAsTable(string const& indent, string const& cap
     vector<string> tableName;
     vector<string> isPartitioned;
     vector<string> isDirector;
+    vector<string> isRefMatch;
     vector<string> directorTable;
     vector<string> directorKey;
+    vector<string> directorTable2;
+    vector<string> directorKey2;
+    vector<string> flagColName;
+    vector<string> angSep;
     vector<string> latitudeColName;
     vector<string> longitudeColName;
     vector<string> tableIsPublished;
@@ -161,66 +166,31 @@ void ConfigAppBase::dumpDatabasesAsTable(string const& indent, string const& cap
 
     string const noSpecificFamily;
     bool const allDatabases = true;
-    for (auto&& database : _config->databases(noSpecificFamily, allDatabases)) {
-        auto const di = _config->databaseInfo(database);
-        for (auto& table : di.partitionedTables) {
-            familyName.push_back(di.family);
-            databaseName.push_back(di.name);
-            isPublished.push_back(di.isPublished ? "yes" : "no");
-            createTime.push_back(to_string(di.createTime));
-            publishTime.push_back(to_string(di.publishTime));
-            tableName.push_back(table);
-            isPartitioned.push_back("yes");
-            if (di.isDirector(table)) {
-                isDirector.push_back("yes");
-                directorTable.push_back("");
-            } else {
-                isDirector.push_back("no");
-                directorTable.push_back(di.directorTable.at(table));
-            }
-            directorKey.push_back(di.directorTableKey.at(table));
-            latitudeColName.push_back(di.latitudeColName.at(table));
-            longitudeColName.push_back(di.longitudeColName.at(table));
-            tableIsPublished.push_back(di.tableIsPublished.at(table) ? "yes" : "no");
-            tableCreateTime.push_back(to_string(di.tableCreateTime.at(table)));
-            tablePublishTime.push_back(to_string(di.tablePublishTime.at(table)));
-            numColumns.push_back(to_string(di.columns.at(table).size()));
-        }
-        for (auto& table : di.regularTables) {
-            familyName.push_back(di.family);
-            databaseName.push_back(di.name);
-            isPublished.push_back(di.isPublished ? "yes" : "no");
-            createTime.push_back(to_string(di.createTime));
-            publishTime.push_back(to_string(di.publishTime));
-            tableName.push_back(table);
-            isPartitioned.push_back("no");
-            isDirector.push_back("no");
-            directorTable.push_back("");
-            directorKey.push_back("");
-            latitudeColName.push_back("");
-            longitudeColName.push_back("");
-            tableIsPublished.push_back(di.tableIsPublished.at(table) ? "yes" : "no");
-            tableCreateTime.push_back(to_string(di.tableCreateTime.at(table)));
-            tablePublishTime.push_back(to_string(di.tablePublishTime.at(table)));
-            numColumns.push_back(to_string(di.columns.at(table).size()));
-        }
-        if (di.partitionedTables.empty() and di.regularTables.empty()) {
-            familyName.push_back(di.family);
-            databaseName.push_back(di.name);
-            isPublished.push_back(di.isPublished ? "yes" : "no");
-            createTime.push_back(to_string(di.createTime));
-            publishTime.push_back(to_string(di.publishTime));
-            tableName.push_back("<no tables>");
-            isPartitioned.push_back("n/a");
-            isDirector.push_back("n/a");
-            directorTable.push_back("n/a");
-            directorKey.push_back("n/a");
-            latitudeColName.push_back("n/a");
-            longitudeColName.push_back("n/a");
-            tableIsPublished.push_back("n/a");
-            tableCreateTime.push_back("n/a");
-            tablePublishTime.push_back("n/a");
-            numColumns.push_back("n/a");
+    for (auto&& databaseName_ : _config->databases(noSpecificFamily, allDatabases)) {
+        auto&& database = _config->databaseInfo(databaseName_);
+        for (auto& tableName_ : database.tables()) {
+            auto&& table = database.findTable(tableName_);
+            familyName.push_back(database.family);
+            databaseName.push_back(database.name);
+            isPublished.push_back(database.isPublished ? "yes" : "no");
+            createTime.push_back(to_string(database.createTime));
+            publishTime.push_back(to_string(database.publishTime));
+            tableName.push_back(table.name);
+            isPartitioned.push_back(table.isPartitioned ? "yes" : "no");
+            isDirector.push_back(table.isDirector ? "yes" : "no");
+            isRefMatch.push_back(table.isRefMatch ? "yes" : "no");
+            directorTable.push_back(table.directorTable.databaseTableName());
+            directorKey.push_back(table.directorTable.primaryKeyColumn());
+            directorTable2.push_back(table.directorTable2.databaseTableName());
+            directorKey2.push_back(table.directorTable2.primaryKeyColumn());
+            flagColName.push_back(table.flagColName);
+            angSep.push_back(to_string(table.angSep));
+            latitudeColName.push_back(table.latitudeColName);
+            longitudeColName.push_back(table.longitudeColName);
+            tableIsPublished.push_back(table.isPublished ? "yes" : "no");
+            tableCreateTime.push_back(to_string(table.createTime));
+            tablePublishTime.push_back(to_string(table.publishTime));
+            numColumns.push_back(to_string(table.columns.size()));
         }
     }
 
@@ -234,8 +204,13 @@ void ConfigAppBase::dumpDatabasesAsTable(string const& indent, string const& cap
     table.addColumn("table", tableName, util::ColumnTablePrinter::LEFT);
     table.addColumn(":partitioned", isPartitioned);
     table.addColumn(":director", isDirector);
+    table.addColumn(":ref-match", isRefMatch);
     table.addColumn(":director-table", directorTable);
     table.addColumn(":director-key", directorKey);
+    table.addColumn(":director-table2", directorTable);
+    table.addColumn(":director-key2", directorKey);
+    table.addColumn(":flag-key", flagColName);
+    table.addColumn(":ang-sep", angSep);
     table.addColumn(":latitude-key", latitudeColName);
     table.addColumn(":longitude-key", longitudeColName);
     table.addColumn(":published", tableIsPublished);

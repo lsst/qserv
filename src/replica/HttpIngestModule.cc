@@ -99,15 +99,16 @@ string jobCompletionErrorIfAny(SqlJob::Ptr const& job, string const& prefix) {
 
 /**
  * @brief Generate the name of a metadata table at czar for the specified data table.
- * @param database The name of a database where the data table is residing.
- * @param table The name of the data table.
+ * @param databaseName The name of a database where the data table is residing.
+ * @param tableName The name of the data table.
  * @param suffix The optional suffix for the metadata table.
  * @return std::string The name of the metadata table at czar.
  * @throws invalid_argument If the length of the resulting name exceeds the MySQL limit.
  */
-string tableNameBuilder(string const& database, string const& table, string const& suffix = string()) {
+string tableNameBuilder(string const& databaseName, string const& tableName,
+                        string const& suffix = string()) {
     size_t const tableNameLimit = 64;
-    string const name = database + "__" + table + suffix;
+    string const name = databaseName + "__" + tableName + suffix;
     if (name.size() > tableNameLimit) {
         throw invalid_argument("HttpIngestModule::" + string(__func__) + " MySQL table name limit of " +
                                to_string(tableNameLimit) + " characters has been exceeded for table '" +
@@ -120,16 +121,16 @@ string tableNameBuilder(string const& database, string const& table, string cons
  * @return The name of a table at czar that stores indexes of the specified director table.
  * @see tableNameBuilder
  */
-string directorIndexTable(string const& database, string const& table) {
-    return tableNameBuilder(database, table);
+string directorIndexTable(string const& databaseName, string const& tableName) {
+    return tableNameBuilder(databaseName, tableName);
 }
 
 /**
  * @return The name of a table at czar that stores table row counters of the specified data table.
  * @see tableNameBuilder
  */
-string rowCountersTable(string const& database, string const& table) {
-    return tableNameBuilder(database, table, "__rows");
+string rowCountersTable(string const& databaseName, string const& tableName) {
+    return tableNameBuilder(databaseName, tableName, "__rows");
 }
 }  // namespace
 
@@ -209,11 +210,11 @@ json HttpIngestModule::_getDatabases() {
     debug(__func__, "isPublished=" + bool2str(isPublished));
 
     json databasesJson = json::array();
-    for (auto const database : config->databases(family, allDatabases, isPublished)) {
-        auto const databaseInfo = config->databaseInfo(database);
-        databasesJson.push_back({{"name", databaseInfo.name},
-                                 {"family", databaseInfo.family},
-                                 {"is_published", databaseInfo.isPublished ? 1 : 0}});
+    for (auto const databaseName : config->databases(family, allDatabases, isPublished)) {
+        auto const database = config->databaseInfo(databaseName);
+        databasesJson.push_back({{"name", database.name},
+                                 {"family", database.family},
+                                 {"is_published", database.isPublished ? 1 : 0}});
     }
     return json::object({{"databases", databasesJson}});
 }
@@ -224,8 +225,7 @@ json HttpIngestModule::_addDatabase() {
     auto const config = controller()->serviceProvider()->config();
     auto const databaseServices = controller()->serviceProvider()->databaseServices();
 
-    DatabaseInfo databaseInfo;
-    string const database = body().required<string>("database");
+    string const databaseName = body().required<string>("database");
 
     auto const numStripes = body().required<unsigned int>("num_stripes");
     auto const numSubStripes = body().required<unsigned int>("num_sub_stripes");
@@ -233,7 +233,7 @@ json HttpIngestModule::_addDatabase() {
     auto const enableAutoBuildSecondaryIndex = body().optional<unsigned int>("auto_build_secondary_index", 1);
     auto const enableLocalLoadSecondaryIndex = body().optional<unsigned int>("local_load_secondary_index", 0);
 
-    debug(__func__, "database=" + database);
+    debug(__func__, "database=" + databaseName);
     debug(__func__, "numStripes=" + to_string(numStripes));
     debug(__func__, "numSubStripes=" + to_string(numSubStripes));
     debug(__func__, "overlap=" + to_string(overlap));
@@ -273,7 +273,7 @@ json HttpIngestModule::_addDatabase() {
 
     bool const allWorkers = true;
     string const noParentJobId;
-    auto const job = SqlCreateDbJob::create(database, allWorkers, controller(), noParentJobId, nullptr,
+    auto const job = SqlCreateDbJob::create(databaseName, allWorkers, controller(), noParentJobId, nullptr,
                                             config->get<int>("controller", "ingest-priority-level"));
     job->start();
     logJobStartedEvent(SqlCreateDbJob::typeName(), job, family);
@@ -287,24 +287,24 @@ json HttpIngestModule::_addDatabase() {
     // Note, this operation will fail if the database with the name
     // already exists. Also, the new database won't have any tables
     // until they will be added as a separate step.
-    databaseInfo = config->addDatabase(database, family);
+    auto database = config->addDatabase(databaseName, family);
 
     // Register a requested mode for building the secondary index. If a value
     // of the parameter is set to 'true' (or '1' in the database) then contributions
     // into the index will be automatically made when committing transactions. Otherwise,
     // it's going to be up to a user's catalog ingest workflow to (re-)build
     // the index.
-    databaseServices->saveIngestParam(databaseInfo.name, "secondary-index", "auto-build",
+    databaseServices->saveIngestParam(database.name, "secondary-index", "auto-build",
                                       to_string(enableAutoBuildSecondaryIndex ? 1 : 0));
-    databaseServices->saveIngestParam(databaseInfo.name, "secondary-index", "local-load",
+    databaseServices->saveIngestParam(database.name, "secondary-index", "local-load",
                                       to_string(enableLocalLoadSecondaryIndex ? 1 : 0));
 
     // Tell workers to reload their configurations
-    error = reconfigureWorkers(databaseInfo, allWorkers, workerReconfigTimeoutSec());
+    error = reconfigureWorkers(database, allWorkers, workerReconfigTimeoutSec());
     if (not error.empty()) throw HttpError(__func__, error);
 
     json result;
-    result["database"] = databaseInfo.toJson();
+    result["database"] = database.toJson();
     return result;
 }
 
@@ -315,19 +315,19 @@ json HttpIngestModule::_publishDatabase() {
     auto const databaseServices = controller()->serviceProvider()->databaseServices();
     auto const config = controller()->serviceProvider()->config();
 
-    auto const database = params().at("database");
+    auto const databaseName = params().at("database");
     bool const consolidateSecondaryIndex = body().optional<int>("consolidate_secondary_index", 0) != 0;
     bool const rowCountersDeployAtQserv = body().optional<int>("row_counters_deploy_at_qserv", 0) != 0;
 
-    debug(__func__, "database=" + database);
+    debug(__func__, "database=" + databaseName);
     debug(__func__, "consolidate_secondary_index=" + bool2str(consolidateSecondaryIndex));
     debug(__func__, "row_counters_deploy_at_qserv=" + bool2str(rowCountersDeployAtQserv));
 
-    auto const databaseInfo = config->databaseInfo(database);
-    if (databaseInfo.isPublished) throw HttpError(__func__, "the database is already published");
+    auto const database = config->databaseInfo(databaseName);
+    if (database.isPublished) throw HttpError(__func__, "the database is already published");
 
     // Scan super-transactions to make sure none is still open
-    for (auto&& t : databaseServices->transactions(databaseInfo.name)) {
+    for (auto&& t : databaseServices->transactions(database.name)) {
         if (!(t.state == TransactionInfo::State::FINISHED || t.state == TransactionInfo::State::ABORTED)) {
             throw HttpError(__func__, "database has uncommitted transactions");
         }
@@ -335,17 +335,17 @@ json HttpIngestModule::_publishDatabase() {
 
     // Refuse the operation if no chunks were registered
     vector<unsigned int> chunks;
-    databaseServices->findDatabaseChunks(chunks, databaseInfo.name, allWorkers);
+    databaseServices->findDatabaseChunks(chunks, database.name, allWorkers);
     if (chunks.empty()) throw HttpError(__func__, "the database doesn't have any chunks");
 
     // The operation can be vetoed by the corresponding workflow parameter requested
     // by a catalog ingest workflow at the database creation time.
-    if (autoBuildSecondaryIndex(database) and consolidateSecondaryIndex) {
-        for (auto&& table : databaseInfo.directorTables()) {
-            // Skip tables that have been published.
-            if (databaseInfo.tableIsPublished.at(table)) continue;
+    if (autoBuildSecondaryIndex(database.name) and consolidateSecondaryIndex) {
+        for (auto&& tableName : database.directorTables()) {
+            auto const table = database.findTable(tableName);
+            if (table.isPublished) continue;
             // This operation may take a while if the table has a large number of entries.
-            _consolidateSecondaryIndex(databaseInfo, table);
+            _consolidateSecondaryIndex(database, table.name);
         }
     }
 
@@ -355,11 +355,11 @@ json HttpIngestModule::_publishDatabase() {
     // the publishing request since.
     if (rowCountersDeployAtQserv) {
         bool const forceRescan = true;  // Since doing the scan for the first time.
-        for (auto&& table : databaseInfo.tables()) {
-            // Skip tables that have been published.
-            if (databaseInfo.tableIsPublished.at(table)) continue;
+        for (auto&& tableName : database.tables()) {
+            auto const table = database.findTable(tableName);
+            if (table.isPublished) continue;
             json const errorExt = _scanTableStatsImpl(
-                    database, table, ChunkOverlapSelector::CHUNK_AND_OVERLAP,
+                    database.name, table.name, ChunkOverlapSelector::CHUNK_AND_OVERLAP,
                     SqlRowStatsJob::StateUpdatePolicy::ENABLED, rowCountersDeployAtQserv, forceRescan,
                     allWorkers, config->get<int>("controller", "ingest-priority-level"));
             if (!errorExt.empty()) {
@@ -367,14 +367,14 @@ json HttpIngestModule::_publishDatabase() {
             }
         }
     }
-    _grantDatabaseAccess(databaseInfo, allWorkers);
-    _enableDatabase(databaseInfo, allWorkers);
-    _createMissingChunkTables(databaseInfo, allWorkers);
-    _removeMySQLPartitions(databaseInfo, allWorkers);
+    _grantDatabaseAccess(database, allWorkers);
+    _enableDatabase(database, allWorkers);
+    _createMissingChunkTables(database, allWorkers);
+    _removeMySQLPartitions(database, allWorkers);
 
     // Finalize setting the database in Qserv master to make the new catalog
     // visible to Qserv users.
-    _publishDatabaseInMaster(databaseInfo);
+    _publishDatabaseInMaster(database);
 
     // Change database status so that it would be seen by the Qserv synchronization
     // algorithm (job) run on the next step. Otherwise users would have to wait
@@ -382,22 +382,22 @@ json HttpIngestModule::_publishDatabase() {
     // which would synchronize chunks between the Replication System and Qserv
     // workers.
     json result;
-    result["database"] = config->publishDatabase(database).toJson();
+    result["database"] = config->publishDatabase(database.name).toJson();
 
     // This step is needed to get workers' Configuration in-sync with its
     // persistent state.
-    auto const error = reconfigureWorkers(databaseInfo, allWorkers, workerReconfigTimeoutSec());
+    auto const error = reconfigureWorkers(database, allWorkers, workerReconfigTimeoutSec());
     if (not error.empty()) throw HttpError(__func__, error);
 
     // Run the chunks scanner to ensure new chunks are registered in the persistent
     // store of the Replication system and synchronized with the Qserv workers.
     // The (fixing, re-balancing, replicating, etc.) will be taken care of by
     // the Replication system.
-    _qservSync(databaseInfo, allWorkers);
+    _qservSync(database, allWorkers);
 
     ControllerEvent event;
     event.status = "PUBLISH DATABASE";
-    event.kvInfo.emplace_back("database", database);
+    event.kvInfo.emplace_back("database", database.name);
     logEvent(event);
 
     return result;
@@ -409,12 +409,12 @@ json HttpIngestModule::_deleteDatabase() {
     auto const cssAccess = qservCssAccess();
     auto const config = controller()->serviceProvider()->config();
     bool const allWorkers = true;
-    auto const database = params().at("database");
+    auto const databaseName = params().at("database");
 
-    debug(__func__, "database=" + database);
+    debug(__func__, "database=" + databaseName);
 
-    auto databaseInfo = config->databaseInfo(database);
-    if (databaseInfo.isPublished) {
+    auto database = config->databaseInfo(databaseName);
+    if (database.isPublished) {
         if (!isAdmin()) {
             throw HttpError(__func__, "deleting published databases requires administrator's privileges.");
         }
@@ -425,37 +425,37 @@ json HttpIngestModule::_deleteDatabase() {
     // created during the initial catalog ingest.
     // NOTE: Qserv allows more than one 'director' table.
     set<string> directorTables;
-    for (auto&& table : databaseInfo.directorTables()) {
-        directorTables.insert(table);
+    for (auto&& tableName : database.directorTables()) {
+        directorTables.insert(tableName);
     }
-    if (cssAccess->containsDb(databaseInfo.name)) {
-        for (auto const table : cssAccess->getTableNames(databaseInfo.name)) {
-            auto const partTableParams = cssAccess->getPartTableParams(databaseInfo.name, table);
+    if (cssAccess->containsDb(database.name)) {
+        for (auto const tableName : cssAccess->getTableNames(database.name)) {
+            auto const partTableParams = cssAccess->getPartTableParams(database.name, tableName);
             if (!partTableParams.dirTable.empty()) directorTables.insert(partTableParams.dirTable);
         }
     }
 
     // Remove related database entries from czar's MySQL if anything is still there
-    if (cssAccess->containsDb(databaseInfo.name)) {
-        cssAccess->dropDb(databaseInfo.name);
+    if (cssAccess->containsDb(database.name)) {
+        cssAccess->dropDb(database.name);
     }
     database::mysql::ConnectionHandler const h(qservMasterDbConnection("qservCssData"));
-    h.conn->executeInOwnTransaction([&databaseInfo, &directorTables](decltype(h.conn) conn) {
-        conn->execute("DROP DATABASE IF EXISTS " + conn->sqlId(databaseInfo.name));
-        auto const emptyChunkListTable = css::DbInterfaceMySql::getEmptyChunksTableName(databaseInfo.name);
+    h.conn->executeInOwnTransaction([&, func = __func__](decltype(h.conn) conn) {
+        conn->execute("DROP DATABASE IF EXISTS " + conn->sqlId(database.name));
+        auto const emptyChunkListTable = css::DbInterfaceMySql::getEmptyChunksTableName(database.name);
         conn->execute("DROP TABLE IF EXISTS " + conn->sqlId("qservCssData", emptyChunkListTable));
-        for (auto const table : directorTables) {
+        for (auto const tableName : directorTables) {
             conn->execute("DROP TABLE IF EXISTS " +
-                          conn->sqlId("qservMeta", ::directorIndexTable(databaseInfo.name, table)));
+                          conn->sqlId("qservMeta", ::directorIndexTable(database.name, tableName)));
         }
-        for (auto const table : databaseInfo.tables()) {
+        for (auto const tableName : database.tables()) {
             try {
                 conn->execute("DROP TABLE IF EXISTS " +
-                              conn->sqlId("qservMeta", ::rowCountersTable(databaseInfo.name, table)));
-            } catch (invalid_argument const&) {
+                              conn->sqlId("qservMeta", ::rowCountersTable(database.name, tableName)));
+            } catch (invalid_argument const& ex) {
                 // This exception may be thrown by the table name generator if
                 // it couldn't build a correct name due to MySQL limitations.
-                ;
+                error(func, ex.what());
             }
         }
     });
@@ -466,32 +466,32 @@ json HttpIngestModule::_deleteDatabase() {
     // NOTE: Ignore any errors should any be reported by the job.
     string const noParentJobId;
     auto const dasableDbJob =
-            SqlDisableDbJob::create(databaseInfo.name, allWorkers, controller(), noParentJobId, nullptr,
+            SqlDisableDbJob::create(database.name, allWorkers, controller(), noParentJobId, nullptr,
                                     config->get<int>("controller", "catalog-management-priority-level"));
     dasableDbJob->start();
-    logJobStartedEvent(SqlDisableDbJob::typeName(), dasableDbJob, databaseInfo.family);
+    logJobStartedEvent(SqlDisableDbJob::typeName(), dasableDbJob, database.family);
     dasableDbJob->wait();
-    logJobFinishedEvent(SqlDisableDbJob::typeName(), dasableDbJob, databaseInfo.family);
+    logJobFinishedEvent(SqlDisableDbJob::typeName(), dasableDbJob, database.family);
 
     // Delete database entries at workers
     auto const deleteDbJob =
-            SqlDeleteDbJob::create(databaseInfo.name, allWorkers, controller(), noParentJobId, nullptr,
+            SqlDeleteDbJob::create(database.name, allWorkers, controller(), noParentJobId, nullptr,
                                    config->get<int>("controller", "catalog-management-priority-level"));
     deleteDbJob->start();
-    logJobStartedEvent(SqlDeleteDbJob::typeName(), deleteDbJob, databaseInfo.family);
+    logJobStartedEvent(SqlDeleteDbJob::typeName(), deleteDbJob, database.family);
     deleteDbJob->wait();
-    logJobFinishedEvent(SqlDeleteDbJob::typeName(), deleteDbJob, databaseInfo.family);
+    logJobFinishedEvent(SqlDeleteDbJob::typeName(), deleteDbJob, database.family);
 
     string error = ::jobCompletionErrorIfAny(deleteDbJob, "database deletion failed");
     if (not error.empty()) throw HttpError(__func__, error);
 
     // Remove database entry from the Configuration. This will also eliminate all
     // dependent metadata, such as replicas info
-    config->deleteDatabase(databaseInfo.name);
+    config->deleteDatabase(database.name);
 
     // This step is needed to get workers' Configuration in-sync with its
     // persistent state.
-    error = reconfigureWorkers(databaseInfo, allWorkers, workerReconfigTimeoutSec());
+    error = reconfigureWorkers(database, allWorkers, workerReconfigTimeoutSec());
     if (not error.empty()) throw HttpError(__func__, error);
 
     return json::object();
@@ -501,18 +501,18 @@ json HttpIngestModule::_getTables() {
     debug(__func__);
 
     auto const config = controller()->serviceProvider()->config();
-    auto const database = params().at("database");
+    auto const databaseName = params().at("database");
 
-    debug(__func__, "database=" + database);
+    debug(__func__, "database=" + databaseName);
 
-    auto const databaseInfo = config->databaseInfo(database);
+    auto const database = config->databaseInfo(databaseName);
 
     json tablesJson = json::array();
-    for (auto&& table : databaseInfo.partitionedTables) {
-        tablesJson.push_back({{"name", table}, {"is_partitioned", 1}});
+    for (auto&& tableName : database.partitionedTables()) {
+        tablesJson.push_back({{"name", tableName}, {"is_partitioned", 1}});
     }
-    for (auto&& table : databaseInfo.regularTables) {
-        tablesJson.push_back({{"name", table}, {"is_partitioned", 0}});
+    for (auto&& tableName : database.regularTables()) {
+        tablesJson.push_back({{"name", tableName}, {"is_partitioned", 0}});
     }
     return json::object({{"tables", tablesJson}});
 }
@@ -520,77 +520,78 @@ json HttpIngestModule::_getTables() {
 json HttpIngestModule::_addTable() {
     debug(__func__);
 
-    auto const config = controller()->serviceProvider()->config();
-
-    auto const database = body().required<string>("database");
-    auto const table = body().required<string>("table");
-    auto const isPartitioned = body().required<int>("is_partitioned") != 0;
-    auto const directorTable = body().optional<string>("director_table", "");
-    auto const isDirector = isPartitioned && directorTable.empty();
-    auto const directorKey = isPartitioned ? body().required<string>("director_key") : "";
-    auto const latitudeColName = isDirector ? body().required<string>("latitude_key")
-                                            : body().optional<string>("latitude_key", "");
-    auto const longitudeColName = isDirector ? body().required<string>("longitude_key")
-                                             : body().optional<string>("longitude_key", "");
+    TableInfo table;
+    table.database = body().required<string>("database");
+    table.name = body().required<string>("table");
+    table.isPartitioned = body().required<int>("is_partitioned") != 0;
+    table.directorTable = DirectorTableRef(body().optional<string>("director_table", ""),
+                                           body().optional<string>("director_key", ""));
+    table.directorTable2 = DirectorTableRef(body().optional<string>("director_table2", ""),
+                                            body().optional<string>("director_key2", ""));
+    table.latitudeColName = body().optional<string>("latitude_key", "");
+    table.longitudeColName = body().optional<string>("longitude_key", "");
+    table.flagColName = body().optional<string>("flag", "");
+    table.angSep = body().optional<double>("ang_sep", 0);
     auto const schema = body().required<json>("schema");
 
-    debug(__func__, "database=" + database);
-    debug(__func__, "table=" + table);
-    debug(__func__, "isPartitioned=" + bool2str(isPartitioned));
-    debug(__func__, "isDirector=" + bool2str(isDirector));
-    debug(__func__, "directorTable=" + directorTable);
-    debug(__func__, "directorKey=" + directorKey);
-    debug(__func__, "latitudeColName=" + latitudeColName);
-    debug(__func__, "longitudeColName=" + longitudeColName);
+    debug(__func__, "database=" + table.database);
+    debug(__func__, "table=" + table.name);
+    debug(__func__, "is_partitioned=" + bool2str(table.isPartitioned));
+    debug(__func__, "director=" + table.directorTable.databaseTableName());
+    debug(__func__, "director_key=" + table.directorTable.primaryKeyColumn());
+    debug(__func__, "director2=" + table.directorTable2.databaseTableName());
+    debug(__func__, "director_key2=" + table.directorTable2.primaryKeyColumn());
+    debug(__func__, "latitude_key=" + table.latitudeColName);
+    debug(__func__, "longitude_key=" + table.longitudeColName);
+    debug(__func__, "flag=" + table.flagColName);
+    debug(__func__, "ang_sep=" + to_string(table.angSep));
     debug(__func__, "schema=" + schema.dump());
 
-    auto databaseInfo = config->databaseInfo(database);
-    if (databaseInfo.isPublished) throw HttpError(__func__, "the database is already published");
-
-    for (auto&& existingTable : databaseInfo.tables()) {
-        if (table == existingTable) throw HttpError(__func__, "table already exists");
-    }
+    auto const config = controller()->serviceProvider()->config();
+    auto database = config->databaseInfo(table.database);
+    if (database.isPublished) throw HttpError(__func__, "the database is already published");
+    if (database.tableExists(table.name)) throw HttpError(__func__, "table already exists");
 
     // Translate table schema
     if (schema.is_null()) throw HttpError(__func__, "table schema is empty");
-    if (not schema.is_array()) throw HttpError(__func__, "table schema is not defined as an array");
-
-    list<SqlColDef> columns;
+    if (!schema.is_array()) throw HttpError(__func__, "table schema is not defined as an array");
 
     // The name of a special column for the super-transaction-based ingest.
     // Always insert this column as the very first one into the schema.
-    columns.emplace_front(_partitionByColumn, _partitionByColumnType);
+    table.columns.emplace_front(_partitionByColumn, _partitionByColumnType);
 
-    for (auto&& coldef : schema) {
-        if (not coldef.is_object()) {
+    for (auto&& column : schema) {
+        if (!column.is_object()) {
             throw HttpError(__func__, "columns definitions in table schema are not JSON objects");
         }
-        if (0 == coldef.count("name")) {
-            throw HttpError(__func__,
-                            "column attribute 'name' is missing in table schema for "
-                            "column number: " +
-                                    to_string(columns.size() + 1));
+        if (0 == column.count("name")) {
+            string const msg =
+                    "column attribute 'name' is missing in table schema for "
+                    "column number: " +
+                    to_string(table.columns.size() + 1);
+            throw HttpError(__func__, msg);
         }
-        string colName = coldef["name"];
-        if (0 == coldef.count("type")) {
-            throw HttpError(__func__,
-                            "column attribute 'type' is missing in table schema for "
-                            "column number: " +
-                                    to_string(columns.size() + 1));
+        string colName = column["name"];
+        if (0 == column.count("type")) {
+            string const msg =
+                    "column attribute 'type' is missing in table schema for "
+                    "column number: " +
+                    to_string(table.columns.size() + 1);
+            throw HttpError(__func__, msg);
         }
-        string colType = coldef["type"];
-
+        string colType = column["type"];
         if (_partitionByColumn == colName) {
-            throw HttpError(__func__, "reserved column '" + _partitionByColumn + "' is not allowed");
+            string const msg = "reserved column '" + _partitionByColumn + "' is not allowed";
+            throw HttpError(__func__, msg);
         }
-        columns.emplace_back(colName, colType);
+        table.columns.emplace_back(colName, colType);
     }
 
     // Register table in the Configuration
     json result;
-    result["database"] = config->addTable(databaseInfo.name, table, isPartitioned, columns, isDirector,
-                                          directorTable, directorKey, latitudeColName, longitudeColName)
-                                 .toJson();
+    database = config->addTable(table);
+    result["database"] = database.toJson();
+    table = database.findTable(table.name);
 
     // Create template and special (if the partitioned table requested) tables on all
     // workers. These tables will be used to create chunk-specific tables before
@@ -606,23 +607,25 @@ json HttpIngestModule::_addTable() {
     string const noParentJobId;
 
     vector<string> tables;
-    tables.push_back(table);
-    if (isPartitioned) {
+    tables.push_back(table.name);
+    if (table.isPartitioned) {
         unsigned int const chunk = lsst::qserv::DUMMY_CHUNK;
-        bool const overlap = false;
-        tables.push_back(ChunkedTable(table, chunk, overlap).name());
-        tables.push_back(ChunkedTable(table, chunk, not overlap).name());
+        bool const overlap = true;
+        tables.push_back(ChunkedTable(table.name, chunk, !overlap).name());
+        tables.push_back(ChunkedTable(table.name, chunk, overlap).name());
     }
-    for (auto&& table : tables) {
-        auto const job = SqlCreateTableJob::create(databaseInfo.name, table, engine, _partitionByColumn,
-                                                   columns, allWorkers, controller(), noParentJobId, nullptr,
-                                                   config->get<int>("controller", "ingest-priority-level"));
+    for (auto&& thisTableName : tables) {
+        auto const job =
+                SqlCreateTableJob::create(database.name, thisTableName, engine, _partitionByColumn,
+                                          table.columns, allWorkers, controller(), noParentJobId, nullptr,
+                                          config->get<int>("controller", "ingest-priority-level"));
         job->start();
-        logJobStartedEvent(SqlCreateTableJob::typeName(), job, databaseInfo.family);
+        logJobStartedEvent(SqlCreateTableJob::typeName(), job, database.family);
         job->wait();
-        logJobFinishedEvent(SqlCreateTableJob::typeName(), job, databaseInfo.family);
+        logJobFinishedEvent(SqlCreateTableJob::typeName(), job, database.family);
 
-        string const error = ::jobCompletionErrorIfAny(job, "table creation failed for: '" + table + "'");
+        string const error =
+                ::jobCompletionErrorIfAny(job, "table creation failed for: '" + thisTableName + "'");
         if (not error.empty()) throw HttpError(__func__, error);
     }
 
@@ -631,15 +634,15 @@ json HttpIngestModule::_addTable() {
     //
     // This operation can be vetoed by a catalog ingest workflow at the database
     // registration time.
-    if (autoBuildSecondaryIndex(databaseInfo.name)) {
-        if (isPartitioned && isDirector) {
-            _createSecondaryIndex(config->databaseInfo(databaseInfo.name), table);
+    if (autoBuildSecondaryIndex(database.name)) {
+        if (table.isDirector) {
+            _createSecondaryIndex(config->databaseInfo(database.name), table.name);
         }
     }
 
     // This step is needed to get workers' Configuration in-sync with its
     // persistent state.
-    string const error = reconfigureWorkers(databaseInfo, allWorkers, workerReconfigTimeoutSec());
+    string const error = reconfigureWorkers(database, allWorkers, workerReconfigTimeoutSec());
     if (not error.empty()) throw HttpError(__func__, error);
 
     return result;
@@ -651,18 +654,16 @@ json HttpIngestModule::_deleteTable() {
     auto const cssAccess = qservCssAccess();
     auto const config = controller()->serviceProvider()->config();
     bool const allWorkers = true;
-    auto const database = params().at("database");
-    auto const table = params().at("table");
+    auto const databaseName = params().at("database");
+    auto const tableName = params().at("table");
 
-    debug(__func__, "database=" + database);
-    debug(__func__, "table=" + table);
+    debug(__func__, "database=" + databaseName);
+    debug(__func__, "table=" + tableName);
 
-    auto databaseInfo = config->databaseInfo(database);
-    auto const tables = databaseInfo.tables();
-    if (tables.cend() == find(tables.cbegin(), tables.cend(), table)) {
-        throw invalid_argument(context() + "::" + string(__func__) + " unknown table: '" + table + "'");
-    }
-    if (databaseInfo.isPublished) {
+    auto database = config->databaseInfo(databaseName);
+    auto table = database.findTable(tableName);
+
+    if (database.isPublished) {
         if (!isAdmin()) {
             throw HttpError(__func__,
                             "deleting tables of published databases requires administrator's"
@@ -672,9 +673,9 @@ json HttpIngestModule::_deleteTable() {
 
     // Remove table entry from czar's databases if it's still there
     try {
-        if (cssAccess->containsDb(databaseInfo.name)) {
-            if (cssAccess->containsTable(databaseInfo.name, table)) {
-                cssAccess->dropTable(databaseInfo.name, table);
+        if (cssAccess->containsDb(database.name)) {
+            if (cssAccess->containsTable(database.name, table.name)) {
+                cssAccess->dropTable(database.name, table.name);
             }
         }
     } catch (css::NoSuchTable const& ex) {
@@ -684,45 +685,45 @@ json HttpIngestModule::_deleteTable() {
     }
 
     database::mysql::ConnectionHandler const h(qservMasterDbConnection("qservCssData"));
-    h.conn->executeInOwnTransaction([&databaseInfo, &table](decltype(h.conn) conn) {
+    h.conn->executeInOwnTransaction([&, func = __func__](decltype(h.conn) conn) {
         // Remove table entry from czar's MySQL
-        conn->execute("DROP TABLE IF EXISTS " + conn->sqlId(databaseInfo.name, table));
+        conn->execute("DROP TABLE IF EXISTS " + conn->sqlId(database.name, table.name));
         // Remove the director index (if any)
-        if (databaseInfo.isDirector(table)) {
+        if (table.isDirector) {
             conn->execute("DROP TABLE IF EXISTS " +
-                          conn->sqlId("qservMeta", ::directorIndexTable(databaseInfo.name, table)));
+                          conn->sqlId("qservMeta", ::directorIndexTable(database.name, table.name)));
         }
         // Remove the row counters table (if any)
         try {
             conn->execute("DROP TABLE IF EXISTS " +
-                          conn->sqlId("qservMeta", ::rowCountersTable(databaseInfo.name, table)));
-        } catch (invalid_argument const&) {
+                          conn->sqlId("qservMeta", ::rowCountersTable(database.name, table.name)));
+        } catch (invalid_argument const& ex) {
             // This exception may be thrown by the table name generator if
             // it couldn't build a correct name due to MySQL limitations.
-            ;
+            error(func, ex.what());
         }
     });
 
     // Delete table entries at workers
     string const noParentJobId;
     auto const job = SqlDeleteTableJob::create(
-            databaseInfo.name, table, allWorkers, controller(), noParentJobId, nullptr,
+            database.name, table.name, allWorkers, controller(), noParentJobId, nullptr,
             config->get<int>("controller", "catalog-management-priority-level"));
     job->start();
-    logJobStartedEvent(SqlDeleteTableJob::typeName(), job, databaseInfo.family);
+    logJobStartedEvent(SqlDeleteTableJob::typeName(), job, database.family);
     job->wait();
-    logJobFinishedEvent(SqlDeleteTableJob::typeName(), job, databaseInfo.family);
+    logJobFinishedEvent(SqlDeleteTableJob::typeName(), job, database.family);
 
     string error = ::jobCompletionErrorIfAny(job, "table deletion failed");
     if (not error.empty()) throw HttpError(__func__, error);
 
     // Remove table entry from the Configuration. This will also eliminate all
     // dependent metadata, such as replicas info
-    config->deleteTable(databaseInfo.name, table);
+    config->deleteTable(database.name, table.name);
 
     // This step is needed to get workers' Configuration in-sync with its
     // persistent state.
-    error = reconfigureWorkers(databaseInfo, allWorkers, workerReconfigTimeoutSec());
+    error = reconfigureWorkers(database, allWorkers, workerReconfigTimeoutSec());
     if (not error.empty()) throw HttpError(__func__, error);
 
     return json::object();
@@ -732,8 +733,8 @@ json HttpIngestModule::_scanTableStats() {
     debug(__func__);
 
     auto const config = controller()->serviceProvider()->config();
-    auto const database = body().required<string>("database");
-    auto const table = body().required<string>("table");
+    auto const databaseName = body().required<string>("database");
+    auto const tableName = body().required<string>("table");
     auto const overlapSelector =
             str2overlapSelector(body().optional<string>("overlap_selector", "CHUNK_AND_OVERLAP"));
     auto const rowCountersStateUpdatePolicy = SqlRowStatsJob::str2policy(
@@ -741,8 +742,8 @@ json HttpIngestModule::_scanTableStats() {
     bool const rowCountersDeployAtQserv = body().optional<int>("row_counters_deploy_at_qserv", 0) != 0;
     bool const forceRescan = body().optional<int>("force_rescan", 0) != 0;
 
-    debug(__func__, "database=" + database);
-    debug(__func__, "table=" + table);
+    debug(__func__, "database=" + databaseName);
+    debug(__func__, "table=" + tableName);
     debug(__func__, "overlap_selector=" + overlapSelector2str(overlapSelector));
     debug(__func__,
           "row_counters_state_update_policy=" + SqlRowStatsJob::policy2str(rowCountersStateUpdatePolicy));
@@ -762,7 +763,7 @@ json HttpIngestModule::_scanTableStats() {
     }
     bool const allWorkers = true;
     json const errorExt = _scanTableStatsImpl(
-            database, table, overlapSelector, rowCountersStateUpdatePolicy, rowCountersDeployAtQserv,
+            databaseName, tableName, overlapSelector, rowCountersStateUpdatePolicy, rowCountersDeployAtQserv,
             forceRescan, allWorkers, config->get<int>("controller", "catalog-management-priority-level"));
     if (!errorExt.empty()) {
         throw HttpError(__func__, "Table rows scanning/deployment failed.", errorExt);
@@ -770,7 +771,7 @@ json HttpIngestModule::_scanTableStats() {
     return json::object();
 }
 
-json HttpIngestModule::_scanTableStatsImpl(string const& database, string const& table,
+json HttpIngestModule::_scanTableStatsImpl(string const& databaseName, string const& tableName,
                                            ChunkOverlapSelector overlapSelector,
                                            SqlRowStatsJob::StateUpdatePolicy stateUpdatePolicy,
                                            bool deployAtQserv, bool forceRescan, bool allWorkers,
@@ -779,27 +780,23 @@ json HttpIngestModule::_scanTableStatsImpl(string const& database, string const&
 
     auto const databaseServices = controller()->serviceProvider()->databaseServices();
     auto const config = controller()->serviceProvider()->config();
-    auto const databaseInfo = config->databaseInfo(database);
-    auto const tables = databaseInfo.tables();
-    if (tables.cend() == find(tables.cbegin(), tables.cend(), table)) {
-        throw invalid_argument(context() + "::" + string(__func__) + " unknown table: '" + table + "'");
-    }
-    bool const isPartitioned = databaseInfo.isPartitioned(table);
+    auto const database = config->databaseInfo(databaseName);
+    auto const table = database.findTable(tableName);
 
     // Check if an optional optimization of not re-scanning the counters would
     // be possible in the given context.
     bool scanRequired = forceRescan;
     if (!scanRequired) {
-        auto const stats = databaseServices->tableRowStats(database, table, transactionId);
+        auto const stats = databaseServices->tableRowStats(database.name, table.name, transactionId);
         if (stats.entries.size() == 0) {
             scanRequired = true;
-            debug(__func__, "scan required since no entries exist for " + database + "." + table);
-        } else if (isPartitioned) {
+            debug(__func__, "scan required since no entries exist for " + database.name + "." + table.name);
+        } else if (table.isPartitioned) {
             // Get a collection of all (but th especial one) chunks that have been
             // registered for the database and turn it into a set.
             bool const enabledWorkersOnly = !allWorkers;
             vector<unsigned int> allChunks;
-            databaseServices->findDatabaseChunks(allChunks, database, enabledWorkersOnly);
+            databaseServices->findDatabaseChunks(allChunks, database.name, enabledWorkersOnly);
             set<unsigned int> chunks;
             for (unsigned int const chunk : allChunks) {
                 if (chunk == lsst::qserv::DUMMY_CHUNK) continue;
@@ -832,7 +829,7 @@ json HttpIngestModule::_scanTableStatsImpl(string const& database, string const&
                                   " unsupported overlap selector '" + overlapSelector2str(overlapSelector));
             }
             if (scanRequired) {
-                debug(__func__, "scan required for " + database + "." + table +
+                debug(__func__, "scan required for " + database.name + "." + table.name +
                                         " since"
                                         " chunks.size(): " +
                                         to_string(chunks.size()) + " chunkOverlapsInEntries.size(): " +
@@ -847,12 +844,12 @@ json HttpIngestModule::_scanTableStatsImpl(string const& database, string const&
     }
     if (scanRequired) {
         string const noParentJobId;
-        auto const job = SqlRowStatsJob::create(databaseInfo.name, table, overlapSelector, stateUpdatePolicy,
+        auto const job = SqlRowStatsJob::create(database.name, table.name, overlapSelector, stateUpdatePolicy,
                                                 allWorkers, controller(), noParentJobId, nullptr, priority);
         job->start();
-        logJobStartedEvent(SqlRowStatsJob::typeName(), job, databaseInfo.family);
+        logJobStartedEvent(SqlRowStatsJob::typeName(), job, database.family);
         job->wait();
-        logJobFinishedEvent(SqlRowStatsJob::typeName(), job, databaseInfo.family);
+        logJobFinishedEvent(SqlRowStatsJob::typeName(), job, database.family);
 
         if (job->extendedState() != Job::ExtendedState::SUCCESS) {
             json errorExt = json::object({{"operation", "Scan table row counters."},
@@ -871,7 +868,7 @@ json HttpIngestModule::_scanTableStatsImpl(string const& database, string const&
         }
     }
     if (deployAtQserv) {
-        auto const stats = databaseServices->tableRowStats(database, table, transactionId);
+        auto const stats = databaseServices->tableRowStats(database.name, table.name, transactionId);
 
         // Entries for the partitioned and regular tables will be filtered and
         // processed differently. In case of the former counters from the chunk
@@ -880,7 +877,7 @@ json HttpIngestModule::_scanTableStatsImpl(string const& database, string const&
         // be computed.
         map<unsigned int, size_t> chunk2rows;
         for (auto&& e : stats.entries) {
-            if (isPartitioned) {
+            if (table.isPartitioned) {
                 if (!e.isOverlap) chunk2rows[e.chunk] += e.numRows;
             } else {
                 chunk2rows[0] += e.numRows;
@@ -892,8 +889,9 @@ json HttpIngestModule::_scanTableStatsImpl(string const& database, string const&
         try {
             database::mysql::ConnectionHandler const h(qservMasterDbConnection("qservMeta"));
             string const sqlCreateRowCountersTable =
-                    "CREATE TABLE IF NOT EXISTS " + h.conn->sqlId(::rowCountersTable(database, table)) +
-                    " (" + h.conn->sqlId("chunk") + " INT UNSIGNED NOT NULL , " + h.conn->sqlId("num_rows") +
+                    "CREATE TABLE IF NOT EXISTS " +
+                    h.conn->sqlId(::rowCountersTable(database.name, table.name)) + " (" +
+                    h.conn->sqlId("chunk") + " INT UNSIGNED NOT NULL , " + h.conn->sqlId("num_rows") +
                     " BIGINT UNSIGNED DEFAULT 0, "
                     " UNIQUE KEY (" +
                     h.conn->sqlId("chunk") +
@@ -903,19 +901,20 @@ json HttpIngestModule::_scanTableStatsImpl(string const& database, string const&
                     "by"
                     " the ingest system when publishing the catalog, or afterwards by the table scanner.'";
             string const sqlEmptyRowCountersTable =
-                    "DELETE FROM " + h.conn->sqlId(::rowCountersTable(database, table));
+                    "DELETE FROM " + h.conn->sqlId(::rowCountersTable(database.name, table.name));
             h.conn->executeInOwnTransaction([&](decltype(h.conn) conn) {
                 conn->execute(sqlCreateRowCountersTable);
                 conn->execute(sqlEmptyRowCountersTable);
                 for (auto&& itr : chunk2rows) {
                     unsigned int const chunk = itr.first;
                     size_t const numRows = itr.second;
-                    conn->execute(conn->sqlInsertQuery(::rowCountersTable(database, table), chunk, numRows));
+                    conn->execute(conn->sqlInsertQuery(::rowCountersTable(database.name, table.name), chunk,
+                                                       numRows));
                 }
             });
         } catch (exception const& ex) {
-            string const msg = "Failed to load/update row counters for table '" + table + "' of database '" +
-                               database + "' into Qserv, ex: " + string(ex.what());
+            string const msg = "Failed to load/update row counters for table '" + table.name +
+                               "' of database '" + database.name + "' into Qserv, ex: " + string(ex.what());
             error(__func__, msg);
             return json::object({{"operation", "Deploy table row counters in Qserv."}, {"error", msg}});
         }
@@ -926,10 +925,7 @@ json HttpIngestModule::_scanTableStatsImpl(string const& database, string const&
 json HttpIngestModule::_deleteTableStats() {
     debug(__func__);
 
-    string database;
-    string table;
-    _getRequiredParameters(__func__, database, table);
-
+    auto const table = _getTableInfo(__func__);
     bool const qservOnly = body().optional<int>("qserv_only", 0) != 0;
     auto const overlapSelector =
             str2overlapSelector(body().optional<string>("overlap_selector", "CHUNK_AND_OVERLAP"));
@@ -938,12 +934,13 @@ json HttpIngestModule::_deleteTableStats() {
 
     try {
         database::mysql::ConnectionHandler const h(qservMasterDbConnection("qservMeta"));
-        h.conn->executeInOwnTransaction([&database, &table](decltype(h.conn) conn) {
-            conn->execute("DROP TABLE IF EXISTS " + conn->sqlId(::rowCountersTable(database, table)));
+        h.conn->executeInOwnTransaction([&table](decltype(h.conn) conn) {
+            conn->execute("DROP TABLE IF EXISTS " +
+                          conn->sqlId(::rowCountersTable(table.database, table.name)));
         });
     } catch (exception const& ex) {
-        string const msg = "Failed to delete metadata table with counters for table '" + table +
-                           "' of database '" + database + "' from Qserv, ex: " + string(ex.what());
+        string const msg = "Failed to delete metadata table with counters for table '" + table.name +
+                           "' of database '" + table.database + "' from Qserv, ex: " + string(ex.what());
         error(__func__, msg);
         throw HttpError(__func__, msg,
                         json::object({{"operation", "Deploy table row counters in Qserv."}, {"error", msg}}));
@@ -952,7 +949,7 @@ json HttpIngestModule::_deleteTableStats() {
     // Delete stats from the Replication system's persistent state if requested.
     if (!qservOnly) {
         auto const databaseServices = controller()->serviceProvider()->databaseServices();
-        databaseServices->deleteTableRowStats(database, table, overlapSelector);
+        databaseServices->deleteTableRowStats(table.database, table.name, overlapSelector);
     }
     return json::object();
 }
@@ -960,48 +957,44 @@ json HttpIngestModule::_deleteTableStats() {
 json HttpIngestModule::_tableStats() {
     debug(__func__);
 
-    string database;
-    string table;
-    _getRequiredParameters(__func__, database, table);
-
-    // Counters ingested in all transactions are pulled.
-    TransactionId const transactionId = 0;
+    auto const table = _getTableInfo(__func__);
+    TransactionId const transactionId = 0;  // Aggregate counters ingested across all transactions.
     return controller()
             ->serviceProvider()
             ->databaseServices()
-            ->tableRowStats(database, table, transactionId)
+            ->tableRowStats(table.database, table.name, transactionId)
             .toJson();
 }
 
 json HttpIngestModule::_buildEmptyChunksList() {
     debug(__func__);
 
-    string const database = body().required<string>("database");
+    string const databaseName = body().required<string>("database");
     bool const force = body().optional<int>("force", 0) != 0;
     bool const tableImpl = body().optional<int>("table_impl", 0) != 0;
 
-    debug(__func__, "database=" + database);
+    debug(__func__, "database=" + databaseName);
     debug(__func__, "force=" + bool2str(force));
     debug(__func__, "table_impl=" + bool2str(tableImpl));
 
-    return _buildEmptyChunksListImpl(database, force, tableImpl);
+    return _buildEmptyChunksListImpl(databaseName, force, tableImpl);
 }
 
 json HttpIngestModule::_getRegular() {
     debug(__func__);
 
     auto const config = controller()->serviceProvider()->config();
-    DatabaseInfo const databaseInfo = getDatabaseInfo(__func__);
+    auto const database = getDatabaseInfo(__func__);
 
     json resultLocations = json::array();
-    for (auto&& worker : config->workers()) {
-        auto&& workerInfo = config->workerInfo(worker);
+    for (auto&& workerName : config->workers()) {
+        auto const worker = config->workerInfo(workerName);
         json resultLocation;
-        resultLocation["worker"] = workerInfo.name;
-        resultLocation["host"] = workerInfo.loaderHost;
-        resultLocation["port"] = workerInfo.loaderPort;
-        resultLocation["http_host"] = workerInfo.httpLoaderHost;
-        resultLocation["http_port"] = workerInfo.httpLoaderPort;
+        resultLocation["worker"] = worker.name;
+        resultLocation["host"] = worker.loaderHost;
+        resultLocation["port"] = worker.loaderPort;
+        resultLocation["http_host"] = worker.httpLoaderHost;
+        resultLocation["http_port"] = worker.httpLoaderPort;
         resultLocations.push_back(resultLocation);
     }
     json result;
@@ -1009,79 +1002,76 @@ json HttpIngestModule::_getRegular() {
     return result;
 }
 
-void HttpIngestModule::_getRequiredParameters(string const& func, string& database, string& table) {
-    database = params().at("database");
-    table = params().at("table");
-    debug(__func__, "database=" + database);
-    debug(__func__, "table=" + table);
-    auto const databaseInfo = controller()->serviceProvider()->config()->databaseInfo(database);
-    auto const tables = databaseInfo.tables();
-    if (tables.cend() == find(tables.cbegin(), tables.cend(), table)) {
-        throw invalid_argument(context() + "::" + func + " unknown table: '" + table + "'.");
-    }
+TableInfo HttpIngestModule::_getTableInfo(string const& func) {
+    auto const databaseName = params().at("database");
+    auto const tableName = params().at("table");
+    debug(__func__, "database=" + databaseName);
+    debug(__func__, "table=" + tableName);
+    return controller()->serviceProvider()->config()->databaseInfo(databaseName).findTable(tableName);
 }
 
-void HttpIngestModule::_grantDatabaseAccess(DatabaseInfo const& databaseInfo, bool allWorkers) const {
+void HttpIngestModule::_grantDatabaseAccess(DatabaseInfo const& database, bool allWorkers) const {
     debug(__func__);
 
     string const noParentJobId;
     auto const config = controller()->serviceProvider()->config();
     auto const job = SqlGrantAccessJob::create(
-            databaseInfo.name, config->get<string>("database", "qserv-master-user"), allWorkers, controller(),
+            database.name, config->get<string>("database", "qserv-master-user"), allWorkers, controller(),
             noParentJobId, nullptr, config->get<int>("controller", "ingest-priority-level"));
     job->start();
-    logJobStartedEvent(SqlGrantAccessJob::typeName(), job, databaseInfo.family);
+    logJobStartedEvent(SqlGrantAccessJob::typeName(), job, database.family);
     job->wait();
-    logJobFinishedEvent(SqlGrantAccessJob::typeName(), job, databaseInfo.family);
+    logJobFinishedEvent(SqlGrantAccessJob::typeName(), job, database.family);
 
     string const error = ::jobCompletionErrorIfAny(job, "grant access to a database failed");
     if (not error.empty()) throw HttpError(__func__, error);
 }
 
-void HttpIngestModule::_enableDatabase(DatabaseInfo const& databaseInfo, bool allWorkers) const {
+void HttpIngestModule::_enableDatabase(DatabaseInfo const& database, bool allWorkers) const {
     debug(__func__);
 
     string const noParentJobId;
     auto const config = controller()->serviceProvider()->config();
-    auto const job = SqlEnableDbJob::create(databaseInfo.name, allWorkers, controller(), noParentJobId,
-                                            nullptr, config->get<int>("controller", "ingest-priority-level"));
+    auto const job = SqlEnableDbJob::create(database.name, allWorkers, controller(), noParentJobId, nullptr,
+                                            config->get<int>("controller", "ingest-priority-level"));
     job->start();
-    logJobStartedEvent(SqlEnableDbJob::typeName(), job, databaseInfo.family);
+    logJobStartedEvent(SqlEnableDbJob::typeName(), job, database.family);
     job->wait();
-    logJobFinishedEvent(SqlEnableDbJob::typeName(), job, databaseInfo.family);
+    logJobFinishedEvent(SqlEnableDbJob::typeName(), job, database.family);
 
     string const error = ::jobCompletionErrorIfAny(job, "enabling database failed");
     if (not error.empty()) throw HttpError(__func__, error);
 }
 
-void HttpIngestModule::_createMissingChunkTables(DatabaseInfo const& databaseInfo, bool allWorkers) const {
+void HttpIngestModule::_createMissingChunkTables(DatabaseInfo const& database, bool allWorkers) const {
     debug(__func__);
 
     string const engine = "MyISAM";
     string const noParentJobId;
 
-    for (auto&& table : databaseInfo.partitionedTables) {
+    for (auto&& tableName : database.partitionedTables()) {
+        auto const& table = database.findTable(tableName);
         // Skip tables that have been published.
-        if (databaseInfo.tableIsPublished.at(table)) continue;
-        auto const columnsItr = databaseInfo.columns.find(table);
-        if (columnsItr == databaseInfo.columns.cend()) {
-            throw HttpError(__func__, "schema is empty for table: '" + table + "'");
+        if (table.isPublished) continue;
+        if (table.columns.empty()) {
+            throw HttpError(__func__, "schema is empty for table: '" + table.name + "'");
         }
         auto const job = SqlCreateTablesJob::create(
-                databaseInfo.name, table, engine, _partitionByColumn, columnsItr->second, allWorkers,
+                database.name, table.name, engine, _partitionByColumn, table.columns, allWorkers,
                 controller(), noParentJobId, nullptr,
                 controller()->serviceProvider()->config()->get<int>("controller", "ingest-priority-level"));
         job->start();
-        logJobStartedEvent(SqlCreateTablesJob::typeName(), job, databaseInfo.family);
+        logJobStartedEvent(SqlCreateTablesJob::typeName(), job, database.family);
         job->wait();
-        logJobFinishedEvent(SqlCreateTablesJob::typeName(), job, databaseInfo.family);
+        logJobFinishedEvent(SqlCreateTablesJob::typeName(), job, database.family);
 
-        string const error = ::jobCompletionErrorIfAny(job, "table creation failed for: '" + table + "'");
+        string const error =
+                ::jobCompletionErrorIfAny(job, "table creation failed for: '" + table.name + "'");
         if (not error.empty()) throw HttpError(__func__, error);
     }
 }
 
-void HttpIngestModule::_removeMySQLPartitions(DatabaseInfo const& databaseInfo, bool allWorkers) const {
+void HttpIngestModule::_removeMySQLPartitions(DatabaseInfo const& database, bool allWorkers) const {
     debug(__func__);
 
     // Ignore tables which may have already been processed at a previous attempt
@@ -1089,27 +1079,28 @@ void HttpIngestModule::_removeMySQLPartitions(DatabaseInfo const& databaseInfo, 
     bool const ignoreNonPartitioned = true;
     string const noParentJobId;
     string error;
-    for (auto const table : databaseInfo.tables()) {
+    for (auto const tableName : database.tables()) {
+        auto const& table = database.findTable(tableName);
         // Skip tables that have been published.
-        if (databaseInfo.tableIsPublished.at(table)) continue;
+        if (table.isPublished) continue;
         auto const job = SqlRemoveTablePartitionsJob::create(
-                databaseInfo.name, table, allWorkers, ignoreNonPartitioned, controller(), noParentJobId,
+                database.name, table.name, allWorkers, ignoreNonPartitioned, controller(), noParentJobId,
                 nullptr,
                 controller()->serviceProvider()->config()->get<int>("controller", "ingest-priority-level"));
         job->start();
-        logJobStartedEvent(SqlRemoveTablePartitionsJob::typeName(), job, databaseInfo.family);
+        logJobStartedEvent(SqlRemoveTablePartitionsJob::typeName(), job, database.family);
         job->wait();
-        logJobFinishedEvent(SqlRemoveTablePartitionsJob::typeName(), job, databaseInfo.family);
+        logJobFinishedEvent(SqlRemoveTablePartitionsJob::typeName(), job, database.family);
 
         error += ::jobCompletionErrorIfAny(job, "MySQL partitions removal failed for database: " +
-                                                        databaseInfo.name + ", table: " + table);
+                                                        database.name + ", table: " + table.name);
     }
     if (not error.empty()) throw HttpError(__func__, error);
 }
 
-void HttpIngestModule::_publishDatabaseInMaster(DatabaseInfo const& databaseInfo) const {
+void HttpIngestModule::_publishDatabaseInMaster(DatabaseInfo const& database) const {
     auto const config = controller()->serviceProvider()->config();
-    auto const databaseFamilyInfo = config->databaseFamilyInfo(databaseInfo.family);
+    auto const databaseFamilyInfo = config->databaseFamilyInfo(database.family);
 
     // Connect to the master database as user "root".
     // Manage the new connection via the RAII-style handler to ensure the transaction
@@ -1121,20 +1112,21 @@ void HttpIngestModule::_publishDatabaseInMaster(DatabaseInfo const& databaseInfo
         vector<string> statements;
 
         // Statements for creating the database & table entries
-        statements.push_back("CREATE DATABASE IF NOT EXISTS " + h.conn->sqlId(databaseInfo.name));
-        for (auto const& table : databaseInfo.tables()) {
+        statements.push_back("CREATE DATABASE IF NOT EXISTS " + h.conn->sqlId(database.name));
+        for (auto const& tableName : database.tables()) {
+            auto const& table = database.findTable(tableName);
             // Skip tables that have been published.
-            if (databaseInfo.tableIsPublished.at(table)) continue;
-            string sql = "CREATE TABLE IF NOT EXISTS " + h.conn->sqlId(databaseInfo.name) + "." +
-                         h.conn->sqlId(table) + " (";
+            if (table.isPublished) continue;
+            string sql = "CREATE TABLE IF NOT EXISTS " + h.conn->sqlId(database.name) + "." +
+                         h.conn->sqlId(table.name) + " (";
             bool first = true;
-            for (auto const& coldef : databaseInfo.columns.at(table)) {
+            for (auto const& column : table.columns) {
                 if (first) {
                     first = false;
                 } else {
                     sql += ",";
                 }
-                sql += h.conn->sqlId(coldef.name) + " " + coldef.type;
+                sql += h.conn->sqlId(column.name) + " " + column.type;
             }
             sql += ") ENGINE=InnoDB";
             statements.push_back(sql);
@@ -1142,7 +1134,7 @@ void HttpIngestModule::_publishDatabaseInMaster(DatabaseInfo const& databaseInfo
 
         // Statements for granting SELECT authorizations for the new database
         // to the Qserv account.
-        statements.push_back("GRANT ALL ON " + h.conn->sqlId(databaseInfo.name) + ".* TO " +
+        statements.push_back("GRANT ALL ON " + h.conn->sqlId(database.name) + ".* TO " +
                              h.conn->sqlValue(config->get<string>("database", "qserv-master-user")) + "@" +
                              h.conn->sqlValue("localhost"));
 
@@ -1155,7 +1147,7 @@ void HttpIngestModule::_publishDatabaseInMaster(DatabaseInfo const& databaseInfo
 
     // Register the database, tables and the partitioning scheme at CSS
     auto const cssAccess = qservCssAccess();
-    if (not cssAccess->containsDb(databaseInfo.name)) {
+    if (not cssAccess->containsDb(database.name)) {
         // First, try to find another database within the same family which
         // has already been published, and the one is found then use it
         // as a template when registering the database in CSS.
@@ -1165,9 +1157,9 @@ void HttpIngestModule::_publishDatabaseInMaster(DatabaseInfo const& databaseInfo
         bool const allDatabases = false;
         bool const isPublished = true;
         auto const databases = config->databases(databaseFamilyInfo.name, allDatabases, isPublished);
-        if (not databases.empty()) {
+        if (!databases.empty()) {
             auto const templateDatabase = databases.front();
-            cssAccess->createDbLike(databaseInfo.name, templateDatabase);
+            cssAccess->createDbLike(database.name, templateDatabase);
         } else {
             // This parameter is not used by the current implementation of the CSS API.
             // However, we should give it some meaningless value in case of the implementation
@@ -1178,70 +1170,75 @@ void HttpIngestModule::_publishDatabaseInMaster(DatabaseInfo const& databaseInfo
                                                      databaseFamilyInfo.overlap);
             string const storageClass = "L2";
             string const releaseStatus = "RELEASED";
-            cssAccess->createDb(databaseInfo.name, stripingParams, storageClass, releaseStatus);
+            cssAccess->createDb(database.name, stripingParams, storageClass, releaseStatus);
         }
     }
 
     // Register tables which still hasn't been registered in CSS
-    for (auto const& table : databaseInfo.regularTables) {
+    for (auto const& tableName : database.regularTables()) {
+        auto const& table = database.findTable(tableName);
         // Skip tables that have been published.
-        if (databaseInfo.tableIsPublished.at(table)) continue;
-        if (not cssAccess->containsTable(databaseInfo.name, table)) {
+        if (table.isPublished) continue;
+        if (!cssAccess->containsTable(database.name, table.name)) {
             // Neither of those groups of parameters apply to the regular tables,
             // so we're leaving them default constructed.
             css::PartTableParams const partParams;
             css::ScanTableParams const scanParams;
-            cssAccess->createTable(databaseInfo.name, table, databaseInfo.schema4css(table), partParams,
-                                   scanParams);
+            cssAccess->createTable(database.name, table.name, table.schema4css(), partParams, scanParams);
         }
     }
-    for (auto const& table : databaseInfo.partitionedTables) {
+    for (auto const& tableName : database.partitionedTables()) {
+        auto const& table = database.findTable(tableName);
         // Skip tables that have been published.
-        if (databaseInfo.tableIsPublished.at(table)) continue;
-        if (not cssAccess->containsTable(databaseInfo.name, table)) {
-            bool const isPartitioned = true;
+        if (table.isPublished) continue;
+        if (!cssAccess->containsTable(database.name, table.name)) {
+            if (table.isRefMatch) {
+                css::MatchTableParams const matchParams(
+                        table.directorTable.databaseTableName(), table.directorTable.primaryKeyColumn(),
+                        table.directorTable2.databaseTableName(), table.directorTable2.primaryKeyColumn(),
+                        table.flagColName, table.angSep);
+                cssAccess->createMatchTable(database.name, table.name, table.schema4css(), matchParams);
+            } else {
+                // These parameters need to be set correctly for the 'director' and dependent
+                // tables to avoid confusing Qserv query analyzer. Also note, that the 'overlap'
+                // is set to be the same for all 'director' tables of the database family.
+                double const overlap = table.isDirector ? databaseFamilyInfo.overlap : 0;
+                bool const isPartitioned = true;
+                bool const hasSubChunks = table.isDirector;
+                css::PartTableParams const partParams(database.name, table.directorTable.tableName(),
+                                                      table.directorTable.primaryKeyColumn(),
+                                                      table.latitudeColName, table.longitudeColName, overlap,
+                                                      isPartitioned, hasSubChunks);
+                bool const lockInMem = true;
+                int const scanRating = 1;
+                css::ScanTableParams const scanParams(lockInMem, scanRating);
 
-            // These parameters need to be set correctly for the 'director' and dependent
-            // tables to avoid confusing Qserv query analyzer. Also note, that the 'overlap'
-            // is set to be the same for all 'director' tables of the database family.
-            bool const isDirector = databaseInfo.isDirector(table);
-            double const overlap = isDirector ? databaseFamilyInfo.overlap : 0;
-            bool const hasSubChunks = isDirector;
-
-            css::PartTableParams const partParams(
-                    databaseInfo.name, databaseInfo.directorTable.at(table),
-                    databaseInfo.directorTableKey.at(table), databaseInfo.latitudeColName.at(table),
-                    databaseInfo.longitudeColName.at(table), overlap, isPartitioned, hasSubChunks);
-
-            bool const lockInMem = true;
-            int const scanRating = 1;
-            css::ScanTableParams const scanParams(lockInMem, scanRating);
-
-            cssAccess->createTable(databaseInfo.name, table, databaseInfo.schema4css(table), partParams,
-                                   scanParams);
+                cssAccess->createTable(database.name, table.name, table.schema4css(), partParams, scanParams);
+            }
         }
     }
 
     bool const forceRebuild = true;
     bool const tableImpl = true;
-    _buildEmptyChunksListImpl(databaseInfo.name, forceRebuild, tableImpl);
+    _buildEmptyChunksListImpl(database.name, forceRebuild, tableImpl);
 }
 
-json HttpIngestModule::_buildEmptyChunksListImpl(string const& database, bool force, bool tableImpl) const {
+json HttpIngestModule::_buildEmptyChunksListImpl(string const& databaseName, bool force,
+                                                 bool tableImpl) const {
     debug(__func__);
 
     auto const databaseServices = controller()->serviceProvider()->databaseServices();
     auto const config = controller()->serviceProvider()->config();
 
-    auto const databaseInfo = config->databaseInfo(database);
-    if (databaseInfo.isPublished) {
+    auto const database = config->databaseInfo(databaseName);
+    if (database.isPublished) {
         throw invalid_argument("database is already published");
     }
 
     // Get a collection of all possible chunks which are allowed to be present
     // in the database given its partitioning scheme.
-    auto const familyInfo = config->databaseFamilyInfo(databaseInfo.family);
-    lsst::sphgeom::Chunker const chunker(familyInfo.numStripes, familyInfo.numSubStripes);
+    auto const family = config->databaseFamilyInfo(database.family);
+    lsst::sphgeom::Chunker const chunker(family.numStripes, family.numSubStripes);
     auto const allChunks = chunker.getAllChunks();
 
     // Get the numbers of chunks ingested into the database. They will be excluded
@@ -1250,20 +1247,20 @@ json HttpIngestModule::_buildEmptyChunksListImpl(string const& database, bool fo
     {
         bool const enabledWorkersOnly = true;
         vector<unsigned int> chunks;
-        databaseServices->findDatabaseChunks(chunks, database, enabledWorkersOnly);
+        databaseServices->findDatabaseChunks(chunks, database.name, enabledWorkersOnly);
 
         for (auto chunk : chunks) ingestedChunks.insert(chunk);
     }
 
     if (tableImpl) {
         database::mysql::ConnectionHandler const h(qservMasterDbConnection("qservCssData"));
-        string const table = css::DbInterfaceMySql::getEmptyChunksTableName(database);
+        string const tableName = css::DbInterfaceMySql::getEmptyChunksTableName(database.name);
         vector<string> statements;
-        if (force) statements.push_back("DROP TABLE IF EXISTS " + h.conn->sqlId(table));
-        statements.push_back(css::DbInterfaceMySql::getEmptyChunksSchema(database));
+        if (force) statements.push_back("DROP TABLE IF EXISTS " + h.conn->sqlId(tableName));
+        statements.push_back(css::DbInterfaceMySql::getEmptyChunksSchema(database.name));
         for (auto&& chunk : allChunks) {
             if (not ingestedChunks.count(chunk)) {
-                statements.push_back(h.conn->sqlInsertQuery(table, chunk));
+                statements.push_back(h.conn->sqlInsertQuery(tableName, chunk));
             }
         }
         h.conn->executeInOwnTransaction([&statements](decltype(h.conn) conn) {
@@ -1272,7 +1269,7 @@ json HttpIngestModule::_buildEmptyChunksListImpl(string const& database, bool fo
             }
         });
     } else {
-        auto const file = "empty_" + database + ".txt";
+        auto const file = "empty_" + database.name + ".txt";
         auto const filePath = fs::path(config->get<string>("controller", "empty-chunks-dir")) / file;
 
         if (not force) {
@@ -1305,35 +1302,35 @@ json HttpIngestModule::_buildEmptyChunksListImpl(string const& database, bool fo
     return result;
 }
 
-void HttpIngestModule::_createSecondaryIndex(DatabaseInfo const& databaseInfo,
-                                             string const& directorTable) const {
-    if (!databaseInfo.isDirector(directorTable)) {
-        throw logic_error("table '" + directorTable + "' is not configured in database '" +
-                          databaseInfo.name + "' as the director table");
+void HttpIngestModule::_createSecondaryIndex(DatabaseInfo const& database,
+                                             string const& directorTableName) const {
+    auto const& table = database.findTable(directorTableName);
+    if (!table.isDirector) {
+        throw logic_error("table '" + table.name + "' is not configured in database '" + database.name +
+                          "' as the director table");
     }
-    if ((databaseInfo.directorTableKey.count(directorTable) == 0) or
-        databaseInfo.directorTableKey.at(directorTable).empty()) {
-        throw logic_error("director key of table '" + directorTable + "' is not configured in database '" +
-                          databaseInfo.name + "'");
+    if (table.directorTable.primaryKeyColumn().empty()) {
+        throw logic_error("director key of table '" + table.name + "' is not configured in database '" +
+                          database.name + "'");
     }
-    string const& directorTableKey = databaseInfo.directorTableKey.at(directorTable);
-    if (0 == databaseInfo.columns.count(directorTable)) {
-        throw logic_error("no schema found for director table '" + directorTable + "' of database '" +
-                          databaseInfo.name + "'");
+    if (table.columns.empty()) {
+        throw logic_error("no schema found for director table '" + table.name + "' of database '" +
+                          database.name + "'");
     }
 
     // Find types of the secondary index table's columns
-    string directorTableKeyType;
+    string primaryKeyColumnType;
     string const chunkIdColNameType = "INT";
     string const subChunkIdColNameType = "INT";
 
-    for (auto&& coldef : databaseInfo.columns.at(directorTable)) {
-        if (coldef.name == directorTableKey) directorTableKeyType = coldef.type;
+    for (auto&& column : table.columns) {
+        if (column.name == table.directorTable.primaryKeyColumn()) primaryKeyColumnType = column.type;
     }
-    if (directorTableKeyType.empty()) {
-        throw logic_error("column definition for the director key column '" + directorTableKey +
-                          "' is missing in the director table schema for table '" + directorTable +
-                          "' of database '" + databaseInfo.name + "'");
+    if (primaryKeyColumnType.empty()) {
+        throw logic_error("column definition for the director key column '" +
+                          table.directorTable.primaryKeyColumn() +
+                          "' is missing in the director table schema for table '" + table.name +
+                          "' of database '" + database.name + "'");
     }
 
     // Manage the new connection via the RAII-style handler to ensure the transaction
@@ -1341,22 +1338,22 @@ void HttpIngestModule::_createSecondaryIndex(DatabaseInfo const& databaseInfo,
     database::mysql::ConnectionHandler const h(qservMasterDbConnection("qservMeta"));
     vector<string> queries;
     queries.push_back("DROP TABLE IF EXISTS " +
-                      h.conn->sqlId(::directorIndexTable(databaseInfo.name, directorTable)));
-    queries.push_back("CREATE TABLE IF NOT EXISTS " +
-                      h.conn->sqlId(::directorIndexTable(databaseInfo.name, directorTable)) + " (" +
-                      h.conn->sqlId(_partitionByColumn) + " " + _partitionByColumnType + "," +
-                      h.conn->sqlId(directorTableKey) + " " + directorTableKeyType + "," +
-                      h.conn->sqlId(lsst::qserv::CHUNK_COLUMN) + " " + chunkIdColNameType + "," +
-                      h.conn->sqlId(lsst::qserv::SUB_CHUNK_COLUMN) + " " + subChunkIdColNameType +
-                      ","
-                      " UNIQUE KEY (" +
-                      h.conn->sqlId(_partitionByColumn) + "," + h.conn->sqlId(directorTableKey) +
-                      "),"
-                      " KEY (" +
-                      h.conn->sqlId(directorTableKey) +
-                      ")"
-                      ") ENGINE=InnoDB PARTITION BY LIST (" +
-                      h.conn->sqlId(_partitionByColumn) + ") (PARTITION `p0` VALUES IN (0) ENGINE=InnoDB)");
+                      h.conn->sqlId(::directorIndexTable(database.name, table.name)));
+    queries.push_back(
+            "CREATE TABLE IF NOT EXISTS " + h.conn->sqlId(::directorIndexTable(database.name, table.name)) +
+            " (" + h.conn->sqlId(_partitionByColumn) + " " + _partitionByColumnType + "," +
+            h.conn->sqlId(table.directorTable.primaryKeyColumn()) + " " + primaryKeyColumnType + "," +
+            h.conn->sqlId(lsst::qserv::CHUNK_COLUMN) + " " + chunkIdColNameType + "," +
+            h.conn->sqlId(lsst::qserv::SUB_CHUNK_COLUMN) + " " + subChunkIdColNameType +
+            ","
+            " UNIQUE KEY (" +
+            h.conn->sqlId(_partitionByColumn) + "," + h.conn->sqlId(table.directorTable.primaryKeyColumn()) +
+            "),"
+            " KEY (" +
+            h.conn->sqlId(table.directorTable.primaryKeyColumn()) +
+            ")"
+            ") ENGINE=InnoDB PARTITION BY LIST (" +
+            h.conn->sqlId(_partitionByColumn) + ") (PARTITION `p0` VALUES IN (0) ENGINE=InnoDB)");
     h.conn->executeInOwnTransaction([&queries](decltype(h.conn) conn) {
         for (auto&& query : queries) {
             conn->execute(query);
@@ -1364,35 +1361,35 @@ void HttpIngestModule::_createSecondaryIndex(DatabaseInfo const& databaseInfo,
     });
 }
 
-void HttpIngestModule::_consolidateSecondaryIndex(DatabaseInfo const& databaseInfo,
-                                                  string const& directorTable) const {
-    if (!databaseInfo.isDirector(directorTable)) {
-        throw logic_error("table '" + directorTable + "' is not configured in database '" +
-                          databaseInfo.name + "' as the director table");
+void HttpIngestModule::_consolidateSecondaryIndex(DatabaseInfo const& database,
+                                                  string const& directorTableName) const {
+    auto const table = database.findTable(directorTableName);
+    if (!table.isDirector) {
+        throw logic_error("table '" + table.name + "' is not configured in database '" + database.name +
+                          "' as the director table");
     }
 
     // Manage the new connection via the RAII-style handler to ensure the transaction
     // is automatically rolled-back in case of exceptions.
     database::mysql::ConnectionHandler const h(qservMasterDbConnection("qservMeta"));
-    string const query = "ALTER TABLE " +
-                         h.conn->sqlId(::directorIndexTable(databaseInfo.name, directorTable)) +
+    string const query = "ALTER TABLE " + h.conn->sqlId(::directorIndexTable(database.name, table.name)) +
                          " REMOVE PARTITIONING";
     debug(__func__, query);
     h.conn->executeInOwnTransaction([&query](decltype(h.conn) conn) { conn->execute(query); });
 }
 
-void HttpIngestModule::_qservSync(DatabaseInfo const& databaseInfo, bool allWorkers) const {
+void HttpIngestModule::_qservSync(DatabaseInfo const& database, bool allWorkers) const {
     debug(__func__);
 
     bool const saveReplicaInfo = true;
     string const noParentJobId;
     auto const findAlljob = FindAllJob::create(
-            databaseInfo.family, saveReplicaInfo, allWorkers, controller(), noParentJobId, nullptr,
+            database.family, saveReplicaInfo, allWorkers, controller(), noParentJobId, nullptr,
             controller()->serviceProvider()->config()->get<int>("controller", "ingest-priority-level"));
     findAlljob->start();
-    logJobStartedEvent(FindAllJob::typeName(), findAlljob, databaseInfo.family);
+    logJobStartedEvent(FindAllJob::typeName(), findAlljob, database.family);
     findAlljob->wait();
-    logJobFinishedEvent(FindAllJob::typeName(), findAlljob, databaseInfo.family);
+    logJobFinishedEvent(FindAllJob::typeName(), findAlljob, database.family);
 
     if (findAlljob->extendedState() != Job::SUCCESS) {
         throw HttpError(__func__, "replica lookup stage failed");
@@ -1400,11 +1397,11 @@ void HttpIngestModule::_qservSync(DatabaseInfo const& databaseInfo, bool allWork
 
     bool const force = false;
     auto const qservSyncJob =
-            QservSyncJob::create(databaseInfo.family, force, qservSyncTimeoutSec(), controller());
+            QservSyncJob::create(database.family, force, qservSyncTimeoutSec(), controller());
     qservSyncJob->start();
-    logJobStartedEvent(QservSyncJob::typeName(), qservSyncJob, databaseInfo.family);
+    logJobStartedEvent(QservSyncJob::typeName(), qservSyncJob, database.family);
     qservSyncJob->wait();
-    logJobFinishedEvent(QservSyncJob::typeName(), qservSyncJob, databaseInfo.family);
+    logJobFinishedEvent(QservSyncJob::typeName(), qservSyncJob, database.family);
 
     if (qservSyncJob->extendedState() != Job::SUCCESS) {
         throw HttpError(__func__, "Qserv synchronization failed");

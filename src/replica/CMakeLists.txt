@@ -51,6 +51,8 @@ target_sources(replica PRIVATE
     ConfigParserJSON.h
     ConfigParserMySQL.cc
     ConfigParserMySQL.h
+    ConfigTable.cc
+    ConfigTable.h
     ConfigTestApp.cc
     ConfigTestApp.h
     ConfigTestData.cc

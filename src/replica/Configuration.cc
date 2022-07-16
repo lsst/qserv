@@ -357,15 +357,15 @@ vector<string> Configuration::workers(bool isEnabled, bool isReadOnly) const {
     util::Lock const lock(_mtx, _context(__func__));
     vector<string> names;
     for (auto&& itr : _workers) {
-        string const& name = itr.first;
-        WorkerInfo const& info = itr.second;
+        string const& workerName = itr.first;
+        WorkerInfo const& worker = itr.second;
         if (isEnabled) {
-            if (info.isEnabled && (isReadOnly == info.isReadOnly)) {
-                names.push_back(name);
+            if (worker.isEnabled && (isReadOnly == worker.isReadOnly)) {
+                names.push_back(workerName);
             }
         } else {
-            if (!info.isEnabled) {
-                names.push_back(name);
+            if (!worker.isEnabled) {
+                names.push_back(workerName);
             }
         }
     }
@@ -386,52 +386,52 @@ vector<string> Configuration::databaseFamilies() const {
     util::Lock const lock(_mtx, _context(__func__));
     vector<string> names;
     for (auto&& itr : _databaseFamilies) {
-        string const& name = itr.first;
-        names.push_back(name);
+        string const& familyName = itr.first;
+        names.push_back(familyName);
     }
     return names;
 }
 
-bool Configuration::isKnownDatabaseFamily(string const& name) const {
+bool Configuration::isKnownDatabaseFamily(string const& familyName) const {
     util::Lock const lock(_mtx, _context(__func__));
-    if (name.empty()) throw invalid_argument(_context(__func__) + " the family name is empty.");
-    return _databaseFamilies.count(name) != 0;
+    if (familyName.empty()) throw invalid_argument(_context(__func__) + " the family name is empty.");
+    return _databaseFamilies.count(familyName) != 0;
 }
 
-DatabaseFamilyInfo Configuration::databaseFamilyInfo(string const& name) const {
+DatabaseFamilyInfo Configuration::databaseFamilyInfo(string const& familyName) const {
     util::Lock const lock(_mtx, _context(__func__));
-    return _databaseFamilyInfo(lock, name);
+    return _databaseFamilyInfo(lock, familyName);
 }
 
-DatabaseFamilyInfo Configuration::addDatabaseFamily(DatabaseFamilyInfo const& info) {
+DatabaseFamilyInfo Configuration::addDatabaseFamily(DatabaseFamilyInfo const& family) {
     util::Lock const lock(_mtx, _context(__func__));
-    if (info.name.empty()) throw invalid_argument(_context(__func__) + " the family name is empty.");
-    if (_databaseFamilies.find(info.name) != _databaseFamilies.end()) {
-        throw invalid_argument(_context(__func__) + " the family '" + info.name + "' already exists.");
+    if (family.name.empty()) throw invalid_argument(_context(__func__) + " the family name is empty.");
+    if (_databaseFamilies.find(family.name) != _databaseFamilies.end()) {
+        throw invalid_argument(_context(__func__) + " the family '" + family.name + "' already exists.");
     }
     string errors;
-    if (info.replicationLevel == 0) errors += " replicationLevel(0)";
-    if (info.numStripes == 0) errors += " numStripes(0)";
-    if (info.numSubStripes == 0) errors += " numSubStripes(0)";
-    if (info.overlap <= 0) errors += " overlap(<=0)";
+    if (family.replicationLevel == 0) errors += " replicationLevel(0)";
+    if (family.numStripes == 0) errors += " numStripes(0)";
+    if (family.numSubStripes == 0) errors += " numSubStripes(0)";
+    if (family.overlap <= 0) errors += " overlap(<=0)";
     if (!errors.empty()) throw invalid_argument(_context(__func__) + errors);
     if (_connectionPtr != nullptr) {
         _connectionPtr->executeInOwnTransaction([&](decltype(_connectionPtr) conn) {
-            conn->executeInsertQuery("config_database_family", info.name, info.replicationLevel,
-                                     info.numStripes, info.numSubStripes, info.overlap);
+            conn->executeInsertQuery("config_database_family", family.name, family.replicationLevel,
+                                     family.numStripes, family.numSubStripes, family.overlap);
         });
     }
-    _databaseFamilies[info.name] = info;
-    return info;
+    _databaseFamilies[family.name] = family;
+    return family;
 }
 
-void Configuration::deleteDatabaseFamily(string const& name) {
+void Configuration::deleteDatabaseFamily(string const& familyName) {
     util::Lock const lock(_mtx, _context(__func__));
-    DatabaseFamilyInfo& familyInfo = _databaseFamilyInfo(lock, name);
+    DatabaseFamilyInfo& family = _databaseFamilyInfo(lock, familyName);
     if (_connectionPtr != nullptr) {
         _connectionPtr->executeInOwnTransaction([&](decltype(_connectionPtr) conn) {
             conn->execute("DELETE FROM " + conn->sqlId("config_database_family") + " WHERE " +
-                          conn->sqlEqual("name", familyInfo.name));
+                          conn->sqlEqual("name", family.name));
         });
     }
     // In order to maintain consistency of the persistent state also delete all
@@ -441,220 +441,226 @@ void Configuration::deleteDatabaseFamily(string const& name) {
     //       relationship between the corresponding tables.
     vector<string> databasesToBeRemoved;
     for (auto&& itr : _databases) {
-        string const& database = itr.first;
-        DatabaseInfo const& info = itr.second;
-        if (info.family == familyInfo.name) {
-            databasesToBeRemoved.push_back(database);
+        string const& databaseName = itr.first;
+        DatabaseInfo const& database = itr.second;
+        if (database.family == family.name) {
+            databasesToBeRemoved.push_back(databaseName);
         }
     }
-    for (string const& database : databasesToBeRemoved) {
-        _databases.erase(database);
+    for (string const& databaseName : databasesToBeRemoved) {
+        _databases.erase(databaseName);
     }
-    _databaseFamilies.erase(familyInfo.name);
+    _databaseFamilies.erase(family.name);
 }
 
-size_t Configuration::replicationLevel(string const& family) const {
+size_t Configuration::replicationLevel(string const& familyName) const {
     util::Lock const lock(_mtx, _context(__func__));
-    return _databaseFamilyInfo(lock, family).replicationLevel;
+    return _databaseFamilyInfo(lock, familyName).replicationLevel;
 }
 
-vector<string> Configuration::databases(string const& family, bool allDatabases, bool isPublished) const {
+vector<string> Configuration::databases(string const& familyName, bool allDatabases, bool isPublished) const {
     util::Lock const lock(_mtx, _context(__func__));
-    if (!family.empty()) {
-        if (_databaseFamilies.find(family) == _databaseFamilies.cend()) {
-            throw invalid_argument(_context(__func__) + " no such family '" + family + "'.");
+    if (!familyName.empty()) {
+        if (_databaseFamilies.find(familyName) == _databaseFamilies.cend()) {
+            throw invalid_argument(_context(__func__) + " no such family '" + familyName + "'.");
         }
     }
     vector<string> names;
     for (auto&& itr : _databases) {
         string const& name = itr.first;
-        DatabaseInfo const& info = itr.second;
-        if (!family.empty() && (family != info.family)) {
+        DatabaseInfo const& database = itr.second;
+        if (!familyName.empty() && (familyName != database.family)) {
             continue;
         }
         if (!allDatabases) {
-            if (isPublished != info.isPublished) continue;
+            if (isPublished != database.isPublished) continue;
         }
         names.push_back(name);
     }
     return names;
 }
 
-void Configuration::assertDatabaseIsValid(string const& name) {
-    if (!isKnownDatabase(name)) {
-        throw invalid_argument(_context(__func__) + " database name is not valid: " + name);
+void Configuration::assertDatabaseIsValid(string const& databaseName) {
+    if (!isKnownDatabase(databaseName)) {
+        throw invalid_argument(_context(__func__) + " database name is not valid: " + databaseName);
     }
 }
 
-bool Configuration::isKnownDatabase(string const& name) const {
+bool Configuration::isKnownDatabase(string const& databaseName) const {
     util::Lock const lock(_mtx, _context(__func__));
-    if (name.empty()) throw invalid_argument(_context(__func__) + " the database name is empty.");
-    return _databases.count(name) != 0;
+    if (databaseName.empty()) throw invalid_argument(_context(__func__) + " the database name is empty.");
+    return _databases.count(databaseName) != 0;
 }
 
-DatabaseInfo Configuration::databaseInfo(string const& name) const {
+DatabaseInfo Configuration::databaseInfo(string const& databaseName) const {
     util::Lock const lock(_mtx, _context(__func__));
-    return _databaseInfo(lock, name);
+    return _databaseInfo(lock, databaseName);
 }
 
-DatabaseInfo Configuration::addDatabase(string const& database, std::string const& family) {
+DatabaseInfo Configuration::addDatabase(string const& databaseName, std::string const& familyName) {
     util::Lock const lock(_mtx, _context(__func__));
-    if (database.empty()) {
+    if (databaseName.empty()) {
         throw invalid_argument(_context(__func__) + " the database name can't be empty.");
     }
-    auto itr = _databases.find(database);
+    auto itr = _databases.find(databaseName);
     if (itr != _databases.end()) {
-        throw invalid_argument(_context(__func__) + " the database '" + database + "' already exists.");
+        throw invalid_argument(_context(__func__) + " the database '" + databaseName + "' already exists.");
     }
     // This will throw an exception if the family isn't valid
-    _databaseFamilyInfo(lock, family);
+    _databaseFamilyInfo(lock, familyName);
 
     // Create a new empty database.
-    DatabaseInfo const info = DatabaseInfo::create(database, family);
+    DatabaseInfo const database = DatabaseInfo::create(databaseName, familyName);
     if (_connectionPtr != nullptr) {
-        _connectionPtr->executeInOwnTransaction([&info](decltype(_connectionPtr) conn) {
-            conn->executeInsertQuery("config_database", info.name, info.family, info.isPublished ? 1 : 0,
-                                     info.createTime, info.publishTime);
+        _connectionPtr->executeInOwnTransaction([&database](decltype(_connectionPtr) conn) {
+            conn->executeInsertQuery("config_database", database.name, database.family,
+                                     database.isPublished ? 1 : 0, database.createTime, database.publishTime);
         });
     }
-    _databases[info.name] = info;
-    return info;
+    _databases[database.name] = database;
+    return database;
 }
 
-DatabaseInfo Configuration::publishDatabase(string const& name) {
+DatabaseInfo Configuration::publishDatabase(string const& databaseName) {
     util::Lock const lock(_mtx, _context(__func__));
     bool const publish = true;
-    return _publishDatabase(lock, name, publish);
+    return _publishDatabase(lock, databaseName, publish);
 }
 
-DatabaseInfo Configuration::unPublishDatabase(string const& name) {
+DatabaseInfo Configuration::unPublishDatabase(string const& databaseName) {
     util::Lock const lock(_mtx, _context(__func__));
     bool const publish = false;
-    return _publishDatabase(lock, name, publish);
+    return _publishDatabase(lock, databaseName, publish);
 }
 
-void Configuration::deleteDatabase(string const& name) {
+void Configuration::deleteDatabase(string const& databaseName) {
     util::Lock const lock(_mtx, _context(__func__));
-    DatabaseInfo& info = _databaseInfo(lock, name);
+    DatabaseInfo& database = _databaseInfo(lock, databaseName);
     if (_connectionPtr != nullptr) {
         _connectionPtr->executeInOwnTransaction([&](decltype(_connectionPtr) conn) {
             conn->execute("DELETE FROM " + conn->sqlId("config_database") + " WHERE " +
-                          conn->sqlEqual("database", info.name));
+                          conn->sqlEqual("database", database.name));
         });
     }
-    _databases.erase(info.name);
+    _databases.erase(database.name);
 }
 
-DatabaseInfo Configuration::addTable(string const& database, string const& table, bool isPartitioned,
-                                     list<SqlColDef> const& columns, bool isDirectorTable,
-                                     string const& directorTable, string const& directorTableKey,
-                                     string const& latitudeColName, string const& longitudeColName) {
+DatabaseInfo Configuration::addTable(TableInfo const& table_) {
     util::Lock const lock(_mtx, _context(__func__));
-    DatabaseInfo& databaseInfo = _databaseInfo(lock, database);
-    databaseInfo.addTable(table, columns, isPartitioned, isDirectorTable, directorTable, directorTableKey,
-                          latitudeColName, longitudeColName);
+    DatabaseInfo& database = _databaseInfo(lock, table_.database);
+    if (database.isPublished) {
+        throw invalid_argument(_context(__func__) +
+                               " adding tables to the published databases isn't allowed.");
+    }
+    // Make sure the input is sanitized & validated before attempting to register
+    // the new table in the persistent store. After that the table could be also
+    // registered in the transient state.
+    bool const sanitize = true;
+    TableInfo const table = database.validate(_databases, table_, sanitize);
     if (_connectionPtr != nullptr) {
         _connectionPtr->executeInOwnTransaction([&](decltype(_connectionPtr) conn) {
             conn->executeInsertQuery(
-                    "config_database_table", database, table, isPartitioned, directorTable, directorTableKey,
-                    latitudeColName, longitudeColName, databaseInfo.tableIsPublished.at(table) ? 1 : 0,
-                    databaseInfo.tableCreateTime.at(table), databaseInfo.tablePublishTime.at(table));
+                    "config_database_table", table.database, table.name, table.isPartitioned,
+                    table.directorTable.databaseTableName(), table.directorTable.primaryKeyColumn(),
+                    table.directorTable2.databaseTableName(), table.directorTable2.primaryKeyColumn(),
+                    table.flagColName, table.angSep, table.latitudeColName, table.longitudeColName,
+                    table.isPublished ? 1 : 0, table.createTime, table.publishTime);
             int colPosition = 0;
-            for (auto&& coldef : columns) {
-                conn->executeInsertQuery("config_database_table_schema", database, table,
-                                         colPosition++,  // column position
-                                         coldef.name, coldef.type);
+            for (auto&& column : table.columns) {
+                conn->executeInsertQuery("config_database_table_schema", table.database, table.name,
+                                         colPosition++, column.name, column.type);
             }
         });
     }
-    return databaseInfo;
+    bool const validate = false;
+    database.addTable(_databases, table, validate);
+    return database;
 }
 
-DatabaseInfo Configuration::deleteTable(string const& database, string const& table) {
+DatabaseInfo Configuration::deleteTable(string const& databaseName, string const& tableName) {
     util::Lock const lock(_mtx, _context(__func__));
-    DatabaseInfo& databaseInfo = _databaseInfo(lock, database);
-    databaseInfo.removeTable(table);
+    DatabaseInfo& database = _databaseInfo(lock, databaseName);
+    database.removeTable(tableName);
     if (_connectionPtr != nullptr) {
         _connectionPtr->executeInOwnTransaction([&](decltype(_connectionPtr) conn) {
             conn->execute("DELETE FROM " + conn->sqlId("config_database_table") + " WHERE " +
-                          conn->sqlEqual("database", databaseInfo.name) + " AND " +
-                          conn->sqlEqual("table", table));
+                          conn->sqlEqual("database", database.name) + " AND " +
+                          conn->sqlEqual("table", tableName));
         });
     }
-    return databaseInfo;
+    return database;
 }
 
-void Configuration::assertWorkerIsValid(string const& name) {
-    if (!isKnownWorker(name)) {
-        throw invalid_argument(_context(__func__) + " worker name is not valid: " + name);
+void Configuration::assertWorkerIsValid(string const& workerName) {
+    if (!isKnownWorker(workerName)) {
+        throw invalid_argument(_context(__func__) + " worker name is not valid: " + workerName);
     }
 }
 
-void Configuration::assertWorkersAreDifferent(string const& firstName, string const& secondName) {
-    assertWorkerIsValid(firstName);
-    assertWorkerIsValid(secondName);
-
-    if (firstName == secondName) {
-        throw invalid_argument(_context(__func__) + " worker names are the same: " + firstName);
+void Configuration::assertWorkersAreDifferent(string const& workerOneName, string const& workerTwoName) {
+    assertWorkerIsValid(workerOneName);
+    assertWorkerIsValid(workerTwoName);
+    if (workerOneName == workerTwoName) {
+        throw invalid_argument(_context(__func__) + " worker names are the same: " + workerOneName);
     }
 }
 
-bool Configuration::isKnownWorker(string const& name) const {
+bool Configuration::isKnownWorker(string const& workerName) const {
     util::Lock const lock(_mtx, _context(__func__));
-    return _workers.count(name) != 0;
+    return _workers.count(workerName) != 0;
 }
 
-WorkerInfo Configuration::workerInfo(string const& name) const {
+WorkerInfo Configuration::workerInfo(string const& workerName) const {
     util::Lock const lock(_mtx, _context(__func__));
-    auto const itr = _workers.find(name);
+    auto const itr = _workers.find(workerName);
     if (itr != _workers.cend()) return itr->second;
-    throw invalid_argument(_context(__func__) + " unknown worker '" + name + "'.");
+    throw invalid_argument(_context(__func__) + " unknown worker '" + workerName + "'.");
 }
 
-WorkerInfo Configuration::addWorker(WorkerInfo const& info) {
+WorkerInfo Configuration::addWorker(WorkerInfo const& worker) {
     util::Lock const lock(_mtx, _context(__func__));
-    if (_workers.find(info.name) == _workers.cend()) return _updateWorker(lock, info);
-    throw invalid_argument(_context(__func__) + " worker '" + info.name + "' already exists.");
+    if (_workers.find(worker.name) == _workers.cend()) return _updateWorker(lock, worker);
+    throw invalid_argument(_context(__func__) + " worker '" + worker.name + "' already exists.");
 }
 
-void Configuration::deleteWorker(string const& name) {
+void Configuration::deleteWorker(string const& workerName) {
     util::Lock const lock(_mtx, _context(__func__));
-    auto itr = _workers.find(name);
+    auto itr = _workers.find(workerName);
     if (itr == _workers.end()) {
-        throw invalid_argument(_context(__func__) + " unknown worker '" + name + "'.");
+        throw invalid_argument(_context(__func__) + " unknown worker '" + workerName + "'.");
     }
     if (_connectionPtr != nullptr) {
         _connectionPtr->executeInOwnTransaction([&](decltype(_connectionPtr) conn) {
             conn->execute("DELETE FROM " + conn->sqlId("config_worker") + " WHERE " +
-                          conn->sqlEqual("name", name));
+                          conn->sqlEqual("name", workerName));
         });
     }
     _workers.erase(itr);
 }
 
-WorkerInfo Configuration::disableWorker(string const& name) {
+WorkerInfo Configuration::disableWorker(string const& workerName) {
     util::Lock const lock(_mtx, _context(__func__));
-    auto itr = _workers.find(name);
+    auto itr = _workers.find(workerName);
     if (itr == _workers.end()) {
-        throw invalid_argument(_context(__func__) + " unknown worker '" + name + "'.");
+        throw invalid_argument(_context(__func__) + " unknown worker '" + workerName + "'.");
     }
-    WorkerInfo& info = itr->second;
-    if (info.isEnabled) {
+    WorkerInfo& worker = itr->second;
+    if (worker.isEnabled) {
         if (_connectionPtr != nullptr) {
-            _connectionPtr->executeInOwnTransaction([&info](decltype(_connectionPtr) conn) {
-                conn->executeSimpleUpdateQuery("config_worker", conn->sqlEqual("name", info.name),
+            _connectionPtr->executeInOwnTransaction([&worker](decltype(_connectionPtr) conn) {
+                conn->executeSimpleUpdateQuery("config_worker", conn->sqlEqual("name", worker.name),
                                                make_pair("is_enabled", 0));
             });
         }
-        info.isEnabled = false;
+        worker.isEnabled = false;
     }
-    return info;
+    return worker;
 }
 
-WorkerInfo Configuration::updateWorker(WorkerInfo const& info) {
+WorkerInfo Configuration::updateWorker(WorkerInfo const& worker) {
     util::Lock const lock(_mtx, _context(__func__));
-    if (_workers.find(info.name) != _workers.end()) return _updateWorker(lock, info);
-    throw invalid_argument(_context(__func__) + " unknown worker '" + info.name + "'.");
+    if (_workers.find(worker.name) != _workers.end()) return _updateWorker(lock, worker);
+    throw invalid_argument(_context(__func__) + " unknown worker '" + worker.name + "'.");
 }
 
 json Configuration::toJson(bool showPassword) const {
@@ -696,93 +702,95 @@ json& Configuration::_get(util::Lock const& lock, string const& category, string
     return _data[json::json_pointer("/" + category + "/" + param)];
 }
 
-WorkerInfo Configuration::_updateWorker(util::Lock const& lock, WorkerInfo const& info) {
-    if (info.name.empty()) {
+WorkerInfo Configuration::_updateWorker(util::Lock const& lock, WorkerInfo const& worker) {
+    if (worker.name.empty()) {
         throw invalid_argument(_context(__func__) + " worker name can't be empty.");
     }
 
     // Update a subset of parameters in the persistent state.
-    bool const update = _workers.count(info.name) != 0;
+    bool const update = _workers.count(worker.name) != 0;
     if (_connectionPtr != nullptr) {
         _connectionPtr->executeInOwnTransaction([&](decltype(_connectionPtr) conn) {
             if (update) {
-                conn->executeSimpleUpdateQuery("config_worker", conn->sqlEqual("name", info.name),
-                                               make_pair("is_enabled", info.isEnabled),
-                                               make_pair("is_read_only", info.isReadOnly));
+                conn->executeSimpleUpdateQuery("config_worker", conn->sqlEqual("name", worker.name),
+                                               make_pair("is_enabled", worker.isEnabled),
+                                               make_pair("is_read_only", worker.isReadOnly));
             } else {
-                conn->executeInsertQuery("config_worker", info.name, info.isEnabled, info.isReadOnly);
+                conn->executeInsertQuery("config_worker", worker.name, worker.isEnabled, worker.isReadOnly);
             }
         });
     }
 
     // Update all parameters in the transient state.
-    _workers[info.name] = info;
-    return info;
+    _workers[worker.name] = worker;
+    return worker;
 }
 
-DatabaseFamilyInfo& Configuration::_databaseFamilyInfo(util::Lock const& lock, string const& name) {
-    if (name.empty()) throw invalid_argument(_context(__func__) + " the database family name is empty.");
-    auto const itr = _databaseFamilies.find(name);
+DatabaseFamilyInfo& Configuration::_databaseFamilyInfo(util::Lock const& lock, string const& familyName) {
+    if (familyName.empty())
+        throw invalid_argument(_context(__func__) + " the database family name is empty.");
+    auto const itr = _databaseFamilies.find(familyName);
     if (itr != _databaseFamilies.cend()) return itr->second;
-    throw invalid_argument(_context(__func__) + " no such database family '" + name + "'.");
+    throw invalid_argument(_context(__func__) + " no such database family '" + familyName + "'.");
 }
 
-DatabaseInfo& Configuration::_databaseInfo(util::Lock const& lock, string const& name) {
-    if (name.empty()) throw invalid_argument(_context(__func__) + " the database name is empty.");
-    auto const itr = _databases.find(name);
+DatabaseInfo& Configuration::_databaseInfo(util::Lock const& lock, string const& databaseName) {
+    if (databaseName.empty()) throw invalid_argument(_context(__func__) + " the database name is empty.");
+    auto const itr = _databases.find(databaseName);
     if (itr != _databases.cend()) return itr->second;
-    throw invalid_argument(_context(__func__) + " no such database '" + name + "'.");
+    throw invalid_argument(_context(__func__) + " no such database '" + databaseName + "'.");
 }
 
-DatabaseInfo& Configuration::_publishDatabase(util::Lock const& lock, string const& name, bool publish) {
-    DatabaseInfo& databaseInfo = _databaseInfo(lock, name);
-    if (publish && databaseInfo.isPublished) {
-        throw logic_error(_context(__func__) + " database '" + databaseInfo.name + "' is already published.");
-    } else if (!publish && !databaseInfo.isPublished) {
-        throw logic_error(_context(__func__) + " database '" + databaseInfo.name + "' is not published.");
+DatabaseInfo& Configuration::_publishDatabase(util::Lock const& lock, string const& databaseName,
+                                              bool publish) {
+    DatabaseInfo& database = _databaseInfo(lock, databaseName);
+    if (publish && database.isPublished) {
+        throw logic_error(_context(__func__) + " database '" + database.name + "' is already published.");
+    } else if (!publish && !database.isPublished) {
+        throw logic_error(_context(__func__) + " database '" + database.name + "' is not published.");
     }
     if (publish) {
         uint64_t const publishTime = PerformanceUtils::now();
         // Firstly, publish all tables that were not published.
-        for (auto const& table : databaseInfo.tables()) {
-            if (_connectionPtr != nullptr) {
-                _connectionPtr->executeInOwnTransaction(
-                        [&table, &databaseInfo, publishTime](decltype(_connectionPtr) conn) {
-                            conn->executeSimpleUpdateQuery("config_database_table",
-                                                           conn->sqlEqual("database", databaseInfo.name) +
-                                                                   " AND " + conn->sqlEqual("table", table),
-                                                           make_pair("is_published", 1),
-                                                           make_pair("publish_time", publishTime));
-                        });
-            }
-            if (!databaseInfo.tableIsPublished.at(table)) {
-                databaseInfo.tableIsPublished[table] = true;
-                databaseInfo.tablePublishTime[table] = publishTime;
+        for (auto const& tableName : database.tables()) {
+            TableInfo& table = database.findTable(tableName);
+            if (!table.isPublished) {
+                if (_connectionPtr != nullptr) {
+                    _connectionPtr->executeInOwnTransaction([&database, &table,
+                                                             publishTime](decltype(_connectionPtr) conn) {
+                        conn->executeSimpleUpdateQuery("config_database_table",
+                                                       conn->sqlEqual("database", database.name) + " AND " +
+                                                               conn->sqlEqual("table", table.name),
+                                                       make_pair("is_published", 1),
+                                                       make_pair("publish_time", publishTime));
+                    });
+                }
+                table.isPublished = true;
+                table.publishTime = publishTime;
             }
         }
         // Then publish the database.
         if (_connectionPtr != nullptr) {
             _connectionPtr->executeInOwnTransaction([&](decltype(_connectionPtr) conn) {
-                conn->executeSimpleUpdateQuery(
-                        "config_database", conn->sqlEqual("database", databaseInfo.name),
-                        make_pair("is_published", 1), make_pair("publish_time", publishTime));
+                conn->executeSimpleUpdateQuery("config_database", conn->sqlEqual("database", database.name),
+                                               make_pair("is_published", 1),
+                                               make_pair("publish_time", publishTime));
             });
         }
-        databaseInfo.isPublished = true;
-        databaseInfo.publishTime = publishTime;
+        database.isPublished = true;
+        database.publishTime = publishTime;
     } else {
         // Do not unpublish individual tables. The operation only affects
         // the general status of the database to allow adding more tables.
         if (_connectionPtr != nullptr) {
             _connectionPtr->executeInOwnTransaction([&](decltype(_connectionPtr) conn) {
-                conn->executeSimpleUpdateQuery("config_database",
-                                               conn->sqlEqual("database", databaseInfo.name),
+                conn->executeSimpleUpdateQuery("config_database", conn->sqlEqual("database", database.name),
                                                make_pair("is_published", 0));
             });
         }
-        databaseInfo.isPublished = false;
+        database.isPublished = false;
     }
-    return databaseInfo;
+    return database;
 }
 
 }  // namespace lsst::qserv::replica

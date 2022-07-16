@@ -163,8 +163,12 @@ void SqlRowStatsJob::processResultAndFinish(util::Lock const& lock, ExtendedStat
         // This flag will be used when scanning the partitioned tables to exclude special
         // tables like the prototype table (w/o a chunk number attached), or another
         // special case of table that has the dummy chunk.
-        bool const isPartitioned =
-                controller()->serviceProvider()->config()->databaseInfo(database()).isPartitioned(table());
+        bool const isPartitioned = controller()
+                                           ->serviceProvider()
+                                           ->config()
+                                           ->databaseInfo(database())
+                                           .findTable(table())
+                                           .isPartitioned;
 
         bool dataError = false;
         getResultData(lock).iterate([&](SqlJobResult::Worker const& worker,

@@ -99,9 +99,9 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param database the name of a database for which the "secondary index"
+     * @param databaseName the name of a database for which the "secondary index"
      *   is built.
-     * @param directorTable the name of the director table
+     * @param directorTableName the name of the director table
      * @param hasTransactions  if 'true' then the database's "director" tables
      *   are expected to be partitioned, and the job will extract data (including
      *   column "qserv_trans_id") from a specific MySQL partition.
@@ -135,10 +135,11 @@ public:
      * @param onFinish a function to be called upon a completion of the job
      * @param priority the priority level of the job
      */
-    static Ptr create(std::string const& database, std::string const& directorTable, bool hasTransactions,
-                      TransactionId transactionId, bool allWorkers, Destination destination,
-                      std::string const& destinationPath, bool localFile, Controller::Ptr const& controller,
-                      std::string const& parentJobId, CallbackType const& onFinish, int priority);
+    static Ptr create(std::string const& databaseName, std::string const& directorTableName,
+                      bool hasTransactions, TransactionId transactionId, bool allWorkers,
+                      Destination destination, std::string const& destinationPath, bool localFile,
+                      Controller::Ptr const& controller, std::string const& parentJobId,
+                      CallbackType const& onFinish, int priority);
 
     // Default construction and copy semantics are prohibited
 
@@ -152,8 +153,8 @@ public:
 
     // Trivial get methods
 
-    std::string const& database() const { return _databaseInfo.name; }
-    std::string const& directorTable() const { return _directorTable; }
+    std::string const& database() const { return _database.name; }
+    std::string const& directorTable() const { return _directorTableName; }
     bool hasTransactions() const { return _hasTransactions; }
     TransactionId transactionId() const { return _transactionId; }
     bool allWorkers() const { return _allWorkers; }
@@ -187,7 +188,7 @@ protected:
     void notify(util::Lock const& lock) final;
 
 private:
-    IndexJob(std::string const& database, std::string const& directorTable, bool hasTransactions,
+    IndexJob(std::string const& databaseName, std::string const& directorTableName, bool hasTransactions,
              TransactionId transactionId, bool allWorkers, Destination destination,
              std::string const& destinationPath, bool localFile, Controller::Ptr const& controller,
              std::string const& parentJobId, CallbackType const& onFinish, int priority);
@@ -233,7 +234,7 @@ private:
 private:
     // Input parameters
 
-    std::string const _directorTable;
+    std::string const _directorTableName;
     bool const _hasTransactions;
     TransactionId const _transactionId;
     bool const _allWorkers;
@@ -243,7 +244,7 @@ private:
 
     CallbackType _onFinish;  /// @note is reset when the job finishes
 
-    DatabaseInfo _databaseInfo;  /// Initialized by the c-tor
+    DatabaseInfo _database;  /// Initialized by the c-tor
 
     /// A collection of chunks to be processed at specific workers
     std::map<std::string, std::queue<unsigned int>> _chunks;
