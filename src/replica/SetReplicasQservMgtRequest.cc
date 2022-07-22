@@ -124,6 +124,14 @@ void SetReplicasQservMgtRequest::startImpl(util::Lock const& lock) {
                         request->finish(lock, QservMgtRequest::ExtendedState::SERVER_ERROR, error);
                         break;
 
+                    case wpublish::SetChunkListQservRequest::Status::INVALID:
+                        request->finish(lock, QservMgtRequest::ExtendedState::SERVER_BAD, error);
+                        break;
+
+                    case wpublish::SetChunkListQservRequest::Status::IN_USE:
+                        request->finish(lock, QservMgtRequest::ExtendedState::SERVER_CHUNK_IN_USE, error);
+                        break;
+
                     default:
                         throw logic_error("SetReplicasQservMgtRequest:: " + string(__func__) +
                                           "  unhandled server status: " +

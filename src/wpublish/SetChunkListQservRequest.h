@@ -45,7 +45,7 @@ public:
         SUCCESS,  // successful completion of a request
         INVALID,  // invalid parameters of the request
         IN_USE,   // request is rejected because one of the chunks is in use
-        ERROR     // an error occured during command execution
+        ERROR     // an error ocurred during command execution
     };
 
     /// @return string representation of a status
@@ -70,21 +70,22 @@ public:
     using CallbackType = std::function<void(Status,                    // completion status
                                             std::string const&,        // error message
                                             ChunkCollection const&)>;  // chunks (if success)
-                                                                       /**
-                                                                        * Static factory method is needed to prevent issues with the lifespan
-                                                                        * and memory management of instances created otherwise (as values or via
-                                                                        * low-level pointers).
-                                                                        *
-                                                                        * ATTENTION: the 'use_count' field of structure Chunk is ignored by this
-                                                                        * class when used on its input.
-                                                                        *
-                                                                        * @param chunks     collection of chunks to be transferred to the worker
-                                                                        * @param databases  limit a scope of the operation to databases of this collection
-                                                                        * @param force      force the proposed change even if the chunk is in use
-                                                                        * @param onFinish   optional callback function to be called upon the completion
-                                                                        *                   (successful or not) of the request.
-                                                                        * @return smart pointer to the object of the class
-                                                                        */
+
+    /**
+     * Static factory method is needed to prevent issues with the lifespan
+     * and memory management of instances created otherwise (as values or via
+     * low-level pointers).
+     *
+     * ATTENTION: the 'use_count' field of structure Chunk is ignored by this
+     * class when used on its input.
+     *
+     * @param chunks     collection of chunks to be transferred to the worker
+     * @param databases  limit a scope of the operation to databases of this collection
+     * @param force      force the proposed change even if the chunk is in use
+     * @param onFinish   optional callback function to be called upon the completion
+     *                   (successful or not) of the request.
+     * @return smart pointer to the object of the class
+     */
     static Ptr create(ChunkCollection const& chunks, std::vector<std::string> const& databases,
                       bool force = false, CallbackType onFinish = nullptr);
 

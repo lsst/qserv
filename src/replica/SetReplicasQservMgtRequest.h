@@ -59,7 +59,7 @@ public:
      * @param serviceProvider A reference to a provider of services for accessing
      *   Configuration, saving the request's persistent state to the database.
      * @param worker The name of a worker to send the request to.
-     * @param newReplicas A collection of new replicas (NOTE: useCount field isignored).
+     * @param newReplicas A collection of new replicas (NOTE: useCount field is ignored).
      * @param databases Limit a scope of the operation to databases of this collection.
      * @param force Proceed with the operation even if some replicas affected by
      *   the operation are in use.
