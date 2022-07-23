@@ -86,8 +86,6 @@ public:
     /// conditions for aborting task completion tracking
     typedef std::function<bool(Ptr)> WaitEvaluatorType;
 
-    // Copy semantics is prohibited
-
     Task(Task const&) = delete;
     Task& operator=(Task const&) = delete;
 
@@ -105,18 +103,15 @@ public:
      * a task object is guaranteed to be extended for the duration of
      * the thread. This allows the thread to communicate with the object if needed.
      *
-     * @return
-     *   'true' if the task was already running at a time when this
-     *   method was called
+     * @return 'true' if the task was already running at a time when this
+     *   method was called.
      */
     bool start();
 
     /**
-     * Stop the task if it's still running
-     *
-     * @return
-     *   'true' if the task was already stopped at a time when this
-     *   method was called
+     * Stop the task if it's still running.
+     * @return 'true' if the task was already stopped at a time when this
+     *   method was called.
      */
     bool stop();
 
@@ -125,9 +120,8 @@ public:
      * its status before it stops or before the optional early-termination
      * evaluator returns 'true'.
      *
-     * @param abortWait
-     *   (optional) this functional will be repeatedly (once a second) called
-     *   while tracking the task's status
+     * @param abortWait (optional) this functional will be repeatedly (once a second)
+     *   called while tracking the task's status.
      */
     bool startAndWait(WaitEvaluatorType const& abortWait = nullptr);
 
@@ -135,19 +129,12 @@ protected:
     /**
      * The constructor is available to subclasses only
      *
-     * @param controller
-     *   a reference to the Controller for launching requests, jobs, etc.
-     *
-     * @param name
-     *   the name of a task (used for logging info into the log stream,
-     *   and for logging task events into the persistent log)
-     *
-     * @param onTerminated
-     *   callback function to be called upon abnormal termination
-     *   of the task
-     *
-     * @param waitIntervalSec
-     *   the number of seconds to wait before calling subclass-specific
+     * @param controller A reference to the Controller for launching requests, jobs, etc.
+     * @param name The name of a task (used for logging info into the log stream,
+     *   and for logging task events into the persistent log).
+     * @param onTerminated A callback function to be called upon abnormal termination
+     *   of the task.
+     * @param waitIntervalSec The number of seconds to wait before calling subclass-specific
      *   method onRun.
      */
     Task(Controller::Ptr const& controller, std::string const& name,
@@ -163,14 +150,11 @@ protected:
      * This optional method implements subclass-specific sequence of actions
      * to be executed when the tasks starts running.
      *
-     * @note
-     *   any but TaskStopped exceptions thrown by this method will
+     * @note Any but TaskStopped exceptions thrown by this method will
      *   be interpreted as abnormal termination of the task. Eventually this will
      *   also result in calling the 'onTerminated' callback if the one was provided
      *   to the constructor of the class.
-     *
-     * @throws
-     *   TaskStopped when the task cancellation request was detected
+     * @throws TaskStopped when the task cancellation request was detected.
      */
     virtual void onStart() {}
 
@@ -178,19 +162,14 @@ protected:
      * This optional method implements subclass-specific sequence of actions
      * to be run by the task.
      *
-     * @note
-     *   any but TaskStopped exceptions thrown by this method will
+     * @note Any but TaskStopped exceptions thrown by this method will
      *   be interpreted as abnormal termination of the task. Eventually this will
      *   also result in calling the 'onTerminated' callback if the one was provided
      *   to the constructor of the class.
-     *
-     * @return
-     *   'true' to schedule next invocation of the method after waiting
+     * @return 'true' to schedule next invocation of the method after waiting
      *   for a interval configured in this class's constructor. Otherwise
      *   stop as if exception TaskStopped was thrown.
-     *
-     * @throws
-     *   TaskStopped when the task cancellation request was detected
+     * @throws TaskStopped when the task cancellation request was detected.
      */
     virtual bool onRun() { return false; }
 
@@ -200,36 +179,27 @@ protected:
      */
     virtual void onStop() {}
 
-    /// @return a flag indicating if the task needs to be stopped
+    /// @return A flag indicating if the task needs to be stopped.
     bool stopRequested() const { return _stopRequested.load(); }
 
-    /**
-     * @return the context string to be used when logging messages into
-     * a log stream.
-     */
+    /// @return The context string to be used when logging messages into a log stream.
     std::string context() const;
 
     /**
-     * Log a message into the Logger's LOG_LVL_INFO stream
-     *
-     * @param msg
-     *   a message to be logged
+     * Log a message into the Logger's LOG_LVL_INFO stream.
+     * @param msg A message to be logged
      */
     void info(std::string const& msg) { LOGS(_log, LOG_LVL_INFO, context() << msg); }
 
     /**
-     * Log a message into the Logger's LOG_LVL_DEBUG stream
-     *
-     * @param msg
-     *   a message to be logged
+     * Log a message into the Logger's LOG_LVL_DEBUG stream.
+     * @param msg A message to be logged.
      */
     void debug(std::string const& msg) { LOGS(_log, LOG_LVL_DEBUG, context() << msg); }
 
     /**
-     * Log a message into the Logger's LOG_LVL_ERROR stream
-     *
-     * @param msg
-     *   a message to be logged
+     * Log a message into the Logger's LOG_LVL_ERROR stream.
+     * @param msg A message to be logged.
      */
     void error(std::string const& msg) { LOGS(_log, LOG_LVL_ERROR, context() << msg); }
 
@@ -237,9 +207,9 @@ protected:
      * Launch and track a job of the specified type per each known database
      * family. Note that parameters of the job are passed as variadic arguments
      * to the method.
-     * @param priority  The priority level of the job.
-     * @param Fargs  Job-specific variadic parameters.
-     * @throws  TaskStopped when the task cancellation request was detected
+     * @param priority The priority level of the job.
+     * @param Fargs Job-specific variadic parameters.
+     * @throws TaskStopped when the task cancellation request was detected
      */
     template <class T, typename... Targs>
     void launch(int priority, Targs... Fargs) {
@@ -279,7 +249,7 @@ protected:
 
     /**
      * Launch Qserv synchronization jobs.
-     * @param qservSyncTimeoutSec  The number of seconds to wait before a completion of
+     * @param qservSyncTimeoutSec The number of seconds to wait before a completion of
      *   the synchronization operation.
      * @param forceQservSync (optional) The flag to force Qserv synchronization if 'true'.
      * @throws TaskStopped when the task cancellation request was detected.
@@ -293,14 +263,9 @@ protected:
      * all jobs will be canceled. The tracking will be done with an interval
      * of 1 second.
      *
-     * @param typeName
-     *   the name of a job
-     *
-     * @param jobs
-     *   the collection of jobs to be tracked
-     *
-     * @param numFinishedJobs
-     *   the counter of completed jobs
+     * @param typeName The name of a job.
+     * @param jobs The collection of jobs to be tracked.
+     * @param numFinishedJobs The counter of completed jobs.
      */
     template <class T>
     void track(std::string const& typeName, std::vector<typename T::Ptr> const& jobs,
@@ -323,9 +288,7 @@ protected:
     }
 
 private:
-    /**
-     * This method is launched by the task when it starts
-     */
+    /// This method is launched by the task when it starts
     void _startImpl();
 
     // Input parameters
@@ -334,24 +297,12 @@ private:
     /// of the user-supplied algorithm run in a context of the task.
     AbnormalTerminationCallbackType _onTerminated;
 
-    /// The number of seconds to wait before calling subclass-specific
-    /// method onRun
-    unsigned int const _waitIntervalSec;
-
-    /// The flag indicating if it's already running
-    std::atomic<bool> _isRunning;
-
-    /// The flag to be raised when the task needs to be stopped
-    std::atomic<bool> _stopRequested;
-
-    /// The thread-safe counter of the finished jobs
-    std::atomic<size_t> _numFinishedJobs;
-
-    /// Message logger
-    LOG_LOGGER _log;
-
-    /// For guarding the object's state
-    util::Mutex _mtx;
+    unsigned int const _waitIntervalSec;    ///< The wait time before calling subclass's method onRun.
+    std::atomic<bool> _isRunning;           ///< The flag indicating if it's already running.
+    std::atomic<bool> _stopRequested;       ///< The flag to be raised when the task needs to be stopped.
+    std::atomic<size_t> _numFinishedJobs;   ///< The thread-safe counter of the finished jobs.
+    LOG_LOGGER _log;                        ///< Message logger
+    util::Mutex _mtx;                       ///< For guarding the object's state
 };
 
 }  // namespace lsst::qserv::replica

@@ -28,14 +28,13 @@
 namespace lsst::qserv::replica {
 
 /**
- * Class
+ * Class ReplicationTask runs a sequence of jobs at each iteration
+ * of the Master Controller's replication loop.
  */
 class ReplicationTask : public Task {
 public:
     /// The pointer type for instances of the class
     typedef std::shared_ptr<ReplicationTask> Ptr;
-
-    // Default construction and copy semantics are prohibited
 
     ReplicationTask() = delete;
     ReplicationTask(ReplicationTask const&) = delete;
@@ -50,25 +49,14 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param controller
-     *   a reference to the Controller for launching requests, jobs, etc.
-     *
-     * @param onTerminated
-     *   callback function to be called upon abnormal termination
+     * @param controller A reference to the Controller for launching requests, jobs, etc.
+     * @param onTerminated A callback function to be called upon abnormal termination
      *   of the task. Set it to 'nullptr' if no call back should be made.
-     *
-     * @param replicationIntervalSec
-     *   the number of seconds to wait in the end of each iteration loop before
-     *   to begin the new one.
-     *
-     * @param numReplicas
-     *   the desired number of replicas
-     *
-     * @param purge
-     *   purge excess replicas if 'true'
-     *
-     * @return
-     *   the smart pointer to a new object
+     * @param replicationIntervalSec The number of seconds to wait in the end of each
+     *   iteration loop before to begin the new one.
+     * @param numReplicas The desired number of replicas.
+     * @param purge Purge excess replicas if 'true'.
+     * @return The smart pointer to a new object
      */
     static Ptr create(Controller::Ptr const& controller,
                       Task::AbnormalTerminationCallbackType const& onTerminated,
@@ -80,11 +68,7 @@ protected:
     bool onRun() final;
 
 private:
-    /**
-     * The constructor is available to the class's factory method
-     *
-     * @see ReplicationTask::create()
-     */
+    /// @see ReplicationTask::create()
     ReplicationTask(Controller::Ptr const& controller, AbnormalTerminationCallbackType const& onTerminated,
                     unsigned int qservSyncTimeoutSec, unsigned int replicationIntervalSec,
                     unsigned int numReplicas, bool purge);
@@ -92,12 +76,8 @@ private:
     /// The maximum number of seconds to be waited before giving up
     /// on the Qserv synchronization requests.
     unsigned int _qservSyncTimeoutSec;
-
-    /// The desired number of replicas
-    unsigned int _numReplicas;
-
-    /// Purge excess replicas if 'true'
-    bool _purge;
+    unsigned int _numReplicas;  ///< The desired number of replicas
+    bool _purge;                ///< Purge excess replicas if 'true'
 };
 
 }  // namespace lsst::qserv::replica

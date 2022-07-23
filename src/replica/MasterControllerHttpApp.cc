@@ -107,20 +107,20 @@ MasterControllerHttpApp::MasterControllerHttpApp(int argc, char* argv[])
 
     parser().option("health-probe-interval",
                     "Interval (seconds) between iterations of the health monitoring probes.",
-                    _healthProbeIntervalSec)
-            .option("replication-interval",
+                    _healthProbeIntervalSec);
+    parser().option("replication-interval",
                     "Interval (seconds) between running the linear sequence of"
                     " actions: check - fix-up - replicate - re-balance.",
-                    _replicationIntervalSec)
-            .option("worker-response-timeout",
+                    _replicationIntervalSec);
+    parser().option("worker-response-timeout",
                     "The maximum number of seconds to wait before giving up"
                     " on worker probes when checking for workers.",
-                    _workerResponseTimeoutSec)
-            .option("worker-evict-timeout",
+                    _workerResponseTimeoutSec);
+    parser().option("worker-evict-timeout",
                     "The maximum number of seconds to allow troubled workers to recover"
                     " from the last catastrophic event before evicting them from a cluster.",
-                    _workerEvictTimeoutSec)
-            .option("qserv-sync-timeout",
+                    _workerEvictTimeoutSec);
+    parser().option("qserv-sync-timeout",
                     "The maximum number of seconds to wait before Qserv workers respond"
                     " to the synchronization requests before bailing out and proceeding"
                     " to the next step in the normal replication sequence. A value which"
@@ -128,45 +128,45 @@ MasterControllerHttpApp::MasterControllerHttpApp(int argc, char* argv[])
                             to_string(defaultOptions.qservSyncTimeoutSec) +
                             " would override the corresponding parameter specified"
                             " in the Configuration.",
-                    _qservSyncTimeoutSec)
-            .option("worker-config-timeout",
+                    _qservSyncTimeoutSec);
+    parser().option("worker-config-timeout",
                     "The maximum number of seconds to wait for the completion of the worker"
                     " reconfiguration requests. A value which"
                     " differs from " +
                             to_string(defaultOptions.workerReconfigTimeoutSec) +
                             " would override the corresponding parameter specified"
                             " in the Configuration.",
-                    _workerReconfigTimeoutSec)
-            .flag("qserv-sync-force",
+                    _workerReconfigTimeoutSec);
+    parser().flag("qserv-sync-force",
                   "The flag which would force Qserv workers to update their list of replicas"
                   " even if some of the chunk replicas were still in use by on-going queries."
                   " This affect replicas to be deleted from the workers during the synchronization"
                   " stages.",
-                  _forceQservSync)
-            .option("replicas",
+                  _forceQservSync);
+    parser().option("replicas",
                     "The minimal number of replicas when running the replication phase"
                     " This number if provided and if it's not " +
                             to_string(defaultOptions.numReplicas) +
                             " will override the corresponding value found"
                             " in the Configuration.",
-                    _numReplicas)
-            .flag("purge",
+                    _numReplicas);
+    parser().flag("purge",
                   "The binary flag which, if provided, enables the 'purge' algorithm in"
                   " the end of each replication cycle that eliminates excess replicas which"
                   " may have been created by algorithms ran earlier in the cycle.",
-                  _purge)
-            .flag("permanent-worker-delete",
+                  _purge);
+    parser().flag("permanent-worker-delete",
                   "The flag would trigger the permanent removal of the evicted workers"
                   " from the configuration of the Replication system. Please, use"
                   " this option with caution as it will result in losing all records"
                   " associated with the deleted workers.",
-                  _permanentDelete)
-            .option("qserv-czar-db", "A connection URL to the MySQL server of the Qserv master database.",
-                    _qservCzarDbUrl)
-            .option("http-root",
+                  _permanentDelete);
+    parser().option("qserv-czar-db", "A connection URL to the MySQL server of the Qserv master database.",
+                    _qservCzarDbUrl);
+    parser().option("http-root",
                     "The root folder for the static content to be served by the built-in HTTP service.",
-                    _httpRoot)
-            .flag("do-not-create-folders",
+                    _httpRoot);
+    parser().flag("do-not-create-folders",
                   "Do not attempt creating missing folders used by the Controller."
                   " Specify this flag in the production deployments of the Replication/Ingest system.",
                   _doNotCreateMissingFolders);
@@ -188,7 +188,7 @@ int MasterControllerHttpApp::runImpl() {
     // Desired characteristics (including size, I/O latency, I/O bandwidth, etc.) of
     // the folders may vary depending on a type of the Controller's operation and
     // a scale of a particular Qserv deployment. Note that the overall performance
-    // and scalability greately depends on the quality of of the underlying filesystems.
+    // and scalability greatly depends on the quality of of the underlying filesystems.
     // Usually, in the large-scale deployments, the folders should be pre-created and be placed
     // at the large-capacity high-performance filesystems at the Qserv deployment time.
     _controller->verifyFolders(!_doNotCreateMissingFolders);
@@ -210,7 +210,7 @@ int MasterControllerHttpApp::runImpl() {
             _workerResponseTimeoutSec, _healthProbeIntervalSec);
     _healthMonitorTask->start();
 
-    // Runing the REST server in its own thread
+    // Running the REST server in its own thread
     auto const httpProcessor =
             HttpProcessor::create(_controller,
                                   HttpProcessorConfig(_workerResponseTimeoutSec, _qservSyncTimeoutSec,
