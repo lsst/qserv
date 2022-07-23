@@ -297,12 +297,12 @@ private:
     /// of the user-supplied algorithm run in a context of the task.
     AbnormalTerminationCallbackType _onTerminated;
 
-    unsigned int const _waitIntervalSec;    ///< The wait time before calling subclass's method onRun.
-    std::atomic<bool> _isRunning;           ///< The flag indicating if it's already running.
-    std::atomic<bool> _stopRequested;       ///< The flag to be raised when the task needs to be stopped.
-    std::atomic<size_t> _numFinishedJobs;   ///< The thread-safe counter of the finished jobs.
-    LOG_LOGGER _log;                        ///< Message logger
-    util::Mutex _mtx;                       ///< For guarding the object's state
+    unsigned int const _waitIntervalSec;   ///< The wait time before calling subclass's method onRun.
+    std::atomic<bool> _isRunning;          ///< The flag indicating if it's already running.
+    std::atomic<bool> _stopRequested;      ///< The flag to be raised when the task needs to be stopped.
+    std::atomic<size_t> _numFinishedJobs;  ///< The thread-safe counter of the finished jobs.
+    LOG_LOGGER _log;                       ///< Message logger
+    util::Mutex _mtx;                      ///< For guarding the object's state
 };
 
 }  // namespace lsst::qserv::replica

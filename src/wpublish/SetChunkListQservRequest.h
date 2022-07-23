@@ -45,7 +45,7 @@ public:
         SUCCESS,  // successful completion of a request
         INVALID,  // invalid parameters of the request
         IN_USE,   // request is rejected because one of the chunks is in use
-        ERROR     // an error ocurred during command execution
+        ERROR     // an error occurred during command execution
     };
 
     /// @return string representation of a status

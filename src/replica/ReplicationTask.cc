@@ -35,11 +35,11 @@ namespace lsst::qserv::replica {
 
 ReplicationTask::Ptr ReplicationTask::create(Controller::Ptr const& controller,
                                              Task::AbnormalTerminationCallbackType const& onTerminated,
-                                             unsigned int qservSyncTimeoutSec,
+                                             unsigned int qservSyncTimeoutSec, bool forceQservSync,
                                              unsigned int replicationIntervalSec, unsigned int numReplicas,
                                              bool purge) {
-    return Ptr(new ReplicationTask(controller, onTerminated, qservSyncTimeoutSec, replicationIntervalSec,
-                                   numReplicas, purge));
+    return Ptr(new ReplicationTask(controller, onTerminated, qservSyncTimeoutSec, forceQservSync,
+                                   replicationIntervalSec, numReplicas, purge));
 }
 
 bool ReplicationTask::onRun() {
@@ -49,21 +49,21 @@ bool ReplicationTask::onRun() {
             serviceProvider()->config()->get<int>("controller", "catalog-management-priority-level");
 
     launch<FindAllJob>(priority, saveReplicaInfo, allWorkers);
-    sync(_qservSyncTimeoutSec);
+    sync(_qservSyncTimeoutSec, _forceQservSync);
 
     launch<FixUpJob>(priority);
-    sync(_qservSyncTimeoutSec);
+    sync(_qservSyncTimeoutSec, _forceQservSync);
 
     launch<ReplicateJob>(priority, _numReplicas);
-    sync(_qservSyncTimeoutSec);
+    sync(_qservSyncTimeoutSec, _forceQservSync);
 
     bool const estimateOnly = false;
     launch<RebalanceJob>(priority, estimateOnly);
-    sync(_qservSyncTimeoutSec);
+    sync(_qservSyncTimeoutSec, _forceQservSync);
 
     if (_purge) {
         launch<PurgeJob>(priority, _numReplicas);
-        sync(_qservSyncTimeoutSec);
+        sync(_qservSyncTimeoutSec, _forceQservSync);
     }
 
     // Keep on getting calls on this method after a wait time
@@ -72,10 +72,11 @@ bool ReplicationTask::onRun() {
 
 ReplicationTask::ReplicationTask(Controller::Ptr const& controller,
                                  Task::AbnormalTerminationCallbackType const& onTerminated,
-                                 unsigned int qservSyncTimeoutSec, unsigned int replicationIntervalSec,
-                                 unsigned int numReplicas, bool purge)
+                                 unsigned int qservSyncTimeoutSec, bool forceQservSync,
+                                 unsigned int replicationIntervalSec, unsigned int numReplicas, bool purge)
         : Task(controller, "REPLICATION-THREAD  ", onTerminated, replicationIntervalSec),
           _qservSyncTimeoutSec(qservSyncTimeoutSec),
+          _forceQservSync(forceQservSync),
           _numReplicas(numReplicas),
           _purge(purge) {}
 

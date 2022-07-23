@@ -52,6 +52,9 @@ public:
      * @param controller A reference to the Controller for launching requests, jobs, etc.
      * @param onTerminated A callback function to be called upon abnormal termination
      *   of the task. Set it to 'nullptr' if no call back should be made.
+     * @param qservSyncTimeoutSec The maximum number of seconds to be waited before giving
+     *   up on the Qserv synchronization requests.
+     * @param forceQservSync Force chunk removal at worker resource collections if 'true'.
      * @param replicationIntervalSec The number of seconds to wait in the end of each
      *   iteration loop before to begin the new one.
      * @param numReplicas The desired number of replicas.
@@ -60,24 +63,26 @@ public:
      */
     static Ptr create(Controller::Ptr const& controller,
                       Task::AbnormalTerminationCallbackType const& onTerminated,
-                      unsigned int qservSyncTimeoutSec, unsigned int replicationIntervalSec,
-                      unsigned int numReplicas, bool purge);
+                      unsigned int qservSyncTimeoutSec, bool forceQservSync,
+                      unsigned int replicationIntervalSec, unsigned int numReplicas, bool purge);
 
 protected:
     /// @see Task::onRun()
-    bool onRun() final;
+    virtual bool onRun() final;
 
 private:
     /// @see ReplicationTask::create()
     ReplicationTask(Controller::Ptr const& controller, AbnormalTerminationCallbackType const& onTerminated,
-                    unsigned int qservSyncTimeoutSec, unsigned int replicationIntervalSec,
-                    unsigned int numReplicas, bool purge);
+                    unsigned int qservSyncTimeoutSec, bool forceQservSync,
+                    unsigned int replicationIntervalSec, unsigned int numReplicas, bool purge);
 
     /// The maximum number of seconds to be waited before giving up
     /// on the Qserv synchronization requests.
-    unsigned int _qservSyncTimeoutSec;
-    unsigned int _numReplicas;  ///< The desired number of replicas
-    bool _purge;                ///< Purge excess replicas if 'true'
+    unsigned int const _qservSyncTimeoutSec;
+
+    bool const _forceQservSync;       ///< Force removal at worker resource collections if 'true'.
+    unsigned int const _numReplicas;  ///< The desired number of replicas.
+    bool const _purge;                ///< Purge excess replicas if 'true'.
 };
 
 }  // namespace lsst::qserv::replica

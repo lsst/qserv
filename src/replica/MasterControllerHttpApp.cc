@@ -201,7 +201,7 @@ int MasterControllerHttpApp::runImpl() {
 
     _replicationTask = ReplicationTask::create(
             _controller, [self](Task::Ptr const& ptr) { self->_isFailed.fail(); }, _qservSyncTimeoutSec,
-            _replicationIntervalSec, _numReplicas, _purge);
+            _forceQservSync, _replicationIntervalSec, _numReplicas, _purge);
     _replicationTask->start();
 
     _healthMonitorTask = HealthMonitorTask::create(
