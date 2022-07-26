@@ -101,7 +101,7 @@ public:
      *
      * @param priority
      *   (optional) priority level of the jobs. Note that the priority system is
-     *   not presently used in comunications with Qserv workers over the XROOTD/SSI
+     *   not presently used in communications with Qserv workers over the XROOTD/SSI
      *   protocol. This parameter is present here only for the sake of compatibility
      *   with other job types.
      *

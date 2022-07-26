@@ -375,6 +375,7 @@ services:
           --xrootd-host=manager-xrootd
           --registry-host=repl-mgr-registry
           --controller-auto-register-workers=1
+          --qserv-sync-force
         environment:
             << : *log-environment
         expose:
