@@ -113,6 +113,7 @@ IngestRequest::Ptr IngestRequest::create(ServiceProvider::Ptr const& serviceProv
 IngestRequest::Ptr IngestRequest::resume(ServiceProvider::Ptr const& serviceProvider,
                                          string const& workerName, unsigned int contribId) {
     string const context = ::context_ + string(__func__) + " ";
+    auto const config = serviceProvider->config();
     auto const databaseServices = serviceProvider->databaseServices();
 
     // Find the request in the database and run some preliminary validation of its
@@ -145,9 +146,13 @@ IngestRequest::Ptr IngestRequest::resume(ServiceProvider::Ptr const& serviceProv
     }
 
     auto const trans = databaseServices->transaction(contrib.transactionId);
-    if (trans.state != TransactionInfo::State::STARTED) {
+    auto const database = config->databaseInfo(trans.database);
+    try {
+        IngestRequest::_validateState(trans, database, contrib);
+    } catch (exception const& ex) {
         contrib.status = TransactionContribInfo::Status::CREATE_FAILED;
-        contrib.error = context + " transactionId=" + to_string(contrib.transactionId) + " is not active";
+        contrib.error = context + ex.what();
+        contrib.retryAllowed = false;
         contrib = databaseServices->updateTransactionContrib(contrib);
         throw invalid_argument(contrib.error);
     }
@@ -163,6 +168,19 @@ IngestRequest::Ptr IngestRequest::resume(ServiceProvider::Ptr const& serviceProv
     contrib = databaseServices->updateTransactionContrib(contrib);
 
     return IngestRequest::Ptr(new IngestRequest(serviceProvider, workerName, contrib));
+}
+
+void IngestRequest::_validateState(TransactionInfo const& trans, DatabaseInfo const& database,
+                                   TransactionContribInfo const& contrib) {
+    string error;
+    if (database.isPublished) {
+        error = "database '" + database.name + "' is already published.";
+    } else if (database.tableIsPublished.at(contrib.table)) {
+        error = "table '" + contrib.table + "' of database '" + database.name + "' is already published.";
+    } else if (trans.state != TransactionInfo::State::STARTED) {
+        error = "transactionId=" + to_string(contrib.transactionId) + " is not active";
+    }
+    if (!error.empty()) throw logic_error(error);
 }
 
 IngestRequest::IngestRequest(ServiceProvider::Ptr const& serviceProvider, string const& workerName,
@@ -184,9 +202,9 @@ IngestRequest::IngestRequest(ServiceProvider::Ptr const& serviceProvider, string
     _contrib.httpData = httpData;
     _contrib.httpHeaders = httpHeaders;
 
-    // Prescreen parameters of the request to ensure they're valid in the given
-    // context. Locate and check the state of the transaction. Refuse to proceed
-    // with the request should any issues were detected.
+    // Prescreen parameters of the request to ensure the request has a valid
+    // context (transaction, database, table). Refuse to proceed with registering
+    // the contribution should any issues were detected when locating the context.
     string const context = ::context_ + string(__func__) + " ";
     bool const failed = true;
     auto const config = serviceProvider->config();
@@ -195,16 +213,16 @@ IngestRequest::IngestRequest(ServiceProvider::Ptr const& serviceProvider, string
 
     _contrib.database = trans.database;
 
-    if (!config->databaseInfo(_contrib.database).hasTable(_contrib.table)) {
-        throw invalid_argument(context + "no such table '" + _contrib.table + "' in database '" +
+    DatabaseInfo const database = config->databaseInfo(_contrib.database);
+    if (!database.hasTable(_contrib.table)) {
+        throw invalid_argument(context + "no such table '" + _contrib.table + "' exists in database '" +
                                _contrib.database + "'.");
     }
-    if (trans.state != TransactionInfo::State::STARTED) {
-        _contrib.error = context + " transactionId=" + to_string(_contrib.transactionId) + " is not active";
-        _contrib = databaseServices->createdTransactionContrib(_contrib, failed);
-        throw logic_error(_contrib.error);
-    }
+
+    // Any failures detected hereafter will result in registering the contribution
+    // as failed for further analysis by the ingest workflows.
     try {
+        IngestRequest::_validateState(trans, database, _contrib);
         _resource.reset(new Url(_contrib.url));
         switch (_resource->scheme()) {
             case Url::FILE:
@@ -212,11 +230,12 @@ IngestRequest::IngestRequest(ServiceProvider::Ptr const& serviceProvider, string
             case Url::HTTPS:
                 break;
             default:
-                throw invalid_argument(context + " unsupported url '" + _contrib.url + "'");
+                throw invalid_argument(context + "unsupported url '" + _contrib.url + "'");
         }
         _dialect = csv::Dialect(dialectInput);
     } catch (exception const& ex) {
-        _contrib.error = string(ex.what());
+        _contrib.error = context + ex.what();
+        _contrib.retryAllowed = false;
         _contrib = databaseServices->createdTransactionContrib(_contrib, failed);
         throw;
     }
@@ -249,6 +268,32 @@ void IngestRequest::process() {
         if (_cancelled) {
             throw IngestRequestInterrupted(context + "request " + to_string(_contrib.id) +
                                            " is already cancelled");
+        }
+        // Exceptions will be thrown if the context of the contribution
+        // has disappeared while the contribution was sitting in
+        // the input queue. Note that updating the status of the contribution
+        // in the Replication database won't be possible should this kind
+        // of a change happened.
+        auto const config = serviceProvider()->config();
+        auto const databaseServices = serviceProvider()->databaseServices();
+        auto const trans = databaseServices->transaction(_contrib.transactionId);
+        auto const database = config->databaseInfo(trans.database);
+        if (!database.hasTable(_contrib.table)) {
+            throw invalid_argument(context + "no such table '" + _contrib.table + "' exists in database '" +
+                                   _contrib.database + "'.");
+        }
+        // Verify if any change in the status of the targeted context has happened
+        // since a time the contribution request was made. Note that retrying
+        // the same contribution would be prohibited should this happened.
+        try {
+            IngestRequest::_validateState(trans, database, _contrib);
+        } catch (exception const& ex) {
+            _contrib.error = context + ex.what();
+            _contrib.retryAllowed = false;
+            bool const failed = true;
+            _contrib = databaseServices->startedTransactionContrib(
+                    _contrib, failed, TransactionContribInfo::Status::START_FAILED);
+            throw;
         }
         _processing = true;
     }
