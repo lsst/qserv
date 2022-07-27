@@ -136,7 +136,7 @@ IngestRequestMgr::Ptr IngestRequestMgr::create(ServiceProvider::Ptr const& servi
         //     uploading the content of teh temporary file into MySQL. At this point the request
         //     is supposed to be completed and moved into the output queue.
         //
-        // The auto-resume algorithm is evaluting a progress of requests from the newest
+        // The auto-resume algorithm is evaluating a progress of requests from the newest
         // timestamps back to the oldest ones in order to determine at what stage each
         // request was before the restart.
         //
@@ -170,7 +170,7 @@ IngestRequestMgr::Ptr IngestRequestMgr::create(ServiceProvider::Ptr const& servi
                                                          TransactionContribInfo::Status::READ_FAILED);
             }
         } else {
-            // Opening the input source might get interupted by the restart.
+            // Opening the input source might get interrupted by the restart.
             if (autoResume) {
                 // Put the request into the input queue as if it's never been processed.
                 ptr->submit(IngestRequest::resume(serviceProvider, workerName, contrib.id));

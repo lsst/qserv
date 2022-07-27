@@ -136,6 +136,17 @@ public:
     void cancel();
 
 private:
+    /**
+     * @brief Validate a state the contribution's context.
+     * @param trans The transaction to be evaluated.
+     * @param database The database to be evaluated.
+     * @param contrib The contribution.
+     * @throw std::logic_error If the state is not suitable for ingesting
+     *   the contribution.
+     */
+    static void _validateState(TransactionInfo const& trans, DatabaseInfo const& database,
+                               TransactionContribInfo const& contrib);
+
     /// @see method IngestRequest::create()
     IngestRequest(ServiceProvider::Ptr const& serviceProvider, std::string const& workerName,
                   TransactionId transactionId, std::string const& table, unsigned int chunk, bool isOverlap,
