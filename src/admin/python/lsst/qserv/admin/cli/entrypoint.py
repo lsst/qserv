@@ -590,6 +590,7 @@ def worker_cmsd(ctx: click.Context, **kwargs: Any) -> None:
 @cmsd_worker_cfg_path_option()
 @xrdssi_cfg_file_option()
 @xrdssi_cfg_path_option()
+@log_cfg_file_option()
 @targs_options()
 @cmd_options()
 @options_file_option()
@@ -608,6 +609,7 @@ def worker_xrootd(ctx: click.Context, **kwargs: Any) -> None:
         cmsd_worker_cfg_path=targs["cmsd_worker_cfg_path"],
         xrdssi_cfg_file=targs["xrdssi_cfg_file"],
         xrdssi_cfg_path=targs["xrdssi_cfg_path"],
+        log_cfg_file=targs["log_cfg_file"],
         cmd=targs["cmd"],
     )
 
@@ -631,6 +633,7 @@ def worker_xrootd(ctx: click.Context, **kwargs: Any) -> None:
     default="{{repl_connection}}",
     show_default=True,
 )
+@log_cfg_file_option()
 @targs_options()
 @run_option()
 @options_file_option()
@@ -641,6 +644,7 @@ def worker_repl(ctx: click.Context, **kwargs: Any) -> None:
         db_admin_uri=targs["db_admin_uri"],
         repl_connection=targs["repl_connection"],
         debug_port=targs["debug_port"],
+        log_cfg_file=targs["log_cfg_file"],
         cmd=targs["cmd"],
         run=targs["run"],
     )
