@@ -37,14 +37,6 @@ table#fwk-status-queries      tbody > tr > td.query_toggler:hover,
 table#fwk-status-queries-past tbody > tr > td.query_toggler:hover {
     cursor:pointer;
 }
-table#fwk-status-queries      tbody pre.query.hidden,
-table#fwk-status-queries-past tbody pre.query.hidden {
-    display:none;
-}
-table#fwk-status-queries      tbody pre.query.visible,
-table#fwk-status-queries-past tbody pre.query.visible {
-    display:block;
-}
 table#fwk-status-queries      span,
 table#fwk-status-queries-past span {
     font-family: monospace;

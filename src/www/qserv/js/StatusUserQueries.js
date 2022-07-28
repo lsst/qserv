@@ -16,7 +16,10 @@ function(CSSLoader,
     class StatusUserQueries extends FwkApplication {
 
         /// @returns the suggested server-side timeout for retreiving results 
-        static server_proc_timeout_sec() { return 2; }
+        static _server_proc_timeout_sec() { return 2; }
+
+        static _sqlFormatterConfig = {"language":"mysql", "uppercase:":true, "indent":"  "};
+        static _max_compact_length = 120;
 
         constructor(name) {
             super(name);
@@ -307,7 +310,7 @@ function(CSSLoader,
                     search_pattern: this._get_query_search_pattern(),
                     search_boolean_mode: this._get_query_search_mode() == "BOOLEAN" ? 1 : 0,
                     limit4past: this._get_max_queries(),
-                    timeout_sec: StatusUserQueries.server_proc_timeout_sec()
+                    timeout_sec: StatusUserQueries._server_proc_timeout_sec()
                 },
                 (data) => {
                     if (!data.success) {
@@ -332,22 +335,21 @@ function(CSSLoader,
          */
         _display(data) {
             this._id2query = {};
-            let queryToggleTitle = "Click to toggle query formatting.";
-            let queryCopyTitle = "Click to copy the query text to the clipboard.";
-            let queryInspectTitle = "Click to see detailed info (progress, messages, etc.) on the query.";
-            let sqlFormatterConfig = {"language":"mysql","uppercase:":true,"indent":"  "};
-            let queryStyle = "color:#4d4dff;";
+            const queryToggleTitle = "Click to toggle query formatting.";
+            const queryCopyTitle = "Click to copy the query text to the clipboard.";
+            const queryInspectTitle = "Click to see detailed info (progress, messages, etc.) on the query.";
+            const queryStyle = "color:#4d4dff;";
             let html = '';
             for (let i in data.queries) {
                 let query = data.queries[i];
                 this._id2query[query.queryId] = query.query;
-                let progress = Math.floor(100. * query.completedChunks  / query.totalChunks);
-                let scheduler = _.isUndefined(query.scheduler) ? 'Loading...' : query.scheduler.substring('Sched'.length);
-                let scheduler_color = _.has(this._scheduler2color, scheduler) ?
+                const progress = Math.floor(100. * query.completedChunks  / query.totalChunks);
+                const scheduler = _.isUndefined(query.scheduler) ? 'Loading...' : query.scheduler.substring('Sched'.length);
+                const scheduler_color = _.has(this._scheduler2color, scheduler) ?
                     this._scheduler2color[scheduler] :
                     this._scheduler2color['Loading'];
 
-                let elapsed = this._elapsed(query.samplingTime_sec - query.queryBegin_sec);
+                const elapsed = this._elapsed(query.samplingTime_sec - query.queryBegin_sec);
                 let leftSeconds;
                 if (query.completedChunks > 0 && query.samplingTime_sec - query.queryBegin_sec > 0) {
                     leftSeconds = Math.floor(
@@ -355,13 +357,10 @@ function(CSSLoader,
                             (query.completedChunks / (query.samplingTime_sec - query.queryBegin_sec))
                     );
                 }
-                let left = this._elapsed(leftSeconds);
-                let trend = this._trend(query.queryId, leftSeconds);
-                let performance = this._performance(query.completedChunks, query.samplingTime_sec - query.queryBegin_sec);
-                let expanded = (query.queryId in this._queryId2Expanded) && this._queryId2Expanded[query.queryId];
-                let query_class = expanded ? "row_expanded" : "row_compact";
-                let query_compact_class  = expanded ? "hidden"  : "visible";
-                let query_expanded_class = expanded ? "visible" : "hidden";
+                const left = this._elapsed(leftSeconds);
+                const trend = this._trend(query.queryId, leftSeconds);
+                const performance = this._performance(query.completedChunks, query.samplingTime_sec - query.queryBegin_sec);
+                const expanded = (query.queryId in this._queryId2Expanded) && this._queryId2Expanded[query.queryId];
                 html += `
 <tr id="${query.queryId}">
   <td><pre>` + query.queryBegin + `</pre></td>
@@ -381,29 +380,17 @@ function(CSSLoader,
   <td style="text-align:center; padding-top:0; padding-bottom:0">
     <button class="btn btn-outline-dark btn-sm copy-query" style="height:20px; margin:0px;" title="${queryCopyTitle}"></button>
   </td>
-  <td class="query_toggler ${query_class}" title="${queryToggleTitle}">
-    <pre class="query compact  ${query_compact_class}"  style="${queryStyle}">` + query.query + `</pre>
-    <pre class="query expanded ${query_expanded_class}" style="${queryStyle}">` + sqlFormatter.format(query.query, sqlFormatterConfig) + `</pre>
-  </td>
+  <td class="query_toggler title="${queryToggleTitle}"><pre class="query" style="${queryStyle}">` + this._query2text(query.queryId, expanded) + `</pre></td>
 </tr>`;
             }
             let that = this;
             let toggleQueryDisplay = function(e) {
                 let td = $(e.currentTarget);
-                let queryCompact  = td.find("pre.query.compact");
-                let queryExpanded = td.find("pre.query.expanded");
-                let queryId = td.parent().attr("id");
-                if (td.hasClass("row_compact")) {
-                    td.removeClass("row_compact").addClass("row_expanded");
-                    queryCompact.removeClass("visible").addClass("hidden");
-                    queryExpanded.removeClass("hidden").addClass("visible");
-                    that._queryId2Expanded[queryId] = true;
-                } else {
-                    td.removeClass("row_expanded").addClass("row_compact");
-                    queryCompact.removeClass("hidden").addClass("visible");
-                    queryExpanded.removeClass("visible").addClass("hidden");
-                    that._queryId2Expanded[queryId] = false;
-                }
+                let pre = td.find("pre.query");
+                const queryId = td.parent().attr("id");
+                const expanded = !((queryId in that._queryId2Expanded) && that._queryId2Expanded[queryId]);
+                pre.text(that._query2text(queryId, expanded));
+                that._queryId2Expanded[queryId] = expanded;
             };
             let copyQueryToClipboard = function(e) {
                 let button = $(e.currentTarget);
@@ -431,9 +418,6 @@ function(CSSLoader,
                 let failed_query_class = query.status !== "COMPLETED" ? "table-danger" : "";
                 let performance = this._performance(query.chunkCount, query.completed_sec - query.submitted_sec);
                 let expanded = (query.queryId in this._queryId2Expanded) && this._queryId2Expanded[query.queryId];
-                let query_class = expanded ? "row_expanded" : "row_compact";
-                let query_compact_class  = expanded ? "hidden"  : "visible";
-                let query_expanded_class = expanded ? "visible" : "hidden";
                 html += `
 <tr class="${failed_query_class}" id="${query.queryId}">
   <td style="padding-right:10px;"><pre>` + query.submitted + `</pre></td>
@@ -451,10 +435,7 @@ function(CSSLoader,
   <td style="text-align:right; padding-top:0; padding-bottom:0">
     <button class="btn btn-outline-info btn-sm inspect-query" style="height:20px; margin:0px;" title="${queryInspectTitle}"></button>
   </td>
-  <td class="query_toggler ${query_class}" title="${queryToggleTitle}">
-    <pre class="query compact ${query_compact_class}"  style="${queryStyle}">` + query.query + `</pre>
-    <pre class="query expanded ${query_expanded_class}" style="${queryStyle}">` + sqlFormatter.format(query.query, sqlFormatterConfig) + `</pre>
-  </td>
+  <td class="query_toggler title="${queryToggleTitle}"><pre class="query" style="${queryStyle}">` + this._query2text(query.queryId, expanded) + `</pre></td>
 </tr>`;
             }
             let tbodyPastQueries = this._tablePastQueries().children('tbody').html(html);
@@ -514,6 +495,17 @@ function(CSSLoader,
         _performance(chunks, totalSeconds) {
             if (chunks === 0 || totalSeconds <= 0) return 0;
             return Math.floor(chunks / (totalSeconds / 60.));
+        }
+
+        _query2text(queryId, expanded) {
+            let query = this._id2query[queryId];
+            if (expanded) {
+                return sqlFormatter.format(query, StatusUserQueries.sqlFormatterConfig);
+            } else if (query.length > StatusUserQueries._max_compact_length) {
+                return query.substring(0, StatusUserQueries._max_compact_length) + "...";
+            } else {
+                return query;
+            }
         }
     }
     return StatusUserQueries;
