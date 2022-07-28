@@ -824,6 +824,26 @@ struct VertexQueue {
     }
 };
 
+/// dump graph
+void dumpGraph(std::list<Vertex> const& vertices) {
+    if (LOG_CHECK_LVL(_log, LOG_LVL_TRACE)) {
+        LOGS(_log, LOG_LVL_TRACE, "RelationGraph:");
+        std::map<Vertex const*, int> vtxId;
+        for (auto&& vtx : vertices) {
+            int id = vtxId.size();
+            vtxId[&vtx] = id;
+            LOGS(_log, LOG_LVL_TRACE,
+                 "   vertex " << id << " info=" << *vtx.info << " overlap=" << vtx.overlap);
+        }
+        for (auto&& vtx : vertices) {
+            for (auto&& edge : vtx.edges) {
+                LOGS(_log, LOG_LVL_TRACE,
+                     "   edge " << vtxId[&vtx] << " <-> " << vtxId[edge.vertex] << " angSep=" << edge.angSep);
+            }
+        }
+    }
+}
+
 /// `computeMinimumOverlap` visits every vertex linked to `v` via one or more
 /// paths and computes its minimum required overlap.
 void computeMinimumOverlap(Vertex& vtx) {
@@ -834,6 +854,7 @@ void computeMinimumOverlap(Vertex& vtx) {
     // The required overlap for the initial vertex is 0.
     vtx.overlap = 0;
     for (Vertex* v = &vtx; v != nullptr; v = q.dequeue()) {
+        LOGS(_log, LOG_LVL_TRACE, "Node " << v->info->table << " current=" << v->overlap);
         // Loop over edges incident to v.
         for (Iter e = v->edges.begin(), end = v->edges.end(); e != end; ++e) {
             Vertex* u = e->vertex;
@@ -859,6 +880,9 @@ void computeMinimumOverlap(Vertex& vtx) {
             if (e->isSpatial()) {
                 requiredOverlap += e->angSep;
             }
+            LOGS(_log, LOG_LVL_TRACE,
+                 " to " << u->info->table << " available=" << availableOverlap
+                        << " required=" << requiredOverlap);
             // If requiredOverlap is greater than or equal to the previously
             // computed required overlap for u, then there is no need to visit
             // u again. This is because the current path between the initial
@@ -878,6 +902,7 @@ void computeMinimumOverlap(Vertex& vtx) {
                 // vertex visitation queue.
                 u->overlap = requiredOverlap;
                 q.enqueue(u);
+                LOGS(_log, LOG_LVL_TRACE, " (updated and queued)");
             }
         }
     }
@@ -886,12 +911,15 @@ void computeMinimumOverlap(Vertex& vtx) {
 /// `isEvaluable` returns `true` if no graph vertex requires infinite overlap.
 bool isEvaluable(std::list<Vertex> const& vertices) {
     LOGS(_log, LOG_LVL_TRACE, __FUNCTION__);
+    dumpGraph(vertices);
     typedef std::list<Vertex>::const_iterator Iter;
     for (Iter v = vertices.begin(), e = vertices.end(); v != e; ++v) {
         if ((boost::math::isinf)(v->overlap)) {
+            LOGS(_log, LOG_LVL_TRACE, "Evaluable: FALSE vertex=" << v->info->table);
             return false;
         }
     }
+    LOGS(_log, LOG_LVL_TRACE, "Evaluable: TRUE");
     return true;
 }
 
@@ -979,24 +1007,7 @@ RelationGraph::RelationGraph(SelectStmt& stmt, TableInfoPool& pool) : _query(&st
     swap(g);
 }
 
-void RelationGraph::_dumpGraph() const {
-    // dump graph
-    if (LOG_CHECK_LVL(_log, LOG_LVL_TRACE)) {
-        LOGS(_log, LOG_LVL_TRACE, "RelationGraph:");
-        std::map<Vertex const*, int> vtxId;
-        for (auto&& vtx : _vertices) {
-            int id = vtxId.size();
-            vtxId[&vtx] = id;
-            LOGS(_log, LOG_LVL_TRACE, "   vertex " << id << " info=" << *vtx.info);
-        }
-        for (auto&& vtx : _vertices) {
-            for (auto&& edge : vtx.edges) {
-                LOGS(_log, LOG_LVL_TRACE,
-                     "   edge " << vtxId[&vtx] << " <-> " << vtxId[edge.vertex] << " angSep=" << edge.angSep);
-            }
-        }
-    }
-}
+void RelationGraph::_dumpGraph() const { dumpGraph(_vertices); }
 
 void RelationGraph::rewrite(SelectStmtPtrVector& outputs, QueryMapping& mapping) {
     LOGS(_log, LOG_LVL_TRACE, __FUNCTION__);
