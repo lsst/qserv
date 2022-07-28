@@ -393,6 +393,7 @@ def enter_worker_xrootd(
     cmsd_worker_cfg_path: str,
     xrdssi_cfg_file: str,
     xrdssi_cfg_path: str,
+    log_cfg_file: str,
     cmd: str,
 ) -> None:
     """Start a worker xrootd node.
@@ -422,6 +423,8 @@ def enter_worker_xrootd(
         The path to the xrdssi config file.
     xrdssi_cfg_path : str
         The location to render to the xrdssi config file.
+    log_cfg_file : `str`
+        Location of the log4cxx config file.
     cmd : `str`
         The jinja2 template for the command for this function to execute.
     """
@@ -463,13 +466,15 @@ def enter_worker_xrootd(
     apply_template_cfg_file(cmsd_worker_cfg_file, cmsd_worker_cfg_path)
     apply_template_cfg_file(xrdssi_cfg_file, xrdssi_cfg_path)
 
-    sys.exit(_run(args=None, cmd=cmd))
+    env = dict(os.environ, LSST_LOG_CONFIG=log_cfg_file)
+    sys.exit(_run(args=None, env=env, cmd=cmd))
 
 
 def enter_worker_repl(
     db_admin_uri: str,
     repl_connection: str,
     debug_port: Optional[int],
+    log_cfg_file: str,
     cmd: str,
     run: bool,
 ) -> None:
@@ -488,6 +493,8 @@ def enter_worker_repl(
         "qsreplica".
     debug_port : int or None
         If not None, indicates that gdbserver should be run on the given port number.
+    log_cfg_file : `str`
+        Location of the log4cxx config file.
     cmd : `str`
         The jinja2 template for the command for this function to execute.
     run : `bool`
@@ -524,6 +531,8 @@ def enter_worker_repl(
     if not os.path.exists(ingest_folder):
         os.makedirs(ingest_folder)
 
+    env = dict(os.environ, LSST_LOG_CONFIG=log_cfg_file)
+
     while True:
         # This loop exists because it is possible for qserv-replica-worker to
         # register itself with the replica controller before the call to
@@ -534,7 +543,7 @@ def enter_worker_repl(
         # qserv-replica-worker returned then by definition it failed, and we
         # just wait a moment and restart it.
         # This is recorded in DM-31252
-        _run(args=None, cmd=cmd, run=run)
+        _run(args=None, cmd=cmd, env=env, run=run)
         _log.info("qserv-replica-worker exited. waiting 5 seconds and restarting.")
         time.sleep(5)
 
