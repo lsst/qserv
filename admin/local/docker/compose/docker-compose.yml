@@ -16,9 +16,6 @@ x-log-volume:
     - type: bind
       source: ./log/
       target: /config-etc/log/
-x-log-environment:
-    &log-environment
-    LSST_LOG_CONFIG: /config-etc/log/log.cfg
 x-worker-cmsd:
     &worker-cmsd
     image: "${QSERV_IMAGE:?err}"
@@ -96,8 +93,7 @@ services:
           --cmsd-manager-name manager-xrootd
           --cmsd-manager-count 1
           --mysql-monitor-password CHANGEME_MONITOR
-        environment:
-            << : *log-environment
+          --log-cfg-file=/config-etc/log/log-worker-xrootd.cnf
         volumes:
             - type: volume
               source: worker_0_xrootd
@@ -120,8 +116,6 @@ services:
           --cmsd-manager-name manager-xrootd
           --cmsd-manager-count 1
         network_mode: "service:worker-xrootd-0"
-        environment:
-            << : *log-environment
         volumes:
             - type: volume
               source: worker_0_xrootd
@@ -136,14 +130,13 @@ services:
           entrypoint worker-repl
           --db-admin-uri mysql://root:CHANGEME@worker-db-0:3306/qservw_worker
           --repl-connection mysql://qsreplica@repl-mgr-db:3306/qservReplica
+          --log-cfg-file=/config-etc/log/log-repl-worker.cnf
           --
           --instance-id=qserv_proj
           --auth-key=replauthkey
           --admin-auth-key=repladminauthkey
           --registry-host=repl-mgr-registry
           --debug
-        environment:
-            << : *log-environment
         volumes:
             - type: volume
               source: worker_0_data
@@ -181,8 +174,7 @@ services:
           --cmsd-manager-count 1
           --mysql-monitor-password CHANGEME_MONITOR
           --targs db_socket=/qserv/mariadb/run/mysqld.sock
-        environment:
-            << : *log-environment
+          --log-cfg-file=/config-etc/log/log-worker-xrootd.cnf
         volumes:
             - type: volume
               source: worker_1_xrootd
@@ -208,8 +200,6 @@ services:
           --cmsd-manager-name manager-xrootd
           --cmsd-manager-count 1
         network_mode: "service:worker-xrootd-1"
-        environment:
-            << : *log-environment
         volumes:
             - type: volume
               source: worker_1_xrootd
@@ -228,14 +218,13 @@ services:
           entrypoint worker-repl
           --db-admin-uri mysql://root:CHANGEME@worker-db-1:3306/qservw_worker
           --repl-connection mysql://qsreplica@repl-mgr-db:3306/qservReplica
+          --log-cfg-file=/config-etc/log/log-repl-worker.cnf
           --
           --instance-id=qserv_proj
           --auth-key=replauthkey
           --admin-auth-key=repladminauthkey
           --registry-host=repl-mgr-registry
           --debug
-        environment:
-            << : *log-environment
         volumes:
             - type: volume
               source: worker_1_data
@@ -255,8 +244,6 @@ services:
           --cmsd-manager-name manager-xrootd
           --cmsd-manager-count 1
         hostname: manager-xrootd
-        environment:
-            << : *log-environment
         expose:
             - "1094"
             - "2131"
@@ -278,8 +265,6 @@ services:
         # NOTE!! cms-delay-servers must match the number of workers being launched!
         command: entrypoint cmsd-manager --cms-delay-servers 2
         network_mode: "service:manager-xrootd-0.manager-xrootd"
-        environment:
-            << : *log-environment
         volumes:
             - type: volume
               source: manager_xrootd
@@ -317,8 +302,7 @@ services:
           --db-admin-uri mysql://root:CHANGEME@127.0.0.1:3306?socket={{db_socket}}
           --targs db_socket=/qserv/mariadb/run/mysqld.sock
           --xrootd-manager manager-xrootd
-        environment:
-            << : *log-environment
+          --log-cfg-file=/config-etc/log/log-czar-proxy.cnf
         volumes:
             - type: volume
               source: czar_0_data
@@ -368,6 +352,7 @@ services:
           --db-uri mysql://qsreplica@repl-mgr-db:3306/qservReplica
           --db-admin-uri mysql://root:CHANGEME@repl-mgr-db:3306/qservReplica
           --qserv-czar-db=mysql://root:CHANGEME@czar-db:3306/qservMeta
+          --log-cfg-file=/config-etc/log/log-repl-controller.cnf
           --
           --instance-id=qserv_proj
           --auth-key=replauthkey
@@ -376,8 +361,7 @@ services:
           --registry-host=repl-mgr-registry
           --controller-auto-register-workers=1
           --qserv-sync-force
-        environment:
-            << : *log-environment
+          --debug
         expose:
             - "25081"
         ports:
@@ -397,13 +381,12 @@ services:
           entrypoint --log-level DEBUG replication-registry
           --db-uri mysql://qsreplica@repl-mgr-db:3306/qservReplica
           --db-admin-uri mysql://root:CHANGEME@repl-mgr-db:3306/qservReplica
+          --log-cfg-file=/config-etc/log/log-repl-registry.cnf
           --
           --instance-id=qserv_proj
           --auth-key=replauthkey
           --admin-auth-key=repladminauthkey
           --debug
-        environment:
-            << : *log-environment
         expose:
             - "25082"
         volumes:
