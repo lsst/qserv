@@ -668,7 +668,7 @@ def worker_repl(ctx: click.Context, **kwargs: Any) -> None:
     "--xrootd-manager",
     help="The host name of the xrootd manager node.",
 )
-@log_cfg_file_option(default="/config-etc/log4cxx.replication.properties")
+@log_cfg_file_option()
 @cmd_options()
 @click.option(
     "--http-root",
@@ -710,7 +710,7 @@ def replication_controller(ctx: click.Context, **kwargs: Any) -> None:
     help="The admin URI to the proxy's database, used for schema initialization. " + socket_option_help,
     required=True,
 )
-@log_cfg_file_option(default="/config-etc/log4cxx.replication.properties")
+@log_cfg_file_option()
 @cmd_options()
 @targs_options()
 @run_option()
