@@ -44,10 +44,6 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.DatabaseMySQL");
 
 namespace lsst::qserv::replica::database::mysql {
 
-/////////////////////////////////////////////////////
-//                ConnectionParams                 //
-/////////////////////////////////////////////////////
-
 ConnectionParams::ConnectionParams()
         : host("localhost"),
           port(3306),
@@ -115,27 +111,5 @@ ostream& operator<<(ostream& os, ConnectionParams const& params) {
        << "(" << params.toString() << ")";
     return os;
 }
-
-//////////////////////////////////////////////////
-//                DoNotProcess                  //
-//////////////////////////////////////////////////
-
-DoNotProcess::DoNotProcess(string const& name_) : name(name_) {}
-
-/////////////////////////////////////////////
-//                Keyword                  //
-/////////////////////////////////////////////
-
-Keyword const Keyword::SQL_NULL{"NULL"};
-
-Keyword::Keyword(string const& name_) : DoNotProcess(name_) {}
-
-/////////////////////////////////////////////
-//                Function                 //
-/////////////////////////////////////////////
-
-Function const Function::LAST_INSERT_ID{"LAST_INSERT_ID()"};
-
-Function::Function(string const& name_) : DoNotProcess(name_) {}
 
 }  // namespace lsst::qserv::replica::database::mysql

@@ -32,8 +32,9 @@
  * included from this one:
  *
  * DatabaseMySQLExceptions.h
- * DatabaseMySQLTypes.h
+ * DatabaseMySQLGenerator.h
  * DatabaseMySQLRow.h
+ * DatabaseMySQLTypes.h
  */
 
 // System headers
@@ -46,7 +47,6 @@
 #include <map>
 #include <memory>
 #include <mutex>
-#include <sstream>
 #include <string>
 #include <vector>
 
@@ -56,8 +56,9 @@
 // Qserv headers
 #include "replica/Common.h"
 #include "replica/DatabaseMySQLExceptions.h"
-#include "replica/DatabaseMySQLTypes.h"
+#include "replica/DatabaseMySQLGenerator.h"
 #include "replica/DatabaseMySQLRow.h"
+#include "replica/DatabaseMySQLTypes.h"
 #include "util/Mutex.h"
 
 // Forward declarations
@@ -71,7 +72,7 @@ namespace lsst::qserv::replica::database::mysql {
 /**
  * Class Connection provides the main API to the database.
  */
-class Connection : public std::enable_shared_from_this<Connection> {
+class Connection : public QueryGenerator, public std::enable_shared_from_this<Connection> {
 public:
     typedef std::shared_ptr<Connection> Ptr;
 
@@ -125,7 +126,7 @@ public:
      *            throw;
      *        }
      *   } while (nullptr != conn);
-     * @code
+     * @endcode
      *
      * @param connectionParams parameters of a connection
      *
@@ -175,14 +176,19 @@ public:
     Connection(Connection const&) = delete;
     Connection& operator=(Connection const&) = delete;
 
-    ~Connection();
+    virtual ~Connection();
+
+    /// @see QueryGenerator::escape()
+    virtual std::string escape(std::string const& str) const final;
+
+    /// @return The query generator object initialized with the current connection.
+    QueryGenerator queryGenerator() { return QueryGenerator(shared_from_this()); }
 
     ConnectionParams const& connectionParams() const { return _connectionParams; }
 
     /// @return maximum amount of time to wait while making reconnection attempts
     unsigned int connectTimeoutSec() const { return _connectTimeoutSec; }
 
-    std::string escape(std::string const& str) const;
     std::string charSetName() const;
 
     // --------------------------------------
@@ -204,321 +210,6 @@ public:
      * @throws Error If no valid database could be deduced from any source.
      */
     bool tableExists(std::string const& table, std::string const& proposedDatabase = std::string());
-
-    // -------------------------------------------------
-    // Helper methods for simplifying query preparation
-    // -------------------------------------------------
-
-    template <typename T>
-    std::string sqlValue(T const& val) const {
-        return std::to_string(val);
-    }
-    std::string sqlValue(std::string const& val) const { return "'" + escape(val) + "'"; }
-    std::string sqlValue(char const* val) const { return sqlValue(std::string(val)); }
-    std::string sqlValue(DoNotProcess const& val) const { return val.name; }
-    std::string sqlValue(Keyword const& val) const { return val.name; }
-    std::string sqlValue(Function const& val) const { return val.name; }
-
-    std::string sqlValue(std::vector<std::string> const& coll) const;
-
-    /**
-     * The function replaces the "conditional operator" of C++ in SQL statements
-     * generators. Unlike the standard operator this function allows internal
-     * type switching while producing a result of a specific type.
-     *
-     * @return an object which doesn't require any further processing
-     */
-    DoNotProcess nullIfEmpty(std::string const& val) {
-        return val.empty() ? DoNotProcess(Keyword::SQL_NULL) : DoNotProcess(sqlValue(val));
-    }
-
-    // Generator: ([value [, value [, ... ]]])
-    // Where values of the string types will be surrounded with single quotes
-
-    /// The end of variadic recursion
-    void sqlValues(std::string& sql) const { sql += ")"; }
-
-    /// The next step in the variadic recursion when at least one value is
-    /// still available
-    template <typename T, typename... Targs>
-    void sqlValues(std::string& sql, T val, Targs... Fargs) const {
-        bool const last = sizeof...(Fargs) - 1 < 0;
-        std::ostringstream ss;
-        ss << (sql.empty() ? "(" : (last ? "" : ",")) << sqlValue(val);
-        sql += ss.str();
-
-        // Recursively keep drilling down the list of arguments with one
-        // argument less.
-        sqlValues(sql, Fargs...);
-    }
-
-    /**
-     * Turn values of variadic arguments into a valid SQL representing a set of
-     * values to be insert into a table row. Values of string types 'std::string const&'
-     * and 'char const*' will be also escaped and surrounded by single quote.
-     *
-     * For example, the following call:
-     * @code
-     *   sqlPackValues("st'r", std::string("c"), 123, 24.5);
-     * @code
-     *
-     * This will produce the following output:
-     * @code
-     *   ('st\'r','c',123,24.5)
-     * @code
-     */
-    template <typename... Targs>
-    std::string sqlPackValues(Targs... Fargs) const {
-        std::string sql;
-        sqlValues(sql, Fargs...);
-        return sql;
-    }
-
-    /**
-     * Generate an SQL statement for inserting a single row into the specified
-     * table based on a variadic list of values to be inserted. The method allows
-     * any number of arguments and any types of argument values. Arguments of
-     * types 'std::string' and 'char*' will be additionally escaped and surrounded by
-     * single quotes as required by the SQL standard.
-     *
-     * @param tableName the name of a table
-     * @param Fargs the variadic list of values to be inserted
-     */
-    template <typename... Targs>
-    std::string sqlInsertQuery(std::string const& tableName, Targs... Fargs) const {
-        std::ostringstream qs;
-        qs << "INSERT INTO " << sqlId(tableName) << " "
-           << "VALUES " << sqlPackValues(Fargs...);
-        return qs.str();
-    }
-
-    /// Return a string representing a built-in MySQL function for the last
-    /// insert auto-incremented identifier: LAST_INSERT_ID()
-    std::string sqlLastInsertId() const { return "LAST_INSERT_ID()"; }
-
-    // ----------------------------------------------------------------------
-    // Generator: [`column` = value [, `column` = value [, ... ]]]
-    // Where values of the string types will be surrounded with single quotes
-
-    /// Return a non-escaped and back-tick-quoted string which is meant
-    /// to be an SQL identifier.
-    std::string sqlId(std::string const& str) const { return "`" + str + "`"; }
-
-    /// @return a composite identifier for a database and a table, or a table and a column
-    std::string sqlId(std::string const& first, std::string const& second) const {
-        return sqlId(first) + "." + sqlId(second);
-    }
-
-    /// @return a back-ticked identifier of a MySQL partition for the given "super-transaction"
-    std::string sqlPartitionId(TransactionId transactionId) const {
-        return sqlId("p" + std::to_string(transactionId));
-    }
-
-    /**
-     * Generate and return an SQL expression for a binary operator applied
-     * over a pair of a simple identifier and a value.
-     *
-     * @param col  the name of a column on the LHS of the expression
-     * @param val  RHS value of the binary operation
-     * @param op   binary operator to be applied to both above
-     *
-     * @return "<col> <binary operator> <value>" where column name will be
-     *   surrounded by back ticks, and  values of string types will be escaped
-     *   and surrounded by single quotes.
-     */
-    template <typename T>
-    std::string sqlBinaryOperator(std::string const& col, T const& val, char const* op) const {
-        std::ostringstream ss;
-        ss << sqlId(col) << op << sqlValue(val);
-        return ss.str();
-    }
-
-    /**
-     * @return "<quoted-col> = <escaped-quoted-value>"
-     * @see Connection::sqlBinaryOperator()
-     */
-    template <typename T>
-    std::string sqlEqual(std::string const& col, T const& val) const {
-        return sqlBinaryOperator(col, val, "=");
-    }
-
-    /**
-     * @return "<quoted-col> != <escaped-quoted-value>"
-     * @see Connection::sqlBinaryOperator()
-     */
-    template <typename T>
-    std::string sqlNotEqual(std::string const& col, T const& val) const {
-        return sqlBinaryOperator(col, val, "!=");
-    }
-
-    /**
-     * @return "<quoted-col> < <escaped-quoted-value>"
-     * @see Connection::sqlBinaryOperator()
-     */
-    template <typename T>
-    std::string sqlLess(std::string const& col, T const& val) const {
-        return sqlBinaryOperator(col, val, "<");
-    }
-
-    /**
-     * @return "<quoted-col> <= <escaped-quoted-value>"
-     * @see Connection::sqlBinaryOperator()
-     */
-    template <typename T>
-    std::string sqlLessOrEqual(std::string const& col, T const& val) const {
-        return sqlBinaryOperator(col, val, "<=");
-    }
-
-    /**
-     * @return "<quoted-col> > <escaped-quoted-value>"
-     * @see Connection::sqlBinaryOperator()
-     */
-    template <typename T>
-    std::string sqlGreater(std::string const& col, T const& val) const {
-        return sqlBinaryOperator(col, val, ">");
-    }
-
-    /**
-     * @return "<quoted-col> => <escaped-quoted-value>"
-     * @see Connection::sqlBinaryOperator()
-     */
-    template <typename T>
-    std::string sqlGreaterOrEqual(std::string const& col, T const& val) const {
-        return sqlBinaryOperator(col, val, ">=");
-    }
-
-    /**
-     * @return "<quoted-col> REGEXP <escaped-quoted-expr>"
-     */
-    std::string sqlRegexp(std::string const& col, std::string const& expr) const {
-        std::ostringstream ss;
-        ss << sqlId(col) << " REGEXP " << sqlValue(expr);
-        return ss.str();
-    }
-
-    /// The base (the final function) to be called
-    void sqlPackPair(std::string&) const {}
-
-    /// Recursive variadic function (overloaded for column names given as std::string)
-    template <typename T, typename... Targs>
-    void sqlPackPair(std::string& sql, std::pair<std::string, T> colVal, Targs... Fargs) const {
-        std::string const& col = colVal.first;
-        T const& val = colVal.second;
-        std::ostringstream ss;
-        ss << (sql.empty() ? "" : (sizeof...(Fargs) - 1 < 0 ? "" : ",")) << sqlEqual(col, val);
-        sql += ss.str();
-        sqlPackPair(sql, Fargs...);
-    }
-
-    /// Recursive variadic function (overloaded for column names given as char const*)
-    template <typename T, typename... Targs>
-    void sqlPackPair(std::string& sql, std::pair<char const*, T> colVal, Targs... Fargs) const {
-        std::string const col = colVal.first;
-        T const& val = colVal.second;
-        std::ostringstream ss;
-        ss << (sql.empty() ? "" : (sizeof...(Fargs) - 1 < 0 ? "" : ",")) << sqlEqual(col, val);
-        sql += ss.str();
-        sqlPackPair(sql, Fargs...);
-    }
-
-    /**
-     * Pack pairs of column names and their new values into a string which can be
-     * further used to form SQL statements of the following kind:
-     * @code
-     *   UPDATE <table> SET <packed-pairs>
-     * @code
-     * @note The method allows any number of arguments and any types of values.
-     * @note  Values types 'std::string' and 'char*' will be additionally escaped and
-     *   surrounded by single quotes as required by the SQL standard.
-     * @note The column names will be surrounded with back-tick quotes.
-     *
-     * For example, the following call:
-     * @code
-     *     sqlPackPairs (
-     *         std::make_pair("col1",  "st'r"),
-     *         std::make_pair("col2",  std::string("c")),
-     *         std::make_pair("col3",  123),
-     *         std::make_pair("fk_id", Function::LAST_INSERT_ID));
-     * @code
-     * will produce the following string content:
-     * @code
-     *     `col1`='st\'r',`col2`="c",`col3`=123,`fk_id`=LAST_INSERT_ID()
-     * @code
-     *
-     * @param Fargs the variadic list of values to be inserted
-     */
-    template <typename... Targs>
-    std::string sqlPackPairs(Targs... Fargs) const {
-        std::string sql;
-        sqlPackPair(sql, Fargs...);
-        return sql;
-    }
-
-    /**
-     * The generator of identifiers
-     *
-     * @note The column name will be surrounded by back ticks.
-     * @note Values of string types will be escaped and surrounded by single quotes.
-     *
-     * @param col the name of a column
-     * @param values an iterable collection of values
-     * @return `col` IN (<val1>,<val2>,<val3>,,,)
-     */
-    template <typename T>
-    std::string sqlIn(std::string const& col, T const& values) const {
-        std::ostringstream ss;
-        ss << sqlId(col) << " IN (";
-        int num = 0;
-        for (auto&& val : values) ss << (num++ ? "," : "") << sqlValue(val);
-        ss << ")";
-        return ss.str();
-    }
-
-    /**
-     * Generate an SQL statement for updating select values of table rows
-     * where the optional condition is met. Fields to be updated and their new
-     * values are passed into the method as variadic list of std::pair objects.
-     * @code
-     *   UPDATE <table> SET <packed-pairs> [WHERE <condition>]
-     * @code
-     * @note  The method allows any number of arguments and any types of value types.
-     * @note  Values types 'std::string' and 'char*' will be additionally escaped and
-     *   surrounded by single quotes as required by the SQL standard.
-     * @note  The column names will be surrounded with back-tick quotes.
-     *
-     * For example:
-     * @code
-     *     connection->sqlSimpleUpdateQuery (
-     *         "table",
-     *         sqlEqual("fk_id", Function::LAST_INSERT_ID),
-     *         std::make_pair("col1",  "st'r"),
-     *         std::make_pair("col2",  std::string("c")),
-     *         std::make_pair("col3",  123));
-     * @code
-     * This will generate the following query (extra newline symbols are added
-     * to me this example a bit easy to read:
-     * @code
-     *     UPDATE `table`
-     *     SET `col1`='st\'r',
-     *         `col2`="c",
-     *         `col3`=123
-     *     WHERE
-     *       `fk_id`=LAST_INSERT_ID()
-     * @code
-     *
-     * @param tableName the name of a table
-     * @param condition the optional condition for selecting rows to be updated
-     * @param Fargs the variadic list of values to be inserted
-     * @return well-formed SQL statement
-     */
-    template <typename... Targs>
-    std::string sqlSimpleUpdateQuery(std::string const& tableName, std::string const& condition,
-                                     Targs... Fargs) const {
-        std::ostringstream qs;
-        qs << "UPDATE " << sqlId(tableName) << " "
-           << "SET " << sqlPackPairs(Fargs...) << " " << (condition.empty() ? "" : "WHERE " + condition);
-        return qs.str();
-    }
 
     ///  @return the status of the transaction
     bool inTransaction() const { return _inTransaction; }
@@ -564,65 +255,6 @@ public:
     Connection::Ptr execute(std::string const& query);
 
     /**
-     * Execute an SQL statement for inserting a new row into a table based
-     * on a variadic list of values to be inserted. The method allows
-     * any number of arguments and any types of argument values. Arguments of
-     * types 'std::string' and 'char*' will be additionally escaped and surrounded by
-     * single quotes as required by the SQL standard.
-     *
-     * The effect:
-     * @code
-     *   INSERT INTO <table> VALUES (<packed-values>)
-     * @code
-     * @note The method will *NOT* start a transaction, neither it will
-     *   commit the one in the end. Transaction management is a responsibility
-     *   of a caller of the method.
-     *
-     * @see Connection::sqlInsertQuery()
-     *
-     * @param tableName the name of a table
-     * @param Fargs the variadic list of values to be inserted
-     * @return a smart pointer to self to allow chained calls
-     *
-     * @throw ER_DUP_ENTRY_ for attempts to insert rows with duplicate keys
-     * @throw Error for any other MySQL specific errors
-     */
-    template <typename... Targs>
-    Connection::Ptr executeInsertQuery(std::string const& tableName, Targs... Fargs) {
-        return execute(sqlInsertQuery(tableName, Fargs...));
-    }
-
-    /**
-     * Execute an SQL statement for updating select values of table rows
-     * where the optional condition is met. Fields to be updated and their new
-     * values are passed into the method as variadic list of std::pair objects.
-     *
-     * The effect:
-     * @code
-     *   UPDATE <table> SET <packed-pairs> [WHERE <condition>]
-     * @code
-     *
-     * @note The method will *NOT* start a transaction, neither it will
-     *   commit the one in the end. Transaction management is a responsibility
-     *   of a caller of the method.
-     * @see Connection::sqlSimpleUpdateQuery()
-     *
-     * @param tableName the name of a table
-     * @param whereCondition the optional condition for selecting rows to be updated
-     * @param Fargs the variadic list of column-value pairs to be updated
-     *
-     * @return a smart pointer to self to allow chained calls
-     *
-     * @throw std::invalid_argument for empty query strings
-     * @throw Error for any MySQL specific errors
-     */
-    template <typename... Targs>
-    Connection::Ptr executeSimpleUpdateQuery(std::string const& tableName, std::string const& condition,
-                                             Targs... Fargs) {
-        return execute(sqlSimpleUpdateQuery(tableName, condition, Fargs...));
-    }
-
-    /**
      * Execute a user-supplied algorithm which could be retried the specified
      * number of times (or until a given timeout expires) if a connection to
      * a server is lost and re-established before the completion of the algorithm.
@@ -661,7 +293,7 @@ public:
      *     } catch (Error const& ex) {
      *         cerr << "failed due to an unrecoverable error: " << ex.what()
      *     }
-     * @code
+     * @endcode
      *
      * @param script a user-provided function (the callable) to execute
      * @param maxReconnects (optional) maximum number of reconnects allowed
@@ -813,7 +445,7 @@ public:
      *         // Extract data from 'row' within this block
      *         // before proceeding to the next row, etc.
      *     }
-     * @code
+     * @endcode
      *
      * @return 'true' if the row was initialized or 'false' if past the last row
      *   in the result set.
