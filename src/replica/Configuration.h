@@ -50,13 +50,9 @@
 #include "replica/ConfigurationExceptions.h"
 #include "replica/ConfigurationSchema.h"
 #include "replica/DatabaseMySQL.h"
+#include "replica/DatabaseMySQLGenerator.h"
 #include "replica/DatabaseMySQLTypes.h"
 #include "util/Mutex.h"
-
-// Forward declarations
-namespace lsst::qserv::replica::database::mysql {
-class Connection;
-}  // namespace lsst::qserv::replica::database::mysql
 
 // This header declarations
 namespace lsst::qserv::replica {
@@ -748,6 +744,7 @@ private:
     // These parameters  will be set for the MySQL back-end (if any).
     database::mysql::ConnectionParams _connectionParams;
     std::shared_ptr<database::mysql::Connection> _connectionPtr;
+    database::mysql::QueryGenerator _g;
 
     // The transient state of the configuration (guarded by Mutex _mtx).
     nlohmann::json _data;

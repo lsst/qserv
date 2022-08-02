@@ -35,6 +35,8 @@ using json = nlohmann::json;
 
 namespace lsst::qserv::replica {
 
+using namespace database::mysql;
+
 void HttpIngestIndexModule::process(Controller::Ptr const& controller, string const& taskName,
                                     HttpProcessorConfig const& processorConfig,
                                     qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp,
@@ -141,28 +143,26 @@ json HttpIngestIndexModule::_buildSecondaryIndex() {
 
         // Manage the new connection via the RAII-style handler to ensure the transaction
         // is automatically rolled-back in case of exceptions.
-        database::mysql::ConnectionHandler const h(qservMasterDbConnection("qservMeta"));
+        ConnectionHandler const h(qservMasterDbConnection("qservMeta"));
+        QueryGenerator const g(h.conn);
         auto const indexTableName = database.name + "__" + tableName;
-        auto const escapedIndexTableName = h.conn->sqlId(indexTableName);
 
         // (Re-)create the index table. Note that the table creation statement (the way it's
         // written below) would fail if the table already exists. Hence, dropping it in
         // the 'rebuild' mode should be explicitly requested by a client to avoid the problem.
         vector<string> queries;
-        if (rebuild) queries.push_back("DROP TABLE IF EXISTS " + escapedIndexTableName);
-        queries.push_back("CREATE TABLE " + escapedIndexTableName + " (" +
-                          h.conn->sqlId(primaryKeyColumn[tableName]) + " " + primaryKeyColumnType[tableName] +
-                          "," + h.conn->sqlId(lsst::qserv::CHUNK_COLUMN) + " " +
-                          chunkIdColNameType[tableName] + "," + h.conn->sqlId(lsst::qserv::SUB_CHUNK_COLUMN) +
-                          " " + subChunkIdColNameType[tableName] +
-                          ","
-                          " UNIQUE KEY (" +
-                          h.conn->sqlId(primaryKeyColumn[tableName]) +
-                          "),"
-                          " KEY (" +
-                          h.conn->sqlId(primaryKeyColumn[tableName]) +
-                          ")"
-                          ") ENGINE=InnoDB");
+        if (rebuild) {
+            bool const ifExists = true;
+            queries.push_back(g.dropTable(indexTableName, ifExists));
+        }
+        bool const ifNotExists = false;
+        list<SqlColDef> const columns = {
+                SqlColDef{primaryKeyColumn[tableName], primaryKeyColumnType[tableName]},
+                SqlColDef{lsst::qserv::CHUNK_COLUMN, chunkIdColNameType[tableName]},
+                SqlColDef{lsst::qserv::SUB_CHUNK_COLUMN, subChunkIdColNameType[tableName]}};
+        list<string> const keys = {g.packTableKey("UNIQUE KEY", "", primaryKeyColumn[tableName])};
+        string const query = g.createTable(indexTableName, ifNotExists, columns, keys, "InnoDB");
+        queries.push_back(query);
         h.conn->executeInOwnTransaction([&queries](decltype(h.conn) conn) {
             for (auto&& query : queries) {
                 conn->execute(query);

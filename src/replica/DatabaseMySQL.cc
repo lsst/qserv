@@ -135,19 +135,20 @@ bool Connection::tableExists(string const& table, string const& proposedDatabase
     if (table.empty()) {
         throw invalid_argument(context + "the table name can't be empty.");
     }
+    QueryGenerator const g(shared_from_this());
     string database = proposedDatabase;
     if (database.empty()) {
         string const column = "database";
-        string const query = sqlSelect(sqlAs(Function::DATABASE, column));
+        string const query = g.select(g.as(Sql::DATABASE, column));
         if (!executeSingleValueSelect(query, column, database)) {
             throw Error(context + "the name of a database is not set on this connection.");
         }
     }
     size_t count = 0;
     string const column = "count";
-    string const query = sqlSelect(sqlAs(Function::COUNT_STAR, column)) +
-                         sqlFrom(sqlId("information_schema", "TABLES")) +
-                         sqlWhere(sqlEqual("TABLE_SCHEMA", database), sqlEqual("TABLE_NAME", table));
+    string const query = g.select(g.as(Sql::COUNT_STAR, column)) +
+                         g.from(g.id("information_schema", "TABLES")) +
+                         g.where(g.eq("TABLE_SCHEMA", database), g.eq("TABLE_NAME", table));
     return executeSingleValueSelect(query, column, count) && count != 0;
 }
 

@@ -23,6 +23,7 @@
 #include "replica/DatabaseMySQLGenerator.h"
 
 // System headers
+#include <stdexcept>
 #include <sstream>
 
 // Qserv headers
@@ -32,63 +33,86 @@ using namespace std;
 
 namespace lsst::qserv::replica::database::mysql {
 
-Keyword const Keyword::SQL_NULL{"NULL"};
+Sql const Sql::NULL_{"NULL"};
 
-Function const Function::LAST_INSERT_ID{"LAST_INSERT_ID()"};
+Sql const Sql::LAST_INSERT_ID{"LAST_INSERT_ID()"};
 
-Function const Function::COUNT_STAR{"COUNT(*)"};
+Sql const Sql::COUNT_STAR{"COUNT(*)"};
 
-Function const Function::STAR{"*"};
+Sql const Sql::STAR{"*"};
 
-Function const Function::DATABASE{"DATABASE()"};
+Sql const Sql::DATABASE{"DATABASE()"};
 
-Function const Function::NOW{"NOW()"};
+Sql const Sql::NOW{"NOW()"};
 
-Function Function::UNIX_TIMESTAMP(SqlId const& id) { return Function("UNIX_TIMESTAMP(" + id.str + ")"); }
+Sql Sql::UNIX_TIMESTAMP(SqlId const& sqlId) { return Sql("UNIX_TIMESTAMP(" + sqlId.str + ")"); }
 
-Function Function::TIMESTAMPDIFF(string const& resolution, SqlId const& lhs, SqlId const& rhs) {
-    return Function("TIMESTAMPDIFF(" + resolution + "," + lhs.str + "," + rhs.str + ")");
+Sql Sql::TIMESTAMPDIFF(string const& resolution, SqlId const& lhs, SqlId const& rhs) {
+    return Sql("TIMESTAMPDIFF(" + resolution + "," + lhs.str + "," + rhs.str + ")");
 }
 
 QueryGenerator::QueryGenerator(shared_ptr<Connection> conn) : _conn(conn) {}
 
 string QueryGenerator::escape(string const& str) const { return _conn == nullptr ? str : _conn->escape(str); }
 
-DoNotProcess QueryGenerator::sqlValue(vector<string> const& coll) const {
-    ostringstream values;
+DoNotProcess QueryGenerator::val(vector<string> const& coll) const {
+    string str;
     for (auto&& v : coll) {
-        values << v << ',';
+        if (!str.empty()) str += ',';
+        str += v;
     }
-    return sqlValue(values.str());
+    return val(str);
 }
 
-string QueryGenerator::sqlCreateTable(SqlId const& id, bool ifNotExists, list<SqlColDef> const& columns,
-                                      list<string> const& keys, string const& engine,
-                                      string const& comment) const {
+string QueryGenerator::limit(unsigned int num, unsigned int offset) const {
+    if (num == 0) return string();
+    string str = " LIMIT " + to_string(num);
+    if (offset != 0) str += " OFFSET " + to_string(offset);
+    return str;
+}
+
+string QueryGenerator::createTable(SqlId const& sqlId, bool ifNotExists, list<SqlColDef> const& columns,
+                                   list<string> const& keys, string const& engine,
+                                   string const& comment) const {
     string sql = "CREATE TABLE ";
     if (ifNotExists) sql += "IF NOT EXISTS ";
-    sql += id.str + " (";
+    sql += sqlId.str + " (";
     string sqlColumns;
     for (auto&& column : columns) {
         if (!sqlColumns.empty()) sqlColumns += ",";
-        sqlColumns += sqlId(column.name).str + " " + column.type;
+        sqlColumns += id(column.name).str + " " + column.type;
     }
     sql += sqlColumns;
     for (auto&& key : keys) {
         sql += "," + key;
     }
     sql += ") ENGINE=" + engine;
-    if (!comment.empty()) sql += " COMMENT=" + sqlValue(comment).str;
+    if (!comment.empty()) sql += " COMMENT=" + val(comment).str;
     return sql;
 }
 
-string QueryGenerator::_sqlCreateIndex(SqlId const& tableId, string const& indexName, string const& spec,
-                                       list<tuple<string, unsigned int, bool>> const& keys,
-                                       string const& comment) const {
+string QueryGenerator::insertPacked(string const& tableName, string const& packedColumns,
+                                    vector<string> const& packedValues) const {
+    if (packedValues.empty()) {
+        string const msg = "QueryGenerator::" + string(__func__) +
+                           " the collection of the packed values can not be empty.";
+        throw invalid_argument(msg);
+    }
+    string sql = "INSERT INTO " + id(tableName).str + " (" + packedColumns + ") VALUES ";
+    for (size_t i = 0, size = packedValues.size(); i < size; ++i) {
+        if (i != 0) sql += ",";
+        sql += "(" + packedValues[i] + ")";
+    }
+    return sql;
+}
+
+string QueryGenerator::_createIndex(SqlId const& tableId, string const& indexName, string const& spec,
+                                    list<tuple<string, unsigned int, bool>> const& keys,
+                                    string const& comment) const {
     string packedKeys;
     for (auto&& key : keys) {
         if (!packedKeys.empty()) packedKeys += ",";
-        packedKeys += sqlId(get<0>(key)).str;
+        packedKeys += id(get<0>(key)).str;
         unsigned int const length = get<1>(key);
         if (length != 0) packedKeys += "(" + to_string(length) + ")";
         bool const ascending = get<2>(key);
@@ -96,8 +120,8 @@ string QueryGenerator::_sqlCreateIndex(SqlId const& tableId, string const& index
     }
     string sql = "CREATE ";
     if (!spec.empty()) sql += spec + " ";
-    sql += "INDEX " + sqlId(indexName).str + " ON " + sqlId(tableId).str + " (" + packedKeys + ")" +
-           " COMMENT " + sqlValue(comment).str;
+    sql += "INDEX " + id(indexName).str + " ON " + id(tableId).str + " (" + packedKeys + ")" + " COMMENT " +
+           val(comment).str;
     return sql;
 }
 

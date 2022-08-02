@@ -136,6 +136,8 @@ string rowCountersTable(string const& databaseName, string const& tableName) {
 
 namespace lsst::qserv::replica {
 
+using namespace database::mysql;
+
 string const HttpIngestModule::_partitionByColumn = "qserv_trans_id";
 string const HttpIngestModule::_partitionByColumnType = "INT NOT NULL";
 
@@ -281,7 +283,7 @@ json HttpIngestModule::_addDatabase() {
     logJobFinishedEvent(SqlCreateDbJob::typeName(), job, family);
 
     string error = ::jobCompletionErrorIfAny(job, "database creation failed");
-    if (not error.empty()) throw HttpError(__func__, error);
+    if (!error.empty()) throw HttpError(__func__, error);
 
     // Register the new database in the Configuration.
     // Note, this operation will fail if the database with the name
@@ -301,7 +303,7 @@ json HttpIngestModule::_addDatabase() {
 
     // Tell workers to reload their configurations
     error = reconfigureWorkers(database, allWorkers, workerReconfigTimeoutSec());
-    if (not error.empty()) throw HttpError(__func__, error);
+    if (!error.empty()) throw HttpError(__func__, error);
 
     json result;
     result["database"] = database.toJson();
@@ -387,7 +389,7 @@ json HttpIngestModule::_publishDatabase() {
     // This step is needed to get workers' Configuration in-sync with its
     // persistent state.
     auto const error = reconfigureWorkers(database, allWorkers, workerReconfigTimeoutSec());
-    if (not error.empty()) throw HttpError(__func__, error);
+    if (!error.empty()) throw HttpError(__func__, error);
 
     // Run the chunks scanner to ensure new chunks are registered in the persistent
     // store of the Replication system and synchronized with the Qserv workers.
@@ -439,19 +441,23 @@ json HttpIngestModule::_deleteDatabase() {
     if (cssAccess->containsDb(database.name)) {
         cssAccess->dropDb(database.name);
     }
-    database::mysql::ConnectionHandler const h(qservMasterDbConnection("qservCssData"));
+    ConnectionHandler const h(qservMasterDbConnection("qservCssData"));
+    QueryGenerator const g(h.conn);
     h.conn->executeInOwnTransaction([&, func = __func__](decltype(h.conn) conn) {
-        conn->execute("DROP DATABASE IF EXISTS " + conn->sqlId(database.name));
+        bool const ifExists = true;
+        conn->execute(g.dropDb(database.name, ifExists));
         auto const emptyChunkListTable = css::DbInterfaceMySql::getEmptyChunksTableName(database.name);
-        conn->execute("DROP TABLE IF EXISTS " + conn->sqlId("qservCssData", emptyChunkListTable));
+        conn->execute(g.dropTable(g.id("qservCssData", emptyChunkListTable), ifExists));
         for (auto const tableName : directorTables) {
-            conn->execute("DROP TABLE IF EXISTS " +
-                          conn->sqlId("qservMeta", ::directorIndexTable(database.name, tableName)));
+            string const query =
+                    g.dropTable(g.id("qservMeta", ::directorIndexTable(database.name, tableName)), ifExists);
+            conn->execute(query);
         }
         for (auto const tableName : database.tables()) {
             try {
-                conn->execute("DROP TABLE IF EXISTS " +
-                              conn->sqlId("qservMeta", ::rowCountersTable(database.name, tableName)));
+                string const query = g.dropTable(
+                        g.id("qservMeta", ::rowCountersTable(database.name, tableName)), ifExists);
+                conn->execute(query);
             } catch (invalid_argument const& ex) {
                 // This exception may be thrown by the table name generator if
                 // it couldn't build a correct name due to MySQL limitations.
@@ -465,13 +471,13 @@ json HttpIngestModule::_deleteDatabase() {
     // as XROOTD "resources".
     // NOTE: Ignore any errors should any be reported by the job.
     string const noParentJobId;
-    auto const dasableDbJob =
+    auto const disableDbJob =
             SqlDisableDbJob::create(database.name, allWorkers, controller(), noParentJobId, nullptr,
                                     config->get<int>("controller", "catalog-management-priority-level"));
-    dasableDbJob->start();
-    logJobStartedEvent(SqlDisableDbJob::typeName(), dasableDbJob, database.family);
-    dasableDbJob->wait();
-    logJobFinishedEvent(SqlDisableDbJob::typeName(), dasableDbJob, database.family);
+    disableDbJob->start();
+    logJobStartedEvent(SqlDisableDbJob::typeName(), disableDbJob, database.family);
+    disableDbJob->wait();
+    logJobFinishedEvent(SqlDisableDbJob::typeName(), disableDbJob, database.family);
 
     // Delete database entries at workers
     auto const deleteDbJob =
@@ -483,7 +489,7 @@ json HttpIngestModule::_deleteDatabase() {
     logJobFinishedEvent(SqlDeleteDbJob::typeName(), deleteDbJob, database.family);
 
     string error = ::jobCompletionErrorIfAny(deleteDbJob, "database deletion failed");
-    if (not error.empty()) throw HttpError(__func__, error);
+    if (!error.empty()) throw HttpError(__func__, error);
 
     // Remove database entry from the Configuration. This will also eliminate all
     // dependent metadata, such as replicas info
@@ -492,7 +498,7 @@ json HttpIngestModule::_deleteDatabase() {
     // This step is needed to get workers' Configuration in-sync with its
     // persistent state.
     error = reconfigureWorkers(database, allWorkers, workerReconfigTimeoutSec());
-    if (not error.empty()) throw HttpError(__func__, error);
+    if (!error.empty()) throw HttpError(__func__, error);
 
     return json::object();
 }
@@ -580,6 +586,7 @@ json HttpIngestModule::_addTable() {
             throw HttpError(__func__, msg);
         }
         string colType = column["type"];
+
         if (_partitionByColumn == colName) {
             string const msg = "reserved column '" + _partitionByColumn + "' is not allowed";
             throw HttpError(__func__, msg);
@@ -626,7 +633,7 @@ json HttpIngestModule::_addTable() {
 
         string const error =
                 ::jobCompletionErrorIfAny(job, "table creation failed for: '" + thisTableName + "'");
-        if (not error.empty()) throw HttpError(__func__, error);
+        if (!error.empty()) throw HttpError(__func__, error);
     }
 
     // Create the secondary index table using an updated version of
@@ -643,7 +650,7 @@ json HttpIngestModule::_addTable() {
     // This step is needed to get workers' Configuration in-sync with its
     // persistent state.
     string const error = reconfigureWorkers(database, allWorkers, workerReconfigTimeoutSec());
-    if (not error.empty()) throw HttpError(__func__, error);
+    if (!error.empty()) throw HttpError(__func__, error);
 
     return result;
 }
@@ -684,19 +691,23 @@ json HttpIngestModule::_deleteTable() {
         ;
     }
 
-    database::mysql::ConnectionHandler const h(qservMasterDbConnection("qservCssData"));
+    ConnectionHandler const h(qservMasterDbConnection("qservCssData"));
+    QueryGenerator const g(h.conn);
     h.conn->executeInOwnTransaction([&, func = __func__](decltype(h.conn) conn) {
         // Remove table entry from czar's MySQL
-        conn->execute("DROP TABLE IF EXISTS " + conn->sqlId(database.name, table.name));
+        bool const ifExists = true;
+        conn->execute(g.dropTable(g.id(database.name, table.name), ifExists));
         // Remove the director index (if any)
         if (table.isDirector) {
-            conn->execute("DROP TABLE IF EXISTS " +
-                          conn->sqlId("qservMeta", ::directorIndexTable(database.name, table.name)));
+            string const query =
+                    g.dropTable(g.id("qservMeta", ::directorIndexTable(database.name, table.name)), ifExists);
+            conn->execute(query);
         }
         // Remove the row counters table (if any)
         try {
-            conn->execute("DROP TABLE IF EXISTS " +
-                          conn->sqlId("qservMeta", ::rowCountersTable(database.name, table.name)));
+            string const query =
+                    g.dropTable(g.id("qservMeta", ::rowCountersTable(database.name, table.name)), ifExists);
+            conn->execute(query);
         } catch (invalid_argument const& ex) {
             // This exception may be thrown by the table name generator if
             // it couldn't build a correct name due to MySQL limitations.
@@ -715,7 +726,7 @@ json HttpIngestModule::_deleteTable() {
     logJobFinishedEvent(SqlDeleteTableJob::typeName(), job, database.family);
 
     string error = ::jobCompletionErrorIfAny(job, "table deletion failed");
-    if (not error.empty()) throw HttpError(__func__, error);
+    if (!error.empty()) throw HttpError(__func__, error);
 
     // Remove table entry from the Configuration. This will also eliminate all
     // dependent metadata, such as replicas info
@@ -724,7 +735,7 @@ json HttpIngestModule::_deleteTable() {
     // This step is needed to get workers' Configuration in-sync with its
     // persistent state.
     error = reconfigureWorkers(database, allWorkers, workerReconfigTimeoutSec());
-    if (not error.empty()) throw HttpError(__func__, error);
+    if (!error.empty()) throw HttpError(__func__, error);
 
     return json::object();
 }
@@ -887,29 +898,29 @@ json HttpIngestModule::_scanTableStatsImpl(string const& databaseName, string co
         // Load counters into Qserv after removing all previous entries
         // for the table to ensure the clean state.
         try {
-            database::mysql::ConnectionHandler const h(qservMasterDbConnection("qservMeta"));
-            string const sqlCreateRowCountersTable =
-                    "CREATE TABLE IF NOT EXISTS " +
-                    h.conn->sqlId(::rowCountersTable(database.name, table.name)) + " (" +
-                    h.conn->sqlId("chunk") + " INT UNSIGNED NOT NULL , " + h.conn->sqlId("num_rows") +
-                    " BIGINT UNSIGNED DEFAULT 0, "
-                    " UNIQUE KEY (" +
-                    h.conn->sqlId("chunk") +
-                    ")) "
-                    " ENGINE = InnoDB"
-                    " COMMENT = 'Row counters for the internal tables. The table is supposed to be populated "
-                    "by"
-                    " the ingest system when publishing the catalog, or afterwards by the table scanner.'";
-            string const sqlEmptyRowCountersTable =
-                    "DELETE FROM " + h.conn->sqlId(::rowCountersTable(database.name, table.name));
-            h.conn->executeInOwnTransaction([&](decltype(h.conn) conn) {
-                conn->execute(sqlCreateRowCountersTable);
-                conn->execute(sqlEmptyRowCountersTable);
-                for (auto&& itr : chunk2rows) {
-                    unsigned int const chunk = itr.first;
-                    size_t const numRows = itr.second;
-                    conn->execute(conn->sqlInsertQuery(::rowCountersTable(database.name, table.name), chunk,
-                                                       numRows));
+            ConnectionHandler const h(qservMasterDbConnection("qservMeta"));
+            QueryGenerator const g(h.conn);
+            string const countersTable = ::rowCountersTable(database.name, table.name);
+            bool ifNotExists = true;
+            list<SqlColDef> const columns = {SqlColDef{"chunk", "INT UNSIGNED NOT NULL"},
+                                             SqlColDef{"num_rows", "BIGINT UNSIGNED DEFAULT 0"}};
+            list<string> const keys = {g.packTableKey("UNIQUE KEY", "", "chunk")};
+            string const engine = "InnoDB";
+            string const comment =
+                    "Row counters for the internal tables."
+                    " The table is supposed to be populated by the ingest system when"
+                    " publishing the catalog, or afterwards by the table scanner.";
+            vector<string> queries;
+            queries.emplace_back(g.createTable(countersTable, ifNotExists, columns, keys, engine, comment));
+            queries.emplace_back(g.delete_(countersTable));
+            for (auto&& itr : chunk2rows) {
+                unsigned int const chunk = itr.first;
+                size_t const numRows = itr.second;
+                queries.emplace_back(g.insert(countersTable, chunk, numRows));
+            }
+            h.conn->executeInOwnTransaction([&queries](decltype(h.conn) conn) {
+                for (auto&& query : queries) {
+                    conn->execute(query);
                 }
             });
         } catch (exception const& ex) {
@@ -933,11 +944,11 @@ json HttpIngestModule::_deleteTableStats() {
     debug(__func__, "overlap_selector=" + overlapSelector2str(overlapSelector));
 
     try {
-        database::mysql::ConnectionHandler const h(qservMasterDbConnection("qservMeta"));
-        h.conn->executeInOwnTransaction([&table](decltype(h.conn) conn) {
-            conn->execute("DROP TABLE IF EXISTS " +
-                          conn->sqlId(::rowCountersTable(table.database, table.name)));
-        });
+        ConnectionHandler const h(qservMasterDbConnection("qservMeta"));
+        QueryGenerator const g(h.conn);
+        bool const ifExists = true;
+        string const query = g.dropTable(::rowCountersTable(table.database, table.name), ifExists);
+        h.conn->executeInOwnTransaction([&query](decltype(h.conn) conn) { conn->execute(query); });
     } catch (exception const& ex) {
         string const msg = "Failed to delete metadata table with counters for table '" + table.name +
                            "' of database '" + table.database + "' from Qserv, ex: " + string(ex.what());
@@ -1024,7 +1035,7 @@ void HttpIngestModule::_grantDatabaseAccess(DatabaseInfo const& database, bool a
     logJobFinishedEvent(SqlGrantAccessJob::typeName(), job, database.family);
 
     string const error = ::jobCompletionErrorIfAny(job, "grant access to a database failed");
-    if (not error.empty()) throw HttpError(__func__, error);
+    if (!error.empty()) throw HttpError(__func__, error);
 }
 
 void HttpIngestModule::_enableDatabase(DatabaseInfo const& database, bool allWorkers) const {
@@ -1040,7 +1051,7 @@ void HttpIngestModule::_enableDatabase(DatabaseInfo const& database, bool allWor
     logJobFinishedEvent(SqlEnableDbJob::typeName(), job, database.family);
 
     string const error = ::jobCompletionErrorIfAny(job, "enabling database failed");
-    if (not error.empty()) throw HttpError(__func__, error);
+    if (!error.empty()) throw HttpError(__func__, error);
 }
 
 void HttpIngestModule::_createMissingChunkTables(DatabaseInfo const& database, bool allWorkers) const {
@@ -1067,7 +1078,7 @@ void HttpIngestModule::_createMissingChunkTables(DatabaseInfo const& database, b
 
         string const error =
                 ::jobCompletionErrorIfAny(job, "table creation failed for: '" + table.name + "'");
-        if (not error.empty()) throw HttpError(__func__, error);
+        if (!error.empty()) throw HttpError(__func__, error);
     }
 }
 
@@ -1095,7 +1106,7 @@ void HttpIngestModule::_removeMySQLPartitions(DatabaseInfo const& database, bool
         error += ::jobCompletionErrorIfAny(job, "MySQL partitions removal failed for database: " +
                                                         database.name + ", table: " + table.name);
     }
-    if (not error.empty()) throw HttpError(__func__, error);
+    if (!error.empty()) throw HttpError(__func__, error);
 }
 
 void HttpIngestModule::_publishDatabaseInMaster(DatabaseInfo const& database) const {
@@ -1106,38 +1117,28 @@ void HttpIngestModule::_publishDatabaseInMaster(DatabaseInfo const& database) co
     // Manage the new connection via the RAII-style handler to ensure the transaction
     // is automatically rolled-back in case of exceptions.
     {
-        database::mysql::ConnectionHandler const h(qservMasterDbConnection("qservMeta"));
+        ConnectionHandler const h(qservMasterDbConnection("qservMeta"));
+        QueryGenerator const g(h.conn);
 
         // SQL statements to be executed
         vector<string> statements;
 
         // Statements for creating the database & table entries
-        statements.push_back("CREATE DATABASE IF NOT EXISTS " + h.conn->sqlId(database.name));
+        bool const ifNotExists = true;
+        statements.push_back(g.createDb(database.name, ifNotExists));
         for (auto const& tableName : database.tables()) {
             auto const& table = database.findTable(tableName);
             // Skip tables that have been published.
             if (table.isPublished) continue;
-            string sql = "CREATE TABLE IF NOT EXISTS " + h.conn->sqlId(database.name) + "." +
-                         h.conn->sqlId(table.name) + " (";
-            bool first = true;
-            for (auto const& column : table.columns) {
-                if (first) {
-                    first = false;
-                } else {
-                    sql += ",";
-                }
-                sql += h.conn->sqlId(column.name) + " " + column.type;
-            }
-            sql += ") ENGINE=InnoDB";
-            statements.push_back(sql);
+            string const query = g.createTable(table.database, table.name, ifNotExists, table.columns);
+            statements.push_back(query);
         }
 
-        // Statements for granting SELECT authorizations for the new database
-        // to the Qserv account.
-        statements.push_back("GRANT ALL ON " + h.conn->sqlId(database.name) + ".* TO " +
-                             h.conn->sqlValue(config->get<string>("database", "qserv-master-user")) + "@" +
-                             h.conn->sqlValue("localhost"));
-
+        // Statements for granting SELECT authorizations on all tables of
+        // the new database to the configured Qserv account.
+        string const query = g.grant("ALL", database.name,
+                                     config->get<string>("database", "qserv-master-user"), "localhost");
+        statements.push_back(query);
         h.conn->executeInOwnTransaction([&statements](decltype(h.conn) conn) {
             for (auto const& query : statements) {
                 conn->execute(query);
@@ -1147,7 +1148,7 @@ void HttpIngestModule::_publishDatabaseInMaster(DatabaseInfo const& database) co
 
     // Register the database, tables and the partitioning scheme at CSS
     auto const cssAccess = qservCssAccess();
-    if (not cssAccess->containsDb(database.name)) {
+    if (!cssAccess->containsDb(database.name)) {
         // First, try to find another database within the same family which
         // has already been published, and the one is found then use it
         // as a template when registering the database in CSS.
@@ -1253,14 +1254,18 @@ json HttpIngestModule::_buildEmptyChunksListImpl(string const& databaseName, boo
     }
 
     if (tableImpl) {
-        database::mysql::ConnectionHandler const h(qservMasterDbConnection("qservCssData"));
+        ConnectionHandler const h(qservMasterDbConnection("qservCssData"));
+        QueryGenerator const g(h.conn);
         string const tableName = css::DbInterfaceMySql::getEmptyChunksTableName(database.name);
         vector<string> statements;
-        if (force) statements.push_back("DROP TABLE IF EXISTS " + h.conn->sqlId(tableName));
+        if (force) {
+            bool const ifExists = true;
+            statements.push_back(g.dropTable(tableName, ifExists));
+        }
         statements.push_back(css::DbInterfaceMySql::getEmptyChunksSchema(database.name));
         for (auto&& chunk : allChunks) {
-            if (not ingestedChunks.count(chunk)) {
-                statements.push_back(h.conn->sqlInsertQuery(tableName, chunk));
+            if (!ingestedChunks.count(chunk)) {
+                statements.push_back(g.insert(tableName, chunk));
             }
         }
         h.conn->executeInOwnTransaction([&statements](decltype(h.conn) conn) {
@@ -1272,7 +1277,7 @@ json HttpIngestModule::_buildEmptyChunksListImpl(string const& databaseName, boo
         auto const file = "empty_" + database.name + ".txt";
         auto const filePath = fs::path(config->get<string>("controller", "empty-chunks-dir")) / file;
 
-        if (not force) {
+        if (!force) {
             boost::system::error_code ec;
             fs::file_status const stat = fs::status(filePath, ec);
             if (stat.type() == fs::status_error) {
@@ -1285,11 +1290,11 @@ json HttpIngestModule::_buildEmptyChunksListImpl(string const& databaseName, boo
 
         debug(__func__, "creating/opening file: " + filePath.string());
         ofstream ofs(filePath.string());
-        if (not ofs.good()) {
+        if (!ofs.good()) {
             throw runtime_error("failed to create/open file: " + filePath.string());
         }
         for (auto&& chunk : allChunks) {
-            if (not ingestedChunks.count(chunk)) {
+            if (!ingestedChunks.count(chunk)) {
                 ofs << chunk << "\n";
             }
         }
@@ -1335,29 +1340,26 @@ void HttpIngestModule::_createSecondaryIndex(DatabaseInfo const& database,
 
     // Manage the new connection via the RAII-style handler to ensure the transaction
     // is automatically rolled-back in case of exceptions.
-    database::mysql::ConnectionHandler const h(qservMasterDbConnection("qservMeta"));
-    vector<string> queries;
-    queries.push_back("DROP TABLE IF EXISTS " +
-                      h.conn->sqlId(::directorIndexTable(database.name, table.name)));
-    queries.push_back(
-            "CREATE TABLE IF NOT EXISTS " + h.conn->sqlId(::directorIndexTable(database.name, table.name)) +
-            " (" + h.conn->sqlId(_partitionByColumn) + " " + _partitionByColumnType + "," +
-            h.conn->sqlId(table.directorTable.primaryKeyColumn()) + " " + primaryKeyColumnType + "," +
-            h.conn->sqlId(lsst::qserv::CHUNK_COLUMN) + " " + chunkIdColNameType + "," +
-            h.conn->sqlId(lsst::qserv::SUB_CHUNK_COLUMN) + " " + subChunkIdColNameType +
-            ","
-            " UNIQUE KEY (" +
-            h.conn->sqlId(_partitionByColumn) + "," + h.conn->sqlId(table.directorTable.primaryKeyColumn()) +
-            "),"
-            " KEY (" +
-            h.conn->sqlId(table.directorTable.primaryKeyColumn()) +
-            ")"
-            ") ENGINE=InnoDB PARTITION BY LIST (" +
-            h.conn->sqlId(_partitionByColumn) + ") (PARTITION `p0` VALUES IN (0) ENGINE=InnoDB)");
-    h.conn->executeInOwnTransaction([&queries](decltype(h.conn) conn) {
-        for (auto&& query : queries) {
-            conn->execute(query);
-        }
+    ConnectionHandler const h(qservMasterDbConnection("qservMeta"));
+    QueryGenerator const g(h.conn);
+    bool const ifExists = true;
+    string const dropTableQuery = g.dropTable(::directorIndexTable(database.name, table.name), ifExists);
+    bool const ifNotExists = true;
+    list<SqlColDef> const columns = {SqlColDef{_partitionByColumn, _partitionByColumnType},
+                                     SqlColDef{table.directorTable.primaryKeyColumn(), primaryKeyColumnType},
+                                     SqlColDef{lsst::qserv::CHUNK_COLUMN, chunkIdColNameType},
+                                     SqlColDef{lsst::qserv::SUB_CHUNK_COLUMN, subChunkIdColNameType}};
+    list<string> const keys = {
+            g.packTableKey("UNIQUE KEY", "", _partitionByColumn, table.directorTable.primaryKeyColumn()),
+            g.packTableKey("KEY", "", table.directorTable.primaryKeyColumn())};
+    string const engine = "InnoDB";
+    TransactionId const transactionId = 0;
+    string const createTableQuery = g.createTable(::directorIndexTable(database.name, table.name),
+                                                  ifNotExists, columns, keys, engine) +
+                                    g.partitionByList(_partitionByColumn) + g.partition(transactionId);
+    h.conn->executeInOwnTransaction([&dropTableQuery, &createTableQuery](decltype(h.conn) conn) {
+        conn->execute(dropTableQuery);
+        conn->execute(createTableQuery);
     });
 }
 
@@ -1371,10 +1373,10 @@ void HttpIngestModule::_consolidateSecondaryIndex(DatabaseInfo const& database,
 
     // Manage the new connection via the RAII-style handler to ensure the transaction
     // is automatically rolled-back in case of exceptions.
-    database::mysql::ConnectionHandler const h(qservMasterDbConnection("qservMeta"));
-    string const query = "ALTER TABLE " + h.conn->sqlId(::directorIndexTable(database.name, table.name)) +
-                         " REMOVE PARTITIONING";
-    debug(__func__, query);
+    ConnectionHandler const h(qservMasterDbConnection("qservMeta"));
+    QueryGenerator const g(h.conn);
+    string const query =
+            g.alterTable(::directorIndexTable(database.name, table.name)) + g.removePartitioning();
     h.conn->executeInOwnTransaction([&query](decltype(h.conn) conn) { conn->execute(query); });
 }
 

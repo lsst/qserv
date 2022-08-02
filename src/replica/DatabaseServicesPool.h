@@ -205,7 +205,7 @@ public:
     void saveTableRowStats(TableRowStats const& stats) final;
 
     void deleteTableRowStats(
-            std::string const& database, std::string const& table,
+            std::string const& databaseName, std::string const& tableName,
             ChunkOverlapSelector overlapSelector = ChunkOverlapSelector::CHUNK_AND_OVERLAP) final;
 
 private:

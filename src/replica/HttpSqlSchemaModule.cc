@@ -43,6 +43,8 @@ using json = nlohmann::json;
 
 namespace lsst::qserv::replica {
 
+using namespace database::mysql;
+
 void HttpSqlSchemaModule::process(Controller::Ptr const& controller, string const& taskName,
                                   HttpProcessorConfig const& processorConfig, qhttp::Request::Ptr const& req,
                                   qhttp::Response::Ptr const& resp, string const& subModuleName,
@@ -81,12 +83,13 @@ json HttpSqlSchemaModule::_getTableSchema() {
     json schemaJson;
     if (database.isPublished) {
         // Extract schema from czar's MySQL database.
-        database::mysql::ConnectionHandler const h(qservMasterDbConnection(database.name));
-        h.conn->executeInOwnTransaction([&database, &table, &schemaJson](decltype(h.conn) const& conn) {
-            conn->execute("SELECT * FROM " + conn->sqlId("information_schema", "columns") + " WHERE " +
-                          conn->sqlEqual("TABLE_SCHEMA", database.name) + "   AND " +
-                          conn->sqlEqual("TABLE_NAME", table.name));
-            database::mysql::Row row;
+        ConnectionHandler const h(qservMasterDbConnection(database.name));
+        QueryGenerator const g(h.conn);
+        string const query = g.select(Sql::STAR) + g.from(g.id("information_schema", "columns")) +
+                             g.where(g.eq("TABLE_SCHEMA", database.name), g.eq("TABLE_NAME", table.name));
+        h.conn->executeInOwnTransaction([&query, &schemaJson](decltype(h.conn) const& conn) {
+            conn->execute(query);
+            Row row;
             while (conn->next(row)) {
                 size_t precision;
                 bool const hasPrecision = row.get("NUMERIC_PRECISION", precision);
@@ -149,18 +152,18 @@ json HttpSqlSchemaModule::_alterTableSchema() {
 
     // Update table definition at Qserv master database. Note this step will
     // also validate the query.
-    database::mysql::ConnectionHandler const h(qservMasterDbConnection(database.name));
-    h.conn->executeInOwnTransaction([&](decltype(h.conn) const& conn) {
-        conn->execute("ALTER TABLE " + conn->sqlId(database.name, table.name) + " " + spec);
-    });
+    ConnectionHandler const h(qservMasterDbConnection(database.name));
+    QueryGenerator const g(h.conn);
+    string query = g.alterTable(g.id(database.name, table.name), spec);
+    h.conn->executeInOwnTransaction([&query](decltype(h.conn) const& conn) { conn->execute(query); });
 
     // Update CSS based on the new table schema at the Qserv master database
     string newCssTableSchema;
-    h.conn->executeInOwnTransaction([&](decltype(h.conn) const& conn) {
-        conn->execute("SELECT * FROM " + conn->sqlId("information_schema", "columns") + " WHERE " +
-                      conn->sqlEqual("TABLE_SCHEMA", database.name) + "   AND " +
-                      conn->sqlEqual("TABLE_NAME", table.name));
-        database::mysql::Row row;
+    query = g.select(Sql::STAR) + g.from(g.id("information_schema", "columns")) +
+            g.where(g.eq("TABLE_SCHEMA", database.name), g.eq("TABLE_NAME", table.name));
+    h.conn->executeInOwnTransaction([&query, &newCssTableSchema, &g](decltype(h.conn) const& conn) {
+        conn->execute(query);
+        Row row;
         while (conn->next(row)) {
             if (!newCssTableSchema.empty()) newCssTableSchema += ",";
             // ATTENTION: in the current implementation of the Qserv Ingest System, default values
@@ -168,7 +171,7 @@ json HttpSqlSchemaModule::_alterTableSchema() {
             // are required to explicitly provide values for all fields or NULL. The only exception
             // allowed here is to either restrict teh values to be NULL or have NULL as the default
             // value.
-            newCssTableSchema += conn->sqlId(row.getAs<string>("COLUMN_NAME")) + " " +
+            newCssTableSchema += g.id(row.getAs<string>("COLUMN_NAME")).str + " " +
                                  row.getAs<string>("COLUMN_TYPE") +
                                  (row.getAs<string>("IS_NULLABLE") != "YES" ? " DEFAULT NULL" : " NOT NULL");
         }

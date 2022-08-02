@@ -204,7 +204,7 @@ public:
     void saveTableRowStats(TableRowStats const& stats) final;
 
     void deleteTableRowStats(
-            std::string const& database, std::string const& table,
+            std::string const& databaseName, std::string const& tableName,
             ChunkOverlapSelector overlapSelector = ChunkOverlapSelector::CHUNK_AND_OVERLAP) final;
 
 private:
@@ -327,8 +327,10 @@ private:
                              std::string const& parentJobId, uint64_t fromTimeStamp, uint64_t toTimeStamp,
                              size_t maxEntries);
 
-    std::vector<TransactionInfo> _transactions(std::string const& predicate, bool includeContext,
-                                               bool includeLog);
+    std::string _typeSelectorPredicate(TransactionContribInfo::TypeSelector typeSelector) const;
+
+    std::vector<TransactionInfo> _transactions(util::Lock const& lock, std::string const& predicate,
+                                               bool includeContext, bool includeLog);
 
     TransactionInfo _findTransactionImpl(util::Lock const& lock, std::string const& predicate,
                                          bool includeContext, bool includeLog);
@@ -336,7 +338,8 @@ private:
     std::vector<TransactionInfo> _findTransactionsImpl(util::Lock const& lock, std::string const& predicate,
                                                        bool includeContext, bool includeLog);
 
-    std::vector<TransactionContribInfo> _transactionContribs(std::string const& predicate);
+    std::vector<TransactionContribInfo> _transactionContribs(util::Lock const& lock,
+                                                             std::string const& predicate);
 
     TransactionContribInfo _transactionContribImpl(util::Lock const& lock, std::string const& predicate);
 
@@ -350,12 +353,24 @@ private:
     TableRowStats _tableRowStats(util::Lock const& lock, std::string const& database,
                                  std::string const& table, TransactionId transactionId);
 
+    /*
+     * The assert methods below will ensure that the specified entries exist
+     * in the Configuration. The methods will throw std::invalid_argument if
+     * the name of the entry is empty, or if it refers to non-existing entry.
+     */
+    void _assertDatabaseFamilyIsValid(std::string const& context, std::string const& familyName) const;
+    void _assertDatabaseIsValid(std::string const& context, std::string const& databaseName) const;
+    void _assertWorkerIsValid(std::string const& context, std::string const& workerName) const;
+
     // Input parameters
 
     Configuration::Ptr const _configuration;
 
     /// Database connection
     database::mysql::Connection::Ptr const _conn;
+
+    /// The query generator tied to the connector
+    database::mysql::QueryGenerator const _g;
 
     /// The mutex for enforcing thread safety of the class's public API
     /// and internal operations.

@@ -48,6 +48,7 @@ using namespace std;
 using json = nlohmann::json;
 using namespace lsst::qserv;
 using namespace lsst::qserv::replica;
+using namespace lsst::qserv::replica::database::mysql;
 
 namespace {
 
@@ -63,10 +64,9 @@ namespace {
  * or the value of the field is 'NULL'.
  */
 template <typename T>
-void parseFieldIntoJson(string const& context, database::mysql::Row const& row, string const& column,
-                        json& obj) {
+void parseFieldIntoJson(string const& context, Row const& row, string const& column, json& obj) {
     T val;
-    if (not row.get(column, val)) {
+    if (!row.get(column, val)) {
         throw invalid_argument(context + " no column '" + column + "' found in the result set");
     }
     obj[column] = val;
@@ -77,8 +77,8 @@ void parseFieldIntoJson(string const& context, database::mysql::Row const& row, 
  * 'NULL' found in a field with the specified default value.
  */
 template <typename T>
-void parseFieldIntoJson(string const& context, database::mysql::Row const& row, string const& column,
-                        json& obj, T const& defaultValue) {
+void parseFieldIntoJson(string const& context, Row const& row, string const& column, json& obj,
+                        T const& defaultValue) {
     if (row.isNull(column)) {
         obj[column] = defaultValue;
         return;
@@ -89,13 +89,13 @@ void parseFieldIntoJson(string const& context, database::mysql::Row const& row, 
 /**
  * Extract rows selected from table qservMeta.QInfo into a JSON object.
  */
-void extractQInfo(database::mysql::Connection::Ptr const& conn, json& result) {
-    if (not conn->hasResult()) return;
+void extractQInfo(Connection::Ptr const& conn, json& result) {
+    if (!conn->hasResult()) return;
 
-    database::mysql::Row row;
+    Row row;
     while (conn->next(row)) {
         QueryId queryId;
-        if (not row.get("queryId", queryId)) continue;
+        if (!row.get("queryId", queryId)) continue;
 
         string query, status, submitted, completed;
         row.get("query", query);
@@ -165,7 +165,7 @@ json HttpQservMonitorModule::_workers() {
         bool success = entry.second;
         if (success) {
             auto info = status.info.at(worker);
-            if (not keepResources) {
+            if (!keepResources) {
                 info["resources"] = json::array();
             }
             result["status"][worker]["success"] = 1;
@@ -278,8 +278,8 @@ json HttpQservMonitorModule::_userQueries() {
 
     // Connect to the master database. Manage the new connection via the RAII-style
     // handler to ensure the transaction is automatically rolled-back in case of exceptions.
-    database::mysql::ConnectionHandler const h(
-            database::mysql::Connection::open(Configuration::qservCzarDbParams("qservMeta")));
+    ConnectionHandler const h(Connection::open(Configuration::qservCzarDbParams("qservMeta")));
+    QueryGenerator const g(h.conn);
 
     // Get info on the ongoing queries
     json result;
@@ -287,30 +287,29 @@ json HttpQservMonitorModule::_userQueries() {
             [&](auto conn) { result["queries"] = _currentUserQueries(conn, queryId2scheduler); });
 
     // Get info on the past queries matching the specified criteria.
-    ostringstream constraint;
+    string constraints;
     if (queryStatus.empty()) {
-        constraint << h.conn->sqlNotEqual("status", "EXECUTING");
+        g.packCond(constraints, g.neq("status", "EXECUTING"));
     } else {
-        constraint << h.conn->sqlEqual("status", queryStatus);
+        g.packCond(constraints, g.eq("status", queryStatus));
     }
     if (!queryType.empty()) {
-        constraint << " AND " + h.conn->sqlEqual("qType", queryType);
+        g.packCond(constraints, g.eq("qType", queryType));
     }
     if (queryAgeSec > 0) {
-        constraint << "AND TIMESTAMPDIFF(SECOND," << h.conn->sqlId("submitted") << ",NOW()) > "
-                   << h.conn->sqlValue(queryAgeSec);
+        string const cond = g.gt(g.TIMESTAMPDIFF("SECOND", "submitted", Sql::NOW), queryAgeSec);
+        g.packCond(constraints, cond);
     }
     if (minElapsedSec > 0) {
-        constraint << " AND TIMESTAMPDIFF(SECOND," << h.conn->sqlId("submitted") << ","
-                   << h.conn->sqlId("completed") << ") > " << h.conn->sqlValue(minElapsedSec);
+        string const cond = g.gt(g.TIMESTAMPDIFF("SECOND", "submitted", "completed"), minElapsedSec);
+        g.packCond(constraints, cond);
     }
     if (!searchPattern.empty()) {
         string const mode = searchBooleanMode ? "BOOLEAN" : "NATURAL LANGUAGE";
-        constraint << " AND MATCH(" << h.conn->sqlId("query") << ") AGAINST("
-                   << h.conn->sqlValue(searchPattern) << " IN " << mode << " MODE)";
+        g.packCond(constraints, g.matchAgainst("query", searchPattern, mode));
     }
     h.conn->executeInOwnTransaction([&](auto conn) {
-        result["queries_past"] = _pastUserQueries(conn, constraint.str(), limit4past, includeMessages);
+        result["queries_past"] = _pastUserQueries(conn, constraints, limit4past, includeMessages);
     });
     return result;
 }
@@ -329,40 +328,32 @@ json HttpQservMonitorModule::_userQuery() {
     // Manage the new connection via the RAII-style handler to ensure the transaction
     // is automatically rolled-back in case of exceptions.
 
-    database::mysql::ConnectionHandler const h(
-            database::mysql::Connection::open(Configuration::qservCzarDbParams("qservMeta")));
+    ConnectionHandler const h(Connection::open(Configuration::qservCzarDbParams("qservMeta")));
+    QueryGenerator const g(h.conn);
 
     h.conn->executeInOwnTransaction([&](auto conn) {
         unsigned int const limit4past = 0;
         result["queries_past"] =
-                _pastUserQueries(conn, conn->sqlEqual("queryId", queryId), limit4past, includeMessages);
+                _pastUserQueries(conn, g.eq("queryId", queryId), limit4past, includeMessages);
     });
     return result;
 }
 
-json HttpQservMonitorModule::_currentUserQueries(database::mysql::Connection::Ptr& conn,
+json HttpQservMonitorModule::_currentUserQueries(Connection::Ptr& conn,
                                                  map<QueryId, string> const& queryId2scheduler) {
-    conn->execute("SELECT " + conn->sqlId("QStatsTmp") +
-                  ".*,"
-                  "UNIX_TIMESTAMP(" +
-                  conn->sqlId("queryBegin") + ") AS " + conn->sqlId("queryBegin_sec") +
-                  ","
-                  "UNIX_TIMESTAMP(" +
-                  conn->sqlId("lastUpdate") + ") AS " + conn->sqlId("lastUpdate_sec") +
-                  ","
-                  "NOW() AS " +
-                  conn->sqlId("samplingTime") +
-                  ","
-                  "UNIX_TIMESTAMP(NOW()) AS " +
-                  conn->sqlId("samplingTime_sec") + "," + conn->sqlId("QInfo") + "." + conn->sqlId("query") +
-                  " FROM " + conn->sqlId("QStatsTmp") + "," + conn->sqlId("QInfo") + " WHERE " +
-                  conn->sqlId("QStatsTmp") + "." + conn->sqlId("queryId") + "=" + conn->sqlId("QInfo") + "." +
-                  conn->sqlId("queryId") + " ORDER BY " + conn->sqlId("QStatsTmp") + "." +
-                  conn->sqlId("queryBegin") + " DESC");
+    QueryGenerator const g(conn);
+    string const query =
+            g.select(g.id("QStatsTmp", Sql::STAR), g.as(g.UNIX_TIMESTAMP("queryBegin"), "queryBegin_sec"),
+                     g.as(g.UNIX_TIMESTAMP("lastUpdate"), "lastUpdate_sec"), g.as(Sql::NOW, "samplingTime"),
+                     g.as(g.UNIX_TIMESTAMP(Sql::NOW), "samplingTime_sec"), g.id("QInfo", "query")) +
+            g.from("QStatsTmp", "QInfo") +
+            g.where(g.eq(g.id("QStatsTmp", "queryId"), g.id("QInfo", "queryId"))) +
+            g.orderBy(make_pair(g.id("QStatsTmp", "queryBegin"), "DESC"));
+    conn->execute(query);
 
     json result = json::array();
     if (conn->hasResult()) {
-        database::mysql::Row row;
+        Row row;
         while (conn->next(row)) {
             json resultRow;
             ::parseFieldIntoJson<QueryId>(__func__, row, "queryId", resultRow);
@@ -390,22 +381,19 @@ json HttpQservMonitorModule::_currentUserQueries(database::mysql::Connection::Pt
     return result;
 }
 
-json HttpQservMonitorModule::_pastUserQueries(database::mysql::Connection::Ptr& conn,
-                                              string const& constraint, unsigned int limit4past,
-                                              bool includeMessages) {
+json HttpQservMonitorModule::_pastUserQueries(Connection::Ptr& conn, string const& constraint,
+                                              unsigned int limit4past, bool includeMessages) {
     json result = json::array();
-    conn->execute(
-            "SELECT *,"
-            "UNIX_TIMESTAMP(" +
-            conn->sqlId("submitted") + ") AS " + conn->sqlId("submitted_sec") + "," + "UNIX_TIMESTAMP(" +
-            conn->sqlId("completed") + ") AS " + conn->sqlId("completed_sec") +
-            ","
-            "UNIX_TIMESTAMP(" +
-            conn->sqlId("returned") + ") AS " + conn->sqlId("returned_sec") + " FROM " +
-            conn->sqlId("QInfo") + " WHERE " + constraint + " ORDER BY " + conn->sqlId("submitted") +
-            " DESC" + (limit4past == 0 ? "" : " LIMIT " + to_string(limit4past)));
+    QueryGenerator const g(conn);
+    string const query = g.select(Sql::STAR, g.as(g.UNIX_TIMESTAMP("submitted"), "submitted_sec"),
+                                  g.as(g.UNIX_TIMESTAMP("completed"), "completed_sec"),
+                                  g.as(g.UNIX_TIMESTAMP("returned"), "returned_sec")) +
+                         g.from("QInfo") + g.where(constraint) + g.orderBy(make_pair("submitted", "DESC")) +
+                         g.limit(limit4past);
+
+    conn->execute(query);
     if (conn->hasResult()) {
-        database::mysql::Row row;
+        Row row;
         while (conn->next(row)) {
             json resultRow;
             ::parseFieldIntoJson<QueryId>(__func__, row, "queryId", resultRow);
@@ -433,9 +421,10 @@ json HttpQservMonitorModule::_pastUserQueries(database::mysql::Connection::Ptr& 
         }
         if (includeMessages) {
             for (auto& queryInfo : result) {
-                conn->execute("SELECT * FROM " + conn->sqlId("QMessages") + " WHERE " +
-                              conn->sqlEqual("queryId", queryInfo["queryId"].get<QueryId>()) + " ORDER BY " +
-                              conn->sqlId("timestamp") + " ASC");
+                string const query = g.select(Sql::STAR) + g.from("QMessages") +
+                                     g.where(g.eq("queryId", queryInfo["queryId"].get<QueryId>())) +
+                                     g.orderBy(make_pair("timestamp", "ASC"));
+                conn->execute(query);
                 if (conn->hasResult()) {
                     while (conn->next(row)) {
                         json resultRow;
@@ -469,18 +458,16 @@ json HttpQservMonitorModule::_getQueries(json& workerInfo) const {
     // is automatically rolled-back in case of exceptions.
 
     auto const config = controller()->serviceProvider()->config();
-    database::mysql::ConnectionHandler const h(
-            database::mysql::Connection::open(Configuration::qservCzarDbParams("qservMeta")));
+    ConnectionHandler const h(Connection::open(Configuration::qservCzarDbParams("qservMeta")));
+    QueryGenerator const g(h.conn);
 
     // Extract descriptions of those queries from qservMeta
     json result;
-    if (not qids.empty()) {
-        h.conn->execute([&](decltype(h.conn) conn) {
-            conn->begin();
-            conn->execute("SELECT * FROM " + h.conn->sqlId("QInfo") + " WHERE " +
-                          h.conn->sqlIn("queryId", qids));
+    if (!qids.empty()) {
+        string const query = g.select(Sql::STAR) + g.from("QInfo") + g.where(g.in("queryId", qids));
+        h.conn->executeInOwnTransaction([&](decltype(h.conn) conn) {
+            conn->execute(query);
             ::extractQInfo(conn, result);
-            conn->commit();
         });
     }
     return result;

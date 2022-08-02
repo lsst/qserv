@@ -30,6 +30,7 @@
 
 // Qserv headers
 #include "replica/Common.h"
+#include "replica/Csv.h"
 #include "replica/Configuration.h"
 #include "replica/protocol.pb.h"
 #include "replica/ProtocolBuffer.h"
@@ -190,7 +191,7 @@ private:
     std::string _table;
     unsigned int _chunk = 0;
     bool _isOverlap = false;
-    char _columnSeparator = ',';
+    csv::Dialect _dialect;
 
     /// The database descriptor and the state of the table are set after receiving
     /// and validating a handshake message from a client.

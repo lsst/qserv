@@ -56,7 +56,6 @@
 // Qserv headers
 #include "replica/Common.h"
 #include "replica/DatabaseMySQLExceptions.h"
-#include "replica/DatabaseMySQLGenerator.h"
 #include "replica/DatabaseMySQLRow.h"
 #include "replica/DatabaseMySQLTypes.h"
 #include "util/Mutex.h"
@@ -72,7 +71,7 @@ namespace lsst::qserv::replica::database::mysql {
 /**
  * Class Connection provides the main API to the database.
  */
-class Connection : public QueryGenerator, public std::enable_shared_from_this<Connection> {
+class Connection : public std::enable_shared_from_this<Connection> {
 public:
     typedef std::shared_ptr<Connection> Ptr;
 
@@ -178,11 +177,7 @@ public:
 
     virtual ~Connection();
 
-    /// @see QueryGenerator::escape()
-    virtual std::string escape(std::string const& str) const final;
-
-    /// @return The query generator object initialized with the current connection.
-    QueryGenerator queryGenerator() { return QueryGenerator(shared_from_this()); }
+    std::string escape(std::string const& str) const;
 
     ConnectionParams const& connectionParams() const { return _connectionParams; }
 

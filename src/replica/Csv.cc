@@ -100,11 +100,12 @@ Dialect::Dialect(DialectInput const& dialectInput)
           _linesTerminatedBy(::parseParam("linesTerminatedBy", dialectInput.linesTerminatedBy,
                                           allowedLinesTerminatedBy)) {}
 
-string Dialect::sqlOptions() const {
-    string opt = "FIELDS TERMINATED BY '" + ::outTranslationMap.at(_fieldsTerminatedBy) + "'";
-    if ('\0' != _fieldsEnclosedBy) opt += " ENCLOSED BY '" + ::outTranslationMap.at(_fieldsEnclosedBy) + "'";
-    opt += " ESCAPED BY '" + ::outTranslationMap.at(_fieldsEscapedBy) + "'";
-    opt += " LINES TERMINATED BY '" + ::outTranslationMap.at(_linesTerminatedBy) + "'";
+string Dialect::sqlOptions(string const& quote) const {
+    string opt = "FIELDS TERMINATED BY " + quote + ::outTranslationMap.at(_fieldsTerminatedBy) + quote;
+    if ('\0' != _fieldsEnclosedBy)
+        opt += " ENCLOSED BY " + quote + ::outTranslationMap.at(_fieldsEnclosedBy) + quote;
+    opt += " ESCAPED BY " + quote + ::outTranslationMap.at(_fieldsEscapedBy) + quote;
+    opt += " LINES TERMINATED BY " + quote + ::outTranslationMap.at(_linesTerminatedBy) + quote;
     return opt;
 }
 

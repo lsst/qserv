@@ -353,10 +353,10 @@ void DatabaseServicesPool::saveTableRowStats(TableRowStats const& stats) {
     service()->saveTableRowStats(stats);
 }
 
-void DatabaseServicesPool::deleteTableRowStats(string const& database, string const& table,
+void DatabaseServicesPool::deleteTableRowStats(string const& databaseName, string const& tableName,
                                                ChunkOverlapSelector overlapSelector) {
     ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
-    service()->deleteTableRowStats(database, table, overlapSelector);
+    service()->deleteTableRowStats(databaseName, tableName, overlapSelector);
 }
 
 DatabaseServices::Ptr DatabaseServicesPool::_allocateService() {

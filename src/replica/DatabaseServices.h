@@ -1245,12 +1245,12 @@ public:
 
     /**
      * Delete statistics of a table.
-     * @param database The name of a database.
-     * @param table The name of a table.
+     * @param databaseName The name of a database.
+     * @param tableName The name of a table.
      * @param overlapSelector The optional flavor of a table (partitioned tables only).
      */
     virtual void deleteTableRowStats(
-            std::string const& database, std::string const& table,
+            std::string const& databaseName, std::string const& tableName,
             ChunkOverlapSelector overlapSelector = ChunkOverlapSelector::CHUNK_AND_OVERLAP) = 0;
 
 protected:

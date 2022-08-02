@@ -48,7 +48,6 @@
 using namespace std;
 using json = nlohmann::json;
 using namespace lsst::qserv::replica;
-
 namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.DatabaseServicesMySQL");
@@ -71,15 +70,17 @@ bool in(Request::ExtendedState val, vector<Request::ExtendedState> const& col) {
 
 namespace lsst::qserv::replica {
 
+using namespace database::mysql;
+
 DatabaseServicesMySQL::DatabaseServicesMySQL(Configuration::Ptr const& configuration)
         : DatabaseServices(),
           _configuration(configuration),
-          _conn(database::mysql::Connection::open(
-                  database::mysql::ConnectionParams(configuration->get<string>("database", "host"),
-                                                    configuration->get<uint16_t>("database", "port"),
-                                                    configuration->get<string>("database", "user"),
-                                                    configuration->get<string>("database", "password"),
-                                                    configuration->get<string>("database", "name")))) {}
+          _conn(Connection::open(ConnectionParams(configuration->get<string>("database", "host"),
+                                                  configuration->get<uint16_t>("database", "port"),
+                                                  configuration->get<string>("database", "user"),
+                                                  configuration->get<string>("database", "password"),
+                                                  configuration->get<string>("database", "name")))),
+          _g(_conn) {}
 
 void DatabaseServicesMySQL::saveState(ControllerIdentity const& identity, uint64_t startTime) {
     string const context = "DatabaseServicesMySQL::" + string(__func__) + "[Controller] ";
@@ -87,9 +88,8 @@ void DatabaseServicesMySQL::saveState(ControllerIdentity const& identity, uint64
 
     util::Lock lock(_mtx, context);
     try {
-        _conn->executeInOwnTransaction([&](decltype(_conn) conn) {
-            conn->executeInsertQuery("controller", identity.id, identity.host, identity.pid, startTime);
-        });
+        string const query = _g.insert("controller", identity.id, identity.host, identity.pid, startTime);
+        _conn->executeInOwnTransaction([&query](decltype(_conn) conn) { conn->execute(query); });
     } catch (database::mysql::ER_DUP_ENTRY_ const&) {
         LOGS(_log, LOG_LVL_ERROR, context << "the state is already in the database");
         throw logic_error(context + "the state is already in the database");
@@ -105,36 +105,35 @@ void DatabaseServicesMySQL::saveState(Job const& job) {
     string const context = "DatabaseServicesMySQL::" + string(__func__) + "[Job::" + job.type() + "] ";
     LOGS(_log, LOG_LVL_DEBUG, context);
 
+    util::Lock lock(_mtx, context);
+
     // The algorithm will first try the INSERT query into the base table.
     // If a row with the same primary key (Job id) already exists in the table
     // then the UPDATE query will be executed.
-    util::Lock lock(_mtx, context);
     try {
-        _conn->executeInsertOrUpdate(
-                [&](decltype(_conn) conn) {
-                    conn->executeInsertQuery(
-                            "job", job.id(), job.controller()->identity().id,
-                            conn->nullIfEmpty(job.parentJobId()), job.type(), Job::state2string(job.state()),
-                            Job::state2string(job.extendedState()), job.beginTime(), job.endTime(),
-                            PerformanceUtils::now() /* heartbeat */, job.priority());
-
-                    // Extended state (if any provided by a specific job class) is recorded
-                    // in a separate table.
-                    for (auto&& entry : job.extendedPersistentState()) {
-                        string const& param = entry.first;
-                        string const& value = entry.second;
-                        LOGS(_log, LOG_LVL_DEBUG,
-                             context << "extendedPersistentState: ('" << param << "','" << value << "')");
-                        conn->executeInsertQuery("job_ext", job.id(), param, value);
-                    }
-                },
-                [&](decltype(_conn) conn) {
-                    conn->executeSimpleUpdateQuery(
-                            "job", _conn->sqlEqual("id", job.id()),
-                            make_pair("state", Job::state2string(job.state())),
-                            make_pair("ext_state", Job::state2string(job.extendedState())),
-                            make_pair("begin_time", job.beginTime()), make_pair("end_time", job.endTime()));
-                });
+        auto const insert = [&](decltype(_conn) conn) {
+            auto const heartbeatTime = PerformanceUtils::now();
+            string const query = _g.insert(
+                    "job", job.id(), job.controller()->identity().id, _g.nullIfEmpty(job.parentJobId()),
+                    job.type(), Job::state2string(job.state()), Job::state2string(job.extendedState()),
+                    job.beginTime(), job.endTime(), heartbeatTime, job.priority());
+            conn->execute(query);
+            for (auto&& entry : job.extendedPersistentState()) {
+                string const& param = entry.first;
+                string const& value = entry.second;
+                string const query = _g.insert("job_ext", job.id(), param, value);
+                conn->execute(query);
+            }
+        };
+        auto const update = [&](decltype(_conn) conn) {
+            string const query = _g.update("job", make_pair("state", Job::state2string(job.state())),
+                                           make_pair("ext_state", Job::state2string(job.extendedState())),
+                                           make_pair("begin_time", job.beginTime()),
+                                           make_pair("end_time", job.endTime())) +
+                                 _g.where(_g.eq("id", job.id()));
+            conn->execute(query);
+        };
+        _conn->executeInsertOrUpdate(insert, update);
     } catch (database::mysql::Error const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context << "failed, exception: " << ex.what());
         throw;
@@ -145,13 +144,11 @@ void DatabaseServicesMySQL::saveState(Job const& job) {
 void DatabaseServicesMySQL::updateHeartbeatTime(Job const& job) {
     string const context = "DatabaseServicesMySQL::" + string(__func__) + "[Job::" + job.type() + "] ";
     LOGS(_log, LOG_LVL_DEBUG, context);
-
     util::Lock lock(_mtx, context);
     try {
-        _conn->executeInOwnTransaction([&](decltype(_conn) conn) {
-            conn->executeSimpleUpdateQuery("job", _conn->sqlEqual("id", job.id()),
-                                           make_pair("heartbeat_time", PerformanceUtils::now()));
-        });
+        string const query = _g.update("job", make_pair("heartbeat_time", PerformanceUtils::now())) +
+                             _g.where(_g.eq("id", job.id()));
+        _conn->executeInOwnTransaction([&query](decltype(_conn) conn) { conn->execute(query); });
     } catch (database::mysql::Error const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context << "failed, exception: " << ex.what());
         throw;
@@ -165,8 +162,6 @@ void DatabaseServicesMySQL::saveState(QservMgtRequest const& request, Performanc
             "DatabaseServicesMySQL::" + string(__func__) + "[QservMgtRequest::" + request.type() + "] ";
     LOGS(_log, LOG_LVL_DEBUG, context);
 
-    util::Lock lock(_mtx, context);
-
     // Requests which haven't started yet or the ones which aren't associated
     // with any job should be ignored.
     try {
@@ -180,42 +175,42 @@ void DatabaseServicesMySQL::saveState(QservMgtRequest const& request, Performanc
         return;
     }
 
+    util::Lock lock(_mtx, context);
+
     // The algorithm will first try the INSERT query into the base table.
     // If a row with the same primary key (QservMgtRequest id) already exists in the table
     // then the UPDATE query will be executed.
     try {
-        _conn->executeInsertOrUpdate(
-                [&](decltype(_conn) conn) {
-                    conn->executeInsertQuery(
-                            "request", request.id(), request.jobId(), request.type(), request.worker(), 0,
-                            QservMgtRequest::state2string(request.state()),
-                            QservMgtRequest::state2string(request.extendedState()), serverError,
-                            performance.c_create_time, performance.c_start_time, performance.w_receive_time,
-                            performance.w_start_time, performance.w_finish_time, performance.c_finish_time);
-
-                    // Extended state (if any provided by a specific request class) is recorded
-                    // in a separate table.
-                    for (auto&& entry : request.extendedPersistentState()) {
-                        string const& param = entry.first;
-                        string const& value = entry.second;
-                        LOGS(_log, LOG_LVL_DEBUG,
-                             context << "extendedPersistentState: ('" << param << "','" << value << "')");
-                        conn->executeInsertQuery("request_ext", request.id(), param, value);
-                    }
-                },
-                [&](decltype(_conn) conn) {
-                    conn->executeSimpleUpdateQuery(
-                            "request", _conn->sqlEqual("id", request.id()),
-                            make_pair("state", QservMgtRequest::state2string(request.state())),
-                            make_pair("ext_state", QservMgtRequest::state2string(request.extendedState())),
-                            make_pair("server_status", serverError),
-                            make_pair("c_create_time", performance.c_create_time),
-                            make_pair("c_start_time", performance.c_start_time),
-                            make_pair("w_receive_time", performance.w_receive_time),
-                            make_pair("w_start_time", performance.w_start_time),
-                            make_pair("w_finish_time", performance.w_finish_time),
-                            make_pair("c_finish_time", performance.c_finish_time));
-                });
+        auto const insert = [&](decltype(_conn) conn) {
+            string const query =
+                    _g.insert("request", request.id(), request.jobId(), request.type(), request.worker(), 0,
+                              QservMgtRequest::state2string(request.state()),
+                              QservMgtRequest::state2string(request.extendedState()), serverError,
+                              performance.c_create_time, performance.c_start_time, performance.w_receive_time,
+                              performance.w_start_time, performance.w_finish_time, performance.c_finish_time);
+            conn->execute(query);
+            for (auto&& entry : request.extendedPersistentState()) {
+                string const& param = entry.first;
+                string const& value = entry.second;
+                string const query = _g.insert("request_ext", request.id(), param, value);
+                conn->execute(query);
+            }
+        };
+        auto const update = [&](decltype(_conn) conn) {
+            string const query =
+                    _g.update("request", make_pair("state", QservMgtRequest::state2string(request.state())),
+                              make_pair("ext_state", QservMgtRequest::state2string(request.extendedState())),
+                              make_pair("server_status", serverError),
+                              make_pair("c_create_time", performance.c_create_time),
+                              make_pair("c_start_time", performance.c_start_time),
+                              make_pair("w_receive_time", performance.w_receive_time),
+                              make_pair("w_start_time", performance.w_start_time),
+                              make_pair("w_finish_time", performance.w_finish_time),
+                              make_pair("c_finish_time", performance.c_finish_time)) +
+                    _g.where(_g.eq("id", request.id()));
+            conn->execute(query);
+        };
+        _conn->executeInsertOrUpdate(insert, update);
     } catch (database::mysql::Error const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context << "failed, exception: " << ex.what());
         throw;
@@ -228,8 +223,6 @@ void DatabaseServicesMySQL::saveState(Request const& request, Performance const&
             "DatabaseServicesMySQL::" + string(__func__) + "[Request::" + request.type() + "] ";
     LOGS(_log, LOG_LVL_DEBUG, context);
 
-    util::Lock lock(_mtx, context);
-
     // Requests which haven't started yet or the ones which aren't associated
     // with any job should be ignored.
     try {
@@ -243,45 +236,43 @@ void DatabaseServicesMySQL::saveState(Request const& request, Performance const&
         return;
     }
 
+    util::Lock lock(_mtx, context);
+
     // The algorithm will first try the INSERT query into the base table.
     // If a row with the same primary key (QservMgtRequest id) already exists in the table
     // then the UPDATE query will be executed.
     try {
-        _conn->executeInsertOrUpdate(
-                [&](decltype(_conn) conn) {
-                    // The primary state of the request
-                    conn->executeInsertQuery(
-                            "request", request.id(), request.jobId(), request.type(), request.worker(),
-                            request.priority(), Request::state2string(request.state()),
-                            Request::state2string(request.extendedState()),
-                            status2string(request.extendedServerStatus()), performance.c_create_time,
-                            performance.c_start_time, performance.w_receive_time, performance.w_start_time,
-                            performance.w_finish_time, performance.c_finish_time);
-
-                    // Extended state (if any provided by a specific request class) is recorded
-                    // in a separate table.
-                    for (auto&& entry : request.extendedPersistentState()) {
-                        string const& param = entry.first;
-                        string const& value = entry.second;
-                        LOGS(_log, LOG_LVL_DEBUG,
-                             context << "extendedPersistentState: ('" << param << "','" << value << "')");
-                        conn->executeInsertQuery("request_ext", request.id(), param, value);
-                    }
-                },
-                [&](decltype(_conn) conn) {
-                    conn->executeSimpleUpdateQuery(
-                            "request", _conn->sqlEqual("id", request.id()),
-                            make_pair("state", Request::state2string(request.state())),
-                            make_pair("ext_state", Request::state2string(request.extendedState())),
-                            make_pair("server_status", status2string(request.extendedServerStatus())),
-                            make_pair("c_create_time", performance.c_create_time),
-                            make_pair("c_start_time", performance.c_start_time),
-                            make_pair("w_receive_time", performance.w_receive_time),
-                            make_pair("w_start_time", performance.w_start_time),
-                            make_pair("w_finish_time", performance.w_finish_time),
-                            make_pair("c_finish_time", performance.c_finish_time));
-                });
-
+        auto const insert = [&](decltype(_conn) conn) {
+            string const query =
+                    _g.insert("request", request.id(), request.jobId(), request.type(), request.worker(),
+                              request.priority(), Request::state2string(request.state()),
+                              Request::state2string(request.extendedState()),
+                              status2string(request.extendedServerStatus()), performance.c_create_time,
+                              performance.c_start_time, performance.w_receive_time, performance.w_start_time,
+                              performance.w_finish_time, performance.c_finish_time);
+            conn->execute(query);
+            for (auto&& entry : request.extendedPersistentState()) {
+                string const& param = entry.first;
+                string const& value = entry.second;
+                string const query = _g.insert("request_ext", request.id(), param, value);
+                conn->execute(query);
+            }
+        };
+        auto const update = [&](decltype(_conn) conn) {
+            string const query =
+                    _g.update("request", make_pair("state", Request::state2string(request.state())),
+                              make_pair("ext_state", Request::state2string(request.extendedState())),
+                              make_pair("server_status", status2string(request.extendedServerStatus())),
+                              make_pair("c_create_time", performance.c_create_time),
+                              make_pair("c_start_time", performance.c_start_time),
+                              make_pair("w_receive_time", performance.w_receive_time),
+                              make_pair("w_start_time", performance.w_start_time),
+                              make_pair("w_finish_time", performance.w_finish_time),
+                              make_pair("c_finish_time", performance.c_finish_time)) +
+                    _g.where(_g.eq("id", request.id()));
+            conn->execute(query);
+        };
+        _conn->executeInsertOrUpdate(insert, update);
     } catch (database::mysql::Error const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context << "failed, exception: " << ex.what());
         throw;
@@ -310,16 +301,15 @@ void DatabaseServicesMySQL::updateRequestState(Request const& request, string co
               Request::ExtendedState::SERVER_IN_PROGRESS, Request::ExtendedState::SERVER_IS_CANCELLING,
               Request::ExtendedState::SERVER_ERROR, Request::ExtendedState::SERVER_CANCELLED})) {
         try {
-            _conn->executeInOwnTransaction([&](decltype(_conn) conn) {
-                conn->executeSimpleUpdateQuery(
-                        "request", _conn->sqlEqual("id", targetRequestId),
-                        make_pair("state", Request::state2string(request.state())),
-                        make_pair("ext_state", Request::state2string(request.extendedState())),
-                        make_pair("server_status", status2string(request.extendedServerStatus())),
-                        make_pair("w_receive_time", targetRequestPerformance.w_receive_time),
-                        make_pair("w_start_time", targetRequestPerformance.w_start_time),
-                        make_pair("w_finish_time", targetRequestPerformance.w_finish_time));
-            });
+            string const query =
+                    _g.update("request", make_pair("state", Request::state2string(request.state())),
+                              make_pair("ext_state", Request::state2string(request.extendedState())),
+                              make_pair("server_status", status2string(request.extendedServerStatus())),
+                              make_pair("w_receive_time", targetRequestPerformance.w_receive_time),
+                              make_pair("w_start_time", targetRequestPerformance.w_start_time),
+                              make_pair("w_finish_time", targetRequestPerformance.w_finish_time)) +
+                    _g.where(_g.eq("id", targetRequestId));
+            _conn->executeInOwnTransaction([&query](decltype(_conn) conn) { conn->execute(query); });
         } catch (database::mysql::Error const& ex) {
             LOGS(_log, LOG_LVL_ERROR, context << "failed, exception: " << ex.what());
             throw;
@@ -332,11 +322,11 @@ void DatabaseServicesMySQL::saveReplicaInfo(ReplicaInfo const& info) {
     string const context = "DatabaseServicesMySQL::" + string(__func__) + " ";
     LOGS(_log, LOG_LVL_DEBUG, context);
 
-    util::Lock lock(_mtx, context);
-
     unsigned int maxReconnects = 0;  // pull the default value from the Configuration
     unsigned int timeoutSec = 0;     // pull the default value from the Configuration
     unsigned int maxRetriesOnDeadLock = 1;
+
+    util::Lock lock(_mtx, context);
     try {
         _conn->executeInOwnTransaction([&](decltype(_conn) conn) { _saveReplicaInfoImpl(lock, info); },
                                        maxReconnects, timeoutSec, maxRetriesOnDeadLock);
@@ -352,11 +342,14 @@ void DatabaseServicesMySQL::saveReplicaInfoCollection(string const& worker, stri
     string const context = "DatabaseServicesMySQL::" + string(__func__) + " ";
     LOGS(_log, LOG_LVL_DEBUG, context);
 
-    util::Lock lock(_mtx, context);
+    _assertWorkerIsValid(context, worker);
+    _assertDatabaseIsValid(context, database);
 
     unsigned int maxReconnects = 0;  // pull the default value from the Configuration
     unsigned int timeoutSec = 0;     // pull the default value from the Configuration
     unsigned int maxRetriesOnDeadLock = 1;
+
+    util::Lock lock(_mtx, context);
     try {
         _conn->executeInOwnTransaction(
                 [&](decltype(_conn) conn) {
@@ -375,23 +368,21 @@ void DatabaseServicesMySQL::_saveReplicaInfoImpl(util::Lock const& lock, Replica
     try {
         // Try inserting if the replica is complete. Delete otherwise.
         if (info.status() == ReplicaInfo::Status::COMPLETE) {
-            _conn->executeInsertQuery("replica",
-                                      database::mysql::Keyword::SQL_NULL, /* the auto-incremented PK */
-                                      info.worker(), info.database(), info.chunk(), info.verifyTime());
-
+            string const query = _g.insert("replica", Sql::NULL_, info.worker(), info.database(),
+                                           info.chunk(), info.verifyTime());
+            _conn->execute(query);
             for (auto&& f : info.fileInfo()) {
-                _conn->executeInsertQuery(
-                        "replica_file",
-                        database::mysql::Function::LAST_INSERT_ID, /* FK -> PK of the above insert row */
-                        f.name, f.size, f.mtime, f.cs, f.beginTransferTime, f.endTransferTime);
+                string const query = _g.insert("replica_file", Sql::LAST_INSERT_ID, f.name, f.size, f.mtime,
+                                               f.cs, f.beginTransferTime, f.endTransferTime);
+                _conn->execute(query);
             }
         } else {
             // This query will also cascade delete the relevant file entries
             // See details in the schema.
-            _conn->execute("DELETE FROM " + _conn->sqlId("replica") + "  WHERE " +
-                           _conn->sqlEqual("worker", info.worker()) + "    AND " +
-                           _conn->sqlEqual("database", info.database()) + "    AND " +
-                           _conn->sqlEqual("chunk", info.chunk()));
+            string const query = _g.delete_("replica") + _g.where(_g.eq("worker", info.worker()),
+                                                                  _g.eq("database", info.database()),
+                                                                  _g.eq("chunk", info.chunk()));
+            _conn->execute(query);
         }
 
     } catch (database::mysql::ER_DUP_ENTRY_ const&) {
@@ -408,13 +399,6 @@ void DatabaseServicesMySQL::_saveReplicaInfoCollectionImpl(
     LOGS(_log, LOG_LVL_DEBUG,
          context << "worker: " << worker << " database: " << database
                  << " num.replicas: " << newReplicaInfoCollection.size());
-
-    if (worker.empty()) {
-        throw invalid_argument(worker + "worker name can't be empty");
-    }
-    if (database.empty()) {
-        throw invalid_argument(context + "database name can't be empty");
-    }
 
     // Group new replicas by contexts
     LOGS(_log, LOG_LVL_DEBUG, context << "new replicas group: 1");
@@ -500,9 +484,14 @@ void DatabaseServicesMySQL::_saveReplicaInfoCollectionImpl(
 
 void DatabaseServicesMySQL::_deleteReplicaInfoImpl(util::Lock const& lock, string const& worker,
                                                    string const& database, unsigned int chunk) {
-    _conn->execute("DELETE FROM " + _conn->sqlId("replica") + "  WHERE " + _conn->sqlEqual("worker", worker) +
-                   "    AND " + _conn->sqlEqual("database", database) + "    AND " +
-                   _conn->sqlEqual("chunk", chunk));
+    string const context = "DatabaseServicesMySQL::" + string(__func__) + " ";
+
+    _assertWorkerIsValid(context, worker);
+    _assertDatabaseIsValid(context, database);
+
+    string const query = _g.delete_("replica") + _g.where(_g.eq("worker", worker),
+                                                          _g.eq("database", database), _g.eq("chunk", chunk));
+    _conn->execute(query);
 }
 
 void DatabaseServicesMySQL::findOldestReplicas(vector<ReplicaInfo>& replicas, size_t maxReplicas,
@@ -510,18 +499,17 @@ void DatabaseServicesMySQL::findOldestReplicas(vector<ReplicaInfo>& replicas, si
     string const context = "DatabaseServicesMySQL::" + string(__func__) + " ";
     LOGS(_log, LOG_LVL_DEBUG, context);
 
-    if (not maxReplicas) {
-        throw invalid_argument(context + "maxReplicas is not allowed to be 0");
-    }
+    if (maxReplicas == 0) throw invalid_argument(context + "maxReplicas is not allowed to be 0");
+
     util::Lock lock(_mtx, context);
     try {
         string const noSpecificFamily;
         auto const databases = _configuration->databases(noSpecificFamily, allDatabases, isPublished);
         string const query =
-                "SELECT * FROM " + _conn->sqlId("replica") + " WHERE " + _conn->sqlIn("database", databases) +
-                (enabledWorkersOnly ? "   AND " + _conn->sqlIn("worker", _configuration->workers(true))
-                                    : "") +
-                " ORDER BY " + _conn->sqlId("verify_time") + " ASC LIMIT " + to_string(maxReplicas);
+                _g.select(Sql::STAR) + _g.from("replica") +
+                _g.where(_g.in("database", databases),
+                         enabledWorkersOnly ? _g.in("worker", _configuration->workers(true)) : "") +
+                _g.orderBy(make_pair("verify_time", "ASC")) + _g.limit(maxReplicas);
         _conn->executeInOwnTransaction(
                 [&](decltype(_conn) conn) { _findReplicasImpl(lock, replicas, query); });
     } catch (exception const& ex) {
@@ -538,15 +526,14 @@ void DatabaseServicesMySQL::findReplicas(vector<ReplicaInfo>& replicas, unsigned
                            "  database=" + database + " ";
     LOGS(_log, LOG_LVL_DEBUG, context);
 
-    if (not _configuration->isKnownDatabase(database)) {
-        throw invalid_argument(context + "unknown database");
-    }
+    _assertDatabaseIsValid(context, database);
+
     util::Lock lock(_mtx, context);
     try {
         string const query =
-                "SELECT * FROM " + _conn->sqlId("replica") + "  WHERE " + _conn->sqlEqual("chunk", chunk) +
-                "    AND " + _conn->sqlEqual("database", database) +
-                (enabledWorkersOnly ? "   AND " + _conn->sqlIn("worker", _configuration->workers(true)) : "");
+                _g.select(Sql::STAR) + _g.from("replica") +
+                _g.where(_g.eq("chunk", chunk), _g.eq("database", database),
+                         enabledWorkersOnly ? _g.in("worker", _configuration->workers(true)) : "");
         _conn->executeInOwnTransaction(
                 [&](decltype(_conn) conn) { _findReplicasImpl(lock, replicas, query, includeFileInfo); });
     } catch (database::mysql::Error const& ex) {
@@ -563,20 +550,20 @@ void DatabaseServicesMySQL::findReplicas(vector<ReplicaInfo>& replicas, vector<u
                            " chunks.size()=" + to_string(chunks.size()) + "  database=" + database + " ";
     LOGS(_log, LOG_LVL_DEBUG, context);
 
+    _assertDatabaseIsValid(context, database);
+
     // The trivial optimization for the trivial input
     if (chunks.empty()) {
         replicas.clear();
         return;
     }
-    if (not _configuration->isKnownDatabase(database)) {
-        throw invalid_argument(context + "unknown database");
-    }
+
     util::Lock lock(_mtx, context);
     try {
         string const query =
-                "SELECT * FROM " + _conn->sqlId("replica") + "  WHERE " + _conn->sqlIn("chunk", chunks) +
-                "    AND " + _conn->sqlEqual("database", database) +
-                (enabledWorkersOnly ? "   AND " + _conn->sqlIn("worker", _configuration->workers(true)) : "");
+                _g.select(Sql::STAR) + _g.from("replica") +
+                _g.where(_g.in("chunk", chunks), _g.eq("database", database),
+                         enabledWorkersOnly ? _g.in("worker", _configuration->workers(true)) : "");
         _conn->executeInOwnTransaction(
                 [&](decltype(_conn) conn) { _findReplicasImpl(lock, replicas, query, includeFileInfo); });
     } catch (database::mysql::Error const& ex) {
@@ -592,6 +579,9 @@ void DatabaseServicesMySQL::findWorkerReplicas(vector<ReplicaInfo>& replicas, st
     string const context = "DatabaseServicesMySQL::" + string(__func__) + " worker=" + worker +
                            " database=" + database + " allDatabases=" + bool2str(allDatabases) +
                            " isPublished=" + bool2str(isPublished) + "  ";
+    LOGS(_log, LOG_LVL_DEBUG, context);
+
+    _assertWorkerIsValid(context, worker);
 
     util::Lock lock(_mtx, context);
     try {
@@ -611,21 +601,22 @@ uint64_t DatabaseServicesMySQL::numWorkerReplicas(string const& worker, string c
     string const context = "DatabaseServicesMySQL::" + string(__func__) + " worker=" + worker +
                            " database=" + database + " allDatabases=" + bool2str(allDatabases) +
                            " isPublished=" + bool2str(isPublished) + "  ";
+    LOGS(_log, LOG_LVL_DEBUG, context);
 
-    util::Lock lock(_mtx, context);
+    _assertWorkerIsValid(context, worker);
+
     uint64_t num;
+    util::Lock lock(_mtx, context);
     try {
-        string query = "SELECT COUNT(*) AS num FROM " + _conn->sqlId("replica") + "  WHERE " +
-                       _conn->sqlEqual("worker", worker) + "  AND ";
+        string query = _g.select(_g.as(Sql::COUNT_STAR, "num")) + _g.from("replica");
         if (database.empty()) {
             string const noSpecificFamily;
-            query += _conn->sqlIn("database",
-                                  _configuration->databases(noSpecificFamily, allDatabases, isPublished));
+            auto const databases = _configuration->databases(noSpecificFamily, allDatabases, isPublished);
+            query += _g.where(_g.in("database", databases), _g.eq("worker", worker));
         } else {
-            if (not _configuration->isKnownDatabase(database)) {
-                throw invalid_argument(context + "unknown database: '" + database + "'");
-            }
-            query += _conn->sqlEqual("database", database);
+            if (!_configuration->isKnownDatabase(database))
+                throw invalid_argument(context + "unknown database: " + database);
+            query += _g.where(_g.eq("database", database), _g.eq("worker", worker));
         }
         _conn->executeInOwnTransaction([&](decltype(_conn) conn) {
             conn->executeSingleValueSelect<uint64_t>(query, "num", num, false);
@@ -647,17 +638,17 @@ void DatabaseServicesMySQL::_findWorkerReplicasImpl(util::Lock const& lock, vect
                            " isPublished=" + bool2str(isPublished) + "  ";
     LOGS(_log, LOG_LVL_DEBUG, context);
 
-    string query = "SELECT * FROM " + _conn->sqlId("replica") + "  WHERE " +
-                   _conn->sqlEqual("worker", worker) + "    AND ";
+    _assertWorkerIsValid(context, worker);
+
+    auto query = _g.select(Sql::STAR) + _g.from("replica");
     if (database.empty()) {
         string const noSpecificFamily;
-        query += _conn->sqlIn("database",
-                              _configuration->databases(noSpecificFamily, allDatabases, isPublished));
+        auto const databases = _configuration->databases(noSpecificFamily, allDatabases, isPublished);
+        query += _g.where(_g.in("database", databases), _g.eq("worker", worker));
     } else {
-        if (not _configuration->isKnownDatabase(database)) {
-            throw invalid_argument(context + "unknown database: '" + database + "'");
-        }
-        query += _conn->sqlEqual("database", database);
+        if (!_configuration->isKnownDatabase(database))
+            throw invalid_argument(context + "unknown database: " + database);
+        query += _g.where(_g.eq("database", database), _g.eq("worker", worker));
     }
     _findReplicasImpl(lock, replicas, query, includeFileInfo);
     LOGS(_log, LOG_LVL_DEBUG, context << "** DONE ** replicas.size(): " << replicas.size());
@@ -672,17 +663,15 @@ void DatabaseServicesMySQL::findWorkerReplicas(vector<ReplicaInfo>& replicas, un
                            " isPublished=" + bool2str(isPublished) + "  ";
     LOGS(_log, LOG_LVL_DEBUG, context);
 
-    if (not databaseFamily.empty() and not _configuration->isKnownDatabaseFamily(databaseFamily)) {
-        throw invalid_argument(context + "unknown databaseFamily");
-    }
+    _assertWorkerIsValid(context, worker);
+    _assertDatabaseFamilyIsValid(context, databaseFamily);
+
     util::Lock lock(_mtx, context);
     try {
-        string const query =
-                "SELECT * FROM " + _conn->sqlId("replica") + "  WHERE " + _conn->sqlEqual("worker", worker) +
-                "  AND " + _conn->sqlEqual("chunk", chunk) + "  AND " +
-                _conn->sqlIn("database",
-                             _configuration->databases(databaseFamily, allDatabases, isPublished));
-
+        auto const databases = _configuration->databases(databaseFamily, allDatabases, isPublished);
+        auto const query =
+                _g.select(Sql::STAR) + _g.from("replica") +
+                _g.where(_g.eq("worker", worker), _g.eq("chunk", chunk), _g.in("database", databases));
         _conn->executeInOwnTransaction(
                 [&](decltype(_conn) conn) { _findReplicasImpl(lock, replicas, query); });
     } catch (exception const& ex) {
@@ -698,15 +687,14 @@ void DatabaseServicesMySQL::findDatabaseReplicas(vector<ReplicaInfo>& replicas, 
                            " enabledWorkersOnly=" + bool2str(enabledWorkersOnly) + " ";
     LOGS(_log, LOG_LVL_DEBUG, context);
 
-    if (not _configuration->isKnownDatabase(database)) {
-        throw invalid_argument(context + "unknown database");
-    }
+    _assertDatabaseIsValid(context, database);
+
     util::Lock lock(_mtx, context);
     try {
         string const query =
-                "SELECT * FROM " + _conn->sqlId("replica") + "  WHERE " +
-                _conn->sqlEqual("database", database) +
-                (enabledWorkersOnly ? "   AND " + _conn->sqlIn("worker", _configuration->workers(true)) : "");
+                _g.select(Sql::STAR) + _g.from("replica") +
+                _g.where(_g.eq("database", database),
+                         enabledWorkersOnly ? _g.in("worker", _configuration->workers(true)) : "");
         _conn->executeInOwnTransaction(
                 [&](decltype(_conn) conn) { _findReplicasImpl(lock, replicas, query); });
     } catch (database::mysql::Error const& ex) {
@@ -722,17 +710,17 @@ void DatabaseServicesMySQL::findDatabaseChunks(vector<unsigned int>& chunks, str
                            " enabledWorkersOnly=" + bool2str(enabledWorkersOnly) + " ";
     LOGS(_log, LOG_LVL_DEBUG, context);
 
-    if (not _configuration->isKnownDatabase(database)) {
-        throw invalid_argument(context + "unknown database");
-    }
+    _assertDatabaseIsValid(context, database);
+
     util::Lock lock(_mtx, context);
     try {
-        string const query =
-                "SELECT DISTINCT " + _conn->sqlId("chunk") + " FROM " + _conn->sqlId("replica") + "  WHERE " +
-                _conn->sqlEqual("database", database) +
-                (enabledWorkersOnly ? "   AND " + _conn->sqlIn("worker", _configuration->workers(true))
-                                    : "") +
-                " ORDER BY " + _conn->sqlId("chunk");
+        string query = _g.select(_g.distinctId("chunk")) + _g.from("replica");
+        if (enabledWorkersOnly) {
+            query += _g.where(_g.eq("database", database), _g.in("worker", _configuration->workers(true)));
+        } else {
+            query += _g.where(_g.eq("database", database));
+        }
+        query += _g.orderBy(make_pair("chunk", ""));
         _conn->executeInOwnTransaction([&](decltype(_conn) conn) { _findChunksImpl(lock, chunks, query); });
     } catch (database::mysql::Error const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context << "failed, exception: " << ex.what());
@@ -746,28 +734,21 @@ map<unsigned int, size_t> DatabaseServicesMySQL::actualReplicationLevel(
     string const context = "DatabaseServicesMySQL::" + string(__func__) + " database=" + database + " ";
     LOGS(_log, LOG_LVL_DEBUG, context);
 
-    if (database.empty()) {
-        throw invalid_argument(context + "database name can't be empty");
-    }
-    if (not _configuration->isKnownDatabase(database)) {
-        throw invalid_argument(context + "unknown database");
-    }
+    _assertDatabaseIsValid(context, database);
+
     util::Lock lock(_mtx, context);
     try {
-        map<unsigned int, size_t> result;
-        string const query =
-                "SELECT " + _conn->sqlId("level") + ",COUNT(*) AS " + _conn->sqlId("num_chunks") +
-                "  FROM (" + "    SELECT  " + _conn->sqlId("chunk") + ",COUNT(*) AS " +
-                _conn->sqlId("level") + "      FROM  " + _conn->sqlId("replica") + "      WHERE " +
-                _conn->sqlEqual("database", database) +
-                (workersToExclude.empty() ? ""
-                                          : "        AND NOT " + _conn->sqlIn("worker", workersToExclude)) +
-                "        AND     " + _conn->sqlId("chunk") + " != 1234567890" + "      GROUP BY  " +
-                _conn->sqlId("chunk") + "  )" + _conn->sqlId("chunks") + "  GROUP BY " +
-                _conn->sqlId("level");
+        auto const subQuery =
+                _g.subQuery(_g.select("chunk", _g.as(Sql::COUNT_STAR, "level")) + _g.from("replica") +
+                            _g.where(_g.eq("database", database), _g.notIn("worker", workersToExclude),
+                                     _g.neq("chunk", 1234567890)) +
+                            _g.groupBy("chunk"));
+        string const query = _g.select("level", _g.as(Sql::COUNT_STAR, "num_chunks")) +
+                             _g.from(_g.as(subQuery, "chunks")) + _g.groupBy("level");
 
         LOGS(_log, LOG_LVL_DEBUG, context + "query: " + query);
 
+        map<unsigned int, size_t> result;
         _conn->executeInOwnTransaction([&](decltype(_conn) conn) {
             conn->execute(query);
             // Always do this before extracting results in case of this lambda
@@ -794,32 +775,24 @@ size_t DatabaseServicesMySQL::numOrphanChunks(string const& database, vector<str
     string const context = "DatabaseServicesMySQL::" + string(__func__) + " database=" + database + " ";
     LOGS(_log, LOG_LVL_DEBUG, context);
 
-    if (database.empty()) {
-        throw invalid_argument(context + "database name can't be empty");
-    }
-    if (not _configuration->isKnownDatabase(database)) {
-        throw invalid_argument(context + "unknown database");
-    }
+    _assertDatabaseIsValid(context, database);
+
     util::Lock lock(_mtx, context);
     try {
         size_t result = 0;
-        if (not uniqueOnWorkers.empty()) {
+        if (!uniqueOnWorkers.empty()) {
             vector<string> workersToExclude;
             for (auto&& worker : _configuration->allWorkers()) {
                 if (uniqueOnWorkers.end() == find(uniqueOnWorkers.begin(), uniqueOnWorkers.end(), worker)) {
                     workersToExclude.push_back(worker);
                 }
             }
-            string const query =
-                    "SELECT COUNT(*) AS " + _conn->sqlId("num_chunks") + "  FROM " + _conn->sqlId("replica") +
-                    "  WHERE " + _conn->sqlEqual("database", database) + "    AND " +
-                    _conn->sqlIn("worker", uniqueOnWorkers) + "    AND " + _conn->sqlId("chunk") +
-                    " != 1234567890" + "    AND " + _conn->sqlId("chunk") + " NOT IN" + "    (SELECT  " +
-                    _conn->sqlId("chunk") + "       FROM  " + _conn->sqlId("replica") + "       WHERE " +
-                    _conn->sqlEqual("database", database) +
-                    (workersToExclude.empty() ? ""
-                                              : "         AND " + _conn->sqlIn("worker", workersToExclude)) +
-                    "    )";
+            string const subQuery = _g.select("chunk") + _g.from("replica") +
+                                    _g.where(_g.eq("database", database), _g.in("worker", workersToExclude));
+
+            string const query = _g.select(_g.as(Sql::COUNT_STAR, "num_chunks")) + _g.from("replica") +
+                                 _g.where(_g.eq("database", database), _g.in("worker", uniqueOnWorkers),
+                                          _g.neq("chunk", 1234567890), _g.notInSubQuery("chunk", subQuery));
 
             LOGS(_log, LOG_LVL_DEBUG, context + "query: " + query);
 
@@ -854,13 +827,14 @@ void DatabaseServicesMySQL::logControllerEvent(ControllerEvent const& event) {
 }
 
 void DatabaseServicesMySQL::_logControllerEvent(util::Lock const& lock, ControllerEvent const& event) {
-    _conn->executeInsertQuery("controller_log", database::mysql::Keyword::SQL_NULL, event.controllerId,
-                              event.timeStamp, event.task, event.operation, event.status,
-                              _conn->nullIfEmpty(event.requestId), _conn->nullIfEmpty(event.jobId));
+    string const query = _g.insert("controller_log", Sql::NULL_, event.controllerId, event.timeStamp,
+                                   event.task, event.operation, event.status, _g.nullIfEmpty(event.requestId),
+                                   _g.nullIfEmpty(event.jobId));
+    _conn->execute(query);
 
     for (auto&& kv : event.kvInfo) {
-        _conn->executeInsertQuery("controller_log_ext", database::mysql::Function::LAST_INSERT_ID, kv.first,
-                                  kv.second);
+        string const query = _g.insert("controller_log_ext", Sql::LAST_INSERT_ID, kv.first, kv.second);
+        _conn->execute(query);
     }
 }
 
@@ -876,8 +850,8 @@ list<ControllerEvent> DatabaseServicesMySQL::readControllerEvents(string const& 
                            " ";
     LOGS(_log, LOG_LVL_DEBUG, context);
 
-    util::Lock lock(_mtx, context);
     list<ControllerEvent> events;
+    util::Lock lock(_mtx, context);
     try {
         _conn->executeInOwnTransaction([&](decltype(_conn) conn) {
             events = _readControllerEvents(lock, controllerId, fromTimeStamp, toTimeStamp, maxEntries, task,
@@ -900,28 +874,17 @@ list<ControllerEvent> DatabaseServicesMySQL::_readControllerEvents(
                                " for events: [" +
                                to_string(fromTimeStamp) + "," + to_string(toTimeStamp) + "]");
     }
+    string const query =
+            _g.select(Sql::STAR) + _g.from("controller_log") +
+            _g.where(_g.geq("time", fromTimeStamp),
+                     _g.leq("time", toTimeStamp != 0 ? toTimeStamp : numeric_limits<uint64_t>::max()),
+                     controllerId.empty() ? "" : _g.eq("controller_id", controllerId),
+                     task.empty() ? "" : _g.eq("task", task),
+                     operation.empty() ? "" : _g.eq("operation", operation),
+                     operationStatus.empty() ? "" : _g.eq("status", operationStatus)) +
+            _g.orderBy(make_pair("time", "DESC")) + _g.limit(maxEntries);
 
     list<ControllerEvent> events;
-
-    string query =
-            "SELECT * FROM " + _conn->sqlId("controller_log") + "  WHERE " +
-            _conn->sqlGreaterOrEqual("time", fromTimeStamp) + "    AND " +
-            _conn->sqlLessOrEqual("time", toTimeStamp != 0 ? toTimeStamp : numeric_limits<uint64_t>::max());
-    if (!controllerId.empty()) {
-        query += " AND " + _conn->sqlEqual("controller_id", controllerId);
-    }
-    if (!task.empty()) {
-        query += " AND " + _conn->sqlEqual("task", task);
-    }
-    if (!operation.empty()) {
-        query += " AND " + _conn->sqlEqual("operation", operation);
-    }
-    if (!operationStatus.empty()) {
-        query += " AND " + _conn->sqlEqual("status", operationStatus);
-    }
-    query += "  ORDER BY " + _conn->sqlId("time") + " DESC" +
-             (maxEntries == 0 ? "" : "  LIMIT " + to_string(maxEntries));
-
     _conn->execute(query);
     if (_conn->hasResult()) {
         database::mysql::Row row;
@@ -938,8 +901,8 @@ list<ControllerEvent> DatabaseServicesMySQL::_readControllerEvents(
             events.push_back(event);
         }
         for (auto&& event : events) {
-            string const query = "SELECT * FROM " + _conn->sqlId("controller_log_ext") + "  WHERE " +
-                                 _conn->sqlEqual("controller_log_id", event.id);
+            string const query = _g.select(Sql::STAR) + _g.from("controller_log_ext") +
+                                 _g.where(_g.eq("controller_log_id", event.id));
             _conn->execute(query);
             if (_conn->hasResult()) {
                 database::mysql::Row row;
@@ -960,8 +923,11 @@ json DatabaseServicesMySQL::readControllerEventDict(string const& controllerId) 
     string const context =
             "DatabaseServicesMySQL::" + string(__func__) + " " + " controllerId=" + controllerId + " ";
     LOGS(_log, LOG_LVL_DEBUG, context);
-    util::Lock lock(_mtx, context);
+
+    if (controllerId.empty()) throw invalid_argument(context + "controllerId can't be empty");
+
     json dict;
+    util::Lock lock(_mtx, context);
     try {
         _conn->executeInOwnTransaction(
                 [&](decltype(_conn) conn) { dict = _readControllerEventDict(lock, controllerId); });
@@ -974,12 +940,11 @@ json DatabaseServicesMySQL::readControllerEventDict(string const& controllerId) 
 }
 
 json DatabaseServicesMySQL::_readControllerEventDict(util::Lock const& lock, string const& controllerId) {
-    string const controllerIdSelector =
-            controllerId.empty() ? string() : " WHERE " + _conn->sqlEqual("controller_id", controllerId);
     json dict;
     for (const char* col : {"task", "operation", "status"}) {
-        _conn->execute("SELECT DISTINCT " + _conn->sqlId(col) + " FROM " + _conn->sqlId("controller_log") +
-                       controllerIdSelector);
+        string const query = _g.select(_g.distinctId(col)) + _g.from("controller_log") +
+                             _g.where(_g.eq("controller_id", controllerId));
+        _conn->execute(query);
         json& colValues = dict[col];
         database::mysql::Row row;
         while (_conn->next(row)) {
@@ -998,8 +963,8 @@ ControllerInfo DatabaseServicesMySQL::controller(string const& id) {
 
     if (id.empty()) throw invalid_argument(context + ", controller identifier can't be empty");
 
-    util::Lock lock(_mtx, context);
     ControllerInfo info;
+    util::Lock lock(_mtx, context);
     try {
         _conn->executeInOwnTransaction([&](decltype(_conn) conn) { info = _controller(lock, id); });
     } catch (exception const& ex) {
@@ -1011,7 +976,8 @@ ControllerInfo DatabaseServicesMySQL::controller(string const& id) {
 }
 
 ControllerInfo DatabaseServicesMySQL::_controller(util::Lock const& lock, string const& id) {
-    _conn->execute("SELECT * FROM " + _conn->sqlId("controller") + "  WHERE " + _conn->sqlEqual("id", id));
+    string const query = _g.select(Sql::STAR) + _g.from("controller") + _g.where(_g.eq("id", id));
+    _conn->execute(query);
     if (_conn->hasResult()) {
         database::mysql::Row row;
         while (_conn->next(row)) {
@@ -1034,8 +1000,8 @@ list<ControllerInfo> DatabaseServicesMySQL::controllers(uint64_t fromTimeStamp, 
                            " ";
     LOGS(_log, LOG_LVL_DEBUG, context);
 
-    util::Lock lock(_mtx, context);
     list<ControllerInfo> collection;
+    util::Lock lock(_mtx, context);
     try {
         _conn->executeInOwnTransaction([&](decltype(_conn) conn) {
             collection = _controllers(lock, fromTimeStamp, toTimeStamp, maxEntries);
@@ -1051,12 +1017,13 @@ list<ControllerInfo> DatabaseServicesMySQL::controllers(uint64_t fromTimeStamp, 
 list<ControllerInfo> DatabaseServicesMySQL::_controllers(util::Lock const& lock, uint64_t fromTimeStamp,
                                                          uint64_t toTimeStamp, size_t maxEntries) {
     list<ControllerInfo> collection;
-    string const limitOpt = maxEntries == 0 ? "" : "  LIMIT " + to_string(maxEntries);
-    _conn->execute("SELECT * FROM " + _conn->sqlId("controller") + "  WHERE " +
-                   _conn->sqlGreaterOrEqual("start_time", fromTimeStamp) + "    AND " +
-                   _conn->sqlLessOrEqual("start_time",
-                                         toTimeStamp != 0 ? toTimeStamp : numeric_limits<uint64_t>::max()) +
-                   "  ORDER BY " + _conn->sqlId("start_time") + " DESC" + limitOpt);
+    string const query =
+            _g.select(Sql::STAR) + _g.from("controller") +
+            _g.where(_g.geq("start_time", fromTimeStamp),
+                     _g.leq("start_time", toTimeStamp != 0 ? toTimeStamp : numeric_limits<uint64_t>::max())) +
+            _g.orderBy(make_pair("start_time", "DESC")) + _g.limit(maxEntries);
+
+    _conn->execute(query);
     if (_conn->hasResult()) {
         database::mysql::Row row;
         while (_conn->next(row)) {
@@ -1077,8 +1044,8 @@ RequestInfo DatabaseServicesMySQL::request(string const& id) {
 
     if (id.empty()) throw invalid_argument(context + ", request identifier can't be empty");
 
-    util::Lock lock(_mtx, context);
     RequestInfo info;
+    util::Lock lock(_mtx, context);
     try {
         _conn->executeInOwnTransaction([&](decltype(_conn) conn) { info = _request(lock, id); });
     } catch (exception const& ex) {
@@ -1090,7 +1057,8 @@ RequestInfo DatabaseServicesMySQL::request(string const& id) {
 }
 
 RequestInfo DatabaseServicesMySQL::_request(util::Lock const& lock, string const& id) {
-    _conn->execute("SELECT * FROM " + _conn->sqlId("request") + "  WHERE " + _conn->sqlEqual("id", id));
+    string const query = _g.select(Sql::STAR) + _g.from("request") + _g.where(_g.eq("id", id));
+    _conn->execute(query);
     if (_conn->hasResult()) {
         database::mysql::Row row;
         while (_conn->next(row)) {
@@ -1109,8 +1077,9 @@ RequestInfo DatabaseServicesMySQL::_request(util::Lock const& lock, string const
             row.get("w_receive_time", info.workerReceiveTime);
             row.get("w_start_time", info.workerStartTime);
             row.get("w_finish_time", info.workerFinishTime);
-            _conn->execute("SELECT * FROM " + _conn->sqlId("request_ext") + "  WHERE " +
-                           _conn->sqlEqual("request_id", id));
+            string const query =
+                    _g.select(Sql::STAR) + _g.from("request_ext") + _g.where(_g.eq("request_id", id));
+            _conn->execute(query);
             if (_conn->hasResult()) {
                 database::mysql::Row row;
                 while (_conn->next(row)) {
@@ -1135,8 +1104,8 @@ list<RequestInfo> DatabaseServicesMySQL::requests(string const& jobId, uint64_t 
                            " ";
     LOGS(_log, LOG_LVL_DEBUG, context);
 
-    util::Lock lock(_mtx, context);
     list<RequestInfo> collection;
+    util::Lock lock(_mtx, context);
     try {
         _conn->executeInOwnTransaction([&](decltype(_conn) conn) {
             collection = _requests(lock, jobId, fromTimeStamp, toTimeStamp, maxEntries);
@@ -1153,15 +1122,14 @@ list<RequestInfo> DatabaseServicesMySQL::_requests(util::Lock const& lock, strin
                                                    uint64_t fromTimeStamp, uint64_t toTimeStamp,
                                                    size_t maxEntries) {
     list<RequestInfo> collection;
+    string const query = _g.select(Sql::STAR) + _g.from("request") +
+                         _g.where(_g.geq("c_create_time", fromTimeStamp),
+                                  _g.leq("c_create_time",
+                                         toTimeStamp != 0 ? toTimeStamp : numeric_limits<uint64_t>::max()),
+                                  jobId.empty() ? "" : _g.eq("job_id", jobId)) +
+                         _g.orderBy(make_pair("c_create_time", "DESC")) + _g.limit(maxEntries);
 
-    string const jobIdOpt = jobId.empty() ? "" : " AND " + _conn->sqlEqual("job_id", jobId);
-    string const limitOpt = maxEntries == 0 ? "" : " LIMIT " + to_string(maxEntries);
-
-    _conn->execute("SELECT * FROM " + _conn->sqlId("request") + "  WHERE " +
-                   _conn->sqlGreaterOrEqual("c_create_time", fromTimeStamp) + "    AND " +
-                   _conn->sqlLessOrEqual("c_create_time",
-                                         toTimeStamp != 0 ? toTimeStamp : numeric_limits<uint64_t>::max()) +
-                   jobIdOpt + "  ORDER BY " + _conn->sqlId("c_create_time") + " DESC" + limitOpt);
+    _conn->execute(query);
     if (_conn->hasResult()) {
         database::mysql::Row row;
         while (_conn->next(row)) {
@@ -1184,8 +1152,9 @@ list<RequestInfo> DatabaseServicesMySQL::_requests(util::Lock const& lock, strin
         }
     }
     for (auto&& info : collection) {
-        _conn->execute("SELECT * FROM " + _conn->sqlId("request_ext") + "  WHERE " +
-                       _conn->sqlEqual("request_id", info.id));
+        string const query =
+                _g.select(Sql::STAR) + _g.from("request_ext") + _g.where(_g.eq("request_id", info.id));
+        _conn->execute(query);
         if (_conn->hasResult()) {
             database::mysql::Row row;
             while (_conn->next(row)) {
@@ -1206,8 +1175,8 @@ JobInfo DatabaseServicesMySQL::job(string const& id) {
 
     if (id.empty()) throw invalid_argument(context + ", job identifier can't be empty");
 
-    util::Lock lock(_mtx, context);
     JobInfo info;
+    util::Lock lock(_mtx, context);
     try {
         _conn->executeInOwnTransaction([&](decltype(_conn) conn) { info = _job(lock, id); });
     } catch (exception const& ex) {
@@ -1219,11 +1188,12 @@ JobInfo DatabaseServicesMySQL::job(string const& id) {
 }
 
 JobInfo DatabaseServicesMySQL::_job(util::Lock const& lock, string const& id) {
-    _conn->execute("SELECT * FROM " + _conn->sqlId("job") + "  WHERE " + _conn->sqlEqual("id", id));
+    string const query = _g.select(Sql::STAR) + _g.from("job") + _g.where(_g.eq("id", id));
+    _conn->execute(query);
     if (_conn->hasResult()) {
+        JobInfo info;
         database::mysql::Row row;
         while (_conn->next(row)) {
-            JobInfo info;
             row.get("id", info.id);
             row.get("controller_id", info.controllerId);
             row.get("parent_job_id", info.parentJobId);
@@ -1234,20 +1204,20 @@ JobInfo DatabaseServicesMySQL::_job(util::Lock const& lock, string const& id) {
             row.get("end_time", info.endTime);
             row.get("heartbeat_time", info.heartbeatTime);
             row.get("priority", info.priority);
-            _conn->execute("SELECT * FROM " + _conn->sqlId("job_ext") + "  WHERE " +
-                           _conn->sqlEqual("job_id", id));
-            if (_conn->hasResult()) {
-                database::mysql::Row row;
-                while (_conn->next(row)) {
-                    string param;
-                    string value;
-                    row.get("param", param);
-                    row.get("value", value);
-                    info.kvInfo.emplace_back(param, value);
-                }
-            }
-            return info;
         }
+        string const query = _g.select(Sql::STAR) + _g.from("job_ext") + _g.where(_g.eq("job_id", id));
+        _conn->execute(query);
+        if (_conn->hasResult()) {
+            database::mysql::Row row;
+            while (_conn->next(row)) {
+                string param;
+                string value;
+                row.get("param", param);
+                row.get("value", value);
+                info.kvInfo.emplace_back(param, value);
+            }
+        }
+        return info;
     }
     throw DatabaseServicesNotFound("no Job found for id: " + id);
 }
@@ -1258,11 +1228,12 @@ list<JobInfo> DatabaseServicesMySQL::jobs(string const& controllerId, string con
             "DatabaseServicesMySQL::" + string(__func__) + " " + " controllerId=" + controllerId +
             " parentJobId=" + parentJobId + " fromTimeStamp=" + to_string(fromTimeStamp) +
             " toTimeStamp=" + to_string(toTimeStamp) + " maxEntries=" + to_string(maxEntries) + " ";
-
     LOGS(_log, LOG_LVL_DEBUG, context);
 
-    util::Lock lock(_mtx, context);
+    if (controllerId.empty()) throw invalid_argument(context + "controllerId can't be empty");
+
     list<JobInfo> collection;
+    util::Lock lock(_mtx, context);
     try {
         _conn->executeInOwnTransaction([&](decltype(_conn) conn) {
             collection = _jobs(lock, controllerId, parentJobId, fromTimeStamp, toTimeStamp, maxEntries);
@@ -1279,21 +1250,14 @@ list<JobInfo> DatabaseServicesMySQL::_jobs(util::Lock const& lock, string const&
                                            string const& parentJobId, uint64_t fromTimeStamp,
                                            uint64_t toTimeStamp, size_t maxEntries) {
     list<JobInfo> collection;
-
-    string const controllerIdOpt =
-            controllerId.empty() ? "" : " AND " + _conn->sqlEqual("controller_id", controllerId);
-
-    string const parentJobIdOpt =
-            parentJobId.empty() ? "" : " AND " + _conn->sqlEqual("parent_job_id", parentJobId);
-
-    string const limitOpt = maxEntries == 0 ? "" : " LIMIT " + to_string(maxEntries);
-
-    _conn->execute("SELECT * FROM " + _conn->sqlId("job") + "  WHERE " +
-                   _conn->sqlGreaterOrEqual("begin_time", fromTimeStamp) + "    AND " +
-                   _conn->sqlLessOrEqual("begin_time",
-                                         toTimeStamp != 0 ? toTimeStamp : numeric_limits<uint64_t>::max()) +
-                   controllerIdOpt + parentJobIdOpt + "  ORDER BY " + _conn->sqlId("begin_time") + " DESC" +
-                   limitOpt);
+    string const query =
+            _g.select(Sql::STAR) + _g.from("job") +
+            _g.where(_g.geq("begin_time", fromTimeStamp),
+                     _g.leq("begin_time", toTimeStamp != 0 ? toTimeStamp : numeric_limits<uint64_t>::max()),
+                     controllerId.empty() ? "" : _g.eq("controller_id", controllerId),
+                     parentJobId.empty() ? "" : _g.eq("parent_job_id", parentJobId)) +
+            _g.orderBy(make_pair("begin_time", "DESC")) + _g.limit(maxEntries);
+    _conn->execute(query);
     if (_conn->hasResult()) {
         database::mysql::Row row;
         while (_conn->next(row)) {
@@ -1312,8 +1276,8 @@ list<JobInfo> DatabaseServicesMySQL::_jobs(util::Lock const& lock, string const&
         }
     }
     for (auto&& info : collection) {
-        _conn->execute("SELECT * FROM " + _conn->sqlId("job_ext") + "  WHERE " +
-                       _conn->sqlEqual("job_id", info.id));
+        string const query = _g.select(Sql::STAR) + _g.from("job_ext") + _g.where(_g.eq("job_id", info.id));
+        _conn->execute(query);
         if (_conn->hasResult()) {
             database::mysql::Row row;
             while (_conn->next(row)) {
@@ -1332,10 +1296,10 @@ TransactionInfo DatabaseServicesMySQL::transaction(TransactionId id, bool includ
     string const context = _context(__func__) + "id=" + to_string(id) + " ";
     LOGS(_log, LOG_LVL_DEBUG, context);
 
-    util::Lock lock(_mtx, context);
     TransactionInfo info;
+    util::Lock lock(_mtx, context);
     try {
-        auto const predicate = _conn->sqlEqual("id", id);
+        string const predicate = _g.eq("id", id);
         _conn->executeInOwnTransaction([&](decltype(_conn) conn) {
             info = _findTransactionImpl(lock, predicate, includeContext, includeLog);
         });
@@ -1349,14 +1313,21 @@ TransactionInfo DatabaseServicesMySQL::transaction(TransactionId id, bool includ
 
 vector<TransactionInfo> DatabaseServicesMySQL::transactions(string const& databaseName, bool includeContext,
                                                             bool includeLog) {
-    auto const predicate = databaseName.empty() ? "" : _conn->sqlEqual("database", databaseName);
-    return _transactions(predicate, includeContext, includeLog);
+    string const context = _context(__func__) + "databaseName=" + databaseName + " ";
+    LOGS(_log, LOG_LVL_DEBUG, context);
+    _assertDatabaseIsValid(context, databaseName);
+    util::Lock lock(_mtx, context);
+    string const predicate = databaseName.empty() ? "" : _g.eq("database", databaseName);
+    return _transactions(lock, predicate, includeContext, includeLog);
 }
 
 vector<TransactionInfo> DatabaseServicesMySQL::transactions(TransactionInfo::State state, bool includeContext,
                                                             bool includeLog) {
-    auto const predicate = _conn->sqlEqual("state", TransactionInfo::state2string(state));
-    return _transactions(predicate, includeContext, includeLog);
+    string const context = _context(__func__) + "state=" + TransactionInfo::state2string(state) + " ";
+    LOGS(_log, LOG_LVL_DEBUG, context);
+    util::Lock lock(_mtx, context);
+    string const predicate = _g.eq("state", TransactionInfo::state2string(state));
+    return _transactions(lock, predicate, includeContext, includeLog);
 }
 
 TransactionInfo DatabaseServicesMySQL::createTransaction(string const& databaseName,
@@ -1366,25 +1337,26 @@ TransactionInfo DatabaseServicesMySQL::createTransaction(string const& databaseN
     string const context = _context(__func__) + "database=" + databaseName + " ";
     LOGS(_log, LOG_LVL_DEBUG, context);
 
-    if (!transactionContext.is_object()) {
+    _assertDatabaseIsValid(context, databaseName);
+
+    if (!transactionContext.is_object())
         throw invalid_argument(context +
                                "a value of the parameter 'transactionContext is not a valid JSON object");
-    }
-    util::Lock lock(_mtx, context);
 
     uint64_t const beginTime = PerformanceUtils::now();
     uint64_t const startTime = 0;
     uint64_t const transitionTime = 0;
     uint64_t const endTime = 0;
     string const state = "IS_STARTING";
-
     TransactionInfo info;
+
+    util::Lock lock(_mtx, context);
     try {
-        auto const predicate = _conn->sqlEqual("id", database::mysql::Function::LAST_INSERT_ID);
+        string const predicate = _g.eq("id", Sql::LAST_INSERT_ID);
+        string const query = _g.insert("transaction", Sql::NULL_, databaseName, state, beginTime, startTime,
+                                       endTime, transitionTime, transactionContext.dump());
         _conn->executeInOwnTransaction([&](decltype(_conn) conn) {
-            conn->executeInsertQuery("transaction", database::mysql::Keyword::SQL_NULL, databaseName, state,
-                                     beginTime, startTime, endTime, transitionTime,
-                                     transactionContext.dump());
+            conn->execute(query);
             bool const includeContext = true;
             bool const includeLog = true;
             info = _findTransactionImpl(lock, predicate, includeContext, includeLog);
@@ -1417,11 +1389,11 @@ TransactionInfo DatabaseServicesMySQL::updateTransaction(TransactionId id, Trans
             timeStampName = "end_time";
             break;
     }
+    TransactionInfo info;
 
     util::Lock lock(_mtx, context);
-    TransactionInfo info;
     try {
-        auto const predicate = _conn->sqlEqual("id", id);
+        auto const predicate = _g.eq("id", id);
         _conn->executeInOwnTransaction([&](decltype(_conn) conn) {
             bool includeContext = false;
             bool includeLog = false;
@@ -1431,9 +1403,11 @@ TransactionInfo DatabaseServicesMySQL::updateTransaction(TransactionId id, Trans
                                        TransactionInfo::state2string(newState) + "into " +
                                        TransactionInfo::state2string(newState) + " is not allowed.");
             }
-            conn->executeSimpleUpdateQuery("transaction", predicate,
-                                           make_pair("state", TransactionInfo::state2string(newState)),
-                                           make_pair(timeStampName, PerformanceUtils::now()));
+            string const query =
+                    _g.update("transaction", make_pair("state", TransactionInfo::state2string(newState)),
+                              make_pair(timeStampName, PerformanceUtils::now())) +
+                    _g.where(predicate);
+            conn->execute(query);
             includeContext = true;
             includeLog = true;
             info = _findTransactionImpl(lock, predicate, includeContext, includeLog);
@@ -1450,20 +1424,21 @@ TransactionInfo DatabaseServicesMySQL::updateTransaction(TransactionId id, json 
     string const context = _context(__func__) + "id=" + to_string(id) + " ";
     LOGS(_log, LOG_LVL_DEBUG, context);
 
-    if (!transactionContext.is_object()) {
+    if (!transactionContext.is_object())
         throw invalid_argument(context +
                                "a value of the parameter 'transactionContext is not a valid JSON object");
-    }
-    util::Lock lock(_mtx, context);
+
     TransactionInfo info;
+    util::Lock lock(_mtx, context);
     try {
-        auto const predicate = _conn->sqlEqual("id", id);
+        string const predicate = _g.eq("id", id);
         _conn->executeInOwnTransaction([&](decltype(_conn) conn) {
             bool includeContext = false;
             bool includeLog = false;
             info = _findTransactionImpl(lock, predicate, includeContext, includeLog);
-            conn->executeSimpleUpdateQuery("transaction", predicate,
-                                           make_pair("context", transactionContext.dump()));
+            string const query = _g.update("transaction", make_pair("context", transactionContext.dump())) +
+                                 _g.where(predicate);
+            conn->execute(query);
             includeContext = true;
             includeLog = true;
             info = _findTransactionImpl(lock, predicate, includeContext, includeLog);
@@ -1481,10 +1456,10 @@ TransactionInfo DatabaseServicesMySQL::updateTransaction(TransactionId id,
     string const context = _context(__func__) + "id=" + to_string(id) + " ";
     LOGS(_log, LOG_LVL_DEBUG, context);
 
-    util::Lock lock(_mtx, context);
     TransactionInfo info;
+    util::Lock lock(_mtx, context);
     try {
-        auto const predicate = _conn->sqlEqual("id", id);
+        string const predicate = _g.eq("id", id);
         _conn->executeInOwnTransaction([&](decltype(_conn) conn) {
             bool includeContext = false;
             bool includeLog = false;
@@ -1493,9 +1468,10 @@ TransactionInfo DatabaseServicesMySQL::updateTransaction(TransactionId id,
                 string const& eventName = elem.first;
                 json const& eventData = elem.second;
                 uint64_t const eventTime = PerformanceUtils::now();
-                conn->executeInsertQuery("transaction_log", database::mysql::Keyword::SQL_NULL, info.id,
-                                         TransactionInfo::state2string(info.state), eventTime, eventName,
-                                         eventData.dump());
+                string const query = _g.insert("transaction_log", Sql::NULL_, info.id,
+                                               TransactionInfo::state2string(info.state), eventTime,
+                                               eventName, eventData.dump());
+                conn->execute(query);
             }
             includeContext = true;
             includeLog = true;
@@ -1509,12 +1485,10 @@ TransactionInfo DatabaseServicesMySQL::updateTransaction(TransactionId id,
     return info;
 }
 
-vector<TransactionInfo> DatabaseServicesMySQL::_transactions(string const& predicate, bool includeContext,
-                                                             bool includeLog) {
+vector<TransactionInfo> DatabaseServicesMySQL::_transactions(util::Lock const& lock, string const& predicate,
+                                                             bool includeContext, bool includeLog) {
     string const context = _context(__func__) + "predicate=" + predicate + " ";
     LOGS(_log, LOG_LVL_DEBUG, context);
-
-    util::Lock lock(_mtx, context);
     vector<TransactionInfo> collection;
     try {
         _conn->executeInOwnTransaction([&](decltype(_conn) conn) {
@@ -1533,7 +1507,6 @@ TransactionInfo DatabaseServicesMySQL::_findTransactionImpl(util::Lock const& lo
     string const context = _context(__func__) + "predicate=" + predicate + " ";
     auto const collection = _findTransactionsImpl(lock, predicate, includeContext, includeLog);
     size_t const num = collection.size();
-
     if (num == 1) return collection[0];
     if (num == 0) throw DatabaseServicesNotFound(context + "no such transaction");
     throw DatabaseServicesError(context + "two many transactions found: " + to_string(num));
@@ -1544,18 +1517,15 @@ vector<TransactionInfo> DatabaseServicesMySQL::_findTransactionsImpl(util::Lock 
                                                                      bool includeContext, bool includeLog) {
     string const context = _context(__func__) + "predicate=" + predicate + " ";
     LOGS(_log, LOG_LVL_DEBUG, context);
-
     vector<TransactionInfo> collection;
-
-    string const columns = includeContext
-                                   ? "*"
-                                   : _conn->sqlId("id") + "," + _conn->sqlId("database") + "," +
-                                             _conn->sqlId("state") + "," + _conn->sqlId("begin_time") + "," +
-                                             _conn->sqlId("start_time") + "," +
-                                             _conn->sqlId("transition_time") + "," + _conn->sqlId("end_time");
-
-    string const query = "SELECT " + columns + " FROM " + _conn->sqlId("transaction") +
-                         (predicate.empty() ? "" : " WHERE " + predicate) + " ORDER BY begin_time DESC";
+    string query;
+    if (includeContext) {
+        query = _g.select(Sql::STAR);
+    } else {
+        query = _g.select("id", "database", "state", "begin_time", "start_time", "transition_time",
+                          "end_time");
+    }
+    query += _g.from("transaction") + _g.where(predicate) + _g.orderBy(make_pair("begin_time", "DESC"));
 
     _conn->execute(query);
     if (_conn->hasResult()) {
@@ -1583,8 +1553,9 @@ vector<TransactionInfo> DatabaseServicesMySQL::_findTransactionsImpl(util::Lock 
     }
     if (includeLog) {
         for (auto& info : collection) {
-            string const query = "SELECT * FROM " + _conn->sqlId("transaction_log") + " WHERE " +
-                                 _conn->sqlEqual("transaction_id", info.id) + " ORDER BY time ASC";
+            string const query = _g.select(Sql::STAR) + _g.from("transaction_log") +
+                                 _g.where(_g.eq("transaction_id", info.id)) +
+                                 _g.orderBy(make_pair("time", "ASC"));
             _conn->execute(query);
             if (_conn->hasResult()) {
                 database::mysql::Row row;
@@ -1610,13 +1581,11 @@ vector<TransactionInfo> DatabaseServicesMySQL::_findTransactionsImpl(util::Lock 
 TransactionContribInfo DatabaseServicesMySQL::transactionContrib(unsigned int id) {
     string const context = _context(__func__) + "id=" + to_string(id) + " ";
     LOGS(_log, LOG_LVL_DEBUG, context);
-
-    util::Lock lock(_mtx, context);
     vector<TransactionContribInfo> collection;
+    util::Lock lock(_mtx, context);
     try {
-        _conn->executeInOwnTransaction([&](decltype(_conn) conn) {
-            collection = _transactionContribsImpl(lock, conn->sqlEqual("id", id));
-        });
+        _conn->executeInOwnTransaction(
+                [&](decltype(_conn) conn) { collection = _transactionContribsImpl(lock, _g.eq("id", id)); });
     } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context << "failed, exception: " << ex.what());
         throw;
@@ -1632,52 +1601,66 @@ TransactionContribInfo DatabaseServicesMySQL::transactionContrib(unsigned int id
     return collection[0];
 }
 
+string DatabaseServicesMySQL::_typeSelectorPredicate(
+        TransactionContribInfo::TypeSelector typeSelector) const {
+    switch (typeSelector) {
+        case TransactionContribInfo::TypeSelector::SYNC:
+            return _g.eq("type", "SYNC");
+        case TransactionContribInfo::TypeSelector::ASYNC:
+            return _g.eq("type", "ASYNC");
+        case TransactionContribInfo::TypeSelector::SYNC_OR_ASYNC:
+            return string();
+    }
+    return string();
+}
+
 vector<TransactionContribInfo> DatabaseServicesMySQL::transactionContribs(
         TransactionId transactionId, string const& table, string const& worker,
         TransactionContribInfo::TypeSelector typeSelector) {
-    return _transactionContribs(
-            _conn->sqlEqual("transaction_id", transactionId) +
-            (table.empty() ? "" : " AND " + _conn->sqlEqual("table", table)) +
-            (worker.empty() ? "" : " AND " + _conn->sqlEqual("worker", worker)) +
-            (typeSelector == TransactionContribInfo::TypeSelector::SYNC_OR_ASYNC
-                     ? ""
-                     : " AND " + _conn->sqlEqual("type",
-                                                 typeSelector == TransactionContribInfo::TypeSelector::SYNC
-                                                         ? "SYNC"
-                                                         : "ASYNC")) +
-            (worker.empty() ? "" : " AND " + _conn->sqlEqual("worker", worker)));
+    string const context = _context(__func__) + "transactionId=" + to_string(transactionId) +
+                           " table=" + table + " worker=" + worker + " " +
+                           " typeSelector=" + TransactionContribInfo::typeSelector2str(typeSelector) + " ";
+    LOGS(_log, LOG_LVL_DEBUG, context);
+    util::Lock lock(_mtx, context);
+
+    string const predicate =
+            _g.packConds(_g.eq("transaction_id", transactionId), table.empty() ? "" : _g.eq("table", table),
+                         worker.empty() ? "" : _g.eq("worker", worker), _typeSelectorPredicate(typeSelector));
+    return _transactionContribs(lock, predicate);
 }
 
 vector<TransactionContribInfo> DatabaseServicesMySQL::transactionContribs(
         TransactionId transactionId, TransactionContribInfo::Status status, string const& table,
         string const& worker, TransactionContribInfo::TypeSelector typeSelector) {
-    return _transactionContribs(
-            _conn->sqlEqual("transaction_id", transactionId) + " AND " +
-            _conn->sqlEqual("status", TransactionContribInfo::status2str(status)) +
-            (table.empty() ? "" : " AND " + _conn->sqlEqual("table", table)) +
-            (worker.empty() ? "" : " AND " + _conn->sqlEqual("worker", worker)) +
-            (typeSelector == TransactionContribInfo::TypeSelector::SYNC_OR_ASYNC
-                     ? ""
-                     : " AND " + _conn->sqlEqual("type",
-                                                 typeSelector == TransactionContribInfo::TypeSelector::SYNC
-                                                         ? "SYNC"
-                                                         : "ASYNC")));
+    string const context = _context(__func__) + "transactionId=" + to_string(transactionId) +
+                           " status=" + TransactionContribInfo::status2str(status) + " table=" + table +
+                           " worker=" + worker + " " +
+                           " typeSelector=" + TransactionContribInfo::typeSelector2str(typeSelector) + " ";
+    LOGS(_log, LOG_LVL_DEBUG, context);
+    util::Lock lock(_mtx, context);
+    string const predicate =
+            _g.packConds(_g.eq("transaction_id", transactionId),
+                         _g.eq("status", TransactionContribInfo::status2str(status)),
+                         table.empty() ? "" : _g.eq("table", table),
+                         worker.empty() ? "" : _g.eq("worker", worker), _typeSelectorPredicate(typeSelector));
+    return _transactionContribs(lock, predicate);
 }
 
 vector<TransactionContribInfo> DatabaseServicesMySQL::transactionContribs(
         string const& database, string const& table, string const& worker,
         TransactionContribInfo::TypeSelector typeSelector) {
-    return _transactionContribs(
-            _conn->sqlEqual("database", database) +
-            (table.empty() ? "" : " AND " + _conn->sqlEqual("table", table)) +
-            (worker.empty() ? "" : " AND " + _conn->sqlEqual("worker", worker)) +
-            (typeSelector == TransactionContribInfo::TypeSelector::SYNC_OR_ASYNC
-                     ? ""
-                     : " AND " + _conn->sqlEqual("type",
-                                                 typeSelector == TransactionContribInfo::TypeSelector::SYNC
-                                                         ? "SYNC"
-                                                         : "ASYNC")) +
-            (worker.empty() ? "" : " AND " + _conn->sqlEqual("worker", worker)));
+    string const context = _context(__func__) + "database=" + database + " table=" + table +
+                           " worker=" + worker + " " +
+                           " typeSelector=" + TransactionContribInfo::typeSelector2str(typeSelector) + " ";
+    LOGS(_log, LOG_LVL_DEBUG, context);
+
+    _assertDatabaseIsValid(context, database);
+
+    util::Lock lock(_mtx, context);
+    string const predicate =
+            _g.packConds(_g.eq("database", database), table.empty() ? "" : _g.eq("table", table),
+                         worker.empty() ? "" : _g.eq("worker", worker), _typeSelectorPredicate(typeSelector));
+    return _transactionContribs(lock, predicate);
 }
 
 TransactionContribInfo DatabaseServicesMySQL::createdTransactionContrib(
@@ -1687,8 +1670,6 @@ TransactionContribInfo DatabaseServicesMySQL::createdTransactionContrib(
                            " isOverlap=" + bool2str(info.isOverlap) + " worker=" + info.worker + " " +
                            " url=" + info.url + " failed=" + bool2str(failed) + " ";
     LOGS(_log, LOG_LVL_DEBUG, context);
-
-    util::Lock lock(_mtx, context);
 
     uint64_t const numBytes = 0;
     uint64_t const numRows = 0;
@@ -1702,34 +1683,36 @@ TransactionContribInfo DatabaseServicesMySQL::createdTransactionContrib(
             failed ? statusOnFailed : TransactionContribInfo::Status::IN_PROGRESS;
 
     TransactionContribInfo updatedInfo;
-    try {
-        auto const predicate = _conn->sqlEqual("id", database::mysql::Function::LAST_INSERT_ID);
-        _conn->executeInOwnTransaction([&](decltype(_conn) conn) {
-            conn->executeInsertQuery(
-                    "transaction_contrib", database::mysql::Keyword::SQL_NULL, info.transactionId,
-                    info.worker, info.database, info.table, info.chunk, info.isOverlap ? 1 : 0, info.url,
-                    info.async ? "ASYNC" : "SYNC", numBytes, numRows, createTime, startTime, readTime,
-                    loadTime, TransactionContribInfo::status2str(status), info.tmpFile,
-                    failed ? info.httpError : 0, failed ? info.systemError : 0,
-                    failed ? info.error : string(), (failed ? info.retryAllowed : false) ? 1 : 0);
 
-            // Write extended parameters (if any)
-            conn->executeInsertQuery("transaction_contrib_ext", database::mysql::Function::LAST_INSERT_ID,
-                                     "fields_terminated_by", info.dialectInput.fieldsTerminatedBy);
-            conn->executeInsertQuery("transaction_contrib_ext", database::mysql::Function::LAST_INSERT_ID,
-                                     "fields_enclosed_by", info.dialectInput.fieldsEnclosedBy);
-            conn->executeInsertQuery("transaction_contrib_ext", database::mysql::Function::LAST_INSERT_ID,
-                                     "fields_escaped_by", info.dialectInput.fieldsEscapedBy);
-            conn->executeInsertQuery("transaction_contrib_ext", database::mysql::Function::LAST_INSERT_ID,
-                                     "lines_terminated_by", info.dialectInput.linesTerminatedBy);
-            conn->executeInsertQuery("transaction_contrib_ext", database::mysql::Function::LAST_INSERT_ID,
-                                     "http_method", info.httpMethod);
-            conn->executeInsertQuery("transaction_contrib_ext", database::mysql::Function::LAST_INSERT_ID,
-                                     "http_data", info.httpData);
-            for (string const& header : info.httpHeaders) {
-                conn->executeInsertQuery("transaction_contrib_ext", database::mysql::Function::LAST_INSERT_ID,
-                                         "http_headers", header);
-            }
+    util::Lock lock(_mtx, context);
+    try {
+        vector<string> queries;
+        queries.emplace_back(
+                _g.insert("transaction_contrib", Sql::NULL_, info.transactionId, info.worker, info.database,
+                          info.table, info.chunk, info.isOverlap ? 1 : 0, info.url,
+                          info.async ? "ASYNC" : "SYNC", numBytes, numRows, createTime, startTime, readTime,
+                          loadTime, TransactionContribInfo::status2str(status), info.tmpFile,
+                          failed ? info.httpError : 0, failed ? info.systemError : 0,
+                          failed ? info.error : string(), (failed ? info.retryAllowed : false) ? 1 : 0));
+        queries.emplace_back(_g.insert("transaction_contrib_ext", Sql::LAST_INSERT_ID, "fields_terminated_by",
+                                       info.dialectInput.fieldsTerminatedBy));
+        queries.emplace_back(_g.insert("transaction_contrib_ext", Sql::LAST_INSERT_ID, "fields_enclosed_by",
+                                       info.dialectInput.fieldsEnclosedBy));
+        queries.emplace_back(_g.insert("transaction_contrib_ext", Sql::LAST_INSERT_ID, "fields_escaped_by",
+                                       info.dialectInput.fieldsEscapedBy));
+        queries.emplace_back(_g.insert("transaction_contrib_ext", Sql::LAST_INSERT_ID, "lines_terminated_by",
+                                       info.dialectInput.linesTerminatedBy));
+        queries.emplace_back(
+                _g.insert("transaction_contrib_ext", Sql::LAST_INSERT_ID, "http_method", info.httpMethod));
+        queries.emplace_back(
+                _g.insert("transaction_contrib_ext", Sql::LAST_INSERT_ID, "http_data", info.httpData));
+        for (string const& header : info.httpHeaders) {
+            queries.emplace_back(
+                    _g.insert("transaction_contrib_ext", Sql::LAST_INSERT_ID, "http_headers", header));
+        }
+        string const predicate = _g.eq("id", Sql::LAST_INSERT_ID);
+        _conn->executeInOwnTransaction([&](decltype(_conn) conn) {
+            for (auto&& query : queries) conn->execute(query);
             updatedInfo = _transactionContribImpl(lock, predicate);
         });
     } catch (exception const& ex) {
@@ -1743,21 +1726,21 @@ TransactionContribInfo DatabaseServicesMySQL::createdTransactionContrib(
 TransactionContribInfo DatabaseServicesMySQL::updateTransactionContrib(TransactionContribInfo const& info) {
     string const context = _context(__func__) + "id=" + to_string(info.id) + " ";
     LOGS(_log, LOG_LVL_DEBUG, context);
-
-    util::Lock lock(_mtx, context);
-
+    string const predicate = _g.eq("id", info.id);
     TransactionContribInfo updatedInfo;
+    util::Lock lock(_mtx, context);
     try {
-        auto const predicate = _conn->sqlEqual("id", info.id);
+        string const query =
+                _g.update("transaction_contrib", make_pair("num_bytes", info.numBytes),
+                          make_pair("num_rows", info.numRows), make_pair("start_time", info.startTime),
+                          make_pair("read_time", info.readTime), make_pair("load_time", info.loadTime),
+                          make_pair("status", TransactionContribInfo::status2str(info.status)),
+                          make_pair("tmp_file", info.tmpFile), make_pair("http_error", info.httpError),
+                          make_pair("system_error", info.systemError), make_pair("error", info.error),
+                          make_pair("retry_allowed", info.retryAllowed)) +
+                _g.where(predicate);
         _conn->executeInOwnTransaction([&](decltype(_conn) conn) {
-            conn->executeSimpleUpdateQuery(
-                    "transaction_contrib", predicate, make_pair("num_bytes", info.numBytes),
-                    make_pair("num_rows", info.numRows), make_pair("start_time", info.startTime),
-                    make_pair("read_time", info.readTime), make_pair("load_time", info.loadTime),
-                    make_pair("status", TransactionContribInfo::status2str(info.status)),
-                    make_pair("tmp_file", info.tmpFile), make_pair("http_error", info.httpError),
-                    make_pair("system_error", info.systemError), make_pair("error", info.error),
-                    make_pair("retry_allowed", info.retryAllowed));
+            conn->execute(query);
             updatedInfo = _transactionContribImpl(lock, predicate);
         });
     } catch (exception const& ex) {
@@ -1768,11 +1751,10 @@ TransactionContribInfo DatabaseServicesMySQL::updateTransactionContrib(Transacti
     return updatedInfo;
 }
 
-vector<TransactionContribInfo> DatabaseServicesMySQL::_transactionContribs(string const& predicate) {
+vector<TransactionContribInfo> DatabaseServicesMySQL::_transactionContribs(util::Lock const& lock,
+                                                                           string const& predicate) {
     string const context = _context(__func__) + "predicate=" + predicate + " ";
     LOGS(_log, LOG_LVL_DEBUG, context);
-
-    util::Lock lock(_mtx, context);
     vector<TransactionContribInfo> collection;
     try {
         _conn->executeInOwnTransaction(
@@ -1801,10 +1783,8 @@ vector<TransactionContribInfo> DatabaseServicesMySQL::_transactionContribsImpl(u
     LOGS(_log, LOG_LVL_DEBUG, context);
 
     vector<TransactionContribInfo> collection;
-
-    _conn->execute("SELECT * FROM " + _conn->sqlId("transaction_contrib") +
-                   (predicate.empty() ? "" : " WHERE " + predicate));
-
+    string const query = _g.select(Sql::STAR) + _g.from("transaction_contrib") + _g.where(predicate);
+    _conn->execute(query);
     if (_conn->hasResult()) {
         database::mysql::Row row;
         while (_conn->next(row)) {
@@ -1838,9 +1818,9 @@ vector<TransactionContribInfo> DatabaseServicesMySQL::_transactionContribsImpl(u
         }
     }
     for (auto& contrib : collection) {
-        _conn->execute("SELECT " + _conn->sqlId("key") + "," + _conn->sqlId("val") + " FROM " +
-                       _conn->sqlId("transaction_contrib_ext") + " WHERE " +
-                       _conn->sqlEqual("contrib_id", contrib.id));
+        string const query = _g.select("key", "val") + _g.from("transaction_contrib_ext") +
+                             _g.where(_g.eq("contrib_id", contrib.id));
+        _conn->execute(query);
         if (_conn->hasResult()) {
             database::mysql::Row row;
             while (_conn->next(row)) {
@@ -1880,12 +1860,16 @@ DatabaseIngestParam DatabaseServicesMySQL::ingestParam(string const& database, s
             _context(__func__) + "database=" + database + " category=" + category + " param=" + param;
     LOGS(_log, LOG_LVL_DEBUG, context);
 
-    util::Lock lock(_mtx, context);
+    _assertDatabaseIsValid(context, database);
+
+    if (category.empty()) throw invalid_argument(context + "category can't be empty");
+    if (param.empty()) throw invalid_argument(param + "category can't be empty");
+
     DatabaseIngestParam info;
+    util::Lock lock(_mtx, context);
     try {
-        auto const predicate = _conn->sqlEqual("database", database) + " AND " +
-                               _conn->sqlEqual("category", category) + " AND " +
-                               _conn->sqlEqual("param", param);
+        string const predicate =
+                _g.packConds(_g.eq("database", database), _g.eq("category", category), _g.eq("param", param));
         _conn->executeInOwnTransaction(
                 [&](decltype(_conn) conn) { info = _ingestParamImpl(lock, predicate); });
     } catch (exception const& ex) {
@@ -1901,11 +1885,13 @@ vector<DatabaseIngestParam> DatabaseServicesMySQL::ingestParams(string const& da
     string const context = _context(__func__) + "database=" + database + " category=" + category;
     LOGS(_log, LOG_LVL_DEBUG, context);
 
-    util::Lock lock(_mtx, context);
+    _assertDatabaseIsValid(context, database);
+
     vector<DatabaseIngestParam> collection;
+    util::Lock lock(_mtx, context);
     try {
-        auto const predicate = _conn->sqlEqual("database", database) +
-                               (category.empty() ? "" : " AND " + _conn->sqlEqual("category", category));
+        string const predicate = _g.packConds(_g.eq("database", database),
+                                              category.empty() ? "" : _g.eq("category", category));
         _conn->executeInOwnTransaction(
                 [&](decltype(_conn) conn) { collection = _ingestParamsImpl(lock, predicate); });
     } catch (exception const& ex) {
@@ -1922,24 +1908,48 @@ void DatabaseServicesMySQL::saveIngestParam(string const& database, string const
             _context(__func__) + "database=" + database + " category=" + category + " param=" + param;
     LOGS(_log, LOG_LVL_DEBUG, context);
 
+    _assertDatabaseIsValid(context, database);
+
+    if (category.empty()) throw invalid_argument(context + "category can't be empty");
+    if (param.empty()) throw invalid_argument(context + "param can't be empty");
+
     util::Lock lock(_mtx, context);
     try {
-        _conn->executeInsertOrUpdate(
-                [&](decltype(_conn) conn) {
-                    conn->executeInsertQuery("database_ingest", database, category, param, value);
-                },
-                [&](decltype(_conn) conn) {
-                    auto const predicate = conn->sqlEqual("database", database) + " AND " +
-                                           conn->sqlEqual("category", category) + " AND " +
-                                           conn->sqlEqual("param", param);
-                    conn->executeSimpleUpdateQuery("database_ingest", predicate, make_pair("value", value));
-                });
-
+        auto const insert = [&](decltype(_conn) conn) {
+            string const query = _g.insert("database_ingest", database, category, param, value);
+            conn->execute(query);
+        };
+        auto const update = [&](decltype(_conn) conn) {
+            string const query =
+                    _g.update("database_ingest", make_pair("value", value)) +
+                    _g.where(_g.eq("database", database), _g.eq("category", category), _g.eq("param", param));
+            conn->execute(query);
+        };
+        _conn->executeInsertOrUpdate(insert, update);
     } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context << "failed, exception: " << ex.what());
         throw;
     }
     LOGS(_log, LOG_LVL_DEBUG, context + "** DONE **");
+}
+
+void DatabaseServicesMySQL::_assertDatabaseFamilyIsValid(string const& context,
+                                                         string const& familyName) const {
+    if (familyName.empty()) throw invalid_argument(context + "database family name can't be empty");
+    if (!_configuration->isKnownDatabaseFamily(familyName))
+        throw invalid_argument(context + "unknown database fanily: " + familyName);
+}
+
+void DatabaseServicesMySQL::_assertDatabaseIsValid(string const& context, string const& databaseName) const {
+    if (databaseName.empty()) throw invalid_argument(context + "database name can't be empty");
+    if (!_configuration->isKnownDatabase(databaseName))
+        throw invalid_argument(context + "unknown database: " + databaseName);
+}
+
+void DatabaseServicesMySQL::_assertWorkerIsValid(string const& context, string const& workerName) const {
+    if (workerName.empty()) throw invalid_argument(context + "worker name can't be empty");
+    if (!_configuration->isKnownWorker(workerName))
+        throw invalid_argument(context + "unknown worker: " + workerName);
 }
 
 DatabaseIngestParam DatabaseServicesMySQL::_ingestParamImpl(util::Lock const& lock, string const& predicate) {
@@ -1955,12 +1965,8 @@ vector<DatabaseIngestParam> DatabaseServicesMySQL::_ingestParamsImpl(util::Lock 
                                                                      string const& predicate) {
     string const context = _context(__func__) + "predicate=" + predicate + " ";
     LOGS(_log, LOG_LVL_DEBUG, context);
-
     vector<DatabaseIngestParam> collection;
-
-    string const query = "SELECT * FROM " + _conn->sqlId("database_ingest") +
-                         (predicate.empty() ? "" : " WHERE " + predicate);
-
+    string const query = _g.select(Sql::STAR) + _g.from("database_ingest") + _g.where(predicate);
     _conn->execute(query);
     if (_conn->hasResult()) {
         database::mysql::Row row;
@@ -2061,10 +2067,10 @@ void DatabaseServicesMySQL::_findReplicaFilesImpl(util::Lock const& lock,
     // replicas may still be in a process of being ingested.
     auto itr = ids.begin();  // points to the first replica identifier of a batch
     for (size_t size : batches) {
-        _conn->execute("SELECT * FROM " + _conn->sqlId("replica_file") + "  WHERE " +
-                       _conn->sqlIn("replica_id", vector<uint64_t>(itr, itr + size)) + "  ORDER BY " +
-                       _conn->sqlId("replica_id"));
-
+        string const query = _g.select(Sql::STAR) + _g.from("replica_file") +
+                             _g.where(_g.in("replica_id", vector<uint64_t>(itr, itr + size))) +
+                             _g.orderBy(make_pair("replica_id", ""));
+        _conn->execute(query);
         if (_conn->hasResult()) {
             uint64_t currentReplicaId = 0;
             ReplicaInfo::FileInfoCollection files;  // for accumulating files of the current
@@ -2143,8 +2149,8 @@ TableRowStats DatabaseServicesMySQL::tableRowStats(string const& database, strin
     auto const context = "DatabaseServicesMySQL::" + string(__func__) + " ";
     LOGS(_log, LOG_LVL_DEBUG, context);
 
-    util::Lock lock(_mtx, context);
     TableRowStats stats;
+    util::Lock lock(_mtx, context);
     try {
         _conn->executeInOwnTransaction(
                 [&](decltype(_conn) conn) { stats = _tableRowStats(lock, database, table, transactionId); });
@@ -2159,21 +2165,24 @@ TableRowStats DatabaseServicesMySQL::tableRowStats(string const& database, strin
 void DatabaseServicesMySQL::saveTableRowStats(TableRowStats const& stats) {
     auto const context = "DatabaseServicesMySQL::" + string(__func__) + " ";
     LOGS(_log, LOG_LVL_DEBUG, context);
-
+    util::Lock lock(_mtx, context);
     try {
+        string const columns = _g.packIds("database", "table", "transaction_id", "chunk", "is_overlap",
+                                          "num_rows", "update_time");
         _conn->executeInOwnTransaction([&](decltype(_conn) conn) {
             for (auto&& e : stats.entries) {
-                conn->execute("INSERT INTO " + _conn->sqlId("stats_table_rows") + " (" +
-                              _conn->sqlId("database") + "," + _conn->sqlId("table") + "," +
-                              (e.transactionId == 0 ? string() : _conn->sqlId("transaction_id") + ",") +
-                              _conn->sqlId("chunk") + "," + _conn->sqlId("is_overlap") + "," +
-                              _conn->sqlId("num_rows") + "," + _conn->sqlId("update_time") + ") VALUES (" +
-                              _conn->sqlValue(stats.database) + "," + _conn->sqlValue(stats.table) + "," +
-                              (e.transactionId == 0 ? string() : _conn->sqlValue(e.transactionId) + ",") +
-                              _conn->sqlValue(e.chunk) + "," + _conn->sqlValue(e.isOverlap) + "," +
-                              _conn->sqlValue(e.numRows) + "," + _conn->sqlValue(e.updateTime) +
-                              ") ON DUPLICATE KEY UPDATE " + _conn->sqlEqual("num_rows", e.numRows) + "," +
-                              _conn->sqlEqual("update_time", e.updateTime));
+                string values2insert = _g.packVals(stats.database, stats.table);
+                if (e.transactionId == 0) {
+                    _g.packVal(values2insert, Sql::NULL_);
+                } else {
+                    _g.packVal(values2insert, e.transactionId);
+                }
+                _g.packVal(values2insert, e.chunk, e.isOverlap, e.numRows, e.updateTime);
+                string const values2update = _g.packPairs(make_pair("num_rows", e.numRows),
+                                                          make_pair("update_time", e.updateTime));
+                string const query =
+                        _g.insertPacked("stats_table_rows", columns, values2insert, values2update);
+                conn->execute(query);
             }
         });
     } catch (exception const& ex) {
@@ -2189,10 +2198,10 @@ TableRowStats DatabaseServicesMySQL::_tableRowStats(util::Lock const& lock, stri
     LOGS(_log, LOG_LVL_DEBUG, context);
 
     TableRowStats stats(database, table);
-
-    _conn->execute("SELECT * FROM " + _conn->sqlId("stats_table_rows") + " WHERE " +
-                   _conn->sqlEqual("database", database) + " AND " + _conn->sqlEqual("table", table) +
-                   (transactionId == 0 ? "" : " AND " + _conn->sqlEqual("transaction_id", transactionId)));
+    string const query = _g.select(Sql::STAR) + _g.from("stats_table_rows") +
+                         _g.where(_g.eq("database", database), _g.eq("table", table),
+                                  transactionId == 0 ? "" : _g.eq("transaction_id", transactionId));
+    _conn->execute(query);
     if (_conn->hasResult()) {
         database::mysql::Row row;
         while (_conn->next(row)) {
@@ -2213,19 +2222,20 @@ TableRowStats DatabaseServicesMySQL::_tableRowStats(util::Lock const& lock, stri
     return stats;
 }
 
-void DatabaseServicesMySQL::deleteTableRowStats(string const& database, string const& table,
+void DatabaseServicesMySQL::deleteTableRowStats(string const& databaseName, string const& tableName,
                                                 ChunkOverlapSelector overlapSelector) {
     auto const context = "DatabaseServicesMySQL::" + string(__func__) + " ";
     LOGS(_log, LOG_LVL_DEBUG, context);
 
-    string query = "DELETE FROM " + _conn->sqlId("stats_table_rows") + " WHERE " +
-                   _conn->sqlEqual("database", database) + " AND " + _conn->sqlEqual("table", table);
-    if (_configuration->databaseInfo(database).findTable(table).isPartitioned &&
-        overlapSelector != ChunkOverlapSelector::CHUNK_AND_OVERLAP) {
-        query += " AND " +
-                 _conn->sqlEqual("is_overlap", overlapSelector == ChunkOverlapSelector::OVERLAP ? 1 : 0);
-    }
+    util::Lock lock(_mtx, context);
     try {
+        TableInfo const table = _configuration->databaseInfo(databaseName).findTable(tableName);
+        string predicate = _g.packConds(_g.eq("database", table.database), _g.eq("table", table.name));
+        if (table.isPartitioned && overlapSelector != ChunkOverlapSelector::CHUNK_AND_OVERLAP) {
+            bool const isOverlap = overlapSelector == ChunkOverlapSelector::OVERLAP;
+            _g.packCond(predicate, _g.eq("is_overlap", isOverlap));
+        }
+        string const query = _g.delete_("stats_table_rows") + _g.where(predicate);
         _conn->executeInOwnTransaction([&query](decltype(_conn) conn) { conn->execute(query); });
     } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context << "failed, exception: " << ex.what());

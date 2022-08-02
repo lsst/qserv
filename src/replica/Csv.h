@@ -109,10 +109,11 @@ public:
      *     ]
      *     ...
      * @code
+     * @param quote The optional quote.
      * @return A string generated for values of the corresponding options stored
      *   in an object.
      */
-    std::string sqlOptions() const;
+    std::string sqlOptions(std::string const& quote = "'") const;
 
 private:
     // In-memory representations of the parameters meant to be used in an implementation
