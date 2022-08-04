@@ -219,6 +219,19 @@ json TransactionInfo::Event::toJson() const {
     return event;
 }
 
+string TransactionContribInfo::typeSelector2str(TypeSelector typeSelector) {
+    switch (typeSelector) {
+        case TypeSelector::SYNC:
+            return "SYNC";
+        case TypeSelector::ASYNC:
+            return "ASYNC";
+        case TypeSelector::SYNC_OR_ASYNC:
+            return "SYNC_OR_ASYNC";
+    };
+    throw runtime_error("DatabaseServices::" + string(__func__) + "  unhandled type selector " +
+                        to_string(static_cast<int>(typeSelector)));
+}
+
 map<TransactionContribInfo::Status, string> const TransactionContribInfo::_transactionContribStatus2str = {
         {TransactionContribInfo::Status::IN_PROGRESS, "IN_PROGRESS"},
         {TransactionContribInfo::Status::CREATE_FAILED, "CREATE_FAILED"},

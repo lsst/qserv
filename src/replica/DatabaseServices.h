@@ -203,10 +203,10 @@ public:
     enum class State : int {
         IS_STARTING = 0,  ///< the initial (and transitional) state, next states: (START, START_FAILED)
         STARTED,        ///< the active state allowing data ingests, next states: (IS_FINISHING, IS_ABORTING)
-        IS_FINISHING,   ///< the transitonal state, next states: (FINISHED, FINISH_FAILED, IS_ABORTING)
-        IS_ABORTING,    ///< the transitonal state, next states: (ABORTED, ABORT_FAILED)
-        FINISHED,       ///< the final successfull) state
-        ABORTED,        ///< the final unsuccessfull state
+        IS_FINISHING,   ///< the transitional state, next states: (FINISHED, FINISH_FAILED, IS_ABORTING)
+        IS_ABORTING,    ///< the transitional state, next states: (ABORTED, ABORT_FAILED)
+        FINISHED,       ///< the final successful) state
+        ABORTED,        ///< the final unsuccessful state
         START_FAILED,   ///< the failed (inactive) state, next states: (IS_ABORTING)
         FINISH_FAILED,  ///< the failed (inactive) state, next states: (IS_ABORTING)
         ABORT_FAILED    ///< the failed (inactive) state, next states: (IS_ABORTING)
@@ -290,7 +290,7 @@ public:
     /// The log gets populated with event recording actions taken over data at various stages,
     /// Events are recorded and state transitions and while the transaction is within some
     /// state.
-    /// The collection is pulled from the database when the corresponding methods are callled
+    /// The collection is pulled from the database when the corresponding methods are called
     /// with flag 'includeLog=true'.
     std::list<Event> log;
 
@@ -305,12 +305,12 @@ public:
 class TransactionContribInfo {
 public:
     // -----------------------------------------------------------------------------
-    // These data members are initialized by the meaninfull values after the initial
+    // These data members are initialized by the meaningful values after the initial
     // recording of the info in the database. After that they would never change.
 
     /// The unique identifier of a contribution is used mostly for the state
     /// tracking purposes. The identifier is set after the initial record on
-    /// ingesting the contribution is recorded in the persistentstate.
+    /// ingesting the contribution is recorded in the persistent state.
     unsigned int id = std::numeric_limits<unsigned int>::max();
 
     /// The unique identifier of a parent transaction.
@@ -326,8 +326,11 @@ public:
 
     std::string url;  ///< The data source specification
 
-    // The type selector is used in the where the tri-state is required.
-    enum TypeSelector { SYNC, ASYNC, SYNC_OR_ASYNC };
+    /// The type selector is used in the where the tri-state is required.
+    enum class TypeSelector : int { SYNC, ASYNC, SYNC_OR_ASYNC };
+
+    /// @return The string representation of teh selector.
+    static std::string typeSelector2str(TypeSelector typeSelector);
 
     bool async = false;  ///< The type of the request
 
@@ -397,7 +400,7 @@ public:
         FINISHED       // The request succeeded
     } status;
 
-    /// The temportary file that was created to store pre-processed content of the input
+    /// The temporary file that was created to store pre-processed content of the input
     /// file before ingesting it into MySQL. The file is supposed to be deleted after finishing
     /// ingesting the contribution or in case of any failures. Though, in some failure modes
     /// the file may stay on disk and it may need to be cleaned up by the ingest service.
@@ -966,16 +969,16 @@ public:
                                     size_t maxEntries = 0) = 0;
 
     /// @param id the unique identifier of a transaction
-    /// @param includeContext (optional) flag that (if 'true') would pull the transacion context
-    /// @param includeLog (optional) flag that (if 'true') would pull the transacion log (events)
+    /// @param includeContext (optional) flag that (if 'true') would pull the transaction context
+    /// @param includeLog (optional) flag that (if 'true') would pull the transaction log (events)
     /// @return a description of a super-transaction
     /// @throws DatabaseServicesNotFound if no such transaction found
     virtual TransactionInfo transaction(TransactionId id, bool includeContext = false,
                                         bool includeLog = false) = 0;
 
     /// @param databaseName (optional) the name of a database
-    /// @param includeContext (optional) flag that (if 'true') would pull the transacion context
-    /// @param includeLog (optional) flag that (if 'true') would pull the transacion log (events)
+    /// @param includeContext (optional) flag that (if 'true') would pull the transaction context
+    /// @param includeLog (optional) flag that (if 'true') would pull the transaction log (events)
     /// @return a collection of super-transactions (all of them or for the specified database only)
     /// @throws std::invalid_argument if database name is not valid
     virtual std::vector<TransactionInfo> transactions(std::string const& databaseName = std::string(),
@@ -1025,7 +1028,7 @@ public:
 
     /// @brief Update or reset the context attribute of a transaction
     /// @param id the unique identifier of a transaction
-    /// @param transactionContexta user-defined context explaining the transaction
+    /// @param transactionContext a user-defined context explaining the transaction
     /// @return an updated descriptor of the transactions that includes the requested modification
     /// @throws DatabaseServicesNotFound if no such transaction found
     /// @throws std::invalid_argument if a value of parameter 'transactionContext'
@@ -1141,7 +1144,7 @@ public:
 
     /**
      * Update the persistent status of the contribution to indicate that it the input
-     * data file has been read/presprocessed (or failed to be read).
+     * data file has been read/preprocessed (or failed to be read).
      *
      * @note If a value of \param failed is set to 'true' the status of the contribution
      * will be switched to the final state 'READ_FAILED'. In case of a failure
@@ -1224,11 +1227,11 @@ public:
     }
 
     /**
-     * Retreive statistics for a table.
+     * Retrieve statistics for a table.
      * @param database The name of a database.
      * @param table The name of a table.
      * @param transactionId The optional identifier of a transaction.
-     *   If the default value is used then entries accross all transactions
+     *   If the default value is used then entries across all transactions
      *   will be reported.
      */
     virtual TableRowStats tableRowStats(std::string const& database, std::string const& table,
