@@ -2,10 +2,10 @@ table#fwk-controller-config-catalogs pre {
     padding:    0;
     margin:     0;
 }
-table#fwk-controller-config-catalogs tbody pre.database_table:hover {
+table#fwk-controller-config-catalogs tbody .database_table:hover {
     cursor:pointer;
 }
-table#fwk-controller-config-catalogs tbody pre.database_table {
+table#fwk-controller-config-catalogs tbody .database_table {
     color:#007bff;
 }
 table#fwk-controller-config-catalogs th,
@@ -30,4 +30,23 @@ table#fwk-controller-config-catalogs caption.updating {
 }
 table#fwk-controller-config-catalogs tbody pre.timestamp {
     color: maroon;
+    padding-top: 3px;
+}
+table#fwk-controller-config-catalogs table.compact {
+    margin: 0;
+    margin-top: 4;
+}
+
+table#fwk-controller-config-catalogs table.compact th,
+table#fwk-controller-config-catalogs table.compact td {
+    padding-top: 0;
+    padding-bottom: 0;
+}
+table#fwk-controller-config-catalogs tbody th,
+table#fwk-controller-config-catalogs tbody td {
+    vertical-align: top;
+}
+table#fwk-controller-config-catalogs tbody span {
+    font-family: SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    font-size: 87.5%;
 }

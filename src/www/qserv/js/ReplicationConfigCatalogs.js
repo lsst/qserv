@@ -67,22 +67,16 @@ function(CSSLoader,
             let html = `
 <div class="row">
   <div class="col">
-    <table class="table table-sm table-hover table-borderless" id="fwk-controller-config-catalogs">
+    <table class="table table-sm table-hover" id="fwk-controller-config-catalogs">
       <thead class="thead-light">
         <tr>
           <th class="sticky">FAMILY</th>
-          <th class="sticky">strp</th>
-          <th class="sticky">substrp</th>
-          <th class="sticky">repl</th>
           <th class="sticky">DATABASE</th>
-          <th class="sticky">pub</th>
           <th class="sticky">TABLE</th>
-          <th class="sticky">part</th>
-          <th class="sticky">dir</th>
-          <th class="sticky">dir_table</th>
-          <th class="sticky">dir_key</th>
-          <th class="sticky">lat_key</th>
-          <th class="sticky">lon_key</th>
+          <th class="sticky">type</th>
+          <th class="sticky">director</th>
+          <th class="sticky">director2</th>
+          <th class="sticky">spatial</th>
           <th class="sticky">created</th>
           <th class="sticky">published</th>
         </tr>
@@ -156,6 +150,7 @@ function(CSSLoader,
                 families[databaseInfo.family_name]['databases'].push(databaseInfo);
             }
 
+            const borderStyle = 'solid 1px #dee2e6';
             let html = '';
             for (let i in families) {
                 let family = families[i];
@@ -165,49 +160,130 @@ function(CSSLoader,
                     let database = family['databases'][j];
                     let databaseRowSpan = 1;
                     familyRowSpan += databaseRowSpan;
-
+                    const databaseSchemaSupportCSS = `class="database_table" database="${database.database}" table=""`;
                     let databaseHtml = '';
                     for (let k in database.tables) {
                         let table = database.tables[k];
                         databaseRowSpan++;
                         familyRowSpan++;
                         const tableSchemaSupportCSS = `class="database_table" database="${database.database}" table="${table.name}"`;
-                        const isPartitionedStr = table.is_partitioned ? '<b>yes</b>' : 'no';
-                        const isDirectorStr = table.is_partitioned && (table.director === "") ? '<b>yes</b>' : 'no';
-                        const directorTable = table.is_partitioned ? table.director : '&nbsp;';
-                        const directorTableSchemaSupportCSS = table.is_partitioned && (table.director === "") ? ""
-                                : `class="database_table" database="${database.database}" table="${table.director}"`;
-                        const directorKey = table.is_partitioned ? table.director_key : '&nbsp;';
-                        const latitudeKey = table.is_partitioned ? table.latitude_key : '&nbsp;';
-                        const longitudeKey = table.is_partitioned ? table.longitude_key : '&nbsp;';
+                        let directorTableSchemaSupportCSS = "";
+                        if(table.director_table !== "") {
+                            const databaseName = table.director_database_name || database.database;
+                            directorTableSchemaSupportCSS = `class="database_table" database="${databaseName}" table="${table.director_table_name}"`;
+                        }
+                        let directorTable2SchemaSupportCSS = "";
+                        if (table.director_table2 !== "") {
+                            const databaseName = table.director_database_name2 || database.database;
+                            directorTable2SchemaSupportCSS = `class="database_table" database="${databaseName}" table="${table.director_table_name2}"`;
+                        }
+                        let type = "REG";
+                        if (table.is_ref_match) {
+                            type = "REF";
+                        } else if (table.is_director) {
+                            type = "DIR";
+                        } else if (table.is_partitioned) {
+                            type = "DEP";
+                        }
                         databaseHtml += `
-<tr ` + (k == database.tables.length - 1 ? ' style="border-bottom: solid 1px #dee2e6"' : '') + `>
-  <td scope="row"><pre ${tableSchemaSupportCSS}>${table.name}</pre></td>
-  <td><pre>${isPartitionedStr}</pre></td>
-  <td><pre>${isDirectorStr}</pre></td>
-  <td><pre ${directorTableSchemaSupportCSS}>${directorTable}</pre></td>
-  <td><pre>${directorKey}</pre></td>
-  <td><pre>${latitudeKey}</pre></td>
-  <td><pre>${longitudeKey}</pre></td>
+<tr ` + (k == database.tables.length - 1 ? ` style="border-bottom: ${borderStyle}"` : '') + `>
+  <td scope="row">
+    <span ${tableSchemaSupportCSS}>${table.name}</span>`;
+                        if (table.is_ref_match) {
+                            databaseHtml += `
+      <br>ang_sep:&nbsp;<span style="font-weight:bold;">${table.ang_sep}</span>`;
+                        }
+                        databaseHtml += `
+  </td>
+  <td style="border-right: ${borderStyle}"><span>${type}</span></td>`;
+                        if (table.is_partitioned) {
+                            if (table.is_ref_match) {
+                                databaseHtml += `
+  <td scope="row" style="border-right: ${borderStyle}">
+    <span ${directorTableSchemaSupportCSS}>${table.director_database_name || database.database}</span><br>
+    <span ${directorTableSchemaSupportCSS}>${table.director_table_name}</span></br>
+    <span>${table.director_key}</span>
+  </td>
+  <td scope="row" style="border-right: ${borderStyle}">
+    <span ${directorTable2SchemaSupportCSS}>${table.director_database_name2 || database.database}</span><br>
+    <span ${directorTable2SchemaSupportCSS}>${table.director_table_name2}</span></br>
+    <span>${table.director_key2}</span>
+  </td>`;
+                            } else if (table.is_director) {
+                                databaseHtml += `
+  <td scope="row" style="border-right: ${borderStyle}">
+    <span>${table.director_key}</span>
+  </td>
+  <td style="border-right: ${borderStyle}">&nbsp;</td>`;
+                            } else {
+                                databaseHtml += `
+  <td scope="row" style="border-right: ${borderStyle}">
+    <span ${directorTableSchemaSupportCSS}>${table.director_table_name}</span></br>
+    <span>${table.director_key}</span>
+  </td>
+  <td style="border-right: ${borderStyle}">&nbsp;</td>`;
+                            }
+                        } else {
+                            databaseHtml += `
+  <td style="border-right: ${borderStyle}">&nbsp;</td>
+  <td style="border-right: ${borderStyle}">&nbsp;</td>`;
+                        }
+databaseHtml += `
+  <td style="border-right: ${borderStyle}">
+    <span>${table.latitude_key}</span><br>
+    <span>${table.longitude_key}</span>
+  </td>
   <td><pre class="timestamp">${(new Date(table.create_time)).toLocalTimeString('iso')}</pre></td>
   <td><pre class="timestamp">${table.is_published ? (new Date(table.publish_time)).toLocalTimeString('iso') : ''}</pre></td>
 </tr>`;
                     }
                     familyHtml += `
-<tr style="border-bottom: solid 1px #dee2e6">
-  <td rowspan="${databaseRowSpan}" style="vertical-align:middle;">${database.database}</td>
-  <td rowspan="${databaseRowSpan}" style="vertical-align:middle; border-right: solid 1px #dee2e6">${database.is_published ? '<b>yes</b>' : 'no'}</td>
+<tr style="border-bottom: ${borderStyle}">
+  <td rowspan="${databaseRowSpan}" style="border-right: ${borderStyle}">
+  <span ${databaseSchemaSupportCSS}>${database.database}</span>
+    <table class="table table-sm table-borderless compact">
+      <tbody>
+        <tr>
+          <td>created:</td>
+          <td><pre class="timestamp">${(new Date(database.create_time)).toLocalTimeString('iso')}</pre></td>
+        </tr>
+        <tr>
+          <td>published:</td>
+          <td><pre class="timestamp">${database.is_published ? (new Date(database.publish_time)).toLocalTimeString('iso') : ''}</pre></td>
+        </tr>
+      </tbody>
+    </table>
+  </td>
 </tr>` + databaseHtml;
                 }
                 html += `
-<tr style="border-bottom: solid 1px #dee2e6">
-  <th rowspan="${familyRowSpan}" style="vertical-align:middle" scope="row">${family.name}</th>
-  <td rowspan="${familyRowSpan}" style="vertical-align:middle"><pre>${family.num_stripes}</pre></td>
-  <td rowspan="${familyRowSpan}" style="vertical-align:middle"><pre>${family.num_sub_stripes}</pre></td>
-  <th rowspan="${familyRowSpan}" style="vertical-align:middle; border-right: solid 1px #dee2e6" scope="row"><pre>${family.min_replication_level}</pre></th>
+<tr style="border-bottom: ${borderStyle}">
+  <td rowspan="${familyRowSpan}" style="border-right: ${borderStyle}" scope="row">
+    <span style="font-weight:bold;">${family.name}</span>
+    <table class="table table-sm table-borderless compact">
+      <tbody>
+        <tr>
+          <td>stripes:</td>
+          <th><span>${family.num_stripes}</span></th>
+        </tr>
+        <tr>
+          <td>sub_stripes:</td>
+          <th><span>${family.num_sub_stripes}</span></th>
+        </tr>
+        <tr>
+          <td>overlap:</td>
+          <th><span>${family.overlap}</span></th>
+        </tr>
+        <tr>
+          <td>repl_level:</td>
+          <th><span>${family.min_replication_level}</span></th>
+        </tr>
+      </tbody>
+    </table>
+  </td>
 </tr>` + familyHtml;
             }
-            this._table().children('tbody').html(html).find("pre.database_table").click((e) => {
+            this._table().children('tbody').html(html).find(".database_table").click((e) => {
                 const elem = $(e.currentTarget);
                 const database = elem.attr("database");
                 const table = elem.attr("table");
