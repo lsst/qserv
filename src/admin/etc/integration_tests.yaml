@@ -34,7 +34,8 @@ test_cases:
       database: data/ingest/database.json
       table: data/ingest/{table_name}.json
     tables:
-      - Object  # director table
+      - Object                 # director
+      - Source                 # child
       - Filter
       - LeapSeconds
       - Logs
@@ -42,7 +43,6 @@ test_cases:
       # - Science_Ccd_Exposure
       - sdqa_Metric
       - SimRefObject
-      - Source
     skip_numbers:
       - "0012"  # depends on a table that has currently unloadable values
       - "0012.1"  # depends on a table that has currently unloadable values
@@ -88,7 +88,10 @@ test_cases:
       database: data/ingest/database.json
       table: data/ingest/{table_name}.json
     tables:
+      - RefObject  # director, must come first.
       - RunDeepSource  # director, must come first.
+      - RunDeepForcedSource  # child of RunDeepSource
+      - RefDeepSrcMatch  # match table for RefObject and RunDeepSource
       - AvgForcedPhot
       - AvgForcedPhotYearly
       # - DeepCoadd  # error: Incorrect double value: ... for column
@@ -97,9 +100,6 @@ test_cases:
       - DeepCoadd_To_Htm10
       - Filter
       - LeapSeconds
-      - RefDeepSrcMatch
-      - RefObject
-      - RunDeepForcedSource
       # - Science_Ccd_Exposure error: Incorrect double value: ... for column
       # `qservTest_case03_qserv`.`Science_Ccd_Exposure`.`taiMjd`
       # at row 1, errno: 1366\n"

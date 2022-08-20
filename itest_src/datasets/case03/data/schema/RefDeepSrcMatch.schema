@@ -21,6 +21,10 @@ DROP TABLE IF EXISTS `RefDeepSrcMatch`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `RefDeepSrcMatch` (
+  `ra` double DEFAULT NULL,
+  `decl` double DEFAULT NULL,
+  `coord_ra` double DEFAULT NULL,
+  `coord_decl` double DEFAULT NULL,
   `refObjectId` bigint(20) DEFAULT NULL,
   `deepSourceId` bigint(20) DEFAULT NULL,
   `angSep` double DEFAULT NULL,

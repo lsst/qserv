@@ -273,7 +273,7 @@ def _partition(staging_dir: str, table: LoadTable, data_file: str) -> None:
     ]
     os.makedirs(staging_dir)
     args = [
-        "sph-partition",
+        "sph-partition-matches" if table.is_match else "sph-partition"
     ]
     for config_file in partition_config_files:
         args.append("--config-file")
@@ -313,6 +313,7 @@ def _prep_table_data(load_table: LoadTable, dest_dir: str) ->  Tuple[str, str]:
     data_file : `str`
         The absolute path to the file that contains the table data. (It may have been unzipped to a location different than in table.)
     """
+    _log.info(f"_prep_table_data(1): dest_dir: %s load_table.data_file: %s", dest_dir, load_table.data_file)
     if load_table.is_gzipped:
         data_file = os.path.join(dest_dir, os.path.splitext(os.path.basename(load_table.data_file))[0])
         unzip(source=load_table.data_file, destination=data_file)
@@ -322,6 +323,7 @@ def _prep_table_data(load_table: LoadTable, dest_dir: str) ->  Tuple[str, str]:
     staging_dir = os.path.join(dest_dir, load_table.data_staging_dir)
     if load_table.is_partitioned:
         _partition(staging_dir, load_table, data_file)
+    _log.info(f"_prep_table_data(2): staging_dir: %s data_file: %s", staging_dir, data_file)
     return staging_dir, data_file
 
 

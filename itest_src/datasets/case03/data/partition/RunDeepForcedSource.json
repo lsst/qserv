@@ -2,8 +2,7 @@
 "id":"id",
 "part":{
     "pos":"coord_ra, coord_decl",
-    "overlap":0,
-    "subChunks":0
+    "overlap":0
 },
 "dirColName":"objectId",
 "in":{

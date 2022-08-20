@@ -1,0 +1,43 @@
+{
+    "id":"id",
+    "part":{
+        "pos":"ra, decl",
+        "subChunks":1
+    },
+    "in":{
+        "csv":{
+            "field":[
+                "refObjectId",
+                "run",
+                "rerun",
+                "camcol",
+                "field",
+                "obj",
+                "mode",
+                "type",
+                "flags",
+                "nChild",
+                "parentId",
+                "isStar",
+                "ra",
+                "decl",
+                "htmId20",
+                "uMag",
+                "gMag",
+                "rMag",
+                "iMag",
+                "zMag",
+                "uMagSigma",
+                "gMagSigma",
+                "rMagSigma",
+                "iMagSigma",
+                "zMagSigma",
+                "uExposureCount",
+                "gExposureCount",
+                "rExposureCount",
+                "iExposureCount",
+                "zExposureCount"
+            ]
+        }
+    }
+}
