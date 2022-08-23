@@ -66,8 +66,11 @@ Chunker::Chunker(double overlap, int32_t numStripes, int32_t numSubStripesPerStr
 
 Chunker::Chunker(ConfigStore const& config) {
     // Overlap is forced to be disabled if using the class in non-RA/DEC paritioning mode
-    _initialize(config.has("part.pos") ? config.get<double>("part.overlap") : 0.,
-                config.get<int32_t>("part.num-stripes"), config.get<int32_t>("part.num-sub-stripes"));
+    double const overlap = config.has("part.pos") || config.has("part.pos1") || config.has("part.pos2")
+                                   ? config.get<double>("part.overlap")
+                                   : 0.;
+    _initialize(overlap, config.get<int32_t>("part.num-stripes"),
+                config.get<int32_t>("part.num-sub-stripes"));
 }
 
 Chunker::~Chunker() {}
