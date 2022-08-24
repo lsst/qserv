@@ -1,4 +1,4 @@
 -- test for the << operator
 
- select * from Filter where filterId << 1 = 2;
+SELECT filterId,filterName,photClam,photBW FROM Filter WHERE filterId << 1 = 2;
  

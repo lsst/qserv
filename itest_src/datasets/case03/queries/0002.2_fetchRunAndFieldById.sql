@@ -3,7 +3,6 @@
 -- note, filterName is selected twice, is that needed???
 -- see #2758, it is confusing qserv
 
--- pragma sortresult
 SELECT sce.scienceCcdExposureId, sce.filterName, sce.field, sce.camcol, sce.run,
        sce.filterId, sce.ra, sce.decl, sce.crpix1, sce.crpix2, 
        sce.crval1, sce.crval2, sce.cd1_1, sce.cd1_2, sce.cd2_1, sce.cd2_2, 

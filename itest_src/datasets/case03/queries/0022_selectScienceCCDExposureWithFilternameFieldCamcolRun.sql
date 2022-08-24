@@ -1,6 +1,5 @@
 -- https://dev.lsstcorp.org/trac/wiki/dbPipeQAQueries
 
--- pragma sortresult
 SELECT sce.filterName, sce.field, sce.camcol, sce.run
 FROM   Science_Ccd_Exposure AS sce 
 WHERE  sce.filterName like '%'

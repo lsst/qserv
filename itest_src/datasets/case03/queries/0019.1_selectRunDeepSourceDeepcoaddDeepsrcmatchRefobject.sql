@@ -15,4 +15,4 @@ WHERE  (s.coadd_id = sce.deepCoaddId)
    AND (sce.filterName = 'r')
    AND (sce.tract = 0)
    AND (sce.patch = '159,3')
-   AND (s.id IN (1398582280195495, 1398582280195498, 1398582280195256))
+   AND (s.id IN (1398582280195495, 1398582280195498, 1398582280195256));

@@ -1,0 +1,5 @@
+SELECT objectId, ra_PS
+FROM Object
+WHERE ra_PS BETWEEN 0. AND 1.
+  AND decl_PS BETWEEN 0. AND 1.
+ORDER BY ra_PS;

@@ -40,22 +40,17 @@ test_cases:
       - LeapSeconds
       - Logs
       - RefSrcMatch
-      # - Science_Ccd_Exposure
+      - Science_Ccd_Exposure
       - sdqa_Metric
       - SimRefObject
     skip_numbers:
-      - "0012"  # depends on a table that has currently unloadable values
-      - "0012.1"  # depends on a table that has currently unloadable values
-      - "0012.2"  # depends on a table that has currently unloadable values
-      - "0012.3"  # depends on a table that has currently unloadable values
-      - "1011"  # depends on a table that has currently unloadable values
-      - "1060"  # depends on a table that has currently unloadable values
-      - "1080"  # depends on a table that has currently unloadable values
-      - "1084"  # has select * (qserv currently returns internal column names)
-      - "1095"  # has select *
-      - "1096"  # has select *
-      - "1097"  # has select *
-      - "1103"  # has select *
+      # The query is perfectly valid in Qserv. Though, it can't be tested in MySQL since
+      # it's ordering rows based on the Qserv-specifc column chunkId.
+      - "2100"
+      # The perfectly valid query for both Qserv and MySQL. However, in Qserv it returns
+      # extra Qserv-specific columns preventing the test from doing the successful comparison.
+      # The second problem is that it won't work in the Qserv async mode SUBMIT SHOW COLUMNS...
+      - "3008"
   - id: case02
     root: /tmp/qserv/itest_src/datasets/case02
     data: data/{table_name}.csv.gz
@@ -73,7 +68,13 @@ test_cases:
       - Object
       - Source
     skip_numbers:
-      - "0002"  # has select *
+      # The following queries would produce different results in Qserv and MySQL because
+      # the Qserv version of the table has additional Qserv-specific columns. One option
+      # would be to rewrite the queries to explicitly mention all (but Qserv-specific)
+      # columns.
+      - "0002"
+      - "3020"
+      - "3020.2"
   - id: case03
     root: /tmp/qserv/itest_src/datasets/case03
     data: data/{table_name}.csv.gz
@@ -94,44 +95,22 @@ test_cases:
       - RefDeepSrcMatch  # match table for RefObject and RunDeepSource
       - AvgForcedPhot
       - AvgForcedPhotYearly
-      # - DeepCoadd  # error: Incorrect double value: ... for column
-      # `qservTest_case03_qserv`.`DeepCoadd`.`fluxMag0` at row 1, errno: 1366\n"
+      - DeepCoadd
       - DeepCoadd_Metadata
       - DeepCoadd_To_Htm10
       - Filter
       - LeapSeconds
-      # - Science_Ccd_Exposure error: Incorrect double value: ... for column
-      # `qservTest_case03_qserv`.`Science_Ccd_Exposure`.`taiMjd`
-      # at row 1, errno: 1366\n"
+      - Science_Ccd_Exposure
       - Science_Ccd_Exposure_Metadata
       - Science_Ccd_Exposure_Metadata_coadd_r
       - Science_Ccd_Exposure_To_Htm10_coadd_r
-      # - Science_Ccd_Exposure_coadd_r error: Incorrect double value: ... for
-      # column `qservTest_case03_qserv`.`Science_Ccd_Exposure_coadd_r`.`taiMjd`
-      # at row 1, errno: 1366\n"
+      - Science_Ccd_Exposure_coadd_r
       - ZZZ_Db_Description
     skip_numbers:
-      - "0031"  # has select *
-      - "0002.1"  # depends on Science_Ccd_Exposure
-      - "0002.2"  # depends on Science_Ccd_Exposure
-      - "0006"  # depends on Science_Ccd_Exposure
-      - "0009"  # depends on Science_Ccd_Exposure
-      - "0022"  # depends on Science_Ccd_Exposure
-      - "0023"  # depends on Science_Ccd_Exposure
-      - "0025"  # depends on Science_Ccd_Exposure
-      - "0028"  # depends on Science_Ccd_Exposure
-      - "0031"  # depends on Science_Ccd_Exposure
-      - "0032"  # depends on Science_Ccd_Exposure
-      - "0011"  # depends on DeepCoadd
-      - "0012"  # depends on DeepCoadd
-      - "0013"  # depends on DeepCoadd
-      - "0014"  # depends on DeepCoadd
-      - "0014"  # depends on DeepCoadd
-      - "0018"  # depends on DeepCoadd
-      - "0019.1"  # depends on DeepCoadd
-      - "0019.1"  # depends on DeepCoadd
-      - "0019.2"  # depends on DeepCoadd
-      - "0019.2"  # depends on DeepCoadd
+      - "0005"  # Async SUBMIT for SHOW ... is not presently supported by Qserv.
+                # The query still works for the submitting the query via the regular
+                # sync interface. So, this looks like a bug or the missing functionality
+                # that needs to be adressed.
   - id: case04
     root: /tmp/qserv/itest_src/datasets/case04
     data: data/{table_name}.csv.gz
@@ -147,15 +126,15 @@ test_cases:
       table: data/ingest/{table_name}.json
     tables:
       - DeepSource  # director, must come first.
-      # - DeepCoadd error: Incorrect integer value
-      # - DeepForcedSource incorrect integer value
-      # - Science_Ccd_Exposure incorrect integer value
+      - DeepForcedSource  # child of DeepSource
+      - DeepCoadd
+      - Science_Ccd_Exposure
     skip_numbers:
-      - "0015"  # depends on DeepCoadd
-      - "0018"  # depends on DeepCoadd
-      - "0003"  # depends on DeepForcedSource and Science_Ccd_Exposure
-      - "0030"  # depends on DeepForcedSource
-      - "0030"  # depends on DeepForcedSource
+      # These tests are for SHOW COLUMNS. For this query, Qserv returns additional
+      # columns that screw the comparison. Otherwise, these are teh perfectly valid
+      # ones.
+      - "0001"
+      - "0020"
   - id: case05
     root: /tmp/qserv/itest_src/datasets/case05
     data: data/{table_name}.csv
