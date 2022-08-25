@@ -65,6 +65,7 @@
 #include "qdisp/QueryRequest.h"
 #include "qdisp/ResponseHandler.h"
 #include "qdisp/XrdSsiMocks.h"
+#include "query/QueryContext.h"
 #include "qproc/QuerySession.h"
 #include "qmeta/Exceptions.h"
 #include "qmeta/QStatus.h"
@@ -579,6 +580,7 @@ void Executive::_setupLimit() {
     // if qSession is nullptr, this is probably a unit test.
     if (qSession == nullptr) return;
     auto const& selectStatement = qSession->getStmt();
+    bool allChunksRequired = qSession->dbgGetContext()->allChunksRequired;
     bool groupBy = selectStatement.hasGroupBy();
     bool orderBy = selectStatement.hasOrderBy();
     bool hasLimit = selectStatement.hasLimit();
@@ -586,11 +588,11 @@ void Executive::_setupLimit() {
         _limit = selectStatement.getLimit();
         if (_limit <= 0) hasLimit = false;
     }
-    _limitApplies = hasLimit && !(groupBy || orderBy);
+    _limitSquashApplies = hasLimit && !(groupBy || orderBy || allChunksRequired);
 }
 
 void Executive::checkLimitRowComplete() {
-    if (!_limitApplies) return;
+    if (!_limitSquashApplies) return;
     if (_totalResultRows < _limit) return;
     bool previousVal = _setLimitRowComplete();
     if (previousVal) {

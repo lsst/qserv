@@ -155,7 +155,7 @@ void AggregatePlugin::applyPhysical(QueryPlugin::Plan& plan, query::QueryContext
     }
 
     // Make a single new parallelSelectList and a single new mergeSelectList for all the parallel statements.
-    // This assumes that the select lists are te same for all statements, which is only true if this plugin
+    // This assumes that the select lists are the same for all statements, which is only true if this plugin
     // is executed early enough to ensure that other fragmenting activity has not yet taken place.
     query::SelectList parallelSelectList;
     auto mergeSelectList = std::make_shared<query::SelectList>();
@@ -170,6 +170,7 @@ void AggregatePlugin::applyPhysical(QueryPlugin::Plan& plan, query::QueryContext
     // update context.
     if (plan.stmtOriginal.getDistinct() || aggOpManager.hasAggregate()) {
         context.needsMerge = true;
+        context.allChunksRequired = true;
     }
 
     // If we are merging *and* there is not a LIMIT on the query then we can remove the ORDER BY clause from

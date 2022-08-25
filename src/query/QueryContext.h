@@ -172,9 +172,13 @@ public:
 
     std::string columnToTablesMapToString() const;
 
-    int chunkCount{0};  //< -1: all, 0: none, N: #chunks
+    int chunkCount = 0;  //< -1: all, 0: none, N: #chunks
 
-    bool needsMerge{false};  ///< Does this query require a merge/post-processing step?
+    bool needsMerge = false;  ///< Does this query require a merge/post-processing step?
+
+    /// Aggregation requires results from all query chunks if true.
+    /// i.e. no stopping early when reaching LIMIT X rows.
+    bool allChunksRequired = false;
 
     css::StripingParams getDbStriping() { return css->getDbStriping(dominantDb); }
     bool containsDb(std::string const& dbName) { return css->containsDb(dbName); }
