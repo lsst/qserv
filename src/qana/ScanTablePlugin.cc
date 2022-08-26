@@ -69,7 +69,7 @@ void ScanTablePlugin::applyFinal(query::QueryContext& context) {
     if (context.chunkCount < scanThreshold) {
         context.scanInfo.infoTables.clear();
         context.scanInfo.scanRating = 0;
-        LOGS(_log, LOG_LVL_TRACE, "Squash scan tables: <" << scanThreshold << " chunks.");
+        LOGS(_log, LOG_LVL_INFO, "ScanInfo Squash full table scan tables: <" << scanThreshold << " chunks.");
     }
 }
 
@@ -211,7 +211,7 @@ proto::ScanInfo ScanTablePlugin::_findScanTables(query::SelectStmt& stmt, query:
         scanInfo.infoTables.push_back(info);
         scanInfo.scanRating = std::max(scanInfo.scanRating, info.scanRating);
         scanInfo.scanRating = std::min(scanInfo.scanRating, static_cast<int>(proto::ScanInfo::SLOWEST));
-        LOGS(_log, LOG_LVL_TRACE,
+        LOGS(_log, LOG_LVL_INFO,
              "ScanInfo " << info.db << "." << info.table << " lockInMemory=" << info.lockInMemory
                          << " rating=" << info.scanRating);
     }

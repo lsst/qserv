@@ -132,31 +132,31 @@ class AvgAggOp : public AggOp {
 public:
     explicit AvgAggOp(AggOp::Mgr& mgr) : AggOp(mgr) {}
 
+
     virtual AggRecord::Ptr operator()(ValueFactor const& orig) {
-        AggRecord::Ptr arp = std::make_shared<AggRecord>();
-        arp->orig = orig.clone();
+
+        AggRecord::Ptr aggRecord = std::make_shared<AggRecord>();
+        aggRecord->orig = orig.clone();
         // Parallel: get each aggregation subterm.
-        std::shared_ptr<FuncExpr> fe;
+        std::shared_ptr<FuncExpr> funcExpr;
         std::shared_ptr<ValueFactor const> origVf(orig.clone());
-        std::shared_ptr<ValueExpr> ve;
-        std::string cAlias = _mgr.getAggName("COUNT");
-        fe = FuncExpr::newLike(*origVf->getFuncExpr(), "COUNT");
-        ve = ValueExpr::newSimple(ValueFactor::newFuncFactor(fe));
-        ve->setAlias(cAlias);
-        arp->parallel.push_back(ve);
+        std::shared_ptr<ValueExpr> valExpr;
+        std::string countAlias = _mgr.getAggName("COUNT");
+        funcExpr = FuncExpr::newLike(*origVf->getFuncExpr(), "COUNT");
+        valExpr = ValueExpr::newSimple(ValueFactor::newFuncFactor(funcExpr));
+        valExpr->setAlias(countAlias);
+        aggRecord->parallel.push_back(valExpr);
 
-        std::string sAlias = _mgr.getAggName("SUM");
-        fe = FuncExpr::newLike(*origVf->getFuncExpr(), "SUM");
-        ve = ValueExpr::newSimple(ValueFactor::newFuncFactor(fe));
-        ve->setAlias(sAlias);
-        arp->parallel.push_back(ve);
+        std::string sumAlias = _mgr.getAggName("SUM");
+        funcExpr = FuncExpr::newLike(*origVf->getFuncExpr(), "SUM");
+        valExpr = ValueExpr::newSimple(ValueFactor::newFuncFactor(funcExpr));
+        valExpr->setAlias(sumAlias);
+        aggRecord->parallel.push_back(valExpr);
 
-        std::shared_ptr<FuncExpr> feSum;
-        std::shared_ptr<FuncExpr> feCount;
-        feSum = FuncExpr::newArg1("SUM", sAlias);
-        feCount = FuncExpr::newArg1("SUM", cAlias);
-        ve = std::make_shared<ValueExpr>();
-        ValueExpr::FactorOpVector& factorOps = ve->getFactorOps();
+        std::shared_ptr<FuncExpr> feSum = FuncExpr::newArg1("SUM", sumAlias);
+        std::shared_ptr<FuncExpr> feCount = FuncExpr::newArg1("SUM", countAlias);
+        valExpr = std::make_shared<ValueExpr>();
+        ValueExpr::FactorOpVector& factorOps = valExpr->getFactorOps();
         factorOps.clear();
         ValueExpr::FactorOp fo;
         fo.factor = ValueFactor::newFuncFactor(feSum);
@@ -165,8 +165,9 @@ public:
         fo.factor = ValueFactor::newFuncFactor(feCount);
         fo.op = ValueExpr::NONE;
         factorOps.push_back(fo);
-        arp->merge = ValueFactor::newExprFactor(ve);
-        return arp;
+        aggRecord->merge = ValueFactor::newExprFactor(valExpr);
+
+        return aggRecord;
     }
 };
 
