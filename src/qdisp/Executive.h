@@ -177,7 +177,9 @@ private:
     /// @return previous value of _limitRowComplete while setting it to true.
     ///  This indicates that enough rows have been read to complete the user query
     ///  with a LIMIT clause, and no group by or order by clause.
-    bool _setLimitRowComplete() { return _limitRowComplete.exchange(true); }
+    bool _setLimitRowComplete() {
+        return _limitRowComplete.exchange(true);
+    }
 
     // for debugging
     void _printState(std::ostream& os);
@@ -237,8 +239,8 @@ private:
     std::weak_ptr<qproc::QuerySession> _querySession;
     int64_t _limit = 0;  ///< Limit to number of rows to return. 0 means no limit.
 
-    ///< true if query can be returned as soon as _limit rows have been read.
-    bool _limitApplies = false;
+    /// true if query can be returned as soon as _limit rows have been read.
+    bool _limitSquashApplies = false;
 
     /// Number of time data has been ignored for for this user query.
     std::atomic<int> _dataIgnoredCount{0};
