@@ -67,5 +67,6 @@
         {"name":"declDeepSource", "type":"double DEFAULT NULL"},
         {"name":"chunkId", "type":"int(11) NOT NULL"},
         {"name":"subChunkId", "type":"int(11) NOT NULL"}
-    ]
+    ],
+    "fields_terminated_by":","
 }

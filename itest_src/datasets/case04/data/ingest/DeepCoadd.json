@@ -38,5 +38,7 @@
         {"name":"matchedFwhm", "type":"double DEFAULT NULL"},
         {"name":"measuredFwhm", "type":"double DEFAULT NULL"},
         {"name":"path", "type":"varchar(255) NOT NULL"}
-    ]
+    ],
+    "fields_terminated_by":",",
+    "fields_enclosed_by":"\""
 }

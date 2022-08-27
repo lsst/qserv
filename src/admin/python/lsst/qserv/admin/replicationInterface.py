@@ -28,6 +28,7 @@ import os
 from requests import delete, get, post, put
 from requests.exceptions import ConnectionError
 import subprocess
+from .itest_table import LoadTable
 from typing import Any, Callable, Dict, Generator, List, Optional, NamedTuple, Tuple
 from urllib.parse import urlparse
 
@@ -335,8 +336,7 @@ class ReplicationInterface:
         worker_host: str,
         worker_port: str,
         data_file: str,
-        table: str,
-        partitioned: bool = False,
+        table: LoadTable
     ) -> None:
         """Ingest table data from a file.
 
@@ -350,10 +350,8 @@ class ReplicationInterface:
             The worker_host port to use.
         data_file : `str`
             The path to the data file to ingest.
-        table : `str`
-            The name of the database to ingest the data into.
-        partitioned : bool, optional
-            True if the data is partitioned into chunks, by default False
+        table : `LoadTable`
+            Table descriptor, including its name, ingest configuration, etc.
         """
         if not self.auth_key:
             raise RuntimeError("auth_key must be set to ingest a data file.")
@@ -364,17 +362,16 @@ class ReplicationInterface:
             worker_host,
             worker_port,
             str(transaction_id),
-            table,
+            table.table_name,
             # app help says P for 'partitioned' and R for 'regular'/non-partitioned.
-            "P" if partitioned else "R",
+            "P" if table.is_partitioned else "R",
             data_file,
             "--verbose",
-            "--fields-terminated-by={terminator}".format(
-                terminator="\\t" if data_file.endswith("tsv") else ","
-            ),
+            f"--fields-terminated-by={table.fields_terminated_by}",
+            f"--fields-enclosed-by={table.fields_enclosed_by}",
+            f"--fields-escaped-by={table.fields_escaped_by}",
             f"--auth-key={self.auth_key}",
-            # "--admin-auth-key",
-            # self.admin_auth_key,
+            f"--lines-terminated-by={table.lines_terminated_by}",
         ]
         _log.debug("ingest file args: %s", args)
         res = subprocess.run(
@@ -431,7 +428,7 @@ class ReplicationInterface:
     def ingest_chunks_data(
         self,
         transaction_id: int,
-        table_name: str,
+        table: LoadTable,
         chunks_folder: str,
         chunk_info_file: str,
     ) -> None:
@@ -441,8 +438,8 @@ class ReplicationInterface:
         ----------
         transaction_id : `int`
             The transaction id obtained by starting a transaction
-        table_name : `str`
-            The name of the table to ingest into.
+        table : `LoadTable`
+            Table descriptor, including its name, ingest configuration, etc.
         chunks_folder : `str`
             The absolute path to the folder containing the chunk files to be ingested.
         chunks_info_file : `str`
@@ -451,7 +448,7 @@ class ReplicationInterface:
         _log.debug(
             "ingest_chunks_data transaction_id: %s table_name: %s chunks_folder: %s",
             transaction_id,
-            table_name,
+            table.table_name,
             chunks_folder,
         )
         # Ingest the chunk configs & get the host+port location for each chunk
@@ -490,26 +487,25 @@ class ReplicationInterface:
                 host,
                 port,
                 data_file=_file,
-                table=table_name,
-                partitioned=True,
+                table=table,
             )
 
-    def ingest_table_data(self, transaction_id: int, table_name: str, data_file: str) -> None:
+    def ingest_table_data(self, transaction_id: int, table: LoadTable, data_file: str) -> None:
         """Ingest data for a non-partitioned table.
 
         Parameters
         ----------
         transaction_id : `int`
             The trasaction id obtained by starting a transaction.
-        table_name : `str`
-            The name of the table to ingest data to
+        table : `LoadTable`
+            Table descriptor, including its name, ingest configuration, etc.
         data_file : `str`
             The absolute path to the file containing the table data.
         """
         _log.debug(
-            "ingest_table_data: transaction_id: %s table_name: %s data_file: %s",
+            "ingest_table_data: transaction_id: %s table.table_name: %s data_file: %s",
             transaction_id,
-            table_name,
+            table.table_name,
             data_file,
         )
         locations = self.ingest_regular_table(transaction_id)
@@ -519,15 +515,14 @@ class ReplicationInterface:
                 data_file,
                 location.host,
                 location.port,
-                table_name,
+                table.table_name,
             )
             self.ingest_data_file(
                 transaction_id,
                 location.host,
                 location.port,
                 data_file=data_file,
-                table=table_name,
-                partitioned=False,
+                table=table,
             )
 
     def delete_database(

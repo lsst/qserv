@@ -2,8 +2,7 @@
 "id":"deepForcedSourceId",
 "part":{
     "pos":"raDeepSource, declDeepSource",
-    "overlap":0,
-    "subChunks":0
+    "overlap":0
 },
 "dirColName":"deepSourceId",
 "in":{

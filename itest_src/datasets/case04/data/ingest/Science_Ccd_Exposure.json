@@ -46,5 +46,7 @@
         {"name":"fwhm", "type":"double NOT NULL"},
         {"name":"path", "type":"varchar(255) NOT NULL"},
         {"name":"airmass", "type":"float DEFAULT NULL"}
-    ]
+    ],
+    "fields_terminated_by":",",
+    "fields_enclosed_by":"\""
 }

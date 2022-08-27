@@ -6,5 +6,6 @@
     "schema":[
         {"name":"f", "type":"varchar(255) DEFAULT NULL"},
         {"name":"r", "type":"varchar(255) DEFAULT NULL"}
-    ]
+    ],
+    "fields_terminated_by":","
 }

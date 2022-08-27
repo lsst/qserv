@@ -45,5 +45,6 @@
         {"name":"fluxMag0Sigma", "type":"float NOT NULL"},
         {"name":"fwhm", "type":"double NOT NULL"},
         {"name":"path", "type":"varchar(255) NOT NULL"}
-    ]
+    ],
+    "fields_terminated_by":","
 }

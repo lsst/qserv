@@ -32,5 +32,6 @@
         {"name":"bright5perMag_i", "type":"float DEFAULT NULL"},
         {"name":"magBright_i", "type":"float DEFAULT NULL"},
         {"name":"nMag_i", "type":"int(11) DEFAULT NULL"}
-    ]
+    ],
+    "fields_terminated_by":","
 }

@@ -27,5 +27,6 @@
         {"name":"q3Mag_i", "type":"float DEFAULT NULL"},
         {"name":"magBright_i", "type":"float DEFAULT NULL"},
         {"name":"nMag_i", "type":"float DEFAULT NULL"}
-    ]
+    ],
+    "fields_terminated_by":","
 }
