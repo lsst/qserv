@@ -331,7 +331,7 @@ bool QueryRequest::_importStream(JobQuery::Ptr const& jq) {
     }
     ResponseHandler::BufPtr bufPtr = make_shared<vector<char>>(buff, buff + len);
 
-    // Use flush to read the buffer and extract the header.
+    // Use `flush()` to read the buffer and extract the header.
     bool largeResult = false;
     int nextBufSize = 0;
     bool last = false;

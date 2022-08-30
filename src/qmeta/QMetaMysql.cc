@@ -424,7 +424,7 @@ void QMetaMysql::finishChunk(QueryId queryId, int chunk) {
 }
 
 // Mark query as completed or failed.
-void QMetaMysql::completeQuery(QueryId queryId, QInfo::QStatus qStatus) {
+void QMetaMysql::completeQuery(QueryId queryId, QInfo::QStatus qStatus, int64_t collectedRows, size_t collectedBytes) {
     lock_guard<mutex> sync(_dbMutex);
 
     auto trans = QMetaTransaction::create(*_conn);
@@ -432,6 +432,8 @@ void QMetaMysql::completeQuery(QueryId queryId, QInfo::QStatus qStatus) {
     // find and update query info
     string query = "UPDATE QInfo SET completed = NOW(), status = ";
     query += ::status2string(qStatus);
+    query += ", resultBytes = " + to_string(collectedBytes);
+    query += ", resultRows = " + to_string(collectedRows);
     query += " WHERE queryId = ";
     query += to_string(queryId);
 

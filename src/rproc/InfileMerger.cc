@@ -349,8 +349,15 @@ bool InfileMerger::_setupConnectionInnoDb(mysql::MySqlConnection& mySConn) {
     return false;
 }
 
-bool InfileMerger::finalize() {
+
+size_t InfileMerger::getTotalResultSize() const {
+    return _totalResultSize;
+}
+
+
+bool InfileMerger::finalize(size_t& collectedBytes) {
     bool finalizeOk = true;
+    collectedBytes = _totalResultSize;
     // TODO: Should check for error condition before continuing.
     if (_isFinished) {
         LOGS(_log, LOG_LVL_ERROR, "InfileMerger::finalize(), but _isFinished == true");

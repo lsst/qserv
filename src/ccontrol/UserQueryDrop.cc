@@ -134,7 +134,8 @@ void UserQueryDrop::submit() {
     if (_qState == ERROR) {
         if (qMetaQueryId) {
             try {
-                _queryMetadata->completeQuery(qMetaQueryId, qmeta::QInfo::FAILED);
+                // rows and bytes collected from workers should be 0.
+                _queryMetadata->completeQuery(qMetaQueryId, qmeta::QInfo::FAILED, 0, 0);
             } catch (qmeta::QMetaError const& exc) {
                 // not fatal, just print error message and continue
                 LOGS(_log, LOG_LVL_WARN, "QMeta failure (non-fatal): " << exc.what());

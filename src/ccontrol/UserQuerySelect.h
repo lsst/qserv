@@ -158,7 +158,7 @@ private:
     void _expandSelectStarInMergeStatment(std::shared_ptr<query::SelectStmt> const& mergeStmt);
 
     void _discardMerger();
-    void _qMetaUpdateStatus(qmeta::QInfo::QStatus qStatus);
+    void _qMetaUpdateStatus(qmeta::QInfo::QStatus qStatus, size_t rows, size_t bytes);
     void _qMetaAddChunks(std::vector<int> const& chunks);
     void _qMetaUpdateMessages();
     void _setupChunking();

@@ -142,6 +142,8 @@ public:
     /// Add 'rowCount' to the total number of rows in the result table.
     void addResultRows(int rowCount) { _totalResultRows += rowCount; }
 
+    int64_t getTotalResultRows() const { return _totalResultRows; }
+
     /// Check if conditions are met for the query to be complete with the
     /// rows already read in.
     void checkLimitRowComplete();
