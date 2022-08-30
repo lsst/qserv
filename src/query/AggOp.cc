@@ -132,9 +132,7 @@ class AvgAggOp : public AggOp {
 public:
     explicit AvgAggOp(AggOp::Mgr& mgr) : AggOp(mgr) {}
 
-
     virtual AggRecord::Ptr operator()(ValueFactor const& orig) {
-
         AggRecord::Ptr aggRecord = std::make_shared<AggRecord>();
         aggRecord->orig = orig.clone();
         // Parallel: get each aggregation subterm.

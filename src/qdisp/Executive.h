@@ -177,9 +177,7 @@ private:
     /// @return previous value of _limitRowComplete while setting it to true.
     ///  This indicates that enough rows have been read to complete the user query
     ///  with a LIMIT clause, and no group by or order by clause.
-    bool _setLimitRowComplete() {
-        return _limitRowComplete.exchange(true);
-    }
+    bool _setLimitRowComplete() { return _limitRowComplete.exchange(true); }
 
     // for debugging
     void _printState(std::ostream& os);
