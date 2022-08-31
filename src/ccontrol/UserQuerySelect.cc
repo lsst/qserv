@@ -340,7 +340,6 @@ void UserQuerySelect::submit() {
 QueryState UserQuerySelect::join() {
     bool successful = _executive->join();  // Wait for all data
     // Since all data are in, run final SQL commands like GROUP BY.
-    int64_t collectedRows = _executive->getTotalResultRows();
     size_t collectedBytes = 0;
     if (!_infileMerger->finalize(collectedBytes)) {
         successful = false;
@@ -362,6 +361,7 @@ QueryState UserQuerySelect::join() {
     // Update the permanent message table.
     _qMetaUpdateMessages();
 
+    int64_t collectedRows = _executive->getTotalResultRows();
     if (successful) {
         _qMetaUpdateStatus(qmeta::QInfo::COMPLETED, collectedRows, collectedBytes);
         LOGS(_log, LOG_LVL_INFO, "Joined everything (success)");
@@ -618,7 +618,6 @@ void UserQuerySelect::qMetaRegister(std::string const& resultLocation, std::stri
 
 // update query status in QMeta
 void UserQuerySelect::_qMetaUpdateStatus(qmeta::QInfo::QStatus qStatus, size_t rows, size_t bytes) {
-    // &&& delete this line - add rows and bytes to completeQuery
     _queryMetadata->completeQuery(_qMetaQueryId, qStatus, rows, bytes);
     // Remove the row for temporary query statistics.
     try {
