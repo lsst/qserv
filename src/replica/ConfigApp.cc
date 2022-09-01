@@ -98,7 +98,7 @@ ConfigApp::ConfigApp(int argc, char* argv[]) : ConfigAppBase(argc, argv, descrip
     auto& updateWorkerCommand =
             parser().command("UPDATE_WORKER")
                     .description("Update a configuration of a worker.")
-                    .required("worker", "The name of a worker to be updated.", _workerInfo.name);
+                    .required("worker", "The name of a worker to be updated.", _worker.name);
     _configureWorkerOptions(updateWorkerCommand);
 
     auto& addWorkerCommand =
@@ -107,11 +107,11 @@ ConfigApp::ConfigApp(int argc, char* argv[]) : ConfigAppBase(argc, argv, descrip
                             "Register a new worker in the configuration. Note that the minimal configuration"
                             " requires just one mandatory parameter - the unique name (identifier) of the "
                             "worker.")
-                    .required("worker", "The name of a worker to be added.", _workerInfo.name);
+                    .required("worker", "The name of a worker to be added.", _worker.name);
     _configureWorkerOptions(addWorkerCommand);
 
     parser().command("DELETE_WORKER")
-            .required("worker", "The name of a worker to be deleted.", _workerInfo.name)
+            .required("worker", "The name of a worker to be deleted.", _worker.name)
             .description(
                     "Remove the specified worker from the configuration. ATTENTION: any data associated"
                     " with the deleted worker will be automatically deleted from the database."
@@ -121,16 +121,16 @@ ConfigApp::ConfigApp(int argc, char* argv[]) : ConfigAppBase(argc, argv, descrip
             .description(
                     "Register a new database family. Note that all parameters of this command are"
                     " mandatory and positional.")
-            .required("name", "The name of a new database family.", _familyInfo.name)
+            .required("name", "The name of a new database family.", _family.name)
             .required("replication-level", "The minimum replication level desired (1..N).",
-                      _familyInfo.replicationLevel)
+                      _family.replicationLevel)
             .required("num-stripes", "The number of stripes (from the CSS partitioning configuration).",
-                      _familyInfo.numStripes)
+                      _family.numStripes)
             .required("num-sub-stripes",
                       "The number of sub-stripes (from the CSS partitioning configuration).",
-                      _familyInfo.numSubStripes)
+                      _family.numSubStripes)
             .required("overlap", "The default overlap for tables that do not specify their own overlap.",
-                      _familyInfo.overlap);
+                      _family.overlap);
 
     parser().command("DELETE_DATABASE_FAMILY")
             .description(
@@ -142,7 +142,7 @@ ConfigApp::ConfigApp(int argc, char* argv[]) : ConfigAppBase(argc, argv, descrip
                       "The name of an existing database family to be deleted. ATTENTION: all databases that"
                       " are members of the family will be deleted as well, along with the relevant info"
                       " about replicas of all chunks of the databases.",
-                      _familyInfo.name);
+                      _family.name);
 
     parser().command("ADD_DATABASE")
             .description(
@@ -150,9 +150,9 @@ ConfigApp::ConfigApp(int argc, char* argv[]) : ConfigAppBase(argc, argv, descrip
                     " as the names of 'director' tables, etc. will be added by this operations. Those"
                     " can be added later when the corresponding tables will be registered in a scope"
                     " of the database.")
-            .required("name", "The name of a new database.", _databaseInfo.name)
+            .required("name", "The name of a new database.", _database.name)
             .required("family", "The name of an existing family the new database will join.",
-                      _databaseInfo.family);
+                      _database.family);
 
     parser().command("PUBLISH_DATABASE")
             .description(
@@ -163,7 +163,7 @@ ConfigApp::ConfigApp(int argc, char* argv[]) : ConfigAppBase(argc, argv, descrip
                     " are published only after they're fully ingested. Normally, the change of the"
                     " database status should be requested via the REST API of the Master Replication"
                     " Controller, rather than using this tool.")
-            .required("name", "The name of an existing database.", _databaseInfo.name);
+            .required("name", "The name of an existing database.", _database.name);
 
     parser().command("UNPUBLISH_DATABASE")
             .description(
@@ -172,7 +172,7 @@ ConfigApp::ConfigApp(int argc, char* argv[]) : ConfigAppBase(argc, argv, descrip
                     " tracked by the Replication system to maintain the sufficient replication level."
                     " Normally, the change of the database status should be requested via the REST API"
                     " of the Master Replication Controller, rather than using this tool.")
-            .required("name", "The name of an existing database.", _databaseInfo.name);
+            .required("name", "The name of an existing database.", _database.name);
 
     parser().command("DELETE_DATABASE")
             .description("Remove the database and all relevant metadata from the configuration.")
@@ -180,39 +180,60 @@ ConfigApp::ConfigApp(int argc, char* argv[]) : ConfigAppBase(argc, argv, descrip
                       "The name of an existing database to be deleted. ATTENTION: all relevant info that"
                       " is associated with the database (replicas of all chunks, etc.) will get deleted as "
                       "well.",
-                      _databaseInfo.name);
+                      _database.name);
 
     parser().command("ADD_TABLE")
             .description("Register a new table a configuration of the given database.")
-            .required("database", "The name of an existing database.", _database)
-            .required("table", "The name of a new table.", _table)
+            .required("database", "The name of an existing database.", _table.database)
+            .required("table", "The name of a new table.", _table.name)
             .flag("partitioned", "The flag indicating (if present) that a table is partitioned.",
-                  _isPartitioned)
-            .flag("director",
-                  "The flag indicating (if present) that this is a 'director' table of the database"
-                  " Note that this flag only applies to the partitioned tables.",
-                  _isDirector)
+                  _table.isPartitioned)
+            .option("director-table",
+                    "The name of the first director table. This parameter is required for"
+                    " all dependent tables. For the RefMatch tables the value may also include"
+                    " the name of a database. In this case the syntax would be <database>.<table>",
+                    _directorDatabaseTable)
             .option("director-key",
                     "The name of a column in the 'director' table of the database."
                     " Note that this option must be provided for the 'director' tables.",
-                    _directorKey)
+                    _primaryKeyColumn)
+            .option("director-table2",
+                    "The name of the second director table. This parameter is required for"
+                    " the 'RefMatch' tables only. A presence of this table specializes the dependent"
+                    " table into the 'RefMatch' one. The value may also include the name of"
+                    " a database. In this case the syntax would be <database>.<table>",
+                    _directorDatabaseTable2)
+            .option("director-key2",
+                    "The name of a column in the second 'director' table."
+                    " Note that this option must be provided for the 'RefMatch' tables only.",
+                    _primaryKeyColumn2)
+            .option("flag",
+                    "The name of a column in the 'RefMatch' that stores flags."
+                    " Note that this option must be provided for the 'RefMatch' tables only."
+                    " This parameter is ignored for other tables.",
+                    _table.flagColName)
+            .option("ang-sep",
+                    "The angular separation parameter."
+                    " Note that this option must be provided for the 'RefMatch' tables only."
+                    " This parameter is ignored for other tables.",
+                    _table.angSep)
             .option("latitude-key",
                     "The name of a column in the 'partitioned' table indicating a column which"
                     " stores latitude (declination) of the object/sources. This parameter is optional.",
-                    _latitudeColName)
+                    _table.latitudeColName)
             .option("longitude-key",
                     "The name of a column in the 'partitioned' table indicating a column which"
                     " stores longitude (right ascension) of the object/sources. This parameter is optional.",
-                    _longitudeColName);
+                    _table.longitudeColName);
 
     parser().command("DELETE_TABLE")
             .description("Remove the table and all relevant metadata from the configuration.")
-            .required("database", "The name of an existing database.", _database)
+            .required("database", "The name of an existing database.", _table.database)
             .required(
                     "table",
                     "The name of an existing table to be deleted. ATTENTION: all relevant info that"
                     " is associated with the table (replicas of all chunks, etc.) will get deleted as well.",
-                    _table);
+                    _table.name);
 }
 
 int ConfigApp::runSubclassImpl() {
@@ -238,10 +259,10 @@ int ConfigApp::runSubclassImpl() {
 
 void ConfigApp::_configureWorkerOptions(detail::Command& command) {
     command.option("enabled", "Set to '0' if the worker is turned into disabled mode upon creation.",
-                   _workerInfo.isEnabled)
+                   _worker.isEnabled)
             .option("read-only",
                     "Set to '0' if the worker is NOT turned into the read-only mode upon creation.",
-                    _workerInfo.isReadOnly);
+                    _worker.isReadOnly);
 }
 
 int ConfigApp::_dump() const {
@@ -273,7 +294,7 @@ int ConfigApp::_updateWorker() const {
     // Configuration changes will be updated in the transient object obtained from
     // the database and then be saved to the the persistent configuration.
     try {
-        auto info = config()->workerInfo(_workerInfo.name);
+        auto info = config()->workerInfo(_worker.name);
         WorkerInfo::update(_workerEnable, info.isEnabled);
         WorkerInfo::update(_workerReadOnly, info.isReadOnly);
         auto const updatedInfo = config()->updateWorker(info);
@@ -286,7 +307,7 @@ int ConfigApp::_updateWorker() const {
 
 int ConfigApp::_addWorker() const {
     try {
-        config()->addWorker(_workerInfo);
+        config()->addWorker(_worker);
     } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR, "ConfigApp::" << __func__ << ": " << ex.what());
         throw;
@@ -296,7 +317,7 @@ int ConfigApp::_addWorker() const {
 
 int ConfigApp::_deleteWorker() const {
     try {
-        config()->deleteWorker(_workerInfo.name);
+        config()->deleteWorker(_worker.name);
     } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR, "ConfigApp::" << __func__ << ": " << ex.what());
         throw;
@@ -306,7 +327,7 @@ int ConfigApp::_deleteWorker() const {
 
 int ConfigApp::_addFamily() {
     try {
-        config()->addDatabaseFamily(_familyInfo);
+        config()->addDatabaseFamily(_family);
     } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR, "ConfigApp::" << __func__ << ": " << ex.what());
         throw;
@@ -316,7 +337,7 @@ int ConfigApp::_addFamily() {
 
 int ConfigApp::_deleteFamily() {
     try {
-        config()->deleteDatabaseFamily(_familyInfo.name);
+        config()->deleteDatabaseFamily(_family.name);
     } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR, "ConfigApp::" << __func__ << ": " << ex.what());
         throw;
@@ -326,7 +347,7 @@ int ConfigApp::_deleteFamily() {
 
 int ConfigApp::_addDatabase() {
     try {
-        config()->addDatabase(_databaseInfo.name, _databaseInfo.family);
+        config()->addDatabase(_database.name, _database.family);
     } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR, "ConfigApp::" << __func__ << ": " << ex.what());
         throw;
@@ -337,9 +358,9 @@ int ConfigApp::_addDatabase() {
 int ConfigApp::_publishDatabase(bool publish) {
     try {
         if (publish) {
-            config()->publishDatabase(_databaseInfo.name);
+            config()->publishDatabase(_database.name);
         } else {
-            config()->unPublishDatabase(_databaseInfo.name);
+            config()->unPublishDatabase(_database.name);
         }
     } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR, "ConfigApp::" << __func__ << ": " << ex.what());
@@ -350,7 +371,7 @@ int ConfigApp::_publishDatabase(bool publish) {
 
 int ConfigApp::_deleteDatabase() {
     try {
-        config()->deleteDatabase(_databaseInfo.name);
+        config()->deleteDatabase(_database.name);
     } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR, "ConfigApp::" << __func__ << ": " << ex.what());
         throw;
@@ -360,9 +381,9 @@ int ConfigApp::_deleteDatabase() {
 
 int ConfigApp::_addTable() {
     try {
-        list<SqlColDef> noColumns;
-        config()->addTable(_database, _table, _isPartitioned, noColumns, _isDirector, _directorKey,
-                           _latitudeColName, _longitudeColName);
+        _table.directorTable = DirectorTableRef(_directorDatabaseTable, _primaryKeyColumn);
+        _table.directorTable2 = DirectorTableRef(_directorDatabaseTable2, _primaryKeyColumn2);
+        config()->addTable(_table);
     } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR, "ConfigApp::" << __func__ << ": " << ex.what());
         throw;
@@ -372,7 +393,7 @@ int ConfigApp::_addTable() {
 
 int ConfigApp::_deleteTable() {
     try {
-        config()->deleteTable(_database, _table);
+        config()->deleteTable(_table.database, _table.name);
     } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR, "ConfigApp::" << __func__ << ": " << ex.what());
         throw;

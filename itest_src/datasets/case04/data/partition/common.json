@@ -9,7 +9,7 @@
     "num-sub-stripes":14,
     "chunk":"chunkId",
     "sub-chunk":"subChunkId",
-    "default-overlap":0.0001
+    "overlap":0.001
 },
 "in":{
     "csv":{

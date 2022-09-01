@@ -1,3 +1,6 @@
+-- Note: this query is returning the empty result set. This may need
+-- to be investigated ad fixed.
+
 -- Return empty set with W13 small dataset
 -- https://dev.lsstcorp.org/trac/wiki/dbPipeQAQueries 
 

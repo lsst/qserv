@@ -10,5 +10,6 @@
         {"name":"intValue", "type":"int(11) DEFAULT NULL"},
         {"name":"doubleValue", "type":"double DEFAULT NULL"},
         {"name":"stringValue", "type":"varchar(255) DEFAULT NULL"}
-    ]
+    ],
+    "fields_terminated_by":","
 }

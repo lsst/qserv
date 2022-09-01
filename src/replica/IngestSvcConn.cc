@@ -162,7 +162,7 @@ void IngestSvcConn::_handshakeReceived(boost::system::error_code const& ec, size
     auto const trans = databaseServices->transaction(_contrib.transactionId);
     _contrib.database = trans.database;
 
-    if (!config->databaseInfo(_contrib.database).hasTable(_contrib.table)) {
+    if (!config->databaseInfo(_contrib.database).tableExists(_contrib.table)) {
         _failed("no such table '" + _contrib.table + "' in database '" + _contrib.database + "'.");
     }
 

@@ -156,19 +156,28 @@ function(CSSLoader,
         _set_table(val) { this._form_control('select', 'schema-table').val(val); }
 
         _set_databases(databases) {
+            console.log("_set_databases()", "databases:", databases);
             this._databases = databases;
-            this._form_control('select', 'schema-database').html(_.reduce(this._databases, (html, tables, name) => {
+            let html = '';
+            _.each(this._databases, (tables, database) => {
+                console.log("_set_databases()", "database:", database, "tables:", tables);
                 const selected = !html ? 'selected' : ''; 
-                return html + `<option value="${name}" ${selected}>${name}</option>`;
-            }, ''));
+                html += `<option value="${database}" ${selected}>${database}</option>`;
+
+            });
+            this._form_control('select', 'schema-database').html(html);
             if (this._current_database) this._set_database(this._current_database);
             this._set_tables(this._get_database());
         }
         _set_tables(database) {
-            this._form_control('select', 'schema-table').html(_.reduce(this._databases[database], (html, name) => {
+            console.log("_set_tables()", "database:", database, "tables:", this._databases[database]);
+            let html = '';
+            _.each(this._databases[database], (table) => {
+                console.log("_set_tables()", "table:", table);
                 const selected = !html ? 'selected' : ''; 
-                return html + `<option value="${name}" ${selected}>${name}</option>`;
-            }, ''));
+                html += `<option value="${table}" ${selected}>${table}</option>`;
+            });
+            this._form_control('select', 'schema-table').html(html);
             if (this._current_database && this._current_table && (database === this._current_database)) {
                 this._set_table(this._current_table);                
             }
@@ -208,9 +217,9 @@ function(CSSLoader,
                         return;
                     }
                     let databases = {};
-                    _.each(data.config.databases, (databaseInfo) => {
-                        databases[databaseInfo.database] = _.map(databaseInfo.tables, (tableInfo, table) => {
-                            return table;
+                    _.each(data.config.databases, (database) => {
+                        databases[database.database] = _.map(database.tables, (table) => {
+                            return table.name;
                         });
                     });
                     this._set_databases(databases);

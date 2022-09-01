@@ -103,7 +103,7 @@ json HttpCatalogsModule::_databaseStats(string const& database) const {
     result["chunks"]["with_replicas"] = replicas.size();
 
     map<string, map<string, size_t>> stats;
-    for (auto&& table : config->databaseInfo(database).partitionedTables) {
+    for (auto&& table : config->databaseInfo(database).partitionedTables()) {
         auto&& statsTable = stats[table];
         statsTable["data_unique_in_chunks_data"] = 0;
         statsTable["data_unique_in_chunks_index"] = 0;
@@ -156,7 +156,7 @@ json HttpCatalogsModule::_databaseStats(string const& database) const {
             }
         }
     }
-    for (auto&& table : config->databaseInfo(database).partitionedTables) {
+    for (auto&& table : config->databaseInfo(database).partitionedTables()) {
         size_t numRowsInChunks = 0;
         size_t numRowsInOverlaps = 0;
         auto const tableRowStats = databaseServices->tableRowStats(database, table);
@@ -184,7 +184,7 @@ json HttpCatalogsModule::_databaseStats(string const& database) const {
         resultTable["data"]["with_replicas"]["in_overlaps"]["index"] =
                 statsTable["data_with_replica_in_overlaps_index"];
     }
-    for (auto&& table : config->databaseInfo(database).regularTables) {
+    for (auto&& table : config->databaseInfo(database).regularTables()) {
         // TODO: implement this when the Replication system will support regular tables
 
         size_t data_unique_data = 0;

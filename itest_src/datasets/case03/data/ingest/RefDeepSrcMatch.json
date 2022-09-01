@@ -2,14 +2,28 @@
     "auth_key":"",
     "database":"qservTest_case03_qserv",
     "table":"RefDeepSrcMatch",
-    "is_partitioned":0,
+    "is_partitioned":1,
+    "director_table":"RefObject",
+    "director_key":"refObjectId",
+    "director_table2":"RunDeepSource",
+    "director_key2":"deepSourceId",
+    "flag":"flags",
+    "ang_sep":0.001,
     "schema":[
+        {"name":"ra", "type":"double DEFAULT NULL"},
+        {"name":"decl", "type":"double DEFAULT NULL"},
+        {"name":"coord_ra", "type":"double DEFAULT NULL"},
+        {"name":"coord_decl", "type":"double DEFAULT NULL"},
         {"name":"refObjectId", "type":"bigint(20) DEFAULT NULL"},
         {"name":"deepSourceId", "type":"bigint(20) DEFAULT NULL"},
         {"name":"angSep", "type":"double DEFAULT NULL"},
         {"name":"nRefMatches", "type":"int(11) DEFAULT NULL"},
         {"name":"nSrcMatches", "type":"int(11) DEFAULT NULL"},
         {"name":"closestToRef", "type":"tinyint(4) DEFAULT NULL"},
-        {"name":"closestToSrc", "type":"tinyint(4) DEFAULT NULL"}
-    ]
+        {"name":"closestToSrc", "type":"tinyint(4) DEFAULT NULL"},
+        {"name":"flags", "type":"int(11) NOT NULL"},
+        {"name":"chunkId", "type":"int(11) NOT NULL"},
+        {"name":"subChunkId", "type":"int(11) NOT NULL"}
+    ],
+    "fields_terminated_by":","
 }

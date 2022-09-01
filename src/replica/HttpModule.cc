@@ -101,11 +101,11 @@ string HttpModule::reconfigureWorkers(DatabaseInfo const& databaseInfo, bool all
     return error;
 }
 
-bool HttpModule::autoBuildSecondaryIndex(string const& database) const {
+bool HttpModule::autoBuildSecondaryIndex(string const& databaseName) const {
     auto const databaseServices = controller()->serviceProvider()->databaseServices();
     try {
         DatabaseIngestParam const paramInfo =
-                databaseServices->ingestParam(database, "secondary-index", "auto-build");
+                databaseServices->ingestParam(databaseName, "secondary-index", "auto-build");
         return paramInfo.value != "0";
     } catch (DatabaseServicesNotFound const& ex) {
         info(__func__, "the secondary index auto-build mode was not specified");

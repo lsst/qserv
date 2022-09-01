@@ -133,30 +133,31 @@ json HttpSqlIndexModule::executeImpl(string const& subModuleName) {
 json HttpSqlIndexModule::_getIndexes() {
     debug(__func__);
 
-    string const database = body().required<string>("database");
-    string const table = body().required<string>("table");
+    string const databaseName = body().required<string>("database");
+    string const tableName = body().required<string>("table");
     bool const overlap = body().optional<int>("overlap", 0) != 0;
 
-    debug(__func__, "database=" + database);
-    debug(__func__, "table=" + table);
+    debug(__func__, "database=" + databaseName);
+    debug(__func__, "table=" + tableName);
     debug(__func__, "overlap=" + bool2str(overlap));
 
     auto const config = controller()->serviceProvider()->config();
-    auto const databaseInfo = config->databaseInfo(database);
+    auto const database = config->databaseInfo(databaseName);
+    auto const table = database.findTable(tableName);
 
     // This safeguard is needed here because the index management job launched
     // doesn't have this restriction.
-    if (not databaseInfo.isPublished) throw HttpError(__func__, "database is not published");
+    if (not database.isPublished) throw HttpError(__func__, "database is not published");
 
     bool const allWorkers = true;
     string const noParentJobId;
     auto const job = SqlGetIndexesJob::create(
-            database, table, overlap, allWorkers, controller(), noParentJobId, nullptr,
+            database.name, table.name, overlap, allWorkers, controller(), noParentJobId, nullptr,
             config->get<int>("controller", "catalog-management-priority-level"));
     job->start();
-    logJobStartedEvent(SqlGetIndexesJob::typeName(), job, databaseInfo.family);
+    logJobStartedEvent(SqlGetIndexesJob::typeName(), job, database.family);
     job->wait();
-    logJobFinishedEvent(SqlGetIndexesJob::typeName(), job, databaseInfo.family);
+    logJobFinishedEvent(SqlGetIndexesJob::typeName(), job, database.family);
 
     auto const extendedErrorReport = job->getExtendedErrorReport();
     if (not extendedErrorReport.is_null()) {
@@ -171,9 +172,9 @@ json HttpSqlIndexModule::_getIndexes() {
 json HttpSqlIndexModule::_createIndexes() {
     debug(__func__);
 
-    string const database = body().required<string>("database");
-    string const table = body().required<string>("table");
-    string const index = body().required<string>("index");
+    string const databaseName = body().required<string>("database");
+    string const tableName = body().required<string>("table");
+    string const indexName = body().required<string>("index");
     string const comment = body().optional<string>("comment", string());
     SqlRequestParams::IndexSpec const spec = SqlRequestParams::IndexSpec(
             body().optional<string>("spec", "DEFAULT", {"DEFAULT", "UNIQUE", "FULLTEXT", "SPATIAL"}));
@@ -181,9 +182,9 @@ json HttpSqlIndexModule::_createIndexes() {
     bool const overlap = body().optional<int>("overlap", 0) != 0;
     bool const ignoreDuplicateKey = body().optional<int>("ignore_duplicate_key", 1) != 0;
 
-    debug(__func__, "database=" + database);
-    debug(__func__, "table=" + table);
-    debug(__func__, "index=" + index);
+    debug(__func__, "database=" + databaseName);
+    debug(__func__, "table=" + tableName);
+    debug(__func__, "index=" + indexName);
     debug(__func__, "comment=" + comment);
     debug(__func__, "spec=" + spec.str());
     debug(__func__, "columns.size()=" + columnsJson.size());
@@ -191,11 +192,12 @@ json HttpSqlIndexModule::_createIndexes() {
     debug(__func__, "ignore_duplicate_key=" + bool2str(ignoreDuplicateKey));
 
     auto const config = controller()->serviceProvider()->config();
-    auto const databaseInfo = config->databaseInfo(database);
+    auto const database = config->databaseInfo(databaseName);
+    auto const table = database.findTable(tableName);
 
     // This safeguard is needed here because the index management job launched
     // doesn't have this restriction.
-    if (not databaseInfo.isPublished) throw HttpError(__func__, "database is not published");
+    if (not database.isPublished) throw HttpError(__func__, "database is not published");
 
     // Process the input collection of the column specifications.
     //
@@ -208,35 +210,33 @@ json HttpSqlIndexModule::_createIndexes() {
     // the index creation against the table instance. Though, the later idea
     // has potential complications - the index may already exist in that table.
 
-    auto const schema =
-            databaseInfo.columns.count(table) == 0 ? list<SqlColDef>() : databaseInfo.columns.at(table);
-    if (not columnsJson.is_array()) {
+    if (!columnsJson.is_array()) {
         throw invalid_argument(context() + "::" + string(__func__) +
                                "  parameter 'columns' is not a simple JSON array.");
     }
-    vector<SqlIndexColumn> columns;
+    vector<SqlIndexColumn> indexColumns;
     for (auto&& columnJson : columnsJson) {
         string const column = HttpRequestBody::required<string>(columnJson, "column");
-        if (not schema.empty() and
-            schema.cend() == find_if(schema.cbegin(), schema.cend(),
-                                     [&column](auto&& c) { return c.name == column; })) {
+        if (!table.columns.empty() and
+            table.columns.cend() == find_if(table.columns.cbegin(), table.columns.cend(),
+                                            [&column](auto&& c) { return c.name == column; })) {
             throw invalid_argument(context() + "::" + string(__func__) + "  requested column '" + column +
                                    "' has not been found in the table schema.");
         }
-        columns.emplace_back(column, HttpRequestBody::required<size_t>(columnJson, "length"),
-                             HttpRequestBody::required<int>(columnJson, "ascending"));
+        indexColumns.emplace_back(column, HttpRequestBody::required<size_t>(columnJson, "length"),
+                                  HttpRequestBody::required<int>(columnJson, "ascending"));
     }
 
     bool const allWorkers = true;
     string const noParentJobId;
-    auto const job =
-            SqlCreateIndexesJob::create(database, table, overlap, spec, index, comment, columns, allWorkers,
-                                        ignoreDuplicateKey, controller(), noParentJobId, nullptr,
-                                        config->get<int>("controller", "catalog-management-priority-level"));
+    auto const job = SqlCreateIndexesJob::create(
+            database.name, table.name, overlap, spec, indexName, comment, indexColumns, allWorkers,
+            ignoreDuplicateKey, controller(), noParentJobId, nullptr,
+            config->get<int>("controller", "catalog-management-priority-level"));
     job->start();
-    logJobStartedEvent(SqlCreateIndexesJob::typeName(), job, databaseInfo.family);
+    logJobStartedEvent(SqlCreateIndexesJob::typeName(), job, database.family);
     job->wait();
-    logJobFinishedEvent(SqlCreateIndexesJob::typeName(), job, databaseInfo.family);
+    logJobFinishedEvent(SqlCreateIndexesJob::typeName(), job, database.family);
 
     auto const extendedErrorReport = job->getExtendedErrorReport();
     if (not extendedErrorReport.is_null()) {
@@ -249,32 +249,33 @@ json HttpSqlIndexModule::_createIndexes() {
 json HttpSqlIndexModule::_dropIndexes() {
     debug(__func__);
 
-    string const database = body().required<string>("database");
-    string const table = body().required<string>("table");
-    string const index = body().required<string>("index");
+    string const databaseName = body().required<string>("database");
+    string const tableName = body().required<string>("table");
+    string const indexName = body().required<string>("index");
     bool const overlap = body().optional<int>("overlap", 0) != 0;
 
-    debug(__func__, "database=" + database);
-    debug(__func__, "table=" + table);
-    debug(__func__, "index=" + index);
+    debug(__func__, "database=" + databaseName);
+    debug(__func__, "table=" + tableName);
+    debug(__func__, "index=" + indexName);
     debug(__func__, "overlap=" + bool2str(overlap));
 
     auto const config = controller()->serviceProvider()->config();
-    auto const databaseInfo = config->databaseInfo(database);
+    auto const database = config->databaseInfo(databaseName);
+    auto const table = database.findTable(tableName);
 
     // This safeguard is needed here because the index management job launched
     // doesn't have this restriction.
-    if (not databaseInfo.isPublished) throw HttpError(__func__, "database is not published");
+    if (!database.isPublished) throw HttpError(__func__, "database is not published");
 
     bool const allWorkers = true;
     string const noParentJobId;
     auto const job = SqlDropIndexesJob::create(
-            database, table, overlap, index, allWorkers, controller(), noParentJobId, nullptr,
+            database.name, table.name, overlap, indexName, allWorkers, controller(), noParentJobId, nullptr,
             config->get<int>("controller", "catalog-management-priority-level"));
     job->start();
-    logJobStartedEvent(SqlDropIndexesJob::typeName(), job, databaseInfo.family);
+    logJobStartedEvent(SqlDropIndexesJob::typeName(), job, database.family);
     job->wait();
-    logJobFinishedEvent(SqlDropIndexesJob::typeName(), job, databaseInfo.family);
+    logJobFinishedEvent(SqlDropIndexesJob::typeName(), job, database.family);
 
     auto const extendedErrorReport = job->getExtendedErrorReport();
     if (not extendedErrorReport.is_null()) {

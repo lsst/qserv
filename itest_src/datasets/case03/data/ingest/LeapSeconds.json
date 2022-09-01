@@ -11,5 +11,6 @@
         {"name":"whenMjdUtc", "type":"float DEFAULT NULL"},
         {"name":"whenUtc", "type":"bigint(20) DEFAULT NULL"},
         {"name":"whenTai", "type":"bigint(20) DEFAULT NULL"}
-    ]
+    ],
+    "fields_terminated_by":","
 }

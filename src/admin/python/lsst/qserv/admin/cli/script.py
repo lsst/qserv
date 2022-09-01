@@ -42,6 +42,7 @@ from ..qserv_backoff import on_backoff
 from ..template import apply_template_cfg_file, save_template_cfg
 from ...schema import smig, smig_block
 from ...schema import MigMgrArgs, SchemaUpdateRequired
+from ..itest_table import LoadTable
 from ..replicationInterface import ReplicationInterface
 from . import _integration_test, options
 
@@ -863,36 +864,47 @@ def load_simple(repl_ctrl_uri: str, auth_key: str) -> None:
             local_load_secondary_index=1,
         ),
     )
-    repl.ingest_table_config(
-        dict(
-            database=database,
-            table="Object",
-            is_partitioned=1,
-            chunk_id_key="chunkId",
-            sub_chunk_id_key="subChunkId",
-            is_director=1,
-            director_key="objectId",
-            latitude_key="dec",
-            longitude_key="ra",
-            schema=[
-                {"name": "objectId", "type": "BIGINT NOT NULL"},
-                {"name": "ra", "type": "DOUBLE NOT NULL"},
-                {"name": "dec", "type": "DOUBLE NOT NULL"},
-                {"name": "property", "type": "DOUBLE"},
-                {"name": "chunkId", "type": "INT UNSIGNED NOT NULL"},
-                {"name": "subChunkId", "type": "INT UNSIGNED NOT NULL"},
-            ],
-        )
+    table_name = "Object"
+    ingest_config = dict(
+        database=database,
+        table=table_name,
+        is_partitioned=1,
+        chunk_id_key="chunkId",
+        sub_chunk_id_key="subChunkId",
+        is_director=1,
+        director_key="objectId",
+        latitude_key="dec",
+        longitude_key="ra",
+        schema=[
+            {"name": "objectId", "type": "BIGINT NOT NULL"},
+            {"name": "ra", "type": "DOUBLE NOT NULL"},
+            {"name": "dec", "type": "DOUBLE NOT NULL"},
+            {"name": "property", "type": "DOUBLE"},
+            {"name": "chunkId", "type": "INT UNSIGNED NOT NULL"},
+            {"name": "subChunkId", "type": "INT UNSIGNED NOT NULL"},
+        ],
     )
+    data_file = os.path.join(Path(__file__).parent.absolute(), "chunk_0.txt")
+    partition_config_files = List[str]()
+    data_staging_dir = ""
+    ref_db_table_schema_file = ""
+    table = LoadTable(
+        table_name,
+        ingest_config,
+        data_file,
+        partition_config_files,
+        data_staging_dir,
+        ref_db_table_schema_file
+    )
+    repl.ingest_table_config(table.ingest_config)
     transaction_id = repl.start_transaction(database=database)
     chunk_location = repl.ingest_chunk_config(transaction_id, "0")
     repl.ingest_data_file(
         transaction_id,
         chunk_location.host,
         chunk_location.port,
-        data_file=os.path.join(Path(__file__).parent.absolute(), "chunk_0.txt"),
-        table="Object",
-        partitioned=True,
+        data_file=data_file,
+        table=table,
     )
     repl.commit_transaction(transaction_id)
     repl.publish_database(database)

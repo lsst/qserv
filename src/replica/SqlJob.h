@@ -193,9 +193,9 @@ protected:
      * multiple entries for the partitioned tables (which includes prototype
      * tables, special "overflow" tables, and chunk-specific tables).
      *
-     * @param worker The unique identifier of a worker hosting the tables.
-     * @param database The name of the table's database.
-     * @param table The base name of a table.
+     * @param workerName The unique identifier of a worker hosting the tables.
+     * @param databaseName The name of the table's database.
+     * @param tableName The base name of a table.
      * @param allTables The optional flag (applies to the partitioned tables only)
      *   indicating if all or a subset of tables (as determined by the next
      *   parameter 'overlapTablesOnly') shall be reported. if the flag is set to 'true'
@@ -209,8 +209,8 @@ protected:
      * @return A collection of tables found.
      * @throw std::invalid_argument If the database or a table isn't valid.
      */
-    std::vector<std::string> workerTables(std::string const& worker, std::string const& database,
-                                          std::string const& table, bool allTables = true,
+    std::vector<std::string> workerTables(std::string const& workerName, std::string const& databaseName,
+                                          std::string const& tableName, bool allTables = true,
                                           bool overlapTablesOnly = false) const;
 
     /**
@@ -219,9 +219,9 @@ protected:
      * transaction. The operation relies upon the persistent records for the transaction
      * contributions.
      *
-     * @param worker The unique identifier of a worker hosting the tables.
+     * @param workerName The unique identifier of a worker hosting the tables.
      * @param transactionId The unique identifier of the transaction.
-     * @param table The base name of a table.
+     * @param tableName The base name of a table.
      * @param allTables The optional flag (applies to the partitioned tables only)
      *   indicating if all or a subset of tables (as determined by the next
      *   parameter 'overlapTablesOnly') shall be reported. if the flag is set to 'true'
@@ -235,8 +235,8 @@ protected:
      * @return A collection of tables found.
      * @throw std::invalid_argument If the database or a table isn't valid.
      */
-    std::vector<std::string> workerTables(std::string const& worker, TransactionId const& transactionId,
-                                          std::string const& table, bool allTables = true,
+    std::vector<std::string> workerTables(std::string const& workerName, TransactionId const& transactionId,
+                                          std::string const& tableName, bool allTables = true,
                                           bool overlapTablesOnly = false) const;
 
     /**
@@ -268,7 +268,7 @@ private:
      * @return A value of 'true' if this is the partitioned table.
      * @throw std::invalid_argument If the database or a table isn't valid.
      */
-    bool _isPartitioned(std::string const& database, std::string const& table) const;
+    bool _isPartitioned(std::string const& databaseName, std::string const& tableName) const;
 
     // Input parameters
 

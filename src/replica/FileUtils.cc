@@ -69,7 +69,7 @@ bool isValidExtention(string const& str) {
  * @return 'true' if this is a valid table name
  */
 bool isValidPartitionedTable(string const& str, DatabaseInfo const& databaseInfo) {
-    for (auto&& table : databaseInfo.partitionedTables) {
+    for (auto&& table : databaseInfo.partitionedTables()) {
         if (str == table) return true;
         if (str == table + "FullOverlap") return true;
     }
@@ -94,7 +94,7 @@ vector<string> FileUtils::partitionedFiles(DatabaseInfo const& databaseInfo, uns
 
     string const chunkSuffix = "_" + to_string(chunk);
 
-    for (auto&& table : databaseInfo.partitionedTables) {
+    for (auto&& table : databaseInfo.partitionedTables()) {
         string const file = table + chunkSuffix;
         for (auto&& ext : ::extensions) {
             result.push_back(file + "." + ext);
@@ -110,7 +110,7 @@ vector<string> FileUtils::partitionedFiles(DatabaseInfo const& databaseInfo, uns
 vector<string> FileUtils::regularFiles(DatabaseInfo const& databaseInfo) {
     vector<string> result;
 
-    for (auto&& table : databaseInfo.regularTables) {
+    for (auto&& table : databaseInfo.regularTables()) {
         string const filename = table;
         for (auto&& ext : ::extensions) {
             result.push_back(filename + "." + ext);

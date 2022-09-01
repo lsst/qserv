@@ -26,7 +26,6 @@
 #include <list>
 #include <iosfwd>
 #include <map>
-#include <memory>
 #include <string>
 #include <vector>
 
@@ -35,6 +34,8 @@
 
 // Qserv headers
 #include "replica/Common.h"
+#include "replica/ConfigTable.h"
+
 // Forward declarations
 namespace lsst::qserv::replica {
 class DatabaseFamilyInfo;
@@ -45,63 +46,16 @@ namespace lsst::qserv::replica {
 
 /**
  * Class DatabaseInfo encapsulates various parameters describing databases.
+ * @note The interface is not thread-safe.
  */
 class DatabaseInfo {
 public:
-    std::string name;    // The name of a database.
-    std::string family;  // The name of the database family.
+    std::string name;    ///< The name of a database.
+    std::string family;  ///< The name of the database family.
 
-    bool isPublished = false;  // The status of the database.
+    bool isPublished = false;
     uint64_t createTime = 0;
     uint64_t publishTime = 0;
-
-    std::vector<std::string> partitionedTables;  // The names of the partitioned tables.
-    std::vector<std::string> regularTables;      // The list of fully replicated tables.
-
-    /// Table schema (optional).
-    std::map<std::string,  // table name
-             std::list<SqlColDef>>
-            columns;
-
-    /// @return The names of all tables.
-    std::vector<std::string> tables() const;
-
-    /// @return The names of the "director" tables.
-    std::vector<std::string> directorTables() const;
-
-    /// Reverse dependencies from the "dependent" tables to the corresponding
-    /// "directors". The "director" tables also have entries here, although they are
-    /// guaranteed to have the empty values. The "dependent" tables are guaranteed
-    /// to have non-empty values.
-    std::map<std::string,  // The table name (partitioned tables only!).
-             std::string>
-            directorTable;  // The name of the Qserv "director" table if any.
-
-    /// Each partitioned table will have an entry here. The key is required for
-    /// both "director" and the "dependent" tables.
-    std::map<std::string,  // The table name (partitioned tables only!).
-             std::string>
-            directorTableKey;  // The name of the table's key representing object identifiers.
-                               // NOTES: (1) In the "director" table this is the unique
-                               // PK identifying table rows, (2) In the "dependent" tables
-                               // the key represents the FK associated with the corresponding
-                               // PK of the "director" table.
-
-    // Names of special columns of the partitioned tables. Each partitioned tables has
-    // an entry in both maps. Non-empty values are required for the "director" tables.
-    // Empty values are allowed for the "dependent" tables since they must have
-    // the direct association with the corresponding "director" tables via
-    // the FK -> PK relation.
-    // Table names are used as keys in the dictionaries defined below.
-
-    std::map<std::string, std::string> latitudeColName;
-    std::map<std::string, std::string> longitudeColName;
-
-    // Publishing status of the tables.
-    // Table names are used as keys in the dictionaries defined below.
-    std::map<std::string, bool> tableIsPublished;
-    std::map<std::string, uint64_t> tableCreateTime;
-    std::map<std::string, uint64_t> tablePublishTime;
 
     /**
      * Construct an empty unpublished database object for the given name and the family.
@@ -122,47 +76,106 @@ public:
      * @param obj The JSON object to be used of a source of the worker's state.
      * @param families The collection of the database families to be used for validating
      *   the database definition.
+     * @param databases The collection of databases is needed for validating
+     *   the referential integrity of the "RefMatch" tables that may refer
+     *   to the director tables of other databases.
      * @return The initialized database descriptor.
      * @throw std::invalid_argument If the input object can't be parsed, or if it has
      *   incorrect schema.
      */
     static DatabaseInfo parse(nlohmann::json const& obj,
-                              std::map<std::string, DatabaseFamilyInfo> const& families);
+                              std::map<std::string, DatabaseFamilyInfo> const& families,
+                              std::map<std::string, DatabaseInfo> const& databases);
 
     /// @return The JSON representation of the object.
     nlohmann::json toJson() const;
 
-    /// @param table The name of a table.
-    /// @return 'true' if the table (of either kind) exists.
-    bool hasTable(std::string const& table) const;
+    /// @return The names of all tables.
+    std::vector<std::string> tables() const;
 
-    /// Validate parameters of a new table, then add it to the database.
-    /// @throw std::invalid_argument If the input parameters are incorrect or inconsistent.
-    void addTable(std::string const& table, std::list<SqlColDef> const& columns_ = std::list<SqlColDef>(),
-                  bool isPartitioned = false, bool isDirector = false,
-                  std::string const& directorTable_ = std::string(),
-                  std::string const& directorTableKey_ = std::string(),
-                  std::string const& latitudeColName_ = std::string(),
-                  std::string const& longitudeColName_ = std::string());
+    /// @return The names of the "regular" (fully-replicated) tables.
+    std::vector<std::string> regularTables() const;
+
+    /// @return The names of the "partitioned" tables.
+    std::vector<std::string> partitionedTables() const;
+
+    /// @return The names of the "director" tables.
+    std::vector<std::string> directorTables() const;
+
+    /// @return The names of the "RefMatch" tables.
+    std::vector<std::string> refMatchTables() const;
+
+    /// @param tableName The name of a table.
+    /// @return 'true' if the table (of either kind) exists.
+    bool tableExists(std::string const& tableName) const;
+
+    /**
+     * @brief Locate the immutable table descriptor.
+     * @param tableName The name of the table.
+     * @return The table descriptor
+     * @throws std::invalid_argument If the name is empty or no table for
+     *   the specified name was found.
+     */
+    TableInfo const& findTable(std::string const& tableName) const;
+
+    /**
+     * @brief Locate the mutable table descriptor.
+     * @param tableName The name of the table.
+     * @return The table descriptor
+     * @throws std::invalid_argument If the name is empty or no table for
+     *   the specified name was found.
+     */
+    TableInfo& findTable(std::string const& tableName) {
+        return const_cast<TableInfo&>(const_cast<DatabaseInfo const*>(this)->findTable(tableName));
+    }
+
+    /**
+     * @brief Validate parameters of a new table, then register the table in the database.
+     * @param databases The collection of databases is needed for validating
+     *   the referential integrity of the "RefMatch" tables that may refer
+     *   to the director tables of other databases.
+     * @param table The table descriptor.
+     * @return The table descriptor. It would be the original or validated and/or sanitized
+     *   one depending on a value of the optional flags \param validate_ and \param sanitize_.
+     * @throw std::invalid_argument if the input parameters are incorrect,
+     *   or if they're inconsistent, or if the table already present.
+     */
+    TableInfo addTable(std::map<std::string, DatabaseInfo> const& databases, TableInfo const& table_,
+                       bool validate_ = true, bool sanitize_ = false);
+
+    /**
+     * @brief Validate parameters of a new table.
+     * @param databases The collection of databases is needed for validating
+     *   the referential integrity of the "RefMatch" tables that may refer
+     *   to the director tables of other databases.
+     * @param table_ The table descriptor.
+     * @param sanitize_ If the flag is set to "true" then the method will try to fix
+     *   incomplete or incorrect values of the attributes where it's possible rather
+     *   then throwing the exception. the exception will be still throws should
+     *   such sanitation attempt failed.
+     * @return The table descriptor. It would be the original or sanitized one
+     *   depending on a value of the optional flag \param sanitize_.
+     * @throw std::invalid_argument if the input parameters are incorrect,
+     *   or if they're inconsistent, or if the table already present.
+     */
+    TableInfo validate(std::map<std::string, DatabaseInfo> const& databases, TableInfo const& table_,
+                       bool sanitize_ = false) const;
+
+    /**
+     * @brief Correct attributes of the table descriptor where this is possible.
+     * @param table_ The input table descriptor.
+     * @return The sanitized descriptor.
+     */
+    TableInfo sanitize(TableInfo const& table_) const;
 
     /// Remove the specified table from the database
+    /// @param tableName The name of the table to be removed.
     /// @throw std::invalid_argument If the empty string is passed as a value of
     ///   the parameter 'table', or the table doesn't exist.
-    void removeTable(std::string const& table);
+    void removeTable(std::string const& tableName);
 
-    /// @param The name of a table to be located and inspected
-    /// @return 'true' if the table was found and it's 'partitioned'
-    /// @throw std::invalid_argument if no such table is known
-    bool isPartitioned(std::string const& table) const;
-
-    /// @param The name of a table to be located and inspected
-    /// @return 'true' if the table was found and it's the 'partitioned' and the 'director' table
-    /// @throw std::invalid_argument if no such table is known
-    bool isDirector(std::string const& table) const;
-
-    /// @return The table schema in format which is suitable for CSS.
-    /// @throws std::out_of_range If the table is unknown.
-    std::string schema4css(std::string const& table) const;
+private:
+    std::map<std::string, TableInfo> _tables;  ///< The collection of all tables.
 };
 
 std::ostream& operator<<(std::ostream& os, DatabaseInfo const& info);

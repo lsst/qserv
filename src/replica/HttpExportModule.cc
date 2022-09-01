@@ -90,19 +90,19 @@ json HttpExportModule::executeImpl(string const& subModuleName) {
 json HttpExportModule::_getTables() {
     debug(__func__);
 
-    auto const database = params().at("database");
-    auto const tables = body().requiredColl<json>("tables");
+    auto const databaseName = params().at("database");
+    auto const tablesJson = body().requiredColl<json>("tables");
 
-    debug(__func__, "database=" + database);
-    debug(__func__, "tables.size()=" + to_string(tables.size()));
+    debug(__func__, "database=" + databaseName);
+    debug(__func__, "tables.size()=" + to_string(tablesJson.size()));
 
     auto const databaseServices = controller()->serviceProvider()->databaseServices();
     auto const config = controller()->serviceProvider()->config();
 
     // This operation will throw an exception if the database name is not valid
-    auto const databaseInfo = config->databaseInfo(database);
-    if (not databaseInfo.isPublished) {
-        throw HttpError(__func__, "database '" + databaseInfo.name + "' is not PUBLISHED");
+    auto const database = config->databaseInfo(databaseName);
+    if (not database.isPublished) {
+        throw HttpError(__func__, "database '" + database.name + "' is not PUBLISHED");
     }
 
     // Get a collection of known workers which are in the 'ENABLED' state
@@ -127,15 +127,14 @@ json HttpExportModule::_getTables() {
      *   chunk. For the databases in the 'PUBLISHED' state it means that the chunk
      *   doesn't exist.
      */
-    auto const findWorkerForChunk = [&databaseServices, &config, &databaseInfo](unsigned int chunk) {
+    auto const findWorkerForChunk = [&databaseServices, &config, &database](unsigned int chunk) {
         bool const enabledWorkersOnly = true;
         bool const includeFileInfo = false;
         vector<ReplicaInfo> replicas;
-        databaseServices->findReplicas(replicas, chunk, databaseInfo.name, enabledWorkersOnly,
-                                       includeFileInfo);
+        databaseServices->findReplicas(replicas, chunk, database.name, enabledWorkersOnly, includeFileInfo);
         if (replicas.empty()) {
             throw invalid_argument("no replica found for chunk " + to_string(chunk) +
-                                   " in a scope of database '" + databaseInfo.name + "'.");
+                                   " in a scope of database '" + database.name + "'.");
         }
         return config->workerInfo(replicas[0].worker());
     };
@@ -158,28 +157,28 @@ json HttpExportModule::_getTables() {
         json result;
         result["location"] = json::array();
 
-        if (tables.empty()) {
+        if (tablesJson.empty()) {
             // Report locations for all regular tables in the database
-            for (auto&& table : databaseInfo.regularTables) {
+            for (auto&& tableName : database.regularTables()) {
                 TableSpec spec;
-                spec.tableName = table;
+                spec.tableName = tableName;
                 spec.workerHost = allWorkerInfos[0].exporterHost;
                 spec.workerPort = allWorkerInfos[0].exporterPort;
                 result["location"].push_back(spec.toJson());
             }
 
-            // The rest is for the partitioned tabled
+            // The rest is for the partitioned tables
             bool const enabledWorkersOnly = true;
             vector<unsigned int> chunks;
-            databaseServices->findDatabaseChunks(chunks, databaseInfo.name, enabledWorkersOnly);
+            databaseServices->findDatabaseChunks(chunks, database.name, enabledWorkersOnly);
             for (auto chunk : chunks) {
                 auto const workerInfo = findWorkerForChunk(chunk);
 
-                for (auto&& table : databaseInfo.partitionedTables) {
+                for (auto&& tableName : database.partitionedTables()) {
                     TableSpec spec;
 
                     // One entry for the main chunk table itself
-                    spec.tableName = table;
+                    spec.tableName = tableName;
                     spec.partitioned = true;
                     spec.chunk = chunk;
                     spec.overlap = false;
@@ -196,18 +195,18 @@ json HttpExportModule::_getTables() {
             // Validate input collection of tables and produce an extended collection
             // with table specifications to be returned back (to a caller).
 
-            for (auto&& table : tables) {
+            for (auto&& tableJson : tablesJson) {
                 TableSpec spec;
-                spec.tableName = HttpRequestBody::required<string>(table, "table");
-                spec.partitioned = databaseInfo.isPartitioned(spec.tableName);
+                spec.tableName = HttpRequestBody::required<string>(tableJson, "table");
+                spec.partitioned = database.findTable(spec.tableName).isPartitioned;
                 if (spec.partitioned) {
-                    spec.overlap = HttpRequestBody::required<unsigned int>(table, "overlap");
-                    spec.chunk = HttpRequestBody::required<unsigned int>(table, "chunk");
+                    spec.overlap = HttpRequestBody::required<unsigned int>(tableJson, "overlap");
+                    spec.chunk = HttpRequestBody::required<unsigned int>(tableJson, "chunk");
                 }
-                WorkerInfo const workerInfo =
+                WorkerInfo const worker =
                         spec.partitioned ? findWorkerForChunk(spec.chunk) : allWorkerInfos[0];
-                spec.workerHost = workerInfo.exporterHost;
-                spec.workerPort = workerInfo.exporterPort;
+                spec.workerHost = worker.exporterHost;
+                spec.workerPort = worker.exporterPort;
 
                 result["location"].push_back(spec.toJson());
             }

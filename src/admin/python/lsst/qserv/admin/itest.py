@@ -376,8 +376,8 @@ class ITestCase:
         """
         _log.info("Running %s", self.case_id)
         for query_file in os.listdir(self.queries_dir):
-            if "FIXME" in query_file:
-                _log.info("Skipping FIXME query %s", os.path.basename(query_file))
+            if not query_file.endswith(".sql"):
+                _log.info("Skipping query group or query %s", os.path.basename(query_file))
                 continue
             if query_file.split("_")[0] in self.skip_numbers:
                 _log.info("Skipping 'skip_number' query %s", os.path.basename(query_file))

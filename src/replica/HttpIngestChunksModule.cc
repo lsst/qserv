@@ -440,7 +440,7 @@ json HttpIngestChunksModule::_getChunks() {
 
         // Initialize required attributes to the default values (all 0) for all
         // relevant tables.
-        for (auto&& table : databaseInfo.partitionedTables) {
+        for (auto&& table : databaseInfo.partitionedTables()) {
             replicaResult[table]["overlap_rows"] = 0;  // TBC when available
             replicaResult[table]["overlap_data_size"] = 0;
             replicaResult[table]["overlap_index_size"] = 0;

@@ -1,9 +1,7 @@
 {
 "id":"deepSourceId",
 "part":{
-    "pos":"ra, decl",
-    "overlap":0,
-    "subChunks":1
+    "pos":"ra, decl"
 },
 "dirColName":"deepSourceId",
 "in":{

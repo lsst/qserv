@@ -1,7 +1,3 @@
 -- test for NOT LIKE
 
-
--- pragma sortresult
-
-SELECT * FROM Filter WHERE filterName NOT LIKE 'Z'
-
+SELECT filterId,filterName,photClam,photBW FROM Filter WHERE filterName NOT LIKE 'Z';

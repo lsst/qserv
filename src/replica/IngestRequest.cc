@@ -175,7 +175,7 @@ void IngestRequest::_validateState(TransactionInfo const& trans, DatabaseInfo co
     string error;
     if (database.isPublished) {
         error = "database '" + database.name + "' is already published.";
-    } else if (database.tableIsPublished.at(contrib.table)) {
+    } else if (database.findTable(contrib.table).isPublished) {
         error = "table '" + contrib.table + "' of database '" + database.name + "' is already published.";
     } else if (trans.state != TransactionInfo::State::STARTED) {
         error = "transactionId=" + to_string(contrib.transactionId) + " is not active";
@@ -214,8 +214,8 @@ IngestRequest::IngestRequest(ServiceProvider::Ptr const& serviceProvider, string
     _contrib.database = trans.database;
 
     DatabaseInfo const database = config->databaseInfo(_contrib.database);
-    if (!database.hasTable(_contrib.table)) {
-        throw invalid_argument(context + "no such table '" + _contrib.table + "' exists in database '" +
+    if (!database.tableExists(_contrib.table)) {
+        throw invalid_argument(context + "no such table '" + _contrib.table + "' in database '" +
                                _contrib.database + "'.");
     }
 
@@ -278,7 +278,7 @@ void IngestRequest::process() {
         auto const databaseServices = serviceProvider()->databaseServices();
         auto const trans = databaseServices->transaction(_contrib.transactionId);
         auto const database = config->databaseInfo(trans.database);
-        if (!database.hasTable(_contrib.table)) {
+        if (!database.tableExists(_contrib.table)) {
             throw invalid_argument(context + "no such table '" + _contrib.table + "' exists in database '" +
                                    _contrib.database + "'.");
         }

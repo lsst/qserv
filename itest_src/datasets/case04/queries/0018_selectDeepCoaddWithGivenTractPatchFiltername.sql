@@ -1,3 +1,6 @@
+-- Note: this query is returning the empty result set. This may need
+-- to be investigated ad fixed.
+
 -- https://dev.lsstcorp.org/trac/wiki/dbPipeQAQueries
 
 -- pragma sortresult

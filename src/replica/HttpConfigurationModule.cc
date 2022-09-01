@@ -275,17 +275,22 @@ json HttpConfigurationModule::_deleteTable() {
 json HttpConfigurationModule::_addTable() {
     debug(__func__);
 
-    auto const database = body().required<string>("database");
-    auto const table = body().required<string>("name");
-    auto const isPartitioned = body().required<int>("is_partitioned") != 0;
+    // FIXME: extend the service to accept all attributes of the table.
+    // Create a method in the base class to extract standard attributes from
+    // from the requests's body. Use this method here and in the method HttpIngestModule::_addTable
 
-    debug(__func__, "database=" + database);
-    debug(__func__, "table=" + table);
-    debug(__func__, "is_partitioned=" + string(isPartitioned ? "1" : "0"));
+    TableInfo table;
+    table.database = body().required<string>("database");
+    table.name = body().required<string>("name");
+    table.isPartitioned = body().required<int>("is_partitioned") != 0;
+
+    debug(__func__, "database=" + table.database);
+    debug(__func__, "table=" + table.name);
+    debug(__func__, "is_partitioned=" + bool2str(table.isPartitioned));
 
     json result;
-    result["config"]["databases"][database] =
-            controller()->serviceProvider()->config()->addTable(database, table, isPartitioned).toJson();
+    result["config"]["databases"][table.database] =
+            controller()->serviceProvider()->config()->addTable(table).toJson();
     return result;
 }
 

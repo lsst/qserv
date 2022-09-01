@@ -5,5 +5,5 @@
     "local_load_secondary_index":1,
     "num_stripes":85,
     "num_sub_stripes":14,
-    "overlap":0.0001
+    "overlap":0.001
 }

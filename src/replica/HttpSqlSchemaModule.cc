@@ -68,23 +68,24 @@ json HttpSqlSchemaModule::executeImpl(string const& subModuleName) {
 json HttpSqlSchemaModule::_getTableSchema() {
     debug(__func__);
 
-    string const database = params().at("database");
-    string const table = params().at("table");
+    string const databaseName = params().at("database");
+    string const tableName = params().at("table");
 
-    debug(__func__, "database=" + database);
-    debug(__func__, "table=" + table);
+    debug(__func__, "database=" + databaseName);
+    debug(__func__, "table=" + tableName);
 
     auto const config = controller()->serviceProvider()->config();
-    auto const databaseInfo = config->databaseInfo(database);
+    auto const database = config->databaseInfo(databaseName);
+    auto const table = database.findTable(tableName);
 
     json schemaJson;
-    if (databaseInfo.isPublished) {
+    if (database.isPublished) {
         // Extract schema from czar's MySQL database.
-        database::mysql::ConnectionHandler const h(qservMasterDbConnection(database));
-        h.conn->executeInOwnTransaction([&](decltype(h.conn) const& conn) {
+        database::mysql::ConnectionHandler const h(qservMasterDbConnection(database.name));
+        h.conn->executeInOwnTransaction([&database, &table, &schemaJson](decltype(h.conn) const& conn) {
             conn->execute("SELECT * FROM " + conn->sqlId("information_schema", "columns") + " WHERE " +
-                          conn->sqlEqual("TABLE_SCHEMA", database) + "   AND " +
-                          conn->sqlEqual("TABLE_NAME", table));
+                          conn->sqlEqual("TABLE_SCHEMA", database.name) + "   AND " +
+                          conn->sqlEqual("TABLE_NAME", table.name));
             database::mysql::Row row;
             while (conn->next(row)) {
                 size_t precision;
@@ -106,10 +107,10 @@ json HttpSqlSchemaModule::_getTableSchema() {
     } else {
         // Pull schema info from the Replication/Ingest system's database.
         size_t ordinalPosition = 1;
-        for (auto const& coldef : databaseInfo.columns.at(table)) {
+        for (auto const& column : table.columns) {
             schemaJson.push_back(json::object({{"ORDINAL_POSITION", ordinalPosition++},
-                                               {"COLUMN_NAME", coldef.name},
-                                               {"COLUMN_TYPE", coldef.type},
+                                               {"COLUMN_NAME", column.name},
+                                               {"COLUMN_TYPE", column.type},
                                                {"DATA_TYPE", string()},
                                                {"NUMERIC_PRECISION", string()},
                                                {"CHARACTER_MAXIMUM_LENGTH", string()},
@@ -119,45 +120,46 @@ json HttpSqlSchemaModule::_getTableSchema() {
         }
     }
     json result;
-    result["schema"][database][table] = schemaJson;
+    result["schema"][database.name][table.name] = schemaJson;
     return result;
 }
 
 json HttpSqlSchemaModule::_alterTableSchema() {
     debug(__func__);
 
-    string const database = params().at("database");
-    string const table = params().at("table");
+    string const databaseName = params().at("database");
+    string const tableName = params().at("table");
     string const spec = body().required<string>("spec");
 
-    debug(__func__, "database=" + database);
-    debug(__func__, "table=" + table);
+    debug(__func__, "database=" + databaseName);
+    debug(__func__, "table=" + tableName);
     debug(__func__, "spec=" + spec);
 
     auto const config = controller()->serviceProvider()->config();
-    auto const databaseInfo = config->databaseInfo(database);
+    auto const database = config->databaseInfo(databaseName);
+    auto const table = database.findTable(tableName);
 
     // This safeguard is needed since database/table definition doesn't exist in Qserv
     // master until the catalog is published. It's unsafe to modifying table schema while
     // they data are still being ingested as it would reault in all sorts of data corruptions
     // or inconsistencies.
-    if (not databaseInfo.isPublished) {
-        throw HttpError(__func__, "database '" + databaseInfo.name + "' is not published");
+    if (not database.isPublished) {
+        throw HttpError(__func__, "database '" + database.name + "' is not published");
     }
 
     // Update table definition at Qserv master database. Note this step will
     // also validate the query.
-    database::mysql::ConnectionHandler const h(qservMasterDbConnection(databaseInfo.name));
+    database::mysql::ConnectionHandler const h(qservMasterDbConnection(database.name));
     h.conn->executeInOwnTransaction([&](decltype(h.conn) const& conn) {
-        conn->execute("ALTER TABLE " + conn->sqlId(databaseInfo.name, table) + " " + spec);
+        conn->execute("ALTER TABLE " + conn->sqlId(database.name, table.name) + " " + spec);
     });
 
     // Update CSS based on the new table schema at the Qserv master database
     string newCssTableSchema;
     h.conn->executeInOwnTransaction([&](decltype(h.conn) const& conn) {
         conn->execute("SELECT * FROM " + conn->sqlId("information_schema", "columns") + " WHERE " +
-                      conn->sqlEqual("TABLE_SCHEMA", databaseInfo.name) + "   AND " +
-                      conn->sqlEqual("TABLE_NAME", table));
+                      conn->sqlEqual("TABLE_SCHEMA", database.name) + "   AND " +
+                      conn->sqlEqual("TABLE_NAME", table.name));
         database::mysql::Row row;
         while (conn->next(row)) {
             if (!newCssTableSchema.empty()) newCssTableSchema += ",";
@@ -172,18 +174,18 @@ json HttpSqlSchemaModule::_alterTableSchema() {
         }
     });
     auto const cssAccess = qservCssAccess();
-    if (!cssAccess->containsDb(databaseInfo.name)) {
-        throw HttpError(__func__, "Database '" + databaseInfo.name + "' is not in CSS.");
+    if (!cssAccess->containsDb(database.name)) {
+        throw HttpError(__func__, "Database '" + database.name + "' is not in CSS.");
     }
-    if (!cssAccess->containsTable(databaseInfo.name, table)) {
-        throw HttpError(__func__, "Table '" + databaseInfo.name + "'.'" + table + "' is not in CSS.");
+    if (!cssAccess->containsTable(database.name, table.name)) {
+        throw HttpError(__func__, "Table '" + database.name + "'.'" + table.name + "' is not in CSS.");
     }
-    string const oldCssTableSchema = cssAccess->getTableSchema(databaseInfo.name, table);
+    string const oldCssTableSchema = cssAccess->getTableSchema(database.name, table.name);
     try {
-        cssAccess->setTableSchema(databaseInfo.name, table, newCssTableSchema);
+        cssAccess->setTableSchema(database.name, table.name, newCssTableSchema);
     } catch (exception const& ex) {
         throw HttpError(__func__,
-                        "Failed to update CSS table schema of '" + databaseInfo.name + "'.'" + table + "'.",
+                        "Failed to update CSS table schema of '" + database.name + "'.'" + table.name + "'.",
                         json({{"css_error", ex.what()},
                               {"css_old_schema", oldCssTableSchema},
                               {"css_new_schema", newCssTableSchema}}));
@@ -193,12 +195,12 @@ json HttpSqlSchemaModule::_alterTableSchema() {
     bool const allWorkers = true;
     string const noParentJobId;
     auto const job = SqlAlterTablesJob::create(
-            databaseInfo.name, table, spec, allWorkers, controller(), noParentJobId, nullptr,
+            database.name, table.name, spec, allWorkers, controller(), noParentJobId, nullptr,
             config->get<int>("controller", "catalog-management-priority-level"));
     job->start();
-    logJobStartedEvent(SqlAlterTablesJob::typeName(), job, databaseInfo.family);
+    logJobStartedEvent(SqlAlterTablesJob::typeName(), job, database.family);
     job->wait();
-    logJobFinishedEvent(SqlAlterTablesJob::typeName(), job, databaseInfo.family);
+    logJobFinishedEvent(SqlAlterTablesJob::typeName(), job, database.family);
 
     auto const extendedErrorReport = job->getExtendedErrorReport();
     if (not extendedErrorReport.is_null()) {

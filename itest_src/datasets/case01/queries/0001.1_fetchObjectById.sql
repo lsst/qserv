@@ -1,10 +1,6 @@
 -- Find an object with a particular object id
 -- http://dev.lsstcorp.org/trac/wiki/dbQuery009
 
--- note that the data for mysql version is specially
--- precooked for this object to include chunkId and
--- subchunkId
-
 -- pragma sortresult
 SELECT objectId,iauId,ra_PS,ra_PS_Sigma,decl_PS,decl_PS_Sigma,radecl_PS_Cov,htmId20,ra_SG,ra_SG_Sigma,decl_SG,decl_SG_Sigma,
        radecl_SG_Cov,raRange,declRange,muRa_PS,muRa_PS_Sigma,muDecl_PS,muDecl_PS_Sigma,muRaDecl_PS_Cov,parallax_PS,
@@ -35,4 +31,4 @@ SELECT objectId,iauId,ra_PS,ra_PS_Sigma,decl_PS,decl_PS_Sigma,radecl_PS_Cov,htmI
 	   yFlux_ESG_Sigma,yFlux_Gaussian,yFlux_Gaussian_Sigma,yTimescale,yEarliestObsTime,yLatestObsTime,ySersicN_SG,
 	   ySersicN_SG_Sigma,yE1_SG,yE1_SG_Sigma,yE2_SG,yE2_SG_Sigma,yRadius_SG,yRadius_SG_Sigma,yFlags
 FROM   Object
-WHERE  objectId = 430213989148129
+WHERE  objectId = 430213989148129;

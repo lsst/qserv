@@ -71,6 +71,13 @@
 namespace fs = boost::filesystem;
 namespace po = boost::program_options;
 
+namespace {
+std::string coords2str(std::pair<double, double> const& loc, int chunkId) {
+    return "(lon:" + std::to_string(loc.first) + ",lat:" + std::to_string(loc.second) +
+           ",chunk:" + std::to_string(chunkId) + ")";
+}
+}  // namespace
+
 namespace lsst::partition {
 
 /// Map-reduce worker class for partitioning spatial match pairs.
@@ -140,7 +147,6 @@ private:
     ObjectIndex* _objectIndex2 = nullptr;
     bool _abortOnMissingId1 = false;
     bool _abortOnMissingId2 = false;
-    bool _abortOnChunkMismatch = false;
 };
 
 Worker::Worker(ConfigStore const& config)
@@ -162,8 +168,7 @@ Worker::Worker(ConfigStore const& config)
           _objectIndex1(ObjectIndex::instance("1")),
           _objectIndex2(ObjectIndex::instance("2")),
           _abortOnMissingId1(config.flag("part.id1-missing-abort")),
-          _abortOnMissingId2(config.flag("part.id2-missing-abort")),
-          _abortOnChunkMismatch(config.flag("part.chunk-mismatch-abort")) {
+          _abortOnMissingId2(config.flag("part.id2-missing-abort")) {
     if (_numNodes == 0 || _numNodes > 99999u) {
         throw std::runtime_error(
                 "The --out.num-nodes option value must be "
@@ -291,11 +296,6 @@ void Worker::defineOptions(po::options_description& opts) {
                        "Abort processing if no entry was found in the index map for "
                        "the identifier. Otherwise just complain and assume that no "
                        "chunk info is available for the identifier.");
-    part.add_options()("part.chunk-mismatch-abort", po::bool_switch()->default_value(false),
-                       "Abort processing if the chunk numbers found in the index maps for "
-                       "the matched identifiers aren't the same. Otherwise just complain "
-                       "and assume that the matched objects are still within the specified "
-                       "overlap radius.");
     part.add_options()("part.flags", po::value<std::string>()->default_value("partitioningFlags"),
                        "The partitioning flags output field name. Bit 0, the LSB of the "
                        "field value, is set if the partition of the first entity in the "
@@ -360,13 +360,6 @@ void Worker::_mapByObjectIndex(char const* const begin, char const* const end, W
                     _editor.set(_flagsField, _FLAG_FULL_MATCH);
                     silo.add(ChunkLocation(chunkId1, subChunkId1, false), _editor);
                     continue;
-                } else {
-                    std::string const msg =
-                            "Chunk numbers found in the index maps for identifiers " + _id1FieldName + "=" +
-                            id1 + ",chunkId=" + std::to_string(chunkId1) + " and " + _id2FieldName + "=" +
-                            id2 + ",chunkId=" + std::to_string(chunkId2) + " do not match.";
-                    if (_abortOnChunkMismatch) throw std::runtime_error(msg);
-                    std::cerr << msg << std::endl;
                 }
             }
             _editor.set(_flagsField, _FLAG_LEFT_MATCH);
@@ -411,9 +404,12 @@ void Worker::_mapByRaDec(char const* const begin, char const* const end, Worker:
                 // Both positions are valid.
                 if (angSep(cartesian(sc1), cartesian(sc2)) * DEG_PER_RAD >
                     _chunker.getOverlap() - EPSILON_DEG) {
-                    throw std::runtime_error(
-                            "Partitioning positions in match record are separated by more "
-                            "than the overlap radius.");
+                    std::string const msg = "Partitioning positions " + ::coords2str(sc1, loc1.chunkId) +
+                                            " and " + ::coords2str(sc2, loc2.chunkId) +
+                                            " in match record are separated by more than"
+                                            " the overlap radius " +
+                                            std::to_string(_chunker.getOverlap()) + ".";
+                    throw std::runtime_error(msg);
                 }
                 if (loc1.chunkId == loc2.chunkId) {
                     // Both positions are in the same chunk.

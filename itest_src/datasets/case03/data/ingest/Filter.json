@@ -8,5 +8,6 @@
         {"name":"filterName", "type":"char(3) NOT NULL"},
         {"name":"photClam", "type":"float NOT NULL"},
         {"name":"photBW", "type":"float NOT NULL"}
-    ]
+    ],
+    "fields_terminated_by":","
 }

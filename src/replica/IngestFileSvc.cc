@@ -68,19 +68,18 @@ IngestFileSvc::IngestFileSvc(ServiceProvider::Ptr const& serviceProvider, string
 
 IngestFileSvc::~IngestFileSvc() { closeFile(); }
 
-string const& IngestFileSvc::openFile(TransactionId transactionId, string const& table,
+string const& IngestFileSvc::openFile(TransactionId transactionId, string const& tableName,
                                       csv::Dialect const& dialect, unsigned int chunk, bool isOverlap) {
     string const context_ = context + string(__func__) + " ";
     LOGS(_log, LOG_LVL_DEBUG, context_);
 
     _transactionId = transactionId;
-    _table = table;
     _dialect = dialect;
     _chunk = chunk;
     _isOverlap = isOverlap;
 
     // Construct and cache the transaction identifier field to be prepended at
-    // the begining of each row. Note that the prefix will be the same for each
+    // the beginning of each row. Note that the prefix will be the same for each
     // row of the file.
     stringstream ss;
     if (dialect.fieldsEnclosedBy() == '\0') {
@@ -93,24 +92,15 @@ string const& IngestFileSvc::openFile(TransactionId transactionId, string const&
 
     // Check if a context of the request is valid
     try {
-        auto transactionInfo = _serviceProvider->databaseServices()->transaction(_transactionId);
-        if (transactionInfo.state != TransactionInfo::State::STARTED) {
+        auto transaction = _serviceProvider->databaseServices()->transaction(_transactionId);
+        if (transaction.state != TransactionInfo::State::STARTED) {
             throw logic_error(context_ + "transaction " + to_string(_transactionId) + " is not active");
         }
-        _databaseInfo = _serviceProvider->config()->databaseInfo(transactionInfo.database);
-        if (_databaseInfo.isPublished) {
-            throw logic_error(context_ + "database '" + _databaseInfo.name + "' is already PUBLISHED");
+        _database = _serviceProvider->config()->databaseInfo(transaction.database);
+        if (_database.isPublished) {
+            throw logic_error(context_ + "database '" + _database.name + "' is already PUBLISHED");
         }
-        _isPartitioned =
-                _databaseInfo.partitionedTables.end() !=
-                find(_databaseInfo.partitionedTables.begin(), _databaseInfo.partitionedTables.end(), _table);
-        if (not _isPartitioned) {
-            if (_databaseInfo.regularTables.end() ==
-                find(_databaseInfo.regularTables.begin(), _databaseInfo.regularTables.end(), _table)) {
-                throw invalid_argument(context_ + "no such table '" + _table + "' in a scope of database '" +
-                                       _databaseInfo.name + "'");
-            }
-        }
+        _table = _database.findTable(tableName);
     } catch (DatabaseServicesNotFound const& ex) {
         throw invalid_argument(context_ + "invalid transaction identifier: " + to_string(_transactionId));
     }
@@ -118,26 +108,27 @@ string const& IngestFileSvc::openFile(TransactionId transactionId, string const&
     // The next test is for the partitioned tables only, and it's meant to check if
     // the chunk number is valid and it's allocated to this worker. The test will
     // also ensure that the database is in the UNPUBLISHED state.
-    if (_isPartitioned) {
+    if (_table.isPartitioned) {
         vector<ReplicaInfo> replicas;  // Chunk replicas at the current worker found
                                        // among the unpublished databases only
         bool const allDatabases = false;
         bool const isPublished = false;
 
-        _serviceProvider->databaseServices()->findWorkerReplicas(
-                replicas, _chunk, _workerName, _databaseInfo.family, allDatabases, isPublished);
+        _serviceProvider->databaseServices()->findWorkerReplicas(replicas, _chunk, _workerName,
+                                                                 _database.family, allDatabases, isPublished);
         if (replicas.cend() == find_if(replicas.cbegin(), replicas.cend(), [&](ReplicaInfo const& replica) {
-                return replica.database() == _databaseInfo.name;
+                return replica.database() == _database.name;
             })) {
             throw invalid_argument(context_ + "chunk " + to_string(_chunk) +
-                                   " of the UNPUBLISHED database '" + _databaseInfo.name +
+                                   " of the UNPUBLISHED database '" + _database.name +
                                    "' is not allocated to worker '" + _workerName + "'");
         }
     }
     try {
         _fileName = FileUtils::createTemporaryFile(
                 _serviceProvider->config()->get<string>("worker", "loader-tmp-dir"),
-                _databaseInfo.name + "-" + _table + "-" + to_string(_chunk) + "-" + to_string(_transactionId),
+                _database.name + "-" + _table.name + "-" + to_string(_chunk) + "-" +
+                        to_string(_transactionId),
                 "-%%%%-%%%%-%%%%-%%%%", ".csv");
     } catch (exception const& ex) {
         raiseRetryAllowedError(
@@ -187,7 +178,7 @@ void IngestFileSvc::loadDataIntoTable() {
         // The RAII connection handler automatically aborts the active transaction
         // should an exception be thrown within the block.
         database::mysql::ConnectionHandler h(
-                database::mysql::Connection::open(Configuration::qservWorkerDbParams(_databaseInfo.name)));
+                database::mysql::Connection::open(Configuration::qservWorkerDbParams(_database.name)));
 
         string const sqlPartition = h.conn->sqlPartitionId(_transactionId);
         vector<Query> tableMgtStatements;
@@ -203,47 +194,48 @@ void IngestFileSvc::loadDataIntoTable() {
         // The query will remove the corresponding MySQL partition.
         Query partitionRemovalQuery;
 
-        if (_isPartitioned) {
+        if (_table.isPartitioned) {
             // Note, that the algorithm will create chunked tables for _ALL_ partitioned
             // tables (not just for the current one) to ensure they have representations
             // in all chunks touched by the ingest workflows. Missing representations would
             // cause Qserv to fail when processing queries involving these tables.
-            for (auto&& table : _databaseInfo.partitionedTables) {
+            for (auto&& tableName : _database.partitionedTables()) {
+                auto const table = _database.findTable(tableName);
                 // Chunked tables are created from the prototype table which is expected
                 // to exist in the database before attempting data loading.
                 // Note that this algorithm won't create MySQL partitions in the DUMMY chunk
                 // tables since these tables are not supposed to store any data.
                 bool const overlap = true;
-                string const sqlProtoTable = h.conn->sqlId(_databaseInfo.name, table);
+                string const sqlProtoTable = h.conn->sqlId(_database.name, table.name);
                 string const sqlTable =
-                        h.conn->sqlId(_databaseInfo.name, ChunkedTable(table, _chunk, not overlap).name());
+                        h.conn->sqlId(_database.name, ChunkedTable(table.name, _chunk, not overlap).name());
                 string const sqlFullOverlapTable =
-                        h.conn->sqlId(_databaseInfo.name, ChunkedTable(table, _chunk, overlap).name());
+                        h.conn->sqlId(_database.name, ChunkedTable(table.name, _chunk, overlap).name());
 
-                string const tablesToBeCreated[] = {
+                string const sqlTablesToBeCreated[] = {
                         sqlTable, sqlFullOverlapTable,
-                        h.conn->sqlId(_databaseInfo.name,
-                                      ChunkedTable(table, lsst::qserv::DUMMY_CHUNK, not overlap).name()),
-                        h.conn->sqlId(_databaseInfo.name,
-                                      ChunkedTable(table, lsst::qserv::DUMMY_CHUNK, overlap).name())};
-                for (auto&& table : tablesToBeCreated) {
-                    tableMgtStatements.push_back(
-                            Query("CREATE TABLE IF NOT EXISTS " + table + " LIKE " + sqlProtoTable, table));
+                        h.conn->sqlId(_database.name,
+                                      ChunkedTable(table.name, lsst::qserv::DUMMY_CHUNK, not overlap).name()),
+                        h.conn->sqlId(_database.name,
+                                      ChunkedTable(table.name, lsst::qserv::DUMMY_CHUNK, overlap).name())};
+                for (auto&& sqlTable : sqlTablesToBeCreated) {
+                    tableMgtStatements.push_back(Query(
+                            "CREATE TABLE IF NOT EXISTS " + sqlTable + " LIKE " + sqlProtoTable, sqlTable));
                 }
                 // Skip this operation for tables that have already been been published. Note that published
                 // tables do not have MySQL partitions. Any attempts to add a partition to those tables will
                 // result in the MySQL failures.
-                if (!_databaseInfo.tableIsPublished.at(table)) {
-                    string const tablesToBePartitioned[] = {sqlTable, sqlFullOverlapTable};
-                    for (auto&& table : tablesToBePartitioned) {
+                if (!table.isPublished) {
+                    string const sqlTablesToBePartitioned[] = {sqlTable, sqlFullOverlapTable};
+                    for (auto&& sqlTable : sqlTablesToBePartitioned) {
                         tableMgtStatements.push_back(Query(
-                                "ALTER TABLE " + table + " ADD PARTITION IF NOT EXISTS (PARTITION " +
+                                "ALTER TABLE " + sqlTable + " ADD PARTITION IF NOT EXISTS (PARTITION " +
                                         sqlPartition + " VALUES IN (" + to_string(_transactionId) + "))",
-                                table));
+                                sqlTable));
                     }
                 }
                 // An additional step for the current request's table
-                if (table == _table) {
+                if (table.name == _table.name) {
                     auto const sqlDestinationTable = _isOverlap ? sqlFullOverlapTable : sqlTable;
                     dataLoadQuery = "LOAD DATA INFILE " + h.conn->sqlValue(_fileName) + " INTO TABLE " +
                                     sqlDestinationTable + _dialect.sqlOptions();
@@ -255,7 +247,7 @@ void IngestFileSvc::loadDataIntoTable() {
         } else {
             // Regular tables are expected to exist in the database before
             // attempting data loading.
-            string const sqlTable = h.conn->sqlId(_databaseInfo.name, _table);
+            string const sqlTable = h.conn->sqlId(_database.name, _table.name);
             tableMgtStatements.push_back(
                     Query("ALTER TABLE " + sqlTable + " ADD PARTITION IF NOT EXISTS (PARTITION " +
                                   sqlPartition + " VALUES IN (" + to_string(_transactionId) + "))",

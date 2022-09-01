@@ -136,8 +136,8 @@ private:
      * @note The operaton can be optimized in some curcumstances. In particular,
      *   if the \param forceRescan is set to 'false' and the persistent state
      *   of the counters within the system is not empty then no scan will be made.
-     * @param database The name of a database.
-     * @param table The name of an existing table.
+     * @param databaseName The name of a database.
+     * @param tableName The name of an existing table.
      * @param overlapSelector The selector (applies to the partitioned tables only)
      *   indicating which kind of the partitioned tables to be affected by
      *   the operation.
@@ -151,7 +151,7 @@ private:
      *   submitted by the method.
      * @return nlohmann::json The extended error object that will be empty of no errors ocurred.
      */
-    nlohmann::json _scanTableStatsImpl(std::string const& database, std::string const& table,
+    nlohmann::json _scanTableStatsImpl(std::string const& databaseName, std::string const& tableName,
                                        ChunkOverlapSelector overlapSelector,
                                        SqlRowStatsJob::StateUpdatePolicy stateUpdatePolicy,
                                        bool deployAtQserv, bool forceRescan, bool allWorkers, int priority);
@@ -172,34 +172,32 @@ private:
     nlohmann::json _getRegular();
 
     /**
-     * @brief Retreive and validate database and table names from the service's URL.
-     *
+     * @brief Retrieve and validate database and table names from the service's URL.
      * @param func A scope from which the method is called (for logging and error reporting).
-     * @param database The name of a database.
-     * @param table The name of a table.
+     * @return The table descriptor.
      * @throws std::invalid_argument For unknown databases or tables.
      */
-    void _getRequiredParameters(std::string const& func, std::string& database, std::string& table);
+    TableInfo _getTableInfo(std::string const& func);
 
     /**
      * Grant SELECT authorizations for the new database to Qserv
      * MySQL account(s) at workers.
      *
-     * @param databaseInfo database descriptor
+     * @param database database descriptor
      * @param allWorkers  'true' if all workers should be involved into the operation
      * @throws HttpError if the operation failed
      */
-    void _grantDatabaseAccess(DatabaseInfo const& databaseInfo, bool allWorkers) const;
+    void _grantDatabaseAccess(DatabaseInfo const& database, bool allWorkers) const;
 
     /**
      * Enable this database in Qserv workers by adding an entry
      * to table 'qservw_worker.Dbs' at workers.
      *
-     * @param databaseInfo database descriptor
+     * @param database database descriptor
      * @param allWorkers 'true' if all workers should be involved into the operation
      * @throws HttpError if the operation failed
      */
-    void _enableDatabase(DatabaseInfo const& databaseInfo, bool allWorkers) const;
+    void _enableDatabase(DatabaseInfo const& database, bool allWorkers) const;
 
     /**
      * The optional fix-up for missing chunked tables applied by the database publishing
@@ -208,20 +206,20 @@ private:
      * of the chunks may be empty. This stage enforces structural consistency across
      * partitioned tables.
      *
-     * @param databaseInfo database descriptor
+     * @param database database descriptor
      * @param allWorkers 'true' if all workers should be involved into the operation
      * @throws HttpError if the operation failed
      */
-    void _createMissingChunkTables(DatabaseInfo const& databaseInfo, bool allWorkers) const;
+    void _createMissingChunkTables(DatabaseInfo const& database, bool allWorkers) const;
 
     /**
      * Consolidate MySQL partitioned tables at workers by removing partitions.
      *
-     * @param databaseInfo database descriptor
+     * @param database database descriptor
      * @param allWorkers 'true' if all workers should be involved into the operation
      * @throws HttpError if operation failed
      */
-    void _removeMySQLPartitions(DatabaseInfo const& databaseInfo, bool allWorkers) const;
+    void _removeMySQLPartitions(DatabaseInfo const& database, bool allWorkers) const;
 
     /**
      * Publish database in the Qserv master database. This involves the following
@@ -232,37 +230,38 @@ private:
      * - granting MySQL privileges for the Qserv account to access the database and tables
      * @param databaseName the name of a database to be published
      */
-    void _publishDatabaseInMaster(DatabaseInfo const& databaseInfo) const;
+    void _publishDatabaseInMaster(DatabaseInfo const& database) const;
 
     /**
      * (Re-)build the empty chunks list (table) for the specified database.
      * The methods throws exceptions in case of any errors.
      *
-     * @param database The name of a database.
+     * @param databaseName The name of a database.
      * @param force Rebuild the list if 'true'.
      * @param tableImpl Create/update the table-based list implementation if 'true'.
      * @return An object representing a result of the operation (empty chunk list
      *   file/table name, number of chunks) in case of successful completion.
      */
-    nlohmann::json _buildEmptyChunksListImpl(std::string const& database, bool force, bool tableImpl) const;
+    nlohmann::json _buildEmptyChunksListImpl(std::string const& databaseName, bool force,
+                                             bool tableImpl) const;
 
     /**
      * Create an empty "secondary index" table partitioned using MySQL partitions.
      * The table will be configured with a single initial partition. More partitions
      * corresponding to super-transactions open during catalog ingest sessions will
      * be added later.
-     * @param databaseInfo defines a scope of the operation
-     * @param directorTable the name of the director table
+     * @param database defines a scope of the operation
+     * @param directorTableName the name of the director table
      */
-    void _createSecondaryIndex(DatabaseInfo const& databaseInfo, std::string const& directorTable) const;
+    void _createSecondaryIndex(DatabaseInfo const& database, std::string const& directorTableName) const;
 
     /**
      * Remove MySQL partitions from the "secondary index" table by turning it
      * into a regular monolithic table.
-     * @param databaseInfo  defines a scope of the operation
-     * @param directorTable the name of the director table
+     * @param database  defines a scope of the operation
+     * @param directorTableName the name of the director table
      */
-    void _consolidateSecondaryIndex(DatabaseInfo const& databaseInfo, std::string const& directorTable) const;
+    void _consolidateSecondaryIndex(DatabaseInfo const& database, std::string const& directorTableName) const;
 
     /**
      * This operation is called in a context of publishing new databases.
@@ -270,11 +269,11 @@ private:
      * in the persistent state of the system. It also registers (synchronizes)
      * new chunks at Qserv workers.
      *
-     * @param databaseInfo database descriptor
+     * @param database database descriptor
      * @param allWorkers 'true' if all workers should be involved into the operation
      * @throws HttpError if the operation failed
      */
-    void _qservSync(DatabaseInfo const& databaseInfo, bool allWorkers) const;
+    void _qservSync(DatabaseInfo const& database, bool allWorkers) const;
 
     // The name and a type of a special column for the super-transaction-based ingest
 

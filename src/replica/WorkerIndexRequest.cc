@@ -101,15 +101,14 @@ bool WorkerIndexRequest::execute() {
     }
     try {
         auto const config = serviceProvider()->config();
-        auto const databaseInfo = config->databaseInfo(_request.database());
+        auto const database = config->databaseInfo(_request.database());
 
         // Create a folder (if it still doesn't exist) where the temporary files will be placed
         // NOTE: this folder is supposed to be seen by the worker's MySQL/MariaDB server, and it
         // must be write-enabled for an account under which the service is run.
 
         boost::system::error_code ec;
-        fs::path const tmpDirPath =
-                fs::path(config->get<string>("worker", "loader-tmp-dir")) / databaseInfo.name;
+        fs::path const tmpDirPath = fs::path(config->get<string>("worker", "loader-tmp-dir")) / database.name;
         fs::create_directory(tmpDirPath, ec);
         if (ec.value() != 0) {
             _error = "failed to create folder '" + tmpDirPath.string();
@@ -180,64 +179,61 @@ bool WorkerIndexRequest::execute() {
 
 string WorkerIndexRequest::_query(database::mysql::Connection::Ptr const& conn) const {
     auto const config = serviceProvider()->config();
-    auto const databaseInfo = config->databaseInfo(_request.database());
-    string const& directorTable = _request.director_table();
+    auto const database = config->databaseInfo(_request.database());
+    auto const table = database.findTable(_request.director_table());
 
-    if (!databaseInfo.isDirector(directorTable)) {
-        throw invalid_argument("table '" + directorTable +
-                               "' is not been configured as director in database '" + databaseInfo.name +
-                               "'");
+    if (!table.isDirector) {
+        throw invalid_argument("table '" + table.name + "' is not been configured as director in database '" +
+                               database.name + "'");
     }
-    if ((databaseInfo.directorTableKey.count(directorTable) == 0) or
-        databaseInfo.directorTableKey.at(directorTable).empty()) {
-        throw invalid_argument("director table '" + directorTable +
-                               "' has not been properly configured in database '" + databaseInfo.name + "'");
+    if (table.directorTable.primaryKeyColumn().empty()) {
+        throw invalid_argument("director table '" + table.name +
+                               "' has not been properly configured in database '" + database.name + "'");
     }
-    string const& directorTableKey = databaseInfo.directorTableKey.at(directorTable);
-
-    if (0 == databaseInfo.columns.count(directorTable)) {
-        throw invalid_argument("no schema found for director table '" + directorTable + "' of database '" +
-                               databaseInfo.name + "'");
+    if (table.columns.empty()) {
+        throw invalid_argument("no schema found for director table '" + table.name + "' of database '" +
+                               database.name + "'");
     }
 
     // Find types required by the secondary index table's columns
 
     string const qservTransId = _request.has_transactions() ? "qserv_trans_id" : string();
     string qservTransIdType;
-    string directorTableKeyType;
+    string primaryKeyColumnType;
     string subChunkIdColNameType;
 
-    for (auto&& coldef : databaseInfo.columns.at(directorTable)) {
-        if (not qservTransId.empty() and coldef.name == qservTransId)
-            qservTransIdType = coldef.type;
-        else if (coldef.name == directorTableKey)
-            directorTableKeyType = coldef.type;
-        else if (coldef.name == lsst::qserv::SUB_CHUNK_COLUMN)
-            subChunkIdColNameType = coldef.type;
+    for (auto&& column : table.columns) {
+        if (not qservTransId.empty() and column.name == qservTransId)
+            qservTransIdType = column.type;
+        else if (column.name == table.directorTable.primaryKeyColumn())
+            primaryKeyColumnType = column.type;
+        else if (column.name == lsst::qserv::SUB_CHUNK_COLUMN)
+            subChunkIdColNameType = column.type;
     }
-    if ((not qservTransId.empty() and qservTransIdType.empty()) or directorTableKeyType.empty() or
+    if ((!qservTransId.empty() && qservTransIdType.empty()) || primaryKeyColumnType.empty() or
         subChunkIdColNameType.empty()) {
         throw invalid_argument(
                 "column definitions for the Object identifier or sub-chunk identifier"
                 " columns are missing in the director table schema for table '" +
-                directorTable + "' of database '" + databaseInfo.name + "'");
+                table.name + "' of database '" + database.name + "'");
     }
 
     // NOTE: injecting the chunk number into each row of the result set because
     // the chunk-id column is optional.
     string const columnsEscaped = (qservTransId.empty() ? string() : conn->sqlId(qservTransId) + ",") +
-                                  conn->sqlId(directorTableKey) + "," + to_string(_request.chunk()) + "," +
+                                  conn->sqlId(table.directorTable.primaryKeyColumn()) + "," +
+                                  to_string(_request.chunk()) + "," +
                                   conn->sqlId(lsst::qserv::SUB_CHUNK_COLUMN);
 
-    string const databaseTableEscaped = conn->sqlId(databaseInfo.name) + "." +
-                                        conn->sqlId(directorTable + "_" + to_string(_request.chunk()));
+    string const databaseTableEscaped =
+            conn->sqlId(database.name) + "." + conn->sqlId(table.name + "_" + to_string(_request.chunk()));
 
     string const partitionRestrictorEscaped =
             qservTransId.empty() ? string()
                                  : "PARTITION (" + conn->sqlPartitionId(_request.transaction_id()) + ")";
 
     string const orderByEscaped = (qservTransId.empty() ? string() : conn->sqlId(qservTransId) + ",") +
-                                  conn->sqlId(directorTableKey);
+                                  conn->sqlId(table.directorTable.primaryKeyColumn());
 
     return "SELECT " + columnsEscaped + "  FROM " + databaseTableEscaped + " " + partitionRestrictorEscaped +
            "  ORDER BY " + orderByEscaped + "  INTO OUTFILE " + conn->sqlValue(_fileName);

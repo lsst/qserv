@@ -492,24 +492,29 @@ json HttpQservMonitorModule::_cssSharedScan() {
     json resultSharedScan;
     auto const config = controller()->serviceProvider()->config();
     auto const cssAccess = qservCssAccess();
-    for (auto&& family : config->databaseFamilies()) {
+    for (auto&& familyName : config->databaseFamilies()) {
         bool const allDatabases = true;
-        for (auto&& database : config->databases(family, allDatabases)) {
-            auto const partitionedTables = config->databaseInfo(database).partitionedTables;
-            // Set the empty object as the default result for each table.
-            for (auto&& table : partitionedTables) {
-                resultSharedScan[family][database][table] = json::object();
+        for (auto&& databaseName : config->databases(familyName, allDatabases)) {
+            auto const database = config->databaseInfo(databaseName);
+            // Do not include special tables into the report.
+            vector<string> sharedScanTables;
+            for (auto&& tableName : database.tables()) {
+                auto const table = database.findTable(tableName);
+                if (table.isPartitioned && !table.isRefMatch) {
+                    sharedScanTables.emplace_back(table.name);
+                    // Set the empty object as the default result for each table.
+                    resultSharedScan[familyName][database.name][table.name] = json::object();
+                }
             }
             // Override the default values for tables for which the shared scan
             // parameters were explicitly set.
-            if (cssAccess->containsDb(database)) {
-                for (auto&& table : partitionedTables) {
-                    resultSharedScan[family][database][table] = json::object();
-                    if (cssAccess->containsTable(database, table)) {
+            if (cssAccess->containsDb(database.name)) {
+                for (auto&& tableName : sharedScanTables) {
+                    if (cssAccess->containsTable(database.name, tableName)) {
                         try {
                             css::ScanTableParams const params =
-                                    cssAccess->getScanTableParams(database, table);
-                            resultSharedScan[family][database][table] =
+                                    cssAccess->getScanTableParams(database.name, tableName);
+                            resultSharedScan[familyName][database.name][tableName] =
                                     json::object({{"lockInMem", params.lockInMem ? 1 : 0},
                                                   {"scanRating", params.scanRating}});
                         } catch (css::NoSuchTable const&) {

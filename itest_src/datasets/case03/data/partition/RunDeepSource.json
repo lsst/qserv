@@ -2,7 +2,6 @@
 "id":"id",
 "part":{
     "pos":"coord_ra, coord_decl",
-    "overlap":0,
     "subChunks":1
 },
 "in":{

@@ -95,7 +95,6 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestStaticParameters) {
 
 BOOST_AUTO_TEST_CASE(ConfigurationInitTestJSON) {
     LOGS_INFO("Testing JSON initialization");
-
     BOOST_REQUIRE_NO_THROW(config = Configuration::load(ConfigTestData::data()));
     BOOST_CHECK(config != nullptr);
     BOOST_CHECK(config->configUrl().empty());
@@ -600,243 +599,517 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestReadingDatabases) {
 BOOST_AUTO_TEST_CASE(ConfigurationTestReadingTables) {
     LOGS_INFO("Testing reading tables");
 
+    DirectorTableRef tableRef1;
+    BOOST_CHECK(tableRef1.empty());
+    BOOST_CHECK(tableRef1.databaseName().empty());
+    BOOST_CHECK(tableRef1.tableName().empty());
+    BOOST_CHECK(tableRef1.primaryKeyColumn().empty());
+
+    DirectorTableRef tableRef2("", "id");
+    BOOST_CHECK(!tableRef2.empty());
+    BOOST_CHECK(tableRef2.databaseName().empty());
+    BOOST_CHECK(tableRef2.tableName().empty());
+    BOOST_CHECK(tableRef2.primaryKeyColumn() == "id");
+
+    DirectorTableRef tableRef3("table", "id");
+    BOOST_CHECK(!tableRef3.empty());
+    BOOST_CHECK(tableRef3.databaseName().empty());
+    BOOST_CHECK(tableRef3.tableName() == "table");
+    BOOST_CHECK(tableRef3.primaryKeyColumn() == "id");
+
+    DirectorTableRef tableRef4("db.table", "id");
+    BOOST_CHECK(!tableRef4.empty());
+    BOOST_CHECK(tableRef4.databaseName() == "db");
+    BOOST_CHECK(tableRef4.tableName() == "table");
+    BOOST_CHECK(tableRef4.primaryKeyColumn() == "id");
+
+    DirectorTableRef tableRef5 = tableRef4;
+    BOOST_CHECK_EQUAL(tableRef5, tableRef4);
+    BOOST_CHECK(!tableRef5.empty());
+
+    DatabaseInfo database;
     vector<string> tables;
-    DatabaseInfo db1info;
-    BOOST_REQUIRE_NO_THROW(db1info = config->databaseInfo("db1"));
-    BOOST_CHECK(db1info.name == "db1");
-    BOOST_CHECK(db1info.family == "production");
-    BOOST_CHECK(db1info.isPublished == true);
-    BOOST_CHECK(db1info.createTime == 10);
-    BOOST_CHECK(db1info.publishTime == 11);
-    BOOST_CHECK(db1info.directorTable.count("Table11") != 0);
-    BOOST_CHECK(db1info.directorTable.at("Table11").empty());
-    BOOST_CHECK(db1info.directorTableKey.count("Table11") != 0);
-    BOOST_CHECK(db1info.directorTableKey.at("Table11") == "id11");
-    BOOST_CHECK(db1info.latitudeColName.count("Table11") != 0);
-    BOOST_CHECK(db1info.latitudeColName.at("Table11") == "decl11");
-    BOOST_CHECK(db1info.longitudeColName.count("Table11") != 0);
-    BOOST_CHECK(db1info.longitudeColName.at("Table11") == "ra11");
-    BOOST_CHECK(db1info.tableIsPublished.count("Table11") != 0);
-    BOOST_CHECK(db1info.tableIsPublished.at("Table11") == true);
-    BOOST_CHECK(db1info.tableCreateTime.count("Table11") != 0);
-    BOOST_CHECK(db1info.tableCreateTime.at("Table11") == 110);
-    BOOST_CHECK(db1info.tablePublishTime.count("Table11") != 0);
-    BOOST_CHECK(db1info.tablePublishTime.at("Table11") == 111);
+    TableInfo table;
+    BOOST_REQUIRE_NO_THROW(database = config->databaseInfo("db1"));
+    BOOST_CHECK(database.name == "db1");
+    BOOST_CHECK(database.family == "production");
+    BOOST_CHECK(database.isPublished);
+    BOOST_CHECK(database.createTime == 10);
+    BOOST_CHECK(database.publishTime == 11);
 
-    tables = db1info.partitionedTables;
+    tables = database.tables();
     sort(tables.begin(), tables.end());
-    BOOST_CHECK(tables.size() == 1);
-    BOOST_CHECK(tables == vector<string>({"Table11"}));
-    BOOST_CHECK(db1info.isPartitioned("Table11"));
-    BOOST_CHECK(db1info.isDirector("Table11"));
+    BOOST_CHECK(tables.size() == 2);
+    BOOST_CHECK(tables == vector<string>({"MetaTable11", "Table11"}));
 
-    tables = db1info.directorTables();
+    tables = database.partitionedTables();
     sort(tables.begin(), tables.end());
     BOOST_CHECK(tables.size() == 1);
     BOOST_CHECK(tables == vector<string>({"Table11"}));
 
-    tables = db1info.regularTables;
+    tables = database.directorTables();
+    sort(tables.begin(), tables.end());
+    BOOST_CHECK(tables.size() == 1);
+    BOOST_CHECK(tables == vector<string>({"Table11"}));
+
+    tables = database.refMatchTables();
+    sort(tables.begin(), tables.end());
+    BOOST_CHECK(tables.size() == 0);
+
+    tables = database.regularTables();
     sort(tables.begin(), tables.end());
     BOOST_CHECK(tables.size() == 1);
     BOOST_CHECK(tables == vector<string>({"MetaTable11"}));
-    BOOST_CHECK(!db1info.isPartitioned("MetaTable11"));
-    BOOST_CHECK(!db1info.isDirector("MetaTable11"));
-    BOOST_CHECK(!db1info.directorTable.count("MetaTable11"));
-    BOOST_CHECK(!db1info.directorTableKey.count("MetaTable11"));
-    BOOST_CHECK(!db1info.latitudeColName.count("MetaTable11"));
-    BOOST_CHECK(!db1info.longitudeColName.count("MetaTable11"));
 
-    DatabaseInfo db2info;
-    BOOST_REQUIRE_NO_THROW(db2info = config->databaseInfo("db2"));
-    BOOST_CHECK(db2info.name == "db2");
-    BOOST_CHECK(db2info.family == "production");
-    BOOST_CHECK(db2info.isPublished == true);
-    BOOST_CHECK(db2info.createTime == 20);
-    BOOST_CHECK(db2info.publishTime == 21);
-    BOOST_CHECK(db2info.isDirector("Table21"));
-    BOOST_CHECK(db2info.directorTable.count("Table21") != 0);
-    BOOST_CHECK(db2info.directorTable.at("Table21").empty());
-    BOOST_CHECK(db2info.directorTableKey.count("Table21") != 0);
-    BOOST_CHECK(db2info.directorTableKey.at("Table21") == "id21");
-    BOOST_CHECK(db2info.latitudeColName.count("Table21") != 0);
-    BOOST_CHECK(db2info.latitudeColName.at("Table21") == "decl21");
-    BOOST_CHECK(db2info.longitudeColName.count("Table21") != 0);
-    BOOST_CHECK(db2info.longitudeColName.at("Table21") == "ra21");
-    BOOST_CHECK(!db2info.isDirector("Table22"));
-    BOOST_CHECK(db2info.directorTable.count("Table22") != 0);
-    BOOST_CHECK(db2info.directorTable.at("Table22") == "Table21");
-    BOOST_CHECK(db2info.directorTableKey.count("Table22") != 0);
-    BOOST_CHECK(db2info.directorTableKey.at("Table22") == "id22");
-    BOOST_CHECK(db2info.latitudeColName.count("Table22") != 0);
-    BOOST_CHECK(db2info.latitudeColName.at("Table22") == "decl22");
-    BOOST_CHECK(db2info.longitudeColName.count("Table22") != 0);
-    BOOST_CHECK(db2info.longitudeColName.at("Table22") == "ra22");
+    BOOST_CHECK(database.tableExists("Table11"));
+    BOOST_REQUIRE_NO_THROW(table = database.findTable("Table11"));
+    BOOST_CHECK(table.isPartitioned);
+    BOOST_CHECK(table.isDirector);
+    BOOST_CHECK(!table.isRefMatch);
+    BOOST_CHECK_EQUAL(table.directorTable, DirectorTableRef("", "id11"));
+    BOOST_CHECK_EQUAL(table.directorTable2, DirectorTableRef("", ""));
+    BOOST_CHECK(table.flagColName.empty());
+    BOOST_CHECK(table.latitudeColName == "decl11");
+    BOOST_CHECK(table.longitudeColName == "ra11");
+    BOOST_CHECK(table.columns.size() == 4);
+    BOOST_CHECK(table.columnNames() == vector<string>({"id11", "decl11", "ra11", "subChunkId"}));
+    BOOST_CHECK(table.isPublished);
+    BOOST_CHECK(table.createTime == 110);
+    BOOST_CHECK(table.publishTime == 111);
 
-    tables = db2info.partitionedTables;
+    BOOST_CHECK(database.tableExists("MetaTable11"));
+    BOOST_REQUIRE_NO_THROW(table = database.findTable("MetaTable11"));
+    BOOST_CHECK(!table.isPartitioned);
+    BOOST_CHECK(!table.isDirector);
+    BOOST_CHECK(!table.isRefMatch);
+    BOOST_CHECK_EQUAL(table.directorTable, DirectorTableRef("", ""));
+    BOOST_CHECK_EQUAL(table.directorTable2, DirectorTableRef("", ""));
+    BOOST_CHECK(table.flagColName.empty());
+    BOOST_CHECK(table.latitudeColName.empty());
+    BOOST_CHECK(table.longitudeColName.empty());
+    BOOST_CHECK(table.columns.empty());
+    BOOST_CHECK(table.isPublished);
+    BOOST_CHECK(table.createTime == 120);
+    BOOST_CHECK(table.publishTime == 121);
+
+    BOOST_REQUIRE_NO_THROW(database = config->databaseInfo("db2"));
+    BOOST_CHECK(database.name == "db2");
+    BOOST_CHECK(database.family == "production");
+    BOOST_CHECK(database.isPublished);
+    BOOST_CHECK(database.createTime == 20);
+    BOOST_CHECK(database.publishTime == 21);
+
+    tables = database.tables();
+    sort(tables.begin(), tables.end());
+    BOOST_CHECK(tables.size() == 4);
+    BOOST_CHECK(tables == vector<string>({"MetaTable21", "MetaTable22", "Table21", "Table22"}));
+
+    tables = database.partitionedTables();
     sort(tables.begin(), tables.end());
     BOOST_CHECK(tables.size() == 2);
     BOOST_CHECK(tables == vector<string>({"Table21", "Table22"}));
 
-    tables = db2info.directorTables();
+    tables = database.directorTables();
     sort(tables.begin(), tables.end());
     BOOST_CHECK(tables.size() == 1);
     BOOST_CHECK(tables == vector<string>({"Table21"}));
 
-    tables = db2info.regularTables;
+    tables = database.refMatchTables();
+    sort(tables.begin(), tables.end());
+    BOOST_CHECK(tables.size() == 0);
+
+    tables = database.regularTables();
     sort(tables.begin(), tables.end());
     BOOST_CHECK(tables.size() == 2);
     BOOST_CHECK(tables == vector<string>({"MetaTable21", "MetaTable22"}));
 
-    DatabaseInfo db3info;
-    BOOST_REQUIRE_NO_THROW(db3info = config->databaseInfo("db3"));
-    BOOST_CHECK(db3info.name == "db3");
-    BOOST_CHECK(db3info.family == "production");
-    BOOST_CHECK(db3info.isPublished == true);
-    BOOST_CHECK(db3info.createTime == 30);
-    BOOST_CHECK(db3info.publishTime == 31);
-    BOOST_CHECK(db3info.isDirector("Table31"));
-    BOOST_CHECK(db3info.directorTable.count("Table31") != 0);
-    BOOST_CHECK(db3info.directorTable.at("Table31").empty());
-    BOOST_CHECK(db3info.directorTableKey.count("Table31") != 0);
-    BOOST_CHECK(db3info.directorTableKey.at("Table31") == "id31");
-    BOOST_CHECK(db3info.latitudeColName.count("Table31") != 0);
-    BOOST_CHECK(db3info.latitudeColName.at("Table31") == "decl31");
-    BOOST_CHECK(db3info.longitudeColName.count("Table31") != 0);
-    BOOST_CHECK(db3info.longitudeColName.at("Table31") == "ra31");
-    BOOST_CHECK(!db3info.isDirector("Table32"));
-    BOOST_CHECK(db3info.directorTable.count("Table32") != 0);
-    BOOST_CHECK(db3info.directorTable.at("Table32") == "Table31");
-    BOOST_CHECK(db3info.directorTableKey.count("Table32") != 0);
-    BOOST_CHECK(db3info.directorTableKey.at("Table32") == "id32");
-    BOOST_CHECK(db3info.latitudeColName.count("Table32") != 0);
-    BOOST_CHECK(db3info.latitudeColName.at("Table32") == "decl32");
-    BOOST_CHECK(db3info.longitudeColName.count("Table32") != 0);
-    BOOST_CHECK(db3info.longitudeColName.at("Table32") == "ra32");
-    BOOST_CHECK(!db3info.isDirector("Table33"));
-    BOOST_CHECK(db3info.directorTable.count("Table33") != 0);
-    BOOST_CHECK(db3info.directorTable.at("Table33") == "Table31");
-    BOOST_CHECK(db3info.directorTableKey.count("Table33") != 0);
-    BOOST_CHECK(db3info.directorTableKey.count("Table33") != 0);
-    BOOST_CHECK(db3info.directorTableKey.at("Table33") == "id33");
-    BOOST_CHECK(db3info.latitudeColName.count("Table33") != 0);
-    BOOST_CHECK(db3info.latitudeColName.at("Table33").empty());
-    BOOST_CHECK(db3info.longitudeColName.count("Table33") != 0);
-    BOOST_CHECK(db3info.longitudeColName.at("Table33").empty());
+    BOOST_CHECK(database.tableExists("Table21"));
+    BOOST_REQUIRE_NO_THROW(table = database.findTable("Table21"));
+    BOOST_CHECK(table.isPartitioned);
+    BOOST_CHECK(table.isDirector);
+    BOOST_CHECK(!table.isRefMatch);
+    BOOST_CHECK_EQUAL(table.directorTable, DirectorTableRef("", "id21"));
+    BOOST_CHECK_EQUAL(table.directorTable2, DirectorTableRef("", ""));
+    BOOST_CHECK(table.flagColName.empty());
+    BOOST_CHECK(table.latitudeColName == "decl21");
+    BOOST_CHECK(table.longitudeColName == "ra21");
+    BOOST_CHECK(table.columns.size() == 4);
+    BOOST_CHECK(table.columnNames() == vector<string>({"id21", "decl21", "ra21", "subChunkId"}));
+    BOOST_CHECK(table.isPublished);
+    BOOST_CHECK(table.createTime == 210);
+    BOOST_CHECK(table.publishTime == 211);
 
-    tables = db3info.partitionedTables;
+    BOOST_CHECK(database.tableExists("Table22"));
+    BOOST_REQUIRE_NO_THROW(table = database.findTable("Table22"));
+    BOOST_CHECK(table.isPartitioned);
+    BOOST_CHECK(!table.isDirector);
+    BOOST_CHECK(!table.isRefMatch);
+    BOOST_CHECK_EQUAL(table.directorTable, DirectorTableRef("Table21", "id22"));
+    BOOST_CHECK_EQUAL(table.directorTable2, DirectorTableRef("", ""));
+    BOOST_CHECK(table.flagColName.empty());
+    BOOST_CHECK(table.latitudeColName == "decl22");
+    BOOST_CHECK(table.longitudeColName == "ra22");
+    BOOST_CHECK(table.columns.size() == 3);
+    BOOST_CHECK(table.columnNames() == vector<string>({"id22", "decl22", "ra22"}));
+    BOOST_CHECK(table.isPublished);
+    BOOST_CHECK(table.createTime == 220);
+    BOOST_CHECK(table.publishTime == 221);
+
+    BOOST_CHECK(database.tableExists("MetaTable21"));
+    BOOST_REQUIRE_NO_THROW(table = database.findTable("MetaTable21"));
+    BOOST_CHECK(!table.isPartitioned);
+    BOOST_CHECK(!table.isDirector);
+    BOOST_CHECK(!table.isRefMatch);
+    BOOST_CHECK_EQUAL(table.directorTable, DirectorTableRef("", ""));
+    BOOST_CHECK_EQUAL(table.directorTable2, DirectorTableRef("", ""));
+    BOOST_CHECK(table.flagColName.empty());
+    BOOST_CHECK(table.latitudeColName.empty());
+    BOOST_CHECK(table.longitudeColName.empty());
+    BOOST_CHECK(table.columns.empty());
+    BOOST_CHECK(table.isPublished);
+    BOOST_CHECK(table.createTime == 2210);
+    BOOST_CHECK(table.publishTime == 2211);
+
+    BOOST_CHECK(database.tableExists("MetaTable22"));
+    BOOST_REQUIRE_NO_THROW(table = database.findTable("MetaTable22"));
+    BOOST_CHECK(!table.isPartitioned);
+    BOOST_CHECK(!table.isDirector);
+    BOOST_CHECK(!table.isRefMatch);
+    BOOST_CHECK_EQUAL(table.directorTable, DirectorTableRef("", ""));
+    BOOST_CHECK_EQUAL(table.directorTable2, DirectorTableRef("", ""));
+    BOOST_CHECK(table.flagColName.empty());
+    BOOST_CHECK(table.latitudeColName.empty());
+    BOOST_CHECK(table.longitudeColName.empty());
+    BOOST_CHECK(table.columns.empty());
+    BOOST_CHECK(table.isPublished);
+    BOOST_CHECK(table.createTime == 2220);
+    BOOST_CHECK(table.publishTime == 2221);
+
+    BOOST_REQUIRE_NO_THROW(database = config->databaseInfo("db3"));
+    BOOST_CHECK(database.name == "db3");
+    BOOST_CHECK(database.family == "production");
+    BOOST_CHECK(database.isPublished);
+    BOOST_CHECK(database.createTime == 30);
+    BOOST_CHECK(database.publishTime == 31);
+
+    tables = database.tables();
+    sort(tables.begin(), tables.end());
+    BOOST_CHECK(tables.size() == 6);
+    BOOST_CHECK(tables == vector<string>({"MetaTable31", "MetaTable32", "MetaTable33", "Table31", "Table32",
+                                          "Table33"}));
+
+    tables = database.partitionedTables();
     sort(tables.begin(), tables.end());
     BOOST_CHECK(tables.size() == 3);
     BOOST_CHECK(tables == vector<string>({"Table31", "Table32", "Table33"}));
 
-    tables = db3info.directorTables();
+    tables = database.directorTables();
     sort(tables.begin(), tables.end());
     BOOST_CHECK(tables.size() == 1);
     BOOST_CHECK(tables == vector<string>({"Table31"}));
 
-    tables = db3info.regularTables;
+    tables = database.refMatchTables();
+    sort(tables.begin(), tables.end());
+    BOOST_CHECK(tables.size() == 0);
+
+    tables = database.regularTables();
     sort(tables.begin(), tables.end());
     BOOST_CHECK(tables.size() == 3);
     BOOST_CHECK(tables == vector<string>({"MetaTable31", "MetaTable32", "MetaTable33"}));
 
-    DatabaseInfo db4info;
-    BOOST_REQUIRE_NO_THROW(db4info = config->databaseInfo("db4"));
-    BOOST_CHECK(db4info.name == "db4");
-    BOOST_CHECK(db4info.family == "test");
-    BOOST_CHECK(db4info.isPublished == true);
-    BOOST_CHECK(db4info.createTime == 40);
-    BOOST_CHECK(db4info.publishTime == 41);
-    BOOST_CHECK(db4info.isDirector("Table41"));
-    BOOST_CHECK(db4info.directorTable.count("Table41") != 0);
-    BOOST_CHECK(db4info.directorTable.at("Table41").empty());
-    BOOST_CHECK(db4info.directorTableKey.count("Table41") != 0);
-    BOOST_CHECK(db4info.directorTableKey.at("Table41") == "id41");
-    BOOST_CHECK(db4info.latitudeColName.count("Table41") != 0);
-    BOOST_CHECK(db4info.latitudeColName.at("Table41") == "decl41");
-    BOOST_CHECK(db4info.longitudeColName.count("Table41") != 0);
-    BOOST_CHECK(db4info.longitudeColName.at("Table41") == "ra41");
-    BOOST_CHECK(db4info.isDirector("Table42"));
-    BOOST_CHECK(db4info.directorTable.count("Table42") != 0);
-    BOOST_CHECK(db4info.directorTable.at("Table42").empty());
-    BOOST_CHECK(db4info.directorTableKey.count("Table42") != 0);
-    BOOST_CHECK(db4info.directorTableKey.at("Table42") == "id42");
-    BOOST_CHECK(db4info.latitudeColName.count("Table42") != 0);
-    BOOST_CHECK(db4info.latitudeColName.at("Table42") == "decl42");
-    BOOST_CHECK(db4info.longitudeColName.count("Table42") != 0);
-    BOOST_CHECK(db4info.longitudeColName.at("Table42") == "ra42");
+    BOOST_CHECK(database.tableExists("Table31"));
+    BOOST_REQUIRE_NO_THROW(table = database.findTable("Table31"));
+    BOOST_CHECK(table.isPartitioned);
+    BOOST_CHECK(table.isDirector);
+    BOOST_CHECK(!table.isRefMatch);
+    BOOST_CHECK_EQUAL(table.directorTable, DirectorTableRef("", "id31"));
+    BOOST_CHECK_EQUAL(table.directorTable2, DirectorTableRef("", ""));
+    BOOST_CHECK(table.flagColName.empty());
+    BOOST_CHECK(table.latitudeColName == "decl31");
+    BOOST_CHECK(table.longitudeColName == "ra31");
+    BOOST_CHECK(table.columns.size() == 4);
+    BOOST_CHECK(table.columnNames() == vector<string>({"id31", "decl31", "ra31", "subChunkId"}));
+    BOOST_CHECK(table.isPublished);
+    BOOST_CHECK(table.createTime == 310);
+    BOOST_CHECK(table.publishTime == 311);
 
-    tables = db4info.partitionedTables;
+    BOOST_CHECK(database.tableExists("Table32"));
+    BOOST_REQUIRE_NO_THROW(table = database.findTable("Table32"));
+    BOOST_CHECK(table.isPartitioned);
+    BOOST_CHECK(!table.isDirector);
+    BOOST_CHECK(!table.isRefMatch);
+    BOOST_CHECK_EQUAL(table.directorTable, DirectorTableRef("Table31", "id32"));
+    BOOST_CHECK_EQUAL(table.directorTable2, DirectorTableRef("", ""));
+    BOOST_CHECK(table.flagColName.empty());
+    BOOST_CHECK(table.latitudeColName == "decl32");
+    BOOST_CHECK(table.longitudeColName == "ra32");
+    BOOST_CHECK(table.columns.size() == 3);
+    BOOST_CHECK(table.columnNames() == vector<string>({"id32", "decl32", "ra32"}));
+    BOOST_CHECK(table.isPublished);
+    BOOST_CHECK(table.createTime == 320);
+    BOOST_CHECK(table.publishTime == 321);
+
+    BOOST_CHECK(database.tableExists("Table33"));
+    BOOST_REQUIRE_NO_THROW(table = database.findTable("Table33"));
+    BOOST_CHECK(table.isPartitioned);
+    BOOST_CHECK(!table.isDirector);
+    BOOST_CHECK(!table.isRefMatch);
+    BOOST_CHECK_EQUAL(table.directorTable, DirectorTableRef("Table31", "id33"));
+    BOOST_CHECK_EQUAL(table.directorTable2, DirectorTableRef("", ""));
+    BOOST_CHECK(table.flagColName.empty());
+    BOOST_CHECK(table.latitudeColName.empty());
+    BOOST_CHECK(table.longitudeColName.empty());
+    BOOST_CHECK(table.columns.size() == 1);
+    BOOST_CHECK(table.columnNames() == vector<string>({"id33"}));
+    BOOST_CHECK(table.isPublished);
+    BOOST_CHECK(table.createTime == 330);
+    BOOST_CHECK(table.publishTime == 331);
+
+    BOOST_CHECK(database.tableExists("MetaTable31"));
+    BOOST_REQUIRE_NO_THROW(table = database.findTable("MetaTable31"));
+    BOOST_CHECK(!table.isPartitioned);
+    BOOST_CHECK(!table.isDirector);
+    BOOST_CHECK(!table.isRefMatch);
+    BOOST_CHECK_EQUAL(table.directorTable, DirectorTableRef("", ""));
+    BOOST_CHECK_EQUAL(table.directorTable2, DirectorTableRef("", ""));
+    BOOST_CHECK(table.flagColName.empty());
+    BOOST_CHECK(table.latitudeColName.empty());
+    BOOST_CHECK(table.longitudeColName.empty());
+    BOOST_CHECK(table.columns.empty());
+    BOOST_CHECK(table.isPublished);
+    BOOST_CHECK(table.createTime == 3310);
+    BOOST_CHECK(table.publishTime == 3311);
+
+    BOOST_CHECK(database.tableExists("MetaTable32"));
+    BOOST_REQUIRE_NO_THROW(table = database.findTable("MetaTable32"));
+    BOOST_CHECK(!table.isPartitioned);
+    BOOST_CHECK(!table.isDirector);
+    BOOST_CHECK(!table.isRefMatch);
+    BOOST_CHECK_EQUAL(table.directorTable, DirectorTableRef("", ""));
+    BOOST_CHECK_EQUAL(table.directorTable2, DirectorTableRef("", ""));
+    BOOST_CHECK(table.flagColName.empty());
+    BOOST_CHECK(table.latitudeColName.empty());
+    BOOST_CHECK(table.longitudeColName.empty());
+    BOOST_CHECK(table.columns.empty());
+    BOOST_CHECK(table.isPublished);
+    BOOST_CHECK(table.createTime == 3320);
+    BOOST_CHECK(table.publishTime == 3321);
+
+    BOOST_CHECK(database.tableExists("MetaTable33"));
+    BOOST_REQUIRE_NO_THROW(table = database.findTable("MetaTable33"));
+    BOOST_CHECK(!table.isPartitioned);
+    BOOST_CHECK(!table.isDirector);
+    BOOST_CHECK(!table.isRefMatch);
+    BOOST_CHECK_EQUAL(table.directorTable, DirectorTableRef("", ""));
+    BOOST_CHECK_EQUAL(table.directorTable2, DirectorTableRef("", ""));
+    BOOST_CHECK(table.flagColName.empty());
+    BOOST_CHECK(table.latitudeColName.empty());
+    BOOST_CHECK(table.longitudeColName.empty());
+    BOOST_CHECK(table.columns.empty());
+    BOOST_CHECK(!table.isPublished);
+    BOOST_CHECK(table.createTime == 3330);
+    BOOST_CHECK(table.publishTime == 0);
+
+    BOOST_REQUIRE_NO_THROW(database = config->databaseInfo("db4"));
+    BOOST_CHECK(database.name == "db4");
+    BOOST_CHECK(database.family == "test");
+    BOOST_CHECK(database.isPublished);
+    BOOST_CHECK(database.createTime == 40);
+    BOOST_CHECK(database.publishTime == 41);
+
+    tables = database.tables();
+    sort(tables.begin(), tables.end());
+    BOOST_CHECK(tables.size() == 4);
+    BOOST_CHECK(tables == vector<string>({"RefMatch43", "RefMatch44", "Table41", "Table42"}));
+
+    tables = database.partitionedTables();
+    sort(tables.begin(), tables.end());
+    BOOST_CHECK(tables.size() == 4);
+    BOOST_CHECK(tables == vector<string>({"RefMatch43", "RefMatch44", "Table41", "Table42"}));
+
+    tables = database.directorTables();
     sort(tables.begin(), tables.end());
     BOOST_CHECK(tables.size() == 2);
     BOOST_CHECK(tables == vector<string>({"Table41", "Table42"}));
 
-    tables = db4info.directorTables();
+    tables = database.refMatchTables();
     sort(tables.begin(), tables.end());
     BOOST_CHECK(tables.size() == 2);
-    BOOST_CHECK(tables == vector<string>({"Table41", "Table42"}));
+    BOOST_CHECK(tables == vector<string>({"RefMatch43", "RefMatch44"}));
 
-    tables = db4info.regularTables;
+    tables = database.regularTables();
     BOOST_CHECK(tables.size() == 0);
 
-    DatabaseInfo db5info;
-    BOOST_REQUIRE_NO_THROW(db5info = config->databaseInfo("db5"));
-    BOOST_CHECK(db5info.name == "db5");
-    BOOST_CHECK(db5info.family == "test");
-    BOOST_CHECK(db5info.isPublished == true);
-    BOOST_CHECK(db5info.createTime == 50);
-    BOOST_CHECK(db5info.publishTime == 51);
-    BOOST_CHECK(db5info.isDirector("Table51"));
-    BOOST_CHECK(db5info.directorTable.count("Table51") != 0);
-    BOOST_CHECK(db5info.directorTable.at("Table51").empty());
-    BOOST_CHECK(db5info.directorTableKey.count("Table51") != 0);
-    BOOST_CHECK(db5info.directorTableKey.at("Table51") == "id51");
-    BOOST_CHECK(db5info.latitudeColName.count("Table51") != 0);
-    BOOST_CHECK(db5info.latitudeColName.at("Table51") == "decl51");
-    BOOST_CHECK(db5info.longitudeColName.count("Table51") != 0);
-    BOOST_CHECK(db5info.longitudeColName.at("Table51") == "ra51");
+    BOOST_CHECK(database.tableExists("Table41"));
+    BOOST_REQUIRE_NO_THROW(table = database.findTable("Table41"));
+    BOOST_CHECK(table.isPartitioned);
+    BOOST_CHECK(table.isDirector);
+    BOOST_CHECK(!table.isRefMatch);
+    BOOST_CHECK_EQUAL(table.directorTable, DirectorTableRef("", "id41"));
+    BOOST_CHECK_EQUAL(table.directorTable2, DirectorTableRef("", ""));
+    BOOST_CHECK(table.flagColName.empty());
+    BOOST_CHECK(table.latitudeColName == "decl41");
+    BOOST_CHECK(table.longitudeColName == "ra41");
+    BOOST_CHECK(table.columns.size() == 4);
+    BOOST_CHECK(table.columnNames() == vector<string>({"id41", "decl41", "ra41", "subChunkId"}));
+    BOOST_CHECK(table.isPublished);
+    BOOST_CHECK(table.createTime == 410);
+    BOOST_CHECK(table.publishTime == 411);
 
-    tables = db5info.partitionedTables;
+    BOOST_CHECK(database.tableExists("Table42"));
+    BOOST_REQUIRE_NO_THROW(table = database.findTable("Table42"));
+    BOOST_CHECK(table.isPartitioned);
+    BOOST_CHECK(table.isDirector);
+    BOOST_CHECK(!table.isRefMatch);
+    BOOST_CHECK_EQUAL(table.directorTable, DirectorTableRef("", "id42"));
+    BOOST_CHECK_EQUAL(table.directorTable2, DirectorTableRef("", ""));
+    BOOST_CHECK(table.flagColName.empty());
+    BOOST_CHECK(table.latitudeColName == "decl42");
+    BOOST_CHECK(table.longitudeColName == "ra42");
+    BOOST_CHECK(table.columns.size() == 4);
+    BOOST_CHECK(table.columnNames() == vector<string>({"id42", "decl42", "ra42", "subChunkId"}));
+    BOOST_CHECK(table.isPublished);
+    BOOST_CHECK(table.createTime == 420);
+    BOOST_CHECK(table.publishTime == 421);
+
+    BOOST_CHECK(database.tableExists("RefMatch43"));
+    BOOST_REQUIRE_NO_THROW(table = database.findTable("RefMatch43"));
+    BOOST_CHECK(table.isPartitioned);
+    BOOST_CHECK(!table.isDirector);
+    BOOST_CHECK(table.isRefMatch);
+    BOOST_CHECK_EQUAL(table.directorTable, DirectorTableRef("Table41", "Table41_id"));
+    BOOST_CHECK_EQUAL(table.directorTable2, DirectorTableRef("Table42", "Table42_id"));
+    BOOST_CHECK(table.flagColName == "flag");
+    BOOST_CHECK(table.angSep == 0.01);
+    BOOST_CHECK(table.latitudeColName.empty());
+    BOOST_CHECK(table.longitudeColName.empty());
+    BOOST_CHECK(table.columns.size() == 3);
+    BOOST_CHECK(table.columnNames() == vector<string>({"Table41_id", "Table42_id", "flag"}));
+    BOOST_CHECK(!table.isPublished);
+    BOOST_CHECK(table.createTime == 430);
+    BOOST_CHECK(table.publishTime == 0);
+
+    BOOST_CHECK(database.tableExists("RefMatch44"));
+    BOOST_REQUIRE_NO_THROW(table = database.findTable("RefMatch44"));
+    BOOST_CHECK(table.isPartitioned);
+    BOOST_CHECK(!table.isDirector);
+    BOOST_CHECK(table.isRefMatch);
+    BOOST_CHECK_EQUAL(table.directorTable, DirectorTableRef("db2.Table21", "Table21_id"));
+    BOOST_CHECK_EQUAL(table.directorTable2, DirectorTableRef("db3.Table31", "Table31_id"));
+    BOOST_CHECK(table.flagColName == "flag");
+    BOOST_CHECK(table.angSep == 0.01667);
+    BOOST_CHECK(table.latitudeColName.empty());
+    BOOST_CHECK(table.longitudeColName.empty());
+    BOOST_CHECK(table.columns.size() == 3);
+    BOOST_CHECK(table.columnNames() == vector<string>({"Table21_id", "Table31_id", "flag"}));
+    BOOST_CHECK(!table.isPublished);
+    BOOST_CHECK(table.createTime == 440);
+    BOOST_CHECK(table.publishTime == 0);
+
+    BOOST_REQUIRE_NO_THROW(database = config->databaseInfo("db5"));
+    BOOST_CHECK(database.name == "db5");
+    BOOST_CHECK(database.family == "test");
+    BOOST_CHECK(database.isPublished);
+    BOOST_CHECK(database.createTime == 50);
+    BOOST_CHECK(database.publishTime == 51);
+
+    tables = database.tables();
     sort(tables.begin(), tables.end());
     BOOST_CHECK(tables.size() == 1);
     BOOST_CHECK(tables == vector<string>({"Table51"}));
 
-    tables = db5info.directorTables();
+    tables = database.partitionedTables();
     sort(tables.begin(), tables.end());
     BOOST_CHECK(tables.size() == 1);
     BOOST_CHECK(tables == vector<string>({"Table51"}));
 
-    tables = db5info.regularTables;
+    tables = database.directorTables();
+    sort(tables.begin(), tables.end());
+    BOOST_CHECK(tables.size() == 1);
+    BOOST_CHECK(tables == vector<string>({"Table51"}));
+
+    tables = database.refMatchTables();
+    BOOST_CHECK(tables.empty());
+
+    tables = database.regularTables();
     BOOST_CHECK(tables.size() == 0);
 
-    DatabaseInfo db6info;
-    BOOST_REQUIRE_NO_THROW(db6info = config->databaseInfo("db6"));
-    BOOST_CHECK(db6info.name == "db6");
-    BOOST_CHECK(db6info.family == "test");
-    BOOST_CHECK(db6info.isPublished == false);
-    BOOST_CHECK(db6info.createTime == 60);
-    BOOST_CHECK(db6info.publishTime == 0);
-    BOOST_CHECK(db6info.isDirector("Table61"));
-    BOOST_CHECK(db6info.directorTable.count("Table61") != 0);
-    BOOST_CHECK(db6info.directorTable.at("Table61").empty());
-    BOOST_CHECK(db6info.directorTableKey.count("Table61") != 0);
-    BOOST_CHECK(db6info.directorTableKey.at("Table61") == "id61");
-    BOOST_CHECK(db6info.latitudeColName.count("Table61") != 0);
-    BOOST_CHECK(db6info.latitudeColName.at("Table61") == "decl61");
-    BOOST_CHECK(db6info.longitudeColName.count("Table61") != 0);
-    BOOST_CHECK(db6info.longitudeColName.at("Table61") == "ra61");
+    BOOST_CHECK(database.tableExists("Table51"));
+    BOOST_REQUIRE_NO_THROW(table = database.findTable("Table51"));
+    BOOST_CHECK(table.isPartitioned);
+    BOOST_CHECK(table.isDirector);
+    BOOST_CHECK(!table.isRefMatch);
+    BOOST_CHECK_EQUAL(table.directorTable, DirectorTableRef("", "id51"));
+    BOOST_CHECK_EQUAL(table.directorTable2, DirectorTableRef("", ""));
+    BOOST_CHECK(table.flagColName.empty());
+    BOOST_CHECK(table.latitudeColName == "decl51");
+    BOOST_CHECK(table.longitudeColName == "ra51");
+    BOOST_CHECK(table.columns.size() == 4);
+    BOOST_CHECK(table.columnNames() == vector<string>({"id51", "decl51", "ra51", "subChunkId"}));
+    BOOST_CHECK(table.isPublished);
+    BOOST_CHECK(table.createTime == 510);
+    BOOST_CHECK(table.publishTime == 511);
 
-    tables = db6info.partitionedTables;
+    BOOST_REQUIRE_NO_THROW(database = config->databaseInfo("db6"));
+    BOOST_CHECK(database.name == "db6");
+    BOOST_CHECK(database.family == "test");
+    BOOST_CHECK(!database.isPublished);
+    BOOST_CHECK(database.createTime == 60);
+    BOOST_CHECK(database.publishTime == 0);
+
+    tables = database.tables();
+    sort(tables.begin(), tables.end());
+    BOOST_CHECK(tables.size() == 2);
+    BOOST_CHECK(tables == vector<string>({"MetaTable61", "Table61"}));
+
+    tables = database.partitionedTables();
     sort(tables.begin(), tables.end());
     BOOST_CHECK(tables.size() == 1);
     BOOST_CHECK(tables == vector<string>({"Table61"}));
 
-    tables = db6info.directorTables();
+    tables = database.directorTables();
     sort(tables.begin(), tables.end());
     BOOST_CHECK(tables.size() == 1);
     BOOST_CHECK(tables == vector<string>({"Table61"}));
 
-    tables = db6info.regularTables;
+    tables = database.refMatchTables();
+    sort(tables.begin(), tables.end());
+    BOOST_CHECK(tables.empty());
+
+    tables = database.regularTables();
     BOOST_CHECK(tables.size() == 1);
     BOOST_CHECK(tables == vector<string>({"MetaTable61"}));
+
+    BOOST_CHECK(database.tableExists("Table61"));
+    BOOST_REQUIRE_NO_THROW(table = database.findTable("Table61"));
+    BOOST_CHECK(table.isPartitioned);
+    BOOST_CHECK(table.isDirector);
+    BOOST_CHECK(!table.isRefMatch);
+    BOOST_CHECK_EQUAL(table.directorTable, DirectorTableRef("", "id61"));
+    BOOST_CHECK_EQUAL(table.directorTable2, DirectorTableRef("", ""));
+    BOOST_CHECK(table.flagColName.empty());
+    BOOST_CHECK(table.latitudeColName == "decl61");
+    BOOST_CHECK(table.longitudeColName == "ra61");
+    BOOST_CHECK(table.columns.size() == 4);
+    BOOST_CHECK(table.columnNames() == vector<string>({"id61", "decl61", "ra61", "subChunkId"}));
+    BOOST_CHECK(!table.isPublished);
+    BOOST_CHECK(table.createTime == 610);
+    BOOST_CHECK(table.publishTime == 0);
+
+    BOOST_CHECK(database.tableExists("MetaTable61"));
+    BOOST_REQUIRE_NO_THROW(table = database.findTable("MetaTable61"));
+    BOOST_CHECK(!table.isPartitioned);
+    BOOST_CHECK(!table.isDirector);
+    BOOST_CHECK(!table.isRefMatch);
+    BOOST_CHECK_EQUAL(table.directorTable, DirectorTableRef("", ""));
+    BOOST_CHECK_EQUAL(table.directorTable2, DirectorTableRef("", ""));
+    BOOST_CHECK(table.flagColName.empty());
+    BOOST_CHECK(table.latitudeColName.empty());
+    BOOST_CHECK(table.longitudeColName.empty());
+    BOOST_CHECK(table.columns.empty());
+    BOOST_CHECK(table.isPublished);
+    BOOST_CHECK(table.createTime == 6610);
+    BOOST_CHECK(table.publishTime == 6611);
 }
 
 BOOST_AUTO_TEST_CASE(ConfigurationTestAddingDatabases) {
@@ -844,157 +1117,198 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestAddingDatabases) {
 
     // Adding new databases.
     {
-        string const database = "new";
-        string const family = "test";
-        DatabaseInfo info;
-        BOOST_REQUIRE_NO_THROW(info = config->addDatabase(database, family));
-        BOOST_CHECK(info.name == database);
-        BOOST_CHECK(info.family == family);
-        BOOST_CHECK(info.isPublished == false);
-        BOOST_CHECK(info.createTime != 0);
-        BOOST_CHECK(info.publishTime == 0);
-        BOOST_CHECK(info.partitionedTables.empty());
-        BOOST_CHECK(info.regularTables.empty());
-        BOOST_CHECK(info.directorTable.empty());
-        BOOST_CHECK(info.directorTableKey.empty());
-        BOOST_CHECK(info.latitudeColName.empty());
-        BOOST_CHECK(info.longitudeColName.empty());
-        BOOST_CHECK(info.tableIsPublished.empty());
-        BOOST_CHECK(info.tableCreateTime.empty());
-        BOOST_CHECK(info.tablePublishTime.empty());
-        BOOST_CHECK(info.directorTables().empty());
-        BOOST_CHECK_THROW(config->addDatabase(database, family), std::invalid_argument);
+        string const databaseName = "new";
+        string const familyName = "test";
+        DatabaseInfo database;
+        BOOST_REQUIRE_NO_THROW(database = config->addDatabase(databaseName, familyName));
+        BOOST_CHECK(database.name == databaseName);
+        BOOST_CHECK(database.family == familyName);
+        BOOST_CHECK(!database.isPublished);
+        BOOST_CHECK(database.createTime != 0);
+        BOOST_CHECK(database.publishTime == 0);
+        BOOST_CHECK(database.tables().empty());
+        BOOST_CHECK(database.partitionedTables().empty());
+        BOOST_CHECK(database.directorTables().empty());
+        BOOST_CHECK(database.refMatchTables().empty());
+        BOOST_CHECK(database.regularTables().empty());
+        BOOST_CHECK_THROW(database.findTable("NonExistingTable"), std::invalid_argument);
+        BOOST_CHECK_THROW(config->addDatabase(databaseName, familyName), std::invalid_argument);
     }
     BOOST_CHECK_THROW(config->addDatabase("", ""), std::invalid_argument);
     BOOST_CHECK_THROW(config->addDatabase("", "unknown"), std::invalid_argument);
     BOOST_CHECK_THROW(config->addDatabase("another", ""), std::invalid_argument);
     BOOST_CHECK_THROW(config->addDatabase("another", "unknown"), std::invalid_argument);
     {
-        DatabaseInfo info;
-        BOOST_CHECK_THROW(info.isPartitioned("NonExistingTable"), std::invalid_argument);
-        BOOST_CHECK_THROW(info.isDirector("NonExistingTable"), std::invalid_argument);
-    }
-    {
-        SqlColDef const emptyColdef;
-        BOOST_CHECK(emptyColdef.name.empty());
-        BOOST_CHECK(emptyColdef.type.empty());
+        SqlColDef const emptyColumn;
+        BOOST_CHECK(emptyColumn.name.empty());
+        BOOST_CHECK(emptyColumn.type.empty());
 
-        SqlColDef const coldef("itsName", "itsType");
-        BOOST_CHECK(coldef.name == "itsName");
-        BOOST_CHECK(coldef.type == "itsType");
+        SqlColDef const column("itsName", "itsType");
+        BOOST_CHECK(column.name == "itsName");
+        BOOST_CHECK(column.type == "itsType");
 
-        SqlColDef const copiedColdef(coldef);
-        BOOST_CHECK(copiedColdef.name == "itsName");
-        BOOST_CHECK(copiedColdef.type == "itsType");
+        SqlColDef const copiedColumn(column);
+        BOOST_CHECK(copiedColumn.name == "itsName");
+        BOOST_CHECK(copiedColumn.type == "itsType");
 
-        SqlColDef const assignedColdef = coldef;
-        BOOST_CHECK(assignedColdef.name == "itsName");
-        BOOST_CHECK(assignedColdef.type == "itsType");
+        SqlColDef const assignedColumn = column;
+        BOOST_CHECK(assignedColumn.name == "itsName");
+        BOOST_CHECK(assignedColumn.type == "itsType");
     }
 }
 
 BOOST_AUTO_TEST_CASE(ConfigurationTestModifyingTables) {
     LOGS_INFO("Testing modifying tables");
     {
-        bool const isPartitioned = true;
-        bool const isDirectorTable = true;
-        string const directorTable;
-        string const directorTableKey = "objectId";
-        string const latitudeColName = "lat";
-        string const longitudeColName = "lon";
-        list<SqlColDef> coldefs;
-        coldefs.emplace_back(directorTableKey, "INT UNSIGNED");
-        coldefs.emplace_back(latitudeColName, "DOUBLE");
-        coldefs.emplace_back(longitudeColName, "DOUBLE");
-        coldefs.emplace_back(lsst::qserv::SUB_CHUNK_COLUMN, "INT");
-        DatabaseInfo info;
-        BOOST_REQUIRE_NO_THROW(info = config->addTable("new", "T1", isPartitioned, coldefs, isDirectorTable,
-                                                       directorTable, directorTableKey, latitudeColName,
-                                                       longitudeColName););
-        BOOST_CHECK(info.columns.count("T1") == 1);
-        std::list<SqlColDef> columns;
-        BOOST_REQUIRE_NO_THROW(columns = info.columns.at("T1"););
-        BOOST_CHECK(columns.size() == 4);
-        BOOST_CHECK(find_if(columns.cbegin(), columns.cend(), [&directorTableKey](SqlColDef const& coldef) {
-                        return (coldef.name == directorTableKey) && (coldef.type == "INT UNSIGNED");
-                    }) != columns.cend());
-        BOOST_CHECK(find_if(columns.cbegin(), columns.cend(), [&latitudeColName](SqlColDef const& coldef) {
-                        return (coldef.name == latitudeColName) && (coldef.type == "DOUBLE");
-                    }) != columns.cend());
-        BOOST_CHECK(find_if(columns.cbegin(), columns.cend(), [&longitudeColName](SqlColDef const& coldef) {
-                        return (coldef.name == longitudeColName) && (coldef.type == "DOUBLE");
-                    }) != columns.cend());
-        BOOST_CHECK(find_if(columns.cbegin(), columns.cend(), [](SqlColDef const& coldef) {
-                        return (coldef.name == lsst::qserv::SUB_CHUNK_COLUMN) && (coldef.type == "INT");
-                    }) != columns.cend());
-        BOOST_CHECK((info.partitionedTables.size() == 1) && (info.partitionedTables[0] == "T1"));
-        BOOST_CHECK(info.directorTable.at("T1").empty());
-        BOOST_CHECK(info.directorTableKey.at("T1") == directorTableKey);
-        BOOST_CHECK(info.latitudeColName.at("T1") == latitudeColName);
-        BOOST_CHECK(info.longitudeColName.at("T1") == longitudeColName);
-        BOOST_CHECK(info.directorTables().size() == 1);
+        DatabaseInfo database;
+        BOOST_REQUIRE_NO_THROW(database = config->databaseInfo("new"));
+        BOOST_CHECK(database.tables().empty());
+        BOOST_CHECK(database.directorTables().empty());
+        BOOST_CHECK(database.partitionedTables().empty());
+        BOOST_CHECK(database.refMatchTables().empty());
+        BOOST_CHECK(database.regularTables().empty());
+
+        TableInfo inTable;
+        inTable.name = "T1";
+        inTable.database = database.name;
+        inTable.isPartitioned = true;
+        inTable.directorTable = DirectorTableRef("", "objectId");
+        inTable.latitudeColName = "lat";
+        inTable.longitudeColName = "lon";
+        inTable.columns.emplace_back(inTable.directorTable.primaryKeyColumn(), "INT UNSIGNED");
+        inTable.columns.emplace_back(inTable.latitudeColName, "DOUBLE");
+        inTable.columns.emplace_back(inTable.longitudeColName, "DOUBLE");
+        inTable.columns.emplace_back(lsst::qserv::SUB_CHUNK_COLUMN, "INT");
+
+        BOOST_REQUIRE_NO_THROW(database = config->addTable(inTable));
+        BOOST_CHECK(database.tables().size() == 1);
+        BOOST_CHECK(database.partitionedTables().size() == 1);
+        BOOST_CHECK(database.directorTables().size() == 1);
+        BOOST_CHECK(database.refMatchTables().empty());
+        BOOST_CHECK(database.regularTables().empty());
+
+        TableInfo table;
+        BOOST_REQUIRE_NO_THROW(table = database.findTable(inTable.name));
+        BOOST_CHECK_EQUAL(table, inTable);
+        BOOST_CHECK(!table.isPublished);
+        BOOST_CHECK(table.createTime != 0);
+        BOOST_CHECK(table.publishTime == 0);
+        BOOST_CHECK_THROW(config->addTable(inTable), std::invalid_argument);
     }
-    BOOST_CHECK_THROW(config->addTable("new", "T1", false), std::invalid_argument);
     {
-        bool const isPartitioned = true;
-        bool const isDirectorTable = false;
-        string const directorTable = "T1";
-        string const directorTableKey = "idT2";
-        string const latitudeColName = "declT2";
-        string const longitudeColName = "raT2";
-        list<SqlColDef> coldefs;
-        coldefs.emplace_back(directorTableKey, "INT UNSIGNED");
-        coldefs.emplace_back(latitudeColName, "DOUBLE");
-        coldefs.emplace_back(longitudeColName, "DOUBLE");
-        DatabaseInfo info;
-        BOOST_REQUIRE_NO_THROW(info = config->addTable("new", "T2", isPartitioned, coldefs, isDirectorTable,
-                                                       directorTable, directorTableKey, latitudeColName,
-                                                       longitudeColName););
-        BOOST_CHECK(info.partitionedTables.size() == 2);
-        BOOST_CHECK(info.directorTable.at("T2") == "T1");
-        BOOST_CHECK(info.directorTableKey.count("T2") != 0);
-        BOOST_CHECK(info.directorTableKey.at("T2") == directorTableKey);
-        BOOST_CHECK(info.latitudeColName.count("T2") != 0);
-        BOOST_CHECK(info.latitudeColName.at("T2") == latitudeColName);
-        BOOST_CHECK(info.longitudeColName.count("T2") != 0);
-        BOOST_CHECK(info.longitudeColName.at("T2") == longitudeColName);
-        BOOST_CHECK(info.directorTables().size() == 1);
+        DatabaseInfo database;
+        BOOST_REQUIRE_NO_THROW(database = config->databaseInfo("new"));
+        BOOST_CHECK(database.tables().size() == 1);
+        BOOST_CHECK(database.partitionedTables().size() == 1);
+        BOOST_CHECK(database.directorTables().size() == 1);
+        BOOST_CHECK(database.refMatchTables().empty());
+        BOOST_CHECK(database.regularTables().empty());
+
+        TableInfo inTable;
+        inTable.name = "T2";
+        inTable.database = database.name;
+        inTable.isPartitioned = true;
+        inTable.directorTable = DirectorTableRef("T1", "idT2");
+        inTable.latitudeColName = "declT2";
+        inTable.longitudeColName = "raT2";
+        inTable.columns.emplace_back(inTable.directorTable.primaryKeyColumn(), "INT UNSIGNED");
+        inTable.columns.emplace_back(inTable.latitudeColName, "DOUBLE");
+        inTable.columns.emplace_back(inTable.longitudeColName, "DOUBLE");
+
+        BOOST_REQUIRE_NO_THROW(database = config->addTable(inTable));
+        BOOST_CHECK(database.tables().size() == 2);
+        BOOST_CHECK(database.partitionedTables().size() == 2);
+        BOOST_CHECK(database.directorTables().size() == 1);
+        BOOST_CHECK(database.refMatchTables().empty());
+        BOOST_CHECK(database.regularTables().empty());
+
+        TableInfo table;
+        BOOST_REQUIRE_NO_THROW(table = database.findTable(inTable.name));
+        BOOST_CHECK_EQUAL(table, inTable);
+        BOOST_CHECK(!table.isPublished);
+        BOOST_CHECK(table.createTime != 0);
+        BOOST_CHECK(table.publishTime == 0);
+        BOOST_CHECK_THROW(config->addTable(inTable), std::invalid_argument);
     }
-    BOOST_CHECK_THROW(config->addTable("new", "T2", true), std::invalid_argument);
     {
-        DatabaseInfo info;
-        BOOST_REQUIRE_NO_THROW(info = config->addTable("new", "T3", false));
-        BOOST_CHECK((info.regularTables.size() == 1) && (info.regularTables[0] == "T3"));
-        BOOST_CHECK(info.directorTableKey.count("T3") == 0);
-        BOOST_CHECK(info.latitudeColName.count("T3") == 0);
-        BOOST_CHECK(info.longitudeColName.count("T3") == 0);
+        DatabaseInfo database;
+        BOOST_REQUIRE_NO_THROW(database = config->databaseInfo("new"));
+        BOOST_CHECK(database.tables().size() == 2);
+        BOOST_CHECK(database.partitionedTables().size() == 2);
+        BOOST_CHECK(database.directorTables().size() == 1);
+        BOOST_CHECK(database.refMatchTables().empty());
+        BOOST_CHECK(database.regularTables().empty());
+
+        TableInfo inTable;
+        inTable.name = "T3";
+        inTable.database = database.name;
+
+        BOOST_REQUIRE_NO_THROW(database = config->addTable(inTable));
+        BOOST_CHECK(database.tables().size() == 3);
+        BOOST_CHECK(database.partitionedTables().size() == 2);
+        BOOST_CHECK(database.directorTables().size() == 1);
+        BOOST_CHECK(database.refMatchTables().empty());
+        BOOST_CHECK(database.regularTables().size() == 1);
+
+        TableInfo table;
+        BOOST_REQUIRE_NO_THROW(table = database.findTable(inTable.name));
+        BOOST_CHECK_EQUAL(table, inTable);
+        BOOST_CHECK(!table.isPublished);
+        BOOST_CHECK(table.createTime != 0);
+        BOOST_CHECK(table.publishTime == 0);
+
+        // Unsuccessful deletion attempt should leave the table intact
+        BOOST_CHECK_THROW(config->addTable(inTable), std::invalid_argument);
+        BOOST_CHECK(config->databaseInfo("new").tableExists(inTable.name));
     }
-    BOOST_CHECK_THROW(config->addTable("new", "T3", false), std::invalid_argument);
     BOOST_REQUIRE_NO_THROW(config->deleteTable("new", "T3"));
 }
 
 BOOST_AUTO_TEST_CASE(ConfigurationTestPublishingDatabases) {
     LOGS_INFO("Testing publishing databases");
     {
-        DatabaseInfo info;
-        BOOST_REQUIRE_NO_THROW(info = config->publishDatabase("new"));
-        BOOST_CHECK(info.name == "new");
-        BOOST_CHECK(info.family == "test");
-        BOOST_CHECK(info.isPublished == true);
-        BOOST_CHECK_EQUAL(info.partitionedTables.size(), 2U);
-        BOOST_CHECK_EQUAL(info.regularTables.size(), 0U);
-        BOOST_CHECK_THROW(info = config->publishDatabase("new"), std::logic_error);
+        DatabaseInfo database;
+        BOOST_REQUIRE_NO_THROW(database = config->publishDatabase("new"));
+        BOOST_CHECK(database.name == "new");
+        BOOST_CHECK(database.family == "test");
+        BOOST_CHECK(database.isPublished == true);
+        BOOST_CHECK(database.tables().size() == 2);
+        BOOST_CHECK_THROW(database = config->publishDatabase("new"), std::logic_error);
     }
 
     // Adding tables to the database after it's published isn't allowed.
-    BOOST_CHECK_THROW(config->addTable("new", "T4", true), std::invalid_argument);
+    TableInfo inTable;
+    inTable.name = "T4";
+    inTable.database = "new";
+    BOOST_CHECK_THROW(config->addTable(inTable), std::invalid_argument);
 
     // Deleting director tables which may still have dependent ones is not allowed
     BOOST_CHECK_THROW(config->deleteTable("new", "T1"), std::invalid_argument);
     BOOST_REQUIRE_NO_THROW(config->deleteTable("new", "T2"));
-    // Now we can do this, after delting the dependent one.
+    // Now we can do this, after deleting the dependent one.
     BOOST_REQUIRE_NO_THROW(config->deleteTable("new", "T1"));
+}
 
+BOOST_AUTO_TEST_CASE(ConfigurationTestUnPublishingDatabases) {
+    LOGS_INFO("Testing un-publishing databases");
+    {
+        DatabaseInfo database;
+        BOOST_REQUIRE_NO_THROW(database = config->unPublishDatabase("new"));
+        BOOST_CHECK(database.name == "new");
+        BOOST_CHECK(database.family == "test");
+        BOOST_CHECK(!database.isPublished);
+        BOOST_CHECK_THROW(database = config->unPublishDatabase("new"), std::logic_error);
+    }
+
+    // Adding tables to the database should be now allowed.
+    TableInfo inTable;
+    inTable.name = "T4";
+    inTable.database = "new";
+    BOOST_CHECK_NO_THROW(config->addTable(inTable));
+}
+
+BOOST_AUTO_TEST_CASE(ConfigurationTestDeletingDatabases) {
+    LOGS_INFO("Testing deleting databases");
     BOOST_REQUIRE_NO_THROW(config->deleteDatabase("new"));
     BOOST_CHECK_THROW(config->deleteDatabase("new"), std::invalid_argument);
 }

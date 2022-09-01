@@ -7,9 +7,9 @@
 "part":{
     "num-stripes":85,
     "num-sub-stripes":14,
+    "overlap": 0.001,
     "chunk":"chunkId",
-    "sub-chunk":"subChunkId",
-    "default-overlap":0.0001
+    "sub-chunk":"subChunkId"
 },
 "in":{
     "csv":{

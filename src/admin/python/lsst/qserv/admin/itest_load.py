@@ -24,7 +24,6 @@ from pathlib import Path
 import tarfile
 import backoff
 from contextlib import closing
-from dataclasses import dataclass
 import gzip
 import json
 import logging
@@ -34,10 +33,11 @@ import os
 import shutil
 import subprocess
 from tempfile import TemporaryDirectory
-from typing import Any, Dict, Generator, List, NamedTuple, Optional, Sequence, Tuple, Union
+from typing import Any, Dict, Generator, List, NamedTuple, Optional, Tuple
 import yaml
 
 from .qserv_backoff import on_backoff, max_backoff_sec
+from .itest_table import LoadTable
 from .mysql_connection import mysql_connection
 from .replicationInterface import ReplicationInterface
 from .template import apply_template_cfg
@@ -145,7 +145,7 @@ def _create_ref_table(cnx: mysql.connector.connection, db: str, schema_file: str
 
 
 def _load_ref_data(
-    cnx: mysql.connector.connection, data_file: str, db: str, table: str, field_sep: str
+    cnx: mysql.connector.connection, data_file: str, db: str, table: LoadTable
 ) -> None:
     """Load database data into the reference database.
 
@@ -159,12 +159,14 @@ def _load_ref_data(
         INFILE.
     db : `str`
         The name of the database that the table is in.
-    table : `str`
-        The name of the table to load data into.
-    field_sep : `str`
-        The data separator used in the data_file.
+    table : `LoadTable`
+        The descriptor of the table to load data into.
     """
-    sql = f"LOAD DATA LOCAL INFILE '{data_file}' INTO TABLE {table} FIELDS TERMINATED BY '{field_sep}'"
+    sql = f"LOAD DATA LOCAL INFILE '{data_file}' INTO TABLE {table.table_name}"
+    sql = sql + f" FIELDS TERMINATED BY '{table.fields_terminated_by}'"
+    sql = sql + f" ENCLOSED BY '{table.fields_enclosed_by}'"
+    sql = sql + f" ESCAPED BY '{table.fields_escaped_by}'"
+    sql = sql + f" LINES TERMINATED BY '{table.lines_terminated_by}'"
     _log.debug("_load_ref_data sql:%s", sql)
     if not cnx.is_connected():
         cnx.connect()
@@ -172,44 +174,7 @@ def _load_ref_data(
         stmt = f"USE {db}"
         execute(cursor, stmt)
         execute(cursor, sql)
-        _log.info(f"inserted {cursor.rowcount} rows into {db}.{table}")
-
-
-@dataclass
-class LoadTable:
-
-    """Contains information about a table to be loaded.
-
-    Parameters
-    ----------
-    table_name: str
-        The name of the table according to the load yaml
-    ingest_config: Dict[Any, Any]
-        The table ingest config dict
-    data_file: str
-        The absolute path to the data file (contains the csv or tsv data)
-    partition_config_files: List[str]
-        The absolute path to the partitioner config files
-    data_staging_dir: str
-        The location where data can be staged (has "rw" permissions)
-    ref_db_table_schema_file: str
-        The absolute path to the referecene db table schema file
-    """
-
-    table_name: str
-    ingest_config: Dict[Any, Any]
-    data_file: str
-    partition_config_files: List[str]
-    data_staging_dir: str
-    ref_db_table_schema_file: str
-
-    @property
-    def is_partitioned(self) -> bool:
-        return bool(self.ingest_config["is_partitioned"])
-
-    @property
-    def is_gzipped(self) -> bool:
-        return os.path.splitext(self.data_file)[1] == ".gz"
+        _log.info(f"inserted {cursor.rowcount} rows into {db}.{table.table_name}")
 
 
 class LoadDb:
@@ -308,7 +273,7 @@ def _partition(staging_dir: str, table: LoadTable, data_file: str) -> None:
     ]
     os.makedirs(staging_dir)
     args = [
-        "sph-partition",
+        "sph-partition-matches" if table.is_match else "sph-partition"
     ]
     for config_file in partition_config_files:
         args.append("--config-file")
@@ -348,6 +313,7 @@ def _prep_table_data(load_table: LoadTable, dest_dir: str) ->  Tuple[str, str]:
     data_file : `str`
         The absolute path to the file that contains the table data. (It may have been unzipped to a location different than in table.)
     """
+    _log.info(f"_prep_table_data(1): dest_dir: %s load_table.data_file: %s", dest_dir, load_table.data_file)
     if load_table.is_gzipped:
         data_file = os.path.join(dest_dir, os.path.splitext(os.path.basename(load_table.data_file))[0])
         unzip(source=load_table.data_file, destination=data_file)
@@ -357,6 +323,7 @@ def _prep_table_data(load_table: LoadTable, dest_dir: str) ->  Tuple[str, str]:
     staging_dir = os.path.join(dest_dir, load_table.data_staging_dir)
     if load_table.is_partitioned:
         _partition(staging_dir, load_table, data_file)
+    _log.info(f"_prep_table_data(2): staging_dir: %s data_file: %s", staging_dir, data_file)
     return staging_dir, data_file
 
 
@@ -408,15 +375,11 @@ def _load_database(
 
             with TemporaryDirectory(dir=qserv_data_dir) as tmp_dir:
                 staging_dir, data_file = _prep_table_data(table, tmp_dir)
-
-                # Assume data is either comma separated (with csv) otherwise tab separated.
-                data_file_ext = os.path.splitext(data_file)[1]
                 _load_ref_data(
                     cnx,
                     data_file,
                     load_db.name,
-                    table.table_name,
-                    "," if data_file_ext == ".csv" else "\\t",
+                    table,
                 )
 
                 @backoff.on_exception(
@@ -434,14 +397,14 @@ def _load_database(
                 if table.is_partitioned:
                     repl.ingest_chunks_data(
                         transaction_id=transaction_id,
-                        table_name=table.table_name,
+                        table=table,
                         chunks_folder=staging_dir,
                         chunk_info_file=os.path.join(staging_dir, chunk_info_file),
                     )
                 else:
                     repl.ingest_table_data(
                         transaction_id=transaction_id,
-                        table_name=table.table_name,
+                        table=table,
                         data_file=data_file,
                     )
                 repl.commit_transaction(transaction_id)

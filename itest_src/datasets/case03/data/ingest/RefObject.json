@@ -2,7 +2,11 @@
     "auth_key":"",
     "database":"qservTest_case03_qserv",
     "table":"RefObject",
-    "is_partitioned":0,
+    "is_partitioned":1,
+    "director_table":"",
+    "director_key":"refObjectId",
+    "latitude_key":"decl",
+    "longitude_key":"ra",
     "schema":[
         {"name":"refObjectId", "type":"bigint(20) NOT NULL"},
         {"name":"run", "type":"smallint(6) DEFAULT NULL"},
@@ -33,6 +37,9 @@
         {"name":"gExposureCount", "type":"smallint(6) NOT NULL"},
         {"name":"rExposureCount", "type":"smallint(6) NOT NULL"},
         {"name":"iExposureCount", "type":"smallint(6) NOT NULL"},
-        {"name":"zExposureCount", "type":"smallint(6) NOT NULL"}
-    ]
+        {"name":"zExposureCount", "type":"smallint(6) NOT NULL"},
+        {"name":"chunkId", "type":"int(11) NOT NULL"},
+        {"name":"subChunkId", "type":"int(11) NOT NULL"}
+    ],
+    "fields_terminated_by":","
 }

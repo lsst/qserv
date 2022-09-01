@@ -219,27 +219,28 @@ vector<vector<string>> SqlJob::distributeTables(vector<string> const& allTables,
     return tablesPerBin;
 }
 
-vector<string> SqlJob::workerTables(string const& worker, string const& database, string const& table,
-                                    bool allTables, bool overlapTablesOnly) const {
+vector<string> SqlJob::workerTables(string const& workerName, string const& databaseName,
+                                    string const& tableName, bool allTables, bool overlapTablesOnly) const {
     vector<string> tables;
-    if (_isPartitioned(database, table)) {
+    if (_isPartitioned(databaseName, tableName)) {
         // The prototype table for creating chunks and chunk overlap tables
-        tables.push_back(table);
+        tables.push_back(tableName);
 
         // Always include the "dummy" chunk even if it won't be explicitly found
         // in the replica collection. This chunk must be present at all workers.
         bool const overlap = true;
-        if (allTables or overlapTablesOnly) {
-            tables.push_back(ChunkedTable(table, lsst::qserv::DUMMY_CHUNK, overlap).name());
+        if (allTables || overlapTablesOnly) {
+            tables.push_back(ChunkedTable(tableName, lsst::qserv::DUMMY_CHUNK, overlap).name());
         }
-        if (allTables or not overlapTablesOnly) {
-            tables.push_back(ChunkedTable(table, lsst::qserv::DUMMY_CHUNK, not overlap).name());
+        if (allTables || !overlapTablesOnly) {
+            tables.push_back(ChunkedTable(tableName, lsst::qserv::DUMMY_CHUNK, !overlap).name());
         }
 
         // Locate all chunks registered on the worker. These chunks will be used
         // to build names of the corresponding chunk-specific partitioned tables.
         vector<ReplicaInfo> replicas;
-        controller()->serviceProvider()->databaseServices()->findWorkerReplicas(replicas, worker, database);
+        controller()->serviceProvider()->databaseServices()->findWorkerReplicas(replicas, workerName,
+                                                                                databaseName);
 
         for (auto&& replica : replicas) {
             auto const chunk = replica.chunk();
@@ -247,51 +248,51 @@ vector<string> SqlJob::workerTables(string const& worker, string const& database
             // the collection.
             if (chunk != lsst::qserv::DUMMY_CHUNK) {
                 if (allTables or overlapTablesOnly) {
-                    tables.push_back(ChunkedTable(table, chunk, overlap).name());
+                    tables.push_back(ChunkedTable(tableName, chunk, overlap).name());
                 }
                 if (allTables or not overlapTablesOnly) {
-                    tables.push_back(ChunkedTable(table, chunk, not overlap).name());
+                    tables.push_back(ChunkedTable(tableName, chunk, !overlap).name());
                 }
             }
         }
     } else {
-        tables.push_back(table);
+        tables.push_back(tableName);
     }
     return tables;
 }
 
-vector<string> SqlJob::workerTables(string const& worker, TransactionId const& transactionId,
-                                    string const& table, bool allTables, bool overlapTablesOnly) const {
+vector<string> SqlJob::workerTables(string const& workerName, TransactionId const& transactionId,
+                                    string const& tableName, bool allTables, bool overlapTablesOnly) const {
     vector<string> tables;
     auto const databaseServices = controller()->serviceProvider()->databaseServices();
-    TransactionInfo const transactionInfo = databaseServices->transaction(transactionId);
+    TransactionInfo const transaction = databaseServices->transaction(transactionId);
 
     // Locate all contributions into the table made at the given worker.
     vector<TransactionContribInfo> const contribs =
-            databaseServices->transactionContribs(transactionId, table, worker);
+            databaseServices->transactionContribs(transaction.id, tableName, workerName);
 
-    if (_isPartitioned(transactionInfo.database, table)) {
+    if (_isPartitioned(transaction.database, tableName)) {
         // The prototype table for creating chunks and chunk overlap tables
-        tables.push_back(table);
+        tables.push_back(tableName);
 
         // Always include the "dummy" chunk even if it won't be explicitly found
         // in the replica collection. This chunk must be present at all workers.
         bool const overlap = true;
-        if (allTables or overlapTablesOnly) {
-            tables.push_back(ChunkedTable(table, lsst::qserv::DUMMY_CHUNK, overlap).name());
+        if (allTables || overlapTablesOnly) {
+            tables.push_back(ChunkedTable(tableName, lsst::qserv::DUMMY_CHUNK, overlap).name());
         }
-        if (allTables or not overlapTablesOnly) {
-            tables.push_back(ChunkedTable(table, lsst::qserv::DUMMY_CHUNK, not overlap).name());
+        if (allTables || !overlapTablesOnly) {
+            tables.push_back(ChunkedTable(tableName, lsst::qserv::DUMMY_CHUNK, !overlap).name());
         }
         for (auto&& contrib : contribs) {
             // Avoiding the "dummy" chunk as it was already forced to be in
             // the collection.
             if (contrib.chunk != lsst::qserv::DUMMY_CHUNK) {
-                if (allTables or overlapTablesOnly) {
-                    tables.push_back(ChunkedTable(table, contrib.chunk, overlap).name());
+                if (allTables || overlapTablesOnly) {
+                    tables.push_back(ChunkedTable(tableName, contrib.chunk, overlap).name());
                 }
-                if (allTables or not overlapTablesOnly) {
-                    tables.push_back(ChunkedTable(table, contrib.chunk, not overlap).name());
+                if (allTables || !overlapTablesOnly) {
+                    tables.push_back(ChunkedTable(tableName, contrib.chunk, !overlap).name());
                 }
             }
         }
@@ -303,20 +304,13 @@ vector<string> SqlJob::workerTables(string const& worker, TransactionId const& t
     return tables;
 }
 
-bool SqlJob::_isPartitioned(string const& database, string const& table) const {
-    // Determine the type of the table
-    auto const info = controller()->serviceProvider()->config()->databaseInfo(database);
-    if (find(info.partitionedTables.begin(), info.partitionedTables.end(), table) !=
-        info.partitionedTables.end()) {
-        return true;
-    }
-
-    // And the following test is just to ensure the table name is valid
-    if (find(info.regularTables.begin(), info.regularTables.end(), table) != info.regularTables.end()) {
-        return false;
-    }
-    throw invalid_argument(context() + string(__func__) + "  unknown <database>.<table> '" + database +
-                           "'.'" + table + "'");
+bool SqlJob::_isPartitioned(string const& databaseName, string const& tableName) const {
+    return controller()
+            ->serviceProvider()
+            ->config()
+            ->databaseInfo(databaseName)
+            .findTable(tableName)
+            .isPartitioned;
 }
 
 }  // namespace lsst::qserv::replica

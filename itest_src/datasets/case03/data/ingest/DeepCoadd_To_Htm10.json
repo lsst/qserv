@@ -6,5 +6,6 @@
     "schema":[
         {"name":"deepCoaddId", "type":"bigint(20) NOT NULL"},
         {"name":"htmId10", "type":"int(11) NOT NULL"}
-    ]
+    ],
+    "fields_terminated_by":","
 }

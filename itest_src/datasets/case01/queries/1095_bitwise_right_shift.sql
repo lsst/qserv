@@ -1,5 +1,3 @@
 -- test for the >> operator
 
--- pragma sortresult
-
-select * from Filter where filterId >> 1 = 1;
+SELECT filterId,filterName,photClam,photBW FROM Filter WHERE filterId >> 1 = 1;

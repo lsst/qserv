@@ -106,6 +106,12 @@ public:
     std::string type;
 };
 
+inline bool operator==(SqlColDef const& lhs, SqlColDef const& rhs) {
+    return (lhs.name == rhs.name) && (lhs.type == rhs.type);
+}
+
+inline bool operator!=(SqlColDef const& lhs, SqlColDef const& rhs) { return !operator==(lhs, rhs); }
+
 /**
  * This class is an abstraction for columns within table index
  * specifications.
