@@ -81,12 +81,12 @@ cmsd_worker_cfg_template = os.path.join(template_dir, "xrootd/etc/cmsd-worker.cf
 xrdssi_cfg_template = os.path.join(template_dir, "xrootd/etc/xrdssi.cf.jinja")
 xrootd_manager_cfg_template = os.path.join(template_dir, "xrootd/etc/xrootd-manager.cf.jinja")
 
-
+mysql_proxy_cfg_path = "/config-etc/my-proxy.cnf"
+czar_cfg_path = "/config-etc/qserv-czar.cnf"
 cmsd_manager_cfg_path = "/config-etc/cmsd-manager.cnf"
-xrootd_manager_cfg_path = "/config-etc/xrootd-manager.cf"
 cmsd_worker_cfg_path = "/config-etc/cmsd-worker.cf"
 xrdssi_cfg_path = "/config-etc/xrdssi-worker.cf"
-
+xrootd_manager_cfg_path = "/config-etc/xrootd-manager.cf"
 
 socket_option_help = f"""Accepts query key {click.style('socket',
 bold=True)}: The path to a socket file used to connect to the database.
@@ -443,7 +443,7 @@ def delete_database(
 @click.option(
     "--proxy-cfg-path",
     help="Location to render the mysql proxy config file.",
-    default=mysql_proxy_cfg_template,
+    default=mysql_proxy_cfg_path,
     show_default=True,
 )
 @click.option(
@@ -455,7 +455,7 @@ def delete_database(
 @click.option(
     "--czar-cfg-path",
     help="Location to render the czar config file.",
-    default=czar_cfg_template,
+    default=czar_cfg_path,
     show_default=True,
 )
 @log_cfg_file_option()
