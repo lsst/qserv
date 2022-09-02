@@ -180,8 +180,11 @@ public:
      *
      *  @param queryId:   Query ID, non-negative number.
      *  @param qStatus:   Query completion status, one of COMPLETED, FAILED, or ABORTED.
+     *  @param collectedRows: number of rows collected from workers for the query.
+     *  @param collectedBytes: number of bytes collected from workers for the query.
      */
-    virtual void completeQuery(QueryId queryId, QInfo::QStatus qStatus) = 0;
+    virtual void completeQuery(QueryId queryId, QInfo::QStatus qStatus, int64_t collectedRows = 0,
+                               size_t collectedBytes = 0) = 0;
 
     /**
      *  @brief Mark query as finished and returned to client.

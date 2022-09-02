@@ -194,8 +194,11 @@ public:
     InfileMergerError const& getError() const { return _error; }
     /// @return final target table name  storing results after post processing
     std::string getTargetTable() const { return _config.targetTable; }
-    /// Finalize a "merge" and perform postprocessing
-    bool finalize();
+
+    /// Finalize a "merge" and perform postprocessing.
+    /// `collectedBytes` is the number of bytes collected in worker results for
+    ///    this user query. Its value is set by this function.
+    bool finalize(size_t& collectedBytes);
     /// Check if the object has completed all processing.
     bool isFinished() const;
 
@@ -230,6 +233,8 @@ public:
     bool makeResultsTableForQuery(query::SelectStmt const& stmt);
 
     int sqlConnectionAttempts() { return _maxSqlConnectionAttempts; }
+
+    size_t getTotalResultSize() const;
 
 private:
     bool _applyMysqlMyIsam(std::string const& query);
