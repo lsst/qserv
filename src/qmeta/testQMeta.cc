@@ -208,8 +208,8 @@ BOOST_AUTO_TEST_CASE(messWithQueries) {
     BOOST_CHECK_EQUAL(queries.size(), 0U);
 
     // update completed status
-    BOOST_CHECK_THROW(qMeta->completeQuery(99999, QInfo::ABORTED, 0, 0), QueryIdError);
-    qMeta->completeQuery(qid1, QInfo::COMPLETED, 0, 0);
+    BOOST_CHECK_THROW(qMeta->completeQuery(99999, QInfo::ABORTED), QueryIdError);
+    qMeta->completeQuery(qid1, QInfo::COMPLETED);
 
     qinfo1 = qMeta->getQueryInfo(qid1);
     BOOST_CHECK_EQUAL(qinfo1.queryStatus(), QInfo::COMPLETED);
@@ -270,18 +270,18 @@ BOOST_AUTO_TEST_CASE(messWithQueries2) {
     BOOST_CHECK_EQUAL(queries.size(), 2U);
 
     // update completed status
-    qMeta->completeQuery(qid1, QInfo::COMPLETED, 0,0);
+    qMeta->completeQuery(qid1, QInfo::COMPLETED);
     qMeta->finishQuery(qid1);
-    qMeta->completeQuery(qid3, QInfo::COMPLETED, 0,0);
+    qMeta->completeQuery(qid3, QInfo::COMPLETED);
     qMeta->finishQuery(qid3);
     queries = qMeta->getPendingQueries(cid1);
     BOOST_CHECK_EQUAL(queries.size(), 1U);
     queries = qMeta->getPendingQueries(cid2);
     BOOST_CHECK_EQUAL(queries.size(), 1U);
 
-    qMeta->completeQuery(qid2, QInfo::COMPLETED, 0,0);
+    qMeta->completeQuery(qid2, QInfo::COMPLETED);
     qMeta->finishQuery(qid2);
-    qMeta->completeQuery(qid4, QInfo::COMPLETED, 0,0);
+    qMeta->completeQuery(qid4, QInfo::COMPLETED);
     qMeta->finishQuery(qid4);
 
     // no running queries should be there
@@ -318,18 +318,18 @@ BOOST_AUTO_TEST_CASE(messWithTables) {
 
     // update completed status
     qMeta->finishQuery(qid1);
-    qMeta->completeQuery(qid1, QInfo::COMPLETED, 0,0);
+    qMeta->completeQuery(qid1, QInfo::COMPLETED);
     qMeta->finishQuery(qid3);
-    qMeta->completeQuery(qid3, QInfo::COMPLETED, 0,0);
+    qMeta->completeQuery(qid3, QInfo::COMPLETED);
     queries = qMeta->getQueriesForTable("TestDB", "Object");
     BOOST_CHECK_EQUAL(queries.size(), 2U);
     queries = qMeta->getQueriesForTable("TestDB", "Source");
     BOOST_CHECK_EQUAL(queries.size(), 1U);
 
     qMeta->finishQuery(qid2);
-    qMeta->completeQuery(qid2, QInfo::COMPLETED, 0,0);
+    qMeta->completeQuery(qid2, QInfo::COMPLETED);
     qMeta->finishQuery(qid4);
-    qMeta->completeQuery(qid4, QInfo::COMPLETED, 0,0);
+    qMeta->completeQuery(qid4, QInfo::COMPLETED);
 
     // no running queries should be there
     queries = qMeta->getQueriesForTable("TestDB", "Object");

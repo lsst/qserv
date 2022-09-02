@@ -424,7 +424,8 @@ void QMetaMysql::finishChunk(QueryId queryId, int chunk) {
 }
 
 // Mark query as completed or failed.
-void QMetaMysql::completeQuery(QueryId queryId, QInfo::QStatus qStatus, int64_t collectedRows, size_t collectedBytes) {
+void QMetaMysql::completeQuery(QueryId queryId, QInfo::QStatus qStatus, int64_t collectedRows,
+                               size_t collectedBytes) {
     lock_guard<mutex> sync(_dbMutex);
 
     auto trans = QMetaTransaction::create(*_conn);

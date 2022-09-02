@@ -181,7 +181,7 @@ void UserQuerySelectCountStar::qMetaRegister(std::string const& resultLocation,
 QueryState UserQuerySelectCountStar::join() {
     // bytes and rows collected from workers should be 0.
     _queryMetadata->completeQuery(_qMetaQueryId,
-                                  _qState == SUCCESS ? qmeta::QInfo::COMPLETED : qmeta::QInfo::FAILED, 0, 0);
+                                  _qState == SUCCESS ? qmeta::QInfo::COMPLETED : qmeta::QInfo::FAILED);
     return _qState;
 }
 

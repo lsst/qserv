@@ -349,11 +349,7 @@ bool InfileMerger::_setupConnectionInnoDb(mysql::MySqlConnection& mySConn) {
     return false;
 }
 
-
-size_t InfileMerger::getTotalResultSize() const {
-    return _totalResultSize;
-}
-
+size_t InfileMerger::getTotalResultSize() const { return _totalResultSize; }
 
 bool InfileMerger::finalize(size_t& collectedBytes) {
     bool finalizeOk = true;

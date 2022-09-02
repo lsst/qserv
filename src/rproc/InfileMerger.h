@@ -197,7 +197,7 @@ public:
 
     /// Finalize a "merge" and perform postprocessing.
     /// `collectedBytes` is the number of bytes collected in worker results for
-    ///    this user query.
+    ///    this user query. Its value is set by this function.
     bool finalize(size_t& collectedBytes);
     /// Check if the object has completed all processing.
     bool isFinished() const;
