@@ -34,13 +34,16 @@ using json = nlohmann::json;
 
 namespace lsst::qserv::replica {
 
+using namespace database::mysql;
+
 int const ConfigParserMySQL::expectedSchemaVersion = 11;
 
-ConfigParserMySQL::ConfigParserMySQL(database::mysql::Connection::Ptr const& conn, json& data,
+ConfigParserMySQL::ConfigParserMySQL(Connection::Ptr const& conn, json& data,
                                      map<string, WorkerInfo>& workers,
                                      map<string, DatabaseFamilyInfo>& databaseFamilies,
                                      map<string, DatabaseInfo>& databases)
         : _conn(conn),
+          _g(conn),
           _data(data),
           _workers(workers),
           _databaseFamilies(databaseFamilies),
@@ -55,31 +58,31 @@ void ConfigParserMySQL::parse() {
 
 void ConfigParserMySQL::_parseVersion() {
     string const table = "QMetadata";
-    string const databaseTableSql = _conn->sqlId(_conn->connectionParams().database, table);
+    auto const databaseTableSql = _g.id(_conn->connectionParams().database, table);
     if (!_conn->tableExists(table)) {
-        throw ConfigVersionMismatch(_context + " the metadata table " + databaseTableSql + " doesn't exist.");
+        throw ConfigVersionMismatch(_context + " the metadata table " + databaseTableSql.str +
+                                    " doesn't exist.");
     }
     string const column = "value";
+    string const query =
+            _g.select(column) + _g.from(databaseTableSql) + _g.where(_g.eq("metakey", "version"));
     int version;
-    bool const isNotNull =
-            _conn->executeSingleValueSelect("SELECT " + _conn->sqlId(column) + " FROM " + databaseTableSql +
-                                                    " WHERE " + _conn->sqlEqual("metakey", "version"),
-                                            column, version);
+    bool const isNotNull = _conn->executeSingleValueSelect(query, column, version);
     if (!isNotNull) {
-        throw ConfigVersionMismatch(_context + " the metadata table " + databaseTableSql +
+        throw ConfigVersionMismatch(_context + " the metadata table " + databaseTableSql.str +
                                     " doesn't have the schema version.");
     }
     if (version != expectedSchemaVersion) {
-        throw ConfigVersionMismatch(_context + " schema version " + to_string(version) +
-                                            " found in the metadata table " + databaseTableSql +
-                                            " doesn't match the required version " +
-                                            to_string(expectedSchemaVersion) + ".",
-                                    version, expectedSchemaVersion);
+        string const msg = _context + " schema version " + to_string(version) +
+                           " found in the metadata table " + databaseTableSql.str +
+                           " doesn't match the required version " + to_string(expectedSchemaVersion) + ".";
+        throw ConfigVersionMismatch(msg, version, expectedSchemaVersion);
     }
 }
 
 void ConfigParserMySQL::_parseWorkers() {
-    _conn->execute("SELECT * FROM " + _conn->sqlId("config_worker"));
+    string const query = _g.select(Sql::STAR) + _g.from("config_worker");
+    _conn->execute(query);
     while (_conn->next(_row)) {
         WorkerInfo worker;
         worker.name = _parseParam<string>("name");
@@ -90,7 +93,7 @@ void ConfigParserMySQL::_parseWorkers() {
 }
 
 void ConfigParserMySQL::_parseDatabaseFamilies() {
-    _conn->execute("SELECT * FROM " + _conn->sqlId("config_database_family"));
+    _conn->execute(_g.select(Sql::STAR) + _g.from("config_database_family"));
     while (_conn->next(_row)) {
         DatabaseFamilyInfo family;
         family.name = _parseParam<string>("name");
@@ -103,7 +106,7 @@ void ConfigParserMySQL::_parseDatabaseFamilies() {
 }
 
 void ConfigParserMySQL::_parseDatabases() {
-    _conn->execute("SELECT * FROM " + _conn->sqlId("config_database"));
+    _conn->execute(_g.select(Sql::STAR) + _g.from("config_database"));
     while (_conn->next(_row)) {
         DatabaseInfo database;
         database.name = _parseParam<string>("database");
@@ -118,7 +121,7 @@ void ConfigParserMySQL::_parseDatabases() {
     // Table definitions are going to be stored in the temporary collection to allow extending
     // each definition later with the table schema before pushing the tables into the configuration.
     list<TableInfo> tables;
-    _conn->execute("SELECT * FROM " + _conn->sqlId("config_database_table"));
+    _conn->execute(_g.select(Sql::STAR) + _g.from("config_database_table"));
     while (_conn->next(_row)) {
         TableInfo table;
         table.name = _parseParam<string>("table");
@@ -144,11 +147,10 @@ void ConfigParserMySQL::_parseDatabases() {
 
     // Read schema for each table.
     for (auto&& table : tables) {
-        _conn->execute("SELECT " + _conn->sqlId("col_name") + "," + _conn->sqlId("col_type") + " FROM " +
-                       _conn->sqlId("config_database_table_schema") + " WHERE " +
-                       _conn->sqlEqual("database", table.database) + " AND " +
-                       _conn->sqlEqual("table", table.name) + " ORDER BY " + _conn->sqlId("col_position") +
-                       " ASC");
+        string const query = _g.select("col_name", "col_type") + _g.from("config_database_table_schema") +
+                             _g.where(_g.eq("database", table.database), _g.eq("table", table.name)) +
+                             _g.orderBy(make_pair("col_position", "ASC"));
+        _conn->execute(query);
         while (_conn->next(_row)) {
             table.columns.push_back(
                     SqlColDef(_parseParam<string>("col_name"), _parseParam<string>("col_type")));

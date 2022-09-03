@@ -75,6 +75,8 @@ target_sources(replica PRIVATE
     DatabaseMySQL.cc
     DatabaseMySQL.h
     DatabaseMySQLExceptions.h
+    DatabaseMySQLGenerator.h
+    DatabaseMySQLGenerator.cc
     DatabaseMySQLRow.cc
     DatabaseMySQLRow.h
     DatabaseMySQLTypes.cc
@@ -520,6 +522,7 @@ replica_tests(
     testJson
     testMessageQueue
     testNamedMutexRegistry
+    testQueryGenerator
     testReplicaInfo
     testSemanticMap
     testSqlSchemaUtils

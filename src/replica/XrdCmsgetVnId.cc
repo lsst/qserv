@@ -36,6 +36,7 @@
 
 using namespace std;
 using namespace lsst::qserv::replica;
+using namespace lsst::qserv::replica::database::mysql;
 
 /**
  * @brief Read a value of the VNID from the Qserv worker database that's
@@ -54,7 +55,7 @@ using namespace lsst::qserv::replica;
  */
 extern "C" string XrdCmsgetVnId(XrdCmsgetVnIdArgs) {
     string const context = string(__func__) + ": ";
-    string vnid;
+    string vnId;
     try {
         vector<string> args = lsst::qserv::replica::strsplit(parms);
         if (args.size() != 3) {
@@ -81,13 +82,14 @@ extern "C" string XrdCmsgetVnId(XrdCmsgetVnIdArgs) {
             bool const allowReconnects = true;
             // Using the RAII-style connection handler to automatically close the connection and
             // release resources in case of exceptions.
-            database::mysql::ConnectionHandler const handler(database::mysql::Connection::open2(
+            ConnectionHandler const handler(Connection::open2(
                     Configuration::qservWorkerDbParams("qservw_worker"), allowReconnects, timeoutSec));
+            QueryGenerator const g(handler.conn);
             handler.conn->executeInOwnTransaction(
-                    [&context, &vnid, &eDest](decltype(handler.conn) conn) {
-                        string const colname = "id";
-                        string const query = "SELECT " + conn->sqlId(colname) + " FROM " + conn->sqlId("Id");
-                        if (!conn->executeSingleValueSelect(query, colname, vnid)) {
+                    [&context, &vnId, &eDest, &g](decltype(handler.conn) conn) {
+                        string const column = "id";
+                        string const query = g.select(column) + g.from("Id");
+                        if (!conn->executeSingleValueSelect(query, column, vnId)) {
                             eDest.Say(context.data(),
                                       "worker identity is not set in the Qserv worker database.");
                         }
@@ -98,8 +100,8 @@ extern "C" string XrdCmsgetVnId(XrdCmsgetVnIdArgs) {
         eDest.Say(context.data(),
                   "failed to pull worker identity from the Qserv worker database, ex:", ex.what());
     }
-    eDest.Say(context.data(), "vnid: ", vnid.data());
-    return vnid;
+    eDest.Say(context.data(), "vnid: ", vnId.data());
+    return vnId;
 }
 
 XrdVERSIONINFO(XrdCmsgetVnId, vnid_mysql_0);

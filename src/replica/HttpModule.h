@@ -37,11 +37,13 @@
 namespace lsst::qserv {
 namespace css {
 class CssAccess;
-}
-namespace replica::database::mysql {
+}  // namespace css
+namespace replica {
 class DatabaseInfo;
+namespace database::mysql {
 class Connection;
-}  // namespace replica::database::mysql
+}  // namespace database::mysql
+}  // namespace replica
 }  // namespace lsst::qserv
 
 // This header declarations

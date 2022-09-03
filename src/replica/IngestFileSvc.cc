@@ -63,6 +63,8 @@ string const context = "INGEST-FILE-SVC ";
 
 namespace lsst::qserv::replica {
 
+using namespace database::mysql;
+
 IngestFileSvc::IngestFileSvc(ServiceProvider::Ptr const& serviceProvider, string const& workerName)
         : _serviceProvider(serviceProvider), _workerName(workerName) {}
 
@@ -177,10 +179,8 @@ void IngestFileSvc::loadDataIntoTable() {
     try {
         // The RAII connection handler automatically aborts the active transaction
         // should an exception be thrown within the block.
-        database::mysql::ConnectionHandler h(
-                database::mysql::Connection::open(Configuration::qservWorkerDbParams(_database.name)));
-
-        string const sqlPartition = h.conn->sqlPartitionId(_transactionId);
+        ConnectionHandler h(Connection::open(Configuration::qservWorkerDbParams(_database.name)));
+        QueryGenerator const g(h.conn);
         vector<Query> tableMgtStatements;
 
         // Make sure no outstanding table locks exist from prior operations
@@ -206,56 +206,55 @@ void IngestFileSvc::loadDataIntoTable() {
                 // Note that this algorithm won't create MySQL partitions in the DUMMY chunk
                 // tables since these tables are not supposed to store any data.
                 bool const overlap = true;
-                string const sqlProtoTable = h.conn->sqlId(_database.name, table.name);
-                string const sqlTable =
-                        h.conn->sqlId(_database.name, ChunkedTable(table.name, _chunk, not overlap).name());
-                string const sqlFullOverlapTable =
-                        h.conn->sqlId(_database.name, ChunkedTable(table.name, _chunk, overlap).name());
-
-                string const sqlTablesToBeCreated[] = {
+                SqlId const sqlProtoTable = g.id(_database.name, table.name);
+                SqlId const sqlTable =
+                        g.id(_database.name, ChunkedTable(table.name, _chunk, !overlap).name());
+                SqlId const sqlFullOverlapTable =
+                        g.id(_database.name, ChunkedTable(table.name, _chunk, overlap).name());
+                SqlId const tablesToBeCreated[] = {
                         sqlTable, sqlFullOverlapTable,
-                        h.conn->sqlId(_database.name,
-                                      ChunkedTable(table.name, lsst::qserv::DUMMY_CHUNK, not overlap).name()),
-                        h.conn->sqlId(_database.name,
-                                      ChunkedTable(table.name, lsst::qserv::DUMMY_CHUNK, overlap).name())};
-                for (auto&& sqlTable : sqlTablesToBeCreated) {
-                    tableMgtStatements.push_back(Query(
-                            "CREATE TABLE IF NOT EXISTS " + sqlTable + " LIKE " + sqlProtoTable, sqlTable));
+                        g.id(_database.name,
+                             ChunkedTable(table.name, lsst::qserv::DUMMY_CHUNK, !overlap).name()),
+                        g.id(_database.name,
+                             ChunkedTable(table.name, lsst::qserv::DUMMY_CHUNK, overlap).name())};
+                for (auto&& sqlTable : tablesToBeCreated) {
+                    bool const ifNotExists = true;
+                    string const query = g.createTableLike(sqlTable, sqlProtoTable, ifNotExists);
+                    tableMgtStatements.push_back(Query(query, sqlTable.str));
                 }
                 // Skip this operation for tables that have already been been published. Note that published
                 // tables do not have MySQL partitions. Any attempts to add a partition to those tables will
                 // result in the MySQL failures.
                 if (!table.isPublished) {
-                    string const sqlTablesToBePartitioned[] = {sqlTable, sqlFullOverlapTable};
-                    for (auto&& sqlTable : sqlTablesToBePartitioned) {
-                        tableMgtStatements.push_back(Query(
-                                "ALTER TABLE " + sqlTable + " ADD PARTITION IF NOT EXISTS (PARTITION " +
-                                        sqlPartition + " VALUES IN (" + to_string(_transactionId) + "))",
-                                sqlTable));
+                    SqlId const tablesToBePartitioned[] = {sqlTable, sqlFullOverlapTable};
+                    for (auto&& sqlTable : tablesToBePartitioned) {
+                        bool const ifNotExists = true;
+                        string const query =
+                                g.alterTable(sqlTable) + g.addPartition(_transactionId, ifNotExists);
+                        tableMgtStatements.push_back(Query(query, sqlTable.str));
                     }
                 }
                 // An additional step for the current request's table
                 if (table.name == _table.name) {
-                    auto const sqlDestinationTable = _isOverlap ? sqlFullOverlapTable : sqlTable;
-                    dataLoadQuery = "LOAD DATA INFILE " + h.conn->sqlValue(_fileName) + " INTO TABLE " +
-                                    sqlDestinationTable + _dialect.sqlOptions();
+                    SqlId const sqlDestinationTable = _isOverlap ? sqlFullOverlapTable : sqlTable;
+                    bool const local = false;
+                    dataLoadQuery = g.loadDataInfile(_fileName, sqlDestinationTable, local, _dialect);
                     partitionRemovalQuery =
-                            Query("ALTER TABLE " + sqlDestinationTable + " DROP PARTITION " + sqlPartition,
-                                  sqlDestinationTable);
+                            Query(g.alterTable(sqlDestinationTable) + g.dropPartition(_transactionId),
+                                  sqlDestinationTable.str);
                 }
             }
         } else {
             // Regular tables are expected to exist in the database before
             // attempting data loading.
-            string const sqlTable = h.conn->sqlId(_database.name, _table.name);
-            tableMgtStatements.push_back(
-                    Query("ALTER TABLE " + sqlTable + " ADD PARTITION IF NOT EXISTS (PARTITION " +
-                                  sqlPartition + " VALUES IN (" + to_string(_transactionId) + "))",
-                          sqlTable));
-            dataLoadQuery = "LOAD DATA INFILE " + h.conn->sqlValue(_fileName) + " INTO TABLE " + sqlTable +
-                            _dialect.sqlOptions();
+            SqlId const sqlTable = g.id(_database.name, _table.name);
+            bool const ifNotExists = true;
+            tableMgtStatements.push_back(Query(
+                    g.alterTable(sqlTable) + g.addPartition(_transactionId, ifNotExists), sqlTable.str));
+            bool const local = false;
+            dataLoadQuery = g.loadDataInfile(_fileName, sqlTable, local, _dialect);
             partitionRemovalQuery =
-                    Query("ALTER TABLE " + sqlTable + " DROP PARTITION " + sqlPartition, sqlTable);
+                    Query(g.alterTable(sqlTable) + g.dropPartition(_transactionId), sqlTable.str);
         }
         for (auto&& statement : tableMgtStatements) {
             LOGS(_log, LOG_LVL_DEBUG, context_ << "query: " << statement.query);

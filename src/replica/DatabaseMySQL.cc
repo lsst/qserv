@@ -135,29 +135,21 @@ bool Connection::tableExists(string const& table, string const& proposedDatabase
     if (table.empty()) {
         throw invalid_argument(context + "the table name can't be empty.");
     }
+    QueryGenerator const g(shared_from_this());
     string database = proposedDatabase;
     if (database.empty()) {
-        string const colname = "database";
-        if (!executeSingleValueSelect("SELECT DATABASE() AS " + sqlId(colname), colname, database)) {
+        string const column = "database";
+        string const query = g.select(g.as(Sql::DATABASE, column));
+        if (!executeSingleValueSelect(query, column, database)) {
             throw Error(context + "the name of a database is not set on this connection.");
         }
     }
-    string const colname = "count";
     size_t count = 0;
-    return executeSingleValueSelect("SELECT COUNT(*) AS " + sqlId(colname) + " FROM " +
-                                            sqlId("information_schema", "TABLES") + " WHERE " +
-                                            sqlEqual("TABLE_SCHEMA", database) + " AND " +
-                                            sqlEqual("TABLE_NAME", table),
-                                    colname, count) &&
-           count != 0;
-}
-
-string Connection::sqlValue(vector<string> const& coll) const {
-    ostringstream values;
-    for (auto&& val : coll) {
-        values << val << ',';
-    }
-    return sqlValue(values.str());
+    string const column = "count";
+    string const query = g.select(g.as(Sql::COUNT_STAR, column)) +
+                         g.from(g.id("information_schema", "TABLES")) +
+                         g.where(g.eq("TABLE_SCHEMA", database), g.eq("TABLE_NAME", table));
+    return executeSingleValueSelect(query, column, count) && count != 0;
 }
 
 Connection::Ptr Connection::begin() {
@@ -608,7 +600,7 @@ void Connection::_connectOnce() {
     // This is required by 'LOAD DATA LOCAL INFILE ...' to allow ingesting files which
     // are not directly seen by the MySQL server. The 'LOCAL' option would make a file
     // local to a client opening this connection to be transferred to some temporary
-    // directory owned by the server. After that the file will get ingestd into
+    // directory owned by the server. After that the file will get ingested into
     // the destination table.
     //
     // NOTES:

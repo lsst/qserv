@@ -54,6 +54,8 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.IndexJob");
 
 namespace lsst::qserv::replica {
 
+using namespace database::mysql;
+
 json IndexJobResult::toJson() const {
     json result;
     for (auto&& workerItr : error) {
@@ -169,7 +171,7 @@ list<pair<string, string>> IndexJob::persistentLogData() const {
         for (auto&& chunkItr : workerItr.second) {
             auto&& chunk = chunkItr.first;
             auto&& error = chunkItr.second;
-            if (not error.empty()) {
+            if (!error.empty()) {
                 result.emplace_back("worker=" + worker + " chunk=" + to_string(chunk), "error=" + error);
             }
         }
@@ -404,7 +406,7 @@ void IndexJob::_onRequestFinish(IndexRequest::Ptr const& request) {
 void IndexJob::_processRequestData(util::Lock const& lock, IndexRequest::Ptr const& request) {
     auto const writeIntoFile = [](string const& fileName, ios::openmode mode, string const& data) {
         ofstream f(fileName, mode);
-        if (not f.good()) {
+        if (!f.good()) {
             throw runtime_error(typeName() + "::_processRequestData" +
                                 "  failed to open/create/append file: " + fileName);
         }
@@ -449,14 +451,12 @@ void IndexJob::_processRequestData(util::Lock const& lock, IndexRequest::Ptr con
 
             // Open the database connection if this is the first batch of data
             if (nullptr == _conn) {
-                _conn = database::mysql::Connection::open(
-                        Configuration::qservCzarDbParams(lsst::qserv::SEC_INDEX_DB));
+                _conn = Connection::open(Configuration::qservCzarDbParams(lsst::qserv::SEC_INDEX_DB));
             }
-            string const query = "LOAD DATA" + string(_localFile ? " LOCAL" : "") + " INFILE " +
-                                 _conn->sqlValue(filePath) + " INTO TABLE " + _conn->sqlId(_destinationPath);
+            QueryGenerator const g(_conn);
+            string const query = g.loadDataInfile(filePath, _destinationPath, _localFile);
 
-            _conn->execute([&](decltype(_conn) conn) {
-                conn->begin();
+            _conn->executeInOwnTransaction([&](decltype(_conn) conn) {
                 conn->execute(query);
                 // Loading operations based on this mechanism won't result in throwing exceptions in
                 // case of certain types of problems encountered during the loading, such as
@@ -473,7 +473,6 @@ void IndexJob::_processRequestData(util::Lock const& lock, IndexRequest::Ptr con
                                 to_string(w.code) + "," + w.message);
                     }
                 }
-                conn->commit();
             });
 
             // Make the best attempt to get rid of the temporary file. Ignore any errors

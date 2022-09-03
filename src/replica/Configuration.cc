@@ -30,6 +30,7 @@
 #include "replica/ConfigParserJSON.h"
 #include "replica/ConfigParserMySQL.h"
 #include "replica/DatabaseMySQLExceptions.h"
+#include "replica/DatabaseMySQLGenerator.h"
 #include "replica/Performance.h"
 #include "util/Timer.h"
 
@@ -311,6 +312,7 @@ void Configuration::_load(util::Lock const& lock, string const& configUrl, bool 
 
     // Read data, validate and update configuration parameters.
     _connectionPtr = database::mysql::Connection::open(_connectionParams);
+    _g = database::mysql::QueryGenerator(_connectionPtr);
     while (true) {
         try {
             _connectionPtr->executeInOwnTransaction([&](decltype(_connectionPtr) conn) {
@@ -416,10 +418,10 @@ DatabaseFamilyInfo Configuration::addDatabaseFamily(DatabaseFamilyInfo const& fa
     if (family.overlap <= 0) errors += " overlap(<=0)";
     if (!errors.empty()) throw invalid_argument(_context(__func__) + errors);
     if (_connectionPtr != nullptr) {
-        _connectionPtr->executeInOwnTransaction([&](decltype(_connectionPtr) conn) {
-            conn->executeInsertQuery("config_database_family", family.name, family.replicationLevel,
-                                     family.numStripes, family.numSubStripes, family.overlap);
-        });
+        string const query = _g.insert("config_database_family", family.name, family.replicationLevel,
+                                       family.numStripes, family.numSubStripes, family.overlap);
+        _connectionPtr->executeInOwnTransaction(
+                [&query](decltype(_connectionPtr) conn) { conn->execute(query); });
     }
     _databaseFamilies[family.name] = family;
     return family;
@@ -429,10 +431,9 @@ void Configuration::deleteDatabaseFamily(string const& familyName) {
     util::Lock const lock(_mtx, _context(__func__));
     DatabaseFamilyInfo& family = _databaseFamilyInfo(lock, familyName);
     if (_connectionPtr != nullptr) {
-        _connectionPtr->executeInOwnTransaction([&](decltype(_connectionPtr) conn) {
-            conn->execute("DELETE FROM " + conn->sqlId("config_database_family") + " WHERE " +
-                          conn->sqlEqual("name", family.name));
-        });
+        string const query = _g.delete_("config_database_family") + _g.where(_g.eq("name", family.name));
+        _connectionPtr->executeInOwnTransaction(
+                [&query](decltype(_connectionPtr) conn) { conn->execute(query); });
     }
     // In order to maintain consistency of the persistent state also delete all
     // dependent databases.
@@ -512,10 +513,11 @@ DatabaseInfo Configuration::addDatabase(string const& databaseName, std::string 
     // Create a new empty database.
     DatabaseInfo const database = DatabaseInfo::create(databaseName, familyName);
     if (_connectionPtr != nullptr) {
-        _connectionPtr->executeInOwnTransaction([&database](decltype(_connectionPtr) conn) {
-            conn->executeInsertQuery("config_database", database.name, database.family,
-                                     database.isPublished ? 1 : 0, database.createTime, database.publishTime);
-        });
+        string const query =
+                _g.insert("config_database", database.name, database.family, database.isPublished ? 1 : 0,
+                          database.createTime, database.publishTime);
+        _connectionPtr->executeInOwnTransaction(
+                [&query](decltype(_connectionPtr) conn) { conn->execute(query); });
     }
     _databases[database.name] = database;
     return database;
@@ -537,10 +539,9 @@ void Configuration::deleteDatabase(string const& databaseName) {
     util::Lock const lock(_mtx, _context(__func__));
     DatabaseInfo& database = _databaseInfo(lock, databaseName);
     if (_connectionPtr != nullptr) {
-        _connectionPtr->executeInOwnTransaction([&](decltype(_connectionPtr) conn) {
-            conn->execute("DELETE FROM " + conn->sqlId("config_database") + " WHERE " +
-                          conn->sqlEqual("database", database.name));
-        });
+        string const query = _g.delete_("config_database") + _g.where(_g.eq("database", database.name));
+        _connectionPtr->executeInOwnTransaction(
+                [&query](decltype(_connectionPtr) conn) { conn->execute(query); });
     }
     _databases.erase(database.name);
 }
@@ -558,17 +559,23 @@ DatabaseInfo Configuration::addTable(TableInfo const& table_) {
     bool const sanitize = true;
     TableInfo const table = database.validate(_databases, table_, sanitize);
     if (_connectionPtr != nullptr) {
-        _connectionPtr->executeInOwnTransaction([&](decltype(_connectionPtr) conn) {
-            conn->executeInsertQuery(
-                    "config_database_table", table.database, table.name, table.isPartitioned,
-                    table.directorTable.databaseTableName(), table.directorTable.primaryKeyColumn(),
-                    table.directorTable2.databaseTableName(), table.directorTable2.primaryKeyColumn(),
-                    table.flagColName, table.angSep, table.latitudeColName, table.longitudeColName,
-                    table.isPublished ? 1 : 0, table.createTime, table.publishTime);
-            int colPosition = 0;
-            for (auto&& column : table.columns) {
-                conn->executeInsertQuery("config_database_table_schema", table.database, table.name,
-                                         colPosition++, column.name, column.type);
+        vector<string> queries;
+        string const query =
+                _g.insert("config_database_table", table.database, table.name, table.isPartitioned,
+                          table.directorTable.databaseTableName(), table.directorTable.primaryKeyColumn(),
+                          table.directorTable2.databaseTableName(), table.directorTable2.primaryKeyColumn(),
+                          table.flagColName, table.angSep, table.latitudeColName, table.longitudeColName,
+                          table.isPublished ? 1 : 0, table.createTime, table.publishTime);
+        queries.emplace_back(query);
+        int colPosition = 0;
+        for (auto&& column : table.columns) {
+            string const query = _g.insert("config_database_table_schema", table.database, table.name,
+                                           colPosition++, column.name, column.type);
+            queries.emplace_back(query);
+        }
+        _connectionPtr->executeInOwnTransaction([&queries](decltype(_connectionPtr) conn) {
+            for (auto&& query : queries) {
+                conn->execute(query);
             }
         });
     }
@@ -582,11 +589,10 @@ DatabaseInfo Configuration::deleteTable(string const& databaseName, string const
     DatabaseInfo& database = _databaseInfo(lock, databaseName);
     database.removeTable(tableName);
     if (_connectionPtr != nullptr) {
-        _connectionPtr->executeInOwnTransaction([&](decltype(_connectionPtr) conn) {
-            conn->execute("DELETE FROM " + conn->sqlId("config_database_table") + " WHERE " +
-                          conn->sqlEqual("database", database.name) + " AND " +
-                          conn->sqlEqual("table", tableName));
-        });
+        string const query = _g.delete_("config_database_table") +
+                             _g.where(_g.eq("database", database.name), _g.eq("table", tableName));
+        _connectionPtr->executeInOwnTransaction(
+                [&query](decltype(_connectionPtr) conn) { conn->execute(query); });
     }
     return database;
 }
@@ -630,10 +636,9 @@ void Configuration::deleteWorker(string const& workerName) {
         throw invalid_argument(_context(__func__) + " unknown worker '" + workerName + "'.");
     }
     if (_connectionPtr != nullptr) {
-        _connectionPtr->executeInOwnTransaction([&](decltype(_connectionPtr) conn) {
-            conn->execute("DELETE FROM " + conn->sqlId("config_worker") + " WHERE " +
-                          conn->sqlEqual("name", workerName));
-        });
+        string const query = _g.delete_("config_worker") + _g.where(_g.eq("name", workerName));
+        _connectionPtr->executeInOwnTransaction(
+                [&query](decltype(_connectionPtr) conn) { conn->execute(query); });
     }
     _workers.erase(itr);
 }
@@ -647,10 +652,10 @@ WorkerInfo Configuration::disableWorker(string const& workerName) {
     WorkerInfo& worker = itr->second;
     if (worker.isEnabled) {
         if (_connectionPtr != nullptr) {
-            _connectionPtr->executeInOwnTransaction([&worker](decltype(_connectionPtr) conn) {
-                conn->executeSimpleUpdateQuery("config_worker", conn->sqlEqual("name", worker.name),
-                                               make_pair("is_enabled", 0));
-            });
+            string const query = _g.update("config_worker", make_pair("is_enabled", 0)) +
+                                 _g.where(_g.eq("name", worker.name));
+            _connectionPtr->executeInOwnTransaction(
+                    [&query](decltype(_connectionPtr) conn) { conn->execute(query); });
         }
         worker.isEnabled = false;
     }
@@ -710,15 +715,16 @@ WorkerInfo Configuration::_updateWorker(util::Lock const& lock, WorkerInfo const
     // Update a subset of parameters in the persistent state.
     bool const update = _workers.count(worker.name) != 0;
     if (_connectionPtr != nullptr) {
-        _connectionPtr->executeInOwnTransaction([&](decltype(_connectionPtr) conn) {
-            if (update) {
-                conn->executeSimpleUpdateQuery("config_worker", conn->sqlEqual("name", worker.name),
-                                               make_pair("is_enabled", worker.isEnabled),
-                                               make_pair("is_read_only", worker.isReadOnly));
-            } else {
-                conn->executeInsertQuery("config_worker", worker.name, worker.isEnabled, worker.isReadOnly);
-            }
-        });
+        string query;
+        if (update) {
+            query = _g.update("config_worker", make_pair("is_enabled", worker.isEnabled),
+                              make_pair("is_read_only", worker.isReadOnly)) +
+                    _g.where(_g.eq("name", worker.name));
+        } else {
+            query = _g.insert("config_worker", worker.name, worker.isEnabled, worker.isReadOnly);
+        }
+        _connectionPtr->executeInOwnTransaction(
+                [&query](decltype(_connectionPtr) conn) { conn->execute(query); });
     }
 
     // Update all parameters in the transient state.
@@ -756,14 +762,12 @@ DatabaseInfo& Configuration::_publishDatabase(util::Lock const& lock, string con
             TableInfo& table = database.findTable(tableName);
             if (!table.isPublished) {
                 if (_connectionPtr != nullptr) {
-                    _connectionPtr->executeInOwnTransaction([&database, &table,
-                                                             publishTime](decltype(_connectionPtr) conn) {
-                        conn->executeSimpleUpdateQuery("config_database_table",
-                                                       conn->sqlEqual("database", database.name) + " AND " +
-                                                               conn->sqlEqual("table", table.name),
-                                                       make_pair("is_published", 1),
-                                                       make_pair("publish_time", publishTime));
-                    });
+                    string const query =
+                            _g.update("config_database_table", make_pair("is_published", 1),
+                                      make_pair("publish_time", publishTime)) +
+                            _g.where(_g.eq("database", database.name), _g.eq("table", table.name));
+                    _connectionPtr->executeInOwnTransaction(
+                            [&query](decltype(_connectionPtr) conn) { conn->execute(query); });
                 }
                 table.isPublished = true;
                 table.publishTime = publishTime;
@@ -771,11 +775,11 @@ DatabaseInfo& Configuration::_publishDatabase(util::Lock const& lock, string con
         }
         // Then publish the database.
         if (_connectionPtr != nullptr) {
-            _connectionPtr->executeInOwnTransaction([&](decltype(_connectionPtr) conn) {
-                conn->executeSimpleUpdateQuery("config_database", conn->sqlEqual("database", database.name),
-                                               make_pair("is_published", 1),
-                                               make_pair("publish_time", publishTime));
-            });
+            string const query = _g.update("config_database", make_pair("is_published", 1),
+                                           make_pair("publish_time", publishTime)) +
+                                 _g.where(_g.eq("database", database.name));
+            _connectionPtr->executeInOwnTransaction(
+                    [&query](decltype(_connectionPtr) conn) { conn->execute(query); });
         }
         database.isPublished = true;
         database.publishTime = publishTime;
@@ -783,10 +787,10 @@ DatabaseInfo& Configuration::_publishDatabase(util::Lock const& lock, string con
         // Do not unpublish individual tables. The operation only affects
         // the general status of the database to allow adding more tables.
         if (_connectionPtr != nullptr) {
-            _connectionPtr->executeInOwnTransaction([&](decltype(_connectionPtr) conn) {
-                conn->executeSimpleUpdateQuery("config_database", conn->sqlEqual("database", database.name),
-                                               make_pair("is_published", 0));
-            });
+            string const query = _g.update("config_database", make_pair("is_published", 0)) +
+                                 _g.where(_g.eq("database", database.name));
+            _connectionPtr->executeInOwnTransaction(
+                    [&query](decltype(_connectionPtr) conn) { conn->execute(query); });
         }
         database.isPublished = false;
     }

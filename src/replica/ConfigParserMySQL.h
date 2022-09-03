@@ -34,6 +34,7 @@
 #include "replica/ConfigDatabaseFamily.h"
 #include "replica/ConfigWorker.h"
 #include "replica/DatabaseMySQL.h"
+#include "replica/DatabaseMySQLGenerator.h"
 
 // This header declarations
 namespace lsst::qserv::replica {
@@ -123,6 +124,7 @@ private:
     // Input parameters
 
     database::mysql::Connection::Ptr const _conn;
+    database::mysql::QueryGenerator const _g;
     nlohmann::json& _data;
     std::map<std::string, WorkerInfo>& _workers;
     std::map<std::string, DatabaseFamilyInfo>& _databaseFamilies;

@@ -460,17 +460,11 @@ void HttpIngestTransModule::_addPartitionToSecondaryIndex(DatabaseInfo const& da
     // is automatically rolled-back in case of exceptions.
 
     database::mysql::ConnectionHandler const h(qservMasterDbConnection("qservMeta"));
-    string const query = "ALTER TABLE " + h.conn->sqlId(database.name + "__" + table.name) +
-                         " ADD PARTITION (PARTITION `p" + to_string(transactionId) + "` VALUES IN (" +
-                         to_string(transactionId) + ") ENGINE=InnoDB)";
-
-    debug(__func__, query);
-
-    h.conn->execute([&query](decltype(h.conn) conn) {
-        conn->begin();
-        conn->execute(query);
-        conn->commit();
-    });
+    database::mysql::QueryGenerator const g(h.conn);
+    bool const ifNotExists = false;
+    string const query =
+            g.alterTable(database.name + "__" + table.name) + g.addPartition(transactionId, ifNotExists);
+    h.conn->executeInOwnTransaction([&query](decltype(h.conn) conn) { conn->execute(query); });
 }
 
 void HttpIngestTransModule::_removePartitionFromSecondaryIndex(DatabaseInfo const& database,
@@ -486,19 +480,13 @@ void HttpIngestTransModule::_removePartitionFromSecondaryIndex(DatabaseInfo cons
     // is automatically rolled-back in case of exceptions.
 
     database::mysql::ConnectionHandler const h(qservMasterDbConnection("qservMeta"));
-    string const query = "ALTER TABLE " + h.conn->sqlId(database.name + "__" + table.name) +
-                         " DROP PARTITION `p" + to_string(transactionId) + "`";
-
-    debug(__func__, query);
+    database::mysql::QueryGenerator const g(h.conn);
+    string const query = g.alterTable(database.name + "__" + table.name) + g.dropPartition(transactionId);
 
     // Not having the specified partition is still fine as it couldn't be properly
     // created after the transaction was created.
     try {
-        h.conn->execute([&query](decltype(h.conn) conn) {
-            conn->begin();
-            conn->execute(query);
-            conn->commit();
-        });
+        h.conn->executeInOwnTransaction([&query](decltype(h.conn) conn) { conn->execute(query); });
     } catch (database::mysql::ER_DROP_PARTITION_NON_EXISTENT_ const&) {
         ;
     }

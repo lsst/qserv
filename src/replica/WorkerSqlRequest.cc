@@ -43,6 +43,8 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.WorkerSqlRequest");
 
 namespace lsst::qserv::replica {
 
+using namespace database::mysql;
+
 WorkerSqlRequest::Ptr WorkerSqlRequest::create(ServiceProvider::Ptr const& serviceProvider,
                                                string const& worker, string const& id, int priority,
                                                ExpirationCallbackType const& onExpired,
@@ -123,7 +125,7 @@ bool WorkerSqlRequest::execute() {
                 currentResultSet->set_scope(table);
 
                 try {
-                    database::mysql::ConnectionHandler const h(connection);
+                    ConnectionHandler const h(connection);
                     h.conn->execute([&](decltype(h.conn) const& conn_) {
                         conn_->begin();
                         auto const query = _query(conn_, table);
@@ -168,7 +170,7 @@ bool WorkerSqlRequest::execute() {
             // TODO: the algorithm will only report a result set of the last query
             // from the multi-query collections. The implementations of the corresponding
             // requests should take this into account.
-            database::mysql::ConnectionHandler const h(connection);
+            ConnectionHandler const h(connection);
             h.conn->execute([&](decltype(h.conn) const& conn_) {
                 conn_->begin();
                 for (auto const& query : _queries(conn_)) {
@@ -212,7 +214,7 @@ bool WorkerSqlRequest::execute() {
     return true;
 }
 
-database::mysql::Connection::Ptr WorkerSqlRequest::_connector() const {
+Connection::Ptr WorkerSqlRequest::_connector() const {
     // A choice of credential for connecting to the database service depends
     // on a type of the request. For the sake of greater security, arbitrary
     // queries require a client to explicitly provide the credentials.
@@ -224,62 +226,48 @@ database::mysql::Connection::Ptr WorkerSqlRequest::_connector() const {
         connectionParams.user = _request.user();
         connectionParams.password = _request.password();
     }
-    return database::mysql::Connection::open(connectionParams);
+    return Connection::open(connectionParams);
 }
 
-vector<Query> WorkerSqlRequest::_queries(database::mysql::Connection::Ptr const& conn) const {
+vector<Query> WorkerSqlRequest::_queries(Connection::Ptr const& conn) const {
+    QueryGenerator const g(conn);
     vector<Query> queries;
-
-    string const qservChunksTable = conn->sqlId("qservw_worker", "Chunks");
-    string const qservDbsTable = conn->sqlId("qservw_worker", "Dbs");
-
     switch (_request.type()) {
         case ProtocolRequestSql::QUERY:
             queries.emplace_back(Query(_request.query()));
             break;
 
-        case ProtocolRequestSql::CREATE_DATABASE:
-            queries.emplace_back(Query("CREATE DATABASE IF NOT EXISTS " + conn->sqlId(_request.database())));
+        case ProtocolRequestSql::CREATE_DATABASE: {
+            bool const ifNotExists = true;
+            string const query = g.createDb(_request.database(), ifNotExists);
+            queries.emplace_back(Query(query));
             break;
-
-        case ProtocolRequestSql::DROP_DATABASE:
-            queries.emplace_back(Query("DROP DATABASE IF EXISTS " + conn->sqlId(_request.database())));
+        }
+        case ProtocolRequestSql::DROP_DATABASE: {
+            bool const ifExists = true;
+            string const query = g.dropDb(_request.database(), ifExists);
+            queries.emplace_back(Query(query));
             break;
-
-        case ProtocolRequestSql::ENABLE_DATABASE:
-
+        }
+        case ProtocolRequestSql::ENABLE_DATABASE: {
             // Using REPLACE instead of INSERT to avoid hitting the DUPLICATE KEY error
             // if such entry already exists in the table.
-            queries.emplace_back(Query("REPLACE INTO " + qservDbsTable + " VALUES (" +
-                                       conn->sqlValue(_request.database()) + ")"));
+            string const query = g.replace("qservw_worker", "Dbs", _request.database());
+            queries.emplace_back(Query(query));
             break;
-
-        case ProtocolRequestSql::DISABLE_DATABASE:
-            queries.emplace_back(Query("DELETE FROM " + qservChunksTable + " WHERE " +
-                                       conn->sqlEqual("db", _request.database())));
-            queries.emplace_back(Query("DELETE FROM " + qservDbsTable + " WHERE " +
-                                       conn->sqlEqual("db", _request.database())));
+        }
+        case ProtocolRequestSql::DISABLE_DATABASE: {
+            string const where = g.where(g.eq("db", _request.database()));
+            queries.emplace_back(Query(g.delete_(g.id("qservw_worker", "Chunks")) + where));
+            queries.emplace_back(Query(g.delete_(g.id("qservw_worker", "Dbs")) + where));
             break;
-
-        case ProtocolRequestSql::GRANT_ACCESS:
-
-            // ATTENTION: MySQL/MariaDB exhibits a somewhat unexpected behavior when putting
-            // the usual MySQL identifier quotes around symbol '*' for table names, like in
-            // this example:
-            //   GRANT ALL ON 'db'.*
-            // The server will result in adding an entry to table:
-            //   mysql.tables_priv
-            // Instead of (as expected):
-            //   mysql.db;
-            // Hence removing quotes from '*' an commenting the following statement:
-            //   return "GRANT ALL ON " + conn->sqlId(_request.database()) + "." + conn->sqlId("*") +
-            //          " TO " + conn->sqlValue(_request.user()) + "@" + conn->sqlValue("localhost");
-            queries.emplace_back(Query("GRANT ALL ON " + conn->sqlId(_request.database()) + ".* TO " +
-                                       conn->sqlValue(_request.user()) + "@" + conn->sqlValue("localhost")));
+        }
+        case ProtocolRequestSql::GRANT_ACCESS: {
+            string const query = g.grant("ALL", _request.database(), _request.user(), "localhost");
+            queries.emplace_back(Query(query));
             break;
-
+        }
         default:
-
             // The remaining remaining types of requests require the name of a table
             // affected by the operation.
             queries.emplace_back(_query(conn, _request.table()));
@@ -288,69 +276,71 @@ vector<Query> WorkerSqlRequest::_queries(database::mysql::Connection::Ptr const&
     return queries;
 }
 
-Query WorkerSqlRequest::_query(database::mysql::Connection::Ptr const& conn, string const& table) const {
-    string const databaseTable = conn->sqlId(_request.database(), table);
+Query WorkerSqlRequest::_query(Connection::Ptr const& conn, string const& table) const {
+    QueryGenerator const g(conn);
+    SqlId const databaseTable = g.id(_request.database(), table);
 
     switch (_request.type()) {
         case ProtocolRequestSql::CREATE_TABLE: {
-            string query = "CREATE TABLE IF NOT EXISTS " + databaseTable + " (";
+            list<SqlColDef> columns;
             for (int index = 0, num_columns = _request.columns_size(); index < num_columns; ++index) {
                 auto const column = _request.columns(index);
-                query += conn->sqlId(column.name()) + " " + column.type();
-                if (index != num_columns - 1) query += ",";
+                columns.emplace_back(SqlColDef{column.name(), column.type()});
             }
-            query += ") ENGINE=" + _request.engine();
+            list<string> const keys;
+            bool const ifNotExists = true;
+            string query = g.createTable(databaseTable, ifNotExists, columns, keys, _request.engine());
 
-            // If MySQL partitioning was requested for the table then automatically
-            // create the initial partition 'p0' corresponding to value '0'
-            // of the key which is used for partitioning.
+            // If MySQL partitioning was requested for the table then configure partitioning
+            // parameters and add the initial partition corresponding to the default
+            // transaction identifier. The table will be partitioned based on values of
+            // the transaction identifiers in the specified column.
             string const partitionByColumn = _request.partition_by_column();
-            if (not partitionByColumn.empty()) {
-                query += " PARTITION BY LIST (" + conn->sqlId(partitionByColumn) +
-                         ") (PARTITION `p0` VALUES IN (0) ENGINE = " + _request.engine() + ")";
+            if (!partitionByColumn.empty()) {
+                TransactionId const defaultTransactionId = 0;
+                query += g.partitionByList(partitionByColumn) + g.partition(defaultTransactionId);
             }
-            return Query(query, databaseTable);
+            return Query(query, databaseTable.str);
         }
 
-        case ProtocolRequestSql::DROP_TABLE:
-            return Query("DROP TABLE IF EXISTS " + databaseTable, databaseTable);
-
-        case ProtocolRequestSql::DROP_TABLE_PARTITION:
-            return Query("ALTER TABLE " + databaseTable + " DROP PARTITION IF EXISTS " +
-                                 conn->sqlPartitionId(_request.transaction_id()),
-                         databaseTable);
-
-        case ProtocolRequestSql::REMOVE_TABLE_PARTITIONING:
-            return Query("ALTER TABLE " + databaseTable + " REMOVE PARTITIONING", databaseTable);
-
+        case ProtocolRequestSql::DROP_TABLE: {
+            bool const ifExists = true;
+            string const query = g.dropTable(databaseTable, ifExists);
+            return Query(query, databaseTable.str);
+        }
+        case ProtocolRequestSql::DROP_TABLE_PARTITION: {
+            string const query = g.alterTable(databaseTable) + g.dropPartition(_request.transaction_id());
+            return Query(query, databaseTable.str);
+        }
+        case ProtocolRequestSql::REMOVE_TABLE_PARTITIONING: {
+            string const query = g.alterTable(databaseTable) + g.removePartitioning();
+            return Query(query, databaseTable.str);
+        }
         case ProtocolRequestSql::CREATE_TABLE_INDEX: {
-            string const spec = _request.index_spec() == ProtocolRequestSql::DEFAULT
-                                        ? ""
-                                        : ProtocolRequestSql_IndexSpec_Name(_request.index_spec());
-            string keys;
+            string spec;
+            if (_request.index_spec() != ProtocolRequestSql::DEFAULT) {
+                spec = ProtocolRequestSql_IndexSpec_Name(_request.index_spec());
+            }
+            list<tuple<string, unsigned int, bool>> keys;
             for (int i = 0; i < _request.index_columns_size(); ++i) {
                 auto const& key = _request.index_columns(i);
-                if (i != 0) keys += ",";
-                keys += conn->sqlId(key.name());
-                if (key.length() != 0) keys += "(" + to_string(key.length()) + ")";
-                keys += key.ascending() ? " ASC" : " DESC";
+                keys.emplace_back(make_tuple(key.name(), key.length(), key.ascending()));
             }
-            return Query("CREATE " + spec + " INDEX " + conn->sqlId(_request.index_name()) + " ON " +
-                                 databaseTable + " (" + keys + ")" + " COMMENT " +
-                                 conn->sqlValue(_request.index_comment()),
-                         databaseTable);
+            string const query =
+                    g.createIndex(databaseTable, _request.index_name(), spec, keys, _request.index_comment());
+            return Query(query, databaseTable.str);
         }
-
-        case ProtocolRequestSql::DROP_TABLE_INDEX:
-            return Query("DROP INDEX " + conn->sqlId(_request.index_name()) + " ON " + databaseTable,
-                         databaseTable);
-
-        case ProtocolRequestSql::GET_TABLE_INDEX:
-            return Query("SHOW INDEXES FROM " + databaseTable);
-
-        case ProtocolRequestSql::ALTER_TABLE:
-            return Query("ALTER TABLE " + databaseTable + " " + _request.alter_spec(), databaseTable);
-
+        case ProtocolRequestSql::DROP_TABLE_INDEX: {
+            string const query = g.dropIndex(databaseTable, _request.index_name());
+            return Query(query, databaseTable.str);
+        }
+        case ProtocolRequestSql::GET_TABLE_INDEX: {
+            return Query(g.showIndexes(databaseTable));
+        }
+        case ProtocolRequestSql::ALTER_TABLE: {
+            string const query = g.alterTable(databaseTable, _request.alter_spec());
+            return Query(query, databaseTable.str);
+        }
         case ProtocolRequestSql::TABLE_ROW_STATS: {
             // The transaction identifier column is not required to be present in
             // the legacy catalogs (ingested w/o super-transactions), or in (the narrow) tables
@@ -358,21 +348,22 @@ Query WorkerSqlRequest::_query(database::mysql::Connection::Ptr const& conn, str
             // implemented below accounts for this scenario by consulting MySQL's
             // information schema. If the column isn't present then the default transaction
             // identifier 0 will be injected into the result set.
-            string const colname = "count";
-            string const query = "SELECT COUNT(*) AS " + conn->sqlId(colname) +
-                                 " FROM information_schema.COLUMNS " + "WHERE " +
-                                 conn->sqlEqual("TABLE_SCHEMA", _request.database()) + " AND " +
-                                 conn->sqlEqual("TABLE_NAME", table) + +" AND " +
-                                 conn->sqlEqual("COLUMN_NAME", "qserv_trans_id");
+            string const column = "count";
+            string query = g.select(g.as(Sql::COUNT_STAR, column)) +
+                           g.from(DoNotProcess(g.id("information_schema", "COLUMNS"))) +
+                           g.where(g.eq("TABLE_SCHEMA", _request.database()), g.eq("TABLE_NAME", table),
+                                   g.eq("COLUMN_NAME", "qserv_trans_id"));
             int count = 0;
-            conn->executeSingleValueSelect(query, colname, count);
+            conn->executeSingleValueSelect(query, column, count);
             if (count == 0) {
-                return Query("SELECT 0 AS " + conn->sqlId("qserv_trans_id") + ",COUNT(*) AS " +
-                             conn->sqlId("num_rows") + " FROM " + databaseTable);
+                string const query =
+                        g.select(g.as(g.val(0), "qserv_trans_id"), g.as(Sql::COUNT_STAR, "num_rows")) +
+                        g.from(DoNotProcess(databaseTable));
+                return Query(query);
             }
-            return Query("SELECT " + conn->sqlId("qserv_trans_id") + ",COUNT(*) AS " +
-                         conn->sqlId("num_rows") + " FROM " + databaseTable + " GROUP BY " +
-                         conn->sqlId("qserv_trans_id"));
+            query = g.select("qserv_trans_id", g.as(Sql::COUNT_STAR, "num_rows")) +
+                    g.from(DoNotProcess(databaseTable)) + g.groupBy("qserv_trans_id");
+            return Query(query);
         }
         default:
             throw invalid_argument(
@@ -381,8 +372,7 @@ Query WorkerSqlRequest::_query(database::mysql::Connection::Ptr const& conn, str
     }
 }
 
-void WorkerSqlRequest::_extractResultSet(util::Lock const& lock,
-                                         database::mysql::Connection::Ptr const& conn) {
+void WorkerSqlRequest::_extractResultSet(util::Lock const& lock, Connection::Ptr const& conn) {
     LOGS(_log, LOG_LVL_DEBUG, context(__func__));
 
     auto resultSet = _currentResultSet(lock);
@@ -400,7 +390,7 @@ void WorkerSqlRequest::_extractResultSet(util::Lock const& lock,
             conn->exportField(resultSet->add_fields(), i);
         }
         size_t numRowsProcessed = 0;
-        database::mysql::Row row;
+        Row row;
         while (conn->next(row)) {
             if (_request.max_rows() != 0) {
                 if (numRowsProcessed >= _request.max_rows()) {

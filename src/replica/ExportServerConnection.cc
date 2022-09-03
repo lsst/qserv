@@ -98,6 +98,8 @@ bool readMessage(boost::asio::ip::tcp::socket& socket, shared_ptr<ProtocolBuffer
 
 namespace lsst::qserv::replica {
 
+using namespace database::mysql;
+
 size_t ExportServerConnection::networkBufSizeBytes = 1024 * 1024;
 
 ExportServerConnection::Ptr ExportServerConnection::create(ServiceProvider::Ptr const& serviceProvider,
@@ -148,7 +150,13 @@ void ExportServerConnection::_handshakeReceived(boost::system::error_code const&
     _table = request.table();
     _chunk = request.chunk();
     _isOverlap = request.is_overlap();
-    _columnSeparator = request.column_separator() == ProtocolExportHandshakeRequest::COMMA ? ',' : '\t';
+
+    // Dialect translation is required to ensure the correct value of the separator were set.
+    // FIXME: Extend the protocol to allow specifying other parameters of the dialect.
+    csv::DialectInput di;
+    di.fieldsTerminatedBy =
+            request.column_separator() == ProtocolExportHandshakeRequest::COMMA ? R"(,)" : R"(\t)";
+    _dialect = csv::Dialect(di);
 
     // Check if the client is authorized for the operation
 
@@ -366,18 +374,13 @@ void ExportServerConnection::_dumpTableIntoFile() const {
     // to the Configuration of the Replication system.
 
     try {
-        database::mysql::ConnectionHandler h(
-                database::mysql::Connection::open(Configuration::qservWorkerDbParams()));
-        string const statement =
-                "SELECT * FROM " + h.conn->sqlId(_databaseInfo.name) + "." +
-                h.conn->sqlId(_isPartitioned ? ChunkedTable(_table, _chunk, _isOverlap).name() : _table) +
-                " INTO OUTFILE " + h.conn->sqlValue(_fileName) + " FIELDS TERMINATED BY " +
-                h.conn->sqlValue(string() + _columnSeparator);
-
-        LOGS(_log, LOG_LVL_DEBUG, context << __func__ << "  statement: " << statement);
-
-        h.conn->executeInOwnTransaction(
-                [&statement](decltype(h.conn) const& conn) { conn->execute(statement); });
+        ConnectionHandler h(Connection::open(Configuration::qservWorkerDbParams()));
+        QueryGenerator const g(h.conn);
+        auto const sqlTable =
+                _isPartitioned ? g.id(_databaseInfo.name, ChunkedTable(_table, _chunk, _isOverlap).name())
+                               : g.id(_databaseInfo.name, _table);
+        string const query = g.select(Sql::STAR) + g.from(sqlTable) + g.intoOutfile(_fileName, _dialect);
+        h.conn->executeInOwnTransaction([&query](decltype(h.conn) const& conn) { conn->execute(query); });
     } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context << __func__ << "  exception: " << ex.what());
         throw;

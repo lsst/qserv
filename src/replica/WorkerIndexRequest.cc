@@ -51,6 +51,8 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.WorkerIndexRequest");
 
 namespace lsst::qserv::replica {
 
+using namespace database::mysql;
+
 WorkerIndexRequest::Ptr WorkerIndexRequest::create(ServiceProvider::Ptr const& serviceProvider,
                                                    ConnectionPoolPtr const& connectionPool,
                                                    string const& worker, string const& id, int priority,
@@ -128,24 +130,22 @@ bool WorkerIndexRequest::execute() {
         // Connect to the worker database
         // Manage the new connection via the RAII-style handler to ensure the transaction
         // is automatically rolled-back in case of exceptions.
-        database::mysql::ConnectionHandler const h(_connectionPool);
+        ConnectionHandler const h(_connectionPool);
 
         // A scope of the query depends on parameters of the request
 
         auto self = shared_from_base<WorkerIndexRequest>();
         bool fileReadSuccess = false;
-        h.conn->execute([self, &fileReadSuccess](decltype(h.conn) const& conn) {
-            conn->begin();
+        h.conn->executeInOwnTransaction([self, &fileReadSuccess](decltype(h.conn) const& conn) {
             conn->execute(self->_query(conn));
             fileReadSuccess = self->_readFile();
-            conn->commit();
         });
         if (fileReadSuccess)
             setStatus(lock, ProtocolStatus::SUCCESS);
         else
             setStatus(lock, ProtocolStatus::FAILED, ProtocolStatusExt::FILE_READ);
 
-    } catch (database::mysql::ER_NO_SUCH_TABLE_ const& ex) {
+    } catch (ER_NO_SUCH_TABLE_ const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context(__func__) << "  MySQL error: " << ex.what());
         _error = ex.what();
         setStatus(lock, ProtocolStatus::FAILED, ProtocolStatusExt::NO_SUCH_TABLE);
@@ -177,7 +177,7 @@ bool WorkerIndexRequest::execute() {
     return true;
 }
 
-string WorkerIndexRequest::_query(database::mysql::Connection::Ptr const& conn) const {
+string WorkerIndexRequest::_query(Connection::Ptr const& conn) const {
     auto const config = serviceProvider()->config();
     auto const database = config->databaseInfo(_request.database());
     auto const table = database.findTable(_request.director_table());
@@ -203,7 +203,7 @@ string WorkerIndexRequest::_query(database::mysql::Connection::Ptr const& conn) 
     string subChunkIdColNameType;
 
     for (auto&& column : table.columns) {
-        if (not qservTransId.empty() and column.name == qservTransId)
+        if (!qservTransId.empty() && column.name == qservTransId)
             qservTransIdType = column.type;
         else if (column.name == table.directorTable.primaryKeyColumn())
             primaryKeyColumnType = column.type;
@@ -220,23 +220,20 @@ string WorkerIndexRequest::_query(database::mysql::Connection::Ptr const& conn) 
 
     // NOTE: injecting the chunk number into each row of the result set because
     // the chunk-id column is optional.
-    string const columnsEscaped = (qservTransId.empty() ? string() : conn->sqlId(qservTransId) + ",") +
-                                  conn->sqlId(table.directorTable.primaryKeyColumn()) + "," +
-                                  to_string(_request.chunk()) + "," +
-                                  conn->sqlId(lsst::qserv::SUB_CHUNK_COLUMN);
-
-    string const databaseTableEscaped =
-            conn->sqlId(database.name) + "." + conn->sqlId(table.name + "_" + to_string(_request.chunk()));
-
-    string const partitionRestrictorEscaped =
-            qservTransId.empty() ? string()
-                                 : "PARTITION (" + conn->sqlPartitionId(_request.transaction_id()) + ")";
-
-    string const orderByEscaped = (qservTransId.empty() ? string() : conn->sqlId(qservTransId) + ",") +
-                                  conn->sqlId(table.directorTable.primaryKeyColumn());
-
-    return "SELECT " + columnsEscaped + "  FROM " + databaseTableEscaped + " " + partitionRestrictorEscaped +
-           "  ORDER BY " + orderByEscaped + "  INTO OUTFILE " + conn->sqlValue(_fileName);
+    QueryGenerator const g(conn);
+    DoNotProcess const chunk = g.val(_request.chunk());
+    SqlId const sqlTableId = g.id(database.name, table.name + "_" + to_string(_request.chunk()));
+    string query;
+    if (qservTransId.empty()) {
+        query = g.select(table.directorTable.primaryKeyColumn(), chunk, lsst::qserv::SUB_CHUNK_COLUMN) +
+                g.from(sqlTableId) + g.orderBy(make_pair(table.directorTable.primaryKeyColumn(), ""));
+    } else {
+        query = g.select(qservTransId, table.directorTable.primaryKeyColumn(), chunk,
+                         lsst::qserv::SUB_CHUNK_COLUMN) +
+                g.from(sqlTableId) + g.inPartition(g.partId(_request.transaction_id())) +
+                g.orderBy(make_pair(qservTransId, ""), make_pair(table.directorTable.primaryKeyColumn(), ""));
+    }
+    return query + g.intoOutfile(_fileName);
 }
 
 bool WorkerIndexRequest::_readFile() {
@@ -244,7 +241,7 @@ bool WorkerIndexRequest::_readFile() {
 
     // Open the stream to 'lock' the file.
     ifstream f(_fileName);
-    if (not f.good()) {
+    if (!f.good()) {
         _error = "failed to open file '" + _fileName + "'";
         LOGS(_log, LOG_LVL_ERROR, context(__func__) << "  " << _error);
         return false;

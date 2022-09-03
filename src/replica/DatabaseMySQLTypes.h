@@ -107,66 +107,6 @@ public:
 std::ostream& operator<<(std::ostream&, ConnectionParams const&);
 
 /**
- * Class DoNotProcess is an abstraction for SQL strings which than ordinary
- * values of string types needs to be injected into SQL statements without
- * being processed (escaped and quoted) as regular string values.
- */
-class DoNotProcess {
-public:
-    /// @param name_ the input value
-    explicit DoNotProcess(std::string const& name_);
-
-    DoNotProcess() = delete;
-    DoNotProcess(DoNotProcess const&) = default;
-    DoNotProcess& operator=(DoNotProcess const&) = default;
-
-    virtual ~DoNotProcess() = default;
-
-    /// Unmodified value of an input string passed into the normal constructor of
-    /// the class. The value would be inserted into queries by query generators.
-    std::string name;
-};
-
-/**
- * Class Keyword is an abstraction for SQL keywords which needs to be processed
- * differently than ordinary values of string types. There won't be escape
- * processing or extra quotes of any kind added to the function name strings.
- */
-class Keyword : public DoNotProcess {
-public:
-    /// @return the object representing the SQL keyword 'NULL'
-    static Keyword const SQL_NULL;
-
-    /// @param name_ the input value
-    explicit Keyword(std::string const& name_);
-
-    Keyword() = delete;
-    Keyword(Keyword const&) = default;
-    Keyword& operator=(Keyword const&) = default;
-    ~Keyword() override = default;
-};
-
-/**
- * Class Function is an abstraction for SQL functions which needs to be processed
- * differently than ordinary values of string types. There won't be escape
- * processing or extra quotes of any kind added to the function name strings.
- */
-class Function : public DoNotProcess {
-public:
-    /// @return the object representing the corresponding SQL function
-    static Function const LAST_INSERT_ID;
-
-    /// @param name_ the input value
-    explicit Function(std::string const& name_);
-
-    Function() = delete;
-    Function(Function const&) = default;
-    Function& operator=(Function const&) = default;
-
-    ~Function() override = default;
-};
-
-/**
  * Objects of class Warning store rows extracted from a result set of MySQL
  * query "SHOW WARNINGS". Members of the class directly map to the corresponding
  * columns returned by the query. More info on this subject can be found in

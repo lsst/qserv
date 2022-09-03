@@ -61,19 +61,22 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.WorkerApp");
 
 namespace lsst::qserv::replica {
 
+using namespace database::mysql;
+
 WorkerApp::Ptr WorkerApp::create(int argc, char* argv[]) { return Ptr(new WorkerApp(argc, argv)); }
 
 WorkerApp::WorkerApp(int argc, char* argv[])
         : Application(argc, argv, description, injectDatabaseOptions, boostProtobufVersionCheck,
                       enableServiceProvider),
           _qservWorkerDbUrl(Configuration::qservWorkerDbUrl()) {
-    // Configure the command line parser
-
-    parser().option("qserv-worker-db", "A connection url for the MySQL service of the Qserv worker database.",
-                    _qservWorkerDbUrl)
-            .flag("do-not-create-folders",
+    parser().option("qserv-worker-db",
+                    "A connection url for the MySQL service of the Qserv"
+                    " worker database.",
+                    _qservWorkerDbUrl);
+    parser().flag("do-not-create-folders",
                   "Do not attempt creating missing folders used by the worker services."
-                  " Specify this flag in the production deployments of the Replication/Ingest system.",
+                  " Specify this flag in the production deployments of the Replication/Ingest"
+                  " system.",
                   _doNotCreateMissingFolders);
 }
 
@@ -93,12 +96,13 @@ int WorkerApp::runImpl() {
     {
         // The RAII-style connection handler will rollback a transaction
         // and close the MySQL connection in case of exceptions.
-        database::mysql::ConnectionHandler const handler(
-                database::mysql::Connection::open(Configuration::qservWorkerDbParams("qservw_worker")));
-        handler.conn->executeInOwnTransaction([&worker, &context](decltype(handler.conn) conn) {
-            string const colname = "id";
-            string const query = "SELECT " + conn->sqlId(colname) + " FROM " + conn->sqlId("Id");
-            if (!conn->executeSingleValueSelect(query, colname, worker)) {
+        ConnectionHandler const handler(
+                Connection::open(Configuration::qservWorkerDbParams("qservw_worker")));
+        QueryGenerator const g(handler.conn);
+        handler.conn->executeInOwnTransaction([&worker, &context, &g](decltype(handler.conn) conn) {
+            string const column = "id";
+            string const query = g.select(column) + g.from("Id");
+            if (!conn->executeSingleValueSelect(query, column, worker)) {
                 throw invalid_argument(context + "worker identity is not set in the Qserv worker database.");
             }
         });
@@ -109,8 +113,8 @@ int WorkerApp::runImpl() {
 
     // Configure the factory with a pool of persistent connectors
     auto const config = serviceProvider()->config();
-    auto const connectionPool = database::mysql::ConnectionPool::create(
-            Configuration::qservWorkerDbParams(), config->get<size_t>("database", "services-pool-size"));
+    auto const connectionPool = ConnectionPool::create(Configuration::qservWorkerDbParams(),
+                                                       config->get<size_t>("database", "services-pool-size"));
     WorkerRequestFactory requestFactory(serviceProvider(), connectionPool);
 
     auto const reqProcSvr = WorkerServer::create(serviceProvider(), requestFactory, worker);
