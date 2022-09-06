@@ -47,7 +47,7 @@ using namespace std;
 namespace {
 
 // Current version of QMeta schema
-char const VERSION_STR[] = "6";
+char const VERSION_STR[] = "7";
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.qmeta.QMetaMysql");
 
@@ -425,7 +425,7 @@ void QMetaMysql::finishChunk(QueryId queryId, int chunk) {
 
 // Mark query as completed or failed.
 void QMetaMysql::completeQuery(QueryId queryId, QInfo::QStatus qStatus, int64_t collectedRows,
-                               size_t collectedBytes) {
+                               size_t collectedBytes, size_t finalRows) {
     lock_guard<mutex> sync(_dbMutex);
 
     auto trans = QMetaTransaction::create(*_conn);
@@ -433,8 +433,9 @@ void QMetaMysql::completeQuery(QueryId queryId, QInfo::QStatus qStatus, int64_t 
     // find and update query info
     string query = "UPDATE QInfo SET completed = NOW(), status = ";
     query += ::status2string(qStatus);
-    query += ", resultBytes = " + to_string(collectedBytes);
-    query += ", resultRows = " + to_string(collectedRows);
+    query += ", collectedBytes = " + to_string(collectedBytes);
+    query += ", collectedRows = " + to_string(collectedRows);
+    query += ", finalRows = " + to_string(finalRows);
     query += " WHERE queryId = ";
     query += to_string(queryId);
 

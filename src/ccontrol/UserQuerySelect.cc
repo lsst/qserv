@@ -194,7 +194,7 @@ void UserQuerySelect::kill() {
         // Since this is being aborted, collectedRows and collectedBytes are going to
         // be off a bit as results were still coming in. A rough idea should be
         // good enough.
-        _qMetaUpdateStatus(qmeta::QInfo::ABORTED, collectedRows, collectedBytes);
+        _qMetaUpdateStatus(qmeta::QInfo::ABORTED, collectedRows, collectedBytes, 0);
     }
 }
 
@@ -341,7 +341,8 @@ QueryState UserQuerySelect::join() {
     bool successful = _executive->join();  // Wait for all data
     // Since all data are in, run final SQL commands like GROUP BY.
     size_t collectedBytes = 0;
-    if (!_infileMerger->finalize(collectedBytes)) {
+    int64_t finalRows = 0;
+    if (!_infileMerger->finalize(collectedBytes, finalRows)) {
         successful = false;
         LOGS(_log, LOG_LVL_ERROR, "InfileMerger::finalize failed");
         // Error: 1105 SQLSTATE: HY000 (ER_UNKNOWN_ERROR) Message: Unknown error
@@ -362,8 +363,10 @@ QueryState UserQuerySelect::join() {
     _qMetaUpdateMessages();
 
     int64_t collectedRows = _executive->getTotalResultRows();
+    // finalRows < 0 indicates there was no postprocessing, so collected rows and final rows should be the same.
+    if (finalRows < 0) finalRows = collectedRows;
     if (successful) {
-        _qMetaUpdateStatus(qmeta::QInfo::COMPLETED, collectedRows, collectedBytes);
+        _qMetaUpdateStatus(qmeta::QInfo::COMPLETED, collectedRows, collectedBytes, finalRows);
         LOGS(_log, LOG_LVL_INFO, "Joined everything (success)");
         return SUCCESS;
     } else if (_killed) {
@@ -371,7 +374,7 @@ QueryState UserQuerySelect::join() {
         LOGS(_log, LOG_LVL_ERROR, "Joined everything (killed)");
         return ERROR;
     } else {
-        _qMetaUpdateStatus(qmeta::QInfo::FAILED, collectedRows, collectedBytes);
+        _qMetaUpdateStatus(qmeta::QInfo::FAILED, collectedRows, collectedBytes, finalRows);
         LOGS(_log, LOG_LVL_ERROR, "Joined everything (failure!)");
         return ERROR;
     }
@@ -424,13 +427,13 @@ void UserQuerySelect::setupMerger() {
 
     auto&& preFlightStmt = _qSession->getPreFlightStmt();
     if (preFlightStmt == nullptr) {
-        _qMetaUpdateStatus(qmeta::QInfo::FAILED, 0, 0);
+        _qMetaUpdateStatus(qmeta::QInfo::FAILED, 0, 0, 0);
         _errorExtra = "Could not create results table for query (no worker queries).";
         return;
     }
     if (not _infileMerger->makeResultsTableForQuery(*preFlightStmt)) {
         _errorExtra = _infileMerger->getError().getMsg();
-        _qMetaUpdateStatus(qmeta::QInfo::FAILED, 0, 0);
+        _qMetaUpdateStatus(qmeta::QInfo::FAILED, 0, 0, 0);
     }
 
     _expandSelectStarInMergeStatment(_infileMergerConfig->mergeStmt);
@@ -604,7 +607,7 @@ void UserQuerySelect::qMetaRegister(std::string const& resultLocation, std::stri
         if (not _qSession->containsTable(itr->first, itr->second)) {
             // table either does not exist or it is being deleted, we must stop
             // here but we must mark query as failed
-            _qMetaUpdateStatus(qmeta::QInfo::FAILED, 0, 0);
+            _qMetaUpdateStatus(qmeta::QInfo::FAILED, 0, 0, 0);
 
             // Throwing exception stops submit() but it does not set any
             // error condition, only prints error message to the log. To communicate
@@ -617,8 +620,8 @@ void UserQuerySelect::qMetaRegister(std::string const& resultLocation, std::stri
 }
 
 // update query status in QMeta
-void UserQuerySelect::_qMetaUpdateStatus(qmeta::QInfo::QStatus qStatus, size_t rows, size_t bytes) {
-    _queryMetadata->completeQuery(_qMetaQueryId, qStatus, rows, bytes);
+void UserQuerySelect::_qMetaUpdateStatus(qmeta::QInfo::QStatus qStatus, size_t rows, size_t bytes, size_t finalRows) {
+    _queryMetadata->completeQuery(_qMetaQueryId, qStatus, rows, bytes, finalRows);
     // Remove the row for temporary query statistics.
     try {
         _queryStatsData->queryStatsTmpRemove(_qMetaQueryId);

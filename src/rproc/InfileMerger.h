@@ -198,7 +198,10 @@ public:
     /// Finalize a "merge" and perform postprocessing.
     /// `collectedBytes` is the number of bytes collected in worker results for
     ///    this user query. Its value is set by this function.
-    bool finalize(size_t& collectedBytes);
+    /// `rowCount` is the number of rows in the final result, as determined by this
+    ///    function. A negative value indicates that its value is meaningless,
+    ///    which happens when there is no postprocessing of the result table.
+    bool finalize(size_t& collectedBytes, int64_t& rowCount);
     /// Check if the object has completed all processing.
     bool isFinished() const;
 
