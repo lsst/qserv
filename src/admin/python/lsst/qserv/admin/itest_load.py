@@ -43,6 +43,7 @@ from .replicationInterface import ReplicationInterface
 from .template import apply_template_cfg
 
 qserv_data_dir = "/qserv/data"
+tmp_data_dir = "/tmp/data"
 
 chunk_info_file = "chunk_info.json"
 
@@ -512,7 +513,7 @@ def prepare_data(
         for table in load_db.iter_tables():
             _prep_table_data(table, dest_dir)
 
-    output_filename = os.path.join(qserv_data_dir, "datasets.tgz")
+    output_filename = os.path.join(tmp_data_dir, "datasets.tgz")
     _log.info("Archiving input datasets for integration tests to %s", output_filename)
     with tarfile.open(output_filename, "w:gz") as tar:
         tar.add(work_dir, arcname=os.path.basename(work_dir))

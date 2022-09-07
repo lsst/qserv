@@ -146,6 +146,7 @@ def prepare_data_args(**kwargs):
         itest_container=ANY,
         qserv_image=ANY,
         itest_file=ANY,
+        outdir=ANY,
         dry=ANY,
         project=ANY,
     )

@@ -314,6 +314,7 @@ user_build_image_ev = FlagEnvVal(
 # the locaiton of this file.
 qserv_build_root_ev = FlagEnvVal("--qserv-build-root", "QSERV_BUILD_ROOT", "/home/{user}/code/qserv")
 project_ev = FlagEnvVal("--project", "QSERV_PROJECT", getpass.getuser())
+outdir_ev = FlagEnvVal("--outdir", "OUTDIR", "/tmp")
 dashboard_port_ev = FlagEnvVal("--dashboard-port", "QSERV_DASHBOARD_PORT", None)
 dh_user_ev = EnvVal("QSERV_DH_USER", "CI only; the dockerhub user for pushing and pulling images")
 dh_token_ev = EnvVal(
@@ -632,6 +633,14 @@ qserv_build_root_option = partial(
     qserv_build_root_ev.opt,
     help=qserv_build_root_ev.help("Location of the qserv sources folder inside the build container."),
     default=qserv_build_root_ev.default,
+)
+
+outdir_option = partial(
+    click.option,
+    outdir_ev.opt,
+    help=outdir_ev.help("Location of the folder that will contain unzipped and partitioned integration test datasets"),
+    envvar=outdir_ev.env_var,
+    default=outdir_ev.default,
 )
 
 
