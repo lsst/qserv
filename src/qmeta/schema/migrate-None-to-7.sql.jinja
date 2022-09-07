@@ -214,5 +214,9 @@ COMMENT = 'Table of messages generated during queries.';
 -- Version 1 introduced QMetadata table and altered schema for QInfo table
 -- Version 2 added query progress data to ProcessList tables.
 -- Version 3 added storing the result query in QMeta.
+-- Version 4 increased storage capacity of the columns in the table QInfo
+-- Version 5 added QMessages table.
+-- Version 6 added indexes to optimize queries made by the Qserv Web Dashboard.
+-- Version 7 added final row count to QInfo.
 INSERT INTO `QMetadata` (`metakey`, `value`) VALUES ('version', '7');
 
