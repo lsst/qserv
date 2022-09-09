@@ -363,7 +363,8 @@ QueryState UserQuerySelect::join() {
     _qMetaUpdateMessages();
 
     int64_t collectedRows = _executive->getTotalResultRows();
-    // finalRows < 0 indicates there was no postprocessing, so collected rows and final rows should be the same.
+    // finalRows < 0 indicates there was no postprocessing, so collected rows and final rows should be the
+    // same.
     if (finalRows < 0) finalRows = collectedRows;
     if (successful) {
         _qMetaUpdateStatus(qmeta::QInfo::COMPLETED, collectedRows, collectedBytes, finalRows);
@@ -427,13 +428,13 @@ void UserQuerySelect::setupMerger() {
 
     auto&& preFlightStmt = _qSession->getPreFlightStmt();
     if (preFlightStmt == nullptr) {
-        _qMetaUpdateStatus(qmeta::QInfo::FAILED, 0, 0, 0);
+        _qMetaUpdateStatus(qmeta::QInfo::FAILED);
         _errorExtra = "Could not create results table for query (no worker queries).";
         return;
     }
     if (not _infileMerger->makeResultsTableForQuery(*preFlightStmt)) {
         _errorExtra = _infileMerger->getError().getMsg();
-        _qMetaUpdateStatus(qmeta::QInfo::FAILED, 0, 0, 0);
+        _qMetaUpdateStatus(qmeta::QInfo::FAILED);
     }
 
     _expandSelectStarInMergeStatment(_infileMergerConfig->mergeStmt);
@@ -607,7 +608,7 @@ void UserQuerySelect::qMetaRegister(std::string const& resultLocation, std::stri
         if (not _qSession->containsTable(itr->first, itr->second)) {
             // table either does not exist or it is being deleted, we must stop
             // here but we must mark query as failed
-            _qMetaUpdateStatus(qmeta::QInfo::FAILED, 0, 0, 0);
+            _qMetaUpdateStatus(qmeta::QInfo::FAILED);
 
             // Throwing exception stops submit() but it does not set any
             // error condition, only prints error message to the log. To communicate
@@ -620,7 +621,8 @@ void UserQuerySelect::qMetaRegister(std::string const& resultLocation, std::stri
 }
 
 // update query status in QMeta
-void UserQuerySelect::_qMetaUpdateStatus(qmeta::QInfo::QStatus qStatus, size_t rows, size_t bytes, size_t finalRows) {
+void UserQuerySelect::_qMetaUpdateStatus(qmeta::QInfo::QStatus qStatus, size_t rows, size_t bytes,
+                                         size_t finalRows) {
     _queryMetadata->completeQuery(_qMetaQueryId, qStatus, rows, bytes, finalRows);
     // Remove the row for temporary query statistics.
     try {

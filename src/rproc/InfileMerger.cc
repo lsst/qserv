@@ -387,11 +387,12 @@ bool InfileMerger::finalize(size_t& collectedBytes, int64_t& rowCount) {
                 LOGS(_log, LOG_LVL_DEBUG, "rowCount=" << rowCount << " " << countRowsSql);
             } else {
                 LOGS(_log, LOG_LVL_ERROR, "Failed to extract row count result");
-                rowCount = 0; // Return 0 rows since there was a problem.
+                rowCount = 0;  // Return 0 rows since there was a problem.
             }
         } else {
-            LOGS(_log, LOG_LVL_ERROR, "InfileMerger::finalize countRows query failed " << countRowsErrObj.printErrMsg());
-            rowCount = 0; // Return 0 rows since there was a problem.
+            LOGS(_log, LOG_LVL_ERROR,
+                 "InfileMerger::finalize countRows query failed " << countRowsErrObj.printErrMsg());
+            rowCount = 0;  // Return 0 rows since there was a problem.
         }
 
         // Cleanup merge table.
@@ -412,7 +413,7 @@ bool InfileMerger::finalize(size_t& collectedBytes, int64_t& rowCount) {
         std::string sqlDropCol = std::string("ALTER TABLE ") + _mergeTable + " DROP COLUMN " + _jobIdColName;
         LOGS(_log, LOG_LVL_TRACE, "Removing w/" << sqlDropCol);
         finalizeOk = _applySqlLocal(sqlDropCol, "dropCol Removing");
-        rowCount = -1; // rowCount is meaningless since there was no postprocessing.
+        rowCount = -1;  // rowCount is meaningless since there was no postprocessing.
     }
     LOGS(_log, LOG_LVL_TRACE, "Merged " << _mergeTable << " into " << _config.targetTable);
     _isFinished = true;

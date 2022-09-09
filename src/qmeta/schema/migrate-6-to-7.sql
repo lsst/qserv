@@ -9,4 +9,4 @@ ALTER TABLE `QInfo`
   RENAME COLUMN `resultBytes` TO `collectedBytes`,
   RENAME COLUMN `resultRows` TO `collectedRows`,  
   ADD `finalRows` INT DEFAULT 0 COMMENT  'number of rows in the final result';
-  
+ 

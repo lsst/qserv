@@ -160,8 +160,8 @@ public:
      *  @param collectedBytes: number of bytes collected from workers for the query.
      *  @param finalRows: number of rows in the final result.
      */
-    void completeQuery(QueryId queryId, QInfo::QStatus qStatus, int64_t collectedRows,
-                       size_t collectedBytes, size_t finalRows) override;
+    void completeQuery(QueryId queryId, QInfo::QStatus qStatus, int64_t collectedRows, size_t collectedBytes,
+                       size_t finalRows) override;
 
     /**
      *  @brief Mark query as finished and returned to client.
