@@ -76,6 +76,8 @@ namespace {  // File-scope helpers
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.rproc.InfileMerger");
 
+using namespace std;
+
 using lsst::qserv::mysql::MySqlConfig;
 using lsst::qserv::rproc::InfileMergerConfig;
 using lsst::qserv::rproc::InfileMergerError;
@@ -351,7 +353,7 @@ bool InfileMerger::_setupConnectionInnoDb(mysql::MySqlConnection& mySConn) {
 
 size_t InfileMerger::getTotalResultSize() const { return _totalResultSize; }
 
-bool InfileMerger::finalize(size_t& collectedBytes) {
+bool InfileMerger::finalize(size_t& collectedBytes, int64_t& rowCount) {
     bool finalizeOk = true;
     collectedBytes = _totalResultSize;
     // TODO: Should check for error condition before continuing.
@@ -372,6 +374,27 @@ bool InfileMerger::finalize(size_t& collectedBytes) {
         LOGS(_log, LOG_LVL_DEBUG, "Merging w/" << createMerge);
         finalizeOk = _applySqlLocal(createMerge, "createMerge");
 
+        // Find the number of rows in the new table.
+        string countRowsSql = "SELECT COUNT(*) FROM " + _config.targetTable;
+        sql::SqlResults countRowsResults;
+        sql::SqlErrorObject countRowsErrObj;
+        bool countSuccess = _applySqlLocal(countRowsSql, countRowsResults, countRowsErrObj);
+        if (countSuccess) {
+            // should be 1 column, 1 row in the results
+            vector<string> counts;
+            if (countRowsResults.extractFirstColumn(counts, countRowsErrObj) && counts.size() > 0) {
+                rowCount = std::stoll(counts[0]);
+                LOGS(_log, LOG_LVL_DEBUG, "rowCount=" << rowCount << " " << countRowsSql);
+            } else {
+                LOGS(_log, LOG_LVL_ERROR, "Failed to extract row count result");
+                rowCount = 0;  // Return 0 rows since there was a problem.
+            }
+        } else {
+            LOGS(_log, LOG_LVL_ERROR,
+                 "InfileMerger::finalize countRows query failed " << countRowsErrObj.printErrMsg());
+            rowCount = 0;  // Return 0 rows since there was a problem.
+        }
+
         // Cleanup merge table.
         sql::SqlErrorObject eObj;
         // Don't report failure on not exist
@@ -390,6 +413,7 @@ bool InfileMerger::finalize(size_t& collectedBytes) {
         std::string sqlDropCol = std::string("ALTER TABLE ") + _mergeTable + " DROP COLUMN " + _jobIdColName;
         LOGS(_log, LOG_LVL_TRACE, "Removing w/" << sqlDropCol);
         finalizeOk = _applySqlLocal(sqlDropCol, "dropCol Removing");
+        rowCount = -1;  // rowCount is meaningless since there was no postprocessing.
     }
     LOGS(_log, LOG_LVL_TRACE, "Merged " << _mergeTable << " into " << _config.targetTable);
     _isFinished = true;

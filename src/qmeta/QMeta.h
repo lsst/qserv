@@ -184,7 +184,7 @@ public:
      *  @param collectedBytes: number of bytes collected from workers for the query.
      */
     virtual void completeQuery(QueryId queryId, QInfo::QStatus qStatus, int64_t collectedRows = 0,
-                               size_t collectedBytes = 0) = 0;
+                               size_t collectedBytes = 0, size_t finalRows = 0) = 0;
 
     /**
      *  @brief Mark query as finished and returned to client.

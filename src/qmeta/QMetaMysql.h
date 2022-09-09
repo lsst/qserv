@@ -158,9 +158,10 @@ public:
      *  @param qStatus:   Query completion status, one of COMPLETED, FAILED, or ABORTED.
      *  @param collectedRows: number of rows collected from workers for the query.
      *  @param collectedBytes: number of bytes collected from workers for the query.
+     *  @param finalRows: number of rows in the final result.
      */
-    void completeQuery(QueryId queryId, QInfo::QStatus qStatus, int64_t collectedRows,
-                       size_t collectedBytes) override;
+    void completeQuery(QueryId queryId, QInfo::QStatus qStatus, int64_t collectedRows, size_t collectedBytes,
+                       size_t finalRows) override;
 
     /**
      *  @brief Mark query as finished and returned to client.
