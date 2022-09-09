@@ -4,8 +4,7 @@ tables:
         'Science_Ccd_Exposure_coadd_r', 'Science_Ccd_Exposure',
         'AvgForcedPhot', 'DeepCoadd_To_Htm10', 'LeapSeconds', 'DeepCoadd',
         'DeepCoadd_Metadata', 'Science_Ccd_Exposure_To_Htm10_coadd_r',
-        'LeapSeconds', 'DeepCoadd', 'DeepCoadd_Metadata', 'Filter',
-        'RefObject', 'RunDeepSource', 'RunDeepForcedSource', 'RefDeepSrcMatch']
+        'Filter', 'RefObject', 'RunDeepSource', 'RunDeepForcedSource', 'RefDeepSrcMatch']
     directors:          ['RefObject', 'RunDeepSource']
     partitioned-tables: ['RefObject', 'RunDeepSource', 'RunDeepForcedSource',' RefDeepSrcMatch']
     views:              ['DeepForcedSource', 'DeepSource']
