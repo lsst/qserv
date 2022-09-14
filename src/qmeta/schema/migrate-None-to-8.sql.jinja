@@ -49,9 +49,9 @@ CREATE TABLE IF NOT EXISTS `QInfo` (
   `resultLocation` TEXT NULL COMMENT 'Result destination - table name, file name, etc.',
   `resultQuery` MEDIUMTEXT NULL COMMENT 'Query to be used by mysqlproxy to get final results.',
   `chunkCount` INT NOT NULL COMMENT 'number of chunks needed by the query',
-  `collectedBytes` INT DEFAULT 0 COMMENT 'number of bytes collected from workers',
-  `collectedRows` INT DEFAULT 0 COMMENT  'number of rows collected from workers',
-  `finalRows` INT DEFAULT 0 COMMENT  'number of rows in the final result',
+  `collectedBytes` BIGINT DEFAULT 0 COMMENT 'number of bytes collected from workers',
+  `collectedRows` BIGINT DEFAULT 0 COMMENT  'number of rows collected from workers',
+  `finalRows` BIGINT DEFAULT 0 COMMENT  'number of rows in the final result',
   PRIMARY KEY (`queryId`),
   KEY `QInfo_czarId_index` (`czarId`),
   KEY `QInfo_status_index` (`status`),
@@ -218,5 +218,5 @@ COMMENT = 'Table of messages generated during queries.';
 -- Version 5 added QMessages table.
 -- Version 6 added indexes to optimize queries made by the Qserv Web Dashboard.
 -- Version 7 added final row count to QInfo.
-INSERT INTO `QMetadata` (`metakey`, `value`) VALUES ('version', '7');
-
+-- Version 8 replaced INT with BIGINT in the byte and row counter columns of QInfo.
+INSERT INTO `QMetadata` (`metakey`, `value`) VALUES ('version', '8');
