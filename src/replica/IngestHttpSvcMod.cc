@@ -133,18 +133,20 @@ IngestRequest::Ptr IngestHttpSvcMod::_createRequest(bool async) const {
     string const url = body().required<string>("url");
 
     csv::DialectInput dialectInput;
-    // Allow "column_separator" for the sake of the backward compatibility with the older
-    // version of the API. The parameter "column_separator" if present will override the one
-    // of "fields_terminated_by"
-    dialectInput.fieldsTerminatedBy = body().optional<string>(
-            "column_separator",
-            body().optional<string>("fields_terminated_by", csv::Dialect::defaultFieldsTerminatedBy));
+    // Allow an empty string in the input. Simply replace the one (if present) with
+    // the corresponding default value of the parameter.
+    auto const getDialectParam = [&](string const& param, string const& defaultValue) -> string {
+        string val = body().optional<string>(param, defaultValue);
+        if (val.empty()) val = defaultValue;
+        return val;
+    };
+    dialectInput.fieldsTerminatedBy =
+            getDialectParam("fields_terminated_by", csv::Dialect::defaultFieldsTerminatedBy);
     dialectInput.fieldsEnclosedBy =
-            body().optional<string>("fields_enclosed_by", csv::Dialect::defaultFieldsEnclosedBy);
-    dialectInput.fieldsEscapedBy =
-            body().optional<string>("fields_escaped_by", csv::Dialect::defaultFieldsEscapedBy);
+            getDialectParam("fields_enclosed_by", csv::Dialect::defaultFieldsEnclosedBy);
+    dialectInput.fieldsEscapedBy = getDialectParam("fields_escaped_by", csv::Dialect::defaultFieldsEscapedBy);
     dialectInput.linesTerminatedBy =
-            body().optional<string>("lines_terminated_by", csv::Dialect::defaultLinesTerminatedBy);
+            getDialectParam("lines_terminated_by", csv::Dialect::defaultLinesTerminatedBy);
 
     string const httpMethod = body().optional<string>("http_method", "GET");
     string const httpData = body().optional<string>("http_data", string());
