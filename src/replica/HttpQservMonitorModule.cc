@@ -414,8 +414,9 @@ json HttpQservMonitorModule::_pastUserQueries(Connection::Ptr& conn, string cons
             ::parseFieldIntoJson<string>(__func__, row, "resultLocation", resultRow, "");
             ::parseFieldIntoJson<string>(__func__, row, "resultQuery", resultRow, "");
             ::parseFieldIntoJson<long>(__func__, row, "chunkCount", resultRow, 0);
-            ::parseFieldIntoJson<long>(__func__, row, "resultBytes", resultRow, 0);
-            ::parseFieldIntoJson<long>(__func__, row, "resultRows", resultRow, 0);
+            ::parseFieldIntoJson<uint64_t>(__func__, row, "collectedBytes", resultRow, 0);
+            ::parseFieldIntoJson<uint64_t>(__func__, row, "collectedRows", resultRow, 0);
+            ::parseFieldIntoJson<uint64_t>(__func__, row, "finalRows", resultRow, 0);
             resultRow["messages"] = json::array();
             result.push_back(resultRow);
         }
