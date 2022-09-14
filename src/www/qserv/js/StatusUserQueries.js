@@ -203,8 +203,9 @@ function(CSSLoader,
           <th class="sticky">Type</th>
           <th class="sticky" style="text-align:right;">Chunks</th>
           <th class="sticky" style="text-align:right;">Ch/min</th>
+          <th class="sticky" style="text-align:right;">&sum;&nbsp;Bytes</th>
+          <th class="sticky" style="text-align:right;">&sum;&nbsp;Rows</th>
           <th class="sticky" style="text-align:right;">Rows</th>
-          <th class="sticky" style="text-align:right;">Bytes</th>
           <th class="sticky" style="text-align:right;">QID</th>
           <th class="sticky" style="text-align:center;"><i class="bi bi-clipboard-fill"></i></th>
           <th class="sticky" style="text-align:center;"><i class="bi bi-info-circle-fill"></i></th>
@@ -426,8 +427,9 @@ function(CSSLoader,
   <td><pre>` + query.qType + `</pre></td>
   <th style="text-align:right;"><pre>${query.chunkCount}</pre></th>
   <td style="text-align:right;" ><pre>${performance > 0 ? performance : ''}</pre></td>
-  <th style="text-align:right;"><pre>${query.resultRows}</pre></th>
-  <th style="text-align:right;"><pre>${query.resultBytes}</pre></th>
+  <th style="text-align:right;"><pre>${query.collectedBytes}</pre></th>
+  <th style="text-align:right;"><pre>${query.collectedRows}</pre></th>
+  <th style="text-align:right;"><pre>${query.finalRows}</pre></th>
   <th style="text-align:right;"><pre>${query.queryId}</pre></th>
   <td style="text-align:right; padding-top:0; padding-bottom:0">
     <button class="btn btn-outline-dark btn-sm copy-query" style="height:20px; margin:0px;" title="${queryCopyTitle}"></button>
