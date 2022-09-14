@@ -309,7 +309,9 @@ Query WorkerSqlRequest::_query(Connection::Ptr const& conn, string const& table)
             return Query(query, databaseTable.str);
         }
         case ProtocolRequestSql::DROP_TABLE_PARTITION: {
-            string const query = g.alterTable(databaseTable) + g.dropPartition(_request.transaction_id());
+            bool const ifExists = true;
+            string const query =
+                    g.alterTable(databaseTable) + g.dropPartition(_request.transaction_id(), ifExists);
             return Query(query, databaseTable.str);
         }
         case ProtocolRequestSql::REMOVE_TABLE_PARTITIONING: {
