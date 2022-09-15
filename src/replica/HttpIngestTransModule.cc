@@ -481,7 +481,9 @@ void HttpIngestTransModule::_removePartitionFromSecondaryIndex(DatabaseInfo cons
 
     database::mysql::ConnectionHandler const h(qservMasterDbConnection("qservMeta"));
     database::mysql::QueryGenerator const g(h.conn);
-    string const query = g.alterTable(database.name + "__" + table.name) + g.dropPartition(transactionId);
+    bool const ifExists = true;
+    string const query =
+            g.alterTable(database.name + "__" + table.name) + g.dropPartition(transactionId, ifExists);
 
     // Not having the specified partition is still fine as it couldn't be properly
     // created after the transaction was created.

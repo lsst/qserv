@@ -906,8 +906,8 @@ public:
     }
 
     std::string partition(TransactionId transactionId) const {
-        return " (PARTITION " + id("p" + std::to_string(transactionId)).str + " VALUES IN (" +
-               std::to_string(transactionId) + "))";
+        return " (PARTITION " + partId(transactionId).str + " VALUES IN (" + std::to_string(transactionId) +
+               "))";
     }
 
     // Generators for ALTER TABLE ...
@@ -928,8 +928,18 @@ public:
         return sql;
     }
 
-    std::string dropPartition(TransactionId transactionId) const {
-        return " DROP PARTITION " + id("p" + std::to_string(transactionId)).str;
+    /**
+     * @brief Generate " DROP PARTITION [IF EXISTS] `p<transaction-id>`".
+     * @param transactionId An identifier of the super-transaction corresponding to
+     *   a partition to be removed.
+     * @param ifExists If 'true' then add 'IF EXISTS'.
+     * @return The complete query fragment.
+     */
+    std::string dropPartition(TransactionId transactionId, bool ifExists = false) const {
+        std::string sql = " DROP PARTITION ";
+        if (ifExists) sql += "IF EXISTS ";
+        sql += partId(transactionId).str;
+        return sql;
     }
 
     // Generators for LOAD DATA INFILE

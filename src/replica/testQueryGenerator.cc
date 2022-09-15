@@ -377,6 +377,7 @@ BOOST_AUTO_TEST_CASE(QueryGeneratorTest) {
             {" ADD PARTITION (PARTITION `p12` VALUES IN (12))", g.addPartition(12)},
             {" ADD PARTITION IF NOT EXISTS (PARTITION `p12` VALUES IN (12))", g.addPartition(12, true)},
             {" DROP PARTITION `p2`", g.dropPartition(2)},
+            {" DROP PARTITION IF EXISTS `p3`", g.dropPartition(3, true)},
 
             // LOAD DATA [LOCAL] INFILE  ...
             {"LOAD DATA INFILE '/tmp/infile.csv' INTO TABLE `table` " + csv::Dialect().sqlOptions(),

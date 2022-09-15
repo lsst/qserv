@@ -239,9 +239,10 @@ void IngestFileSvc::loadDataIntoTable() {
                     SqlId const sqlDestinationTable = _isOverlap ? sqlFullOverlapTable : sqlTable;
                     bool const local = false;
                     dataLoadQuery = g.loadDataInfile(_fileName, sqlDestinationTable, local, _dialect);
-                    partitionRemovalQuery =
-                            Query(g.alterTable(sqlDestinationTable) + g.dropPartition(_transactionId),
-                                  sqlDestinationTable.str);
+                    bool const ifExists = true;
+                    partitionRemovalQuery = Query(
+                            g.alterTable(sqlDestinationTable) + g.dropPartition(_transactionId, ifExists),
+                            sqlDestinationTable.str);
                 }
             }
         } else {
@@ -253,8 +254,9 @@ void IngestFileSvc::loadDataIntoTable() {
                     g.alterTable(sqlTable) + g.addPartition(_transactionId, ifNotExists), sqlTable.str));
             bool const local = false;
             dataLoadQuery = g.loadDataInfile(_fileName, sqlTable, local, _dialect);
+            bool const ifExists = true;
             partitionRemovalQuery =
-                    Query(g.alterTable(sqlTable) + g.dropPartition(_transactionId), sqlTable.str);
+                    Query(g.alterTable(sqlTable) + g.dropPartition(_transactionId, ifExists), sqlTable.str);
         }
         for (auto&& statement : tableMgtStatements) {
             LOGS(_log, LOG_LVL_DEBUG, context_ << "query: " << statement.query);
