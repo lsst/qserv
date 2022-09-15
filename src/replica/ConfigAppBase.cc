@@ -81,13 +81,13 @@ void ConfigAppBase::dumpWorkersAsTable(string const& indent, string const& capti
         isEnabled.push_back(wi.isEnabled ? "yes" : "no");
         isReadOnly.push_back(wi.isReadOnly ? "yes" : "no");
         dataDir.push_back(wi.dataDir);
-        svcHostPort.push_back(wi.svcHost + ":" + to_string(wi.svcPort));
-        fsHostPort.push_back(wi.fsHost + ":" + to_string(wi.fsPort));
-        loaderHostPort.push_back(wi.loaderHost + ":" + to_string(wi.loaderPort));
+        svcHostPort.push_back(wi.svcHost.addr + ":" + to_string(wi.svcPort));
+        fsHostPort.push_back(wi.fsHost.addr + ":" + to_string(wi.fsPort));
+        loaderHostPort.push_back(wi.loaderHost.addr + ":" + to_string(wi.loaderPort));
         loaderTmpDir.push_back(wi.loaderTmpDir);
-        exporterHostPort.push_back(wi.exporterHost + ":" + to_string(wi.exporterPort));
+        exporterHostPort.push_back(wi.exporterHost.addr + ":" + to_string(wi.exporterPort));
         exporterTmpDir.push_back(wi.exporterTmpDir);
-        httpLoaderHostPort.push_back(wi.httpLoaderHost + ":" + to_string(wi.httpLoaderPort));
+        httpLoaderHostPort.push_back(wi.httpLoaderHost.addr + ":" + to_string(wi.httpLoaderPort));
         httpLoaderTmpDir.push_back(wi.httpLoaderTmpDir);
     }
 

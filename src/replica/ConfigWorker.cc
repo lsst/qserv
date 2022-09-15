@@ -51,6 +51,22 @@ void parseOptional(T& dest, json const& obj, string const& attr) {
 
 namespace lsst::qserv::replica {
 
+json HostInfo::toJson() const {
+    json infoJson;
+    infoJson["addr"] = addr;
+    infoJson["name"] = name;
+    return infoJson;
+}
+
+bool HostInfo::operator==(HostInfo const& other) const {
+    return (addr == other.addr) && (name == other.name);
+}
+
+ostream& operator<<(ostream& os, HostInfo const& info) {
+    os << "HostInfo: " << info.toJson().dump();
+    return os;
+}
+
 WorkerInfo::WorkerInfo(json const& obj) {
     string const context = "WorkerInfo::WorkerInfo(json): ";
     if (obj.empty()) return;
@@ -61,18 +77,23 @@ WorkerInfo::WorkerInfo(json const& obj) {
         parseRequired<string>(name, obj, "name");
         parseRequired<bool>(isEnabled, obj, "is-enabled");
         parseRequired<bool>(isReadOnly, obj, "is-read-only");
-        parseOptional<string>(svcHost, obj, "svc-host");
+        parseRequired<string>(svcHost.addr, obj["svc-host"], "addr");
+        parseRequired<string>(svcHost.name, obj["svc-host"], "name");
         parseOptional<uint16_t>(svcPort, obj, "svc-port");
-        parseOptional<string>(fsHost, obj, "fs-host");
+        parseRequired<string>(fsHost.addr, obj["fs-host"], "addr");
+        parseRequired<string>(fsHost.name, obj["fs-host"], "name");
         parseOptional<uint16_t>(fsPort, obj, "fs-port");
         parseOptional<string>(dataDir, obj, "data-dir");
-        parseOptional<string>(loaderHost, obj, "loader-host");
+        parseRequired<string>(loaderHost.addr, obj["loader-host"], "addr");
+        parseRequired<string>(loaderHost.name, obj["loader-host"], "name");
         parseOptional<uint16_t>(loaderPort, obj, "loader-port");
         parseOptional<string>(loaderTmpDir, obj, "loader-tmp-dir");
-        parseOptional<string>(exporterHost, obj, "exporter-host");
+        parseRequired<string>(exporterHost.addr, obj["exporter-host"], "addr");
+        parseRequired<string>(exporterHost.name, obj["exporter-host"], "name");
         parseOptional<uint16_t>(exporterPort, obj, "exporter-port");
         parseOptional<string>(exporterTmpDir, obj, "exporter-tmp-dir");
-        parseOptional<string>(httpLoaderHost, obj, "http-loader-host");
+        parseRequired<string>(httpLoaderHost.addr, obj["http-loader-host"], "addr");
+        parseRequired<string>(httpLoaderHost.name, obj["http-loader-host"], "name");
         parseOptional<uint16_t>(httpLoaderPort, obj, "http-loader-port");
         parseOptional<string>(httpLoaderTmpDir, obj, "http-loader-tmp-dir");
     } catch (exception const& ex) {
@@ -85,18 +106,18 @@ json WorkerInfo::toJson() const {
     infoJson["name"] = name;
     infoJson["is-enabled"] = isEnabled ? 1 : 0;
     infoJson["is-read-only"] = isReadOnly ? 1 : 0;
-    infoJson["svc-host"] = svcHost;
+    infoJson["svc-host"] = svcHost.toJson();
     infoJson["svc-port"] = svcPort;
-    infoJson["fs-host"] = fsHost;
+    infoJson["fs-host"] = fsHost.toJson();
     infoJson["fs-port"] = fsPort;
     infoJson["data-dir"] = dataDir;
-    infoJson["loader-host"] = loaderHost;
+    infoJson["loader-host"] = loaderHost.toJson();
     infoJson["loader-port"] = loaderPort;
     infoJson["loader-tmp-dir"] = loaderTmpDir;
-    infoJson["exporter-host"] = exporterHost;
+    infoJson["exporter-host"] = exporterHost.toJson();
     infoJson["exporter-port"] = exporterPort;
     infoJson["exporter-tmp-dir"] = exporterTmpDir;
-    infoJson["http-loader-host"] = httpLoaderHost;
+    infoJson["http-loader-host"] = httpLoaderHost.toJson();
     infoJson["http-loader-port"] = httpLoaderPort;
     infoJson["http-loader-tmp-dir"] = httpLoaderTmpDir;
     return infoJson;

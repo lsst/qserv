@@ -130,18 +130,18 @@ json ConfigTestData::data() {
         json worker = json::object({{"name", "worker-A"},
                                     {"is-enabled", 1},
                                     {"is-read-only", 0},
-                                    {"svc-host", "host-A"},
+                                    {"svc-host", {{"addr", "127.0.0.1"}, {"name", "host-A"}}},
                                     {"svc-port", 51001},
-                                    {"fs-host", "host-A"},
+                                    {"fs-host", {{"addr", "127.0.0.1"}, {"name", "host-A"}}},
                                     {"fs-port", 52001},
                                     {"data-dir", "/data/A"},
-                                    {"loader-host", "host-A"},
+                                    {"loader-host", {{"addr", "127.0.0.1"}, {"name", "host-A"}}},
                                     {"loader-port", 53002},
                                     {"loader-tmp-dir", "/tmp/A"},
-                                    {"exporter-host", "host-A"},
+                                    {"exporter-host", {{"addr", "127.0.0.1"}, {"name", "host-A"}}},
                                     {"exporter-port", 53003},
                                     {"exporter-tmp-dir", "/tmp/export/A"},
-                                    {"http-loader-host", "host-A"},
+                                    {"http-loader-host", {{"addr", "127.0.0.1"}, {"name", "host-A"}}},
                                     {"http-loader-port", 53004},
                                     {"http-loader-tmp-dir", "/tmp/http/A"}});
         obj["workers"].emplace_back(worker);
@@ -153,12 +153,12 @@ json ConfigTestData::data() {
         json worker = json::object({{"name", "worker-B"},
                                     {"is-enabled", 1},
                                     {"is-read-only", 1},
-                                    {"svc-host", "host-B"},
-                                    {"fs-host", "host-B"},
+                                    {"svc-host", {{"addr", "168.1.1.1"}, {"name", "host-B"}}},
+                                    {"fs-host", {{"addr", "168.1.1.1"}, {"name", "host-B"}}},
                                     {"data-dir", "/data/B"},
-                                    {"loader-host", "host-B"},
-                                    {"exporter-host", "host-B"},
-                                    {"http-loader-host", "host-B"}});
+                                    {"loader-host", {{"addr", "168.1.1.1"}, {"name", "host-B"}}},
+                                    {"exporter-host", {{"addr", "168.1.1.1"}, {"name", "host-B"}}},
+                                    {"http-loader-host", {{"addr", "168.1.1.1"}, {"name", "host-B"}}}});
         obj["workers"].emplace_back(worker);
     }
     {
@@ -168,11 +168,11 @@ json ConfigTestData::data() {
         json worker = json::object({{"name", "worker-C"},
                                     {"is-enabled", 0},
                                     {"is-read-only", 0},
-                                    {"svc-host", "host-C"},
-                                    {"fs-host", "host-C"},
-                                    {"loader-host", "host-C"},
-                                    {"exporter-host", "host-C"},
-                                    {"http-loader-host", "host-C"}});
+                                    {"svc-host", {{"addr", "168.1.1.1"}, {"name", "host-C1"}}},
+                                    {"fs-host", {{"addr", "168.1.1.2"}, {"name", "host-C2"}}},
+                                    {"loader-host", {{"addr", "168.1.1.3"}, {"name", "host-C3"}}},
+                                    {"exporter-host", {{"addr", "168.1.1.4"}, {"name", "host-C4"}}},
+                                    {"http-loader-host", {{"addr", "168.1.1.5"}, {"name", "host-C5"}}}});
         obj["workers"].emplace_back(worker);
     }
     obj["database_families"] = json::array();
