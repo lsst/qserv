@@ -100,7 +100,7 @@ void tracker(weak_ptr<Controller> const& controller, string const& context) {
                     auto const prevWorkerInfo = config->workerInfo(workerInfo.name);
                     if (prevWorkerInfo != workerInfo) {
                         LOGS(_log, LOG_LVL_INFO,
-                             context << "worker '" << workerInfo.name << "' logged in from host '"
+                             context << "worker '" << workerInfo.name << "' logged in from '"
                                      << workerInfo.svcHost
                                      << "'. Updating worker's record in the configuration.");
                         config->updateWorker(workerInfo);
@@ -108,7 +108,7 @@ void tracker(weak_ptr<Controller> const& controller, string const& context) {
                 } else {
                     if (autoRegisterWorkers) {
                         LOGS(_log, LOG_LVL_INFO,
-                             context << "new worker '" << workerInfo.name << "' logged in from host '"
+                             context << "new worker '" << workerInfo.name << "' logged in from '"
                                      << workerInfo.svcHost
                                      << "'. Registering new worker in the configuration.");
                         config->addWorker(workerInfo);

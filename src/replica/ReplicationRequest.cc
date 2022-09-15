@@ -106,7 +106,7 @@ void ReplicationRequest::startImpl(util::Lock const& lock) {
     message.set_database(database());
     message.set_chunk(chunk());
     message.set_worker(sourceWorker());
-    message.set_worker_host(sourceWorkerInfo.fsHost);
+    message.set_worker_host(sourceWorkerInfo.fsHost.addr);
     message.set_worker_port(sourceWorkerInfo.fsPort);
     message.set_worker_data_dir(sourceWorkerInfo.dataDir);
 

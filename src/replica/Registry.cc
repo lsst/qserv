@@ -34,6 +34,9 @@
 #include <stdexcept>
 #include <thread>
 
+// Third-party headers
+#include "boost/asio.hpp"
+
 using namespace std;
 using json = nlohmann::json;
 
@@ -67,18 +70,23 @@ vector<WorkerInfo> Registry::workers() const {
         } else {
             worker.name = name;
         }
-        worker.svcHost = host;
+        worker.svcHost.addr = host;
+        worker.svcHost.name = workerJson.at("svc-host-name").get<string>();
         worker.svcPort = workerJson.at("svc-port").get<uint16_t>();
-        worker.fsHost = host;
+        worker.fsHost.addr = host;
+        worker.fsHost.name = workerJson.at("fs-host-name").get<string>();
         worker.fsPort = workerJson.at("fs-port").get<uint16_t>();
         worker.dataDir = workerJson.at("data-dir").get<string>();
-        worker.loaderHost = host;
+        worker.loaderHost.addr = host;
+        worker.loaderHost.name = workerJson.at("loader-host-name").get<string>();
         worker.loaderPort = workerJson.at("loader-port").get<uint16_t>();
         worker.loaderTmpDir = workerJson.at("loader-tmp-dir").get<string>();
-        worker.exporterHost = host;
+        worker.exporterHost.addr = host;
+        worker.exporterHost.name = workerJson.at("exporter-host-name").get<string>();
         worker.exporterPort = workerJson.at("exporter-port").get<uint16_t>();
         worker.exporterTmpDir = workerJson.at("exporter-tmp-dir").get<string>();
-        worker.httpLoaderHost = host;
+        worker.httpLoaderHost.addr = host;
+        worker.httpLoaderHost.name = workerJson.at("http-loader-host-name").get<string>();
         worker.httpLoaderPort = workerJson.at("http-loader-port").get<uint16_t>();
         worker.httpLoaderTmpDir = workerJson.at("http-loader-tmp-dir").get<string>();
         coll.push_back(std::move(worker));
@@ -87,19 +95,25 @@ vector<WorkerInfo> Registry::workers() const {
 }
 
 void Registry::add(string const& name) const {
+    string const hostName = boost::asio::ip::host_name();
     auto const config = _serviceProvider->config();
     json const request =
             json::object({{"instance_id", _serviceProvider->instanceId()},
                           {"auth_key", _serviceProvider->authKey()},
                           {"worker",
                            {{"name", name},
+                            {"svc-host-name", hostName},
                             {"svc-port", config->get<uint16_t>("worker", "svc-port")},
+                            {"fs-host-name", hostName},
                             {"fs-port", config->get<uint16_t>("worker", "fs-port")},
                             {"data-dir", config->get<string>("worker", "data-dir")},
+                            {"loader-host-name", hostName},
                             {"loader-port", config->get<uint16_t>("worker", "loader-port")},
                             {"loader-tmp-dir", config->get<string>("worker", "loader-tmp-dir")},
+                            {"exporter-host-name", hostName},
                             {"exporter-port", config->get<uint16_t>("worker", "exporter-port")},
                             {"exporter-tmp-dir", config->get<string>("worker", "exporter-tmp-dir")},
+                            {"http-loader-host-name", hostName},
                             {"http-loader-port", config->get<uint16_t>("worker", "http-loader-port")},
                             {"http-loader-tmp-dir", config->get<string>("worker", "http-loader-tmp-dir")}}}});
     _request("POST", "/worker", request);
