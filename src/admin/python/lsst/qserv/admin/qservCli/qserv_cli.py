@@ -75,6 +75,7 @@ from .opt import (
     mariadb_image_ev,
     mariadb_image_option,
     mypy_option,
+    outdir_option,
     project_option,
     pull_image_option,
     push_image_option,
@@ -578,12 +579,14 @@ def itest_rm(project: str, dry: bool) -> None:
 @project_option()
 @itest_container_name_option()
 @itest_file_option()
+@outdir_option()
 @dry_option()
 def prepare_data(
     qserv_root: str,
     itest_container: str,
     qserv_image: str,
     itest_file: str,
+    outdir: str,
     dry: bool,
     project: str,
 ) -> None:
@@ -595,6 +598,7 @@ def prepare_data(
         itest_container=itest_container,
         qserv_image=qserv_image,
         itest_file=itest_file,
+        outdir=outdir,
         dry=dry,
         project=project,
     )

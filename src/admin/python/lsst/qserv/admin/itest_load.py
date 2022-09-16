@@ -36,6 +36,7 @@ from tempfile import TemporaryDirectory
 from typing import Any, Dict, Generator, List, NamedTuple, Optional, Tuple
 import yaml
 
+from .constants import tmp_data_dir
 from .qserv_backoff import on_backoff, max_backoff_sec
 from .itest_table import LoadTable
 from .mysql_connection import mysql_connection
@@ -512,7 +513,7 @@ def prepare_data(
         for table in load_db.iter_tables():
             _prep_table_data(table, dest_dir)
 
-    output_filename = os.path.join(qserv_data_dir, "datasets.tgz")
+    output_filename = os.path.join(tmp_data_dir, "datasets.tgz")
     _log.info("Archiving input datasets for integration tests to %s", output_filename)
     with tarfile.open(output_filename, "w:gz") as tar:
         tar.add(work_dir, arcname=os.path.basename(work_dir))

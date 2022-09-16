@@ -38,6 +38,7 @@ from .opt import (
     dh_user_ev,
     dh_token_ev,
 )
+from ..constants import tmp_data_dir
 from . import images
 from . import subproc
 
@@ -1149,6 +1150,7 @@ def prepare_data(
     itest_container: str,
     qserv_image: str,
     itest_file: str,
+    outdir: str,
     dry: bool,
     project: str,
 ) -> int:
@@ -1164,6 +1166,8 @@ def prepare_data(
         The name of the image to run.
     itest_file : `str`
         The path to the yaml file that contains integration test execution data.
+    outdir : `str`
+        The path to the directory that contains unzipped and partitionned integration tests datasets.
     dry : `bool`
         If True do not run the command; print what would have been run.
     project : `str`
@@ -1174,7 +1178,6 @@ def prepare_data(
     returncode : `int`
         The returncode of "entrypoint integration-test".
     """
-    itest_volumes = make_itest_volumes(project)
 
     with open(itest_file) as f:
         tests_data = yaml.safe_load(f.read())
@@ -1189,6 +1192,8 @@ def prepare_data(
         f"src={itest_file},dst=/usr/local/etc/integration_tests.yaml,type=bind",
         "--mount",
         f"src={os.path.join(qserv_root, testdata_subdir)},dst={tests_data['qserv-testdata-dir']},type=bind",
+        "--mount",
+        f"src={outdir},dst={tmp_data_dir},type=bind"
     ]
 
     add_network_option(args, project)
