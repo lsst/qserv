@@ -143,11 +143,11 @@ function(CSSLoader,
   <th style="text-align:left" scope="row"><pre>` + worker['name'] + `</pre></th>
   <td ` + workerEnabledCssClass  + `><pre>` + (worker['is-enabled'] ? 'yes' : 'no') + `</pre></td>
   <td ` + workerReadOnlyCssClass + `><pre>` + (worker['is-read-only'] ? 'yes' : 'no') + `</pre></td>
-  <td><pre>` + worker['svc-host'] + `:` + worker['svc-port'] + `</pre></td>
-  <td><pre>` + worker['fs-host'] + `:` + worker['fs-port'] + `</pre></td>
-  <td><pre>` + worker['loader-host'] + `:` + worker['loader-port'] + `</pre></td>
-  <td><pre>` + worker['exporter-host'] + `:` + worker['exporter-port'] + `</pre></td>
-  <td><pre>` + worker['http-loader-host'] + `:` + worker['http-loader-port'] + `</pre></td>
+  <td><pre>` + worker['svc-host']['name'] + `:` + worker['svc-port'] + `</pre></td>
+  <td><pre>` + worker['fs-host']['name'] + `:` + worker['fs-port'] + `</pre></td>
+  <td><pre>` + worker['loader-host']['name'] + `:` + worker['loader-port'] + `</pre></td>
+  <td><pre>` + worker['exporter-host']['name'] + `:` + worker['exporter-port'] + `</pre></td>
+  <td><pre>` + worker['http-loader-host']['name'] + `:` + worker['http-loader-port'] + `</pre></td>
 </tr>`;
             }
             this._table().children('tbody').html(html);

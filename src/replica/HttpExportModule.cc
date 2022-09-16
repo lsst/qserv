@@ -28,6 +28,7 @@
 // Qserv headers
 #include "replica/ChunkedTable.h"
 #include "replica/Configuration.h"
+#include "replica/ConfigWorker.h"
 #include "replica/DatabaseServices.h"
 #include "replica/HttpExceptions.h"
 #include "replica/ReplicaInfo.h"
@@ -48,7 +49,7 @@ struct TableSpec {
     bool partitioned = false;  /// Is 'true' for the partitioned tables
     unsigned int chunk = 0;    /// The chunk number (partitioned tables)
     bool overlap = false;      /// Is 'true' for the 'overlap' tables (partitioned tables)
-    std::string workerHost;    /// The host name or an IP address of a worker
+    HostInfo workerHost;       /// The host name and an IP address of a worker
     uint16_t workerPort = 0;   /// The port number of the Export Service
 
     json toJson() const {
@@ -58,7 +59,8 @@ struct TableSpec {
         spec["partitioned"] = partitioned ? 1 : 0;
         spec["chunk"] = chunk;
         spec["overlap"] = overlap ? 1 : 0;
-        spec["worker"] = workerHost;
+        spec["worker_host"] = workerHost.addr;
+        spec["worker_host_name"] = workerHost.name;
         spec["port"] = workerPort;
         return spec;
     }

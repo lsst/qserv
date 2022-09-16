@@ -403,22 +403,42 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestWorkers) {
 BOOST_AUTO_TEST_CASE(ConfigurationTestWorkerParameters) {
     LOGS_INFO("Testing worker parameters");
 
+    HostInfo const hostA({"127.0.0.1", "host-A"});
+    BOOST_CHECK_EQUAL(hostA.addr, "127.0.0.1");
+    BOOST_CHECK_EQUAL(hostA.name, "host-A");
+
     WorkerInfo workerA;
     BOOST_REQUIRE_NO_THROW(workerA = config->workerInfo("worker-A"));
     BOOST_CHECK(workerA.name == "worker-A");
     BOOST_CHECK(workerA.isEnabled);
     BOOST_CHECK(!workerA.isReadOnly);
+    BOOST_CHECK_EQUAL(workerA.svcHost, hostA);
+    BOOST_CHECK_EQUAL(workerA.fsHost, hostA);
+    BOOST_CHECK_EQUAL(workerA.loaderHost, hostA);
+    BOOST_CHECK_EQUAL(workerA.exporterHost, hostA);
+    BOOST_CHECK_EQUAL(workerA.httpLoaderHost, hostA);
 
+    HostInfo const hostB({"168.1.1.1", "host-B"});
     WorkerInfo workerB;
     BOOST_REQUIRE_NO_THROW(workerB = config->workerInfo("worker-B"));
     BOOST_CHECK(workerB.name == "worker-B");
     BOOST_CHECK(workerB.isEnabled);
     BOOST_CHECK(workerB.isReadOnly);
+    BOOST_CHECK_EQUAL(workerB.svcHost, hostB);
+    BOOST_CHECK_EQUAL(workerB.fsHost, hostB);
+    BOOST_CHECK_EQUAL(workerB.loaderHost, hostB);
+    BOOST_CHECK_EQUAL(workerB.exporterHost, hostB);
+    BOOST_CHECK_EQUAL(workerB.httpLoaderHost, hostB);
 
     WorkerInfo workerC;
     BOOST_REQUIRE_NO_THROW(workerC = config->workerInfo("worker-C"));
     BOOST_CHECK(workerC.name == "worker-C");
     BOOST_CHECK(!workerC.isEnabled);
+    BOOST_CHECK_EQUAL(workerC.svcHost, HostInfo({"168.1.1.1", "host-C1"}));
+    BOOST_CHECK_EQUAL(workerC.fsHost, HostInfo({"168.1.1.2", "host-C2"}));
+    BOOST_CHECK_EQUAL(workerC.loaderHost, HostInfo({"168.1.1.3", "host-C3"}));
+    BOOST_CHECK_EQUAL(workerC.exporterHost, HostInfo({"168.1.1.4", "host-C4"}));
+    BOOST_CHECK_EQUAL(workerC.httpLoaderHost, HostInfo({"168.1.1.5", "host-C5"}));
 
     // Adding a new worker with well formed and unique parameters.
     WorkerInfo workerD;

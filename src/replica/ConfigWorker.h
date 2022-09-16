@@ -33,6 +33,41 @@
 namespace lsst::qserv::replica {
 
 /**
+ * @brief The structure HostInfo encapsulates the DNS name and the IP address
+ *   of a machine where the replication system's services run.
+ *
+ * In the current inplementation of the Replication/Ingest system,
+ * the IP address of the machine is captured by the Workers Registry
+ * service on the connections made by the workers to the Registry.
+ * So far, this is the most reliable way of determine a location of
+ * the worker services. One known disadvantage of relying on the IP addresses
+ * is that they may change in the cloud environmemt should worker services
+ * be moved to different hosts or the correposponding pods be restarted.
+ *
+ * An alternative mechanism is based on using the DNS name of the machine
+ * as it's known to the worker service itself locally. Note that information
+ * recorded in the host name attribute may be ambigous at the presence of
+ * many network interfaces on the worker machine. In this case, it's up to
+ * a user to correctly interpret and use the name for establishing
+ * connections to the worker services.
+ */
+struct HostInfo {
+    std::string addr;  ///< The IP address
+    std::string name;  ///< The DNS name(short or long)
+
+    /// @return JSON representation of the object
+    nlohmann::json toJson() const;
+
+    /// @return 'true' if host objects have the same values of attributes
+    bool operator==(HostInfo const& other) const;
+
+    /// @return 'true' if host objects don't have the same values of attributes
+    bool operator!=(HostInfo const& other) const { return !(operator==(other)); }
+};
+
+std::ostream& operator<<(std::ostream& os, HostInfo const& info);
+
+/**
  * Class WorkerInfo encapsulates various parameters describing a worker.
  */
 class WorkerInfo {
@@ -43,30 +78,30 @@ public:
     bool isReadOnly = false;  // The worker can only serve as a source of replicas.
                               // New replicas can't be placed on it.
 
-    std::string svcHost;   // The host name (or IP address) of the worker service
+    HostInfo svcHost;      // The host name (and IP address) of the worker service
     uint16_t svcPort = 0;  // The port number of the worker service
 
-    std::string fsHost;   // The host name (or IP address) of the file service for the worker
+    HostInfo fsHost;      // The host name (and IP address) of the file service for the worker
     uint16_t fsPort = 0;  // The port number for the file service for the worker
 
     std::string dataDir;  // An absolute path to the data directory under which the MySQL
                           // database folders are residing.
 
-    std::string loaderHost;   // The host name (or IP address) of the ingest (loader) service
+    HostInfo loaderHost;      // The host name (and IP address) of the ingest (loader) service
     uint16_t loaderPort = 0;  // The port number of the ingest service
 
     std::string loaderTmpDir;  // An absolute path to the temporary directory which would be used
                                // by the service. The folder must be write-enabled for a user
                                // under which the service will be run.
 
-    std::string exporterHost;   // The host name (or IP address) of the data exporting service
+    HostInfo exporterHost;      // The host name (and IP address) of the data exporting service
     uint16_t exporterPort = 0;  // The port number of the data exporting service
 
     std::string exporterTmpDir;  // An absolute path to the temporary directory which would be used
                                  // by the service. The folder must be write-enabled for a user
                                  // under which the service will be run.
 
-    std::string httpLoaderHost;   // The host name (or IP address) of the HTTP-based ingest (loader) service
+    HostInfo httpLoaderHost;      // The host name (and IP address) of the HTTP-based ingest (loader) service
     uint16_t httpLoaderPort = 0;  // The port number of the HTTP-based ingest service
 
     std::string httpLoaderTmpDir;  // An absolute path to the temporary directory which would be used

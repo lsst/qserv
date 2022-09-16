@@ -244,11 +244,11 @@ void MessengerConnector::_resolve(util::Lock const& lock) {
     // in the resolver or subsequent connection attempts will trigger the standard
     // recovery sequence that begins with a timeout and a subsequent restart.
     WorkerInfo const workerInfo = _serviceProvider->config()->workerInfo(_worker);
-    if (workerInfo.svcHost.empty() || (workerInfo.svcPort == 0)) {
+    if (workerInfo.svcHost.addr.empty() || (workerInfo.svcPort == 0)) {
         LOGS(_log, LOG_LVL_WARN,
              _context() << __func__ << "  no connection info available for worker=" << _worker);
     }
-    boost::asio::ip::tcp::resolver::query query(workerInfo.svcHost, to_string(workerInfo.svcPort));
+    boost::asio::ip::tcp::resolver::query query(workerInfo.svcHost.addr, to_string(workerInfo.svcPort));
     _resolver.async_resolve(query, bind(&MessengerConnector::_resolved, shared_from_this(), _1, _2));
     _state = STATE_CONNECTING;
 }

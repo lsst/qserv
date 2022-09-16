@@ -254,9 +254,11 @@ json HttpIngestChunksModule::_addChunk() {
 
     json result;
     result["location"]["worker"] = workerInfo.name;
-    result["location"]["host"] = workerInfo.loaderHost;
+    result["location"]["host"] = workerInfo.loaderHost.addr;
+    result["location"]["host_name"] = workerInfo.loaderHost.name;
     result["location"]["port"] = workerInfo.loaderPort;
-    result["location"]["http_host"] = workerInfo.httpLoaderHost;
+    result["location"]["http_host"] = workerInfo.httpLoaderHost.addr;
+    result["location"]["http_host_name"] = workerInfo.httpLoaderHost.name;
     result["location"]["http_port"] = workerInfo.httpLoaderPort;
     return result;
 }
@@ -401,9 +403,11 @@ json HttpIngestChunksModule::_addChunks() {
         json workerResult;
         workerResult["chunk"] = chunk;
         workerResult["worker"] = workerInfo.name;
-        workerResult["host"] = workerInfo.loaderHost;
+        workerResult["host"] = workerInfo.loaderHost.addr;
+        workerResult["host_name"] = workerInfo.loaderHost.name;
         workerResult["port"] = workerInfo.loaderPort;
-        workerResult["http_host"] = workerInfo.httpLoaderHost;
+        workerResult["http_host"] = workerInfo.httpLoaderHost.addr;
+        workerResult["http_host_name"] = workerInfo.httpLoaderHost.name;
         workerResult["http_port"] = workerInfo.httpLoaderPort;
 
         result["location"].push_back(workerResult);
