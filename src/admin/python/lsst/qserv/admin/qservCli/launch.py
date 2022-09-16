@@ -38,6 +38,7 @@ from .opt import (
     dh_user_ev,
     dh_token_ev,
 )
+from ..constants import tmp_data_dir
 from . import images
 from . import subproc
 
@@ -1192,7 +1193,7 @@ def prepare_data(
         "--mount",
         f"src={os.path.join(qserv_root, testdata_subdir)},dst={tests_data['qserv-testdata-dir']},type=bind",
         "--mount",
-        f"src={outdir},dst=/tmp/data,type=bind",
+        f"src={outdir},dst={tmp_data_dir},type=bind"
     ]
 
     add_network_option(args, project)

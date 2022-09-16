@@ -36,6 +36,7 @@ from tempfile import TemporaryDirectory
 from typing import Any, Dict, Generator, List, NamedTuple, Optional, Tuple
 import yaml
 
+from .constants import tmp_data_dir
 from .qserv_backoff import on_backoff, max_backoff_sec
 from .itest_table import LoadTable
 from .mysql_connection import mysql_connection
@@ -43,7 +44,6 @@ from .replicationInterface import ReplicationInterface
 from .template import apply_template_cfg
 
 qserv_data_dir = "/qserv/data"
-tmp_data_dir = "/tmp/data"
 
 chunk_info_file = "chunk_info.json"
 
