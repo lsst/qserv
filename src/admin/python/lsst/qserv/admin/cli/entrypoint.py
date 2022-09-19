@@ -558,6 +558,7 @@ def xrootd_manager(ctx: click.Context, **kwargs: Any) -> None:
 @cmsd_worker_cfg_path_option()
 @xrdssi_cfg_file_option()
 @xrdssi_cfg_path_option()
+@log_cfg_file_option()
 @targs_options()
 @cmd_options()
 @options_file_option()
@@ -572,6 +573,7 @@ def worker_cmsd(ctx: click.Context, **kwargs: Any) -> None:
         cmsd_worker_cfg_path=targs["cmsd_worker_cfg_path"],
         xrdssi_cfg_file=targs["xrdssi_cfg_file"],
         xrdssi_cfg_path=targs["xrdssi_cfg_path"],
+        log_cfg_file=targs["log_cfg_file"],
         cmd=targs["cmd"],
     )
 

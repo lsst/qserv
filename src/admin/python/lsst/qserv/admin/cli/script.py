@@ -335,6 +335,7 @@ def enter_worker_cmsd(
     cmsd_worker_cfg_path: str,
     xrdssi_cfg_file: str,
     xrdssi_cfg_path: str,
+    log_cfg_file: str,
     cmd: str,
 ) -> None:
     """Start a worker cmsd node.
@@ -358,6 +359,8 @@ def enter_worker_cmsd(
         The path to the xrdssi config file.
     xrdssi_cfg_path : str
         The location to render the the xrdssi config file.
+    log_cfg_file : `str`
+        Location of the log4cxx config file.
     cmd : str
         The jinja2 template for the command for this function to execute.
     """
@@ -379,7 +382,8 @@ def enter_worker_cmsd(
     # for the vnid plugin to function correctly
     _do_smig_block(worker_smig_dir, "worker", db_uri)
 
-    sys.exit(_run(args=None, cmd=cmd))
+    env = dict(os.environ, LSST_LOG_CONFIG=log_cfg_file)
+    sys.exit(_run(args=None, env=env, cmd=cmd))
 
 
 def enter_worker_xrootd(

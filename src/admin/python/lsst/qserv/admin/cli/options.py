@@ -110,7 +110,7 @@ log_level_option = partial(
     default="INFO",
     type=click.Choice(logLevelChoices, case_sensitive=False),
     callback=lambda ctx, par, val: val.upper(),
-    help=f"The logging level. Supported levels are [{'|'.join(logLevelChoices)}]",
+    help=f"The logging level for the entrypoint tool. Supported levels are [{'|'.join(logLevelChoices)}]",
 )
 
 
