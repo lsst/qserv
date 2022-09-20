@@ -108,6 +108,10 @@ json HttpIngestConfigModule::_get() {
     getStr(result, HttpClientConfig::proxyCaInfoKey);
     getStr(result, HttpClientConfig::proxyCaInfoValKey);
 
+    getStr(result, HttpClientConfig::proxyKey);
+    getStr(result, HttpClientConfig::noProxyKey);
+    getLong(result, HttpClientConfig::httpProxyTunnelKey);
+
     getLong(result, HttpClientConfig::connectTimeoutKey);
     getLong(result, HttpClientConfig::timeoutKey);
     getLong(result, HttpClientConfig::lowSpeedLimitKey);
@@ -151,6 +155,10 @@ json HttpIngestConfigModule::_update() {
     updateStr(HttpClientConfig::proxyCaPathKey);
     updateStr(HttpClientConfig::proxyCaInfoKey);
     updateStr(HttpClientConfig::proxyCaInfoValKey);
+
+    updateStr(HttpClientConfig::proxyKey);
+    updateStr(HttpClientConfig::noProxyKey);
+    updateLong(HttpClientConfig::httpProxyTunnelKey);
 
     updateLong(HttpClientConfig::connectTimeoutKey);
     updateLong(HttpClientConfig::timeoutKey);

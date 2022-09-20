@@ -561,6 +561,9 @@ HttpClientConfig IngestRequest::_clientConfig() const {
     getString(clientConfig.proxyCaPath, HttpClientConfig::proxyCaPathKey);
     getString(clientConfig.proxyCaInfo, HttpClientConfig::proxyCaInfoKey);
     getString(clientConfig.proxyCaInfoVal, HttpClientConfig::proxyCaInfoValKey);
+    getString(clientConfig.proxy, HttpClientConfig::proxyKey);
+    getString(clientConfig.noProxy, HttpClientConfig::noProxyKey);
+    getLong(clientConfig.httpProxyTunnel, HttpClientConfig::httpProxyTunnelKey);
     getLong(clientConfig.connectTimeout, HttpClientConfig::connectTimeoutKey);
     getLong(clientConfig.timeout, HttpClientConfig::timeoutKey);
     getLong(clientConfig.lowSpeedLimit, HttpClientConfig::lowSpeedLimitKey);

@@ -86,6 +86,21 @@ public:
     /// at workers, or make them directly readable by worker's ingest services otherwise.
     static std::string const proxyCaInfoValKey;
 
+    // ----------------------------------------------------------
+    // Configuration parameters of the intermediate proxy servers
+    // ----------------------------------------------------------
+
+    /// Set (or reset) the proxy to use for the upcoming request ('CURLOPT_PROXY').
+    static std::string const proxyKey;
+
+    /// Set a comma separated list of host names that do not require a proxy to get
+    /// reached, even if one is specified ('CURLOPT_NOPROXY').
+    static std::string const noProxyKey;
+
+    /// Set the tunnel parameter to a desired value to be used by the CURL library
+    /// when communicating with a proxy ('CURLOPT_HTTPPROXYTUNNEL').
+    static std::string const httpProxyTunnelKey;
+
     // --------------------------------------------------------
     // The group of parameters affecting timing of the requests
     // --------------------------------------------------------
@@ -134,6 +149,10 @@ public:
     std::string proxyCaPath;
     std::string proxyCaInfo;
     std::string proxyCaInfoVal;
+
+    std::string proxy;
+    std::string noProxy;
+    long httpProxyTunnel = 0;
 
     long connectTimeout = 0;  ///< corresponds to the default (300 seconds)
     long timeout = 0;         ///< corresponds to the default (no timeout)
