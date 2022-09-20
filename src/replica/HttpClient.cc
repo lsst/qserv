@@ -50,6 +50,10 @@ string const HttpClientConfig::proxyCaPathKey = "PROXY_CAPATH";
 string const HttpClientConfig::proxyCaInfoKey = "PROXY_CAINFO";
 string const HttpClientConfig::proxyCaInfoValKey = "PROXY_CAINFO_VAL";
 
+string const HttpClientConfig::proxyKey = "CURLOPT_PROXY";
+string const HttpClientConfig::noProxyKey = "CURLOPT_NOPROXY";
+string const HttpClientConfig::httpProxyTunnelKey = "CURLOPT_HTTPPROXYTUNNEL";
+
 string const HttpClientConfig::connectTimeoutKey = "CONNECTTIMEOUT";
 string const HttpClientConfig::timeoutKey = "TIMEOUT";
 string const HttpClientConfig::lowSpeedLimitKey = "LOW_SPEED_LIMIT";
@@ -139,6 +143,20 @@ void HttpClient::read(CallbackType const& onDataRead) {
     } else {
         _errorChecked("curl_easy_setopt(CURLOPT_PROXY_SSL_VERIFYPEER)",
                       curl_easy_setopt(_hcurl, CURLOPT_PROXY_SSL_VERIFYPEER, 0L));
+    }
+
+    // Optional settings for proxies
+    if (!_clientConfig.proxy.empty()) {
+        _errorChecked("curl_easy_setopt(CURLOPT_PROXY)",
+                      curl_easy_setopt(_hcurl, CURLOPT_PROXY, _clientConfig.proxy.c_str()));
+        if (_clientConfig.httpProxyTunnel != 0) {
+            _errorChecked("curl_easy_setopt(CURLOPT_HTTPPROXYTUNNEL)",
+                          curl_easy_setopt(_hcurl, CURLOPT_HTTPPROXYTUNNEL, 1L));
+        }
+    }
+    if (!_clientConfig.noProxy.empty()) {
+        _errorChecked("curl_easy_setopt(CURLOPT_NOPROXY)",
+                      curl_easy_setopt(_hcurl, CURLOPT_NOPROXY, _clientConfig.noProxy.c_str()));
     }
 
     // Optional settings for timing and performance of the transfer
