@@ -57,14 +57,13 @@ public:
      * @param forceQservSync Force chunk removal at worker resource collections if 'true'.
      * @param replicationIntervalSec The number of seconds to wait in the end of each
      *   iteration loop before to begin the new one.
-     * @param numReplicas The desired number of replicas.
      * @param purge Purge excess replicas if 'true'.
      * @return The smart pointer to a new object
      */
     static Ptr create(Controller::Ptr const& controller,
                       Task::AbnormalTerminationCallbackType const& onTerminated,
                       unsigned int qservSyncTimeoutSec, bool forceQservSync,
-                      unsigned int replicationIntervalSec, unsigned int numReplicas, bool purge);
+                      unsigned int replicationIntervalSec, bool purge);
 
 protected:
     /// @see Task::onRun()
@@ -74,15 +73,14 @@ private:
     /// @see ReplicationTask::create()
     ReplicationTask(Controller::Ptr const& controller, AbnormalTerminationCallbackType const& onTerminated,
                     unsigned int qservSyncTimeoutSec, bool forceQservSync,
-                    unsigned int replicationIntervalSec, unsigned int numReplicas, bool purge);
+                    unsigned int replicationIntervalSec, bool purge);
 
     /// The maximum number of seconds to be waited before giving up
     /// on the Qserv synchronization requests.
     unsigned int const _qservSyncTimeoutSec;
 
-    bool const _forceQservSync;       ///< Force removal at worker resource collections if 'true'.
-    unsigned int const _numReplicas;  ///< The desired number of replicas.
-    bool const _purge;                ///< Purge excess replicas if 'true'.
+    bool const _forceQservSync;  ///< Force removal at worker resource collections if 'true'.
+    bool const _purge;           ///< Purge excess replicas if 'true'.
 };
 
 }  // namespace lsst::qserv::replica
