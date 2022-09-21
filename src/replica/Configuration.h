@@ -402,6 +402,9 @@ public:
     /// @return The names of all known workers regardless of their statuses.
     std::vector<std::string> allWorkers() const;
 
+    /// @return The number of workers workers meeting the specified criteria.
+    size_t numWorkers(bool isEnabled = true, bool isReadOnly = false) const;
+
     /// @return names of known database families
     std::vector<std::string> databaseFamilies() const;
 
@@ -447,6 +450,45 @@ public:
      *   if the specified entry was not found in the configuration.
      */
     size_t replicationLevel(std::string const& familyName) const;
+
+    /**
+     * @brief Evaluate the desired replication level and apply restrictions.
+     *
+     * The input number (or a level found in the family configuration if 0 was passed)
+     * will be  evaluated against existing restrictions, such as: the "hard" limit
+     * specified in the general parameter "controller-max-repl-level" and the number
+     * of workers specified in the worker filtering parameters.
+     * @param familyName The name of a database family.
+     * @param desiredReplicationLevel The desired replication level. In case if 0 value
+     *   was specified then the configured replication level of a family will be evaluated
+     *   instead.
+     * @param workerIsEnabled Select workers which are allowed to participate in the
+     *   replication operations. If a value of the parameter is set
+     *   to 'true' then the next flag 'isReadOnly' (depending on its state)
+     *   would put further restrictions on the selected subset.
+     *   Workers which are not 'enabled' are still known to the Replication
+     *   system.
+     * @param workerIsReadOnly This flag will be considered only if 'isEnabled' is set
+     *   to 'true'. The flag narrows down a subset of the 'enabled' workers which
+     *   are either the read-only sources (if 'isReadOnly' is set to true')
+     *   or the read-write replica sources/destinations.
+     * @return Return the effective level for the family given the above-explained
+     *   restrictions.
+     * @throw std::invalid_argument If the empty string passed as a value of the family,
+     *   or if the specified entry was not found in the configuration.
+     */
+    size_t effectiveReplicationLevel(std::string const& familyName, size_t desiredReplicationLevel = 0,
+                                     bool workerIsEnabled = true, bool workerIsReadOnly = false) const;
+
+    /**
+     * @brief Set the replication level for a database family.
+     * @param familyName The name of the database family affected by the operation.
+     * @param newReplicationLevel The new replication level (must be greater than 0).
+     * @throw std::invalid_argument If the empty string passed as a value of the family
+     *   name, or if the entry was not found in the configuration, or if the desired
+     *   replication level is equal to 0.
+     */
+    void setReplicationLevel(std::string const& familyName, size_t newReplicationLevel);
 
     /**
      * The selector for the names of the known database.
@@ -683,6 +725,9 @@ private:
      * @return A reference to a JSON object encapsulating the parameter's value and its type.
      */
     nlohmann::json& _get(util::Lock const& lock, std::string const& category, std::string const& param);
+
+    /// @return The number of workers workers meeting the specified criteria.
+    size_t _numWorkers(util::Lock const& lock, bool isEnabled = true, bool isReadOnly = false) const;
 
     /**
      * Validate the input and add or update worker entry.

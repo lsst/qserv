@@ -134,6 +134,12 @@ json const ConfigurationSchema::_schemaJson = json::object(
             {{"description",
               "A path to a folder where Qserv master stores its empty chunk lists. Must be non-empty."},
              {"default", "/qserv/data/qserv"}}},
+           {"max-repl-level",
+            {{"description",
+              "The maximum replicaton level that applies to any database family. This"
+              " hard limit is meant to prevent the Replication system's algorithms from utilizing too"
+              " much storage. The limit is enforced at run time. The number must be greater than 0."},
+             {"default", 4}}},
            {"worker-evict-priority-level",
             {{"description",
               "The priority level of the worker eviction task that is run to compensate for"
