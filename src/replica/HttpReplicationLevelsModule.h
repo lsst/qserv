@@ -44,6 +44,14 @@ class HttpReplicationLevelsModule : public HttpModule {
 public:
     typedef std::shared_ptr<HttpReplicationLevelsModule> Ptr;
 
+    /**
+     * Supported values for parameter 'subModuleName':
+     *
+     *   GET  for retreiving info on the replication level of a family
+     *   SET  for updating a value or the replication level of a family
+     *
+     * @throws std::invalid_argument for unknown values of parameter 'subModuleName'
+     */
     static void process(Controller::Ptr const& controller, std::string const& taskName,
                         HttpProcessorConfig const& processorConfig, qhttp::Request::Ptr const& req,
                         qhttp::Response::Ptr const& resp, HealthMonitorTask::Ptr const& healthMonitorTask,
@@ -65,7 +73,17 @@ private:
                                 qhttp::Response::Ptr const& resp,
                                 HealthMonitorTask::Ptr const& healthMonitorTask);
 
-    // Input parameters
+    /// @return nlohmann::json The replica status report for all known families.
+    nlohmann::json _get();
+
+    /// Set the replication level of a family.
+    /// @return nlohmann::json The replica status report for all known families.
+    nlohmann::json _set();
+
+    /// Update the cached replication report (if any).
+    /// @param force Ignore the cache and rebuild the report if 'true'.
+    /// @return nlohmann::json The latest state of the report.
+    nlohmann::json _makeReport(bool force = false);
 
     std::weak_ptr<HealthMonitorTask> const _healthMonitorTask;
 

@@ -103,7 +103,13 @@ void HttpProcessor::registerServices() {
                              [self](qhttp::Request::Ptr const req, qhttp::Response::Ptr const resp) {
                                  HttpReplicationLevelsModule::process(self->controller(), self->name(),
                                                                       self->_processorConfig, req, resp,
-                                                                      self->_healthMonitorTask);
+                                                                      self->_healthMonitorTask, "GET");
+                             });
+    httpServer()->addHandler("PUT", "/replication/level",
+                             [self](qhttp::Request::Ptr const req, qhttp::Response::Ptr const resp) {
+                                 HttpReplicationLevelsModule::process(
+                                         self->controller(), self->name(), self->_processorConfig, req, resp,
+                                         self->_healthMonitorTask, "SET", HttpAuthType::REQUIRED);
                              });
     httpServer()->addHandler("GET", "/replication/worker",
                              [self](qhttp::Request::Ptr const req, qhttp::Response::Ptr const resp) {
