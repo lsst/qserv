@@ -31,7 +31,11 @@
 #include "lsst/log/Log.h"
 
 // Standard headers
+#include <netdb.h>
 #include <stdexcept>
+#include <string.h>
+#include <sys/types.h>
+#include <sys/socket.h>
 #include <thread>
 
 // Third-party headers
@@ -45,6 +49,49 @@ namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.Registry");
 
 string context(string const& func) { return "REGISTRY " + func + " "; }
+
+/**
+ * @brief Get the FQDN of the current host.
+ * @note If there will be more than one canonical name associated with the host
+ *   then  the result will contain them all separated by comma, such as in:
+ * @code
+ *   <fqdn-1>,<fqdn-2>,...
+ * @endcode
+ * @return The FQDN (or FQDNs)
+ * @throws std::runtime_error In case if the information couldn't be retreived.
+ */
+string get_current_host_fqdn() {
+    // Get the short name of the current host first.
+    boost::system::error_code ec;
+    string const hostname = boost::asio::ip::host_name(ec);
+    if (ec.value() != 0) {
+        throw runtime_error("Registry::" + string(__func__) +
+                            " boost::asio::ip::host_name failed: " + ec.category().name() + string(":") +
+                            to_string(ec.value()) + "[" + ec.message() + "]");
+    }
+
+    // Get the host's FQDN(s)
+    struct addrinfo hints;
+    memset(&hints, 0, sizeof hints);
+    hints.ai_family = AF_UNSPEC;     /* either IPV4 or IPV6 */
+    hints.ai_socktype = SOCK_STREAM; /* IP */
+    hints.ai_flags = AI_CANONNAME;   /* canonical name */
+    struct addrinfo* info;
+    while (true) {
+        int const retCode = getaddrinfo(hostname.data(), "http", &hints, &info);
+        if (retCode == 0) break;
+        if (retCode == EAI_AGAIN) continue;
+        throw runtime_error("Registry::" + string(__func__) +
+                            " getaddrinfo failed: " + gai_strerror(retCode));
+    }
+    string fqdn;
+    for (struct addrinfo* p = info; p != NULL; p = p->ai_next) {
+        if (!fqdn.empty()) fqdn += ",";
+        fqdn += p->ai_canonname;
+    }
+    freeaddrinfo(info);
+    return fqdn;
+}
 
 }  // namespace
 
@@ -95,7 +142,7 @@ vector<WorkerInfo> Registry::workers() const {
 }
 
 void Registry::add(string const& name) const {
-    string const hostName = boost::asio::ip::host_name();
+    string const hostName = ::get_current_host_fqdn();
     auto const config = _serviceProvider->config();
     json const request =
             json::object({{"instance_id", _serviceProvider->instanceId()},
