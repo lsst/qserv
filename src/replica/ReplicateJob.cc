@@ -60,10 +60,13 @@ ReplicateJob::ReplicateJob(string const& databaseFamily, unsigned int numReplica
                            CallbackType const& onFinish, int priority)
         : Job(controller, parentJobId, "REPLICATE", priority),
           _databaseFamily(databaseFamily),
-          _numReplicas(numReplicas
-                               ? numReplicas
-                               : controller->serviceProvider()->config()->replicationLevel(databaseFamily)),
-          _onFinish(onFinish) {}
+          _numReplicas(controller->serviceProvider()->config()->effectiveReplicationLevel(databaseFamily,
+                                                                                          numReplicas)),
+          _onFinish(onFinish) {
+    if (0 == _numReplicas) {
+        throw invalid_argument(typeName() + "::" + string(__func__) + "  0 replicas is not allowed");
+    }
+}
 
 ReplicateJobResult const& ReplicateJob::getReplicaData() const {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);

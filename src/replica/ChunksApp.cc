@@ -292,8 +292,8 @@ int ChunksApp::runImpl() {
         vector<string> columnNumQservReplicas;
         vector<string> columnNumQservReplicasDiff;
         vector<string> columnReplicasAtWorkers;
-
-        size_t const replicationLevel = serviceProvider()->config()->replicationLevel(_databaseFamily);
+        auto const config = serviceProvider()->config();
+        size_t const replicationLevel = config->effectiveReplicationLevel(_databaseFamily);
 
         for (auto&& chunk : replicaData.chunks) {
             auto&& chunkNumber = chunk.first;
