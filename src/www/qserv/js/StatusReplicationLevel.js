@@ -75,12 +75,13 @@ function(CSSLoader,
   <div class="col-md-4">
     <p>This dynamically updated table shows the <span style="font-weight:bold;">Act</span>ual replication
       levels for chunks across all known <span style="font-weight:bold;">Database</span>s.
-      These levels may also be below or above the <span style="font-weight:bold;">Req</span>uired
-      level which is set for each database <span style="font-weight:bold;">Family</span> in
-      a configuration of the system. The levels may change for some chunks depending on
-      a number of worker nodes which are <span style="font-weight:bold;">On-line</span> or
-      <span style="font-weight:bold;">Inactive</span> (not responding) at a time when this
-      table gets updated.
+      These levels may also be below or above the <span style="font-weight:bold;">Eff</span>ective
+      level which is allowed in the current configuration of Qserv. Note that the effective level
+      may be lower than the <span style="font-weight:bold;">Req</span>iured one that's specified
+      set in the configuration of the corresponding database <span style="font-weight:bold;">Family</span>.
+      The levels may change for some chunks depending on a number of worker nodes which are
+      <span style="font-weight:bold;">On-line</span> or <span style="font-weight:bold;">Inactive</span> (not
+      responding) at a time when this page gets updated.
     </p>
     <p>Numbers under the
       <span style="font-weight:bold;">&plus;&nbsp;Inactive</span> columns
@@ -89,18 +90,6 @@ function(CSSLoader,
       <span style="font-weight:bold;">On-line</span> based on the last successful
       replica disposition scan of those nodes.
     </p>
-    <p><span style="font-weight:bold;">HINT:</span> there seems to be a significant
-      redundancy in the <span style="font-weight:bold;">Act</span>ual number of
-      replicas well above the minimally <span style="font-weight:bold;">Req</span>uired
-      level. Consider running the replica <span style="font-weight:bold;">Purge</span>
-      tool.
-    </p>
-    <p><span style="font-weight:bold;">TODO:</span></p>
-    <ul>
-      <li>add a hyperlink to the Configuration section within this application</li>
-      <li>add a hyperlink to the Workers tab to show a status of he workers</li>
-      <li>add a hyperlink the replica <span style="font-weight:bold;">Purge</span> tool</li>
-    </ul>
   </div>
   <div class="col-md-8">
     <table class="table table-sm table-hover table-bordered" id="fwk-status-level">
@@ -111,6 +100,7 @@ function(CSSLoader,
         <tr>
           <th rowspan="3" style="vertical-align:middle">Family</th>
           <th rowspan="3" style="vertical-align:middle">Req.</th>
+          <th rowspan="3" style="vertical-align:middle">Eff.</th>
           <th rowspan="3" style="vertical-align:middle">Database</th>
           <th rowspan="3" style="vertical-align:middle; text-align:right; border-right-color:#A9A9A9">Act.</th>
           <th colspan="4" style="text-align:right; border-right-color:#A9A9A9">Qserv</th>
@@ -208,9 +198,9 @@ function(CSSLoader,
                                 // Apply optional color schemes to rows depending on a value
                                 // of the replication level relative to the required one.
                                 let cssClass = '';
-                                if      (level == 0)                cssClass = 'class="table-danger"';
-                                else if (level == familyInfo.level) cssClass = 'class="table-success"';
-                                else if (level <  familyInfo.level) cssClass = 'class="table-warning"';
+                                if (level == 0) cssClass = 'class="table-danger"';
+                                else if (level == familyInfo.effective_level) cssClass = 'class="table-success"';
+                                else if (level < familyInfo.effective_level) cssClass = 'class="table-warning"';
 
                                 databaseHtml = `
 <tr ${cssClass}>
@@ -234,6 +224,7 @@ function(CSSLoader,
 <tr>
   <td rowspan="`+familyRowSpan+`" style="vertical-align:middle">`+family+`</td>
   <th rowspan="`+familyRowSpan+`" style="vertical-align:middle; text-align:center;" scope="row"><pre>`+familyInfo.level+`</pre></th>
+  <th rowspan="`+familyRowSpan+`" style="vertical-align:middle; text-align:center;" scope="row"><pre>`+familyInfo.effective_level+`</pre></th>
 </tr>`;
                         html += familyHtml;
                     }
