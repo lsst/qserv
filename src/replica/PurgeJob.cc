@@ -57,11 +57,10 @@ PurgeJob::PurgeJob(string const& databaseFamily, unsigned int numReplicas, Contr
                    string const& parentJobId, CallbackType const& onFinish, int priority)
         : Job(controller, parentJobId, "PURGE", priority),
           _databaseFamily(databaseFamily),
-          _numReplicas(numReplicas
-                               ? numReplicas
-                               : controller->serviceProvider()->config()->replicationLevel(databaseFamily)),
+          _numReplicas(controller->serviceProvider()->config()->effectiveReplicationLevel(databaseFamily,
+                                                                                          numReplicas)),
           _onFinish(onFinish) {
-    if (not _numReplicas) {
+    if (0 == _numReplicas) {
         throw invalid_argument(typeName() + "::" + string(__func__) + "  0 replicas is not allowed");
     }
 }

@@ -55,7 +55,6 @@ struct {
     unsigned int const workerResponseTimeoutSec = 60;
     unsigned int const workerEvictTimeoutSec = 3600;
     unsigned int const qservSyncTimeoutSec = 1800;
-    unsigned int const numReplicas = 0;
     unsigned int const workerReconfigTimeoutSec = 600;
 
     bool const purge = false;
@@ -97,7 +96,6 @@ MasterControllerHttpApp::MasterControllerHttpApp(int argc, char* argv[])
           _workerResponseTimeoutSec(::defaultOptions.workerResponseTimeoutSec),
           _workerEvictTimeoutSec(::defaultOptions.workerEvictTimeoutSec),
           _qservSyncTimeoutSec(::defaultOptions.qservSyncTimeoutSec),
-          _numReplicas(::defaultOptions.numReplicas),
           _workerReconfigTimeoutSec(::defaultOptions.workerReconfigTimeoutSec),
           _purge(::defaultOptions.purge),
           _forceQservSync(::defaultOptions.forceQservSync),
@@ -143,13 +141,6 @@ MasterControllerHttpApp::MasterControllerHttpApp(int argc, char* argv[])
                   " This affect replicas to be deleted from the workers during the synchronization"
                   " stages.",
                   _forceQservSync);
-    parser().option("replicas",
-                    "The minimal number of replicas when running the replication phase"
-                    " This number if provided and if it's not " +
-                            to_string(defaultOptions.numReplicas) +
-                            " will override the corresponding value found"
-                            " in the Configuration.",
-                    _numReplicas);
     parser().flag("purge",
                   "The binary flag which, if provided, enables the 'purge' algorithm in"
                   " the end of each replication cycle that eliminates excess replicas which"
@@ -201,7 +192,7 @@ int MasterControllerHttpApp::runImpl() {
 
     _replicationTask = ReplicationTask::create(
             _controller, [self](Task::Ptr const& ptr) { self->_isFailed.fail(); }, _qservSyncTimeoutSec,
-            _forceQservSync, _replicationIntervalSec, _numReplicas, _purge);
+            _forceQservSync, _replicationIntervalSec, _purge);
     _replicationTask->start();
 
     _healthMonitorTask = HealthMonitorTask::create(
@@ -282,7 +273,6 @@ void MasterControllerHttpApp::_logControllerStartedEvent() const {
     event.kvInfo.emplace_back("qserv-sync-timeout", to_string(_qservSyncTimeoutSec));
     event.kvInfo.emplace_back("qserv-sync-force", bool2str(_forceQservSync));
     event.kvInfo.emplace_back("worker-config-timeout", to_string(_workerReconfigTimeoutSec));
-    event.kvInfo.emplace_back("replicas", to_string(_numReplicas));
     event.kvInfo.emplace_back("purge", bool2str(_purge));
     event.kvInfo.emplace_back("permanent-worker-delete", bool2str(_permanentDelete));
 

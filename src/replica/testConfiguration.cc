@@ -128,6 +128,7 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestReadingGeneralParameters) {
     BOOST_CHECK(config->get<string>("controller", "empty-chunks-dir") == "/qserv/data/qserv");
     BOOST_CHECK(config->get<unsigned int>("controller", "job-timeout-sec") == 200);
     BOOST_CHECK(config->get<unsigned int>("controller", "job-heartbeat-sec") == 300);
+    BOOST_CHECK(config->get<unsigned int>("controller", "max-repl-level") == 2);
     BOOST_CHECK(config->get<int>("controller", "worker-evict-priority-level") == 1);
     BOOST_CHECK(config->get<int>("controller", "health-monitor-priority-level") == 2);
     BOOST_CHECK(config->get<int>("controller", "ingest-priority-level") == 3);
@@ -230,6 +231,10 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestModifyingGeneralParameters) {
 
     BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("controller", "job-heartbeat-sec", 0));
     BOOST_CHECK(config->get<unsigned int>("controller", "job-heartbeat-sec") == 0);
+
+    BOOST_CHECK_THROW(config->set<unsigned int>("controller", "max-repl-level", 0), std::invalid_argument);
+    BOOST_REQUIRE_NO_THROW(config->set<int>("controller", "max-repl-level", 3));
+    BOOST_CHECK(config->get<unsigned int>("controller", "max-repl-level") == 3);
 
     BOOST_REQUIRE_NO_THROW(config->set<int>("controller", "worker-evict-priority-level", 1));
     BOOST_CHECK(config->get<int>("controller", "worker-evict-priority-level") == 1);
@@ -368,6 +373,7 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestWorkers) {
     BOOST_REQUIRE_NO_THROW(workers1 = config->workers());
     BOOST_CHECK(workers1.size() == 1);
     BOOST_CHECK(workers1 == vector<string>({"worker-A"}));
+    BOOST_CHECK(config->numWorkers() == 1);
 
     // Explicit values of the worker selectors.
     bool isEnabled = true;
@@ -521,24 +527,24 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestFamilies) {
     DatabaseFamilyInfo production;
     BOOST_REQUIRE_NO_THROW(production = config->databaseFamilyInfo("production"));
     BOOST_CHECK(production.name == "production");
-    BOOST_CHECK(production.replicationLevel == 10);
+    BOOST_CHECK(production.replicationLevel == 1);
     BOOST_CHECK(production.numStripes == 11);
     BOOST_CHECK(production.numSubStripes == 12);
     BOOST_CHECK(abs(production.overlap - 0.01667) <= numeric_limits<double>::epsilon());
     DatabaseFamilyInfo test;
     BOOST_REQUIRE_NO_THROW(test = config->databaseFamilyInfo("test"));
     BOOST_CHECK(test.name == "test");
-    BOOST_CHECK(test.replicationLevel == 13);
+    BOOST_CHECK(test.replicationLevel == 2);
     BOOST_CHECK(test.numStripes == 14);
     BOOST_CHECK(test.numSubStripes == 15);
     BOOST_CHECK(abs(test.overlap - 0.001) <= numeric_limits<double>::epsilon());
-    BOOST_CHECK(config->replicationLevel("production") == 10);
-    BOOST_CHECK(config->replicationLevel("test") == 13);
+    BOOST_CHECK(config->replicationLevel("production") == 1);
+    BOOST_CHECK(config->replicationLevel("test") == 2);
 
     // Adding new families.
     DatabaseFamilyInfo newFamily;
     newFamily.name = "new";
-    newFamily.replicationLevel = 300;
+    newFamily.replicationLevel = 3;
     newFamily.numStripes = 301;
     newFamily.numSubStripes = 302;
     newFamily.overlap = 0.001;
@@ -547,10 +553,26 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestFamilies) {
     BOOST_REQUIRE_NO_THROW(newFamilyAdded = config->addDatabaseFamily(newFamily));
     BOOST_CHECK(config->isKnownDatabaseFamily("new"));
     BOOST_CHECK(newFamilyAdded.name == "new");
-    BOOST_CHECK(newFamilyAdded.replicationLevel == 300);
+    BOOST_CHECK(newFamilyAdded.replicationLevel == 3);
     BOOST_CHECK(newFamilyAdded.numStripes == 301);
     BOOST_CHECK(newFamilyAdded.numSubStripes == 302);
     BOOST_CHECK(abs(newFamilyAdded.overlap - 0.001) <= numeric_limits<double>::epsilon());
+
+    // Modify the replication level
+    BOOST_REQUIRE_THROW(config->setReplicationLevel("", 5), std::invalid_argument);
+    BOOST_REQUIRE_THROW(config->setReplicationLevel(newFamilyAdded.name, 0), std::invalid_argument);
+    BOOST_REQUIRE_NO_THROW(config->setReplicationLevel(newFamilyAdded.name, 5));
+    BOOST_CHECK(config->databaseFamilyInfo(newFamilyAdded.name).replicationLevel == 5);
+
+    // Test the effictive level
+    BOOST_CHECK(config->effectiveReplicationLevel(newFamilyAdded.name) <= newFamilyAdded.replicationLevel);
+    BOOST_CHECK(config->effectiveReplicationLevel(newFamilyAdded.name) <= config->numWorkers());
+    BOOST_CHECK(config->effectiveReplicationLevel(newFamilyAdded.name) <=
+                config->get<size_t>("controller", "max-repl-level"));
+    BOOST_CHECK(config->effectiveReplicationLevel(newFamilyAdded.name, 6) <= 6);
+    BOOST_CHECK(config->effectiveReplicationLevel(newFamilyAdded.name, 6) <= config->numWorkers());
+    BOOST_CHECK(config->effectiveReplicationLevel(newFamilyAdded.name, 6) <=
+                config->get<size_t>("controller", "max-repl-level"));
 
     // Deleting existing families,
     BOOST_REQUIRE_NO_THROW(config->deleteDatabaseFamily("new"));

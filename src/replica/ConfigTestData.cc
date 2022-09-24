@@ -34,8 +34,9 @@ map<string, set<string>> ConfigTestData::parameters() {
              {"controller",
               {"num-threads", "http-server-port", "http-max-listen-conn", "http-server-threads",
                "request-timeout-sec", "job-timeout-sec", "job-heartbeat-sec", "empty-chunks-dir",
-               "worker-evict-priority-level", "health-monitor-priority-level", "ingest-priority-level",
-               "catalog-management-priority-level", "auto-register-workers", "ingest-job-monitor-ival-sec"}},
+               "max-repl-level", "worker-evict-priority-level", "health-monitor-priority-level",
+               "ingest-priority-level", "catalog-management-priority-level", "auto-register-workers",
+               "ingest-job-monitor-ival-sec"}},
              {"database",
               {"services-pool-size", "host", "port", "user", "password", "name", "qserv-master-user",
                "qserv-master-services-pool-size", "qserv-master-tmp-dir"}},
@@ -82,6 +83,7 @@ json ConfigTestData::data() {
                                              {"job-timeout-sec", 200},
                                              {"job-heartbeat-sec", 300},
                                              {"empty-chunks-dir", "/qserv/data/qserv"},
+                                             {"max-repl-level", 2},
                                              {"worker-evict-priority-level", 1},
                                              {"health-monitor-priority-level", 2},
                                              {"ingest-priority-level", 3},
@@ -178,7 +180,7 @@ json ConfigTestData::data() {
     obj["database_families"] = json::array();
     {
         json family = json::object({{"name", "production"},
-                                    {"min_replication_level", 10},
+                                    {"min_replication_level", 1},
                                     {"num_stripes", 11},
                                     {"num_sub_stripes", 12},
                                     {"overlap", 0.01667}});
@@ -186,7 +188,7 @@ json ConfigTestData::data() {
     }
     {
         json family = json::object({{"name", "test"},
-                                    {"min_replication_level", 13},
+                                    {"min_replication_level", 2},
                                     {"num_stripes", 14},
                                     {"num_sub_stripes", 15},
                                     {"overlap", 0.001}});

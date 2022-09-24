@@ -23,6 +23,7 @@
 #include "replica/Configuration.h"
 
 // System headers
+#include <algorithm>
 #include <chrono>
 #include <thread>
 
@@ -374,6 +375,24 @@ vector<string> Configuration::workers(bool isEnabled, bool isReadOnly) const {
     return names;
 }
 
+size_t Configuration::numWorkers(bool isEnabled, bool isReadOnly) const {
+    util::Lock const lock(_mtx, _context(__func__));
+    return _numWorkers(lock, isEnabled, isReadOnly);
+}
+
+size_t Configuration::_numWorkers(util::Lock const& lock, bool isEnabled, bool isReadOnly) const {
+    size_t result = 0;
+    for (auto&& itr : _workers) {
+        WorkerInfo const& worker = itr.second;
+        if (isEnabled) {
+            if (worker.isEnabled && (isReadOnly == worker.isReadOnly)) result++;
+        } else {
+            if (!worker.isEnabled) result++;
+        }
+    }
+    return result;
+}
+
 vector<string> Configuration::allWorkers() const {
     util::Lock const lock(_mtx, _context(__func__));
     vector<string> names;
@@ -457,6 +476,35 @@ void Configuration::deleteDatabaseFamily(string const& familyName) {
 size_t Configuration::replicationLevel(string const& familyName) const {
     util::Lock const lock(_mtx, _context(__func__));
     return _databaseFamilyInfo(lock, familyName).replicationLevel;
+}
+
+size_t Configuration::effectiveReplicationLevel(string const& familyName, size_t desiredReplicationLevel,
+                                                bool workerIsEnabled, bool workerIsReadOnly) const {
+    // IMPORTANT: Obtain a value of the hard limit before acquiring the lock
+    // on the mutex in order to avoid a deadlock.
+    size_t const hardLimit = this->get<size_t>("controller", "max-repl-level");
+    util::Lock const lock(_mtx, _context(__func__));
+    DatabaseFamilyInfo const& family = _databaseFamilyInfo(lock, familyName);
+    size_t const adjustedReplicationLevel =
+            desiredReplicationLevel == 0 ? family.replicationLevel : desiredReplicationLevel;
+    return std::min(
+            {adjustedReplicationLevel, hardLimit, _numWorkers(lock, workerIsEnabled, workerIsReadOnly)});
+}
+
+void Configuration::setReplicationLevel(string const& familyName, size_t newReplicationLevel) {
+    util::Lock const lock(_mtx, _context(__func__));
+    DatabaseFamilyInfo& family = _databaseFamilyInfo(lock, familyName);
+    if (newReplicationLevel == 0) {
+        throw invalid_argument(_context(__func__) + " replication level must be greater than 0.");
+    }
+    if (_connectionPtr != nullptr) {
+        string const query =
+                _g.update("config_database_family", make_pair("min_replication_level", newReplicationLevel)) +
+                _g.where(_g.eq("name", family.name));
+        _connectionPtr->executeInOwnTransaction(
+                [&query](decltype(_connectionPtr) conn) { conn->execute(query); });
+    }
+    family.replicationLevel = newReplicationLevel;
 }
 
 vector<string> Configuration::databases(string const& familyName, bool allDatabases, bool isPublished) const {

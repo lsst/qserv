@@ -66,25 +66,50 @@ HttpReplicationLevelsModule::HttpReplicationLevelsModule(Controller::Ptr const& 
           _healthMonitorTask(healthMonitorTask) {}
 
 json HttpReplicationLevelsModule::executeImpl(string const& subModuleName) {
-    debug(__func__);
+    if (subModuleName == "GET")
+        return _get();
+    else if (subModuleName == "SET")
+        return _set();
+    throw invalid_argument("HttpReplicationLevelsModule::" + string(__func__) + " unsupported sub-module: '" +
+                           subModuleName + "'");
+}
 
+json HttpReplicationLevelsModule::_get() {
+    debug(__func__);
+    return _makeReport();
+}
+
+json HttpReplicationLevelsModule::_set() {
+    debug(__func__);
+    if (!isAdmin()) {
+        throw HttpError(__func__, "administrator's privileges are required for changing replication levels.");
+    }
+    string const familyName = body().required<string>("family");
+    size_t const replicationLevel = body().required<size_t>("replication_level");
+    debug(__func__, "family=" + familyName);
+    debug(__func__, "replication_level=" + to_string(replicationLevel));
+    // The replica setting method will validate values of both parameters and throw
+    // an exception if either (or both) value will not be correct.
+    controller()->serviceProvider()->config()->setReplicationLevel(familyName, replicationLevel);
+    bool const force = true;
+    return _makeReport(force);
+}
+
+json HttpReplicationLevelsModule::_makeReport(bool force) {
     util::Lock lock(_replicationLevelMtx, "HttpReplicationLevelsModule::" + string(__func__));
 
-    // Check if a cached report can be used
+    // Check if a cached report can be used (unless in the 'forced' mode)
     //
     // TODO: add a cache control parameter to the class's constructor,
     // or (even better) extract it from an optional parameter of the request
     // to let a client decide on how "stale" the result is expected to be.
-
-    if (not _replicationLevelReport.is_null()) {
+    if (!force && !_replicationLevelReport.is_null()) {
         uint64_t const lastReportAgeMs = PerformanceUtils::now() - _replicationLevelReportTimeMs;
         if (lastReportAgeMs < 240 * 1000) return _replicationLevelReport;
     }
 
     // Otherwise, get the fresh snapshot of the replica distributions
-
     auto const config = controller()->serviceProvider()->config();
-
     auto const healthMonitorTask = _healthMonitorTask.lock();
     if (nullptr == healthMonitorTask) {
         throw HttpError(__func__,
@@ -92,7 +117,6 @@ json HttpReplicationLevelsModule::executeImpl(string const& subModuleName) {
                         " The service may be shutting down.");
     }
     auto const delays = healthMonitorTask->workerResponseDelay();
-
     vector<string> disabledQservWorkers;
     vector<string> disabledReplicationWorkers;
     for (auto&& entry : delays) {
@@ -107,18 +131,15 @@ json HttpReplicationLevelsModule::executeImpl(string const& subModuleName) {
             disabledReplicationWorkers.push_back(worker);
         }
     }
-
     json result;
-    for (auto&& family : config->databaseFamilies()) {
-        size_t const replicationLevel = config->databaseFamilyInfo(family).replicationLevel;
-        result["families"][family]["level"] = replicationLevel;
-
-        for (auto&& database : config->databases(family)) {
+    for (auto&& familyName : config->databaseFamilies()) {
+        result["families"][familyName]["level"] = config->databaseFamilyInfo(familyName).replicationLevel;
+        result["families"][familyName]["effective_level"] = config->effectiveReplicationLevel(familyName);
+        for (auto&& database : config->databases(familyName)) {
             debug(string(__func__) + "  database=" + database);
 
             // Get observed replication levels for workers which are on-line
             // as well as for the whole cluster (if there in-active workers).
-
             auto const onlineQservLevels =
                     controller()->serviceProvider()->databaseServices()->actualReplicationLevel(
                             database, disabledQservWorkers);
@@ -128,11 +149,9 @@ json HttpReplicationLevelsModule::executeImpl(string const& subModuleName) {
                             ? onlineQservLevels
                             : controller()->serviceProvider()->databaseServices()->actualReplicationLevel(
                                       database);
-
             auto const onLineReplicationSystemLevels =
                     controller()->serviceProvider()->databaseServices()->actualReplicationLevel(
                             database, disabledReplicationWorkers);
-
             auto const allReplicationSystemLevels =
                     disabledReplicationWorkers.empty()
                             ? onLineReplicationSystemLevels
@@ -143,13 +162,11 @@ json HttpReplicationLevelsModule::executeImpl(string const& subModuleName) {
             // will be associated with the replication level 0. Also note, that these
             // chunks will be contributing into the total number of chunks when computing
             // the percentage of each replication level.
-
             size_t const numOrphanQservChunks =
                     disabledQservWorkers.empty()
                             ? 0
                             : controller()->serviceProvider()->databaseServices()->numOrphanChunks(
                                       database, disabledQservWorkers);
-
             size_t const numOrphanReplicationSystemChunks =
                     disabledReplicationWorkers.empty()
                             ? 0
@@ -161,27 +178,22 @@ json HttpReplicationLevelsModule::executeImpl(string const& subModuleName) {
             // cells will be filled from the above captured reports.
             //
             // Also, while doing so compute the total number of chunks in each context.
-
             unsigned int maxObservedLevel = 0;
-
             size_t numOnlineQservChunks = numOrphanQservChunks;
             for (auto&& entry : onlineQservLevels) {
                 maxObservedLevel = max(maxObservedLevel, entry.first);
                 numOnlineQservChunks += entry.second;
             }
-
             size_t numAllQservChunks = 0;
             for (auto&& entry : allQservLevels) {
                 maxObservedLevel = max(maxObservedLevel, entry.first);
                 numAllQservChunks += entry.second;
             }
-
             size_t numOnlineReplicationSystemChunks = numOrphanReplicationSystemChunks;
             for (auto&& entry : onLineReplicationSystemLevels) {
                 maxObservedLevel = max(maxObservedLevel, entry.first);
                 numOnlineReplicationSystemChunks += entry.second;
             }
-
             size_t numAllReplicationSystemChunks = 0;
             for (auto&& entry : allReplicationSystemLevels) {
                 maxObservedLevel = max(maxObservedLevel, entry.first);
@@ -190,9 +202,7 @@ json HttpReplicationLevelsModule::executeImpl(string const& subModuleName) {
 
             // Pre-initialize the database-specific result with zeroes for all
             // levels in the range of [0,maxObservedLevel]
-
             json databaseJson;
-
             for (int level = maxObservedLevel; level >= 0; --level) {
                 databaseJson["levels"][level]["qserv"]["online"]["num_chunks"] = 0;
                 databaseJson["levels"][level]["qserv"]["online"]["percent"] = 0.;
@@ -205,7 +215,6 @@ json HttpReplicationLevelsModule::executeImpl(string const& subModuleName) {
             }
 
             // Fill-in non-blank areas
-
             for (auto&& entry : onlineQservLevels) {
                 unsigned int const level = entry.first;
                 size_t const numChunks = entry.second;
@@ -254,15 +263,12 @@ json HttpReplicationLevelsModule::executeImpl(string const& subModuleName) {
                         numOrphanReplicationSystemChunks;
                 databaseJson["levels"][0]["replication"]["online"]["percent"] = percent;
             }
-            result["families"][family]["databases"][database] = databaseJson;
+            result["families"][familyName]["databases"][database] = databaseJson;
         }
     }
-
     // Update the cache before sending the response
-
     _replicationLevelReport = result;
     _replicationLevelReportTimeMs = PerformanceUtils::now();
-
     return _replicationLevelReport;
 }
 
