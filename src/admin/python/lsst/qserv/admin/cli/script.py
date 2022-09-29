@@ -615,7 +615,6 @@ def enter_proxy(
             "czar_db_host": url.host or "",
             "czar_db_port": url.port or "",
             "czar_db_socket": url.query.get("socket", ""),
-            "log_config_file": log_cfg_file
         }
     )
 
@@ -631,7 +630,7 @@ def enter_proxy(
     #  qmeta: mysqld_user_qserv
     smig_czar(db_admin_uri, update=False)
 
-    env = dict(os.environ, QSERV_CONFIG=czar_cfg_path)
+    env = dict(os.environ, LSST_LOG_CONFIG=log_cfg_file, QSERV_CONFIG=czar_cfg_path, )
 
     sys.exit(_run(args=None, cmd=cmd, env=env))
 
