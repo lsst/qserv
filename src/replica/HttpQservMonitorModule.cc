@@ -145,6 +145,7 @@ json HttpQservMonitorModule::executeImpl(string const& subModuleName) {
 
 json HttpQservMonitorModule::_workers() {
     debug(__func__);
+    checkApiVersion(__func__, 12);
 
     unsigned int const timeoutSec = query().optionalUInt("timeout_sec", workerResponseTimeoutSec());
     bool const keepResources = query().optionalUInt("keep_resources", 0) != 0;
@@ -198,6 +199,7 @@ json HttpQservMonitorModule::_workers() {
 
 json HttpQservMonitorModule::_worker() {
     debug(__func__);
+    checkApiVersion(__func__, 12);
 
     auto const worker = params().at("worker");
     unsigned int const timeoutSec = query().optionalUInt("timeout_sec", workerResponseTimeoutSec());
@@ -227,6 +229,7 @@ json HttpQservMonitorModule::_worker() {
 
 json HttpQservMonitorModule::_userQueries() {
     debug(__func__);
+    checkApiVersion(__func__, 12);
 
     auto const config = controller()->serviceProvider()->config();
 
@@ -316,6 +319,8 @@ json HttpQservMonitorModule::_userQueries() {
 
 json HttpQservMonitorModule::_userQuery() {
     debug(__func__);
+    checkApiVersion(__func__, 12);
+
     auto const queryId = stoull(params().at("id"));
     bool const includeMessages = query().optionalUInt("include_messages", 0) != 0;
 
@@ -476,6 +481,8 @@ json HttpQservMonitorModule::_getQueries(json& workerInfo) const {
 
 json HttpQservMonitorModule::_cssSharedScan() {
     debug(__func__);
+    checkApiVersion(__func__, 12);
+
     // Results are packed into the dictionary: family->database->table-sharedScan
     json resultSharedScan;
     auto const config = controller()->serviceProvider()->config();

@@ -2,11 +2,13 @@ define([
     'webfwk/CSSLoader',
     'webfwk/Fwk',
     'webfwk/FwkApplication',
+    'qserv/Common',
     'underscore'],
 
 function(CSSLoader,
          Fwk,
          FwkApplication,
+         Common,
          _) {
 
     CSSLoader.load('qserv/css/ToolsSql.css');
@@ -154,11 +156,12 @@ function(CSSLoader,
             this._table().children('caption').removeClass('error').addClass('updating');
             Fwk.web_service_POST(
                 "/replication/sql/query",
-                {   'worker':   this._worker().val(),
-                    'user':     this._user().val(),
-                    'password': this._password().val(),
-                    'auth_key': this._auth_key().val(),
-                    'query':    this._query().val()
+                {   worker: this._worker().val(),
+                    user: this._user().val(),
+                    password: this._password().val(),
+                    auth_key: this._auth_key().val(),
+                    query: this._query().val(),
+                    version: Common.RestAPIVersion
                 },
                 (data) => {
                     Fwk.setLastUpdate(this._table().children('caption'));

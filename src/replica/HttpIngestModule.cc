@@ -185,6 +185,7 @@ json HttpIngestModule::executeImpl(string const& subModuleName) {
 
 json HttpIngestModule::_getDatabases() {
     debug(__func__);
+    checkApiVersion(__func__, 12);
 
     auto const config = controller()->serviceProvider()->config();
 
@@ -196,7 +197,6 @@ json HttpIngestModule::_getDatabases() {
     // the current implementation of a method fetching the requested names of
     // databases from the system's configuration.
     string const family = body().optional<string>("family", string());
-
     bool const allDatabases = body().optional<unsigned int>("all", 1) != 0;
 
     // This parameter is used only if a subset of databases specified in the optional
@@ -206,7 +206,6 @@ json HttpIngestModule::_getDatabases() {
     if (!allDatabases) {
         isPublished = body().required<unsigned int>("published") != 0;
     }
-
     debug(__func__, "family=" + family);
     debug(__func__, "allDatabases=" + bool2str(allDatabases));
     debug(__func__, "isPublished=" + bool2str(isPublished));
@@ -223,6 +222,7 @@ json HttpIngestModule::_getDatabases() {
 
 json HttpIngestModule::_addDatabase() {
     debug(__func__);
+    checkApiVersion(__func__, 12);
 
     auto const config = controller()->serviceProvider()->config();
     auto const databaseServices = controller()->serviceProvider()->databaseServices();
@@ -312,6 +312,7 @@ json HttpIngestModule::_addDatabase() {
 
 json HttpIngestModule::_publishDatabase() {
     debug(__func__);
+    checkApiVersion(__func__, 12);
 
     bool const allWorkers = true;
     auto const databaseServices = controller()->serviceProvider()->databaseServices();
@@ -407,6 +408,7 @@ json HttpIngestModule::_publishDatabase() {
 
 json HttpIngestModule::_deleteDatabase() {
     debug(__func__);
+    checkApiVersion(__func__, 12);
 
     auto const cssAccess = qservCssAccess();
     auto const config = controller()->serviceProvider()->config();
@@ -505,6 +507,7 @@ json HttpIngestModule::_deleteDatabase() {
 
 json HttpIngestModule::_getTables() {
     debug(__func__);
+    checkApiVersion(__func__, 12);
 
     auto const config = controller()->serviceProvider()->config();
     auto const databaseName = params().at("database");
@@ -525,6 +528,7 @@ json HttpIngestModule::_getTables() {
 
 json HttpIngestModule::_addTable() {
     debug(__func__);
+    checkApiVersion(__func__, 12);
 
     TableInfo table;
     table.database = body().required<string>("database");
@@ -538,6 +542,7 @@ json HttpIngestModule::_addTable() {
     table.longitudeColName = body().optional<string>("longitude_key", "");
     table.flagColName = body().optional<string>("flag", "");
     table.angSep = body().optional<double>("ang_sep", 0);
+
     auto const schema = body().required<json>("schema");
 
     debug(__func__, "database=" + table.database);
@@ -657,6 +662,7 @@ json HttpIngestModule::_addTable() {
 
 json HttpIngestModule::_deleteTable() {
     debug(__func__);
+    checkApiVersion(__func__, 12);
 
     auto const cssAccess = qservCssAccess();
     auto const config = controller()->serviceProvider()->config();
@@ -742,6 +748,7 @@ json HttpIngestModule::_deleteTable() {
 
 json HttpIngestModule::_scanTableStats() {
     debug(__func__);
+    checkApiVersion(__func__, 12);
 
     auto const config = controller()->serviceProvider()->config();
     auto const databaseName = body().required<string>("database");
@@ -935,6 +942,7 @@ json HttpIngestModule::_scanTableStatsImpl(string const& databaseName, string co
 
 json HttpIngestModule::_deleteTableStats() {
     debug(__func__);
+    checkApiVersion(__func__, 12);
 
     auto const table = _getTableInfo(__func__);
     bool const qservOnly = body().optional<int>("qserv_only", 0) != 0;
@@ -967,6 +975,7 @@ json HttpIngestModule::_deleteTableStats() {
 
 json HttpIngestModule::_tableStats() {
     debug(__func__);
+    checkApiVersion(__func__, 12);
 
     auto const table = _getTableInfo(__func__);
     TransactionId const transactionId = 0;  // Aggregate counters ingested across all transactions.
@@ -979,6 +988,7 @@ json HttpIngestModule::_tableStats() {
 
 json HttpIngestModule::_buildEmptyChunksList() {
     debug(__func__);
+    checkApiVersion(__func__, 12);
 
     string const databaseName = body().required<string>("database");
     bool const force = body().optional<int>("force", 0) != 0;
@@ -993,6 +1003,7 @@ json HttpIngestModule::_buildEmptyChunksList() {
 
 json HttpIngestModule::_getRegular() {
     debug(__func__);
+    checkApiVersion(__func__, 12);
 
     auto const config = controller()->serviceProvider()->config();
     auto const database = getDatabaseInfo(__func__);

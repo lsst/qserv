@@ -91,6 +91,7 @@ json HttpExportModule::executeImpl(string const& subModuleName) {
 
 json HttpExportModule::_getTables() {
     debug(__func__);
+    checkApiVersion(__func__, 12);
 
     auto const databaseName = params().at("database");
     auto const tablesJson = body().requiredColl<json>("tables");

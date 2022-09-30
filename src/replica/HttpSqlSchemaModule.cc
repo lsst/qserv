@@ -69,6 +69,7 @@ json HttpSqlSchemaModule::executeImpl(string const& subModuleName) {
 
 json HttpSqlSchemaModule::_getTableSchema() {
     debug(__func__);
+    checkApiVersion(__func__, 12);
 
     string const databaseName = params().at("database");
     string const tableName = params().at("table");
@@ -129,6 +130,7 @@ json HttpSqlSchemaModule::_getTableSchema() {
 
 json HttpSqlSchemaModule::_alterTableSchema() {
     debug(__func__);
+    checkApiVersion(__func__, 12);
 
     string const databaseName = params().at("database");
     string const tableName = params().at("table");

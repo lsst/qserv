@@ -61,6 +61,7 @@ HttpCatalogsModule::HttpCatalogsModule(Controller::Ptr const& controller, string
 
 json HttpCatalogsModule::executeImpl(string const& subModuleName) {
     debug(__func__);
+    checkApiVersion(__func__, 12);
 
     util::Lock lock(_catalogsMtx, "HttpCatalogsModule::" + string(__func__));
 

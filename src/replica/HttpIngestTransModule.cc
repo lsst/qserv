@@ -90,6 +90,7 @@ json HttpIngestTransModule::executeImpl(string const& subModuleName) {
 
 json HttpIngestTransModule::_getTransactions() {
     debug(__func__);
+    checkApiVersion(__func__, 12);
 
     auto const config = controller()->serviceProvider()->config();
     auto const databaseServices = controller()->serviceProvider()->databaseServices();
@@ -143,6 +144,7 @@ json HttpIngestTransModule::_getTransactions() {
 
 json HttpIngestTransModule::_getTransaction() {
     debug(__func__);
+    checkApiVersion(__func__, 12);
 
     auto const config = controller()->serviceProvider()->config();
     auto const databaseServices = controller()->serviceProvider()->databaseServices();
@@ -177,6 +179,7 @@ json HttpIngestTransModule::_getTransaction() {
 
 json HttpIngestTransModule::_beginTransaction() {
     debug(__func__);
+    checkApiVersion(__func__, 12);
 
     auto const config = controller()->serviceProvider()->config();
     auto const databaseServices = controller()->serviceProvider()->databaseServices();
@@ -262,6 +265,7 @@ json HttpIngestTransModule::_beginTransaction() {
 
 json HttpIngestTransModule::_endTransaction() {
     debug(__func__);
+    checkApiVersion(__func__, 12);
 
     auto const config = controller()->serviceProvider()->config();
     auto const databaseServices = controller()->serviceProvider()->databaseServices();

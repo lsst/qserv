@@ -1,4 +1,5 @@
 {
+    "version": 12,
     "auth_key":"",
     "database":"qservTest_case01_qserv",
     "table":"Source",

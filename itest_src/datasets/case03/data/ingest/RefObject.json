@@ -1,4 +1,5 @@
 {
+    "version": 12,
     "auth_key":"",
     "database":"qservTest_case03_qserv",
     "table":"RefObject",

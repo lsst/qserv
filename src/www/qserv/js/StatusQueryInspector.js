@@ -2,12 +2,14 @@ define([
     'webfwk/CSSLoader',
     'webfwk/Fwk',
     'webfwk/FwkApplication',
+    'qserv/Common',
     'underscore',
     'modules/sql-formatter.min'],
 
 function(CSSLoader,
          Fwk,
          FwkApplication,
+         Common,
          _,
          sqlFormatter) {
 
@@ -213,8 +215,8 @@ function(CSSLoader,
         }
         _load_query_info(queryId) {
             Fwk.web_service_GET(
-                "/replication/qserv/master/query/" + queryId + "?include_messages=1",
-                {},
+                "/replication/qserv/master/query/" + queryId,
+                {include_messages: 1, version: Common.RestAPIVersion},
                 (data) => {
                     console.log(data["queries_past"]);
                     if (!data.success) {

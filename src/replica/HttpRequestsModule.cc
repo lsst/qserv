@@ -59,6 +59,7 @@ json HttpRequestsModule::executeImpl(string const& subModuleName) {
 
 json HttpRequestsModule::_requests() {
     debug(__func__);
+    checkApiVersion(__func__, 12);
 
     string const jobId = query().optionalString("job_id");
     uint64_t const fromTimeStamp = query().optionalUInt64("from");
@@ -84,6 +85,7 @@ json HttpRequestsModule::_requests() {
 
 json HttpRequestsModule::_oneRequest() {
     debug(__func__);
+    checkApiVersion(__func__, 12);
 
     auto const id = params().at("id");
     try {

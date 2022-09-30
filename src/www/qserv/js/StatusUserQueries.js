@@ -2,12 +2,14 @@ define([
     'webfwk/CSSLoader',
     'webfwk/Fwk',
     'webfwk/FwkApplication',
+    'qserv/Common',
     'underscore',
     'modules/sql-formatter.min'],
 
 function(CSSLoader,
          Fwk,
          FwkApplication,
+         Common,
          _,
          sqlFormatter) {
 

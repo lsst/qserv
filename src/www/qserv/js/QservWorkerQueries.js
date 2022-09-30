@@ -2,11 +2,13 @@ define([
     'webfwk/CSSLoader',
     'webfwk/Fwk',
     'webfwk/FwkApplication',
+    'qserv/Common',
     'underscore'],
 
 function(CSSLoader,
          Fwk,
          FwkApplication,
+         Common,
          _) {
 
     CSSLoader.load('qserv/css/QservWorkerQueries.css');
@@ -97,7 +99,7 @@ function(CSSLoader,
 
             Fwk.web_service_GET(
                 "/replication/qserv/worker/status",
-                {'timeout_sec': 2},
+                {timeout_sec: 2, version: Common.RestAPIVersion},
                 (data) => {
                     this._display(data.status);
                     Fwk.setLastUpdate(this._table().children('caption'));

@@ -2,11 +2,13 @@ define([
     'webfwk/CSSLoader',
     'webfwk/Fwk',
     'webfwk/FwkApplication',
+    'qserv/Common',
     'underscore'],
 
 function(CSSLoader,
          Fwk,
          FwkApplication,
+         Common,
          _) {
 
     CSSLoader.load('qserv/css/ReplicationSchema.css');
@@ -210,7 +212,7 @@ function(CSSLoader,
             if (!this._begin_load()) return;
             Fwk.web_service_GET(
                 "/replication/config",
-                {},
+                {version: Common.RestAPIVersion},
                 (data) => {
                     if (!data.success) {
                         this._end_load(data.error);
@@ -243,7 +245,7 @@ function(CSSLoader,
             if (!this._begin_load()) return;
             Fwk.web_service_GET(
                 "/replication/sql/table/schema/" + this._current_database + "/" + this._current_table,
-                {},
+                {version: Common.RestAPIVersion},
                 (data) => {
                     if (!data.success) {
                         this._end_load(data.error);

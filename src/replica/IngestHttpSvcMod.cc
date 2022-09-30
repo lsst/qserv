@@ -70,12 +70,18 @@ json IngestHttpSvcMod::executeImpl(string const& subModuleName) {
 }
 
 json IngestHttpSvcMod::_syncProcessRequest() const {
+    debug(__func__);
+    checkApiVersion(__func__, 12);
+
     auto const request = _createRequest();
     request->process();
     return json::object({{"contrib", request->transactionContribInfo().toJson()}});
 }
 
 json IngestHttpSvcMod::_asyncSubmitRequest() const {
+    debug(__func__);
+    checkApiVersion(__func__, 12);
+
     bool const async = true;
     auto const request = _createRequest(async);
     _ingestRequestMgr->submit(request);
@@ -83,18 +89,27 @@ json IngestHttpSvcMod::_asyncSubmitRequest() const {
 }
 
 json IngestHttpSvcMod::_asyncRequest() const {
+    debug(__func__);
+    checkApiVersion(__func__, 12);
+
     auto const id = stoul(params().at("id"));
     auto const contrib = _ingestRequestMgr->find(id);
     return json::object({{"contrib", contrib.toJson()}});
 }
 
 json IngestHttpSvcMod::_asyncCancelRequest() const {
+    debug(__func__);
+    checkApiVersion(__func__, 12);
+
     auto const id = stoul(params().at("id"));
     auto const contrib = _ingestRequestMgr->cancel(id);
     return json::object({{"contrib", contrib.toJson()}});
 }
 
 json IngestHttpSvcMod::_asyncTransRequests() const {
+    debug(__func__);
+    checkApiVersion(__func__, 12);
+
     TransactionId const transactionId = stoul(params().at("id"));
     string const anyTable;
     auto const contribs = _serviceProvider->databaseServices()->transactionContribs(
@@ -107,6 +122,9 @@ json IngestHttpSvcMod::_asyncTransRequests() const {
 }
 
 json IngestHttpSvcMod::_asyncTransCancelRequests() const {
+    debug(__func__);
+    checkApiVersion(__func__, 12);
+
     TransactionId const transactionId = stoul(params().at("id"));
     string const anyTable;
     auto const contribs = _serviceProvider->databaseServices()->transactionContribs(

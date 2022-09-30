@@ -24,6 +24,7 @@
 
 // Qserv headers
 #include "replica/HttpExceptions.h"
+#include "replica/HttpMetaModule.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -63,9 +64,50 @@ void HttpModuleBase::execute(string const& subModuleName, HttpAuthType const aut
     }
 }
 
+void HttpModuleBase::checkApiVersion(string const& func, unsigned int minVersion) const {
+    unsigned int const maxVersion = HttpMetaModule::version;
+    unsigned int version = 0;
+    string const versionAttrName = "version";
+    json const errorEx = json::object({{"min_version", minVersion}, {"max_version", maxVersion}});
+
+    // Intercept exceptions thrown when converting the attribute's value (if provided)
+    // in order to inject the allowed range of the version numbers into the extended
+    // error sent back to the caller.
+    //
+    // Note that requests sent w/o explicitly specified API version will still be
+    // processed. In this case a warning will be sent in the response object.
+    try {
+        if (req()->method == "GET") {
+            if (!query().has(versionAttrName)) {
+                _warningOnVersionMissing = "No version number was provided in the request's query.";
+                warn(_warningOnVersionMissing);
+                return;
+            }
+            version = query().requiredUInt(versionAttrName);
+        } else {
+            if (!body().has(versionAttrName)) {
+                _warningOnVersionMissing = "No version number was provided in the request's body.";
+                warn(_warningOnVersionMissing);
+                return;
+            }
+            version = body().required<unsigned int>(versionAttrName);
+        }
+    } catch (...) {
+        throw HttpError(func, "The required parameter " + versionAttrName + " is not a number.", errorEx);
+    }
+    if (!(minVersion <= version && version <= maxVersion)) {
+        throw HttpError(func,
+                        "The requested version " + to_string(version) +
+                                " of the API is not in the range supported by the service.",
+                        errorEx);
+    }
+}
+
 void HttpModuleBase::info(string const& msg) const { LOGS(_log, LOG_LVL_INFO, context() << msg); }
 
 void HttpModuleBase::debug(string const& msg) const { LOGS(_log, LOG_LVL_DEBUG, context() << msg); }
+
+void HttpModuleBase::warn(string const& msg) const { LOGS(_log, LOG_LVL_WARN, context() << msg); }
 
 void HttpModuleBase::error(string const& msg) const { LOGS(_log, LOG_LVL_ERROR, context() << msg); }
 
@@ -75,6 +117,7 @@ void HttpModuleBase::_sendError(string const& func, string const& errorMsg, json
     result["success"] = 0;
     result["error"] = errorMsg;
     result["error_ext"] = errorExt.is_null() ? json::object() : errorExt;
+    result["warning"] = _warningOnVersionMissing;
     resp()->send(result.dump(), "application/json");
 }
 
@@ -82,6 +125,7 @@ void HttpModuleBase::_sendData(json& result) {
     result["success"] = 1;
     result["error"] = "";
     result["error_ext"] = json::object();
+    result["warning"] = _warningOnVersionMissing;
     resp()->send(result.dump(), "application/json");
 }
 

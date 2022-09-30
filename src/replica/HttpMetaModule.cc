@@ -34,7 +34,7 @@ using json = nlohmann::json;
 
 namespace lsst::qserv::replica {
 
-unsigned int const HttpMetaModule::version = 11;
+unsigned int const HttpMetaModule::version = 12;
 
 void HttpMetaModule::process(ServiceProvider::Ptr const& serviceProvider, string const& context,
                              qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp,
@@ -59,6 +59,7 @@ string HttpMetaModule::context() const { return _context; }
 
 json HttpMetaModule::_version() {
     debug(__func__);
+
     json result;
     result["version"] = version;
     result["database_schema_version"] = ConfigParserMySQL::expectedSchemaVersion;

@@ -2,11 +2,13 @@ define([
     'webfwk/CSSLoader',
     'webfwk/Fwk',
     'webfwk/FwkApplication',
+    'qserv/Common',
     'underscore'],
 
 function(CSSLoader,
          Fwk,
          FwkApplication,
+         Common,
          _) {
 
     CSSLoader.load('qserv/css/IngestTransactionsLog.css');
@@ -285,7 +287,7 @@ function(CSSLoader,
         _load_databases() {
             Fwk.web_service_GET(
                 "/replication/config",
-                {},
+                {version: Common.RestAPIVersion},
                 (data) => {
                     if (!data.success) {
                         this._on_failure(data.error);
@@ -311,7 +313,7 @@ function(CSSLoader,
         _load_transactions(current_database) {
             Fwk.web_service_GET(
                 "/ingest/trans",
-                {database: current_database},
+                {database: current_database, version: Common.RestAPIVersion},
                 (data) => {
                     if (!data.success) {
                         this._on_failure(data.error);
@@ -338,7 +340,7 @@ function(CSSLoader,
         _load_transaction_info(current_database, current_transaction) {
             Fwk.web_service_GET(
                 "/ingest/trans/" + current_transaction,
-                {include_context: 1, include_log: 1},
+                {include_context: 1, include_log: 1, version: Common.RestAPIVersion},
                 (data) => {
                     if (!data.success) {
                         this._on_failure(data.error);

@@ -2,11 +2,13 @@ define([
     'webfwk/CSSLoader',
     'webfwk/Fwk',
     'webfwk/FwkApplication',
+    'qserv/Common',
     'underscore'],
 
 function(CSSLoader,
          Fwk,
          FwkApplication,
+         Common,
          _) {
 
     CSSLoader.load('qserv/css/ReplicationController.css');
@@ -289,8 +291,7 @@ function(CSSLoader,
         _loadControllerInfo(onLoaded) {
             Fwk.web_service_GET(
                 "/replication/controller",
-                {   "current_only": true
-                },
+                {current_only: true, version: Common.RestAPIVersion},
                 (data) => {
                     let controller = undefined;
                     switch (data.controllers.length) {
@@ -331,8 +332,7 @@ function(CSSLoader,
             this._dict = {};
             Fwk.web_service_GET(
                 "/replication/controller/" + controllerId + "/dict",
-                {   "log_current_controller": 0,
-                },
+                {log_current_controller: 0, version: Common.RestAPIVersion},
                 (data) => {
                     if (data.success === 0) {
                         console.log("/replication/controller/:id/dict failed, error:", data.error, data.error_ext);
@@ -388,13 +388,14 @@ function(CSSLoader,
         _loadLogEvents(controllerId, onLoaded) {
             Fwk.web_service_GET(
                 "/replication/controller/" + controllerId,
-                {   "log": 1,
-                    "log_current_controller": this._get_current_controller(),
-                    "log_task": this._get_task(),
-                    "log_operation": this._get_operation(),
-                    "log_operation_status": this._get_operation_status(),
-                    "log_from": this._prevTimestamp + 1,     // 1ms later
-                    "log_max_events": this._get_max_events()
+                {   log: 1,
+                    log_current_controller: this._get_current_controller(),
+                    log_task: this._get_task(),
+                    log_operation: this._get_operation(),
+                    log_operation_status: this._get_operation_status(),
+                    log_from: this._prevTimestamp + 1,     // 1ms later
+                    log_max_events: this._get_max_events(),
+                    version: Common.RestAPIVersion
                 },
                 (data) => {
                     if (data.log.length > 0) this._prevTimestamp = data.log[0].timestamp;
