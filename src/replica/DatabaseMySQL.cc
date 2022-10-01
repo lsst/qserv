@@ -32,6 +32,7 @@
 
 // Qserv headers
 #include "replica/Configuration.h"
+#include "replica/DatabaseMySQLGenerator.h"
 #include "replica/Performance.h"
 #include "replica/protocol.pb.h"
 #include "util/BlockPost.h"
@@ -440,19 +441,18 @@ Connection::Ptr Connection::executeInsertOrUpdate(function<void(Ptr)> const& ins
 
 unsigned int Connection::warningCount() { return mysql_warning_count(_mysql); }
 
-list<Warning> Connection::warnings() {
+list<Warning> Connection::warnings(unsigned int maxNumWarnings, unsigned int offset) {
     list<Warning> result;
     if (mysql_warning_count(_mysql) == 0) return result;
-    execute("SHOW WARNINGS");
+    QueryGenerator const g(shared_from_this());
+    execute(g.warnings() + g.limit(maxNumWarnings, offset));
     Row row;
     while (next(row)) {
-        string level;
-        unsigned int code = 0;
-        string message;
-        row.get("Level", level);
-        row.get("Code", code);
-        row.get("Message", message);
-        result.emplace_back(level, code, message);
+        Warning w;
+        row.get("Level", w.level);
+        row.get("Code", w.code);
+        row.get("Message", w.message);
+        result.emplace_back(w);
     }
     return result;
 }

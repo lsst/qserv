@@ -27,6 +27,9 @@
 #include <ostream>
 #include <string>
 
+// Third party headers
+#include "nlohmann/json.hpp"
+
 // Qserv headers
 #include "replica/FileUtils.h"
 
@@ -114,11 +117,12 @@ std::ostream& operator<<(std::ostream&, ConnectionParams const&);
  */
 class Warning {
 public:
-    explicit Warning(std::string const& level_, unsigned int code_, std::string const& message_)
-            : level(level_), code(code_), message(message_) {}
     std::string level;
     unsigned int code = 0;
     std::string message;
+
+    /// @return JSON representation of the object
+    nlohmann::json toJson() const;
 };
 
 }  // namespace lsst::qserv::replica::database::mysql

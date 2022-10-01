@@ -538,15 +538,20 @@ public:
 
     /**
      * Retrieve warning, errors or notes generated after executing the last statement.
-     * This operation is implemented as MySQL query "SHOW WARNINGS".
+     * This operation is implemented using the corresponding MySQL query.
+     * @code
+     *   SHOW WARNINGS [LIMIT <max-num-warnings> [OFFSET <offset>]]
+     * @endcode
      *
      * @note The operation will not reset the query statistics.  Calling this method
      *   many times in a row will return the same result.
      * @see Connection::warningCount
-     *
+     * @param maxNumWarnings The maximum number of entries to be reported. In case
+     *   if both values of the parameter are set to 0 then all entries will be reported.
+     * @param offset The number of entries to skip.
      * @return A collection of entries.
      */
-    std::list<Warning> warnings();
+    std::list<Warning> warnings(unsigned int maxNumWarnings = 0, unsigned int offset = 0);
 
 private:
     /**

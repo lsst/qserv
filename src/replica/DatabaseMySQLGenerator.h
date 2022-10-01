@@ -93,7 +93,7 @@ public:
     /// @return an object representing the function "UNIX_TIMESTAMP(<column>)"
     static Sql UNIX_TIMESTAMP(SqlId const& sqlId);
 
-    /// @note Identifiers of teh columns are expected to be formed using calls
+    /// @note Identifiers of the columns are expected to be formed using calls
     ///   to id(columnName).
     /// @param resolution The resolution of the result: "HOUR", "MINUTE", "SECOND", etc.
     ///   See MySQL documentation for further details.
@@ -109,6 +109,9 @@ public:
 
     ~Sql() override = default;
 };
+
+/// The enumerator type dwefining a scope for a variable(s)
+enum class SqlVarScope : int { SESSION = 1, GLOBAL = 2 };
 
 /**
  * @brief Class QueryGenerator provides the API that facilitates generating MySQL queries.
@@ -151,7 +154,7 @@ public:
     /**
      * @brief The optional string processing algorithm that's could be replaced
      *   in a subclass. No processing is done in the default implementation of
-     *   teh method.
+     *   the method.
      * @param str The input string to be processed.
      * @return The result string ready to be used in the MySQL queries.
      */
@@ -448,7 +451,7 @@ public:
     }
 
     /**
-     * Pack pairs of column names and their new values into a string which can be
+     * Pack pairs of column/variable names and their new values into a string which can be
      * further used to form SQL statements of the following kind:
      * @code
      *   UPDATE <table> SET <packed-pairs>
@@ -456,7 +459,7 @@ public:
      * @note The method allows any number of arguments and any types of values.
      * @note  Values types 'std::string' and 'char*' will be additionally escaped and
      *   surrounded by single quotes as required by the SQL standard.
-     * @note The column names will be surrounded with back-tick quotes.
+     * @note The column/variable names will be surrounded with back-tick quotes.
      *
      * For example, the following call:
      * @code
@@ -644,7 +647,7 @@ public:
      *     " LIMIT 123 OFFSET 1"
      * @endcode
      * @param num The limit.
-     * @return The complete clause or eh empty string of the limit was 0.
+     * @return The complete clause or the empty string if the limit was 0.
      */
     std::string limit(unsigned int num, unsigned int offset = 0) const;
 
@@ -990,12 +993,64 @@ public:
                val(host).str;
     }
 
+    /// @return SHOW WARNINGS
+    std::string warnings() const { return "SHOW WARNINGS"; }
+
+    /**
+     * @brief Generator for an SQL squery that would return values of variables.
+     *
+     * For the following sample inputs:
+     * @code
+     *   showVars(SqlVarScope::GLOBAL);
+     *   showVars(SqlVarScope::SESSION, "myisam_%");
+     * @endcode
+     * The generator will produce these statements:
+     * @code
+     *  SHOW GLOBAL VARIABLES
+     *  SHOW VARIABLES LIKE 'myisam_%'
+     * @code
+     * @note The method will not validate the syntax of the pattern.
+     * @param scope The scope of the variable (SESSION, GLOBAL, etc.)
+     * @param pattern The optional pattern for searching the variables by names.
+     *   If the empty string is passed as a value of the parameter then all variables
+     *   in the specific scope will be reported by MySQL after executing the query.
+     * @return Well-formed SQL statement.
+     * @throws std::invalid_argument If the specified scope is not supported.
+     */
+    std::string showVars(SqlVarScope scope, std::string const& pattern = std::string()) const;
+
+    /**
+     * @brief Generator for setting variables in the given scope.
+     *
+     * For the following sample inputs:
+     * @code
+     *   setVars(SqlVarScope::GLOBAL,  std::make_mair("var1", 1);
+     *   setVars(SqlVarScope::SESSION, std::make_mair("var2", 2), std::make_mair("var3", "abc"));
+     * @endcode
+     * The generator will produce these statements:
+     * @code
+     *  SET GLOBAL `var1`=1
+     *  SET `var2`=2,`var3`='abc'
+     * @code
+     *
+     * @param scope The scope of the variable (SESSION, GLOBAL, etc.)
+     * @param Fargs A collection of pairs specifying variable names and their values.
+     * @return Well-formed SQL statement.
+     * @throws std::invalid_argument If the input collection is empty, or in case
+     *   if the specified scope is not supported.
+     */
+    template <typename... Targs>
+    std::string setVars(SqlVarScope scope, Targs... Fargs) const {
+        return _setVars(scope, packPairs(Fargs...));
+    }
+
 private:
     /// @return A string that's ready to be included into the queries.
     template <typename... Targs>
     std::string _values(Targs... Fargs) const {
         return " VALUES (" + packVals(Fargs...) + ")";
     }
+
     /// The base (the final function) to be called
     void _packPair(std::string&) const {}
 
@@ -1053,6 +1108,14 @@ private:
         sql += (sql.empty() ? "" : ",") + v.str;
         _packId(sql, Fargs...);
     }
+
+    /// @brief The implementatin of the generator for setting variables.
+    /// @param scope The scope of the variable (SESSION, GLOBAL, etc.)
+    /// @param packedVars Partial SQL for setting values of the variables.
+    /// @return The well-formed SQL for setting the variables
+    /// @throws std::invalid_argument If a value of \param packedVars is empty,
+    ///   or in case if the specified value of \param scope is not supported.
+    std::string _setVars(SqlVarScope scope, std::string const& packedVars) const;
 
     std::string _createIndex(SqlId const& tableId, std::string const& indexName, std::string const& spec,
                              std::list<std::tuple<std::string, unsigned int, bool>> const& keys,

@@ -25,6 +25,7 @@
 // System headers
 #include <stdexcept>
 #include <sstream>
+#include <type_traits>
 
 // Qserv headers
 #include "replica/DatabaseMySQL.h"
@@ -32,6 +33,12 @@
 using namespace std;
 
 namespace lsst::qserv::replica::database::mysql {
+
+[[noreturn]] void throwOnInvalidScope(string const& func, SqlVarScope scope) {
+    string const msg = "QueryGenerator::" + func + " unsupported scope: " +
+                       to_string(static_cast<typename underlying_type<SqlVarScope>::type>(scope));
+    throw invalid_argument(msg);
+}
 
 Sql const Sql::NULL_{"NULL"};
 
@@ -104,6 +111,32 @@ string QueryGenerator::insertPacked(string const& tableName, string const& packe
         sql += "(" + packedValues[i] + ")";
     }
     return sql;
+}
+
+string QueryGenerator::showVars(SqlVarScope scope, string const& pattern) const {
+    string const like = pattern.empty() ? string() : " LIKE " + val(pattern).str;
+    switch (scope) {
+        case SqlVarScope::SESSION:
+            return "SHOW VARIABLES" + like;
+        case SqlVarScope::GLOBAL:
+            return "SHOW GLOBAL VARIABLES" + like;
+    }
+    throwOnInvalidScope(__func__, scope);
+}
+
+string QueryGenerator::_setVars(SqlVarScope scope, string const& packedVars) const {
+    if (packedVars.empty()) {
+        string const msg = "QueryGenerator::" + string(__func__) +
+                           " the collection of the packed variables/values can not be empty.";
+        throw invalid_argument(msg);
+    }
+    switch (scope) {
+        case SqlVarScope::SESSION:
+            return "SET " + packedVars;
+        case SqlVarScope::GLOBAL:
+            return "SET GLOBAL " + packedVars;
+    }
+    throwOnInvalidScope(__func__, scope);
 }
 
 string QueryGenerator::_createIndex(SqlId const& tableId, string const& indexName, string const& spec,

@@ -408,7 +408,18 @@ BOOST_AUTO_TEST_CASE(QueryGeneratorTest) {
             {"SHOW INDEXES FROM `db`.`workers`", g.showIndexes(g.id("db", "workers"))},
 
             {"DROP INDEX `idx_ObjectId` ON `table`", g.dropIndex("table", "idx_ObjectId")},
-            {"DROP INDEX `idx_ObjectId` ON `db`.`table`", g.dropIndex(g.id("db", "table"), "idx_ObjectId")}};
+            {"DROP INDEX `idx_ObjectId` ON `db`.`table`", g.dropIndex(g.id("db", "table"), "idx_ObjectId")},
+
+            {"SHOW WARNINGS", g.warnings()},
+            {"SHOW WARNINGS LIMIT 64", g.warnings() + g.limit(64)},
+
+            {"SHOW VARIABLES", g.showVars(SqlVarScope::SESSION)},
+            {"SHOW GLOBAL VARIABLES", g.showVars(SqlVarScope::GLOBAL, "")},
+            {"SHOW GLOBAL VARIABLES LIKE 'myisam_%'", g.showVars(SqlVarScope::GLOBAL, "myisam_%")},
+
+            {"SET `var1`=1", g.setVars(SqlVarScope::SESSION, make_pair("var1", 1))},
+            {"SET GLOBAL `var2`=2,`var3`='abc'",
+             g.setVars(SqlVarScope::GLOBAL, make_pair("var2", 2), make_pair("var3", "abc"))}};
 
     for (auto&& test : tests) {
         BOOST_CHECK_EQUAL(test.first, test.second);
