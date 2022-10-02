@@ -36,7 +36,7 @@ namespace lsst::qserv::replica {
 
 using namespace database::mysql;
 
-int const ConfigParserMySQL::expectedSchemaVersion = 11;
+int const ConfigParserMySQL::expectedSchemaVersion = 12;
 
 ConfigParserMySQL::ConfigParserMySQL(Connection::Ptr const& conn, json& data,
                                      map<string, WorkerInfo>& workers,

@@ -452,7 +452,7 @@ list<Warning> Connection::warnings(unsigned int maxNumWarnings, unsigned int off
         row.get("Level", w.level);
         row.get("Code", w.code);
         row.get("Message", w.message);
-        result.emplace_back(w);
+        result.push_back(move(w));
     }
     return result;
 }

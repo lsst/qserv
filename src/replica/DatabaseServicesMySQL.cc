@@ -1578,14 +1578,15 @@ vector<TransactionInfo> DatabaseServicesMySQL::_findTransactionsImpl(util::Lock 
     return collection;
 }
 
-TransactionContribInfo DatabaseServicesMySQL::transactionContrib(unsigned int id) {
+TransactionContribInfo DatabaseServicesMySQL::transactionContrib(unsigned int id, bool includeWarnings) {
     string const context = _context(__func__) + "id=" + to_string(id) + " ";
     LOGS(_log, LOG_LVL_DEBUG, context);
     vector<TransactionContribInfo> collection;
     util::Lock lock(_mtx, context);
     try {
-        _conn->executeInOwnTransaction(
-                [&](decltype(_conn) conn) { collection = _transactionContribsImpl(lock, _g.eq("id", id)); });
+        _conn->executeInOwnTransaction([&](decltype(_conn) conn) {
+            collection = _transactionContribsImpl(lock, _g.eq("id", id), includeWarnings);
+        });
     } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context << "failed, exception: " << ex.what());
         throw;
@@ -1616,7 +1617,7 @@ string DatabaseServicesMySQL::_typeSelectorPredicate(
 
 vector<TransactionContribInfo> DatabaseServicesMySQL::transactionContribs(
         TransactionId transactionId, string const& table, string const& worker,
-        TransactionContribInfo::TypeSelector typeSelector) {
+        TransactionContribInfo::TypeSelector typeSelector, bool includeWarnings) {
     string const context = _context(__func__) + "transactionId=" + to_string(transactionId) +
                            " table=" + table + " worker=" + worker + " " +
                            " typeSelector=" + TransactionContribInfo::typeSelector2str(typeSelector) + " ";
@@ -1626,12 +1627,12 @@ vector<TransactionContribInfo> DatabaseServicesMySQL::transactionContribs(
     string const predicate =
             _g.packConds(_g.eq("transaction_id", transactionId), table.empty() ? "" : _g.eq("table", table),
                          worker.empty() ? "" : _g.eq("worker", worker), _typeSelectorPredicate(typeSelector));
-    return _transactionContribs(lock, predicate);
+    return _transactionContribs(lock, predicate, includeWarnings);
 }
 
 vector<TransactionContribInfo> DatabaseServicesMySQL::transactionContribs(
         TransactionId transactionId, TransactionContribInfo::Status status, string const& table,
-        string const& worker, TransactionContribInfo::TypeSelector typeSelector) {
+        string const& worker, TransactionContribInfo::TypeSelector typeSelector, bool includeWarnings) {
     string const context = _context(__func__) + "transactionId=" + to_string(transactionId) +
                            " status=" + TransactionContribInfo::status2str(status) + " table=" + table +
                            " worker=" + worker + " " +
@@ -1643,12 +1644,12 @@ vector<TransactionContribInfo> DatabaseServicesMySQL::transactionContribs(
                          _g.eq("status", TransactionContribInfo::status2str(status)),
                          table.empty() ? "" : _g.eq("table", table),
                          worker.empty() ? "" : _g.eq("worker", worker), _typeSelectorPredicate(typeSelector));
-    return _transactionContribs(lock, predicate);
+    return _transactionContribs(lock, predicate, includeWarnings);
 }
 
 vector<TransactionContribInfo> DatabaseServicesMySQL::transactionContribs(
         string const& database, string const& table, string const& worker,
-        TransactionContribInfo::TypeSelector typeSelector) {
+        TransactionContribInfo::TypeSelector typeSelector, bool includeWarnings) {
     string const context = _context(__func__) + "database=" + database + " table=" + table +
                            " worker=" + worker + " " +
                            " typeSelector=" + TransactionContribInfo::typeSelector2str(typeSelector) + " ";
@@ -1660,7 +1661,7 @@ vector<TransactionContribInfo> DatabaseServicesMySQL::transactionContribs(
     string const predicate =
             _g.packConds(_g.eq("database", database), table.empty() ? "" : _g.eq("table", table),
                          worker.empty() ? "" : _g.eq("worker", worker), _typeSelectorPredicate(typeSelector));
-    return _transactionContribs(lock, predicate);
+    return _transactionContribs(lock, predicate, includeWarnings);
 }
 
 TransactionContribInfo DatabaseServicesMySQL::createdTransactionContrib(
@@ -1679,6 +1680,8 @@ TransactionContribInfo DatabaseServicesMySQL::createdTransactionContrib(
     uint64_t const readTime = 0;
     uint64_t const loadTime = 0;
 
+    unsigned int const numWarnings = 0;
+
     TransactionContribInfo::Status const status =
             failed ? statusOnFailed : TransactionContribInfo::Status::IN_PROGRESS;
 
@@ -1691,9 +1694,11 @@ TransactionContribInfo DatabaseServicesMySQL::createdTransactionContrib(
                 _g.insert("transaction_contrib", Sql::NULL_, info.transactionId, info.worker, info.database,
                           info.table, info.chunk, info.isOverlap ? 1 : 0, info.url,
                           info.async ? "ASYNC" : "SYNC", numBytes, numRows, createTime, startTime, readTime,
-                          loadTime, TransactionContribInfo::status2str(status), info.tmpFile,
+                          loadTime, TransactionContribInfo::status2str(status), info.tmpFile, numWarnings,
                           failed ? info.httpError : 0, failed ? info.systemError : 0,
                           failed ? info.error : string(), (failed ? info.retryAllowed : false) ? 1 : 0));
+        queries.emplace_back(_g.insert("transaction_contrib_ext", Sql::LAST_INSERT_ID, "max_num_warnings",
+                                       info.maxNumWarnings));
         queries.emplace_back(_g.insert("transaction_contrib_ext", Sql::LAST_INSERT_ID, "fields_terminated_by",
                                        info.dialectInput.fieldsTerminatedBy));
         queries.emplace_back(_g.insert("transaction_contrib_ext", Sql::LAST_INSERT_ID, "fields_enclosed_by",
@@ -1730,17 +1735,38 @@ TransactionContribInfo DatabaseServicesMySQL::updateTransactionContrib(Transacti
     TransactionContribInfo updatedInfo;
     util::Lock lock(_mtx, context);
     try {
+        list<string> queries;
         string const query =
                 _g.update("transaction_contrib", make_pair("num_bytes", info.numBytes),
                           make_pair("num_rows", info.numRows), make_pair("start_time", info.startTime),
                           make_pair("read_time", info.readTime), make_pair("load_time", info.loadTime),
                           make_pair("status", TransactionContribInfo::status2str(info.status)),
-                          make_pair("tmp_file", info.tmpFile), make_pair("http_error", info.httpError),
+                          make_pair("tmp_file", info.tmpFile), make_pair("num_warnings", info.numWarnings),
+                          make_pair("http_error", info.httpError),
                           make_pair("system_error", info.systemError), make_pair("error", info.error),
                           make_pair("retry_allowed", info.retryAllowed)) +
                 _g.where(predicate);
+        queries.push_back(query);
+        // Warnings are saved only for the (formally) successfully ingested contributions.
+        // These contributions may still be analyzed for potential problems with
+        // the input data. The key indicator here is the total number of warnings
+        // recorded in the contribution descriptor's attrubute 'numWarnings'.
+        if (info.status == TransactionContribInfo::Status::FINISHED) {
+            // The position number plays two roles here. Firstly, it allows to preserve
+            // the original order of the warnings exactly how they were reported by MySQL.
+            // Secondly, the combined unique index (contrib_id,pos) would prevent the method
+            // from inserting duplicates.
+            size_t pos = 0;
+            for (auto&& w : info.warnings) {
+                string const query =
+                        _g.insert("transaction_contrib_warn", info.id, pos++, w.level, w.code, w.message);
+                queries.emplace_back(query);
+            }
+        }
         _conn->executeInOwnTransaction([&](decltype(_conn) conn) {
-            conn->execute(query);
+            for (auto&& query : queries) {
+                conn->execute(query);
+            }
             updatedInfo = _transactionContribImpl(lock, predicate);
         });
     } catch (exception const& ex) {
@@ -1752,13 +1778,15 @@ TransactionContribInfo DatabaseServicesMySQL::updateTransactionContrib(Transacti
 }
 
 vector<TransactionContribInfo> DatabaseServicesMySQL::_transactionContribs(util::Lock const& lock,
-                                                                           string const& predicate) {
+                                                                           string const& predicate,
+                                                                           bool includeWarnings) {
     string const context = _context(__func__) + "predicate=" + predicate + " ";
     LOGS(_log, LOG_LVL_DEBUG, context);
     vector<TransactionContribInfo> collection;
     try {
-        _conn->executeInOwnTransaction(
-                [&](decltype(_conn) conn) { collection = _transactionContribsImpl(lock, predicate); });
+        _conn->executeInOwnTransaction([&](decltype(_conn) conn) {
+            collection = _transactionContribsImpl(lock, predicate, includeWarnings);
+        });
     } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context << "failed, exception: " << ex.what());
         throw;
@@ -1768,9 +1796,10 @@ vector<TransactionContribInfo> DatabaseServicesMySQL::_transactionContribs(util:
 }
 
 TransactionContribInfo DatabaseServicesMySQL::_transactionContribImpl(util::Lock const& lock,
-                                                                      string const& predicate) {
+                                                                      string const& predicate,
+                                                                      bool includeWarnings) {
     string const context = _context(__func__) + "predicate=" + predicate + " ";
-    auto const collection = _transactionContribsImpl(lock, predicate);
+    auto const collection = _transactionContribsImpl(lock, predicate, includeWarnings);
     size_t const num = collection.size();
     if (num == 1) return collection[0];
     if (num == 0) throw DatabaseServicesNotFound(context + "no such transaction contribution");
@@ -1778,7 +1807,8 @@ TransactionContribInfo DatabaseServicesMySQL::_transactionContribImpl(util::Lock
 }
 
 vector<TransactionContribInfo> DatabaseServicesMySQL::_transactionContribsImpl(util::Lock const& lock,
-                                                                               string const& predicate) {
+                                                                               string const& predicate,
+                                                                               bool includeWarnings) {
     string const context = _context(__func__) + "predicate=" + predicate + " ";
     LOGS(_log, LOG_LVL_DEBUG, context);
 
@@ -1810,6 +1840,7 @@ vector<TransactionContribInfo> DatabaseServicesMySQL::_transactionContribsImpl(u
             row.get("status", str);
             info.status = TransactionContribInfo::str2status(str);
             row.get("tmp_file", info.tmpFile);
+            row.get("num_warnings", info.numWarnings);
             row.get("http_error", info.httpError);
             row.get("system_error", info.systemError);
             row.get("error", info.error);
@@ -1830,7 +1861,9 @@ vector<TransactionContribInfo> DatabaseServicesMySQL::_transactionContribsImpl(u
                 string val;
                 row.get("val", val);
                 if (val.empty()) continue;
-                if (key == "fields_terminated_by")
+                if (key == "max_num_warnings")
+                    contrib.maxNumWarnings = stoui(val);
+                else if (key == "fields_terminated_by")
                     contrib.dialectInput.fieldsTerminatedBy = val;
                 else if (key == "fields_enclosed_by")
                     contrib.dialectInput.fieldsEnclosedBy = val;
@@ -1847,6 +1880,24 @@ vector<TransactionContribInfo> DatabaseServicesMySQL::_transactionContribsImpl(u
                 else {
                     throw DatabaseServicesError(context + "unexpected extended parameter '" + key +
                                                 "' for contribution id=" + to_string(contrib.id));
+                }
+            }
+        }
+    }
+    if (includeWarnings) {
+        for (auto& contrib : collection) {
+            string const query = _g.select("level", "code", "message") + _g.from("transaction_contrib_warn") +
+                                 _g.where(_g.eq("contrib_id", contrib.id)) +
+                                 _g.orderBy(make_pair("pos", "ASC"));
+            _conn->execute(query);
+            if (_conn->hasResult()) {
+                database::mysql::Row row;
+                while (_conn->next(row)) {
+                    database::mysql::Warning w;
+                    row.get("level", w.level);
+                    row.get("code", w.code);
+                    row.get("message", w.message);
+                    contrib.warnings.emplace_back(w);
                 }
             }
         }

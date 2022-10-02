@@ -162,25 +162,28 @@ public:
     TransactionInfo updateTransaction(TransactionId id,
                                       std::unordered_map<std::string, nlohmann::json> const& events) final;
 
-    TransactionContribInfo transactionContrib(unsigned int id) final;
+    TransactionContribInfo transactionContrib(unsigned int id, bool includeWarnings = false) final;
 
     std::vector<TransactionContribInfo> transactionContribs(
             TransactionId transactionId, std::string const& table = std::string(),
             std::string const& worker = std::string(),
             TransactionContribInfo::TypeSelector typeSelector =
-                    TransactionContribInfo::TypeSelector::SYNC_OR_ASYNC) final;
+                    TransactionContribInfo::TypeSelector::SYNC_OR_ASYNC,
+            bool includeWarnings = false) final;
 
     std::vector<TransactionContribInfo> transactionContribs(
             TransactionId transactionId, TransactionContribInfo::Status status,
             std::string const& table = std::string(), std::string const& worker = std::string(),
             TransactionContribInfo::TypeSelector typeSelector =
-                    TransactionContribInfo::TypeSelector::SYNC_OR_ASYNC) final;
+                    TransactionContribInfo::TypeSelector::SYNC_OR_ASYNC,
+            bool includeWarnings = false) final;
 
     std::vector<TransactionContribInfo> transactionContribs(
             std::string const& database, std::string const& table = std::string(),
             std::string const& worker = std::string(),
             TransactionContribInfo::TypeSelector typeSelector =
-                    TransactionContribInfo::TypeSelector::SYNC_OR_ASYNC) final;
+                    TransactionContribInfo::TypeSelector::SYNC_OR_ASYNC,
+            bool includeWarnings = false) final;
 
     TransactionContribInfo createdTransactionContrib(
             TransactionContribInfo const& info, bool failed = false,
@@ -339,12 +342,15 @@ private:
                                                        bool includeContext, bool includeLog);
 
     std::vector<TransactionContribInfo> _transactionContribs(util::Lock const& lock,
-                                                             std::string const& predicate);
+                                                             std::string const& predicate,
+                                                             bool includeWarnings = false);
 
-    TransactionContribInfo _transactionContribImpl(util::Lock const& lock, std::string const& predicate);
+    TransactionContribInfo _transactionContribImpl(util::Lock const& lock, std::string const& predicate,
+                                                   bool includeWarnings = false);
 
     std::vector<TransactionContribInfo> _transactionContribsImpl(util::Lock const& lock,
-                                                                 std::string const& predicate);
+                                                                 std::string const& predicate,
+                                                                 bool includeWarnings = false);
 
     DatabaseIngestParam _ingestParamImpl(util::Lock const& lock, std::string const& predicate);
 
