@@ -304,7 +304,9 @@ void IngestSvcConn::_dataReceived(boost::system::error_code const& ec, size_t by
         _retryAllowed = false;
         _contrib.retryAllowed = false;
         try {
-            loadDataIntoTable();
+            loadDataIntoTable(_contrib.maxNumWarnings);
+            _contrib.numWarnings = numWarnings();
+            _contrib.warnings = warnings();
             serviceProvider()->databaseServices()->loadedTransactionContrib(_contrib);
             _finished();
         } catch (exception const& ex) {

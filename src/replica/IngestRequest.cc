@@ -436,8 +436,10 @@ void IngestRequest::_processLoadData() {
         }
     }
     try {
-        loadDataIntoTable();
+        loadDataIntoTable(_contrib.maxNumWarnings);
         util::Lock lock(_mtx, context);
+        _contrib.numWarnings = numWarnings();
+        _contrib.warnings = warnings();
         _contrib = databaseServices->loadedTransactionContrib(_contrib);
     } catch (exception const& ex) {
         {
