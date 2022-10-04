@@ -84,13 +84,15 @@ json HttpIngestTransModule::executeImpl(string const& subModuleName) {
         return _beginTransaction();
     else if (subModuleName == "END-TRANSACTION")
         return _endTransaction();
+    else if (subModuleName == "GET-CONTRIBUTION-BY-ID")
+        return _getContribution();
     throw invalid_argument(context() + "::" + string(__func__) + "  unsupported sub-module: '" +
                            subModuleName + "'");
 }
 
 json HttpIngestTransModule::_getTransactions() {
     debug(__func__);
-    checkApiVersion(__func__, 12);
+    checkApiVersion(__func__, 13);
 
     auto const config = controller()->serviceProvider()->config();
     auto const databaseServices = controller()->serviceProvider()->databaseServices();
@@ -103,6 +105,7 @@ json HttpIngestTransModule::_getTransactions() {
     auto const longContribFormat = query().optionalUInt64("contrib_long", 0) != 0;
     bool const includeContext = query().optionalUInt64("include_context", 0) != 0;
     bool const includeLog = query().optionalUInt64("include_log", 0) != 0;
+    bool const includeWarnings = query().optionalUInt64("include_warnings", 0) != 0;
 
     debug(__func__, "database=" + databaseName);
     debug(__func__, "family=" + family);
@@ -112,6 +115,7 @@ json HttpIngestTransModule::_getTransactions() {
     debug(__func__, "contrib_long=" + bool2str(longContribFormat));
     debug(__func__, "include_context=" + bool2str(includeContext));
     debug(__func__, "include_log=" + bool2str(includeLog));
+    debug(__func__, "include_warnings=" + bool2str(includeWarnings));
 
     vector<string> databases;
     if (databaseName.empty()) {
@@ -134,7 +138,8 @@ json HttpIngestTransModule::_getTransactions() {
         for (auto&& transaction : databaseServices->transactions(database.name, includeContext, includeLog)) {
             json transJson = transaction.toJson();
             if (includeContributions) {
-                transJson["contrib"] = _getTransactionContributions(transaction, longContribFormat);
+                transJson["contrib"] =
+                        _getTransactionContributions(transaction, longContribFormat, includeWarnings);
             }
             result["databases"][database.name]["transactions"].push_back(transJson);
         }
@@ -144,7 +149,7 @@ json HttpIngestTransModule::_getTransactions() {
 
 json HttpIngestTransModule::_getTransaction() {
     debug(__func__);
-    checkApiVersion(__func__, 12);
+    checkApiVersion(__func__, 13);
 
     auto const config = controller()->serviceProvider()->config();
     auto const databaseServices = controller()->serviceProvider()->databaseServices();
@@ -153,12 +158,14 @@ json HttpIngestTransModule::_getTransaction() {
     auto const longContribFormat = query().optionalUInt64("contrib_long", 0) != 0;
     bool const includeContext = query().optionalUInt64("include_context", 0) != 0;
     bool const includeLog = query().optionalUInt64("include_log", 0) != 0;
+    bool const includeWarnings = query().optionalUInt64("include_warnings", 0) != 0;
 
     debug(__func__, "id=" + to_string(id));
     debug(__func__, "contrib=" + bool2str(includeContributions));
     debug(__func__, "contrib_long=" + bool2str(longContribFormat));
     debug(__func__, "include_context=" + bool2str(includeContext));
     debug(__func__, "include_log=" + bool2str(includeLog));
+    debug(__func__, "include_warnings=" + bool2str(includeWarnings));
 
     auto const transaction = databaseServices->transaction(id, includeContext, includeLog);
     auto const database = config->databaseInfo(transaction.database);
@@ -168,7 +175,7 @@ json HttpIngestTransModule::_getTransaction() {
 
     json transJson = transaction.toJson();
     if (includeContributions) {
-        transJson["contrib"] = _getTransactionContributions(transaction, longContribFormat);
+        transJson["contrib"] = _getTransactionContributions(transaction, longContribFormat, includeWarnings);
     }
     json result;
     result["databases"][transaction.database]["is_published"] = database.isPublished ? 1 : 0;
@@ -439,6 +446,24 @@ json HttpIngestTransModule::_endTransaction() {
     }
 }
 
+json HttpIngestTransModule::_getContribution() {
+    debug(__func__);
+    checkApiVersion(__func__, 13);
+
+    unsigned int const id = stoul(params().at("id"));
+    bool const includeWarnings = query().optionalUInt64("include_warnings", 0) != 0;
+
+    debug(__func__, "id=" + to_string(id));
+    debug(__func__, "include_warnings=" + bool2str(includeWarnings));
+
+    auto const databaseServices = controller()->serviceProvider()->databaseServices();
+    auto const contrib = databaseServices->transactionContrib(id, includeWarnings);
+
+    json result;
+    result["contribution"] = contrib.toJson();
+    return result;
+}
+
 void HttpIngestTransModule::_logTransactionMgtEvent(string const& operation, string const& status,
                                                     TransactionId transactionId, string const& databaseName,
                                                     string const& msg) const {
@@ -499,7 +524,7 @@ void HttpIngestTransModule::_removePartitionFromSecondaryIndex(DatabaseInfo cons
 }
 
 json HttpIngestTransModule::_getTransactionContributions(TransactionInfo const& transaction,
-                                                         bool longContribFormat) const {
+                                                         bool longContribFormat, bool includeWarnings) const {
     auto const config = controller()->serviceProvider()->config();
     auto const databaseServices = controller()->serviceProvider()->databaseServices();
     DatabaseInfo const database = config->databaseInfo(transaction.database);
@@ -522,9 +547,21 @@ json HttpIngestTransModule::_getTransactionContributions(TransactionInfo const& 
         numFilesByStatusJson[TransactionContribInfo::status2str(status)] = 0;
     }
 
-    for (auto&& contrib : databaseServices->transactionContribs(transaction.id)) {
-        // Always include detailed into on the contributions
-        if (longContribFormat) transContribFilesJson.push_back(contrib.toJson());
+    // Default selectors for contributions imply pulling all contributions
+    // attempted in a scope of the transaction.
+    string const anyTableSelector;
+    string const anyWorkerSelector;
+    TransactionContribInfo::TypeSelector const anyTypeSelector =
+            TransactionContribInfo::TypeSelector::SYNC_OR_ASYNC;
+
+    vector<TransactionContribInfo> const contribs =
+            databaseServices->transactionContribs(transaction.id, anyTableSelector, anyWorkerSelector,
+                                                  anyTypeSelector, longContribFormat && includeWarnings);
+
+    for (auto&& contrib : contribs) {
+        if (longContribFormat) {
+            transContribFilesJson.push_back(contrib.toJson());
+        }
 
         // Count numbers of files in any state
         numFilesByStatusJson[TransactionContribInfo::status2str(contrib.status)] =

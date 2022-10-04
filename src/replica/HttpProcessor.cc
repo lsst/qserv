@@ -328,6 +328,12 @@ void HttpProcessor::registerServices() {
                                                                 self->_processorConfig, req, resp,
                                                                 "END-TRANSACTION", HttpAuthType::REQUIRED);
                              });
+    httpServer()->addHandler("GET", "/ingest/trans/contrib/:id",
+                             [self](qhttp::Request::Ptr const req, qhttp::Response::Ptr const resp) {
+                                 HttpIngestTransModule::process(
+                                         self->controller(), self->_transactionMutexRegistry, self->name(),
+                                         self->_processorConfig, req, resp, "GET-CONTRIBUTION-BY-ID");
+                             });
     httpServer()->addHandler("GET", "/ingest/database",
                              [self](qhttp::Request::Ptr const req, qhttp::Response::Ptr const resp) {
                                  HttpIngestModule::process(self->controller(), self->name(),

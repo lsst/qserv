@@ -55,6 +55,7 @@ public:
      *   SELECT-TRANSACTION-BY-ID  for a single transaction
      *   BEGIN-TRANSACTION         for starting a new transaction
      *   END-TRANSACTION           for finishing/aborting a transaction
+     *   GET-CONTRIBUTION-BY-ID    for pulling info on the transaction contributions
      *
      * @throws std::invalid_argument for unknown values of parameter 'subModuleName'
      */
@@ -89,6 +90,9 @@ private:
 
     /// Commit or rollback a super-transaction
     nlohmann::json _endTransaction();
+
+    /// Get info on the the transaction contributions
+    nlohmann::json _getContribution();
 
     /**
      * @brief Log controller events for the transaction management operations.
@@ -128,10 +132,13 @@ private:
      * @param transaction A transaction defining a scope of the request.
      * @param longContribFormat If 'true' then the method will also return info on
      *   the individual file contributions rather than just the summary info.
+     * @param includeWarnings If 'true' then include info on the MySQL warnings
+     *   if any were captured after LOAD DATA INFILE. Note that this option is
+     *   ignored if longContribFormat == false.
      * @return A JSON object.
      */
-    nlohmann::json _getTransactionContributions(TransactionInfo const& transaction,
-                                                bool longContribFormat) const;
+    nlohmann::json _getTransactionContributions(TransactionInfo const& transaction, bool longContribFormat,
+                                                bool includeWarnings) const;
 
     /// Named mutexes are used for acquiring exclusive transient locks on the transaction
     /// management operations performed by the module.
