@@ -2,7 +2,7 @@ define(
 [],
 function() {
     class Common {
-        static RestAPIVersion = 12;
+        static RestAPIVersion = 13;
     }
     return Common;
 });

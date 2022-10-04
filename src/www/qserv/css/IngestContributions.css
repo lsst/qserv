@@ -31,10 +31,12 @@ table#fwk-ingest-contributions pre {
     padding: 0;
     margin: 0;
 }
-table#fwk-ingest-contributions tbody pre.database_table:hover {
+table#fwk-ingest-contributions tbody pre.database_table:hover,
+table#fwk-ingest-contributions tbody pre.contrib_id:hover {
     cursor:pointer;
 }
-table#fwk-ingest-contributions tbody pre.database_table {
+table#fwk-ingest-contributions tbody pre.database_table,
+table#fwk-ingest-contributions tbody pre.contrib_id {
     color:#007bff;
 }
 table#fwk-ingest-contributions caption.updating {

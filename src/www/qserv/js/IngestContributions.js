@@ -180,7 +180,8 @@ function(CSSLoader,
           <option value="read2load">Read &rarr; Loaded</option>
           <option value="load_time">Loaded</option>
           <option value="num_bytes">Bytes</option>
-          <option value="num_rows">Rows</option>
+          <option value="num_rows">Rows parsed</option>
+          <option value="num_rows_loaded">Rows</option>
           <option value="io_read">Read I/O</option>
           <option value="io_load">Load I/O</option>
           <option value="error">Error</option>
@@ -219,8 +220,10 @@ function(CSSLoader,
           <th></th>
           <th class="right-aligned">Size</th>
           <th></th>
+          <th class="right-aligned">Rows</th>
           <th class="right-aligned">I/O</th>
           <th>MB/s</th>
+          <th></th>
           <th></th>
           <th></th>
         </tr>
@@ -242,9 +245,11 @@ function(CSSLoader,
           <th class="sticky right-aligned"><elem style="color:red;">&rarr;</elem></th>
           <th class="sticky right-aligned">Loaded</th>
           <th class="sticky right-aligned">Bytes</th>
-          <th class="sticky right-aligned">Rows</th>
+          <th class="sticky right-aligned">Parsed</th>
+          <th class="sticky right-aligned">Loaded</th>
           <th class="sticky right-aligned">Read</th>
           <th class="sticky right-aligned">Load</th>
+          <th class="sticky right-aligned">Warnings</th>
           <th class="sticky">Error</th>
           <th class="sticky">Url</th>
         </tr>
@@ -576,7 +581,7 @@ function(CSSLoader,
                 let loadPerfStr = file.io_load ? file.io_load.toFixed(1) : '';
         html += `
 <tr class="${statusCssClass}">
-  <th class="right-aligned"><pre>${file.id}</pre></th>
+  <th class="right-aligned"><pre class="contrib_id" id="${file.id}">${file.id}</pre></th>
   <td class="right-aligned"><pre>${file.worker}</pre></td>
   <td class="right-aligned"><pre class="database_table" database="${database}" table="${file.table}">${file.table}</pre></td>
   <td class="right-aligned"><pre>${file.chunk}</pre></td>
@@ -594,18 +599,27 @@ function(CSSLoader,
   <td class="right-aligned"><pre>${loadTimeStr}</pre></td>
   <td class="right-aligned"><pre>${file.num_bytes}</pre></td>
   <td class="right-aligned"><pre>${file.num_rows}</pre></td>
+  <td class="right-aligned"><pre>${file.num_rows_loaded}</pre></td>
   <th class="right-aligned"><pre>${readPerfStr}</pre></th>
   <th class="right-aligned"><pre>${loadPerfStr}</pre></th>
+  <td class="right-aligned"><pre>${file.num_warnings}</pre></td>
   <td style="color:maroon;">${file.error}</td>
   <td><pre>${file.url}</pre></td>
 </tr>`;
             }
-            this._table().children('tbody').html(html).find("pre.database_table").click((e) => {
+            let tbody = this._table().children('tbody');
+            tbody.html(html);
+            tbody.find("pre.database_table").click((e) => {
                 const elem = $(e.currentTarget);
                 const database = elem.attr("database");
                 const table = elem.attr("table");
                 Fwk.show("Replication", "Schema");
                 Fwk.current().loadSchema(database, table);
+            });
+            tbody.find("pre.contrib_id").click((e) => {
+                const id = $(e.currentTarget).attr("id");
+                Fwk.find("Ingest", "Warnings").set_contrib_id(id);
+                Fwk.show("Ingest", "Warnings");
             });
             this._set_num_select(numSelect, info.contrib.files.length);
         }
