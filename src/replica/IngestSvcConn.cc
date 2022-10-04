@@ -205,7 +205,8 @@ void IngestSvcConn::_handshakeReceived(boost::system::error_code const& ec, size
 
     // This is where the actual processing of the request begins.
     try {
-        openFile(_contrib.transactionId, _contrib.table, dialect, _contrib.chunk, _contrib.isOverlap);
+        _contrib.tmpFile =
+                openFile(_contrib.transactionId, _contrib.table, dialect, _contrib.chunk, _contrib.isOverlap);
         _contrib = databaseServices->startedTransactionContrib(_contrib);
     } catch (HttpError const& ex) {
         json const errorExt = ex.errorExt();
