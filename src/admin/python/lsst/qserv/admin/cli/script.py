@@ -155,6 +155,7 @@ class InvalidQueryParameter(RuntimeError):
     """Raised when a URI contains query keys that are not supported for that
     URI.
     """
+
     pass
 
 
@@ -186,6 +187,7 @@ def _process_uri(uri: str, query_keys: Sequence[str], option: str, block: bool) 
     url : sqlalchemy.engine.url.URL
         The `URL` object derived from the parsed `uri`.
     """
+
     @backoff.on_exception(
         exception=mysql.connector.errors.DatabaseError,
         wait_gen=backoff.expo,
@@ -208,8 +210,10 @@ def _process_uri(uri: str, query_keys: Sequence[str], option: str, block: bool) 
             pass
 
     url = make_url(uri)
-    if (any(remainders := set(url.query.keys()) - set(query_keys))):
-        raise InvalidQueryParameter(f"Invalid query key(s) ({remainders}); {option} accepts {query_keys or 'no keys'}.")
+    if any(remainders := set(url.query.keys()) - set(query_keys)):
+        raise InvalidQueryParameter(
+            f"Invalid query key(s) ({remainders}); {option} accepts {query_keys or 'no keys'}."
+        )
     if block and url.host and url.port:
         wait_for_db(url)
     return url
@@ -261,7 +265,7 @@ def smig_replication_controller(
         update,
         mig_mgr_args=dict(
             repl_connection=db_uri,
-        )
+        ),
     )
 
 
@@ -335,6 +339,7 @@ def enter_worker_cmsd(
     cmsd_worker_cfg_path: str,
     xrdssi_cfg_file: str,
     xrdssi_cfg_path: str,
+    log_cfg_file: str,
     cmd: str,
 ) -> None:
     """Start a worker cmsd node.
@@ -358,6 +363,8 @@ def enter_worker_cmsd(
         The path to the xrdssi config file.
     xrdssi_cfg_path : str
         The location to render the the xrdssi config file.
+    log_cfg_file : `str`
+        Location of the log4cxx config file.
     cmd : str
         The jinja2 template for the command for this function to execute.
     """
@@ -379,7 +386,8 @@ def enter_worker_cmsd(
     # for the vnid plugin to function correctly
     _do_smig_block(worker_smig_dir, "worker", db_uri)
 
-    sys.exit(_run(args=None, cmd=cmd))
+    env = dict(os.environ, LSST_LOG_CONFIG=log_cfg_file)
+    sys.exit(_run(args=None, env=env, cmd=cmd))
 
 
 def enter_worker_xrootd(
@@ -611,7 +619,6 @@ def enter_proxy(
             "czar_db_host": url.host or "",
             "czar_db_port": url.port or "",
             "czar_db_socket": url.query.get("socket", ""),
-            "log_config_file": log_cfg_file
         }
     )
 
@@ -627,7 +634,11 @@ def enter_proxy(
     #  qmeta: mysqld_user_qserv
     smig_czar(db_admin_uri, update=False)
 
-    env = dict(os.environ, QSERV_CONFIG=czar_cfg_path)
+    env = dict(
+        os.environ,
+        LSST_LOG_CONFIG=log_cfg_file,
+        QSERV_CONFIG=czar_cfg_path,
+    )
 
     sys.exit(_run(args=None, cmd=cmd, env=env))
 
@@ -681,6 +692,7 @@ def enter_replication_controller(
     env = dict(os.environ, LSST_LOG_CONFIG=log_cfg_file)
     sys.exit(_run(args=None, cmd=cmd, env=env, run=run))
 
+
 def enter_replication_registry(
     db_uri: str,
     db_admin_uri: str,
@@ -729,6 +741,7 @@ def enter_replication_registry(
 
     env = dict(os.environ, LSST_LOG_CONFIG=log_cfg_file)
     sys.exit(_run(args=None, cmd=cmd, env=env, run=run))
+
 
 def smig_update(czar_connection: str, worker_connections: List[str], repl_connection: str) -> None:
     """Update smig on nodes that need it.
@@ -894,7 +907,7 @@ def load_simple(repl_ctrl_uri: str, auth_key: str) -> None:
         data_file,
         partition_config_files,
         data_staging_dir,
-        ref_db_table_schema_file
+        ref_db_table_schema_file,
     )
     repl.ingest_table_config(table.ingest_config)
     transaction_id = repl.start_transaction(database=database)
@@ -934,13 +947,12 @@ def integration_test(
         mysqld_user=mysqld_user_qserv,
     )
 
+
 def prepare_data(
     tests_yaml: str,
 ) -> bool:
 
-    return _integration_test.prepare_data(
-        tests_yaml=tests_yaml
-    )
+    return _integration_test.prepare_data(tests_yaml=tests_yaml)
 
 
 def spawned_app_help(
