@@ -83,6 +83,8 @@ public:
      *   whose content will be transferred to to the remote service.
      * @param authKey  an authorization key which should also be known to the server.
      * @param dialectInput optional parameteres specifying a dialect of the input file
+     * @param maxNumWarnings optional limit for the number of MySQL warnings to be
+     *   captured and retained by the ingest system after loading the contribution.
      * @param recordSizeBytes  an optional parameter specifying the record size for
      *   reading from the input file and for sending data to a server.
      * @throws IngestClientError for any problem occurred when establishing
@@ -92,7 +94,7 @@ public:
                        std::string const& tableName, unsigned int chunk, bool isOverlap,
                        std::string const& inputFilePath, std::string const& authKey = std::string(),
                        csv::DialectInput const& dialectInput = csv::DialectInput(),
-                       size_t recordSizeBytes = defaultRecordSizeBytes);
+                       unsigned int maxNumWarnings = 0, size_t recordSizeBytes = defaultRecordSizeBytes);
 
     // Default construction and copy semantics are prohibited
 
@@ -119,11 +121,14 @@ public:
     /// @throws std::logic_error if the request hasn't been completed
     bool retryAllowed() const;
 
+    /// @return The number of MySQL warnings detected when ingesting the contribution
+    unsigned int numWarnings() const;
+
 private:
     IngestClient(std::string const& workerHost, uint16_t workerPort, TransactionId transactionId,
                  std::string const& tableName, unsigned int chunk, bool isOverlap,
                  std::string const& inputFilePath, std::string const& authKey,
-                 csv::DialectInput const& dialectInput, size_t recordSizeBytes);
+                 csv::DialectInput const& dialectInput, unsigned int maxNumWarnings, size_t recordSizeBytes);
 
     /// @return a context string for the logger and exceptions
     std::string _context(std::string const& func) const {
@@ -189,6 +194,7 @@ private:
     std::string const _inputFilePath;
     std::string const _authKey;
     csv::DialectInput const _dialectInput;
+    unsigned int _maxNumWarnings;
     size_t const _recordSizeBytes;
 
     /// Buffer for data moved over the network.
@@ -197,9 +203,11 @@ private:
     boost::asio::io_service _io_service;
     boost::asio::ip::tcp::socket _socket;
 
-    bool _sent = false;          /// Set to 'true' after a successful completion of the ingest.
-    bool _retryAllowed = false;  /// Set to 'true' to indicate that failed request may be retried.
-    size_t _sizeBytes = 0;       /// The number of bytes read from an input file
+    bool _sent = false;          ///< Set to 'true' after a successful completion of the ingest.
+    bool _retryAllowed = false;  ///< Set to 'true' to indicate that failed request may be retried.
+    size_t _sizeBytes = 0;       ///< The number of bytes read from an input file.
+    unsigned int _numWarnings =
+            0;  ///< The number of MySQL warnings detected when ingesting the contribution.
 };
 
 }  // namespace lsst::qserv::replica

@@ -901,6 +901,12 @@ message ProtocolIngestHandshakeRequest {
 
     /// The input parameteres for a dialect of the input file.
     required ProtocolDialectInput dialect_input = 12;
+
+    /// The optional limit for the number of MySQL warnings to be captured
+    /// after loading the contribution. In case of the default value of 0
+    /// is used the limit will be derived from the corresponding
+    /// configuration parameter.
+    optional uint32 max_num_warnings = 13 [default = 0];
 }
 
 /// A message which is meant for sending a byte stream to a server after receiving
@@ -925,6 +931,7 @@ message ProtocolIngestResponse {
 
     optional string error = 3 [default = ""];           /// sent with FAILED
     optional bool retry_allowed = 4 [default = false];  /// sent with FAILED
+    optional uint32 num_warnings = 5 [default = 0];     /// sent with FINISHED
 }
 
 //////////////////////////////////////////////
