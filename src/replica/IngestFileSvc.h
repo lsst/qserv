@@ -23,15 +23,22 @@
 
 // System headers
 #include <fstream>
+#include <list>
 #include <memory>
 
 // Qserv headers
 #include "replica/Configuration.h"
 #include "replica/Csv.h"
+#include "replica/TransactionContrib.h"
 #include "replica/ServiceProvider.h"
 
 // This header declarations
 namespace lsst::qserv::replica {
+
+// Forward declarations
+namespace database::mysql {
+class Warning;
+}  // namespace database::mysql
 
 /**
  * Class IngestFileSvc is used in the server-side implementations of
@@ -54,6 +61,9 @@ protected:
 
     ServiceProvider::Ptr const& serviceProvider() const { return _serviceProvider; }
     std::string const& workerName() const { return _workerName; }
+    unsigned int numWarnings() const { return _numWarnings; }
+    std::list<database::mysql::Warning> const& warnings() const { return _warnings; }
+    uint64_t numRowsLoaded() const { return _numRowsLoaded; }
 
     /**
      * Open a file.
@@ -82,7 +92,11 @@ protected:
     void writeRowIntoFile(char const* buf, size_t size);
 
     /// Load the content of the current file into a database table
-    void loadDataIntoTable();
+    /// @param maxNumWarnings The optional limit for the number of MySQL warnings
+    ///   to be captured when ingesting the contribution. If the default
+    ///   value of 0 will be used then the implementation will use
+    ///   the corresponding parameter of the configuration.
+    void loadDataIntoTable(unsigned int maxNumWarnings = 0);
 
     /// Make sure the currently open/created file gets closed and deleted
     void closeFile();
@@ -111,6 +125,12 @@ private:
     std::ofstream _file;
 
     size_t _totalNumRows = 0;  ///< The number of rows received and recorded
+
+    // MySQL warnings (if any) captured after loading the contribution into the table.
+    unsigned int _numWarnings = 0;
+    std::list<database::mysql::Warning> _warnings;
+
+    uint64_t _numRowsLoaded = 0;  ///< Th enumber of rows actually ingested into Qserv.
 };
 
 }  // namespace lsst::qserv::replica

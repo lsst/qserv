@@ -110,7 +110,7 @@ function(CSSLoader,
                 {version: Common.RestAPIVersion},
                 (data) => {
                     if (!data.success) {
-                        _on_failed(data.error);
+                        this._on_failed(data.error);
                         return;
                     }
                     this._display(data["css"]["shared_scan"]);
@@ -118,10 +118,10 @@ function(CSSLoader,
                     this._table().children('caption').removeClass('updating');
                     this._loading = false;
                 },
-                (msg) => { this._in_failed('No Response'); }
+                (msg) => { this._on_failed('No Response'); }
             );
         }
-        _in_failed(msg) {
+        _on_failed(msg) {
             this._table().children('caption').html('<span style="color:maroon">' + msg + '</span>');
             this._table().children('caption').removeClass('updating');
             this._loading = false;

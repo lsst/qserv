@@ -35,6 +35,7 @@
 #include "lsst/log/Log.h"
 
 using namespace std;
+using json = nlohmann::json;
 
 namespace {
 
@@ -112,4 +113,11 @@ ostream& operator<<(ostream& os, ConnectionParams const& params) {
     return os;
 }
 
+json Warning::toJson() const {
+    json infoJson;
+    infoJson["level"] = level;
+    infoJson["code"] = code;
+    infoJson["message"] = message;
+    return infoJson;
+}
 }  // namespace lsst::qserv::replica::database::mysql

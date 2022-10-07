@@ -40,6 +40,7 @@
 #include "global/constants.h"
 #include "replica/ChunkedTable.h"
 #include "replica/DatabaseMySQL.h"
+#include "replica/DatabaseMySQLTypes.h"
 #include "replica/DatabaseServices.h"
 #include "replica/FileUtils.h"
 #include "replica/HttpExceptions.h"
@@ -154,7 +155,7 @@ void IngestFileSvc::writeRowIntoFile(char const* buf, size_t size) {
     ++_totalNumRows;
 }
 
-void IngestFileSvc::loadDataIntoTable() {
+void IngestFileSvc::loadDataIntoTable(unsigned int maxNumWarnings) {
     string const context_ = context + string(__func__) + " ";
     LOGS(_log, LOG_LVL_DEBUG, context_ << "_totalNumRows: " << _totalNumRows);
 
@@ -293,8 +294,25 @@ void IngestFileSvc::loadDataIntoTable() {
         if (dataLoadQuery.empty()) {
             throw runtime_error(context_ + "no data loading query generated");
         }
-        h.conn->executeInOwnTransaction(
-                [&dataLoadQuery](decltype(h.conn) const& conn_) { conn_->execute(dataLoadQuery); });
+        unsigned int effectiveMaxNumWarnings = maxNumWarnings;
+        if (effectiveMaxNumWarnings == 0) {
+            effectiveMaxNumWarnings =
+                    _serviceProvider->config()->get<unsigned int>("worker", "loader-max-warnings");
+        }
+        string const setErrorCountQuery =
+                g.setVars(SqlVarScope::SESSION, make_pair("max_error_count", effectiveMaxNumWarnings));
+        h.conn->executeInOwnTransaction([&](decltype(h.conn) const& conn_) {
+            conn_->execute(setErrorCountQuery);
+            conn_->execute(dataLoadQuery);
+            // ATTENTION: it's important to obtain the number of loaded rows before
+            // checking for the warnings. Otherwise, if the collection of warnings won't
+            // be found empty then MariaDB will reset the counter of the loaded rows to -1.
+            _numRowsLoaded = conn_->affectedRows();
+            _numWarnings = conn_->warningCount();
+            if (_numWarnings != 0) {
+                _warnings = conn_->warnings(effectiveMaxNumWarnings);
+            }
+        });
 
         // Make the final check to ensure the current transaction wasn't aborted
         // while the input file was being ingested into the table. If it was

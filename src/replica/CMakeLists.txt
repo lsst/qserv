@@ -404,6 +404,8 @@ target_sources(replica PRIVATE
     Task.h
     TestEchoQservMgtRequest.cc
     TestEchoQservMgtRequest.h
+    TransactionContrib.cc
+    TransactionContrib.h
     TransactionsApp.cc
     TransactionsApp.h
     Url.cc

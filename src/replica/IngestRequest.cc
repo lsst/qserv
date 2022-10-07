@@ -103,10 +103,10 @@ IngestRequest::Ptr IngestRequest::create(ServiceProvider::Ptr const& serviceProv
                                          string const& table, unsigned int chunk, bool isOverlap,
                                          string const& url, bool async, csv::DialectInput const& dialectInput,
                                          string const& httpMethod, string const& httpData,
-                                         vector<string> const& httpHeaders) {
+                                         vector<string> const& httpHeaders, unsigned int maxNumWarnings) {
     IngestRequest::Ptr ptr(new IngestRequest(serviceProvider, workerName, transactionId, table, chunk,
                                              isOverlap, url, async, dialectInput, httpMethod, httpData,
-                                             httpHeaders));
+                                             httpHeaders, maxNumWarnings));
     return ptr;
 }
 
@@ -187,7 +187,8 @@ IngestRequest::IngestRequest(ServiceProvider::Ptr const& serviceProvider, string
                              TransactionId transactionId, string const& table, unsigned int chunk,
                              bool isOverlap, string const& url, bool async,
                              csv::DialectInput const& dialectInput, string const& httpMethod,
-                             string const& httpData, vector<string> const& httpHeaders)
+                             string const& httpData, vector<string> const& httpHeaders,
+                             unsigned int maxNumWarnings)
         : IngestFileSvc(serviceProvider, workerName) {
     // Initialize the descriptor
     _contrib.transactionId = transactionId;
@@ -201,6 +202,12 @@ IngestRequest::IngestRequest(ServiceProvider::Ptr const& serviceProvider, string
     _contrib.httpMethod = httpMethod;
     _contrib.httpData = httpData;
     _contrib.httpHeaders = httpHeaders;
+    if (maxNumWarnings == 0) {
+        _contrib.maxNumWarnings =
+                serviceProvider->config()->get<unsigned int>("worker", "loader-max-warnings");
+    } else {
+        _contrib.maxNumWarnings = maxNumWarnings;
+    }
 
     // Prescreen parameters of the request to ensure the request has a valid
     // context (transaction, database, table). Refuse to proceed with registering
@@ -436,8 +443,11 @@ void IngestRequest::_processLoadData() {
         }
     }
     try {
-        loadDataIntoTable();
+        loadDataIntoTable(_contrib.maxNumWarnings);
         util::Lock lock(_mtx, context);
+        _contrib.numWarnings = numWarnings();
+        _contrib.warnings = warnings();
+        _contrib.numRowsLoaded = numRowsLoaded();
         _contrib = databaseServices->loadedTransactionContrib(_contrib);
     } catch (exception const& ex) {
         {

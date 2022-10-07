@@ -54,6 +54,7 @@ require([
     'qserv/IngestTransactions',
     'qserv/IngestTransactionsLog',
     'qserv/IngestContributions',
+    'qserv/IngestContribWarnings',
     'qserv/ToolsSql',
 
     // Make sure the core libraries are preloaded so that the applications
@@ -84,6 +85,7 @@ function(CSSLoader,
          IngestTransactions,
          IngestTransactionsLog,
          IngestContributions,
+         IngestContribWarnings,
          ToolsSql) {
 
     CSSLoader.load('https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.css');
@@ -139,7 +141,8 @@ function(CSSLoader,
                     new IngestStatus('Status'),
                     new IngestTransactions('Transactions'),
                     new IngestTransactionsLog('Transaction Events Log'),
-                    new IngestContributions('Contributions')
+                    new IngestContributions('Contributions'),
+                    new IngestContribWarnings('Warnings')
                 ]
             },
             {   name: 'Tools',

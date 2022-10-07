@@ -71,7 +71,7 @@ json IngestHttpSvcMod::executeImpl(string const& subModuleName) {
 
 json IngestHttpSvcMod::_syncProcessRequest() const {
     debug(__func__);
-    checkApiVersion(__func__, 12);
+    checkApiVersion(__func__, 13);
 
     auto const request = _createRequest();
     request->process();
@@ -80,7 +80,7 @@ json IngestHttpSvcMod::_syncProcessRequest() const {
 
 json IngestHttpSvcMod::_asyncSubmitRequest() const {
     debug(__func__);
-    checkApiVersion(__func__, 12);
+    checkApiVersion(__func__, 13);
 
     bool const async = true;
     auto const request = _createRequest(async);
@@ -90,7 +90,7 @@ json IngestHttpSvcMod::_asyncSubmitRequest() const {
 
 json IngestHttpSvcMod::_asyncRequest() const {
     debug(__func__);
-    checkApiVersion(__func__, 12);
+    checkApiVersion(__func__, 13);
 
     auto const id = stoul(params().at("id"));
     auto const contrib = _ingestRequestMgr->find(id);
@@ -99,7 +99,7 @@ json IngestHttpSvcMod::_asyncRequest() const {
 
 json IngestHttpSvcMod::_asyncCancelRequest() const {
     debug(__func__);
-    checkApiVersion(__func__, 12);
+    checkApiVersion(__func__, 13);
 
     auto const id = stoul(params().at("id"));
     auto const contrib = _ingestRequestMgr->cancel(id);
@@ -108,7 +108,7 @@ json IngestHttpSvcMod::_asyncCancelRequest() const {
 
 json IngestHttpSvcMod::_asyncTransRequests() const {
     debug(__func__);
-    checkApiVersion(__func__, 12);
+    checkApiVersion(__func__, 13);
 
     TransactionId const transactionId = stoul(params().at("id"));
     string const anyTable;
@@ -123,7 +123,7 @@ json IngestHttpSvcMod::_asyncTransRequests() const {
 
 json IngestHttpSvcMod::_asyncTransCancelRequests() const {
     debug(__func__);
-    checkApiVersion(__func__, 12);
+    checkApiVersion(__func__, 13);
 
     TransactionId const transactionId = stoul(params().at("id"));
     string const anyTable;
@@ -170,6 +170,8 @@ IngestRequest::Ptr IngestHttpSvcMod::_createRequest(bool async) const {
     string const httpData = body().optional<string>("http_data", string());
     vector<string> const httpHeaders = body().optionalColl<string>("http_headers", vector<string>());
 
+    unsigned int const maxNumWarnings = body().optional<unsigned int>("max_num_warnings", 0);
+
     debug(__func__, "transactionId: " + to_string(transactionId));
     debug(__func__, "table: '" + table + "'");
     debug(__func__, "fields_terminated_by: '" + dialectInput.fieldsTerminatedBy + "'");
@@ -185,7 +187,7 @@ IngestRequest::Ptr IngestHttpSvcMod::_createRequest(bool async) const {
 
     IngestRequest::Ptr const request =
             IngestRequest::create(_serviceProvider, _workerName, transactionId, table, chunk, isOverlap, url,
-                                  async, dialectInput, httpMethod, httpData, httpHeaders);
+                                  async, dialectInput, httpMethod, httpData, httpHeaders, maxNumWarnings);
     return request;
 }
 

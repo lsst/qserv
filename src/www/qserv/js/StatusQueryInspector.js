@@ -22,7 +22,6 @@ function(CSSLoader,
 
         constructor(name) {
             super(name);
-            this._queryId = 0;
         }
 
         /**
@@ -61,9 +60,9 @@ function(CSSLoader,
         }
 
         /// Set the identifier and begin loading the query info in the background.
-        set_query_id(queryId) {
+        set_query_id(query_id) {
             this._init();
-            this._set_query_id(queryId);
+            this._set_query_id(query_id);
             this._load();
         }
 
@@ -80,7 +79,7 @@ function(CSSLoader,
 <div class="form-row" id="fwk-status-query-controls">
   <div class="form-group col-md-1">
     <label for="query-id">Query Id:</label>
-    <input type="number" id="queryId" class="form-control" value="">
+    <input type="number" id="query-id" class="form-control" value="">
   </div>
   <div class="form-group col-md-1">
     <label for="query-update-interval">Interval <i class="bi bi-arrow-repeat"></i></label>
@@ -183,8 +182,8 @@ function(CSSLoader,
             }
             return this._form_control_obj[id];
         }
-        _get_query_id() { return this._form_control('input', 'queryId').val(); }
-        _set_query_id(queryId) { this._form_control('input', 'queryId').val(queryId); }
+        _get_query_id() { return this._form_control('input', 'query-id').val(); }
+        _set_query_id(query_id) { this._form_control('input', 'query-id').val(query_id); }
         _query_info(attr) {
             if (this._query_info_obj === undefined) {
                 this._query_info_obj = this.fwk_app_container.find('div#fwk-status-query-info');
@@ -213,18 +212,18 @@ function(CSSLoader,
             this._status().addClass('updating');
             this._load_query_info(this._get_query_id());
         }
-        _load_query_info(queryId) {
+        _load_query_info(query_id) {
             Fwk.web_service_GET(
-                "/replication/qserv/master/query/" + queryId,
+                "/replication/qserv/master/query/" + query_id,
                 {include_messages: 1, version: Common.RestAPIVersion},
                 (data) => {
                     console.log(data["queries_past"]);
                     if (!data.success) {
-                        _on_failed(data.error);
+                        this._on_failed(data.error);
                         return;
                     }
                     if (!_.has(data, "queries_past") || data["queries_past"].length !== 1) {
-                        _on_failed('No info returned by the server for queryId=' + queryId);
+                      this._on_failed('No info returned by the server for query_id=' + query_id);
                         return;
                     } else {
                         this._display(data["queries_past"][0]);
@@ -276,8 +275,9 @@ function(CSSLoader,
             }
             let tbody = this._table_messages().children('tbody');
             tbody.html(html);
-            // Messages are set via DOM to avoid failures that may arrise during static HTML generation
-            // due to special HTML tags a=ro symbols like '<', '>', etc.
+            // Messages are set via DOM to avoid failures that may arrise during
+            // static HTML generation due to special HTML tags or markup symbols
+            // like '<', '>', etc.
             for (let i in info.messages) {
                 tbody.find('td#' + i).text(info.messages[i].message);
             }
@@ -288,10 +288,10 @@ function(CSSLoader,
             return "query-failed";
         }
         _severity2class(severity) {
-          if (severity === "INFO") return "severity-info";
-          else if (severity === "WARN") return "severity-warn";
-          return "severity-error";
-      }
+            if (severity === "INFO") return "severity-info";
+            else if (severity === "WARN") return "severity-warn";
+            return "severity-error";
+        }
     }
     return StatusQueryInspector;
 });

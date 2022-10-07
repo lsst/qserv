@@ -166,6 +166,7 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestReadingGeneralParameters) {
     BOOST_CHECK(config->get<size_t>("worker", "async-loader-auto-resume") == 0);
     BOOST_CHECK(config->get<size_t>("worker", "async-loader-cleanup-on-resume") == 0);
     BOOST_CHECK(config->get<unsigned int>("worker", "http-max-listen-conn") == 512);
+    BOOST_CHECK(config->get<unsigned int>("worker", "loader-max-warnings") == 2);
 }
 
 BOOST_AUTO_TEST_CASE(ConfigurationTestModifyingGeneralParameters) {
@@ -349,6 +350,10 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestModifyingGeneralParameters) {
     BOOST_CHECK_THROW(config->set<unsigned int>("worker", "http-max-listen-conn", 0), std::invalid_argument);
     BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("worker", "http-max-listen-conn", 2048));
     BOOST_CHECK(config->get<unsigned int>("worker", "http-max-listen-conn") == 2048);
+
+    BOOST_CHECK_THROW(config->set<unsigned int>("worker", "loader-max-warnings", 0), std::invalid_argument);
+    BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("worker", "loader-max-warnings", 100));
+    BOOST_CHECK(config->get<unsigned int>("worker", "loader-max-warnings") == 100);
 }
 
 BOOST_AUTO_TEST_CASE(ConfigurationTestWorkerOperators) {

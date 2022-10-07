@@ -325,6 +325,13 @@ json const ConfigurationSchema::_schemaJson = json::object(
               " to other workers. This folder is required to be the location where the MySQL"
               " service of Qserv worker stores its data."},
              {"default", "/qserv/data/mysql"}}},
+           {"loader-max-warnings",
+            {{"description",
+              "The maximum number of warnings to retain after executing LOAD DATA [LOCAL] INFILE"
+              " when ingesting contributions into the adjacent Qserv worker's MySQL database."
+              " The warnings (if any) will be recorded in the persisent state of the"
+              " Replication/Inhgest system and returned to the ingest workflow upon request."},
+             {"default", 64}}},
            {"loader-port",
             {{"description", "The port number for the worker's binary file ingest service."},
              {"default", 25002}}},

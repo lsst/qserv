@@ -239,6 +239,8 @@ function(CSSLoader,
             // summary sections.
             let databaseDataSize = 0;
             let databaseNumRows = 0;
+            let databaseNumRowsLoaded = 0;
+            let databaseNumWarnings = 0;
             let databaseNumFilesByStatus = {
                 'IN_PROGRESS': 0,
                 'CREATE_FAILED': 0,
@@ -277,6 +279,8 @@ function(CSSLoader,
                 const summary = transactionInfo.contrib.summary;
                 databaseDataSize += summary.data_size_gb;
                 databaseNumRows  += summary.num_rows;
+                databaseNumRowsLoaded  += summary.num_rows_loaded;
+                databaseNumWarnings  += summary.num_warnings;
                 for (let status in summary.num_files_by_status) {
                     databaseNumFilesByStatus[status] += summary.num_files_by_status[status];
                 }
@@ -295,12 +299,16 @@ function(CSSLoader,
                     const tableInfo = summary.table[table];
                     if (_.has(tableStats, table)) {
                         tableStats[table].data  += tableInfo.data_size_gb;
-                        tableStats[table].rows  += tableInfo.num_rows;
+                        tableStats[table].num_rows  += tableInfo.num_rows;
+                        tableStats[table].num_rows_loaded  += tableInfo.num_rows_loaded;
+                        tableStats[table].num_warnings  += tableInfo.num_warnings;
                         tableStats[table].files += tableInfo.num_files;
                     } else {
                         tableStats[table] = {
-                            'data':  tableInfo.data_size_gb,
-                            'rows':  tableInfo.num_rows,
+                            'data': tableInfo.data_size_gb,
+                            'num_rows': tableInfo.num_rows,
+                            'num_rows_loaded': tableInfo.num_rows_loaded,
+                            'num_warnings': tableInfo.num_warnings,
                             'files': tableInfo.num_files
                         };
                     }
@@ -309,12 +317,16 @@ function(CSSLoader,
                         baseTableName[tableOverlaps] = table;
                         if (_.has(tableStats, tableOverlaps)) {
                             tableStats[tableOverlaps].data  += tableInfo.overlap.data_size_gb;
-                            tableStats[tableOverlaps].rows  += tableInfo.overlap.num_rows;
+                            tableStats[tableOverlaps].num_rows  += tableInfo.overlap.num_rows;
+                            tableStats[tableOverlaps].num_rows_loaded  += tableInfo.overlap.num_rows_loaded;
+                            tableStats[tableOverlaps].num_warnings  += tableInfo.overlap.num_warnings;
                             tableStats[tableOverlaps].files += tableInfo.overlap.num_files;
                         } else {
                             tableStats[tableOverlaps] = {
                                 'data':  tableInfo.overlap.data_size_gb,
-                                'rows':  tableInfo.overlap.num_rows,
+                                'num_rows':  tableInfo.overlap.num_rows,
+                                'num_rows_loaded':  tableInfo.overlap.num_rows_loaded,
+                                'num_warnings':  tableInfo.overlap.num_warnings,
                                 'files': tableInfo.overlap.num_files
                             };
                         }
@@ -329,12 +341,16 @@ function(CSSLoader,
                                            workerInfo.num_chunk_overlap_files;
                     if (_.has(workerStats, worker)) {
                         workerStats[worker].data  += workerInfo.data_size_gb;
-                        workerStats[worker].rows  += workerInfo.num_rows;
+                        workerStats[worker].num_rows  += workerInfo.num_rows;
+                        workerStats[worker].num_rows_loaded  += workerInfo.num_rows_loaded;
+                        workerStats[worker].num_warnings  += workerInfo.num_warnings;
                         workerStats[worker].files += numWorkerFiles;
                     } else {
                         workerStats[worker] = {
                             'data':  workerInfo.data_size_gb,
-                            'rows':  workerInfo.num_rows,
+                            'num_rows':  workerInfo.num_rows,
+                            'num_rows_loaded':  workerInfo.num_rows_loaded,
+                            'num_warnings':  workerInfo.num_warnings,
                             'files': numWorkerFiles
                         };
                     }
@@ -358,6 +374,8 @@ function(CSSLoader,
                 perfStr = (1000. * perfGBps).toFixed(2);
             }
             const catalogStatus = databaseInfo.is_published ? 'PUBLISHED' : 'INGESTING';
+            let attentionCssClass4rows = databaseNumRowsLoaded === databaseNumRows ? '' : 'table-danger';
+            let attentionCssClass4warnings = databaseNumWarnings === 0 ? '' : 'table-danger';
             html += `
     <div class="database">
       <div class="row block">
@@ -367,6 +385,8 @@ function(CSSLoader,
               <tr><th>Status</th><td class="right-aligned"><pre>${catalogStatus}</pre></td><td>&nbsp;</td></tr>
               <tr><th>Chunks</th><td class="right-aligned"><pre>${databaseInfo.num_chunks}</pre></td><td>&nbsp;</td></tr>
               <tr><th>Rows</th><td class="right-aligned"><pre>${databaseNumRows}</pre></td><td>&nbsp;</td></tr>
+              <tr class="${attentionCssClass4rows}"><th>Rows&nbsp;loaded</th><td class="right-aligned"><pre>${databaseNumRowsLoaded}</pre></td><td>&nbsp;</td></tr>
+              <tr class="${attentionCssClass4warnings}"><th>Warnings</th><td class="right-aligned"><pre>${databaseNumWarnings}</pre></td><td>&nbsp;</td></tr>
               <tr><th>Data [GB]</th><td class="right-aligned"><pre>${databaseDataSize.toFixed(2)}</pre></td><td>&nbsp;</td></tr>
               <tr><th>Performance [MB/s]:</th><td class="right-aligned"><pre>${perfStr}</pre></td><td>&nbsp;</td></tr>
             </tbody>
@@ -422,23 +442,29 @@ function(CSSLoader,
             <thead class="thead-light">
               <tr>
                 <th style="border-top:none">&nbsp;</th>
-                <th class="right-aligned" style="border-top:none">data [GB]</th>
-                <th class="right-aligned" style="border-top:none">rows</th>
-                <th class="right-aligned" style="border-top:none">contribs</th>
+                <th class="right-aligned" style="border-top:none">Data [GB]</th>
+                <th class="right-aligned" style="border-top:none">Rows</th>
+                <th class="right-aligned" style="border-top:none">Rows loaded</th>
+                <th class="right-aligned" style="border-top:none">Warnings</th>
+                <th class="right-aligned" style="border-top:none">Contribs</th>
               </tr>
             </thead>
             <thead>
               <tr>
-                <th colspan="4" style="border-bottom:none">table</th>
+                <th colspan="4" style="border-bottom:none">Table</th>
               </tr>
             </thead>
             <tbody>`;
                 for (let table in tableStats) {
+                    let attentionCssClass4rows = tableStats[table].num_rows_loaded === tableStats[table].num_rows ? '' : 'table-danger';
+                    let attentionCssClass4warnings = tableStats[table].num_warnings === 0 ? '' : 'table-danger';
                     html += `
                   <tr>
                     <td class="level-2"><pre class="database_table" database="${database}" table="${baseTableName[table]}">${table}</pre></td>
                     <td class="right-aligned"><pre>${tableStats[table].data.toFixed(2)}</pre></td>
-                    <td class="right-aligned"><pre>${tableStats[table].rows}</pre></td>
+                    <td class="right-aligned"><pre>${tableStats[table].num_rows}</pre></td>
+                    <td class="right-aligned ${attentionCssClass4rows}"><pre>${tableStats[table].num_rows_loaded}</pre></td>
+                    <td class="right-aligned ${attentionCssClass4warnings}"><pre>${tableStats[table].num_warnings}</pre></td>
                     <td class="right-aligned"><pre>${tableStats[table].files}</pre></td>
               </tr>`;
                 }
@@ -446,16 +472,20 @@ function(CSSLoader,
                 </tbody>
                 <thead>
                   <tr>
-                    <th colspan="4" style="border-bottom:none">worker</th>
+                    <th colspan="4" style="border-bottom:none">Worker</th>
                   </tr>
                 </thead>
             <tbody>`;
                 for (let worker in workerStats) {
+                    let attentionCssClass4rows = workerStats[worker].num_rows_loaded === workerStats[worker].num_rows ? '' : 'table-danger';
+                    let attentionCssClass4warnings = workerStats[worker].num_warnings === 0 ? '' : 'table-danger';
                     html += `
                   <tr>
                     <td class="level-2"><pre>${worker}</pre></td>
                     <td class="right-aligned"><pre>${workerStats[worker].data.toFixed(2)}</pre></td>
-                    <td class="right-aligned"><pre>${workerStats[worker].rows}</pre></td>
+                    <td class="right-aligned"><pre>${workerStats[worker].num_rows}</pre></td>
+                    <td class="right-aligned ${attentionCssClass4rows}"><pre>${workerStats[worker].num_rows_loaded}</pre></td>
+                    <td class="right-aligned ${attentionCssClass4warnings}"><pre>${workerStats[worker].num_warnings}</pre></td>
                     <td class="right-aligned"><pre>${workerStats[worker].files}</pre></td>
                   </tr>`;
                 }

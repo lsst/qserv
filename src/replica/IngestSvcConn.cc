@@ -153,12 +153,17 @@ void IngestSvcConn::_handshakeReceived(boost::system::error_code const& ec, size
     _contrib.dialectInput = csv::DialectInput(request.dialect_input());
     _contrib.retryAllowed = true;  // stays like this before loading data into MySQL
 
+    auto const config = serviceProvider()->config();
+
+    _contrib.maxNumWarnings = request.max_num_warnings();
+    if (_contrib.maxNumWarnings == 0) {
+        _contrib.maxNumWarnings = config->get<unsigned int>("worker", "loader-max-warnings");
+    }
+
     // Attempts to pass invalid transaction identifiers or tables are not recorded
     // as transaction contributions since it's impossible to determine a context
     // of these operations.
-    auto const config = serviceProvider()->config();
     auto const databaseServices = serviceProvider()->databaseServices();
-
     auto const trans = databaseServices->transaction(_contrib.transactionId);
     _contrib.database = trans.database;
 
@@ -200,7 +205,8 @@ void IngestSvcConn::_handshakeReceived(boost::system::error_code const& ec, size
 
     // This is where the actual processing of the request begins.
     try {
-        openFile(_contrib.transactionId, _contrib.table, dialect, _contrib.chunk, _contrib.isOverlap);
+        _contrib.tmpFile =
+                openFile(_contrib.transactionId, _contrib.table, dialect, _contrib.chunk, _contrib.isOverlap);
         _contrib = databaseServices->startedTransactionContrib(_contrib);
     } catch (HttpError const& ex) {
         json const errorExt = ex.errorExt();
@@ -304,7 +310,10 @@ void IngestSvcConn::_dataReceived(boost::system::error_code const& ec, size_t by
         _retryAllowed = false;
         _contrib.retryAllowed = false;
         try {
-            loadDataIntoTable();
+            loadDataIntoTable(_contrib.maxNumWarnings);
+            _contrib.numWarnings = numWarnings();
+            _contrib.warnings = warnings();
+            _contrib.numRowsLoaded = numRowsLoaded();
             serviceProvider()->databaseServices()->loadedTransactionContrib(_contrib);
             _finished();
         } catch (exception const& ex) {
@@ -329,6 +338,9 @@ void IngestSvcConn::_reply(ProtocolIngestResponse::Status status, string const& 
     response.set_status(status);
     response.set_error(msg);
     response.set_retry_allowed(_retryAllowed);
+    response.set_num_warnings(_contrib.numWarnings);
+    response.set_num_rows(_contrib.numRows);
+    response.set_num_rows_loaded(_contrib.numRowsLoaded);
 
     _bufferPtr->resize();
     _bufferPtr->serialize(response);

@@ -53,10 +53,10 @@ IngestClient::Ptr IngestClient::connect(string const& workerHost, uint16_t worke
                                         TransactionId transactionId, string const& tableName,
                                         unsigned int chunk, bool isOverlap, string const& inputFilePath,
                                         string const& authKey, csv::DialectInput const& dialectInput,
-                                        size_t recordSizeBytes) {
+                                        unsigned int maxNumWarnings, size_t recordSizeBytes) {
     IngestClient::Ptr const ptr(new IngestClient(workerHost, workerPort, transactionId, tableName, chunk,
                                                  isOverlap, inputFilePath, authKey, dialectInput,
-                                                 recordSizeBytes));
+                                                 maxNumWarnings, recordSizeBytes));
     ptr->_connectImpl();
     return ptr;
 }
@@ -64,7 +64,8 @@ IngestClient::Ptr IngestClient::connect(string const& workerHost, uint16_t worke
 IngestClient::IngestClient(string const& workerHost, uint16_t workerPort, TransactionId transactionId,
                            string const& tableName, unsigned int chunk, bool isOverlap,
                            string const& inputFilePath, string const& authKey,
-                           csv::DialectInput const& dialectInput, size_t recordSizeBytes)
+                           csv::DialectInput const& dialectInput, unsigned int maxNumWarnings,
+                           size_t recordSizeBytes)
         : _workerHost(workerHost),
           _workerPort(workerPort),
           _transactionId(transactionId),
@@ -74,6 +75,7 @@ IngestClient::IngestClient(string const& workerHost, uint16_t workerPort, Transa
           _inputFilePath(inputFilePath),
           _authKey(authKey),
           _dialectInput(dialectInput),
+          _maxNumWarnings(maxNumWarnings),
           _recordSizeBytes(recordSizeBytes),
           _bufferPtr(new ProtocolBuffer(defaultBufferCapacity)),
           _io_service(),
@@ -123,6 +125,9 @@ void IngestClient::send() {
         ProtocolIngestResponse response;
         _readResponse(response);
         _retryAllowed = response.retry_allowed();
+        _numWarnings = response.num_warnings();
+        _numRows = response.num_rows();
+        _numRowsLoaded = response.num_rows_loaded();
 
         switch (response.status()) {
             case ProtocolIngestResponse::READY_TO_READ_DATA:
@@ -163,6 +168,21 @@ bool IngestClient::retryAllowed() const {
     return _retryAllowed;
 }
 
+unsigned int IngestClient::numWarnings() const {
+    if (!_sent) throw logic_error(_context(__func__) + "the request hasn't been sent");
+    return _numWarnings;
+}
+
+uint64_t IngestClient::numRows() const {
+    if (!_sent) throw logic_error(_context(__func__) + "the request hasn't been sent");
+    return _numRows;
+}
+
+uint64_t IngestClient::numRowsLoaded() const {
+    if (!_sent) throw logic_error(_context(__func__) + "the request hasn't been sent");
+    return _numRowsLoaded;
+}
+
 void IngestClient::_connectImpl() {
     LOGS(_log, LOG_LVL_DEBUG, _context(__func__));
 
@@ -193,6 +213,7 @@ void IngestClient::_connectImpl() {
     request.set_auth_key(_authKey);
     request.set_url("file://" + host + inputFilePathAbsolute.string());
     request.set_allocated_dialect_input(_dialectInput.toProto().release());
+    request.set_max_num_warnings(_maxNumWarnings);
     _bufferPtr->resize();
     _bufferPtr->serialize(request);
 

@@ -171,6 +171,11 @@ FileIngestApp::FileIngestApp(int argc, char* argv[])
                     _dialectInput.fieldsEscapedBy)
             .option("lines-terminated-by", "An optional character which is used to terminate lines.",
                     _dialectInput.linesTerminatedBy)
+            .option("max-num-warnings",
+                    "The number of MySQL warnings to be captured and retained"
+                    " after loading the contribution. The default value of 0 will result in using"
+                    " the corresponding default limit of the ingest service.",
+                    _maxNumWarnings)
             .option("record-size-bytes",
                     "An optional parameter specifying the record size for reading from the input"
                     " file and for sending data to a server.",
@@ -372,9 +377,10 @@ void FileIngestApp::_ingest(FileIngestSpec const& file) const {
     // set via an optional parameter to the application.
 
     uint64_t const startedMs = PerformanceUtils::now();
-    auto const ptr = IngestClient::connect(
-            file.workerHost, file.workerPort, file.transactionId, file.tableName, chunkContribution.chunk,
-            chunkContribution.isOverlap, file.inFileName, authKey(), _dialectInput, _recordSizeBytes);
+    auto const ptr =
+            IngestClient::connect(file.workerHost, file.workerPort, file.transactionId, file.tableName,
+                                  chunkContribution.chunk, chunkContribution.isOverlap, file.inFileName,
+                                  authKey(), _dialectInput, _maxNumWarnings, _recordSizeBytes);
     ptr->send();
     uint64_t const finishedMs = PerformanceUtils::now();
 
@@ -395,6 +401,9 @@ void FileIngestApp::_ingest(FileIngestSpec const& file) const {
              << "           Elapsed time: " << elapsedSec << " sec\n"
              << "             Bytes sent: " << ptr->sizeBytes() << "\n"
              << "              MByte/sec: " << megaBytesPerSec << "\n"
+             << "     Number of warnings: " << ptr->numWarnings() << "\n"
+             << "  Number of rows parsed: " << ptr->numRows() << "\n"
+             << "  Number of rows loaded: " << ptr->numRowsLoaded() << "\n"
              << endl;
     }
 }

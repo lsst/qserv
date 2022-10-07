@@ -366,6 +366,10 @@ CREATE TABLE IF NOT EXISTS `transaction_contrib` (
 
   `tmp_file` TEXT NOT NULL ,  -- the temporary file open to store preprocessed data
 
+  `num_warnings` INT UNSIGNED NOT NULL DEFAULT 0 ,  -- the total number of MySQL warnings detected after loading the contribution
+
+  `num_rows_loaded` BIGINT UNSIGNED NOT NULL DEFAULT 0 ,  -- the total number of rows affected by the loading operation
+
   -- Columns for storing the extended info on a problem that prevented a request
   -- from succeeding.
   `http_error`    INT     NOT NULL DEFAULT 0 ,  -- HTTP response code, if applies to a request
@@ -395,7 +399,6 @@ CREATE TABLE IF NOT EXISTS `transaction_contrib` (
 ENGINE = InnoDB
 COMMENT = 'Table/chunk contributions made in a context of the super-transactions during ingests';
 
-
 CREATE TABLE IF NOT EXISTS `transaction_contrib_ext` (
   `contrib_id` INT UNSIGNED NOT NULL ,
   `key`        VARCHAR(255) NOT NULL ,
@@ -409,6 +412,23 @@ CREATE TABLE IF NOT EXISTS `transaction_contrib_ext` (
 ENGINE = InnoDB
 COMMENT = 'Extended attributes for the corresponding transaction contributions';
 
+CREATE TABLE IF NOT EXISTS `transaction_contrib_warn` (
+  `contrib_id` INT UNSIGNED NOT NULL ,
+  `pos`        INT UNSIGNED NOT NULL ,  -- the column allows preserving the original order of warnings
+                                        -- as they were reported by MySQL
+  `level`      VARCHAR(32)  NOT NULL ,
+  `code`       INT          NOT NULL ,
+  `message`    TEXT         NOT NULL ,
+  PRIMARY KEY (`contrib_id`, `pos`) ,
+  CONSTRAINT `transaction_contrib_warn_fk_1`
+    FOREIGN KEY (`contrib_id`)
+    REFERENCES `transaction_contrib` (`id`)
+    ON DELETE CASCADE
+    ON UPDATE CASCADE
+)
+ENGINE = InnoDB
+COMMENT = 'Warnings captured after executing "LOAD DATA [LOCAL] INFILE ..." for
+ the corresponding transaction contributions';
 
 CREATE TABLE IF NOT EXISTS `database_ingest` (
   `database` VARCHAR(255) NOT NULL ,
@@ -469,4 +489,4 @@ ENGINE = InnoDB
 COMMENT = 'Metadata about database as a whole, key-value pairs' ;
 
 -- Add record for schema version, migration script expects this record to exist
-INSERT INTO `QMetadata` (`metakey`, `value`) VALUES ('version', '11');
+INSERT INTO `QMetadata` (`metakey`, `value`) VALUES ('version', '12');

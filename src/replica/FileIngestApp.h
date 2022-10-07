@@ -182,6 +182,7 @@ private:
 
     csv::DialectInput _dialectInput;
 
+    unsigned int _maxNumWarnings = 0;
     size_t _recordSizeBytes = IngestClient::defaultRecordSizeBytes;
 
     FileIngestSpec _file;  /// File specification for the single file ingest ('FILE'))
