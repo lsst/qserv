@@ -313,6 +313,7 @@ void IngestSvcConn::_dataReceived(boost::system::error_code const& ec, size_t by
             loadDataIntoTable(_contrib.maxNumWarnings);
             _contrib.numWarnings = numWarnings();
             _contrib.warnings = warnings();
+            _contrib.numRowsLoaded = numRowsLoaded();
             serviceProvider()->databaseServices()->loadedTransactionContrib(_contrib);
             _finished();
         } catch (exception const& ex) {
@@ -338,6 +339,8 @@ void IngestSvcConn::_reply(ProtocolIngestResponse::Status status, string const& 
     response.set_error(msg);
     response.set_retry_allowed(_retryAllowed);
     response.set_num_warnings(_contrib.numWarnings);
+    response.set_num_rows(_contrib.numRows);
+    response.set_num_rows_loaded(_contrib.numRowsLoaded);
 
     _bufferPtr->resize();
     _bufferPtr->serialize(response);

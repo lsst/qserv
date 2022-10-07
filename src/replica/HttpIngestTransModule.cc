@@ -534,7 +534,9 @@ json HttpIngestTransModule::_getTransactionContributions(TransactionInfo const& 
     unsigned int numChunkFiles = 0;
     unsigned int numChunkOverlapFiles = 0;
     float dataSizeGb = 0;
+    uint64_t numWarnings = 0;
     uint64_t numRows = 0;
+    uint64_t numRowsLoaded = 0;
     uint64_t firstContribBeginTime = numeric_limits<uint64_t>::max();
     uint64_t lastContribEndTime = 0;
 
@@ -581,12 +583,17 @@ json HttpIngestTransModule::_getTransactionContributions(TransactionInfo const& 
         //   The second issue is related to operator '+=' that's implemented in the library
         //   as container's 'push_back'! The code below avoid using this operator.
         if (!tableContribJson.contains(contrib.table)) {
-            tableContribJson[contrib.table] =
-                    json::object({{"data_size_gb", 0}, {"num_rows", 0}, {"num_files", 0}});
+            tableContribJson[contrib.table] = json::object({{"data_size_gb", 0},
+                                                            {"num_warnings", 0},
+                                                            {"num_rows", 0},
+                                                            {"num_rows_loaded", 0},
+                                                            {"num_files", 0}});
         }
         if (!workerContribJson.contains(contrib.worker)) {
             workerContribJson[contrib.worker] = json::object({{"data_size_gb", 0},
+                                                              {"num_warnings", 0},
                                                               {"num_rows", 0},
+                                                              {"num_rows_loaded", 0},
                                                               {"num_chunk_overlap_files", 0},
                                                               {"num_chunk_files", 0},
                                                               {"num_regular_files", 0}});
@@ -596,19 +603,26 @@ json HttpIngestTransModule::_getTransactionContributions(TransactionInfo const& 
         if (table.isPartitioned) {
             if (contrib.isOverlap) {
                 if (!tableContribJson[contrib.table].contains("overlap")) {
-                    tableContribJson[contrib.table]["overlap"] =
-                            json::object({{"data_size_gb", 0}, {"num_rows", 0}, {"num_files", 0}});
+                    tableContribJson[contrib.table]["overlap"] = json::object({{"data_size_gb", 0},
+                                                                               {"num_warnings", 0},
+                                                                               {"num_rows", 0},
+                                                                               {"num_rows_loaded", 0},
+                                                                               {"num_files", 0}});
                 }
                 json& objTable = tableContribJson[contrib.table]["overlap"];
                 incrementBy<float>(objTable, "data_size_gb", contribDataSizeGb);
-                incrementBy<unsigned int>(objTable, "num_rows", contrib.numRows);
+                incrementBy<uint64_t>(objTable, "num_warnings", contrib.numWarnings);
+                incrementBy<uint64_t>(objTable, "num_rows", contrib.numRows);
+                incrementBy<uint64_t>(objTable, "num_rows_loaded", contrib.numRowsLoaded);
                 incrementBy<unsigned int>(objTable, "num_files", 1);
                 incrementBy<unsigned int>(objWorker, "num_chunk_overlap_files", 1);
                 numChunkOverlapFiles++;
             } else {
                 json& objTable = tableContribJson[contrib.table];
                 incrementBy<float>(objTable, "data_size_gb", contribDataSizeGb);
-                incrementBy<unsigned int>(objTable, "num_rows", contrib.numRows);
+                incrementBy<uint64_t>(objTable, "num_warnings", contrib.numWarnings);
+                incrementBy<uint64_t>(objTable, "num_rows", contrib.numRows);
+                incrementBy<uint64_t>(objTable, "num_rows_loaded", contrib.numRowsLoaded);
                 incrementBy<unsigned int>(objTable, "num_files", 1);
                 incrementBy<unsigned int>(objWorker, "num_chunk_files", 1);
                 numChunkFiles++;
@@ -616,7 +630,9 @@ json HttpIngestTransModule::_getTransactionContributions(TransactionInfo const& 
         } else {
             json& objTable = tableContribJson[contrib.table];
             incrementBy<float>(objTable, "data_size_gb", contribDataSizeGb);
-            incrementBy<unsigned int>(objTable, "num_rows", contrib.numRows);
+            incrementBy<uint64_t>(objTable, "num_warnings", contrib.numWarnings);
+            incrementBy<uint64_t>(objTable, "num_rows", contrib.numRows);
+            incrementBy<uint64_t>(objTable, "num_rows_loaded", contrib.numRowsLoaded);
             incrementBy<unsigned int>(objTable, "num_files", 1);
             incrementBy<unsigned int>(objWorker, "num_regular_files", 1);
             numRegularFiles++;
@@ -624,8 +640,14 @@ json HttpIngestTransModule::_getTransactionContributions(TransactionInfo const& 
         dataSizeGb += contribDataSizeGb;
         incrementBy<float>(objWorker, "data_size_gb", contribDataSizeGb);
 
+        numWarnings += contrib.numWarnings;
+        incrementBy<uint64_t>(objWorker, "num_warnings", contrib.numWarnings);
+
         numRows += contrib.numRows;
-        incrementBy<unsigned int>(objWorker, "num_rows", contrib.numRows);
+        incrementBy<uint64_t>(objWorker, "num_rows", contrib.numRows);
+
+        numRowsLoaded += contrib.numRowsLoaded;
+        incrementBy<uint64_t>(objWorker, "num_rows_loaded", contrib.numRowsLoaded);
 
         firstContribBeginTime = min(firstContribBeginTime, contrib.createTime);
         lastContribEndTime = max(lastContribEndTime, contrib.loadTime);
@@ -638,7 +660,9 @@ json HttpIngestTransModule::_getTransactionContributions(TransactionInfo const& 
              {"num_chunk_files", numChunkFiles},
              {"num_chunk_overlap_files", numChunkOverlapFiles},
              {"data_size_gb", dataSizeGb},
+             {"num_warnings", numWarnings},
              {"num_rows", numRows},
+             {"num_rows_loaded", numRowsLoaded},
              // Force 0 if no contribution has been made
              {"first_contrib_begin",
               firstContribBeginTime == numeric_limits<uint64_t>::max() ? 0 : firstContribBeginTime},

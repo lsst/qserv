@@ -368,6 +368,8 @@ CREATE TABLE IF NOT EXISTS `transaction_contrib` (
 
   `num_warnings` INT UNSIGNED NOT NULL DEFAULT 0 ,  -- the total number of MySQL warnings detected after loading the contribution
 
+  `num_rows_loaded` BIGINT UNSIGNED NOT NULL DEFAULT 0 ,  -- the total number of rows affected by the loading operation
+
   -- Columns for storing the extended info on a problem that prevented a request
   -- from succeeding.
   `http_error`    INT     NOT NULL DEFAULT 0 ,  -- HTTP response code, if applies to a request

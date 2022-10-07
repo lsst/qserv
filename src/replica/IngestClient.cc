@@ -126,6 +126,8 @@ void IngestClient::send() {
         _readResponse(response);
         _retryAllowed = response.retry_allowed();
         _numWarnings = response.num_warnings();
+        _numRows = response.num_rows();
+        _numRowsLoaded = response.num_rows_loaded();
 
         switch (response.status()) {
             case ProtocolIngestResponse::READY_TO_READ_DATA:
@@ -169,6 +171,16 @@ bool IngestClient::retryAllowed() const {
 unsigned int IngestClient::numWarnings() const {
     if (!_sent) throw logic_error(_context(__func__) + "the request hasn't been sent");
     return _numWarnings;
+}
+
+uint64_t IngestClient::numRows() const {
+    if (!_sent) throw logic_error(_context(__func__) + "the request hasn't been sent");
+    return _numRows;
+}
+
+uint64_t IngestClient::numRowsLoaded() const {
+    if (!_sent) throw logic_error(_context(__func__) + "the request hasn't been sent");
+    return _numRowsLoaded;
 }
 
 void IngestClient::_connectImpl() {

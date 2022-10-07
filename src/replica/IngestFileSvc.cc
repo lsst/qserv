@@ -304,6 +304,10 @@ void IngestFileSvc::loadDataIntoTable(unsigned int maxNumWarnings) {
         h.conn->executeInOwnTransaction([&](decltype(h.conn) const& conn_) {
             conn_->execute(setErrorCountQuery);
             conn_->execute(dataLoadQuery);
+            // ATTENTION: it's important to obtain the number of loaded rows before
+            // checking for the warnings. Otherwise, if the collection of warnings won't
+            // be found empty then MariaDB will reset the counter of the loaded rows to -1.
+            _numRowsLoaded = conn_->affectedRows();
             _numWarnings = conn_->warningCount();
             if (_numWarnings != 0) {
                 _warnings = conn_->warnings(effectiveMaxNumWarnings);

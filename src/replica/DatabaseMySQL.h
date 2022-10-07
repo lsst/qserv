@@ -559,6 +559,13 @@ public:
      */
     std::list<Warning> warnings(unsigned int maxNumWarnings = 0, unsigned int offset = 0);
 
+    /**
+     * Retreive the number of rows affected by the last query.
+     * @see https://mariadb.com/kb/en/mysql_affected_rows/
+     * @return unsigned long long - the number of rows reported by MySQL.
+     */
+    uint64_t affectedRows();
+
 private:
     /**
      * @see Connection::open()

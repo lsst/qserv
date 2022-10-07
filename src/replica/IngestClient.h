@@ -124,6 +124,12 @@ public:
     /// @return The number of MySQL warnings detected when ingesting the contribution
     unsigned int numWarnings() const;
 
+    /// @return The number of rows parsed in the contribution
+    uint64_t numRows() const;
+
+    /// @return The number of rows that were actually loaded into Qserv
+    uint64_t numRowsLoaded() const;
+
 private:
     IngestClient(std::string const& workerHost, uint16_t workerPort, TransactionId transactionId,
                  std::string const& tableName, unsigned int chunk, bool isOverlap,
@@ -203,11 +209,12 @@ private:
     boost::asio::io_service _io_service;
     boost::asio::ip::tcp::socket _socket;
 
-    bool _sent = false;          ///< Set to 'true' after a successful completion of the ingest.
-    bool _retryAllowed = false;  ///< Set to 'true' to indicate that failed request may be retried.
-    size_t _sizeBytes = 0;       ///< The number of bytes read from an input file.
-    unsigned int _numWarnings =
-            0;  ///< The number of MySQL warnings detected when ingesting the contribution.
+    bool _sent = false;             ///< Set to 'true' after a successful completion of the ingest.
+    bool _retryAllowed = false;     ///< Set to 'true' to indicate that failed request may be retried.
+    size_t _sizeBytes = 0;          ///< The number of bytes read from an input file.
+    unsigned int _numWarnings = 0;  ///< The number of MySQL warnings detected during ingest.
+    uint64_t _numRows = 0;          ///< The number of rows parsed in the contribution.
+    uint64_t _numRowsLoaded = 0;    ///< The number of rows that were actually loaded into Qserv.
 };
 
 }  // namespace lsst::qserv::replica

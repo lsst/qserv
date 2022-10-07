@@ -185,6 +185,9 @@ public:
     /// Optional warnings reported by MySQL after loading data.
     std::list<database::mysql::Warning> warnings;
 
+    /// The total number of rows affected by the loading operation.
+    uint64_t numRowsLoaded = 0;
+
     /// @return JSON representation of the object
     nlohmann::json toJson() const;
 

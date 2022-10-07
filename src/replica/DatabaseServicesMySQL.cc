@@ -1681,6 +1681,7 @@ TransactionContribInfo DatabaseServicesMySQL::createdTransactionContrib(
     uint64_t const loadTime = 0;
 
     unsigned int const numWarnings = 0;
+    uint64_t const numRowsLoaded = 0;
 
     TransactionContribInfo::Status const status =
             failed ? statusOnFailed : TransactionContribInfo::Status::IN_PROGRESS;
@@ -1695,7 +1696,7 @@ TransactionContribInfo DatabaseServicesMySQL::createdTransactionContrib(
                           info.table, info.chunk, info.isOverlap ? 1 : 0, info.url,
                           info.async ? "ASYNC" : "SYNC", numBytes, numRows, createTime, startTime, readTime,
                           loadTime, TransactionContribInfo::status2str(status), info.tmpFile, numWarnings,
-                          failed ? info.httpError : 0, failed ? info.systemError : 0,
+                          numRowsLoaded, failed ? info.httpError : 0, failed ? info.systemError : 0,
                           failed ? info.error : string(), (failed ? info.retryAllowed : false) ? 1 : 0));
         queries.emplace_back(_g.insert("transaction_contrib_ext", Sql::LAST_INSERT_ID, "max_num_warnings",
                                        info.maxNumWarnings));
@@ -1742,6 +1743,7 @@ TransactionContribInfo DatabaseServicesMySQL::updateTransactionContrib(Transacti
                           make_pair("read_time", info.readTime), make_pair("load_time", info.loadTime),
                           make_pair("status", TransactionContribInfo::status2str(info.status)),
                           make_pair("tmp_file", info.tmpFile), make_pair("num_warnings", info.numWarnings),
+                          make_pair("num_rows_loaded", info.numRowsLoaded),
                           make_pair("http_error", info.httpError),
                           make_pair("system_error", info.systemError), make_pair("error", info.error),
                           make_pair("retry_allowed", info.retryAllowed)) +
@@ -1841,6 +1843,7 @@ vector<TransactionContribInfo> DatabaseServicesMySQL::_transactionContribsImpl(u
             info.status = TransactionContribInfo::str2status(str);
             row.get("tmp_file", info.tmpFile);
             row.get("num_warnings", info.numWarnings);
+            row.get("num_rows_loaded", info.numRowsLoaded);
             row.get("http_error", info.httpError);
             row.get("system_error", info.systemError);
             row.get("error", info.error);

@@ -457,6 +457,8 @@ list<Warning> Connection::warnings(unsigned int maxNumWarnings, unsigned int off
     return result;
 }
 
+uint64_t Connection::affectedRows() { return mysql_affected_rows(_mysql); }
+
 bool Connection::hasResult() const { return _mysql and _res; }
 
 vector<string> const& Connection::columnNames() const {

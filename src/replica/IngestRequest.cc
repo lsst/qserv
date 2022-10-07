@@ -447,6 +447,7 @@ void IngestRequest::_processLoadData() {
         util::Lock lock(_mtx, context);
         _contrib.numWarnings = numWarnings();
         _contrib.warnings = warnings();
+        _contrib.numRowsLoaded = numRowsLoaded();
         _contrib = databaseServices->loadedTransactionContrib(_contrib);
     } catch (exception const& ex) {
         {

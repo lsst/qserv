@@ -932,6 +932,8 @@ message ProtocolIngestResponse {
     optional string error = 3 [default = ""];           /// sent with FAILED
     optional bool retry_allowed = 4 [default = false];  /// sent with FAILED
     optional uint32 num_warnings = 5 [default = 0];     /// sent with FINISHED
+    optional uint64 num_rows = 6 [default = 0];         /// sent with FINISHED
+    optional uint64 num_rows_loaded = 7 [default = 0];  /// sent with FINISHED
 }
 
 //////////////////////////////////////////////

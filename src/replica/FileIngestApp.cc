@@ -402,6 +402,8 @@ void FileIngestApp::_ingest(FileIngestSpec const& file) const {
              << "             Bytes sent: " << ptr->sizeBytes() << "\n"
              << "              MByte/sec: " << megaBytesPerSec << "\n"
              << "     Number of warnings: " << ptr->numWarnings() << "\n"
+             << "  Number of rows parsed: " << ptr->numRows() << "\n"
+             << "  Number of rows loaded: " << ptr->numRowsLoaded() << "\n"
              << endl;
     }
 }

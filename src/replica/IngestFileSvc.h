@@ -63,6 +63,7 @@ protected:
     std::string const& workerName() const { return _workerName; }
     unsigned int numWarnings() const { return _numWarnings; }
     std::list<database::mysql::Warning> const& warnings() const { return _warnings; }
+    uint64_t numRowsLoaded() const { return _numRowsLoaded; }
 
     /**
      * Open a file.
@@ -128,6 +129,8 @@ private:
     // MySQL warnings (if any) captured after loading the contribution into the table.
     unsigned int _numWarnings = 0;
     std::list<database::mysql::Warning> _warnings;
+
+    uint64_t _numRowsLoaded = 0;  ///< Th enumber of rows actually ingested into Qserv.
 };
 
 }  // namespace lsst::qserv::replica

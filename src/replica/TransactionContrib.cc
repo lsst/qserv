@@ -126,6 +126,7 @@ json TransactionContribInfo::toJson() const {
     info["retry_allowed"] = retryAllowed ? 1 : 0;
     info["max_num_warnings"] = maxNumWarnings;
     info["num_warnings"] = numWarnings;
+    info["num_rows_loaded"] = numRowsLoaded;
 
     json warningsJson = json::array();
     for (auto&& w : warnings) {
