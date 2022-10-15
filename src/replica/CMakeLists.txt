@@ -523,6 +523,7 @@ replica_tests(
     testFileIngestApp
     testFileUtils
     testHttpAsyncReq
+    testIngestRequestMgr
     testJson
     testMessageQueue
     testNamedMutexRegistry

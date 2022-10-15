@@ -24,6 +24,7 @@
 
 // System headers
 #include <algorithm>
+#include <stdexcept>
 
 // Third party headers
 #include "boost/filesystem.hpp"
@@ -31,6 +32,7 @@
 // Qserv headers
 #include "replica/DatabaseServices.h"
 #include "replica/IngestRequest.h"
+#include "replica/ServiceProvider.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -45,9 +47,9 @@ string const context_ = "INGEST-REQUEST-MGR  ";
 
 namespace lsst::qserv::replica {
 
-IngestRequestMgr::Ptr IngestRequestMgr::create(ServiceProvider::Ptr const& serviceProvider,
-                                               string const& workerName) {
-    IngestRequestMgr::Ptr ptr(new IngestRequestMgr(serviceProvider, workerName));
+shared_ptr<IngestRequestMgr> IngestRequestMgr::create(shared_ptr<ServiceProvider> const& serviceProvider,
+                                                      string const& workerName) {
+    shared_ptr<IngestRequestMgr> ptr(new IngestRequestMgr(serviceProvider, workerName));
 
     // ---------------------------------
     // -- RECOVERY AFTER RESTART MODE --
@@ -186,7 +188,27 @@ IngestRequestMgr::Ptr IngestRequestMgr::create(ServiceProvider::Ptr const& servi
     return ptr;
 }
 
-IngestRequestMgr::IngestRequestMgr(ServiceProvider::Ptr const& serviceProvider, string const& workerName)
+shared_ptr<IngestRequestMgr> IngestRequestMgr::test() {
+    return shared_ptr<IngestRequestMgr>(new IngestRequestMgr());
+}
+
+size_t IngestRequestMgr::inputQueueSize() const {
+    unique_lock<mutex> lock(_mtx);
+    return _input.size();
+}
+
+size_t IngestRequestMgr::inProgressQueueSize() const {
+    unique_lock<mutex> lock(_mtx);
+    return _inProgress.size();
+}
+
+size_t IngestRequestMgr::outputQueueSize() const {
+    unique_lock<mutex> lock(_mtx);
+    return _output.size();
+}
+
+IngestRequestMgr::IngestRequestMgr(shared_ptr<ServiceProvider> const& serviceProvider,
+                                   string const& workerName)
         : _serviceProvider(serviceProvider), _workerName(workerName) {}
 
 TransactionContribInfo IngestRequestMgr::find(unsigned int id) {
@@ -206,14 +228,20 @@ TransactionContribInfo IngestRequestMgr::find(unsigned int id) {
         return outputItr->second->transactionContribInfo();
     }
     try {
-        return _serviceProvider->databaseServices()->transactionContrib(id);
+        // This extra test is needed to allow unit testing the class w/o
+        // making side effects.
+        if (_serviceProvider != nullptr) {
+            return _serviceProvider->databaseServices()->transactionContrib(id);
+        }
     } catch (DatabaseServicesNotFound const& ex) {
         ;
     }
     throw IngestRequestNotFound(context_ + string(__func__) + " request " + to_string(id) + " was not found");
 }
 
-void IngestRequestMgr::submit(IngestRequest::Ptr const& request) {
+IngestRequestMgr::IngestRequestMgr() {}
+
+void IngestRequestMgr::submit(shared_ptr<IngestRequest> const& request) {
     if (request == nullptr) {
         throw invalid_argument(context_ + string(__func__) + " null pointer passed into the method");
     }
@@ -261,12 +289,28 @@ TransactionContribInfo IngestRequestMgr::cancel(unsigned int id) {
     throw IngestRequestNotFound(context_ + string(__func__) + " request " + to_string(id) + " was not found");
 }
 
-IngestRequest::Ptr IngestRequestMgr::next() {
+shared_ptr<IngestRequest> IngestRequestMgr::next() {
     unique_lock<mutex> lock(_mtx);
     if (_input.empty()) {
         _cv.wait(lock, [&]() { return !_input.empty(); });
     }
-    IngestRequest::Ptr const request = _input.back();
+    shared_ptr<IngestRequest> const request = _input.back();
+    _input.pop_back();
+    _inProgress[request->transactionContribInfo().id] = request;
+    return request;
+}
+
+shared_ptr<IngestRequest> IngestRequestMgr::next(chrono::milliseconds const& ivalMsec) {
+    string const context = context_ + string(__func__) + " ";
+    if (ivalMsec.count() == 0) throw invalid_argument(context + "the interval can not be 0.");
+    unique_lock<mutex> lock(_mtx);
+    if (_input.empty()) {
+        if (!_cv.wait_for(lock, ivalMsec, [&]() { return !_input.empty(); })) {
+            throw IngestRequestTimerExpired(context + "no request was found in the queue after waiting for " +
+                                            to_string(ivalMsec.count()) + "ms");
+        }
+    }
+    shared_ptr<IngestRequest> const request = _input.back();
     _input.pop_back();
     _inProgress[request->transactionContribInfo().id] = request;
     return request;

@@ -23,6 +23,7 @@
 
 // System headers
 #include <condition_variable>
+#include <chrono>
 #include <list>
 #include <map>
 #include <memory>
@@ -30,12 +31,10 @@
 #include <string>
 #include <stdexcept>
 
-// Qserv headers
-#include "replica/ServiceProvider.h"
-
 // Forward declarations
 namespace lsst::qserv::replica {
 class IngestRequest;
+class ServiceProvider;
 class TransactionContribInfo;
 }  // namespace lsst::qserv::replica
 
@@ -47,6 +46,15 @@ namespace lsst::qserv::replica {
  * criteria were found in the request manager collections.
  */
 class IngestRequestNotFound : public std::runtime_error {
+    using std::runtime_error::runtime_error;
+};
+
+/**
+ * Exceptions of this class are thrown when no request will be found available
+ * when attempting to get the one via the timed version of the method
+ * IngestRequestMgr::next(). See the documentation for the method for further details.
+ */
+class IngestRequestTimerExpired : public std::runtime_error {
     using std::runtime_error::runtime_error;
 };
 
@@ -80,6 +88,12 @@ class IngestRequestNotFound : public std::runtime_error {
  * globally for all requests by the manager.
  *
  * @note All public methods of the class are thread-safe (synchronized).
+ * @note The class can be also used for unit testing w/o making any side effects
+ *  (like attempting to connect to the Replication system's database or other
+ *  remote services). In order to instaniate instances of the class for unit testing,
+ *  one has to call the special factory method IngestRequestMgr::test(). This
+ *  method will make an object that has the empty ServiceProvider and the empty
+ *  worker name.
  */
 class IngestRequestMgr : public std::enable_shared_from_this<IngestRequestMgr> {
 public:
@@ -93,8 +107,14 @@ public:
      * @param workerName The name of a worker this service is acting upon.
      * @return A newly created instance of the manager.
      */
-    static IngestRequestMgr::Ptr create(ServiceProvider::Ptr const& serviceProvider,
-                                        std::string const& workerName);
+    static std::shared_ptr<IngestRequestMgr> create(std::shared_ptr<ServiceProvider> const& serviceProvider,
+                                                    std::string const& workerName);
+
+    /**
+     * The factory method for instantiating the dummy manager for unit testing.
+     * @return A newly created instance of the manager.
+     */
+    static std::shared_ptr<IngestRequestMgr> test();
 
     /**
      * Find a request by its identifier.
@@ -139,7 +159,7 @@ public:
      *
      * @param id The unique identifier of a request to be cancelled.
      * @return The updated descriptor of the request.
-     * @throw std::invalid_argument If the request is unknown to the manager.
+     * @throw IngestRequestNotFound If the request is unknown to the manager.
      */
     TransactionContribInfo cancel(unsigned int id);
 
@@ -157,6 +177,22 @@ public:
     std::shared_ptr<IngestRequest> next();
 
     /**
+     * The timed version of a method that retrieves the next request from the input queue.
+     *
+     * The method will block the calling thread for the specified duration of time
+     * while no request will be avaiable (submitted) in the input queue. If no request
+     * will be still available upon an expiration of the wait period the method will
+     * throw an exception.
+     *
+     * @param ivalMsec A duration of time not to exceed while waiting for a request to be available.
+     * @return An object representing the request.
+     * @throws std::invalid_argument If the specifid interval is 0.
+     * @throws IngestRequestTimerExpired If no request will be found in the queue
+     *   before an expiration of the specified timeout.
+     */
+    std::shared_ptr<IngestRequest> next(std::chrono::milliseconds const& ivalMsec);
+
+    /**
      * Report a request that has been processed (or failed to be processed, explicitly
      * cancelled, or expired.).
      *
@@ -166,16 +202,25 @@ public:
      *   into the output collection.
      *
      * @param id The unique identifier of a request to be reported.
-     * @throw std::invalid_argument If the request is unknown to the manager.
+     * @throw IngestRequestNotFound If the request is unknown to the manager.
      */
     void completed(unsigned int id);
 
+    // Get statuses of the queues
+
+    size_t inputQueueSize() const;
+    size_t inProgressQueueSize() const;
+    size_t outputQueueSize() const;
+
 private:
     /// @see method IngestRequestMgr::create()
-    IngestRequestMgr(ServiceProvider::Ptr const& serviceProvider, std::string const& workerName);
+    IngestRequestMgr(std::shared_ptr<ServiceProvider> const& serviceProvider, std::string const& workerName);
+
+    /// @see method IngestRequestMgr::test()
+    IngestRequestMgr();
 
     // Input parameters
-    ServiceProvider::Ptr const _serviceProvider;
+    std::shared_ptr<ServiceProvider> const _serviceProvider;
     std::string const _workerName;
 
     /// The mutex for enforcing thread safety of the class's public API and
