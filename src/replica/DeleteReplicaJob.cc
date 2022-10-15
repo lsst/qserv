@@ -33,6 +33,7 @@
 #include "replica/QservMgtServices.h"
 #include "replica/ServiceProvider.h"
 #include "replica/StopRequest.h"
+#include "util/IterableFormatter.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -135,8 +136,8 @@ void DeleteReplicaJob::startImpl(util::Lock const& lock) {
     // at the worker.
     //
     // Alternative options would be:
-    // 1. launching requests for all databases of the family and then see
-    //    filter them on a result status (something like FILE_ROPEN)
+    // 1. launching requests for all databases of the family and then
+    //    filter requests based on a result status (something like FILE_ROPEN)
     //
     // 2. launching FindRequest for each member of the database family to
     //    see if the chunk is available on a source node.
@@ -191,35 +192,32 @@ void DeleteReplicaJob::startImpl(util::Lock const& lock) {
 
         auto self = shared_from_base<DeleteReplicaJob>();
 
-        bool const force = true;  // force the removal regardless of the replica
-                                  // usage status. See the implementation of the
-                                  // corresponding worker management service for
-                                  // specific detail on what "remove" means in
-                                  // that service's context.
-        qservRemoveReplica(lock, chunk(), databases, worker(), force,
-                           [self](RemoveReplicaQservMgtRequest::Ptr const& request) {
-                               util::Lock lock(self->_mtx,
-                                               self->context() + string(__func__) + "::qservRemoveReplica");
-
-                               switch (request->extendedState()) {
-                                   // If there is a solid confirmation from Qserv on source node that the
-                                   // replica is not being used and it won't be used then it's safe to proceed
-                                   // with the second stage of requests to actually eliminate replica's files
-                                   // from the source worker.
-                                   case QservMgtRequest::ExtendedState::SUCCESS:
-                                       self->_beginDeleteReplica(lock);
-                                       return;
-
-                                   // Otherwise set an appropriate status of the operation, finish them
-                                   // job and notify the caller.
-                                   case QservMgtRequest::ExtendedState::SERVER_CHUNK_IN_USE:
-                                       self->finish(lock, ExtendedState::QSERV_CHUNK_IN_USE);
-                                       break;
-                                   default:
-                                       self->finish(lock, ExtendedState::QSERV_FAILED);
-                                       break;
-                               }
-                           });
+        // Force the removal regardless of the replica usage status.
+        // See the implementation of the corresponding worker management service
+        // for specific detail on what "remove" means in that service's context.
+        bool const force = true;
+        _qservRemoveReplica(lock, chunk(), databases, worker(), force,
+                            [self](RemoveReplicaQservMgtRequest::Ptr const& request) {
+                                util::Lock lock(self->_mtx,
+                                                self->context() + string(__func__) + "::qservRemoveReplica");
+                                switch (request->extendedState()) {
+                                    case QservMgtRequest::ExtendedState::SUCCESS:
+                                        // If there is a solid confirmation from Qserv on source node that the
+                                        // replica is not being used and it won't be used then it's safe to
+                                        // proceed with the second stage of requests to actually eliminate
+                                        // replica's files from the source worker.
+                                        self->_beginDeleteReplica(lock);
+                                        return;
+                                    case QservMgtRequest::ExtendedState::SERVER_CHUNK_IN_USE:
+                                        // Otherwise set an appropriate status of the operation, finish them
+                                        // job and notify the caller.
+                                        self->finish(lock, ExtendedState::QSERV_CHUNK_IN_USE);
+                                        break;
+                                    default:
+                                        self->finish(lock, ExtendedState::QSERV_FAILED);
+                                        break;
+                                }
+                            });
     }
 }
 
@@ -272,9 +270,7 @@ void DeleteReplicaJob::_onRequestFinish(DeleteRequest::Ptr const& request) {
                    << "  chunk=" << chunk());
 
     if (state() == State::FINISHED) return;
-
     util::Lock lock(_mtx, context() + __func__);
-
     if (state() == State::FINISHED) return;
 
     ++_numRequestsFinished;
@@ -291,6 +287,29 @@ void DeleteReplicaJob::_onRequestFinish(DeleteRequest::Ptr const& request) {
         finish(lock,
                _numRequestsSuccess == _requests.size() ? ExtendedState::SUCCESS : ExtendedState::FAILED);
     }
+}
+void DeleteReplicaJob::_qservRemoveReplica(util::Lock const& lock, unsigned int chunk,
+                                           vector<string> const& databases, string const& worker, bool force,
+                                           RemoveReplicaQservMgtRequest::CallbackType const& onFinish) {
+    LOGS(_log, LOG_LVL_DEBUG,
+         context() << __func__ << "  ** START ** Qserv notification on REMOVE replica:"
+                   << "  chunk=" << chunk << ", databases=" << util::printable(databases)
+                   << ", worker=" << worker << ", force=" << (force ? "true" : "false"));
+
+    auto self = shared_from_this();
+    controller()->serviceProvider()->qservMgtServices()->removeReplica(
+            chunk, databases, worker, force,
+            [self, onFinish](RemoveReplicaQservMgtRequest::Ptr const& request) {
+                LOGS(_log, LOG_LVL_DEBUG,
+                     self->context() << __func__ << "  ** FINISH ** Qserv notification on REMOVE replica:"
+                                     << "  chunk=" << request->chunk()
+                                     << ", databases=" << util::printable(request->databases())
+                                     << ", worker=" << request->worker()
+                                     << ", force=" << (request->force() ? "true" : "false")
+                                     << ", state=" << request->state2string());
+                if (onFinish) onFinish(request);
+            },
+            id());
 }
 
 }  // namespace lsst::qserv::replica

@@ -32,15 +32,12 @@
 #include "boost/date_time/posix_time/posix_time.hpp"
 
 // Qserv headers
-#include "replica/AddReplicaQservMgtRequest.h"
 #include "replica/Common.h"  // Generators::uniqueId()
 #include "replica/Configuration.h"
 #include "replica/DatabaseServices.h"
 #include "replica/Performance.h"  // PerformanceUtils::now()
 #include "replica/QservMgtServices.h"
-#include "replica/RemoveReplicaQservMgtRequest.h"
 #include "replica/ServiceProvider.h"
-#include "util/IterableFormatter.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -228,51 +225,6 @@ void Job::finish(util::Lock const& lock, ExtendedState newExtendedState) {
     // to method Job::wait()
     _finished = true;
     _onFinishCv.notify_all();
-}
-
-void Job::qservAddReplica(util::Lock const& lock, unsigned int chunk, vector<string> const& databases,
-                          string const& worker, AddReplicaQservMgtRequest::CallbackType const& onFinish) {
-    LOGS(_log, LOG_LVL_DEBUG,
-         context() << __func__ << "  ** START ** Qserv notification on ADD replica:"
-                   << ", chunk=" << chunk << ", databases=" << util::printable(databases)
-                   << "  worker=" << worker);
-
-    auto self = shared_from_this();
-    controller()->serviceProvider()->qservMgtServices()->addReplica(
-            chunk, databases, worker,
-            [self, onFinish](AddReplicaQservMgtRequest::Ptr const& request) {
-                LOGS(_log, LOG_LVL_DEBUG,
-                     self->context() << __func__ << "  ** FINISH ** Qserv notification on ADD replica:"
-                                     << "  chunk=" << request->chunk()
-                                     << ", databases=" << util::printable(request->databases()) << ", worker="
-                                     << request->worker() << ", state=" << request->state2string());
-                if (onFinish) onFinish(request);
-            },
-            id());
-}
-
-void Job::qservRemoveReplica(util::Lock const& lock, unsigned int chunk, vector<string> const& databases,
-                             string const& worker, bool force,
-                             RemoveReplicaQservMgtRequest::CallbackType const& onFinish) {
-    LOGS(_log, LOG_LVL_DEBUG,
-         context() << __func__ << "  ** START ** Qserv notification on REMOVE replica:"
-                   << "  chunk=" << chunk << ", databases=" << util::printable(databases)
-                   << ", worker=" << worker << ", force=" << (force ? "true" : "false"));
-
-    auto self = shared_from_this();
-    controller()->serviceProvider()->qservMgtServices()->removeReplica(
-            chunk, databases, worker, force,
-            [self, onFinish](RemoveReplicaQservMgtRequest::Ptr const& request) {
-                LOGS(_log, LOG_LVL_DEBUG,
-                     self->context() << __func__ << "  ** FINISH ** Qserv notification on REMOVE replica:"
-                                     << "  chunk=" << request->chunk()
-                                     << ", databases=" << util::printable(request->databases())
-                                     << ", worker=" << request->worker()
-                                     << ", force=" << (request->force() ? "true" : "false")
-                                     << ", state=" << request->state2string());
-                if (onFinish) onFinish(request);
-            },
-            id());
 }
 
 void Job::_assertState(util::Lock const& lock, State desiredState, string const& context) const {

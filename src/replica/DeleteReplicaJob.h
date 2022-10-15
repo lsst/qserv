@@ -29,6 +29,7 @@
 #include <vector>
 
 // Qserv headers
+#include "replica/RemoveReplicaQservMgtRequest.h"
 #include "replica/Job.h"
 #include "replica/ReplicaInfo.h"
 #include "replica/DeleteRequest.h"
@@ -179,6 +180,21 @@ private:
      *   a pointer to a request
      */
     void _onRequestFinish(DeleteRequest::Ptr const& request);
+
+    /**
+     * Notify Qserv about a new chunk added to its database.
+     * @param lock  A lock on Job::_mtx must be acquired by a caller of the method.
+     * @param chunk  A chunk whose replicas are removed from the worker.
+     * @param databases  The names of databases involved into the operation.
+     * @param worker  The name of a worker to be notified.
+     * @param force  The flag indicating of the removal should be done regardless
+     *   of the usage status of the replica.
+     * @param onFinish  An (optional) callback function to be called upon completion
+     *   of the operation.
+     */
+    void _qservRemoveReplica(util::Lock const& lock, unsigned int chunk,
+                             std::vector<std::string> const& databases, std::string const& worker, bool force,
+                             RemoveReplicaQservMgtRequest::CallbackType const& onFinish = nullptr);
 
     // Input parameters
 
