@@ -61,18 +61,25 @@ json HttpIngestConfigModule::executeImpl(string const& subModuleName) {
 
 json HttpIngestConfigModule::_get() {
     debug(__func__);
-    checkApiVersion(__func__, 12);
+    checkApiVersion(__func__, 14);
 
     auto const config = controller()->serviceProvider()->config();
     auto const databaseServices = controller()->serviceProvider()->databaseServices();
 
-    auto const database = body().required<string>("database");
+    auto const database = query().requiredString("database");
     auto const databaseInfo = config->databaseInfo(database);
 
     debug(__func__, "database=" + database);
 
     // Ignore parameters that were never configured for the database.
 
+    auto const getUInt = [&databaseServices, &databaseInfo](json& obj, string const& key) {
+        try {
+            obj[key] = stoui(
+                    databaseServices->ingestParam(databaseInfo.name, HttpClientConfig::category, key).value);
+        } catch (DatabaseServicesNotFound const&) {
+        }
+    };
     auto const getInt = [&databaseServices, &databaseInfo](json& obj, string const& key) {
         try {
             obj[key] = stoi(
@@ -117,13 +124,14 @@ json HttpIngestConfigModule::_get() {
     getLong(result, HttpClientConfig::timeoutKey);
     getLong(result, HttpClientConfig::lowSpeedLimitKey);
     getLong(result, HttpClientConfig::lowSpeedTimeKey);
+    getUInt(result, HttpClientConfig::asyncProcLimitKey);
 
     return json({{"config", result}});
 }
 
 json HttpIngestConfigModule::_update() {
     debug(__func__);
-    checkApiVersion(__func__, 12);
+    checkApiVersion(__func__, 14);
 
     auto const database = body().required<string>("database");
     debug(__func__, "database=" + database);
@@ -135,6 +143,9 @@ json HttpIngestConfigModule::_update() {
     auto const update = [&](string const& key, string const& val) {
         debug(__func__, key + "=" + val);
         databaseServices->saveIngestParam(databaseInfo.name, HttpClientConfig::category, key, val);
+    };
+    auto const updateUInt = [&](string const& key) {
+        if (body().has(key)) update(key, to_string(body().required<unsigned int>(key)));
     };
     auto const updateInt = [&](string const& key) {
         if (body().has(key)) update(key, to_string(body().required<int>(key)));
@@ -165,6 +176,7 @@ json HttpIngestConfigModule::_update() {
     updateLong(HttpClientConfig::timeoutKey);
     updateLong(HttpClientConfig::lowSpeedLimitKey);
     updateLong(HttpClientConfig::lowSpeedTimeKey);
+    updateUInt(HttpClientConfig::asyncProcLimitKey);
 
     return json::object();
 }

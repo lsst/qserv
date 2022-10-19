@@ -127,6 +127,15 @@ public:
     ///   on the minimally desired interval for measuring the data transfer speed.
     static std::string const lowSpeedTimeKey;
 
+    // ----------------------------------------------------------
+    // A group of parameters that impose resource usage limits on
+    // ingest processing scheduler.
+    // ----------------------------------------------------------
+
+    /// The concurrency limit for the number of the asynchronous requests
+    /// to be processes simultaneously.
+    static std::string const asyncProcLimitKey;
+
     // Objects of this class can be trivially constructed, copied or deleted.
     // The default state of an object corresponds to not having any of the options
     // carried by the class be set when using 'libcurl' API.
@@ -158,6 +167,8 @@ public:
     long timeout = 0;         ///< corresponds to the default (no timeout)
     long lowSpeedLimit = 0;   ///< corresponds to the default (no limit)
     long lowSpeedTime = 0;    ///< corresponds to the default (no limit)
+
+    unsigned int asyncProcLimit = 0;  ///< corresponds to the default (no limit)
 };
 
 /**
