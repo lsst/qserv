@@ -223,6 +223,12 @@ target_sources(replica PRIVATE
 	IngestRequest.h
 	IngestRequestMgr.cc
 	IngestRequestMgr.h
+    IngestResourceMgr.cc
+    IngestResourceMgr.h
+    IngestResourceMgrP.cc
+    IngestResourceMgrP.h
+    IngestResourceMgrT.cc
+    IngestResourceMgrT.h
     IngestSvc.cc
     IngestSvc.h
     IngestSvcConn.cc

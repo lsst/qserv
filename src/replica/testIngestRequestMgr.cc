@@ -35,6 +35,7 @@
 #include "replica/AsyncTimer.h"
 #include "replica/IngestRequest.h"
 #include "replica/IngestRequestMgr.h"
+#include "replica/IngestResourceMgrT.h"
 #include "replica/TransactionContrib.h"
 
 // LSST headers
@@ -50,7 +51,48 @@ using namespace lsst::qserv::replica;
 
 BOOST_AUTO_TEST_SUITE(Suite)
 
-BOOST_AUTO_TEST_CASE(MessageQueueTest) {
+BOOST_AUTO_TEST_CASE(IngestResourceMgrTest) {
+    LOGS_INFO("IngestResourceMgr BEGIN");
+
+    // Instantiate the manager.
+    shared_ptr<IngestResourceMgrT> resourceMgr;
+    BOOST_REQUIRE_NO_THROW({ resourceMgr = IngestResourceMgrT::create(); });
+    BOOST_CHECK(resourceMgr != nullptr);
+
+    BOOST_REQUIRE_THROW({ resourceMgr->asyncProcLimit(string()); }, std::invalid_argument);
+    BOOST_REQUIRE_THROW({ resourceMgr->setAsyncProcLimit(string(), 0); }, std::invalid_argument);
+    BOOST_REQUIRE_THROW({ resourceMgr->setAsyncProcLimit(string(), 1); }, std::invalid_argument);
+
+    // Check defaults
+    string const database1 = "db1";
+    BOOST_REQUIRE_NO_THROW({ BOOST_CHECK_EQUAL(resourceMgr->asyncProcLimit(database1), 0U); });
+    string const database2 = "db2";
+    BOOST_REQUIRE_NO_THROW({ BOOST_CHECK_EQUAL(resourceMgr->asyncProcLimit(database2), 0U); });
+
+    // Check setting non-trivial limits. Check for cross-talks. There should be none.
+    unsigned int const limit1 = 1U;
+    BOOST_REQUIRE_NO_THROW({ resourceMgr->setAsyncProcLimit(database1, limit1); });
+    BOOST_CHECK_EQUAL(resourceMgr->asyncProcLimit(database1), limit1);
+    BOOST_CHECK_EQUAL(resourceMgr->asyncProcLimit(database2), 0U);
+
+    unsigned int const limit2 = 2U;
+    BOOST_REQUIRE_NO_THROW({ resourceMgr->setAsyncProcLimit(database2, limit2); });
+    BOOST_CHECK_EQUAL(resourceMgr->asyncProcLimit(database1), limit1);
+    BOOST_CHECK_EQUAL(resourceMgr->asyncProcLimit(database2), limit2);
+
+    // Reset the limits
+    BOOST_REQUIRE_NO_THROW({ resourceMgr->setAsyncProcLimit(database1, 0U); });
+    BOOST_CHECK_EQUAL(resourceMgr->asyncProcLimit(database1), 0U);
+    BOOST_CHECK_EQUAL(resourceMgr->asyncProcLimit(database2), limit2);
+
+    BOOST_REQUIRE_NO_THROW({ resourceMgr->setAsyncProcLimit(database2, 0U); });
+    BOOST_CHECK_EQUAL(resourceMgr->asyncProcLimit(database1), 0U);
+    BOOST_CHECK_EQUAL(resourceMgr->asyncProcLimit(database2), 0U);
+
+    LOGS_INFO("IngestResourceMgr END");
+}
+
+BOOST_AUTO_TEST_CASE(IngestRequestMgrSimpleTest) {
     LOGS_INFO("IngestRequestMgr_simple BEGIN");
 
     // Start a separate thread for handling BOOST ASIO events (including the ones
@@ -65,9 +107,10 @@ BOOST_AUTO_TEST_CASE(MessageQueueTest) {
     // from the manager will get locked due to problems in the implementaton
     // of the manager. The timer will be fired before each such operation and
     // be cancelled after completing the one.
-    unsigned int const expirationIvalMs = 1000;
-    AsyncTimer timer(io_service, expirationIvalMs, [](unsigned int const expirationIvalMs) {
-        LOGS_INFO("IngestRequestMgr_simple: test exceeded the time budget of " << expirationIvalMs << "ms");
+    chrono::milliseconds const expirationIvalMs(1000);
+    auto const timer = AsyncTimer::create(io_service, expirationIvalMs, [](auto expirationIvalMs) {
+        LOGS_INFO("IngestRequestMgr_simple: test exceeded the time budget of " << expirationIvalMs.count()
+                                                                               << "ms");
         std::exit(1);
     });
 
@@ -153,9 +196,9 @@ BOOST_AUTO_TEST_CASE(MessageQueueTest) {
     // Pull the request for processing.
     // The request shall move from the input queue into the in-progress one.
     shared_ptr<IngestRequest> outRequest2;
-    timer.start();
+    timer->start();
     BOOST_REQUIRE_NO_THROW({ outRequest2 = mgr->next(); });
-    timer.cancel();
+    timer->cancel();
     BOOST_CHECK(outRequest2 != nullptr);
     BOOST_CHECK_EQUAL(outRequest2->transactionContribInfo().id, inContrib2.id);
     BOOST_CHECK_EQUAL(outRequest2->transactionContribInfo().createTime, inContrib2.createTime);
@@ -165,8 +208,7 @@ BOOST_AUTO_TEST_CASE(MessageQueueTest) {
 
     // Make sure any further attepts to pull requests from the empty input queue
     // will time out.
-    BOOST_REQUIRE_THROW({ outRequest2 = mgr->next(chrono::milliseconds(expirationIvalMs)); },
-                        IngestRequestTimerExpired);
+    BOOST_REQUIRE_THROW({ outRequest2 = mgr->next(expirationIvalMs); }, IngestRequestTimerExpired);
 
     // Cancel the request while it's in the in-progress queue.
     // The cancelled request will remain in the queue because of

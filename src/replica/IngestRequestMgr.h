@@ -34,6 +34,7 @@
 // Forward declarations
 namespace lsst::qserv::replica {
 class IngestRequest;
+class IngestResourceMgr;
 class ServiceProvider;
 class TransactionContribInfo;
 }  // namespace lsst::qserv::replica
@@ -112,9 +113,14 @@ public:
 
     /**
      * The factory method for instantiating the dummy manager for unit testing.
+     * @param resourceMgr The optional resource manager of the test instances is allowed
+     *  to be configured externally. If the default value is assumed (the null pointer)
+     *  then the empty manager will be created that won't allow imposing any
+     *  constraints during request scheduling.
      * @return A newly created instance of the manager.
      */
-    static std::shared_ptr<IngestRequestMgr> test();
+    static std::shared_ptr<IngestRequestMgr> test(
+            std::shared_ptr<IngestResourceMgr> const& resourceMgr = std::shared_ptr<IngestResourceMgr>());
 
     /**
      * Find a request by its identifier.
@@ -217,11 +223,12 @@ private:
     IngestRequestMgr(std::shared_ptr<ServiceProvider> const& serviceProvider, std::string const& workerName);
 
     /// @see method IngestRequestMgr::test()
-    IngestRequestMgr();
+    IngestRequestMgr(std::shared_ptr<IngestResourceMgr> const& resourceMgr);
 
     // Input parameters
     std::shared_ptr<ServiceProvider> const _serviceProvider;
     std::string const _workerName;
+    std::shared_ptr<IngestResourceMgr> const _resourceMgr;
 
     /// The mutex for enforcing thread safety of the class's public API and
     /// internal operations.

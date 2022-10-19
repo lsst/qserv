@@ -32,6 +32,8 @@
 // Qserv headers
 #include "replica/DatabaseServices.h"
 #include "replica/IngestRequest.h"
+#include "replica/IngestResourceMgrP.h"
+#include "replica/IngestResourceMgrT.h"
 #include "replica/ServiceProvider.h"
 
 // LSST headers
@@ -188,8 +190,8 @@ shared_ptr<IngestRequestMgr> IngestRequestMgr::create(shared_ptr<ServiceProvider
     return ptr;
 }
 
-shared_ptr<IngestRequestMgr> IngestRequestMgr::test() {
-    return shared_ptr<IngestRequestMgr>(new IngestRequestMgr());
+shared_ptr<IngestRequestMgr> IngestRequestMgr::test(shared_ptr<IngestResourceMgr> const& resourceMgr) {
+    return shared_ptr<IngestRequestMgr>(new IngestRequestMgr(resourceMgr));
 }
 
 size_t IngestRequestMgr::inputQueueSize() const {
@@ -209,7 +211,9 @@ size_t IngestRequestMgr::outputQueueSize() const {
 
 IngestRequestMgr::IngestRequestMgr(shared_ptr<ServiceProvider> const& serviceProvider,
                                    string const& workerName)
-        : _serviceProvider(serviceProvider), _workerName(workerName) {}
+        : _serviceProvider(serviceProvider),
+          _workerName(workerName),
+          _resourceMgr(IngestResourceMgrP::create(serviceProvider)) {}
 
 TransactionContribInfo IngestRequestMgr::find(unsigned int id) {
     unique_lock<mutex> lock(_mtx);
@@ -239,7 +243,8 @@ TransactionContribInfo IngestRequestMgr::find(unsigned int id) {
     throw IngestRequestNotFound(context_ + string(__func__) + " request " + to_string(id) + " was not found");
 }
 
-IngestRequestMgr::IngestRequestMgr() {}
+IngestRequestMgr::IngestRequestMgr(shared_ptr<IngestResourceMgr> const& resourceMgr)
+        : _resourceMgr(resourceMgr == nullptr ? IngestResourceMgrT::create() : resourceMgr) {}
 
 void IngestRequestMgr::submit(shared_ptr<IngestRequest> const& request) {
     if (request == nullptr) {
