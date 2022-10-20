@@ -212,10 +212,23 @@ public:
      */
     void completed(unsigned int id);
 
-    // Get statuses of the queues
+    /**
+     * Return the number of the queued requests for the specified database
+     * (if any was provided). Otherwise return all requests in this state.
+     * @param databaseName The optional name of a database to be inspected.
+     * @return size_t
+     */
+    size_t inputQueueSize(std::string const& databaseName = std::string()) const;
 
-    size_t inputQueueSize() const;
-    size_t inProgressQueueSize() const;
+    /**
+     * Return the number of in-progress requests for the specified database
+     * (if any was provided). Otherwise return all requests in this state.
+     * @param databaseName The optional name of a database to be inspected.
+     * @return size_t
+     */
+    size_t inProgressQueueSize(std::string const& databaseName = std::string()) const;
+
+    /// @return The number of the completed/failed/cancelled requests in the output queue.
     size_t outputQueueSize() const;
 
 private:
@@ -224,6 +237,26 @@ private:
 
     /// @see method IngestRequestMgr::test()
     IngestRequestMgr(std::shared_ptr<IngestResourceMgr> const& resourceMgr);
+
+    /**
+     * Find the next request that's suitable for processing based on availability
+     * of requests and existing resource constraints.
+     * The request (if any will be found) will be pulled from the corresponding
+     * input queue and moved into the in-progress queue.
+     *
+     * @param lock The lock to be acquired before calling the method.
+     * @return The request found in the queue or the empty pointer if
+     *  no suitable request was found.
+     */
+    std::shared_ptr<IngestRequest> _next(std::unique_lock<std::mutex> const& lock);
+
+    /**
+     * Update the concurrency limit from the configuration (if needed)
+     * @param lock The lock to be acquired before calkling the method.
+     * @param database The name of the affected database.
+     * @return 'true' if the concurrency has increased.
+     */
+    bool _updateMaxConcurrency(std::unique_lock<std::mutex> const& lock, std::string const& database);
 
     // Input parameters
     std::shared_ptr<ServiceProvider> const _serviceProvider;
@@ -238,9 +271,19 @@ private:
     /// the next request that is ready to be processed.
     std::condition_variable _cv;
 
-    std::list<std::shared_ptr<IngestRequest>> _input;
+    /// Input queues of databases. Each active database has its own queue. The newest
+    /// elements are added to the back of the queues.
+    std::map<std::string, std::list<std::shared_ptr<IngestRequest>>> _input;
+
     std::map<unsigned int, std::shared_ptr<IngestRequest>> _inProgress;
     std::map<unsigned int, std::shared_ptr<IngestRequest>> _output;
+
+    /// The maximum number of concurrent requests to be processed for a database.
+    /// A value of 0 means there is no limit.
+    std::map<std::string, unsigned int> _maxConcurrency;
+
+    /// The current number of the concurrent requests being processed for databases.
+    std::map<std::string, unsigned int> _concurrency;
 };
 
 }  // namespace lsst::qserv::replica

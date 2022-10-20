@@ -67,20 +67,20 @@ shared_ptr<IngestRequestMgr> IngestRequestMgr::create(shared_ptr<ServiceProvider
             serviceProvider->config()->get<unsigned int>("worker", "async-loader-auto-resume") != 0;
     string const anyTable;
 
-    // Contribution requests are sorted (ASC) by the creation time globally across
+    // Contribution requests are sorted (DESC) by the creation time globally across
     // all transaction to ensure the eligible requests will be auto-resumed
     // in the original order.
-    vector<TransactionContribInfo> contribsByCreateTimeASC;
+    vector<TransactionContribInfo> contribsByCreateTimeDESC;
     auto const transactions = databaseServices->transactions(TransactionInfo::State::STARTED);
     for (auto const& trans : transactions) {
         auto const contribs = databaseServices->transactionContribs(
                 trans.id, TransactionContribInfo::Status::IN_PROGRESS, anyTable, workerName,
                 TransactionContribInfo::TypeSelector::ASYNC);
-        contribsByCreateTimeASC.insert(contribsByCreateTimeASC.end(), contribs.cbegin(), contribs.cend());
+        contribsByCreateTimeDESC.insert(contribsByCreateTimeDESC.end(), contribs.cbegin(), contribs.cend());
     }
-    sort(contribsByCreateTimeASC.begin(), contribsByCreateTimeASC.end(),
+    sort(contribsByCreateTimeDESC.begin(), contribsByCreateTimeDESC.end(),
          [](TransactionContribInfo const& a, TransactionContribInfo const& b) {
-             return a.createTime < b.createTime;
+             return a.createTime > b.createTime;
          });
 
     bool const failed = true;
@@ -96,7 +96,7 @@ shared_ptr<IngestRequestMgr> IngestRequestMgr::create(shared_ptr<ServiceProvider
             "Loading into MySQL was interrupted when the service was restarted."
             " Resuming requests at this stage is not possible.";
 
-    for (auto& contrib : contribsByCreateTimeASC) {
+    for (auto& contrib : contribsByCreateTimeDESC) {
         // Make the best effort to clean up the temporary files (if any) left after previous
         // run of the unfinished requests. Requests that are eligible to be resumed will
         // open new empty files as they will be being processed.
@@ -194,14 +194,28 @@ shared_ptr<IngestRequestMgr> IngestRequestMgr::test(shared_ptr<IngestResourceMgr
     return shared_ptr<IngestRequestMgr>(new IngestRequestMgr(resourceMgr));
 }
 
-size_t IngestRequestMgr::inputQueueSize() const {
+size_t IngestRequestMgr::inputQueueSize(string const& databaseName) const {
     unique_lock<mutex> lock(_mtx);
-    return _input.size();
+    if (databaseName.empty()) {
+        size_t size = 0;
+        for (auto&& itr : _input) {
+            list<shared_ptr<IngestRequest>> const& queue = itr.second;
+            size += queue.size();
+        }
+        return size;
+    } else {
+        auto const itr = _input.find(databaseName);
+        if (itr == _input.cend()) return 0;
+        return itr->second.size();
+    }
 }
 
-size_t IngestRequestMgr::inProgressQueueSize() const {
+size_t IngestRequestMgr::inProgressQueueSize(string const& databaseName) const {
     unique_lock<mutex> lock(_mtx);
-    return _inProgress.size();
+    if (databaseName.empty()) return _inProgress.size();
+    auto const itr = _concurrency.find(databaseName);
+    if (itr == _concurrency.cend()) return 0;
+    return itr->second;
 }
 
 size_t IngestRequestMgr::outputQueueSize() const {
@@ -217,11 +231,14 @@ IngestRequestMgr::IngestRequestMgr(shared_ptr<ServiceProvider> const& servicePro
 
 TransactionContribInfo IngestRequestMgr::find(unsigned int id) {
     unique_lock<mutex> lock(_mtx);
-    auto const inputItr = find_if(_input.cbegin(), _input.cend(), [id](auto const& request) {
-        return request->transactionContribInfo().id == id;
-    });
-    if (inputItr != _input.cend()) {
-        return (*inputItr)->transactionContribInfo();
+    for (auto&& databaseItr : _input) {
+        list<shared_ptr<IngestRequest>> const& queue = databaseItr.second;
+        auto const inputItr = find_if(queue.cbegin(), queue.cend(), [id](auto const& request) {
+            return request->transactionContribInfo().id == id;
+        });
+        if (inputItr != queue.cend()) {
+            return (*inputItr)->transactionContribInfo();
+        }
     }
     auto const inProgressItr = _inProgress.find(id);
     if (inProgressItr != _inProgress.cend()) {
@@ -251,37 +268,69 @@ void IngestRequestMgr::submit(shared_ptr<IngestRequest> const& request) {
         throw invalid_argument(context_ + string(__func__) + " null pointer passed into the method");
     }
     auto const contrib = request->transactionContribInfo();
+    if (contrib.database.empty() || contrib.createTime == 0) {
+        throw invalid_argument(context_ + string(__func__) + " invalid request passed into the method");
+    }
     if ((contrib.status != TransactionContribInfo::Status::IN_PROGRESS) || (contrib.startTime != 0)) {
         throw logic_error(context_ + string(__func__) + " request " + to_string(contrib.id) +
                           " has already been processed");
     }
     unique_lock<mutex> lock(_mtx);
-    _input.push_front(request);
-    lock.unlock();
-    _cv.notify_one();
+    // Newest requests should go to the very end of the queue, so that
+    // they will be processed after the older ones.
+    _input[contrib.database].push_back(request);
+    if (_updateMaxConcurrency(lock, contrib.database)) {
+        // Concurrency has increased. Unblock all processing threads.
+        lock.unlock();
+        _cv.notify_all();
+    } else {
+        // Concurrency has not changed, or got lower. Unblock one processing thread for
+        // the new request only.
+        lock.unlock();
+        _cv.notify_one();
+    }
 }
 
 TransactionContribInfo IngestRequestMgr::cancel(unsigned int id) {
     unique_lock<mutex> lock(_mtx);
-    auto const inputItr = find_if(_input.cbegin(), _input.cend(), [id](auto const& request) {
-        return request->transactionContribInfo().id == id;
-    });
-    if (inputItr != _input.cend()) {
-        // Forced cancellation for requests that haven't been started.
-        // This is the deterministic cancellation scenario as the request is
-        // guaranteed to end up in the output queue with status 'CANCELLED'.
-        auto const request = *inputItr;
-        request->cancel();
-        _input.erase(inputItr);
-        _output[id] = request;
-        return request->transactionContribInfo();
+    // Scan input queues of all active databases.
+    for (auto&& databaseItr : _input) {
+        string const& databaseName = databaseItr.first;
+        list<shared_ptr<IngestRequest>>& queue = databaseItr.second;
+        auto const itr = find_if(queue.cbegin(), queue.cend(), [id](auto const& request) {
+            return request->transactionContribInfo().id == id;
+        });
+        if (itr != queue.cend()) {
+            // Forced cancellation for requests that haven't been started.
+            // This is the deterministic cancellation scenario as the request is
+            // guaranteed to end up in the output queue with status 'CANCELLED'.
+            shared_ptr<IngestRequest> const request = *itr;
+            request->cancel();
+            queue.erase(itr);
+            _output[id] = request;
+            // Clear the queue and the dictionary if this was the very last element
+            // in a scope of the database. Otherwise, refresh the concurrency limit
+            // for the database in case if it was updated by the ingest workflow.
+            if (queue.empty()) {
+                _input.erase(databaseName);
+                _maxConcurrency.erase(databaseName);
+            } else {
+                if (_updateMaxConcurrency(lock, databaseName)) {
+                    // Concurrency has increased. Unblock all processing threads.
+                    lock.unlock();
+                    _cv.notify_all();
+                }
+            }
+            return request->transactionContribInfo();
+        }
     }
     auto const inProgressItr = _inProgress.find(id);
     if (inProgressItr != _inProgress.cend()) {
-        // Advisory cancellation by the processing thread when it will discover it
-        // and if it won't be too late to cancel the request. Note that the thread
-        // may be involved into the blocking disk, network or MySQL I/O call at this
-        // time.
+        // Advisory cancellation by the processing thread. It's going to be up
+        // to the thread to discover the new state of the request, and cancel
+        // the one if it won't be too late to do so. Note that the thread
+        // may be involved into the blocking operations such as reading/writing
+        // from disk, network, or interacting with MySQL at this time.
         inProgressItr->second->cancel();
         return inProgressItr->second->transactionContribInfo();
     }
@@ -296,12 +345,14 @@ TransactionContribInfo IngestRequestMgr::cancel(unsigned int id) {
 
 shared_ptr<IngestRequest> IngestRequestMgr::next() {
     unique_lock<mutex> lock(_mtx);
-    if (_input.empty()) {
-        _cv.wait(lock, [&]() { return !_input.empty(); });
+    shared_ptr<IngestRequest> request = _next(lock);
+    if (request == nullptr) {
+        _cv.wait(lock, [&]() {
+            // The mutex is guaranteed to be re-locked here.
+            request = _next(lock);
+            return request != nullptr;
+        });
     }
-    shared_ptr<IngestRequest> const request = _input.back();
-    _input.pop_back();
-    _inProgress[request->transactionContribInfo().id] = request;
     return request;
 }
 
@@ -309,15 +360,18 @@ shared_ptr<IngestRequest> IngestRequestMgr::next(chrono::milliseconds const& iva
     string const context = context_ + string(__func__) + " ";
     if (ivalMsec.count() == 0) throw invalid_argument(context + "the interval can not be 0.");
     unique_lock<mutex> lock(_mtx);
-    if (_input.empty()) {
-        if (!_cv.wait_for(lock, ivalMsec, [&]() { return !_input.empty(); })) {
+    shared_ptr<IngestRequest> request = _next(lock);
+    if (request == nullptr) {
+        bool const ivalExpired = !_cv.wait_for(lock, ivalMsec, [&]() {
+            // The mutex is guaranteed to be re-locked here.
+            request = _next(lock);
+            return request != nullptr;
+        });
+        if (ivalExpired) {
             throw IngestRequestTimerExpired(context + "no request was found in the queue after waiting for " +
                                             to_string(ivalMsec.count()) + "ms");
         }
     }
-    shared_ptr<IngestRequest> const request = _input.back();
-    _input.pop_back();
-    _inProgress[request->transactionContribInfo().id] = request;
     return request;
 }
 
@@ -329,8 +383,75 @@ void IngestRequestMgr::completed(unsigned int id) {
         throw IngestRequestNotFound(context_ + string(__func__) + " request " + to_string(id) +
                                     " was not found");
     }
-    _output[id] = inProgressItr->second;
+    shared_ptr<IngestRequest> const request = inProgressItr->second;
+    _output[id] = request;
     _inProgress.erase(id);
+    string const databaseName = request->transactionContribInfo().database;
+    --(_concurrency[databaseName]);
+    if (_concurrency[databaseName] == 0) _concurrency.erase(databaseName);
+    // Refresh the concurrency limit for the database if there are outstanding
+    // requests in the input queue.
+    if (_input.count(databaseName) != 0) {
+        if (_updateMaxConcurrency(lock, databaseName)) {
+            // Concurrency has increased. Unblock all processing threads.
+            lock.unlock();
+            _cv.notify_all();
+            return;
+        }
+    }
+    lock.unlock();
+    _cv.notify_one();
+}
+
+shared_ptr<IngestRequest> IngestRequestMgr::_next(unique_lock<mutex> const& lock) {
+    shared_ptr<IngestRequest> request;
+    for (auto&& databaseItr : _input) {
+        string const& databaseName = databaseItr.first;
+        list<shared_ptr<IngestRequest>> const& queue = databaseItr.second;
+        // Skip empty queues and queues that have the current concurrency level
+        // at or above the threshold. Note that the concurrency thresholds for
+        // databases may change dynamically as directed by the ingest workflows.
+        if (queue.empty()) continue;
+        unsigned int const queueConcurrency = _maxConcurrency[databaseName];
+        if ((queueConcurrency > 0) && (_concurrency[databaseName] >= queueConcurrency)) continue;
+        // The (new) candidate request would be the very first hit, or the one
+        // having the oldest create time.
+        shared_ptr<IngestRequest> const& thisRequest = queue.front();
+        bool const isCandidate = (request == nullptr) || (thisRequest->transactionContribInfo().createTime <
+                                                          request->transactionContribInfo().createTime);
+        if (isCandidate) request = thisRequest;
+    }
+    if (request != nullptr) {
+        auto const contrib = request->transactionContribInfo();
+        list<shared_ptr<IngestRequest>>& queue = _input[contrib.database];
+        queue.pop_front();
+        _inProgress[contrib.id] = request;
+        ++(_concurrency[contrib.database]);
+        // Clear the queue and the dictionary if this was the very last element
+        // in a scope of the database.
+        if (queue.empty()) {
+            _input.erase(contrib.database);
+            _maxConcurrency.erase(contrib.database);
+        }
+    }
+    return request;
+}
+
+bool IngestRequestMgr::_updateMaxConcurrency(unique_lock<std::mutex> const& lock, string const& database) {
+    bool concurrencyHasIncreased = false;
+    // The previous concurrency limit will be initialize with 0, if the database
+    // wasn't registered in the dictionary.
+    unsigned int& maxConcurrencyRef = _maxConcurrency[database];
+    unsigned int const newMaxConcurrency = _resourceMgr->asyncProcLimit(database);
+    if (maxConcurrencyRef != newMaxConcurrency) {
+        LOGS(_log, LOG_LVL_WARN,
+             context_ << __func__ << " max.concurrency limit for database '" << database << "' changed from "
+                      << maxConcurrencyRef << " to " << newMaxConcurrency << ".");
+        concurrencyHasIncreased = (newMaxConcurrency == 0) ||
+                                  ((maxConcurrencyRef != 0) && (newMaxConcurrency > maxConcurrencyRef));
+        maxConcurrencyRef = newMaxConcurrency;
+    }
+    return concurrencyHasIncreased;
 }
 
 }  // namespace lsst::qserv::replica
