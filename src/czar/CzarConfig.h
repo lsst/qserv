@@ -63,8 +63,6 @@ public:
      */
     mysql::MySqlConfig const& getMySqlResultConfig() const { return _mySqlResultConfig; }
 
-    std::string const& getLogConfig() const { return _logConfig; }
-
     /* Get MySQL configuration for czar MySQL qmeta database
      *
      * @return a structure containing MySQL parameters
@@ -167,7 +165,6 @@ private:
 
     // Parameters below used in czar::Czar
     mysql::MySqlConfig const _mySqlResultConfig;
-    std::string const _logConfig;
 
     // Parameters used to affect result aggregation in rproc.
     int const _maxTableSizeMB;

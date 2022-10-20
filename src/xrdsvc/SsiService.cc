@@ -44,6 +44,7 @@
 #include "mysql/MySqlConnection.h"
 #include "sql/SqlConnection.h"
 #include "sql/SqlConnectionFactory.h"
+#include "util/FileMonitor.h"
 #include "wbase/Base.h"
 #include "wconfig/WorkerConfig.h"
 #include "wconfig/WorkerConfigError.h"
@@ -163,6 +164,18 @@ SsiService::SsiService(XrdSsiLogger* log, wconfig::WorkerConfig const& workerCon
     _foreman =
             make_shared<wcontrol::Foreman>(blendSched, poolSize, maxPoolThreads,
                                            workerConfig.getMySqlConfig(), queries, sqlConnMgr, _transmitMgr);
+
+    // Watch to see if the log configuration is changed.
+    // If LSST_LOG_CONFIG is not defined, there's no good way to know what log
+    // configuration file is in use.
+    string logConfigFile = std::getenv("LSST_LOG_CONFIG");
+    if (logConfigFile == "") {
+    	LOGS(_log, LOG_LVL_ERROR, "FileMonitor LSST_LOG_CONFIG was blank, no log configuration file to watch.");
+    } else {
+    	LOGS(_log, LOG_LVL_ERROR, "logConfigFile=" << logConfigFile);
+    	_logFileMonitor = make_shared<util::FileMonitor>(logConfigFile);
+    	_logFileMonitor->run();
+    }
 }
 
 SsiService::~SsiService() { LOGS(_log, LOG_LVL_DEBUG, "SsiService dying."); }

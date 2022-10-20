@@ -39,6 +39,9 @@
 class XrdSsiLogger;
 
 namespace lsst::qserv {
+namespace util {
+class FileMonitor;
+}
 namespace wcontrol {
 class Foreman;
 class TransmitMgr;
@@ -81,6 +84,9 @@ private:
     std::shared_ptr<wcontrol::TransmitMgr> _transmitMgr;
 
     mysql::MySqlConfig const _mySqlConfig;
+
+    /// Reloads the log configuration file on log config file change.
+     std::shared_ptr<util::FileMonitor> _logFileMonitor;
 
 };  // class SsiService
 

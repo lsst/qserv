@@ -64,7 +64,6 @@ CzarConfig::CzarConfig(util::ConfigStore const& configStore)
                              configStore.getRequired("resultdb.host"), configStore.getInt("resultdb.port"),
                              configStore.getRequired("resultdb.unix_socket"),
                              configStore.get("resultdb.db", "qservResult")),
-          _logConfig(configStore.get("log.logConfig")),
           _maxTableSizeMB(configStore.getInt("resultdb.maxtablesize_mb", 5001)),
           _maxSqlConnectionAttempts(configStore.getInt("resultdb.maxsqlconnectionattempts", 10)),
           _resultEngine(configStore.get("resultdb.engine", "myisam")),
@@ -96,7 +95,7 @@ CzarConfig::CzarConfig(util::ConfigStore const& configStore)
 
 std::ostream& operator<<(std::ostream& out, CzarConfig const& czarConfig) {
     out << "[cssConfigMap=" << util::printable(czarConfig._cssConfigMap)
-        << ", emptyChunkPath=" << czarConfig._emptyChunkPath << ", logConfig=" << czarConfig._logConfig
+		<< ", emptyChunkPath=" << czarConfig._emptyChunkPath
         << ", mySqlQmetaConfig=" << czarConfig._mySqlQmetaConfig
         << ", mySqlQStatusDataConfig=" << czarConfig._mySqlQstatusDataConfig
         << ", mySqlResultConfig=" << czarConfig._mySqlResultConfig

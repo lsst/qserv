@@ -56,8 +56,8 @@ namespace lsst::qserv::util {
 	}
 
 
-	void FileMonitor::setup() {
-		LOGS(_log, LOG_LVL_WARN, "FileMonitor::setup() " << _fileName);
+	void FileMonitor::_setup() {
+		LOGS(_log, LOG_LVL_WARN, "FileMonitor::_setup() " << _fileName);
 		_fD = inotify_init();
 		if ( _fD < 0 ) {
 			throw Bug(ERR_LOC, "FileMonitor::setup inotify_init failed " + _fileName);
@@ -65,10 +65,14 @@ namespace lsst::qserv::util {
 		_wD = inotify_add_watch( _fD, _fileName.c_str(), IN_CREATE | IN_MODIFY | IN_MOVE_SELF | IN_MOVED_FROM | IN_MOVED_TO );
 	}
 
-	void FileMonitor::checkLoop() {
-		LOGS(_log, LOG_LVL_WARN, "FileMonitor::checkLoop() start " << _fileName);
+	void FileMonitor::_checkLoop() {
 		while(_loop) {
 			char buffer[EVENT_BUF_LEN];
+
+			/// There's a lock situation here. If the file is never modified, it's never getting past
+			/// this line. xrootd doesn't exit gracefully anyway, so this is unlikely to cause a problem.
+			/// This thread could be cancelled or the file could be touched, but that's unlikely to make
+			/// program termination much prettier.
 			int length = read(_fD, buffer, EVENT_BUF_LEN);
 			LOGS(_log, LOG_LVL_WARN, "FileMonitor::checkLoop() " << _fileName << " read length=" << length);
 			if (length < 0) {
@@ -80,7 +84,7 @@ namespace lsst::qserv::util {
 			int i = 0;
 			while ( i < length ) {
 				struct inotify_event *event = (struct inotify_event *) &buffer[i];
-				LOGS(_log, LOG_LVL_ERROR, "&&& FileMonitor inotify event i=" << i << " event len=" << event->len);
+				LOGS(_log, LOG_LVL_DEBUG, "FileMonitor inotify event i=" << i << " event len=" << event->len);
 				bool reread = false;
 				string msg = "FileMonitor::checkLoop got event " + to_string(event->mask);
 				if (event->mask & IN_CREATE) {
@@ -104,7 +108,8 @@ namespace lsst::qserv::util {
 					reread = true;
 				}
 				LOGS(_log, LOG_LVL_ERROR, msg << " reread=" << reread);
-				if (reread) {
+				// Only reload if the loop is still active and reread is true.
+				if (reread && _loop) {
 					LOGS(_log, LOG_LVL_ERROR, msg << " reloading config " << _fileName);
 					sleep(1); // Give it a second in hopes of log message being written before changes.
 					LOG_CONFIG(_fileName);
@@ -120,7 +125,7 @@ namespace lsst::qserv::util {
 	}
 
 	void FileMonitor::run() {
-	    thread t(&FileMonitor::checkLoop, this);
+	    thread t(&FileMonitor::_checkLoop, this);
 	    _thrd = move(t);
 	}
 

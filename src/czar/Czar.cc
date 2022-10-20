@@ -95,13 +95,6 @@ Czar::Czar(string const& configPath, string const& czarName)
     const int year = 60 * 60 * 24 * 365;
     _idCounter = uint64_t(tv.tv_sec % year) * 1000 + tv.tv_usec / 1000;
 
-    /* &&& logConfig isn't used and conflicts with LSST_
-    string logConfig = _czarConfig.getLogConfig();
-    if (not logConfig.empty()) {
-        LOG_CONFIG(logConfig);
-    }
-    */
-
     auto databaseModels =
             qproc::DatabaseModels::create(_czarConfig.getCssConfigMap(), _czarConfig.getMySqlResultConfig());
 
