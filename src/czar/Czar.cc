@@ -50,6 +50,7 @@
 #include "sql/SqlConnectionFactory.h"
 #include "sql/SqlResults.h"
 #include "util/common.h"
+#include "util/FileMonitor.h"
 #include "util/IterableFormatter.h"
 #include "util/StringHelper.h"
 #include "XrdSsi/XrdSsiProvider.hh"
@@ -94,10 +95,12 @@ Czar::Czar(string const& configPath, string const& czarName)
     const int year = 60 * 60 * 24 * 365;
     _idCounter = uint64_t(tv.tv_sec % year) * 1000 + tv.tv_usec / 1000;
 
+    /* &&& logConfig isn't used and conflicts with LSST_
     string logConfig = _czarConfig.getLogConfig();
     if (not logConfig.empty()) {
         LOG_CONFIG(logConfig);
     }
+    */
 
     auto databaseModels =
             qproc::DatabaseModels::create(_czarConfig.getCssConfigMap(), _czarConfig.getMySqlResultConfig());
@@ -134,6 +137,18 @@ Czar::Czar(string const& configPath, string const& czarName)
 
     LOGS(_log, LOG_LVL_INFO, "Creating czar instance with name " << czarName);
     LOGS(_log, LOG_LVL_INFO, "Czar config: " << _czarConfig);
+
+    // Watch to see if the log configuration is changed.
+    // If LSST_LOG_CONFIG is not defined, there's no good way to know what log
+    // configuration file is in use.
+    string logConfigFile = std::getenv("LSST_LOG_CONFIG");
+    if (logConfigFile == "") {
+    	LOGS(_log, LOG_LVL_ERROR, "FileMonitor LSST_LOG_CONFIG was blank, no log configuration file to watch.");
+    } else {
+        LOGS(_log, LOG_LVL_ERROR, "logConfigFile=" << logConfigFile);
+        _logFileMonitor = make_shared<util::FileMonitor>(logConfigFile);
+        _logFileMonitor->run();
+    }
 }
 
 SubmitResult Czar::submitQuery(string const& query, map<string, string> const& hints) {
