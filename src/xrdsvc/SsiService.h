@@ -86,7 +86,7 @@ private:
     mysql::MySqlConfig const _mySqlConfig;
 
     /// Reloads the log configuration file on log config file change.
-     std::shared_ptr<util::FileMonitor> _logFileMonitor;
+    std::shared_ptr<util::FileMonitor> _logFileMonitor;
 
 };  // class SsiService
 

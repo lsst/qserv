@@ -170,11 +170,12 @@ SsiService::SsiService(XrdSsiLogger* log, wconfig::WorkerConfig const& workerCon
     // configuration file is in use.
     string logConfigFile = std::getenv("LSST_LOG_CONFIG");
     if (logConfigFile == "") {
-    	LOGS(_log, LOG_LVL_ERROR, "FileMonitor LSST_LOG_CONFIG was blank, no log configuration file to watch.");
+        LOGS(_log, LOG_LVL_ERROR,
+             "FileMonitor LSST_LOG_CONFIG was blank, no log configuration file to watch.");
     } else {
-    	LOGS(_log, LOG_LVL_ERROR, "logConfigFile=" << logConfigFile);
-    	_logFileMonitor = make_shared<util::FileMonitor>(logConfigFile);
-    	_logFileMonitor->run();
+        LOGS(_log, LOG_LVL_ERROR, "logConfigFile=" << logConfigFile);
+        _logFileMonitor = make_shared<util::FileMonitor>(logConfigFile);
+        _logFileMonitor->run();
     }
 }
 

@@ -52,7 +52,7 @@ class PseudoFifo;
 }
 
 namespace util {
-	class FileMonitor;
+class FileMonitor;
 }
 
 namespace czar {

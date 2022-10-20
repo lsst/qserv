@@ -26,7 +26,6 @@
 #include <atomic>
 #include <thread>
 
-
 namespace lsst::qserv::util {
 
 /// This class monitors the log configuration file and reloads it when modified.
@@ -37,38 +36,36 @@ namespace lsst::qserv::util {
 /// events wait for.
 class FileMonitor {
 public:
-	using Ptr = std::shared_ptr<FileMonitor>;
+    using Ptr = std::shared_ptr<FileMonitor>;
 
-	FileMonitor() = delete;
-	FileMonitor(std::string const& fileName) : _fileName(fileName) {
-		_setup();
-	}
+    FileMonitor() = delete;
+    FileMonitor(std::string const& fileName) : _fileName(fileName) { _setup(); }
 
-	/// Stops and joins _thrd, if joinable.
-	~FileMonitor();
+    /// Stops and joins _thrd, if joinable.
+    ~FileMonitor();
 
-	FileMonitor(FileMonitor const&) = delete;
-	FileMonitor& operator=(FileMonitor const&) = delete;
+    FileMonitor(FileMonitor const&) = delete;
+    FileMonitor& operator=(FileMonitor const&) = delete;
 
-	/// start running `_thrd` containing `checkLoop()`.
-	void run();
+    /// start running `_thrd` containing `checkLoop()`.
+    void run();
 
-	/// Stop the thread `_thrd`.
-	void stop() { _loop = false; }
+    /// Stop the thread `_thrd`.
+    void stop() { _loop = false; }
 
-	/// Join to `_thrd`, if it is joinable.
-	void join();
+    /// Join to `_thrd`, if it is joinable.
+    void join();
 
 private:
-	void _setup(); ///< Do the class initialization.
-	void _checkLoop(); ///< Check for changes to the file in the thread `_thrd`.
+    void _setup();      ///< Do the class initialization.
+    void _checkLoop();  ///< Check for changes to the file in the thread `_thrd`.
 
-	std::string _fileName; ///< name of the file being watched, including path.
-	std::thread _thrd; ///< Thread monitoring file changes
-	std::atomic<bool> _loop{true}; ///< setting to false will end the loop
+    std::string _fileName;          ///< name of the file being watched, including path.
+    std::thread _thrd;              ///< Thread monitoring file changes
+    std::atomic<bool> _loop{true};  ///< setting to false will end the loop
 
-	int _fD; ///< File descriptor for the monitor itself.
-	int _wD; ///< inotify watch descriptor.
+    int _fD;  ///< File descriptor for the monitor itself.
+    int _wD;  ///< inotify watch descriptor.
 };
 
 }  // namespace lsst::qserv::util

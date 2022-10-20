@@ -95,7 +95,7 @@ CzarConfig::CzarConfig(util::ConfigStore const& configStore)
 
 std::ostream& operator<<(std::ostream& out, CzarConfig const& czarConfig) {
     out << "[cssConfigMap=" << util::printable(czarConfig._cssConfigMap)
-		<< ", emptyChunkPath=" << czarConfig._emptyChunkPath
+        << ", emptyChunkPath=" << czarConfig._emptyChunkPath
         << ", mySqlQmetaConfig=" << czarConfig._mySqlQmetaConfig
         << ", mySqlQStatusDataConfig=" << czarConfig._mySqlQstatusDataConfig
         << ", mySqlResultConfig=" << czarConfig._mySqlResultConfig
