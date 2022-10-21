@@ -39,7 +39,10 @@ public:
     using Ptr = std::shared_ptr<FileMonitor>;
 
     FileMonitor() = delete;
-    FileMonitor(std::string const& fileName) : _fileName(fileName) { _setup(); }
+    FileMonitor(std::string const& fileName) : _fileName(fileName) {
+    	_setup();
+    	_run();
+    }
 
     /// Stops and joins _thrd, if joinable.
     ~FileMonitor();
@@ -47,13 +50,13 @@ public:
     FileMonitor(FileMonitor const&) = delete;
     FileMonitor& operator=(FileMonitor const&) = delete;
 
-    /// start running `_thrd` containing `checkLoop()`.
-    void run();
+
 
 private:
     void _setup();      ///< Do the class initialization.
     void _checkLoop();  ///< Check for changes to the file in the thread `_thrd`.
 
+    void _run();                     ///< start running `_thrd` containing `checkLoop()`.
     void _stop() { _loop = false; } ///< Stop the thread `_thrd`.
     void _join();                   ///< Join to `_thrd`, if it is joinable.
 

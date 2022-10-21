@@ -175,7 +175,6 @@ SsiService::SsiService(XrdSsiLogger* log, wconfig::WorkerConfig const& workerCon
     } else {
         LOGS(_log, LOG_LVL_ERROR, "logConfigFile=" << logConfigFile);
         _logFileMonitor = make_shared<util::FileMonitor>(logConfigFile);
-        _logFileMonitor->run();
     }
 }
 

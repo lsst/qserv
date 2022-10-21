@@ -123,7 +123,7 @@ void FileMonitor::_checkLoop() {
     close(_fD);
 }
 
-void FileMonitor::run() {
+void FileMonitor::_run() {
     thread t(&FileMonitor::_checkLoop, this);
     _thrd = move(t);
 }

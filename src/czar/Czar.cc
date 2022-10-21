@@ -141,7 +141,6 @@ Czar::Czar(string const& configPath, string const& czarName)
     } else {
         LOGS(_log, LOG_LVL_WARN, "logConfigFile=" << logConfigFile);
         _logFileMonitor = make_shared<util::FileMonitor>(logConfigFile);
-        _logFileMonitor->run();
     }
 }
 
