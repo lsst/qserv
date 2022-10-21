@@ -10,6 +10,7 @@ target_sources(util PRIVATE
     Error.cc
     EventThread.cc
     File.cc
+    FileMonitor.cc
     InstanceCount.cc
     Issue.cc
     MultiError.cc

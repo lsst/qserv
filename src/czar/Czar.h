@@ -51,6 +51,10 @@ namespace qdisp {
 class PseudoFifo;
 }
 
+namespace util {
+class FileMonitor;
+}
+
 namespace czar {
 
 /// @addtogroup czar
@@ -161,6 +165,9 @@ private:
     std::thread _oldTableRemovalThread;  ///< thread needs to remain valid while running.
 
     bool _queryDistributionTestVer;  ///< True if config says this is distribution test version.
+
+    /// Reloads the log configuration file on log config file change.
+    std::shared_ptr<util::FileMonitor> _logFileMonitor;
 };
 
 }  // namespace czar
