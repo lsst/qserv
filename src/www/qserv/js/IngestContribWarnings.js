@@ -60,7 +60,7 @@ function(CSSLoader,
             let html = `
 <div class="form-row" id="fwk-ingest-contrib-warnings-controls">
   <div class="form-group col-md-1">
-    <label for="contrib-id">Query Id:</label>
+    <label for="contrib-id">Contribution Id:</label>
     <input type="number" id="contrib-id" class="form-control" value="">
   </div>
   <div class="form-group col-md-1">
