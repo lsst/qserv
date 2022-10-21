@@ -135,11 +135,11 @@ Czar::Czar(string const& configPath, string const& czarName)
     // If LSST_LOG_CONFIG is not defined, there's no good way to know what log
     // configuration file is in use.
     string logConfigFile = std::getenv("LSST_LOG_CONFIG");
-    if (logConfigFile == "") {
+    if (logConfigFile.empty()) {
         LOGS(_log, LOG_LVL_ERROR,
              "FileMonitor LSST_LOG_CONFIG was blank, no log configuration file to watch.");
     } else {
-        LOGS(_log, LOG_LVL_ERROR, "logConfigFile=" << logConfigFile);
+        LOGS(_log, LOG_LVL_WARN, "logConfigFile=" << logConfigFile);
         _logFileMonitor = make_shared<util::FileMonitor>(logConfigFile);
         _logFileMonitor->run();
     }

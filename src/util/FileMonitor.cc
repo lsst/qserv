@@ -50,8 +50,8 @@ using namespace std;
 namespace lsst::qserv::util {
 
 FileMonitor::~FileMonitor() {
-    stop();
-    join();
+    _stop();
+    _join();
 }
 
 void FileMonitor::_setup() {
@@ -128,7 +128,7 @@ void FileMonitor::run() {
     _thrd = move(t);
 }
 
-void FileMonitor::join() {
+void FileMonitor::_join() {
     if (_thrd.joinable()) {
         _thrd.join();
     } else {
