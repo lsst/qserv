@@ -1,0 +1,39 @@
+#fwk-ingest-configuration-controls label {
+    font-weight:    bold;
+}
+table#fwk-ingest-configuration caption {
+    caption-side:   top;
+    text-align:     right;
+    padding-top:    0;
+}
+table#fwk-ingest-configuration th.right-aligned,
+table#fwk-ingest-configuration td.right-aligned {
+    text-align:     right;
+}
+table#fwk-ingest-configuration th.center-aligned,
+table#fwk-ingest-configuration td.center-aligned {
+    text-align: center;
+}
+table#fwk-ingest-configuration tbody th,
+table#fwk-ingest-configuration tbody td {
+    vertical-align:middle;
+}
+table#fwk-ingest-configuration tbody > tr > th.controls {
+    padding:2px;
+}
+table#fwk-ingest-configuration tbody > tr > th.controls button {
+    color:#007bff;
+}
+
+table#fwk-ingest-configuration pre {
+    padding: 0;
+    margin: 0;
+}
+table#fwk-ingest-configuration caption.updating {
+    background-color: #ffeeba;
+}
+table#fwk-ingest-configuration > thead > tr > th.sticky {
+    position:sticky;
+    top:80px;
+    z-index:2;
+}

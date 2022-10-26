@@ -59,6 +59,8 @@ string const HttpClientConfig::timeoutKey = "TIMEOUT";
 string const HttpClientConfig::lowSpeedLimitKey = "LOW_SPEED_LIMIT";
 string const HttpClientConfig::lowSpeedTimeKey = "LOW_SPEED_TIME";
 
+string const HttpClientConfig::asyncProcLimitKey = "ASYNC_PROC_LIMIT";
+
 size_t forwardToHttpClient(char* ptr, size_t size, size_t nmemb, void* userdata) {
     size_t const nchars = size * nmemb;
     HttpClient* reader = reinterpret_cast<HttpClient*>(userdata);

@@ -33,6 +33,7 @@
 #include "replica/QservMgtServices.h"
 #include "replica/ServiceProvider.h"
 #include "replica/StopRequest.h"
+#include "util/IterableFormatter.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -297,7 +298,7 @@ void CreateReplicaJob::_onRequestFinish(ReplicationRequest::Ptr const& request) 
 
             ServiceProvider::Ptr const serviceProvider = controller()->serviceProvider();
             if (serviceProvider->config()->get<unsigned int>("xrootd", "auto-notify") != 0) {
-                qservAddReplica(lock, chunk(), databases, destinationWorker());
+                _qservAddReplica(lock, chunk(), databases, destinationWorker());
             }
             finish(lock, ExtendedState::SUCCESS);
         } else {
@@ -306,4 +307,25 @@ void CreateReplicaJob::_onRequestFinish(ReplicationRequest::Ptr const& request) 
     }
 }
 
+void CreateReplicaJob::_qservAddReplica(util::Lock const& lock, unsigned int chunk,
+                                        vector<string> const& databases, string const& worker,
+                                        AddReplicaQservMgtRequest::CallbackType const& onFinish) {
+    LOGS(_log, LOG_LVL_DEBUG,
+         context() << __func__ << "  ** START ** Qserv notification on ADD replica:"
+                   << ", chunk=" << chunk << ", databases=" << util::printable(databases)
+                   << "  worker=" << worker);
+
+    auto self = shared_from_this();
+    controller()->serviceProvider()->qservMgtServices()->addReplica(
+            chunk, databases, worker,
+            [self, onFinish](AddReplicaQservMgtRequest::Ptr const& request) {
+                LOGS(_log, LOG_LVL_DEBUG,
+                     self->context() << __func__ << "  ** FINISH ** Qserv notification on ADD replica:"
+                                     << "  chunk=" << request->chunk()
+                                     << ", databases=" << util::printable(request->databases()) << ", worker="
+                                     << request->worker() << ", state=" << request->state2string());
+                if (onFinish) onFinish(request);
+            },
+            id());
+}
 }  // namespace lsst::qserv::replica

@@ -29,6 +29,7 @@
 #include <vector>
 
 // Qserv headers
+#include "replica/AddReplicaQservMgtRequest.h"
 #include "replica/Job.h"
 #include "replica/ReplicaInfo.h"
 #include "replica/ReplicationRequest.h"
@@ -176,6 +177,19 @@ private:
      *   a pointer to a request
      */
     void _onRequestFinish(ReplicationRequest::Ptr const& request);
+
+    /**
+     * Notify Qserv about a new chunk added to its database.
+     * @param lock  A lock on Job::_mtx must be acquired by a caller of the method.
+     * @param chunk  The chunk whose replicas are added.
+     * @param databases  The names of databases involved into the operation.
+     * @param worker  The name of a worker to be notified.
+     * @param onFinish  An (optional) callback function to be called upon completion
+     *   of the operation.
+     */
+    void _qservAddReplica(util::Lock const& lock, unsigned int chunk,
+                          std::vector<std::string> const& databases, std::string const& worker,
+                          AddReplicaQservMgtRequest::CallbackType const& onFinish = nullptr);
 
     // Input parameters
 

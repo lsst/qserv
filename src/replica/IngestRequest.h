@@ -32,13 +32,13 @@
 #include "replica/Csv.h"
 #include "replica/DatabaseServices.h"
 #include "replica/IngestFileSvc.h"
-#include "replica/ServiceProvider.h"
 #include "replica/Url.h"
 #include "util/Mutex.h"
 
 // Forward declarations
 namespace lsst::qserv::replica {
 class HttpClientConfig;
+class ServiceProvider;
 }  // namespace lsst::qserv::replica
 
 // This header declarations
@@ -58,6 +58,11 @@ class IngestRequestInterrupted : public std::runtime_error {
  * ingest contributions.
  *
  * @note All public methods of the class are thread-safe (synchronized).
+ * @note The class can be also used for unit testing w/o making any side effects
+ *  (like attempting to connect to the Replication system's database or other
+ *  remote services). In order to instaniate instances of the class for unit
+ *  testing one has to call the special factory method IngestRequest::test().
+ *  Methods process() and cancel() called on the test objects will do nothing.
  */
 class IngestRequest : public std::enable_shared_from_this<IngestRequest>, public IngestFileSvc {
 public:
@@ -82,15 +87,13 @@ public:
      * @param workerName The name of a worker this service is acting upon.
      * @return A newly created instance of the request object.
      */
-    static IngestRequest::Ptr create(ServiceProvider::Ptr const& serviceProvider,
-                                     std::string const& workerName, TransactionId transactionId,
-                                     std::string const& table, unsigned int chunk, bool isOverlap,
-                                     std::string const& url, bool async,
-                                     csv::DialectInput const& dialectInput,
-                                     std::string const& httpMethod = "GET",
-                                     std::string const& httpData = std::string(),
-                                     std::vector<std::string> const& httpHeaders = std::vector<std::string>(),
-                                     unsigned int maxNumWarnings = 0);
+    static std::shared_ptr<IngestRequest> create(
+            std::shared_ptr<ServiceProvider> const& serviceProvider, std::string const& workerName,
+            TransactionId transactionId, std::string const& table, unsigned int chunk, bool isOverlap,
+            std::string const& url, bool async, csv::DialectInput const& dialectInput,
+            std::string const& httpMethod = "GET", std::string const& httpData = std::string(),
+            std::vector<std::string> const& httpHeaders = std::vector<std::string>(),
+            unsigned int maxNumWarnings = 0);
 
     /**
      * The factory method for instantiating the request from an existing contribution.
@@ -106,8 +109,18 @@ public:
      * @param contribId A unique identifier of an existing contribution request.
      * @return A newly created instance of the request object.
      */
-    static IngestRequest::Ptr resume(ServiceProvider::Ptr const& serviceProvider,
-                                     std::string const& workerName, unsigned int contribId);
+    static std::shared_ptr<IngestRequest> resume(std::shared_ptr<ServiceProvider> const& serviceProvider,
+                                                 std::string const& workerName, unsigned int contribId);
+
+    /**
+     * Special factory method for creating dummy requests for unit testing.
+     * @note Attempts to process or cancel requests created by this method will result
+     *   in throwing exceptions as described in the documentations of the corresponding
+     *   methods.
+     * @param contrib The description of the contribution.
+     * @return A newly created instance of the request object.
+     */
+    static std::shared_ptr<IngestRequest> test(TransactionContribInfo const& contrib);
 
     /// @return The descriptor of the request.
     TransactionContribInfo transactionContribInfo() const;
@@ -151,15 +164,18 @@ private:
                                TransactionContribInfo const& contrib);
 
     /// @see method IngestRequest::create()
-    IngestRequest(ServiceProvider::Ptr const& serviceProvider, std::string const& workerName,
+    IngestRequest(std::shared_ptr<ServiceProvider> const& serviceProvider, std::string const& workerName,
                   TransactionId transactionId, std::string const& table, unsigned int chunk, bool isOverlap,
                   std::string const& url, bool async, csv::DialectInput const& dialectInput,
                   std::string const& httpMethod, std::string const& httpData,
                   std::vector<std::string> const& httpHeaders, unsigned int maxNumWarnings);
 
     /// @see method IngestRequest::resume()
-    IngestRequest(ServiceProvider::Ptr const& serviceProvider, std::string const& workerName,
+    IngestRequest(std::shared_ptr<ServiceProvider> const& serviceProvider, std::string const& workerName,
                   TransactionContribInfo const& contrib);
+
+    /// @see method IngestRequest::test()
+    IngestRequest(TransactionContribInfo const& contrib);
 
     // Three processing stages of the request
 

@@ -36,6 +36,7 @@
 #include "replica/Configuration.h"
 #include "replica/HttpClient.h"
 #include "replica/HttpExceptions.h"
+#include "replica/ServiceProvider.h"
 
 using namespace std;
 namespace fs = boost::filesystem;
@@ -98,20 +99,19 @@ private:
 
 namespace lsst::qserv::replica {
 
-IngestRequest::Ptr IngestRequest::create(ServiceProvider::Ptr const& serviceProvider,
-                                         string const& workerName, TransactionId transactionId,
-                                         string const& table, unsigned int chunk, bool isOverlap,
-                                         string const& url, bool async, csv::DialectInput const& dialectInput,
-                                         string const& httpMethod, string const& httpData,
-                                         vector<string> const& httpHeaders, unsigned int maxNumWarnings) {
-    IngestRequest::Ptr ptr(new IngestRequest(serviceProvider, workerName, transactionId, table, chunk,
-                                             isOverlap, url, async, dialectInput, httpMethod, httpData,
-                                             httpHeaders, maxNumWarnings));
+shared_ptr<IngestRequest> IngestRequest::create(
+        shared_ptr<ServiceProvider> const& serviceProvider, string const& workerName,
+        TransactionId transactionId, string const& table, unsigned int chunk, bool isOverlap,
+        string const& url, bool async, csv::DialectInput const& dialectInput, string const& httpMethod,
+        string const& httpData, vector<string> const& httpHeaders, unsigned int maxNumWarnings) {
+    shared_ptr<IngestRequest> ptr(new IngestRequest(serviceProvider, workerName, transactionId, table, chunk,
+                                                    isOverlap, url, async, dialectInput, httpMethod, httpData,
+                                                    httpHeaders, maxNumWarnings));
     return ptr;
 }
 
-IngestRequest::Ptr IngestRequest::resume(ServiceProvider::Ptr const& serviceProvider,
-                                         string const& workerName, unsigned int contribId) {
+shared_ptr<IngestRequest> IngestRequest::resume(shared_ptr<ServiceProvider> const& serviceProvider,
+                                                string const& workerName, unsigned int contribId) {
     string const context = ::context_ + string(__func__) + " ";
     auto const config = serviceProvider->config();
     auto const databaseServices = serviceProvider->databaseServices();
@@ -167,7 +167,11 @@ IngestRequest::Ptr IngestRequest::resume(ServiceProvider::Ptr const& serviceProv
     contrib.retryAllowed = false;
     contrib = databaseServices->updateTransactionContrib(contrib);
 
-    return IngestRequest::Ptr(new IngestRequest(serviceProvider, workerName, contrib));
+    return shared_ptr<IngestRequest>(new IngestRequest(serviceProvider, workerName, contrib));
+}
+
+shared_ptr<IngestRequest> IngestRequest::test(TransactionContribInfo const& contrib) {
+    return shared_ptr<IngestRequest>(new IngestRequest(contrib));
 }
 
 void IngestRequest::_validateState(TransactionInfo const& trans, DatabaseInfo const& database,
@@ -183,7 +187,7 @@ void IngestRequest::_validateState(TransactionInfo const& trans, DatabaseInfo co
     if (!error.empty()) throw logic_error(error);
 }
 
-IngestRequest::IngestRequest(ServiceProvider::Ptr const& serviceProvider, string const& workerName,
+IngestRequest::IngestRequest(shared_ptr<ServiceProvider> const& serviceProvider, string const& workerName,
                              TransactionId transactionId, string const& table, unsigned int chunk,
                              bool isOverlap, string const& url, bool async,
                              csv::DialectInput const& dialectInput, string const& httpMethod,
@@ -249,7 +253,7 @@ IngestRequest::IngestRequest(ServiceProvider::Ptr const& serviceProvider, string
     _contrib = databaseServices->createdTransactionContrib(_contrib);
 }
 
-IngestRequest::IngestRequest(ServiceProvider::Ptr const& serviceProvider, string const& workerName,
+IngestRequest::IngestRequest(shared_ptr<ServiceProvider> const& serviceProvider, string const& workerName,
                              TransactionContribInfo const& contrib)
         : IngestFileSvc(serviceProvider, workerName), _contrib(contrib) {
     // This constructor assumes a valid contribution object obtained from a database
@@ -258,6 +262,9 @@ IngestRequest::IngestRequest(ServiceProvider::Ptr const& serviceProvider, string
     _dialect = csv::Dialect(_contrib.dialectInput);
 }
 
+IngestRequest::IngestRequest(TransactionContribInfo const& contrib)
+        : IngestFileSvc(shared_ptr<ServiceProvider>(), string()), _contrib(contrib) {}
+
 TransactionContribInfo IngestRequest::transactionContribInfo() const {
     string const context = ::context_ + string(__func__) + " ";
     util::Lock lock(_mtx, context);
@@ -265,6 +272,9 @@ TransactionContribInfo IngestRequest::transactionContribInfo() const {
 }
 
 void IngestRequest::process() {
+    // No actual processing for the test requests made for unit testing.
+    if (serviceProvider() == nullptr) return;
+
     string const context = ::context_ + string(__func__) + " ";
     {
         util::Lock lock(_mtx, context);
@@ -310,6 +320,9 @@ void IngestRequest::process() {
 }
 
 void IngestRequest::cancel() {
+    // No actual cancellation for the test requests made for unit testing.
+    if (serviceProvider() == nullptr) return;
+
     string const context = ::context_ + string(__func__) + " ";
     util::Lock lock(_mtx, context);
 

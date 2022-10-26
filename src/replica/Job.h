@@ -31,16 +31,13 @@
 #include <memory>
 #include <ostream>
 #include <string>
-#include <vector>
 
 // Third party headers
 #include "boost/asio.hpp"
 #include "nlohmann/json.hpp"
 
 // Qserv headers
-#include "replica/AddReplicaQservMgtRequest.h"
 #include "replica/Controller.h"
-#include "replica/RemoveReplicaQservMgtRequest.h"
 #include "replica/ServiceProvider.h"
 #include "util/Mutex.h"
 
@@ -292,34 +289,6 @@ protected:
             onFinish = nullptr;
         }
     }
-
-    /**
-     * Notify Qserv about a new chunk added to its database.
-     * @param lock  A lock on Job::_mtx must be acquired by a caller of the method.
-     * @param chunk  The chunk whose replicas are added.
-     * @param databases  The names of databases involved into the operation.
-     * @param worker  The name of a worker to be notified.
-     * @param onFinish  An (optional) callback function to be called upon completion
-     *   of the operation.
-     */
-    void qservAddReplica(util::Lock const& lock, unsigned int chunk,
-                         std::vector<std::string> const& databases, std::string const& worker,
-                         AddReplicaQservMgtRequest::CallbackType const& onFinish = nullptr);
-
-    /**
-     * Notify Qserv about a new chunk added to its database.
-     * @param lock  A lock on Job::_mtx must be acquired by a caller of the method.
-     * @param chunk  A chunk whose replicas are removed from the worker.
-     * @param databases  The names of databases involved into the operation.
-     * @param worker  The name of a worker to be notified.
-     * @param force  The flag indicating of the removal should be done regardless
-     *   of the usage status of the replica.
-     * @param onFinish  An (optional) callback function to be called upon completion
-     *   of the operation.
-     */
-    void qservRemoveReplica(util::Lock const& lock, unsigned int chunk,
-                            std::vector<std::string> const& databases, std::string const& worker, bool force,
-                            RemoveReplicaQservMgtRequest::CallbackType const& onFinish = nullptr);
 
     /**
      * Set the desired primary and extended state.

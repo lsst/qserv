@@ -23,6 +23,8 @@ target_sources(replica PRIVATE
     ApplicationColl.h
     ApplicationTypes.cc
     ApplicationTypes.h
+    AsyncTimer.cc
+    AsyncTimer.h
     CheckSumApp.cc
     CheckSumApp.h
     ChunkLocker.cc
@@ -221,6 +223,12 @@ target_sources(replica PRIVATE
 	IngestRequest.h
 	IngestRequestMgr.cc
 	IngestRequestMgr.h
+    IngestResourceMgr.cc
+    IngestResourceMgr.h
+    IngestResourceMgrP.cc
+    IngestResourceMgrP.h
+    IngestResourceMgrT.cc
+    IngestResourceMgrT.h
     IngestSvc.cc
     IngestSvc.h
     IngestSvcConn.cc
@@ -521,6 +529,7 @@ replica_tests(
     testFileIngestApp
     testFileUtils
     testHttpAsyncReq
+    testIngestRequestMgr
     testJson
     testMessageQueue
     testNamedMutexRegistry

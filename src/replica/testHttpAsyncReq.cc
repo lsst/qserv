@@ -41,6 +41,7 @@
 #include "qhttp/Request.h"
 #include "qhttp/Response.h"
 #include "qhttp/Server.h"
+#include "replica/AsyncTimer.h"
 #include "replica/HttpAsyncReq.h"
 #include "util/Mutex.h"
 
@@ -87,62 +88,6 @@ private:
     asio::io_service _io_service;
     qhttp::Server::Ptr const _server;
     unique_ptr<thread> _serviceThread;
-};
-
-/**
- * Class AsyncTimer represents a simple asynchronous timer for initiating time-based
- * events within an application.
- */
-class AsyncTimer {
-public:
-    /// The function type for notifications on the completion of the operation.
-    /// The only parameter of the function is a vale of the expiration interval.
-    typedef std::function<void(unsigned int const)> CallbackType;
-
-    AsyncTimer(boost::asio::io_service& io_service, unsigned int expirationIvalMs,
-               CallbackType const& onFinish)
-            : _io_service(io_service),
-              _expirationIvalMs(expirationIvalMs),
-              _onFinish(onFinish),
-              _timer(_io_service) {}
-
-    AsyncTimer(AsyncTimer const&) = delete;
-    AsyncTimer& operator=(AsyncTimer const&) = delete;
-
-    virtual ~AsyncTimer() { _timer.cancel(); }
-
-    void start() {
-        util::Lock lock(_mtx, "AsyncTimer::" + string(__func__));
-        _timer.expires_from_now(boost::posix_time::milliseconds(_expirationIvalMs));
-        _timer.async_wait([this](boost::system::error_code const& ec) { _expired(ec); });
-    }
-
-    bool cancel() {
-        util::Lock lock(_mtx, "AsyncTimer::" + string(__func__));
-        if (nullptr == _onFinish) return false;
-        _onFinish = nullptr;
-        _timer.cancel();
-        return true;
-    }
-
-private:
-    void _expired(boost::system::error_code const& ec) {
-        util::Lock lock(_mtx, "AsyncTimer::" + string(__func__));
-        if (ec == boost::asio::error::operation_aborted) return;
-        if (nullptr == _onFinish) return;
-        _onFinish(_expirationIvalMs);
-        _onFinish = nullptr;
-    }
-
-    boost::asio::io_service& _io_service;
-    unsigned int const _expirationIvalMs;
-    CallbackType _onFinish;
-
-    boost::asio::deadline_timer _timer;
-
-    /// The mutex for enforcing thread safety of the class public API
-    /// and internal operations.
-    mutable util::Mutex _mtx;
 };
 
 }  // namespace
@@ -194,11 +139,13 @@ BOOST_AUTO_TEST_CASE(HttpAsyncReq_simple) {
 
     // The deadline timer limits the duration of the test to prevent the test from
     // being stuck for longer than expected.
-    ::AsyncTimer testAbortTimer(io_service, 100, [](auto expirationIvalMs) {
-        LOGS_INFO("HttpAsyncReq_simple: test exceeded the time budget of " << expirationIvalMs << " ms");
-        std::exit(1);
-    });
-    testAbortTimer.start();
+    auto const testAbortTimer =
+            AsyncTimer::create(io_service, chrono::milliseconds(100), [](auto expirationIvalMs) {
+                LOGS_INFO("HttpAsyncReq_simple: test exceeded the time budget of " << expirationIvalMs.count()
+                                                                                   << " ms");
+                std::exit(1);
+            });
+    testAbortTimer->start();
 
     // Set up and start the server
     ::HttpServer httpServer;
@@ -227,8 +174,8 @@ BOOST_AUTO_TEST_CASE(HttpAsyncReq_simple) {
     unordered_map<string, string> const headers = {{"Header-1", "A"}, {"Header-2", "B"}};
     shared_ptr<HttpAsyncReq> const req = HttpAsyncReq::create(
             io_service,
-            [&testAbortTimer](auto const& req) {
-                testAbortTimer.cancel();
+            [testAbortTimer](auto const& req) {
+                testAbortTimer->cancel();
                 BOOST_CHECK(req->state() == HttpAsyncReq::State::FINISHED);
                 BOOST_CHECK(req->errorMessage().empty());
                 BOOST_CHECK_EQUAL(req->responseCode(), 200);
@@ -255,12 +202,13 @@ BOOST_AUTO_TEST_CASE(HttpAsyncReq_body_limit_error) {
 
     // The deadline timer limits the duration of the test to prevent the test from
     // being stuck for longer than expected.
-    ::AsyncTimer testAbortTimer(io_service, 100, [](auto expirationIvalMs) {
-        LOGS_INFO("HttpAsyncReq_body_limit_error: test exceeded the time budget of " << expirationIvalMs
-                                                                                     << " ms");
-        std::exit(1);
-    });
-    testAbortTimer.start();
+    auto const testAbortTimer =
+            AsyncTimer::create(io_service, chrono::milliseconds(100), [](auto expirationIvalMs) {
+                LOGS_INFO("HttpAsyncReq_body_limit_error: test exceeded the time budget of "
+                          << expirationIvalMs.count() << " ms");
+                std::exit(1);
+            });
+    testAbortTimer->start();
 
     // Set up and start the server
     ::HttpServer httpServer;
@@ -282,8 +230,8 @@ BOOST_AUTO_TEST_CASE(HttpAsyncReq_body_limit_error) {
     size_t const maxResponseBodySize = serverResponseBodySize - 1;
     shared_ptr<HttpAsyncReq> const req = HttpAsyncReq::create(
             io_service,
-            [&testAbortTimer, serverResponseBodySize](auto const& req) {
-                testAbortTimer.cancel();
+            [testAbortTimer, serverResponseBodySize](auto const& req) {
+                testAbortTimer->cancel();
                 BOOST_CHECK(req->state() == HttpAsyncReq::State::BODY_LIMIT_ERROR);
                 BOOST_CHECK(req->errorMessage().empty());
                 BOOST_CHECK_EQUAL(req->responseCode(), 200);
@@ -310,11 +258,13 @@ BOOST_AUTO_TEST_CASE(HttpAsyncReq_expired) {
 
     // The deadline timer limits the duration of the test to prevent the test from
     // being stuck for longer than expected.
-    ::AsyncTimer testAbortTimer(io_service, 3000, [](auto expirationIvalMs) {
-        LOGS_INFO("HttpAsyncReq_expired: test exceeded the time budget of " << expirationIvalMs << " ms");
-        std::exit(1);
-    });
-    testAbortTimer.start();
+    auto const testAbortTimer =
+            AsyncTimer::create(io_service, chrono::milliseconds(3000), [](auto expirationIvalMs) {
+                LOGS_INFO("HttpAsyncReq_expired: test exceeded the time budget of "
+                          << expirationIvalMs.count() << " ms");
+                std::exit(1);
+            });
+    testAbortTimer->start();
 
     // Set up and start the server
     ::HttpServer httpServer;
@@ -334,8 +284,8 @@ BOOST_AUTO_TEST_CASE(HttpAsyncReq_expired) {
     unsigned int const expirationIvalSec = 2;
     shared_ptr<HttpAsyncReq> const req = HttpAsyncReq::create(
             io_service,
-            [&testAbortTimer](auto const& req) {
-                testAbortTimer.cancel();
+            [testAbortTimer](auto const& req) {
+                testAbortTimer->cancel();
                 BOOST_CHECK(req->state() == HttpAsyncReq::State::EXPIRED);
                 BOOST_REQUIRE_NO_THROW(req->errorMessage());
                 BOOST_CHECK_THROW(req->responseCode(), std::logic_error);
@@ -358,11 +308,13 @@ BOOST_AUTO_TEST_CASE(HttpAsyncReq_cancelled) {
 
     // The deadline timer limits the duration of the test to prevent the test from
     // being stuck for longer than expected.
-    ::AsyncTimer testAbortTimer(io_service, 3000, [](auto expirationIvalMs) {
-        LOGS_INFO("HttpAsyncReq_simple: test exceeded the time budget of " << expirationIvalMs << " ms");
-        std::exit(1);
-    });
-    testAbortTimer.start();
+    auto const testAbortTimer =
+            AsyncTimer::create(io_service, chrono::milliseconds(3000), [](auto expirationIvalMs) {
+                LOGS_INFO("HttpAsyncReq_simple: test exceeded the time budget of " << expirationIvalMs.count()
+                                                                                   << " ms");
+                std::exit(1);
+            });
+    testAbortTimer->start();
 
     // Set up and start the server
     ::HttpServer httpServer;
@@ -378,17 +330,18 @@ BOOST_AUTO_TEST_CASE(HttpAsyncReq_cancelled) {
     string const method = "DELETE";
     shared_ptr<HttpAsyncReq> const req = HttpAsyncReq::create(
             io_service,
-            [&testAbortTimer](auto const& req) {
-                testAbortTimer.cancel();
+            [testAbortTimer](auto const& req) {
+                testAbortTimer->cancel();
                 BOOST_CHECK(req->state() == HttpAsyncReq::State::CANCELLED);
             },
             method, url);
     req->start();
 
     // The deadline timer for cancelling the request
-    ::AsyncTimer cancelReqTimer(io_service, 1000,
-                                [&req](auto expirationIvalMs) { BOOST_CHECK(req->cancel()); });
-    cancelReqTimer.start();
+    auto const cancelReqTimer =
+            AsyncTimer::create(io_service, chrono::milliseconds(1000),
+                               [&req](auto expirationIvalMs) { BOOST_CHECK(req->cancel()); });
+    cancelReqTimer->start();
 
     thread serviceThread([&io_service]() { io_service.run(); });
     serviceThread.join();
@@ -403,12 +356,13 @@ BOOST_AUTO_TEST_CASE(HttpAsyncReq_cancelled_before_started) {
 
     // The deadline timer limits the duration of the test to prevent the test from
     // being stuck for longer than expected.
-    ::AsyncTimer testAbortTimer(io_service, 300, [](auto expirationIvalMs) {
-        LOGS_INFO("HttpAsyncReq_cancelled_before_started: test exceeded the time budget of "
-                  << expirationIvalMs << " ms");
-        std::exit(1);
-    });
-    testAbortTimer.start();
+    auto const testAbortTimer =
+            AsyncTimer::create(io_service, chrono::milliseconds(300), [](auto expirationIvalMs) {
+                LOGS_INFO("HttpAsyncReq_cancelled_before_started: test exceeded the time budget of "
+                          << expirationIvalMs.count() << " ms");
+                std::exit(1);
+            });
+    testAbortTimer->start();
 
     // Set up and start the server
     ::HttpServer httpServer;
@@ -422,8 +376,8 @@ BOOST_AUTO_TEST_CASE(HttpAsyncReq_cancelled_before_started) {
     string const method = "GET";
     shared_ptr<HttpAsyncReq> const req = HttpAsyncReq::create(
             io_service,
-            [&testAbortTimer](auto const& req) {
-                testAbortTimer.cancel();
+            [testAbortTimer](auto const& req) {
+                testAbortTimer->cancel();
                 BOOST_CHECK(req->state() == HttpAsyncReq::State::CANCELLED);
             },
             method, url);
@@ -463,12 +417,13 @@ BOOST_AUTO_TEST_CASE(HttpAsyncReq_delayed_server_start) {
 
     // The deadline timer limits the duration of the test to prevent the test from
     // being stuck for longer than expected.
-    ::AsyncTimer testAbortTimer(io_service, 5000, [](auto expirationIvalMs) {
-        LOGS_INFO("HttpAsyncReq_delayed_server_start: test exceeded the time budget of " << expirationIvalMs
-                                                                                         << " ms");
-        std::exit(1);
-    });
-    testAbortTimer.start();
+    auto const testAbortTimer =
+            AsyncTimer::create(io_service, chrono::milliseconds(5000), [](auto expirationIvalMs) {
+                LOGS_INFO("HttpAsyncReq_delayed_server_start: test exceeded the time budget of "
+                          << expirationIvalMs.count() << " ms");
+                std::exit(1);
+            });
+    testAbortTimer->start();
 
     // Set up the server on the allocated port. The server start will be delayed by the timer.
     ::HttpServer httpServer(port);
@@ -482,17 +437,18 @@ BOOST_AUTO_TEST_CASE(HttpAsyncReq_delayed_server_start) {
     shared_ptr<HttpAsyncReq> req;
 
     // Delay server startup before expiration of the timer
-    ::AsyncTimer serverStartDelayTimer(io_service, 3000,
-                                       [&httpServer, &req](auto expirationIvalMs) { httpServer.start(); });
-    serverStartDelayTimer.start();
+    auto const serverStartDelayTimer =
+            AsyncTimer::create(io_service, chrono::milliseconds(3000),
+                               [&httpServer, &req](auto expirationIvalMs) { httpServer.start(); });
+    serverStartDelayTimer->start();
 
     // Submit a request.
     string const url = "http://127.0.0.1:" + to_string(port) + "/redirected_from";
     string const method = "GET";
     req = HttpAsyncReq::create(
             io_service,
-            [&testAbortTimer](auto const& req) {
-                testAbortTimer.cancel();
+            [testAbortTimer](auto const& req) {
+                testAbortTimer->cancel();
                 switch (req->state()) {
                     case HttpAsyncReq::State::FINISHED:
                         BOOST_CHECK_EQUAL(req->responseCode(), 301);
