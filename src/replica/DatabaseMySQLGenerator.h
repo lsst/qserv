@@ -948,12 +948,14 @@ public:
     // Generators for LOAD DATA INFILE
 
     template <typename IDTYPE>
-    std::string loadDataInfile(std::string const& fileName, IDTYPE const& tableNameOrId, bool local = false,
+    std::string loadDataInfile(std::string const& fileName, IDTYPE const& tableNameOrId,
+                               std::string const& charsetName = std::string(), bool local = false,
                                csv::Dialect const& dialect = csv::Dialect()) const {
         std::string sql = "LOAD DATA ";
         if (local) sql += "LOCAL ";
-        sql += "INFILE " + val(fileName).str + " INTO TABLE " + id(tableNameOrId).str + " " +
-               dialect.sqlOptions();
+        sql += "INFILE " + val(fileName).str + " INTO TABLE " + id(tableNameOrId).str + " ";
+        if (!charsetName.empty()) sql += "CHARACTER SET " + val(charsetName).str + " ";
+        sql += dialect.sqlOptions();
         return sql;
     }
 

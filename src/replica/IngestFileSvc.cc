@@ -239,7 +239,8 @@ void IngestFileSvc::loadDataIntoTable(unsigned int maxNumWarnings) {
                 if (table.name == _table.name) {
                     SqlId const sqlDestinationTable = _isOverlap ? sqlFullOverlapTable : sqlTable;
                     bool const local = false;
-                    dataLoadQuery = g.loadDataInfile(_fileName, sqlDestinationTable, local, _dialect);
+                    dataLoadQuery =
+                            g.loadDataInfile(_fileName, sqlDestinationTable, _charsetName, local, _dialect);
                     bool const ifExists = true;
                     partitionRemovalQuery = Query(
                             g.alterTable(sqlDestinationTable) + g.dropPartition(_transactionId, ifExists),
@@ -254,7 +255,7 @@ void IngestFileSvc::loadDataIntoTable(unsigned int maxNumWarnings) {
             tableMgtStatements.push_back(Query(
                     g.alterTable(sqlTable) + g.addPartition(_transactionId, ifNotExists), sqlTable.str));
             bool const local = false;
-            dataLoadQuery = g.loadDataInfile(_fileName, sqlTable, local, _dialect);
+            dataLoadQuery = g.loadDataInfile(_fileName, sqlTable, _charsetName, local, _dialect);
             bool const ifExists = true;
             partitionRemovalQuery =
                     Query(g.alterTable(sqlTable) + g.dropPartition(_transactionId, ifExists), sqlTable.str);

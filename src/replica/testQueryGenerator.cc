@@ -386,7 +386,10 @@ BOOST_AUTO_TEST_CASE(QueryGeneratorTest) {
                      csv::Dialect().sqlOptions(),
              g.loadDataInfile("/tmp/infile.csv", g.id("database", "table"))},
             {"LOAD DATA LOCAL INFILE '/tmp/infile.csv' INTO TABLE `table` " + csv::Dialect().sqlOptions(),
-             g.loadDataInfile("/tmp/infile.csv", "table", true, csv::Dialect())},
+             g.loadDataInfile("/tmp/infile.csv", "table", "", true, csv::Dialect())},
+            {"LOAD DATA INFILE '/tmp/infile.csv' INTO TABLE `table` CHARACTER SET 'latin1' " +
+                     csv::Dialect().sqlOptions(),
+             g.loadDataInfile("/tmp/infile.csv", "table", "latin1")},
 
             // GRANT ...
             {"GRANT ALL ON `db`.* TO 'qsreplica'@'localhost'",

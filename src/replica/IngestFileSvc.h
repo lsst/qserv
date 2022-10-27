@@ -114,6 +114,7 @@ private:
 
     std::string _fileName;
     TransactionId _transactionId = 0;
+    std::string _charsetName;
     csv::Dialect _dialect;
     unsigned int _chunk = 0;
     bool _isOverlap = false;
