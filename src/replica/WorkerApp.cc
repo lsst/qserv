@@ -31,6 +31,7 @@
 // Qserv headers
 #include "replica/Configuration.h"
 #include "replica/DatabaseMySQL.h"
+#include "replica/DatabaseMySQLUtils.h"
 #include "replica/ExportServer.h"
 #include "replica/FileServer.h"
 #include "replica/FileUtils.h"
@@ -99,10 +100,9 @@ int WorkerApp::runImpl() {
         ConnectionHandler const handler(
                 Connection::open(Configuration::qservWorkerDbParams("qservw_worker")));
         QueryGenerator const g(handler.conn);
-        handler.conn->executeInOwnTransaction([&worker, &context, &g](decltype(handler.conn) conn) {
-            string const column = "id";
-            string const query = g.select(column) + g.from("Id");
-            if (!conn->executeSingleValueSelect(query, column, worker)) {
+        string const query = g.select("id") + g.from("Id");
+        handler.conn->executeInOwnTransaction([&worker, &context, &query](auto conn) {
+            if (!selectSingleValue(conn, query, worker)) {
                 throw invalid_argument(context + "worker identity is not set in the Qserv worker database.");
             }
         });

@@ -34,6 +34,7 @@
 #include "replica/Common.h"
 #include "replica/Configuration.h"
 #include "replica/Controller.h"
+#include "replica/DatabaseMySQLUtils.h"
 #include "replica/Job.h"
 #include "replica/NamedMutexRegistry.h"
 #include "replica/Performance.h"
@@ -608,7 +609,7 @@ uint64_t DatabaseServicesMySQL::numWorkerReplicas(string const& worker, string c
     uint64_t num;
     util::Lock lock(_mtx, context);
     try {
-        string query = _g.select(_g.as(Sql::COUNT_STAR, "num")) + _g.from("replica");
+        string query = _g.select(Sql::COUNT_STAR) + _g.from("replica");
         if (database.empty()) {
             string const noSpecificFamily;
             auto const databases = _configuration->databases(noSpecificFamily, allDatabases, isPublished);
@@ -618,9 +619,8 @@ uint64_t DatabaseServicesMySQL::numWorkerReplicas(string const& worker, string c
                 throw invalid_argument(context + "unknown database: " + database);
             query += _g.where(_g.eq("database", database), _g.eq("worker", worker));
         }
-        _conn->executeInOwnTransaction([&](decltype(_conn) conn) {
-            conn->executeSingleValueSelect<uint64_t>(query, "num", num, false);
-        });
+        _conn->executeInOwnTransaction(
+                [&](decltype(_conn) conn) { selectSingleValue(conn, query, num, 0, false); });
     } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context << "failed, exception: " << ex.what());
         throw;
@@ -790,15 +790,14 @@ size_t DatabaseServicesMySQL::numOrphanChunks(string const& database, vector<str
             string const subQuery = _g.select("chunk") + _g.from("replica") +
                                     _g.where(_g.eq("database", database), _g.in("worker", workersToExclude));
 
-            string const query = _g.select(_g.as(Sql::COUNT_STAR, "num_chunks")) + _g.from("replica") +
+            string const query = _g.select(Sql::COUNT_STAR) + _g.from("replica") +
                                  _g.where(_g.eq("database", database), _g.in("worker", uniqueOnWorkers),
                                           _g.neq("chunk", 1234567890), _g.notInSubQuery("chunk", subQuery));
 
             LOGS(_log, LOG_LVL_DEBUG, context + "query: " + query);
 
-            _conn->executeInOwnTransaction([&](decltype(_conn) conn) {
-                conn->executeSingleValueSelect(query, "num_chunks", result);
-            });
+            _conn->executeInOwnTransaction(
+                    [&](decltype(_conn) conn) { selectSingleValue(conn, query, result); });
         }
         LOGS(_log, LOG_LVL_DEBUG, context << "** DONE **");
         return result;

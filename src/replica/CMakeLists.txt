@@ -83,6 +83,8 @@ target_sources(replica PRIVATE
     DatabaseMySQLRow.h
     DatabaseMySQLTypes.cc
     DatabaseMySQLTypes.h
+    DatabaseMySQLUtils.cc
+    DatabaseMySQLUtils.h
     DatabaseServices.cc
     DatabaseServices.h
     DatabaseServicesMySQL.cc
