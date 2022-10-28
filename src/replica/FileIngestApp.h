@@ -181,6 +181,8 @@ private:
     std::string _fileListName;  /// The name of a file to read info for 'FILE-LIST' scenario
 
     csv::DialectInput _dialectInput;
+    std::string _charsetName;  /// The desired name of a character set top be used when
+                               /// ingesting the contribution into the destination table.
 
     unsigned int _maxNumWarnings = 0;
     size_t _recordSizeBytes = IngestClient::defaultRecordSizeBytes;

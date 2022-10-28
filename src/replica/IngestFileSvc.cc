@@ -72,12 +72,17 @@ IngestFileSvc::IngestFileSvc(ServiceProvider::Ptr const& serviceProvider, string
 IngestFileSvc::~IngestFileSvc() { closeFile(); }
 
 string const& IngestFileSvc::openFile(TransactionId transactionId, string const& tableName,
-                                      csv::Dialect const& dialect, unsigned int chunk, bool isOverlap) {
+                                      csv::Dialect const& dialect, std::string const& charsetName,
+                                      unsigned int chunk, bool isOverlap) {
     string const context_ = context + string(__func__) + " ";
     LOGS(_log, LOG_LVL_DEBUG, context_);
 
     _transactionId = transactionId;
-    _charsetName = _serviceProvider->config()->get<string>("worker", "ingest-charset-name");
+    if (charsetName.empty()) {
+        _charsetName = _serviceProvider->config()->get<string>("worker", "ingest-charset-name");
+    } else {
+        _charsetName = charsetName;
+    }
     _dialect = dialect;
     _chunk = chunk;
     _isOverlap = isOverlap;

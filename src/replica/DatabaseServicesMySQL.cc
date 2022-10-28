@@ -1668,7 +1668,8 @@ TransactionContribInfo DatabaseServicesMySQL::createdTransactionContrib(
     string const context = _context(__func__) + "transactionId=" + to_string(info.transactionId) +
                            " table=" + info.table + " chunk=" + to_string(info.chunk) +
                            " isOverlap=" + bool2str(info.isOverlap) + " worker=" + info.worker + " " +
-                           " url=" + info.url + " failed=" + bool2str(failed) + " ";
+                           " url=" + info.url + " charsetName=" + info.charsetName +
+                           " failed=" + bool2str(failed) + " ";
     LOGS(_log, LOG_LVL_DEBUG, context);
 
     uint64_t const numBytes = 0;
@@ -1715,6 +1716,8 @@ TransactionContribInfo DatabaseServicesMySQL::createdTransactionContrib(
             queries.emplace_back(
                     _g.insert("transaction_contrib_ext", Sql::LAST_INSERT_ID, "http_headers", header));
         }
+        queries.emplace_back(
+                _g.insert("transaction_contrib_ext", Sql::LAST_INSERT_ID, "charset_name", info.charsetName));
         string const predicate = _g.eq("id", Sql::LAST_INSERT_ID);
         _conn->executeInOwnTransaction([&](decltype(_conn) conn) {
             for (auto&& query : queries) conn->execute(query);
@@ -1879,6 +1882,8 @@ vector<TransactionContribInfo> DatabaseServicesMySQL::_transactionContribsImpl(u
                     contrib.httpData = val;
                 else if (key == "http_headers")
                     contrib.httpHeaders.emplace_back(val);
+                else if (key == "charset_name")
+                    contrib.charsetName = val;
                 else {
                     throw DatabaseServicesError(context + "unexpected extended parameter '" + key +
                                                 "' for contribution id=" + to_string(contrib.id));

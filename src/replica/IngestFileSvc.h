@@ -72,6 +72,8 @@ protected:
      * @param tableName  The base (or the final) name of a table where to upload the file.
      * @param dialect  The CSV dialect configured for interpreting the input stream, post-processing
      *   the data, and uploading the data into MySQL.
+     * @param charsetName  The desired character set to be used when ingsting the contribution
+     *   data into the destination table.
      * @param chunk  The number of a chunk (applies to partitioned tables only).
      * @param isOverlap  A kind of the table (applies to partitioned tables only).
      * @return The name of the open file.
@@ -80,7 +82,8 @@ protected:
      * @throw runtime_error  Error wile creating, or opening a file.
      */
     std::string const& openFile(TransactionId transactionId, std::string const& tableName,
-                                csv::Dialect const& dialect, unsigned int chunk = 0, bool isOverlap = false);
+                                csv::Dialect const& dialect, std::string const& charsetName,
+                                unsigned int chunk = 0, bool isOverlap = false);
 
     /**
      * @note Each row will be prepended with an identifier of a transaction before being written.

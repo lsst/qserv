@@ -99,14 +99,17 @@ private:
 
 namespace lsst::qserv::replica {
 
-shared_ptr<IngestRequest> IngestRequest::create(
-        shared_ptr<ServiceProvider> const& serviceProvider, string const& workerName,
-        TransactionId transactionId, string const& table, unsigned int chunk, bool isOverlap,
-        string const& url, bool async, csv::DialectInput const& dialectInput, string const& httpMethod,
-        string const& httpData, vector<string> const& httpHeaders, unsigned int maxNumWarnings) {
+shared_ptr<IngestRequest> IngestRequest::create(shared_ptr<ServiceProvider> const& serviceProvider,
+                                                string const& workerName, TransactionId transactionId,
+                                                string const& table, unsigned int chunk, bool isOverlap,
+                                                string const& url, string const& charsetName, bool async,
+                                                csv::DialectInput const& dialectInput,
+                                                string const& httpMethod, string const& httpData,
+                                                vector<string> const& httpHeaders,
+                                                unsigned int maxNumWarnings) {
     shared_ptr<IngestRequest> ptr(new IngestRequest(serviceProvider, workerName, transactionId, table, chunk,
-                                                    isOverlap, url, async, dialectInput, httpMethod, httpData,
-                                                    httpHeaders, maxNumWarnings));
+                                                    isOverlap, url, charsetName, async, dialectInput,
+                                                    httpMethod, httpData, httpHeaders, maxNumWarnings));
     return ptr;
 }
 
@@ -189,7 +192,7 @@ void IngestRequest::_validateState(TransactionInfo const& trans, DatabaseInfo co
 
 IngestRequest::IngestRequest(shared_ptr<ServiceProvider> const& serviceProvider, string const& workerName,
                              TransactionId transactionId, string const& table, unsigned int chunk,
-                             bool isOverlap, string const& url, bool async,
+                             bool isOverlap, string const& url, string const& charsetName, bool async,
                              csv::DialectInput const& dialectInput, string const& httpMethod,
                              string const& httpData, vector<string> const& httpHeaders,
                              unsigned int maxNumWarnings)
@@ -201,6 +204,7 @@ IngestRequest::IngestRequest(shared_ptr<ServiceProvider> const& serviceProvider,
     _contrib.isOverlap = isOverlap;
     _contrib.worker = workerName;
     _contrib.url = url;
+    _contrib.charsetName = charsetName;
     _contrib.async = async;
     _contrib.dialectInput = dialectInput;
     _contrib.httpMethod = httpMethod;
@@ -357,8 +361,8 @@ void IngestRequest::_processStart() {
         }
     }
     try {
-        _contrib.tmpFile = openFile(_contrib.transactionId, _contrib.table, _dialect, _contrib.chunk,
-                                    _contrib.isOverlap);
+        _contrib.tmpFile = openFile(_contrib.transactionId, _contrib.table, _dialect, _contrib.charsetName,
+                                    _contrib.chunk, _contrib.isOverlap);
         util::Lock lock(_mtx, context);
         _contrib = databaseServices->startedTransactionContrib(_contrib);
 

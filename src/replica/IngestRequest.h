@@ -90,8 +90,9 @@ public:
     static std::shared_ptr<IngestRequest> create(
             std::shared_ptr<ServiceProvider> const& serviceProvider, std::string const& workerName,
             TransactionId transactionId, std::string const& table, unsigned int chunk, bool isOverlap,
-            std::string const& url, bool async, csv::DialectInput const& dialectInput,
-            std::string const& httpMethod = "GET", std::string const& httpData = std::string(),
+            std::string const& url, std::string const& charsetName, bool async,
+            csv::DialectInput const& dialectInput, std::string const& httpMethod = "GET",
+            std::string const& httpData = std::string(),
             std::vector<std::string> const& httpHeaders = std::vector<std::string>(),
             unsigned int maxNumWarnings = 0);
 
@@ -166,9 +167,10 @@ private:
     /// @see method IngestRequest::create()
     IngestRequest(std::shared_ptr<ServiceProvider> const& serviceProvider, std::string const& workerName,
                   TransactionId transactionId, std::string const& table, unsigned int chunk, bool isOverlap,
-                  std::string const& url, bool async, csv::DialectInput const& dialectInput,
-                  std::string const& httpMethod, std::string const& httpData,
-                  std::vector<std::string> const& httpHeaders, unsigned int maxNumWarnings);
+                  std::string const& url, std::string const& charsetName, bool async,
+                  csv::DialectInput const& dialectInput, std::string const& httpMethod,
+                  std::string const& httpData, std::vector<std::string> const& httpHeaders,
+                  unsigned int maxNumWarnings);
 
     /// @see method IngestRequest::resume()
     IngestRequest(std::shared_ptr<ServiceProvider> const& serviceProvider, std::string const& workerName,

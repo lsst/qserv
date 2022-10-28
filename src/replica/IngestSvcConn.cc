@@ -144,17 +144,21 @@ void IngestSvcConn::_handshakeReceived(boost::system::error_code const& ec, size
     }
 
     // Initialize parameters of the contribution descriptor
+    auto const config = serviceProvider()->config();
     _contrib.transactionId = request.transaction_id();
     _contrib.table = request.table();
     _contrib.chunk = request.chunk();
     _contrib.isOverlap = request.is_overlap();
     _contrib.worker = workerName();
     _contrib.url = request.url();
+    if (request.has_charset_name()) {
+        _contrib.charsetName = request.charset_name();
+    }
+    if (_contrib.charsetName.empty()) {
+        _contrib.charsetName = config->get<string>("worker", "ingest-charset-name");
+    }
     _contrib.dialectInput = csv::DialectInput(request.dialect_input());
     _contrib.retryAllowed = true;  // stays like this before loading data into MySQL
-
-    auto const config = serviceProvider()->config();
-
     _contrib.maxNumWarnings = request.max_num_warnings();
     if (_contrib.maxNumWarnings == 0) {
         _contrib.maxNumWarnings = config->get<unsigned int>("worker", "loader-max-warnings");
@@ -205,8 +209,8 @@ void IngestSvcConn::_handshakeReceived(boost::system::error_code const& ec, size
 
     // This is where the actual processing of the request begins.
     try {
-        _contrib.tmpFile =
-                openFile(_contrib.transactionId, _contrib.table, dialect, _contrib.chunk, _contrib.isOverlap);
+        _contrib.tmpFile = openFile(_contrib.transactionId, _contrib.table, dialect, _contrib.charsetName,
+                                    _contrib.chunk, _contrib.isOverlap);
         _contrib = databaseServices->startedTransactionContrib(_contrib);
     } catch (HttpError const& ex) {
         json const errorExt = ex.errorExt();
@@ -335,6 +339,7 @@ void IngestSvcConn::_failed(std::string const& msg) {
 
 void IngestSvcConn::_reply(ProtocolIngestResponse::Status status, string const& msg) {
     ProtocolIngestResponse response;
+    response.set_id(_contrib.id);
     response.set_status(status);
     response.set_error(msg);
     response.set_retry_allowed(_retryAllowed);

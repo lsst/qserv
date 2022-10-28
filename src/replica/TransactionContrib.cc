@@ -101,6 +101,7 @@ json TransactionContribInfo::toJson() const {
     info["chunk"] = chunk;
     info["overlap"] = isOverlap ? 1 : 0;
     info["url"] = url;
+    info["charset_name"] = charsetName;
 
     info["async"] = async ? 1 : 0;
 

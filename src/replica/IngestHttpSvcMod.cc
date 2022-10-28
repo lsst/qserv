@@ -71,7 +71,7 @@ json IngestHttpSvcMod::executeImpl(string const& subModuleName) {
 
 json IngestHttpSvcMod::_syncProcessRequest() const {
     debug(__func__);
-    checkApiVersion(__func__, 13);
+    checkApiVersion(__func__, 15);
 
     auto const request = _createRequest();
     request->process();
@@ -80,7 +80,7 @@ json IngestHttpSvcMod::_syncProcessRequest() const {
 
 json IngestHttpSvcMod::_asyncSubmitRequest() const {
     debug(__func__);
-    checkApiVersion(__func__, 13);
+    checkApiVersion(__func__, 15);
 
     bool const async = true;
     auto const request = _createRequest(async);
@@ -149,6 +149,8 @@ IngestRequest::Ptr IngestHttpSvcMod::_createRequest(bool async) const {
     unsigned int const chunk = body().required<unsigned int>("chunk");
     bool const isOverlap = body().required<int>("overlap") != 0;
     string const url = body().required<string>("url");
+    string const charsetName = body().optional<string>(
+            "charset_name", _serviceProvider->config()->get<string>("worker", "ingest-charset-name"));
 
     csv::DialectInput dialectInput;
     // Allow an empty string in the input. Simply replace the one (if present) with
@@ -181,13 +183,14 @@ IngestRequest::Ptr IngestHttpSvcMod::_createRequest(bool async) const {
     debug(__func__, "chunk: " + to_string(chunk));
     debug(__func__, "isOverlap: " + string(isOverlap ? "1" : "0"));
     debug(__func__, "url: '" + url + "'");
+    debug(__func__, "charset_name: '" + charsetName + "'");
     debug(__func__, "http_method: '" + httpMethod + "'");
     debug(__func__, "http_data: '" + httpData + "'");
     debug(__func__, "http_headers.size(): " + to_string(httpHeaders.size()));
 
-    IngestRequest::Ptr const request =
-            IngestRequest::create(_serviceProvider, _workerName, transactionId, table, chunk, isOverlap, url,
-                                  async, dialectInput, httpMethod, httpData, httpHeaders, maxNumWarnings);
+    IngestRequest::Ptr const request = IngestRequest::create(
+            _serviceProvider, _workerName, transactionId, table, chunk, isOverlap, url, charsetName, async,
+            dialectInput, httpMethod, httpData, httpHeaders, maxNumWarnings);
     return request;
 }
 

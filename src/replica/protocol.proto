@@ -907,6 +907,10 @@ message ProtocolIngestHandshakeRequest {
     /// is used the limit will be derived from the corresponding
     /// configuration parameter.
     optional uint32 max_num_warnings = 13 [default = 0];
+
+    /// The optional name of a charset to be usd when loading
+    /// the contribution into the destination table.
+    optional string charset_name = 14 [default = ""];
 }
 
 /// A message which is meant for sending a byte stream to a server after receiving
@@ -921,6 +925,8 @@ message ProtocolIngestData {
 
 /// The response message sent by a server on each client's request
 message ProtocolIngestResponse {
+
+    required uint64 id = 8;     /// the unique identifier of the contribution request
 
     enum Status {
         READY_TO_READ_DATA = 0;     /// server is waiting for data
