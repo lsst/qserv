@@ -11,9 +11,9 @@ function(CSSLoader,
          Common,
          _) {
 
-    CSSLoader.load('qserv/css/IngestContribWarnings.css');
+    CSSLoader.load('qserv/css/IngestContribInfo.css');
 
-    class IngestContribWarnings extends FwkApplication {
+    class IngestContribInfo extends FwkApplication {
 
         /// @returns the suggested server-side timeout for retreiving results 
         static update_ival_sec() { return 3600; }
@@ -38,7 +38,7 @@ function(CSSLoader,
                     this._prev_update_sec = 0;
                 }
                 let now_sec = Fwk.now().sec;
-                if (now_sec - this._prev_update_sec > IngestContribWarnings.update_ival_sec()) {
+                if (now_sec - this._prev_update_sec > IngestContribInfo.update_ival_sec()) {
                     this._prev_update_sec = now_sec;
                     this._load();
                 }
@@ -58,7 +58,7 @@ function(CSSLoader,
             if (this._initialized) return;
             this._initialized = true;
             let html = `
-<div class="form-row" id="fwk-ingest-contrib-warnings-controls">
+<div class="form-row" id="fwk-ingest-contrib-info-controls">
   <div class="form-group col-md-1">
     <label for="contrib-id">Contribution Id:</label>
     <input type="number" id="contrib-id" class="form-control" value="">
@@ -76,11 +76,11 @@ function(CSSLoader,
   </div>
 </div>
 <div class="row">
-  <div class="col" id="fwk-ingest-contrib-warnings-status">
+  <div class="col" id="fwk-ingest-contrib-info-status">
     <div id="status"></div>
   </div>
 </div>
-<div class="row" id="fwk-ingest-contrib-warnings-info">
+<div class="row" id="fwk-ingest-contrib-info">
   <div class="col col-md-3">
     <table class="table table-sm table-hover">
       <tbody>
@@ -183,6 +183,10 @@ function(CSSLoader,
           <td style="text-align:left"><pre id="overlap"></pre></td>
         </tr>
         <tr>
+          <th style="text-align:left" scope="row">charset_name</th>
+          <td style="text-align:left"><pre id="charset_name"></pre></td>
+        </tr>
+        <tr>
           <th style="text-align:left" scope="row">url</th>
           <td style="text-align:left"><pre id="url"></pre></td>
         </tr>
@@ -216,7 +220,7 @@ function(CSSLoader,
 </div>
 <div class="row">
   <div class="col">
-    <table class="table table-sm table-hover table-bordered" id="fwk-ingest-contrib-warnings-table">
+    <table class="table table-sm table-hover table-bordered" id="fwk-ingest-contrib-info-warnings">
       <thead class="thead-light">
         <tr>
           <th class="left-aligned">Level</th>
@@ -235,7 +239,7 @@ function(CSSLoader,
         }
         _status() {
             if (this._status_obj === undefined) {
-                this._status_obj = this.fwk_app_container.find('div#fwk-ingest-contrib-warnings-status > div#status');
+                this._status_obj = this.fwk_app_container.find('div#fwk-ingest-contrib-info-status > div#status');
             }
             return this._status_obj;
         }
@@ -250,13 +254,13 @@ function(CSSLoader,
         _set_contrib_id(contrib_id) { this._form_control('input', 'contrib-id').val(contrib_id); }
         _table_warnings() {
             if (this._table_warnings_obj === undefined) {
-                this._table_warnings_obj = this.fwk_app_container.find('table#fwk-ingest-contrib-warnings-table');
+                this._table_warnings_obj = this.fwk_app_container.find('table#fwk-ingest-contrib-info-warnings');
             }
             return this._table_warnings_obj;
         }
         _info() {
             if (this._info_obj === undefined) {
-                this._info_obj = this.fwk_app_container.find('div#fwk-ingest-contrib-warnings-info');
+                this._info_obj = this.fwk_app_container.find('div#fwk-ingest-contrib-info');
             }
             return this._info_obj;
         }
@@ -330,6 +334,7 @@ function(CSSLoader,
             this._set_info("chunk", "");
             this._set_info("overlap", "");
             this._set_info("url", "");
+            this._set_info("charset_name", "");
             this._set_info("async", "");
             this._set_info("fields_terminated_by", "");
             this._set_info("fields_enclosed_by", "");
@@ -376,6 +381,7 @@ function(CSSLoader,
             this._set_info("chunk", contrib.chunk);
             this._set_info("overlap", contrib.overlap);
             this._set_info("url", contrib.url);
+            this._set_info("charset_name", contrib.charset_name);
             this._set_info("async", contrib.async);
             this._set_info("fields_terminated_by", contrib.dialect_input.fields_terminated_by);
             this._set_info("fields_enclosed_by", contrib.dialect_input.fields_enclosed_by);
@@ -421,5 +427,5 @@ function(CSSLoader,
             return "status-error";
         }
     }
-    return IngestContribWarnings;
+    return IngestContribInfo;
 });
