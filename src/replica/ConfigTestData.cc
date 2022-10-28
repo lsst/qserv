@@ -63,7 +63,8 @@ map<string, set<string>> ConfigTestData::parameters() {
                "exporter-port",
                "exporter-tmp-dir",
                "http-loader-port",
-               "http-loader-tmp-dir"}}});
+               "http-loader-tmp-dir",
+               "ingest-charset-name"}}});
 }
 
 json ConfigTestData::data() {

@@ -77,6 +77,7 @@ string const& IngestFileSvc::openFile(TransactionId transactionId, string const&
     LOGS(_log, LOG_LVL_DEBUG, context_);
 
     _transactionId = transactionId;
+    _charsetName = _serviceProvider->config()->get<string>("worker", "ingest-charset-name");
     _dialect = dialect;
     _chunk = chunk;
     _isOverlap = isOverlap;
