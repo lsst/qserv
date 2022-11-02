@@ -7,8 +7,8 @@ log4j.appender.CONSOLE.layout.ConversionPattern=[%d{yyyy-MM-ddTHH:mm:ss.SSSZ}] [
 
 # Tune log at the module level
 #log4j.logger.lsst.qserv.replica=DEBUG
-#log4j.logger.lsst.qserv.replica.DatabaseMySQL=DEBUG
-log4j.logger.lsst.qserv.replica.MessengerConnector=TRACE
+#log4j.logger.lsst.qserv.replica.DatabaseMySQL=TRACE
+#log4j.logger.lsst.qserv.replica.MessengerConnector=TRACE
 #log4j.logger.lsst.qserv.replica.DatabaseServicesMySQL=ERROR
 #log4j.logger.lsst.qserv.util=DEBUG
 #log4j.logger.lsst.qserv.wpublish=DEBUG
