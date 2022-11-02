@@ -1,10 +1,10 @@
 {
     "version": 12,
     "auth_key":"",
-    "database":"qservTest_case01_qserv",
+    "database":"qcase01",
     "table":"Filter",
     "is_partitioned":0,
-    "schema":[    
+    "schema":[
         {"name":"filterId", "type":"tinyint(4) NOT NULL"},
         {"name":"filterName", "type":"char(3) NOT NULL"},
         {"name":"photClam", "type":"float NOT NULL"},

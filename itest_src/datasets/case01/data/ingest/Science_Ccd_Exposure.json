@@ -1,7 +1,7 @@
 {
     "version": 12,
     "auth_key":"",
-    "database":"qservTest_case01_qserv",
+    "database":"qcase01",
     "table":"Science_Ccd_Exposure",
     "is_partitioned":0,
     "schema":[

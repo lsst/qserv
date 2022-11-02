@@ -1,7 +1,7 @@
 {
     "version": 12,
     "auth_key":"",
-    "database":"qservTest_case03_qserv",
+    "database":"qcase03",
     "table":"DeepCoadd_Metadata",
     "is_partitioned":0,
     "schema":[

@@ -2,7 +2,7 @@
 "htm":{
     "level":8
 },
-"dirDb":"qservTest_case04_qserv",
+"dirDb":"qcase04",
 "dirTable":"DeepSource",
 "part":{
     "num-stripes":85,

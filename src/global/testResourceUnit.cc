@@ -47,7 +47,7 @@ BOOST_FIXTURE_TEST_SUITE(Suite, Fixture)
 BOOST_AUTO_TEST_CASE(Garbage) {
     char p[][MAGIC_SIZE] = {// Convert to std vector list init when available
                             // Missing chunk number
-                            "/chk/qservTest_case01_qserv", "/chk/abc/",
+                            "/chk/qcase01", "/chk/abc/",
                             // Bad resource type
                             "/chk2/abc", "/abc/", "/abc/chk/g",
                             // Missing/bad params
@@ -61,7 +61,7 @@ BOOST_AUTO_TEST_CASE(Garbage) {
 
 BOOST_AUTO_TEST_CASE(DbChunk) {
     char p[][MAGIC_SIZE] = {
-            "/chk/qservTest_case01_qserv/123",
+            "/chk/qcase01/123",
             "/chk/abc/456",
     };
     int const pSize = 2;
@@ -70,7 +70,7 @@ BOOST_AUTO_TEST_CASE(DbChunk) {
         r.push_back(ResourceUnit(*i));
         BOOST_CHECK_EQUAL(r.back().unitType(), ResourceUnit::DBCHUNK);
     }
-    BOOST_CHECK_EQUAL(r[0].db(), "qservTest_case01_qserv");
+    BOOST_CHECK_EQUAL(r[0].db(), "qcase01");
     BOOST_CHECK_EQUAL(r[1].db(), "abc");
     BOOST_CHECK_EQUAL(r[0].chunk(), 123);
     BOOST_CHECK_EQUAL(r[1].chunk(), 456);

@@ -1,7 +1,7 @@
 {
     "version": 12,
     "auth_key":"",
-    "database":"qservTest_case04_qserv",
+    "database":"qcase04",
     "auto_build_secondary_index":1,
     "local_load_secondary_index":1,
     "num_stripes":85,

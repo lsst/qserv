@@ -1,7 +1,7 @@
 {
     "version": 12,
     "auth_key":"",
-    "database":"qservTest_case03_qserv",
+    "database":"qcase03",
     "table":"AvgForcedPhot",
     "is_partitioned":0,
     "schema":[
