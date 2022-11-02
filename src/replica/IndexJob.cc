@@ -454,7 +454,9 @@ void IndexJob::_processRequestData(util::Lock const& lock, IndexRequest::Ptr con
                 _conn = Connection::open(Configuration::qservCzarDbParams(lsst::qserv::SEC_INDEX_DB));
             }
             QueryGenerator const g(_conn);
-            string const query = g.loadDataInfile(filePath, _destinationPath, _localFile);
+            string const query =
+                    g.loadDataInfile(filePath, _destinationPath,
+                                     config->get<string>("worker", "ingest-charset-name"), _localFile);
 
             _conn->executeInOwnTransaction([&](decltype(_conn) conn) {
                 conn->execute(query);

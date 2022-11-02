@@ -72,11 +72,17 @@ IngestFileSvc::IngestFileSvc(ServiceProvider::Ptr const& serviceProvider, string
 IngestFileSvc::~IngestFileSvc() { closeFile(); }
 
 string const& IngestFileSvc::openFile(TransactionId transactionId, string const& tableName,
-                                      csv::Dialect const& dialect, unsigned int chunk, bool isOverlap) {
+                                      csv::Dialect const& dialect, std::string const& charsetName,
+                                      unsigned int chunk, bool isOverlap) {
     string const context_ = context + string(__func__) + " ";
     LOGS(_log, LOG_LVL_DEBUG, context_);
 
     _transactionId = transactionId;
+    if (charsetName.empty()) {
+        _charsetName = _serviceProvider->config()->get<string>("worker", "ingest-charset-name");
+    } else {
+        _charsetName = charsetName;
+    }
     _dialect = dialect;
     _chunk = chunk;
     _isOverlap = isOverlap;
@@ -239,7 +245,8 @@ void IngestFileSvc::loadDataIntoTable(unsigned int maxNumWarnings) {
                 if (table.name == _table.name) {
                     SqlId const sqlDestinationTable = _isOverlap ? sqlFullOverlapTable : sqlTable;
                     bool const local = false;
-                    dataLoadQuery = g.loadDataInfile(_fileName, sqlDestinationTable, local, _dialect);
+                    dataLoadQuery =
+                            g.loadDataInfile(_fileName, sqlDestinationTable, _charsetName, local, _dialect);
                     bool const ifExists = true;
                     partitionRemovalQuery = Query(
                             g.alterTable(sqlDestinationTable) + g.dropPartition(_transactionId, ifExists),
@@ -254,7 +261,7 @@ void IngestFileSvc::loadDataIntoTable(unsigned int maxNumWarnings) {
             tableMgtStatements.push_back(Query(
                     g.alterTable(sqlTable) + g.addPartition(_transactionId, ifNotExists), sqlTable.str));
             bool const local = false;
-            dataLoadQuery = g.loadDataInfile(_fileName, sqlTable, local, _dialect);
+            dataLoadQuery = g.loadDataInfile(_fileName, sqlTable, _charsetName, local, _dialect);
             bool const ifExists = true;
             partitionRemovalQuery =
                     Query(g.alterTable(sqlTable) + g.dropPartition(_transactionId, ifExists), sqlTable.str);

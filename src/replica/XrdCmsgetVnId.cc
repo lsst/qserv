@@ -28,6 +28,7 @@
 #include "replica/Common.h"
 #include "replica/Configuration.h"
 #include "replica/DatabaseMySQL.h"
+#include "replica/DatabaseMySQLUtils.h"
 
 // XrootD headers
 #include "XrdCms/XrdCmsVnId.hh"
@@ -87,9 +88,8 @@ extern "C" string XrdCmsgetVnId(XrdCmsgetVnIdArgs) {
             QueryGenerator const g(handler.conn);
             handler.conn->executeInOwnTransaction(
                     [&context, &vnId, &eDest, &g](decltype(handler.conn) conn) {
-                        string const column = "id";
-                        string const query = g.select(column) + g.from("Id");
-                        if (!conn->executeSingleValueSelect(query, column, vnId)) {
+                        string const query = g.select("id") + g.from("Id");
+                        if (!selectSingleValue(conn, query, vnId)) {
                             eDest.Say(context.data(),
                                       "worker identity is not set in the Qserv worker database.");
                         }

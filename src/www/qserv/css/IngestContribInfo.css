@@ -1,0 +1,53 @@
+#fwk-ingest-contrib-info-controls label {
+    font-weight: bold;
+}
+#fwk-ingest-contrib-info-status #status {
+    text-align: right;
+}
+#fwk-ingest-contrib-info-status #status.updating {
+    background-color: #ffeeba;
+}
+#fwk-ingest-contrib-info tbody pre.status-progress {
+    color: green;
+}
+#fwk-ingest-contrib-info tbody pre.status-finished {
+    color: default;
+}
+#fwk-ingest-contrib-info tbody pre.status-error {
+    color: red;
+}
+#fwk-ingest-contrib-info tbody pre {
+    padding: 0;
+    margin: 0;
+}
+#fwk-ingest-contrib-info textarea {
+    width: 100%;
+    height: 8.5em;
+    overflow-y: scroll;
+}
+#fwk-ingest-contrib-info table pre.database_table:hover {
+    cursor:pointer;
+}
+#fwk-ingest-contrib-info table pre.database_table {
+    color:#007bff;
+}
+table#fwk-ingest-contrib-info-warnings tbody pre {
+    padding: 0;
+    margin: 0;
+    margin-top: 3px;
+}
+table#fwk-ingest-contrib-info-warnings .left-aligned {
+    text-align: left;
+}
+table#fwk-ingest-contrib-info-warnings .right-aligned {
+    text-align: right;
+}
+table#fwk-ingest-contrib-info-warnings tbody pre.level-note {
+    color: default;
+}
+table#fwk-ingest-contrib-info-warnings tbody pre.level-warning {
+    color: orange;
+}
+table#fwk-ingest-contrib-info-warnings tbody pre.level-error {
+    color: red;
+}

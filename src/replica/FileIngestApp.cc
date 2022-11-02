@@ -180,6 +180,12 @@ FileIngestApp::FileIngestApp(int argc, char* argv[])
                     "An optional parameter specifying the record size for reading from the input"
                     " file and for sending data to a server.",
                     _recordSizeBytes)
+            .option("charset-name",
+                    "An optional parameter specifying the desired name of a character set to be"
+                    " used when ingesting the contribution into the destination table. If no"
+                    " specific name is provided then the name at the current configuration"
+                    " of the ingest service will be assumed.",
+                    _charsetName)
             .flag("verbose", "Print various stats upon a completion of the ingest", _verbose);
 
     parser().command("PARSE")
@@ -380,7 +386,7 @@ void FileIngestApp::_ingest(FileIngestSpec const& file) const {
     auto const ptr =
             IngestClient::connect(file.workerHost, file.workerPort, file.transactionId, file.tableName,
                                   chunkContribution.chunk, chunkContribution.isOverlap, file.inFileName,
-                                  authKey(), _dialectInput, _maxNumWarnings, _recordSizeBytes);
+                                  authKey(), _dialectInput, _charsetName, _maxNumWarnings, _recordSizeBytes);
     ptr->send();
     uint64_t const finishedMs = PerformanceUtils::now();
 
@@ -388,7 +394,8 @@ void FileIngestApp::_ingest(FileIngestSpec const& file) const {
         uint64_t const elapsedMs = max(1UL, finishedMs - startedMs);
         double const elapsedSec = elapsedMs / 1000;
         double const megaBytesPerSec = ptr->sizeBytes() / 1000000 / elapsedSec;
-        cout << "Ingest service location: " << file.workerHost << ":" << file.workerPort << "\n"
+        cout << "                     Id: " << ptr->id() << "\n"
+             << "Ingest service location: " << file.workerHost << ":" << file.workerPort << "\n"
              << " Transaction identifier: " << file.transactionId << "\n"
              << "      Destination table: " << file.tableName << "\n"
              << "                  Chunk: " << chunkContribution.chunk << "\n"

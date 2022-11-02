@@ -28,6 +28,7 @@
 
 // Qserv headers
 #include "replica/ConfigurationExceptions.h"
+#include "replica/DatabaseMySQLUtils.h"
 
 using namespace std;
 using json = nlohmann::json;
@@ -63,12 +64,10 @@ void ConfigParserMySQL::_parseVersion() {
         throw ConfigVersionMismatch(_context + " the metadata table " + databaseTableSql.str +
                                     " doesn't exist.");
     }
-    string const column = "value";
     string const query =
-            _g.select(column) + _g.from(databaseTableSql) + _g.where(_g.eq("metakey", "version"));
+            _g.select("value") + _g.from(databaseTableSql) + _g.where(_g.eq("metakey", "version"));
     int version;
-    bool const isNotNull = _conn->executeSingleValueSelect(query, column, version);
-    if (!isNotNull) {
+    if (!selectSingleValue(_conn, query, version)) {
         throw ConfigVersionMismatch(_context + " the metadata table " + databaseTableSql.str +
                                     " doesn't have the schema version.");
     }

@@ -358,7 +358,10 @@ json const ConfigurationSchema::_schemaJson = json::object(
               "A location for temporary files stored by the worker's"
               " HTTP-based REST service ingesting table before ingesting them into"
               " the adjacent Qserv worker's MySQL database."},
-             {"default", "/qserv/data/ingest"}}}}}});
+             {"default", "/qserv/data/ingest"}}},
+           {"ingest-charset-name",
+            {{"description", "The name of a character set for parsing the payload of the contributions."},
+             {"default", "latin1"}}}}}});
 
 string ConfigurationSchema::description(string const& category, string const& param) {
     return _attributeValue<string>(category, param, "description", "");

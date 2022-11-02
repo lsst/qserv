@@ -70,7 +70,8 @@ public:
     unsigned int chunk = 0;  ///< (optional) The chunk number (partitioned tables only)
     bool isOverlap = false;  ///< (optional) A flavor of the chunked table (partitioned tables only)
 
-    std::string url;  ///< The data source specification
+    std::string url;          ///< The data source specification
+    std::string charsetName;  ///< The name of the MySQL character set.
 
     /// The type selector is used in the where the tri-state is required.
     enum class TypeSelector : int { SYNC, ASYNC, SYNC_OR_ASYNC };

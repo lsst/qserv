@@ -618,8 +618,8 @@ function(CSSLoader,
             });
             tbody.find("pre.contrib_id").click((e) => {
                 const id = $(e.currentTarget).attr("id");
-                Fwk.find("Ingest", "Warnings").set_contrib_id(id);
-                Fwk.show("Ingest", "Warnings");
+                Fwk.find("Ingest", "Contribution Info").set_contrib_id(id);
+                Fwk.show("Ingest", "Contribution Info");
             });
             this._set_num_select(numSelect, info.contrib.files.length);
         }

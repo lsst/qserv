@@ -33,6 +33,7 @@
 // Qserv headers
 #include "replica/Configuration.h"
 #include "replica/DatabaseMySQLGenerator.h"
+#include "replica/DatabaseMySQLUtils.h"
 #include "replica/Performance.h"
 #include "replica/protocol.pb.h"
 #include "util/BlockPost.h"
@@ -136,21 +137,19 @@ bool Connection::tableExists(string const& table, string const& proposedDatabase
     if (table.empty()) {
         throw invalid_argument(context + "the table name can't be empty.");
     }
-    QueryGenerator const g(shared_from_this());
+    auto const self = shared_from_this();
+    QueryGenerator const g(self);
     string database = proposedDatabase;
     if (database.empty()) {
-        string const column = "database";
-        string const query = g.select(g.as(Sql::DATABASE, column));
-        if (!executeSingleValueSelect(query, column, database)) {
+        string const query = g.select(Sql::DATABASE);
+        if (!selectSingleValue(self, query, database)) {
             throw Error(context + "the name of a database is not set on this connection.");
         }
     }
     size_t count = 0;
-    string const column = "count";
-    string const query = g.select(g.as(Sql::COUNT_STAR, column)) +
-                         g.from(g.id("information_schema", "TABLES")) +
+    string const query = g.select(Sql::COUNT_STAR) + g.from(g.id("information_schema", "TABLES")) +
                          g.where(g.eq("TABLE_SCHEMA", database), g.eq("TABLE_NAME", table));
-    return executeSingleValueSelect(query, column, count) && count != 0;
+    return selectSingleValue(self, query, count) && count != 0;
 }
 
 Connection::Ptr Connection::begin() {
@@ -394,7 +393,6 @@ Connection::Ptr Connection::executeInOwnTransaction(function<void(Ptr)> const& s
                            "(_inTransaction=" + to_string(_inTransaction ? 1 : 0) +
                            ",maxRetriesOnDeadLock=" + to_string(maxRetriesOnDeadLock) + ")  ";
 
-    auto conn = shared_from_this();
     try {
         unsigned int numRetriesOnDeadLock = 0;
         do {
@@ -409,7 +407,7 @@ Connection::Ptr Connection::executeInOwnTransaction(function<void(Ptr)> const& s
                         },
                         maxReconnects, timeoutSec);
             } catch (ER_LOCK_DEADLOCK_ const& ex) {
-                if (conn->inTransaction()) conn->rollback();
+                if (inTransaction()) rollback();
                 if (numRetriesOnDeadLock < maxRetriesOnDeadLock) {
                     LOGS(_log, LOG_LVL_DEBUG, context << "exception: " << ex.what());
                     ++numRetriesOnDeadLock;
@@ -423,9 +421,10 @@ Connection::Ptr Connection::executeInOwnTransaction(function<void(Ptr)> const& s
             }
         } while (true);
     } catch (...) {
-        if (conn->inTransaction()) conn->rollback();
+        if (inTransaction()) rollback();
         throw;
     }
+    return shared_from_this();
 }
 
 Connection::Ptr Connection::executeInsertOrUpdate(function<void(Ptr)> const& insertScript,

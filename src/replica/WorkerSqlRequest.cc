@@ -27,6 +27,7 @@
 
 // Qserv headers
 #include "replica/Configuration.h"
+#include "replica/DatabaseMySQLUtils.h"
 #include "replica/Performance.h"
 #include "util/Mutex.h"
 
@@ -350,13 +351,12 @@ Query WorkerSqlRequest::_query(Connection::Ptr const& conn, string const& table)
             // implemented below accounts for this scenario by consulting MySQL's
             // information schema. If the column isn't present then the default transaction
             // identifier 0 will be injected into the result set.
-            string const column = "count";
-            string query = g.select(g.as(Sql::COUNT_STAR, column)) +
+            string query = g.select(Sql::COUNT_STAR) +
                            g.from(DoNotProcess(g.id("information_schema", "COLUMNS"))) +
                            g.where(g.eq("TABLE_SCHEMA", _request.database()), g.eq("TABLE_NAME", table),
                                    g.eq("COLUMN_NAME", "qserv_trans_id"));
             int count = 0;
-            conn->executeSingleValueSelect(query, column, count);
+            selectSingleValue(conn, query, count);
             if (count == 0) {
                 string const query =
                         g.select(g.as(g.val(0), "qserv_trans_id"), g.as(Sql::COUNT_STAR, "num_rows")) +
