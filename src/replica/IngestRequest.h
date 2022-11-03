@@ -94,7 +94,7 @@ public:
             csv::DialectInput const& dialectInput, std::string const& httpMethod = "GET",
             std::string const& httpData = std::string(),
             std::vector<std::string> const& httpHeaders = std::vector<std::string>(),
-            unsigned int maxNumWarnings = 0);
+            unsigned int maxNumWarnings = 0, unsigned int maxRetries = 0);
 
     /**
      * The factory method for instantiating the request from an existing contribution.
@@ -170,7 +170,7 @@ private:
                   std::string const& url, std::string const& charsetName, bool async,
                   csv::DialectInput const& dialectInput, std::string const& httpMethod,
                   std::string const& httpData, std::vector<std::string> const& httpHeaders,
-                  unsigned int maxNumWarnings);
+                  unsigned int maxNumWarnings, unsigned int maxRetries);
 
     /// @see method IngestRequest::resume()
     IngestRequest(std::shared_ptr<ServiceProvider> const& serviceProvider, std::string const& workerName,

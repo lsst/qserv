@@ -23,6 +23,7 @@
 #include "replica/TransactionContrib.h"
 
 // System headers
+#include <algorithm>
 #include <stdexcept>
 
 // Qserv headers
@@ -91,6 +92,23 @@ std::vector<TransactionContribInfo::Status> const& TransactionContribInfo::statu
     return _transactionContribStatusCodes;
 }
 
+TransactionContribInfo::FailedRetry TransactionContribInfo::resetForRetry(
+        TransactionContribInfo::Status newStatus, bool newAsyncMode) {
+    status = newStatus;
+    async = newAsyncMode;
+    retryAllowed = false;
+    TransactionContribInfo::FailedRetry retry;
+    swap(retry.numBytes, numBytes);
+    swap(retry.numRows, numRows);
+    swap(retry.startTime, startTime);
+    swap(retry.readTime, readTime);
+    swap(retry.tmpFile, tmpFile);
+    swap(retry.httpError, httpError);
+    swap(retry.systemError, systemError);
+    swap(retry.error, error);
+    return retry;
+}
+
 json TransactionContribInfo::toJson() const {
     json info;
     info["id"] = id;
@@ -110,6 +128,23 @@ json TransactionContribInfo::toJson() const {
     info["http_method"] = httpMethod;
     info["http_data"] = httpData;
     info["http_headers"] = json(httpHeaders);
+
+    info["max_retries"] = maxRetries;
+    info["num_failed_retries"] = numFailedRetries;
+    json failedRetriesJson = json::array();
+    for (auto&& r : failedRetries) {
+        json failedRetryJson = json::object();
+        failedRetryJson["num_bytes"] = r.numBytes;
+        failedRetryJson["num_rows"] = r.numRows;
+        failedRetryJson["start_time"] = r.startTime;
+        failedRetryJson["read_time"] = r.readTime;
+        failedRetryJson["tmp_file"] = r.tmpFile;
+        failedRetryJson["http_error"] = r.httpError;
+        failedRetryJson["system_error"] = r.systemError;
+        failedRetryJson["error"] = r.error;
+        failedRetriesJson.push_back(failedRetryJson);
+    }
+    info["failed_retries"] = failedRetriesJson;
 
     info["num_bytes"] = numBytes;
     info["num_rows"] = numRows;

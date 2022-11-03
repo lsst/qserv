@@ -92,6 +92,58 @@ public:
     std::string httpData;
     std::vector<std::string> httpHeaders;
 
+    /// The number of retries allowed on requests failed while reading the input data.
+    /// Each previous attempt is recorded in the collection 'failedRetries'.
+    /// By default (if the value of the parameter is 0), there is only one chance
+    /// to pull the data.
+    unsigned int maxRetries = 0;
+
+    /**
+     * The class FailedRetry is an abstraction for recording failed attempts to pull
+     * or preprocess the input data of the contribution.
+     *
+     * A new instance of this class gets created and recorded in the collection
+     * 'failedRetries' on each failed attempt if the failure happened while pulling
+     * or preprocessing the input data of the contribution and if more retries
+     * are still allowed.
+     */
+    class FailedRetry {
+    public:
+        uint64_t numBytes = 0;   ///< The total number of bytes read from the source
+        uint64_t numRows = 0;    ///< The total number of rows read from the source
+        uint64_t startTime = 0;  ///< The timestamp (ms) when the request processing started
+        uint64_t readTime = 0;   ///< The timestamp (ms) when finished reading/preprocessing the input
+
+        /// The temporary file that was created to store pre-processed content of the input
+        /// file before ingesting it into MySQL. The file is supposed to be deleted after finishing
+        /// ingesting the contribution or in case of any failures. Though, in some failure modes
+        /// the file may stay on disk and it may need to be cleaned up by the ingest service.
+        std::string tmpFile;
+
+        // The error context (if any).
+        int httpError = 0;    ///< An HTTP response code, if applies to the request
+        int systemError = 0;  ///< The UNIX errno captured at a point where a problem occurred
+        std::string error;    ///< The human-readable explanation of the error
+    };
+
+    /**
+     * The actual number of failed retries. It's here to allow optimising summary reports on
+     * the contributions without pulling the detailed info on the retries from the child table.
+     * Otherwise, a value stored in the variable should match the number of elements in the
+     * collection.
+     */
+    unsigned int numFailedRetries = 0;
+
+    /**
+     * A collection of past attempts (if any) that failed to pull/preprocess data of
+     * the contribution. New records are always appended to the very end of the collection.
+     *
+     * @note The current state of the class TransactionContribInfo always records
+     *  the latest effort to pull the data. If retries were not allowed for the request
+     *  then the correction will be empty.
+     */
+    std::list<FailedRetry> failedRetries;
+
     // These counters are set only in case of the successful completion of the request
     // indicated by the status code 'FINISHED'.
 
@@ -188,6 +240,20 @@ public:
 
     /// The total number of rows affected by the loading operation.
     uint64_t numRowsLoaded = 0;
+
+    /**
+     * Reset object counters to prepare it for retry.
+     *
+     * Move counters and error status codes from the contribution object into the retry
+     * object to be returned object. The corresponding fields of the contribution objects
+     * will get reset to the initial values (which are the same as in the default
+     * constructed retry object).
+     *
+     * @param newStatus The new status of the contribution to be set.
+     * @param newAsyncMode The ASYNC vs SYNC mode desired in the new state.
+     * @return FailedRetry The populated descriptor of the failed retry object.
+     */
+    FailedRetry resetForRetry(TransactionContribInfo::Status newStatus, bool newAsyncMode);
 
     /// @return JSON representation of the object
     nlohmann::json toJson() const;

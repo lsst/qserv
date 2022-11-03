@@ -23,6 +23,7 @@
 #include "replica/IngestRequest.h"
 
 // System headers
+#include <algorithm>
 #include <cerrno>
 #include <cstring>
 #include <fstream>
@@ -106,10 +107,10 @@ shared_ptr<IngestRequest> IngestRequest::create(shared_ptr<ServiceProvider> cons
                                                 csv::DialectInput const& dialectInput,
                                                 string const& httpMethod, string const& httpData,
                                                 vector<string> const& httpHeaders,
-                                                unsigned int maxNumWarnings) {
-    shared_ptr<IngestRequest> ptr(new IngestRequest(serviceProvider, workerName, transactionId, table, chunk,
-                                                    isOverlap, url, charsetName, async, dialectInput,
-                                                    httpMethod, httpData, httpHeaders, maxNumWarnings));
+                                                unsigned int maxNumWarnings, unsigned int maxRetries) {
+    shared_ptr<IngestRequest> ptr(new IngestRequest(
+            serviceProvider, workerName, transactionId, table, chunk, isOverlap, url, charsetName, async,
+            dialectInput, httpMethod, httpData, httpHeaders, maxNumWarnings, maxRetries));
     return ptr;
 }
 
@@ -195,7 +196,7 @@ IngestRequest::IngestRequest(shared_ptr<ServiceProvider> const& serviceProvider,
                              bool isOverlap, string const& url, string const& charsetName, bool async,
                              csv::DialectInput const& dialectInput, string const& httpMethod,
                              string const& httpData, vector<string> const& httpHeaders,
-                             unsigned int maxNumWarnings)
+                             unsigned int maxNumWarnings, unsigned int maxRetries)
         : IngestFileSvc(serviceProvider, workerName) {
     // Initialize the descriptor
     _contrib.transactionId = transactionId;
@@ -216,6 +217,8 @@ IngestRequest::IngestRequest(shared_ptr<ServiceProvider> const& serviceProvider,
     } else {
         _contrib.maxNumWarnings = maxNumWarnings;
     }
+    _contrib.maxRetries =
+            min(maxRetries, serviceProvider->config()->get<unsigned int>("worker", "ingest-max-retries"));
 
     // Prescreen parameters of the request to ensure the request has a valid
     // context (transaction, database, table). Refuse to proceed with registering
