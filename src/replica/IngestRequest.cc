@@ -178,6 +178,50 @@ shared_ptr<IngestRequest> IngestRequest::test(TransactionContribInfo const& cont
     return shared_ptr<IngestRequest>(new IngestRequest(contrib));
 }
 
+shared_ptr<IngestRequest> IngestRequest::createRetry(shared_ptr<ServiceProvider> const& serviceProvider,
+                                                     string const& workerName, unsigned int contribId,
+                                                     bool async) {
+    string const context = ::context_ + string(__func__) + " ";
+    auto const config = serviceProvider->config();
+    auto const databaseServices = serviceProvider->databaseServices();
+
+    // Find the request in the database and run some preliminary validation of its
+    // state to ensure the request is eligible to be resumed.
+    TransactionContribInfo contrib;
+    try {
+        contrib = databaseServices->transactionContrib(contribId);
+    } catch (exception const& ex) {
+        throw runtime_error(context + "failed to locate the contribution id=" + to_string(contribId) +
+                            " in the database.");
+    }
+    if (contrib.status != TransactionContribInfo::Status::READ_FAILED) {
+        throw invalid_argument(
+                "contribution id=" + to_string(contribId) + " is not in state " +
+                TransactionContribInfo::status2str(TransactionContribInfo::Status::READ_FAILED) +
+                ", the actual state is " + TransactionContribInfo::status2str(contrib.status) + ".");
+    }
+    if (contrib.worker != workerName) {
+        throw invalid_argument("contribution id=" + to_string(contribId) +
+                               " was originally processed by worker '" + contrib.worker +
+                               "', while this retry operation was request at worker '" + workerName + "'.");
+    }
+
+    // Move counters and error status codes from the contribution object
+    // into the retry. The corresponding fields of the contribution objects
+    // will get reset to the initial values (which are the same as in the default
+    // constructed retry object). Then update the persistent state.
+    TransactionContribInfo::FailedRetry const failedRetry =
+            contrib.resetForRetry(TransactionContribInfo::Status::IN_PROGRESS, async);
+    contrib = databaseServices->updateTransactionContrib(contrib);
+
+    // The retry object has to be saved in the persistent state separately.
+    contrib.failedRetries.push_back(failedRetry);
+    contrib.numFailedRetries = contrib.failedRetries.size();
+    contrib = databaseServices->saveLastTransactionContribRetry(contrib);
+
+    return shared_ptr<IngestRequest>(new IngestRequest(serviceProvider, workerName, contrib));
+}
+
 void IngestRequest::_validateState(TransactionInfo const& trans, DatabaseInfo const& database,
                                    TransactionContribInfo const& contrib) {
     string error;

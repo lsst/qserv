@@ -928,8 +928,10 @@ public:
     /// @return the desired contribution into a super-transaction (if found)
     /// @param id a unique identifier of the contribution
     /// @param includeWarnings if 'true' then include info on the MySQL warnings after LOAD DATA INFILE
+    /// @param includeRetries if 'true' then include info on the failed retries to pull the input data
     /// @throws DatabaseServicesNotFound if no contribution was found for the specified identifier
-    virtual TransactionContribInfo transactionContrib(unsigned int id, bool includeWarnings = false) = 0;
+    virtual TransactionContribInfo transactionContrib(unsigned int id, bool includeWarnings = false,
+                                                      bool includeRetries = false) = 0;
 
     /// @return contributions into a super-transaction for the given selectors
     /// @param transactionId a unique identifier of the transaction
@@ -937,12 +939,13 @@ public:
     /// @param worker (optional) the name of a worker (all workers if not provided)
     /// @param typeSelector (optional) type of the contributions
     /// @param includeWarnings if 'true' then include info on the MySQL warnings after LOAD DATA INFILE
+    /// @param includeRetries if 'true' then include info on the failed retries to pull the input data
     virtual std::vector<TransactionContribInfo> transactionContribs(
             TransactionId transactionId, std::string const& table = std::string(),
             std::string const& worker = std::string(),
             TransactionContribInfo::TypeSelector typeSelector =
                     TransactionContribInfo::TypeSelector::SYNC_OR_ASYNC,
-            bool includeWarnings = false) = 0;
+            bool includeWarnings = false, bool includeRetries = false) = 0;
 
     /// @return contributions into a super-transaction for the given selectors
     /// @param transactionId a unique identifier of the transaction
@@ -951,12 +954,13 @@ public:
     /// @param worker (optional) the name of a worker (all workers if not provided)
     /// @param typeSelector (optional) type of the contributions
     /// @param includeWarnings if 'true' then include info on the MySQL warnings after LOAD DATA INFILE
+    /// @param includeRetries if 'true' then include info on the failed retries to pull the input data
     virtual std::vector<TransactionContribInfo> transactionContribs(
             TransactionId transactionId, TransactionContribInfo::Status status,
             std::string const& table = std::string(), std::string const& worker = std::string(),
             TransactionContribInfo::TypeSelector typeSelector =
                     TransactionContribInfo::TypeSelector::SYNC_OR_ASYNC,
-            bool includeWarnings = false) = 0;
+            bool includeWarnings = false, bool includeRetries = false) = 0;
 
     /// @return contributions into super-transactions for the given selectors
     /// @param database the name of a database
@@ -964,12 +968,13 @@ public:
     /// @param worker (optional) the name of a worker (all workers if not provided)
     /// @param typeSelector (optional) type of the contributions
     /// @param includeWarnings if 'true' then include info on the MySQL warnings after LOAD DATA INFILE
+    /// @param includeRetries if 'true' then include info on the failed retries to pull the input data
     virtual std::vector<TransactionContribInfo> transactionContribs(
             std::string const& database, std::string const& table = std::string(),
             std::string const& worker = std::string(),
             TransactionContribInfo::TypeSelector typeSelector =
                     TransactionContribInfo::TypeSelector::SYNC_OR_ASYNC,
-            bool includeWarnings = false) = 0;
+            bool includeWarnings = false, bool includeRetries = false) = 0;
 
     /**
      * Insert the initial record on the contribution.
@@ -1058,6 +1063,13 @@ public:
      * @return The updated record on the contribution.
      */
     virtual TransactionContribInfo updateTransactionContrib(TransactionContribInfo const& info) = 0;
+
+    /**
+     * Save info on the last retry attempt made in a scope of the contribution.
+     * @param info The transient state of the contribution to be synched.
+     * @return The updated record on the contribution.
+     */
+    virtual TransactionContribInfo saveLastTransactionContribRetry(TransactionContribInfo const& info) = 0;
 
     /// @return A descriptor of the parameter
     /// @throws DatabaseServicesNotFound If no such parameter found.

@@ -123,6 +123,33 @@ public:
      */
     static std::shared_ptr<IngestRequest> test(TransactionContribInfo const& contrib);
 
+    /**
+     * The factory method for instantiating the request from an existing contribution.
+     *
+     * Parameters of the request will be still validated to ensure the request was
+     * failed while attempting to read or preprocess the input data. The method will
+     * also ensure the original request was processed at the same worker as the one
+     * specified in the parameter \param workerName. The processing mode (SYNC or ASYNC)
+     * of the request will be updated to a value specified in the input parameter
+     * \param async.
+     *
+     * @note Unlike the method create(), the request won't be re-created in the database.
+     *   And it will retain the original identifier.
+     *
+     * @param serviceProvider The provider is needed to access various services of
+     *   the Replication system's framework, such as the Configuration service,
+     *   the Database service, etc.
+     * @param workerName The name of a worker this service is acting upon.
+     * @param contribId A unique identifier of an existing contribution request.
+     * @param async The processing mode to be set at the request for bookkeeping purposes.
+     * @throw std::invalid_argument For non-existing request, or incorrect values of
+     *   the input parameters.
+     * @return A newly created instance of the request object.
+     */
+    static std::shared_ptr<IngestRequest> createRetry(std::shared_ptr<ServiceProvider> const& serviceProvider,
+                                                      std::string const& workerName, unsigned int contribId,
+                                                      bool async);
+
     /// @return The descriptor of the request.
     TransactionContribInfo transactionContribInfo() const;
 

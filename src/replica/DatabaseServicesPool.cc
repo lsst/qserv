@@ -287,31 +287,35 @@ TransactionInfo DatabaseServicesPool::updateTransaction(TransactionId id,
     return service()->updateTransaction(id, events);
 }
 
-TransactionContribInfo DatabaseServicesPool::transactionContrib(unsigned int id, bool includeWarnings) {
+TransactionContribInfo DatabaseServicesPool::transactionContrib(unsigned int id, bool includeWarnings,
+                                                                bool includeRetries) {
     ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
-    return service()->transactionContrib(id, includeWarnings);
+    return service()->transactionContrib(id, includeWarnings, includeRetries);
 }
 
 vector<TransactionContribInfo> DatabaseServicesPool::transactionContribs(
         TransactionId transactionId, string const& table, string const& worker,
-        TransactionContribInfo::TypeSelector typeSelector, bool includeWarnings) {
+        TransactionContribInfo::TypeSelector typeSelector, bool includeWarnings, bool includeRetries) {
     ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
-    return service()->transactionContribs(transactionId, table, worker, typeSelector, includeWarnings);
+    return service()->transactionContribs(transactionId, table, worker, typeSelector, includeWarnings,
+                                          includeRetries);
 }
 
 vector<TransactionContribInfo> DatabaseServicesPool::transactionContribs(
         TransactionId transactionId, TransactionContribInfo::Status status, string const& table,
-        string const& worker, TransactionContribInfo::TypeSelector typeSelector, bool includeWarnings) {
+        string const& worker, TransactionContribInfo::TypeSelector typeSelector, bool includeWarnings,
+        bool includeRetries) {
     ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
-    return service()->transactionContribs(transactionId, status, table, worker, typeSelector,
-                                          includeWarnings);
+    return service()->transactionContribs(transactionId, status, table, worker, typeSelector, includeWarnings,
+                                          includeRetries);
 }
 
 vector<TransactionContribInfo> DatabaseServicesPool::transactionContribs(
         string const& database, string const& table, string const& worker,
-        TransactionContribInfo::TypeSelector typeSelector, bool includeWarnings) {
+        TransactionContribInfo::TypeSelector typeSelector, bool includeWarnings, bool includeRetries) {
     ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
-    return service()->transactionContribs(database, table, worker, typeSelector, includeWarnings);
+    return service()->transactionContribs(database, table, worker, typeSelector, includeWarnings,
+                                          includeRetries);
 }
 
 TransactionContribInfo DatabaseServicesPool::createdTransactionContrib(
@@ -323,6 +327,12 @@ TransactionContribInfo DatabaseServicesPool::createdTransactionContrib(
 TransactionContribInfo DatabaseServicesPool::updateTransactionContrib(TransactionContribInfo const& info) {
     ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
     return service()->updateTransactionContrib(info);
+}
+
+TransactionContribInfo DatabaseServicesPool::saveLastTransactionContribRetry(
+        TransactionContribInfo const& info) {
+    ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
+    return service()->saveLastTransactionContribRetry(info);
 }
 
 DatabaseIngestParam DatabaseServicesPool::ingestParam(string const& database, string const& category,

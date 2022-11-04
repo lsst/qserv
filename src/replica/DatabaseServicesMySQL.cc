@@ -1577,14 +1577,15 @@ vector<TransactionInfo> DatabaseServicesMySQL::_findTransactionsImpl(util::Lock 
     return collection;
 }
 
-TransactionContribInfo DatabaseServicesMySQL::transactionContrib(unsigned int id, bool includeWarnings) {
+TransactionContribInfo DatabaseServicesMySQL::transactionContrib(unsigned int id, bool includeWarnings,
+                                                                 bool includeRetries) {
     string const context = _context(__func__) + "id=" + to_string(id) + " ";
     LOGS(_log, LOG_LVL_DEBUG, context);
     vector<TransactionContribInfo> collection;
     util::Lock lock(_mtx, context);
     try {
         _conn->executeInOwnTransaction([&](decltype(_conn) conn) {
-            collection = _transactionContribsImpl(lock, _g.eq("id", id), includeWarnings);
+            collection = _transactionContribsImpl(lock, _g.eq("id", id), includeWarnings, includeRetries);
         });
     } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context << "failed, exception: " << ex.what());
@@ -1616,7 +1617,7 @@ string DatabaseServicesMySQL::_typeSelectorPredicate(
 
 vector<TransactionContribInfo> DatabaseServicesMySQL::transactionContribs(
         TransactionId transactionId, string const& table, string const& worker,
-        TransactionContribInfo::TypeSelector typeSelector, bool includeWarnings) {
+        TransactionContribInfo::TypeSelector typeSelector, bool includeWarnings, bool includeRetries) {
     string const context = _context(__func__) + "transactionId=" + to_string(transactionId) +
                            " table=" + table + " worker=" + worker + " " +
                            " typeSelector=" + TransactionContribInfo::typeSelector2str(typeSelector) + " ";
@@ -1626,12 +1627,13 @@ vector<TransactionContribInfo> DatabaseServicesMySQL::transactionContribs(
     string const predicate =
             _g.packConds(_g.eq("transaction_id", transactionId), table.empty() ? "" : _g.eq("table", table),
                          worker.empty() ? "" : _g.eq("worker", worker), _typeSelectorPredicate(typeSelector));
-    return _transactionContribs(lock, predicate, includeWarnings);
+    return _transactionContribs(lock, predicate, includeWarnings, includeRetries);
 }
 
 vector<TransactionContribInfo> DatabaseServicesMySQL::transactionContribs(
         TransactionId transactionId, TransactionContribInfo::Status status, string const& table,
-        string const& worker, TransactionContribInfo::TypeSelector typeSelector, bool includeWarnings) {
+        string const& worker, TransactionContribInfo::TypeSelector typeSelector, bool includeWarnings,
+        bool includeRetries) {
     string const context = _context(__func__) + "transactionId=" + to_string(transactionId) +
                            " status=" + TransactionContribInfo::status2str(status) + " table=" + table +
                            " worker=" + worker + " " +
@@ -1643,12 +1645,12 @@ vector<TransactionContribInfo> DatabaseServicesMySQL::transactionContribs(
                          _g.eq("status", TransactionContribInfo::status2str(status)),
                          table.empty() ? "" : _g.eq("table", table),
                          worker.empty() ? "" : _g.eq("worker", worker), _typeSelectorPredicate(typeSelector));
-    return _transactionContribs(lock, predicate, includeWarnings);
+    return _transactionContribs(lock, predicate, includeWarnings, includeRetries);
 }
 
 vector<TransactionContribInfo> DatabaseServicesMySQL::transactionContribs(
         string const& database, string const& table, string const& worker,
-        TransactionContribInfo::TypeSelector typeSelector, bool includeWarnings) {
+        TransactionContribInfo::TypeSelector typeSelector, bool includeWarnings, bool includeRetries) {
     string const context = _context(__func__) + "database=" + database + " table=" + table +
                            " worker=" + worker + " " +
                            " typeSelector=" + TransactionContribInfo::typeSelector2str(typeSelector) + " ";
@@ -1660,7 +1662,7 @@ vector<TransactionContribInfo> DatabaseServicesMySQL::transactionContribs(
     string const predicate =
             _g.packConds(_g.eq("database", database), table.empty() ? "" : _g.eq("table", table),
                          worker.empty() ? "" : _g.eq("worker", worker), _typeSelectorPredicate(typeSelector));
-    return _transactionContribs(lock, predicate, includeWarnings);
+    return _transactionContribs(lock, predicate, includeWarnings, includeRetries);
 }
 
 TransactionContribInfo DatabaseServicesMySQL::createdTransactionContrib(
@@ -1680,6 +1682,7 @@ TransactionContribInfo DatabaseServicesMySQL::createdTransactionContrib(
     uint64_t const readTime = 0;
     uint64_t const loadTime = 0;
 
+    unsigned int const numFailedRetries = 0;
     unsigned int const numWarnings = 0;
     uint64_t const numRowsLoaded = 0;
 
@@ -1691,13 +1694,13 @@ TransactionContribInfo DatabaseServicesMySQL::createdTransactionContrib(
     util::Lock lock(_mtx, context);
     try {
         vector<string> queries;
-        queries.emplace_back(
-                _g.insert("transaction_contrib", Sql::NULL_, info.transactionId, info.worker, info.database,
-                          info.table, info.chunk, info.isOverlap ? 1 : 0, info.url,
-                          info.async ? "ASYNC" : "SYNC", numBytes, numRows, createTime, startTime, readTime,
-                          loadTime, TransactionContribInfo::status2str(status), info.tmpFile, numWarnings,
-                          numRowsLoaded, failed ? info.httpError : 0, failed ? info.systemError : 0,
-                          failed ? info.error : string(), (failed ? info.retryAllowed : false) ? 1 : 0));
+        queries.emplace_back(_g.insert(
+                "transaction_contrib", Sql::NULL_, info.transactionId, info.worker, info.database, info.table,
+                info.chunk, info.isOverlap ? 1 : 0, info.url, info.async ? "ASYNC" : "SYNC", info.maxRetries,
+                numFailedRetries, numBytes, numRows, createTime, startTime, readTime, loadTime,
+                TransactionContribInfo::status2str(status), info.tmpFile, numWarnings, numRowsLoaded,
+                failed ? info.httpError : 0, failed ? info.systemError : 0, failed ? info.error : string(),
+                (failed && info.retryAllowed) ? 1 : 0));
         queries.emplace_back(_g.insert("transaction_contrib_ext", Sql::LAST_INSERT_ID, "max_num_warnings",
                                        info.maxNumWarnings));
         queries.emplace_back(_g.insert("transaction_contrib_ext", Sql::LAST_INSERT_ID, "fields_terminated_by",
@@ -1735,14 +1738,20 @@ TransactionContribInfo DatabaseServicesMySQL::updateTransactionContrib(Transacti
     string const context = _context(__func__) + "id=" + to_string(info.id) + " ";
     LOGS(_log, LOG_LVL_DEBUG, context);
     string const predicate = _g.eq("id", info.id);
+    // These flags should be set to retain the full state of the contribution descriptor
+    // upter reloading it from the database.
+    bool const includeWarnings = true;
+    bool const includeRetries = true;
     TransactionContribInfo updatedInfo;
     util::Lock lock(_mtx, context);
     try {
         list<string> queries;
         string const query =
-                _g.update("transaction_contrib", make_pair("num_bytes", info.numBytes),
-                          make_pair("num_rows", info.numRows), make_pair("start_time", info.startTime),
-                          make_pair("read_time", info.readTime), make_pair("load_time", info.loadTime),
+                _g.update("transaction_contrib", make_pair("type", info.async ? "ASYNC" : "SYNC"),
+                          make_pair("num_failed_retries", info.numFailedRetries),
+                          make_pair("num_bytes", info.numBytes), make_pair("num_rows", info.numRows),
+                          make_pair("start_time", info.startTime), make_pair("read_time", info.readTime),
+                          make_pair("load_time", info.loadTime),
                           make_pair("status", TransactionContribInfo::status2str(info.status)),
                           make_pair("tmp_file", info.tmpFile), make_pair("num_warnings", info.numWarnings),
                           make_pair("num_rows_loaded", info.numRowsLoaded),
@@ -1771,7 +1780,45 @@ TransactionContribInfo DatabaseServicesMySQL::updateTransactionContrib(Transacti
             for (auto&& query : queries) {
                 conn->execute(query);
             }
-            updatedInfo = _transactionContribImpl(lock, predicate);
+            updatedInfo = _transactionContribImpl(lock, predicate, includeWarnings, includeRetries);
+        });
+    } catch (exception const& ex) {
+        LOGS(_log, LOG_LVL_ERROR, context << "failed, exception: " << ex.what());
+        throw;
+    }
+    LOGS(_log, LOG_LVL_DEBUG, context + "** DONE **");
+    return updatedInfo;
+}
+
+TransactionContribInfo DatabaseServicesMySQL::saveLastTransactionContribRetry(
+        TransactionContribInfo const& info) {
+    string const context = _context(__func__) + "id=" + to_string(info.id) + " ";
+    LOGS(_log, LOG_LVL_DEBUG, context);
+    if ((info.numFailedRetries == 0) || (info.numFailedRetries != info.failedRetries.size())) {
+        throw invalid_argument(context + "inconsistent retries");
+    }
+    auto const& lastRetry = info.failedRetries.back();
+    // These flags should be set to retain the full state of the contribution descriptor
+    // upter reloading it from the database.
+    bool const includeWarnings = true;
+    bool const includeRetries = true;
+    TransactionContribInfo updatedInfo;
+    list<string> queries;
+    util::Lock lock(_mtx, context);
+    string const predicate = _g.eq("id", info.id);
+    string query = _g.update("transaction_contrib", make_pair("num_failed_retries", info.numFailedRetries)) +
+                   _g.where(predicate);
+    queries.push_back(query);
+    query = _g.insert("transaction_contrib_retry", info.id, lastRetry.numBytes, lastRetry.numRows,
+                      lastRetry.startTime, lastRetry.readTime, lastRetry.tmpFile, lastRetry.httpError,
+                      lastRetry.systemError, lastRetry.error);
+    queries.push_back(query);
+    try {
+        _conn->executeInOwnTransaction([&](decltype(_conn) conn) {
+            for (auto&& query : queries) {
+                conn->execute(query);
+            }
+            updatedInfo = _transactionContribImpl(lock, predicate, includeWarnings, includeRetries);
         });
     } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context << "failed, exception: " << ex.what());
@@ -1783,13 +1830,14 @@ TransactionContribInfo DatabaseServicesMySQL::updateTransactionContrib(Transacti
 
 vector<TransactionContribInfo> DatabaseServicesMySQL::_transactionContribs(util::Lock const& lock,
                                                                            string const& predicate,
-                                                                           bool includeWarnings) {
+                                                                           bool includeWarnings,
+                                                                           bool includeRetries) {
     string const context = _context(__func__) + "predicate=" + predicate + " ";
     LOGS(_log, LOG_LVL_DEBUG, context);
     vector<TransactionContribInfo> collection;
     try {
         _conn->executeInOwnTransaction([&](decltype(_conn) conn) {
-            collection = _transactionContribsImpl(lock, predicate, includeWarnings);
+            collection = _transactionContribsImpl(lock, predicate, includeWarnings, includeRetries);
         });
     } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context << "failed, exception: " << ex.what());
@@ -1801,9 +1849,10 @@ vector<TransactionContribInfo> DatabaseServicesMySQL::_transactionContribs(util:
 
 TransactionContribInfo DatabaseServicesMySQL::_transactionContribImpl(util::Lock const& lock,
                                                                       string const& predicate,
-                                                                      bool includeWarnings) {
+                                                                      bool includeWarnings,
+                                                                      bool includeRetries) {
     string const context = _context(__func__) + "predicate=" + predicate + " ";
-    auto const collection = _transactionContribsImpl(lock, predicate, includeWarnings);
+    auto const collection = _transactionContribsImpl(lock, predicate, includeWarnings, includeRetries);
     size_t const num = collection.size();
     if (num == 1) return collection[0];
     if (num == 0) throw DatabaseServicesNotFound(context + "no such transaction contribution");
@@ -1812,7 +1861,8 @@ TransactionContribInfo DatabaseServicesMySQL::_transactionContribImpl(util::Lock
 
 vector<TransactionContribInfo> DatabaseServicesMySQL::_transactionContribsImpl(util::Lock const& lock,
                                                                                string const& predicate,
-                                                                               bool includeWarnings) {
+                                                                               bool includeWarnings,
+                                                                               bool includeRetries) {
     string const context = _context(__func__) + "predicate=" + predicate + " ";
     LOGS(_log, LOG_LVL_DEBUG, context);
 
@@ -1834,6 +1884,8 @@ vector<TransactionContribInfo> DatabaseServicesMySQL::_transactionContribsImpl(u
             string type;
             row.get("type", type);
             info.async = (type == "ASYNC");
+            row.get("max_retries", info.maxRetries);
+            row.get("num_failed_retries", info.numFailedRetries);
             row.get("num_bytes", info.numBytes);
             row.get("num_rows", info.numRows);
             row.get("create_time", info.createTime);
@@ -1904,7 +1956,32 @@ vector<TransactionContribInfo> DatabaseServicesMySQL::_transactionContribsImpl(u
                     row.get("level", w.level);
                     row.get("code", w.code);
                     row.get("message", w.message);
-                    contrib.warnings.emplace_back(w);
+                    contrib.warnings.push_back(w);
+                }
+            }
+        }
+    }
+    if (includeRetries) {
+        for (auto& contrib : collection) {
+            if (contrib.numFailedRetries == 0) continue;
+            // Sorting is needed to recover the original ordering of the retries.
+            string const query = _g.select(Sql::STAR) + _g.from("transaction_contrib_retry") +
+                                 _g.where(_g.eq("contrib_id", contrib.id)) +
+                                 _g.orderBy(make_pair("start_time", "ASC"), make_pair("read_time", "ASC"));
+            _conn->execute(query);
+            if (_conn->hasResult()) {
+                database::mysql::Row row;
+                while (_conn->next(row)) {
+                    TransactionContribInfo::FailedRetry r;
+                    row.get("num_bytes", r.numBytes);
+                    row.get("num_rows", r.numRows);
+                    row.get("start_time", r.startTime);
+                    row.get("read_time", r.readTime);
+                    row.get("tmp_file", r.tmpFile);
+                    row.get("http_error", r.httpError);
+                    row.get("system_error", r.systemError);
+                    row.get("error", r.error);
+                    contrib.failedRetries.push_back(r);
                 }
             }
         }
