@@ -72,10 +72,20 @@ void IngestHttpSvc::registerServices() {
                   IngestHttpSvcMod::process(self->serviceProvider(), self->_requestMgr, self->_workerName,
                                             req, resp, "SYNC-PROCESS");
               }},
+             {"PUT", "/ingest/file/:id",
+              [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
+                  IngestHttpSvcMod::process(self->serviceProvider(), self->_requestMgr, self->_workerName,
+                                            req, resp, "SYNC-RETRY");
+              }},
              {"POST", "/ingest/file-async",
               [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
                   IngestHttpSvcMod::process(self->serviceProvider(), self->_requestMgr, self->_workerName,
                                             req, resp, "ASYNC-SUBMIT");
+              }},
+             {"PUT", "/ingest/file-async/:id",
+              [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
+                  IngestHttpSvcMod::process(self->serviceProvider(), self->_requestMgr, self->_workerName,
+                                            req, resp, "ASYNC-RETRY");
               }},
              {"GET", "/ingest/file-async/:id",
               [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {

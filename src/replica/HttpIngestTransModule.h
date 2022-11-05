@@ -135,10 +135,13 @@ private:
      * @param includeWarnings If 'true' then include info on the MySQL warnings
      *   if any were captured after LOAD DATA INFILE. Note that this option is
      *   ignored if longContribFormat == false.
+     * @param includeRetries If 'true' then include info on the failed retries
+     *   if any were made when reading the input data of the contributions. Note that
+     *   this option is ignored if longContribFormat == false.
      * @return A JSON object.
      */
     nlohmann::json _getTransactionContributions(TransactionInfo const& transaction, bool longContribFormat,
-                                                bool includeWarnings) const;
+                                                bool includeWarnings, bool includeRetries) const;
 
     /// Named mutexes are used for acquiring exclusive transient locks on the transaction
     /// management operations performed by the module.

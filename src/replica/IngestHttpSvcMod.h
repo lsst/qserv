@@ -56,7 +56,11 @@ public:
      * Supported values for parameter 'subModuleName':
      *
      *   SYNC-PROCESS  for synchronous execution of the table contribution requests
+     *   SYNC-RETRY    for synchronous retry of a prior request that failed while reading
+     *                 or preprocessing the input data
      *   ASYNC-SUBMIT  submit an asynchronous contribution request
+     *   ASYNC-RETRY   submit an asynchronous retry of a prior request that failed while
+     *                 reading or preprocessing the input data request
      *   ASYNC-STATUS-BY-ID  return a status of a contribution request specified by its identifier
      *   ASYNC-CANCEL-BY-ID  cancel an outstanding contribution request specified by its identifier
      *   ASYNC-STATUS-BY-TRANS-ID  return a status of requests in a scope of the specified
@@ -97,8 +101,14 @@ private:
     /// Process a table contribution request (SYNC).
     nlohmann::json _syncProcessRequest() const;
 
+    /// Make an attempt to retry a table contribution request that failed before (SYNC).
+    nlohmann::json _syncProcessRetry() const;
+
     /// Submit a table contribution request (ASYNC).
     nlohmann::json _asyncSubmitRequest() const;
+
+    /// Make an attempt to retry a table contribution request (ASYNC).
+    nlohmann::json _asyncSubmitRetry() const;
 
     /// Return a status of an existing table contribution request (ASYNC).
     nlohmann::json _asyncRequest() const;
@@ -117,13 +127,21 @@ private:
     /**
      * Process request parameters and create table contribution request
      * of the specified type.
-     * @note The method may throw exceptions in case of any problems with the parameters
-     *   of the request, or other issues encountered during request creation (interaction
-     *   with external services).
+     * @note The method may throw exceptions in case if there are problems
+     *  with parameters request creation, or database services interactions.
      * @param async The optional type of a request to be created.
      * @return A pointer to the created request.
      */
     IngestRequest::Ptr _createRequest(bool async = false) const;
+
+    /**
+     * Locate and evaluate the specified table contribution request, and if it's
+     * eligible for retries then re-initialize it to allow submitting for processing.
+     * @note The method may throw exceptions in case if there are problems
+     *  with parameters request creation, or database services interactions.
+     * @return A pointer to the prepared request.
+     */
+    IngestRequest::Ptr _createRetry(bool async = false) const;
 
     // Input parameters
     ServiceProvider::Ptr const _serviceProvider;

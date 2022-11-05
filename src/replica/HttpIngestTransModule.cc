@@ -92,7 +92,7 @@ json HttpIngestTransModule::executeImpl(string const& subModuleName) {
 
 json HttpIngestTransModule::_getTransactions() {
     debug(__func__);
-    checkApiVersion(__func__, 13);
+    checkApiVersion(__func__, 16);
 
     auto const config = controller()->serviceProvider()->config();
     auto const databaseServices = controller()->serviceProvider()->databaseServices();
@@ -106,6 +106,7 @@ json HttpIngestTransModule::_getTransactions() {
     bool const includeContext = query().optionalUInt64("include_context", 0) != 0;
     bool const includeLog = query().optionalUInt64("include_log", 0) != 0;
     bool const includeWarnings = query().optionalUInt64("include_warnings", 0) != 0;
+    bool const includeRetries = query().optionalUInt64("include_retries", 0) != 0;
 
     debug(__func__, "database=" + databaseName);
     debug(__func__, "family=" + family);
@@ -116,6 +117,7 @@ json HttpIngestTransModule::_getTransactions() {
     debug(__func__, "include_context=" + bool2str(includeContext));
     debug(__func__, "include_log=" + bool2str(includeLog));
     debug(__func__, "include_warnings=" + bool2str(includeWarnings));
+    debug(__func__, "include_retries=" + bool2str(includeRetries));
 
     vector<string> databases;
     if (databaseName.empty()) {
@@ -138,8 +140,8 @@ json HttpIngestTransModule::_getTransactions() {
         for (auto&& transaction : databaseServices->transactions(database.name, includeContext, includeLog)) {
             json transJson = transaction.toJson();
             if (includeContributions) {
-                transJson["contrib"] =
-                        _getTransactionContributions(transaction, longContribFormat, includeWarnings);
+                transJson["contrib"] = _getTransactionContributions(transaction, longContribFormat,
+                                                                    includeWarnings, includeRetries);
             }
             result["databases"][database.name]["transactions"].push_back(transJson);
         }
@@ -149,7 +151,7 @@ json HttpIngestTransModule::_getTransactions() {
 
 json HttpIngestTransModule::_getTransaction() {
     debug(__func__);
-    checkApiVersion(__func__, 13);
+    checkApiVersion(__func__, 16);
 
     auto const config = controller()->serviceProvider()->config();
     auto const databaseServices = controller()->serviceProvider()->databaseServices();
@@ -159,6 +161,7 @@ json HttpIngestTransModule::_getTransaction() {
     bool const includeContext = query().optionalUInt64("include_context", 0) != 0;
     bool const includeLog = query().optionalUInt64("include_log", 0) != 0;
     bool const includeWarnings = query().optionalUInt64("include_warnings", 0) != 0;
+    bool const includeRetries = query().optionalUInt64("include_retries", 0) != 0;
 
     debug(__func__, "id=" + to_string(id));
     debug(__func__, "contrib=" + bool2str(includeContributions));
@@ -166,6 +169,7 @@ json HttpIngestTransModule::_getTransaction() {
     debug(__func__, "include_context=" + bool2str(includeContext));
     debug(__func__, "include_log=" + bool2str(includeLog));
     debug(__func__, "include_warnings=" + bool2str(includeWarnings));
+    debug(__func__, "include_retries=" + bool2str(includeRetries));
 
     auto const transaction = databaseServices->transaction(id, includeContext, includeLog);
     auto const database = config->databaseInfo(transaction.database);
@@ -175,7 +179,8 @@ json HttpIngestTransModule::_getTransaction() {
 
     json transJson = transaction.toJson();
     if (includeContributions) {
-        transJson["contrib"] = _getTransactionContributions(transaction, longContribFormat, includeWarnings);
+        transJson["contrib"] =
+                _getTransactionContributions(transaction, longContribFormat, includeWarnings, includeRetries);
     }
     json result;
     result["databases"][transaction.database]["is_published"] = database.isPublished ? 1 : 0;
@@ -448,16 +453,18 @@ json HttpIngestTransModule::_endTransaction() {
 
 json HttpIngestTransModule::_getContribution() {
     debug(__func__);
-    checkApiVersion(__func__, 13);
+    checkApiVersion(__func__, 16);
 
     unsigned int const id = stoul(params().at("id"));
     bool const includeWarnings = query().optionalUInt64("include_warnings", 0) != 0;
+    bool const includeRetries = query().optionalUInt64("include_retries", 0) != 0;
 
     debug(__func__, "id=" + to_string(id));
     debug(__func__, "include_warnings=" + bool2str(includeWarnings));
+    debug(__func__, "include_retries=" + bool2str(includeRetries));
 
     auto const databaseServices = controller()->serviceProvider()->databaseServices();
-    auto const contrib = databaseServices->transactionContrib(id, includeWarnings);
+    auto const contrib = databaseServices->transactionContrib(id, includeWarnings, includeRetries);
 
     json result;
     result["contribution"] = contrib.toJson();
@@ -524,7 +531,8 @@ void HttpIngestTransModule::_removePartitionFromSecondaryIndex(DatabaseInfo cons
 }
 
 json HttpIngestTransModule::_getTransactionContributions(TransactionInfo const& transaction,
-                                                         bool longContribFormat, bool includeWarnings) const {
+                                                         bool longContribFormat, bool includeWarnings,
+                                                         bool includeRetries) const {
     auto const config = controller()->serviceProvider()->config();
     auto const databaseServices = controller()->serviceProvider()->databaseServices();
     DatabaseInfo const database = config->databaseInfo(transaction.database);
@@ -534,6 +542,7 @@ json HttpIngestTransModule::_getTransactionContributions(TransactionInfo const& 
     unsigned int numChunkFiles = 0;
     unsigned int numChunkOverlapFiles = 0;
     float dataSizeGb = 0;
+    uint64_t numFailedRetries = 0;
     uint64_t numWarnings = 0;
     uint64_t numRows = 0;
     uint64_t numRowsLoaded = 0;
@@ -556,9 +565,9 @@ json HttpIngestTransModule::_getTransactionContributions(TransactionInfo const& 
     TransactionContribInfo::TypeSelector const anyTypeSelector =
             TransactionContribInfo::TypeSelector::SYNC_OR_ASYNC;
 
-    vector<TransactionContribInfo> const contribs =
-            databaseServices->transactionContribs(transaction.id, anyTableSelector, anyWorkerSelector,
-                                                  anyTypeSelector, longContribFormat && includeWarnings);
+    vector<TransactionContribInfo> const contribs = databaseServices->transactionContribs(
+            transaction.id, anyTableSelector, anyWorkerSelector, anyTypeSelector,
+            longContribFormat && includeWarnings, longContribFormat && includeRetries);
 
     for (auto&& contrib : contribs) {
         if (longContribFormat) {
@@ -569,10 +578,11 @@ json HttpIngestTransModule::_getTransactionContributions(TransactionInfo const& 
         numFilesByStatusJson[TransactionContribInfo::status2str(contrib.status)] =
                 numFilesByStatusJson[TransactionContribInfo::status2str(contrib.status)].get<int>() + 1;
 
-        // Don't count incomplete or non-successful contributions for the summary statistics.
-        if (contrib.status != TransactionContribInfo::Status::FINISHED) {
-            continue;
-        }
+        // Don't count incomplete or non-successful contributions for the summary
+        // statistics, except retries as those could be useful for the diagnostic
+        // or the monitoring purposes.
+        bool const isFinished = contrib.status != TransactionContribInfo::Status::FINISHED;
+
         uniqueWorkers.insert(contrib.worker);
         float const contribDataSizeGb = contrib.numBytes / GiB;
 
@@ -584,6 +594,7 @@ json HttpIngestTransModule::_getTransactionContributions(TransactionInfo const& 
         //   as container's 'push_back'! The code below avoid using this operator.
         if (!tableContribJson.contains(contrib.table)) {
             tableContribJson[contrib.table] = json::object({{"data_size_gb", 0},
+                                                            {"num_failed_retries", 0},
                                                             {"num_warnings", 0},
                                                             {"num_rows", 0},
                                                             {"num_rows_loaded", 0},
@@ -591,6 +602,7 @@ json HttpIngestTransModule::_getTransactionContributions(TransactionInfo const& 
         }
         if (!workerContribJson.contains(contrib.worker)) {
             workerContribJson[contrib.worker] = json::object({{"data_size_gb", 0},
+                                                              {"num_failed_retries", 0},
                                                               {"num_warnings", 0},
                                                               {"num_rows", 0},
                                                               {"num_rows_loaded", 0},
@@ -604,53 +616,68 @@ json HttpIngestTransModule::_getTransactionContributions(TransactionInfo const& 
             if (contrib.isOverlap) {
                 if (!tableContribJson[contrib.table].contains("overlap")) {
                     tableContribJson[contrib.table]["overlap"] = json::object({{"data_size_gb", 0},
+                                                                               {"num_failed_retries", 0},
                                                                                {"num_warnings", 0},
                                                                                {"num_rows", 0},
                                                                                {"num_rows_loaded", 0},
                                                                                {"num_files", 0}});
                 }
                 json& objTable = tableContribJson[contrib.table]["overlap"];
-                incrementBy<float>(objTable, "data_size_gb", contribDataSizeGb);
-                incrementBy<uint64_t>(objTable, "num_warnings", contrib.numWarnings);
-                incrementBy<uint64_t>(objTable, "num_rows", contrib.numRows);
-                incrementBy<uint64_t>(objTable, "num_rows_loaded", contrib.numRowsLoaded);
-                incrementBy<unsigned int>(objTable, "num_files", 1);
-                incrementBy<unsigned int>(objWorker, "num_chunk_overlap_files", 1);
-                numChunkOverlapFiles++;
+                if (isFinished) {
+                    incrementBy<float>(objTable, "data_size_gb", contribDataSizeGb);
+                    incrementBy<uint64_t>(objTable, "num_warnings", contrib.numWarnings);
+                    incrementBy<uint64_t>(objTable, "num_rows", contrib.numRows);
+                    incrementBy<uint64_t>(objTable, "num_rows_loaded", contrib.numRowsLoaded);
+                    incrementBy<unsigned int>(objTable, "num_files", 1);
+                    incrementBy<unsigned int>(objWorker, "num_chunk_overlap_files", 1);
+                    numChunkOverlapFiles++;
+                }
+                incrementBy<uint64_t>(objTable, "num_failed_retries", contrib.numFailedRetries);
             } else {
                 json& objTable = tableContribJson[contrib.table];
-                incrementBy<float>(objTable, "data_size_gb", contribDataSizeGb);
-                incrementBy<uint64_t>(objTable, "num_warnings", contrib.numWarnings);
-                incrementBy<uint64_t>(objTable, "num_rows", contrib.numRows);
-                incrementBy<uint64_t>(objTable, "num_rows_loaded", contrib.numRowsLoaded);
-                incrementBy<unsigned int>(objTable, "num_files", 1);
-                incrementBy<unsigned int>(objWorker, "num_chunk_files", 1);
-                numChunkFiles++;
+                if (isFinished) {
+                    incrementBy<float>(objTable, "data_size_gb", contribDataSizeGb);
+                    incrementBy<uint64_t>(objTable, "num_warnings", contrib.numWarnings);
+                    incrementBy<uint64_t>(objTable, "num_rows", contrib.numRows);
+                    incrementBy<uint64_t>(objTable, "num_rows_loaded", contrib.numRowsLoaded);
+                    incrementBy<unsigned int>(objTable, "num_files", 1);
+                    incrementBy<unsigned int>(objWorker, "num_chunk_files", 1);
+                    numChunkFiles++;
+                }
+                incrementBy<uint64_t>(objTable, "num_failed_retries", contrib.numFailedRetries);
             }
         } else {
             json& objTable = tableContribJson[contrib.table];
-            incrementBy<float>(objTable, "data_size_gb", contribDataSizeGb);
-            incrementBy<uint64_t>(objTable, "num_warnings", contrib.numWarnings);
-            incrementBy<uint64_t>(objTable, "num_rows", contrib.numRows);
-            incrementBy<uint64_t>(objTable, "num_rows_loaded", contrib.numRowsLoaded);
-            incrementBy<unsigned int>(objTable, "num_files", 1);
-            incrementBy<unsigned int>(objWorker, "num_regular_files", 1);
-            numRegularFiles++;
+            if (isFinished) {
+                incrementBy<float>(objTable, "data_size_gb", contribDataSizeGb);
+                incrementBy<uint64_t>(objTable, "num_failed_retries", contrib.numFailedRetries);
+                incrementBy<uint64_t>(objTable, "num_warnings", contrib.numWarnings);
+                incrementBy<uint64_t>(objTable, "num_rows", contrib.numRows);
+                incrementBy<uint64_t>(objTable, "num_rows_loaded", contrib.numRowsLoaded);
+                incrementBy<unsigned int>(objTable, "num_files", 1);
+                incrementBy<unsigned int>(objWorker, "num_regular_files", 1);
+                numRegularFiles++;
+            }
+            incrementBy<uint64_t>(objTable, "num_failed_retries", contrib.numFailedRetries);
         }
-        dataSizeGb += contribDataSizeGb;
-        incrementBy<float>(objWorker, "data_size_gb", contribDataSizeGb);
+        if (isFinished) {
+            dataSizeGb += contribDataSizeGb;
+            incrementBy<float>(objWorker, "data_size_gb", contribDataSizeGb);
 
-        numWarnings += contrib.numWarnings;
-        incrementBy<uint64_t>(objWorker, "num_warnings", contrib.numWarnings);
+            numWarnings += contrib.numWarnings;
+            incrementBy<uint64_t>(objWorker, "num_warnings", contrib.numWarnings);
 
-        numRows += contrib.numRows;
-        incrementBy<uint64_t>(objWorker, "num_rows", contrib.numRows);
+            numRows += contrib.numRows;
+            incrementBy<uint64_t>(objWorker, "num_rows", contrib.numRows);
 
-        numRowsLoaded += contrib.numRowsLoaded;
-        incrementBy<uint64_t>(objWorker, "num_rows_loaded", contrib.numRowsLoaded);
+            numRowsLoaded += contrib.numRowsLoaded;
+            incrementBy<uint64_t>(objWorker, "num_rows_loaded", contrib.numRowsLoaded);
 
-        firstContribBeginTime = min(firstContribBeginTime, contrib.createTime);
-        lastContribEndTime = max(lastContribEndTime, contrib.loadTime);
+            firstContribBeginTime = min(firstContribBeginTime, contrib.createTime);
+            lastContribEndTime = max(lastContribEndTime, contrib.loadTime);
+        }
+        numFailedRetries += contrib.numFailedRetries;
+        incrementBy<uint64_t>(objWorker, "num_failed_retries", contrib.numFailedRetries);
     }
     json resultJson;
     resultJson["summary"] = json::object(
@@ -660,6 +687,7 @@ json HttpIngestTransModule::_getTransactionContributions(TransactionInfo const& 
              {"num_chunk_files", numChunkFiles},
              {"num_chunk_overlap_files", numChunkOverlapFiles},
              {"data_size_gb", dataSizeGb},
+             {"num_failed_retries", numFailedRetries},
              {"num_warnings", numWarnings},
              {"num_rows", numRows},
              {"num_rows_loaded", numRowsLoaded},

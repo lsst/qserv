@@ -54,10 +54,13 @@ string IngestHttpSvcMod::context() const { return "INGEST-HTTP-SVC "; }
 
 json IngestHttpSvcMod::executeImpl(string const& subModuleName) {
     debug(__func__, "subModuleName: '" + subModuleName + "'");
-    if (subModuleName == "SYNC-PROCESS")
-        return _syncProcessRequest();
+    if (subModuleName == "SYNC-PROCESS") return _syncProcessRequest();
+    if (subModuleName == "SYNC-RETRY")
+        return _syncProcessRetry();
     else if (subModuleName == "ASYNC-SUBMIT")
         return _asyncSubmitRequest();
+    else if (subModuleName == "ASYNC-RETRY")
+        return _asyncSubmitRetry();
     else if (subModuleName == "ASYNC-STATUS-BY-ID")
         return _asyncRequest();
     else if (subModuleName == "ASYNC-CANCEL-BY-ID")
@@ -79,12 +82,31 @@ json IngestHttpSvcMod::_syncProcessRequest() const {
     return json::object({{"contrib", request->transactionContribInfo().toJson()}});
 }
 
+json IngestHttpSvcMod::_syncProcessRetry() const {
+    debug(__func__);
+    checkApiVersion(__func__, 16);
+
+    auto const request = _createRetry();
+    request->process();
+    return json::object({{"contrib", request->transactionContribInfo().toJson()}});
+}
+
 json IngestHttpSvcMod::_asyncSubmitRequest() const {
     debug(__func__);
     checkApiVersion(__func__, 16);
 
     bool const async = true;
     auto const request = _createRequest(async);
+    _ingestRequestMgr->submit(request);
+    return json::object({{"contrib", request->transactionContribInfo().toJson()}});
+}
+
+json IngestHttpSvcMod::_asyncSubmitRetry() const {
+    debug(__func__);
+    checkApiVersion(__func__, 16);
+
+    bool const async = true;
+    auto const request = _createRetry(async);
     _ingestRequestMgr->submit(request);
     return json::object({{"contrib", request->transactionContribInfo().toJson()}});
 }
@@ -204,6 +226,12 @@ IngestRequest::Ptr IngestHttpSvcMod::_createRequest(bool async) const {
             _serviceProvider, _workerName, transactionId, table, chunk, isOverlap, url, charsetName, async,
             dialectInput, httpMethod, httpData, httpHeaders, maxNumWarnings, maxRetries);
     return request;
+}
+
+IngestRequest::Ptr IngestHttpSvcMod::_createRetry(bool async) const {
+    unsigned int const id = stoul(params().at("id"));
+    debug(__func__, "id: " + to_string(id));
+    return IngestRequest::createRetry(_serviceProvider, _workerName, id, async);
 }
 
 }  // namespace lsst::qserv::replica
