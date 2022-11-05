@@ -217,8 +217,8 @@ IngestRequest::IngestRequest(shared_ptr<ServiceProvider> const& serviceProvider,
     } else {
         _contrib.maxNumWarnings = maxNumWarnings;
     }
-    _contrib.maxRetries =
-            min(maxRetries, serviceProvider->config()->get<unsigned int>("worker", "ingest-max-retries"));
+    _contrib.maxRetries = std::min(
+            maxRetries, serviceProvider->config()->get<unsigned int>("worker", "ingest-max-retries"));
 
     // Prescreen parameters of the request to ensure the request has a valid
     // context (transaction, database, table). Refuse to proceed with registering
@@ -282,45 +282,8 @@ void IngestRequest::process() {
     // No actual processing for the test requests made for unit testing.
     if (serviceProvider() == nullptr) return;
 
-    string const context = ::context_ + string(__func__) + " ";
-    {
-        util::Lock lock(_mtx, context);
-        if (_processing) {
-            throw logic_error(context + "the contribution request " + to_string(_contrib.id) +
-                              " is already being processed or has been processed.");
-        }
-        if (_cancelled) {
-            throw IngestRequestInterrupted(context + "request " + to_string(_contrib.id) +
-                                           " is already cancelled");
-        }
-        // Exceptions will be thrown if the context of the contribution
-        // has disappeared while the contribution was sitting in
-        // the input queue. Note that updating the status of the contribution
-        // in the Replication database won't be possible should this kind
-        // of a change happened.
-        auto const config = serviceProvider()->config();
-        auto const databaseServices = serviceProvider()->databaseServices();
-        auto const trans = databaseServices->transaction(_contrib.transactionId);
-        auto const database = config->databaseInfo(trans.database);
-        if (!database.tableExists(_contrib.table)) {
-            throw invalid_argument(context + "no such table '" + _contrib.table + "' exists in database '" +
-                                   _contrib.database + "'.");
-        }
-        // Verify if any change in the status of the targeted context has happened
-        // since a time the contribution request was made. Note that retrying
-        // the same contribution would be prohibited should this happened.
-        try {
-            IngestRequest::_validateState(trans, database, _contrib);
-        } catch (exception const& ex) {
-            _contrib.error = context + ex.what();
-            _contrib.retryAllowed = false;
-            bool const failed = true;
-            _contrib = databaseServices->startedTransactionContrib(
-                    _contrib, failed, TransactionContribInfo::Status::START_FAILED);
-            throw;
-        }
-        _processing = true;
-    }
+    // Request processing is split into 3 stages to allow interrupting the processing
+    // if the request has been canceled.
     _processStart();
     _processReadData();
     _processLoadData();
@@ -330,47 +293,69 @@ void IngestRequest::cancel() {
     // No actual cancellation for the test requests made for unit testing.
     if (serviceProvider() == nullptr) return;
 
-    string const context = ::context_ + string(__func__) + " ";
-    util::Lock lock(_mtx, context);
-
     // A result from setting the flag will depend on a state of the request.
     // If the requests is already being processed it's up to the processing thread
     // to take actions on the delayed cancellation (if it's not to late for the request).
     _cancelled = true;
-    if (!_processing) {
-        // Cancel the request immediately to prevent any further changes to the state
-        // of the request.
-        bool const failed = true;
-        _contrib = serviceProvider()->databaseServices()->startedTransactionContrib(
-                _contrib, failed, TransactionContribInfo::Status::CANCELLED);
-    }
 }
 
 void IngestRequest::_processStart() {
     string const context = ::context_ + string(__func__) + " ";
+    util::Lock const lock(_mtx, context);
+
+    if (_processing) {
+        throw logic_error(context + "the contribution request " + to_string(_contrib.id) +
+                          " is already being processed or has been processed.");
+    }
+    _processing = true;
+
     bool const failed = true;
     auto const databaseServices = serviceProvider()->databaseServices();
-
-    // The actual processing of the request begins with open a temporary file
-    // where the preprocessed content of the contribution will be stored.
-    {
-        util::Lock lock(_mtx, context);
-        if (_cancelled) {
-            _contrib.error = "cancelled before opening a temporary file.";
-            _contrib.retryAllowed = true;
-            _contrib = databaseServices->startedTransactionContrib(_contrib, failed,
-                                                                   TransactionContribInfo::Status::CANCELLED);
-            throw IngestRequestInterrupted(context + "request " + to_string(_contrib.id) + _contrib.error);
-        }
+    if (_cancelled) {
+        _contrib.error = "cancelled before beginning processing the request.";
+        _contrib.retryAllowed = true;
+        _contrib = databaseServices->startedTransactionContrib(_contrib, failed,
+                                                               TransactionContribInfo::Status::CANCELLED);
+        throw IngestRequestInterrupted(context + "request " + to_string(_contrib.id) + _contrib.error);
     }
+
+    // Validate the request to see if it's still valid in the current context.
+    // Exceptions will be thrown if the context of the contribution
+    // has disappeared while the contribution was sitting in
+    // the input queue. Note that updating the status of the contribution
+    // in the Replication database won't be possible should this kind
+    // of a change happened.
+    auto const trans = databaseServices->transaction(_contrib.transactionId);
+    auto const database = serviceProvider()->config()->databaseInfo(trans.database);
+    if (!database.tableExists(_contrib.table)) {
+        throw invalid_argument(context + "no such table '" + _contrib.table + "' exists in database '" +
+                               _contrib.database + "'.");
+    }
+    // Verify if any change in the status of the targeted context has happened
+    // since a time the contribution request was made. Note that retrying
+    // the same contribution would be prohibited should this happened.
+    try {
+        IngestRequest::_validateState(trans, database, _contrib);
+    } catch (exception const& ex) {
+        _contrib.error = context + ex.what();
+        _contrib.retryAllowed = false;
+        _contrib = databaseServices->startedTransactionContrib(_contrib, failed);
+        throw;
+    }
+
+    // The actual processing of the request begins with opening a temporary file
+    // where the preprocessed content of the contribution will be stored.
+    _openTmpFileAndStart(lock);
+}
+
+void IngestRequest::_openTmpFileAndStart(util::Lock const& lock) {
+    bool const failed = true;
+    auto const databaseServices = serviceProvider()->databaseServices();
     try {
         _contrib.tmpFile = openFile(_contrib.transactionId, _contrib.table, _dialect, _contrib.charsetName,
                                     _contrib.chunk, _contrib.isOverlap);
-        util::Lock lock(_mtx, context);
         _contrib = databaseServices->startedTransactionContrib(_contrib);
-
     } catch (HttpError const& ex) {
-        util::Lock lock(_mtx, context);
         json const errorExt = ex.errorExt();
         if (!errorExt.empty()) {
             _contrib.httpError = errorExt["http_error"];
@@ -381,7 +366,6 @@ void IngestRequest::_processStart() {
         _contrib = databaseServices->startedTransactionContrib(_contrib, failed);
         throw;
     } catch (exception const& ex) {
-        util::Lock lock(_mtx, context);
         _contrib.systemError = errno;
         _contrib.error = ex.what();
         _contrib.retryAllowed = true;
@@ -392,37 +376,35 @@ void IngestRequest::_processStart() {
 
 void IngestRequest::_processReadData() {
     string const context = ::context_ + string(__func__) + " ";
+    util::Lock const lock(_mtx, context);
+
     bool const failed = true;
     auto const databaseServices = serviceProvider()->databaseServices();
 
     // Start reading and preprocessing the input file.
-    {
-        util::Lock lock(_mtx, context);
-        if (_cancelled) {
-            _contrib.error = "cancelled before reading the input file.";
-            _contrib.retryAllowed = true;
-            _contrib = databaseServices->readTransactionContrib(_contrib, failed,
-                                                                TransactionContribInfo::Status::CANCELLED);
-            closeFile();
-            throw IngestRequestInterrupted(context + "request " + to_string(_contrib.id) + _contrib.error);
-        }
+    if (_cancelled) {
+        _contrib.error = "cancelled before reading the input file.";
+        _contrib.retryAllowed = true;
+        _contrib = databaseServices->readTransactionContrib(_contrib, failed,
+                                                            TransactionContribInfo::Status::CANCELLED);
+        closeFile();
+        throw IngestRequestInterrupted(context + "request " + to_string(_contrib.id) + _contrib.error);
     }
     try {
         switch (_resource->scheme()) {
             case Url::FILE:
-                _readLocalFile();
+                _readLocalFile(lock);
                 break;
             case Url::HTTP:
             case Url::HTTPS:
-                _readRemoteFile();
+                _readRemoteFile(lock);
                 break;
             default:
-                throw invalid_argument(string(__func__) + " unsupported url '" + _contrib.url + "'");
+                throw invalid_argument(context + "unsupported url '" + _contrib.url + "'");
         }
-        util::Lock lock(_mtx, context);
         _contrib = databaseServices->readTransactionContrib(_contrib);
+        return;
     } catch (HttpError const& ex) {
-        util::Lock lock(_mtx, context);
         json const errorExt = ex.errorExt();
         if (!errorExt.empty()) {
             _contrib.httpError = errorExt["http_error"];
@@ -434,7 +416,6 @@ void IngestRequest::_processReadData() {
         closeFile();
         throw;
     } catch (exception const& ex) {
-        util::Lock lock(_mtx, context);
         _contrib.systemError = errno;
         _contrib.error = ex.what();
         _contrib.retryAllowed = true;
@@ -446,43 +427,38 @@ void IngestRequest::_processReadData() {
 
 void IngestRequest::_processLoadData() {
     string const context = ::context_ + string(__func__) + " ";
+    util::Lock const lock(_mtx, context);
+
     bool const failed = true;
     auto const databaseServices = serviceProvider()->databaseServices();
 
     // Load the preprocessed input file into MySQL and update the persistent
     // state of the contribution request.
-    {
-        util::Lock lock(_mtx, context);
-        if (_cancelled) {
-            _contrib.error = "cancelled before loading data into MySQL";
-            _contrib.retryAllowed = true;
-            _contrib = databaseServices->loadedTransactionContrib(_contrib, failed,
-                                                                  TransactionContribInfo::Status::CANCELLED);
-            closeFile();
-            throw IngestRequestInterrupted(context + "request " + to_string(_contrib.id) + _contrib.error);
-        }
+    if (_cancelled) {
+        _contrib.error = "cancelled before loading data into MySQL";
+        _contrib.retryAllowed = true;
+        _contrib = databaseServices->loadedTransactionContrib(_contrib, failed,
+                                                              TransactionContribInfo::Status::CANCELLED);
+        closeFile();
+        throw IngestRequestInterrupted(context + "request " + to_string(_contrib.id) + _contrib.error);
     }
     try {
         loadDataIntoTable(_contrib.maxNumWarnings);
-        util::Lock lock(_mtx, context);
         _contrib.numWarnings = numWarnings();
         _contrib.warnings = warnings();
         _contrib.numRowsLoaded = numRowsLoaded();
         _contrib = databaseServices->loadedTransactionContrib(_contrib);
     } catch (exception const& ex) {
-        {
-            util::Lock lock(_mtx, context);
-            _contrib.systemError = errno;
-            _contrib.error = ex.what();
-            _contrib = databaseServices->loadedTransactionContrib(_contrib, failed);
-        }
+        _contrib.systemError = errno;
+        _contrib.error = ex.what();
+        _contrib = databaseServices->loadedTransactionContrib(_contrib, failed);
         closeFile();
         throw;
     }
     closeFile();
 }
 
-void IngestRequest::_readLocalFile() {
+void IngestRequest::_readLocalFile(util::Lock const& lock) {
     string const context = ::context_ + string(__func__) + " ";
 
     _contrib.numBytes = 0;
@@ -513,7 +489,7 @@ void IngestRequest::_readLocalFile() {
     } while (!eof);
 }
 
-void IngestRequest::_readRemoteFile() {
+void IngestRequest::_readRemoteFile(util::Lock const& lock) {
     _contrib.numBytes = 0;
     _contrib.numRows = 0;
 
@@ -524,7 +500,7 @@ void IngestRequest::_readRemoteFile() {
 
     // The configuration may be updated later if certificate bundles were loaded
     // by a client into the config store.
-    auto clientConfig = _clientConfig();
+    auto clientConfig = _clientConfig(lock);
 
     // Check if values of the certificate bundles were loaded into the configuration
     // store for the catalog. If so then write the certificates into temporary files
@@ -562,7 +538,7 @@ void IngestRequest::_readRemoteFile() {
     parser->parse(emptyRecord.data(), emptyRecord.size(), flush, reportRow);
 }
 
-HttpClientConfig IngestRequest::_clientConfig() const {
+HttpClientConfig IngestRequest::_clientConfig(util::Lock const& lock) const {
     auto const databaseServices = serviceProvider()->databaseServices();
     auto const getString = [&](string& val, string const& key) -> bool {
         try {

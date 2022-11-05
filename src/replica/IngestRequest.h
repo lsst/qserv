@@ -185,17 +185,20 @@ private:
     void _processReadData();
     void _processLoadData();
 
+    /// Open the temporary file and mark the contribution as started.
+    void _openTmpFileAndStart(util::Lock const& lock);
+
     /// Read a local file and preprocess it.
-    void _readLocalFile();
+    void _readLocalFile(util::Lock const& lock);
 
     /// Pull an input file from a remote HTTP service and preprocess it.
-    void _readRemoteFile();
+    void _readRemoteFile(util::Lock const& lock);
 
     /**
      * Pull file reader's configuration from the config store.
      * @return The configuration object.
      */
-    HttpClientConfig _clientConfig() const;
+    HttpClientConfig _clientConfig(util::Lock const& lock) const;
 
     /// Mutex guarding internal state.
     mutable util::Mutex _mtx;
@@ -211,9 +214,8 @@ private:
     /// The flag is set by method process(), and once it's set it's never
     /// reset. The flag is used for coordinating state change with other methods
     /// of the class. In particular, setting this flag would prevent executing
-    /// the request more than one time. The flag is also used by the request
-    /// cancellation method cancel().
-    std::atomic<bool> _processing{false};
+    /// the request more than one time.
+    bool _processing = false;
 
     // Setting the flag will interrupt request processing (if the one is
     // still going on).

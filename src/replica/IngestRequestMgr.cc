@@ -156,8 +156,7 @@ shared_ptr<IngestRequestMgr> IngestRequestMgr::create(shared_ptr<ServiceProvider
             // the auto-resume policy.
             contrib.error = errorLoadingIntoMySQL;
             contrib.retryAllowed = false;
-            databaseServices->loadedTransactionContrib(contrib, failed,
-                                                       TransactionContribInfo::Status::LOAD_FAILED);
+            databaseServices->loadedTransactionContrib(contrib, failed);
             continue;
         }
         if (contrib.startTime != 0) {
@@ -170,8 +169,7 @@ shared_ptr<IngestRequestMgr> IngestRequestMgr::create(shared_ptr<ServiceProvider
                 // Cancel at reading the input data phase
                 contrib.error = errorReadData;
                 contrib.retryAllowed = true;
-                databaseServices->readTransactionContrib(contrib, failed,
-                                                         TransactionContribInfo::Status::READ_FAILED);
+                databaseServices->readTransactionContrib(contrib, failed);
             }
         } else {
             // Opening the input source might get interrupted by the restart.
@@ -182,8 +180,7 @@ shared_ptr<IngestRequestMgr> IngestRequestMgr::create(shared_ptr<ServiceProvider
                 // Cancel at the starting phase
                 contrib.error = errorStart;
                 contrib.retryAllowed = true;
-                databaseServices->startedTransactionContrib(contrib, failed,
-                                                            TransactionContribInfo::Status::START_FAILED);
+                databaseServices->startedTransactionContrib(contrib, failed);
             }
         }
     }
