@@ -425,48 +425,76 @@ void IngestRequest::_processReadData() {
     bool const failed = true;
     auto const databaseServices = serviceProvider()->databaseServices();
 
-    // Start reading and preprocessing the input file.
-    if (_cancelled) {
-        _contrib.error = "cancelled before reading the input file.";
-        _contrib.retryAllowed = true;
-        _contrib = databaseServices->readTransactionContrib(_contrib, failed,
-                                                            TransactionContribInfo::Status::CANCELLED);
-        closeFile();
-        throw IngestRequestInterrupted(context + "request " + to_string(_contrib.id) + _contrib.error);
-    }
-    try {
-        switch (_resource->scheme()) {
-            case Url::FILE:
-                _readLocalFile(lock);
-                break;
-            case Url::HTTP:
-            case Url::HTTPS:
-                _readRemoteFile(lock);
-                break;
-            default:
-                throw invalid_argument(context + "unsupported url '" + _contrib.url + "'");
+    // Loop over retries (if any). The loop terminates if the file was successfuly read/processed
+    // or after hitting the limit of retries set for the request.
+    while (true) {
+        // Start reading and preprocessing the input file.
+        if (_cancelled) {
+            _contrib.error = "cancelled before reading the input file.";
+            _contrib.retryAllowed = true;
+            _contrib = databaseServices->readTransactionContrib(_contrib, failed,
+                                                                TransactionContribInfo::Status::CANCELLED);
+            closeFile();
+            throw IngestRequestInterrupted(context + "request " + to_string(_contrib.id) + _contrib.error);
         }
-        _contrib = databaseServices->readTransactionContrib(_contrib);
-        return;
-    } catch (HttpError const& ex) {
-        json const errorExt = ex.errorExt();
-        if (!errorExt.empty()) {
-            _contrib.httpError = errorExt["http_error"];
-            _contrib.systemError = errorExt["system_error"];
+        try {
+            switch (_resource->scheme()) {
+                case Url::FILE:
+                    _readLocalFile(lock);
+                    break;
+                case Url::HTTP:
+                case Url::HTTPS:
+                    _readRemoteFile(lock);
+                    break;
+                default:
+                    throw invalid_argument(context + "unsupported url '" + _contrib.url + "'");
+            }
+            _contrib = databaseServices->readTransactionContrib(_contrib);
+            return;
+        } catch (HttpError const& ex) {
+            json const errorExt = ex.errorExt();
+            if (!errorExt.empty()) {
+                _contrib.httpError = errorExt["http_error"];
+                _contrib.systemError = errorExt["system_error"];
+            }
+            _contrib.error = ex.what();
+            _contrib.retryAllowed = true;
+            _contrib = databaseServices->readTransactionContrib(_contrib, failed);
+            if (!_closeTmpFileAndRetry(lock)) throw;
+        } catch (exception const& ex) {
+            _contrib.systemError = errno;
+            _contrib.error = ex.what();
+            _contrib.retryAllowed = true;
+            _contrib = databaseServices->readTransactionContrib(_contrib, failed);
+            if (!_closeTmpFileAndRetry(lock)) throw;
         }
-        _contrib.error = ex.what();
-        _contrib.retryAllowed = true;
-        _contrib = databaseServices->readTransactionContrib(_contrib, failed);
-        closeFile();
-        throw;
-    } catch (exception const& ex) {
-        _contrib.systemError = errno;
-        _contrib.error = ex.what();
-        _contrib.retryAllowed = true;
-        _contrib = databaseServices->readTransactionContrib(_contrib, failed);
-        closeFile();
-        throw;
     }
+}
+
+bool IngestRequest::_closeTmpFileAndRetry(util::Lock const& lock) {
+    closeFile();
+    if (_contrib.numFailedRetries >= _contrib.maxRetries) return false;
+
+    // Prepare a context for the next attempt to read the contribution.
+
+    // Move counters and error status codes from the contribution object
+    // into the retry. The corresponding fields of the contribution objects
+    // will get reset to the initial values (which are the same as in the default
+    // constructed retry object).
+    TransactionContribInfo::FailedRetry const failedRetry =
+            _contrib.resetForRetry(_contrib.status, _contrib.async);
+
+    // This method will open the new temporary file save the updated state of
+    // the contribution to prepare the current context for the next attempt
+    // to read the input data.
+    _openTmpFileAndStart(lock);
+
+    // The retry object has to be saved separately.
+    _contrib.failedRetries.push_back(failedRetry);
+    _contrib.numFailedRetries = _contrib.failedRetries.size();
+    _contrib = serviceProvider()->databaseServices()->saveLastTransactionContribRetry(_contrib);
+
+    return true;
 }
 
 void IngestRequest::_processLoadData() {

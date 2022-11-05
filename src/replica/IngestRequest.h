@@ -215,6 +215,9 @@ private:
     /// Open the temporary file and mark the contribution as started.
     void _openTmpFileAndStart(util::Lock const& lock);
 
+    /// @return 'true' if retry is possible.
+    bool _closeTmpFileAndRetry(util::Lock const& lock);
+
     /// Read a local file and preprocess it.
     void _readLocalFile(util::Lock const& lock);
 
