@@ -239,7 +239,7 @@ MYSQL_RES* QueryRunner::_primeResult(string const& query) {
 
 class ChunkResourceRequest {
 public:
-    ChunkResourceRequest(shared_ptr<ChunkResourceMgr> const& mgr, proto::TaskMsg const& msg)
+    ChunkResourceRequest(ChunkResourceMgr::Ptr const& mgr, proto::TaskMsg const& msg)
             // Use old-school member initializers because gcc 4.8.5
             // miscompiles the code when using brace initializers (DM-4704).
             : _mgr(mgr), _msg(msg) {}
@@ -305,8 +305,12 @@ bool QueryRunner::_dispatchChannel() {
     try {
         util::Timer subChunkT;
         subChunkT.start();
+        /* &&&
         ChunkResourceRequest req(_chunkResourceMgr, tMsg);
         ChunkResource cr(req.getResourceFragment(fragNum));
+        */
+        auto req = make_unique<ChunkResourceRequest>(_chunkResourceMgr, tMsg);
+        auto cr = make_unique<ChunkResource>(req->getResourceFragment(fragNum));
         subChunkT.stop();
         auto logSubChunk = qrSubChunkHist.addTime(subChunkT.getElapsed(), "");
         LOGS(_log, LOG_LVL_DEBUG, "subchunk time=" << subChunkT.getElapsed() << " " << logSubChunk);
@@ -345,8 +349,12 @@ bool QueryRunner::_dispatchChannel() {
                 }
             }
 
+            // Subchunk temporary tables no longer needed.
+            cr.reset();
+            req.reset();
+
             // Pass all information on to the shared object to add on to
-            // an existing message or build a new one as needed.
+            // an existing message or build a new message as needed.
             if (_task->getSendChannel()->buildAndTransmitResult(res, numFields, *_task, _largeResult,
                                                                 _multiError, _cancelled, readRowsOk)) {
                 erred = true;
