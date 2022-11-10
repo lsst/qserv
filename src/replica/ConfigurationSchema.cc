@@ -361,7 +361,30 @@ json const ConfigurationSchema::_schemaJson = json::object(
              {"default", "/qserv/data/ingest"}}},
            {"ingest-charset-name",
             {{"description", "The name of a character set for parsing the payload of the contributions."},
-             {"default", "latin1"}}}}}});
+             {"default", "latin1"}}},
+           {"ingest-num-retries",
+            {{"description",
+              "The default number of the automated retries of failed contribution attempts"
+              " in cases when such retries are still possible. The limit can be changed for"
+              " individual contributions. Note that the effective number of retries specified"
+              " by this parameter or the one set in the contribution requests can not"
+              " exceed the 'hard' limit set in the related parameter 'worker','ingest-max-retries'."
+              " Setting a value of the parameter to 0 will disable automatic retries (unless they are"
+              " explicitly enabled or requested by the ingest workflows for individual contributions)."},
+             {"empty-allowed", 1},
+             {"default", 1}}},
+           {"ingest-max-retries",
+            {{"description",
+              "The maximum number of the automated retries of failed contribution attempts"
+              " in cases when such retries are still possible. The parameter represents the 'hard'"
+              " limit for the number of retries regardless of what's specified in the related"
+              " parameter 'worker','ingest-num-retries' or in the contributions requests."
+              " The primary purpose of the parameter is to prevent accidental overloading"
+              " of the ingest system should a very large number of retries accidentally specified"
+              " by the ingest workflows for individual contributions. Setting a value of the parameter"
+              " to 0 will unconditionally disable any retries."},
+             {"empty-allowed", 1},
+             {"default", 10}}}}}});
 
 string ConfigurationSchema::description(string const& category, string const& param) {
     return _attributeValue<string>(category, param, "description", "");

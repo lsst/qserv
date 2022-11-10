@@ -31,14 +31,17 @@
 #fwk-ingest-contrib-info table pre.database_table {
     color:#007bff;
 }
+table#fwk-ingest-contrib-info-retries tbody pre,
 table#fwk-ingest-contrib-info-warnings tbody pre {
     padding: 0;
     margin: 0;
     margin-top: 3px;
 }
+table#fwk-ingest-contrib-info-retries .left-aligned,
 table#fwk-ingest-contrib-info-warnings .left-aligned {
     text-align: left;
 }
+table#fwk-ingest-contrib-info-retries .right-aligned,
 table#fwk-ingest-contrib-info-warnings .right-aligned {
     text-align: right;
 }

@@ -348,6 +348,11 @@ CREATE TABLE IF NOT EXISTS `transaction_contrib` (
 
   `type`  ENUM ('SYNC', 'ASYNC') NOT NULL DEFAULT 'SYNC' ,
 
+  `max_retries`        INT UNSIGNED NOT NULL DEFAULT 0 ,  -- the number of retries allowed on failed input reads
+  `num_failed_retries` INT UNSIGNED NOT NULL DEFAULT 0 ,  -- the actuall number of failed retries. The number is stored here
+                                                          -- to optimize summary reports on the contributions without pulling
+                                                          -- the detailed info on the retries from the related table
+                                                          -- `transaction_contrib_retry`.
   `num_bytes`   BIGINT UNSIGNED   NOT NULL DEFAULT 0 ,
   `num_rows`    BIGINT UNSIGNED   NOT NULL DEFAULT 0 ,
   `create_time` BIGINT UNSIGNED   NOT NULL DEFAULT 0 ,    -- the time a request was received and (possibly) queued
@@ -430,6 +435,31 @@ ENGINE = InnoDB
 COMMENT = 'Warnings captured after executing "LOAD DATA [LOCAL] INFILE ..." for
  the corresponding transaction contributions';
 
+CREATE TABLE IF NOT EXISTS `transaction_contrib_retry` (
+  `contrib_id` INT UNSIGNED NOT NULL ,
+
+  `num_bytes`  BIGINT UNSIGNED NOT NULL DEFAULT 0 ,
+  `num_rows`   BIGINT UNSIGNED NOT NULL DEFAULT 0 ,
+  `start_time` BIGINT UNSIGNED NOT NULL DEFAULT 0 , -- the time the reading/loading input data started
+  `read_time`  BIGINT UNSIGNED NOT NULL DEFAULT 0 , -- the time the operation failed
+
+  `tmp_file` TEXT NOT NULL ,  -- the temporary file open to store preprocessed data
+
+  -- Columns for storing the extended info on a problem that prevented a request
+  -- from succeeding.
+  `http_error`   INT  NOT NULL DEFAULT 0 ,  -- HTTP response code, if applies to a request
+  `system_error` INT  NOT NULL DEFAULT 0 ,  -- the UNIX errno captured at a point where a problem occurred
+  `error`        TEXT NOT NULL DEFAULT '' , -- the human-readable message
+
+  CONSTRAINT `transaction_contrib_retry_fk_1`
+    FOREIGN KEY (`contrib_id`)
+    REFERENCES `transaction_contrib` (`id`)
+    ON DELETE CASCADE
+    ON UPDATE CASCADE
+)
+ENGINE = InnoDB
+COMMENT = 'Info on the failed retries to pull the input data of the corresponding transaction contributions';
+
 CREATE TABLE IF NOT EXISTS `database_ingest` (
   `database` VARCHAR(255) NOT NULL ,
   `category` VARCHAR(255) NOT NULL ,
@@ -489,4 +519,4 @@ ENGINE = InnoDB
 COMMENT = 'Metadata about database as a whole, key-value pairs' ;
 
 -- Add record for schema version, migration script expects this record to exist
-INSERT INTO `QMetadata` (`metakey`, `value`) VALUES ('version', '12');
+INSERT INTO `QMetadata` (`metakey`, `value`) VALUES ('version', '13');

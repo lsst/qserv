@@ -94,7 +94,7 @@ public:
             csv::DialectInput const& dialectInput, std::string const& httpMethod = "GET",
             std::string const& httpData = std::string(),
             std::vector<std::string> const& httpHeaders = std::vector<std::string>(),
-            unsigned int maxNumWarnings = 0);
+            unsigned int maxNumWarnings = 0, unsigned int maxRetries = 0);
 
     /**
      * The factory method for instantiating the request from an existing contribution.
@@ -122,6 +122,33 @@ public:
      * @return A newly created instance of the request object.
      */
     static std::shared_ptr<IngestRequest> test(TransactionContribInfo const& contrib);
+
+    /**
+     * The factory method for instantiating the request from an existing contribution.
+     *
+     * Parameters of the request will be still validated to ensure the request was
+     * failed while attempting to read or preprocess the input data. The method will
+     * also ensure the original request was processed at the same worker as the one
+     * specified in the parameter \param workerName. The processing mode (SYNC or ASYNC)
+     * of the request will be updated to a value specified in the input parameter
+     * \param async.
+     *
+     * @note Unlike the method create(), the request won't be re-created in the database.
+     *   And it will retain the original identifier.
+     *
+     * @param serviceProvider The provider is needed to access various services of
+     *   the Replication system's framework, such as the Configuration service,
+     *   the Database service, etc.
+     * @param workerName The name of a worker this service is acting upon.
+     * @param contribId A unique identifier of an existing contribution request.
+     * @param async The processing mode to be set at the request for bookkeeping purposes.
+     * @throw std::invalid_argument For non-existing request, or incorrect values of
+     *   the input parameters.
+     * @return A newly created instance of the request object.
+     */
+    static std::shared_ptr<IngestRequest> createRetry(std::shared_ptr<ServiceProvider> const& serviceProvider,
+                                                      std::string const& workerName, unsigned int contribId,
+                                                      bool async);
 
     /// @return The descriptor of the request.
     TransactionContribInfo transactionContribInfo() const;
@@ -170,7 +197,7 @@ private:
                   std::string const& url, std::string const& charsetName, bool async,
                   csv::DialectInput const& dialectInput, std::string const& httpMethod,
                   std::string const& httpData, std::vector<std::string> const& httpHeaders,
-                  unsigned int maxNumWarnings);
+                  unsigned int maxNumWarnings, unsigned int maxRetries);
 
     /// @see method IngestRequest::resume()
     IngestRequest(std::shared_ptr<ServiceProvider> const& serviceProvider, std::string const& workerName,
@@ -185,17 +212,23 @@ private:
     void _processReadData();
     void _processLoadData();
 
+    /// Open the temporary file and mark the contribution as started.
+    void _openTmpFileAndStart(util::Lock const& lock);
+
+    /// @return 'true' if retry is possible.
+    bool _closeTmpFileAndRetry(util::Lock const& lock);
+
     /// Read a local file and preprocess it.
-    void _readLocalFile();
+    void _readLocalFile(util::Lock const& lock);
 
     /// Pull an input file from a remote HTTP service and preprocess it.
-    void _readRemoteFile();
+    void _readRemoteFile(util::Lock const& lock);
 
     /**
      * Pull file reader's configuration from the config store.
      * @return The configuration object.
      */
-    HttpClientConfig _clientConfig() const;
+    HttpClientConfig _clientConfig(util::Lock const& lock) const;
 
     /// Mutex guarding internal state.
     mutable util::Mutex _mtx;
@@ -211,9 +244,8 @@ private:
     /// The flag is set by method process(), and once it's set it's never
     /// reset. The flag is used for coordinating state change with other methods
     /// of the class. In particular, setting this flag would prevent executing
-    /// the request more than one time. The flag is also used by the request
-    /// cancellation method cancel().
-    std::atomic<bool> _processing{false};
+    /// the request more than one time.
+    bool _processing = false;
 
     // Setting the flag will interrupt request processing (if the one is
     // still going on).

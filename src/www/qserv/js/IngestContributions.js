@@ -226,6 +226,7 @@ function(CSSLoader,
           <th></th>
           <th></th>
           <th></th>
+          <th></th>
         </tr>
         <tr>
           <th class="sticky right-aligned">Id</th>
@@ -249,6 +250,7 @@ function(CSSLoader,
           <th class="sticky right-aligned">Loaded</th>
           <th class="sticky right-aligned">Read</th>
           <th class="sticky right-aligned">Load</th>
+          <th class="sticky right-aligned">Retries</th>
           <th class="sticky right-aligned">Warnings</th>
           <th class="sticky">Error</th>
           <th class="sticky">Url</th>
@@ -602,6 +604,7 @@ function(CSSLoader,
   <td class="right-aligned"><pre>${file.num_rows_loaded}</pre></td>
   <th class="right-aligned"><pre>${readPerfStr}</pre></th>
   <th class="right-aligned"><pre>${loadPerfStr}</pre></th>
+  <td class="right-aligned"><pre>${file.num_failed_retries}</pre></td>
   <td class="right-aligned"><pre>${file.num_warnings}</pre></td>
   <td style="color:maroon;">${file.error}</td>
   <td><pre>${file.url}</pre></td>

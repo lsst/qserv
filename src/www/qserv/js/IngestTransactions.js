@@ -91,7 +91,7 @@ function(CSSLoader,
           <th rowspan="2" class="right-aligned">Id</th>
           <th rowspan="2" class="center-aligned">State</th>
           <th colspan="8" class="left-aligned">Timing</th>
-          <th colspan="9" class="left-aligned">Contributions</th>
+          <th colspan="10" class="left-aligned">Contributions</th>
         </tr>
         <tr>
           <th class="right-aligned"><elem style="color:red;">&darr;</elem></th>
@@ -109,6 +109,7 @@ function(CSSLoader,
           <th class="right-aligned">Files</th>
           <th class="right-aligned">Rows</th>
           <th class="right-aligned">Rows&nbsp;loaded</th>
+          <th class="right-aligned">Retries</th>
           <th class="right-aligned">Warnings</th>
           <th class="right-aligned">Data [GB]</th>
         </tr>
@@ -271,9 +272,11 @@ function(CSSLoader,
                         let numFiles = numRegular + numChunks + numChunkOverlaps;
                         let numRows = info.contrib.summary.num_rows;
                         let numRowsLoaded = info.contrib.summary.num_rows_loaded;
+                        let numFailedRetries = info.contrib.summary.num_failed_retries;
                         let numWarnings = info.contrib.summary.num_warnings;
                         let dataSize = info.contrib.summary.data_size_gb.toFixed(2);
                         let attentionCssClass4rows = numRowsLoaded === numRows ? '' : 'table-danger';
+                        let attentionCssClass4retries = numFailedRetries === 0 ? '' : 'table-warning';    
                         let attentionCssClass4warnings = numWarnings === 0 ? '' : 'table-danger';    
                         return html + `
 <tr>
@@ -298,6 +301,7 @@ function(CSSLoader,
   <td class="right-aligned"><pre>${numFiles}</pre></td>
   <td class="right-aligned"><pre>${numRows}</pre></td>
   <td class="right-aligned ${attentionCssClass4rows}"><pre>${numRowsLoaded}</pre></td>
+  <td class="right-aligned ${attentionCssClass4retries}"><pre>${numFailedRetries}</pre></td>
   <td class="right-aligned ${attentionCssClass4warnings}"><pre>${numWarnings}</pre></td>
   <td class="right-aligned"><pre>${dataSize}</pre></td>
 </tr>`;

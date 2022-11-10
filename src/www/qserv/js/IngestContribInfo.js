@@ -15,9 +15,6 @@ function(CSSLoader,
 
     class IngestContribInfo extends FwkApplication {
 
-        /// @returns the suggested server-side timeout for retreiving results 
-        static update_ival_sec() { return 3600; }
-
         constructor(name) {
             super(name);
         }
@@ -38,7 +35,7 @@ function(CSSLoader,
                     this._prev_update_sec = 0;
                 }
                 let now_sec = Fwk.now().sec;
-                if (now_sec - this._prev_update_sec > IngestContribInfo.update_ival_sec()) {
+                if (now_sec - this._prev_update_sec > this._update_interval_sec()) {
                     this._prev_update_sec = now_sec;
                     this._load();
                 }
@@ -64,11 +61,11 @@ function(CSSLoader,
     <input type="number" id="contrib-id" class="form-control" value="">
   </div>
   <div class="form-group col-md-1">
-    <label for="query-update-interval">Interval <i class="bi bi-arrow-repeat"></i></label>
-    <select id="query-update-interval" class="form-control">
-    <option value="10">10 sec</option>
+    <label for="contrib-update-interval">Interval <i class="bi bi-arrow-repeat"></i></label>
+    <select id="contrib-update-interval" class="form-control">
+    <option value="10" selected>10 sec</option>
     <option value="20">20 sec</option>
-    <option value="30" selected>30 sec</option>
+    <option value="30">30 sec</option>
     <option value="60">1 min</option>
     <option value="120">2 min</option>
     <option value="300">5 min</option>
@@ -141,12 +138,16 @@ function(CSSLoader,
           <td style="text-align:left"><pre id="num_warnings"></pre></td>
         </tr>
         <tr>
-          <th style="text-align:left" scope="row">http_error</th>
-          <td style="text-align:left"><pre id="http_error"></pre></td>
+          <th style="text-align:left" scope="row">max_retries</th>
+          <td style="text-align:left"><pre id="max_retries"></pre></td>
         </tr>
         <tr>
-          <th style="text-align:left" scope="row">system_error</th>
-          <td style="text-align:left"><pre id="system_error"></pre></td>
+          <th style="text-align:left" scope="row">num_failed_retries</th>
+          <td style="text-align:left"><pre id="num_failed_retries"></pre></td>
+        </tr>
+        <tr>
+          <th style="text-align:left" scope="row">retry_allowed</th>
+          <td style="text-align:left"><pre id="retry_allowed"></pre></td>
         </tr>
       </tbody>
     </table>
@@ -207,12 +208,16 @@ function(CSSLoader,
           <td style="text-align:left"><pre id="http_headers"></pre></td>
         </tr>
         <tr>
-          <th style="text-align:left" scope="row">error</th>
-          <td style="text-align:left"><pre id="error"></pre></td>
+          <th style="text-align:left" scope="row">http_error</th>
+          <td style="text-align:left"><pre id="http_error"></pre></td>
         </tr>
         <tr>
-          <th style="text-align:left" scope="row">retry_allowed</th>
-          <td style="text-align:left"><pre id="retry_allowed"></pre></td>
+          <th style="text-align:left" scope="row">system_error</th>
+          <td style="text-align:left"><pre id="system_error"></pre></td>
+        </tr>
+        <tr>
+          <th style="text-align:left" scope="row">error</th>
+          <td style="text-align:left"><pre id="error"></pre></td>
         </tr>
       </tbody>
     </table>
@@ -220,6 +225,27 @@ function(CSSLoader,
 </div>
 <div class="row">
   <div class="col">
+    <h2>Failed retries to read the input data</h2>
+    <table class="table table-sm table-hover table-bordered" id="fwk-ingest-contrib-info-retries">
+      <thead class="thead-light">
+        <tr>
+          <th class="left-aligned">start_time</th>
+          <th class="left-aligned">read_time</th>
+          <th class="right-aligned">num_bytes</th>
+          <th class="right-aligned">num_rows</th>
+          <th class="left-aligned">tmp_file</th>
+          <th class="right-aligned">http_error</th>
+          <th class="right-aligned">system_error</th>
+          <th class="left-aligned">error</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</div>
+<div class="row">
+  <div class="col">
+    <h2>MySQL warnings</h2>
     <table class="table table-sm table-hover table-bordered" id="fwk-ingest-contrib-info-warnings">
       <thead class="thead-light">
         <tr>
@@ -252,11 +278,18 @@ function(CSSLoader,
         }
         _get_contrib_id() { return this._form_control('input', 'contrib-id').val(); }
         _set_contrib_id(contrib_id) { this._form_control('input', 'contrib-id').val(contrib_id); }
+        _update_interval_sec() { return this._form_control('select', 'contrib-update-interval').val(); }
         _table_warnings() {
             if (this._table_warnings_obj === undefined) {
                 this._table_warnings_obj = this.fwk_app_container.find('table#fwk-ingest-contrib-info-warnings');
             }
             return this._table_warnings_obj;
+        }
+        _table_retries() {
+            if (this._table_retries_obj === undefined) {
+                this._table_retries_obj = this.fwk_app_container.find('table#fwk-ingest-contrib-info-retries');
+            }
+            return this._table_retries_obj;
         }
         _info() {
             if (this._info_obj === undefined) {
@@ -289,7 +322,7 @@ function(CSSLoader,
         _load_contrib(contrib_id) {
             Fwk.web_service_GET(
                 "/ingest/trans/contrib/" + contrib_id,
-                {include_warnings: 1, version: Common.RestAPIVersion},
+                {include_warnings: 1, include_retries: 1, version: Common.RestAPIVersion},
                 (data) => {
                     console.log(data["contribution"]);
                     if (!data.success) {
@@ -322,6 +355,9 @@ function(CSSLoader,
             this._set_info("max_num_warnings", "");
             this._set_info("num_warnings", "");
             this._info_attr_parent("num_warnings").removeClass('table-danger');
+            this._set_info("max_retries", "");
+            this._set_info("num_failed_retries", "");
+            this._info_attr_parent("num_failed_retries").removeClass('table-warning');
             this._set_info("http_error", "");
             this._set_info("system_error", "");
             this._set_info("error", "");
@@ -362,14 +398,20 @@ function(CSSLoader,
                 this._info_attr_parent("num_rows_loaded").addClass('table-danger');
             }
             this._set_info("max_num_warnings", contrib.max_num_warnings);
-
             this._set_info("num_warnings", contrib.num_warnings);
             if (contrib.num_warnings === 0) {
                 this._info_attr_parent("num_warnings").removeClass('table-danger');
             } else {
                 this._info_attr_parent("num_warnings").addClass('table-danger');
             }
-            this._set_info("http_error", contrib.http_error);
+            this._set_info("max_retries", contrib.max_retries);
+            this._set_info("num_failed_retries", contrib.num_failed_retries);
+            if (contrib.num_failed_retries === 0) {
+              this._info_attr_parent("num_failed_retries").removeClass('table-warning');
+          } else {
+              this._info_attr_parent("num_failed_retries").addClass('table-warning');
+          }
+          this._set_info("http_error", contrib.http_error);
             this._set_info("system_error", contrib.system_error);
             this._set_info("error", contrib.error);
             this._set_info("retry_allowed", contrib.retry_allowed);
@@ -414,6 +456,30 @@ function(CSSLoader,
             // like '<', '>', etc.
             for (let i in contrib.warnings) {
                 tbody.find('td#' + i).text(contrib.warnings[i].message);
+            }
+
+            html = '';
+            for (let i in contrib.failed_retries) {
+                let retry = contrib.failed_retries[i];
+                html += `
+<tr>
+  <td class="left-aligned"><pre>${retry.start_time ? (new Date(retry.start_time)).toLocalTimeString('iso') : ""}</pre></td>
+  <td class="left-aligned"><pre>${retry.read_time ? (new Date(retry.read_time)).toLocalTimeString('iso') : ""}</pre></td>
+  <td class="right-aligned"><pre>${retry.num_bytes}</pre></td>
+  <td class="right-aligned"><pre>${retry.num_rows}</pre></td>
+  <td class="left-aligned"><pre>${retry.tmp_file}</pre></td>
+  <td class="right-aligned"><pre>${retry.http_error}</pre></td>
+  <td class="right-aligned"><pre>${retry.system_error}</pre></td>
+  <td class="left-aligned" id="${i}">Loading...</td>
+</tr>`;
+            }
+            tbody = this._table_retries().children('tbody');
+            tbody.html(html);
+            // Messages are set via DOM to avoid failures that may arrise during
+            // static HTML generation due to special HTML tags or markup symbols
+            // like '<', '>', etc.
+            for (let i in contrib.failed_retries) {
+                tbody.find('td#' + i).text(contrib.failed_retries[i].error);
             }
         }
         _level2class(level) {

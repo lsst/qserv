@@ -185,7 +185,7 @@ function(CSSLoader,
                 {database: current_database, contrib: 1, contrib_long: 0, version: Common.RestAPIVersion},
                 (data) => {
                     if (!data.success) {
-                        this._on_failure(msg);
+                        this._on_failure(data.error);
                         return;
                     }
                     this._display(data.databases[current_database]);
@@ -240,6 +240,7 @@ function(CSSLoader,
             let databaseDataSize = 0;
             let databaseNumRows = 0;
             let databaseNumRowsLoaded = 0;
+            let databaseNumFailedRetries = 0;
             let databaseNumWarnings = 0;
             let databaseNumFilesByStatus = {
                 'IN_PROGRESS': 0,
@@ -280,6 +281,7 @@ function(CSSLoader,
                 databaseDataSize += summary.data_size_gb;
                 databaseNumRows  += summary.num_rows;
                 databaseNumRowsLoaded  += summary.num_rows_loaded;
+                databaseNumFailedRetries  += summary.num_failed_retries;
                 databaseNumWarnings  += summary.num_warnings;
                 for (let status in summary.num_files_by_status) {
                     databaseNumFilesByStatus[status] += summary.num_files_by_status[status];
@@ -301,6 +303,7 @@ function(CSSLoader,
                         tableStats[table].data  += tableInfo.data_size_gb;
                         tableStats[table].num_rows  += tableInfo.num_rows;
                         tableStats[table].num_rows_loaded  += tableInfo.num_rows_loaded;
+                        tableStats[table].num_failed_retries  += tableInfo.num_failed_retries;
                         tableStats[table].num_warnings  += tableInfo.num_warnings;
                         tableStats[table].files += tableInfo.num_files;
                     } else {
@@ -308,6 +311,7 @@ function(CSSLoader,
                             'data': tableInfo.data_size_gb,
                             'num_rows': tableInfo.num_rows,
                             'num_rows_loaded': tableInfo.num_rows_loaded,
+                            'num_failed_retries': tableInfo.num_failed_retries,
                             'num_warnings': tableInfo.num_warnings,
                             'files': tableInfo.num_files
                         };
@@ -319,6 +323,7 @@ function(CSSLoader,
                             tableStats[tableOverlaps].data  += tableInfo.overlap.data_size_gb;
                             tableStats[tableOverlaps].num_rows  += tableInfo.overlap.num_rows;
                             tableStats[tableOverlaps].num_rows_loaded  += tableInfo.overlap.num_rows_loaded;
+                            tableStats[tableOverlaps].num_failed_retries  += tableInfo.overlap.num_failed_retries;
                             tableStats[tableOverlaps].num_warnings  += tableInfo.overlap.num_warnings;
                             tableStats[tableOverlaps].files += tableInfo.overlap.num_files;
                         } else {
@@ -326,6 +331,7 @@ function(CSSLoader,
                                 'data':  tableInfo.overlap.data_size_gb,
                                 'num_rows':  tableInfo.overlap.num_rows,
                                 'num_rows_loaded':  tableInfo.overlap.num_rows_loaded,
+                                'num_failed_retries':  tableInfo.overlap.num_failed_retries,
                                 'num_warnings':  tableInfo.overlap.num_warnings,
                                 'files': tableInfo.overlap.num_files
                             };
@@ -343,6 +349,7 @@ function(CSSLoader,
                         workerStats[worker].data  += workerInfo.data_size_gb;
                         workerStats[worker].num_rows  += workerInfo.num_rows;
                         workerStats[worker].num_rows_loaded  += workerInfo.num_rows_loaded;
+                        workerStats[worker].num_failed_retries  += workerInfo.num_failed_retries;
                         workerStats[worker].num_warnings  += workerInfo.num_warnings;
                         workerStats[worker].files += numWorkerFiles;
                     } else {
@@ -350,6 +357,7 @@ function(CSSLoader,
                             'data':  workerInfo.data_size_gb,
                             'num_rows':  workerInfo.num_rows,
                             'num_rows_loaded':  workerInfo.num_rows_loaded,
+                            'num_failed_retries':  workerInfo.num_failed_retries,
                             'num_warnings':  workerInfo.num_warnings,
                             'files': numWorkerFiles
                         };
@@ -375,6 +383,7 @@ function(CSSLoader,
             }
             const catalogStatus = databaseInfo.is_published ? 'PUBLISHED' : 'INGESTING';
             let attentionCssClass4rows = databaseNumRowsLoaded === databaseNumRows ? '' : 'table-danger';
+            let attentionCssClass4retries = databaseNumFailedRetries === 0 ? '' : 'table-warning';
             let attentionCssClass4warnings = databaseNumWarnings === 0 ? '' : 'table-danger';
             html += `
     <div class="database">
@@ -386,6 +395,7 @@ function(CSSLoader,
               <tr><th>Chunks</th><td class="right-aligned"><pre>${databaseInfo.num_chunks}</pre></td><td>&nbsp;</td></tr>
               <tr><th>Rows</th><td class="right-aligned"><pre>${databaseNumRows}</pre></td><td>&nbsp;</td></tr>
               <tr class="${attentionCssClass4rows}"><th>Rows&nbsp;loaded</th><td class="right-aligned"><pre>${databaseNumRowsLoaded}</pre></td><td>&nbsp;</td></tr>
+              <tr class="${attentionCssClass4retries}"><th>Failed retries</th><td class="right-aligned"><pre>${databaseNumFailedRetries}</pre></td><td>&nbsp;</td></tr>
               <tr class="${attentionCssClass4warnings}"><th>Warnings</th><td class="right-aligned"><pre>${databaseNumWarnings}</pre></td><td>&nbsp;</td></tr>
               <tr><th>Data [GB]</th><td class="right-aligned"><pre>${databaseDataSize.toFixed(2)}</pre></td><td>&nbsp;</td></tr>
               <tr><th>Performance [MB/s]:</th><td class="right-aligned"><pre>${perfStr}</pre></td><td>&nbsp;</td></tr>
@@ -445,6 +455,7 @@ function(CSSLoader,
                 <th class="right-aligned" style="border-top:none">Data [GB]</th>
                 <th class="right-aligned" style="border-top:none">Rows</th>
                 <th class="right-aligned" style="border-top:none">Rows loaded</th>
+                <th class="right-aligned" style="border-top:none">Failed&nbsp;retries</th>
                 <th class="right-aligned" style="border-top:none">Warnings</th>
                 <th class="right-aligned" style="border-top:none">Contribs</th>
               </tr>
@@ -457,6 +468,7 @@ function(CSSLoader,
             <tbody>`;
                 for (let table in tableStats) {
                     let attentionCssClass4rows = tableStats[table].num_rows_loaded === tableStats[table].num_rows ? '' : 'table-danger';
+                    let attentionCssClass4retries = tableStats[table].num_failed_retries === 0 ? '' : 'table-warning';
                     let attentionCssClass4warnings = tableStats[table].num_warnings === 0 ? '' : 'table-danger';
                     html += `
                   <tr>
@@ -464,6 +476,7 @@ function(CSSLoader,
                     <td class="right-aligned"><pre>${tableStats[table].data.toFixed(2)}</pre></td>
                     <td class="right-aligned"><pre>${tableStats[table].num_rows}</pre></td>
                     <td class="right-aligned ${attentionCssClass4rows}"><pre>${tableStats[table].num_rows_loaded}</pre></td>
+                    <td class="right-aligned ${attentionCssClass4retries}"><pre>${tableStats[table].num_failed_retries}</pre></td>
                     <td class="right-aligned ${attentionCssClass4warnings}"><pre>${tableStats[table].num_warnings}</pre></td>
                     <td class="right-aligned"><pre>${tableStats[table].files}</pre></td>
               </tr>`;
@@ -478,6 +491,7 @@ function(CSSLoader,
             <tbody>`;
                 for (let worker in workerStats) {
                     let attentionCssClass4rows = workerStats[worker].num_rows_loaded === workerStats[worker].num_rows ? '' : 'table-danger';
+                    let attentionCssClass4retries = workerStats[worker].num_failed_retries === 0 ? '' : 'table-warning';
                     let attentionCssClass4warnings = workerStats[worker].num_warnings === 0 ? '' : 'table-danger';
                     html += `
                   <tr>
@@ -485,6 +499,7 @@ function(CSSLoader,
                     <td class="right-aligned"><pre>${workerStats[worker].data.toFixed(2)}</pre></td>
                     <td class="right-aligned"><pre>${workerStats[worker].num_rows}</pre></td>
                     <td class="right-aligned ${attentionCssClass4rows}"><pre>${workerStats[worker].num_rows_loaded}</pre></td>
+                    <td class="right-aligned ${attentionCssClass4retries}"><pre>${workerStats[worker].num_failed_retries}</pre></td>
                     <td class="right-aligned ${attentionCssClass4warnings}"><pre>${workerStats[worker].num_warnings}</pre></td>
                     <td class="right-aligned"><pre>${workerStats[worker].files}</pre></td>
                   </tr>`;

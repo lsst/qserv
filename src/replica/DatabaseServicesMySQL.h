@@ -162,28 +162,29 @@ public:
     TransactionInfo updateTransaction(TransactionId id,
                                       std::unordered_map<std::string, nlohmann::json> const& events) final;
 
-    TransactionContribInfo transactionContrib(unsigned int id, bool includeWarnings = false) final;
+    TransactionContribInfo transactionContrib(unsigned int id, bool includeWarnings = false,
+                                              bool includeRetries = false) final;
 
     std::vector<TransactionContribInfo> transactionContribs(
             TransactionId transactionId, std::string const& table = std::string(),
             std::string const& worker = std::string(),
             TransactionContribInfo::TypeSelector typeSelector =
                     TransactionContribInfo::TypeSelector::SYNC_OR_ASYNC,
-            bool includeWarnings = false) final;
+            bool includeWarnings = false, bool includeRetries = false) final;
 
     std::vector<TransactionContribInfo> transactionContribs(
             TransactionId transactionId, TransactionContribInfo::Status status,
             std::string const& table = std::string(), std::string const& worker = std::string(),
             TransactionContribInfo::TypeSelector typeSelector =
                     TransactionContribInfo::TypeSelector::SYNC_OR_ASYNC,
-            bool includeWarnings = false) final;
+            bool includeWarnings = false, bool includeRetries = false) final;
 
     std::vector<TransactionContribInfo> transactionContribs(
             std::string const& database, std::string const& table = std::string(),
             std::string const& worker = std::string(),
             TransactionContribInfo::TypeSelector typeSelector =
                     TransactionContribInfo::TypeSelector::SYNC_OR_ASYNC,
-            bool includeWarnings = false) final;
+            bool includeWarnings = false, bool includeRetries = false) final;
 
     TransactionContribInfo createdTransactionContrib(
             TransactionContribInfo const& info, bool failed = false,
@@ -191,6 +192,8 @@ public:
                     TransactionContribInfo::Status::CREATE_FAILED) final;
 
     TransactionContribInfo updateTransactionContrib(TransactionContribInfo const& info) final;
+
+    TransactionContribInfo saveLastTransactionContribRetry(TransactionContribInfo const& info) final;
 
     DatabaseIngestParam ingestParam(std::string const& database, std::string const& category,
                                     std::string const& param) final;
@@ -343,14 +346,16 @@ private:
 
     std::vector<TransactionContribInfo> _transactionContribs(util::Lock const& lock,
                                                              std::string const& predicate,
-                                                             bool includeWarnings = false);
+                                                             bool includeWarnings = false,
+                                                             bool includeRetries = false);
 
     TransactionContribInfo _transactionContribImpl(util::Lock const& lock, std::string const& predicate,
-                                                   bool includeWarnings = false);
+                                                   bool includeWarnings = false, bool includeRetries = false);
 
     std::vector<TransactionContribInfo> _transactionContribsImpl(util::Lock const& lock,
                                                                  std::string const& predicate,
-                                                                 bool includeWarnings = false);
+                                                                 bool includeWarnings = false,
+                                                                 bool includeRetries = false);
 
     DatabaseIngestParam _ingestParamImpl(util::Lock const& lock, std::string const& predicate);
 
