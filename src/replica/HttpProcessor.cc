@@ -276,7 +276,7 @@ void HttpProcessor::registerServices() {
                                                              self->_processorConfig, req, resp,
                                                              defaultSubModule, HttpAuthType::REQUIRED);
                              });
-    httpServer()->addHandler("GET", "/replication/sql/index",
+    httpServer()->addHandler("GET", "/replication/sql/index/:database/:table",
                              [self](qhttp::Request::Ptr const req, qhttp::Response::Ptr const resp) {
                                  HttpSqlIndexModule::process(self->controller(), self->name(),
                                                              self->_processorConfig, req, resp);
