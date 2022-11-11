@@ -538,6 +538,7 @@ replica_tests(
     testQueryGenerator
     testReplicaInfo
     testSemanticMap
+    testSqlResultSet
     testSqlSchemaUtils
     testTypes
     testUrl

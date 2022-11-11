@@ -43,6 +43,7 @@
 // Forward declarations
 namespace lsst::qserv::replica {
 class ProtocolResponseSqlRow;
+class SqlResultSet;
 namespace database::mysql {
 class Connection;
 }  // namespace database::mysql
@@ -84,8 +85,9 @@ namespace lsst::qserv::replica::database::mysql {
  */
 class Row {
 public:
-    /// Class Connection is allowed to initialize the valid content of rows
+    // These classes are allowed to initialize the valid content of rows.
     friend class Connection;
+    friend class lsst::qserv::replica::SqlResultSet;
 
     /**
      * The class encapsulate a raw data pointer and the number of bytes

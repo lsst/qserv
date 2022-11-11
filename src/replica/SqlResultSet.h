@@ -23,6 +23,7 @@
 
 // System headers
 #include <cstdint>
+#include <functional>
 #include <list>
 #include <memory>
 #include <string>
@@ -35,6 +36,11 @@
 
 // Third party headers
 #include "nlohmann/json.hpp"
+
+// Forward declarations
+namespace lsst::qserv::replica::database::mysql {
+class Row;
+}  // namespace lsst::qserv::replica::database::mysql
 
 // This header declarations
 namespace lsst::qserv::replica {
@@ -77,6 +83,9 @@ public:
 
             /// The default c-tor is required at a presence of the explicit one
             Field() = default;
+
+            /// Special constructor for unit testing
+            explicit Field(std::string const& name_) : name(name_) {}
 
             /// @return string representation of the type
             std::string type2string() const;
@@ -121,6 +130,9 @@ public:
         /// where the number of elements in the array represents
         /// the number of rows.
         std::list<Row> rows;
+
+        /// Default construction is needed for unit testing
+        ResultSet() = default;
 
         /**
          * Construct the object by carrying over the content of the input protocol
@@ -194,6 +206,17 @@ public:
     /// results returned by method SqlResultSet::firstError()
     /// @see SqlResultSet::firstError()
     std::vector<std::string> allErrors() const;
+
+    /**
+     * The method for iterating over rows of the result sets and exploring their
+     * payload via the MySQL API.
+     *
+     * @param resultSet The result set object to be inspected
+     * @param onEchRow User-provided callback to be called on each row of
+     *  of the result set
+     */
+    static void iterate(ResultSet const& resultSet,
+                        std::function<void(database::mysql::Row const&)> const& onEchRow);
 };
 
 std::ostream& operator<<(std::ostream& os, SqlResultSet const& info);
