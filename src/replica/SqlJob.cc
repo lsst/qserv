@@ -220,12 +220,14 @@ vector<vector<string>> SqlJob::distributeTables(vector<string> const& allTables,
 }
 
 vector<string> SqlJob::workerTables(string const& workerName, string const& databaseName,
-                                    string const& tableName, bool allTables, bool overlapTablesOnly) const {
+                                    string const& tableName, bool allTables, bool overlapTablesOnly,
+                                    bool includeProtoTable) const {
     vector<string> tables;
     if (_isPartitioned(databaseName, tableName)) {
         // The prototype table for creating chunks and chunk overlap tables
-        tables.push_back(tableName);
-
+        if (allTables || includeProtoTable) {
+            tables.push_back(tableName);
+        }
         // Always include the "dummy" chunk even if it won't be explicitly found
         // in the replica collection. This chunk must be present at all workers.
         bool const overlap = true;
@@ -262,7 +264,8 @@ vector<string> SqlJob::workerTables(string const& workerName, string const& data
 }
 
 vector<string> SqlJob::workerTables(string const& workerName, TransactionId const& transactionId,
-                                    string const& tableName, bool allTables, bool overlapTablesOnly) const {
+                                    string const& tableName, bool allTables, bool overlapTablesOnly,
+                                    bool includeProtoTable) const {
     vector<string> tables;
     auto const databaseServices = controller()->serviceProvider()->databaseServices();
     TransactionInfo const transaction = databaseServices->transaction(transactionId);
@@ -273,8 +276,9 @@ vector<string> SqlJob::workerTables(string const& workerName, TransactionId cons
 
     if (_isPartitioned(transaction.database, tableName)) {
         // The prototype table for creating chunks and chunk overlap tables
-        tables.push_back(tableName);
-
+        if (allTables || includeProtoTable) {
+            tables.push_back(tableName);
+        }
         // Always include the "dummy" chunk even if it won't be explicitly found
         // in the replica collection. This chunk must be present at all workers.
         bool const overlap = true;

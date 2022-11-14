@@ -191,7 +191,7 @@ protected:
      * the replicas (for the partitioned tables only). Normally this method
      * is expected to return a single entry for the regular tables, and
      * multiple entries for the partitioned tables (which includes prototype
-     * tables, special "overflow" tables, and chunk-specific tables).
+     * tables if requested, special "overflow" tables, and chunk-specific tables).
      *
      * @param workerName The unique identifier of a worker hosting the tables.
      * @param databaseName The name of the table's database.
@@ -206,12 +206,17 @@ protected:
      *   If the flag is set to 'false' then the chunk tables will be reported.
      *   Note, this parameter is only taken into consideration if the previous
      *   parameter 'allTables' was set to 'false'.
+     * @param includeProtoTable The optional flag (applies to the partitioned tables only)
+     *   telling the method to include the name of the prototype table into the report.
+     *   Note, this parameter is only taken into consideration if a value of
+     *   the parameter 'allTables' was set to 'false'.
      * @return A collection of tables found.
      * @throw std::invalid_argument If the database or a table isn't valid.
      */
     std::vector<std::string> workerTables(std::string const& workerName, std::string const& databaseName,
                                           std::string const& tableName, bool allTables = true,
-                                          bool overlapTablesOnly = false) const;
+                                          bool overlapTablesOnly = false,
+                                          bool includeProtoTable = false) const;
 
     /**
      * This version of the table locator method searches for tables where actual
@@ -232,12 +237,17 @@ protected:
      *   If the flag is set to 'false' then the chunk tables will be reported.
      *   Note, this parameter is only taken into consideration if the previous
      *   parameter 'allTables' was set to 'false'.
+     * @param includeProtoTable The optional flag (applies to the partitioned tables only)
+     *   telling the method to include the name of the prototype table into the report.
+     *   Note, this parameter is only taken into consideration if a value of
+     *   the parameter 'allTables' was set to 'false'.
      * @return A collection of tables found.
      * @throw std::invalid_argument If the database or a table isn't valid.
      */
     std::vector<std::string> workerTables(std::string const& workerName, TransactionId const& transactionId,
                                           std::string const& tableName, bool allTables = true,
-                                          bool overlapTablesOnly = false) const;
+                                          bool overlapTablesOnly = false,
+                                          bool includeProtoTable = false) const;
 
     /**
      * The algorithm will distribute tables between the specified number of
