@@ -24,10 +24,14 @@
 
 // System headers
 #include <algorithm>
+#include <map>
 #include <stdexcept>
 
 // Third party headers
 #include <mysql/mysql.h>
+
+// Qserv headers
+#include "replica/DatabaseMySQLRow.h"
 
 using namespace std;
 using json = nlohmann::json;
@@ -271,6 +275,27 @@ vector<string> SqlResultSet::allErrors() const {
         }
     }
     return errors;
+}
+
+void SqlResultSet::iterate(SqlResultSet::ResultSet const& resultSet,
+                           function<void(database::mysql::Row const&)> const& onEchRow) {
+    map<string, size_t> name2index;
+    for (size_t columnIdx = 0, size = resultSet.fields.size(); columnIdx < size; ++columnIdx) {
+        name2index[resultSet.fields[columnIdx].name] = columnIdx;
+    }
+    for (auto&& row : resultSet.rows) {
+        database::mysql::Row databaseRow;
+        databaseRow._name2indexPtr = &name2index;
+        for (size_t columnIdx = 0, size = row.cells.size(); columnIdx < size; ++columnIdx) {
+            if (row.nulls[columnIdx]) {
+                databaseRow._index2cell.emplace_back(nullptr, 0);
+            } else {
+                auto const& cell = row.cells[columnIdx];
+                databaseRow._index2cell.emplace_back(cell.data(), cell.size());
+            }
+        }
+        onEchRow(databaseRow);
+    }
 }
 
 ostream& operator<<(ostream& os, SqlResultSet const& info) {

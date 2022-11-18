@@ -38,71 +38,7 @@
 #include "replica/HttpRequestBody.h"
 
 using namespace std;
-using json = nlohmann::json;
-using namespace lsst::qserv::replica;
-
-namespace {
-
-/**
- * Translate a result set of a job into a JSON object.
- *
- * @note ignore errors reported in the input set for now. Only consider
- * successful result sets.
- *
- * The output JSON object has the following schema:
- * @code
- *   <worker>:{
- *     <table>:{
- *       <index-key>:{
- *         "columns":{
- *           <column>:<number>
- *         },
- *         "comment":<string>
- *       }
- *     }
- *   }
- * @code
- *
- * @param jobResultSet The result set to analyze.
- * @param context The context string for error reporting.
- * @return The JSON representation of the result.
- */
-json result2json(SqlJobResult const& jobResultSet, string const& context) {
-    // The cached locations of the fields are computed once during the very first
-    // iteration over result sets. It's assumed all result sets have the same set
-    // of fields.
-    map<string, size_t> field;
-
-    json result = json::object();
-    jobResultSet.iterate([&](SqlJobResult::Worker const& worker, SqlJobResult::Scope const& scope,
-                             SqlResultSet::ResultSet const& resultSet) {
-        // Ignoring failed or empty results for now. They will be analyzed and reported
-        // in the extended error channel.
-        if (resultSet.extendedStatus != ProtocolStatusExt::NONE) return;
-        if (not resultSet.hasResult) return;
-
-        // Compute indexes just once and save it for analyzing this and other result sets.
-        if (field.empty()) {
-            for (size_t idx = 0, num = resultSet.fields.size(); idx < num; ++idx) {
-                field[resultSet.fields[idx].name] = idx;
-            }
-        }
-        string const& tableName = scope;
-        result[worker][tableName] = json::object();
-        for (auto&& row : resultSet.rows) {
-            auto const& cells = row.cells;
-            string const& keyName = cells[field.at("Key_name")];
-            string const& columnName = cells[field.at("Column_name")];
-            string const& sequence = cells[field.at("Seq_in_index")];
-            string const& comment = cells[field.at("Index_comment")];
-            json& key = result[worker][tableName][keyName];
-            key["columns"][columnName] = sequence;
-            key["comment"] = comment;
-        }
-    });
-    return result;
-}
-}  // namespace
+using namespace nlohmann;
 
 namespace lsst::qserv::replica {
 
@@ -132,11 +68,11 @@ json HttpSqlIndexModule::executeImpl(string const& subModuleName) {
 
 json HttpSqlIndexModule::_getIndexes() {
     debug(__func__);
-    checkApiVersion(__func__, 12);
+    checkApiVersion(__func__, 17);
 
-    string const databaseName = body().required<string>("database");
-    string const tableName = body().required<string>("table");
-    bool const overlap = body().optional<int>("overlap", 0) != 0;
+    string const databaseName = params().at("database");
+    string const tableName = params().at("table");
+    bool const overlap = query().optionalInt("overlap", 0) != 0;
 
     debug(__func__, "database=" + databaseName);
     debug(__func__, "table=" + tableName);
@@ -148,7 +84,7 @@ json HttpSqlIndexModule::_getIndexes() {
 
     // This safeguard is needed here because the index management job launched
     // doesn't have this restriction.
-    if (not database.isPublished) throw HttpError(__func__, "database is not published");
+    if (!table.isPublished) throw HttpError(__func__, "table is not published");
 
     bool const allWorkers = true;
     string const noParentJobId;
@@ -161,12 +97,12 @@ json HttpSqlIndexModule::_getIndexes() {
     logJobFinishedEvent(SqlGetIndexesJob::typeName(), job, database.family);
 
     auto const extendedErrorReport = job->getExtendedErrorReport();
-    if (not extendedErrorReport.is_null()) {
+    if (!extendedErrorReport.is_null()) {
         throw HttpError(__func__, "The operation failed. See details in the extended report.",
                         extendedErrorReport);
     }
     json result;
-    result["workers"] = ::result2json(job->getResultData(), context());
+    result["status"] = job->indexes().toJson();
     return result;
 }
 
@@ -199,7 +135,7 @@ json HttpSqlIndexModule::_createIndexes() {
 
     // This safeguard is needed here because the index management job launched
     // doesn't have this restriction.
-    if (not database.isPublished) throw HttpError(__func__, "database is not published");
+    if (!table.isPublished) throw HttpError(__func__, "table is not published");
 
     // Process the input collection of the column specifications.
     //
@@ -241,7 +177,7 @@ json HttpSqlIndexModule::_createIndexes() {
     logJobFinishedEvent(SqlCreateIndexesJob::typeName(), job, database.family);
 
     auto const extendedErrorReport = job->getExtendedErrorReport();
-    if (not extendedErrorReport.is_null()) {
+    if (!extendedErrorReport.is_null()) {
         throw HttpError(__func__, "The operation failed. See details in the extended report.",
                         extendedErrorReport);
     }
@@ -268,7 +204,7 @@ json HttpSqlIndexModule::_dropIndexes() {
 
     // This safeguard is needed here because the index management job launched
     // doesn't have this restriction.
-    if (!database.isPublished) throw HttpError(__func__, "database is not published");
+    if (!table.isPublished) throw HttpError(__func__, "table is not published");
 
     bool const allWorkers = true;
     string const noParentJobId;
@@ -281,7 +217,7 @@ json HttpSqlIndexModule::_dropIndexes() {
     logJobFinishedEvent(SqlDropIndexesJob::typeName(), job, database.family);
 
     auto const extendedErrorReport = job->getExtendedErrorReport();
-    if (not extendedErrorReport.is_null()) {
+    if (!extendedErrorReport.is_null()) {
         throw HttpError(__func__, "The operation failed. See details in the extended report.",
                         extendedErrorReport);
     }

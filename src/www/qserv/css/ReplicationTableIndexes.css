@@ -1,0 +1,28 @@
+table#fwk-replication-indexes pre {
+    padding: 0;
+    margin: 0;
+}
+table#fwk-replication-indexes th,
+table#fwk-replication-indexes td {
+    vertical-align: middle;
+}
+table#fwk-replication-indexes {
+    position: relative;
+}
+table#fwk-replication-indexes caption {
+    caption-side: top;
+    text-align: right;
+    padding-top: 0;
+}
+table#fwk-replication-indexes caption.updating {
+    background-color: #ffeeba;
+}
+table#fwk-replication-indexes tbody pre.status-complete {
+    color: default;
+}
+table#fwk-replication-indexes tbody pre.status-incomplete {
+    color: orange;
+}
+table#fwk-replication-indexes tbody pre.status-inconsistent {
+    color: red;
+}
