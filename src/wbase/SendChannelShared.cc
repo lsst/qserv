@@ -312,6 +312,10 @@ bool SendChannelShared::buildAndTransmitResult(MYSQL_RES* mResult, int numFields
     numFields = mysql_num_fields(mResult);
     bool erred = false;
     size_t tSize = 0;
+
+    int bytesTransmitted = 0;
+    int rowsTransmitted = 0;
+
     // If fillRows returns false, _transmitData is full and needs to be transmitted
     // fillRows returns true when there are no more rows in mResult to add.
     // tSize is set by fillRows.
@@ -326,14 +330,15 @@ bool SendChannelShared::buildAndTransmitResult(MYSQL_RES* mResult, int numFields
             multiErr.push_back(worker_err);
             break;
         }
+        bytesTransmitted += _transmitData->getResultSize();
+        rowsTransmitted += _transmitData->getResultRowCount();
         _transmitData->buildDataMsg(task, largeResult, multiErr);
         LOGS(_log, LOG_LVL_TRACE,
              "buildAndTransmitResult() more=" << more << " " << task.getIdStr() << " seq=" << task.getTSeq()
                                               << _dumpTr());
 
-        bool lastIn =
-                false;  // This will become true only if this is the last task sending its last transmit.
-        // replace the above 'if (true) {' with this
+        // This will become true only if this is the last task sending its last transmit.
+        bool lastIn = false;
         if (more) {
             if (readRowsOk && !_prepTransmit(task, cancelled, lastIn)) {
                 LOGS(_log, LOG_LVL_ERROR, "Could not transmit intermediate results.");
@@ -354,6 +359,10 @@ bool SendChannelShared::buildAndTransmitResult(MYSQL_RES* mResult, int numFields
             }
         }
     }
+
+    task.getUserQueryWInfo()->getHistSizePerChunk()->addEntry(bytesTransmitted);
+    task.getUserQueryWInfo()->getHistRowsPerChunk()->addEntry(rowsTransmitted);
+
     return erred;
 }
 

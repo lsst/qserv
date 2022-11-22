@@ -41,6 +41,7 @@
 #include "proto/ScanTableInfo.h"
 #include "util/ThreadPool.h"
 #include "util/threadSafe.h"
+#include "wbase/UserQueryWInfo.h"
 
 // Forward declarations
 namespace lsst::qserv {
@@ -72,9 +73,13 @@ class Task;
 class TaskScheduler {
 public:
     using Ptr = std::shared_ptr<TaskScheduler>;
+    TaskScheduler();
     virtual ~TaskScheduler() {}
     virtual void taskCancelled(Task*) = 0;  ///< Repeated calls must be harmless.
     virtual bool removeTask(std::shared_ptr<Task> const& task, bool removeRunning) = 0;
+
+    util::Histogram::Ptr histTimeOfRunningTasks;       ///< Store information about running tasks
+    util::Histogram::Ptr histTimeOfTransmittingTasks;  ///< Store information about transmitting tasks.
 };
 
 /// Used to find tasks that are in process for debugging with Task::_idStr.
@@ -192,6 +197,15 @@ public:
         return QueryIdHelper::makeIdStr(_qId, _jId, invalid) + std::to_string(_tSeq) + ":";
     }
 
+    /* &&&
+    //&&& All need to be moved to a UserQueryWorker
+    util::Histogram::Ptr histTimeRunningPerChunk;       ///< &&&
+    util::Histogram::Ptr histTimeTransmittingPerChunk;  ///< &&&
+    util::Histogram::Ptr histSizePerChunk;              ///< Store information about bytes per chunk.
+    util::Histogram::Ptr histRowsPerChunk;              ///< Store information about rows per chunk.
+        */
+    UserQueryWInfo::Ptr getUserQueryWInfo() const { return _userQueryWInfo; }
+
 private:
     std::shared_ptr<SendChannelShared> _sendChannel;
     uint64_t const _tSeq = 0;     ///< identifier for the specific task
@@ -220,6 +234,9 @@ private:
     std::chrono::system_clock::time_point _startTime;
     std::chrono::system_clock::time_point _finishTime;
     size_t _totalSize = 0;  ///< Total size of the result so far.
+
+    /// Stores information on the query's resource usage.
+    UserQueryWInfo::Ptr const _userQueryWInfo;
 };
 
 }  // namespace lsst::qserv::wbase

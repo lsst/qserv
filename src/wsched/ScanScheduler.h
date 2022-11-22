@@ -80,6 +80,8 @@ public:
     double getMaxTimeMinutes() const { return _maxTimeMinutes; }
     bool removeTask(wbase::Task::Ptr const& task, bool removeRunning) override;
 
+    nlohmann::json getJson() const;  ///< Return a json version of this object.
+
 private:
     bool _ready();
     std::shared_ptr<ChunkTaskCollection> _taskQueue;  ///< Constrains access to files.

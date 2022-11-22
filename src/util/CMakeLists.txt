@@ -11,6 +11,7 @@ target_sources(util PRIVATE
     EventThread.cc
     File.cc
     FileMonitor.cc
+    Histogram.cc
     InstanceCount.cc
     Issue.cc
     MultiError.cc
@@ -48,6 +49,7 @@ util_tests(
     testCommon
     testEventThread
     testIterableFormatter
+    testHistogram
     testMultiError
     testMutex
     testTablePrinter

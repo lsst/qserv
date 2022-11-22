@@ -314,19 +314,28 @@ bool QueryRunner::_dispatchChannel() {
         // TODO: Hold onto this for longer period of time as the odds of reuse are pretty low at this scale
         //       Ideally, hold it until moving on to the next chunk. Try to clean up ChunkResource code.
 
+        auto taskSched = _task->getTaskScheduler();
         if (!_cancelled && !_task->getSendChannel()->isDead()) {
             string const& query = _task->getQueryString();
-            util::Timer sqlTimer;
-            sqlTimer.start();
             util::Timer primeT;
             primeT.start();
             MYSQL_RES* res = _primeResult(query);  // This runs the SQL query, throws SqlErrorObj on failure.
             primeT.stop();
             auto logPrime = qrPrimeHist.addTime(primeT.getElapsed(), "");
             needToFreeRes = true;
-            sqlTimer.stop();
             LOGS(_log, LOG_LVL_DEBUG,
-                 " query time=" << sqlTimer.getElapsed() << " " << logPrime << " query=" << query);
+                 " query time=" << primeT.getElapsed() << " " << logPrime << " query=" << query);
+            if (taskSched != nullptr) {
+                taskSched->histTimeOfRunningTasks->addEntry(primeT.getElapsed());
+                LOGS(_log, LOG_LVL_WARN,
+                     "&&& running " << taskSched->histTimeOfRunningTasks->getString("running"));
+                auto jsn = taskSched->histTimeOfRunningTasks->getJson();
+                LOGS(_log, LOG_LVL_WARN, "&&& running j " << jsn);
+            }
+            _task->getUserQueryWInfo()->getHistTimeRunningPerChunk()->addEntry(primeT.getElapsed());
+
+            util::Timer transmitT;
+            transmitT.start();
 
             // This thread may have already been removed from the pool for
             // other reasons, such as taking too long.
@@ -353,6 +362,13 @@ bool QueryRunner::_dispatchChannel() {
                                                                 _multiError, _cancelled, readRowsOk)) {
                 erred = true;
             }
+            transmitT.stop();
+            if (taskSched != nullptr) {
+                taskSched->histTimeOfTransmittingTasks->addEntry(transmitT.getElapsed());  //&&&
+                LOGS(_log, LOG_LVL_WARN,
+                     "&&& transmitting " << taskSched->histTimeOfTransmittingTasks->getString("trans"));
+            }
+            _task->getUserQueryWInfo()->getHistTimeTransmittingPerChunk()->addEntry(transmitT.getElapsed());
         }
     } catch (sql::SqlErrorObject const& e) {
         LOGS(_log, LOG_LVL_ERROR, "dispatchChannel " << e.errMsg());

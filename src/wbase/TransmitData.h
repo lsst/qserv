@@ -124,6 +124,9 @@ public:
     /// @return the size of the result in bytes.
     int getResultSize() const;
 
+    /// Return the number of rows in the result.
+    int getResultRowCount() const;
+
     std::string getIdStr() const { return _idStr; }
 
     /// @return a log worthy description of this object.
