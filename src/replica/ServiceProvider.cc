@@ -78,7 +78,7 @@ QservMgtServices::Ptr const& ServiceProvider::qservMgtServices() {
 Messenger::Ptr const& ServiceProvider::messenger() {
     util::Lock lock(_mtx, _context() + __func__);
     if (_messenger == nullptr) {
-        _messenger = Messenger::create(shared_from_this(), _io_service);
+        _messenger = Messenger::create(_configuration, _io_service);
     }
     return _messenger;
 }

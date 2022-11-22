@@ -33,11 +33,11 @@
 // Qserv headers
 #include "replica/MessengerConnector.h"
 #include "replica/protocol.pb.h"
-#include "replica/ServiceProvider.h"
 #include "util/Mutex.h"
 
 // Forward declarations
 namespace lsst::qserv::replica {
+class Configuration;
 class ProtocolBuffer;
 }  // namespace lsst::qserv::replica
 
@@ -66,13 +66,13 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param serviceProvider  Services of the Replication Framework.
+     * @param config  The Configuration service of the Replication Framework.
      * @param io_service  The I/O service for communication. The lifespan of
      *   the object must exceed the one of this instance
      *   of the Messenger.
      * @return  A pointer to the created object.
      */
-    static Ptr create(ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service);
+    static Ptr create(std::shared_ptr<Configuration> const& config, boost::asio::io_service& io_service);
 
     /**
      * Stop operations
@@ -127,7 +127,7 @@ public:
 
 private:
     /// @see Messenger::create()
-    Messenger(ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service);
+    Messenger(std::shared_ptr<Configuration> const& config, boost::asio::io_service& io_service);
 
     /**
      * Locate and return a connector for the specified worker
@@ -142,7 +142,7 @@ private:
 
     // Input parameters
 
-    ServiceProvider::Ptr const _serviceProvider;
+    std::shared_ptr<Configuration> const _config;
     boost::asio::io_service& _io_service;
 
     /// The mutex for implementing the synchronized management of the connections.

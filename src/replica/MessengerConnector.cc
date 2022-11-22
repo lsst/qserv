@@ -28,7 +28,6 @@
 // Qserv headers
 #include "replica/Configuration.h"
 #include "replica/ProtocolBuffer.h"
-#include "replica/ServiceProvider.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -60,23 +59,23 @@ string MessengerConnector::_state2string(MessengerConnector::State state) {
     throw logic_error("MessengerConnector::" + string(__func__) + "  incomplete implementation");
 }
 
-MessengerConnector::Ptr MessengerConnector::create(ServiceProvider::Ptr const& serviceProvider,
+MessengerConnector::Ptr MessengerConnector::create(shared_ptr<Configuration> const& config,
                                                    boost::asio::io_service& io_service,
                                                    string const& worker) {
-    return MessengerConnector::Ptr(new MessengerConnector(serviceProvider, io_service, worker));
+    return MessengerConnector::Ptr(new MessengerConnector(config, io_service, worker));
 }
 
-MessengerConnector::MessengerConnector(ServiceProvider::Ptr const& serviceProvider,
+MessengerConnector::MessengerConnector(shared_ptr<Configuration> const& config,
                                        boost::asio::io_service& io_service, string const& worker)
-        : _serviceProvider(serviceProvider),
+        : _config(config),
           _worker(worker),
-          _bufferCapacityBytes(serviceProvider->config()->get<size_t>("common", "request-buf-size-bytes")),
-          _timerIvalSec(serviceProvider->config()->get<unsigned int>("common", "request-retry-interval-sec")),
+          _bufferCapacityBytes(config->get<size_t>("common", "request-buf-size-bytes")),
+          _timerIvalSec(config->get<unsigned int>("common", "request-retry-interval-sec")),
           _state(State::STATE_INITIAL),
           _resolver(io_service),
           _socket(io_service),
           _timer(io_service),
-          _inBuffer(serviceProvider->config()->get<size_t>("common", "request-buf-size-bytes")) {}
+          _inBuffer(config->get<size_t>("common", "request-buf-size-bytes")) {}
 
 void MessengerConnector::stop() {
     LOGS(_log, LOG_LVL_DEBUG, _context() << __func__);
@@ -243,7 +242,7 @@ void MessengerConnector::_resolve(util::Lock const& lock) {
     // aren't set or have expired we shall still proceed to the resover. Any failures
     // in the resolver or subsequent connection attempts will trigger the standard
     // recovery sequence that begins with a timeout and a subsequent restart.
-    WorkerInfo const workerInfo = _serviceProvider->config()->workerInfo(_worker);
+    WorkerInfo const workerInfo = _config->workerInfo(_worker);
     if (workerInfo.svcHost.addr.empty() || (workerInfo.svcPort == 0)) {
         LOGS(_log, LOG_LVL_WARN,
              _context() << __func__ << "  no connection info available for worker=" << _worker);

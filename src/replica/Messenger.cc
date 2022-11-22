@@ -27,7 +27,6 @@
 
 // Qserv headers
 #include "replica/Configuration.h"
-#include "replica/ServiceProvider.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -40,15 +39,15 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.Messenger");
 
 namespace lsst::qserv::replica {
 
-Messenger::Ptr Messenger::create(ServiceProvider::Ptr const& serviceProvider,
+Messenger::Ptr Messenger::create(shared_ptr<Configuration> const& config,
                                  boost::asio::io_service& io_service) {
-    return Messenger::Ptr(new Messenger(serviceProvider, io_service));
+    return Messenger::Ptr(new Messenger(config, io_service));
 }
 
-Messenger::Messenger(ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service)
-        : _serviceProvider(serviceProvider), _io_service(io_service) {
-    for (auto&& worker : serviceProvider->config()->allWorkers()) {
-        _workerConnector[worker] = MessengerConnector::create(serviceProvider, io_service, worker);
+Messenger::Messenger(shared_ptr<Configuration> const& config, boost::asio::io_service& io_service)
+        : _config(config), _io_service(io_service) {
+    for (auto&& worker : config->allWorkers()) {
+        _workerConnector[worker] = MessengerConnector::create(config, io_service, worker);
         LOGS(_log, LOG_LVL_INFO, _context(worker) << "connector added");
     }
 }
@@ -74,9 +73,9 @@ MessengerConnector::Ptr const& Messenger::_connector(string const& worker) {
     // worker connector needs to be created and registered in the local collection.
     // Note that std::invalid_argument will be thrown by the worker locator method
     // if the name won't match any worker.
-    WorkerInfo const workerInfo = _serviceProvider->config()->workerInfo(worker);
-    auto const [itr, success] = _workerConnector.insert(
-            {worker, MessengerConnector::create(_serviceProvider, _io_service, worker)});
+    WorkerInfo const workerInfo = _config->workerInfo(worker);
+    auto const [itr, success] =
+            _workerConnector.insert({worker, MessengerConnector::create(_config, _io_service, worker)});
     if (success) {
         LOGS(_log, LOG_LVL_INFO, _context(worker) << "connector added");
         return itr->second;

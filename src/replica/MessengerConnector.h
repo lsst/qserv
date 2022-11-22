@@ -35,12 +35,15 @@
 #include "boost/asio.hpp"
 
 // Qserv headers
-#include "replica/Configuration.h"
 #include "replica/MessageQueue.h"
 #include "replica/protocol.pb.h"
 #include "replica/ProtocolBuffer.h"
-#include "replica/ServiceProvider.h"
 #include "util/Mutex.h"
+
+// Forward declarations
+namespace lsst::qserv::replica {
+class Configuration;
+}  // namespace lsst::qserv::replica
 
 // This header declarations
 namespace lsst::qserv::replica {
@@ -213,13 +216,13 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param serviceProvider  Services of the Replication Framework.
+     * @param config  The configuration service of the Replication Framework.
      * @param io_service  The I/O service for communication. The lifespan of
      *   the object must exceed the one of this instance.
      * @param worker  The name of a worker.
      * @return  A pointer to the created object.
      */
-    static Ptr create(ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service,
+    static Ptr create(std::shared_ptr<Configuration> const& config, boost::asio::io_service& io_service,
                       std::string const& worker);
 
     /**
@@ -270,7 +273,7 @@ public:
 
 private:
     /// @see MessengerConnector::create()
-    MessengerConnector(ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service,
+    MessengerConnector(std::shared_ptr<Configuration> const& config, boost::asio::io_service& io_service,
                        std::string const& worker);
 
     /**
@@ -437,7 +440,7 @@ private:
 
     // Input parameters.
 
-    ServiceProvider::Ptr const _serviceProvider;
+    std::shared_ptr<Configuration> const _config;
 
     /// The unique identifier of the worker.
     std::string const _worker;
