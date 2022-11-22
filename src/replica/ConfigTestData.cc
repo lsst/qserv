@@ -44,6 +44,7 @@ map<string, set<string>> ConfigTestData::parameters() {
               {"auto-notify", "request-timeout-sec", "host", "port", "allow-reconnect", "reconnect-timeout"}},
              {"worker",
               {"technology",
+               "num-threads",
                "num-svc-processing-threads",
                "num-fs-processing-threads",
                "fs-buf-size-bytes",
@@ -109,6 +110,7 @@ json ConfigTestData::data() {
                                          {"allow-reconnect", 0},
                                          {"reconnect-timeout", 500}});
     generalObj["worker"] = json::object({{"technology", "POSIX"},
+                                         {"num-threads", 3},
                                          {"num-svc-processing-threads", 4},
                                          {"num-fs-processing-threads", 5},
                                          {"fs-buf-size-bytes", 1024},

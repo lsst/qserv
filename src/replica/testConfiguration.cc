@@ -156,6 +156,7 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestReadingGeneralParameters) {
     BOOST_CHECK(config->get<size_t>("database", "services-pool-size") == 2);
 
     BOOST_CHECK(config->get<string>("worker", "technology") == "POSIX");
+    BOOST_CHECK(config->get<size_t>("worker", "num-threads") == 3);
     BOOST_CHECK(config->get<size_t>("worker", "num-svc-processing-threads") == 4);
     BOOST_CHECK(config->get<size_t>("worker", "num-fs-processing-threads") == 5);
     BOOST_CHECK(config->get<size_t>("worker", "fs-buf-size-bytes") == 1024);
@@ -307,6 +308,10 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestModifyingGeneralParameters) {
     BOOST_CHECK_THROW(config->set<string>("worker", "technology", ""), std::invalid_argument);
     BOOST_REQUIRE_NO_THROW(config->set<string>("worker", "technology", "FS"));
     BOOST_CHECK(config->get<string>("worker", "technology") == "FS");
+
+    BOOST_CHECK_THROW(config->set<size_t>("worker", "num-threads", 0), std::invalid_argument);
+    BOOST_REQUIRE_NO_THROW(config->set<size_t>("worker", "num-threads", 4));
+    BOOST_CHECK(config->get<size_t>("worker", "num-threads") == 4);
 
     BOOST_CHECK_THROW(config->set<size_t>("worker", "num-svc-processing-threads", 0), std::invalid_argument);
     BOOST_REQUIRE_NO_THROW(config->set<size_t>("worker", "num-svc-processing-threads", 5));

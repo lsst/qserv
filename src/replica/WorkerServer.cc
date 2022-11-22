@@ -24,6 +24,8 @@
 
 // System headers
 #include <functional>
+#include <thread>
+#include <vector>
 
 // Qserv headers
 #include "replica/Configuration.h"
@@ -71,7 +73,16 @@ void WorkerServer::run() {
     // away.
     _beginAccept();
 
-    _io_service.run();
+    // Launch the pool of the BOOST ASIO threads
+    vector<shared_ptr<thread>> threads(_serviceProvider->config()->get<size_t>("worker", "num-threads"));
+    for (auto&& ptr : threads) {
+        ptr = shared_ptr<thread>(new thread([&]() { _io_service.run(); }));
+    }
+
+    // Wait for all threads in the pool to exit.
+    for (auto&& ptr : threads) {
+        ptr->join();
+    }
 }
 
 void WorkerServer::_beginAccept() {
