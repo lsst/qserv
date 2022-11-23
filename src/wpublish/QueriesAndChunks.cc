@@ -25,6 +25,7 @@
 #include "wpublish/QueriesAndChunks.h"
 
 // Qserv headers
+#include "util/Bug.h"
 #include "wsched/BlendScheduler.h"
 #include "wsched/SchedulerBase.h"
 #include "wsched/ScanScheduler.h"
@@ -39,6 +40,45 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.wpublish.QueriesAndChunks");
 }
 
 namespace lsst::qserv::wpublish {
+
+QueryStatistics::QueryStatistics(QueryId const& qId_) : creationTime(CLOCK::now()), queryId(qId_) {
+    /// For all of the histograms, all entries should be kept at least until the work is finished.
+    string qidStr = to_string(queryId);
+    std::chrono::milliseconds maxAge(100h);  // essentially forever
+    _histSizePerTask = util::Histogram::Ptr(new util::Histogram(
+            string("SizePerChunk_") + qidStr, {1'000, 10'0000, 1'000'000, 10'000'000, 100'000'000}));
+    _histRowsPerTask = util::Histogram::Ptr(new util::Histogram(string("RowsPerChunk_") + qidStr,
+                                                                {1, 100, 1'000, 10'000, 100'000, 1'000'000}));
+    _histTimeRunningPerTask = util::Histogram::Ptr(new util::Histogram(
+            string("TimeRunningPerChunk_") + qidStr, {0.1, 1, 10, 30, 60, 120, 300, 600, 1200, 10000}));
+    _histTimeSubchunkPerTask = util::Histogram::Ptr(new util::Histogram(
+            string("TimeSubchunkPerChunk_") + qidStr, {0.1, 1, 10, 30, 60, 120, 300, 600, 1200, 10000}));
+    _histTimeTransmittingPerTask = util::Histogram::Ptr(new util::Histogram(
+            string("TimeTransmittingPerChunk_") + qidStr, {0.1, 1, 10, 30, 60, 120, 300, 600, 1200, 10000}));
+    LOGS(_log, LOG_LVL_WARN, "&&& QueryStatistics hist init end");
+}
+
+QueriesAndChunks::Ptr QueriesAndChunks::_globalQueriesAndChunks;
+
+QueriesAndChunks::Ptr QueriesAndChunks::get(bool noThrow) {
+    if (_globalQueriesAndChunks == nullptr && !noThrow) {
+        throw util::Bug(ERR_LOC, "QueriesAndChunks::get() called before QueriesAndChunks::setupGlobal");
+    }
+    return _globalQueriesAndChunks;
+}
+
+QueriesAndChunks::Ptr QueriesAndChunks::setupGlobal(std::chrono::seconds deadAfter,
+                                                    std::chrono::seconds examineAfter, int maxTasksBooted,
+                                                    bool resetForTesting) {
+    if (resetForTesting) {
+        _globalQueriesAndChunks.reset();
+    }
+    if (_globalQueriesAndChunks != nullptr) {
+        throw util::Bug(ERR_LOC, "QueriesAndChunks::setupGlobal called twice");
+    }
+    _globalQueriesAndChunks = Ptr(new QueriesAndChunks(deadAfter, examineAfter, maxTasksBooted));
+    return _globalQueriesAndChunks;
+}
 
 QueriesAndChunks::QueriesAndChunks(chrono::seconds deadAfter, chrono::seconds examineAfter,
                                    int maxTasksBooted)
@@ -86,18 +126,22 @@ void QueriesAndChunks::setRequiredTasksCompleted(unsigned int value) { _required
 
 /// Add statistics for the Task, creating a QueryStatistics object if needed.
 void QueriesAndChunks::addTask(wbase::Task::Ptr const& task) {
+    LOGS(_log, LOG_LVL_WARN, "&&& QueriesAndChunks::addTask start");
     auto qid = task->getQueryId();
     unique_lock<mutex> guardStats(_queryStatsMtx);
     auto itr = _queryStats.find(qid);
     QueryStatistics::Ptr stats;
     if (_queryStats.end() == itr) {
-        stats = make_shared<QueryStatistics>(qid);
+        //&&&stats = make_shared<QueryStatistics>(qid);
+        stats = QueryStatistics::Ptr(new QueryStatistics(qid));
         _queryStats[qid] = stats;
     } else {
         stats = itr->second;
     }
     guardStats.unlock();
     stats->addTask(task);
+    task->setQueryStatistics(stats);
+    LOGS(_log, LOG_LVL_WARN, "&&& QueriesAndChunks::addTask end");
 }
 
 /// Update statistics for the Task that was just queued.
@@ -118,7 +162,7 @@ void QueriesAndChunks::startedTask(wbase::Task::Ptr const& task) {
     auto now = chrono::system_clock::now();
     task->started(now);
 
-    QueryStatistics::Ptr stats = getStats(task->getQueryId());
+    QueryStatistics::Ptr stats = getStats(task->getQueryId());  // &&& move query tracking here ???
     if (stats != nullptr) {
         lock_guard<mutex>(stats->_qStatsMtx);
         stats->_touched = now;
@@ -133,7 +177,7 @@ void QueriesAndChunks::finishedTask(wbase::Task::Ptr const& task) {
     taskDuration /= 60000.0;  // convert to minutes.
 
     QueryId qId = task->getQueryId();
-    QueryStatistics::Ptr stats = getStats(qId);
+    QueryStatistics::Ptr stats = getStats(qId);  // &&& move query tracking here ???
     if (stats != nullptr) {
         bool mostlyDead = false;
         {
@@ -189,7 +233,7 @@ void QueriesAndChunks::removeDead() {
         for (auto const& elem : *newlyDead) {
             _deadQueries[elem.first] = elem.second;
         }
-        LOGS(_log, LOG_LVL_DEBUG, "QueriesAndChunks::removeDead deadQueries size=" << _deadQueries.size());
+        LOGS(_log, LOG_LVL_DEBUG, "&&&QueriesAndChunks::removeDead deadQueries size=" << _deadQueries.size());
         auto iter = _deadQueries.begin();
         while (iter != _deadQueries.end()) {
             auto const& statPtr = iter->second;
@@ -218,7 +262,7 @@ void QueriesAndChunks::removeDead() {
 /// a qId multiple times from _queryStats should be harmless.
 void QueriesAndChunks::removeDead(QueryStatistics::Ptr const& queryStats) {
     unique_lock<mutex> gS(queryStats->_qStatsMtx);
-    QueryId qId = queryStats->_queryId;
+    QueryId qId = queryStats->queryId;
     gS.unlock();
     LOGS(_log, LOG_LVL_TRACE, "Queries::removeDead");
 
@@ -233,6 +277,7 @@ QueryStatistics::Ptr QueriesAndChunks::getStats(QueryId const& qId) const {
     if (iter != _queryStats.end()) {
         return iter->second;
     }
+    LOGS(_log, LOG_LVL_WARN, "&&&QueriesAndChunks::getStats could not find qId=" << qId);  // &&& keep?
     return nullptr;
 }
 
@@ -404,15 +449,19 @@ void QueriesAndChunks::_bootTask(QueryStatistics::Ptr const& uq, wbase::Task::Pt
                  "entire UserQuery booting from " << sched->getName() << " tasksBooted=" << uq->_tasksBooted
                                                   << " maxTasksBooted=" << _maxTasksBooted);
             uq->_queryBooted = true;
-            bSched->moveUserQueryToSnail(uq->_queryId, sched);
+            bSched->moveUserQueryToSnail(uq->queryId, sched);
         }
     }
 }
 
 /// Add a Task to the user query statistics.
 void QueryStatistics::addTask(wbase::Task::Ptr const& task) {
+    LOGS(_log, LOG_LVL_WARN, "&&& QueryStatistics::addTask start");
     lock_guard<mutex> guard(_qStatsMtx);
-    _taskMap.insert(make_pair(task->getJobId(), task));
+    TaskId tId = make_pair(task->getQueryId(), task->getJobId());
+    _taskMap.insert(make_pair(tId, task));
+    //&&&;  /// this is broken for subchunks, as there are multiple chunks for the same jobId. &&&
+    LOGS(_log, LOG_LVL_WARN, "&&& QueryStatistics::addTask end");
 }
 
 /// @return the number of Tasks that have been booted for this user query.
@@ -438,10 +487,27 @@ bool QueryStatistics::_isMostlyDead() const { return _tasksCompleted >= _size; }
 
 ostream& operator<<(ostream& os, QueryStatistics const& q) {
     lock_guard<mutex> gd(q._qStatsMtx);
-    os << QueryIdHelper::makeIdStr(q._queryId) << " time=" << q._totalTimeMinutes << " size=" << q._size
+    os << QueryIdHelper::makeIdStr(q.queryId) << " time=" << q._totalTimeMinutes << " size=" << q._size
        << " tasksCompleted=" << q._tasksCompleted << " tasksRunning=" << q._tasksRunning
        << " tasksBooted=" << q._tasksBooted;
     return os;
+}
+
+void QueryStatistics::addTaskTransmit(double timeSeconds, int64_t bytesTransmitted, int64_t rowsTransmitted) {
+    _histTimeTransmittingPerTask->addEntry(timeSeconds);
+    _histTimeTransmittingPerTask->addEntry(bytesTransmitted);
+    _histRowsPerTask->addEntry(rowsTransmitted);
+
+    //&&&task.addTransmitData(timeSeconds, bytesTransmitted, rowsTransmitted);
+}
+
+void QueryStatistics::addTaskRunQuery(double runTimeSeconds, double subchunkRunTimeSeconds) {
+    LOGS(_log, LOG_LVL_WARN, "&&& QueryStatistics::addTaskRunQuery start ");
+    _histTimeRunningPerTask->addEntry(runTimeSeconds);
+    _histTimeSubchunkPerTask->addEntry(subchunkRunTimeSeconds);
+    LOGS(_log, LOG_LVL_WARN, "&&& QueryStatistics::addTaskRunQuery end ");
+
+    //&&&task.addRunData(runTimeSeconds, subchunkRunTimeSeconds);
 }
 
 /// Remove all Tasks belonging to the user query 'qId' from the queue of 'sched'.

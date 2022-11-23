@@ -48,6 +48,8 @@ namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.wsched.GroupScheduler");
 }
 
+using namespace std;
+
 namespace lsst::qserv::wsched {
 
 GroupQueue::GroupQueue(int maxAccepted, wbase::Task::Ptr const& task) : _maxAccepted{maxAccepted} {
@@ -159,6 +161,7 @@ util::Command::Ptr GroupScheduler::getCmd(bool wait) {
 
 void GroupScheduler::commandFinish(util::Command::Ptr const& cmd) {
     --_inFlight;
+    ++_recentlyCompleted;
     auto t = std::dynamic_pointer_cast<wbase::Task>(cmd);
     if (t != nullptr) _decrChunkTaskCount(t->getChunkId());
     LOGS(_log, LOG_LVL_DEBUG, "GroupSched tskEnd task=" << t->getIdStr() << " chunk=" << t->getChunkId());

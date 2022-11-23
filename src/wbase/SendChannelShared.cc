@@ -33,6 +33,7 @@
 #include "util/Timer.h"
 #include "wbase/Task.h"
 #include "wcontrol/TransmitMgr.h"
+#include "wpublish/QueriesAndChunks.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -298,6 +299,9 @@ void SendChannelShared::setSchemaCols(Task& task, std::vector<SchemaCol>& schema
 bool SendChannelShared::buildAndTransmitResult(MYSQL_RES* mResult, int numFields, Task& task,
                                                bool largeResult, util::MultiError& multiErr,
                                                std::atomic<bool>& cancelled, bool& readRowsOk) {
+    util::Timer transmitT;
+    transmitT.start();
+
     // 'cancelled' is passed as a reference so that if its value is
     // changed externally, it will break the while loop below.
     // Wait until the transmit Manager says it is ok to send data to the czar.
@@ -360,8 +364,15 @@ bool SendChannelShared::buildAndTransmitResult(MYSQL_RES* mResult, int numFields
         }
     }
 
-    task.getUserQueryWInfo()->getHistSizePerChunk()->addEntry(bytesTransmitted);
-    task.getUserQueryWInfo()->getHistRowsPerChunk()->addEntry(rowsTransmitted);
+    transmitT.stop();
+    double timeSeconds = transmitT.getElapsed();
+    task.addTransmitData(timeSeconds, bytesTransmitted, rowsTransmitted);
+    auto qStats = task.getQueryStats();
+    if (qStats == nullptr) {
+        LOGS(_log, LOG_LVL_ERROR, "No statistics for " << task.getIdStr());
+    } else {
+        qStats->addTaskTransmit(timeSeconds, bytesTransmitted, rowsTransmitted);
+    }
 
     return erred;
 }

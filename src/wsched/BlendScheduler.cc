@@ -231,6 +231,8 @@ void BlendScheduler::queCmd(std::vector<util::Command::Ptr> const& cmds) {
                                                        << " sched=" << targSched->getName());
     }
 
+    _logSchedulers();
+
     if (!taskCmds.empty()) {
         LOGS(_log, LOG_LVL_DEBUG, "Blend queCmd");
         targSched->queCmd(taskCmds);
@@ -252,6 +254,7 @@ void BlendScheduler::commandStart(util::Command::Ptr const& cmd) {
     wcontrol::Scheduler::Ptr s = dynamic_pointer_cast<wcontrol::Scheduler>(t->getTaskScheduler());
     if (s != nullptr) {
         s->commandStart(t);
+        // &&& check queues here ????
     } else {
         LOGS(_log, LOG_LVL_ERROR, "BlendScheduler::commandStart scheduler not found");
     }
@@ -273,6 +276,7 @@ void BlendScheduler::commandFinish(util::Command::Ptr const& cmd) {
     LOGS(_log, LOG_LVL_DEBUG, "BlendScheduler::commandFinish");
     if (s != nullptr) {
         s->commandFinish(t);
+        // &&& check queues here ????
     } else {
         LOGS(_log, LOG_LVL_ERROR, "BlendScheduler::commandFinish scheduler not found");
     }
@@ -360,6 +364,8 @@ util::Command::Ptr BlendScheduler::getCmd(bool wait) {
             ready = _ready();
         }
 
+        _logSchedulers();
+
         // Try to get a command from the schedulers
         if (ready && (_readySched != nullptr)) {
             cmd = _readySched->getCmd(false);
@@ -391,6 +397,7 @@ util::Command::Ptr BlendScheduler::getCmd(bool wait) {
          "lockTime BlendScheduler::getCmd ready toLock=" << timeToLock.getElapsed()
                                                          << " held=" << timeHeld.getElapsed()
                                                          << " totalHeld=" << totalTimeHeld);
+    // &&& check queues here ????
     return cmd;
 }
 
@@ -506,6 +513,18 @@ int BlendScheduler::moveUserQuery(QueryId qId, SchedulerBase::Ptr const& source,
         ++count;
     }
     return count;
+}
+
+void BlendScheduler::_logSchedulers() {
+    // &&& Rate limit logging
+    static unsigned int rlim = 0;
+    if (rlim % 100) {  // &&& wrong, temporary, needs to be about every 15 seconds
+        // &&& for all schedulers log size of queue, number of queries running, average runtime of query,
+        // number of queries finished since last call.
+        //&&&;
+        // recordPerformanceData();
+    }
+    ++rlim;
 }
 
 void ControlCommandQueue::queCmd(util::Command::Ptr const& cmd) {

@@ -20,8 +20,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-// Generic timer class
 
+// class header
 #include "wbase/UserQueryWInfo.h"
 
 // System headers
@@ -37,6 +37,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.wbase.UserQueryInfo");
 
 namespace lsst::qserv::wbase {
 
+#if 0   //&&&
 // Static members of UserQueryWInfo
 UserQueryWInfo::UserQueryWInfoMap UserQueryWInfo::_uqwiMap;
 queue<UserQueryWInfo::Ptr> UserQueryWInfo::_startTimes;
@@ -44,12 +45,12 @@ mutex UserQueryWInfo::_mtx;
 
 UserQueryWInfo::Ptr UserQueryWInfo::getUQWI(QueryId queryId_) {
     lock_guard<mutex> lkg(_mtx);
-    auto iter = _uqwiMap.find(queryId);
+    auto iter = _uqwiMap.find(queryId_);
     if (iter != _uqwiMap.end()) {
         return iter->second;
     }
-    Ptr newElem = make_shared<UserQueryWInfo>(queryId);
-    _uqwiMap.insert(make_pair(queryId, newElem));
+    Ptr newElem = Ptr(new UserQueryWInfo(queryId_));
+    _uqwiMap.insert(make_pair(queryId_, newElem));
     _startTimes.push(newElem);
     return newElem;
 }
@@ -60,7 +61,7 @@ UserQueryWInfo::Ptr UserQueryWInfo::erase(QueryId queryId_) {
 }
 
 UserQueryWInfo::Ptr UserQueryWInfo::_erase(QueryId queryId_) {
-    auto iter = _uqwiMap.find(queryId);
+    auto iter = _uqwiMap.find(queryId_);
     if (iter == _uqwiMap.end()) {
         return nullptr;
     }
@@ -70,11 +71,11 @@ UserQueryWInfo::Ptr UserQueryWInfo::_erase(QueryId queryId_) {
 }
 
 int UserQueryWInfo::removeOld() {
-    vector<QueryId> toBeRemoved;
     lock_guard<mutex> lkg(_mtx);
     auto now = CLOCK::now();
     auto maxAge = std::chrono::milliseconds(25h);
 
+    vector<QueryId> toBeRemoved;
     while (!_startTimes.empty()) {
         auto item = _startTimes.front();
         // If the item at the front is too old and the only things using it are
@@ -89,12 +90,15 @@ int UserQueryWInfo::removeOld() {
         }
     }
 
+    int count = 0;
     for (auto const& qid : toBeRemoved) {
         _erase(qid);
+        ++count;
     }
+    return count;
 }
 
-UserQueryWInfo::UserQueryWInfo(QueryId qId_) : queryId(qId_), creationTime(CLOCK::now()) {
+UserQueryWInfo::UserQueryWInfo(QueryId qId_) : creationTime(CLOCK::now()), queryId(qId_) {
     /// For all of the histograms, all entries should be kept at least until the work is finished.
     string qidStr = to_string(queryId);
     std::chrono::milliseconds maxAge(100h);  // essentially forever
@@ -111,5 +115,6 @@ UserQueryWInfo::UserQueryWInfo(QueryId qId_) : queryId(qId_), creationTime(CLOCK
             new util::Histogram(string("TimeTransmittingPerChunk_") + qidStr,
                                 {0.1, 1, 10, 30, 60, 120, 300, 600, 1200, 10000}, maxAge, 200'000));
 }
+#endif  //&&&
 
 }  // namespace lsst::qserv::wbase

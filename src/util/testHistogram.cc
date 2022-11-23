@@ -29,7 +29,7 @@
 // Third-party headers
 
 // Qserv headers
-#include "util/Histogram.h"
+#include "Histogram.h"
 
 // Boost unit test header
 #define BOOST_TEST_MODULE MultiError
@@ -45,11 +45,11 @@ BOOST_AUTO_TEST_SUITE(Suite)
 
 BOOST_AUTO_TEST_CASE(HistogramSize) {
     std::vector<double> bucketMaxVals{0.01, 0.1, 1};
-    int maxSize = 10;
+    size_t maxSize = 10;
     string hId = "Test1";
-    util::Histogram hist(hId, bucketMaxVals, 1h, maxSize);
+    util::HistogramRolling hist(hId, bucketMaxVals, 1h, maxSize);
 
-    int sz = 0;
+    size_t sz = 0;
     for (int j = 0; j < 4; ++j) {
         BOOST_REQUIRE(hist.getBucketCount(j) == 0);
     }
@@ -78,7 +78,7 @@ BOOST_AUTO_TEST_CASE(HistogramSize) {
     cout << "jsn:" << jsn << endl;
 
     BOOST_REQUIRE(jsn["HistogramId"] == hId);
-    BOOST_REQUIRE(jsn["size"] == hist.getSize());
+    BOOST_REQUIRE(jsn["totalCount"] == hist.getTotalCount());
 
     for (int j = 0; j < 4; ++j) {
         BOOST_REQUIRE(jsn["buckets"][j]["index"] == j);

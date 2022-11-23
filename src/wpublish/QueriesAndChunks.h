@@ -23,6 +23,9 @@
 #ifndef LSST_QSERV_WPUBLISH_QUERIESANDCHUNKS_H
 #define LSST_QSERV_WPUBLISH_QUERIESANDCHUNKS_H
 
+// System headers
+//&&& #include <unordered_map>
+
 // Third party headers
 #include "nlohmann/json.hpp"
 
@@ -45,27 +48,53 @@ class QueriesAndChunks;
 namespace lsst::qserv::wpublish {
 
 /// Statistics for a single user query.
+/// This class stores some statistics for each Task in the user query on this worker.
 class QueryStatistics {
 public:
     using Ptr = std::shared_ptr<QueryStatistics>;
 
-    explicit QueryStatistics(QueryId const& queryId) : _queryId{queryId} {}
+    using CLOCK = std::chrono::system_clock;
+    using TIMEPOINT = std::chrono::time_point<CLOCK>;
+
+    using TaskId = std::pair<QueryId, int>;  ///< Unique identifier for task is jobId, fragment number.
+    /// For maps of Tasks in a query. It would be nice to use an unordered_map, but a hash need to be defined.
+    using TaskMap = std::map<TaskId, wbase::Task::Ptr>;
 
     void addTask(wbase::Task::Ptr const& task);
 
-    bool isDead(std::chrono::seconds deadTime, std::chrono::system_clock::time_point now);
+    bool isDead(std::chrono::seconds deadTime, TIMEPOINT now);
 
     int getTasksBooted();
     bool getQueryBooted() { return _queryBooted; }
+
+    /// Add statistics related to the running of the query in the task.
+    /// If there are subchunks in the user query, several Tasks may be needed for one chunk.
+    /// @param runTimeSeconds - How long it took to run the query.
+    /// @param subchunkRunTimeSeconds - How long the query spent waiting for the
+    ///                         subchunk temporary tables to be made. It's important to
+    ///                         remember that it's very common for several tasks to be waiting
+    ///                         on the same subchunk tables at the same time.
+    void addTaskRunQuery(double runTimeSeconds, double subchunkRunTimeSeconds);
+
+    /// Add statistics related to transmitting results back to the czar.
+    /// If there are subchunks in the user query, several Tasks may be needed for one chunk.
+    /// @param timeSeconds - time to transmit data back to the czar for one Task
+    /// @param bytesTransmitted - number of bytes transmitted to the czar for one Task.
+    /// @param rowsTransmitted - number of rows transmitted to the czar for one Task.
+    void addTaskTransmit(double timeSeconds, int64_t bytesTransmitted, int64_t rowsTransmitted);
+
+    TIMEPOINT const creationTime;
+    QueryId const queryId;
 
     friend class QueriesAndChunks;
     friend std::ostream& operator<<(std::ostream& os, QueryStatistics const& q);
 
 private:
+    explicit QueryStatistics(QueryId const& queryId);
     bool _isMostlyDead() const;
 
     mutable std::mutex _qStatsMtx;
-    QueryId const _queryId;
+
     std::chrono::system_clock::time_point _touched = std::chrono::system_clock::now();
 
     int _size = 0;
@@ -76,7 +105,14 @@ private:
 
     double _totalTimeMinutes = 0.0;
 
-    std::map<int, wbase::Task::Ptr> _taskMap;  ///< Map of Tasks keyed by job id.
+    TaskMap _taskMap;  ///< Map of all Tasks for this user query keyed by job id and fragment number.
+
+    util::Histogram::Ptr _histTimeRunningPerTask;  ///< Histogram of SQL query run times.
+    util::Histogram::Ptr
+            _histTimeSubchunkPerTask;  ///< Histogram of time waiting for temporary table generation.
+    util::Histogram::Ptr _histTimeTransmittingPerTask;  ///< Histogram of time spent transmitting.
+    util::Histogram::Ptr _histSizePerTask;              ///< Histogram of bytes per Task.
+    util::Histogram::Ptr _histRowsPerTask;              ///< Histogram of rows per Task.
 };
 
 /// Statistics for a table in a chunk. Statistics are based on the slowest table in a query,
@@ -145,7 +181,22 @@ class QueriesAndChunks {
 public:
     using Ptr = std::shared_ptr<QueriesAndChunks>;
 
-    QueriesAndChunks(std::chrono::seconds deadAfter, std::chrono::seconds examineAfter, int maxTasksBooted);
+    /// Setup the global instance and return a pointer to it.
+    /// @param deadAfter - consider a user query to be dead after this number of seconds.
+    /// @param examineAfter - examine all know tasks after this much time has passed since the last
+    ///                 examineAll() call
+    /// @param maxTasksBooted - after this many tasks have been booted, the query should be
+    ///                 moved to the snail scheduler.
+    /// @param resetForTesting - set this to true ONLY if the class needs to be reset for unit testing.
+    static Ptr setupGlobal(std::chrono::seconds deadAfter, std::chrono::seconds examineAfter,
+                           int maxTasksBooted, bool resetForTesting = false);
+
+    /// Return the pointer to the global object.
+    /// @param noThrow - if true, this will not throw an exception when called and
+    ///                  the function can return nullptr. This should only be true in unit testing.
+    /// @throws - throws util::Bug if setupGlobal() has not been called before this.
+    static Ptr get(bool noThrow = false);
+
     virtual ~QueriesAndChunks();
 
     void setBlendScheduler(std::shared_ptr<wsched::BlendScheduler> const& blendsched);
@@ -185,6 +236,9 @@ public:
     friend std::ostream& operator<<(std::ostream& os, QueriesAndChunks const& qc);
 
 private:
+    static Ptr _globalQueriesAndChunks;
+    QueriesAndChunks(std::chrono::seconds deadAfter, std::chrono::seconds examineAfter, int maxTasksBooted);
+
     void _bootTask(QueryStatistics::Ptr const& uq, wbase::Task::Ptr const& task,
                    std::shared_ptr<wsched::SchedulerBase> const& sched);
     ScanTableSumsMap _calcScanTableSums();

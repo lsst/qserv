@@ -35,6 +35,8 @@ namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.wsched.ScanScheduler");
 }
 
+using namespace std;
+
 namespace lsst::qserv::wsched {
 
 /// Set priority to use when starting next chunk.
@@ -137,6 +139,15 @@ bool SchedulerBase::chunkAlreadyActive(int chunkId) {
     std::lock_guard<std::mutex> lock(_countsMutex);
     auto iter = _chunkTasks.find(chunkId);
     return iter != _chunkTasks.end();  // return true if chunkId was found.
+}
+
+void SchedulerBase::recordPerformanceData() {
+    //&&&lock_guard<mutex> lock(util::CommandQueue::_mx);
+    _histQueuedTasks->addEntry(getTotalTaskCount());
+    _histRunningTasks->addEntry(_inFlight);
+    _histTransmittingTasks->addEntry(_transmitCount);  // &&& doesn't exist yet
+    _histRecentlyCompletedTasks->addEntry(_recentlyCompleted);
+    _recentlyCompleted = 0;  // reset to 0 every time it is recorded.
 }
 
 }  // namespace lsst::qserv::wsched

@@ -29,12 +29,11 @@
 #include <map>
 #include <memory>
 
-// qserv headers
+#include "../util/Histogram.h"
 #include "global/intTypes.h"
-#include "util/Histogram.h"
 
 namespace lsst::qserv::wbase {
-
+#if 0   // &&&
 /// This class is used to store information about the part of a
 /// user query running on this particular worker.
 class UserQueryWInfo {
@@ -53,7 +52,7 @@ public:
     ~UserQueryWInfo() = default;
 
     /// Return a UserQueryWInfo instance for the given `queryId`, creating a new one if needed.
-    static Ptr getUQWI(QueryId queryId_);
+    static Ptr getUQWI(QueryId queryId_);  //&&& replace with QueriesAndChunks::getStats()
 
     /// Return the UserQueryWInfo instance for the given `queryId` and remove it from the map.
     /// Returns nullptr if it wasn't found.
@@ -95,7 +94,7 @@ private:
 
     static std::mutex _mtx;  ///< Protects the map `_uqwiMap`.
 };
-
+#endif  //&&&
 }  // namespace lsst::qserv::wbase
 
 #endif  // LSST_QSERV_WBASE_USERQUERYWINFO_H

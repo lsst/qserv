@@ -46,6 +46,7 @@
 #include "util/Bug.h"
 #include "wbase/Base.h"
 #include "wbase/SendChannelShared.h"
+#include "wpublish/QueriesAndChunks.h"
 
 using namespace std;
 using namespace std::chrono_literals;
@@ -101,10 +102,10 @@ IdSet Task::allIds{};
 
 TaskScheduler::TaskScheduler() {
     auto hour = std::chrono::milliseconds(1h);
-    histTimeOfRunningTasks = util::Histogram::Ptr(
-            new util::Histogram("RunningTaskTimes", {0.1, 1.0, 10.0, 100.0, 200.0}, hour, 10'000));
-    histTimeOfTransmittingTasks = util::Histogram::Ptr(
-            new util::Histogram("TransmittingTaskTime", {0.1, 1.0, 10.0, 60.0, 600.0, 1200.0}, hour, 10'000));
+    histTimeOfRunningTasks = util::HistogramRolling::Ptr(
+            new util::HistogramRolling("RunningTaskTimes", {0.1, 1.0, 10.0, 100.0, 200.0}, hour, 10'000));
+    histTimeOfTransmittingTasks = util::HistogramRolling::Ptr(new util::HistogramRolling(
+            "TransmittingTaskTime", {0.1, 1.0, 10.0, 60.0, 600.0, 1200.0}, hour, 10'000));
 }
 
 std::atomic<uint32_t> taskSequence{0};
@@ -123,8 +124,7 @@ Task::Task(TaskMsgPtr const& t, std::string const& query, int fragmentNumber,
           _attemptCount(t->attemptcount()),
           _idStr(makeIdStr()),
           _queryString(query),
-          _queryFragmentNum(fragmentNumber),
-          _userQueryWInfo(UserQueryWInfo::getUQWI(_qId)) {
+          _queryFragmentNum(fragmentNumber) {
     hash = hashTaskMsg(*t);
 
     if (t->has_user()) {
@@ -147,23 +147,6 @@ Task::Task(TaskMsgPtr const& t, std::string const& query, int fragmentNumber,
     _scanInfo.scanRating = msg->scanpriority();
     _scanInfo.sortTablesSlowestFirst();
     _scanInteractive = msg->scaninteractive();
-
-    /* &&&
-    /// For all of the histograms, all entries should be kept at least until the work is finished.
-    std::chrono::milliseconds maxAge(48h);
-    histSizePerChunk = util::Histogram::Ptr(new util::Histogram(
-            string("SizePerChunk") + _idStr, {1'000, 10'0000, 1'000'000, 10'000'000, 100'000'000}, maxAge,
-            200'000));  ///< &&&
-    histRowsPerChunk = util::Histogram::Ptr(new util::Histogram(string("RowsPerChunk") + _idStr,
-                                                                {1, 100, 1'000, 10'000, 100'000, 1'000'000},
-                                                                maxAge, 200'000));  ///< &&&
-    histTimeRunningPerChunk = util::Histogram::Ptr(
-            new util::Histogram(string("TimeRunningPerChunk") + _idStr,
-                                {0.1, 1, 10, 30, 60, 120, 300, 600, 1200, 10000}, maxAge, 200'000));  ///< &&&
-    histTimeTransmittingPerChunk = util::Histogram::Ptr(
-            new util::Histogram(string("TimeTransmittingPerChunk") + _idStr,
-                                {0.1, 1, 10, 30, 60, 120, 300, 600, 1200, 10000}, maxAge, 200'000));
-    */
 }
 
 Task::~Task() {
@@ -205,7 +188,18 @@ std::vector<Task::Ptr> Task::createTasks(std::shared_ptr<proto::TaskMsg> const& 
         }
     }
     sendChannel->setTaskCount(vect.size());
+
     return vect;
+}
+
+void Task::setQueryStatistics(wpublish::QueryStatistics::Ptr const& qStats) { _queryStats = qStats; }
+
+wpublish::QueryStatistics::Ptr Task::getQueryStats() const {
+    auto qStats = _queryStats.lock();
+    if (qStats == nullptr) {
+        LOGS(_log, LOG_LVL_ERROR, "Task::getQueryStats() _queryStats==null " << getIdStr());
+    }
+    return qStats;
 }
 
 /// @return the chunkId for this task. If the task has no chunkId, return -1.
@@ -341,6 +335,24 @@ memman::MemMan::Status Task::getMemHandleStatus() {
         return memman::MemMan::Status();
     }
     return _memMan->getStatus(_memHandle);
+}
+
+Task::PerformanceData Task::getPerformanceData() const {
+    lock_guard<mutex> lg(_perfMtx);
+    return _performanceData;
+}
+
+void Task::addTransmitData(double timeSeconds, int64_t bytesTransmitted, int64_t rowsTransmitted) {
+    lock_guard<mutex> lg(_perfMtx);
+    _performanceData.transmitTimeSeconds += timeSeconds;
+    _performanceData.bytesTransmitted += bytesTransmitted;
+    _performanceData.rowsTransmitted += rowsTransmitted;
+}
+
+void Task::addRunData(double runTimeSeconds, double subchunkRunTimeSeconds) {
+    lock_guard<mutex> lg(_perfMtx);
+    _performanceData.runTimeSeconds += runTimeSeconds;
+    _performanceData.subchunkRunTimeSeconds += subchunkRunTimeSeconds;
 }
 
 std::ostream& operator<<(std::ostream& os, Task const& t) {

@@ -40,6 +40,74 @@
 
 namespace lsst::qserv::util {
 
+class Histogram {
+public:
+    using Ptr = std::shared_ptr<Histogram>;
+    using CLOCK = std::chrono::system_clock;
+    using TIMEPOINT = std::chrono::time_point<CLOCK>;
+
+    Histogram(std::string const& label, std::vector<double> const& bucketVals);
+
+    /// This keeps track of the count of entries with values greater than
+    /// the previous bucket's _maxVal and less than this bucket's _maxVal.
+    class Bucket {
+    public:
+        Bucket(double maxV) : _maxVal(maxV) {}
+        Bucket() = delete;
+        Bucket(Bucket const&) = default;
+
+        /// Return the maximum value for the bucket.
+        double getMaxVal() const { return _maxVal; }
+        int64_t count = 0;
+
+    private:
+        double const _maxVal;
+    };
+
+    double getAvg() const;    ///< Return the average value of all current entries.
+    double getTotal() const;  ///< Return the total value of all entries.
+
+    /// Return number of entries used to make the histogram.
+    uint64_t getTotalCount() const { return _totalCount; }
+
+    /// Return the count for bucket `index`, where index=0 is the bucket for the smallest values.
+    int getBucketCount(size_t index) const;
+
+    /// Return the _maxVal for the bucket at `index`.
+    double getBucketMaxVal(size_t index) const;
+
+    /// Add a time and value to the histogram.
+    virtual std::string addEntry(TIMEPOINT stamp, double val, std::string const& note = std::string());
+
+    /// Add a time entry using CLOCK::now() as the time stamp.
+    virtual std::string addEntry(double val, std::string const& note = std::string());
+
+    nlohmann::json getJson() const;  ///< Return a json version of this object.
+    std::string getJsonStr() const;  ///< Return the json string for this instance.
+
+    virtual std::string getString(std::string const& note);
+
+protected:
+    std::string _addEntry(TIMEPOINT stamp, double val, std::string const& note);
+
+    /// _mtx must be locked, return the average value of all current entries.
+    double _getAvg() const;
+
+    /// _mtx must be locked, Change the counts of the appropriate bucket by `incr`.
+    /// Normal values of `incr` should be -1 or 1.
+    void _changeCountsBy(double val, int incr);
+
+    /// _mtx must be locked, returns a log worthy string.
+    std::string _getString(std::string const& note);
+
+    std::string _label;            ///< String to identify what the histogram is for.
+    std::vector<Bucket> _buckets;  ///< The ordered array of Buckets
+    double _total = 0.0;           ///< Sum of the values used to make the Histogram
+    int64_t _totalCount = 0;       ///< Total number of items used to make the Histogram.
+    int64_t _overMaxCount = 0;     ///< number of entries that couldn't fit in a bucket.
+    mutable std::mutex _mtx;
+};
+
 /// This class is used to help track a value over time.
 /// The `getJson()` function returns a json object that has a structure similar to this
 ///	{"HistogramId":"RunningTaskTimes",
@@ -64,11 +132,9 @@ namespace lsst::qserv::util {
 /// `total` is the sum of all entries.
 /// The `Histogram` keeps a list of all entries. When there are too many entries, the oldest ones are removed
 /// until there are at most `_maxSize` entries. Entries older than `_maxAge` are also removed.
-class Histogram {
+class HistogramRolling : public Histogram {
 public:
-    using Ptr = std::shared_ptr<Histogram>;
-    using CLOCK = std::chrono::system_clock;
-    using TIMEPOINT = std::chrono::time_point<CLOCK>;
+    using Ptr = std::shared_ptr<HistogramRolling>;
 
     /// This keeps track of the count of entries with values greater than
     /// the previous bucket's _maxVal and less than this bucket's _maxVal.
@@ -99,58 +165,29 @@ public:
     /// @param maxSize - maximum number of entries to keep. Must be greater than 0.
     /// @param maxAge - maximum age in milliseconds, such that entries older than
     ///                       it will be removed from the histogram. Default is 1 hour.
-    Histogram(std::string const& label, std::vector<double> const& bucketVals,
-              std::chrono::milliseconds maxAge, size_t maxSize = 1000);
-    Histogram() = delete;
-    Histogram(Histogram const&) = delete;
-    Histogram& operator=(Histogram const&) = delete;
+    HistogramRolling(std::string const& label, std::vector<double> const& bucketVals,
+                     std::chrono::milliseconds maxAge, size_t maxSize = 1000);
+    HistogramRolling() = delete;
+    HistogramRolling(HistogramRolling const&) = delete;
+    HistogramRolling& operator=(HistogramRolling const&) = delete;
 
     /// Add a time and value to the histogram.
-    std::string addEntry(TIMEPOINT stamp, double val, std::string const& note = "");
+    std::string addEntry(TIMEPOINT stamp, double val, std::string const& note = std::string()) override;
 
     /// Add a time entry using CLOCK::now() as the time stamp.
-    std::string addEntry(double val, std::string const& note = "");
+    std::string addEntry(double val, std::string const& note = std::string()) override;
 
+    size_t getSize();                                  ///< Return the number of elements in _entries.
     void setMaxSize(size_t maxSize);                   ///< Set the maximum number of entries to keep.
     void setMaxAge(std::chrono::milliseconds maxAge);  ///< Set the maximum age for entries.
 
-    /// Return the count for bucket `index`, where index=0 is the bucket for the smallest values.
-    int getBucketCount(size_t index) const;
-
-    /// Return the _maxVal for the bucket at `index`.
-    double getBucketMaxVal(size_t index) const;
-
-    double getAvg() const;                        ///< Return the average value of all current entries.
-    double getTotal() const;                      ///< Return the total value of all entries.
-    double getSize() const;                       ///< Return the number of entries.
     std::chrono::milliseconds getMaxAge() const;  ///< Return the maximum age allowed.
     size_t getMaxSize() const;                    ///< Return the maximum number of entries allowed.
     void checkEntries();                          ///< Remove old entries or entries beyond maxSize.
-    std::string getString(std::string const& note = "");  ///< @return a log worthy version of the histogram.
-
-    nlohmann::json getJson() const;  ///< Return a json version of this object.
-    std::string getJsonStr() const;  ///< Return the json string for this instance.
 
 private:
-    /// _mtx must be locked, return the average value of all current entries.
-    double _getAvg() const;
-
-    /// _mtx must be locked, returns a log worthy string.
-    std::string _getString(std::string const& note);
-
-    /// _mtx must be locked, Change the counts of the appropriate bucket by `incr`.
-    /// Normal values of `incr` should be -1 or 1.
-    void _changeCountsBy(double val, int incr);
-
     /// Remove old entries, _mtx must be held when calling.
     void _checkEntries();
-
-    std::string _label;
-    mutable std::mutex _mtx;
-    std::vector<Bucket> _buckets;
-    int64_t _overMaxCount = 0;
-    double _total = 0.0;
-    int64_t _totalCount = 0;
 
     size_t _maxSize;                    ///< Maximum size of _entries.
     std::chrono::milliseconds _maxAge;  ///< maximum age of an individual entry.

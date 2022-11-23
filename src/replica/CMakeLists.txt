@@ -420,8 +420,6 @@ target_sources(replica PRIVATE
     TransactionsApp.h
     Url.cc
     Url.h
-    UserQueryWInfo.cc
-    UserQueryWInfo.h
     VerifyApp.cc
     VerifyApp.h
     VerifyJob.cc

@@ -129,11 +129,15 @@ public:
     /// @return a JSON representation of the object's status for the monitoring
     nlohmann::json statusToJson();
 
+    /// Do nothing, the schedulers this class manages keep their own statistics.
+    void recordPerformanceData() override{};
+
 private:
     int _getAdjustedMaxThreads(int oldAdjMax, int inFlight);
     bool _ready();
     void _sortScanSchedulers();
     void _logChunkStatus();
+    void _logSchedulers();
     ControlCommandQueue _ctrlCmdQueue;  ///< Needed for changing thread pool size.
 
     int _schedMaxThreads;  ///< maximum number of threads that can run.

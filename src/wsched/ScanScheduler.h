@@ -75,6 +75,8 @@ public:
     bool ready() override;
     std::size_t getSize() const override;
 
+    //&&&void recordPerformanceData() override;
+
     void logMemManStats();
 
     double getMaxTimeMinutes() const { return _maxTimeMinutes; }

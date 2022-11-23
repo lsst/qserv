@@ -45,14 +45,17 @@
 
 // Forward declarations
 namespace lsst::qserv {
-namespace wbase {
-struct ScriptMeta;
-class SendChannelShared;
-}  // namespace wbase
 namespace proto {
 class TaskMsg;
 class TaskMsg_Fragment;
 }  // namespace proto
+namespace wbase {
+struct ScriptMeta;
+class SendChannelShared;
+}  // namespace wbase
+namespace wpublish {
+class QueryStatistics;
+}
 }  // namespace lsst::qserv
 
 namespace lsst::qserv::wbase {
@@ -78,8 +81,8 @@ public:
     virtual void taskCancelled(Task*) = 0;  ///< Repeated calls must be harmless.
     virtual bool removeTask(std::shared_ptr<Task> const& task, bool removeRunning) = 0;
 
-    util::Histogram::Ptr histTimeOfRunningTasks;       ///< Store information about running tasks
-    util::Histogram::Ptr histTimeOfTransmittingTasks;  ///< Store information about transmitting tasks.
+    util::HistogramRolling::Ptr histTimeOfRunningTasks;       ///< Store information about running tasks
+    util::HistogramRolling::Ptr histTimeOfTransmittingTasks;  ///< Store information about transmitting tasks.
 };
 
 /// Used to find tasks that are in process for debugging with Task::_idStr.
@@ -132,6 +135,8 @@ public:
     /// Read 'taskMsg' to generate a vector of one or more task objects all using the same 'sendChannel'
     static std::vector<Ptr> createTasks(std::shared_ptr<proto::TaskMsg> const& taskMsg,
                                         std::shared_ptr<SendChannelShared> const& sendChannel);
+
+    void setQueryStatistics(std::shared_ptr<wpublish::QueryStatistics> const& qC);
 
     TaskMsgPtr msg;  ///< Protobufs Task spec
     std::shared_ptr<SendChannelShared> getSendChannel() const { return _sendChannel; }
@@ -197,14 +202,25 @@ public:
         return QueryIdHelper::makeIdStr(_qId, _jId, invalid) + std::to_string(_tSeq) + ":";
     }
 
-    /* &&&
-    //&&& All need to be moved to a UserQueryWorker
-    util::Histogram::Ptr histTimeRunningPerChunk;       ///< &&&
-    util::Histogram::Ptr histTimeTransmittingPerChunk;  ///< &&&
-    util::Histogram::Ptr histSizePerChunk;              ///< Store information about bytes per chunk.
-    util::Histogram::Ptr histRowsPerChunk;              ///< Store information about rows per chunk.
-        */
-    UserQueryWInfo::Ptr getUserQueryWInfo() const { return _userQueryWInfo; }
+    std::shared_ptr<wpublish::QueryStatistics> getQueryStats() const;
+
+    /// Statistics relating to handling the SQL queries for one job in this user query.
+    /// If there are subchunk queries, a single job may have several Tasks, one Task
+    /// for each required subchunk.
+    struct PerformanceData {
+        double runTimeSeconds = 0.0;
+        double subchunkRunTimeSeconds = 0.0;
+        double transmitTimeSeconds = 0.0;
+        int64_t bytesTransmitted = 0;
+        int64_t rowsTransmitted = 0;
+    };
+
+    void addTransmitData(double timeSeconds, int64_t bytesTransmitted, int64_t rowsTransmitted);
+
+    void addRunData(double runTimeSeconds, double subchunkRunTimeSeconds);
+
+    /// Return a copy of PerformanceData.
+    PerformanceData getPerformanceData() const;
 
 private:
     std::shared_ptr<SendChannelShared> _sendChannel;
@@ -236,7 +252,9 @@ private:
     size_t _totalSize = 0;  ///< Total size of the result so far.
 
     /// Stores information on the query's resource usage.
-    UserQueryWInfo::Ptr const _userQueryWInfo;
+    std::weak_ptr<wpublish::QueryStatistics> _queryStats;
+    PerformanceData _performanceData;
+    std::mutex mutable _perfMtx;  ///< protects _performanceData;
 };
 
 }  // namespace lsst::qserv::wbase

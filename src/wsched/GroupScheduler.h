@@ -82,6 +82,8 @@ public:
     bool ready() override;
     std::size_t getSize() const override;
 
+    //&&&void recordPerformanceData() override;
+
 private:
     /// util::CommandQueue::_mx must be locked before calling this function.
     /// @param keepInThisGroup - set to true is this item must remain in the same group.

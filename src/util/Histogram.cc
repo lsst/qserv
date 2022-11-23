@@ -22,13 +22,11 @@
  */
 // Generic timer class
 
-#include "util/Histogram.h"
-
-// System headers
 #include <cstdio>
 #include <float.h>
 #include <set>
 
+#include "Histogram.h"
 // qserv headers
 #include "util/Bug.h"
 
@@ -43,36 +41,31 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.util.Histogram");
 
 namespace lsst::qserv::util {
 
-Histogram::Histogram(string const& label, std::vector<double> const& bucketVals,
-                     std::chrono::milliseconds maxAgeMillis, size_t maxSize)
-        : _label(label), _maxSize(maxSize), _maxAge(maxAgeMillis) {
+Histogram::Histogram(string const& label, std::vector<double> const& bucketVals) : _label(label) {
     // sort vector and remove duplicates.
     std::set<double> valSet;
     for (auto&& v : bucketVals) {
         valSet.insert(v);
     }
     for (auto&& v : valSet) {
-        _buckets.emplace_back(Bucket(v));
+        _buckets.emplace_back(v);
     }
 }
 
-std::string Histogram::addEntry(double val, std::string const& note) {
+string Histogram::addEntry(double val, string const& note) {
     auto now = CLOCK::now();
     return addEntry(now, val, note);
 }
 
-std::string Histogram::addEntry(TIMEPOINT stamp, double val, std::string const& note) {
+string Histogram::addEntry(TIMEPOINT stamp, double val, string const& note) {
     std::lock_guard<std::mutex> lock(_mtx);
+    return _addEntry(stamp, val, note);
+}
 
+string Histogram::_addEntry(TIMEPOINT stamp, double val, string const& note) {
     _changeCountsBy(val, 1);
     _total += val;
-
-    if (_maxSize > 0) {
-        _entries.emplace(stamp, val);
-    }
-
-    // remove old values.
-    _checkEntries();
+    ++_totalCount;
 
     if (note.empty()) {
         return note;
@@ -80,35 +73,28 @@ std::string Histogram::addEntry(TIMEPOINT stamp, double val, std::string const& 
     return _getString(note);
 }
 
-void Histogram::checkEntries() {
-    std::lock_guard<std::mutex> lock(_mtx);
-    _checkEntries();
-}
-
-void Histogram::_checkEntries() {
-    auto now = CLOCK::now();
-    auto originalSize = _entries.size();
-    while (true && !_entries.empty()) {
-        Entry& head = _entries.front();
-        auto age = now - head.stamp;
-        if (age.count() > _maxAge.count() || _entries.size() > _maxSize) {
-            auto val = head.val;
-            _total -= val;
-            _changeCountsBy(val, -1);
-            _entries.pop();
-
-        } else {
+void Histogram::_changeCountsBy(double val, int incr) {
+    bool found = false;
+    for (auto& bkt : _buckets) {
+        if (val <= bkt.getMaxVal()) {
+            bkt.count += incr;
+            found = true;
             break;
         }
     }
-    if (_entries.size() == 0 && originalSize != 0) {
-        // clear values.
-        for (auto& bkt : _buckets) {
-            bkt.count = 0;
-        }
-        _overMaxCount = 0;
-        _total = 0.0;
+    if (not found) {
+        _overMaxCount += incr;
     }
+}
+
+double Histogram::getAvg() const {
+    std::lock_guard<std::mutex> lock(_mtx);
+    return _getAvg();
+}
+
+double Histogram::_getAvg() const {
+    double avg = (_totalCount) ? _total / _totalCount : 0.0;
+    return avg;
 }
 
 int Histogram::getBucketCount(size_t index) const {
@@ -136,54 +122,7 @@ double Histogram::getBucketMaxVal(size_t index) const {
     return _buckets[index].getMaxVal();
 }
 
-double Histogram::getTotal() const {
-    std::lock_guard<std::mutex> lock(_mtx);
-    return _total;
-}
-
-double Histogram::getSize() const {
-    std::lock_guard<std::mutex> lock(_mtx);
-    return _entries.size();
-}
-
-void Histogram::_changeCountsBy(double val, int incr) {
-    bool found = false;
-    for (auto& bkt : _buckets) {
-        if (val <= bkt.getMaxVal()) {
-            bkt.count += incr;
-            found = true;
-            break;
-        }
-    }
-    if (not found) {
-        _overMaxCount += incr;
-    }
-}
-
-double Histogram::getAvg() const {
-    std::lock_guard<std::mutex> lock(_mtx);
-    return _getAvg();
-}
-
-double Histogram::_getAvg() const {
-    double totalCount = _entries.size();
-    double avg = (totalCount) ? _total / totalCount : 0.0;
-    return avg;
-}
-
-void Histogram::setMaxSize(size_t maxSize) {
-    std::lock_guard<std::mutex> lock(_mtx);
-    _maxSize = maxSize;
-    _checkEntries();
-}
-
-void Histogram::setMaxAge(std::chrono::milliseconds maxAge) {
-    std::lock_guard<std::mutex> lock(_mtx);
-    _maxAge = maxAge;
-    _checkEntries();
-}
-
-std::string Histogram::getString(std::string const& note) {
+string Histogram::getString(std::string const& note) {
     std::lock_guard<std::mutex> lock(_mtx);
     return _getString(note);
 }
@@ -193,7 +132,7 @@ std::string Histogram::getString(std::string const& note) {
 string Histogram::_getString(std::string const& note) {
     stringstream os;
 
-    os << _label << " " << note << " size=" << _entries.size() << " total=" << _total << " avg=" << _getAvg()
+    os << _label << " " << note << " size=" << _totalCount << " total=" << _total << " avg=" << _getAvg()
        << " ";
     double maxB = -DBL_MAX;
     for (auto& bkt : _buckets) {
@@ -207,7 +146,7 @@ string Histogram::_getString(std::string const& note) {
 nlohmann::json Histogram::getJson() const {
     std::lock_guard<std::mutex> lock(_mtx);
     nlohmann::json rJson = {
-            {"HistogramId", _label}, {"avg", _getAvg()}, {"size", _entries.size()}, {"total", _total}};
+            {"HistogramId", _label}, {"avg", _getAvg()}, {"totalCount", _totalCount}, {"total", _total}};
     for (size_t j = 0; j < _buckets.size(); ++j) {
         auto const& bk = _buckets[j];
         rJson["buckets"][j] = {{"index", j}, {"maxVal", bk.getMaxVal()}, {"count", bk.count}};
@@ -224,6 +163,79 @@ std::string Histogram::getJsonStr() const {
     stringstream os;
     os << rJson;
     return os.str();
+}
+
+HistogramRolling::HistogramRolling(string const& label, std::vector<double> const& bucketVals,
+                                   std::chrono::milliseconds maxAgeMillis, size_t maxSize)
+        : Histogram(label, bucketVals), _maxSize(maxSize), _maxAge(maxAgeMillis) {}
+
+std::string HistogramRolling::addEntry(double val, std::string const& note) {
+    auto now = CLOCK::now();
+    return addEntry(now, val, note);
+}
+
+std::string HistogramRolling::addEntry(TIMEPOINT stamp, double val, std::string const& note) {
+    std::lock_guard<std::mutex> lock(_mtx);
+
+    string str = Histogram::_addEntry(stamp, val, note);
+
+    if (_maxSize > 0) {
+        _entries.emplace(stamp, val);
+    }
+
+    // remove old values.
+    _checkEntries();
+
+    return str;
+}
+
+size_t HistogramRolling::getSize() {
+    std::lock_guard<std::mutex> lock(_mtx);
+    return _entries.size();
+}
+
+void HistogramRolling::checkEntries() {
+    std::lock_guard<std::mutex> lock(_mtx);
+    _checkEntries();
+}
+
+void HistogramRolling::_checkEntries() {
+    auto now = CLOCK::now();
+    auto originalSize = _entries.size();
+    while (true && !_entries.empty()) {
+        Entry& head = _entries.front();
+        auto age = now - head.stamp;
+        if (age.count() > _maxAge.count() || _entries.size() > _maxSize) {
+            auto val = head.val;
+            _total -= val;
+            _changeCountsBy(val, -1);
+            _entries.pop();
+            --_totalCount;
+        } else {
+            break;
+        }
+    }
+    if (_entries.size() == 0 && originalSize != 0) {
+        // clear values.
+        for (auto& bkt : _buckets) {
+            bkt.count = 0;
+        }
+        _overMaxCount = 0;
+        _total = 0.0;
+        _totalCount = 0;
+    }
+}
+
+void HistogramRolling::setMaxSize(size_t maxSize) {
+    std::lock_guard<std::mutex> lock(_mtx);
+    _maxSize = maxSize;
+    _checkEntries();
+}
+
+void HistogramRolling::setMaxAge(std::chrono::milliseconds maxAge) {
+    std::lock_guard<std::mutex> lock(_mtx);
+    _maxAge = maxAge;
+    _checkEntries();
 }
 
 }  // namespace lsst::qserv::util

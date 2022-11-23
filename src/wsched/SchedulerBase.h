@@ -29,6 +29,7 @@
 #include "nlohmann/json.hpp"
 
 // Qserv headers
+#include "util/Histogram.h"
 #include "wcontrol/Foreman.h"
 
 namespace lsst::qserv::wsched {
@@ -50,6 +51,18 @@ public:
               _priority{priority},
               _priorityDefault{priority} {
         setMaxActiveChunks(maxActiveChunks);
+
+        using namespace std::chrono_literals;
+        std::vector<double> bucketMaxVals{0.01, 0.1, 1};  //&&&
+        size_t maxSize = 10;                              //&&&
+        _histQueuedTasks =
+                std::make_shared<util::HistogramRolling>("queuedTasks", bucketMaxVals, 1h, maxSize);  /// &&&
+        _histRunningTasks = std::make_shared<util::HistogramRolling>("runningTasks", bucketMaxVals, 1h,
+                                                                     maxSize);  ///< &&&
+        _histTransmittingTasks = std::make_shared<util::HistogramRolling>("transmittingTasks", bucketMaxVals,
+                                                                          1h, maxSize);  ///< &&&
+        _histRecentlyCompletedTasks = std::make_shared<util::HistogramRolling>(
+                "recentlyCompletedTasks", bucketMaxVals, 1h, maxSize);  ///&&&
     }
     virtual ~SchedulerBase() {}
     SchedulerBase(SchedulerBase const&) = delete;
@@ -96,6 +109,9 @@ public:
     /// Return maximum number of Tasks this scheduler can have inFlight.
     virtual int maxInFlight() { return std::min(_maxThreads, _maxThreadsAdj); }
 
+    /// Record performance data for the scheduler.
+    virtual void recordPerformanceData();
+
     std::string chunkStatusStr();  //< @return a string
 
     /// @return a JSON representation of the object's status for the monitoring
@@ -111,6 +127,19 @@ public:
 
     void setDefaultPosition(int val) { _defaultPosition = val; }
     int getDefaultPosition() const { return _defaultPosition; }
+
+    /// Class used to track number of Tasks that are transmitting.
+    class TransmittingTracker {
+    public:
+        using TPtr = std::shared_ptr<TransmittingTracker>;
+        static TPtr create(SchedulerBase& sched) { return TPtr(new TransmittingTracker(sched)); }
+        TransmittingTracker() = delete;
+        ~TransmittingTracker() { _sched._transmitCount -= 1; }
+
+    private:
+        TransmittingTracker(SchedulerBase& sched) : _sched(sched) { _sched._transmitCount += 1; }
+        SchedulerBase& _sched;
+    };
 
 protected:
     /// Increment the _userQueryCounts entry for queryId, creating it if needed.
@@ -134,7 +163,14 @@ protected:
     int _priority;  ///< Current priority, higher value - higher priority
     int _priorityDefault;
 
-    std::atomic<int> _inFlight{0};  //< Number of Tasks running.
+    std::atomic<int> _inFlight{0};           ///< Number of Tasks running.
+    std::atomic<int> _recentlyCompleted{0};  ///< Number of completed tasks, reset at intervals.
+    std::atomic<int> _transmitCount{0};      ///< Number of tasks transmitting.
+
+    util::HistogramRolling::Ptr _histQueuedTasks;             ///< &&& doc
+    util::HistogramRolling::Ptr _histRunningTasks;            ///< &&& doc
+    util::HistogramRolling::Ptr _histTransmittingTasks;       ///< &&& doc
+    util::HistogramRolling::Ptr _histRecentlyCompletedTasks;  ///< &&& doc
 
 private:
     /// The true purpose of _userQuerycount is to track how many different UserQuery's are on the queue.
