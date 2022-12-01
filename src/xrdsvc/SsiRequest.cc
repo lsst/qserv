@@ -39,6 +39,7 @@
 #include "global/ResourceUnit.h"
 #include "proto/FrameBuffer.h"
 #include "proto/worker.pb.h"
+#include "util/InstanceCount.h"
 #include "util/Timer.h"
 #include "wbase/MsgProcessor.h"
 #include "wbase/SendChannelShared.h"
@@ -70,6 +71,8 @@ void SsiRequest::reportError(std::string const& errStr) {
     replyError(errStr, EINVAL);
     ReleaseRequestBuffer();
 }
+
+uint64_t countLimiter = 0;  // LockupDB
 
 // Step 4
 /// Called by XrdSsi to actually process a request.
@@ -169,7 +172,11 @@ void SsiRequest::execute(XrdSsiRequest& req) {
             _processor->processCommand(command);  // Queues the command to be run later.
 
             LOGS(_log, LOG_LVL_DEBUG, "Enqueued WorkerCommand for resource=" << _resourceName);
-
+            ++countLimiter;
+            if (countLimiter % 500 == 0) {
+                LOGS(_log, LOG_LVL_DEBUG, "Forcing instance count to the log");
+                util::InstanceCount ic("ForcingPrint_LDB");  // LockupDB
+            }
             break;
         }
         default:

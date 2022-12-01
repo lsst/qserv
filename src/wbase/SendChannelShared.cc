@@ -127,6 +127,9 @@ bool SendChannelShared::_addTransmit(bool cancelled, bool erred, bool lastIn, Tr
     // this SendChannel is effectively dead.
     bool reallyLast = _lastRecvd;
     string idStr(makeIdStr(qId, jId));
+    if (_icPtr == nullptr) {
+        _icPtr = std::make_shared<util::InstanceCount>(std::to_string(qId) + "_SCS_LDB");
+    }
 
     // If something bad already happened, just give up.
     if (reallyLast || isDead()) {

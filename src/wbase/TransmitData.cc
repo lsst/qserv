@@ -83,6 +83,7 @@ proto::Result* TransmitData::_createResult() {
 
 void TransmitData::attachNextHeader(TransmitData::Ptr const& nextTr, bool reallyLast, uint32_t seq,
                                     int scsSeq) {
+    _icPtr = std::make_shared<util::InstanceCount>(_idStr + "_td_LDB_" + std::to_string(reallyLast));
     lock_guard<mutex> lock(_trMtx);
     if (_result == nullptr) {
         throw util::Bug(ERR_LOC, _idStr + "_transmitLoop() had nullptr result!");

@@ -31,7 +31,8 @@ void InstanceCount::_increment(std::string const& source) {
     auto ret = _instances.insert(entry);
     auto iter = ret.first;
     iter->second += 1;
-    LOGS(_log, LOG_LVL_INFO, "InstanceCount " << source << " " << iter->first << "=" << iter->second);
+    LOGS(_log, LOG_LVL_WARN,
+         "InstanceCount " << source << " " << iter->first << "=" << iter->second);  // LockupDB INFO
 }
 
 InstanceCount::~InstanceCount() {
@@ -39,7 +40,11 @@ InstanceCount::~InstanceCount() {
     auto iter = _instances.find(_className);
     if (iter != _instances.end()) {
         iter->second -= 1;
-        LOGS(_log, LOG_LVL_INFO, "~InstanceCount " << iter->first << "=" << iter->second << " : " << *this);
+        LOGS(_log, LOG_LVL_WARN,
+             "~InstanceCount " << iter->first << "=" << iter->second << " : " << *this);  // LockupDB INFO
+        if (iter->second == 0) {
+            _instances.erase(_className);
+        }
     } else {
         LOGS(_log, LOG_LVL_ERROR, "~InstanceCount " << _className << " was not found! : " << *this);
     }
