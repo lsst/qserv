@@ -768,8 +768,8 @@ def smig_update(czar_connection: str, worker_connections: List[str], repl_connec
 
 def _run(
     args: Optional[Sequence[Union[str, int]]],
-    cmd: str = None,
-    env: Dict[str, str] = None,
+    cmd: Optional[str] = None,
+    env: Optional[Dict[str, str]] = None,
     debug_port: Optional[int] = None,
     run: bool = True,
     check_returncode: bool = False,
