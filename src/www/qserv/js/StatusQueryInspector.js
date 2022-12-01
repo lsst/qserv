@@ -105,58 +105,40 @@ function(CSSLoader,
   </div>
 </div>
 <div class="row" id="fwk-status-query-info">
-  <div class="col col-md-2">
+  <div class="col col-md-4">
     <table class="table table-sm table-hover">
       <thead>
         <tr>
-          <th>&nbsp;</th>
-          <th>&nbsp;</th>
-          <th>&nbsp;</th>
+          <th class="borderless">&nbsp;</th>
+          <th class="borderless">&nbsp;</th>
+          <th class="borderless">&nbsp;</th>
+          <th class="borderless">&nbsp;</th>
+          <th class="borderless">&nbsp;</th>
+          <th class="borderless">&nbsp;</th>
         </tr>
       </thead>
       <tbody>
         <tr>
           <th style="text-align:left" scope="row">Status</th>
           <td style="text-align:left" id="status"><pre></pre></td>
-        </tr>
-        <tr>
-          <th style="text-align:left" scope="row">Type</th>
-          <td style="text-align:left"><pre id="qType"></pre></td>
-        </tr>
-        <tr>
-          <th style="text-align:left" scope="row">Submitted</th>
-          <td style="text-align:left"><pre id="submitted"></pre></td>
-        </tr>
-        <tr>
-          <th style="text-align:left" scope="row">Completed</th>
-          <td style="text-align:left"><pre id="completed"></pre></td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
-  <div class="col col-md-2">
-    <table class="table table-sm table-hover">
-      <thead>
-        <tr>
-          <th>&nbsp;</th>
-          <th>&nbsp;</th>
-          <th>&nbsp;</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
           <th style="text-align:left" scope="row">Chunks</th>
           <td style="text-align:left"><pre id="chunkCount"></pre></td>
         </tr>
         <tr>
+          <th style="text-align:left" scope="row">Type</th>
+          <td style="text-align:left"><pre id="qType"></pre></td>
           <th style="text-align:left" scope="row">Collected Bytes</th>
           <td style="text-align:left"><pre id="collectedBytes"></pre></td>
         </tr>
         <tr>
+          <th style="text-align:left" scope="row">Submitted</th>
+          <td style="text-align:left"><pre id="submitted"></pre></td>
           <th style="text-align:left" scope="row">Collected Rows</th>
           <td style="text-align:left"><pre id="collectedRows"></pre></td>
         </tr>
         <tr>
+          <th style="text-align:left" scope="row">Completed</th>
+          <td style="text-align:left"><pre id="completed"></pre></td>
           <th style="text-align:left" scope="row">Final Rows</th>
           <td style="text-align:left"><pre id="finalRows"></pre></td>
         </tr>
@@ -167,9 +149,9 @@ function(CSSLoader,
     <table class="table table-sm table-hover">
       <thead>
         <tr>
-          <th>&nbsp;</th>
-          <th><i class="bi bi-clipboard-fill"></i></th>
-          <th>&nbsp;</th>
+          <th class="borderless">&nbsp;</th>
+          <th class="borderless"><i class="bi bi-clipboard-fill"></i></th>
+          <th class="borderless">&nbsp;</th>
         </tr>
       </thead>
       <tbody>
@@ -226,6 +208,31 @@ function(CSSLoader,
             cont.find(".form-control").change(() => {
                 this._load();
             });
+
+            // Set up display toggler for all 4 query displays.
+            let that = this;
+            let toggleQueryDisplay = function(e) {
+                let pre = $(e.currentTarget);
+                let id = pre.attr("id");
+                that._expanded[id] = !that._expanded[id];
+                pre.text(Common.query2text(that._info[id], that._expanded[id]));
+            };
+            this._query_info("query").click(toggleQueryDisplay);
+            this._query_info("qTemplate").click(toggleQueryDisplay);
+            this._query_info("qMerge").click(toggleQueryDisplay);
+            this._query_info("resultQuery").click(toggleQueryDisplay);
+
+            // Set up event handler to copy queries to the clipboard
+            let copyQueryToClipboard = function(e) {
+                let button = $(e.currentTarget);
+                let target = button.attr("target");
+                let query = that._info[target];
+                navigator.clipboard.writeText(query,
+                    () => {},
+                    () => { alert("Failed to write the query to the clipboard. Please copy the text manually: " + query); }
+                );
+            };
+            this._query_status().find("button.copy-query").click(copyQueryToClipboard);
         }
         _status() {
             if (this._status_obj === undefined) {
@@ -342,31 +349,6 @@ function(CSSLoader,
   <td class="left-aligned" id="${i}">Loading...</td>
 </tr>`;
             }
-
-            // Set up display toggler for all 4 query displays.
-            let that = this;
-            let toggleQueryDisplay = function(e) {
-                let pre = $(e.currentTarget);
-                let id = pre.attr("id");
-                that._expanded[id] = !that._expanded[id];
-                pre.text(Common.query2text(that._info[id], that._expanded[id]));
-            };
-            this._query_info("query").click(toggleQueryDisplay);
-            this._query_info("qTemplate").click(toggleQueryDisplay);
-            this._query_info("qMerge").click(toggleQueryDisplay);
-            this._query_info("resultQuery").click(toggleQueryDisplay);
-
-            // Set up event handler to copy queries to the clipboard
-            let copyQueryToClipboard = function(e) {
-                let button = $(e.currentTarget);
-                let target = button.attr("target");
-                let query = that._info[target];
-                navigator.clipboard.writeText(query,
-                    () => {},
-                    () => { alert("Failed to write the query to the clipboard. Please copy the text manually: " + query); }
-                );
-            };
-            this._query_status().find("button.copy-query").click(copyQueryToClipboard);
 
             // Display MySQL warnings (if any)
             let tbody = this._table_messages().children('tbody');

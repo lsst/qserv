@@ -7,6 +7,9 @@
 #fwk-status-query-status #status.updating {
     background-color: #ffeeba;
 }
+#fwk-status-query-info thead th.borderless {
+    border-color: transparent;
+}
 #fwk-status-query-info tbody pre {
     padding: 0;
     padding-top: 3px;
