@@ -149,6 +149,7 @@ size_t QueryRunner::_getDesiredLimit() {
 util::TimerHistogram memWaitHisto("memWait Hist", {1, 5, 10, 20, 40});
 
 bool QueryRunner::runQuery() {
+    util::InstanceCount ic(to_string(_task->getQueryId()) + "_rq_LDB");  // LockupDB
     QSERV_LOGCONTEXT_QUERY_JOB(_task->getQueryId(), _task->getJobId());
     LOGS(_log, LOG_LVL_INFO,
          "QueryRunner::runQuery() tid=" << _task->getIdStr()
@@ -347,6 +348,7 @@ bool QueryRunner::_dispatchChannel() {
 
             // Pass all information on to the shared object to add on to
             // an existing message or build a new one as needed.
+            util::InstanceCount ica(to_string(_task->getQueryId()) + "_rqa_LDB");  // LockupDB
             if (_task->getSendChannel()->buildAndTransmitResult(res, numFields, *_task, _largeResult,
                                                                 _multiError, _cancelled, readRowsOk)) {
                 erred = true;
@@ -359,12 +361,14 @@ bool QueryRunner::_dispatchChannel() {
         erred = true;
     }
     // IMPORTANT, do not leave this function before this check has been made.
+    util::InstanceCount icb(to_string(_task->getQueryId()) + "_rqb_LDB");  // LockupDB
     if (needToFreeRes) {
         needToFreeRes = false;
         // All rows have been read out or there was an error. In
         // either case resources need to be freed.
         _mysqlConn->freeResult();
     }
+    util::InstanceCount icc(to_string(_task->getQueryId()) + "_rqc_LDB");  // LockupDB
     if (!readRowsOk) {
         // This means a there was a transmit error and there's no way to
         // send anything to the czar. However, there were mysql results

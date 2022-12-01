@@ -187,6 +187,8 @@ private:
     std::string const _idStr;
 
     int const _trSeq;  ///< Identifier for this object, used for debugging.
+
+    std::shared_ptr<util::InstanceCount> _icPtr;  // LockupDB
 };
 
 }  // namespace wbase

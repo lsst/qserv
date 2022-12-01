@@ -34,6 +34,7 @@
 #include <mysql/mysql.h>
 
 // Qserv headers
+#include "util/InstanceCount.h"
 #include "wbase/SendChannel.h"
 #include "wbase/TransmitData.h"
 
@@ -286,6 +287,8 @@ private:
 
     std::shared_ptr<TransmitData> _transmitData;  ///< TransmitData object
     mutable std::mutex _tMtx;                     ///< protects _transmitData
+
+    std::shared_ptr<util::InstanceCount> _icPtr;  ///< temporary for LockupDB
 };
 
 }  // namespace wbase
