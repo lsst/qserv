@@ -97,6 +97,7 @@ function(CSSLoader,
           <th style="text-align:right;">Ch/min</th>
           <th style="text-align:right;">QID</th>
           <th style="text-align:center;"><i class="bi bi-clipboard-fill"></i></th>
+          <th class="sticky" style="text-align:center;"><i class="bi bi-info-circle-fill"></i></th>
           <th>Query</th>
         </tr>
       </thead>
@@ -378,6 +379,9 @@ function(CSSLoader,
   <td style="text-align:center; padding-top:0; padding-bottom:0">
     <button class="btn btn-outline-dark btn-sm copy-query" style="height:20px; margin:0px;" title="${queryCopyTitle}"></button>
   </td>
+  <td style="text-align:right; padding-top:0; padding-bottom:0">
+    <button class="btn btn-outline-info btn-sm inspect-query" style="height:20px; margin:0px;" title="${queryInspectTitle}"></button>
+  </td>
   <td class="query_toggler" title="${queryToggleTitle}"><pre class="query" style="${queryStyle}">` + this._query2text(query.queryId, expanded) + `</pre></td>
 </tr>`;
             }
@@ -408,6 +412,7 @@ function(CSSLoader,
             let tbodyQueries = this._tableQueries().children('tbody').html(html);
             tbodyQueries.find("td.query_toggler").click(toggleQueryDisplay);
             tbodyQueries.find("button.copy-query").click(copyQueryToClipboard);
+            tbodyQueries.find("button.inspect-query").click(displayQuery);
             html = '';
             for (let i in data.queries_past) {
                 let query = data.queries_past[i];
