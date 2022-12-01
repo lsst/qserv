@@ -9,6 +9,7 @@
 }
 #fwk-status-query-info tbody pre {
     padding: 0;
+    padding-top: 3px;
     margin: 0;
 }
 #fwk-status-query-info tbody pre.query-in-progress {
@@ -20,10 +21,15 @@
 #fwk-status-query-info tbody pre.query-finished {
     color: default;
 }
-#fwk-status-query-info textarea {
-    width: 100%;
-    height: 8.5em;
-    overflow-y: scroll;
+#fwk-status-query-info tbody > tr > td > button.copy-query {
+    height:20px;
+    margin-top: 7px;
+}
+#fwk-status-query-info tbody > tr > td > pre.query_toggler {
+    color:#4d4dff;
+}
+#fwk-status-query-info tbody > tr > td > pre.query_toggler:hover {
+    cursor:pointer;
 }
 #fwk-status-query-messages tbody pre {
     padding: 0;

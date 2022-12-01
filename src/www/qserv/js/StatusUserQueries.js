@@ -3,15 +3,13 @@ define([
     'webfwk/Fwk',
     'webfwk/FwkApplication',
     'qserv/Common',
-    'underscore',
-    'modules/sql-formatter.min'],
+    'underscore'],
 
 function(CSSLoader,
          Fwk,
          FwkApplication,
          Common,
-         _,
-         sqlFormatter) {
+         _) {
 
     CSSLoader.load('qserv/css/StatusUserQueries.css');
 
@@ -19,9 +17,6 @@ function(CSSLoader,
 
         /// @returns the suggested server-side timeout for retreiving results 
         static _server_proc_timeout_sec() { return 2; }
-
-        static _sqlFormatterConfig = {"language":"mysql", "uppercase:":true, "indent":"  "};
-        static _max_compact_length = 120;
 
         constructor(name) {
             super(name);
@@ -383,7 +378,7 @@ function(CSSLoader,
   <td style="text-align:center; padding-top:0; padding-bottom:0">
     <button class="btn btn-outline-dark btn-sm copy-query" style="height:20px; margin:0px;" title="${queryCopyTitle}"></button>
   </td>
-  <td class="query_toggler title="${queryToggleTitle}"><pre class="query" style="${queryStyle}">` + this._query2text(query.queryId, expanded) + `</pre></td>
+  <td class="query_toggler" title="${queryToggleTitle}"><pre class="query" style="${queryStyle}">` + this._query2text(query.queryId, expanded) + `</pre></td>
 </tr>`;
             }
             let that = this;
@@ -439,7 +434,7 @@ function(CSSLoader,
   <td style="text-align:right; padding-top:0; padding-bottom:0">
     <button class="btn btn-outline-info btn-sm inspect-query" style="height:20px; margin:0px;" title="${queryInspectTitle}"></button>
   </td>
-  <td class="query_toggler title="${queryToggleTitle}"><pre class="query" style="${queryStyle}">` + this._query2text(query.queryId, expanded) + `</pre></td>
+  <td class="query_toggler" title="${queryToggleTitle}"><pre class="query" style="${queryStyle}">` + this._query2text(query.queryId, expanded) + `</pre></td>
 </tr>`;
             }
             let tbodyPastQueries = this._tablePastQueries().children('tbody').html(html);
@@ -500,16 +495,8 @@ function(CSSLoader,
             if (chunks === 0 || totalSeconds <= 0) return 0;
             return Math.floor(chunks / (totalSeconds / 60.));
         }
-
         _query2text(queryId, expanded) {
-            let query = this._id2query[queryId];
-            if (expanded) {
-                return sqlFormatter.format(query, StatusUserQueries.sqlFormatterConfig);
-            } else if (query.length > StatusUserQueries._max_compact_length) {
-                return query.substring(0, StatusUserQueries._max_compact_length) + "...";
-            } else {
-                return query;
-            }
+            return Common.query2text(this._id2query[queryId], expanded);
         }
     }
     return StatusUserQueries;
