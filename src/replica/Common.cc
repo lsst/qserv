@@ -370,4 +370,15 @@ vector<string> strsplit(string const& str, char delimiter) {
     return words;
 }
 
+string tableNameBuilder(string const& databaseName, string const& tableName, string const& suffix) {
+    size_t const tableNameLimit = 64;
+    string const name = databaseName + "__" + tableName + suffix;
+    if (name.size() > tableNameLimit) {
+        throw invalid_argument("replica::" + string(__func__) + " MySQL table name limit of " +
+                               to_string(tableNameLimit) + " characters has been exceeded for table '" +
+                               name + "'.");
+    }
+    return name;
+}
+
 }  // namespace lsst::qserv::replica

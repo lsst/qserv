@@ -146,7 +146,7 @@ json HttpIngestIndexModule::_buildSecondaryIndex() {
         // is automatically rolled-back in case of exceptions.
         ConnectionHandler const h(qservMasterDbConnection("qservMeta"));
         QueryGenerator const g(h.conn);
-        auto const indexTableName = database.name + "__" + tableName;
+        auto const indexTableName = directorIndexTableName(database.name, tableName);
 
         // (Re-)create the index table. Note that the table creation statement (the way it's
         // written below) would fail if the table already exists. Hence, dropping it in

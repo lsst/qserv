@@ -399,11 +399,10 @@ json HttpIngestTransModule::_endTransaction() {
                     auto const table = database.findTable(tableName);
                     if (table.isPublished) continue;
                     bool const hasTransactions = true;
-                    string const destinationPath = database.name + "__" + table.name;
                     auto const job = IndexJob::create(
                             database.name, table.name, hasTransactions, transactionId, allWorkers,
-                            IndexJob::TABLE, destinationPath, localLoadSecondaryIndex(database.name),
-                            controller(), noParentJobId,
+                            IndexJob::TABLE, directorIndexTableName(database.name, table.name),
+                            localLoadSecondaryIndex(database.name), controller(), noParentJobId,
                             nullptr,  // no callback
                             config->get<int>("controller", "ingest-priority-level"));
                     json transEventData = {{"job", job->id()}, {"table", table.name}};
@@ -498,8 +497,8 @@ void HttpIngestTransModule::_addPartitionToSecondaryIndex(DatabaseInfo const& da
     database::mysql::ConnectionHandler const h(qservMasterDbConnection("qservMeta"));
     database::mysql::QueryGenerator const g(h.conn);
     bool const ifNotExists = false;
-    string const query =
-            g.alterTable(database.name + "__" + table.name) + g.addPartition(transactionId, ifNotExists);
+    string const query = g.alterTable(directorIndexTableName(database.name, table.name)) +
+                         g.addPartition(transactionId, ifNotExists);
     h.conn->executeInOwnTransaction([&query](decltype(h.conn) conn) { conn->execute(query); });
 }
 
@@ -518,8 +517,8 @@ void HttpIngestTransModule::_removePartitionFromSecondaryIndex(DatabaseInfo cons
     database::mysql::ConnectionHandler const h(qservMasterDbConnection("qservMeta"));
     database::mysql::QueryGenerator const g(h.conn);
     bool const ifExists = true;
-    string const query =
-            g.alterTable(database.name + "__" + table.name) + g.dropPartition(transactionId, ifExists);
+    string const query = g.alterTable(directorIndexTableName(database.name, table.name)) +
+                         g.dropPartition(transactionId, ifExists);
 
     // Not having the specified partition is still fine as it couldn't be properly
     // created after the transaction was created.

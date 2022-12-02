@@ -367,6 +367,28 @@ unsigned int stoui(std::string const& str, size_t* idx = 0, int base = 10);
  */
 std::vector<std::string> strsplit(std::string const& str, char delimiter = ' ');
 
+/**
+ * @brief Generate the name of a metadata table at czar for the specified data table.
+ * @param databaseName The name of a database where the data table is residing.
+ * @param tableName The name of the data table.
+ * @param suffix The optional suffix for the metadata table.
+ * @return std::string The name of the metadata table at czar.
+ * @throws std::invalid_argument If the length of the resulting name exceeds the MySQL limit.
+ */
+std::string tableNameBuilder(std::string const& databaseName, std::string const& tableName,
+                             std::string const& suffix = std::string());
+
+/// @return The name of the director index table
+inline std::string directorIndexTableName(std::string const& databaseName,
+                                          std::string const& directorTableName) {
+    return tableNameBuilder(databaseName, directorTableName);
+}
+
+/// @return The name of a table at czar that stores table row counters of the specified data table.
+inline std::string rowCountersTable(std::string const& databaseName, std::string const& tableName) {
+    return tableNameBuilder(databaseName, tableName, "__rows");
+}
+
 }  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_REPLICA_COMMON_H

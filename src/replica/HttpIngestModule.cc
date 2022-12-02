@@ -97,41 +97,6 @@ string jobCompletionErrorIfAny(SqlJob::Ptr const& job, string const& prefix) {
     return error;
 }
 
-/**
- * @brief Generate the name of a metadata table at czar for the specified data table.
- * @param databaseName The name of a database where the data table is residing.
- * @param tableName The name of the data table.
- * @param suffix The optional suffix for the metadata table.
- * @return std::string The name of the metadata table at czar.
- * @throws invalid_argument If the length of the resulting name exceeds the MySQL limit.
- */
-string tableNameBuilder(string const& databaseName, string const& tableName,
-                        string const& suffix = string()) {
-    size_t const tableNameLimit = 64;
-    string const name = databaseName + "__" + tableName + suffix;
-    if (name.size() > tableNameLimit) {
-        throw invalid_argument("HttpIngestModule::" + string(__func__) + " MySQL table name limit of " +
-                               to_string(tableNameLimit) + " characters has been exceeded for table '" +
-                               name + "'.");
-    }
-    return name;
-}
-
-/**
- * @return The name of a table at czar that stores indexes of the specified director table.
- * @see tableNameBuilder
- */
-string directorIndexTable(string const& databaseName, string const& tableName) {
-    return tableNameBuilder(databaseName, tableName);
-}
-
-/**
- * @return The name of a table at czar that stores table row counters of the specified data table.
- * @see tableNameBuilder
- */
-string rowCountersTable(string const& databaseName, string const& tableName) {
-    return tableNameBuilder(databaseName, tableName, "__rows");
-}
 }  // namespace
 
 namespace lsst::qserv::replica {
@@ -451,14 +416,14 @@ json HttpIngestModule::_deleteDatabase() {
         auto const emptyChunkListTable = css::DbInterfaceMySql::getEmptyChunksTableName(database.name);
         conn->execute(g.dropTable(g.id("qservCssData", emptyChunkListTable), ifExists));
         for (auto const tableName : directorTables) {
-            string const query =
-                    g.dropTable(g.id("qservMeta", ::directorIndexTable(database.name, tableName)), ifExists);
+            string const query = g.dropTable(
+                    g.id("qservMeta", directorIndexTableName(database.name, tableName)), ifExists);
             conn->execute(query);
         }
         for (auto const tableName : database.tables()) {
             try {
-                string const query = g.dropTable(
-                        g.id("qservMeta", ::rowCountersTable(database.name, tableName)), ifExists);
+                string const query =
+                        g.dropTable(g.id("qservMeta", rowCountersTable(database.name, tableName)), ifExists);
                 conn->execute(query);
             } catch (invalid_argument const& ex) {
                 // This exception may be thrown by the table name generator if
@@ -705,14 +670,14 @@ json HttpIngestModule::_deleteTable() {
         conn->execute(g.dropTable(g.id(database.name, table.name), ifExists));
         // Remove the director index (if any)
         if (table.isDirector) {
-            string const query =
-                    g.dropTable(g.id("qservMeta", ::directorIndexTable(database.name, table.name)), ifExists);
+            string const query = g.dropTable(
+                    g.id("qservMeta", directorIndexTableName(database.name, table.name)), ifExists);
             conn->execute(query);
         }
         // Remove the row counters table (if any)
         try {
             string const query =
-                    g.dropTable(g.id("qservMeta", ::rowCountersTable(database.name, table.name)), ifExists);
+                    g.dropTable(g.id("qservMeta", rowCountersTable(database.name, table.name)), ifExists);
             conn->execute(query);
         } catch (invalid_argument const& ex) {
             // This exception may be thrown by the table name generator if
@@ -907,7 +872,7 @@ json HttpIngestModule::_scanTableStatsImpl(string const& databaseName, string co
         try {
             ConnectionHandler const h(qservMasterDbConnection("qservMeta"));
             QueryGenerator const g(h.conn);
-            string const countersTable = ::rowCountersTable(database.name, table.name);
+            string const countersTable = rowCountersTable(database.name, table.name);
             bool ifNotExists = true;
             list<SqlColDef> const columns = {SqlColDef{"chunk", "INT UNSIGNED NOT NULL"},
                                              SqlColDef{"num_rows", "BIGINT UNSIGNED DEFAULT 0"}};
@@ -955,7 +920,7 @@ json HttpIngestModule::_deleteTableStats() {
         ConnectionHandler const h(qservMasterDbConnection("qservMeta"));
         QueryGenerator const g(h.conn);
         bool const ifExists = true;
-        string const query = g.dropTable(::rowCountersTable(table.database, table.name), ifExists);
+        string const query = g.dropTable(rowCountersTable(table.database, table.name), ifExists);
         h.conn->executeInOwnTransaction([&query](decltype(h.conn) conn) { conn->execute(query); });
     } catch (exception const& ex) {
         string const msg = "Failed to delete metadata table with counters for table '" + table.name +
@@ -1356,7 +1321,7 @@ void HttpIngestModule::_createSecondaryIndex(DatabaseInfo const& database,
     ConnectionHandler const h(qservMasterDbConnection("qservMeta"));
     QueryGenerator const g(h.conn);
     bool const ifExists = true;
-    string const dropTableQuery = g.dropTable(::directorIndexTable(database.name, table.name), ifExists);
+    string const dropTableQuery = g.dropTable(directorIndexTableName(database.name, table.name), ifExists);
     bool const ifNotExists = true;
     list<SqlColDef> const columns = {SqlColDef{_partitionByColumn, _partitionByColumnType},
                                      SqlColDef{table.directorTable.primaryKeyColumn(), primaryKeyColumnType},
@@ -1367,7 +1332,7 @@ void HttpIngestModule::_createSecondaryIndex(DatabaseInfo const& database,
             g.packTableKey("KEY", "", table.directorTable.primaryKeyColumn())};
     string const engine = "InnoDB";
     TransactionId const transactionId = 0;
-    string const createTableQuery = g.createTable(::directorIndexTable(database.name, table.name),
+    string const createTableQuery = g.createTable(directorIndexTableName(database.name, table.name),
                                                   ifNotExists, columns, keys, engine) +
                                     g.partitionByList(_partitionByColumn) + g.partition(transactionId);
     h.conn->executeInOwnTransaction([&dropTableQuery, &createTableQuery](decltype(h.conn) conn) {
@@ -1389,7 +1354,7 @@ void HttpIngestModule::_consolidateSecondaryIndex(DatabaseInfo const& database,
     ConnectionHandler const h(qservMasterDbConnection("qservMeta"));
     QueryGenerator const g(h.conn);
     string const query =
-            g.alterTable(::directorIndexTable(database.name, table.name)) + g.removePartitioning();
+            g.alterTable(directorIndexTableName(database.name, table.name)) + g.removePartitioning();
     h.conn->executeInOwnTransaction([&query](decltype(h.conn) conn) { conn->execute(query); });
 }
 
