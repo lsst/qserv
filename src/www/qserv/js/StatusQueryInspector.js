@@ -15,9 +15,6 @@ function(CSSLoader,
 
     class StatusQueryInspector extends FwkApplication {
 
-        /// @returns the suggested server-side timeout for retreiving results 
-        static update_ival_sec() { return 3600; }
-
         constructor(name) {
             super(name);
             // The last query info is cached here as it's needed for handling events on
@@ -56,7 +53,7 @@ function(CSSLoader,
                     this._prev_update_sec = 0;
                 }
                 let now_sec = Fwk.now().sec;
-                if (now_sec - this._prev_update_sec > StatusQueryInspector.update_ival_sec()) {
+                if (now_sec - this._prev_update_sec > this._update_interval_sec()) {
                     this._prev_update_sec = now_sec;
                     this._load();
                 }
@@ -88,8 +85,8 @@ function(CSSLoader,
     <input type="number" id="query-id" class="form-control" value="">
   </div>
   <div class="form-group col-md-1">
-    <label for="query-update-interval">Interval <i class="bi bi-arrow-repeat"></i></label>
-    <select id="query-update-interval" class="form-control">
+    <label for="update-interval">Interval <i class="bi bi-arrow-repeat"></i></label>
+    <select id="update-interval" class="form-control">
     <option value="10">10 sec</option>
     <option value="20">20 sec</option>
     <option value="30" selected>30 sec</option>
@@ -247,6 +244,7 @@ function(CSSLoader,
             }
             return this._form_control_obj[id];
         }
+        _update_interval_sec() { return this._form_control('select', 'update-interval').val(); }
         _get_query_id() { return this._form_control('input', 'query-id').val(); }
         _set_query_id(query_id) { this._form_control('input', 'query-id').val(query_id); }
         _query_status() {
