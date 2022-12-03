@@ -401,7 +401,6 @@ json HttpIngestTransModule::_endTransaction() {
                     bool const hasTransactions = true;
                     auto const job = DirectorIndexJob::create(
                             database.name, table.name, hasTransactions, transactionId, allWorkers,
-                            DirectorIndexJob::TABLE, directorIndexTableName(database.name, table.name),
                             localLoadDirectorIndex(database.name), controller(), noParentJobId,
                             nullptr,  // no callback
                             config->get<int>("controller", "ingest-priority-level"));

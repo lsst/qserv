@@ -42,7 +42,7 @@ namespace {
 string const description =
         "This is a Controller application which launches a single job Controller in order"
         " to harvest the 'director' index data from the 'director' tables of a select"
-        " database and aggregate these data at a specified destination."
+        " database and load these data into the corresponidng 'director' index table."
         " Maximum timeout (seconds) to wait before the index data extraction requests sent"
         " to workers will finish should be set via option --controller--request-timeout-sec."
         " Setting this timeout to some reasonably low number would prevent the application from"
@@ -73,18 +73,9 @@ DirectorIndexApp::DirectorIndexApp(int argc, char* argv[])
                     " the table will be scanned, and the scan won't include the super-transaction"
                     " column 'qserv_trans_id'.",
                     _transactionId)
-            .required("destination",
-                      "The destination type for the harvested data."
-                      " Allowed values: DISCARD, FILE, FOLDER, TABLE",
-                      _destination, {"DISCARD", "FILE", "FOLDER", "TABLE"})
-            .option("destination-path",
-                    "A specific destination (depends on a value of parameter 'destination')"
-                    " where the 'director index data received from workers would go",
-                    _destinationPath)
             .flag("local",
-                  "This flag is used together with the TABLE destination option to load"
-                  " contributions using 'LOAD DATA LOCAL INFILE' protocol instead of"
-                  " 'LOAD DATA INFILE'. See MySQL documentation for further details"
+                  "This flag is used to load contributions using 'LOAD DATA LOCAL INFILE' protocol"
+                  " instead of 'LOAD DATA INFILE'. See MySQL documentation for further details"
                   " on this subject.",
                   _localFile)
             .flag("all-workers",
@@ -115,8 +106,7 @@ int DirectorIndexApp::runImpl() {
     string const noParentJobId;
     auto const job = DirectorIndexJob::create(
             _database, _table, _transactionId != numeric_limits<TransactionId>::max(), _transactionId,
-            _allWorkers, DirectorIndexJob::fromString(_destination), _destinationPath, _localFile, controller,
-            noParentJobId,
+            _allWorkers, _localFile, controller, noParentJobId,
             nullptr,  // no callback
             PRIORITY_NORMAL);
     job->start();

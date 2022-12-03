@@ -34,6 +34,7 @@
 
 // Qserv headers
 #include "global/constants.h"
+#include "replica/Common.h"
 #include "replica/Configuration.h"
 #include "replica/DatabaseMySQL.h"
 #include "replica/ServiceProvider.h"
@@ -73,52 +74,24 @@ json DirectorIndexJob::Result::toJson() const {
 
 string DirectorIndexJob::typeName() { return "DirectorIndexJob"; }
 
-string DirectorIndexJob::toString(Destination destination) {
-    switch (destination) {
-        case DISCARD:
-            return "DISCARD";
-        case FILE:
-            return "FILE";
-        case FOLDER:
-            return "FOLDER";
-        case TABLE:
-            return "TABLE";
-    }
-    throw range_error(typeName() + "::" + string(__func__) + "  unhandled value of the parameter");
-}
-
-DirectorIndexJob::Destination DirectorIndexJob::fromString(string const& str) {
-    if (str == "DISCARD") return Destination::DISCARD;
-    if (str == "FILE") return Destination::FILE;
-    if (str == "FOLDER") return Destination::FOLDER;
-    if (str == "TABLE") return Destination::TABLE;
-    throw invalid_argument(typeName() + "::" + string(__func__) + "  input value '" + str +
-                           "' doesn't match any known option of the enumerator");
-}
-
 DirectorIndexJob::Ptr DirectorIndexJob::create(string const& databaseName, string const& directorTableName,
                                                bool hasTransactions, TransactionId transactionId,
-                                               bool allWorkers, Destination destination,
-                                               string const& destinationPath, bool localFile,
+                                               bool allWorkers, bool localFile,
                                                Controller::Ptr const& controller, string const& parentJobId,
                                                CallbackType const& onFinish, int priority) {
     return Ptr(new DirectorIndexJob(databaseName, directorTableName, hasTransactions, transactionId,
-                                    allWorkers, destination, destinationPath, localFile, controller,
-                                    parentJobId, onFinish, priority));
+                                    allWorkers, localFile, controller, parentJobId, onFinish, priority));
 }
 
 DirectorIndexJob::DirectorIndexJob(string const& databaseName, string const& directorTableName,
                                    bool hasTransactions, TransactionId transactionId, bool allWorkers,
-                                   Destination destination, string const& destinationPath, bool localFile,
-                                   Controller::Ptr const& controller, string const& parentJobId,
-                                   CallbackType const& onFinish, int priority)
+                                   bool localFile, Controller::Ptr const& controller,
+                                   string const& parentJobId, CallbackType const& onFinish, int priority)
         : Job(controller, parentJobId, "INDEX", priority),
           _directorTableName(directorTableName),
           _hasTransactions(hasTransactions),
           _transactionId(transactionId),
           _allWorkers(allWorkers),
-          _destination(destination),
-          _destinationPath(destinationPath),
           _localFile(localFile),
           _onFinish(onFinish) {
     // Get and verify database status
@@ -158,8 +131,6 @@ list<std::pair<string, string>> DirectorIndexJob::extendedPersistentState() cons
     result.emplace_back("has_transactions", bool2str(hasTransactions()));
     result.emplace_back("transaction_id", to_string(transactionId()));
     result.emplace_back("all_workers", bool2str(allWorkers()));
-    result.emplace_back("destination", toString(destination()));
-    result.emplace_back("destination_path", destinationPath());
     result.emplace_back("local_file", bool2str(localFile()));
     return result;
 }
@@ -415,84 +386,56 @@ void DirectorIndexJob::_processRequestData(util::Lock const& lock, DirectorIndex
         f << data;
         f.close();
     };
-    switch (_destination) {
-        case DISCARD:
-            break;
 
-        case FILE: {
-            if (_destinationPath.empty()) {
-                cout << request->responseData().data;
-            } else {
-                writeIntoFile(_destinationPath, ios::app, request->responseData().data);
+    auto const config = controller()->serviceProvider()->config();
+
+    // ATTENTION: all exceptions which may be potentially thrown are
+    // supposed to be intercepted by a caller of the current method
+    // and be used for error reporting.
+
+    // Dump the data into a temporary file from where it would be loaded
+    // into the MySQL table. Note that the file must be readable by
+    // the MySQL service.
+
+    string const filePath = config->get<string>("database", "qserv-master-tmp-dir") + "/" + database() + "_" +
+                            to_string(request->chunk()) +
+                            (_hasTransactions ? "_p" + to_string(_transactionId) : "");
+    writeIntoFile(filePath, ios::out | ios::trunc, request->responseData().data);
+
+    // Open the database connection if this is the first batch of data
+    if (nullptr == _conn) {
+        _conn = Connection::open(Configuration::qservCzarDbParams(lsst::qserv::SEC_INDEX_DB));
+    }
+    QueryGenerator const g(_conn);
+    string const query = g.loadDataInfile(filePath, directorIndexTableName(database(), directorTable()),
+                                          config->get<string>("worker", "ingest-charset-name"), _localFile);
+
+    _conn->executeInOwnTransaction([&](decltype(_conn) conn) {
+        conn->execute(query);
+        // Loading operations based on this mechanism won't result in throwing exceptions in
+        // case of certain types of problems encountered during the loading, such as
+        // out-of-range data, duplicate keys, etc. These errors are reported as warnings
+        // which need to be retrieved using a special call to the database API.
+        if (_localFile) {
+            auto const warnings = conn->warnings();
+            if (!warnings.empty()) {
+                auto const& w = warnings.front();
+                throw database::mysql::Error("query: " + query + " failed with total number of problems: " +
+                                             to_string(warnings.size()) +
+                                             ", first problem (Level,Code,Message) was: " + w.level + "," +
+                                             to_string(w.code) + "," + w.message);
             }
-            break;
         }
-        case FOLDER: {
-            string const filePath = (_destinationPath.empty() ? "." : _destinationPath) + "/" + database() +
-                                    "_" + to_string(request->chunk()) + ".tsv";
-            writeIntoFile(filePath, ios::out | ios::trunc, request->responseData().data);
-            break;
-        }
-        case TABLE: {
-            auto const config = controller()->serviceProvider()->config();
+    });
 
-            // ATTENTION: all exceptions which may be potentially thrown are
-            // supposed to be intercepted by a caller of the current method
-            // and be used for error reporting.
-
-            // Dump the data into a temporary file from where it would be loaded
-            // into the MySQL table. Note that the file must be readable by
-            // the MySQL service.
-            //
-            // TODO: consider using the named pipe (FIFO)
-
-            string const filePath = config->get<string>("database", "qserv-master-tmp-dir") + "/" +
-                                    database() + "_" + to_string(request->chunk()) +
-                                    (_hasTransactions ? "_p" + to_string(_transactionId) : "");
-            writeIntoFile(filePath, ios::out | ios::trunc, request->responseData().data);
-
-            // Open the database connection if this is the first batch of data
-            if (nullptr == _conn) {
-                _conn = Connection::open(Configuration::qservCzarDbParams(lsst::qserv::SEC_INDEX_DB));
-            }
-            QueryGenerator const g(_conn);
-            string const query =
-                    g.loadDataInfile(filePath, _destinationPath,
-                                     config->get<string>("worker", "ingest-charset-name"), _localFile);
-
-            _conn->executeInOwnTransaction([&](decltype(_conn) conn) {
-                conn->execute(query);
-                // Loading operations based on this mechanism won't result in throwing exceptions in
-                // case of certain types of problems encountered during the loading, such as
-                // out-of-range data, duplicate keys, etc. These errors are reported as warnings
-                // which need to be retrieved using a special call to the database API.
-                if (_localFile) {
-                    auto const warnings = conn->warnings();
-                    if (!warnings.empty()) {
-                        auto const& w = warnings.front();
-                        throw database::mysql::Error(
-                                "query: " + query +
-                                " failed with total number of problems: " + to_string(warnings.size()) +
-                                ", first problem (Level,Code,Message) was: " + w.level + "," +
-                                to_string(w.code) + "," + w.message);
-                    }
-                }
-            });
-
-            // Make the best attempt to get rid of the temporary file. Ignore any errors
-            // for now. Just report them.
-            boost::system::error_code ec;
-            fs::remove(fs::path(filePath), ec);
-            if (ec.value() != 0) {
-                LOGS(_log, LOG_LVL_ERROR,
-                     context() << "::" << __func__ << "  "
-                               << "failed to remove the temporary file '" << filePath);
-            }
-            break;
-        }
-        default:
-            throw range_error(typeName() + "::" + string(__func__) +
-                              "  unsupported destination: " + toString(_destination));
+    // Make the best attempt to get rid of the temporary file. Ignore any errors
+    // for now. Just report them.
+    boost::system::error_code ec;
+    fs::remove(fs::path(filePath), ec);
+    if (ec.value() != 0) {
+        LOGS(_log, LOG_LVL_ERROR,
+             context() << "::" << __func__ << "  "
+                       << "failed to remove the temporary file '" << filePath);
     }
 }
 

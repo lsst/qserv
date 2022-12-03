@@ -171,11 +171,11 @@ json HttpDirectorIndexModule::_buildDirectorIndex() {
             }
         });
         string const noParentJobId;
-        auto const job = DirectorIndexJob::create(
-                database.name, tableName, noTransactions, noTransactionId, allWorkers,
-                DirectorIndexJob::TABLE, indexTableName, localFile, controller(), noParentJobId,
-                nullptr,  // no callback
-                config->get<int>("controller", "catalog-management-priority-level"));
+        auto const job =
+                DirectorIndexJob::create(database.name, tableName, noTransactions, noTransactionId,
+                                         allWorkers, localFile, controller(), noParentJobId,
+                                         nullptr,  // no callback
+                                         config->get<int>("controller", "catalog-management-priority-level"));
         job->start();
         logJobStartedEvent(DirectorIndexJob::typeName(), job, database.family);
         job->wait();

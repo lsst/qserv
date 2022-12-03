@@ -51,8 +51,8 @@ namespace lsst::qserv::replica {
 /**
  * Class DirectorIndexJob is a class for a family of jobs which broadcast
  * the "director" index retrieval requests for the relevant chunks to
- * the workers. Results are either dumped into the specified folder or
- * directly loaded into the "director" index of a director table.
+ * the workers. Results are directly loaded into the "director" index of
+ * the specified director table.
  */
 class DirectorIndexJob : public Job {
 public:
@@ -63,22 +63,6 @@ public:
 
     /// @return the unique name distinguishing this class from other types of jobs
     static std::string typeName();
-
-    /// Possible destinations where the harvested data would go
-    enum Destination {
-        DISCARD,  // do nothing with the data
-        FILE,     // write all data into a file
-        FOLDER,   // write each chunk's data as a separate file at a folder
-        TABLE     // write into the specified or standard "director" index table
-    };
-
-    /// @return the string representation for a value of the Destination option
-    static std::string toString(Destination destination);
-
-    /// @return a value of the enumerator Destination parsed from the input string
-    /// @throw invalid_argument if the input value doesn't match any known option of
-    ///        the enumerator type
-    static Destination fromString(std::string const& str);
 
     /**
      * Static factory method is needed to prevent issue with the lifespan
@@ -97,33 +81,21 @@ public:
      * @param allWorkers engage all known workers regardless of their status.
      *   If the flag is set to 'false' then only 'ENABLED' workers which are not
      *   in the 'READ-ONLY' state will be involved into the operation.
-     * @param destination a destination for the harvested data
-     * @param destinationPath depending on a value of the previous parameter
-     *   'destination', a value of this parameter could be either either the name
-     *   of a file, the name of an existing folder, or the name of a table. For
-     *   the FILE destination the empty destination path will trigger dumping
-     *   the data onto the Standard Output Stream. For the FOLDER option
-     *   the current working directory will be assumed. And for the TABLE option
-     *   the empty value would imply the standard "director" index table of
-     *   the database. A non-empty value for the table would imply the name of
-     *   a specific (non-standard) table.
-     * @param localFile the flag which is used along with the TABLE destinaton option.
-     *   If the flag is set to 'true' then index contribution files retrieved from
-     *   workers would be loaded into the destination table using MySQL statement
-     *   "LOAD DATA LOCAL INFILE". Otherwise, contributions will be loaded using
-     *   "LOAD DATA INFILE", which will require the files be directly visible by
+     * @param localFile If the flag is set to 'true' then index contribution files
+     *   retrieved from workers would be loaded into the "director" index" table using MySQL
+     *   statement "LOAD DATA LOCAL INFILE". Otherwise, contributions will be loaded
+     *   using "LOAD DATA INFILE", which will require the files be directly visible by
      *   the MySQL server where the table is residing. Note that the non-local
      *   option results in the better performance of the operation. On the other hand,
      *   the local option requires the server be properly configured to allow this
-     *   mechanism. The flag is ignored for other destination options.
+     *   mechanism.
      * @param controller is needed launching requests and accessing the Configuration
      * @param parentJobId an identifier of the parent job
      * @param onFinish a function to be called upon a completion of the job
      * @param priority the priority level of the job
      */
     static Ptr create(std::string const& databaseName, std::string const& directorTableName,
-                      bool hasTransactions, TransactionId transactionId, bool allWorkers,
-                      Destination destination, std::string const& destinationPath, bool localFile,
+                      bool hasTransactions, TransactionId transactionId, bool allWorkers, bool localFile,
                       Controller::Ptr const& controller, std::string const& parentJobId,
                       CallbackType const& onFinish, int priority);
 
@@ -144,8 +116,6 @@ public:
     bool hasTransactions() const { return _hasTransactions; }
     TransactionId transactionId() const { return _transactionId; }
     bool allWorkers() const { return _allWorkers; }
-    Destination destination() const { return _destination; }
-    std::string const& destinationPath() const { return _destinationPath; }
     bool localFile() const { return _localFile; }
 
     /// @see Job::progress
@@ -182,15 +152,12 @@ public:
 
 protected:
     void startImpl(util::Lock const& lock) final;
-
     void cancelImpl(util::Lock const& lock) final;
-
     void notify(util::Lock const& lock) final;
 
 private:
     DirectorIndexJob(std::string const& databaseName, std::string const& directorTableName,
-                     bool hasTransactions, TransactionId transactionId, bool allWorkers,
-                     Destination destination, std::string const& destinationPath, bool localFile,
+                     bool hasTransactions, TransactionId transactionId, bool allWorkers, bool localFile,
                      Controller::Ptr const& controller, std::string const& parentJobId,
                      CallbackType const& onFinish, int priority);
 
@@ -224,10 +191,7 @@ private:
                                                          size_t maxRequests = 1);
 
     /**
-     * Roll back a database transaction should the one be still open
-     * for destination TABLE. The method won't have any effect for other
-     * scenarios.
-     *
+     * Roll back a database transaction should the one be still open.
      * @param func  the name of a method/function to report errors
      */
     void _rollbackTransaction(std::string const& func);
@@ -239,8 +203,6 @@ private:
     bool const _hasTransactions;
     TransactionId const _transactionId;
     bool const _allWorkers;
-    Destination const _destination;
-    std::string const _destinationPath;
     bool const _localFile;
 
     CallbackType _onFinish;  /// @note is reset when the job finishes
@@ -253,7 +215,7 @@ private:
     /// A collection of the in-flight requests (request id is the key)
     std::map<std::string, DirectorIndexRequest::Ptr> _requests;
 
-    /// Database connector is initialized for Destination::TABLE upon arrival
+    /// Database connector is initialized upon arrival
     /// of the very first batch of data. A separate transaction is started
     /// to load each bunch of data received from workers. The transaction (if
     /// any is still open) is automatically aborted by the destructor or

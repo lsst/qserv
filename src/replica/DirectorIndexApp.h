@@ -34,8 +34,8 @@ namespace lsst::qserv::replica {
 
 /**
  * Class DirectorIndexApp implements a tool which launches a single job Controller in order
- * to harvest the "director" index data from the "director" tables of a select
- * database and aggregate these data at a specified destination.
+ * to harvest the "director" index data from the "director" table of a select
+ * database and load the data into the corresponding "director" index table.
  */
 class DirectorIndexApp : public Application {
 public:
@@ -72,17 +72,8 @@ private:
     /// A unique identifier of a super-transaction (not used if its value stays default)
     TransactionId _transactionId = std::numeric_limits<TransactionId>::max();
 
-    /// The destination type of the harvested data. Allowed values here
-    /// are: "DISCARD", "FILE", "FOLDER", "TABLE.
-    std::string _destination = "DISCARD";
-
-    /// The optional parameter for a specific destination (depends
-    /// the destination type).
-    std::string _destinationPath;
-
-    /// This flag is used together with the TABLE destination option to load
-    /// contributions using "LOAD DATA LOCAL INFILE" protocol instead of
-    /// just "LOAD DATA INFILE". See MySQL documentation for further details
+    /// This flag is used to load contributions using "LOAD DATA LOCAL INFILE" protocol
+    /// instead of just "LOAD DATA INFILE". See MySQL documentation for further details
     /// on this subject.
     bool _localFile = false;
 
