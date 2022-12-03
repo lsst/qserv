@@ -20,7 +20,7 @@
  */
 
 // Class header
-#include "replica/IndexRequest.h"
+#include "replica/DirectorIndexRequest.h"
 
 // System headers
 #include <fstream>
@@ -46,13 +46,13 @@ using namespace std::placeholders;
 
 namespace {
 
-LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.IndexRequest");
+LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.DirectorIndexRequest");
 
 }  // namespace
 
 namespace lsst::qserv::replica {
 
-void IndexInfo::print(string const& fileName) const {
+void DirectorIndexRequestInfo::print(string const& fileName) const {
     if (fileName.empty()) {
         cout << data;
         return;
@@ -60,35 +60,36 @@ void IndexInfo::print(string const& fileName) const {
     ofstream file(fileName);
     if (not file.good()) {
         LOGS(_log, LOG_LVL_DEBUG,
-             "IndexInfo::" << __func__ << " "
-                           << "failed to open the file: " << fileName);
+             "DirectorIndexRequestInfo::" << __func__ << " "
+                                          << "failed to open the file: " << fileName);
         return;
     }
     file << data;
 }
 
-ostream& operator<<(ostream& os, IndexInfo const& info) {
-    os << "IndexInfo {error:'" << info.error << "',"
+ostream& operator<<(ostream& os, DirectorIndexRequestInfo const& info) {
+    os << "DirectorIndexRequestInfo {error:'" << info.error << "',"
        << "data.length:" << info.data.size() << "}";
     return os;
 }
 
-IndexRequest::Ptr IndexRequest::create(ServiceProvider::Ptr const& serviceProvider,
-                                       boost::asio::io_service& io_service, string const& worker,
-                                       string const& database, string const& directorTable,
-                                       unsigned int chunk, bool hasTransactions, TransactionId transactionId,
-                                       CallbackType const& onFinish, int priority, bool keepTracking,
-                                       shared_ptr<Messenger> const& messenger) {
-    return IndexRequest::Ptr(new IndexRequest(serviceProvider, io_service, worker, database, directorTable,
-                                              chunk, hasTransactions, transactionId, onFinish, priority,
-                                              keepTracking, messenger));
+DirectorIndexRequest::Ptr DirectorIndexRequest::create(
+        ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service,
+        string const& worker, string const& database, string const& directorTable, unsigned int chunk,
+        bool hasTransactions, TransactionId transactionId, CallbackType const& onFinish, int priority,
+        bool keepTracking, shared_ptr<Messenger> const& messenger) {
+    return DirectorIndexRequest::Ptr(new DirectorIndexRequest(
+            serviceProvider, io_service, worker, database, directorTable, chunk, hasTransactions,
+            transactionId, onFinish, priority, keepTracking, messenger));
 }
 
-IndexRequest::IndexRequest(ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service,
-                           string const& worker, string const& database, string const& directorTable,
-                           unsigned int chunk, bool hasTransactions, TransactionId transactionId,
-                           CallbackType const& onFinish, int priority, bool keepTracking,
-                           shared_ptr<Messenger> const& messenger)
+DirectorIndexRequest::DirectorIndexRequest(ServiceProvider::Ptr const& serviceProvider,
+                                           boost::asio::io_service& io_service, string const& worker,
+                                           string const& database, string const& directorTable,
+                                           unsigned int chunk, bool hasTransactions,
+                                           TransactionId transactionId, CallbackType const& onFinish,
+                                           int priority, bool keepTracking,
+                                           shared_ptr<Messenger> const& messenger)
         : RequestMessenger(serviceProvider, io_service, "INDEX", worker, priority, keepTracking,
                            false,  // allowDuplicate
                            true,   // disposeRequired
@@ -102,9 +103,9 @@ IndexRequest::IndexRequest(ServiceProvider::Ptr const& serviceProvider, boost::a
     Request::serviceProvider()->config()->assertDatabaseIsValid(database);
 }
 
-IndexInfo const& IndexRequest::responseData() const { return _indexInfo; }
+DirectorIndexRequestInfo const& DirectorIndexRequest::responseData() const { return _responseData; }
 
-void IndexRequest::startImpl(util::Lock const& lock) {
+void DirectorIndexRequest::startImpl(util::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG,
          context() << __func__ << " "
                    << " worker: " << worker() << " database: " << database()
@@ -126,7 +127,7 @@ void IndexRequest::startImpl(util::Lock const& lock) {
 
     buffer()->serialize(hdr);
 
-    ProtocolRequestIndex message;
+    ProtocolRequestDirectorIndex message;
     message.set_database(database());
     message.set_director_table(directorTable());
     message.set_chunk(chunk());
@@ -138,7 +139,7 @@ void IndexRequest::startImpl(util::Lock const& lock) {
     _send(lock);
 }
 
-void IndexRequest::awaken(boost::system::error_code const& ec) {
+void DirectorIndexRequest::awaken(boost::system::error_code const& ec) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     if (isAborted(ec)) return;
@@ -169,17 +170,17 @@ void IndexRequest::awaken(boost::system::error_code const& ec) {
     _send(lock);
 }
 
-void IndexRequest::_send(util::Lock const& lock) {
+void DirectorIndexRequest::_send(util::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
-    auto self = shared_from_base<IndexRequest>();
-    messenger()->send<ProtocolResponseIndex>(
+    auto self = shared_from_base<DirectorIndexRequest>();
+    messenger()->send<ProtocolResponseDirectorIndex>(
             worker(), id(), priority(), buffer(),
-            [self](string const& id, bool success, ProtocolResponseIndex const& response) {
+            [self](string const& id, bool success, ProtocolResponseDirectorIndex const& response) {
                 self->_analyze(success, response);
             });
 }
 
-void IndexRequest::_analyze(bool success, ProtocolResponseIndex const& message) {
+void DirectorIndexRequest::_analyze(bool success, ProtocolResponseDirectorIndex const& message) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  success=" << (success ? "true" : "false"));
 
     // This method is called on behalf of an asynchronous callback fired
@@ -211,12 +212,12 @@ void IndexRequest::_analyze(bool success, ProtocolResponseIndex const& message) 
 
     // Always extract extended data regardless of the completion status
     // reported by the worker service.
-    _indexInfo.error = message.error();
-    _indexInfo.data = message.data();
+    _responseData.error = message.error();
+    _responseData.data = message.data();
 
     // Extract target request type-specific parameters from the response
     if (message.has_request()) {
-        _targetRequestParams = IndexRequestParams(message.request());
+        _targetRequestParams = DirectorIndexRequestParams(message.request());
     }
     switch (message.status()) {
         case ProtocolStatus::SUCCESS:
@@ -252,21 +253,21 @@ void IndexRequest::_analyze(bool success, ProtocolResponseIndex const& message) 
             break;
 
         default:
-            throw logic_error("IndexRequest::" + string(__func__) + " unknown status '" +
+            throw logic_error("DirectorIndexRequest::" + string(__func__) + " unknown status '" +
                               ProtocolStatus_Name(message.status()) + "' received from server");
     }
 }
 
-void IndexRequest::notify(util::Lock const& lock) {
+void DirectorIndexRequest::notify(util::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
-    notifyDefaultImpl<IndexRequest>(lock, _onFinish);
+    notifyDefaultImpl<DirectorIndexRequest>(lock, _onFinish);
 }
 
-void IndexRequest::savePersistentState(util::Lock const& lock) {
+void DirectorIndexRequest::savePersistentState(util::Lock const& lock) {
     controller()->serviceProvider()->databaseServices()->saveState(*this, performance(lock));
 }
 
-list<pair<string, string>> IndexRequest::extendedPersistentState() const {
+list<pair<string, string>> DirectorIndexRequest::extendedPersistentState() const {
     list<pair<string, string>> result;
     result.emplace_back("database", database());
     result.emplace_back("director_table", directorTable());

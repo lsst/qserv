@@ -20,7 +20,7 @@
  */
 
 // Class header
-#include "replica/IndexJob.h"
+#include "replica/DirectorIndexJob.h"
 
 // System headers
 #include <algorithm>
@@ -48,7 +48,7 @@ using json = nlohmann::json;
 
 namespace {
 
-LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.IndexJob");
+LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.DirectorIndexJob");
 
 }  // namespace
 
@@ -56,7 +56,7 @@ namespace lsst::qserv::replica {
 
 using namespace database::mysql;
 
-json IndexJobResult::toJson() const {
+json DirectorIndexJob::Result::toJson() const {
     json result;
     for (auto&& workerItr : error) {
         string const& worker = workerItr.first;
@@ -71,9 +71,9 @@ json IndexJobResult::toJson() const {
     return result;
 }
 
-string IndexJob::typeName() { return "IndexJob"; }
+string DirectorIndexJob::typeName() { return "DirectorIndexJob"; }
 
-string IndexJob::toString(Destination destination) {
+string DirectorIndexJob::toString(Destination destination) {
     switch (destination) {
         case DISCARD:
             return "DISCARD";
@@ -87,7 +87,7 @@ string IndexJob::toString(Destination destination) {
     throw range_error(typeName() + "::" + string(__func__) + "  unhandled value of the parameter");
 }
 
-IndexJob::Destination IndexJob::fromString(string const& str) {
+DirectorIndexJob::Destination DirectorIndexJob::fromString(string const& str) {
     if (str == "DISCARD") return Destination::DISCARD;
     if (str == "FILE") return Destination::FILE;
     if (str == "FOLDER") return Destination::FOLDER;
@@ -96,20 +96,22 @@ IndexJob::Destination IndexJob::fromString(string const& str) {
                            "' doesn't match any known option of the enumerator");
 }
 
-IndexJob::Ptr IndexJob::create(string const& databaseName, string const& directorTableName,
-                               bool hasTransactions, TransactionId transactionId, bool allWorkers,
-                               Destination destination, string const& destinationPath, bool localFile,
-                               Controller::Ptr const& controller, string const& parentJobId,
-                               CallbackType const& onFinish, int priority) {
-    return Ptr(new IndexJob(databaseName, directorTableName, hasTransactions, transactionId, allWorkers,
-                            destination, destinationPath, localFile, controller, parentJobId, onFinish,
-                            priority));
+DirectorIndexJob::Ptr DirectorIndexJob::create(string const& databaseName, string const& directorTableName,
+                                               bool hasTransactions, TransactionId transactionId,
+                                               bool allWorkers, Destination destination,
+                                               string const& destinationPath, bool localFile,
+                                               Controller::Ptr const& controller, string const& parentJobId,
+                                               CallbackType const& onFinish, int priority) {
+    return Ptr(new DirectorIndexJob(databaseName, directorTableName, hasTransactions, transactionId,
+                                    allWorkers, destination, destinationPath, localFile, controller,
+                                    parentJobId, onFinish, priority));
 }
 
-IndexJob::IndexJob(string const& databaseName, string const& directorTableName, bool hasTransactions,
-                   TransactionId transactionId, bool allWorkers, Destination destination,
-                   string const& destinationPath, bool localFile, Controller::Ptr const& controller,
-                   string const& parentJobId, CallbackType const& onFinish, int priority)
+DirectorIndexJob::DirectorIndexJob(string const& databaseName, string const& directorTableName,
+                                   bool hasTransactions, TransactionId transactionId, bool allWorkers,
+                                   Destination destination, string const& destinationPath, bool localFile,
+                                   Controller::Ptr const& controller, string const& parentJobId,
+                                   CallbackType const& onFinish, int priority)
         : Job(controller, parentJobId, "INDEX", priority),
           _directorTableName(directorTableName),
           _hasTransactions(hasTransactions),
@@ -132,15 +134,15 @@ IndexJob::IndexJob(string const& databaseName, string const& directorTableName, 
     }
 }
 
-IndexJob::~IndexJob() { _rollbackTransaction(__func__); }
+DirectorIndexJob::~DirectorIndexJob() { _rollbackTransaction(__func__); }
 
-Job::Progress IndexJob::progress() const {
+Job::Progress DirectorIndexJob::progress() const {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
     util::Lock lock(_mtx, context() + __func__);
     return Progress{_completeChunks, _totalChunks};
 }
 
-IndexJobResult const& IndexJob::getResultData() const {
+DirectorIndexJob::Result const& DirectorIndexJob::getResultData() const {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     if (state() == State::FINISHED) return _resultData;
@@ -149,7 +151,7 @@ IndexJobResult const& IndexJob::getResultData() const {
                       "  the method can't be called while the job hasn't finished");
 }
 
-list<std::pair<string, string>> IndexJob::extendedPersistentState() const {
+list<std::pair<string, string>> DirectorIndexJob::extendedPersistentState() const {
     list<pair<string, string>> result;
     result.emplace_back("database", database());
     result.emplace_back("directorTable", directorTable());
@@ -162,7 +164,7 @@ list<std::pair<string, string>> IndexJob::extendedPersistentState() const {
     return result;
 }
 
-list<pair<string, string>> IndexJob::persistentLogData() const {
+list<pair<string, string>> DirectorIndexJob::persistentLogData() const {
     // Report failed chunks only
 
     list<pair<string, string>> result;
@@ -179,7 +181,7 @@ list<pair<string, string>> IndexJob::persistentLogData() const {
     return result;
 }
 
-void IndexJob::startImpl(util::Lock const& lock) {
+void DirectorIndexJob::startImpl(util::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     // ------------------------
@@ -306,7 +308,7 @@ void IndexJob::startImpl(util::Lock const& lock) {
     if (_requests.size() == 0) finish(lock, ExtendedState::SUCCESS);
 }
 
-void IndexJob::cancelImpl(util::Lock const& lock) {
+void DirectorIndexJob::cancelImpl(util::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     // The algorithm will also clear resources taken by various
@@ -322,9 +324,9 @@ void IndexJob::cancelImpl(util::Lock const& lock) {
         auto&& ptr = itr.second;
         ptr->cancel();
         if (ptr->state() != Request::State::FINISHED) {
-            controller()->stopById<StopIndexRequest>(ptr->worker(), ptr->id(), nullptr, /* onFinish */
-                                                     priority(), true,                  /* keepTracking */
-                                                     id()                               /* jobId */
+            controller()->stopById<StopDirectorIndexRequest>(ptr->worker(), ptr->id(), nullptr, /* onFinish */
+                                                             priority(), true, /* keepTracking */
+                                                             id()              /* jobId */
             );
         }
     }
@@ -332,12 +334,12 @@ void IndexJob::cancelImpl(util::Lock const& lock) {
     _rollbackTransaction(__func__);
 }
 
-void IndexJob::notify(util::Lock const& lock) {
+void DirectorIndexJob::notify(util::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
-    notifyDefaultImpl<IndexJob>(lock, _onFinish);
+    notifyDefaultImpl<DirectorIndexJob>(lock, _onFinish);
 }
 
-void IndexJob::_onRequestFinish(IndexRequest::Ptr const& request) {
+void DirectorIndexJob::_onRequestFinish(DirectorIndexRequest::Ptr const& request) {
     // NOTE: this algorithm assumes "zero tolerance" to failures - any failure
     // in executing requests or processing data of the requests would result in
     // the job termination. The only exception from this rule is a scenario
@@ -403,7 +405,7 @@ void IndexJob::_onRequestFinish(IndexRequest::Ptr const& request) {
     if (_requests.size() == 0) finish(lock, ExtendedState::SUCCESS);
 }
 
-void IndexJob::_processRequestData(util::Lock const& lock, IndexRequest::Ptr const& request) {
+void DirectorIndexJob::_processRequestData(util::Lock const& lock, DirectorIndexRequest::Ptr const& request) {
     auto const writeIntoFile = [](string const& fileName, ios::openmode mode, string const& data) {
         ofstream f(fileName, mode);
         if (!f.good()) {
@@ -494,34 +496,34 @@ void IndexJob::_processRequestData(util::Lock const& lock, IndexRequest::Ptr con
     }
 }
 
-list<IndexRequest::Ptr> IndexJob::_launchRequests(util::Lock const& lock, string const& worker,
-                                                  size_t maxRequests) {
-    list<IndexRequest::Ptr> requests;
+list<DirectorIndexRequest::Ptr> DirectorIndexJob::_launchRequests(util::Lock const& lock,
+                                                                  string const& worker, size_t maxRequests) {
+    list<DirectorIndexRequest::Ptr> requests;
 
     // Create as many requests as specified by the corresponding parameter of
     // the method or as many as are still available for the specified
     // worker (not to exceed the limit) by popping chunk numbers from the worker's
     // queue.
 
-    auto const self = shared_from_base<IndexJob>();
+    auto const self = shared_from_base<DirectorIndexJob>();
 
-    while (_chunks[worker].size() > 0 and requests.size() < maxRequests) {
+    while (_chunks[worker].size() > 0 && requests.size() < maxRequests) {
         auto const chunk = _chunks[worker].front();
         _chunks[worker].pop();
 
-        requests.push_back(controller()->index(
+        requests.push_back(controller()->directorIndex(
                 worker, database(), directorTable(), chunk, hasTransactions(), transactionId(),
-                [self](IndexRequest::Ptr const& request) { self->_onRequestFinish(request); }, priority(),
-                true, /* keepTracking*/
-                id()  /* jobId */
+                [self](DirectorIndexRequest::Ptr const& request) { self->_onRequestFinish(request); },
+                priority(), true, /* keepTracking*/
+                id()              /* jobId */
                 ));
     }
     return requests;
 }
 
-void IndexJob::_rollbackTransaction(string const& func) {
+void DirectorIndexJob::_rollbackTransaction(string const& func) {
     try {
-        if ((nullptr != _conn) and _conn->inTransaction()) _conn->rollback();
+        if ((nullptr != _conn) && _conn->inTransaction()) _conn->rollback();
     } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context() << func << "  transaction rollback failed, ex: " << ex.what());
     }

@@ -51,7 +51,7 @@
 
 // Forward declarations
 namespace lsst::qserv::replica {
-class IndexInfo;
+class DirectorIndexRequestInfo;
 }  // namespace lsst::qserv::replica
 
 // This header declarations
@@ -156,11 +156,11 @@ public:
     }
 };
 
-class StatusIndexRequestPolicy {
+class StatusDirectorIndexRequestPolicy {
 public:
-    using ResponseMessageType = ProtocolResponseIndex;
-    using ResponseDataType = IndexInfo;
-    using TargetRequestParamsType = IndexRequestParams;
+    using ResponseMessageType = ProtocolResponseDirectorIndex;
+    using ResponseDataType = DirectorIndexRequestInfo;
+    using TargetRequestParamsType = DirectorIndexRequestParams;
 
     static char const* requestName();
     static ProtocolQueuedRequestType targetRequestType();
@@ -351,7 +351,7 @@ typedef StatusRequest<StatusDeleteRequestPolicy> StatusDeleteRequest;
 typedef StatusRequest<StatusFindRequestPolicy> StatusFindRequest;
 typedef StatusRequest<StatusFindAllRequestPolicy> StatusFindAllRequest;
 typedef StatusRequest<StatusEchoRequestPolicy> StatusEchoRequest;
-typedef StatusRequest<StatusIndexRequestPolicy> StatusIndexRequest;
+typedef StatusRequest<StatusDirectorIndexRequestPolicy> StatusDirectorIndexRequest;
 typedef StatusRequest<StatusSqlRequestPolicy> StatusSqlQueryRequest;
 typedef StatusRequest<StatusSqlRequestPolicy> StatusSqlCreateDbRequest;
 typedef StatusRequest<StatusSqlRequestPolicy> StatusSqlDeleteDbRequest;

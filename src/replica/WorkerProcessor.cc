@@ -38,7 +38,7 @@
 #include "replica/WorkerReplicationRequest.h"
 #include "replica/WorkerRequestFactory.h"
 #include "replica/WorkerSqlRequest.h"
-#include "replica/WorkerIndexRequest.h"
+#include "replica/WorkerDirectorIndexRequest.h"
 #include "util/BlockPost.h"
 
 // LSST headers
@@ -395,9 +395,10 @@ void WorkerProcessor::enqueueForSql(std::string const& id, int32_t priority,
     }
 }
 
-void WorkerProcessor::enqueueForIndex(string const& id, int32_t priority,
-                                      unsigned int requestExpirationIvalSec,
-                                      ProtocolRequestIndex const& request, ProtocolResponseIndex& response) {
+void WorkerProcessor::enqueueForDirectorIndex(string const& id, int32_t priority,
+                                              unsigned int requestExpirationIvalSec,
+                                              ProtocolRequestDirectorIndex const& request,
+                                              ProtocolResponseDirectorIndex& response) {
     LOGS(_log, LOG_LVL_DEBUG,
          _context(__func__) << "  id: " << id << "  db: " << request.database()
                             << "  chunk: " << request.chunk()
@@ -410,7 +411,7 @@ void WorkerProcessor::enqueueForIndex(string const& id, int32_t priority,
     // won't pass further validation against the present configuration of the request
     // processing service.
     try {
-        auto const ptr = _requestFactory.createIndexRequest(
+        auto const ptr = _requestFactory.createDirectorIndexRequest(
                 _worker, id, priority, bind(&WorkerProcessor::dispose, shared_from_this(), _1),
                 requestExpirationIvalSec, request);
         _newRequests.push(ptr);
@@ -630,7 +631,7 @@ void WorkerProcessor::_setServiceResponseInfo(WorkerRequest::Ptr const& request,
         info->set_queued_type(ProtocolQueuedRequestType::TEST_ECHO);
     } else if (nullptr != dynamic_pointer_cast<WorkerSqlRequest>(request)) {
         info->set_queued_type(ProtocolQueuedRequestType::SQL);
-    } else if (nullptr != dynamic_pointer_cast<WorkerIndexRequest>(request)) {
+    } else if (nullptr != dynamic_pointer_cast<WorkerDirectorIndexRequest>(request)) {
         info->set_queued_type(ProtocolQueuedRequestType::INDEX);
     } else {
         throw logic_error(_classMethodContext(__func__) + "  unsupported request type: " + request->type() +
@@ -854,11 +855,11 @@ void WorkerProcessor::_setInfo(WorkerRequest::Ptr const& request, ProtocolRespon
     ptr->setInfo(response);
 }
 
-void WorkerProcessor::_setInfo(WorkerRequest::Ptr const& request, ProtocolResponseIndex& response) {
-    auto ptr = dynamic_pointer_cast<WorkerIndexRequest>(request);
+void WorkerProcessor::_setInfo(WorkerRequest::Ptr const& request, ProtocolResponseDirectorIndex& response) {
+    auto ptr = dynamic_pointer_cast<WorkerDirectorIndexRequest>(request);
     if (not ptr) {
         throw logic_error(_classMethodContext(__func__) +
-                          "(WorkerIndexRequest)"
+                          "(WorkerDirectorIndexRequest)"
                           "  incorrect dynamic type of request id: " +
                           request->id());
     }

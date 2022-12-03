@@ -20,7 +20,7 @@
  */
 
 // Class header
-#include "replica/IndexApp.h"
+#include "replica/DirectorIndexApp.h"
 
 // System headers
 #include <iomanip>
@@ -31,7 +31,7 @@
 // Qserv headers
 #include "replica/Configuration.h"
 #include "replica/Controller.h"
-#include "replica/IndexJob.h"
+#include "replica/DirectorIndexJob.h"
 #include "util/TablePrinter.h"
 
 using namespace std;
@@ -41,7 +41,7 @@ namespace {
 
 string const description =
         "This is a Controller application which launches a single job Controller in order"
-        " to harvest the 'secondary index' data from the 'director' tables of a select"
+        " to harvest the 'director' index data from the 'director' tables of a select"
         " database and aggregate these data at a specified destination."
         " Maximum timeout (seconds) to wait before the index data extraction requests sent"
         " to workers will finish should be set via option --controller--request-timeout-sec."
@@ -56,9 +56,11 @@ bool const enableServiceProvider = true;
 
 namespace lsst::qserv::replica {
 
-IndexApp::Ptr IndexApp::create(int argc, char* argv[]) { return Ptr(new IndexApp(argc, argv)); }
+DirectorIndexApp::Ptr DirectorIndexApp::create(int argc, char* argv[]) {
+    return Ptr(new DirectorIndexApp(argc, argv));
+}
 
-IndexApp::IndexApp(int argc, char* argv[])
+DirectorIndexApp::DirectorIndexApp(int argc, char* argv[])
         : Application(argc, argv, ::description, ::injectDatabaseOptions, ::boostProtobufVersionCheck,
                       ::enableServiceProvider) {
     // Configure the command line parser
@@ -77,7 +79,7 @@ IndexApp::IndexApp(int argc, char* argv[])
                       _destination, {"DISCARD", "FILE", "FOLDER", "TABLE"})
             .option("destination-path",
                     "A specific destination (depends on a value of parameter 'destination')"
-                    " where the 'secondary index' data received from workers would go",
+                    " where the 'director index data received from workers would go",
                     _destinationPath)
             .flag("local",
                   "This flag is used together with the TABLE destination option to load"
@@ -91,7 +93,7 @@ IndexApp::IndexApp(int argc, char* argv[])
             .option("qserv-czar-db", "A connection URL to the MySQL server of the Qserv master database.",
                     _qservCzarDbUrl)
             .flag("detailed-report",
-                  "The flag triggering detailed report on the harvested 'secondary index' data."
+                  "The flag triggering detailed report on the harvested 'director' index data."
                   " The report will also include MySQL errors (f any) for each chunk.",
                   _detailedReport)
             .option("tables-page-size", "The number of rows in the table of chunks (0 means no pages).",
@@ -100,7 +102,7 @@ IndexApp::IndexApp(int argc, char* argv[])
                   "Print vertical separator when displaying tabular data in reports.", _verticalSeparator);
 }
 
-int IndexApp::runImpl() {
+int DirectorIndexApp::runImpl() {
     if (!_qservCzarDbUrl.empty()) {
         // IMPORTANT: set the connector, then clear it up to avoid
         // contaminating the log files when logging command line arguments
@@ -111,12 +113,12 @@ int IndexApp::runImpl() {
     auto const controller = Controller::create(serviceProvider());
 
     string const noParentJobId;
-    auto const job =
-            IndexJob::create(_database, _table, _transactionId != numeric_limits<TransactionId>::max(),
-                             _transactionId, _allWorkers, IndexJob::fromString(_destination),
-                             _destinationPath, _localFile, controller, noParentJobId,
-                             nullptr,  // no callback
-                             PRIORITY_NORMAL);
+    auto const job = DirectorIndexJob::create(
+            _database, _table, _transactionId != numeric_limits<TransactionId>::max(), _transactionId,
+            _allWorkers, DirectorIndexJob::fromString(_destination), _destinationPath, _localFile, controller,
+            noParentJobId,
+            nullptr,  // no callback
+            PRIORITY_NORMAL);
     job->start();
     job->wait();
 

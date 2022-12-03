@@ -18,8 +18,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_REPLICA_INDEXREQUEST_H
-#define LSST_QSERV_REPLICA_INDEXREQUEST_H
+#ifndef LSST_QSERV_REPLICA_DIRECTORINDEXREQUEST_H
+#define LSST_QSERV_REPLICA_DIRECTORINDEXREQUEST_H
 
 // System headers
 #include <functional>
@@ -41,11 +41,11 @@ class Messenger;
 namespace lsst::qserv::replica {
 
 /**
- *  Structure IndexInfo represents a result of the requests
+ *  Structure DirectorIndexRequestInfo represents a result of the requests
  */
-struct IndexInfo {
+struct DirectorIndexRequestInfo {
     std::string error;  /// MySQL error (if any)
-    std::string data;   /// Index data to be loaded into the "secondary index" (if success)
+    std::string data;   /// Index data to be loaded into the "director" index (if success)
 
     /**
      * Print index data into a file.
@@ -54,24 +54,24 @@ struct IndexInfo {
     void print(std::string const& fileName = std::string()) const;
 };
 
-std::ostream& operator<<(std::ostream& os, IndexInfo const& info);
+std::ostream& operator<<(std::ostream& os, DirectorIndexRequestInfo const& info);
 
 /**
- * Class IndexRequest extracts and returns data to be loaded into
- * the "secondary index"
+ * Class DirectorIndexRequest extracts and returns data to be loaded into
+ * the "director" index.
  */
-class IndexRequest : public RequestMessenger {
+class DirectorIndexRequest : public RequestMessenger {
 public:
-    typedef std::shared_ptr<IndexRequest> Ptr;
+    typedef std::shared_ptr<DirectorIndexRequest> Ptr;
 
     /// The function type for notifications on the completion of the request
     typedef std::function<void(Ptr)> CallbackType;
 
-    IndexRequest() = delete;
-    IndexRequest(IndexRequest const&) = delete;
-    IndexRequest& operator=(IndexRequest const&) = delete;
+    DirectorIndexRequest() = delete;
+    DirectorIndexRequest(DirectorIndexRequest const&) = delete;
+    DirectorIndexRequest& operator=(DirectorIndexRequest const&) = delete;
 
-    ~IndexRequest() final = default;
+    ~DirectorIndexRequest() final = default;
 
     std::string const& database() const { return _database; }
     std::string const& directorTable() const { return _directorTable; }
@@ -80,7 +80,7 @@ public:
     TransactionId transactionId() const { return _transactionId; }
 
     /// @return target request specific parameters
-    IndexRequestParams const& targetRequestParams() const { return _targetRequestParams; }
+    DirectorIndexRequestParams const& targetRequestParams() const { return _targetRequestParams; }
 
     /**
      * @note the method must be called on requests which are in the FINISHED
@@ -89,7 +89,7 @@ public:
      *   MySQL error code if the worker-side data extraction failed.
      * @return a reference to a result of the completed request
      */
-    IndexInfo const& responseData() const;
+    DirectorIndexRequestInfo const& responseData() const;
 
     /**
      * Create a new request with specified parameters.
@@ -137,11 +137,11 @@ protected:
     void awaken(boost::system::error_code const& ec) final;
 
 private:
-    IndexRequest(ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service,
-                 std::string const& worker, std::string const& database, std::string const& directorTable,
-                 unsigned int chunk, bool hasTransactions, TransactionId transactionId,
-                 CallbackType const& onFinish, int priority, bool keepTracking,
-                 std::shared_ptr<Messenger> const& messenger);
+    DirectorIndexRequest(ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service,
+                         std::string const& worker, std::string const& database,
+                         std::string const& directorTable, unsigned int chunk, bool hasTransactions,
+                         TransactionId transactionId, CallbackType const& onFinish, int priority,
+                         bool keepTracking, std::shared_ptr<Messenger> const& messenger);
 
     /**
      * Send the serialized content of the buffer to a worker
@@ -154,7 +154,7 @@ private:
      * @param success 'true' indicates a successful response from a worker
      * @param message response from a worker (if success)
      */
-    void _analyze(bool success, ProtocolResponseIndex const& message);
+    void _analyze(bool success, ProtocolResponseDirectorIndex const& message);
 
     // Input parameters
 
@@ -166,12 +166,12 @@ private:
     CallbackType _onFinish;
 
     /// Request-specific parameters of the target request
-    IndexRequestParams _targetRequestParams;
+    DirectorIndexRequestParams _targetRequestParams;
 
     /// Result of the operation
-    IndexInfo _indexInfo;
+    DirectorIndexRequestInfo _responseData;
 };
 
 }  // namespace lsst::qserv::replica
 
-#endif  // LSST_QSERV_REPLICA_INDEXREQUEST_H
+#endif  // LSST_QSERV_REPLICA_DIRECTORINDEXREQUEST_H

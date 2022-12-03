@@ -18,8 +18,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_REPLICA_INDEXJOB_H
-#define LSST_QSERV_REPLICA_INDEXJOB_H
+#ifndef LSST_QSERV_REPLICA_DIRECTORINDEXJOB_H
+#define LSST_QSERV_REPLICA_DIRECTORINDEXJOB_H
 
 // System headers
 #include <cstdint>
@@ -38,7 +38,7 @@
 // Qserv headers
 #include "replica/Common.h"
 #include "replica/Job.h"
-#include "replica/IndexRequest.h"
+#include "replica/DirectorIndexRequest.h"
 
 // Forward declarations
 namespace lsst::qserv::replica::database::mysql {
@@ -49,28 +49,14 @@ class Connection;
 namespace lsst::qserv::replica {
 
 /**
- * The structure IndexJobResult represents a combined result received
- * from worker services upon a completion of the job.
- */
-struct IndexJobResult {
-    /// MySQL-specific errors (if any) for chunks are stored in this map
-    std::map<std::string,            // worker
-             std::map<unsigned int,  // chunk
-                      std::string>>
-            error;
-    /// @return JSON representation of the object as {<worker>:{<chunk>:<error>}}
-    nlohmann::json toJson() const;
-};
-
-/**
- * Class IndexJob is a class for a family of jobs which broadcast
- * the "secondary index" retrieval requests for the relevant chunks to
+ * Class DirectorIndexJob is a class for a family of jobs which broadcast
+ * the "director" index retrieval requests for the relevant chunks to
  * the workers. Results are either dumped into the specified folder or
- * directly loaded into the "secondary index" of a database.
+ * directly loaded into the "director" index of a director table.
  */
-class IndexJob : public Job {
+class DirectorIndexJob : public Job {
 public:
-    typedef std::shared_ptr<IndexJob> Ptr;
+    typedef std::shared_ptr<DirectorIndexJob> Ptr;
 
     /// The function type for notifications on the completion of the request
     typedef std::function<void(Ptr)> CallbackType;
@@ -83,7 +69,7 @@ public:
         DISCARD,  // do nothing with the data
         FILE,     // write all data into a file
         FOLDER,   // write each chunk's data as a separate file at a folder
-        TABLE     // write into the specified or standard "secondary index" table
+        TABLE     // write into the specified or standard "director" index table
     };
 
     /// @return the string representation for a value of the Destination option
@@ -99,7 +85,7 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param databaseName the name of a database for which the "secondary index"
+     * @param databaseName the name of a database for which the "director" index
      *   is built.
      * @param directorTableName the name of the director table
      * @param hasTransactions  if 'true' then the database's "director" tables
@@ -118,7 +104,7 @@ public:
      *   the FILE destination the empty destination path will trigger dumping
      *   the data onto the Standard Output Stream. For the FOLDER option
      *   the current working directory will be assumed. And for the TABLE option
-     *   the empty value would imply the standard "secondary index" table of
+     *   the empty value would imply the standard "director" index table of
      *   the database. A non-empty value for the table would imply the name of
      *   a specific (non-standard) table.
      * @param localFile the flag which is used along with the TABLE destinaton option.
@@ -143,13 +129,13 @@ public:
 
     // Default construction and copy semantics are prohibited
 
-    IndexJob() = delete;
-    IndexJob(IndexJob const&) = delete;
-    IndexJob& operator=(IndexJob const&) = delete;
+    DirectorIndexJob() = delete;
+    DirectorIndexJob(DirectorIndexJob const&) = delete;
+    DirectorIndexJob& operator=(DirectorIndexJob const&) = delete;
 
     /// Non-trivial destructor is needed to abort an ongoing transaction
     /// if needed.
-    ~IndexJob() final;
+    ~DirectorIndexJob() final;
 
     // Trivial get methods
 
@@ -166,6 +152,20 @@ public:
     virtual Job::Progress progress() const override;
 
     /**
+     * The structure Result represents a combined result received
+     * from worker services upon a completion of the job.
+     */
+    struct Result {
+        /// MySQL-specific errors (if any) for chunks are stored in this map
+        std::map<std::string,            // worker
+                 std::map<unsigned int,  // chunk
+                          std::string>>
+                error;
+        /// @return JSON representation of the object as {<worker>:{<chunk>:<error>}}
+        nlohmann::json toJson() const;
+    };
+
+    /**
      * Return the combined result of the operation
      *
      * @note The method should be invoked only after the job has
@@ -175,7 +175,7 @@ public:
      * @throws std::logic_error if the job didn't finish at a time when
      *   the method was called
      */
-    IndexJobResult const& getResultData() const;
+    Result const& getResultData() const;
 
     std::list<std::pair<std::string, std::string>> extendedPersistentState() const final;
     std::list<std::pair<std::string, std::string>> persistentLogData() const final;
@@ -188,16 +188,17 @@ protected:
     void notify(util::Lock const& lock) final;
 
 private:
-    IndexJob(std::string const& databaseName, std::string const& directorTableName, bool hasTransactions,
-             TransactionId transactionId, bool allWorkers, Destination destination,
-             std::string const& destinationPath, bool localFile, Controller::Ptr const& controller,
-             std::string const& parentJobId, CallbackType const& onFinish, int priority);
+    DirectorIndexJob(std::string const& databaseName, std::string const& directorTableName,
+                     bool hasTransactions, TransactionId transactionId, bool allWorkers,
+                     Destination destination, std::string const& destinationPath, bool localFile,
+                     Controller::Ptr const& controller, std::string const& parentJobId,
+                     CallbackType const& onFinish, int priority);
 
     /**
      * The callback function to be invoked on a completion of requests
      * targeting workers.
      */
-    void _onRequestFinish(IndexRequest::Ptr const& request);
+    void _onRequestFinish(DirectorIndexRequest::Ptr const& request);
 
     /**
      * Extract data from the successfully completed requests. The completion
@@ -207,7 +208,7 @@ private:
      *   the object's state
      * @param request the request to extract the data to be processed
      */
-    void _processRequestData(util::Lock const& lock, IndexRequest::Ptr const& request);
+    void _processRequestData(util::Lock const& lock, DirectorIndexRequest::Ptr const& request);
 
     /**
      * Launch a batch of requests with a total number not to exceed the specified
@@ -219,8 +220,8 @@ private:
      * @param maxRequests the maximum number of requests to be launched
      * @return a collection of requests launched
      */
-    std::list<IndexRequest::Ptr> _launchRequests(util::Lock const& lock, std::string const& worker,
-                                                 size_t maxRequests = 1);
+    std::list<DirectorIndexRequest::Ptr> _launchRequests(util::Lock const& lock, std::string const& worker,
+                                                         size_t maxRequests = 1);
 
     /**
      * Roll back a database transaction should the one be still open
@@ -250,7 +251,7 @@ private:
     std::map<std::string, std::queue<unsigned int>> _chunks;
 
     /// A collection of the in-flight requests (request id is the key)
-    std::map<std::string, IndexRequest::Ptr> _requests;
+    std::map<std::string, DirectorIndexRequest::Ptr> _requests;
 
     /// Database connector is initialized for Destination::TABLE upon arrival
     /// of the very first batch of data. A separate transaction is started
@@ -260,7 +261,7 @@ private:
     std::shared_ptr<database::mysql::Connection> _conn;
 
     /// The result of the operation (gets updated as requests are finishing)
-    IndexJobResult _resultData;
+    Result _resultData;
 
     // Job progression counters
     size_t _totalChunks = 0;     ///< The total number of chunks is set when the job is starting.
@@ -269,4 +270,4 @@ private:
 
 }  // namespace lsst::qserv::replica
 
-#endif  // LSST_QSERV_REPLICA_INDEXJOB_H
+#endif  // LSST_QSERV_REPLICA_DIRECTORINDEXJOB_H

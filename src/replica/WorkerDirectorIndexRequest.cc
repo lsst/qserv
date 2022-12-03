@@ -20,7 +20,7 @@
  */
 
 // Class header
-#include "replica/WorkerIndexRequest.h"
+#include "replica/WorkerDirectorIndexRequest.h"
 
 // System headers
 // System headers
@@ -45,7 +45,7 @@ namespace fs = boost::filesystem;
 
 namespace {
 
-LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.WorkerIndexRequest");
+LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.WorkerDirectorIndexRequest");
 
 }  // namespace
 
@@ -53,28 +53,26 @@ namespace lsst::qserv::replica {
 
 using namespace database::mysql;
 
-WorkerIndexRequest::Ptr WorkerIndexRequest::create(ServiceProvider::Ptr const& serviceProvider,
-                                                   ConnectionPoolPtr const& connectionPool,
-                                                   string const& worker, string const& id, int priority,
-                                                   ExpirationCallbackType const& onExpired,
-                                                   unsigned int requestExpirationIvalSec,
-                                                   ProtocolRequestIndex const& request) {
-    return WorkerIndexRequest::Ptr(new WorkerIndexRequest(serviceProvider, connectionPool, worker, id,
-                                                          priority, onExpired, requestExpirationIvalSec,
-                                                          request));
+WorkerDirectorIndexRequest::Ptr WorkerDirectorIndexRequest::create(
+        ServiceProvider::Ptr const& serviceProvider, ConnectionPoolPtr const& connectionPool,
+        string const& worker, string const& id, int priority, ExpirationCallbackType const& onExpired,
+        unsigned int requestExpirationIvalSec, ProtocolRequestDirectorIndex const& request) {
+    return WorkerDirectorIndexRequest::Ptr(new WorkerDirectorIndexRequest(serviceProvider, connectionPool,
+                                                                          worker, id, priority, onExpired,
+                                                                          requestExpirationIvalSec, request));
 }
 
-WorkerIndexRequest::WorkerIndexRequest(ServiceProvider::Ptr const& serviceProvider,
-                                       ConnectionPoolPtr const& connectionPool, string const& worker,
-                                       string const& id, int priority,
-                                       ExpirationCallbackType const& onExpired,
-                                       unsigned int requestExpirationIvalSec,
-                                       ProtocolRequestIndex const& request)
+WorkerDirectorIndexRequest::WorkerDirectorIndexRequest(ServiceProvider::Ptr const& serviceProvider,
+                                                       ConnectionPoolPtr const& connectionPool,
+                                                       string const& worker, string const& id, int priority,
+                                                       ExpirationCallbackType const& onExpired,
+                                                       unsigned int requestExpirationIvalSec,
+                                                       ProtocolRequestDirectorIndex const& request)
         : WorkerRequest(serviceProvider, worker, "INDEX", id, priority, onExpired, requestExpirationIvalSec),
           _connectionPool(connectionPool),
           _request(request) {}
 
-void WorkerIndexRequest::setInfo(ProtocolResponseIndex& response) const {
+void WorkerDirectorIndexRequest::setInfo(ProtocolResponseDirectorIndex& response) const {
     LOGS(_log, LOG_LVL_DEBUG, context(__func__));
 
     util::Lock lock(_mtx, context(__func__));
@@ -86,7 +84,7 @@ void WorkerIndexRequest::setInfo(ProtocolResponseIndex& response) const {
     *(response.mutable_request()) = _request;
 }
 
-bool WorkerIndexRequest::execute() {
+bool WorkerDirectorIndexRequest::execute() {
     LOGS(_log, LOG_LVL_DEBUG, context(__func__));
 
     util::Lock lock(_mtx, context(__func__));
@@ -98,7 +96,7 @@ bool WorkerIndexRequest::execute() {
             setStatus(lock, ProtocolStatus::CANCELLED);
             throw WorkerRequestCancelled();
         default:
-            throw logic_error("WorkerIndexRequest::" + context(__func__) +
+            throw logic_error("WorkerDirectorIndexRequest::" + context(__func__) +
                               "  not allowed while in state: " + WorkerRequest::status2string(status()));
     }
     try {
@@ -134,7 +132,7 @@ bool WorkerIndexRequest::execute() {
 
         // A scope of the query depends on parameters of the request
 
-        auto self = shared_from_base<WorkerIndexRequest>();
+        auto self = shared_from_base<WorkerDirectorIndexRequest>();
         bool fileReadSuccess = false;
         h.conn->executeInOwnTransaction([self, &fileReadSuccess](decltype(h.conn) const& conn) {
             conn->execute(self->_query(conn));
@@ -177,7 +175,7 @@ bool WorkerIndexRequest::execute() {
     return true;
 }
 
-string WorkerIndexRequest::_query(Connection::Ptr const& conn) const {
+string WorkerDirectorIndexRequest::_query(Connection::Ptr const& conn) const {
     auto const config = serviceProvider()->config();
     auto const database = config->databaseInfo(_request.database());
     auto const table = database.findTable(_request.director_table());
@@ -195,7 +193,7 @@ string WorkerIndexRequest::_query(Connection::Ptr const& conn) const {
                                database.name + "'");
     }
 
-    // Find types required by the secondary index table's columns
+    // Find types required by the "director" index table's columns
 
     string const qservTransId = _request.has_transactions() ? "qserv_trans_id" : string();
     string qservTransIdType;
@@ -236,7 +234,7 @@ string WorkerIndexRequest::_query(Connection::Ptr const& conn) const {
     return query + g.intoOutfile(_fileName);
 }
 
-bool WorkerIndexRequest::_readFile() {
+bool WorkerDirectorIndexRequest::_readFile() {
     LOGS(_log, LOG_LVL_DEBUG, context(__func__));
 
     // Open the stream to 'lock' the file.

@@ -250,12 +250,13 @@ void WorkerServerConnection::_processQueuedRequest(ProtocolRequestHeader const& 
         }
         case ProtocolQueuedRequestType::INDEX: {
             // Read the request body
-            ProtocolRequestIndex request;
+            ProtocolRequestDirectorIndex request;
             if (not ::readMessage(context(), _socket, _bufferPtr, bytes, request)) return;
 
-            ProtocolResponseIndex response;
+            ProtocolResponseDirectorIndex response;
             if (_verifyInstance(hdr, response)) {
-                _processor->enqueueForIndex(hdr.id(), hdr.priority(), hdr.timeout(), request, response);
+                _processor->enqueueForDirectorIndex(hdr.id(), hdr.priority(), hdr.timeout(), request,
+                                                    response);
             }
             _reply(hdr.id(), response);
             break;
@@ -326,7 +327,7 @@ void WorkerServerConnection::_processManagementRequest(ProtocolRequestHeader con
                     break;
                 }
                 case ProtocolQueuedRequestType::INDEX: {
-                    ProtocolResponseIndex response;
+                    ProtocolResponseDirectorIndex response;
                     if (_verifyInstance(hdr, response)) _processor->dequeueOrCancel(request, response);
                     _reply(hdr.id(), response);
                     break;
@@ -381,7 +382,7 @@ void WorkerServerConnection::_processManagementRequest(ProtocolRequestHeader con
                     break;
                 }
                 case ProtocolQueuedRequestType::INDEX: {
-                    ProtocolResponseIndex response;
+                    ProtocolResponseDirectorIndex response;
                     if (_verifyInstance(hdr, response)) _processor->checkStatus(request, response);
                     _reply(hdr.id(), response);
                     break;

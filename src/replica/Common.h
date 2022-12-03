@@ -309,19 +309,19 @@ public:
 std::ostream& operator<<(std::ostream& os, SqlRequestParams const& params);
 
 /**
- * Class IndexRequestParams represents parameters of requests extracting data
- * to be loaded into the "secondary index".
+ * Class DirectorIndexRequestParams represents parameters of requests extracting data
+ * to be loaded into the "director" index.
  */
-class IndexRequestParams {
+class DirectorIndexRequestParams {
 public:
     std::string database;
     unsigned int chunk = 0;
     bool hasTransactions = false;
     TransactionId transactionId = 0;
 
-    IndexRequestParams() = default;
+    DirectorIndexRequestParams() = default;
 
-    explicit IndexRequestParams(ProtocolRequestIndex const& request);
+    explicit DirectorIndexRequestParams(ProtocolRequestDirectorIndex const& request);
 };
 
 /**
@@ -378,7 +378,7 @@ std::vector<std::string> strsplit(std::string const& str, char delimiter = ' ');
 std::string tableNameBuilder(std::string const& databaseName, std::string const& tableName,
                              std::string const& suffix = std::string());
 
-/// @return The name of the director index table
+/// @return The name of the "director" index table
 inline std::string directorIndexTableName(std::string const& databaseName,
                                           std::string const& directorTableName) {
     return tableNameBuilder(databaseName, directorTableName);

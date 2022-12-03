@@ -345,7 +345,7 @@ ostream& operator<<(ostream& os, SqlRequestParams const& params) {
     return os;
 }
 
-IndexRequestParams::IndexRequestParams(ProtocolRequestIndex const& request)
+DirectorIndexRequestParams::DirectorIndexRequestParams(ProtocolRequestDirectorIndex const& request)
         : database(request.database()),
           chunk(request.chunk()),
           hasTransactions(request.has_transactions()),

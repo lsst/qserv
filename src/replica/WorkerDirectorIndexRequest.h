@@ -18,8 +18,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_REPLICA_WORKERINDEXREQUEST_H
-#define LSST_QSERV_REPLICA_WORKERINDEXREQUEST_H
+#ifndef LSST_QSERV_REPLICA_WORKERDIRECTORINDEXREQUEST_H
+#define LSST_QSERV_REPLICA_WORKERDIRECTORINDEXREQUEST_H
 
 // System headers
 #include <string>
@@ -38,13 +38,13 @@ class ConnectionPool;
 namespace lsst::qserv::replica {
 
 /**
- * Class WorkerIndexRequest queries a director table (the whole or just one MySQL
+ * Class WorkerDirectorIndexRequest queries a director table (the whole or just one MySQL
  * partition, depending on parameters of the request) of a database
- * to extracts data to be loaded into the "secondary index".
+ * to extracts data to be loaded into the "director" index.
  */
-class WorkerIndexRequest : public WorkerRequest {
+class WorkerDirectorIndexRequest : public WorkerRequest {
 public:
-    typedef std::shared_ptr<WorkerIndexRequest> Ptr;
+    typedef std::shared_ptr<WorkerDirectorIndexRequest> Ptr;
 
     /// Forward declaration for the connection pool
     typedef std::shared_ptr<database::mysql::ConnectionPool> ConnectionPoolPtr;
@@ -73,31 +73,32 @@ public:
     static Ptr create(ServiceProvider::Ptr const& serviceProvider, ConnectionPoolPtr const& connectionPool,
                       std::string const& worker, std::string const& id, int priority,
                       ExpirationCallbackType const& onExpired, unsigned int requestExpirationIvalSec,
-                      ProtocolRequestIndex const& request);
+                      ProtocolRequestDirectorIndex const& request);
 
-    WorkerIndexRequest() = delete;
-    WorkerIndexRequest(WorkerIndexRequest const&) = delete;
-    WorkerIndexRequest& operator=(WorkerIndexRequest const&) = delete;
+    WorkerDirectorIndexRequest() = delete;
+    WorkerDirectorIndexRequest(WorkerDirectorIndexRequest const&) = delete;
+    WorkerDirectorIndexRequest& operator=(WorkerDirectorIndexRequest const&) = delete;
 
-    ~WorkerIndexRequest() override = default;
+    ~WorkerDirectorIndexRequest() override = default;
 
     /// @return the original request
-    ProtocolRequestIndex const& request() const { return _request; }
+    ProtocolRequestDirectorIndex const& request() const { return _request; }
 
     /**
      * Extract request status into the Protobuf response object.
      *
      * @param response Protobuf response to be initialized
      */
-    void setInfo(ProtocolResponseIndex& response) const;
+    void setInfo(ProtocolResponseDirectorIndex& response) const;
 
     bool execute() override;
 
 private:
-    WorkerIndexRequest(ServiceProvider::Ptr const& serviceProvider, ConnectionPoolPtr const& connectionPool,
-                       std::string const& worker, std::string const& id, int priority,
-                       ExpirationCallbackType const& onExpired, unsigned int requestExpirationIvalSec,
-                       ProtocolRequestIndex const& request);
+    WorkerDirectorIndexRequest(ServiceProvider::Ptr const& serviceProvider,
+                               ConnectionPoolPtr const& connectionPool, std::string const& worker,
+                               std::string const& id, int priority, ExpirationCallbackType const& onExpired,
+                               unsigned int requestExpirationIvalSec,
+                               ProtocolRequestDirectorIndex const& request);
 
     /**
      * The query generator uses parameters of a request to compose
@@ -120,7 +121,7 @@ private:
     // Input parameters
 
     ConnectionPoolPtr const _connectionPool;
-    ProtocolRequestIndex const _request;
+    ProtocolRequestDirectorIndex const _request;
 
     /// Cached error to be sent to a client
     std::string _error;
@@ -134,12 +135,12 @@ private:
     std::string _data;
 };
 
-/// Class WorkerIndexRequest provides an actual implementation
-typedef WorkerIndexRequest WorkerIndexRequestFS;
+/// Class WorkerDirectorIndexRequest provides an actual implementation
+typedef WorkerDirectorIndexRequest WorkerDirectorIndexRequestFS;
 
-/// Class WorkerIndexRequest provides an actual implementation
-typedef WorkerIndexRequest WorkerIndexRequestPOSIX;
+/// Class WorkerDirectorIndexRequest provides an actual implementation
+typedef WorkerDirectorIndexRequest WorkerDirectorIndexRequestPOSIX;
 
 }  // namespace lsst::qserv::replica
 
-#endif  // LSST_QSERV_REPLICA_WORKERINDEXREQUEST_H
+#endif  // LSST_QSERV_REPLICA_WORKERDIRECTORINDEXREQUEST_H

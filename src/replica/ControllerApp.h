@@ -183,10 +183,10 @@ private:
     /// the replica's files.
     bool _computeCheckSum = false;
 
-    /// The name of a file where the 'secondary index' data will be written into
+    /// The name of a file where the "director" index data will be written into
     /// upon a successful completion of a request. If the option is not used then
     /// the data will be printed onto the Standard Output Stream.
-    std::string _indexFileName;
+    std::string _directorIndexFileName;
 };
 
 }  // namespace lsst::qserv::replica

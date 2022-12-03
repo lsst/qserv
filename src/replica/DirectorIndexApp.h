@@ -18,8 +18,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_REPLICA_INDEXAPP_H
-#define LSST_QSERV_REPLICA_INDEXAPP_H
+#ifndef LSST_QSERV_REPLICA_DIRECTORINDEXAPP_H
+#define LSST_QSERV_REPLICA_DIRECTORINDEXAPP_H
 
 // System headers
 #include <cstdint>
@@ -33,14 +33,14 @@
 namespace lsst::qserv::replica {
 
 /**
- * Class IndexApp implements a tool which launches a single job Controller in order
- * to harvest the "secondary index" data from the "director" tables of a select
+ * Class DirectorIndexApp implements a tool which launches a single job Controller in order
+ * to harvest the "director" index data from the "director" tables of a select
  * database and aggregate these data at a specified destination.
  */
-class IndexApp : public Application {
+class DirectorIndexApp : public Application {
 public:
     /// The pointer type for instances of the class
-    typedef std::shared_ptr<IndexApp> Ptr;
+    typedef std::shared_ptr<DirectorIndexApp> Ptr;
 
     /**
      * The factory method is the only way of creating objects of this class
@@ -51,17 +51,17 @@ public:
      */
     static Ptr create(int argc, char* argv[]);
 
-    IndexApp() = delete;
-    IndexApp(IndexApp const&) = delete;
-    IndexApp& operator=(IndexApp const&) = delete;
+    DirectorIndexApp() = delete;
+    DirectorIndexApp(DirectorIndexApp const&) = delete;
+    DirectorIndexApp& operator=(DirectorIndexApp const&) = delete;
 
-    ~IndexApp() final = default;
+    ~DirectorIndexApp() final = default;
 
 protected:
     int runImpl() final;
 
 private:
-    IndexApp(int argc, char* argv[]);
+    DirectorIndexApp(int argc, char* argv[]);
 
     /// The name of a database
     std::string _database;
@@ -110,4 +110,4 @@ private:
 
 }  // namespace lsst::qserv::replica
 
-#endif /* LSST_QSERV_REPLICA_INDEXAPP_H */
+#endif /* LSST_QSERV_REPLICA_DIRECTORINDEXAPP_H */

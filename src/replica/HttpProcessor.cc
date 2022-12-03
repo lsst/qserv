@@ -32,7 +32,7 @@
 #include "replica/HttpIngestChunksModule.h"
 #include "replica/HttpIngestConfigModule.h"
 #include "replica/HttpIngestModule.h"
-#include "replica/HttpIngestIndexModule.h"
+#include "replica/HttpDirectorIndexModule.h"
 #include "replica/HttpIngestTransModule.h"
 #include "replica/HttpJobsModule.h"
 #include "replica/HttpMetaModule.h"
@@ -418,9 +418,9 @@ void HttpProcessor::registerServices() {
                              });
     httpServer()->addHandler("POST", "/ingest/index/secondary",
                              [self](qhttp::Request::Ptr const req, qhttp::Response::Ptr const resp) {
-                                 HttpIngestIndexModule::process(
-                                         self->controller(), self->name(), self->_processorConfig, req, resp,
-                                         "BUILD-SECONDARY-INDEX", HttpAuthType::REQUIRED);
+                                 HttpDirectorIndexModule::process(self->controller(), self->name(),
+                                                                  self->_processorConfig, req, resp, "BUILD",
+                                                                  HttpAuthType::REQUIRED);
                              });
     httpServer()->addHandler("GET", "/export/tables/:database",
                              [self](qhttp::Request::Ptr const req, qhttp::Response::Ptr const resp) {

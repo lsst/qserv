@@ -211,7 +211,7 @@ public:
                        ProtocolRequestSql const& request, ProtocolResponseSql& response);
 
     /**
-     * Enqueue a request for extracting the "secondary index" data from
+     * Enqueue a request for extracting the "director" index data from
      * the director tables.
      *
      * @param id an identifier of a request
@@ -220,8 +220,10 @@ public:
      * @param response the Protobuf object to be initialized and ready to be sent
      *   back to the client
      */
-    void enqueueForIndex(std::string const& id, int32_t priority, unsigned int requestExpirationIvalSec,
-                         ProtocolRequestIndex const& request, ProtocolResponseIndex& response);
+    void enqueueForDirectorIndex(std::string const& id, int32_t priority,
+                                 unsigned int requestExpirationIvalSec,
+                                 ProtocolRequestDirectorIndex const& request,
+                                 ProtocolResponseDirectorIndex& response);
 
     /**
      * Set default values to protocol response which has 3 mandatory fields:
@@ -452,7 +454,7 @@ private:
      * @param response Google Protobuf object to be initialized
      * @throws std::logic_error if the dynamic type of the request won't match expectations
      */
-    void _setInfo(WorkerRequest::Ptr const& request, ProtocolResponseIndex& response);
+    void _setInfo(WorkerRequest::Ptr const& request, ProtocolResponseDirectorIndex& response);
 
     /**
      * Fill in the information object for the specified request based on its

@@ -197,15 +197,15 @@ json HttpIngestModule::_addDatabase() {
     auto const numStripes = body().required<unsigned int>("num_stripes");
     auto const numSubStripes = body().required<unsigned int>("num_sub_stripes");
     auto const overlap = body().required<double>("overlap");
-    auto const enableAutoBuildSecondaryIndex = body().optional<unsigned int>("auto_build_secondary_index", 1);
-    auto const enableLocalLoadSecondaryIndex = body().optional<unsigned int>("local_load_secondary_index", 0);
+    auto const enableAutoBuildDirectorIndex = body().optional<unsigned int>("auto_build_secondary_index", 1);
+    auto const enableLocalLoadDirectorIndex = body().optional<unsigned int>("local_load_secondary_index", 0);
 
     debug(__func__, "database=" + databaseName);
-    debug(__func__, "numStripes=" + to_string(numStripes));
-    debug(__func__, "numSubStripes=" + to_string(numSubStripes));
+    debug(__func__, "num_stripes=" + to_string(numStripes));
+    debug(__func__, "num_sub_stripes=" + to_string(numSubStripes));
     debug(__func__, "overlap=" + to_string(overlap));
-    debug(__func__, "enableAutoBuildSecondaryIndex=" + to_string(enableAutoBuildSecondaryIndex ? 1 : 0));
-    debug(__func__, "enableLocalLoadSecondaryIndex=" + to_string(enableLocalLoadSecondaryIndex ? 1 : 0));
+    debug(__func__, "auto_build_secondary_index=" + to_string(enableAutoBuildDirectorIndex ? 1 : 0));
+    debug(__func__, "local_load_secondary_index=" + to_string(enableLocalLoadDirectorIndex ? 1 : 0));
 
     if (overlap < 0) throw HttpError(__func__, "overlap can't have a negative value");
 
@@ -256,15 +256,15 @@ json HttpIngestModule::_addDatabase() {
     // until they will be added as a separate step.
     auto database = config->addDatabase(databaseName, family);
 
-    // Register a requested mode for building the secondary index. If a value
+    // Register a requested mode for building the "director" index. If a value
     // of the parameter is set to 'true' (or '1' in the database) then contributions
     // into the index will be automatically made when committing transactions. Otherwise,
     // it's going to be up to a user's catalog ingest workflow to (re-)build
     // the index.
     databaseServices->saveIngestParam(database.name, "secondary-index", "auto-build",
-                                      to_string(enableAutoBuildSecondaryIndex ? 1 : 0));
+                                      to_string(enableAutoBuildDirectorIndex ? 1 : 0));
     databaseServices->saveIngestParam(database.name, "secondary-index", "local-load",
-                                      to_string(enableLocalLoadSecondaryIndex ? 1 : 0));
+                                      to_string(enableLocalLoadDirectorIndex ? 1 : 0));
 
     // Tell workers to reload their configurations
     error = reconfigureWorkers(database, allWorkers, workerReconfigTimeoutSec());
@@ -284,11 +284,11 @@ json HttpIngestModule::_publishDatabase() {
     auto const config = controller()->serviceProvider()->config();
 
     auto const databaseName = params().at("database");
-    bool const consolidateSecondaryIndex = body().optional<int>("consolidate_secondary_index", 0) != 0;
+    bool const consolidateDirectorIndex = body().optional<int>("consolidate_secondary_index", 0) != 0;
     bool const rowCountersDeployAtQserv = body().optional<int>("row_counters_deploy_at_qserv", 0) != 0;
 
     debug(__func__, "database=" + databaseName);
-    debug(__func__, "consolidate_secondary_index=" + bool2str(consolidateSecondaryIndex));
+    debug(__func__, "consolidate_secondary_index=" + bool2str(consolidateDirectorIndex));
     debug(__func__, "row_counters_deploy_at_qserv=" + bool2str(rowCountersDeployAtQserv));
 
     auto const database = config->databaseInfo(databaseName);
@@ -308,12 +308,12 @@ json HttpIngestModule::_publishDatabase() {
 
     // The operation can be vetoed by the corresponding workflow parameter requested
     // by a catalog ingest workflow at the database creation time.
-    if (autoBuildSecondaryIndex(database.name) and consolidateSecondaryIndex) {
+    if (autoBuildDirectorIndex(database.name) and consolidateDirectorIndex) {
         for (auto&& tableName : database.directorTables()) {
             auto const table = database.findTable(tableName);
             if (table.isPublished) continue;
             // This operation may take a while if the table has a large number of entries.
-            _consolidateSecondaryIndex(database, table.name);
+            _consolidateDirectorIndex(database, table.name);
         }
     }
 
@@ -606,14 +606,14 @@ json HttpIngestModule::_addTable() {
         if (!error.empty()) throw HttpError(__func__, error);
     }
 
-    // Create the secondary index table using an updated version of
+    // Create the "director" index table using an updated version of
     // the database descriptor.
     //
     // This operation can be vetoed by a catalog ingest workflow at the database
     // registration time.
-    if (autoBuildSecondaryIndex(database.name)) {
+    if (autoBuildDirectorIndex(database.name)) {
         if (table.isDirector) {
-            _createSecondaryIndex(config->databaseInfo(database.name), table.name);
+            _createDirectorIndex(config->databaseInfo(database.name), table.name);
         }
     }
 
@@ -1285,8 +1285,8 @@ json HttpIngestModule::_buildEmptyChunksListImpl(string const& databaseName, boo
     return result;
 }
 
-void HttpIngestModule::_createSecondaryIndex(DatabaseInfo const& database,
-                                             string const& directorTableName) const {
+void HttpIngestModule::_createDirectorIndex(DatabaseInfo const& database,
+                                            string const& directorTableName) const {
     auto const& table = database.findTable(directorTableName);
     if (!table.isDirector) {
         throw logic_error("table '" + table.name + "' is not configured in database '" + database.name +
@@ -1301,7 +1301,7 @@ void HttpIngestModule::_createSecondaryIndex(DatabaseInfo const& database,
                           database.name + "'");
     }
 
-    // Find types of the secondary index table's columns
+    // Find types of the "director" index table's columns
     string primaryKeyColumnType;
     string const chunkIdColNameType = "INT";
     string const subChunkIdColNameType = "INT";
@@ -1341,8 +1341,8 @@ void HttpIngestModule::_createSecondaryIndex(DatabaseInfo const& database,
     });
 }
 
-void HttpIngestModule::_consolidateSecondaryIndex(DatabaseInfo const& database,
-                                                  string const& directorTableName) const {
+void HttpIngestModule::_consolidateDirectorIndex(DatabaseInfo const& database,
+                                                 string const& directorTableName) const {
     auto const table = database.findTable(directorTableName);
     if (!table.isDirector) {
         throw logic_error("table '" + table.name + "' is not configured in database '" + database.name +

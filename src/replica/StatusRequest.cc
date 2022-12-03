@@ -23,7 +23,7 @@
 #include "replica/StatusRequest.h"
 
 // Qserv headers
-#include "replica/IndexRequest.h"
+#include "replica/DirectorIndexRequest.h"
 
 using namespace std;
 
@@ -137,23 +137,24 @@ void StatusEchoRequestPolicy::extractTargetRequestParams(ResponseMessageType con
     }
 }
 
-// ---------------------------------------------
-// --------- StatusIndexRequestPolicy ----------
-// ---------------------------------------------
+// -----------------------------------------------------
+// --------- StatusDirectorIndexRequestPolicy ----------
+// -----------------------------------------------------
 
-char const* StatusIndexRequestPolicy::requestName() { return "REQUEST_STATUS:INDEX"; }
+char const* StatusDirectorIndexRequestPolicy::requestName() { return "REQUEST_STATUS:INDEX"; }
 
-ProtocolQueuedRequestType StatusIndexRequestPolicy::targetRequestType() {
+ProtocolQueuedRequestType StatusDirectorIndexRequestPolicy::targetRequestType() {
     return ProtocolQueuedRequestType::INDEX;
 }
 
-void StatusIndexRequestPolicy::extractResponseData(ResponseMessageType const& msg, ResponseDataType& data) {
+void StatusDirectorIndexRequestPolicy::extractResponseData(ResponseMessageType const& msg,
+                                                           ResponseDataType& data) {
     data.error = msg.error();
     data.data = msg.data();
 }
 
-void StatusIndexRequestPolicy::extractTargetRequestParams(ResponseMessageType const& msg,
-                                                          TargetRequestParamsType& params) {
+void StatusDirectorIndexRequestPolicy::extractTargetRequestParams(ResponseMessageType const& msg,
+                                                                  TargetRequestParamsType& params) {
     if (msg.has_request()) {
         params = TargetRequestParamsType(msg.request());
     }

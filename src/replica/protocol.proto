@@ -56,7 +56,7 @@ enum ProtocolQueuedRequestType {
     REPLICA_FIND_ALL = 3;    // find all replicas and report their states
     TEST_ECHO        = 4;    // test the worker-side framework
     SQL              = 5;    // execute an SQL statement against the worker's database
-    INDEX            = 6;    // extract and return a collection of the "secondary index" data
+    INDEX            = 6;    // extract and return a collection of the "director" index data
 }
 
 // Request types for managing above defined requests
@@ -272,7 +272,7 @@ message ProtocolRequestSql {
 
 // This request is always queued.
 // This message is sent once after the header for the 'INDEX' request types
-message ProtocolRequestIndex {
+message ProtocolRequestDirectorIndex {
 
     required string database = 2;
     required string director_table = 6;
@@ -720,7 +720,7 @@ message ProtocolResponseSql {
     optional ProtocolRequestSql request = 10;
 }
 
-message ProtocolResponseIndex {
+message ProtocolResponseDirectorIndex {
 
     /// The completion status of the operation
     required ProtocolStatus status = 8;
@@ -745,7 +745,7 @@ message ProtocolResponseIndex {
     optional string error = 5 [default = ""];
 
     /// Full content of the TSV/CSV file in which is lines has a set of fields
-    /// to be ingested into the secondary index at Qserv master. The number and
+    /// to be ingested into the "director" index at Qserv master. The number and
     /// a schema of fields depends on a mode the request was made as well as on
     /// a mode of the request. For consolidated (not MySQL partitioned tables)
     /// each line of the file would be represented by the triplet:
@@ -760,7 +760,7 @@ message ProtocolResponseIndex {
 
     /// Parameters of the original request to which this response
     /// is related
-    optional ProtocolRequestIndex request = 7;
+    optional ProtocolRequestDirectorIndex request = 7;
 }
 
 message ProtocolResponseDisposeStatus {

@@ -48,7 +48,7 @@ class DeleteRequest;
 class FindRequest;
 class FindAllRequest;
 class EchoRequest;
-class IndexRequest;
+class DirectorIndexRequest;
 class SqlAlterTablesRequest;
 class SqlQueryRequest;
 class SqlCreateDbRequest;
@@ -72,7 +72,7 @@ class StopDeleteRequestPolicy;
 class StopFindRequestPolicy;
 class StopFindAllRequestPolicy;
 class StopEchoRequestPolicy;
-class StopIndexRequestPolicy;
+class StopDirectorIndexRequestPolicy;
 class StopSqlRequestPolicy;
 
 template <typename POLICY>
@@ -83,7 +83,7 @@ using StopDeleteRequest = StopRequest<StopDeleteRequestPolicy>;
 using StopFindRequest = StopRequest<StopFindRequestPolicy>;
 using StopFindAllRequest = StopRequest<StopFindAllRequestPolicy>;
 using StopEchoRequest = StopRequest<StopEchoRequestPolicy>;
-using StopIndexRequest = StopRequest<StopIndexRequestPolicy>;
+using StopDirectorIndexRequest = StopRequest<StopDirectorIndexRequestPolicy>;
 using StopSqlAlterTablesRequest = StopRequest<StopSqlRequestPolicy>;
 using StopSqlQueryRequest = StopRequest<StopSqlRequestPolicy>;
 using StopSqlCreateDbRequest = StopRequest<StopSqlRequestPolicy>;
@@ -106,7 +106,7 @@ class StatusDeleteRequestPolicy;
 class StatusFindRequestPolicy;
 class StatusFindAllRequestPolicy;
 class StatusEchoRequestPolicy;
-class StatusIndexRequestPolicy;
+class StatusDirectorIndexRequestPolicy;
 class StatusSqlRequestPolicy;
 
 template <typename POLICY>
@@ -117,7 +117,7 @@ using StatusDeleteRequest = StatusRequest<StatusDeleteRequestPolicy>;
 using StatusFindRequest = StatusRequest<StatusFindRequestPolicy>;
 using StatusFindAllRequest = StatusRequest<StatusFindAllRequestPolicy>;
 using StatusEchoRequest = StatusRequest<StatusEchoRequestPolicy>;
-using StatusIndexRequest = StatusRequest<StatusIndexRequestPolicy>;
+using StatusDirectorIndexRequest = StatusRequest<StatusDirectorIndexRequestPolicy>;
 using StatusSqlAlterTablesRequest = StatusRequest<StatusSqlRequestPolicy>;
 using StatusSqlQueryRequest = StatusRequest<StatusSqlRequestPolicy>;
 using StatusSqlCreateDbRequest = StatusRequest<StatusSqlRequestPolicy>;
@@ -246,10 +246,10 @@ public:
             int priority = PRIORITY_NORMAL, bool keepTracking = true, std::string const& jobId = "",
             unsigned int requestExpirationIvalSec = 0);
 
-    std::shared_ptr<IndexRequest> index(
+    std::shared_ptr<DirectorIndexRequest> directorIndex(
             std::string const& workerName, std::string const& database, std::string const& directorTable,
             unsigned int chunk, bool hasTransactions, TransactionId transactionId,
-            std::function<void(std::shared_ptr<IndexRequest>)> const& onFinish = nullptr,
+            std::function<void(std::shared_ptr<DirectorIndexRequest>)> const& onFinish = nullptr,
             int priority = PRIORITY_NORMAL, bool keepTracking = true, std::string const& jobId = "",
             unsigned int requestExpirationIvalSec = 0);
 

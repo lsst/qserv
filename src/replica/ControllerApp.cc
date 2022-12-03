@@ -34,7 +34,7 @@
 #include "replica/EchoRequest.h"
 #include "replica/FindRequest.h"
 #include "replica/FindAllRequest.h"
-#include "replica/IndexRequest.h"
+#include "replica/DirectorIndexRequest.h"
 #include "replica/ReplicationRequest.h"
 #include "replica/ServiceManagementRequest.h"
 #include "replica/ServiceProvider.h"
@@ -398,10 +398,10 @@ void ControllerApp::_configureParserCommandINDEX() {
                     " column 'qserv_trans_id'.",
                     _transactionId)
             .option("index-file",
-                    "The name of a file where the 'secondary index' data will be written into"
+                    "The name of a file where the 'director' index data will be written into"
                     " upon a successful completion of a request. If the option is not used then"
                     " the data will be printed onto the Standard Output Stream",
-                    _indexFileName);
+                    _directorIndexFileName);
 }
 
 void ControllerApp::_configureParserCommandSTATUS() {
@@ -549,11 +549,11 @@ int ControllerApp::runImpl() {
 
     } else if ("INDEX" == _requestType) {
         bool const hasTransactions = _transactionId != numeric_limits<TransactionId>::max();
-        request = controller->index(
+        request = controller->directorIndex(
                 _workerName, _sqlDatabase, _sqlTable, _chunkNumber, hasTransactions, _transactionId,
-                [&](IndexRequest::Ptr const& request_) {
+                [&](DirectorIndexRequest::Ptr const& request_) {
                     Request::defaultPrinter(request_);
-                    request_->responseData().print(_indexFileName);
+                    request_->responseData().print(_directorIndexFileName);
                 },
                 _priority, !_doNotTrackRequest);
 
@@ -700,7 +700,7 @@ Request::Ptr ControllerApp::_launchStatusRequest(Controller::Ptr const& controll
     if ("FIND" == _affectedRequest) return l.status<StatusFindRequest>();
     if ("FIND_ALL" == _affectedRequest) return l.status<StatusFindAllRequest>();
     if ("ECHO" == _affectedRequest) return l.status<StatusEchoRequest>();
-    if ("INDEX" == _affectedRequest) return l.status<StatusIndexRequest>();
+    if ("INDEX" == _affectedRequest) return l.status<StatusDirectorIndexRequest>();
     if ("SQL_ALTER_TABLES" == _affectedRequest) return l.status<StatusSqlAlterTablesRequest>();
     if ("SQL_QUERY" == _affectedRequest) return l.status<StatusSqlQueryRequest>();
     if ("SQL_CREATE_DATABASE" == _affectedRequest) return l.status<StatusSqlCreateDbRequest>();
@@ -718,7 +718,7 @@ Request::Ptr ControllerApp::_launchStatusRequest(Controller::Ptr const& controll
         return l.status<StatusSqlRemoveTablePartitionsRequest>();
     if ("SQL_DELETE_TABLE_PARTITION" == _affectedRequest)
         return l.status<StatusSqlDeleteTablePartitionRequest>();
-    if ("INDEX" == _affectedRequest) return l.status<StatusIndexRequest>();
+    if ("INDEX" == _affectedRequest) return l.status<StatusDirectorIndexRequest>();
 
     throw logic_error("ControllerApp::" + string(__func__) + "  unsupported request: " + _affectedRequest);
 }
@@ -731,7 +731,7 @@ Request::Ptr ControllerApp::_launchStopRequest(Controller::Ptr const& controller
     if ("FIND" == _affectedRequest) return l.stop<StopFindRequest>();
     if ("FIND_ALL" == _affectedRequest) return l.stop<StopFindAllRequest>();
     if ("ECHO" == _affectedRequest) return l.stop<StopEchoRequest>();
-    if ("INDEX" == _affectedRequest) return l.stop<StopIndexRequest>();
+    if ("INDEX" == _affectedRequest) return l.stop<StopDirectorIndexRequest>();
     if ("SQL_ALTER_TABLES" == _affectedRequest) return l.stop<StopSqlAlterTablesRequest>();
     if ("SQL_QUERY" == _affectedRequest) return l.stop<StopSqlQueryRequest>();
     if ("SQL_CREATE_DATABASE" == _affectedRequest) return l.stop<StopSqlCreateDbRequest>();
@@ -748,7 +748,7 @@ Request::Ptr ControllerApp::_launchStopRequest(Controller::Ptr const& controller
     if ("SQL_REMOVE_TABLE_PARTITIONS" == _affectedRequest)
         return l.stop<StopSqlRemoveTablePartitionsRequest>();
     if ("SQL_DELETE_TABLE_PARTITION" == _affectedRequest) return l.stop<StopSqlDeleteTablePartitionRequest>();
-    if ("INDEX" == _affectedRequest) return l.stop<StopIndexRequest>();
+    if ("INDEX" == _affectedRequest) return l.stop<StopDirectorIndexRequest>();
 
     throw logic_error("ControllerApp::" + string(__func__) + "  unsupported request: " + _affectedRequest);
 }
