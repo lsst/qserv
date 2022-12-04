@@ -93,8 +93,10 @@ DirectorIndexJob::DirectorIndexJob(string const& databaseName, string const& dir
           _transactionId(transactionId),
           _allWorkers(allWorkers),
           _localFile(localFile),
-          _onFinish(onFinish) {
-    // Get and verify database status
+          _onFinish(onFinish),
+          _connPool(ConnectionPool::create(Configuration::qservCzarDbParams(lsst::qserv::SEC_INDEX_DB),
+                                           controller->serviceProvider()->config()->get<size_t>(
+                                                   "controller", "num-director-index-connections"))) {
     try {
         _database = controller->serviceProvider()->config()->databaseInfo(databaseName);
         if (!_database.findTable(directorTableName).isDirector) {
@@ -106,8 +108,6 @@ DirectorIndexJob::DirectorIndexJob(string const& databaseName, string const& dir
         throw;
     }
 }
-
-DirectorIndexJob::~DirectorIndexJob() { _rollbackTransaction(__func__); }
 
 Job::Progress DirectorIndexJob::progress() const {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
@@ -302,7 +302,6 @@ void DirectorIndexJob::cancelImpl(util::Lock const& lock) {
         }
     }
     _requests.clear();
-    _rollbackTransaction(__func__);
 }
 
 void DirectorIndexJob::notify(util::Lock const& lock) {
@@ -317,81 +316,84 @@ void DirectorIndexJob::_onRequestFinish(DirectorIndexRequest::Ptr const& request
     // when a target chunk table won't have a partition. This may be expected
     // for some chunk tables because they may not have contributions in a context
     // of the given super-transaction.
-    //
-    // TODO: reconsider this algorithm.
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  worker=" << request->worker());
+    string const context_ = context() + string(__func__) + " worker=" + request->worker() + " ";
+    LOGS(_log, LOG_LVL_DEBUG, context_);
 
-    if (state() == State::FINISHED) return;
-
-    util::Lock lock(_mtx, context() + __func__);
-
-    if (state() == State::FINISHED) return;
-
-    _completeChunks++;
-
+    // This synchronized block performs the light-weight operations that are meant
+    // to evaluate the completion status of the request, update the internal data
+    // structures and and decide if the algorithm should proceed with ingesitng
+    // the request's data into the "director" index table.
     bool hasData = true;
-    if (request->extendedState() != Request::SUCCESS) {
-        if (request->extendedServerStatus() == ProtocolStatusExt::NO_SUCH_PARTITION) {
-            // OK to proceed. We just don't have any contribution into the
-            // partition.
-            hasData = false;
-        } else {
-            _resultData.error[request->worker()][request->chunk()] = request->responseData().error;
-            _rollbackTransaction(__func__);
-            finish(lock, ExtendedState::FAILED);
-            return;
+    {
+        if (state() == State::FINISHED) return;
+        util::Lock lock(_mtx, context_);
+        if (state() == State::FINISHED) return;
+
+        _completeChunks++;
+
+        if (request->extendedState() != Request::SUCCESS) {
+            if (request->extendedServerStatus() == ProtocolStatusExt::NO_SUCH_PARTITION) {
+                // OK to proceed. We just don't have any contribution into the
+                // partition.
+                hasData = false;
+            } else {
+                _resultData.error[request->worker()][request->chunk()] = request->responseData().error;
+                finish(lock, ExtendedState::FAILED);
+                return;
+            }
         }
+
+        // Submit a replacement request for the same worker BEFORE processing
+        // results of the current one. This little optimization is meant to keep
+        // workers busy in case of a non-negligible latency in processing data of
+        // requests.
+        for (auto&& ptr : _launchRequests(lock, request->worker())) {
+            _requests[ptr->id()] = ptr;
+        }
+
+        // Removing request from the list before processing its data is fine as
+        // we still have a shared pointer passed into this method. Note that
+        // we need to erase completed requests from memory since they may carry
+        // a significant amount of data.
+        // Erasing completed requests is also needed for evaluating the completion
+        // condition of the job.
+        _requests.erase(request->id());
     }
 
-    // Submit a replacement request for the same worker BEFORE processing
-    // results of the current one. This little optimization is meant to keep
-    // workers busy in case of a non-negligible latency in processing data of
-    // requests.
-
-    for (auto&& ptr : _launchRequests(lock, request->worker())) {
-        _requests[ptr->id()] = ptr;
-    }
-
-    // Removing request from the list before processing its data is fine as
-    // we still have a shared pointer passed into this method. Note that
-    // we need to erase completed requests from memory since they may carry
-    // a significant amount of data.
-
-    _requests.erase(request->id());
+    // The next step performs the actual data loading in the lock-free context
+    // of a thread that invoked the current handler. Loading data in the lock-free
+    // context allows the parellel processing of multiple requests.
+    // Problems (if any) will be reported into the variable 'error'.
+    string error;
     if (hasData) {
         try {
-            _processRequestData(lock, request);
+            _processRequestData(request);
         } catch (exception const& ex) {
-            string const error = "request data processing failed, ex: " + string(ex.what());
-            LOGS(_log, LOG_LVL_ERROR, context() << __func__ << "  " << error);
-            _resultData.error[request->worker()][request->chunk()] = error;
-            _rollbackTransaction(__func__);
-            finish(lock, ExtendedState::FAILED);
-            return;
+            error = context_ + "request data processing failed, ex: " + string(ex.what());
+            LOGS(_log, LOG_LVL_ERROR, error);
         }
     }
 
-    // Evaluate for the completion condition of the job.
-    if (_requests.size() == 0) finish(lock, ExtendedState::SUCCESS);
+    // The rest of the algorithm needs to be performed in the synchronized context.
+    {
+        if (state() == State::FINISHED) return;
+        util::Lock lock(_mtx, context_);
+        if (state() == State::FINISHED) return;
+
+        if (!error.empty()) {
+            _resultData.error[request->worker()][request->chunk()] = error;
+            finish(lock, ExtendedState::FAILED);
+            return;
+        }
+
+        // Evaluate for the completion condition of the job.
+        if (_requests.size() == 0) finish(lock, ExtendedState::SUCCESS);
+    }
 }
 
-void DirectorIndexJob::_processRequestData(util::Lock const& lock, DirectorIndexRequest::Ptr const& request) {
-    auto const writeIntoFile = [](string const& fileName, ios::openmode mode, string const& data) {
-        ofstream f(fileName, mode);
-        if (!f.good()) {
-            throw runtime_error(typeName() + "::_processRequestData" +
-                                "  failed to open/create/append file: " + fileName);
-        }
-        f << data;
-        f.close();
-    };
-
+void DirectorIndexJob::_processRequestData(DirectorIndexRequest::Ptr const& request) const {
     auto const config = controller()->serviceProvider()->config();
-
-    // ATTENTION: all exceptions which may be potentially thrown are
-    // supposed to be intercepted by a caller of the current method
-    // and be used for error reporting.
 
     // Dump the data into a temporary file from where it would be loaded
     // into the MySQL table. Note that the file must be readable by
@@ -399,24 +401,30 @@ void DirectorIndexJob::_processRequestData(util::Lock const& lock, DirectorIndex
 
     string const filePath = config->get<string>("database", "qserv-master-tmp-dir") + "/" + database() + "_" +
                             to_string(request->chunk()) +
-                            (_hasTransactions ? "_p" + to_string(_transactionId) : "");
-    writeIntoFile(filePath, ios::out | ios::trunc, request->responseData().data);
-
-    // Open the database connection if this is the first batch of data
-    if (nullptr == _conn) {
-        _conn = Connection::open(Configuration::qservCzarDbParams(lsst::qserv::SEC_INDEX_DB));
+                            (hasTransactions() ? "_p" + to_string(transactionId()) : "");
+    ofstream f(filePath, ios::out | ios::trunc);
+    if (!f.good()) {
+        throw runtime_error(typeName() + "::_processRequestData" +
+                            "  failed to open/create/append file: " + filePath);
     }
-    QueryGenerator const g(_conn);
-    string const query = g.loadDataInfile(filePath, directorIndexTableName(database(), directorTable()),
-                                          config->get<string>("worker", "ingest-charset-name"), _localFile);
+    f << request->responseData().data;
+    f.close();
 
-    _conn->executeInOwnTransaction([&](decltype(_conn) conn) {
+    // Allocate a database connection using the RAII style handler that would automatically
+    // deallocate the connection and abort the transaction should any problem occured
+    // when loading data into the table.
+    ConnectionHandler h(_connPool);
+    QueryGenerator const g(h.conn);
+    string const query = g.loadDataInfile(filePath, directorIndexTableName(database(), directorTable()),
+                                          config->get<string>("worker", "ingest-charset-name"), localFile());
+
+    h.conn->executeInOwnTransaction([&](auto conn) {
         conn->execute(query);
         // Loading operations based on this mechanism won't result in throwing exceptions in
         // case of certain types of problems encountered during the loading, such as
         // out-of-range data, duplicate keys, etc. These errors are reported as warnings
         // which need to be retrieved using a special call to the database API.
-        if (_localFile) {
+        if (localFile()) {
             auto const warnings = conn->warnings();
             if (!warnings.empty()) {
                 auto const& w = warnings.front();
@@ -462,14 +470,6 @@ list<DirectorIndexRequest::Ptr> DirectorIndexJob::_launchRequests(util::Lock con
                 ));
     }
     return requests;
-}
-
-void DirectorIndexJob::_rollbackTransaction(string const& func) {
-    try {
-        if ((nullptr != _conn) && _conn->inTransaction()) _conn->rollback();
-    } catch (exception const& ex) {
-        LOGS(_log, LOG_LVL_ERROR, context() << func << "  transaction rollback failed, ex: " << ex.what());
-    }
 }
 
 }  // namespace lsst::qserv::replica

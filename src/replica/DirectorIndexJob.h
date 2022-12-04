@@ -42,7 +42,7 @@
 
 // Forward declarations
 namespace lsst::qserv::replica::database::mysql {
-class Connection;
+class ConnectionPool;
 }  // namespace lsst::qserv::replica::database::mysql
 
 // This header declarations
@@ -105,9 +105,7 @@ public:
     DirectorIndexJob(DirectorIndexJob const&) = delete;
     DirectorIndexJob& operator=(DirectorIndexJob const&) = delete;
 
-    /// Non-trivial destructor is needed to abort an ongoing transaction
-    /// if needed.
-    ~DirectorIndexJob() final;
+    virtual ~DirectorIndexJob() = default;
 
     // Trivial get methods
 
@@ -168,14 +166,18 @@ private:
     void _onRequestFinish(DirectorIndexRequest::Ptr const& request);
 
     /**
-     * Extract data from the successfully completed requests. The completion
-     * state of the request will be evaluated by the method.
+     * Extract data from the successfully completed requests and load
+     * teh data into the "director" index table.
      *
-     * @param lock on the mutex Job::_mtx to be acquired for protecting
-     *   the object's state
+     * @note This method doesn't require locking the mutex since it only
+     *  depends on the unmutable interface (parameters) of the job.
+     * @note All exceptions which may be potentially thrown are
+     *  supposed to be intercepted by a caller of the current method
+     *  and be used for error reporting.
+     *
      * @param request the request to extract the data to be processed
      */
-    void _processRequestData(util::Lock const& lock, DirectorIndexRequest::Ptr const& request);
+    void _processRequestData(DirectorIndexRequest::Ptr const& request) const;
 
     /**
      * Launch a batch of requests with a total number not to exceed the specified
@@ -189,12 +191,6 @@ private:
      */
     std::list<DirectorIndexRequest::Ptr> _launchRequests(util::Lock const& lock, std::string const& worker,
                                                          size_t maxRequests = 1);
-
-    /**
-     * Roll back a database transaction should the one be still open.
-     * @param func  the name of a method/function to report errors
-     */
-    void _rollbackTransaction(std::string const& func);
 
 private:
     // Input parameters
@@ -215,12 +211,10 @@ private:
     /// A collection of the in-flight requests (request id is the key)
     std::map<std::string, DirectorIndexRequest::Ptr> _requests;
 
-    /// Database connector is initialized upon arrival
-    /// of the very first batch of data. A separate transaction is started
-    /// to load each bunch of data received from workers. The transaction (if
-    /// any is still open) is automatically aborted by the destructor or
-    /// the request cancellation.
-    std::shared_ptr<database::mysql::Connection> _conn;
+    /// Database connection pool to allow parallel ingest into the "director"
+    /// index table. Connections are allocated/used/released by the request completion
+    /// handlers for loading the next chunk of rows into the table.
+    std::shared_ptr<database::mysql::ConnectionPool> const _connPool;
 
     /// The result of the operation (gets updated as requests are finishing)
     Result _resultData;
