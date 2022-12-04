@@ -36,7 +36,7 @@ map<string, set<string>> ConfigTestData::parameters() {
                "request-timeout-sec", "job-timeout-sec", "job-heartbeat-sec", "empty-chunks-dir",
                "max-repl-level", "worker-evict-priority-level", "health-monitor-priority-level",
                "ingest-priority-level", "catalog-management-priority-level", "auto-register-workers",
-               "ingest-job-monitor-ival-sec"}},
+               "ingest-job-monitor-ival-sec", "num-director-index-connections"}},
              {"database",
               {"services-pool-size", "host", "port", "user", "password", "name", "qserv-master-user",
                "qserv-master-services-pool-size", "qserv-master-tmp-dir"}},
@@ -94,7 +94,8 @@ json ConfigTestData::data() {
                                              {"ingest-priority-level", 3},
                                              {"catalog-management-priority-level", 4},
                                              {"auto-register-workers", 1},
-                                             {"ingest-job-monitor-ival-sec", 5}});
+                                             {"ingest-job-monitor-ival-sec", 5},
+                                             {"num-director-index-connections", 6}});
     generalObj["database"] = json::object({{"host", "localhost"},
                                            {"port", 13306},
                                            {"user", "qsreplica"},

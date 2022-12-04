@@ -172,7 +172,18 @@ json const ConfigurationSchema::_schemaJson = json::object(
             {{"description",
               "An interval (seconds) for monitoring progress of jobs submitted by the Controller during"
               " asynchronous ingest operations."},
-             {"default", 60}}}}},
+             {"default", 60}}},
+           {"num-director-index-connections",
+            {{"description",
+              "The number of the MySQL connection to the Qserv 'czar's database in the connection pool that"
+              " is used by the 'director' index builder job."},
+              " is used by the 'director' index builder job. If using the InnoDB storage engine for"
+              " the 'director' index table, a value of this parameter should be set to 2,"
+              " which would allow the second MySQL thread to prepare data while the first thread"
+              " is loading data into the table. Setting the parameter to some large number won't"
+              " yield any benefits in terms of the overall performance of the index ingest. This"
+              " will just result in the useless increase in the CPU time consumed by MySQL."},
+             {"default", 2}}}}},
          {"database",
           {{"services-pool-size",
             {{"description", "The pool size at the client database services connector."},
