@@ -43,6 +43,7 @@
 #include "replica/Common.h"
 #include "replica/ConfigTestData.h"
 #include "replica/Configuration.h"
+#include "replica/ProtocolBuffer.h"
 
 // Boost unit test header
 #define BOOST_TEST_MODULE Configuration
@@ -172,6 +173,7 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestReadingGeneralParameters) {
     BOOST_CHECK(config->get<string>("worker", "ingest-charset-name") == "latin1");
     BOOST_CHECK(config->get<unsigned int>("worker", "ingest-num-retries") == 1);
     BOOST_CHECK(config->get<unsigned int>("worker", "ingest-max-retries") == 10);
+    BOOST_CHECK(config->get<size_t>("worker", "director-index-record-size") == 16 * 1024 * 1024);
 }
 
 BOOST_AUTO_TEST_CASE(ConfigurationTestModifyingGeneralParameters) {
@@ -382,6 +384,11 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestModifyingGeneralParameters) {
     BOOST_CHECK(config->get<unsigned int>("worker", "ingest-max-retries") == 0);
     BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("worker", "ingest-max-retries", 100));
     BOOST_CHECK(config->get<unsigned int>("worker", "ingest-max-retries") == 100);
+
+    BOOST_CHECK_THROW(config->set<size_t>("worker", "director-index-record-size", 0), std::invalid_argument);
+    BOOST_REQUIRE_NO_THROW(
+            config->set<size_t>("worker", "director-index-record-size", ProtocolBuffer::HARD_LIMIT));
+    BOOST_CHECK(config->get<size_t>("worker", "director-index-record-size") == ProtocolBuffer::HARD_LIMIT);
 }
 
 BOOST_AUTO_TEST_CASE(ConfigurationTestWorkerOperators) {

@@ -31,6 +31,7 @@
 // Qserv headers
 #include "global/constants.h"
 #include "replica/Common.h"
+#include "replica/ProtocolBuffer.h"
 
 using namespace std;
 using json = nlohmann::json;
@@ -398,7 +399,16 @@ json const ConfigurationSchema::_schemaJson = json::object(
               " by the ingest workflows for individual contributions. Setting a value of the parameter"
               " to 0 will unconditionally disable any retries."},
              {"empty-allowed", 1},
-             {"default", 10}}}}}});
+             {"default", 10}}},
+           {"director-index-record-size",
+            {{"description",
+              "The recommended record size (in bytes) for reading from the 'director' index file."
+              " Note that the size should not exceed the 'hard' limit of the Google Protobuf message"
+              " size of " +
+                      to_string(ProtocolBuffer::HARD_LIMIT) +
+                      " bytes. Any number set higher than this limit will"
+                      " get truncated down to match the limit at run time."},
+             {"default", 16 * 1024 * 1024}}}}}});
 
 string ConfigurationSchema::description(string const& category, string const& param) {
     return _attributeValue<string>(category, param, "description", "");

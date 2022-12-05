@@ -67,7 +67,8 @@ map<string, set<string>> ConfigTestData::parameters() {
                "http-loader-tmp-dir",
                "ingest-charset-name",
                "ingest-num-retries",
-               "ingest-max-retries"}}});
+               "ingest-max-retries",
+               "director-index-record-size"}}});
 }
 
 json ConfigTestData::data() {
