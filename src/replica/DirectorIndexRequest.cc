@@ -30,6 +30,7 @@
 
 // Third party headers
 #include "boost/date_time/posix_time/posix_time.hpp"
+#include "boost/filesystem.hpp"
 
 // Qserv headers
 #include "replica/Controller.h"
@@ -43,6 +44,7 @@
 
 using namespace std;
 using namespace std::placeholders;
+namespace fs = boost::filesystem;
 
 namespace {
 
@@ -52,24 +54,9 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.DirectorIndexRequest");
 
 namespace lsst::qserv::replica {
 
-void DirectorIndexRequestInfo::print(string const& fileName) const {
-    if (fileName.empty()) {
-        cout << data;
-        return;
-    }
-    ofstream file(fileName);
-    if (not file.good()) {
-        LOGS(_log, LOG_LVL_DEBUG,
-             "DirectorIndexRequestInfo::" << __func__ << " "
-                                          << "failed to open the file: " << fileName);
-        return;
-    }
-    file << data;
-}
-
 ostream& operator<<(ostream& os, DirectorIndexRequestInfo const& info) {
     os << "DirectorIndexRequestInfo {error:'" << info.error << "',"
-       << "data.length:" << info.data.size() << "}";
+       << "fileName:'" << info.fileName << "',fileSizeBytes:" << info.fileSizeBytes << "}";
     return os;
 }
 
@@ -99,8 +86,23 @@ DirectorIndexRequest::DirectorIndexRequest(ServiceProvider::Ptr const& servicePr
           _chunk(chunk),
           _hasTransactions(hasTransactions),
           _transactionId(transactionId),
-          _onFinish(onFinish) {
+          _onFinish(onFinish),
+          _fileName(serviceProvider->config()->get<string>("database", "qserv-master-tmp-dir") + "/" +
+                    database + "_" + directorTable + "_" + to_string(chunk) +
+                    (hasTransactions ? "_p" + to_string(transactionId) : "")) {
     Request::serviceProvider()->config()->assertDatabaseIsValid(database);
+}
+
+DirectorIndexRequest::~DirectorIndexRequest() {
+    // Make the best attempt to get rid of the temporary file. Ignore any errors
+    // for now. Just report them.
+    boost::system::error_code ec;
+    fs::remove(fs::path(_fileName), ec);
+    if (ec.value() != 0) {
+        LOGS(_log, LOG_LVL_WARN,
+             context() << "::" << __func__ << "  "
+                       << "failed to remove the temporary file '" << _fileName);
+    }
 }
 
 DirectorIndexRequestInfo const& DirectorIndexRequest::responseData() const { return _responseData; }
@@ -140,12 +142,13 @@ void DirectorIndexRequest::startImpl(util::Lock const& lock) {
 }
 
 void DirectorIndexRequest::awaken(boost::system::error_code const& ec) {
-    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
+    string const context_ = context() + string(__func__) + " ";
+    LOGS(_log, LOG_LVL_DEBUG, context_);
 
     if (isAborted(ec)) return;
 
     if (state() == State::FINISHED) return;
-    util::Lock lock(_mtx, context() + __func__);
+    util::Lock lock(_mtx, context_);
     if (state() == State::FINISHED) return;
 
     // Serialize the Status message header and the request itself into
@@ -181,7 +184,8 @@ void DirectorIndexRequest::_send(util::Lock const& lock) {
 }
 
 void DirectorIndexRequest::_analyze(bool success, ProtocolResponseDirectorIndex const& message) {
-    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  success=" << (success ? "true" : "false"));
+    string const context_ = context() + string(__func__) + " success=" + bool2str(success) + " ";
+    LOGS(_log, LOG_LVL_DEBUG, context_);
 
     // This method is called on behalf of an asynchronous callback fired
     // upon a completion of the request within method send() - the only
@@ -189,7 +193,7 @@ void DirectorIndexRequest::_analyze(bool success, ProtocolResponseDirectorIndex 
     // for possible state transition which might occur while the async I/O was
     // still in a progress.
     if (state() == State::FINISHED) return;
-    util::Lock lock(_mtx, context() + __func__);
+    util::Lock lock(_mtx, context_);
     if (state() == State::FINISHED) return;
 
     if (not success) {
@@ -210,52 +214,64 @@ void DirectorIndexRequest::_analyze(bool success, ProtocolResponseDirectorIndex 
         mutablePerformance().update(message.performance());
     }
 
-    // Always extract extended data regardless of the completion status
+    // Always extract the MySQL error regardless of the completion status
     // reported by the worker service.
     _responseData.error = message.error();
-    _responseData.data = message.data();
 
     // Extract target request type-specific parameters from the response
     if (message.has_request()) {
         _targetRequestParams = DirectorIndexRequestParams(message.request());
     }
     switch (message.status()) {
-        case ProtocolStatus::SUCCESS:
+        case ProtocolStatus::SUCCESS: {
+            try {
+                _writeInfoFile(lock, message.data());
+            } catch (exception const& ex) {
+                _responseData.error = ex.what();
+                LOGS(_log, LOG_LVL_ERROR, context_ << _responseData.error);
+                finish(lock, CLIENT_ERROR);
+                break;
+            }
+            _responseData.fileName = _fileName;
+            _responseData.fileSizeBytes = message.data().size();
             finish(lock, SUCCESS);
             break;
-
+        }
         case ProtocolStatus::CREATED:
             keepTrackingOrFinish(lock, SERVER_CREATED);
             break;
-
         case ProtocolStatus::QUEUED:
             keepTrackingOrFinish(lock, SERVER_QUEUED);
             break;
-
         case ProtocolStatus::IN_PROGRESS:
             keepTrackingOrFinish(lock, SERVER_IN_PROGRESS);
             break;
-
         case ProtocolStatus::IS_CANCELLING:
             keepTrackingOrFinish(lock, SERVER_IS_CANCELLING);
             break;
-
         case ProtocolStatus::BAD:
             finish(lock, SERVER_BAD);
             break;
-
         case ProtocolStatus::FAILED:
             finish(lock, SERVER_ERROR);
             break;
-
         case ProtocolStatus::CANCELLED:
             finish(lock, SERVER_CANCELLED);
             break;
-
         default:
-            throw logic_error("DirectorIndexRequest::" + string(__func__) + " unknown status '" +
-                              ProtocolStatus_Name(message.status()) + "' received from server");
+            throw logic_error(context_ + "unknown status '" + ProtocolStatus_Name(message.status()) +
+                              "' received from server");
     }
+}
+
+void DirectorIndexRequest::_writeInfoFile(util::Lock const& lock, string const& data) {
+    ofstream f(_fileName, ios::out | ios::trunc);
+    if (!f.good()) {
+        throw runtime_error(context() + string(__func__) +
+                            " failed to open/create/append file: " + _fileName);
+    }
+    f << data;
+    f.close();
 }
 
 void DirectorIndexRequest::notify(util::Lock const& lock) {

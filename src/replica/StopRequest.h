@@ -50,11 +50,6 @@
 #include "replica/SqlResultSet.h"
 #include "replica/StopRequestBase.h"
 
-// Forward declarations
-namespace lsst::qserv::replica {
-class DirectorIndexRequestInfo;
-}  // namespace lsst::qserv::replica
-
 // This header declarations
 namespace lsst::qserv::replica {
 
@@ -157,10 +152,16 @@ public:
     }
 };
 
+/// @note This type of the management request for stopping the target request won't
+///  return any data even in case when the target request was found successfully
+///  completed. An assumption here is that since the target requests of this
+///  kind have no side effects then they could always be resubmited if needed.
+///  The response object will contained the server error should the request failed
+///  at a worker.
 class StopDirectorIndexRequestPolicy {
 public:
     using ResponseMessageType = ProtocolResponseDirectorIndex;
-    using ResponseDataType = DirectorIndexRequestInfo;
+    using ResponseDataType = std::string;
     using TargetRequestParamsType = DirectorIndexRequestParams;
 
     static char const* requestName();

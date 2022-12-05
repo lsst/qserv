@@ -41,17 +41,12 @@ class Messenger;
 namespace lsst::qserv::replica {
 
 /**
- *  Structure DirectorIndexRequestInfo represents a result of the requests
+ *  Structure DirectorIndexRequestInfo represents a result of the requests.
  */
 struct DirectorIndexRequestInfo {
-    std::string error;  /// MySQL error (if any)
-    std::string data;   /// Index data to be loaded into the "director" index (if success)
-
-    /**
-     * Print index data into a file.
-     * @param fileName  the name or a file or 'std::cout' if it's empty
-     */
-    void print(std::string const& fileName = std::string()) const;
+    std::string error;         ///< A error (if any) that reported by the worker server.
+    std::string fileName;      ///< The file that containes the index data (if success).
+    size_t fileSizeBytes = 0;  ///< The number of bytes that were written into the file.
 };
 
 std::ostream& operator<<(std::ostream& os, DirectorIndexRequestInfo const& info);
@@ -71,7 +66,9 @@ public:
     DirectorIndexRequest(DirectorIndexRequest const&) = delete;
     DirectorIndexRequest& operator=(DirectorIndexRequest const&) = delete;
 
-    ~DirectorIndexRequest() final = default;
+    /// Non-trivial destructor is needed to delete the data file that is created
+    /// upon successfull completion of the request.
+    virtual ~DirectorIndexRequest() final;
 
     std::string const& database() const { return _database; }
     std::string const& directorTable() const { return _directorTable; }
@@ -156,6 +153,15 @@ private:
      */
     void _analyze(bool success, ProtocolResponseDirectorIndex const& message);
 
+    /**
+     * Open the input file and write the data into the file.
+     * @note The method may throw exceptions in case if any problems will be encountered
+     *  with opening the output file or writing data into the file.
+     * @param lock A lock on the mutex _mtx acquired before calling the method.
+     * @param data The data to be writrten onto the file.
+     */
+    void _writeInfoFile(util::Lock const& lock, std::string const& data);
+
     // Input parameters
 
     std::string const _database;
@@ -164,6 +170,11 @@ private:
     bool const _hasTransactions;
     TransactionId const _transactionId;
     CallbackType _onFinish;
+
+    /// The name of a file that will store the data. The name will be initialized
+    /// by the constructor. The data are written into the file by the method _writeInfoFile.
+    /// The file will get deleted by the destructor of the class.
+    std::string const _fileName;
 
     /// Request-specific parameters of the target request
     DirectorIndexRequestParams _targetRequestParams;

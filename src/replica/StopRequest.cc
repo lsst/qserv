@@ -22,9 +22,6 @@
 // Class header
 #include "replica/StopRequest.h"
 
-// Qserv headers
-#include "replica/DirectorIndexRequest.h"
-
 using namespace std;
 
 namespace lsst::qserv::replica {
@@ -149,8 +146,7 @@ ProtocolQueuedRequestType StopDirectorIndexRequestPolicy::targetRequestType() {
 
 void StopDirectorIndexRequestPolicy::extractResponseData(ResponseMessageType const& msg,
                                                          ResponseDataType& data) {
-    data.error = msg.error();
-    data.data = msg.data();
+    data = msg.error();
 }
 
 void StopDirectorIndexRequestPolicy::extractTargetRequestParams(ResponseMessageType const& msg,

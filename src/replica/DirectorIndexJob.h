@@ -167,7 +167,7 @@ private:
 
     /**
      * Extract data from the successfully completed requests and load
-     * teh data into the "director" index table.
+     * the data into the "director" index table.
      *
      * @note This method doesn't require locking the mutex since it only
      *  depends on the unmutable interface (parameters) of the job.

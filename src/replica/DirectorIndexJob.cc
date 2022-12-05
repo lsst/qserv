@@ -24,13 +24,9 @@
 
 // System headers
 #include <algorithm>
-#include <fstream>
 #include <iostream>
 #include <limits>
 #include <stdexcept>
-
-// Third party headers
-#include "boost/filesystem.hpp"
 
 // Qserv headers
 #include "global/constants.h"
@@ -44,7 +40,6 @@
 #include "lsst/log/Log.h"
 
 using namespace std;
-namespace fs = boost::filesystem;
 using json = nlohmann::json;
 
 namespace {
@@ -322,7 +317,7 @@ void DirectorIndexJob::_onRequestFinish(DirectorIndexRequest::Ptr const& request
 
     // This synchronized block performs the light-weight operations that are meant
     // to evaluate the completion status of the request, update the internal data
-    // structures and and decide if the algorithm should proceed with ingesitng
+    // structures and decide if the algorithm should proceed with ingesitng
     // the request's data into the "director" index table.
     bool hasData = true;
     {
@@ -361,10 +356,12 @@ void DirectorIndexJob::_onRequestFinish(DirectorIndexRequest::Ptr const& request
         _requests.erase(request->id());
     }
 
-    // The next step performs the actual data loading in the lock-free context
-    // of a thread that invoked the current handler. Loading data in the lock-free
-    // context allows the parellel processing of multiple requests.
-    // Problems (if any) will be reported into the variable 'error'.
+    // The next step performs the actual data loading within the lock-free (by not locking
+    // the job's mutex guarding the job's internal state) context.
+    // The loading is done by a thread that invoked the current handler. Note that
+    // Loading data within the lock-free context allows the parellel processing of multiple
+    // requests. Problems (if any) will be reported into the variable 'error' that will be
+    // evaluated later to abort the processing should it be not empty.
     string error;
     if (hasData) {
         try {
@@ -393,31 +390,15 @@ void DirectorIndexJob::_onRequestFinish(DirectorIndexRequest::Ptr const& request
 }
 
 void DirectorIndexJob::_processRequestData(DirectorIndexRequest::Ptr const& request) const {
-    auto const config = controller()->serviceProvider()->config();
-
-    // Dump the data into a temporary file from where it would be loaded
-    // into the MySQL table. Note that the file must be readable by
-    // the MySQL service.
-
-    string const filePath = config->get<string>("database", "qserv-master-tmp-dir") + "/" + database() + "_" +
-                            to_string(request->chunk()) +
-                            (hasTransactions() ? "_p" + to_string(transactionId()) : "");
-    ofstream f(filePath, ios::out | ios::trunc);
-    if (!f.good()) {
-        throw runtime_error(typeName() + "::_processRequestData" +
-                            "  failed to open/create/append file: " + filePath);
-    }
-    f << request->responseData().data;
-    f.close();
-
     // Allocate a database connection using the RAII style handler that would automatically
     // deallocate the connection and abort the transaction should any problem occured
     // when loading data into the table.
     ConnectionHandler h(_connPool);
     QueryGenerator const g(h.conn);
-    string const query = g.loadDataInfile(filePath, directorIndexTableName(database(), directorTable()),
-                                          config->get<string>("worker", "ingest-charset-name"), localFile());
-
+    string const query = g.loadDataInfile(
+            request->responseData().fileName, directorIndexTableName(database(), directorTable()),
+            controller()->serviceProvider()->config()->get<string>("worker", "ingest-charset-name"),
+            localFile());
     h.conn->executeInOwnTransaction([&](auto conn) {
         conn->execute(query);
         // Loading operations based on this mechanism won't result in throwing exceptions in
@@ -435,29 +416,16 @@ void DirectorIndexJob::_processRequestData(DirectorIndexRequest::Ptr const& requ
             }
         }
     });
-
-    // Make the best attempt to get rid of the temporary file. Ignore any errors
-    // for now. Just report them.
-    boost::system::error_code ec;
-    fs::remove(fs::path(filePath), ec);
-    if (ec.value() != 0) {
-        LOGS(_log, LOG_LVL_ERROR,
-             context() << "::" << __func__ << "  "
-                       << "failed to remove the temporary file '" << filePath);
-    }
 }
 
 list<DirectorIndexRequest::Ptr> DirectorIndexJob::_launchRequests(util::Lock const& lock,
                                                                   string const& worker, size_t maxRequests) {
-    list<DirectorIndexRequest::Ptr> requests;
-
     // Create as many requests as specified by the corresponding parameter of
     // the method or as many as are still available for the specified
     // worker (not to exceed the limit) by popping chunk numbers from the worker's
     // queue.
-
+    list<DirectorIndexRequest::Ptr> requests;
     auto const self = shared_from_base<DirectorIndexJob>();
-
     while (_chunks[worker].size() > 0 && requests.size() < maxRequests) {
         auto const chunk = _chunks[worker].front();
         _chunks[worker].pop();
