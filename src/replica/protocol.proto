@@ -283,6 +283,16 @@ message ProtocolRequestDirectorIndex {
     // to be inspected. This parameter is used only if the above defined
     // 'has_transactions' is set to 'true'.
     required uint32 transaction_id = 5;
+
+    // The windowing parameters, where 'offset' specifies 0-based location
+    // of the first byte.
+    //
+    // Please, note that the actual data extraction from the target table into the CSV
+    // file at worker will be made when a request with 'offset' set to 0. Any subsequent
+    // requests where a value of 'offset' will be higher will read the specified range of
+    // bytes from an existing CSV file. The file will get deleted by the worker when it's
+    // been fully read.
+    optional uint64 offset = 7 [default = 0];
 }
 
 // This request is sent to stop an on-going replication (if any is still in progress).
@@ -744,7 +754,7 @@ message ProtocolResponseDirectorIndex {
     /// MySQL-specific error
     optional string error = 5 [default = ""];
 
-    /// Full content of the TSV/CSV file in which is lines has a set of fields
+    /// Partial content of the TSV/CSV file in which is lines has a set of fields
     /// to be ingested into the "director" index at Qserv master. The number and
     /// a schema of fields depends on a mode the request was made as well as on
     /// a mode of the request. For consolidated (not MySQL partitioned tables)
@@ -757,6 +767,9 @@ message ProtocolResponseDirectorIndex {
     ///   <super-transaction-id> <object-id> <chunk-id> <sub-chunk-id>
     ///
     required bytes data = 6;
+
+    /// The total number of bytes in the CSV file.
+    required uint64 total_bytes = 9;
 
     /// Parameters of the original request to which this response
     /// is related

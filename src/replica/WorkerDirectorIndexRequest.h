@@ -118,17 +118,26 @@ private:
      */
     bool _readFile();
 
-    // Input parameters
+    /// Get rid of the temporary file if it's still tehre.
+    void _removeFile() const;
 
     ConnectionPoolPtr const _connectionPool;
     ProtocolRequestDirectorIndex const _request;
 
+    /// The path name of a temporary folder where the file will be stored.
+    /// The folder gets created before extracting data from the MySQL table
+    /// into the file.
+    std::string const _tmpDirName;
+
+    /// The full path name of a temporary file into which the TSV/CSV dump will be made.
+    /// This file will get deleted when its whole content is sent to the Controller.
+    std::string const _fileName;
+
+    /// The size of the file is determined each time before reading it.
+    size_t _fileSizeBytes = 0;
+
     /// Cached error to be sent to a client
     std::string _error;
-
-    /// The name of a temporary file into which the TSV/CSV dump will be made.
-    /// This file will get deleted when
-    std::string _fileName;
 
     /// In-memory storage for the content of the file upon a successful completion
     /// of the data extraction query.
