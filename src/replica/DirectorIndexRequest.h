@@ -22,6 +22,7 @@
 #define LSST_QSERV_REPLICA_DIRECTORINDEXREQUEST_H
 
 // System headers
+#include <fstream>
 #include <functional>
 #include <memory>
 #include <ostream>
@@ -141,6 +142,18 @@ private:
                          bool keepTracking, std::shared_ptr<Messenger> const& messenger);
 
     /**
+     * Send the initial request for pulling data from the server.
+     * @param lock a lock on Request::_mtx must be acquired before calling this method
+     */
+    void _sendInitialRequest(util::Lock const& lock);
+
+    /**
+     * Send the status inquery request to the server.
+     * @param lock a lock on Request::_mtx must be acquired before calling this method
+     */
+    void _sendStatusRequest(util::Lock const& lock);
+
+    /**
      * Send the serialized content of the buffer to a worker
      * @param lock a lock on Request::_mtx must be acquired before calling this method
      */
@@ -171,16 +184,16 @@ private:
     TransactionId const _transactionId;
     CallbackType _onFinish;
 
-    /// The name of a file that will store the data. The name will be initialized
-    /// by the constructor. The data are written into the file by the method _writeInfoFile.
-    /// The file will get deleted by the destructor of the class.
-    std::string const _fileName;
-
     /// Request-specific parameters of the target request
     DirectorIndexRequestParams _targetRequestParams;
 
     /// Result of the operation
     DirectorIndexRequestInfo _responseData;
+
+    /// The file open for writing data read from the input stream. The file is open
+    /// at a time when the first batch of data is received. And it gets closed after
+    /// writing the last batch of data or in case of any failure.
+    std::ofstream _file;
 };
 
 }  // namespace lsst::qserv::replica

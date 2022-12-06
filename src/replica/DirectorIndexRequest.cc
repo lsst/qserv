@@ -23,7 +23,6 @@
 #include "replica/DirectorIndexRequest.h"
 
 // System headers
-#include <fstream>
 #include <functional>
 #include <iostream>
 #include <stdexcept>
@@ -86,28 +85,34 @@ DirectorIndexRequest::DirectorIndexRequest(ServiceProvider::Ptr const& servicePr
           _chunk(chunk),
           _hasTransactions(hasTransactions),
           _transactionId(transactionId),
-          _onFinish(onFinish),
-          _fileName(serviceProvider->config()->get<string>("database", "qserv-master-tmp-dir") + "/" +
-                    database + "_" + directorTable + "_" + to_string(chunk) +
-                    (hasTransactions ? "_p" + to_string(transactionId) : "")) {
+          _onFinish(onFinish) {
     Request::serviceProvider()->config()->assertDatabaseIsValid(database);
+    _responseData.fileName = serviceProvider->config()->get<string>("database", "qserv-master-tmp-dir") +
+                             "/" + database + "_" + directorTable + "_" + to_string(chunk) +
+                             (hasTransactions ? "_p" + to_string(transactionId) : "");
 }
 
 DirectorIndexRequest::~DirectorIndexRequest() {
+    // The file may be still open in case of any failure.
+    if (_file.is_open()) {
+        _file.close();
+    }
     // Make the best attempt to get rid of the temporary file. Ignore any errors
     // for now. Just report them.
     boost::system::error_code ec;
-    fs::remove(fs::path(_fileName), ec);
+    fs::remove(fs::path(_responseData.fileName), ec);
     if (ec.value() != 0) {
         LOGS(_log, LOG_LVL_WARN,
              context() << "::" << __func__ << "  "
-                       << "failed to remove the temporary file '" << _fileName);
+                       << "failed to remove the temporary file '" << _responseData.fileName);
     }
 }
 
 DirectorIndexRequestInfo const& DirectorIndexRequest::responseData() const { return _responseData; }
 
-void DirectorIndexRequest::startImpl(util::Lock const& lock) {
+void DirectorIndexRequest::startImpl(util::Lock const& lock) { _sendInitialRequest(lock); }
+
+void DirectorIndexRequest::_sendInitialRequest(util::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG,
          context() << __func__ << " "
                    << " worker: " << worker() << " database: " << database()
@@ -135,7 +140,8 @@ void DirectorIndexRequest::startImpl(util::Lock const& lock) {
     message.set_chunk(chunk());
     message.set_has_transactions(hasTransactions());
     message.set_transaction_id(transactionId());
-
+    message.set_offset(_responseData.fileSizeBytes);  // Begin or continue reading the input stream
+                                                      // at a point where the previous request ended.
     buffer()->serialize(message);
 
     _send(lock);
@@ -151,6 +157,10 @@ void DirectorIndexRequest::awaken(boost::system::error_code const& ec) {
     util::Lock lock(_mtx, context_);
     if (state() == State::FINISHED) return;
 
+    _sendStatusRequest(lock);
+}
+
+void DirectorIndexRequest::_sendStatusRequest(util::Lock const& lock) {
     // Serialize the Status message header and the request itself into
     // the network buffer.
 
@@ -226,15 +236,19 @@ void DirectorIndexRequest::_analyze(bool success, ProtocolResponseDirectorIndex 
         case ProtocolStatus::SUCCESS: {
             try {
                 _writeInfoFile(lock, message.data());
+                _responseData.fileSizeBytes += message.data().size();
+                if (_responseData.fileSizeBytes >= message.total_bytes()) {
+                    _file.close();
+                    finish(lock, SUCCESS);
+                } else {
+                    // Continue reading the stream.
+                    _sendInitialRequest(lock);
+                }
             } catch (exception const& ex) {
                 _responseData.error = ex.what();
                 LOGS(_log, LOG_LVL_ERROR, context_ << _responseData.error);
                 finish(lock, CLIENT_ERROR);
-                break;
             }
-            _responseData.fileName = _fileName;
-            _responseData.fileSizeBytes = message.data().size();
-            finish(lock, SUCCESS);
             break;
         }
         case ProtocolStatus::CREATED:
@@ -265,13 +279,14 @@ void DirectorIndexRequest::_analyze(bool success, ProtocolResponseDirectorIndex 
 }
 
 void DirectorIndexRequest::_writeInfoFile(util::Lock const& lock, string const& data) {
-    ofstream f(_fileName, ios::out | ios::trunc);
-    if (!f.good()) {
-        throw runtime_error(context() + string(__func__) +
-                            " failed to open/create/append file: " + _fileName);
+    if (!_file.is_open()) {
+        _file.open(_responseData.fileName, ios::binary | ios::out | ios::trunc);
+        if (!_file.good()) {
+            throw runtime_error(context() + string(__func__) +
+                                " failed to open/create/append file: " + _responseData.fileName);
+        }
     }
-    f << data;
-    f.close();
+    _file << data;
 }
 
 void DirectorIndexRequest::notify(util::Lock const& lock) {

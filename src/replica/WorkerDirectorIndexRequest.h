@@ -112,11 +112,14 @@ private:
     std::string _query(std::shared_ptr<database::mysql::Connection> const& conn) const;
 
     /**
-     * Read the content of the file into memory
-     *
-     * @return 'true' if the file has been successfully read into memory
+     * Read the content of the file into memory starting from the given offset.
+     * @note The maximum number of bytes to read is set in the Configuration
+     *   parameter (worker, director-index-record-size). And it should not
+     *   exceed a limit set in ProtocolBuffer::HARD_LIMIT.
+     * @param offset A position of the first byte in the file to read.
+     * @return The completion status to be returned to the Controller.
      */
-    bool _readFile();
+    ProtocolStatusExt _readFile(size_t offset);
 
     /// Get rid of the temporary file if it's still tehre.
     void _removeFile() const;

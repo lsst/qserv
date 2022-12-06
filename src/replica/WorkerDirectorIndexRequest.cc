@@ -23,7 +23,7 @@
 #include "replica/WorkerDirectorIndexRequest.h"
 
 // System headers
-// System headers
+#include <algorithm>
 #include <cerrno>
 #include <iostream>
 #include <stdexcept>
@@ -36,6 +36,7 @@
 #include "replica/Configuration.h"
 #include "replica/DatabaseMySQL.h"
 #include "replica/Performance.h"
+#include "replica/ProtocolBuffer.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -135,11 +136,11 @@ bool WorkerDirectorIndexRequest::execute() {
             h.conn->executeInOwnTransaction([self = shared_from_base<WorkerDirectorIndexRequest>()](
                                                     auto conn) { conn->execute(self->_query(conn)); });
         }
-        if (_readFile())
+        if (auto const status = _readFile(_request.offset()); status != ProtocolStatusExt::NONE) {
+            setStatus(lock, ProtocolStatus::FAILED, status);
+        } else {
             setStatus(lock, ProtocolStatus::SUCCESS);
-        else
-            setStatus(lock, ProtocolStatus::FAILED, ProtocolStatusExt::FILE_READ);
-
+        }
     } catch (ER_NO_SUCH_TABLE_ const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context(__func__) << "  MySQL error: " << ex.what());
         _error = ex.what();
@@ -231,36 +232,62 @@ string WorkerDirectorIndexRequest::_query(Connection::Ptr const& conn) const {
     return query + g.intoOutfile(_fileName);
 }
 
-bool WorkerDirectorIndexRequest::_readFile() {
+ProtocolStatusExt WorkerDirectorIndexRequest::_readFile(size_t offset) {
     LOGS(_log, LOG_LVL_DEBUG, context(__func__));
 
-    // Open the stream to 'lock' the file.
-    ifstream f(_fileName);
+    // Open the the file.
+    ifstream f(_fileName, ios::binary);
     if (!f.good()) {
         _error = "failed to open file '" + _fileName + "'";
         LOGS(_log, LOG_LVL_ERROR, context(__func__) << "  " << _error);
-        return false;
+        return ProtocolStatusExt::FILE_ROPEN;
     }
 
-    // Get the file size
+    // Get the file size.
     boost::system::error_code ec;
     _fileSizeBytes = fs::file_size(_fileName, ec);
     if (ec.value() != 0) {
         _error = "failed to get file size '" + _fileName + "'";
         LOGS(_log, LOG_LVL_ERROR, context(__func__) << "  " << _error);
-        return false;
+        return ProtocolStatusExt::FILE_SIZE;
     }
 
-    // Resize the memory buffer for the efficiency of the following read
-    _data.resize(_fileSizeBytes, ' ');
+    // Validate a value of the offset and position indicator as requested.
+    if (offset == _fileSizeBytes) {
+        _removeFile();
+        return ProtocolStatusExt::NONE;
+    } else if (offset > _fileSizeBytes) {
+        _error = "attempted to read the file '" + _fileName + "' at the offset " + to_string(offset) +
+                 " that is beyond the file size of " + to_string(_fileSizeBytes) + " bytes.";
+        LOGS(_log, LOG_LVL_ERROR, context(__func__) << "  " << _error);
+        return ProtocolStatusExt::INVALID_PARAM;
+    } else if (offset != 0) {
+        f.seekg(offset, ios::beg);
+    }
 
-    // Read the whole file into the buffer
-    f.read(&_data[0], _fileSizeBytes);
+    // Resize the memory buffer for the efficiency of the following read.
+    size_t const recordSize = std::min(
+            _fileSizeBytes - offset,
+            std::min(ProtocolBuffer::HARD_LIMIT,
+                     serviceProvider()->config()->get<size_t>("worker", "director-index-record-size")));
+    _data.resize(recordSize, ' ');
+
+    // Read the specified number of bytes into the buffer.
+    ProtocolStatusExt result = ProtocolStatusExt::NONE;
+    f.read(&_data[0], recordSize);
+    if (f.bad()) {
+        _error = "failed to read " + to_string(recordSize) + " bytes from the file '" + _fileName +
+                 "' at the offset " + to_string(offset) + ".";
+        LOGS(_log, LOG_LVL_ERROR, context(__func__) << "  " << _error);
+        result = ProtocolStatusExt::FILE_READ;
+    }
     f.close();
 
-    _removeFile();
-
-    return true;
+    // If this was the last record read from the file then delete the file.
+    if (offset + recordSize >= _fileSizeBytes) {
+        _removeFile();
+    }
+    return result;
 }
 
 void WorkerDirectorIndexRequest::_removeFile() const {
