@@ -1330,11 +1330,12 @@ void HttpIngestModule::_createDirectorIndex(DatabaseInfo const& database,
     list<string> const keys = {
             g.packTableKey("UNIQUE KEY", "", _partitionByColumn, table.directorTable.primaryKeyColumn()),
             g.packTableKey("KEY", "", table.directorTable.primaryKeyColumn())};
-    string const engine = "InnoDB";
+    auto const config = controller()->serviceProvider()->config();
     TransactionId const transactionId = 0;
-    string const createTableQuery = g.createTable(directorIndexTableName(database.name, table.name),
-                                                  ifNotExists, columns, keys, engine) +
-                                    g.partitionByList(_partitionByColumn) + g.partition(transactionId);
+    string const createTableQuery =
+            g.createTable(directorIndexTableName(database.name, table.name), ifNotExists, columns, keys,
+                          config->get<string>("controller", "director-index-engine")) +
+            g.partitionByList(_partitionByColumn) + g.partition(transactionId);
     h.conn->executeInOwnTransaction([&dropTableQuery, &createTableQuery](decltype(h.conn) conn) {
         conn->execute(dropTableQuery);
         conn->execute(createTableQuery);

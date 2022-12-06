@@ -163,7 +163,8 @@ json HttpDirectorIndexModule::_buildDirectorIndex() {
                 SqlColDef{lsst::qserv::CHUNK_COLUMN, chunkIdColNameType[tableName]},
                 SqlColDef{lsst::qserv::SUB_CHUNK_COLUMN, subChunkIdColNameType[tableName]}};
         list<string> const keys = {g.packTableKey("UNIQUE KEY", "", primaryKeyColumn[tableName])};
-        string const query = g.createTable(indexTableName, ifNotExists, columns, keys, "InnoDB");
+        string const query = g.createTable(indexTableName, ifNotExists, columns, keys,
+                                           config->get<string>("controller", "director-index-engine"));
         queries.push_back(query);
         h.conn->executeInOwnTransaction([&queries](decltype(h.conn) conn) {
             for (auto&& query : queries) {
