@@ -253,14 +253,13 @@ void DirectorIndexJob::startImpl(util::Lock const& lock) {
 
     // Launch the initial batch of requests in the number which won't exceed
     // the number of the service processing threads at each worker multiplied
-    // by the number of workers involved into the operation and by the "magic"
-    // number 8. The later is needed to absorb the latency of the network
-    // communications so that the worker threads would be able to work on
-    // another batch of the data extraction requests while results of the
-    // previous batch were being sent back to the Controller.
+    // by the number of workers involved into the operation. This is needed
+    // to absorb the latency of the network and disk I/O, so that worker threads
+    // would be able to work on another batch of the data extraction requests while
+    // results of the previous batch were being sent back to the Controller.
 
-    size_t const maxRequestsPerWorker = 8 * controller()->serviceProvider()->config()->get<size_t>(
-                                                    "worker", "num-svc-processing-threads");
+    size_t const maxRequestsPerWorker =
+            controller()->serviceProvider()->config()->get<size_t>("worker", "num-svc-processing-threads");
 
     for (auto&& worker : workerNames) {
         for (auto&& ptr : _launchRequests(lock, worker, maxRequestsPerWorker)) {
