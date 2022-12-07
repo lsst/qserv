@@ -206,7 +206,7 @@ void DirectorIndexRequest::_analyze(bool success, ProtocolResponseDirectorIndex 
     util::Lock lock(_mtx, context_);
     if (state() == State::FINISHED) return;
 
-    if (not success) {
+    if (!success) {
         finish(lock, CLIENT_ERROR);
         return;
     }
@@ -241,8 +241,21 @@ void DirectorIndexRequest::_analyze(bool success, ProtocolResponseDirectorIndex 
                     _file.close();
                     finish(lock, SUCCESS);
                 } else {
-                    // Continue reading the stream.
-                    _sendInitialRequest(lock);
+                    // Before requesting the next chunk of data, make sure the previous
+                    // worker request gets garbage collected. This operation is meant to
+                    // prevent memory build up at the worker. Note that workers do automaic
+                    // garbage collection of request based on the default value of the request
+                    // expiration parameter in the configuration: (controller, request-timeout-sec).
+                    // Normally this parameter would be set to some very high number. In this case,
+                    // the memory build up at workers due to intermediate data stored in the worker
+                    // request may be happening faster than the automatic garbage collection.
+                    // Also note the elevated priority level for the request disposal operations.
+                    // This will guarantee (in most cases) that such requests will be fast-track delivered
+                    // to (and processed by) the worker.
+                    auto self = shared_from_base<DirectorIndexRequest>();
+                    dispose(lock, PRIORITY_VERY_HIGH, [self](auto id, auto success, auto message) {
+                        self->_disposed(success, message);
+                    });
                 }
             } catch (exception const& ex) {
                 _responseData.error = ex.what();
@@ -276,6 +289,22 @@ void DirectorIndexRequest::_analyze(bool success, ProtocolResponseDirectorIndex 
             throw logic_error(context_ + "unknown status '" + ProtocolStatus_Name(message.status()) +
                               "' received from server");
     }
+}
+
+void DirectorIndexRequest::_disposed(bool success, ProtocolResponseDispose const& message) {
+    string const context_ = context() + string(__func__) + " success=" + bool2str(success) + " ";
+    LOGS(_log, LOG_LVL_DEBUG, context_);
+
+    if (state() == State::FINISHED) return;
+    util::Lock lock(_mtx, context_);
+    if (state() == State::FINISHED) return;
+
+    if (!success) {
+        finish(lock, CLIENT_ERROR);
+        return;
+    }
+    // Continue reading the stream.
+    _sendInitialRequest(lock);
 }
 
 void DirectorIndexRequest::_writeInfoFile(util::Lock const& lock, string const& data) {

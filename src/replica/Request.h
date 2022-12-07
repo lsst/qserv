@@ -24,7 +24,6 @@
 // System headers
 #include <atomic>
 #include <condition_variable>
-#include <functional>
 #include <map>
 #include <memory>
 #include <iostream>

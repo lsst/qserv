@@ -71,26 +71,30 @@ void RequestMessenger::finishImpl(util::Lock const& lock) {
     // Requests in other states ended up at workers would be automatically disposed
     // by workers after requests's expiration deadlines.
     if (disposeRequired() && (extendedState() == Request::ExtendedState::SUCCESS)) {
-        buffer()->resize();
-
-        ProtocolRequestHeader hdr;
-        hdr.set_id(id());
-        hdr.set_type(ProtocolRequestHeader::REQUEST);
-        hdr.set_management_type(ProtocolManagementRequestType::REQUEST_DISPOSE);
-        hdr.set_instance_id(serviceProvider()->instanceId());
-
-        buffer()->serialize(hdr);
-        ProtocolRequestDispose message;
-        message.add_ids(id());
-        buffer()->serialize(message);
-
-        _messenger->send<ProtocolResponseDispose>(
-                worker(), id(), priority(), buffer(),
-                // Don't require any callback notification for the completion of
-                // the operation. This will also prevent incrementing a shared pointer
-                // counter for the current object.
-                nullptr);
+        // Don't require any callback notification for the completion of
+        // the operation. This will also prevent incrementing a shared pointer
+        // counter for the current object.
+        dispose(lock, priority(), nullptr);
     }
+}
+
+void RequestMessenger::dispose(util::Lock const& lock, int priority, OnDisposeCallbackType const& onFinish) {
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
+
+    buffer()->resize();
+
+    ProtocolRequestHeader hdr;
+    hdr.set_id(id());
+    hdr.set_type(ProtocolRequestHeader::REQUEST);
+    hdr.set_management_type(ProtocolManagementRequestType::REQUEST_DISPOSE);
+    hdr.set_instance_id(serviceProvider()->instanceId());
+
+    buffer()->serialize(hdr);
+    ProtocolRequestDispose message;
+    message.add_ids(id());
+    buffer()->serialize(message);
+
+    _messenger->send<ProtocolResponseDispose>(worker(), id(), priority, buffer(), onFinish);
 }
 
 }  // namespace lsst::qserv::replica
