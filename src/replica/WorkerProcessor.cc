@@ -643,46 +643,14 @@ void WorkerProcessor::_setServiceResponseInfo(WorkerRequest::Ptr const& request,
 
 bool WorkerProcessor::dispose(string const& id) {
     util::Lock lock(_mtx, _context(__func__));
-
-    // Try finding a request in any queue.
-
+    // Note that only the finished requests are allowed to be disposed.
     bool found = false;
-
-    string queue;  // For logging the name of a queue where the request will
-                   // be found
-
-    // Still waiting in the queue? Then unconditionally remove before any of
-    // of the processing threads will get a chance to pick it up.
-    for (auto&& ptr : _newRequests) {
-        found = ptr->id() == id;
-        if (found) {
-            ptr->dispose();
-            _newRequests.remove(id);
-            queue = "new";
-            break;
-        }
+    if (auto itr = _finishedRequests.find(id); itr != _finishedRequests.end()) {
+        itr->second->dispose();
+        _finishedRequests.erase(itr);
+        found = true;
     }
-    if (not found) {
-        // Is it already being processed? If so then make sure the request gets
-        // cancelled before being removed from the queue.
-        // NOTE: this operation will still trigger a notification sent
-        auto itr = _inProgressRequests.find(id);
-        if (itr != _inProgressRequests.end()) {
-            itr->second->cancel();
-            itr->second->dispose();
-            _inProgressRequests.erase(itr);
-            queue = "in-progress";
-        } else {
-            // Has it already finished?
-            auto itr = _finishedRequests.find(id);
-            if (itr != _finishedRequests.end()) {
-                itr->second->dispose();
-                _finishedRequests.erase(itr);
-                queue = "finished";
-            }
-        }
-    }
-    LOGS(_log, LOG_LVL_TRACE, _context(__func__) << "  id: " << id << " queue: " << queue);
+    LOGS(_log, LOG_LVL_TRACE, _context(__func__) << " id: " << id << " found: " << bool2str(found));
     return found;
 }
 
