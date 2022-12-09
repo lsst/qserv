@@ -23,6 +23,7 @@
 
 // System headers
 #include <arpa/inet.h>
+#include <atomic>
 #include <cstdint>
 #include <stdexcept>
 
@@ -180,6 +181,10 @@ private:
 
     size_t _capacity;
     size_t _size;
+
+    // For memory usage monitoring.
+    static std::atomic<size_t> _numInstances;
+    static std::atomic<size_t> _numBytesAllocated;
 };
 
 }  // namespace lsst::qserv::replica

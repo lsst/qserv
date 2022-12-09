@@ -331,6 +331,9 @@ private:
      *   by the explicit request disposal operation.
      */
     void _expired(boost::system::error_code const& ec);
+
+    // For memory usage monitoring and memory leak diagnostic.
+    static std::atomic<size_t> _numInstances;
 };
 
 /**
