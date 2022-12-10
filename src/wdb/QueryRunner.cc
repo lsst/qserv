@@ -284,11 +284,6 @@ private:
     proto::TaskMsg const& _msg;
 };
 
-/// Histograms to log subchunk creation time and query run time.
-util::TimerHistogram qrPrimeHist("qrPrimeHist", {0.01, 0.1, 1.0, 2.0, 5.0, 10.0, 20.0, 60.0});  // &&& delete
-util::TimerHistogram qrSubChunkHist("qrSubChunkHist",
-                                    {0.01, 0.1, 1.0, 2.0, 5.0, 10.0, 20.0, 60.0});  // &&& delete
-
 bool QueryRunner::_dispatchChannel() {
     int const fragNum = _task->getQueryFragmentNum();
     proto::TaskMsg& tMsg = *_task->msg;
@@ -311,9 +306,6 @@ bool QueryRunner::_dispatchChannel() {
         ChunkResourceRequest req(_chunkResourceMgr, tMsg);
         ChunkResource cr(req.getResourceFragment(fragNum));
         subChunkT.stop();
-        auto logSubChunk =
-                qrSubChunkHist.addTime(subChunkT.getElapsed(), "");  // &&& add to histTimeOfRunningTasks
-        LOGS(_log, LOG_LVL_DEBUG, "subchunk time=" << subChunkT.getElapsed() << " " << logSubChunk);
         // TODO: Hold onto this for longer period of time as the odds of reuse are pretty low at this scale
         //       Ideally, hold it until moving on to the next chunk. Try to clean up ChunkResource code.
 
@@ -324,19 +316,16 @@ bool QueryRunner::_dispatchChannel() {
             primeT.start();
             MYSQL_RES* res = _primeResult(query);  // This runs the SQL query, throws SqlErrorObj on failure.
             primeT.stop();
-            auto logPrime = qrPrimeHist.addTime(primeT.getElapsed(), "");
             needToFreeRes = true;
-            LOGS(_log, LOG_LVL_DEBUG,
-                 " query time=" << primeT.getElapsed() << " " << logPrime << " query=" << query);
             if (taskSched != nullptr) {
                 taskSched->histTimeOfRunningTasks->addEntry(primeT.getElapsed());
-                LOGS(_log, LOG_LVL_DEBUG,
-                     "running " << taskSched->histTimeOfRunningTasks->getString("running"));
-                auto jsn = taskSched->histTimeOfRunningTasks->getJson();
+                LOGS(_log, LOG_LVL_DEBUG, "QR " << taskSched->histTimeOfRunningTasks->getString("run"));
+            } else {
+                LOGS(_log, LOG_LVL_ERROR, "QR runtaskSched == nullptr");
             }
             double runTimeSeconds = primeT.getElapsed();
             double subchunkRunTimeSeconds = subChunkT.getElapsed();
-            _task->addRunData(runTimeSeconds, subchunkRunTimeSeconds);
+            //&&&_task->addRunData(runTimeSeconds, subchunkRunTimeSeconds);
             _task->getQueryStats()->addTaskRunQuery(runTimeSeconds, subchunkRunTimeSeconds);
 
             util::Timer transmitT;  /// Transmitting time starts now.
@@ -371,7 +360,9 @@ bool QueryRunner::_dispatchChannel() {
             if (taskSched != nullptr) {
                 taskSched->histTimeOfTransmittingTasks->addEntry(transmitT.getElapsed());
                 LOGS(_log, LOG_LVL_DEBUG,
-                     "transmitting " << taskSched->histTimeOfTransmittingTasks->getString("trans"));
+                     "QR " << taskSched->histTimeOfTransmittingTasks->getString("trans"));
+            } else {
+                LOGS(_log, LOG_LVL_ERROR, "QR transmit taskSched == nullptr");
             }
         }
     } catch (sql::SqlErrorObject const& e) {

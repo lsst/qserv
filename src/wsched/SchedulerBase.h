@@ -117,6 +117,8 @@ public:
     /// @return a JSON representation of the object's status for the monitoring
     nlohmann::json statusToJson();
 
+    nlohmann::json getJson() const override;
+
     int getTotalTaskCount() { return _totalTaskCount; }
 
     /// Remove task from this scheduler.

@@ -41,9 +41,9 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.util.Histogram");
 
 namespace lsst::qserv::util {
 
-Histogram::Histogram(string const& label, std::vector<double> const& bucketVals) : _label(label) {
+Histogram::Histogram(string const& label, vector<double> const& bucketVals) : _label(label) {
     // sort vector and remove duplicates.
-    std::set<double> valSet;
+    set<double> valSet;
     for (auto&& v : bucketVals) {
         valSet.insert(v);
     }
@@ -58,7 +58,7 @@ string Histogram::addEntry(double val, string const& note) {
 }
 
 string Histogram::addEntry(TIMEPOINT stamp, double val, string const& note) {
-    std::lock_guard<std::mutex> lock(_mtx);
+    lock_guard<mutex> lock(_mtx);
     return _addEntry(stamp, val, note);
 }
 
@@ -88,7 +88,7 @@ void Histogram::_changeCountsBy(double val, int incr) {
 }
 
 double Histogram::getAvg() const {
-    std::lock_guard<std::mutex> lock(_mtx);
+    lock_guard<mutex> lock(_mtx);
     return _getAvg();
 }
 
@@ -98,7 +98,7 @@ double Histogram::_getAvg() const {
 }
 
 int Histogram::getBucketCount(size_t index) const {
-    std::lock_guard<std::mutex> lock(_mtx);
+    lock_guard<mutex> lock(_mtx);
     if (index > _buckets.size()) {
         LOGS(_log, LOG_LVL_ERROR, "Histogram::getBucketCount out of range index=" << index);
         return 0;
@@ -110,31 +110,30 @@ int Histogram::getBucketCount(size_t index) const {
 }
 
 double Histogram::getBucketMaxVal(size_t index) const {
-    std::lock_guard<std::mutex> lock(_mtx);
+    lock_guard<mutex> lock(_mtx);
     if (index > _buckets.size()) {
         string eMsg = string("Histogram::getBucketCount out of range index=") + to_string(index);
         LOGS(_log, LOG_LVL_ERROR, eMsg);
-        return std::numeric_limits<double>::max();
+        return numeric_limits<double>::max();
     }
     if (index == _buckets.size()) {
-        return std::numeric_limits<double>::max();
+        return numeric_limits<double>::max();
     }
     return _buckets[index].getMaxVal();
 }
 
-string Histogram::getString(std::string const& note) {
-    std::lock_guard<std::mutex> lock(_mtx);
+string Histogram::getString(string const& note) {
+    lock_guard<mutex> lock(_mtx);
     return _getString(note);
 }
 
-/// _mtx must be locked before calling this function.
-///
-string Histogram::_getString(std::string const& note) {
+string Histogram::_getString(string const& note) {
+    /// _mtx must be locked before calling this function.
     stringstream os;
 
     os << _label << " " << note << " size=" << _totalCount << " total=" << _total << " avg=" << _getAvg()
        << " ";
-    double maxB = -DBL_MAX;
+    double maxB = -numeric_limits<double>::infinity();
     for (auto& bkt : _buckets) {
         os << " <" << bkt.getMaxVal() << "=" << bkt.count;
         maxB = bkt.getMaxVal();
@@ -144,38 +143,41 @@ string Histogram::_getString(std::string const& note) {
 }
 
 nlohmann::json Histogram::getJson() const {
-    std::lock_guard<std::mutex> lock(_mtx);
-    nlohmann::json rJson = {
-            {"HistogramId", _label}, {"avg", _getAvg()}, {"totalCount", _totalCount}, {"total", _total}};
+    lock_guard<mutex> lock(_mtx);
+    nlohmann::json rJson = {{"HistogramId", _label},
+                            {"avg", _getAvg()},
+                            {"totalCount", _totalCount},
+                            {"total", _total},
+                            {"buckets", nlohmann::json::array()}};
+    auto& bucketsJson = rJson["buckets"];
+
     for (size_t j = 0; j < _buckets.size(); ++j) {
         auto const& bk = _buckets[j];
-        rJson["buckets"][j] = {{"index", j}, {"maxVal", bk.getMaxVal()}, {"count", bk.count}};
+        nlohmann::json bucketJson = {{"maxVal", bk.getMaxVal()}, {"count", bk.count}};
+        bucketsJson.push_back(move(bucketJson));
     }
-
-    auto sz = _buckets.size();
-    rJson["buckets"][sz] = {
-            {"index", sz}, {"maxVal", std::numeric_limits<double>::max()}, {"count", _overMaxCount}};
+    nlohmann::json bucketJson = {{"maxVal", "infinity"}, {"count", _overMaxCount}};
+    bucketsJson.push_back(move(bucketJson));
     return rJson;
 }
 
-std::string Histogram::getJsonStr() const {
+string Histogram::getJsonStr() const {
     nlohmann::json rJson = getJson();
     stringstream os;
     os << rJson;
     return os.str();
 }
 
-HistogramRolling::HistogramRolling(string const& label, std::vector<double> const& bucketVals,
-                                   std::chrono::milliseconds maxAgeMillis, size_t maxSize)
+HistogramRolling::HistogramRolling(string const& label, vector<double> const& bucketVals,
+                                   chrono::milliseconds maxAgeMillis, size_t maxSize)
         : Histogram(label, bucketVals), _maxSize(maxSize), _maxAge(maxAgeMillis) {}
 
-std::string HistogramRolling::addEntry(double val, std::string const& note) {
-    auto now = CLOCK::now();
-    return addEntry(now, val, note);
+string HistogramRolling::addEntry(double val, string const& note) {
+    return addEntry(CLOCK::now(), val, note);
 }
 
-std::string HistogramRolling::addEntry(TIMEPOINT stamp, double val, std::string const& note) {
-    std::lock_guard<std::mutex> lock(_mtx);
+string HistogramRolling::addEntry(TIMEPOINT stamp, double val, string const& note) {
+    lock_guard<mutex> lock(_mtx);
 
     string str = Histogram::_addEntry(stamp, val, note);
 
@@ -190,12 +192,12 @@ std::string HistogramRolling::addEntry(TIMEPOINT stamp, double val, std::string 
 }
 
 size_t HistogramRolling::getSize() {
-    std::lock_guard<std::mutex> lock(_mtx);
+    lock_guard<mutex> lock(_mtx);
     return _entries.size();
 }
 
 void HistogramRolling::checkEntries() {
-    std::lock_guard<std::mutex> lock(_mtx);
+    lock_guard<mutex> lock(_mtx);
     _checkEntries();
 }
 
@@ -227,13 +229,13 @@ void HistogramRolling::_checkEntries() {
 }
 
 void HistogramRolling::setMaxSize(size_t maxSize) {
-    std::lock_guard<std::mutex> lock(_mtx);
+    lock_guard<mutex> lock(_mtx);
     _maxSize = maxSize;
     _checkEntries();
 }
 
-void HistogramRolling::setMaxAge(std::chrono::milliseconds maxAge) {
-    std::lock_guard<std::mutex> lock(_mtx);
+void HistogramRolling::setMaxAge(chrono::milliseconds maxAge) {
+    lock_guard<mutex> lock(_mtx);
     _maxAge = maxAge;
     _checkEntries();
 }

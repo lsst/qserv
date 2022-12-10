@@ -23,9 +23,6 @@
 #ifndef LSST_QSERV_WPUBLISH_QUERIESANDCHUNKS_H
 #define LSST_QSERV_WPUBLISH_QUERIESANDCHUNKS_H
 
-// System headers
-//&&& #include <unordered_map>
-
 // Third party headers
 #include "nlohmann/json.hpp"
 
@@ -85,6 +82,12 @@ public:
 
     TIMEPOINT const creationTime;
     QueryId const queryId;
+
+    /// Return a json object containing high level data, such as histograms.
+    nlohmann::json getJson() const;
+
+    /// Return a json object containing information about all tasks.
+    nlohmann::json getJsonTasks() const;
 
     friend class QueriesAndChunks;
     friend std::ostream& operator<<(std::ostream& os, QueryStatistics const& q);

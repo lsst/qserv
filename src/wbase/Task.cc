@@ -337,10 +337,12 @@ memman::MemMan::Status Task::getMemHandleStatus() {
     return _memMan->getStatus(_memHandle);
 }
 
+/* &&&
 Task::PerformanceData Task::getPerformanceData() const {
     lock_guard<mutex> lg(_perfMtx);
     return _performanceData;
 }
+
 
 void Task::addTransmitData(double timeSeconds, int64_t bytesTransmitted, int64_t rowsTransmitted) {
     lock_guard<mutex> lg(_perfMtx);
@@ -354,6 +356,7 @@ void Task::addRunData(double runTimeSeconds, double subchunkRunTimeSeconds) {
     _performanceData.runTimeSeconds += runTimeSeconds;
     _performanceData.subchunkRunTimeSeconds += subchunkRunTimeSeconds;
 }
+*/
 
 std::ostream& operator<<(std::ostream& os, Task const& t) {
     proto::TaskMsg& m = *t.msg;

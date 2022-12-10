@@ -81,12 +81,11 @@ BOOST_AUTO_TEST_CASE(HistogramSize) {
     BOOST_REQUIRE(jsn["totalCount"] == hist.getTotalCount());
 
     for (int j = 0; j < 4; ++j) {
-        BOOST_REQUIRE(jsn["buckets"][j]["index"] == j);
         BOOST_REQUIRE(jsn["buckets"][j]["count"] == hist.getBucketCount(j));
         if (j < 3) {
             BOOST_REQUIRE(jsn["buckets"][j]["maxVal"] == hist.getBucketMaxVal(j));
         } else {
-            BOOST_REQUIRE(jsn["buckets"][j]["maxVal"] == std::numeric_limits<double>::max());
+            BOOST_REQUIRE(jsn["buckets"][j]["maxVal"] == "infinity");
         }
     }
 

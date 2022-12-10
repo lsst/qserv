@@ -254,7 +254,6 @@ void BlendScheduler::commandStart(util::Command::Ptr const& cmd) {
     wcontrol::Scheduler::Ptr s = dynamic_pointer_cast<wcontrol::Scheduler>(t->getTaskScheduler());
     if (s != nullptr) {
         s->commandStart(t);
-        // &&& check queues here ????
     } else {
         LOGS(_log, LOG_LVL_ERROR, "BlendScheduler::commandStart scheduler not found");
     }
@@ -397,7 +396,6 @@ util::Command::Ptr BlendScheduler::getCmd(bool wait) {
          "lockTime BlendScheduler::getCmd ready toLock=" << timeToLock.getElapsed()
                                                          << " held=" << timeHeld.getElapsed()
                                                          << " totalHeld=" << totalTimeHeld);
-    // &&& check queues here ????
     return cmd;
 }
 
@@ -522,7 +520,7 @@ void BlendScheduler::_logSchedulers() {
         // &&& for all schedulers log size of queue, number of queries running, average runtime of query,
         // number of queries finished since last call.
         //&&&;
-        // recordPerformanceData();
+        recordPerformanceData();
     }
     ++rlim;
 }

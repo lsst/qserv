@@ -39,9 +39,9 @@
 #include "global/intTypes.h"
 #include "memman/MemMan.h"
 #include "proto/ScanTableInfo.h"
+#include "util/Histogram.h"
 #include "util/ThreadPool.h"
 #include "util/threadSafe.h"
-#include "wbase/UserQueryWInfo.h"
 
 // Forward declarations
 namespace lsst::qserv {
@@ -80,6 +80,8 @@ public:
     virtual ~TaskScheduler() {}
     virtual void taskCancelled(Task*) = 0;  ///< Repeated calls must be harmless.
     virtual bool removeTask(std::shared_ptr<Task> const& task, bool removeRunning) = 0;
+
+    virtual nlohmann::json getJson() const = 0;
 
     util::HistogramRolling::Ptr histTimeOfRunningTasks;       ///< Store information about running tasks
     util::HistogramRolling::Ptr histTimeOfTransmittingTasks;  ///< Store information about transmitting tasks.
@@ -204,6 +206,7 @@ public:
 
     std::shared_ptr<wpublish::QueryStatistics> getQueryStats() const;
 
+    /* &&&
     /// Statistics relating to handling the SQL queries for one job in this user query.
     /// If there are subchunk queries, a single job may have several Tasks, one Task
     /// for each required subchunk.
@@ -214,14 +217,17 @@ public:
         int64_t bytesTransmitted = 0;
         int64_t rowsTransmitted = 0;
     };
+    */
 
+    /* &&&
     void addTransmitData(double timeSeconds, int64_t bytesTransmitted, int64_t rowsTransmitted);
 
     void addRunData(double runTimeSeconds, double subchunkRunTimeSeconds);
-
+    */
+    /* &&&
     /// Return a copy of PerformanceData.
     PerformanceData getPerformanceData() const;
-
+    */
 private:
     std::shared_ptr<SendChannelShared> _sendChannel;
     uint64_t const _tSeq = 0;     ///< identifier for the specific task
@@ -253,8 +259,10 @@ private:
 
     /// Stores information on the query's resource usage.
     std::weak_ptr<wpublish::QueryStatistics> _queryStats;
+    /* &&&
     PerformanceData _performanceData;
     std::mutex mutable _perfMtx;  ///< protects _performanceData;
+    */
 };
 
 }  // namespace lsst::qserv::wbase

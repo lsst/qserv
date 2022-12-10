@@ -130,6 +130,22 @@ nlohmann::json SchedulerBase::statusToJson() {
     return status;
 }
 
+nlohmann::json SchedulerBase::getJson() const {
+    /* &&&
+    &&&;
+    // Histogram::Ptr from wbase::TaskScheduler base class
+     histTimeOfRunningTasks;
+     histTimeOfTransmittingTasks;
+
+     // Histogram::Ptr from wsched::SchedulerBase
+     _histQueuedTasks;
+     _histRunningTasks;
+     _histTransmittingTasks;
+     _histRecentlyCompletedTasks;
+     */
+    return nlohmann::json();
+}
+
 void SchedulerBase::setMaxActiveChunks(int maxActive) {
     if (maxActive < 1) maxActive = 1;
     _maxActiveChunks = maxActive;
