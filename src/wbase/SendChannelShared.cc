@@ -366,7 +366,6 @@ bool SendChannelShared::buildAndTransmitResult(MYSQL_RES* mResult, int numFields
 
     transmitT.stop();
     double timeSeconds = transmitT.getElapsed();
-    //&&& task.addTransmitData(timeSeconds, bytesTransmitted, rowsTransmitted);
     auto qStats = task.getQueryStats();
     if (qStats == nullptr) {
         LOGS(_log, LOG_LVL_ERROR, "No statistics for " << task.getIdStr());

@@ -275,7 +275,6 @@ void BlendScheduler::commandFinish(util::Command::Ptr const& cmd) {
     LOGS(_log, LOG_LVL_DEBUG, "BlendScheduler::commandFinish");
     if (s != nullptr) {
         s->commandFinish(t);
-        // &&& check queues here ????
     } else {
         LOGS(_log, LOG_LVL_ERROR, "BlendScheduler::commandFinish scheduler not found");
     }
@@ -514,15 +513,11 @@ int BlendScheduler::moveUserQuery(QueryId qId, SchedulerBase::Ptr const& source,
 }
 
 void BlendScheduler::_logSchedulers() {
-    // &&& Rate limit logging
-    static unsigned int rlim = 0;
-    if (rlim % 100) {  // &&& wrong, temporary, needs to be about every 15 seconds
-        // &&& for all schedulers log size of queue, number of queries running, average runtime of query,
-        // number of queries finished since last call.
-        //&&&;
+    chrono::system_clock::time_point now = chrono::system_clock::now();
+    if (now > _nextRecordPerformanceTime) {
+        _nextRecordPerformanceTime = now + _intervalRecordPerformanceTime;
         recordPerformanceData();
     }
-    ++rlim;
 }
 
 void ControlCommandQueue::queCmd(util::Command::Ptr const& cmd) {

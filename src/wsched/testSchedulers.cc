@@ -157,7 +157,6 @@ struct SchedulerFixture {
 BOOST_FIXTURE_TEST_SUITE(SchedulerSuite, SchedulerFixture)
 
 struct SchedFixture {
-    // &&& SchedFixture() { setupQueriesBlend(); }
     SchedFixture(double maxScanTimeFast, bool examinAllSleep)
             : _maxScanTimeFast{maxScanTimeFast}, _examineAllSleep{examinAllSleep} {
         setupQueriesBlend();

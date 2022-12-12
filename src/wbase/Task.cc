@@ -31,6 +31,9 @@
 // Class header
 #include "wbase/Task.h"
 
+// System headers
+#include <ctime>
+
 // Third-party headers
 #include "boost/regex.hpp"
 #include <boost/algorithm/string/replace.hpp>
@@ -337,26 +340,30 @@ memman::MemMan::Status Task::getMemHandleStatus() {
     return _memMan->getStatus(_memHandle);
 }
 
-/* &&&
-Task::PerformanceData Task::getPerformanceData() const {
-    lock_guard<mutex> lg(_perfMtx);
-    return _performanceData;
+string convertToStr(std::chrono::system_clock::time_point chTm) {
+    stringstream os;
+    time_t tm = std::chrono::system_clock::to_time_t(chTm);
+    os << std::put_time(std::localtime(&tm), "%F %T.\n");
+    return os.str();
 }
 
-
-void Task::addTransmitData(double timeSeconds, int64_t bytesTransmitted, int64_t rowsTransmitted) {
-    lock_guard<mutex> lg(_perfMtx);
-    _performanceData.transmitTimeSeconds += timeSeconds;
-    _performanceData.bytesTransmitted += bytesTransmitted;
-    _performanceData.rowsTransmitted += rowsTransmitted;
+nlohmann::json Task::getJson() const {
+    // It would be nice to have the _queryString in this, but that could make the results very large.
+    nlohmann::json js;
+    js["queryId"] = _qId;
+    js["jobId"] = _jId;
+    js["fragmentId"] = _queryFragmentNum;
+    js["attemptId"] = _attemptCount;
+    js["sequenceId"] = _tSeq;
+    js["scanInteractive"] = _scanInteractive;
+    js["cancelled"] = to_string(_cancelled);
+    js["state"] = _state;
+    js["queueTime"] = convertToStr(_queueTime);
+    js["startTime"] = convertToStr(_startTime);
+    js["finishTime"] = convertToStr(_finishTime);
+    js["sizeSoFar"] = _totalSize;
+    return js;
 }
-
-void Task::addRunData(double runTimeSeconds, double subchunkRunTimeSeconds) {
-    lock_guard<mutex> lg(_perfMtx);
-    _performanceData.runTimeSeconds += runTimeSeconds;
-    _performanceData.subchunkRunTimeSeconds += subchunkRunTimeSeconds;
-}
-*/
 
 std::ostream& operator<<(std::ostream& os, Task const& t) {
     proto::TaskMsg& m = *t.msg;

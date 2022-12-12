@@ -66,7 +66,16 @@ nlohmann::json QueryStatistics::getJson() const {
 
 /// Return a json object containing information about all tasks.
 /// This can return a very large object and should be used sparingly.
-nlohmann::json QueryStatistics::getJsonTasks() const { throw util::Bug(ERR_LOC, "&&& NEEDS code"); }
+nlohmann::json QueryStatistics::getJsonTasks() const {
+    nlohmann::json js = getJson();
+    nlohmann::json jsTasks = nlohmann::json::array();
+    for (auto const& elem : _taskMap) {
+        wbase::Task::Ptr const& tsk = elem.second;
+        jsTasks.push_back(tsk->getJson());
+    }
+    js["taskArray"] = jsTasks;
+    return js;
+}
 
 QueriesAndChunks::Ptr QueriesAndChunks::_globalQueriesAndChunks;
 

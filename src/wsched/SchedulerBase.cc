@@ -131,19 +131,11 @@ nlohmann::json SchedulerBase::statusToJson() {
 }
 
 nlohmann::json SchedulerBase::getJson() const {
-    /* &&&
-    &&&;
-    // Histogram::Ptr from wbase::TaskScheduler base class
-     histTimeOfRunningTasks;
-     histTimeOfTransmittingTasks;
-
-     // Histogram::Ptr from wsched::SchedulerBase
-     _histQueuedTasks;
-     _histRunningTasks;
-     _histTransmittingTasks;
-     _histRecentlyCompletedTasks;
-     */
-    return nlohmann::json();
+    nlohmann::json js = {{"SchedulerName", getName()},          histTimeOfTransmittingTasks->getJson(),
+                         histTimeOfRunningTasks->getJson(),     _histQueuedTasks->getJson(),
+                         _histRunningTasks->getJson(),          _histTransmittingTasks->getJson(),
+                         _histRecentlyCompletedTasks->getJson()};
+    return js;
 }
 
 void SchedulerBase::setMaxActiveChunks(int maxActive) {
@@ -158,10 +150,9 @@ bool SchedulerBase::chunkAlreadyActive(int chunkId) {
 }
 
 void SchedulerBase::recordPerformanceData() {
-    //&&&lock_guard<mutex> lock(util::CommandQueue::_mx);
     _histQueuedTasks->addEntry(getTotalTaskCount());
     _histRunningTasks->addEntry(_inFlight);
-    _histTransmittingTasks->addEntry(_transmitCount);  // &&& doesn't exist yet
+    _histTransmittingTasks->addEntry(_transmitCount);
     _histRecentlyCompletedTasks->addEntry(_recentlyCompleted);
     _recentlyCompleted = 0;  // reset to 0 every time it is recorded.
 }

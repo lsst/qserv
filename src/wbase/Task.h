@@ -206,28 +206,9 @@ public:
 
     std::shared_ptr<wpublish::QueryStatistics> getQueryStats() const;
 
-    /* &&&
-    /// Statistics relating to handling the SQL queries for one job in this user query.
-    /// If there are subchunk queries, a single job may have several Tasks, one Task
-    /// for each required subchunk.
-    struct PerformanceData {
-        double runTimeSeconds = 0.0;
-        double subchunkRunTimeSeconds = 0.0;
-        double transmitTimeSeconds = 0.0;
-        int64_t bytesTransmitted = 0;
-        int64_t rowsTransmitted = 0;
-    };
-    */
+    /// Return a json object describing sdome details of this task.
+    nlohmann::json getJson() const;
 
-    /* &&&
-    void addTransmitData(double timeSeconds, int64_t bytesTransmitted, int64_t rowsTransmitted);
-
-    void addRunData(double runTimeSeconds, double subchunkRunTimeSeconds);
-    */
-    /* &&&
-    /// Return a copy of PerformanceData.
-    PerformanceData getPerformanceData() const;
-    */
 private:
     std::shared_ptr<SendChannelShared> _sendChannel;
     uint64_t const _tSeq = 0;     ///< identifier for the specific task
@@ -259,10 +240,6 @@ private:
 
     /// Stores information on the query's resource usage.
     std::weak_ptr<wpublish::QueryStatistics> _queryStats;
-    /* &&&
-    PerformanceData _performanceData;
-    std::mutex mutable _perfMtx;  ///< protects _performanceData;
-    */
 };
 
 }  // namespace lsst::qserv::wbase
