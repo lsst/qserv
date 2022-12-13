@@ -161,13 +161,6 @@ nlohmann::json Histogram::getJson() const {
     return rJson;
 }
 
-string Histogram::getJsonStr() const {
-    nlohmann::json rJson = getJson();
-    stringstream os;
-    os << rJson;
-    return os.str();
-}
-
 HistogramRolling::HistogramRolling(string const& label, vector<double> const& bucketVals,
                                    chrono::milliseconds maxAgeMillis, size_t maxSize)
         : Histogram(label, bucketVals), _maxSize(maxSize), _maxAge(maxAgeMillis) {}

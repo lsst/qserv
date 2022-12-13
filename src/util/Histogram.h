@@ -40,6 +40,28 @@
 
 namespace lsst::qserv::util {
 
+/// This class is used to help track a value over time.
+/// The `getJson()` function returns a json object that has a structure similar to this
+/// {"HistogramId":"RunningTaskTimes",
+///  "avg":0.002177499999999979,
+///  "buckets":[
+///     {"count":2,"maxVal":0.1},
+///     {"count":0,"maxVal":1.0},
+///     {"count":0,,"maxVal":10.0},
+///     {"count":0,,"maxVal":100.0},
+///     {"count":0,,"maxVal":200.0},
+///     {"count":0,,"maxVal":infinity}
+///    ],
+///  "total":0.004354999999999958,
+///  "totalCount":2
+/// }
+/// `HistogramId` identifies what the Histogram instance is tracking.
+/// `avg` is the average value of all entries.
+/// `buckets`, each bucket contains the `count` of entries with values <= `maxVal` and > the maxVal of the
+/// previous bucket.
+///    Where the `index` indicates the buckets position in the series.
+/// `totalCount` is the number of entries.
+/// `total` is the sum of all entries.
 class Histogram {
 public:
     using Ptr = std::shared_ptr<Histogram>;
@@ -83,7 +105,6 @@ public:
     virtual std::string addEntry(double val, std::string const& note = std::string());
 
     nlohmann::json getJson() const;  ///< Return a json version of this object.
-    std::string getJsonStr() const;  ///< Return the json string for this instance.
 
     virtual std::string getString(std::string const& note);
 
@@ -108,28 +129,6 @@ protected:
     mutable std::mutex _mtx;
 };
 
-/// This class is used to help track a value over time.
-/// The `getJson()` function returns a json object that has a structure similar to this
-///	{"HistogramId":"RunningTaskTimes",
-///	 "avg":0.002177499999999979,
-///	 "buckets":
-///	   [{"count":2,"index":0,"maxVal":0.1},
-///		{"count":0,"index":1,"maxVal":1.0},
-///		{"count":0,"index":2,"maxVal":10.0},
-///		{"count":0,"index":3,"maxVal":100.0},
-///		{"count":0,"index":4,"maxVal":200.0},
-///		{"count":0,"index":5,"maxVal":1.7976931348623157e+308}
-///	   ],
-///	 "size":2,
-///	 "total":0.004354999999999958
-///	}
-/// `HistogramId` identifies what the Histogram instance is tracking.
-/// `avg` is the average value of all entries.
-/// `buckets`, each bucket contains the `count` of entries with values <= `maxVal` and > the maxVal of the
-/// previous bucket.
-///    Where the `index` indicates the buckets position in the series.
-/// `size` is the number of entries.
-/// `total` is the sum of all entries.
 /// The `Histogram` keeps a list of all entries. When there are too many entries, the oldest ones are removed
 /// until there are at most `_maxSize` entries. Entries older than `_maxAge` are also removed.
 class HistogramRolling : public Histogram {
