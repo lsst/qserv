@@ -22,6 +22,7 @@
 #define LSST_QSERV_REPLICA_DIRECTORINDEXJOB_H
 
 // System headers
+#include <condition_variable>
 #include <cstdint>
 #include <functional>
 #include <list>
@@ -166,18 +167,34 @@ private:
     void _onRequestFinish(DirectorIndexRequest::Ptr const& request);
 
     /**
-     * Extract data from the successfully completed requests and load
-     * the data into the "director" index table.
-     *
-     * @note This method doesn't require locking the mutex since it only
-     *  depends on the unmutable interface (parameters) of the job.
-     * @note All exceptions which may be potentially thrown are
-     *  supposed to be intercepted by a caller of the current method
-     *  and be used for error reporting.
-     *
-     * @param request the request to extract the data to be processed
+     * The method runs by the data loading threads to ingest the "director" index
+     * data into the destination table. The method will be pulling requests from
+     * the queue _completedRequests and decrement the counter _numLoadingRequests
+     * after finishing loading data of each request into the table.
      */
-    void _processRequestData(DirectorIndexRequest::Ptr const& request) const;
+    void _loadDataIntoTable();
+
+    /**
+     * Locate anbd return the next request (if any) in the queue _completedRequests.
+     * The method gets called by the data loading threads when the threads are ready
+     * to process the next request.
+     *
+     * The request will be removed from the queue. The counter _numLoadingRequests
+     * will be incremented.
+     *
+     * If no requests were found in the queue
+     * and while there are still ongoing requests the method will block before any new request will appear in
+     * the queue.
+     *
+     * @note The method will unblock when the jobs will finish
+     * and if the job is still in the unfinished while there are ongoing requests in
+     * the queue _inFlightRequests the method will block waiting before any request
+     * from the latter queue will finish
+     *
+     * @return DirectorIndexRequest::Ptr A pointer to the next request or nullptr
+     *  if the job has laready finished.
+     */
+    DirectorIndexRequest::Ptr _nextRequest();
 
     /**
      * Launch a batch of requests with a total number not to exceed the specified
@@ -209,12 +226,19 @@ private:
     std::map<std::string, std::queue<unsigned int>> _chunks;
 
     /// A collection of the in-flight requests (request id is the key)
-    std::map<std::string, DirectorIndexRequest::Ptr> _requests;
+    std::map<std::string, DirectorIndexRequest::Ptr> _inFlightRequests;
 
-    /// Database connection pool to allow parallel ingest into the "director"
-    /// index table. Connections are allocated/used/released by the request completion
-    /// handlers for loading the next chunk of rows into the table.
-    std::shared_ptr<database::mysql::ConnectionPool> const _connPool;
+    /// A collection of the completed requests that have data ready to be loaded
+    /// into the "director" table.
+    std::list<DirectorIndexRequest::Ptr> _completedRequests;
+
+    /// The number of the on-going operations for ingesting request's data into
+    /// the destination trable.
+    size_t _numLoadingRequests = 0;
+
+    /// This variable is used for to get the loading threads waiting while
+    /// the queue _completedRequests is empty.
+    std::condition_variable _cv;
 
     /// The result of the operation (gets updated as requests are finishing)
     Result _resultData;

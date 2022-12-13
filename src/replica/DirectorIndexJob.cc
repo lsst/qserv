@@ -24,9 +24,11 @@
 
 // System headers
 #include <algorithm>
+#include <chrono>
 #include <iostream>
 #include <limits>
 #include <stdexcept>
+#include <thread>
 
 // Qserv headers
 #include "global/constants.h"
@@ -38,8 +40,10 @@
 
 // LSST headers
 #include "lsst/log/Log.h"
+#include "DirectorIndexJob.h"
 
 using namespace std;
+using namespace std::chrono_literals;
 using json = nlohmann::json;
 
 namespace {
@@ -88,10 +92,7 @@ DirectorIndexJob::DirectorIndexJob(string const& databaseName, string const& dir
           _transactionId(transactionId),
           _allWorkers(allWorkers),
           _localFile(localFile),
-          _onFinish(onFinish),
-          _connPool(ConnectionPool::create(Configuration::qservCzarDbParams(lsst::qserv::SEC_INDEX_DB),
-                                           controller->serviceProvider()->config()->get<size_t>(
-                                                   "controller", "num-director-index-connections"))) {
+          _onFinish(onFinish) {
     try {
         _database = controller->serviceProvider()->config()->databaseInfo(databaseName);
         if (!_database.findTable(directorTableName).isDirector) {
@@ -132,7 +133,6 @@ list<std::pair<string, string>> DirectorIndexJob::extendedPersistentState() cons
 
 list<pair<string, string>> DirectorIndexJob::persistentLogData() const {
     // Report failed chunks only
-
     list<pair<string, string>> result;
     for (auto&& workerItr : getResultData().error) {
         auto&& worker = workerItr.first;
@@ -154,9 +154,9 @@ void DirectorIndexJob::startImpl(util::Lock const& lock) {
     // Stage I: replica scanner
     // ------------------------
 
+    auto const config = controller()->serviceProvider()->config();
     auto const databaseServices = controller()->serviceProvider()->databaseServices();
-    auto const workerNames = allWorkers() ? controller()->serviceProvider()->config()->allWorkers()
-                                          : controller()->serviceProvider()->config()->workers();
+    auto const workerNames = allWorkers() ? config->allWorkers() : config->workers();
 
     // Initialize a collection of chunks grouped by workers, in a way which
     // would make an attempt to keep requests equally (as much as that's possible)
@@ -257,20 +257,26 @@ void DirectorIndexJob::startImpl(util::Lock const& lock) {
     // to absorb the latency of the network and disk I/O, so that worker threads
     // would be able to work on another batch of the data extraction requests while
     // results of the previous batch were being sent back to the Controller.
-
-    size_t const maxRequestsPerWorker =
-            controller()->serviceProvider()->config()->get<size_t>("worker", "num-svc-processing-threads");
-
+    size_t const maxRequestsPerWorker = config->get<size_t>("worker", "num-svc-processing-threads");
     for (auto&& worker : workerNames) {
         for (auto&& ptr : _launchRequests(lock, worker, maxRequestsPerWorker)) {
-            _requests[ptr->id()] = ptr;
+            _inFlightRequests[ptr->id()] = ptr;
         }
     }
 
     // In case if no workers or database are present in the Configuration
     // at this time.
+    if (_inFlightRequests.size() == 0) finish(lock, ExtendedState::SUCCESS);
 
-    if (_requests.size() == 0) finish(lock, ExtendedState::SUCCESS);
+    // Start a pool of threads for ingesting the "director" index data into MySQL.
+    // Note that threads are getting a copy of a shared pointer. This guarantees that
+    // the job will outlive the threads.
+    auto const self = shared_from_base<DirectorIndexJob>();
+    size_t const numThreads = config->get<size_t>("controller", "num-director-index-connections");
+    for (size_t i = 0; i < numThreads; ++i) {
+        std::thread t([self]() { self->_loadDataIntoTable(); });
+        t.detach();
+    }
 }
 
 void DirectorIndexJob::cancelImpl(util::Lock const& lock) {
@@ -285,7 +291,7 @@ void DirectorIndexJob::cancelImpl(util::Lock const& lock) {
     // job the request cancellation should be also followed (where it makes a sense)
     // by stopping the request at corresponding worker service.
 
-    for (auto&& itr : _requests) {
+    for (auto&& itr : _inFlightRequests) {
         auto&& ptr = itr.second;
         ptr->cancel();
         if (ptr->state() != Request::State::FINISHED) {
@@ -295,7 +301,7 @@ void DirectorIndexJob::cancelImpl(util::Lock const& lock) {
             );
         }
     }
-    _requests.clear();
+    _inFlightRequests.clear();
 }
 
 void DirectorIndexJob::notify(util::Lock const& lock) {
@@ -314,107 +320,187 @@ void DirectorIndexJob::_onRequestFinish(DirectorIndexRequest::Ptr const& request
     string const context_ = context() + string(__func__) + " worker=" + request->worker() + " ";
     LOGS(_log, LOG_LVL_DEBUG, context_);
 
-    // This synchronized block performs the light-weight operations that are meant
-    // to evaluate the completion status of the request, update the internal data
-    // structures and decide if the algorithm should proceed with ingesitng
-    // the request's data into the "director" index table.
-    bool hasData = true;
-    {
-        if (state() == State::FINISHED) return;
-        util::Lock lock(_mtx, context_);
-        if (state() == State::FINISHED) return;
+    if (state() == State::FINISHED) return;
+    util::Lock lock(_mtx, context_);
+    if (state() == State::FINISHED) return;
 
+    if (request->extendedState() == Request::SUCCESS) {
+        // This request has data that will be loaded into the table.
+        _completedRequests.push_back(request);
+        _cv.notify_one();
+    } else if (request->extendedServerStatus() == ProtocolStatusExt::NO_SUCH_PARTITION) {
+        // No contribution is expected into the non-existing (in this chunk) partition.
+        // This is would be the normal situaton for many chunks. However, we still
+        // need to increment the counter of the fully completed chunks.
         _completeChunks++;
-
-        if (request->extendedState() != Request::SUCCESS) {
-            if (request->extendedServerStatus() == ProtocolStatusExt::NO_SUCH_PARTITION) {
-                // OK to proceed. We just don't have any contribution into the
-                // partition.
-                hasData = false;
-            } else {
-                _resultData.error[request->worker()][request->chunk()] = request->responseData().error;
-                finish(lock, ExtendedState::FAILED);
-                return;
-            }
-        }
-
-        // Submit a replacement request for the same worker BEFORE processing
-        // results of the current one. This little optimization is meant to keep
-        // workers busy in case of a non-negligible latency in processing data of
-        // requests.
-        for (auto&& ptr : _launchRequests(lock, request->worker())) {
-            _requests[ptr->id()] = ptr;
-        }
-
-        // Removing request from the list before processing its data is fine as
-        // we still have a shared pointer passed into this method. Note that
-        // we need to erase completed requests from memory since they may carry
-        // a significant amount of data.
-        // Erasing completed requests is also needed for evaluating the completion
-        // condition of the job.
-        _requests.erase(request->id());
+    } else {
+        _resultData.error[request->worker()][request->chunk()] = request->responseData().error;
+        finish(lock, ExtendedState::FAILED);
+        return;
     }
 
-    // The next step performs the actual data loading within the lock-free (by not locking
-    // the job's mutex guarding the job's internal state) context.
-    // The loading is done by a thread that invoked the current handler. Note that
-    // Loading data within the lock-free context allows the parellel processing of multiple
-    // requests. Problems (if any) will be reported into the variable 'error' that will be
-    // evaluated later to abort the processing should it be not empty.
-    string error;
-    if (hasData) {
-        try {
-            _processRequestData(request);
-        } catch (exception const& ex) {
-            error = context_ + "request data processing failed, ex: " + string(ex.what());
-            LOGS(_log, LOG_LVL_ERROR, error);
-        }
+    // Submit a replacement request for the same worker BEFORE processing
+    // results of the current one. This little optimization is meant to keep
+    // workers busy as a compensatory mechanism for the non-negligible latencies
+    // in processing data of the completed requests.
+    for (auto&& ptr : _launchRequests(lock, request->worker())) {
+        _inFlightRequests[ptr->id()] = ptr;
     }
 
-    // The rest of the algorithm needs to be performed in the synchronized context.
-    {
+    // Removing request from the list before processing its data is fine as
+    // we still have a shared pointer passed into this method. Note that
+    // we need to erase completed requests from memory since they may carry
+    // a significant amount of data.
+    _inFlightRequests.erase(request->id());
+
+    // Evaluate the completion condition of the job.
+    if (_completeChunks == _totalChunks) {
+        finish(lock, ExtendedState::SUCCESS);
+    }
+}
+
+void DirectorIndexJob::_loadDataIntoTable() {
+    string const context_ = context() + string(__func__) + " ";
+    LOGS(_log, LOG_LVL_DEBUG, context_);
+
+    // Open MySQL connection using the RAII-style handler that would automatically
+    // abort the transaction should any problem occured when loading data into the table.
+    Connection::Ptr conn;
+    try {
+        conn = Connection::open(Configuration::qservCzarDbParams(lsst::qserv::SEC_INDEX_DB));
+    } catch (exception const& ex) {
+        string const error =
+                context_ + "failed to connect to the czar's database server, ex: " + string(ex.what());
+        LOGS(_log, LOG_LVL_ERROR, error);
         if (state() == State::FINISHED) return;
         util::Lock lock(_mtx, context_);
         if (state() == State::FINISHED) return;
+        finish(lock, ExtendedState::FAILED);
+        return;
+    }
+    ConnectionHandler h(conn);
+    QueryGenerator const g(h.conn);
 
-        if (!error.empty()) {
+    // Pool completed requests from the queue and process them.
+    while (true) {
+        // The method will return the null pointer if the job has finished.
+        auto const request = _nextRequest();
+        if (request == nullptr) break;
+
+        // Load request's data into the destination table.
+        try {
+            string const query = g.loadDataInfile(
+                    request->responseData().fileName, directorIndexTableName(database(), directorTable()),
+                    controller()->serviceProvider()->config()->get<string>("worker", "ingest-charset-name"),
+                    localFile());
+            h.conn->executeInOwnTransaction([&](auto conn) {
+                conn->execute(query);
+                // Loading operations based on this mechanism won't result in throwing exceptions in
+                // case of certain types of problems encountered during the loading, such as
+                // out-of-range data, duplicate keys, etc. These errors are reported as warnings
+                // which need to be retrieved using a special call to the database API.
+                if (localFile()) {
+                    auto const warnings = conn->warnings();
+                    if (!warnings.empty()) {
+                        auto const& w = warnings.front();
+                        throw database::mysql::Error(
+                                "query: " + query +
+                                " failed with total number of problems: " + to_string(warnings.size()) +
+                                ", first problem (Level,Code,Message) was: " + w.level + "," +
+                                to_string(w.code) + "," + w.message);
+                    }
+                }
+            });
+
+            // Decrement the counter for the number of the on-going loading operations.
+            util::Lock lock(_mtx, context_);
+            _numLoadingRequests--;
+
+            // The counter of the fully completed chunks gets incremented only after
+            // succesfully finishing the ingest into the destination table.
+            _completeChunks++;
+
+        } catch (exception const& ex) {
+            string const error = context_ + "failed to load data into the 'director' index table, ex: " +
+                                 string(ex.what());
+            LOGS(_log, LOG_LVL_ERROR, error);
+            if (state() == State::FINISHED) return;
+            util::Lock lock(_mtx, context_);
+            if (state() == State::FINISHED) return;
             _resultData.error[request->worker()][request->chunk()] = error;
             finish(lock, ExtendedState::FAILED);
             return;
         }
-
-        // Evaluate for the completion condition of the job.
-        if (_requests.size() == 0) finish(lock, ExtendedState::SUCCESS);
     }
 }
 
-void DirectorIndexJob::_processRequestData(DirectorIndexRequest::Ptr const& request) const {
-    // Allocate a database connection using the RAII style handler that would automatically
-    // deallocate the connection and abort the transaction should any problem occured
-    // when loading data into the table.
-    ConnectionHandler h(_connPool);
-    QueryGenerator const g(h.conn);
-    string const query = g.loadDataInfile(
-            request->responseData().fileName, directorIndexTableName(database(), directorTable()),
-            controller()->serviceProvider()->config()->get<string>("worker", "ingest-charset-name"),
-            localFile());
-    h.conn->executeInOwnTransaction([&](auto conn) {
-        conn->execute(query);
-        // Loading operations based on this mechanism won't result in throwing exceptions in
-        // case of certain types of problems encountered during the loading, such as
-        // out-of-range data, duplicate keys, etc. These errors are reported as warnings
-        // which need to be retrieved using a special call to the database API.
-        if (localFile()) {
-            auto const warnings = conn->warnings();
-            if (!warnings.empty()) {
-                auto const& w = warnings.front();
-                throw database::mysql::Error("query: " + query + " failed with total number of problems: " +
-                                             to_string(warnings.size()) +
-                                             ", first problem (Level,Code,Message) was: " + w.level + "," +
-                                             to_string(w.code) + "," + w.message);
-            }
+DirectorIndexRequest::Ptr DirectorIndexJob::_nextRequest() {
+    string const context_ = context() + string(__func__) + " ";
+    LOGS(_log, LOG_LVL_DEBUG, context_);
+
+    // This method has to use std::condition_variable::wait_for()
+    // instead of std::condition_variable::wait() in order to allow rechecking
+    // changes in a status of the job, not just notifications on new entries
+    // in the queue _completedRequests.
+    //
+    // The re-check interval of 1s should be reasonable here since this type
+    // of jobs is designed for processing large amounts of data, which may
+    // take many minutes or even many hours.
+    chrono::milliseconds const jobStatusCheckIvalMsec{1s};
+
+    // Pull the next request from the queue or wait.
+    DirectorIndexRequest::Ptr request;
+    while (request == nullptr) {
+        if (state() == State::FINISHED) return nullptr;
+        unique_lock<mutex> lock(_mtx);
+        if (state() == State::FINISHED) return nullptr;
+
+        if (!_completedRequests.empty()) {
+            request = _completedRequests.front();
+            _completedRequests.pop_front();
+            _numLoadingRequests++;
+        } else {
+            _cv.wait_for(lock, jobStatusCheckIvalMsec, [&] {
+                if (state() == State::FINISHED) return true;
+                if (_completeChunks == _totalChunks) {
+                    // We got here because the main condition for completing the job
+                    // has been met. It means the job needs to be finished right away.
+                    // Unfortunately, the desired state transition can't be done under
+                    // the currently held lock of thr type std::unique_lock. The API for
+                    // the operation require acquering a different type of locks
+                    // represented by the class util::Lock.
+                    return true;
+                }
+                if (!_completedRequests.empty()) {
+                    request = _completedRequests.front();
+                    _completedRequests.pop_front();
+                    _numLoadingRequests++;
+                    return true;
+                }
+                // Keep waiting before the next wakeup.
+                return false;
+            });
+            if (_completeChunks == _totalChunks) break;
         }
-    });
+    }
+
+    // Re-evaluate the current state of the job under a different type
+    // of lock that's suitable for making state transitions of the job
+    // if needed.
+    if (state() == State::FINISHED) return nullptr;
+    util::Lock lock(_mtx, context_);
+    if (state() == State::FINISHED) return nullptr;
+
+    if (_completeChunks == _totalChunks) {
+        finish(lock, ExtendedState::SUCCESS);
+        return nullptr;
+    }
+    LOGS(_log, LOG_LVL_DEBUG,
+         context_ << "request: " << request->id() << " _inFlightRequests.size(): " << _inFlightRequests.size()
+                  << " _completedRequests.size(): " << _completedRequests.size()
+                  << " _numLoadingRequests: " << _numLoadingRequests
+                  << " _completeChunks: " << _completeChunks << " _totalChunks: " << _totalChunks);
+    return request;
 }
 
 list<DirectorIndexRequest::Ptr> DirectorIndexJob::_launchRequests(util::Lock const& lock,
