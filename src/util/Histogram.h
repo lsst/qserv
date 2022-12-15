@@ -32,8 +32,9 @@
 #include <queue>
 #include <sys/time.h>
 #include <time.h>
-#include <mutex>
 #include <vector>
+
+#include "util/Mutex.h"
 
 // Third party headers
 #include <nlohmann/json.hpp>
@@ -77,6 +78,8 @@ public:
         Bucket(double maxV) : _maxVal(maxV) {}
         Bucket() = delete;
         Bucket(Bucket const&) = default;
+        Bucket& operator=(Bucket const&) = default;
+        ~Bucket() = default;
 
         /// Return the maximum value for the bucket.
         double getMaxVal() const { return _maxVal; }
@@ -109,6 +112,7 @@ public:
     virtual std::string getString(std::string const& note);
 
 protected:
+    /// _mtx must be locked, add an entry to the appropriate bucket.
     std::string _addEntry(TIMEPOINT stamp, double val, std::string const& note);
 
     /// _mtx must be locked, return the average value of all current entries.
@@ -126,7 +130,7 @@ protected:
     double _total = 0.0;           ///< Sum of the values used to make the Histogram
     int64_t _totalCount = 0;       ///< Total number of items used to make the Histogram.
     int64_t _overMaxCount = 0;     ///< number of entries that couldn't fit in a bucket.
-    mutable std::mutex _mtx;
+    mutable VMutex _mtx;
 };
 
 /// The `Histogram` keeps a list of all entries. When there are too many entries, the oldest ones are removed

@@ -58,11 +58,12 @@ string Histogram::addEntry(double val, string const& note) {
 }
 
 string Histogram::addEntry(TIMEPOINT stamp, double val, string const& note) {
-    lock_guard<mutex> lock(_mtx);
+    lock_guard<VMutex> lock(_mtx);
     return _addEntry(stamp, val, note);
 }
 
 string Histogram::_addEntry(TIMEPOINT stamp, double val, string const& note) {
+    VMUTEX_HELD(_mtx);
     _changeCountsBy(val, 1);
     _total += val;
     ++_totalCount;
@@ -88,17 +89,18 @@ void Histogram::_changeCountsBy(double val, int incr) {
 }
 
 double Histogram::getAvg() const {
-    lock_guard<mutex> lock(_mtx);
+    lock_guard<VMutex> lock(_mtx);
     return _getAvg();
 }
 
 double Histogram::_getAvg() const {
+    VMUTEX_HELD(_mtx);
     double avg = (_totalCount) ? _total / _totalCount : 0.0;
     return avg;
 }
 
 int Histogram::getBucketCount(size_t index) const {
-    lock_guard<mutex> lock(_mtx);
+    lock_guard<VMutex> lock(_mtx);
     if (index > _buckets.size()) {
         LOGS(_log, LOG_LVL_ERROR, "Histogram::getBucketCount out of range index=" << index);
         return 0;
@@ -110,7 +112,7 @@ int Histogram::getBucketCount(size_t index) const {
 }
 
 double Histogram::getBucketMaxVal(size_t index) const {
-    lock_guard<mutex> lock(_mtx);
+    lock_guard<VMutex> lock(_mtx);
     if (index > _buckets.size()) {
         string eMsg = string("Histogram::getBucketCount out of range index=") + to_string(index);
         LOGS(_log, LOG_LVL_ERROR, eMsg);
@@ -123,12 +125,12 @@ double Histogram::getBucketMaxVal(size_t index) const {
 }
 
 string Histogram::getString(string const& note) {
-    lock_guard<mutex> lock(_mtx);
+    lock_guard<VMutex> lock(_mtx);
     return _getString(note);
 }
 
 string Histogram::_getString(string const& note) {
-    /// _mtx must be locked before calling this function.
+    VMUTEX_HELD(_mtx);
     stringstream os;
 
     os << _label << " " << note << " size=" << _totalCount << " total=" << _total << " avg=" << _getAvg()
@@ -143,7 +145,7 @@ string Histogram::_getString(string const& note) {
 }
 
 nlohmann::json Histogram::getJson() const {
-    lock_guard<mutex> lock(_mtx);
+    lock_guard<VMutex> lock(_mtx);
     nlohmann::json rJson = {{"HistogramId", _label},
                             {"avg", _getAvg()},
                             {"totalCount", _totalCount},
@@ -170,7 +172,7 @@ string HistogramRolling::addEntry(double val, string const& note) {
 }
 
 string HistogramRolling::addEntry(TIMEPOINT stamp, double val, string const& note) {
-    lock_guard<mutex> lock(_mtx);
+    lock_guard<VMutex> lock(_mtx);
 
     string str = Histogram::_addEntry(stamp, val, note);
 
@@ -185,16 +187,17 @@ string HistogramRolling::addEntry(TIMEPOINT stamp, double val, string const& not
 }
 
 size_t HistogramRolling::getSize() {
-    lock_guard<mutex> lock(_mtx);
+    lock_guard<VMutex> lock(_mtx);
     return _entries.size();
 }
 
 void HistogramRolling::checkEntries() {
-    lock_guard<mutex> lock(_mtx);
+    lock_guard<VMutex> lock(_mtx);
     _checkEntries();
 }
 
 void HistogramRolling::_checkEntries() {
+    VMUTEX_HELD(_mtx);
     auto now = CLOCK::now();
     auto originalSize = _entries.size();
     while (true && !_entries.empty()) {
@@ -222,13 +225,13 @@ void HistogramRolling::_checkEntries() {
 }
 
 void HistogramRolling::setMaxSize(size_t maxSize) {
-    lock_guard<mutex> lock(_mtx);
+    lock_guard<VMutex> lock(_mtx);
     _maxSize = maxSize;
     _checkEntries();
 }
 
 void HistogramRolling::setMaxAge(chrono::milliseconds maxAge) {
-    lock_guard<mutex> lock(_mtx);
+    lock_guard<VMutex> lock(_mtx);
     _maxAge = maxAge;
     _checkEntries();
 }

@@ -129,6 +129,85 @@ BOOST_AUTO_TEST_CASE(MutexTest) {
     LOGS_DEBUG("MutexTest ends");
 }
 
+BOOST_AUTO_TEST_CASE(VMutexTest) {
+    // Test the interface of class Mutex to comply with expectations
+    // of the standard std::lock_guard<T>.
+    LOGS_DEBUG("VMutexTest begins");
+
+    // The mutex won't be locked by anyone
+    VMutex mtx1;
+    BOOST_CHECK(!mtx1.lockedByCaller());
+    BOOST_CHECK_THROW(VMUTEX_HELD(mtx1), lsst::qserv::util::Bug);
+    BOOST_REQUIRE_NO_THROW(VMUTEX_FREE(mtx1));
+
+    // The mutex will be locked by the current thread
+    VMutex mtx2;
+    lock_guard<VMutex> const lockGuard2(mtx2);
+    BOOST_CHECK(mtx2.lockedByCaller());
+    BOOST_REQUIRE_NO_THROW(VMUTEX_HELD(mtx2));
+    BOOST_CHECK_THROW(VMUTEX_FREE(mtx2), lsst::qserv::util::Bug);
+
+    // Lock this mutex in each of two separate threads. Let each thread
+    // to wait for a random period of time within some interval before
+    // grabbing a lock. This would ensure threads would attempt locking
+    // at random order.
+    //
+    // Note the wait interval for each thread is a random
+    // number of milliseconds within the same interval of time.
+    // The average run time of the test is the average wait time
+    // multiplied by the number of iterations of the loop.
+    for (int i = 0; i < 100; ++i) {
+        VMutex mtx;
+        bool wasLockedBeforeBy1 = false;
+        bool wasLockedAfterBy1 = false;
+        thread thr1([&mtx, &wasLockedBeforeBy1, &wasLockedAfterBy1]() {
+            BlockPost blockPost(10, 20);
+            blockPost.wait();
+            wasLockedBeforeBy1 = mtx.lockedByCaller();
+            lock_guard<VMutex> const lock(mtx);
+            wasLockedAfterBy1 = mtx.lockedByCaller();
+        });
+        bool wasLockedBeforeBy2 = false;
+        bool wasLockedAfterBy2 = false;
+        thread thr2([&mtx, &wasLockedBeforeBy2, &wasLockedAfterBy2]() {
+            BlockPost blockPost(10, 20);
+            blockPost.wait();
+            wasLockedBeforeBy2 = mtx.lockedByCaller();
+            lock_guard<VMutex> const lock(mtx);
+            wasLockedAfterBy2 = mtx.lockedByCaller();
+        });
+        thr1.join();
+        BOOST_CHECK(!wasLockedBeforeBy1);
+        BOOST_CHECK(wasLockedAfterBy1);
+        thr2.join();
+        BOOST_CHECK(!wasLockedBeforeBy2);
+        BOOST_CHECK(wasLockedAfterBy2);
+    }
+    // Test the correctness of the Mutex implementation by using a non-atomic
+    // counter to be incremented after acquiring a lock.
+    {
+        VMutex mtx;
+        unsigned int counter = 0;
+        unsigned int const steps = 1024;
+        unsigned int const numThreads = min(2U, thread::hardware_concurrency());
+        vector<unique_ptr<thread>> threads(numThreads);
+        for (auto&& t : threads) {
+            t = make_unique<thread>([&mtx, &counter]() {
+                for (unsigned int i = 0; i < steps; ++i) {
+                    lock_guard<VMutex> const lock(mtx);
+                    ++counter;
+                }
+            });
+        }
+        for (auto&& t : threads) {
+            t->join();
+        }
+        BOOST_CHECK_EQUAL(counter, steps * numThreads);
+    }
+
+    LOGS_DEBUG("VMutexTest ends");
+}
+
 BOOST_AUTO_TEST_CASE(LockTest1) {
     // Test locking a mutex created on stack using a special class util::Lock.
     LOGS_DEBUG("LockTest1 begins");
