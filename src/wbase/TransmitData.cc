@@ -83,8 +83,9 @@ proto::Result* TransmitData::_createResult() {
 
 void TransmitData::attachNextHeader(TransmitData::Ptr const& nextTr, bool reallyLast, uint32_t seq,
                                     int scsSeq) {
-    _icPtr = std::make_shared<util::InstanceCount>(_idStr + "_td_LDB_" + std::to_string(reallyLast));
+    _icPtr = std::make_shared<util::InstanceCount>(_idStr + "_td_LDB_" + std::to_string(reallyLast) + "_a");
     lock_guard<mutex> lock(_trMtx);
+    _icPtr = std::make_shared<util::InstanceCount>(_idStr + "_td_LDB_" + std::to_string(reallyLast) + "_b");
     if (_result == nullptr) {
         throw util::Bug(ERR_LOC, _idStr + "_transmitLoop() had nullptr result!");
     }
@@ -105,6 +106,7 @@ void TransmitData::attachNextHeader(TransmitData::Ptr const& nextTr, bool really
     }
     // Append the next header to this data.
     _dataMsg += proto::ProtoHeaderWrap::wrap(nextHeaderString);
+    _icPtr = std::make_shared<util::InstanceCount>(_idStr + "_td_LDB_" + std::to_string(reallyLast) + "_c");
 }
 
 string TransmitData::makeHeaderString(bool reallyLast, uint32_t seq, int scsSeq) {
