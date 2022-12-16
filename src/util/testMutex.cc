@@ -138,14 +138,14 @@ BOOST_AUTO_TEST_CASE(VMutexTest) {
     VMutex mtx1;
     BOOST_CHECK(!mtx1.lockedByCaller());
     BOOST_CHECK_THROW(VMUTEX_HELD(mtx1), lsst::qserv::util::Bug);
-    BOOST_REQUIRE_NO_THROW(VMUTEX_FREE(mtx1));
+    BOOST_REQUIRE_NO_THROW(VMUTEX_NOT_HELD(mtx1));
 
     // The mutex will be locked by the current thread
     VMutex mtx2;
     lock_guard<VMutex> const lockGuard2(mtx2);
     BOOST_CHECK(mtx2.lockedByCaller());
     BOOST_REQUIRE_NO_THROW(VMUTEX_HELD(mtx2));
-    BOOST_CHECK_THROW(VMUTEX_FREE(mtx2), lsst::qserv::util::Bug);
+    BOOST_CHECK_THROW(VMUTEX_NOT_HELD(mtx2), lsst::qserv::util::Bug);
 
     // Lock this mutex in each of two separate threads. Let each thread
     // to wait for a random period of time within some interval before

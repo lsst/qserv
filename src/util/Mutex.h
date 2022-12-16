@@ -33,33 +33,46 @@
 
 #include "util/Bug.h"
 
-/// Used to verify a mutex is locked before accessing a protected variable
+/// Used to verify a mutex is locked before accessing a protected variable.
 #define VMUTEX_HELD(vmtx) \
     if (!vmtx.lockedByCaller()) throw lsst::qserv::util::Bug(ERR_LOC, "mutex not locked!");
 
-/// Used to verify a mutex is unlocked before locking a related mutex.
-#define VMUTEX_FREE(vmtx) \
+/// Used to verify a mutex is not locked by this thread before locking a related mutex.
+#define VMUTEX_NOT_HELD(vmtx) \
     if (vmtx.lockedByCaller()) throw lsst::qserv::util::Bug(ERR_LOC, "mutex not free!");
 
 // This header declarations
 namespace lsst::qserv::util {
 
 /// This class implements a verifiable mutex based on std::mutex. It can be used with the
-/// VMUTEX_HELD and VMUTEX_FREE macros.
-class VMutex : public std::mutex {
+/// VMUTEX_HELD and VMUTEX_NOT_HELD macros.
+/// For it to work properly, all of the lock_guard calls must specify util::VMutex
+/// (or a child thereof) and not std::mutex.
+/// Making VMutex a wrapper around std::mutex instead of a child causes lines
+/// like `std::lock_guard<std::mutex> lck(_vmutex);` to be flagged as errors,
+/// which is desirable.
+class VMutex {
 public:
     explicit VMutex() {}
 
     /// Lock the mutex (replaces the corresponding method of the base class)
     void lock() {
-        std::mutex::lock();
+        _mutex.lock();
         _holder = std::this_thread::get_id();
     }
 
     /// Release the mutex (replaces the corresponding method of the base class)
     void unlock() {
         _holder = std::thread::id();
-        std::mutex::unlock();
+        _mutex.unlock();
+    }
+
+    bool try_lock() {
+        bool res = _mutex.try_lock();
+        if (res) {
+            _holder = std::this_thread::get_id();
+        }
+        return res;
     }
 
     /// @return true if the mutex is locked by this thread.
@@ -68,6 +81,9 @@ public:
 
 protected:
     std::atomic<std::thread::id> _holder;
+
+private:
+    std::mutex _mutex;
 };
 
 /**
@@ -96,6 +112,14 @@ public:
     void unlock() {
         removeCurrentId();
         VMutex::unlock();
+    }
+
+    bool try_lock() {
+        bool res = VMutex::try_lock();
+        if (res) {
+            addCurrentId();
+        }
+        return res;
     }
 
     /// @return unique identifier of a lock
