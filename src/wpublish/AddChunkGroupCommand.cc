@@ -69,7 +69,7 @@ void AddChunkGroupCommand::_reportError(proto::WorkerCommandChunkGroupR::Status 
 
     _frameBuf.serialize(reply);
     string str(_frameBuf.data(), _frameBuf.size());
-    _sendChannel->sendStream(xrdsvc::StreamBuffer::createWithMove(str), true);
+    _sendChannel->sendStream(xrdsvc::StreamBuffer::createWithMove(str, "other"), true);
 }
 
 void AddChunkGroupCommand::run() {
@@ -122,7 +122,7 @@ void AddChunkGroupCommand::run() {
     }
     _frameBuf.serialize(reply);
     string str(_frameBuf.data(), _frameBuf.size());
-    _sendChannel->sendStream(xrdsvc::StreamBuffer::createWithMove(str), true);
+    _sendChannel->sendStream(xrdsvc::StreamBuffer::createWithMove(str, "other"), true);
 
     LOGS(_log, LOG_LVL_DEBUG, context << "** SENT **");
 }

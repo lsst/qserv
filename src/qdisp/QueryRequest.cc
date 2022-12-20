@@ -79,6 +79,7 @@ public:
     void action(util::CmdData* data) override {
         // If everything is ok, call GetResponseData to have XrdSsi ask the worker for the data.
         QSERV_LOGCONTEXT_QUERY_JOB(_qid, _jobid);
+        util::InstanceCount ica("QI=" + to_string(_qid) +":" + to_string(_jobid) + "_QReq_AfRDCmd_LDB_a");
         util::Timer tWaiting;
         util::Timer tTotal;
         PseudoFifo::Element::Ptr pseudoFifoElem;
@@ -107,14 +108,18 @@ public:
             pseudoFifoElem = _pseudoFifo->queueAndWait();
 
             tWaiting.start();
+            util::InstanceCount icb("QI=" + to_string(_qid) +":" + to_string(_jobid) + "_QReq_AfRDCmd_LDB_b");
             qr->GetResponseData(&buffer[0], buffer.size());
+            util::InstanceCount icc("QI=" + to_string(_qid) +":" + to_string(_jobid) + "_QReq_AfRDCmd_LDB_c");
         }
 
         // Wait for XrdSsi to call ProcessResponseData with the data,
         // which will notify this wait with a call to receivedProcessResponseDataParameters.
         {
             LOGS(_log, LOG_LVL_TRACE, "GetResponseData called respC=" << _respCount);
+            util::InstanceCount icd("QI=" + to_string(_qid) +":" + to_string(_jobid) + "_QReq_AfRDCmd_LDB_d");
             std::unique_lock<std::mutex> uLock(_mtx);
+            util::InstanceCount ice("QI=" + to_string(_qid) +":" + to_string(_jobid) + "_QReq_AfRDCmd_LDB_e");
             // TODO: make timed wait, check for wedged, if weak pointers dead, log and give up.
             // The only purpose of the below being in a function is make this easier to find in gdb.
             _lockWaitQrA(uLock);
@@ -137,6 +142,7 @@ public:
         // Actually process the data.
         // If more data needs to be sent, _processData will make a new AskForResponseDataCmd
         // object and queue it.
+        util::InstanceCount icf("QI=" + to_string(_qid) +":" + to_string(_jobid) + "_QReq_AfRDCmd_LDB_f");
         {
             auto jq = _jQuery.lock();
             auto qr = _qRequest.lock();
@@ -149,6 +155,7 @@ public:
             // _processData will have created another AskForResponseDataCmd object if was needed.
             tTotal.stop();
         }
+        util::InstanceCount icg("QI=" + to_string(_qid) +":" + to_string(_jobid) + "_QReq_AfRDCmd_LDB_g");
         _setState(State::DONE2);
         LOGS(_log, LOG_LVL_DEBUG,
              "Ask data is done wait=" << tWaiting.getElapsed() << " total=" << tTotal.getElapsed());
@@ -336,8 +343,10 @@ bool QueryRequest::_importStream(JobQuery::Ptr const& jq) {
     int nextBufSize = 0;
     bool last = false;
     int resultRows = 0;
+    util::InstanceCount ica(_jobIdStr + "_QReq_imStream_LDB_a");
     bool flushOk = jq->getDescription()->respHandler()->flush(len, bufPtr, last, largeResult, nextBufSize,
                                                               resultRows);
+    util::InstanceCount icb(_jobIdStr + "_QReq_imStream_LDB_b_last=" + to_string(last));
 
     if (!flushOk) {
         LOGS(_log, LOG_LVL_ERROR, "_importStream not flushOk");

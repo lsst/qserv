@@ -94,7 +94,7 @@ void SetChunkListCommand::_reportError(proto::WorkerCommandSetChunkListR::Status
 
     _frameBuf.serialize(reply);
     string str(_frameBuf.data(), _frameBuf.size());
-    auto streamBuffer = xrdsvc::StreamBuffer::createWithMove(str);
+    auto streamBuffer = xrdsvc::StreamBuffer::createWithMove(str, "other");
     _sendChannel->sendStream(streamBuffer, true);
 }
 
@@ -218,7 +218,7 @@ void SetChunkListCommand::run() {
 
     _frameBuf.serialize(reply);
     string str(_frameBuf.data(), _frameBuf.size());
-    _sendChannel->sendStream(xrdsvc::StreamBuffer::createWithMove(str), true);
+    _sendChannel->sendStream(xrdsvc::StreamBuffer::createWithMove(str, "other"), true);
 
     LOGS(_log, LOG_LVL_DEBUG, context << "** SENT **");
 }

@@ -145,7 +145,7 @@ string TransmitData::getHeaderString(uint32_t seq, int scsSeq) {
 xrdsvc::StreamBuffer::Ptr TransmitData::getStreamBuffer() {
     lock_guard<mutex> lock(_trMtx);
     // createWithMove invalidates _dataMsg
-    return xrdsvc::StreamBuffer::createWithMove(_dataMsg);
+    return xrdsvc::StreamBuffer::createWithMove(_dataMsg, getIdStr());
 }
 
 void TransmitData::_buildHeader(bool largeResult) {
