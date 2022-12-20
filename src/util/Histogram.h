@@ -102,9 +102,13 @@ public:
     double getBucketMaxVal(size_t index) const;
 
     /// Add a time and value to the histogram.
+    /// @return If note is not empty, a log worthy string describing the data in the histogram
+    ///         is returned.
     virtual std::string addEntry(TIMEPOINT stamp, double val, std::string const& note = std::string());
 
     /// Add a time entry using CLOCK::now() as the time stamp.
+    /// @return If note is not empty, a log worthy string describing the data in the histogram
+    ///         is returned.
     virtual std::string addEntry(double val, std::string const& note = std::string());
 
     nlohmann::json getJson() const;  ///< Return a json version of this object.
