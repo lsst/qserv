@@ -99,7 +99,7 @@ bool MergingHandler::flush(int bLen, BufPtr const& bufPtr, bool& last, bool& lar
 
     switch (_state) {
         case MsgState::HEADER_WAIT: {
-            util::InstanceCount icl(_tableName + "_Merge_flush_LDB_l_header_wait");
+            //&&&util::InstanceCount icl(_tableName + "_Merge_flush_LDB_l_header_wait");
             _response->headerSize = static_cast<unsigned char>((*bufPtr)[0]);
             if (!proto::ProtoHeaderWrap::unwrap(_response, *bufPtr)) {
                 std::string sErr =
@@ -145,7 +145,7 @@ bool MergingHandler::flush(int bLen, BufPtr const& bufPtr, bool& last, bool& lar
         }
             return true;
         case MsgState::RESULT_WAIT: {
-            util::InstanceCount icp(_tableName + "_Merge_flush_LDB_p_result_wait");
+            //&&&util::InstanceCount icp(_tableName + "_Merge_flush_LDB_p_result_wait");
             nextBufSize = proto::ProtoHeaderWrap::getProtoHeaderSize();
             auto jobQuery = getJobQuery().lock();
             if (!_verifyResult(bufPtr, bLen)) {
@@ -164,9 +164,9 @@ bool MergingHandler::flush(int bLen, BufPtr const& bufPtr, bool& last, bool& lar
             LOGS(_log, LOG_LVL_DEBUG, "Flushed last=" << last << " for tableName=" << _tableName);
 
             auto success = _merge();
-            util::InstanceCount icpx(_tableName + "_Merge_flush_LDB_px");
+            //&&&util::InstanceCount icpx(_tableName + "_Merge_flush_LDB_px");
             _response.reset(new WorkerResponse());
-            util::InstanceCount icpz(_tableName + "_Merge_flush_LDB_pz");
+            //&&&util::InstanceCount icpz(_tableName + "_Merge_flush_LDB_pz");
             return success;
         }
         case MsgState::RESULT_RECV:
@@ -236,9 +236,9 @@ bool MergingHandler::_merge() {
         if (_flushed) {
             throw util::Bug(ERR_LOC, "MergingRequester::_merge : already flushed");
         }
-        util::InstanceCount icb(_tableName + "_Merge_merge_LDB_b");
+        //&&&util::InstanceCount icb(_tableName + "_Merge_merge_LDB_b");
         bool success = _infileMerger->merge(_response);
-        util::InstanceCount icc(_tableName + "_Merge_merge_LDB_c");
+        //&&&util::InstanceCount icc(_tableName + "_Merge_merge_LDB_c");
         if (!success) {
             LOGS(_log, LOG_LVL_WARN, "_merge() failed");
             rproc::InfileMergerError const& err = _infileMerger->getError();
@@ -246,11 +246,11 @@ bool MergingHandler::_merge() {
             _state = MsgState::RESULT_ERR;
         }
         _response.reset();
-        util::InstanceCount icx(_tableName + "_Merge_merge_LDB_x");
+        //&&&util::InstanceCount icx(_tableName + "_Merge_merge_LDB_x");
         return success;
     }
     LOGS(_log, LOG_LVL_ERROR, "MergingHandler::_merge() failed, jobQuery was NULL");
-    util::InstanceCount icz(_tableName + "_Merge_merge_LDB_z");
+    //&&&util::InstanceCount icz(_tableName + "_Merge_merge_LDB_z");
     return false;
 }
 

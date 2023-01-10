@@ -210,9 +210,11 @@ bool SendChannelShared::_transmit(bool erred) {
         // The first message needs to put its header data in metadata as there's
         // no previous message it could attach its header to.
         {
-            icPtrA = std::make_shared<util::InstanceCount>(thisTransmit->getIdStr() + "_te_LDB_" + to_string(reallyLast) + "_a"); //&&&
+            icPtrA = std::make_shared<util::InstanceCount>(thisTransmit->getIdStr() + "_te_LDB_" +
+                                                           to_string(reallyLast) + "_a");  //&&&
             lock_guard<mutex> streamLock(_streamMutex);  // Must keep meta and buffer together.
-            icPtrA = std::make_shared<util::InstanceCount>(thisTransmit->getIdStr() + "_te_LDB_" + to_string(reallyLast) + "_b"); //&&&
+            icPtrA = std::make_shared<util::InstanceCount>(thisTransmit->getIdStr() + "_te_LDB_" +
+                                                           to_string(reallyLast) + "_b");  //&&&
             if (_firstTransmit.exchange(false)) {
                 // Put the header for the first message in metadata
                 // _metaDataBuf must remain valid until Finished() is called.
@@ -231,10 +233,12 @@ bool SendChannelShared::_transmit(bool erred) {
             {
                 util::Timer sendTimer;
                 sendTimer.start();
-                icPtrA = std::make_shared<util::InstanceCount>(thisTransmit->getIdStr() + "_te_LDB_" + to_string(reallyLast) + "_c"); //&&&
+                icPtrA = std::make_shared<util::InstanceCount>(thisTransmit->getIdStr() + "_te_LDB_" +
+                                                               to_string(reallyLast) + "_c");  //&&&
                 bool sent = _sendBuf(streamLock, streamBuf, reallyLast,
                                      "transmitLoop " + idStr + " " + seqStr, scsSeq);
-                icPtrA = std::make_shared<util::InstanceCount>(thisTransmit->getIdStr() + "_te_LDB_" + to_string(reallyLast) + "_d"); //&&&
+                icPtrA = std::make_shared<util::InstanceCount>(thisTransmit->getIdStr() + "_te_LDB_" +
+                                                               to_string(reallyLast) + "_d");  //&&&
                 sendTimer.stop();
                 auto logMsgSend = scsTransmitSend.addTime(sendTimer.getElapsed(), idStr);
                 LOGS(_log, LOG_LVL_INFO, logMsgSend);
@@ -245,7 +249,8 @@ bool SendChannelShared::_transmit(bool erred) {
                 }
             }
         }
-        icPtrA = std::make_shared<util::InstanceCount>(thisTransmit->getIdStr() + "_te_LDB_" + to_string(reallyLast) + "_z"); //&&&
+        icPtrA = std::make_shared<util::InstanceCount>(thisTransmit->getIdStr() + "_te_LDB_" +
+                                                       to_string(reallyLast) + "_z");  //&&&
         // If that was the last message, break the loop.
         if (reallyLast) return true;
     }

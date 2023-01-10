@@ -79,7 +79,7 @@ public:
     void action(util::CmdData* data) override {
         // If everything is ok, call GetResponseData to have XrdSsi ask the worker for the data.
         QSERV_LOGCONTEXT_QUERY_JOB(_qid, _jobid);
-        util::InstanceCount ica("QI=" + to_string(_qid) +":" + to_string(_jobid) + "_QReq_AfRDCmd_LDB_a");
+        util::InstanceCount ica("QI=" + to_string(_qid) + ":" + to_string(_jobid) + "_QReq_AfRDCmd_LDB_a");
         util::Timer tWaiting;
         util::Timer tTotal;
         PseudoFifo::Element::Ptr pseudoFifoElem;
@@ -108,18 +108,22 @@ public:
             pseudoFifoElem = _pseudoFifo->queueAndWait();
 
             tWaiting.start();
-            util::InstanceCount icb("QI=" + to_string(_qid) +":" + to_string(_jobid) + "_QReq_AfRDCmd_LDB_b");
+            util::InstanceCount icb("QI=" + to_string(_qid) + ":" + to_string(_jobid) +
+                                    "_QReq_AfRDCmd_LDB_b");
             qr->GetResponseData(&buffer[0], buffer.size());
-            util::InstanceCount icc("QI=" + to_string(_qid) +":" + to_string(_jobid) + "_QReq_AfRDCmd_LDB_c");
+            util::InstanceCount icc("QI=" + to_string(_qid) + ":" + to_string(_jobid) +
+                                    "_QReq_AfRDCmd_LDB_c");
         }
 
         // Wait for XrdSsi to call ProcessResponseData with the data,
-        // which will notify this wait with a call to receivedProcessResponseDataParameters.
+        // which will notify this wait with a call to notifyDataSuccess.
         {
             LOGS(_log, LOG_LVL_TRACE, "GetResponseData called respC=" << _respCount);
-            util::InstanceCount icd("QI=" + to_string(_qid) +":" + to_string(_jobid) + "_QReq_AfRDCmd_LDB_d");
+            util::InstanceCount icd("QI=" + to_string(_qid) + ":" + to_string(_jobid) +
+                                    "_QReq_AfRDCmd_LDB_d");
             std::unique_lock<std::mutex> uLock(_mtx);
-            util::InstanceCount ice("QI=" + to_string(_qid) +":" + to_string(_jobid) + "_QReq_AfRDCmd_LDB_e");
+            util::InstanceCount ice("QI=" + to_string(_qid) + ":" + to_string(_jobid) +
+                                    "_QReq_AfRDCmd_LDB_e");
             // TODO: make timed wait, check for wedged, if weak pointers dead, log and give up.
             // The only purpose of the below being in a function is make this easier to find in gdb.
             _lockWaitQrA(uLock);
@@ -142,7 +146,7 @@ public:
         // Actually process the data.
         // If more data needs to be sent, _processData will make a new AskForResponseDataCmd
         // object and queue it.
-        util::InstanceCount icf("QI=" + to_string(_qid) +":" + to_string(_jobid) + "_QReq_AfRDCmd_LDB_f");
+        util::InstanceCount icf("QI=" + to_string(_qid) + ":" + to_string(_jobid) + "_QReq_AfRDCmd_LDB_f");
         {
             auto jq = _jQuery.lock();
             auto qr = _qRequest.lock();
@@ -155,7 +159,7 @@ public:
             // _processData will have created another AskForResponseDataCmd object if was needed.
             tTotal.stop();
         }
-        util::InstanceCount icg("QI=" + to_string(_qid) +":" + to_string(_jobid) + "_QReq_AfRDCmd_LDB_g");
+        util::InstanceCount icg("QI=" + to_string(_qid) + ":" + to_string(_jobid) + "_QReq_AfRDCmd_LDB_g");
         _setState(State::DONE2);
         LOGS(_log, LOG_LVL_DEBUG,
              "Ask data is done wait=" << tWaiting.getElapsed() << " total=" << tTotal.getElapsed());
@@ -310,9 +314,17 @@ bool QueryRequest::ProcessResponse(XrdSsiErrInfo const& eInfo, XrdSsiRespInfo co
         case XrdSsiRespInfo::isFile:  // Local-only
             errorDesc += "Unexpected XrdSsiRespInfo.rType == isFile";
             break;
-        case XrdSsiRespInfo::isStream:  // All remote requests
+        case XrdSsiRespInfo::isStream: {  // All remote requests
             jq->getStatus()->updateInfo(_jobIdStr, JobStatus::RESPONSE_READY, "SSI");
-            return _importStream(jq);
+            //&&&return _importStream(jq);
+            bool importSuccess = _importStream(jq);
+            LOGS(_log, LOG_LVL_INFO, "&&& _importStream importSuccess=" << importSuccess);
+            if (!importSuccess) {
+                LOGS(_log, LOG_LVL_WARN, "ProcessResponse stream import failure.");
+                _errorFinish();
+            }
+            return importSuccess;
+        }
         default:
             errorDesc += "Out of range XrdSsiRespInfo.rType";
     }
@@ -641,8 +653,20 @@ void QueryRequest::cleanup() {
 /// a local shared pointer for this QueryRequest and/or its owner JobQuery.
 /// See QueryRequest::cleanup()
 /// @return true if this QueryRequest object had the authority to make changes.
+
+atomic<int> errorFinishFalseCount{0};  //&&&
+atomic<int> errorFinishTrueCount{0};   //&&&
+
 bool QueryRequest::_errorFinish(bool stopTrying) {
     LOGS(_log, LOG_LVL_DEBUG, "_errorFinish() shouldCancel=" << stopTrying);
+    if (stopTrying) {
+        ++errorFinishTrueCount;
+    } else {
+        ++errorFinishFalseCount;
+    }
+    LOGS(_log, LOG_LVL_WARN,
+         "&&&_errorFinish stopTrying=" << stopTrying << " tCount=" << errorFinishTrueCount
+                                       << " fCount=" << errorFinishFalseCount);
     auto jq = _jobQuery;
     {
         // Running _errorFinish more than once could cause errors.
@@ -657,8 +681,9 @@ bool QueryRequest::_errorFinish(bool stopTrying) {
     }
 
     // Make the calls outside of the mutex lock.
-    LOGS(_log, LOG_LVL_DEBUG, "calling Finished(stopTrying=" << stopTrying << ")");
-    bool ok = Finished(stopTrying);
+    LOGS(_log, LOG_LVL_WARN, "calling Finished(stopTrying=" << stopTrying << ")");
+    //&&&bool ok = Finished(stopTrying);
+    bool ok = Finished(true);  // &&&
     _finishedCalled = true;
     if (!ok) {
         LOGS(_log, LOG_LVL_ERROR, "QueryRequest::_errorFinish NOT ok");

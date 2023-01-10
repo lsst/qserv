@@ -54,7 +54,7 @@ public:
 
     /// Factory function, because this should be able to delete itself when Recycle() is called.
     /// The constructor uses move to avoid copying the string.
-    static StreamBuffer::Ptr createWithMove(std::string &input, std::string const& idStr);
+    static StreamBuffer::Ptr createWithMove(std::string &input, std::string const &idStr);
 
     /// Set the maximum number of bytes that can be used by all instances of this class.
     static void setMaxTotalBytes(int64_t maxBytes);
@@ -81,7 +81,7 @@ public:
 
 private:
     /// This constructor will invalidate 'input'.
-    explicit StreamBuffer(std::string &input, std::string const& idStr);
+    explicit StreamBuffer(std::string &input, std::string const &idStr);
 
     std::string _dataStr;
     std::string const _idStr;

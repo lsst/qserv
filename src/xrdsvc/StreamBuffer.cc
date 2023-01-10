@@ -65,7 +65,7 @@ double StreamBuffer::percentOfMaxTotalBytesUsed() {
 }
 
 // Factory function, because this should be able to delete itself when Recycle() is called.
-StreamBuffer::Ptr StreamBuffer::createWithMove(std::string &input, string const& idStr) {
+StreamBuffer::Ptr StreamBuffer::createWithMove(std::string &input, string const &idStr) {
     unique_lock<mutex> uLock(_createMtx);
     if (_totalBytes >= _maxTotalBytes) {
         LOGS(_log, LOG_LVL_WARN, "StreamBuffer at memory limit " << _totalBytes);
@@ -76,7 +76,7 @@ StreamBuffer::Ptr StreamBuffer::createWithMove(std::string &input, string const&
     return ptr;
 }
 
-StreamBuffer::StreamBuffer(std::string &input, string const& idStr) : _idStr(idStr) {
+StreamBuffer::StreamBuffer(std::string &input, string const &idStr) : _idStr(idStr) {
     _dataStr = std::move(input);
     // TODO: try to make 'data' a const char* in xrootd code.
     // 'data' is not being changed after being passed, so hopefully not an issue.

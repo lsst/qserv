@@ -291,9 +291,7 @@ bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> const& response)
             throw std::invalid_argument("InfileMerger::_dbEngine is unknown =" + engineToStr(_dbEngine));
     }
     auto end = std::chrono::system_clock::now();
-    util::InstanceCount icl(_getQueryIdStr() + "_InfMerge_LDB_l");
     auto mergeDur = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-    util::InstanceCount icm(_getQueryIdStr() + "_InfMerge_LDB_m");
     LOGS(_log, LOG_LVL_DEBUG,
          "mergeDur=" << mergeDur.count() << " sema(total=" << _semaMgrConn->getTotalCount()
                      << " used=" << _semaMgrConn->getUsedCount() << ")");
@@ -303,7 +301,6 @@ bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> const& response)
     _invalidJobAttemptMgr.decrConcurrentMergeCount();
 
     LOGS(_log, LOG_LVL_DEBUG, "mergeDur=" << mergeDur.count());
-    util::InstanceCount icz(_getQueryIdStr() + "_InfMerge_LDB_z");
     return ret;
 }
 
