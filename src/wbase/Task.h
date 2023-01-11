@@ -39,19 +39,23 @@
 #include "global/intTypes.h"
 #include "memman/MemMan.h"
 #include "proto/ScanTableInfo.h"
+#include "util/Histogram.h"
 #include "util/ThreadPool.h"
 #include "util/threadSafe.h"
 
 // Forward declarations
 namespace lsst::qserv {
-namespace wbase {
-struct ScriptMeta;
-class SendChannelShared;
-}  // namespace wbase
 namespace proto {
 class TaskMsg;
 class TaskMsg_Fragment;
 }  // namespace proto
+namespace wbase {
+struct ScriptMeta;
+class SendChannelShared;
+}  // namespace wbase
+namespace wpublish {
+class QueryStatistics;
+}
 }  // namespace lsst::qserv
 
 namespace lsst::qserv::wbase {
@@ -72,9 +76,15 @@ class Task;
 class TaskScheduler {
 public:
     using Ptr = std::shared_ptr<TaskScheduler>;
+    TaskScheduler();
     virtual ~TaskScheduler() {}
     virtual void taskCancelled(Task*) = 0;  ///< Repeated calls must be harmless.
     virtual bool removeTask(std::shared_ptr<Task> const& task, bool removeRunning) = 0;
+
+    virtual nlohmann::json getJson() const = 0;
+
+    util::HistogramRolling::Ptr histTimeOfRunningTasks;       ///< Store information about running tasks
+    util::HistogramRolling::Ptr histTimeOfTransmittingTasks;  ///< Store information about transmitting tasks.
 };
 
 /// Used to find tasks that are in process for debugging with Task::_idStr.
@@ -127,6 +137,8 @@ public:
     /// Read 'taskMsg' to generate a vector of one or more task objects all using the same 'sendChannel'
     static std::vector<Ptr> createTasks(std::shared_ptr<proto::TaskMsg> const& taskMsg,
                                         std::shared_ptr<SendChannelShared> const& sendChannel);
+
+    void setQueryStatistics(std::shared_ptr<wpublish::QueryStatistics> const& qC);
 
     TaskMsgPtr msg;  ///< Protobufs Task spec
     std::shared_ptr<SendChannelShared> getSendChannel() const { return _sendChannel; }
@@ -192,6 +204,11 @@ public:
         return QueryIdHelper::makeIdStr(_qId, _jId, invalid) + std::to_string(_tSeq) + ":";
     }
 
+    std::shared_ptr<wpublish::QueryStatistics> getQueryStats() const;
+
+    /// Return a json object describing sdome details of this task.
+    nlohmann::json getJson() const;
+
 private:
     std::shared_ptr<SendChannelShared> _sendChannel;
     uint64_t const _tSeq = 0;     ///< identifier for the specific task
@@ -220,6 +237,9 @@ private:
     std::chrono::system_clock::time_point _startTime;
     std::chrono::system_clock::time_point _finishTime;
     size_t _totalSize = 0;  ///< Total size of the result so far.
+
+    /// Stores information on the query's resource usage.
+    std::weak_ptr<wpublish::QueryStatistics> _queryStats;
 };
 
 }  // namespace lsst::qserv::wbase

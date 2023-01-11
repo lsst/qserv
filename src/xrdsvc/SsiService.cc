@@ -140,7 +140,7 @@ SsiService::SsiService(XrdSsiLogger* log, wconfig::WorkerConfig const& workerCon
             "SchedSnail", maxThread, workerConfig.getMaxReserveSnail(), workerConfig.getPrioritySnail(),
             workerConfig.getMaxActiveChunksSnail(), memMan, slow + 1, slowest, snailScanMaxMinutes);
 
-    wpublish::QueriesAndChunks::Ptr queries = make_shared<wpublish::QueriesAndChunks>(
+    wpublish::QueriesAndChunks::Ptr queries = wpublish::QueriesAndChunks::setupGlobal(
             chrono::minutes(5), chrono::minutes(5), maxTasksBootedPerUserQuery);
     wsched::BlendScheduler::Ptr blendSched = make_shared<wsched::BlendScheduler>(
             "BlendSched", queries, maxThread, group, snail, scanSchedulers);

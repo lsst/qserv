@@ -35,6 +35,8 @@ namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.wsched.ScanScheduler");
 }
 
+using namespace std;
+
 namespace lsst::qserv::wsched {
 
 /// Set priority to use when starting next chunk.
@@ -128,6 +130,14 @@ nlohmann::json SchedulerBase::statusToJson() {
     return status;
 }
 
+nlohmann::json SchedulerBase::getJson() const {
+    nlohmann::json js = {{"SchedulerName", getName()},          histTimeOfTransmittingTasks->getJson(),
+                         histTimeOfRunningTasks->getJson(),     _histQueuedTasks->getJson(),
+                         _histRunningTasks->getJson(),          _histTransmittingTasks->getJson(),
+                         _histRecentlyCompletedTasks->getJson()};
+    return js;
+}
+
 void SchedulerBase::setMaxActiveChunks(int maxActive) {
     if (maxActive < 1) maxActive = 1;
     _maxActiveChunks = maxActive;
@@ -137,6 +147,14 @@ bool SchedulerBase::chunkAlreadyActive(int chunkId) {
     std::lock_guard<std::mutex> lock(_countsMutex);
     auto iter = _chunkTasks.find(chunkId);
     return iter != _chunkTasks.end();  // return true if chunkId was found.
+}
+
+void SchedulerBase::recordPerformanceData() {
+    _histQueuedTasks->addEntry(getTotalTaskCount());
+    _histRunningTasks->addEntry(_inFlight);
+    _histTransmittingTasks->addEntry(_transmitCount);
+    _histRecentlyCompletedTasks->addEntry(_recentlyCompleted);
+    _recentlyCompleted = 0;  // reset to 0 every time it is recorded.
 }
 
 }  // namespace lsst::qserv::wsched

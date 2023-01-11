@@ -122,7 +122,7 @@ std::string TimerHistogram::getString(std::string const& note) {
 std::string TimerHistogram::_getString(std::string const& note) {
     std::stringstream os;
     os << _label << " " << note << " avg=" << (_total / _totalCount) << " ";
-    double maxB = -DBL_MAX;
+    double maxB = -std::numeric_limits<double>::infinity();
     for (auto& bkt : _buckets) {
         os << " <" << bkt.getMaxVal() << "=" << bkt.count;
         maxB = bkt.getMaxVal();

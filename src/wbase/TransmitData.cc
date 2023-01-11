@@ -258,6 +258,11 @@ int TransmitData::getResultSize() const {
     return _dataMsg.size();
 }
 
+int TransmitData::getResultRowCount() const {
+    lock_guard<mutex> lock(_trMtx);
+    return _rowCount;
+}
+
 string TransmitData::_dump() const {
     string str = string(" trDump ") + _idStr + " trSeq=" + to_string(_trSeq) + " hdr=";
     if (_header != nullptr) {

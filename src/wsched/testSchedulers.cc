@@ -156,8 +156,62 @@ struct SchedulerFixture {
 
 BOOST_FIXTURE_TEST_SUITE(SchedulerSuite, SchedulerFixture)
 
+struct SchedFixture {
+    SchedFixture(double maxScanTimeFast, bool examinAllSleep)
+            : _maxScanTimeFast{maxScanTimeFast}, _examineAllSleep{examinAllSleep} {
+        setupQueriesBlend();
+    }
+    ~SchedFixture() {}
+
+    void setupQueriesBlend() {
+        bool resetForTesting = true;
+        queries = lsst::qserv::wpublish::QueriesAndChunks::setupGlobal(
+                std::chrono::seconds(1), std::chrono::seconds(_examineAllSleep), 5, resetForTesting);
+        blend = std::make_shared<wsched::BlendScheduler>("blendSched", queries, maxThreads, group, scanSlow,
+                                                         scanSchedulers);
+        group->setDefaultPosition(0);
+        scanFast->setDefaultPosition(1);
+        scanMed->setDefaultPosition(2);
+        scanSlow->setDefaultPosition(3);
+        queries->setBlendScheduler(blend);
+        queries->setRequiredTasksCompleted(1);  // Make it easy to set a baseline.
+    }
+
+    int const fastest = lsst::qserv::proto::ScanInfo::Rating::FASTEST;
+    int const fast = lsst::qserv::proto::ScanInfo::Rating::FAST;
+    int const medium = lsst::qserv::proto::ScanInfo::Rating::MEDIUM;
+    int const slow = lsst::qserv::proto::ScanInfo::Rating::SLOW;
+
+    lsst::qserv::QueryId qIdInc{1};
+
+    int maxThreads{9};
+    int maxActiveChunks{20};
+    int priority{2};
+
+private:
+    double _maxScanTimeFast{oneHr};  ///< Don't hit time limit in tests.
+    int _examineAllSleep{0};         ///< Don't run _examineThread when 0
+
+public:
+    lsst::qserv::memman::MemManNone::Ptr memMan{std::make_shared<lsst::qserv::memman::MemManNone>(1, true)};
+    wsched::GroupScheduler::Ptr group{
+            std::make_shared<wsched::GroupScheduler>("GroupSched", maxThreads, 2, 3, priority++)};
+    wsched::ScanScheduler::Ptr scanSlow{std::make_shared<wsched::ScanScheduler>(
+            "ScanSlow", maxThreads, 2, priority++, maxActiveChunks, memMan, medium + 1, slow, oneHr)};
+    wsched::ScanScheduler::Ptr scanMed{std::make_shared<wsched::ScanScheduler>(
+            "ScanMed", maxThreads, 2, priority++, maxActiveChunks, memMan, fast + 1, medium, oneHr)};
+    wsched::ScanScheduler::Ptr scanFast{std::make_shared<wsched::ScanScheduler>(
+            "ScanFast", maxThreads, 3, priority++, maxActiveChunks, memMan, fastest, fast, _maxScanTimeFast)};
+    std::vector<wsched::ScanScheduler::Ptr> scanSchedulers{scanFast, scanMed};
+
+    lsst::qserv::wpublish::QueriesAndChunks::Ptr queries;
+    wsched::BlendScheduler::Ptr blend;
+};
+
 // TODO: DM-33302 replace this test case
 BOOST_AUTO_TEST_CASE(Grouping) {
+    SchedFixture f(60.0, 1);  // Values to keep QueriesAndChunk from triggering.
+
     // Test grouping by chunkId. Max entries added to a single group set to 3.
     wsched::GroupScheduler gs{"GroupSchedA", 100, 0, 3, 0};
     // chunk Ids
@@ -327,63 +381,11 @@ BOOST_AUTO_TEST_CASE(ScanScheduleTest) {
     BOOST_CHECK(sched.ready() == false);
 }
 
-struct SchedFixture {
-    SchedFixture() { setupQueriesBlend(); }
-    SchedFixture(double maxScanTimeFast, bool examinAllSleep)
-            : _maxScanTimeFast{maxScanTimeFast}, _examineAllSleep{examinAllSleep} {
-        setupQueriesBlend();
-    }
-    ~SchedFixture() {}
-
-    void setupQueriesBlend() {
-        queries = std::make_shared<lsst::qserv::wpublish::QueriesAndChunks>(
-                std::chrono::seconds(1), std::chrono::seconds(_examineAllSleep), 5);
-        blend = std::make_shared<wsched::BlendScheduler>("blendSched", queries, maxThreads, group, scanSlow,
-                                                         scanSchedulers);
-        group->setDefaultPosition(0);
-        scanFast->setDefaultPosition(1);
-        scanMed->setDefaultPosition(2);
-        scanSlow->setDefaultPosition(3);
-        queries->setBlendScheduler(blend);
-        queries->setRequiredTasksCompleted(1);  // Make it easy to set a baseline.
-    }
-
-    int const fastest = lsst::qserv::proto::ScanInfo::Rating::FASTEST;
-    int const fast = lsst::qserv::proto::ScanInfo::Rating::FAST;
-    int const medium = lsst::qserv::proto::ScanInfo::Rating::MEDIUM;
-    int const slow = lsst::qserv::proto::ScanInfo::Rating::SLOW;
-
-    lsst::qserv::QueryId qIdInc{1};
-
-    int maxThreads{9};
-    int maxActiveChunks{20};
-    int priority{2};
-
-private:
-    double _maxScanTimeFast{oneHr};  ///< Don't hit time limit in tests.
-    int _examineAllSleep{0};         ///< Don't run _examineThread when 0
-
-public:
-    lsst::qserv::memman::MemManNone::Ptr memMan{std::make_shared<lsst::qserv::memman::MemManNone>(1, true)};
-    wsched::GroupScheduler::Ptr group{
-            std::make_shared<wsched::GroupScheduler>("GroupSched", maxThreads, 2, 3, priority++)};
-    wsched::ScanScheduler::Ptr scanSlow{std::make_shared<wsched::ScanScheduler>(
-            "ScanSlow", maxThreads, 2, priority++, maxActiveChunks, memMan, medium + 1, slow, oneHr)};
-    wsched::ScanScheduler::Ptr scanMed{std::make_shared<wsched::ScanScheduler>(
-            "ScanMed", maxThreads, 2, priority++, maxActiveChunks, memMan, fast + 1, medium, oneHr)};
-    wsched::ScanScheduler::Ptr scanFast{std::make_shared<wsched::ScanScheduler>(
-            "ScanFast", maxThreads, 3, priority++, maxActiveChunks, memMan, fastest, fast, _maxScanTimeFast)};
-    std::vector<wsched::ScanScheduler::Ptr> scanSchedulers{scanFast, scanMed};
-
-    lsst::qserv::wpublish::QueriesAndChunks::Ptr queries;
-    wsched::BlendScheduler::Ptr blend;
-};
-
 BOOST_AUTO_TEST_CASE(BlendScheduleTest) {
     // Test that space is appropriately reserved for each scheduler as Tasks are started and finished.
     // In this case, memMan->lock(..) always returns true (really HandleType::ISEMPTY).
     // ChunkIds matter as they control the order Tasks come off individual schedulers.
-    SchedFixture f;
+    SchedFixture f(60.0, 1);  // Values to keep QueriesAndChunk from triggering.
 
     BOOST_CHECK(f.blend->ready() == false);
     BOOST_CHECK(f.blend->calcAvailableTheads() == 5);
@@ -580,7 +582,7 @@ BOOST_AUTO_TEST_CASE(BlendScheduleTest) {
 }
 
 BOOST_AUTO_TEST_CASE(BlendScheduleThreadLimitingTest) {
-    SchedFixture f;
+    SchedFixture f(60.0, 1);  // Values to keep QueriesAndChunk from triggering.
     LOGS(_log, LOG_LVL_DEBUG, "BlendScheduleTest-2 check thread limiting");
     // Test that only 6 threads can be started on a single ScanScheduler
     // This leaves 3 threads available, 1 for each other scheduler.
@@ -652,7 +654,7 @@ BOOST_AUTO_TEST_CASE(BlendScheduleQueryRemovalTest) {
     // Test that space is appropriately reserved for each scheduler as Tasks are started and finished.
     // In this case, memMan->lock(..) always returns true (really HandleType::ISEMPTY).
     // ChunkIds matter as they control the order Tasks come off individual schedulers.
-    SchedFixture f;
+    SchedFixture f(60.0, 1);  // Values to keep QueriesAndChunk from triggering.
     LOGS(_log, LOG_LVL_DEBUG, "BlendScheduleQueryRemovalTest");
     // Add two queries to scanFast scheduler and then move one query to scanSlow.
     int startChunk = 70;

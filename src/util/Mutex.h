@@ -31,14 +31,65 @@
 #include <string>
 #include <thread>
 
-// This header declarations
+#include "util/Bug.h"
 
+/// Used to verify a mutex is locked before accessing a protected variable.
+#define VMUTEX_HELD(vmtx) \
+    if (!vmtx.lockedByCaller()) throw lsst::qserv::util::Bug(ERR_LOC, "mutex not locked!");
+
+/// Used to verify a mutex is not locked by this thread before locking a related mutex.
+#define VMUTEX_NOT_HELD(vmtx) \
+    if (vmtx.lockedByCaller()) throw lsst::qserv::util::Bug(ERR_LOC, "mutex not free!");
+
+// This header declarations
 namespace lsst::qserv::util {
+
+/// This class implements a verifiable mutex based on std::mutex. It can be used with the
+/// VMUTEX_HELD and VMUTEX_NOT_HELD macros.
+/// For it to work properly, all of the lock_guard calls must specify util::VMutex
+/// (or a child thereof) and not std::mutex.
+/// Making VMutex a wrapper around std::mutex instead of a child causes lines
+/// like `std::lock_guard<std::mutex> lck(_vmutex);` to be flagged as errors,
+/// which is desirable.
+class VMutex {
+public:
+    explicit VMutex() {}
+
+    /// Lock the mutex (replaces the corresponding method of the base class)
+    void lock() {
+        _mutex.lock();
+        _holder = std::this_thread::get_id();
+    }
+
+    /// Release the mutex (replaces the corresponding method of the base class)
+    void unlock() {
+        _holder = std::thread::id();
+        _mutex.unlock();
+    }
+
+    bool try_lock() {
+        bool res = _mutex.try_lock();
+        if (res) {
+            _holder = std::this_thread::get_id();
+        }
+        return res;
+    }
+
+    /// @return true if the mutex is locked by this thread.
+    /// TODO: Rename lockedByThread()
+    bool lockedByCaller() const { return _holder == std::this_thread::get_id(); }
+
+protected:
+    std::atomic<std::thread::id> _holder;
+
+private:
+    std::mutex _mutex;
+};
 
 /**
  * Class Mutex extends the standard class std::mutex with extra methods.
  */
-class Mutex : public std::mutex {
+class Mutex : public VMutex {
 public:
     /// @return identifiers of locked mutexes
     static std::set<unsigned int> lockedId() {
@@ -53,23 +104,26 @@ public:
 
     /// Lock the mutext (replaces the corresponding method of the base class)
     void lock() {
-        std::mutex::lock();
-        _holder = std::this_thread::get_id();
+        VMutex::lock();
         addCurrentId();
     }
 
     /// Release the mutext (replaces the corresponding method of the base class)
     void unlock() {
         removeCurrentId();
-        _holder = std::thread::id();
-        std::mutex::unlock();
+        VMutex::unlock();
+    }
+
+    bool try_lock() {
+        bool res = VMutex::try_lock();
+        if (res) {
+            addCurrentId();
+        }
+        return res;
     }
 
     /// @return unique identifier of a lock
     unsigned int id() const { return _id; }
-
-    /// @return true if the mutex is locked by the caller of this method
-    bool lockedByCaller() const { return _holder == std::this_thread::get_id(); }
 
 private:
     /// @return next identifier in a global series
@@ -95,7 +149,6 @@ private:
     static std::set<unsigned int> _lockedId;
 
     unsigned int _id;
-    std::atomic<std::thread::id> _holder;
 };
 
 /**

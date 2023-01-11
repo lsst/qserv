@@ -78,7 +78,6 @@ uint64_t countLimiter = 0;  // LockupDB
 /// Called by XrdSsi to actually process a request.
 void SsiRequest::execute(XrdSsiRequest& req) {
     util::Timer t;
-
     LOGS(_log, LOG_LVL_DEBUG, "Execute request, resource=" << _resourceName);
 
     char* reqData = nullptr;

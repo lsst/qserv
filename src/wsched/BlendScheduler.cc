@@ -231,6 +231,8 @@ void BlendScheduler::queCmd(std::vector<util::Command::Ptr> const& cmds) {
                                                        << " sched=" << targSched->getName());
     }
 
+    _logSchedulers();
+
     if (!taskCmds.empty()) {
         LOGS(_log, LOG_LVL_DEBUG, "Blend queCmd");
         targSched->queCmd(taskCmds);
@@ -359,6 +361,8 @@ util::Command::Ptr BlendScheduler::getCmd(bool wait) {
         } else {
             ready = _ready();
         }
+
+        _logSchedulers();
 
         // Try to get a command from the schedulers
         if (ready && (_readySched != nullptr)) {
@@ -506,6 +510,14 @@ int BlendScheduler::moveUserQuery(QueryId qId, SchedulerBase::Ptr const& source,
         ++count;
     }
     return count;
+}
+
+void BlendScheduler::_logSchedulers() {
+    chrono::system_clock::time_point now = chrono::system_clock::now();
+    if (now > _nextRecordPerformanceTime) {
+        _nextRecordPerformanceTime = now + _intervalRecordPerformanceTime;
+        recordPerformanceData();
+    }
 }
 
 void ControlCommandQueue::queCmd(util::Command::Ptr const& cmd) {

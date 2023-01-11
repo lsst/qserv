@@ -31,6 +31,9 @@
 // Class header
 #include "wbase/Task.h"
 
+// System headers
+#include <ctime>
+
 // Third-party headers
 #include "boost/regex.hpp"
 #include <boost/algorithm/string/replace.hpp>
@@ -46,6 +49,10 @@
 #include "util/Bug.h"
 #include "wbase/Base.h"
 #include "wbase/SendChannelShared.h"
+#include "wpublish/QueriesAndChunks.h"
+
+using namespace std;
+using namespace std::chrono_literals;
 
 namespace {
 
@@ -95,6 +102,14 @@ bool Task::ChunkIdGreater::operator()(Task::Ptr const& x, Task::Ptr const& y) {
 
 std::string const Task::defaultUser = "qsmaster";
 IdSet Task::allIds{};
+
+TaskScheduler::TaskScheduler() {
+    auto hour = std::chrono::milliseconds(1h);
+    histTimeOfRunningTasks = util::HistogramRolling::Ptr(
+            new util::HistogramRolling("RunningTaskTimes", {0.1, 1.0, 10.0, 100.0, 200.0}, hour, 10'000));
+    histTimeOfTransmittingTasks = util::HistogramRolling::Ptr(new util::HistogramRolling(
+            "TransmittingTaskTime", {0.1, 1.0, 10.0, 60.0, 600.0, 1200.0}, hour, 10'000));
+}
 
 std::atomic<uint32_t> taskSequence{0};
 
@@ -176,7 +191,18 @@ std::vector<Task::Ptr> Task::createTasks(std::shared_ptr<proto::TaskMsg> const& 
         }
     }
     sendChannel->setTaskCount(vect.size());
+
     return vect;
+}
+
+void Task::setQueryStatistics(wpublish::QueryStatistics::Ptr const& qStats) { _queryStats = qStats; }
+
+wpublish::QueryStatistics::Ptr Task::getQueryStats() const {
+    auto qStats = _queryStats.lock();
+    if (qStats == nullptr) {
+        LOGS(_log, LOG_LVL_ERROR, "Task::getQueryStats() _queryStats==null " << getIdStr());
+    }
+    return qStats;
 }
 
 /// @return the chunkId for this task. If the task has no chunkId, return -1.
@@ -312,6 +338,31 @@ memman::MemMan::Status Task::getMemHandleStatus() {
         return memman::MemMan::Status();
     }
     return _memMan->getStatus(_memHandle);
+}
+
+string convertToStr(std::chrono::system_clock::time_point chTm) {
+    stringstream os;
+    time_t tm = std::chrono::system_clock::to_time_t(chTm);
+    os << std::put_time(std::localtime(&tm), "%F %T.\n");
+    return os.str();
+}
+
+nlohmann::json Task::getJson() const {
+    // It would be nice to have the _queryString in this, but that could make the results very large.
+    nlohmann::json js;
+    js["queryId"] = _qId;
+    js["jobId"] = _jId;
+    js["fragmentId"] = _queryFragmentNum;
+    js["attemptId"] = _attemptCount;
+    js["sequenceId"] = _tSeq;
+    js["scanInteractive"] = _scanInteractive;
+    js["cancelled"] = to_string(_cancelled);
+    js["state"] = _state;
+    js["queueTime"] = convertToStr(_queueTime);
+    js["startTime"] = convertToStr(_startTime);
+    js["finishTime"] = convertToStr(_finishTime);
+    js["sizeSoFar"] = _totalSize;
+    return js;
 }
 
 std::ostream& operator<<(std::ostream& os, Task const& t) {

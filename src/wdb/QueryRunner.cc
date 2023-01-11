@@ -66,6 +66,7 @@
 #include "wbase/Base.h"
 #include "wbase/SendChannelShared.h"
 #include "wdb/ChunkResource.h"
+#include "wpublish/QueriesAndChunks.h"
 
 namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.wdb.QueryRunner");
@@ -283,10 +284,6 @@ private:
     proto::TaskMsg const& _msg;
 };
 
-/// Histograms to log subchunk creation time and query run time.
-util::TimerHistogram qrPrimeHist("qrPrimeHist", {0.01, 0.1, 1.0, 2.0, 5.0, 10.0, 20.0, 60.0});
-util::TimerHistogram qrSubChunkHist("qrSubChunkHist", {0.01, 0.1, 1.0, 2.0, 5.0, 10.0, 20.0, 60.0});
-
 bool QueryRunner::_dispatchChannel() {
     int const fragNum = _task->getQueryFragmentNum();
     proto::TaskMsg& tMsg = *_task->msg;
@@ -309,24 +306,29 @@ bool QueryRunner::_dispatchChannel() {
         ChunkResourceRequest req(_chunkResourceMgr, tMsg);
         ChunkResource cr(req.getResourceFragment(fragNum));
         subChunkT.stop();
-        auto logSubChunk = qrSubChunkHist.addTime(subChunkT.getElapsed(), "");
-        LOGS(_log, LOG_LVL_DEBUG, "subchunk time=" << subChunkT.getElapsed() << " " << logSubChunk);
         // TODO: Hold onto this for longer period of time as the odds of reuse are pretty low at this scale
         //       Ideally, hold it until moving on to the next chunk. Try to clean up ChunkResource code.
 
+        auto taskSched = _task->getTaskScheduler();
         if (!_cancelled && !_task->getSendChannel()->isDead()) {
             string const& query = _task->getQueryString();
-            util::Timer sqlTimer;
-            sqlTimer.start();
             util::Timer primeT;
             primeT.start();
             MYSQL_RES* res = _primeResult(query);  // This runs the SQL query, throws SqlErrorObj on failure.
             primeT.stop();
-            auto logPrime = qrPrimeHist.addTime(primeT.getElapsed(), "");
             needToFreeRes = true;
-            sqlTimer.stop();
-            LOGS(_log, LOG_LVL_DEBUG,
-                 " query time=" << sqlTimer.getElapsed() << " " << logPrime << " query=" << query);
+            if (taskSched != nullptr) {
+                taskSched->histTimeOfRunningTasks->addEntry(primeT.getElapsed());
+                LOGS(_log, LOG_LVL_DEBUG, "QR " << taskSched->histTimeOfRunningTasks->getString("run"));
+            } else {
+                LOGS(_log, LOG_LVL_ERROR, "QR runtaskSched == nullptr");
+            }
+            double runTimeSeconds = primeT.getElapsed();
+            double subchunkRunTimeSeconds = subChunkT.getElapsed();
+            _task->getQueryStats()->addTaskRunQuery(runTimeSeconds, subchunkRunTimeSeconds);
+
+            util::Timer transmitT;  /// Transmitting time starts now.
+            transmitT.start();
 
             // This thread may have already been removed from the pool for
             // other reasons, such as taking too long.
@@ -352,6 +354,14 @@ bool QueryRunner::_dispatchChannel() {
             if (_task->getSendChannel()->buildAndTransmitResult(res, numFields, *_task, _largeResult,
                                                                 _multiError, _cancelled, readRowsOk)) {
                 erred = true;
+            }
+            transmitT.stop();
+            if (taskSched != nullptr) {
+                taskSched->histTimeOfTransmittingTasks->addEntry(transmitT.getElapsed());
+                LOGS(_log, LOG_LVL_DEBUG,
+                     "QR " << taskSched->histTimeOfTransmittingTasks->getString("trans"));
+            } else {
+                LOGS(_log, LOG_LVL_ERROR, "QR transmit taskSched == nullptr");
             }
         }
     } catch (sql::SqlErrorObject const& e) {

@@ -129,11 +129,15 @@ public:
     /// @return a JSON representation of the object's status for the monitoring
     nlohmann::json statusToJson();
 
+    /// Do nothing, the schedulers this class manages keep their own statistics.
+    void recordPerformanceData() override{};
+
 private:
     int _getAdjustedMaxThreads(int oldAdjMax, int inFlight);
     bool _ready();
     void _sortScanSchedulers();
     void _logChunkStatus();
+    void _logSchedulers();
     ControlCommandQueue _ctrlCmdQueue;  ///< Needed for changing thread pool size.
 
     int _schedMaxThreads;  ///< maximum number of threads that can run.
@@ -151,6 +155,13 @@ private:
     std::atomic<bool> _prioritizeByInFlight{
             false};                  // Schedulers with more tasks inflight get lower priority.
     SchedulerBase::Ptr _readySched;  //< Pointer to the scheduler with a ready task.
+
+    /// Record performance data when this value is less than now(), and then this value us increased
+    /// by _intervalRecordPerformanceTime;
+    /// TODO: DM-??? set values from configuration, change values at runtime.
+    std::chrono::system_clock::time_point _nextRecordPerformanceTime;
+    std::chrono::milliseconds _intervalRecordPerformanceTime{15000};
+    std::mutex _mtxRecordPerformance;  ///< protects _nextRecordPerformanceTime
 };
 
 }  // namespace lsst::qserv::wsched
