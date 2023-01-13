@@ -65,18 +65,18 @@ double StreamBuffer::percentOfMaxTotalBytesUsed() {
 }
 
 // Factory function, because this should be able to delete itself when Recycle() is called.
-StreamBuffer::Ptr StreamBuffer::createWithMove(std::string &input) {
+StreamBuffer::Ptr StreamBuffer::createWithMove(std::string &input, string const &idStr) {
     unique_lock<mutex> uLock(_createMtx);
     if (_totalBytes >= _maxTotalBytes) {
         LOGS(_log, LOG_LVL_WARN, "StreamBuffer at memory limit " << _totalBytes);
     }
     _createCv.wait(uLock, []() { return _totalBytes < _maxTotalBytes; });
-    Ptr ptr(new StreamBuffer(input));
+    Ptr ptr(new StreamBuffer(input, idStr));
     ptr->_selfKeepAlive = ptr;
     return ptr;
 }
 
-StreamBuffer::StreamBuffer(std::string &input) {
+StreamBuffer::StreamBuffer(std::string &input, string const &idStr) : _idStr(idStr) {
     _dataStr = std::move(input);
     // TODO: try to make 'data' a const char* in xrootd code.
     // 'data' is not being changed after being passed, so hopefully not an issue.
@@ -85,18 +85,21 @@ StreamBuffer::StreamBuffer(std::string &input) {
     next = 0;
 
     _totalBytes += _dataStr.size();
-    LOGS(_log, LOG_LVL_DEBUG, "StreamBuffer::_totalBytes=" << _totalBytes << " thisSize=" << _dataStr.size());
+    LOGS(_log, LOG_LVL_DEBUG,
+         _idStr << "StreamBuffer::_totalBytes=" << _totalBytes << " thisSize=" << _dataStr.size());
 }
 
 StreamBuffer::~StreamBuffer() {
     _totalBytes -= _dataStr.size();
-    LOGS(_log, LOG_LVL_DEBUG, "~StreamBuffer::_totalBytes=" << _totalBytes);
+    LOGS(_log, LOG_LVL_DEBUG, _idStr << "~StreamBuffer::_totalBytes=" << _totalBytes);
 }
 
 /// xrdssi calls this to recycle the buffer when finished.
 void StreamBuffer::Recycle() {
     {
+        util::InstanceCount ica(_idStr + "_streamBuf_LDB_a");
         std::lock_guard<std::mutex> lg(_mtx);
+        util::InstanceCount icb(_idStr + "_streamBuf_LDB_b");
         _doneWithThis = true;
     }
     _cv.notify_all();

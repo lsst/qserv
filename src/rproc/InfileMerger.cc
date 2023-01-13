@@ -218,6 +218,8 @@ bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> const& response)
     if (!_queryIdStrSet) {
         _setQueryIdStr(QueryIdHelper::makeIdStr(response->result.queryid()));
     }
+
+    util::InstanceCount ica(_getQueryIdStr() + "_InfMerge_LDB_a");
     size_t resultSize = response->result.transmitsize();
     LOGS(_log, LOG_LVL_TRACE,
          "Executing InfileMerger::merge("

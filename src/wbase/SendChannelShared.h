@@ -288,7 +288,7 @@ private:
     std::shared_ptr<TransmitData> _transmitData;  ///< TransmitData object
     mutable std::mutex _tMtx;                     ///< protects _transmitData
 
-    std::shared_ptr<util::InstanceCount> _icPtr;  ///< temporary for LockupDB
+    util::InstanceCount::Ptr _icPtr;  ///< temporary for LockupDB
 };
 
 }  // namespace wbase

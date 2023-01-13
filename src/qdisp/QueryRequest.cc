@@ -79,6 +79,7 @@ public:
     void action(util::CmdData* data) override {
         // If everything is ok, call GetResponseData to have XrdSsi ask the worker for the data.
         QSERV_LOGCONTEXT_QUERY_JOB(_qid, _jobid);
+        util::InstanceCount ica("QI=" + to_string(_qid) + ":" + to_string(_jobid) + "_QReq_AfRDCmd_LDB_a");
         util::Timer tWaiting;
         util::Timer tTotal;
         PseudoFifo::Element::Ptr pseudoFifoElem;
@@ -107,14 +108,22 @@ public:
             pseudoFifoElem = _pseudoFifo->queueAndWait();
 
             tWaiting.start();
+            util::InstanceCount icb("QI=" + to_string(_qid) + ":" + to_string(_jobid) +
+                                    "_QReq_AfRDCmd_LDB_b");
             qr->GetResponseData(&buffer[0], buffer.size());
+            util::InstanceCount icc("QI=" + to_string(_qid) + ":" + to_string(_jobid) +
+                                    "_QReq_AfRDCmd_LDB_c");
         }
 
         // Wait for XrdSsi to call ProcessResponseData with the data,
-        // which will notify this wait with a call to receivedProcessResponseDataParameters.
+        // which will notify this wait with a call to notifyDataSuccess.
         {
             LOGS(_log, LOG_LVL_TRACE, "GetResponseData called respC=" << _respCount);
+            util::InstanceCount icd("QI=" + to_string(_qid) + ":" + to_string(_jobid) +
+                                    "_QReq_AfRDCmd_LDB_d");
             std::unique_lock<std::mutex> uLock(_mtx);
+            util::InstanceCount ice("QI=" + to_string(_qid) + ":" + to_string(_jobid) +
+                                    "_QReq_AfRDCmd_LDB_e");
             // TODO: make timed wait, check for wedged, if weak pointers dead, log and give up.
             // The only purpose of the below being in a function is make this easier to find in gdb.
             _lockWaitQrA(uLock);
@@ -137,6 +146,7 @@ public:
         // Actually process the data.
         // If more data needs to be sent, _processData will make a new AskForResponseDataCmd
         // object and queue it.
+        util::InstanceCount icf("QI=" + to_string(_qid) + ":" + to_string(_jobid) + "_QReq_AfRDCmd_LDB_f");
         {
             auto jq = _jQuery.lock();
             auto qr = _qRequest.lock();
@@ -149,6 +159,7 @@ public:
             // _processData will have created another AskForResponseDataCmd object if was needed.
             tTotal.stop();
         }
+        util::InstanceCount icg("QI=" + to_string(_qid) + ":" + to_string(_jobid) + "_QReq_AfRDCmd_LDB_g");
         _setState(State::DONE2);
         LOGS(_log, LOG_LVL_DEBUG,
              "Ask data is done wait=" << tWaiting.getElapsed() << " total=" << tTotal.getElapsed());
@@ -207,6 +218,148 @@ private:
     bool _last = true;
 };
 
+// &&& Keep track of items which are being received but not yet finished
+class QueryRequestStatus {
+public:
+    using Ptr = shared_ptr<QueryRequestStatus>;
+    static map<string, QueryRequestStatus::Ptr> queryReqStatMap;  // &&&
+    static mutex reqStatMapMtx;                                   // &&&
+
+    static Ptr getPtr(string const& id_) {
+        Ptr ptr;
+        lock_guard<mutex> lck(reqStatMapMtx);
+        auto iter = queryReqStatMap.find(id_);
+        if (iter == queryReqStatMap.end()) {
+            ptr = Ptr(new QueryRequestStatus(id_));
+        } else {
+            ptr = iter->second;
+        }
+        return ptr;
+    }
+
+    static void addProcessResp(string const& id_) {
+        Ptr ptr = getPtr(id_);
+        ptr->incrProcessResp("addProcessResp");
+    }
+
+    static void addProcessRespData(string const& id_) {
+        Ptr ptr = getPtr(id_);
+        ptr->incrProcessRespData("addProcessRespData");
+    }
+
+    static void addCancelled(string const& id_) {
+        Ptr ptr = getPtr(id_);
+        ptr->incrCancelled("addCancelled");
+    }
+
+    static void addMarked(string const& id_) {
+        Ptr ptr = getPtr(id_);
+        ptr->incrMarked("addMarked");
+    }
+
+    static void addErr(string const& id_, string const& err, string const& note) {
+        Ptr ptr = getPtr(id_);
+        ptr->apendErr(err, note);
+    }
+
+    static void addFinish(string const& id_, string const& note) {
+        Ptr ptr = getPtr(id_);
+        ptr->finito(note);
+        remove(id_);  // &&& don't do this every time and remove old items that are finished??
+        dumpMap();
+    }
+
+    static void dumpMap() {
+        stringstream os;
+        lock_guard<mutex> lck(reqStatMapMtx);
+        os << "reqStatMap::";
+        for (auto&& elem : queryReqStatMap) {
+            os << elem.second->dumpStr() << ";;";
+        }
+        LOGS(_log, LOG_LVL_WARN, "&&& " << os.str());
+    }
+
+    static void remove(string const& id_) {
+        lock_guard<mutex> lck(reqStatMapMtx);
+        queryReqStatMap.erase(id_);
+    }
+
+    void incrProcessResp(string const& note) {
+        lock_guard<mutex> lck(_mtx);
+        processRespCount++;
+        _dump(note);
+    }
+
+    void incrProcessRespData(string const& note) {
+        lock_guard<mutex> lck(_mtx);
+        processRespDataCount++;
+        _dump(note);
+    }
+
+    void incrCancelled(string const& note) {
+        lock_guard<mutex> lck(_mtx);
+        cancelledCount++;
+        _dump(note);
+    }
+
+    void incrMarked(string const& note) {
+        lock_guard<mutex> lck(_mtx);
+        cancelledCount++;
+        _dump(note);
+    }
+
+    void apendErr(string const& err_, string const& note) {
+        lock_guard<mutex> lck(_mtx);
+        if (err.length() < 200) {
+            err += err_;
+        } else {
+            err += ".";
+        }
+        _dump(note);
+    }
+
+    void finito(string const& note) {
+        lock_guard<mutex> lck(_mtx);
+        ++finished;
+        _dump(note);
+    }
+
+    void dump() {
+        lock_guard<mutex> lck(_mtx);
+        _dump("");
+    }
+
+    string dumpStr() {
+        lock_guard<mutex> lck(_mtx);
+        return _dumpStr("");
+    }
+
+    string const id;
+    string err;
+    int processRespCount = 0;
+    int processRespDataCount = 0;
+    int cancelledCount = 0;
+    int markedCount = 0;
+    int finished = 0;
+
+private:
+    QueryRequestStatus(string const& id_) : id(id_) {}
+
+    void _dump(string const& note) { LOGS(_log, LOG_LVL_WARN, _dumpStr("")); }
+
+    string _dumpStr(string const& note) {
+        stringstream os;
+        os << id << " &&& " << note << " fin=" << finished << " markC=" << markedCount
+           << " RespC=" << processRespCount << " rData=" << processRespDataCount
+           << " cancelC=" << cancelledCount << " err=" << err;
+        return os.str();
+    }
+
+    mutex _mtx;
+};
+map<string, QueryRequestStatus::Ptr> QueryRequestStatus::queryReqStatMap;  // &&&
+mutex QueryRequestStatus::reqStatMapMtx;                                   // &&&
+
 ////////////////////////////////////////////////////////////////////////
 // QueryRequest
 ////////////////////////////////////////////////////////////////////////
@@ -231,7 +384,7 @@ QueryRequest::~QueryRequest() {
     }
     if (!_finishedCalled) {
         LOGS(_log, LOG_LVL_WARN, "~QueryRequest cleaning up calling Finished");
-        Finished(true);
+        _qrFinished(true);
     }
 }
 
@@ -258,6 +411,7 @@ char* QueryRequest::GetRequest(int& requestLength) {
 bool QueryRequest::ProcessResponse(XrdSsiErrInfo const& eInfo, XrdSsiRespInfo const& rInfo) {
     QSERV_LOGCONTEXT_QUERY_JOB(_qid, _jobid);
     LOGS(_log, LOG_LVL_DEBUG, "workerName=" << GetEndPoint() << " ProcessResponse");
+    QueryRequestStatus::addProcessResp(_jobIdStr);  //&&&
     string errorDesc = _jobIdStr + " ";
     if (isQueryCancelled()) {
         LOGS(_log, LOG_LVL_WARN, "QueryRequest::ProcessResponse job already cancelled");
@@ -303,9 +457,17 @@ bool QueryRequest::ProcessResponse(XrdSsiErrInfo const& eInfo, XrdSsiRespInfo co
         case XrdSsiRespInfo::isFile:  // Local-only
             errorDesc += "Unexpected XrdSsiRespInfo.rType == isFile";
             break;
-        case XrdSsiRespInfo::isStream:  // All remote requests
+        case XrdSsiRespInfo::isStream: {  // All remote requests
             jq->getStatus()->updateInfo(_jobIdStr, JobStatus::RESPONSE_READY, "SSI");
-            return _importStream(jq);
+            //&&&return _importStream(jq);
+            bool importSuccess = _importStream(jq);
+            LOGS(_log, LOG_LVL_INFO, "&&& _importStream importSuccess=" << importSuccess);
+            if (!importSuccess) {
+                LOGS(_log, LOG_LVL_WARN, "ProcessResponse stream import failure.");
+                _errorFinish();
+            }
+            return importSuccess;
+        }
         default:
             errorDesc += "Out of range XrdSsiRespInfo.rType";
     }
@@ -336,8 +498,10 @@ bool QueryRequest::_importStream(JobQuery::Ptr const& jq) {
     int nextBufSize = 0;
     bool last = false;
     int resultRows = 0;
+    util::InstanceCount ica(_jobIdStr + "_QReq_imStream_LDB_a");
     bool flushOk = jq->getDescription()->respHandler()->flush(len, bufPtr, last, largeResult, nextBufSize,
                                                               resultRows);
+    util::InstanceCount icb(_jobIdStr + "_QReq_imStream_LDB_b_last=" + to_string(last));
 
     if (!flushOk) {
         LOGS(_log, LOG_LVL_ERROR, "_importStream not flushOk");
@@ -379,6 +543,7 @@ void QueryRequest::_queueAskForResponse(AskForResponseDataCmd::Ptr const& cmd, J
 
 /// Process an incoming error.
 bool QueryRequest::_importError(string const& msg, int code) {
+    QueryRequestStatus::addErr(_jobIdStr, msg, "_importError");  //&&&
     auto jq = _jobQuery;
     {
         lock_guard<mutex> lock(_finishStatusMutex);
@@ -408,6 +573,7 @@ void QueryRequest::ProcessResponseData(XrdSsiErrInfo const& eInfo, char* buff, i
     LOGS(_log, LOG_LVL_DEBUG,
          "ProcessResponseData with buflen=" << blen << " " << (last ? "(last)" : "(more)"));
 
+    QueryRequestStatus::addProcessRespData(_jobIdStr);  //&&&
     if (_askForResponseDataCmd == nullptr) {
         LOGS(_log, LOG_LVL_ERROR, "ProcessResponseData called with invalid _askForResponseDataCmd!!!");
         return;
@@ -578,6 +744,7 @@ bool QueryRequest::cancel() {
             LOGS(_log, LOG_LVL_DEBUG, "QueryRequest::cancel already cancelled, ignoring");
             return false;  // Don't do anything if already cancelled.
         }
+        QueryRequestStatus::addCancelled(_jobIdStr);
         _cancelled = true;
         _retried = true;  // Prevent retries.
         // Only call the following if the job is NOT already done.
@@ -632,8 +799,22 @@ void QueryRequest::cleanup() {
 /// a local shared pointer for this QueryRequest and/or its owner JobQuery.
 /// See QueryRequest::cleanup()
 /// @return true if this QueryRequest object had the authority to make changes.
+
+atomic<int> errorFinishFalseCount{0};  //&&&
+atomic<int> errorFinishTrueCount{0};   //&&&
+
 bool QueryRequest::_errorFinish(bool stopTrying) {
     LOGS(_log, LOG_LVL_DEBUG, "_errorFinish() shouldCancel=" << stopTrying);
+    QueryRequestStatus::addErr(_jobIdStr, "_errorFinish " + to_string(stopTrying),
+                               "_errorFinish " + to_string(stopTrying));  //&&&
+    if (stopTrying) {
+        ++errorFinishTrueCount;
+    } else {
+        ++errorFinishFalseCount;
+    }
+    LOGS(_log, LOG_LVL_WARN,
+         "&&&_errorFinish stopTrying=" << stopTrying << " tCount=" << errorFinishTrueCount
+                                       << " fCount=" << errorFinishFalseCount);
     auto jq = _jobQuery;
     {
         // Running _errorFinish more than once could cause errors.
@@ -648,9 +829,10 @@ bool QueryRequest::_errorFinish(bool stopTrying) {
     }
 
     // Make the calls outside of the mutex lock.
-    LOGS(_log, LOG_LVL_DEBUG, "calling Finished(stopTrying=" << stopTrying << ")");
-    bool ok = Finished(stopTrying);
-    _finishedCalled = true;
+    LOGS(_log, LOG_LVL_WARN, "calling Finished(stopTrying=" << stopTrying << ")");
+    //&&&bool ok = &&&Finished(stopTrying);
+    bool ok = _qrFinished(true);  // &&&
+    //&&&_finishedCalled = true;
     if (!ok) {
         LOGS(_log, LOG_LVL_ERROR, "QueryRequest::_errorFinish NOT ok");
     } else {
@@ -693,8 +875,8 @@ void QueryRequest::_finish() {
         _finishStatus = FINISHED;
     }
 
-    bool ok = Finished();
-    _finishedCalled = true;
+    bool ok = _qrFinished();
+    //&&&_finishedCalled = true;
     if (!ok) {
         LOGS(_log, LOG_LVL_ERROR, "QueryRequest::finish Finished() !ok ");
     } else {
@@ -710,7 +892,18 @@ void QueryRequest::_callMarkComplete(bool success) {
     if (!_calledMarkComplete.exchange(true)) {
         auto jq = _jobQuery;
         if (jq != nullptr) jq->getMarkCompleteFunc()->operator()(success);
+        QueryRequestStatus::addMarked(_jobIdStr);
     }
+}
+
+bool QueryRequest::_qrFinished(bool stopTrying) {
+    LOGS(_log, LOG_LVL_WARN, _jobIdStr << "_qrFinished A &&&stopTrying=" << stopTrying);
+    bool res = Finished(stopTrying);
+    _finishedCalled = true;
+    LOGS(_log, LOG_LVL_WARN, _jobIdStr << "_qrFinished B &&&stopTrying=" << stopTrying << " res=" << res);
+    QueryRequestStatus::addFinish(_jobIdStr, "_qrFinished stopTrying=" + to_string(stopTrying));
+
+    return res;
 }
 
 ostream& operator<<(ostream& os, QueryRequest const& qr) {

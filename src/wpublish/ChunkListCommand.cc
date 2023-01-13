@@ -76,7 +76,7 @@ void ChunkListCommand::_reportError(string const& message) {
 
     _frameBuf.serialize(reply);
     string str(_frameBuf.data(), _frameBuf.size());
-    _sendChannel->sendStream(xrdsvc::StreamBuffer::createWithMove(str), true);
+    _sendChannel->sendStream(xrdsvc::StreamBuffer::createWithMove(str, "other"), true);
 }
 
 void ChunkListCommand::run() {
@@ -195,7 +195,7 @@ void ChunkListCommand::run() {
     }
     _frameBuf.serialize(reply);
     string str(_frameBuf.data(), _frameBuf.size());
-    _sendChannel->sendStream(xrdsvc::StreamBuffer::createWithMove(str), true);
+    _sendChannel->sendStream(xrdsvc::StreamBuffer::createWithMove(str, "other"), true);
 
     LOGS(_log, LOG_LVL_DEBUG, context << "** SENT **");
 }

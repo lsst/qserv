@@ -73,7 +73,7 @@ void RemoveChunkGroupCommand::_reportError(proto::WorkerCommandChunkGroupR::Stat
 
     _frameBuf.serialize(reply);
     string str(_frameBuf.data(), _frameBuf.size());
-    auto streamBuffer = xrdsvc::StreamBuffer::createWithMove(str);
+    auto streamBuffer = xrdsvc::StreamBuffer::createWithMove(str, "other");
     _sendChannel->sendStream(streamBuffer, true);
 }
 
@@ -149,7 +149,7 @@ void RemoveChunkGroupCommand::run() {
 
     _frameBuf.serialize(reply);
     string str(_frameBuf.data(), _frameBuf.size());
-    _sendChannel->sendStream(xrdsvc::StreamBuffer::createWithMove(str), true);
+    _sendChannel->sendStream(xrdsvc::StreamBuffer::createWithMove(str, "other"), true);
 
     LOGS(_log, LOG_LVL_DEBUG, context << "** SENT **");
 }

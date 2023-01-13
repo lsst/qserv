@@ -133,6 +133,8 @@ private:
                               bool initialRequest);
     void _flushError(JobQuery::Ptr const& jq);
 
+    bool _qrFinished(bool stopTrying = true);
+
     /// _holdState indicates the data is being held by SSI for a large response using LargeResultMgr.
     /// If the state is NOT NO_HOLD0, then this instance has decremented the shared semaphore and it
     /// must increment the semaphore before going away.

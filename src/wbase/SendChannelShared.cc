@@ -129,7 +129,7 @@ bool SendChannelShared::_addTransmit(bool cancelled, bool erred, bool lastIn, Tr
     bool reallyLast = _lastRecvd;
     string idStr(makeIdStr(qId, jId));
     if (_icPtr == nullptr) {
-        _icPtr = std::make_shared<util::InstanceCount>(std::to_string(qId) + "_SCS_LDB");
+        _icPtr = std::make_shared<util::InstanceCount>("QI=" + std::to_string(qId) + "_SCS_LDB");
     }
 
     // If something bad already happened, just give up.
@@ -160,7 +160,7 @@ util::TimerHistogram scsTransmitSend("scsTransmitSend", {0.01, 0.1, 1.0, 2.0, 5.
 
 bool SendChannelShared::_transmit(bool erred) {
     string idStr = "QID?";
-
+    util::InstanceCount::Ptr icPtrA;
     // Result data is transmitted in messages containing data and headers.
     // data - is the result data
     // header - contains information about the next chunk of result data,
@@ -210,7 +210,11 @@ bool SendChannelShared::_transmit(bool erred) {
         // The first message needs to put its header data in metadata as there's
         // no previous message it could attach its header to.
         {
+            icPtrA = std::make_shared<util::InstanceCount>(thisTransmit->getIdStr() + "_te_LDB_" +
+                                                           to_string(reallyLast) + "_a");  //&&&
             lock_guard<mutex> streamLock(_streamMutex);  // Must keep meta and buffer together.
+            icPtrA = std::make_shared<util::InstanceCount>(thisTransmit->getIdStr() + "_te_LDB_" +
+                                                           to_string(reallyLast) + "_b");  //&&&
             if (_firstTransmit.exchange(false)) {
                 // Put the header for the first message in metadata
                 // _metaDataBuf must remain valid until Finished() is called.
@@ -229,8 +233,12 @@ bool SendChannelShared::_transmit(bool erred) {
             {
                 util::Timer sendTimer;
                 sendTimer.start();
+                icPtrA = std::make_shared<util::InstanceCount>(thisTransmit->getIdStr() + "_te_LDB_" +
+                                                               to_string(reallyLast) + "_c");  //&&&
                 bool sent = _sendBuf(streamLock, streamBuf, reallyLast,
                                      "transmitLoop " + idStr + " " + seqStr, scsSeq);
+                icPtrA = std::make_shared<util::InstanceCount>(thisTransmit->getIdStr() + "_te_LDB_" +
+                                                               to_string(reallyLast) + "_d");  //&&&
                 sendTimer.stop();
                 auto logMsgSend = scsTransmitSend.addTime(sendTimer.getElapsed(), idStr);
                 LOGS(_log, LOG_LVL_INFO, logMsgSend);
@@ -241,6 +249,8 @@ bool SendChannelShared::_transmit(bool erred) {
                 }
             }
         }
+        icPtrA = std::make_shared<util::InstanceCount>(thisTransmit->getIdStr() + "_te_LDB_" +
+                                                       to_string(reallyLast) + "_z");  //&&&
         // If that was the last message, break the loop.
         if (reallyLast) return true;
     }
@@ -251,7 +261,9 @@ util::TimerHistogram transmitHisto("transmit Hist", {0.1, 1, 5, 10, 20, 40});
 
 bool SendChannelShared::_sendBuf(lock_guard<mutex> const& streamLock, xrdsvc::StreamBuffer::Ptr& streamBuf,
                                  bool last, string const& note, int scsSeq) {
+    util::InstanceCount ica(note + "_SCSStream_LDB_a");
     bool sent = _sendChannel->sendStream(streamBuf, last, scsSeq);
+    util::InstanceCount icb(note + "_SCSStream_LDB_b");
     if (!sent) {
         LOGS(_log, LOG_LVL_ERROR, "Failed to transmit " << note << "!");
         return false;
@@ -259,7 +271,9 @@ bool SendChannelShared::_sendBuf(lock_guard<mutex> const& streamLock, xrdsvc::St
         util::Timer t;
         t.start();
         LOGS(_log, LOG_LVL_INFO, "_sendbuf wait start " << note);
+        util::InstanceCount icc(note + "_SCSStream_LDB_c");
         streamBuf->waitForDoneWithThis();  // Block until this buffer has been sent.
+        util::InstanceCount icd(note + "_SCSStream_LDB_d");
         t.stop();
         auto logMsg = transmitHisto.addTime(t.getElapsed(), note);
         LOGS(_log, LOG_LVL_DEBUG, logMsg);
