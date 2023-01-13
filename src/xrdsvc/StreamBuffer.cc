@@ -85,12 +85,13 @@ StreamBuffer::StreamBuffer(std::string &input, string const &idStr) : _idStr(idS
     next = 0;
 
     _totalBytes += _dataStr.size();
-    LOGS(_log, LOG_LVL_DEBUG, "StreamBuffer::_totalBytes=" << _totalBytes << " thisSize=" << _dataStr.size());
+    LOGS(_log, LOG_LVL_DEBUG,
+         _idStr << "StreamBuffer::_totalBytes=" << _totalBytes << " thisSize=" << _dataStr.size());
 }
 
 StreamBuffer::~StreamBuffer() {
     _totalBytes -= _dataStr.size();
-    LOGS(_log, LOG_LVL_DEBUG, "~StreamBuffer::_totalBytes=" << _totalBytes);
+    LOGS(_log, LOG_LVL_DEBUG, _idStr << "~StreamBuffer::_totalBytes=" << _totalBytes);
 }
 
 /// xrdssi calls this to recycle the buffer when finished.

@@ -218,6 +218,148 @@ private:
     bool _last = true;
 };
 
+// &&& Keep track of items which are being received but not yet finished
+class QueryRequestStatus {
+public:
+    using Ptr = shared_ptr<QueryRequestStatus>;
+    static map<string, QueryRequestStatus::Ptr> queryReqStatMap;  // &&&
+    static mutex reqStatMapMtx;                                   // &&&
+
+    static Ptr getPtr(string const& id_) {
+        Ptr ptr;
+        lock_guard<mutex> lck(reqStatMapMtx);
+        auto iter = queryReqStatMap.find(id_);
+        if (iter == queryReqStatMap.end()) {
+            ptr = Ptr(new QueryRequestStatus(id_));
+        } else {
+            ptr = iter->second;
+        }
+        return ptr;
+    }
+
+    static void addProcessResp(string const& id_) {
+        Ptr ptr = getPtr(id_);
+        ptr->incrProcessResp("addProcessResp");
+    }
+
+    static void addProcessRespData(string const& id_) {
+        Ptr ptr = getPtr(id_);
+        ptr->incrProcessRespData("addProcessRespData");
+    }
+
+    static void addCancelled(string const& id_) {
+        Ptr ptr = getPtr(id_);
+        ptr->incrCancelled("addCancelled");
+    }
+
+    static void addMarked(string const& id_) {
+        Ptr ptr = getPtr(id_);
+        ptr->incrMarked("addMarked");
+    }
+
+    static void addErr(string const& id_, string const& err, string const& note) {
+        Ptr ptr = getPtr(id_);
+        ptr->apendErr(err, note);
+    }
+
+    static void addFinish(string const& id_, string const& note) {
+        Ptr ptr = getPtr(id_);
+        ptr->finito(note);
+        remove(id_);  // &&& don't do this every time and remove old items that are finished??
+        dumpMap();
+    }
+
+    static void dumpMap() {
+        stringstream os;
+        lock_guard<mutex> lck(reqStatMapMtx);
+        os << "reqStatMap::";
+        for (auto&& elem : queryReqStatMap) {
+            os << elem.second->dumpStr() << ";;";
+        }
+        LOGS(_log, LOG_LVL_WARN, "&&& " << os.str());
+    }
+
+    static void remove(string const& id_) {
+        lock_guard<mutex> lck(reqStatMapMtx);
+        queryReqStatMap.erase(id_);
+    }
+
+    void incrProcessResp(string const& note) {
+        lock_guard<mutex> lck(_mtx);
+        processRespCount++;
+        _dump(note);
+    }
+
+    void incrProcessRespData(string const& note) {
+        lock_guard<mutex> lck(_mtx);
+        processRespDataCount++;
+        _dump(note);
+    }
+
+    void incrCancelled(string const& note) {
+        lock_guard<mutex> lck(_mtx);
+        cancelledCount++;
+        _dump(note);
+    }
+
+    void incrMarked(string const& note) {
+        lock_guard<mutex> lck(_mtx);
+        cancelledCount++;
+        _dump(note);
+    }
+
+    void apendErr(string const& err_, string const& note) {
+        lock_guard<mutex> lck(_mtx);
+        if (err.length() < 200) {
+            err += err_;
+        } else {
+            err += ".";
+        }
+        _dump(note);
+    }
+
+    void finito(string const& note) {
+        lock_guard<mutex> lck(_mtx);
+        ++finished;
+        _dump(note);
+    }
+
+    void dump() {
+        lock_guard<mutex> lck(_mtx);
+        _dump("");
+    }
+
+    string dumpStr() {
+        lock_guard<mutex> lck(_mtx);
+        return _dumpStr("");
+    }
+
+    string const id;
+    string err;
+    int processRespCount = 0;
+    int processRespDataCount = 0;
+    int cancelledCount = 0;
+    int markedCount = 0;
+    int finished = 0;
+
+private:
+    QueryRequestStatus(string const& id_) : id(id_) {}
+
+    void _dump(string const& note) { LOGS(_log, LOG_LVL_WARN, _dumpStr("")); }
+
+    string _dumpStr(string const& note) {
+        stringstream os;
+        os << id << " &&& " << note << " fin=" << finished << " markC=" << markedCount
+           << " RespC=" << processRespCount << " rData=" << processRespDataCount
+           << " cancelC=" << cancelledCount << " err=" << err;
+        return os.str();
+    }
+
+    mutex _mtx;
+};
+map<string, QueryRequestStatus::Ptr> QueryRequestStatus::queryReqStatMap;  // &&&
+mutex QueryRequestStatus::reqStatMapMtx;                                   // &&&
+
 ////////////////////////////////////////////////////////////////////////
 // QueryRequest
 ////////////////////////////////////////////////////////////////////////
@@ -242,7 +384,7 @@ QueryRequest::~QueryRequest() {
     }
     if (!_finishedCalled) {
         LOGS(_log, LOG_LVL_WARN, "~QueryRequest cleaning up calling Finished");
-        Finished(true);
+        _qrFinished(true);
     }
 }
 
@@ -269,6 +411,7 @@ char* QueryRequest::GetRequest(int& requestLength) {
 bool QueryRequest::ProcessResponse(XrdSsiErrInfo const& eInfo, XrdSsiRespInfo const& rInfo) {
     QSERV_LOGCONTEXT_QUERY_JOB(_qid, _jobid);
     LOGS(_log, LOG_LVL_DEBUG, "workerName=" << GetEndPoint() << " ProcessResponse");
+    QueryRequestStatus::addProcessResp(_jobIdStr);  //&&&
     string errorDesc = _jobIdStr + " ";
     if (isQueryCancelled()) {
         LOGS(_log, LOG_LVL_WARN, "QueryRequest::ProcessResponse job already cancelled");
@@ -400,6 +543,7 @@ void QueryRequest::_queueAskForResponse(AskForResponseDataCmd::Ptr const& cmd, J
 
 /// Process an incoming error.
 bool QueryRequest::_importError(string const& msg, int code) {
+    QueryRequestStatus::addErr(_jobIdStr, msg, "_importError");  //&&&
     auto jq = _jobQuery;
     {
         lock_guard<mutex> lock(_finishStatusMutex);
@@ -429,6 +573,7 @@ void QueryRequest::ProcessResponseData(XrdSsiErrInfo const& eInfo, char* buff, i
     LOGS(_log, LOG_LVL_DEBUG,
          "ProcessResponseData with buflen=" << blen << " " << (last ? "(last)" : "(more)"));
 
+    QueryRequestStatus::addProcessRespData(_jobIdStr);  //&&&
     if (_askForResponseDataCmd == nullptr) {
         LOGS(_log, LOG_LVL_ERROR, "ProcessResponseData called with invalid _askForResponseDataCmd!!!");
         return;
@@ -599,6 +744,7 @@ bool QueryRequest::cancel() {
             LOGS(_log, LOG_LVL_DEBUG, "QueryRequest::cancel already cancelled, ignoring");
             return false;  // Don't do anything if already cancelled.
         }
+        QueryRequestStatus::addCancelled(_jobIdStr);
         _cancelled = true;
         _retried = true;  // Prevent retries.
         // Only call the following if the job is NOT already done.
@@ -659,6 +805,8 @@ atomic<int> errorFinishTrueCount{0};   //&&&
 
 bool QueryRequest::_errorFinish(bool stopTrying) {
     LOGS(_log, LOG_LVL_DEBUG, "_errorFinish() shouldCancel=" << stopTrying);
+    QueryRequestStatus::addErr(_jobIdStr, "_errorFinish " + to_string(stopTrying),
+                               "_errorFinish " + to_string(stopTrying));  //&&&
     if (stopTrying) {
         ++errorFinishTrueCount;
     } else {
@@ -682,9 +830,9 @@ bool QueryRequest::_errorFinish(bool stopTrying) {
 
     // Make the calls outside of the mutex lock.
     LOGS(_log, LOG_LVL_WARN, "calling Finished(stopTrying=" << stopTrying << ")");
-    //&&&bool ok = Finished(stopTrying);
-    bool ok = Finished(true);  // &&&
-    _finishedCalled = true;
+    //&&&bool ok = &&&Finished(stopTrying);
+    bool ok = _qrFinished(true);  // &&&
+    //&&&_finishedCalled = true;
     if (!ok) {
         LOGS(_log, LOG_LVL_ERROR, "QueryRequest::_errorFinish NOT ok");
     } else {
@@ -727,8 +875,8 @@ void QueryRequest::_finish() {
         _finishStatus = FINISHED;
     }
 
-    bool ok = Finished();
-    _finishedCalled = true;
+    bool ok = _qrFinished();
+    //&&&_finishedCalled = true;
     if (!ok) {
         LOGS(_log, LOG_LVL_ERROR, "QueryRequest::finish Finished() !ok ");
     } else {
@@ -744,7 +892,18 @@ void QueryRequest::_callMarkComplete(bool success) {
     if (!_calledMarkComplete.exchange(true)) {
         auto jq = _jobQuery;
         if (jq != nullptr) jq->getMarkCompleteFunc()->operator()(success);
+        QueryRequestStatus::addMarked(_jobIdStr);
     }
+}
+
+bool QueryRequest::_qrFinished(bool stopTrying) {
+    LOGS(_log, LOG_LVL_WARN, _jobIdStr << "_qrFinished A &&&stopTrying=" << stopTrying);
+    bool res = Finished(stopTrying);
+    _finishedCalled = true;
+    LOGS(_log, LOG_LVL_WARN, _jobIdStr << "_qrFinished B &&&stopTrying=" << stopTrying << " res=" << res);
+    QueryRequestStatus::addFinish(_jobIdStr, "_qrFinished stopTrying=" + to_string(stopTrying));
+
+    return res;
 }
 
 ostream& operator<<(ostream& os, QueryRequest const& qr) {
