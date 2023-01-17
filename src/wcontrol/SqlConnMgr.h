@@ -31,6 +31,9 @@
 #include <memory>
 #include <mutex>
 
+// Third party headers
+#include "nlohmann/json.hpp"
+
 // Qserv headers
 
 namespace lsst::qserv {
@@ -82,9 +85,12 @@ public:
     SqlConnMgr& operator=(SqlConnMgr const&) = delete;
     virtual ~SqlConnMgr() = default;
 
-    int getTotalCount() { return _totalCount; }
-    int getSqlScanConnCount() { return _sqlScanConnCount; }
-    int getSqlSharedConnCount() { return _sqlSharedConnCount; }
+    int getTotalCount() const { return _totalCount; }
+    int getSqlScanConnCount() const { return _sqlScanConnCount; }
+    int getSqlSharedConnCount() const { return _sqlSharedConnCount; }
+
+    /// @return a JSON representation of the object's status for the monitoring
+    nlohmann::json statusToJson() const;
 
     virtual std::ostream& dump(std::ostream& os) const;
     std::string dump() const;
