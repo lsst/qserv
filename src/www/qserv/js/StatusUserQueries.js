@@ -178,7 +178,7 @@ function(CSSLoader,
       <div class="form-group col-md-1">
         <label for="update-interval"><i class="bi bi-arrow-repeat"></i> interval:</label>
         <select id="update-interval" class="form-control form-control-selector">
-          <option value="10">5 sec</option>
+          <option value="5">5 sec</option>
           <option value="10" selected>10 sec</option>
           <option value="20">20 sec</option>
           <option value="30">30 sec</option>
