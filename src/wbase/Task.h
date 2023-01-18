@@ -166,7 +166,7 @@ public:
     friend std::ostream& operator<<(std::ostream& os, Task const& t);
 
     // Shared scan information
-    int getChunkId();
+    int getChunkId() const;
     QueryId getQueryId() const { return _qId; }
     int getJobId() const { return _jId; }
     int getAttemptCount() const { return _attemptCount; }
