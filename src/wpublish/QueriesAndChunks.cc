@@ -57,23 +57,24 @@ QueryStatistics::QueryStatistics(QueryId const& qId_) : creationTime(CLOCK::now(
 }
 
 /// Return a json object containing high level data, such as histograms.
-nlohmann::json QueryStatistics::getJson() const {
-    nlohmann::json js = {{"queryId", to_string(queryId)},     _histTimeRunningPerTask->getJson(),
-                         _histTimeSubchunkPerTask->getJson(), _histTimeTransmittingPerTask->getJson(),
-                         _histSizePerTask->getJson(),         _histRowsPerTask->getJson()};
+nlohmann::json QueryStatistics::getJsonHist() const {
+    nlohmann::json js = nlohmann::json::object();
+    js["timeRunningPerTask"] = _histTimeRunningPerTask->getJson();
+    js["timeSubchunkPerTask"] = _histTimeSubchunkPerTask->getJson();
+    js["timeTransmittingPerTask"] = _histTimeTransmittingPerTask->getJson();
+    js["sizePerTask"] = _histSizePerTask->getJson();
+    js["rowsPerTask"] = _histRowsPerTask->getJson();
     return js;
 }
 
 /// Return a json object containing information about all tasks.
 /// This can return a very large object and should be used sparingly.
 nlohmann::json QueryStatistics::getJsonTasks() const {
-    nlohmann::json js = getJson();
-    nlohmann::json jsTasks = nlohmann::json::array();
+    nlohmann::json js = nlohmann::json::array();
     for (auto const& elem : _taskMap) {
         wbase::Task::Ptr const& tsk = elem.second;
-        jsTasks.push_back(tsk->getJson());
+        js.push_back(tsk->getJson());
     }
-    js["taskArray"] = jsTasks;
     return js;
 }
 
@@ -379,12 +380,23 @@ void QueriesAndChunks::examineAll() {
 }
 
 nlohmann::json QueriesAndChunks::statusToJson() {
-    nlohmann::json status;
-    auto bSched = _blendSched.lock();
-    if (bSched == nullptr) {
-        LOGS(_log, LOG_LVL_WARN, "blendSched undefined, can't check user query");
-    } else {
-        status["blend_scheduler"] = bSched->statusToJson();
+    nlohmann::json status = nlohmann::json::object();
+    {
+        auto bSched = _blendSched.lock();
+        if (bSched == nullptr) {
+            LOGS(_log, LOG_LVL_WARN, "blendSched undefined, can't check user query");
+            status["blend_scheduler"] = nlohmann::json::object();
+        } else {
+            status["blend_scheduler"] = bSched->statusToJson();
+        }
+    }
+    status["query_stats"] = nlohmann::json::object();
+    lock_guard<mutex> g(_queryStatsMtx);
+    for (auto&& itr : _queryStats) {
+        string const qId = to_string(itr.first);  // forcing string type for the json object key
+        QueryStatistics::Ptr const& qStats = itr.second;
+        status["query_stats"][qId]["histograms"] = qStats->getJsonHist();
+        status["query_stats"][qId]["tasks"] = qStats->getJsonTasks();
     }
     return status;
 }

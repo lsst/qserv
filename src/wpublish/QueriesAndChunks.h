@@ -84,7 +84,7 @@ public:
     QueryId const queryId;
 
     /// Return a json object containing high level data, such as histograms.
-    nlohmann::json getJson() const;
+    nlohmann::json getJsonHist() const;
 
     /// Return a json object containing information about all tasks.
     nlohmann::json getJsonTasks() const;
