@@ -42,6 +42,7 @@ require([
     'qserv/StatusWorkers',
     'qserv/StatusUserQueries',
     'qserv/QservCss',
+    'qserv/QservMySQLConnections',
     'qserv/QservWorkerSchedulers',
     'qserv/QservWorkerQueries',
     'qserv/ReplicationController',
@@ -75,6 +76,7 @@ function(CSSLoader,
          StatusWorkers,
          StatusUserQueries,
          QservCss,
+         QservMySQLConnections,
          QservWorkerSchedulers,
          QservWorkerQueries,
          ReplicationController,
@@ -161,6 +163,7 @@ function(CSSLoader,
                 apps: [
                     new QservWorkerSchedulers('Schedulers'),
                     new QservWorkerQueries('Queries in Worker Queues'),
+                    new QservMySQLConnections('MySQL Connections'),
                     new QservCss('CSS')
                 ]
             }
