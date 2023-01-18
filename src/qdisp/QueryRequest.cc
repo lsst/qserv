@@ -231,7 +231,10 @@ QueryRequest::~QueryRequest() {
     }
     if (!_finishedCalled) {
         LOGS(_log, LOG_LVL_WARN, "~QueryRequest cleaning up calling Finished");
-        Finished(true);
+        bool ok = Finished();
+        if (!ok) {
+            LOGS(_log, LOG_LVL_ERROR, "QueryRequest::~QueryRequest Finished NOT ok");
+        }
     }
 }
 
@@ -649,7 +652,7 @@ bool QueryRequest::_errorFinish(bool stopTrying) {
 
     // Make the calls outside of the mutex lock.
     LOGS(_log, LOG_LVL_DEBUG, "calling Finished(stopTrying=" << stopTrying << ")");
-    bool ok = Finished(stopTrying);
+    bool ok = Finished();
     _finishedCalled = true;
     if (!ok) {
         LOGS(_log, LOG_LVL_ERROR, "QueryRequest::_errorFinish NOT ok");
