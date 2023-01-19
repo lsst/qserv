@@ -199,7 +199,7 @@ json HttpQservMonitorModule::_workers() {
 
 json HttpQservMonitorModule::_worker() {
     debug(__func__);
-    checkApiVersion(__func__, 12);
+    checkApiVersion(__func__, 18);
 
     auto const worker = params().at("worker");
     unsigned int const timeoutSec = query().optionalUInt("timeout_sec", workerResponseTimeoutSec());
@@ -215,15 +215,34 @@ json HttpQservMonitorModule::_worker() {
     request->wait();
 
     json result;
-
+    map<string, set<int>> schedulers2chunks;
+    set<int> chunks;
     if (request->extendedState() == QservMgtRequest::ExtendedState::SUCCESS) {
         auto info = request->info();
         result["status"][worker]["success"] = 1;
         result["status"][worker]["info"] = info;
         result["status"][worker]["queries"] = _getQueries(info);
+        auto&& schedulers = info["processor"]["queries"]["blend_scheduler"]["schedulers"];
+        for (auto&& scheduler : schedulers) {
+            string const scheduerName = scheduler["name"];
+            for (auto&& chunk2tasks : scheduler["chunk_to_num_tasks"]) {
+                int const chunk = chunk2tasks[0];
+                schedulers2chunks[scheduerName].insert(chunk);
+                chunks.insert(chunk);
+            }
+        }
     } else {
         result["status"][worker]["success"] = 0;
     }
+    json resultSchedulers2chunks;
+    for (auto&& entry : schedulers2chunks) {
+        auto&& scheduerName = entry.first;
+        for (auto&& chunk : entry.second) {
+            resultSchedulers2chunks[scheduerName].push_back(chunk);
+        }
+    }
+    result["schedulers_to_chunks"] = resultSchedulers2chunks;
+    result["chunks"] = _chunkInfo(chunks);
     return result;
 }
 
