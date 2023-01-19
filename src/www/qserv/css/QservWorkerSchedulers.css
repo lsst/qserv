@@ -14,3 +14,8 @@ table#fwk-qserv-schedulers pre {
 table#fwk-qserv-schedulers caption.updating {
     background-color: #ffeeba;
 }
+table#fwk-qserv-schedulers > thead > tr > th.sticky {
+    position:sticky;
+    top:80px;
+    z-index:2;
+}

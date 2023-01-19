@@ -75,13 +75,13 @@ function(CSSLoader,
     <table class="table table-sm table-hover table-bordered" id="fwk-qserv-queries">
       <thead class="thead-light">
         <tr>
-          <th>worker</th>
-          <th>scheduler</th>
-          <th>#tasks</th>
-          <th>qid</th>
-          <th style="text-align:center;"><i class="bi bi-clipboard-fill"></i></th>
+          <th class="sticky">worker</th>
+          <th class="sticky">scheduler</th>
+          <th class="sticky">#tasks</th>
+          <th class="sticky">qid</th>
+          <th class="sticky" style="text-align:center;"><i class="bi bi-clipboard-fill"></i></th>
           <th class="sticky" style="text-align:center;"><i class="bi bi-info-circle-fill"></i></th>
-          <th>query</th>
+          <th class="sticky">query</th>
         </tr>
       </thead>
       <caption class="updating">Loading...</caption>

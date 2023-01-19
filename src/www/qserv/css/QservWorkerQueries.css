@@ -1,3 +1,6 @@
+#fwk-qserv-queries-controls label {
+    font-weight:    bold;
+}
 table#fwk-qserv-queries caption {
     caption-side:   top;
     text-align:     right;
@@ -13,4 +16,9 @@ table#fwk-qserv-queries pre {
 }
 table#fwk-qserv-queries caption.updating {
     background-color: #ffeeba;
+}
+table#fwk-qserv-queries > thead > tr > th.sticky {
+    position:sticky;
+    top:80px;
+    z-index:2;
 }
