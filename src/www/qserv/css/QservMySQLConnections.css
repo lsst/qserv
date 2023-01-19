@@ -1,0 +1,24 @@
+#fwk-qserv-mysql-connections-controls label {
+    font-weight:    bold;
+}
+table#fwk-qserv-mysql-connections caption {
+    caption-side:   top;
+    text-align:     right;
+    padding-top:    0;
+}
+table#fwk-qserv-mysql-connections tbody th,
+table#fwk-qserv-mysql-connections tbody td {
+    vertical-align:middle;
+}
+table#fwk-qserv-mysql-connections pre {
+    padding: 0;
+    margin: 0;
+}
+table#fwk-qserv-mysql-connections caption.updating {
+    background-color: #ffeeba;
+}
+table#fwk-qserv-mysql-connections > thead > tr > th.sticky {
+    position:sticky;
+    top:80px;
+    z-index:2;
+}

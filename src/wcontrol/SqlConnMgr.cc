@@ -38,6 +38,16 @@ using namespace std;
 
 namespace lsst::qserv::wcontrol {
 
+nlohmann::json SqlConnMgr::statusToJson() const {
+    nlohmann::json status = nlohmann::json::object();
+    status["maxSqlScanConnections"] = _maxSqlScanConnections;
+    status["maxSqlSharedConnections"] = _maxSqlSharedConnections;
+    status["totalCount"] = getTotalCount();
+    status["sqlScanConnCount"] = getSqlScanConnCount();
+    status["sqlSharedConnCount"] = getSqlSharedConnCount();
+    return status;
+}
+
 SqlConnMgr::ConnType SqlConnMgr::_take(bool scanQuery,
                                        std::shared_ptr<wbase::SendChannelShared> const& sendChannelShared,
                                        bool firstChannelSqlConn) {

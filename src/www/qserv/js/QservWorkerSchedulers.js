@@ -64,13 +64,13 @@ function(CSSLoader,
     <table class="table table-sm table-hover table-bordered" id="fwk-qserv-schedulers">
       <thead class="thead-light">
         <tr>
-          <th>worker</th>
-          <th>scheduler</th>
-          <th>priority</th>
-          <th>in-flight : #tasks</th>
-          <th>: chunk(#tasks)</th>
-          <th>queued : #tasks</th>
-          <th>: QID(#tasks)</th>
+          <th class="sticky">worker</th>
+          <th class="sticky">scheduler</th>
+          <th class="sticky">priority</th>
+          <th class="sticky">in-flight : #tasks</th>
+          <th class="sticky">: chunk(#tasks)</th>
+          <th class="sticky">queued : #tasks</th>
+          <th class="sticky">: QID(#tasks)</th>
         </tr>
       </thead>
       <caption class="updating">Loading...</caption>

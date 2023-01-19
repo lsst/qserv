@@ -3,7 +3,7 @@ define([
 
 function(sqlFormatter) {
     class Common {
-        static RestAPIVersion = 17;
+        static RestAPIVersion = 18;
         static query2text(query, expanded) {
             if (expanded) {
                 return sqlFormatter.format(query, Common._sqlFormatterConfig);

@@ -145,6 +145,7 @@ void Foreman::processCommand(shared_ptr<wbase::WorkerCommand> const& command) {
 nlohmann::json Foreman::statusToJson() {
     nlohmann::json status;
     status["queries"] = _queries->statusToJson();
+    status["sql_conn_mgr"] = _sqlConnMgr->statusToJson();
     return status;
 }
 

@@ -206,7 +206,7 @@ wpublish::QueryStatistics::Ptr Task::getQueryStats() const {
 }
 
 /// @return the chunkId for this task. If the task has no chunkId, return -1.
-int Task::getChunkId() {
+int Task::getChunkId() const {
     if (msg->has_chunkid()) {
         return msg->chunkid();
     }
@@ -343,7 +343,7 @@ memman::MemMan::Status Task::getMemHandleStatus() {
 string convertToStr(std::chrono::system_clock::time_point chTm) {
     stringstream os;
     time_t tm = std::chrono::system_clock::to_time_t(chTm);
-    os << std::put_time(std::localtime(&tm), "%F %T.\n");
+    os << std::put_time(std::localtime(&tm), "%F %T");
     return os.str();
 }
 
@@ -352,6 +352,7 @@ nlohmann::json Task::getJson() const {
     nlohmann::json js;
     js["queryId"] = _qId;
     js["jobId"] = _jId;
+    js["chunkId"] = getChunkId();
     js["fragmentId"] = _queryFragmentNum;
     js["attemptId"] = _attemptCount;
     js["sequenceId"] = _tSeq;
