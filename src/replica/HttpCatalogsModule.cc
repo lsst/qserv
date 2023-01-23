@@ -44,7 +44,7 @@ namespace lsst::qserv::replica {
 
 json HttpCatalogsModule::_catalogsReport = json::object();
 uint64_t HttpCatalogsModule::_catalogsReportTimeMs = 0;
-util::Mutex HttpCatalogsModule::_catalogsMtx;
+replica::Mutex HttpCatalogsModule::_catalogsMtx;
 
 void HttpCatalogsModule::process(Controller::Ptr const& controller, string const& taskName,
                                  HttpProcessorConfig const& processorConfig, qhttp::Request::Ptr const& req,
@@ -63,7 +63,7 @@ json HttpCatalogsModule::executeImpl(string const& subModuleName) {
     debug(__func__);
     checkApiVersion(__func__, 12);
 
-    util::Lock lock(_catalogsMtx, "HttpCatalogsModule::" + string(__func__));
+    replica::Lock lock(_catalogsMtx, "HttpCatalogsModule::" + string(__func__));
 
     // Check if a valid cached report is still available
     if (not _catalogsReport.is_null()) {

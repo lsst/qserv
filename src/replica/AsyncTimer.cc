@@ -53,14 +53,14 @@ AsyncTimer::~AsyncTimer() {
 }
 
 void AsyncTimer::start() {
-    util::Lock lock(_mtx, "AsyncTimer::" + string(__func__));
+    replica::Lock lock(_mtx, "AsyncTimer::" + string(__func__));
     _timer.expires_from_now(boost::posix_time::milliseconds(_expirationIvalMs.count()));
     _timer.async_wait(
             [self = shared_from_this()](boost::system::error_code const& ec) { self->_expired(ec); });
 }
 
 bool AsyncTimer::cancel() {
-    util::Lock lock(_mtx, "AsyncTimer::" + string(__func__));
+    replica::Lock lock(_mtx, "AsyncTimer::" + string(__func__));
     if (nullptr == _onFinish) return false;
     _onFinish = nullptr;
     _timer.cancel();
@@ -68,7 +68,7 @@ bool AsyncTimer::cancel() {
 }
 
 void AsyncTimer::_expired(boost::system::error_code const& ec) {
-    util::Lock lock(_mtx, "AsyncTimer::" + string(__func__));
+    replica::Lock lock(_mtx, "AsyncTimer::" + string(__func__));
     if (ec == boost::asio::error::operation_aborted) return;
     if (nullptr == _onFinish) return;
     _onFinish(_expirationIvalMs);

@@ -58,7 +58,7 @@
 #include "replica/DatabaseMySQLExceptions.h"
 #include "replica/DatabaseMySQLRow.h"
 #include "replica/DatabaseMySQLTypes.h"
-#include "util/Mutex.h"
+#include "replica/Mutex.h"
 
 // Forward declarations
 namespace lsst::qserv::replica {

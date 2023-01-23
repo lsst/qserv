@@ -116,7 +116,7 @@ AddReplicaQservMgtRequest::Ptr QservMgtServices::addReplica(
     if (not service) {
         return request;
     } else {
-        util::Lock lock(_mtx, "QservMgtServices::" + string(__func__));
+        replica::Lock lock(_mtx, "QservMgtServices::" + string(__func__));
 
         auto const manager = shared_from_this();
 
@@ -151,7 +151,7 @@ RemoveReplicaQservMgtRequest::Ptr QservMgtServices::removeReplica(
     if (not service) {
         return request;
     } else {
-        util::Lock lock(_mtx, "QservMgtServices::" + string(__func__));
+        replica::Lock lock(_mtx, "QservMgtServices::" + string(__func__));
 
         auto const manager = shared_from_this();
 
@@ -185,7 +185,7 @@ GetReplicasQservMgtRequest::Ptr QservMgtServices::getReplicas(
     if (not service) {
         return request;
     } else {
-        util::Lock lock(_mtx, "QservMgtServices::" + string(__func__));
+        replica::Lock lock(_mtx, "QservMgtServices::" + string(__func__));
 
         auto const manager = shared_from_this();
 
@@ -220,7 +220,7 @@ SetReplicasQservMgtRequest::Ptr QservMgtServices::setReplicas(
     if (not service) {
         return request;
     } else {
-        util::Lock lock(_mtx, "QservMgtServices::" + string(__func__));
+        replica::Lock lock(_mtx, "QservMgtServices::" + string(__func__));
 
         auto const manager = shared_from_this();
 
@@ -255,7 +255,7 @@ TestEchoQservMgtRequest::Ptr QservMgtServices::echo(string const& worker, string
     if (not service) {
         return request;
     } else {
-        util::Lock lock(_mtx, "QservMgtServices::" + string(__func__));
+        replica::Lock lock(_mtx, "QservMgtServices::" + string(__func__));
 
         auto const manager = shared_from_this();
 
@@ -289,7 +289,7 @@ GetStatusQservMgtRequest::Ptr QservMgtServices::status(std::string const& worker
     if (not service) {
         return request;
     } else {
-        util::Lock lock(_mtx, "QservMgtServices::" + string(__func__));
+        replica::Lock lock(_mtx, "QservMgtServices::" + string(__func__));
 
         auto const manager = shared_from_this();
 
@@ -330,7 +330,7 @@ void QservMgtServices::_finish(string const& id) {
 
     QservMgtRequestWrapper::Ptr requestWrapper;
     {
-        util::Lock lock(_mtx, context);
+        replica::Lock lock(_mtx, context);
         auto&& itr = _registry.find(id);
         if (itr == _registry.end()) {
             throw logic_error("QservMgtServices::" + string(__func__) + "  request identifier " + id +
@@ -343,7 +343,7 @@ void QservMgtServices::_finish(string const& id) {
 }
 
 XrdSsiService* QservMgtServices::_xrdSsiService() {
-    util::Lock lock(_mtx, "QservMgtServices::" + string(__func__));
+    replica::Lock lock(_mtx, "QservMgtServices::" + string(__func__));
 
     if (_service != nullptr) return _service;
 

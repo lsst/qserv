@@ -60,7 +60,7 @@ ServiceProvider::ServiceProvider(string const& configUrl, string const& instance
           _adminAuthKey(adminAuthKey) {}
 
 DatabaseServices::Ptr const& ServiceProvider::databaseServices() {
-    util::Lock lock(_mtx, _context() + __func__);
+    replica::Lock lock(_mtx, _context() + __func__);
     if (_databaseServices == nullptr) {
         _databaseServices = DatabaseServicesPool::create(_configuration);
     }
@@ -68,7 +68,7 @@ DatabaseServices::Ptr const& ServiceProvider::databaseServices() {
 }
 
 QservMgtServices::Ptr const& ServiceProvider::qservMgtServices() {
-    util::Lock lock(_mtx, _context() + __func__);
+    replica::Lock lock(_mtx, _context() + __func__);
     if (_qservMgtServices == nullptr) {
         _qservMgtServices = QservMgtServices::create(shared_from_this());
     }
@@ -76,7 +76,7 @@ QservMgtServices::Ptr const& ServiceProvider::qservMgtServices() {
 }
 
 Messenger::Ptr const& ServiceProvider::messenger() {
-    util::Lock lock(_mtx, _context() + __func__);
+    replica::Lock lock(_mtx, _context() + __func__);
     if (_messenger == nullptr) {
         _messenger = Messenger::create(_configuration, _io_service);
     }
@@ -84,21 +84,21 @@ Messenger::Ptr const& ServiceProvider::messenger() {
 }
 
 Registry::Ptr const& ServiceProvider::registry() {
-    util::Lock lock(_mtx, _context() + __func__);
+    replica::Lock lock(_mtx, _context() + __func__);
     if (_registry == nullptr) {
         _registry = Registry::create(shared_from_this());
     }
     return _registry;
 }
 
-shared_ptr<util::Mutex> ServiceProvider::getNamedMutex(string const& name) {
+shared_ptr<replica::Mutex> ServiceProvider::getNamedMutex(string const& name) {
     return _namedMutexRegistry.get(name);
 }
 
 void ServiceProvider::run() {
     LOGS(_log, LOG_LVL_DEBUG, _context() << __func__);
 
-    util::Lock lock(_mtx, _context() + __func__);
+    replica::Lock lock(_mtx, _context() + __func__);
 
     // Check if the service is still not running
 
@@ -122,7 +122,7 @@ void ServiceProvider::run() {
 }
 
 bool ServiceProvider::isRunning() const {
-    util::Lock lock(_mtx, _context() + __func__);
+    replica::Lock lock(_mtx, _context() + __func__);
 
     return not _threads.empty();
 }
@@ -130,7 +130,7 @@ bool ServiceProvider::isRunning() const {
 void ServiceProvider::stop() {
     LOGS(_log, LOG_LVL_DEBUG, _context() << __func__);
 
-    util::Lock lock(_mtx, _context() + __func__);
+    replica::Lock lock(_mtx, _context() + __func__);
 
     // Check if the service is already stopped
 

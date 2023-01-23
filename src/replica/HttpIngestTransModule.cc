@@ -40,7 +40,7 @@
 #include "replica/DirectorIndexJob.h"
 #include "replica/NamedMutexRegistry.h"
 #include "replica/ServiceProvider.h"
-#include "util/Mutex.h"
+#include "replica/Mutex.h"
 
 using namespace std;
 using json = nlohmann::json;
@@ -218,7 +218,7 @@ json HttpIngestTransModule::_beginTransaction() {
     // The transient lock on the named mutex will be initialized upon creation of
     // the transaction. This mechanism prevents race conditions in the transaction
     // management operations performed by the module.
-    unique_ptr<util::Lock> lock;
+    unique_ptr<replica::Lock> lock;
 
     // Any problems during the "director" index creation will result in
     // failing the transaction.
@@ -295,7 +295,7 @@ json HttpIngestTransModule::_endTransaction() {
     // management operations performed by the module.
     string const lockName = "transaction:" + to_string(transactionId);
     debug(__func__, "begin acquiring transient management lock on mutex '" + lockName = "'");
-    util::Lock const lock(_transactionMutexRegistry.get(lockName));
+    replica::Lock const lock(_transactionMutexRegistry.get(lockName));
     debug(__func__, "transient management lock on mutex '" + lockName + "' acquired");
 
     // At this point the transaction state is guaranteed not to be changed by others.

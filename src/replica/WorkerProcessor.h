@@ -36,7 +36,7 @@
 #include "replica/ServiceProvider.h"
 #include "replica/WorkerProcessorThread.h"
 #include "replica/WorkerRequest.h"
-#include "util/Mutex.h"
+#include "replica/Mutex.h"
 
 // Forward declarations
 namespace lsst::qserv::replica {
@@ -258,7 +258,7 @@ public:
      */
     template <typename RESPONSE_MSG_TYPE>
     void dequeueOrCancel(ProtocolRequestStop const& request, RESPONSE_MSG_TYPE& response) {
-        util::Lock lock(_mtx, _context(__func__));
+        replica::Lock lock(_mtx, _context(__func__));
 
         // Set this response unless an exact request (same type and identifier)
         // will be found.
@@ -285,7 +285,7 @@ public:
      */
     template <typename RESPONSE_MSG_TYPE>
     void checkStatus(ProtocolRequestStatus const& request, RESPONSE_MSG_TYPE& response) {
-        util::Lock lock(_mtx, _context(__func__));
+        replica::Lock lock(_mtx, _context(__func__));
 
         // Set this response unless an exact request (same type and identifier)
         // will be found.
@@ -375,7 +375,7 @@ private:
      * @return a valid reference to the request object (if found)
      *   or a reference to nullptr otherwise.
      */
-    WorkerRequest::Ptr _dequeueOrCancelImpl(util::Lock const& lock, std::string const& id);
+    WorkerRequest::Ptr _dequeueOrCancelImpl(replica::Lock const& lock, std::string const& id);
 
     /**
      * Find and return a reference to the request object.
@@ -386,7 +386,7 @@ private:
      * @return a valid reference to the request object (if found)
      *   or a reference to nullptr otherwise.
      */
-    WorkerRequest::Ptr _checkStatusImpl(util::Lock const& lock, std::string const& id);
+    WorkerRequest::Ptr _checkStatusImpl(replica::Lock const& lock, std::string const& id);
 
     /**
      * Extract the extra data from the request and put
@@ -515,7 +515,7 @@ private:
 
     std::vector<WorkerProcessorThread::Ptr> _threads;
 
-    mutable util::Mutex _mtx;  /// Mutex guarding the queues
+    mutable replica::Mutex _mtx;  /// Mutex guarding the queues
 
     PriorityQueueType _newRequests;
 

@@ -79,13 +79,13 @@ public:
 
 protected:
     /// @see QservMgtRequest::startImpl()
-    void startImpl(util::Lock const& lock) final;
+    void startImpl(replica::Lock const& lock) final;
 
     /// @see QservMgtRequest::finishImpl()
-    void finishImpl(util::Lock const& lock) final;
+    void finishImpl(replica::Lock const& lock) final;
 
     /// @see QservMgtRequest::notify()
-    void notify(util::Lock const& lock) final;
+    void notify(replica::Lock const& lock) final;
 
 private:
     /// @see GetStatusQservMgtRequest::create()
@@ -97,7 +97,7 @@ private:
      * @param lock A lock on QservMgtRequest::_mtx must be acquired by a caller of the method.
      * @param info The data string returned by a worker.
      */
-    void _setInfo(util::Lock const& lock, std::string const& info);
+    void _setInfo(replica::Lock const& lock, std::string const& info);
 
     // Input parameters
 

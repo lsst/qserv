@@ -108,7 +108,7 @@ list<pair<string, string>> QservGetReplicasJob::persistentLogData() const {
     return result;
 }
 
-void QservGetReplicasJob::startImpl(util::Lock const& lock) {
+void QservGetReplicasJob::startImpl(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     auto self = shared_from_base<QservGetReplicasJob>();
@@ -139,7 +139,7 @@ void QservGetReplicasJob::startImpl(util::Lock const& lock) {
     if (not _numLaunched) finish(lock, ExtendedState::SUCCESS);
 }
 
-void QservGetReplicasJob::cancelImpl(util::Lock const& lock) {
+void QservGetReplicasJob::cancelImpl(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     for (auto&& ptr : _requests) {
@@ -152,7 +152,7 @@ void QservGetReplicasJob::cancelImpl(util::Lock const& lock) {
     _numSuccess = 0;
 }
 
-void QservGetReplicasJob::notify(util::Lock const& lock) {
+void QservGetReplicasJob::notify(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
     notifyDefaultImpl<QservGetReplicasJob>(lock, _onFinish);
 }
@@ -164,7 +164,7 @@ void QservGetReplicasJob::_onRequestFinish(GetReplicasQservMgtRequest::Ptr const
 
     if (state() == State::FINISHED) return;
 
-    util::Lock lock(_mtx, context() + __func__);
+    replica::Lock lock(_mtx, context() + __func__);
 
     if (state() == State::FINISHED) return;
 

@@ -252,6 +252,8 @@ target_sources(replica PRIVATE
     MoveReplicaJob.h
     MySQLTestApp.cc
     MySQLTestApp.h
+    Mutex.h
+    Mutex.cc
     NamedMutexRegistry.cc
     NamedMutexRegistry.h
     OneWayFailer.h

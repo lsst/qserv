@@ -73,7 +73,7 @@ list<pair<string, string>> TestEchoQservMgtRequest::extendedPersistentState() co
     return result;
 }
 
-void TestEchoQservMgtRequest::startImpl(util::Lock const& lock) {
+void TestEchoQservMgtRequest::startImpl(replica::Lock const& lock) {
     // Submit the actual request
 
     auto const request = shared_from_base<TestEchoQservMgtRequest>();
@@ -83,7 +83,7 @@ void TestEchoQservMgtRequest::startImpl(util::Lock const& lock) {
                               string const& data, string const& dataEcho) {
                 if (request->state() == State::FINISHED) return;
 
-                util::Lock lock(request->_mtx, request->context() + string(__func__) + "[callback]");
+                replica::Lock lock(request->_mtx, request->context() + string(__func__) + "[callback]");
 
                 if (request->state() == State::FINISHED) return;
 
@@ -109,7 +109,7 @@ void TestEchoQservMgtRequest::startImpl(util::Lock const& lock) {
     service()->ProcessRequest(*_qservRequest, resource);
 }
 
-void TestEchoQservMgtRequest::finishImpl(util::Lock const& lock) {
+void TestEchoQservMgtRequest::finishImpl(replica::Lock const& lock) {
     switch (extendedState()) {
         case ExtendedState::CANCELLED:
         case ExtendedState::TIMEOUT_EXPIRED:
@@ -127,11 +127,11 @@ void TestEchoQservMgtRequest::finishImpl(util::Lock const& lock) {
     }
 }
 
-void TestEchoQservMgtRequest::notify(util::Lock const& lock) {
+void TestEchoQservMgtRequest::notify(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
     notifyDefaultImpl<TestEchoQservMgtRequest>(lock, _onFinish);
 }
 
-void TestEchoQservMgtRequest::_setData(util::Lock const& lock, string const& data) { _dataEcho = data; }
+void TestEchoQservMgtRequest::_setData(replica::Lock const& lock, string const& data) { _dataEcho = data; }
 
 }  // namespace lsst::qserv::replica

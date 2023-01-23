@@ -88,7 +88,7 @@ public:
 
 protected:
     /// @see Request::notify()
-    void notify(util::Lock const& lock) final;
+    void notify(replica::Lock const& lock) final;
 
 private:
     /// @see SqlCreateTableRequest::create()

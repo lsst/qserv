@@ -155,13 +155,13 @@ public:
 
 protected:
     /// @see Job::startImpl()
-    void startImpl(util::Lock const& lock) final;
+    void startImpl(replica::Lock const& lock) final;
 
     /// @see Job::cancelImpl()
-    void cancelImpl(util::Lock const& lock) final;
+    void cancelImpl(replica::Lock const& lock) final;
 
     /// @see Job::notify()
-    void notify(util::Lock const& lock) final;
+    void notify(replica::Lock const& lock) final;
 
 private:
     /// @see CreateReplicaJob::create()
@@ -187,7 +187,7 @@ private:
      * @param onFinish  An (optional) callback function to be called upon completion
      *   of the operation.
      */
-    void _qservAddReplica(util::Lock const& lock, unsigned int chunk,
+    void _qservAddReplica(replica::Lock const& lock, unsigned int chunk,
                           std::vector<std::string> const& databases, std::string const& worker,
                           AddReplicaQservMgtRequest::CallbackType const& onFinish = nullptr);
 

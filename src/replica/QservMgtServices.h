@@ -35,7 +35,7 @@
 #include "replica/ServiceProvider.h"
 #include "replica/SetReplicasQservMgtRequest.h"
 #include "replica/TestEchoQservMgtRequest.h"
-#include "util/Mutex.h"
+#include "replica/Mutex.h"
 
 // Forward declarations
 class XrdSsiService;
@@ -250,7 +250,7 @@ private:
 
     /// The mutex for enforcing thread safety of the class's public API
     /// and internal operations.
-    mutable util::Mutex _mtx;
+    mutable replica::Mutex _mtx;
 };
 
 }  // namespace lsst::qserv::replica

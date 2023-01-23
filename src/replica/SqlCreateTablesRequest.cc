@@ -74,7 +74,7 @@ SqlCreateTablesRequest::SqlCreateTablesRequest(
     requestBody.set_batch_mode(true);
 }
 
-void SqlCreateTablesRequest::notify(util::Lock const& lock) {
+void SqlCreateTablesRequest::notify(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG,
          context() << __func__ << "[" << ProtocolRequestSql_Type_Name(requestBody.type()) << "]");
 

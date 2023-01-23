@@ -73,7 +73,7 @@ list<pair<string, string>> GetStatusQservMgtRequest::extendedPersistentState() c
     return result;
 }
 
-void GetStatusQservMgtRequest::startImpl(util::Lock const& lock) {
+void GetStatusQservMgtRequest::startImpl(replica::Lock const& lock) {
     // Submit the actual request
 
     auto const request = shared_from_base<GetStatusQservMgtRequest>();
@@ -83,7 +83,7 @@ void GetStatusQservMgtRequest::startImpl(util::Lock const& lock) {
                                                               string const& error, string const& info) {
                 if (request->state() == State::FINISHED) return;
 
-                util::Lock lock(request->_mtx, request->context() + string(__func__) + "[callback]");
+                replica::Lock lock(request->_mtx, request->context() + string(__func__) + "[callback]");
 
                 if (request->state() == State::FINISHED) return;
 
@@ -116,7 +116,7 @@ void GetStatusQservMgtRequest::startImpl(util::Lock const& lock) {
     service()->ProcessRequest(*_qservRequest, resource);
 }
 
-void GetStatusQservMgtRequest::finishImpl(util::Lock const& lock) {
+void GetStatusQservMgtRequest::finishImpl(replica::Lock const& lock) {
     switch (extendedState()) {
         case ExtendedState::CANCELLED:
         case ExtendedState::TIMEOUT_EXPIRED:
@@ -134,12 +134,12 @@ void GetStatusQservMgtRequest::finishImpl(util::Lock const& lock) {
     }
 }
 
-void GetStatusQservMgtRequest::notify(util::Lock const& lock) {
+void GetStatusQservMgtRequest::notify(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
     notifyDefaultImpl<GetStatusQservMgtRequest>(lock, _onFinish);
 }
 
-void GetStatusQservMgtRequest::_setInfo(util::Lock const& lock, string const& info) {
+void GetStatusQservMgtRequest::_setInfo(replica::Lock const& lock, string const& info) {
     _info = json::parse(info);
 }
 

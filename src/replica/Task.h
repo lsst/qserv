@@ -35,7 +35,7 @@
 #include "replica/ServiceProvider.h"
 #include "util/BlockPost.h"
 #include "util/Issue.h"
-#include "util/Mutex.h"
+#include "replica/Mutex.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -302,7 +302,7 @@ private:
     std::atomic<bool> _stopRequested;      ///< The flag to be raised when the task needs to be stopped.
     std::atomic<size_t> _numFinishedJobs;  ///< The thread-safe counter of the finished jobs.
     LOG_LOGGER _log;                       ///< Message logger
-    util::Mutex _mtx;                      ///< For guarding the object's state
+    replica::Mutex _mtx;                   ///< For guarding the object's state
 };
 
 }  // namespace lsst::qserv::replica

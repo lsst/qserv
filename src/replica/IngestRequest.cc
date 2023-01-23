@@ -318,7 +318,7 @@ IngestRequest::IngestRequest(TransactionContribInfo const& contrib)
 
 TransactionContribInfo IngestRequest::transactionContribInfo() const {
     string const context = ::context_ + string(__func__) + " ";
-    util::Lock lock(_mtx, context);
+    replica::Lock lock(_mtx, context);
     return _contrib;
 }
 
@@ -345,7 +345,7 @@ void IngestRequest::cancel() {
 
 void IngestRequest::_processStart() {
     string const context = ::context_ + string(__func__) + " ";
-    util::Lock const lock(_mtx, context);
+    replica::Lock const lock(_mtx, context);
 
     if (_processing) {
         throw logic_error(context + "the contribution request " + to_string(_contrib.id) +
@@ -392,7 +392,7 @@ void IngestRequest::_processStart() {
     _openTmpFileAndStart(lock);
 }
 
-void IngestRequest::_openTmpFileAndStart(util::Lock const& lock) {
+void IngestRequest::_openTmpFileAndStart(replica::Lock const& lock) {
     bool const failed = true;
     auto const databaseServices = serviceProvider()->databaseServices();
     try {
@@ -420,7 +420,7 @@ void IngestRequest::_openTmpFileAndStart(util::Lock const& lock) {
 
 void IngestRequest::_processReadData() {
     string const context = ::context_ + string(__func__) + " ";
-    util::Lock const lock(_mtx, context);
+    replica::Lock const lock(_mtx, context);
 
     bool const failed = true;
     auto const databaseServices = serviceProvider()->databaseServices();
@@ -471,7 +471,7 @@ void IngestRequest::_processReadData() {
     }
 }
 
-bool IngestRequest::_closeTmpFileAndRetry(util::Lock const& lock) {
+bool IngestRequest::_closeTmpFileAndRetry(replica::Lock const& lock) {
     closeFile();
     if (_contrib.numFailedRetries >= _contrib.maxRetries) return false;
 
@@ -499,7 +499,7 @@ bool IngestRequest::_closeTmpFileAndRetry(util::Lock const& lock) {
 
 void IngestRequest::_processLoadData() {
     string const context = ::context_ + string(__func__) + " ";
-    util::Lock const lock(_mtx, context);
+    replica::Lock const lock(_mtx, context);
 
     bool const failed = true;
     auto const databaseServices = serviceProvider()->databaseServices();
@@ -530,7 +530,7 @@ void IngestRequest::_processLoadData() {
     closeFile();
 }
 
-void IngestRequest::_readLocalFile(util::Lock const& lock) {
+void IngestRequest::_readLocalFile(replica::Lock const& lock) {
     string const context = ::context_ + string(__func__) + " ";
 
     _contrib.numBytes = 0;
@@ -561,7 +561,7 @@ void IngestRequest::_readLocalFile(util::Lock const& lock) {
     } while (!eof);
 }
 
-void IngestRequest::_readRemoteFile(util::Lock const& lock) {
+void IngestRequest::_readRemoteFile(replica::Lock const& lock) {
     _contrib.numBytes = 0;
     _contrib.numRows = 0;
 
@@ -610,7 +610,7 @@ void IngestRequest::_readRemoteFile(util::Lock const& lock) {
     parser->parse(emptyRecord.data(), emptyRecord.size(), flush, reportRow);
 }
 
-HttpClientConfig IngestRequest::_clientConfig(util::Lock const& lock) const {
+HttpClientConfig IngestRequest::_clientConfig(replica::Lock const& lock) const {
     auto const databaseServices = serviceProvider()->databaseServices();
     auto const getString = [&](string& val, string const& key) -> bool {
         try {

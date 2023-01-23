@@ -80,13 +80,13 @@ public:
 
 protected:
     /// @see QservMgtRequest::startImpl
-    void startImpl(util::Lock const& lock) final;
+    void startImpl(replica::Lock const& lock) final;
 
     /// @see QservMgtRequest::finishImpl
-    void finishImpl(util::Lock const& lock) final;
+    void finishImpl(replica::Lock const& lock) final;
 
     /// @see QservMgtRequest::notify
-    void notify(util::Lock const& lock) final;
+    void notify(replica::Lock const& lock) final;
 
 private:
     /// @see TestEchoQservMgtRequest::create()
@@ -99,7 +99,7 @@ private:
      *   of the method.
      * @param data The data string returned by a worker.
      */
-    void _setData(util::Lock const& lock, std::string const& data);
+    void _setData(replica::Lock const& lock, std::string const& data);
 
     // Input parameters
 

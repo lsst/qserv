@@ -184,7 +184,7 @@ list<pair<string, string>> VerifyJob::extendedPersistentState() const {
     return result;
 }
 
-void VerifyJob::startImpl(util::Lock const& lock) {
+void VerifyJob::startImpl(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     auto self = shared_from_base<VerifyJob>();
@@ -216,7 +216,7 @@ void VerifyJob::startImpl(util::Lock const& lock) {
     }
 }
 
-void VerifyJob::cancelImpl(util::Lock const& lock) {
+void VerifyJob::cancelImpl(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     // To ensure no lingering "side effects" will be left after cancelling this
@@ -236,7 +236,7 @@ void VerifyJob::cancelImpl(util::Lock const& lock) {
     _requests.clear();
 }
 
-void VerifyJob::notify(util::Lock const& lock) {
+void VerifyJob::notify(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
     notifyDefaultImpl<VerifyJob>(lock, _onFinish);
 }
@@ -248,7 +248,7 @@ void VerifyJob::_onRequestFinish(FindRequest::Ptr const& request) {
 
     if (state() == State::FINISHED) return;
 
-    util::Lock lock(_mtx, context() + __func__);
+    replica::Lock lock(_mtx, context() + __func__);
 
     if (state() == State::FINISHED) return;
 
@@ -347,7 +347,7 @@ void VerifyJob::_onRequestFinish(FindRequest::Ptr const& request) {
     }
 }
 
-void VerifyJob::_nextReplicas(util::Lock const& lock, vector<ReplicaInfo>& replicas, size_t numReplicas) {
+void VerifyJob::_nextReplicas(replica::Lock const& lock, vector<ReplicaInfo>& replicas, size_t numReplicas) {
     controller()->serviceProvider()->databaseServices()->findOldestReplicas(replicas, numReplicas);
 }
 

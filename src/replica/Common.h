@@ -38,7 +38,7 @@
 
 // Qserv headers
 #include "replica/protocol.pb.h"
-#include "util/Mutex.h"
+#include "replica/Mutex.h"
 
 // This header declarations
 namespace lsst::qserv::replica {
@@ -87,7 +87,7 @@ public:
 
 private:
     /// For thread safety where it's required
-    static util::Mutex _mtx;
+    static replica::Mutex _mtx;
 };
 
 /**

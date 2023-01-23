@@ -53,12 +53,12 @@ ostream& operator<<(ostream& os, Chunk const& chunk) {
 /////////////////////////////////////////////
 
 bool ChunkLocker::isLocked(Chunk const& chunk) const {
-    util::Lock mLock(_mtx, "ChunkLocker::" + string(__func__) + "(chunk)");
+    replica::Lock mLock(_mtx, "ChunkLocker::" + string(__func__) + "(chunk)");
     return _chunk2owner.count(chunk);
 }
 
 bool ChunkLocker::isLocked(Chunk const& chunk, string& owner) const {
-    util::Lock mLock(_mtx, "ChunkLocker::" + string(__func__) + "(chunk,owner)");
+    replica::Lock mLock(_mtx, "ChunkLocker::" + string(__func__) + "(chunk,owner)");
 
     auto itr = _chunk2owner.find(chunk);
     if (itr != _chunk2owner.end()) {
@@ -69,7 +69,7 @@ bool ChunkLocker::isLocked(Chunk const& chunk, string& owner) const {
 }
 
 ChunkLocker::OwnerToChunks ChunkLocker::locked(string const& owner) const {
-    util::Lock mLock(_mtx, "ChunkLocker::" + string(__func__));
+    replica::Lock mLock(_mtx, "ChunkLocker::" + string(__func__));
 
     OwnerToChunks owner2chunks;
     _lockedImpl(mLock, owner, owner2chunks);
@@ -77,7 +77,7 @@ ChunkLocker::OwnerToChunks ChunkLocker::locked(string const& owner) const {
     return owner2chunks;
 }
 
-void ChunkLocker::_lockedImpl(util::Lock const& mLock, string const& owner,
+void ChunkLocker::_lockedImpl(replica::Lock const& mLock, string const& owner,
                               ChunkLocker::OwnerToChunks& owner2chunks) const {
     for (auto&& entry : _chunk2owner) {
         Chunk const& chunk = entry.first;
@@ -90,7 +90,7 @@ void ChunkLocker::_lockedImpl(util::Lock const& mLock, string const& owner,
 }
 
 bool ChunkLocker::lock(Chunk const& chunk, string const& owner) {
-    util::Lock mLock(_mtx, "ChunkLocker::" + string(__func__));
+    replica::Lock mLock(_mtx, "ChunkLocker::" + string(__func__));
 
     if (owner.empty()) {
         throw invalid_argument("ChunkLocker::" + string(__func__) + "  empty owner");
@@ -103,7 +103,7 @@ bool ChunkLocker::lock(Chunk const& chunk, string const& owner) {
 }
 
 bool ChunkLocker::release(Chunk const& chunk) {
-    util::Lock mLock(_mtx, "ChunkLocker::" + string(__func__) + "(chunk)");
+    replica::Lock mLock(_mtx, "ChunkLocker::" + string(__func__) + "(chunk)");
 
     // An owner (if set) will be ignored by the current method
 
@@ -112,11 +112,11 @@ bool ChunkLocker::release(Chunk const& chunk) {
 }
 
 bool ChunkLocker::release(Chunk const& chunk, string& owner) {
-    util::Lock mLock(_mtx, "ChunkLocker::" + string(__func__) + "(chunk,owner)");
+    replica::Lock mLock(_mtx, "ChunkLocker::" + string(__func__) + "(chunk,owner)");
     return _releaseImpl(mLock, chunk, owner);
 }
 
-bool ChunkLocker::_releaseImpl(util::Lock const& mLock, Chunk const& chunk, string& owner) {
+bool ChunkLocker::_releaseImpl(replica::Lock const& mLock, Chunk const& chunk, string& owner) {
     auto itr = _chunk2owner.find(chunk);
     if (itr == _chunk2owner.end()) return false;
 
@@ -130,7 +130,7 @@ bool ChunkLocker::_releaseImpl(util::Lock const& mLock, Chunk const& chunk, stri
 }
 
 list<Chunk> ChunkLocker::release(string const& owner) {
-    util::Lock mLock(_mtx, "ChunkLocker::" + string(__func__) + "(owner)");
+    replica::Lock mLock(_mtx, "ChunkLocker::" + string(__func__) + "(owner)");
 
     if (owner.empty()) {
         throw invalid_argument("ChunkLocker::" + string(__func__) + "  empty owner");

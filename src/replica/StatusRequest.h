@@ -260,7 +260,9 @@ public:
     }
 
 protected:
-    void notify(util::Lock const& lock) final { notifyDefaultImpl<StatusRequest<POLICY>>(lock, _onFinish); }
+    void notify(replica::Lock const& lock) final {
+        notifyDefaultImpl<StatusRequest<POLICY>>(lock, _onFinish);
+    }
 
     /**
      * Initiate request-specific send.
@@ -268,7 +270,7 @@ protected:
      *   by the base class.
      * @param lock  A lock on Request::_mtx must be acquired before calling this method.
      */
-    void send(util::Lock const& lock) final {
+    void send(replica::Lock const& lock) final {
         auto self = shared_from_base<StatusRequest<POLICY>>();
         messenger()->send<typename POLICY::ResponseMessageType>(
                 worker(), id(), priority(), buffer(),
@@ -311,7 +313,7 @@ private:
         // results of the request. Note that the operation doesn't care
         // about the global state of the request (wether it's already finished
         // or not)
-        util::Lock lock(_mtx, context() + __func__);
+        replica::Lock lock(_mtx, context() + __func__);
 
         // Extract target request-specific parameters from the response if available.
         POLICY::extractTargetRequestParams(message, _targetRequestParams);

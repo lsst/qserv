@@ -38,7 +38,7 @@
 #include "replica/Common.h"
 #include "replica/Request.h"
 #include "replica/ServiceProvider.h"
-#include "util/Mutex.h"
+#include "replica/Mutex.h"
 
 // Forward declarations
 namespace lsst::qserv::replica {
@@ -452,7 +452,7 @@ public:
 
     template <class REQUEST>
     void requestsOfType(std::vector<typename REQUEST::Ptr>& requests) const {
-        util::Lock lock(_mtx, _context(__func__));
+        replica::Lock lock(_mtx, _context(__func__));
         requests.clear();
         for (auto&& itr : _registry)
             if (typename REQUEST::Ptr ptr = std::dynamic_pointer_cast<REQUEST>(itr.second->request())) {
@@ -462,7 +462,7 @@ public:
 
     template <class REQUEST>
     size_t numRequestsOfType() const {
-        util::Lock lock(_mtx, _context(__func__));
+        replica::Lock lock(_mtx, _context(__func__));
         size_t result(0);
         for (auto&& itr : _registry) {
             if (typename REQUEST::Ptr request = std::dynamic_pointer_cast<REQUEST>(itr.second->request())) {
@@ -547,7 +547,7 @@ private:
                                   bool keepTracking, std::string const& jobId,
                                   unsigned int requestExpirationIvalSec) {
         _assertIsRunning();
-        util::Lock lock(_mtx, _context(__func__));
+        replica::Lock lock(_mtx, _context(__func__));
         auto const controller = shared_from_this();
         auto const request = REQUEST::create(
                 serviceProvider(), serviceProvider()->io_service(), workerName, Fargs...,
@@ -573,7 +573,7 @@ private:
                                   typename REQUEST::CallbackType const& onFinish, int priority,
                                   std::string const& jobId, unsigned int requestExpirationIvalSec) {
         _assertIsRunning();
-        util::Lock lock(_mtx, _context(__func__));
+        replica::Lock lock(_mtx, _context(__func__));
         auto const controller = shared_from_this();
         auto const request = REQUEST::create(
                 serviceProvider(), serviceProvider()->io_service(), workerName,
@@ -601,7 +601,7 @@ private:
 
     /// For enforcing thread safety of the class's public API
     /// and internal operations.
-    mutable util::Mutex _mtx;
+    mutable replica::Mutex _mtx;
 
     std::map<std::string, std::shared_ptr<RequestWrapper>> _registry;
 };

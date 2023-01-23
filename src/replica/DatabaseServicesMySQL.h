@@ -36,7 +36,7 @@
 #include "replica/Configuration.h"
 #include "replica/DatabaseMySQL.h"
 #include "replica/DatabaseServices.h"
-#include "util/Mutex.h"
+#include "replica/Mutex.h"
 
 // This header declarations
 namespace lsst::qserv::replica {
@@ -151,7 +151,7 @@ public:
 
     TransactionInfo createTransaction(
             std::string const& databaseName, NamedMutexRegistry& namedMutexRegistry,
-            std::unique_ptr<util::Lock>& namedMutexLock,
+            std::unique_ptr<replica::Lock>& namedMutexLock,
             nlohmann::json const& transactionContext = nlohmann::json::object()) final;
 
     TransactionInfo updateTransaction(TransactionId id, TransactionInfo::State newState) final;
@@ -236,7 +236,7 @@ private:
      * @param includeFileInfo if set to 'true' then file info will also be added
      *   to each replica
      */
-    void _findWorkerReplicasImpl(util::Lock const& lock, std::vector<ReplicaInfo>& replicas,
+    void _findWorkerReplicasImpl(replica::Lock const& lock, std::vector<ReplicaInfo>& replicas,
                                  std::string const& worker, std::string const& database = std::string(),
                                  bool allDatabases = false, bool isPublished = true,
                                  bool includeFileInfo = true);
@@ -248,7 +248,7 @@ private:
      *   before calling this method
      * @param info replica to be added/updated or deleted
      */
-    void _saveReplicaInfoImpl(util::Lock const& lock, ReplicaInfo const& info);
+    void _saveReplicaInfoImpl(replica::Lock const& lock, ReplicaInfo const& info);
 
     /**
      * Actual implementation of the multiple replicas update algorithm.
@@ -259,7 +259,7 @@ private:
      * @param database database name (as per the request)
      * @param newReplicaInfoCollection collection of new replicas
      */
-    void _saveReplicaInfoCollectionImpl(util::Lock const& lock, std::string const& worker,
+    void _saveReplicaInfoCollectionImpl(replica::Lock const& lock, std::string const& worker,
                                         std::string const& database,
                                         ReplicaInfoCollection const& newReplicaInfoCollection);
 
@@ -272,7 +272,7 @@ private:
      * @param database database name
      * @param chunk the chunk whose replicas will be removed
      */
-    void _deleteReplicaInfoImpl(util::Lock const& lock, std::string const& worker,
+    void _deleteReplicaInfoImpl(replica::Lock const& lock, std::string const& worker,
                                 std::string const& database, unsigned int chunk);
     /**
      * Fetch replicas satisfying the specified query
@@ -284,7 +284,7 @@ private:
      * @param includeFileInfo if set to 'true' then file info will also be added
      *   to each replica
      */
-    void _findReplicasImpl(util::Lock const& lock, std::vector<ReplicaInfo>& replicas,
+    void _findReplicasImpl(replica::Lock const& lock, std::vector<ReplicaInfo>& replicas,
                            std::string const& query, bool includeFileInfo = true);
 
     /**
@@ -295,7 +295,7 @@ private:
      * @param id2replica input/output collection of incomplete replicas to be
      *   extended with files (if any found)
      */
-    void _findReplicaFilesImpl(util::Lock const& lock, std::map<uint64_t, ReplicaInfo>& id2replica);
+    void _findReplicaFilesImpl(replica::Lock const& lock, std::map<uint64_t, ReplicaInfo>& id2replica);
 
     /**
      * Fetch replicas satisfying the specified query
@@ -305,63 +305,66 @@ private:
      * @param chunks collection of chunks to be returned
      * @param query SQL query against the corresponding table
      */
-    void _findChunksImpl(util::Lock const& lock, std::vector<unsigned int>& chunks, std::string const& query);
+    void _findChunksImpl(replica::Lock const& lock, std::vector<unsigned int>& chunks,
+                         std::string const& query);
 
-    void _logControllerEvent(util::Lock const& lock, ControllerEvent const& event);
+    void _logControllerEvent(replica::Lock const& lock, ControllerEvent const& event);
 
-    std::list<ControllerEvent> _readControllerEvents(util::Lock const& lock, std::string const& controllerId,
-                                                     uint64_t fromTimeStamp, uint64_t toTimeStamp,
-                                                     size_t maxEntries, std::string const& task,
-                                                     std::string const& operation,
+    std::list<ControllerEvent> _readControllerEvents(replica::Lock const& lock,
+                                                     std::string const& controllerId, uint64_t fromTimeStamp,
+                                                     uint64_t toTimeStamp, size_t maxEntries,
+                                                     std::string const& task, std::string const& operation,
                                                      std::string const& operationStatus);
 
-    nlohmann::json _readControllerEventDict(util::Lock const& lock, std::string const& controllerId);
+    nlohmann::json _readControllerEventDict(replica::Lock const& lock, std::string const& controllerId);
 
-    ControllerInfo _controller(util::Lock const& lock, std::string const& id);
+    ControllerInfo _controller(replica::Lock const& lock, std::string const& id);
 
-    std::list<ControllerInfo> _controllers(util::Lock const& lock, uint64_t fromTimeStamp,
+    std::list<ControllerInfo> _controllers(replica::Lock const& lock, uint64_t fromTimeStamp,
                                            uint64_t toTimeStamp, size_t maxEntries);
 
-    RequestInfo _request(util::Lock const& lock, std::string const& id);
+    RequestInfo _request(replica::Lock const& lock, std::string const& id);
 
-    std::list<RequestInfo> _requests(util::Lock const& lock, std::string const& jobId, uint64_t fromTimeStamp,
-                                     uint64_t toTimeStamp, size_t maxEntries);
+    std::list<RequestInfo> _requests(replica::Lock const& lock, std::string const& jobId,
+                                     uint64_t fromTimeStamp, uint64_t toTimeStamp, size_t maxEntries);
 
-    JobInfo _job(util::Lock const& lock, std::string const& id);
+    JobInfo _job(replica::Lock const& lock, std::string const& id);
 
-    std::list<JobInfo> _jobs(util::Lock const& lock, std::string const& controllerId,
+    std::list<JobInfo> _jobs(replica::Lock const& lock, std::string const& controllerId,
                              std::string const& parentJobId, uint64_t fromTimeStamp, uint64_t toTimeStamp,
                              size_t maxEntries);
 
     std::string _typeSelectorPredicate(TransactionContribInfo::TypeSelector typeSelector) const;
 
-    std::vector<TransactionInfo> _transactions(util::Lock const& lock, std::string const& predicate,
+    std::vector<TransactionInfo> _transactions(replica::Lock const& lock, std::string const& predicate,
                                                bool includeContext, bool includeLog);
 
-    TransactionInfo _findTransactionImpl(util::Lock const& lock, std::string const& predicate,
+    TransactionInfo _findTransactionImpl(replica::Lock const& lock, std::string const& predicate,
                                          bool includeContext, bool includeLog);
 
-    std::vector<TransactionInfo> _findTransactionsImpl(util::Lock const& lock, std::string const& predicate,
-                                                       bool includeContext, bool includeLog);
+    std::vector<TransactionInfo> _findTransactionsImpl(replica::Lock const& lock,
+                                                       std::string const& predicate, bool includeContext,
+                                                       bool includeLog);
 
-    std::vector<TransactionContribInfo> _transactionContribs(util::Lock const& lock,
+    std::vector<TransactionContribInfo> _transactionContribs(replica::Lock const& lock,
                                                              std::string const& predicate,
                                                              bool includeWarnings = false,
                                                              bool includeRetries = false);
 
-    TransactionContribInfo _transactionContribImpl(util::Lock const& lock, std::string const& predicate,
+    TransactionContribInfo _transactionContribImpl(replica::Lock const& lock, std::string const& predicate,
                                                    bool includeWarnings = false, bool includeRetries = false);
 
-    std::vector<TransactionContribInfo> _transactionContribsImpl(util::Lock const& lock,
+    std::vector<TransactionContribInfo> _transactionContribsImpl(replica::Lock const& lock,
                                                                  std::string const& predicate,
                                                                  bool includeWarnings = false,
                                                                  bool includeRetries = false);
 
-    DatabaseIngestParam _ingestParamImpl(util::Lock const& lock, std::string const& predicate);
+    DatabaseIngestParam _ingestParamImpl(replica::Lock const& lock, std::string const& predicate);
 
-    std::vector<DatabaseIngestParam> _ingestParamsImpl(util::Lock const& lock, std::string const& predicate);
+    std::vector<DatabaseIngestParam> _ingestParamsImpl(replica::Lock const& lock,
+                                                       std::string const& predicate);
 
-    TableRowStats _tableRowStats(util::Lock const& lock, std::string const& database,
+    TableRowStats _tableRowStats(replica::Lock const& lock, std::string const& database,
                                  std::string const& table, TransactionId transactionId);
 
     /*
@@ -385,7 +388,7 @@ private:
 
     /// The mutex for enforcing thread safety of the class's public API
     /// and internal operations.
-    mutable util::Mutex _mtx;
+    mutable replica::Mutex _mtx;
 };
 
 }  // namespace lsst::qserv::replica

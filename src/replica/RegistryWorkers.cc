@@ -40,7 +40,7 @@ void RegistryWorkers::insert(json const& worker) {
         throw invalid_argument(context + "attribute 'name' is missing in the worker definition JSON object.");
     }
     string const& id = *itr;
-    util::Lock const lock(_mtx, context);
+    replica::Lock const lock(_mtx, context);
     _workers[id] = worker;
 }
 
@@ -49,13 +49,13 @@ void RegistryWorkers::remove(std::string const& id) {
     if (id.empty()) {
         throw invalid_argument(context + "worker identifier is empty.");
     }
-    util::Lock const lock(_mtx, context);
+    replica::Lock const lock(_mtx, context);
     _workers.erase(id);
 }
 
 json RegistryWorkers::workers() const {
     string const context = "RegistryWorkers::" + string(__func__) + " ";
-    util::Lock const lock(_mtx, context);
+    replica::Lock const lock(_mtx, context);
     return _workers;
 }
 

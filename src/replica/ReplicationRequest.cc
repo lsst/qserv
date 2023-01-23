@@ -82,7 +82,7 @@ ReplicationRequest::ReplicationRequest(ServiceProvider::Ptr const& serviceProvid
     Request::serviceProvider()->config()->assertDatabaseIsValid(database);
 }
 
-void ReplicationRequest::startImpl(util::Lock const& lock) {
+void ReplicationRequest::startImpl(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     WorkerInfo const sourceWorkerInfo = serviceProvider()->config()->workerInfo(sourceWorker());
@@ -121,7 +121,7 @@ void ReplicationRequest::awaken(boost::system::error_code const& ec) {
     if (isAborted(ec)) return;
 
     if (state() == State::FINISHED) return;
-    util::Lock lock(_mtx, context() + __func__);
+    replica::Lock lock(_mtx, context() + __func__);
     if (state() == State::FINISHED) return;
 
     // Serialize the Status message header and the request itself into
@@ -146,7 +146,7 @@ void ReplicationRequest::awaken(boost::system::error_code const& ec) {
     _send(lock);
 }
 
-void ReplicationRequest::_send(util::Lock const& lock) {
+void ReplicationRequest::_send(replica::Lock const& lock) {
     auto self = shared_from_base<ReplicationRequest>();
     messenger()->send<ProtocolResponseReplicate>(
             worker(), id(), priority(), buffer(),
@@ -164,7 +164,7 @@ void ReplicationRequest::_analyze(bool success, ProtocolResponseReplicate const&
     // for possible state transition which might occur while the async I/O was
     // still in a progress.
     if (state() == State::FINISHED) return;
-    util::Lock lock(_mtx, context() + __func__);
+    replica::Lock lock(_mtx, context() + __func__);
     if (state() == State::FINISHED) return;
 
     if (not success) {
@@ -243,12 +243,12 @@ void ReplicationRequest::_analyze(bool success, ProtocolResponseReplicate const&
     }
 }
 
-void ReplicationRequest::notify(util::Lock const& lock) {
+void ReplicationRequest::notify(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
     notifyDefaultImpl<ReplicationRequest>(lock, _onFinish);
 }
 
-void ReplicationRequest::savePersistentState(util::Lock const& lock) {
+void ReplicationRequest::savePersistentState(replica::Lock const& lock) {
     controller()->serviceProvider()->databaseServices()->saveState(*this, performance(lock));
 }
 

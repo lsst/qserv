@@ -91,7 +91,8 @@ list<pair<string, string>> SqlDeleteTablePartitionJob::extendedPersistentState()
     return result;
 }
 
-list<SqlRequest::Ptr> SqlDeleteTablePartitionJob::launchRequests(util::Lock const& lock, string const& worker,
+list<SqlRequest::Ptr> SqlDeleteTablePartitionJob::launchRequests(replica::Lock const& lock,
+                                                                 string const& worker,
                                                                  size_t maxRequestsPerWorker) {
     list<SqlRequest::Ptr> requests;
 
@@ -120,11 +121,11 @@ list<SqlRequest::Ptr> SqlDeleteTablePartitionJob::launchRequests(util::Lock cons
     return requests;
 }
 
-void SqlDeleteTablePartitionJob::stopRequest(util::Lock const& lock, SqlRequest::Ptr const& request) {
+void SqlDeleteTablePartitionJob::stopRequest(replica::Lock const& lock, SqlRequest::Ptr const& request) {
     stopRequestDefaultImpl<StopSqlDeleteTablePartitionRequest>(lock, request);
 }
 
-void SqlDeleteTablePartitionJob::notify(util::Lock const& lock) {
+void SqlDeleteTablePartitionJob::notify(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "[" << typeName() << "]");
     notifyDefaultImpl<SqlDeleteTablePartitionJob>(lock, _onFinish);
 }

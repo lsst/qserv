@@ -80,7 +80,7 @@ list<pair<string, string>> GetReplicasQservMgtRequest::extendedPersistentState()
 }
 
 void GetReplicasQservMgtRequest::_setReplicas(
-        util::Lock const& lock, wpublish::GetChunkListQservRequest::ChunkCollection const& collection) {
+        replica::Lock const& lock, wpublish::GetChunkListQservRequest::ChunkCollection const& collection) {
     // Filter results by databases participating in the family
 
     set<string> databases;
@@ -95,7 +95,7 @@ void GetReplicasQservMgtRequest::_setReplicas(
     }
 }
 
-void GetReplicasQservMgtRequest::startImpl(util::Lock const& lock) {
+void GetReplicasQservMgtRequest::startImpl(replica::Lock const& lock) {
     // Check if configuration parameters are valid
 
     if (not serviceProvider()->config()->isKnownDatabaseFamily(databaseFamily())) {
@@ -116,7 +116,7 @@ void GetReplicasQservMgtRequest::startImpl(util::Lock const& lock) {
                                    wpublish::GetChunkListQservRequest::ChunkCollection const& collection) {
                 if (request->state() == State::FINISHED) return;
 
-                util::Lock lock(request->_mtx, request->context() + string(__func__) + "[callback]");
+                replica::Lock lock(request->_mtx, request->context() + string(__func__) + "[callback]");
 
                 if (request->state() == State::FINISHED) return;
 
@@ -142,7 +142,7 @@ void GetReplicasQservMgtRequest::startImpl(util::Lock const& lock) {
     service()->ProcessRequest(*_qservRequest, resource);
 }
 
-void GetReplicasQservMgtRequest::finishImpl(util::Lock const& lock) {
+void GetReplicasQservMgtRequest::finishImpl(replica::Lock const& lock) {
     switch (extendedState()) {
         case ExtendedState::CANCELLED:
         case ExtendedState::TIMEOUT_EXPIRED:
@@ -160,7 +160,7 @@ void GetReplicasQservMgtRequest::finishImpl(util::Lock const& lock) {
     }
 }
 
-void GetReplicasQservMgtRequest::notify(util::Lock const& lock) {
+void GetReplicasQservMgtRequest::notify(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
     notifyDefaultImpl<GetReplicasQservMgtRequest>(lock, _onFinish);
 }

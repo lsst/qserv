@@ -116,9 +116,9 @@ public:
     std::list<std::pair<std::string, std::string>> persistentLogData() const final;
 
 protected:
-    void startImpl(util::Lock const& lock) final;
-    void cancelImpl(util::Lock const& lock) final;
-    void notify(util::Lock const& lock) final;
+    void startImpl(replica::Lock const& lock) final;
+    void cancelImpl(replica::Lock const& lock) final;
+    void notify(replica::Lock const& lock) final;
 
 private:
     FixUpJob(std::string const& databaseFamily, Controller::Ptr const& controller,
@@ -155,7 +155,7 @@ private:
      * @param maxRequests The maximum number of requests to be launched
      * @return The number of requests launched or 0 if no tasks existed for the worker.
      */
-    size_t _launchNext(util::Lock const& lock, std::string const& destinationWorker, size_t maxRequests);
+    size_t _launchNext(replica::Lock const& lock, std::string const& destinationWorker, size_t maxRequests);
 
     /// Structure ReplicationTask encapsulates a task to be schedule for executing
     /// as a replication request.

@@ -110,9 +110,9 @@ DirectorIndexRequest::~DirectorIndexRequest() {
 
 DirectorIndexRequestInfo const& DirectorIndexRequest::responseData() const { return _responseData; }
 
-void DirectorIndexRequest::startImpl(util::Lock const& lock) { _sendInitialRequest(lock); }
+void DirectorIndexRequest::startImpl(replica::Lock const& lock) { _sendInitialRequest(lock); }
 
-void DirectorIndexRequest::_sendInitialRequest(util::Lock const& lock) {
+void DirectorIndexRequest::_sendInitialRequest(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG,
          context() << __func__ << " "
                    << " worker: " << worker() << " database: " << database()
@@ -154,13 +154,13 @@ void DirectorIndexRequest::awaken(boost::system::error_code const& ec) {
     if (isAborted(ec)) return;
 
     if (state() == State::FINISHED) return;
-    util::Lock lock(_mtx, context_);
+    replica::Lock lock(_mtx, context_);
     if (state() == State::FINISHED) return;
 
     _sendStatusRequest(lock);
 }
 
-void DirectorIndexRequest::_sendStatusRequest(util::Lock const& lock) {
+void DirectorIndexRequest::_sendStatusRequest(replica::Lock const& lock) {
     // Serialize the Status message header and the request itself into
     // the network buffer.
 
@@ -183,7 +183,7 @@ void DirectorIndexRequest::_sendStatusRequest(util::Lock const& lock) {
     _send(lock);
 }
 
-void DirectorIndexRequest::_send(util::Lock const& lock) {
+void DirectorIndexRequest::_send(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
     auto self = shared_from_base<DirectorIndexRequest>();
     messenger()->send<ProtocolResponseDirectorIndex>(
@@ -203,7 +203,7 @@ void DirectorIndexRequest::_analyze(bool success, ProtocolResponseDirectorIndex 
     // for possible state transition which might occur while the async I/O was
     // still in a progress.
     if (state() == State::FINISHED) return;
-    util::Lock lock(_mtx, context_);
+    replica::Lock lock(_mtx, context_);
     if (state() == State::FINISHED) return;
 
     if (!success) {
@@ -296,7 +296,7 @@ void DirectorIndexRequest::_disposed(bool success, ProtocolResponseDispose const
     LOGS(_log, LOG_LVL_DEBUG, context_);
 
     if (state() == State::FINISHED) return;
-    util::Lock lock(_mtx, context_);
+    replica::Lock lock(_mtx, context_);
     if (state() == State::FINISHED) return;
 
     if (!success) {
@@ -307,7 +307,7 @@ void DirectorIndexRequest::_disposed(bool success, ProtocolResponseDispose const
     _sendInitialRequest(lock);
 }
 
-void DirectorIndexRequest::_writeInfoFile(util::Lock const& lock, string const& data) {
+void DirectorIndexRequest::_writeInfoFile(replica::Lock const& lock, string const& data) {
     if (!_file.is_open()) {
         _file.open(_responseData.fileName, ios::binary | ios::out | ios::trunc);
         if (!_file.good()) {
@@ -318,12 +318,12 @@ void DirectorIndexRequest::_writeInfoFile(util::Lock const& lock, string const& 
     _file << data;
 }
 
-void DirectorIndexRequest::notify(util::Lock const& lock) {
+void DirectorIndexRequest::notify(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
     notifyDefaultImpl<DirectorIndexRequest>(lock, _onFinish);
 }
 
-void DirectorIndexRequest::savePersistentState(util::Lock const& lock) {
+void DirectorIndexRequest::savePersistentState(replica::Lock const& lock) {
     controller()->serviceProvider()->databaseServices()->saveState(*this, performance(lock));
 }
 

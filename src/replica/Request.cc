@@ -140,7 +140,7 @@ Request::~Request() {
 }
 
 string Request::state2string() const {
-    util::Lock lock(_mtx, context() + __func__);
+    replica::Lock lock(_mtx, context() + __func__);
     return state2string(state(), extendedState()) + "::" + replica::status2string(extendedServerStatus());
 }
 
@@ -158,11 +158,11 @@ unsigned int Request::nextTimeIvalMsec() {
 }
 
 Performance Request::performance() const {
-    util::Lock lock(_mtx, context() + __func__);
+    replica::Lock lock(_mtx, context() + __func__);
     return performance(lock);
 }
 
-Performance Request::performance(util::Lock const& lock) const { return _performance; }
+Performance Request::performance(replica::Lock const& lock) const { return _performance; }
 
 string Request::toString(bool extended) const {
     ostringstream oss;
@@ -184,7 +184,7 @@ string Request::toString(bool extended) const {
 
 void Request::start(shared_ptr<Controller> const& controller, string const& jobId,
                     unsigned int requestExpirationIvalSec) {
-    util::Lock lock(_mtx, context() + __func__);
+    replica::Lock lock(_mtx, context() + __func__);
 
     assertState(lock, CREATED, context() + __func__);
 
@@ -245,7 +245,7 @@ void Request::expired(boost::system::error_code const& ec) {
     if (ec == boost::asio::error::operation_aborted) return;
 
     if (state() == State::FINISHED) return;
-    util::Lock lock(_mtx, context() + __func__);
+    replica::Lock lock(_mtx, context() + __func__);
     if (state() == State::FINISHED) return;
 
     finish(lock, TIMEOUT_EXPIRED);
@@ -255,13 +255,13 @@ void Request::cancel() {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     if (state() == State::FINISHED) return;
-    util::Lock lock(_mtx, context() + __func__);
+    replica::Lock lock(_mtx, context() + __func__);
     if (state() == FINISHED) return;
 
     finish(lock, CANCELLED);
 }
 
-void Request::keepTrackingOrFinish(util::Lock const& lock, ExtendedState extendedState) {
+void Request::keepTrackingOrFinish(replica::Lock const& lock, ExtendedState extendedState) {
     if (keepTracking()) {
         timer().expires_from_now(boost::posix_time::milliseconds(nextTimeIvalMsec()));
         timer().async_wait(bind(&Request::awaken, shared_from_this(), _1));
@@ -274,7 +274,7 @@ void Request::awaken(boost::system::error_code const& ec) {
     throw runtime_error(context() + string(__func__) + "  the default implementation is not allowed.");
 }
 
-void Request::finish(util::Lock const& lock, ExtendedState extendedState) {
+void Request::finish(replica::Lock const& lock, ExtendedState extendedState) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     // Check if it's not too late for this operation
@@ -309,14 +309,14 @@ bool Request::isAborted(boost::system::error_code const& ec) const {
     return false;
 }
 
-void Request::assertState(util::Lock const& lock, State desiredState, string const& context) const {
+void Request::assertState(replica::Lock const& lock, State desiredState, string const& context) const {
     if (desiredState != state()) {
         throw logic_error(context + ": wrong state " + state2string(state()) + " instead of " +
                           state2string(desiredState));
     }
 }
 
-void Request::setState(util::Lock const& lock, State newState, ExtendedState newExtendedState) {
+void Request::setState(replica::Lock const& lock, State newState, ExtendedState newExtendedState) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  " << state2string(newState, newExtendedState));
 
     // ATTENTION: ensure the top-level state is the last to change in

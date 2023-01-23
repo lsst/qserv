@@ -88,7 +88,7 @@ public:
                       int priority, bool keepTracking, std::shared_ptr<Messenger> const& messenger);
 
 protected:
-    void notify(util::Lock const& lock) final;
+    void notify(replica::Lock const& lock) final;
 
 private:
     SqlCreateIndexesRequest(ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service,

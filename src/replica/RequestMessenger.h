@@ -35,7 +35,7 @@
 #include "replica/protocol.pb.h"
 #include "replica/Request.h"
 #include "replica/ServiceProvider.h"
-#include "util/Mutex.h"
+#include "replica/Mutex.h"
 
 // This header declarations
 namespace lsst::qserv::replica {
@@ -80,7 +80,7 @@ protected:
     Messenger::Ptr const& messenger() const { return _messenger; }
 
     /// @see Request::finishImpl()
-    void finishImpl(util::Lock const& lock) override;
+    void finishImpl(replica::Lock const& lock) override;
 
     /**
      * Initiate the request disposal at the worker server. This method is automatically
@@ -96,7 +96,7 @@ protected:
      * @param onFinish The optional callback to be called upon the completion of
      *  the request disposal operation.
      */
-    void dispose(util::Lock const& lock, int priority, OnDisposeCallbackType const& onFinish = nullptr);
+    void dispose(replica::Lock const& lock, int priority, OnDisposeCallbackType const& onFinish = nullptr);
 
     // Input parameters
 

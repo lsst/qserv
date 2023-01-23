@@ -30,7 +30,7 @@
 // Qserv headers
 #include "replica/ClusterHealthJob.h"
 #include "replica/Task.h"
-#include "util/Mutex.h"
+#include "replica/Mutex.h"
 
 // This header declarations
 namespace lsst::qserv::replica {
@@ -157,7 +157,7 @@ private:
 
     /// Mutex guarding internal state. This object is made protected
     /// to allow subclasses use it.
-    mutable util::Mutex _mtx;
+    mutable replica::Mutex _mtx;
 
     /// Accumulate here non-response intervals for each workers until either will
     /// reach the "eviction" threshold. Then trigger worker eviction sequence.

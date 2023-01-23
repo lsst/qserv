@@ -38,7 +38,7 @@
 #include "replica/Performance.h"
 #include "replica/ProtocolBuffer.h"
 #include "replica/ServiceProvider.h"
-#include "util/Mutex.h"
+#include "replica/Mutex.h"
 
 // Forward declarations
 namespace lsst::qserv::replica {
@@ -292,7 +292,7 @@ protected:
      * @param lock The lock on Request::_mtx must be acquired before calling this method.
      * @param extendedState The finalization state to be set if the request should not resume.
      */
-    void keepTrackingOrFinish(util::Lock const& lock, ExtendedState extendedState);
+    void keepTrackingOrFinish(replica::Lock const& lock, ExtendedState extendedState);
 
     /// Callback handler for the asynchronous operation. It's invoked in a series
     /// of the timer-triggered events to track a progress of the request.
@@ -350,7 +350,7 @@ protected:
      * @param lock A lock on Request::_mtx must be acquired before calling this method.
      * @return The performance info.
      */
-    Performance performance(util::Lock const& lock) const;
+    Performance performance(replica::Lock const& lock) const;
 
     /// @return reference to the performance counters object
     Performance& mutablePerformance() { return _performance; }
@@ -360,7 +360,7 @@ protected:
      * @param lock A lock on Request::_mtx must be acquired before calling this method
      * @param status The new status to be set.
      */
-    void setExtendedServerStatus(util::Lock const& lock, ProtocolStatusExt status) {
+    void setExtendedServerStatus(replica::Lock const& lock, ProtocolStatusExt status) {
         _extendedServerStatus = status;
     }
 
@@ -369,14 +369,14 @@ protected:
      * @param lock A lock on Request::_mtx must be acquired before calling this method.
      * @param id An identifier to be set.
      */
-    void setDuplicateRequestId(util::Lock const& lock, std::string const& id) { _duplicateRequestId = id; }
+    void setDuplicateRequestId(replica::Lock const& lock, std::string const& id) { _duplicateRequestId = id; }
 
     /**
      * This method is supposed to be provided by subclasses for additional
      * subclass-specific actions to begin processing the request.
      * @param lock A lock on Request::_mtx must be acquired before calling this method.
      */
-    virtual void startImpl(util::Lock const& lock) = 0;
+    virtual void startImpl(replica::Lock const& lock) = 0;
 
     /**
      * Request expiration timer's handler. The expiration interval (if any)
@@ -393,14 +393,14 @@ protected:
      * @param lock A lock on Request::_mtx must be acquired before calling this method.
      * @param extendedState The new extended state.
      */
-    void finish(util::Lock const& lock, ExtendedState extendedState);
+    void finish(replica::Lock const& lock, ExtendedState extendedState);
 
     /**
      * This method is supposed to be provided by subclasses
      * to finalize request processing as required by the subclass.
      * @param lock A lock on Request::_mtx must be acquired before calling this method.
      */
-    virtual void finishImpl(util::Lock const& lock) = 0;
+    virtual void finishImpl(replica::Lock const& lock) = 0;
 
     /**
      * This method is supposed to be provided by subclasses to save the request's
@@ -411,7 +411,7 @@ protected:
      *
      * @param lock A lock on Request::_mtx must be acquired before calling this method.
      */
-    virtual void savePersistentState(util::Lock const& lock) {}
+    virtual void savePersistentState(replica::Lock const& lock) {}
 
     /**
      * Return 'true' if the operation was aborted.
@@ -438,7 +438,7 @@ protected:
      * @param context A context from which the state test is requested.
      * @throws std::logic_error If the desired state condition is not met.
      */
-    void assertState(util::Lock const& lock, State desiredState, std::string const& context) const;
+    void assertState(replica::Lock const& lock, State desiredState, std::string const& context) const;
 
     /**
      * Set the desired primary and extended state.
@@ -452,7 +452,7 @@ protected:
      * @param state The new primary state.
      * @param extendedState The new extended state.
      */
-    void setState(util::Lock const& lock, State state, ExtendedState extendedStat = ExtendedState::NONE);
+    void setState(replica::Lock const& lock, State state, ExtendedState extendedStat = ExtendedState::NONE);
 
     /**
      * This method will begin an optional user protocol upon a completion
@@ -467,7 +467,7 @@ protected:
      * The standard implementation of this method in a context of some
      * subclass 'T' should looks like this:
      * @code
-     *   void T::notify(util::Lock const& lock) {
+     *   void T::notify(replica::Lock const& lock) {
      *       notifyDefaultImpl<T>(lock, _onFinish);
      *   }
      * @code
@@ -475,7 +475,7 @@ protected:
      * @see Request::notifyDefaultImpl
      * @param lock A lock on Request::_mtx must be acquired before calling this method.
      */
-    virtual void notify(util::Lock const& lock) = 0;
+    virtual void notify(replica::Lock const& lock) = 0;
 
     /**
      * The helper function which pushes up-stream notifications on behalf of
@@ -492,7 +492,7 @@ protected:
      * @param onFinish A callback function (if set) to be called.
      */
     template <class T>
-    void notifyDefaultImpl(util::Lock const& lock, typename T::CallbackType& onFinish) {
+    void notifyDefaultImpl(replica::Lock const& lock, typename T::CallbackType& onFinish) {
         if (nullptr != onFinish) {
             // Clearing the stored callback after finishing the up-stream notification
             // has two purposes:
@@ -511,7 +511,7 @@ protected:
 
     /// Mutex guarding internal state. This object is made protected
     /// to allow subclasses use it.
-    mutable util::Mutex _mtx;
+    mutable replica::Mutex _mtx;
 
 private:
     /// The global counter for the number of instances of any subclasses

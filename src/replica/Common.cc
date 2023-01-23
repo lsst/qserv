@@ -76,10 +76,10 @@ ChunkOverlapSelector str2overlapSelector(string const& str) {
 //                Generators              //
 ////////////////////////////////////////////
 
-util::Mutex Generators::_mtx;
+replica::Mutex Generators::_mtx;
 
 string Generators::uniqueId() {
-    util::Lock lock(_mtx, "Generators::" + string(__func__));
+    replica::Lock lock(_mtx, "Generators::" + string(__func__));
     boost::uuids::uuid id = boost::uuids::random_generator()();
     return boost::uuids::to_string(id);
 }

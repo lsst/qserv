@@ -150,9 +150,9 @@ public:
     std::list<std::pair<std::string, std::string>> persistentLogData() const final;
 
 protected:
-    void startImpl(util::Lock const& lock) final;
-    void cancelImpl(util::Lock const& lock) final;
-    void notify(util::Lock const& lock) final;
+    void startImpl(replica::Lock const& lock) final;
+    void cancelImpl(replica::Lock const& lock) final;
+    void notify(replica::Lock const& lock) final;
 
 private:
     DirectorIndexJob(std::string const& databaseName, std::string const& directorTableName,
@@ -206,7 +206,7 @@ private:
      * @param maxRequests the maximum number of requests to be launched
      * @return a collection of requests launched
      */
-    std::list<DirectorIndexRequest::Ptr> _launchRequests(util::Lock const& lock, std::string const& worker,
+    std::list<DirectorIndexRequest::Ptr> _launchRequests(replica::Lock const& lock, std::string const& worker,
                                                          size_t maxRequests = 1);
 
 private:

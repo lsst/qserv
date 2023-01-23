@@ -35,7 +35,7 @@
 
 // Qserv headers
 #include "replica/Url.h"
-#include "util/Mutex.h"
+#include "replica/Mutex.h"
 
 // This header declarations
 namespace lsst::qserv::replica {
@@ -212,14 +212,14 @@ private:
      * @param desiredStates The desired states (may be more than one) to be verified.
      * @throw std::logic_error If the current state didn't match the desired one.
      */
-    void _assertState(util::Lock const& lock, std::string const& context,
+    void _assertState(replica::Lock const& lock, std::string const& context,
                       std::initializer_list<State> const& desiredStates) const;
 
     // Async operations initiators and handlers.
 
-    void _restart(util::Lock const& lock);
+    void _restart(replica::Lock const& lock);
     void _restarted(boost::system::error_code const& ec);
-    void _resolve(util::Lock const& lock);
+    void _resolve(replica::Lock const& lock);
     void _resolved(boost::system::error_code const& ec,
                    boost::asio::ip::tcp::resolver::results_type const& results);
     void _connected(boost::system::error_code const& ec);
@@ -228,7 +228,7 @@ private:
     void _expired(boost::system::error_code const& ec);
 
     /// Extract the header from the response message and cache it.
-    void _extractCacheHeader(util::Lock const& lock);
+    void _extractCacheHeader(replica::Lock const& lock);
 
     /// Log a error along with the request's parameters in the specified context
     void _logError(std::string const& prefix, boost::system::error_code const& ec) const;
@@ -241,7 +241,7 @@ private:
      * @param finalState The final state to be set.
      * @param error (Optional) The error message to be set.
      */
-    void _finish(util::Lock const& lock, State finalState, std::string const& error = std::string());
+    void _finish(replica::Lock const& lock, State finalState, std::string const& error = std::string());
 
     // Data members.
 
@@ -292,7 +292,7 @@ private:
 
     /// The mutex for enforcing thread safety of the class public API
     /// and internal operations.
-    mutable util::Mutex _mtx;
+    mutable replica::Mutex _mtx;
 };
 
 }  // namespace lsst::qserv::replica

@@ -73,7 +73,7 @@ list<pair<string, string>> RemoveReplicaQservMgtRequest::extendedPersistentState
     return result;
 }
 
-void RemoveReplicaQservMgtRequest::startImpl(util::Lock const& lock) {
+void RemoveReplicaQservMgtRequest::startImpl(replica::Lock const& lock) {
     auto const request = shared_from_base<RemoveReplicaQservMgtRequest>();
 
     _qservRequest = wpublish::RemoveChunkGroupQservRequest::create(
@@ -81,7 +81,7 @@ void RemoveReplicaQservMgtRequest::startImpl(util::Lock const& lock) {
             [request](wpublish::ChunkGroupQservRequest::Status status, string const& error) {
                 if (request->state() == State::FINISHED) return;
 
-                util::Lock lock(request->_mtx, request->context() + string(__func__) + "[callback]");
+                replica::Lock lock(request->_mtx, request->context() + string(__func__) + "[callback]");
 
                 if (request->state() == State::FINISHED) return;
 
@@ -112,7 +112,7 @@ void RemoveReplicaQservMgtRequest::startImpl(util::Lock const& lock) {
     service()->ProcessRequest(*_qservRequest, resource);
 }
 
-void RemoveReplicaQservMgtRequest::finishImpl(util::Lock const& lock) {
+void RemoveReplicaQservMgtRequest::finishImpl(replica::Lock const& lock) {
     switch (extendedState()) {
         case ExtendedState::CANCELLED:
         case ExtendedState::TIMEOUT_EXPIRED:
@@ -130,7 +130,7 @@ void RemoveReplicaQservMgtRequest::finishImpl(util::Lock const& lock) {
     }
 }
 
-void RemoveReplicaQservMgtRequest::notify(util::Lock const& lock) {
+void RemoveReplicaQservMgtRequest::notify(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
     notifyDefaultImpl<RemoveReplicaQservMgtRequest>(lock, _onFinish);
 }

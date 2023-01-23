@@ -67,7 +67,7 @@ SqlGetIndexesRequest::SqlGetIndexesRequest(ServiceProvider::Ptr const& servicePr
     requestBody.set_batch_mode(true);
 }
 
-void SqlGetIndexesRequest::notify(util::Lock const& lock) {
+void SqlGetIndexesRequest::notify(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG,
          context() << __func__ << "[" << ProtocolRequestSql_Type_Name(requestBody.type()) << "]");
 

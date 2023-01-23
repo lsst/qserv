@@ -131,7 +131,8 @@ private:
      *   going to access a protected state of the object.
      * @param conn  a valid database connector for extracting a result set
      */
-    void _extractResultSet(util::Lock const& lock, std::shared_ptr<database::mysql::Connection> const& conn);
+    void _extractResultSet(replica::Lock const& lock,
+                           std::shared_ptr<database::mysql::Connection> const& conn);
 
     /**
      * Report & record a failure
@@ -144,10 +145,10 @@ private:
      * @throw std::logic_error Is thrown when the method is called before
      *   creating a result set.
      */
-    void _reportFailure(util::Lock const& lock, ProtocolStatusExt statusExt, std::string const& error);
+    void _reportFailure(replica::Lock const& lock, ProtocolStatusExt statusExt, std::string const& error);
 
     // @return A mutable pointer to the current result set
-    ProtocolResponseSqlResultSet* _currentResultSet(util::Lock const& lock);
+    ProtocolResponseSqlResultSet* _currentResultSet(replica::Lock const& lock);
 
     /// @return 'true' if the request issues multiple queries
     bool _batchMode() const;

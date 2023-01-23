@@ -82,7 +82,7 @@ void MessengerConnector::stop() {
 
     list<MessageWrapperBase::Ptr> requests2notify;
     {
-        util::Lock lock(_mtx, _context() + __func__);
+        replica::Lock lock(_mtx, _context() + __func__);
 
         // The error code is used to call non-throwing methods and to prevent exceptions.
         // Note that it makes no sense to handle (not even report) any errors within the body
@@ -130,7 +130,7 @@ void MessengerConnector::stop() {
 }
 
 void MessengerConnector::cancel(string const& id) {
-    util::Lock lock(_mtx, _context() + __func__);
+    replica::Lock lock(_mtx, _context() + __func__);
 
     LOGS(_log, LOG_LVL_DEBUG,
          _context() << __func__ << "  _currentRequest=" << (_currentRequest ? _currentRequest->id() : "")
@@ -152,7 +152,7 @@ void MessengerConnector::cancel(string const& id) {
 }
 
 bool MessengerConnector::exists(string const& id) const {
-    util::Lock lock(_mtx, _context() + __func__);
+    replica::Lock lock(_mtx, _context() + __func__);
 
     LOGS(_log, LOG_LVL_DEBUG,
          _context() << __func__ << "  _currentRequest=" << (_currentRequest ? _currentRequest->id() : "")
@@ -161,7 +161,7 @@ bool MessengerConnector::exists(string const& id) const {
 }
 
 void MessengerConnector::_sendImpl(MessageWrapperBase::Ptr const& ptr) {
-    util::Lock lock(_mtx, _context() + __func__);
+    replica::Lock lock(_mtx, _context() + __func__);
 
     LOGS(_log, LOG_LVL_DEBUG,
          _context() << __func__ << "  _currentRequest=" << (_currentRequest ? _currentRequest->id() : "")
@@ -194,7 +194,7 @@ void MessengerConnector::_sendImpl(MessageWrapperBase::Ptr const& ptr) {
     }
 }
 
-void MessengerConnector::_restart(util::Lock const& lock) {
+void MessengerConnector::_restart(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG,
          _context() << __func__ << "  _currentRequest=" << (_currentRequest ? _currentRequest->id() : "")
                     << "  _requests.size=" << _requests.size());
@@ -231,7 +231,7 @@ void MessengerConnector::_restart(util::Lock const& lock) {
     _resolve(lock);
 }
 
-void MessengerConnector::_resolve(util::Lock const& lock) {
+void MessengerConnector::_resolve(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG,
          _context() << __func__ << "  _currentRequest=" << (_currentRequest ? _currentRequest->id() : "")
                     << "  _requests.size=" << _requests.size());
@@ -254,7 +254,7 @@ void MessengerConnector::_resolve(util::Lock const& lock) {
 
 void MessengerConnector::_resolved(boost::system::error_code const& ec,
                                    boost::asio::ip::tcp::resolver::iterator iter) {
-    util::Lock lock(_mtx, _context() + __func__);
+    replica::Lock lock(_mtx, _context() + __func__);
 
     LOGS(_log, LOG_LVL_DEBUG,
          _context() << __func__ << "  _currentRequest=" << (_currentRequest ? _currentRequest->id() : "")
@@ -269,7 +269,7 @@ void MessengerConnector::_resolved(boost::system::error_code const& ec,
     }
 }
 
-void MessengerConnector::_connect(util::Lock const& lock, boost::asio::ip::tcp::resolver::iterator iter) {
+void MessengerConnector::_connect(replica::Lock const& lock, boost::asio::ip::tcp::resolver::iterator iter) {
     LOGS(_log, LOG_LVL_DEBUG,
          _context() << __func__ << "  _currentRequest=" << (_currentRequest ? _currentRequest->id() : "")
                     << "  _requests.size=" << _requests.size());
@@ -280,7 +280,7 @@ void MessengerConnector::_connect(util::Lock const& lock, boost::asio::ip::tcp::
 
 void MessengerConnector::_connected(boost::system::error_code const& ec,
                                     boost::asio::ip::tcp::resolver::iterator iter) {
-    util::Lock lock(_mtx, _context() + __func__);
+    replica::Lock lock(_mtx, _context() + __func__);
 
     LOGS(_log, LOG_LVL_DEBUG,
          _context() << __func__ << "  _currentRequest=" << (_currentRequest ? _currentRequest->id() : "")
@@ -296,7 +296,7 @@ void MessengerConnector::_connected(boost::system::error_code const& ec,
     }
 }
 
-void MessengerConnector::_waitBeforeRestart(util::Lock const& lock) {
+void MessengerConnector::_waitBeforeRestart(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG,
          _context() << __func__ << "  _currentRequest=" << (_currentRequest ? _currentRequest->id() : "")
                     << "  _requests.size=" << _requests.size());
@@ -307,7 +307,7 @@ void MessengerConnector::_waitBeforeRestart(util::Lock const& lock) {
 }
 
 void MessengerConnector::_awakenForRestart(boost::system::error_code const& ec) {
-    util::Lock lock(_mtx, _context() + __func__);
+    replica::Lock lock(_mtx, _context() + __func__);
 
     LOGS(_log, LOG_LVL_DEBUG,
          _context() << __func__ << "  _currentRequest=" << (_currentRequest ? _currentRequest->id() : "")
@@ -330,7 +330,7 @@ void MessengerConnector::_awakenForRestart(boost::system::error_code const& ec) 
     throw runtime_error("MessengerConnector::" + string(__func__) + "  error: " + ec2str(ec));
 }
 
-void MessengerConnector::_sendRequest(util::Lock const& lock) {
+void MessengerConnector::_sendRequest(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG,
          _context() << __func__ << ":1"
                     << "  _currentRequest=" << (_currentRequest ? _currentRequest->id() : "")
@@ -357,7 +357,7 @@ void MessengerConnector::_sendRequest(util::Lock const& lock) {
 }
 
 void MessengerConnector::_requestSent(boost::system::error_code const& ec, size_t bytes_transferred) {
-    util::Lock lock(_mtx, _context() + __func__);
+    replica::Lock lock(_mtx, _context() + __func__);
 
     LOGS(_log, LOG_LVL_DEBUG,
          _context() << __func__ << "  _currentRequest=" << (_currentRequest ? _currentRequest->id() : "")
@@ -383,7 +383,7 @@ void MessengerConnector::_requestSent(boost::system::error_code const& ec, size_
     _receiveResponse(lock);
 }
 
-void MessengerConnector::_receiveResponse(util::Lock const& lock) {
+void MessengerConnector::_receiveResponse(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG,
          _context() << __func__ << "  _currentRequest=" << (_currentRequest ? _currentRequest->id() : "")
                     << "  _requests.size=" << _requests.size());
@@ -416,7 +416,7 @@ void MessengerConnector::_responseReceived(boost::system::error_code const& ec, 
 
     MessageWrapperBase::Ptr request2notify;
     {
-        util::Lock lock(_mtx, _context() + __func__);
+        replica::Lock lock(_mtx, _context() + __func__);
 
         LOGS(_log, LOG_LVL_DEBUG,
              _context() << __func__ << "  _currentRequest=" << (_currentRequest ? _currentRequest->id() : "")
@@ -481,7 +481,7 @@ void MessengerConnector::_responseReceived(boost::system::error_code const& ec, 
     if (request2notify) request2notify->parseAndNotify();
 }
 
-boost::system::error_code MessengerConnector::_syncReadFrame(util::Lock const& lock, ProtocolBuffer& buf,
+boost::system::error_code MessengerConnector::_syncReadFrame(replica::Lock const& lock, ProtocolBuffer& buf,
                                                              size_t& bytes) {
     size_t const frameLength = sizeof(uint32_t);
     buf.resize(frameLength);
@@ -497,7 +497,7 @@ boost::system::error_code MessengerConnector::_syncReadFrame(util::Lock const& l
     return ec;
 }
 
-boost::system::error_code MessengerConnector::_syncReadVerifyHeader(util::Lock const& lock,
+boost::system::error_code MessengerConnector::_syncReadVerifyHeader(replica::Lock const& lock,
                                                                     ProtocolBuffer& buf, size_t bytes,
                                                                     string const& id) {
     boost::system::error_code const ec = _syncReadMessageImpl(lock, buf, bytes);
@@ -512,7 +512,7 @@ boost::system::error_code MessengerConnector::_syncReadVerifyHeader(util::Lock c
     return ec;
 }
 
-boost::system::error_code MessengerConnector::_syncReadMessageImpl(util::Lock const& lock,
+boost::system::error_code MessengerConnector::_syncReadMessageImpl(replica::Lock const& lock,
                                                                    ProtocolBuffer& buf, size_t bytes) {
     buf.resize(bytes);
     boost::system::error_code ec;

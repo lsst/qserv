@@ -109,7 +109,7 @@ list<pair<string, string>> SqlRequest::extendedPersistentState() const {
 
 SqlResultSet const& SqlRequest::responseData() const { return _responseData; }
 
-void SqlRequest::startImpl(util::Lock const& lock) {
+void SqlRequest::startImpl(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     // Serialize the Request message header and the request body into
@@ -137,7 +137,7 @@ void SqlRequest::awaken(boost::system::error_code const& ec) {
     if (isAborted(ec)) return;
 
     if (state() == State::FINISHED) return;
-    util::Lock lock(_mtx, context() + __func__);
+    replica::Lock lock(_mtx, context() + __func__);
     if (state() == State::FINISHED) return;
 
     // Serialize the Status message header and the status request's body into
@@ -162,7 +162,7 @@ void SqlRequest::awaken(boost::system::error_code const& ec) {
     _send(lock);
 }
 
-void SqlRequest::_send(util::Lock const& lock) {
+void SqlRequest::_send(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
     auto self = shared_from_base<SqlRequest>();
     messenger()->send<ProtocolResponseSql>(
@@ -181,7 +181,7 @@ void SqlRequest::_analyze(bool success, ProtocolResponseSql const& response) {
     // for possible state transition which might occur while the async I/O was
     // still in a progress.
     if (state() == State::FINISHED) return;
-    util::Lock lock(_mtx, context() + __func__);
+    replica::Lock lock(_mtx, context() + __func__);
     if (state() == State::FINISHED) return;
 
     if (not success) {
@@ -250,7 +250,7 @@ void SqlRequest::_analyze(bool success, ProtocolResponseSql const& response) {
     }
 }
 
-void SqlRequest::savePersistentState(util::Lock const& lock) {
+void SqlRequest::savePersistentState(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
     controller()->serviceProvider()->databaseServices()->saveState(*this, performance(lock));
 }

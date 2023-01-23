@@ -47,7 +47,7 @@ RequestMessenger::RequestMessenger(ServiceProvider::Ptr const& serviceProvider,
                   disposeRequired),
           _messenger(messenger) {}
 
-void RequestMessenger::finishImpl(util::Lock const& lock) {
+void RequestMessenger::finishImpl(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     // Make sure the request (if any) has been eliminated from the messenger.
@@ -78,7 +78,8 @@ void RequestMessenger::finishImpl(util::Lock const& lock) {
     }
 }
 
-void RequestMessenger::dispose(util::Lock const& lock, int priority, OnDisposeCallbackType const& onFinish) {
+void RequestMessenger::dispose(replica::Lock const& lock, int priority,
+                               OnDisposeCallbackType const& onFinish) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     buffer()->resize();

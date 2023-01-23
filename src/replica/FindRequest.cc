@@ -77,7 +77,7 @@ FindRequest::FindRequest(ServiceProvider::Ptr const& serviceProvider, boost::asi
 
 ReplicaInfo const& FindRequest::responseData() const { return _replicaInfo; }
 
-void FindRequest::startImpl(util::Lock const& lock) {
+void FindRequest::startImpl(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG,
          context() << __func__ << " "
                    << " worker: " << worker() << " database: " << database() << " chunk: " << chunk()
@@ -114,7 +114,7 @@ void FindRequest::awaken(boost::system::error_code const& ec) {
     if (isAborted(ec)) return;
 
     if (state() == State::FINISHED) return;
-    util::Lock lock(_mtx, context() + __func__);
+    replica::Lock lock(_mtx, context() + __func__);
     if (state() == State::FINISHED) return;
 
     // Serialize the Status message header and the request itself into
@@ -139,7 +139,7 @@ void FindRequest::awaken(boost::system::error_code const& ec) {
     _send(lock);
 }
 
-void FindRequest::_send(util::Lock const& lock) {
+void FindRequest::_send(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
     auto self = shared_from_base<FindRequest>();
     messenger()->send<ProtocolResponseFind>(
@@ -158,7 +158,7 @@ void FindRequest::_analyze(bool success, ProtocolResponseFind const& message) {
     // for possible state transition which might occur while the async I/O was
     // still in a progress.
     if (state() == State::FINISHED) return;
-    util::Lock lock(_mtx, context() + __func__);
+    replica::Lock lock(_mtx, context() + __func__);
     if (state() == State::FINISHED) return;
 
     if (not success) {
@@ -227,12 +227,12 @@ void FindRequest::_analyze(bool success, ProtocolResponseFind const& message) {
     }
 }
 
-void FindRequest::notify(util::Lock const& lock) {
+void FindRequest::notify(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
     notifyDefaultImpl<FindRequest>(lock, _onFinish);
 }
 
-void FindRequest::savePersistentState(util::Lock const& lock) {
+void FindRequest::savePersistentState(replica::Lock const& lock) {
     controller()->serviceProvider()->databaseServices()->saveState(*this, performance(lock));
 }
 

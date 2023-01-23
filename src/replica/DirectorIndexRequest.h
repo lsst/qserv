@@ -123,13 +123,13 @@ public:
 
 protected:
     /// @see Request::startImpl()
-    void startImpl(util::Lock const& lock) final;
+    void startImpl(replica::Lock const& lock) final;
 
     /// @see Request::notify()
-    void notify(util::Lock const& lock) final;
+    void notify(replica::Lock const& lock) final;
 
     /// @see Request::savePersistentState()
-    void savePersistentState(util::Lock const& lock) final;
+    void savePersistentState(replica::Lock const& lock) final;
 
     /// @see Request::awaken()
     void awaken(boost::system::error_code const& ec) final;
@@ -145,19 +145,19 @@ private:
      * Send the initial request for pulling data from the server.
      * @param lock a lock on Request::_mtx must be acquired before calling this method
      */
-    void _sendInitialRequest(util::Lock const& lock);
+    void _sendInitialRequest(replica::Lock const& lock);
 
     /**
      * Send the status inquery request to the server.
      * @param lock a lock on Request::_mtx must be acquired before calling this method
      */
-    void _sendStatusRequest(util::Lock const& lock);
+    void _sendStatusRequest(replica::Lock const& lock);
 
     /**
      * Send the serialized content of the buffer to a worker
      * @param lock a lock on Request::_mtx must be acquired before calling this method
      */
-    void _send(util::Lock const& lock);
+    void _send(replica::Lock const& lock);
 
     /**
      * Process the completion of the requested operation
@@ -180,7 +180,7 @@ private:
      * @param lock A lock on the mutex _mtx acquired before calling the method.
      * @param data The data to be writrten onto the file.
      */
-    void _writeInfoFile(util::Lock const& lock, std::string const& data);
+    void _writeInfoFile(replica::Lock const& lock, std::string const& data);
 
     // Input parameters
 

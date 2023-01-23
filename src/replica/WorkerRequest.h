@@ -36,7 +36,7 @@
 #include "replica/Performance.h"
 #include "replica/protocol.pb.h"
 #include "replica/ServiceProvider.h"
-#include "util/Mutex.h"
+#include "replica/Mutex.h"
 
 // This header declarations
 namespace lsst::qserv::replica {
@@ -223,7 +223,7 @@ protected:
      * @param status primary status to be set
      * @param extendedStatus secondary status to be set
      */
-    void setStatus(util::Lock const& lock, ProtocolStatus status,
+    void setStatus(replica::Lock const& lock, ProtocolStatus status,
                    ProtocolStatusExt extendedStatus = ProtocolStatusExt::NONE);
 
     /**
@@ -314,10 +314,10 @@ protected:
     unsigned int _durationMillisec;
 
     /// Mutex guarding API calls where it's needed
-    mutable util::Mutex _mtx;
+    mutable replica::Mutex _mtx;
 
     /// Mutex guarding operations with the worker's data folder
-    static util::Mutex _mtxDataFolderOperations;
+    static replica::Mutex _mtxDataFolderOperations;
 
 private:
     /**

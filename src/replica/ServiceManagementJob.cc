@@ -58,7 +58,7 @@ ServiceManagementJobResult const& ServiceManagementBaseJob::getResultData() cons
                       "  the method can't be called while the job hasn't finished");
 }
 
-void ServiceManagementBaseJob::startImpl(util::Lock const& lock) {
+void ServiceManagementBaseJob::startImpl(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     auto const workerNames = allWorkers() ? controller()->serviceProvider()->config()->allWorkers()
@@ -76,7 +76,7 @@ void ServiceManagementBaseJob::startImpl(util::Lock const& lock) {
     if (_requests.size() == 0) finish(lock, ExtendedState::SUCCESS);
 }
 
-void ServiceManagementBaseJob::cancelImpl(util::Lock const& lock) {
+void ServiceManagementBaseJob::cancelImpl(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     for (auto&& ptr : _requests) ptr->cancel();
@@ -91,7 +91,7 @@ void ServiceManagementBaseJob::onRequestFinish(ServiceManagementRequestBase::Ptr
 
     if (state() == State::FINISHED) return;
 
-    util::Lock lock(_mtx, context() + string(__func__) + "[" + request->id() + "]");
+    replica::Lock lock(_mtx, context() + string(__func__) + "[" + request->id() + "]");
 
     if (state() == State::FINISHED) return;
 

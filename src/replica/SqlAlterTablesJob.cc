@@ -70,7 +70,7 @@ list<pair<string, string>> SqlAlterTablesJob::extendedPersistentState() const {
     return result;
 }
 
-list<SqlRequest::Ptr> SqlAlterTablesJob::launchRequests(util::Lock const& lock, string const& worker,
+list<SqlRequest::Ptr> SqlAlterTablesJob::launchRequests(replica::Lock const& lock, string const& worker,
                                                         size_t maxRequestsPerWorker) {
     list<SqlRequest::Ptr> requests;
 
@@ -98,11 +98,11 @@ list<SqlRequest::Ptr> SqlAlterTablesJob::launchRequests(util::Lock const& lock, 
     return requests;
 }
 
-void SqlAlterTablesJob::stopRequest(util::Lock const& lock, SqlRequest::Ptr const& request) {
+void SqlAlterTablesJob::stopRequest(replica::Lock const& lock, SqlRequest::Ptr const& request) {
     stopRequestDefaultImpl<StopSqlAlterTablesRequest>(lock, request);
 }
 
-void SqlAlterTablesJob::notify(util::Lock const& lock) {
+void SqlAlterTablesJob::notify(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "[" << typeName() << "]");
     notifyDefaultImpl<SqlAlterTablesJob>(lock, _onFinish);
 }

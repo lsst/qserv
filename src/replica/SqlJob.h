@@ -130,8 +130,8 @@ protected:
            std::string const& parentJobId, std::string const& jobName, int priority,
            bool ignoreNonPartitioned = false, bool ignoreDuplicateKey = false);
 
-    virtual void startImpl(util::Lock const& lock) final;
-    virtual void cancelImpl(util::Lock const& lock) final;
+    virtual void startImpl(replica::Lock const& lock) final;
+    virtual void cancelImpl(replica::Lock const& lock) final;
 
     /**
      * The callback function to be invoked on a completion of requests
@@ -149,14 +149,14 @@ protected:
      * @param maxRequestsPerWorker The maximum number of requests to be launched per each worker.
      * @return A collection of requests launched.
      */
-    virtual std::list<SqlRequest::Ptr> launchRequests(util::Lock const& lock, std::string const& worker,
+    virtual std::list<SqlRequest::Ptr> launchRequests(replica::Lock const& lock, std::string const& worker,
                                                       size_t maxRequestsPerWorker = 1) = 0;
 
     /**
      * This method lets a request type-specific subclass to stop requests
      * of the corresponding subtype.
      */
-    virtual void stopRequest(util::Lock const& lock, SqlRequest::Ptr const& request) = 0;
+    virtual void stopRequest(replica::Lock const& lock, SqlRequest::Ptr const& request) = 0;
 
     /**
      * This method is called by subclass-specific implementations of
@@ -164,7 +164,7 @@ protected:
      * duplication.
      */
     template <class REQUEST>
-    void stopRequestDefaultImpl(util::Lock const& lock, SqlRequest::Ptr const& request) const {
+    void stopRequestDefaultImpl(replica::Lock const& lock, SqlRequest::Ptr const& request) const {
         controller()->stopById<REQUEST>(request->worker(), request->id(), nullptr, /* onFinish */
                                         priority(), true,                          /* keepTracking */
                                         id()                                       /* jobId */
@@ -183,7 +183,7 @@ protected:
      * @param extendedState  A specific state to be set upon the completion.
      * @return A collection of requests launched.
      */
-    virtual void processResultAndFinish(util::Lock const& lock, ExtendedState extendedState);
+    virtual void processResultAndFinish(replica::Lock const& lock, ExtendedState extendedState);
 
     /**
      * Find out which tables corresponding to the name are expected to exist
@@ -268,7 +268,7 @@ protected:
      * @param lock A lock on Job::_mtx must be acquired by a caller of the method.
      * @return SqlJobResult The current state of the result.
      */
-    SqlJobResult getResultData(util::Lock const& lock) const { return _resultData; }
+    SqlJobResult getResultData(replica::Lock const& lock) const { return _resultData; }
 
 private:
     /**

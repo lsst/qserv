@@ -45,7 +45,7 @@ namespace lsst::qserv::replica {
 
 json HttpReplicationLevelsModule::_replicationLevelReport = json::object();
 uint64_t HttpReplicationLevelsModule::_replicationLevelReportTimeMs = 0;
-util::Mutex HttpReplicationLevelsModule::_replicationLevelMtx;
+replica::Mutex HttpReplicationLevelsModule::_replicationLevelMtx;
 
 void HttpReplicationLevelsModule::process(Controller::Ptr const& controller, string const& taskName,
                                           HttpProcessorConfig const& processorConfig,
@@ -98,7 +98,7 @@ json HttpReplicationLevelsModule::_set() {
 }
 
 json HttpReplicationLevelsModule::_makeReport(bool force) {
-    util::Lock lock(_replicationLevelMtx, "HttpReplicationLevelsModule::" + string(__func__));
+    replica::Lock lock(_replicationLevelMtx, "HttpReplicationLevelsModule::" + string(__func__));
 
     // Check if a cached report can be used (unless in the 'forced' mode)
     //

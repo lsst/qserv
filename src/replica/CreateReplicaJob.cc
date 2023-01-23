@@ -118,7 +118,7 @@ list<pair<string, string>> CreateReplicaJob::persistentLogData() const {
     return result;
 }
 
-void CreateReplicaJob::startImpl(util::Lock const& lock) {
+void CreateReplicaJob::startImpl(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << "startImpl");
 
     // Check if configuration parameters are valid
@@ -233,7 +233,7 @@ void CreateReplicaJob::startImpl(util::Lock const& lock) {
     }
 }
 
-void CreateReplicaJob::cancelImpl(util::Lock const& lock) {
+void CreateReplicaJob::cancelImpl(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     // The algorithm will also clear resources taken by various
@@ -254,7 +254,7 @@ void CreateReplicaJob::cancelImpl(util::Lock const& lock) {
     _requests.clear();
 }
 
-void CreateReplicaJob::notify(util::Lock const& lock) {
+void CreateReplicaJob::notify(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
     notifyDefaultImpl<CreateReplicaJob>(lock, _onFinish);
 }
@@ -267,7 +267,7 @@ void CreateReplicaJob::_onRequestFinish(ReplicationRequest::Ptr const& request) 
 
     if (state() == State::FINISHED) return;
 
-    util::Lock lock(_mtx, context() + string(__func__) + "(ReplicationeRequest)");
+    replica::Lock lock(_mtx, context() + string(__func__) + "(ReplicationeRequest)");
 
     if (state() == State::FINISHED) return;
 
@@ -307,7 +307,7 @@ void CreateReplicaJob::_onRequestFinish(ReplicationRequest::Ptr const& request) 
     }
 }
 
-void CreateReplicaJob::_qservAddReplica(util::Lock const& lock, unsigned int chunk,
+void CreateReplicaJob::_qservAddReplica(replica::Lock const& lock, unsigned int chunk,
                                         vector<string> const& databases, string const& worker,
                                         AddReplicaQservMgtRequest::CallbackType const& onFinish) {
     LOGS(_log, LOG_LVL_DEBUG,

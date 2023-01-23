@@ -188,7 +188,7 @@ private:
      * @param lock lock which must be acquired before calling this method
      * @return 'false' in case of any error
      */
-    bool _openFiles(util::Lock const& lock);
+    bool _openFiles(replica::Lock const& lock);
 
     /**
      * The final stage to be executed just once after copying the content
@@ -200,7 +200,7 @@ private:
      * @param lock A lock to be acquired before calling this method
      * @return always 'true'
      */
-    bool _finalize(util::Lock const& lock);
+    bool _finalize(replica::Lock const& lock);
 
     /**
      * Close connections, de-allocate resources, etc.
@@ -212,14 +212,14 @@ private:
      *
      * @param lock A lock to be acquired before calling this method
      */
-    void _releaseResources(util::Lock const& lock);
+    void _releaseResources(replica::Lock const& lock);
 
     /**
      * Update file migration statistics
      *
      * @param lock A lock to be acquired before calling this method
      */
-    void _updateInfo(util::Lock const& lock);
+    void _updateInfo(replica::Lock const& lock);
 
     /// Cached descriptor of the database obtained from the Configuration
     DatabaseInfo const _databaseInfo;

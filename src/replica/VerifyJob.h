@@ -201,13 +201,13 @@ public:
 
 protected:
     /// @see Job::startImpl()
-    void startImpl(util::Lock const& lock) final;
+    void startImpl(replica::Lock const& lock) final;
 
     /// @see Job::cancelImpl()
-    void cancelImpl(util::Lock const& lock) final;
+    void cancelImpl(replica::Lock const& lock) final;
 
     /// @see Job::notify()
-    void notify(util::Lock const& lock) final;
+    void notify(replica::Lock const& lock) final;
 
 private:
     /// @see VerifyJob::create()
@@ -236,7 +236,7 @@ private:
      *   a desired number of replicas to be pulled from the database
      *   for processing.
      */
-    void _nextReplicas(util::Lock const& lock, std::vector<ReplicaInfo>& replicas, size_t numReplicas);
+    void _nextReplicas(replica::Lock const& lock, std::vector<ReplicaInfo>& replicas, size_t numReplicas);
 
     // Input parameters
 

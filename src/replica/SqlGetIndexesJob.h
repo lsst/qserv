@@ -183,12 +183,12 @@ public:
     SqlIndexes indexes() const;
 
 protected:
-    void notify(util::Lock const& lock) final;
+    void notify(replica::Lock const& lock) final;
 
-    std::list<SqlRequest::Ptr> launchRequests(util::Lock const& lock, std::string const& worker,
+    std::list<SqlRequest::Ptr> launchRequests(replica::Lock const& lock, std::string const& worker,
                                               size_t maxRequestsPerWorker) final;
 
-    void stopRequest(util::Lock const& lock, SqlRequest::Ptr const& request) final;
+    void stopRequest(replica::Lock const& lock, SqlRequest::Ptr const& request) final;
 
 private:
     SqlGetIndexesJob(std::string const& database, std::string const& table, bool overlap, bool allWorkers,

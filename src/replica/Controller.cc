@@ -458,7 +458,7 @@ ServiceReconfigRequest::Ptr Controller::reconfigWorkerService(
 }
 
 size_t Controller::numActiveRequests() const {
-    util::Lock lock(_mtx, _context(__func__));
+    replica::Lock lock(_mtx, _context(__func__));
     return _registry.size();
 }
 
@@ -474,7 +474,7 @@ void Controller::_finish(string const& id) {
     //   execution time of of the callback function.
     RequestWrapper::Ptr request;
     {
-        util::Lock lock(_mtx, _context(__func__));
+        replica::Lock lock(_mtx, _context(__func__));
         request = _registry[id];
         _registry.erase(id);
     }

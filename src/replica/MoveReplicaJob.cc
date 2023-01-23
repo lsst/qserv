@@ -120,7 +120,7 @@ list<pair<string, string>> MoveReplicaJob::persistentLogData() const {
     return result;
 }
 
-void MoveReplicaJob::startImpl(util::Lock const& lock) {
+void MoveReplicaJob::startImpl(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     // Check if configuration parameters are valid
@@ -153,7 +153,7 @@ void MoveReplicaJob::startImpl(util::Lock const& lock) {
     _createReplicaJob->start();
 }
 
-void MoveReplicaJob::cancelImpl(util::Lock const& lock) {
+void MoveReplicaJob::cancelImpl(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     if (_createReplicaJob and (_createReplicaJob->state() != Job::State::FINISHED)) {
@@ -164,7 +164,7 @@ void MoveReplicaJob::cancelImpl(util::Lock const& lock) {
     }
 }
 
-void MoveReplicaJob::notify(util::Lock const& lock) {
+void MoveReplicaJob::notify(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
     notifyDefaultImpl<MoveReplicaJob>(lock, _onFinish);
 }
@@ -174,7 +174,7 @@ void MoveReplicaJob::_onCreateJobFinish() {
 
     if (state() == State::FINISHED) return;
 
-    util::Lock lock(_mtx, context() + __func__);
+    replica::Lock lock(_mtx, context() + __func__);
 
     if (state() == State::FINISHED) return;
 
@@ -212,7 +212,7 @@ void MoveReplicaJob::_onDeleteJobFinish() {
 
     if (state() == State::FINISHED) return;
 
-    util::Lock lock(_mtx, context() + __func__);
+    replica::Lock lock(_mtx, context() + __func__);
 
     if (state() == State::FINISHED) return;
 

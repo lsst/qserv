@@ -33,7 +33,7 @@
 // Qserv headers
 #include "replica/ChunkLocker.h"
 #include "replica/NamedMutexRegistry.h"
-#include "util/Mutex.h"
+#include "replica/Mutex.h"
 
 // Forward declarations
 namespace lsst::qserv::replica {
@@ -138,24 +138,24 @@ public:
      *   memory consumption in class NamedMutexRegistry.
      * @see class NamedMutexRegistry
      *
-     * Mutex objects returned by the method are expected to be used together with class util::Lock
+     * Mutex objects returned by the method are expected to be used together with class replica::Lock
      * as it's shown below (both ways are the same):
      * @code
      *   // Okay
      *   auto mutex = serviceProvider->getNamedMutex("name");
-     *   util::Lock lock(mutex);
+     *   replica::Lock lock(mutex);
      *   // The better option
-     *   util::Lock lock(serviceProvider->getNamedMutex("name"));
+     *   replica::Lock lock(serviceProvider->getNamedMutex("name"));
      * @code
-     * Class util::Lock makes a copy of the shared pointer for a duration of the lock.
+     * Class replica::Lock makes a copy of the shared pointer for a duration of the lock.
      *
      * If, for some reason, a code resorts to using low-level references/pointers to the stored mutex
      * object then, please, make sure the shared pointer outlives the lock. This comment relates
      * to the locking made like shown below:
      * @code
      *   auto mutex = serviceProvider->getNamedMutex("name");
-     *   util::Lock lock(*mutex);
-     *   std::lock_guard<util::Mutex> lock(*mutex);
+     *   replica::Lock lock(*mutex);
+     *   std::lock_guard<replica::Mutex> lock(*mutex);
      * @code
      * Though, in general this would work, the above shown dereferencing is not recommended.
      *
@@ -163,7 +163,7 @@ public:
      * @return A smart pointer to a mutex for the name.
      * @throw std::invalid_argument If the name is empty.
      */
-    std::shared_ptr<util::Mutex> getNamedMutex(std::string const& name);
+    std::shared_ptr<replica::Mutex> getNamedMutex(std::string const& name);
 
 private:
     /// @see ServiceProvider::create()
@@ -213,7 +213,7 @@ private:
 
     /// The mutex for enforcing thread safety of the class's public API
     /// and internal operations.
-    mutable util::Mutex _mtx;
+    mutable replica::Mutex _mtx;
 };
 
 }  // namespace lsst::qserv::replica

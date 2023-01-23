@@ -74,7 +74,7 @@ WorkerDeleteRequest::WorkerDeleteRequest(ServiceProvider::Ptr const& serviceProv
 void WorkerDeleteRequest::setInfo(ProtocolResponseDelete& response) const {
     LOGS(_log, LOG_LVL_DEBUG, context(__func__));
 
-    util::Lock lock(_mtx, context(__func__));
+    replica::Lock lock(_mtx, context(__func__));
 
     response.set_allocated_target_performance(performance().info().release());
     response.set_allocated_replica_info(_replicaInfo.info().release());
@@ -113,7 +113,7 @@ WorkerDeleteRequestPOSIX::WorkerDeleteRequestPOSIX(ServiceProvider::Ptr const& s
 bool WorkerDeleteRequestPOSIX::execute() {
     LOGS(_log, LOG_LVL_DEBUG, context(__func__) << "  db: " << database() << "  chunk: " << chunk());
 
-    util::Lock lock(_mtx, context(__func__));
+    replica::Lock lock(_mtx, context(__func__));
 
     auto const config = _serviceProvider->config();
     DatabaseInfo const databaseInfo = config->databaseInfo(database());
@@ -127,7 +127,7 @@ bool WorkerDeleteRequestPOSIX::execute() {
     WorkerRequest::ErrorContext errorContext;
     boost::system::error_code ec;
     {
-        util::Lock dataFolderLock(_mtxDataFolderOperations, context(__func__));
+        replica::Lock dataFolderLock(_mtxDataFolderOperations, context(__func__));
 
         fs::path const dataDir = fs::path(config->get<string>("worker", "data-dir")) / database();
         fs::file_status const stat = fs::status(dataDir, ec);

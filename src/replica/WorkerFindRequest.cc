@@ -72,7 +72,7 @@ WorkerFindRequest::WorkerFindRequest(ServiceProvider::Ptr const& serviceProvider
 void WorkerFindRequest::setInfo(ProtocolResponseFind& response) const {
     LOGS(_log, LOG_LVL_DEBUG, context(__func__));
 
-    util::Lock lock(_mtx, context(__func__));
+    replica::Lock lock(_mtx, context(__func__));
 
     response.set_allocated_target_performance(performance().info().release());
     response.set_allocated_replica_info(_replicaInfo.info().release());
@@ -83,7 +83,7 @@ void WorkerFindRequest::setInfo(ProtocolResponseFind& response) const {
 bool WorkerFindRequest::execute() {
     LOGS(_log, LOG_LVL_DEBUG, context(__func__) << "  database: " << database() << "  chunk: " << chunk());
 
-    util::Lock lock(_mtx, context(__func__));
+    replica::Lock lock(_mtx, context(__func__));
 
     // Set up the result if the operation is over
 
@@ -120,7 +120,7 @@ WorkerFindRequestPOSIX::WorkerFindRequestPOSIX(ServiceProvider::Ptr const& servi
 bool WorkerFindRequestPOSIX::execute() {
     LOGS(_log, LOG_LVL_DEBUG, context(__func__) << "  database: " << database() << "  chunk: " << chunk());
 
-    util::Lock lock(_mtx, context(__func__));
+    replica::Lock lock(_mtx, context(__func__));
 
     // Abort the operation right away if that's the case
 
@@ -151,7 +151,7 @@ bool WorkerFindRequestPOSIX::execute() {
 
         // Check if the data directory exists and it can be read
 
-        util::Lock dataFolderLock(_mtxDataFolderOperations, context(__func__));
+        replica::Lock dataFolderLock(_mtxDataFolderOperations, context(__func__));
 
         fs::path const dataDir = fs::path(config->get<string>("worker", "data-dir")) / database();
         fs::file_status const stat = fs::status(dataDir, ec);

@@ -28,7 +28,7 @@
 #include "nlohmann/json.hpp"
 
 // Qserv headers
-#include "util/Mutex.h"
+#include "replica/Mutex.h"
 
 // This header declarations
 namespace lsst::qserv::replica {
@@ -60,7 +60,7 @@ public:
 private:
     /// This mutex is needed for implementing synchronized operations over
     /// the collection.
-    mutable util::Mutex _mtx;
+    mutable replica::Mutex _mtx;
 
     /// The collection of workers, where the key is the unique identifier
     // of a worker.

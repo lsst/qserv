@@ -63,7 +63,7 @@ void Messenger::cancel(string const& worker, string const& id) { _connector(work
 bool Messenger::exists(string const& worker, string const& id) { return _connector(worker)->exists(id); }
 
 MessengerConnector::Ptr const& Messenger::_connector(string const& worker) {
-    util::Lock lock(_mtx, _context(worker));
+    replica::Lock lock(_mtx, _context(worker));
 
     if (auto const itr = _workerConnector.find(worker); itr != _workerConnector.end()) {
         return itr->second;

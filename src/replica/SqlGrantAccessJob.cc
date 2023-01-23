@@ -70,7 +70,7 @@ list<pair<string, string>> SqlGrantAccessJob::extendedPersistentState() const {
     return result;
 }
 
-list<SqlRequest::Ptr> SqlGrantAccessJob::launchRequests(util::Lock const& lock, string const& worker,
+list<SqlRequest::Ptr> SqlGrantAccessJob::launchRequests(replica::Lock const& lock, string const& worker,
                                                         size_t maxRequestsPerWorker) {
     // Launch exactly one request per worker unless it was already
     // launched earlier
@@ -89,11 +89,11 @@ list<SqlRequest::Ptr> SqlGrantAccessJob::launchRequests(util::Lock const& lock, 
     return requests;
 }
 
-void SqlGrantAccessJob::stopRequest(util::Lock const& lock, SqlRequest::Ptr const& request) {
+void SqlGrantAccessJob::stopRequest(replica::Lock const& lock, SqlRequest::Ptr const& request) {
     stopRequestDefaultImpl<StopSqlGrantAccessRequest>(lock, request);
 }
 
-void SqlGrantAccessJob::notify(util::Lock const& lock) {
+void SqlGrantAccessJob::notify(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "[" << typeName() << "]");
     notifyDefaultImpl<SqlGrantAccessJob>(lock, _onFinish);
 }

@@ -150,13 +150,13 @@ public:
 
 protected:
     /// @see Job::startImpl()
-    void startImpl(util::Lock const& lock) final;
+    void startImpl(replica::Lock const& lock) final;
 
     /// @see Job::cancelImpl()
-    void cancelImpl(util::Lock const& lock) final;
+    void cancelImpl(replica::Lock const& lock) final;
 
     /// @see Job::notify()
-    void notify(util::Lock const& lock) final;
+    void notify(replica::Lock const& lock) final;
 
 private:
     /// @see DeleteReplicaJob::create()
@@ -170,7 +170,7 @@ private:
      * @param lock
      *   a lock on Job::_mtx must be acquired before calling this method
      */
-    void _beginDeleteReplica(util::Lock const& lock);
+    void _beginDeleteReplica(replica::Lock const& lock);
 
     /**
      * The callback function to be invoked on a completion of each replica
@@ -192,7 +192,7 @@ private:
      * @param onFinish  An (optional) callback function to be called upon completion
      *   of the operation.
      */
-    void _qservRemoveReplica(util::Lock const& lock, unsigned int chunk,
+    void _qservRemoveReplica(replica::Lock const& lock, unsigned int chunk,
                              std::vector<std::string> const& databases, std::string const& worker, bool force,
                              RemoveReplicaQservMgtRequest::CallbackType const& onFinish = nullptr);
 

@@ -176,7 +176,7 @@ ServiceManagementRequestBase::ServiceManagementRequestBase(ServiceProvider::Ptr 
                            messenger),
           _requestType(requestType) {}
 
-void ServiceManagementRequestBase::startImpl(util::Lock const& lock) {
+void ServiceManagementRequestBase::startImpl(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     // Serialize the Request message header and the request itself into
@@ -210,7 +210,7 @@ void ServiceManagementRequestBase::_analyze(bool success, ProtocolServiceRespons
     // for possible state transition which might occur while the async I/O was
     // still in a progress.
     if (state() == State::FINISHED) return;
-    util::Lock lock(_mtx, context() + __func__);
+    replica::Lock lock(_mtx, context() + __func__);
     if (state() == State::FINISHED) return;
 
     if (not success) {
@@ -236,7 +236,7 @@ void ServiceManagementRequestBase::_analyze(bool success, ProtocolServiceRespons
     }
 }
 
-void ServiceManagementRequestBase::savePersistentState(util::Lock const& lock) {
+void ServiceManagementRequestBase::savePersistentState(replica::Lock const& lock) {
     controller()->serviceProvider()->databaseServices()->saveState(*this, performance(lock));
 }
 

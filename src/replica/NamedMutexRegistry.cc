@@ -32,18 +32,18 @@ using namespace std;
 
 namespace lsst::qserv::replica {
 
-shared_ptr<util::Mutex> NamedMutexRegistry::get(string const& name) {
+shared_ptr<replica::Mutex> NamedMutexRegistry::get(string const& name) {
     string const context = "NamedMutexRegistry::" + string(__func__) + " ";
     if (name.empty()) {
         throw invalid_argument(context + "the name of a mutex can't be empty.");
     }
-    util::Lock const lock(_registryAccessMtx, "NamedMutexRegistry(" + name + ")");
-    shared_ptr<util::Mutex> mtx;
+    replica::Lock const lock(_registryAccessMtx, "NamedMutexRegistry(" + name + ")");
+    shared_ptr<replica::Mutex> mtx;
     auto const itr = _registry.find(name);
     if (itr != _registry.end()) {
         mtx = itr->second;
     } else {
-        auto const insertItr = _registry.insert(make_pair(name, make_shared<util::Mutex>()));
+        auto const insertItr = _registry.insert(make_pair(name, make_shared<replica::Mutex>()));
         if (!insertItr.second) {
             throw runtime_error(context + "duplicate key: " + name + ".");
         }
@@ -71,7 +71,7 @@ shared_ptr<util::Mutex> NamedMutexRegistry::get(string const& name) {
 }
 
 size_t NamedMutexRegistry::size() const {
-    util::Lock const lock(_registryAccessMtx, "NamedMutexRegistry::" + string(__func__));
+    replica::Lock const lock(_registryAccessMtx, "NamedMutexRegistry::" + string(__func__));
     return _registry.size();
 }
 

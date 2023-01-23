@@ -30,7 +30,7 @@
 
 // Qserv headers
 #include "replica/HttpModule.h"
-#include "util/Mutex.h"
+#include "replica/Mutex.h"
 
 // This header declarations
 namespace lsst::qserv::replica {
@@ -78,7 +78,7 @@ private:
     static uint64_t _catalogsReportTimeMs;
 
     /// Protects the catalog stats cache
-    static util::Mutex _catalogsMtx;
+    static replica::Mutex _catalogsMtx;
 };
 
 }  // namespace lsst::qserv::replica

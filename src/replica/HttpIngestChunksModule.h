@@ -31,7 +31,7 @@
 // Qserv headers
 #include "replica/Common.h"
 #include "replica/HttpModule.h"
-#include "util/Mutex.h"
+#include "replica/Mutex.h"
 
 // This header declarations
 namespace lsst::qserv::replica {
@@ -107,7 +107,7 @@ private:
      */
     nlohmann::json _getChunks();
 
-    static util::Mutex _ingestManagementMtx;  /// Synchronized access to the chunk management operations
+    static replica::Mutex _ingestManagementMtx;  /// Synchronized access to the chunk management operations
 };
 
 }  // namespace lsst::qserv::replica

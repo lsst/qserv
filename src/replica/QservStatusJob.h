@@ -133,11 +133,11 @@ public:
     std::list<std::pair<std::string, std::string>> persistentLogData() const final;
 
 protected:
-    void startImpl(util::Lock const& lock) final;
+    void startImpl(replica::Lock const& lock) final;
 
-    void cancelImpl(util::Lock const& lock) final;
+    void cancelImpl(replica::Lock const& lock) final;
 
-    void notify(util::Lock const& lock) final;
+    void notify(replica::Lock const& lock) final;
 
 private:
     /// @see QservStatusJob::create()

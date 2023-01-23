@@ -83,13 +83,13 @@ public:
 
 protected:
     /// @see QservMgtRequest::startImpl
-    void startImpl(util::Lock const& lock) final;
+    void startImpl(replica::Lock const& lock) final;
 
     /// @see QservMgtRequest::finishImpl
-    void finishImpl(util::Lock const& lock) final;
+    void finishImpl(replica::Lock const& lock) final;
 
     /// @see QservMgtRequest::notify
-    void notify(util::Lock const& lock) final;
+    void notify(replica::Lock const& lock) final;
 
 private:
     /// @see RemoveReplicaQservMgtRequest::create()

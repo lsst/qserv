@@ -246,7 +246,7 @@ SqlIndexes SqlGetIndexesJob::indexes() const {
     return result;
 }
 
-list<SqlRequest::Ptr> SqlGetIndexesJob::launchRequests(util::Lock const& lock, string const& worker,
+list<SqlRequest::Ptr> SqlGetIndexesJob::launchRequests(replica::Lock const& lock, string const& worker,
                                                        size_t maxRequestsPerWorker) {
     list<SqlRequest::Ptr> requests;
 
@@ -273,11 +273,11 @@ list<SqlRequest::Ptr> SqlGetIndexesJob::launchRequests(util::Lock const& lock, s
     return requests;
 }
 
-void SqlGetIndexesJob::stopRequest(util::Lock const& lock, SqlRequest::Ptr const& request) {
+void SqlGetIndexesJob::stopRequest(replica::Lock const& lock, SqlRequest::Ptr const& request) {
     stopRequestDefaultImpl<StopSqlGetIndexesRequest>(lock, request);
 }
 
-void SqlGetIndexesJob::notify(util::Lock const& lock) {
+void SqlGetIndexesJob::notify(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "[" << typeName() << "]");
     notifyDefaultImpl<SqlGetIndexesJob>(lock, _onFinish);
 }

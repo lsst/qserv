@@ -33,7 +33,7 @@
 // Qserv headers
 #include "replica/MessengerConnector.h"
 #include "replica/protocol.pb.h"
-#include "util/Mutex.h"
+#include "replica/Mutex.h"
 
 // Forward declarations
 namespace lsst::qserv::replica {
@@ -146,7 +146,7 @@ private:
     boost::asio::io_service& _io_service;
 
     /// The mutex for implementing the synchronized management of the connections.
-    mutable util::Mutex _mtx;
+    mutable replica::Mutex _mtx;
 
     /// Connection providers for individual workers
     std::map<std::string, MessengerConnector::Ptr> _workerConnector;

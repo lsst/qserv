@@ -152,7 +152,7 @@ public:
 
     TransactionInfo createTransaction(
             std::string const& databaseName, NamedMutexRegistry& namedMutexRegistry,
-            std::unique_ptr<util::Lock>& namedMutexLock,
+            std::unique_ptr<replica::Lock>& namedMutexLock,
             nlohmann::json const& transactionContext = nlohmann::json::object()) final;
 
     TransactionInfo updateTransaction(TransactionId id, TransactionInfo::State newState) final;

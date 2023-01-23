@@ -125,7 +125,7 @@ list<pair<string, string>> ReplicateJob::persistentLogData() const {
     return result;
 }
 
-void ReplicateJob::startImpl(util::Lock const& lock) {
+void ReplicateJob::startImpl(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     // Launch the chained job to get chunk disposition
@@ -141,7 +141,7 @@ void ReplicateJob::startImpl(util::Lock const& lock) {
     _findAllJob->start();
 }
 
-void ReplicateJob::cancelImpl(util::Lock const& lock) {
+void ReplicateJob::cancelImpl(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     // The algorithm will also clear resources taken by various
@@ -162,7 +162,7 @@ void ReplicateJob::cancelImpl(util::Lock const& lock) {
     _numSuccess = 0;
 }
 
-void ReplicateJob::notify(util::Lock const& lock) {
+void ReplicateJob::notify(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
     notifyDefaultImpl<ReplicateJob>(lock, _onFinish);
 }
@@ -172,7 +172,7 @@ void ReplicateJob::_onPrecursorJobFinish() {
 
     if (state() == State::FINISHED) return;
 
-    util::Lock lock(_mtx, context() + __func__);
+    replica::Lock lock(_mtx, context() + __func__);
 
     if (state() == State::FINISHED) return;
 
@@ -423,7 +423,7 @@ void ReplicateJob::_onCreateJobFinish(CreateReplicaJob::Ptr const& job) {
         return;
     }
 
-    util::Lock lock(_mtx, context() + __func__);
+    replica::Lock lock(_mtx, context() + __func__);
 
     if (state() == State::FINISHED) {
         _activeJobs.remove(job);
@@ -478,7 +478,7 @@ void ReplicateJob::_onCreateJobFinish(CreateReplicaJob::Ptr const& job) {
     }
 }
 
-size_t ReplicateJob::_launchNextJobs(util::Lock const& lock, size_t numJobs) {
+size_t ReplicateJob::_launchNextJobs(replica::Lock const& lock, size_t numJobs) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  numJobs=" << numJobs);
 
     // Compute the number of jobs which are already active at both ends

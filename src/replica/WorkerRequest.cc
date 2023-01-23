@@ -57,7 +57,7 @@ lsst::qserv::replica::SuccessRateGenerator successRateGenerator(0.9);
 
 namespace lsst::qserv::replica {
 
-util::Mutex WorkerRequest::_mtxDataFolderOperations;
+replica::Mutex WorkerRequest::_mtxDataFolderOperations;
 
 string WorkerRequest::status2string(ProtocolStatus status) { return ProtocolStatus_Name(status); }
 
@@ -109,7 +109,7 @@ WorkerRequest::ErrorContext WorkerRequest::reportErrorIf(bool errorCondition,
 
 void WorkerRequest::init() {
     LOGS(_log, LOG_LVL_TRACE, context(__func__));
-    util::Lock lock(_mtx, context(__func__));
+    replica::Lock lock(_mtx, context(__func__));
 
     if (status() != ProtocolStatus::CREATED) return;
 
@@ -128,7 +128,7 @@ void WorkerRequest::init() {
 
 void WorkerRequest::start() {
     LOGS(_log, LOG_LVL_TRACE, context(__func__));
-    util::Lock lock(_mtx, context(__func__));
+    replica::Lock lock(_mtx, context(__func__));
 
     switch (status()) {
         case ProtocolStatus::CREATED:
@@ -142,7 +142,7 @@ void WorkerRequest::start() {
 
 bool WorkerRequest::execute() {
     LOGS(_log, LOG_LVL_TRACE, context(__func__));
-    util::Lock lock(_mtx, context(__func__));
+    replica::Lock lock(_mtx, context(__func__));
 
     // Simulate request 'processing' for some maximum duration of time (milliseconds)
     // while making a progress through increments of random duration of time.
@@ -169,7 +169,7 @@ bool WorkerRequest::execute() {
 
 void WorkerRequest::cancel() {
     LOGS(_log, LOG_LVL_TRACE, context(__func__));
-    util::Lock lock(_mtx, context(__func__));
+    replica::Lock lock(_mtx, context(__func__));
 
     switch (status()) {
         case ProtocolStatus::QUEUED:
@@ -192,7 +192,7 @@ void WorkerRequest::cancel() {
 
 void WorkerRequest::rollback() {
     LOGS(_log, LOG_LVL_TRACE, context(__func__));
-    util::Lock lock(_mtx, context(__func__));
+    replica::Lock lock(_mtx, context(__func__));
 
     switch (status()) {
         case ProtocolStatus::CREATED:
@@ -211,13 +211,13 @@ void WorkerRequest::rollback() {
 
 void WorkerRequest::stop() {
     LOGS(_log, LOG_LVL_TRACE, context(__func__));
-    util::Lock lock(_mtx, context(__func__));
+    replica::Lock lock(_mtx, context(__func__));
     setStatus(lock, ProtocolStatus::CREATED);
 }
 
 void WorkerRequest::dispose() noexcept {
     LOGS(_log, LOG_LVL_TRACE, context(__func__));
-    util::Lock lock(_mtx, context(__func__));
+    replica::Lock lock(_mtx, context(__func__));
     if (_requestExpirationIvalSec != 0) {
         try {
             _requestExpirationTimer.cancel();
@@ -228,7 +228,7 @@ void WorkerRequest::dispose() noexcept {
     }
 }
 
-void WorkerRequest::setStatus(util::Lock const& lock, ProtocolStatus status,
+void WorkerRequest::setStatus(replica::Lock const& lock, ProtocolStatus status,
                               ProtocolStatusExt extendedStatus) {
     LOGS(_log, LOG_LVL_TRACE,
          context(__func__) << "  " << WorkerRequest::status2string(_status, _extendedStatus) << " -> "
@@ -274,7 +274,7 @@ void WorkerRequest::setStatus(util::Lock const& lock, ProtocolStatus status,
 void WorkerRequest::_expired(boost::system::error_code const& ec) {
     LOGS(_log, LOG_LVL_TRACE,
          context() << __func__ << (ec == boost::asio::error::operation_aborted ? "  ** ABORTED **" : ""));
-    util::Lock lock(_mtx, context(__func__));
+    replica::Lock lock(_mtx, context(__func__));
 
     // Clearing the stored callback after finishing the up-stream notification
     // has two purposes:

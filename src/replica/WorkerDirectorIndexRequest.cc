@@ -81,7 +81,7 @@ WorkerDirectorIndexRequest::WorkerDirectorIndexRequest(ServiceProvider::Ptr cons
 void WorkerDirectorIndexRequest::setInfo(ProtocolResponseDirectorIndex& response) const {
     LOGS(_log, LOG_LVL_DEBUG, context(__func__));
 
-    util::Lock lock(_mtx, context(__func__));
+    replica::Lock lock(_mtx, context(__func__));
 
     response.set_allocated_target_performance(performance().info().release());
     response.set_error(_error);
@@ -94,7 +94,7 @@ void WorkerDirectorIndexRequest::setInfo(ProtocolResponseDirectorIndex& response
 bool WorkerDirectorIndexRequest::execute() {
     LOGS(_log, LOG_LVL_DEBUG, context(__func__));
 
-    util::Lock lock(_mtx, context(__func__));
+    replica::Lock lock(_mtx, context(__func__));
 
     switch (status()) {
         case ProtocolStatus::IN_PROGRESS:

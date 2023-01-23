@@ -60,7 +60,7 @@ SqlDeleteDbRequest::SqlDeleteDbRequest(ServiceProvider::Ptr const& serviceProvid
     requestBody.set_database(database);
 }
 
-void SqlDeleteDbRequest::notify(util::Lock const& lock) {
+void SqlDeleteDbRequest::notify(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG,
          context() << __func__ << "[" << ProtocolRequestSql_Type_Name(requestBody.type()) << "]");
 

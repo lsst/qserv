@@ -70,7 +70,7 @@ list<pair<string, string>> AddReplicaQservMgtRequest::extendedPersistentState() 
     return result;
 }
 
-void AddReplicaQservMgtRequest::startImpl(util::Lock const& lock) {
+void AddReplicaQservMgtRequest::startImpl(replica::Lock const& lock) {
     auto const request = shared_from_base<AddReplicaQservMgtRequest>();
 
     _qservRequest = wpublish::AddChunkGroupQservRequest::create(
@@ -78,7 +78,7 @@ void AddReplicaQservMgtRequest::startImpl(util::Lock const& lock) {
             [request](wpublish::ChunkGroupQservRequest::Status status, string const& error) {
                 if (request->state() == State::FINISHED) return;
 
-                util::Lock lock(request->_mtx, request->context() + string(__func__) + "[callback]");
+                replica::Lock lock(request->_mtx, request->context() + string(__func__) + "[callback]");
 
                 if (request->state() == State::FINISHED) return;
 
@@ -109,7 +109,7 @@ void AddReplicaQservMgtRequest::startImpl(util::Lock const& lock) {
     service()->ProcessRequest(*_qservRequest, resource);
 }
 
-void AddReplicaQservMgtRequest::finishImpl(util::Lock const& lock) {
+void AddReplicaQservMgtRequest::finishImpl(replica::Lock const& lock) {
     switch (extendedState()) {
         case ExtendedState::CANCELLED:
         case ExtendedState::TIMEOUT_EXPIRED:
@@ -127,7 +127,7 @@ void AddReplicaQservMgtRequest::finishImpl(util::Lock const& lock) {
     }
 }
 
-void AddReplicaQservMgtRequest::notify(util::Lock const& lock) {
+void AddReplicaQservMgtRequest::notify(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     notifyDefaultImpl<AddReplicaQservMgtRequest>(lock, _onFinish);

@@ -65,7 +65,7 @@ AbortTransactionJob::AbortTransactionJob(TransactionId transactionId, bool allWo
 
 Job::Progress AbortTransactionJob::progress() const {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
-    util::Lock lock(_mtx, context() + __func__);
+    replica::Lock lock(_mtx, context() + __func__);
     Progress jobProgress{0ULL, 0ULL};
     for (auto const& job : _jobs) {
         Progress const subJobProgress = job->progress();
@@ -100,7 +100,7 @@ list<pair<string, string>> AbortTransactionJob::persistentLogData() const {
     return result;
 }
 
-void AbortTransactionJob::startImpl(util::Lock const& lock) {
+void AbortTransactionJob::startImpl(replica::Lock const& lock) {
     string const context_ = context() + string(__func__) + "  ";
     LOGS(_log, LOG_LVL_TRACE, context_);
 
@@ -157,14 +157,14 @@ void AbortTransactionJob::startImpl(util::Lock const& lock) {
     }
 }
 
-void AbortTransactionJob::cancelImpl(util::Lock const& lock) {
+void AbortTransactionJob::cancelImpl(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_TRACE, context() << __func__);
     for (auto&& job : _jobs) {
         job->cancel();
     }
 }
 
-void AbortTransactionJob::notify(util::Lock const& lock) {
+void AbortTransactionJob::notify(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_TRACE, context() << __func__);
     notifyDefaultImpl<AbortTransactionJob>(lock, _onFinish);
 }
@@ -174,7 +174,7 @@ void AbortTransactionJob::_onChildJobFinish(SqlDeleteTablePartitionJob::Ptr cons
 
     if (state() == State::FINISHED) return;
 
-    util::Lock lock(_mtx, context() + string(__func__));
+    replica::Lock lock(_mtx, context() + string(__func__));
 
     if (state() == State::FINISHED) return;
 

@@ -66,7 +66,7 @@ list<pair<string, string>> SqlEnableDbJob::extendedPersistentState() const {
     return result;
 }
 
-list<SqlRequest::Ptr> SqlEnableDbJob::launchRequests(util::Lock const& lock, string const& worker,
+list<SqlRequest::Ptr> SqlEnableDbJob::launchRequests(replica::Lock const& lock, string const& worker,
                                                      size_t maxRequestsPerWorker) {
     // Launch exactly one request per worker unless it was already
     // launched earlier
@@ -85,11 +85,11 @@ list<SqlRequest::Ptr> SqlEnableDbJob::launchRequests(util::Lock const& lock, str
     return requests;
 }
 
-void SqlEnableDbJob::stopRequest(util::Lock const& lock, SqlRequest::Ptr const& request) {
+void SqlEnableDbJob::stopRequest(replica::Lock const& lock, SqlRequest::Ptr const& request) {
     stopRequestDefaultImpl<StopSqlEnableDbRequest>(lock, request);
 }
 
-void SqlEnableDbJob::notify(util::Lock const& lock) {
+void SqlEnableDbJob::notify(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "[" << typeName() << "]");
     notifyDefaultImpl<SqlEnableDbJob>(lock, _onFinish);
 }

@@ -87,7 +87,7 @@ DisposeRequest::DisposeRequest(ServiceProvider::Ptr const& serviceProvider,
 
 DisposeRequestResult const& DisposeRequest::responseData() const { return _responseData; }
 
-void DisposeRequest::startImpl(util::Lock const& lock) {
+void DisposeRequest::startImpl(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG,
          context() << __func__ << "  worker: " << worker() << " targetIds.size: " << targetIds().size());
 
@@ -113,7 +113,7 @@ void DisposeRequest::startImpl(util::Lock const& lock) {
     _send(lock);
 }
 
-void DisposeRequest::_send(util::Lock const& lock) {
+void DisposeRequest::_send(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
     messenger()->send<ProtocolResponseDispose>(
             worker(), id(), priority(), buffer(),
@@ -127,7 +127,7 @@ void DisposeRequest::_analyze(bool success, ProtocolResponseDispose const& messa
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  success=" << (success ? "true" : "false"));
 
     if (state() == State::FINISHED) return;
-    util::Lock lock(_mtx, context() + __func__);
+    replica::Lock lock(_mtx, context() + __func__);
     if (state() == State::FINISHED) return;
 
     // This type of request (if delivered to a worker and if a response from
@@ -138,7 +138,7 @@ void DisposeRequest::_analyze(bool success, ProtocolResponseDispose const& messa
     finish(lock, success ? SUCCESS : CLIENT_ERROR);
 }
 
-void DisposeRequest::notify(util::Lock const& lock) {
+void DisposeRequest::notify(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
     notifyDefaultImpl<DisposeRequest>(lock, _onFinish);
 }

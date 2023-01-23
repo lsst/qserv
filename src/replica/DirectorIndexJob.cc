@@ -107,7 +107,7 @@ DirectorIndexJob::DirectorIndexJob(string const& databaseName, string const& dir
 
 Job::Progress DirectorIndexJob::progress() const {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
-    util::Lock lock(_mtx, context() + __func__);
+    replica::Lock lock(_mtx, context() + __func__);
     return Progress{_completeChunks, _totalChunks};
 }
 
@@ -147,7 +147,7 @@ list<pair<string, string>> DirectorIndexJob::persistentLogData() const {
     return result;
 }
 
-void DirectorIndexJob::startImpl(util::Lock const& lock) {
+void DirectorIndexJob::startImpl(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     // ------------------------
@@ -279,7 +279,7 @@ void DirectorIndexJob::startImpl(util::Lock const& lock) {
     }
 }
 
-void DirectorIndexJob::cancelImpl(util::Lock const& lock) {
+void DirectorIndexJob::cancelImpl(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     // The algorithm will also clear resources taken by various
@@ -304,7 +304,7 @@ void DirectorIndexJob::cancelImpl(util::Lock const& lock) {
     _inFlightRequests.clear();
 }
 
-void DirectorIndexJob::notify(util::Lock const& lock) {
+void DirectorIndexJob::notify(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
     notifyDefaultImpl<DirectorIndexJob>(lock, _onFinish);
 }
@@ -321,7 +321,7 @@ void DirectorIndexJob::_onRequestFinish(DirectorIndexRequest::Ptr const& request
     LOGS(_log, LOG_LVL_DEBUG, context_);
 
     if (state() == State::FINISHED) return;
-    util::Lock lock(_mtx, context_);
+    replica::Lock lock(_mtx, context_);
     if (state() == State::FINISHED) return;
 
     if (request->extendedState() == Request::SUCCESS) {
@@ -373,7 +373,7 @@ void DirectorIndexJob::_loadDataIntoTable() {
                 context_ + "failed to connect to the czar's database server, ex: " + string(ex.what());
         LOGS(_log, LOG_LVL_ERROR, error);
         if (state() == State::FINISHED) return;
-        util::Lock lock(_mtx, context_);
+        replica::Lock lock(_mtx, context_);
         if (state() == State::FINISHED) return;
         finish(lock, ExtendedState::FAILED);
         return;
@@ -413,7 +413,7 @@ void DirectorIndexJob::_loadDataIntoTable() {
             });
 
             // Decrement the counter for the number of the on-going loading operations.
-            util::Lock lock(_mtx, context_);
+            replica::Lock lock(_mtx, context_);
             _numLoadingRequests--;
 
             // The counter of the fully completed chunks gets incremented only after
@@ -425,7 +425,7 @@ void DirectorIndexJob::_loadDataIntoTable() {
                                  string(ex.what());
             LOGS(_log, LOG_LVL_ERROR, error);
             if (state() == State::FINISHED) return;
-            util::Lock lock(_mtx, context_);
+            replica::Lock lock(_mtx, context_);
             if (state() == State::FINISHED) return;
             _resultData.error[request->worker()][request->chunk()] = error;
             finish(lock, ExtendedState::FAILED);
@@ -468,7 +468,7 @@ DirectorIndexRequest::Ptr DirectorIndexJob::_nextRequest() {
                     // Unfortunately, the desired state transition can't be done under
                     // the currently held lock of thr type std::unique_lock. The API for
                     // the operation require acquering a different type of locks
-                    // represented by the class util::Lock.
+                    // represented by the class replica::Lock.
                     return true;
                 }
                 if (!_completedRequests.empty()) {
@@ -488,7 +488,7 @@ DirectorIndexRequest::Ptr DirectorIndexJob::_nextRequest() {
     // of lock that's suitable for making state transitions of the job
     // if needed.
     if (state() == State::FINISHED) return nullptr;
-    util::Lock lock(_mtx, context_);
+    replica::Lock lock(_mtx, context_);
     if (state() == State::FINISHED) return nullptr;
 
     if (_completeChunks == _totalChunks) {
@@ -503,7 +503,7 @@ DirectorIndexRequest::Ptr DirectorIndexJob::_nextRequest() {
     return request;
 }
 
-list<DirectorIndexRequest::Ptr> DirectorIndexJob::_launchRequests(util::Lock const& lock,
+list<DirectorIndexRequest::Ptr> DirectorIndexJob::_launchRequests(replica::Lock const& lock,
                                                                   string const& worker, size_t maxRequests) {
     // Create as many requests as specified by the corresponding parameter of
     // the method or as many as are still available for the specified

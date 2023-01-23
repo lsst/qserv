@@ -25,7 +25,7 @@
 #include <random>
 
 // Qserv headers
-#include "util/Mutex.h"
+#include "replica/Mutex.h"
 
 // This header declarations
 namespace lsst::qserv::replica {
@@ -82,7 +82,7 @@ private:
 
     /// The mutex is for synchronized update of the object's state
     /// within a multi-threaded environment.
-    mutable util::Mutex _generatorMtx;
+    mutable replica::Mutex _generatorMtx;
 };
 
 }  // namespace lsst::qserv::replica
