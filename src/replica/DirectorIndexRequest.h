@@ -18,10 +18,11 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_REPLICA_INDEXREQUEST_H
-#define LSST_QSERV_REPLICA_INDEXREQUEST_H
+#ifndef LSST_QSERV_REPLICA_DIRECTORINDEXREQUEST_H
+#define LSST_QSERV_REPLICA_DIRECTORINDEXREQUEST_H
 
 // System headers
+#include <fstream>
 #include <functional>
 #include <memory>
 #include <ostream>
@@ -41,37 +42,34 @@ class Messenger;
 namespace lsst::qserv::replica {
 
 /**
- *  Structure IndexInfo represents a result of the requests
+ *  Structure DirectorIndexRequestInfo represents a result of the requests.
  */
-struct IndexInfo {
-    std::string error;  /// MySQL error (if any)
-    std::string data;   /// Index data to be loaded into the "secondary index" (if success)
-
-    /**
-     * Print index data into a file.
-     * @param fileName  the name or a file or 'std::cout' if it's empty
-     */
-    void print(std::string const& fileName = std::string()) const;
+struct DirectorIndexRequestInfo {
+    std::string error;         ///< A error (if any) that reported by the worker server.
+    std::string fileName;      ///< The file that containes the index data (if success).
+    size_t fileSizeBytes = 0;  ///< The number of bytes that were written into the file.
 };
 
-std::ostream& operator<<(std::ostream& os, IndexInfo const& info);
+std::ostream& operator<<(std::ostream& os, DirectorIndexRequestInfo const& info);
 
 /**
- * Class IndexRequest extracts and returns data to be loaded into
- * the "secondary index"
+ * Class DirectorIndexRequest extracts and returns data to be loaded into
+ * the "director" index.
  */
-class IndexRequest : public RequestMessenger {
+class DirectorIndexRequest : public RequestMessenger {
 public:
-    typedef std::shared_ptr<IndexRequest> Ptr;
+    typedef std::shared_ptr<DirectorIndexRequest> Ptr;
 
     /// The function type for notifications on the completion of the request
     typedef std::function<void(Ptr)> CallbackType;
 
-    IndexRequest() = delete;
-    IndexRequest(IndexRequest const&) = delete;
-    IndexRequest& operator=(IndexRequest const&) = delete;
+    DirectorIndexRequest() = delete;
+    DirectorIndexRequest(DirectorIndexRequest const&) = delete;
+    DirectorIndexRequest& operator=(DirectorIndexRequest const&) = delete;
 
-    ~IndexRequest() final = default;
+    /// Non-trivial destructor is needed to delete the data file that is created
+    /// upon successfull completion of the request.
+    virtual ~DirectorIndexRequest() final;
 
     std::string const& database() const { return _database; }
     std::string const& directorTable() const { return _directorTable; }
@@ -80,7 +78,7 @@ public:
     TransactionId transactionId() const { return _transactionId; }
 
     /// @return target request specific parameters
-    IndexRequestParams const& targetRequestParams() const { return _targetRequestParams; }
+    DirectorIndexRequestParams const& targetRequestParams() const { return _targetRequestParams; }
 
     /**
      * @note the method must be called on requests which are in the FINISHED
@@ -89,7 +87,7 @@ public:
      *   MySQL error code if the worker-side data extraction failed.
      * @return a reference to a result of the completed request
      */
-    IndexInfo const& responseData() const;
+    DirectorIndexRequestInfo const& responseData() const;
 
     /**
      * Create a new request with specified parameters.
@@ -125,36 +123,64 @@ public:
 
 protected:
     /// @see Request::startImpl()
-    void startImpl(util::Lock const& lock) final;
+    void startImpl(replica::Lock const& lock) final;
 
     /// @see Request::notify()
-    void notify(util::Lock const& lock) final;
+    void notify(replica::Lock const& lock) final;
 
     /// @see Request::savePersistentState()
-    void savePersistentState(util::Lock const& lock) final;
+    void savePersistentState(replica::Lock const& lock) final;
 
     /// @see Request::awaken()
     void awaken(boost::system::error_code const& ec) final;
 
 private:
-    IndexRequest(ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service,
-                 std::string const& worker, std::string const& database, std::string const& directorTable,
-                 unsigned int chunk, bool hasTransactions, TransactionId transactionId,
-                 CallbackType const& onFinish, int priority, bool keepTracking,
-                 std::shared_ptr<Messenger> const& messenger);
+    DirectorIndexRequest(ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service,
+                         std::string const& worker, std::string const& database,
+                         std::string const& directorTable, unsigned int chunk, bool hasTransactions,
+                         TransactionId transactionId, CallbackType const& onFinish, int priority,
+                         bool keepTracking, std::shared_ptr<Messenger> const& messenger);
+
+    /**
+     * Send the initial request for pulling data from the server.
+     * @param lock a lock on Request::_mtx must be acquired before calling this method
+     */
+    void _sendInitialRequest(replica::Lock const& lock);
+
+    /**
+     * Send the status inquery request to the server.
+     * @param lock a lock on Request::_mtx must be acquired before calling this method
+     */
+    void _sendStatusRequest(replica::Lock const& lock);
 
     /**
      * Send the serialized content of the buffer to a worker
      * @param lock a lock on Request::_mtx must be acquired before calling this method
      */
-    void _send(util::Lock const& lock);
+    void _send(replica::Lock const& lock);
 
     /**
      * Process the completion of the requested operation
      * @param success 'true' indicates a successful response from a worker
      * @param message response from a worker (if success)
      */
-    void _analyze(bool success, ProtocolResponseIndex const& message);
+    void _analyze(bool success, ProtocolResponseDirectorIndex const& message);
+
+    /**
+     * Process the completion of the request disposal operation.
+     * @param success 'true' indicates a successful response from a worker
+     * @param message response from a worker (if success)
+     */
+    void _disposed(bool success, ProtocolResponseDispose const& message);
+
+    /**
+     * Open the input file and write the data into the file.
+     * @note The method may throw exceptions in case if any problems will be encountered
+     *  with opening the output file or writing data into the file.
+     * @param lock A lock on the mutex _mtx acquired before calling the method.
+     * @param data The data to be writrten onto the file.
+     */
+    void _writeInfoFile(replica::Lock const& lock, std::string const& data);
 
     // Input parameters
 
@@ -166,12 +192,17 @@ private:
     CallbackType _onFinish;
 
     /// Request-specific parameters of the target request
-    IndexRequestParams _targetRequestParams;
+    DirectorIndexRequestParams _targetRequestParams;
 
     /// Result of the operation
-    IndexInfo _indexInfo;
+    DirectorIndexRequestInfo _responseData;
+
+    /// The file open for writing data read from the input stream. The file is open
+    /// at a time when the first batch of data is received. And it gets closed after
+    /// writing the last batch of data or in case of any failure.
+    std::ofstream _file;
 };
 
 }  // namespace lsst::qserv::replica
 
-#endif  // LSST_QSERV_REPLICA_INDEXREQUEST_H
+#endif  // LSST_QSERV_REPLICA_DIRECTORINDEXREQUEST_H

@@ -72,7 +72,7 @@ list<pair<string, string>> SqlRemoveTablePartitionsJob::extendedPersistentState(
     return result;
 }
 
-list<SqlRequest::Ptr> SqlRemoveTablePartitionsJob::launchRequests(util::Lock const& lock,
+list<SqlRequest::Ptr> SqlRemoveTablePartitionsJob::launchRequests(replica::Lock const& lock,
                                                                   string const& worker,
                                                                   size_t maxRequestsPerWorker) {
     list<SqlRequest::Ptr> requests;
@@ -102,11 +102,11 @@ list<SqlRequest::Ptr> SqlRemoveTablePartitionsJob::launchRequests(util::Lock con
     return requests;
 }
 
-void SqlRemoveTablePartitionsJob::stopRequest(util::Lock const& lock, SqlRequest::Ptr const& request) {
+void SqlRemoveTablePartitionsJob::stopRequest(replica::Lock const& lock, SqlRequest::Ptr const& request) {
     stopRequestDefaultImpl<StopSqlRemoveTablePartitionsRequest>(lock, request);
 }
 
-void SqlRemoveTablePartitionsJob::notify(util::Lock const& lock) {
+void SqlRemoveTablePartitionsJob::notify(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "[" << typeName() << "]");
     notifyDefaultImpl<SqlRemoveTablePartitionsJob>(lock, _onFinish);
 }

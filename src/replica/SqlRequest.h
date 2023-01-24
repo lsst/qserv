@@ -106,10 +106,10 @@ protected:
                bool keepTracking, std::shared_ptr<Messenger> const& messenger);
 
     /// @see Request::startImpl()
-    void startImpl(util::Lock const& lock) final;
+    void startImpl(replica::Lock const& lock) final;
 
     /// @see Request::savePersistentState()
-    void savePersistentState(util::Lock const& lock) final;
+    void savePersistentState(replica::Lock const& lock) final;
 
     /// @see Request::awaken()
     void awaken(boost::system::error_code const& ec) final;
@@ -126,7 +126,7 @@ private:
      * Send the serialized content of the buffer to a worker
      * @param lock a lock on Request::_mtx must be acquired before calling this method
      */
-    void _send(util::Lock const& lock);
+    void _send(replica::Lock const& lock);
 
     /**
      * Analyze the completion status of the requested operation

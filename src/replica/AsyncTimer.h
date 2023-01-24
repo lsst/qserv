@@ -31,7 +31,7 @@
 #include "boost/asio.hpp"
 
 // Qserv headers
-#include "util/Mutex.h"
+#include "replica/Mutex.h"
 
 // This header declarations
 namespace lsst::qserv::replica {
@@ -114,7 +114,7 @@ private:
 
     /// The mutex for enforcing thread safety of the class public API
     /// and internal operations.
-    mutable util::Mutex _mtx;
+    mutable replica::Mutex _mtx;
 };
 
 }  // namespace lsst::qserv::replica

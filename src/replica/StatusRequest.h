@@ -49,11 +49,6 @@
 #include "replica/SqlResultSet.h"
 #include "replica/StatusRequestBase.h"
 
-// Forward declarations
-namespace lsst::qserv::replica {
-class IndexInfo;
-}  // namespace lsst::qserv::replica
-
 // This header declarations
 namespace lsst::qserv::replica {
 
@@ -156,11 +151,17 @@ public:
     }
 };
 
-class StatusIndexRequestPolicy {
+/// @note This type of the management request for testing the target request won't
+///  return any data even in case when the target request was found successfully
+///  completed. An assumption here is that since the target requests of this
+///  kind have no side effects then they could always be resubmited if needed.
+///  The response object will contained the server error should the request failed
+///  at a worker.
+class StatusDirectorIndexRequestPolicy {
 public:
-    using ResponseMessageType = ProtocolResponseIndex;
-    using ResponseDataType = IndexInfo;
-    using TargetRequestParamsType = IndexRequestParams;
+    using ResponseMessageType = ProtocolResponseDirectorIndex;
+    using ResponseDataType = std::string;
+    using TargetRequestParamsType = DirectorIndexRequestParams;
 
     static char const* requestName();
     static ProtocolQueuedRequestType targetRequestType();
@@ -259,7 +260,9 @@ public:
     }
 
 protected:
-    void notify(util::Lock const& lock) final { notifyDefaultImpl<StatusRequest<POLICY>>(lock, _onFinish); }
+    void notify(replica::Lock const& lock) final {
+        notifyDefaultImpl<StatusRequest<POLICY>>(lock, _onFinish);
+    }
 
     /**
      * Initiate request-specific send.
@@ -267,7 +270,7 @@ protected:
      *   by the base class.
      * @param lock  A lock on Request::_mtx must be acquired before calling this method.
      */
-    void send(util::Lock const& lock) final {
+    void send(replica::Lock const& lock) final {
         auto self = shared_from_base<StatusRequest<POLICY>>();
         messenger()->send<typename POLICY::ResponseMessageType>(
                 worker(), id(), priority(), buffer(),
@@ -310,7 +313,7 @@ private:
         // results of the request. Note that the operation doesn't care
         // about the global state of the request (wether it's already finished
         // or not)
-        util::Lock lock(_mtx, context() + __func__);
+        replica::Lock lock(_mtx, context() + __func__);
 
         // Extract target request-specific parameters from the response if available.
         POLICY::extractTargetRequestParams(message, _targetRequestParams);
@@ -351,7 +354,7 @@ typedef StatusRequest<StatusDeleteRequestPolicy> StatusDeleteRequest;
 typedef StatusRequest<StatusFindRequestPolicy> StatusFindRequest;
 typedef StatusRequest<StatusFindAllRequestPolicy> StatusFindAllRequest;
 typedef StatusRequest<StatusEchoRequestPolicy> StatusEchoRequest;
-typedef StatusRequest<StatusIndexRequestPolicy> StatusIndexRequest;
+typedef StatusRequest<StatusDirectorIndexRequestPolicy> StatusDirectorIndexRequest;
 typedef StatusRequest<StatusSqlRequestPolicy> StatusSqlQueryRequest;
 typedef StatusRequest<StatusSqlRequestPolicy> StatusSqlCreateDbRequest;
 typedef StatusRequest<StatusSqlRequestPolicy> StatusSqlDeleteDbRequest;

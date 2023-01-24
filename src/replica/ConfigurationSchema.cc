@@ -31,6 +31,7 @@
 // Qserv headers
 #include "global/constants.h"
 #include "replica/Common.h"
+#include "replica/ProtocolBuffer.h"
 
 using namespace std;
 using json = nlohmann::json;
@@ -172,7 +173,20 @@ json const ConfigurationSchema::_schemaJson = json::object(
             {{"description",
               "An interval (seconds) for monitoring progress of jobs submitted by the Controller during"
               " asynchronous ingest operations."},
-             {"default", 60}}}}},
+             {"default", 60}}},
+           {"num-director-index-connections",
+            {{"description",
+              "The number of the MySQL connection to the Qserv 'czar's database in the connection pool that"
+              " is used by the 'director' index builder job. If using the InnoDB storage engine for"
+              " the 'director' index table, a value of this parameter should be set to 2,"
+              " which would allow the second MySQL thread to prepare data while the first thread"
+              " is loading data into the table. Setting the parameter to some large number won't"
+              " yield any benefits in terms of the overall performance of the index ingest. This"
+              " will just result in the useless increase in the CPU time consumed by MySQL."},
+             {"default", 2}}},
+           {"director-index-engine",
+            {{"description", "The default MySQL engine of the 'director' index tables."},
+             {"default", "InnoDB"}}}}},
          {"database",
           {{"services-pool-size",
             {{"description", "The pool size at the client database services connector."},
@@ -260,6 +274,9 @@ json const ConfigurationSchema::_schemaJson = json::object(
               "The name of a technology for implementing replica management requests at workers."},
              {"restricted", {{"type", "set"}, {"values", json::array({"FS", "POSIX", "TEST"})}}},
              {"default", "FS"}}},
+           {"num-threads",
+            {{"description", "The number of threads managed by BOOST ASIO. Must be greater than 0."},
+             {"default", num_threads}}},
            {"num-svc-processing-threads",
             {{"description", "The number of request processing threads in each Replication worker service."},
              {"default", num_threads}}},
@@ -384,7 +401,16 @@ json const ConfigurationSchema::_schemaJson = json::object(
               " by the ingest workflows for individual contributions. Setting a value of the parameter"
               " to 0 will unconditionally disable any retries."},
              {"empty-allowed", 1},
-             {"default", 10}}}}}});
+             {"default", 10}}},
+           {"director-index-record-size",
+            {{"description",
+              "The recommended record size (in bytes) for reading from the 'director' index file."
+              " Note that the size should not exceed the 'hard' limit of the Google Protobuf message"
+              " size of " +
+                      to_string(ProtocolBuffer::HARD_LIMIT) +
+                      " bytes. Any number set higher than this limit will"
+                      " get truncated down to match the limit at run time."},
+             {"default", 16 * 1024 * 1024}}}}}});
 
 string ConfigurationSchema::description(string const& category, string const& param) {
     return _attributeValue<string>(category, param, "description", "");

@@ -122,14 +122,14 @@ public:
 
 protected:
     /// @see Request::startImpl
-    void startImpl(util::Lock const& lock) final;
+    void startImpl(replica::Lock const& lock) final;
 
     /// @see Request::notify
-    void notify(util::Lock const& lock) final;
+    void notify(replica::Lock const& lock) final;
 
     /// @note No persistent state for this type of requests
     /// @see Request::savePersistentState
-    void savePersistentState(util::Lock const& lock) final {}
+    void savePersistentState(replica::Lock const& lock) final {}
 
 private:
     DisposeRequest(ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service,
@@ -142,7 +142,7 @@ private:
      * @param lock a lock on Request::_mtx must be acquired before calling
      *   this method
      */
-    void _send(util::Lock const& lock);
+    void _send(replica::Lock const& lock);
 
     /**
      * Process the completion of the requested operation

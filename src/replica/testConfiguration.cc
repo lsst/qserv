@@ -43,6 +43,7 @@
 #include "replica/Common.h"
 #include "replica/ConfigTestData.h"
 #include "replica/Configuration.h"
+#include "replica/ProtocolBuffer.h"
 
 // Boost unit test header
 #define BOOST_TEST_MODULE Configuration
@@ -135,6 +136,8 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestReadingGeneralParameters) {
     BOOST_CHECK(config->get<int>("controller", "catalog-management-priority-level") == 4);
     BOOST_CHECK(config->get<unsigned int>("controller", "auto-register-workers") == 1);
     BOOST_CHECK(config->get<unsigned int>("controller", "ingest-job-monitor-ival-sec") == 5);
+    BOOST_CHECK(config->get<unsigned int>("controller", "num-director-index-connections") == 6);
+    BOOST_CHECK(config->get<string>("controller", "director-index-engine") == "MyISAM");
 
     BOOST_CHECK(config->get<unsigned int>("xrootd", "auto-notify") == 0);
     BOOST_CHECK(config->get<string>("xrootd", "host") == "localhost");
@@ -156,6 +159,7 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestReadingGeneralParameters) {
     BOOST_CHECK(config->get<size_t>("database", "services-pool-size") == 2);
 
     BOOST_CHECK(config->get<string>("worker", "technology") == "POSIX");
+    BOOST_CHECK(config->get<size_t>("worker", "num-threads") == 3);
     BOOST_CHECK(config->get<size_t>("worker", "num-svc-processing-threads") == 4);
     BOOST_CHECK(config->get<size_t>("worker", "num-fs-processing-threads") == 5);
     BOOST_CHECK(config->get<size_t>("worker", "fs-buf-size-bytes") == 1024);
@@ -170,6 +174,7 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestReadingGeneralParameters) {
     BOOST_CHECK(config->get<string>("worker", "ingest-charset-name") == "latin1");
     BOOST_CHECK(config->get<unsigned int>("worker", "ingest-num-retries") == 1);
     BOOST_CHECK(config->get<unsigned int>("worker", "ingest-max-retries") == 10);
+    BOOST_CHECK(config->get<size_t>("worker", "director-index-record-size") == 16 * 1024 * 1024);
 }
 
 BOOST_AUTO_TEST_CASE(ConfigurationTestModifyingGeneralParameters) {
@@ -272,6 +277,15 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestModifyingGeneralParameters) {
     BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("controller", "ingest-job-monitor-ival-sec", 6));
     BOOST_CHECK(config->get<unsigned int>("controller", "ingest-job-monitor-ival-sec") == 6);
 
+    BOOST_CHECK_THROW(config->set<uint16_t>("controller", "num-director-index-connections", 0),
+                      std::invalid_argument);
+    BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("controller", "num-director-index-connections", 7));
+    BOOST_CHECK(config->get<unsigned int>("controller", "num-director-index-connections") == 7);
+
+    BOOST_CHECK_THROW(config->set<string>("controller", "director-index-engine", ""), std::invalid_argument);
+    BOOST_REQUIRE_NO_THROW(config->set<string>("controller", "director-index-engine", "InnoDB"));
+    BOOST_CHECK(config->get<string>("controller", "director-index-engine") == "InnoDB");
+
     BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("xrootd", "auto-notify", 1));
     BOOST_CHECK(config->get<unsigned int>("xrootd", "auto-notify") != 0);
 
@@ -307,6 +321,10 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestModifyingGeneralParameters) {
     BOOST_CHECK_THROW(config->set<string>("worker", "technology", ""), std::invalid_argument);
     BOOST_REQUIRE_NO_THROW(config->set<string>("worker", "technology", "FS"));
     BOOST_CHECK(config->get<string>("worker", "technology") == "FS");
+
+    BOOST_CHECK_THROW(config->set<size_t>("worker", "num-threads", 0), std::invalid_argument);
+    BOOST_REQUIRE_NO_THROW(config->set<size_t>("worker", "num-threads", 4));
+    BOOST_CHECK(config->get<size_t>("worker", "num-threads") == 4);
 
     BOOST_CHECK_THROW(config->set<size_t>("worker", "num-svc-processing-threads", 0), std::invalid_argument);
     BOOST_REQUIRE_NO_THROW(config->set<size_t>("worker", "num-svc-processing-threads", 5));
@@ -371,6 +389,11 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestModifyingGeneralParameters) {
     BOOST_CHECK(config->get<unsigned int>("worker", "ingest-max-retries") == 0);
     BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("worker", "ingest-max-retries", 100));
     BOOST_CHECK(config->get<unsigned int>("worker", "ingest-max-retries") == 100);
+
+    BOOST_CHECK_THROW(config->set<size_t>("worker", "director-index-record-size", 0), std::invalid_argument);
+    BOOST_REQUIRE_NO_THROW(
+            config->set<size_t>("worker", "director-index-record-size", ProtocolBuffer::HARD_LIMIT));
+    BOOST_CHECK(config->get<size_t>("worker", "director-index-record-size") == ProtocolBuffer::HARD_LIMIT);
 }
 
 BOOST_AUTO_TEST_CASE(ConfigurationTestWorkerOperators) {

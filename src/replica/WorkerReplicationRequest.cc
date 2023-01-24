@@ -92,7 +92,7 @@ WorkerReplicationRequest::WorkerReplicationRequest(ServiceProvider::Ptr const& s
 void WorkerReplicationRequest::setInfo(ProtocolResponseReplicate& response) const {
     LOGS(_log, LOG_LVL_DEBUG, context(__func__));
 
-    util::Lock lock(_mtx, context(__func__));
+    replica::Lock lock(_mtx, context(__func__));
 
     response.set_allocated_target_performance(performance().info().release());
     response.set_allocated_replica_info(replicaInfo.info().release());
@@ -140,7 +140,7 @@ bool WorkerReplicationRequestPOSIX::execute() {
                            << "  sourceWorkerDataDir: " << sourceWorkerDataDir()
                            << "  database: " << database() << "  chunk: " << chunk());
 
-    util::Lock lock(_mtx, context(__func__));
+    replica::Lock lock(_mtx, context(__func__));
 
     // Obtain the list of files to be migrated
     //
@@ -157,7 +157,7 @@ bool WorkerReplicationRequestPOSIX::execute() {
     //
     // - All operations with the file system namespace (creating new non-temporary
     //   files, checking for folders and files, renaming files, creating folders, etc.)
-    //   are guarded by acquiring util::Lock lock(_mtxDataFolderOperations) where it's needed.
+    //   are guarded by acquiring replica::Lock lock(_mtxDataFolderOperations) where it's needed.
 
     auto const config = serviceProvider()->config();
     DatabaseInfo const databaseInfo = config->databaseInfo(database());
@@ -198,7 +198,7 @@ bool WorkerReplicationRequestPOSIX::execute() {
     WorkerRequest::ErrorContext errorContext;
     boost::system::error_code ec;
     {
-        util::Lock dataFolderLock(_mtxDataFolderOperations, context(__func__) + ":1");
+        replica::Lock dataFolderLock(_mtxDataFolderOperations, context(__func__) + ":1");
 
         // Check for a presence of input files and calculate space requirement
 
@@ -300,7 +300,7 @@ bool WorkerReplicationRequestPOSIX::execute() {
     // acquiring the directory lock to guarantee a consistent view onto the folder.
 
     {
-        util::Lock dataFolderLock(_mtxDataFolderOperations, context(__func__) + ":2");
+        replica::Lock dataFolderLock(_mtxDataFolderOperations, context(__func__) + ":2");
 
         // ATTENTION: as per ISO/IEC 9945 the file rename operation will
         //            remove empty files. Not sure if this should be treated
@@ -360,7 +360,7 @@ WorkerReplicationRequestFS::WorkerReplicationRequestFS(ServiceProvider::Ptr cons
           _bufSize(serviceProvider->config()->get<size_t>("worker", "fs-buf-size-bytes")) {}
 
 WorkerReplicationRequestFS::~WorkerReplicationRequestFS() {
-    util::Lock lock(_mtx, context(__func__));
+    replica::Lock lock(_mtx, context(__func__));
     _releaseResources(lock);
 }
 
@@ -369,7 +369,7 @@ bool WorkerReplicationRequestFS::execute() {
          context(__func__) << "  sourceWorkerHostPort: " << sourceWorkerHostPort()
                            << "  database: " << database() << "  chunk: " << chunk());
 
-    util::Lock lock(_mtx, context(__func__));
+    replica::Lock lock(_mtx, context(__func__));
 
     // Abort the operation right away if that's the case
 
@@ -393,7 +393,7 @@ bool WorkerReplicationRequestFS::execute() {
     //
     // - All operations with the file system namespace (creating new non-temporary
     //   files, checking for folders and files, renaming files, creating folders, etc.)
-    //   are guarded by acquiring util::Lock lock(_mtxDataFolderOperations) where it's needed.
+    //   are guarded by acquiring replica::Lock lock(_mtxDataFolderOperations) where it's needed.
 
     WorkerRequest::ErrorContext errorContext;
 
@@ -431,7 +431,7 @@ bool WorkerReplicationRequestFS::execute() {
 
         boost::system::error_code ec;
         {
-            util::Lock dataFolderLock(_mtxDataFolderOperations, context(__func__));
+            replica::Lock dataFolderLock(_mtxDataFolderOperations, context(__func__));
 
             // Check for a presence of input files and calculate space requirement
 
@@ -642,7 +642,7 @@ bool WorkerReplicationRequestFS::execute() {
     return _finalize(lock);
 }
 
-bool WorkerReplicationRequestFS::_openFiles(util::Lock const& lock) {
+bool WorkerReplicationRequestFS::_openFiles(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG,
          context(__func__) << "  sourceWorkerHostPort: " << sourceWorkerHostPort() << "  database: "
                            << database() << "  chunk: " << chunk() << "  file: " << *_fileItr);
@@ -683,7 +683,7 @@ bool WorkerReplicationRequestFS::_openFiles(util::Lock const& lock) {
     return true;
 }
 
-bool WorkerReplicationRequestFS::_finalize(util::Lock const& lock) {
+bool WorkerReplicationRequestFS::_finalize(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG,
          context(__func__) << "  sourceWorkerHostPort: " << sourceWorkerHostPort()
                            << "  database: " << database() << "  chunk: " << chunk());
@@ -696,7 +696,7 @@ bool WorkerReplicationRequestFS::_finalize(util::Lock const& lock) {
     // which may affect other users (like replica lookup operations, etc.). Hence we're
     // acquiring the directory lock to guarantee a consistent view onto the folder.
 
-    util::Lock dataFolderLock(_mtxDataFolderOperations, context(__func__));
+    replica::Lock dataFolderLock(_mtxDataFolderOperations, context(__func__));
 
     // ATTENTION: as per ISO/IEC 9945 the file rename operation will
     //            remove empty files. Not sure if this should be treated
@@ -726,7 +726,7 @@ bool WorkerReplicationRequestFS::_finalize(util::Lock const& lock) {
     return true;
 }
 
-void WorkerReplicationRequestFS::_updateInfo(util::Lock const& lock) {
+void WorkerReplicationRequestFS::_updateInfo(replica::Lock const& lock) {
     size_t totalInSizeBytes = 0;
     size_t totalOutSizeBytes = 0;
 
@@ -750,7 +750,7 @@ void WorkerReplicationRequestFS::_updateInfo(util::Lock const& lock) {
             ReplicaInfo(status, worker(), database(), chunk(), PerformanceUtils::now(), fileInfoCollection);
 }
 
-void WorkerReplicationRequestFS::_releaseResources(util::Lock const& lock) {
+void WorkerReplicationRequestFS::_releaseResources(replica::Lock const& lock) {
     // Drop a connection to the remote server
     _inFilePtr.reset();
 

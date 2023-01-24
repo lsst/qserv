@@ -77,7 +77,7 @@ list<pair<string, string>> SqlCreateTablesJob::extendedPersistentState() const {
     return result;
 }
 
-list<SqlRequest::Ptr> SqlCreateTablesJob::launchRequests(util::Lock const& lock, string const& worker,
+list<SqlRequest::Ptr> SqlCreateTablesJob::launchRequests(replica::Lock const& lock, string const& worker,
                                                          size_t maxRequestsPerWorker) {
     list<SqlRequest::Ptr> requests;
 
@@ -104,11 +104,11 @@ list<SqlRequest::Ptr> SqlCreateTablesJob::launchRequests(util::Lock const& lock,
     return requests;
 }
 
-void SqlCreateTablesJob::stopRequest(util::Lock const& lock, SqlRequest::Ptr const& request) {
+void SqlCreateTablesJob::stopRequest(replica::Lock const& lock, SqlRequest::Ptr const& request) {
     stopRequestDefaultImpl<StopSqlCreateTablesRequest>(lock, request);
 }
 
-void SqlCreateTablesJob::notify(util::Lock const& lock) {
+void SqlCreateTablesJob::notify(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "[" << typeName() << "]");
     notifyDefaultImpl<SqlCreateTablesJob>(lock, _onFinish);
 }

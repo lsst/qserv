@@ -88,14 +88,14 @@ list<pair<string, string>> SetReplicasQservMgtRequest::extendedPersistentState()
 }
 
 void SetReplicasQservMgtRequest::_setReplicas(
-        util::Lock const& lock, wpublish::SetChunkListQservRequest::ChunkCollection const& collection) {
+        replica::Lock const& lock, wpublish::SetChunkListQservRequest::ChunkCollection const& collection) {
     _replicas.clear();
     for (auto&& replica : collection) {
         _replicas.push_back(QservReplica{replica.chunk, replica.database, replica.use_count});
     }
 }
 
-void SetReplicasQservMgtRequest::startImpl(util::Lock const& lock) {
+void SetReplicasQservMgtRequest::startImpl(replica::Lock const& lock) {
     wpublish::SetChunkListQservRequest::ChunkCollection chunks;
     for (auto&& chunkEntry : newReplicas()) {
         chunks.push_back(wpublish::SetChunkListQservRequest::Chunk{
@@ -110,7 +110,7 @@ void SetReplicasQservMgtRequest::startImpl(util::Lock const& lock) {
                       wpublish::SetChunkListQservRequest::ChunkCollection const& collection) {
                 if (request->state() == State::FINISHED) return;
 
-                util::Lock lock(request->_mtx, request->context() + string(__func__) + "[callback]");
+                replica::Lock lock(request->_mtx, request->context() + string(__func__) + "[callback]");
 
                 if (request->state() == State::FINISHED) return;
 
@@ -142,7 +142,7 @@ void SetReplicasQservMgtRequest::startImpl(util::Lock const& lock) {
     service()->ProcessRequest(*_qservRequest, resource);
 }
 
-void SetReplicasQservMgtRequest::finishImpl(util::Lock const& lock) {
+void SetReplicasQservMgtRequest::finishImpl(replica::Lock const& lock) {
     switch (extendedState()) {
         case ExtendedState::CANCELLED:
         case ExtendedState::TIMEOUT_EXPIRED:
@@ -160,7 +160,7 @@ void SetReplicasQservMgtRequest::finishImpl(util::Lock const& lock) {
     }
 }
 
-void SetReplicasQservMgtRequest::notify(util::Lock const& lock) {
+void SetReplicasQservMgtRequest::notify(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
     notifyDefaultImpl<SetReplicasQservMgtRequest>(lock, _onFinish);
 }

@@ -87,13 +87,13 @@ public:
 
 protected:
     /// @see QservMgtRequest::startImpl
-    void startImpl(util::Lock const& lock) final;
+    void startImpl(replica::Lock const& lock) final;
 
     /// @see QservMgtRequest::finishImpl
-    void finishImpl(util::Lock const& lock) final;
+    void finishImpl(replica::Lock const& lock) final;
 
     /// @see QservMgtRequest::notify
-    void notify(util::Lock const& lock) final;
+    void notify(replica::Lock const& lock) final;
 
 private:
     /// @see GetReplicasQservMgtRequest::create()
@@ -108,7 +108,7 @@ private:
      * @param lock A lock on QservMgtRequest::_mtx must be acquired before calling this method
      * @param collection The input collection of replicas.
      */
-    void _setReplicas(util::Lock const& lock,
+    void _setReplicas(replica::Lock const& lock,
                       wpublish::GetChunkListQservRequest::ChunkCollection const& collection);
 
     // Input parameters

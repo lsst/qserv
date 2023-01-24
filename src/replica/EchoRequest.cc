@@ -74,7 +74,7 @@ EchoRequest::EchoRequest(ServiceProvider::Ptr const& serviceProvider, boost::asi
 
 string const& EchoRequest::responseData() const { return _responseData; }
 
-void EchoRequest::startImpl(util::Lock const& lock) {
+void EchoRequest::startImpl(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG,
          context() << __func__ << "  worker: " << worker() << " data.length: " << data().size()
                    << " delay: " << delay());
@@ -109,7 +109,7 @@ void EchoRequest::awaken(boost::system::error_code const& ec) {
     if (isAborted(ec)) return;
 
     if (state() == State::FINISHED) return;
-    util::Lock lock(_mtx, context() + __func__);
+    replica::Lock lock(_mtx, context() + __func__);
     if (state() == State::FINISHED) return;
 
     // Serialize the Status message header and the request itself into
@@ -134,7 +134,7 @@ void EchoRequest::awaken(boost::system::error_code const& ec) {
     _send(lock);
 }
 
-void EchoRequest::_send(util::Lock const& lock) {
+void EchoRequest::_send(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
     auto self = shared_from_base<EchoRequest>();
     messenger()->send<ProtocolResponseEcho>(
@@ -153,7 +153,7 @@ void EchoRequest::_analyze(bool success, ProtocolResponseEcho const& message) {
     // for possible state transition which might occur while the async I/O was
     // still in a progress.
     if (state() == State::FINISHED) return;
-    util::Lock lock(_mtx, context() + __func__);
+    replica::Lock lock(_mtx, context() + __func__);
     if (state() == State::FINISHED) return;
 
     if (not success) {
@@ -221,12 +221,12 @@ void EchoRequest::_analyze(bool success, ProtocolResponseEcho const& message) {
     }
 }
 
-void EchoRequest::notify(util::Lock const& lock) {
+void EchoRequest::notify(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
     notifyDefaultImpl<EchoRequest>(lock, _onFinish);
 }
 
-void EchoRequest::savePersistentState(util::Lock const& lock) {
+void EchoRequest::savePersistentState(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
     controller()->serviceProvider()->databaseServices()->saveState(*this, performance(lock));
 }

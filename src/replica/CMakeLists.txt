@@ -162,6 +162,8 @@ target_sources(replica PRIVATE
     HttpConfigurationModule.h
     HttpControllersModule.cc
     HttpControllersModule.h
+    HttpDirectorIndexModule.cc
+    HttpDirectorIndexModule.h
     HttpExceptions.cc
     HttpExceptions.h
     HttpExportModule.cc
@@ -170,8 +172,6 @@ target_sources(replica PRIVATE
     HttpIngestChunksModule.h
     HttpIngestConfigModule.cc
     HttpIngestConfigModule.h
-    HttpIngestIndexModule.cc
-    HttpIngestIndexModule.h
     HttpIngestModule.cc
     HttpIngestModule.h
     HttpIngestTransModule.cc
@@ -207,12 +207,12 @@ target_sources(replica PRIVATE
     HttpSvc.h
     HttpWorkerStatusModule.cc
     HttpWorkerStatusModule.h
-    IndexApp.cc
-    IndexApp.h
-    IndexJob.cc
-    IndexJob.h
-    IndexRequest.cc
-    IndexRequest.h
+    DirectorIndexApp.cc
+    DirectorIndexApp.h
+    DirectorIndexJob.cc
+    DirectorIndexJob.h
+    DirectorIndexRequest.cc
+    DirectorIndexRequest.h
     IngestClient.cc
     IngestClient.h
     IngestFileSvc.cc
@@ -252,6 +252,8 @@ target_sources(replica PRIVATE
     MoveReplicaJob.h
     MySQLTestApp.cc
     MySQLTestApp.h
+    Mutex.h
+    Mutex.cc
     NamedMutexRegistry.cc
     NamedMutexRegistry.h
     OneWayFailer.h
@@ -428,14 +430,14 @@ target_sources(replica PRIVATE
     WorkerApp.h
     WorkerDeleteRequest.cc
     WorkerDeleteRequest.h
+    WorkerDirectorIndexRequest.cc
+    WorkerDirectorIndexRequest.h
     WorkerEchoRequest.cc
     WorkerEchoRequest.h
     WorkerFindAllRequest.cc
     WorkerFindAllRequest.h
     WorkerFindRequest.cc
     WorkerFindRequest.h
-    WorkerIndexRequest.cc
-    WorkerIndexRequest.h
     WorkerProcessor.cc
     WorkerProcessor.h
     WorkerProcessorThread.cc

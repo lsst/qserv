@@ -73,7 +73,7 @@ list<pair<string, string>> SqlDropIndexesJob::extendedPersistentState() const {
     return result;
 }
 
-list<SqlRequest::Ptr> SqlDropIndexesJob::launchRequests(util::Lock const& lock, string const& worker,
+list<SqlRequest::Ptr> SqlDropIndexesJob::launchRequests(replica::Lock const& lock, string const& worker,
                                                         size_t maxRequestsPerWorker) {
     list<SqlRequest::Ptr> requests;
 
@@ -101,11 +101,11 @@ list<SqlRequest::Ptr> SqlDropIndexesJob::launchRequests(util::Lock const& lock, 
     return requests;
 }
 
-void SqlDropIndexesJob::stopRequest(util::Lock const& lock, SqlRequest::Ptr const& request) {
+void SqlDropIndexesJob::stopRequest(replica::Lock const& lock, SqlRequest::Ptr const& request) {
     stopRequestDefaultImpl<StopSqlDropIndexesRequest>(lock, request);
 }
 
-void SqlDropIndexesJob::notify(util::Lock const& lock) {
+void SqlDropIndexesJob::notify(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "[" << typeName() << "]");
     notifyDefaultImpl<SqlDropIndexesJob>(lock, _onFinish);
 }

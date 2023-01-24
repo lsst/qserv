@@ -88,7 +88,7 @@ list<pair<string, string>> SqlCreateIndexesJob::extendedPersistentState() const 
     return result;
 }
 
-list<SqlRequest::Ptr> SqlCreateIndexesJob::launchRequests(util::Lock const& lock, string const& worker,
+list<SqlRequest::Ptr> SqlCreateIndexesJob::launchRequests(replica::Lock const& lock, string const& worker,
                                                           size_t maxRequestsPerWorker) {
     list<SqlRequest::Ptr> requests;
 
@@ -116,11 +116,11 @@ list<SqlRequest::Ptr> SqlCreateIndexesJob::launchRequests(util::Lock const& lock
     return requests;
 }
 
-void SqlCreateIndexesJob::stopRequest(util::Lock const& lock, SqlRequest::Ptr const& request) {
+void SqlCreateIndexesJob::stopRequest(replica::Lock const& lock, SqlRequest::Ptr const& request) {
     stopRequestDefaultImpl<StopSqlCreateIndexesRequest>(lock, request);
 }
 
-void SqlCreateIndexesJob::notify(util::Lock const& lock) {
+void SqlCreateIndexesJob::notify(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "[" << typeName() << "]");
     notifyDefaultImpl<SqlCreateIndexesJob>(lock, _onFinish);
 }

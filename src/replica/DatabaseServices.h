@@ -41,7 +41,7 @@
 #include "replica/Job.h"
 #include "replica/ReplicaInfo.h"
 #include "replica/TransactionContrib.h"
-#include "util/Mutex.h"
+#include "replica/Mutex.h"
 
 // Forward declarations
 namespace lsst::qserv::replica {
@@ -875,7 +875,7 @@ public:
     /// @see ServiceProvider::getNamedMutex
     virtual TransactionInfo createTransaction(
             std::string const& databaseName, NamedMutexRegistry& namedMutexRegistry,
-            std::unique_ptr<util::Lock>& namedMutexLock,
+            std::unique_ptr<replica::Lock>& namedMutexLock,
             nlohmann::json const& transactionContext = nlohmann::json::object()) = 0;
 
     /// @brief Update the state of a transaction

@@ -104,7 +104,7 @@ protected:
                                    unsigned int workerResponseTimeoutSec) const;
 
     /**
-     * Fetch a mode of building the "secondary index" as requested by a catalog
+     * Fetch a mode of building the "director" index as requested by a catalog
      * ingest workflow and recorded at the database creation time. A value of
      * the parameter is recorded in a database.
      *
@@ -113,10 +113,10 @@ protected:
      * @return 'true' if the index was requested to be built automatically w/o any
      *   explicit requests from a catalog ingest workflow.
      */
-    bool autoBuildSecondaryIndex(std::string const& database) const;
+    bool autoBuildDirectorIndex(std::string const& database) const;
 
     /**
-     * Fetch a mode of loading contributions into the "secondary index" as requested by
+     * Fetch a mode of loading contributions into the "director" index as requested by
      * a catalog ingest workflow and recorded at the database creation time. A value of
      * the parameter is recorded in a database.
      *
@@ -126,7 +126,7 @@ protected:
      *   "LOAD DATA LOCAL INFILE" instead of just "LOAD DATA INFILE". See MySQL
      *   documentation for further explanation of the protocol.
      */
-    bool localLoadSecondaryIndex(std::string const& database) const;
+    bool localLoadDirectorIndex(std::string const& database) const;
 
     /**
      * Get database info for a database that was specified in a request, either explicitly

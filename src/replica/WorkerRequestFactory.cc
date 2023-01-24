@@ -33,7 +33,7 @@
 #include "replica/WorkerEchoRequest.h"
 #include "replica/WorkerFindAllRequest.h"
 #include "replica/WorkerFindRequest.h"
-#include "replica/WorkerIndexRequest.h"
+#include "replica/WorkerDirectorIndexRequest.h"
 #include "replica/WorkerReplicationRequest.h"
 #include "replica/WorkerSqlRequest.h"
 
@@ -128,12 +128,12 @@ public:
                                         requestExpirationIvalSec, request);
     }
 
-    WorkerIndexRequest::Ptr createIndexRequest(string const& worker, string const& id, int priority,
-                                               WorkerRequest::ExpirationCallbackType const& onExpired,
-                                               unsigned int requestExpirationIvalSec,
-                                               ProtocolRequestIndex const& request) const final {
-        return WorkerIndexRequest::create(_serviceProvider, _connectionPool, worker, id, priority, onExpired,
-                                          requestExpirationIvalSec, request);
+    WorkerDirectorIndexRequest::Ptr createDirectorIndexRequest(
+            string const& worker, string const& id, int priority,
+            WorkerRequest::ExpirationCallbackType const& onExpired, unsigned int requestExpirationIvalSec,
+            ProtocolRequestDirectorIndex const& request) const final {
+        return WorkerDirectorIndexRequest::create(_serviceProvider, _connectionPool, worker, id, priority,
+                                                  onExpired, requestExpirationIvalSec, request);
     }
 };
 
@@ -207,12 +207,13 @@ public:
                                              requestExpirationIvalSec, request);
     }
 
-    WorkerIndexRequest::Ptr createIndexRequest(string const& worker, string const& id, int priority,
-                                               WorkerRequest::ExpirationCallbackType const& onExpired,
-                                               unsigned int requestExpirationIvalSec,
-                                               ProtocolRequestIndex const& request) const final {
-        return WorkerIndexRequestPOSIX::create(_serviceProvider, _connectionPool, worker, id, priority,
-                                               onExpired, requestExpirationIvalSec, request);
+    WorkerDirectorIndexRequest::Ptr createDirectorIndexRequest(
+            string const& worker, string const& id, int priority,
+            WorkerRequest::ExpirationCallbackType const& onExpired, unsigned int requestExpirationIvalSec,
+            ProtocolRequestDirectorIndex const& request) const final {
+        return WorkerDirectorIndexRequestPOSIX::create(_serviceProvider, _connectionPool, worker, id,
+                                                       priority, onExpired, requestExpirationIvalSec,
+                                                       request);
     }
 };
 
@@ -287,12 +288,12 @@ public:
                                           requestExpirationIvalSec, request);
     }
 
-    WorkerIndexRequest::Ptr createIndexRequest(string const& worker, string const& id, int priority,
-                                               WorkerRequest::ExpirationCallbackType const& onExpired,
-                                               unsigned int requestExpirationIvalSec,
-                                               ProtocolRequestIndex const& request) const final {
-        return WorkerIndexRequestFS::create(_serviceProvider, _connectionPool, worker, id, priority,
-                                            onExpired, requestExpirationIvalSec, request);
+    WorkerDirectorIndexRequest::Ptr createDirectorIndexRequest(
+            string const& worker, string const& id, int priority,
+            WorkerRequest::ExpirationCallbackType const& onExpired, unsigned int requestExpirationIvalSec,
+            ProtocolRequestDirectorIndex const& request) const final {
+        return WorkerDirectorIndexRequestFS::create(_serviceProvider, _connectionPool, worker, id, priority,
+                                                    onExpired, requestExpirationIvalSec, request);
     }
 };
 
@@ -374,11 +375,12 @@ WorkerSqlRequest::Ptr WorkerRequestFactory::createSqlRequest(
     return ptr;
 }
 
-WorkerIndexRequest::Ptr WorkerRequestFactory::createIndexRequest(
+WorkerDirectorIndexRequest::Ptr WorkerRequestFactory::createDirectorIndexRequest(
         string const& worker, string const& id, int priority,
         WorkerRequest::ExpirationCallbackType const& onExpired, unsigned int requestExpirationIvalSec,
-        ProtocolRequestIndex const& request) const {
-    auto ptr = _ptr->createIndexRequest(worker, id, priority, onExpired, requestExpirationIvalSec, request);
+        ProtocolRequestDirectorIndex const& request) const {
+    auto ptr = _ptr->createDirectorIndexRequest(worker, id, priority, onExpired, requestExpirationIvalSec,
+                                                request);
     ptr->init();
     return ptr;
 }

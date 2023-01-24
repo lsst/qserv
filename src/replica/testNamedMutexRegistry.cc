@@ -33,7 +33,7 @@
 // Qserv headers
 #include "replica/Common.h"
 #include "replica/NamedMutexRegistry.h"
-#include "util/Mutex.h"
+#include "replica/Mutex.h"
 #include "util/BlockPost.h"
 
 // LSST headers
@@ -46,6 +46,8 @@
 using namespace std;
 using namespace boost::unit_test;
 using namespace lsst::qserv::replica;
+
+namespace replica = lsst::qserv::replica;
 namespace util = lsst::qserv::util;
 
 namespace {
@@ -150,7 +152,7 @@ BOOST_AUTO_TEST_CASE(NamedMutexRegistryTest2) {
         for (auto&& thr : threads) {
             thr = make_unique<thread>([&]() {
                 for (unsigned int i = 0; i < steps; ++i) {
-                    util::Lock const lock(registry->get("a"), __func__);
+                    replica::Lock const lock(registry->get("a"), __func__);
                     ++counter;
                 }
             });
@@ -240,7 +242,7 @@ BOOST_AUTO_TEST_CASE(NamedMutexRegistryTest3) {
                         // This lock will be released after suspending the thread for
                         // a duration of the delay (if any).
                         {
-                            util::Lock const lock(registry->get(context.key), __func__);
+                            replica::Lock const lock(registry->get(context.key), __func__);
                             context.counter++;
                             if (plan.keepLockTimeMs > 0) {
                                 delay.wait(plan.keepLockTimeMs);

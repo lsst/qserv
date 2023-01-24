@@ -31,7 +31,7 @@
 // Qserv headers
 #include "replica/HealthMonitorTask.h"
 #include "replica/HttpModule.h"
-#include "util/Mutex.h"
+#include "replica/Mutex.h"
 
 // This header declarations
 namespace lsst::qserv::replica {
@@ -96,7 +96,7 @@ private:
     static uint64_t _replicationLevelReportTimeMs;
 
     /// Protects the replication level cache
-    static util::Mutex _replicationLevelMtx;
+    static replica::Mutex _replicationLevelMtx;
 };
 
 }  // namespace lsst::qserv::replica

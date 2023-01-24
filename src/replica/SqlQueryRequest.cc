@@ -63,7 +63,7 @@ SqlQueryRequest::SqlQueryRequest(ServiceProvider::Ptr const& serviceProvider,
     requestBody.set_password(password);
 }
 
-void SqlQueryRequest::notify(util::Lock const& lock) {
+void SqlQueryRequest::notify(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG,
          context() << __func__ << "[" << ProtocolRequestSql_Type_Name(requestBody.type()) << "]");
 

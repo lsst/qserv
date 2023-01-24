@@ -74,7 +74,7 @@ DeleteRequest::DeleteRequest(ServiceProvider::Ptr const& serviceProvider, boost:
     Request::serviceProvider()->config()->assertDatabaseIsValid(database);
 }
 
-void DeleteRequest::startImpl(util::Lock const& lock) {
+void DeleteRequest::startImpl(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     // Serialize the Request message header and the request itself into
@@ -107,7 +107,7 @@ void DeleteRequest::awaken(boost::system::error_code const& ec) {
     if (isAborted(ec)) return;
 
     if (state() == State::FINISHED) return;
-    util::Lock lock(_mtx, context() + __func__);
+    replica::Lock lock(_mtx, context() + __func__);
     if (state() == State::FINISHED) return;
 
     // Serialize the Status message header and the request itself into
@@ -132,7 +132,7 @@ void DeleteRequest::awaken(boost::system::error_code const& ec) {
     _send(lock);
 }
 
-void DeleteRequest::_send(util::Lock const& lock) {
+void DeleteRequest::_send(replica::Lock const& lock) {
     auto self = shared_from_base<DeleteRequest>();
     messenger()->send<ProtocolResponseDelete>(
             worker(), id(), priority(), buffer(),
@@ -150,7 +150,7 @@ void DeleteRequest::_analyze(bool success, ProtocolResponseDelete const& message
     // for possible state transition which might occur while the async I/O was
     // still in a progress.
     if (state() == State::FINISHED) return;
-    util::Lock lock(_mtx, context() + __func__);
+    replica::Lock lock(_mtx, context() + __func__);
     if (state() == State::FINISHED) return;
 
     if (not success) {
@@ -228,12 +228,12 @@ void DeleteRequest::_analyze(bool success, ProtocolResponseDelete const& message
     }
 }
 
-void DeleteRequest::notify(util::Lock const& lock) {
+void DeleteRequest::notify(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
     notifyDefaultImpl<DeleteRequest>(lock, _onFinish);
 }
 
-void DeleteRequest::savePersistentState(util::Lock const& lock) {
+void DeleteRequest::savePersistentState(replica::Lock const& lock) {
     controller()->serviceProvider()->databaseServices()->saveState(*this, performance(lock));
 }
 

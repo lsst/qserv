@@ -62,7 +62,7 @@ QservStatusJob::QservStatusJob(unsigned int timeoutSec, bool allWorkers, Control
           _onFinish(onFinish) {}
 
 QservStatus const& QservStatusJob::qservStatus() const {
-    util::Lock lock(_mtx, context() + __func__);
+    replica::Lock lock(_mtx, context() + __func__);
 
     if (state() == State::FINISHED) return _qservStatus;
 
@@ -90,7 +90,7 @@ list<pair<string, string>> QservStatusJob::persistentLogData() const {
     return result;
 }
 
-void QservStatusJob::startImpl(util::Lock const& lock) {
+void QservStatusJob::startImpl(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     auto self = shared_from_base<QservStatusJob>();
@@ -115,7 +115,7 @@ void QservStatusJob::startImpl(util::Lock const& lock) {
     if (0 == _numStarted) finish(lock, ExtendedState::SUCCESS);
 }
 
-void QservStatusJob::cancelImpl(util::Lock const& lock) {
+void QservStatusJob::cancelImpl(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     for (auto&& entry : _requests) {
@@ -125,7 +125,7 @@ void QservStatusJob::cancelImpl(util::Lock const& lock) {
     _requests.clear();
 }
 
-void QservStatusJob::notify(util::Lock const& lock) {
+void QservStatusJob::notify(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     notifyDefaultImpl<QservStatusJob>(lock, _onFinish);
@@ -138,7 +138,7 @@ void QservStatusJob::_onRequestFinish(GetStatusQservMgtRequest::Ptr const& reque
 
     if (state() == State::FINISHED) return;
 
-    util::Lock lock(_mtx, context() + string(__func__) + "[qserv]");
+    replica::Lock lock(_mtx, context() + string(__func__) + "[qserv]");
 
     if (state() == State::FINISHED) return;
 

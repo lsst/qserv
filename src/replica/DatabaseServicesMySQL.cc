@@ -87,7 +87,7 @@ void DatabaseServicesMySQL::saveState(ControllerIdentity const& identity, uint64
     string const context = "DatabaseServicesMySQL::" + string(__func__) + "[Controller] ";
     LOGS(_log, LOG_LVL_DEBUG, context);
 
-    util::Lock lock(_mtx, context);
+    replica::Lock lock(_mtx, context);
     try {
         string const query = _g.insert("controller", identity.id, identity.host, identity.pid, startTime);
         _conn->executeInOwnTransaction([&query](decltype(_conn) conn) { conn->execute(query); });
@@ -106,7 +106,7 @@ void DatabaseServicesMySQL::saveState(Job const& job) {
     string const context = "DatabaseServicesMySQL::" + string(__func__) + "[Job::" + job.type() + "] ";
     LOGS(_log, LOG_LVL_DEBUG, context);
 
-    util::Lock lock(_mtx, context);
+    replica::Lock lock(_mtx, context);
 
     // The algorithm will first try the INSERT query into the base table.
     // If a row with the same primary key (Job id) already exists in the table
@@ -145,7 +145,7 @@ void DatabaseServicesMySQL::saveState(Job const& job) {
 void DatabaseServicesMySQL::updateHeartbeatTime(Job const& job) {
     string const context = "DatabaseServicesMySQL::" + string(__func__) + "[Job::" + job.type() + "] ";
     LOGS(_log, LOG_LVL_DEBUG, context);
-    util::Lock lock(_mtx, context);
+    replica::Lock lock(_mtx, context);
     try {
         string const query = _g.update("job", make_pair("heartbeat_time", PerformanceUtils::now())) +
                              _g.where(_g.eq("id", job.id()));
@@ -176,7 +176,7 @@ void DatabaseServicesMySQL::saveState(QservMgtRequest const& request, Performanc
         return;
     }
 
-    util::Lock lock(_mtx, context);
+    replica::Lock lock(_mtx, context);
 
     // The algorithm will first try the INSERT query into the base table.
     // If a row with the same primary key (QservMgtRequest id) already exists in the table
@@ -237,7 +237,7 @@ void DatabaseServicesMySQL::saveState(Request const& request, Performance const&
         return;
     }
 
-    util::Lock lock(_mtx, context);
+    replica::Lock lock(_mtx, context);
 
     // The algorithm will first try the INSERT query into the base table.
     // If a row with the same primary key (QservMgtRequest id) already exists in the table
@@ -287,7 +287,7 @@ void DatabaseServicesMySQL::updateRequestState(Request const& request, string co
             "DatabaseServicesMySQL::" + string(__func__) + "[Request::" + request.type() + "] ";
     LOGS(_log, LOG_LVL_DEBUG, context);
 
-    util::Lock lock(_mtx, context);
+    replica::Lock lock(_mtx, context);
 
     // According to the current implementation of the requests processing pipeline
     // for the request management (including State* and Stop* families of requests),
@@ -327,7 +327,7 @@ void DatabaseServicesMySQL::saveReplicaInfo(ReplicaInfo const& info) {
     unsigned int timeoutSec = 0;     // pull the default value from the Configuration
     unsigned int maxRetriesOnDeadLock = 1;
 
-    util::Lock lock(_mtx, context);
+    replica::Lock lock(_mtx, context);
     try {
         _conn->executeInOwnTransaction([&](decltype(_conn) conn) { _saveReplicaInfoImpl(lock, info); },
                                        maxReconnects, timeoutSec, maxRetriesOnDeadLock);
@@ -350,7 +350,7 @@ void DatabaseServicesMySQL::saveReplicaInfoCollection(string const& worker, stri
     unsigned int timeoutSec = 0;     // pull the default value from the Configuration
     unsigned int maxRetriesOnDeadLock = 1;
 
-    util::Lock lock(_mtx, context);
+    replica::Lock lock(_mtx, context);
     try {
         _conn->executeInOwnTransaction(
                 [&](decltype(_conn) conn) {
@@ -364,7 +364,7 @@ void DatabaseServicesMySQL::saveReplicaInfoCollection(string const& worker, stri
     LOGS(_log, LOG_LVL_DEBUG, context + "** DONE **");
 }
 
-void DatabaseServicesMySQL::_saveReplicaInfoImpl(util::Lock const& lock, ReplicaInfo const& info) {
+void DatabaseServicesMySQL::_saveReplicaInfoImpl(replica::Lock const& lock, ReplicaInfo const& info) {
     string const context = "DatabaseServicesMySQL::" + string(__func__) + " ";
     try {
         // Try inserting if the replica is complete. Delete otherwise.
@@ -394,7 +394,7 @@ void DatabaseServicesMySQL::_saveReplicaInfoImpl(util::Lock const& lock, Replica
 }
 
 void DatabaseServicesMySQL::_saveReplicaInfoCollectionImpl(
-        util::Lock const& lock, string const& worker, string const& database,
+        replica::Lock const& lock, string const& worker, string const& database,
         ReplicaInfoCollection const& newReplicaInfoCollection) {
     string const context = "DatabaseServicesMySQL::" + string(__func__) + " ";
     LOGS(_log, LOG_LVL_DEBUG,
@@ -483,7 +483,7 @@ void DatabaseServicesMySQL::_saveReplicaInfoCollectionImpl(
     LOGS(_log, LOG_LVL_DEBUG, context << "** DONE **");
 }
 
-void DatabaseServicesMySQL::_deleteReplicaInfoImpl(util::Lock const& lock, string const& worker,
+void DatabaseServicesMySQL::_deleteReplicaInfoImpl(replica::Lock const& lock, string const& worker,
                                                    string const& database, unsigned int chunk) {
     string const context = "DatabaseServicesMySQL::" + string(__func__) + " ";
 
@@ -502,7 +502,7 @@ void DatabaseServicesMySQL::findOldestReplicas(vector<ReplicaInfo>& replicas, si
 
     if (maxReplicas == 0) throw invalid_argument(context + "maxReplicas is not allowed to be 0");
 
-    util::Lock lock(_mtx, context);
+    replica::Lock lock(_mtx, context);
     try {
         string const noSpecificFamily;
         auto const databases = _configuration->databases(noSpecificFamily, allDatabases, isPublished);
@@ -529,7 +529,7 @@ void DatabaseServicesMySQL::findReplicas(vector<ReplicaInfo>& replicas, unsigned
 
     _assertDatabaseIsValid(context, database);
 
-    util::Lock lock(_mtx, context);
+    replica::Lock lock(_mtx, context);
     try {
         string const query =
                 _g.select(Sql::STAR) + _g.from("replica") +
@@ -559,7 +559,7 @@ void DatabaseServicesMySQL::findReplicas(vector<ReplicaInfo>& replicas, vector<u
         return;
     }
 
-    util::Lock lock(_mtx, context);
+    replica::Lock lock(_mtx, context);
     try {
         string const query =
                 _g.select(Sql::STAR) + _g.from("replica") +
@@ -584,7 +584,7 @@ void DatabaseServicesMySQL::findWorkerReplicas(vector<ReplicaInfo>& replicas, st
 
     _assertWorkerIsValid(context, worker);
 
-    util::Lock lock(_mtx, context);
+    replica::Lock lock(_mtx, context);
     try {
         _conn->executeInOwnTransaction([&](decltype(_conn) conn) {
             _findWorkerReplicasImpl(lock, replicas, worker, database, allDatabases, isPublished,
@@ -607,7 +607,7 @@ uint64_t DatabaseServicesMySQL::numWorkerReplicas(string const& worker, string c
     _assertWorkerIsValid(context, worker);
 
     uint64_t num;
-    util::Lock lock(_mtx, context);
+    replica::Lock lock(_mtx, context);
     try {
         string query = _g.select(Sql::COUNT_STAR) + _g.from("replica");
         if (database.empty()) {
@@ -629,7 +629,7 @@ uint64_t DatabaseServicesMySQL::numWorkerReplicas(string const& worker, string c
     return num;
 }
 
-void DatabaseServicesMySQL::_findWorkerReplicasImpl(util::Lock const& lock, vector<ReplicaInfo>& replicas,
+void DatabaseServicesMySQL::_findWorkerReplicasImpl(replica::Lock const& lock, vector<ReplicaInfo>& replicas,
                                                     string const& worker, string const& database,
                                                     bool allDatabases, bool isPublished,
                                                     bool includeFileInfo) {
@@ -666,7 +666,7 @@ void DatabaseServicesMySQL::findWorkerReplicas(vector<ReplicaInfo>& replicas, un
     _assertWorkerIsValid(context, worker);
     _assertDatabaseFamilyIsValid(context, databaseFamily);
 
-    util::Lock lock(_mtx, context);
+    replica::Lock lock(_mtx, context);
     try {
         auto const databases = _configuration->databases(databaseFamily, allDatabases, isPublished);
         auto const query =
@@ -689,7 +689,7 @@ void DatabaseServicesMySQL::findDatabaseReplicas(vector<ReplicaInfo>& replicas, 
 
     _assertDatabaseIsValid(context, database);
 
-    util::Lock lock(_mtx, context);
+    replica::Lock lock(_mtx, context);
     try {
         string const query =
                 _g.select(Sql::STAR) + _g.from("replica") +
@@ -712,7 +712,7 @@ void DatabaseServicesMySQL::findDatabaseChunks(vector<unsigned int>& chunks, str
 
     _assertDatabaseIsValid(context, database);
 
-    util::Lock lock(_mtx, context);
+    replica::Lock lock(_mtx, context);
     try {
         string query = _g.select(_g.distinctId("chunk")) + _g.from("replica");
         if (enabledWorkersOnly) {
@@ -736,7 +736,7 @@ map<unsigned int, size_t> DatabaseServicesMySQL::actualReplicationLevel(
 
     _assertDatabaseIsValid(context, database);
 
-    util::Lock lock(_mtx, context);
+    replica::Lock lock(_mtx, context);
     try {
         auto const subQuery =
                 _g.subQuery(_g.select("chunk", _g.as(Sql::COUNT_STAR, "level")) + _g.from("replica") +
@@ -777,7 +777,7 @@ size_t DatabaseServicesMySQL::numOrphanChunks(string const& database, vector<str
 
     _assertDatabaseIsValid(context, database);
 
-    util::Lock lock(_mtx, context);
+    replica::Lock lock(_mtx, context);
     try {
         size_t result = 0;
         if (!uniqueOnWorkers.empty()) {
@@ -815,7 +815,7 @@ void DatabaseServicesMySQL::logControllerEvent(ControllerEvent const& event) {
             " jobId=" + event.jobId + " kvInfo.size=" + to_string(event.kvInfo.size()) + " ";
     LOGS(_log, LOG_LVL_DEBUG, context);
 
-    util::Lock lock(_mtx, context);
+    replica::Lock lock(_mtx, context);
     try {
         _conn->executeInOwnTransaction([&](decltype(_conn) conn) { _logControllerEvent(lock, event); });
     } catch (exception const& ex) {
@@ -825,7 +825,7 @@ void DatabaseServicesMySQL::logControllerEvent(ControllerEvent const& event) {
     LOGS(_log, LOG_LVL_DEBUG, context + "** DONE **");
 }
 
-void DatabaseServicesMySQL::_logControllerEvent(util::Lock const& lock, ControllerEvent const& event) {
+void DatabaseServicesMySQL::_logControllerEvent(replica::Lock const& lock, ControllerEvent const& event) {
     string const query = _g.insert("controller_log", Sql::NULL_, event.controllerId, event.timeStamp,
                                    event.task, event.operation, event.status, _g.nullIfEmpty(event.requestId),
                                    _g.nullIfEmpty(event.jobId));
@@ -850,7 +850,7 @@ list<ControllerEvent> DatabaseServicesMySQL::readControllerEvents(string const& 
     LOGS(_log, LOG_LVL_DEBUG, context);
 
     list<ControllerEvent> events;
-    util::Lock lock(_mtx, context);
+    replica::Lock lock(_mtx, context);
     try {
         _conn->executeInOwnTransaction([&](decltype(_conn) conn) {
             events = _readControllerEvents(lock, controllerId, fromTimeStamp, toTimeStamp, maxEntries, task,
@@ -865,7 +865,7 @@ list<ControllerEvent> DatabaseServicesMySQL::readControllerEvents(string const& 
 }
 
 list<ControllerEvent> DatabaseServicesMySQL::_readControllerEvents(
-        util::Lock const& lock, string const& controllerId, uint64_t fromTimeStamp, uint64_t toTimeStamp,
+        replica::Lock const& lock, string const& controllerId, uint64_t fromTimeStamp, uint64_t toTimeStamp,
         size_t maxEntries, string const& task, string const& operation, string const& operationStatus) {
     if (fromTimeStamp > toTimeStamp) {
         throw invalid_argument("DatabaseServicesMySQL::" + string(__func__) +
@@ -926,7 +926,7 @@ json DatabaseServicesMySQL::readControllerEventDict(string const& controllerId) 
     if (controllerId.empty()) throw invalid_argument(context + "controllerId can't be empty");
 
     json dict;
-    util::Lock lock(_mtx, context);
+    replica::Lock lock(_mtx, context);
     try {
         _conn->executeInOwnTransaction(
                 [&](decltype(_conn) conn) { dict = _readControllerEventDict(lock, controllerId); });
@@ -938,7 +938,7 @@ json DatabaseServicesMySQL::readControllerEventDict(string const& controllerId) 
     return dict;
 }
 
-json DatabaseServicesMySQL::_readControllerEventDict(util::Lock const& lock, string const& controllerId) {
+json DatabaseServicesMySQL::_readControllerEventDict(replica::Lock const& lock, string const& controllerId) {
     json dict;
     for (const char* col : {"task", "operation", "status"}) {
         string const query = _g.select(_g.distinctId(col)) + _g.from("controller_log") +
@@ -963,7 +963,7 @@ ControllerInfo DatabaseServicesMySQL::controller(string const& id) {
     if (id.empty()) throw invalid_argument(context + ", controller identifier can't be empty");
 
     ControllerInfo info;
-    util::Lock lock(_mtx, context);
+    replica::Lock lock(_mtx, context);
     try {
         _conn->executeInOwnTransaction([&](decltype(_conn) conn) { info = _controller(lock, id); });
     } catch (exception const& ex) {
@@ -974,7 +974,7 @@ ControllerInfo DatabaseServicesMySQL::controller(string const& id) {
     return info;
 }
 
-ControllerInfo DatabaseServicesMySQL::_controller(util::Lock const& lock, string const& id) {
+ControllerInfo DatabaseServicesMySQL::_controller(replica::Lock const& lock, string const& id) {
     string const query = _g.select(Sql::STAR) + _g.from("controller") + _g.where(_g.eq("id", id));
     _conn->execute(query);
     if (_conn->hasResult()) {
@@ -1000,7 +1000,7 @@ list<ControllerInfo> DatabaseServicesMySQL::controllers(uint64_t fromTimeStamp, 
     LOGS(_log, LOG_LVL_DEBUG, context);
 
     list<ControllerInfo> collection;
-    util::Lock lock(_mtx, context);
+    replica::Lock lock(_mtx, context);
     try {
         _conn->executeInOwnTransaction([&](decltype(_conn) conn) {
             collection = _controllers(lock, fromTimeStamp, toTimeStamp, maxEntries);
@@ -1013,7 +1013,7 @@ list<ControllerInfo> DatabaseServicesMySQL::controllers(uint64_t fromTimeStamp, 
     return collection;
 }
 
-list<ControllerInfo> DatabaseServicesMySQL::_controllers(util::Lock const& lock, uint64_t fromTimeStamp,
+list<ControllerInfo> DatabaseServicesMySQL::_controllers(replica::Lock const& lock, uint64_t fromTimeStamp,
                                                          uint64_t toTimeStamp, size_t maxEntries) {
     list<ControllerInfo> collection;
     string const query =
@@ -1044,7 +1044,7 @@ RequestInfo DatabaseServicesMySQL::request(string const& id) {
     if (id.empty()) throw invalid_argument(context + ", request identifier can't be empty");
 
     RequestInfo info;
-    util::Lock lock(_mtx, context);
+    replica::Lock lock(_mtx, context);
     try {
         _conn->executeInOwnTransaction([&](decltype(_conn) conn) { info = _request(lock, id); });
     } catch (exception const& ex) {
@@ -1055,7 +1055,7 @@ RequestInfo DatabaseServicesMySQL::request(string const& id) {
     return info;
 }
 
-RequestInfo DatabaseServicesMySQL::_request(util::Lock const& lock, string const& id) {
+RequestInfo DatabaseServicesMySQL::_request(replica::Lock const& lock, string const& id) {
     string const query = _g.select(Sql::STAR) + _g.from("request") + _g.where(_g.eq("id", id));
     _conn->execute(query);
     if (_conn->hasResult()) {
@@ -1104,7 +1104,7 @@ list<RequestInfo> DatabaseServicesMySQL::requests(string const& jobId, uint64_t 
     LOGS(_log, LOG_LVL_DEBUG, context);
 
     list<RequestInfo> collection;
-    util::Lock lock(_mtx, context);
+    replica::Lock lock(_mtx, context);
     try {
         _conn->executeInOwnTransaction([&](decltype(_conn) conn) {
             collection = _requests(lock, jobId, fromTimeStamp, toTimeStamp, maxEntries);
@@ -1117,7 +1117,7 @@ list<RequestInfo> DatabaseServicesMySQL::requests(string const& jobId, uint64_t 
     return collection;
 }
 
-list<RequestInfo> DatabaseServicesMySQL::_requests(util::Lock const& lock, string const& jobId,
+list<RequestInfo> DatabaseServicesMySQL::_requests(replica::Lock const& lock, string const& jobId,
                                                    uint64_t fromTimeStamp, uint64_t toTimeStamp,
                                                    size_t maxEntries) {
     list<RequestInfo> collection;
@@ -1175,7 +1175,7 @@ JobInfo DatabaseServicesMySQL::job(string const& id) {
     if (id.empty()) throw invalid_argument(context + ", job identifier can't be empty");
 
     JobInfo info;
-    util::Lock lock(_mtx, context);
+    replica::Lock lock(_mtx, context);
     try {
         _conn->executeInOwnTransaction([&](decltype(_conn) conn) { info = _job(lock, id); });
     } catch (exception const& ex) {
@@ -1186,7 +1186,7 @@ JobInfo DatabaseServicesMySQL::job(string const& id) {
     return info;
 }
 
-JobInfo DatabaseServicesMySQL::_job(util::Lock const& lock, string const& id) {
+JobInfo DatabaseServicesMySQL::_job(replica::Lock const& lock, string const& id) {
     string const query = _g.select(Sql::STAR) + _g.from("job") + _g.where(_g.eq("id", id));
     _conn->execute(query);
     if (_conn->hasResult()) {
@@ -1232,7 +1232,7 @@ list<JobInfo> DatabaseServicesMySQL::jobs(string const& controllerId, string con
     if (controllerId.empty()) throw invalid_argument(context + "controllerId can't be empty");
 
     list<JobInfo> collection;
-    util::Lock lock(_mtx, context);
+    replica::Lock lock(_mtx, context);
     try {
         _conn->executeInOwnTransaction([&](decltype(_conn) conn) {
             collection = _jobs(lock, controllerId, parentJobId, fromTimeStamp, toTimeStamp, maxEntries);
@@ -1245,7 +1245,7 @@ list<JobInfo> DatabaseServicesMySQL::jobs(string const& controllerId, string con
     return collection;
 }
 
-list<JobInfo> DatabaseServicesMySQL::_jobs(util::Lock const& lock, string const& controllerId,
+list<JobInfo> DatabaseServicesMySQL::_jobs(replica::Lock const& lock, string const& controllerId,
                                            string const& parentJobId, uint64_t fromTimeStamp,
                                            uint64_t toTimeStamp, size_t maxEntries) {
     list<JobInfo> collection;
@@ -1296,7 +1296,7 @@ TransactionInfo DatabaseServicesMySQL::transaction(TransactionId id, bool includ
     LOGS(_log, LOG_LVL_DEBUG, context);
 
     TransactionInfo info;
-    util::Lock lock(_mtx, context);
+    replica::Lock lock(_mtx, context);
     try {
         string const predicate = _g.eq("id", id);
         _conn->executeInOwnTransaction([&](decltype(_conn) conn) {
@@ -1315,7 +1315,7 @@ vector<TransactionInfo> DatabaseServicesMySQL::transactions(string const& databa
     string const context = _context(__func__) + "databaseName=" + databaseName + " ";
     LOGS(_log, LOG_LVL_DEBUG, context);
     _assertDatabaseIsValid(context, databaseName);
-    util::Lock lock(_mtx, context);
+    replica::Lock lock(_mtx, context);
     string const predicate = databaseName.empty() ? "" : _g.eq("database", databaseName);
     return _transactions(lock, predicate, includeContext, includeLog);
 }
@@ -1324,14 +1324,14 @@ vector<TransactionInfo> DatabaseServicesMySQL::transactions(TransactionInfo::Sta
                                                             bool includeLog) {
     string const context = _context(__func__) + "state=" + TransactionInfo::state2string(state) + " ";
     LOGS(_log, LOG_LVL_DEBUG, context);
-    util::Lock lock(_mtx, context);
+    replica::Lock lock(_mtx, context);
     string const predicate = _g.eq("state", TransactionInfo::state2string(state));
     return _transactions(lock, predicate, includeContext, includeLog);
 }
 
 TransactionInfo DatabaseServicesMySQL::createTransaction(string const& databaseName,
                                                          NamedMutexRegistry& namedMutexRegistry,
-                                                         unique_ptr<util::Lock>& namedMutexLock,
+                                                         unique_ptr<replica::Lock>& namedMutexLock,
                                                          json const& transactionContext) {
     string const context = _context(__func__) + "database=" + databaseName + " ";
     LOGS(_log, LOG_LVL_DEBUG, context);
@@ -1349,7 +1349,7 @@ TransactionInfo DatabaseServicesMySQL::createTransaction(string const& databaseN
     string const state = "IS_STARTING";
     TransactionInfo info;
 
-    util::Lock lock(_mtx, context);
+    replica::Lock lock(_mtx, context);
     try {
         string const predicate = _g.eq("id", Sql::LAST_INSERT_ID);
         string const query = _g.insert("transaction", Sql::NULL_, databaseName, state, beginTime, startTime,
@@ -1359,7 +1359,8 @@ TransactionInfo DatabaseServicesMySQL::createTransaction(string const& databaseN
             bool const includeContext = true;
             bool const includeLog = true;
             info = _findTransactionImpl(lock, predicate, includeContext, includeLog);
-            namedMutexLock.reset(new util::Lock(namedMutexRegistry.get("transaction:" + to_string(info.id))));
+            namedMutexLock.reset(
+                    new replica::Lock(namedMutexRegistry.get("transaction:" + to_string(info.id))));
         });
     } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context << "failed, exception: " << ex.what());
@@ -1390,7 +1391,7 @@ TransactionInfo DatabaseServicesMySQL::updateTransaction(TransactionId id, Trans
     }
     TransactionInfo info;
 
-    util::Lock lock(_mtx, context);
+    replica::Lock lock(_mtx, context);
     try {
         auto const predicate = _g.eq("id", id);
         _conn->executeInOwnTransaction([&](decltype(_conn) conn) {
@@ -1428,7 +1429,7 @@ TransactionInfo DatabaseServicesMySQL::updateTransaction(TransactionId id, json 
                                "a value of the parameter 'transactionContext is not a valid JSON object");
 
     TransactionInfo info;
-    util::Lock lock(_mtx, context);
+    replica::Lock lock(_mtx, context);
     try {
         string const predicate = _g.eq("id", id);
         _conn->executeInOwnTransaction([&](decltype(_conn) conn) {
@@ -1456,7 +1457,7 @@ TransactionInfo DatabaseServicesMySQL::updateTransaction(TransactionId id,
     LOGS(_log, LOG_LVL_DEBUG, context);
 
     TransactionInfo info;
-    util::Lock lock(_mtx, context);
+    replica::Lock lock(_mtx, context);
     try {
         string const predicate = _g.eq("id", id);
         _conn->executeInOwnTransaction([&](decltype(_conn) conn) {
@@ -1484,8 +1485,9 @@ TransactionInfo DatabaseServicesMySQL::updateTransaction(TransactionId id,
     return info;
 }
 
-vector<TransactionInfo> DatabaseServicesMySQL::_transactions(util::Lock const& lock, string const& predicate,
-                                                             bool includeContext, bool includeLog) {
+vector<TransactionInfo> DatabaseServicesMySQL::_transactions(replica::Lock const& lock,
+                                                             string const& predicate, bool includeContext,
+                                                             bool includeLog) {
     string const context = _context(__func__) + "predicate=" + predicate + " ";
     LOGS(_log, LOG_LVL_DEBUG, context);
     vector<TransactionInfo> collection;
@@ -1501,8 +1503,9 @@ vector<TransactionInfo> DatabaseServicesMySQL::_transactions(util::Lock const& l
     return collection;
 }
 
-TransactionInfo DatabaseServicesMySQL::_findTransactionImpl(util::Lock const& lock, string const& predicate,
-                                                            bool includeContext, bool includeLog) {
+TransactionInfo DatabaseServicesMySQL::_findTransactionImpl(replica::Lock const& lock,
+                                                            string const& predicate, bool includeContext,
+                                                            bool includeLog) {
     string const context = _context(__func__) + "predicate=" + predicate + " ";
     auto const collection = _findTransactionsImpl(lock, predicate, includeContext, includeLog);
     size_t const num = collection.size();
@@ -1511,7 +1514,7 @@ TransactionInfo DatabaseServicesMySQL::_findTransactionImpl(util::Lock const& lo
     throw DatabaseServicesError(context + "two many transactions found: " + to_string(num));
 }
 
-vector<TransactionInfo> DatabaseServicesMySQL::_findTransactionsImpl(util::Lock const& lock,
+vector<TransactionInfo> DatabaseServicesMySQL::_findTransactionsImpl(replica::Lock const& lock,
                                                                      string const& predicate,
                                                                      bool includeContext, bool includeLog) {
     string const context = _context(__func__) + "predicate=" + predicate + " ";
@@ -1582,7 +1585,7 @@ TransactionContribInfo DatabaseServicesMySQL::transactionContrib(unsigned int id
     string const context = _context(__func__) + "id=" + to_string(id) + " ";
     LOGS(_log, LOG_LVL_DEBUG, context);
     vector<TransactionContribInfo> collection;
-    util::Lock lock(_mtx, context);
+    replica::Lock lock(_mtx, context);
     try {
         _conn->executeInOwnTransaction([&](decltype(_conn) conn) {
             collection = _transactionContribsImpl(lock, _g.eq("id", id), includeWarnings, includeRetries);
@@ -1622,7 +1625,7 @@ vector<TransactionContribInfo> DatabaseServicesMySQL::transactionContribs(
                            " table=" + table + " worker=" + worker + " " +
                            " typeSelector=" + TransactionContribInfo::typeSelector2str(typeSelector) + " ";
     LOGS(_log, LOG_LVL_DEBUG, context);
-    util::Lock lock(_mtx, context);
+    replica::Lock lock(_mtx, context);
 
     string const predicate =
             _g.packConds(_g.eq("transaction_id", transactionId), table.empty() ? "" : _g.eq("table", table),
@@ -1639,7 +1642,7 @@ vector<TransactionContribInfo> DatabaseServicesMySQL::transactionContribs(
                            " worker=" + worker + " " +
                            " typeSelector=" + TransactionContribInfo::typeSelector2str(typeSelector) + " ";
     LOGS(_log, LOG_LVL_DEBUG, context);
-    util::Lock lock(_mtx, context);
+    replica::Lock lock(_mtx, context);
     string const predicate =
             _g.packConds(_g.eq("transaction_id", transactionId),
                          _g.eq("status", TransactionContribInfo::status2str(status)),
@@ -1658,7 +1661,7 @@ vector<TransactionContribInfo> DatabaseServicesMySQL::transactionContribs(
 
     _assertDatabaseIsValid(context, database);
 
-    util::Lock lock(_mtx, context);
+    replica::Lock lock(_mtx, context);
     string const predicate =
             _g.packConds(_g.eq("database", database), table.empty() ? "" : _g.eq("table", table),
                          worker.empty() ? "" : _g.eq("worker", worker), _typeSelectorPredicate(typeSelector));
@@ -1691,7 +1694,7 @@ TransactionContribInfo DatabaseServicesMySQL::createdTransactionContrib(
 
     TransactionContribInfo updatedInfo;
 
-    util::Lock lock(_mtx, context);
+    replica::Lock lock(_mtx, context);
     try {
         vector<string> queries;
         queries.emplace_back(_g.insert(
@@ -1743,7 +1746,7 @@ TransactionContribInfo DatabaseServicesMySQL::updateTransactionContrib(Transacti
     bool const includeWarnings = true;
     bool const includeRetries = true;
     TransactionContribInfo updatedInfo;
-    util::Lock lock(_mtx, context);
+    replica::Lock lock(_mtx, context);
     try {
         list<string> queries;
         string const query =
@@ -1804,7 +1807,7 @@ TransactionContribInfo DatabaseServicesMySQL::saveLastTransactionContribRetry(
     bool const includeRetries = true;
     TransactionContribInfo updatedInfo;
     list<string> queries;
-    util::Lock lock(_mtx, context);
+    replica::Lock lock(_mtx, context);
     string const predicate = _g.eq("id", info.id);
     string query = _g.update("transaction_contrib", make_pair("num_failed_retries", info.numFailedRetries)) +
                    _g.where(predicate);
@@ -1828,7 +1831,7 @@ TransactionContribInfo DatabaseServicesMySQL::saveLastTransactionContribRetry(
     return updatedInfo;
 }
 
-vector<TransactionContribInfo> DatabaseServicesMySQL::_transactionContribs(util::Lock const& lock,
+vector<TransactionContribInfo> DatabaseServicesMySQL::_transactionContribs(replica::Lock const& lock,
                                                                            string const& predicate,
                                                                            bool includeWarnings,
                                                                            bool includeRetries) {
@@ -1847,7 +1850,7 @@ vector<TransactionContribInfo> DatabaseServicesMySQL::_transactionContribs(util:
     return collection;
 }
 
-TransactionContribInfo DatabaseServicesMySQL::_transactionContribImpl(util::Lock const& lock,
+TransactionContribInfo DatabaseServicesMySQL::_transactionContribImpl(replica::Lock const& lock,
                                                                       string const& predicate,
                                                                       bool includeWarnings,
                                                                       bool includeRetries) {
@@ -1859,7 +1862,7 @@ TransactionContribInfo DatabaseServicesMySQL::_transactionContribImpl(util::Lock
     throw DatabaseServicesError(context + "two many transaction contributions found: " + to_string(num));
 }
 
-vector<TransactionContribInfo> DatabaseServicesMySQL::_transactionContribsImpl(util::Lock const& lock,
+vector<TransactionContribInfo> DatabaseServicesMySQL::_transactionContribsImpl(replica::Lock const& lock,
                                                                                string const& predicate,
                                                                                bool includeWarnings,
                                                                                bool includeRetries) {
@@ -2001,7 +2004,7 @@ DatabaseIngestParam DatabaseServicesMySQL::ingestParam(string const& database, s
     if (param.empty()) throw invalid_argument(param + "category can't be empty");
 
     DatabaseIngestParam info;
-    util::Lock lock(_mtx, context);
+    replica::Lock lock(_mtx, context);
     try {
         string const predicate =
                 _g.packConds(_g.eq("database", database), _g.eq("category", category), _g.eq("param", param));
@@ -2023,7 +2026,7 @@ vector<DatabaseIngestParam> DatabaseServicesMySQL::ingestParams(string const& da
     _assertDatabaseIsValid(context, database);
 
     vector<DatabaseIngestParam> collection;
-    util::Lock lock(_mtx, context);
+    replica::Lock lock(_mtx, context);
     try {
         string const predicate = _g.packConds(_g.eq("database", database),
                                               category.empty() ? "" : _g.eq("category", category));
@@ -2048,7 +2051,7 @@ void DatabaseServicesMySQL::saveIngestParam(string const& database, string const
     if (category.empty()) throw invalid_argument(context + "category can't be empty");
     if (param.empty()) throw invalid_argument(context + "param can't be empty");
 
-    util::Lock lock(_mtx, context);
+    replica::Lock lock(_mtx, context);
     try {
         auto const insert = [&](decltype(_conn) conn) {
             string const query = _g.insert("database_ingest", database, category, param, value);
@@ -2087,7 +2090,8 @@ void DatabaseServicesMySQL::_assertWorkerIsValid(string const& context, string c
         throw invalid_argument(context + "unknown worker: " + workerName);
 }
 
-DatabaseIngestParam DatabaseServicesMySQL::_ingestParamImpl(util::Lock const& lock, string const& predicate) {
+DatabaseIngestParam DatabaseServicesMySQL::_ingestParamImpl(replica::Lock const& lock,
+                                                            string const& predicate) {
     string const context = _context(__func__) + "predicate=" + predicate + " ";
     auto const collection = _ingestParamsImpl(lock, predicate);
     size_t const num = collection.size();
@@ -2096,7 +2100,7 @@ DatabaseIngestParam DatabaseServicesMySQL::_ingestParamImpl(util::Lock const& lo
     throw DatabaseServicesError(context + "two many parameters found: " + to_string(num));
 }
 
-vector<DatabaseIngestParam> DatabaseServicesMySQL::_ingestParamsImpl(util::Lock const& lock,
+vector<DatabaseIngestParam> DatabaseServicesMySQL::_ingestParamsImpl(replica::Lock const& lock,
                                                                      string const& predicate) {
     string const context = _context(__func__) + "predicate=" + predicate + " ";
     LOGS(_log, LOG_LVL_DEBUG, context);
@@ -2117,7 +2121,7 @@ vector<DatabaseIngestParam> DatabaseServicesMySQL::_ingestParamsImpl(util::Lock 
     return collection;
 }
 
-void DatabaseServicesMySQL::_findReplicasImpl(util::Lock const& lock, vector<ReplicaInfo>& replicas,
+void DatabaseServicesMySQL::_findReplicasImpl(replica::Lock const& lock, vector<ReplicaInfo>& replicas,
                                               string const& query, bool includeFileInfo) {
     string const context = "DatabaseServicesMySQL::" + string(__func__) + "(replicas,query) ";
     LOGS(_log, LOG_LVL_DEBUG, context);
@@ -2158,7 +2162,7 @@ void DatabaseServicesMySQL::_findReplicasImpl(util::Lock const& lock, vector<Rep
     }
 }
 
-void DatabaseServicesMySQL::_findReplicaFilesImpl(util::Lock const& lock,
+void DatabaseServicesMySQL::_findReplicaFilesImpl(replica::Lock const& lock,
                                                   map<uint64_t, ReplicaInfo>& id2replica) {
     string const context = "DatabaseServicesMySQL::" + string(__func__) + " ";
 
@@ -2261,7 +2265,7 @@ void DatabaseServicesMySQL::_findReplicaFilesImpl(util::Lock const& lock,
     }
 }
 
-void DatabaseServicesMySQL::_findChunksImpl(util::Lock const& lock, vector<unsigned int>& chunks,
+void DatabaseServicesMySQL::_findChunksImpl(replica::Lock const& lock, vector<unsigned int>& chunks,
                                             string const& query) {
     auto const context = "DatabaseServicesMySQL::" + string(__func__) + "(chunks,query) ";
     LOGS(_log, LOG_LVL_DEBUG, context);
@@ -2285,7 +2289,7 @@ TableRowStats DatabaseServicesMySQL::tableRowStats(string const& database, strin
     LOGS(_log, LOG_LVL_DEBUG, context);
 
     TableRowStats stats;
-    util::Lock lock(_mtx, context);
+    replica::Lock lock(_mtx, context);
     try {
         _conn->executeInOwnTransaction(
                 [&](decltype(_conn) conn) { stats = _tableRowStats(lock, database, table, transactionId); });
@@ -2300,7 +2304,7 @@ TableRowStats DatabaseServicesMySQL::tableRowStats(string const& database, strin
 void DatabaseServicesMySQL::saveTableRowStats(TableRowStats const& stats) {
     auto const context = "DatabaseServicesMySQL::" + string(__func__) + " ";
     LOGS(_log, LOG_LVL_DEBUG, context);
-    util::Lock lock(_mtx, context);
+    replica::Lock lock(_mtx, context);
     try {
         string const columns = _g.packIds("database", "table", "transaction_id", "chunk", "is_overlap",
                                           "num_rows", "update_time");
@@ -2327,7 +2331,7 @@ void DatabaseServicesMySQL::saveTableRowStats(TableRowStats const& stats) {
     LOGS(_log, LOG_LVL_DEBUG, context + "** DONE **");
 }
 
-TableRowStats DatabaseServicesMySQL::_tableRowStats(util::Lock const& lock, string const& database,
+TableRowStats DatabaseServicesMySQL::_tableRowStats(replica::Lock const& lock, string const& database,
                                                     string const& table, TransactionId transactionId) {
     auto const context = "DatabaseServicesMySQL::" + string(__func__) + " ";
     LOGS(_log, LOG_LVL_DEBUG, context);
@@ -2362,7 +2366,7 @@ void DatabaseServicesMySQL::deleteTableRowStats(string const& databaseName, stri
     auto const context = "DatabaseServicesMySQL::" + string(__func__) + " ";
     LOGS(_log, LOG_LVL_DEBUG, context);
 
-    util::Lock lock(_mtx, context);
+    replica::Lock lock(_mtx, context);
     try {
         TableInfo const table = _configuration->databaseInfo(databaseName).findTable(tableName);
         string predicate = _g.packConds(_g.eq("database", table.database), _g.eq("table", table.name));

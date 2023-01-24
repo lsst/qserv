@@ -136,7 +136,7 @@ public:
     }
 
 protected:
-    void notify(util::Lock const& lock) final {
+    void notify(replica::Lock const& lock) final {
         notifyDefaultImpl<ServiceManagementRequest<POLICY>>(lock, _onFinish);
     }
 

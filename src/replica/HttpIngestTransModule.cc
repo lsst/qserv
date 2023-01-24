@@ -37,10 +37,10 @@
 #include "replica/DatabaseMySQL.h"
 #include "replica/DatabaseServices.h"
 #include "replica/HttpExceptions.h"
-#include "replica/IndexJob.h"
+#include "replica/DirectorIndexJob.h"
 #include "replica/NamedMutexRegistry.h"
 #include "replica/ServiceProvider.h"
-#include "util/Mutex.h"
+#include "replica/Mutex.h"
 
 using namespace std;
 using json = nlohmann::json;
@@ -218,9 +218,9 @@ json HttpIngestTransModule::_beginTransaction() {
     // The transient lock on the named mutex will be initialized upon creation of
     // the transaction. This mechanism prevents race conditions in the transaction
     // management operations performed by the module.
-    unique_ptr<util::Lock> lock;
+    unique_ptr<replica::Lock> lock;
 
-    // Any problems during the secondary index creation will result in
+    // Any problems during the "director" index creation will result in
     // failing the transaction.
     try {
         // Upon creation, the transaction will be put into the transitional
@@ -230,7 +230,7 @@ json HttpIngestTransModule::_beginTransaction() {
 
         // This operation can be vetoed by a catalog ingest workflow at the database
         // registration time.
-        if (autoBuildSecondaryIndex(database.name)) {
+        if (autoBuildDirectorIndex(database.name)) {
             string const transEvent = "add dir idx part";
             for (auto&& tableName : database.directorTables()) {
                 auto const table = database.findTable(tableName);
@@ -241,7 +241,7 @@ json HttpIngestTransModule::_beginTransaction() {
                 transEventData["success"] = 1;
                 transEventData["error"] = string();
                 try {
-                    _addPartitionToSecondaryIndex(database, transaction.id, table.name);
+                    _addPartitionToDirectorIndex(database, transaction.id, table.name);
                     transaction = databaseServices->updateTransaction(transaction.id, "end " + transEvent,
                                                                       transEventData);
                 } catch (exception const& ex) {
@@ -295,7 +295,7 @@ json HttpIngestTransModule::_endTransaction() {
     // management operations performed by the module.
     string const lockName = "transaction:" + to_string(transactionId);
     debug(__func__, "begin acquiring transient management lock on mutex '" + lockName = "'");
-    util::Lock const lock(_transactionMutexRegistry.get(lockName));
+    replica::Lock const lock(_transactionMutexRegistry.get(lockName));
     debug(__func__, "transient management lock on mutex '" + lockName + "' acquired");
 
     // At this point the transaction state is guaranteed not to be changed by others.
@@ -328,7 +328,7 @@ json HttpIngestTransModule::_endTransaction() {
             transaction = databaseServices->updateTransaction(transactionId, context);
         }
 
-        bool secondaryIndexBuildSuccess = false;
+        bool directorIndexBuildSuccess = false;
         string const noParentJobId;
         if (abort) {
             // Drop the transaction-specific MySQL partition from the relevant tables.
@@ -362,9 +362,9 @@ json HttpIngestTransModule::_endTransaction() {
 
             if (!success) throw HttpError(__func__, "failed to drop table partitions", error);
 
-            // This operation in a context of the "secondary index" table can be vetoed by
+            // This operation in a context of the "director" index table can be vetoed by
             // a catalog ingest workflow at the database registration time.
-            if (autoBuildSecondaryIndex(database.name)) {
+            if (autoBuildDirectorIndex(database.name)) {
                 string const transEvent = "del dir idx part";
                 for (auto&& tableName : database.directorTables()) {
                     auto const table = database.findTable(tableName);
@@ -375,7 +375,7 @@ json HttpIngestTransModule::_endTransaction() {
                     transEventData["success"] = 1;
                     transEventData["error"] = string();
                     try {
-                        _removePartitionFromSecondaryIndex(database, transactionId, table.name);
+                        _removePartitionFromDirectorIndex(database, transactionId, table.name);
                         transaction = databaseServices->updateTransaction(transactionId, "end " + transEvent,
                                                                           transEventData);
                     } catch (exception const& ex) {
@@ -388,10 +388,10 @@ json HttpIngestTransModule::_endTransaction() {
                 }
             }
         } else {
-            // Make the best attempt to build a layer at the "secondary index" if requested
+            // Make the best attempt to build a layer at the "director" index if requested
             // by a catalog ingest workflow at the database registration time.
-            if (autoBuildSecondaryIndex(database.name)) {
-                secondaryIndexBuildSuccess = true;
+            if (autoBuildDirectorIndex(database.name)) {
+                directorIndexBuildSuccess = true;
                 chrono::milliseconds const jobMonitoringIval(
                         1000 * config->get<unsigned int>("controller", "ingest-job-monitor-ival-sec"));
                 string const transEvent = "bld dir idx";
@@ -399,11 +399,9 @@ json HttpIngestTransModule::_endTransaction() {
                     auto const table = database.findTable(tableName);
                     if (table.isPublished) continue;
                     bool const hasTransactions = true;
-                    string const destinationPath = database.name + "__" + table.name;
-                    auto const job = IndexJob::create(
+                    auto const job = DirectorIndexJob::create(
                             database.name, table.name, hasTransactions, transactionId, allWorkers,
-                            IndexJob::TABLE, destinationPath, localLoadSecondaryIndex(database.name),
-                            controller(), noParentJobId,
+                            localLoadDirectorIndex(database.name), controller(), noParentJobId,
                             nullptr,  // no callback
                             config->get<int>("controller", "ingest-priority-level"));
                     json transEventData = {{"job", job->id()}, {"table", table.name}};
@@ -411,16 +409,16 @@ json HttpIngestTransModule::_endTransaction() {
                                                                       transEventData);
 
                     job->start();
-                    logJobStartedEvent(IndexJob::typeName(), job, database.family);
+                    logJobStartedEvent(DirectorIndexJob::typeName(), job, database.family);
                     job->wait(jobMonitoringIval, [&](Job::Ptr const& job) {
                         auto data = transEventData;
                         data["progress"] = job->progress().toJson();
                         transaction = databaseServices->updateTransaction(transactionId,
                                                                           "progress " + transEvent, data);
                     });
-                    logJobFinishedEvent(IndexJob::typeName(), job, database.family);
-                    secondaryIndexBuildSuccess =
-                            secondaryIndexBuildSuccess && (job->extendedState() == Job::SUCCESS);
+                    logJobFinishedEvent(DirectorIndexJob::typeName(), job, database.family);
+                    directorIndexBuildSuccess =
+                            directorIndexBuildSuccess && (job->extendedState() == Job::SUCCESS);
 
                     transEventData["success"] = job->extendedState() == Job::ExtendedState::SUCCESS ? 1 : 0;
                     transEventData["error"] = job->getResultData().toJson();
@@ -436,7 +434,7 @@ json HttpIngestTransModule::_endTransaction() {
                                 database.name);
 
         json result;
-        result["secondary-index-build-success"] = secondaryIndexBuildSuccess ? 1 : 0;
+        result["secondary-index-build-success"] = directorIndexBuildSuccess ? 1 : 0;
         result["databases"][database.name]["num_chunks"] = chunks.size();
         result["databases"][database.name]["transactions"].push_back(transaction.toJson());
         return result;
@@ -483,9 +481,9 @@ void HttpIngestTransModule::_logTransactionMgtEvent(string const& operation, str
     logEvent(event);
 }
 
-void HttpIngestTransModule::_addPartitionToSecondaryIndex(DatabaseInfo const& database,
-                                                          TransactionId transactionId,
-                                                          string const& directorTableName) const {
+void HttpIngestTransModule::_addPartitionToDirectorIndex(DatabaseInfo const& database,
+                                                         TransactionId transactionId,
+                                                         string const& directorTableName) const {
     auto const table = database.findTable(directorTableName);
     if (!table.isDirector) {
         throw logic_error("table '" + table.name + "' is not configured in database '" + database.name +
@@ -498,14 +496,14 @@ void HttpIngestTransModule::_addPartitionToSecondaryIndex(DatabaseInfo const& da
     database::mysql::ConnectionHandler const h(qservMasterDbConnection("qservMeta"));
     database::mysql::QueryGenerator const g(h.conn);
     bool const ifNotExists = false;
-    string const query =
-            g.alterTable(database.name + "__" + table.name) + g.addPartition(transactionId, ifNotExists);
+    string const query = g.alterTable(directorIndexTableName(database.name, table.name)) +
+                         g.addPartition(transactionId, ifNotExists);
     h.conn->executeInOwnTransaction([&query](decltype(h.conn) conn) { conn->execute(query); });
 }
 
-void HttpIngestTransModule::_removePartitionFromSecondaryIndex(DatabaseInfo const& database,
-                                                               TransactionId transactionId,
-                                                               string const& directorTableName) const {
+void HttpIngestTransModule::_removePartitionFromDirectorIndex(DatabaseInfo const& database,
+                                                              TransactionId transactionId,
+                                                              string const& directorTableName) const {
     auto const table = database.findTable(directorTableName);
     if (!table.isDirector) {
         throw logic_error("table '" + table.name + "' is not configured in database '" + database.name +
@@ -518,8 +516,8 @@ void HttpIngestTransModule::_removePartitionFromSecondaryIndex(DatabaseInfo cons
     database::mysql::ConnectionHandler const h(qservMasterDbConnection("qservMeta"));
     database::mysql::QueryGenerator const g(h.conn);
     bool const ifExists = true;
-    string const query =
-            g.alterTable(database.name + "__" + table.name) + g.dropPartition(transactionId, ifExists);
+    string const query = g.alterTable(directorIndexTableName(database.name, table.name)) +
+                         g.dropPartition(transactionId, ifExists);
 
     // Not having the specified partition is still fine as it couldn't be properly
     // created after the transaction was created.

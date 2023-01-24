@@ -66,7 +66,7 @@ list<pair<string, string>> SqlDeleteDbJob::extendedPersistentState() const {
     return result;
 }
 
-list<SqlRequest::Ptr> SqlDeleteDbJob::launchRequests(util::Lock const& lock, string const& worker,
+list<SqlRequest::Ptr> SqlDeleteDbJob::launchRequests(replica::Lock const& lock, string const& worker,
                                                      size_t maxRequestsPerWorker) {
     // Launch exactly one request per worker unless it was already
     // launched earlier
@@ -85,11 +85,11 @@ list<SqlRequest::Ptr> SqlDeleteDbJob::launchRequests(util::Lock const& lock, str
     return requests;
 }
 
-void SqlDeleteDbJob::stopRequest(util::Lock const& lock, SqlRequest::Ptr const& request) {
+void SqlDeleteDbJob::stopRequest(replica::Lock const& lock, SqlRequest::Ptr const& request) {
     stopRequestDefaultImpl<StopSqlDeleteDbRequest>(lock, request);
 }
 
-void SqlDeleteDbJob::notify(util::Lock const& lock) {
+void SqlDeleteDbJob::notify(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "[" << typeName() << "]");
     notifyDefaultImpl<SqlDeleteDbJob>(lock, _onFinish);
 }

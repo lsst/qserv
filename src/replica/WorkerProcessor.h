@@ -36,7 +36,7 @@
 #include "replica/ServiceProvider.h"
 #include "replica/WorkerProcessorThread.h"
 #include "replica/WorkerRequest.h"
-#include "util/Mutex.h"
+#include "replica/Mutex.h"
 
 // Forward declarations
 namespace lsst::qserv::replica {
@@ -211,7 +211,7 @@ public:
                        ProtocolRequestSql const& request, ProtocolResponseSql& response);
 
     /**
-     * Enqueue a request for extracting the "secondary index" data from
+     * Enqueue a request for extracting the "director" index data from
      * the director tables.
      *
      * @param id an identifier of a request
@@ -220,8 +220,10 @@ public:
      * @param response the Protobuf object to be initialized and ready to be sent
      *   back to the client
      */
-    void enqueueForIndex(std::string const& id, int32_t priority, unsigned int requestExpirationIvalSec,
-                         ProtocolRequestIndex const& request, ProtocolResponseIndex& response);
+    void enqueueForDirectorIndex(std::string const& id, int32_t priority,
+                                 unsigned int requestExpirationIvalSec,
+                                 ProtocolRequestDirectorIndex const& request,
+                                 ProtocolResponseDirectorIndex& response);
 
     /**
      * Set default values to protocol response which has 3 mandatory fields:
@@ -256,7 +258,7 @@ public:
      */
     template <typename RESPONSE_MSG_TYPE>
     void dequeueOrCancel(ProtocolRequestStop const& request, RESPONSE_MSG_TYPE& response) {
-        util::Lock lock(_mtx, _context(__func__));
+        replica::Lock lock(_mtx, _context(__func__));
 
         // Set this response unless an exact request (same type and identifier)
         // will be found.
@@ -283,7 +285,7 @@ public:
      */
     template <typename RESPONSE_MSG_TYPE>
     void checkStatus(ProtocolRequestStatus const& request, RESPONSE_MSG_TYPE& response) {
-        util::Lock lock(_mtx, _context(__func__));
+        replica::Lock lock(_mtx, _context(__func__));
 
         // Set this response unless an exact request (same type and identifier)
         // will be found.
@@ -373,7 +375,7 @@ private:
      * @return a valid reference to the request object (if found)
      *   or a reference to nullptr otherwise.
      */
-    WorkerRequest::Ptr _dequeueOrCancelImpl(util::Lock const& lock, std::string const& id);
+    WorkerRequest::Ptr _dequeueOrCancelImpl(replica::Lock const& lock, std::string const& id);
 
     /**
      * Find and return a reference to the request object.
@@ -384,7 +386,7 @@ private:
      * @return a valid reference to the request object (if found)
      *   or a reference to nullptr otherwise.
      */
-    WorkerRequest::Ptr _checkStatusImpl(util::Lock const& lock, std::string const& id);
+    WorkerRequest::Ptr _checkStatusImpl(replica::Lock const& lock, std::string const& id);
 
     /**
      * Extract the extra data from the request and put
@@ -452,7 +454,7 @@ private:
      * @param response Google Protobuf object to be initialized
      * @throws std::logic_error if the dynamic type of the request won't match expectations
      */
-    void _setInfo(WorkerRequest::Ptr const& request, ProtocolResponseIndex& response);
+    void _setInfo(WorkerRequest::Ptr const& request, ProtocolResponseDirectorIndex& response);
 
     /**
      * Fill in the information object for the specified request based on its
@@ -513,7 +515,7 @@ private:
 
     std::vector<WorkerProcessorThread::Ptr> _threads;
 
-    mutable util::Mutex _mtx;  /// Mutex guarding the queues
+    mutable replica::Mutex _mtx;  /// Mutex guarding the queues
 
     PriorityQueueType _newRequests;
 

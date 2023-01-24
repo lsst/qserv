@@ -265,7 +265,7 @@ vector<TransactionInfo> DatabaseServicesPool::transactions(TransactionInfo::Stat
 
 TransactionInfo DatabaseServicesPool::createTransaction(string const& databaseName,
                                                         NamedMutexRegistry& namedMutexRegistry,
-                                                        unique_ptr<util::Lock>& namedMutexLock,
+                                                        unique_ptr<replica::Lock>& namedMutexLock,
                                                         json const& transactionContext) {
     ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
     return service()->createTransaction(databaseName, namedMutexRegistry, namedMutexLock, transactionContext);

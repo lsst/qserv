@@ -27,14 +27,14 @@
 #include <string>
 
 // Qserv headers
-#include "util/Mutex.h"
+#include "replica/Mutex.h"
 
 // This header declarations
 namespace lsst::qserv::replica {
 
 /**
  * Class NamedMutexRegistry represents a collection of named instances
- * of class util::Mutex. Each instance has a unique name. Instances are
+ * of class replica::Mutex. Each instance has a unique name. Instances are
  * created automatically and stored in the registry upon the very first
  * request mentioning a new name.
  * Unused mutex objects would be automatically garbage-collected at each
@@ -57,14 +57,14 @@ public:
      * @return A shared pointer to the mutex.
      * @throw std::invalid_argument If the name is empty.
      */
-    std::shared_ptr<util::Mutex> get(std::string const& name);
+    std::shared_ptr<replica::Mutex> get(std::string const& name);
 
     /// @return The current number of entries.
     size_t size() const;
 
 private:
-    std::map<std::string, std::shared_ptr<util::Mutex>> _registry;
-    mutable util::Mutex _registryAccessMtx;
+    std::map<std::string, std::shared_ptr<replica::Mutex>> _registry;
+    mutable replica::Mutex _registryAccessMtx;
 };
 
 }  // namespace lsst::qserv::replica

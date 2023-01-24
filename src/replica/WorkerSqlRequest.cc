@@ -29,7 +29,7 @@
 #include "replica/Configuration.h"
 #include "replica/DatabaseMySQLUtils.h"
 #include "replica/Performance.h"
-#include "util/Mutex.h"
+#include "replica/Mutex.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -63,7 +63,7 @@ WorkerSqlRequest::WorkerSqlRequest(ServiceProvider::Ptr const& serviceProvider, 
 
 void WorkerSqlRequest::setInfo(ProtocolResponseSql& response) const {
     LOGS(_log, LOG_LVL_DEBUG, context(__func__));
-    util::Lock lock(_mtx, context(__func__));
+    replica::Lock lock(_mtx, context(__func__));
 
     response.set_allocated_target_performance(performance().info().release());
 
@@ -83,7 +83,7 @@ void WorkerSqlRequest::setInfo(ProtocolResponseSql& response) const {
 bool WorkerSqlRequest::execute() {
     string const context_ = "WorkerSqlRequest::" + context(__func__);
     LOGS(_log, LOG_LVL_DEBUG, context_);
-    util::Lock lock(_mtx, context_);
+    replica::Lock lock(_mtx, context_);
 
     switch (status()) {
         case ProtocolStatus::IN_PROGRESS:
@@ -133,8 +133,8 @@ bool WorkerSqlRequest::execute() {
                         if (query.mutexName.empty()) {
                             conn_->execute(query.query);
                         } else {
-                            util::Lock const lock(serviceProvider()->getNamedMutex(query.mutexName),
-                                                  context_);
+                            replica::Lock const lock(serviceProvider()->getNamedMutex(query.mutexName),
+                                                     context_);
                             conn_->execute(query.query);
                         }
                         _extractResultSet(lock, conn_);
@@ -178,7 +178,7 @@ bool WorkerSqlRequest::execute() {
                     if (query.mutexName.empty()) {
                         conn_->execute(query.query);
                     } else {
-                        util::Lock const lock(serviceProvider()->getNamedMutex(query.mutexName), context_);
+                        replica::Lock const lock(serviceProvider()->getNamedMutex(query.mutexName), context_);
                         conn_->execute(query.query);
                     }
                     _extractResultSet(lock, conn_);
@@ -374,7 +374,7 @@ Query WorkerSqlRequest::_query(Connection::Ptr const& conn, string const& table)
     }
 }
 
-void WorkerSqlRequest::_extractResultSet(util::Lock const& lock, Connection::Ptr const& conn) {
+void WorkerSqlRequest::_extractResultSet(replica::Lock const& lock, Connection::Ptr const& conn) {
     LOGS(_log, LOG_LVL_DEBUG, context(__func__));
 
     auto resultSet = _currentResultSet(lock);
@@ -406,7 +406,7 @@ void WorkerSqlRequest::_extractResultSet(util::Lock const& lock, Connection::Ptr
     }
 }
 
-void WorkerSqlRequest::_reportFailure(util::Lock const& lock, ProtocolStatusExt statusExt,
+void WorkerSqlRequest::_reportFailure(replica::Lock const& lock, ProtocolStatusExt statusExt,
                                       string const& error) {
     LOGS(_log, LOG_LVL_ERROR, context(__func__) << "  exception: " << error);
 
@@ -423,7 +423,7 @@ void WorkerSqlRequest::_reportFailure(util::Lock const& lock, ProtocolStatusExt 
     setStatus(lock, ProtocolStatus::FAILED, _batchMode() ? statusExt : ProtocolStatusExt::MULTIPLE);
 }
 
-ProtocolResponseSqlResultSet* WorkerSqlRequest::_currentResultSet(util::Lock const& lock) {
+ProtocolResponseSqlResultSet* WorkerSqlRequest::_currentResultSet(replica::Lock const& lock) {
     auto const numResultSets = _response.result_sets_size();
     if (numResultSets < 1) {
         throw logic_error("WorkerSqlRequest::" + context(__func__) +

@@ -29,7 +29,7 @@ namespace lsst::qserv::replica {
 SuccessRateGenerator::SuccessRateGenerator(double successRate) : _rd(), _gen(_rd()), _distr(successRate) {}
 
 bool SuccessRateGenerator::success() {
-    lock_guard<util::Mutex> lock(_generatorMtx);
+    lock_guard<replica::Mutex> lock(_generatorMtx);
     return _distr(_gen);
 }
 

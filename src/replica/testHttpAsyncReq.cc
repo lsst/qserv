@@ -43,7 +43,7 @@
 #include "qhttp/Server.h"
 #include "replica/AsyncTimer.h"
 #include "replica/HttpAsyncReq.h"
-#include "util/Mutex.h"
+#include "replica/Mutex.h"
 
 // Boost unit test header
 #define BOOST_TEST_MODULE HttpAsyncReq

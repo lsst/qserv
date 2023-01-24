@@ -67,7 +67,7 @@ SqlDropIndexesRequest::SqlDropIndexesRequest(ServiceProvider::Ptr const& service
     requestBody.set_batch_mode(true);
 }
 
-void SqlDropIndexesRequest::notify(util::Lock const& lock) {
+void SqlDropIndexesRequest::notify(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG,
          context() << __func__ << "[" << ProtocolRequestSql_Type_Name(requestBody.type()) << "]");
 

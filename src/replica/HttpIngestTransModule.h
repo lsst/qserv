@@ -108,24 +108,24 @@ private:
                                  std::string const& msg = std::string()) const;
 
     /**
-     * Extend an existing "secondary index" table by adding a MySQL partition
+     * Extend an existing "director" index table by adding a MySQL partition
      * corresponding to the specified transaction identifier.
      * @param database the database descriptor defines a scope of the operation
      * @param transactionId unique identifier of a super-transaction
      * @param directorTableName the name of the director table to build the index for
      */
-    void _addPartitionToSecondaryIndex(DatabaseInfo const& database, TransactionId transactionId,
-                                       std::string const& directorTableName) const;
+    void _addPartitionToDirectorIndex(DatabaseInfo const& database, TransactionId transactionId,
+                                      std::string const& directorTableName) const;
 
     /**
-     * Shrink an existing "secondary index" table by removing a MySQL partition
+     * Shrink an existing "directtor" index table by removing a MySQL partition
      * corresponding to the specified transaction identifier from the table.
      * @param database the database descriptor defines a scope of the operation
      * @param transactionId unique identifier of a super-transaction
      * @param directorTableName the name of the director table to remove the index from
      */
-    void _removePartitionFromSecondaryIndex(DatabaseInfo const& database, TransactionId transactionId,
-                                            std::string const& directorTableName) const;
+    void _removePartitionFromDirectorIndex(DatabaseInfo const& database, TransactionId transactionId,
+                                           std::string const& directorTableName) const;
 
     /**
      * Extract contributions into a transaction.

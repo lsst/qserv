@@ -45,14 +45,13 @@
 #include "replica/FileUtils.h"
 #include "replica/HttpExceptions.h"
 #include "replica/ReplicaInfo.h"
-#include "util/Mutex.h"
+#include "replica/Mutex.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
 
 using namespace std;
 namespace fs = boost::filesystem;
-namespace util = lsst::qserv::util;
 
 namespace {
 
@@ -289,8 +288,8 @@ void IngestFileSvc::loadDataIntoTable(unsigned int maxNumWarnings) {
                         if (statement.mutexName.empty()) {
                             conn_->execute(statement.query);
                         } else {
-                            util::Lock const lock(_serviceProvider->getNamedMutex(statement.mutexName),
-                                                  context_);
+                            replica::Lock const lock(_serviceProvider->getNamedMutex(statement.mutexName),
+                                                     context_);
                             conn_->execute(statement.query);
                         }
                     }
@@ -333,7 +332,7 @@ void IngestFileSvc::loadDataIntoTable(unsigned int maxNumWarnings) {
             try {
                 h.conn->executeInOwnTransaction(
                         [&](decltype(h.conn) const& conn_) {
-                            util::Lock const lock(
+                            replica::Lock const lock(
                                     _serviceProvider->getNamedMutex(partitionRemovalQuery.mutexName),
                                     context_);
                             conn_->execute(partitionRemovalQuery.query);

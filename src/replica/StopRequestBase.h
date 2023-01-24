@@ -84,7 +84,7 @@ protected:
                     std::shared_ptr<Messenger> const& messenger);
 
     /// @see Request::startImpl()
-    void startImpl(util::Lock const& lock) final;
+    void startImpl(replica::Lock const& lock) final;
 
     /// @see Request::awaken()
     void awaken(boost::system::error_code const& ec) final;
@@ -93,7 +93,7 @@ protected:
      * Initiate request-specific send.
      * @param lock a lock on Request::_mtx must be acquired before calling this method
      */
-    virtual void send(util::Lock const& lock) = 0;
+    virtual void send(replica::Lock const& lock) = 0;
 
     /**
      * Process the worker response to the requested operation.
@@ -109,7 +109,7 @@ protected:
     virtual void saveReplicaInfo() = 0;
 
     /// @see Request::savePersistentState()
-    void savePersistentState(util::Lock const& lock) final;
+    void savePersistentState(replica::Lock const& lock) final;
 
     /// The performance of the target operation (this object is updated by subclasses)
     Performance _targetPerformance;
@@ -119,7 +119,7 @@ private:
      * Serialize request data into a network buffer and send the message to a worker
      * @param lock a lock on Request::_mtx must be acquired before calling this method
      */
-    void _sendImpl(util::Lock const& lock);
+    void _sendImpl(replica::Lock const& lock);
 
     // Input parameters
 

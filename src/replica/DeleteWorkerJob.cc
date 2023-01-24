@@ -120,7 +120,7 @@ list<pair<string, string>> DeleteWorkerJob::persistentLogData() const {
     return result;
 }
 
-void DeleteWorkerJob::startImpl(util::Lock const& lock) {
+void DeleteWorkerJob::startImpl(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     // Check the status of the worker service, and if it's still running
@@ -171,7 +171,7 @@ void DeleteWorkerJob::startImpl(util::Lock const& lock) {
     _disableWorker(lock);
 }
 
-void DeleteWorkerJob::cancelImpl(util::Lock const& lock) {
+void DeleteWorkerJob::cancelImpl(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     // To ensure no lingering "side effects" will be left after cancelling this
@@ -197,7 +197,7 @@ void DeleteWorkerJob::_onRequestFinish(FindAllRequest::Ptr const& request) {
          context() << __func__ << "  worker=" << request->worker() << "  database=" << request->database());
 
     if (state() == State::FINISHED) return;
-    util::Lock lock(_mtx, context() + __func__);
+    replica::Lock lock(_mtx, context() + __func__);
     if (state() == State::FINISHED) return;
 
     _numFinished++;
@@ -212,7 +212,7 @@ void DeleteWorkerJob::_onRequestFinish(FindAllRequest::Ptr const& request) {
     if (_numFinished == _numLaunched) _disableWorker(lock);
 }
 
-void DeleteWorkerJob::_disableWorker(util::Lock const& lock) {
+void DeleteWorkerJob::_disableWorker(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     // Temporary disable this worker from the configuration. If it's requested
@@ -245,7 +245,7 @@ void DeleteWorkerJob::_onJobFinish(ReplicateJob::Ptr const& job) {
                    << " state: " << job->state2string());
 
     if (state() == State::FINISHED) return;
-    util::Lock lock(_mtx, context() + string(__func__) + "(ReplicateJob)");
+    replica::Lock lock(_mtx, context() + string(__func__) + "(ReplicateJob)");
     if (state() == State::FINISHED) return;
 
     _numFinished++;
@@ -315,7 +315,7 @@ void DeleteWorkerJob::_onJobFinish(ReplicateJob::Ptr const& job) {
     }
 }
 
-void DeleteWorkerJob::notify(util::Lock const& lock) {
+void DeleteWorkerJob::notify(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
     notifyDefaultImpl<DeleteWorkerJob>(lock, _onFinish);
 }

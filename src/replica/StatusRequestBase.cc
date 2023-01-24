@@ -67,7 +67,7 @@ string StatusRequestBase::toString(bool extended) const {
     return oss.str();
 }
 
-void StatusRequestBase::startImpl(util::Lock const& lock) {
+void StatusRequestBase::startImpl(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
     _sendImpl(lock);
 }
@@ -78,13 +78,13 @@ void StatusRequestBase::awaken(boost::system::error_code const& ec) {
     if (isAborted(ec)) return;
 
     if (state() == State::FINISHED) return;
-    util::Lock lock(_mtx, context() + __func__);
+    replica::Lock lock(_mtx, context() + __func__);
     if (state() == State::FINISHED) return;
 
     _sendImpl(lock);
 }
 
-void StatusRequestBase::_sendImpl(util::Lock const& lock) {
+void StatusRequestBase::_sendImpl(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     // Serialize the Status message header and the request itself into
@@ -118,7 +118,7 @@ void StatusRequestBase::analyze(bool success, ProtocolStatus status) {
     // for possible state transition which might occur while the async I/O was
     // still in a progress.
     if (state() == State::FINISHED) return;
-    util::Lock lock(_mtx, context() + __func__);
+    replica::Lock lock(_mtx, context() + __func__);
     if (state() == State::FINISHED) return;
 
     if (not success) {

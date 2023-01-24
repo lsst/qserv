@@ -20,10 +20,10 @@
  */
 
 // Class header
-#include "replica/WorkerIndexRequest.h"
+#include "replica/WorkerDirectorIndexRequest.h"
 
 // System headers
-// System headers
+#include <algorithm>
 #include <cerrno>
 #include <iostream>
 #include <stdexcept>
@@ -36,6 +36,7 @@
 #include "replica/Configuration.h"
 #include "replica/DatabaseMySQL.h"
 #include "replica/Performance.h"
+#include "replica/ProtocolBuffer.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -45,7 +46,7 @@ namespace fs = boost::filesystem;
 
 namespace {
 
-LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.WorkerIndexRequest");
+LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.WorkerDirectorIndexRequest");
 
 }  // namespace
 
@@ -53,43 +54,47 @@ namespace lsst::qserv::replica {
 
 using namespace database::mysql;
 
-WorkerIndexRequest::Ptr WorkerIndexRequest::create(ServiceProvider::Ptr const& serviceProvider,
-                                                   ConnectionPoolPtr const& connectionPool,
-                                                   string const& worker, string const& id, int priority,
-                                                   ExpirationCallbackType const& onExpired,
-                                                   unsigned int requestExpirationIvalSec,
-                                                   ProtocolRequestIndex const& request) {
-    return WorkerIndexRequest::Ptr(new WorkerIndexRequest(serviceProvider, connectionPool, worker, id,
-                                                          priority, onExpired, requestExpirationIvalSec,
-                                                          request));
+WorkerDirectorIndexRequest::Ptr WorkerDirectorIndexRequest::create(
+        ServiceProvider::Ptr const& serviceProvider, ConnectionPoolPtr const& connectionPool,
+        string const& worker, string const& id, int priority, ExpirationCallbackType const& onExpired,
+        unsigned int requestExpirationIvalSec, ProtocolRequestDirectorIndex const& request) {
+    return WorkerDirectorIndexRequest::Ptr(new WorkerDirectorIndexRequest(serviceProvider, connectionPool,
+                                                                          worker, id, priority, onExpired,
+                                                                          requestExpirationIvalSec, request));
 }
 
-WorkerIndexRequest::WorkerIndexRequest(ServiceProvider::Ptr const& serviceProvider,
-                                       ConnectionPoolPtr const& connectionPool, string const& worker,
-                                       string const& id, int priority,
-                                       ExpirationCallbackType const& onExpired,
-                                       unsigned int requestExpirationIvalSec,
-                                       ProtocolRequestIndex const& request)
+WorkerDirectorIndexRequest::WorkerDirectorIndexRequest(ServiceProvider::Ptr const& serviceProvider,
+                                                       ConnectionPoolPtr const& connectionPool,
+                                                       string const& worker, string const& id, int priority,
+                                                       ExpirationCallbackType const& onExpired,
+                                                       unsigned int requestExpirationIvalSec,
+                                                       ProtocolRequestDirectorIndex const& request)
         : WorkerRequest(serviceProvider, worker, "INDEX", id, priority, onExpired, requestExpirationIvalSec),
           _connectionPool(connectionPool),
-          _request(request) {}
+          _request(request),
+          _tmpDirName(serviceProvider->config()->get<string>("worker", "loader-tmp-dir") + "/" +
+                      request.database()),
+          _fileName(_tmpDirName + "/" + request.director_table() + "-" + to_string(request.chunk()) +
+                    (request.has_transactions() ? "-p" + to_string(request.transaction_id()) : "") + "-" +
+                    id) {}
 
-void WorkerIndexRequest::setInfo(ProtocolResponseIndex& response) const {
+void WorkerDirectorIndexRequest::setInfo(ProtocolResponseDirectorIndex& response) const {
     LOGS(_log, LOG_LVL_DEBUG, context(__func__));
 
-    util::Lock lock(_mtx, context(__func__));
+    replica::Lock lock(_mtx, context(__func__));
 
     response.set_allocated_target_performance(performance().info().release());
     response.set_error(_error);
     response.set_data(_data);
+    response.set_total_bytes(_fileSizeBytes);
 
     *(response.mutable_request()) = _request;
 }
 
-bool WorkerIndexRequest::execute() {
+bool WorkerDirectorIndexRequest::execute() {
     LOGS(_log, LOG_LVL_DEBUG, context(__func__));
 
-    util::Lock lock(_mtx, context(__func__));
+    replica::Lock lock(_mtx, context(__func__));
 
     switch (status()) {
         case ProtocolStatus::IN_PROGRESS:
@@ -98,53 +103,44 @@ bool WorkerIndexRequest::execute() {
             setStatus(lock, ProtocolStatus::CANCELLED);
             throw WorkerRequestCancelled();
         default:
-            throw logic_error("WorkerIndexRequest::" + context(__func__) +
+            throw logic_error("WorkerDirectorIndexRequest::" + context(__func__) +
                               "  not allowed while in state: " + WorkerRequest::status2string(status()));
     }
     try {
-        auto const config = serviceProvider()->config();
-        auto const database = config->databaseInfo(_request.database());
+        // The table will be scanned only when the offset is set to 0.
+        if (_request.offset() == 0) {
+            auto const config = serviceProvider()->config();
+            auto const database = config->databaseInfo(_request.database());
 
-        // Create a folder (if it still doesn't exist) where the temporary files will be placed
-        // NOTE: this folder is supposed to be seen by the worker's MySQL/MariaDB server, and it
-        // must be write-enabled for an account under which the service is run.
+            // Create a folder (if it still doesn't exist) where the temporary files will be placed
+            // NOTE: this folder is supposed to be seen by the worker's MySQL/MariaDB server, and it
+            // must be write-enabled for an account under which the service is run.
+            boost::system::error_code ec;
+            fs::create_directory(fs::path(_tmpDirName), ec);
+            if (ec.value() != 0) {
+                _error = "failed to create folder '" + _tmpDirName;
+                LOGS(_log, LOG_LVL_ERROR, context(__func__) << "  " << _error);
+                setStatus(lock, ProtocolStatus::FAILED, ProtocolStatusExt::FOLDER_CREATE);
+            }
 
-        boost::system::error_code ec;
-        fs::path const tmpDirPath = fs::path(config->get<string>("worker", "loader-tmp-dir")) / database.name;
-        fs::create_directory(tmpDirPath, ec);
-        if (ec.value() != 0) {
-            _error = "failed to create folder '" + tmpDirPath.string();
-            LOGS(_log, LOG_LVL_ERROR, context(__func__) << "  " << _error);
-            setStatus(lock, ProtocolStatus::FAILED, ProtocolStatusExt::FOLDER_CREATE);
+            // Make sure no file exists from any previous attempt to harvest the index data
+            // in a scope of the request. Otherwise MySQL query will fail.
+            _removeFile();
+
+            // Connect to the worker database
+            // Manage the new connection via the RAII-style handler to ensure the transaction
+            // is automatically rolled-back in case of exceptions.
+            ConnectionHandler const h(_connectionPool);
+
+            // A scope of the query depends on parameters of the request
+            h.conn->executeInOwnTransaction([self = shared_from_base<WorkerDirectorIndexRequest>()](
+                                                    auto conn) { conn->execute(self->_query(conn)); });
         }
-
-        // The name of a temporary file where the index data will be dumped into
-        auto const tmpFileName = fs::unique_path("%%%%-%%%%-%%%%-%%%%.tsv", ec);
-        if (ec.value() != 0) {
-            _error = "failed to create temporary file at '" + tmpDirPath.string();
-            LOGS(_log, LOG_LVL_ERROR, context(__func__) << "  " << _error);
-            setStatus(lock, ProtocolStatus::FAILED, ProtocolStatusExt::FILE_CREATE);
-        }
-        _fileName = (tmpDirPath / tmpFileName).string();
-
-        // Connect to the worker database
-        // Manage the new connection via the RAII-style handler to ensure the transaction
-        // is automatically rolled-back in case of exceptions.
-        ConnectionHandler const h(_connectionPool);
-
-        // A scope of the query depends on parameters of the request
-
-        auto self = shared_from_base<WorkerIndexRequest>();
-        bool fileReadSuccess = false;
-        h.conn->executeInOwnTransaction([self, &fileReadSuccess](decltype(h.conn) const& conn) {
-            conn->execute(self->_query(conn));
-            fileReadSuccess = self->_readFile();
-        });
-        if (fileReadSuccess)
+        if (auto const status = _readFile(_request.offset()); status != ProtocolStatusExt::NONE) {
+            setStatus(lock, ProtocolStatus::FAILED, status);
+        } else {
             setStatus(lock, ProtocolStatus::SUCCESS);
-        else
-            setStatus(lock, ProtocolStatus::FAILED, ProtocolStatusExt::FILE_READ);
-
+        }
     } catch (ER_NO_SUCH_TABLE_ const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context(__func__) << "  MySQL error: " << ex.what());
         _error = ex.what();
@@ -177,7 +173,7 @@ bool WorkerIndexRequest::execute() {
     return true;
 }
 
-string WorkerIndexRequest::_query(Connection::Ptr const& conn) const {
+string WorkerDirectorIndexRequest::_query(Connection::Ptr const& conn) const {
     auto const config = serviceProvider()->config();
     auto const database = config->databaseInfo(_request.database());
     auto const table = database.findTable(_request.director_table());
@@ -195,7 +191,7 @@ string WorkerIndexRequest::_query(Connection::Ptr const& conn) const {
                                database.name + "'");
     }
 
-    // Find types required by the secondary index table's columns
+    // Find types required by the "director" index table's columns
 
     string const qservTransId = _request.has_transactions() ? "qserv_trans_id" : string();
     string qservTransIdType;
@@ -236,31 +232,73 @@ string WorkerIndexRequest::_query(Connection::Ptr const& conn) const {
     return query + g.intoOutfile(_fileName);
 }
 
-bool WorkerIndexRequest::_readFile() {
+ProtocolStatusExt WorkerDirectorIndexRequest::_readFile(size_t offset) {
     LOGS(_log, LOG_LVL_DEBUG, context(__func__));
 
-    // Open the stream to 'lock' the file.
-    ifstream f(_fileName);
+    // Open the the file.
+    ifstream f(_fileName, ios::binary);
     if (!f.good()) {
         _error = "failed to open file '" + _fileName + "'";
         LOGS(_log, LOG_LVL_ERROR, context(__func__) << "  " << _error);
-        return false;
+        return ProtocolStatusExt::FILE_ROPEN;
     }
 
-    // Resize the memory buffer for the efficiency of the following read
+    // Get the file size.
     boost::system::error_code ec;
-    const auto size = fs::file_size(_fileName, ec);
+    _fileSizeBytes = fs::file_size(_fileName, ec);
     if (ec.value() != 0) {
         _error = "failed to get file size '" + _fileName + "'";
         LOGS(_log, LOG_LVL_ERROR, context(__func__) << "  " << _error);
-        return false;
+        return ProtocolStatusExt::FILE_SIZE;
     }
-    _data.resize(size, ' ');
 
-    // Read the whole file into the buffer
-    f.read(&_data[0], size);
+    // Validate a value of the offset and position indicator as requested.
+    if (offset == _fileSizeBytes) {
+        _removeFile();
+        return ProtocolStatusExt::NONE;
+    } else if (offset > _fileSizeBytes) {
+        _error = "attempted to read the file '" + _fileName + "' at the offset " + to_string(offset) +
+                 " that is beyond the file size of " + to_string(_fileSizeBytes) + " bytes.";
+        LOGS(_log, LOG_LVL_ERROR, context(__func__) << "  " << _error);
+        return ProtocolStatusExt::INVALID_PARAM;
+    } else if (offset != 0) {
+        f.seekg(offset, ios::beg);
+    }
+
+    // Resize the memory buffer for the efficiency of the following read.
+    size_t const recordSize = std::min(
+            _fileSizeBytes - offset,
+            std::min(ProtocolBuffer::HARD_LIMIT,
+                     serviceProvider()->config()->get<size_t>("worker", "director-index-record-size")));
+    _data.resize(recordSize, ' ');
+
+    // Read the specified number of bytes into the buffer.
+    ProtocolStatusExt result = ProtocolStatusExt::NONE;
+    f.read(&_data[0], recordSize);
+    if (f.bad()) {
+        _error = "failed to read " + to_string(recordSize) + " bytes from the file '" + _fileName +
+                 "' at the offset " + to_string(offset) + ".";
+        LOGS(_log, LOG_LVL_ERROR, context(__func__) << "  " << _error);
+        result = ProtocolStatusExt::FILE_READ;
+    }
     f.close();
-    return true;
+
+    // If this was the last record read from the file then delete the file.
+    if (offset + recordSize >= _fileSizeBytes) {
+        _removeFile();
+    }
+    return result;
+}
+
+void WorkerDirectorIndexRequest::_removeFile() const {
+    // Make the best attempt to get rid of the temporary file. Ignore any errors
+    // for now. Just report them. Note that 'remove_all' won't complain if the file
+    // didn't exist.
+    boost::system::error_code ec;
+    fs::remove_all(fs::path(_fileName), ec);
+    if (ec.value() != 0) {
+        LOGS(_log, LOG_LVL_WARN, context(__func__) << " failed to remove the temporary file '" << _fileName);
+    }
 }
 
 }  // namespace lsst::qserv::replica

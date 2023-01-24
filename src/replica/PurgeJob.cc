@@ -122,7 +122,7 @@ list<pair<string, string>> PurgeJob::persistentLogData() const {
     return result;
 }
 
-void PurgeJob::startImpl(util::Lock const& lock) {
+void PurgeJob::startImpl(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_TRACE, context() << __func__);
 
     // Launch the chained job to get chunk disposition
@@ -138,7 +138,7 @@ void PurgeJob::startImpl(util::Lock const& lock) {
     _findAllJob->start();
 }
 
-void PurgeJob::cancelImpl(util::Lock const& lock) {
+void PurgeJob::cancelImpl(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_TRACE, context() << __func__);
 
     // The algorithm will also clear resources taken by various
@@ -158,7 +158,7 @@ void PurgeJob::cancelImpl(util::Lock const& lock) {
     _jobs.clear();
 }
 
-void PurgeJob::notify(util::Lock const& lock) {
+void PurgeJob::notify(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_TRACE, context() << __func__);
     notifyDefaultImpl<PurgeJob>(lock, _onFinish);
 }
@@ -168,7 +168,7 @@ void PurgeJob::_onPrecursorJobFinish() {
 
     if (state() == State::FINISHED) return;
 
-    util::Lock lock(_mtx, context() + __func__);
+    replica::Lock lock(_mtx, context() + __func__);
 
     if (state() == State::FINISHED) return;
 
@@ -334,7 +334,7 @@ void PurgeJob::_onDeleteJobFinish(DeleteReplicaJob::Ptr const& job) {
 
     if (state() == State::FINISHED) return;
 
-    util::Lock lock(_mtx, context() + __func__);
+    replica::Lock lock(_mtx, context() + __func__);
 
     if (state() == State::FINISHED) return;
 
@@ -370,7 +370,7 @@ void PurgeJob::_onDeleteJobFinish(DeleteReplicaJob::Ptr const& job) {
     }
 }
 
-size_t PurgeJob::_launchNext(util::Lock const& lock, string const& targetWorker, size_t maxJobs) {
+size_t PurgeJob::_launchNext(replica::Lock const& lock, string const& targetWorker, size_t maxJobs) {
     if (maxJobs == 0) return 0;
 
     auto const self = shared_from_base<PurgeJob>();

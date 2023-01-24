@@ -157,13 +157,13 @@ public:
 
 protected:
     /// @see Job::startImpl()
-    void startImpl(util::Lock const& lock) final;
+    void startImpl(replica::Lock const& lock) final;
 
     /// @see Job::cancelImpl()
-    void cancelImpl(util::Lock const& lock) final;
+    void cancelImpl(replica::Lock const& lock) final;
 
     /// @see Job::notify()
-    void notify(util::Lock const& lock) final;
+    void notify(replica::Lock const& lock) final;
 
 private:
     /// @see DeleteWorkerJob::create()
@@ -176,7 +176,7 @@ private:
      * @param lock
      *   a lock on Job::_mtx must be acquired before calling this method
      */
-    void _disableWorker(util::Lock const& lock);
+    void _disableWorker(replica::Lock const& lock);
 
     /**
      * The callback function to be invoked on a completion of each request.

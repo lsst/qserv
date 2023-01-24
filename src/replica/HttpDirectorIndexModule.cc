@@ -20,14 +20,14 @@
  */
 
 // Class header
-#include "replica/HttpIngestIndexModule.h"
+#include "replica/HttpDirectorIndexModule.h"
 
 // Qserv headers
 #include "replica/Configuration.h"
 #include "replica/DatabaseMySQL.h"
 #include "replica/DatabaseServices.h"
 #include "replica/HttpExceptions.h"
-#include "replica/IndexJob.h"
+#include "replica/DirectorIndexJob.h"
 #include "replica/ServiceProvider.h"
 
 using namespace std;
@@ -37,26 +37,27 @@ namespace lsst::qserv::replica {
 
 using namespace database::mysql;
 
-void HttpIngestIndexModule::process(Controller::Ptr const& controller, string const& taskName,
-                                    HttpProcessorConfig const& processorConfig,
-                                    qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp,
-                                    string const& subModuleName, HttpAuthType const authType) {
-    HttpIngestIndexModule module(controller, taskName, processorConfig, req, resp);
+void HttpDirectorIndexModule::process(Controller::Ptr const& controller, string const& taskName,
+                                      HttpProcessorConfig const& processorConfig,
+                                      qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp,
+                                      string const& subModuleName, HttpAuthType const authType) {
+    HttpDirectorIndexModule module(controller, taskName, processorConfig, req, resp);
     module.execute(subModuleName, authType);
 }
 
-HttpIngestIndexModule::HttpIngestIndexModule(Controller::Ptr const& controller, string const& taskName,
-                                             HttpProcessorConfig const& processorConfig,
-                                             qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp)
+HttpDirectorIndexModule::HttpDirectorIndexModule(Controller::Ptr const& controller, string const& taskName,
+                                                 HttpProcessorConfig const& processorConfig,
+                                                 qhttp::Request::Ptr const& req,
+                                                 qhttp::Response::Ptr const& resp)
         : HttpModule(controller, taskName, processorConfig, req, resp) {}
 
-json HttpIngestIndexModule::executeImpl(string const& subModuleName) {
-    if (subModuleName == "BUILD-SECONDARY-INDEX") return _buildSecondaryIndex();
+json HttpDirectorIndexModule::executeImpl(string const& subModuleName) {
+    if (subModuleName == "BUILD") return _buildDirectorIndex();
     throw invalid_argument(context() + "::" + string(__func__) + "  unsupported sub-module: '" +
                            subModuleName + "'");
 }
 
-json HttpIngestIndexModule::_buildSecondaryIndex() {
+json HttpDirectorIndexModule::_buildDirectorIndex() {
     debug(__func__);
     checkApiVersion(__func__, 12);
 
@@ -111,7 +112,7 @@ json HttpIngestIndexModule::_buildSecondaryIndex() {
             throw HttpError(__func__, msg);
         }
 
-        // Find types of the secondary index table's columns
+        // Find types of the "director" index table's columns
         primaryKeyColumnType[table.name] = string();
         chunkIdColNameType[table.name] = "INT";
         subChunkIdColNameType[table.name] = string();
@@ -146,7 +147,7 @@ json HttpIngestIndexModule::_buildSecondaryIndex() {
         // is automatically rolled-back in case of exceptions.
         ConnectionHandler const h(qservMasterDbConnection("qservMeta"));
         QueryGenerator const g(h.conn);
-        auto const indexTableName = database.name + "__" + tableName;
+        auto const indexTableName = directorIndexTableName(database.name, tableName);
 
         // (Re-)create the index table. Note that the table creation statement (the way it's
         // written below) would fail if the table already exists. Hence, dropping it in
@@ -162,7 +163,8 @@ json HttpIngestIndexModule::_buildSecondaryIndex() {
                 SqlColDef{lsst::qserv::CHUNK_COLUMN, chunkIdColNameType[tableName]},
                 SqlColDef{lsst::qserv::SUB_CHUNK_COLUMN, subChunkIdColNameType[tableName]}};
         list<string> const keys = {g.packTableKey("UNIQUE KEY", "", primaryKeyColumn[tableName])};
-        string const query = g.createTable(indexTableName, ifNotExists, columns, keys, "InnoDB");
+        string const query = g.createTable(indexTableName, ifNotExists, columns, keys,
+                                           config->get<string>("controller", "director-index-engine"));
         queries.push_back(query);
         h.conn->executeInOwnTransaction([&queries](decltype(h.conn) conn) {
             for (auto&& query : queries) {
@@ -171,19 +173,19 @@ json HttpIngestIndexModule::_buildSecondaryIndex() {
         });
         string const noParentJobId;
         auto const job =
-                IndexJob::create(database.name, tableName, noTransactions, noTransactionId, allWorkers,
-                                 IndexJob::TABLE, indexTableName, localFile, controller(), noParentJobId,
-                                 nullptr,  // no callback
-                                 config->get<int>("controller", "catalog-management-priority-level"));
+                DirectorIndexJob::create(database.name, tableName, noTransactions, noTransactionId,
+                                         allWorkers, localFile, controller(), noParentJobId,
+                                         nullptr,  // no callback
+                                         config->get<int>("controller", "catalog-management-priority-level"));
         job->start();
-        logJobStartedEvent(IndexJob::typeName(), job, database.family);
+        logJobStartedEvent(DirectorIndexJob::typeName(), job, database.family);
         job->wait();
-        logJobFinishedEvent(IndexJob::typeName(), job, database.family);
+        logJobFinishedEvent(DirectorIndexJob::typeName(), job, database.family);
 
         // Extended error reporting in case of failures
         if (job->extendedState() != Job::SUCCESS) {
             failed = true;
-            IndexJobResult const& jobResultData = job->getResultData();
+            DirectorIndexJob::Result const& jobResultData = job->getResultData();
             for (auto&& workerItr : jobResultData.error) {
                 string const& workerName = workerItr.first;
                 extError[tableName][workerName] = json::object();

@@ -36,7 +36,7 @@ map<string, set<string>> ConfigTestData::parameters() {
                "request-timeout-sec", "job-timeout-sec", "job-heartbeat-sec", "empty-chunks-dir",
                "max-repl-level", "worker-evict-priority-level", "health-monitor-priority-level",
                "ingest-priority-level", "catalog-management-priority-level", "auto-register-workers",
-               "ingest-job-monitor-ival-sec"}},
+               "ingest-job-monitor-ival-sec", "num-director-index-connections", "director-index-engine"}},
              {"database",
               {"services-pool-size", "host", "port", "user", "password", "name", "qserv-master-user",
                "qserv-master-services-pool-size", "qserv-master-tmp-dir"}},
@@ -44,6 +44,7 @@ map<string, set<string>> ConfigTestData::parameters() {
               {"auto-notify", "request-timeout-sec", "host", "port", "allow-reconnect", "reconnect-timeout"}},
              {"worker",
               {"technology",
+               "num-threads",
                "num-svc-processing-threads",
                "num-fs-processing-threads",
                "fs-buf-size-bytes",
@@ -66,7 +67,8 @@ map<string, set<string>> ConfigTestData::parameters() {
                "http-loader-tmp-dir",
                "ingest-charset-name",
                "ingest-num-retries",
-               "ingest-max-retries"}}});
+               "ingest-max-retries",
+               "director-index-record-size"}}});
 }
 
 json ConfigTestData::data() {
@@ -93,7 +95,9 @@ json ConfigTestData::data() {
                                              {"ingest-priority-level", 3},
                                              {"catalog-management-priority-level", 4},
                                              {"auto-register-workers", 1},
-                                             {"ingest-job-monitor-ival-sec", 5}});
+                                             {"ingest-job-monitor-ival-sec", 5},
+                                             {"num-director-index-connections", 6},
+                                             {"director-index-engine", "MyISAM"}});
     generalObj["database"] = json::object({{"host", "localhost"},
                                            {"port", 13306},
                                            {"user", "qsreplica"},
@@ -109,6 +113,7 @@ json ConfigTestData::data() {
                                          {"allow-reconnect", 0},
                                          {"reconnect-timeout", 500}});
     generalObj["worker"] = json::object({{"technology", "POSIX"},
+                                         {"num-threads", 3},
                                          {"num-svc-processing-threads", 4},
                                          {"num-fs-processing-threads", 5},
                                          {"fs-buf-size-bytes", 1024},

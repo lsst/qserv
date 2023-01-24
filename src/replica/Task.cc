@@ -41,7 +41,7 @@ TaskError::TaskError(util::Issue::Context const& ctx, string const& message)
 bool Task::start() {
     debug("starting...");
 
-    util::Lock lock(_mtx, context() + __func__);
+    replica::Lock lock(_mtx, context() + __func__);
 
     if (_isRunning.exchange(true)) return true;
 
@@ -54,7 +54,7 @@ bool Task::start() {
 bool Task::stop() {
     debug("stopping...");
 
-    util::Lock lock(_mtx, context() + __func__);
+    replica::Lock lock(_mtx, context() + __func__);
 
     if (not _isRunning) return true;
 
@@ -138,7 +138,7 @@ void Task::_startImpl() {
     // object guaranteed through a copy of a shared pointer bound as
     // a parameter of the callback.
 
-    util::Lock lock(_mtx, context() + __func__);
+    replica::Lock lock(_mtx, context() + __func__);
 
     _stopRequested = false;
     _isRunning = false;

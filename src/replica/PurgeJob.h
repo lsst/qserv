@@ -130,9 +130,9 @@ public:
     std::list<std::pair<std::string, std::string>> persistentLogData() const final;
 
 protected:
-    void startImpl(util::Lock const& lock) final;
-    void cancelImpl(util::Lock const& lock) final;
-    void notify(util::Lock const& lock) final;
+    void startImpl(replica::Lock const& lock) final;
+    void cancelImpl(replica::Lock const& lock) final;
+    void notify(replica::Lock const& lock) final;
 
 private:
     PurgeJob(std::string const& databaseFamily, unsigned int numReplicas, Controller::Ptr const& controller,
@@ -170,7 +170,7 @@ private:
      * @param maxJobs The maximum number of jobs to be launched
      * @return The number of jobs launched or 0 if no tasks existed for the worker.
      */
-    size_t _launchNext(util::Lock const& lock, std::string const& targetWorker, size_t maxJobs);
+    size_t _launchNext(replica::Lock const& lock, std::string const& targetWorker, size_t maxJobs);
 
     /// Structure ReplicaPurgeTask encapsulates a task to be schedule for executing
     /// as a replica removal job.

@@ -117,7 +117,7 @@ list<pair<string, string>> QservSyncJob::persistentLogData() const {
     return result;
 }
 
-void QservSyncJob::startImpl(util::Lock const& lock) {
+void QservSyncJob::startImpl(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     auto const databases = controller()->serviceProvider()->config()->databases(databaseFamily());
@@ -169,7 +169,7 @@ void QservSyncJob::startImpl(util::Lock const& lock) {
     if (not _numLaunched) finish(lock, ExtendedState::SUCCESS);
 }
 
-void QservSyncJob::cancelImpl(util::Lock const& lock) {
+void QservSyncJob::cancelImpl(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     for (auto&& ptr : _requests) {
@@ -182,7 +182,7 @@ void QservSyncJob::cancelImpl(util::Lock const& lock) {
     _numSuccess = 0;
 }
 
-void QservSyncJob::notify(util::Lock const& lock) {
+void QservSyncJob::notify(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
     notifyDefaultImpl<QservSyncJob>(lock, _onFinish);
 }
@@ -193,7 +193,7 @@ void QservSyncJob::_onRequestFinish(SetReplicasQservMgtRequest::Ptr const& reque
 
     if (state() == State::FINISHED) return;
 
-    util::Lock lock(_mtx, context() + __func__);
+    replica::Lock lock(_mtx, context() + __func__);
 
     if (state() == State::FINISHED) return;
 

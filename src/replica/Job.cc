@@ -120,7 +120,7 @@ Job::~Job() {
 }
 
 string Job::state2string() const {
-    util::Lock lock(_mtx, context() + __func__);
+    replica::Lock lock(_mtx, context() + __func__);
     return state2string(state(), extendedState());
 }
 
@@ -137,7 +137,7 @@ string Job::context() const {
 
 void Job::start() {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
-    util::Lock lock(_mtx, context() + __func__);
+    replica::Lock lock(_mtx, context() + __func__);
     _assertState(lock, State::CREATED, context() + __func__);
 
     // IMPORTANT: update these before proceeding to the implementation
@@ -163,7 +163,7 @@ void Job::start() {
 
 Job::Progress Job::progress() const {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
-    util::Lock lock(_mtx, context() + __func__);
+    replica::Lock lock(_mtx, context() + __func__);
     return Progress{_finished ? 1ULL : 0ULL, 1ULL};
 }
 
@@ -194,12 +194,12 @@ void Job::wait(chrono::milliseconds const& ivalMsec, WaitMonitorFunc const& func
 void Job::cancel() {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
     if (state() == State::FINISHED) return;
-    util::Lock lock(_mtx, context() + __func__);
+    replica::Lock lock(_mtx, context() + __func__);
     if (state() == State::FINISHED) return;
     finish(lock, ExtendedState::CANCELLED);
 }
 
-void Job::finish(util::Lock const& lock, ExtendedState newExtendedState) {
+void Job::finish(replica::Lock const& lock, ExtendedState newExtendedState) {
     LOGS(_log, LOG_LVL_DEBUG,
          context() << __func__ << "  newExtendedState=" << state2string(newExtendedState));
 
@@ -227,14 +227,14 @@ void Job::finish(util::Lock const& lock, ExtendedState newExtendedState) {
     _onFinishCv.notify_all();
 }
 
-void Job::_assertState(util::Lock const& lock, State desiredState, string const& context) const {
+void Job::_assertState(replica::Lock const& lock, State desiredState, string const& context) const {
     if (desiredState != state()) {
         throw logic_error(context + ": wrong state " + state2string(state()) + " instead of " +
                           state2string(desiredState));
     }
 }
 
-void Job::setState(util::Lock const& lock, State newState, ExtendedState newExtendedState) {
+void Job::setState(replica::Lock const& lock, State newState, ExtendedState newExtendedState) {
     LOGS(_log, LOG_LVL_DEBUG,
          context() << __func__ << "  new state=" << state2string(newState, newExtendedState));
 
@@ -250,7 +250,7 @@ void Job::setState(util::Lock const& lock, State newState, ExtendedState newExte
     controller()->serviceProvider()->databaseServices()->saveState(*this);
 }
 
-void Job::_startHeartbeatTimer(util::Lock const& lock) {
+void Job::_startHeartbeatTimer(replica::Lock const& lock) {
     if (_heartbeatTimerIvalSec) {
         LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
         // The timer needs to be initialized each time a new interval
@@ -270,7 +270,7 @@ void Job::_heartbeat(boost::system::error_code const& ec) {
     // Ignore this event if the timer was aborted
     if (ec == boost::asio::error::operation_aborted) return;
     if (state() == State::FINISHED) return;
-    util::Lock lock(_mtx, context() + __func__);
+    replica::Lock lock(_mtx, context() + __func__);
     if (state() == State::FINISHED) return;
 
     // Update the job entry in the database
@@ -280,7 +280,7 @@ void Job::_heartbeat(boost::system::error_code const& ec) {
     _startHeartbeatTimer(lock);
 }
 
-void Job::_startExpirationTimer(util::Lock const& lock) {
+void Job::_startExpirationTimer(replica::Lock const& lock) {
     if (0 != _expirationIvalSec) {
         LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
         // The timer needs to be initialized each time a new interval
@@ -300,7 +300,7 @@ void Job::_expired(boost::system::error_code const& ec) {
     // Ignore this event if the timer was aborted
     if (ec == boost::asio::error::operation_aborted) return;
     if (state() == State::FINISHED) return;
-    util::Lock lock(_mtx, context() + __func__);
+    replica::Lock lock(_mtx, context() + __func__);
     if (state() == State::FINISHED) return;
     finish(lock, ExtendedState::TIMEOUT_EXPIRED);
 }

@@ -36,7 +36,7 @@
 // Qserv headers
 #include "replica/Performance.h"
 #include "replica/ServiceProvider.h"
-#include "util/Mutex.h"
+#include "replica/Mutex.h"
 
 // Forward declarations
 class XrdSsiService;
@@ -53,7 +53,7 @@ public:
     typedef std::shared_ptr<QservMgtRequest> Ptr;
 
     /// The lock type used by the implementations
-    typedef std::lock_guard<util::Mutex> LockType;
+    typedef std::lock_guard<replica::Mutex> LockType;
 
     /// The type which represents the primary public state of the request
     enum State {
@@ -218,7 +218,7 @@ protected:
      * @param lock A lock on QservMgtRequest::_mtx must be acquired before calling
      *   this method.
      */
-    virtual void startImpl(util::Lock const& lock) = 0;
+    virtual void startImpl(replica::Lock const& lock) = 0;
 
     /**
      * Request expiration timer's handler. The expiration interval (if any)
@@ -239,7 +239,7 @@ protected:
      * @param extendedState The new extended state.
      * @param serverError (optional) error message from a Qserv worker service.
      */
-    void finish(util::Lock const& lock, ExtendedState extendedState, std::string const& serverError = "");
+    void finish(replica::Lock const& lock, ExtendedState extendedState, std::string const& serverError = "");
 
     /**
      * This method is supposed to be provided by subclasses
@@ -247,7 +247,7 @@ protected:
      * @param lock A lock on QservMgtRequest::_mtx must be acquired before calling
      *   this method.
      */
-    virtual void finishImpl(util::Lock const& lock) = 0;
+    virtual void finishImpl(replica::Lock const& lock) = 0;
 
     /**
      * Start user-notification protocol (in case if user-defined notifiers
@@ -261,7 +261,7 @@ protected:
      * The standard implementation of this method in a context of some
      * subclass 'T' should looks like this:
      * @code
-     *   void T::notify(util::Lock const& lock) {
+     *   void T::notify(replica::Lock const& lock) {
      *       notifyDefaultImpl<T>(lock, _onFinish);
      *   }
      * @code
@@ -270,7 +270,7 @@ protected:
      * @param lock A lock on QservMgtRequest::_mtx must be acquired before calling
      *   this method.
      */
-    virtual void notify(util::Lock const& lock) = 0;
+    virtual void notify(replica::Lock const& lock) = 0;
 
     /**
      * The helper function which pushes up-stream notifications on behalf of
@@ -286,7 +286,7 @@ protected:
      * @param onFinish A callback function (if set) to be called.
      */
     template <class T>
-    void notifyDefaultImpl(util::Lock const& lock, typename T::CallbackType& onFinish) {
+    void notifyDefaultImpl(replica::Lock const& lock, typename T::CallbackType& onFinish) {
         if (nullptr != onFinish) {
             // Clearing the stored callback after finishing the up-stream notification
             // has two purposes:
@@ -322,23 +322,23 @@ protected:
      * @param state The primary state of the request.
      * @param extendedState The extended state of the request.
      */
-    void setState(util::Lock const& lock, State state, ExtendedState extendedState = ExtendedState::NONE);
+    void setState(replica::Lock const& lock, State state, ExtendedState extendedState = ExtendedState::NONE);
 
     /**
      * @param lock A lock on QservMgtRequest::_mtx must be acquired before calling this method.
      * @return A server error string (if any).
      */
-    std::string serverError(util::Lock const& lock) const;
+    std::string serverError(replica::Lock const& lock) const;
 
     /**
      * @param lock A lock on QservMgtRequest::_mtx must be acquired before calling
      *   this method.
      * @return The performance info.
      */
-    Performance performance(util::Lock const& lock) const;
+    Performance performance(replica::Lock const& lock) const;
 
     /// Mutex guarding internal state (also used by subclasses)
-    mutable util::Mutex _mtx;
+    mutable replica::Mutex _mtx;
 
 private:
     /// The global counter for the number of instances of any subclass

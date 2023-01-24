@@ -142,7 +142,7 @@ list<pair<string, string>> FindAllJob::persistentLogData() const {
     return result;
 }
 
-void FindAllJob::startImpl(util::Lock const& lock) {
+void FindAllJob::startImpl(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     auto const self = shared_from_base<FindAllJob>();
@@ -170,7 +170,7 @@ void FindAllJob::startImpl(util::Lock const& lock) {
     if (not _numLaunched) finish(lock, ExtendedState::SUCCESS);
 }
 
-void FindAllJob::cancelImpl(util::Lock const& lock) {
+void FindAllJob::cancelImpl(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     // To ensure no lingering "side effects" will be left after cancelling this
@@ -192,7 +192,7 @@ void FindAllJob::cancelImpl(util::Lock const& lock) {
     _numSuccess = 0;
 }
 
-void FindAllJob::notify(util::Lock const& lock) {
+void FindAllJob::notify(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
     notifyDefaultImpl<FindAllJob>(lock, _onFinish);
 }
@@ -204,7 +204,7 @@ void FindAllJob::_onRequestFinish(FindAllRequest::Ptr const& request) {
 
     if (state() == State::FINISHED) return;
 
-    util::Lock lock(_mtx, context() + "" + string(__func__) + "[" + request->id() + "]");
+    replica::Lock lock(_mtx, context() + "" + string(__func__) + "[" + request->id() + "]");
 
     if (state() == State::FINISHED) return;
 

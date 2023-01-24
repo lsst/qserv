@@ -107,7 +107,7 @@ ClusterHealthJob::ClusterHealthJob(unsigned int timeoutSec, bool allWorkers,
                              : controller->serviceProvider()->config()->workers()) {}
 
 ClusterHealth const& ClusterHealthJob::clusterHealth() const {
-    util::Lock lock(_mtx, context() + __func__);
+    replica::Lock lock(_mtx, context() + __func__);
 
     if (state() == State::FINISHED) return _health;
 
@@ -145,7 +145,7 @@ list<pair<string, string>> ClusterHealthJob::persistentLogData() const {
     return result;
 }
 
-void ClusterHealthJob::startImpl(util::Lock const& lock) {
+void ClusterHealthJob::startImpl(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     auto self = shared_from_base<ClusterHealthJob>();
@@ -178,7 +178,7 @@ void ClusterHealthJob::startImpl(util::Lock const& lock) {
     if (0 == _numStarted) finish(lock, ExtendedState::SUCCESS);
 }
 
-void ClusterHealthJob::cancelImpl(util::Lock const& lock) {
+void ClusterHealthJob::cancelImpl(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     for (auto&& entry : _requests) {
@@ -194,7 +194,7 @@ void ClusterHealthJob::cancelImpl(util::Lock const& lock) {
     _qservRequests.clear();
 }
 
-void ClusterHealthJob::notify(util::Lock const& lock) {
+void ClusterHealthJob::notify(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     notifyDefaultImpl<ClusterHealthJob>(lock, _onFinish);
@@ -207,7 +207,7 @@ void ClusterHealthJob::_onRequestFinish(ServiceStatusRequest::Ptr const& request
 
     if (state() == State::FINISHED) return;
 
-    util::Lock lock(_mtx, context() + string(__func__) + "[replication]");
+    replica::Lock lock(_mtx, context() + string(__func__) + "[replication]");
 
     if (state() == State::FINISHED) return;
 
@@ -224,7 +224,7 @@ void ClusterHealthJob::_onRequestFinish(TestEchoQservMgtRequest::Ptr const& requ
 
     if (state() == State::FINISHED) return;
 
-    util::Lock lock(_mtx, context() + string(__func__) + "[qserv]");
+    replica::Lock lock(_mtx, context() + string(__func__) + "[qserv]");
 
     if (state() == State::FINISHED) return;
 

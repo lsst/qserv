@@ -73,7 +73,7 @@ WorkerFindAllRequest::WorkerFindAllRequest(ServiceProvider::Ptr const& servicePr
 void WorkerFindAllRequest::setInfo(ProtocolResponseFindAll& response) const {
     LOGS(_log, LOG_LVL_DEBUG, context(__func__));
 
-    util::Lock lock(_mtx, context(__func__));
+    replica::Lock lock(_mtx, context(__func__));
 
     response.set_allocated_target_performance(performance().info().release());
 
@@ -126,7 +126,7 @@ WorkerFindAllRequestPOSIX::WorkerFindAllRequestPOSIX(ServiceProvider::Ptr const&
 bool WorkerFindAllRequestPOSIX::execute() {
     LOGS(_log, LOG_LVL_DEBUG, context(__func__) << "  database: " << database());
 
-    util::Lock lock(_mtx, context(__func__));
+    replica::Lock lock(_mtx, context(__func__));
 
     auto const config = _serviceProvider->config();
     DatabaseInfo const databaseInfo = config->databaseInfo(database());
@@ -139,7 +139,7 @@ bool WorkerFindAllRequestPOSIX::execute() {
 
     map<unsigned int, ReplicaInfo::FileInfoCollection> chunk2fileInfoCollection;
     {
-        util::Lock dataFolderLock(_mtxDataFolderOperations, context(__func__));
+        replica::Lock dataFolderLock(_mtxDataFolderOperations, context(__func__));
 
         fs::path const dataDir = fs::path(config->get<string>("worker", "data-dir")) / database();
         fs::file_status const stat = fs::status(dataDir, ec);

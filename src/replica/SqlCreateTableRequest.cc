@@ -72,7 +72,7 @@ SqlCreateTableRequest::SqlCreateTableRequest(ServiceProvider::Ptr const& service
     }
 }
 
-void SqlCreateTableRequest::notify(util::Lock const& lock) {
+void SqlCreateTableRequest::notify(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG,
          context() << __func__ << "[" << ProtocolRequestSql_Type_Name(requestBody.type()) << "]");
 

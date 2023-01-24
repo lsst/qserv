@@ -141,7 +141,7 @@ string HttpAsyncReq::version() const {
 
 void HttpAsyncReq::start() {
     string const context = "HttpAsyncReq::" + string(__func__) + " ";
-    util::Lock lock(_mtx, context);
+    replica::Lock lock(_mtx, context);
     _assertState(lock, context, {State::CREATED});
     try {
         _resolve(lock);
@@ -159,7 +159,7 @@ void HttpAsyncReq::start() {
 
 bool HttpAsyncReq::cancel() {
     string const context = "HttpAsyncReq::" + string(__func__) + " ";
-    util::Lock lock(_mtx, context);
+    replica::Lock lock(_mtx, context);
     switch (_state) {
         case State::CREATED:
         case State::IN_PROGRESS:
@@ -172,13 +172,13 @@ bool HttpAsyncReq::cancel() {
 
 string HttpAsyncReq::errorMessage() const {
     string const context = "HttpAsyncReq::" + string(__func__) + " ";
-    util::Lock lock(_mtx, context);
+    replica::Lock lock(_mtx, context);
     return _error;
 }
 
 int HttpAsyncReq::responseCode() const {
     string const context = "HttpAsyncReq::" + string(__func__) + " ";
-    util::Lock lock(_mtx, context);
+    replica::Lock lock(_mtx, context);
     _assertState(lock, context, {State::FINISHED, State::BODY_LIMIT_ERROR});
     auto const& header = _res.get().base();
     return header.result_int();
@@ -186,26 +186,26 @@ int HttpAsyncReq::responseCode() const {
 
 unordered_map<string, string> const& HttpAsyncReq::responseHeader() const {
     string const context = "HttpAsyncReq::" + string(__func__) + " ";
-    util::Lock lock(_mtx, context);
+    replica::Lock lock(_mtx, context);
     _assertState(lock, context, {State::FINISHED, State::BODY_LIMIT_ERROR});
     return _responseHeader;
 }
 
 string const& HttpAsyncReq::responseBody() const {
     string const context = "HttpAsyncReq::" + string(__func__) + " ";
-    util::Lock lock(_mtx, context);
+    replica::Lock lock(_mtx, context);
     _assertState(lock, context, {State::FINISHED});
     return _res.get().body();
 }
 
 size_t HttpAsyncReq::responseBodySize() const {
     string const context = "HttpAsyncReq::" + string(__func__) + " ";
-    util::Lock lock(_mtx, context);
+    replica::Lock lock(_mtx, context);
     _assertState(lock, context, {State::FINISHED});
     return _res.get().body().size();
 }
 
-void HttpAsyncReq::_restart(util::Lock const& lock) {
+void HttpAsyncReq::_restart(replica::Lock const& lock) {
     _timer.cancel();
     _timer.expires_from_now(boost::posix_time::seconds(_timerIvalSec));
     _timer.async_wait(
@@ -219,13 +219,13 @@ void HttpAsyncReq::_restarted(boost::system::error_code const& ec) {
     if (ec == boost::asio::error::operation_aborted) return;
 
     if (State::IN_PROGRESS != _state) return;
-    util::Lock lock(_mtx, context);
+    replica::Lock lock(_mtx, context);
     if (State::IN_PROGRESS != _state) return;
 
     _resolve(lock);
 }
 
-void HttpAsyncReq::_resolve(util::Lock const& lock) {
+void HttpAsyncReq::_resolve(replica::Lock const& lock) {
     _resolver.async_resolve(
             _url.host(), to_string(_url.port() == 0 ? 80 : _url.port()),
             [self = shared_from_this()](boost::system::error_code const& ec,
@@ -239,7 +239,7 @@ void HttpAsyncReq::_resolved(boost::system::error_code const& ec,
     string const context = "HttpAsyncReq::" + string(__func__) + " ";
 
     if (State::IN_PROGRESS != _state) return;
-    util::Lock lock(_mtx, context);
+    replica::Lock lock(_mtx, context);
     if (State::IN_PROGRESS != _state) return;
 
     if (ec.value() != 0) {
@@ -257,7 +257,7 @@ void HttpAsyncReq::_connected(boost::system::error_code const& ec) {
     string const context = "HttpAsyncReq::" + string(__func__) + " ";
 
     if (State::IN_PROGRESS != _state) return;
-    util::Lock lock(_mtx, context);
+    replica::Lock lock(_mtx, context);
     if (State::IN_PROGRESS != _state) return;
 
     if (ec.value() != 0) {
@@ -275,7 +275,7 @@ void HttpAsyncReq::_sent(boost::system::error_code const& ec, size_t bytesSent) 
     string const context = "HttpAsyncReq::" + string(__func__) + " ";
 
     if (State::IN_PROGRESS != _state) return;
-    util::Lock lock(_mtx, context);
+    replica::Lock lock(_mtx, context);
     if (State::IN_PROGRESS != _state) return;
 
     if (ec.value() != 0) {
@@ -296,7 +296,7 @@ void HttpAsyncReq::_received(boost::system::error_code const& ec, size_t bytesRe
     string const context = "HttpAsyncReq::" + string(__func__) + " ";
 
     if (_state != State::IN_PROGRESS) return;
-    util::Lock lock(_mtx, context);
+    replica::Lock lock(_mtx, context);
     if (_state != State::IN_PROGRESS) return;
 
     State newState = State::FINISHED;
@@ -317,7 +317,7 @@ void HttpAsyncReq::_received(boost::system::error_code const& ec, size_t bytesRe
     _finish(lock, newState);
 }
 
-void HttpAsyncReq::_extractCacheHeader(util::Lock const& lock) {
+void HttpAsyncReq::_extractCacheHeader(replica::Lock const& lock) {
     auto const& header = _res.get().base();
     for (auto itr = header.cbegin(); itr != header.cend(); ++itr) {
         _responseHeader.insert(pair<string, string>(itr->name_string(), itr->value()));
@@ -331,13 +331,13 @@ void HttpAsyncReq::_expired(boost::system::error_code const& ec) {
     if (ec == boost::asio::error::operation_aborted) return;
 
     if (_state != State::IN_PROGRESS) return;
-    util::Lock lock(_mtx, context);
+    replica::Lock lock(_mtx, context);
     if (_state != State::IN_PROGRESS) return;
 
     _finish(lock, State::EXPIRED);
 }
 
-void HttpAsyncReq::_finish(util::Lock const& lock, State finalState, string const& error) {
+void HttpAsyncReq::_finish(replica::Lock const& lock, State finalState, string const& error) {
     _state = finalState;
     _error = error;
 
@@ -360,7 +360,7 @@ void HttpAsyncReq::_finish(util::Lock const& lock, State finalState, string cons
     }
 }
 
-void HttpAsyncReq::_assertState(util::Lock const& lock, string const& context,
+void HttpAsyncReq::_assertState(replica::Lock const& lock, string const& context,
                                 initializer_list<State> const& desiredStates) const {
     if (find(desiredStates.begin(), desiredStates.end(), _state) == desiredStates.end()) {
         string states;

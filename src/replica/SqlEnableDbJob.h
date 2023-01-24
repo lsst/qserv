@@ -98,14 +98,14 @@ public:
 
 protected:
     /// @see Job::notify()
-    void notify(util::Lock const& lock) final;
+    void notify(replica::Lock const& lock) final;
 
     /// @see SqlJob::launchRequests()
-    std::list<SqlRequest::Ptr> launchRequests(util::Lock const& lock, std::string const& worker,
+    std::list<SqlRequest::Ptr> launchRequests(replica::Lock const& lock, std::string const& worker,
                                               size_t maxRequestsPerWorker) final;
 
     /// @see SqlJob::stopRequest()
-    void stopRequest(util::Lock const& lock, SqlRequest::Ptr const& request) final;
+    void stopRequest(replica::Lock const& lock, SqlRequest::Ptr const& request) final;
 
 private:
     /// @see SqlEnableDbJob::create()

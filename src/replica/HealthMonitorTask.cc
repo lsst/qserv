@@ -44,14 +44,14 @@ HealthMonitorTask::Ptr HealthMonitorTask::create(Controller::Ptr const& controll
 }
 
 HealthMonitorTask::WorkerResponseDelay HealthMonitorTask::workerResponseDelay() const {
-    util::Lock lock(_mtx, "HealthMonitorTask::" + string(__func__));
+    replica::Lock lock(_mtx, "HealthMonitorTask::" + string(__func__));
     return _workerServiceNoResponseSec;
 }
 
 void HealthMonitorTask::onStart() {
     string const context = "HealthMonitorTask::" + string(__func__);
 
-    util::Lock lock(_mtx, context);
+    replica::Lock lock(_mtx, context);
 
     for (auto&& worker : serviceProvider()->config()->allWorkers()) {
         _workerServiceNoResponseSec[worker]["qserv"] = 0;
@@ -94,7 +94,7 @@ bool HealthMonitorTask::onRun() {
 
     // Update non-response intervals for both services
     {
-        util::Lock lock(_mtx, context);
+        replica::Lock lock(_mtx, context);
 
         for (auto&& entry : jobs[0]->clusterHealth().qserv()) {
             auto worker = entry.first;

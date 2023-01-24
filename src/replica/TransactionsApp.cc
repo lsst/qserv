@@ -32,7 +32,7 @@
 #include "replica/NamedMutexRegistry.h"
 #include "replica/Performance.h"
 #include "replica/ServiceProvider.h"
-#include "util/Mutex.h"
+#include "replica/Mutex.h"
 #include "util/TablePrinter.h"
 
 using namespace std;
@@ -106,7 +106,7 @@ int TransactionsApp::runImpl() {
         _print(service->transactions(_databaseName));
     } else if ("CREATE" == _operation) {
         NamedMutexRegistry registry;
-        unique_ptr<util::Lock> lock;
+        unique_ptr<replica::Lock> lock;
         _print(service->createTransaction(_databaseName, registry, lock));
     } else if ("UPDATE" == _operation) {
         _print(service->updateTransaction(_id, _state));

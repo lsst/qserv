@@ -101,26 +101,26 @@ string HttpModule::reconfigureWorkers(DatabaseInfo const& databaseInfo, bool all
     return error;
 }
 
-bool HttpModule::autoBuildSecondaryIndex(string const& databaseName) const {
+bool HttpModule::autoBuildDirectorIndex(string const& databaseName) const {
     auto const databaseServices = controller()->serviceProvider()->databaseServices();
     try {
         DatabaseIngestParam const paramInfo =
                 databaseServices->ingestParam(databaseName, "secondary-index", "auto-build");
         return paramInfo.value != "0";
     } catch (DatabaseServicesNotFound const& ex) {
-        info(__func__, "the secondary index auto-build mode was not specified");
+        info(__func__, "the director index auto-build mode was not specified");
     }
     return false;
 }
 
-bool HttpModule::localLoadSecondaryIndex(string const& database) const {
+bool HttpModule::localLoadDirectorIndex(string const& database) const {
     auto const databaseServices = controller()->serviceProvider()->databaseServices();
     try {
         DatabaseIngestParam const paramInfo =
                 databaseServices->ingestParam(database, "secondary-index", "local-load");
         return paramInfo.value != "0";
     } catch (DatabaseServicesNotFound const& ex) {
-        info(__func__, "the secondary index local-load mode was not specified");
+        info(__func__, "the director index local-load mode was not specified");
     }
     return false;
 }

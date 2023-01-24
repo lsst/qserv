@@ -205,13 +205,13 @@ public:
 
 protected:
     /// @see Job::startImpl()
-    void startImpl(util::Lock const& lock) final;
+    void startImpl(replica::Lock const& lock) final;
 
     /// @see Job::cancelImpl()
-    void cancelImpl(util::Lock const& lock) final;
+    void cancelImpl(replica::Lock const& lock) final;
 
     /// @see Job::notify()
-    void notify(util::Lock const& lock) final;
+    void notify(replica::Lock const& lock) final;
 
 private:
     /// @see RebalanceJob::create()
@@ -249,7 +249,7 @@ private:
      * @retun
      *   the actual number of submitted jobs
      */
-    size_t _launchNextJobs(util::Lock const& lock, size_t numJobs);
+    size_t _launchNextJobs(replica::Lock const& lock, size_t numJobs);
 
     // Input parameters
 

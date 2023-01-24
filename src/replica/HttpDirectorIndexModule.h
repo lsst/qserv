@@ -18,8 +18,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_HTTPINGESTINDEXMODULE_H
-#define LSST_QSERV_HTTPINGESTINDEXMODULE_H
+#ifndef LSST_QSERV_HTTPDIRECTORINDEXMODULE_H
+#define LSST_QSERV_HTTPDIRECTORINDEXMODULE_H
 
 // System headers
 #include <memory>
@@ -36,16 +36,16 @@
 namespace lsst::qserv::replica {
 
 /**
- * Class HttpIngestIndexModule manages the "secondary" indexes in Qserv.
+ * Class HttpDirectorIndexModule manages the "director" indexes in Qserv.
  */
-class HttpIngestIndexModule : public HttpModule {
+class HttpDirectorIndexModule : public HttpModule {
 public:
-    typedef std::shared_ptr<HttpIngestIndexModule> Ptr;
+    typedef std::shared_ptr<HttpDirectorIndexModule> Ptr;
 
     /**
      * Supported values for parameter 'subModuleName':
      *
-     *   BUILD-SECONDARY-INDEX  for building (or rebuilding) the "secondary" index
+     *   BUILD  for building (or rebuilding) the "director" index
      *
      * @throws std::invalid_argument for unknown values of parameter 'subModuleName'
      */
@@ -54,23 +54,23 @@ public:
                         qhttp::Response::Ptr const& resp, std::string const& subModuleName = std::string(),
                         HttpAuthType const authType = HttpAuthType::NONE);
 
-    HttpIngestIndexModule() = delete;
-    HttpIngestIndexModule(HttpIngestIndexModule const&) = delete;
-    HttpIngestIndexModule& operator=(HttpIngestIndexModule const&) = delete;
+    HttpDirectorIndexModule() = delete;
+    HttpDirectorIndexModule(HttpDirectorIndexModule const&) = delete;
+    HttpDirectorIndexModule& operator=(HttpDirectorIndexModule const&) = delete;
 
-    ~HttpIngestIndexModule() final = default;
+    ~HttpDirectorIndexModule() final = default;
 
 protected:
     nlohmann::json executeImpl(std::string const& subModuleName) final;
 
 private:
-    HttpIngestIndexModule(Controller::Ptr const& controller, std::string const& taskName,
-                          HttpProcessorConfig const& processorConfig, qhttp::Request::Ptr const& req,
-                          qhttp::Response::Ptr const& resp);
+    HttpDirectorIndexModule(Controller::Ptr const& controller, std::string const& taskName,
+                            HttpProcessorConfig const& processorConfig, qhttp::Request::Ptr const& req,
+                            qhttp::Response::Ptr const& resp);
 
-    nlohmann::json _buildSecondaryIndex();
+    nlohmann::json _buildDirectorIndex();
 };
 
 }  // namespace lsst::qserv::replica
 
-#endif  // LSST_QSERV_HTTPINGESTINDEXMODULE_H
+#endif  // LSST_QSERV_HTTPDIRECTORINDEXMODULE_H

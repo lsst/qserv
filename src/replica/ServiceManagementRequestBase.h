@@ -127,10 +127,10 @@ protected:
                                  int priority, std::shared_ptr<Messenger> const& messenger);
 
     /// @see Request::startImpl()
-    void startImpl(util::Lock const& lock) final;
+    void startImpl(replica::Lock const& lock) final;
 
     /// @see Request::savePersistentState()
-    void savePersistentState(util::Lock const& lock) final;
+    void savePersistentState(replica::Lock const& lock) final;
 
 private:
     /**

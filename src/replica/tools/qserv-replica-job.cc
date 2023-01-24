@@ -31,7 +31,7 @@
 #include "replica/DeleteWorkerApp.h"
 #include "replica/FixUpApp.h"
 #include "replica/ClusterHealthApp.h"
-#include "replica/IndexApp.h"
+#include "replica/DirectorIndexApp.h"
 #include "replica/MoveApp.h"
 #include "replica/PurgeApp.h"
 #include "replica/RebalanceApp.h"
@@ -53,7 +53,7 @@ ApplicationColl getAppColl() {
     coll.add<DeleteWorkerApp>("DELETE-WORKER");
     coll.add<FixUpApp>("FIXUP");
     coll.add<ClusterHealthApp>("CLUSTER-HEALTH");
-    coll.add<IndexApp>("INDEX");
+    coll.add<DirectorIndexApp>("INDEX");
     coll.add<MoveApp>("MOVE");
     coll.add<PurgeApp>("PURGE");
     coll.add<RebalanceApp>("REBALANCE");

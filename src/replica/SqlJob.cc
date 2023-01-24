@@ -61,7 +61,7 @@ SqlJob::SqlJob(uint64_t maxRows, bool allWorkers, Controller::Ptr const& control
 
 Job::Progress SqlJob::progress() const {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
-    util::Lock lock(_mtx, context() + __func__);
+    replica::Lock lock(_mtx, context() + __func__);
     return Progress{_numFinished, _requests.size()};
 }
 
@@ -120,7 +120,7 @@ json SqlJob::getExtendedErrorReport() const {
     return report;
 }
 
-void SqlJob::startImpl(util::Lock const& lock) {
+void SqlJob::startImpl(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
     auto const workerNames = allWorkers() ? controller()->serviceProvider()->config()->allWorkers()
                                           : controller()->serviceProvider()->config()->workers();
@@ -142,7 +142,7 @@ void SqlJob::startImpl(util::Lock const& lock) {
     if (_requests.size() == 0) processResultAndFinish(lock, ExtendedState::SUCCESS);
 }
 
-void SqlJob::cancelImpl(util::Lock const& lock) {
+void SqlJob::cancelImpl(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
     // The algorithm will also clear resources taken by various
     // locally created objects.
@@ -159,7 +159,7 @@ void SqlJob::cancelImpl(util::Lock const& lock) {
 void SqlJob::onRequestFinish(SqlRequest::Ptr const& request) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  worker=" << request->worker());
     if (state() == State::FINISHED) return;
-    util::Lock lock(_mtx, context() + __func__);
+    replica::Lock lock(_mtx, context() + __func__);
     if (state() == State::FINISHED) return;
     _numFinished++;
     // Update stats, including the result sets since they may carry
@@ -201,7 +201,7 @@ void SqlJob::onRequestFinish(SqlRequest::Ptr const& request) {
     }
 }
 
-void SqlJob::processResultAndFinish(util::Lock const& lock, ExtendedState extendedState) {
+void SqlJob::processResultAndFinish(replica::Lock const& lock, ExtendedState extendedState) {
     finish(lock, extendedState);
 }
 

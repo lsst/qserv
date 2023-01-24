@@ -33,7 +33,7 @@
 #include "replica/DatabaseServices.h"
 #include "replica/IngestFileSvc.h"
 #include "replica/Url.h"
-#include "util/Mutex.h"
+#include "replica/Mutex.h"
 
 // Forward declarations
 namespace lsst::qserv::replica {
@@ -213,25 +213,25 @@ private:
     void _processLoadData();
 
     /// Open the temporary file and mark the contribution as started.
-    void _openTmpFileAndStart(util::Lock const& lock);
+    void _openTmpFileAndStart(replica::Lock const& lock);
 
     /// @return 'true' if retry is possible.
-    bool _closeTmpFileAndRetry(util::Lock const& lock);
+    bool _closeTmpFileAndRetry(replica::Lock const& lock);
 
     /// Read a local file and preprocess it.
-    void _readLocalFile(util::Lock const& lock);
+    void _readLocalFile(replica::Lock const& lock);
 
     /// Pull an input file from a remote HTTP service and preprocess it.
-    void _readRemoteFile(util::Lock const& lock);
+    void _readRemoteFile(replica::Lock const& lock);
 
     /**
      * Pull file reader's configuration from the config store.
      * @return The configuration object.
      */
-    HttpClientConfig _clientConfig(util::Lock const& lock) const;
+    HttpClientConfig _clientConfig(replica::Lock const& lock) const;
 
     /// Mutex guarding internal state.
-    mutable util::Mutex _mtx;
+    mutable replica::Mutex _mtx;
 
     /// The descriptor is build by the c-tor after validating the input
     /// parameters of the request.

@@ -76,10 +76,10 @@ ChunkOverlapSelector str2overlapSelector(string const& str) {
 //                Generators              //
 ////////////////////////////////////////////
 
-util::Mutex Generators::_mtx;
+replica::Mutex Generators::_mtx;
 
 string Generators::uniqueId() {
-    util::Lock lock(_mtx, "Generators::" + string(__func__));
+    replica::Lock lock(_mtx, "Generators::" + string(__func__));
     boost::uuids::uuid id = boost::uuids::random_generator()();
     return boost::uuids::to_string(id);
 }
@@ -345,7 +345,7 @@ ostream& operator<<(ostream& os, SqlRequestParams const& params) {
     return os;
 }
 
-IndexRequestParams::IndexRequestParams(ProtocolRequestIndex const& request)
+DirectorIndexRequestParams::DirectorIndexRequestParams(ProtocolRequestDirectorIndex const& request)
         : database(request.database()),
           chunk(request.chunk()),
           hasTransactions(request.has_transactions()),
@@ -368,6 +368,17 @@ vector<string> strsplit(string const& str, char delimiter) {
         }
     }
     return words;
+}
+
+string tableNameBuilder(string const& databaseName, string const& tableName, string const& suffix) {
+    size_t const tableNameLimit = 64;
+    string const name = databaseName + "__" + tableName + suffix;
+    if (name.size() > tableNameLimit) {
+        throw invalid_argument("replica::" + string(__func__) + " MySQL table name limit of " +
+                               to_string(tableNameLimit) + " characters has been exceeded for table '" +
+                               name + "'.");
+    }
+    return name;
 }
 
 }  // namespace lsst::qserv::replica

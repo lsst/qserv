@@ -35,12 +35,15 @@
 #include "boost/asio.hpp"
 
 // Qserv headers
-#include "replica/Configuration.h"
 #include "replica/MessageQueue.h"
 #include "replica/protocol.pb.h"
 #include "replica/ProtocolBuffer.h"
-#include "replica/ServiceProvider.h"
-#include "util/Mutex.h"
+#include "replica/Mutex.h"
+
+// Forward declarations
+namespace lsst::qserv::replica {
+class Configuration;
+}  // namespace lsst::qserv::replica
 
 // This header declarations
 namespace lsst::qserv::replica {
@@ -213,13 +216,13 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param serviceProvider  Services of the Replication Framework.
+     * @param config  The configuration service of the Replication Framework.
      * @param io_service  The I/O service for communication. The lifespan of
      *   the object must exceed the one of this instance.
      * @param worker  The name of a worker.
      * @return  A pointer to the created object.
      */
-    static Ptr create(ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service,
+    static Ptr create(std::shared_ptr<Configuration> const& config, boost::asio::io_service& io_service,
                       std::string const& worker);
 
     /**
@@ -270,7 +273,7 @@ public:
 
 private:
     /// @see MessengerConnector::create()
-    MessengerConnector(ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service,
+    MessengerConnector(std::shared_ptr<Configuration> const& config, boost::asio::io_service& io_service,
                        std::string const& worker);
 
     /**
@@ -300,14 +303,14 @@ private:
      * @param lock  A lock on MessengerConnector::_mtx must be acquired before
      *   calling this method.
      */
-    void _restart(util::Lock const& lock);
+    void _restart(replica::Lock const& lock);
 
     /**
      * Start resolving the destination worker host & port.
      * @param lock  A lock on MessengerConnector::_mtx must be acquired before
      *   calling this method.
      */
-    void _resolve(util::Lock const& lock);
+    void _resolve(replica::Lock const& lock);
 
     /**
      * Callback handler for the asynchronous operation.
@@ -321,7 +324,7 @@ private:
      * @param lock  A lock on MessengerConnector::_mtx must be acquired before
      *   calling this method.
      */
-    void _connect(util::Lock const& lock, boost::asio::ip::tcp::resolver::iterator iter);
+    void _connect(replica::Lock const& lock, boost::asio::ip::tcp::resolver::iterator iter);
 
     /**
      * Callback handler for the asynchronous operation upon its successful
@@ -336,7 +339,7 @@ private:
      * @param lock  A lock on MessengerConnector::_mtx must be acquired before
      *   calling this method.
      */
-    void _waitBeforeRestart(util::Lock const& lock);
+    void _waitBeforeRestart(replica::Lock const& lock);
 
     /**
      * Callback handler fired for restarting the connection.
@@ -350,7 +353,7 @@ private:
      * @param lock  A lock on MessengerConnector::_mtx must be acquired before
      *   calling this method.
      */
-    void _sendRequest(util::Lock const& lock);
+    void _sendRequest(replica::Lock const& lock);
 
     /**
      * Callback handler fired upon a completion of the request sending.
@@ -364,7 +367,7 @@ private:
      * @param lock  A lock on MessengerConnector::_mtx must be acquired before
      *   calling this method.
      */
-    void _receiveResponse(util::Lock const& lock);
+    void _receiveResponse(replica::Lock const& lock);
 
     /**
      * Callback handler fired upon a completion of the response receiving.
@@ -383,7 +386,7 @@ private:
      * @param bytes  The length in bytes extracted from the frame.
      * @return  The completion code of the operation.
      */
-    boost::system::error_code _syncReadFrame(util::Lock const& lock, ProtocolBuffer& buf, size_t& bytes);
+    boost::system::error_code _syncReadFrame(replica::Lock const& lock, ProtocolBuffer& buf, size_t& bytes);
 
     /**
      * Synchronously read a response header of a known size. Then parse it
@@ -401,8 +404,8 @@ private:
      * @param id  A unique identifier of a request to match the 'id' in a response header
      * @return  The completion code of the operation.
      */
-    boost::system::error_code _syncReadVerifyHeader(util::Lock const& lock, ProtocolBuffer& buf, size_t bytes,
-                                                    std::string const& id);
+    boost::system::error_code _syncReadVerifyHeader(replica::Lock const& lock, ProtocolBuffer& buf,
+                                                    size_t bytes, std::string const& id);
 
     /**
      * Synchronously read a message of a known size into the specified buffer.
@@ -416,7 +419,8 @@ private:
      *   to be received into the network buffer from the network.
      * @return  The completion code of the operation.
      */
-    boost::system::error_code _syncReadMessageImpl(util::Lock const& lock, ProtocolBuffer& buf, size_t bytes);
+    boost::system::error_code _syncReadMessageImpl(replica::Lock const& lock, ProtocolBuffer& buf,
+                                                   size_t bytes);
 
     /**
      * Check if the error status corresponds to a failed operation.
@@ -437,7 +441,7 @@ private:
 
     // Input parameters.
 
-    ServiceProvider::Ptr const _serviceProvider;
+    std::shared_ptr<Configuration> const _config;
 
     /// The unique identifier of the worker.
     std::string const _worker;
@@ -461,7 +465,7 @@ private:
     /// This mutex is meant to avoid race conditions to the internal data
     /// structure between threads that trigger asynchronous I/O events
     /// and threads submitting requests.
-    mutable util::Mutex _mtx;
+    mutable replica::Mutex _mtx;
 
     /// The priority-based queue of requests.
     MessageQueue<MessageWrapperBase> _requests;

@@ -123,7 +123,7 @@ string leastLoadedWorker(map<string, size_t>& worker2replicasCache,
 
 namespace lsst::qserv::replica {
 
-util::Mutex HttpIngestChunksModule::_ingestManagementMtx;
+replica::Mutex HttpIngestChunksModule::_ingestManagementMtx;
 
 void HttpIngestChunksModule::process(Controller::Ptr const& controller, string const& taskName,
                                      HttpProcessorConfig const& processorConfig,
@@ -171,7 +171,7 @@ json HttpIngestChunksModule::_addChunk() {
 
     // This locks prevents other invocations of the method from making different
     // decisions on a chunk placement.
-    util::Lock lock(_ingestManagementMtx, "HttpIngestChunksModule::" + string(__func__));
+    replica::Lock lock(_ingestManagementMtx, "HttpIngestChunksModule::" + string(__func__));
 
     // Decide on a worker where the chunk is best to be located.
     // If the chunk is already there then use it. Otherwise register an empty chunk
@@ -289,7 +289,7 @@ json HttpIngestChunksModule::_addChunks() {
 
     // This locks prevents other invocations of the method from making different
     // decisions on chunk placements.
-    util::Lock lock(_ingestManagementMtx, "HttpIngestChunksModule::" + string(__func__));
+    replica::Lock lock(_ingestManagementMtx, "HttpIngestChunksModule::" + string(__func__));
 
     // Locate replicas (if any) for all chunks. Then regroup them into
     // a dictionary in which all input chunk numbers are used as keys.

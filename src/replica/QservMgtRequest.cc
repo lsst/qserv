@@ -111,33 +111,33 @@ QservMgtRequest::~QservMgtRequest() {
 }
 
 string QservMgtRequest::state2string() const {
-    util::Lock lock(_mtx, context() + __func__);
+    replica::Lock lock(_mtx, context() + __func__);
     return state2string(state(), extendedState()) + "::" + serverError(lock);
 }
 
 string QservMgtRequest::serverError() const {
-    util::Lock lock(_mtx, context() + __func__);
+    replica::Lock lock(_mtx, context() + __func__);
     return serverError(lock);
 }
 
-string QservMgtRequest::serverError(util::Lock const& lock) const { return _serverError; }
+string QservMgtRequest::serverError(replica::Lock const& lock) const { return _serverError; }
 
 string QservMgtRequest::context() const {
     return id() + "  " + type() + "  " + state2string(state(), extendedState()) + "  ";
 }
 
 Performance QservMgtRequest::performance() const {
-    util::Lock lock(_mtx, context() + __func__);
+    replica::Lock lock(_mtx, context() + __func__);
     return performance(lock);
 }
 
-Performance QservMgtRequest::performance(util::Lock const& lock) const { return _performance; }
+Performance QservMgtRequest::performance(replica::Lock const& lock) const { return _performance; }
 
 void QservMgtRequest::start(XrdSsiService* service, string const& jobId,
                             unsigned int requestExpirationIvalSec) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
-    util::Lock lock(_mtx, "QservMgtRequest::" + string(__func__));
+    replica::Lock lock(_mtx, "QservMgtRequest::" + string(__func__));
 
     assertState(State::CREATED, "QservMgtRequest::" + string(__func__));
 
@@ -215,7 +215,7 @@ void QservMgtRequest::expired(boost::system::error_code const& ec) {
 
     if (state() == State::FINISHED) return;
 
-    util::Lock lock(_mtx, context() + __func__);
+    replica::Lock lock(_mtx, context() + __func__);
 
     if (state() == State::FINISHED) return;
 
@@ -227,14 +227,15 @@ void QservMgtRequest::cancel() {
 
     if (state() == State::FINISHED) return;
 
-    util::Lock lock(_mtx, context() + __func__);
+    replica::Lock lock(_mtx, context() + __func__);
 
     if (state() == State::FINISHED) return;
 
     finish(lock, ExtendedState::CANCELLED);
 }
 
-void QservMgtRequest::finish(util::Lock const& lock, ExtendedState extendedState, string const& serverError) {
+void QservMgtRequest::finish(replica::Lock const& lock, ExtendedState extendedState,
+                             string const& serverError) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     // Set the optional server error state as well
@@ -281,7 +282,7 @@ void QservMgtRequest::assertState(State desiredState, string const& context) con
     }
 }
 
-void QservMgtRequest::setState(util::Lock const& lock, State newState, ExtendedState newExtendedState) {
+void QservMgtRequest::setState(replica::Lock const& lock, State newState, ExtendedState newExtendedState) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  " << state2string(newState, newExtendedState));
 
     // IMPORTANT: the top-level state is the last to be set when performing

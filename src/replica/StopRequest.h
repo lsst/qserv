@@ -50,11 +50,6 @@
 #include "replica/SqlResultSet.h"
 #include "replica/StopRequestBase.h"
 
-// Forward declarations
-namespace lsst::qserv::replica {
-class IndexInfo;
-}  // namespace lsst::qserv::replica
-
 // This header declarations
 namespace lsst::qserv::replica {
 
@@ -157,11 +152,17 @@ public:
     }
 };
 
-class StopIndexRequestPolicy {
+/// @note This type of the management request for stopping the target request won't
+///  return any data even in case when the target request was found successfully
+///  completed. An assumption here is that since the target requests of this
+///  kind have no side effects then they could always be resubmited if needed.
+///  The response object will contained the server error should the request failed
+///  at a worker.
+class StopDirectorIndexRequestPolicy {
 public:
-    using ResponseMessageType = ProtocolResponseIndex;
-    using ResponseDataType = IndexInfo;
-    using TargetRequestParamsType = IndexRequestParams;
+    using ResponseMessageType = ProtocolResponseDirectorIndex;
+    using ResponseDataType = std::string;
+    using TargetRequestParamsType = DirectorIndexRequestParams;
 
     static char const* requestName();
     static ProtocolQueuedRequestType targetRequestType();
@@ -260,9 +261,9 @@ public:
     }
 
 protected:
-    void notify(util::Lock const& lock) final { notifyDefaultImpl<StopRequest<POLICY>>(lock, _onFinish); }
+    void notify(replica::Lock const& lock) final { notifyDefaultImpl<StopRequest<POLICY>>(lock, _onFinish); }
 
-    void send(util::Lock const& lock) final {
+    void send(replica::Lock const& lock) final {
         auto self = shared_from_base<StopRequest<POLICY>>();
         messenger()->send<typename POLICY::ResponseMessageType>(
                 worker(), id(), priority(), buffer(),
@@ -299,7 +300,7 @@ private:
         // results of the request. Note that the operation doesn't care
         // about the global state of the request (wether it's already finished
         // or not).
-        util::Lock lock(_mtx, context() + __func__);
+        replica::Lock lock(_mtx, context() + __func__);
 
         // Extract target request-specific parameters from the response if available.
         POLICY::extractTargetRequestParams(message, _targetRequestParams);
@@ -340,7 +341,7 @@ typedef StopRequest<StopDeleteRequestPolicy> StopDeleteRequest;
 typedef StopRequest<StopFindRequestPolicy> StopFindRequest;
 typedef StopRequest<StopFindAllRequestPolicy> StopFindAllRequest;
 typedef StopRequest<StopEchoRequestPolicy> StopEchoRequest;
-typedef StopRequest<StopIndexRequestPolicy> StopIndexRequest;
+typedef StopRequest<StopDirectorIndexRequestPolicy> StopDirectorIndexRequest;
 typedef StopRequest<StopSqlRequestPolicy> StopSqlQueryRequest;
 typedef StopRequest<StopSqlRequestPolicy> StopSqlCreateDbRequest;
 typedef StopRequest<StopSqlRequestPolicy> StopSqlDeleteDbRequest;

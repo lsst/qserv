@@ -56,7 +56,7 @@ enum ProtocolQueuedRequestType {
     REPLICA_FIND_ALL = 3;    // find all replicas and report their states
     TEST_ECHO        = 4;    // test the worker-side framework
     SQL              = 5;    // execute an SQL statement against the worker's database
-    INDEX            = 6;    // extract and return a collection of the "secondary index" data
+    INDEX            = 6;    // extract and return a collection of the "director" index data
 }
 
 // Request types for managing above defined requests
@@ -272,7 +272,7 @@ message ProtocolRequestSql {
 
 // This request is always queued.
 // This message is sent once after the header for the 'INDEX' request types
-message ProtocolRequestIndex {
+message ProtocolRequestDirectorIndex {
 
     required string database = 2;
     required string director_table = 6;
@@ -283,6 +283,16 @@ message ProtocolRequestIndex {
     // to be inspected. This parameter is used only if the above defined
     // 'has_transactions' is set to 'true'.
     required uint32 transaction_id = 5;
+
+    // The windowing parameters, where 'offset' specifies 0-based location
+    // of the first byte.
+    //
+    // Please, note that the actual data extraction from the target table into the CSV
+    // file at worker will be made when a request with 'offset' set to 0. Any subsequent
+    // requests where a value of 'offset' will be higher will read the specified range of
+    // bytes from an existing CSV file. The file will get deleted by the worker when it's
+    // been fully read.
+    optional uint64 offset = 7 [default = 0];
 }
 
 // This request is sent to stop an on-going replication (if any is still in progress).
@@ -720,7 +730,7 @@ message ProtocolResponseSql {
     optional ProtocolRequestSql request = 10;
 }
 
-message ProtocolResponseIndex {
+message ProtocolResponseDirectorIndex {
 
     /// The completion status of the operation
     required ProtocolStatus status = 8;
@@ -744,8 +754,8 @@ message ProtocolResponseIndex {
     /// MySQL-specific error
     optional string error = 5 [default = ""];
 
-    /// Full content of the TSV/CSV file in which is lines has a set of fields
-    /// to be ingested into the secondary index at Qserv master. The number and
+    /// Partial content of the TSV/CSV file in which is lines has a set of fields
+    /// to be ingested into the "director" index at Qserv master. The number and
     /// a schema of fields depends on a mode the request was made as well as on
     /// a mode of the request. For consolidated (not MySQL partitioned tables)
     /// each line of the file would be represented by the triplet:
@@ -758,9 +768,12 @@ message ProtocolResponseIndex {
     ///
     required bytes data = 6;
 
+    /// The total number of bytes in the CSV file.
+    required uint64 total_bytes = 9;
+
     /// Parameters of the original request to which this response
     /// is related
-    optional ProtocolRequestIndex request = 7;
+    optional ProtocolRequestDirectorIndex request = 7;
 }
 
 message ProtocolResponseDisposeStatus {

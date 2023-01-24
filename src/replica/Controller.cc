@@ -41,7 +41,7 @@
 #include "replica/FileUtils.h"
 #include "replica/FindRequest.h"
 #include "replica/FindAllRequest.h"
-#include "replica/IndexRequest.h"
+#include "replica/DirectorIndexRequest.h"
 #include "replica/Messenger.h"
 #include "replica/Performance.h"
 #include "replica/Registry.h"
@@ -226,13 +226,14 @@ EchoRequest::Ptr Controller::echo(string const& workerName, string const& data, 
             workerName, data, delay, onFinish, priority, keepTracking, jobId, requestExpirationIvalSec);
 }
 
-IndexRequest::Ptr Controller::index(string const& workerName, string const& database,
-                                    string const& directorTable, unsigned int chunk, bool hasTransactions,
-                                    TransactionId transactionId, IndexRequest::CallbackType const& onFinish,
-                                    int priority, bool keepTracking, string const& jobId,
-                                    unsigned int requestExpirationIvalSec) {
+DirectorIndexRequest::Ptr Controller::directorIndex(string const& workerName, string const& database,
+                                                    string const& directorTable, unsigned int chunk,
+                                                    bool hasTransactions, TransactionId transactionId,
+                                                    DirectorIndexRequest::CallbackType const& onFinish,
+                                                    int priority, bool keepTracking, string const& jobId,
+                                                    unsigned int requestExpirationIvalSec) {
     LOGS(_log, LOG_LVL_TRACE, _context(__func__));
-    return _submit<IndexRequest, decltype(database), decltype(directorTable), decltype(chunk),
+    return _submit<DirectorIndexRequest, decltype(database), decltype(directorTable), decltype(chunk),
                    decltype(hasTransactions), decltype(transactionId)>(
             workerName, database, directorTable, chunk, hasTransactions, transactionId, onFinish, priority,
             keepTracking, jobId, requestExpirationIvalSec);
@@ -457,7 +458,7 @@ ServiceReconfigRequest::Ptr Controller::reconfigWorkerService(
 }
 
 size_t Controller::numActiveRequests() const {
-    util::Lock lock(_mtx, _context(__func__));
+    replica::Lock lock(_mtx, _context(__func__));
     return _registry.size();
 }
 
@@ -473,7 +474,7 @@ void Controller::_finish(string const& id) {
     //   execution time of of the callback function.
     RequestWrapper::Ptr request;
     {
-        util::Lock lock(_mtx, _context(__func__));
+        replica::Lock lock(_mtx, _context(__func__));
         request = _registry[id];
         _registry.erase(id);
     }

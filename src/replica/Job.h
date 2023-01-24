@@ -39,7 +39,7 @@
 // Qserv headers
 #include "replica/Controller.h"
 #include "replica/ServiceProvider.h"
-#include "util/Mutex.h"
+#include "replica/Mutex.h"
 
 // This header declarations
 namespace lsst::qserv::replica {
@@ -219,7 +219,7 @@ protected:
      * subclass-specific actions to begin processing the request.
      * @param lock  A lock on Job::_mtx must be acquired by a caller of the method.
      */
-    virtual void startImpl(util::Lock const& lock) = 0;
+    virtual void startImpl(replica::Lock const& lock) = 0;
 
     /**
      * The sequence of actions to be executed when the job is transitioning into
@@ -232,14 +232,14 @@ protected:
      * @param lock  A lock on Job::_mtx must be acquired by a caller of the method.
      * @param extendedState  A specific state to be set upon the completion.
      */
-    void finish(util::Lock const& lock, ExtendedState extendedState);
+    void finish(replica::Lock const& lock, ExtendedState extendedState);
 
     /**
      * This method is supposed to be provided by subclasses to finalize request
      * processing as required by the subclass.
      * @param lock  A lock on Job::_mtx must be acquired by a caller of the method.
      */
-    virtual void cancelImpl(util::Lock const& lock) = 0;
+    virtual void cancelImpl(replica::Lock const& lock) = 0;
 
     /**
      * This method will begin an optional user protocol upon a completion
@@ -254,14 +254,14 @@ protected:
      * The standard implementation of this method in a context of some
      * subclass 'T' should looks like this:
      * @code
-     *   void T::notify(util::Lock const& lock) {
+     *   void T::notify(replica::Lock const& lock) {
      *       notifyDefaultImpl<T>(lock, _onFinish);
      *   }
      * @code
      * @see Job::notifyDefaultImpl
      * @param lock  A lock on Job::_mtx must be acquired by a caller of the method.
      */
-    virtual void notify(util::Lock const& lock) = 0;
+    virtual void notify(replica::Lock const& lock) = 0;
 
     /**
      * The helper function which pushes up-stream notifications on behalf of
@@ -277,7 +277,7 @@ protected:
      * @param onFinish  A callback function (if set) to be called.
      */
     template <class T>
-    void notifyDefaultImpl(util::Lock const& lock, typename T::CallbackType& onFinish) {
+    void notifyDefaultImpl(replica::Lock const& lock, typename T::CallbackType& onFinish) {
         if (nullptr != onFinish) {
             // Clearing the stored callback after finishing the up-stream notification
             // has two purposes:
@@ -302,7 +302,7 @@ protected:
      * @param state  The new primary state.
      * @param extendedState The (optional) new extended state.
      */
-    void setState(util::Lock const& lock, State state, ExtendedState extendedState = ExtendedState::NONE);
+    void setState(replica::Lock const& lock, State state, ExtendedState extendedState = ExtendedState::NONE);
 
 private:
     /**
@@ -315,7 +315,7 @@ private:
      * @param context  A context from which the state test is requested.
      * @throw std::logic_error  If the desired state requirement is not met.
      */
-    void _assertState(util::Lock const& lock, State desiredState, std::string const& context) const;
+    void _assertState(replica::Lock const& lock, State desiredState, std::string const& context) const;
 
     /**
      * Start the timer (if the corresponding Configuration parameter is set`).
@@ -323,7 +323,7 @@ private:
      * defined below will be called.
      * @param lock  A lock on Job::_mtx must be acquired by a caller of the method.
      */
-    void _startHeartbeatTimer(util::Lock const& lock);
+    void _startHeartbeatTimer(replica::Lock const& lock);
 
     /**
      * Job heartbeat timer's handler. The heartbeat interval (if any)
@@ -340,7 +340,7 @@ private:
      * defined below will be called.
      * @param lock  A lock on Job::_mtx must be acquired by a caller of the method.
      */
-    void _startExpirationTimer(util::Lock const& lock);
+    void _startExpirationTimer(replica::Lock const& lock);
 
     /**
      * Job expiration timer's handler. The expiration interval (if any)
@@ -352,7 +352,7 @@ private:
 
 protected:
     /// Mutex guarding internal state. This object is also used by subclasses.
-    mutable util::Mutex _mtx;
+    mutable replica::Mutex _mtx;
 
 private:
     /// The global counter for the number of instances of any subclasses.

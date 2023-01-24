@@ -98,7 +98,7 @@ list<pair<string, string>> SqlRowStatsJob::extendedPersistentState() const {
     return result;
 }
 
-list<SqlRequest::Ptr> SqlRowStatsJob::launchRequests(util::Lock const& lock, string const& worker,
+list<SqlRequest::Ptr> SqlRowStatsJob::launchRequests(replica::Lock const& lock, string const& worker,
                                                      size_t maxRequestsPerWorker) {
     list<SqlRequest::Ptr> requests;
     if (maxRequestsPerWorker == 0) return requests;
@@ -139,16 +139,16 @@ list<SqlRequest::Ptr> SqlRowStatsJob::launchRequests(util::Lock const& lock, str
     return requests;
 }
 
-void SqlRowStatsJob::stopRequest(util::Lock const& lock, SqlRequest::Ptr const& request) {
+void SqlRowStatsJob::stopRequest(replica::Lock const& lock, SqlRequest::Ptr const& request) {
     stopRequestDefaultImpl<StopSqlGetIndexesRequest>(lock, request);
 }
 
-void SqlRowStatsJob::notify(util::Lock const& lock) {
+void SqlRowStatsJob::notify(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "[" << typeName() << "]");
     notifyDefaultImpl<SqlRowStatsJob>(lock, _onFinish);
 }
 
-void SqlRowStatsJob::processResultAndFinish(util::Lock const& lock, ExtendedState extendedState) {
+void SqlRowStatsJob::processResultAndFinish(replica::Lock const& lock, ExtendedState extendedState) {
     string const context_ = context() + string(__func__) + " ";
 
     bool const isForced = stateUpdatePolicy() == StateUpdatePolicy::FORCED;

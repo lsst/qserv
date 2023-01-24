@@ -52,7 +52,7 @@
 #include "replica/DatabaseMySQL.h"
 #include "replica/DatabaseMySQLGenerator.h"
 #include "replica/DatabaseMySQLTypes.h"
-#include "util/Mutex.h"
+#include "replica/Mutex.h"
 
 // This header declarations
 namespace lsst::qserv::replica {
@@ -323,7 +323,7 @@ public:
      */
     template <typename T>
     T get(std::string const& category, std::string const& param) const {
-        util::Lock const lock(_mtx, _context(__func__));
+        replica::Lock const lock(_mtx, _context(__func__));
         nlohmann::json const obj = _get(lock, category, param);
         try {
             return obj.get<T>();
@@ -356,7 +356,7 @@ public:
     void set(std::string const& category, std::string const& param, T const& val) {
         std::string const context_ =
                 _context(__func__) + " category='" + category + "' param='" + param + "' ";
-        util::Lock const lock(_mtx, context_);
+        replica::Lock const lock(_mtx, context_);
         // Some parameters can't be updated using this interface.
         if (ConfigurationSchema::readOnly(category, param)) {
             throw std::logic_error(context_ + "the read-only parameters can't be updated via the API.");
@@ -685,7 +685,7 @@ private:
      * @param reset The flag (if set to 'true') will trigger the internal state reset
      *   to the default values of the parameters before applying the input configuration.
      */
-    void _load(util::Lock const& lock, nlohmann::json const& obj, bool reset);
+    void _load(replica::Lock const& lock, nlohmann::json const& obj, bool reset);
 
     /**
      * Load from MySQL. Parameters read from the database will be applied
@@ -697,12 +697,12 @@ private:
      * @param reset The flag (if set to 'true') will trigger the internal state reset
      *   to the default values of the parameters before applying the input configuration.
      */
-    void _load(util::Lock const& lock, std::string const& configUrl, bool reset);
+    void _load(replica::Lock const& lock, std::string const& configUrl, bool reset);
 
     /// @param lock The lock on '_mtx' to be acquired prior to calling the method.
     /// @param showPassword If a value of the flag is 'false' then hash a password in the result.
     /// @return The JSON representation of the object.
-    nlohmann::json _toJson(util::Lock const& lock, bool showPassword = false) const;
+    nlohmann::json _toJson(replica::Lock const& lock, bool showPassword = false) const;
 
     /**
      * Return a JSON object representing a parameter.
@@ -712,7 +712,7 @@ private:
      * @return A 'const' reference to a JSON object encapsulating the parameter's value and its type.
      * @throws std::invalid_argument If the parameter doesn't exist.
      */
-    nlohmann::json const& _get(util::Lock const& lock, std::string const& category,
+    nlohmann::json const& _get(replica::Lock const& lock, std::string const& category,
                                std::string const& param) const;
 
     /**
@@ -724,26 +724,26 @@ private:
      * @param param The name of the parameter within its category.
      * @return A reference to a JSON object encapsulating the parameter's value and its type.
      */
-    nlohmann::json& _get(util::Lock const& lock, std::string const& category, std::string const& param);
+    nlohmann::json& _get(replica::Lock const& lock, std::string const& category, std::string const& param);
 
     /// @return The number of workers workers meeting the specified criteria.
-    size_t _numWorkers(util::Lock const& lock, bool isEnabled = true, bool isReadOnly = false) const;
+    size_t _numWorkers(replica::Lock const& lock, bool isEnabled = true, bool isReadOnly = false) const;
 
     /**
      * Validate the input and add or update worker entry.
      * @param lock The lock on '_mtx' to be acquired prior to calling the method.
      * @return An updated worker description.
      */
-    WorkerInfo _updateWorker(util::Lock const& lock, WorkerInfo const& worker);
+    WorkerInfo _updateWorker(replica::Lock const& lock, WorkerInfo const& worker);
 
     /**
      * @param lock The lock on '_mtx' to be acquired prior to calling the method.
      * @return A family descriptor.
      * @throws std::invalid_argument If the name is empty or if no such entry exists.
      */
-    DatabaseFamilyInfo& _databaseFamilyInfo(util::Lock const& lock, std::string const& familyName);
+    DatabaseFamilyInfo& _databaseFamilyInfo(replica::Lock const& lock, std::string const& familyName);
 
-    DatabaseFamilyInfo const& _databaseFamilyInfo(util::Lock const& lock,
+    DatabaseFamilyInfo const& _databaseFamilyInfo(replica::Lock const& lock,
                                                   std::string const& familyName) const {
         return const_cast<Configuration*>(this)->_databaseFamilyInfo(lock, familyName);
     }
@@ -753,9 +753,9 @@ private:
      * @return A database descriptor.
      * @throws std::invalid_argument If the name is empty or if no such entry exists.
      */
-    DatabaseInfo& _databaseInfo(util::Lock const& lock, std::string const& databaseName);
+    DatabaseInfo& _databaseInfo(replica::Lock const& lock, std::string const& databaseName);
 
-    DatabaseInfo const& _databaseInfo(util::Lock const& lock, std::string const& databaseName) const {
+    DatabaseInfo const& _databaseInfo(replica::Lock const& lock, std::string const& databaseName) const {
         return const_cast<Configuration*>(this)->_databaseInfo(lock, databaseName);
     }
 
@@ -767,7 +767,7 @@ private:
      * @param publish The new state of the database.
      * @return An updated database descriptor.
      */
-    DatabaseInfo& _publishDatabase(util::Lock const& lock, std::string const& databaseName, bool publish);
+    DatabaseInfo& _publishDatabase(replica::Lock const& lock, std::string const& databaseName, bool publish);
 
     // Static parameters of the database connectors (read-write).
 
@@ -781,7 +781,7 @@ private:
     static std::string _qservWorkerDbUrl;
 
     // For implementing static synchronized methods.
-    static util::Mutex _classMtx;
+    static replica::Mutex _classMtx;
 
     // A source of the configuration.
     std::string _configUrl;
@@ -798,7 +798,7 @@ private:
     std::map<std::string, DatabaseInfo> _databases;
 
     // For implementing synchronized methods.
-    mutable util::Mutex _mtx;
+    mutable replica::Mutex _mtx;
 };
 
 }  // namespace lsst::qserv::replica

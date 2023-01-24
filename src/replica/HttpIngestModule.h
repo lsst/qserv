@@ -98,7 +98,7 @@ private:
 
     /**
      * Delete a database. All relevant data, including databases and tables at workers,
-     * the secondary index (if any), the Replication System's Configuration, database entries
+     * the "director" index (if any), the Replication System's Configuration, database entries
      * at Qserv czar  will get deleted.
      * @note This operation requires administrator-level privileges for deleting
      *   published databases.
@@ -246,22 +246,22 @@ private:
                                              bool tableImpl) const;
 
     /**
-     * Create an empty "secondary index" table partitioned using MySQL partitions.
+     * Create an empty "director" index table partitioned using MySQL partitions.
      * The table will be configured with a single initial partition. More partitions
      * corresponding to super-transactions open during catalog ingest sessions will
      * be added later.
      * @param database defines a scope of the operation
      * @param directorTableName the name of the director table
      */
-    void _createSecondaryIndex(DatabaseInfo const& database, std::string const& directorTableName) const;
+    void _createDirectorIndex(DatabaseInfo const& database, std::string const& directorTableName) const;
 
     /**
-     * Remove MySQL partitions from the "secondary index" table by turning it
+     * Remove MySQL partitions from the "director" index table by turning it
      * into a regular monolithic table.
      * @param database  defines a scope of the operation
      * @param directorTableName the name of the director table
      */
-    void _consolidateSecondaryIndex(DatabaseInfo const& database, std::string const& directorTableName) const;
+    void _consolidateDirectorIndex(DatabaseInfo const& database, std::string const& directorTableName) const;
 
     /**
      * This operation is called in a context of publishing new databases.

@@ -28,7 +28,7 @@
 #include <string>
 
 // Qserv headers
-#include "util/Mutex.h"
+#include "replica/Mutex.h"
 
 // This header declarations
 namespace lsst::qserv::replica {
@@ -200,7 +200,7 @@ private:
      * @return
      *   a collection of chunks grouped by owners
      */
-    void _lockedImpl(util::Lock const& mLock, std::string const& owner, OwnerToChunks& owner2chunks) const;
+    void _lockedImpl(replica::Lock const& mLock, std::string const& owner, OwnerToChunks& owner2chunks) const;
 
     /**
      * Actual implementation of the chunk release operation, which will attempt
@@ -226,13 +226,13 @@ private:
      * @return
      *   'true' if the operation was successful
      */
-    bool _releaseImpl(util::Lock const& mLock, Chunk const& chunk, std::string& owner);
+    bool _releaseImpl(replica::Lock const& mLock, Chunk const& chunk, std::string& owner);
 
     /// Mapping a chunk to its "owner" (the one which holds the lock)
     ChunkToOwner _chunk2owner;
 
     /// For thread safety where it's required
-    mutable util::Mutex _mtx;
+    mutable replica::Mutex _mtx;
 };
 
 }  // namespace lsst::qserv::replica

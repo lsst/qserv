@@ -67,7 +67,7 @@ SqlAlterTablesRequest::SqlAlterTablesRequest(ServiceProvider::Ptr const& service
     requestBody.set_batch_mode(true);
 }
 
-void SqlAlterTablesRequest::notify(util::Lock const& lock) {
+void SqlAlterTablesRequest::notify(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG,
          context() << __func__ << "[" << ProtocolRequestSql_Type_Name(requestBody.type()) << "]");
 

@@ -113,7 +113,7 @@ list<pair<string, string>> FixUpJob::persistentLogData() const {
     return result;
 }
 
-void FixUpJob::startImpl(util::Lock const& lock) {
+void FixUpJob::startImpl(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     // Launch the chained job to get chunk disposition
@@ -128,7 +128,7 @@ void FixUpJob::startImpl(util::Lock const& lock) {
     _findAllJob->start();
 }
 
-void FixUpJob::cancelImpl(util::Lock const& lock) {
+void FixUpJob::cancelImpl(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     // The algorithm will also clear resources taken by various
@@ -154,7 +154,7 @@ void FixUpJob::cancelImpl(util::Lock const& lock) {
     _requests.clear();
 }
 
-void FixUpJob::notify(util::Lock const& lock) {
+void FixUpJob::notify(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
     notifyDefaultImpl<FixUpJob>(lock, _onFinish);
 }
@@ -164,7 +164,7 @@ void FixUpJob::_onPrecursorJobFinish() {
 
     if (state() == State::FINISHED) return;
 
-    util::Lock lock(_mtx, context() + __func__);
+    replica::Lock lock(_mtx, context() + __func__);
 
     if (state() == State::FINISHED) return;
 
@@ -249,7 +249,7 @@ void FixUpJob::_onRequestFinish(ReplicationRequest::Ptr const& request) {
 
     if (state() == State::FINISHED) return;
 
-    util::Lock lock(_mtx, context() + __func__);
+    replica::Lock lock(_mtx, context() + __func__);
 
     if (state() == State::FINISHED) return;
 
@@ -271,7 +271,7 @@ void FixUpJob::_onRequestFinish(ReplicationRequest::Ptr const& request) {
     }
 }
 
-size_t FixUpJob::_launchNext(util::Lock const& lock, string const& destinationWorker, size_t maxRequests) {
+size_t FixUpJob::_launchNext(replica::Lock const& lock, string const& destinationWorker, size_t maxRequests) {
     if (maxRequests == 0) return 0;
 
     auto const self = shared_from_base<FixUpJob>();

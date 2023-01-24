@@ -62,7 +62,7 @@ SqlRowStatsRequest::SqlRowStatsRequest(ServiceProvider::Ptr const& serviceProvid
     requestBody.set_batch_mode(true);
 }
 
-void SqlRowStatsRequest::notify(util::Lock const& lock) {
+void SqlRowStatsRequest::notify(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG,
          context() << __func__ << "[" << ProtocolRequestSql_Type_Name(requestBody.type()) << "]");
     notifyDefaultImpl<SqlRowStatsRequest>(lock, _onFinish);

@@ -97,41 +97,6 @@ string jobCompletionErrorIfAny(SqlJob::Ptr const& job, string const& prefix) {
     return error;
 }
 
-/**
- * @brief Generate the name of a metadata table at czar for the specified data table.
- * @param databaseName The name of a database where the data table is residing.
- * @param tableName The name of the data table.
- * @param suffix The optional suffix for the metadata table.
- * @return std::string The name of the metadata table at czar.
- * @throws invalid_argument If the length of the resulting name exceeds the MySQL limit.
- */
-string tableNameBuilder(string const& databaseName, string const& tableName,
-                        string const& suffix = string()) {
-    size_t const tableNameLimit = 64;
-    string const name = databaseName + "__" + tableName + suffix;
-    if (name.size() > tableNameLimit) {
-        throw invalid_argument("HttpIngestModule::" + string(__func__) + " MySQL table name limit of " +
-                               to_string(tableNameLimit) + " characters has been exceeded for table '" +
-                               name + "'.");
-    }
-    return name;
-}
-
-/**
- * @return The name of a table at czar that stores indexes of the specified director table.
- * @see tableNameBuilder
- */
-string directorIndexTable(string const& databaseName, string const& tableName) {
-    return tableNameBuilder(databaseName, tableName);
-}
-
-/**
- * @return The name of a table at czar that stores table row counters of the specified data table.
- * @see tableNameBuilder
- */
-string rowCountersTable(string const& databaseName, string const& tableName) {
-    return tableNameBuilder(databaseName, tableName, "__rows");
-}
 }  // namespace
 
 namespace lsst::qserv::replica {
@@ -232,15 +197,15 @@ json HttpIngestModule::_addDatabase() {
     auto const numStripes = body().required<unsigned int>("num_stripes");
     auto const numSubStripes = body().required<unsigned int>("num_sub_stripes");
     auto const overlap = body().required<double>("overlap");
-    auto const enableAutoBuildSecondaryIndex = body().optional<unsigned int>("auto_build_secondary_index", 1);
-    auto const enableLocalLoadSecondaryIndex = body().optional<unsigned int>("local_load_secondary_index", 0);
+    auto const enableAutoBuildDirectorIndex = body().optional<unsigned int>("auto_build_secondary_index", 1);
+    auto const enableLocalLoadDirectorIndex = body().optional<unsigned int>("local_load_secondary_index", 0);
 
     debug(__func__, "database=" + databaseName);
-    debug(__func__, "numStripes=" + to_string(numStripes));
-    debug(__func__, "numSubStripes=" + to_string(numSubStripes));
+    debug(__func__, "num_stripes=" + to_string(numStripes));
+    debug(__func__, "num_sub_stripes=" + to_string(numSubStripes));
     debug(__func__, "overlap=" + to_string(overlap));
-    debug(__func__, "enableAutoBuildSecondaryIndex=" + to_string(enableAutoBuildSecondaryIndex ? 1 : 0));
-    debug(__func__, "enableLocalLoadSecondaryIndex=" + to_string(enableLocalLoadSecondaryIndex ? 1 : 0));
+    debug(__func__, "auto_build_secondary_index=" + to_string(enableAutoBuildDirectorIndex ? 1 : 0));
+    debug(__func__, "local_load_secondary_index=" + to_string(enableLocalLoadDirectorIndex ? 1 : 0));
 
     if (overlap < 0) throw HttpError(__func__, "overlap can't have a negative value");
 
@@ -291,15 +256,15 @@ json HttpIngestModule::_addDatabase() {
     // until they will be added as a separate step.
     auto database = config->addDatabase(databaseName, family);
 
-    // Register a requested mode for building the secondary index. If a value
+    // Register a requested mode for building the "director" index. If a value
     // of the parameter is set to 'true' (or '1' in the database) then contributions
     // into the index will be automatically made when committing transactions. Otherwise,
     // it's going to be up to a user's catalog ingest workflow to (re-)build
     // the index.
     databaseServices->saveIngestParam(database.name, "secondary-index", "auto-build",
-                                      to_string(enableAutoBuildSecondaryIndex ? 1 : 0));
+                                      to_string(enableAutoBuildDirectorIndex ? 1 : 0));
     databaseServices->saveIngestParam(database.name, "secondary-index", "local-load",
-                                      to_string(enableLocalLoadSecondaryIndex ? 1 : 0));
+                                      to_string(enableLocalLoadDirectorIndex ? 1 : 0));
 
     // Tell workers to reload their configurations
     error = reconfigureWorkers(database, allWorkers, workerReconfigTimeoutSec());
@@ -319,11 +284,11 @@ json HttpIngestModule::_publishDatabase() {
     auto const config = controller()->serviceProvider()->config();
 
     auto const databaseName = params().at("database");
-    bool const consolidateSecondaryIndex = body().optional<int>("consolidate_secondary_index", 0) != 0;
+    bool const consolidateDirectorIndex = body().optional<int>("consolidate_secondary_index", 0) != 0;
     bool const rowCountersDeployAtQserv = body().optional<int>("row_counters_deploy_at_qserv", 0) != 0;
 
     debug(__func__, "database=" + databaseName);
-    debug(__func__, "consolidate_secondary_index=" + bool2str(consolidateSecondaryIndex));
+    debug(__func__, "consolidate_secondary_index=" + bool2str(consolidateDirectorIndex));
     debug(__func__, "row_counters_deploy_at_qserv=" + bool2str(rowCountersDeployAtQserv));
 
     auto const database = config->databaseInfo(databaseName);
@@ -343,12 +308,12 @@ json HttpIngestModule::_publishDatabase() {
 
     // The operation can be vetoed by the corresponding workflow parameter requested
     // by a catalog ingest workflow at the database creation time.
-    if (autoBuildSecondaryIndex(database.name) and consolidateSecondaryIndex) {
+    if (autoBuildDirectorIndex(database.name) and consolidateDirectorIndex) {
         for (auto&& tableName : database.directorTables()) {
             auto const table = database.findTable(tableName);
             if (table.isPublished) continue;
             // This operation may take a while if the table has a large number of entries.
-            _consolidateSecondaryIndex(database, table.name);
+            _consolidateDirectorIndex(database, table.name);
         }
     }
 
@@ -451,14 +416,14 @@ json HttpIngestModule::_deleteDatabase() {
         auto const emptyChunkListTable = css::DbInterfaceMySql::getEmptyChunksTableName(database.name);
         conn->execute(g.dropTable(g.id("qservCssData", emptyChunkListTable), ifExists));
         for (auto const tableName : directorTables) {
-            string const query =
-                    g.dropTable(g.id("qservMeta", ::directorIndexTable(database.name, tableName)), ifExists);
+            string const query = g.dropTable(
+                    g.id("qservMeta", directorIndexTableName(database.name, tableName)), ifExists);
             conn->execute(query);
         }
         for (auto const tableName : database.tables()) {
             try {
-                string const query = g.dropTable(
-                        g.id("qservMeta", ::rowCountersTable(database.name, tableName)), ifExists);
+                string const query =
+                        g.dropTable(g.id("qservMeta", rowCountersTable(database.name, tableName)), ifExists);
                 conn->execute(query);
             } catch (invalid_argument const& ex) {
                 // This exception may be thrown by the table name generator if
@@ -641,14 +606,14 @@ json HttpIngestModule::_addTable() {
         if (!error.empty()) throw HttpError(__func__, error);
     }
 
-    // Create the secondary index table using an updated version of
+    // Create the "director" index table using an updated version of
     // the database descriptor.
     //
     // This operation can be vetoed by a catalog ingest workflow at the database
     // registration time.
-    if (autoBuildSecondaryIndex(database.name)) {
+    if (autoBuildDirectorIndex(database.name)) {
         if (table.isDirector) {
-            _createSecondaryIndex(config->databaseInfo(database.name), table.name);
+            _createDirectorIndex(config->databaseInfo(database.name), table.name);
         }
     }
 
@@ -705,14 +670,14 @@ json HttpIngestModule::_deleteTable() {
         conn->execute(g.dropTable(g.id(database.name, table.name), ifExists));
         // Remove the director index (if any)
         if (table.isDirector) {
-            string const query =
-                    g.dropTable(g.id("qservMeta", ::directorIndexTable(database.name, table.name)), ifExists);
+            string const query = g.dropTable(
+                    g.id("qservMeta", directorIndexTableName(database.name, table.name)), ifExists);
             conn->execute(query);
         }
         // Remove the row counters table (if any)
         try {
             string const query =
-                    g.dropTable(g.id("qservMeta", ::rowCountersTable(database.name, table.name)), ifExists);
+                    g.dropTable(g.id("qservMeta", rowCountersTable(database.name, table.name)), ifExists);
             conn->execute(query);
         } catch (invalid_argument const& ex) {
             // This exception may be thrown by the table name generator if
@@ -907,7 +872,7 @@ json HttpIngestModule::_scanTableStatsImpl(string const& databaseName, string co
         try {
             ConnectionHandler const h(qservMasterDbConnection("qservMeta"));
             QueryGenerator const g(h.conn);
-            string const countersTable = ::rowCountersTable(database.name, table.name);
+            string const countersTable = rowCountersTable(database.name, table.name);
             bool ifNotExists = true;
             list<SqlColDef> const columns = {SqlColDef{"chunk", "INT UNSIGNED NOT NULL"},
                                              SqlColDef{"num_rows", "BIGINT UNSIGNED DEFAULT 0"}};
@@ -955,7 +920,7 @@ json HttpIngestModule::_deleteTableStats() {
         ConnectionHandler const h(qservMasterDbConnection("qservMeta"));
         QueryGenerator const g(h.conn);
         bool const ifExists = true;
-        string const query = g.dropTable(::rowCountersTable(table.database, table.name), ifExists);
+        string const query = g.dropTable(rowCountersTable(table.database, table.name), ifExists);
         h.conn->executeInOwnTransaction([&query](decltype(h.conn) conn) { conn->execute(query); });
     } catch (exception const& ex) {
         string const msg = "Failed to delete metadata table with counters for table '" + table.name +
@@ -1320,8 +1285,8 @@ json HttpIngestModule::_buildEmptyChunksListImpl(string const& databaseName, boo
     return result;
 }
 
-void HttpIngestModule::_createSecondaryIndex(DatabaseInfo const& database,
-                                             string const& directorTableName) const {
+void HttpIngestModule::_createDirectorIndex(DatabaseInfo const& database,
+                                            string const& directorTableName) const {
     auto const& table = database.findTable(directorTableName);
     if (!table.isDirector) {
         throw logic_error("table '" + table.name + "' is not configured in database '" + database.name +
@@ -1336,7 +1301,7 @@ void HttpIngestModule::_createSecondaryIndex(DatabaseInfo const& database,
                           database.name + "'");
     }
 
-    // Find types of the secondary index table's columns
+    // Find types of the "director" index table's columns
     string primaryKeyColumnType;
     string const chunkIdColNameType = "INT";
     string const subChunkIdColNameType = "INT";
@@ -1356,7 +1321,7 @@ void HttpIngestModule::_createSecondaryIndex(DatabaseInfo const& database,
     ConnectionHandler const h(qservMasterDbConnection("qservMeta"));
     QueryGenerator const g(h.conn);
     bool const ifExists = true;
-    string const dropTableQuery = g.dropTable(::directorIndexTable(database.name, table.name), ifExists);
+    string const dropTableQuery = g.dropTable(directorIndexTableName(database.name, table.name), ifExists);
     bool const ifNotExists = true;
     list<SqlColDef> const columns = {SqlColDef{_partitionByColumn, _partitionByColumnType},
                                      SqlColDef{table.directorTable.primaryKeyColumn(), primaryKeyColumnType},
@@ -1365,19 +1330,20 @@ void HttpIngestModule::_createSecondaryIndex(DatabaseInfo const& database,
     list<string> const keys = {
             g.packTableKey("UNIQUE KEY", "", _partitionByColumn, table.directorTable.primaryKeyColumn()),
             g.packTableKey("KEY", "", table.directorTable.primaryKeyColumn())};
-    string const engine = "InnoDB";
+    auto const config = controller()->serviceProvider()->config();
     TransactionId const transactionId = 0;
-    string const createTableQuery = g.createTable(::directorIndexTable(database.name, table.name),
-                                                  ifNotExists, columns, keys, engine) +
-                                    g.partitionByList(_partitionByColumn) + g.partition(transactionId);
+    string const createTableQuery =
+            g.createTable(directorIndexTableName(database.name, table.name), ifNotExists, columns, keys,
+                          config->get<string>("controller", "director-index-engine")) +
+            g.partitionByList(_partitionByColumn) + g.partition(transactionId);
     h.conn->executeInOwnTransaction([&dropTableQuery, &createTableQuery](decltype(h.conn) conn) {
         conn->execute(dropTableQuery);
         conn->execute(createTableQuery);
     });
 }
 
-void HttpIngestModule::_consolidateSecondaryIndex(DatabaseInfo const& database,
-                                                  string const& directorTableName) const {
+void HttpIngestModule::_consolidateDirectorIndex(DatabaseInfo const& database,
+                                                 string const& directorTableName) const {
     auto const table = database.findTable(directorTableName);
     if (!table.isDirector) {
         throw logic_error("table '" + table.name + "' is not configured in database '" + database.name +
@@ -1389,7 +1355,7 @@ void HttpIngestModule::_consolidateSecondaryIndex(DatabaseInfo const& database,
     ConnectionHandler const h(qservMasterDbConnection("qservMeta"));
     QueryGenerator const g(h.conn);
     string const query =
-            g.alterTable(::directorIndexTable(database.name, table.name)) + g.removePartitioning();
+            g.alterTable(directorIndexTableName(database.name, table.name)) + g.removePartitioning();
     h.conn->executeInOwnTransaction([&query](decltype(h.conn) conn) { conn->execute(query); });
 }
 

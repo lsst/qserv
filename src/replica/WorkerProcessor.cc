@@ -38,7 +38,7 @@
 #include "replica/WorkerReplicationRequest.h"
 #include "replica/WorkerRequestFactory.h"
 #include "replica/WorkerSqlRequest.h"
-#include "replica/WorkerIndexRequest.h"
+#include "replica/WorkerDirectorIndexRequest.h"
 #include "util/BlockPost.h"
 
 // LSST headers
@@ -106,7 +106,7 @@ WorkerProcessor::WorkerProcessor(ServiceProvider::Ptr const& serviceProvider,
 
 void WorkerProcessor::run() {
     LOGS(_log, LOG_LVL_DEBUG, _context(__func__));
-    util::Lock lock(_mtx, _context(__func__));
+    replica::Lock lock(_mtx, _context(__func__));
 
     if (_state == STATE_IS_STOPPED) {
         size_t const numThreads =
@@ -135,7 +135,7 @@ void WorkerProcessor::run() {
 
 void WorkerProcessor::stop() {
     LOGS(_log, LOG_LVL_DEBUG, _context(__func__));
-    util::Lock lock(_mtx, _context(__func__));
+    replica::Lock lock(_mtx, _context(__func__));
 
     if (_state == STATE_IS_RUNNING) {
         // Tell each thread to stop.
@@ -152,7 +152,7 @@ void WorkerProcessor::stop() {
 
 void WorkerProcessor::drain() {
     LOGS(_log, LOG_LVL_DEBUG, _context(__func__));
-    util::Lock lock(_mtx, _context(__func__));
+    replica::Lock lock(_mtx, _context(__func__));
 
     // Collect identifiers of requests to be affected by the operation
     list<string> ids;
@@ -165,7 +165,7 @@ void WorkerProcessor::drain() {
 
 void WorkerProcessor::reconfig() {
     LOGS(_log, LOG_LVL_DEBUG, _context(__func__));
-    util::Lock lock(_mtx, _context(__func__));
+    replica::Lock lock(_mtx, _context(__func__));
     _serviceProvider->config()->reload();
 }
 
@@ -179,7 +179,7 @@ void WorkerProcessor::enqueueForReplication(string const& id, int32_t priority,
                             << "  worker_host: " << request.worker_host() << "  worker_port: "
                             << request.worker_port() << "  worker_data_dir: " << request.worker_data_dir());
 
-    util::Lock lock(_mtx, _context(__func__));
+    replica::Lock lock(_mtx, _context(__func__));
 
     // Verify a scope of the request to ensure it won't duplicate or interfere (with)
     // existing requests in the active (non-completed) queues. A reason why we're ignoring
@@ -222,7 +222,7 @@ void WorkerProcessor::enqueueForDeletion(string const& id, int32_t priority,
          _context(__func__) << "  id: " << id << "  db: " << request.database()
                             << "  chunk: " << request.chunk());
 
-    util::Lock lock(_mtx, _context(__func__));
+    replica::Lock lock(_mtx, _context(__func__));
 
     // Verify a scope of the request to ensure it won't duplicate or interfere (with)
     // existing requests in the active (non-completed) queues. A reason why we're ignoring
@@ -265,7 +265,7 @@ void WorkerProcessor::enqueueForFind(string const& id, int32_t priority,
                             << "  chunk: " << request.chunk()
                             << "  compute_cs: " << (request.compute_cs() ? "true" : "false"));
 
-    util::Lock lock(_mtx, _context(__func__));
+    replica::Lock lock(_mtx, _context(__func__));
 
     // The code below may catch exceptions if other parameters of the request
     // won't pass further validation against the present configuration of the request
@@ -295,7 +295,7 @@ void WorkerProcessor::enqueueForFindAll(string const& id, int32_t priority,
                                         ProtocolResponseFindAll& response) {
     LOGS(_log, LOG_LVL_DEBUG, _context(__func__) << "  id: " << id << "  db: " << request.database());
 
-    util::Lock lock(_mtx, _context(__func__));
+    replica::Lock lock(_mtx, _context(__func__));
 
     // The code below may catch exceptions if other parameters of the request
     // won't pass further validation against the present configuration of the request
@@ -326,7 +326,7 @@ void WorkerProcessor::enqueueForEcho(string const& id, int32_t priority,
          _context(__func__) << "  id: " << id << "  data.size: " << request.data().size()
                             << "  delay: " << request.delay());
 
-    util::Lock lock(_mtx, _context(__func__));
+    replica::Lock lock(_mtx, _context(__func__));
 
     // Instant response if no delay was requested
     if (0 == request.delay()) {
@@ -371,7 +371,7 @@ void WorkerProcessor::enqueueForSql(std::string const& id, int32_t priority,
          _context(__func__) << "  id: " << id << "  query: " << request.query()
                             << "  user: " << request.user());
 
-    util::Lock lock(_mtx, _context(__func__));
+    replica::Lock lock(_mtx, _context(__func__));
 
     // The code below may catch exceptions if other parameters of the request
     // won't pass further validation against the present configuration of the request
@@ -395,22 +395,23 @@ void WorkerProcessor::enqueueForSql(std::string const& id, int32_t priority,
     }
 }
 
-void WorkerProcessor::enqueueForIndex(string const& id, int32_t priority,
-                                      unsigned int requestExpirationIvalSec,
-                                      ProtocolRequestIndex const& request, ProtocolResponseIndex& response) {
+void WorkerProcessor::enqueueForDirectorIndex(string const& id, int32_t priority,
+                                              unsigned int requestExpirationIvalSec,
+                                              ProtocolRequestDirectorIndex const& request,
+                                              ProtocolResponseDirectorIndex& response) {
     LOGS(_log, LOG_LVL_DEBUG,
          _context(__func__) << "  id: " << id << "  db: " << request.database()
                             << "  chunk: " << request.chunk()
                             << "  has_transactions: " << (request.has_transactions() ? "true" : "false")
                             << "  transaction_id: " << request.transaction_id());
 
-    util::Lock lock(_mtx, _context(__func__));
+    replica::Lock lock(_mtx, _context(__func__));
 
     // The code below may catch exceptions if other parameters of the request
     // won't pass further validation against the present configuration of the request
     // processing service.
     try {
-        auto const ptr = _requestFactory.createIndexRequest(
+        auto const ptr = _requestFactory.createDirectorIndexRequest(
                 _worker, id, priority, bind(&WorkerProcessor::dispose, shared_from_this(), _1),
                 requestExpirationIvalSec, request);
         _newRequests.push(ptr);
@@ -428,7 +429,7 @@ void WorkerProcessor::enqueueForIndex(string const& id, int32_t priority,
     }
 }
 
-WorkerRequest::Ptr WorkerProcessor::_dequeueOrCancelImpl(util::Lock const& lock, string const& id) {
+WorkerRequest::Ptr WorkerProcessor::_dequeueOrCancelImpl(replica::Lock const& lock, string const& id) {
     LOGS(_log, LOG_LVL_DEBUG, _context(__func__) << "  id: " << id);
 
     // Still waiting in the queue?
@@ -480,9 +481,9 @@ WorkerRequest::Ptr WorkerProcessor::_dequeueOrCancelImpl(util::Lock const& lock,
             // states before reporting their new state via method:
             //    WorkerProcessor::_processingFinished()
             // Sometimes, the request just can't finish this in time due to
-            // util::Lock lock(_mtx) held by the current method. We shouldn't worry
+            // replica::Lock lock(_mtx) held by the current method. We shouldn't worry
             // about this situation here. The request will be moved into the next
-            // queue as soon as util::Lock lock(_mtx) will be released.
+            // queue as soon as replica::Lock lock(_mtx) will be released.
             case ProtocolStatus::SUCCESS:
             case ProtocolStatus::FAILED:
                 return ptr;
@@ -515,7 +516,7 @@ WorkerRequest::Ptr WorkerProcessor::_dequeueOrCancelImpl(util::Lock const& lock,
     return WorkerRequest::Ptr();
 }
 
-WorkerRequest::Ptr WorkerProcessor::_checkStatusImpl(util::Lock const& lock, string const& id) {
+WorkerRequest::Ptr WorkerProcessor::_checkStatusImpl(replica::Lock const& lock, string const& id) {
     LOGS(_log, LOG_LVL_DEBUG, _context(__func__) << "  id: " << id);
 
     // Still waiting in the queue?
@@ -546,9 +547,9 @@ WorkerRequest::Ptr WorkerProcessor::_checkStatusImpl(util::Lock const& lock, str
             // states before reporting their new state via method:
             //    WorkerProcessor::_processingFinished()
             // Sometimes, the request just can't finish this in time due to
-            // util::Lock lock(_mtx) held by the current method. We shouldn't worry
+            // replica::Lock lock(_mtx) held by the current method. We shouldn't worry
             // about this situation here. The request will be moved into the next
-            // queue as soon as util::Lock lock(_mtx) will be released.
+            // queue as soon as replica::Lock lock(_mtx) will be released.
             case ProtocolStatus::CANCELLED:
             case ProtocolStatus::SUCCESS:
             case ProtocolStatus::FAILED:
@@ -582,7 +583,7 @@ WorkerRequest::Ptr WorkerProcessor::_checkStatusImpl(util::Lock const& lock, str
 void WorkerProcessor::setServiceResponse(ProtocolServiceResponse& response, string const& id,
                                          ProtocolStatus status, bool extendedReport) {
     LOGS(_log, LOG_LVL_DEBUG, _context(__func__));
-    util::Lock lock(_mtx, _context(__func__));
+    replica::Lock lock(_mtx, _context(__func__));
 
     response.set_status(status);
     response.set_technology(_requestFactory.technology());
@@ -630,7 +631,7 @@ void WorkerProcessor::_setServiceResponseInfo(WorkerRequest::Ptr const& request,
         info->set_queued_type(ProtocolQueuedRequestType::TEST_ECHO);
     } else if (nullptr != dynamic_pointer_cast<WorkerSqlRequest>(request)) {
         info->set_queued_type(ProtocolQueuedRequestType::SQL);
-    } else if (nullptr != dynamic_pointer_cast<WorkerIndexRequest>(request)) {
+    } else if (nullptr != dynamic_pointer_cast<WorkerDirectorIndexRequest>(request)) {
         info->set_queued_type(ProtocolQueuedRequestType::INDEX);
     } else {
         throw logic_error(_classMethodContext(__func__) + "  unsupported request type: " + request->type() +
@@ -641,62 +642,30 @@ void WorkerProcessor::_setServiceResponseInfo(WorkerRequest::Ptr const& request,
 }
 
 bool WorkerProcessor::dispose(string const& id) {
-    util::Lock lock(_mtx, _context(__func__));
-
-    // Try finding a request in any queue.
-
+    replica::Lock lock(_mtx, _context(__func__));
+    // Note that only the finished requests are allowed to be disposed.
     bool found = false;
-
-    string queue;  // For logging the name of a queue where the request will
-                   // be found
-
-    // Still waiting in the queue? Then unconditionally remove before any of
-    // of the processing threads will get a chance to pick it up.
-    for (auto&& ptr : _newRequests) {
-        found = ptr->id() == id;
-        if (found) {
-            ptr->dispose();
-            _newRequests.remove(id);
-            queue = "new";
-            break;
-        }
+    if (auto itr = _finishedRequests.find(id); itr != _finishedRequests.end()) {
+        itr->second->dispose();
+        _finishedRequests.erase(itr);
+        found = true;
     }
-    if (not found) {
-        // Is it already being processed? If so then make sure the request gets
-        // cancelled before being removed from the queue.
-        // NOTE: this operation will still trigger a notification sent
-        auto itr = _inProgressRequests.find(id);
-        if (itr != _inProgressRequests.end()) {
-            itr->second->cancel();
-            itr->second->dispose();
-            _inProgressRequests.erase(itr);
-            queue = "in-progress";
-        } else {
-            // Has it already finished?
-            auto itr = _finishedRequests.find(id);
-            if (itr != _finishedRequests.end()) {
-                itr->second->dispose();
-                _finishedRequests.erase(itr);
-                queue = "finished";
-            }
-        }
-    }
-    LOGS(_log, LOG_LVL_TRACE, _context(__func__) << "  id: " << id << " queue: " << queue);
+    LOGS(_log, LOG_LVL_TRACE, _context(__func__) << " id: " << id << " found: " << bool2str(found));
     return found;
 }
 
 size_t WorkerProcessor::numNewRequests() const {
-    util::Lock lock(_mtx, _context(__func__));
+    replica::Lock lock(_mtx, _context(__func__));
     return _newRequests.size();
 }
 
 size_t WorkerProcessor::numInProgressRequests() const {
-    util::Lock lock(_mtx, _context(__func__));
+    replica::Lock lock(_mtx, _context(__func__));
     return _inProgressRequests.size();
 }
 
 size_t WorkerProcessor::numFinishedRequests() const {
-    util::Lock lock(_mtx, _context(__func__));
+    replica::Lock lock(_mtx, _context(__func__));
     return _finishedRequests.size();
 }
 
@@ -722,7 +691,7 @@ WorkerRequest::Ptr WorkerProcessor::_fetchNextForProcessing(WorkerProcessorThrea
         // the queue will be locked for all threads for the duration of
         // the wait.
         {
-            util::Lock lock(_mtx, _context(__func__));
+            replica::Lock lock(_mtx, _context(__func__));
 
             if (not _newRequests.empty()) {
                 WorkerRequest::Ptr request = _newRequests.top();
@@ -745,7 +714,7 @@ WorkerRequest::Ptr WorkerProcessor::_fetchNextForProcessing(WorkerProcessorThrea
 
 void WorkerProcessor::_processingRefused(WorkerRequest::Ptr const& request) {
     LOGS(_log, LOG_LVL_DEBUG, _context(__func__) << "  id: " << request->id());
-    util::Lock lock(_mtx, _context(__func__));
+    replica::Lock lock(_mtx, _context(__func__));
 
     // Note that disposed requests won't be found in any queue.
     auto itr = _inProgressRequests.find(request->id());
@@ -763,7 +732,7 @@ void WorkerProcessor::_processingFinished(WorkerRequest::Ptr const& request) {
          _context(__func__) << "  id: " << request->id()
                             << "  status: " << WorkerRequest::status2string(request->status()));
 
-    util::Lock lock(_mtx, _context(__func__));
+    replica::Lock lock(_mtx, _context(__func__));
 
     // Note that disposed requests won't be found in any queue.
     auto itr = _inProgressRequests.find(request->id());
@@ -775,7 +744,7 @@ void WorkerProcessor::_processingFinished(WorkerRequest::Ptr const& request) {
 
 void WorkerProcessor::_processorThreadStopped(WorkerProcessorThread::Ptr const& processorThread) {
     LOGS(_log, LOG_LVL_DEBUG, _context(__func__) << "  thread: " << processorThread->id());
-    util::Lock lock(_mtx, _context(__func__));
+    replica::Lock lock(_mtx, _context(__func__));
 
     if (_state == STATE_IS_STOPPING) {
         // Complete state transition if all threads are stopped
@@ -854,11 +823,11 @@ void WorkerProcessor::_setInfo(WorkerRequest::Ptr const& request, ProtocolRespon
     ptr->setInfo(response);
 }
 
-void WorkerProcessor::_setInfo(WorkerRequest::Ptr const& request, ProtocolResponseIndex& response) {
-    auto ptr = dynamic_pointer_cast<WorkerIndexRequest>(request);
+void WorkerProcessor::_setInfo(WorkerRequest::Ptr const& request, ProtocolResponseDirectorIndex& response) {
+    auto ptr = dynamic_pointer_cast<WorkerDirectorIndexRequest>(request);
     if (not ptr) {
         throw logic_error(_classMethodContext(__func__) +
-                          "(WorkerIndexRequest)"
+                          "(WorkerDirectorIndexRequest)"
                           "  incorrect dynamic type of request id: " +
                           request->id());
     }

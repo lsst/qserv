@@ -115,7 +115,7 @@ list<pair<string, string>> DeleteReplicaJob::persistentLogData() const {
     return result;
 }
 
-void DeleteReplicaJob::startImpl(util::Lock const& lock) {
+void DeleteReplicaJob::startImpl(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     // Check if configuration parameters are valid
@@ -198,8 +198,8 @@ void DeleteReplicaJob::startImpl(util::Lock const& lock) {
         bool const force = true;
         _qservRemoveReplica(lock, chunk(), databases, worker(), force,
                             [self](RemoveReplicaQservMgtRequest::Ptr const& request) {
-                                util::Lock lock(self->_mtx,
-                                                self->context() + string(__func__) + "::qservRemoveReplica");
+                                replica::Lock lock(self->_mtx, self->context() + string(__func__) +
+                                                                       "::qservRemoveReplica");
                                 switch (request->extendedState()) {
                                     case QservMgtRequest::ExtendedState::SUCCESS:
                                         // If there is a solid confirmation from Qserv on source node that the
@@ -221,7 +221,7 @@ void DeleteReplicaJob::startImpl(util::Lock const& lock) {
     }
 }
 
-void DeleteReplicaJob::cancelImpl(util::Lock const& lock) {
+void DeleteReplicaJob::cancelImpl(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     // The algorithm will also clear resources taken by various
@@ -241,12 +241,12 @@ void DeleteReplicaJob::cancelImpl(util::Lock const& lock) {
     _requests.clear();
 }
 
-void DeleteReplicaJob::notify(util::Lock const& lock) {
+void DeleteReplicaJob::notify(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
     notifyDefaultImpl<DeleteReplicaJob>(lock, _onFinish);
 }
 
-void DeleteReplicaJob::_beginDeleteReplica(util::Lock const& lock) {
+void DeleteReplicaJob::_beginDeleteReplica(replica::Lock const& lock) {
     auto self = shared_from_base<DeleteReplicaJob>();
 
     // VERY IMPORTANT: the requests are sent for participating databases
@@ -270,7 +270,7 @@ void DeleteReplicaJob::_onRequestFinish(DeleteRequest::Ptr const& request) {
                    << "  chunk=" << chunk());
 
     if (state() == State::FINISHED) return;
-    util::Lock lock(_mtx, context() + __func__);
+    replica::Lock lock(_mtx, context() + __func__);
     if (state() == State::FINISHED) return;
 
     ++_numRequestsFinished;
@@ -288,7 +288,7 @@ void DeleteReplicaJob::_onRequestFinish(DeleteRequest::Ptr const& request) {
                _numRequestsSuccess == _requests.size() ? ExtendedState::SUCCESS : ExtendedState::FAILED);
     }
 }
-void DeleteReplicaJob::_qservRemoveReplica(util::Lock const& lock, unsigned int chunk,
+void DeleteReplicaJob::_qservRemoveReplica(replica::Lock const& lock, unsigned int chunk,
                                            vector<string> const& databases, string const& worker, bool force,
                                            RemoveReplicaQservMgtRequest::CallbackType const& onFinish) {
     LOGS(_log, LOG_LVL_DEBUG,

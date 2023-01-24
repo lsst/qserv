@@ -20,20 +20,19 @@
  */
 
 // Class header
-#include "replica/IndexJob.h"
+#include "replica/DirectorIndexJob.h"
 
 // System headers
 #include <algorithm>
-#include <fstream>
+#include <chrono>
 #include <iostream>
 #include <limits>
 #include <stdexcept>
-
-// Third party headers
-#include "boost/filesystem.hpp"
+#include <thread>
 
 // Qserv headers
 #include "global/constants.h"
+#include "replica/Common.h"
 #include "replica/Configuration.h"
 #include "replica/DatabaseMySQL.h"
 #include "replica/ServiceProvider.h"
@@ -41,14 +40,15 @@
 
 // LSST headers
 #include "lsst/log/Log.h"
+#include "DirectorIndexJob.h"
 
 using namespace std;
-namespace fs = boost::filesystem;
+using namespace std::chrono_literals;
 using json = nlohmann::json;
 
 namespace {
 
-LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.IndexJob");
+LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.DirectorIndexJob");
 
 }  // namespace
 
@@ -56,7 +56,7 @@ namespace lsst::qserv::replica {
 
 using namespace database::mysql;
 
-json IndexJobResult::toJson() const {
+json DirectorIndexJob::Result::toJson() const {
     json result;
     for (auto&& workerItr : error) {
         string const& worker = workerItr.first;
@@ -71,55 +71,28 @@ json IndexJobResult::toJson() const {
     return result;
 }
 
-string IndexJob::typeName() { return "IndexJob"; }
+string DirectorIndexJob::typeName() { return "DirectorIndexJob"; }
 
-string IndexJob::toString(Destination destination) {
-    switch (destination) {
-        case DISCARD:
-            return "DISCARD";
-        case FILE:
-            return "FILE";
-        case FOLDER:
-            return "FOLDER";
-        case TABLE:
-            return "TABLE";
-    }
-    throw range_error(typeName() + "::" + string(__func__) + "  unhandled value of the parameter");
+DirectorIndexJob::Ptr DirectorIndexJob::create(string const& databaseName, string const& directorTableName,
+                                               bool hasTransactions, TransactionId transactionId,
+                                               bool allWorkers, bool localFile,
+                                               Controller::Ptr const& controller, string const& parentJobId,
+                                               CallbackType const& onFinish, int priority) {
+    return Ptr(new DirectorIndexJob(databaseName, directorTableName, hasTransactions, transactionId,
+                                    allWorkers, localFile, controller, parentJobId, onFinish, priority));
 }
 
-IndexJob::Destination IndexJob::fromString(string const& str) {
-    if (str == "DISCARD") return Destination::DISCARD;
-    if (str == "FILE") return Destination::FILE;
-    if (str == "FOLDER") return Destination::FOLDER;
-    if (str == "TABLE") return Destination::TABLE;
-    throw invalid_argument(typeName() + "::" + string(__func__) + "  input value '" + str +
-                           "' doesn't match any known option of the enumerator");
-}
-
-IndexJob::Ptr IndexJob::create(string const& databaseName, string const& directorTableName,
-                               bool hasTransactions, TransactionId transactionId, bool allWorkers,
-                               Destination destination, string const& destinationPath, bool localFile,
-                               Controller::Ptr const& controller, string const& parentJobId,
-                               CallbackType const& onFinish, int priority) {
-    return Ptr(new IndexJob(databaseName, directorTableName, hasTransactions, transactionId, allWorkers,
-                            destination, destinationPath, localFile, controller, parentJobId, onFinish,
-                            priority));
-}
-
-IndexJob::IndexJob(string const& databaseName, string const& directorTableName, bool hasTransactions,
-                   TransactionId transactionId, bool allWorkers, Destination destination,
-                   string const& destinationPath, bool localFile, Controller::Ptr const& controller,
-                   string const& parentJobId, CallbackType const& onFinish, int priority)
+DirectorIndexJob::DirectorIndexJob(string const& databaseName, string const& directorTableName,
+                                   bool hasTransactions, TransactionId transactionId, bool allWorkers,
+                                   bool localFile, Controller::Ptr const& controller,
+                                   string const& parentJobId, CallbackType const& onFinish, int priority)
         : Job(controller, parentJobId, "INDEX", priority),
           _directorTableName(directorTableName),
           _hasTransactions(hasTransactions),
           _transactionId(transactionId),
           _allWorkers(allWorkers),
-          _destination(destination),
-          _destinationPath(destinationPath),
           _localFile(localFile),
           _onFinish(onFinish) {
-    // Get and verify database status
     try {
         _database = controller->serviceProvider()->config()->databaseInfo(databaseName);
         if (!_database.findTable(directorTableName).isDirector) {
@@ -132,15 +105,13 @@ IndexJob::IndexJob(string const& databaseName, string const& directorTableName, 
     }
 }
 
-IndexJob::~IndexJob() { _rollbackTransaction(__func__); }
-
-Job::Progress IndexJob::progress() const {
+Job::Progress DirectorIndexJob::progress() const {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
-    util::Lock lock(_mtx, context() + __func__);
+    replica::Lock lock(_mtx, context() + __func__);
     return Progress{_completeChunks, _totalChunks};
 }
 
-IndexJobResult const& IndexJob::getResultData() const {
+DirectorIndexJob::Result const& DirectorIndexJob::getResultData() const {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     if (state() == State::FINISHED) return _resultData;
@@ -149,22 +120,19 @@ IndexJobResult const& IndexJob::getResultData() const {
                       "  the method can't be called while the job hasn't finished");
 }
 
-list<std::pair<string, string>> IndexJob::extendedPersistentState() const {
+list<std::pair<string, string>> DirectorIndexJob::extendedPersistentState() const {
     list<pair<string, string>> result;
     result.emplace_back("database", database());
     result.emplace_back("directorTable", directorTable());
     result.emplace_back("has_transactions", bool2str(hasTransactions()));
     result.emplace_back("transaction_id", to_string(transactionId()));
     result.emplace_back("all_workers", bool2str(allWorkers()));
-    result.emplace_back("destination", toString(destination()));
-    result.emplace_back("destination_path", destinationPath());
     result.emplace_back("local_file", bool2str(localFile()));
     return result;
 }
 
-list<pair<string, string>> IndexJob::persistentLogData() const {
+list<pair<string, string>> DirectorIndexJob::persistentLogData() const {
     // Report failed chunks only
-
     list<pair<string, string>> result;
     for (auto&& workerItr : getResultData().error) {
         auto&& worker = workerItr.first;
@@ -179,16 +147,16 @@ list<pair<string, string>> IndexJob::persistentLogData() const {
     return result;
 }
 
-void IndexJob::startImpl(util::Lock const& lock) {
+void DirectorIndexJob::startImpl(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     // ------------------------
     // Stage I: replica scanner
     // ------------------------
 
+    auto const config = controller()->serviceProvider()->config();
     auto const databaseServices = controller()->serviceProvider()->databaseServices();
-    auto const workerNames = allWorkers() ? controller()->serviceProvider()->config()->allWorkers()
-                                          : controller()->serviceProvider()->config()->workers();
+    auto const workerNames = allWorkers() ? config->allWorkers() : config->workers();
 
     // Initialize a collection of chunks grouped by workers, in a way which
     // would make an attempt to keep requests equally (as much as that's possible)
@@ -285,28 +253,33 @@ void IndexJob::startImpl(util::Lock const& lock) {
 
     // Launch the initial batch of requests in the number which won't exceed
     // the number of the service processing threads at each worker multiplied
-    // by the number of workers involved into the operation and by the "magic"
-    // number 8. The later is needed to absorb the latency of the network
-    // communications so that the worker threads would be able to work on
-    // another batch of the data extraction requests while results of the
-    // previous batch were being sent back to the Controller.
-
-    size_t const maxRequestsPerWorker = 8 * controller()->serviceProvider()->config()->get<size_t>(
-                                                    "worker", "num-svc-processing-threads");
-
+    // by the number of workers involved into the operation. This is needed
+    // to absorb the latency of the network and disk I/O, so that worker threads
+    // would be able to work on another batch of the data extraction requests while
+    // results of the previous batch were being sent back to the Controller.
+    size_t const maxRequestsPerWorker = config->get<size_t>("worker", "num-svc-processing-threads");
     for (auto&& worker : workerNames) {
         for (auto&& ptr : _launchRequests(lock, worker, maxRequestsPerWorker)) {
-            _requests[ptr->id()] = ptr;
+            _inFlightRequests[ptr->id()] = ptr;
         }
     }
 
     // In case if no workers or database are present in the Configuration
     // at this time.
+    if (_inFlightRequests.size() == 0) finish(lock, ExtendedState::SUCCESS);
 
-    if (_requests.size() == 0) finish(lock, ExtendedState::SUCCESS);
+    // Start a pool of threads for ingesting the "director" index data into MySQL.
+    // Note that threads are getting a copy of a shared pointer. This guarantees that
+    // the job will outlive the threads.
+    auto const self = shared_from_base<DirectorIndexJob>();
+    size_t const numThreads = config->get<size_t>("controller", "num-director-index-connections");
+    for (size_t i = 0; i < numThreads; ++i) {
+        std::thread t([self]() { self->_loadDataIntoTable(); });
+        t.detach();
+    }
 }
 
-void IndexJob::cancelImpl(util::Lock const& lock) {
+void DirectorIndexJob::cancelImpl(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     // The algorithm will also clear resources taken by various
@@ -318,153 +291,115 @@ void IndexJob::cancelImpl(util::Lock const& lock) {
     // job the request cancellation should be also followed (where it makes a sense)
     // by stopping the request at corresponding worker service.
 
-    for (auto&& itr : _requests) {
+    for (auto&& itr : _inFlightRequests) {
         auto&& ptr = itr.second;
         ptr->cancel();
         if (ptr->state() != Request::State::FINISHED) {
-            controller()->stopById<StopIndexRequest>(ptr->worker(), ptr->id(), nullptr, /* onFinish */
-                                                     priority(), true,                  /* keepTracking */
-                                                     id()                               /* jobId */
+            controller()->stopById<StopDirectorIndexRequest>(ptr->worker(), ptr->id(), nullptr, /* onFinish */
+                                                             priority(), true, /* keepTracking */
+                                                             id()              /* jobId */
             );
         }
     }
-    _requests.clear();
-    _rollbackTransaction(__func__);
+    _inFlightRequests.clear();
 }
 
-void IndexJob::notify(util::Lock const& lock) {
+void DirectorIndexJob::notify(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
-    notifyDefaultImpl<IndexJob>(lock, _onFinish);
+    notifyDefaultImpl<DirectorIndexJob>(lock, _onFinish);
 }
 
-void IndexJob::_onRequestFinish(IndexRequest::Ptr const& request) {
+void DirectorIndexJob::_onRequestFinish(DirectorIndexRequest::Ptr const& request) {
     // NOTE: this algorithm assumes "zero tolerance" to failures - any failure
     // in executing requests or processing data of the requests would result in
     // the job termination. The only exception from this rule is a scenario
     // when a target chunk table won't have a partition. This may be expected
     // for some chunk tables because they may not have contributions in a context
     // of the given super-transaction.
-    //
-    // TODO: reconsider this algorithm.
 
-    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  worker=" << request->worker());
-
-    if (state() == State::FINISHED) return;
-
-    util::Lock lock(_mtx, context() + __func__);
+    string const context_ = context() + string(__func__) + " worker=" + request->worker() + " ";
+    LOGS(_log, LOG_LVL_DEBUG, context_);
 
     if (state() == State::FINISHED) return;
+    replica::Lock lock(_mtx, context_);
+    if (state() == State::FINISHED) return;
 
-    _completeChunks++;
-
-    bool hasData = true;
-    if (request->extendedState() != Request::SUCCESS) {
-        if (request->extendedServerStatus() == ProtocolStatusExt::NO_SUCH_PARTITION) {
-            // OK to proceed. We just don't have any contribution into the
-            // partition.
-            hasData = false;
-        } else {
-            _resultData.error[request->worker()][request->chunk()] = request->responseData().error;
-            _rollbackTransaction(__func__);
-            finish(lock, ExtendedState::FAILED);
-            return;
-        }
+    if (request->extendedState() == Request::SUCCESS) {
+        // This request has data that will be loaded into the table.
+        _completedRequests.push_back(request);
+        _cv.notify_one();
+    } else if (request->extendedServerStatus() == ProtocolStatusExt::NO_SUCH_PARTITION) {
+        // No contribution is expected into the non-existing (in this chunk) partition.
+        // This is would be the normal situaton for many chunks. However, we still
+        // need to increment the counter of the fully completed chunks.
+        _completeChunks++;
+    } else {
+        _resultData.error[request->worker()][request->chunk()] = request->responseData().error;
+        finish(lock, ExtendedState::FAILED);
+        return;
     }
 
     // Submit a replacement request for the same worker BEFORE processing
     // results of the current one. This little optimization is meant to keep
-    // workers busy in case of a non-negligible latency in processing data of
-    // requests.
-
+    // workers busy as a compensatory mechanism for the non-negligible latencies
+    // in processing data of the completed requests.
     for (auto&& ptr : _launchRequests(lock, request->worker())) {
-        _requests[ptr->id()] = ptr;
+        _inFlightRequests[ptr->id()] = ptr;
     }
 
     // Removing request from the list before processing its data is fine as
     // we still have a shared pointer passed into this method. Note that
     // we need to erase completed requests from memory since they may carry
     // a significant amount of data.
+    _inFlightRequests.erase(request->id());
 
-    _requests.erase(request->id());
-    if (hasData) {
-        try {
-            _processRequestData(lock, request);
-        } catch (exception const& ex) {
-            string const error = "request data processing failed, ex: " + string(ex.what());
-            LOGS(_log, LOG_LVL_ERROR, context() << __func__ << "  " << error);
-            _resultData.error[request->worker()][request->chunk()] = error;
-            _rollbackTransaction(__func__);
-            finish(lock, ExtendedState::FAILED);
-            return;
-        }
+    // Evaluate the completion condition of the job.
+    if (_completeChunks == _totalChunks) {
+        finish(lock, ExtendedState::SUCCESS);
     }
-
-    // Evaluate for the completion condition of the job.
-    if (_requests.size() == 0) finish(lock, ExtendedState::SUCCESS);
 }
 
-void IndexJob::_processRequestData(util::Lock const& lock, IndexRequest::Ptr const& request) {
-    auto const writeIntoFile = [](string const& fileName, ios::openmode mode, string const& data) {
-        ofstream f(fileName, mode);
-        if (!f.good()) {
-            throw runtime_error(typeName() + "::_processRequestData" +
-                                "  failed to open/create/append file: " + fileName);
-        }
-        f << data;
-        f.close();
-    };
-    switch (_destination) {
-        case DISCARD:
-            break;
+void DirectorIndexJob::_loadDataIntoTable() {
+    string const context_ = context() + string(__func__) + " ";
+    LOGS(_log, LOG_LVL_DEBUG, context_);
 
-        case FILE: {
-            if (_destinationPath.empty()) {
-                cout << request->responseData().data;
-            } else {
-                writeIntoFile(_destinationPath, ios::app, request->responseData().data);
-            }
-            break;
-        }
-        case FOLDER: {
-            string const filePath = (_destinationPath.empty() ? "." : _destinationPath) + "/" + database() +
-                                    "_" + to_string(request->chunk()) + ".tsv";
-            writeIntoFile(filePath, ios::out | ios::trunc, request->responseData().data);
-            break;
-        }
-        case TABLE: {
-            auto const config = controller()->serviceProvider()->config();
+    // Open MySQL connection using the RAII-style handler that would automatically
+    // abort the transaction should any problem occured when loading data into the table.
+    Connection::Ptr conn;
+    try {
+        conn = Connection::open(Configuration::qservCzarDbParams(lsst::qserv::SEC_INDEX_DB));
+    } catch (exception const& ex) {
+        string const error =
+                context_ + "failed to connect to the czar's database server, ex: " + string(ex.what());
+        LOGS(_log, LOG_LVL_ERROR, error);
+        if (state() == State::FINISHED) return;
+        replica::Lock lock(_mtx, context_);
+        if (state() == State::FINISHED) return;
+        finish(lock, ExtendedState::FAILED);
+        return;
+    }
+    ConnectionHandler h(conn);
+    QueryGenerator const g(h.conn);
 
-            // ATTENTION: all exceptions which may be potentially thrown are
-            // supposed to be intercepted by a caller of the current method
-            // and be used for error reporting.
+    // Pool completed requests from the queue and process them.
+    while (true) {
+        // The method will return the null pointer if the job has finished.
+        auto const request = _nextRequest();
+        if (request == nullptr) break;
 
-            // Dump the data into a temporary file from where it would be loaded
-            // into the MySQL table. Note that the file must be readable by
-            // the MySQL service.
-            //
-            // TODO: consider using the named pipe (FIFO)
-
-            string const filePath = config->get<string>("database", "qserv-master-tmp-dir") + "/" +
-                                    database() + "_" + to_string(request->chunk()) +
-                                    (_hasTransactions ? "_p" + to_string(_transactionId) : "");
-            writeIntoFile(filePath, ios::out | ios::trunc, request->responseData().data);
-
-            // Open the database connection if this is the first batch of data
-            if (nullptr == _conn) {
-                _conn = Connection::open(Configuration::qservCzarDbParams(lsst::qserv::SEC_INDEX_DB));
-            }
-            QueryGenerator const g(_conn);
-            string const query =
-                    g.loadDataInfile(filePath, _destinationPath,
-                                     config->get<string>("worker", "ingest-charset-name"), _localFile);
-
-            _conn->executeInOwnTransaction([&](decltype(_conn) conn) {
+        // Load request's data into the destination table.
+        try {
+            string const query = g.loadDataInfile(
+                    request->responseData().fileName, directorIndexTableName(database(), directorTable()),
+                    controller()->serviceProvider()->config()->get<string>("worker", "ingest-charset-name"),
+                    localFile());
+            h.conn->executeInOwnTransaction([&](auto conn) {
                 conn->execute(query);
                 // Loading operations based on this mechanism won't result in throwing exceptions in
                 // case of certain types of problems encountered during the loading, such as
                 // out-of-range data, duplicate keys, etc. These errors are reported as warnings
                 // which need to be retrieved using a special call to the database API.
-                if (_localFile) {
+                if (localFile()) {
                     auto const warnings = conn->warnings();
                     if (!warnings.empty()) {
                         auto const& w = warnings.front();
@@ -477,54 +412,117 @@ void IndexJob::_processRequestData(util::Lock const& lock, IndexRequest::Ptr con
                 }
             });
 
-            // Make the best attempt to get rid of the temporary file. Ignore any errors
-            // for now. Just report them.
-            boost::system::error_code ec;
-            fs::remove(fs::path(filePath), ec);
-            if (ec.value() != 0) {
-                LOGS(_log, LOG_LVL_ERROR,
-                     context() << "::" << __func__ << "  "
-                               << "failed to remove the temporary file '" << filePath);
-            }
-            break;
+            // Decrement the counter for the number of the on-going loading operations.
+            replica::Lock lock(_mtx, context_);
+            _numLoadingRequests--;
+
+            // The counter of the fully completed chunks gets incremented only after
+            // succesfully finishing the ingest into the destination table.
+            _completeChunks++;
+
+        } catch (exception const& ex) {
+            string const error = context_ + "failed to load data into the 'director' index table, ex: " +
+                                 string(ex.what());
+            LOGS(_log, LOG_LVL_ERROR, error);
+            if (state() == State::FINISHED) return;
+            replica::Lock lock(_mtx, context_);
+            if (state() == State::FINISHED) return;
+            _resultData.error[request->worker()][request->chunk()] = error;
+            finish(lock, ExtendedState::FAILED);
+            return;
         }
-        default:
-            throw range_error(typeName() + "::" + string(__func__) +
-                              "  unsupported destination: " + toString(_destination));
     }
 }
 
-list<IndexRequest::Ptr> IndexJob::_launchRequests(util::Lock const& lock, string const& worker,
-                                                  size_t maxRequests) {
-    list<IndexRequest::Ptr> requests;
+DirectorIndexRequest::Ptr DirectorIndexJob::_nextRequest() {
+    string const context_ = context() + string(__func__) + " ";
+    LOGS(_log, LOG_LVL_DEBUG, context_);
 
+    // This method has to use std::condition_variable::wait_for()
+    // instead of std::condition_variable::wait() in order to allow rechecking
+    // changes in a status of the job, not just notifications on new entries
+    // in the queue _completedRequests.
+    //
+    // The re-check interval of 1s should be reasonable here since this type
+    // of jobs is designed for processing large amounts of data, which may
+    // take many minutes or even many hours.
+    chrono::milliseconds const jobStatusCheckIvalMsec{1s};
+
+    // Pull the next request from the queue or wait.
+    DirectorIndexRequest::Ptr request;
+    while (request == nullptr) {
+        if (state() == State::FINISHED) return nullptr;
+        unique_lock<mutex> lock(_mtx);
+        if (state() == State::FINISHED) return nullptr;
+
+        if (!_completedRequests.empty()) {
+            request = _completedRequests.front();
+            _completedRequests.pop_front();
+            _numLoadingRequests++;
+        } else {
+            _cv.wait_for(lock, jobStatusCheckIvalMsec, [&] {
+                if (state() == State::FINISHED) return true;
+                if (_completeChunks == _totalChunks) {
+                    // We got here because the main condition for completing the job
+                    // has been met. It means the job needs to be finished right away.
+                    // Unfortunately, the desired state transition can't be done under
+                    // the currently held lock of thr type std::unique_lock. The API for
+                    // the operation require acquering a different type of locks
+                    // represented by the class replica::Lock.
+                    return true;
+                }
+                if (!_completedRequests.empty()) {
+                    request = _completedRequests.front();
+                    _completedRequests.pop_front();
+                    _numLoadingRequests++;
+                    return true;
+                }
+                // Keep waiting before the next wakeup.
+                return false;
+            });
+            if (_completeChunks == _totalChunks) break;
+        }
+    }
+
+    // Re-evaluate the current state of the job under a different type
+    // of lock that's suitable for making state transitions of the job
+    // if needed.
+    if (state() == State::FINISHED) return nullptr;
+    replica::Lock lock(_mtx, context_);
+    if (state() == State::FINISHED) return nullptr;
+
+    if (_completeChunks == _totalChunks) {
+        finish(lock, ExtendedState::SUCCESS);
+        return nullptr;
+    }
+    LOGS(_log, LOG_LVL_DEBUG,
+         context_ << "request: " << request->id() << " _inFlightRequests.size(): " << _inFlightRequests.size()
+                  << " _completedRequests.size(): " << _completedRequests.size()
+                  << " _numLoadingRequests: " << _numLoadingRequests
+                  << " _completeChunks: " << _completeChunks << " _totalChunks: " << _totalChunks);
+    return request;
+}
+
+list<DirectorIndexRequest::Ptr> DirectorIndexJob::_launchRequests(replica::Lock const& lock,
+                                                                  string const& worker, size_t maxRequests) {
     // Create as many requests as specified by the corresponding parameter of
     // the method or as many as are still available for the specified
     // worker (not to exceed the limit) by popping chunk numbers from the worker's
     // queue.
-
-    auto const self = shared_from_base<IndexJob>();
-
-    while (_chunks[worker].size() > 0 and requests.size() < maxRequests) {
+    list<DirectorIndexRequest::Ptr> requests;
+    auto const self = shared_from_base<DirectorIndexJob>();
+    while (_chunks[worker].size() > 0 && requests.size() < maxRequests) {
         auto const chunk = _chunks[worker].front();
         _chunks[worker].pop();
 
-        requests.push_back(controller()->index(
+        requests.push_back(controller()->directorIndex(
                 worker, database(), directorTable(), chunk, hasTransactions(), transactionId(),
-                [self](IndexRequest::Ptr const& request) { self->_onRequestFinish(request); }, priority(),
-                true, /* keepTracking*/
-                id()  /* jobId */
+                [self](DirectorIndexRequest::Ptr const& request) { self->_onRequestFinish(request); },
+                priority(), true, /* keepTracking*/
+                id()              /* jobId */
                 ));
     }
     return requests;
-}
-
-void IndexJob::_rollbackTransaction(string const& func) {
-    try {
-        if ((nullptr != _conn) and _conn->inTransaction()) _conn->rollback();
-    } catch (exception const& ex) {
-        LOGS(_log, LOG_LVL_ERROR, context() << func << "  transaction rollback failed, ex: " << ex.what());
-    }
 }
 
 }  // namespace lsst::qserv::replica
