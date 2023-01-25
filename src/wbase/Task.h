@@ -35,6 +35,9 @@
 #include <sstream>
 #include <string>
 
+// Third party headers
+#include "nlohmann/json.hpp"
+
 // Qserv headers
 #include "global/intTypes.h"
 #include "memman/MemMan.h"
@@ -80,8 +83,6 @@ public:
     virtual ~TaskScheduler() {}
     virtual void taskCancelled(Task*) = 0;  ///< Repeated calls must be harmless.
     virtual bool removeTask(std::shared_ptr<Task> const& task, bool removeRunning) = 0;
-
-    virtual nlohmann::json getJson() const = 0;
 
     util::HistogramRolling::Ptr histTimeOfRunningTasks;       ///< Store information about running tasks
     util::HistogramRolling::Ptr histTimeOfTransmittingTasks;  ///< Store information about transmitting tasks.

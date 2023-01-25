@@ -127,15 +127,14 @@ nlohmann::json SchedulerBase::statusToJson() {
     }
     status["query_id_to_count"] = queryIdToCount;
     status["chunk_to_num_tasks"] = chunkToNumTasks;
+    status["histograms"] =
+            nlohmann::json::object({{"timeOfTransmittingTasks", histTimeOfTransmittingTasks->getJson()},
+                                    {"timeOfRunningTasks", histTimeOfRunningTasks->getJson()},
+                                    {"queuedTasks", _histQueuedTasks->getJson()},
+                                    {"runningTasks", _histRunningTasks->getJson()},
+                                    {"transmittingTasks", _histTransmittingTasks->getJson()},
+                                    {"recentlyCompletedTasks", _histRecentlyCompletedTasks->getJson()}});
     return status;
-}
-
-nlohmann::json SchedulerBase::getJson() const {
-    nlohmann::json js = {{"SchedulerName", getName()},          histTimeOfTransmittingTasks->getJson(),
-                         histTimeOfRunningTasks->getJson(),     _histQueuedTasks->getJson(),
-                         _histRunningTasks->getJson(),          _histTransmittingTasks->getJson(),
-                         _histRecentlyCompletedTasks->getJson()};
-    return js;
 }
 
 void SchedulerBase::setMaxActiveChunks(int maxActive) {
