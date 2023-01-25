@@ -325,7 +325,8 @@ bool QueryRunner::_dispatchChannel() {
             }
             double runTimeSeconds = primeT.getElapsed();
             double subchunkRunTimeSeconds = subChunkT.getElapsed();
-            _task->getQueryStats()->addTaskRunQuery(runTimeSeconds, subchunkRunTimeSeconds);
+            auto qStats = _task->getQueryStats();
+            if (qStats != nullptr) qStats->addTaskRunQuery(runTimeSeconds, subchunkRunTimeSeconds);
 
             util::Timer transmitT;  /// Transmitting time starts now.
             transmitT.start();
