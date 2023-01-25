@@ -522,6 +522,7 @@ void QueryStatistics::addTaskTransmit(double timeSeconds, int64_t bytesTransmitt
     _histTimeTransmittingPerTask->addEntry(timeSeconds);
     _histTimeTransmittingPerTask->addEntry(bytesTransmitted);
     _histRowsPerTask->addEntry(rowsTransmitted);
+    _histSizePerTask->addEntry(bytesTransmitted);
 }
 
 void QueryStatistics::addTaskRunQuery(double runTimeSeconds, double subchunkRunTimeSeconds) {
