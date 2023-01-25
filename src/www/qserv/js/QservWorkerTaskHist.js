@@ -11,9 +11,9 @@ function(CSSLoader,
          Common,
          _) {
 
-    CSSLoader.load('qserv/css/QservWorkerHistograms.css');
+    CSSLoader.load('qserv/css/QservWorkerTaskHist.css');
 
-    class QservWorkerHistograms extends FwkApplication {
+    class QservWorkerTaskHist extends FwkApplication {
 
         constructor(name) {
             super(name);
@@ -75,14 +75,14 @@ function(CSSLoader,
             if (this._initialized) return;
             this._initialized = true;
             let html = `
-<div class="row" id="fwk-qserv-histograms-controls">
+<div class="row" id="fwk-qserv-task-hist-controls">
   <div class="col">
     <div class="form-row">
       <div class="form-group col-md-2">
         <label for="histogram-name">Histogram:</label>
         <select id="histogram-name" class="form-control form-control-selector">`;
-            for (let i in QservWorkerHistograms._histogram_names) {
-                const name = QservWorkerHistograms._histogram_names[i];
+            for (let i in QservWorkerTaskHist._histogram_names) {
+                const name = QservWorkerTaskHist._histogram_names[i];
                 html += `
           <option value="${name}">${name}</option>`;
             }
@@ -110,9 +110,9 @@ function(CSSLoader,
 </div>
 <div class="row">
   <div class="col">
-    <table class="table table-sm table-hover table-bordered" id="fwk-qserv-histograms">
+    <table class="table table-sm table-hover table-bordered" id="fwk-qserv-task-hist">
       <thead class="thead-light">
-        ${QservWorkerHistograms._table_head()}
+        ${QservWorkerTaskHist._table_head()}
       </thead>
       <caption class="updating">Loading...</caption>
       <tbody></tbody>
@@ -124,7 +124,7 @@ function(CSSLoader,
                 this._load();
             });
             cont.find("button#reset-histograms-form").click(() => {
-                this._set_histogram_name(QservWorkerHistograms._histogram_names[0]);
+                this._set_histogram_name(QservWorkerTaskHist._histogram_names[0]);
                 this._set_update_interval_sec(10);
                 this._load();
             });
@@ -146,7 +146,7 @@ function(CSSLoader,
          */
         _table() {
             if (this._table_obj === undefined) {
-                this._table_obj = this.fwk_app_container.find('table#fwk-qserv-histograms');
+                this._table_obj = this.fwk_app_container.find('table#fwk-qserv-task-hist');
             }
             return this._table_obj;
         }
@@ -185,7 +185,7 @@ function(CSSLoader,
         _display(data) {
             const queryInspectTitle = "Click to see detailed info (progress, messages, etc.) on the query.";
             const histogram_name = this._histogram_name();
-            let thead_html = QservWorkerHistograms._table_head();
+            let thead_html = QservWorkerTaskHist._table_head();
             let tbody_html = '';
             for (let worker in data) {
                 if (!data[worker].success || _.isUndefined(data[worker].info.processor) ||
@@ -203,7 +203,7 @@ function(CSSLoader,
                     if (!_.has(histograms, histogram_name)) continue;
                     let histogram = histograms[histogram_name];
                     if (_.isEmpty(html)) {
-                        thead_html = QservWorkerHistograms._table_head(histogram);
+                        thead_html = QservWorkerTaskHist._table_head(histogram);
                     }
                     html += `
 <tr id="${queryId}">
@@ -239,5 +239,5 @@ rowspan++;
             tbody.find("button.inspect-query").click(displayQuery);
         }
     }
-    return QservWorkerHistograms;
+    return QservWorkerTaskHist;
 });

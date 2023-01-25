@@ -1,0 +1,24 @@
+#fwk-qserv-task-hist-controls label {
+    font-weight:    bold;
+}
+table#fwk-qserv-task-hist caption {
+    caption-side:   top;
+    text-align:     right;
+    padding-top:    0;
+}
+table#fwk-qserv-task-hist > thead > tr > th.sticky {
+    position:sticky;
+    top:80px;
+    z-index:2;
+}
+table#fwk-qserv-task-hist tbody th,
+table#fwk-qserv-task-hist tbody td {
+    vertical-align:middle;
+}
+table#fwk-qserv-task-hist pre {
+    padding: 0;
+    margin: 0;
+}
+table#fwk-qserv-task-hist caption.updating {
+    background-color: #ffeeba;
+}
