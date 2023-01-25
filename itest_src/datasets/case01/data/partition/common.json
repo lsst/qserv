@@ -2,7 +2,7 @@
 "htm":{
     "level":8
 },
-"dirDb":"qservTest_case01_qserv",
+"dirDb":"qcase01",
 "dirTable":"Object",
 "part":{
     "num-stripes":85,

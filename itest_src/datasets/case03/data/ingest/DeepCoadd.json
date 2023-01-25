@@ -1,7 +1,7 @@
 {
     "version": 12,
     "auth_key":"",
-    "database":"qservTest_case03_qserv",
+    "database":"qcase03",
     "table":"DeepCoadd",
     "is_partitioned":0,
     "schema":[
@@ -41,4 +41,4 @@
         {"name":"path", "type":"varchar(255) NOT NULL"}
     ],
     "fields_terminated_by":","
-} 
+}

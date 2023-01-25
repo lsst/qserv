@@ -10,11 +10,10 @@ Administration Guide
 ####################
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 4
 
    docker
    k8s
+   qserv-ingest/index
    configuration
    test-set
-   gb-sized-integration-test
-   data-loader

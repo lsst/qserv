@@ -1,7 +1,7 @@
 {
     "version": 12,
     "auth_key":"",
-    "database":"qservTest_case01_qserv",
+    "database":"qcase01",
     "table":"Object",
     "is_partitioned":1,
     "director_table":"",

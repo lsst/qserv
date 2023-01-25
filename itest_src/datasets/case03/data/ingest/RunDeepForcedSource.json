@@ -1,7 +1,7 @@
 {
     "version": 12,
     "auth_key":"",
-    "database":"qservTest_case03_qserv",
+    "database":"qcase03",
     "table":"RunDeepForcedSource",
     "is_partitioned":1,
     "director_table":"RunDeepSource",
