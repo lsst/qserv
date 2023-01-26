@@ -78,6 +78,10 @@ function(CSSLoader,
 <div class="row" id="fwk-qserv-task-hist-controls">
   <div class="col">
     <div class="form-row">
+      <div class="form-group col-md-1">
+        <label for="qid">QID:</label>
+        <input id="qid" type="number" value="" class="form-control form-control-selector">
+      </div>
       <div class="form-group col-md-2">
         <label for="histogram-name">Histogram:</label>
         <select id="histogram-name" class="form-control form-control-selector">`;
@@ -124,6 +128,7 @@ function(CSSLoader,
                 this._load();
             });
             cont.find("button#reset-histograms-form").click(() => {
+                this._set_qid("");
                 this._set_histogram_name(QservWorkerTaskHist._histogram_names[0]);
                 this._set_update_interval_sec(10);
                 this._load();
@@ -136,10 +141,12 @@ function(CSSLoader,
             }
             return this._form_control_obj[id];
         }
-        _update_interval_sec() { return this._form_control('select', 'update-interval').val(); }
-        _set_update_interval_sec(val) { this._form_control('select', 'update-interval').val(val); }
+        _qid() { return this._form_control('input', 'qid').val(); }
+        _set_qid(val) { this._form_control('input', 'qid').val(val); }
         _histogram_name() { return this._form_control('select', 'histogram-name').val(); }
         _set_histogram_name(val) { this._form_control('select', 'histogram-name').val(val); }
+        _update_interval_sec() { return this._form_control('select', 'update-interval').val(); }
+        _set_update_interval_sec(val) { this._form_control('select', 'update-interval').val(val); }
 
         /**
          * Table for displaying histograms that are being produced at workers.
@@ -184,6 +191,7 @@ function(CSSLoader,
          */
         _display(data) {
             const queryInspectTitle = "Click to see detailed info (progress, messages, etc.) on the query.";
+            const qid = this._qid();
             const histogram_name = this._histogram_name();
             let thead_html = QservWorkerTaskHist._table_head();
             let tbody_html = '';
@@ -198,6 +206,7 @@ function(CSSLoader,
                 let rowspan = 1;
                 let html   = '';
                 for (let queryId in query_stats) {
+                    if (!_.isEmpty(qid) && (qid !== queryId)) continue;
                     if (!_.has(query_stats[queryId], "histograms")) continue;
                     let histograms = query_stats[queryId].histograms;
                     if (!_.has(histograms, histogram_name)) continue;
@@ -211,13 +220,13 @@ function(CSSLoader,
   <td style="text-align:center; padding-top:0; padding-bottom:0">
     <button class="btn btn-outline-info btn-sm inspect-query" style="height:20px; margin:0px;" title="${queryInspectTitle}"></button>
   </td>
-  <td style="text-align:right;"><pre>${histogram.total.toFixed(3)}</pre></td>
-  <td style="text-align:right;"><pre>${histogram.totalCount}</pre></td>
-  <th style="text-align:right;"><pre>${histogram.avg.toFixed(3)}</pre></th>`;
+  <td style="text-align:right;"><pre>${histogram.total ? histogram.total.toFixed(3) : ''}</pre></td>
+  <td style="text-align:right;"><pre>${histogram.totalCount ? histogram.totalCount : ''}</pre></td>
+  <th style="text-align:right;"><pre>${histogram.avg ? histogram.avg.toFixed(3) : ''}</pre></th>`;
                     for (let i in histogram.buckets) {
                         let bucket = histogram.buckets[i];
                         html += `
-  <td style="text-align:right;"><pre>${bucket.count}</pre></td>`;
+  <th style="text-align:right;"><pre>${bucket.count ? bucket.count : ''}</pre></th>`;
                     }
                     html += `
 </tr>`;
