@@ -1,0 +1,24 @@
+#fwk-qserv-scheduler-hist-controls label {
+    font-weight:    bold;
+}
+table#fwk-qserv-scheduler-hist caption {
+    caption-side:   top;
+    text-align:     right;
+    padding-top:    0;
+}
+table#fwk-qserv-scheduler-hist > thead > tr > th.sticky {
+    position:sticky;
+    top:80px;
+    z-index:2;
+}
+table#fwk-qserv-scheduler-hist tbody th,
+table#fwk-qserv-scheduler-hist tbody td {
+    vertical-align:middle;
+}
+table#fwk-qserv-scheduler-hist pre {
+    padding: 0;
+    margin: 0;
+}
+table#fwk-qserv-scheduler-hist caption.updating {
+    background-color: #ffeeba;
+}

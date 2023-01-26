@@ -11,9 +11,9 @@ function(CSSLoader,
          Common,
          _) {
 
-    CSSLoader.load('qserv/css/QservWorkerHistograms.css');
+    CSSLoader.load('qserv/css/QservWorkerSchedulerHist.css');
 
-    class QservWorkerHistograms extends FwkApplication {
+    class QservWorkerSchedulerHist extends FwkApplication {
 
         constructor(name) {
             super(name);
@@ -39,12 +39,20 @@ function(CSSLoader,
                 }
             }
         }
+        static _scheduler_names = [
+          'Group',
+          'Slow',
+          'Fast',
+          'Med',
+          'Snail'
+        ];
         static _histogram_names = [
-            'timeRunningPerTask',
-            'timeSubchunkPerTask',
-            'timeTransmittingPerTask',
-            'sizePerTask',
-            'rowsPerTask'
+            'timeOfTransmittingTasks',
+            'timeOfRunningTasks',
+            'queuedTasks',
+            'runningTasks',
+            'transmittingTasks',
+            'recentlyCompletedTasks'
         ];
         static _table_head(histogram) {
             if (_.isUndefined(histogram)) {
@@ -56,15 +64,14 @@ function(CSSLoader,
             let html = `
 <tr>
   <th class="sticky">worker</th>
-  <th class="sticky" style="text-align:right;">QID</th>
-  <th class="sticky" style="text-align:center;"><i class="bi bi-clipboard-fill"></i></th>
+  <th class="sticky">Scheduler</th>
   <th class="sticky" style="text-align:right;">total</th>
   <th class="sticky" style="text-align:right;">totalCount</th>
   <th class="sticky" style="text-align:right;">avg</th>`;
             for (let i in histogram.buckets) {
                 let bucket = histogram.buckets[i];
                 html += `
-<th class="sticky" style="text-align:right;">${i == 0 ? "&le;&nbsp;" : ""}${bucket.maxVal}</th>`;
+  <th class="sticky" style="text-align:right;">${i == 0 ? "&le;&nbsp;" : ""}${bucket.maxVal}</th>`;
             }
             html += `
 </tr>`;
@@ -75,14 +82,26 @@ function(CSSLoader,
             if (this._initialized) return;
             this._initialized = true;
             let html = `
-<div class="row" id="fwk-qserv-histograms-controls">
+<div class="row" id="fwk-qserv-scheduler-hist-controls">
   <div class="col">
     <div class="form-row">
+      <div class="form-group col-md-1">
+        <label for="scheduler-name">Scheduler:</label>
+        <select id="scheduler-name" class="form-control form-control-selector">
+          <option value="">&lt;any&gt;</option>`;
+            for (let i in QservWorkerSchedulerHist._scheduler_names) {
+                const name = QservWorkerSchedulerHist._scheduler_names[i];
+                html += `
+          <option value="Sched${name}">${name}</option>`;
+            }
+        html += `
+        </select>
+      </div>
       <div class="form-group col-md-2">
         <label for="histogram-name">Histogram:</label>
         <select id="histogram-name" class="form-control form-control-selector">`;
-            for (let i in QservWorkerHistograms._histogram_names) {
-                const name = QservWorkerHistograms._histogram_names[i];
+            for (let i in QservWorkerSchedulerHist._histogram_names) {
+                const name = QservWorkerSchedulerHist._histogram_names[i];
                 html += `
           <option value="${name}">${name}</option>`;
             }
@@ -110,9 +129,9 @@ function(CSSLoader,
 </div>
 <div class="row">
   <div class="col">
-    <table class="table table-sm table-hover table-bordered" id="fwk-qserv-histograms">
+    <table class="table table-sm table-hover table-bordered" id="fwk-qserv-scheduler-hist">
       <thead class="thead-light">
-        ${QservWorkerHistograms._table_head()}
+        ${QservWorkerSchedulerHist._table_head()}
       </thead>
       <caption class="updating">Loading...</caption>
       <tbody></tbody>
@@ -124,7 +143,8 @@ function(CSSLoader,
                 this._load();
             });
             cont.find("button#reset-histograms-form").click(() => {
-                this._set_histogram_name(QservWorkerHistograms._histogram_names[0]);
+              this._set_scheduler_name("");
+              this._set_histogram_name(QservWorkerSchedulerHist._histogram_names[0]);
                 this._set_update_interval_sec(10);
                 this._load();
             });
@@ -140,13 +160,15 @@ function(CSSLoader,
         _set_update_interval_sec(val) { this._form_control('select', 'update-interval').val(val); }
         _histogram_name() { return this._form_control('select', 'histogram-name').val(); }
         _set_histogram_name(val) { this._form_control('select', 'histogram-name').val(val); }
+        _scheduler_name() { return this._form_control('select', 'scheduler-name').val(); }
+        _set_scheduler_name(val) { this._form_control('select', 'scheduler-name').val(val); }
 
         /**
          * Table for displaying histograms that are being produced at workers.
          */
         _table() {
             if (this._table_obj === undefined) {
-                this._table_obj = this.fwk_app_container.find('table#fwk-qserv-histograms');
+                this._table_obj = this.fwk_app_container.find('table#fwk-qserv-scheduler-hist');
             }
             return this._table_obj;
         }
@@ -183,41 +205,41 @@ function(CSSLoader,
          * Display histograms
          */
         _display(data) {
-            const queryInspectTitle = "Click to see detailed info (progress, messages, etc.) on the query.";
+            const scheduler_name = this._scheduler_name();
             const histogram_name = this._histogram_name();
-            let thead_html = QservWorkerHistograms._table_head();
+            let thead_html = QservWorkerSchedulerHist._table_head();
             let tbody_html = '';
             for (let worker in data) {
                 if (!data[worker].success || _.isUndefined(data[worker].info.processor) ||
                                              _.isUndefined(data[worker].info.processor.queries) ||
-                                             _.isUndefined(data[worker].info.processor.queries.query_stats)) {
+                                             _.isUndefined(data[worker].info.processor.queries.blend_scheduler) ||
+                                             _.isUndefined(data[worker].info.processor.queries.blend_scheduler.schedulers)) {
                     continue; 
                 }
-                let query_stats = data[worker].info.processor.queries.query_stats;
-                if (_.isEmpty(query_stats)) continue;
+                let schedulers = data[worker].info.processor.queries.blend_scheduler.schedulers;
+                if (_.isEmpty(schedulers)) continue;
                 let rowspan = 1;
                 let html   = '';
-                for (let queryId in query_stats) {
-                    if (!_.has(query_stats[queryId], "histograms")) continue;
-                    let histograms = query_stats[queryId].histograms;
+                for (let i in schedulers) {
+                    let scheduler = schedulers[i];
+                    if (!_.has(scheduler, "histograms")) continue;
+                    let histograms = scheduler.histograms;
                     if (!_.has(histograms, histogram_name)) continue;
+                    if (!_.isEmpty(scheduler_name) && (scheduler_name !== scheduler.name)) continue;
                     let histogram = histograms[histogram_name];
                     if (_.isEmpty(html)) {
-                        thead_html = QservWorkerHistograms._table_head(histogram);
+                        thead_html = QservWorkerSchedulerHist._table_head(histogram);
                     }
                     html += `
-<tr id="${queryId}">
-  <td style="text-align:right;"><pre>${queryId}</pre></td>
-  <td style="text-align:center; padding-top:0; padding-bottom:0">
-    <button class="btn btn-outline-info btn-sm inspect-query" style="height:20px; margin:0px;" title="${queryInspectTitle}"></button>
-  </td>
-  <td style="text-align:right;"><pre>${histogram.total.toFixed(3)}</pre></td>
-  <td style="text-align:right;"><pre>${histogram.totalCount}</pre></td>
-  <th style="text-align:right;"><pre>${histogram.avg.toFixed(3)}</pre></th>`;
+<tr>
+  <td><pre>${scheduler.name.substr(5)}</pre></td>
+  <th style="text-align:right;"><pre>${histogram.total ? histogram.total.toFixed(3) : ''}</pre></th>
+  <th style="text-align:right;"><pre>${histogram.totalCount ? histogram.totalCount : ''}</pre></th>
+  <th style="text-align:right;"><pre>${histogram.avg ? histogram.avg.toFixed(3) : ''}</pre></th>`;
                     for (let i in histogram.buckets) {
                         let bucket = histogram.buckets[i];
                         html += `
-  <td style="text-align:right;"><pre>${bucket.count}</pre></td>`;
+  <th style="text-align:right;"><pre>${bucket.count ? bucket.count : ''}</pre></th>`;
                     }
                     html += `
 </tr>`;
@@ -229,15 +251,8 @@ rowspan++;
 </tr>` + html;
             }
             this._table().children('thead').html(thead_html);
-            let tbody = this._table().children('tbody').html(tbody_html);
-            let displayQuery  = function(e) {
-                let button = $(e.currentTarget);
-                let queryId = button.parent().parent().attr("id");
-                Fwk.find("Status", "Query Inspector").set_query_id(queryId);
-                Fwk.show("Status", "Query Inspector");
-            };
-            tbody.find("button.inspect-query").click(displayQuery);
+            this._table().children('tbody').html(tbody_html);
         }
     }
-    return QservWorkerHistograms;
+    return QservWorkerSchedulerHist;
 });
