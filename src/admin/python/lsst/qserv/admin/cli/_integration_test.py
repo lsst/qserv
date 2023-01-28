@@ -101,7 +101,7 @@ def wait_for_czar(czar_db_uri: str) -> None:
         ) as connection:
             with closing(connection.cursor()) as cursor:
                 cursor.execute("show databases;")
-                return [row[0] for row in cursor.fetchall()]
+                return [str(row[0]) for row in cursor.fetchall()]
 
     databases = get_databases()
     checkdb = "qservMeta"

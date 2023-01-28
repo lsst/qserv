@@ -28,12 +28,12 @@ import gzip
 import json
 import logging
 import mysql.connector
-from mysql.connector.cursor import MySQLCursor
+from mysql.connector.abstracts import MySQLConnectionAbstract, MySQLCursorAbstract
 import os
 import shutil
 import subprocess
 from tempfile import TemporaryDirectory
-from typing import Any, Dict, Generator, List, NamedTuple, Optional, Tuple
+from typing import Any, Dict, Generator, List, NamedTuple, Optional, Tuple, Union, cast
 import yaml
 
 from .constants import tmp_data_dir
@@ -57,7 +57,7 @@ def unzip(source: str, destination: str) -> None:
         shutil.copyfileobj(_source, _target)
 
 
-def execute(cursor: MySQLCursor, stmt: str, multi: bool = False) -> None:
+def execute(cursor: MySQLCursorAbstract, stmt: str, multi: bool = False) -> None:
     """Execute a statement in a cursor, and clean up the cursor so it can be
     closed without causing warnings on the server."""
     warnings = []
@@ -73,6 +73,11 @@ def execute(cursor: MySQLCursor, stmt: str, multi: bool = False) -> None:
         cursors = [cursor]
 
     for cursor in cursors:
+        # Cast here because MySQLCursorAbtract does not have with_rows for some reason, even though both of
+        # its subclasses do...
+        cursor = cast(
+            Union[mysql.connector.cursor.MySQLCursor, mysql.connector.cursor_cext.CMySQLCursor], cursor
+        )
         if cursor.with_rows:
             for row in cursor.fetchall():
                 results.append(row)
@@ -121,12 +126,12 @@ def _create_ref_db(ref_db_admin: str, name: str) -> None:
                 execute(cursor, stmt)
 
 
-def _create_ref_table(cnx: mysql.connector.connection, db: str, schema_file: str) -> None:
+def _create_ref_table(cnx: MySQLConnectionAbstract, db: str, schema_file: str) -> None:
     """Create a table in the mysql database used for integration test reference.
 
     Parameters
     ----------
-    cnx : `mysql.connector.connection`
+    cnx : `mysql.connector.abstracts.MySQLConnectionAbstract`
         Connection to the reference database that has permission to create a
         table.
     db : `str`
@@ -145,14 +150,12 @@ def _create_ref_table(cnx: mysql.connector.connection, db: str, schema_file: str
             execute(cursor, f.read(), multi=True)
 
 
-def _load_ref_data(
-    cnx: mysql.connector.connection, data_file: str, db: str, table: LoadTable
-) -> None:
+def _load_ref_data(cnx: MySQLConnectionAbstract, data_file: str, db: str, table: LoadTable) -> None:
     """Load database data into the reference database.
 
     Parameters
     ----------
-    cnx : `mysql.connector.connection`
+    cnx : `mysql.connector.abstracts.MySQLConnectionAbstract`
         Connection to the reference database that has permission to load data
         into the table.
     data_file : `str`

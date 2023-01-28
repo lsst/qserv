@@ -25,6 +25,7 @@
 
 import logging
 import mysql.connector
+from typing import cast
 from urllib.parse import urlparse
 
 _log = logging.getLogger(__name__)
@@ -34,7 +35,7 @@ def mysql_connection(
     uri: str,
     get_warnings: bool = True,
     local_infile: bool = False,
-) -> mysql.connector.connection:
+) -> mysql.connector.abstracts.MySQLConnectionAbstract:
     """Create a mysql.connection that is connected to a database.
 
     Parameters
@@ -58,12 +59,16 @@ def mysql_connection(
         user = parsed.username
         pw = parsed.password
     _log.debug("mysql_connection hostname:%s, port:%s, user:%s", hostname, port, user)
-    cnx = mysql.connector.connect(
-        user=user,
-        password=pw,
-        host=hostname,
-        port=port,
-        allow_local_infile=local_infile,
+    # Cast justified because no pool args passed here to connect(), so cnx cannot be PooledMySQLConnection
+    cnx = cast(
+        mysql.connector.abstracts.MySQLConnectionAbstract,
+        mysql.connector.connect(
+            user=user,
+            password=pw,
+            host=hostname,
+            port=port,
+            allow_local_infile=local_infile,
+        ),
     )
     cnx.get_warnings = get_warnings
     return cnx

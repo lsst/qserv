@@ -34,7 +34,7 @@ from dataclasses import dataclass
 import jinja2
 import logging
 import mysql.connector
-from typing import Callable, Dict, Union
+from typing import Callable, Dict, Union, cast
 
 # MySQLInterfaceError can get thrown, we need to catch it.
 # It's not exposed as a public python object but *is* used in mysql.connector unit tests.
@@ -271,7 +271,7 @@ class SchemaMigMgr(metaclass=ABCMeta):
         on_backoff=on_backoff(log=_log),
         max_time=max_backoff_sec,
     )
-    def _connect(self, connection: str) -> mysql.connector.connection:
+    def _connect(self, connection: str) -> mysql.connector.abstracts.MySQLConnectionAbstract:
         url = make_url(connection)
         # The database is not always guaranteed to exist yet (sometimes we connect and then create it)
         # so cache it, and it can be set in the connection before use when it is known to exist.
@@ -284,7 +284,11 @@ class SchemaMigMgr(metaclass=ABCMeta):
             kwargs["unix_socket"] = url.query["socket"]
         else:
             kwargs.update(host=url.host, port=url.port)
-        return mysql.connector.connect(**kwargs)
+        # Cast justified because no pool args passed here to connect() so cannot be PooledMySQLConnection
+        return cast(
+            mysql.connector.abstracts.MySQLConnectionAbstract,
+            mysql.connector.connect(**kwargs),
+        )
 
     @backoff.on_exception(
         exception=mysql.connector.errors.DatabaseError,

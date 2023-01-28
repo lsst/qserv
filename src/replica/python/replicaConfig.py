@@ -23,6 +23,7 @@ import backoff
 from contextlib import closing
 import mysql.connector
 import logging
+from typing import cast
 from urllib.parse import urlparse
 
 from lsst.qserv.admin.backoff import qserv_backoff, on_backoff
@@ -44,11 +45,15 @@ def applyConfiguration(connection: str, sql: str) -> None:
     """Apply configuration sql to the replication controller database."""
     c = urlparse(connection)
     with closing(
-        mysql.connector.connect(
-            user=c.username,
-            password=c.password,
-            host=c.hostname,
-            port=c.port,
+        # Cast justified because no pool args passed here to connect(), so cannot be PooledMySQLConnection
+        cast(
+            mysql.connector.abstracts.MySQLConnectionAbstract,
+            mysql.connector.connect(
+                user=c.username,
+                password=c.password,
+                host=c.hostname,
+                port=c.port,
+            ),
         )
     ) as cnx:
         cnx.database = replicaDb
