@@ -132,8 +132,8 @@ RUN pip3 install \
     documenteer \
     jinja2 \
     ltd-conveyor \
+    "sphinx-rtd-theme>=1.2.0rc3" \
     mypy \
-    sphinx-rtd-theme \
     mysql-connector-python \
     numpy \
     pybind11[global] \
@@ -142,6 +142,7 @@ RUN pip3 install \
     sqlalchemy-stubs \
     types-PyYAML \
     types-requests
+
 
 RUN useradd --create-home --uid 1000 --shell /bin/bash qserv
 
