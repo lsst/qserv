@@ -26,7 +26,7 @@ from contextlib import closing
 import logging
 import requests
 from time import sleep
-from typing import List, Sequence, Set, Type, Union
+from typing import List, Sequence, Set, Type, Union, Any
 
 _log = logging.getLogger(__name__)
 
@@ -168,7 +168,7 @@ class Watcher:
             _log.error(f"Failed to send notification {msg}, exception: {e}")
         _log.debug(f"Sent notification: {msg}")
 
-    def query(self, uri: str, stmt: str) -> List[Sequence[str]]:
+    def query(self, uri: str, stmt: str) -> Sequence[Any]:
         """Execute a mysql query at the provided URI
 
         Parameters
