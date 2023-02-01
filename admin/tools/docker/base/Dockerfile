@@ -134,7 +134,7 @@ RUN pip3 install \
     ltd-conveyor \
     "sphinx-rtd-theme>=1.2.0rc3" \
     mypy \
-    mysql-connector-python \
+    "mysql-connector-python==8.0.31" \
     numpy \
     pybind11[global] \
     pyyaml \
@@ -230,7 +230,7 @@ RUN pip3 install \
     click \
     deprecated \
     jinja2 \
-    mysql-connector-python \
+    "mysql-connector-python==8.0.31" \
     pyyaml \
     requests \
     sqlalchemy
