@@ -345,7 +345,8 @@ class SchemaMigMgr(metaclass=ABCMeta):
                 _log.debug(f"Migration statement: {stmt}")
                 if stmt:
                     for result in cursor.execute(stmt, multi=True):
-                        pass
+                        if result.with_rows:
+                            result.fetchall()
                 else:
                     _log.warn(
                         "Migration statement was empty, nothing to execute."
