@@ -136,9 +136,12 @@ InfileMerger::InfileMerger(InfileMergerConfig const& c, std::shared_ptr<qproc::D
         _mysqlConn.closeMySqlConn();
     }
 
-    LOGS(_log, LOG_LVL_TRACE,
-         "InfileMerger maxResultTableSizeBytes=" << _maxResultTableSizeBytes << " maxSqlConnexctionAttempts="
-                                                 << _maxSqlConnectionAttempts);
+    // The DEBUG level is good here since this report will be made onces per query,
+    // not per each chunk.
+    LOGS(_log, LOG_LVL_DEBUG,
+         "InfileMerger maxResultTableSizeBytes=" << _maxResultTableSizeBytes
+                                                 << " maxSqlConnexctionAttempts=" << _maxSqlConnectionAttempts
+                                                 << " debugNoMerge=" << (_config.debugNoMerge ? "1" : " 0"));
     _invalidJobAttemptMgr.setDeleteFunc([this](InvalidJobAttemptMgr::jASetType const& jobAttempts) -> bool {
         return _deleteInvalidRows(jobAttempts);
     });
@@ -274,6 +277,11 @@ bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> const& response)
         LOGS(_log, LOG_LVL_ERROR, os.str());
         _error = util::Error(-1, os.str(), -1);
         return false;
+    }
+    // Stop here (if requested) after collecting stats on the amount of data collected
+    // from workers.
+    if (_config.debugNoMerge) {
+        return true;
     }
 
     auto start = std::chrono::system_clock::now();

@@ -96,6 +96,7 @@ public:
     mysql::MySqlConfig const mySqlConfig;
     std::string targetTable;
     std::shared_ptr<query::SelectStmt> mergeStmt;
+    bool debugNoMerge = false;
 };
 
 /// This class is used to remove invalid rows from cancelled job attempts.
