@@ -292,6 +292,7 @@ UserQuery::Ptr UserQueryFactory::newUserQuery(std::string const& aQuery, std::st
                                                  _userQuerySharedResources->queryStatsData, qs);
             infileMergerConfig = std::make_shared<rproc::InfileMergerConfig>(
                     _userQuerySharedResources->czarConfig, _userQuerySharedResources->mysqlResultConfig);
+            infileMergerConfig->debugNoMerge = _debugNoMerge;
         }
 
         // This, effectively invalid, UserQuerySelect object should report errors from both `errorExtra`
@@ -361,10 +362,12 @@ UserQuery::Ptr UserQueryFactory::newUserQuery(std::string const& aQuery, std::st
         auto uq = parser->getUserQuery();
         auto setQuery = std::static_pointer_cast<UserQuerySet>(uq);
         if (setQuery->varName() == "QSERV_ROW_COUNTER_OPTIMIZATION") {
-            _useQservRowCounterOptimization = setQuery->varValue() != "0" ? true : false;
-            LOGS(_log, LOG_LVL_INFO,
-                 "Set SELECT COUNT(*) row count optimization to "
-                         << (_useQservRowCounterOptimization ? "ON" : "OFF"));
+            _useQservRowCounterOptimization = setQuery->varValue() != "0";
+            LOGS(_log, LOG_LVL_WARN,
+                 "QSERV_ROW_COUNTER_OPTIMIZATION=" << (_useQservRowCounterOptimization ? "1" : "0"));
+        } else if (setQuery->varName() == "QSERV_DEBUG_CZAR_NO_MERGE") {
+            _debugNoMerge = setQuery->varValue() != "0";
+            LOGS(_log, LOG_LVL_WARN, "QSERV_DEBUG_CZAR_NO_MERGE=" << (_debugNoMerge ? "1" : "0"));
         }
         return uq;
     } else {

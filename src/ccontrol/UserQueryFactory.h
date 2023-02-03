@@ -89,6 +89,7 @@ private:
     std::shared_ptr<UserQuerySharedResources> _userQuerySharedResources;
     std::shared_ptr<qdisp::ExecutiveConfig> _executiveConfig;
     bool _useQservRowCounterOptimization;
+    bool _debugNoMerge = false;
 };
 
 }  // namespace lsst::qserv::ccontrol
