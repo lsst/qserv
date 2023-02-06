@@ -63,7 +63,6 @@ class StreamBuffer;
 
 namespace wcontrol {
 class SqlConnMgr;
-class TransmitMgr;
 }  // namespace wcontrol
 
 }  // namespace lsst::qserv
@@ -78,8 +77,7 @@ public:
     static QueryRunner::Ptr newQueryRunner(wbase::Task::Ptr const& task,
                                            ChunkResourceMgr::Ptr const& chunkResourceMgr,
                                            mysql::MySqlConfig const& mySqlConfig,
-                                           std::shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr,
-                                           std::shared_ptr<wcontrol::TransmitMgr> const& transmitMgr);
+                                           std::shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr);
     // Having more than one copy of this would making tracking its progress difficult.
     QueryRunner(QueryRunner const&) = delete;
     QueryRunner& operator=(QueryRunner const&) = delete;
@@ -96,8 +94,7 @@ public:
 protected:
     QueryRunner(wbase::Task::Ptr const& task, ChunkResourceMgr::Ptr const& chunkResourceMgr,
                 mysql::MySqlConfig const& mySqlConfig,
-                std::shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr,
-                std::shared_ptr<wcontrol::TransmitMgr> const& transmitMgr);
+                std::shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr);
 
 private:
     bool _initConnection();
@@ -129,9 +126,6 @@ private:
     /// Used to limit the number of open MySQL connections.
     std::shared_ptr<wcontrol::SqlConnMgr> const _sqlConnMgr;
     std::atomic<bool> _runQueryCalled{false};  ///< If runQuery gets called twice, the scheduler messed up.
-
-    /// Used to limit the number of transmits being sent to czars.
-    std::shared_ptr<wcontrol::TransmitMgr> const _transmitMgr;
 };
 
 }  // namespace lsst::qserv::wdb
