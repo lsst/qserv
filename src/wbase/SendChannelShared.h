@@ -139,11 +139,6 @@ public:
     /// Return a normalized id string.
     static std::string makeIdStr(int qId, int jId);
 
-    /// Items to share one TransmitLock across all Task's using this
-    /// SendChannelShared. If all Task's using this channel are not
-    /// allowed to complete, deadlock is likely.
-    void waitTransmitLock(wcontrol::TransmitMgr& transmitMgr, bool interactive, QueryId const& qId);
-
     /// @return the channel sequence number (this will not be valid until after
     ///         the channel is open.)
     uint64_t getSeq() const { return _sendChannel->getSeq(); }
@@ -180,6 +175,11 @@ private:
     /// Private constructor to protect shared pointer integrity.
     SendChannelShared(SendChannel::Ptr const& sendChannel,
                       std::shared_ptr<wcontrol::TransmitMgr> const& transmitMgr, qmeta::CzarId czarId);
+
+    /// Items to share one TransmitLock across all Task's using this
+    /// SendChannelShared. If all Task's using this channel are not
+    /// allowed to complete, deadlock is likely.
+    void _waitTransmitLock(bool interactive, QueryId const& qId);
 
     /// Wrappers for SendChannel public functions that may need to be used
     /// by threads.
