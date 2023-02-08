@@ -348,6 +348,8 @@ bool QueryRunner::_dispatchChannel() {
                 }
             }
 
+            // Transition task's state to the next one (reading data from MySQL and sending them to Czar).
+            _task->queried();
             // Pass all information on to the shared object to add on to
             // an existing message or build a new one as needed.
             util::InstanceCount ica(to_string(_task->getQueryId()) + "_rqa_LDB");  // LockupDB
@@ -363,6 +365,18 @@ bool QueryRunner::_dispatchChannel() {
             } else {
                 LOGS(_log, LOG_LVL_ERROR, "QR transmit taskSched == nullptr");
             }
+            // ATTENTION: This call is needed to record the _actual_ completion time of the task.
+            // It rewrites the finish timestamp within the task that was made when the task got
+            // kicked off the scheduler (see the code block above where a value of _removedFromThreadPool
+            // gets tested) which is happening shortly after MySQL query finishes and before the data
+            // transmission to Czar starts.
+            // NOTE: Tasks would stay in the task "cemetery" (class wpublish::QueriesAndChunks)
+            // for about 5 minutes after they finish transmitting data. After that no info on
+            // the task is available.
+            // TODO: Investigate an option for recording state transitions of the persistent
+            // metadata store of the worker, or keeping the state transisitons in a separate transient
+            // store that won't be affected by the task destruction.
+            _task->finished(std::chrono::system_clock::now());
         }
     } catch (sql::SqlErrorObject const& e) {
         LOGS(_log, LOG_LVL_ERROR, "dispatchChannel " << e.errMsg());

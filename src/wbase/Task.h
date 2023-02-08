@@ -120,7 +120,7 @@ public:
     using Ptr = std::shared_ptr<Task>;
     using TaskMsgPtr = std::shared_ptr<proto::TaskMsg>;
 
-    enum class State { CREATED, QUEUED, RUNNING, FINISHED };
+    enum class State { CREATED = 0, QUEUED, EXECUTING_QUERY, READING_DATA, FINISHED };
 
     struct ChunkEqual {
         bool operator()(Task::Ptr const& x, Task::Ptr const& y);
@@ -203,6 +203,10 @@ public:
 
     void queued(std::chrono::system_clock::time_point const& now);
     void started(std::chrono::system_clock::time_point const& now);
+
+    /// MySQL finished executing queries.
+    void queried();
+
     std::chrono::milliseconds finished(std::chrono::system_clock::time_point const& now);
 
     uint64_t getTSeq() const { return _tSeq; }
@@ -240,10 +244,13 @@ private:
 
     mutable std::mutex _stateMtx;  ///< Mutex to protect state related members _state, _???Time.
     State _state{State::CREATED};
-    std::chrono::system_clock::time_point _queueTime;
-    std::chrono::system_clock::time_point _startTime;
-    std::chrono::system_clock::time_point _finishTime;
-    size_t _totalSize = 0;  ///< Total size of the result so far.
+    std::chrono::system_clock::time_point _createTime =
+            std::chrono::system_clock::now();           ///< task was created
+    std::chrono::system_clock::time_point _queueTime;   ///< task was queued
+    std::chrono::system_clock::time_point _startTime;   ///< task processing started
+    std::chrono::system_clock::time_point _queryTime;   ///< MySQL finished executing queries
+    std::chrono::system_clock::time_point _finishTime;  ///< data transmission to Czar fiished
+    size_t _totalSize = 0;                              ///< Total size of the result so far.
 
     /// Stores information on the query's resource usage.
     std::weak_ptr<wpublish::QueryStatistics> _queryStats;
