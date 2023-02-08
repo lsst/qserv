@@ -52,13 +52,14 @@ function(CSSLoader,
         <select id="worker" class="form-control form-control-selector">
         </select>
       </div>
-      <div class="form-group col-md-1">
+      <div class="form-group col-md-2">
         <label for="state">State:</label>
         <select id="state" class="form-control form-control-selector">
           <option value="" selected>&lt;any&gt;</option>
           <option value="CREATED">CREATED</option>
           <option value="QUEUED">QUEUED</option>
-          <option value="RUNNING">RUNNING</option>
+          <option value="EXECUTING_QUERY">EXECUTING_QUERY</option>
+          <option value="READING_DATA">READING_DATA</option>
           <option value="FINISHED">FINISHED</option>
           <option value="!FINISHED">!FINISHED</option>
         </select>
@@ -98,9 +99,13 @@ function(CSSLoader,
           <th class="sticky" style="text-align:right;">state</th>
           <th class="sticky" style="text-align:right;">cancelled</th>
           <th class="sticky" style="text-align:right;">sizeSoFar</th>
+          <th class="sticky" style="text-align:right;">createTime</th>
+          <th class="sticky right-aligned"><elem style="color:red;">&rarr;</elem></th>
           <th class="sticky" style="text-align:right;">queueTime</th>
           <th class="sticky right-aligned"><elem style="color:red;">&rarr;</elem></th>
           <th class="sticky" style="text-align:right;">startTime</th>
+          <th class="sticky right-aligned"><elem style="color:red;">&rarr;</elem></th>
+          <th class="sticky" style="text-align:right;">queryTime</th>
           <th class="sticky right-aligned"><elem style="color:red;">&rarr;</elem></th>
           <th class="sticky" style="text-align:right;">finishTime</th>
         </tr>    
@@ -247,11 +252,15 @@ function(CSSLoader,
   <td style="text-align:right;"><pre>${QservWorkerTasks._state2str(task.state)}</pre></td>
   <td style="text-align:right;"><pre>${task.cancelled == "0" ? "no" : "yes"}</pre></td>
   <td style="text-align:right;"><pre>${task.sizeSoFar}</pre></td>
-  <td style="text-align:right;"><pre>${task.queueTime_msec ? (new Date(task.queueTime_msec)).toISOString() : ""}</pre></td>
+  <td style="text-align:right;"><pre>${task.createTime_msec ? (new Date(task.createTime_msec)).toISOString() : ""}</pre></td>
+  <th style="text-align:right;"><pre>${QservWorkerTasks._timestamps_diff2str(task.createTime_msec, task.queueTime_msec)}</pre></th>
+  <td style="text-align:right;"><pre>${task.queueTime_msec ? QservWorkerTasks._timestamp2hhmmss(task.queueTime_msec) : ""}</pre></td>
   <th style="text-align:right;"><pre>${QservWorkerTasks._timestamps_diff2str(task.queueTime_msec, task.startTime_msec)}</pre></th>
-  <td style="text-align:right;"><pre>${task.startTime_msec ? (new Date(task.startTime_msec)).toISOString() : ""}</pre></td>
-  <th style="text-align:right;"><pre>${QservWorkerTasks._timestamps_diff2str(task.startTime_msec, task.finishTime_msec)}</pre></th>
-  <td style="text-align:right;"><pre>${task.finishTime_msec ? (new Date(task.finishTime_msec)).toISOString() : ""}</pre></td>
+  <td style="text-align:right;"><pre>${task.startTime_msec ? QservWorkerTasks._timestamp2hhmmss(task.startTime_msec) : ""}</pre></td>
+  <th style="text-align:right;"><pre>${QservWorkerTasks._timestamps_diff2str(task.startTime_msec, task.queryTime_msec)}</pre></th>
+  <td style="text-align:right;"><pre>${task.queryTime_msec ? QservWorkerTasks._timestamp2hhmmss(task.queryTime_msec) : ""}</pre></td>
+  <th style="text-align:right;"><pre>${QservWorkerTasks._timestamps_diff2str(task.queryTime_msec, task.finishTime_msec)}</pre></th>
+  <td style="text-align:right;"><pre>${task.finishTime_msec ? QservWorkerTasks._timestamp2hhmmss(task.finishTime_msec) : ""}</pre></td>
 </tr>`;
                             rowspan++;
                         }
@@ -273,10 +282,11 @@ function(CSSLoader,
         }
         static _state2css(state) {
             switch (state) {
-                case 0: return 'table-light';
+                case 0: return 'table-warning';
                 case 1: return 'table-light';
-                case 2: return 'table-info';
-                case 3: return 'table-success';
+                case 2: return 'table-primary';
+                case 3: return 'table-info';
+                case 4: return 'table-secondary';
                 default: return 'table-warning';
             }
         }
@@ -284,14 +294,18 @@ function(CSSLoader,
             switch (state) {
                 case 0: return 'CREATED';
                 case 1: return 'QUEUED';
-                case 2: return 'RUNNING';
-                case 3: return 'FINISHED';
+                case 2: return 'EXECUTING_QUERY';
+                case 3: return 'READING_DATA';
+                case 4: return 'FINISHED';
                 default: return 'UNKNOWN';
             }
         }
         static _timestamps_diff2str(begin, end) {
             if (!begin || !end) return '';
             return ((end - begin) / 1000.0).toFixed(1);
+        }
+        static _timestamp2hhmmss(ts) {
+            return (new Date(ts)).toISOString().substring(11, 19);
         }
     }
     return QservWorkerTasks;
