@@ -277,9 +277,14 @@ void Task::queued(std::chrono::system_clock::time_point const& now) {
     _queueTime = now;
 }
 
-Task::State Task::getState() const {
+bool Task::isRunning() const {
     std::lock_guard<std::mutex> lock(_stateMtx);
-    return _state;
+    switch (_state) {
+        case State::RUNNING:
+            return true;
+        default:
+            return false;
+    }
 }
 
 /// Set values associated with the Task being started.
@@ -307,19 +312,17 @@ std::chrono::milliseconds Task::finished(std::chrono::system_clock::time_point c
     return duration;
 }
 
-/// @return the amount of time spent so far on the task in milliseconds.
 std::chrono::milliseconds Task::getRunTime() const {
-    std::chrono::milliseconds duration{0};
-    {
-        std::lock_guard<std::mutex> guard(_stateMtx);
-        if (_state == State::FINISHED) {
-            duration = std::chrono::duration_cast<std::chrono::milliseconds>(_finishTime - _startTime);
-        } else if (_state == State::RUNNING) {
-            auto now = std::chrono::system_clock::now();
-            duration = std::chrono::duration_cast<std::chrono::milliseconds>(now - _startTime);
-        }
+    std::lock_guard<std::mutex> guard(_stateMtx);
+    switch (_state) {
+        case State::FINISHED:
+            return std::chrono::duration_cast<std::chrono::milliseconds>(_finishTime - _startTime);
+        case State::RUNNING:
+            return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() -
+                                                                         _startTime);
+        default:
+            return std::chrono::milliseconds(0);
     }
-    return duration;
 }
 
 /// Wait for MemMan to finish reserving resources. The mlock call can take several seconds

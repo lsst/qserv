@@ -193,8 +193,14 @@ public:
     }
 
     // Functions for tracking task state and statistics.
-    State getState() const;
+
+    /// @return 'true' if the task is still running (waiting before MySQL will finish executing
+    ///  queries or sending a result set to Czar)
+    bool isRunning() const;
+
+    /// @return the amount of time spent so far on the task in milliseconds.
     std::chrono::milliseconds getRunTime() const;
+
     void queued(std::chrono::system_clock::time_point const& now);
     void started(std::chrono::system_clock::time_point const& now);
     std::chrono::milliseconds finished(std::chrono::system_clock::time_point const& now);
