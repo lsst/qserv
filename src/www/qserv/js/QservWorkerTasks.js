@@ -99,7 +99,9 @@ function(CSSLoader,
           <th class="sticky" style="text-align:right;">cancelled</th>
           <th class="sticky" style="text-align:right;">sizeSoFar</th>
           <th class="sticky" style="text-align:right;">queueTime</th>
+          <th class="sticky right-aligned"><elem style="color:red;">&rarr;</elem></th>
           <th class="sticky" style="text-align:right;">startTime</th>
+          <th class="sticky right-aligned"><elem style="color:red;">&rarr;</elem></th>
           <th class="sticky" style="text-align:right;">finishTime</th>
         </tr>    
       </thead>
@@ -245,9 +247,11 @@ function(CSSLoader,
   <td style="text-align:right;"><pre>${QservWorkerTasks._state2str(task.state)}</pre></td>
   <td style="text-align:right;"><pre>${task.cancelled == "0" ? "no" : "yes"}</pre></td>
   <td style="text-align:right;"><pre>${task.sizeSoFar}</pre></td>
-  <td style="text-align:right;"><pre>${task.queueTime}</pre></td>
-  <td style="text-align:right;"><pre>${task.startTime}</pre></td>
-  <td style="text-align:right;"><pre>${task.finishTime}</pre></td>
+  <td style="text-align:right;"><pre>${task.queueTime_msec ? (new Date(task.queueTime_msec)).toISOString() : ""}</pre></td>
+  <th style="text-align:right;"><pre>${QservWorkerTasks._timestamps_diff2str(task.queueTime_msec, task.startTime_msec)}</pre></th>
+  <td style="text-align:right;"><pre>${task.startTime_msec ? (new Date(task.startTime_msec)).toISOString() : ""}</pre></td>
+  <th style="text-align:right;"><pre>${QservWorkerTasks._timestamps_diff2str(task.startTime_msec, task.finishTime_msec)}</pre></th>
+  <td style="text-align:right;"><pre>${task.finishTime_msec ? (new Date(task.finishTime_msec)).toISOString() : ""}</pre></td>
 </tr>`;
                             rowspan++;
                         }
@@ -284,6 +288,10 @@ function(CSSLoader,
                 case 3: return 'FINISHED';
                 default: return 'UNKNOWN';
             }
+        }
+        static _timestamps_diff2str(begin, end) {
+            if (!begin || !end) return '';
+            return ((end - begin) / 1000.0).toFixed(1);
         }
     }
     return QservWorkerTasks;
