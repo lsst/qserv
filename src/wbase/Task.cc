@@ -74,6 +74,14 @@ std::ostream& dump(std::ostream& os, lsst::qserv::proto::TaskMsg_Fragment const&
     return os;
 }
 
+/**
+ * @param tp The timepoint to be converted.
+ * @return The number of milliseconds since UNIX Epoch
+ */
+uint64_t tp2ms(std::chrono::system_clock::time_point const& tp) {
+    return std::chrono::duration_cast<std::chrono::milliseconds>(tp.time_since_epoch()).count();
+}
+
 }  // namespace
 
 namespace lsst::qserv::wbase {
@@ -340,13 +348,6 @@ memman::MemMan::Status Task::getMemHandleStatus() {
     return _memMan->getStatus(_memHandle);
 }
 
-string convertToStr(std::chrono::system_clock::time_point chTm) {
-    stringstream os;
-    time_t tm = std::chrono::system_clock::to_time_t(chTm);
-    os << std::put_time(std::localtime(&tm), "%F %T");
-    return os.str();
-}
-
 nlohmann::json Task::getJson() const {
     // It would be nice to have the _queryString in this, but that could make the results very large.
     nlohmann::json js;
@@ -359,9 +360,9 @@ nlohmann::json Task::getJson() const {
     js["scanInteractive"] = _scanInteractive;
     js["cancelled"] = to_string(_cancelled);
     js["state"] = _state;
-    js["queueTime"] = convertToStr(_queueTime);
-    js["startTime"] = convertToStr(_startTime);
-    js["finishTime"] = convertToStr(_finishTime);
+    js["queueTime_msec"] = ::tp2ms(_queueTime);
+    js["startTime_msec"] = ::tp2ms(_startTime);
+    js["finishTime_msec"] = ::tp2ms(_finishTime);
     js["sizeSoFar"] = _totalSize;
     return js;
 }
