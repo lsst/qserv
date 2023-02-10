@@ -46,19 +46,25 @@ namespace lsst::qserv::qdisp {
 
 class QdispPool;
 
-/// &&& doc
+/// This class is used to track statistics for the czar.
+/// setup() needs to be called before get().
+/// The primary information stored is for the QdispPool of threads and queues,
+/// which is a good indicator of how much work the czar needs to do,
+/// and with some knowledge of the priorities, what kind of work the czar
+/// is trying to do.
+/// It also tracks statistics about receiving data from workers and merging
+/// results.
 class CzarStats : std::enable_shared_from_this<CzarStats> {
 public:
     using Ptr = std::shared_ptr<CzarStats>;
+    using CLOCK = std::chrono::system_clock;
+    using TIMEPOINT = std::chrono::time_point<CLOCK>;
 
-    //&&&CzarStats() = delete;
+    CzarStats() = delete;
     CzarStats(CzarStats const&) = delete;
     CzarStats& operator=(CzarStats const&) = delete;
 
     ~CzarStats() = default;
-
-    /// &&& doc
-    void setQdispPool(std::shared_ptr<qdisp::QdispPool> const& qdispPool);
 
     /// Setup the global CzarStats instance
     /// @throws Bug if global has already been set or qdispPool is null.
@@ -70,14 +76,21 @@ public:
 
     /// Add a bytes per second entry
     void addTrmitRecvRate(double bytesPerSec);
-    //&&&void addTrmitRecvTime();
 
-    /// &&& doc
-    void addQueryRespConcurrentSetup(int64_t val) { _queryRespConcurrentSetup += val; }
-    /// &&& doc
-    void addQueryRespConcurrentWait(int64_t val) { _queryRespConcurrentWait += val; }
-    /// &&& doc
-    void addQueryRespConcurrentProcessing(int64_t val) { _queryRespConcurrentProcessing += val; }
+    /// Increase the count of requests being setup.
+    void startQueryRespConcurrentSetup() { ++_queryRespConcurrentSetup; }
+    /// Decrease the count and add the time taken to the histogram.
+    void endQueryRespConcurrentSetup(TIMEPOINT start, TIMEPOINT end);
+
+    /// Increase the count of requests waiting.
+    void startQueryRespConcurrentWait() { ++_queryRespConcurrentWait; }
+    /// Decrease the count and add the time taken to the histogram.
+    void endQueryRespConcurrentWait(TIMEPOINT start, TIMEPOINT end);
+
+    /// Increase the count of requests being processed.
+    void startQueryRespConcurrentProcessing() { ++_queryRespConcurrentProcessing; }
+    /// Decrease the count and add the time taken to the histogram.
+    void endQueryRespConcurrentProcessing(TIMEPOINT start, TIMEPOINT end);
 
     /// Get a json object describing the current state of the query dispatch thread pool.
     nlohmann::json getQdispStatsJson() const;
@@ -86,8 +99,7 @@ public:
     nlohmann::json getTransmitStatsJson() const;
 
 private:
-    //&&&CzarStats(std::shared_ptr<qdisp::QdispPool> const& qdispPool);
-    CzarStats();
+    CzarStats(std::shared_ptr<qdisp::QdispPool> const& qdispPool);
     static Ptr _globalCzarStats;    ///< Pointer to the global instance.
     static util::Mutex _globalMtx;  ///< Protects `_globalCzarStats`
 
@@ -98,8 +110,11 @@ private:
     util::HistogramRolling::Ptr _histTrmitRecvRate;
 
     std::atomic<int64_t> _queryRespConcurrentSetup{0};       ///< Number of request currently being setup
+    util::HistogramRolling::Ptr _histRespSetup;              ///< Histogram for setup time
     std::atomic<int64_t> _queryRespConcurrentWait{0};        ///< Number of requests currently waiting
+    util::HistogramRolling::Ptr _histRespWait;               ///< Histogram for wait time
     std::atomic<int64_t> _queryRespConcurrentProcessing{0};  ///< Number of requests currently processing
+    util::HistogramRolling::Ptr _histRespProcessing;         ///< Histogram for processing time
 };
 
 /// RAII class to help track a changing sum through a begin and end time.
@@ -107,41 +122,43 @@ template <typename TType>
 class TimeCountTracker {
 public:
     using Ptr = std::shared_ptr<TimeCountTracker>;
-    using CLOCK = std::chrono::system_clock;
-    using TIMEPOINT = std::chrono::time_point<CLOCK>;
-    using CALLBACKFUNC = std::function<void(TIMEPOINT start, TIMEPOINT end, TType sum, bool success)>;
-    TimeCountTracker() = delete;
 
-    /// doc &&&
+    using CALLBACKFUNC = std::function<void(CzarStats::TIMEPOINT start, CzarStats::TIMEPOINT end, TType sum,
+                                            bool success)>;
+    TimeCountTracker() = delete;
+    TimeCountTracker(TimeCountTracker const&) = delete;
+    TimeCountTracker& operator=(TimeCountTracker const&) = delete;
+
+    /// Constructor that includes the callback function that the destructor will call.
     TimeCountTracker(CALLBACKFUNC callback) : _callback(callback) {
-        auto now = CLOCK::now();
+        auto now = CzarStats::CLOCK::now();
         _startTime = now;
         _endTime = now;
     }
 
-    /// doc &&&
+    /// Call the callback function as the dying act.
     ~TimeCountTracker() {
         TType sum;
         {
             std::lock_guard lg(_mtx);
-            _endTime = CLOCK::now();
+            _endTime = CzarStats::CLOCK::now();
             sum = _sum;
         }
         _callback(_startTime, _endTime, sum, _success);
     }
 
-    /// doc &&&
+    /// Add val to _sum
     void addToValue(double val) {
         std::lock_guard lg(_mtx);
         _sum += val;
     }
 
-    /// doc &&&
+    /// Call if the related action completed.
     void setSuccess() { _success = true; }
 
 private:
-    TIMEPOINT _startTime;
-    TIMEPOINT _endTime;
+    CzarStats::TIMEPOINT _startTime;
+    CzarStats::TIMEPOINT _endTime;
     TType _sum = 0;  ///< atomic double doesn't support +=
     std::atomic<bool> _success{false};
     CALLBACKFUNC _callback;

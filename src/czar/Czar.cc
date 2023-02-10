@@ -115,8 +115,7 @@ Czar::Czar(string const& configPath, string const& czarName)
                                         << util::prettyCharList(vectMinRunningSizes));
     qdisp::QdispPool::Ptr qdispPool =
             make_shared<qdisp::QdispPool>(qPoolSize, maxPriority, vectRunSizes, vectMinRunningSizes);
-    auto czarStats = qdisp::CzarStats::get();
-    czarStats->setQdispPool(qdispPool);  //&&& would rather do setup, but that may cause issues in unit tests
+    qdisp::CzarStats::setup(qdispPool);
 
     int qReqPseudoMaxRunning = _czarConfig.getQReqPseudoFifoMaxRunning();
     qdisp::PseudoFifo::Ptr queryRequestPseudoFifo = make_shared<qdisp::PseudoFifo>(qReqPseudoMaxRunning);

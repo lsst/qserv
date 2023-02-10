@@ -251,15 +251,12 @@ bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> const& response)
         semaLock.reset(new util::SemaLock(*_semaMgrConn));
     }
 
-    qdisp::TimeCountTracker<double>::CALLBACKFUNC cbf = [](qdisp::TimeCountTracker<double>::TIMEPOINT start,
-                                                           qdisp::TimeCountTracker<double>::TIMEPOINT end,
-                                                           double sum, bool success) {
-        qdisp::CzarStats::Ptr cStats = qdisp::CzarStats::get();
-        //&&&cStats->addCurrentTrmitRecvBytes(sum);
-        std::chrono::duration<double> secs = end - start;
-        LOGS(_log, LOG_LVL_WARN, "&&& sum=" << sum << " sec=" << secs.count());
-        cStats->addTrmitRecvRate(sum / secs.count());
-    };
+    qdisp::TimeCountTracker<double>::CALLBACKFUNC cbf =
+            [](qdisp::CzarStats::TIMEPOINT start, qdisp::CzarStats::TIMEPOINT end, double sum, bool success) {
+                qdisp::CzarStats::Ptr cStats = qdisp::CzarStats::get();
+                std::chrono::duration<double> secs = end - start;
+                cStats->addTrmitRecvRate(sum / secs.count());
+            };
     qdisp::TimeCountTracker tct(cbf);
 
     bool ret = false;
@@ -317,10 +314,13 @@ bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> const& response)
                      << " used=" << _semaMgrConn->getUsedCount() << ")");
     if (not ret) {
         LOGS(_log, LOG_LVL_ERROR, "InfileMerger::merge mysql applyMysql failure");
+    } else {
+        tct.setSuccess();
     }
     _invalidJobAttemptMgr.decrConcurrentMergeCount();
 
     LOGS(_log, LOG_LVL_DEBUG, "mergeDur=" << mergeDur.count());
+
     return ret;
 }
 
