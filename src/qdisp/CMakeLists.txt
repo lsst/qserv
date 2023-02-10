@@ -3,6 +3,7 @@ add_dependencies(qdisp proto)
 
 target_sources(qdisp PRIVATE
     ChunkMeta.cc
+    CzarStats.cc
     Executive.cc
     JobDescription.cc
     JobQuery.cc

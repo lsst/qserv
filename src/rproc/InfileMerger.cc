@@ -58,6 +58,7 @@
 #include "global/intTypes.h"
 #include "proto/WorkerResponse.h"
 #include "proto/ProtoImporter.h"
+#include "qdisp/CzarStats.h"
 #include "qproc/DatabaseModels.h"
 #include "query/ColumnRef.h"
 #include "query/SelectStmt.h"
@@ -249,6 +250,18 @@ bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> const& response)
         // needed for parallel merging with INNODB and MEMORY
         semaLock.reset(new util::SemaLock(*_semaMgrConn));
     }
+
+    qdisp::TimeCountTracker<double>::CALLBACKFUNC cbf = [](qdisp::TimeCountTracker<double>::TIMEPOINT start,
+                                                           qdisp::TimeCountTracker<double>::TIMEPOINT end,
+                                                           double sum, bool success) {
+        qdisp::CzarStats::Ptr cStats = qdisp::CzarStats::get();
+        //&&&cStats->addCurrentTrmitRecvBytes(sum);
+        std::chrono::duration<double> secs = end - start;
+        LOGS(_log, LOG_LVL_WARN, "&&& sum=" << sum << " sec=" << secs.count());
+        cStats->addTrmitRecvRate(sum / secs.count());
+    };
+    qdisp::TimeCountTracker tct(cbf);
+
     bool ret = false;
     // Add columns to rows in virtFile.
     int resultJobId = makeJobIdAttempt(response->result.jobid(), response->result.attemptcount());
@@ -296,6 +309,7 @@ bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> const& response)
         default:
             throw std::invalid_argument("InfileMerger::_dbEngine is unknown =" + engineToStr(_dbEngine));
     }
+    tct.addToValue(resultSize);
     auto end = std::chrono::system_clock::now();
     auto mergeDur = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
     LOGS(_log, LOG_LVL_DEBUG,

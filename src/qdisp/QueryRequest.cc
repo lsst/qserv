@@ -42,6 +42,7 @@
 
 // Qserv headers
 #include "czar/Czar.h"
+#include "qdisp/CzarStats.h"
 #include "global/LogContext.h"
 #include "proto/ProtoHeaderWrap.h"
 #include "proto/ScanTableInfo.h"
@@ -82,7 +83,15 @@ public:
         util::Timer tWaiting;
         util::Timer tTotal;
         PseudoFifo::Element::Ptr pseudoFifoElem;
+        auto czarStats = CzarStats::get();  // &&&
         {
+            /// &&& here state 1 - setup buffer
+            TimeCountTracker<int64_t>::CALLBACKFUNC cbf1 =
+                    [&czarStats](TimeCountTracker<int64_t>::TIMEPOINT start,
+                                 TimeCountTracker<int64_t>::TIMEPOINT end, int64_t sum,
+                                 bool success) { czarStats->addQueryRespConcurrentSetup(-1); };
+            czarStats->addQueryRespConcurrentSetup(1);
+            TimeCountTracker<int64_t> tct1(cbf1);
             tTotal.start();
             auto jq = _jQuery.lock();
             auto qr = _qRequest.lock();
@@ -113,6 +122,13 @@ public:
         // Wait for XrdSsi to call ProcessResponseData with the data,
         // which will notify this wait with a call to receivedProcessResponseDataParameters.
         {
+            // &&& state 2 - wait for response
+            TimeCountTracker<int64_t>::CALLBACKFUNC cbf2 =
+                    [&czarStats](TimeCountTracker<int64_t>::TIMEPOINT start,
+                                 TimeCountTracker<int64_t>::TIMEPOINT end, int64_t sum,
+                                 bool success) { czarStats->addQueryRespConcurrentWait(-1); };
+            czarStats->addQueryRespConcurrentWait(1);
+            TimeCountTracker<int64_t> tct2(cbf2);
             LOGS(_log, LOG_LVL_TRACE, "GetResponseData called respC=" << _respCount);
             std::unique_lock<std::mutex> uLock(_mtx);
             // TODO: make timed wait, check for wedged, if weak pointers dead, log and give up.
@@ -138,6 +154,14 @@ public:
         // If more data needs to be sent, _processData will make a new AskForResponseDataCmd
         // object and queue it.
         {
+            // state 3 - process data
+            TimeCountTracker<int64_t>::CALLBACKFUNC cbf3 =
+                    [&czarStats](TimeCountTracker<int64_t>::TIMEPOINT start,
+                                 TimeCountTracker<int64_t>::TIMEPOINT end, int64_t sum,
+                                 bool success) { czarStats->addQueryRespConcurrentProcessing(-1); };
+            czarStats->addQueryRespConcurrentProcessing(1);
+            TimeCountTracker<int64_t> tct3(cbf3);
+
             auto jq = _jQuery.lock();
             auto qr = _qRequest.lock();
             if (jq == nullptr || qr == nullptr) {

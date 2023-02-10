@@ -197,6 +197,23 @@ std::string PriorityQueue::_statsStr() const {
     return os.str();
 }
 
+nlohmann::json PriorityQueue::getJson() const {
+    std::lock_guard<std::mutex> const lock(_mtx);
+    return _getJson();
+}
+
+nlohmann::json PriorityQueue::_getJson() const {
+    nlohmann::json jsArray = nlohmann::json::array();
+    for (auto const& queueStats : _stats()) {
+        nlohmann::json js;
+        js["priority"] = queueStats.priority;
+        js["size"] = queueStats.size;
+        js["running"] = queueStats.running;
+        jsArray.push_back(js);
+    }
+    return jsArray;
+}
+
 QdispPool::QdispPool(int poolSize, int largestPriority, std::vector<int> const& maxRunSizes,
                      std::vector<int> const& minRunningSizes) {
     std::stringstream os;
