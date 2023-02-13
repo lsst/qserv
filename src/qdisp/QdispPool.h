@@ -125,10 +125,6 @@ private:
     /// @return the stringified representation of the statistics for all queues
     std::string _statsStr() const;
 
-    /// @return a json object with queue information.
-    /// @note a lock on _mtx must be held before calling the method
-    nlohmann::json _getJson() const;
-
     void _incrDecrRunningCount(util::Command::Ptr const& cmd, int incrDecr);
 
     mutable std::mutex _mtx;

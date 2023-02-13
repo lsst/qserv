@@ -199,10 +199,6 @@ std::string PriorityQueue::_statsStr() const {
 
 nlohmann::json PriorityQueue::getJson() const {
     std::lock_guard<std::mutex> const lock(_mtx);
-    return _getJson();
-}
-
-nlohmann::json PriorityQueue::_getJson() const {
     nlohmann::json jsArray = nlohmann::json::array();
     for (auto const& queueStats : _stats()) {
         nlohmann::json js;
