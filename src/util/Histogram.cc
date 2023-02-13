@@ -202,7 +202,7 @@ void HistogramRolling::_checkEntries() {
     auto originalSize = _entries.size();
     while (true && !_entries.empty()) {
         Entry& head = _entries.front();
-        auto age = now - head.stamp;
+        chrono::milliseconds age = chrono::duration_cast<chrono::milliseconds>(now - head.stamp);
         if (age.count() > _maxAge.count() || _entries.size() > _maxSize) {
             auto val = head.val;
             _total -= val;

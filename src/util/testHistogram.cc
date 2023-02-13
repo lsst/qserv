@@ -119,7 +119,7 @@ BOOST_AUTO_TEST_CASE(HistogramSize) {
     BOOST_REQUIRE(hist.getBucketCount(3) == 0);
 
     hist.setMaxAge(std::chrono::milliseconds(1));
-    usleep(1000);
+    usleep(2000);
     hist.checkEntries();
     BOOST_REQUIRE(hist.getSize() == 0);
     BOOST_REQUIRE(hist.getAvg() == 0.0);

@@ -31,6 +31,7 @@
 #include "boost/format.hpp"
 #include "boost/lexical_cast.hpp"
 
+#include "../qdisp/CzarStats.h"
 // LSST headers
 #include "lsst/log/Log.h"
 
@@ -114,6 +115,8 @@ Czar::Czar(string const& configPath, string const& czarName)
                                         << util::prettyCharList(vectMinRunningSizes));
     qdisp::QdispPool::Ptr qdispPool =
             make_shared<qdisp::QdispPool>(qPoolSize, maxPriority, vectRunSizes, vectMinRunningSizes);
+    qdisp::CzarStats::setup(qdispPool);
+
     int qReqPseudoMaxRunning = _czarConfig.getQReqPseudoFifoMaxRunning();
     qdisp::PseudoFifo::Ptr queryRequestPseudoFifo = make_shared<qdisp::PseudoFifo>(qReqPseudoMaxRunning);
     _qdispSharedResources = qdisp::SharedResources::create(qdispPool, queryRequestPseudoFifo);

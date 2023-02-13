@@ -28,6 +28,7 @@
 #include <vector>
 
 // Third-party headers
+#include <nlohmann/json.hpp>
 
 // Qserv headers
 #include "util/ThreadPool.h"
@@ -112,6 +113,9 @@ public:
     /// @return a snapshot of statistics for all queues (one element per queue)
     std::vector<PriQ::Stats> stats() const;
 
+    /// @return a json object with queue information.
+    nlohmann::json getJson() const;
+
 private:
     /// @note a lock on _mtx must be held before calling the method
     /// @return a snapshot of statistics for all queues (one element per queue)
@@ -187,6 +191,9 @@ public:
         _prQueue->prepareShutdown();
         _pool->shutdownPool();
     }
+
+    /// @return a json object with queue information.
+    nlohmann::json getJson() const { return _prQueue->getJson(); }
 
 private:
     PriorityQueue::Ptr _prQueue;
