@@ -241,6 +241,8 @@ MYSQL_RES* QueryRunner::_primeResult(string const& query) {
 
 class ChunkResourceRequest {
 public:
+    using Ptr = std::shared_ptr<ChunkResourceRequest>;
+
     ChunkResourceRequest(shared_ptr<ChunkResourceMgr> const& mgr, proto::TaskMsg const& msg)
             // Use old-school member initializers because gcc 4.8.5
             // miscompiles the code when using brace initializers (DM-4704).
@@ -300,11 +302,13 @@ bool QueryRunner::_dispatchChannel() {
     bool needToFreeRes = false;  // set to true once there are results to be freed.
     // Collect the result in _transmitData. When a reasonable amount of data has been collected,
     // or there are no more rows to collect, pass _transmitData to _sendChannel.
+    ChunkResourceRequest::Ptr req;
+    ChunkResource::Ptr cr;
     try {
         util::Timer subChunkT;
         subChunkT.start();
-        ChunkResourceRequest req(_chunkResourceMgr, tMsg);
-        ChunkResource cr(req.getResourceFragment(fragNum));
+        req.reset(new ChunkResourceRequest(_chunkResourceMgr, tMsg));
+        cr.reset(new ChunkResource(req->getResourceFragment(fragNum)));
         subChunkT.stop();
         // TODO: Hold onto this for longer period of time as the odds of reuse are pretty low at this scale
         //       Ideally, hold it until moving on to the next chunk. Try to clean up ChunkResource code.

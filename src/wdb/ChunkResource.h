@@ -70,6 +70,8 @@ class ChunkResourceMgr;
 class ChunkResource {
 public:
     class Info;  // Internal metadata for the resource.
+    using Ptr = std::shared_ptr<ChunkResource>;
+
     ~ChunkResource();
 
     std::string const& getDb() const;
