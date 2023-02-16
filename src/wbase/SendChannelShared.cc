@@ -96,8 +96,7 @@ string SendChannelShared::makeIdStr(int qId, int jId) {
     return str;
 }
 
-void SendChannelShared::waitTransmitLock(wcontrol::TransmitMgr& transmitMgr, bool interactive,
-                                         QueryId const& qId) {
+void SendChannelShared::_waitTransmitLock(bool interactive, QueryId const& qId) {
     if (_transmitLock != nullptr) {
         return;
     }
@@ -107,7 +106,7 @@ void SendChannelShared::waitTransmitLock(wcontrol::TransmitMgr& transmitMgr, boo
         bool first = _firstTransmitLock.exchange(false);
         if (first) {
             // This will wait until TransmitMgr has resources available.
-            _transmitLock.reset(new wcontrol::TransmitLock(transmitMgr, interactive, qId));
+            _transmitLock.reset(new wcontrol::TransmitLock(*_transmitMgr, interactive, qId));
         } else {
             _transmitLockCv.wait(uLock, [this]() { return _transmitLock != nullptr; });
         }
@@ -270,7 +269,7 @@ bool SendChannelShared::_sendBuf(lock_guard<mutex> const& streamLock, xrdsvc::St
 bool SendChannelShared::buildAndTransmitError(util::MultiError& multiErr, Task& task, bool cancelled) {
     auto qId = task.getQueryId();
     bool scanInteractive = true;
-    waitTransmitLock(*_transmitMgr, scanInteractive, qId);
+    _waitTransmitLock(scanInteractive, qId);
     lock_guard<mutex> lock(_tMtx);
     // Ignore the existing _transmitData object as it is irrelevant now
     // that there's an error. Create a new one to send the error.
@@ -307,7 +306,7 @@ bool SendChannelShared::buildAndTransmitResult(MYSQL_RES* mResult, int numFields
     // Wait until the transmit Manager says it is ok to send data to the czar.
     auto qId = task.getQueryId();
     bool scanInteractive = task.getScanInteractive();
-    waitTransmitLock(*_transmitMgr, scanInteractive, qId);
+    _waitTransmitLock(scanInteractive, qId);
     // Lock the transmit mutex until this is done.
     lock_guard<mutex> lock(_tMtx);
     // Initialize _transmitData, if needed.

@@ -45,7 +45,6 @@
 
 // LSST headers
 #include "lsst/log/Log.h"
-#include "wcontrol/TransmitMgr.h"
 #include "global/DbTable.h"
 #include "global/LogContext.h"
 #include "global/UnsupportedError.h"
@@ -79,10 +78,8 @@ namespace lsst::qserv::wdb {
 QueryRunner::Ptr QueryRunner::newQueryRunner(wbase::Task::Ptr const& task,
                                              ChunkResourceMgr::Ptr const& chunkResourceMgr,
                                              mysql::MySqlConfig const& mySqlConfig,
-                                             shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr,
-                                             std::shared_ptr<wcontrol::TransmitMgr> const& transmitMgr) {
-    Ptr qr(new QueryRunner(task, chunkResourceMgr, mySqlConfig, sqlConnMgr,
-                           transmitMgr));  // Private constructor.
+                                             shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr) {
+    Ptr qr(new QueryRunner(task, chunkResourceMgr, mySqlConfig, sqlConnMgr));  // Private constructor.
     // Let the Task know this is its QueryRunner.
     bool cancelled = qr->_task->setTaskQueryRunner(qr);
     if (cancelled) {
@@ -96,13 +93,11 @@ QueryRunner::Ptr QueryRunner::newQueryRunner(wbase::Task::Ptr const& task,
 /// and correct setup of enable_shared_from_this.
 QueryRunner::QueryRunner(wbase::Task::Ptr const& task, ChunkResourceMgr::Ptr const& chunkResourceMgr,
                          mysql::MySqlConfig const& mySqlConfig,
-                         shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr,
-                         std::shared_ptr<wcontrol::TransmitMgr> const& transmitMgr)
+                         shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr)
         : _task(task),
           _chunkResourceMgr(chunkResourceMgr),
           _mySqlConfig(mySqlConfig),
-          _sqlConnMgr(sqlConnMgr),
-          _transmitMgr(transmitMgr) {
+          _sqlConnMgr(sqlConnMgr) {
     [[maybe_unused]] int rc = mysql_thread_init();
     assert(rc == 0);
     assert(_task->msg);
@@ -353,6 +348,8 @@ bool QueryRunner::_dispatchChannel() {
                 }
             }
 
+            // Transition task's state to the next one (reading data from MySQL and sending them to Czar).
+            _task->queried();
             // Pass all information on to the shared object to add on to
             // an existing message or build a new one as needed.
             util::InstanceCount ica(to_string(_task->getQueryId()) + "_rqa_LDB");  // LockupDB
@@ -368,6 +365,18 @@ bool QueryRunner::_dispatchChannel() {
             } else {
                 LOGS(_log, LOG_LVL_ERROR, "QR transmit taskSched == nullptr");
             }
+            // ATTENTION: This call is needed to record the _actual_ completion time of the task.
+            // It rewrites the finish timestamp within the task that was made when the task got
+            // kicked off the scheduler (see the code block above where a value of _removedFromThreadPool
+            // gets tested) which is happening shortly after MySQL query finishes and before the data
+            // transmission to Czar starts.
+            // NOTE: Tasks would stay in the task "cemetery" (class wpublish::QueriesAndChunks)
+            // for about 5 minutes after they finish transmitting data. After that no info on
+            // the task is available.
+            // TODO: Investigate an option for recording state transitions of the persistent
+            // metadata store of the worker, or keeping the state transisitons in a separate transient
+            // store that won't be affected by the task destruction.
+            _task->finished(std::chrono::system_clock::now());
         }
     } catch (sql::SqlErrorObject const& e) {
         LOGS(_log, LOG_LVL_ERROR, "dispatchChannel " << e.errMsg());

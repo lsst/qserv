@@ -45,7 +45,6 @@ class QueryRunner;
 namespace lsst::qserv::wcontrol {
 
 class SqlConnMgr;
-class TransmitMgr;
 
 /// An abstract scheduler interface. Foreman objects use Scheduler instances
 /// to determine what tasks to launch upon triggering events.
@@ -78,8 +77,7 @@ public:
      */
     Foreman(Scheduler::Ptr const& scheduler, unsigned int poolSize, unsigned int maxPoolThreads,
             mysql::MySqlConfig const& mySqlConfig, wpublish::QueriesAndChunks::Ptr const& queries,
-            std::shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr,
-            std::shared_ptr<wcontrol::TransmitMgr> const& transmitMgr);
+            std::shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr);
 
     virtual ~Foreman();
 
@@ -116,9 +114,6 @@ private:
 
     /// For limiting the number of MySQL connections used for tasks.
     std::shared_ptr<wcontrol::SqlConnMgr> _sqlConnMgr;
-
-    /// For limiting the number of transmits back to czars
-    std::shared_ptr<wcontrol::TransmitMgr> _transmitMgr;
 };
 
 }  // namespace lsst::qserv::wcontrol

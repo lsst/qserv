@@ -44,7 +44,6 @@
 #include "wbase/SendChannelShared.h"
 #include "wbase/WorkerCommand.h"
 #include "wcontrol/SqlConnMgr.h"
-#include "wcontrol/TransmitMgr.h"
 #include "wdb/ChunkResource.h"
 #include "wdb/QueryRunner.h"
 
@@ -58,13 +57,9 @@ namespace lsst::qserv::wcontrol {
 
 Foreman::Foreman(Scheduler::Ptr const& scheduler, unsigned int poolSize, unsigned int maxPoolThreads,
                  mysql::MySqlConfig const& mySqlConfig, wpublish::QueriesAndChunks::Ptr const& queries,
-                 wcontrol::SqlConnMgr::Ptr const& sqlConnMgr, wcontrol::TransmitMgr::Ptr const& transmitMgr)
+                 wcontrol::SqlConnMgr::Ptr const& sqlConnMgr)
 
-        : _scheduler(scheduler),
-          _mySqlConfig(mySqlConfig),
-          _queries(queries),
-          _sqlConnMgr(sqlConnMgr),
-          _transmitMgr(transmitMgr) {
+        : _scheduler(scheduler), _mySqlConfig(mySqlConfig), _queries(queries), _sqlConnMgr(sqlConnMgr) {
     // Make the chunk resource mgr
     // Creating backend makes a connection to the database for making temporary tables.
     // It will delete temporary tables that it can identify as being created by a worker.
@@ -103,8 +98,7 @@ void Foreman::_setRunFunc(shared_ptr<wbase::Task> const& task) {
                 task->getSendChannel()->sendError("Unsupported wire protocol", 1);
             }
         } else {
-            auto qr = wdb::QueryRunner::newQueryRunner(task, _chunkResourceMgr, _mySqlConfig, _sqlConnMgr,
-                                                       _transmitMgr);
+            auto qr = wdb::QueryRunner::newQueryRunner(task, _chunkResourceMgr, _mySqlConfig, _sqlConnMgr);
             bool success = false;
             try {
                 success = qr->runQuery();

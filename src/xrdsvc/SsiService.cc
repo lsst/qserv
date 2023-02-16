@@ -161,9 +161,8 @@ SsiService::SsiService(XrdSsiLogger* log, wconfig::WorkerConfig const& workerCon
     LOGS(_log, LOG_LVL_WARN, "config transmitMgr" << *_transmitMgr);
     LOGS(_log, LOG_LVL_WARN, "maxPoolThreads=" << maxPoolThreads);
 
-    _foreman =
-            make_shared<wcontrol::Foreman>(blendSched, poolSize, maxPoolThreads,
-                                           workerConfig.getMySqlConfig(), queries, sqlConnMgr, _transmitMgr);
+    _foreman = make_shared<wcontrol::Foreman>(blendSched, poolSize, maxPoolThreads,
+                                              workerConfig.getMySqlConfig(), queries, sqlConnMgr);
 
     // Watch to see if the log configuration is changed.
     // If LSST_LOG_CONFIG is not defined, there's no good way to know what log

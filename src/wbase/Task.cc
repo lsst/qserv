@@ -74,6 +74,14 @@ std::ostream& dump(std::ostream& os, lsst::qserv::proto::TaskMsg_Fragment const&
     return os;
 }
 
+/**
+ * @param tp The timepoint to be converted.
+ * @return The number of milliseconds since UNIX Epoch
+ */
+uint64_t tp2ms(std::chrono::system_clock::time_point const& tp) {
+    return std::chrono::duration_cast<std::chrono::milliseconds>(tp.time_since_epoch()).count();
+}
+
 }  // namespace
 
 namespace lsst::qserv::wbase {
@@ -269,16 +277,31 @@ void Task::queued(std::chrono::system_clock::time_point const& now) {
     _queueTime = now;
 }
 
-Task::State Task::getState() const {
+bool Task::isRunning() const {
     std::lock_guard<std::mutex> lock(_stateMtx);
-    return _state;
+    switch (_state) {
+        case State::EXECUTING_QUERY:
+        case State::READING_DATA:
+            return true;
+        default:
+            return false;
+    }
 }
 
 /// Set values associated with the Task being started.
 void Task::started(std::chrono::system_clock::time_point const& now) {
     std::lock_guard<std::mutex> guard(_stateMtx);
-    _state = State::RUNNING;
+    _state = State::EXECUTING_QUERY;
     _startTime = now;
+}
+
+void Task::queried() {
+    std::lock_guard<std::mutex> guard(_stateMtx);
+    _state = State::READING_DATA;
+    _queryTime = std::chrono::system_clock::now();
+    // Reset finish time as it might be already set when the task got booted off
+    // a scheduler.
+    _finishTime = std::chrono::system_clock::time_point();
 }
 
 /// Set values associated with the Task being finished.
@@ -299,19 +322,18 @@ std::chrono::milliseconds Task::finished(std::chrono::system_clock::time_point c
     return duration;
 }
 
-/// @return the amount of time spent so far on the task in milliseconds.
 std::chrono::milliseconds Task::getRunTime() const {
-    std::chrono::milliseconds duration{0};
-    {
-        std::lock_guard<std::mutex> guard(_stateMtx);
-        if (_state == State::FINISHED) {
-            duration = std::chrono::duration_cast<std::chrono::milliseconds>(_finishTime - _startTime);
-        } else if (_state == State::RUNNING) {
-            auto now = std::chrono::system_clock::now();
-            duration = std::chrono::duration_cast<std::chrono::milliseconds>(now - _startTime);
-        }
+    std::lock_guard<std::mutex> guard(_stateMtx);
+    switch (_state) {
+        case State::FINISHED:
+            return std::chrono::duration_cast<std::chrono::milliseconds>(_finishTime - _startTime);
+        case State::EXECUTING_QUERY:
+        case State::READING_DATA:
+            return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() -
+                                                                         _startTime);
+        default:
+            return std::chrono::milliseconds(0);
     }
-    return duration;
 }
 
 /// Wait for MemMan to finish reserving resources. The mlock call can take several seconds
@@ -340,13 +362,6 @@ memman::MemMan::Status Task::getMemHandleStatus() {
     return _memMan->getStatus(_memHandle);
 }
 
-string convertToStr(std::chrono::system_clock::time_point chTm) {
-    stringstream os;
-    time_t tm = std::chrono::system_clock::to_time_t(chTm);
-    os << std::put_time(std::localtime(&tm), "%F %T");
-    return os.str();
-}
-
 nlohmann::json Task::getJson() const {
     // It would be nice to have the _queryString in this, but that could make the results very large.
     nlohmann::json js;
@@ -359,9 +374,11 @@ nlohmann::json Task::getJson() const {
     js["scanInteractive"] = _scanInteractive;
     js["cancelled"] = to_string(_cancelled);
     js["state"] = _state;
-    js["queueTime"] = convertToStr(_queueTime);
-    js["startTime"] = convertToStr(_startTime);
-    js["finishTime"] = convertToStr(_finishTime);
+    js["createTime_msec"] = ::tp2ms(_createTime);
+    js["queueTime_msec"] = ::tp2ms(_queueTime);
+    js["startTime_msec"] = ::tp2ms(_startTime);
+    js["queryTime_msec"] = ::tp2ms(_queryTime);
+    js["finishTime_msec"] = ::tp2ms(_finishTime);
     js["sizeSoFar"] = _totalSize;
     return js;
 }

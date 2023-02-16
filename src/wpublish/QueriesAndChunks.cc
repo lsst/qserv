@@ -328,7 +328,7 @@ void QueriesAndChunks::examineAll() {
             lock_guard<mutex> lock(uq->_qStatsMtx);
             for (auto const& ele : uq->_taskMap) {
                 auto const& task = ele.second;
-                if (task->getState() == wbase::Task::State::RUNNING) {
+                if (task->isRunning()) {
                     auto const& sched = dynamic_pointer_cast<wsched::ScanScheduler>(task->getTaskScheduler());
                     if (sched != nullptr) {
                         runningTasks.push_back(task);
