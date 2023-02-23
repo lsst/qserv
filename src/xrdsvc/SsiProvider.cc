@@ -32,6 +32,7 @@
 #include <sys/types.h>
 
 // Third party headers
+#include "boost/filesystem.hpp"
 #include "XrdSsi/XrdSsiCluster.hh"
 #include "XrdSsi/XrdSsiLogger.hh"
 
@@ -171,6 +172,16 @@ XrdSsiProvider::rStat SsiProviderServer::QueryResource(char const* rName, char c
         // Tell the caller we don't recognize this worker
         LOGS(_log, LOG_LVL_DEBUG, "SsiProvider Query " << rName << " absent");
         return notPresent;
+    }
+
+    // Treat other resources as absolute path names of files
+    boost::filesystem::path const path(rName);
+    if (path.is_absolute()) {
+        boost::system::error_code ec;
+        if (boost::filesystem::exists(path, ec) && !ec.value()) {
+            LOGS(_log, LOG_LVL_DEBUG, "SsiProvider File Resource " << rName << " recognized");
+            return isPresent;
+        }
     }
 
     LOGS(_log, LOG_LVL_DEBUG, "SsiProvider Query " << rName << " invalid");

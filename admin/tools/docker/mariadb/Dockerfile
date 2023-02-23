@@ -55,7 +55,7 @@ FROM mariadb-scisql AS lite-mariadb
 
 RUN useradd --uid 1000 qserv
 
-RUN mkdir -p /qserv/data /config-etc /var/log/mysql \
-    && chown qserv:qserv /qserv/data /config-etc /var/log/mysql
+RUN mkdir -p /qserv/data /qserv/data/results /config-etc /var/log/mysql \
+    && chown qserv:qserv /qserv/data /qserv/data/results /config-etc /var/log/mysql
 
 USER qserv
