@@ -14,6 +14,8 @@ target_include_directories(qserv_xrdsvc PRIVATE
 )
 
 target_link_libraries(qserv_xrdsvc PUBLIC
+    boost_filesystem
+    boost_system
     log
     XrdSsiLib
 )

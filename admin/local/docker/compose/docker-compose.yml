@@ -42,11 +42,13 @@ x-worker-repl:
 
 volumes:
     worker_0_data:
+    worker_0_results:
     worker_0_repl_cfg:
     worker_0_xrootd:
     worker_0_home:
     worker_0_mariadb_lib:
     worker_1_data:
+    worker_1_results:
     worker_1_repl_cfg:
     worker_1_xrootd:
     worker_1_home:
@@ -80,6 +82,9 @@ services:
               source: worker_0_data
               target: /qserv/data
             - type: volume
+              source: worker_0_results
+              target: /qserv/data/results
+            - type: volume
               source: worker_0_mariadb_lib
               target: /var/lib/mysql
         network_mode: "service:worker-xrootd-0"
@@ -90,11 +95,15 @@ services:
           --db-uri mysql://qsmaster@127.0.0.1:3306
           --db-admin-uri mysql://root:CHANGEME@127.0.0.1:3306
           --vnid-config "@/usr/local/lib64/libreplica.so {{db_uri}}/qservw_worker 0 0"
+          --results-dirname /qserv/data/results
           --cmsd-manager-name manager-xrootd
           --cmsd-manager-count 1
           --mysql-monitor-password CHANGEME_MONITOR
           --log-cfg-file=/config-etc/log/log-worker-xrootd.cnf
         volumes:
+            - type: volume
+              source: worker_0_results
+              target: /qserv/data/results
             - type: volume
               source: worker_0_xrootd
               target: /var/run/xrootd
@@ -113,10 +122,14 @@ services:
           entrypoint worker-cmsd
           --db-uri mysql://qsmaster@worker-db-0:3306
           --vnid-config "@/usr/local/lib64/libreplica.so mysql://qsmaster@127.0.0.1:3306/qservw_worker 0 0"
+          --results-dirname /qserv/data/results
           --cmsd-manager-name manager-xrootd
           --cmsd-manager-count 1
         network_mode: "service:worker-xrootd-0"
         volumes:
+            - type: volume
+              source: worker_0_results
+              target: /qserv/data/results
             - type: volume
               source: worker_0_xrootd
               target: /var/run/xrootd
@@ -157,6 +170,9 @@ services:
               source: worker_1_data
               target: /qserv/data
             - type: volume
+              source: worker_1_results
+              target: /qserv/data/results
+            - type: volume
               source: worker_1_mariadb_lib
               target: /var/lib/mysql
             - type: volume
@@ -170,12 +186,16 @@ services:
           --db-uri mysql://qsmaster@127.0.0.1:3306?socket={{db_socket}}
           --db-admin-uri mysql://root:CHANGEME@127.0.0.1:3306?socket={{db_socket}}
           --vnid-config "@/usr/local/lib64/libreplica.so mysql://qsmaster@127.0.0.1:3306/qservw_worker 0 0"
+          --results-dirname /qserv/data/results
           --cmsd-manager-name manager-xrootd
           --cmsd-manager-count 1
           --mysql-monitor-password CHANGEME_MONITOR
           --targs db_socket=/qserv/mariadb/run/mysqld.sock
           --log-cfg-file=/config-etc/log/log-worker-xrootd.cnf
         volumes:
+            - type: volume
+              source: worker_1_results
+              target: /qserv/data/results
             - type: volume
               source: worker_1_xrootd
               target: /var/run/xrootd
@@ -197,10 +217,14 @@ services:
           entrypoint --log-level DEBUG worker-cmsd
           --db-uri mysql://qsmaster@worker-db-1:3306?socket=/qserv/mariadb/run/mysqld.sock
           --vnid-config "@/usr/local/lib64/libreplica.so mysql://qsmaster@127.0.0.1:3306/qservw_worker 0 0"
+          --results-dirname /qserv/data/results
           --cmsd-manager-name manager-xrootd
           --cmsd-manager-count 1
         network_mode: "service:worker-xrootd-1"
         volumes:
+            - type: volume
+              source: worker_1_results
+              target: /qserv/data/results
             - type: volume
               source: worker_1_xrootd
               target: /var/run/xrootd

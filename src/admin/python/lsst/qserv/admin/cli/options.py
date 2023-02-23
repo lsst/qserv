@@ -146,6 +146,14 @@ vnid_config_option = partial(
     " source (static string, a file or worker database)."
 )
 
+results_dirname_option = partial(
+    click.option,
+    "--results-dirname",
+    help="Path to a folder where worker stores result sets of queries.",
+    default="/qserv/data/results",
+    show_default=True,
+)
+
 
 xrootd_manager_option = partial(
     click.option,
