@@ -86,9 +86,10 @@ public:
         auto czarStats = CzarStats::get();
         {
             /// setup buffer
-            TimeCountTracker<int>::CALLBACKFUNC cbf1 =
-                    [&czarStats](CzarStats::TIMEPOINT start, CzarStats::TIMEPOINT end, int sum,
-                                 bool success) { czarStats->endQueryRespConcurrentSetup(start, end); };
+            TimeCountTracker<int>::CALLBACKFUNC cbf1 = [&czarStats](TIMEPOINT start, TIMEPOINT end, int sum,
+                                                                    bool success) {
+                czarStats->endQueryRespConcurrentSetup(start, end);
+            };
             czarStats->startQueryRespConcurrentSetup();
             TimeCountTracker<int> tct1(cbf1);
             tTotal.start();
@@ -121,9 +122,10 @@ public:
         // Wait for XrdSsi to call ProcessResponseData with the data,
         // which will notify this wait with a call to receivedProcessResponseDataParameters.
         {
-            TimeCountTracker<int>::CALLBACKFUNC cbf2 =
-                    [&czarStats](CzarStats::TIMEPOINT start, CzarStats::TIMEPOINT end, int sum,
-                                 bool success) { czarStats->endQueryRespConcurrentWait(start, end); };
+            TimeCountTracker<int>::CALLBACKFUNC cbf2 = [&czarStats](TIMEPOINT start, TIMEPOINT end, int sum,
+                                                                    bool success) {
+                czarStats->endQueryRespConcurrentWait(start, end);
+            };
             czarStats->startQueryRespConcurrentWait();
             TimeCountTracker<int> tct2(cbf2);
             LOGS(_log, LOG_LVL_TRACE, "GetResponseData called respC=" << _respCount);
@@ -151,9 +153,10 @@ public:
         // If more data needs to be sent, _processData will make a new AskForResponseDataCmd
         // object and queue it.
         {
-            TimeCountTracker<int>::CALLBACKFUNC cbf3 =
-                    [&czarStats](CzarStats::TIMEPOINT start, CzarStats::TIMEPOINT end, int sum,
-                                 bool success) { czarStats->endQueryRespConcurrentProcessing(start, end); };
+            TimeCountTracker<int>::CALLBACKFUNC cbf3 = [&czarStats](TIMEPOINT start, TIMEPOINT end, int sum,
+                                                                    bool success) {
+                czarStats->endQueryRespConcurrentProcessing(start, end);
+            };
             czarStats->startQueryRespConcurrentProcessing();
             TimeCountTracker<int> tct3(cbf3);
 

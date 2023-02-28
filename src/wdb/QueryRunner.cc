@@ -197,7 +197,7 @@ bool QueryRunner::runQuery() {
     bool connOk = _initConnection();
     if (!connOk) {
         // Since there's an error, this will be the last transmit from this QueryRunner.
-        if (!_task->getSendChannel()->buildAndTransmitError(_multiError, *_task, _cancelled)) {
+        if (!_task->getSendChannel()->buildAndTransmitError(_multiError, _task, _cancelled)) {
             LOGS(_log, LOG_LVL_WARN, " Could not report error to czar as sendChannel not accepting msgs.");
         }
         return false;
@@ -327,9 +327,6 @@ bool QueryRunner::_dispatchChannel() {
             auto qStats = _task->getQueryStats();
             if (qStats != nullptr) qStats->addTaskRunQuery(runTimeSeconds, subchunkRunTimeSeconds);
 
-            util::Timer transmitT;  /// Transmitting time starts now.
-            transmitT.start();
-
             // This thread may have already been removed from the pool for
             // other reasons, such as taking too long.
             if (not _removedFromThreadPool) {
@@ -353,10 +350,11 @@ bool QueryRunner::_dispatchChannel() {
             // Pass all information on to the shared object to add on to
             // an existing message or build a new one as needed.
             util::InstanceCount ica(to_string(_task->getQueryId()) + "_rqa_LDB");  // LockupDB
-            if (_task->getSendChannel()->buildAndTransmitResult(res, numFields, *_task, _largeResult,
+            if (_task->getSendChannel()->buildAndTransmitResult(res, numFields, _task, _largeResult,
                                                                 _multiError, _cancelled, readRowsOk)) {
                 erred = true;
             }
+<<<<<<< HEAD
             transmitT.stop();
             if (taskSched != nullptr) {
                 taskSched->histTimeOfTransmittingTasks->addEntry(transmitT.getElapsed());
@@ -377,6 +375,8 @@ bool QueryRunner::_dispatchChannel() {
             // metadata store of the worker, or keeping the state transisitons in a separate transient
             // store that won't be affected by the task destruction.
             _task->finished(std::chrono::system_clock::now());
+=======
+>>>>>>> 342c43312 (Moved timers and statistics functions to where they now need to be.)
         }
     } catch (sql::SqlErrorObject const& e) {
         LOGS(_log, LOG_LVL_ERROR, "dispatchChannel " << e.errMsg());
@@ -406,7 +406,7 @@ bool QueryRunner::_dispatchChannel() {
         erred = true;
         // Send results. This needs to happen after the error check.
         // If any errors were found, send an error back.
-        if (!_task->getSendChannel()->buildAndTransmitError(_multiError, *_task, _cancelled)) {
+        if (!_task->getSendChannel()->buildAndTransmitError(_multiError, _task, _cancelled)) {
             LOGS(_log, LOG_LVL_WARN, " Could not report error to czar as sendChannel not accepting msgs.");
         }
     }

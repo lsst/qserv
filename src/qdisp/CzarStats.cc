@@ -20,7 +20,6 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-// Generic timer class
 
 // Class header
 #include "qdisp/CzarStats.h"
@@ -58,15 +57,18 @@ void CzarStats::setup(qdisp::QdispPool::Ptr const& qdispPool) {
 }
 
 CzarStats::CzarStats(qdisp::QdispPool::Ptr const& qdispPool) : _qdispPool(qdispPool) {
-    _histTrmitRecvRate = util::HistogramRolling::Ptr(new util::HistogramRolling(
-            "TransmitRecvRateBytesPerSec", {1'000, 1'000'000, 500'000'000, 1'000'000'000}, 1h, 10000));
-    auto bucketVals = {0.1, 1.0, 10.0, 100.0, 1000.0};
-    _histRespSetup =
-            util::HistogramRolling::Ptr(new util::HistogramRolling("RespSetupTime", bucketVals, 1h, 10000));
-    _histRespWait =
-            util::HistogramRolling::Ptr(new util::HistogramRolling("RespWaitTime", bucketVals, 1h, 10000));
+    auto bucketValsRates = {1'000.0, 1'000'000.0, 500'000'000.0, 1'000'000'000.0};
+    _histTrmitRecvRate = util::HistogramRolling::Ptr(
+            new util::HistogramRolling("TransmitRecvRateBytesPerSec", bucketValsRates, 1h, 10000));
+    _histMergeRate = util::HistogramRolling::Ptr(
+            new util::HistogramRolling("MergeRateRateBytesPerSec", bucketValsRates, 1h, 10000));
+    auto bucketValsTimes = {0.1, 1.0, 10.0, 100.0, 1000.0};
+    _histRespSetup = util::HistogramRolling::Ptr(
+            new util::HistogramRolling("RespSetupTime", bucketValsTimes, 1h, 10000));
+    _histRespWait = util::HistogramRolling::Ptr(
+            new util::HistogramRolling("RespWaitTime", bucketValsTimes, 1h, 10000));
     _histRespProcessing = util::HistogramRolling::Ptr(
-            new util::HistogramRolling("RespProcessingTime", bucketVals, 1h, 10000));
+            new util::HistogramRolling("RespProcessingTime", bucketValsTimes, 1h, 10000));
 }
 
 CzarStats::Ptr CzarStats::get() {
@@ -98,9 +100,14 @@ void CzarStats::endQueryRespConcurrentProcessing(TIMEPOINT start, TIMEPOINT end)
 void CzarStats::addTrmitRecvRate(double bytesPerSec) {
     _histTrmitRecvRate->addEntry(bytesPerSec);
     LOGS(_log, LOG_LVL_TRACE,
-         "czarstats::addTrmitRecvRate " << bytesPerSec << " " << _histTrmitRecvRate->getString("")
-                                        << " jsonA=" << getTransmitStatsJson()
-                                        << " jsonB=" << getQdispStatsJson());
+         "czarstats::addTrmitRecvRate " << bytesPerSec << " " << _histTrmitRecvRate->getString(""));
+}
+
+void CzarStats::addMergeRate(double bytesPerSec) {
+    _histMergeRate->addEntry(bytesPerSec);
+    LOGS(_log, LOG_LVL_TRACE,
+         "czarstats::addTrmitRecvRate " << bytesPerSec << " " << _histMergeRate->getString("") << " jsonA="
+                                        << getTransmitStatsJson() << " jsonB=" << getQdispStatsJson());
 }
 
 nlohmann::json CzarStats::getQdispStatsJson() const {
@@ -118,6 +125,7 @@ nlohmann::json CzarStats::getQdispStatsJson() const {
 nlohmann::json CzarStats::getTransmitStatsJson() const {
     nlohmann::json js;
     js["TransmitRecvRate"] = _histTrmitRecvRate->getJson();
+    js["histMergeRate"] = _histMergeRate->getJson();
     return js;
 }
 

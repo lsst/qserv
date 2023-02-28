@@ -96,7 +96,7 @@ public:
 
     /// @return a StreamBuffer object containing what was in _dataMsg.
     /// Note: this function invalidates _dataMsg.
-    std::shared_ptr<xrdsvc::StreamBuffer> getStreamBuffer();
+    std::shared_ptr<xrdsvc::StreamBuffer> getStreamBuffer(std::shared_ptr<Task> const& task);
 
     /// @return the protobuf string for the header.
     std::string makeHeaderString(bool reallyLast, uint32_t seq, int scsSeq);

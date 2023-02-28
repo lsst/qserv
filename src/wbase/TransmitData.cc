@@ -140,10 +140,10 @@ string TransmitData::getHeaderString(uint32_t seq, int scsSeq) {
     return thisHeaderString;
 }
 
-xrdsvc::StreamBuffer::Ptr TransmitData::getStreamBuffer() {
+xrdsvc::StreamBuffer::Ptr TransmitData::getStreamBuffer(Task::Ptr const& task) {
     lock_guard<mutex> lock(_trMtx);
     // createWithMove invalidates _dataMsg
-    return xrdsvc::StreamBuffer::createWithMove(_dataMsg);
+    return xrdsvc::StreamBuffer::createWithMove(_dataMsg, task);
 }
 
 void TransmitData::_buildHeader(bool largeResult) {

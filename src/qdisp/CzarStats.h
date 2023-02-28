@@ -57,8 +57,6 @@ class QdispPool;
 class CzarStats : std::enable_shared_from_this<CzarStats> {
 public:
     using Ptr = std::shared_ptr<CzarStats>;
-    using CLOCK = std::chrono::system_clock;
-    using TIMEPOINT = std::chrono::time_point<CLOCK>;
 
     CzarStats() = delete;
     CzarStats(CzarStats const&) = delete;
@@ -74,8 +72,11 @@ public:
     /// @throws Bug if get() is called before setup()
     static Ptr get();
 
-    /// Add a bytes per second entry
+    /// Add a bytes per second entry for transmits received
     void addTrmitRecvRate(double bytesPerSec);
+
+    /// Add a bytes per second entry for merges
+    void addMergeRate(double bytesPerSec);
 
     /// Increase the count of requests being setup.
     void startQueryRespConcurrentSetup() { ++_queryRespConcurrentSetup; }
@@ -106,8 +107,11 @@ private:
     /// Connection to get information about the czar's pool of dispatch threads.
     std::shared_ptr<qdisp::QdispPool> _qdispPool;
 
-    /// Histogram for tracking  receive rate in bytes per second.
+    /// Histogram for tracking receive rate in bytes per second.
     util::HistogramRolling::Ptr _histTrmitRecvRate;
+
+    /// Histogram for tracking merge rate in bytes per second.
+    util::HistogramRolling::Ptr _histMergeRate;
 
     std::atomic<int64_t> _queryRespConcurrentSetup{0};       ///< Number of request currently being setup
     util::HistogramRolling::Ptr _histRespSetup;              ///< Histogram for setup time
@@ -123,15 +127,14 @@ class TimeCountTracker {
 public:
     using Ptr = std::shared_ptr<TimeCountTracker>;
 
-    using CALLBACKFUNC = std::function<void(CzarStats::TIMEPOINT start, CzarStats::TIMEPOINT end, TType sum,
-                                            bool success)>;
+    using CALLBACKFUNC = std::function<void(TIMEPOINT start, TIMEPOINT end, TType sum, bool success)>;
     TimeCountTracker() = delete;
     TimeCountTracker(TimeCountTracker const&) = delete;
     TimeCountTracker& operator=(TimeCountTracker const&) = delete;
 
     /// Constructor that includes the callback function that the destructor will call.
     TimeCountTracker(CALLBACKFUNC callback) : _callback(callback) {
-        auto now = CzarStats::CLOCK::now();
+        auto now = CLOCK::now();
         _startTime = now;
         _endTime = now;
     }
@@ -141,7 +144,7 @@ public:
         TType sum;
         {
             std::lock_guard lg(_mtx);
-            _endTime = CzarStats::CLOCK::now();
+            _endTime = CLOCK::now();
             sum = _sum;
         }
         _callback(_startTime, _endTime, sum, _success);
@@ -157,8 +160,8 @@ public:
     void setSuccess() { _success = true; }
 
 private:
-    CzarStats::TIMEPOINT _startTime;
-    CzarStats::TIMEPOINT _endTime;
+    TIMEPOINT _startTime;
+    TIMEPOINT _endTime;
     TType _sum = 0;  ///< atomic double doesn't support +=
     std::atomic<bool> _success{false};
     CALLBACKFUNC _callback;

@@ -37,6 +37,15 @@
 #include "XrdSsi/XrdSsiErrInfo.hh"  // required by XrdSsiStream
 #include "XrdSsi/XrdSsiStream.hh"
 
+namespace lsst::qserv {
+namespace wbase {
+class Task;
+}
+namespace wcontrol {
+class WorkerStats;
+}
+}  // namespace lsst::qserv
+
 namespace lsst::qserv::xrdsvc {
 
 /// StreamBuffer is a single use buffer for transferring data packets
@@ -54,7 +63,8 @@ public:
 
     /// Factory function, because this should be able to delete itself when Recycle() is called.
     /// The constructor uses move to avoid copying the string.
-    static StreamBuffer::Ptr createWithMove(std::string &input);
+    static StreamBuffer::Ptr createWithMove(std::string &input,
+                                            std::shared_ptr<wbase::Task> const &task = nullptr);
 
     /// Set the maximum number of bytes that can be used by all instances of this class.
     static void setMaxTotalBytes(int64_t maxBytes);
@@ -74,6 +84,9 @@ public:
     /// @return true if there is data in the buffer.
     bool waitForDoneWithThis();
 
+    /// Start the timer that will be stopped when Recycle() is called.
+    void startTimer();
+
     /// Unblock the condition variable on cancel.
     void cancel();
 
@@ -81,8 +94,11 @@ public:
 
 private:
     /// This constructor will invalidate 'input'.
-    explicit StreamBuffer(std::string &input);
+    explicit StreamBuffer(std::string &input, std::shared_ptr<wbase::Task> const &task);
 
+    /// Pointer to the task for keeping statistics.
+    /// NOTE: This will be nullptr for many things, so check before using.
+    std::shared_ptr<wbase::Task> _task;
     std::string _dataStr;
     std::mutex _mtx;
     std::condition_variable _cv;
@@ -90,6 +106,15 @@ private:
     bool _cancelled = false;
     Ptr _selfKeepAlive;  ///< keep this object alive until after Recycle() is called.
     // util::InstanceCount _ic{"StreamBuffer"}; ///< Useful as it indicates amount of waiting for czar.
+
+    std::chrono::time_point<std::chrono::system_clock> _createdTime;  ///< Time this instance was created.
+    std::chrono::time_point<std::chrono::system_clock>
+            _startTime;  ///< Time this instance was handed to xrootd.
+    std::chrono::time_point<std::chrono::system_clock>
+            _endTime;  ///< Time xrootd was finished with this instance.
+    /// Pointer for worker statistics.
+    /// NOTE: This will be nullptr for many things, so check before using.
+    std::shared_ptr<wcontrol::WorkerStats> _wStats;
 
     // Members associated with limiting memory use.
     static std::atomic<int64_t> _totalBytes;  ///< Total bytes currently in use by all StreamBuffer instances.

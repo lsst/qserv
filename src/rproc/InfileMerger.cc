@@ -251,21 +251,24 @@ bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> const& response)
         semaLock.reset(new util::SemaLock(*_semaMgrConn));
     }
 
-    qdisp::TimeCountTracker<double>::CALLBACKFUNC cbf =
-            [](qdisp::CzarStats::TIMEPOINT start, qdisp::CzarStats::TIMEPOINT end, double sum, bool success) {
-                qdisp::CzarStats::Ptr cStats = qdisp::CzarStats::get();
-                std::chrono::duration<double> secs = end - start;
-                cStats->addTrmitRecvRate(sum / secs.count());
-            };
-    qdisp::TimeCountTracker tct(cbf);
+    qdisp::TimeCountTracker<double>::CALLBACKFUNC cbf = [](TIMEPOINT start, TIMEPOINT end, double sum,
+                                                           bool success) {
+        qdisp::CzarStats::Ptr cStats = qdisp::CzarStats::get();
+        std::chrono::duration<double> secs = end - start;
+        cStats->addTrmitRecvRate(sum / secs.count());
+    };
+    auto tct = make_shared<qdisp::TimeCountTracker<double>>(cbf);
 
     bool ret = false;
     // Add columns to rows in virtFile.
+    util::Timer virtFileT;
+    virtFileT.start();
     int resultJobId = makeJobIdAttempt(response->result.jobid(), response->result.attemptcount());
     ProtoRowBuffer::Ptr pRowBuffer = std::make_shared<ProtoRowBuffer>(
             response->result, resultJobId, _jobIdColName, _jobIdSqlType, _jobIdMysqlType);
     std::string const virtFile = _infileMgr.prepareSrc(pRowBuffer);
     std::string const infileStatement = sql::formLoadInfile(_mergeTable, virtFile);
+    virtFileT.stop();
 
     // If the job attempt is invalid, exit without adding rows.
     // It will wait here if rows need to be deleted.
@@ -288,11 +291,23 @@ bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> const& response)
         _error = util::Error(-1, os.str(), -1);
         return false;
     }
+
+    tct->addToValue(resultSize);
+    tct->setSuccess();
+    tct.reset();  // stop transmit recieve timer before merging happens.
     // Stop here (if requested) after collecting stats on the amount of data collected
     // from workers.
     if (_config.debugNoMerge) {
         return true;
     }
+
+    qdisp::TimeCountTracker<double>::CALLBACKFUNC cbfMerge = [](TIMEPOINT start, TIMEPOINT end, double sum,
+                                                                bool success) {
+        qdisp::CzarStats::Ptr cStats = qdisp::CzarStats::get();
+        std::chrono::duration<double> secs = end - start;
+        cStats->addMergeRate(sum / secs.count());
+    };
+    qdisp::TimeCountTracker tctMerge(cbfMerge);
 
     auto start = std::chrono::system_clock::now();
     switch (_dbEngine) {
@@ -306,7 +321,7 @@ bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> const& response)
         default:
             throw std::invalid_argument("InfileMerger::_dbEngine is unknown =" + engineToStr(_dbEngine));
     }
-    tct.addToValue(resultSize);
+    tctMerge.addToValue(resultSize);
     auto end = std::chrono::system_clock::now();
     auto mergeDur = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
     LOGS(_log, LOG_LVL_DEBUG,
@@ -315,11 +330,11 @@ bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> const& response)
     if (not ret) {
         LOGS(_log, LOG_LVL_ERROR, "InfileMerger::merge mysql applyMysql failure");
     } else {
-        tct.setSuccess();
+        tctMerge.setSuccess();
     }
     _invalidJobAttemptMgr.decrConcurrentMergeCount();
 
-    LOGS(_log, LOG_LVL_DEBUG, "mergeDur=" << mergeDur.count());
+    LOGS(_log, LOG_LVL_DEBUG, "virtFileT=" << virtFileT.getElapsed() << " mergeDur=" << mergeDur.count());
 
     return ret;
 }

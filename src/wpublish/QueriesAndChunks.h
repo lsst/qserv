@@ -50,9 +50,6 @@ class QueryStatistics {
 public:
     using Ptr = std::shared_ptr<QueryStatistics>;
 
-    using CLOCK = std::chrono::system_clock;
-    using TIMEPOINT = std::chrono::time_point<CLOCK>;
-
     using TaskId = std::pair<QueryId, int>;  ///< Unique identifier for task is jobId, fragment number.
     /// For maps of Tasks in a query. It would be nice to use an unordered_map, but a hash need to be defined.
     using TaskMap = std::map<TaskId, wbase::Task::Ptr>;
@@ -78,7 +75,9 @@ public:
     /// @param timeSeconds - time to transmit data back to the czar for one Task
     /// @param bytesTransmitted - number of bytes transmitted to the czar for one Task.
     /// @param rowsTransmitted - number of rows transmitted to the czar for one Task.
-    void addTaskTransmit(double timeSeconds, int64_t bytesTransmitted, int64_t rowsTransmitted);
+    /// @param bufferFillSecs - time spent filling the buffer from the sql result.
+    void addTaskTransmit(double timeSeconds, int64_t bytesTransmitted, int64_t rowsTransmitted,
+                         double bufferFillSecs);
 
     TIMEPOINT const creationTime;
     QueryId const queryId;
@@ -114,6 +113,7 @@ private:
     util::Histogram::Ptr
             _histTimeSubchunkPerTask;  ///< Histogram of time waiting for temporary table generation.
     util::Histogram::Ptr _histTimeTransmittingPerTask;  ///< Histogram of time spent transmitting.
+    util::Histogram::Ptr _histTimeBufferFillPerTask;    ///< Histogram of time filling buffers.
     util::Histogram::Ptr _histSizePerTask;              ///< Histogram of bytes per Task.
     util::Histogram::Ptr _histRowsPerTask;              ///< Histogram of rows per Task.
 };
