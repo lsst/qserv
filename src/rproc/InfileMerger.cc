@@ -251,13 +251,13 @@ bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> const& response)
         semaLock.reset(new util::SemaLock(*_semaMgrConn));
     }
 
-    qdisp::TimeCountTracker<double>::CALLBACKFUNC cbf = [](TIMEPOINT start, TIMEPOINT end, double sum,
-                                                           bool success) {
+    TimeCountTracker<double>::CALLBACKFUNC cbf = [](TIMEPOINT start, TIMEPOINT end, double sum,
+                                                    bool success) {
         qdisp::CzarStats::Ptr cStats = qdisp::CzarStats::get();
         std::chrono::duration<double> secs = end - start;
         cStats->addTrmitRecvRate(sum / secs.count());
     };
-    auto tct = make_shared<qdisp::TimeCountTracker<double>>(cbf);
+    auto tct = make_shared<TimeCountTracker<double>>(cbf);
 
     bool ret = false;
     // Add columns to rows in virtFile.
@@ -301,13 +301,13 @@ bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> const& response)
         return true;
     }
 
-    qdisp::TimeCountTracker<double>::CALLBACKFUNC cbfMerge = [](TIMEPOINT start, TIMEPOINT end, double sum,
-                                                                bool success) {
+    TimeCountTracker<double>::CALLBACKFUNC cbfMerge = [](TIMEPOINT start, TIMEPOINT end, double sum,
+                                                         bool success) {
         qdisp::CzarStats::Ptr cStats = qdisp::CzarStats::get();
         std::chrono::duration<double> secs = end - start;
         cStats->addMergeRate(sum / secs.count());
     };
-    qdisp::TimeCountTracker tctMerge(cbfMerge);
+    TimeCountTracker tctMerge(cbfMerge);
 
     auto start = std::chrono::system_clock::now();
     switch (_dbEngine) {

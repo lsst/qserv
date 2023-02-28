@@ -40,7 +40,7 @@
 #include <nlohmann/json.hpp>
 
 // qserv headers
-#include "global/constants.h"
+#include "global/clock_defs.h"
 
 namespace lsst::qserv::util {
 

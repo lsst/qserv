@@ -28,9 +28,6 @@
  *
  */
 
-// Sytem includes
-#include <chrono>
-
 namespace lsst::qserv {
 const char CHUNK_COLUMN[] = "chunkId";
 const char SUB_CHUNK_COLUMN[] = "subChunkId";
@@ -71,9 +68,6 @@ const int NOTSET = -1;
  * @warning mysql enum index start from 1
  */
 enum MessageSeverity { MSG_INFO = 1, MSG_ERROR };
-
-using CLOCK = std::chrono::system_clock;
-using TIMEPOINT = std::chrono::time_point<CLOCK>;
 
 }  // namespace lsst::qserv
 #endif  // LSST_QSERV_CONSTANTS_H

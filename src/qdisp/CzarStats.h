@@ -121,53 +121,6 @@ private:
     util::HistogramRolling::Ptr _histRespProcessing;         ///< Histogram for processing time
 };
 
-/// RAII class to help track a changing sum through a begin and end time.
-template <typename TType>
-class TimeCountTracker {
-public:
-    using Ptr = std::shared_ptr<TimeCountTracker>;
-
-    using CALLBACKFUNC = std::function<void(TIMEPOINT start, TIMEPOINT end, TType sum, bool success)>;
-    TimeCountTracker() = delete;
-    TimeCountTracker(TimeCountTracker const&) = delete;
-    TimeCountTracker& operator=(TimeCountTracker const&) = delete;
-
-    /// Constructor that includes the callback function that the destructor will call.
-    TimeCountTracker(CALLBACKFUNC callback) : _callback(callback) {
-        auto now = CLOCK::now();
-        _startTime = now;
-        _endTime = now;
-    }
-
-    /// Call the callback function as the dying act.
-    ~TimeCountTracker() {
-        TType sum;
-        {
-            std::lock_guard lg(_mtx);
-            _endTime = CLOCK::now();
-            sum = _sum;
-        }
-        _callback(_startTime, _endTime, sum, _success);
-    }
-
-    /// Add val to _sum
-    void addToValue(double val) {
-        std::lock_guard lg(_mtx);
-        _sum += val;
-    }
-
-    /// Call if the related action completed.
-    void setSuccess() { _success = true; }
-
-private:
-    TIMEPOINT _startTime;
-    TIMEPOINT _endTime;
-    TType _sum = 0;  ///< atomic double doesn't support +=
-    std::atomic<bool> _success{false};
-    CALLBACKFUNC _callback;
-    std::mutex _mtx;
-};
-
 }  // namespace lsst::qserv::qdisp
 
 #endif  // LSST_QSERV_QDISP_CZARSTATS_H
