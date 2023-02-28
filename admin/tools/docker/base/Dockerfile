@@ -108,9 +108,9 @@ RUN cd /tmp \
     && rm -rf mysqlproxy
 
 RUN cd /tmp \
-    && git clone https://github.com/lsst/xrootd \
+    && git clone https://github.com/xrootd/xrootd.git \
     && cd xrootd \
-    && git checkout affinity-flex-hash \
+    && git checkout ssi-5.3.x \
     && mkdir build \
     && cd build \
     && cmake -DENABLE_PYTHON=off .. \
