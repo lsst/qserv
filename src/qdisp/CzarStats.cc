@@ -57,12 +57,12 @@ void CzarStats::setup(qdisp::QdispPool::Ptr const& qdispPool) {
 }
 
 CzarStats::CzarStats(qdisp::QdispPool::Ptr const& qdispPool) : _qdispPool(qdispPool) {
-    auto bucketValsRates = {1'000.0, 1'000'000.0, 500'000'000.0, 1'000'000'000.0};
+    auto const bucketValsRates = {1'000.0, 1'000'000.0, 500'000'000.0, 1'000'000'000.0};
     _histTrmitRecvRate = util::HistogramRolling::Ptr(
             new util::HistogramRolling("TransmitRecvRateBytesPerSec", bucketValsRates, 1h, 10000));
     _histMergeRate = util::HistogramRolling::Ptr(
             new util::HistogramRolling("MergeRateRateBytesPerSec", bucketValsRates, 1h, 10000));
-    auto bucketValsTimes = {0.1, 1.0, 10.0, 100.0, 1000.0};
+    auto const bucketValsTimes = {0.1, 1.0, 10.0, 100.0, 1000.0};
     _histRespSetup = util::HistogramRolling::Ptr(
             new util::HistogramRolling("RespSetupTime", bucketValsTimes, 1h, 10000));
     _histRespWait = util::HistogramRolling::Ptr(

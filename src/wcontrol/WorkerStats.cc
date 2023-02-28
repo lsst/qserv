@@ -56,14 +56,14 @@ void WorkerStats::setup() {
 }
 
 WorkerStats::WorkerStats() {
-    auto bucketTimes = {1.0, 20.0, 60.0, 600.0, 1000.0, 10'000.0};
+    auto const  bucketTimes = {1.0, 20.0, 60.0, 600.0, 1000.0, 10'000.0};
     _histSendQueueWaitTime = util::HistogramRolling::Ptr(
             new util::HistogramRolling("SendQueueWaitTime", bucketTimes, 1h, 10'000));
 
     _histSendXrootdTime = util::HistogramRolling::Ptr(
             new util::HistogramRolling("SendXrootdTime", bucketTimes, 1h, 10'000));
 
-    auto bucketVals = {10.0, 100.0, 1'000.0, 10'000.0, 100'000.0, 500'000.0, 1'000'000.0};
+    auto const bucketVals = {10.0, 100.0, 1'000.0, 10'000.0, 100'000.0, 500'000.0, 1'000'000.0};
     _histConcurrentQueuedBuffers =
             util::Histogram::Ptr(new util::Histogram("ConcurrentQueuedBuffers", bucketVals));
     _histXrootdOwnedBuffers = util::Histogram::Ptr(new util::Histogram("XrootdOwnedBuffers", bucketVals));
