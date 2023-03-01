@@ -249,7 +249,17 @@ bool SendChannelShared::_sendBuf(lock_guard<mutex> const& streamLock, xrdsvc::St
         return false;
     } else {
         LOGS(_log, LOG_LVL_INFO, "_sendbuf wait start " << note);
-        streamBuf->waitForDoneWithThis();  // Block until this buffer has been sent.
+        // Only wait if this is really the last message to finish transmitting for this SendChannelShared.
+        // Note: If this does speed up transmission of data to the czar then it is probably worth it to
+        //       add code to wait if more than X buffers are in use at the same time, which will likely
+        //       make a big performance crater, but better than crashing due to out of memory.
+        //       It may be best to reduce the number of threads per scheduler to 1 until it clears up instead
+        //       of waiting for every send.
+        //       If this doesn't improve transmission performance, just change it back to waiting all of the
+        //       time.
+        if (last) {
+            streamBuf->waitForDoneWithThis();  // Block until this buffer has been sent.
+        }
     }
     return sent;
 }
