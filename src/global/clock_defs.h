@@ -66,7 +66,7 @@ public:
     }
 
     /// Add val to _sum
-    void addToValue(double val) {
+    void addToValue(TType val) {
         std::lock_guard lg(_mtx);
         _sum += val;
     }
