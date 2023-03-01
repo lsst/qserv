@@ -31,6 +31,8 @@
 #include "lsst/log/Log.h"
 
 // Qserv headers
+#include "wbase/Task.h"
+#include "wcontrol/WorkerStats.h"
 
 namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.xrdsvc.StreamBuffer");
@@ -65,24 +67,34 @@ double StreamBuffer::percentOfMaxTotalBytesUsed() {
 }
 
 // Factory function, because this should be able to delete itself when Recycle() is called.
-StreamBuffer::Ptr StreamBuffer::createWithMove(std::string &input) {
+StreamBuffer::Ptr StreamBuffer::createWithMove(std::string &input, std::shared_ptr<wbase::Task> const &task) {
     unique_lock<mutex> uLock(_createMtx);
     if (_totalBytes >= _maxTotalBytes) {
         LOGS(_log, LOG_LVL_WARN, "StreamBuffer at memory limit " << _totalBytes);
     }
     _createCv.wait(uLock, []() { return _totalBytes < _maxTotalBytes; });
-    Ptr ptr(new StreamBuffer(input));
+    Ptr ptr(new StreamBuffer(input, task));
     ptr->_selfKeepAlive = ptr;
     return ptr;
 }
 
-StreamBuffer::StreamBuffer(std::string &input) {
+StreamBuffer::StreamBuffer(std::string &input, wbase::Task::Ptr const &task) : _task(task) {
     _dataStr = std::move(input);
     // TODO: try to make 'data' a const char* in xrootd code.
     // 'data' is not being changed after being passed, so hopefully not an issue.
     //_dataStr will not be used again, but this is ugly.
     data = (char *)(_dataStr.data());
     next = 0;
+
+    auto now = CLOCK::now();
+    _createdTime = now;
+    _startTime = now;
+    _endTime = now;
+
+    _wStats = wcontrol::WorkerStats::get();
+    if (_wStats != nullptr) {
+        _wStats->startQueryRespConcurrentQueued(_createdTime);
+    }
 
     _totalBytes += _dataStr.size();
     LOGS(_log, LOG_LVL_DEBUG, "StreamBuffer::_totalBytes=" << _totalBytes << " thisSize=" << _dataStr.size());
@@ -93,6 +105,16 @@ StreamBuffer::~StreamBuffer() {
     LOGS(_log, LOG_LVL_DEBUG, "~StreamBuffer::_totalBytes=" << _totalBytes);
 }
 
+void StreamBuffer::startTimer() {
+    auto now = CLOCK::now();
+    _startTime = now;
+    _endTime = now;
+
+    if (_wStats != nullptr) {
+        _wStats->endQueryRespConcurrentQueued(_createdTime, _startTime);  // add time to queued time
+    }
+}
+
 /// xrdssi calls this to recycle the buffer when finished.
 void StreamBuffer::Recycle() {
     {
@@ -101,6 +123,23 @@ void StreamBuffer::Recycle() {
     }
     _cv.notify_all();
 
+    _endTime = CLOCK::now();
+    if (_wStats != nullptr) {
+        _wStats->endQueryRespConcurrentXrootd(_startTime, _endTime);
+    }
+
+    if (_task != nullptr) {
+        auto taskSched = _task->getTaskScheduler();
+        if (taskSched != nullptr) {
+            std::chrono::duration<double> secs = _endTime - _startTime;
+            taskSched->histTimeOfTransmittingTasks->addEntry(secs.count());
+            LOGS(_log, LOG_LVL_TRACE, "Recycle " << taskSched->histTimeOfTransmittingTasks->getJson());
+        } else {
+            LOGS(_log, LOG_LVL_WARN, "Recycle transmit taskSched == nullptr");
+        }
+    } else {
+        LOGS(_log, LOG_LVL_DEBUG, "Recycle transmit _task == nullptr");
+    }
     // Effectively reset _selfKeepAlive, and if nobody else was
     // referencing this, this object will delete itself when
     // this function is done.

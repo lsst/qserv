@@ -114,8 +114,8 @@ void SendChannelShared::_waitTransmitLock(bool interactive, QueryId const& qId) 
     _transmitLockCv.notify_one();
 }
 
-bool SendChannelShared::_addTransmit(bool cancelled, bool erred, bool lastIn, TransmitData::Ptr const& tData,
-                                     int qId, int jId) {
+bool SendChannelShared::_addTransmit(Task::Ptr const& task, bool cancelled, bool erred, bool lastIn,
+                                     TransmitData::Ptr const& tData, int qId, int jId) {
     QSERV_LOGCONTEXT_QUERY_JOB(qId, jId);
     assert(tData != nullptr);
 
@@ -152,12 +152,10 @@ bool SendChannelShared::_addTransmit(bool cancelled, bool erred, bool lastIn, Tr
                                       << " cancelled=" << cancelled);
     }
 
-    return _transmit(erred);
+    return _transmit(erred, task);
 }
 
-util::TimerHistogram scsTransmitSend("scsTransmitSend", {0.01, 0.1, 1.0, 2.0, 5.0, 10.0, 20.0});
-
-bool SendChannelShared::_transmit(bool erred) {
+bool SendChannelShared::_transmit(bool erred, Task::Ptr const& task) {
     string idStr = "QID?";
 
     // Result data is transmitted in messages containing data and headers.
@@ -224,20 +222,17 @@ bool SendChannelShared::_transmit(bool erred) {
             }
 
             // Put the data for the transmit in a StreamBuffer and send it.
-            auto streamBuf = thisTransmit->getStreamBuffer();
-            {
-                util::Timer sendTimer;
-                sendTimer.start();
-                bool sent = _sendBuf(streamLock, streamBuf, reallyLast,
-                                     "transmitLoop " + idStr + " " + seqStr, scsSeq);
-                sendTimer.stop();
-                auto logMsgSend = scsTransmitSend.addTime(sendTimer.getElapsed(), idStr);
-                LOGS(_log, LOG_LVL_INFO, logMsgSend);
-                if (!sent) {
-                    LOGS(_log, LOG_LVL_ERROR, "Failed to send " << idStr);
-                    _kill("SendChannelShared::_transmit b");
-                    return false;
-                }
+            // Since the StreamBuffer's lifetime is beyond our control, it needs
+            // its own Task pointer.
+            auto streamBuf = thisTransmit->getStreamBuffer(task);
+            streamBuf->startTimer();
+            bool sent = _sendBuf(streamLock, streamBuf, reallyLast, "transmitLoop " + idStr + " " + seqStr,
+                                 scsSeq);
+
+            if (!sent) {
+                LOGS(_log, LOG_LVL_ERROR, "Failed to send " << idStr);
+                _kill("SendChannelShared::_transmit b");
+                return false;
             }
         }
         // If that was the last message, break the loop.
@@ -246,8 +241,6 @@ bool SendChannelShared::_transmit(bool erred) {
     return true;
 }
 
-util::TimerHistogram transmitHisto("transmit Hist", {0.1, 1, 5, 10, 20, 40});
-
 bool SendChannelShared::_sendBuf(lock_guard<mutex> const& streamLock, xrdsvc::StreamBuffer::Ptr& streamBuf,
                                  bool last, string const& note, int scsSeq) {
     bool sent = _sendChannel->sendStream(streamBuf, last, scsSeq);
@@ -255,28 +248,24 @@ bool SendChannelShared::_sendBuf(lock_guard<mutex> const& streamLock, xrdsvc::St
         LOGS(_log, LOG_LVL_ERROR, "Failed to transmit " << note << "!");
         return false;
     } else {
-        util::Timer t;
-        t.start();
         LOGS(_log, LOG_LVL_INFO, "_sendbuf wait start " << note);
         streamBuf->waitForDoneWithThis();  // Block until this buffer has been sent.
-        t.stop();
-        auto logMsg = transmitHisto.addTime(t.getElapsed(), note);
-        LOGS(_log, LOG_LVL_DEBUG, logMsg);
     }
     return sent;
 }
 
-bool SendChannelShared::buildAndTransmitError(util::MultiError& multiErr, Task& task, bool cancelled) {
-    auto qId = task.getQueryId();
+bool SendChannelShared::buildAndTransmitError(util::MultiError& multiErr, Task::Ptr const& task,
+                                              bool cancelled) {
+    auto qId = task->getQueryId();
     bool scanInteractive = true;
     _waitTransmitLock(scanInteractive, qId);
     lock_guard<mutex> lock(_tMtx);
     // Ignore the existing _transmitData object as it is irrelevant now
     // that there's an error. Create a new one to send the error.
-    TransmitData::Ptr tData = _createTransmit(task);
+    TransmitData::Ptr tData = _createTransmit(*task);
     _transmitData = tData;
     bool largeResult = false;
-    _transmitData->buildDataMsg(task, largeResult, multiErr);
+    _transmitData->buildDataMsg(*task, largeResult, multiErr);
     LOGS(_log, LOG_LVL_DEBUG, "SendChannelShared::buildAndTransmitError " << _dumpTr());
     bool lastIn = true;
     return _prepTransmit(task, cancelled, lastIn);
@@ -295,22 +284,24 @@ void SendChannelShared::setSchemaCols(Task& task, std::vector<SchemaCol>& schema
     }
 }
 
-bool SendChannelShared::buildAndTransmitResult(MYSQL_RES* mResult, int numFields, Task& task,
+bool SendChannelShared::buildAndTransmitResult(MYSQL_RES* mResult, int numFields, Task::Ptr const& task,
                                                bool largeResult, util::MultiError& multiErr,
                                                std::atomic<bool>& cancelled, bool& readRowsOk) {
     util::Timer transmitT;
     transmitT.start();
+    double bufferFillSecs = 0.0;
 
     // 'cancelled' is passed as a reference so that if its value is
     // changed externally, it will break the while loop below.
     // Wait until the transmit Manager says it is ok to send data to the czar.
-    auto qId = task.getQueryId();
-    bool scanInteractive = task.getScanInteractive();
+    auto qId = task->getQueryId();
+    bool scanInteractive = task->getScanInteractive();
     _waitTransmitLock(scanInteractive, qId);
+
     // Lock the transmit mutex until this is done.
     lock_guard<mutex> lock(_tMtx);
     // Initialize _transmitData, if needed.
-    _initTransmit(task);
+    _initTransmit(*task);
 
     numFields = mysql_num_fields(mResult);
     bool erred = false;
@@ -324,6 +315,8 @@ bool SendChannelShared::buildAndTransmitResult(MYSQL_RES* mResult, int numFields
     // tSize is set by fillRows.
     bool more = true;
     while (more && !cancelled) {
+        util::Timer bufferFillT;
+        bufferFillT.start();
         more = !_transmitData->fillRows(mResult, numFields, tSize);
         if (tSize > proto::ProtoHeaderWrap::PROTOBUFFER_HARD_LIMIT) {
             LOGS_ERROR("Message single row too large to send using protobuffer");
@@ -335,12 +328,15 @@ bool SendChannelShared::buildAndTransmitResult(MYSQL_RES* mResult, int numFields
         }
         bytesTransmitted += _transmitData->getResultSize();
         rowsTransmitted += _transmitData->getResultRowCount();
-        _transmitData->buildDataMsg(task, largeResult, multiErr);
+        _transmitData->buildDataMsg(*task, largeResult, multiErr);
+        bufferFillT.stop();
+        bufferFillSecs += bufferFillT.getElapsed();
         LOGS(_log, LOG_LVL_TRACE,
-             "buildAndTransmitResult() more=" << more << " " << task.getIdStr() << " seq=" << task.getTSeq()
+             "buildAndTransmitResult() more=" << more << " " << task->getIdStr() << " seq=" << task->getTSeq()
                                               << _dumpTr());
 
         // This will become true only if this is the last task sending its last transmit.
+        // _prepTransmit will add the message to the queue and may try to transmit it now.
         bool lastIn = false;
         if (more) {
             if (readRowsOk && !_prepTransmit(task, cancelled, lastIn)) {
@@ -365,11 +361,13 @@ bool SendChannelShared::buildAndTransmitResult(MYSQL_RES* mResult, int numFields
 
     transmitT.stop();
     double timeSeconds = transmitT.getElapsed();
-    auto qStats = task.getQueryStats();
+    auto qStats = task->getQueryStats();
     if (qStats == nullptr) {
-        LOGS(_log, LOG_LVL_ERROR, "No statistics for " << task.getIdStr());
+        LOGS(_log, LOG_LVL_ERROR, "No statistics for " << task->getIdStr());
     } else {
-        qStats->addTaskTransmit(timeSeconds, bytesTransmitted, rowsTransmitted);
+        qStats->addTaskTransmit(timeSeconds, bytesTransmitted, rowsTransmitted, bufferFillSecs);
+        LOGS(_log, LOG_LVL_TRACE,
+             "TaskTransmit time=" << timeSeconds << " bufferFillSecs=" << bufferFillSecs);
     }
 
     return erred;
@@ -386,13 +384,12 @@ TransmitData::Ptr SendChannelShared::_createTransmit(Task& task) {
     LOGS(_log, LOG_LVL_TRACE, "_createTransmit " << task.getIdStr() << " seq=" << task.getTSeq());
     auto tData = wbase::TransmitData::createTransmitData(_czarId, task.getIdStr());
     tData->initResult(task, _schemaCols);
-    ;
     return tData;
 }
 
-bool SendChannelShared::_prepTransmit(Task& task, bool cancelled, bool lastIn) {
-    auto qId = task.getQueryId();
-    int jId = task.getJobId();
+bool SendChannelShared::_prepTransmit(Task::Ptr const& task, bool cancelled, bool lastIn) {
+    auto qId = task->getQueryId();
+    int jId = task->getJobId();
 
     QSERV_LOGCONTEXT_QUERY_JOB(qId, jId);
     LOGS(_log, LOG_LVL_DEBUG, "_transmit lastIn=" << lastIn);
@@ -404,11 +401,11 @@ bool SendChannelShared::_prepTransmit(Task& task, bool cancelled, bool lastIn) {
     // Have all rows already been read, or an error?
     bool erred = _transmitData->hasErrormsg();
 
-    bool success = _addTransmit(cancelled, erred, lastIn, _transmitData, qId, jId);
+    bool success = _addTransmit(task, cancelled, erred, lastIn, _transmitData, qId, jId);
 
     // Now that _transmitData is on the queue, reset and initialize a new one.
     _transmitData.reset();
-    _initTransmit(task);  // reset _transmitData
+    _initTransmit(*task);  // reset _transmitData
 
     return success;
 }

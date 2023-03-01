@@ -65,6 +65,7 @@ string Histogram::addEntry(TIMEPOINT stamp, double val, string const& note) {
 string Histogram::_addEntry(TIMEPOINT stamp, double val, string const& note) {
     VMUTEX_HELD(_mtx);
     _changeCountsBy(val, 1);
+    _lastVal = val;
     _total += val;
     ++_totalCount;
 
@@ -134,7 +135,7 @@ string Histogram::_getString(string const& note) {
     stringstream os;
 
     os << _label << " " << note << " size=" << _totalCount << " total=" << _total << " avg=" << _getAvg()
-       << " ";
+       << " lastVal=" << _lastVal << " ";
     double maxB = -numeric_limits<double>::infinity();
     for (auto& bkt : _buckets) {
         os << " <" << bkt.getMaxVal() << "=" << bkt.count;
@@ -146,11 +147,9 @@ string Histogram::_getString(string const& note) {
 
 nlohmann::json Histogram::getJson() const {
     lock_guard<VMutex> lock(_mtx);
-    nlohmann::json rJson = {{"HistogramId", _label},
-                            {"avg", _getAvg()},
-                            {"totalCount", _totalCount},
-                            {"total", _total},
-                            {"buckets", nlohmann::json::array()}};
+    nlohmann::json rJson = {{"HistogramId", _label}, {"lastVal", _lastVal},
+                            {"avg", _getAvg()},      {"totalCount", _totalCount},
+                            {"total", _total},       {"buckets", nlohmann::json::array()}};
     auto& bucketsJson = rJson["buckets"];
 
     for (size_t j = 0; j < _buckets.size(); ++j) {

@@ -5,6 +5,7 @@ target_sources(wcontrol PRIVATE
     Foreman.cc
     SqlConnMgr.cc
     TransmitMgr.cc
+    WorkerStats.cc
 )
 
 target_include_directories(wcontrol PRIVATE

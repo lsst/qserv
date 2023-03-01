@@ -22,6 +22,7 @@
  */
 #ifndef LSST_QSERV_CONSTANTS_H
 #define LSST_QSERV_CONSTANTS_H
+
 /**
  * @brief  Global constants.
  *

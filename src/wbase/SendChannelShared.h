@@ -47,6 +47,8 @@ class TransmitLock;
 
 namespace wbase {
 
+class Task;
+
 /// A class that provides a SendChannel object with synchronization so it can be
 /// shared by across multiple threads.
 /// This class is now also responsible for assembling transmit messages from
@@ -160,13 +162,14 @@ public:
     void setSchemaCols(Task& task, std::vector<SchemaCol>& schemaCols);
 
     /// @return a transmit data object indicating the errors in 'multiErr'.
-    bool buildAndTransmitError(util::MultiError& multiErr, Task& task, bool cancelled);
+    bool buildAndTransmitError(util::MultiError& multiErr, std::shared_ptr<Task> const& task, bool cancelled);
 
     /// Put the SQL results in a TransmitData object and transmit it to the czar
     /// if appropriate.
     /// @ return true if there was an error.
-    bool buildAndTransmitResult(MYSQL_RES* mResult, int numFields, Task& task, bool largeResult,
-                                util::MultiError& multiErr, std::atomic<bool>& cancelled, bool& readRowsOk);
+    bool buildAndTransmitResult(MYSQL_RES* mResult, int numFields, std::shared_ptr<Task> const& task,
+                                bool largeResult, util::MultiError& multiErr, std::atomic<bool>& cancelled,
+                                bool& readRowsOk);
 
     /// @return a log worthy string describing _transmitData.
     std::string dumpTr() const;
@@ -222,8 +225,8 @@ private:
     /// and crash.
     /// @return true if transmit was added successfully.
     /// @see SendChannelShared::_transmit code for further explanation.
-    bool _addTransmit(bool cancelled, bool erred, bool lastIn, TransmitData::Ptr const& tData, int qId,
-                      int jId);
+    bool _addTransmit(std::shared_ptr<Task> const& task, bool cancelled, bool erred, bool lastIn,
+                      TransmitData::Ptr const& tData, int qId, int jId);
 
     /// Encode TransmitData items from _transmitQueue and pass them to XrdSsi
     /// to be sent to the czar.
@@ -233,7 +236,7 @@ private:
     /// The specially constructed header for the 'reallyLast' transmit just
     /// says that there's no more data, this SendChannel is done.
     /// _queueMtx must be held before calling this.
-    bool _transmit(bool erred);
+    bool _transmit(bool erred, std::shared_ptr<Task> const& task);
 
     /// Send the buffer 'streamBuffer' using xrdssi.
     /// 'last' should only be true if this is the last buffer to be sent with this _sendChannel.
@@ -243,7 +246,7 @@ private:
                   bool last, std::string const& note, int scsSeq);
 
     /// Prepare the transmit data and then call _addTransmit.
-    bool _prepTransmit(Task& task, bool cancelled, bool lastIn);
+    bool _prepTransmit(std::shared_ptr<Task> const& task, bool cancelled, bool lastIn);
 
     /// @see dumpTr()
     std::string _dumpTr() const;

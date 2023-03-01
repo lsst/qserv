@@ -44,6 +44,8 @@
 #include "wbase/SendChannelShared.h"
 #include "wbase/WorkerCommand.h"
 #include "wcontrol/SqlConnMgr.h"
+#include "wcontrol/TransmitMgr.h"
+#include "wcontrol/WorkerStats.h"
 #include "wdb/ChunkResource.h"
 #include "wdb/QueryRunner.h"
 
@@ -75,6 +77,8 @@ Foreman::Foreman(Scheduler::Ptr const& scheduler, unsigned int poolSize, unsigne
 
     _workerCommandQueue = make_shared<util::CommandQueue>();
     _workerCommandPool = util::ThreadPool::newThreadPool(poolSize, _workerCommandQueue);
+
+    WorkerStats::setup();  // FUTURE: maybe add links to scheduler, _backend, etc?
 }
 
 Foreman::~Foreman() {

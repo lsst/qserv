@@ -39,6 +39,9 @@
 // Third party headers
 #include <nlohmann/json.hpp>
 
+// qserv headers
+#include "global/clock_defs.h"
+
 namespace lsst::qserv::util {
 
 /// This class is used to help track a value over time.
@@ -66,8 +69,6 @@ namespace lsst::qserv::util {
 class Histogram {
 public:
     using Ptr = std::shared_ptr<Histogram>;
-    using CLOCK = std::chrono::system_clock;
-    using TIMEPOINT = std::chrono::time_point<CLOCK>;
 
     Histogram(std::string const& label, std::vector<double> const& bucketVals);
 
@@ -132,6 +133,7 @@ protected:
     std::string _label;            ///< String to identify what the histogram is for.
     std::vector<Bucket> _buckets;  ///< The ordered array of Buckets
     double _total = 0.0;           ///< Sum of the values used to make the Histogram
+    double _lastVal = 0.0;         ///< Last value added to the histogram.
     int64_t _totalCount = 0;       ///< Total number of items used to make the Histogram.
     int64_t _overMaxCount = 0;     ///< number of entries that couldn't fit in a bucket.
     mutable VMutex _mtx;

@@ -54,6 +54,8 @@ QueryStatistics::QueryStatistics(QueryId const& qId_) : creationTime(CLOCK::now(
             string("TimeSubchunkPerTask_") + qidStr, {0.1, 1, 10, 30, 60, 120, 300, 600, 1200, 10000}));
     _histTimeTransmittingPerTask = util::Histogram::Ptr(new util::Histogram(
             string("TimeTransmittingPerTask_") + qidStr, {0.1, 1, 10, 30, 60, 120, 300, 600, 1200, 10000}));
+    _histTimeBufferFillPerTask = util::Histogram::Ptr(new util::Histogram(
+            string("TimeFillingBuffersPerTask_") + qidStr, {0.1, 1, 10, 30, 60, 120, 300, 600, 1200, 10000}));
 }
 
 /// Return a json object containing high level data, such as histograms.
@@ -62,6 +64,7 @@ nlohmann::json QueryStatistics::getJsonHist() const {
     js["timeRunningPerTask"] = _histTimeRunningPerTask->getJson();
     js["timeSubchunkPerTask"] = _histTimeSubchunkPerTask->getJson();
     js["timeTransmittingPerTask"] = _histTimeTransmittingPerTask->getJson();
+    js["timeBufferFillPerTask"] = _histTimeBufferFillPerTask->getJson();
     js["sizePerTask"] = _histSizePerTask->getJson();
     js["rowsPerTask"] = _histRowsPerTask->getJson();
     return js;
@@ -518,11 +521,12 @@ ostream& operator<<(ostream& os, QueryStatistics const& q) {
     return os;
 }
 
-void QueryStatistics::addTaskTransmit(double timeSeconds, int64_t bytesTransmitted, int64_t rowsTransmitted) {
+void QueryStatistics::addTaskTransmit(double timeSeconds, int64_t bytesTransmitted, int64_t rowsTransmitted,
+                                      double bufferFillSecs) {
     _histTimeTransmittingPerTask->addEntry(timeSeconds);
-    _histTimeTransmittingPerTask->addEntry(bytesTransmitted);
     _histRowsPerTask->addEntry(rowsTransmitted);
     _histSizePerTask->addEntry(bytesTransmitted);
+    _histTimeBufferFillPerTask->addEntry(bufferFillSecs);
 }
 
 void QueryStatistics::addTaskRunQuery(double runTimeSeconds, double subchunkRunTimeSeconds) {

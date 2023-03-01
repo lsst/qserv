@@ -197,7 +197,7 @@ bool QueryRunner::runQuery() {
     bool connOk = _initConnection();
     if (!connOk) {
         // Since there's an error, this will be the last transmit from this QueryRunner.
-        if (!_task->getSendChannel()->buildAndTransmitError(_multiError, *_task, _cancelled)) {
+        if (!_task->getSendChannel()->buildAndTransmitError(_multiError, _task, _cancelled)) {
             LOGS(_log, LOG_LVL_WARN, " Could not report error to czar as sendChannel not accepting msgs.");
         }
         return false;
@@ -327,9 +327,6 @@ bool QueryRunner::_dispatchChannel() {
             auto qStats = _task->getQueryStats();
             if (qStats != nullptr) qStats->addTaskRunQuery(runTimeSeconds, subchunkRunTimeSeconds);
 
-            util::Timer transmitT;  /// Transmitting time starts now.
-            transmitT.start();
-
             // This thread may have already been removed from the pool for
             // other reasons, such as taking too long.
             if (not _removedFromThreadPool) {
@@ -353,18 +350,11 @@ bool QueryRunner::_dispatchChannel() {
             // Pass all information on to the shared object to add on to
             // an existing message or build a new one as needed.
             util::InstanceCount ica(to_string(_task->getQueryId()) + "_rqa_LDB");  // LockupDB
-            if (_task->getSendChannel()->buildAndTransmitResult(res, numFields, *_task, _largeResult,
+            if (_task->getSendChannel()->buildAndTransmitResult(res, numFields, _task, _largeResult,
                                                                 _multiError, _cancelled, readRowsOk)) {
                 erred = true;
             }
-            transmitT.stop();
-            if (taskSched != nullptr) {
-                taskSched->histTimeOfTransmittingTasks->addEntry(transmitT.getElapsed());
-                LOGS(_log, LOG_LVL_DEBUG,
-                     "QR " << taskSched->histTimeOfTransmittingTasks->getString("trans"));
-            } else {
-                LOGS(_log, LOG_LVL_ERROR, "QR transmit taskSched == nullptr");
-            }
+
             // ATTENTION: This call is needed to record the _actual_ completion time of the task.
             // It rewrites the finish timestamp within the task that was made when the task got
             // kicked off the scheduler (see the code block above where a value of _removedFromThreadPool
@@ -406,7 +396,7 @@ bool QueryRunner::_dispatchChannel() {
         erred = true;
         // Send results. This needs to happen after the error check.
         // If any errors were found, send an error back.
-        if (!_task->getSendChannel()->buildAndTransmitError(_multiError, *_task, _cancelled)) {
+        if (!_task->getSendChannel()->buildAndTransmitError(_multiError, _task, _cancelled)) {
             LOGS(_log, LOG_LVL_WARN, " Could not report error to czar as sendChannel not accepting msgs.");
         }
     }
