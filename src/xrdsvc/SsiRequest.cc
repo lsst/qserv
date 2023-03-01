@@ -41,8 +41,9 @@
 #include "proto/worker.pb.h"
 #include "util/InstanceCount.h"
 #include "util/Timer.h"
-#include "wbase/MsgProcessor.h"
 #include "wbase/SendChannelShared.h"
+#include "wbase/Task.h"
+#include "wcontrol/Foreman.h"
 #include "wpublish/AddChunkGroupCommand.h"
 #include "wpublish/ChunkListCommand.h"
 #include "wpublish/GetChunkListCommand.h"
@@ -59,7 +60,24 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.xrdsvc.SsiRequest");
 
 namespace lsst::qserv::xrdsvc {
 
-std::shared_ptr<wpublish::ResourceMonitor> SsiRequest::_resourceMonitor(new wpublish::ResourceMonitor());
+std::shared_ptr<wpublish::ResourceMonitor> const SsiRequest::_resourceMonitor(
+        new wpublish::ResourceMonitor());
+
+SsiRequest::Ptr SsiRequest::newSsiRequest(std::string const& rname,
+                                          std::shared_ptr<wpublish::ChunkInventory> const& chunkInventory,
+                                          std::shared_ptr<wcontrol::Foreman> const& foreman) {
+    auto req = SsiRequest::Ptr(new SsiRequest(rname, chunkInventory, foreman));
+    req->_selfKeepAlive = req;
+    return req;
+}
+
+SsiRequest::SsiRequest(std::string const& rname,
+                       std::shared_ptr<wpublish::ChunkInventory> const& chunkInventory,
+                       std::shared_ptr<wcontrol::Foreman> const& foreman)
+        : _chunkInventory(chunkInventory),
+          _validator(_chunkInventory->newValidator()),
+          _foreman(foreman),
+          _resourceName(rname) {}
 
 SsiRequest::~SsiRequest() {
     LOGS(_log, LOG_LVL_DEBUG, "~SsiRequest()");
@@ -147,13 +165,13 @@ void SsiRequest::execute(XrdSsiRequest& req) {
             // reference to this SsiRequest inside the reply channel for the task,
             // and after the call to BindRequest.
             auto sendChannelBase = std::make_shared<wbase::SendChannel>(shared_from_this());
-            auto sendChannel =
-                    wbase::SendChannelShared::create(sendChannelBase, _transmitMgr, taskMsg->czarid());
-            auto tasks = wbase::Task::createTasks(taskMsg, sendChannel);
-
+            auto sendChannel = wbase::SendChannelShared::create(sendChannelBase, _foreman->transmitMgr(),
+                                                                taskMsg->czarid());
+            auto tasks = wbase::Task::createTasks(taskMsg, sendChannel, _foreman->chunkResourceMgr(),
+                                                  _foreman->mySqlConfig(), _foreman->sqlConnMgr());
             ReleaseRequestBuffer();
             t.start();
-            _processor->processTasks(tasks);  // Queues tasks to be run later.
+            _foreman->processTasks(tasks);  // Queues tasks to be run later.
             t.stop();
             LOGS(_log, LOG_LVL_DEBUG,
                  "Enqueued TaskMsg for " << ru << " in " << t.getElapsed() << " seconds");
@@ -168,7 +186,7 @@ void SsiRequest::execute(XrdSsiRequest& req) {
             // The buffer must be released before submitting commands for
             // further processing.
             ReleaseRequestBuffer();
-            _processor->processCommand(command);  // Queues the command to be run later.
+            _foreman->processCommand(command);  // Queues the command to be run later.
 
             LOGS(_log, LOG_LVL_DEBUG, "Enqueued WorkerCommand for resource=" << _resourceName);
             ++countLimiter;
@@ -225,11 +243,12 @@ wbase::WorkerCommand::Ptr SsiRequest::parseWorkerCommand(char const* reqData, in
                 bool const force = group.force();
 
                 if (header.command() == proto::WorkerCommandH::ADD_CHUNK_GROUP)
-                    command = std::make_shared<wpublish::AddChunkGroupCommand>(sendChannel, _chunkInventory,
-                                                                               _mySqlConfig, chunk, dbs);
+                    command = std::make_shared<wpublish::AddChunkGroupCommand>(
+                            sendChannel, _chunkInventory, _foreman->mySqlConfig(), chunk, dbs);
                 else
                     command = std::make_shared<wpublish::RemoveChunkGroupCommand>(
-                            sendChannel, _chunkInventory, _resourceMonitor, _mySqlConfig, chunk, dbs, force);
+                            sendChannel, _chunkInventory, _resourceMonitor, _foreman->mySqlConfig(), chunk,
+                            dbs, force);
                 break;
             }
             case proto::WorkerCommandH::UPDATE_CHUNK_LIST: {
@@ -238,10 +257,10 @@ wbase::WorkerCommand::Ptr SsiRequest::parseWorkerCommand(char const* reqData, in
 
                 if (message.rebuild())
                     command = std::make_shared<wpublish::RebuildChunkListCommand>(
-                            sendChannel, _chunkInventory, _mySqlConfig, message.reload());
+                            sendChannel, _chunkInventory, _foreman->mySqlConfig(), message.reload());
                 else
                     command = std::make_shared<wpublish::ReloadChunkListCommand>(sendChannel, _chunkInventory,
-                                                                                 _mySqlConfig);
+                                                                                 _foreman->mySqlConfig());
                 break;
             }
             case proto::WorkerCommandH::GET_CHUNK_LIST: {
@@ -264,14 +283,14 @@ wbase::WorkerCommand::Ptr SsiRequest::parseWorkerCommand(char const* reqData, in
                 }
                 bool const force = message.force();
 
-                command = std::make_shared<wpublish::SetChunkListCommand>(sendChannel, _chunkInventory,
-                                                                          _resourceMonitor, _mySqlConfig,
-                                                                          chunks, databases, force);
+                command = std::make_shared<wpublish::SetChunkListCommand>(
+                        sendChannel, _chunkInventory, _resourceMonitor, _foreman->mySqlConfig(), chunks,
+                        databases, force);
                 break;
             }
             case proto::WorkerCommandH::GET_STATUS: {
-                command = std::make_shared<wpublish::GetStatusCommand>(sendChannel, _processor,
-                                                                       _resourceMonitor);
+                command =
+                        std::make_shared<wpublish::GetStatusCommand>(sendChannel, _foreman, _resourceMonitor);
                 break;
             }
             default:

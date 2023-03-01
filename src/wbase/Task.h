@@ -44,18 +44,25 @@
 #include "proto/ScanTableInfo.h"
 #include "util/Histogram.h"
 #include "util/ThreadPool.h"
-#include "util/threadSafe.h"
 
 // Forward declarations
 namespace lsst::qserv {
+namespace mysql {
+class MySqlConfig;
+}  // namespace mysql
 namespace proto {
 class TaskMsg;
 class TaskMsg_Fragment;
 }  // namespace proto
 namespace wbase {
-struct ScriptMeta;
 class SendChannelShared;
 }  // namespace wbase
+namespace wcontrol {
+class SqlConnMgr;
+}  // namespace wcontrol
+namespace wdb {
+class ChunkResourceMgr;
+}  // namespace wdb
 namespace wpublish {
 class QueryStatistics;
 }
@@ -137,7 +144,10 @@ public:
 
     /// Read 'taskMsg' to generate a vector of one or more task objects all using the same 'sendChannel'
     static std::vector<Ptr> createTasks(std::shared_ptr<proto::TaskMsg> const& taskMsg,
-                                        std::shared_ptr<SendChannelShared> const& sendChannel);
+                                        std::shared_ptr<wbase::SendChannelShared> const& sendChannel,
+                                        std::shared_ptr<wdb::ChunkResourceMgr> const& chunkResourceMgr,
+                                        mysql::MySqlConfig const& mySqlConfig,
+                                        std::shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr);
 
     void setQueryStatistics(std::shared_ptr<wpublish::QueryStatistics> const& qC);
 

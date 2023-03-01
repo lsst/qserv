@@ -64,6 +64,7 @@
 #include "util/threadSafe.h"
 #include "wbase/Base.h"
 #include "wbase/SendChannelShared.h"
+#include "wcontrol/SqlConnMgr.h"
 #include "wdb/ChunkResource.h"
 #include "wpublish/QueriesAndChunks.h"
 

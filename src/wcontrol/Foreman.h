@@ -29,22 +29,32 @@
 #include <memory>
 
 // Qserv headers
-#include "mysql/MySqlConfig.h"
 #include "util/EventThread.h"
-#include "wbase/Base.h"
 #include "wbase/MsgProcessor.h"
-#include "wpublish/QueriesAndChunks.h"
+#include "wbase/Task.h"
 
 // Forward declarations
+namespace lsst::qserv::mysql {
+class MySqlConfig;
+}
+
+namespace lsst::qserv::wconfig {
+class WorkerConfig;
+}
+
 namespace lsst::qserv::wdb {
-class SQLBackend;
 class ChunkResourceMgr;
 class QueryRunner;
 }  // namespace lsst::qserv::wdb
 
+namespace lsst::qserv::wpublish {
+class QueriesAndChunks;
+}
+
 namespace lsst::qserv::wcontrol {
 
 class SqlConnMgr;
+class TransmitMgr;
 
 /// An abstract scheduler interface. Foreman objects use Scheduler instances
 /// to determine what tasks to launch upon triggering events.
@@ -70,14 +80,19 @@ public:
 class Foreman : public wbase::MsgProcessor {
 public:
     /**
-     * @param scheduler   - pointer to the scheduler
-     * @param poolSize    - size of the thread pool
-     * @param mySqlConfig - configuration object for the MySQL service
-     * @param queries     - query statistics collector
+     * @param scheduler    - pointer to the scheduler
+     * @param poolSize     - size of the thread pool
+     * @param mySqlConfig  - configuration object for the MySQL service
+     * @param queries      - query statistics collector
+     * @param sqlConnMgr   - for limiting the number of MySQL connections used for tasks
+     * @param transmitMgr  - for throttling outgoing massages to prevent czars from being overloaded
+     * @param workerConfig - worker configuration parameters
      */
     Foreman(Scheduler::Ptr const& scheduler, unsigned int poolSize, unsigned int maxPoolThreads,
-            mysql::MySqlConfig const& mySqlConfig, wpublish::QueriesAndChunks::Ptr const& queries,
-            std::shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr);
+            mysql::MySqlConfig const& mySqlConfig, std::shared_ptr<wpublish::QueriesAndChunks> const& queries,
+            std::shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr,
+            std::shared_ptr<wcontrol::TransmitMgr> const& transmitMgr,
+            wconfig::WorkerConfig const& workerConfig);
 
     virtual ~Foreman();
 
@@ -86,8 +101,14 @@ public:
     Foreman(Foreman const&) = delete;
     Foreman& operator=(Foreman const&) = delete;
 
+    std::shared_ptr<wdb::ChunkResourceMgr> const& chunkResourceMgr() const { return _chunkResourceMgr; }
+    mysql::MySqlConfig const& mySqlConfig() const { return _mySqlConfig; }
+    std::shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr() const { return _sqlConnMgr; }
+    std::shared_ptr<wcontrol::TransmitMgr> const& transmitMgr() const { return _transmitMgr; }
+    wconfig::WorkerConfig const& workerConfig() const { return _workerConfig; }
+
     /// Process a group of query processing tasks.
-    /// @see sgProcessor::processTasks()
+    /// @see MsgProcessor::processTasks()
     void processTasks(std::vector<std::shared_ptr<wbase::Task>> const& tasks) override;
 
     /// Implement the corresponding method of the base class
@@ -97,10 +118,6 @@ public:
     nlohmann::json statusToJson() override;
 
 private:
-    /// Set the function called when it is time to process the task.
-    void _setRunFunc(std::shared_ptr<wbase::Task> const& task);
-
-    std::shared_ptr<wdb::SQLBackend> _backend;
     std::shared_ptr<wdb::ChunkResourceMgr> _chunkResourceMgr;
 
     util::ThreadPool::Ptr _pool;
@@ -109,11 +126,17 @@ private:
     util::CommandQueue::Ptr _workerCommandQueue;  ///< dedicated queue for the worker commands
     util::ThreadPool::Ptr _workerCommandPool;     ///< dedicated pool for executing worker commands
 
-    mysql::MySqlConfig const _mySqlConfig;
-    wpublish::QueriesAndChunks::Ptr _queries;
+    mysql::MySqlConfig const& _mySqlConfig;
+    std::shared_ptr<wpublish::QueriesAndChunks> const _queries;
 
     /// For limiting the number of MySQL connections used for tasks.
-    std::shared_ptr<wcontrol::SqlConnMgr> _sqlConnMgr;
+    std::shared_ptr<wcontrol::SqlConnMgr> const _sqlConnMgr;
+
+    /// Used to throttle outgoing massages to prevent czars from being overloaded.
+    std::shared_ptr<wcontrol::TransmitMgr> const _transmitMgr;
+
+    /// Worker configuration parameters.
+    wconfig::WorkerConfig const& _workerConfig;
 };
 
 }  // namespace lsst::qserv::wcontrol
