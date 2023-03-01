@@ -354,15 +354,7 @@ bool QueryRunner::_dispatchChannel() {
                                                                 _multiError, _cancelled, readRowsOk)) {
                 erred = true;
             }
-<<<<<<< HEAD
-            transmitT.stop();
-            if (taskSched != nullptr) {
-                taskSched->histTimeOfTransmittingTasks->addEntry(transmitT.getElapsed());
-                LOGS(_log, LOG_LVL_DEBUG,
-                     "QR " << taskSched->histTimeOfTransmittingTasks->getString("trans"));
-            } else {
-                LOGS(_log, LOG_LVL_ERROR, "QR transmit taskSched == nullptr");
-            }
+
             // ATTENTION: This call is needed to record the _actual_ completion time of the task.
             // It rewrites the finish timestamp within the task that was made when the task got
             // kicked off the scheduler (see the code block above where a value of _removedFromThreadPool
@@ -375,8 +367,6 @@ bool QueryRunner::_dispatchChannel() {
             // metadata store of the worker, or keeping the state transisitons in a separate transient
             // store that won't be affected by the task destruction.
             _task->finished(std::chrono::system_clock::now());
-=======
->>>>>>> 342c43312 (Moved timers and statistics functions to where they now need to be.)
         }
     } catch (sql::SqlErrorObject const& e) {
         LOGS(_log, LOG_LVL_ERROR, "dispatchChannel " << e.errMsg());

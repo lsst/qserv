@@ -294,15 +294,10 @@ bool SendChannelShared::buildAndTransmitResult(MYSQL_RES* mResult, int numFields
     // 'cancelled' is passed as a reference so that if its value is
     // changed externally, it will break the while loop below.
     // Wait until the transmit Manager says it is ok to send data to the czar.
-<<<<<<< HEAD
-    auto qId = task.getQueryId();
-    bool scanInteractive = task.getScanInteractive();
-    _waitTransmitLock(scanInteractive, qId);
-=======
     auto qId = task->getQueryId();
     bool scanInteractive = task->getScanInteractive();
-    waitTransmitLock(*_transmitMgr, scanInteractive, qId);
->>>>>>> 342c43312 (Moved timers and statistics functions to where they now need to be.)
+    _waitTransmitLock(scanInteractive, qId);
+
     // Lock the transmit mutex until this is done.
     lock_guard<mutex> lock(_tMtx);
     // Initialize _transmitData, if needed.
