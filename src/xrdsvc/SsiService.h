@@ -43,7 +43,6 @@ class FileMonitor;
 }
 namespace wcontrol {
 class Foreman;
-class TransmitMgr;
 }  // namespace wcontrol
 namespace wpublish {
 class ChunkInventory;
@@ -56,11 +55,10 @@ namespace lsst::qserv::xrdsvc {
 /// worker services
 class SsiService : public XrdSsiService {
 public:
-    /**
-     * Build a SsiService object
+    /** Build a SsiService object
      * @param log xrdssi logger
+     * @note take ownership of logger for now
      */
-    // take ownership of logger for now
 
     SsiService(XrdSsiLogger* log);
     virtual ~SsiService();
@@ -77,9 +75,6 @@ private:
 
     // The Foreman contains essential structures for adding and running tasks.
     std::shared_ptr<wcontrol::Foreman> _foreman;
-
-    /// Used to throttle outgoing massages to prevent czars from being overloaded.
-    std::shared_ptr<wcontrol::TransmitMgr> _transmitMgr;
 
     mysql::MySqlConfig const _mySqlConfig;
 

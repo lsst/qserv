@@ -39,7 +39,7 @@
 namespace lsst::qserv {
 
 namespace wbase {
-class SendChannelShared;
+class ChannelShared;
 }
 
 namespace wcontrol {
@@ -99,7 +99,7 @@ public:
     friend class SqlConnLock;
 
 private:
-    ConnType _take(bool scanQuery, std::shared_ptr<wbase::SendChannelShared> const& sendChannelShared,
+    ConnType _take(bool scanQuery, std::shared_ptr<wbase::ChannelShared> const& sendChannelShared,
                    bool firstChannelSqlConn);
     void _release(ConnType connType);
 
@@ -116,7 +116,7 @@ private:
 class SqlConnLock {
 public:
     SqlConnLock(SqlConnMgr& sqlConnMgr, bool scanQuery,
-                std::shared_ptr<wbase::SendChannelShared> const& sendChannelShared);
+                std::shared_ptr<wbase::ChannelShared> const& sendChannelShared);
     SqlConnLock() = delete;
     SqlConnLock(SqlConnLock const&) = delete;
     SqlConnLock& operator=(SqlConnLock const&) = delete;

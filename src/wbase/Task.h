@@ -46,18 +46,25 @@
 #include "wbase/TaskState.h"
 #include "util/Histogram.h"
 #include "util/ThreadPool.h"
-#include "util/threadSafe.h"
 
 // Forward declarations
 namespace lsst::qserv {
+namespace mysql {
+class MySqlConfig;
+}  // namespace mysql
 namespace proto {
 class TaskMsg;
 class TaskMsg_Fragment;
 }  // namespace proto
 namespace wbase {
-struct ScriptMeta;
-class SendChannelShared;
+class ChannelShared;
 }  // namespace wbase
+namespace wcontrol {
+class SqlConnMgr;
+}  // namespace wcontrol
+namespace wdb {
+class ChunkResourceMgr;
+}  // namespace wdb
 namespace wpublish {
 class QueryStatistics;
 }
@@ -150,19 +157,22 @@ public:
     };
 
     Task(TaskMsgPtr const& t, int fragmentNumber, std::shared_ptr<UserQueryInfo> const& userQueryInfo,
-         size_t templateId, int subchunkId, std::shared_ptr<SendChannelShared> const& sc);
+         size_t templateId, int subchunkId, std::shared_ptr<ChannelShared> const& sc);
     Task& operator=(const Task&) = delete;
     Task(const Task&) = delete;
     virtual ~Task();
 
     /// Read 'taskMsg' to generate a vector of one or more task objects all using the same 'sendChannel'
     static std::vector<Ptr> createTasks(std::shared_ptr<proto::TaskMsg> const& taskMsg,
-                                        std::shared_ptr<SendChannelShared> const& sendChannel);
+                                        std::shared_ptr<wbase::ChannelShared> const& sendChannel,
+                                        std::shared_ptr<wdb::ChunkResourceMgr> const& chunkResourceMgr,
+                                        mysql::MySqlConfig const& mySqlConfig,
+                                        std::shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr);
 
     void setQueryStatistics(std::shared_ptr<wpublish::QueryStatistics> const& qC);
 
-    std::shared_ptr<SendChannelShared> getSendChannel() const { return _sendChannel; }
-    void resetSendChannel() { _sendChannel.reset(); }  ///< reset the shared pointer for SendChannelShared
+    std::shared_ptr<ChannelShared> getSendChannel() const { return _sendChannel; }
+    void resetSendChannel() { _sendChannel.reset(); }  ///< reset the shared pointer for ChannelShared
     std::string user;                                  ///< Incoming username
     // Note that manpage spec of "26 bytes"  is insufficient
 
@@ -269,8 +279,8 @@ public:
     const IntVector& getSubchunksVect() const { return _dbTblsAndSubchunks->subchunksVect; }
 
 private:
-    std::shared_ptr<UserQueryInfo> _userQueryInfo;    ///< Details common to Tasks in this UserQuery.
-    std::shared_ptr<SendChannelShared> _sendChannel;  ///< Send channel.
+    std::shared_ptr<UserQueryInfo> _userQueryInfo;  ///< Details common to Tasks in this UserQuery.
+    std::shared_ptr<ChannelShared> _sendChannel;    ///< Send channel.
 
     uint64_t const _tSeq = 0;          ///< identifier for the specific task
     QueryId const _qId = 0;            ///< queryId from czar

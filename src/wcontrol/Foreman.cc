@@ -26,28 +26,18 @@
 
 // System headers
 #include <cassert>
-#include <deque>
-#include <iostream>
-#include <memory>
-#include <mutex>
-#include <thread>
-#include <utility>
 
 // LSST headers
 #include "lsst/log/Log.h"
 
 // Qserv headers
-#include "global/UnsupportedError.h"
 #include "mysql/MySqlConfig.h"
-#include "proto/worker.pb.h"
-#include "wbase/Base.h"
-#include "wbase/SendChannelShared.h"
 #include "wbase/WorkerCommand.h"
 #include "wcontrol/SqlConnMgr.h"
-#include "wcontrol/TransmitMgr.h"
 #include "wcontrol/WorkerStats.h"
 #include "wdb/ChunkResource.h"
-#include "wdb/QueryRunner.h"
+#include "wdb/SQLBackend.h"
+#include "wpublish/QueriesAndChunks.h"
 
 namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.wcontrol.Foreman");
@@ -59,16 +49,21 @@ namespace lsst::qserv::wcontrol {
 
 Foreman::Foreman(Scheduler::Ptr const& scheduler, unsigned int poolSize, unsigned int maxPoolThreads,
                  mysql::MySqlConfig const& mySqlConfig, wpublish::QueriesAndChunks::Ptr const& queries,
-                 wcontrol::SqlConnMgr::Ptr const& sqlConnMgr)
-
-        : _scheduler(scheduler), _mySqlConfig(mySqlConfig), _queries(queries), _sqlConnMgr(sqlConnMgr) {
+                 std::shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr,
+                 std::shared_ptr<wcontrol::TransmitMgr> const& transmitMgr,
+                 wconfig::WorkerConfig const& workerConfig)
+        : _scheduler(scheduler),
+          _mySqlConfig(mySqlConfig),
+          _queries(queries),
+          _sqlConnMgr(sqlConnMgr),
+          _transmitMgr(transmitMgr),
+          _workerConfig(workerConfig) {
     // Make the chunk resource mgr
     // Creating backend makes a connection to the database for making temporary tables.
     // It will delete temporary tables that it can identify as being created by a worker.
     // Previous instances of the worker will terminate when they try to use or create temporary tables.
     // Previous instances of the worker should be terminated before a new worker is started.
-    _backend = make_shared<wdb::SQLBackend>(_mySqlConfig);
-    _chunkResourceMgr = wdb::ChunkResourceMgr::newMgr(_backend);
+    _chunkResourceMgr = wdb::ChunkResourceMgr::newMgr(make_shared<wdb::SQLBackend>(_mySqlConfig));
 
     assert(_scheduler);  // Cannot operate without scheduler.
 
@@ -90,39 +85,9 @@ Foreman::~Foreman() {
     _pool->shutdownPool();
 }
 
-void Foreman::_setRunFunc(shared_ptr<wbase::Task> const& task) {
-    // If there are no problems, this lambda function creates
-    // a QueryRunner instance for this Task and then runs
-    // QueryRunner::runQuery() for the Task.
-    auto func = [this, task](util::CmdData*) {
-        auto qr = wdb::QueryRunner::newQueryRunner(task, _chunkResourceMgr, _mySqlConfig, _sqlConnMgr);
-        bool success = false;
-        try {
-            success = qr->runQuery();
-        } catch (UnsupportedError const& e) {
-            LOGS(_log, LOG_LVL_ERROR, "runQuery threw UnsupportedError " << e.what() << *task);
-        }
-        if (not success) {
-            LOGS(_log, LOG_LVL_ERROR, "runQuery failed " << *task);
-            if (not task->getSendChannel()->kill("Foreman::_setRunFunc")) {
-                LOGS(_log, LOG_LVL_WARN, "runQuery sendChannel killed");
-            }
-        }
-
-        // Transmission is done, but 'task' contains statistics that are still useful.
-        // However, the resources used by sendChannel need to be freed quickly.
-        // The QueryRunner class access to sendChannel for results is over by this point.
-        task->resetSendChannel();  // Frees its xrdsvc::SsiRequest object.
-    };
-
-    task->setFunc(func);
-}
-
-/// Put the task on the scheduler to be run later.
 void Foreman::processTasks(vector<wbase::Task::Ptr> const& tasks) {
     std::vector<util::Command::Ptr> cmds;
     for (auto const& task : tasks) {
-        _setRunFunc(task);
         _queries->addTask(task);
         cmds.push_back(task);
     }

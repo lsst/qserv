@@ -35,7 +35,6 @@
 // Qserv headers
 #include "global/ResourceUnit.h"
 #include "mysql/MySqlConfig.h"
-#include "wbase/Task.h"
 #include "wbase/WorkerCommand.h"
 #include "wpublish/ChunkInventory.h"
 #include "xrdsvc/StreamBuffer.h"
@@ -45,11 +44,11 @@ class XrdSsiService;
 
 namespace lsst::qserv {
 namespace wbase {
-struct MsgProcessor;
+class SendChannel;
 class Task;
 }  // namespace wbase
 namespace wcontrol {
-class TransmitMgr;
+class Foreman;
 }
 namespace wpublish {
 class ResourceMonitor;
@@ -75,14 +74,7 @@ public:
     /// Use factory to ensure proper construction for enable_shared_from_this.
     static SsiRequest::Ptr newSsiRequest(std::string const& rname,
                                          std::shared_ptr<wpublish::ChunkInventory> const& chunkInventory,
-                                         std::shared_ptr<wbase::MsgProcessor> const& processor,
-                                         mysql::MySqlConfig const& mySqlConfig,
-                                         std::shared_ptr<wcontrol::TransmitMgr> const& transmitMgr) {
-        auto req =
-                SsiRequest::Ptr(new SsiRequest(rname, chunkInventory, processor, mySqlConfig, transmitMgr));
-        req->_selfKeepAlive = req;
-        return req;
-    }
+                                         std::shared_ptr<wcontrol::Foreman> const& processor);
 
     virtual ~SsiRequest();
 
@@ -117,14 +109,7 @@ public:
 private:
     /// Constructor (called by SsiService)
     SsiRequest(std::string const& rname, std::shared_ptr<wpublish::ChunkInventory> const& chunkInventory,
-               std::shared_ptr<wbase::MsgProcessor> const& processor, mysql::MySqlConfig const& mySqlConfig,
-               std::shared_ptr<wcontrol::TransmitMgr> const& transmitMgr)
-            : _chunkInventory(chunkInventory),
-              _validator(_chunkInventory->newValidator()),
-              _processor(processor),
-              _resourceName(rname),
-              _mySqlConfig(mySqlConfig),
-              _transmitMgr(transmitMgr) {}
+               std::shared_ptr<wcontrol::Foreman> const& processor);
 
     /// For internal error reporting
     void reportError(std::string const& errStr);
@@ -132,21 +117,23 @@ private:
     /**
      * Parse a Protobuf request into the corresponding command
      *
+     * @param sendChannel - XROOTD/SSI channel for sending back responses or errors
      * @param reqData - pointer to the Protobuf data buffer
      * @param reqSize - size of the data buffer
      *
      * @return smart pointer to the corresponding command object or nullptr if failed
      */
-    wbase::WorkerCommand::Ptr parseWorkerCommand(char const* reqData, int reqSize);
+    wbase::WorkerCommand::Ptr parseWorkerCommand(std::shared_ptr<wbase::SendChannel> const& sendChannel,
+                                                 char const* reqData, int reqSize);
 
 private:
     /// Counters of the database/chunk requests which are being used
-    static std::shared_ptr<wpublish::ResourceMonitor> _resourceMonitor;
+    static std::shared_ptr<wpublish::ResourceMonitor> const _resourceMonitor;
 
-    std::shared_ptr<wpublish::ChunkInventory> _chunkInventory;
+    std::shared_ptr<wpublish::ChunkInventory> const _chunkInventory;
 
-    ValidatorPtr _validator;                          ///< validates request against what's available
-    std::shared_ptr<wbase::MsgProcessor> _processor;  ///< actual msg processor
+    ValidatorPtr _validator;                            ///< validates request against what's available
+    std::shared_ptr<wcontrol::Foreman> const _foreman;  ///< actual msg processor
 
     std::mutex _finMutex;                   ///< Protects execute() from Finish(), _finished, and _stream
     std::atomic<bool> _reqFinished{false};  ///< set to true when Finished called
@@ -155,9 +142,6 @@ private:
     std::shared_ptr<ChannelStream> _stream;
 
     std::vector<std::weak_ptr<wbase::Task>> _tasks;  ///< List of tasks for use in cancellation.
-
-    mysql::MySqlConfig const _mySqlConfig;
-    std::shared_ptr<wcontrol::TransmitMgr> _transmitMgr;  ///< limits transmits to czars.
 
     /// Make sure this object exists until Finish() is called.
     /// Make a local copy before calling reset() within and non-static member function.

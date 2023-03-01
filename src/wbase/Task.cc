@@ -35,7 +35,6 @@
 #include <ctime>
 
 // Third-party headers
-#include "boost/regex.hpp"
 #include <boost/algorithm/string/replace.hpp>
 
 // LSST headers
@@ -44,6 +43,8 @@
 // Qserv headers
 #include "global/constants.h"
 #include "global/LogContext.h"
+#include "global/UnsupportedError.h"
+#include "mysql/MySqlConfig.h"
 #include "proto/TaskMsgDigest.h"
 #include "proto/worker.pb.h"
 #include "util/Bug.h"
@@ -51,7 +52,7 @@
 #include "util/IterableFormatter.h"
 #include "util/TimeUtils.h"
 #include "wbase/Base.h"
-#include "wbase/SendChannelShared.h"
+#include "wbase/ChannelShared.h"
 #include "wbase/UserQueryInfo.h"
 #include "wpublish/QueriesAndChunks.h"
 
@@ -100,7 +101,7 @@ std::atomic<uint32_t> taskSequence{0};
 /// Command::setFunc() is used set the action later. This is why
 /// the util::CommandThreadPool is not called here.
 Task::Task(TaskMsgPtr const& t, int fragmentNumber, std::shared_ptr<UserQueryInfo> const& userQueryInfo,
-           size_t templateId, int subchunkId, std::shared_ptr<SendChannelShared> const& sc)
+           size_t templateId, int subchunkId, std::shared_ptr<ChannelShared> const& sc)
         : _userQueryInfo(userQueryInfo),
           _sendChannel(sc),
           _tSeq(++taskSequence),
@@ -190,7 +191,10 @@ Task::~Task() {
 }
 
 std::vector<Task::Ptr> Task::createTasks(std::shared_ptr<proto::TaskMsg> const& taskMsg,
-                                         std::shared_ptr<wbase::SendChannelShared> const& sendChannel) {
+                                         std::shared_ptr<wbase::ChannelShared> const& sendChannel,
+                                         std::shared_ptr<wdb::ChunkResourceMgr> const& chunkResourceMgr,
+                                         mysql::MySqlConfig const& mySqlConfig,
+                                         std::shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr) {
     QueryId qId = taskMsg->queryid();
     QSERV_LOGCONTEXT_QUERY_JOB(qId, taskMsg->jobid());
     std::vector<Task::Ptr> vect;
@@ -221,6 +225,39 @@ std::vector<Task::Ptr> Task::createTasks(std::shared_ptr<proto::TaskMsg> const& 
                 vect.push_back(task);
             }
         }
+    }
+    for (auto task : vect) {
+        /// Set the function called when it is time to process the task.
+        auto func = [task, chunkResourceMgr, mySqlConfig, sqlConnMgr](util::CmdData*) {
+            proto::TaskMsg const& msg = *task->msg;
+            int const resultProtocol = 2;  // See proto/worker.proto Result protocol
+            if (!msg.has_protocol() || msg.protocol() < resultProtocol) {
+                LOGS(_log, LOG_LVL_WARN, "processMsg Unsupported wire protocol");
+                if (!task->checkCancelled()) {
+                    // We should not send anything back to xrootd if the task has been cancelled.
+                    task->getSendChannel()->sendError("Unsupported wire protocol", 1);
+                }
+            } else {
+                auto qr = wdb::QueryRunner::newQueryRunner(task, chunkResourceMgr, mySqlConfig, sqlConnMgr);
+                bool success = false;
+                try {
+                    success = qr->runQuery();
+                } catch (UnsupportedError const& e) {
+                    LOGS(_log, LOG_LVL_ERROR, "runQuery threw UnsupportedError " << e.what() << *task);
+                }
+                if (not success) {
+                    LOGS(_log, LOG_LVL_ERROR, "runQuery failed " << *task);
+                    if (not task->getSendChannel()->kill("Foreman::_setRunFunc")) {
+                        LOGS(_log, LOG_LVL_WARN, "runQuery sendChannel killed");
+                    }
+                }
+            }
+            // Transmission is done, but 'task' contains statistics that are still useful.
+            // However, the resources used by sendChannel need to be freed quickly.
+            // The QueryRunner class access to sendChannel for results is over by this point.
+            task->resetSendChannel();  // Frees its xrdsvc::SsiRequest object.
+        };
+        task->setFunc(func);
     }
     sendChannel->setTaskCount(vect.size());
 

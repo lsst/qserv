@@ -32,6 +32,7 @@
 
 // Qserv headers
 #include "memman/MemManNone.h"
+#include "mysql/MySqlConfig.h"
 #include "proto/ScanTableInfo.h"
 #include "proto/worker.pb.h"
 #include "util/Command.h"
@@ -39,6 +40,7 @@
 #include "wbase/SendChannelShared.h"
 #include "wbase/Task.h"
 #include "wconfig/WorkerConfig.h"
+#include "wcontrol/SqlConnMgr.h"
 #include "wcontrol/TransmitMgr.h"
 #include "wpublish/QueriesAndChunks.h"
 #include "wsched/ChunkTasksQueue.h"
@@ -59,25 +61,32 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.wsched.testSchedulers");
 }
 
 using namespace std;
+using lsst::qserv::mysql::MySqlConfig;
 using lsst::qserv::proto::TaskMsg;
 using lsst::qserv::wbase::SendChannel;
 using lsst::qserv::wbase::SendChannelShared;
 using lsst::qserv::wbase::Task;
 using lsst::qserv::wconfig::WorkerConfig;
+using lsst::qserv::wcontrol::SqlConnMgr;
+using lsst::qserv::wdb::ChunkResourceMgr;
 
 double const oneHr = 60.0;
 
 lsst::qserv::wcontrol::TransmitMgr::Ptr locTransmitMgr =
         std::make_shared<lsst::qserv::wcontrol::TransmitMgr>(50, 4);
 
+shared_ptr<ChunkResourceMgr> crm;  // not used in this test, required by Task::createTasks
+MySqlConfig mySqlConfig;           // not used in this test, required by Task::createTasks
+SqlConnMgr::Ptr sqlConnMgr;        // not used in this test, required by Task::createTasks
+
 std::vector<SendChannelShared::Ptr> locSendSharedPtrs;
 
 Task::Ptr makeTask(std::shared_ptr<TaskMsg> tm) {
+    WorkerConfig::create();
     auto sendC = std::make_shared<SendChannel>();
     auto sc = SendChannelShared::create(sendC, locTransmitMgr, 1);
     locSendSharedPtrs.push_back(sc);
-    WorkerConfig::create();
-    auto taskVect = Task::createTasks(tm, sc);
+    auto taskVect = Task::createTasks(tm, sc, crm, mySqlConfig, sqlConnMgr);
     Task::Ptr task = taskVect[0];
     task->setSafeToMoveRunning(true);  // Can't wait for MemMan in unit tests.
     return task;
