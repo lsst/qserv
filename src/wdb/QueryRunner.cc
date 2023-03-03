@@ -63,10 +63,11 @@
 #include "util/Timer.h"
 #include "util/threadSafe.h"
 #include "wbase/Base.h"
-#include "wbase/SendChannelShared.h"
+#include "wbase/ChannelShared.h"
 #include "wcontrol/SqlConnMgr.h"
 #include "wdb/ChunkResource.h"
 #include "wpublish/QueriesAndChunks.h"
+#include "xrdsvc/StreamBuffer.h"
 
 namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.wdb.QueryRunner");

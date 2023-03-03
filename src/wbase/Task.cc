@@ -49,7 +49,7 @@
 #include "proto/worker.pb.h"
 #include "util/Bug.h"
 #include "wbase/Base.h"
-#include "wbase/SendChannelShared.h"
+#include "wbase/ChannelShared.h"
 #include "wdb/QueryRunner.h"
 #include "wpublish/QueriesAndChunks.h"
 
@@ -128,7 +128,7 @@ std::atomic<uint32_t> taskSequence{0};
 /// Command::setFunc() is used set the action later. This is why
 /// the util::CommandThreadPool is not called here.
 Task::Task(TaskMsgPtr const& t, std::string const& query, int fragmentNumber,
-           std::shared_ptr<SendChannelShared> const& sc)
+           std::shared_ptr<ChannelShared> const& sc)
         : msg(t),
           _sendChannel(sc),
           _tSeq(++taskSequence),
@@ -168,7 +168,7 @@ Task::~Task() {
 }
 
 std::vector<Task::Ptr> Task::createTasks(std::shared_ptr<proto::TaskMsg> const& taskMsg,
-                                         std::shared_ptr<wbase::SendChannelShared> const& sendChannel,
+                                         std::shared_ptr<wbase::ChannelShared> const& sendChannel,
                                          std::shared_ptr<wdb::ChunkResourceMgr> const& chunkResourceMgr,
                                          mysql::MySqlConfig const& mySqlConfig,
                                          std::shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr) {

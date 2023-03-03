@@ -55,7 +55,7 @@ class TaskMsg;
 class TaskMsg_Fragment;
 }  // namespace proto
 namespace wbase {
-class SendChannelShared;
+class ChannelShared;
 }  // namespace wbase
 namespace wcontrol {
 class SqlConnMgr;
@@ -137,14 +137,14 @@ public:
     };
 
     explicit Task(TaskMsgPtr const& t, std::string const& query, int fragmentNumber,
-                  std::shared_ptr<SendChannelShared> const& sc);
+                  std::shared_ptr<ChannelShared> const& sc);
     Task& operator=(const Task&) = delete;
     Task(const Task&) = delete;
     virtual ~Task();
 
     /// Read 'taskMsg' to generate a vector of one or more task objects all using the same 'sendChannel'
     static std::vector<Ptr> createTasks(std::shared_ptr<proto::TaskMsg> const& taskMsg,
-                                        std::shared_ptr<wbase::SendChannelShared> const& sendChannel,
+                                        std::shared_ptr<wbase::ChannelShared> const& sendChannel,
                                         std::shared_ptr<wdb::ChunkResourceMgr> const& chunkResourceMgr,
                                         mysql::MySqlConfig const& mySqlConfig,
                                         std::shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr);
@@ -152,8 +152,8 @@ public:
     void setQueryStatistics(std::shared_ptr<wpublish::QueryStatistics> const& qC);
 
     TaskMsgPtr msg;  ///< Protobufs Task spec
-    std::shared_ptr<SendChannelShared> getSendChannel() const { return _sendChannel; }
-    void resetSendChannel() { _sendChannel.reset(); }  ///< reset the shared pointer for SendChannelShared
+    std::shared_ptr<ChannelShared> getSendChannel() const { return _sendChannel; }
+    void resetSendChannel() { _sendChannel.reset(); }  ///< reset the shared pointer for ChannelShared
     std::string hash;                                  ///< hash of TaskMsg
     std::string user;                                  ///< Incoming username
     time_t entryTime{0};                               ///< Timestamp for task admission
@@ -231,7 +231,7 @@ public:
     nlohmann::json getJson() const;
 
 private:
-    std::shared_ptr<SendChannelShared> _sendChannel;
+    std::shared_ptr<ChannelShared> _sendChannel;
     uint64_t const _tSeq = 0;     ///< identifier for the specific task
     QueryId const _qId = 0;       ///< queryId from czar
     int const _jId = 0;           ///< jobId from czar

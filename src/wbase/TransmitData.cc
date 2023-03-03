@@ -181,7 +181,7 @@ void TransmitData::_buildDataMsg(Task const& task, bool largeResult, util::Multi
     _result->SerializeToString(&_dataMsg);
     // Build the header for this message, but this message can't be transmitted until the
     // next header has been built and appended to _transmitData->dataMsg. That happens
-    // later in SendChannelShared.
+    // later in ChannelShared.
     _buildHeader(largeResult);
 }
 
