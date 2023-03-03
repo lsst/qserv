@@ -44,6 +44,7 @@ class XrdSsiService;
 
 namespace lsst::qserv {
 namespace wbase {
+class SendChannel;
 class Task;
 }  // namespace wbase
 namespace wcontrol {
@@ -116,12 +117,14 @@ private:
     /**
      * Parse a Protobuf request into the corresponding command
      *
+     * @param sendChannel - XROOTD/SSI channel for sending back responses or errors
      * @param reqData - pointer to the Protobuf data buffer
      * @param reqSize - size of the data buffer
      *
      * @return smart pointer to the corresponding command object or nullptr if failed
      */
-    wbase::WorkerCommand::Ptr parseWorkerCommand(char const* reqData, int reqSize);
+    wbase::WorkerCommand::Ptr parseWorkerCommand(std::shared_ptr<wbase::SendChannel> const& sendChannel,
+                                                 char const* reqData, int reqSize);
 
 private:
     /// Counters of the database/chunk requests which are being used

@@ -123,6 +123,8 @@ void SsiRequest::execute(XrdSsiRequest& req) {
         return;
     }
 
+    auto const sendChannel = std::make_shared<wbase::SendChannel>(shared_from_this());
+
     // Process the request
     switch (ru.unitType()) {
         case ResourceUnit::DBCHUNK: {
@@ -158,17 +160,17 @@ void SsiRequest::execute(XrdSsiRequest& req) {
                             " czarid:" + std::to_string(taskMsg->has_czarid()));
                 return;
             }
+            auto const sendChannelShared =
+                    wbase::SendChannelShared::create(sendChannel, _foreman->transmitMgr(), taskMsg->czarid());
+            auto const tasks =
+                    wbase::Task::createTasks(taskMsg, sendChannelShared, _foreman->chunkResourceMgr(),
+                                             _foreman->mySqlConfig(), _foreman->sqlConnMgr());
 
             // Now that the request is decoded (successfully or not), release the
             // xrootd request buffer. To avoid data races, this must happen before
             // the task is handed off to another thread for processing, as there is a
             // reference to this SsiRequest inside the reply channel for the task,
             // and after the call to BindRequest.
-            auto sendChannelBase = std::make_shared<wbase::SendChannel>(shared_from_this());
-            auto sendChannel = wbase::SendChannelShared::create(sendChannelBase, _foreman->transmitMgr(),
-                                                                taskMsg->czarid());
-            auto tasks = wbase::Task::createTasks(taskMsg, sendChannel, _foreman->chunkResourceMgr(),
-                                                  _foreman->mySqlConfig(), _foreman->sqlConnMgr());
             ReleaseRequestBuffer();
             t.start();
             _foreman->processTasks(tasks);  // Queues tasks to be run later.
@@ -180,7 +182,7 @@ void SsiRequest::execute(XrdSsiRequest& req) {
         case ResourceUnit::WORKER: {
             LOGS(_log, LOG_LVL_DEBUG, "Parsing WorkerCommand for resource=" << _resourceName);
 
-            wbase::WorkerCommand::Ptr const command = parseWorkerCommand(reqData, reqSize);
+            wbase::WorkerCommand::Ptr const command = parseWorkerCommand(sendChannel, reqData, reqSize);
             if (not command) return;
 
             // The buffer must be released before submitting commands for
@@ -206,11 +208,9 @@ void SsiRequest::execute(XrdSsiRequest& req) {
     // to actually do something once everything is actually setup.
 }
 
-wbase::WorkerCommand::Ptr SsiRequest::parseWorkerCommand(char const* reqData, int reqSize) {
-    wbase::SendChannel::Ptr const sendChannel = std::make_shared<wbase::SendChannel>(shared_from_this());
-
+wbase::WorkerCommand::Ptr SsiRequest::parseWorkerCommand(
+        std::shared_ptr<wbase::SendChannel> const& sendChannel, char const* reqData, int reqSize) {
     wbase::WorkerCommand::Ptr command;
-
     try {
         // reqData has the entire request, so we can unpack it without waiting for
         // more data.
