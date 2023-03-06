@@ -293,19 +293,6 @@ bool ChannelShared::buildAndTransmitError(util::MultiError& multiErr, Task::Ptr 
     return _prepTransmit(task, cancelled, lastIn);
 }
 
-void ChannelShared::setSchemaCols(Task& task, std::vector<SchemaCol>& schemaCols) {
-    // _schemaCols should be identical for all tasks in this send channel.
-    if (_schemaColsSet.exchange(true) == false) {
-        _schemaCols = schemaCols;
-        // If this is the first time _schemaCols has been set, it is missing
-        // from the existing _transmitData object
-        lock_guard<mutex> lock(_tMtx);
-        if (_transmitData != nullptr) {
-            _transmitData->addSchemaCols(_schemaCols);
-        }
-    }
-}
-
 bool ChannelShared::buildAndTransmitResult(MYSQL_RES* mResult, int numFields, Task::Ptr const& task,
                                            bool largeResult, util::MultiError& multiErr,
                                            std::atomic<bool>& cancelled, bool& readRowsOk) {
@@ -405,7 +392,7 @@ void ChannelShared::_initTransmit(Task& task) {
 TransmitData::Ptr ChannelShared::_createTransmit(Task& task) {
     LOGS(_log, LOG_LVL_TRACE, "_createTransmit " << task.getIdStr() << " seq=" << task.getTSeq());
     auto tData = wbase::TransmitData::createTransmitData(_czarId, task.getIdStr());
-    tData->initResult(task, _schemaCols);
+    tData->initResult(task);
     return tData;
 }
 

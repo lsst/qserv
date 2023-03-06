@@ -110,10 +110,6 @@ public:
     /// @return true if this is the first time this function has been called.
     bool getFirstChannelSqlConn() { return _firstChannelSqlConn.exchange(false); }
 
-    /// Set the schemaCols. All tasks using this send channel should have
-    /// the same schema.
-    void setSchemaCols(Task& task, std::vector<SchemaCol>& schemaCols);
-
     /// @return a transmit data object indicating the errors in 'multiErr'.
     bool buildAndTransmitError(util::MultiError& multiErr, std::shared_ptr<Task> const& task, bool cancelled);
 
@@ -218,9 +214,6 @@ private:
 
     /// true until getFirstChannelSqlConn() is called.
     std::atomic<bool> _firstChannelSqlConn{true};
-
-    std::vector<SchemaCol> _schemaCols;
-    std::atomic<bool> _schemaColsSet{false};
 
     std::shared_ptr<TransmitData> _transmitData;  ///< TransmitData object
     mutable std::mutex _tMtx;                     ///< protects _transmitData
