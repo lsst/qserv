@@ -187,6 +187,8 @@ bool SendChannelShared::_transmit(bool erred, Task::Ptr const& task) {
 
         auto sz = _transmitQueue.size();
         // Is this really the last message for this SharedSendChannel?
+        // _lastRecvd means no more data will be added to the queue and
+        // if the queue size is zero, then `thisTransmit` is really the last one.
         bool reallyLast = (_lastRecvd && sz == 0);
 
         TransmitData::Ptr nextTr;
@@ -248,7 +250,6 @@ bool SendChannelShared::_sendBuf(lock_guard<mutex> const& streamLock, xrdsvc::St
         LOGS(_log, LOG_LVL_ERROR, "Failed to transmit " << note << "!");
         return false;
     } else {
-        LOGS(_log, LOG_LVL_INFO, "_sendbuf wait start " << note);
         // Only wait if this is really the last message to finish transmitting for this SendChannelShared.
         // Note: If this does speed up transmission of data to the czar then it is probably worth it to
         //       add code to wait if more than X buffers are in use at the same time, which will likely
@@ -258,6 +259,7 @@ bool SendChannelShared::_sendBuf(lock_guard<mutex> const& streamLock, xrdsvc::St
         //       If this doesn't improve transmission performance, just change it back to waiting all of the
         //       time.
         if (last) {
+            LOGS(_log, LOG_LVL_INFO, "_sendbuf wait start " << note);
             streamBuf->waitForDoneWithThis();  // Block until this buffer has been sent.
         }
     }
