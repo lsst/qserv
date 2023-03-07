@@ -24,6 +24,7 @@
 
 // System headers
 #include <memory>
+#include <mutex>
 #include <queue>
 #include <string>
 #include <stdexcept>
@@ -38,14 +39,18 @@
 #include "wbase/SendChannel.h"
 #include "wbase/TransmitData.h"
 
-namespace lsst::qserv::wbase {
-class Task;
-}  // namespace lsst::qserv::wbase
-
 namespace lsst::qserv::wcontrol {
 class TransmitLock;
 class TransmitMgr;
 }  // namespace lsst::qserv::wcontrol
+
+namespace lsst::qserv::wbase {
+class Task;
+}
+
+namespace lsst::qserv::util {
+class MultiError;
+}
 
 namespace lsst::qserv::wbase {
 
@@ -59,7 +64,9 @@ public:
     ChannelShared() = delete;
     ChannelShared(ChannelShared const&) = delete;
     ChannelShared& operator=(ChannelShared const&) = delete;
-    ~ChannelShared();
+
+    /// Non-trival d-tor is needed to close the channel.
+    virtual ~ChannelShared();
 
     /// Wrappers for wbase::SendChannel public functions that may need to be used
     /// by threads.
@@ -86,10 +93,8 @@ public:
     void setTaskCount(int taskCount);
     int getTaskCount() const { return _taskCount; }
 
-    /// @return true if inLast is true and this is the last task to call this
-    ///              with inLast == true.
-    /// The calling Thread must hold 'streamMutex' before calling this.
-    bool transmitTaskLast(bool inLast);
+    /// @return true if this is the last task to call this
+    bool transmitTaskLast();
 
     /// Return a normalized id string.
     static std::string makeIdStr(int qId, int jId);
@@ -115,35 +120,36 @@ public:
 
     /// Put the SQL results in a TransmitData object and transmit it to the czar
     /// if appropriate.
-    /// @ return true if there was an error.
-    bool buildAndTransmitResult(MYSQL_RES* mResult, int numFields, std::shared_ptr<Task> const& task,
-                                util::MultiError& multiErr, std::atomic<bool>& cancelled,
-                                bool& readRowsOk);
+    /// @return true if there was an error.
+    virtual bool buildAndTransmitResult(MYSQL_RES* mResult, std::shared_ptr<Task> const& task,
+                                        util::MultiError& multiErr, std::atomic<bool>& cancelled) = 0;
 
-    /// @return a log worthy string describing _transmitData.
-    std::string dumpTr() const;
+    /// @return a log worthy string describing transmitData.
+    std::string dumpTransmit() const;
 
 protected:
     /// Protected constructor is seen by subclasses only.
     ChannelShared(std::shared_ptr<wbase::SendChannel> const& sendChannel,
                   std::shared_ptr<wcontrol::TransmitMgr> const& transmitMgr, qmeta::CzarId czarId);
 
-private:
-    /// Items to share one TransmitLock across all Task's using this
-    /// ChannelShared. If all Task's using this channel are not
-    /// allowed to complete, deadlock is likely.
-    void _waitTransmitLock(bool interactive, QueryId const& qId);
+    std::shared_ptr<wbase::SendChannel> const sendChannel() const { return _sendChannel; }
 
-    /// @see wbase::SendChannel::kill
-    /// Note: _streamLock must be held before calling this function.
-    bool _kill(std::string const& note);
+    /// Dumps transmitData into a string within the thread-safe context.
+    /// @param tMtxLock - Lock on mutex tMtx to be acquired before calling the method.
+    std::string dumpTransmit(std::lock_guard<std::mutex> const& tMtxLock) const;
 
     /// @return a new TransmitData::Ptr object.
-    TransmitData::Ptr _createTransmit(Task& task);
+    /// @param tMtxLock - Lock on mutex tMtx to be acquired before calling the method.
+    TransmitData::Ptr createTransmit(std::lock_guard<std::mutex> const& tMtxLock, Task& task);
 
-    /// Create a new _transmitData object if needed.
-    /// Note: tMtx must be held before calling.
-    void _initTransmit(Task& task);
+    /// Create a new transmitData object if needed.
+    /// @param tMtxLock - Lock on mutex tMtx to be acquired before calling the method.
+    void initTransmit(std::lock_guard<std::mutex> const& tMtxLock, Task& task);
+
+    /// Prepare the transmit data and then call addTransmit.
+    /// @param tMtxLock - Lock on mutex tMtx to be acquired before calling the method.
+    virtual bool prepTransmit(std::lock_guard<std::mutex> const& tMtxLock, std::shared_ptr<Task> const& task,
+                              bool cancelled, bool lastIn);
 
     /// Try to transmit the data in tData.
     /// If the queue already has at least 2 TransmitData objects, addTransmit
@@ -153,10 +159,25 @@ private:
     /// sent to the czar before reading more rows. Without the wait,
     /// the worker may read in too many result rows, run out of memory,
     /// and crash.
+    /// @param tMtxLock - Lock on mutex tMtx to be acquired before calling the method.
     /// @return true if transmit was added successfully.
     /// @see ChannelShared::_transmit code for further explanation.
-    bool _addTransmit(std::shared_ptr<Task> const& task, bool cancelled, bool erred, bool lastIn,
-                      TransmitData::Ptr const& tData, int qId, int jId);
+    bool addTransmit(std::lock_guard<std::mutex> const& tMtxLock, std::shared_ptr<Task> const& task,
+                     bool cancelled, bool erred, bool lastIn, TransmitData::Ptr const& tData, int qId,
+                     int jId);
+
+    /// Items to share one TransmitLock across all Task's using this
+    /// ChannelShared. If all Task's using this channel are not
+    /// allowed to complete, deadlock is likely.
+    void waitTransmitLock(bool interactive, QueryId const& qId);
+
+    std::shared_ptr<TransmitData> transmitData;  ///< TransmitData object
+    mutable std::mutex tMtx;                     ///< protects transmitData
+
+private:
+    /// @see wbase::SendChannel::kill
+    /// @param streamMutexLock - Lock on mutex _streamMutex to be acquired before calling the method.
+    bool _kill(std::lock_guard<std::mutex> const& streamMutexLock, std::string const& note);
 
     /// Encode TransmitData items from _transmitQueue and pass them to XrdSsi
     /// to be sent to the czar.
@@ -165,21 +186,32 @@ private:
     /// 'reallyLast' transmit.
     /// The specially constructed header for the 'reallyLast' transmit just
     /// says that there's no more data, this wbase::SendChannel is done.
-    /// _queueMtx must be held before calling this.
-    bool _transmit(bool erred, std::shared_ptr<Task> const& task);
+    /// @param tMtxLock - Lock on mutex tMtx to be acquired before calling the method.
+    /// @param queueMtxLock - Lock on mutex _queueMtx to be acquired before calling the method.
+    bool _transmit(std::lock_guard<std::mutex> const& tMtxLock,
+                   std::lock_guard<std::mutex> const& queueMtxLock, bool erred,
+                   std::shared_ptr<Task> const& task);
 
     /// Send the buffer 'streamBuffer' using xrdssi.
     /// 'last' should only be true if this is the last buffer to be sent with this _sendChannel.
     /// 'note' is just a log note about what/who is sending the buffer.
+    /// @param tMtxLock - Lock on mutex tMtx to be acquired before calling the method.
+    /// @param queueMtxLock - Lock on mutex _queueMtx to be acquired before calling the method.
+    /// @param streamMutexLock - Lock on mutex _streamMutex to be acquired before calling the method.
     /// @return true if the buffer was sent.
-    bool _sendBuf(std::lock_guard<std::mutex> const& streamLock, xrdsvc::StreamBuffer::Ptr& streamBuf,
+    bool _sendBuf(std::lock_guard<std::mutex> const& tMtxLock,
+                  std::lock_guard<std::mutex> const& queueMtxLock,
+                  std::lock_guard<std::mutex> const& streamMutexLock, xrdsvc::StreamBuffer::Ptr& streamBuf,
                   bool last, std::string const& note, int scsSeq);
 
-    /// Prepare the transmit data and then call _addTransmit.
-    bool _prepTransmit(std::shared_ptr<Task> const& task, bool cancelled, bool lastIn);
+    std::atomic<bool> _firstTransmitLock{true};  ///< True until the first thread tries to lock transmitLock.
+    std::shared_ptr<wcontrol::TransmitLock> _transmitLock;  ///< Hold onto transmitLock until finished.
+    std::mutex _transmitLockMtx;                            ///< protects access to _transmitLock.
+    std::condition_variable _transmitLockCv;
 
-    /// @see dumpTr()
-    std::string _dumpTr() const;
+    std::shared_ptr<wbase::SendChannel> const _sendChannel;  ///< Used to pass encoded information to XrdSsi.
+
+    std::shared_ptr<wcontrol::TransmitMgr> _transmitMgr;  ///< Pointer to the TransmitMgr
 
     /// streamMutex is used to protect _lastCount and messages that are sent
     /// using ChannelShared.
@@ -196,16 +228,9 @@ private:
     std::atomic<bool> _lastRecvd{false};     ///< The truly 'last' transmit message is in the queue.
     std::atomic<bool> _firstTransmit{true};  ///< True until the first transmit has been sent.
 
-    std::shared_ptr<wbase::SendChannel> const _sendChannel;  ///< Used to pass encoded information to XrdSsi.
-
-    std::atomic<bool> _firstTransmitLock{true};  ///< True until the first thread tries to lock transmitLock.
-    std::shared_ptr<wcontrol::TransmitLock> _transmitLock;  ///< Hold onto transmitLock until finished.
-    std::mutex _transmitLockMtx;                            ///< protects access to _transmitLock.
-    std::condition_variable _transmitLockCv;
-    std::shared_ptr<wcontrol::TransmitMgr> _transmitMgr;  ///< Pointer to the TransmitMgr
-    qmeta::CzarId const _czarId;                          ///< id of the czar that requested this task(s).
-    uint64_t const _scsId;                                ///< id number for this ChannelShared
-    std::atomic<uint32_t> _scsSeq{0};                     ///< ChannelSharedsequence number for transmit.
+    qmeta::CzarId const _czarId;       ///< id of the czar that requested this task(s).
+    uint64_t const _scsId;             ///< id number for this ChannelShared
+    std::atomic<uint32_t> _scsSeq{0};  ///< ChannelSharedsequence number for transmit.
 
     /// The number of sql connections opened to handle the Tasks using this ChannelShared.
     /// Once this is greater than 0, this object needs free access to sql connections to avoid
@@ -214,9 +239,6 @@ private:
 
     /// true until getFirstChannelSqlConn() is called.
     std::atomic<bool> _firstChannelSqlConn{true};
-
-    std::shared_ptr<TransmitData> _transmitData;  ///< TransmitData object
-    mutable std::mutex _tMtx;                     ///< protects _transmitData
 
     std::shared_ptr<util::InstanceCount> _icPtr;  ///< temporary for LockupDB
 };

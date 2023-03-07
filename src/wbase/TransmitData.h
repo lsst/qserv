@@ -97,7 +97,7 @@ public:
     /// return false.
     /// @return false if there ARE MORE ROWS left in mResult.
     ///         true if there are no more rows remaining in mResult.
-    bool fillRows(MYSQL_RES* mResult, int numFields, size_t& sz);
+    bool fillRows(MYSQL_RES* mResult, size_t& sz);
 
     /// Use the information collected in _result and multiErr to build _dataMsg.
     void buildDataMsg(Task const& task, util::MultiError& multiErr);
@@ -113,6 +113,9 @@ public:
 
     /// @return a log worthy description of this object.
     std::string dump() const;
+
+    /// @return a copy of the data message
+    std::string dataMsg() const;
 
 private:
     TransmitData(qmeta::CzarId const& czarId, std::shared_ptr<google::protobuf::Arena> const& arena,

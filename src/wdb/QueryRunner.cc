@@ -287,15 +287,9 @@ bool QueryRunner::_dispatchChannel() {
     int const fragNum = _task->getQueryFragmentNum();
     proto::TaskMsg& tMsg = *_task->msg;
     bool erred = false;
-    int numFields = -1;
     if (tMsg.fragment_size() < 1) {
         throw util::Bug(ERR_LOC, "QueryRunner: No fragments to execute in TaskMsg");
     }
-
-    // readRowsOk remains true as long as there are no problems with reading/transmitting.
-    // However, if it gets set to false, _mysqlConn->freeResult() needs to be
-    // called before this function exits.
-    bool readRowsOk = true;
     bool needToFreeRes = false;  // set to true once there are results to be freed.
     // Collect the result in _transmitData. When a reasonable amount of data has been collected,
     // or there are no more rows to collect, pass _transmitData to _sendChannel.
@@ -352,10 +346,7 @@ bool QueryRunner::_dispatchChannel() {
             // Pass all information on to the shared object to add on to
             // an existing message or build a new one as needed.
             util::InstanceCount ica(to_string(_task->getQueryId()) + "_rqa_LDB");  // LockupDB
-            if (_task->getSendChannel()->buildAndTransmitResult(res, numFields, _task,
-                                                                _multiError, _cancelled, readRowsOk)) {
-                erred = true;
-            }
+            erred = _task->getSendChannel()->buildAndTransmitResult(res, _task, _multiError, _cancelled);
 
             // ATTENTION: This call is needed to record the _actual_ completion time of the task.
             // It rewrites the finish timestamp within the task that was made when the task got
@@ -383,14 +374,6 @@ bool QueryRunner::_dispatchChannel() {
         // All rows have been read out or there was an error. In
         // either case resources need to be freed.
         _mysqlConn->freeResult();
-    }
-    util::InstanceCount icc(to_string(_task->getQueryId()) + "_rqc_LDB");  // LockupDB
-    if (!readRowsOk) {
-        // This means a there was a transmit error and there's no way to
-        // send anything to the czar. However, there were mysql results
-        // that needed to be freed (see needToFree above).
-        LOGS(_log, LOG_LVL_ERROR, "Failed to read and transmit rows.");
-        return false;
     }
     // Transmit errors, if needed.
     if (!_cancelled && _multiError.size() > 0) {

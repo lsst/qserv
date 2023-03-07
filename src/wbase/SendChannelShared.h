@@ -23,7 +23,9 @@
 #define LSST_QSERV_WBASE_SENDCHANNELSHARED_H
 
 // System headers
+#include <condition_variable>
 #include <memory>
+#include <mutex>
 
 // Qserv headers
 #include "qmeta/types.h"
@@ -31,12 +33,16 @@
 
 namespace lsst::qserv::wbase {
 class SendChannel;
-}
+class Task;
+}  // namespace lsst::qserv::wbase
 
 namespace lsst::qserv::wcontrol {
-class TransmitLock;
 class TransmitMgr;
-}  // namespace lsst::qserv::wcontrol
+}
+
+namespace lsst::qserv::util {
+class MultiError;
+}
 
 namespace lsst::qserv::wbase {
 
@@ -76,7 +82,10 @@ public:
     SendChannelShared() = delete;
     SendChannelShared(SendChannelShared const&) = delete;
     SendChannelShared& operator=(SendChannelShared const&) = delete;
-    ~SendChannelShared() = default;
+    virtual ~SendChannelShared() override = default;
+
+    virtual bool buildAndTransmitResult(MYSQL_RES* mResult, std::shared_ptr<Task> const& task,
+                                        util::MultiError& multiErr, std::atomic<bool>& cancelled) override;
 
 private:
     /// Private constructor to protect shared pointer integrity.

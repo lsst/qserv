@@ -188,13 +188,13 @@ void TransmitData::initResult(Task& task) {
 
 bool TransmitData::hasErrormsg() const { return _result->has_errormsg(); }
 
-bool TransmitData::fillRows(MYSQL_RES* mResult, int numFields, size_t& sz) {
+bool TransmitData::fillRows(MYSQL_RES* mResult, size_t& sz) {
     lock_guard<mutex> const lock(_trMtx);
     MYSQL_ROW row;
 
+    int const numFields = mysql_num_fields(mResult);
     unsigned int szLimit = min(proto::ProtoHeaderWrap::PROTOBUFFER_DESIRED_LIMIT,
                                proto::ProtoHeaderWrap::PROTOBUFFER_HARD_LIMIT);
-
     while ((row = mysql_fetch_row(mResult))) {
         auto lengths = mysql_fetch_lengths(mResult);
         proto::RowBundle* rawRow = _result->add_row();
@@ -233,6 +233,11 @@ int TransmitData::getResultRowCount() const {
 string TransmitData::dump() const {
     lock_guard<mutex> const lock(_trMtx);
     return _dump(lock);
+}
+
+string TransmitData::dataMsg() const {
+    lock_guard<mutex> const lock(_trMtx);
+    return _dataMsg;
 }
 
 string TransmitData::_dump(lock_guard<mutex> const& lock) const {
