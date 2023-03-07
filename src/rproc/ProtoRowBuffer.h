@@ -29,7 +29,6 @@
 // Qserv headers
 #include "mysql/RowBuffer.h"
 #include "proto/worker.pb.h"
-#include "sql/Schema.h"
 
 namespace lsst::qserv::rproc {
 
@@ -125,7 +124,6 @@ public:
 
 private:
     void _initCurrentRow();
-    void _initSchema();
     void _readNextRow();
     // Copy a row bundle into a destination STL char container
     template <typename T>
@@ -149,7 +147,6 @@ private:
     std::string _nullToken;  ///< Null indicator (e.g. \N)
     proto::Result& _result;  ///< Ref to Resultmessage
 
-    sql::Schema _schema;            ///< Schema object
     int _rowIdx;                    ///< Row index
     int _rowTotal;                  ///< Total row count
     std::vector<char> _currentRow;  ///< char buffer representing current row.

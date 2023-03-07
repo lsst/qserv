@@ -177,10 +177,6 @@ public:
 
     std::string engineToStr(InfileMerger::DbEngine engine);
 
-    /// Create the shared thread pool and/or change its size.
-    // @return the size of the large result thread pool.
-    static int setLargeResultPoolSize(int size);
-
     /// Merge a worker response, which contains:
     /// Size of ProtoHeader message
     /// ProtoHeader message

@@ -36,6 +36,7 @@
 #include "global/LogContext.h"
 #include "proto/ProtoHeaderWrap.h"
 #include "util/Bug.h"
+#include "util/InstanceCount.h"
 #include "util/MultiError.h"
 #include "util/StringHash.h"
 #include "wbase/Task.h"
@@ -69,7 +70,6 @@ proto::ProtoHeader* TransmitData::_createHeader(lock_guard<mutex> const& lock) {
     hdr->set_size(0);
     hdr->set_md5(util::StringHash::getMd5("", 0));
     hdr->set_wname(getHostname());
-    hdr->set_largeresult(false);
     hdr->set_endnodata(true);
     return hdr;
 }
@@ -144,17 +144,16 @@ xrdsvc::StreamBuffer::Ptr TransmitData::getStreamBuffer(Task::Ptr const& task) {
     return xrdsvc::StreamBuffer::createWithMove(_dataMsg, task);
 }
 
-void TransmitData::_buildHeader(lock_guard<mutex> const& lock, bool largeResult) {
+void TransmitData::_buildHeader(lock_guard<mutex> const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, _idStr << "TransmitData::_buildHeader");
     // The size of the dataMsg must include space for the header for the next dataMsg.
     _header->set_size(_dataMsg.size() + proto::ProtoHeaderWrap::getProtoHeaderSize());
     // The md5 hash must not include the header for the next dataMsg.
     _header->set_md5(util::StringHash::getMd5(_dataMsg.data(), _dataMsg.size()));
-    _header->set_largeresult(largeResult);
     _header->set_endnodata(false);
 }
 
-void TransmitData::buildDataMsg(Task const& task, bool largeResult, util::MultiError& multiErr) {
+void TransmitData::buildDataMsg(Task const& task, util::MultiError& multiErr) {
     QSERV_LOGCONTEXT_QUERY_JOB(task.getQueryId(), task.getJobId());
     lock_guard<mutex> const lock(_trMtx);
     LOGS(_log, LOG_LVL_INFO,
@@ -175,14 +174,13 @@ void TransmitData::buildDataMsg(Task const& task, bool largeResult, util::MultiE
     // Build the header for this message, but this message can't be transmitted until the
     // next header has been built and appended to _transmitData->dataMsg. That happens
     // later in ChannelShared.
-    _buildHeader(lock, largeResult);
+    _buildHeader(lock);
 }
 
 void TransmitData::initResult(Task& task) {
     lock_guard<mutex> const lock(_trMtx);
     _result->set_queryid(task.getQueryId());
     _result->set_jobid(task.getJobId());
-    _result->mutable_rowschema();
     if (task.msg->has_session()) {
         _result->set_session(task.msg->session());
     }

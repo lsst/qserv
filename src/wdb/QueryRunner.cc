@@ -352,7 +352,7 @@ bool QueryRunner::_dispatchChannel() {
             // Pass all information on to the shared object to add on to
             // an existing message or build a new one as needed.
             util::InstanceCount ica(to_string(_task->getQueryId()) + "_rqa_LDB");  // LockupDB
-            if (_task->getSendChannel()->buildAndTransmitResult(res, numFields, _task, _largeResult,
+            if (_task->getSendChannel()->buildAndTransmitResult(res, numFields, _task,
                                                                 _multiError, _cancelled, readRowsOk)) {
                 erred = true;
             }

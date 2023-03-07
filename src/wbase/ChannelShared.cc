@@ -286,15 +286,14 @@ bool ChannelShared::buildAndTransmitError(util::MultiError& multiErr, Task::Ptr 
     // that there's an error. Create a new one to send the error.
     TransmitData::Ptr tData = _createTransmit(*task);
     _transmitData = tData;
-    bool largeResult = false;
-    _transmitData->buildDataMsg(*task, largeResult, multiErr);
+    _transmitData->buildDataMsg(*task, multiErr);
     LOGS(_log, LOG_LVL_DEBUG, "ChannelShared::buildAndTransmitError " << _dumpTr());
     bool lastIn = true;
     return _prepTransmit(task, cancelled, lastIn);
 }
 
 bool ChannelShared::buildAndTransmitResult(MYSQL_RES* mResult, int numFields, Task::Ptr const& task,
-                                           bool largeResult, util::MultiError& multiErr,
+                                           util::MultiError& multiErr,
                                            std::atomic<bool>& cancelled, bool& readRowsOk) {
     util::Timer transmitT;
     transmitT.start();
@@ -337,7 +336,7 @@ bool ChannelShared::buildAndTransmitResult(MYSQL_RES* mResult, int numFields, Ta
         }
         bytesTransmitted += _transmitData->getResultSize();
         rowsTransmitted += _transmitData->getResultRowCount();
-        _transmitData->buildDataMsg(*task, largeResult, multiErr);
+        _transmitData->buildDataMsg(*task, multiErr);
         bufferFillT.stop();
         bufferFillSecs += bufferFillT.getElapsed();
         LOGS(_log, LOG_LVL_TRACE,

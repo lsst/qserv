@@ -117,7 +117,7 @@ public:
     /// if appropriate.
     /// @ return true if there was an error.
     bool buildAndTransmitResult(MYSQL_RES* mResult, int numFields, std::shared_ptr<Task> const& task,
-                                bool largeResult, util::MultiError& multiErr, std::atomic<bool>& cancelled,
+                                util::MultiError& multiErr, std::atomic<bool>& cancelled,
                                 bool& readRowsOk);
 
     /// @return a log worthy string describing _transmitData.
