@@ -86,8 +86,7 @@ const char* MergingHandler::getStateStr(MsgState const& state) {
     return "unknown";
 }
 
-bool MergingHandler::flush(int bLen, BufPtr const& bufPtr, bool& last, bool& largeResult, int& nextBufSize,
-                           int& resultRows) {
+bool MergingHandler::flush(int bLen, BufPtr const& bufPtr, bool& last, int& nextBufSize, int& resultRows) {
     LOGS(_log, LOG_LVL_DEBUG,
          "From:" << _wName << " flush state=" << getStateStr(_state) << " blen=" << bLen << " last=" << last);
     resultRows = 0;
@@ -112,7 +111,6 @@ bool MergingHandler::flush(int bLen, BufPtr const& bufPtr, bool& last, bool& lar
 
             {
                 nextBufSize = _response->protoHeader.size();
-                largeResult = _response->protoHeader.largeresult();
                 bool endNoData = _response->protoHeader.endnodata();
                 int seq = -1;
                 int scsSeq = -1;
@@ -123,9 +121,8 @@ bool MergingHandler::flush(int bLen, BufPtr const& bufPtr, bool& last, bool& lar
                     scsSeq = _response->protoHeader.scsseq();
                 }
                 LOGS(_log, LOG_LVL_DEBUG,
-                     "HEADER_WAIT: From:" << _wName << " nextBufSize=" << nextBufSize
-                                          << " largeResult=" << largeResult << " endNoData=" << endNoData
-                                          << " seq=" << seq << " scsseq=" << scsSeq);
+                     "HEADER_WAIT: From:" << _wName << " nextBufSize=" << nextBufSize << " endNoData="
+                                          << endNoData << " seq=" << seq << " scsseq=" << scsSeq);
 
                 _state = MsgState::RESULT_WAIT;
                 if (endNoData || nextBufSize == 0) {

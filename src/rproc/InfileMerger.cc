@@ -206,15 +206,13 @@ bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> const& response)
     }
     // TODO: Check session id (once session id mgmt is implemented)
     if (not(response->result.has_jobid() && response->result.has_rowcount() &&
-            response->result.has_transmitsize() && response->result.has_attemptcount() &&
-            response->result.has_rowschema())) {
+            response->result.has_transmitsize() && response->result.has_attemptcount())) {
         LOGS(_log, LOG_LVL_ERROR,
              "merge response missing required field"
                      << " jobid:" << response->result.has_jobid()
                      << " rowcount:" << response->result.has_rowcount()
                      << " transmitsize:" << response->result.has_transmitsize()
-                     << " attemptcount:" << response->result.has_attemptcount()
-                     << " rowschema:" << response->result.has_rowschema());
+                     << " attemptcount:" << response->result.has_attemptcount());
         return false;
     }
     int const jobId = response->result.jobid();

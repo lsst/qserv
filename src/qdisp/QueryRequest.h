@@ -133,7 +133,7 @@ private:
                               bool initialRequest);
     void _flushError(JobQuery::Ptr const& jq);
 
-    /// _holdState indicates the data is being held by SSI for a large response using LargeResultMgr.
+    /// _holdState indicates the data is being held by SSI for a large response.
     /// If the state is NOT NO_HOLD0, then this instance has decremented the shared semaphore and it
     /// must increment the semaphore before going away.
     enum HoldState { NO_HOLD0 = 0, GET_DATA1 = 1, MERGE2 = 2 };
@@ -161,7 +161,6 @@ private:
 
     std::atomic<bool> _finishedCalled{false};
 
-    bool _largeResult{false};  ///< True if the worker flags this job as having a large result.
     QdispPool::Ptr _qdispPool;
     std::shared_ptr<AskForResponseDataCmd> _askForResponseDataCmd;
 

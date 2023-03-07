@@ -357,12 +357,10 @@ bool QueryRequest::_importStream(JobQuery::Ptr const& jq) {
     ResponseHandler::BufPtr bufPtr = make_shared<vector<char>>(buff, buff + len);
 
     // Use `flush()` to read the buffer and extract the header.
-    bool largeResult = false;
     int nextBufSize = 0;
     bool last = false;
     int resultRows = 0;
-    bool flushOk = jq->getDescription()->respHandler()->flush(len, bufPtr, last, largeResult, nextBufSize,
-                                                              resultRows);
+    bool flushOk = jq->getDescription()->respHandler()->flush(len, bufPtr, last, nextBufSize, resultRows);
 
     if (!flushOk) {
         LOGS(_log, LOG_LVL_ERROR, "_importStream not flushOk");
@@ -512,7 +510,6 @@ void QueryRequest::_processData(JobQuery::Ptr const& jq, int blen, bool xrdLast)
     ResponseHandler::BufPtr nextHeaderBufPtr;
 
     // Values for these variables to be filled in by flush() calls.
-    bool largeResult = false;
     int nextBufSize = 0;
     int resultRows = 0;
     bool last = false;
@@ -525,8 +522,8 @@ void QueryRequest::_processData(JobQuery::Ptr const& jq, int blen, bool xrdLast)
     int respSize = blen - protoHeaderSize;
     nextHeaderBufPtr = make_shared<vector<char>>(bufPtr->begin() + respSize, bufPtr->end());
     // Read the result
-    // Values for last, largeResult, and nextBufSize filled in by flush
-    flushOk = jq->getRespHandler()->flush(respSize, bufPtr, last, largeResult, nextBufSize, resultRows);
+    // Values for last, and nextBufSize filled in by flush
+    flushOk = jq->getRespHandler()->flush(respSize, bufPtr, last, nextBufSize, resultRows);
     if (last) {
         // Last should only be true when the header is read, not the result.
         throw util::Bug(ERR_LOC, "_processData result had 'last' true, which cannot be allowed.");
@@ -545,15 +542,9 @@ void QueryRequest::_processData(JobQuery::Ptr const& jq, int blen, bool xrdLast)
     }
 
     // Read the next header
-    // Values for last, largeResult, and nextBufSize filled in by flush
+    // Values for last, and nextBufSize filled in by flush
     // resultRows is ignored in headers, and should always be 0.
-    flushOk = jq->getRespHandler()->flush(protoHeaderSize, nextHeaderBufPtr, last, largeResult, nextBufSize,
-                                          resultRows);
-
-    if (largeResult) {
-        if (!_largeResult) LOGS(_log, LOG_LVL_DEBUG, "holdState largeResult set to true");
-        _largeResult = true;  // Once the worker indicates it's a large result, it stays that way.
-    }
+    flushOk = jq->getRespHandler()->flush(protoHeaderSize, nextHeaderBufPtr, last, nextBufSize, resultRows);
 
     if (flushOk) {
         if (last != xrdLast) {

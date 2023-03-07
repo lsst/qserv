@@ -24,25 +24,24 @@
 // System headers
 #include <atomic>
 #include <memory>
+#include <mutex>
 #include <string>
 
 // 3rd party headers
 #include <mysql/mysql.h>
 
 // Qserv headers
-#include "proto/ProtoHeaderWrap.h"
+#include "proto/worker.pb.h"
 #include "qmeta/types.h"
 
 namespace google::protobuf {
 class Arena;
 }  // namespace google::protobuf
 
-// This header declarations
-namespace lsst::qserv {
-
-namespace util {
+namespace lsst::qserv::util {
+class InstanceCount;
 class MultiError;
-}
+}  // namespace lsst::qserv::util
 
 namespace xrdsvc {
 class StreamBuffer;
@@ -51,19 +50,6 @@ class StreamBuffer;
 namespace wbase {
 
 class Task;
-
-/// This class stores properties for one column in the schema.
-class SchemaCol {
-public:
-    SchemaCol() = default;
-    SchemaCol(SchemaCol const&) = default;
-    SchemaCol& operator=(SchemaCol const&) = default;
-    SchemaCol(std::string name, std::string sqltype, int mysqltype)
-            : colName(name), colSqlType(sqltype), colMysqlType(mysqltype) {}
-    std::string colName;
-    std::string colSqlType;  ///< sqltype for the column
-    int colMysqlType = 0;    ///< MySQL type number
-};
 
 /// This class is used to store information needed for one transmit.
 /// The data may be for result rows or an error message.
@@ -116,7 +102,7 @@ public:
     void addSchemaCols(std::vector<SchemaCol>& schemaCols);
 
     /// Use the information collected in _result and multiErr to build _dataMsg.
-    void buildDataMsg(Task const& task, bool largeResult, util::MultiError& multiErr);
+    void buildDataMsg(Task const& task, util::MultiError& multiErr);
 
     /// @return true if tData has an error message in _result.
     bool hasErrormsg() const;
@@ -150,17 +136,8 @@ private:
     /// Note: _trMtx must be held before calling this.
     std::string _makeHeaderString(bool reallyLast, uint32_t seq, int scsSeq);
 
-    /// @see buildDataMsg
-    /// Note: _trMtx must be held before calling this.
-    void _buildDataMsg(Task const& task, bool largeResult, util::MultiError& multiErr);
-
-    ////////////////////////////////////////////////////
-    // Methods used by QueryRunner to build dataMsg
-    void _buildHeader(bool largeResult);
-
-    /// @see addSchemaCols
-    /// Note: _trMtx must be held before calling this.
-    void _addSchemaCols(std::vector<SchemaCol>& schemaCols);
+    /// @param lock - on _trMtx must be held before calling this methid.
+    void _buildHeader(std::lock_guard<std::mutex> const& lock);
 
     /// @see dump()
     std::string _dump() const;

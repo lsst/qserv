@@ -142,7 +142,6 @@ public:
         ph->set_size(0);
         ph->set_md5(std::string("d41d8cd98f00b204e9800998ecf8427"));
         ph->set_wname("localhost");
-        ph->set_largeresult(false);
         ph->set_endnodata(true);
         std::string pHdrString;
         ph->SerializeToString(&pHdrString);

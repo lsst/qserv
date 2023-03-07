@@ -123,8 +123,6 @@ private:
 
     util::MultiError _multiError;  // Error log
 
-    bool _largeResult = false;  //< True for all transmits after the first transmit.
-
     /// Used to limit the number of open MySQL connections.
     std::shared_ptr<wcontrol::SqlConnMgr> const _sqlConnMgr;
     std::atomic<bool> _runQueryCalled{false};  ///< If runQuery gets called twice, the scheduler messed up.
