@@ -38,10 +38,6 @@ namespace lsst::qserv::mysql {
 class MySqlConfig;
 }
 
-namespace lsst::qserv::wconfig {
-class WorkerConfig;
-}
-
 namespace lsst::qserv::wdb {
 class ChunkResourceMgr;
 class QueryRunner;
@@ -80,19 +76,20 @@ public:
 class Foreman : public wbase::MsgProcessor {
 public:
     /**
-     * @param scheduler    - pointer to the scheduler
-     * @param poolSize     - size of the thread pool
-     * @param mySqlConfig  - configuration object for the MySQL service
-     * @param queries      - query statistics collector
-     * @param sqlConnMgr   - for limiting the number of MySQL connections used for tasks
-     * @param transmitMgr  - for throttling outgoing massages to prevent czars from being overloaded
-     * @param workerConfig - worker configuration parameters
+     * @param scheduler             - pointer to the scheduler
+     * @param poolSize              - size of the thread pool
+     * @param mySqlConfig           - configuration object for the MySQL service
+     * @param queries               - query statistics collector
+     * @param sqlConnMgr            - for limiting the number of MySQL connections used for tasks
+     * @param transmitMgr           - for throttling outgoing massages to prevent czars from being overloaded
+     * @param resultsDirname        - the name of a folder where query results will be stored
+     * @param resultsXrootdPort     - the port number of the worker XROOTD service for serving result files
      */
     Foreman(Scheduler::Ptr const& scheduler, unsigned int poolSize, unsigned int maxPoolThreads,
             mysql::MySqlConfig const& mySqlConfig, std::shared_ptr<wpublish::QueriesAndChunks> const& queries,
             std::shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr,
-            std::shared_ptr<wcontrol::TransmitMgr> const& transmitMgr,
-            wconfig::WorkerConfig const& workerConfig);
+            std::shared_ptr<wcontrol::TransmitMgr> const& transmitMgr, std::string const& resultsDirname,
+            uint16_t resultsXrootdPort);
 
     virtual ~Foreman();
 
@@ -105,7 +102,8 @@ public:
     mysql::MySqlConfig const& mySqlConfig() const { return _mySqlConfig; }
     std::shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr() const { return _sqlConnMgr; }
     std::shared_ptr<wcontrol::TransmitMgr> const& transmitMgr() const { return _transmitMgr; }
-    wconfig::WorkerConfig const& workerConfig() const { return _workerConfig; }
+    std::string const& resultsDirname() const { return _resultsDirname; }
+    uint16_t resultsXrootdPort() const { return _resultsXrootdPort; }
 
     /// Process a group of query processing tasks.
     /// @see MsgProcessor::processTasks()
@@ -135,8 +133,9 @@ private:
     /// Used to throttle outgoing massages to prevent czars from being overloaded.
     std::shared_ptr<wcontrol::TransmitMgr> const _transmitMgr;
 
-    /// Worker configuration parameters.
-    wconfig::WorkerConfig const& _workerConfig;
+    // Worker configuration parameters.
+    std::string const _resultsDirname;
+    uint16_t const _resultsXrootdPort;
 };
 
 }  // namespace lsst::qserv::wcontrol

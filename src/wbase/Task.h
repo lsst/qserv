@@ -46,27 +46,25 @@
 #include "util/ThreadPool.h"
 
 // Forward declarations
-namespace lsst::qserv {
-namespace mysql {
+namespace lsst::qserv::mysql {
 class MySqlConfig;
-}  // namespace mysql
-namespace proto {
+}
+namespace lsst::qserv::proto {
 class TaskMsg;
 class TaskMsg_Fragment;
-}  // namespace proto
-namespace wbase {
+}  // namespace lsst::qserv::proto
+namespace lsst::qserv::wbase {
 class ChannelShared;
-}  // namespace wbase
-namespace wcontrol {
+}
+namespace lsst::qserv::wcontrol {
 class SqlConnMgr;
-}  // namespace wcontrol
-namespace wdb {
+}
+namespace lsst::qserv::wdb {
 class ChunkResourceMgr;
-}  // namespace wdb
-namespace wpublish {
+}
+namespace lsst::qserv::wpublish {
 class QueryStatistics;
 }
-}  // namespace lsst::qserv
 
 namespace lsst::qserv::wbase {
 
@@ -137,7 +135,9 @@ public:
     };
 
     explicit Task(TaskMsgPtr const& t, std::string const& query, int fragmentNumber,
-                  std::shared_ptr<ChannelShared> const& sc);
+                  std::shared_ptr<ChannelShared> const& sc,
+                  std::string const& resultsDirname = "/qserv/data/results",
+                  uint16_t resultsXrootdPort = 1094, uint16_t resultsHttpPort = 8080);
     Task& operator=(const Task&) = delete;
     Task(const Task&) = delete;
     virtual ~Task();
@@ -147,7 +147,9 @@ public:
                                         std::shared_ptr<wbase::ChannelShared> const& sendChannel,
                                         std::shared_ptr<wdb::ChunkResourceMgr> const& chunkResourceMgr,
                                         mysql::MySqlConfig const& mySqlConfig,
-                                        std::shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr);
+                                        std::shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr,
+                                        std::string const& resultsDirname = "/qserv/data/results",
+                                        uint16_t resultsXrootdPort = 1094, uint16_t resultsHttpPort = 8080);
 
     void setQueryStatistics(std::shared_ptr<wpublish::QueryStatistics> const& qC);
 
@@ -169,6 +171,9 @@ public:
 
     std::string getQueryString() { return _queryString; }
     int getQueryFragmentNum() { return _queryFragmentNum; }
+    std::string const& resultFilePath() const { return _resultFilePath; }
+    std::string const& resultFileXrootUrl() const { return _resultFileXrootUrl; }
+    std::string const& resultFileHttpUrl() const { return _resultFileHttpUrl; }
     bool setTaskQueryRunner(
             TaskQueryRunner::Ptr const& taskQueryRunner);  ///< return true if already cancelled.
     void freeTaskQueryRunner(TaskQueryRunner* tqr);
@@ -238,8 +243,16 @@ private:
     int const _attemptCount = 0;  // attemptCount from czar
     /// _idStr for logging only.
     std::string const _idStr = makeIdStr(true);
-    std::string _queryString;   ///< The query this task will run.
-    int _queryFragmentNum = 0;  ///< The fragment number of the query in the task message.
+    std::string _queryString;           ///< The query this task will run.
+    int _queryFragmentNum = 0;          ///< The fragment number of the query in the task message.
+    std::string const _resultFilePath;  ///< The path to the result file
+
+    /// The XROOTD URL for the result file: "xroot://<host>:<xrootd-port>" + "/" + _resultFilePath
+    /// @note an extra '/' after server:port spec is required to make a "valid" XROOTD url
+    std::string const _resultFileXrootUrl;
+
+    /// The HTTP URL for the result file: "http://<host>:<http-port>" + _resultFilePath
+    std::string const _resultFileHttpUrl;
 
     std::atomic<bool> _cancelled{false};
     std::atomic<bool> _safeToMoveRunning{false};  ///< false until done with waitForMemMan().

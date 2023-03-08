@@ -41,7 +41,7 @@
 #include "proto/worker.pb.h"
 #include "util/InstanceCount.h"
 #include "util/Timer.h"
-#include "wbase/SendChannelShared.h"
+#include "wbase/FileChannelShared.h"
 #include "wbase/Task.h"
 #include "wcontrol/Foreman.h"
 #include "wpublish/AddChunkGroupCommand.h"
@@ -160,11 +160,11 @@ void SsiRequest::execute(XrdSsiRequest& req) {
                             " czarid:" + std::to_string(taskMsg->has_czarid()));
                 return;
             }
-            auto const sendChannelShared =
-                    wbase::SendChannelShared::create(sendChannel, _foreman->transmitMgr(), taskMsg->czarid());
-            auto const tasks =
-                    wbase::Task::createTasks(taskMsg, sendChannelShared, _foreman->chunkResourceMgr(),
-                                             _foreman->mySqlConfig(), _foreman->sqlConnMgr());
+            auto const channelShared =
+                    wbase::FileChannelShared::create(sendChannel, _foreman->transmitMgr(), taskMsg);
+            auto const tasks = wbase::Task::createTasks(
+                    taskMsg, channelShared, _foreman->chunkResourceMgr(), _foreman->mySqlConfig(),
+                    _foreman->sqlConnMgr(), _foreman->resultsDirname(), _foreman->resultsXrootdPort());
 
             // Now that the request is decoded (successfully or not), release the
             // xrootd request buffer. To avoid data races, this must happen before

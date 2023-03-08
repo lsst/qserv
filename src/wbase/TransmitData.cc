@@ -154,8 +154,13 @@ void TransmitData::_buildHeader(lock_guard<mutex> const& lock) {
 }
 
 void TransmitData::buildDataMsg(Task const& task, util::MultiError& multiErr) {
-    QSERV_LOGCONTEXT_QUERY_JOB(task.getQueryId(), task.getJobId());
     lock_guard<mutex> const lock(_trMtx);
+    _buildDataMsg(lock, task, multiErr);
+}
+
+void TransmitData::_buildDataMsg(lock_guard<mutex> const& lock, Task const& task,
+                                 util::MultiError& multiErr) {
+    QSERV_LOGCONTEXT_QUERY_JOB(task.getQueryId(), task.getJobId());
     LOGS(_log, LOG_LVL_INFO,
          _idStr << "TransmitData::_buildDataMsg rowCount=" << _rowCount << " tSize=" << _tSize);
     assert(_result != nullptr);
@@ -184,6 +189,8 @@ void TransmitData::initResult(Task& task) {
     if (task.msg->has_session()) {
         _result->set_session(task.msg->session());
     }
+    _result->set_fileresource_xroot(task.resultFileXrootUrl());
+    _result->set_fileresource_http(task.resultFileHttpUrl());
 }
 
 bool TransmitData::hasErrormsg() const { return _result->has_errormsg(); }
@@ -218,6 +225,21 @@ bool TransmitData::fillRows(MYSQL_RES* mResult, size_t& sz) {
         }
     }
     return true;
+}
+
+void TransmitData::emptyRows(Task const& task, uint32_t rowcount, uint64_t transmitsize) {
+    lock_guard<mutex> const lock(_trMtx);
+    _rowCount = rowcount;
+    _tSize = transmitsize;
+    _result->clear_row();
+    // Rebuild the message
+    util::MultiError multiErr;
+    _buildDataMsg(lock, task, multiErr);
+}
+
+size_t TransmitData::getResultTransmitSize() const {
+    lock_guard<mutex> const lock(_trMtx);
+    return _tSize;
 }
 
 int TransmitData::getResultSize() const {

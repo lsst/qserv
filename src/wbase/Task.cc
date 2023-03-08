@@ -36,6 +36,8 @@
 
 // Third-party headers
 #include <boost/algorithm/string/replace.hpp>
+#include "boost/asio.hpp"
+#include "boost/filesystem.hpp"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -55,6 +57,7 @@
 
 using namespace std;
 using namespace std::chrono_literals;
+namespace fs = boost::filesystem;
 
 namespace {
 
@@ -84,6 +87,26 @@ uint64_t tp2ms(std::chrono::system_clock::time_point const& tp) {
     return std::chrono::duration_cast<std::chrono::milliseconds>(tp.time_since_epoch()).count();
 }
 
+string get_hostname() {
+    // Get the short name of the current host.
+    boost::system::error_code ec;
+    string const hostname = boost::asio::ip::host_name(ec);
+    if (ec.value() != 0) {
+        throw runtime_error("Task::" + string(__func__) +
+                            " boost::asio::ip::host_name failed: " + ec.category().name() + string(":") +
+                            to_string(ec.value()) + "[" + ec.message() + "]");
+    }
+    return hostname;
+}
+
+string buildResultFilePath(shared_ptr<lsst::qserv::proto::TaskMsg> const& taskMsg,
+                           string const& resultsDirname) {
+    if (resultsDirname.empty()) return resultsDirname;
+    fs::path path(resultsDirname);
+    path /= to_string(taskMsg->queryid()) + "-" + to_string(taskMsg->jobid()) + "-" +
+            to_string(taskMsg->chunkid()) + "-" + to_string(taskMsg->attemptcount()) + ".proto";
+    return path.string();
+}
 }  // namespace
 
 namespace lsst::qserv::wbase {
@@ -128,7 +151,8 @@ std::atomic<uint32_t> taskSequence{0};
 /// Command::setFunc() is used set the action later. This is why
 /// the util::CommandThreadPool is not called here.
 Task::Task(TaskMsgPtr const& t, std::string const& query, int fragmentNumber,
-           std::shared_ptr<ChannelShared> const& sc)
+           std::shared_ptr<ChannelShared> const& sc, std::string const& resultsDirname,
+           uint16_t resultsXrootdPort, uint16_t resultsHttpPort)
         : msg(t),
           _sendChannel(sc),
           _tSeq(++taskSequence),
@@ -137,7 +161,13 @@ Task::Task(TaskMsgPtr const& t, std::string const& query, int fragmentNumber,
           _attemptCount(t->attemptcount()),
           _idStr(makeIdStr()),
           _queryString(query),
-          _queryFragmentNum(fragmentNumber) {
+          _queryFragmentNum(fragmentNumber),
+          _resultFilePath(::buildResultFilePath(t, resultsDirname)),
+          // NOTE: one extra '/' after the server/port spec is required to make a "valid" XROOTD url
+          _resultFileXrootUrl("xroot://" + ::get_hostname() + ":" + to_string(resultsXrootdPort) + "/" +
+                              _resultFilePath),
+          _resultFileHttpUrl("http://" + ::get_hostname() + ":" + to_string(resultsHttpPort) +
+                             _resultFilePath) {
     hash = hashTaskMsg(*t);
 
     if (t->has_user()) {
@@ -171,7 +201,9 @@ std::vector<Task::Ptr> Task::createTasks(std::shared_ptr<proto::TaskMsg> const& 
                                          std::shared_ptr<wbase::ChannelShared> const& sendChannel,
                                          std::shared_ptr<wdb::ChunkResourceMgr> const& chunkResourceMgr,
                                          mysql::MySqlConfig const& mySqlConfig,
-                                         std::shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr) {
+                                         std::shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr,
+                                         std::string const& resultsDirname, uint16_t resultsXrootdPort,
+                                         uint16_t resultsHttpPort) {
     QSERV_LOGCONTEXT_QUERY_JOB(taskMsg->queryid(), taskMsg->jobid());
     std::vector<Task::Ptr> vect;
 
@@ -190,11 +222,14 @@ std::vector<Task::Ptr> Task::createTasks(std::shared_ptr<proto::TaskMsg> const& 
                 for (auto subchunkId : fragment.subchunks().id()) {
                     std::string qs(queryStr);
                     boost::algorithm::replace_all(qs, SUBCHUNK_TAG, std::to_string(subchunkId));
-                    auto task = std::make_shared<wbase::Task>(taskMsg, qs, fragNum, sendChannel);
+                    auto task =
+                            std::make_shared<wbase::Task>(taskMsg, qs, fragNum, sendChannel, resultsDirname,
+                                                          resultsXrootdPort, resultsHttpPort);
                     vect.push_back(task);
                 }
             } else {
-                auto task = std::make_shared<wbase::Task>(taskMsg, queryStr, fragNum, sendChannel);
+                auto task = std::make_shared<wbase::Task>(taskMsg, queryStr, fragNum, sendChannel,
+                                                          resultsDirname, resultsXrootdPort, resultsHttpPort);
                 // TODO: Maybe? Is it better to move fragment info from
                 //      ChunkResource getResourceFragment(int i) to here???
                 //      It looks like Task should contain a ChunkResource::Info object

@@ -50,14 +50,15 @@ namespace lsst::qserv::wcontrol {
 Foreman::Foreman(Scheduler::Ptr const& scheduler, unsigned int poolSize, unsigned int maxPoolThreads,
                  mysql::MySqlConfig const& mySqlConfig, wpublish::QueriesAndChunks::Ptr const& queries,
                  std::shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr,
-                 std::shared_ptr<wcontrol::TransmitMgr> const& transmitMgr,
-                 wconfig::WorkerConfig const& workerConfig)
+                 std::shared_ptr<wcontrol::TransmitMgr> const& transmitMgr, std::string const& resultsDirname,
+                 uint16_t resultsXrootdPort)
         : _scheduler(scheduler),
           _mySqlConfig(mySqlConfig),
           _queries(queries),
           _sqlConnMgr(sqlConnMgr),
           _transmitMgr(transmitMgr),
-          _workerConfig(workerConfig) {
+          _resultsDirname(resultsDirname),
+          _resultsXrootdPort(resultsXrootdPort) {
     // Make the chunk resource mgr
     // Creating backend makes a connection to the database for making temporary tables.
     // It will delete temporary tables that it can identify as being created by a worker.

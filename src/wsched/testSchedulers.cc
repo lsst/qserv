@@ -38,6 +38,7 @@
 #include "util/EventThread.h"
 #include "wbase/SendChannelShared.h"
 #include "wbase/Task.h"
+#include "wconfig/WorkerConfig.h"
 #include "wcontrol/TransmitMgr.h"
 #include "wpublish/QueriesAndChunks.h"
 #include "wsched/ChunkTasksQueue.h"
