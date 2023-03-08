@@ -99,11 +99,21 @@ public:
     ///         true if there are no more rows remaining in mResult.
     bool fillRows(MYSQL_RES* mResult, size_t& sz);
 
+    /// Prepare the summary response by emptying the payload (rows) and setting
+    /// the counters.
+    /// @param task - the task responsible for the change
+    /// @param rowcount - the total number of rows in a result set of a query
+    /// @param transmitsize - teh total size (bytes) of a result set of a query
+    void prepareResponse(Task const& task, uint32_t rowcount, uint64_t transmitsize);
+
     /// Use the information collected in _result and multiErr to build _dataMsg.
     void buildDataMsg(Task const& task, util::MultiError& multiErr);
 
     /// @return true if tData has an error message in _result.
     bool hasErrormsg() const;
+
+    /// @return the size of the result (the 'transmitsize' of the result) in bytes.
+    size_t getResultTransmitSize() const;
 
     /// @return the size of the result in bytes.
     int getResultSize() const;
@@ -120,6 +130,9 @@ public:
 private:
     TransmitData(qmeta::CzarId const& czarId, std::shared_ptr<google::protobuf::Arena> const& arena,
                  std::string const& idStr);
+
+    /// @see TrasnmitData::buildDataMsg
+    void _buildDataMsg(std::lock_guard<std::mutex> const& lock, Task const& task, util::MultiError& multiErr);
 
     /// Create a header for an empty result using our arena.
     /// This does not set the 'header' member of this object as there is a

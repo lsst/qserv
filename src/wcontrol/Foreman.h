@@ -32,6 +32,9 @@
 // Third party headers
 #include "nlohmann/json.hpp"
 
+// Third party headers
+#include "boost/asio.hpp"
+
 // Qserv headers
 #include "util/EventThread.h"
 #include "util/HoldTrack.h"
@@ -49,9 +52,9 @@ namespace lsst::qserv::mysql {
 class MySqlConfig;
 }  // namespace lsst::qserv::mysql
 
-namespace lsst::qserv::wconfig {
-class WorkerConfig;
-}  // namespace lsst::qserv::wconfig
+namespace lsst::qserv::qhttp {
+class Server;
+}  // namespace lsst::qserv::qhttp
 
 namespace lsst::qserv::wdb {
 class ChunkResourceMgr;
@@ -95,19 +98,17 @@ public:
 class Foreman : public wbase::MsgProcessor {
 public:
     /**
-     * @param scheduler    - pointer to the scheduler
-     * @param poolSize     - size of the thread pool
-     * @param mySqlConfig  - configuration object for the MySQL service
-     * @param queries      - query statistics collector
-     * @param sqlConnMgr   - for limiting the number of MySQL connections used for tasks
-     * @param transmitMgr  - for throttling outgoing massages to prevent czars from being overloaded
-     * @param workerConfig - worker configuration parameters
+     * @param scheduler              - pointer to the scheduler
+     * @param poolSize               - size of the thread pool
+     * @param mySqlConfig            - configuration object for the MySQL service
+     * @param queries                - query statistics collector
+     * @param sqlConnMgr             - for limiting the number of MySQL connections used for tasks
+     * @param transmitMgr            - for throttling outgoing massages to prevent czars from being overloaded
      */
     Foreman(Scheduler::Ptr const& scheduler, unsigned int poolSize, unsigned int maxPoolThreads,
             mysql::MySqlConfig const& mySqlConfig, std::shared_ptr<wpublish::QueriesAndChunks> const& queries,
             std::shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr,
-            std::shared_ptr<wcontrol::TransmitMgr> const& transmitMgr,
-            wconfig::WorkerConfig const& workerConfig);
+            std::shared_ptr<wcontrol::TransmitMgr> const& transmitMgr);
 
     virtual ~Foreman() override;
 
@@ -120,7 +121,7 @@ public:
     mysql::MySqlConfig const& mySqlConfig() const { return _mySqlConfig; }
     std::shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr() const { return _sqlConnMgr; }
     std::shared_ptr<wcontrol::TransmitMgr> const& transmitMgr() const { return _transmitMgr; }
-    wconfig::WorkerConfig const& workerConfig() const { return _workerConfig; }
+    uint16_t httpPort() const;
 
     /// Process a group of query processing tasks.
     /// @see MsgProcessor::processTasks()
@@ -154,8 +155,11 @@ private:
     /// Used to throttle outgoing massages to prevent czars from being overloaded.
     std::shared_ptr<wcontrol::TransmitMgr> const _transmitMgr;
 
-    /// Worker configuration parameters.
-    wconfig::WorkerConfig const& _workerConfig;
+    /// BOOST ASIO services needed to run the HTTP server
+    boost::asio::io_service _io_service;
+
+    /// The HTTP server for serving/managing result files
+    std::shared_ptr<qhttp::Server> const _httpServer;
 };
 
 }  // namespace lsst::qserv::wcontrol

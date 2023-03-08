@@ -26,6 +26,7 @@
 #include <cctype>
 #include <cstddef>
 #include <iostream>
+#include <stdexcept>
 #include <string>
 
 // Third-party headers
@@ -43,9 +44,11 @@
 #include "util/InstanceCount.h"
 #include "util/HoldTrack.h"
 #include "util/Timer.h"
+#include "wbase/FileChannelShared.h"
 #include "wbase/SendChannelShared.h"
 #include "wbase/TaskState.h"
 #include "wbase/Task.h"
+#include "wconfig/WorkerConfig.h"
 #include "wcontrol/Foreman.h"
 #include "wpublish/AddChunkGroupCommand.h"
 #include "wpublish/ChunkListCommand.h"
@@ -183,11 +186,24 @@ void SsiRequest::execute(XrdSsiRequest& req) {
                             " czarid:" + std::to_string(taskMsg->has_czarid()));
                 return;
             }
-            auto const sendChannelShared =
-                    wbase::SendChannelShared::create(sendChannel, _foreman->transmitMgr(), taskMsg->czarid());
-            auto const tasks =
-                    wbase::Task::createTasks(taskMsg, sendChannelShared, _foreman->chunkResourceMgr(),
-                                             _foreman->mySqlConfig(), _foreman->sqlConnMgr());
+            std::shared_ptr<wbase::ChannelShared> channelShared;
+            switch (wconfig::WorkerConfig::instance()->resultDeliveryProtocol()) {
+                case wconfig::WorkerConfig::ResultDeliveryProtocol::SSI:
+                    channelShared = wbase::SendChannelShared::create(sendChannel, _foreman->transmitMgr(),
+                                                                     taskMsg->czarid());
+                    break;
+                case wconfig::WorkerConfig::ResultDeliveryProtocol::XROOT:
+                case wconfig::WorkerConfig::ResultDeliveryProtocol::HTTP:
+                    channelShared =
+                            wbase::FileChannelShared::create(sendChannel, _foreman->transmitMgr(), taskMsg);
+                    break;
+                default:
+                    throw std::runtime_error("SsiRequest::" + std::string(__func__) +
+                                             " unsupported result delivery protocol");
+            }
+            auto const tasks = wbase::Task::createTasks(taskMsg, channelShared, _foreman->chunkResourceMgr(),
+                                                        _foreman->mySqlConfig(), _foreman->sqlConnMgr(),
+                                                        _foreman->httpPort());
             for (auto const& task : tasks) {
                 _tasks.push_back(task);
             }
@@ -241,6 +257,39 @@ void SsiRequest::execute(XrdSsiRequest& req) {
             LOGS(_log, LOG_LVL_DEBUG,
                  "QueryManagement: op=" << proto::QueryManagement_Operation_Name(request.op())
                                         << " query_id=" << request.query_id());
+
+            switch (wconfig::WorkerConfig::instance()->resultDeliveryProtocol()) {
+                case wconfig::WorkerConfig::ResultDeliveryProtocol::SSI:
+                    // TODO: locate and cancel the coresponding tasks, remove the tasks
+                    //       from the scheduler queues.
+                    break;
+                case wconfig::WorkerConfig::ResultDeliveryProtocol::XROOT:
+                case wconfig::WorkerConfig::ResultDeliveryProtocol::HTTP:
+                    switch (request.op()) {
+                        case proto::QueryManagement::CANCEL_AFTER_RESTART:
+                            // TODO: locate and cancel the coresponding tasks, remove the tasks
+                            //       from the scheduler queues.
+                            wbase::FileChannelShared::cleanUpResultsOnCzarRestart(request.query_id());
+                            break;
+                        case proto::QueryManagement::CANCEL:
+                            // TODO: locate and cancel the coresponding tasks, remove the tasks
+                            //       from the scheduler queues.
+                            wbase::FileChannelShared::cleanUpResults(request.query_id());
+                            break;
+                        case proto::QueryManagement::COMPLETE:
+                            wbase::FileChannelShared::cleanUpResults(request.query_id());
+                            break;
+                        default:
+                            reportError("QueryManagement: op=" +
+                                        proto::QueryManagement_Operation_Name(request.op()) +
+                                        " is not supported by the current implementation.");
+                            return;
+                    }
+                    break;
+                default:
+                    throw std::runtime_error("SsiRequest::" + std::string(__func__) +
+                                             " unsupported result delivery protocol");
+            }
 
             // Send back the empty response since no info is expected by a caller
             // for this type of requests beyond the usual error notifications (if any).

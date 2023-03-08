@@ -47,6 +47,7 @@
 #include "util/FileMonitor.h"
 #include "util/HoldTrack.h"
 #include "wbase/Base.h"
+#include "wbase/FileChannelShared.h"
 #include "wconfig/WorkerConfig.h"
 #include "wconfig/WorkerConfigError.h"
 #include "wcontrol/Foreman.h"
@@ -75,7 +76,7 @@ int dummyInitMDC = LOG_MDC_INIT(initMDC);
 
 namespace lsst::qserv::xrdsvc {
 
-SsiService::SsiService(XrdSsiLogger* log, wconfig::WorkerConfig const& workerConfig)
+SsiService::SsiService(XrdSsiLogger* log)
         : _mySqlConfig(wconfig::WorkerConfig::instance()->getMySqlConfig()) {
     LOGS(_log, LOG_LVL_DEBUG, "SsiService starting...");
 
@@ -169,7 +170,7 @@ SsiService::SsiService(XrdSsiLogger* log, wconfig::WorkerConfig const& workerCon
     LOGS(_log, LOG_LVL_WARN, "maxPoolThreads=" << maxPoolThreads);
 
     _foreman = make_shared<wcontrol::Foreman>(blendSched, poolSize, maxPoolThreads, _mySqlConfig, queries,
-                                              sqlConnMgr, transmitMgr, workerConfig);
+                                              sqlConnMgr, transmitMgr);
 
     // Watch to see if the log configuration is changed.
     // If LSST_LOG_CONFIG is not defined, there's no good way to know what log
@@ -181,6 +182,13 @@ SsiService::SsiService(XrdSsiLogger* log, wconfig::WorkerConfig const& workerCon
     } else {
         LOGS(_log, LOG_LVL_ERROR, "logConfigFile=" << logConfigFile);
         _logFileMonitor = make_shared<util::FileMonitor>(logConfigFile);
+    }
+
+    // Garbage collect unclaimed result files (if any).
+    // ATTENTION: this is the blocking operation since it needs to be run before accepting
+    // new queries to ensure that worker had sufficient resources to process those.
+    if (workerConfig->resultsCleanUpOnStart()) {
+        wbase::FileChannelShared::cleanUpResultsOnWorkerRestart();
     }
 }
 

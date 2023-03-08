@@ -148,8 +148,8 @@ protected:
 
     /// Prepare the transmit data and then call addTransmit.
     /// @param tMtxLock - Lock on mutex tMtx to be acquired before calling the method.
-    virtual bool prepTransmit(std::lock_guard<std::mutex> const& tMtxLock, std::shared_ptr<Task> const& task,
-                              bool cancelled, bool lastIn);
+    bool prepTransmit(std::lock_guard<std::mutex> const& tMtxLock, std::shared_ptr<Task> const& task,
+                      bool cancelled, bool lastIn);
 
     /// Try to transmit the data in tData.
     /// If the queue already has at least 2 TransmitData objects, addTransmit

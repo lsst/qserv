@@ -48,27 +48,25 @@
 #include "util/ThreadPool.h"
 
 // Forward declarations
-namespace lsst::qserv {
-namespace mysql {
+namespace lsst::qserv::mysql {
 class MySqlConfig;
-}  // namespace mysql
-namespace proto {
+}
+namespace lsst::qserv::proto {
 class TaskMsg;
 class TaskMsg_Fragment;
-}  // namespace proto
-namespace wbase {
+}  // namespace lsst::qserv::proto
+namespace lsst::qserv::wbase {
 class ChannelShared;
-}  // namespace wbase
-namespace wcontrol {
+}
+namespace lsst::qserv::wcontrol {
 class SqlConnMgr;
-}  // namespace wcontrol
-namespace wdb {
+}
+namespace lsst::qserv::wdb {
 class ChunkResourceMgr;
-}  // namespace wdb
-namespace wpublish {
+}
+namespace lsst::qserv::wpublish {
 class QueryStatistics;
 }
-}  // namespace lsst::qserv
 
 namespace lsst::qserv::wbase {
 
@@ -157,7 +155,8 @@ public:
     };
 
     Task(TaskMsgPtr const& t, int fragmentNumber, std::shared_ptr<UserQueryInfo> const& userQueryInfo,
-         size_t templateId, int subchunkId, std::shared_ptr<ChannelShared> const& sc);
+         size_t templateId, int subchunkId, std::shared_ptr<ChannelShared> const& sc,
+         uint16_t resultsHttpPort = 8080);
     Task& operator=(const Task&) = delete;
     Task(const Task&) = delete;
     virtual ~Task();
@@ -167,7 +166,8 @@ public:
                                         std::shared_ptr<wbase::ChannelShared> const& sendChannel,
                                         std::shared_ptr<wdb::ChunkResourceMgr> const& chunkResourceMgr,
                                         mysql::MySqlConfig const& mySqlConfig,
-                                        std::shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr);
+                                        std::shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr,
+                                        uint16_t resultsHttpPort = 8080);
 
     void setQueryStatistics(std::shared_ptr<wpublish::QueryStatistics> const& qC);
 
@@ -199,6 +199,9 @@ public:
     TaskState state() const { return _state; }
     std::string getQueryString() const;
     int getQueryFragmentNum() { return _queryFragmentNum; }
+    std::string const& resultFilePath() const { return _resultFilePath; }
+    std::string const& resultFileXrootUrl() const { return _resultFileXrootUrl; }
+    std::string const& resultFileHttpUrl() const { return _resultFileHttpUrl; }
     bool setTaskQueryRunner(
             TaskQueryRunner::Ptr const& taskQueryRunner);  ///< return true if already cancelled.
     void freeTaskQueryRunner(TaskQueryRunner* tqr);
@@ -300,6 +303,16 @@ private:
 
     /// Set of tables and vector of subchunk ids used by ChunkResourceRequest. Do not change/reset.
     std::unique_ptr<DbTblsAndSubchunks> _dbTblsAndSubchunks;
+
+    /// The path to the result file.
+    std::string _resultFilePath;
+
+    /// The XROOTD URL for the result file: "xroot://<host>:<xrootd-port>" + "/" + _resultFilePath
+    /// @note an extra '/' after server:port spec is required to make a "valid" XROOTD url
+    std::string _resultFileXrootUrl;
+
+    /// The HTTP URL for the result file: "http://<host>:<http-port>" + _resultFilePath
+    std::string _resultFileHttpUrl;
 
     std::atomic<bool> _cancelled{false};
     std::atomic<bool> _safeToMoveRunning{false};  ///< false until done with waitForMemMan().

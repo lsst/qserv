@@ -33,9 +33,12 @@
 
 // System headers
 #include <ctime>
+#include <stdexcept>
 
 // Third-party headers
 #include <boost/algorithm/string/replace.hpp>
+#include "boost/asio.hpp"
+#include "boost/filesystem.hpp"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -54,15 +57,38 @@
 #include "wbase/Base.h"
 #include "wbase/ChannelShared.h"
 #include "wbase/UserQueryInfo.h"
+#include "wconfig/WorkerConfig.h"
+#include "wdb/QueryRunner.h"
 #include "wpublish/QueriesAndChunks.h"
 
 using namespace std;
 using namespace std::chrono_literals;
+namespace fs = boost::filesystem;
 
 namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.wbase.Task");
 
+string get_hostname() {
+    // Get the short name of the current host.
+    boost::system::error_code ec;
+    string const hostname = boost::asio::ip::host_name(ec);
+    if (ec.value() != 0) {
+        throw runtime_error("Task::" + string(__func__) +
+                            " boost::asio::ip::host_name failed: " + ec.category().name() + string(":") +
+                            to_string(ec.value()) + "[" + ec.message() + "]");
+    }
+    return hostname;
+}
+
+string buildResultFilePath(shared_ptr<lsst::qserv::proto::TaskMsg> const& taskMsg,
+                           string const& resultsDirname) {
+    if (resultsDirname.empty()) return resultsDirname;
+    fs::path path(resultsDirname);
+    path /= to_string(taskMsg->queryid()) + "-" + to_string(taskMsg->jobid()) + "-" +
+            to_string(taskMsg->chunkid()) + "-" + to_string(taskMsg->attemptcount()) + ".proto";
+    return path.string();
+}
 }  // namespace
 
 namespace lsst::qserv::wbase {
@@ -101,7 +127,8 @@ std::atomic<uint32_t> taskSequence{0};
 /// Command::setFunc() is used set the action later. This is why
 /// the util::CommandThreadPool is not called here.
 Task::Task(TaskMsgPtr const& t, int fragmentNumber, std::shared_ptr<UserQueryInfo> const& userQueryInfo,
-           size_t templateId, int subchunkId, std::shared_ptr<ChannelShared> const& sc)
+           size_t templateId, int subchunkId, std::shared_ptr<ChannelShared> const& sc,
+           uint16_t resultsHttpPort)
         : _userQueryInfo(userQueryInfo),
           _sendChannel(sc),
           _tSeq(++taskSequence),
@@ -119,6 +146,25 @@ Task::Task(TaskMsgPtr const& t, int fragmentNumber, std::shared_ptr<UserQueryInf
           _db(t->has_db() ? t->db() : ""),
           _protocol(t->has_protocol() ? t->protocol() : -1),
           _czarId(t->has_czarid() ? t->czarid() : -1) {
+    // These attributes will be passed back to Czar in the Protobuf response
+    // to advice which result delivery channel to use.
+    auto const workerConfig = wconfig::WorkerConfig::instance();
+    auto const resultDeliveryProtocol = workerConfig->resultDeliveryProtocol();
+    if (resultDeliveryProtocol != wconfig::WorkerConfig::ResultDeliveryProtocol::SSI) {
+        _resultFilePath = ::buildResultFilePath(t, workerConfig->resultsDirname());
+        if (resultDeliveryProtocol == wconfig::WorkerConfig::ResultDeliveryProtocol::XROOT) {
+            // NOTE: one extra '/' after the <server>[:<port>] spec is required to make
+            // a "valid" XROOTD url.
+            _resultFileXrootUrl = "xroot://" + ::get_hostname() + ":" +
+                                  to_string(workerConfig->resultsXrootdPort()) + "/" + _resultFilePath;
+        } else if (resultDeliveryProtocol == wconfig::WorkerConfig::ResultDeliveryProtocol::HTTP) {
+            _resultFileHttpUrl =
+                    "http://" + ::get_hostname() + ":" + to_string(resultsHttpPort) + _resultFilePath;
+        } else {
+            throw std::runtime_error("wbase::Task::Task: unsupported results delivery protocol: " +
+                                     wconfig::WorkerConfig::protocol2str(resultDeliveryProtocol));
+        }
+    }
     if (t->has_user()) {
         user = t->user();
     } else {
@@ -194,7 +240,8 @@ std::vector<Task::Ptr> Task::createTasks(std::shared_ptr<proto::TaskMsg> const& 
                                          std::shared_ptr<wbase::ChannelShared> const& sendChannel,
                                          std::shared_ptr<wdb::ChunkResourceMgr> const& chunkResourceMgr,
                                          mysql::MySqlConfig const& mySqlConfig,
-                                         std::shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr) {
+                                         std::shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr,
+                                         uint16_t resultsHttpPort) {
     QueryId qId = taskMsg->queryid();
     QSERV_LOGCONTEXT_QUERY_JOB(qId, taskMsg->jobid());
     std::vector<Task::Ptr> vect;
@@ -215,13 +262,13 @@ std::vector<Task::Ptr> Task::createTasks(std::shared_ptr<proto::TaskMsg> const& 
             if (fragment.has_subchunks() && not fragment.subchunks().id().empty()) {
                 for (auto subchunkId : fragment.subchunks().id()) {
                     auto task = std::make_shared<wbase::Task>(taskMsg, fragNum, userQueryInfo, templateId,
-                                                              subchunkId, sendChannel);
+                                                              subchunkId, sendChannel, resultsHttpPort);
                     vect.push_back(task);
                 }
             } else {
                 int subchunkId = -1;  // there are no subchunks.
                 auto task = std::make_shared<wbase::Task>(taskMsg, fragNum, userQueryInfo, templateId,
-                                                          subchunkId, sendChannel);
+                                                          subchunkId, sendChannel, resultsHttpPort);
                 vect.push_back(task);
             }
         }
@@ -229,27 +276,17 @@ std::vector<Task::Ptr> Task::createTasks(std::shared_ptr<proto::TaskMsg> const& 
     for (auto task : vect) {
         /// Set the function called when it is time to process the task.
         auto func = [task, chunkResourceMgr, mySqlConfig, sqlConnMgr](util::CmdData*) {
-            proto::TaskMsg const& msg = *task->msg;
-            int const resultProtocol = 2;  // See proto/worker.proto Result protocol
-            if (!msg.has_protocol() || msg.protocol() < resultProtocol) {
-                LOGS(_log, LOG_LVL_WARN, "processMsg Unsupported wire protocol");
-                if (!task->checkCancelled()) {
-                    // We should not send anything back to xrootd if the task has been cancelled.
-                    task->getSendChannel()->sendError("Unsupported wire protocol", 1);
-                }
-            } else {
-                auto qr = wdb::QueryRunner::newQueryRunner(task, chunkResourceMgr, mySqlConfig, sqlConnMgr);
-                bool success = false;
-                try {
-                    success = qr->runQuery();
-                } catch (UnsupportedError const& e) {
-                    LOGS(_log, LOG_LVL_ERROR, "runQuery threw UnsupportedError " << e.what() << *task);
-                }
-                if (not success) {
-                    LOGS(_log, LOG_LVL_ERROR, "runQuery failed " << *task);
-                    if (not task->getSendChannel()->kill("Foreman::_setRunFunc")) {
-                        LOGS(_log, LOG_LVL_WARN, "runQuery sendChannel killed");
-                    }
+            auto qr = wdb::QueryRunner::newQueryRunner(task, chunkResourceMgr, mySqlConfig, sqlConnMgr);
+            bool success = false;
+            try {
+                success = qr->runQuery();
+            } catch (UnsupportedError const& e) {
+                LOGS(_log, LOG_LVL_ERROR, "runQuery threw UnsupportedError " << e.what() << *task);
+            }
+            if (not success) {
+                LOGS(_log, LOG_LVL_ERROR, "runQuery failed " << *task);
+                if (not task->getSendChannel()->kill("Foreman::_setRunFunc")) {
+                    LOGS(_log, LOG_LVL_WARN, "runQuery sendChannel killed");
                 }
             }
             // Transmission is done, but 'task' contains statistics that are still useful.

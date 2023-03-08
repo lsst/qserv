@@ -26,38 +26,69 @@
 
 // System headers
 #include <cassert>
+#include <thread>
+
+// Third party headers
+#include "boost/filesystem.hpp"
 
 // LSST headers
 #include "lsst/log/Log.h"
 
 // Qserv headers
 #include "mysql/MySqlConfig.h"
+#include "qhttp/Request.h"
+#include "qhttp/Response.h"
+#include "qhttp/Server.h"
+#include "qhttp/Status.h"
 #include "wbase/WorkerCommand.h"
+#include "wconfig/WorkerConfig.h"
 #include "wcontrol/SqlConnMgr.h"
 #include "wcontrol/WorkerStats.h"
 #include "wdb/ChunkResource.h"
 #include "wdb/SQLBackend.h"
 #include "wpublish/QueriesAndChunks.h"
 
+using namespace std;
+namespace fs = boost::filesystem;
+namespace qhttp = lsst::qserv::qhttp;
+
 namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.wcontrol.Foreman");
-}
 
-using namespace std;
+/// Remove the result file specified in the parameter of the method.
+/// @param fileName An absolute path name to a file to be removed.
+/// @return The HTTP status code which depends on the status of the requested
+///   file and the outcome of the operation.
+qhttp::Status removeResultFile(std::string const& fileName) {
+    string const context = "Foreman::" + string(__func__) + " ";
+    fs::path const filePath(fileName);
+    if (!fs::exists(filePath)) return qhttp::STATUS_NOT_FOUND;
+    boost::system::error_code ec;
+    fs::remove_all(filePath, ec);
+    if (ec.value() != 0) {
+        LOGS(_log, LOG_LVL_WARN,
+             context << "failed to remove the result file: " << fileName << ", code: " << ec.value()
+                     << ", error:" << ec.message());
+        return qhttp::STATUS_INTERNAL_SERVER_ERR;
+    }
+    LOGS(_log, LOG_LVL_DEBUG, context << "result file removed: " << fileName);
+    return qhttp::STATUS_OK;
+}
+}  // namespace
 
 namespace lsst::qserv::wcontrol {
 
 Foreman::Foreman(Scheduler::Ptr const& scheduler, unsigned int poolSize, unsigned int maxPoolThreads,
                  mysql::MySqlConfig const& mySqlConfig, wpublish::QueriesAndChunks::Ptr const& queries,
                  std::shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr,
-                 std::shared_ptr<wcontrol::TransmitMgr> const& transmitMgr,
-                 wconfig::WorkerConfig const& workerConfig)
+                 std::shared_ptr<wcontrol::TransmitMgr> const& transmitMgr)
         : _scheduler(scheduler),
           _mySqlConfig(mySqlConfig),
           _queries(queries),
           _sqlConnMgr(sqlConnMgr),
           _transmitMgr(transmitMgr),
-          _workerConfig(workerConfig) {
+          _io_service(),
+          _httpServer(qhttp::Server::create(_io_service, 0 /* grab the first available port */)) {
     // Make the chunk resource mgr
     // Creating backend makes a connection to the database for making temporary tables.
     // It will delete temporary tables that it can identify as being created by a worker.
@@ -76,6 +107,34 @@ Foreman::Foreman(Scheduler::Ptr const& scheduler, unsigned int poolSize, unsigne
     WorkerStats::setup();  // FUTURE: maybe add links to scheduler, _backend, etc?
 
     _mark = make_shared<util::HoldTrack::Mark>(ERR_LOC, "Forman Test Msg");
+
+    // Read-only access to the result files via the HTTP protocol's method "GET"
+    //
+    // NOTE: The following config doesn't seem to work due to multiple instances
+    //       of '/' that's present in a value passed for the pattern parameter
+    //      (the first parameter) of the called method.
+    //
+    // _httpServer->addStaticContent(workerConfig->resultsDirname() + "/*", "/");
+    //
+    // Using this insecure config instead. The problem will get fixed later.
+    auto const workerConfig = wconfig::WorkerConfig::instance();
+    _httpServer->addStaticContent("/*", "/");
+    _httpServer->addHandler("DELETE", workerConfig->resultsDirname() + "/:file",
+                            [](qhttp::Request::Ptr const req, qhttp::Response::Ptr const resp) {
+                                resp->sendStatus(::removeResultFile(req->path));
+                            });
+
+    // The HTTP server should be started before launching the threads to prevent
+    // the thread from exiting prematurely due to a lack of work. The threads
+    // will stop automatically when the server will be requested to stop in
+    // the destructor of the current class.
+    _httpServer->start();
+    assert(workerConfig->resultsNumHttpThreads() > 0);
+    for (size_t i = 0; i < workerConfig->resultsNumHttpThreads(); ++i) {
+        std::thread t([this]() { _io_service.run(); });
+        t.detach();
+    }
+    LOGS(_log, LOG_LVL_DEBUG, "qhttp started on port=" << _httpServer->getPort());
 }
 
 Foreman::~Foreman() {
@@ -83,6 +142,7 @@ Foreman::~Foreman() {
     // It will take significant effort to have xrootd shutdown cleanly and this will never get called
     // until that happens.
     _pool->shutdownPool();
+    _httpServer->stop();
 }
 
 void Foreman::processTasks(vector<wbase::Task::Ptr> const& tasks) {
@@ -97,6 +157,8 @@ void Foreman::processTasks(vector<wbase::Task::Ptr> const& tasks) {
 void Foreman::processCommand(shared_ptr<wbase::WorkerCommand> const& command) {
     _workerCommandQueue->queCmd(command);
 }
+
+uint16_t Foreman::httpPort() const { return _httpServer->getPort(); }
 
 nlohmann::json Foreman::statusToJson(wbase::TaskSelector const& taskSelector) {
     nlohmann::json status;
