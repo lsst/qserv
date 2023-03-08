@@ -219,6 +219,12 @@ public:
 
     int getMaxPerQid() const { return _maxPerQid; }
 
+    /// @return the name of a folder where query results will be stored.
+    std::string const& resultsDirname() const { return _resultsDirname; }
+
+    /// @return the port number of the worker XROOTD service for serving result files.
+    uint16_t resultsXrootdPort() const { return _resultsXrootdPort; }
+
     /** Overload output operator for current class
      *
      * @param out
@@ -267,6 +273,8 @@ private:
     unsigned int const _bufferMaxTotalGB;
     unsigned int const _maxTransmits;
     int const _maxPerQid;
+    std::string const _resultsDirname;
+    uint16_t const _resultsXrootdPort;
 };
 
 }  // namespace lsst::qserv::wconfig
