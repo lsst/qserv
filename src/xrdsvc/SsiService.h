@@ -33,7 +33,6 @@
 
 // Qserv headers
 #include "mysql/MySqlConfig.h"
-#include "wconfig/WorkerConfig.h"
 
 // Forward declarations
 class XrdSsiLogger;
@@ -57,14 +56,13 @@ namespace lsst::qserv::xrdsvc {
 /// worker services
 class SsiService : public XrdSsiService {
 public:
-    /** Build a SsiService object
-     *
+    /**
+     * Build a SsiService object
      * @param log xrdssi logger
-     * @param config SSiservice configuration parameters
      */
     // take ownership of logger for now
 
-    SsiService(XrdSsiLogger* log, wconfig::WorkerConfig const& workerConfig);
+    SsiService(XrdSsiLogger* log);
     virtual ~SsiService();
 
     /// Called by SSI framework to handle new requests

@@ -90,8 +90,8 @@ bool SsiProviderServer::Init(XrdSsiLogger* logP, XrdSsiCluster* clsP, std::strin
     LOGS(_log, LOG_LVL_DEBUG, "Qserv xrdssi plugin configuration file: " << argv[1]);
 
     std::string workerConfigFile = argv[1];
-    wconfig::WorkerConfig workerConfig(workerConfigFile);
-    LOGS(_log, LOG_LVL_DEBUG, "Qserv xrdssi plugin configuration: " << workerConfig);
+    auto const workerConfig = wconfig::WorkerConfig::create(workerConfigFile);
+    LOGS(_log, LOG_LVL_DEBUG, "Qserv xrdssi plugin configuration: " << *workerConfig);
 
     // Save the ssi logger as it places messages in another file than our log.
     //
@@ -118,7 +118,7 @@ bool SsiProviderServer::Init(XrdSsiLogger* logP, XrdSsiCluster* clsP, std::strin
     // calls either in the data provider and the metadata provider (we can be
     // either one).
     //
-    _chunkInventory.init(x.getName(), workerConfig.getMySqlConfig());
+    _chunkInventory.init(x.getName(), workerConfig->getMySqlConfig());
 
     // If we are a data provider (i.e. xrootd) then we need to get the service
     // object. It will print the exported paths. Otherwise, we need to print
@@ -126,7 +126,7 @@ bool SsiProviderServer::Init(XrdSsiLogger* logP, XrdSsiCluster* clsP, std::strin
     // single shared memory inventory object which should do this by itself.
     //
     if (clsP && clsP->DataContext()) {
-        _service.reset(new SsiService(logP, workerConfig));
+        _service.reset(new SsiService(logP));
     } else {
         std::ostringstream ss;
         ss << "Provider valid paths(ci): ";

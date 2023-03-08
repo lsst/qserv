@@ -76,7 +76,7 @@ int dummyInitMDC = LOG_MDC_INIT(initMDC);
 namespace lsst::qserv::xrdsvc {
 
 SsiService::SsiService(XrdSsiLogger* log, wconfig::WorkerConfig const& workerConfig)
-        : _mySqlConfig(workerConfig.getMySqlConfig()) {
+        : _mySqlConfig(wconfig::WorkerConfig::instance()->getMySqlConfig()) {
     LOGS(_log, LOG_LVL_DEBUG, "SsiService starting...");
 
     util::HoldTrack::setup(10min);
@@ -87,16 +87,17 @@ SsiService::SsiService(XrdSsiLogger* log, wconfig::WorkerConfig const& workerCon
     }
     _initInventory();
 
-    string cfgMemMan = workerConfig.getMemManClass();
+    auto const workerConfig = wconfig::WorkerConfig::instance();
+    string cfgMemMan = workerConfig->getMemManClass();
     memman::MemMan::Ptr memMan;
     if (cfgMemMan == "MemManReal") {
         // Default to 1 gigabyte
-        uint64_t memManSize = workerConfig.getMemManSizeMb() * 1000000;
+        uint64_t memManSize = workerConfig->getMemManSizeMb() * 1000000;
         LOGS(_log, LOG_LVL_DEBUG,
-             "Using MemManReal with memManSizeMb=" << workerConfig.getMemManSizeMb()
-                                                   << " location=" << workerConfig.getMemManLocation());
+             "Using MemManReal with memManSizeMb=" << workerConfig->getMemManSizeMb()
+                                                   << " location=" << workerConfig->getMemManLocation());
         memMan = shared_ptr<memman::MemMan>(
-                memman::MemMan::create(memManSize, workerConfig.getMemManLocation()));
+                memman::MemMan::create(memManSize, workerConfig->getMemManLocation()));
     } else if (cfgMemMan == "MemManNone") {
         memMan = make_shared<memman::MemManNone>(1, false);
     } else {
@@ -104,18 +105,18 @@ SsiService::SsiService(XrdSsiLogger* log, wconfig::WorkerConfig const& workerCon
         throw wconfig::WorkerConfigError("Unrecognized memory manager.");
     }
 
-    int64_t bufferMaxTotalBytes = workerConfig.getBufferMaxTotalGB() * 1'000'000'000LL;
+    int64_t bufferMaxTotalBytes = workerConfig->getBufferMaxTotalGB() * 1'000'000'000LL;
     StreamBuffer::setMaxTotalBytes(bufferMaxTotalBytes);
 
     // Set thread pool size.
-    unsigned int poolSize = max(workerConfig.getThreadPoolSize(), thread::hardware_concurrency());
-    unsigned int maxPoolThreads = max(workerConfig.getMaxPoolThreads(), poolSize);
+    unsigned int poolSize = max(workerConfig->getThreadPoolSize(), thread::hardware_concurrency());
+    unsigned int maxPoolThreads = max(workerConfig->getMaxPoolThreads(), poolSize);
 
     // poolSize should be greater than either GroupScheduler::maxThreads or ScanScheduler::maxThreads
     unsigned int maxThread = poolSize;
     int maxReserve = 2;
     auto group = make_shared<wsched::GroupScheduler>("SchedGroup", maxThread, maxReserve,
-                                                     workerConfig.getMaxGroupSize(),
+                                                     workerConfig->getMaxGroupSize(),
                                                      wsched::SchedulerBase::getMaxPriority());
 
     int const fastest = lsst::qserv::proto::ScanInfo::Rating::FASTEST;
@@ -123,26 +124,28 @@ SsiService::SsiService(XrdSsiLogger* log, wconfig::WorkerConfig const& workerCon
     int const medium = lsst::qserv::proto::ScanInfo::Rating::MEDIUM;
     int const slow = lsst::qserv::proto::ScanInfo::Rating::SLOW;
     int const slowest = lsst::qserv::proto::ScanInfo::Rating::SLOWEST;
-    double fastScanMaxMinutes = (double)workerConfig.getScanMaxMinutesFast();
-    double medScanMaxMinutes = (double)workerConfig.getScanMaxMinutesMed();
-    double slowScanMaxMinutes = (double)workerConfig.getScanMaxMinutesSlow();
-    double snailScanMaxMinutes = (double)workerConfig.getScanMaxMinutesSnail();
-    int maxTasksBootedPerUserQuery = workerConfig.getMaxTasksBootedPerUserQuery();
+    double fastScanMaxMinutes = (double)workerConfig->getScanMaxMinutesFast();
+    double medScanMaxMinutes = (double)workerConfig->getScanMaxMinutesMed();
+    double slowScanMaxMinutes = (double)workerConfig->getScanMaxMinutesSlow();
+    double snailScanMaxMinutes = (double)workerConfig->getScanMaxMinutesSnail();
+    int maxTasksBootedPerUserQuery = workerConfig->getMaxTasksBootedPerUserQuery();
     vector<wsched::ScanScheduler::Ptr> scanSchedulers{
+            make_shared<wsched::ScanScheduler>("SchedSlow", maxThread, workerConfig->getMaxReserveSlow(),
+                                               workerConfig->getPrioritySlow(),
+                                               workerConfig->getMaxActiveChunksSlow(), memMan, medium + 1,
+                                               slow, slowScanMaxMinutes),
+            make_shared<wsched::ScanScheduler>("SchedFast", maxThread, workerConfig->getMaxReserveFast(),
+                                               workerConfig->getPriorityFast(),
+                                               workerConfig->getMaxActiveChunksFast(), memMan, fastest, fast,
+                                               fastScanMaxMinutes),
             make_shared<wsched::ScanScheduler>(
-                    "SchedSlow", maxThread, workerConfig.getMaxReserveSlow(), workerConfig.getPrioritySlow(),
-                    workerConfig.getMaxActiveChunksSlow(), memMan, medium + 1, slow, slowScanMaxMinutes),
-            make_shared<wsched::ScanScheduler>(
-                    "SchedFast", maxThread, workerConfig.getMaxReserveFast(), workerConfig.getPriorityFast(),
-                    workerConfig.getMaxActiveChunksFast(), memMan, fastest, fast, fastScanMaxMinutes),
-            make_shared<wsched::ScanScheduler>(
-                    "SchedMed", maxThread, workerConfig.getMaxReserveMed(), workerConfig.getPriorityMed(),
-                    workerConfig.getMaxActiveChunksMed(), memMan, fast + 1, medium, medScanMaxMinutes),
+                    "SchedMed", maxThread, workerConfig->getMaxReserveMed(), workerConfig->getPriorityMed(),
+                    workerConfig->getMaxActiveChunksMed(), memMan, fast + 1, medium, medScanMaxMinutes),
     };
 
     auto snail = make_shared<wsched::ScanScheduler>(
-            "SchedSnail", maxThread, workerConfig.getMaxReserveSnail(), workerConfig.getPrioritySnail(),
-            workerConfig.getMaxActiveChunksSnail(), memMan, slow + 1, slowest, snailScanMaxMinutes);
+            "SchedSnail", maxThread, workerConfig->getMaxReserveSnail(), workerConfig->getPrioritySnail(),
+            workerConfig->getMaxActiveChunksSnail(), memMan, slow + 1, slowest, snailScanMaxMinutes);
 
     wpublish::QueriesAndChunks::Ptr queries = wpublish::QueriesAndChunks::setupGlobal(
             chrono::minutes(5), chrono::minutes(5), maxTasksBootedPerUserQuery);
@@ -151,22 +154,22 @@ SsiService::SsiService(XrdSsiLogger* log, wconfig::WorkerConfig const& workerCon
     blendSched->setPrioritizeByInFlight(false);  // TODO: set in configuration file.
     queries->setBlendScheduler(blendSched);
 
-    unsigned int requiredTasksCompleted = workerConfig.getRequiredTasksCompleted();
+    unsigned int requiredTasksCompleted = workerConfig->getRequiredTasksCompleted();
     queries->setRequiredTasksCompleted(requiredTasksCompleted);
 
-    int const maxSqlConn = workerConfig.getMaxSqlConnections();
-    int const resvInteractiveSqlConn = workerConfig.getReservedInteractiveSqlConnections();
+    int const maxSqlConn = workerConfig->getMaxSqlConnections();
+    int const resvInteractiveSqlConn = workerConfig->getReservedInteractiveSqlConnections();
     auto sqlConnMgr = make_shared<wcontrol::SqlConnMgr>(maxSqlConn, maxSqlConn - resvInteractiveSqlConn);
     LOGS(_log, LOG_LVL_WARN, "config sqlConnMgr" << *sqlConnMgr);
 
-    int const maxTransmits = workerConfig.getMaxTransmits();
-    int const maxPerQid = workerConfig.getMaxPerQid();
+    int const maxTransmits = workerConfig->getMaxTransmits();
+    int const maxPerQid = workerConfig->getMaxPerQid();
     _transmitMgr = make_shared<wcontrol::TransmitMgr>(maxTransmits, maxPerQid);
     LOGS(_log, LOG_LVL_WARN, "config transmitMgr" << *_transmitMgr);
     LOGS(_log, LOG_LVL_WARN, "maxPoolThreads=" << maxPoolThreads);
 
     _foreman = make_shared<wcontrol::Foreman>(blendSched, poolSize, maxPoolThreads,
-                                              workerConfig.getMySqlConfig(), queries, sqlConnMgr);
+                                              _mySqlConfig, queries, sqlConnMgr);
 
     // Watch to see if the log configuration is changed.
     // If LSST_LOG_CONFIG is not defined, there's no good way to know what log

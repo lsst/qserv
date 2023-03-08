@@ -85,5 +85,23 @@ maxtransmits = 50
 maxalreadytransmitting = 10
 
 [results]
+
 # The name of a folder where query results will be stored.
 dirname = {{ results_dirname }}
+
+# The port number of the worker XROOTD service for serving files.
+# NOTE: the hardcoded value may need to be replaced with a template
+xrootd_port = 1094
+
+# The number of the BOOST ASIO threads for HTTP requests
+num_http_threads = 4
+
+# Result delivery protocol. Allowed options:
+#   SSI   - XROOTD/SSI stream (the default mode if no specific choice is proided)
+#   XROOT - XROOT file protocol
+#   HTTP  - HTTP protocol
+protocol = SSI
+
+# Set to any value but 0 if result files (if any) left after the previous run of
+# the worker had to be deleted from the corresponding folder.
+clean_up_on_start = 1
