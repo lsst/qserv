@@ -300,7 +300,7 @@ void UserQuerySelect::submit() {
             qproc::ChunkQuerySpec::Ptr cs;
             {
                 std::lock_guard<std::mutex> lock(chunksMtx);
-                cs = _qSession->buildChunkQuerySpec(queryTemplates, chunkSpec);
+                cs = _qSession->buildChunkQuerySpec(queryTemplates, chunkSpec, false);
                 chunks.push_back(cs->chunkId);
             }
             std::string chunkResultName = ttn.make(cs->chunkId);
