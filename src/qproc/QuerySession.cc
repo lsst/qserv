@@ -432,7 +432,7 @@ ChunkQuerySpec::Ptr QuerySession::buildChunkQuerySpec(query::QueryTemplate::Vect
         string chunkIdStr = to_string(chunkSpec.chunkId);
         for (auto&& qs : cQSpec->queries) {
             boost::algorithm::replace_all(qs, CHUNK_TAG, chunkIdStr);
-            LOGS(_log, LOG_LVL_DEBUG, "QuerySession::buildChunkQuerySpec " << qs);
+            LOGS(_log, LOG_LVL_DEBUG, "QuerySession::" << __func__ << " " << qs);
         }
     }
     return cQSpec;
