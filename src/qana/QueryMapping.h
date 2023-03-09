@@ -72,7 +72,7 @@ namespace lsst::qserv::qana {
 /// moved to the worker.
 class QueryMapping {
 public:
-    enum Parameter { INVALID, CHUNK = 100, SUBCHUNK, HTM1 = 200 };
+    enum Parameter { INVALID, CHUNK = 100, HTM1 = 200 };
     typedef std::map<std::string, Parameter> ParameterMap;
 
     QueryMapping();

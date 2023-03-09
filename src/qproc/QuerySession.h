@@ -142,8 +142,12 @@ public:
 
     std::shared_ptr<query::SelectStmt> getMergeStmt() const;
 
+    /// Build the template for the worker queries.
+    /// @param fillinChunIdTag - When true replace the CHUNK_TAG string with the chunk id number.
+    ///         Template strings sent to the worker should not fill in the tag, but unit tests
+    ///         need it filled in.
     ChunkQuerySpec::Ptr buildChunkQuerySpec(query::QueryTemplate::Vect const& queryTemplates,
-                                            ChunkSpec const& chunkSpec) const;
+                                            ChunkSpec const& chunkSpec, bool fillInChunkIdTag = true) const;
 
     /// Finalize a query after chunk coverage has been updated
     void finalize();

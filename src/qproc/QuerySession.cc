@@ -76,6 +76,8 @@
 #include "sql/SqlException.h"
 #include "util/IterableFormatter.h"
 
+using namespace std;
+
 namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.qproc.QuerySession");
 
@@ -401,7 +403,8 @@ std::ostream& operator<<(std::ostream& out, QuerySession const& querySession) {
 }
 
 ChunkQuerySpec::Ptr QuerySession::buildChunkQuerySpec(query::QueryTemplate::Vect const& queryTemplates,
-                                                      ChunkSpec const& chunkSpec) const {
+                                                      ChunkSpec const& chunkSpec,
+                                                      bool fillInChunkIdTag) const {
     auto cQSpec = std::make_shared<ChunkQuerySpec>(_context->dominantDb, chunkSpec.chunkId,
                                                    _context->scanInfo, _scanInteractive);
     // Reset subChunkTables
@@ -422,6 +425,14 @@ ChunkQuerySpec::Ptr QuerySession::buildChunkQuerySpec(query::QueryTemplate::Vect
         } else {
             cQSpec->queries = _buildChunkQueries(queryTemplates, chunkSpec);
             cQSpec->subChunkIds.assign(chunkSpec.subChunks.begin(), chunkSpec.subChunks.end());
+        }
+    }
+    // For a unit test, replace the CHUNK_TAG string with the chunk id number.
+    if (fillInChunkIdTag) {
+        string chunkIdStr = to_string(chunkSpec.chunkId);
+        for (auto&& qs : cQSpec->queries) {
+            boost::algorithm::replace_all(qs, CHUNK_TAG, chunkIdStr);
+            LOGS(_log, LOG_LVL_DEBUG, "QuerySession::" << __func__ << " " << qs);
         }
     }
     return cQSpec;

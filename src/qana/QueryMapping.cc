@@ -36,6 +36,7 @@
 #include "lsst/log/Log.h"
 
 // Qserv headers
+#include "global/constants.h"
 #include "qproc/ChunkSpec.h"
 #include "query/QueryTemplate.h"
 
@@ -109,9 +110,7 @@ private:
             case QueryMapping::INVALID:
                 return "INVALID";
             case QueryMapping::CHUNK:
-                return _chunkString;
-            case QueryMapping::SUBCHUNK:
-                return _subChunkString;
+                return CHUNK_TAG;
             case QueryMapping::HTM1:
                 throw std::range_error("HTM unimplemented");
             default:

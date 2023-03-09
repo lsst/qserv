@@ -175,9 +175,12 @@ std::vector<Task::Ptr> Task::createTasks(std::shared_ptr<proto::TaskMsg> const& 
     if (fragmentCount < 1) {
         throw util::Bug(ERR_LOC, "Task::createTasks No fragments to execute in TaskMsg");
     }
+    string const chunkIdStr = to_string(taskMsg->chunkid());
     for (int fragNum = 0; fragNum < fragmentCount; ++fragNum) {
         proto::TaskMsg_Fragment const& fragment = taskMsg->fragment(fragNum);
-        for (const std::string queryStr : fragment.query()) {
+        for (std::string queryStr : fragment.query()) {
+            boost::algorithm::replace_all(queryStr, CHUNK_TAG, chunkIdStr);
+            LOGS(_log, LOG_LVL_TRACE, "fragment[" << fragNum << "]=" << queryStr);
             // fragment.has_subchunks() == true and fragment.subchunks().id().empty() == false
             // is apparently valid and must go to the else clause.
             // TODO: Look into the creation of fragment on the czar as this is not intuitive.
