@@ -3,6 +3,7 @@ add_dependencies(ccontrol proto)
 
 target_include_directories(ccontrol PRIVATE
     ${ANTLR4_INCLUDE_DIR}
+    ${XROOTD_INCLUDE_DIRS}
 )
 
 target_sources(ccontrol PRIVATE
@@ -29,6 +30,7 @@ target_link_libraries(ccontrol PUBLIC
     log
     parser
     sphgeom
+    XrdCl
 )
 
 FUNCTION(ccontrol_tests)
