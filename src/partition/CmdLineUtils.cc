@@ -28,6 +28,7 @@
 #include <map>
 #include <set>
 #include <vector>
+#include "boost/algorithm/string/predicate.hpp"
 
 #include "partition/ConfigStore.h"
 #include "partition/Constants.h"
@@ -140,6 +141,7 @@ InputLines const makeInputLines(ConfigStore const& config) {
                 "using --in.path.");
     }
     std::vector<fs::path> paths;
+    bool bIsParquetFile = false;
     for (auto&& s : config.get<std::vector<std::string>>("in.path")) {
         fs::path p(s);
         fs::file_status stat = fs::status(p);
@@ -152,13 +154,25 @@ InputLines const makeInputLines(ConfigStore const& config) {
                 }
             }
         }
+        bIsParquetFile = (boost::algorithm::ends_with(s.c_str(), ".parquet") ||
+                          boost::algorithm::ends_with(s.c_str(), ".parq"));
     }
     if (paths.empty()) {
         throw std::runtime_error(
                 "No non-empty input files found among the "
                 "files and directories specified via --in.path.");
     }
-    return InputLines(paths, blockSize * MiB, false);
+
+    // Arrow : collect parameter name list to be read from parquet file
+    std::vector<std::string> names;
+    if (config.has("out.csv.field")) names = config.get<std::vector<std::string>>("in.csv.field");
+    // Direct parquet file reading is not possible using MT - March 2023
+    if (bIsParquetFile && config.has("mr.num-workers") && config.get<int>("mr.num-workers") > 1)
+        throw std::runtime_error(
+                "Parquet file partition cannot be done in MT - mr.num-workers parameter must be set to 1 in "
+                "parition.json file ");
+
+    return InputLines(paths, blockSize * MiB, false, names);
 }
 
 void defineOutputOptions(po::options_description& opts) {

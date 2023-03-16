@@ -21,6 +21,7 @@
  */
 
 #include "partition/FileUtils.h"
+#include "partition/ParquetInterface.h"
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -64,7 +65,8 @@ InputFile::~InputFile() {
     }
 }
 
-void InputFile::read(void *buf, off_t off, size_t sz) const {
+void InputFile::read(void *buf, off_t off, size_t sz, int *bufferSize,
+                     std::vector<std::string> params) const {
     char msg[1024];
     uint8_t *cur = static_cast<uint8_t *>(buf);
     while (sz > 0) {
@@ -79,6 +81,67 @@ void InputFile::read(void *buf, off_t off, size_t sz) const {
             off += n;
             cur += n;
         }
+    }
+}
+
+InputFileArrow::InputFileArrow(fs::path const &path, off_t blockSize) : InputFile(path), _fd(-1), _sz(-1) {
+    char msg[1024];
+    struct ::stat st;
+
+    m_batchReader = std::make_unique<lsst::partition::ParquetFile>(ParquetFile(path.string().c_str()));
+    arrow::Status status = m_batchReader->SetupBatchReader(blockSize);
+    if (!status.ok()) throw std::runtime_error("Could not setup Arrow recordbatchreader");
+
+    int fd = ::open(path.string().c_str(), O_RDONLY);
+
+    if (fd == -1) {
+        ::strerror_r(errno, msg, sizeof(msg));
+        throw std::runtime_error("open() failed [" + path.string() + "]: " + msg);
+    }
+    if (::fstat(fd, &st) != 0) {
+        ::strerror_r(errno, msg, sizeof(msg));
+        ::close(fd);
+        throw std::runtime_error("fstat() failed [" + path.string() + "]: " + msg);
+    }
+    _fd = fd;
+    _sz = st.st_size;
+}
+
+InputFileArrow::~InputFileArrow() {
+    char msg[1024];
+    if (_fd != -1 && ::close(_fd) != 0) {
+        ::snprintf(msg, sizeof(msg), "close() failed [%s]", _path.string().c_str());
+        ::perror(msg);
+        ::exit(EXIT_FAILURE);
+    }
+}
+
+int InputFileArrow::getBatchNumber() const { return m_batchReader->GetTotalBatchNumber(); }
+
+void InputFileArrow::read(void *buf, off_t off, size_t sz, int *bufferSize,
+                          std::vector<std::string> params) const {
+    char msg[1024];
+    uint8_t *cur = static_cast<uint8_t *>(buf);
+
+    int buffSize;
+    arrow::Status status = m_batchReader->ReadNextBatch_Table2CSV(cur, buffSize, params);
+    // return the buffersize because it varies from batch to batch
+    *bufferSize = buffSize;
+
+    if (status.ok()) {
+        ssize_t n = buffSize;
+        if (n == 0) {
+            throw std::runtime_error("pread() received EOF [" + _path.string() + "]");
+        } else if (n < 0 && errno != EINTR) {
+            ::strerror_r(errno, msg, sizeof(msg));
+            throw std::runtime_error("pread() failed [" + _path.string() + "]: " + msg);
+        }
+        /*else if (n > 0) {
+            sz -= static_cast<size_t>(n);
+            off += n;
+            cur += n;
+        }
+        */
     }
 }
 

@@ -34,6 +34,8 @@
 
 namespace lsst::partition {
 
+class ParquetFile;
+
 /// An input file. Safe for use from multiple threads.
 class InputFile {
 public:
@@ -46,8 +48,12 @@ public:
     /// Return the path of the input file.
     boost::filesystem::path const &path() const { return _path; }
 
+    // Needed in derived class InputFileArrow
+    virtual int getBatchNumber() const { return -1; }
+
     /// Read a range of bytes into `buf`.
-    void read(void *buf, off_t off, size_t sz) const;
+    virtual void read(void *buf, off_t off, size_t sz, int *bufferSize = 0,
+                      std::vector<std::string> params = {}) const;
 
 private:
     // Disable copy construction and assignment.
@@ -57,6 +63,35 @@ private:
     boost::filesystem::path _path;
     int _fd;
     off_t _sz;
+};
+
+class InputFileArrow : public InputFile {
+public:
+    explicit InputFileArrow(boost::filesystem::path const &path, off_t blockSize);
+    ~InputFileArrow();
+
+    /// Return the size of the input file.
+    off_t size() const { return _sz; }
+
+    /// Return the path of the input file.
+    boost::filesystem::path const &path() const { return _path; }
+
+    int getBatchNumber() const;
+
+    /// Read a range of bytes into `buf`.
+    void read(void *buf, off_t off, size_t sz, int *bufferSize, std::vector<std::string> params) const;
+
+private:
+    // Disable copy construction and assignment.
+    InputFileArrow(InputFileArrow const &);
+    InputFileArrow &operator=(InputFileArrow const &);
+
+    boost::filesystem::path _path;
+    std::vector<std::string> _paramNames;
+    int _fd;
+    off_t _sz;
+
+    std::unique_ptr<ParquetFile> m_batchReader;
 };
 
 /// An output file that can only be appended to, and which should only be

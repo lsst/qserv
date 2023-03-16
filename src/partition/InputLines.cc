@@ -28,6 +28,7 @@
 #include "boost/make_shared.hpp"
 #include "boost/static_assert.hpp"
 #include "boost/thread.hpp"
+#include "boost/algorithm/string/predicate.hpp"
 
 #include "partition/Constants.h"
 #include "partition/FileUtils.h"
@@ -92,15 +93,23 @@ struct Block {
 
     Block() : file(), offset(0), size(0), head(), tail() {}
 
-    CharPtrPair const read(char *buf, bool skipFirstLine);
+    CharPtrPair const read(char *buf, bool skipFirstLine, std::vector<std::string> paramNames = {});
 };
 
 // Read a file block and handle the lines crossing its boundaries.
-CharPtrPair const Block::read(char *buf, bool skipFirstLine) {
+CharPtrPair const Block::read(char *buf, bool skipFirstLine, std::vector<std::string> paramNames) {
     // Read into buf, leaving space for a line on either side of the block.
     char *readBeg = buf + MAX_LINE_SIZE;
     char *readEnd = readBeg + size;
-    file->read(readBeg, offset, size);
+
+    // Arrow/Parquet : retrieve the real size of the arrow CSV block
+    int bufferSize = 0;
+    file->read(readBeg, offset, size, &bufferSize, paramNames);
+    if (bufferSize > 0) {
+        size = bufferSize;
+        readEnd = readBeg + size;
+    }
+
     // The responsibility for returning a line which crosses the beginning
     // or end of this block lies with the last thread to encounter the
     // line.
@@ -164,14 +173,36 @@ CharPtrPair const Block::read(char *buf, bool skipFirstLine) {
 std::vector<Block> const split(fs::path const &path, off_t blockSize) {
     std::vector<Block> blocks;
     Block b;
-    b.file = boost::make_shared<InputFile>(path);
+
     b.offset = 0;
+    off_t fileSize = 0;
+    off_t numBlocks = 0;
+
+    if (boost::algorithm::ends_with(path.c_str(), ".parquet") ||
+        boost::algorithm::ends_with(path.c_str(), ".parq")) {
+        b.file = boost::make_shared<InputFileArrow>(path, blockSize);
+
+        b.size = blockSize;
+        fileSize = b.file->getBatchNumber();
+        numBlocks = b.file->getBatchNumber();
+
+        blocks.reserve(numBlocks);
+        for (off_t i = 0; i < numBlocks; ++i) {
+            b.offset = 1;
+            blocks.push_back(b);
+        }
+        return blocks;
+    }
+
+    b.file = boost::make_shared<InputFile>(path);
+
     b.size = blockSize;
-    off_t const fileSize = b.file->size();
-    off_t numBlocks = fileSize / blockSize;
+    fileSize = b.file->size();
+    numBlocks = fileSize / blockSize;
     if (fileSize % blockSize != 0) {
         ++numBlocks;
     }
+
     blocks.reserve(numBlocks);
     for (off_t i = 0; i < numBlocks; ++i, b.offset += blockSize) {
         b.size = static_cast<size_t>(std::min(fileSize - b.offset, blockSize));
@@ -190,7 +221,8 @@ std::vector<Block> const split(fs::path const &path, off_t blockSize) {
 
 class InputLines::Impl {
 public:
-    Impl(std::vector<fs::path> const &paths, size_t blockSize, bool skipFirstLine);
+    Impl(std::vector<fs::path> const &paths, size_t blockSize, bool skipFirstLine,
+         std::vector<std::string> paramNames);
     ~Impl() {}
 
     size_t getBlockSize() const { return _blockSize; }
@@ -199,6 +231,8 @@ public:
         boost::lock_guard<boost::mutex> lock(_mutex);
         return _blockCount == 0;
     }
+
+    std::vector<std::string> getParameterNames() const { return _paramNames; }
 
     CharPtrPair const read(char *buf);
 
@@ -210,6 +244,7 @@ private:
 
     size_t const _blockSize;
     bool const _skipFirstLine;
+    const std::vector<std::string> _paramNames;
 
     char _pad0[CACHE_LINE_SIZE];
 
@@ -221,9 +256,11 @@ private:
     char _pad1[CACHE_LINE_SIZE];
 };
 
-InputLines::Impl::Impl(std::vector<fs::path> const &paths, size_t blockSize, bool skipFirstLine)
+InputLines::Impl::Impl(std::vector<fs::path> const &paths, size_t blockSize, bool skipFirstLine,
+                       std::vector<std::string> paramNames)
         : _blockSize(std::min(std::max(blockSize, 1 * MiB), 1 * GiB)),
           _skipFirstLine(skipFirstLine),
+          _paramNames(paramNames),
           _mutex(),
           _blockCount(paths.size()),
           _queue(),
@@ -238,7 +275,7 @@ CharPtrPair const InputLines::Impl::read(char *buf) {
             _queue.pop_back();
             --_blockCount;
             lock.unlock();  // allow block reads to proceed in parallel
-            return b.read(buf, _skipFirstLine);
+            return b.read(buf, _skipFirstLine, _paramNames);
         } else if (!_paths.empty()) {
             // The queue is empty - grab the next file and split it into blocks.
             fs::path path = _paths.back();
@@ -261,7 +298,7 @@ CharPtrPair const InputLines::Impl::read(char *buf) {
             _queue.insert(_queue.end(), v.rbegin(), v.rend() - 1);
             _blockCount += v.size() - 1;
             lock.unlock();  // allow block reads to proceed in parallel
-            return b.read(buf, _skipFirstLine);
+            return b.read(buf, _skipFirstLine, _paramNames);
         } else {
             // The queue is empty and all input paths have been processed, but
             // the block count is non-zero. This means one or more threads are
@@ -279,14 +316,17 @@ CharPtrPair const InputLines::Impl::read(char *buf) {
 
 // Method delegation.
 
-InputLines::InputLines(std::vector<fs::path> const &paths, size_t blockSize, bool skipFirstLine)
-        : _impl(boost::make_shared<Impl>(paths, blockSize, skipFirstLine)) {}
+InputLines::InputLines(std::vector<fs::path> const &paths, size_t blockSize, bool skipFirstLine,
+                       std::vector<std::string> paramNames)
+        : _impl(boost::make_shared<Impl>(paths, blockSize, skipFirstLine, paramNames)) {}
 
 size_t InputLines::getBlockSize() const { return _impl ? _impl->getBlockSize() : 0; }
 
 size_t InputLines::getMinimumBufferCapacity() const { return _impl ? _impl->getMinimumBufferCapacity() : 0; }
 
 bool InputLines::empty() const { return _impl ? _impl->empty() : true; }
+
+std::vector<std::string> InputLines::getParameterNames() const { return _impl->getParameterNames(); }
 
 CharPtrPair const InputLines::read(char *buf) {
     if (_impl) {

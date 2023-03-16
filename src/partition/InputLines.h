@@ -33,6 +33,8 @@
 #include "boost/filesystem.hpp"
 #include "boost/shared_ptr.hpp"
 
+#include "ParquetInterface.h"
+
 namespace lsst::partition {
 
 /// The InputLines class reads lines from a list of input text files in an IO
@@ -68,7 +70,8 @@ public:
     /// ignoring the first line in each file. The user is responsible for
     /// ensuring that the file list contains no empty or duplicate entries.
     /// Note that `blockSize` is clamped to lie between 1MiB and 1GiB.
-    InputLines(std::vector<boost::filesystem::path> const &paths, size_t blockSize, bool skipFirstLine);
+    InputLines(std::vector<boost::filesystem::path> const &paths, size_t blockSize, bool skipFirstLine,
+               std::vector<std::string> paramNames = {});
 
     ~InputLines() {}
 
@@ -80,6 +83,9 @@ public:
 
     /// Has all the input been read?
     bool empty() const;
+
+    /// Return the parameter names as defined in in.csv
+    std::vector<std::string> getParameterNames() const;
 
     /// Read consecutive lines of text into `buf`, and return a pointer range
     /// `[i,end)` identifying the bytes in `buf` containing valid data. The
