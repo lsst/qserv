@@ -1,0 +1,91 @@
+/*
+ * LSST Data Management System
+ *
+ * This product includes software developed by the
+ * LSST Project (http://www.lsst.org/).
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the LSST License Statement and
+ * the GNU General Public License along with this program.  If not,
+ * see <http://www.lsstcorp.org/LegalNotices/>.
+ */
+
+// Class header
+#include "wbase/UserQueryInfo.h"
+
+// System headers
+
+// Qserv headers
+
+// LSST headers
+#include "lsst/log/Log.h"
+
+
+using namespace std;
+
+namespace {
+LOG_LOGGER _log = LOG_GET("lsst.qserv.wbase.UserQueryInfo");
+}
+
+namespace lsst::qserv::wbase {
+
+UserQueryInfo::Ptr UserQueryInfo::uqMapInsert(QueryId qId, vector<string> const& templateStrings) {
+    Ptr uqi;
+    {
+        lock_guard<mutex> lg(_uqMapMtx);
+        auto iter = _uqMap.find(qId);
+        if (iter != _uqMap.end()) {
+            uqi = iter->second;
+        } else {
+            uqi = make_shared<UserQueryInfo>(qId);
+            _uqMapMtx[qId] = elem;
+        }
+    }
+    for (auto const& str:templateStrings) {
+        uqi->addTemplate(str);
+    }
+    return uqi;
+}
+
+UserQueryInfo::Ptr UserQueryInfo::uqMapGet(QueryId qId) {
+    lock_guard<mutex> lg(_uqMapMtx);
+    auto iter = _uqMap.find(qId);
+    if (iter != _uqMap.end()) {
+        return iter->second;
+    }
+    return nullptr;
+}
+
+UserQueryInfo::Map UserQueryInfo::_uqMap;
+
+mutex UserQueryInfo::_uqMapMtx;
+
+size_t UserQueryInfo::addTemplate(std::string const& templateStr) {
+    size_t j = 0;
+    for (; j<_templates.size(); ++j) {
+        if (_templates[j] == templateStr) {
+            return j;
+        }
+    }
+    _templates.emplace_back(templateStr);
+    LOGS(_log, LOG_LVL_DEBUG, "QueryInfo:" << _qId << " j=" << j << << " Added:" << templateStr);
+    return j;
+}
+
+std::string& UserQueryInfo::getTemplate(size_t id) {
+    if (id >= _templates.size()) {
+        return std::string();
+    }
+    return _templates[id];
+}
+
+}  // namespace lsst::qserv::wbase
