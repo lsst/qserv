@@ -93,29 +93,20 @@ void Foreman::_setRunFunc(shared_ptr<wbase::Task> const& task) {
     // a QueryRunner instance for this Task and then runs
     // QueryRunner::runQuery() for the Task.
     auto func = [this, task](util::CmdData*) {
-        proto::TaskMsg const& msg = *task->msg;
-        int const resultProtocol = 2;  // See proto/worker.proto Result protocol
-        if (!msg.has_protocol() || msg.protocol() < resultProtocol) {
-            LOGS(_log, LOG_LVL_WARN, "processMsg Unsupported wire protocol");
-            if (!task->checkCancelled()) {
-                // We should not send anything back to xrootd if the task has been cancelled.
-                task->getSendChannel()->sendError("Unsupported wire protocol", 1);
-            }
-        } else {
-            auto qr = wdb::QueryRunner::newQueryRunner(task, _chunkResourceMgr, _mySqlConfig, _sqlConnMgr);
-            bool success = false;
-            try {
-                success = qr->runQuery();
-            } catch (UnsupportedError const& e) {
-                LOGS(_log, LOG_LVL_ERROR, "runQuery threw UnsupportedError " << e.what() << *task);
-            }
-            if (not success) {
-                LOGS(_log, LOG_LVL_ERROR, "runQuery failed " << *task);
-                if (not task->getSendChannel()->kill("Foreman::_setRunFunc")) {
-                    LOGS(_log, LOG_LVL_WARN, "runQuery sendChannel killed");
-                }
+        auto qr = wdb::QueryRunner::newQueryRunner(task, _chunkResourceMgr, _mySqlConfig, _sqlConnMgr);
+        bool success = false;
+        try {
+            success = qr->runQuery();
+        } catch (UnsupportedError const& e) {
+            LOGS(_log, LOG_LVL_ERROR, "runQuery threw UnsupportedError " << e.what() << *task);
+        }
+        if (not success) {
+            LOGS(_log, LOG_LVL_ERROR, "runQuery failed " << *task);
+            if (not task->getSendChannel()->kill("Foreman::_setRunFunc")) {
+                LOGS(_log, LOG_LVL_WARN, "runQuery sendChannel killed");
             }
         }
+
         // Transmission is done, but 'task' contains statistics that are still useful.
         // However, the resources used by sendChannel need to be freed quickly.
         // The QueryRunner class access to sendChannel for results is over by this point.

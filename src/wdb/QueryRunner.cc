@@ -100,7 +100,6 @@ QueryRunner::QueryRunner(wbase::Task::Ptr const& task, ChunkResourceMgr::Ptr con
           _sqlConnMgr(sqlConnMgr) {
     [[maybe_unused]] int rc = mysql_thread_init();
     assert(rc == 0);
-    assert(_task->msg);
 }
 
 /// Initialize the db connection
@@ -124,8 +123,8 @@ bool QueryRunner::_initConnection() {
 
 /// Override _dbName with _msg->db() if available.
 void QueryRunner::_setDb() {
-    if (_task->msg->has_db()) {
-        _dbName = _task->msg->db();
+    if (_task->getDb() != "") {
+        _dbName = _task->getDb();
         LOGS(_log, LOG_LVL_DEBUG, "QueryRunner overriding dbName with " << _dbName);
     }
 }
@@ -174,7 +173,7 @@ bool QueryRunner::runQuery() {
         return false;
     }
 
-    _czarId = _task->msg->czarid();
+    _czarId = _task->getCzarId();
 
     // Wait for memman to finish reserving resources. This can take several seconds.
     util::Timer memTimer;
@@ -203,23 +202,20 @@ bool QueryRunner::runQuery() {
         return false;
     }
 
-    if (_task->msg->has_protocol()) {
-        switch (_task->msg->protocol()) {
-            case 2:
-                // Run the query and send the results back.
-                if (!_dispatchChannel()) {
-                    LOGS(_log, LOG_LVL_WARN, "_dispatchChannel failed.");
-                    return false;
-                }
-                return true;
-            case 1:
-                throw UnsupportedError(_task->getIdStr() + " QueryRunner: Expected protocol > 1 in TaskMsg");
-            default:
-                throw UnsupportedError(_task->getIdStr() + " QueryRunner: Invalid protocol in TaskMsg");
-        }
-    } else {
-        throw UnsupportedError(_task->getIdStr() + " QueryRunner: Expected protocol > 1 in TaskMsg");
+    switch (_task->getProtocol()) {
+        case 2:
+            // Run the query and send the results back.
+            if (!_dispatchChannel()) {
+                LOGS(_log, LOG_LVL_WARN, "_dispatchChannel failed.");
+                return false;
+            }
+            return true;
+        case 1:
+            throw UnsupportedError(_task->getIdStr() + " QueryRunner: Expected protocol > 1 in TaskMsg");
+        default:
+            throw UnsupportedError(_task->getIdStr() + " QueryRunner: Invalid protocol in TaskMsg");
     }
+
     return false;
 }
 
@@ -238,58 +234,29 @@ class ChunkResourceRequest {
 public:
     using Ptr = std::shared_ptr<ChunkResourceRequest>;
 
-    ChunkResourceRequest(shared_ptr<ChunkResourceMgr> const& mgr, proto::TaskMsg const& msg)
+    ChunkResourceRequest(shared_ptr<ChunkResourceMgr> const& mgr, wbase::Task& task)
             // Use old-school member initializers because gcc 4.8.5
             // miscompiles the code when using brace initializers (DM-4704).
-            : _mgr(mgr), _msg(msg) {}
+            : _mgr(mgr), _task(task) {}
 
-    ChunkResource getResourceFragment(int i) {
-        proto::TaskMsg_Fragment const& fragment(_msg.fragment(i));
-        LOGS(_log, LOG_LVL_DEBUG, "fragment i=" << i);
-        if (!fragment.has_subchunks()) {
-            DbTableSet dbTbls;
-            for (auto const& scanTbl : _msg.scantable()) {
-                dbTbls.emplace(scanTbl.db(), scanTbl.table());
-            }
-            assert(_msg.has_db());
-            LOGS(_log, LOG_LVL_DEBUG,
-                 "fragment a db=" << _msg.db() << ":" << _msg.chunkid()
-                                  << " dbTbls=" << util::printable(dbTbls));
-            return _mgr->acquire(_msg.db(), _msg.chunkid(), dbTbls);
+    // Since each Task has only one subchunk, fragment number isn't needed.
+    ChunkResource getResourceFragment() {
+        if (!_task.getFragmentHasSubchunks()) {
+            /// &&& ??? Why aquire anything if there are no subchunks in the fragment?
+            return _mgr->acquire(_task.getDb(), _task.getChunkId(), _task.getDbTbls());
         }
 
-        string db;
-        proto::TaskMsg_Subchunk const& sc = fragment.subchunks();
-        DbTableSet dbTableSet;
-        for (int j = 0; j < sc.dbtbl_size(); j++) {
-            dbTableSet.emplace(sc.dbtbl(j).db(), sc.dbtbl(j).tbl());
-        }
-        IntVector subchunks(sc.id().begin(), sc.id().end());
-        if (sc.has_database()) {
-            db = sc.database();
-        } else {
-            db = _msg.db();
-        }
-        LOGS(_log, LOG_LVL_DEBUG,
-             "fragment b db=" << db << ":" << _msg.chunkid() << " dbTableSet" << util::printable(dbTableSet)
-                              << " subChunks=" << util::printable(subchunks));
-        return _mgr->acquire(db, _msg.chunkid(), dbTableSet, subchunks);
+        return _mgr->acquire(_task.getDb(), _task.getChunkId(), _task.getDbTbls(), _task.getSubchunksVect());
     }
 
 private:
     shared_ptr<ChunkResourceMgr> _mgr;
-    proto::TaskMsg const& _msg;
+    wbase::Task& _task;
 };
 
 bool QueryRunner::_dispatchChannel() {
-    int const fragNum = _task->getQueryFragmentNum();
-    proto::TaskMsg& tMsg = *_task->msg;
     bool erred = false;
     int numFields = -1;
-    if (tMsg.fragment_size() < 1) {
-        throw util::Bug(ERR_LOC, "QueryRunner: No fragments to execute in TaskMsg");
-    }
-
     // readRowsOk remains true as long as there are no problems with reading/transmitting.
     // However, if it gets set to false, _mysqlConn->freeResult() needs to be
     // called before this function exits.
@@ -302,8 +269,8 @@ bool QueryRunner::_dispatchChannel() {
     try {
         util::Timer subChunkT;
         subChunkT.start();
-        req.reset(new ChunkResourceRequest(_chunkResourceMgr, tMsg));
-        cr.reset(new ChunkResource(req->getResourceFragment(fragNum)));
+        req.reset(new ChunkResourceRequest(_chunkResourceMgr, *_task));
+        cr.reset(new ChunkResource(req->getResourceFragment()));
         subChunkT.stop();
         // TODO: Hold onto this for longer period of time as the odds of reuse are pretty low at this scale
         //       Ideally, hold it until moving on to the next chunk. Try to clean up ChunkResource code.

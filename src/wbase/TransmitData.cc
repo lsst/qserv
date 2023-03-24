@@ -173,8 +173,8 @@ void TransmitData::_buildDataMsg(Task const& task, bool largeResult, util::Multi
     _result->set_attemptcount(task.getAttemptCount());
 
     if (!multiErr.empty()) {
-        string chunkId = to_string(task.msg->chunkid());
-        string msg = "Error(s) in result for chunk #" + chunkId + ": " + multiErr.toOneLineString();
+        string msg = "Error(s) in result for chunk #" + to_string(task.getChunkId()) + ": " +
+                     multiErr.toOneLineString();
         _result->set_errormsg(msg);
         LOGS(_log, LOG_LVL_ERROR, _idStr << "buildDataMsg adding " << msg);
     }
@@ -190,8 +190,9 @@ void TransmitData::initResult(Task& task, std::vector<SchemaCol>& schemaCols) {
     _result->set_queryid(task.getQueryId());
     _result->set_jobid(task.getJobId());
     _result->mutable_rowschema();
-    if (task.msg->has_session()) {
-        _result->set_session(task.msg->session());
+
+    if (task.getSession() >= 0) {
+        _result->set_session(task.getSession());
     }
     // If no queries have been run, schemaCols will be empty at this point.
     if (!schemaCols.empty()) {

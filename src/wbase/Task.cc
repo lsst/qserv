@@ -47,8 +47,10 @@
 #include "proto/TaskMsgDigest.h"
 #include "proto/worker.pb.h"
 #include "util/Bug.h"
+#include "util/IterableFormatter.h"
 #include "wbase/Base.h"
 #include "wbase/SendChannelShared.h"
+#include "wbase/UserQueryInfo.h"
 #include "wpublish/QueriesAndChunks.h"
 
 using namespace std;
@@ -57,22 +59,6 @@ using namespace std::chrono_literals;
 namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.wbase.Task");
-
-std::ostream& dump(std::ostream& os, lsst::qserv::proto::TaskMsg_Fragment const& f) {
-    os << "frag: "
-       << "q=";
-    for (int i = 0; i < f.query_size(); ++i) {
-        os << f.query(i) << ",";
-    }
-    if (f.has_subchunks()) {
-        os << " sc=";
-        for (int i = 0; i < f.subchunks().id_size(); ++i) {
-            os << f.subchunks().id(i) << ",";
-        }
-    }
-    os << " rt=" << f.resulttable();
-    return os;
-}
 
 /**
  * @param tp The timepoint to be converted.
@@ -91,10 +77,7 @@ bool Task::ChunkEqual::operator()(Task::Ptr const& x, Task::Ptr const& y) {
     if (!x || !y) {
         return false;
     }
-    if ((!x->msg) || (!y->msg)) {
-        return false;
-    }
-    return x->msg->has_chunkid() && y->msg->has_chunkid() && x->msg->chunkid() == y->msg->chunkid();
+    return x->_chunkId == y->_chunkId;
 }
 
 // Task::PtrChunkIdGreater functor
@@ -102,10 +85,7 @@ bool Task::ChunkIdGreater::operator()(Task::Ptr const& x, Task::Ptr const& y) {
     if (!x || !y) {
         return false;
     }
-    if ((!x->msg) || (!y->msg)) {
-        return false;
-    }
-    return x->msg->chunkid() > y->msg->chunkid();
+    return x->_chunkId > y->_chunkId;
 }
 
 std::string const Task::defaultUser = "qsmaster";
@@ -125,25 +105,30 @@ std::atomic<uint32_t> taskSequence{0};
 /// available to define the action to take when this task is run, so
 /// Command::setFunc() is used set the action later. This is why
 /// the util::CommandThreadPool is not called here.
-Task::Task(TaskMsgPtr const& t, std::string const& query, int fragmentNumber,
-           std::shared_ptr<SendChannelShared> const& sc)
-        : msg(t),
+Task::Task(TaskMsgPtr const& t, int fragmentNumber, std::shared_ptr<UserQueryInfo> const& userQueryInfo,
+           size_t templateId, int subchunkId, std::shared_ptr<SendChannelShared> const& sc)
+        : _userQueryInfo(userQueryInfo),
           _sendChannel(sc),
           _tSeq(++taskSequence),
           _qId(t->queryid()),
+          _templateId(templateId),
+          _hasChunkId(t->has_chunkid()),
+          _chunkId(t->has_chunkid() ? t->chunkid() : -1),
+          _subchunkId(subchunkId),
           _jId(t->jobid()),
           _attemptCount(t->attemptcount()),
-          _idStr(makeIdStr()),
-          _queryString(query),
-          _queryFragmentNum(fragmentNumber) {
-    hash = hashTaskMsg(*t);
-
+          _queryFragmentNum(fragmentNumber),
+          _fragmentHasSubchunks(t->fragment(fragmentNumber).has_subchunks()),
+          _session(t->has_session() ? t->session() : -1),
+          _hasDb(t->has_db()),
+          _db(t->has_db() ? t->db() : ""),
+          _protocol(t->has_protocol() ? t->protocol() : -1),
+          _czarId(t->has_czarid() ? t->czarid() : -1) {
     if (t->has_user()) {
         user = t->user();
     } else {
         user = defaultUser;
     }
-    timestr[0] = '\0';
 
     allIds.add(std::to_string(_qId) + "_" + std::to_string(_jId));
     LOGS(_log, LOG_LVL_DEBUG,
@@ -151,13 +136,42 @@ Task::Task(TaskMsgPtr const& t, std::string const& query, int fragmentNumber,
                  << "this=" << this << " : " << allIds);
 
     // Determine which major tables this task will use.
-    int const size = msg->scantable_size();
+    int const size = t->scantable_size();
     for (int j = 0; j < size; ++j) {
-        _scanInfo.infoTables.push_back(proto::ScanTableInfo(msg->scantable(j)));
+        _scanInfo.infoTables.push_back(proto::ScanTableInfo(t->scantable(j)));
     }
-    _scanInfo.scanRating = msg->scanpriority();
+    _scanInfo.scanRating = t->scanpriority();
     _scanInfo.sortTablesSlowestFirst();
-    _scanInteractive = msg->scaninteractive();
+    _scanInteractive = t->scaninteractive();
+
+    // Create sets and vectors for 'aquiring' subchunk temporary tables.
+    proto::TaskMsg_Fragment const& fragment(t->fragment(_queryFragmentNum));
+    if (!_fragmentHasSubchunks) {
+        /// &&& ??? Why aquire anything if there are no subchunks in the fragment?
+        /// &&& ??? All tasks for this user query probably use the same tables
+        for (auto const& scanTbl : t->scantable()) {
+            _dbTbls.emplace(scanTbl.db(), scanTbl.table());
+        }
+        assert(t->has_db());
+        LOGS(_log, LOG_LVL_INFO,
+             "fragment a db=" << _db << ":" << _chunkId << " dbTbls=" << util::printable(_dbTbls));
+    } else {
+        proto::TaskMsg_Subchunk const& sc = fragment.subchunks();
+        for (int j = 0; j < sc.dbtbl_size(); j++) {
+            /// &&& ??? All tasks for this user query probably use the same tables
+            _dbTbls.emplace(sc.dbtbl(j).db(), sc.dbtbl(j).tbl());
+        }
+        IntVector sVect(sc.id().begin(), sc.id().end());
+        _subchunksVect = sVect;
+        if (sc.has_database()) {
+            _db = sc.database();
+        } else {
+            _db = t->db();
+        }
+        LOGS(_log, LOG_LVL_INFO,
+             "fragment b db=" << _db << ":" << _chunkId << " dbTableSet" << util::printable(_dbTbls)
+                              << " subChunks=" << util::printable(_subchunksVect));
+    }
 }
 
 Task::~Task() {
@@ -167,36 +181,33 @@ Task::~Task() {
 
 std::vector<Task::Ptr> Task::createTasks(std::shared_ptr<proto::TaskMsg> const& taskMsg,
                                          std::shared_ptr<wbase::SendChannelShared> const& sendChannel) {
-    QSERV_LOGCONTEXT_QUERY_JOB(taskMsg->queryid(), taskMsg->jobid());
+    QueryId qId = taskMsg->queryid();
+    QSERV_LOGCONTEXT_QUERY_JOB(qId, taskMsg->jobid());
     std::vector<Task::Ptr> vect;
+
+    UserQueryInfo::Ptr userQueryInfo = UserQueryInfo::uqMapInsert(qId);
 
     /// Make one task for each fragment.
     int fragmentCount = taskMsg->fragment_size();
     if (fragmentCount < 1) {
         throw util::Bug(ERR_LOC, "Task::createTasks No fragments to execute in TaskMsg");
     }
+
     string const chunkIdStr = to_string(taskMsg->chunkid());
     for (int fragNum = 0; fragNum < fragmentCount; ++fragNum) {
         proto::TaskMsg_Fragment const& fragment = taskMsg->fragment(fragNum);
         for (std::string queryStr : fragment.query()) {
-            boost::algorithm::replace_all(queryStr, CHUNK_TAG, chunkIdStr);
-            LOGS(_log, LOG_LVL_TRACE, "fragment[" << fragNum << "]=" << queryStr);
-            // fragment.has_subchunks() == true and fragment.subchunks().id().empty() == false
-            // is apparently valid and must go to the else clause.
-            // TODO: Look into the creation of fragment on the czar as this is not intuitive.
+            size_t templateId = userQueryInfo->addTemplate(queryStr);
             if (fragment.has_subchunks() && not fragment.subchunks().id().empty()) {
                 for (auto subchunkId : fragment.subchunks().id()) {
-                    std::string qs(queryStr);
-                    boost::algorithm::replace_all(qs, SUBCHUNK_TAG, std::to_string(subchunkId));
-                    auto task = std::make_shared<wbase::Task>(taskMsg, qs, fragNum, sendChannel);
+                    auto task = std::make_shared<wbase::Task>(taskMsg, fragNum, userQueryInfo, templateId,
+                                                              subchunkId, sendChannel);
                     vect.push_back(task);
                 }
             } else {
-                auto task = std::make_shared<wbase::Task>(taskMsg, queryStr, fragNum, sendChannel);
-                // TODO: Maybe? Is it better to move fragment info from
-                //      ChunkResource getResourceFragment(int i) to here???
-                //      It looks like Task should contain a ChunkResource::Info object
-                //      which could help clean up ChunkResource and related classes.
+                int subchunkId = 0;  // there are no subchunks.
+                auto task = std::make_shared<wbase::Task>(taskMsg, fragNum, userQueryInfo, templateId,
+                                                          subchunkId, sendChannel);
                 vect.push_back(task);
             }
         }
@@ -204,6 +215,13 @@ std::vector<Task::Ptr> Task::createTasks(std::shared_ptr<proto::TaskMsg> const& 
     sendChannel->setTaskCount(vect.size());
 
     return vect;
+}
+
+string Task::getQueryString() const {
+    string qs = _userQueryInfo->getTemplate(_templateId);
+    boost::algorithm::replace_all(qs, CHUNK_TAG, to_string(_chunkId));
+    boost::algorithm::replace_all(qs, SUBCHUNK_TAG, to_string(_subchunkId));
+    return qs;
 }
 
 void Task::setQueryStatistics(wpublish::QueryStatistics::Ptr const& qStats) { _queryStats = qStats; }
@@ -217,16 +235,11 @@ wpublish::QueryStatistics::Ptr Task::getQueryStats() const {
 }
 
 /// @return the chunkId for this task. If the task has no chunkId, return -1.
-int Task::getChunkId() const {
-    if (msg->has_chunkid()) {
-        return msg->chunkid();
-    }
-    return -1;
-}
+int Task::getChunkId() const { return _chunkId; }
 
 /// Flag the Task as cancelled, try to stop the SQL query, and try to remove it from the schedule.
 void Task::cancel() {
-    LOGS(_log, LOG_LVL_INFO, "Task::cancel " << _idStr);
+    LOGS(_log, LOG_LVL_INFO, "Task::cancel " << getIdStr());
     if (_cancelled.exchange(true)) {
         // Was already cancelled.
         return;
@@ -387,14 +400,10 @@ nlohmann::json Task::getJson() const {
 }
 
 std::ostream& operator<<(std::ostream& os, Task const& t) {
-    proto::TaskMsg& m = *t.msg;
     os << "Task: "
-       << "msg: " << t._idStr << " session=" << m.session() << " chunk=" << m.chunkid() << " db=" << m.db()
-       << " entry time=" << t.timestr << " ";
-    for (int i = 0; i < m.fragment_size(); ++i) {
-        dump(os, m.fragment(i));
-        os << " ";
-    }
+       << "msg: " << t.makeIdStr() << " session=" << t._session << " chunk=" << t._chunkId << " db=" << t._db
+       << " " << t.getQueryString();
+
     return os;
 }
 

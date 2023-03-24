@@ -86,13 +86,6 @@ struct Fixture {
         f->add_query("SELECT AVG(yFlux_PS) from LSST.Object_3240");
         return t;
     }
-    shared_ptr<Task> newTask() {
-        shared_ptr<TaskMsg> msg(newTaskMsg());
-        shared_ptr<SendChannel> sc(SendChannel::newNopChannel());
-        auto scs = SendChannelShared::create(sc, locTransmitMgr, 1);
-        Task::Ptr taskPtr(new Task(msg, "", 0, scs));
-        return taskPtr;
-    }
 
     MySqlConfig newMySqlConfig() {
         string user = "qsmaster";
@@ -112,7 +105,8 @@ BOOST_AUTO_TEST_CASE(Simple) {
     shared_ptr<TaskMsg> msg(newTaskMsg());
     shared_ptr<SendChannel> sendC(SendChannel::newNopChannel());
     auto sc = SendChannelShared::create(sendC, locTransmitMgr, 1);
-    Task::Ptr task(new Task(msg, "", 0, sc));
+    auto taskVect = Task::createTasks(msg, sc);
+    Task::Ptr task = taskVect[0];
     FakeBackend::Ptr backend = make_shared<FakeBackend>();
     shared_ptr<ChunkResourceMgr> crm = ChunkResourceMgr::newMgr(backend);
     SqlConnMgr::Ptr sqlConnMgr = make_shared<SqlConnMgr>(20, 15);
@@ -125,7 +119,8 @@ BOOST_AUTO_TEST_CASE(Output) {
     shared_ptr<TaskMsg> msg(newTaskMsg());
     shared_ptr<SendChannel> sendC(SendChannel::newStringChannel(out));
     auto sc = SendChannelShared::create(sendC, locTransmitMgr, 1);
-    Task::Ptr task(new Task(msg, "", 0, sc));
+    auto taskVect = Task::createTasks(msg, sc);
+    Task::Ptr task = taskVect[0];
     FakeBackend::Ptr backend = make_shared<FakeBackend>();
     shared_ptr<ChunkResourceMgr> crm = ChunkResourceMgr::newMgr(backend);
     SqlConnMgr::Ptr sqlConnMgr = make_shared<SqlConnMgr>(20, 15);
@@ -146,7 +141,7 @@ BOOST_AUTO_TEST_CASE(Output) {
     result.PrintDebugString();
     string computedMd5 = util::StringHash::getMd5(cursor, remain);
     BOOST_CHECK_EQUAL(ph.md5(), computedMd5);
-    BOOST_CHECK_EQUAL(task->msg->session(), result.session());
+    BOOST_CHECK_EQUAL(task->getSession(), result.session());
 }
 
 BOOST_AUTO_TEST_SUITE_END()

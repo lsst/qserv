@@ -312,10 +312,6 @@ wbase::Task::Ptr ChunkTasks::SlowTableHeap::pop() {
 /// Queue new Tasks to be run, ordered with the slowest tables first.
 /// This relies on ChunkTasks owner for thread safety.
 void ChunkTasks::queTask(wbase::Task::Ptr const& a) {
-    time(&a->entryTime);
-    /// Compute entry time to reduce spurious valgrind errors
-    ::ctime_r(&a->entryTime, a->timestr);
-
     const char* state = "";
     // If this is the active chunk, put new Tasks on the pending list, as
     // we could easily get stuck on this chunk as new Tasks come in.

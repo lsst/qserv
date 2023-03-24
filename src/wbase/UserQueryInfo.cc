@@ -25,10 +25,10 @@
 // System headers
 
 // Qserv headers
+#include "util/Bug.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
-
 
 using namespace std;
 
@@ -38,20 +38,17 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.wbase.UserQueryInfo");
 
 namespace lsst::qserv::wbase {
 
-UserQueryInfo::Ptr UserQueryInfo::uqMapInsert(QueryId qId, vector<string> const& templateStrings) {
+UserQueryInfo::UserQueryInfo(QueryId qId) : _qId(qId) {}
+
+UserQueryInfo::Ptr UserQueryInfo::uqMapInsert(QueryId qId) {
     Ptr uqi;
-    {
-        lock_guard<mutex> lg(_uqMapMtx);
-        auto iter = _uqMap.find(qId);
-        if (iter != _uqMap.end()) {
-            uqi = iter->second;
-        } else {
-            uqi = make_shared<UserQueryInfo>(qId);
-            _uqMapMtx[qId] = elem;
-        }
-    }
-    for (auto const& str:templateStrings) {
-        uqi->addTemplate(str);
+    lock_guard<mutex> lg(_uqMapMtx);
+    auto iter = _uqMap.find(qId);
+    if (iter != _uqMap.end()) {
+        uqi = iter->second;
+    } else {
+        uqi = make_shared<UserQueryInfo>(qId);
+        _uqMap[qId] = uqi;
     }
     return uqi;
 }
@@ -71,19 +68,20 @@ mutex UserQueryInfo::_uqMapMtx;
 
 size_t UserQueryInfo::addTemplate(std::string const& templateStr) {
     size_t j = 0;
-    for (; j<_templates.size(); ++j) {
+    for (; j < _templates.size(); ++j) {
         if (_templates[j] == templateStr) {
             return j;
         }
     }
     _templates.emplace_back(templateStr);
-    LOGS(_log, LOG_LVL_DEBUG, "QueryInfo:" << _qId << " j=" << j << << " Added:" << templateStr);
+    LOGS(_log, LOG_LVL_DEBUG, "QueryInfo:" << _qId << " j=" << j << " Added:" << templateStr);
     return j;
 }
 
 std::string& UserQueryInfo::getTemplate(size_t id) {
     if (id >= _templates.size()) {
-        return std::string();
+        throw util::Bug(ERR_LOC, "UserQueryInfo template index out of range id=" + to_string(id) +
+                                         " size=" + to_string(_templates.size()));
     }
     return _templates[id];
 }

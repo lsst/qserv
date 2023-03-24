@@ -74,7 +74,8 @@ Task::Ptr makeTask(std::shared_ptr<TaskMsg> tm) {
     auto sendC = std::make_shared<SendChannel>();
     auto sc = SendChannelShared::create(sendC, locTransmitMgr, 1);
     locSendSharedPtrs.push_back(sc);
-    Task::Ptr task(new Task(tm, "", 0, sc));
+    auto taskVect = Task::createTasks(tm, sc);
+    Task::Ptr task = taskVect[0];
     task->setSafeToMoveRunning(true);  // Can't wait for MemMan in unit tests.
     return task;
 }
@@ -85,6 +86,15 @@ struct SchedulerFixture {
     SchedulerFixture(void) { counter = 20; }
     ~SchedulerFixture(void) {}
 
+    void addSomeFragments(TaskMsgPtr const& t, int numberOfFragments) {
+        for (int i = 0; i < numberOfFragments; ++i) {
+            TaskMsg::Fragment* f = t->add_fragment();
+            f->add_query("Hello, this is a query.");
+            f->mutable_subchunks()->add_id(100 + i);
+            f->set_resulttable("r_341");
+        }
+    }
+
     TaskMsgPtr newTaskMsg(int seq, lsst::qserv::QueryId qId, int jobId) {
         TaskMsgPtr t = std::make_shared<TaskMsg>();
         t->set_session(123456);
@@ -93,12 +103,7 @@ struct SchedulerFixture {
         t->set_chunkid(seq);
         t->set_czarid(1);
         t->set_db("elephant");
-        for (int i = 0; i < 3; ++i) {
-            TaskMsg::Fragment* f = t->add_fragment();
-            f->add_query("Hello, this is a query.");
-            f->mutable_subchunks()->add_id(100 + i);
-            f->set_resulttable("r_341");
-        }
+        addSomeFragments(t, 3);
         t->set_scaninteractive(false);
         t->set_attemptcount(0);
         ++counter;
@@ -115,6 +120,7 @@ struct SchedulerFixture {
         t->set_db("moose");
         t->set_scaninteractive(false);
         t->set_attemptcount(0);
+        addSomeFragments(t, 1);
         ++counter;
         return t;
     }

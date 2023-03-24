@@ -32,7 +32,6 @@
 // Qserv headers
 #include "global/intTypes.h"
 
-
 // This header declarations
 namespace lsst::qserv::wbase {
 
@@ -42,11 +41,10 @@ public:
     using Ptr = std::shared_ptr<UserQueryInfo>;
     using Map = std::map<QueryId, UserQueryInfo::Ptr>;
 
+    static Ptr uqMapInsert(QueryId qId);
+    static Ptr uqMapGet(QueryId qId);
 
-    static Ptr uqMapInsert(QueryId qId, std::vector<std::string> const& templateStr);
-    static Ptr uqMapGet(QueryId);
-
-    UserQueryInfo(QueryId);
+    UserQueryInfo(QueryId qId);
     UserQueryInfo() = delete;
     UserQueryInfo(UserQueryInfo const&) = delete;
     UserQueryInfo& operator=(UserQueryInfo const&) = delete;
@@ -57,67 +55,21 @@ public:
     size_t addTemplate(std::string const& templateStr);
 
     /// &&& doc
+    /// @throws Bug if id is out of range.
     std::string& getTemplate(size_t id);
 
 private:
     static Map _uqMap;
-    static std::mutex _uqMapMtx; ///< protects _uqMap
+    static std::mutex _uqMapMtx;  ///< protects _uqMap
 
-    QueryId const _qId; ///< The User Query Id number.
-
-
+    QueryId const _qId;  ///< The User Query Id number.
 
     /// List of template strings. This is expected to be short, 1 or 2 entries.
     std::vector<std::string> _templates;
 
-    std::mutex _uqMtx; ///< protects _templates;
+    std::mutex _uqMtx;  ///< protects _templates;
 };
-
-
-
-/* &&&
-/// &&& just not working out
-/// &&& This is a nuisance. We're trying to save memory, but for quick location the thing we are trying to find
-/// needs to be the key, but that's really big. So, we need something that sorts by key string and returns a pointer.
-class StringElement : public std::enable_shared_from_this<StringElement> {
-public:
-    using Ptr = std::shared_ptr<StringElement>;
-
-    StringElement() = delete;
-
-private:
-    StringElement(std::string const& str) : _str(str) {    }
-
-    std::string const _str; ///< The string this class is storing, cannot be changed once set.
-};
-
-
-
-class StringCache {
-public:
-    class Handle {
-    public:
-        std::string getStr() { return _str; }
-        Handle() = delete;
-        Handle(Handle const&) = delete;
-        Handle& operator=(Handle const&) = delete;
-        ~Handle() {
-
-        }
-    private:
-        Handle(StringCache& StringCache, std::string const& str) {
-
-        }
-        StringCache& _cache;
-        std::string const& _str;
-    };
-private:
-    std::map<std::string, int> _strMap;
-};
-*/
-
-
 
 }  // namespace lsst::qserv::wbase
 
-#endif // LSST_QSERV_WBASE_USERQUERYDESCRIPTION_H
+#endif  // LSST_QSERV_WBASE_USERQUERYDESCRIPTION_H
