@@ -227,11 +227,14 @@ public:
     bool getFragmentHasSubchunks() const { return _fragmentHasSubchunks; }
     int getSubchunkId() const { return _subchunkId; }
 
-    /// Do not alter the returned value. &&& ??? just return a copy?
+    /// Do not alter the returned value, returns a set of database tables.
+    /// Note: Copying would be safer, but it could be an expensive thing to copy.
+    ///       This only used by ChunkResourceRequest acquire. The set is usually
+    ///       short, but this is called fairly frequently.
     DbTableSet& getDbTbls() { return _dbTbls; }
 
-    /// Do not alter the returned value. &&& ??? just return a copy?
-    IntVector& getSubchunksVect() { return _subchunksVect; }
+    /// Returns a copy of the list of subchunk ids.
+    IntVector getSubchunksVect() { return _subchunksVect; }
 
 private:
     std::shared_ptr<UserQueryInfo> _userQueryInfo;  ///< Details common to Tasks in this UserQuery.

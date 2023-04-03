@@ -35,7 +35,8 @@
 // This header declarations
 namespace lsst::qserv::wbase {
 
-/// &&& doc
+/// This class contains information about a user query that is effectively the same
+/// for all Task's in the user query.
 class UserQueryInfo {
 public:
     using Ptr = std::shared_ptr<UserQueryInfo>;
@@ -51,10 +52,10 @@ public:
 
     ~UserQueryInfo() = default;
 
-    /// &&& doc
+    /// Add a query template to the map of templates for this user query.
     size_t addTemplate(std::string const& templateStr);
 
-    /// &&& doc
+    /// Retrieve the template associated with the key 'id' from the map of templates.
     /// @throws Bug if id is out of range.
     std::string& getTemplate(size_t id);
 

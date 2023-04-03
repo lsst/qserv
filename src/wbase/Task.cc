@@ -147,10 +147,13 @@ Task::Task(TaskMsgPtr const& t, int fragmentNumber, std::shared_ptr<UserQueryInf
     // Create sets and vectors for 'aquiring' subchunk temporary tables.
     proto::TaskMsg_Fragment const& fragment(t->fragment(_queryFragmentNum));
     if (!_fragmentHasSubchunks) {
-        /// &&& ??? Why aquire anything if there are no subchunks in the fragment?
-        /// &&& ??? All tasks for this user query probably use the same tables
+        /// FUTURE: Why acquire anything if there are no subchunks in the fragment?
+        ///   This branch never seems to happen, but this needs to be proven beyond any doubt.
+        LOGS(_log, LOG_LVL_WARN, "Task::Task not _fragmentHasSubchunks");
         for (auto const& scanTbl : t->scantable()) {
             _dbTbls.emplace(scanTbl.db(), scanTbl.table());
+            LOGS(_log, LOG_LVL_INFO,
+                 "Task::Task scanTbl.db()=" << scanTbl.db() << " scanTbl.table()=" << scanTbl.table());
         }
         assert(t->has_db());
         LOGS(_log, LOG_LVL_INFO,
@@ -158,8 +161,13 @@ Task::Task(TaskMsgPtr const& t, int fragmentNumber, std::shared_ptr<UserQueryInf
     } else {
         proto::TaskMsg_Subchunk const& sc = fragment.subchunks();
         for (int j = 0; j < sc.dbtbl_size(); j++) {
-            /// &&& ??? All tasks for this user query probably use the same tables
+            /// Different subchunk fragments can require different tables.
+            /// FUTURE: It may save space to store these in UserQueryInfo as it seems
+            ///         database and table names are consistent across chunks.
             _dbTbls.emplace(sc.dbtbl(j).db(), sc.dbtbl(j).tbl());
+            LOGS(_log, LOG_LVL_TRACE,
+                 "Task::Task subchunk j=" << j << " sc.dbtbl(j).db()=" << sc.dbtbl(j).db()
+                                          << " sc.dbtbl(j).tbl()=" << sc.dbtbl(j).tbl());
         }
         IntVector sVect(sc.id().begin(), sc.id().end());
         _subchunksVect = sVect;
@@ -168,7 +176,7 @@ Task::Task(TaskMsgPtr const& t, int fragmentNumber, std::shared_ptr<UserQueryInf
         } else {
             _db = t->db();
         }
-        LOGS(_log, LOG_LVL_INFO,
+        LOGS(_log, LOG_LVL_DEBUG,
              "fragment b db=" << _db << ":" << _chunkId << " dbTableSet" << util::printable(_dbTbls)
                               << " subChunks=" << util::printable(_subchunksVect));
     }

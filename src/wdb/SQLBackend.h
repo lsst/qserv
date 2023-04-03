@@ -107,7 +107,7 @@ protected:
 
     // Memory lock table members.
     std::atomic<bool> _lockConflict{false};
-    std::atomic<bool> _lockAquired{false};
+    std::atomic<bool> _lockAcquired{false};
     std::string _lockDb;
     std::string _lockTbl;
     std::string _lockDbTbl;

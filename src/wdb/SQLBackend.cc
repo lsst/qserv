@@ -195,7 +195,7 @@ void SQLBackend::_memLockAcquire() {
     std::ostringstream insert;
     insert << "INSERT INTO " << _lockDbTbl << " (keyId, uid) VALUES(1, '" << _uid << "' )";
     _execLockSql(insert.str());
-    _lockAquired = true;
+    _lockAcquired = true;
 
     // Delete any old in memory databases. They could be empty or otherwise wrong.
     // Empty tables would prevent new tables from being created.
@@ -231,8 +231,8 @@ void SQLBackend::_memLockAcquire() {
 void SQLBackend::_memLockRelease() {
     // Must hold _mtx
     LOGS(_log, LOG_LVL_DEBUG, "memLockRelease");
-    if (_lockAquired && !_lockConflict) {
-        // Only attempt to release tables if the lock on the db was aquired.
+    if (_lockAcquired && !_lockConflict) {
+        // Only attempt to release tables if the lock on the db was acquired.
         LOGS(_log, LOG_LVL_DEBUG, "memLockRelease releasing lock.");
         std::string sql = "DROP DATABASE " + _lockDb + ";";
         _execLockSql(sql);

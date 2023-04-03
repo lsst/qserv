@@ -242,7 +242,8 @@ public:
     // Since each Task has only one subchunk, fragment number isn't needed.
     ChunkResource getResourceFragment() {
         if (!_task.getFragmentHasSubchunks()) {
-            /// &&& ??? Why aquire anything if there are no subchunks in the fragment?
+            /// Why acquire anything if there are no subchunks in the fragment?
+            /// Future: Need to be certain this never happens before removing.
             return _mgr->acquire(_task.getDb(), _task.getChunkId(), _task.getDbTbls());
         }
 
