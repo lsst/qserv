@@ -337,7 +337,7 @@ std::shared_ptr<query::SecIdxInRestrictor> makeSecondaryIndexRestrictor(query::I
 }
 
 /**
- * @brief Make a Secondary Index comparison restrictor for the given between predicate, if one of the
+ * @brief Make a Secondary Index 'between' restrictor for the given between predicate, if one of the
  *      columns in the predicate is a director column.
  *
  * @param betweenPredicate
@@ -345,7 +345,7 @@ std::shared_ptr<query::SecIdxInRestrictor> makeSecondaryIndexRestrictor(query::I
  * @return std::shared_ptr<query::SIBetweenRestr> The restrictor that corresponds to the given predicate if
  * one of the columns is a director column, otherwise nullptr.
  */
-std::shared_ptr<query::SecIdxBetweenRestrictor> makeSecondaryIndexRestrictor(
+[[maybe_unused]] std::shared_ptr<query::SecIdxBetweenRestrictor> makeSecondaryIndexRestrictor(
         query::BetweenPredicate const& betweenPredicate, query::QueryContext const& context) {
     if (isSecIndexCol(context, betweenPredicate.value->getColumnRef())) {
         auto dirCol = getCorrespondingDirectorColumn(context, betweenPredicate.value->getColumnRef());
@@ -362,7 +362,7 @@ std::shared_ptr<query::SecIdxBetweenRestrictor> makeSecondaryIndexRestrictor(
 }
 
 /**
- * @brief Make a Secondary Index 'between' restrictor for the given comparison predicate, if one of the
+ * @brief Make a Secondary Index comparison restrictor for the given comparison predicate, if one of the
  *      columns in the comparison predicate is a director column.
  *
  * @param compPredicate
@@ -419,10 +419,9 @@ std::vector<std::shared_ptr<query::SecIdxRestrictor>> getSecIndexRestrictors(que
                 restrictor = makeSecondaryIndexRestrictor(*inPredicate, context);
             } else if (auto const compPredicate =
                                std::dynamic_pointer_cast<query::CompPredicate>(factorTerm)) {
-                restrictor = makeSecondaryIndexRestrictor(*compPredicate, context);
-            } else if (auto const betweenPredicate =
-                               std::dynamic_pointer_cast<query::BetweenPredicate>(factorTerm)) {
-                restrictor = makeSecondaryIndexRestrictor(*betweenPredicate, context);
+                if (compPredicate->op == query::CompPredicate::EQUALS_OP) {
+                    restrictor = makeSecondaryIndexRestrictor(*compPredicate, context);
+                }
             }
             if (restrictor) {
                 LOGS(_log, LOG_LVL_TRACE, "Add restrictor: " << *restrictor << " for " << factorTerm);

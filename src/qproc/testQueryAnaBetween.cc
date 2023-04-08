@@ -76,19 +76,7 @@ BOOST_AUTO_TEST_CASE(SecondaryIndex) {
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
     BOOST_CHECK_EQUAL(context->dominantDb, std::string("LSST"));
-    BOOST_REQUIRE(context->secIdxRestrictors);
-    BOOST_CHECK_EQUAL(context->secIdxRestrictors->size(), 1U);
-    BOOST_REQUIRE(context->secIdxRestrictors->front());
-    auto betweenRestr =
-            std::dynamic_pointer_cast<SecIdxBetweenRestrictor>(context->secIdxRestrictors->front());
-    BOOST_REQUIRE(nullptr != betweenRestr);
-    BOOST_REQUIRE_EQUAL(
-            betweenRestr->getSecIdxLookupQuery(lsst::qserv::SEC_INDEX_DB, "LSST__Object",
-                                               lsst::qserv::CHUNK_COLUMN, lsst::qserv::SUB_CHUNK_COLUMN),
-            "SELECT `" + std::string(lsst::qserv::CHUNK_COLUMN) + "`, " + "`" +
-                    std::string(lsst::qserv::SUB_CHUNK_COLUMN) + "`" + " FROM `" +
-                    std::string(lsst::qserv::SEC_INDEX_DB) + "`" +
-                    ".`LSST__Object` WHERE `objectIdObjTest` BETWEEN 386942193651347 AND 386942193651349");
+    BOOST_REQUIRE(not context->secIdxRestrictors);  // since DM-38621
 }
 
 BOOST_AUTO_TEST_CASE(NoSecondaryIndex) {
@@ -115,19 +103,9 @@ BOOST_AUTO_TEST_CASE(DoubleSecondaryIndexRestrictor) {
     BOOST_CHECK(context);
     BOOST_CHECK_EQUAL(context->dominantDb, std::string("LSST"));
     BOOST_REQUIRE(context->secIdxRestrictors);
-    BOOST_CHECK_EQUAL(context->secIdxRestrictors->size(), 2U);
+    BOOST_CHECK_EQUAL(context->secIdxRestrictors->size(), 1U);  // since DM-38621
     BOOST_REQUIRE(context->secIdxRestrictors->at(0));
-    auto betweenRestr = std::dynamic_pointer_cast<SecIdxBetweenRestrictor>(context->secIdxRestrictors->at(0));
-    BOOST_REQUIRE(betweenRestr != nullptr);
-    BOOST_REQUIRE_EQUAL(
-            betweenRestr->getSecIdxLookupQuery(lsst::qserv::SEC_INDEX_DB, "LSST__Object",
-                                               lsst::qserv::CHUNK_COLUMN, lsst::qserv::SUB_CHUNK_COLUMN),
-            "SELECT `" + std::string(lsst::qserv::CHUNK_COLUMN) + "`, " + "`" +
-                    std::string(lsst::qserv::SUB_CHUNK_COLUMN) + "`" + " FROM " + "`" +
-                    std::string(lsst::qserv::SEC_INDEX_DB) + "`" +
-                    ".`LSST__Object` WHERE `objectIdObjTest` BETWEEN 38 AND 40");
-    BOOST_REQUIRE(context->secIdxRestrictors->at(1));
-    auto inRestrictor = std::dynamic_pointer_cast<SecIdxInRestrictor>(context->secIdxRestrictors->at(1));
+    auto inRestrictor = std::dynamic_pointer_cast<SecIdxInRestrictor>(context->secIdxRestrictors->at(0));
     BOOST_REQUIRE(inRestrictor != nullptr);
     BOOST_REQUIRE_EQUAL(
             inRestrictor->getSecIdxLookupQuery(lsst::qserv::SEC_INDEX_DB, "LSST__Object",
@@ -153,19 +131,9 @@ BOOST_AUTO_TEST_CASE(DoubleSecondaryIndexRestrictorCartesian) {
     BOOST_CHECK(context);
     BOOST_CHECK_EQUAL(context->dominantDb, std::string("LSST"));
     BOOST_REQUIRE(context->secIdxRestrictors);
-    BOOST_CHECK_EQUAL(context->secIdxRestrictors->size(), 2U);
+    BOOST_CHECK_EQUAL(context->secIdxRestrictors->size(), 1U);  // since DM-38621
     BOOST_REQUIRE(context->secIdxRestrictors->at(0));
-    auto betweenRestr = std::dynamic_pointer_cast<SecIdxBetweenRestrictor>(context->secIdxRestrictors->at(0));
-    BOOST_REQUIRE(betweenRestr != nullptr);
-    BOOST_REQUIRE_EQUAL(
-            betweenRestr->getSecIdxLookupQuery(lsst::qserv::SEC_INDEX_DB, "LSST__Object",
-                                               lsst::qserv::CHUNK_COLUMN, lsst::qserv::SUB_CHUNK_COLUMN),
-            "SELECT `" + std::string(lsst::qserv::CHUNK_COLUMN) + "`, " + "`" +
-                    std::string(lsst::qserv::SUB_CHUNK_COLUMN) + "`" + " FROM `" +
-                    std::string(lsst::qserv::SEC_INDEX_DB) + "`" +
-                    ".`LSST__Object` WHERE `objectIdObjTest` BETWEEN 38 AND 40");
-    BOOST_REQUIRE(context->secIdxRestrictors->at(1));
-    auto inRestrictor = std::dynamic_pointer_cast<SecIdxInRestrictor>(context->secIdxRestrictors->at(1));
+    auto inRestrictor = std::dynamic_pointer_cast<SecIdxInRestrictor>(context->secIdxRestrictors->at(0));
     BOOST_REQUIRE(inRestrictor != nullptr);
     BOOST_REQUIRE_EQUAL(
             inRestrictor->getSecIdxLookupQuery(lsst::qserv::SEC_INDEX_DB, "LSST__Object",
