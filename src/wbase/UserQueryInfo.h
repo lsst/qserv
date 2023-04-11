@@ -70,6 +70,8 @@ private:
     QueryId const _qId;  ///< The User Query Id number.
 
     /// List of template strings. This is expected to be short, 1 or 2 entries.
+    /// This must be a vector. New entries are always added to the end so as not
+    /// to alter existing indexes into the vector.
     std::vector<std::string> _templates;
     std::mutex _uqMtx;  ///< protects _templates;
 };
