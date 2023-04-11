@@ -239,24 +239,24 @@ public:
 private:
     std::shared_ptr<UserQueryInfo> _userQueryInfo;  ///< Details common to Tasks in this UserQuery.
     std::shared_ptr<SendChannelShared> _sendChannel;
-    uint64_t const _tSeq = 0;     ///< identifier for the specific task
-    QueryId const _qId = 0;       ///< queryId from czar
-    size_t const _templateId;     ///< Id number of the template in _userQueryInfo.
-    bool const _hasChunkId;       ///< True if there was a chunkId in the czar message.
-    int const _chunkId;           ///< chunkId from czar
-    int const _subchunkId;        ///< subchunkId from czar
-    int const _jId = 0;           ///< jobId from czar
-    int const _attemptCount = 0;  // attemptCount from czar
-    int const _queryFragmentNum;  ///< The fragment number of the query in the task message. // &&& delete???
+    uint64_t const _tSeq = 0;          ///< identifier for the specific task
+    QueryId const _qId = 0;            ///< queryId from czar
+    size_t const _templateId;          ///< Id number of the template in _userQueryInfo.
+    bool const _hasChunkId;            ///< True if there was a chunkId in the czar message.
+    int const _chunkId;                ///< chunkId from czar
+    int const _subchunkId;             ///< subchunkId from czar
+    int const _jId = 0;                ///< jobId from czar
+    int const _attemptCount = 0;       ///< attemptCount from czar
+    int const _queryFragmentNum;       ///< The fragment number of the query in the task message.
     bool const _fragmentHasSubchunks;  ///< True if the fragment in this query has subchunks.
     int64_t const _session;            ///< XrdSsi session.
     bool const _hasDb;                 ///< true if db was in message from czar.
-    std::string _db;                   ///< Task database (&&& move to UserQueryInfo ???)
+    std::string _db;                   ///< Task database
     int const _protocol;               ///< protocol expected by czar
     int const _czarId;                 ///< czar Id from the task message.
 
-    DbTableSet _dbTbls;  ///< Set of tables used by ChunkResourceRequest  // &&& move to UserQueryInfo if
-                         ///< possible.
+    DbTableSet _dbTbls;        ///< Set of tables used by ChunkResourceRequest
+                               ///< possible.
     IntVector _subchunksVect;  ///< Vector of subchunkIds.
 
     std::atomic<bool> _cancelled{false};
