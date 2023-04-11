@@ -22,8 +22,6 @@
 // Class header
 #include "wbase/UserQueryInfo.h"
 
-// System headers
-
 // Qserv headers
 #include "util/Bug.h"
 
@@ -45,8 +43,10 @@ UserQueryInfo::Ptr UserQueryInfo::uqMapInsert(QueryId qId) {
     lock_guard<mutex> lg(_uqMapMtx);
     auto iter = _uqMap.find(qId);
     if (iter != _uqMap.end()) {
-        uqi = iter->second;
-    } else {
+        uqi = iter->second.lock();
+    }
+    // If uqi is invalid at this point, a new one needs to be made.
+    if (uqi == nullptr) {
         uqi = make_shared<UserQueryInfo>(qId);
         _uqMap[qId] = uqi;
     }
@@ -57,9 +57,20 @@ UserQueryInfo::Ptr UserQueryInfo::uqMapGet(QueryId qId) {
     lock_guard<mutex> lg(_uqMapMtx);
     auto iter = _uqMap.find(qId);
     if (iter != _uqMap.end()) {
-        return iter->second;
+        return iter->second.lock();
     }
     return nullptr;
+}
+
+void UserQueryInfo::uqMapErase(QueryId qId) {
+    lock_guard<mutex> lg(_uqMapMtx);
+    auto iter = _uqMap.find(qId);
+    if (iter != _uqMap.end()) {
+        // If the weak pointer has 0 real references
+        if (iter->second.expired()) {
+            _uqMap.erase(qId);
+        }
+    }
 }
 
 UserQueryInfo::Map UserQueryInfo::_uqMap;
@@ -68,17 +79,21 @@ mutex UserQueryInfo::_uqMapMtx;
 
 size_t UserQueryInfo::addTemplate(std::string const& templateStr) {
     size_t j = 0;
-    for (; j < _templates.size(); ++j) {
-        if (_templates[j] == templateStr) {
-            return j;
+    {
+        lock_guard<mutex> lockUq(_uqMtx);
+        for (; j < _templates.size(); ++j) {
+            if (_templates[j] == templateStr) {
+                return j;
+            }
         }
+        _templates.emplace_back(templateStr);
     }
-    _templates.emplace_back(templateStr);
     LOGS(_log, LOG_LVL_DEBUG, "QueryInfo:" << _qId << " j=" << j << " Added:" << templateStr);
     return j;
 }
 
-std::string& UserQueryInfo::getTemplate(size_t id) {
+std::string UserQueryInfo::getTemplate(size_t id) {
+    lock_guard<mutex> lockUq(_uqMtx);
     if (id >= _templates.size()) {
         throw util::Bug(ERR_LOC, "UserQueryInfo template index out of range id=" + to_string(id) +
                                          " size=" + to_string(_templates.size()));

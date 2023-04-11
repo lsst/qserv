@@ -40,10 +40,14 @@ namespace lsst::qserv::wbase {
 class UserQueryInfo {
 public:
     using Ptr = std::shared_ptr<UserQueryInfo>;
-    using Map = std::map<QueryId, UserQueryInfo::Ptr>;
+    using Map = std::map<QueryId, std::weak_ptr<UserQueryInfo>>;
 
     static Ptr uqMapInsert(QueryId qId);
     static Ptr uqMapGet(QueryId qId);
+    /// Erase the entry for `qId` in the map, as long as there are only
+    /// weak references to the UserQueryInfoObject.
+    /// Clear appropriate local and member references before calling this.
+    static void uqMapErase(QueryId qId);
 
     UserQueryInfo(QueryId qId);
     UserQueryInfo() = delete;
@@ -57,7 +61,7 @@ public:
 
     /// Retrieve the template associated with the key 'id' from the map of templates.
     /// @throws Bug if id is out of range.
-    std::string& getTemplate(size_t id);
+    std::string getTemplate(size_t id);
 
 private:
     static Map _uqMap;
@@ -67,10 +71,9 @@ private:
 
     /// List of template strings. This is expected to be short, 1 or 2 entries.
     std::vector<std::string> _templates;
-
     std::mutex _uqMtx;  ///< protects _templates;
 };
 
 }  // namespace lsst::qserv::wbase
 
-#endif  // LSST_QSERV_WBASE_USERQUERYDESCRIPTION_H
+#endif  // LSST_QSERV_WBASE_USERQUERYINFO_H
