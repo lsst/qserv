@@ -218,7 +218,7 @@ std::vector<Task::Ptr> Task::createTasks(std::shared_ptr<proto::TaskMsg> const& 
                     vect.push_back(task);
                 }
             } else {
-                int subchunkId = 0;  // there are no subchunks.
+                int subchunkId = -1;  // there are no subchunks.
                 auto task = std::make_shared<wbase::Task>(taskMsg, fragNum, userQueryInfo, templateId,
                                                           subchunkId, sendChannel);
                 vect.push_back(task);
@@ -252,11 +252,12 @@ int Task::getChunkId() const { return _chunkId; }
 
 /// Flag the Task as cancelled, try to stop the SQL query, and try to remove it from the schedule.
 void Task::cancel() {
-    LOGS(_log, LOG_LVL_INFO, "Task::cancel " << getIdStr());
     if (_cancelled.exchange(true)) {
         // Was already cancelled.
         return;
     }
+
+    LOGS(_log, LOG_LVL_DEBUG, "Task::cancel " << getIdStr());
     auto qr = _taskQueryRunner;  // Need a copy in case _taskQueryRunner is reset.
     if (qr != nullptr) {
         qr->cancel();
@@ -409,12 +410,13 @@ nlohmann::json Task::getJson() const {
     js["queryTime_msec"] = ::tp2ms(_queryTime);
     js["finishTime_msec"] = ::tp2ms(_finishTime);
     js["sizeSoFar"] = _totalSize;
+    // LOGS(_log, LOG_LVL_WARN, "&&& task::getJson " << js);
     return js;
 }
 
 std::ostream& operator<<(std::ostream& os, Task const& t) {
     os << "Task: "
-       << "msg: " << t.makeIdStr() << " session=" << t._session << " chunk=" << t._chunkId << " db=" << t._db
+       << "msg: " << t.getIdStr() << " session=" << t._session << " chunk=" << t._chunkId << " db=" << t._db
        << " " << t.getQueryString();
 
     return os;

@@ -185,7 +185,6 @@ public:
     void setSafeToMoveRunning(bool val) { _safeToMoveRunning = val; }  ///< For testing only.
 
     static IdSet allIds;  // set of all task jobId numbers that are not complete.
-    std::string getIdStr() const { return makeIdStr(); }
 
     /// @return true if qId and jId match this task's query and job ids.
     bool idsMatch(QueryId qId, int jId, uint64_t tseq) const {
@@ -212,7 +211,7 @@ public:
     uint64_t getTSeq() const { return _tSeq; }
 
     /// The returned string is only usefult for logging purposes.
-    std::string makeIdStr(bool invalid = false) const {
+    std::string getIdStr(bool invalid = false) const {
         return QueryIdHelper::makeIdStr(_qId, _jId, invalid) + std::to_string(_tSeq) + ":";
     }
 
@@ -228,14 +227,11 @@ public:
     bool getFragmentHasSubchunks() const { return _fragmentHasSubchunks; }
     int getSubchunkId() const { return _subchunkId; }
 
-    /// Do not alter the returned value, returns a set of database tables.
-    /// Note: Copying would be safer, but it could be an expensive thing to copy.
-    ///       This only used by ChunkResourceRequest acquire. The set is usually
-    ///       short, but this is called fairly frequently.
-    DbTableSet& getDbTbls() { return _dbTbls; }
+    /// Returns a reference to _dbTbls.
+    const DbTableSet& getDbTbls() const { return _dbTbls; }
 
-    /// Returns a copy of the list of subchunk ids.
-    IntVector getSubchunksVect() { return _subchunksVect; }
+    /// Return a reference to the list of subchunk ids.
+    const IntVector& getSubchunksVect() const { return _subchunksVect; }
 
 private:
     std::shared_ptr<UserQueryInfo> _userQueryInfo;    ///< Details common to Tasks in this UserQuery.
@@ -257,9 +253,11 @@ private:
     int const _protocol;               ///< protocol expected by czar
     int const _czarId;                 ///< czar Id from the task message.
 
-    DbTableSet _dbTbls;        ///< Set of tables used by ChunkResourceRequest
-                               ///< possible.
-    IntVector _subchunksVect;  ///< Vector of subchunkIds.
+    /// Set of tables used by ChunkResourceRequest possible. Set in constructor and should never change.
+    DbTableSet _dbTbls;
+
+    /// Vector of subchunkIds. Set in constructor and should never change.
+    IntVector _subchunksVect;
 
     std::atomic<bool> _cancelled{false};
     std::atomic<bool> _safeToMoveRunning{false};  ///< false until done with waitForMemMan().

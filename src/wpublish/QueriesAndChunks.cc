@@ -402,6 +402,7 @@ nlohmann::json QueriesAndChunks::statusToJson() {
         status["query_stats"][qId]["histograms"] = qStats->getJsonHist();
         status["query_stats"][qId]["tasks"] = qStats->getJsonTasks();
     }
+    // LOGS(_log, LOG_LVL_WARN, "&&& QueriesAndChunks::statusToJson " << status);
     return status;
 }
 
