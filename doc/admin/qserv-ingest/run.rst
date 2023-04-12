@@ -54,6 +54,8 @@ For additional informations, check official documentation for `setting the names
     argo-workflows-server-9f9bd4cc4-wkm5z                 1/1     Running   0          1m
     argo-workflows-workflow-controller-57779f5f96-2r9jf   1/1     Running   1          1m
 
+- `git-lfs <https://git-lfs.com>`__ is required in order to retrieve integration test datasets.
+
 Prepare Qserv ingest
 ====================
 
