@@ -155,7 +155,6 @@ Task::Task(TaskMsgPtr const& t, int fragmentNumber, std::shared_ptr<UserQueryInf
             LOGS(_log, LOG_LVL_INFO,
                  "Task::Task scanTbl.db()=" << scanTbl.db() << " scanTbl.table()=" << scanTbl.table());
         }
-        assert(t->has_db());
         LOGS(_log, LOG_LVL_INFO,
              "fragment a db=" << _db << ":" << _chunkId << " dbTbls=" << util::printable(_dbTbls));
     } else {
@@ -185,6 +184,12 @@ Task::Task(TaskMsgPtr const& t, int fragmentNumber, std::shared_ptr<UserQueryInf
 Task::~Task() {
     allIds.remove(std::to_string(_qId) + "_" + std::to_string(_jId));
     LOGS(_log, LOG_LVL_TRACE, "~Task() : " << allIds);
+
+    _userQueryInfo.reset();
+    UserQueryInfo::uqMapErase(_qId);
+    if (UserQueryInfo::uqMapGet(_qId) == nullptr) {
+        LOGS(_log, LOG_LVL_TRACE, "~Task Cleared uqMap entry for _qId=" << _qId);
+    }
 }
 
 std::vector<Task::Ptr> Task::createTasks(std::shared_ptr<proto::TaskMsg> const& taskMsg,

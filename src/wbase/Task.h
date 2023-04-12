@@ -211,6 +211,7 @@ public:
 
     uint64_t getTSeq() const { return _tSeq; }
 
+    /// The returned string is only usefult for logging purposes.
     std::string makeIdStr(bool invalid = false) const {
         return QueryIdHelper::makeIdStr(_qId, _jId, invalid) + std::to_string(_tSeq) + ":";
     }
@@ -237,8 +238,9 @@ public:
     IntVector getSubchunksVect() { return _subchunksVect; }
 
 private:
-    std::shared_ptr<UserQueryInfo> _userQueryInfo;  ///< Details common to Tasks in this UserQuery.
-    std::shared_ptr<SendChannelShared> _sendChannel;
+    std::shared_ptr<UserQueryInfo> _userQueryInfo;    ///< Details common to Tasks in this UserQuery.
+    std::shared_ptr<SendChannelShared> _sendChannel;  ///< Send channel.
+
     uint64_t const _tSeq = 0;          ///< identifier for the specific task
     QueryId const _qId = 0;            ///< queryId from czar
     size_t const _templateId;          ///< Id number of the template in _userQueryInfo.

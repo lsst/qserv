@@ -289,12 +289,6 @@ void QueriesAndChunks::removeDead(QueryStatistics::Ptr const& queryStats) {
 
     lock_guard<mutex> gQ(_queryStatsMtx);
     _queryStats.erase(qId);
-
-    // The above statement should clear all shared pointers for the UserQueryInfo for `qId`.
-    wbase::UserQueryInfo::uqMapErase(qId);
-    if (wbase::UserQueryInfo::uqMapGet(qId) != nullptr) {
-        LOGS(_log, LOG_LVL_ERROR, "Could not clear uqMap entry for qId=" << qId << " likely memory leak.");
-    }
 }
 
 /// @return the statistics for a user query.
