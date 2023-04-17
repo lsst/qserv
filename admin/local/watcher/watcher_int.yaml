@@ -20,7 +20,7 @@ spec:
         - name: watcher
           image: qserv/lite-watcher:c1973a8b
           command: ["entrypoint"]
-          args: ["--log-level", "DEBUG", "watcher", "--cluster-id", "int", "--qserv", "mysql://qsmaster@qserv-czar:3306", "--notify-url-file", "/qserv/data/webhook_url"]
+          args: ["--log-level", "DEBUG", "watcher", "--cluster-id", "int", "--qserv", "mysql://qsmaster@qserv-czar:3306", "--notify-url-file", "/qserv/data/webhook_url", "--timeout-sec", "1800"]
           volumeMounts:
             - name: slack-webhook-url
               readOnly: true
