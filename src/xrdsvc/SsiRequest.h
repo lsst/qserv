@@ -154,7 +154,8 @@ private:
 
     std::shared_ptr<ChannelStream> _stream;
 
-    std::weak_ptr<wbase::Task> _task;
+    //&&&std::weak_ptr<wbase::Task> _task;
+    std::vector<std::weak_ptr<wbase::Task>> _tasks;
 
     mysql::MySqlConfig const _mySqlConfig;
     std::shared_ptr<wcontrol::TransmitMgr> _transmitMgr;  ///< limits transmits to czars.
