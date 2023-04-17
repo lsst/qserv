@@ -151,6 +151,10 @@ void SsiRequest::execute(XrdSsiRequest& req) {
                     wbase::SendChannelShared::create(sendChannelBase, _transmitMgr, taskMsg->czarid());
             auto tasks = wbase::Task::createTasks(taskMsg, sendChannel);
 
+            for (auto const& task : tasks) {
+                _tasks.emplace_back(task);
+            }
+
             ReleaseRequestBuffer();
             t.start();
             _processor->processTasks(tasks);  // Queues tasks to be run later.
@@ -290,9 +294,11 @@ wbase::WorkerCommand::Ptr SsiRequest::parseWorkerCommand(char const* reqData, in
 void SsiRequest::Finished(XrdSsiRequest& req, XrdSsiRespInfo const& rinfo, bool cancel) {  // Step 8
     if (cancel) {
         // Try to cancel the task, if there is one.
-        auto task = _task.lock();
-        if (task != nullptr) {
-            task->cancel();
+        for (auto&& wTask : _tasks) {
+            auto task = wTask.lock();
+            if (task != nullptr) {
+                task->cancel();
+            }
         }
     }
 
