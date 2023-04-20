@@ -39,6 +39,7 @@
 #include "nlohmann/json.hpp"
 
 // Qserv headers
+#include "global/DbTable.h"
 #include "global/intTypes.h"
 #include "memman/MemMan.h"
 #include "proto/ScanTableInfo.h"
@@ -62,6 +63,8 @@ class QueryStatistics;
 }  // namespace lsst::qserv
 
 namespace lsst::qserv::wbase {
+
+class UserQueryInfo;
 
 /// Base class for tracking a database query for a worker Task.
 class TaskQueryRunner {
@@ -122,15 +125,33 @@ public:
 
     enum class State { CREATED = 0, QUEUED, EXECUTING_QUERY, READING_DATA, FINISHED };
 
+    /// Class to store constant sets and vectors.
+    class DbTblsAndSubchunks {
+    public:
+        DbTblsAndSubchunks() = delete;
+        DbTblsAndSubchunks(DbTblsAndSubchunks const&) = delete;
+        DbTblsAndSubchunks& operator=(DbTblsAndSubchunks const&) = delete;
+
+        DbTblsAndSubchunks(DbTableSet const& dbTbls_, IntVector const& subchunksVect_)
+                : dbTbls(dbTbls_), subchunksVect(subchunksVect_) {}
+        ~DbTblsAndSubchunks() = default;
+
+        /// Set of tables used by ChunkResourceRequest possible. Set in constructor and should never change.
+        const DbTableSet dbTbls;
+
+        /// Vector of subchunkIds. Set in constructor and should never change.
+        const IntVector subchunksVect;
+    };
+
     struct ChunkEqual {
-        bool operator()(Task::Ptr const& x, Task::Ptr const& y);
+        bool operator()(Ptr const& x, Ptr const& y);
     };
     struct ChunkIdGreater {
         bool operator()(Ptr const& x, Ptr const& y);
     };
 
-    explicit Task(TaskMsgPtr const& t, std::string const& query, int fragmentNumber,
-                  std::shared_ptr<SendChannelShared> const& sc);
+    Task(TaskMsgPtr const& t, int fragmentNumber, std::shared_ptr<UserQueryInfo> const& userQueryInfo,
+         size_t templateId, int subchunkId, std::shared_ptr<SendChannelShared> const& sc);
     Task& operator=(const Task&) = delete;
     Task(const Task&) = delete;
     virtual ~Task();
@@ -141,13 +162,9 @@ public:
 
     void setQueryStatistics(std::shared_ptr<wpublish::QueryStatistics> const& qC);
 
-    TaskMsgPtr msg;  ///< Protobufs Task spec
     std::shared_ptr<SendChannelShared> getSendChannel() const { return _sendChannel; }
     void resetSendChannel() { _sendChannel.reset(); }  ///< reset the shared pointer for SendChannelShared
-    std::string hash;                                  ///< hash of TaskMsg
     std::string user;                                  ///< Incoming username
-    time_t entryTime{0};                               ///< Timestamp for task admission
-    char timestr[100];                                 ///< ::ctime_r(&t.entryTime, timestr)
     // Note that manpage spec of "26 bytes"  is insufficient
 
     /// Cancel the query in progress and set _cancelled.
@@ -157,7 +174,7 @@ public:
     /// @return true if this task was or needed to be cancelled.
     bool checkCancelled();
 
-    std::string getQueryString() { return _queryString; }
+    std::string getQueryString() const;
     int getQueryFragmentNum() { return _queryFragmentNum; }
     bool setTaskQueryRunner(
             TaskQueryRunner::Ptr const& taskQueryRunner);  ///< return true if already cancelled.
@@ -167,6 +184,7 @@ public:
     friend std::ostream& operator<<(std::ostream& os, Task const& t);
 
     // Shared scan information
+    bool getHasChunkId() const { return _hasChunkId; }
     int getChunkId() const;
     QueryId getQueryId() const { return _qId; }
     int getJobId() const { return _jId; }
@@ -185,7 +203,6 @@ public:
     void setSafeToMoveRunning(bool val) { _safeToMoveRunning = val; }  ///< For testing only.
 
     static IdSet allIds;  // set of all task jobId numbers that are not complete.
-    std::string getIdStr() const { return _idStr; }
 
     /// @return true if qId and jId match this task's query and job ids.
     bool idsMatch(QueryId qId, int jId, uint64_t tseq) const {
@@ -211,7 +228,8 @@ public:
 
     uint64_t getTSeq() const { return _tSeq; }
 
-    std::string makeIdStr(bool invalid = false) const {
+    /// The returned string is only usefult for logging purposes.
+    std::string getIdStr(bool invalid = false) const {
         return QueryIdHelper::makeIdStr(_qId, _jId, invalid) + std::to_string(_tSeq) + ":";
     }
 
@@ -220,16 +238,41 @@ public:
     /// Return a json object describing sdome details of this task.
     nlohmann::json getJson() const;
 
+    int64_t getSession() const { return _session; }
+    int getProtocol() const { return _protocol; }
+    std::string getDb() const { return _db; }
+    int getCzarId() const { return _czarId; }
+    bool getFragmentHasSubchunks() const { return _fragmentHasSubchunks; }
+    int getSubchunkId() const { return _subchunkId; }
+
+    /// Returns a reference to dbTbls.
+    const DbTableSet& getDbTbls() const { return _dbTblsAndSubchunks->dbTbls; }
+
+    /// Return a reference to the list of subchunk ids.
+    const IntVector& getSubchunksVect() const { return _dbTblsAndSubchunks->subchunksVect; }
+
 private:
-    std::shared_ptr<SendChannelShared> _sendChannel;
-    uint64_t const _tSeq = 0;     ///< identifier for the specific task
-    QueryId const _qId = 0;       ///< queryId from czar
-    int const _jId = 0;           ///< jobId from czar
-    int const _attemptCount = 0;  // attemptCount from czar
-    /// _idStr for logging only.
-    std::string const _idStr = makeIdStr(true);
-    std::string _queryString;   ///< The query this task will run.
-    int _queryFragmentNum = 0;  ///< The fragment number of the query in the task message.
+    std::shared_ptr<UserQueryInfo> _userQueryInfo;    ///< Details common to Tasks in this UserQuery.
+    std::shared_ptr<SendChannelShared> _sendChannel;  ///< Send channel.
+
+    uint64_t const _tSeq = 0;          ///< identifier for the specific task
+    QueryId const _qId = 0;            ///< queryId from czar
+    size_t const _templateId;          ///< Id number of the template in _userQueryInfo.
+    bool const _hasChunkId;            ///< True if there was a chunkId in the czar message.
+    int const _chunkId;                ///< chunkId from czar
+    int const _subchunkId;             ///< subchunkId from czar
+    int const _jId = 0;                ///< jobId from czar
+    int const _attemptCount = 0;       ///< attemptCount from czar
+    int const _queryFragmentNum;       ///< The fragment number of the query in the task message.
+    bool const _fragmentHasSubchunks;  ///< True if the fragment in this query has subchunks.
+    int64_t const _session;            ///< XrdSsi session.
+    bool const _hasDb;                 ///< true if db was in message from czar.
+    std::string _db;                   ///< Task database
+    int const _protocol;               ///< protocol expected by czar
+    int const _czarId;                 ///< czar Id from the task message.
+
+    /// Set of tables and vector of subchunk ids used by ChunkResourceRequest. Do not change/reset.
+    std::unique_ptr<DbTblsAndSubchunks> _dbTblsAndSubchunks;
 
     std::atomic<bool> _cancelled{false};
     std::atomic<bool> _safeToMoveRunning{false};  ///< false until done with waitForMemMan().

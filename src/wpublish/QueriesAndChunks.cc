@@ -26,6 +26,7 @@
 
 // Qserv headers
 #include "util/Bug.h"
+#include "wbase/UserQueryInfo.h"
 #include "wsched/BlendScheduler.h"
 #include "wsched/SchedulerBase.h"
 #include "wsched/ScanScheduler.h"
