@@ -377,6 +377,29 @@ void QueryRunner::cancel() {
     LOGS(_log, LOG_LVL_WARN, "Trying QueryRunner::cancel() call");
     _cancelled = true;
 
+    if (_mysqlConn == nullptr) {
+        LOGS(_log, LOG_LVL_WARN, "QueryRunner::cancel() no MysqlConn");
+    } else {
+        int status = _mysqlConn->cancel();
+        switch (status) {
+            case -1:
+                LOGS(_log, LOG_LVL_WARN, "QueryRunner::cancel() NOP");
+                break;
+            case 0:
+                LOGS(_log, LOG_LVL_WARN, "QueryRunner::cancel() success");
+                break;
+            case 1:
+                LOGS(_log, LOG_LVL_ERROR, "QueryRunner::cancel() Error connecting to kill query.");
+                break;
+            case 2:
+                LOGS(_log, LOG_LVL_ERROR, "QueryRunner::cancel() Error processing kill query.");
+                break;
+            default:
+                LOGS(_log, LOG_LVL_ERROR, "QueryRunner::cancel() unknown error");
+                break;
+        }
+    }
+
     auto streamB = _streamBuf.lock();
     if (streamB != nullptr) {
         streamB->cancel();
@@ -387,29 +410,6 @@ void QueryRunner::cancel() {
     auto sChannel = _task->getSendChannel();
     if (sChannel != nullptr) {
         sChannel->kill("QueryRunner cancel");
-    }
-
-    if (!_mysqlConn.get()) {
-        LOGS(_log, LOG_LVL_WARN, "QueryRunner::cancel() no MysqlConn");
-        return;
-    }
-    int status = _mysqlConn->cancel();
-    switch (status) {
-        case -1:
-            LOGS(_log, LOG_LVL_WARN, "QueryRunner::cancel() NOP");
-            break;
-        case 0:
-            LOGS(_log, LOG_LVL_WARN, "QueryRunner::cancel() success");
-            break;
-        case 1:
-            LOGS(_log, LOG_LVL_ERROR, "QueryRunner::cancel() Error connecting to kill query.");
-            break;
-        case 2:
-            LOGS(_log, LOG_LVL_ERROR, "QueryRunner::cancel() Error processing kill query.");
-            break;
-        default:
-            LOGS(_log, LOG_LVL_ERROR, "QueryRunner::cancel() unknown error");
-            break;
     }
 }
 
