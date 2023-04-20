@@ -125,8 +125,26 @@ public:
 
     enum class State { CREATED = 0, QUEUED, EXECUTING_QUERY, READING_DATA, FINISHED };
 
+    /// Class to store constant sets and vectors.
+    class DbTblsAndSubchunks {
+    public:
+        DbTblsAndSubchunks() = delete;
+        DbTblsAndSubchunks(DbTblsAndSubchunks const&) = delete;
+        DbTblsAndSubchunks& operator=(DbTblsAndSubchunks const&) = delete;
+
+        DbTblsAndSubchunks(DbTableSet const& dbTbls_, IntVector const& subchunksVect_)
+                : dbTbls(dbTbls_), subchunksVect(subchunksVect_) {}
+        ~DbTblsAndSubchunks() = default;
+
+        /// Set of tables used by ChunkResourceRequest possible. Set in constructor and should never change.
+        const DbTableSet dbTbls;
+
+        /// Vector of subchunkIds. Set in constructor and should never change.
+        const IntVector subchunksVect;
+    };
+
     struct ChunkEqual {
-        bool operator()(Task::Ptr const& x, Task::Ptr const& y);
+        bool operator()(Ptr const& x, Ptr const& y);
     };
     struct ChunkIdGreater {
         bool operator()(Ptr const& x, Ptr const& y);
@@ -227,11 +245,11 @@ public:
     bool getFragmentHasSubchunks() const { return _fragmentHasSubchunks; }
     int getSubchunkId() const { return _subchunkId; }
 
-    /// Returns a reference to _dbTbls.
-    const DbTableSet& getDbTbls() const { return _dbTbls; }
+    /// Returns a reference to dbTbls.
+    const DbTableSet& getDbTbls() const { return _dbTblsAndSubchunks->dbTbls; }
 
     /// Return a reference to the list of subchunk ids.
-    const IntVector& getSubchunksVect() const { return _subchunksVect; }
+    const IntVector& getSubchunksVect() const { return _dbTblsAndSubchunks->subchunksVect; }
 
 private:
     std::shared_ptr<UserQueryInfo> _userQueryInfo;    ///< Details common to Tasks in this UserQuery.
@@ -253,11 +271,8 @@ private:
     int const _protocol;               ///< protocol expected by czar
     int const _czarId;                 ///< czar Id from the task message.
 
-    /// Set of tables used by ChunkResourceRequest possible. Set in constructor and should never change.
-    DbTableSet _dbTbls;
-
-    /// Vector of subchunkIds. Set in constructor and should never change.
-    IntVector _subchunksVect;
+    /// Set of tables and vector of subchunk ids used by ChunkResourceRequest. Do not change/reset.
+    std::unique_ptr<DbTblsAndSubchunks> _dbTblsAndSubchunks;
 
     std::atomic<bool> _cancelled{false};
     std::atomic<bool> _safeToMoveRunning{false};  ///< false until done with waitForMemMan().

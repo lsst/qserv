@@ -135,7 +135,6 @@ nlohmann::json Foreman::statusToJson() {
     nlohmann::json status;
     status["queries"] = _queries->statusToJson();
     status["sql_conn_mgr"] = _sqlConnMgr->statusToJson();
-    LOGS(_log, LOG_LVL_WARN, "&&& Foreman::statusToJson() " << status);
     return status;
 }
 

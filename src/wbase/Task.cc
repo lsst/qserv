@@ -146,39 +146,42 @@ Task::Task(TaskMsgPtr const& t, int fragmentNumber, std::shared_ptr<UserQueryInf
 
     // Create sets and vectors for 'aquiring' subchunk temporary tables.
     proto::TaskMsg_Fragment const& fragment(t->fragment(_queryFragmentNum));
+    DbTableSet dbTbls_;
+    IntVector subchunksVect_;
     if (!_fragmentHasSubchunks) {
         /// FUTURE: Why acquire anything if there are no subchunks in the fragment?
         ///   This branch never seems to happen, but this needs to be proven beyond any doubt.
         LOGS(_log, LOG_LVL_WARN, "Task::Task not _fragmentHasSubchunks");
         for (auto const& scanTbl : t->scantable()) {
-            _dbTbls.emplace(scanTbl.db(), scanTbl.table());
+            dbTbls_.emplace(scanTbl.db(), scanTbl.table());
             LOGS(_log, LOG_LVL_INFO,
                  "Task::Task scanTbl.db()=" << scanTbl.db() << " scanTbl.table()=" << scanTbl.table());
         }
         LOGS(_log, LOG_LVL_INFO,
-             "fragment a db=" << _db << ":" << _chunkId << " dbTbls=" << util::printable(_dbTbls));
+             "fragment a db=" << _db << ":" << _chunkId << " dbTbls=" << util::printable(dbTbls_));
     } else {
         proto::TaskMsg_Subchunk const& sc = fragment.subchunks();
         for (int j = 0; j < sc.dbtbl_size(); j++) {
             /// Different subchunk fragments can require different tables.
             /// FUTURE: It may save space to store these in UserQueryInfo as it seems
             ///         database and table names are consistent across chunks.
-            _dbTbls.emplace(sc.dbtbl(j).db(), sc.dbtbl(j).tbl());
+            dbTbls_.emplace(sc.dbtbl(j).db(), sc.dbtbl(j).tbl());
             LOGS(_log, LOG_LVL_TRACE,
                  "Task::Task subchunk j=" << j << " sc.dbtbl(j).db()=" << sc.dbtbl(j).db()
                                           << " sc.dbtbl(j).tbl()=" << sc.dbtbl(j).tbl());
         }
         IntVector sVect(sc.id().begin(), sc.id().end());
-        _subchunksVect = sVect;
+        subchunksVect_ = sVect;
         if (sc.has_database()) {
             _db = sc.database();
         } else {
             _db = t->db();
         }
         LOGS(_log, LOG_LVL_DEBUG,
-             "fragment b db=" << _db << ":" << _chunkId << " dbTableSet" << util::printable(_dbTbls)
-                              << " subChunks=" << util::printable(_subchunksVect));
+             "fragment b db=" << _db << ":" << _chunkId << " dbTableSet" << util::printable(dbTbls_)
+                              << " subChunks=" << util::printable(subchunksVect_));
     }
+    _dbTblsAndSubchunks = make_unique<DbTblsAndSubchunks>(dbTbls_, subchunksVect_);
 }
 
 Task::~Task() {
@@ -410,7 +413,6 @@ nlohmann::json Task::getJson() const {
     js["queryTime_msec"] = ::tp2ms(_queryTime);
     js["finishTime_msec"] = ::tp2ms(_finishTime);
     js["sizeSoFar"] = _totalSize;
-    // LOGS(_log, LOG_LVL_WARN, "&&& task::getJson " << js);
     return js;
 }
 
