@@ -30,6 +30,16 @@ include_directories(
     ${CMAKE_CURRENT_BINARY_DIR}
 )
 
+file(GLOB_RECURSE CLANG_FILES *.cc *.h)
+
+add_custom_target(clang-format
+    COMMAND /usr/bin/clang-format -style=file --verbose -i ${CLANG_FILES}
+)
+
+add_custom_target(clang-format-check
+    COMMAND /usr/bin/clang-format -style=file --verbose -i --dry-run -Werror ${CLANG_FILES}
+)
+
 #-----------------------------------------------------------------------------
 
 add_subdirectory(admin)
