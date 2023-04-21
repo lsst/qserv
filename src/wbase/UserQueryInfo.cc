@@ -24,6 +24,7 @@
 
 // Qserv headers
 #include "util/Bug.h"
+#include "wbase/Task.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -99,6 +100,25 @@ std::string UserQueryInfo::getTemplate(size_t id) {
                                          " size=" + to_string(_templates.size()));
     }
     return _templates[id];
+}
+
+void UserQueryInfo::appendTasks(vector<shared_ptr<wbase::Task>> const& tasks) {
+    lock_guard<mutex> lg(_tasksMtx);
+    for (auto const& task : tasks) {
+        _tasks.emplace_back(task);
+    }
+}
+
+/// Cancel all tasks in this user query.
+void UserQueryInfo::cancelAllTasks() {
+    if (!_userQueryCancelled.exchange(true)) {
+        LOGS(_log, LOG_LVL_WARN, "UserQueryInfo::cancelAllTasks " << _qId);
+        lock_guard<mutex> lg(_tasksMtx);
+        for (auto&& wTask : _tasks) {
+            auto task = wTask.lock();
+            task->cancel();
+        }
+    }
 }
 
 }  // namespace lsst::qserv::wbase

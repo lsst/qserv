@@ -43,6 +43,7 @@
 #include "util/Timer.h"
 #include "wbase/MsgProcessor.h"
 #include "wbase/SendChannelShared.h"
+#include "wbase/UserQueryInfo.h"
 #include "wpublish/AddChunkGroupCommand.h"
 #include "wpublish/ChunkListCommand.h"
 #include "wpublish/GetChunkListCommand.h"
@@ -151,8 +152,14 @@ void SsiRequest::execute(XrdSsiRequest& req) {
                     wbase::SendChannelShared::create(sendChannelBase, _transmitMgr, taskMsg->czarid());
             auto tasks = wbase::Task::createTasks(taskMsg, sendChannel);
 
+            /* &&&
             for (auto const& task : tasks) {
                 _tasks.emplace_back(task);
+            }
+            */
+            auto const& task = tasks.front();
+            if (task != nullptr) {
+                _userQueryInfo = task->getUserQueryInfo();
             }
 
             ReleaseRequestBuffer();
@@ -293,12 +300,19 @@ wbase::WorkerCommand::Ptr SsiRequest::parseWorkerCommand(char const* reqData, in
 /// Called by SSI to free resources.
 void SsiRequest::Finished(XrdSsiRequest& req, XrdSsiRespInfo const& rinfo, bool cancel) {  // Step 8
     if (cancel) {
+        /* &&&
         // Try to cancel the task, if there is one.
         for (auto&& wTask : _tasks) {
             auto task = wTask.lock();
             if (task != nullptr) {
                 task->cancel();
             }
+        }
+        */
+
+        auto userQueryInfo = _userQueryInfo.lock();
+        if (userQueryInfo != nullptr) {
+            userQueryInfo->cancelAllTasks();
         }
     }
 
