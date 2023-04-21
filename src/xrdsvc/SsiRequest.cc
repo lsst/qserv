@@ -293,7 +293,7 @@ wbase::WorkerCommand::Ptr SsiRequest::parseWorkerCommand(char const* reqData, in
 /// Called by SSI to free resources.
 void SsiRequest::Finished(XrdSsiRequest& req, XrdSsiRespInfo const& rinfo, bool cancel) {  // Step 8
     if (cancel) {
-        // Try to cancel the task, if there is one.
+        // Try to cancel all of the tasks, if there are any.
         for (auto&& wTask : _tasks) {
             auto task = wTask.lock();
             if (task != nullptr) {
