@@ -10,7 +10,6 @@ target_sources(wdb PRIVATE
 
 target_include_directories(wdb PRIVATE
     ${XROOTD_INCLUDE_DIRS}
-    ${XROOTD_INCLUDE_DIRS}/private
 )
 
 target_link_libraries(wdb PUBLIC
@@ -23,7 +22,6 @@ FUNCTION(wdb_tests)
         add_executable(${TEST} ${TEST}.cc)
         target_include_directories(${TEST} PRIVATE
             ${XROOTD_INCLUDE_DIRS}
-            ${XROOTD_INCLUDE_DIRS}/private
         )
         target_link_libraries(${TEST} PUBLIC
             crypto

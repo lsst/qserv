@@ -459,7 +459,6 @@ target_sources(replica PRIVATE
 
 target_include_directories(replica PRIVATE
     ${XROOTD_INCLUDE_DIRS}
-    ${XROOTD_INCLUDE_DIRS}/private
 )
 
 target_link_libraries(replica PUBLIC
@@ -483,7 +482,7 @@ FUNCTION(REPLICA_UTILS)
     FOREACH(UTIL IN ITEMS ${ARGV})
         add_executable(${UTIL})
         target_sources(${UTIL} PRIVATE tools/${UTIL}.cc)
-        target_include_directories(${UTIL} PRIVATE ${XROOTD_INCLUDE_DIRS} ${XROOTD_INCLUDE_DIRS}/private)
+        target_include_directories(${UTIL} PRIVATE ${XROOTD_INCLUDE_DIRS})
         target_link_libraries(${UTIL} PRIVATE replica)
         install(TARGETS ${UTIL})
     ENDFOREACH()

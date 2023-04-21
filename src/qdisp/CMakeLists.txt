@@ -17,7 +17,6 @@ target_sources(qdisp PRIVATE
 
 target_include_directories(qdisp PRIVATE
     ${XROOTD_INCLUDE_DIRS}
-    ${XROOTD_INCLUDE_DIRS}/private
 )
 
 target_link_libraries(qdisp PUBLIC
@@ -29,7 +28,6 @@ add_executable(testQDisp testQDisp.cc)
 
 target_include_directories(testQDisp PRIVATE
     ${XROOTD_INCLUDE_DIRS}
-    ${XROOTD_INCLUDE_DIRS}/private
 )
 
 target_link_libraries(testQDisp

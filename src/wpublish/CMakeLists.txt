@@ -23,7 +23,6 @@ target_sources(wpublish PRIVATE
 
 target_include_directories(wpublish PRIVATE
     ${XROOTD_INCLUDE_DIRS}
-    ${XROOTD_INCLUDE_DIRS}/private
 )
 
 target_link_libraries(wpublish PUBLIC

@@ -17,7 +17,6 @@ add_executable(testSchedulers testSchedulers.cc)
 
 target_include_directories(testSchedulers PRIVATE
     ${XROOTD_INCLUDE_DIRS}
-    ${XROOTD_INCLUDE_DIRS}/private
 )
 
 target_link_libraries(testSchedulers PUBLIC

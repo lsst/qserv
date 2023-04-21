@@ -10,7 +10,6 @@ target_sources(wcontrol PRIVATE
 
 target_include_directories(wcontrol PRIVATE
     ${XROOTD_INCLUDE_DIRS}
-    ${XROOTD_INCLUDE_DIRS}/private
 )
 
 target_link_libraries(wcontrol PUBLIC

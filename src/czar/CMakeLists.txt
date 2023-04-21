@@ -8,7 +8,6 @@ target_sources(czar PRIVATE
 
 target_include_directories(czar PRIVATE
     ${XROOTD_INCLUDE_DIRS}
-    ${XROOTD_INCLUDE_DIRS}/private
 )
 
 target_link_libraries(czar PUBLIC
