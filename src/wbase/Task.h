@@ -251,8 +251,6 @@ public:
     /// Return a reference to the list of subchunk ids.
     const IntVector& getSubchunksVect() const { return _dbTblsAndSubchunks->subchunksVect; }
 
-    std::shared_ptr<UserQueryInfo> getUserQueryInfo() const { return _userQueryInfo; }
-
 private:
     std::shared_ptr<UserQueryInfo> _userQueryInfo;    ///< Details common to Tasks in this UserQuery.
     std::shared_ptr<SendChannelShared> _sendChannel;  ///< Send channel.

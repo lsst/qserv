@@ -154,9 +154,7 @@ private:
 
     std::shared_ptr<ChannelStream> _stream;
 
-    //&&&std::vector<std::weak_ptr<wbase::Task>> _tasks;  ///< List of tasks for use in cancellation.
-    std::weak_ptr<wbase::UserQueryInfo>
-            _userQueryInfo;  ///< Weak pointer to the associated UserQueryInfo object.
+    std::vector<std::weak_ptr<wbase::Task>> _tasks;  ///< List of tasks for use in cancellation.
 
     mysql::MySqlConfig const _mySqlConfig;
     std::shared_ptr<wcontrol::TransmitMgr> _transmitMgr;  ///< limits transmits to czars.

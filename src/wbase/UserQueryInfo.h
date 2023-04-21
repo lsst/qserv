@@ -24,7 +24,6 @@
 #define LSST_QSERV_WBASE_USERQUERYINFO_H
 
 // System headers
-#include <atomic>
 #include <map>
 #include <memory>
 #include <mutex>
@@ -35,8 +34,6 @@
 
 // This header declarations
 namespace lsst::qserv::wbase {
-
-class Task;
 
 /// This class contains information about a user query that is effectively the same
 /// for all Task's in the user query.
@@ -66,12 +63,6 @@ public:
     /// @throws Bug if id is out of range.
     std::string getTemplate(size_t id);
 
-    /// Add this vector of task pointers to our list of weak task pointers.
-    void appendTasks(std::vector<std::shared_ptr<wbase::Task>> const& tasks);
-
-    /// Cancel all tasks in this user query.
-    void cancelAllTasks();
-
 private:
     static Map _uqMap;
     static std::mutex _uqMapMtx;  ///< protects _uqMap
@@ -83,10 +74,6 @@ private:
     /// to alter existing indexes into the vector.
     std::vector<std::string> _templates;
     std::mutex _uqMtx;  ///< protects _templates;
-
-    std::atomic<bool> _userQueryCancelled{false};    ///< Set to true when the user query has been cancelled.
-    std::vector<std::weak_ptr<wbase::Task>> _tasks;  ///< list of tasks for this user query.
-    std::mutex _tasksMtx;                            ///< protects _tasks;
 };
 
 }  // namespace lsst::qserv::wbase

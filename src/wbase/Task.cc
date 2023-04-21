@@ -230,8 +230,6 @@ std::vector<Task::Ptr> Task::createTasks(std::shared_ptr<proto::TaskMsg> const& 
     }
     sendChannel->setTaskCount(vect.size());
 
-    userQueryInfo->appendTasks(vect);
-
     return vect;
 }
 
