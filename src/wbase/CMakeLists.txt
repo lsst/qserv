@@ -13,7 +13,6 @@ target_sources(wbase PRIVATE
 
 target_include_directories(wbase PRIVATE
     ${XROOTD_INCLUDE_DIRS}
-    ${XROOTD_INCLUDE_DIRS}/private
 )
 
 target_link_libraries(wbase PUBLIC
