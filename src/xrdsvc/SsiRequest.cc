@@ -152,7 +152,7 @@ void SsiRequest::execute(XrdSsiRequest& req) {
             auto tasks = wbase::Task::createTasks(taskMsg, sendChannel);
 
             for (auto const& task : tasks) {
-                _tasks.emplace_back(task);
+                _tasks.push_back(task);
             }
 
             ReleaseRequestBuffer();
