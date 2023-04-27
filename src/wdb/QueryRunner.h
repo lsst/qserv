@@ -107,7 +107,15 @@ private:
     static size_t _getDesiredLimit();
 
     /// Inform SendChannelShared that this Task, and all related Tasks, has been cancelled.
-    void transmitCancelledError();
+    void _transmitCancelledError();
+
+    /// Inform SendChannelShared that this Task expects to transmit data.
+    /// This is used primarily for SendChannelShared to inform other Tasks that
+    /// another Task expects to transmit on this channel, so at the very least
+    /// this Task must transmit an error or risk lockup.
+    void _setTransmitIntended();
+
+    std::mutex _initialCancelMtx;  ///< Protects first query cancel test and transmitIntended call.
 
     wbase::Task::Ptr const _task;  ///< Actual task
 

@@ -168,10 +168,14 @@ bool QueryRunner::runQuery() {
     };
     Release release(_task, this);
 
-    if (_task->checkCancelled()) {
-        LOGS(_log, LOG_LVL_DEBUG, "runQuery, task was cancelled before it started.");
-        transmitCancelledError();
-        return false;
+    {
+        lock_guard<mutex> initCancelMtx(_initialCancelMtx);
+        if (_task->checkCancelled()) {
+            LOGS(_log, LOG_LVL_DEBUG, "runQuery, task was cancelled before it started.");
+            _transmitCancelledError();
+            return false;
+        }
+        _setTransmitIntended();
     }
 
     _czarId = _task->getCzarId();
@@ -186,7 +190,7 @@ bool QueryRunner::runQuery() {
 
     if (_task->checkCancelled()) {
         LOGS(_log, LOG_LVL_DEBUG, "runQuery, task was cancelled after locking tables.");
-        transmitCancelledError();
+        _transmitCancelledError();
         return false;
     }
 
@@ -345,7 +349,7 @@ bool QueryRunner::_dispatchChannel() {
         erred = true;
     }
     if (_cancelled) {
-        transmitCancelledError();
+        _transmitCancelledError();
     }
     // IMPORTANT, do not leave this function before this check has been made.
     util::InstanceCount icb(to_string(_task->getQueryId()) + "_rqb_LDB");  // LockupDB
@@ -376,12 +380,20 @@ bool QueryRunner::_dispatchChannel() {
     return !erred;
 }
 
-void QueryRunner::transmitCancelledError() {
-    auto sendChan = _task->getSendChannel();
-    if (sendChan->isDead()) {
-        return;
+void QueryRunner::_setTransmitIntended() {
+    auto sendC = _task->getSendChannel();
+    if (sendC == nullptr) {
+        return;  // This should never happen, but this function may be called in unusual places.
     }
-    sendChan->transmitCancel(_task);
+    sendC->setTransmitIntended();
+}
+
+void QueryRunner::_transmitCancelledError() {
+    auto sendC = _task->getSendChannel();
+    if (sendC == nullptr) {
+        return;  // This should never happen, but this function may be called in unusual places.
+    }
+    sendC->transmitCancel(_task);
 }
 
 void QueryRunner::cancel() {
