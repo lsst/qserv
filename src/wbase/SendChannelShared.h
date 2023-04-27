@@ -161,8 +161,12 @@ public:
     /// the same schema.
     void setSchemaCols(Task& task, std::vector<SchemaCol>& schemaCols);
 
-    /// @return a transmit data object indicating the errors in 'multiErr'.
+    /// Transmit data object indicating the errors in 'multiErr'.
+    /// @return true if the error is transmitted.
     bool buildAndTransmitError(util::MultiError& multiErr, std::shared_ptr<Task> const& task, bool cancelled);
+
+    /// Finish any existing transmits by sending an error.
+    void transmitCancel(std::shared_ptr<Task> const& task);
 
     /// Put the SQL results in a TransmitData object and transmit it to the czar
     /// if appropriate.

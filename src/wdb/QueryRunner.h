@@ -106,6 +106,9 @@ private:
 
     static size_t _getDesiredLimit();
 
+    /// Inform SendChannelShared that this Task, and all related Tasks, has been cancelled.
+    void transmitCancelledError();
+
     wbase::Task::Ptr const _task;  ///< Actual task
 
     qmeta::CzarId _czarId = 0;  ///< To be replaced with the czarId of the requesting czar.

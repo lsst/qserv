@@ -271,6 +271,16 @@ bool SendChannelShared::buildAndTransmitError(util::MultiError& multiErr, Task::
     return _prepTransmit(task, cancelled, lastIn);
 }
 
+void SendChannelShared::transmitCancel(std::shared_ptr<Task> const& task) {
+    if (isDead()) {
+        return;
+    }
+    util::Error error(-1, "query has been cancelled");
+    util::MultiError multiErr;
+    multiErr.push_back(error);
+    buildAndTransmitError(multiErr, task, true);
+}
+
 void SendChannelShared::setSchemaCols(Task& task, std::vector<SchemaCol>& schemaCols) {
     // _schemaCols should be identical for all tasks in this send channel.
     if (_schemaColsSet.exchange(true) == false) {

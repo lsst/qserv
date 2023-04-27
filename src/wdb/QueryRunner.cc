@@ -170,6 +170,7 @@ bool QueryRunner::runQuery() {
 
     if (_task->checkCancelled()) {
         LOGS(_log, LOG_LVL_DEBUG, "runQuery, task was cancelled before it started.");
+        transmitCancelledError();
         return false;
     }
 
@@ -185,6 +186,7 @@ bool QueryRunner::runQuery() {
 
     if (_task->checkCancelled()) {
         LOGS(_log, LOG_LVL_DEBUG, "runQuery, task was cancelled after locking tables.");
+        transmitCancelledError();
         return false;
     }
 
@@ -342,6 +344,9 @@ bool QueryRunner::_dispatchChannel() {
         _multiError.push_back(worker_err);
         erred = true;
     }
+    if (_cancelled) {
+        transmitCancelledError();
+    }
     // IMPORTANT, do not leave this function before this check has been made.
     util::InstanceCount icb(to_string(_task->getQueryId()) + "_rqb_LDB");  // LockupDB
     if (needToFreeRes) {
@@ -369,6 +374,14 @@ bool QueryRunner::_dispatchChannel() {
         }
     }
     return !erred;
+}
+
+void QueryRunner::transmitCancelledError() {
+    auto sendChan = _task->getSendChannel();
+    if (sendChan->isDead()) {
+        return;
+    }
+    sendChan->transmitCancel(_task);
 }
 
 void QueryRunner::cancel() {
