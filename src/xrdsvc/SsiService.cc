@@ -45,6 +45,7 @@
 #include "sql/SqlConnection.h"
 #include "sql/SqlConnectionFactory.h"
 #include "util/FileMonitor.h"
+#include "util/HoldTrack.h"
 #include "wbase/Base.h"
 #include "wconfig/WorkerConfig.h"
 #include "wconfig/WorkerConfigError.h"
@@ -76,6 +77,9 @@ namespace lsst::qserv::xrdsvc {
 SsiService::SsiService(XrdSsiLogger* log, wconfig::WorkerConfig const& workerConfig)
         : _mySqlConfig(workerConfig.getMySqlConfig()) {
     LOGS(_log, LOG_LVL_DEBUG, "SsiService starting...");
+
+    double timeDurationSeconds = 600.0;
+    util::HoldTrack::setup(timeDurationSeconds);
 
     if (not mysql::MySqlConnection::checkConnection(_mySqlConfig)) {
         LOGS(_log, LOG_LVL_FATAL, "Unable to connect to MySQL using configuration:" << _mySqlConfig);

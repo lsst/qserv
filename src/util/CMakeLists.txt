@@ -12,6 +12,7 @@ target_sources(util PRIVATE
     File.cc
     FileMonitor.cc
     Histogram.cc
+    HoldTrack.cc
     InstanceCount.cc
     Issue.cc
     MultiError.cc

@@ -40,6 +40,7 @@
 #include "proto/FrameBuffer.h"
 #include "proto/worker.pb.h"
 #include "util/InstanceCount.h"
+#include "util/HoldTrack.h"
 #include "util/Timer.h"
 #include "wbase/MsgProcessor.h"
 #include "wbase/SendChannelShared.h"
@@ -292,6 +293,7 @@ wbase::WorkerCommand::Ptr SsiRequest::parseWorkerCommand(char const* reqData, in
 
 /// Called by SSI to free resources.
 void SsiRequest::Finished(XrdSsiRequest& req, XrdSsiRespInfo const& rinfo, bool cancel) {  // Step 8
+    util::HoldTrack::Mark markA(ERR_LOC, "SsiRequest::Finished");
     if (cancel) {
         // Try to cancel all of the tasks, if there are any.
         for (auto&& wTask : _tasks) {

@@ -29,6 +29,7 @@
 #include "proto/ProtoHeaderWrap.h"
 #include "util/Bug.h"
 #include "util/Error.h"
+#include "util/HoldTrack.h"
 #include "util/MultiError.h"
 #include "util/Timer.h"
 #include "wbase/Task.h"
@@ -118,9 +119,12 @@ bool SendChannelShared::_addTransmit(Task::Ptr const& task, bool cancelled, bool
                                      TransmitData::Ptr const& tData, int qId, int jId) {
     QSERV_LOGCONTEXT_QUERY_JOB(qId, jId);
     assert(tData != nullptr);
+    util::HoldTrack::Mark markA(ERR_LOC, "_addTransmit");
 
     // This lock may be held for a very long time.
+    auto markMtx = make_shared<util::HoldTrack::Mark>(ERR_LOC, "_addTransmit Mtx");
     std::unique_lock<std::mutex> qLock(_queueMtx);
+    markMtx.reset();
     _transmitQueue.push(tData);
 
     // If _lastRecvd is true, the last message has already been transmitted and
@@ -157,6 +161,7 @@ bool SendChannelShared::_addTransmit(Task::Ptr const& task, bool cancelled, bool
 
 bool SendChannelShared::_transmit(bool erred, Task::Ptr const& task) {
     string idStr = "QID?";
+    util::HoldTrack::Mark markA(ERR_LOC, "_transmit");
 
     // Result data is transmitted in messages containing data and headers.
     // data - is the result data
@@ -207,7 +212,9 @@ bool SendChannelShared::_transmit(bool erred, Task::Ptr const& task) {
         // The first message needs to put its header data in metadata as there's
         // no previous message it could attach its header to.
         {
+            auto markMtx = make_shared<util::HoldTrack::Mark>(ERR_LOC, "_transmit Mtx");
             lock_guard<mutex> streamLock(_streamMutex);  // Must keep meta and buffer together.
+            markMtx.reset();
             if (_firstTransmit.exchange(false)) {
                 // Put the header for the first message in metadata
                 // _metaDataBuf must remain valid until Finished() is called.
@@ -226,8 +233,10 @@ bool SendChannelShared::_transmit(bool erred, Task::Ptr const& task) {
             // its own Task pointer.
             auto streamBuf = thisTransmit->getStreamBuffer(task);
             streamBuf->startTimer();
+            auto markSbMtx = make_shared<util::HoldTrack::Mark>(ERR_LOC, "_transmit SbMtx");
             bool sent = _sendBuf(streamLock, streamBuf, reallyLast, "transmitLoop " + idStr + " " + seqStr,
                                  scsSeq);
+            markSbMtx.reset();
 
             if (!sent) {
                 LOGS(_log, LOG_LVL_ERROR, "Failed to send " << idStr);
@@ -257,6 +266,7 @@ bool SendChannelShared::_sendBuf(lock_guard<mutex> const& streamLock, xrdsvc::St
 bool SendChannelShared::buildAndTransmitError(util::MultiError& multiErr, Task::Ptr const& task,
                                               bool cancelled) {
     auto qId = task->getQueryId();
+    util::HoldTrack::Mark markA(ERR_LOC, "buildAndTransmitError " + to_string(qId));
     bool scanInteractive = true;
     _waitTransmitLock(scanInteractive, qId);
     lock_guard<mutex> lock(_tMtx);
@@ -305,6 +315,7 @@ void SendChannelShared::setSchemaCols(Task& task, std::vector<SchemaCol>& schema
 bool SendChannelShared::buildAndTransmitResult(MYSQL_RES* mResult, int numFields, Task::Ptr const& task,
                                                bool largeResult, util::MultiError& multiErr,
                                                std::atomic<bool>& cancelled, bool& readRowsOk) {
+    util::HoldTrack::Mark markA(ERR_LOC, "buildAndTransmitResult");
     util::Timer transmitT;
     transmitT.start();
     double bufferFillSecs = 0.0;
@@ -406,6 +417,7 @@ TransmitData::Ptr SendChannelShared::_createTransmit(Task& task) {
 }
 
 bool SendChannelShared::_prepTransmit(Task::Ptr const& task, bool cancelled, bool lastIn) {
+    util::HoldTrack::Mark markA(ERR_LOC, "_prepTransmit");
     auto qId = task->getQueryId();
     int jId = task->getJobId();
 
