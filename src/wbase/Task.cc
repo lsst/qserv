@@ -47,6 +47,7 @@
 #include "proto/TaskMsgDigest.h"
 #include "proto/worker.pb.h"
 #include "util/Bug.h"
+#include "util/HoldTrack.h"
 #include "util/IterableFormatter.h"
 #include "wbase/Base.h"
 #include "wbase/SendChannelShared.h"
@@ -260,11 +261,13 @@ void Task::cancel() {
         return;
     }
 
+    util::HoldTrack::Mark markA(ERR_LOC, "Task::cancel A &&&");
     LOGS(_log, LOG_LVL_DEBUG, "Task::cancel " << getIdStr());
     auto qr = _taskQueryRunner;  // Need a copy in case _taskQueryRunner is reset.
     if (qr != nullptr) {
         qr->cancel();
     }
+    util::HoldTrack::Mark markB(ERR_LOC, "Task::cancel B &&&");
 
     // At this point, this code doesn't do anything. It may be
     // useful to remove this task from the scheduler, but it

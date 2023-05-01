@@ -41,6 +41,7 @@ namespace lsst::qserv::util {
 
 std::atomic<bool> HoldTrack::_enabled{false};
 HoldTrack::Ptr HoldTrack::_globalInstance;
+std::atomic<uint64_t> HoldTrack::_seq{0};  ///< Sequence number to keep items in order.
 
 void HoldTrack::setup(double durationLimitSeconds) {
     if (_globalInstance != nullptr) {
@@ -63,13 +64,14 @@ HoldTrack::KeyType HoldTrack::makeKey(Issue::Context const& ctx, std::string con
     TIMEPOINT timePoint = CLOCK::now();
     uint64_t tm = std::chrono::duration_cast<std::chrono::milliseconds>(timePoint.time_since_epoch()).count();
     thread::id tid = this_thread::get_id();
+    uint64_t seq = _getSeq();
 
     ostringstream os;
     ctx.print(os);
     os << " " << note;
     string str = os.str();
 
-    KeyType key = make_pair(tid, make_pair(tm, str));
+    KeyType key = make_pair(make_pair(tid, seq), make_pair(tm, str));
     return key;
 }
 
@@ -87,13 +89,16 @@ std::string HoldTrack::CheckKeySet() {
             std::chrono::duration_cast<std::chrono::milliseconds>(timePoint.time_since_epoch()).count();
     lock_guard<mutex> lockG(gi->_setMtx);
     for (auto const& key : gi->_keySet) {
-        thread::id tid = key.first;
+        thread::id tid = key.first.first;
+        uint64_t seq = key.first.second;
         uint64_t tm = key.second.first;
         string const& note = key.second.second;
 
         double durationMillisec = (now - tm);
         if (durationMillisec > gi->_durationLimitMillisec) {
-            os << "NEXT{tid:" << tid << " seconds=" << (durationMillisec / 1000.0) << " " << note << "}";
+            // &&& remove sequence from log message ???
+            os << "NEXT{tid:" << tid << " " << seq << "secs:" << (durationMillisec / 1000.0) << " " << note
+               << "}";
         }
     }
 

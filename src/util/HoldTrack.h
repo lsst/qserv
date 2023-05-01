@@ -49,8 +49,9 @@ class HoldTrack {
 public:
     using Ptr = std::shared_ptr<HoldTrack>;
 
-    /// Keys sorted by thread::id, uint64_t(time in milliseconds), string (note).
-    using KeyType = std::pair<std::thread::id, std::pair<uint64_t, std::string>>;
+    /// Keys sorted by thread::id, sequence_number, uint64_t(time in milliseconds), string (note).
+    /// sequence number is neede to keep items in order as too many items may occur in 1ms.
+    using KeyType = std::pair<std::pair<std::thread::id, uint64_t>, std::pair<uint64_t, std::string>>;
 
     HoldTrack() = delete;
     HoldTrack(HoldTrack const&) = delete;
@@ -102,8 +103,12 @@ private:
     /// Remove `key` from _keySet.
     void _removeKey(KeyType const& key);
 
+    /// Return the next sequence number.
+    static uint64_t _getSeq() { return _seq++; }
+
     static std::atomic<bool> _enabled;  ///< Set to true to enable tracking.
     static Ptr _globalInstance;         ///< Pointer to the global instance.
+    static std::atomic<uint64_t> _seq;  ///< Sequence number to keep items in order.
 
     double _durationLimitMillisec;  ///< Time that needs to pass before this item should be logged.
     std::set<KeyType> _keySet;      ///< Set of all marks sorted by thread id, time, and note.

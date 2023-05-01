@@ -146,7 +146,7 @@ util::TimerHistogram memWaitHisto("memWait Hist", {1, 5, 10, 20, 40});
 
 bool QueryRunner::runQuery() {
     util::InstanceCount ic(to_string(_task->getQueryId()) + "_rq_LDB");  // LockupDB
-    util::HoldTrack::Mark runQueryMarkA(ERR_LOC, "runQuery " + to_string(_task->getQueryId()));
+    util::HoldTrack::Mark runQueryMarkA(ERR_LOC, "&&& runQuery " + to_string(_task->getQueryId()));
     QSERV_LOGCONTEXT_QUERY_JOB(_task->getQueryId(), _task->getJobId());
     LOGS(_log, LOG_LVL_INFO,
          "QueryRunner::runQuery() tid=" << _task->getIdStr()
@@ -228,7 +228,7 @@ bool QueryRunner::runQuery() {
 }
 
 MYSQL_RES* QueryRunner::_primeResult(string const& query) {
-    util::HoldTrack::Mark markA(ERR_LOC, "primeResult " + to_string(_task->getQueryId()));
+    // &&& util::HoldTrack::Mark markA(ERR_LOC, "primeResult " + to_string(_task->getQueryId()));
     bool queryOk = _mysqlConn->queryUnbuffered(query);
     if (!queryOk) {
         sql::SqlErrorObject errObj;
@@ -265,7 +265,7 @@ private:
 };
 
 bool QueryRunner::_dispatchChannel() {
-    util::HoldTrack::Mark markA(ERR_LOC, "_dispatchChannel " + to_string(_task->getQueryId()));
+    // &&& util::HoldTrack::Mark markA(ERR_LOC, "_dispatchChannel " + to_string(_task->getQueryId()));
     bool erred = false;
     int numFields = -1;
     // readRowsOk remains true as long as there are no problems with reading/transmitting.
@@ -288,9 +288,7 @@ bool QueryRunner::_dispatchChannel() {
 
         auto taskSched = _task->getTaskScheduler();
         if (!_cancelled && !_task->getSendChannel()->isDead()) {
-            auto markB = make_shared<util::HoldTrack::Mark>(ERR_LOC, "getting query string");  //&&&
             string const& query = _task->getQueryString();
-            markB.reset();  //&&&
             util::Timer primeT;
             primeT.start();
             MYSQL_RES* res = _primeResult(query);  // This runs the SQL query, throws SqlErrorObj on failure.
@@ -309,7 +307,6 @@ bool QueryRunner::_dispatchChannel() {
 
             // This thread may have already been removed from the pool for
             // other reasons, such as taking too long.
-            auto markThrdP = make_shared<util::HoldTrack::Mark>(ERR_LOC, "remove from thread pool");  //&&&
             if (not _removedFromThreadPool) {
                 // This query has been answered by the database and the
                 // scheduler for this worker should stop waiting for it.
@@ -328,9 +325,9 @@ bool QueryRunner::_dispatchChannel() {
 
             // Transition task's state to the next one (reading data from MySQL and sending them to Czar).
             _task->queried();
-            markThrdP.reset();  //&&&
-            // Pass all information on to the shared object to add on to
-            // an existing message or build a new one as needed.
+            // markThrdP.reset();  //&&&
+            //  Pass all information on to the shared object to add on to
+            //  an existing message or build a new one as needed.
             if (_task->getSendChannel()->buildAndTransmitResult(res, numFields, _task, _largeResult,
                                                                 _multiError, _cancelled, readRowsOk)) {
                 erred = true;
@@ -347,7 +344,6 @@ bool QueryRunner::_dispatchChannel() {
             // TODO: Investigate an option for recording state transitions of the persistent
             // metadata store of the worker, or keeping the state transisitons in a separate transient
             // store that won't be affected by the task destruction.
-            util::HoldTrack::Mark markfinished(ERR_LOC, "_dispatchChannel query finished");
             _task->finished(std::chrono::system_clock::now());
         }
     } catch (sql::SqlErrorObject const& e) {
@@ -431,17 +427,23 @@ void QueryRunner::cancel() {
         }
     }
 
+    util::HoldTrack::Mark markB(ERR_LOC, "QueryRunner::cancel() B");
     auto streamB = _streamBuf.lock();
     if (streamB != nullptr) {
+        util::HoldTrack::Mark markB1(ERR_LOC, "QueryRunner::cancel() B1");
         streamB->cancel();
     }
 
+    /* &&&
     // This could be called after the task has been completed, so sendChannel
     // validation is needed.
+    util::HoldTrack::Mark markC(ERR_LOC, "QueryRunner::cancel() C");
     auto sChannel = _task->getSendChannel();
     if (sChannel != nullptr) {
+        util::HoldTrack::Mark markC1(ERR_LOC, "QueryRunner::cancel() C1");
         sChannel->kill("QueryRunner cancel");
     }
+    */
 }
 
 QueryRunner::~QueryRunner() {}

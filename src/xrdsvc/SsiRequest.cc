@@ -293,8 +293,9 @@ wbase::WorkerCommand::Ptr SsiRequest::parseWorkerCommand(char const* reqData, in
 
 /// Called by SSI to free resources.
 void SsiRequest::Finished(XrdSsiRequest& req, XrdSsiRespInfo const& rinfo, bool cancel) {  // Step 8
-    util::HoldTrack::Mark markA(ERR_LOC, "SsiRequest::Finished");
+    util::HoldTrack::Mark markA(ERR_LOC, "SsiRequest::Finished start");
     if (cancel) {
+        util::HoldTrack::Mark markA1(ERR_LOC, "SsiRequest::Finished cancel &&&");
         // Try to cancel all of the tasks, if there are any.
         for (auto&& wTask : _tasks) {
             auto task = wTask.lock();
@@ -304,6 +305,7 @@ void SsiRequest::Finished(XrdSsiRequest& req, XrdSsiRespInfo const& rinfo, bool 
         }
     }
 
+    util::HoldTrack::Mark markB(ERR_LOC, "SsiRequest::Finished _finMutex &&&");
     // This call is sync (blocking).
     // client finished retrieving response, or cancelled.
     // release response resources (e.g. buf)
@@ -318,6 +320,7 @@ void SsiRequest::Finished(XrdSsiRequest& req, XrdSsiRespInfo const& rinfo, bool 
         }
     }
 
+    util::HoldTrack::Mark markB1(ERR_LOC, "SsiRequest::Finished keepAlive &&&");
     auto keepAlive = freeSelfKeepAlive();
 
     // No buffers allocated, so don't need to free.

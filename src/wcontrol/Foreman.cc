@@ -80,7 +80,7 @@ Foreman::Foreman(Scheduler::Ptr const& scheduler, unsigned int poolSize, unsigne
 
     WorkerStats::setup();  // FUTURE: maybe add links to scheduler, _backend, etc?
 
-    _mark = make_shared<util::HoldTrack::Mark>(ERR_LOC, "&&& FormaneTest");
+    _mark = make_shared<util::HoldTrack::Mark>(ERR_LOC, "FormanTest");
 }
 
 Foreman::~Foreman() {
