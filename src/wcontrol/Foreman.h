@@ -116,7 +116,7 @@ private:
     /// For limiting the number of MySQL connections used for tasks.
     std::shared_ptr<wcontrol::SqlConnMgr> _sqlConnMgr;
 
-    util::HoldTrack::Mark::Ptr _mark;  // &&&
+    util::HoldTrack::Mark::Ptr _mark;
 };
 
 }  // namespace lsst::qserv::wcontrol

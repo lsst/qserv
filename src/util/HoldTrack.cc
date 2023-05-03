@@ -50,28 +50,28 @@ void HoldTrack::setup(double durationLimitSeconds) {
     _globalInstance = Ptr(new HoldTrack(durationLimitSeconds));
 }
 
-void HoldTrack::_addKey(KeyType const& key) {
-    lock_guard<mutex> lockG(_setMtx);
-    _keySet.insert(key);
-}
-
-void HoldTrack::_removeKey(KeyType const& key) {
-    lock_guard<mutex> lockG(_setMtx);
-    _keySet.erase(key);
-}
-
-HoldTrack::KeyType HoldTrack::makeKey(Issue::Context const& ctx, std::string const& note) {
-    TIMEPOINT timePoint = CLOCK::now();
-    uint64_t tm = std::chrono::duration_cast<std::chrono::milliseconds>(timePoint.time_since_epoch()).count();
-    thread::id tid = this_thread::get_id();
-    uint64_t seq = _getSeq();
-
+void HoldTrack::_addKey(KeyType const& key, Issue::Context const& ctx, string const& note) {
     ostringstream os;
     ctx.print(os);
     os << " " << note;
     string str = os.str();
 
-    KeyType key = make_pair(make_pair(tid, seq), make_pair(tm, str));
+    lock_guard<mutex> lockG(_mapMtx);
+    _keyMap[key] = str;
+}
+
+void HoldTrack::_removeKey(KeyType const& key) {
+    lock_guard<mutex> lockG(_mapMtx);
+    _keyMap.erase(key);
+}
+
+HoldTrack::KeyType HoldTrack::makeKey() {
+    TIMEPOINT timePoint = CLOCK::now();
+    uint64_t tm = std::chrono::duration_cast<std::chrono::milliseconds>(timePoint.time_since_epoch()).count();
+    thread::id tid = this_thread::get_id();
+    uint64_t seq = _getSeq();
+
+    KeyType key = make_pair(tid, make_pair(seq, tm));
     return key;
 }
 
@@ -87,17 +87,17 @@ std::string HoldTrack::CheckKeySet() {
     TIMEPOINT timePoint = CLOCK::now();
     uint64_t now =
             std::chrono::duration_cast<std::chrono::milliseconds>(timePoint.time_since_epoch()).count();
-    lock_guard<mutex> lockG(gi->_setMtx);
-    for (auto const& key : gi->_keySet) {
-        thread::id tid = key.first.first;
-        uint64_t seq = key.first.second;
-        uint64_t tm = key.second.first;
-        string const& note = key.second.second;
+    lock_guard<mutex> lockG(gi->_mapMtx);
+    for (auto const& elem : gi->_keyMap) {
+        auto const& key = elem.first;
+        thread::id tid = key.first;
+        uint64_t seq = key.second.first;
+        uint64_t tm = key.second.second;
+        string const& note = elem.second;
 
         double durationMillisec = (now - tm);
         if (durationMillisec > gi->_durationLimitMillisec) {
-            // &&& remove sequence from log message ???
-            os << "NEXT{tid:" << tid << " " << seq << "secs:" << (durationMillisec / 1000.0) << " " << note
+            os << "NEXT{tid:" << tid << " " << seq << " secs:" << (durationMillisec / 1000.0) << " " << note
                << "}";
         }
     }

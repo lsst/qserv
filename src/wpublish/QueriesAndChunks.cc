@@ -382,8 +382,8 @@ void QueriesAndChunks::examineAll() {
         }
     }
 
-    LOGS(_log, LOG_LVL_WARN, "&&& a " << util::HoldTrack::CheckKeySet());
-    LOGS(_log, LOG_LVL_DEBUG, "QueriesAndChunks::examineAll end &&&");
+    LOGS(_log, LOG_LVL_WARN, util::HoldTrack::CheckKeySet());
+    LOGS(_log, LOG_LVL_DEBUG, "QueriesAndChunks::examineAll end");
 }
 
 nlohmann::json QueriesAndChunks::statusToJson() {

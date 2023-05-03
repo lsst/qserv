@@ -146,7 +146,7 @@ util::TimerHistogram memWaitHisto("memWait Hist", {1, 5, 10, 20, 40});
 
 bool QueryRunner::runQuery() {
     util::InstanceCount ic(to_string(_task->getQueryId()) + "_rq_LDB");  // LockupDB
-    util::HoldTrack::Mark runQueryMarkA(ERR_LOC, "&&& runQuery " + to_string(_task->getQueryId()));
+    util::HoldTrack::Mark runQueryMarkA(ERR_LOC, "runQuery " + to_string(_task->getQueryId()));
     QSERV_LOGCONTEXT_QUERY_JOB(_task->getQueryId(), _task->getJobId());
     LOGS(_log, LOG_LVL_INFO,
          "QueryRunner::runQuery() tid=" << _task->getIdStr()
@@ -228,7 +228,6 @@ bool QueryRunner::runQuery() {
 }
 
 MYSQL_RES* QueryRunner::_primeResult(string const& query) {
-    // &&& util::HoldTrack::Mark markA(ERR_LOC, "primeResult " + to_string(_task->getQueryId()));
     bool queryOk = _mysqlConn->queryUnbuffered(query);
     if (!queryOk) {
         sql::SqlErrorObject errObj;
@@ -265,7 +264,6 @@ private:
 };
 
 bool QueryRunner::_dispatchChannel() {
-    // &&& util::HoldTrack::Mark markA(ERR_LOC, "_dispatchChannel " + to_string(_task->getQueryId()));
     bool erred = false;
     int numFields = -1;
     // readRowsOk remains true as long as there are no problems with reading/transmitting.
@@ -325,9 +323,9 @@ bool QueryRunner::_dispatchChannel() {
 
             // Transition task's state to the next one (reading data from MySQL and sending them to Czar).
             _task->queried();
-            // markThrdP.reset();  //&&&
             //  Pass all information on to the shared object to add on to
             //  an existing message or build a new one as needed.
+            // Note that _cancelled is passed as reference so changing _cancelled will stop transmits.
             if (_task->getSendChannel()->buildAndTransmitResult(res, numFields, _task, _largeResult,
                                                                 _multiError, _cancelled, readRowsOk)) {
                 erred = true;
@@ -434,16 +432,8 @@ void QueryRunner::cancel() {
         streamB->cancel();
     }
 
-    /* &&&
-    // This could be called after the task has been completed, so sendChannel
-    // validation is needed.
-    util::HoldTrack::Mark markC(ERR_LOC, "QueryRunner::cancel() C");
-    auto sChannel = _task->getSendChannel();
-    if (sChannel != nullptr) {
-        util::HoldTrack::Mark markC1(ERR_LOC, "QueryRunner::cancel() C1");
-        sChannel->kill("QueryRunner cancel");
-    }
-    */
+    // The send channel will die naturally on its own when xrootd stops talking to it
+    // or other tasks call _transmitCancelledError().
 }
 
 QueryRunner::~QueryRunner() {}

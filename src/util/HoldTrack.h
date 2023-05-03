@@ -49,9 +49,9 @@ class HoldTrack {
 public:
     using Ptr = std::shared_ptr<HoldTrack>;
 
-    /// Keys sorted by thread::id, sequence_number, uint64_t(time in milliseconds), string (note).
-    /// sequence number is neede to keep items in order as too many items may occur in 1ms.
-    using KeyType = std::pair<std::pair<std::thread::id, uint64_t>, std::pair<uint64_t, std::string>>;
+    /// Keys sorted by thread::id, sequence_number, uint64_t(time in milliseconds).
+    /// sequence number is needed to keep items in order as too many items may occur in 1ms.
+    using KeyType = std::pair<std::thread::id, std::pair<uint64_t, uint64_t>>;
 
     HoldTrack() = delete;
     HoldTrack(HoldTrack const&) = delete;
@@ -64,7 +64,7 @@ public:
     static void setup(double durationLimitSeconds);
 
     /// Make a KeyType object given the current information.
-    static KeyType makeKey(Issue::Context const& ctx, std::string const&);
+    static KeyType makeKey();
 
     /// Return a string detailing keys that have existed longer than `durationLimit`.
     static std::string CheckKeySet();
@@ -75,8 +75,8 @@ public:
         using Ptr = std::shared_ptr<Mark>;
         Mark(Issue::Context const& ctx, std::string const& note) {
             if (_enabled && _globalInstance != nullptr) {
-                _key = makeKey(ctx, note);
-                _globalInstance->_addKey(_key);
+                _key = makeKey();
+                _globalInstance->_addKey(_key, ctx, note);
                 _inserted = true;
             }
         }
@@ -97,10 +97,10 @@ private:
         _enabled = true;
     }
 
-    /// Add `key` to _keySet
-    void _addKey(KeyType const& key);
+    /// Add `key` to _keyMap with ctx prepended to note.
+    void _addKey(KeyType const& key, Issue::Context const& ctx, std::string const& note);
 
-    /// Remove `key` from _keySet.
+    /// Remove `key` from _keyMap.
     void _removeKey(KeyType const& key);
 
     /// Return the next sequence number.
@@ -110,9 +110,9 @@ private:
     static Ptr _globalInstance;         ///< Pointer to the global instance.
     static std::atomic<uint64_t> _seq;  ///< Sequence number to keep items in order.
 
-    double _durationLimitMillisec;  ///< Time that needs to pass before this item should be logged.
-    std::set<KeyType> _keySet;      ///< Set of all marks sorted by thread id, time, and note.
-    std::mutex _setMtx;             ///< protects _keySet;
+    double _durationLimitMillisec;           ///< Time that needs to pass before this item should be logged.
+    std::map<KeyType, std::string> _keyMap;  ///< Set of all marks sorted by thread id, time, and note.
+    std::mutex _mapMtx;                      ///< protects _keyMap;
 };
 
 }  // namespace lsst::qserv::util
