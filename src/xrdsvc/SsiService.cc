@@ -60,6 +60,7 @@
 #include "xrdsvc/XrdName.h"
 
 using namespace std;
+using namespace std::literals;
 
 class XrdPosixCallBack;  // Forward.
 
@@ -78,8 +79,7 @@ SsiService::SsiService(XrdSsiLogger* log, wconfig::WorkerConfig const& workerCon
         : _mySqlConfig(workerConfig.getMySqlConfig()) {
     LOGS(_log, LOG_LVL_DEBUG, "SsiService starting...");
 
-    double timeDurationSeconds = 600.0;
-    util::HoldTrack::setup(timeDurationSeconds);
+    util::HoldTrack::setup(10min);
 
     if (not mysql::MySqlConnection::checkConnection(_mySqlConfig)) {
         LOGS(_log, LOG_LVL_FATAL, "Unable to connect to MySQL using configuration:" << _mySqlConfig);

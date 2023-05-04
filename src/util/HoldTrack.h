@@ -49,9 +49,9 @@ class HoldTrack {
 public:
     using Ptr = std::shared_ptr<HoldTrack>;
 
-    /// Keys sorted by thread::id, sequence_number, uint64_t(time in milliseconds).
+    /// Keys sorted by thread::id, sequence_number, std::chrono::milliseconds.
     /// sequence number is needed to keep items in order as too many items may occur in 1ms.
-    using KeyType = std::pair<std::thread::id, std::pair<uint64_t, uint64_t>>;
+    using KeyType = std::pair<std::thread::id, std::pair<uint64_t, std::chrono::milliseconds>>;
 
     HoldTrack() = delete;
     HoldTrack(HoldTrack const&) = delete;
@@ -61,7 +61,7 @@ public:
 
     /// Setup the global instance for storing hold information.
     /// Items that have existed for longer than `durationLimit` will be logged.
-    static void setup(double durationLimitSeconds);
+    static void setup(std::chrono::milliseconds durationLimitMillisec);
 
     /// Make a KeyType object given the current information.
     static KeyType makeKey();
@@ -74,7 +74,7 @@ public:
     public:
         using Ptr = std::shared_ptr<Mark>;
         Mark(Issue::Context const& ctx, std::string const& note) {
-            if (_enabled && _globalInstance != nullptr) {
+            if (_globalInstance != nullptr) {
                 _key = makeKey();
                 _globalInstance->_addKey(_key, ctx, note);
                 _inserted = true;
@@ -93,9 +93,8 @@ public:
     };
 
 private:
-    HoldTrack(double durationLimitSeconds) : _durationLimitMillisec(durationLimitSeconds * 1000.0) {
-        _enabled = true;
-    }
+    HoldTrack(std::chrono::milliseconds durationLimitMillisec)
+            : _durationLimitMillisec(durationLimitMillisec) {}
 
     /// Add `key` to _keyMap with ctx prepended to note.
     void _addKey(KeyType const& key, Issue::Context const& ctx, std::string const& note);
@@ -106,11 +105,11 @@ private:
     /// Return the next sequence number.
     static uint64_t _getSeq() { return _seq++; }
 
-    static std::atomic<bool> _enabled;  ///< Set to true to enable tracking.
     static Ptr _globalInstance;         ///< Pointer to the global instance.
     static std::atomic<uint64_t> _seq;  ///< Sequence number to keep items in order.
 
-    double _durationLimitMillisec;           ///< Time that needs to pass before this item should be logged.
+    /// Time that needs to pass before this item should be logged.
+    std::chrono::milliseconds _durationLimitMillisec;
     std::map<KeyType, std::string> _keyMap;  ///< Set of all marks sorted by thread id, time, and note.
     std::mutex _mapMtx;                      ///< protects _keyMap;
 };

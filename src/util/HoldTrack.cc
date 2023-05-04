@@ -39,15 +39,14 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.util.HoldTrack");
 
 namespace lsst::qserv::util {
 
-std::atomic<bool> HoldTrack::_enabled{false};
 HoldTrack::Ptr HoldTrack::_globalInstance;
 std::atomic<uint64_t> HoldTrack::_seq{0};  ///< Sequence number to keep items in order.
 
-void HoldTrack::setup(double durationLimitSeconds) {
+void HoldTrack::setup(std::chrono::milliseconds durationLimitMillisec) {
     if (_globalInstance != nullptr) {
         throw util::Bug(ERR_LOC, "HoldTrack::setup called when already setup!");
     }
-    _globalInstance = Ptr(new HoldTrack(durationLimitSeconds));
+    _globalInstance = Ptr(new HoldTrack(durationLimitMillisec));
 }
 
 void HoldTrack::_addKey(KeyType const& key, Issue::Context const& ctx, string const& note) {
@@ -67,7 +66,8 @@ void HoldTrack::_removeKey(KeyType const& key) {
 
 HoldTrack::KeyType HoldTrack::makeKey() {
     TIMEPOINT timePoint = CLOCK::now();
-    uint64_t tm = std::chrono::duration_cast<std::chrono::milliseconds>(timePoint.time_since_epoch()).count();
+    std::chrono::milliseconds tm =
+            std::chrono::duration_cast<std::chrono::milliseconds>(timePoint.time_since_epoch());
     thread::id tid = this_thread::get_id();
     uint64_t seq = _getSeq();
 
@@ -80,25 +80,24 @@ std::string HoldTrack::CheckKeySet() {
     os << "HoldTrack::CheckKeySet held keys ";
 
     auto gi = _globalInstance;
-    if (!_enabled || gi == nullptr) {
+    if (gi == nullptr) {
         os << "diasabled";
         return os.str();
     }
     TIMEPOINT timePoint = CLOCK::now();
-    uint64_t now =
-            std::chrono::duration_cast<std::chrono::milliseconds>(timePoint.time_since_epoch()).count();
+    auto now = std::chrono::duration_cast<std::chrono::milliseconds>(timePoint.time_since_epoch());
     lock_guard<mutex> lockG(gi->_mapMtx);
     for (auto const& elem : gi->_keyMap) {
         auto const& key = elem.first;
         thread::id tid = key.first;
         uint64_t seq = key.second.first;
-        uint64_t tm = key.second.second;
+        std::chrono::milliseconds tm = key.second.second;
         string const& note = elem.second;
 
-        double durationMillisec = (now - tm);
+        std::chrono::milliseconds durationMillisec = (now - tm);
         if (durationMillisec > gi->_durationLimitMillisec) {
-            os << "NEXT{tid:" << tid << " " << seq << " secs:" << (durationMillisec / 1000.0) << " " << note
-               << "}";
+            os << "NEXT{tid:" << tid << " " << seq << " secs:" << (durationMillisec.count() / 1000.0) << " "
+               << note << "}";
         }
     }
 

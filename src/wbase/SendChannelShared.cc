@@ -121,9 +121,7 @@ bool SendChannelShared::_addTransmit(Task::Ptr const& task, bool cancelled, bool
     assert(tData != nullptr);
 
     // This lock may be held for a very long time.
-    auto markMtx = make_shared<util::HoldTrack::Mark>(ERR_LOC, "_addTransmit Mtx");
     std::unique_lock<std::mutex> qLock(_queueMtx);
-    markMtx.reset();
     _transmitQueue.push(tData);
 
     // If _lastRecvd is true, the last message has already been transmitted and
@@ -210,9 +208,7 @@ bool SendChannelShared::_transmit(bool erred, Task::Ptr const& task) {
         // The first message needs to put its header data in metadata as there's
         // no previous message it could attach its header to.
         {
-            auto markMtx = make_shared<util::HoldTrack::Mark>(ERR_LOC, "_transmit Mtx");
             lock_guard<mutex> streamLock(_streamMutex);  // Must keep meta and buffer together.
-            markMtx.reset();
             if (_firstTransmit.exchange(false)) {
                 // Put the header for the first message in metadata
                 // _metaDataBuf must remain valid until Finished() is called.
@@ -231,10 +227,8 @@ bool SendChannelShared::_transmit(bool erred, Task::Ptr const& task) {
             // its own Task pointer.
             auto streamBuf = thisTransmit->getStreamBuffer(task);
             streamBuf->startTimer();
-            auto markSbMtx = make_shared<util::HoldTrack::Mark>(ERR_LOC, "_transmit SbMtx " + seqStr);
             bool sent = _sendBuf(streamLock, streamBuf, reallyLast, "transmitLoop " + idStr + " " + seqStr,
                                  scsSeq);
-            markSbMtx.reset();
 
             if (!sent) {
                 LOGS(_log, LOG_LVL_ERROR, "Failed to send " << idStr);

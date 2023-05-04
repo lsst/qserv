@@ -228,6 +228,7 @@ bool QueryRunner::runQuery() {
 }
 
 MYSQL_RES* QueryRunner::_primeResult(string const& query) {
+    util::HoldTrack::Mark mark(ERR_LOC, "QR _primeResult() QID=" + _task->getIdStr());
     bool queryOk = _mysqlConn->queryUnbuffered(query);
     if (!queryOk) {
         sql::SqlErrorObject errObj;
@@ -400,6 +401,7 @@ void QueryRunner::cancel() {
     // QueryRunner::cancel() should only be called by Task::cancel()
     // to keep the bookkeeping straight.
     LOGS(_log, LOG_LVL_WARN, "Trying QueryRunner::cancel() call");
+    util::HoldTrack::Mark mark(ERR_LOC, "QR cancel() QID=" + _task->getIdStr());
     _cancelled = true;
 
     if (_mysqlConn == nullptr) {
@@ -425,10 +427,8 @@ void QueryRunner::cancel() {
         }
     }
 
-    util::HoldTrack::Mark markB(ERR_LOC, "QueryRunner::cancel() B");
     auto streamB = _streamBuf.lock();
     if (streamB != nullptr) {
-        util::HoldTrack::Mark markB1(ERR_LOC, "QueryRunner::cancel() B1");
         streamB->cancel();
     }
 
