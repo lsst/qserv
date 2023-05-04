@@ -74,7 +74,16 @@ class Task;
 /// '_lastRecvd' is also set to true when an error message is sent. When
 /// there's an error, the czar will throw out all data related to the
 /// chunk, since it is unreliable. The error needs to be sent immediately to
-/// waste as little time processing useless results as possible
+/// waste as little time processing useless results as possible.
+///
+/// Cancellation is tricky, it's easy to introduce race conditions that would
+/// result in deadlock. It should work correctly given the following:
+///    - buildAndTransmitResult() continues transmitting unless the Task
+///      that called it is cancelled. Having a different Task break the loop
+///      would be risky.
+///    - buildAndTransmitError() error must be allowed to attempt to transmit
+///      even if the Task has been cancelled. This prevents other Tasks getting
+///      wedged waiting for data to be queued.
 class SendChannelShared {
 public:
     using Ptr = std::shared_ptr<SendChannelShared>;
@@ -161,12 +170,23 @@ public:
     /// the same schema.
     void setSchemaCols(Task& task, std::vector<SchemaCol>& schemaCols);
 
-    /// @return a transmit data object indicating the errors in 'multiErr'.
+    /// Transmit data object indicating the errors in 'multiErr'.
+    /// @return true if the error is transmitted.
+    /// Errors transmissions are attempted even if cancelled is true.
     bool buildAndTransmitError(util::MultiError& multiErr, std::shared_ptr<Task> const& task, bool cancelled);
+
+    /// Set true to indicate that a Task intends to transmit. This needs to be set
+    /// before any transmissions are started or there could be race conditions.
+    bool setTransmitIntended();
+
+    /// Finish any existing transmits by sending an error.
+    void transmitCancel(std::shared_ptr<Task> const& task);
 
     /// Put the SQL results in a TransmitData object and transmit it to the czar
     /// if appropriate.
     /// @ return true if there was an error.
+    /// Note: `cancelled` is a reference used to break the transmit loop if the calling Task
+    ///      is cancelled. Having anything else set `cancelled` to true could result in deadlock.
     bool buildAndTransmitResult(MYSQL_RES* mResult, int numFields, std::shared_ptr<Task> const& task,
                                 bool largeResult, util::MultiError& multiErr, std::atomic<bool>& cancelled,
                                 bool& readRowsOk);
@@ -290,6 +310,10 @@ private:
 
     std::shared_ptr<TransmitData> _transmitData;  ///< TransmitData object
     mutable std::mutex _tMtx;                     ///< protects _transmitData
+
+    std::atomic<bool> _transmitIntended{
+            false};                       ///< Set to true once a Task knows it will transmit something.
+    std::atomic<bool> _cancelled{false};  ///< Set to true when transmitCancel is called.
 
     std::shared_ptr<util::InstanceCount> _icPtr;  ///< temporary for LockupDB
 };

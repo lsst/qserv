@@ -154,6 +154,10 @@ void StreamBuffer::cancel() {
     // better a possible leak than corrupted memory or a permanently wedged
     // thread in a limited pool.
     // In any case, this code having an effect should be extremely rare.
+    // FUTURE: It would be nice to eliminate this possible memory leak.
+    //       Possible fix, atomic<bool> _recycleCalled, create thread
+    //       to check if _recycleCalled == true. If true or 24 hours pass
+    //       use `Ptr keepAlive = std::move(_selfKeepAlive);` to kill the object.
     {
         std::lock_guard<std::mutex> lg(_mtx);
         _doneWithThis = true;

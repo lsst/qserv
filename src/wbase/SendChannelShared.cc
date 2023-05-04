@@ -29,6 +29,7 @@
 #include "proto/ProtoHeaderWrap.h"
 #include "util/Bug.h"
 #include "util/Error.h"
+#include "util/HoldTrack.h"
 #include "util/MultiError.h"
 #include "util/Timer.h"
 #include "wbase/Task.h"
@@ -269,6 +270,24 @@ bool SendChannelShared::buildAndTransmitError(util::MultiError& multiErr, Task::
     LOGS(_log, LOG_LVL_DEBUG, "SendChannelShared::buildAndTransmitError " << _dumpTr());
     bool lastIn = true;
     return _prepTransmit(task, cancelled, lastIn);
+}
+
+bool SendChannelShared::setTransmitIntended() { return _transmitIntended.exchange(true); }
+
+void SendChannelShared::transmitCancel(std::shared_ptr<Task> const& task) {
+    if (isDead()) {
+        return;
+    }
+    if (_cancelled.exchange(true)) {
+        return;
+    }
+    // If _transmitIntended is false, there's no need to transmit anything.
+    if (_transmitIntended) {
+        util::Error error(-1, "query has been cancelled");
+        util::MultiError multiErr;
+        multiErr.push_back(error);
+        buildAndTransmitError(multiErr, task, true);
+    }
 }
 
 void SendChannelShared::setSchemaCols(Task& task, std::vector<SchemaCol>& schemaCols) {

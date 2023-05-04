@@ -45,6 +45,7 @@
 #include "sql/SqlConnection.h"
 #include "sql/SqlConnectionFactory.h"
 #include "util/FileMonitor.h"
+#include "util/HoldTrack.h"
 #include "wbase/Base.h"
 #include "wconfig/WorkerConfig.h"
 #include "wconfig/WorkerConfigError.h"
@@ -59,6 +60,7 @@
 #include "xrdsvc/XrdName.h"
 
 using namespace std;
+using namespace std::literals;
 
 class XrdPosixCallBack;  // Forward.
 
@@ -76,6 +78,8 @@ namespace lsst::qserv::xrdsvc {
 SsiService::SsiService(XrdSsiLogger* log, wconfig::WorkerConfig const& workerConfig)
         : _mySqlConfig(workerConfig.getMySqlConfig()) {
     LOGS(_log, LOG_LVL_DEBUG, "SsiService starting...");
+
+    util::HoldTrack::setup(10min);
 
     if (not mysql::MySqlConnection::checkConnection(_mySqlConfig)) {
         LOGS(_log, LOG_LVL_FATAL, "Unable to connect to MySQL using configuration:" << _mySqlConfig);

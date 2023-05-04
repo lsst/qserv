@@ -26,6 +26,7 @@
 
 // Qserv headers
 #include "util/Bug.h"
+#include "util/HoldTrack.h"
 #include "wbase/UserQueryInfo.h"
 #include "wsched/BlendScheduler.h"
 #include "wsched/SchedulerBase.h"
@@ -380,6 +381,8 @@ void QueriesAndChunks::examineAll() {
             }
         }
     }
+
+    LOGS(_log, LOG_LVL_WARN, util::HoldTrack::CheckKeySet());
     LOGS(_log, LOG_LVL_DEBUG, "QueriesAndChunks::examineAll end");
 }
 

@@ -58,6 +58,7 @@
 #include "util/Bug.h"
 #include "util/common.h"
 #include "util/IterableFormatter.h"
+#include "util/HoldTrack.h"
 #include "util/MultiError.h"
 #include "util/StringHash.h"
 #include "util/Timer.h"
@@ -145,6 +146,7 @@ util::TimerHistogram memWaitHisto("memWait Hist", {1, 5, 10, 20, 40});
 
 bool QueryRunner::runQuery() {
     util::InstanceCount ic(to_string(_task->getQueryId()) + "_rq_LDB");  // LockupDB
+    util::HoldTrack::Mark runQueryMarkA(ERR_LOC, "runQuery " + to_string(_task->getQueryId()));
     QSERV_LOGCONTEXT_QUERY_JOB(_task->getQueryId(), _task->getJobId());
     LOGS(_log, LOG_LVL_INFO,
          "QueryRunner::runQuery() tid=" << _task->getIdStr()
@@ -168,9 +170,14 @@ bool QueryRunner::runQuery() {
     };
     Release release(_task, this);
 
-    if (_task->checkCancelled()) {
-        LOGS(_log, LOG_LVL_DEBUG, "runQuery, task was cancelled before it started.");
-        return false;
+    {
+        lock_guard<mutex> initCancelMtx(_initialCancelMtx);
+        if (_task->checkCancelled()) {
+            LOGS(_log, LOG_LVL_DEBUG, "runQuery, task was cancelled before it started.");
+            _transmitCancelledError();
+            return false;
+        }
+        _setTransmitIntended();
     }
 
     _czarId = _task->getCzarId();
@@ -185,6 +192,7 @@ bool QueryRunner::runQuery() {
 
     if (_task->checkCancelled()) {
         LOGS(_log, LOG_LVL_DEBUG, "runQuery, task was cancelled after locking tables.");
+        _transmitCancelledError();
         return false;
     }
 
@@ -220,6 +228,7 @@ bool QueryRunner::runQuery() {
 }
 
 MYSQL_RES* QueryRunner::_primeResult(string const& query) {
+    util::HoldTrack::Mark mark(ERR_LOC, "QR _primeResult() QID=" + _task->getIdStr());
     bool queryOk = _mysqlConn->queryUnbuffered(query);
     if (!queryOk) {
         sql::SqlErrorObject errObj;
@@ -315,9 +324,9 @@ bool QueryRunner::_dispatchChannel() {
 
             // Transition task's state to the next one (reading data from MySQL and sending them to Czar).
             _task->queried();
-            // Pass all information on to the shared object to add on to
-            // an existing message or build a new one as needed.
-            util::InstanceCount ica(to_string(_task->getQueryId()) + "_rqa_LDB");  // LockupDB
+            //  Pass all information on to the shared object to add on to
+            //  an existing message or build a new one as needed.
+            // Note that _cancelled is passed as reference so changing _cancelled will stop transmits.
             if (_task->getSendChannel()->buildAndTransmitResult(res, numFields, _task, _largeResult,
                                                                 _multiError, _cancelled, readRowsOk)) {
                 erred = true;
@@ -342,15 +351,16 @@ bool QueryRunner::_dispatchChannel() {
         _multiError.push_back(worker_err);
         erred = true;
     }
+    if (_cancelled) {
+        _transmitCancelledError();
+    }
     // IMPORTANT, do not leave this function before this check has been made.
-    util::InstanceCount icb(to_string(_task->getQueryId()) + "_rqb_LDB");  // LockupDB
     if (needToFreeRes) {
         needToFreeRes = false;
         // All rows have been read out or there was an error. In
         // either case resources need to be freed.
         _mysqlConn->freeResult();
     }
-    util::InstanceCount icc(to_string(_task->getQueryId()) + "_rqc_LDB");  // LockupDB
     if (!readRowsOk) {
         // This means a there was a transmit error and there's no way to
         // send anything to the czar. However, there were mysql results
@@ -371,10 +381,27 @@ bool QueryRunner::_dispatchChannel() {
     return !erred;
 }
 
+void QueryRunner::_setTransmitIntended() {
+    auto sendC = _task->getSendChannel();
+    if (sendC == nullptr) {
+        return;  // This should never happen, but this function may be called in unusual places.
+    }
+    sendC->setTransmitIntended();
+}
+
+void QueryRunner::_transmitCancelledError() {
+    auto sendC = _task->getSendChannel();
+    if (sendC == nullptr) {
+        return;  // This should never happen, but this function may be called in unusual places.
+    }
+    sendC->transmitCancel(_task);
+}
+
 void QueryRunner::cancel() {
     // QueryRunner::cancel() should only be called by Task::cancel()
     // to keep the bookkeeping straight.
     LOGS(_log, LOG_LVL_WARN, "Trying QueryRunner::cancel() call");
+    util::HoldTrack::Mark mark(ERR_LOC, "QR cancel() QID=" + _task->getIdStr());
     _cancelled = true;
 
     if (_mysqlConn == nullptr) {
@@ -405,12 +432,8 @@ void QueryRunner::cancel() {
         streamB->cancel();
     }
 
-    // This could be called after the task has been completed, so sendChannel
-    // validation is needed.
-    auto sChannel = _task->getSendChannel();
-    if (sChannel != nullptr) {
-        sChannel->kill("QueryRunner cancel");
-    }
+    // The send channel will die naturally on its own when xrootd stops talking to it
+    // or other tasks call _transmitCancelledError().
 }
 
 QueryRunner::~QueryRunner() {}

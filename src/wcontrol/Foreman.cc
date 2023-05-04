@@ -79,6 +79,8 @@ Foreman::Foreman(Scheduler::Ptr const& scheduler, unsigned int poolSize, unsigne
     _workerCommandPool = util::ThreadPool::newThreadPool(poolSize, _workerCommandQueue);
 
     WorkerStats::setup();  // FUTURE: maybe add links to scheduler, _backend, etc?
+
+    _mark = make_shared<util::HoldTrack::Mark>(ERR_LOC, "Forman Test Msg");
 }
 
 Foreman::~Foreman() {
