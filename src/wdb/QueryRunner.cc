@@ -170,14 +170,9 @@ bool QueryRunner::runQuery() {
     };
     Release release(_task, this);
 
-    {
-        lock_guard<mutex> initCancelMtx(_initialCancelMtx);
-        if (_task->checkCancelled()) {
-            LOGS(_log, LOG_LVL_DEBUG, "runQuery, task was cancelled before it started.");
-            _transmitCancelledError();
-            return false;
-        }
-        _setTransmitIntended();
+    if (_task->checkCancelled()) {
+        LOGS(_log, LOG_LVL_DEBUG, "runQuery, task was cancelled before it started.");
+        return false;
     }
 
     _czarId = _task->getCzarId();
@@ -192,7 +187,6 @@ bool QueryRunner::runQuery() {
 
     if (_task->checkCancelled()) {
         LOGS(_log, LOG_LVL_DEBUG, "runQuery, task was cancelled after locking tables.");
-        _transmitCancelledError();
         return false;
     }
 
@@ -351,9 +345,7 @@ bool QueryRunner::_dispatchChannel() {
         _multiError.push_back(worker_err);
         erred = true;
     }
-    if (_cancelled) {
-        _transmitCancelledError();
-    }
+
     // IMPORTANT, do not leave this function before this check has been made.
     if (needToFreeRes) {
         needToFreeRes = false;
@@ -379,22 +371,6 @@ bool QueryRunner::_dispatchChannel() {
         }
     }
     return !erred;
-}
-
-void QueryRunner::_setTransmitIntended() {
-    auto sendC = _task->getSendChannel();
-    if (sendC == nullptr) {
-        return;  // This should never happen, but this function may be called in unusual places.
-    }
-    sendC->setTransmitIntended();
-}
-
-void QueryRunner::_transmitCancelledError() {
-    auto sendC = _task->getSendChannel();
-    if (sendC == nullptr) {
-        return;  // This should never happen, but this function may be called in unusual places.
-    }
-    sendC->transmitCancel(_task);
 }
 
 void QueryRunner::cancel() {

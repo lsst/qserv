@@ -175,13 +175,6 @@ public:
     /// Errors transmissions are attempted even if cancelled is true.
     bool buildAndTransmitError(util::MultiError& multiErr, std::shared_ptr<Task> const& task, bool cancelled);
 
-    /// Set true to indicate that a Task intends to transmit. This needs to be set
-    /// before any transmissions are started or there could be race conditions.
-    bool setTransmitIntended();
-
-    /// Finish any existing transmits by sending an error.
-    void transmitCancel(std::shared_ptr<Task> const& task);
-
     /// Put the SQL results in a TransmitData object and transmit it to the czar
     /// if appropriate.
     /// @ return true if there was an error.
@@ -310,10 +303,6 @@ private:
 
     std::shared_ptr<TransmitData> _transmitData;  ///< TransmitData object
     mutable std::mutex _tMtx;                     ///< protects _transmitData
-
-    std::atomic<bool> _transmitIntended{
-            false};                       ///< Set to true once a Task knows it will transmit something.
-    std::atomic<bool> _cancelled{false};  ///< Set to true when transmitCancel is called.
 
     std::shared_ptr<util::InstanceCount> _icPtr;  ///< temporary for LockupDB
 };
