@@ -157,42 +157,20 @@ json HttpQservMonitorModule::_workers() {
     job->start();
     job->wait();
 
-    json result;
+    json result = json::object();
+    result["status"] = json::object();
+
     map<string, set<int>> schedulers2chunks;
     set<int> chunks;
-    auto&& status = job->qservStatus();
-    for (auto&& entry : status.workers) {
-        auto&& worker = entry.first;
-        bool success = entry.second;
-        if (success) {
-            auto info = status.info.at(worker);
-            if (!keepResources) {
-                info["resources"] = json::array();
-            }
-            result["status"][worker]["success"] = 1;
-            result["status"][worker]["info"] = info;
-            result["status"][worker]["queries"] = _getQueries(info);
-            auto&& schedulers = info["processor"]["queries"]["blend_scheduler"]["schedulers"];
-            for (auto&& scheduler : schedulers) {
-                string const scheduerName = scheduler["name"];
-                for (auto&& chunk2tasks : scheduler["chunk_to_num_tasks"]) {
-                    int const chunk = chunk2tasks[0];
-                    schedulers2chunks[scheduerName].insert(chunk);
-                    chunks.insert(chunk);
-                }
-            }
-        } else {
-            result["status"][worker]["success"] = 0;
-        }
+
+    QservStatus const& status = job->qservStatus();
+    for (auto itr : status.workers) {
+        string const& worker = itr.first;
+        bool const success = itr.second;
+        _processWorkerInfo(worker, success, keepResources, status.info.at(worker), result["status"],
+                           schedulers2chunks, chunks);
     }
-    json resultSchedulers2chunks;
-    for (auto&& entry : schedulers2chunks) {
-        auto&& scheduerName = entry.first;
-        for (auto&& chunk : entry.second) {
-            resultSchedulers2chunks[scheduerName].push_back(chunk);
-        }
-    }
-    result["schedulers_to_chunks"] = resultSchedulers2chunks;
+    result["schedulers_to_chunks"] = _schedulers2chunks2json(schedulers2chunks);
     result["chunks"] = _chunkInfo(chunks);
     return result;
 }
@@ -203,6 +181,7 @@ json HttpQservMonitorModule::_worker() {
 
     auto const worker = params().at("worker");
     unsigned int const timeoutSec = query().optionalUInt("timeout_sec", workerResponseTimeoutSec());
+    bool const keepResources = query().optionalUInt("keep_resources", 0) != 0;
 
     debug(__func__, "worker=" + worker);
     debug(__func__, "timeout_sec=" + to_string(timeoutSec));
@@ -214,35 +193,55 @@ json HttpQservMonitorModule::_worker() {
                                                                                      onFinish, timeoutSec);
     request->wait();
 
-    json result;
+    json result = json::object();
+    result["status"] = json::object();
+
     map<string, set<int>> schedulers2chunks;
     set<int> chunks;
-    if (request->extendedState() == QservMgtRequest::ExtendedState::SUCCESS) {
-        auto info = request->info();
-        result["status"][worker]["success"] = 1;
-        result["status"][worker]["info"] = info;
-        result["status"][worker]["queries"] = _getQueries(info);
-        auto&& schedulers = info["processor"]["queries"]["blend_scheduler"]["schedulers"];
-        for (auto&& scheduler : schedulers) {
-            string const scheduerName = scheduler["name"];
-            for (auto&& chunk2tasks : scheduler["chunk_to_num_tasks"]) {
+
+    bool const success = request->extendedState() == QservMgtRequest::ExtendedState::SUCCESS;
+    _processWorkerInfo(worker, success, keepResources, request->info(), result["status"], schedulers2chunks,
+                       chunks);
+    result["schedulers_to_chunks"] = _schedulers2chunks2json(schedulers2chunks);
+    result["chunks"] = _chunkInfo(chunks);
+    return result;
+}
+
+void HttpQservMonitorModule::_processWorkerInfo(string const& worker, bool success, bool keepResources,
+                                                json const& inWorkerInfo, json& statusRef,
+                                                map<string, set<int>>& schedulers2chunks,
+                                                set<int>& chunks) const {
+    statusRef[worker] = json::object();
+    json& workerRef = statusRef[worker];
+    workerRef["success"] = success ? 1 : 0;
+
+    if (success) {
+        workerRef["info"] = inWorkerInfo;
+        json& info = workerRef["info"];
+        if (!keepResources) {
+            info["resources"] = json::array();
+        }
+        workerRef["queries"] = _getQueries(info);
+        for (json const& scheduler :
+             info.at("processor").at("queries").at("blend_scheduler").at("schedulers")) {
+            string const scheduerName = scheduler.at("name");
+            for (json const& chunk2tasks : scheduler.at("chunk_to_num_tasks")) {
                 int const chunk = chunk2tasks[0];
                 schedulers2chunks[scheduerName].insert(chunk);
                 chunks.insert(chunk);
             }
         }
-    } else {
-        result["status"][worker]["success"] = 0;
     }
-    json resultSchedulers2chunks;
-    for (auto&& entry : schedulers2chunks) {
-        auto&& scheduerName = entry.first;
-        for (auto&& chunk : entry.second) {
-            resultSchedulers2chunks[scheduerName].push_back(chunk);
+}
+
+json HttpQservMonitorModule::_schedulers2chunks2json(map<string, set<int>> const& schedulers2chunks) const {
+    json result;
+    for (auto itr : schedulers2chunks) {
+        string const& scheduerName = itr.first;
+        for (int const chunk : itr.second) {
+            result[scheduerName].push_back(chunk);
         }
     }
-    result["schedulers_to_chunks"] = resultSchedulers2chunks;
-    result["chunks"] = _chunkInfo(chunks);
     return result;
 }
 
@@ -283,7 +282,7 @@ json HttpQservMonitorModule::_userQueries() {
     map<QueryId, string> queryId2scheduler;
     auto&& status = job->qservStatus();
     for (auto&& entry : status.workers) {
-        auto&& worker = entry.first;
+        string const& worker = entry.first;
         bool success = entry.second;
         if (success) {
             auto info = status.info.at(worker);
@@ -445,7 +444,7 @@ json HttpQservMonitorModule::_pastUserQueries(Connection::Ptr& conn, string cons
             result.push_back(resultRow);
         }
         if (includeMessages) {
-            for (auto& queryInfo : result) {
+            for (auto&& queryInfo : result) {
                 string const query = g.select(Sql::STAR) + g.from("QMessages") +
                                      g.where(g.eq("queryId", queryInfo["queryId"].get<QueryId>())) +
                                      g.orderBy(make_pair("timestamp", "ASC"));
@@ -469,11 +468,12 @@ json HttpQservMonitorModule::_pastUserQueries(Connection::Ptr& conn, string cons
     return result;
 }
 
-json HttpQservMonitorModule::_getQueries(json& workerInfo) const {
+json HttpQservMonitorModule::_getQueries(json const& workerInfo) const {
     // Find identifiers of all queries in the wait queues of all schedulers
     set<QueryId> qids;
-    for (auto&& scheduler : workerInfo.at("processor").at("queries").at("blend_scheduler").at("schedulers")) {
-        for (auto&& entry : scheduler.at("query_id_to_count")) {
+    for (json const& scheduler :
+         workerInfo.at("processor").at("queries").at("blend_scheduler").at("schedulers")) {
+        for (json const& entry : scheduler.at("query_id_to_count")) {
             qids.insert(entry[0].get<QueryId>());
         }
     }
@@ -506,13 +506,13 @@ json HttpQservMonitorModule::_cssSharedScan() {
     json resultSharedScan;
     auto const config = controller()->serviceProvider()->config();
     auto const cssAccess = qservCssAccess();
-    for (auto&& familyName : config->databaseFamilies()) {
+    for (string const& familyName : config->databaseFamilies()) {
         bool const allDatabases = true;
-        for (auto&& databaseName : config->databases(familyName, allDatabases)) {
+        for (string const& databaseName : config->databases(familyName, allDatabases)) {
             auto const database = config->databaseInfo(databaseName);
             // Do not include special tables into the report.
             vector<string> sharedScanTables;
-            for (auto&& tableName : database.tables()) {
+            for (string const& tableName : database.tables()) {
                 auto const table = database.findTable(tableName);
                 if (table.isPartitioned && !table.isRefMatch) {
                     sharedScanTables.emplace_back(table.name);
@@ -523,7 +523,7 @@ json HttpQservMonitorModule::_cssSharedScan() {
             // Override the default values for tables for which the shared scan
             // parameters were explicitly set.
             if (cssAccess->containsDb(database.name)) {
-                for (auto&& tableName : sharedScanTables) {
+                for (string const& tableName : sharedScanTables) {
                     if (cssAccess->containsTable(database.name, tableName)) {
                         try {
                             css::ScanTableParams const params =
@@ -549,7 +549,7 @@ json HttpQservMonitorModule::_cssSharedScan() {
 json HttpQservMonitorModule::_chunkInfo(set<int> const& chunks) const {
     json result;
     auto const config = controller()->serviceProvider()->config();
-    for (auto&& familyName : config->databaseFamilies()) {
+    for (string const& familyName : config->databaseFamilies()) {
         auto&& familyInfo = config->databaseFamilyInfo(familyName);
         /*
          * TODO: both versions of the 'Chunker' class need to be used due to non-overlapping
@@ -562,10 +562,10 @@ json HttpQservMonitorModule::_chunkInfo(set<int> const& chunks) const {
         lsst::sphgeom::Chunker const sphgeomChunker(familyInfo.numStripes, familyInfo.numSubStripes);
         lsst::partition::Chunker const partitionChunker(familyInfo.overlap, familyInfo.numStripes,
                                                         familyInfo.numSubStripes);
-        for (auto&& chunk : chunks) {
+        for (int const chunk : chunks) {
             if (sphgeomChunker.valid(chunk)) {
                 json chunkGeometry;
-                auto&& box = partitionChunker.getChunkBounds(chunk);
+                auto box = partitionChunker.getChunkBounds(chunk);
                 chunkGeometry["lat_min"] = box.getLatMin();
                 chunkGeometry["lat_max"] = box.getLatMax();
                 chunkGeometry["lon_min"] = box.getLonMin();
