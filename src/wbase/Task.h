@@ -168,6 +168,19 @@ public:
     // Note that manpage spec of "26 bytes"  is insufficient
 
     /// Cancel the query in progress and set _cancelled.
+    /// Query cancellation on the worker is fairly complicated. This
+    /// function usually called by `SsiRequest::Finished` when xrootd
+    /// indicates the job is cancelled. This may come from:
+    /// - xrootd - in the case of communications issues
+    /// - czar - user query was cancelled, an error, or limit reached.
+    /// This function may also be called by `Task::checkCancelled()` - `_sendChannel`
+    ///    has been killed, usually a result of failed communication with xrootd.
+    /// If a `QueryRunner` object for this task exists, it must
+    /// be cancelled to free up threads and other resources.
+    /// Otherwise `_cancelled` is set so that an attempt
+    /// to run this `Task` will result in a rapid exit.
+    /// This functional also attempts to inform the scheduler for this
+    /// `Task` that is has been cancelled (scheduler currently does nothing in this case).
     void cancel();
 
     /// Check if this task should be cancelled and call cancel() as needed.

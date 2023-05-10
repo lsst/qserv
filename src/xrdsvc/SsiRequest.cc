@@ -295,6 +295,7 @@ wbase::WorkerCommand::Ptr SsiRequest::parseWorkerCommand(char const* reqData, in
 void SsiRequest::Finished(XrdSsiRequest& req, XrdSsiRespInfo const& rinfo, bool cancel) {  // Step 8
     util::HoldTrack::Mark markA(ERR_LOC, "SsiRequest::Finished start");
     if (cancel) {
+        // Either the czar of xrootd has decided to cancel the Job.
         // Try to cancel all of the tasks, if there are any.
         for (auto&& wTask : _tasks) {
             auto task = wTask.lock();
