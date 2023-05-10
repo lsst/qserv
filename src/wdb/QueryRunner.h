@@ -89,6 +89,8 @@ public:
     /// by Task::cancel(), so if this needs to be cancelled elsewhere,
     /// call Task::cancel().
     /// This should kill an in progress SQL command.
+    /// It also tries to unblock `_streamBuf` to keep the thread
+    /// from being blocked forever.
     void cancel() override;
 
 protected:
@@ -105,17 +107,6 @@ private:
     MYSQL_RES* _primeResult(std::string const& query);  ///< Obtain a result handle for a query.
 
     static size_t _getDesiredLimit();
-
-    /// Inform SendChannelShared that this Task, and all related Tasks, has been cancelled.
-    void _transmitCancelledError();
-
-    /// Inform SendChannelShared that this Task expects to transmit data.
-    /// This is used primarily for SendChannelShared to inform other Tasks that
-    /// another Task expects to transmit on this channel, so at the very least
-    /// this Task must transmit an error or risk lockup.
-    void _setTransmitIntended();
-
-    std::mutex _initialCancelMtx;  ///< Protects first query cancel test and transmitIntended call.
 
     wbase::Task::Ptr const _task;  ///< Actual task
 

@@ -62,6 +62,10 @@ public:
     /// Take appropriate action when a task in the Schedule is cancelled. Doing
     /// nothing should be harmless, but some Schedulers may work better if cancelled
     /// tasks are removed.
+    /// Future: Find the task and remove it from the queue, then start a
+    ///  thread to run the task, or add it to a thread that just runs tasks in FIFO
+    ///  order, maybe after the thread checks that cancelled has been set. The
+    ///  cancelled tasks should run very quickly.
     void taskCancelled(wbase::Task* task) override {}
 };
 

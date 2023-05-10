@@ -257,6 +257,7 @@ bool SendChannelShared::_sendBuf(lock_guard<mutex> const& streamLock, xrdsvc::St
 
 bool SendChannelShared::buildAndTransmitError(util::MultiError& multiErr, Task::Ptr const& task,
                                               bool cancelled) {
+    util::HoldTrack::Mark mark(ERR_LOC, "SCS buildAndTransmitError");
     auto qId = task->getQueryId();
     bool scanInteractive = true;
     _waitTransmitLock(scanInteractive, qId);
@@ -270,24 +271,6 @@ bool SendChannelShared::buildAndTransmitError(util::MultiError& multiErr, Task::
     LOGS(_log, LOG_LVL_DEBUG, "SendChannelShared::buildAndTransmitError " << _dumpTr());
     bool lastIn = true;
     return _prepTransmit(task, cancelled, lastIn);
-}
-
-bool SendChannelShared::setTransmitIntended() { return _transmitIntended.exchange(true); }
-
-void SendChannelShared::transmitCancel(std::shared_ptr<Task> const& task) {
-    if (isDead()) {
-        return;
-    }
-    if (_cancelled.exchange(true)) {
-        return;
-    }
-    // If _transmitIntended is false, there's no need to transmit anything.
-    if (_transmitIntended) {
-        util::Error error(-1, "query has been cancelled");
-        util::MultiError multiErr;
-        multiErr.push_back(error);
-        buildAndTransmitError(multiErr, task, true);
-    }
 }
 
 void SendChannelShared::setSchemaCols(Task& task, std::vector<SchemaCol>& schemaCols) {
