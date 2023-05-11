@@ -47,7 +47,7 @@ struct QservStatus {
     std::map<std::string, bool> workers;
 
     /// Key: worker, value: status info received from the worker
-    std::map<std::string, nlohmann::json> info;
+    nlohmann::json info;
 };
 
 /**
