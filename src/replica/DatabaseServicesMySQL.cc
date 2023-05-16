@@ -2010,6 +2010,10 @@ DatabaseIngestParam DatabaseServicesMySQL::ingestParam(string const& database, s
                 _g.packConds(_g.eq("database", database), _g.eq("category", category), _g.eq("param", param));
         _conn->executeInOwnTransaction(
                 [&](decltype(_conn) conn) { info = _ingestParamImpl(lock, predicate); });
+    } catch (DatabaseServicesNotFound const&) {
+        // Nothing to report here because parameters are optional. Pass the exception
+        // to the caller.
+        throw;
     } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR, context << "failed, exception: " << ex.what());
         throw;
