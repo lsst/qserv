@@ -252,9 +252,21 @@ function(CSSLoader,
                         this._transactions.push(info.id);
                         let transactionCssClass = 'bg-white';
                         switch (info.state) {
-                            case 'STARTED':  transactionCssClass = 'bg-transparent'; break;
-                            case 'FINISHED': transactionCssClass = 'alert alert-success'; break;
-                            case 'ABORTED':  transactionCssClass = 'alert alert-danger'; break;
+                            case 'IS_STARTING':
+                            case 'STARTED':
+                            case 'IS_FINISHING':
+                                transactionCssClass = 'alert alert-success';
+                                break;
+                            case 'FINISHED':
+                                transactionCssClass = 'bg-transparent';
+                                break;
+                            case 'START_FAILED':
+                            case 'FINISH_FAILED':
+                            case 'IS_ABORTING':
+                            case 'ABORT_FAILED':
+                            case 'ABORTED':
+                                transactionCssClass = 'alert alert-danger';
+                                break;
                         }
                         const beginDateTimeStr = (new Date(info.begin_time)).toLocalTimeString('iso').split(' ');
                         const beginDateStr = beginDateTimeStr[0];

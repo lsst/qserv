@@ -579,7 +579,7 @@ json HttpIngestTransModule::_getTransactionContributions(TransactionInfo const& 
         // Don't count incomplete or non-successful contributions for the summary
         // statistics, except retries as those could be useful for the diagnostic
         // or the monitoring purposes.
-        bool const isFinished = contrib.status != TransactionContribInfo::Status::FINISHED;
+        bool const isFinished = contrib.status == TransactionContribInfo::Status::FINISHED;
 
         uniqueWorkers.insert(contrib.worker);
         float const contribDataSizeGb = contrib.numBytes / GiB;
