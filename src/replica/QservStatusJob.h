@@ -25,7 +25,6 @@
 #include <functional>
 #include <map>
 #include <string>
-#include <vector>
 
 // Third party headers
 #include "nlohmann/json.hpp"
@@ -34,6 +33,7 @@
 #include "replica/Job.h"
 #include "replica/GetStatusQservMgtRequest.h"
 #include "replica/ServiceManagementRequest.h"
+#include "wbase/TaskState.h"
 
 // This header declarations
 namespace lsst::qserv::replica {
@@ -73,56 +73,47 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param timeoutSec
-     *   maximum number of seconds that (all) requests are allowed to wait
+     * @param timeoutSec maximum number of seconds that (all) requests are allowed to wait
      *   before finish or expire. If the parameter is set to 0 then
-     *   the corresponding timeout (for requests) from the Configuration service
-     *   will be assumed. ARTTENTION: this timeout could be quite lengthy.
-     *
-     * @param allWorkers
-     *   if 'true' then send probes to all workers, otherwise the enabled workers
-     *   will be considered only
-     *
-     * @param controller
-     *   for launching requests
-     *
-     * @param parentJobId
-     *   (optional) identifier of a parent job
-     *
-     * @param onFinish
-     *   (optional) callback function to be called upon a completion of the job
-     *
-     * @param priority
-     *   (optional) priority level of the job
-     *
-     * @return
-     *   pointer to the created object
+     *   the corresponding default timeout (for requests) from the Configuration service
+     *   will be assumed. Be aware that the default timeout could be quite lengthy.
+     *   So, if the job is being launched for worker monitoring purposes
+     *   from the time-constrained environment then it's better to be set to same
+     *   reasonably small value.
+     * @param allWorkers if 'true' then send probes to all workers, otherwise
+     *   the enabled workers will be considered only
+     * @param controller for launching requests
+     * @param parentJobId (optional) identifier of a parent job
+     * @param taskSelector (optional) task selection criterias
+     * @param onFinish (optional) callback function to be called upon a completion of the job
+     * @param priority (optional) priority level of the job
+     * @return a pointer to the created object
      */
     static Ptr create(unsigned int timeoutSec, bool allWorkers, Controller::Ptr const& controller,
-                      std::string const& parentJobId = std::string(), CallbackType const& onFinish = nullptr,
-                      int priority = PRIORITY_NORMAL);
-
-    // Default construction and copy semantics are prohibited
+                      std::string const& parentJobId = std::string(),
+                      wbase::TaskSelector const& taskSelector = wbase::TaskSelector(),
+                      CallbackType const& onFinish = nullptr, int priority = PRIORITY_NORMAL);
 
     QservStatusJob() = delete;
     QservStatusJob(QservStatusJob const&) = delete;
     QservStatusJob& operator=(QservStatusJob const&) = delete;
 
-    ~QservStatusJob() final = default;
+    virtual ~QservStatusJob() final = default;
 
-    /// @return maximum number of seconds that (all) requests are allowed to wait
-    /// before finish or expire
+    /// @return an actual value for the maximum number of seconds that (all) requests
+    ///   are allowed to wait before finish or expire after a possible adjustment of
+    ///   the parameter's value from the Configuration
     unsigned int timeoutSec() const { return _timeoutSec; }
 
     /// @return 'true' if the job probes all known workers
     bool allWorkers() const { return _allWorkers; }
 
+    /// @return the selection criterias for tasks
+    wbase::TaskSelector const& taskSelector() const { return _taskSelector; }
+
     /**
-     * @return
-     *   status report from workers
-     *
-     * @throw std::logic_error
-     *   if the method is called before the job finishes
+     * @return status report from workers
+     * @throw std::logic_error if the method is called before the job finishes
      */
     QservStatus const& qservStatus() const;
 
@@ -133,23 +124,20 @@ public:
     std::list<std::pair<std::string, std::string>> persistentLogData() const final;
 
 protected:
-    void startImpl(replica::Lock const& lock) final;
-
-    void cancelImpl(replica::Lock const& lock) final;
-
-    void notify(replica::Lock const& lock) final;
+    virtual void startImpl(replica::Lock const& lock) final;
+    virtual void cancelImpl(replica::Lock const& lock) final;
+    virtual void notify(replica::Lock const& lock) final;
 
 private:
     /// @see QservStatusJob::create()
     QservStatusJob(unsigned int timeoutSec, bool allWorkers, Controller::Ptr const& controller,
-                   std::string const& parentJobId, CallbackType const& onFinish, int priority);
+                   std::string const& parentJobId, wbase::TaskSelector const& taskSelector,
+                   CallbackType const& onFinish, int priority);
 
     /**
      * The callback function to be invoked on a completion of the Qserv
      * worker requests.
-     *
-     * @param request
-     *   a pointer to a request
+     * @param request a pointer to a request
      */
     void _onRequestFinish(GetStatusQservMgtRequest::Ptr const& request);
 
@@ -157,19 +145,15 @@ private:
 
     unsigned int const _timeoutSec;
     bool const _allWorkers;
+    wbase::TaskSelector const _taskSelector;
     CallbackType _onFinish;
 
     /// Requests sent to the Qserv workers registered by their identifiers
     std::map<std::string, GetStatusQservMgtRequest::Ptr> _requests;
 
-    /// Result to be returned
-    QservStatus _qservStatus;
-
-    /// The number of started requests
-    size_t _numStarted = 0;
-
-    /// The number of finished requests
-    size_t _numFinished = 0;
+    QservStatus _qservStatus;  ///< Result to be returned
+    size_t _numStarted = 0;    ///< The number of started requests
+    size_t _numFinished = 0;   ///< The number of finished requests
 };
 
 }  // namespace lsst::qserv::replica

@@ -35,6 +35,11 @@
 #include "replica/DatabaseMySQL.h"
 #include "replica/HttpModule.h"
 
+// Forward declarations
+namespace lsst::qserv::wbase {
+struct TaskSelector;
+}  // namespace lsst::qserv::wbase
+
 // This header declarations
 namespace lsst::qserv::replica {
 
@@ -102,13 +107,18 @@ private:
     nlohmann::json _userQuery();
 
     /**
+     * Extract and parse values of the worker task selector.
+     */
+    wbase::TaskSelector _translateTaskSelector(std::string const& func) const;
+
+    /**
      * The helper method for processing the input JSON object and populating
      * the output collections.
      * @note The method is shared by implementations of _worker() and _workers(), and
      * it's needed to avoid code duplication.
      */
-    void _processWorkerInfo(std::string const& worker, bool success, bool keepResources,
-                            nlohmann::json const& inWorkerInfo, nlohmann::json& statusRef,
+    void _processWorkerInfo(std::string const& worker, bool keepResources, nlohmann::json const& inWorkerInfo,
+                            nlohmann::json& statusRef,
                             std::map<std::string, std::set<int>>& schedulers2chunks,
                             std::set<int>& chunks) const;
 

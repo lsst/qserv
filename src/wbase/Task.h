@@ -43,6 +43,7 @@
 #include "global/intTypes.h"
 #include "memman/MemMan.h"
 #include "proto/ScanTableInfo.h"
+#include "wbase/TaskState.h"
 #include "util/Histogram.h"
 #include "util/ThreadPool.h"
 #include "util/threadSafe.h"
@@ -123,8 +124,6 @@ public:
     using Ptr = std::shared_ptr<Task>;
     using TaskMsgPtr = std::shared_ptr<proto::TaskMsg>;
 
-    enum class State { CREATED = 0, QUEUED, EXECUTING_QUERY, READING_DATA, FINISHED };
-
     /// Class to store constant sets and vectors.
     class DbTblsAndSubchunks {
     public:
@@ -187,6 +186,7 @@ public:
     /// @return true if this task was or needed to be cancelled.
     bool checkCancelled();
 
+    TaskState state() const { return _state; }
     std::string getQueryString() const;
     int getQueryFragmentNum() { return _queryFragmentNum; }
     bool setTaskQueryRunner(
@@ -303,7 +303,7 @@ private:
     memman::MemMan::Ptr _memMan;
 
     mutable std::mutex _stateMtx;  ///< Mutex to protect state related members _state, _???Time.
-    State _state{State::CREATED};
+    std::atomic<TaskState> _state{TaskState::CREATED};
     std::chrono::system_clock::time_point _createTime =
             std::chrono::system_clock::now();           ///< task was created
     std::chrono::system_clock::time_point _queueTime;   ///< task was queued

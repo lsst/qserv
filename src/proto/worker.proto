@@ -321,6 +321,30 @@ message WorkerCommandSetChunkListR {
     repeated WorkerCommandChunk chunks = 3;
 }
 
+// This message must be sent after the command header for the 'GET_STATUS'
+// to customize a scope of the request.
+//
+message WorkerCommandGetStatusM {
+    // Include detailed info on the tasks
+    optional bool include_tasks = 1 [ default = false];
+
+    // Narrow a scope of the request that involves tasks (the above-define parameter
+    // 'include_tasks = true') to a specific collection of queries.
+    repeated uint64 query_ids = 2;
+
+    // An optional selector for the state(s) of tasks. If the collection
+    // is empty then the selector is disregarded. Values to be put into
+    // the collection are the integer representation of the following transient
+    // C++ enum type 'wbase::TaskState'. These values are expected to be
+    // validated and upconverted into the enum class by the worker.
+    repeated uint64 task_states = 3;
+
+    // An optional limit for the number of tasks to be reported.
+    // Note that no specific ordering for tasks is assumed when applying
+    // this limit.
+    optional uint32 max_tasks = 4 [ default = 0 ];
+}
+
 // The message to be sent back in response to the 'GET_STATUS' command
 //
 message WorkerCommandGetStatusR {

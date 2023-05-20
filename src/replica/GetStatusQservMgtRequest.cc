@@ -51,14 +51,18 @@ namespace lsst::qserv::replica {
 
 GetStatusQservMgtRequest::Ptr GetStatusQservMgtRequest::create(
         ServiceProvider::Ptr const& serviceProvider, string const& worker,
-        GetStatusQservMgtRequest::CallbackType const& onFinish) {
-    return GetStatusQservMgtRequest::Ptr(new GetStatusQservMgtRequest(serviceProvider, worker, onFinish));
+        wbase::TaskSelector const& taskSelector, GetStatusQservMgtRequest::CallbackType const& onFinish) {
+    return GetStatusQservMgtRequest::Ptr(
+            new GetStatusQservMgtRequest(serviceProvider, worker, taskSelector, onFinish));
 }
 
 GetStatusQservMgtRequest::GetStatusQservMgtRequest(ServiceProvider::Ptr const& serviceProvider,
                                                    string const& worker,
+                                                   wbase::TaskSelector const& taskSelector,
                                                    GetStatusQservMgtRequest::CallbackType const& onFinish)
-        : QservMgtRequest(serviceProvider, "QSERV_GET_STATUS", worker), _onFinish(onFinish) {}
+        : QservMgtRequest(serviceProvider, "QSERV_GET_STATUS", worker),
+          _taskSelector(taskSelector),
+          _onFinish(onFinish) {}
 
 json const& GetStatusQservMgtRequest::info() const {
     if (not((state() == State::FINISHED) and (extendedState() == ExtendedState::SUCCESS))) {
@@ -74,22 +78,16 @@ list<pair<string, string>> GetStatusQservMgtRequest::extendedPersistentState() c
 }
 
 void GetStatusQservMgtRequest::startImpl(replica::Lock const& lock) {
-    // Submit the actual request
-
     auto const request = shared_from_base<GetStatusQservMgtRequest>();
-
-    _qservRequest =
-            wpublish::GetStatusQservRequest::create([request](wpublish::GetStatusQservRequest::Status status,
-                                                              string const& error, string const& info) {
+    _qservRequest = wpublish::GetStatusQservRequest::create(
+            _taskSelector, [request](wpublish::GetStatusQservRequest::Status status, string const& error,
+                                     string const& info) {
                 if (request->state() == State::FINISHED) return;
-
-                replica::Lock lock(request->_mtx, request->context() + string(__func__) + "[callback]");
-
+                replica::Lock const lock(request->_mtx, request->context() + string(__func__) + "[callback]");
                 if (request->state() == State::FINISHED) return;
 
                 switch (status) {
                     case wpublish::GetStatusQservRequest::Status::SUCCESS:
-
                         try {
                             request->_setInfo(lock, info);
                             request->finish(lock, QservMgtRequest::ExtendedState::SUCCESS);
@@ -100,12 +98,9 @@ void GetStatusQservMgtRequest::startImpl(replica::Lock const& lock) {
                             request->finish(lock, QservMgtRequest::ExtendedState::SERVER_BAD_RESPONSE, msg);
                         }
                         break;
-
                     case wpublish::GetStatusQservRequest::Status::ERROR:
-
                         request->finish(lock, QservMgtRequest::ExtendedState::SERVER_ERROR, error);
                         break;
-
                     default:
                         throw logic_error("GetStatusQservMgtRequest::" + string(__func__) +
                                           "  unhandled server status: " +
@@ -120,22 +115,19 @@ void GetStatusQservMgtRequest::finishImpl(replica::Lock const& lock) {
     switch (extendedState()) {
         case ExtendedState::CANCELLED:
         case ExtendedState::TIMEOUT_EXPIRED:
-
             // And if the SSI request is still around then tell it to stop
-
             if (_qservRequest) {
                 bool const cancel = true;
                 _qservRequest->Finished(cancel);
             }
             break;
-
         default:
             break;
     }
 }
 
 void GetStatusQservMgtRequest::notify(replica::Lock const& lock) {
-    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
+    LOGS(_log, LOG_LVL_TRACE, context() << __func__);
     notifyDefaultImpl<GetStatusQservMgtRequest>(lock, _onFinish);
 }
 

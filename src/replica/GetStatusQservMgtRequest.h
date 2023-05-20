@@ -32,6 +32,7 @@
 // Qserv headers
 #include "replica/QservMgtRequest.h"
 #include "replica/ServiceProvider.h"
+#include "wbase/TaskState.h"
 #include "wpublish/GetStatusQservRequest.h"
 
 // This header declarations
@@ -61,10 +62,12 @@ public:
      * @param serviceProvider A reference to a provider of services for accessing
      *   Configuration, saving the request's persistent state to the database.
      * @param worker The name of a worker to send the request to.
+     * @param taskSelector (optional) task selection criterias
      * @param onFinish (optional) callback function to be called upon request completion.
      * @return A pointer to the created object.
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider, std::string const& worker,
+                      wbase::TaskSelector const& taskSelector = wbase::TaskSelector(),
                       CallbackType const& onFinish = nullptr);
 
     /**
@@ -90,7 +93,7 @@ protected:
 private:
     /// @see GetStatusQservMgtRequest::create()
     GetStatusQservMgtRequest(ServiceProvider::Ptr const& serviceProvider, std::string const& worker,
-                             CallbackType const& onFinish);
+                             wbase::TaskSelector const& taskSelector, CallbackType const& onFinish);
 
     /**
      * Carry over results of the request into a local storage.
@@ -102,7 +105,8 @@ private:
     // Input parameters
 
     std::string const _data;
-    CallbackType _onFinish;  ///< @note this object is reset after finishing the request
+    wbase::TaskSelector const _taskSelector;
+    CallbackType _onFinish;  ///< this object is reset after finishing the request
 
     /// A request to the remote services
     wpublish::GetStatusQservRequest::Ptr _qservRequest;

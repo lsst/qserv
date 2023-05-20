@@ -278,6 +278,7 @@ TestEchoQservMgtRequest::Ptr QservMgtServices::echo(string const& worker, string
 }
 
 GetStatusQservMgtRequest::Ptr QservMgtServices::status(std::string const& worker, std::string const& jobId,
+                                                       wbase::TaskSelector const& taskSelector,
                                                        GetStatusQservMgtRequest::CallbackType const& onFinish,
                                                        unsigned int requestExpirationIvalSec) {
     GetStatusQservMgtRequest::Ptr request;
@@ -294,7 +295,7 @@ GetStatusQservMgtRequest::Ptr QservMgtServices::status(std::string const& worker
         auto const manager = shared_from_this();
 
         request = GetStatusQservMgtRequest::create(
-                serviceProvider(), worker,
+                serviceProvider(), worker, taskSelector,
                 [manager](QservMgtRequest::Ptr const& request) { manager->_finish(request->id()); });
 
         // Register the request (along with its callback) by its unique

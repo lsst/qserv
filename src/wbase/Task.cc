@@ -298,15 +298,15 @@ void Task::freeTaskQueryRunner(TaskQueryRunner* tqr) {
 /// Set values associated with the Task being put on the queue.
 void Task::queued(std::chrono::system_clock::time_point const& now) {
     std::lock_guard<std::mutex> guard(_stateMtx);
-    _state = State::QUEUED;
+    _state = TaskState::QUEUED;
     _queueTime = now;
 }
 
 bool Task::isRunning() const {
     std::lock_guard<std::mutex> lock(_stateMtx);
     switch (_state) {
-        case State::EXECUTING_QUERY:
-        case State::READING_DATA:
+        case TaskState::EXECUTING_QUERY:
+        case TaskState::READING_DATA:
             return true;
         default:
             return false;
@@ -316,13 +316,13 @@ bool Task::isRunning() const {
 /// Set values associated with the Task being started.
 void Task::started(std::chrono::system_clock::time_point const& now) {
     std::lock_guard<std::mutex> guard(_stateMtx);
-    _state = State::EXECUTING_QUERY;
+    _state = TaskState::EXECUTING_QUERY;
     _startTime = now;
 }
 
 void Task::queried() {
     std::lock_guard<std::mutex> guard(_stateMtx);
-    _state = State::READING_DATA;
+    _state = TaskState::READING_DATA;
     _queryTime = std::chrono::system_clock::now();
     // Reset finish time as it might be already set when the task got booted off
     // a scheduler.
@@ -336,7 +336,7 @@ std::chrono::milliseconds Task::finished(std::chrono::system_clock::time_point c
     {
         std::lock_guard<std::mutex> guard(_stateMtx);
         _finishTime = now;
-        _state = State::FINISHED;
+        _state = TaskState::FINISHED;
         duration = std::chrono::duration_cast<std::chrono::milliseconds>(_finishTime - _startTime);
     }
     // Ensure that the duration is greater than 0.
@@ -350,10 +350,10 @@ std::chrono::milliseconds Task::finished(std::chrono::system_clock::time_point c
 std::chrono::milliseconds Task::getRunTime() const {
     std::lock_guard<std::mutex> guard(_stateMtx);
     switch (_state) {
-        case State::FINISHED:
+        case TaskState::FINISHED:
             return std::chrono::duration_cast<std::chrono::milliseconds>(_finishTime - _startTime);
-        case State::EXECUTING_QUERY:
-        case State::READING_DATA:
+        case TaskState::EXECUTING_QUERY:
+        case TaskState::READING_DATA:
             return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() -
                                                                          _startTime);
         default:
@@ -400,7 +400,7 @@ nlohmann::json Task::getJson() const {
     js["sequenceId"] = _tSeq;
     js["scanInteractive"] = _scanInteractive;
     js["cancelled"] = to_string(_cancelled);
-    js["state"] = _state;
+    js["state"] = static_cast<uint64_t>(_state.load());
     js["createTime_msec"] = util::TimeUtils::tp2ms(_createTime);
     js["queueTime_msec"] = util::TimeUtils::tp2ms(_queueTime);
     js["startTime_msec"] = util::TimeUtils::tp2ms(_startTime);
