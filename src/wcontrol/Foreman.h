@@ -27,6 +27,10 @@
 // System headers
 #include <atomic>
 #include <memory>
+#include <vector>
+
+// Third party headers
+#include "nlohmann/json.hpp"
 
 // Qserv headers
 #include "mysql/MySqlConfig.h"
@@ -37,6 +41,11 @@
 #include "wpublish/QueriesAndChunks.h"
 
 // Forward declarations
+
+namespace lsst::qserv::wbase {
+struct TaskSelector;
+}  // namespace lsst::qserv::wbase
+
 namespace lsst::qserv::wdb {
 class SQLBackend;
 class ChunkResourceMgr;
@@ -84,7 +93,7 @@ public:
             mysql::MySqlConfig const& mySqlConfig, wpublish::QueriesAndChunks::Ptr const& queries,
             std::shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr);
 
-    virtual ~Foreman();
+    virtual ~Foreman() override;
 
     // This class doesn't have the default construction or copy semantics
     Foreman() = delete;
@@ -99,7 +108,9 @@ public:
     /// @see MsgProcessor::processCommand()
     void processCommand(std::shared_ptr<wbase::WorkerCommand> const& command) override;
 
-    nlohmann::json statusToJson() override;
+    /// Implement the corresponding method of the base class
+    /// @see MsgProcessor::statusToJson()
+    virtual nlohmann::json statusToJson(wbase::TaskSelector const& taskSelector) override;
 
 private:
     /// Set the function called when it is time to process the task.

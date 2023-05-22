@@ -45,14 +45,18 @@ namespace lsst::qserv::wpublish {
 
 GetStatusCommand::GetStatusCommand(shared_ptr<wbase::SendChannel> const& sendChannel,
                                    shared_ptr<wbase::MsgProcessor> const& processor,
-                                   shared_ptr<ResourceMonitor> const& resourceMonitor)
-        : wbase::WorkerCommand(sendChannel), _processor(processor), _resourceMonitor(resourceMonitor) {}
+                                   shared_ptr<ResourceMonitor> const& resourceMonitor,
+                                   wbase::TaskSelector const& taskSelector)
+        : wbase::WorkerCommand(sendChannel),
+          _processor(processor),
+          _resourceMonitor(resourceMonitor),
+          _taskSelector(taskSelector) {}
 
 void GetStatusCommand::run() {
     LOGS(_log, LOG_LVL_DEBUG, "GetStatusCommand::" << __func__);
 
     nlohmann::json result;
-    result["processor"] = _processor->statusToJson();
+    result["processor"] = _processor->statusToJson(_taskSelector);
     result["resources"] = _resourceMonitor->statusToJson();
 
     proto::WorkerCommandGetStatusR reply;

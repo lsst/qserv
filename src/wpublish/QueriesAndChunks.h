@@ -38,19 +38,23 @@
 #include "nlohmann/json.hpp"
 
 // Qserv headers
+#include "global/intTypes.h"
 #include "wbase/Task.h"
 
 // Forward declarations
-namespace lsst::qserv {
-namespace wsched {
+namespace lsst::qserv::wbase {
+struct TaskSelector;
+}  // namespace lsst::qserv::wbase
+
+namespace lsst::qserv::wsched {
 class SchedulerBase;
 class BlendScheduler;
 class ScanScheduler;
-}  // namespace wsched
-namespace wpublish {
+}  // namespace lsst::qserv::wsched
+
+namespace lsst::qserv::wpublish {
 class QueriesAndChunks;
-}
-}  // namespace lsst::qserv
+}  // namespace lsst::qserv::wpublish
 
 // This header declarations
 namespace lsst::qserv::wpublish {
@@ -90,8 +94,14 @@ public:
     /// Return a json object containing high level data, such as histograms.
     nlohmann::json getJsonHist() const;
 
-    /// Return a json object containing information about all tasks.
-    nlohmann::json getJsonTasks() const;
+    /**
+     * Retreive a status of the tasks as defined by the query selector.
+     * @note If no restrictors are specified in the task selector then the method
+     * can return a very large object. So it should be used sparingly.
+     * @param taskSelector Task selection criterias.
+     * @return a json object containing information about tasks in the requested scope.
+     */
+    nlohmann::json getJsonTasks(wbase::TaskSelector const& taskSelector) const;
 
     friend class QueriesAndChunks;
     friend std::ostream& operator<<(std::ostream& os, QueryStatistics const& q);
@@ -224,8 +234,12 @@ public:
 
     void examineAll();
 
-    /// @return a JSON representation of the object's status for the monitoring
-    nlohmann::json statusToJson();
+    /**
+     * Retreive monitoring data for teh worker.
+     * @param taskSelector Task selection criterias.
+     * @return a JSON representation of the object's status for the monitoring
+     */
+    nlohmann::json statusToJson(wbase::TaskSelector const& taskSelector) const;
 
     // Figure out each chunkTable's percentage of time.
     // Store average time for a task to run on this table for this chunk.

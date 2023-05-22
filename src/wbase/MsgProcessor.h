@@ -27,16 +27,16 @@
 
 // System headers
 #include <memory>
+#include <vector>
 
 // Third party headers
 #include "nlohmann/json.hpp"
 
 // Forward declarations
 namespace lsst::qserv::wbase {
-
 class Task;
+struct TaskSelector;
 class WorkerCommand;
-
 }  // namespace lsst::qserv::wbase
 
 namespace lsst::qserv::wbase {
@@ -51,8 +51,12 @@ struct MsgProcessor {
     /// Process a managememt command
     virtual void processCommand(std::shared_ptr<wbase::WorkerCommand> const& command) = 0;
 
-    /// @return a JSON representation of the object's status for the monitoring
-    virtual nlohmann::json statusToJson() = 0;
+    /**
+     * Retreive the status of queries being processed by the worker.
+     * @param taskSelector Task selection criterias.
+     * @return a JSON representation of the object's status for the monitoring
+     */
+    virtual nlohmann::json statusToJson(wbase::TaskSelector const& taskSelector) = 0;
 };
 
 }  // namespace lsst::qserv::wbase

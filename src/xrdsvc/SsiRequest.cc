@@ -35,6 +35,7 @@
 #include "lsst/log/Log.h"
 
 // Qserv headers
+#include "global/intTypes.h"
 #include "global/LogContext.h"
 #include "global/ResourceUnit.h"
 #include "proto/FrameBuffer.h"
@@ -44,6 +45,7 @@
 #include "util/Timer.h"
 #include "wbase/MsgProcessor.h"
 #include "wbase/SendChannelShared.h"
+#include "wbase/TaskState.h"
 #include "wpublish/AddChunkGroupCommand.h"
 #include "wpublish/ChunkListCommand.h"
 #include "wpublish/GetChunkListCommand.h"
@@ -54,9 +56,29 @@
 #include "wpublish/TestEchoCommand.h"
 #include "xrdsvc/ChannelStream.h"
 
+namespace proto = lsst::qserv::proto;
+namespace wbase = lsst::qserv::wbase;
+
 namespace {
+
 LOG_LOGGER _log = LOG_GET("lsst.qserv.xrdsvc.SsiRequest");
+
+/**
+ * Translate the Protobuf message into the task selector.
+ */
+wbase::TaskSelector proto2taskSelector(proto::WorkerCommandGetStatusM const& message) {
+    wbase::TaskSelector selector;
+    selector.includeTasks = message.include_tasks();
+    for (int i = 0, num = message.query_ids_size(); i < num; ++i) {
+        selector.queryIds.push_back(message.query_ids(i));
+    }
+    for (int i = 0, num = message.task_states_size(); i < num; ++i) {
+        selector.taskStates.push_back(static_cast<wbase::TaskState>(message.task_states(i)));
+    }
+    selector.maxTasks = message.max_tasks();
+    return selector;
 }
+}  // namespace
 
 namespace lsst::qserv::xrdsvc {
 
@@ -268,15 +290,16 @@ wbase::WorkerCommand::Ptr SsiRequest::parseWorkerCommand(char const* reqData, in
                     databases.push_back(message.databases(i));
                 }
                 bool const force = message.force();
-
                 command = std::make_shared<wpublish::SetChunkListCommand>(sendChannel, _chunkInventory,
                                                                           _resourceMonitor, _mySqlConfig,
                                                                           chunks, databases, force);
                 break;
             }
             case proto::WorkerCommandH::GET_STATUS: {
-                command = std::make_shared<wpublish::GetStatusCommand>(sendChannel, _processor,
-                                                                       _resourceMonitor);
+                proto::WorkerCommandGetStatusM message;
+                view.parse(message);
+                command = std::make_shared<wpublish::GetStatusCommand>(
+                        sendChannel, _processor, _resourceMonitor, ::proto2taskSelector(message));
                 break;
             }
             default:
