@@ -37,7 +37,7 @@ jobs:
 
     steps:
       - name: Install python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v3
         with:
           python-version: '3.x'
 
@@ -57,11 +57,11 @@ jobs:
       - name: Save image names
         id: image-names
         run: |
-          echo "::set-output name=build-image::$(./admin/local/cli/qserv env --build-image) "
-          echo "::set-output name=user-build-image::$(./admin/local/cli/qserv env --user-build-image) "
-          echo "::set-output name=run-base-image::$(./admin/local/cli/qserv env --run-base-image) "
-          echo "::set-output name=mariadb-image::$(./admin/local/cli/qserv env --mariadb-image) "
-          echo "::set-output name=qserv-image::$(./admin/local/cli/qserv env --qserv-image) "
+          echo "build-image=$(./admin/local/cli/qserv env --build-image)" >> "$GITHUB_OUTPUT"
+          echo "user-build-image=$(./admin/local/cli/qserv env --user-build-image)" >> "$GITHUB_OUTPUT"
+          echo "run-base-image=$(./admin/local/cli/qserv env --run-base-image)" >> "$GITHUB_OUTPUT"
+          echo "mariadb-image=$(./admin/local/cli/qserv env --mariadb-image)" >> "$GITHUB_OUTPUT"
+          echo "qserv-image=$(./admin/local/cli/qserv env --qserv-image)" >> "$GITHUB_OUTPUT"
 
   update-base-images:
     name: Update base images
@@ -74,7 +74,7 @@ jobs:
     steps:
 
       - name: Install python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v3
         with:
           python-version: '3.x'
 
@@ -89,7 +89,7 @@ jobs:
           fetch-depth: 0  # 0 is "all history and branch tags"
 
       - name: Login to DockerHub
-        uses: docker/login-action@v1
+        uses: docker/login-action@v2
         with:
           username: ${{ secrets.FM_DOCKERHUB_TOKEN_USER }}
           password: ${{ secrets.FM_DOCKERHUB_TOKEN }}
@@ -99,11 +99,11 @@ jobs:
         run: |
           if [[ $(./admin/local/cli/qserv --log-level DEBUG dh-image-exists ${{ needs.image-names.outputs.build-image }}) == "True" ]]; then
             echo "Build image already on docker hub; skipping..."
-            echo "::set-output name=build-rebuilt::False"
+            echo "build-rebuilt=False" >> "$GITHUB_OUTPUT"
           else
             ./admin/local/cli/qserv --log-level DEBUG build-build-image --push-image \
             --build-image ${{ needs.image-names.outputs.build-image }}
-            echo "::set-output name=build-rebuilt::True"
+            echo "build-rebuilt=True" >> "$GITHUB_OUTPUT"
           fi
         env:
           QSERV_DH_USER: ${{ secrets.FM_DOCKERHUB_TOKEN_USER }}
@@ -113,11 +113,11 @@ jobs:
         run: |
           if [[ $(./admin/local/cli/qserv --log-level DEBUG dh-image-exists ${{ needs.image-names.outputs.run-base-image }}) == "True" ]]; then
             echo "Run base image already on docker hub; skipping..."
-            echo "::set-output name=run-base-rebuilt::False"
+            echo "run-base-rebuilt=False" >> "$GITHUB_OUTPUT"
           else
             ./admin/local/cli/qserv --log-level DEBUG build-run-base-image --push-image \
             --run-base-image ${{ needs.image-names.outputs.run-base-image }}
-            echo "::set-output name=run-base-rebuilt::True"
+            echo "run-base-rebuilt=True" >> "$GITHUB_OUTPUT"
           fi
         env:
           QSERV_DH_USER: ${{ secrets.FM_DOCKERHUB_TOKEN_USER }}
@@ -132,7 +132,7 @@ jobs:
     steps:
 
       - name: Install python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v3
         with:
           python-version: '3.x'
 
@@ -147,7 +147,7 @@ jobs:
           fetch-depth: 0  # 0 is "all history and branch tags"
 
       - name: Login to DockerHub
-        uses: docker/login-action@v1
+        uses: docker/login-action@v2
         with:
           username: ${{ secrets.FM_DOCKERHUB_TOKEN_USER }}
           password: ${{ secrets.FM_DOCKERHUB_TOKEN }}
@@ -157,10 +157,10 @@ jobs:
         run: |
           if [[ $(./admin/local/cli/qserv --log-level DEBUG dh-image-exists ${{ needs.image-names.outputs.mariadb-image }}) == "True" ]]; then
             echo "MariaDB image already on docker hub; skipping..."
-            echo "::set-output name=rebuilt::False"
+            echo "rebuilt=False" >> "$GITHUB_OUTPUT"
           else
             ./admin/local/cli/qserv --log-level DEBUG build-mariadb-image --push-image --mariadb-image ${{ needs.image-names.outputs.mariadb-image }}
-            echo "::set-output name=rebuilt::True"
+            echo "rebuilt=True" >> "$GITHUB_OUTPUT"
           fi
         env:
           QSERV_DH_USER: ${{ secrets.FM_DOCKERHUB_TOKEN_USER }}
@@ -173,7 +173,7 @@ jobs:
     steps:
 
       - name: Install python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v3
         with:
           python-version: '3.x'
 
@@ -224,7 +224,7 @@ jobs:
     steps:
 
       - name: Install python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v3
         with:
           python-version: '3.x'
 
@@ -243,7 +243,7 @@ jobs:
           git submodule update --init
 
       - name: Login to DockerHub
-        uses: docker/login-action@v1
+        uses: docker/login-action@v2
         with:
           username: ${{ secrets.FM_DOCKERHUB_TOKEN_USER }}
           password: ${{ secrets.FM_DOCKERHUB_TOKEN }}
@@ -276,7 +276,7 @@ jobs:
     steps:
 
       - name: Install python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v3
         with:
           python-version: '3.x'
 
@@ -291,7 +291,7 @@ jobs:
           fetch-depth: 0  # 0 is "all history and branch tags"
 
       - name: Login to DockerHub
-        uses: docker/login-action@v1
+        uses: docker/login-action@v2
         with:
           username: ${{ secrets.FM_DOCKERHUB_TOKEN_USER }}
           password: ${{ secrets.FM_DOCKERHUB_TOKEN }}
