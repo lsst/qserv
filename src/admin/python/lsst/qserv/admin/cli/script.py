@@ -19,35 +19,32 @@
 # You should have received a copy of the GNU General Public License
 
 
-import backoff
-from contextlib import closing
-from functools import partial
-import jinja2
 import json
 import logging
-import mysql.connector
 import os
-from pathlib import Path
 import shlex
-from sqlalchemy.engine.url import URL
 import subprocess
 import sys
 import time
+from contextlib import closing
+from functools import partial
+from pathlib import Path
 from typing import Callable, Dict, List, Optional, Sequence, Union
-from sqlalchemy.engine.url import make_url
 
-from .utils import split_kv, Targs
+import backoff
+import jinja2
+import mysql.connector
+from sqlalchemy.engine.url import URL, make_url
+
+from ...schema import MigMgrArgs, SchemaUpdateRequired, smig, smig_block
 from ..itest import ITestResults
-from ..qserv_backoff import on_backoff
-from ..template import apply_template_cfg_file, save_template_cfg
-from ...schema import smig, smig_block
-from ...schema import MigMgrArgs, SchemaUpdateRequired
 from ..itest_table import LoadTable
-from ..replicationInterface import ReplicationInterface
-from . import _integration_test, options
-
 from ..mysql_connection import mysql_connection
-
+from ..qserv_backoff import on_backoff
+from ..replicationInterface import ReplicationInterface
+from ..template import apply_template_cfg_file, save_template_cfg
+from . import _integration_test, options
+from .utils import Targs, split_kv
 
 smig_dir_env_var = "QSERV_SMIG_DIRECTORY"
 default_smig_dir = "/usr/local/qserv/smig"
@@ -67,6 +64,8 @@ replication_controller_smig_dir = "replica/schema"
 mysqld_user_qserv = "qsmaster"
 
 proxy_empty_chunk_path = "/qserv/data/qserv"
+
+ld_preload = "libjemalloc.so.2"
 
 _log = logging.getLogger(__name__)
 
@@ -305,7 +304,13 @@ def enter_manager_cmsd(
         The jinja2 template for the command for this function to execute.
     """
     apply_template_cfg_file(cmsd_manager_cfg_file, cmsd_manager_cfg_path, targs)
-    sys.exit(_run(args=None, cmd=cmd))
+
+    env = dict(
+        os.environ,
+        LD_PRELOAD=ld_preload,
+    )
+
+    sys.exit(_run(args=None, env=env, cmd=cmd))
 
 
 def enter_xrootd_manager(
@@ -328,7 +333,13 @@ def enter_xrootd_manager(
         The jinja2 template for the command for this function to execute.
     """
     apply_template_cfg_file(xrootd_manager_cfg_file, xrootd_manager_cfg_path, targs)
-    sys.exit(_run(args=None, cmd=cmd))
+
+    env = dict(
+        os.environ,
+        LD_PRELOAD=ld_preload,
+    )
+
+    sys.exit(_run(args=None, env=env, cmd=cmd))
 
 
 def enter_worker_cmsd(
@@ -386,7 +397,12 @@ def enter_worker_cmsd(
     # for the vnid plugin to function correctly
     _do_smig_block(worker_smig_dir, "worker", db_uri)
 
-    env = dict(os.environ, LSST_LOG_CONFIG=log_cfg_file)
+    env = dict(
+        os.environ,
+        LD_PRELOAD=ld_preload,
+        LSST_LOG_CONFIG=log_cfg_file,
+    )
+
     sys.exit(_run(args=None, env=env, cmd=cmd))
 
 
@@ -475,7 +491,12 @@ def enter_worker_xrootd(
     apply_template_cfg_file(cmsd_worker_cfg_file, cmsd_worker_cfg_path)
     apply_template_cfg_file(xrdssi_cfg_file, xrdssi_cfg_path)
 
-    env = dict(os.environ, LSST_LOG_CONFIG=log_cfg_file)
+    env = dict(
+        os.environ,
+        LD_PRELOAD=ld_preload,
+        LSST_LOG_CONFIG=log_cfg_file,
+    )
+
     sys.exit(_run(args=None, env=env, cmd=cmd))
 
 
@@ -540,7 +561,11 @@ def enter_worker_repl(
     if not os.path.exists(ingest_folder):
         os.makedirs(ingest_folder)
 
-    env = dict(os.environ, LSST_LOG_CONFIG=log_cfg_file)
+    env = dict(
+        os.environ,
+        LD_PRELOAD=ld_preload,
+        LSST_LOG_CONFIG=log_cfg_file,
+    )
 
     while True:
         # This loop exists because it is possible for qserv-replica-worker to
@@ -636,6 +661,7 @@ def enter_proxy(
 
     env = dict(
         os.environ,
+        LD_PRELOAD=ld_preload,
         LSST_LOG_CONFIG=log_cfg_file,
         QSERV_CONFIG=czar_cfg_path,
     )
@@ -689,7 +715,12 @@ def enter_replication_controller(
             update=False,
         )
 
-    env = dict(os.environ, LSST_LOG_CONFIG=log_cfg_file)
+    env = dict(
+        os.environ,
+        LD_PRELOAD=ld_preload,
+        LSST_LOG_CONFIG=log_cfg_file,
+    )
+
     sys.exit(_run(args=None, cmd=cmd, env=env, run=run))
 
 
@@ -739,7 +770,12 @@ def enter_replication_registry(
     # on the schema version to be sure that there are values in the database.
     _do_smig_block(replication_controller_smig_dir, "replica", db_uri)
 
-    env = dict(os.environ, LSST_LOG_CONFIG=log_cfg_file)
+    env = dict(
+        os.environ,
+        LD_PRELOAD=ld_preload,
+        LSST_LOG_CONFIG=log_cfg_file,
+    )
+
     sys.exit(_run(args=None, cmd=cmd, env=env, run=run))
 
 
@@ -951,7 +987,6 @@ def integration_test(
 def prepare_data(
     tests_yaml: str,
 ) -> bool:
-
     return _integration_test.prepare_data(tests_yaml=tests_yaml)
 
 
