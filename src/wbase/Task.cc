@@ -251,9 +251,6 @@ wpublish::QueryStatistics::Ptr Task::getQueryStats() const {
     return qStats;
 }
 
-/// @return the chunkId for this task. If the task has no chunkId, return -1.
-int Task::getChunkId() const { return _chunkId; }
-
 /// Flag the Task as cancelled, try to stop the SQL query, and try to remove it from the schedule.
 void Task::cancel() {
     if (_cancelled.exchange(true)) {
@@ -401,8 +398,10 @@ nlohmann::json Task::getJson() const {
     // It would be nice to have the _queryString in this, but that could make the results very large.
     nlohmann::json js;
     js["queryId"] = _qId;
+    js["templateId"] = getTemplateId();
     js["jobId"] = _jId;
     js["chunkId"] = getChunkId();
+    js["subChunkId"] = getSubchunkId();
     js["fragmentId"] = _queryFragmentNum;
     js["attemptId"] = _attemptCount;
     js["sequenceId"] = _tSeq;
