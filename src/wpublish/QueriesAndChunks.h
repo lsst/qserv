@@ -23,6 +23,17 @@
 #ifndef LSST_QSERV_WPUBLISH_QUERIESANDCHUNKS_H
 #define LSST_QSERV_WPUBLISH_QUERIESANDCHUNKS_H
 
+// System headers
+#include <atomic>
+#include <chrono>
+#include <cstdint>
+#include <map>
+#include <memory>
+#include <mutex>
+#include <ostream>
+#include <string>
+#include <vector>
+
 // Third party headers
 #include "nlohmann/json.hpp"
 
@@ -50,14 +61,8 @@ class QueryStatistics {
 public:
     using Ptr = std::shared_ptr<QueryStatistics>;
 
-    using TaskId = std::pair<QueryId, int>;  ///< Unique identifier for task is jobId, fragment number.
-    /// For maps of Tasks in a query. It would be nice to use an unordered_map, but a hash need to be defined.
-    using TaskMap = std::map<TaskId, wbase::Task::Ptr>;
-
     void addTask(wbase::Task::Ptr const& task);
-
     bool isDead(std::chrono::seconds deadTime, TIMEPOINT now);
-
     int getTasksBooted();
     bool getQueryBooted() { return _queryBooted; }
 
@@ -107,7 +112,7 @@ private:
 
     double _totalTimeMinutes = 0.0;
 
-    TaskMap _taskMap;  ///< Map of all Tasks for this user query keyed by job id and fragment number.
+    std::vector<wbase::Task::Ptr> _tasks;  ///< A collection of all tasks of the query
 
     util::Histogram::Ptr _histTimeRunningPerTask;  ///< Histogram of SQL query run times.
     util::Histogram::Ptr

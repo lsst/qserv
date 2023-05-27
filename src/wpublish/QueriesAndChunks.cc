@@ -36,10 +36,12 @@
 #include "lsst/log/Log.h"
 
 using namespace std;
+namespace wbase = lsst::qserv::wbase;
+namespace wpublish = lsst::qserv::wpublish;
 
 namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.wpublish.QueriesAndChunks");
-}
+}  // namespace
 
 namespace lsst::qserv::wpublish {
 
@@ -75,10 +77,10 @@ nlohmann::json QueryStatistics::getJsonHist() const {
 /// Return a json object containing information about all tasks.
 /// This can return a very large object and should be used sparingly.
 nlohmann::json QueryStatistics::getJsonTasks() const {
+    lock_guard<mutex> const guard(_qStatsMtx);
     nlohmann::json js = nlohmann::json::array();
-    for (auto const& elem : _taskMap) {
-        wbase::Task::Ptr const& tsk = elem.second;
-        js.push_back(tsk->getJson());
+    for (auto&& task : _tasks) {
+        js.push_back(task->getJson());
     }
     return js;
 }
@@ -331,8 +333,7 @@ void QueriesAndChunks::examineAll() {
         vector<wbase::Task::Ptr> runningTasks;
         {
             lock_guard<mutex> lock(uq->_qStatsMtx);
-            for (auto const& ele : uq->_taskMap) {
-                auto const& task = ele.second;
+            for (auto&& task : uq->_tasks) {
                 if (task->isRunning()) {
                     auto const& sched = dynamic_pointer_cast<wsched::ScanScheduler>(task->getTaskScheduler());
                     if (sched != nullptr) {
@@ -492,8 +493,13 @@ void QueriesAndChunks::_bootTask(QueryStatistics::Ptr const& uq, wbase::Task::Pt
 /// Add a Task to the user query statistics.
 void QueryStatistics::addTask(wbase::Task::Ptr const& task) {
     lock_guard<mutex> guard(_qStatsMtx);
-    TaskId tId = make_pair(task->getQueryId(), task->getJobId());
-    _taskMap.insert(make_pair(tId, task));
+    if (queryId != task->getQueryId()) {
+        string const msg = "QueryStatistics::" + string(__func__) +
+                           ": the task has queryId=" + to_string(task->getQueryId()) +
+                           " where queryId=" + to_string(queryId) + " was expected.";
+        throw util::Bug(ERR_LOC, msg);
+    }
+    _tasks.push_back(task);
 }
 
 /// @return the number of Tasks that have been booted for this user query.
@@ -559,15 +565,11 @@ vector<wbase::Task::Ptr> QueriesAndChunks::removeQueryFrom(QueryId const& qId,
 
     // Remove Tasks from their scheduler put them on 'removedList', but only if their Scheduler is the same
     // as 'sched' or if sched == nullptr.
-    auto& taskMap = query->second->_taskMap;
     vector<wbase::Task::Ptr> taskList;
     {
         lock_guard<mutex> taskLock(query->second->_qStatsMtx);
-        for (auto const& elem : taskMap) {
-            taskList.push_back(elem.second);
-        }
+        taskList = query->second->_tasks;
     }
-
     auto moveTasks = [&sched, &taskList, &removedList](bool moveRunning) {
         vector<wbase::Task::Ptr> taskListNotRemoved;
         for (auto const& task : taskList) {
