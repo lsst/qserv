@@ -37,6 +37,7 @@
 #include "replica/Messenger.h"
 #include "replica/ServiceProvider.h"
 #include "util/IterableFormatter.h"
+#include "util/TimeUtils.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -205,7 +206,7 @@ void SqlRequest::_analyze(bool success, ProtocolResponseSql const& response) {
     // Always extract extended data regardless of the completion status
     // reported by the worker service.
     _responseData.set(response);
-    _responseData.performanceSec = (PerformanceUtils::now() - performance(lock).c_create_time) / 1000.;
+    _responseData.performanceSec = (util::TimeUtils::now() - performance(lock).c_create_time) / 1000.;
 
     // Extract target request type-specific parameters from the response
     if (response.has_request()) {

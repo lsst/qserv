@@ -29,7 +29,6 @@
 
 // Qserv headers
 #include "replica/Configuration.h"
-#include "replica/Performance.h"
 #include "replica/ServiceProvider.h"
 #include "replica/WorkerDeleteRequest.h"
 #include "replica/WorkerEchoRequest.h"
@@ -40,6 +39,7 @@
 #include "replica/WorkerSqlRequest.h"
 #include "replica/WorkerDirectorIndexRequest.h"
 #include "util/BlockPost.h"
+#include "util/TimeUtils.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -102,7 +102,7 @@ WorkerProcessor::WorkerProcessor(ServiceProvider::Ptr const& serviceProvider,
           _requestFactory(requestFactory),
           _worker(worker),
           _state(STATE_IS_STOPPED),
-          _startTime(PerformanceUtils::now()) {}
+          _startTime(util::TimeUtils::now()) {}
 
 void WorkerProcessor::run() {
     LOGS(_log, LOG_LVL_DEBUG, _context(__func__));

@@ -27,7 +27,7 @@
 
 // Qserv headers
 #include "replica/DatabaseServices.h"
-#include "replica/Performance.h"
+#include "util/TimeUtils.h"
 
 using namespace std;
 
@@ -57,7 +57,7 @@ void HealthMonitorTask::onStart() {
         _workerServiceNoResponseSec[worker]["qserv"] = 0;
         _workerServiceNoResponseSec[worker]["replication"] = 0;
     }
-    _prevUpdateTimeMs = PerformanceUtils::now();
+    _prevUpdateTimeMs = util::TimeUtils::now();
 }
 
 bool HealthMonitorTask::onRun() {
@@ -88,7 +88,7 @@ bool HealthMonitorTask::onRun() {
     // Compute the actual delay which will also include the wait time since
     // the previous invocation of this method (onRun()).
 
-    auto newUpdateTimeMs = PerformanceUtils::now();
+    auto newUpdateTimeMs = util::TimeUtils::now();
     unsigned int workerResponseDelaySec = (newUpdateTimeMs - _prevUpdateTimeMs) / 1000;
     _prevUpdateTimeMs = newUpdateTimeMs;
 

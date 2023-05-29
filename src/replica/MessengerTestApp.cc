@@ -31,9 +31,9 @@
 #include "replica/Configuration.h"
 #include "replica/Controller.h"
 #include "replica/EchoRequest.h"
-#include "replica/Performance.h"
 #include "replica/ServiceProvider.h"
 #include "util/BlockPost.h"
+#include "util/TimeUtils.h"
 
 using namespace std;
 
@@ -169,22 +169,22 @@ void MessengerTestApp::_logEvent(unique_lock<mutex> const& lock, uint64_t timeMs
 
 void MessengerTestApp::_reportEvents(unique_lock<mutex> const& lock) {
     if (_eventsReportIvalSec == 0) return;
-    if (_prevEventsReportMs == 0) _prevEventsReportMs = PerformanceUtils::now();
+    if (_prevEventsReportMs == 0) _prevEventsReportMs = util::TimeUtils::now();
 
-    uint64_t const currentTimeMs = PerformanceUtils::now();
+    uint64_t const currentTimeMs = util::TimeUtils::now();
     if ((currentTimeMs - _prevEventsReportMs) / 1000 >= _eventsReportIvalSec) {
         _prevEventsReportMs = currentTimeMs;
 
         // First report events on requests (if any). Note that the event log must
         // be cleared to avoid double reporting.
         for (auto const& entry : _eventLog) {
-            cout << PerformanceUtils::toDateTimeString(chrono::milliseconds(entry.first)) << "  "
+            cout << util::TimeUtils::toDateTimeString(chrono::milliseconds(entry.first)) << "  "
                  << entry.second << "\n";
         }
         _eventLog.clear();
 
         // Then report the general statistics.
-        cout << PerformanceUtils::toDateTimeString(chrono::milliseconds(currentTimeMs)) << "  "
+        cout << util::TimeUtils::toDateTimeString(chrono::milliseconds(currentTimeMs)) << "  "
              << "STAT"
              << " active: " << setw(6) << _numActive << " finished: " << setw(6) << _numFinished
              << " success: " << setw(6) << _numSuccess << " expired: " << setw(6) << _numExpired

@@ -22,14 +22,9 @@
 // Class header
 #include "replica/Performance.h"
 
-// System headers
-#include <ctime>
-#include <iomanip>
-#include <sstream>
-#include <stdexcept>
-
 // Qserv headers
 #include "replica/protocol.pb.h"
+#include "util/TimeUtils.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -44,24 +39,8 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.Performance");
 
 namespace lsst::qserv::replica {
 
-uint64_t PerformanceUtils::now() {
-    return chrono::duration_cast<chrono::milliseconds>(chrono::system_clock::now().time_since_epoch())
-            .count();
-}
-
-string PerformanceUtils::toDateTimeString(chrono::milliseconds const& millisecondsSinceEpoch) {
-    chrono::time_point<chrono::system_clock> const point(millisecondsSinceEpoch);
-    auto const timer = chrono::system_clock::to_time_t(point);
-    auto broken_time = *localtime(&timer);
-
-    ostringstream ss;
-    ss << put_time(&broken_time, "%Y-%m-%d %H:%M:%S");
-    ss << '.' << setfill('0') << setw(3) << millisecondsSinceEpoch.count() % 1000;
-    return ss.str();
-}
-
 Performance::Performance()
-        : c_create_time(PerformanceUtils::now()),
+        : c_create_time(util::TimeUtils::now()),
           c_start_time(0),
           w_receive_time(0),
           w_start_time(0),
@@ -76,13 +55,13 @@ void Performance::update(ProtocolPerformance const& workerPerformanceInfo) {
 
 uint64_t Performance::setUpdateStart() {
     uint64_t const t = c_start_time;
-    c_start_time = PerformanceUtils::now();
+    c_start_time = util::TimeUtils::now();
     return t;
 }
 
 uint64_t Performance::setUpdateFinish() {
     uint64_t const t = c_finish_time;
-    c_finish_time = PerformanceUtils::now();
+    c_finish_time = util::TimeUtils::now();
     return t;
 }
 
@@ -96,17 +75,17 @@ ostream& operator<<(ostream& os, Performance const& p) {
 }
 
 WorkerPerformance::WorkerPerformance()
-        : receive_time(PerformanceUtils::now()), start_time(0), finish_time(0) {}
+        : receive_time(util::TimeUtils::now()), start_time(0), finish_time(0) {}
 
 uint64_t WorkerPerformance::setUpdateStart() {
     uint64_t const t = start_time;
-    start_time = PerformanceUtils::now();
+    start_time = util::TimeUtils::now();
     return t;
 }
 
 uint64_t WorkerPerformance::setUpdateFinish() {
     uint64_t const t = finish_time;
-    finish_time = PerformanceUtils::now();
+    finish_time = util::TimeUtils::now();
     return t;
 }
 

@@ -32,7 +32,7 @@
 #include "replica/DatabaseServices.h"
 #include "replica/HttpProcessor.h"
 #include "replica/HttpProcessorConfig.h"
-#include "replica/Performance.h"
+#include "util/TimeUtils.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -313,7 +313,7 @@ void MasterControllerHttpApp::_logEvent(ControllerEvent& event) const {
     // Finish filling the common fields
 
     event.controllerId = _controller->identity().id;
-    event.timeStamp = PerformanceUtils::now();
+    event.timeStamp = util::TimeUtils::now();
     event.task = _name();
 
     // For now ignore exceptions when logging events. Just report errors.

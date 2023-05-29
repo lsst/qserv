@@ -28,11 +28,9 @@
  */
 
 // System headers
-#include <chrono>
 #include <cstdint>
 #include <memory>
 #include <ostream>
-#include <string>
 
 // Forward declarations
 namespace lsst::qserv::replica {
@@ -41,17 +39,6 @@ class ProtocolPerformance;
 
 // This header declarations
 namespace lsst::qserv::replica {
-
-/**
- * Structure PerformanceUtils provides utilities shared by all classes in this scope
- */
-struct PerformanceUtils {
-    /// @return the current time in milliseconds since Epoch
-    static uint64_t now();
-
-    /// @return a human-readable timestamp in a format 'YYYY-MM-DD HH:MM:SS.mmm'
-    static std::string toDateTimeString(std::chrono::milliseconds const& millisecondsSinceEpoch);
-};
 
 /**
  * Class Performance encapsulates controller-side performance counters of requests
@@ -130,10 +117,8 @@ std::ostream& operator<<(std::ostream& os, Performance const& p);
 class WorkerPerformance {
 public:
     WorkerPerformance();
-
     WorkerPerformance(WorkerPerformance const&) = default;
     WorkerPerformance& operator=(WorkerPerformance const&) = default;
-
     ~WorkerPerformance() = default;
 
     uint64_t setUpdateStart();

@@ -31,6 +31,7 @@
 #include "global/constants.h"
 #include "replica/ConfigDatabaseFamily.h"
 #include "replica/Performance.h"
+#include "util/TimeUtils.h"
 
 using namespace std;
 using json = nlohmann::json;
@@ -50,7 +51,7 @@ DatabaseInfo DatabaseInfo::create(string const& name, string const family) {
     DatabaseInfo info;
     info.name = name;
     info.family = family;
-    info.createTime = PerformanceUtils::now();
+    info.createTime = util::TimeUtils::now();
     return info;
 }
 
@@ -342,7 +343,7 @@ TableInfo DatabaseInfo::sanitize(TableInfo const& table_) const {
     TableInfo table = table_;
     table.database = this->name;
     if (table.createTime == 0) {
-        table.createTime = PerformanceUtils::now();
+        table.createTime = util::TimeUtils::now();
     }
     if (table.publishTime == 0 && !table.isPublished) {
         table.publishTime = 0;

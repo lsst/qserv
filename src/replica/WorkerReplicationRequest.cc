@@ -31,8 +31,8 @@
 #include "replica/Configuration.h"
 #include "replica/FileClient.h"
 #include "replica/FileUtils.h"
-#include "replica/Performance.h"
 #include "replica/ServiceProvider.h"
+#include "util/TimeUtils.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -108,7 +108,7 @@ bool WorkerReplicationRequest::execute() {
     bool const complete = WorkerRequest::execute();
     if (complete) {
         replicaInfo = ReplicaInfo(ReplicaInfo::COMPLETE, worker(), database(), chunk(),
-                                  PerformanceUtils::now(), ReplicaInfo::FileInfoCollection());
+                                  util::TimeUtils::now(), ReplicaInfo::FileInfoCollection());
     }
     return complete;
 }
@@ -581,7 +581,7 @@ bool WorkerReplicationRequestFS::execute() {
                     }
 
                     // Keep updating this stats while copying the files
-                    _file2descr[*_fileItr].endTransferTime = PerformanceUtils::now();
+                    _file2descr[*_fileItr].endTransferTime = util::TimeUtils::now();
                     _updateInfo(lock);
 
                     // Keep copying the same file
@@ -625,7 +625,7 @@ bool WorkerReplicationRequestFS::execute() {
         _tmpFilePtr = 0;
 
         // Keep updating this stats after finishing to copy each file
-        _file2descr[*_fileItr].endTransferTime = PerformanceUtils::now();
+        _file2descr[*_fileItr].endTransferTime = util::TimeUtils::now();
         _updateInfo(lock);
 
         // Move the iterator to the name of the next file to be copied
@@ -678,7 +678,7 @@ bool WorkerReplicationRequestFS::_openFiles(replica::Lock const& lock) {
     }
     rewind(_tmpFilePtr);
 
-    _file2descr[*_fileItr].beginTransferTime = PerformanceUtils::now();
+    _file2descr[*_fileItr].beginTransferTime = util::TimeUtils::now();
 
     return true;
 }
@@ -747,7 +747,7 @@ void WorkerReplicationRequestFS::_updateInfo(replica::Lock const& lock) {
     // Fill in the info on the chunk before finishing the operation
 
     WorkerReplicationRequest::replicaInfo =
-            ReplicaInfo(status, worker(), database(), chunk(), PerformanceUtils::now(), fileInfoCollection);
+            ReplicaInfo(status, worker(), database(), chunk(), util::TimeUtils::now(), fileInfoCollection);
 }
 
 void WorkerReplicationRequestFS::_releaseResources(replica::Lock const& lock) {

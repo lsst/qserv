@@ -34,6 +34,7 @@
 #include "replica/DatabaseMySQLGenerator.h"
 #include "replica/Performance.h"
 #include "util/Timer.h"
+#include "util/TimeUtils.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -805,7 +806,7 @@ DatabaseInfo& Configuration::_publishDatabase(replica::Lock const& lock, string 
         throw logic_error(_context(__func__) + " database '" + database.name + "' is not published.");
     }
     if (publish) {
-        uint64_t const publishTime = PerformanceUtils::now();
+        uint64_t const publishTime = util::TimeUtils::now();
         // Firstly, publish all tables that were not published.
         for (auto const& tableName : database.tables()) {
             TableInfo& table = database.findTable(tableName);

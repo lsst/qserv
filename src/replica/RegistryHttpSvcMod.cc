@@ -24,8 +24,8 @@
 
 // Qserv header
 #include "qhttp/Request.h"
-#include "replica/Performance.h"
 #include "replica/RegistryWorkers.h"
+#include "util/TimeUtils.h"
 
 // System headers
 #include <sstream>
@@ -89,7 +89,7 @@ json RegistryHttpSvcMod::_addWorker() {
     json worker = body().required<json>("worker");
     string const name = worker.at("name").get<string>();
     string const host = ::senderIpAddr(req());
-    uint64_t const loggedTime = PerformanceUtils::now();
+    uint64_t const loggedTime = util::TimeUtils::now();
 
     debug(__func__, "name:        " + name);
     debug(__func__, "host:        " + host);

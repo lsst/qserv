@@ -31,9 +31,9 @@
 
 // Qserv headers
 #include "replica/Configuration.h"
-#include "replica/Performance.h"
 #include "replica/ServiceProvider.h"
 #include "util/BlockPost.h"
+#include "util/TimeUtils.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -353,7 +353,7 @@ XrdSsiService* QservMgtServices::_xrdSsiService() {
 
     XrdSsiErrInfo errInfo;
     unsigned int const intervalBetweenReconnectsMs = 1000;
-    uint64_t const startedConnectionAttemptsSec = PerformanceUtils::now() / 1000;
+    uint64_t const startedConnectionAttemptsSec = util::TimeUtils::now() / 1000;
     unsigned int numAttempts = 0;
     while (true) {
         ++numAttempts;
@@ -363,7 +363,7 @@ XrdSsiService* QservMgtServices::_xrdSsiService() {
         // Allow another try after waiting for the given reconnection interval if
         // allowed and while the configuration-specified timeout has not been expired.
 
-        uint64_t const timeSinceStartedSec = PerformanceUtils::now() / 1000 - startedConnectionAttemptsSec;
+        uint64_t const timeSinceStartedSec = util::TimeUtils::now() / 1000 - startedConnectionAttemptsSec;
 
         if (_serviceProvider->config()->get<unsigned int>("xrootd", "allow-reconnect") &&
             timeSinceStartedSec <

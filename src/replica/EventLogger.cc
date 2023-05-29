@@ -27,8 +27,8 @@
 
 // Qserv headers
 #include "replica/DatabaseServices.h"
-#include "replica/Performance.h"
 #include "replica/ServiceProvider.h"
+#include "util/TimeUtils.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -48,7 +48,7 @@ void EventLogger::logEvent(ControllerEvent& event) const {
     // Finish filling the common fields
 
     event.controllerId = controller()->identity().id;
-    event.timeStamp = PerformanceUtils::now();
+    event.timeStamp = util::TimeUtils::now();
     event.task = name();
 
     // For now ignore exceptions when logging events. Just report errors.

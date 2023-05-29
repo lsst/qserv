@@ -49,6 +49,7 @@
 #include "util/Bug.h"
 #include "util/HoldTrack.h"
 #include "util/IterableFormatter.h"
+#include "util/TimeUtils.h"
 #include "wbase/Base.h"
 #include "wbase/SendChannelShared.h"
 #include "wbase/UserQueryInfo.h"
@@ -60,14 +61,6 @@ using namespace std::chrono_literals;
 namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.wbase.Task");
-
-/**
- * @param tp The timepoint to be converted.
- * @return The number of milliseconds since UNIX Epoch
- */
-uint64_t tp2ms(std::chrono::system_clock::time_point const& tp) {
-    return std::chrono::duration_cast<std::chrono::milliseconds>(tp.time_since_epoch()).count();
-}
 
 }  // namespace
 
@@ -408,11 +401,11 @@ nlohmann::json Task::getJson() const {
     js["scanInteractive"] = _scanInteractive;
     js["cancelled"] = to_string(_cancelled);
     js["state"] = _state;
-    js["createTime_msec"] = ::tp2ms(_createTime);
-    js["queueTime_msec"] = ::tp2ms(_queueTime);
-    js["startTime_msec"] = ::tp2ms(_startTime);
-    js["queryTime_msec"] = ::tp2ms(_queryTime);
-    js["finishTime_msec"] = ::tp2ms(_finishTime);
+    js["createTime_msec"] = util::TimeUtils::tp2ms(_createTime);
+    js["queueTime_msec"] = util::TimeUtils::tp2ms(_queueTime);
+    js["startTime_msec"] = util::TimeUtils::tp2ms(_startTime);
+    js["queryTime_msec"] = util::TimeUtils::tp2ms(_queryTime);
+    js["finishTime_msec"] = util::TimeUtils::tp2ms(_finishTime);
     js["sizeSoFar"] = _totalSize;
     return js;
 }

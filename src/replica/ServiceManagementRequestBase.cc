@@ -32,9 +32,9 @@
 #include "replica/Controller.h"
 #include "replica/DatabaseServices.h"
 #include "replica/Messenger.h"
-#include "replica/Performance.h"
 #include "replica/ProtocolBuffer.h"
 #include "replica/ServiceProvider.h"
+#include "util/TimeUtils.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -116,7 +116,7 @@ void ServiceState::set(ProtocolServiceResponse const& message) {
 }
 
 ostream& operator<<(ostream& os, ServiceState const& ss) {
-    unsigned int const secondsAgo = (PerformanceUtils::now() - ss.startTime) / 1000.0f;
+    unsigned int const secondsAgo = (util::TimeUtils::now() - ss.startTime) / 1000.0f;
 
     os << "ServiceState:\n"
        << "\n  Summary:\n\n"
