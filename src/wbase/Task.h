@@ -198,8 +198,12 @@ public:
 
     // Shared scan information
     bool getHasChunkId() const { return _hasChunkId; }
-    int getChunkId() const;
+
+    /// @return the chunkId for this task. If the task has no chunkId, return -1.
+    int getChunkId() const { return _chunkId; }
+
     QueryId getQueryId() const { return _qId; }
+    size_t getTemplateId() const { return _templateId; }
     int getJobId() const { return _jId; }
     int getAttemptCount() const { return _attemptCount; }
     bool getScanInteractive() { return _scanInteractive; }
