@@ -2,6 +2,9 @@
 Test sets
 *********
 
+.. warning::
+    DEPRECATED
+
 Integration tests
 =================
 
@@ -28,7 +31,6 @@ Directory structure
 ^^^^^^^^^^^^^^^^^^^
 
 ::
-
     case<number>/
         README.txt - contains info about data
         queries/
