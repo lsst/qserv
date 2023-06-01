@@ -27,6 +27,7 @@
 #include <string>
 
 // Qserv headers
+#include "wbase/TaskState.h"
 #include "wbase/WorkerCommand.h"
 
 // Forward declarations
@@ -49,29 +50,31 @@ namespace lsst::qserv::wpublish {
  */
 class GetStatusCommand : public wbase::WorkerCommand {
 public:
-    // The default construction and copy semantics are prohibited
+    /**
+     * @param sendChannel      The communication channel for reporting results.
+     * @param processor        The message processor for extracting status info.
+     * @param resourceMonitor  The XRootD resource monitor for finding which chunks are in use.
+     * @param taskSelector     Task selection criterias.
+     */
+    GetStatusCommand(std::shared_ptr<wbase::SendChannel> const& sendChannel,
+                     std::shared_ptr<wbase::MsgProcessor> const& processor,
+                     std::shared_ptr<ResourceMonitor> const& resourceMonitor,
+                     wbase::TaskSelector const& taskSelector);
+
+    GetStatusCommand() = delete;
     GetStatusCommand& operator=(GetStatusCommand const&) = delete;
     GetStatusCommand(GetStatusCommand const&) = delete;
-    GetStatusCommand() = delete;
 
-    /**
-     * @param sendChannel      communication channel for reporting results
-     * @param processor        message processor for extracting status info
-     * @param resourceMonitor  XRootD resource monitor for finding which chunks are in use
-     */
-    explicit GetStatusCommand(std::shared_ptr<wbase::SendChannel> const& sendChannel,
-                              std::shared_ptr<wbase::MsgProcessor> const& processor,
-                              std::shared_ptr<ResourceMonitor> const& resourceMonitor);
+    virtual ~GetStatusCommand() override = default;
 
-    ~GetStatusCommand() override = default;
-
-    void run() override;
+    virtual void run() override;
 
 private:
     // Parameters of the object
 
     std::shared_ptr<wbase::MsgProcessor> const _processor;
-    std::shared_ptr<ResourceMonitor> _resourceMonitor;
+    std::shared_ptr<ResourceMonitor> const _resourceMonitor;
+    wbase::TaskSelector const _taskSelector;
 };
 
 }  // namespace lsst::qserv::wpublish

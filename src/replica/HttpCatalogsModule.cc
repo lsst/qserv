@@ -31,9 +31,9 @@
 // Qserv headers
 #include "replica/Configuration.h"
 #include "replica/DatabaseServices.h"
-#include "replica/Performance.h"
 #include "replica/ReplicaInfo.h"
 #include "replica/ServiceProvider.h"
+#include "util/TimeUtils.h"
 
 using namespace std;
 using json = nlohmann::json;
@@ -70,7 +70,7 @@ json HttpCatalogsModule::executeImpl(string const& subModuleName) {
         // TODO: add a cache control parameter to the class's constructor,
         // or (even better) extract it from an optional parameter of the request
         // to let a client decide on how "stale" the result is expected to be.
-        uint64_t const lastReportAgeMs = PerformanceUtils::now() - _catalogsReportTimeMs;
+        uint64_t const lastReportAgeMs = util::TimeUtils::now() - _catalogsReportTimeMs;
         if (lastReportAgeMs < 60 * 60 * 1000) return _catalogsReport;
     }
 
@@ -84,7 +84,7 @@ json HttpCatalogsModule::executeImpl(string const& subModuleName) {
 
     // Update the cache
     _catalogsReport = result;
-    _catalogsReportTimeMs = PerformanceUtils::now();
+    _catalogsReportTimeMs = util::TimeUtils::now();
 
     return _catalogsReport;
 }

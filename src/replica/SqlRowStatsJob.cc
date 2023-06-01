@@ -25,10 +25,10 @@
 // Qserv headers
 #include "global/constants.h"
 #include "replica/ChunkedTable.h"
-#include "replica/Performance.h"
 #include "replica/SqlJobResult.h"
 #include "replica/SqlRowStatsRequest.h"
 #include "replica/StopRequest.h"
+#include "util/TimeUtils.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -189,7 +189,7 @@ void SqlRowStatsJob::processResultAndFinish(replica::Lock const& lock, ExtendedS
         // Report errors and refuse updating the state if these conditions
         // aren't met.
         bool counterMismatchDetected = false;
-        uint64_t const updateTime = PerformanceUtils::now();
+        uint64_t const updateTime = util::TimeUtils::now();
         TableRowStats stats(database(), table());
         for (auto const& tableItr : counters) {
             string const& internalTable = tableItr.first;

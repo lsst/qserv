@@ -35,9 +35,9 @@
 #include "replica/Common.h"  // Generators::uniqueId()
 #include "replica/Configuration.h"
 #include "replica/DatabaseServices.h"
-#include "replica/Performance.h"  // PerformanceUtils::now()
 #include "replica/QservMgtServices.h"
 #include "replica/ServiceProvider.h"
+#include "util/TimeUtils.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -144,7 +144,7 @@ void Job::start() {
     // because the later may create children jobs whose performance
     // counters must be newer, and whose saved state within the database
     // may depend on this job's state.
-    _beginTime = PerformanceUtils::now();
+    _beginTime = util::TimeUtils::now();
     controller()->serviceProvider()->databaseServices()->saveState(*this);
 
     // Start timers if configured
@@ -241,7 +241,7 @@ void Job::setState(replica::Lock const& lock, State newState, ExtendedState newE
     // ATTENTION: changing the top-level state to FINISHED should be last step
     // in the transient state transition in order to ensure a consistent view
     // onto the combined state.
-    if (newState == State::FINISHED) _endTime = PerformanceUtils::now();
+    if (newState == State::FINISHED) _endTime = util::TimeUtils::now();
     {
         unique_lock<mutex> onFinishLock(_onFinishMtx);
         _extendedState = newExtendedState;

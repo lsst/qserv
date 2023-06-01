@@ -33,8 +33,8 @@
 
 // Qserv headers
 #include "replica/ExportClient.h"
-#include "replica/Performance.h"
 #include "util/File.h"
+#include "util/TimeUtils.h"
 
 using namespace std;
 using namespace nlohmann;
@@ -219,12 +219,12 @@ void FileExportApp::_export(FileExportSpec const& file) const {
         throw invalid_argument(context + "unsupported value of the column separator: '" +
                                _columnSeparatorStr + "'");
     }
-    uint64_t const startedMs = PerformanceUtils::now();
+    uint64_t const startedMs = util::TimeUtils::now();
     auto const ptr =
             ExportClient::connect(file.workerHost, file.workerPort, file.databaseName, file.tableName,
                                   file.chunk, file.overlap, file.outFileName, columnSeparator, authKey());
     ptr->receive();
-    uint64_t const finishedMs = PerformanceUtils::now();
+    uint64_t const finishedMs = util::TimeUtils::now();
 
     if (_verbose) {
         uint64_t const elapsedMs = max(1UL, finishedMs - startedMs);
@@ -238,9 +238,9 @@ void FileExportApp::_export(FileExportSpec const& file) const {
              << "          Is chunk overlap: " << bool2str(file.overlap) << "\n"
              << "          Output file name: " << file.outFileName << "\n"
              << "               Start  time: "
-             << PerformanceUtils::toDateTimeString(chrono::milliseconds(startedMs)) << "\n"
+             << util::TimeUtils::toDateTimeString(chrono::milliseconds(startedMs)) << "\n"
              << "               Finish time: "
-             << PerformanceUtils::toDateTimeString(chrono::milliseconds(finishedMs)) << "\n"
+             << util::TimeUtils::toDateTimeString(chrono::milliseconds(finishedMs)) << "\n"
              << "              Elapsed time: " << elapsedSec << " sec\n"
              << "            Rows  received: " << ptr->totalNumRows() << "\n"
              << "            Bytes received: " << ptr->sizeBytes() << "\n"

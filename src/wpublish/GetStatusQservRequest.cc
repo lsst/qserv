@@ -47,12 +47,14 @@ string GetStatusQservRequest::status2str(Status status) {
                        "  no match for status: " + to_string(status));
 }
 
-GetStatusQservRequest::Ptr GetStatusQservRequest::create(GetStatusQservRequest::CallbackType onFinish) {
-    return GetStatusQservRequest::Ptr(new GetStatusQservRequest(onFinish));
+GetStatusQservRequest::Ptr GetStatusQservRequest::create(wbase::TaskSelector const& taskSelector,
+                                                         GetStatusQservRequest::CallbackType onFinish) {
+    return GetStatusQservRequest::Ptr(new GetStatusQservRequest(taskSelector, onFinish));
 }
 
-GetStatusQservRequest::GetStatusQservRequest(GetStatusQservRequest::CallbackType onFinish)
-        : _onFinish(onFinish) {
+GetStatusQservRequest::GetStatusQservRequest(wbase::TaskSelector const& taskSelector,
+                                             GetStatusQservRequest::CallbackType onFinish)
+        : _taskSelector(taskSelector), _onFinish(onFinish) {
     LOGS(_log, LOG_LVL_DEBUG, "GetStatusQservRequest  ** CONSTRUCTED **");
 }
 
@@ -64,6 +66,17 @@ void GetStatusQservRequest::onRequest(proto::FrameBuffer& buf) {
     proto::WorkerCommandH header;
     header.set_command(proto::WorkerCommandH::GET_STATUS);
     buf.serialize(header);
+
+    proto::WorkerCommandGetStatusM message;
+    message.set_include_tasks(_taskSelector.includeTasks);
+    for (auto const& id : _taskSelector.queryIds) {
+        message.add_query_ids(id);
+    }
+    for (auto const& state : _taskSelector.taskStates) {
+        message.add_task_states(static_cast<std::uint64_t>(state));
+    }
+    message.set_max_tasks(_taskSelector.maxTasks);
+    buf.serialize(message);
 }
 
 void GetStatusQservRequest::onResponse(proto::FrameBufferView& view) {

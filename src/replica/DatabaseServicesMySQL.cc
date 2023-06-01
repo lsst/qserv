@@ -37,11 +37,11 @@
 #include "replica/DatabaseMySQLUtils.h"
 #include "replica/Job.h"
 #include "replica/NamedMutexRegistry.h"
-#include "replica/Performance.h"
 #include "replica/QservMgtRequest.h"
 #include "replica/ReplicaInfo.h"
 #include "replica/Request.h"
 #include "replica/SemanticMaps.h"
+#include "util/TimeUtils.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -113,7 +113,7 @@ void DatabaseServicesMySQL::saveState(Job const& job) {
     // then the UPDATE query will be executed.
     try {
         auto const insert = [&](decltype(_conn) conn) {
-            auto const heartbeatTime = PerformanceUtils::now();
+            auto const heartbeatTime = util::TimeUtils::now();
             string const query = _g.insert(
                     "job", job.id(), job.controller()->identity().id, _g.nullIfEmpty(job.parentJobId()),
                     job.type(), Job::state2string(job.state()), Job::state2string(job.extendedState()),
@@ -147,7 +147,7 @@ void DatabaseServicesMySQL::updateHeartbeatTime(Job const& job) {
     LOGS(_log, LOG_LVL_DEBUG, context);
     replica::Lock lock(_mtx, context);
     try {
-        string const query = _g.update("job", make_pair("heartbeat_time", PerformanceUtils::now())) +
+        string const query = _g.update("job", make_pair("heartbeat_time", util::TimeUtils::now())) +
                              _g.where(_g.eq("id", job.id()));
         _conn->executeInOwnTransaction([&query](decltype(_conn) conn) { conn->execute(query); });
     } catch (database::mysql::Error const& ex) {
@@ -1342,7 +1342,7 @@ TransactionInfo DatabaseServicesMySQL::createTransaction(string const& databaseN
         throw invalid_argument(context +
                                "a value of the parameter 'transactionContext is not a valid JSON object");
 
-    uint64_t const beginTime = PerformanceUtils::now();
+    uint64_t const beginTime = util::TimeUtils::now();
     uint64_t const startTime = 0;
     uint64_t const transitionTime = 0;
     uint64_t const endTime = 0;
@@ -1405,7 +1405,7 @@ TransactionInfo DatabaseServicesMySQL::updateTransaction(TransactionId id, Trans
             }
             string const query =
                     _g.update("transaction", make_pair("state", TransactionInfo::state2string(newState)),
-                              make_pair(timeStampName, PerformanceUtils::now())) +
+                              make_pair(timeStampName, util::TimeUtils::now())) +
                     _g.where(predicate);
             conn->execute(query);
             includeContext = true;
@@ -1467,7 +1467,7 @@ TransactionInfo DatabaseServicesMySQL::updateTransaction(TransactionId id,
             for (auto&& elem : events) {
                 string const& eventName = elem.first;
                 json const& eventData = elem.second;
-                uint64_t const eventTime = PerformanceUtils::now();
+                uint64_t const eventTime = util::TimeUtils::now();
                 string const query = _g.insert("transaction_log", Sql::NULL_, info.id,
                                                TransactionInfo::state2string(info.state), eventTime,
                                                eventName, eventData.dump());
@@ -1680,7 +1680,7 @@ TransactionContribInfo DatabaseServicesMySQL::createdTransactionContrib(
     uint64_t const numBytes = 0;
     uint64_t const numRows = 0;
 
-    uint64_t const createTime = PerformanceUtils::now();
+    uint64_t const createTime = util::TimeUtils::now();
     uint64_t const startTime = 0;
     uint64_t const readTime = 0;
     uint64_t const loadTime = 0;

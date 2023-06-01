@@ -22,7 +22,9 @@
 #define LSST_QSERV_HTTPREQUESTQUERY_H
 
 // System headers
+#include <cstdint>
 #include <string>
+#include <vector>
 #include <unordered_map>
 
 // This header declarations
@@ -59,21 +61,46 @@ public:
     std::string optionalString(std::string const& param,
                                std::string const& defaultValue = std::string()) const;
 
+    bool requiredBool(std::string const& param) const;
+    bool optionalBool(std::string const& param, bool defaultValue = false) const;
+
     uint16_t requiredUInt16(std::string const& param) const;
     uint16_t optionalUInt16(std::string const& param, uint16_t defaultValue = 0) const;
-
-    uint64_t requiredUInt64(std::string const& param) const;
-    uint64_t optionalUInt64(std::string const& param, uint64_t defaultValue = 0) const;
-
-    int optionalInt(std::string const& param, int defaultValue = -1) const;
 
     unsigned int requiredUInt(std::string const& param) const;
     unsigned int optionalUInt(std::string const& param, unsigned int defaultValue = 0) const;
 
-    bool requiredBool(std::string const& param) const;
-    bool optionalBool(std::string const& param, bool defaultValue = false) const;
+    int requiredInt(std::string const& param) const;
+    int optionalInt(std::string const& param, int defaultValue = 0) const;
+
+    std::uint64_t requiredUInt64(std::string const& param) const;
+    std::uint64_t optionalUInt64(std::string const& param, std::uint64_t defaultValue = 0) const;
 
     double requiredDouble(std::string const& param) const;
+
+    /**
+     * For the optional parameter, parse its input string value into
+     * a collection of numbers. Where the input string is expected to have
+     * the following syntax:
+     * @code
+     * [<n1>[,<n2>[,<n2> ... ]]]
+     * @endcode
+     */
+    std::vector<std::uint64_t> optionalVectorUInt64(
+            std::string const& param,
+            std::vector<std::uint64_t> const& defaultValue = std::vector<std::uint64_t>()) const;
+
+    /**
+     * For the optional parameter, parse its input string value into
+     * a collection of strings. Where the input string is expected to have
+     * the following syntax:
+     * @code
+     * [<s1>[,<s2>[,<s2> ... ]]]
+     * @endcode
+     */
+    std::vector<std::string> optionalVectorStr(
+            std::string const& param,
+            std::vector<std::string> const& defaultValue = std::vector<std::string>()) const;
 
     bool has(std::string const& param) const;
 

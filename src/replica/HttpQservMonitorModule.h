@@ -35,6 +35,11 @@
 #include "replica/DatabaseMySQL.h"
 #include "replica/HttpModule.h"
 
+// Forward declarations
+namespace lsst::qserv::wbase {
+struct TaskSelector;
+}  // namespace lsst::qserv::wbase
+
 // This header declarations
 namespace lsst::qserv::replica {
 
@@ -102,6 +107,30 @@ private:
     nlohmann::json _userQuery();
 
     /**
+     * Extract and parse values of the worker task selector.
+     */
+    wbase::TaskSelector _translateTaskSelector(std::string const& func) const;
+
+    /**
+     * The helper method for processing the input JSON object and populating
+     * the output collections.
+     * @note The method is shared by implementations of _worker() and _workers(), and
+     * it's needed to avoid code duplication.
+     */
+    void _processWorkerInfo(std::string const& worker, bool keepResources, nlohmann::json const& inWorkerInfo,
+                            nlohmann::json& statusRef,
+                            std::map<std::string, std::set<int>>& schedulers2chunks,
+                            std::set<int>& chunks) const;
+
+    /**
+     * The helper method translates the input collection into the JSON reptresentation.
+     * @note The method is shared by implementations of _worker() and _workers(), and
+     * it's needed to avoid code duplication.
+     */
+    nlohmann::json _schedulers2chunks2json(
+            std::map<std::string, std::set<int>> const& schedulers2chunks) const;
+
+    /**
      * @brief Extract info on the ongoing queries.
      * @param conn Database connection to the Czar database.
      * @param queryId2scheduler The map with optional entries indicating which schedulers
@@ -130,7 +159,7 @@ private:
      * @param workerInfo  worker info object to be inspected to extract identifier)s of queries
      * @return descriptions of the queries
      */
-    nlohmann::json _getQueries(nlohmann::json& workerInfo) const;
+    nlohmann::json _getQueries(nlohmann::json const& workerInfo) const;
 
     /// @return The shared scan parameters of all partitioned tables (CSS)
     nlohmann::json _cssSharedScan();

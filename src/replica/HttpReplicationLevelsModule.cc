@@ -32,9 +32,9 @@
 #include "replica/Configuration.h"
 #include "replica/DatabaseServices.h"
 #include "replica/HttpExceptions.h"
-#include "replica/Performance.h"
 #include "replica/ReplicaInfo.h"
 #include "replica/ServiceProvider.h"
+#include "util/TimeUtils.h"
 
 using namespace std;
 using json = nlohmann::json;
@@ -106,7 +106,7 @@ json HttpReplicationLevelsModule::_makeReport(bool force) {
     // or (even better) extract it from an optional parameter of the request
     // to let a client decide on how "stale" the result is expected to be.
     if (!force && !_replicationLevelReport.is_null()) {
-        uint64_t const lastReportAgeMs = PerformanceUtils::now() - _replicationLevelReportTimeMs;
+        uint64_t const lastReportAgeMs = util::TimeUtils::now() - _replicationLevelReportTimeMs;
         if (lastReportAgeMs < 240 * 1000) return _replicationLevelReport;
     }
 
@@ -270,7 +270,7 @@ json HttpReplicationLevelsModule::_makeReport(bool force) {
     }
     // Update the cache before sending the response
     _replicationLevelReport = result;
-    _replicationLevelReportTimeMs = PerformanceUtils::now();
+    _replicationLevelReportTimeMs = util::TimeUtils::now();
     return _replicationLevelReport;
 }
 

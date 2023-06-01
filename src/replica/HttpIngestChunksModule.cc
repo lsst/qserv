@@ -37,6 +37,7 @@
 #include "replica/HttpExceptions.h"
 #include "replica/ReplicaInfo.h"
 #include "replica/ServiceProvider.h"
+#include "util/TimeUtils.h"
 
 using namespace std;
 using json = nlohmann::json;
@@ -481,7 +482,7 @@ json HttpIngestChunksModule::_getChunks() {
 
 void HttpIngestChunksModule::_registerNewChunk(string const& worker, string const& database,
                                                unsigned int chunk) const {
-    auto const verifyTime = PerformanceUtils::now();
+    auto const verifyTime = util::TimeUtils::now();
     ReplicaInfo const newReplica(ReplicaInfo::Status::COMPLETE, worker, database, chunk, verifyTime);
     controller()->serviceProvider()->databaseServices()->saveReplicaInfo(newReplica);
 }

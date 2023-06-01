@@ -10,6 +10,7 @@
 #include "XrdSsi/XrdSsiService.hh"
 
 // Qserv headers
+#include "global/intTypes.h"
 #include "global/ResourceUnit.h"
 #include "proto/worker.pb.h"
 #include "util/BlockPost.h"
@@ -34,8 +35,10 @@ string fileName;
 unsigned int numRequests;
 string serviceProviderLocation;
 unsigned int numWorkers;
+vector<QueryId> queryIds;
 bool workerFirst;
 unsigned int cancelAfterMs;
+bool includeTasks;
 
 int test() {
     vector<string> const workers = util::File::getLines(fileName, true);
@@ -65,6 +68,7 @@ int test() {
 
             for (unsigned int i = 0; i < numRequests; ++i) {
                 auto request = wpublish::GetStatusQservRequest::create(
+                        includeTasks, queryIds,
                         [&finished](wpublish::GetStatusQservRequest::Status status, string const& error,
                                     string const& info) {
                             if (status != wpublish::GetStatusQservRequest::Status::SUCCESS) {
@@ -142,26 +146,30 @@ int main(int argc, const char* const argv[]) {
                 argc, argv,
                 "\n"
                 "Usage:\n"
-                "  <workers-file-name> <num-requests>\n"
+                "  <workers-file-name> <num-requests> [<qid> [<qid> ... ]]\n"
                 "  [--service=<provider>]\n"
                 "  [--num-workers=<value>]\n"
                 "  [--worker-first]\b"
+                "  [--include-tasks]\n"
                 "  [--cancel-after=<milliseconds>]\n"
                 "\n"
                 "Flags an options:\n"
                 "  --service=<provider>  - location of a service provider (default: 'localhost:1094')\n"
                 "  --num-workers=<value> - the number of workers (default: 1, range: 1..10)\n"
                 "  --worker-first        - iterate over workers, then over requests\n"
+                "  --include-tasks       - include detail info on the tasks\n"
                 "  --cancel-after=<milliseconds> \n"
                 "                        - the number of milliseconds to wait before cancelling\n"
                 "                          all requests (default 0 means no cancellation)\n"
                 "\n"
                 "Parameters:\n"
                 "  <workers-file-name>  - a file with worker identifiers (one worker per line)\n"
-                "  <num-requests>       - the number of requests per worker\n");
+                "  <num-requests>       - the number of requests per worker\n"
+                "  <qid>                - user query identifier\n");
 
         ::fileName = parser.parameter<string>(1);
         ::numRequests = parser.parameter<unsigned int>(2);
+        ::queryIds = parser.parameters<QueryIds>(3);
 
         ::serviceProviderLocation = parser.option<string>("service", "localhost:1094");
         ::numWorkers = parser.option<unsigned int>("num-workers", 1);

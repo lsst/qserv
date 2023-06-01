@@ -31,8 +31,8 @@
 // Qserv headers
 #include "replica/Configuration.h"
 #include "replica/FileUtils.h"
-#include "replica/Performance.h"
 #include "replica/ServiceProvider.h"
+#include "util/TimeUtils.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -95,7 +95,7 @@ bool WorkerFindAllRequest::execute() {
 
         for (unsigned int chunk = 0; chunk < 8; ++chunk) {
             _replicaInfoCollection.emplace_back(ReplicaInfo::COMPLETE, _worker, database(), chunk,
-                                                PerformanceUtils::now(), ReplicaInfo::FileInfoCollection());
+                                                util::TimeUtils::now(), ReplicaInfo::FileInfoCollection());
         }
     }
     return completed;
@@ -199,7 +199,7 @@ bool WorkerFindAllRequestPOSIX::execute() {
         size_t const numFiles = entry.second.size();
         _replicaInfoCollection.emplace_back(
                 numFiles < numFilesPerChunkRequired ? ReplicaInfo::INCOMPLETE : ReplicaInfo::COMPLETE,
-                worker(), database(), chunk, PerformanceUtils::now(), chunk2fileInfoCollection[chunk]);
+                worker(), database(), chunk, util::TimeUtils::now(), chunk2fileInfoCollection[chunk]);
     }
 
     setStatus(lock, ProtocolStatus::SUCCESS);

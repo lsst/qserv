@@ -29,7 +29,7 @@
 #include "replica/Configuration.h"
 #include "replica/DatabaseMySQL.h"
 #include "replica/DatabaseServicesMySQL.h"
-#include "replica/Performance.h"
+#include "util/TimeUtils.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -268,21 +268,21 @@ DatabaseServices::Ptr DatabaseServices::create(Configuration::Ptr const& config)
 
 TransactionContribInfo DatabaseServices::startedTransactionContrib(
         TransactionContribInfo info, bool failed, TransactionContribInfo::Status statusOnFailed) {
-    info.startTime = PerformanceUtils::now();
+    info.startTime = util::TimeUtils::now();
     info.status = failed ? statusOnFailed : TransactionContribInfo::Status::IN_PROGRESS;
     return updateTransactionContrib(info);
 }
 
 TransactionContribInfo DatabaseServices::readTransactionContrib(
         TransactionContribInfo info, bool failed, TransactionContribInfo::Status statusOnFailed) {
-    info.readTime = PerformanceUtils::now();
+    info.readTime = util::TimeUtils::now();
     info.status = failed ? statusOnFailed : TransactionContribInfo::Status::IN_PROGRESS;
     return updateTransactionContrib(info);
 }
 
 TransactionContribInfo DatabaseServices::loadedTransactionContrib(
         TransactionContribInfo info, bool failed, TransactionContribInfo::Status statusOnFailed) {
-    info.loadTime = PerformanceUtils::now();
+    info.loadTime = util::TimeUtils::now();
     info.status = failed ? statusOnFailed : TransactionContribInfo::Status::FINISHED;
     return updateTransactionContrib(info);
 }

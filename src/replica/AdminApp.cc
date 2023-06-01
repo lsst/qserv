@@ -34,6 +34,7 @@
 #include "replica/RequestTracker.h"
 #include "replica/ServiceManagementRequest.h"
 #include "util/TablePrinter.h"
+#include "util/TimeUtils.h"
 
 using namespace std;
 
@@ -141,7 +142,7 @@ int AdminApp::runImpl() {
         if ((ptr->state() == Request::State::FINISHED) &&
             (ptr->extendedState() == Request::ExtendedState::SUCCESS)) {
             startedSecondsAgo.push_back(
-                    to_string((PerformanceUtils::now() - ptr->getServiceState().startTime) / 1000));
+                    to_string((util::TimeUtils::now() - ptr->getServiceState().startTime) / 1000));
             state.push_back(ptr->getServiceState().state2string());
             numNewRequests.push_back(to_string(ptr->getServiceState().numNewRequests));
             numInProgressRequests.push_back(to_string(ptr->getServiceState().numInProgressRequests));

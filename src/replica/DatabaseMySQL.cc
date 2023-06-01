@@ -37,6 +37,7 @@
 #include "replica/Performance.h"
 #include "replica/protocol.pb.h"
 #include "util/BlockPost.h"
+#include "util/TimeUtils.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -348,7 +349,7 @@ Connection::Ptr Connection::execute(function<void(Connection::Ptr)> const& scrip
     auto conn = shared_from_this();
 
     unsigned int numReconnects = 0;
-    size_t const beginTimeMillisec = PerformanceUtils::now();
+    size_t const beginTimeMillisec = util::TimeUtils::now();
     do {
         try {
             LOGS(_log, LOG_LVL_DEBUG, context << "running user script, numReconnects: " << numReconnects);
@@ -373,7 +374,7 @@ Connection::Ptr Connection::execute(function<void(Connection::Ptr)> const& scrip
 
         // Check for timer expiration
 
-        size_t const elapsedTimeMillisec = PerformanceUtils::now() - beginTimeMillisec;
+        size_t const elapsedTimeMillisec = util::TimeUtils::now() - beginTimeMillisec;
         if (elapsedTimeMillisec / 1000 > effectiveTimeoutSec) {
             string const msg = context + "aborting script, expired effectiveTimeoutSec: " +
                                to_string(effectiveTimeoutSec) +

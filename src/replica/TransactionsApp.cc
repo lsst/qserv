@@ -30,10 +30,10 @@
 // Qserv headers
 #include "replica/DatabaseServices.h"
 #include "replica/NamedMutexRegistry.h"
-#include "replica/Performance.h"
 #include "replica/ServiceProvider.h"
 #include "replica/Mutex.h"
 #include "util/TablePrinter.h"
+#include "util/TimeUtils.h"
 
 using namespace std;
 
@@ -129,12 +129,12 @@ void TransactionsApp::_print(vector<TransactionInfo> const& collection) const {
         colId.push_back(info.id);
         colDatabase.push_back(info.database);
         colState.push_back(TransactionInfo::state2string(info.state));
-        colStartTime.push_back(PerformanceUtils::toDateTimeString(chrono::milliseconds(info.beginTime)));
-        colTransTime.push_back(PerformanceUtils::toDateTimeString(chrono::milliseconds(info.transitionTime)));
-        colBeginTime.push_back(PerformanceUtils::toDateTimeString(chrono::milliseconds(info.startTime)));
-        colEndTime.push_back(
-                info.endTime == 0 ? ""
-                                  : PerformanceUtils::toDateTimeString(chrono::milliseconds(info.endTime)));
+        colStartTime.push_back(util::TimeUtils::toDateTimeString(chrono::milliseconds(info.beginTime)));
+        colTransTime.push_back(util::TimeUtils::toDateTimeString(chrono::milliseconds(info.transitionTime)));
+        colBeginTime.push_back(util::TimeUtils::toDateTimeString(chrono::milliseconds(info.startTime)));
+        colEndTime.push_back(info.endTime == 0
+                                     ? ""
+                                     : util::TimeUtils::toDateTimeString(chrono::milliseconds(info.endTime)));
     }
 
     util::ColumnTablePrinter table("SUPER-TRANSACTIONS:", "  ");

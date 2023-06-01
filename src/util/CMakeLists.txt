@@ -25,6 +25,7 @@ target_sources(util PRIVATE
     ThreadPool.cc
     ThreadPriority.cc
     Timer.cc
+    TimeUtils.cc
     WorkQueue.cc
     xrootd.cc
 )

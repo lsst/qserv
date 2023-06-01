@@ -24,11 +24,14 @@
 #define LSST_QSERV_WPUBLISH_GET_STATUS_QSERV_REQUEST_H
 
 // System headers
+#include <cstdint>
 #include <functional>
 #include <memory>
 #include <string>
+#include <vector>
 
 // Qserv headers
+#include "wbase/TaskState.h"
 #include "wpublish/QservRequest.h"
 
 namespace lsst::qserv::wpublish {
@@ -62,34 +65,39 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param onFinish  optional callback function to be called upon the completion
-     *                  (successful or not) of the request.
-     * @return  smart pointer to the object of the class
+     * @param includeTasks (optional) flag telling the worker service to include detailed
+     *   info on the known tasks.
+     * @param queryIds (optional) collection of the queries for for selecting tasks.
+     *   The parameter is ignored if 'includeTasks=false'. If the collection is empty
+     *   then all tasks will be included into the status report.
+     * @param taskStates (optional) collection of the task state(s). If the collection
+     *   is empty then the selector is disregarded.
+     * @param onFinish (optional )callback function to be called upon the completion
+     *   (successful or not) of the request.
+     * @see wbase::Task::Status
+     * @return the smart pointer to the object of the class
      */
-    static Ptr create(CallbackType onFinish = nullptr);
+    static Ptr create(wbase::TaskSelector const& taskSelector = wbase::TaskSelector(),
+                      CallbackType onFinish = nullptr);
 
-    // Default construction and copy semantics is prohibited
     GetStatusQservRequest() = delete;
     GetStatusQservRequest(GetStatusQservRequest const&) = delete;
     GetStatusQservRequest& operator=(GetStatusQservRequest const&) = delete;
 
-    ~GetStatusQservRequest() override;
+    virtual ~GetStatusQservRequest() override;
 
 protected:
-    /**
-     * @param onFinish  function to be called upon the completion of a request
-     */
-    GetStatusQservRequest(CallbackType onFinish);
+    /// @see GetStatusQservRequest::create()
+    GetStatusQservRequest(wbase::TaskSelector const& taskSelector, CallbackType onFinish);
 
-    void onRequest(proto::FrameBuffer& buf) override;
-
-    void onResponse(proto::FrameBufferView& view) override;
-
-    void onError(std::string const& error) override;
+    virtual void onRequest(proto::FrameBuffer& buf) override;
+    virtual void onResponse(proto::FrameBufferView& view) override;
+    virtual void onError(std::string const& error) override;
 
 private:
     // Parameters of the object
 
+    wbase::TaskSelector const _taskSelector;
     CallbackType _onFinish;
 };
 

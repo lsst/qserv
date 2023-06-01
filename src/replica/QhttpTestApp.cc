@@ -41,8 +41,8 @@
 #include "qhttp/Server.h"
 #include "qhttp/Request.h"
 #include "qhttp/Response.h"
-#include "replica/Performance.h"
 #include "util/BlockPost.h"
+#include "util/TimeUtils.h"
 
 using namespace std;
 using json = nlohmann::json;
@@ -75,9 +75,7 @@ uint64_t readBody(qhttp::Request::Ptr const& req) {
 
 /// @return 'YYYY-MM-DD HH:MM:SS.mmm  '
 string timestamp() {
-    return replica::PerformanceUtils::toDateTimeString(
-                   std::chrono::milliseconds(replica::PerformanceUtils::now())) +
-           "  ";
+    return util::TimeUtils::toDateTimeString(std::chrono::milliseconds(util::TimeUtils::now())) + "  ";
 }
 
 /// @return requestor's IP address as a string

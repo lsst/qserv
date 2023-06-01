@@ -66,6 +66,7 @@
 #include "replica/SqlRowStatsRequest.h"
 #include "replica/StatusRequest.h"
 #include "replica/StopRequest.h"
+#include "util/TimeUtils.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -160,7 +161,7 @@ Controller::Ptr Controller::create(ServiceProvider::Ptr const& serviceProvider) 
 
 Controller::Controller(ServiceProvider::Ptr const& serviceProvider)
         : _identity({Generators::uniqueId(), boost::asio::ip::host_name(), getpid()}),
-          _startTime(PerformanceUtils::now()),
+          _startTime(util::TimeUtils::now()),
           _serviceProvider(serviceProvider) {
     serviceProvider->databaseServices()->saveState(_identity, _startTime);
 }

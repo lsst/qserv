@@ -532,6 +532,7 @@ replica_tests(
     testFileIngestApp
     testFileUtils
     testHttpAsyncReq
+    testHttpRequestQuery
     testIngestRequestMgr
     testJson
     testMessageQueue

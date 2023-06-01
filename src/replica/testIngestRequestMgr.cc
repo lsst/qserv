@@ -36,8 +36,8 @@
 #include "replica/IngestRequest.h"
 #include "replica/IngestRequestMgr.h"
 #include "replica/IngestResourceMgrT.h"
-#include "replica/Performance.h"
 #include "replica/TransactionContrib.h"
+#include "util/TimeUtils.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -49,6 +49,7 @@
 using namespace std;
 using namespace boost::unit_test;
 using namespace lsst::qserv::replica;
+namespace util = lsst::qserv::util;
 
 namespace {
 
@@ -57,7 +58,7 @@ namespace {
 auto const makeContrib = [](unsigned int id, char const* databaseName) -> TransactionContribInfo {
     TransactionContribInfo contrib;
     contrib.id = id;
-    contrib.createTime = PerformanceUtils::now();
+    contrib.createTime = util::TimeUtils::now();
     contrib.database = databaseName;
     // This status needs to be set explicitly here since no database support
     // is available for requests created for the unit tests. Normally this status

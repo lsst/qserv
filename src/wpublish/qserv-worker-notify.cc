@@ -12,6 +12,7 @@
 #include "XrdSsi/XrdSsiService.hh"
 
 // Qserv headers
+#include "global/intTypes.h"
 #include "global/ResourceUnit.h"
 #include "proto/worker.pb.h"
 #include "util/BlockPost.h"
@@ -41,9 +42,11 @@ string worker;
 string inFileName;
 unsigned int chunk;
 vector<string> dbs;
+vector<QueryId> queryIds;
 string value;
 string serviceProviderLocation;
 bool inUseOnly;
+bool includeTasks;
 bool reload;
 bool force;
 bool printReport;
@@ -223,6 +226,7 @@ int test() {
 
     } else if ("GET_STATUS" == operation) {
         request = wpublish::GetStatusQservRequest::create(
+                includeTasks, queryIds,
                 [&finished](wpublish::GetStatusQservRequest::Status status, string const& error,
                             string const& info) {
                     if (status != wpublish::GetStatusQservRequest::Status::SUCCESS) {
@@ -275,6 +279,7 @@ int main(int argc, const char* const argv[]) {
                 "  <operation> [<parameter> [<parameter> [...]]]\n"
                 "              [--service=<provider>]\n"
                 "              [--in-use-only]\n"
+                "              [--include-tasks]\n"
                 "              [--reload]\n"
                 "              [--force>]\n"
                 "              [--print-report]\n"
@@ -287,12 +292,13 @@ int main(int argc, const char* const argv[]) {
                 "    ADD_CHUNK_GROUP    <worker> <chunk> <db> [<db> [<db> ... ]]\n"
                 "    REMOVE_CHUNK_GROUP <worker> <chunk> <db> [<db> [<db> ... ]]\n"
                 "    TEST_ECHO          <worker> <value>\n"
-                "    GET_STATUS         <worker>\n"
+                "    GET_STATUS         <worker> [<qid> [<qid> ... ]]\n"
                 "\n"
                 "Flags an options:\n"
                 "  --service=<provider>  - location of a service provider (default: 'localhost:1094')\n"
                 "  --in-use-only         - used with GET_CHUNK_LIST to only report chunks which are in use.\n"
                 "                          Otherwise all chunks will be reported\n"
+                "  --include-tasks       - include detail info on the tasks\n"
                 "  --reload              - used with REBUILD_CHUNK_LIST to also reload the list into a "
                 "worker\n"
                 "  --force               - force operation in REMOVE_CHUNK_GROUP even for chunks in use\n"
@@ -303,6 +309,7 @@ int main(int argc, const char* const argv[]) {
                 "  <infile>  - text file with space or newline separated pairs of <database>:<chunk>\n"
                 "  <chunk>   - chunk number\n"
                 "  <db>      - database name\n"
+                "  <qid>     - user query identifier\n"
                 "  <value>   - arbitrary string\n");
 
         ::operation = parser.parameterRestrictedBy(
@@ -313,16 +320,17 @@ int main(int argc, const char* const argv[]) {
 
         if (parser.in(::operation, {"SET_CHUNK_LIST"})) {
             ::inFileName = parser.parameter<string>(3);
-
         } else if (parser.in(::operation, {"ADD_CHUNK_GROUP", "REMOVE_CHUNK_GROUP"})) {
             ::chunk = parser.parameter<unsigned int>(3);
             ::dbs = parser.parameters<string>(4);
-
         } else if (parser.in(::operation, {"TEST_ECHO"})) {
             ::value = parser.parameter<string>(3);
+        } else if (parser.in(::operation, {"GET_STATUS"})) {
+            ::queryIds = parser.parameters<QueryIds>(2);
         }
         ::serviceProviderLocation = parser.option<string>("service", "localhost:1094");
         ::inUseOnly = parser.flag("in-use-only");
+        ::includeTasks = parser.flag("include-tasks");
         ::reload = parser.flag("reload");
         ::force = parser.flag("force");
         ::printReport = parser.flag("print-report");

@@ -36,6 +36,7 @@
 #include "replica/SetReplicasQservMgtRequest.h"
 #include "replica/TestEchoQservMgtRequest.h"
 #include "replica/Mutex.h"
+#include "wbase/TaskState.h"
 
 // Forward declarations
 class XrdSsiService;
@@ -203,15 +204,17 @@ public:
      * Request detailed status of a Qserv worker
      *
      * @param worker  The name of a worker.
-     * @param onFinish  A callback function to be called upon request completion.
      * @param jobId  An optional identifier of a job specifying a context in which
      *    a request will be executed.
+     * @param taskSelector An optional task selection criterias.
+     * @param onFinish  A callback function to be called upon request completion.
      * @param requestExpirationIvalSec  An optional parameter (if differs from 0) allowing
      *   to override the default value of the corresponding parameter from the Configuration.
      * @return  A pointer to the request object if the request was made. Return
      *   nullptr otherwise.
      */
     GetStatusQservMgtRequest::Ptr status(std::string const& worker, std::string const& jobId = "",
+                                         wbase::TaskSelector const& taskSelector = wbase::TaskSelector(),
                                          GetStatusQservMgtRequest::CallbackType const& onFinish = nullptr,
                                          unsigned int requestExpirationIvalSec = 0);
 

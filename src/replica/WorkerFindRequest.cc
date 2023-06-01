@@ -30,8 +30,8 @@
 // Qserv headers
 #include "replica/Configuration.h"
 #include "replica/FileUtils.h"
-#include "replica/Performance.h"
 #include "replica/ServiceProvider.h"
+#include "util/TimeUtils.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -90,7 +90,7 @@ bool WorkerFindRequest::execute() {
     bool completed = WorkerRequest::execute();
     if (completed) {
         _replicaInfo = ReplicaInfo(ReplicaInfo::COMPLETE, worker(), database(), chunk(),
-                                   PerformanceUtils::now(), ReplicaInfo::FileInfoCollection());
+                                   util::TimeUtils::now(), ReplicaInfo::FileInfoCollection());
     }
     return completed;
 }
@@ -231,7 +231,7 @@ bool WorkerFindRequestPOSIX::execute() {
                                 : ReplicaInfo::Status::INCOMPLETE;
 
             // Fill in the info on the chunk before finishing the operation
-            _replicaInfo = ReplicaInfo(status, worker(), database(), chunk(), PerformanceUtils::now(),
+            _replicaInfo = ReplicaInfo(status, worker(), database(), chunk(), util::TimeUtils::now(),
                                        fileInfoCollection);
 
             setStatus(lock, ProtocolStatus::SUCCESS);
@@ -284,7 +284,7 @@ bool WorkerFindRequestPOSIX::execute() {
                                  : ReplicaInfo::Status::INCOMPLETE;
 
             // Fill in the info on the chunk before finishing the operation
-            _replicaInfo = ReplicaInfo(status, worker(), database(), chunk(), PerformanceUtils::now(),
+            _replicaInfo = ReplicaInfo(status, worker(), database(), chunk(), util::TimeUtils::now(),
                                        fileInfoCollection);
 
             setStatus(lock, ProtocolStatus::SUCCESS);

@@ -24,9 +24,14 @@
 // Class header
 #include "wpublish/QueriesAndChunks.h"
 
+// System headers
+#include <algorithm>
+
 // Qserv headers
 #include "util/Bug.h"
 #include "util/HoldTrack.h"
+#include "util/TimeUtils.h"
+#include "wbase/TaskState.h"
 #include "wbase/UserQueryInfo.h"
 #include "wsched/BlendScheduler.h"
 #include "wsched/SchedulerBase.h"
@@ -74,15 +79,34 @@ nlohmann::json QueryStatistics::getJsonHist() const {
     return js;
 }
 
-/// Return a json object containing information about all tasks.
-/// This can return a very large object and should be used sparingly.
-nlohmann::json QueryStatistics::getJsonTasks() const {
+nlohmann::json QueryStatistics::getJsonTasks(wbase::TaskSelector const& taskSelector) const {
     lock_guard<mutex> const guard(_qStatsMtx);
-    nlohmann::json js = nlohmann::json::array();
-    for (auto&& task : _tasks) {
-        js.push_back(task->getJson());
+    nlohmann::json result = nlohmann::json::object();
+    result["snapshotTime_msec"] = util::TimeUtils::now();
+    result["entries"] = nlohmann::json::array();
+    auto& taskEntriesJson = result["entries"];
+    uint32_t numTasksSelected = 0;
+    if (taskSelector.includeTasks) {
+        auto const& ids = taskSelector.queryIds;
+        auto const& states = taskSelector.taskStates;
+        for (auto&& task : _tasks) {
+            bool const selectedByQueryId =
+                    ids.empty() || find(ids.begin(), ids.end(), task->getQueryId()) != ids.end();
+            bool const selectedByTaskState =
+                    states.empty() || find(states.begin(), states.end(), task->state()) != states.end();
+            if (selectedByQueryId && selectedByTaskState) {
+                ++numTasksSelected;
+                // Stop reporting tasks if the limit has been reached. Just keep
+                // counting the number of tasks selected by the filter.
+                if ((taskSelector.maxTasks == 0) || (numTasksSelected < taskSelector.maxTasks)) {
+                    taskEntriesJson.push_back(task->getJson());
+                }
+            }
+        }
     }
-    return js;
+    result["total"] = _tasks.size();
+    result["selected"] = numTasksSelected;
+    return result;
 }
 
 QueriesAndChunks::Ptr QueriesAndChunks::_globalQueriesAndChunks;
@@ -94,9 +118,8 @@ QueriesAndChunks::Ptr QueriesAndChunks::get(bool noThrow) {
     return _globalQueriesAndChunks;
 }
 
-QueriesAndChunks::Ptr QueriesAndChunks::setupGlobal(std::chrono::seconds deadAfter,
-                                                    std::chrono::seconds examineAfter, int maxTasksBooted,
-                                                    bool resetForTesting) {
+QueriesAndChunks::Ptr QueriesAndChunks::setupGlobal(chrono::seconds deadAfter, chrono::seconds examineAfter,
+                                                    int maxTasksBooted, bool resetForTesting) {
     if (resetForTesting) {
         _globalQueriesAndChunks.reset();
     }
@@ -340,7 +363,7 @@ void QueriesAndChunks::examineAll() {
                         runningTasks.push_back(task);
                     }
                 }
-            }
+            };
         }
 
         // For each running task, check if it is taking too long, or if the query is taking too long.
@@ -387,7 +410,7 @@ void QueriesAndChunks::examineAll() {
     LOGS(_log, LOG_LVL_DEBUG, "QueriesAndChunks::examineAll end");
 }
 
-nlohmann::json QueriesAndChunks::statusToJson() {
+nlohmann::json QueriesAndChunks::statusToJson(wbase::TaskSelector const& taskSelector) const {
     nlohmann::json status = nlohmann::json::object();
     {
         auto bSched = _blendSched.lock();
@@ -404,7 +427,7 @@ nlohmann::json QueriesAndChunks::statusToJson() {
         string const qId = to_string(itr.first);  // forcing string type for the json object key
         QueryStatistics::Ptr const& qStats = itr.second;
         status["query_stats"][qId]["histograms"] = qStats->getJsonHist();
-        status["query_stats"][qId]["tasks"] = qStats->getJsonTasks();
+        status["query_stats"][qId]["tasks"] = qStats->getJsonTasks(taskSelector);
     }
     return status;
 }

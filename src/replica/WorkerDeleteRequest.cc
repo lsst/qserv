@@ -30,8 +30,8 @@
 // Qserv headers
 #include "replica/Configuration.h"
 #include "replica/FileUtils.h"
-#include "replica/Performance.h"
 #include "replica/ServiceProvider.h"
+#include "util/TimeUtils.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -69,7 +69,7 @@ WorkerDeleteRequest::WorkerDeleteRequest(ServiceProvider::Ptr const& serviceProv
           _request(request),
           // This status will be returned in all contexts
           _replicaInfo(ReplicaInfo::Status::NOT_FOUND, worker, request.database(), request.chunk(),
-                       PerformanceUtils::now(), ReplicaInfo::FileInfoCollection{}) {}
+                       util::TimeUtils::now(), ReplicaInfo::FileInfoCollection{}) {}
 
 void WorkerDeleteRequest::setInfo(ProtocolResponseDelete& response) const {
     LOGS(_log, LOG_LVL_DEBUG, context(__func__));

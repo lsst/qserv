@@ -37,8 +37,8 @@
 #include "boost/filesystem.hpp"
 
 // Qserv headers
-#include "replica/Performance.h"
 #include "util/File.h"
+#include "util/TimeUtils.h"
 
 using namespace std;
 using namespace nlohmann;
@@ -382,13 +382,13 @@ void FileIngestApp::_ingest(FileIngestSpec const& file) const {
     // timer launched in a separate thread). A duration of the timeout could be
     // set via an optional parameter to the application.
 
-    uint64_t const startedMs = PerformanceUtils::now();
+    uint64_t const startedMs = util::TimeUtils::now();
     auto const ptr =
             IngestClient::connect(file.workerHost, file.workerPort, file.transactionId, file.tableName,
                                   chunkContribution.chunk, chunkContribution.isOverlap, file.inFileName,
                                   authKey(), _dialectInput, _charsetName, _maxNumWarnings, _recordSizeBytes);
     ptr->send();
-    uint64_t const finishedMs = PerformanceUtils::now();
+    uint64_t const finishedMs = util::TimeUtils::now();
 
     if (_verbose) {
         uint64_t const elapsedMs = max(1UL, finishedMs - startedMs);
@@ -402,9 +402,9 @@ void FileIngestApp::_ingest(FileIngestSpec const& file) const {
              << "       Is chunk overlap: " << bool2str(chunkContribution.isOverlap) << "\n"
              << "        Input file name: " << file.inFileName << "\n"
              << "            Start  time: "
-             << PerformanceUtils::toDateTimeString(chrono::milliseconds(startedMs)) << "\n"
+             << util::TimeUtils::toDateTimeString(chrono::milliseconds(startedMs)) << "\n"
              << "            Finish time: "
-             << PerformanceUtils::toDateTimeString(chrono::milliseconds(finishedMs)) << "\n"
+             << util::TimeUtils::toDateTimeString(chrono::milliseconds(finishedMs)) << "\n"
              << "           Elapsed time: " << elapsedSec << " sec\n"
              << "             Bytes sent: " << ptr->sizeBytes() << "\n"
              << "              MByte/sec: " << megaBytesPerSec << "\n"

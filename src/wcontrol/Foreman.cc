@@ -133,9 +133,9 @@ void Foreman::processCommand(shared_ptr<wbase::WorkerCommand> const& command) {
     _workerCommandQueue->queCmd(command);
 }
 
-nlohmann::json Foreman::statusToJson() {
+nlohmann::json Foreman::statusToJson(wbase::TaskSelector const& taskSelector) {
     nlohmann::json status;
-    status["queries"] = _queries->statusToJson();
+    status["queries"] = _queries->statusToJson(taskSelector);
     status["sql_conn_mgr"] = _sqlConnMgr->statusToJson();
     return status;
 }

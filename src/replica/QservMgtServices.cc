@@ -31,9 +31,9 @@
 
 // Qserv headers
 #include "replica/Configuration.h"
-#include "replica/Performance.h"
 #include "replica/ServiceProvider.h"
 #include "util/BlockPost.h"
+#include "util/TimeUtils.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -278,6 +278,7 @@ TestEchoQservMgtRequest::Ptr QservMgtServices::echo(string const& worker, string
 }
 
 GetStatusQservMgtRequest::Ptr QservMgtServices::status(std::string const& worker, std::string const& jobId,
+                                                       wbase::TaskSelector const& taskSelector,
                                                        GetStatusQservMgtRequest::CallbackType const& onFinish,
                                                        unsigned int requestExpirationIvalSec) {
     GetStatusQservMgtRequest::Ptr request;
@@ -294,7 +295,7 @@ GetStatusQservMgtRequest::Ptr QservMgtServices::status(std::string const& worker
         auto const manager = shared_from_this();
 
         request = GetStatusQservMgtRequest::create(
-                serviceProvider(), worker,
+                serviceProvider(), worker, taskSelector,
                 [manager](QservMgtRequest::Ptr const& request) { manager->_finish(request->id()); });
 
         // Register the request (along with its callback) by its unique
@@ -353,7 +354,7 @@ XrdSsiService* QservMgtServices::_xrdSsiService() {
 
     XrdSsiErrInfo errInfo;
     unsigned int const intervalBetweenReconnectsMs = 1000;
-    uint64_t const startedConnectionAttemptsSec = PerformanceUtils::now() / 1000;
+    uint64_t const startedConnectionAttemptsSec = util::TimeUtils::now() / 1000;
     unsigned int numAttempts = 0;
     while (true) {
         ++numAttempts;
@@ -363,7 +364,7 @@ XrdSsiService* QservMgtServices::_xrdSsiService() {
         // Allow another try after waiting for the given reconnection interval if
         // allowed and while the configuration-specified timeout has not been expired.
 
-        uint64_t const timeSinceStartedSec = PerformanceUtils::now() / 1000 - startedConnectionAttemptsSec;
+        uint64_t const timeSinceStartedSec = util::TimeUtils::now() / 1000 - startedConnectionAttemptsSec;
 
         if (_serviceProvider->config()->get<unsigned int>("xrootd", "allow-reconnect") &&
             timeSinceStartedSec <
