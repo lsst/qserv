@@ -21,6 +21,7 @@ target_link_libraries(partition PUBLIC
     Threads::Threads
     arrow
     parquet
+    log
 )
 
 install(TARGETS partition)

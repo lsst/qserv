@@ -154,8 +154,9 @@ InputLines const makeInputLines(ConfigStore const& config) {
                 }
             }
         }
-        bIsParquetFile = (boost::algorithm::ends_with(s.c_str(), ".parquet") ||
-                          boost::algorithm::ends_with(s.c_str(), ".parq"));
+        if (!bIsParquetFile)
+            bIsParquetFile = (boost::algorithm::ends_with(s.c_str(), ".parquet") ||
+                              boost::algorithm::ends_with(s.c_str(), ".parq"));
     }
     if (paths.empty()) {
         throw std::runtime_error(
@@ -163,16 +164,30 @@ InputLines const makeInputLines(ConfigStore const& config) {
                 "files and directories specified via --in.path.");
     }
 
-    // Arrow : collect parameter name list to be read from parquet file
+    // return InputLines(paths, blockSize * MiB, false, names);
+    if (!bIsParquetFile) return InputLines(paths, blockSize * MiB, false);
+
+    // In case input files are parquet files, data from config file have to be transfered to the parquet
+    // reading class Arrow : collect parameter name list to be read from parquet file
     std::vector<std::string> names;
-    if (config.has("out.csv.field")) names = config.get<std::vector<std::string>>("in.csv.field");
+    std::string st_null = "";
+    std::string st_delimiter = "";
+    std::string st_escape = "";
+
+    if (config.has("in.csv.field")) names = config.get<std::vector<std::string>>("in.csv.field");
+    if (config.has("in.csv.null")) st_null = config.get<std::string>("in.csv.null");
+    if (config.has("in.csv.delimiter")) st_delimiter = config.get<std::string>("in.csv.delimiter");
+    if (config.has("in.csv.escape")) st_escape = config.get<std::string>("in.csv.escape");
+
+    ConfigParamArrow const configParamArrow{names, st_null, st_delimiter, st_escape};
+
     // Direct parquet file reading is not possible using MT - March 2023
-    if (bIsParquetFile && config.has("mr.num-workers") && config.get<int>("mr.num-workers") > 1)
+    if (config.has("mr.num-workers") && config.get<int>("mr.num-workers") > 1)
         throw std::runtime_error(
                 "Parquet file partition cannot be done in MT - mr.num-workers parameter must be set to 1 in "
-                "parition.json file ");
+                "partition.json file ");
 
-    return InputLines(paths, blockSize * MiB, false, names);
+    return InputLines(paths, blockSize * MiB, false, configParamArrow);
 }
 
 void defineOutputOptions(po::options_description& opts) {

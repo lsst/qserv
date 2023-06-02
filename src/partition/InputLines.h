@@ -33,9 +33,12 @@
 #include "boost/filesystem.hpp"
 #include "boost/shared_ptr.hpp"
 
-#include "ParquetInterface.h"
+// Qserv headers
+#include "partition/ParquetInterface.h"
 
 namespace lsst::partition {
+
+typedef struct ConfigParamArrow ConfigParamArrow;
 
 /// The InputLines class reads lines from a list of input text files in an IO
 /// efficient and parallel way. Each file is split up into blocks, where all
@@ -70,9 +73,9 @@ public:
     /// ignoring the first line in each file. The user is responsible for
     /// ensuring that the file list contains no empty or duplicate entries.
     /// Note that `blockSize` is clamped to lie between 1MiB and 1GiB.
-    InputLines(std::vector<boost::filesystem::path> const &paths, size_t blockSize, bool skipFirstLine,
-               std::vector<std::string> paramNames = {});
-
+    InputLines(std::vector<boost::filesystem::path> const& paths, size_t blockSize, bool skipFirstLine);
+    InputLines(std::vector<boost::filesystem::path> const& paths, size_t blockSize, bool skipFirstLine,
+               ConfigParamArrow const& config);
     ~InputLines() {}
 
     /// Return the IO read block size in bytes.
@@ -84,15 +87,12 @@ public:
     /// Has all the input been read?
     bool empty() const;
 
-    /// Return the parameter names as defined in in.csv
-    std::vector<std::string> getParameterNames() const;
-
     /// Read consecutive lines of text into `buf`, and return a pointer range
     /// `[i,end)` identifying the bytes in `buf` containing valid data. The
     /// pointers returned will both be NULL if and only if there is no more
     /// input left to read. Note that `buf` must have a capacity of at least
     /// getMinimumBufferCapacity() bytes.
-    std::pair<char *, char *> const read(char *buf);
+    std::pair<char*, char*> const read(char* buf);
 
 private:
     class Impl;

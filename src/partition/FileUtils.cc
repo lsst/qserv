@@ -35,47 +35,54 @@
 
 #include <stdexcept>
 
+// LSST headers
+#include "lsst/log/Log.h"
+
+namespace {
+LOG_LOGGER _log = LOG_GET("lsst.qserv.partitionner");
+}  // namespace
+
 namespace fs = boost::filesystem;
 
 namespace lsst::partition {
 
 InputFile::InputFile(fs::path const &path) : _path(path), _fd(-1), _sz(-1) {
-    char msg[1024];
     struct ::stat st;
     int fd = ::open(path.string().c_str(), O_RDONLY);
     if (fd == -1) {
-        ::strerror_r(errno, msg, sizeof(msg));
-        throw std::runtime_error("open() failed [" + path.string() + "]: " + msg);
+        ::strerror_r(errno, _msg, sizeof(_msg));
+        throw std::runtime_error("InputFile::" + std::string(__func__) + " :open() failed [" + path.string() +
+                                 "]: " + _msg);
     }
     if (::fstat(fd, &st) != 0) {
-        ::strerror_r(errno, msg, sizeof(msg));
+        ::strerror_r(errno, _msg, sizeof(_msg));
         ::close(fd);
-        throw std::runtime_error("fstat() failed [" + path.string() + "]: " + msg);
+        throw std::runtime_error("InputFile::" + std::string(__func__) + " :fstat() failed [" +
+                                 path.string() + "]: " + _msg);
     }
     _fd = fd;
     _sz = st.st_size;
 }
 
 InputFile::~InputFile() {
-    char msg[1024];
     if (_fd != -1 && ::close(_fd) != 0) {
-        ::snprintf(msg, sizeof(msg), "close() failed [%s]", _path.string().c_str());
-        ::perror(msg);
-        ::exit(EXIT_FAILURE);
+        ::snprintf(_msg, sizeof(_msg), "InputFile::~InputFile close() failed [%s]", _path.string().c_str());
+        ::perror(_msg);
+        LOGS(_log, LOG_LVL_WARN, _msg);
     }
 }
 
-void InputFile::read(void *buf, off_t off, size_t sz, int *bufferSize,
-                     std::vector<std::string> params) const {
-    char msg[1024];
+void InputFile::read(void *buf, off_t off, size_t sz) const {
     uint8_t *cur = static_cast<uint8_t *>(buf);
     while (sz > 0) {
         ssize_t n = ::pread(_fd, cur, sz, off);
         if (n == 0) {
-            throw std::runtime_error("pread() received EOF [" + _path.string() + "]");
+            throw std::runtime_error("InputFile::" + std::string(__func__) + ":received EOF [" +
+                                     _path.string() + "]");
         } else if (n < 0 && errno != EINTR) {
-            ::strerror_r(errno, msg, sizeof(msg));
-            throw std::runtime_error("pread() failed [" + _path.string() + "]: " + msg);
+            ::strerror_r(errno, _msg, sizeof(_msg));
+            throw std::runtime_error("InputFile::" + std::string(__func__) + ":failed [" + _path.string() +
+                                     "]: " + _msg);
         } else if (n > 0) {
             sz -= static_cast<size_t>(n);
             off += n;
@@ -84,99 +91,101 @@ void InputFile::read(void *buf, off_t off, size_t sz, int *bufferSize,
     }
 }
 
-InputFileArrow::InputFileArrow(fs::path const &path, off_t blockSize) : InputFile(path), _fd(-1), _sz(-1) {
-    char msg[1024];
+void InputFile::read(void *buf, off_t off, size_t sz, int & /*bufferSize*/,
+                     ConfigParamArrow const & /*params*/) const {
+    read(buf, off, sz);
+}
+
+InputFileArrow::InputFileArrow(fs::path const &path, off_t blockSize)
+        : InputFile(path), _path(path), _fd(-1), _sz(-1) {
     struct ::stat st;
 
-    m_batchReader = std::make_unique<lsst::partition::ParquetFile>(ParquetFile(path.string().c_str()));
-    arrow::Status status = m_batchReader->SetupBatchReader(blockSize);
-    if (!status.ok()) throw std::runtime_error("Could not setup Arrow recordbatchreader");
+    _batchReader = std::make_unique<lsst::partition::ParquetFile>(path.string());
+    arrow::Status status = _batchReader->setupBatchReader(blockSize);
+    if (!status.ok())
+        throw std::runtime_error("InputArrowFile::" + std::string(__func__) +
+                                 ": Could not setup Arrow recordbatchreader");
 
     int fd = ::open(path.string().c_str(), O_RDONLY);
 
     if (fd == -1) {
-        ::strerror_r(errno, msg, sizeof(msg));
-        throw std::runtime_error("open() failed [" + path.string() + "]: " + msg);
+        ::strerror_r(errno, _msg, sizeof(_msg));
+        throw std::runtime_error("InputFileArrow::" + std::string(__func__) + ": open() failed [" +
+                                 path.string() + "]: " + _msg);
     }
     if (::fstat(fd, &st) != 0) {
-        ::strerror_r(errno, msg, sizeof(msg));
+        ::strerror_r(errno, _msg, sizeof(_msg));
         ::close(fd);
-        throw std::runtime_error("fstat() failed [" + path.string() + "]: " + msg);
+        throw std::runtime_error("InputFileArrow::" + std::string(__func__) + ": fstat() failed [" +
+                                 path.string() + "]: " + _msg);
     }
     _fd = fd;
     _sz = st.st_size;
 }
 
 InputFileArrow::~InputFileArrow() {
-    char msg[1024];
     if (_fd != -1 && ::close(_fd) != 0) {
-        ::snprintf(msg, sizeof(msg), "close() failed [%s]", _path.string().c_str());
-        ::perror(msg);
-        ::exit(EXIT_FAILURE);
+        ::snprintf(_msg, sizeof(_msg), "InputFileArrow::~InputFileArrow : close() failed [%s]",
+                   _path.string().c_str());
+        ::perror(_msg);
+        LOGS(_log, LOG_LVL_WARN, _msg);
     }
 }
 
-int InputFileArrow::getBatchNumber() const { return m_batchReader->GetTotalBatchNumber(); }
+int InputFileArrow::getBatchNumber() const { return _batchReader->getTotalBatchNumber(); }
 
-void InputFileArrow::read(void *buf, off_t off, size_t sz, int *bufferSize,
-                          std::vector<std::string> params) const {
-    char msg[1024];
+void InputFileArrow::read(void *buf, off_t off, size_t sz, int &csvBufferSize,
+                          ConfigParamArrow const &params) const {
     uint8_t *cur = static_cast<uint8_t *>(buf);
 
-    int buffSize;
-    arrow::Status status = m_batchReader->ReadNextBatch_Table2CSV(cur, buffSize, params);
-    // return the buffersize because it varies from batch to batch
-    *bufferSize = buffSize;
+    arrow::Status status = _batchReader->readNextBatch_Table2CSV(cur, csvBufferSize, params.paramNames,
+                                                                 params.str_null, params.str_delimiter);
 
     if (status.ok()) {
-        ssize_t n = buffSize;
+        ssize_t n = csvBufferSize;
         if (n == 0) {
-            throw std::runtime_error("pread() received EOF [" + _path.string() + "]");
+            throw std::runtime_error("InputFileArrow::" + std::string(__func__) + ": received EOF [" +
+                                     _path.string() + "]");
         } else if (n < 0 && errno != EINTR) {
-            ::strerror_r(errno, msg, sizeof(msg));
-            throw std::runtime_error("pread() failed [" + _path.string() + "]: " + msg);
+            ::strerror_r(errno, _msg, sizeof(_msg));
+            throw std::runtime_error("InputFileArrow::" + std::string(__func__) + ": failed [" +
+                                     _path.string() + "]: " + _msg);
         }
-        /*else if (n > 0) {
-            sz -= static_cast<size_t>(n);
-            off += n;
-            cur += n;
-        }
-        */
     }
 }
 
 OutputFile::OutputFile(fs::path const &path, bool truncate) : _path(path), _fd(-1) {
-    char msg[1024];
     int flags = O_CREAT | O_WRONLY;
     if (truncate) {
         flags |= O_TRUNC;
     }
     int fd = ::open(path.string().c_str(), flags, S_IROTH | S_IRGRP | S_IRUSR | S_IWUSR);
     if (fd == -1) {
-        ::strerror_r(errno, msg, sizeof(msg));
-        throw std::runtime_error("open() failed [" + path.string() + "]: " + msg);
+        ::strerror_r(errno, _msg, sizeof(_msg));
+        throw std::runtime_error("OutputFile::" + std::string(__func__) + ": open() failed [" +
+                                 path.string() + "]: " + _msg);
     }
     if (!truncate) {
         if (::lseek(fd, 0, SEEK_END) < 0) {
-            ::strerror_r(errno, msg, sizeof(msg));
+            ::strerror_r(errno, _msg, sizeof(_msg));
             close(fd);
-            throw std::runtime_error("lseek() failed [" + path.string() + "]: " + msg);
+            throw std::runtime_error("OutputFile::" + std::string(__func__) + ": lseek() failed [" +
+                                     path.string() + "]: " + _msg);
         }
     }
     _fd = fd;
 }
 
 OutputFile::~OutputFile() {
-    char msg[1024];
     if (_fd != -1 && close(_fd) != 0) {
-        ::snprintf(msg, sizeof(msg), "close() failed [%s]", _path.string().c_str());
-        ::perror(msg);
-        ::exit(EXIT_FAILURE);
+        ::snprintf(_msg, sizeof(_msg), "OutputFile::~OutputFile : close() failed [%s]",
+                   _path.string().c_str());
+        ::perror(_msg);
+        LOGS(_log, LOG_LVL_WARN, _msg);
     }
 }
 
 void OutputFile::append(void const *buf, size_t sz) {
-    char msg[1024];
     if (!buf || sz == 0) {
         return;
     }
@@ -185,8 +194,9 @@ void OutputFile::append(void const *buf, size_t sz) {
         ssize_t n = ::write(_fd, b, sz);
         if (n < 0) {
             if (errno != EINTR) {
-                ::strerror_r(errno, msg, sizeof(msg));
-                throw std::runtime_error("write() failed [" + _path.string() + "]: " + msg);
+                ::strerror_r(errno, _msg, sizeof(_msg));
+                throw std::runtime_error("OutputFile::" + std::string(__func__) + ": write() failed [" +
+                                         _path.string() + "]: " + _msg);
             }
         } else {
             sz -= static_cast<size_t>(n);
