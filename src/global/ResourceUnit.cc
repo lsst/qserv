@@ -109,6 +109,8 @@ std::string ResourceUnit::prefix(UnitType const& r) {
             return "UNKNOWN";
         case WORKER:
             return "worker";
+        case QUERY:
+            return "query";
         case GARBAGE:
         default:
             return "GARBAGE";
@@ -179,6 +181,12 @@ void ResourceUnit::_setFromPath(std::string const& path) {
         t.next();
         _workerId = t.token();
         if (_workerId.empty()) {
+            _unitType = GARBAGE;
+            return;
+        }
+    } else if (rTypeString == prefix(QUERY)) {
+        _unitType = QUERY;
+        if (!t.done()) {
             _unitType = GARBAGE;
             return;
         }

@@ -88,4 +88,11 @@ BOOST_AUTO_TEST_CASE(Worker) {
     BOOST_CHECK_EQUAL(res.workerId(), id);
 }
 
+BOOST_AUTO_TEST_CASE(Query) {
+    ResourceUnit const res1("/query");
+    BOOST_CHECK_EQUAL(res1.unitType(), ResourceUnit::QUERY);
+    ResourceUnit const res2("/query/abc");
+    BOOST_CHECK_EQUAL(res2.unitType(), ResourceUnit::GARBAGE);
+}
+
 BOOST_AUTO_TEST_SUITE_END()

@@ -45,16 +45,19 @@ namespace lsst::qserv {
 class ResourceUnit {
 public:
     class Checker;
-    enum UnitType { GARBAGE, DBCHUNK, UNKNOWN, WORKER };
+    enum UnitType { GARBAGE, DBCHUNK, UNKNOWN, WORKER, QUERY };
 
-    ResourceUnit() : _unitType(GARBAGE), _chunk(-1) {}
-
+    ResourceUnit() = default;
     explicit ResourceUnit(std::string const& path);
+    ResourceUnit(ResourceUnit const&) = default;
+    ResourceUnit& operator=(ResourceUnit const&) = default;
+    ~ResourceUnit() = default;
 
     /// @return the constructed path.
     std::string path() const;
 
     // Retrieve elements of the path.
+
     UnitType unitType() const { return _unitType; }
     std::string const& db() const { return _db; }
     int chunk() const { return _chunk; }
