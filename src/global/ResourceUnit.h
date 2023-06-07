@@ -45,7 +45,7 @@ namespace lsst::qserv {
 class ResourceUnit {
 public:
     class Checker;
-    enum UnitType { GARBAGE, DBCHUNK, CQUERY, UNKNOWN, RESULT, WORKER };
+    enum UnitType { GARBAGE, DBCHUNK, UNKNOWN, WORKER };
 
     ResourceUnit() : _unitType(GARBAGE), _chunk(-1) {}
 
@@ -56,9 +56,9 @@ public:
 
     // Retrieve elements of the path.
     UnitType unitType() const { return _unitType; }
-    std::string db() const { return _db; }
+    std::string const& db() const { return _db; }
     int chunk() const { return _chunk; }
-    std::string hashName() const { return _hashName; }
+    std::string const& workerId() const { return _workerId; }
 
     /// Lookup extended path variables (?k=val syntax)
     std::string var(std::string const& key) const;
@@ -75,15 +75,6 @@ public:
     // Setup a path of a certain type.
     void setAsDbChunk(std::string const& db, int chunk = DUMMY_CHUNK);
 
-    // Compatibility types
-    void setAsCquery(std::string const& db, int chunk = DUMMY_CHUNK);
-    void setAsResult(std::string const& hashName);
-
-    // Optional specifiers may not be supported by XrdSsi
-    // Add optional specifiers ?foo&bar=1&bar2=2
-    void addKey(std::string const& key);
-    void addKey(std::string const& key, int val);
-
 private:
     class Tokenizer;
     void _setFromPath(std::string const& path);
@@ -91,10 +82,10 @@ private:
     void _ingestKeyStr(std::string const& keyStr);
     bool _markGarbageIfDone(Tokenizer& t);
 
-    UnitType _unitType;     //< Type of unit
-    std::string _db;        //< for CQUERY and DBCHUNK types
-    int _chunk;             //< for CQUERY and DBCHUNK types
-    std::string _hashName;  //< for RESULT and WORKER types
+    UnitType _unitType = UnitType::GARBAGE;  //< Type of unit
+    std::string _db;                         //< for DBCHUNK type
+    int _chunk = -1;                         //< for DBCHUNK type
+    std::string _workerId;                   //< for WORKER type
 
     typedef std::map<std::string, std::string> VarMap;
     VarMap _vars;  //< Key-value specifiers

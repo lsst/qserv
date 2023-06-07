@@ -163,7 +163,7 @@ XrdSsiProvider::rStat SsiProviderServer::QueryResource(char const* rName, char c
     } else if (ru.unitType() == ResourceUnit::WORKER) {
         // Extract the worker name and alidate it against the one which is
         // provided through the inventory
-        if (not _chunkInventory.id().empty() and _chunkInventory.id() == ru.hashName()) {
+        if (not _chunkInventory.id().empty() and _chunkInventory.id() == ru.workerId()) {
             LOGS(_log, LOG_LVL_DEBUG, "SsiProvider Query " << rName << " present");
             return isPresent;
         }
@@ -190,7 +190,7 @@ void SsiProviderServer::ResourceAdded(const char* rName) {
 
     } else if (ru.unitType() == ResourceUnit::WORKER) {
         // Replace the unique identifier of the worker with the new one
-        _chunkInventory.resetId(ru.hashName());
+        _chunkInventory.resetId(ru.workerId());
         LOGS(_log, LOG_LVL_DEBUG, "SsiProvider ResourceAdded " << rName);
         return;
     }
