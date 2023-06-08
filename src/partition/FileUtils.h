@@ -34,11 +34,39 @@
 
 namespace lsst::partition {
 
+class ParquetFile;
+
+struct ConfigParamArrow {
+    std::vector<std::string> const paramNames;
+    std::string str_null;
+    std::string str_delimiter;
+    std::string str_escape;
+
+    ConfigParamArrow()
+            : paramNames(std::vector<std::string>()), str_null(""), str_delimiter(""), str_escape("") {}
+    ConfigParamArrow(std::vector<std::string> const &paramNames, std::string const &vnull,
+                     std::string const &vdelimiter, std::string const &vescape)
+            : paramNames(paramNames), str_null(vnull), str_delimiter(vdelimiter), str_escape(vescape) {}
+
+    ConfigParamArrow(const ConfigParamArrow &v)
+            : paramNames(v.paramNames),
+              str_null(v.str_null),
+              str_delimiter(v.str_delimiter),
+              str_escape(v.str_escape) {}
+    ConfigParamArrow &operator=(const ConfigParamArrow &) = delete;
+};
+
+typedef struct ConfigParamArrow ConfigParamArrow;
+
 /// An input file. Safe for use from multiple threads.
 class InputFile {
 public:
     explicit InputFile(boost::filesystem::path const &path);
-    ~InputFile();
+    virtual ~InputFile();
+
+    // Disable copy construction and assignment.
+    InputFile(InputFile const &) = delete;
+    InputFile &operator=(InputFile const &) = delete;
 
     /// Return the size of the input file.
     off_t size() const { return _sz; }
@@ -46,17 +74,44 @@ public:
     /// Return the path of the input file.
     boost::filesystem::path const &path() const { return _path; }
 
+    // Needed in derived class InputFileArrow
+    virtual int getBatchNumber() const { return -1; }
+
     /// Read a range of bytes into `buf`.
     void read(void *buf, off_t off, size_t sz) const;
+    virtual void read(void *buf, off_t off, size_t sz, int &bufferSize, ConfigParamArrow const &params) const;
 
 private:
-    // Disable copy construction and assignment.
-    InputFile(InputFile const &);
-    InputFile &operator=(InputFile const &);
+    mutable char _msg[1024];
 
-    boost::filesystem::path _path;
+    boost::filesystem::path const _path;
     int _fd;
     off_t _sz;
+};
+
+class InputFileArrow : public InputFile {
+public:
+    InputFileArrow(boost::filesystem::path const &path, off_t blockSize);
+    virtual ~InputFileArrow();
+
+    // Disable copy construction and assignment.
+    InputFileArrow(InputFileArrow const &) = delete;
+    InputFileArrow &operator=(InputFileArrow const &) = delete;
+
+    virtual int getBatchNumber() const override;
+
+    /// Read a range of bytes into `buf`.
+    virtual void read(void *buf, off_t off, size_t sz, int &bufferSize,
+                      ConfigParamArrow const &params) const override;
+
+private:
+    mutable char _msg[1024];
+
+    boost::filesystem::path const _path;
+    int _fd;
+    off_t _sz;
+
+    std::unique_ptr<ParquetFile> _batchReader;
 };
 
 /// An output file that can only be appended to, and which should only be
@@ -69,6 +124,10 @@ public:
     OutputFile(boost::filesystem::path const &path, bool truncate);
     ~OutputFile();
 
+    // Disable copy construction and assignment.
+    OutputFile(OutputFile const &) = delete;
+    OutputFile &operator=(OutputFile const &) = delete;
+
     /// Return the path of the output file.
     boost::filesystem::path const &path() const { return _path; }
 
@@ -76,11 +135,9 @@ public:
     void append(void const *buf, size_t size);
 
 private:
-    // Disable copy construction and assignment.
-    OutputFile(OutputFile const &);
-    OutputFile &operator=(OutputFile const &);
+    mutable char _msg[1024];
 
-    boost::filesystem::path _path;
+    boost::filesystem::path const _path;
     int _fd;
 };
 

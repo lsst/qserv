@@ -12,12 +12,16 @@ target_sources(partition PRIVATE
     HtmIndex.cc
     InputLines.cc
     ObjectIndex.cc
+    ParquetInterface.cc
 )
 
 target_link_libraries(partition PUBLIC
     boost_program_options
     boost_thread
     Threads::Threads
+    arrow
+    parquet
+    log
 )
 
 install(TARGETS partition)
@@ -31,6 +35,8 @@ FUNCTION(partition_apps)
             partition
             boost_filesystem
             sphgeom
+	    arrow
+	    parquet
         )
         install(TARGETS ${APP})
     ENDFOREACH()

@@ -32,7 +32,7 @@
 #include "QueryAnaHelper.h"
 
 // System headers
-//#include <memory>
+// #include <memory>
 
 // Third-party headers
 
