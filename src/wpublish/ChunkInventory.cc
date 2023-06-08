@@ -142,6 +142,8 @@ public:
                 return chunkInventory.has(ru.db(), ru.chunk());
             case lsst::qserv::ResourceUnit::WORKER:
                 return chunkInventory.id() == ru.workerId();
+            case lsst::qserv::ResourceUnit::QUERY:
+                return true;
             default:
                 return false;
         }

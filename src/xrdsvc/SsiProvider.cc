@@ -171,6 +171,9 @@ XrdSsiProvider::rStat SsiProviderServer::QueryResource(char const* rName, char c
         // Tell the caller we don't recognize this worker
         LOGS(_log, LOG_LVL_DEBUG, "SsiProvider Query " << rName << " absent");
         return notPresent;
+
+    } else if (ru.unitType() == ResourceUnit::QUERY) {
+        return isPresent;
     }
 
     LOGS(_log, LOG_LVL_DEBUG, "SsiProvider Query " << rName << " invalid");

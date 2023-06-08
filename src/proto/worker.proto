@@ -352,3 +352,32 @@ message WorkerCommandGetStatusR {
     // Status info serialized from a JSON object
     required string info = 1;
 }
+
+
+/////////////////////////////////////////////////////////////////
+// Protocol definition for the query management requests. These
+// requests do not require any response messages to be explicitly
+// sent by workers.
+//
+// ATTENTION: each message sent to a worker must be preceeded by
+// an int32 size (network-byte-ordered) word carrying a size
+// of the message.
+////////////////////////////////////////////////////////////////
+
+message QueryManagement {
+
+    // Supported operations
+    enum Operation {
+
+        // Cancel older queries before the specified query (excluding that one).
+        CANCEL_AFTER_RESTART = 1;
+
+        // Cancel a specific query.
+        CANCEL = 2;
+
+        // Notify workers on the completion of the specified query.
+        COMPLETE = 3;
+    }
+    required Operation op = 1;
+    required uint64 query_id = 2;
+}
