@@ -65,13 +65,7 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param includeTasks (optional) flag telling the worker service to include detailed
-     *   info on the known tasks.
-     * @param queryIds (optional) collection of the queries for for selecting tasks.
-     *   The parameter is ignored if 'includeTasks=false'. If the collection is empty
-     *   then all tasks will be included into the status report.
-     * @param taskStates (optional) collection of the task state(s). If the collection
-     *   is empty then the selector is disregarded.
+     * @param taskSelector (optional) task selection criterias.
      * @param onFinish (optional )callback function to be called upon the completion
      *   (successful or not) of the request.
      * @see wbase::Task::Status

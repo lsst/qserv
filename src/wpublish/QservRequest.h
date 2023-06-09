@@ -37,7 +37,7 @@ namespace lsst::qserv::wpublish {
 
 /**
  * Class QservRequest is a base class for a family of the client-side requests
- * (classes) to the Qserv worker management services.
+ * (classes) to Qserv workers.
  */
 class QservRequest : public XrdSsiRequest {
 public:
@@ -52,14 +52,12 @@ protected:
     /**
      * Serialize a request into the provided buffer. The method is required to be
      * provided by a subclass.
-     *
      * @param buf A request buffer for serializing a request.
      */
     virtual void onRequest(proto::FrameBuffer& buf) = 0;
 
     /**
      * Process response from Qserv. The method is required to be provided by a subclass.
-     *
      * @param view The buffer view for parsing results.
      */
     virtual void onResponse(proto::FrameBufferView& view) = 0;
@@ -67,28 +65,22 @@ protected:
     /**
      * Notify a base class about a failure occurred when sending a request data
      * or receiving a response.
-     *
      * @param error A message explaining a reason of the failure.
      */
     virtual void onError(std::string const& msg) = 0;
 
     char* GetRequest(int& dlen) override;
-
     bool ProcessResponse(const XrdSsiErrInfo& eInfo, const XrdSsiRespInfo& rInfo) override;
-
     void ProcessResponseData(const XrdSsiErrInfo& eInfo, char* buff, int blen, bool last) override;
 
 private:
-    // Request buffer (gets prepared by subclasses before sending a request
-    // to the worker service of Qserv)
-
-    proto::FrameBuffer _frameBuf;  ///< buffer for serializing messages before sending them
-
     /// The global counter for the number of instances of any subclasses
     static std::atomic<size_t> _numClassInstances;
 
-    // Response buffer (gets updated when receiving a response stream of
-    // data from a worker management service of Qserv)
+    /// Request buffer is prepared by subclasses before sending a request to a worker.
+    proto::FrameBuffer _frameBuf;
+
+    // Response buffer is updated when receiving a response stream of data from a worker.
 
     /// The (very first and the) last increment of the capacity of the incoming
     /// buffer is used to limit the amount of bytes to be received from a server.
