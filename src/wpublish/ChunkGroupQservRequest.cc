@@ -138,7 +138,9 @@ void ChunkGroupQservRequest::onError(string const& error) {
 AddChunkGroupQservRequest::Ptr AddChunkGroupQservRequest::create(unsigned int chunk,
                                                                  vector<string> const& databases,
                                                                  CallbackType onFinish) {
-    return AddChunkGroupQservRequest::Ptr(new AddChunkGroupQservRequest(chunk, databases, onFinish));
+    AddChunkGroupQservRequest::Ptr ptr(new AddChunkGroupQservRequest(chunk, databases, onFinish));
+    ptr->setRefToSelf4keepAlive(ptr);
+    return ptr;
 }
 
 AddChunkGroupQservRequest::AddChunkGroupQservRequest(unsigned int chunk, vector<string> const& databases,
@@ -148,8 +150,10 @@ AddChunkGroupQservRequest::AddChunkGroupQservRequest(unsigned int chunk, vector<
 RemoveChunkGroupQservRequest::Ptr RemoveChunkGroupQservRequest::create(unsigned int chunk,
                                                                        vector<string> const& databases,
                                                                        bool force, CallbackType onFinish) {
-    return RemoveChunkGroupQservRequest::Ptr(
+    RemoveChunkGroupQservRequest::Ptr ptr(
             new RemoveChunkGroupQservRequest(chunk, databases, force, onFinish));
+    ptr->setRefToSelf4keepAlive(ptr);
+    return ptr;
 }
 
 RemoveChunkGroupQservRequest::RemoveChunkGroupQservRequest(unsigned int chunk,

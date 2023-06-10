@@ -65,7 +65,9 @@ string TestEchoQservRequest::status2str(Status status) {
 
 TestEchoQservRequest::Ptr TestEchoQservRequest::create(string const& value,
                                                        TestEchoQservRequest::CallbackType onFinish) {
-    return TestEchoQservRequest::Ptr(new TestEchoQservRequest(value, onFinish));
+    TestEchoQservRequest::Ptr ptr(new TestEchoQservRequest(value, onFinish));
+    ptr->setRefToSelf4keepAlive(ptr);
+    return ptr;
 }
 
 TestEchoQservRequest::TestEchoQservRequest(string const& value, TestEchoQservRequest::CallbackType onFinish)

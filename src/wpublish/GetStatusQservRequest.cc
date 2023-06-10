@@ -49,7 +49,9 @@ string GetStatusQservRequest::status2str(Status status) {
 
 GetStatusQservRequest::Ptr GetStatusQservRequest::create(wbase::TaskSelector const& taskSelector,
                                                          GetStatusQservRequest::CallbackType onFinish) {
-    return GetStatusQservRequest::Ptr(new GetStatusQservRequest(taskSelector, onFinish));
+    GetStatusQservRequest::Ptr ptr(new GetStatusQservRequest(taskSelector, onFinish));
+    ptr->setRefToSelf4keepAlive(ptr);
+    return ptr;
 }
 
 GetStatusQservRequest::GetStatusQservRequest(wbase::TaskSelector const& taskSelector,

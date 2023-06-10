@@ -142,7 +142,9 @@ void ChunkListQservRequest::onError(string const& error) {
 
 ReloadChunkListQservRequest::Ptr ReloadChunkListQservRequest::create(
         ChunkListQservRequest::CallbackType onFinish) {
-    return ReloadChunkListQservRequest::Ptr(new ReloadChunkListQservRequest(onFinish));
+    ReloadChunkListQservRequest::Ptr ptr(new ReloadChunkListQservRequest(onFinish));
+    ptr->setRefToSelf4keepAlive(ptr);
+    return ptr;
 }
 
 ReloadChunkListQservRequest::ReloadChunkListQservRequest(ChunkListQservRequest::CallbackType onFinish)
@@ -150,7 +152,9 @@ ReloadChunkListQservRequest::ReloadChunkListQservRequest(ChunkListQservRequest::
 
 RebuildChunkListQservRequest::Ptr RebuildChunkListQservRequest::create(
         bool reload, ChunkListQservRequest::CallbackType onFinish) {
-    return RebuildChunkListQservRequest::Ptr(new RebuildChunkListQservRequest(reload, onFinish));
+    RebuildChunkListQservRequest::Ptr ptr(new RebuildChunkListQservRequest(reload, onFinish));
+    ptr->setRefToSelf4keepAlive(ptr);
+    return ptr;
 }
 
 RebuildChunkListQservRequest::RebuildChunkListQservRequest(bool reload,

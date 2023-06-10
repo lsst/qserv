@@ -113,15 +113,8 @@ void TestEchoQservMgtRequest::finishImpl(replica::Lock const& lock) {
     switch (extendedState()) {
         case ExtendedState::CANCELLED:
         case ExtendedState::TIMEOUT_EXPIRED:
-
-            // And if the SSI request is still around then tell it to stop
-
-            if (_qservRequest) {
-                bool const cancel = true;
-                _qservRequest->Finished(cancel);
-            }
+            if (_qservRequest) _qservRequest->cancel();
             break;
-
         default:
             break;
     }

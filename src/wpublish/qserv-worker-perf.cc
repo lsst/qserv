@@ -126,8 +126,7 @@ int test() {
         util::BlockPost blockPost(cancelAfterMs, cancelAfterMs + 1);
         blockPost.wait();
         for (auto&& request : requests) {
-            bool const cancel = true;
-            request->Finished(cancel);
+            request->cancel();
         }
     }
     return 0;

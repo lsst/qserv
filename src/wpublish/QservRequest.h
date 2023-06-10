@@ -25,6 +25,8 @@
 
 // System headers
 #include <atomic>
+#include <memory>
+#include <string>
 
 // Third party headers
 #include "XrdSsi/XrdSsiRequest.hh"
@@ -43,11 +45,28 @@ class QservRequest : public XrdSsiRequest {
 public:
     QservRequest(QservRequest const&) = delete;
     QservRequest& operator=(QservRequest const&) = delete;
-
     ~QservRequest() override;
+
+    /**
+     * Do a proper request cancellation to ensure a pointer to the request gets deleted
+     * after calling XrdSsiRequest::Finished(true).
+     */
+    void cancel();
 
 protected:
     QservRequest();
+
+    /**
+     * Setting a pointer to the object would guarantee that the life expectancy
+     * of the request be preserved before it's finished/failed and the corresponding
+     * notifications are sent to a subclass via the virtual methods QservRequest::onResponse()
+     * or QservRequest::onError(). The pointer will be reset after calling either of
+     * these methods, or the method QservRequest::cancel().
+     * @param ptr The pointer to be set.
+     * @throws std::invalid_argument if the pointer is empty or pointing to a different
+     *   request object.
+     */
+    void setRefToSelf4keepAlive(std::shared_ptr<QservRequest> ptr);
 
     /**
      * Serialize a request into the provided buffer. The method is required to be
@@ -90,6 +109,10 @@ private:
     int _bufCapacity;  ///< total capacity of the incoming buffer
 
     char* _buf;  ///< buffer for incomming data
+
+    /// The reference to the object is needed to guarantee the life expectency of
+    /// the request object while the request is still being processed.
+    std::shared_ptr<QservRequest> _refToSelf4keepAlive;
 };
 
 }  // namespace lsst::qserv::wpublish

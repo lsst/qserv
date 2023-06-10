@@ -72,7 +72,9 @@ string SetChunkListQservRequest::status2str(Status status) {
 SetChunkListQservRequest::Ptr SetChunkListQservRequest::create(
         SetChunkListQservRequest::ChunkCollection const& chunks, vector<string> const& databases, bool force,
         SetChunkListQservRequest::CallbackType onFinish) {
-    return SetChunkListQservRequest::Ptr(new SetChunkListQservRequest(chunks, databases, force, onFinish));
+    SetChunkListQservRequest::Ptr ptr(new SetChunkListQservRequest(chunks, databases, force, onFinish));
+    ptr->setRefToSelf4keepAlive(ptr);
+    return ptr;
 }
 
 SetChunkListQservRequest::SetChunkListQservRequest(SetChunkListQservRequest::ChunkCollection const& chunks,

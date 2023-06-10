@@ -63,7 +63,9 @@ string GetChunkListQservRequest::status2str(Status status) {
 
 GetChunkListQservRequest::Ptr GetChunkListQservRequest::create(
         bool inUseOnly, GetChunkListQservRequest::CallbackType onFinish) {
-    return GetChunkListQservRequest::Ptr(new GetChunkListQservRequest(inUseOnly, onFinish));
+    GetChunkListQservRequest::Ptr ptr(new GetChunkListQservRequest(inUseOnly, onFinish));
+    ptr->setRefToSelf4keepAlive(ptr);
+    return ptr;
 }
 
 GetChunkListQservRequest::GetChunkListQservRequest(bool inUseOnly,

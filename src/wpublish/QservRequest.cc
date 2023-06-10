@@ -24,7 +24,8 @@
 #include "wpublish/QservRequest.h"
 
 // System headers
-#include <string>
+#include <sstream>
+#include <stdexcept>
 
 // Qserv headers
 #include "lsst/log/Log.h"
@@ -62,6 +63,23 @@ QservRequest::QservRequest()
     LOGS(_log, LOG_LVL_DEBUG, "QservRequest  constructed  instances: " << _numClassInstances);
 }
 
+void QservRequest::cancel() {
+    // This will decrement the reference counter to the pointee at the end of the current
+    // block regardless of any exceptions that may be thrown below.
+    auto self = move(_refToSelf4keepAlive);
+    Finished(true);
+}
+
+void QservRequest::setRefToSelf4keepAlive(shared_ptr<QservRequest> ptr) {
+    if ((ptr == nullptr) || (this != ptr.get())) {
+        stringstream ss;
+        ss << "QservRequest::" << __func__ << ": the value of " << ptr
+           << " passed as an argument is not pointing to the current object.";
+        throw invalid_argument(ss.str());
+    }
+    _refToSelf4keepAlive = ptr;
+}
+
 char* QservRequest::GetRequest(int& dlen) {
     // Ask a subclass to serialize its request into the frame buffer
     onRequest(_frameBuf);
@@ -75,6 +93,10 @@ bool QservRequest::ProcessResponse(const XrdSsiErrInfo& eInfo, const XrdSsiRespI
     string const context = "QservRequest::" + string(__func__) + "  ";
 
     if (eInfo.hasError()) {
+        // This will decrement the reference counter to the pointee at the end of the current
+        // block regardless of any exceptions that may be thrown below.
+        auto self = move(_refToSelf4keepAlive);
+
         // Copy the argument before sending the upstream notification
         // Otherwise the current object may get disposed before we even had
         // a chance to notify XRootD/SSI by calling Finished().
@@ -89,7 +111,6 @@ bool QservRequest::ProcessResponse(const XrdSsiErrInfo& eInfo, const XrdSsiRespI
         // WARNING: This has to be the last call as the object may get deleted
         //          downstream.
         onError(errorStr);
-
         return false;
     }
     LOGS(_log, LOG_LVL_DEBUG,
@@ -105,6 +126,9 @@ bool QservRequest::ProcessResponse(const XrdSsiErrInfo& eInfo, const XrdSsiRespI
             return true;
 
         default:
+            // This will decrement the reference counter to the pointee at the end of the current
+            // block regardless of any exceptions that may be thrown below.
+            auto self = move(_refToSelf4keepAlive);
 
             // Copy the argument before sending the upstream notification
             // Otherwise the current object may get disposed before we even had
@@ -128,6 +152,10 @@ void QservRequest::ProcessResponseData(const XrdSsiErrInfo& eInfo, char* buff, i
     LOGS(_log, LOG_LVL_DEBUG, context << "eInfo.isOK: " << eInfo.isOK());
 
     if (not eInfo.isOK()) {
+        // This will decrement the reference counter to the pointee at the end of the current
+        // block regardless of any exceptions that may be thrown below.
+        auto self = move(_refToSelf4keepAlive);
+
         // Copy these arguments before sending the upstream notification.
         // Otherwise the current object may get disposed before we even had
         // a chance to notify XRootD/SSI by calling Finished().
@@ -153,6 +181,10 @@ void QservRequest::ProcessResponseData(const XrdSsiErrInfo& eInfo, char* buff, i
         _bufSize += blen;
 
         if (last) {
+            // This will decrement the reference counter to the pointee at the end of the current
+            // block regardless of any exceptions that may be thrown below.
+            auto self = move(_refToSelf4keepAlive);
+
             // Tell XrootD to release all resources associated with this request
             Finished();
 
