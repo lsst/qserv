@@ -160,6 +160,17 @@ public:
 
     int getOldestResultKeptDays() const { return _oldestResultKeptDays; }
 
+    /// @return 'true' to allow broadcasting query completion/cancellation events
+    /// to all workers so that they would do proper garbage collection and resource recycling.
+    bool notifyWorkersOnQueryFinish() const { return _notifyWorkersOnQueryFinish != 0; }
+
+    /// @return 'true' to allow broadcasting this event to all workers to let them cancel
+    /// any older that were submitted before the restart. The first query identifier in the new
+    /// series will be reported to the workers. The identifier will be used as
+    /// a high watermark for diffirentiating between the older (to be cancelled)
+    /// and the newer queries.
+    bool notifyWorkersOnCzarRestart() const { return _notifyWorkersOnCzarRestart != 0; }
+
 private:
     CzarConfig(util::ConfigStore const& ConfigStore);
 
@@ -196,6 +207,10 @@ private:
 
     // Parameters for QueryRequest PseudoFifo
     int const _qReqPseudoFifoMaxRunning;
+
+    // Events sent to workers
+    int const _notifyWorkersOnQueryFinish;  ///< Sent by cccontrol::UserQuerySelect
+    int const _notifyWorkersOnCzarRestart;  ///< Sent by czar::Czar
 };
 
 }  // namespace lsst::qserv::czar

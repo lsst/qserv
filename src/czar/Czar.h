@@ -39,6 +39,7 @@
 #include "ccontrol/UserQueryFactory.h"
 #include "czar/CzarConfig.h"
 #include "czar/SubmitResult.h"
+#include "global/intTypes.h"
 #include "global/stringTypes.h"
 #include "mysql/MySqlConfig.h"
 #include "qdisp/SharedResources.h"
@@ -135,6 +136,9 @@ private:
 
     /// Create and fill async result table
     void _makeAsyncResult(std::string const& asyncResultTable, QueryId queryId, std::string const& resultLoc);
+
+    /// @return An identifier of the last query that was recorded in the query metadata table
+    QueryId _lastQueryIdBeforeRestart() const;
 
     static Ptr _czar;  ///< Pointer to single instance of the Czar.
 

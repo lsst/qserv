@@ -29,6 +29,7 @@ target_link_libraries(ccontrol PUBLIC
     log
     parser
     sphgeom
+    xrdreq
 )
 
 FUNCTION(ccontrol_tests)
