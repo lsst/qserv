@@ -20,8 +20,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_WPUBLISH_CHUNK_LIST_QSERV_REQUEST_H
-#define LSST_QSERV_WPUBLISH_CHUNK_LIST_QSERV_REQUEST_H
+#ifndef LSST_QSERV_XRDREQ_CHUNK_LIST_QSERV_REQUEST_H
+#define LSST_QSERV_XRDREQ_CHUNK_LIST_QSERV_REQUEST_H
 
 // System headers
 #include <functional>
@@ -29,9 +29,9 @@
 #include <memory>
 
 // Qserv headers
-#include "wpublish/QservRequest.h"
+#include "xrdreq/QservRequest.h"
 
-namespace lsst::qserv::wpublish {
+namespace lsst::qserv::xrdreq {
 
 /**
  * Class ChunkListQservRequest the base class for client-side requests
@@ -165,6 +165,6 @@ protected:
     RebuildChunkListQservRequest(bool reload, CallbackType onFinish);
 };
 
-}  // namespace lsst::qserv::wpublish
+}  // namespace lsst::qserv::xrdreq
 
-#endif  // LSST_QSERV_WPUBLISH_CHUNK_LIST_QSERV_REQUEST_H
+#endif  // LSST_QSERV_XRDREQ_CHUNK_LIST_QSERV_REQUEST_H

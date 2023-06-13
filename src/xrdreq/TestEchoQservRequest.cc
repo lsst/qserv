@@ -21,7 +21,7 @@
  */
 
 // Class header
-#include "wpublish/TestEchoQservRequest.h"
+#include "xrdreq/TestEchoQservRequest.h"
 
 // System headers
 #include <stdexcept>
@@ -34,23 +34,23 @@ using namespace std;
 
 namespace {
 
-LOG_LOGGER _log = LOG_GET("lsst.qserv.wpublish.TestEchoQservRequest");
+LOG_LOGGER _log = LOG_GET("lsst.qserv.xrdreq.TestEchoQservRequest");
 
 using namespace lsst::qserv;
 
-wpublish::TestEchoQservRequest::Status translate(proto::WorkerCommandTestEchoR::Status status) {
+xrdreq::TestEchoQservRequest::Status translate(proto::WorkerCommandTestEchoR::Status status) {
     switch (status) {
         case proto::WorkerCommandTestEchoR::SUCCESS:
-            return wpublish::TestEchoQservRequest::SUCCESS;
+            return xrdreq::TestEchoQservRequest::SUCCESS;
         case proto::WorkerCommandTestEchoR::ERROR:
-            return wpublish::TestEchoQservRequest::ERROR;
+            return xrdreq::TestEchoQservRequest::ERROR;
     }
     throw domain_error("TestEchoQservRequest::" + string(__func__) + "  no match for Protobuf status: " +
                        proto::WorkerCommandTestEchoR_Status_Name(status));
 }
 }  // namespace
 
-namespace lsst::qserv::wpublish {
+namespace lsst::qserv::xrdreq {
 
 string TestEchoQservRequest::status2str(Status status) {
     switch (status) {
@@ -126,4 +126,4 @@ void TestEchoQservRequest::onError(string const& error) {
     }
 }
 
-}  // namespace lsst::qserv::wpublish
+}  // namespace lsst::qserv::xrdreq

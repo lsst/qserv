@@ -48,19 +48,19 @@
 #include "util/BlockPost.h"
 #include "util/CmdLineParser.h"
 #include "util/File.h"
-#include "wpublish/TestEchoQservRequest.h"
+#include "xrdreq/TestEchoQservRequest.h"
 
 /// This C++ symbol is provided by the SSI shared library
 extern XrdSsiProvider* XrdSsiProviderClient;
 
 namespace global = lsst::qserv;
 namespace util = lsst::qserv::util;
-namespace wpublish = lsst::qserv::wpublish;
+namespace xrdreq = lsst::qserv::xrdreq;
 
 using namespace std;
 using namespace std::placeholders;
 
-using RequestT = wpublish::TestEchoQservRequest;
+using RequestT = xrdreq::TestEchoQservRequest;
 
 namespace {
 

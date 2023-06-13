@@ -30,7 +30,7 @@
 #include "replica/QservMgtRequest.h"
 #include "replica/ReplicaInfo.h"
 #include "replica/ServiceProvider.h"
-#include "wpublish/SetChunkListQservRequest.h"
+#include "xrdreq/SetChunkListQservRequest.h"
 
 // This header declarations
 namespace lsst::qserv::replica {
@@ -109,7 +109,7 @@ private:
      * @param collection The input collection of replicas.
      */
     void _setReplicas(replica::Lock const& lock,
-                      wpublish::SetChunkListQservRequest::ChunkCollection const& collection);
+                      xrdreq::SetChunkListQservRequest::ChunkCollection const& collection);
 
     // Input parameters.
 
@@ -120,7 +120,7 @@ private:
     CallbackType _onFinish;
 
     /// A request to the remote services.
-    wpublish::SetChunkListQservRequest::Ptr _qservRequest;
+    xrdreq::SetChunkListQservRequest::Ptr _qservRequest;
 
     /// A collection of replicas reported by the Qserv worker.
     QservReplicaCollection _replicas;

@@ -29,7 +29,7 @@
 // Qserv headers
 #include "replica/QservMgtRequest.h"
 #include "replica/ServiceProvider.h"
-#include "wpublish/ChunkGroupQservRequest.h"
+#include "xrdreq/ChunkGroupQservRequest.h"
 
 // This header declarations
 namespace lsst::qserv::replica {
@@ -107,7 +107,7 @@ private:
     CallbackType _onFinish;
 
     /// A request to the remote services
-    wpublish::RemoveChunkGroupQservRequest::Ptr _qservRequest;
+    xrdreq::RemoveChunkGroupQservRequest::Ptr _qservRequest;
 };
 
 }  // namespace lsst::qserv::replica

@@ -79,15 +79,15 @@ list<pair<string, string>> GetStatusQservMgtRequest::extendedPersistentState() c
 
 void GetStatusQservMgtRequest::startImpl(replica::Lock const& lock) {
     auto const request = shared_from_base<GetStatusQservMgtRequest>();
-    _qservRequest = wpublish::GetStatusQservRequest::create(
-            _taskSelector, [request](wpublish::GetStatusQservRequest::Status status, string const& error,
-                                     string const& info) {
+    _qservRequest = xrdreq::GetStatusQservRequest::create(
+            _taskSelector,
+            [request](xrdreq::GetStatusQservRequest::Status status, string const& error, string const& info) {
                 if (request->state() == State::FINISHED) return;
                 replica::Lock const lock(request->_mtx, request->context() + string(__func__) + "[callback]");
                 if (request->state() == State::FINISHED) return;
 
                 switch (status) {
-                    case wpublish::GetStatusQservRequest::Status::SUCCESS:
+                    case xrdreq::GetStatusQservRequest::Status::SUCCESS:
                         try {
                             request->_setInfo(lock, info);
                             request->finish(lock, QservMgtRequest::ExtendedState::SUCCESS);
@@ -98,13 +98,13 @@ void GetStatusQservMgtRequest::startImpl(replica::Lock const& lock) {
                             request->finish(lock, QservMgtRequest::ExtendedState::SERVER_BAD_RESPONSE, msg);
                         }
                         break;
-                    case wpublish::GetStatusQservRequest::Status::ERROR:
+                    case xrdreq::GetStatusQservRequest::Status::ERROR:
                         request->finish(lock, QservMgtRequest::ExtendedState::SERVER_ERROR, error);
                         break;
                     default:
                         throw logic_error("GetStatusQservMgtRequest::" + string(__func__) +
                                           "  unhandled server status: " +
-                                          wpublish::GetStatusQservRequest::status2str(status));
+                                          xrdreq::GetStatusQservRequest::status2str(status));
                 }
             });
     XrdSsiResource resource(ResourceUnit::makeWorkerPath(worker()));

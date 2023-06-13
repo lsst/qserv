@@ -21,7 +21,7 @@
  */
 
 // Class header
-#include "wpublish/QservRequest.h"
+#include "xrdreq/QservRequest.h"
 
 // System headers
 #include <sstream>
@@ -34,14 +34,14 @@ using namespace std;
 
 namespace {
 
-LOG_LOGGER _log = LOG_GET("lsst.qserv.wpublish.QservRequest");
+LOG_LOGGER _log = LOG_GET("lsst.qserv.xrdreq.QservRequest");
 
 // Set this parameter to some reasonable default
 int const bufInitialSize = 1024;
 
 }  // namespace
 
-namespace lsst::qserv::wpublish {
+namespace lsst::qserv::xrdreq {
 
 atomic<size_t> QservRequest::_numClassInstances(0);
 
@@ -213,4 +213,4 @@ void QservRequest::ProcessResponseData(const XrdSsiErrInfo& eInfo, char* buff, i
     }
 }
 
-}  // namespace lsst::qserv::wpublish
+}  // namespace lsst::qserv::xrdreq

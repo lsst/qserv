@@ -21,7 +21,7 @@
  */
 
 // Class header
-#include "wpublish/ChunkListQservRequest.h"
+#include "xrdreq/ChunkListQservRequest.h"
 
 // System headers
 #include <stdexcept>
@@ -35,21 +35,21 @@ using namespace std;
 
 namespace {
 
-LOG_LOGGER _log = LOG_GET("lsst.qserv.wpublish.ChunkListQservRequest");
+LOG_LOGGER _log = LOG_GET("lsst.qserv.xrdreq.ChunkListQservRequest");
 
-wpublish::ChunkListQservRequest::Status translate(proto::WorkerCommandUpdateChunkListR::Status status) {
+xrdreq::ChunkListQservRequest::Status translate(proto::WorkerCommandUpdateChunkListR::Status status) {
     switch (status) {
         case proto::WorkerCommandUpdateChunkListR::SUCCESS:
-            return wpublish::ChunkListQservRequest::SUCCESS;
+            return xrdreq::ChunkListQservRequest::SUCCESS;
         case proto::WorkerCommandUpdateChunkListR::ERROR:
-            return wpublish::ChunkListQservRequest::ERROR;
+            return xrdreq::ChunkListQservRequest::ERROR;
     }
     throw domain_error("ChunkListQservRequest::translate  no match for Protobuf status: " +
                        proto::WorkerCommandUpdateChunkListR_Status_Name(status));
 }
 }  // namespace
 
-namespace lsst::qserv::wpublish {
+namespace lsst::qserv::xrdreq {
 
 string ChunkListQservRequest::status2str(Status status) {
     switch (status) {
@@ -161,4 +161,4 @@ RebuildChunkListQservRequest::RebuildChunkListQservRequest(bool reload,
                                                            ChunkListQservRequest::CallbackType onFinish)
         : ChunkListQservRequest(true, reload, onFinish) {}
 
-}  // namespace lsst::qserv::wpublish
+}  // namespace lsst::qserv::xrdreq

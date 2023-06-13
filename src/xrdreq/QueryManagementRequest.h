@@ -1,7 +1,6 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2011-2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -20,27 +19,29 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_WPUBLISH_GET_STATUS_QSERV_REQUEST_H
-#define LSST_QSERV_WPUBLISH_GET_STATUS_QSERV_REQUEST_H
+#ifndef LSST_QSERV_XRDREQ_QUERY_MANAGEMENT_REQUEST_H
+#define LSST_QSERV_XRDREQ_QUERY_MANAGEMENT_REQUEST_H
 
 // System headers
-#include <cstdint>
 #include <functional>
 #include <memory>
 #include <string>
-#include <vector>
 
 // Qserv headers
-#include "wbase/TaskState.h"
-#include "wpublish/QservRequest.h"
+#include "global/intTypes.h"
+#include "proto/worker.pb.h"
+#include "xrdreq/QservRequest.h"
 
-namespace lsst::qserv::wpublish {
+namespace lsst::qserv::xrdreq {
 
 /**
- * Class GetStatusQservRequest represents a request returning various info
- * on the on-going status of a Qserv worker.
+ * Class QueryManagementRequest represents requests for managing query
+ * completion/cancellation at Qserv workers.
+ * @note No actuall responses are expected from these requests beyond
+ * the error messages in case of any problems in delivering or processing
+ * notifications.
  */
-class GetStatusQservRequest : public QservRequest {
+class QueryManagementRequest : public QservRequest {
 public:
     /// Completion status of the operation
     enum Status {
@@ -52,37 +53,36 @@ public:
     static std::string status2str(Status status);
 
     /// The pointer type for instances of the class
-    typedef std::shared_ptr<GetStatusQservRequest> Ptr;
+    typedef std::shared_ptr<QueryManagementRequest> Ptr;
 
     /// The callback function type to be used for notifications on
     /// the operation completion.
     using CallbackType = std::function<void(Status,                // completion status
-                                            std::string const&,    // error message
-                                            std::string const&)>;  // worker info received (if success)
+                                            std::string const&)>;  // error message
 
     /**
      * Static factory method is needed to prevent issues with the lifespan
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
-     *
-     * @param taskSelector (optional) task selection criterias.
-     * @param onFinish (optional )callback function to be called upon the completion
+     * @param op An operation to be initiated.
+     * @param queryId An uinque identifier of a query affected by the request.
+     *   Note that a cole of the identifier depends on which operation
+     *   was requested.
+     * @param onFinish (optional) callback function to be called upon the completion
      *   (successful or not) of the request.
-     * @see wbase::Task::Status
      * @return the smart pointer to the object of the class
      */
-    static Ptr create(wbase::TaskSelector const& taskSelector = wbase::TaskSelector(),
-                      CallbackType onFinish = nullptr);
+    static Ptr create(proto::QueryManagement::Operation op, QueryId queryId, CallbackType onFinish = nullptr);
 
-    GetStatusQservRequest() = delete;
-    GetStatusQservRequest(GetStatusQservRequest const&) = delete;
-    GetStatusQservRequest& operator=(GetStatusQservRequest const&) = delete;
+    QueryManagementRequest() = delete;
+    QueryManagementRequest(QueryManagementRequest const&) = delete;
+    QueryManagementRequest& operator=(QueryManagementRequest const&) = delete;
 
-    virtual ~GetStatusQservRequest() override;
+    virtual ~QueryManagementRequest() override;
 
 protected:
-    /// @see GetStatusQservRequest::create()
-    GetStatusQservRequest(wbase::TaskSelector const& taskSelector, CallbackType onFinish);
+    /// @see QueryManagementRequest::create()
+    QueryManagementRequest(proto::QueryManagement::Operation op, QueryId queryId, CallbackType onFinish);
 
     virtual void onRequest(proto::FrameBuffer& buf) override;
     virtual void onResponse(proto::FrameBufferView& view) override;
@@ -91,10 +91,11 @@ protected:
 private:
     // Parameters of the object
 
-    wbase::TaskSelector const _taskSelector;
+    proto::QueryManagement::Operation _op = proto::QueryManagement::CANCEL_AFTER_RESTART;
+    QueryId _queryId = 0;
     CallbackType _onFinish;
 };
 
-}  // namespace lsst::qserv::wpublish
+}  // namespace lsst::qserv::xrdreq
 
-#endif  // LSST_QSERV_WPUBLISH_GET_STATUS_QSERV_REQUEST_H
+#endif  // LSST_QSERV_XRDREQ_QUERY_MANAGEMENT_REQUEST_H

@@ -33,7 +33,7 @@
 #include "replica/QservMgtRequest.h"
 #include "replica/ServiceProvider.h"
 #include "wbase/TaskState.h"
-#include "wpublish/GetStatusQservRequest.h"
+#include "xrdreq/GetStatusQservRequest.h"
 
 // This header declarations
 namespace lsst::qserv::replica {
@@ -109,7 +109,7 @@ private:
     CallbackType _onFinish;  ///< this object is reset after finishing the request
 
     /// A request to the remote services
-    wpublish::GetStatusQservRequest::Ptr _qservRequest;
+    xrdreq::GetStatusQservRequest::Ptr _qservRequest;
 
     /// The info object returned by the Qserv worker
     nlohmann::json _info;

@@ -21,7 +21,7 @@
  */
 
 // Class header
-#include "wpublish/SetChunkListQservRequest.h"
+#include "xrdreq/SetChunkListQservRequest.h"
 
 // System headers
 #include <stdexcept>
@@ -35,25 +35,25 @@ using namespace lsst::qserv;
 
 namespace {
 
-LOG_LOGGER _log = LOG_GET("lsst.qserv.wpublish.SetChunkListQservRequest");
+LOG_LOGGER _log = LOG_GET("lsst.qserv.xrdreq.SetChunkListQservRequest");
 
-wpublish::SetChunkListQservRequest::Status translate(proto::WorkerCommandSetChunkListR::Status status) {
+xrdreq::SetChunkListQservRequest::Status translate(proto::WorkerCommandSetChunkListR::Status status) {
     switch (status) {
         case proto::WorkerCommandSetChunkListR::SUCCESS:
-            return wpublish::SetChunkListQservRequest::SUCCESS;
+            return xrdreq::SetChunkListQservRequest::SUCCESS;
         case proto::WorkerCommandSetChunkListR::INVALID:
-            return wpublish::SetChunkListQservRequest::INVALID;
+            return xrdreq::SetChunkListQservRequest::INVALID;
         case proto::WorkerCommandSetChunkListR::IN_USE:
-            return wpublish::SetChunkListQservRequest::IN_USE;
+            return xrdreq::SetChunkListQservRequest::IN_USE;
         case proto::WorkerCommandSetChunkListR::ERROR:
-            return wpublish::SetChunkListQservRequest::ERROR;
+            return xrdreq::SetChunkListQservRequest::ERROR;
     }
     throw domain_error("SetChunkListQservRequest::translate  no match for Protobuf status: " +
                        proto::WorkerCommandSetChunkListR_Status_Name(status));
 }
 }  // namespace
 
-namespace lsst::qserv::wpublish {
+namespace lsst::qserv::xrdreq {
 
 string SetChunkListQservRequest::status2str(Status status) {
     switch (status) {
@@ -156,4 +156,4 @@ void SetChunkListQservRequest::onError(string const& error) {
     }
 }
 
-}  // namespace lsst::qserv::wpublish
+}  // namespace lsst::qserv::xrdreq

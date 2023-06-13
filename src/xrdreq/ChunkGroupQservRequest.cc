@@ -21,7 +21,7 @@
  */
 
 // Class header
-#include "wpublish/ChunkGroupQservRequest.h"
+#include "xrdreq/ChunkGroupQservRequest.h"
 
 // System headers
 #include <stdexcept>
@@ -34,20 +34,20 @@ using namespace std;
 
 namespace {
 
-LOG_LOGGER _log = LOG_GET("lsst.qserv.wpublish.ChunkGroupQservRequest");
+LOG_LOGGER _log = LOG_GET("lsst.qserv.xrdreq.ChunkGroupQservRequest");
 
 using namespace lsst::qserv;
 
-wpublish::ChunkGroupQservRequest::Status translate(proto::WorkerCommandChunkGroupR::Status status) {
+xrdreq::ChunkGroupQservRequest::Status translate(proto::WorkerCommandChunkGroupR::Status status) {
     switch (status) {
         case proto::WorkerCommandChunkGroupR::SUCCESS:
-            return wpublish::ChunkGroupQservRequest::SUCCESS;
+            return xrdreq::ChunkGroupQservRequest::SUCCESS;
         case proto::WorkerCommandChunkGroupR::INVALID:
-            return wpublish::ChunkGroupQservRequest::INVALID;
+            return xrdreq::ChunkGroupQservRequest::INVALID;
         case proto::WorkerCommandChunkGroupR::IN_USE:
-            return wpublish::ChunkGroupQservRequest::IN_USE;
+            return xrdreq::ChunkGroupQservRequest::IN_USE;
         case proto::WorkerCommandChunkGroupR::ERROR:
-            return wpublish::ChunkGroupQservRequest::ERROR;
+            return xrdreq::ChunkGroupQservRequest::ERROR;
     }
     throw domain_error("ChunkGroupQservRequest::" + string(__func__) + "  no match for Protobuf status: " +
                        proto::WorkerCommandChunkGroupR_Status_Name(status));
@@ -55,7 +55,7 @@ wpublish::ChunkGroupQservRequest::Status translate(proto::WorkerCommandChunkGrou
 
 }  // namespace
 
-namespace lsst::qserv::wpublish {
+namespace lsst::qserv::xrdreq {
 
 string ChunkGroupQservRequest::status2str(Status status) {
     switch (status) {
@@ -161,4 +161,4 @@ RemoveChunkGroupQservRequest::RemoveChunkGroupQservRequest(unsigned int chunk,
                                                            CallbackType onFinish)
         : ChunkGroupQservRequest(false, chunk, databases, force, onFinish) {}
 
-}  // namespace lsst::qserv::wpublish
+}  // namespace lsst::qserv::xrdreq

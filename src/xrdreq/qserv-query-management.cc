@@ -35,8 +35,8 @@
 #include "proto/worker.pb.h"
 #include "util/BlockPost.h"
 #include "util/CmdLineParser.h"
-#include "wpublish/QueryManagementAction.h"
-#include "wpublish/QueryManagementRequest.h"
+#include "xrdreq/QueryManagementAction.h"
+#include "xrdreq/QueryManagementRequest.h"
 
 /// This C++ symbol is provided by the SSI shared library
 extern XrdSsiProvider* XrdSsiProviderClient;
@@ -44,7 +44,7 @@ extern XrdSsiProvider* XrdSsiProviderClient;
 namespace global = lsst::qserv;
 namespace proto = lsst::qserv::proto;
 namespace util = lsst::qserv::util;
-namespace wpublish = lsst::qserv::wpublish;
+namespace xrdreq = lsst::qserv::xrdreq;
 
 using namespace std;
 
@@ -72,9 +72,9 @@ proto::QueryManagement::Operation str2operation(string const& str) {
 int test() {
     bool finished = false;
     if (allWorkers) {
-        wpublish::QueryManagementAction::notifyAllWorkers(
+        xrdreq::QueryManagementAction::notifyAllWorkers(
                 serviceProviderLocation, operation, queryId,
-                [&finished](wpublish::QueryManagementAction::Response const& response) {
+                [&finished](xrdreq::QueryManagementAction::Response const& response) {
                     for (auto itr : response) {
                         cout << "worker: " << itr.first << " error: " << itr.second << endl;
                     }
@@ -92,10 +92,10 @@ int test() {
         cout << "connected to service provider at: " << serviceProviderLocation << endl;
 
         // Prepare the request
-        auto request = wpublish::QueryManagementRequest::create(
+        auto request = xrdreq::QueryManagementRequest::create(
                 operation, queryId,
-                [&finished](wpublish::QueryManagementRequest::Status status, string const& error) {
-                    cout << "status=" << wpublish::QueryManagementRequest::status2str(status) << ", error='"
+                [&finished](xrdreq::QueryManagementRequest::Status status, string const& error) {
+                    cout << "status=" << xrdreq::QueryManagementRequest::status2str(status) << ", error='"
                          << error << "'" << endl;
                     finished = true;
                 });

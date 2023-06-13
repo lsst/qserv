@@ -21,7 +21,7 @@
  */
 
 // Class header
-#include "wpublish/QueryManagementAction.h"
+#include "xrdreq/QueryManagementAction.h"
 
 // System headers
 #include <stdexcept>
@@ -33,7 +33,7 @@
 #include "XrdSsi/XrdSsiService.hh"
 
 // Qserv headers
-#include "wpublish/QueryManagementRequest.h"
+#include "xrdreq/QueryManagementRequest.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -44,7 +44,7 @@ extern XrdSsiProvider* XrdSsiProviderClient;
 using namespace std;
 
 namespace {
-LOG_LOGGER _log = LOG_GET("lsst.qserv.wpublish.QueryManagementAction");
+LOG_LOGGER _log = LOG_GET("lsst.qserv.xrdreq.QueryManagementAction");
 
 string xrootdStatus2str(XrdCl::XRootDStatus const& s) {
     return "status=" + to_string(s.status) + ", code=" + to_string(s.code) + ", errNo=" + to_string(s.errNo) +
@@ -60,7 +60,7 @@ struct LocationInfoRAII {
 
 }  // namespace
 
-namespace lsst::qserv::wpublish {
+namespace lsst::qserv::xrdreq {
 
 void QueryManagementAction::notifyAllWorkers(string const& xrootdFrontendUrl,
                                              proto::QueryManagement::Operation op, QueryId queryId,
@@ -117,11 +117,11 @@ void QueryManagementAction::_notifyAllWorkers(std::string const& xrootdFrontendU
         }
 
         // Make and configure the request object
-        auto request = wpublish::QueryManagementRequest::create(
+        auto request = xrdreq::QueryManagementRequest::create(
                 op, queryId,
-                [self, workerAddress, onFinish](wpublish::QueryManagementRequest::Status status,
+                [self, workerAddress, onFinish](xrdreq::QueryManagementRequest::Status status,
                                                 string const& error) {
-                    if (status != wpublish::QueryManagementRequest::Status::SUCCESS) {
+                    if (status != xrdreq::QueryManagementRequest::Status::SUCCESS) {
                         self->_response[workerAddress] = error;
                     }
                     if (++(self->_numWorkerRequestsFinished) == self->_response.size()) {
@@ -135,4 +135,4 @@ void QueryManagementAction::_notifyAllWorkers(std::string const& xrootdFrontendU
     }
 }
 
-}  // namespace lsst::qserv::wpublish
+}  // namespace lsst::qserv::xrdreq

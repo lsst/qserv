@@ -78,8 +78,8 @@ void TestEchoQservMgtRequest::startImpl(replica::Lock const& lock) {
 
     auto const request = shared_from_base<TestEchoQservMgtRequest>();
 
-    _qservRequest = wpublish::TestEchoQservRequest::create(
-            data(), [request](wpublish::TestEchoQservRequest::Status status, string const& error,
+    _qservRequest = xrdreq::TestEchoQservRequest::create(
+            data(), [request](xrdreq::TestEchoQservRequest::Status status, string const& error,
                               string const& data, string const& dataEcho) {
                 if (request->state() == State::FINISHED) return;
 
@@ -88,13 +88,13 @@ void TestEchoQservMgtRequest::startImpl(replica::Lock const& lock) {
                 if (request->state() == State::FINISHED) return;
 
                 switch (status) {
-                    case wpublish::TestEchoQservRequest::Status::SUCCESS:
+                    case xrdreq::TestEchoQservRequest::Status::SUCCESS:
 
                         request->_setData(lock, dataEcho);
                         request->finish(lock, QservMgtRequest::ExtendedState::SUCCESS);
                         break;
 
-                    case wpublish::TestEchoQservRequest::Status::ERROR:
+                    case xrdreq::TestEchoQservRequest::Status::ERROR:
 
                         request->finish(lock, QservMgtRequest::ExtendedState::SERVER_ERROR, error);
                         break;
@@ -102,7 +102,7 @@ void TestEchoQservMgtRequest::startImpl(replica::Lock const& lock) {
                     default:
                         throw logic_error("TestEchoQservMgtRequest::" + string(__func__) +
                                           "  unhandled server status: " +
-                                          wpublish::TestEchoQservRequest::status2str(status));
+                                          xrdreq::TestEchoQservRequest::status2str(status));
                 }
             });
     XrdSsiResource resource(ResourceUnit::makeWorkerPath(worker()));

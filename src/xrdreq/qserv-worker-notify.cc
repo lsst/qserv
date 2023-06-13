@@ -17,19 +17,19 @@
 #include "proto/worker.pb.h"
 #include "util/BlockPost.h"
 #include "util/CmdLineParser.h"
-#include "wpublish/ChunkGroupQservRequest.h"
-#include "wpublish/ChunkListQservRequest.h"
-#include "wpublish/GetChunkListQservRequest.h"
-#include "wpublish/GetStatusQservRequest.h"
-#include "wpublish/SetChunkListQservRequest.h"
-#include "wpublish/TestEchoQservRequest.h"
+#include "xrdreq/ChunkGroupQservRequest.h"
+#include "xrdreq/ChunkListQservRequest.h"
+#include "xrdreq/GetChunkListQservRequest.h"
+#include "xrdreq/GetStatusQservRequest.h"
+#include "xrdreq/SetChunkListQservRequest.h"
+#include "xrdreq/TestEchoQservRequest.h"
 
 /// This C++ symbol is provided by the SSI shared library
 extern XrdSsiProvider* XrdSsiProviderClient;
 
 namespace global = lsst::qserv;
 namespace util = lsst::qserv::util;
-namespace wpublish = lsst::qserv::wpublish;
+namespace xrdreq = lsst::qserv::xrdreq;
 
 using namespace std;
 
@@ -65,7 +65,7 @@ bool printReport;
  *
  * @param chunk - collection to be initialize
  */
-void readInFile(wpublish::SetChunkListQservRequest::ChunkCollection& chunks, vector<string>& databases) {
+void readInFile(xrdreq::SetChunkListQservRequest::ChunkCollection& chunks, vector<string>& databases) {
     chunks.clear();
     databases.clear();
 
@@ -90,7 +90,7 @@ void readInFile(wpublish::SetChunkListQservRequest::ChunkCollection& chunks, vec
         }
         unsigned long const chunk = stoul(databaseAndChunk.substr(pos + 1));
         string const database = databaseAndChunk.substr(0, pos);
-        chunks.emplace_back(wpublish::SetChunkListQservRequest::Chunk{
+        chunks.emplace_back(xrdreq::SetChunkListQservRequest::Chunk{
                 (unsigned int)chunk, database, 0 /* use_count (UNUSED) */
         });
         uniqueDatabaseNames.insert(database);
@@ -105,14 +105,14 @@ int test() {
 
     atomic<bool> finished(false);
 
-    shared_ptr<wpublish::QservRequest> request = nullptr;
+    shared_ptr<xrdreq::QservRequest> request = nullptr;
 
     if ("GET_CHUNK_LIST" == operation) {
-        request = wpublish::GetChunkListQservRequest::create(
-                inUseOnly, [&finished](wpublish::GetChunkListQservRequest::Status status, string const& error,
-                                       wpublish::GetChunkListQservRequest::ChunkCollection const& chunks) {
-                    if (status != wpublish::GetChunkListQservRequest::Status::SUCCESS) {
-                        cout << "status: " << wpublish::GetChunkListQservRequest::status2str(status) << "\n"
+        request = xrdreq::GetChunkListQservRequest::create(
+                inUseOnly, [&finished](xrdreq::GetChunkListQservRequest::Status status, string const& error,
+                                       xrdreq::GetChunkListQservRequest::ChunkCollection const& chunks) {
+                    if (status != xrdreq::GetChunkListQservRequest::Status::SUCCESS) {
+                        cout << "status: " << xrdreq::GetChunkListQservRequest::status2str(status) << "\n"
                              << "error:  " << error << endl;
                     } else {
                         cout << "# total chunks: " << chunks.size() << "\n" << endl;
@@ -131,16 +131,16 @@ int test() {
                 });
 
     } else if ("SET_CHUNK_LIST" == operation) {
-        wpublish::SetChunkListQservRequest::ChunkCollection chunks;
+        xrdreq::SetChunkListQservRequest::ChunkCollection chunks;
         vector<string> databases;
         readInFile(chunks, databases);
 
-        request = wpublish::SetChunkListQservRequest::create(
+        request = xrdreq::SetChunkListQservRequest::create(
                 chunks, databases, force,
-                [&finished](wpublish::SetChunkListQservRequest::Status status, string const& error,
-                            wpublish::SetChunkListQservRequest::ChunkCollection const& chunks) {
-                    if (status != wpublish::SetChunkListQservRequest::Status::SUCCESS) {
-                        cout << "status: " << wpublish::SetChunkListQservRequest::status2str(status) << "\n"
+                [&finished](xrdreq::SetChunkListQservRequest::Status status, string const& error,
+                            xrdreq::SetChunkListQservRequest::ChunkCollection const& chunks) {
+                    if (status != xrdreq::SetChunkListQservRequest::Status::SUCCESS) {
+                        cout << "status: " << xrdreq::SetChunkListQservRequest::status2str(status) << "\n"
                              << "error:  " << error << endl;
                     } else {
                         cout << "# total chunks: " << chunks.size() << "\n" << endl;
@@ -159,12 +159,12 @@ int test() {
                 });
 
     } else if ("REBUILD_CHUNK_LIST" == operation) {
-        request = wpublish::RebuildChunkListQservRequest::create(
-                reload, [&finished](wpublish::ChunkListQservRequest::Status status, string const& error,
-                                    wpublish::ChunkListQservRequest::ChunkCollection const& added,
-                                    wpublish::ChunkListQservRequest::ChunkCollection const& removed) {
-                    if (status != wpublish::ChunkListQservRequest::Status::SUCCESS) {
-                        cout << "status: " << wpublish::ChunkListQservRequest::status2str(status) << "\n"
+        request = xrdreq::RebuildChunkListQservRequest::create(
+                reload, [&finished](xrdreq::ChunkListQservRequest::Status status, string const& error,
+                                    xrdreq::ChunkListQservRequest::ChunkCollection const& added,
+                                    xrdreq::ChunkListQservRequest::ChunkCollection const& removed) {
+                    if (status != xrdreq::ChunkListQservRequest::Status::SUCCESS) {
+                        cout << "status: " << xrdreq::ChunkListQservRequest::status2str(status) << "\n"
                              << "error:  " << error << endl;
                     } else {
                         cout << "# chunks added:   " << added.size() << "\n"
@@ -174,12 +174,12 @@ int test() {
                 });
 
     } else if ("RELOAD_CHUNK_LIST" == operation) {
-        request = wpublish::ReloadChunkListQservRequest::create(
-                [&finished](wpublish::ChunkListQservRequest::Status status, string const& error,
-                            wpublish::ChunkListQservRequest::ChunkCollection const& added,
-                            wpublish::ChunkListQservRequest::ChunkCollection const& removed) {
-                    if (status != wpublish::ChunkListQservRequest::Status::SUCCESS) {
-                        cout << "status: " << wpublish::ChunkListQservRequest::status2str(status) << "\n"
+        request = xrdreq::ReloadChunkListQservRequest::create(
+                [&finished](xrdreq::ChunkListQservRequest::Status status, string const& error,
+                            xrdreq::ChunkListQservRequest::ChunkCollection const& added,
+                            xrdreq::ChunkListQservRequest::ChunkCollection const& removed) {
+                    if (status != xrdreq::ChunkListQservRequest::Status::SUCCESS) {
+                        cout << "status: " << xrdreq::ChunkListQservRequest::status2str(status) << "\n"
                              << "error:  " << error << endl;
                     } else {
                         cout << "# chunks added:   " << added.size() << "\n"
@@ -189,33 +189,32 @@ int test() {
                 });
 
     } else if ("ADD_CHUNK_GROUP" == operation) {
-        request = wpublish::AddChunkGroupQservRequest::create(
-                chunk, dbs,
-                [&finished](wpublish::ChunkGroupQservRequest::Status status, string const& error) {
-                    if (status != wpublish::ChunkGroupQservRequest::Status::SUCCESS) {
-                        cout << "status: " << wpublish::ChunkGroupQservRequest::status2str(status) << "\n"
+        request = xrdreq::AddChunkGroupQservRequest::create(
+                chunk, dbs, [&finished](xrdreq::ChunkGroupQservRequest::Status status, string const& error) {
+                    if (status != xrdreq::ChunkGroupQservRequest::Status::SUCCESS) {
+                        cout << "status: " << xrdreq::ChunkGroupQservRequest::status2str(status) << "\n"
                              << "error:  " << error << endl;
                     }
                     finished = true;
                 });
 
     } else if ("REMOVE_CHUNK_GROUP" == operation) {
-        request = wpublish::RemoveChunkGroupQservRequest::create(
+        request = xrdreq::RemoveChunkGroupQservRequest::create(
                 chunk, dbs, force,
-                [&finished](wpublish::ChunkGroupQservRequest::Status status, string const& error) {
-                    if (status != wpublish::ChunkGroupQservRequest::Status::SUCCESS) {
-                        cout << "status: " << wpublish::ChunkGroupQservRequest::status2str(status) << "\n"
+                [&finished](xrdreq::ChunkGroupQservRequest::Status status, string const& error) {
+                    if (status != xrdreq::ChunkGroupQservRequest::Status::SUCCESS) {
+                        cout << "status: " << xrdreq::ChunkGroupQservRequest::status2str(status) << "\n"
                              << "error:  " << error << endl;
                     }
                     finished = true;
                 });
 
     } else if ("TEST_ECHO" == operation) {
-        request = wpublish::TestEchoQservRequest::create(
-                value, [&finished](wpublish::TestEchoQservRequest::Status status, string const& error,
+        request = xrdreq::TestEchoQservRequest::create(
+                value, [&finished](xrdreq::TestEchoQservRequest::Status status, string const& error,
                                    string const& sent, string const& received) {
-                    if (status != wpublish::TestEchoQservRequest::Status::SUCCESS) {
-                        cout << "status: " << wpublish::TestEchoQservRequest::status2str(status) << "\n"
+                    if (status != xrdreq::TestEchoQservRequest::Status::SUCCESS) {
+                        cout << "status: " << xrdreq::TestEchoQservRequest::status2str(status) << "\n"
                              << "error:  " << error << endl;
                     } else {
                         cout << "value sent:     " << sent << "\n"
@@ -225,12 +224,12 @@ int test() {
                 });
 
     } else if ("GET_STATUS" == operation) {
-        request = wpublish::GetStatusQservRequest::create(
+        request = xrdreq::GetStatusQservRequest::create(
                 includeTasks, queryIds,
-                [&finished](wpublish::GetStatusQservRequest::Status status, string const& error,
+                [&finished](xrdreq::GetStatusQservRequest::Status status, string const& error,
                             string const& info) {
-                    if (status != wpublish::GetStatusQservRequest::Status::SUCCESS) {
-                        cout << "status: " << wpublish::GetStatusQservRequest::status2str(status) << "\n"
+                    if (status != xrdreq::GetStatusQservRequest::Status::SUCCESS) {
+                        cout << "status: " << xrdreq::GetStatusQservRequest::status2str(status) << "\n"
                              << "error:  " << error << endl;
                     } else {
                         cout << "worker info: " << info << endl;

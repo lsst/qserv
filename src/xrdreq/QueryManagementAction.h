@@ -19,8 +19,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_WPUBLISH_QUERY_MANAGEMENT_ACTION_H
-#define LSST_QSERV_WPUBLISH_QUERY_MANAGEMENT_ACTION_H
+#ifndef LSST_QSERV_XRDREQ_QUERY_MANAGEMENT_ACTION_H
+#define LSST_QSERV_XRDREQ_QUERY_MANAGEMENT_ACTION_H
 
 // System headers
 #include <atomic>
@@ -33,7 +33,7 @@
 #include "global/intTypes.h"
 #include "proto/worker.pb.h"
 
-namespace lsst::qserv::wpublish {
+namespace lsst::qserv::xrdreq {
 
 /**
  * Class QueryManagementAction is an interface for managing query completion/cancellation
@@ -91,6 +91,6 @@ private:
     std::atomic<std::size_t> _numWorkerRequestsFinished{0};
 };
 
-}  // namespace lsst::qserv::wpublish
+}  // namespace lsst::qserv::xrdreq
 
-#endif  // LSST_QSERV_WPUBLISH_QUERY_MANAGEMENT_ACTION_H
+#endif  // LSST_QSERV_XRDREQ_QUERY_MANAGEMENT_ACTION_H

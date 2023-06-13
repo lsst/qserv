@@ -20,8 +20,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_WPUBLISH_QSERV_REQUEST_H
-#define LSST_QSERV_WPUBLISH_QSERV_REQUEST_H
+#ifndef LSST_QSERV_XRDREQ_QSERV_REQUEST_H
+#define LSST_QSERV_XRDREQ_QSERV_REQUEST_H
 
 // System headers
 #include <atomic>
@@ -35,7 +35,7 @@
 #include "proto/FrameBuffer.h"
 #include "proto/worker.pb.h"
 
-namespace lsst::qserv::wpublish {
+namespace lsst::qserv::xrdreq {
 
 /**
  * Class QservRequest is a base class for a family of the client-side requests
@@ -115,6 +115,6 @@ private:
     std::shared_ptr<QservRequest> _refToSelf4keepAlive;
 };
 
-}  // namespace lsst::qserv::wpublish
+}  // namespace lsst::qserv::xrdreq
 
-#endif  // LSST_QSERV_WPUBLISH_QSERV_REQUEST_H
+#endif  // LSST_QSERV_XRDREQ_QSERV_REQUEST_H

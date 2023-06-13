@@ -463,6 +463,7 @@ target_include_directories(replica PRIVATE
 
 target_link_libraries(replica PUBLIC
     qserv_css
+    xrdreq
     xrdsvc
     XrdCl
     XrdSsiLib
@@ -483,7 +484,9 @@ FUNCTION(REPLICA_UTILS)
         add_executable(${UTIL})
         target_sources(${UTIL} PRIVATE tools/${UTIL}.cc)
         target_include_directories(${UTIL} PRIVATE ${XROOTD_INCLUDE_DIRS})
-        target_link_libraries(${UTIL} PRIVATE replica)
+        target_link_libraries(${UTIL} PRIVATE
+            replica
+        )
         install(TARGETS ${UTIL})
     ENDFOREACH()
 ENDFUNCTION()

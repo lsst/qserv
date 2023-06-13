@@ -1,6 +1,6 @@
-// -*- LSST-C++ -*-
 /*
  * LSST Data Management System
+ * Copyright 2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -21,10 +21,7 @@
  */
 
 // Class header
-#include "wpublish/QueryManagementRequest.h"
-
-// System headers
-#include <stdexcept>
+#include "xrdreq/GetStatusQservRequest.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -32,48 +29,62 @@
 using namespace std;
 
 namespace {
-LOG_LOGGER _log = LOG_GET("lsst.qserv.wpublish.QueryManagementRequest");
+
+LOG_LOGGER _log = LOG_GET("lsst.qserv.xrdreq.GetStatusQservRequest");
+
 }  // namespace
 
-namespace lsst::qserv::wpublish {
+namespace lsst::qserv::xrdreq {
 
-string QueryManagementRequest::status2str(Status status) {
+string GetStatusQservRequest::status2str(Status status) {
     switch (status) {
         case SUCCESS:
             return "SUCCESS";
         case ERROR:
             return "ERROR";
     }
-    throw domain_error("QueryManagementRequest::" + string(__func__) +
+    throw domain_error("GetStatusQservRequest::" + string(__func__) +
                        "  no match for status: " + to_string(status));
 }
 
-QueryManagementRequest::Ptr QueryManagementRequest::create(proto::QueryManagement::Operation op,
-                                                           QueryId queryId,
-                                                           QueryManagementRequest::CallbackType onFinish) {
-    QueryManagementRequest::Ptr ptr(new QueryManagementRequest(op, queryId, onFinish));
+GetStatusQservRequest::Ptr GetStatusQservRequest::create(wbase::TaskSelector const& taskSelector,
+                                                         GetStatusQservRequest::CallbackType onFinish) {
+    GetStatusQservRequest::Ptr ptr(new GetStatusQservRequest(taskSelector, onFinish));
     ptr->setRefToSelf4keepAlive(ptr);
     return ptr;
 }
 
-QueryManagementRequest::QueryManagementRequest(proto::QueryManagement::Operation op, QueryId queryId,
-                                               QueryManagementRequest::CallbackType onFinish)
-        : _op(op), _queryId(queryId), _onFinish(onFinish) {
-    LOGS(_log, LOG_LVL_DEBUG, "QueryManagementRequest  ** CONSTRUCTED **");
+GetStatusQservRequest::GetStatusQservRequest(wbase::TaskSelector const& taskSelector,
+                                             GetStatusQservRequest::CallbackType onFinish)
+        : _taskSelector(taskSelector), _onFinish(onFinish) {
+    LOGS(_log, LOG_LVL_DEBUG, "GetStatusQservRequest  ** CONSTRUCTED **");
 }
 
-QueryManagementRequest::~QueryManagementRequest() {
-    LOGS(_log, LOG_LVL_DEBUG, "QueryManagementRequest  ** DELETED **");
+GetStatusQservRequest::~GetStatusQservRequest() {
+    LOGS(_log, LOG_LVL_DEBUG, "GetStatusQservRequest  ** DELETED **");
 }
 
-void QueryManagementRequest::onRequest(proto::FrameBuffer& buf) {
-    proto::QueryManagement message;
-    message.set_op(_op);
-    message.set_query_id(_queryId);
+void GetStatusQservRequest::onRequest(proto::FrameBuffer& buf) {
+    proto::WorkerCommandH header;
+    header.set_command(proto::WorkerCommandH::GET_STATUS);
+    buf.serialize(header);
+
+    proto::WorkerCommandGetStatusM message;
+    message.set_include_tasks(_taskSelector.includeTasks);
+    for (auto const& id : _taskSelector.queryIds) {
+        message.add_query_ids(id);
+    }
+    for (auto const& state : _taskSelector.taskStates) {
+        message.add_task_states(static_cast<std::uint64_t>(state));
+    }
+    message.set_max_tasks(_taskSelector.maxTasks);
     buf.serialize(message);
 }
 
-void QueryManagementRequest::onResponse(proto::FrameBufferView& view) {
+void GetStatusQservRequest::onResponse(proto::FrameBufferView& view) {
+    proto::WorkerCommandGetStatusR reply;
+    view.parse(reply);
+
     if (nullptr != _onFinish) {
         // Clearing the stored callback after finishing the up-stream notification
         // has two purposes:
@@ -84,11 +95,11 @@ void QueryManagementRequest::onResponse(proto::FrameBufferView& view) {
 
         auto onFinish = move(_onFinish);
         _onFinish = nullptr;
-        onFinish(Status::SUCCESS, string());
+        onFinish(Status::SUCCESS, string(), reply.info());
     }
 }
 
-void QueryManagementRequest::onError(string const& error) {
+void GetStatusQservRequest::onError(string const& error) {
     if (nullptr != _onFinish) {
         // Clearing the stored callback after finishing the up-stream notification
         // has two purposes:
@@ -99,8 +110,8 @@ void QueryManagementRequest::onError(string const& error) {
 
         auto onFinish = move(_onFinish);
         _onFinish = nullptr;
-        onFinish(Status::ERROR, error);
+        onFinish(Status::ERROR, error, string());
     }
 }
 
-}  // namespace lsst::qserv::wpublish
+}  // namespace lsst::qserv::xrdreq

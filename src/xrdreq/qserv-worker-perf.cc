@@ -16,14 +16,14 @@
 #include "util/BlockPost.h"
 #include "util/CmdLineParser.h"
 #include "util/File.h"
-#include "wpublish/TestEchoQservRequest.h"
+#include "xrdreq/TestEchoQservRequest.h"
 
 /// This C++ symbol is provided by the SSI shared library
 extern XrdSsiProvider* XrdSsiProviderClient;
 
 namespace global = lsst::qserv;
 namespace util = lsst::qserv::util;
-namespace wpublish = lsst::qserv::wpublish;
+namespace xrdreq = lsst::qserv::xrdreq;
 
 using namespace std;
 
@@ -57,7 +57,7 @@ int test() {
     cout << "connected to service provider at: " << serviceProviderLocation << endl;
 
     // Store request pointers here to prevent them deleted too early
-    vector<wpublish::TestEchoQservRequest::Ptr> requests;
+    vector<xrdreq::TestEchoQservRequest::Ptr> requests;
 
     atomic<unsigned int> finished(0);
 
@@ -66,12 +66,11 @@ int test() {
             string const& worker = workers[j];
 
             for (unsigned int i = 0; i < numRequests; ++i) {
-                auto request = wpublish::TestEchoQservRequest::create(
-                        value, [&finished](wpublish::TestEchoQservRequest::Status status, string const& error,
+                auto request = xrdreq::TestEchoQservRequest::create(
+                        value, [&finished](xrdreq::TestEchoQservRequest::Status status, string const& error,
                                            string const& sent, string const& received) {
-                            if (status != wpublish::TestEchoQservRequest::Status::SUCCESS) {
-                                cout << "status: " << wpublish::TestEchoQservRequest::status2str(status)
-                                     << "\n"
+                            if (status != xrdreq::TestEchoQservRequest::Status::SUCCESS) {
+                                cout << "status: " << xrdreq::TestEchoQservRequest::status2str(status) << "\n"
                                      << "error:  " << error << endl;
                             } else {
                                 cout << "value sent:     " << sent << "\n"
@@ -92,12 +91,11 @@ int test() {
         for (unsigned int i = 0; i < numRequests; ++i) {
             for (unsigned int j = 0; j < numWorkers; ++j) {
                 string const& worker = workers[j];
-                auto request = wpublish::TestEchoQservRequest::create(
-                        value, [&finished](wpublish::TestEchoQservRequest::Status status, string const& error,
+                auto request = xrdreq::TestEchoQservRequest::create(
+                        value, [&finished](xrdreq::TestEchoQservRequest::Status status, string const& error,
                                            string const& sent, string const& received) {
-                            if (status != wpublish::TestEchoQservRequest::Status::SUCCESS) {
-                                cout << "status: " << wpublish::TestEchoQservRequest::status2str(status)
-                                     << "\n"
+                            if (status != xrdreq::TestEchoQservRequest::Status::SUCCESS) {
+                                cout << "status: " << xrdreq::TestEchoQservRequest::status2str(status) << "\n"
                                      << "error:  " << error << endl;
                             } else {
                                 cout << "value sent:     " << sent << "\n"

@@ -16,14 +16,14 @@
 #include "util/BlockPost.h"
 #include "util/CmdLineParser.h"
 #include "util/File.h"
-#include "wpublish/GetStatusQservRequest.h"
+#include "xrdreq/GetStatusQservRequest.h"
 
 /// This C++ symbol is provided by the SSI shared library
 extern XrdSsiProvider* XrdSsiProviderClient;
 
 namespace global = lsst::qserv;
 namespace util = lsst::qserv::util;
-namespace wpublish = lsst::qserv::wpublish;
+namespace xrdreq = lsst::qserv::xrdreq;
 
 using namespace std;
 
@@ -58,7 +58,7 @@ int test() {
     cout << "connected to service provider at: " << serviceProviderLocation << endl;
 
     // Store request pointers here to prevent them deleted too early
-    vector<wpublish::GetStatusQservRequest::Ptr> requests;
+    vector<xrdreq::GetStatusQservRequest::Ptr> requests;
 
     atomic<unsigned int> finished(0);
 
@@ -67,12 +67,12 @@ int test() {
             string const& worker = workers[j];
 
             for (unsigned int i = 0; i < numRequests; ++i) {
-                auto request = wpublish::GetStatusQservRequest::create(
+                auto request = xrdreq::GetStatusQservRequest::create(
                         includeTasks, queryIds,
-                        [&finished](wpublish::GetStatusQservRequest::Status status, string const& error,
+                        [&finished](xrdreq::GetStatusQservRequest::Status status, string const& error,
                                     string const& info) {
-                            if (status != wpublish::GetStatusQservRequest::Status::SUCCESS) {
-                                cout << "status: " << wpublish::GetStatusQservRequest::status2str(status)
+                            if (status != xrdreq::GetStatusQservRequest::Status::SUCCESS) {
+                                cout << "status: " << xrdreq::GetStatusQservRequest::status2str(status)
                                      << "\n"
                                      << "error:  " << error << endl;
                             } else {
@@ -93,11 +93,11 @@ int test() {
         for (unsigned int i = 0; i < numRequests; ++i) {
             for (unsigned int j = 0; j < numWorkers; ++j) {
                 string const& worker = workers[j];
-                auto request = wpublish::GetStatusQservRequest::create(
-                        [&finished](wpublish::GetStatusQservRequest::Status status, string const& error,
+                auto request = xrdreq::GetStatusQservRequest::create(
+                        [&finished](xrdreq::GetStatusQservRequest::Status status, string const& error,
                                     string const& info) {
-                            if (status != wpublish::GetStatusQservRequest::Status::SUCCESS) {
-                                cout << "status: " << wpublish::GetStatusQservRequest::status2str(status)
+                            if (status != xrdreq::GetStatusQservRequest::Status::SUCCESS) {
+                                cout << "status: " << xrdreq::GetStatusQservRequest::status2str(status)
                                      << "\n"
                                      << "error:  " << error << endl;
                             } else {

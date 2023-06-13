@@ -30,6 +30,7 @@ FUNCTION(qproc_tests)
             qserv_css
             qserv_meta
             rproc
+            xrdreq
             Boost::unit_test_framework
             Threads::Threads
         )
