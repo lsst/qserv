@@ -116,19 +116,6 @@ protected:
     bool autoBuildDirectorIndex(std::string const& database) const;
 
     /**
-     * Fetch a mode of loading contributions into the "director" index as requested by
-     * a catalog ingest workflow and recorded at the database creation time. A value of
-     * the parameter is recorded in a database.
-     *
-     * @param database The name of a database for which a value of the parameter
-     *   is requested.
-     * @return 'true' if the index was requested to be loaded using MySQL protocol
-     *   "LOAD DATA LOCAL INFILE" instead of just "LOAD DATA INFILE". See MySQL
-     *   documentation for further explanation of the protocol.
-     */
-    bool localLoadDirectorIndex(std::string const& database) const;
-
-    /**
      * Get database info for a database that was specified in a request, either explicitly
      * in attribute "database" or implicitly in attribute "transation_id". The method may
      * do an optional check on the database state as directed by the optional parameter

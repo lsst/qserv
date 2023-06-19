@@ -68,13 +68,14 @@ json HttpDirectorIndexModule::_buildDirectorIndex() {
     string const directorTableName = body().optional<string>("director_table", string());
     bool const allowForPublished = body().optional<int>("allow_for_published", 0) != 0;
     bool const rebuild = body().optional<int>("rebuild", 0) != 0;
-    bool const localFile = body().optional<int>("local", 0) != 0;
+    if (body().has("local")) {
+        warn("Option 'local' is obsolete as of the version 20 of the API.");
+    }
 
     debug(__func__, "database=" + databaseName);
     debug(__func__, "director_table=" + directorTableName);
     debug(__func__, "allow_for_published=" + bool2str(allowForPublished));
     debug(__func__, "rebuild=" + bool2str(rebuild));
-    debug(__func__, "local=" + bool2str(localFile));
 
     auto const database = config->databaseInfo(databaseName);
     if (database.isPublished and not allowForPublished) {
