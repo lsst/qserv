@@ -72,11 +72,6 @@ private:
     /// A unique identifier of a super-transaction (not used if its value stays default)
     TransactionId _transactionId = std::numeric_limits<TransactionId>::max();
 
-    /// This flag is used to load contributions using "LOAD DATA LOCAL INFILE" protocol
-    /// instead of just "LOAD DATA INFILE". See MySQL documentation for further details
-    /// on this subject.
-    bool _localFile = false;
-
     /// A connection URL to the MySQL service of the Qserv master database.
     std::string _qservCzarDbUrl;
 

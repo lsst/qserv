@@ -174,7 +174,7 @@ json HttpDirectorIndexModule::_buildDirectorIndex() {
         string const noParentJobId;
         auto const job =
                 DirectorIndexJob::create(database.name, tableName, noTransactions, noTransactionId,
-                                         allWorkers, localFile, controller(), noParentJobId,
+                                         allWorkers, controller(), noParentJobId,
                                          nullptr,  // no callback
                                          config->get<int>("controller", "catalog-management-priority-level"));
         job->start();

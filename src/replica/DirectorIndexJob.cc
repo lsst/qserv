@@ -75,23 +75,22 @@ string DirectorIndexJob::typeName() { return "DirectorIndexJob"; }
 
 DirectorIndexJob::Ptr DirectorIndexJob::create(string const& databaseName, string const& directorTableName,
                                                bool hasTransactions, TransactionId transactionId,
-                                               bool allWorkers, bool localFile,
-                                               Controller::Ptr const& controller, string const& parentJobId,
-                                               CallbackType const& onFinish, int priority) {
+                                               bool allWorkers, Controller::Ptr const& controller,
+                                               string const& parentJobId, CallbackType const& onFinish,
+                                               int priority) {
     return Ptr(new DirectorIndexJob(databaseName, directorTableName, hasTransactions, transactionId,
-                                    allWorkers, localFile, controller, parentJobId, onFinish, priority));
+                                    allWorkers, controller, parentJobId, onFinish, priority));
 }
 
 DirectorIndexJob::DirectorIndexJob(string const& databaseName, string const& directorTableName,
                                    bool hasTransactions, TransactionId transactionId, bool allWorkers,
-                                   bool localFile, Controller::Ptr const& controller,
-                                   string const& parentJobId, CallbackType const& onFinish, int priority)
+                                   Controller::Ptr const& controller, string const& parentJobId,
+                                   CallbackType const& onFinish, int priority)
         : Job(controller, parentJobId, "INDEX", priority),
           _directorTableName(directorTableName),
           _hasTransactions(hasTransactions),
           _transactionId(transactionId),
           _allWorkers(allWorkers),
-          _localFile(localFile),
           _onFinish(onFinish) {
     try {
         _database = controller->serviceProvider()->config()->databaseInfo(databaseName);
@@ -127,7 +126,6 @@ list<std::pair<string, string>> DirectorIndexJob::extendedPersistentState() cons
     result.emplace_back("has_transactions", bool2str(hasTransactions()));
     result.emplace_back("transaction_id", to_string(transactionId()));
     result.emplace_back("all_workers", bool2str(allWorkers()));
-    result.emplace_back("local_file", bool2str(localFile()));
     return result;
 }
 
@@ -388,27 +386,26 @@ void DirectorIndexJob::_loadDataIntoTable() {
         if (request == nullptr) break;
 
         // Load request's data into the destination table.
+        bool const localFile = true;
         try {
             string const query = g.loadDataInfile(
                     request->responseData().fileName, directorIndexTableName(database(), directorTable()),
                     controller()->serviceProvider()->config()->get<string>("worker", "ingest-charset-name"),
-                    localFile());
+                    localFile);
             h.conn->executeInOwnTransaction([&](auto conn) {
                 conn->execute(query);
                 // Loading operations based on this mechanism won't result in throwing exceptions in
                 // case of certain types of problems encountered during the loading, such as
                 // out-of-range data, duplicate keys, etc. These errors are reported as warnings
                 // which need to be retrieved using a special call to the database API.
-                if (localFile()) {
-                    auto const warnings = conn->warnings();
-                    if (!warnings.empty()) {
-                        auto const& w = warnings.front();
-                        throw database::mysql::Error(
-                                "query: " + query +
-                                " failed with total number of problems: " + to_string(warnings.size()) +
-                                ", first problem (Level,Code,Message) was: " + w.level + "," +
-                                to_string(w.code) + "," + w.message);
-                    }
+                auto const warnings = conn->warnings();
+                if (!warnings.empty()) {
+                    auto const& w = warnings.front();
+                    throw database::mysql::Error(
+                            "query: " + query +
+                            " failed with total number of problems: " + to_string(warnings.size()) +
+                            ", first problem (Level,Code,Message) was: " + w.level + "," + to_string(w.code) +
+                            "," + w.message);
                 }
             });
 
