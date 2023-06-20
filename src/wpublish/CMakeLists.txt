@@ -3,22 +3,15 @@ add_dependencies(wpublish proto)
 
 target_sources(wpublish PRIVATE
     AddChunkGroupCommand.cc
-    ChunkGroupQservRequest.cc
     ChunkInventory.cc
     ChunkListCommand.cc
-    ChunkListQservRequest.cc
     GetChunkListCommand.cc
-    GetChunkListQservRequest.cc
     GetStatusCommand.cc
-    GetStatusQservRequest.cc
-    QservRequest.cc
     QueriesAndChunks.cc
     RemoveChunkGroupCommand.cc
     ResourceMonitor.cc
     SetChunkListCommand.cc
-    SetChunkListQservRequest.cc
     TestEchoCommand.cc
-    TestEchoQservRequest.cc
 )
 
 target_include_directories(wpublish PRIVATE
@@ -27,7 +20,10 @@ target_include_directories(wpublish PRIVATE
 
 target_link_libraries(wpublish PUBLIC
     log
+    proto
+    protobuf
     XrdSsiLib
+    XrdCl
 )
 
 add_executable(testChunkInventory testChunkInventory.cc)
@@ -39,3 +35,7 @@ target_link_libraries(testChunkInventory PUBLIC
 )
 
 add_test(NAME testChunkInventory COMMAND testChunkInventory)
+
+install(
+    TARGETS wpublish
+)

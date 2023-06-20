@@ -21,7 +21,7 @@
  */
 
 // Class header
-#include "wpublish/GetChunkListQservRequest.h"
+#include "xrdreq/GetChunkListQservRequest.h"
 
 // System headers
 #include <stdexcept>
@@ -35,21 +35,21 @@ using namespace std;
 
 namespace {
 
-LOG_LOGGER _log = LOG_GET("lsst.qserv.wpublish.GetChunkListQservRequest");
+LOG_LOGGER _log = LOG_GET("lsst.qserv.xrdreq.GetChunkListQservRequest");
 
-wpublish::GetChunkListQservRequest::Status translate(proto::WorkerCommandGetChunkListR::Status status) {
+xrdreq::GetChunkListQservRequest::Status translate(proto::WorkerCommandGetChunkListR::Status status) {
     switch (status) {
         case proto::WorkerCommandGetChunkListR::SUCCESS:
-            return wpublish::GetChunkListQservRequest::SUCCESS;
+            return xrdreq::GetChunkListQservRequest::SUCCESS;
         case proto::WorkerCommandGetChunkListR::ERROR:
-            return wpublish::GetChunkListQservRequest::ERROR;
+            return xrdreq::GetChunkListQservRequest::ERROR;
     }
     throw domain_error("GetChunkListQservRequest::translate  no match for Protobuf status: " +
                        proto::WorkerCommandGetChunkListR_Status_Name(status));
 }
 }  // namespace
 
-namespace lsst::qserv::wpublish {
+namespace lsst::qserv::xrdreq {
 
 string GetChunkListQservRequest::status2str(Status status) {
     switch (status) {
@@ -63,7 +63,9 @@ string GetChunkListQservRequest::status2str(Status status) {
 
 GetChunkListQservRequest::Ptr GetChunkListQservRequest::create(
         bool inUseOnly, GetChunkListQservRequest::CallbackType onFinish) {
-    return GetChunkListQservRequest::Ptr(new GetChunkListQservRequest(inUseOnly, onFinish));
+    GetChunkListQservRequest::Ptr ptr(new GetChunkListQservRequest(inUseOnly, onFinish));
+    ptr->setRefToSelf4keepAlive(ptr);
+    return ptr;
 }
 
 GetChunkListQservRequest::GetChunkListQservRequest(bool inUseOnly,
@@ -133,4 +135,4 @@ void GetChunkListQservRequest::onError(string const& error) {
     }
 }
 
-}  // namespace lsst::qserv::wpublish
+}  // namespace lsst::qserv::xrdreq

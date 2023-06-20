@@ -91,7 +91,9 @@ CzarConfig::CzarConfig(util::ConfigStore const& configStore)
           _qdispMaxPriority(configStore.getInt("qdisppool.largestPriority", 2)),
           _qdispVectRunSizes(configStore.get("qdisppool.vectRunSizes", "50:50:50:50")),
           _qdispVectMinRunningSizes(configStore.get("qdisppool.vectMinRunningSizes", "0:1:3:3")),
-          _qReqPseudoFifoMaxRunning(configStore.getInt("qdisppool.qReqPseudoFifoMaxRunning", 300)) {}
+          _qReqPseudoFifoMaxRunning(configStore.getInt("qdisppool.qReqPseudoFifoMaxRunning", 300)),
+          _notifyWorkersOnQueryFinish(configStore.getInt("tuning.notifyWorkersOnQueryFinish", 1)),
+          _notifyWorkersOnCzarRestart(configStore.getInt("tuning.notifyWorkersOnCzarRestart", 1)) {}
 
 std::ostream& operator<<(std::ostream& out, CzarConfig const& czarConfig) {
     out << "[cssConfigMap=" << util::printable(czarConfig._cssConfigMap)

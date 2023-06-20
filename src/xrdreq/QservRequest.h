@@ -20,11 +20,13 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_WPUBLISH_QSERV_REQUEST_H
-#define LSST_QSERV_WPUBLISH_QSERV_REQUEST_H
+#ifndef LSST_QSERV_XRDREQ_QSERV_REQUEST_H
+#define LSST_QSERV_XRDREQ_QSERV_REQUEST_H
 
 // System headers
 #include <atomic>
+#include <memory>
+#include <string>
 
 // Third party headers
 #include "XrdSsi/XrdSsiRequest.hh"
@@ -33,33 +35,48 @@
 #include "proto/FrameBuffer.h"
 #include "proto/worker.pb.h"
 
-namespace lsst::qserv::wpublish {
+namespace lsst::qserv::xrdreq {
 
 /**
  * Class QservRequest is a base class for a family of the client-side requests
- * (classes) to the Qserv worker management services.
+ * (classes) to Qserv workers.
  */
 class QservRequest : public XrdSsiRequest {
 public:
     QservRequest(QservRequest const&) = delete;
     QservRequest& operator=(QservRequest const&) = delete;
-
     ~QservRequest() override;
+
+    /**
+     * Do a proper request cancellation to ensure a pointer to the request gets deleted
+     * after calling XrdSsiRequest::Finished(true).
+     */
+    void cancel();
 
 protected:
     QservRequest();
 
     /**
+     * Setting a pointer to the object would guarantee that the life expectancy
+     * of the request be preserved before it's finished/failed and the corresponding
+     * notifications are sent to a subclass via the virtual methods QservRequest::onResponse()
+     * or QservRequest::onError(). The pointer will be reset after calling either of
+     * these methods, or the method QservRequest::cancel().
+     * @param ptr The pointer to be set.
+     * @throws std::invalid_argument if the pointer is empty or pointing to a different
+     *   request object.
+     */
+    void setRefToSelf4keepAlive(std::shared_ptr<QservRequest> ptr);
+
+    /**
      * Serialize a request into the provided buffer. The method is required to be
      * provided by a subclass.
-     *
      * @param buf A request buffer for serializing a request.
      */
     virtual void onRequest(proto::FrameBuffer& buf) = 0;
 
     /**
      * Process response from Qserv. The method is required to be provided by a subclass.
-     *
      * @param view The buffer view for parsing results.
      */
     virtual void onResponse(proto::FrameBufferView& view) = 0;
@@ -67,28 +84,22 @@ protected:
     /**
      * Notify a base class about a failure occurred when sending a request data
      * or receiving a response.
-     *
      * @param error A message explaining a reason of the failure.
      */
     virtual void onError(std::string const& msg) = 0;
 
     char* GetRequest(int& dlen) override;
-
     bool ProcessResponse(const XrdSsiErrInfo& eInfo, const XrdSsiRespInfo& rInfo) override;
-
     void ProcessResponseData(const XrdSsiErrInfo& eInfo, char* buff, int blen, bool last) override;
 
 private:
-    // Request buffer (gets prepared by subclasses before sending a request
-    // to the worker service of Qserv)
-
-    proto::FrameBuffer _frameBuf;  ///< buffer for serializing messages before sending them
-
     /// The global counter for the number of instances of any subclasses
     static std::atomic<size_t> _numClassInstances;
 
-    // Response buffer (gets updated when receiving a response stream of
-    // data from a worker management service of Qserv)
+    /// Request buffer is prepared by subclasses before sending a request to a worker.
+    proto::FrameBuffer _frameBuf;
+
+    // Response buffer is updated when receiving a response stream of data from a worker.
 
     /// The (very first and the) last increment of the capacity of the incoming
     /// buffer is used to limit the amount of bytes to be received from a server.
@@ -98,8 +109,12 @@ private:
     int _bufCapacity;  ///< total capacity of the incoming buffer
 
     char* _buf;  ///< buffer for incomming data
+
+    /// The reference to the object is needed to guarantee the life expectency of
+    /// the request object while the request is still being processed.
+    std::shared_ptr<QservRequest> _refToSelf4keepAlive;
 };
 
-}  // namespace lsst::qserv::wpublish
+}  // namespace lsst::qserv::xrdreq
 
-#endif  // LSST_QSERV_WPUBLISH_QSERV_REQUEST_H
+#endif  // LSST_QSERV_XRDREQ_QSERV_REQUEST_H

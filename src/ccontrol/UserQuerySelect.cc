@@ -66,6 +66,7 @@
 #include <cassert>
 #include <chrono>
 #include <memory>
+#include <stdexcept>
 
 // Third-party headers
 #include <boost/algorithm/string/replace.hpp>
@@ -78,6 +79,7 @@
 #include "ccontrol/MergingHandler.h"
 #include "ccontrol/TmpTableName.h"
 #include "ccontrol/UserQueryError.h"
+#include "czar/CzarConfig.h"
 #include "global/constants.h"
 #include "global/LogContext.h"
 #include "global/MsgReceiver.h"
@@ -103,6 +105,7 @@
 #include "sql/Schema.h"
 #include "util/IterableFormatter.h"
 #include "util/ThreadPriority.h"
+#include "xrdreq/QueryManagementAction.h"
 
 namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.ccontrol.UserQuerySelect");
@@ -352,6 +355,9 @@ QueryState UserQuerySelect::join() {
     }
     _executive->updateProxyMessages();
 
+    // Capture these parameters before discarding the merger which would also reset the config.
+    bool const notifyWorkersOnQueryFinish = _infileMergerConfig->czarConfig.notifyWorkersOnQueryFinish();
+    std::string const xrootdFrontendUrl = _infileMergerConfig->czarConfig.getXrootdFrontendUrl();
     try {
         _discardMerger();
     } catch (std::exception const& exc) {
@@ -367,19 +373,32 @@ QueryState UserQuerySelect::join() {
     // finalRows < 0 indicates there was no postprocessing, so collected rows and final rows should be the
     // same.
     if (finalRows < 0) finalRows = collectedRows;
+    // Notify workers on the query completion/cancellation to ensure
+    // resources are properly cleaned over there as well.
+    proto::QueryManagement::Operation operation = proto::QueryManagement::COMPLETE;
+    QueryState state = SUCCESS;
     if (successful) {
         _qMetaUpdateStatus(qmeta::QInfo::COMPLETED, collectedRows, collectedBytes, finalRows);
         LOGS(_log, LOG_LVL_INFO, "Joined everything (success)");
-        return SUCCESS;
     } else if (_killed) {
         // status is already set to ABORTED
         LOGS(_log, LOG_LVL_ERROR, "Joined everything (killed)");
-        return ERROR;
+        operation = proto::QueryManagement::CANCEL;
+        state = ERROR;
     } else {
         _qMetaUpdateStatus(qmeta::QInfo::FAILED, collectedRows, collectedBytes, finalRows);
         LOGS(_log, LOG_LVL_ERROR, "Joined everything (failure!)");
-        return ERROR;
+        operation = proto::QueryManagement::CANCEL;
+        state = ERROR;
     }
+    if (notifyWorkersOnQueryFinish) {
+        try {
+            xrdreq::QueryManagementAction::notifyAllWorkers(xrootdFrontendUrl, operation, _qMetaQueryId);
+        } catch (std::exception const& ex) {
+            LOGS(_log, LOG_LVL_WARN, ex.what());
+        }
+    }
+    return state;
 }
 
 /// Release resources held by the merger

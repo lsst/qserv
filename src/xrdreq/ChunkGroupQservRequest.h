@@ -21,8 +21,8 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 /// ChunkGroupQservRequest.h
-#ifndef LSST_QSERV_WPUBLISH_CHUNK_GROUP_QSERV_REQUEST_H
-#define LSST_QSERV_WPUBLISH_CHUNK_GROUP_QSERV_REQUEST_H
+#ifndef LSST_QSERV_XRDREQ_CHUNK_GROUP_QSERV_REQUEST_H
+#define LSST_QSERV_XRDREQ_CHUNK_GROUP_QSERV_REQUEST_H
 
 // System headers
 #include <functional>
@@ -30,10 +30,10 @@
 #include <vector>
 
 // Qserv headers
-#include "wpublish/QservRequest.h"
+#include "xrdreq/QservRequest.h"
 
 // This header declarations
-namespace lsst::qserv::wpublish {
+namespace lsst::qserv::xrdreq {
 
 /**
  * Class ChunkGroupQservRequest implements a client-side request to
@@ -170,6 +170,6 @@ private:
                                  CallbackType onFinish);
 };
 
-}  // namespace lsst::qserv::wpublish
+}  // namespace lsst::qserv::xrdreq
 
-#endif  // LSST_QSERV_WPUBLISH_CHUNK_GROUP_QSERV_REQUEST_H
+#endif  // LSST_QSERV_XRDREQ_CHUNK_GROUP_QSERV_REQUEST_H

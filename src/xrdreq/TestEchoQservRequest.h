@@ -20,8 +20,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_WPUBLISH_TEST_ECHO_QSERV_REQUEST_H
-#define LSST_QSERV_WPUBLISH_TEST_ECHO_QSERV_REQUEST_H
+#ifndef LSST_QSERV_XRDREQ_TEST_ECHO_QSERV_REQUEST_H
+#define LSST_QSERV_XRDREQ_TEST_ECHO_QSERV_REQUEST_H
 
 // System headers
 #include <functional>
@@ -29,9 +29,9 @@
 #include <string>
 
 // Qserv headers
-#include "wpublish/QservRequest.h"
+#include "xrdreq/QservRequest.h"
 
-namespace lsst::qserv::wpublish {
+namespace lsst::qserv::xrdreq {
 
 /**
  * Class TestEchoQservRequest represents a simple test request sending a string
@@ -99,6 +99,6 @@ private:
     CallbackType _onFinish;
 };
 
-}  // namespace lsst::qserv::wpublish
+}  // namespace lsst::qserv::xrdreq
 
-#endif  // LSST_QSERV_WPUBLISH_TEST_ECHO_QSERV_REQUEST_H
+#endif  // LSST_QSERV_XRDREQ_TEST_ECHO_QSERV_REQUEST_H

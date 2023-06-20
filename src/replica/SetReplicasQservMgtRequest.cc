@@ -88,7 +88,7 @@ list<pair<string, string>> SetReplicasQservMgtRequest::extendedPersistentState()
 }
 
 void SetReplicasQservMgtRequest::_setReplicas(
-        replica::Lock const& lock, wpublish::SetChunkListQservRequest::ChunkCollection const& collection) {
+        replica::Lock const& lock, xrdreq::SetChunkListQservRequest::ChunkCollection const& collection) {
     _replicas.clear();
     for (auto&& replica : collection) {
         _replicas.push_back(QservReplica{replica.chunk, replica.database, replica.use_count});
@@ -96,18 +96,18 @@ void SetReplicasQservMgtRequest::_setReplicas(
 }
 
 void SetReplicasQservMgtRequest::startImpl(replica::Lock const& lock) {
-    wpublish::SetChunkListQservRequest::ChunkCollection chunks;
+    xrdreq::SetChunkListQservRequest::ChunkCollection chunks;
     for (auto&& chunkEntry : newReplicas()) {
-        chunks.push_back(wpublish::SetChunkListQservRequest::Chunk{
+        chunks.push_back(xrdreq::SetChunkListQservRequest::Chunk{
                 chunkEntry.chunk, chunkEntry.database, 0 /* UNUSED: use_count */
         });
     }
     auto const request = shared_from_base<SetReplicasQservMgtRequest>();
 
-    _qservRequest = wpublish::SetChunkListQservRequest::create(
+    _qservRequest = xrdreq::SetChunkListQservRequest::create(
             chunks, _databases, force(),
-            [request](wpublish::SetChunkListQservRequest::Status status, string const& error,
-                      wpublish::SetChunkListQservRequest::ChunkCollection const& collection) {
+            [request](xrdreq::SetChunkListQservRequest::Status status, string const& error,
+                      xrdreq::SetChunkListQservRequest::ChunkCollection const& collection) {
                 if (request->state() == State::FINISHED) return;
 
                 replica::Lock lock(request->_mtx, request->context() + string(__func__) + "[callback]");
@@ -115,27 +115,27 @@ void SetReplicasQservMgtRequest::startImpl(replica::Lock const& lock) {
                 if (request->state() == State::FINISHED) return;
 
                 switch (status) {
-                    case wpublish::SetChunkListQservRequest::Status::SUCCESS:
+                    case xrdreq::SetChunkListQservRequest::Status::SUCCESS:
                         request->_setReplicas(lock, collection);
                         request->finish(lock, QservMgtRequest::ExtendedState::SUCCESS);
                         break;
 
-                    case wpublish::SetChunkListQservRequest::Status::ERROR:
+                    case xrdreq::SetChunkListQservRequest::Status::ERROR:
                         request->finish(lock, QservMgtRequest::ExtendedState::SERVER_ERROR, error);
                         break;
 
-                    case wpublish::SetChunkListQservRequest::Status::INVALID:
+                    case xrdreq::SetChunkListQservRequest::Status::INVALID:
                         request->finish(lock, QservMgtRequest::ExtendedState::SERVER_BAD, error);
                         break;
 
-                    case wpublish::SetChunkListQservRequest::Status::IN_USE:
+                    case xrdreq::SetChunkListQservRequest::Status::IN_USE:
                         request->finish(lock, QservMgtRequest::ExtendedState::SERVER_CHUNK_IN_USE, error);
                         break;
 
                     default:
                         throw logic_error("SetReplicasQservMgtRequest:: " + string(__func__) +
                                           "  unhandled server status: " +
-                                          wpublish::SetChunkListQservRequest::status2str(status));
+                                          xrdreq::SetChunkListQservRequest::status2str(status));
                 }
             });
     XrdSsiResource resource(ResourceUnit::makeWorkerPath(worker()));
@@ -146,15 +146,8 @@ void SetReplicasQservMgtRequest::finishImpl(replica::Lock const& lock) {
     switch (extendedState()) {
         case ExtendedState::CANCELLED:
         case ExtendedState::TIMEOUT_EXPIRED:
-
-            // And if the SSI request is still around then tell it to stop
-
-            if (_qservRequest) {
-                bool const cancel = true;
-                _qservRequest->Finished(cancel);
-            }
+            if (_qservRequest) _qservRequest->cancel();
             break;
-
         default:
             break;
     }

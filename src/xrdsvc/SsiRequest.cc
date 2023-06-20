@@ -205,6 +205,29 @@ void SsiRequest::execute(XrdSsiRequest& req) {
             }
             break;
         }
+        case ResourceUnit::QUERY: {
+            LOGS(_log, LOG_LVL_DEBUG, "Parsing request details for resource=" << _resourceName);
+            proto::QueryManagement request;
+            try {
+                // reqData has the entire request, so we can unpack it without waiting for
+                // more data.
+                proto::FrameBufferView view(reqData, reqSize);
+                view.parse(request);
+                ReleaseRequestBuffer();
+            } catch (proto::FrameBufferError const& ex) {
+                reportError("Failed to decode a query completion/cancellation command, error: " +
+                            std::string(ex.what()));
+                break;
+            }
+            LOGS(_log, LOG_LVL_DEBUG,
+                 "QueryManagement: op=" << proto::QueryManagement_Operation_Name(request.op())
+                                        << " query_id=" << request.query_id());
+
+            // Send back the empty response since no info is expected by a caller
+            // for this type of requests beyond the usual error notifications (if any).
+            this->reply((char const*)0, 0);
+            break;
+        }
         default:
             reportError("Unexpected unit type '" + std::to_string(ru.unitType()) +
                         "', resource name: " + _resourceName);

@@ -20,29 +20,32 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_WPUBLISH_GET_CHUNK_LIST_QSERV_REQUEST_H
-#define LSST_QSERV_WPUBLISH_GET_CHUNK_LIST_QSERV_REQUEST_H
+#ifndef LSST_QSERV_XRDREQ_SET_CHUNK_LIST_QSERV_REQUEST_H
+#define LSST_QSERV_XRDREQ_SET_CHUNK_LIST_QSERV_REQUEST_H
 
 // System headers
 #include <functional>
 #include <list>
 #include <memory>
+#include <vector>
 
 // Qserv headers
-#include "wpublish/QservRequest.h"
+#include "xrdreq/QservRequest.h"
 
-namespace lsst::qserv::wpublish {
+namespace lsst::qserv::xrdreq {
 
 /**
- * Class GetChunkListQservRequest implements the client-side requests
+ * Class SetChunkListQservRequest implements the client-side requests
  * the Qserv worker services for a status of chunk lists.
  */
-class GetChunkListQservRequest : public QservRequest {
+class SetChunkListQservRequest : public QservRequest {
 public:
     /// Completion status of the operation
     enum Status {
         SUCCESS,  // successful completion of a request
-        ERROR     // an error occured during command execution
+        INVALID,  // invalid parameters of the request
+        IN_USE,   // request is rejected because one of the chunks is in use
+        ERROR     // an error occurred during command execution
     };
 
     /// @return string representation of a status
@@ -56,11 +59,11 @@ public:
         unsigned int use_count;
     };
 
-    /// The ChunkCollection type refresens a collection of chunks
+    /// The ChunkCollection type represents a collection of chunks
     using ChunkCollection = std::list<Chunk>;
 
     /// The pointer type for instances of the class
-    typedef std::shared_ptr<GetChunkListQservRequest> Ptr;
+    typedef std::shared_ptr<SetChunkListQservRequest> Ptr;
 
     /// The callback function type to be used for notifications on
     /// the operation completion.
@@ -73,27 +76,30 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param inUseOnly  only report chunks which are in use
+     * ATTENTION: the 'use_count' field of structure Chunk is ignored by this
+     * class when used on its input.
+     *
+     * @param chunks     collection of chunks to be transferred to the worker
+     * @param databases  limit a scope of the operation to databases of this collection
+     * @param force      force the proposed change even if the chunk is in use
      * @param onFinish   optional callback function to be called upon the completion
      *                   (successful or not) of the request.
      * @return smart pointer to the object of the class
      */
-    static Ptr create(bool inUseOnly, CallbackType onFinish = nullptr);
+    static Ptr create(ChunkCollection const& chunks, std::vector<std::string> const& databases,
+                      bool force = false, CallbackType onFinish = nullptr);
 
     // Default construction and copy semantics are prohibited
-    GetChunkListQservRequest() = delete;
-    GetChunkListQservRequest(GetChunkListQservRequest const&) = delete;
-    GetChunkListQservRequest& operator=(GetChunkListQservRequest const&) = delete;
+    SetChunkListQservRequest() = delete;
+    SetChunkListQservRequest(SetChunkListQservRequest const&) = delete;
+    SetChunkListQservRequest& operator=(SetChunkListQservRequest const&) = delete;
 
-    ~GetChunkListQservRequest() override;
+    ~SetChunkListQservRequest() override;
 
 protected:
-    /**
-     * @param inUseOnly  only report chunks which are in use
-     * @param onFinish   optional callback function to be called upon the completion
-     *                   (successful or not) of the request.
-     */
-    GetChunkListQservRequest(bool inUseOnly, CallbackType onFinish);
+    /// @see SetChunkListQservRequest::create())
+    SetChunkListQservRequest(ChunkCollection const& chunks, std::vector<std::string> const& databases,
+                             bool force, CallbackType onFinish);
 
     void onRequest(proto::FrameBuffer& buf) override;
 
@@ -104,10 +110,12 @@ protected:
 private:
     // Parameters of the object
 
-    bool _inUseOnly;
+    ChunkCollection const _chunks;
+    std::vector<std::string> const _databases;
+    bool const _force;
     CallbackType _onFinish;
 };
 
-}  // namespace lsst::qserv::wpublish
+}  // namespace lsst::qserv::xrdreq
 
-#endif  // LSST_QSERV_WPUBLISH_GET_CHUNK_LIST_QSERV_REQUEST_H
+#endif  // LSST_QSERV_XRDREQ_SET_CHUNK_LIST_QSERV_REQUEST_H

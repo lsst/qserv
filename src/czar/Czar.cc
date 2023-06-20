@@ -25,6 +25,7 @@
 
 // System headers
 #include <sys/time.h>
+#include <stdexcept>
 #include <thread>
 
 // Third-party headers
@@ -42,6 +43,7 @@
 #include "czar/CzarErrors.h"
 #include "czar/MessageTable.h"
 #include "global/LogContext.h"
+#include "proto/worker.pb.h"
 #include "qdisp/PseudoFifo.h"
 #include "qdisp/QdispPool.h"
 #include "qdisp/SharedResources.h"
@@ -54,6 +56,7 @@
 #include "util/FileMonitor.h"
 #include "util/IterableFormatter.h"
 #include "util/StringHelper.h"
+#include "xrdreq/QueryManagementAction.h"
 #include "XrdSsi/XrdSsiProvider.hh"
 
 using namespace std;
@@ -95,6 +98,21 @@ Czar::Czar(string const& configPath, string const& czarName)
     gettimeofday(&tv, nullptr);
     const int year = 60 * 60 * 24 * 365;
     _idCounter = uint64_t(tv.tv_sec % year) * 1000 + tv.tv_usec / 1000;
+
+    // Tell workers to cancel any queries that were submitted before this restart of Czar.
+    // Figure out which query (if any) was recorded in Czar database before the restart.
+    // The id will be used as the high-watermark for queries that need to be cancelled.
+    // All queries that have identifiers that are strictly less than this one will
+    // be affected by the operation.
+    if (_czarConfig.notifyWorkersOnCzarRestart()) {
+        try {
+            xrdreq::QueryManagementAction::notifyAllWorkers(_czarConfig.getXrootdFrontendUrl(),
+                                                            proto::QueryManagement::CANCEL_AFTER_RESTART,
+                                                            _lastQueryIdBeforeRestart());
+        } catch (std::exception const& ex) {
+            LOGS(_log, LOG_LVL_WARN, ex.what());
+        }
+    }
 
     auto databaseModels =
             qproc::DatabaseModels::create(_czarConfig.getCssConfigMap(), _czarConfig.getMySqlResultConfig());
@@ -459,6 +477,26 @@ void Czar::removeOldResultTables() {
     });
     t.detach();
     _oldTableRemovalThread = std::move(t);
+}
+
+QueryId Czar::_lastQueryIdBeforeRestart() const {
+    string const context = "Czar::" + string(__func__) + " ";
+    auto sqlConn = sql::SqlConnectionFactory::make(_czarConfig.getMySqlQmetaConfig());
+    string const sql = "SELECT MAX(queryId) FROM QInfo";
+    sql::SqlResults results;
+    sql::SqlErrorObject err;
+    if (!sqlConn->runQuery(sql, results, err)) {
+        string const msg =
+                context + "Query to find the last query id failed, err=" + err.printErrMsg() + ", sql=" + sql;
+        throw runtime_error(msg);
+    }
+    string queryIdStr;
+    if (!results.extractFirstValue(queryIdStr, err)) {
+        string const msg = context + "Failed to extract the last query id from the result set, err=" +
+                           err.printErrMsg() + ", sql=" + sql;
+        throw runtime_error(msg);
+    }
+    return stoull(queryIdStr);
 }
 
 }  // namespace lsst::qserv::czar

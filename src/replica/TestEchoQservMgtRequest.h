@@ -29,7 +29,7 @@
 // Qserv headers
 #include "replica/QservMgtRequest.h"
 #include "replica/ServiceProvider.h"
-#include "wpublish/TestEchoQservRequest.h"
+#include "xrdreq/TestEchoQservRequest.h"
 
 // This header declarations
 namespace lsst::qserv::replica {
@@ -107,7 +107,7 @@ private:
     CallbackType _onFinish;  ///< @note this object is reset after finishing the request
 
     /// A request to the remote services
-    wpublish::TestEchoQservRequest::Ptr _qservRequest;
+    xrdreq::TestEchoQservRequest::Ptr _qservRequest;
 
     /// The data string returned by the Qserv worker
     std::string _dataEcho;

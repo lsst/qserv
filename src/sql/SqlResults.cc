@@ -183,7 +183,12 @@ bool SqlResults::extractFirstValue(std::string& ret, SqlErrorObject& errObj) {
     if (!row) {
         return errObj.addErrMsg("Expecting one row, found no rows");
     }
-    ret = (row[0]);
+    auto ptr = row[0];
+    if (!ptr) {
+        freeResults();
+        return errObj.addErrMsg("NULL returned by the query");
+    }
+    ret = ptr;
     freeResults();
     return true;
 }

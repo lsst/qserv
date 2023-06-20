@@ -81,17 +81,18 @@ BOOST_AUTO_TEST_CASE(DbChunk) {
     BOOST_CHECK_EQUAL(r[1].path(), "/chk/bar/968");
 }
 
-BOOST_AUTO_TEST_CASE(Old) {
-    ResourceUnit cq("/q/Foo/123");
-    ResourceUnit res("/result/1234567890abcde");
-    BOOST_CHECK_EQUAL(cq.unitType(), ResourceUnit::CQUERY);
-    BOOST_CHECK_EQUAL(res.unitType(), ResourceUnit::RESULT);
+BOOST_AUTO_TEST_CASE(Worker) {
+    std::string const id = "worker-1";
+    ResourceUnit res("/worker/" + id);
+    BOOST_CHECK_EQUAL(res.unitType(), ResourceUnit::WORKER);
+    BOOST_CHECK_EQUAL(res.workerId(), id);
 }
 
-BOOST_AUTO_TEST_CASE(Worker) {
-    ResourceUnit res("/worker/worker-1");
-    BOOST_CHECK_EQUAL(res.unitType(), ResourceUnit::WORKER);
-    BOOST_CHECK_EQUAL(res.hashName(), "worker-1");
+BOOST_AUTO_TEST_CASE(Query) {
+    ResourceUnit const res1("/query");
+    BOOST_CHECK_EQUAL(res1.unitType(), ResourceUnit::QUERY);
+    ResourceUnit const res2("/query/abc");
+    BOOST_CHECK_EQUAL(res2.unitType(), ResourceUnit::GARBAGE);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

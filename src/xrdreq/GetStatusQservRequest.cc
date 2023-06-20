@@ -21,7 +21,7 @@
  */
 
 // Class header
-#include "wpublish/GetStatusQservRequest.h"
+#include "xrdreq/GetStatusQservRequest.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -30,11 +30,11 @@ using namespace std;
 
 namespace {
 
-LOG_LOGGER _log = LOG_GET("lsst.qserv.wpublish.GetStatusQservRequest");
+LOG_LOGGER _log = LOG_GET("lsst.qserv.xrdreq.GetStatusQservRequest");
 
 }  // namespace
 
-namespace lsst::qserv::wpublish {
+namespace lsst::qserv::xrdreq {
 
 string GetStatusQservRequest::status2str(Status status) {
     switch (status) {
@@ -49,7 +49,9 @@ string GetStatusQservRequest::status2str(Status status) {
 
 GetStatusQservRequest::Ptr GetStatusQservRequest::create(wbase::TaskSelector const& taskSelector,
                                                          GetStatusQservRequest::CallbackType onFinish) {
-    return GetStatusQservRequest::Ptr(new GetStatusQservRequest(taskSelector, onFinish));
+    GetStatusQservRequest::Ptr ptr(new GetStatusQservRequest(taskSelector, onFinish));
+    ptr->setRefToSelf4keepAlive(ptr);
+    return ptr;
 }
 
 GetStatusQservRequest::GetStatusQservRequest(wbase::TaskSelector const& taskSelector,
@@ -112,4 +114,4 @@ void GetStatusQservRequest::onError(string const& error) {
     }
 }
 
-}  // namespace lsst::qserv::wpublish
+}  // namespace lsst::qserv::xrdreq

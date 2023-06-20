@@ -74,8 +74,7 @@ std::string ResourceUnit::path() const {
     switch (_unitType) {
         case GARBAGE:
             return "/GARBAGE";
-        case DBCHUNK:  // For now, DBCHUNK is handled the same as CQUERY
-        case CQUERY:
+        case DBCHUNK:
             ss << _pathSep << _db;
             if (_chunk != -1) {
                 ss << _pathSep << _chunk;
@@ -84,9 +83,8 @@ std::string ResourceUnit::path() const {
         case UNKNOWN:
             ss << _pathSep << "UNKNOWN_RESOURCE_UNIT";
             break;
-        case RESULT:
         case WORKER:
-            ss << _hashName;
+            ss << _workerId;
             break;
         default:
             ::abort();
@@ -107,14 +105,12 @@ std::string ResourceUnit::prefix(UnitType const& r) {
     switch (r) {
         case DBCHUNK:
             return "chk";
-        case CQUERY:
-            return "q";
         case UNKNOWN:
             return "UNKNOWN";
-        case RESULT:
-            return "result";
         case WORKER:
             return "worker";
+        case QUERY:
+            return "query";
         case GARBAGE:
         default:
             return "GARBAGE";
@@ -122,20 +118,15 @@ std::string ResourceUnit::prefix(UnitType const& r) {
 }
 
 std::string ResourceUnit::makePath(int chunk, std::string const& db) {
-    return "/" + prefix(UnitType::DBCHUNK) + "/" + db + "/" + std::to_string(chunk);
+    return _pathSep + prefix(UnitType::DBCHUNK) + _pathSep + db + _pathSep + std::to_string(chunk);
 }
+
 std::string ResourceUnit::makeWorkerPath(std::string const& id) {
-    return "/" + prefix(UnitType::WORKER) + "/" + id;
+    return _pathSep + prefix(UnitType::WORKER) + _pathSep + id;
 }
 
 void ResourceUnit::setAsDbChunk(std::string const& db, int chunk) {
     _unitType = DBCHUNK;
-    _db = db;
-    _chunk = chunk;
-}
-
-void ResourceUnit::setAsCquery(std::string const& db, int chunk) {
-    _unitType = CQUERY;
     _db = db;
     _chunk = chunk;
 }
@@ -182,48 +173,20 @@ void ResourceUnit::_setFromPath(std::string const& path) {
         }
         _chunk = t.tokenAsInt();
         _ingestLeafAndKeys(t.token());
-    } else if (rTypeString == prefix(CQUERY)) {
-        // Import as chunk query
-        _unitType = CQUERY;
-        if (_markGarbageIfDone(t)) {
-            return;
-        }
-        t.next();
-        _db = t.token();
-        if (_db.empty()) {
-            _unitType = GARBAGE;
-            return;
-        }
-        if (_markGarbageIfDone(t)) {
-            return;
-        }
-        t.next();
-        if (t.token().empty()) {
-            _unitType = GARBAGE;
-            return;
-        }
-        _chunk = t.tokenAsInt();
-        _ingestLeafAndKeys(t.token());
-
-    } else if (rTypeString == prefix(RESULT)) {
-        _unitType = RESULT;
-        if (_markGarbageIfDone(t)) {
-            return;
-        }
-        t.next();
-        _hashName = t.token();
-        if (_hashName.empty()) {
-            _unitType = GARBAGE;
-            return;
-        }
     } else if (rTypeString == prefix(WORKER)) {
         _unitType = WORKER;
         if (_markGarbageIfDone(t)) {
             return;
         }
         t.next();
-        _hashName = t.token();
-        if (_hashName.empty()) {
+        _workerId = t.token();
+        if (_workerId.empty()) {
+            _unitType = GARBAGE;
+            return;
+        }
+    } else if (rTypeString == prefix(QUERY)) {
+        _unitType = QUERY;
+        if (!t.done()) {
             _unitType = GARBAGE;
             return;
         }

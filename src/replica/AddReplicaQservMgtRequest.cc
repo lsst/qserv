@@ -73,9 +73,9 @@ list<pair<string, string>> AddReplicaQservMgtRequest::extendedPersistentState() 
 void AddReplicaQservMgtRequest::startImpl(replica::Lock const& lock) {
     auto const request = shared_from_base<AddReplicaQservMgtRequest>();
 
-    _qservRequest = wpublish::AddChunkGroupQservRequest::create(
+    _qservRequest = xrdreq::AddChunkGroupQservRequest::create(
             chunk(), databases(),
-            [request](wpublish::ChunkGroupQservRequest::Status status, string const& error) {
+            [request](xrdreq::ChunkGroupQservRequest::Status status, string const& error) {
                 if (request->state() == State::FINISHED) return;
 
                 replica::Lock lock(request->_mtx, request->context() + string(__func__) + "[callback]");
@@ -83,26 +83,26 @@ void AddReplicaQservMgtRequest::startImpl(replica::Lock const& lock) {
                 if (request->state() == State::FINISHED) return;
 
                 switch (status) {
-                    case wpublish::ChunkGroupQservRequest::Status::SUCCESS:
+                    case xrdreq::ChunkGroupQservRequest::Status::SUCCESS:
                         request->finish(lock, QservMgtRequest::ExtendedState::SUCCESS);
                         break;
 
-                    case wpublish::ChunkGroupQservRequest::Status::INVALID:
+                    case xrdreq::ChunkGroupQservRequest::Status::INVALID:
                         request->finish(lock, QservMgtRequest::ExtendedState::SERVER_BAD, error);
                         break;
 
-                    case wpublish::ChunkGroupQservRequest::Status::IN_USE:
+                    case xrdreq::ChunkGroupQservRequest::Status::IN_USE:
                         request->finish(lock, QservMgtRequest::ExtendedState::SERVER_CHUNK_IN_USE, error);
                         break;
 
-                    case wpublish::ChunkGroupQservRequest::Status::ERROR:
+                    case xrdreq::ChunkGroupQservRequest::Status::ERROR:
                         request->finish(lock, QservMgtRequest::ExtendedState::SERVER_ERROR, error);
                         break;
 
                     default:
                         throw logic_error("AddReplicaQservMgtRequest::" + string(__func__) +
                                           "  unhandled server status: " +
-                                          wpublish::ChunkGroupQservRequest::status2str(status));
+                                          xrdreq::ChunkGroupQservRequest::status2str(status));
                 }
             });
     XrdSsiResource resource(ResourceUnit::makeWorkerPath(worker()));
@@ -113,15 +113,8 @@ void AddReplicaQservMgtRequest::finishImpl(replica::Lock const& lock) {
     switch (extendedState()) {
         case ExtendedState::CANCELLED:
         case ExtendedState::TIMEOUT_EXPIRED:
-
-            // And if the SSI request is still around then tell it to stop
-
-            if (_qservRequest) {
-                bool const cancel = true;
-                _qservRequest->Finished(cancel);
-            }
+            if (_qservRequest) _qservRequest->cancel();
             break;
-
         default:
             break;
     }
