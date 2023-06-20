@@ -54,6 +54,12 @@ namespace lsst::qserv::replica {
  * the "director" index retrieval requests for the relevant chunks to
  * the workers. Results are directly loaded into the "director" index of
  * the specified director table.
+ *
+ * Contributions are always loaded into the index table using the "LOCAL" attribute
+ * of the query:
+ * @code
+ * LOAD DATA LOCAL INFILE ...
+ * @endcode
  */
 class DirectorIndexJob : public Job {
 public:
@@ -82,21 +88,13 @@ public:
      * @param allWorkers engage all known workers regardless of their status.
      *   If the flag is set to 'false' then only 'ENABLED' workers which are not
      *   in the 'READ-ONLY' state will be involved into the operation.
-     * @param localFile If the flag is set to 'true' then index contribution files
-     *   retrieved from workers would be loaded into the "director" index" table using MySQL
-     *   statement "LOAD DATA LOCAL INFILE". Otherwise, contributions will be loaded
-     *   using "LOAD DATA INFILE", which will require the files be directly visible by
-     *   the MySQL server where the table is residing. Note that the non-local
-     *   option results in the better performance of the operation. On the other hand,
-     *   the local option requires the server be properly configured to allow this
-     *   mechanism.
      * @param controller is needed launching requests and accessing the Configuration
      * @param parentJobId an identifier of the parent job
      * @param onFinish a function to be called upon a completion of the job
      * @param priority the priority level of the job
      */
     static Ptr create(std::string const& databaseName, std::string const& directorTableName,
-                      bool hasTransactions, TransactionId transactionId, bool allWorkers, bool localFile,
+                      bool hasTransactions, TransactionId transactionId, bool allWorkers,
                       Controller::Ptr const& controller, std::string const& parentJobId,
                       CallbackType const& onFinish, int priority);
 
@@ -115,7 +113,6 @@ public:
     bool hasTransactions() const { return _hasTransactions; }
     TransactionId transactionId() const { return _transactionId; }
     bool allWorkers() const { return _allWorkers; }
-    bool localFile() const { return _localFile; }
 
     /// @see Job::progress
     virtual Job::Progress progress() const override;
@@ -156,7 +153,7 @@ protected:
 
 private:
     DirectorIndexJob(std::string const& databaseName, std::string const& directorTableName,
-                     bool hasTransactions, TransactionId transactionId, bool allWorkers, bool localFile,
+                     bool hasTransactions, TransactionId transactionId, bool allWorkers,
                      Controller::Ptr const& controller, std::string const& parentJobId,
                      CallbackType const& onFinish, int priority);
 
@@ -216,11 +213,9 @@ private:
     bool const _hasTransactions;
     TransactionId const _transactionId;
     bool const _allWorkers;
-    bool const _localFile;
 
-    CallbackType _onFinish;  /// @note is reset when the job finishes
-
-    DatabaseInfo _database;  /// Initialized by the c-tor
+    CallbackType _onFinish;  ///< Is reset when the job finishes
+    DatabaseInfo _database;  ///< Is initialized by the c-tor
 
     /// A collection of chunks to be processed at specific workers
     std::map<std::string, std::queue<unsigned int>> _chunks;

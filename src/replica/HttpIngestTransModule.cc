@@ -399,11 +399,11 @@ json HttpIngestTransModule::_endTransaction() {
                     auto const table = database.findTable(tableName);
                     if (table.isPublished) continue;
                     bool const hasTransactions = true;
-                    auto const job = DirectorIndexJob::create(
-                            database.name, table.name, hasTransactions, transactionId, allWorkers,
-                            localLoadDirectorIndex(database.name), controller(), noParentJobId,
-                            nullptr,  // no callback
-                            config->get<int>("controller", "ingest-priority-level"));
+                    auto const job =
+                            DirectorIndexJob::create(database.name, table.name, hasTransactions,
+                                                     transactionId, allWorkers, controller(), noParentJobId,
+                                                     nullptr,  // no callback
+                                                     config->get<int>("controller", "ingest-priority-level"));
                     json transEventData = {{"job", job->id()}, {"table", table.name}};
                     transaction = databaseServices->updateTransaction(transactionId, "begin " + transEvent,
                                                                       transEventData);

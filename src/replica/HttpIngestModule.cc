@@ -198,14 +198,15 @@ json HttpIngestModule::_addDatabase() {
     auto const numSubStripes = body().required<unsigned int>("num_sub_stripes");
     auto const overlap = body().required<double>("overlap");
     auto const enableAutoBuildDirectorIndex = body().optional<unsigned int>("auto_build_secondary_index", 1);
-    auto const enableLocalLoadDirectorIndex = body().optional<unsigned int>("local_load_secondary_index", 0);
+    if (body().has("local_load_secondary_index")) {
+        warn("Option 'local_load_secondary_index' is obsolete as of the version 20 of the API.");
+    }
 
     debug(__func__, "database=" + databaseName);
     debug(__func__, "num_stripes=" + to_string(numStripes));
     debug(__func__, "num_sub_stripes=" + to_string(numSubStripes));
     debug(__func__, "overlap=" + to_string(overlap));
     debug(__func__, "auto_build_secondary_index=" + to_string(enableAutoBuildDirectorIndex ? 1 : 0));
-    debug(__func__, "local_load_secondary_index=" + to_string(enableLocalLoadDirectorIndex ? 1 : 0));
 
     if (overlap < 0) throw HttpError(__func__, "overlap can't have a negative value");
 
@@ -263,8 +264,6 @@ json HttpIngestModule::_addDatabase() {
     // the index.
     databaseServices->saveIngestParam(database.name, "secondary-index", "auto-build",
                                       to_string(enableAutoBuildDirectorIndex ? 1 : 0));
-    databaseServices->saveIngestParam(database.name, "secondary-index", "local-load",
-                                      to_string(enableLocalLoadDirectorIndex ? 1 : 0));
 
     // Tell workers to reload their configurations
     error = reconfigureWorkers(database, allWorkers, workerReconfigTimeoutSec());

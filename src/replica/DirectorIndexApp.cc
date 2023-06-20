@@ -73,11 +73,6 @@ DirectorIndexApp::DirectorIndexApp(int argc, char* argv[])
                     " the table will be scanned, and the scan won't include the super-transaction"
                     " column 'qserv_trans_id'.",
                     _transactionId)
-            .flag("local",
-                  "This flag is used to load contributions using 'LOAD DATA LOCAL INFILE' protocol"
-                  " instead of 'LOAD DATA INFILE'. See MySQL documentation for further details"
-                  " on this subject.",
-                  _localFile)
             .flag("all-workers",
                   "The flag for selecting all workers regardless of their status (DISABLED or READ-ONLY).",
                   _allWorkers)
@@ -104,11 +99,11 @@ int DirectorIndexApp::runImpl() {
     auto const controller = Controller::create(serviceProvider());
 
     string const noParentJobId;
-    auto const job = DirectorIndexJob::create(
-            _database, _table, _transactionId != numeric_limits<TransactionId>::max(), _transactionId,
-            _allWorkers, _localFile, controller, noParentJobId,
-            nullptr,  // no callback
-            PRIORITY_NORMAL);
+    auto const job = DirectorIndexJob::create(_database, _table,
+                                              _transactionId != numeric_limits<TransactionId>::max(),
+                                              _transactionId, _allWorkers, controller, noParentJobId,
+                                              nullptr,  // no callback
+                                              PRIORITY_NORMAL);
     job->start();
     job->wait();
 

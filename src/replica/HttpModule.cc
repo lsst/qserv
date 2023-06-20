@@ -113,18 +113,6 @@ bool HttpModule::autoBuildDirectorIndex(string const& databaseName) const {
     return false;
 }
 
-bool HttpModule::localLoadDirectorIndex(string const& database) const {
-    auto const databaseServices = controller()->serviceProvider()->databaseServices();
-    try {
-        DatabaseIngestParam const paramInfo =
-                databaseServices->ingestParam(database, "secondary-index", "local-load");
-        return paramInfo.value != "0";
-    } catch (DatabaseServicesNotFound const& ex) {
-        info(__func__, "the director index local-load mode was not specified");
-    }
-    return false;
-}
-
 DatabaseInfo HttpModule::getDatabaseInfo(string const& func, bool throwIfPublished) const {
     debug(func);
     auto const databaseServices = controller()->serviceProvider()->databaseServices();
