@@ -23,6 +23,7 @@
 #define LSST_QSERV_HTTPMODULEBASE_H
 
 // System headers
+#include <list>
 #include <memory>
 #include <stdexcept>
 #include <string>
@@ -230,7 +231,7 @@ private:
 
     /// The optional warning message to be sent to a caller if the API version
     /// number wasn't mentoned in the request.
-    mutable std::string _warningOnVersionMissing;
+    mutable std::list<std::string> _warnings;
 };
 
 }  // namespace lsst::qserv::replica

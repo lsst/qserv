@@ -37,7 +37,16 @@ using json = nlohmann::json;
 
 namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.HttpModuleBase");
+
+string packWarnings(list<string> const& warnings) {
+    string packed;
+    for (auto const& msg : warnings) {
+        if (!packed.empty()) packed += "; ";
+        packed += msg;
+    }
+    return packed;
 }
+}  // namespace
 
 namespace lsst::qserv::replica {
 
@@ -79,15 +88,13 @@ void HttpModuleBase::checkApiVersion(string const& func, unsigned int minVersion
     try {
         if (req()->method == "GET") {
             if (!query().has(versionAttrName)) {
-                _warningOnVersionMissing = "No version number was provided in the request's query.";
-                warn(_warningOnVersionMissing);
+                warn("No version number was provided in the request's query.");
                 return;
             }
             version = query().requiredUInt(versionAttrName);
         } else {
             if (!body().has(versionAttrName)) {
-                _warningOnVersionMissing = "No version number was provided in the request's body.";
-                warn(_warningOnVersionMissing);
+                warn("No version number was provided in the request's body.");
                 return;
             }
             version = body().required<unsigned int>(versionAttrName);
@@ -107,7 +114,10 @@ void HttpModuleBase::info(string const& msg) const { LOGS(_log, LOG_LVL_INFO, co
 
 void HttpModuleBase::debug(string const& msg) const { LOGS(_log, LOG_LVL_DEBUG, context() << msg); }
 
-void HttpModuleBase::warn(string const& msg) const { LOGS(_log, LOG_LVL_WARN, context() << msg); }
+void HttpModuleBase::warn(string const& msg) const {
+    LOGS(_log, LOG_LVL_WARN, context() << msg);
+    _warnings.push_back(msg);
+}
 
 void HttpModuleBase::error(string const& msg) const { LOGS(_log, LOG_LVL_ERROR, context() << msg); }
 
@@ -117,7 +127,7 @@ void HttpModuleBase::_sendError(string const& func, string const& errorMsg, json
     result["success"] = 0;
     result["error"] = errorMsg;
     result["error_ext"] = errorExt.is_null() ? json::object() : errorExt;
-    result["warning"] = _warningOnVersionMissing;
+    result["warning"] = ::packWarnings(_warnings);
     resp()->send(result.dump(), "application/json");
 }
 
@@ -125,7 +135,7 @@ void HttpModuleBase::_sendData(json& result) {
     result["success"] = 1;
     result["error"] = "";
     result["error_ext"] = json::object();
-    result["warning"] = _warningOnVersionMissing;
+    result["warning"] = ::packWarnings(_warnings);
     resp()->send(result.dump(), "application/json");
 }
 
