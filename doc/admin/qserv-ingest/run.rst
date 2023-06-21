@@ -56,8 +56,8 @@ For additional informations, check official documentation for `setting the names
 
 - `git-lfs <https://git-lfs.com>`__ is required in order to retrieve integration test datasets.
 
-Prepare Qserv ingest
-====================
+Prepare and configure Qserv ingest
+==================================
 
 Get the project
 ---------------
@@ -81,13 +81,18 @@ A directory with ingest workflow configuration and an ``env.sh`` file have to be
     cp env.example.sh env.sh
 
 #. In ``env.sh``, set ``OVERLAY`` to ``<CUSTOM_INGEST>``, and eventually ``INSTANCE`` to the name of current Qserv instance.
-#. In ingest workflow configuration file (named ``manifests/<CUSTOM_INGEST>/configmap/ingest.yaml``), set:
+#. Configure ingest workflow configuration file (named ``manifests/<CUSTOM_INGEST>/configmap/ingest.yaml``):
 
-   #. ``ingest/input/servers`` to the list of http servers providing input dataset,  The ingest process will load-balance the download of input files accross these servers.
-   #. ``ingest/input/path`` to the **path to input data on the http server**
-   #. ``ingest/qserv/query_url`` to the URL which serve Qserv SQL queries
-   #. ``ingest/qserv/queue_url`` to the URL which serve input chunk contributions queue
-   #. ``ingest/qserv/replication_url`` to the URL which serve replication controller service
+..
+    Copy example configuration file in current directory in order to update documentation
+    cp ~/src/qserv-ingest/manifests/base/configmap/ingest.yaml ~/src/qserv/doc/admin/qserv-ingest/
+
+Inline documentation for this configuration file is avalaible at ``manifests/base/configmap/ingest.yaml``:
+
+.. literalinclude:: ingest.yaml
+   :language: yaml
+   :linenos:
+
 
 Launch Qserv ingest
 ===================

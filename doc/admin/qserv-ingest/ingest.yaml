@@ -1,0 +1,69 @@
+version: 15
+ingest:
+    http:
+        # Optional, default to no time-out
+        # Timeout for POST and PUT queries in seconds
+        # POST and PUT queries which might be very long for the following operations:
+        # - posting contribution
+        # - closing transaction
+        # - publishing database
+        # - building the "director" index
+        # - building table indexes at workers
+        write_timeout: 1800
+        # Optional, default to no time-out
+        # Timeout for GET queries in seconds
+        read_timeout: 10
+    metadata:
+      # Optional, default to "ingest.input.servers[0]/ingest.input.path"
+      # Allow to customize metadata URL
+      url: http://dataserver/datasets/DC2/
+
+    input:
+        # List of http servers providing input dataset
+        # The ingest process will load-balance the download of input files accross
+        # these servers.
+        # Use file:// as first element in list when using local data
+        # TODO Add support for webdav protocol
+        servers:
+            - http://dataserver
+            - http://dataserver
+        # Path to input data on the http servers
+        path: datasets/DC2/
+
+    ## URLs of Qserv services
+    ## ----------------------
+    qserv:
+        # URL which serves Qserv SQL queries
+        query_url: "mysql://qsmaster:@qserv-czar:4040"
+        # URL which serves input chunk contributions queue
+        queue_url: "mysql://qsingest:@qserv-ingest-db-0.qserv-ingest-db/qservIngest"
+        # Replication controller service URL
+        replication_url: http://qserv-repl-ctl-0.qserv-repl-ctl:8080
+
+    ## Configure replication service
+    ## Documented at https://confluence.lsstcorp.org/display/DM/1.+Setting+configuration+parameters
+    ## --------------------------------------------------------------------------------------------
+    ingestservice:
+        # Optional, default to None
+        # Override the default value stored in input metadata (in database.json file)
+        # 1: build secondary index when closing a transaction
+        # 0: build secondary index after ingest
+        auto_build_secondary_index: 1
+
+        # Optional, default to "/etc/pki/tls/certs/ca-bundle.crt"
+        # cainfo: "/etc/pki/tls/certs/ca-bundle.crt"
+
+        # Optional, default to 1
+        # ssl_verifypeer: 1
+
+        # Optional, default to None
+        # Override the default Qserv value
+        async_proc_limit: 4
+
+        # Optional, default to None
+        # Override the default Qserv value
+        low_speed_limit: 10
+
+        # Optional, default to None
+        # Override the default Qserv value
+        low_speed_time: 3600
