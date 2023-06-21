@@ -19,7 +19,8 @@ This access is only available for users having access to the cluster with ``kube
 .. code:: bash
 
     # Open a tunnel between local machine and Qserv dashboard
-    kubectl port-forward qserv-repl-ctl-0 8080 &
+    # # Listen on first port number locally, forwarding to second port number in the pod
+    kubectl port-forward qserv-repl-ctl-0 8080:8080 &
 
     # Access to the dashboard
     firefox http://localhost:8080

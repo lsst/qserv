@@ -1,21 +1,21 @@
 version: 15
 ingest:
     http:
-        # Optional
+        # Optional, default to no time-out
         # Timeout for POST and PUT queries in seconds
-        # POST and PUT queries which might be very long like:
-        # - postint contribution
+        # POST and PUT queries which might be very long for the following operations:
+        # - posting contribution
         # - closing transaction
         # - publishing database
-        # have no timeout at all
+        # - building the "director" index
+        # - building table indexes at workers
         write_timeout: 1800
-        # Optional
+        # Optional, default to no time-out
         # Timeout for GET queries in seconds
         read_timeout: 10
     metadata:
-      # Optional
+      # Optional, default to "ingest.input.servers[0]/ingest.input.path"
       # Allow to customize metadata URL
-      # Default to "{servers[0]}{path}"
       url: http://dataserver/datasets/DC2/
 
     input:
