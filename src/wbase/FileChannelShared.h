@@ -31,6 +31,7 @@
 
 // Third-party headers
 #include <mysql/mysql.h>
+#include "nlohmann/json.hpp"
 
 // Qserv headers
 #include "global/intTypes.h"
@@ -93,6 +94,9 @@ public:
      * @param queryId The most recent user query registered before restart.
      */
     static void cleanUpResults(QueryId queryId);
+
+    /// @return Status and statistics on the results folder (capacity, usage, etc.)
+    static nlohmann::json statusToJson();
 
     /// The factory method for the channel class.
     static Ptr create(std::shared_ptr<wbase::SendChannel> const& sendChannel,

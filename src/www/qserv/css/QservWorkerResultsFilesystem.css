@@ -1,0 +1,24 @@
+#fwk-qserv-results-filesystem-controls label {
+    font-weight:    bold;
+}
+table#fwk-qserv-results-filesystem caption {
+    caption-side:   top;
+    text-align:     right;
+    padding-top:    0;
+}
+table#fwk-qserv-results-filesystem tbody th,
+table#fwk-qserv-results-filesystem tbody td {
+    vertical-align:middle;
+}
+table#fwk-qserv-results-filesystem pre {
+    padding: 0;
+    margin: 0;
+}
+table#fwk-qserv-results-filesystem caption.updating {
+    background-color: #ffeeba;
+}
+table#fwk-qserv-results-filesystem > thead > tr > th.sticky {
+    position:sticky;
+    top:80px;
+    z-index:2;
+}

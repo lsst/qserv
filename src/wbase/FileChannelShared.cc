@@ -43,6 +43,7 @@
 #include "lsst/log/Log.h"
 
 using namespace std;
+using namespace nlohmann;
 namespace fs = boost::filesystem;
 namespace wconfig = lsst::qserv::wconfig;
 
@@ -144,6 +145,44 @@ void FileChannelShared::cleanUpResults(QueryId queryId) {
             });
     LOGS(_log, LOG_LVL_INFO,
          context << "removed " << numFilesRemoved << " result files from " << dirPath << ".");
+}
+
+json FileChannelShared::statusToJson() {
+    string const context = "FileChannelShared::" + string(__func__) + " ";
+    auto const config = wconfig::WorkerConfig::instance();
+    string const protocol = wconfig::WorkerConfig::protocol2str(config->resultDeliveryProtocol());
+    fs::path const dirPath = config->resultsDirname();
+    json result = json::object({{"protocol", protocol},
+                                {"folder", dirPath.string()},
+                                {"capacity_bytes", -1},
+                                {"free_bytes", -1},
+                                {"available_bytes", -1},
+                                {"num_result_files", -1},
+                                {"size_result_files_bytes", -1}});
+    lock_guard<mutex> const lock(_resultsDirCleanupMtx);
+    try {
+        auto const space = fs::space(dirPath);
+        result["capacity_bytes"] = space.capacity;
+        result["free_bytes"] = space.free;
+        result["available_bytes"] = space.available;
+        uintmax_t sizeResultFilesBytes = 0;
+        uintmax_t numResultFiles = 0;
+        string const ext = ".proto";
+        auto itr = fs::directory_iterator(dirPath);
+        for (auto&& entry : boost::make_iterator_range(itr, {})) {
+            auto const filePath = entry.path();
+            if (filePath.has_filename() && filePath.has_extension() && (filePath.extension() == ext)) {
+                numResultFiles++;
+                sizeResultFilesBytes += fs::file_size(filePath);
+            }
+        }
+        result["num_result_files"] = numResultFiles;
+        result["size_result_files_bytes"] = sizeResultFilesBytes;
+    } catch (exception const& ex) {
+        LOGS(_log, LOG_LVL_WARN,
+             context << "failed to get folder stats for " << dirPath << ", ex: " << ex.what());
+    }
+    return result;
 }
 
 FileChannelShared::Ptr FileChannelShared::create(shared_ptr<wbase::SendChannel> const& sendChannel,

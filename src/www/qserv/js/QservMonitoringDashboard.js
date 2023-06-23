@@ -48,6 +48,7 @@ require([
     'qserv/QservWorkerSchedulerHist',
     'qserv/QservWorkerTasks',
     'qserv/QservWorkerTaskHist',
+    'qserv/QservWorkerResultsFilesystem',
     'qserv/ReplicationController',
     'qserv/ReplicationTools',
     'qserv/ReplicationConfigGeneral',
@@ -85,6 +86,7 @@ function(CSSLoader,
          QservWorkerSchedulerHist,
          QservWorkerTasks,
          QservWorkerTaskHist,
+         QservWorkerResultsFilesystem,
          ReplicationController,
          ReplicationTools,
          ReplicationConfigGeneral,
@@ -173,6 +175,7 @@ function(CSSLoader,
                     new QservWorkerSchedulerHist('Scheduler Histograms'),
                     new QservWorkerTasks('Tasks'),
                     new QservWorkerTaskHist('Task Histograms'),
+                    new QservWorkerResultsFilesystem('Results Filesystem'),
                     new QservCss('CSS')
                 ]
             }
