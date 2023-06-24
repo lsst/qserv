@@ -256,10 +256,22 @@ void FileUtils::verifyFolders(string const& requestorContext, vector<string> con
         }
         boost::system::error_code ec;
         if (createMissingFolders) {
-            if (!fs::create_directories(path, ec)) {
+            if (fs::exists(path, ec)) {
+                bool const isDirectory = fs::is_directory(path, ec);
                 if (ec.value() != 0) {
-                    throw runtime_error(context + " failed to create folder '" + folder +
-                                        "' or its intermediate subfolders, error: " + ec.message());
+                    throw runtime_error(context + " failed to check if the path '" + folder +
+                                        "' is a directory, error: " + ec.message());
+                }
+                if (!isDirectory) {
+                    throw runtime_error(context + " specified path '" + folder +
+                                        "' is not a valid directory");
+                }
+            } else {
+                if (!fs::create_directories(path, ec)) {
+                    if (ec.value() != 0) {
+                        throw runtime_error(context + " failed to create folder '" + folder +
+                                            "' or its intermediate subfolders, error: " + ec.message());
+                    }
                 }
             }
         }

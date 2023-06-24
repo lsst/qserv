@@ -201,6 +201,10 @@ BOOST_AUTO_TEST_CASE(FileUtils_verifyFolders) {
         // Now launch the method to force create the folder.
         BOOST_REQUIRE_NO_THROW({ FileUtils::verifyFolders("TEST", folders, createMissingFolders); });
 
+        // Repeat the preious operation. It should not fail since the method first checks
+        // if the path already exists and if it's a valid directory before creating the one.
+        BOOST_REQUIRE_NO_THROW({ FileUtils::verifyFolders("TEST", folders, createMissingFolders); });
+
         // Make another run w/o attempting creating a folder
         BOOST_REQUIRE_NO_THROW({ FileUtils::verifyFolders("TEST", folders, !createMissingFolders); });
 
