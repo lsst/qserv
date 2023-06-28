@@ -55,6 +55,7 @@
 
 // Qserv headers
 #include "czar/Czar.h"
+#include "czar/CzarConfig.h"
 #include "global/intTypes.h"
 #include "proto/WorkerResponse.h"
 #include "proto/ProtoImporter.h"
@@ -114,11 +115,11 @@ InfileMerger::InfileMerger(InfileMergerConfig const& c, std::shared_ptr<qproc::D
           _mysqlConn(_config.mySqlConfig),
           _databaseModels(dm),
           _jobIdColName(JOB_ID_BASE_NAME),
-          _maxSqlConnectionAttempts(_config.czarConfig.getMaxSqlConnectionAttempts()),
-          _maxResultTableSizeBytes(_config.czarConfig.getMaxTableSizeMB() * MB_SIZE_BYTES),
+          _maxSqlConnectionAttempts(czar::CzarConfig::instance()->getMaxSqlConnectionAttempts()),
+          _maxResultTableSizeBytes(czar::CzarConfig::instance()->getMaxTableSizeMB() * MB_SIZE_BYTES),
           _semaMgrConn(semaMgrConn) {
     _fixupTargetName();
-    _setEngineFromStr(_config.czarConfig.getResultEngine());
+    _setEngineFromStr(czar::CzarConfig::instance()->getResultEngine());
     if (_dbEngine == MYISAM) {
         LOGS(_log, LOG_LVL_INFO, "Engine is MYISAM, serial");
         if (!_setupConnectionMyIsam()) {

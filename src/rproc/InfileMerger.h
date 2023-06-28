@@ -46,9 +46,6 @@
 
 // Forward declarations
 namespace lsst::qserv {
-namespace czar {
-class CzarConfig;
-}
 namespace mysql {
 class MysqlConfig;
 }
@@ -88,11 +85,9 @@ typedef util::Error InfileMergerError;
 class InfileMergerConfig {
 public:
     InfileMergerConfig() = delete;
-    InfileMergerConfig(czar::CzarConfig const& czarConfig_, mysql::MySqlConfig const& mySqlConfig_)
-            : czarConfig(czarConfig_), mySqlConfig(mySqlConfig_) {}
+    InfileMergerConfig(mysql::MySqlConfig const& mySqlConfig_) : mySqlConfig(mySqlConfig_) {}
 
     // for final result, and imported result
-    czar::CzarConfig const& czarConfig;
     mysql::MySqlConfig const mySqlConfig;
     std::string targetTable;
     std::shared_ptr<query::SelectStmt> mergeStmt;

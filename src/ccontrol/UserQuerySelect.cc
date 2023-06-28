@@ -355,9 +355,6 @@ QueryState UserQuerySelect::join() {
     }
     _executive->updateProxyMessages();
 
-    // Capture these parameters before discarding the merger which would also reset the config.
-    bool const notifyWorkersOnQueryFinish = _infileMergerConfig->czarConfig.notifyWorkersOnQueryFinish();
-    std::string const xrootdFrontendUrl = _infileMergerConfig->czarConfig.getXrootdFrontendUrl();
     try {
         _discardMerger();
     } catch (std::exception const& exc) {
@@ -391,9 +388,11 @@ QueryState UserQuerySelect::join() {
         operation = proto::QueryManagement::CANCEL;
         state = ERROR;
     }
-    if (notifyWorkersOnQueryFinish) {
+    std::shared_ptr<czar::CzarConfig> const czarConfig = czar::CzarConfig::instance();
+    if (czarConfig->notifyWorkersOnQueryFinish()) {
         try {
-            xrdreq::QueryManagementAction::notifyAllWorkers(xrootdFrontendUrl, operation, _qMetaQueryId);
+            xrdreq::QueryManagementAction::notifyAllWorkers(czarConfig->getXrootdFrontendUrl(), operation,
+                                                            _qMetaQueryId);
         } catch (std::exception const& ex) {
             LOGS(_log, LOG_LVL_WARN, ex.what());
         }

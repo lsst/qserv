@@ -151,7 +151,7 @@ bool qmetaHasDataForSelectCountStarQuery(query::SelectStmt::Ptr const& stmt,
     auto const& fromTable = tableRefPtr->getTable();
     rowsTable = fromDb + "__" + fromTable + "__rows";
     // TODO consider using QMetaSelect instead of making a new connection.
-    auto cnx = sql::SqlConnectionFactory::make(sharedResources->czarConfig.getMySqlQmetaConfig());
+    auto cnx = sql::SqlConnectionFactory::make(czar::CzarConfig::instance()->getMySqlQmetaConfig());
     sql::SqlErrorObject err;
     auto tableExists = cnx->tableExists(rowsTable, err);
     LOGS(_log, LOG_LVL_DEBUG,
@@ -161,28 +161,27 @@ bool qmetaHasDataForSelectCountStarQuery(query::SelectStmt::Ptr const& stmt,
 }
 
 std::shared_ptr<UserQuerySharedResources> makeUserQuerySharedResources(
-        czar::CzarConfig const& czarConfig, std::shared_ptr<qproc::DatabaseModels> const& dbModels,
-        std::string const& czarName) {
+        std::shared_ptr<qproc::DatabaseModels> const& dbModels, std::string const& czarName) {
+    std::shared_ptr<czar::CzarConfig> const czarConfig = czar::CzarConfig::instance();
     return std::make_shared<UserQuerySharedResources>(
-            czarConfig,
-            css::CssAccess::createFromConfig(czarConfig.getCssConfigMap(), czarConfig.getEmptyChunkPath()),
-            czarConfig.getMySqlResultConfig(),
-            std::make_shared<qproc::SecondaryIndex>(czarConfig.getMySqlQmetaConfig()),
-            std::make_shared<qmeta::QMetaMysql>(czarConfig.getMySqlQmetaConfig(),
-                                                czarConfig.getMaxMsgSourceStore()),
-            std::make_shared<qmeta::QStatusMysql>(czarConfig.getMySqlQStatusDataConfig()),
-            std::make_shared<qmeta::QMetaSelect>(czarConfig.getMySqlQmetaConfig()),
-            sql::SqlConnectionFactory::make(czarConfig.getMySqlResultConfig()), dbModels, czarName,
-            czarConfig.getInteractiveChunkLimit());
+            css::CssAccess::createFromConfig(czarConfig->getCssConfigMap(), czarConfig->getEmptyChunkPath()),
+            czarConfig->getMySqlResultConfig(),
+            std::make_shared<qproc::SecondaryIndex>(czarConfig->getMySqlQmetaConfig()),
+            std::make_shared<qmeta::QMetaMysql>(czarConfig->getMySqlQmetaConfig(),
+                                                czarConfig->getMaxMsgSourceStore()),
+            std::make_shared<qmeta::QStatusMysql>(czarConfig->getMySqlQStatusDataConfig()),
+            std::make_shared<qmeta::QMetaSelect>(czarConfig->getMySqlQmetaConfig()),
+            sql::SqlConnectionFactory::make(czarConfig->getMySqlResultConfig()), dbModels, czarName,
+            czarConfig->getInteractiveChunkLimit());
 }
 
 ////////////////////////////////////////////////////////////////////////
-UserQueryFactory::UserQueryFactory(czar::CzarConfig const& czarConfig,
-                                   qproc::DatabaseModels::Ptr const& dbModels, std::string const& czarName)
-        : _userQuerySharedResources(makeUserQuerySharedResources(czarConfig, dbModels, czarName)),
+UserQueryFactory::UserQueryFactory(qproc::DatabaseModels::Ptr const& dbModels, std::string const& czarName)
+        : _userQuerySharedResources(makeUserQuerySharedResources(dbModels, czarName)),
           _useQservRowCounterOptimization(true) {
+    std::shared_ptr<czar::CzarConfig> const czarConfig = czar::CzarConfig::instance();
     _executiveConfig = std::make_shared<qdisp::ExecutiveConfig>(
-            czarConfig.getXrootdFrontendUrl(), czarConfig.getQMetaSecondsBetweenChunkUpdates());
+            czarConfig->getXrootdFrontendUrl(), czarConfig->getQMetaSecondsBetweenChunkUpdates());
 
     // When czar crashes/exits while some queries are still in flight they
     // are left in EXECUTING state in QMeta. We want to cleanup that state
@@ -290,8 +289,8 @@ UserQuery::Ptr UserQueryFactory::newUserQuery(std::string const& aQuery, std::st
         if (sessionValid) {
             executive = qdisp::Executive::create(*_executiveConfig, messageStore, qdispSharedResources,
                                                  _userQuerySharedResources->queryStatsData, qs);
-            infileMergerConfig = std::make_shared<rproc::InfileMergerConfig>(
-                    _userQuerySharedResources->czarConfig, _userQuerySharedResources->mysqlResultConfig);
+            infileMergerConfig =
+                    std::make_shared<rproc::InfileMergerConfig>(_userQuerySharedResources->mysqlResultConfig);
             infileMergerConfig->debugNoMerge = _debugNoMerge;
         }
 

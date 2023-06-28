@@ -25,6 +25,11 @@
 #define LSST_QSERV_CZAR_CZARCONFIG_H
 
 // System headers
+#include <map>
+#include <memory>
+#include <mutex>
+#include <ostream>
+#include <string>
 
 // Qserv headers
 #include "mysql/MySqlConfig.h"
@@ -44,15 +49,33 @@ namespace lsst::qserv::czar {
  */
 class CzarConfig {
 public:
-    CzarConfig(std::string configFileName) : CzarConfig(util::ConfigStore(configFileName)) {}
+    /**
+     * Create an instance of CzarConfig and load parameters from the specifid file.
+     * @note One has to call this method at least once before trying to obtain
+     *   a pointer of the instance by calling 'instance()'. The method 'create()'
+     *   can be called many times. A new instance would be created each time and
+     *   stored within the class.
+     * @param configFileName - path to worker INI configuration file
+     * @return the shared pointer to the configuration object
+     */
+    static std::shared_ptr<CzarConfig> create(std::string const& configFileName);
 
+    /**
+     * Get a pointer to an instance that was created by the last call to
+     * the method 'create'.
+     * @return the shared pointer to the configuration object
+     * @throws std::logic_error when attempting to call the bethod before creating an instance.
+     */
+    static std::shared_ptr<CzarConfig> instance();
+
+    CzarConfig() = delete;
     CzarConfig(CzarConfig const&) = delete;
     CzarConfig& operator=(CzarConfig const&) = delete;
 
     /** Overload output operator for current class
      *
      * @param out
-     * @param workerConfig
+     * @param czarConfig
      * @return an output stream
      */
     friend std::ostream& operator<<(std::ostream& out, CzarConfig const& czarConfig);
@@ -173,6 +196,12 @@ public:
 
 private:
     CzarConfig(util::ConfigStore const& ConfigStore);
+
+    /// This mutex is needed for managing a state of the static member _instance.
+    static std::mutex _mtxOnInstance;
+
+    /// The configuratoon object created by the last call to the method 'create()'.
+    static std::shared_ptr<CzarConfig> _instance;
 
     // Parameters below used in czar::Czar
     mysql::MySqlConfig const _mySqlResultConfig;

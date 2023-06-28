@@ -33,8 +33,7 @@
 namespace lsst::qserv::ccontrol {
 
 UserQuerySharedResources::UserQuerySharedResources(
-        czar::CzarConfig const& czarConfig_, std::shared_ptr<css::CssAccess> const& css_,
-        mysql::MySqlConfig const& mysqlResultConfig_,
+        std::shared_ptr<css::CssAccess> const& css_, mysql::MySqlConfig const& mysqlResultConfig_,
         std::shared_ptr<qproc::SecondaryIndex> const& secondaryIndex_,
         std::shared_ptr<qmeta::QMeta> const& queryMetadata_,
         std::shared_ptr<qmeta::QStatus> const& queryStatsData_,
@@ -42,8 +41,7 @@ UserQuerySharedResources::UserQuerySharedResources(
         std::shared_ptr<sql::SqlConnection> const& resultDbConn_,
         std::shared_ptr<qproc::DatabaseModels> const& dbModels_, std::string const& czarName,
         int interactiveChunkLimit_)
-        : czarConfig(czarConfig_),
-          css(css_),
+        : css(css_),
           mysqlResultConfig(mysqlResultConfig_),
           secondaryIndex(secondaryIndex_),
           queryMetadata(queryMetadata_),
@@ -52,7 +50,7 @@ UserQuerySharedResources::UserQuerySharedResources(
           resultDbConn(resultDbConn_),
           databaseModels(dbModels_),
           interactiveChunkLimit(interactiveChunkLimit_),
-          semaMgrConnections(new util::SemaMgr(czarConfig.getResultMaxConnections())) {
+          semaMgrConnections(new util::SemaMgr(czar::CzarConfig::instance()->getResultMaxConnections())) {
     // register czar in QMeta
     // TODO: check that czar with the same name is not active already?
     qMetaCzarId = queryMetadata->registerCzar(czarName);

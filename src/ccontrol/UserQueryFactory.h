@@ -47,10 +47,6 @@ class UserQuery;
 class UserQuerySharedResources;
 }  // namespace lsst::qserv::ccontrol
 
-namespace lsst::qserv::czar {
-class CzarConfig;
-}
-
 namespace lsst::qserv::qdisp {
 class ExecutiveConfig;
 }
@@ -71,8 +67,7 @@ namespace lsst::qserv::ccontrol {
 ///  constant between successive user queries.
 class UserQueryFactory : private boost::noncopyable {
 public:
-    UserQueryFactory(czar::CzarConfig const& czarConfig,
-                     std::shared_ptr<qproc::DatabaseModels> const& dbModels, std::string const& czarName);
+    UserQueryFactory(std::shared_ptr<qproc::DatabaseModels> const& dbModels, std::string const& czarName);
 
     /// @param query:        Query text
     /// @param defaultDb:    Default database name, may be empty
