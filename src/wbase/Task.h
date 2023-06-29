@@ -220,6 +220,7 @@ public:
     int getJobId() const { return _jId; }
     int getAttemptCount() const { return _attemptCount; }
     bool getScanInteractive() { return _scanInteractive; }
+    int64_t getMaxTableSize() const { return _maxTableSize; }
     proto::ScanInfo& getScanInfo() { return _scanInfo; }
     void setOnInteractive(bool val) { _onInteractive = val; }
     bool getOnInteractive() { return _onInteractive; }
@@ -322,6 +323,7 @@ private:
     bool _scanInteractive;  ///< True if the czar thinks this query should be interactive.
     bool _onInteractive{
             false};  ///< True if the scheduler put this task on the interactive (group) scheduler.
+    int64_t _maxTableSize = 0;
     std::atomic<memman::MemMan::Handle> _memHandle{memman::MemMan::HandleType::INVALID};
     memman::MemMan::Ptr _memMan;
 

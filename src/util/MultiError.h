@@ -69,6 +69,15 @@ public:
      */
     std::string toOneLineString() const;
 
+    /** Return the first error code (if any)
+     *
+     * The idea is to return the first code that might trigger the "chain" reaction.
+     * An interpretation of the code depns on a context.
+     *
+     * @return the code or ErrorCode::NONE if the collection of errors is empty
+     */
+    int firstErrorCode() const;
+
     virtual ~MultiError() throw() {}
 
     /** Overload output operator for this class

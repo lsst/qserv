@@ -216,7 +216,7 @@ bool FileChannelShared::buildAndTransmitResult(MYSQL_RES* mResult, shared_ptr<Ta
     transmitT.start();
 
     double bufferFillSecs = 0.0;
-    int bytesTransmitted = 0;
+    int64_t bytesTransmitted = 0;
     int rowsTransmitted = 0;
 
     // Keep reading rows and converting those into messages while any
@@ -258,6 +258,19 @@ bool FileChannelShared::buildAndTransmitResult(MYSQL_RES* mResult, shared_ptr<Ta
         rowsTransmitted += rows;
         _rowcount += rows;
         _transmitsize += bytes;
+
+        // Fail the operation if the amount of data in the result set exceeds the requested
+        // "large result" limit (in case if the one was specified).
+        if (int64_t const maxTableSize = task->getMaxTableSize();
+            maxTableSize > 0 && bytesTransmitted > maxTableSize) {
+            string const err = "The result set size " + to_string(bytesTransmitted) +
+                               " of a job exceeds the requested limit of " + to_string(maxTableSize) +
+                               " bytes, task: " + task->getIdStr();
+            multiErr.push_back(util::Error(util::ErrorCode::WORKER_RESULT_TOO_LARGE, err));
+            LOGS(_log, LOG_LVL_ERROR, err);
+            erred = true;
+            break;
+        }
 
         // If no more rows are left in the task's result set then we need to check
         // if this is last task in a logical group of ones created for processing

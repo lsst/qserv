@@ -89,6 +89,9 @@ string buildResultFilePath(shared_ptr<lsst::qserv::proto::TaskMsg> const& taskMs
             to_string(taskMsg->chunkid()) + "-" + to_string(taskMsg->attemptcount()) + ".proto";
     return path.string();
 }
+
+size_t const MB_SIZE_BYTES = 1024 * 1024;
+
 }  // namespace
 
 namespace lsst::qserv::wbase {
@@ -184,6 +187,7 @@ Task::Task(TaskMsgPtr const& t, int fragmentNumber, std::shared_ptr<UserQueryInf
     _scanInfo.scanRating = t->scanpriority();
     _scanInfo.sortTablesSlowestFirst();
     _scanInteractive = t->scaninteractive();
+    _maxTableSize = t->maxtablesize_mb() * ::MB_SIZE_BYTES;
 
     // Create sets and vectors for 'aquiring' subchunk temporary tables.
     proto::TaskMsg_Fragment const& fragment(t->fragment(_queryFragmentNum));
@@ -473,6 +477,7 @@ nlohmann::json Task::getJson() const {
     js["attemptId"] = _attemptCount;
     js["sequenceId"] = _tSeq;
     js["scanInteractive"] = _scanInteractive;
+    js["maxTableSize"] = _maxTableSize;
     js["cancelled"] = to_string(_cancelled);
     js["state"] = static_cast<uint64_t>(_state.load());
     js["createTime_msec"] = util::TimeUtils::tp2ms(_createTime);
