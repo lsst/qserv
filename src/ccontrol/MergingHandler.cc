@@ -419,23 +419,27 @@ bool MergingHandler::flush(int bLen, BufPtr const& bufPtr, bool& last, int& next
             };
             bool success = false;
             if (!_response->result.fileresource_xroot().empty()) {
-                success = ::readXrootFileResourceAndMerge(
-                        _response->result, [&](char const* buf, uint32_t messageLength) -> bool {
-                            if (_response->result.ParseFromArray(buf, messageLength) &&
-                                _response->result.IsInitialized()) {
-                                return mergeCurrentResult();
-                            }
-                            throw runtime_error("MergingHandler::flush ** message deserialization failed **");
-                        });
+                success = _noErrorsInResult() &&
+                          ::readXrootFileResourceAndMerge(
+                                  _response->result, [&](char const* buf, uint32_t messageLength) -> bool {
+                                      if (_response->result.ParseFromArray(buf, messageLength) &&
+                                          _response->result.IsInitialized()) {
+                                          return mergeCurrentResult();
+                                      }
+                                      throw runtime_error(
+                                              "MergingHandler::flush ** message deserialization failed **");
+                                  });
             } else if (!_response->result.fileresource_http().empty()) {
-                success = ::readHttpFileAndMerge(
-                        _response->result, [&](char const* buf, uint32_t messageLength) -> bool {
-                            if (_response->result.ParseFromArray(buf, messageLength) &&
-                                _response->result.IsInitialized()) {
-                                return mergeCurrentResult();
-                            }
-                            throw runtime_error("MergingHandler::flush ** message deserialization failed **");
-                        });
+                success = _noErrorsInResult() &&
+                          ::readHttpFileAndMerge(
+                                  _response->result, [&](char const* buf, uint32_t messageLength) -> bool {
+                                      if (_response->result.ParseFromArray(buf, messageLength) &&
+                                          _response->result.IsInitialized()) {
+                                          return mergeCurrentResult();
+                                      }
+                                      throw runtime_error(
+                                              "MergingHandler::flush ** message deserialization failed **");
+                                  });
             } else {
                 success = mergeCurrentResult();
             }
@@ -459,6 +463,16 @@ bool MergingHandler::flush(int bLen, BufPtr const& bufPtr, bool& last, int& next
     }
     _setError(ccontrol::MSG_RESULT_ERROR, "Unexpected message (invalid)");
     return false;
+}
+
+bool MergingHandler::_noErrorsInResult() {
+    if (_response->result.has_errorcode() || _response->result.has_errormsg()) {
+        _setError(_response->result.errorcode(), _response->result.errormsg());
+        LOGS(_log, LOG_LVL_ERROR,
+             "Error from worker:" << _response->protoHeader.wname() << " in response data: " << _error);
+        return false;
+    }
+    return true;
 }
 
 void MergingHandler::errorFlush(std::string const& msg, int code) {
