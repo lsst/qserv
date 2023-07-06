@@ -35,6 +35,9 @@
 #include "boost/asio.hpp"
 #include "boost/filesystem.hpp"
 
+// Local headers
+#include "qhttp/Status.h"
+
 namespace lsst::qserv::qhttp {
 
 class Server;
@@ -49,14 +52,14 @@ public:
     //      near the top of Response.cc for specific extensions supported.)
 
     void send(std::string const& content, std::string const& contentType = "text/html");
-    void sendStatus(unsigned int status);
+    void sendStatus(Status status);
     void sendFile(boost::filesystem::path const& path);
 
     //----- Response status code and additional headers may also be set with these members, and will be
     //      included/observed by the send methods above (sendStatus and sendFile will override status set
     //      here, though; sendFile will override any Content-Type header set here.)
 
-    unsigned int status = {200};
+    Status status = STATUS_OK;
     std::unordered_map<std::string, std::string> headers;
 
 private:

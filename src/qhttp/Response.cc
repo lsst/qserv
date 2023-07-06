@@ -43,71 +43,71 @@
 namespace asio = boost::asio;
 namespace ip = boost::asio::ip;
 namespace fs = boost::filesystem;
+using namespace lsst::qserv::qhttp;
 
 namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.qhttp");
 
-std::map<unsigned int, const std::string> responseStringsByCode = {
-        {100, "Continue"},
-        {101, "Switching Protocols"},
-        {102, "Processing"},
-        {200, "OK"},
-        {201, "Created"},
-        {202, "Accepted"},
-        {203, "Non-Authoritative Information"},
-        {204, "No Content"},
-        {205, "Reset Content"},
-        {206, "Partial Content"},
-        {207, "Multi-Status"},
-        {208, "Already Reported"},
-        {226, "IM Used"},
-        {300, "Multiple Choices"},
-        {301, "Moved Permanently"},
-        {302, "Found"},
-        {303, "See Other"},
-        {304, "Not Modified"},
-        {305, "Use Proxy"},
-        {307, "Temporary Redirect"},
-        {308, "Permanent Redirect"},
-        {400, "Bad Request"},
-        {401, "Unauthorized"},
-        {402, "Payment Required"},
-        {403, "Forbidden"},
-        {404, "Not Found"},
-        {405, "Method Not Allowed"},
-        {406, "Not Acceptable"},
-        {407, "Proxy Authentication Required"},
-        {408, "Request Timeout"},
-        {409, "Conflict"},
-        {410, "Gone"},
-        {411, "Length Required"},
-        {412, "Precondition Failed"},
-        {413, "Payload Too Large"},
-        {414, "URI Too Long"},
-        {415, "Unsupported Media Type"},
-        {416, "Range Not Satisfiable"},
-        {417, "Expectation Failed"},
-        {421, "Misdirected Request"},
-        {422, "Unprocessable Entity"},
-        {423, "Locked"},
-        {424, "Failed Dependency"},
-        {426, "Upgrade Required"},
-        {428, "Precondition Required"},
-        {429, "Too Many Requests"},
-        {431, "Request Header Fields Too Large"},
-        {500, "Internal Server Error"},
-        {501, "Not Implemented"},
-        {502, "Bad Gateway"},
-        {503, "Service Unavailable"},
-        {504, "Gateway Timeout"},
-        {505, "HTTP Version Not Supported"},
-        {506, "Variant Also Negotiates"},
-        {507, "Insufficient Storage"},
-        {508, "Loop Detected"},
-        {510, "Not Extended"},
-        {511, "Network Authentication Required"},
-};
+std::map<Status, const std::string> responseStringsByCode = {
+        {STATUS_CONTINUE, "Continue"},
+        {STATUS_SWITCH_PROTOCOL, "Switching Protocols"},
+        {STATUS_PROCESSING, "Processing"},
+        {STATUS_OK, "OK"},
+        {STATUS_CREATED, "Created"},
+        {STATUS_ACCEPTED, "Accepted"},
+        {STATUS_NON_AUTHORATIVE_INFO, "Non-Authoritative Information"},
+        {STATUS_NO_CONTENT, "No Content"},
+        {STATUS_RESET_CONTENT, "Reset Content"},
+        {STATUS_PARTIAL_CONTENT, "Partial Content"},
+        {STATUS_MULTI_STATUS, "Multi-Status"},
+        {STATUS_ALREADY_REPORTED, "Already Reported"},
+        {STATUS_IM_USED, "IM Used"},
+        {STATUS_MULTIPLE_CHOICES, "Multiple Choices"},
+        {STATUS_MOVED_PERM, "Moved Permanently"},
+        {STATUS_FOUND, "Found"},
+        {STATUS_SEE_OTHER, "See Other"},
+        {STATUS_NOT_MODIFIED, "Not Modified"},
+        {STATUS_USE_PROXY, "Use Proxy"},
+        {STATUS_TEMP_REDIRECT, "Temporary Redirect"},
+        {STATUS_PERM_REDIRECT, "Permanent Redirect"},
+        {STATUS_BAD_REQ, "Bad Request"},
+        {STATUS_UNAUTHORIZED, "Unauthorized"},
+        {STATUS_PAYMENT_REQUIRED, "Payment Required"},
+        {STATUS_FORBIDDEN, "Forbidden"},
+        {STATUS_NOT_FOUND, "Not Found"},
+        {STATUS_METHOD_NOT_ALLOWED, "Method Not Allowed"},
+        {STATUS_NON_ACCEPTABLE, "Not Acceptable"},
+        {STATUS_PROXY_AUTH_REQUIRED, "Proxy Authentication Required"},
+        {STATUS_REQ_TIMEOUT, "Request Timeout"},
+        {STATUS_CONFLICT, "Conflict"},
+        {STATUS_GONE, "Gone"},
+        {STATUS_LENGTH_REQUIRED, "Length Required"},
+        {STATUS_PRECOND_FAILED, "Precondition Failed"},
+        {STATUS_PAYLOAD_TOO_LARGE, "Payload Too Large"},
+        {STATUS_URI_TOO_LONG, "URI Too Long"},
+        {STATUS_UNSUPPORTED_MEDIA_TYPE, "Unsupported Media Type"},
+        {STATUS_RANGE_NOT_SATISFIABLE, "Range Not Satisfiable"},
+        {STATUS_FAILED_EXPECT, "Expectation Failed"},
+        {STATUS_MISREDIRECT_REQ, "Misdirected Request"},
+        {STATUS_UNPROCESSIBLE, "Unprocessable Entity"},
+        {STATUS_LOCKED, "Locked"},
+        {STATUS_FAILED_DEP, "Failed Dependency"},
+        {STATUS_UPGRADE_REQUIRED, "Upgrade Required"},
+        {STATUS_PRECOND_REQUIRED, "Precondition Required"},
+        {STATUS_TOO_MANY_REQS, "Too Many Requests"},
+        {STATUS_REQ_HDR_FIELDS_TOO_LARGE, "Request Header Fields Too Large"},
+        {STATUS_INTERNAL_SERVER_ERR, "Internal Server Error"},
+        {STATUS_NOT_IMPL, "Not Implemented"},
+        {STATUS_BAD_GATEWAY, "Bad Gateway"},
+        {STATUS_SERVICE_UNAVAIL, "Service Unavailable"},
+        {STATUS_GSATEWAY_TIMEOUT, "Gateway Timeout"},
+        {STATUS_UNDSUPPORT_VERSION, "HTTP Version Not Supported"},
+        {STATUS_VARIANT_NEGOTIATES, "Variant Also Negotiates"},
+        {STATUS_NO_STORAGE, "Insufficient Storage"},
+        {STATUS_LOOP, "Loop Detected"},
+        {STATUS_NOT_EXTENDED, "Not Extended"},
+        {STATUS_NET_AUTH_REQUIRED, "Network Authentication Required"}};
 
 std::unordered_map<std::string, const std::string> contentTypesByExtension = {
         {".css", "text/css"},   {".gif", "image/gif"},  {".htm", "text/html"},
@@ -125,7 +125,7 @@ Response::Response(std::shared_ptr<Server> const server, std::shared_ptr<ip::tcp
     _transmissionStarted.clear();
 }
 
-void Response::sendStatus(unsigned int status) {
+void Response::sendStatus(Status status) {
     this->status = status;
     std::string statusStr = responseStringsByCode[status];
     std::ostringstream entStr;
@@ -171,7 +171,7 @@ std::string Response::_headers() const {
     headerst << "HTTP/1.1 ";
 
     auto r = responseStringsByCode.find(status);
-    if (r == responseStringsByCode.end()) r = responseStringsByCode.find(500);
+    if (r == responseStringsByCode.end()) r = responseStringsByCode.find(STATUS_INTERNAL_SERVER_ERR);
     headerst << r->first << " " << r->second;
 
     auto ilength = headers.find("Content-Length");

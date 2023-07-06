@@ -40,6 +40,7 @@
 
 #include "lsst/log/Log.h"
 #include "qhttp/Server.h"
+#include "qhttp/Status.h"
 
 namespace asio = boost::asio;
 namespace ip = boost::asio::ip;
@@ -93,7 +94,7 @@ public:
 
     CurlEasy& perform();
 
-    CurlEasy& validate(int responseCode, std::string const& contentType);
+    CurlEasy& validate(lsst::qserv::qhttp::Status responseCode, std::string const& contentType);
 
     CURL* hcurl;
     curl_slist* hlist;
@@ -145,7 +146,7 @@ CurlEasy& CurlEasy::perform() {
     return *this;
 }
 
-CurlEasy& CurlEasy::validate(int responseCode, std::string const& contentType) {
+CurlEasy& CurlEasy::validate(lsst::qserv::qhttp::Status responseCode, std::string const& contentType) {
     long recdResponseCode;
     char* recdContentType = nullptr;
     double recdContentLength;
@@ -345,8 +346,9 @@ struct QhttpFixture {
 BOOST_FIXTURE_TEST_CASE(request_timeout, QhttpFixture) {
     //----- set up server with a handler on "/" and a request timeout of 20ms
 
-    server->addHandler("GET", "/",
-                       [](qhttp::Request::Ptr req, qhttp::Response::Ptr resp) { resp->sendStatus(200); });
+    server->addHandler("GET", "/", [](qhttp::Request::Ptr req, qhttp::Response::Ptr resp) {
+        resp->sendStatus(qhttp::STATUS_OK);
+    });
 
     server->setRequestTimeout(std::chrono::milliseconds(20));
     start();
@@ -388,14 +390,14 @@ BOOST_FIXTURE_TEST_CASE(shutdown, QhttpFixture) {
 
     server->addHandler("GET", "/", [&invocations](qhttp::Request::Ptr req, qhttp::Response::Ptr resp) {
         ++invocations;
-        resp->sendStatus(200);
+        resp->sendStatus(qhttp::STATUS_OK);
     });
 
     //----- start, and verify handler invoked
 
     start();
     CurlEasy curl1;
-    curl1.setup("GET", urlPrefix, "").perform().validate(200, "text/html");
+    curl1.setup("GET", urlPrefix, "").perform().validate(qhttp::STATUS_OK, "text/html");
     BOOST_TEST(invocations == 1);
 
     //----- shutdown, and verify cannot connect.  Check on both existing curl object (already open
@@ -411,9 +413,9 @@ BOOST_FIXTURE_TEST_CASE(shutdown, QhttpFixture) {
     //----- restart, and verify handler in invoked again
 
     server->start();
-    curl1.setup("GET", urlPrefix, "").perform().validate(200, "text/html");
+    curl1.setup("GET", urlPrefix, "").perform().validate(qhttp::STATUS_OK, "text/html");
     BOOST_TEST(invocations == 2);
-    curl2.setup("GET", urlPrefix, "").perform().validate(200, "text/html");
+    curl2.setup("GET", urlPrefix, "").perform().validate(qhttp::STATUS_OK, "text/html");
     BOOST_TEST(invocations == 3);
 }
 
@@ -423,9 +425,9 @@ BOOST_FIXTURE_TEST_CASE(case_insensitive_headers, QhttpFixture) {
     server->addHandler("GET", "/", [](qhttp::Request::Ptr req, qhttp::Response::Ptr resp) {
         if ((req->header["foobar"] == "baz") && (req->header["FOOBAR"] == "baz") &&
             (req->header["FooBar"] == "baz")) {
-            resp->sendStatus(200);
+            resp->sendStatus(qhttp::STATUS_OK);
         } else {
-            resp->sendStatus(500);
+            resp->sendStatus(qhttp::STATUS_INTERNAL_SERVER_ERR);
         }
     });
 
@@ -434,8 +436,8 @@ BOOST_FIXTURE_TEST_CASE(case_insensitive_headers, QhttpFixture) {
 
     //----- tests provide same header in multiple cases
 
-    curl.setup("GET", urlPrefix, "", {"foobar: baz"}).perform().validate(200, "text/html");
-    curl.setup("GET", urlPrefix, "", {"FOOBAR: baz"}).perform().validate(200, "text/html");
+    curl.setup("GET", urlPrefix, "", {"foobar: baz"}).perform().validate(qhttp::STATUS_OK, "text/html");
+    curl.setup("GET", urlPrefix, "", {"FOOBAR: baz"}).perform().validate(qhttp::STATUS_OK, "text/html");
 }
 
 BOOST_FIXTURE_TEST_CASE(percent_decoding, QhttpFixture) {
@@ -458,7 +460,7 @@ BOOST_FIXTURE_TEST_CASE(percent_decoding, QhttpFixture) {
     //----- send in request with percent encodes and check echoed params
 
     curl.setup("GET", urlPrefix + "path%2Dwith%2d%2F-and-%3F?key-with-%3D=value-with-%26&key2=value2", "");
-    curl.perform().validate(200, "text/plain");
+    curl.perform().validate(qhttp::STATUS_OK, "text/plain");
     BOOST_TEST(curl.recdContent == "params[] query[key-with-==value-with-&,key2=value2]");
 }
 
@@ -477,34 +479,38 @@ BOOST_FIXTURE_TEST_CASE(static_content, QhttpFixture) {
 
     //----- test default index.html
 
-    curl.setup("GET", urlPrefix, "").perform().validate(200, "text/html");
+    curl.setup("GET", urlPrefix, "").perform().validate(qhttp::STATUS_OK, "text/html");
     compareWithFile(curl.recdContent, dataDir + "index.html");
 
     //----- test subdirectories and file typing by extension
 
-    curl.setup("GET", urlPrefix + "css/style.css", "").perform().validate(200, "text/css");
+    curl.setup("GET", urlPrefix + "css/style.css", "").perform().validate(qhttp::STATUS_OK, "text/css");
     compareWithFile(curl.recdContent, dataDir + "css/style.css");
-    curl.setup("GET", urlPrefix + "images/lsst.gif", "").perform().validate(200, "image/gif");
+    curl.setup("GET", urlPrefix + "images/lsst.gif", "").perform().validate(qhttp::STATUS_OK, "image/gif");
     compareWithFile(curl.recdContent, dataDir + "images/lsst.gif");
-    curl.setup("GET", urlPrefix + "images/lsst.jpg", "").perform().validate(200, "image/jpeg");
+    curl.setup("GET", urlPrefix + "images/lsst.jpg", "").perform().validate(qhttp::STATUS_OK, "image/jpeg");
     compareWithFile(curl.recdContent, dataDir + "images/lsst.jpg");
-    curl.setup("GET", urlPrefix + "images/lsst.png", "").perform().validate(200, "image/png");
+    curl.setup("GET", urlPrefix + "images/lsst.png", "").perform().validate(qhttp::STATUS_OK, "image/png");
     compareWithFile(curl.recdContent, dataDir + "images/lsst.png");
-    curl.setup("GET", urlPrefix + "js/main.js", "").perform().validate(200, "application/javascript");
+    curl.setup("GET", urlPrefix + "js/main.js", "")
+            .perform()
+            .validate(qhttp::STATUS_OK, "application/javascript");
     compareWithFile(curl.recdContent, dataDir + "js/main.js");
 
     //----- test redirect for directory w/o trailing "/"
 
     char* redirect = nullptr;
-    curl.setup("GET", urlPrefix + "css", "").perform().validate(301, "text/html");
-    BOOST_TEST(curl.recdContent.find("301") != std::string::npos);
+    curl.setup("GET", urlPrefix + "css", "").perform().validate(qhttp::STATUS_MOVED_PERM, "text/html");
+    BOOST_TEST(curl.recdContent.find(std::to_string(qhttp::STATUS_MOVED_PERM)) != std::string::npos);
     BOOST_TEST(curl_easy_getinfo(curl.hcurl, CURLINFO_REDIRECT_URL, &redirect) == CURLE_OK);
     BOOST_TEST(redirect == urlPrefix + "css/");
 
     //----- test non-existent file
 
-    curl.setup("GET", urlPrefix + "doesNotExist", "").perform().validate(404, "text/html");
-    BOOST_TEST(curl.recdContent.find("404") != std::string::npos);
+    curl.setup("GET", urlPrefix + "doesNotExist", "")
+            .perform()
+            .validate(qhttp::STATUS_NOT_FOUND, "text/html");
+    BOOST_TEST(curl.recdContent.find(std::to_string(qhttp::STATUS_NOT_FOUND)) != std::string::npos);
 }
 
 BOOST_FIXTURE_TEST_CASE(relative_url_containment, QhttpFixture) {
@@ -515,19 +521,19 @@ BOOST_FIXTURE_TEST_CASE(relative_url_containment, QhttpFixture) {
 
     //----- test path normalization
 
-    content = asioHttpGet("/css/../css/style.css", 200, "text/css");
+    content = asioHttpGet("/css/../css/style.css", qhttp::STATUS_OK, "text/css");
     compareWithFile(content, dataDir + "css/style.css");
-    content = asioHttpGet("/css/./style.css", 200, "text/css");
+    content = asioHttpGet("/css/./style.css", qhttp::STATUS_OK, "text/css");
     compareWithFile(content, dataDir + "css/style.css");
-    content = asioHttpGet("/././css/.././css/./../css/style.css", 200, "text/css");
+    content = asioHttpGet("/././css/.././css/./../css/style.css", qhttp::STATUS_OK, "text/css");
     compareWithFile(content, dataDir + "css/style.css");
 
     //----- test relative path containment
 
-    content = asioHttpGet("/..", 403, "text/html");
-    BOOST_TEST(content.find("403") != std::string::npos);
-    content = asioHttpGet("/css/../..", 403, "text/html");
-    BOOST_TEST(content.find("403") != std::string::npos);
+    content = asioHttpGet("/..", qhttp::STATUS_FORBIDDEN, "text/html");
+    BOOST_TEST(content.find(std::to_string(qhttp::STATUS_FORBIDDEN)) != std::string::npos);
+    content = asioHttpGet("/css/../..", qhttp::STATUS_FORBIDDEN, "text/html");
+    BOOST_TEST(content.find(std::to_string(qhttp::STATUS_FORBIDDEN)) != std::string::npos);
 }
 
 BOOST_FIXTURE_TEST_CASE(exception_handling, QhttpFixture) {
@@ -542,12 +548,13 @@ BOOST_FIXTURE_TEST_CASE(exception_handling, QhttpFixture) {
     });
 
     server->addHandler("GET", "/throw-after-send", [](qhttp::Request::Ptr req, qhttp::Response::Ptr resp) {
-        resp->sendStatus(200);
+        resp->sendStatus(qhttp::STATUS_OK);
         throw std::runtime_error("test");
     });
 
-    server->addHandler("GET", "/invalid-content-length",
-                       [](qhttp::Request::Ptr req, qhttp::Response::Ptr resp) { resp->sendStatus(200); });
+    server->addHandler(
+            "GET", "/invalid-content-length",
+            [](qhttp::Request::Ptr req, qhttp::Response::Ptr resp) { resp->sendStatus(qhttp::STATUS_OK); });
 
     start();
 
@@ -555,45 +562,46 @@ BOOST_FIXTURE_TEST_CASE(exception_handling, QhttpFixture) {
 
     //----- test EACCESS thrown from static file handler
 
-    curl.setup("GET", urlPrefix + "etc/shadow", "").perform().validate(403, "text/html");
-    BOOST_TEST(curl.recdContent.find("403") != std::string::npos);
+    curl.setup("GET", urlPrefix + "etc/shadow", "").perform().validate(qhttp::STATUS_FORBIDDEN, "text/html");
+    BOOST_TEST(curl.recdContent.find(std::to_string(qhttp::STATUS_FORBIDDEN)) != std::string::npos);
 
     //----- test exceptions thrown from user handler
 
     curl.setup("GET", urlPrefix + (boost::format("throw/%1%") % EACCES).str(), "");
-    curl.perform().validate(403, "text/html");
-    BOOST_TEST(curl.recdContent.find("403") != std::string::npos);
+    curl.perform().validate(qhttp::STATUS_FORBIDDEN, "text/html");
+    BOOST_TEST(curl.recdContent.find(std::to_string(qhttp::STATUS_FORBIDDEN)) != std::string::npos);
 
     curl.setup("GET", urlPrefix + (boost::format("throw/%1%") % ENOENT).str(), "");
-    curl.perform().validate(500, "text/html");
-    BOOST_TEST(curl.recdContent.find("500") != std::string::npos);
+    curl.perform().validate(qhttp::STATUS_INTERNAL_SERVER_ERR, "text/html");
+    BOOST_TEST(curl.recdContent.find(std::to_string(qhttp::STATUS_INTERNAL_SERVER_ERR)) != std::string::npos);
 
     curl.setup("GET", urlPrefix + "throw/make-stoi-throw-invalid-argument", "");
-    curl.perform().validate(500, "text/html");
-    BOOST_TEST(curl.recdContent.find("500") != std::string::npos);
+    curl.perform().validate(qhttp::STATUS_INTERNAL_SERVER_ERR, "text/html");
+    BOOST_TEST(curl.recdContent.find(std::to_string(qhttp::STATUS_INTERNAL_SERVER_ERR)) != std::string::npos);
 
     //----- Test exception thrown in user handler after calling a request send() method.  This would be a user
     //      programming error, but we defend against it anyway.  From the point of view of the HTTP client,
     //      the response provided by the handler before the exception goes through.
 
-    curl.setup("GET", urlPrefix + "throw-after-send", "").perform().validate(200, "text/html");
-    BOOST_TEST(curl.recdContent.find("200") != std::string::npos);
+    curl.setup("GET", urlPrefix + "throw-after-send", "").perform().validate(qhttp::STATUS_OK, "text/html");
+    BOOST_TEST(curl.recdContent.find(std::to_string(qhttp::STATUS_OK)) != std::string::npos);
 
     //----- test resource path with embedded null
 
-    curl.setup("GET", urlPrefix + "etc/%00/", "").perform().validate(400, "text/html");
-    BOOST_TEST(curl.recdContent.find("400") != std::string::npos);
+    curl.setup("GET", urlPrefix + "etc/%00/", "").perform().validate(qhttp::STATUS_BAD_REQ, "text/html");
+    BOOST_TEST(curl.recdContent.find(std::to_string(qhttp::STATUS_BAD_REQ)) != std::string::npos);
 
-    content = asioHttpGet(std::string("/\0/", 3), 400, "text/html");
-    BOOST_TEST(content.find("400") != std::string::npos);
+    content = asioHttpGet(std::string("/\0/", 3), qhttp::STATUS_BAD_REQ, "text/html");
+    BOOST_TEST(content.find(std::to_string(qhttp::STATUS_BAD_REQ)) != std::string::npos);
 
     //----- test request with invalid Content-Length headers
 
-    content = asioHttpGet("/invalid-content-length", 400, "text/html", "not-an-integer");
-    BOOST_TEST(content.find("400") != std::string::npos);
+    content = asioHttpGet("/invalid-content-length", qhttp::STATUS_BAD_REQ, "text/html", "not-an-integer");
+    BOOST_TEST(content.find(std::to_string(qhttp::STATUS_BAD_REQ)) != std::string::npos);
 
-    content = asioHttpGet("/invalid-content-length", 400, "text/html", "18446744073709551616");
-    BOOST_TEST(content.find("400") != std::string::npos);
+    content = asioHttpGet("/invalid-content-length", qhttp::STATUS_BAD_REQ, "text/html",
+                          "18446744073709551616");
+    BOOST_TEST(content.find(std::to_string(qhttp::STATUS_BAD_REQ)) != std::string::npos);
 }
 
 BOOST_FIXTURE_TEST_CASE(handler_dispatch, QhttpFixture) {
@@ -617,38 +625,42 @@ BOOST_FIXTURE_TEST_CASE(handler_dispatch, QhttpFixture) {
 
     //----- Test basic handler dispatch by path and method
 
-    curl.setup("GET", urlPrefix + "api/v1/foos", "").perform().validate(200, "text/plain");
+    curl.setup("GET", urlPrefix + "api/v1/foos", "").perform().validate(qhttp::STATUS_OK, "text/plain");
     BOOST_TEST(curl.recdContent == "Handler1 params[] query[]");
-    curl.setup("POST", urlPrefix + "api/v1/foos", "").perform().validate(200, "text/plain");
+    curl.setup("POST", urlPrefix + "api/v1/foos", "").perform().validate(qhttp::STATUS_OK, "text/plain");
     BOOST_TEST(curl.recdContent == "Handler2 params[] query[]");
-    curl.setup("PUT", urlPrefix + "api/v1/bars", "").perform().validate(200, "text/plain");
+    curl.setup("PUT", urlPrefix + "api/v1/bars", "").perform().validate(qhttp::STATUS_OK, "text/plain");
     BOOST_TEST(curl.recdContent == "Handler3 params[] query[]");
-    curl.setup("PATCH", urlPrefix + "api/v1/bars", "").perform().validate(200, "text/plain");
+    curl.setup("PATCH", urlPrefix + "api/v1/bars", "").perform().validate(qhttp::STATUS_OK, "text/plain");
     BOOST_TEST(curl.recdContent == "Handler4 params[] query[]");
-    curl.setup("DELETE", urlPrefix + "api/v1/bars", "").perform().validate(200, "text/plain");
+    curl.setup("DELETE", urlPrefix + "api/v1/bars", "").perform().validate(qhttp::STATUS_OK, "text/plain");
     BOOST_TEST(curl.recdContent == "Handler5 params[] query[]");
 
     //----- Test methods without installed handlers
 
-    curl.setup("GET", urlPrefix + "api/v1/bars", "").perform().validate(404, "text/html");
-    BOOST_TEST(curl.recdContent.find("404") != std::string::npos);
-    curl.setup("PUT", urlPrefix + "api/v1/foos", "").perform().validate(404, "text/html");
-    BOOST_TEST(curl.recdContent.find("404") != std::string::npos);
+    curl.setup("GET", urlPrefix + "api/v1/bars", "").perform().validate(qhttp::STATUS_NOT_FOUND, "text/html");
+    BOOST_TEST(curl.recdContent.find(std::to_string(qhttp::STATUS_NOT_FOUND)) != std::string::npos);
+    curl.setup("PUT", urlPrefix + "api/v1/foos", "").perform().validate(qhttp::STATUS_NOT_FOUND, "text/html");
+    BOOST_TEST(curl.recdContent.find(std::to_string(qhttp::STATUS_NOT_FOUND)) != std::string::npos);
 
     //----- Test URL parameters
 
-    curl.setup("GET", urlPrefix + "api/v1/foos?bar=baz", "").perform().validate(200, "text/plain");
+    curl.setup("GET", urlPrefix + "api/v1/foos?bar=baz", "")
+            .perform()
+            .validate(qhttp::STATUS_OK, "text/plain");
     BOOST_TEST(curl.recdContent == "Handler1 params[] query[bar=baz]");
     curl.setup("GET", urlPrefix + "api/v1/foos?bar=bop&bar=baz&bip=bap", "")
             .perform()
-            .validate(200, "text/plain");
+            .validate(qhttp::STATUS_OK, "text/plain");
     BOOST_TEST(curl.recdContent == "Handler1 params[] query[bar=baz,bip=bap]");
 
     //----- Test path captures
 
-    curl.setup("GET", urlPrefix + "api/v1/foos/boz", "").perform().validate(200, "text/plain");
+    curl.setup("GET", urlPrefix + "api/v1/foos/boz", "").perform().validate(qhttp::STATUS_OK, "text/plain");
     BOOST_TEST(curl.recdContent == "Handler6 params[foo=boz] query[]");
-    curl.setup("GET", urlPrefix + "api/v1/foos/gleep/glorp", "").perform().validate(200, "text/plain");
+    curl.setup("GET", urlPrefix + "api/v1/foos/gleep/glorp", "")
+            .perform()
+            .validate(qhttp::STATUS_OK, "text/plain");
     BOOST_TEST(curl.recdContent == "Handler7 params[bar=glorp,foo=gleep] query[]");
 }
 
@@ -672,7 +684,7 @@ BOOST_FIXTURE_TEST_CASE(ajax, QhttpFixture) {
 
     HandlerFactory ajaxHandler = [&m, &ajaxHandler](CurlEasy& c, std::string const& r, int& n) {
         return [&m, &c, r, &n, &ajaxHandler]() {
-            c.validate(200, "application/json");
+            c.validate(qhttp::STATUS_OK, "application/json");
             BOOST_TEST(c.recdContent == r);
             c.recdContent.erase();
             ++n;

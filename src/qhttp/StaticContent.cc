@@ -30,6 +30,7 @@
 // Local headers
 #include "lsst/log/Log.h"
 #include "qhttp/LogHelpers.h"
+#include "qhttp/Status.h"
 
 namespace errc = boost::system::errc;
 namespace fs = boost::filesystem;
@@ -63,7 +64,7 @@ void StaticContent::add(Server& server, std::string const& pattern, std::string 
         requestPath /= request->params["0"];
         requestPath = fs::weakly_canonical(requestPath);
         if (!boost::starts_with(requestPath, rootPath)) {
-            response->sendStatus(403);
+            response->sendStatus(STATUS_FORBIDDEN);
             return;
         }
 
@@ -73,15 +74,15 @@ void StaticContent::add(Server& server, std::string const& pattern, std::string 
         if (fs::is_directory(requestPath)) {
             if (!boost::ends_with(request->path, "/")) {
                 response->headers["Location"] = request->path + "/";
-                response->sendStatus(301);
+                response->sendStatus(STATUS_MOVED_PERM);
                 return;
             }
             requestPath /= "index.html";
         }
 
-        // Handle the oft-expected 404 case here explicitly, rather than as an exception.
+        // Handle the oft-expected case here explicitly, rather than as an exception.
         if (!fs::exists(requestPath)) {
-            response->sendStatus(404);
+            response->sendStatus(STATUS_NOT_FOUND);
             return;
         }
 
