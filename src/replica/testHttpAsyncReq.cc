@@ -41,6 +41,7 @@
 #include "qhttp/Request.h"
 #include "qhttp/Response.h"
 #include "qhttp/Server.h"
+#include "qhttp/Status.h"
 #include "replica/AsyncTimer.h"
 #include "replica/HttpAsyncReq.h"
 #include "replica/Mutex.h"
@@ -178,7 +179,7 @@ BOOST_AUTO_TEST_CASE(HttpAsyncReq_simple) {
                 testAbortTimer->cancel();
                 BOOST_CHECK(req->state() == HttpAsyncReq::State::FINISHED);
                 BOOST_CHECK(req->errorMessage().empty());
-                BOOST_CHECK_EQUAL(req->responseCode(), 200);
+                BOOST_CHECK_EQUAL(req->responseCode(), qhttp::STATUS_OK);
                 BOOST_CHECK_EQUAL(req->responseHeader().at("Content-Length"), "0");
                 BOOST_CHECK_EQUAL(req->responseHeader().at("Content-Type"), "text/html");
                 BOOST_CHECK_EQUAL(req->responseBodySize(), 0U);
@@ -234,7 +235,7 @@ BOOST_AUTO_TEST_CASE(HttpAsyncReq_body_limit_error) {
                 testAbortTimer->cancel();
                 BOOST_CHECK(req->state() == HttpAsyncReq::State::BODY_LIMIT_ERROR);
                 BOOST_CHECK(req->errorMessage().empty());
-                BOOST_CHECK_EQUAL(req->responseCode(), 200);
+                BOOST_CHECK_EQUAL(req->responseCode(), qhttp::STATUS_OK);
                 BOOST_CHECK_EQUAL(req->responseHeader().at("Content-Length"),
                                   to_string(serverResponseBodySize));
                 BOOST_CHECK_EQUAL(req->responseHeader().at("Content-Type"), "text/html");
@@ -271,7 +272,7 @@ BOOST_AUTO_TEST_CASE(HttpAsyncReq_expired) {
     httpServer.server()->addHandler("POST", "/delayed_response",
                                     [](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
                                         this_thread::sleep_for(chrono::milliseconds(2500));
-                                        resp->sendStatus(200);
+                                        resp->sendStatus(qhttp::STATUS_OK);
                                     });
     httpServer.start();
 
@@ -321,7 +322,7 @@ BOOST_AUTO_TEST_CASE(HttpAsyncReq_cancelled) {
     httpServer.server()->addHandler("DELETE", "/delayed_response_too",
                                     [](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
                                         this_thread::sleep_for(chrono::milliseconds(2000));
-                                        resp->sendStatus(200);
+                                        resp->sendStatus(qhttp::STATUS_OK);
                                     });
     httpServer.start();
 
@@ -366,9 +367,10 @@ BOOST_AUTO_TEST_CASE(HttpAsyncReq_cancelled_before_started) {
 
     // Set up and start the server
     ::HttpServer httpServer;
-    httpServer.server()->addHandler(
-            "GET", "/quick",
-            [](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) { resp->sendStatus(200); });
+    httpServer.server()->addHandler("GET", "/quick",
+                                    [](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
+                                        resp->sendStatus(qhttp::STATUS_OK);
+                                    });
     httpServer.start();
 
     // Submit a request.
@@ -430,7 +432,7 @@ BOOST_AUTO_TEST_CASE(HttpAsyncReq_delayed_server_start) {
     httpServer.server()->addHandler("GET", "/redirected_from",
                                     [](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
                                         resp->headers["Location"] = "/redirected_to";
-                                        resp->sendStatus(301);
+                                        resp->sendStatus(qhttp::STATUS_MOVED_PERM);
                                     });
 
     // Request object will be created later.
@@ -451,7 +453,7 @@ BOOST_AUTO_TEST_CASE(HttpAsyncReq_delayed_server_start) {
                 testAbortTimer->cancel();
                 switch (req->state()) {
                     case HttpAsyncReq::State::FINISHED:
-                        BOOST_CHECK_EQUAL(req->responseCode(), 301);
+                        BOOST_CHECK_EQUAL(req->responseCode(), qhttp::STATUS_MOVED_PERM);
                         BOOST_CHECK_EQUAL(req->responseHeader().at("Location"), "/redirected_to");
                         break;
                     case HttpAsyncReq::State::CANCELLED:

@@ -40,6 +40,7 @@
 #include "qhttp/AjaxEndpoint.h"
 #include "qhttp/LogHelpers.h"
 #include "qhttp/StaticContent.h"
+#include "qhttp/Status.h"
 
 namespace asio = boost::asio;
 namespace errc = boost::system::errc;
@@ -229,7 +230,7 @@ void Server::_readRequest(std::shared_ptr<ip::tcp::socket> socket) {
 
                 if (!(request->_parseHeader() && request->_parseUri())) {
                     timer->cancel();
-                    response->sendStatus(400);
+                    response->sendStatus(STATUS_BAD_REQ);
                     return;
                 }
 
@@ -249,7 +250,7 @@ void Server::_readRequest(std::shared_ptr<ip::tcp::socket> socket) {
                                                       << "rejecting request with bad Content-Length: "
                                                       << ctrlquote(request->header["Content-Length"]));
                         timer->cancel();
-                        response->sendStatus(400);
+                        response->sendStatus(STATUS_BAD_REQ);
                         return;
                     }
                     bytesToRead -= bytesBuffered;
@@ -275,7 +276,7 @@ void Server::_readRequest(std::shared_ptr<ip::tcp::socket> socket) {
                                      "application/x-www-form-urlencoded") &&
                                     !request->_parseBody()) {
                                     LOGLS_ERROR(_log, logger(self) << logger(socket) << "form decode failed");
-                                    response->sendStatus(400);
+                                    response->sendStatus(STATUS_BAD_REQ);
                                     return;
                                 }
                                 self->_dispatchRequest(request, response);
@@ -305,23 +306,23 @@ void Server::_dispatchRequest(Request::Ptr request, Response::Ptr response) {
                                                    << "exception thrown from handler: " << e.what());
                     switch (e.code().value()) {
                         case errc::permission_denied:
-                            response->sendStatus(403);
+                            response->sendStatus(STATUS_FORBIDDEN);
                             break;
                         default:
-                            response->sendStatus(500);
+                            response->sendStatus(STATUS_INTERNAL_SERVER_ERR);
                             break;
                     }
                 } catch (std::exception const& e) {
                     LOGLS_ERROR(_log, logger(this) << logger(request->_socket)
                                                    << "exception thrown from handler: " << e.what());
-                    response->sendStatus(500);
+                    response->sendStatus(STATUS_INTERNAL_SERVER_ERR);
                 }
                 return;
             }
         }
     }
     LOGLS_DEBUG(_log, logger(this) << logger(request->_socket) << "no handler found");
-    response->sendStatus(404);
+    response->sendStatus(STATUS_NOT_FOUND);
 }
 
 }  // namespace lsst::qserv::qhttp

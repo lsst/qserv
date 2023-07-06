@@ -74,7 +74,7 @@ void getFoo(qhttp::Request::Ptr req, qhttp::Response::Ptr resp)
     string requestedFoo = req->params["foo"];
     auto const& foo = fooMap.find(requestedFoo);
     if (foo == fooMap.end()) {
-        resp->sendStatus(404); // simple status response
+        resp->sendStatus(qhttp::STATUS_NOT_FOUND); // simple status response
     } else {
         resp->send(foo->second.toJSON(), "application/json");
     }
