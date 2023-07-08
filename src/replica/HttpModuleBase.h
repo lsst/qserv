@@ -163,10 +163,15 @@ protected:
      *
      * @param func The name of the calling context (it's used for error reporting).
      * @param minVersion The minimum version number of the valid version range.
+     * @param warning The optional warning to be sent to a client along with the usual
+     *   error if the minimum version requirement won't be satisfied. This mechanism
+     *   allows REST serivices to notify clients on possible problems encountered
+     *   when validating parameters of a request.
      *
      * @throw HttpError if a value of the attribute is not within the expected range.
      */
-    void checkApiVersion(std::string const& func, unsigned int minVersion) const;
+    void checkApiVersion(std::string const& func, unsigned int minVersion,
+                         std::string const& warning = std::string()) const;
 
     /**
      * To implement a subclass-specific request processing.
