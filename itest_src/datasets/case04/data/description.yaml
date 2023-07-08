@@ -1,6 +1,6 @@
 tables:
-    directors:          ['DeepSource']
-    partitioned-tables: ['DeepSource', 'DeepForcedSource']
+    directors:          ['DeepSource', 'DeepSourceDupKeys']
+    partitioned-tables: ['DeepSource', 'DeepSourceDupKeys', 'DeepForcedSource']
 extensions:
     data:   '.csv'
     schema: '.schema'
