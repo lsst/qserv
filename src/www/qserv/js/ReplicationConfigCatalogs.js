@@ -193,7 +193,11 @@ function(CSSLoader,
     <span ${tableSchemaSupportCSS}>${table.name}</span>`;
                         if (table.is_ref_match) {
                             databaseHtml += `
-      <br>ang_sep:&nbsp;<span style="font-weight:bold;">${table.ang_sep}</span>`;
+      <br>ang_sep:&nbsp;<span style="font-weight:bold;">${table.ang_sep}</span>
+      <br>flag:&nbsp;<span style="font-weight:bold;">${table.flag}</span>`;
+                        } else if (table.is_director) {
+                          databaseHtml += `
+    <br>unique_primary_key:&nbsp;<span style="font-weight:bold;">${table.unique_primary_key}</span>`;
                         }
                         databaseHtml += `
   </td>
