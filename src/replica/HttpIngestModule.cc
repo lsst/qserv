@@ -492,7 +492,15 @@ json HttpIngestModule::_getTables() {
 
 json HttpIngestModule::_addTable() {
     debug(__func__);
-    checkApiVersion(__func__, 12);
+
+    // Prevent clients of the older versions from using the parameter introduced
+    // in this version. The forward compatibility of the APi is presently not
+    // supported.
+    if (body().has("unique_primary_key")) {
+        checkApiVersion(__func__, 21, "'unique_primary_key' requires API version 21 or newer.");
+    } else {
+        checkApiVersion(__func__, 12);
+    }
 
     TableInfo table;
     table.database = body().required<string>("database");
@@ -506,6 +514,7 @@ json HttpIngestModule::_addTable() {
     table.longitudeColName = body().optional<string>("longitude_key", "");
     table.flagColName = body().optional<string>("flag", "");
     table.angSep = body().optional<double>("ang_sep", 0);
+    table.uniquePrimaryKey = body().optional<int>("unique_primary_key", 1) != 0;
 
     auto const schema = body().required<json>("schema");
 
@@ -520,6 +529,7 @@ json HttpIngestModule::_addTable() {
     debug(__func__, "longitude_key=" + table.longitudeColName);
     debug(__func__, "flag=" + table.flagColName);
     debug(__func__, "ang_sep=" + to_string(table.angSep));
+    debug(__func__, "unique_primary_key=" + bool2str(table.uniquePrimaryKey));
     debug(__func__, "schema=" + schema.dump());
 
     auto const config = controller()->serviceProvider()->config();
@@ -1326,8 +1336,9 @@ void HttpIngestModule::_createDirectorIndex(DatabaseInfo const& database,
                                      SqlColDef{table.directorTable.primaryKeyColumn(), primaryKeyColumnType},
                                      SqlColDef{lsst::qserv::CHUNK_COLUMN, chunkIdColNameType},
                                      SqlColDef{lsst::qserv::SUB_CHUNK_COLUMN, subChunkIdColNameType}};
+    string const primaryKeyType = table.uniquePrimaryKey ? "UNIQUE KEY" : "KEY";
     list<string> const keys = {
-            g.packTableKey("UNIQUE KEY", "", _partitionByColumn, table.directorTable.primaryKeyColumn()),
+            g.packTableKey(primaryKeyType, "", _partitionByColumn, table.directorTable.primaryKeyColumn()),
             g.packTableKey("KEY", "", table.directorTable.primaryKeyColumn())};
     auto const config = controller()->serviceProvider()->config();
     TransactionId const transactionId = 0;
