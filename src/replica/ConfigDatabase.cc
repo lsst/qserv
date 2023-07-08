@@ -89,6 +89,7 @@ DatabaseInfo DatabaseInfo::parse(json const& obj, map<string, DatabaseFamilyInfo
                                                             tableJson.at("director_key2").get<string>());
                     table.flagColName = tableJson.at("flag").get<string>();
                     table.angSep = tableJson.at("ang_sep").get<double>();
+                    table.uniquePrimaryKey = tableJson.at("unique_primary_key").get<int>() != 0;
                     table.latitudeColName = tableJson.at("latitude_key").get<string>();
                     table.longitudeColName = tableJson.at("longitude_key").get<string>();
                     table.isDirector = table.isPartitioned && table.directorTable.tableName().empty();
