@@ -609,12 +609,12 @@ DatabaseInfo Configuration::addTable(TableInfo const& table_) {
     TableInfo const table = database.validate(_databases, table_, sanitize);
     if (_connectionPtr != nullptr) {
         vector<string> queries;
-        string const query =
-                _g.insert("config_database_table", table.database, table.name, table.isPartitioned,
-                          table.directorTable.databaseTableName(), table.directorTable.primaryKeyColumn(),
-                          table.directorTable2.databaseTableName(), table.directorTable2.primaryKeyColumn(),
-                          table.flagColName, table.angSep, table.latitudeColName, table.longitudeColName,
-                          table.isPublished ? 1 : 0, table.createTime, table.publishTime);
+        string const query = _g.insert(
+                "config_database_table", table.database, table.name, table.isPartitioned,
+                table.directorTable.databaseTableName(), table.directorTable.primaryKeyColumn(),
+                table.directorTable2.databaseTableName(), table.directorTable2.primaryKeyColumn(),
+                table.flagColName, table.angSep, table.uniquePrimaryKey ? 1 : 0, table.latitudeColName,
+                table.longitudeColName, table.isPublished ? 1 : 0, table.createTime, table.publishTime);
         queries.emplace_back(query);
         int colPosition = 0;
         for (auto&& column : table.columns) {

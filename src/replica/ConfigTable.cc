@@ -123,6 +123,7 @@ json TableInfo::toJson() const {
     result["director_key2"] = directorTable2.primaryKeyColumn();
     result["flag"] = flagColName;
     result["ang_sep"] = angSep;
+    result["unique_primary_key"] = uniquePrimaryKey ? 1 : 0;
     result["latitude_key"] = latitudeColName;
     result["longitude_key"] = longitudeColName;
     // The array representation is required to preserve the relative order
@@ -142,7 +143,8 @@ bool operator==(TableInfo const& lhs, TableInfo const& rhs) {
     return (lhs.columns == rhs.columns) && (lhs.name == rhs.name) && (lhs.database == rhs.database) &&
            (lhs.isPartitioned == rhs.isPartitioned) && (lhs.directorTable == rhs.directorTable) &&
            (lhs.directorTable2 == rhs.directorTable2) && (lhs.flagColName == rhs.flagColName) &&
-           (lhs.latitudeColName == rhs.latitudeColName) && (lhs.longitudeColName == rhs.longitudeColName);
+           (lhs.uniquePrimaryKey == rhs.uniquePrimaryKey) && (lhs.latitudeColName == rhs.latitudeColName) &&
+           (lhs.longitudeColName == rhs.longitudeColName);
 }
 
 ostream& operator<<(ostream& os, TableInfo const& info) {

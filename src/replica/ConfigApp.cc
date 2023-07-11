@@ -217,6 +217,14 @@ ConfigApp::ConfigApp(int argc, char* argv[]) : ConfigAppBase(argc, argv, descrip
                     " Note that this option must be provided for the 'RefMatch' tables only."
                     " This parameter is ignored for other tables.",
                     _table.angSep)
+            .flag("non-unique-primary-key",
+                  "The optional flag that is related to the 'director' tables only, and it's ignored"
+                  " for any other table types. The flag affects the construction of the 'director'"
+                  " indexes of such tables during catalog ingest or when the index is built for"
+                  " the published table. Setting a value of this parameter to 'true' would drop"
+                  " the 'UNIQUE' constraint in a definition of the corresponiding key of the 'director'"
+                  " table schema when the index is constructed at the transaction commit time",
+                  _nonUniquePrimaryKey)
             .option("latitude-key",
                     "The name of a column in the 'partitioned' table indicating a column which"
                     " stores latitude (declination) of the object/sources. This parameter is optional.",
@@ -383,6 +391,7 @@ int ConfigApp::_addTable() {
     try {
         _table.directorTable = DirectorTableRef(_directorDatabaseTable, _primaryKeyColumn);
         _table.directorTable2 = DirectorTableRef(_directorDatabaseTable2, _primaryKeyColumn2);
+        _table.uniquePrimaryKey = !_nonUniquePrimaryKey;
         config()->addTable(_table);
     } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR, "ConfigApp::" << __func__ << ": " << ex.what());

@@ -184,6 +184,8 @@ private:
     std::string _directorDatabaseTable2;
     std::string _primaryKeyColumn;
     std::string _primaryKeyColumn2;
+
+    bool _nonUniquePrimaryKey = false;  ///< @see TableInfo::uniquePrimaryKey
 };
 
 }  // namespace lsst::qserv::replica

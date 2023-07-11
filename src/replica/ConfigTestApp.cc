@@ -881,6 +881,7 @@ bool ConfigTestApp::_testTables() {
     table1.isPartitioned = true;
     table1.isDirector = true;
     table1.directorTable = DirectorTableRef("", "objectId");
+    table1.uniquePrimaryKey = false;
     table1.latitudeColName = "decl";
     table1.longitudeColName = "ra";
     table1.columns.emplace_back(table1.directorTable.primaryKeyColumn(), "INT UNSIGNED");

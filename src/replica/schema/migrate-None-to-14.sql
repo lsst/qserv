@@ -73,6 +73,7 @@ CREATE TABLE IF NOT EXISTS `config_database_table` (
   `director_key2`   VARCHAR(255) DEFAULT "" , -- The name of the second referenced 'director' table's FK key (if the current table is RefMatch)
   `flag`            VARCHAR(255) DEFAULT "" , -- The name of a column for flags (if the current table is RefMatch)
   `ang_sep`         DOUBLE       DEFAULT 0 ,  -- The angular separation parameter (if the current table is RefMatch)
+  `unique_primary_key` BOOLEAN NOT NULL DEFAULT TRUE ,
   `latitude_key`    VARCHAR(255) DEFAULT "" , -- The name for latitude (declination) column in this table
   `longitude_key`   VARCHAR(255) DEFAULT "" , -- The name for longitude (right ascension) column in this table
   `is_published`    BOOLEAN DEFAULT TRUE ,

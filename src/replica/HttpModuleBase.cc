@@ -73,7 +73,8 @@ void HttpModuleBase::execute(string const& subModuleName, HttpAuthType const aut
     }
 }
 
-void HttpModuleBase::checkApiVersion(string const& func, unsigned int minVersion) const {
+void HttpModuleBase::checkApiVersion(string const& func, unsigned int minVersion,
+                                     string const& warning) const {
     unsigned int const maxVersion = HttpMetaModule::version;
     unsigned int version = 0;
     string const versionAttrName = "version";
@@ -103,6 +104,7 @@ void HttpModuleBase::checkApiVersion(string const& func, unsigned int minVersion
         throw HttpError(func, "The required parameter " + versionAttrName + " is not a number.", errorEx);
     }
     if (!(minVersion <= version && version <= maxVersion)) {
+        if (!warning.empty()) warn(warning);
         throw HttpError(func,
                         "The requested version " + to_string(version) +
                                 " of the API is not in the range supported by the service.",

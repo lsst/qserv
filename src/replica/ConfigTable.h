@@ -80,7 +80,7 @@ public:
      */
     std::string databaseTableName() const;
 
-    /// @return 'true' if the object was initialized using non-default constructor
+    /// @return 'true' if the object was initialized using the default constructor
     bool empty() const;
 
     /// @return The JSON representation of the object.
@@ -131,9 +131,10 @@ public:
     /**
      * @brief The "director" table (if any).
      *
-     * The dependency is required for all partitioned tables that are
-     * not themselves the "directors". The "director" tables themselves
-     * would have the empty value here.
+     * The dependency is required for all partitioned tables including the "directors".
+     *
+     * For the "director" table the field stores the name of the corresponding "director"
+     * key (the primary key) column. Other attributes of the object would be ignored.
      *
      * For the "RefMatch" table the value points to the first matched "director".
      * Unlike other tables, the matched director table is also allowed to include
@@ -144,7 +145,6 @@ public:
 
     /**
      * @brief The second matched director table for the "RefMatch" tables.
-     *
      * For other tables this parameter should be ignored.
      */
     DirectorTableRef directorTable2;
@@ -154,6 +154,20 @@ public:
 
     /// The angular separation parameter (RefMatch tables only)
     double angSep = 0.0;
+
+    /**
+     * The optional flag that is related to the "director" tables only. The flag
+     * affects the construction of the "director" indexes of such tables.
+     * Setting a value of this parameter to "false" would drop the "UNIQUE"
+     * constraint from a definition of the corresponiding key in the "director"
+     * table schema when the index is constructed at the transaction commit time
+     * during catalog ingest.
+     * @note This behavior can be explicitly overriden in any direction (if needed) when
+     *   the index is build as a post-ingest data management operation.
+     * @see TableInfo::directorTable
+     * @see DirectorTableRef::primaryKeyColumn()
+     */
+    bool uniquePrimaryKey = true;
 
     // Names of special columns of the partitioned tables.
     // The non-empty values are required for the "director" tables only.
@@ -169,7 +183,6 @@ public:
     /**
      * @brief Extract the optional name of a database from the table
      *   specification string.
-     *
      * @param str The table specification that may be optionally
      *   prepended by the name of a database.
      * @return The name of a database or the empty string.
@@ -178,7 +191,6 @@ public:
 
     /**
      * @brief Extract the name of the table from the specification string.
-     *
      * @param str The table specification that may be optionally
      *   prepended by the name of a database.
      * @return The name of a table or the empty string.

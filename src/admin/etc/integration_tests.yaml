@@ -127,6 +127,7 @@ test_cases:
     tables:
       - DeepSource  # director, must come first.
       - DeepForcedSource  # child of DeepSource
+      - DeepSourceDupKeys  # standalone director that has duplicate keys.
       - DeepCoadd
       - Science_Ccd_Exposure
     skip_numbers:
