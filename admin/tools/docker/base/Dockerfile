@@ -140,7 +140,7 @@ RUN pip3 install \
     "click==8.1.3" \
     deprecated \
     docker-compose \
-    documenteer \
+    documenteer[guide] \
     jinja2 \
     "sphinx-rtd-theme>=1.2.0rc3" \
     mypy \
