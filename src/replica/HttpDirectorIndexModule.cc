@@ -59,14 +59,16 @@ json HttpDirectorIndexModule::executeImpl(string const& subModuleName) {
 
 json HttpDirectorIndexModule::_buildDirectorIndex() {
     debug(__func__);
-    checkApiVersion(__func__, 21);
+    checkApiVersion(__func__, 22);
 
     auto const databaseServices = controller()->serviceProvider()->databaseServices();
     auto const config = controller()->serviceProvider()->config();
 
     string const databaseName = body().required<string>("database");
     string const directorTableName = body().required<string>("director_table");
-    bool const allowForPublished = body().optional<int>("allow_for_published", 0) != 0;
+    if (body().has("allow_for_published")) {
+        warn("Option 'allow_for_published' is obsolete as of the version 22 of the API.");
+    }
     bool const rebuild = body().optional<int>("rebuild", 0) != 0;
     if (body().has("local")) {
         warn("Option 'local' is obsolete as of the version 20 of the API.");
@@ -74,23 +76,20 @@ json HttpDirectorIndexModule::_buildDirectorIndex() {
 
     debug(__func__, "database=" + databaseName);
     debug(__func__, "director_table=" + directorTableName);
-    debug(__func__, "allow_for_published=" + bool2str(allowForPublished));
     debug(__func__, "rebuild=" + bool2str(rebuild));
 
     auto const database = config->databaseInfo(databaseName);
-    if (database.isPublished and !allowForPublished) {
-        string const msg = "database '" + database.name +
-                           "' is already published. Use 'allow_for_published' option to "
-                           "override the restriction.";
-        throw HttpError(__func__, msg);
-    }
     auto const table = database.findTable(directorTableName);
     if (!table.isDirector) {
         string const msg = "table '" + table.name + "' is not configured as a director table in database '" +
                            database.name + "'";
         throw HttpError(__func__, msg);
     }
-
+    if (!table.isPublished) {
+        string const msg = " the director table '" + table.name + "' of the database '" + database.name +
+                           "' is not published.";
+        throw HttpError(__func__, msg);
+    }
     // Look for the optional parameter defining the uniqueness of the index's keys
     // assuming the current configuration of the table as the default.
     bool const uniquePrimaryKey =
