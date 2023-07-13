@@ -139,7 +139,7 @@ RUN echo /usr/local/lib > /etc/ld.so.conf.d/local.conf \
 RUN pip3 install \
     backoff \
     backoff-stubs \
-    click \
+    "click==8.1.3" \
     deprecated \
     docker-compose \
     documenteer \
@@ -253,7 +253,7 @@ RUN echo /usr/local/lib > /etc/ld.so.conf.d/local.conf \
 
 RUN pip3 install \
     backoff \
-    click \
+    "click==8.1.3" \
     deprecated \
     jinja2 \
     "mysql-connector-python==8.0.31" \
