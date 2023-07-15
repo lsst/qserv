@@ -520,4 +520,4 @@ ENGINE = InnoDB
 COMMENT = 'Metadata about database as a whole, key-value pairs' ;
 
 -- Add record for schema version, migration script expects this record to exist
-INSERT INTO `QMetadata` (`metakey`, `value`) VALUES ('version', '13');
+INSERT INTO `QMetadata` (`metakey`, `value`) VALUES ('version', '14');
