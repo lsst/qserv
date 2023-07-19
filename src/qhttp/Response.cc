@@ -175,7 +175,7 @@ std::string Response::_headers() const {
     headerst << r->first << " " << r->second;
 
     auto ilength = headers.find("Content-Length");
-    std::size_t length = (ilength == headers.end()) ? 0 : std::stoi(ilength->second);
+    std::size_t length = (ilength == headers.end()) ? 0 : std::stoull(ilength->second);
     LOGLS_INFO(_log, logger(_server) << logger(_socket) << headerst.str() << " + " << length << " bytes");
 
     headerst << "\r\n";
