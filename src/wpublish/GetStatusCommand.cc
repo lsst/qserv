@@ -26,6 +26,7 @@
 
 // Qserv headers
 #include "proto/worker.pb.h"
+#include "wbase/FileChannelShared.h"
 #include "wbase/MsgProcessor.h"
 #include "wbase/SendChannel.h"
 #include "wpublish/ResourceMonitor.h"
@@ -58,6 +59,7 @@ void GetStatusCommand::run() {
     nlohmann::json result;
     result["processor"] = _processor->statusToJson(_taskSelector);
     result["resources"] = _resourceMonitor->statusToJson();
+    result["filesystem"] = wbase::FileChannelShared::statusToJson();
 
     proto::WorkerCommandGetStatusR reply;
     reply.set_info(result.dump());

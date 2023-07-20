@@ -72,8 +72,7 @@ public:
     /// Flush the retrieved buffer where bLen bytes were set. If last==true,
     /// then no more buffer() and flush() calls should occur.
     /// @return true if successful (no error)
-    bool flush(int bLen, BufPtr const& bufPtr, bool& last, bool& largeResult, int& nextBufSize,
-               int& resultRows) override;
+    bool flush(int bLen, BufPtr const& bufPtr, bool& last, int& nextBufSize, int& resultRows) override;
 
     /// Signal an unrecoverable error condition. No further calls are expected.
     void errorFlush(std::string const& msg, int code) override;

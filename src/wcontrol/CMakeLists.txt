@@ -15,4 +15,5 @@ target_include_directories(wcontrol PRIVATE
 target_link_libraries(wcontrol PUBLIC
     log
     XrdSsiLib
+    qhttp
 )

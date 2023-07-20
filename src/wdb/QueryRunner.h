@@ -40,22 +40,12 @@
 // Qserv headers
 #include "mysql/MySqlConfig.h"
 #include "mysql/MySqlConnection.h"
+#include "qmeta/types.h"
 #include "util/MultiError.h"
 #include "wbase/Task.h"
-#include "wbase/TransmitData.h"
-#include "wcontrol/SqlConnMgr.h"
 #include "wdb/ChunkResource.h"
 
 namespace lsst::qserv {
-
-namespace proto {
-class ProtoHeader;
-class Result;
-}  // namespace proto
-
-namespace util {
-class TimerHistogram;
-}
 
 namespace xrdsvc {
 class StreamBuffer;
@@ -122,8 +112,6 @@ private:
     std::unique_ptr<mysql::MySqlConnection> _mysqlConn;
 
     util::MultiError _multiError;  // Error log
-
-    bool _largeResult = false;  //< True for all transmits after the first transmit.
 
     /// Used to limit the number of open MySQL connections.
     std::shared_ptr<wcontrol::SqlConnMgr> const _sqlConnMgr;

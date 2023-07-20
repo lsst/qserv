@@ -4,13 +4,17 @@ all.role server
 cms.vnid {{ vnid_config }}
 
 # Use XrdSsi plugin
-xrootd.fslib -2 libXrdSsi.so
+xrootd.fslib -2 libXrdSsi.so default
 ssi.svclib libxrdsvc.so
 oss.statlib -2 -arevents libXrdSsi.so
 
 # Force disable asyncronous access
 # because of XrdSsi
 xrootd.async off
+
+# Access to the files at the file system as specified by the "default" option
+# in the statement "xrootd.fslib" above.
+ssi.fspath {{ results_dirname }}
 
 ssi.trace all debug
 
@@ -25,6 +29,7 @@ all.adminpath /var/run/xrootd
 # "nolock" directive prevents write-locking and is important for qserv
 # qserv is hardcoded for these paths.
 all.export / nolock
+all.export {{ results_dirname }}
 
 # Specify that no significant free space is required on servers
 # Indeed current configuration doesn't expect to be dynamically

@@ -80,7 +80,7 @@ private:
     static util::Mutex _globalMtx;  ///< Protects `_globalWorkerStats`
 
     std::atomic<int> _queueCount{
-            0};  ///< Number of buffers on queues (there are many queues, one per SendChannelShared)
+            0};  ///< Number of buffers on queues (there are many queues, one per ChannelShared)
     std::atomic<int> _xrootdCount{0};                   ///< Number of buffers held by xrootd.
     util::Histogram::Ptr _histConcurrentQueuedBuffers;  ///< How many buffers are queued at a given time
     util::Histogram::Ptr _histXrootdOwnedBuffers;  ///< How many of these buffers xrootd has at a given time

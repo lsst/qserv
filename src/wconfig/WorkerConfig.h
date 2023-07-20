@@ -26,6 +26,8 @@
 
 // System headers
 #include <cstdint>
+#include <memory>
+#include <mutex>
 #include <string>
 
 // Qserv headers
@@ -35,200 +37,183 @@
 namespace lsst::qserv::wconfig {
 
 /**
- *  Provide all configuration parameters for a Qserv worker instance
+ * Provide all configuration parameters for a Qserv worker instance.
+ * Parse an INI configuration file, identify required parameters and ignore
+ * others, analyze and store them inside private member variables, use default
+ * values for missing parameters, provide accessor for each of these variable.
+ * This class hides configuration complexity
+ * from other part of the code. All private member variables are related to INI
+ * parameters and are immutables.
  *
- *  Parse an INI configuration file, identify required parameters and ignore
- *  others, analyze and store them inside private member variables, use default
- *  values for missing parameters, provide accessor for each of these variable.
- *  This class hide configuration complexity
- *  from other part of the code. All private member variables are related to INI
- *  parameters and are immutables.
- *
+ * @note the class has a thread-safe API.
  */
 class WorkerConfig {
 public:
     /**
-     *  Create WorkerConfig instance from a INI configuration file
-     *
-     *  @param configFileName: path to worker INI configuration file
+     * The enumeration type representing available methods for pulling query results
+     * from workers.
+     * @note The default method, if none was found in the configuration, would be SSI.
      */
-    explicit WorkerConfig(std::string configFileName) : WorkerConfig(util::ConfigStore(configFileName)) {}
+    enum class ResultDeliveryProtocol : int {
+        SSI = 0,    ///< Pull data from the SSI stream (default)
+        XROOT = 1,  ///< Use XROOTD file protocol
+        HTTP = 2    ///< Use HTTP protocol
+    };
+
+    /// @return the string representation of the protocol
+    /// @throw std::invalid_argument if the protocol is unknown
+    static std::string protocol2str(ResultDeliveryProtocol const& p);
+
+    /**
+     * Create an instance of WorkerConfig and if a configuration file is provided then
+     * load parameters from the file. Otherwise create an object with default values
+     * of the parameters.
+     * @note One has to call this method at least once before trying to obtain
+     *   a pointer of the instance by calling 'instnce()'. The method 'create()'
+     *   can be called many times. A new instance would be created each time and
+     *   stored witin the class.
+     * @param configFileName - (optional) path to worker INI configuration file
+     * @return the shared pointer to the configuration object
+     */
+    static std::shared_ptr<WorkerConfig> create(std::string const& configFileName = std::string());
+
+    /**
+     * Get a pointer to an instance that was created by a last call to
+     * the method 'create'.
+     * @return the shared pointer to the configuration object
+     * @throws std::logic_error when attempting to call the bethod before creating an instance.
+     */
+    static std::shared_ptr<WorkerConfig> instance();
 
     WorkerConfig(WorkerConfig const&) = delete;
     WorkerConfig& operator=(WorkerConfig const&) = delete;
 
-    /* Get thread pool size for shared scans
-     *
-     * @return thread pool size for shared scans
-     */
+    /// @return thread pool size for shared scans
     unsigned int getThreadPoolSize() const { return _threadPoolSize; }
 
-    /* Get the maximum number of threads the pool can have in
-     * existence at any given time.
-     */
+    /// @return maximum number of threads the pool can have in existence at any given time
     unsigned int getMaxPoolThreads() const { return _maxPoolThreads; }
 
-    /* Get required number of completed tasks for table in a chunk for the average to be valid.
-     *
-     * @return required tasks completed before average time is valid.
-     */
+    /// @return required number of tasks for table in a chunk for the average to be valid
     unsigned int getRequiredTasksCompleted() const { return _requiredTasksCompleted; }
 
-    /* Get the number of tasks that can be booted from a single user query.
-     *
-     * @return Maximum number of tasks that can be booted from a single user query.
-     */
+    /// @return maximum number of tasks that can be booted from a single user query
     unsigned int getMaxTasksBootedPerUserQuery() const { return _maxTasksBootedPerUserQuery; }
 
-    /* Get maximum time in minutes for all tasks in a user query to finish for the fast scan.
-     *
-     * @return Maximum minutes for a user query to complete on the fast scan.
-     */
+    /// @return maximum time for a user query to complete  all tasks on the fast scan
     unsigned int getScanMaxMinutesFast() const { return _scanMaxMinutesFast; }
 
-    /* Get maximum time in minutes for all tasks in a user query to finish for the medium scan.
-     *
-     * @return Maximum minutes for a user query to complete on the medium scan.
-     */
+    /// @return maximum time for a user query to complete all tasks on the medium scan
     unsigned int getScanMaxMinutesMed() const { return _scanMaxMinutesMed; }
 
-    /* Get maximum time in minutes for all tasks in a user query to finish for the slow scan.
-     *
-     * @return Maximum minutes for a user query to complete on the slow scan.
-     */
+    /// @return maximum time for a user query to complete all tasks on the slow scan
     unsigned int getScanMaxMinutesSlow() const { return _scanMaxMinutesSlow; }
 
-    /* Get maximum time in minutes for all tasks in a user query to finish for the snail scan.
-     *
-     * @return Maximum minutes for a user query to complete on the snail scan.
-     */
+    /// @return maximum time for a user query to complete all tasks on the snail scan
     unsigned int getScanMaxMinutesSnail() const { return _scanMaxMinutesSnail; }
 
-    /* Get maximum number of task accepted in a group queue
-     *
-     * @return maximum number of task accepted in a group queue
-     */
+    /// @return maximum number of task accepted in a group queue
     unsigned int getMaxGroupSize() const { return _maxGroupSize; }
 
-    /* Get max thread reserve for fast shared scan
-     *
-     * @return max thread reserve for fast shared scan
-     */
+    /// @return max thread reserve for fast shared scan
     unsigned int getMaxReserveFast() const { return _maxReserveFast; }
 
-    /* Get max thread reserve for medium shared scan
-     *
-     * @return max thread reserve for medium shared scan
-     */
+    /// @return max thread reserve for medium shared scan
     unsigned int getMaxReserveMed() const { return _maxReserveMed; }
 
-    /* Get max thread reserve for slow shared scan
-     *
-     * @return max thread reserve for slow shared scan
-     */
+    /// @return max thread reserve for slow shared scan
     unsigned int getMaxReserveSlow() const { return _maxReserveSlow; }
 
-    /* Get max thread reserve for snail shared scan
-     *
-     * @return max thread reserve for snail shared scan
-     */
+    /// @return max thread reserve for snail shared scan
     unsigned int getMaxReserveSnail() const { return _maxReserveSnail; }
 
-    /* Get selected memory management implementation
-     *
-     * @return class name implementing selected memory management
-     */
+    /// @return class name implementing selected memory management
     std::string const& getMemManClass() const { return _memManClass; }
 
-    /* Get path to directory where the Memory Manager database resides
-     *
-     * @return path to directory where the Memory Manager database resides
-     */
+    /// @return path to directory where the Memory Manager database resides
     std::string const& getMemManLocation() const { return _memManLocation; }
 
-    /* Get maximum amount of memory that can be used by Memory Manager
-     *
-     * @return maximum amount of memory that can be used by Memory Manager
-     */
+    /// @return maximum amount of memory that can be used by Memory Manager
     uint64_t getMemManSizeMb() const { return _memManSizeMb; }
 
-    /* Get MySQL configuration for worker MySQL instance
-     *
-     * @return a structure containing MySQL parameters
-     */
+    /// @return a configuration for worker MySQL instance.
     mysql::MySqlConfig const& getMySqlConfig() const { return _mySqlConfig; }
 
-    /* Get fast shared scan priority
-     *
-     * @return fast shared scan priority
-     */
+    /// @return fast shared scan priority
     unsigned int getPriorityFast() const { return _priorityFast; }
 
-    /* Get medium shared scan priority
-     *
-     * @return medium shared scan priority
-     */
+    /// @return medium shared scan priority
     unsigned int getPriorityMed() const { return _priorityMed; }
 
-    /* Get slow shared scan priority
-     *
-     * @return slow shared scan priority
-     */
+    /// @return slow shared scan priority
     unsigned int getPrioritySlow() const { return _prioritySlow; }
 
-    /* Get snail shared scan priority
-     *
-     * @return slow shared scan priority
-     */
+    /// @return slow shared scan priority
     unsigned int getPrioritySnail() const { return _prioritySnail; }
 
-    /* Get maximum concurrent chunks for fast shared scan.
-     *
-     * @return fast shared scan maxActiveChunks.
-     */
+    /// @return maximum concurrent chunks for fast shared scan
     unsigned int getMaxActiveChunksFast() const { return _maxActiveChunksFast; }
 
-    /* Get maximum concurrent chunks for medium shared scan.
-     *
-     * @return medium shared scan maxActiveChunks.
-     */
+    /// @return maximum concurrent chunks for medium shared scan
     unsigned int getMaxActiveChunksMed() const { return _maxActiveChunksMed; }
 
-    /* Get maximum concurrent chunks for slow shared scan.
-     *
-     * @return slow shared scan maxActiveChunks.
-     */
+    /// @return maximum concurrent chunks for slow shared scan
     unsigned int getMaxActiveChunksSlow() const { return _maxActiveChunksSlow; }
 
-    /* Get maximum concurrent chunks for snail shared scan.
-     *
-     * @return snail shared scan maxActiveChunks.
-     */
+    /// @return maximum concurrent chunks for snail shared scan
     unsigned int getMaxActiveChunksSnail() const { return _maxActiveChunksSnail; }
 
-    /// @return the maximum number of SQL connections for tasks.
+    /// @return the maximum number of SQL connections for tasks
     unsigned int getMaxSqlConnections() const { return _maxSqlConnections; }
-    /// @return the number of SQL connections reserved for interactive tasks.
+
+    /// @return the number of SQL connections reserved for interactive tasks
     unsigned int getReservedInteractiveSqlConnections() const { return _ReservedInteractiveSqlConnections; }
 
-    /// @return the maximum number of gigabytes that can be used by StreamBuffers.
+    /// @return the maximum number of gigabytes that can be used by StreamBuffers
     unsigned int getBufferMaxTotalGB() const { return _bufferMaxTotalGB; }
 
-    /// @return the maximum number of concurrent transmits to a czar.
+    /// @return the maximum number of concurrent transmits to a czar
     unsigned int getMaxTransmits() const { return _maxTransmits; }
 
     int getMaxPerQid() const { return _maxPerQid; }
 
-    /** Overload output operator for current class
-     *
-     * @param out
-     * @param workerConfig
-     * @return an output stream
+    /// @return the name of a folder where query results will be stored
+    std::string const& resultsDirname() const { return _resultsDirname; }
+
+    /// @return the port number of the worker XROOTD service for serving result files
+    uint16_t resultsXrootdPort() const { return _resultsXrootdPort; }
+
+    /// @return the number of the BOOST ASIO threads for servicing HTGTP requests
+    size_t resultsNumHttpThreads() const { return _resultsNumHttpThreads; }
+
+    /// @return the result delivery method
+    ResultDeliveryProtocol resultDeliveryProtocol() const { return _resultDeliveryProtocol; }
+
+    /// @return 'true' if result files (if any) left after the previous run of the worker
+    /// had to be deleted from the corresponding folder.
+    bool resultsCleanUpOnStart() const { return _resultsCleanUpOnStart; }
+
+    /**
+     * Dump the configuration object onto the output stream.
+     * @param out - the output stream object
+     * @param workerConfig - worker configuration object
+     * @return the output stream object
      */
     friend std::ostream& operator<<(std::ostream& out, WorkerConfig const& workerConfig);
 
 private:
+    /// Initialize parameters with default values
+    WorkerConfig();
+
+    /// Initialize parameters from the configuration store
+    /// @param configStore
     WorkerConfig(util::ConfigStore const& configStore);
+
+    /// This mutex protects the static member _instance.
+    static std::mutex _mtxOnInstance;
+
+    /// The configuratoon object created by the last call to the method 'test'.
+    static std::shared_ptr<WorkerConfig> _instance;
 
     mysql::MySqlConfig _mySqlConfig;
 
@@ -267,6 +252,11 @@ private:
     unsigned int const _bufferMaxTotalGB;
     unsigned int const _maxTransmits;
     int const _maxPerQid;
+    std::string const _resultsDirname;
+    uint16_t const _resultsXrootdPort;
+    size_t const _resultsNumHttpThreads;
+    ResultDeliveryProtocol const _resultDeliveryProtocol;
+    bool const _resultsCleanUpOnStart;
 };
 
 }  // namespace lsst::qserv::wconfig

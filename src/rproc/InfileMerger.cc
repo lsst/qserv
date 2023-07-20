@@ -206,15 +206,13 @@ bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> const& response)
     }
     // TODO: Check session id (once session id mgmt is implemented)
     if (not(response->result.has_jobid() && response->result.has_rowcount() &&
-            response->result.has_transmitsize() && response->result.has_attemptcount() &&
-            response->result.has_rowschema())) {
+            response->result.has_transmitsize() && response->result.has_attemptcount())) {
         LOGS(_log, LOG_LVL_ERROR,
              "merge response missing required field"
                      << " jobid:" << response->result.has_jobid()
                      << " rowcount:" << response->result.has_rowcount()
                      << " transmitsize:" << response->result.has_transmitsize()
-                     << " attemptcount:" << response->result.has_attemptcount()
-                     << " rowschema:" << response->result.has_rowschema());
+                     << " attemptcount:" << response->result.has_attemptcount());
         return false;
     }
     int const jobId = response->result.jobid();
@@ -635,75 +633,6 @@ bool InfileMerger::_sqlConnect(sql::SqlErrorObject& errObj) {
         LOGS(_log, LOG_LVL_TRACE, "InfileMerger " << (void*)this << " connected to db");
     }
     return true;
-}
-
-size_t InfileMerger::_getResultTableSizeMB() {
-    std::string tableSizeSql = std::string("SELECT table_name, ") +
-                               "round(((data_length + index_length) / 1048576), 2) as 'MB' " +
-                               "FROM information_schema.TABLES " + "WHERE table_schema = '" +
-                               _config.mySqlConfig.dbName + "' AND table_name = '" + _mergeTable + "'";
-    LOGS(_log, LOG_LVL_TRACE, "Checking ResultTableSize " << tableSizeSql);
-    std::lock_guard<std::mutex> m(_sqlMutex);
-    sql::SqlErrorObject errObj;
-    sql::SqlResults results;
-    if (not _sqlConnect(errObj)) {
-        return 0;
-    }
-    if (not _sqlConn->runQuery(tableSizeSql, results, errObj)) {
-        _error = util::Error(errObj.errNo(), "error getting size sql: " + errObj.printErrMsg(),
-                             util::ErrorCode::MYSQLEXEC);
-        LOGS(_log, LOG_LVL_ERROR, "result table size error: " << _error.getMsg() << tableSizeSql);
-        return 0;
-    }
-
-    // There should only be 1 row
-    auto iter = results.begin();
-    if (iter == results.end()) {
-        LOGS(_log, LOG_LVL_ERROR, "result table size no rows returned " << _mergeTable);
-        return 0;
-    }
-    auto& row = *iter;
-    std::string tbName = row[0].first;
-    std::string tbSize = row[1].first;
-    size_t sz = std::stoul(tbSize);
-    LOGS(_log, LOG_LVL_TRACE,
-         "Checking ResultTableSize " << tableSizeSql << " ResultTableSizeMB tbl=" << tbName
-                                     << " tbSize=" << tbSize);
-    return sz;
-}
-
-/// Read a ProtoHeader message from a buffer and return the number of bytes
-/// consumed.
-int InfileMerger::_readHeader(proto::ProtoHeader& header, char const* buffer, int length) {
-    if (not proto::ProtoImporter<proto::ProtoHeader>::setMsgFrom(header, buffer, length)) {
-        // This is only a real error if there are no more bytes.
-        _error = InfileMergerError(util::ErrorCode::HEADER_IMPORT,
-                                   _getQueryIdStr() + " Error decoding protobuf header");
-        return 0;
-    }
-    return length;
-}
-
-/// Read a Result message and return the number of bytes consumed.
-int InfileMerger::_readResult(proto::Result& result, char const* buffer, int length) {
-    if (not proto::ProtoImporter<proto::Result>::setMsgFrom(result, buffer, length)) {
-        _error = InfileMergerError(util::ErrorCode::RESULT_IMPORT,
-                                   _getQueryIdStr() + "Error decoding result message");
-        throw _error;
-    }
-    // result.PrintDebugString();
-    return length;
-}
-
-/// Verify that the sessionId is the same as what we were expecting.
-/// This is an additional safety check to protect from importing a message from
-/// another session.
-/// TODO: this is incomplete.
-bool InfileMerger::_verifySession(int sessionId) {
-    if (false) {
-        _error = InfileMergerError(util::ErrorCode::RESULT_IMPORT, "Session id mismatch");
-    }
-    return true;  // TODO: for better message integrity
 }
 
 /// Choose the appropriate target name, depending on whether post-processing is

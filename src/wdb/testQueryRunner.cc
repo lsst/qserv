@@ -28,11 +28,13 @@
  */
 
 // Qserv headers
+#include "mysql/MySqlConfig.h"
 #include "proto/worker.pb.h"
 #include "proto/ProtoImporter.h"
 #include "util/StringHash.h"
 #include "wbase/SendChannelShared.h"
 #include "wbase/Task.h"
+#include "wconfig/WorkerConfig.h"
 #include "wcontrol/SqlConnMgr.h"
 #include "wcontrol/TransmitMgr.h"
 #include "wdb/ChunkResource.h"
@@ -61,6 +63,7 @@ using lsst::qserv::proto::TaskMsg_Subchunk;
 using lsst::qserv::wbase::SendChannel;
 using lsst::qserv::wbase::SendChannelShared;
 using lsst::qserv::wbase::Task;
+using lsst::qserv::wconfig::WorkerConfig;
 using lsst::qserv::wcontrol::SqlConnMgr;
 using lsst::qserv::wcontrol::TransmitMgr;
 using lsst::qserv::wdb::ChunkResource;
@@ -102,28 +105,30 @@ struct Fixture {
 BOOST_FIXTURE_TEST_SUITE(Basic, Fixture)
 
 BOOST_AUTO_TEST_CASE(Simple) {
+    WorkerConfig::create();
     shared_ptr<TaskMsg> msg(newTaskMsg());
     shared_ptr<SendChannel> sendC(SendChannel::newNopChannel());
     auto sc = SendChannelShared::create(sendC, locTransmitMgr, 1);
-    auto taskVect = Task::createTasks(msg, sc);
-    Task::Ptr task = taskVect[0];
     FakeBackend::Ptr backend = make_shared<FakeBackend>();
     shared_ptr<ChunkResourceMgr> crm = ChunkResourceMgr::newMgr(backend);
     SqlConnMgr::Ptr sqlConnMgr = make_shared<SqlConnMgr>(20, 15);
+    auto taskVect = Task::createTasks(msg, sc, crm, newMySqlConfig(), sqlConnMgr);
+    Task::Ptr task = taskVect[0];
     QueryRunner::Ptr a(QueryRunner::newQueryRunner(task, crm, newMySqlConfig(), sqlConnMgr));
     BOOST_CHECK(a->runQuery());
 }
 
 BOOST_AUTO_TEST_CASE(Output) {
+    WorkerConfig::create();
     string out;
     shared_ptr<TaskMsg> msg(newTaskMsg());
     shared_ptr<SendChannel> sendC(SendChannel::newStringChannel(out));
     auto sc = SendChannelShared::create(sendC, locTransmitMgr, 1);
-    auto taskVect = Task::createTasks(msg, sc);
-    Task::Ptr task = taskVect[0];
     FakeBackend::Ptr backend = make_shared<FakeBackend>();
     shared_ptr<ChunkResourceMgr> crm = ChunkResourceMgr::newMgr(backend);
     SqlConnMgr::Ptr sqlConnMgr = make_shared<SqlConnMgr>(20, 15);
+    auto taskVect = Task::createTasks(msg, sc, crm, newMySqlConfig(), sqlConnMgr);
+    Task::Ptr task = taskVect[0];
     QueryRunner::Ptr a(QueryRunner::newQueryRunner(task, crm, newMySqlConfig(), sqlConnMgr));
     BOOST_CHECK(a->runQuery());
 

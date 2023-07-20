@@ -412,6 +412,7 @@ def enter_worker_xrootd(
     db_uri: str,
     db_admin_uri: str,
     vnid_config: str,
+    results_dirname: str,
     mysql_monitor_password: str,
     db_qserv_user: str,
     cmsd_worker_cfg_file: str,
@@ -436,6 +437,8 @@ def enter_worker_xrootd(
     vnid_config : str
         The config parameters used by the qserv cmsd to get the vnid
         from the specified source (static string, a file or worker database).
+    results_dirname : str
+        A path to a folder where query results will be stored.
     mysql_monitor_password : str
         The password used by applications that monitor via the worker database.
     db_qserv_user : str

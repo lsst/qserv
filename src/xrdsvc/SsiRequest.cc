@@ -26,6 +26,7 @@
 #include <cctype>
 #include <cstddef>
 #include <iostream>
+#include <stdexcept>
 #include <string>
 
 // Third-party headers
@@ -43,9 +44,12 @@
 #include "util/InstanceCount.h"
 #include "util/HoldTrack.h"
 #include "util/Timer.h"
-#include "wbase/MsgProcessor.h"
+#include "wbase/FileChannelShared.h"
 #include "wbase/SendChannelShared.h"
 #include "wbase/TaskState.h"
+#include "wbase/Task.h"
+#include "wconfig/WorkerConfig.h"
+#include "wcontrol/Foreman.h"
 #include "wpublish/AddChunkGroupCommand.h"
 #include "wpublish/ChunkListCommand.h"
 #include "wpublish/GetChunkListCommand.h"
@@ -82,7 +86,24 @@ wbase::TaskSelector proto2taskSelector(proto::WorkerCommandGetStatusM const& mes
 
 namespace lsst::qserv::xrdsvc {
 
-std::shared_ptr<wpublish::ResourceMonitor> SsiRequest::_resourceMonitor(new wpublish::ResourceMonitor());
+std::shared_ptr<wpublish::ResourceMonitor> const SsiRequest::_resourceMonitor(
+        new wpublish::ResourceMonitor());
+
+SsiRequest::Ptr SsiRequest::newSsiRequest(std::string const& rname,
+                                          std::shared_ptr<wpublish::ChunkInventory> const& chunkInventory,
+                                          std::shared_ptr<wcontrol::Foreman> const& foreman) {
+    auto req = SsiRequest::Ptr(new SsiRequest(rname, chunkInventory, foreman));
+    req->_selfKeepAlive = req;
+    return req;
+}
+
+SsiRequest::SsiRequest(std::string const& rname,
+                       std::shared_ptr<wpublish::ChunkInventory> const& chunkInventory,
+                       std::shared_ptr<wcontrol::Foreman> const& foreman)
+        : _chunkInventory(chunkInventory),
+          _validator(_chunkInventory->newValidator()),
+          _foreman(foreman),
+          _resourceName(rname) {}
 
 SsiRequest::~SsiRequest() {
     LOGS(_log, LOG_LVL_DEBUG, "~SsiRequest()");
@@ -128,6 +149,8 @@ void SsiRequest::execute(XrdSsiRequest& req) {
         return;
     }
 
+    auto const sendChannel = std::make_shared<wbase::SendChannel>(shared_from_this());
+
     // Process the request
     switch (ru.unitType()) {
         case ResourceUnit::DBCHUNK: {
@@ -163,24 +186,36 @@ void SsiRequest::execute(XrdSsiRequest& req) {
                             " czarid:" + std::to_string(taskMsg->has_czarid()));
                 return;
             }
+            std::shared_ptr<wbase::ChannelShared> channelShared;
+            switch (wconfig::WorkerConfig::instance()->resultDeliveryProtocol()) {
+                case wconfig::WorkerConfig::ResultDeliveryProtocol::SSI:
+                    channelShared = wbase::SendChannelShared::create(sendChannel, _foreman->transmitMgr(),
+                                                                     taskMsg->czarid());
+                    break;
+                case wconfig::WorkerConfig::ResultDeliveryProtocol::XROOT:
+                case wconfig::WorkerConfig::ResultDeliveryProtocol::HTTP:
+                    channelShared =
+                            wbase::FileChannelShared::create(sendChannel, _foreman->transmitMgr(), taskMsg);
+                    break;
+                default:
+                    throw std::runtime_error("SsiRequest::" + std::string(__func__) +
+                                             " unsupported result delivery protocol");
+            }
+            auto const tasks = wbase::Task::createTasks(taskMsg, channelShared, _foreman->chunkResourceMgr(),
+                                                        _foreman->mySqlConfig(), _foreman->sqlConnMgr(),
+                                                        _foreman->httpPort());
+            for (auto const& task : tasks) {
+                _tasks.push_back(task);
+            }
 
             // Now that the request is decoded (successfully or not), release the
             // xrootd request buffer. To avoid data races, this must happen before
             // the task is handed off to another thread for processing, as there is a
             // reference to this SsiRequest inside the reply channel for the task,
             // and after the call to BindRequest.
-            auto sendChannelBase = std::make_shared<wbase::SendChannel>(shared_from_this());
-            auto sendChannel =
-                    wbase::SendChannelShared::create(sendChannelBase, _transmitMgr, taskMsg->czarid());
-            auto tasks = wbase::Task::createTasks(taskMsg, sendChannel);
-
-            for (auto const& task : tasks) {
-                _tasks.push_back(task);
-            }
-
             ReleaseRequestBuffer();
             t.start();
-            _processor->processTasks(tasks);  // Queues tasks to be run later.
+            _foreman->processTasks(tasks);  // Queues tasks to be run later.
             t.stop();
             LOGS(_log, LOG_LVL_DEBUG,
                  "Enqueued TaskMsg for " << ru << " in " << t.getElapsed() << " seconds");
@@ -189,13 +224,13 @@ void SsiRequest::execute(XrdSsiRequest& req) {
         case ResourceUnit::WORKER: {
             LOGS(_log, LOG_LVL_DEBUG, "Parsing WorkerCommand for resource=" << _resourceName);
 
-            wbase::WorkerCommand::Ptr const command = parseWorkerCommand(reqData, reqSize);
+            wbase::WorkerCommand::Ptr const command = parseWorkerCommand(sendChannel, reqData, reqSize);
             if (not command) return;
 
             // The buffer must be released before submitting commands for
             // further processing.
             ReleaseRequestBuffer();
-            _processor->processCommand(command);  // Queues the command to be run later.
+            _foreman->processCommand(command);  // Queues the command to be run later.
 
             LOGS(_log, LOG_LVL_DEBUG, "Enqueued WorkerCommand for resource=" << _resourceName);
             ++countLimiter;
@@ -223,6 +258,39 @@ void SsiRequest::execute(XrdSsiRequest& req) {
                  "QueryManagement: op=" << proto::QueryManagement_Operation_Name(request.op())
                                         << " query_id=" << request.query_id());
 
+            switch (wconfig::WorkerConfig::instance()->resultDeliveryProtocol()) {
+                case wconfig::WorkerConfig::ResultDeliveryProtocol::SSI:
+                    // TODO: locate and cancel the coresponding tasks, remove the tasks
+                    //       from the scheduler queues.
+                    break;
+                case wconfig::WorkerConfig::ResultDeliveryProtocol::XROOT:
+                case wconfig::WorkerConfig::ResultDeliveryProtocol::HTTP:
+                    switch (request.op()) {
+                        case proto::QueryManagement::CANCEL_AFTER_RESTART:
+                            // TODO: locate and cancel the coresponding tasks, remove the tasks
+                            //       from the scheduler queues.
+                            wbase::FileChannelShared::cleanUpResultsOnCzarRestart(request.query_id());
+                            break;
+                        case proto::QueryManagement::CANCEL:
+                            // TODO: locate and cancel the coresponding tasks, remove the tasks
+                            //       from the scheduler queues.
+                            wbase::FileChannelShared::cleanUpResults(request.query_id());
+                            break;
+                        case proto::QueryManagement::COMPLETE:
+                            wbase::FileChannelShared::cleanUpResults(request.query_id());
+                            break;
+                        default:
+                            reportError("QueryManagement: op=" +
+                                        proto::QueryManagement_Operation_Name(request.op()) +
+                                        " is not supported by the current implementation.");
+                            return;
+                    }
+                    break;
+                default:
+                    throw std::runtime_error("SsiRequest::" + std::string(__func__) +
+                                             " unsupported result delivery protocol");
+            }
+
             // Send back the empty response since no info is expected by a caller
             // for this type of requests beyond the usual error notifications (if any).
             this->reply((char const*)0, 0);
@@ -238,11 +306,9 @@ void SsiRequest::execute(XrdSsiRequest& req) {
     // to actually do something once everything is actually setup.
 }
 
-wbase::WorkerCommand::Ptr SsiRequest::parseWorkerCommand(char const* reqData, int reqSize) {
-    wbase::SendChannel::Ptr const sendChannel = std::make_shared<wbase::SendChannel>(shared_from_this());
-
+wbase::WorkerCommand::Ptr SsiRequest::parseWorkerCommand(
+        std::shared_ptr<wbase::SendChannel> const& sendChannel, char const* reqData, int reqSize) {
     wbase::WorkerCommand::Ptr command;
-
     try {
         // reqData has the entire request, so we can unpack it without waiting for
         // more data.
@@ -275,11 +341,12 @@ wbase::WorkerCommand::Ptr SsiRequest::parseWorkerCommand(char const* reqData, in
                 bool const force = group.force();
 
                 if (header.command() == proto::WorkerCommandH::ADD_CHUNK_GROUP)
-                    command = std::make_shared<wpublish::AddChunkGroupCommand>(sendChannel, _chunkInventory,
-                                                                               _mySqlConfig, chunk, dbs);
+                    command = std::make_shared<wpublish::AddChunkGroupCommand>(
+                            sendChannel, _chunkInventory, _foreman->mySqlConfig(), chunk, dbs);
                 else
                     command = std::make_shared<wpublish::RemoveChunkGroupCommand>(
-                            sendChannel, _chunkInventory, _resourceMonitor, _mySqlConfig, chunk, dbs, force);
+                            sendChannel, _chunkInventory, _resourceMonitor, _foreman->mySqlConfig(), chunk,
+                            dbs, force);
                 break;
             }
             case proto::WorkerCommandH::UPDATE_CHUNK_LIST: {
@@ -288,10 +355,10 @@ wbase::WorkerCommand::Ptr SsiRequest::parseWorkerCommand(char const* reqData, in
 
                 if (message.rebuild())
                     command = std::make_shared<wpublish::RebuildChunkListCommand>(
-                            sendChannel, _chunkInventory, _mySqlConfig, message.reload());
+                            sendChannel, _chunkInventory, _foreman->mySqlConfig(), message.reload());
                 else
                     command = std::make_shared<wpublish::ReloadChunkListCommand>(sendChannel, _chunkInventory,
-                                                                                 _mySqlConfig);
+                                                                                 _foreman->mySqlConfig());
                 break;
             }
             case proto::WorkerCommandH::GET_CHUNK_LIST: {
@@ -313,16 +380,16 @@ wbase::WorkerCommand::Ptr SsiRequest::parseWorkerCommand(char const* reqData, in
                     databases.push_back(message.databases(i));
                 }
                 bool const force = message.force();
-                command = std::make_shared<wpublish::SetChunkListCommand>(sendChannel, _chunkInventory,
-                                                                          _resourceMonitor, _mySqlConfig,
-                                                                          chunks, databases, force);
+                command = std::make_shared<wpublish::SetChunkListCommand>(
+                        sendChannel, _chunkInventory, _resourceMonitor, _foreman->mySqlConfig(), chunks,
+                        databases, force);
                 break;
             }
             case proto::WorkerCommandH::GET_STATUS: {
                 proto::WorkerCommandGetStatusM message;
                 view.parse(message);
                 command = std::make_shared<wpublish::GetStatusCommand>(
-                        sendChannel, _processor, _resourceMonitor, ::proto2taskSelector(message));
+                        sendChannel, _foreman, _resourceMonitor, ::proto2taskSelector(message));
                 break;
             }
             default:

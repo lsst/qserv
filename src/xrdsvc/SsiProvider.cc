@@ -32,6 +32,7 @@
 #include <sys/types.h>
 
 // Third party headers
+#include "boost/filesystem.hpp"
 #include "XrdSsi/XrdSsiCluster.hh"
 #include "XrdSsi/XrdSsiLogger.hh"
 
@@ -89,8 +90,8 @@ bool SsiProviderServer::Init(XrdSsiLogger* logP, XrdSsiCluster* clsP, std::strin
     LOGS(_log, LOG_LVL_DEBUG, "Qserv xrdssi plugin configuration file: " << argv[1]);
 
     std::string workerConfigFile = argv[1];
-    wconfig::WorkerConfig workerConfig(workerConfigFile);
-    LOGS(_log, LOG_LVL_DEBUG, "Qserv xrdssi plugin configuration: " << workerConfig);
+    auto const workerConfig = wconfig::WorkerConfig::create(workerConfigFile);
+    LOGS(_log, LOG_LVL_DEBUG, "Qserv xrdssi plugin configuration: " << *workerConfig);
 
     // Save the ssi logger as it places messages in another file than our log.
     //
@@ -117,7 +118,7 @@ bool SsiProviderServer::Init(XrdSsiLogger* logP, XrdSsiCluster* clsP, std::strin
     // calls either in the data provider and the metadata provider (we can be
     // either one).
     //
-    _chunkInventory.init(x.getName(), workerConfig.getMySqlConfig());
+    _chunkInventory.init(x.getName(), workerConfig->getMySqlConfig());
 
     // If we are a data provider (i.e. xrootd) then we need to get the service
     // object. It will print the exported paths. Otherwise, we need to print
@@ -125,7 +126,7 @@ bool SsiProviderServer::Init(XrdSsiLogger* logP, XrdSsiCluster* clsP, std::strin
     // single shared memory inventory object which should do this by itself.
     //
     if (clsP && clsP->DataContext()) {
-        _service.reset(new SsiService(logP, workerConfig));
+        _service.reset(new SsiService(logP));
     } else {
         std::ostringstream ss;
         ss << "Provider valid paths(ci): ";
@@ -174,6 +175,16 @@ XrdSsiProvider::rStat SsiProviderServer::QueryResource(char const* rName, char c
 
     } else if (ru.unitType() == ResourceUnit::QUERY) {
         return isPresent;
+    }
+
+    // Treat other resources as absolute path names of files
+    boost::filesystem::path const path(rName);
+    if (path.is_absolute()) {
+        boost::system::error_code ec;
+        if (boost::filesystem::exists(path, ec) && !ec.value()) {
+            LOGS(_log, LOG_LVL_DEBUG, "SsiProvider File Resource " << rName << " recognized");
+            return isPresent;
+        }
     }
 
     LOGS(_log, LOG_LVL_DEBUG, "SsiProvider Query " << rName << " invalid");

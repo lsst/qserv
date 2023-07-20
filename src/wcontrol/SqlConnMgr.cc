@@ -26,7 +26,7 @@
 
 // qserv headers
 #include "util/Bug.h"
-#include "wbase/SendChannelShared.h"
+#include "wbase/ChannelShared.h"
 
 #include "lsst/log/Log.h"
 
@@ -49,7 +49,7 @@ nlohmann::json SqlConnMgr::statusToJson() const {
 }
 
 SqlConnMgr::ConnType SqlConnMgr::_take(bool scanQuery,
-                                       std::shared_ptr<wbase::SendChannelShared> const& sendChannelShared,
+                                       std::shared_ptr<wbase::ChannelShared> const& sendChannelShared,
                                        bool firstChannelSqlConn) {
     ++_totalCount;
     LOGS(_log, LOG_LVL_DEBUG, "SqlConnMgr take " << dump());
@@ -63,7 +63,7 @@ SqlConnMgr::ConnType SqlConnMgr::_take(bool scanQuery,
         // normal shared scan, low priority as far as SqlConnMgr is concerned.
         connType = SCAN;
     } else {
-        // SendChannelShared, every SQL connection after the first one.
+        // ChannelShared, every SQL connection after the first one.
         // High priority to SqlConnMgr as these need to run to free up resources.
         if (sendChannelShared != nullptr) {
             connType = SHARED;
@@ -118,7 +118,7 @@ void SqlConnMgr::_release(SqlConnMgr::ConnType connType) {
     // Decrementing the sendChannelShared count could result in the count
     // being 0 before all transmits on the sendChannelShared have finished,
     // causing _take() to block when it really should not.
-    // When the SendChannelShared is finished, it is thrown away, effectively
+    // When the ChannelShared is finished, it is thrown away, effectively
     // clearing its count.
     LOGS(_log, LOG_LVL_DEBUG, "SqlConnMgr release " << dump());
     if (connType == SCAN) {
@@ -154,7 +154,7 @@ string SqlConnMgr::dump() const {
 ostream& operator<<(ostream& os, SqlConnMgr const& mgr) { return mgr.dump(os); }
 
 SqlConnLock::SqlConnLock(SqlConnMgr& sqlConnMgr, bool scanQuery,
-                         std::shared_ptr<wbase::SendChannelShared> const& sendChannelShared)
+                         std::shared_ptr<wbase::ChannelShared> const& sendChannelShared)
         : _sqlConnMgr(sqlConnMgr) {
     bool firstChannelSqlConn = true;
     if (sendChannelShared != nullptr) {

@@ -177,10 +177,6 @@ public:
 
     std::string engineToStr(InfileMerger::DbEngine engine);
 
-    /// Create the shared thread pool and/or change its size.
-    // @return the size of the large result thread pool.
-    static int setLargeResultPoolSize(int size);
-
     /// Merge a worker response, which contains:
     /// Size of ProtoHeader message
     /// ProtoHeader message
@@ -244,9 +240,6 @@ private:
     bool _applyMysqlMyIsam(std::string const& query);
     bool _applyMysqlInnoDb(std::string const& query);
     bool _merge(std::shared_ptr<proto::WorkerResponse>& response);
-    int _readHeader(proto::ProtoHeader& header, char const* buffer, int length);
-    int _readResult(proto::Result& result, char const* buffer, int length);
-    bool _verifySession(int sessionId);
     void _setupRow();
     bool _applySql(std::string const& sql);
     bool _applySqlLocal(std::string const& sql, std::string const& logMsg, sql::SqlResults& results);
@@ -278,7 +271,6 @@ private:
     InfileMergerError _error;                      ///< Error state
     bool _isFinished = false;                      ///< Completed?
     std::mutex _sqlMutex;                          ///< Protection for SQL connection
-    size_t _getResultTableSizeMB();                ///< Return the size of the result table in MB.
 
     /**
      * @brief Put a "jobId" column first in the provided schema.

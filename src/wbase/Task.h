@@ -46,22 +46,27 @@
 #include "wbase/TaskState.h"
 #include "util/Histogram.h"
 #include "util/ThreadPool.h"
-#include "util/threadSafe.h"
 
 // Forward declarations
-namespace lsst::qserv {
-namespace proto {
+namespace lsst::qserv::mysql {
+class MySqlConfig;
+}
+namespace lsst::qserv::proto {
 class TaskMsg;
 class TaskMsg_Fragment;
-}  // namespace proto
-namespace wbase {
-struct ScriptMeta;
-class SendChannelShared;
-}  // namespace wbase
-namespace wpublish {
+}  // namespace lsst::qserv::proto
+namespace lsst::qserv::wbase {
+class ChannelShared;
+}
+namespace lsst::qserv::wcontrol {
+class SqlConnMgr;
+}
+namespace lsst::qserv::wdb {
+class ChunkResourceMgr;
+}
+namespace lsst::qserv::wpublish {
 class QueryStatistics;
 }
-}  // namespace lsst::qserv
 
 namespace lsst::qserv::wbase {
 
@@ -150,19 +155,24 @@ public:
     };
 
     Task(TaskMsgPtr const& t, int fragmentNumber, std::shared_ptr<UserQueryInfo> const& userQueryInfo,
-         size_t templateId, int subchunkId, std::shared_ptr<SendChannelShared> const& sc);
+         size_t templateId, int subchunkId, std::shared_ptr<ChannelShared> const& sc,
+         uint16_t resultsHttpPort = 8080);
     Task& operator=(const Task&) = delete;
     Task(const Task&) = delete;
     virtual ~Task();
 
     /// Read 'taskMsg' to generate a vector of one or more task objects all using the same 'sendChannel'
     static std::vector<Ptr> createTasks(std::shared_ptr<proto::TaskMsg> const& taskMsg,
-                                        std::shared_ptr<SendChannelShared> const& sendChannel);
+                                        std::shared_ptr<wbase::ChannelShared> const& sendChannel,
+                                        std::shared_ptr<wdb::ChunkResourceMgr> const& chunkResourceMgr,
+                                        mysql::MySqlConfig const& mySqlConfig,
+                                        std::shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr,
+                                        uint16_t resultsHttpPort = 8080);
 
     void setQueryStatistics(std::shared_ptr<wpublish::QueryStatistics> const& qC);
 
-    std::shared_ptr<SendChannelShared> getSendChannel() const { return _sendChannel; }
-    void resetSendChannel() { _sendChannel.reset(); }  ///< reset the shared pointer for SendChannelShared
+    std::shared_ptr<ChannelShared> getSendChannel() const { return _sendChannel; }
+    void resetSendChannel() { _sendChannel.reset(); }  ///< reset the shared pointer for ChannelShared
     std::string user;                                  ///< Incoming username
     // Note that manpage spec of "26 bytes"  is insufficient
 
@@ -189,6 +199,9 @@ public:
     TaskState state() const { return _state; }
     std::string getQueryString() const;
     int getQueryFragmentNum() { return _queryFragmentNum; }
+    std::string const& resultFilePath() const { return _resultFilePath; }
+    std::string const& resultFileXrootUrl() const { return _resultFileXrootUrl; }
+    std::string const& resultFileHttpUrl() const { return _resultFileHttpUrl; }
     bool setTaskQueryRunner(
             TaskQueryRunner::Ptr const& taskQueryRunner);  ///< return true if already cancelled.
     void freeTaskQueryRunner(TaskQueryRunner* tqr);
@@ -269,8 +282,8 @@ public:
     const IntVector& getSubchunksVect() const { return _dbTblsAndSubchunks->subchunksVect; }
 
 private:
-    std::shared_ptr<UserQueryInfo> _userQueryInfo;    ///< Details common to Tasks in this UserQuery.
-    std::shared_ptr<SendChannelShared> _sendChannel;  ///< Send channel.
+    std::shared_ptr<UserQueryInfo> _userQueryInfo;  ///< Details common to Tasks in this UserQuery.
+    std::shared_ptr<ChannelShared> _sendChannel;    ///< Send channel.
 
     uint64_t const _tSeq = 0;          ///< identifier for the specific task
     QueryId const _qId = 0;            ///< queryId from czar
@@ -290,6 +303,16 @@ private:
 
     /// Set of tables and vector of subchunk ids used by ChunkResourceRequest. Do not change/reset.
     std::unique_ptr<DbTblsAndSubchunks> _dbTblsAndSubchunks;
+
+    /// The path to the result file.
+    std::string _resultFilePath;
+
+    /// The XROOTD URL for the result file: "xroot://<host>:<xrootd-port>" + "/" + _resultFilePath
+    /// @note an extra '/' after server:port spec is required to make a "valid" XROOTD url
+    std::string _resultFileXrootUrl;
+
+    /// The HTTP URL for the result file: "http://<host>:<http-port>" + _resultFilePath
+    std::string _resultFileHttpUrl;
 
     std::atomic<bool> _cancelled{false};
     std::atomic<bool> _safeToMoveRunning{false};  ///< false until done with waitForMemMan().

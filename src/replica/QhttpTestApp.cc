@@ -126,7 +126,7 @@ int QhttpTestApp::runImpl() {
 
     boost::asio::io_service io_service;
     qhttp::Server::Ptr const httpServer = qhttp::Server::create(io_service, _port, _backlog);
-    httpServer->addHandlers({{"GET", "/service/receive",
+    httpServer->addHandlers({{"POST", "/service/receive",
                               [&](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
                                   ++numRequests;
                                   if (_verbose)
@@ -136,7 +136,7 @@ int QhttpTestApp::runImpl() {
                                   json const reply({{"success", 1}});
                                   resp->send(reply.dump(), "application/json");
                               }},
-                             {"GET", "/service/echo",
+                             {"POST", "/service/echo",
                               [&](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
                                   ++numRequests;
                                   if (_verbose)
@@ -155,8 +155,6 @@ int QhttpTestApp::runImpl() {
                                   if (_verbose)
                                       cout << ::timestamp() << "Request: " << ::senderIpAddr(req)
                                            << "  /service/random" << endl;
-                                  uint64_t const numBytes = readBody(req);
-                                  numBytesReceived += numBytes;
                                   uint64_t const numBytesRandom = distr(gen);
                                   numBytesSent += numBytesRandom;
                                   string const data(numBytesRandom, 'x');
@@ -169,7 +167,6 @@ int QhttpTestApp::runImpl() {
                                   if (_verbose)
                                       cout << ::timestamp() << "Request: " << ::senderIpAddr(req)
                                            << "  /management/stop" << endl;
-                                  numBytesReceived += readBody(req);
                                   json const reply({{"success", 1}});
                                   resp->send(reply.dump(), "application/json");
                                   httpServer->stop();

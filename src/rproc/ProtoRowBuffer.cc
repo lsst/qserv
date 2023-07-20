@@ -77,7 +77,6 @@ ProtoRowBuffer::ProtoRowBuffer(proto::Result& res, int jobId, std::string const&
           _jobIdSqlType(jobIdSqlType),
           _jobIdMysqlType(jobIdMysqlType) {
     _jobIdStr = std::string("'") + std::to_string(jobId) + "'";
-    _initSchema();
     if (_result.row_size() > 0) {
         _initCurrentRow();
     }
@@ -103,43 +102,8 @@ unsigned ProtoRowBuffer::fetch(char* buffer, unsigned bufLen) {
     return fetched;
 }
 
-/// Import schema from the proto message into a Schema object
-void ProtoRowBuffer::_initSchema() {
-    _schema.columns.clear();
-
-    // Set jobId and attemptCount
-    sql::ColSchema jobIdCol;
-    jobIdCol.name = _jobIdColName;
-    jobIdCol.colType.sqlType = _jobIdSqlType;
-    jobIdCol.colType.mysqlType = _jobIdMysqlType;
-    _schema.columns.push_back(jobIdCol);
-
-    proto::RowSchema const& prs = _result.rowschema();
-    for (int i = 0, e = prs.columnschema_size(); i != e; ++i) {
-        proto::ColumnSchema const& pcs = prs.columnschema(i);
-        sql::ColSchema cs;
-        if (pcs.has_name()) {
-            cs.name = pcs.name();
-        }
-        if (not pcs.has_sqltype()) {
-            throw util::Bug(ERR_LOC, "_initSchema _result missing sqltype");
-        }
-        cs.colType.sqlType = pcs.sqltype();
-        if (pcs.has_mysqltype()) {
-            cs.colType.mysqlType = pcs.mysqltype();
-        }
-        _schema.columns.push_back(cs);
-    }
-}
-
 std::string ProtoRowBuffer::dump() const {
-    std::string str("ProtoRowBuffer schema(");
-    for (auto sCol : _schema.columns) {
-        str += "(Name=" + sCol.name;
-        str += ",colType=" + sCol.colType.sqlType + ":" + std::to_string(sCol.colType.mysqlType) + ")";
-    }
-    str += ") ";
-    str += "Row " + std::to_string(_rowIdx) + "(";
+    std::string str("ProtoRowBuffer Row " + std::to_string(_rowIdx) + "(");
     str += printCharVect(_currentRow);
     str += ")";
     return str;

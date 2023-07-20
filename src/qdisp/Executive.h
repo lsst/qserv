@@ -64,7 +64,6 @@ class QuerySession;
 namespace qdisp {
 
 class JobQuery;
-class LargeResultMgr;
 class MessageStore;
 class PseudoFifo;
 
