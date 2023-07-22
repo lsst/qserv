@@ -173,6 +173,7 @@ void TransmitData::_buildDataMsg(lock_guard<mutex> const& lock, Task const& task
         string msg = "Error(s) in result for chunk #" + to_string(task.getChunkId()) + ": " +
                      multiErr.toOneLineString();
         _result->set_errormsg(msg);
+        _result->set_errorcode(multiErr.firstErrorCode());
         LOGS(_log, LOG_LVL_ERROR, _idStr << "buildDataMsg adding " << msg);
     }
     _result->SerializeToString(&_dataMsg);

@@ -155,7 +155,7 @@ bool MySqlConnection::queryUnbuffered(std::string const& query) {
 int MySqlConnection::cancel() {
     std::lock_guard<std::mutex> lock(_interruptMutex);
     int rc;
-    if (!_isExecuting || _interrupted) {
+    if (_interrupted) {
         // Should we log this?
         return -1;  // No further action needed.
     }
@@ -172,6 +172,9 @@ int MySqlConnection::cancel() {
     rc = mysql_real_query(killMysql, killSql.c_str(), killSql.size());
     mysql_close(killMysql);
     if (rc) {
+        LOGS(_log, LOG_LVL_WARN,
+             "failed to kill MySQL thread: " << threadId << ", error: " << std::string(mysql_error(killMysql))
+                                             << ", errno: " << std::to_string(mysql_errno(killMysql)));
         return 2;
     }
     return 0;

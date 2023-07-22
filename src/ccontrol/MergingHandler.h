@@ -100,6 +100,7 @@ private:
     void _setError(int code, std::string const& msg);    ///< Set error code and string
     bool _setResult(BufPtr const& bufPtr, int blen);     ///< Extract the result from the protobuffer.
     bool _verifyResult(BufPtr const& bufPtr, int blen);  ///< Check the result against hash in the header.
+    bool _noErrorsInResult();  ///< Check if the result message has no errors, report the ones (if any).
 
     std::shared_ptr<MsgReceiver> _msgReceiver;           ///< Message code receiver
     std::shared_ptr<rproc::InfileMerger> _infileMerger;  ///< Merging delegate

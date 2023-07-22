@@ -74,6 +74,7 @@ message TaskMsg {
     optional bool scaninteractive = 12;
     optional int32 attemptcount = 13;
     optional uint32 czarid = 14;
+    optional int32 maxtablesize_mb = 15 [default = 0];
 }
 
 // Result message received from worker

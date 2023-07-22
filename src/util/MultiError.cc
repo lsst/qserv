@@ -52,6 +52,8 @@ std::string MultiError::toOneLineString() const {
     return oss.str();
 }
 
+int MultiError::firstErrorCode() const { return empty() ? ErrorCode::NONE : _errorVector.front().getCode(); }
+
 bool MultiError::empty() const { return _errorVector.empty(); }
 
 std::vector<Error>::size_type MultiError::size() const { return _errorVector.size(); }

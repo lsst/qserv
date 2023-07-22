@@ -37,7 +37,6 @@
 // Qserv headers
 #include "ccontrol/UserQuery.h"
 #include "ccontrol/UserQueryFactory.h"
-#include "czar/CzarConfig.h"
 #include "czar/SubmitResult.h"
 #include "global/intTypes.h"
 #include "global/stringTypes.h"
@@ -47,6 +46,10 @@
 #include "util/Timer.h"
 
 namespace lsst::qserv {
+
+namespace czar {
+class CzarConfig;
+}
 
 namespace qdisp {
 class PseudoFifo;
@@ -61,10 +64,8 @@ namespace czar {
 /// @addtogroup czar
 
 /**
- *  @ingroup czar
- *
- *  @brief Class representing czar "entry points".
- *
+ * @ingroup czar
+ * @brief Class representing czar "entry points".
  */
 
 class Czar {
@@ -148,7 +149,7 @@ private:
     typedef std::map<QueryId, std::weak_ptr<ccontrol::UserQuery>> IdToQuery;
 
     std::string const _czarName;  ///< Unique czar name
-    CzarConfig const _czarConfig;
+    std::shared_ptr<CzarConfig> const _czarConfig;
 
     std::atomic<uint64_t> _idCounter;  ///< Query/task identifier for next query
     std::unique_ptr<ccontrol::UserQueryFactory> _uqFactory;

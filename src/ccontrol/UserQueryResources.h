@@ -38,10 +38,6 @@ namespace lsst::qserv::css {
 class CssAccess;
 }
 
-namespace lsst::qserv::czar {
-class CzarConfig;
-}
-
 namespace lsst::qserv::mysql {
 class MySqlConfig;
 }
@@ -72,7 +68,7 @@ namespace lsst::qserv::ccontrol {
  */
 class UserQuerySharedResources {
 public:
-    UserQuerySharedResources(czar::CzarConfig const& czarConfig_, std::shared_ptr<css::CssAccess> const& css_,
+    UserQuerySharedResources(std::shared_ptr<css::CssAccess> const& css_,
                              mysql::MySqlConfig const& mysqlResultConfig_,
                              std::shared_ptr<qproc::SecondaryIndex> const& secondaryIndex_,
                              std::shared_ptr<qmeta::QMeta> const& queryMetadata_,
@@ -84,7 +80,6 @@ public:
 
     UserQuerySharedResources(UserQuerySharedResources const& rhs) = default;
     UserQuerySharedResources& operator=(UserQuerySharedResources const& rhs) = delete;
-    czar::CzarConfig const& czarConfig;
     std::shared_ptr<css::CssAccess> css;
     mysql::MySqlConfig const mysqlResultConfig;
     std::shared_ptr<qproc::SecondaryIndex> secondaryIndex;

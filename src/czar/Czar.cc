@@ -24,15 +24,14 @@
 #include "czar/Czar.h"
 
 // System headers
-#include <sys/time.h>
 #include <stdexcept>
+#include <sys/time.h>
 #include <thread>
 
 // Third-party headers
 #include "boost/format.hpp"
 #include "boost/lexical_cast.hpp"
 
-#include "../qdisp/CzarStats.h"
 // LSST headers
 #include "lsst/log/Log.h"
 
@@ -40,10 +39,12 @@
 #include "ccontrol/ConfigMap.h"
 #include "ccontrol/UserQuerySelect.h"
 #include "ccontrol/UserQueryType.h"
+#include "czar/CzarConfig.h"
 #include "czar/CzarErrors.h"
 #include "czar/MessageTable.h"
 #include "global/LogContext.h"
 #include "proto/worker.pb.h"
+#include "qdisp/CzarStats.h"
 #include "qdisp/PseudoFifo.h"
 #include "qdisp/QdispPool.h"
 #include "qdisp/SharedResources.h"
@@ -88,7 +89,7 @@ Czar::Ptr Czar::createCzar(string const& configPath, string const& czarName) {
 // Constructors
 Czar::Czar(string const& configPath, string const& czarName)
         : _czarName(czarName),
-          _czarConfig(configPath),
+          _czarConfig(CzarConfig::create(configPath)),
           _idCounter(),
           _uqFactory(),
           _clientToQuery(),
@@ -104,9 +105,9 @@ Czar::Czar(string const& configPath, string const& czarName)
     // The id will be used as the high-watermark for queries that need to be cancelled.
     // All queries that have identifiers that are strictly less than this one will
     // be affected by the operation.
-    if (_czarConfig.notifyWorkersOnCzarRestart()) {
+    if (_czarConfig->notifyWorkersOnCzarRestart()) {
         try {
-            xrdreq::QueryManagementAction::notifyAllWorkers(_czarConfig.getXrootdFrontendUrl(),
+            xrdreq::QueryManagementAction::notifyAllWorkers(_czarConfig->getXrootdFrontendUrl(),
                                                             proto::QueryManagement::CANCEL_AFTER_RESTART,
                                                             _lastQueryIdBeforeRestart());
         } catch (std::exception const& ex) {
@@ -114,17 +115,17 @@ Czar::Czar(string const& configPath, string const& czarName)
         }
     }
 
-    auto databaseModels =
-            qproc::DatabaseModels::create(_czarConfig.getCssConfigMap(), _czarConfig.getMySqlResultConfig());
+    auto databaseModels = qproc::DatabaseModels::create(_czarConfig->getCssConfigMap(),
+                                                        _czarConfig->getMySqlResultConfig());
 
     // Need to be done first as it adds logging context for new threads
-    _uqFactory.reset(new ccontrol::UserQueryFactory(_czarConfig, databaseModels, _czarName));
+    _uqFactory.reset(new ccontrol::UserQueryFactory(databaseModels, _czarName));
 
-    int qPoolSize = _czarConfig.getQdispPoolSize();
-    int maxPriority = std::max(0, _czarConfig.getQdispMaxPriority());
-    string vectRunSizesStr = _czarConfig.getQdispVectRunSizes();
+    int qPoolSize = _czarConfig->getQdispPoolSize();
+    int maxPriority = std::max(0, _czarConfig->getQdispMaxPriority());
+    string vectRunSizesStr = _czarConfig->getQdispVectRunSizes();
     vector<int> vectRunSizes = util::StringHelper::getIntVectFromStr(vectRunSizesStr, ":", 1);
-    string vectMinRunningSizesStr = _czarConfig.getQdispVectMinRunningSizes();
+    string vectMinRunningSizesStr = _czarConfig->getQdispVectMinRunningSizes();
     vector<int> vectMinRunningSizes = util::StringHelper::getIntVectFromStr(vectMinRunningSizesStr, ":", 0);
     LOGS(_log, LOG_LVL_INFO,
          "INFO qdisp config qPoolSize=" << qPoolSize << " maxPriority=" << maxPriority << " vectRunSizes="
@@ -135,22 +136,22 @@ Czar::Czar(string const& configPath, string const& czarName)
             make_shared<qdisp::QdispPool>(qPoolSize, maxPriority, vectRunSizes, vectMinRunningSizes);
     qdisp::CzarStats::setup(qdispPool);
 
-    int qReqPseudoMaxRunning = _czarConfig.getQReqPseudoFifoMaxRunning();
+    int qReqPseudoMaxRunning = _czarConfig->getQReqPseudoFifoMaxRunning();
     qdisp::PseudoFifo::Ptr queryRequestPseudoFifo = make_shared<qdisp::PseudoFifo>(qReqPseudoMaxRunning);
     _qdispSharedResources = qdisp::SharedResources::create(qdispPool, queryRequestPseudoFifo);
 
-    int xrootdCBThreadsMax = _czarConfig.getXrootdCBThreadsMax();
-    int xrootdCBThreadsInit = _czarConfig.getXrootdCBThreadsInit();
+    int xrootdCBThreadsMax = _czarConfig->getXrootdCBThreadsMax();
+    int xrootdCBThreadsInit = _czarConfig->getXrootdCBThreadsInit();
     LOGS(_log, LOG_LVL_INFO, "config xrootdCBThreadsMax=" << xrootdCBThreadsMax);
     LOGS(_log, LOG_LVL_INFO, "config xrootdCBThreadsInit=" << xrootdCBThreadsInit);
     XrdSsiProviderClient->SetCBThreads(xrootdCBThreadsMax, xrootdCBThreadsInit);
-    int const xrootdSpread = _czarConfig.getXrootdSpread();
+    int const xrootdSpread = _czarConfig->getXrootdSpread();
     LOGS(_log, LOG_LVL_INFO, "config xrootdSpread=" << xrootdSpread);
     XrdSsiProviderClient->SetSpread(xrootdSpread);
-    _queryDistributionTestVer = _czarConfig.getQueryDistributionTestVer();
+    _queryDistributionTestVer = _czarConfig->getQueryDistributionTestVer();
 
     LOGS(_log, LOG_LVL_INFO, "Creating czar instance with name " << czarName);
-    LOGS(_log, LOG_LVL_INFO, "Czar config: " << _czarConfig);
+    LOGS(_log, LOG_LVL_INFO, "Czar config: " << *_czarConfig);
 
     // Watch to see if the log configuration is changed.
     // If LSST_LOG_CONFIG is not defined, there's no good way to know what log
@@ -187,7 +188,7 @@ SubmitResult Czar::submitQuery(string const& query, map<string, string> const& h
     // make message table name
     string userQueryId = to_string(_idCounter++);
     LOGS(_log, LOG_LVL_DEBUG, "userQueryId: " << userQueryId);
-    string resultDb = _czarConfig.getMySqlResultConfig().dbName;
+    string resultDb = _czarConfig->getMySqlResultConfig().dbName;
     string const msgTableName = "message_" + userQueryId;
     string const lockName = resultDb + "." + msgTableName;
 
@@ -197,7 +198,7 @@ SubmitResult Czar::submitQuery(string const& query, map<string, string> const& h
     SubmitResult result;
 
     // instantiate message table manager
-    MessageTable msgTable(lockName, _czarConfig.getMySqlResultConfig());
+    MessageTable msgTable(lockName, _czarConfig->getMySqlResultConfig());
     try {
         msgTable.lock();
     } catch (std::exception const& exc) {
@@ -261,7 +262,7 @@ SubmitResult Czar::submitQuery(string const& query, map<string, string> const& h
         // we do not need to lock message because result is ready before we return
         string const resultTableName = resultDb + ".result_async_" + userQueryId;
         string const asyncLockName = resultDb + ".message_async_" + userQueryId;
-        MessageTable msgTable(asyncLockName, _czarConfig.getMySqlResultConfig());
+        MessageTable msgTable(asyncLockName, _czarConfig->getMySqlResultConfig());
         try {
             _makeAsyncResult(resultTableName, uq->getQueryId(), uq->getResultLocation());
             msgTable.create();
@@ -397,7 +398,7 @@ void Czar::_updateQueryHistory(string const& clientId, int threadId, ccontrol::U
 }
 
 void Czar::_makeAsyncResult(string const& asyncResultTable, QueryId queryId, string const& resultLoc) {
-    auto sqlConn = sql::SqlConnectionFactory::make(_czarConfig.getMySqlResultConfig());
+    auto sqlConn = sql::SqlConnectionFactory::make(_czarConfig->getMySqlResultConfig());
     LOGS(_log, LOG_LVL_DEBUG, "creating async result table " << asyncResultTable);
 
     sql::SqlErrorObject sqlErr;
@@ -431,9 +432,9 @@ void Czar::removeOldResultTables() {
     // Run in a separate thread in the off chance this takes a while.
     thread t([this]() {
         LOGS(_log, LOG_LVL_INFO, "Removing old result database tables.");
-        auto sqlConn = sql::SqlConnectionFactory::make(_czarConfig.getMySqlResultConfig());
-        string dbName = _czarConfig.getMySqlResultConfig().dbName;
-        string dStr = to_string(_czarConfig.getOldestResultKeptDays());
+        auto sqlConn = sql::SqlConnectionFactory::make(_czarConfig->getMySqlResultConfig());
+        string dbName = _czarConfig->getMySqlResultConfig().dbName;
+        string dStr = to_string(_czarConfig->getOldestResultKeptDays());
 
         // Find result related tables that haven't been updated in a long time.
         string sql =
@@ -481,7 +482,7 @@ void Czar::removeOldResultTables() {
 
 QueryId Czar::_lastQueryIdBeforeRestart() const {
     string const context = "Czar::" + string(__func__) + " ";
-    auto sqlConn = sql::SqlConnectionFactory::make(_czarConfig.getMySqlQmetaConfig());
+    auto sqlConn = sql::SqlConnectionFactory::make(_czarConfig->getMySqlQmetaConfig());
     string const sql = "SELECT MAX(queryId) FROM QInfo";
     sql::SqlResults results;
     sql::SqlErrorObject err;

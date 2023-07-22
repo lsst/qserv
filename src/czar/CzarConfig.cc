@@ -58,6 +58,26 @@ bool dummy = XrdSsiLogger::SetMCB(QservLogger, XrdSsiLogger::mcbClient);
 
 namespace lsst::qserv::czar {
 
+std::mutex CzarConfig::_mtxOnInstance;
+
+std::shared_ptr<CzarConfig> CzarConfig::_instance;
+
+std::shared_ptr<CzarConfig> CzarConfig::create(std::string const& configFileName) {
+    std::lock_guard<std::mutex> const lock(_mtxOnInstance);
+    if (_instance == nullptr) {
+        _instance = std::shared_ptr<CzarConfig>(new CzarConfig(util::ConfigStore(configFileName)));
+    }
+    return _instance;
+}
+
+std::shared_ptr<CzarConfig> CzarConfig::instance() {
+    std::lock_guard<std::mutex> const lock(_mtxOnInstance);
+    if (_instance == nullptr) {
+        throw std::logic_error("CzarConfig::" + std::string(__func__) + ": instance has not been created.");
+    }
+    return _instance;
+}
+
 CzarConfig::CzarConfig(util::ConfigStore const& configStore)
         : _mySqlResultConfig(configStore.get("resultdb.user", "qsmaster"),
                              configStore.getRequired("resultdb.passwd"),

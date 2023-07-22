@@ -60,7 +60,9 @@ struct ErrorCode {
         CREATE_TABLE,
         MYSQLCONNECT,
         MYSQLEXEC,
-        INTERNAL
+        INTERNAL,
+        // Worker errors:
+        WORKER_RESULT_TOO_LARGE
     };
 };
 

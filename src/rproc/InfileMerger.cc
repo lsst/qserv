@@ -55,6 +55,7 @@
 
 // Qserv headers
 #include "czar/Czar.h"
+#include "czar/CzarConfig.h"
 #include "global/intTypes.h"
 #include "proto/WorkerResponse.h"
 #include "proto/ProtoImporter.h"
@@ -101,6 +102,11 @@ std::string getTimeStampId() {
 
 const char JOB_ID_BASE_NAME[] = "jobId";
 size_t const MB_SIZE_BYTES = 1024 * 1024;
+
+/// @return Error info on the last operation with MySQL
+string lastMysqlError(MYSQL* mysql) {
+    return "error: " + string(mysql_error(mysql)) + ", errno: " + to_string(mysql_errno(mysql));
+}
 }  // anonymous namespace
 
 namespace lsst::qserv::rproc {
@@ -114,11 +120,11 @@ InfileMerger::InfileMerger(InfileMergerConfig const& c, std::shared_ptr<qproc::D
           _mysqlConn(_config.mySqlConfig),
           _databaseModels(dm),
           _jobIdColName(JOB_ID_BASE_NAME),
-          _maxSqlConnectionAttempts(_config.czarConfig.getMaxSqlConnectionAttempts()),
-          _maxResultTableSizeBytes(_config.czarConfig.getMaxTableSizeMB() * MB_SIZE_BYTES),
+          _maxSqlConnectionAttempts(czar::CzarConfig::instance()->getMaxSqlConnectionAttempts()),
+          _maxResultTableSizeBytes(czar::CzarConfig::instance()->getMaxTableSizeMB() * MB_SIZE_BYTES),
           _semaMgrConn(semaMgrConn) {
     _fixupTargetName();
-    _setEngineFromStr(_config.czarConfig.getResultEngine());
+    _setEngineFromStr(czar::CzarConfig::instance()->getResultEngine());
     if (_dbEngine == MYISAM) {
         LOGS(_log, LOG_LVL_INFO, "Engine is MYISAM, serial");
         if (!_setupConnectionMyIsam()) {
@@ -348,27 +354,34 @@ bool InfileMerger::_applyMysqlMyIsam(std::string const& query) {
                 sleep(1);
                 lock.lock();
             } else {
-                LOGS(_log, LOG_LVL_ERROR, "InfileMerger::_applyMysql _setupConnection() failed!!!");
+                LOGS(_log, LOG_LVL_ERROR,
+                     "InfileMerger::_applyMysqlMyIsam _setupConnectionMyIsam() failed!!!");
                 return false;  // Reconnection failed. This is an error.
             }
         }
     }
 
     int rc = mysql_real_query(_mysqlConn.getMySql(), query.data(), query.size());
-    return rc == 0;
+    if (rc == 0) return true;
+    LOGS(_log, LOG_LVL_ERROR,
+         "InfileMerger::_applyMysqlMyIsam mysql_real_query() " + ::lastMysqlError(_mysqlConn.getMySql()));
+    return false;
 }
 
 bool InfileMerger::_applyMysqlInnoDb(std::string const& query) {
     mysql::MySqlConnection mySConn(_config.mySqlConfig);
     if (!mySConn.connected()) {
         if (!_setupConnectionInnoDb(mySConn)) {
-            LOGS(_log, LOG_LVL_ERROR, "InfileMerger::_applyMysql _setupConnection() failed!!!");
+            LOGS(_log, LOG_LVL_ERROR, "InfileMerger::_applyMysqlInnoDb _setupConnectionInnoDb() failed!!!");
             return false;  // Reconnection failed. This is an error.
         }
     }
 
     int rc = mysql_real_query(mySConn.getMySql(), query.data(), query.size());
-    return rc == 0;
+    if (rc == 0) return true;
+    LOGS(_log, LOG_LVL_ERROR,
+         "InfileMerger::_applyMysqlInnoDb mysql_real_query() " + ::lastMysqlError(mySConn.getMySql()));
+    return false;
 }
 
 bool InfileMerger::_setupConnectionInnoDb(mysql::MySqlConnection& mySConn) {
