@@ -59,7 +59,6 @@ CREATE TABLE IF NOT EXISTS `QInfo` (
   KEY `QInfo_completed_index` (`completed`),
   KEY `QInfo_returned_index` (`returned`),
   KEY `QInfo_qtype_index` (`qType`),
-  FULLTEXT KEY `QInfo_query_index` (`query`),
   CONSTRAINT `QInfo_cid`
     FOREIGN KEY (`czarId`)
     REFERENCES `QCzar` (`czarId`)
@@ -219,4 +218,5 @@ COMMENT = 'Table of messages generated during queries.';
 -- Version 6 added indexes to optimize queries made by the Qserv Web Dashboard.
 -- Version 7 added final row count to QInfo.
 -- Version 8 replaced INT with BIGINT in the byte and row counter columns of QInfo.
-INSERT INTO `QMetadata` (`metakey`, `value`) VALUES ('version', '8');
+-- Version 9 removed the full-text index on the query text from QInfo.
+INSERT INTO `QMetadata` (`metakey`, `value`) VALUES ('version', '9');
