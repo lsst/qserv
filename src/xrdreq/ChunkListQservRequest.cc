@@ -39,11 +39,11 @@ namespace lsst::qserv::xrdreq {
 
 ChunkListQservRequest::ChunkListQservRequest(bool rebuild, bool reload, CallbackType onFinish)
         : _rebuild(rebuild), _reload(reload), _onFinish(onFinish) {
-    LOGS(_log, LOG_LVL_DEBUG, "ChunkListQservRequest  ** CONSTRUCTED **");
+    LOGS(_log, LOG_LVL_TRACE, "ChunkListQservRequest  ** CONSTRUCTED **");
 }
 
 ChunkListQservRequest::~ChunkListQservRequest() {
-    LOGS(_log, LOG_LVL_DEBUG, "ChunkListQservRequest  ** DELETED **");
+    LOGS(_log, LOG_LVL_TRACE, "ChunkListQservRequest  ** DELETED **");
 }
 
 void ChunkListQservRequest::onRequest(proto::FrameBuffer& buf) {
@@ -63,7 +63,7 @@ void ChunkListQservRequest::onResponse(proto::FrameBufferView& view) {
     proto::WorkerCommandUpdateChunkListR reply;
     view.parse(reply);
 
-    LOGS(_log, LOG_LVL_DEBUG,
+    LOGS(_log, LOG_LVL_TRACE,
          context << "** SERVICE REPLY **  status: "
                  << proto::WorkerCommandStatus_Code_Name(reply.status().code()));
 
@@ -77,7 +77,7 @@ void ChunkListQservRequest::onResponse(proto::FrameBufferView& view) {
             Chunk chunk{chunkEntry.chunk(), chunkEntry.db()};
             added.push_back(chunk);
         }
-        LOGS(_log, LOG_LVL_DEBUG, context << "total chunks added: " << numAdded);
+        LOGS(_log, LOG_LVL_TRACE, context << "total chunks added: " << numAdded);
 
         int const numRemoved = reply.removed_size();
         for (int i = 0; i < numRemoved; i++) {
@@ -85,7 +85,7 @@ void ChunkListQservRequest::onResponse(proto::FrameBufferView& view) {
             Chunk chunk{chunkEntry.chunk(), chunkEntry.db()};
             removed.push_back(chunk);
         }
-        LOGS(_log, LOG_LVL_DEBUG, context << "total chunks removed: " << numRemoved);
+        LOGS(_log, LOG_LVL_TRACE, context << "total chunks removed: " << numRemoved);
     }
     if (nullptr != _onFinish) {
         // Clearing the stored callback after finishing the up-stream notification

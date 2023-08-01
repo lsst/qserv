@@ -44,11 +44,11 @@ GetDbStatusQservRequest::Ptr GetDbStatusQservRequest::create(GetDbStatusQservReq
 
 GetDbStatusQservRequest::GetDbStatusQservRequest(GetDbStatusQservRequest::CallbackType onFinish)
         : _onFinish(onFinish) {
-    LOGS(_log, LOG_LVL_DEBUG, "GetDbStatusQservRequest  ** CONSTRUCTED **");
+    LOGS(_log, LOG_LVL_TRACE, "GetDbStatusQservRequest  ** CONSTRUCTED **");
 }
 
 GetDbStatusQservRequest::~GetDbStatusQservRequest() {
-    LOGS(_log, LOG_LVL_DEBUG, "GetDbStatusQservRequest  ** DELETED **");
+    LOGS(_log, LOG_LVL_TRACE, "GetDbStatusQservRequest  ** DELETED **");
 }
 
 void GetDbStatusQservRequest::onRequest(proto::FrameBuffer& buf) {

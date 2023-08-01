@@ -49,7 +49,7 @@ QservRequest::~QservRequest() {
     delete[] _buf;
 
     --_numClassInstances;
-    LOGS(_log, LOG_LVL_DEBUG, "QservRequest  destructed   instances: " << _numClassInstances);
+    LOGS(_log, LOG_LVL_TRACE, "QservRequest  destructed   instances: " << _numClassInstances);
 }
 
 QservRequest::QservRequest()
@@ -60,7 +60,7 @@ QservRequest::QservRequest()
     // This report is used solely for debugging purposes to allow tracking
     // potential memory leaks within applications.
     ++_numClassInstances;
-    LOGS(_log, LOG_LVL_DEBUG, "QservRequest  constructed  instances: " << _numClassInstances);
+    LOGS(_log, LOG_LVL_TRACE, "QservRequest  constructed  instances: " << _numClassInstances);
 }
 
 void QservRequest::cancel() {
@@ -113,7 +113,7 @@ bool QservRequest::ProcessResponse(const XrdSsiErrInfo& eInfo, const XrdSsiRespI
         onError(errorStr);
         return false;
     }
-    LOGS(_log, LOG_LVL_DEBUG,
+    LOGS(_log, LOG_LVL_TRACE,
          context << "  eInfo.rType: " << rInfo.rType << "(" << rInfo.State() << ")"
                  << ", eInfo.blen: " << rInfo.blen);
 
@@ -121,7 +121,7 @@ bool QservRequest::ProcessResponse(const XrdSsiErrInfo& eInfo, const XrdSsiRespI
         case XrdSsiRespInfo::isData:
         case XrdSsiRespInfo::isStream:
 
-            LOGS(_log, LOG_LVL_DEBUG, context << "** REQUESTING RESPONSE DATA **");
+            LOGS(_log, LOG_LVL_TRACE, context << "** REQUESTING RESPONSE DATA **");
             GetResponseData(_buf + _bufSize, _bufIncrementSize);
             return true;
 
@@ -149,7 +149,7 @@ bool QservRequest::ProcessResponse(const XrdSsiErrInfo& eInfo, const XrdSsiRespI
 void QservRequest::ProcessResponseData(const XrdSsiErrInfo& eInfo, char* buff, int blen, bool last) {
     string const context = "QservRequest::" + string(__func__) + "  ";
 
-    LOGS(_log, LOG_LVL_DEBUG, context << "eInfo.isOK: " << eInfo.isOK());
+    LOGS(_log, LOG_LVL_TRACE, context << "eInfo.isOK: " << eInfo.isOK());
 
     if (not eInfo.isOK()) {
         // This will decrement the reference counter to the pointee at the end of the current
@@ -175,7 +175,7 @@ void QservRequest::ProcessResponseData(const XrdSsiErrInfo& eInfo, char* buff, i
         onError(errorStr);
 
     } else {
-        LOGS(_log, LOG_LVL_DEBUG, context << "blen: " << blen << ", last: " << last);
+        LOGS(_log, LOG_LVL_TRACE, context << "blen: " << blen << ", last: " << last);
 
         // Update the byte counter
         _bufSize += blen;

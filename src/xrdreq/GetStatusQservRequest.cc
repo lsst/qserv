@@ -44,11 +44,11 @@ GetStatusQservRequest::Ptr GetStatusQservRequest::create(wbase::TaskSelector con
 GetStatusQservRequest::GetStatusQservRequest(wbase::TaskSelector const& taskSelector,
                                              GetStatusQservRequest::CallbackType onFinish)
         : _taskSelector(taskSelector), _onFinish(onFinish) {
-    LOGS(_log, LOG_LVL_DEBUG, "GetStatusQservRequest  ** CONSTRUCTED **");
+    LOGS(_log, LOG_LVL_TRACE, "GetStatusQservRequest  ** CONSTRUCTED **");
 }
 
 GetStatusQservRequest::~GetStatusQservRequest() {
-    LOGS(_log, LOG_LVL_DEBUG, "GetStatusQservRequest  ** DELETED **");
+    LOGS(_log, LOG_LVL_TRACE, "GetStatusQservRequest  ** DELETED **");
 }
 
 void GetStatusQservRequest::onRequest(proto::FrameBuffer& buf) {

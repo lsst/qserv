@@ -47,11 +47,11 @@ GetChunkListQservRequest::Ptr GetChunkListQservRequest::create(
 GetChunkListQservRequest::GetChunkListQservRequest(bool inUseOnly,
                                                    GetChunkListQservRequest::CallbackType onFinish)
         : _inUseOnly(inUseOnly), _onFinish(onFinish) {
-    LOGS(_log, LOG_LVL_DEBUG, "GetChunkListQservRequest  ** CONSTRUCTED **");
+    LOGS(_log, LOG_LVL_TRACE, "GetChunkListQservRequest  ** CONSTRUCTED **");
 }
 
 GetChunkListQservRequest::~GetChunkListQservRequest() {
-    LOGS(_log, LOG_LVL_DEBUG, "GetChunkListQservRequest  ** DELETED **");
+    LOGS(_log, LOG_LVL_TRACE, "GetChunkListQservRequest  ** DELETED **");
 }
 
 void GetChunkListQservRequest::onRequest(proto::FrameBuffer& buf) {
@@ -66,7 +66,7 @@ void GetChunkListQservRequest::onResponse(proto::FrameBufferView& view) {
     proto::WorkerCommandGetChunkListR reply;
     view.parse(reply);
 
-    LOGS(_log, LOG_LVL_DEBUG,
+    LOGS(_log, LOG_LVL_TRACE,
          context << "** SERVICE REPLY **  status: "
                  << proto::WorkerCommandStatus_Code_Name(reply.status().code()));
 
@@ -80,7 +80,7 @@ void GetChunkListQservRequest::onResponse(proto::FrameBufferView& view) {
             Chunk chunk{chunkEntry.chunk(), chunkEntry.db(), chunkEntry.use_count()};
             chunks.push_back(chunk);
         }
-        LOGS(_log, LOG_LVL_DEBUG, context << "total chunks: " << num);
+        LOGS(_log, LOG_LVL_TRACE, context << "total chunks: " << num);
     }
     if (nullptr != _onFinish) {
         // Clearing the stored callback after finishing the up-stream notification

@@ -40,12 +40,12 @@ namespace lsst::qserv::xrdreq {
 ChunkGroupQservRequest::ChunkGroupQservRequest(bool add, unsigned int chunk, vector<string> const& databases,
                                                bool force, CallbackType onFinish)
         : _add(add), _chunk(chunk), _databases(databases), _force(force), _onFinish(onFinish) {
-    LOGS(_log, LOG_LVL_DEBUG,
+    LOGS(_log, LOG_LVL_TRACE,
          "ChunkGroupQservRequest[" << (_add ? "add" : "remove") << "]   ** CONSTRUCTED **");
 }
 
 ChunkGroupQservRequest::~ChunkGroupQservRequest() {
-    LOGS(_log, LOG_LVL_DEBUG, "ChunkGroupQservRequest[" << (_add ? "add" : "remove") << "]  ** DELETED **");
+    LOGS(_log, LOG_LVL_TRACE, "ChunkGroupQservRequest[" << (_add ? "add" : "remove") << "]  ** DELETED **");
 }
 
 void ChunkGroupQservRequest::onRequest(proto::FrameBuffer& buf) {
@@ -67,7 +67,7 @@ void ChunkGroupQservRequest::onResponse(proto::FrameBufferView& view) {
     proto::WorkerCommandChunkGroupR reply;
     view.parse(reply);
 
-    LOGS(_log, LOG_LVL_DEBUG,
+    LOGS(_log, LOG_LVL_TRACE,
          "ChunkGroupQservRequest[" << (_add ? "add" : "remove") << "** SERVICE REPLY **  status: "
                                    << proto::WorkerCommandStatus_Code_Name(reply.status().code()));
 

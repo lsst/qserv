@@ -46,11 +46,11 @@ TestEchoQservRequest::Ptr TestEchoQservRequest::create(string const& value,
 
 TestEchoQservRequest::TestEchoQservRequest(string const& value, TestEchoQservRequest::CallbackType onFinish)
         : _value(value), _onFinish(onFinish) {
-    LOGS(_log, LOG_LVL_DEBUG, "TestEchoQservRequest  ** CONSTRUCTED **");
+    LOGS(_log, LOG_LVL_TRACE, "TestEchoQservRequest  ** CONSTRUCTED **");
 }
 
 TestEchoQservRequest::~TestEchoQservRequest() {
-    LOGS(_log, LOG_LVL_DEBUG, "TestEchoQservRequest  ** DELETED **");
+    LOGS(_log, LOG_LVL_TRACE, "TestEchoQservRequest  ** DELETED **");
 }
 
 void TestEchoQservRequest::onRequest(proto::FrameBuffer& buf) {
@@ -67,7 +67,7 @@ void TestEchoQservRequest::onResponse(proto::FrameBufferView& view) {
     proto::WorkerCommandTestEchoR reply;
     view.parse(reply);
 
-    LOGS(_log, LOG_LVL_DEBUG,
+    LOGS(_log, LOG_LVL_TRACE,
          "TestEchoQservRequest  ** SERVICE REPLY **  status: "
                  << proto::WorkerCommandStatus_Code_Name(reply.status().code()));
 

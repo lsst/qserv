@@ -45,11 +45,11 @@ QueryManagementRequest::Ptr QueryManagementRequest::create(proto::QueryManagemen
 QueryManagementRequest::QueryManagementRequest(proto::QueryManagement::Operation op, QueryId queryId,
                                                QueryManagementRequest::CallbackType onFinish)
         : _op(op), _queryId(queryId), _onFinish(onFinish) {
-    LOGS(_log, LOG_LVL_DEBUG, "QueryManagementRequest  ** CONSTRUCTED **");
+    LOGS(_log, LOG_LVL_TRACE, "QueryManagementRequest  ** CONSTRUCTED **");
 }
 
 QueryManagementRequest::~QueryManagementRequest() {
-    LOGS(_log, LOG_LVL_DEBUG, "QueryManagementRequest  ** DELETED **");
+    LOGS(_log, LOG_LVL_TRACE, "QueryManagementRequest  ** DELETED **");
 }
 
 void QueryManagementRequest::onRequest(proto::FrameBuffer& buf) {

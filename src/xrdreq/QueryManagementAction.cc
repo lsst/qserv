@@ -70,11 +70,11 @@ void QueryManagementAction::notifyAllWorkers(string const& xrootdFrontendUrl,
 }
 
 QueryManagementAction::QueryManagementAction() {
-    LOGS(_log, LOG_LVL_DEBUG, "QueryManagementAction  ** CONSTRUCTED **");
+    LOGS(_log, LOG_LVL_TRACE, "QueryManagementAction  ** CONSTRUCTED **");
 }
 
 QueryManagementAction::~QueryManagementAction() {
-    LOGS(_log, LOG_LVL_DEBUG, "QueryManagementAction  ** DELETED **");
+    LOGS(_log, LOG_LVL_TRACE, "QueryManagementAction  ** DELETED **");
 }
 
 void QueryManagementAction::_notifyAllWorkers(std::string const& xrootdFrontendUrl,
