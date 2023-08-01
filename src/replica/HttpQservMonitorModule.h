@@ -56,6 +56,8 @@ public:
      *
      *   WORKERS    get the status info of many workers (possible selected by various criteria)
      *   WORKER     get the status info of a specific worker
+     *   WORKER-DB  get the database status of a specific worker
+     *   CZAR-DB    get the database status of Czar
      *   QUERIES    get user query info (queries selected by various criteria)
      *   QUERY      get user query info for a specific query
      *   CSS        get CSS configurations (the shared scan settings, etc.)
@@ -93,6 +95,18 @@ private:
      * Qserv worker.
      */
     nlohmann::json _worker();
+
+    /**
+     * Process a request for extracting various status info on the database
+     * service for select Qserv worker.
+     */
+    nlohmann::json _workerDb();
+
+    /**
+     * Process a request for extracting various status info on the database
+     * service of Czar.
+     */
+    nlohmann::json _czarDb();
 
     /**
      * Process a request for extracting a status on select user queries

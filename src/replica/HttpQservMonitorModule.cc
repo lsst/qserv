@@ -33,6 +33,9 @@
 // Qserv headers
 #include "css/CssAccess.h"
 #include "css/CssError.h"
+#include "replica/DatabaseMySQL.h"
+#include "replica/DatabaseMySQLTypes.h"
+#include "replica/DatabaseMySQLUtils.h"
 #include "global/intTypes.h"
 #include "replica/Common.h"
 #include "replica/Configuration.h"
@@ -139,6 +142,10 @@ json HttpQservMonitorModule::executeImpl(string const& subModuleName) {
         return _workers();
     else if (subModuleName == "WORKER")
         return _worker();
+    else if (subModuleName == "WORKER-DB")
+        return _workerDb();
+    else if (subModuleName == "CZAR-DB")
+        return _czarDb();
     else if (subModuleName == "QUERIES")
         return _userQueries();
     else if (subModuleName == "QUERY")
@@ -215,6 +222,44 @@ json HttpQservMonitorModule::_worker() {
     result["schedulers_to_chunks"] = _schedulers2chunks2json(schedulers2chunks);
     result["chunks"] = _chunkInfo(chunks);
     return result;
+}
+
+json HttpQservMonitorModule::_workerDb() {
+    debug(__func__);
+    checkApiVersion(__func__, 24);
+
+    auto const worker = params().at("worker");
+    unsigned int const timeoutSec = query().optionalUInt("timeout_sec", workerResponseTimeoutSec());
+
+    debug(__func__, "worker=" + worker);
+    debug(__func__, "timeout_sec=" + to_string(timeoutSec));
+
+    string const noParentJobId;
+    GetDbStatusQservMgtRequest::CallbackType const onFinish = nullptr;
+
+    auto const request = controller()->serviceProvider()->qservMgtServices()->databaseStatus(
+            worker, noParentJobId, onFinish, timeoutSec);
+    request->wait();
+
+    if (request->extendedState() != QservMgtRequest::ExtendedState::SUCCESS) {
+        string const msg = "database operation failed, error: " +
+                           QservMgtRequest::state2string(request->extendedState());
+        throw HttpError(__func__, msg);
+    }
+    json result = json::object();
+    result["status"] = request->info();
+    return result;
+}
+
+json HttpQservMonitorModule::_czarDb() {
+    debug(__func__);
+    checkApiVersion(__func__, 24);
+
+    // Connect to the master database. Manage the new connection via the RAII-style
+    // handler to ensure the transaction is automatically rolled-back in case of exceptions.
+    ConnectionHandler const h(Connection::open(Configuration::qservCzarDbParams("qservMeta")));
+    bool const full = true;
+    return json::object({{"status", database::mysql::processList(h.conn, full)}});
 }
 
 wbase::TaskSelector HttpQservMonitorModule::_translateTaskSelector(string const& func) const {
