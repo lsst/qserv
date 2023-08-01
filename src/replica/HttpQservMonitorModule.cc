@@ -281,7 +281,7 @@ json HttpQservMonitorModule::_schedulers2chunks2json(map<string, set<int>> const
 
 json HttpQservMonitorModule::_userQueries() {
     debug(__func__);
-    checkApiVersion(__func__, 12);
+    checkApiVersion(__func__, 23);
 
     auto const config = controller()->serviceProvider()->config();
 
@@ -292,7 +292,7 @@ json HttpQservMonitorModule::_userQueries() {
     unsigned int const timeoutSec = query().optionalUInt("timeout_sec", workerResponseTimeoutSec());
     unsigned int const limit4past = query().optionalUInt("limit4past", 1);
     string const searchPattern = query().optionalString("search_pattern", string());
-    bool const searchBooleanMode = query().optionalUInt("search_boolean_mode", 0) != 0;
+    bool const searchRegexpMode = query().optionalUInt("search_regexp_mode", 0) != 0;
     bool const includeMessages = query().optionalUInt("include_messages", 0) != 0;
 
     debug(__func__, "query_status=" + queryStatus);
@@ -302,7 +302,7 @@ json HttpQservMonitorModule::_userQueries() {
     debug(__func__, "timeout_sec=" + to_string(timeoutSec));
     debug(__func__, "limit4past=" + to_string(limit4past));
     debug(__func__, "search_pattern=" + searchPattern);
-    debug(__func__, "search_boolean_mode=" + bool2str(searchBooleanMode));
+    debug(__func__, "search_regexp_mode=" + bool2str(searchRegexpMode));
     debug(__func__, "include_messages=" + bool2str(includeMessages));
 
     // Check which queries and in which schedulers are being executed
@@ -360,8 +360,11 @@ json HttpQservMonitorModule::_userQueries() {
         g.packCond(constraints, cond);
     }
     if (!searchPattern.empty()) {
-        string const mode = searchBooleanMode ? "BOOLEAN" : "NATURAL LANGUAGE";
-        g.packCond(constraints, g.matchAgainst("query", searchPattern, mode));
+        if (searchRegexpMode) {
+            g.packCond(constraints, g.regexp("query", searchPattern));
+        } else {
+            g.packCond(constraints, g.like("query", "%" + searchPattern + "%"));
+        }
     }
     h.conn->executeInOwnTransaction([&](auto conn) {
         result["queries_past"] = _pastUserQueries(conn, constraints, limit4past, includeMessages);
