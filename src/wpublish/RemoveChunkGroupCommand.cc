@@ -62,37 +62,23 @@ RemoveChunkGroupCommand::RemoveChunkGroupCommand(shared_ptr<wbase::SendChannel> 
           _dbs(dbs),
           _force(force) {}
 
-void RemoveChunkGroupCommand::_reportError(proto::WorkerCommandChunkGroupR::Status status,
-                                           string const& message) {
-    LOGS(_log, LOG_LVL_ERROR, "RemoveChunkGroupCommand::" << __func__ << "  " << message);
-
-    proto::WorkerCommandChunkGroupR reply;
-
-    reply.set_status(status);
-    reply.set_error(message);
-
-    _frameBuf.serialize(reply);
-    string str(_frameBuf.data(), _frameBuf.size());
-    auto streamBuffer = xrdsvc::StreamBuffer::createWithMove(str);
-    _sendChannel->sendStream(streamBuffer, true);
-}
-
 void RemoveChunkGroupCommand::run() {
     string const context = "RemoveChunkGroupCommand::" + string(__func__) + "  ";
-
     LOGS(_log, LOG_LVL_DEBUG, context);
 
-    if (not _dbs.size()) {
-        _reportError(proto::WorkerCommandChunkGroupR::INVALID,
-                     "the list of database names in the group was found empty");
+    if (_dbs.empty()) {
+        reportError<proto::WorkerCommandChunkGroupR>(
+                "the list of database names in the group was found empty",
+                proto::WorkerCommandStatus::INVALID);
         return;
     }
 
     // Make sure none of the chunks in the group is not being used
     // unless in the 'force' mode
-    if (not _force) {
+    if (!_force) {
         if (_resourceMonitor->count(_chunk, _dbs)) {
-            _reportError(proto::WorkerCommandChunkGroupR::IN_USE, "some chunks of the group are in use");
+            reportError<proto::WorkerCommandChunkGroupR>("some chunks of the group are in use",
+                                                         proto::WorkerCommandStatus::IN_USE);
             return;
         }
     }
@@ -120,33 +106,28 @@ void RemoveChunkGroupCommand::run() {
             _chunkInventory->remove(db, _chunk, _mySqlConfig);
 
         } catch (InvalidParamError const& ex) {
-            _reportError(proto::WorkerCommandChunkGroupR::INVALID, ex.what());
+            reportError<proto::WorkerCommandChunkGroupR>(ex.what(), proto::WorkerCommandStatus::INVALID);
             return;
         } catch (QueryError const& ex) {
-            _reportError(proto::WorkerCommandChunkGroupR::ERROR, ex.what());
+            reportError<proto::WorkerCommandChunkGroupR>(ex.what());
             return;
         } catch (exception const& ex) {
-            _reportError(proto::WorkerCommandChunkGroupR::ERROR,
-                         "failed to remove the chunk: " + string(ex.what()));
+            reportError<proto::WorkerCommandChunkGroupR>("failed to remove the chunk: " + string(ex.what()));
             return;
         }
     }
-
-    proto::WorkerCommandChunkGroupR reply;
     if (_resourceMonitor->count(_chunk, _dbs)) {
         // Tell a caller that some of the associated resources are still
         // in use by this worker even though they've been blocked from use for any
         // further requests. It's up to a caller of this service to correctly
         // interpret the effect of the operation based on a presence of the "force"
         // flag in the request.
-
-        reply.set_status(proto::WorkerCommandChunkGroupR::IN_USE);
-        reply.set_error("some chunks of the group are in use");
-
-    } else {
-        reply.set_status(proto::WorkerCommandChunkGroupR::SUCCESS);
+        reportError<proto::WorkerCommandChunkGroupR>("some chunks of the group are in use",
+                                                     proto::WorkerCommandStatus::IN_USE);
+        return;
     }
-
+    proto::WorkerCommandChunkGroupR reply;
+    reply.mutable_status();
     _frameBuf.serialize(reply);
     string str(_frameBuf.data(), _frameBuf.size());
     _sendChannel->sendStream(xrdsvc::StreamBuffer::createWithMove(str), true);

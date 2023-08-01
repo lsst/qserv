@@ -23,9 +23,6 @@
 // Class header
 #include "xrdreq/QueryManagementRequest.h"
 
-// System headers
-#include <stdexcept>
-
 // LSST headers
 #include "lsst/log/Log.h"
 
@@ -36,17 +33,6 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.xrdreq.QueryManagementRequest");
 }  // namespace
 
 namespace lsst::qserv::xrdreq {
-
-string QueryManagementRequest::status2str(Status status) {
-    switch (status) {
-        case SUCCESS:
-            return "SUCCESS";
-        case ERROR:
-            return "ERROR";
-    }
-    throw domain_error("QueryManagementRequest::" + string(__func__) +
-                       "  no match for status: " + to_string(status));
-}
 
 QueryManagementRequest::Ptr QueryManagementRequest::create(proto::QueryManagement::Operation op,
                                                            QueryId queryId,
@@ -81,10 +67,9 @@ void QueryManagementRequest::onResponse(proto::FrameBufferView& view) {
         // 1. it guaranties (exactly) one time notification
         // 2. it breaks the up-stream dependency on a caller object if a shared
         //    pointer to the object was mentioned as the lambda-function's closure
-
         auto onFinish = move(_onFinish);
         _onFinish = nullptr;
-        onFinish(Status::SUCCESS, string());
+        onFinish(proto::WorkerCommandStatus::SUCCESS, string());
     }
 }
 
@@ -96,10 +81,9 @@ void QueryManagementRequest::onError(string const& error) {
         // 1. it guaranties (exactly) one time notification
         // 2. it breaks the up-stream dependency on a caller object if a shared
         //    pointer to the object was mentioned as the lambda-function's closure
-
         auto onFinish = move(_onFinish);
         _onFinish = nullptr;
-        onFinish(Status::ERROR, error);
+        onFinish(proto::WorkerCommandStatus::ERROR, error);
     }
 }
 

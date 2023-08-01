@@ -25,12 +25,14 @@
 #define LSST_QSERV_WBASE_WORKER_COMMAND_H
 
 // System headers
+#include <functional>
 #include <memory>
 #include <mutex>
 #include <string>
 
 // Qserv headers
 #include "proto/FrameBuffer.h"
+#include "proto/worker.pb.h"
 #include "util/Command.h"
 
 // Forward declarations
@@ -46,29 +48,45 @@ namespace lsst::qserv::wbase {
  */
 class WorkerCommand : public util::Command {
 public:
-    /// The smart pointer type to objects of the class
     using Ptr = std::shared_ptr<WorkerCommand>;
 
-    // The default construction and copy semantics are prohibited
     WorkerCommand& operator=(const WorkerCommand&) = delete;
     WorkerCommand(const WorkerCommand&) = delete;
     WorkerCommand() = delete;
+    virtual ~WorkerCommand() = default;
 
-    /**
-     * The normal constructor of the class
-     * @param sendChannel - communication channel for reporting results
-     */
+    /// @param sendChannel - communication channel for reporting results
     explicit WorkerCommand(std::shared_ptr<SendChannel> const& sendChannel);
 
-    /// The destructor
-    virtual ~WorkerCommand();
-
-    /**
-     * The code which will be execute by specific subclasses of this abstract class
-     */
+protected:
+    /// The actual behavior is provided by subclasses.
     virtual void run() = 0;
 
-protected:
+    /**
+     * Fill in the status code and the message into the response message
+     * of the desired type and sent it back to a caller.
+     * @param error Mandatory error to be reported.
+     * @param code The optional error code if the one differes from the default one.
+     * @param extendedModsFunc The optional function to be provided if any additional modifications
+     *   are required to be made to the response object.
+     */
+    template <typename RESPONSE>
+    void reportError(std::string const& error,
+                     proto::WorkerCommandStatus::Code code = proto::WorkerCommandStatus::ERROR,
+                     std::function<void(RESPONSE&)> const& extendedModsFunc = nullptr) {
+        RESPONSE resp;
+        resp.mutable_status()->set_code(code);
+        resp.mutable_status()->set_error(error);
+        if (extendedModsFunc != nullptr) extendedModsFunc(resp);
+        _frameBuf.serialize(resp);
+        sendSerializedResponse();
+    }
+
+    /**
+     * Send the serialized payload stored within the frame buffer to a caller.
+     */
+    void sendSerializedResponse();
+
     std::shared_ptr<SendChannel> _sendChannel;  ///< For result reporting
     proto::FrameBuffer _frameBuf;               ///< Buffer for serializing a response
 };

@@ -52,14 +52,11 @@ namespace lsst::qserv::wpublish {
  */
 class AddChunkGroupCommand : public wbase::WorkerCommand {
 public:
-    // The default construction and copy semantics are prohibited
     AddChunkGroupCommand& operator=(const AddChunkGroupCommand&) = delete;
     AddChunkGroupCommand(const AddChunkGroupCommand&) = delete;
     AddChunkGroupCommand() = delete;
 
     /**
-     * The normal constructor of the class
-     *
      * @param sendChannel     communication channel for reporting results
      * @param chunkInventory  chunks known to the application
      * @param mySqlConfig     database connection parameters
@@ -71,19 +68,10 @@ public:
                          mysql::MySqlConfig const& mySqlConfig, int chunk,
                          std::vector<std::string> const& databases);
 
-    ~AddChunkGroupCommand() override = default;
+    virtual ~AddChunkGroupCommand() override = default;
 
-    void run() override;
-
-private:
-    /**
-     * Report error condition to the logging stream and reply back to
-     * a service caller.
-     *
-     * @param status   error status
-     * @param message  message to be reported
-     */
-    void _reportError(proto::WorkerCommandChunkGroupR::Status status, std::string const& message);
+protected:
+    virtual void run() override;
 
 private:
     std::shared_ptr<ChunkInventory> _chunkInventory;

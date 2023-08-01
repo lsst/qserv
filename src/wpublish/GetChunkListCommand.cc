@@ -54,10 +54,8 @@ void GetChunkListCommand::run() {
     LOGS(_log, LOG_LVL_DEBUG, "GetChunkListCommand::" << __func__);
 
     proto::WorkerCommandGetChunkListR reply;
-    reply.set_status(proto::WorkerCommandGetChunkListR::SUCCESS);
-
+    reply.mutable_status();
     ChunkInventory::ExistMap const existMap = _chunkInventory->existMap();
-
     for (auto&& entry : existMap) {
         string const& db = entry.first;
 
@@ -68,7 +66,6 @@ void GetChunkListCommand::run() {
             ptr->set_use_count(_resourceMonitor->count(chunk, db));
         }
     }
-
     _frameBuf.serialize(reply);
     string str(_frameBuf.data(), _frameBuf.size());
     _sendChannel->sendStream(xrdsvc::StreamBuffer::createWithMove(str), true);

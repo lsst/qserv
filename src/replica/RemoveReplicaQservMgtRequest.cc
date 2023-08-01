@@ -28,6 +28,7 @@
 
 // Qserv headers
 #include "global/ResourceUnit.h"
+#include "proto/worker.pb.h"
 #include "replica/Configuration.h"
 #include "replica/ServiceProvider.h"
 
@@ -78,34 +79,28 @@ void RemoveReplicaQservMgtRequest::startImpl(replica::Lock const& lock) {
 
     _qservRequest = xrdreq::RemoveChunkGroupQservRequest::create(
             chunk(), databases(), force(),
-            [request](xrdreq::ChunkGroupQservRequest::Status status, string const& error) {
+            [request](proto::WorkerCommandStatus::Code code, string const& error) {
                 if (request->state() == State::FINISHED) return;
-
                 replica::Lock lock(request->_mtx, request->context() + string(__func__) + "[callback]");
-
                 if (request->state() == State::FINISHED) return;
 
-                switch (status) {
-                    case xrdreq::ChunkGroupQservRequest::Status::SUCCESS:
+                switch (code) {
+                    case proto::WorkerCommandStatus::SUCCESS:
                         request->finish(lock, QservMgtRequest::ExtendedState::SUCCESS);
                         break;
-
-                    case xrdreq::ChunkGroupQservRequest::Status::INVALID:
+                    case proto::WorkerCommandStatus::INVALID:
                         request->finish(lock, QservMgtRequest::ExtendedState::SERVER_BAD, error);
                         break;
-
-                    case xrdreq::ChunkGroupQservRequest::Status::IN_USE:
+                    case proto::WorkerCommandStatus::IN_USE:
                         request->finish(lock, QservMgtRequest::ExtendedState::SERVER_CHUNK_IN_USE, error);
                         break;
-
-                    case xrdreq::ChunkGroupQservRequest::Status::ERROR:
+                    case proto::WorkerCommandStatus::ERROR:
                         request->finish(lock, QservMgtRequest::ExtendedState::SERVER_ERROR, error);
                         break;
-
                     default:
-                        throw logic_error("RemoveReplicaQservMgtRequest::" + string(__func__) +
-                                          "  unhandled server status: " +
-                                          xrdreq::ChunkGroupQservRequest::status2str(status));
+                        throw logic_error(
+                                "RemoveReplicaQservMgtRequest::" + string(__func__) +
+                                "  unhandled server status: " + proto::WorkerCommandStatus_Code_Name(code));
                 }
             });
     XrdSsiResource resource(ResourceUnit::makeWorkerPath(worker()));

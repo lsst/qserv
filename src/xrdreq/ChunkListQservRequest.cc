@@ -24,42 +24,18 @@
 #include "xrdreq/ChunkListQservRequest.h"
 
 // System headers
-#include <stdexcept>
 #include <string>
 
 // Qserv headers
 #include "lsst/log/Log.h"
 
-using namespace lsst::qserv;
 using namespace std;
 
 namespace {
-
 LOG_LOGGER _log = LOG_GET("lsst.qserv.xrdreq.ChunkListQservRequest");
-
-xrdreq::ChunkListQservRequest::Status translate(proto::WorkerCommandUpdateChunkListR::Status status) {
-    switch (status) {
-        case proto::WorkerCommandUpdateChunkListR::SUCCESS:
-            return xrdreq::ChunkListQservRequest::SUCCESS;
-        case proto::WorkerCommandUpdateChunkListR::ERROR:
-            return xrdreq::ChunkListQservRequest::ERROR;
-    }
-    throw domain_error("ChunkListQservRequest::translate  no match for Protobuf status: " +
-                       proto::WorkerCommandUpdateChunkListR_Status_Name(status));
-}
 }  // namespace
 
 namespace lsst::qserv::xrdreq {
-
-string ChunkListQservRequest::status2str(Status status) {
-    switch (status) {
-        case SUCCESS:
-            return "SUCCESS";
-        case ERROR:
-            return "ERROR";
-    }
-    throw domain_error("ChunkListQservRequest::status2str  no match for status: " + to_string(status));
-}
 
 ChunkListQservRequest::ChunkListQservRequest(bool rebuild, bool reload, CallbackType onFinish)
         : _rebuild(rebuild), _reload(reload), _onFinish(onFinish) {
@@ -89,12 +65,12 @@ void ChunkListQservRequest::onResponse(proto::FrameBufferView& view) {
 
     LOGS(_log, LOG_LVL_DEBUG,
          context << "** SERVICE REPLY **  status: "
-                 << proto::WorkerCommandUpdateChunkListR_Status_Name(reply.status()));
+                 << proto::WorkerCommandStatus_Code_Name(reply.status().code()));
 
     ChunkCollection added;
     ChunkCollection removed;
 
-    if (reply.status() == proto::WorkerCommandUpdateChunkListR::SUCCESS) {
+    if (reply.status().code() == proto::WorkerCommandStatus::SUCCESS) {
         int const numAdded = reply.added_size();
         for (int i = 0; i < numAdded; i++) {
             proto::WorkerCommandChunk const& chunkEntry = reply.added(i);
@@ -118,10 +94,9 @@ void ChunkListQservRequest::onResponse(proto::FrameBufferView& view) {
         // 1. it guaranties (exactly) one time notification
         // 2. it breaks the up-stream dependency on a caller object if a shared
         //    pointer to the object was mentioned as the lambda-function's closure
-
         auto onFinish = move(_onFinish);
         _onFinish = nullptr;
-        onFinish(::translate(reply.status()), reply.error(), added, removed);
+        onFinish(reply.status().code(), reply.status().error(), added, removed);
     }
 }
 
@@ -133,10 +108,9 @@ void ChunkListQservRequest::onError(string const& error) {
         // 1. it guaranties (exactly) one time notification
         // 2. it breaks the up-stream dependency on a caller object if a shared
         //    pointer to the object was mentioned as the lambda-function's closure
-
         auto onFinish = move(_onFinish);
         _onFinish = nullptr;
-        onFinish(Status::ERROR, error, ChunkCollection(), ChunkCollection());
+        onFinish(proto::WorkerCommandStatus::ERROR, error, ChunkCollection(), ChunkCollection());
     }
 }
 

@@ -53,7 +53,6 @@ namespace lsst::qserv::wpublish {
  */
 class RemoveChunkGroupCommand : public wbase::WorkerCommand {
 public:
-    // The default construction and copy semantics are prohibited
     RemoveChunkGroupCommand() = delete;
     RemoveChunkGroupCommand& operator=(const RemoveChunkGroupCommand&) = delete;
     RemoveChunkGroupCommand(const RemoveChunkGroupCommand&) = delete;
@@ -73,20 +72,12 @@ public:
                             mysql::MySqlConfig const& mySqlConfig, int chunk,
                             std::vector<std::string> const& dbs, bool force);
 
-    ~RemoveChunkGroupCommand() override = default;
+    virtual ~RemoveChunkGroupCommand() override = default;
 
-    void run() override;
+protected:
+    virtual void run() override;
 
 private:
-    /**
-     * Report error condition to the logging stream and reply back to
-     * a service caller.
-     *
-     * @param status   error status
-     * @param message  message to be reported
-     */
-    void _reportError(proto::WorkerCommandChunkGroupR::Status status, std::string const& message);
-
     // Parameters of the object
 
     std::shared_ptr<ChunkInventory> _chunkInventory;

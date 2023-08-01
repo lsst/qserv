@@ -24,42 +24,18 @@
 #include "xrdreq/GetChunkListQservRequest.h"
 
 // System headers
-#include <stdexcept>
 #include <string>
 
 // LSST headers
 #include "lsst/log/Log.h"
 
-using namespace lsst::qserv;
 using namespace std;
 
 namespace {
-
 LOG_LOGGER _log = LOG_GET("lsst.qserv.xrdreq.GetChunkListQservRequest");
-
-xrdreq::GetChunkListQservRequest::Status translate(proto::WorkerCommandGetChunkListR::Status status) {
-    switch (status) {
-        case proto::WorkerCommandGetChunkListR::SUCCESS:
-            return xrdreq::GetChunkListQservRequest::SUCCESS;
-        case proto::WorkerCommandGetChunkListR::ERROR:
-            return xrdreq::GetChunkListQservRequest::ERROR;
-    }
-    throw domain_error("GetChunkListQservRequest::translate  no match for Protobuf status: " +
-                       proto::WorkerCommandGetChunkListR_Status_Name(status));
-}
 }  // namespace
 
 namespace lsst::qserv::xrdreq {
-
-string GetChunkListQservRequest::status2str(Status status) {
-    switch (status) {
-        case SUCCESS:
-            return "SUCCESS";
-        case ERROR:
-            return "ERROR";
-    }
-    throw domain_error("GetChunkListQservRequest::status2str  no match for status: " + to_string(status));
-}
 
 GetChunkListQservRequest::Ptr GetChunkListQservRequest::create(
         bool inUseOnly, GetChunkListQservRequest::CallbackType onFinish) {
@@ -92,11 +68,11 @@ void GetChunkListQservRequest::onResponse(proto::FrameBufferView& view) {
 
     LOGS(_log, LOG_LVL_DEBUG,
          context << "** SERVICE REPLY **  status: "
-                 << proto::WorkerCommandGetChunkListR_Status_Name(reply.status()));
+                 << proto::WorkerCommandStatus_Code_Name(reply.status().code()));
 
     ChunkCollection chunks;
 
-    if (reply.status() == proto::WorkerCommandGetChunkListR::SUCCESS) {
+    if (reply.status().code() == proto::WorkerCommandStatus::SUCCESS) {
         int const num = reply.chunks_size();
         for (int i = 0; i < num; i++) {
             proto::WorkerCommandChunk const& chunkEntry = reply.chunks(i);
@@ -113,10 +89,9 @@ void GetChunkListQservRequest::onResponse(proto::FrameBufferView& view) {
         // 1. it guaranties (exactly) one time notification
         // 2. it breaks the up-stream dependency on a caller object if a shared
         //    pointer to the object was mentioned as the lambda-function's closure
-
         auto onFinish = move(_onFinish);
         _onFinish = nullptr;
-        onFinish(::translate(reply.status()), reply.error(), chunks);
+        onFinish(reply.status().code(), reply.status().error(), chunks);
     }
 }
 
@@ -128,10 +103,9 @@ void GetChunkListQservRequest::onError(string const& error) {
         // 1. it guaranties (exactly) one time notification
         // 2. it breaks the up-stream dependency on a caller object if a shared
         //    pointer to the object was mentioned as the lambda-function's closure
-
         auto onFinish = move(_onFinish);
         _onFinish = nullptr;
-        onFinish(Status::ERROR, error, ChunkCollection());
+        onFinish(proto::WorkerCommandStatus::ERROR, error, ChunkCollection());
     }
 }
 

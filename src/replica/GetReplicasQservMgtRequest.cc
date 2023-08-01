@@ -32,6 +32,7 @@
 
 // Qserv headers
 #include "global/ResourceUnit.h"
+#include "proto/worker.pb.h"
 #include "replica/Configuration.h"
 #include "replica/ServiceProvider.h"
 
@@ -112,30 +113,24 @@ void GetReplicasQservMgtRequest::startImpl(replica::Lock const& lock) {
     auto const request = shared_from_base<GetReplicasQservMgtRequest>();
 
     _qservRequest = xrdreq::GetChunkListQservRequest::create(
-            inUseOnly(), [request](xrdreq::GetChunkListQservRequest::Status status, string const& error,
+            inUseOnly(), [request](proto::WorkerCommandStatus::Code code, string const& error,
                                    xrdreq::GetChunkListQservRequest::ChunkCollection const& collection) {
                 if (request->state() == State::FINISHED) return;
-
                 replica::Lock lock(request->_mtx, request->context() + string(__func__) + "[callback]");
-
                 if (request->state() == State::FINISHED) return;
 
-                switch (status) {
-                    case xrdreq::GetChunkListQservRequest::Status::SUCCESS:
-
+                switch (code) {
+                    case proto::WorkerCommandStatus::SUCCESS:
                         request->_setReplicas(lock, collection);
                         request->finish(lock, QservMgtRequest::ExtendedState::SUCCESS);
                         break;
-
-                    case xrdreq::GetChunkListQservRequest::Status::ERROR:
-
+                    case proto::WorkerCommandStatus::ERROR:
                         request->finish(lock, QservMgtRequest::ExtendedState::SERVER_ERROR, error);
                         break;
-
                     default:
-                        throw logic_error("GetReplicasQservMgtRequest::" + string(__func__) +
-                                          "  unhandled server status: " +
-                                          xrdreq::GetChunkListQservRequest::status2str(status));
+                        throw logic_error(
+                                "GetReplicasQservMgtRequest::" + string(__func__) +
+                                "  unhandled server status: " + proto::WorkerCommandStatus_Code_Name(code));
                 }
             });
     XrdSsiResource resource(ResourceUnit::makeWorkerPath(worker()));

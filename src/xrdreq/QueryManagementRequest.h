@@ -43,22 +43,13 @@ namespace lsst::qserv::xrdreq {
  */
 class QueryManagementRequest : public QservRequest {
 public:
-    /// Completion status of the operation
-    enum Status {
-        SUCCESS,  // successful completion of a request
-        ERROR     // an error occurred during command execution
-    };
-
-    /// @return string representation of a status
-    static std::string status2str(Status status);
-
     /// The pointer type for instances of the class
     typedef std::shared_ptr<QueryManagementRequest> Ptr;
 
     /// The callback function type to be used for notifications on
     /// the operation completion.
-    using CallbackType = std::function<void(Status,                // completion status
-                                            std::string const&)>;  // error message
+    using CallbackType = std::function<void(proto::WorkerCommandStatus::Code,
+                                            std::string const&)>;  // error message (if failed)
 
     /**
      * Static factory method is needed to prevent issues with the lifespan

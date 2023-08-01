@@ -62,6 +62,7 @@ void GetStatusCommand::run() {
     result["filesystem"] = wbase::FileChannelShared::statusToJson();
 
     proto::WorkerCommandGetStatusR reply;
+    reply.mutable_status();
     reply.set_info(result.dump());
 
     _frameBuf.serialize(reply);

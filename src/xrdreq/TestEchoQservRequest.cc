@@ -24,7 +24,6 @@
 #include "xrdreq/TestEchoQservRequest.h"
 
 // System headers
-#include <stdexcept>
 #include <string>
 
 // LSST headers
@@ -33,35 +32,10 @@
 using namespace std;
 
 namespace {
-
 LOG_LOGGER _log = LOG_GET("lsst.qserv.xrdreq.TestEchoQservRequest");
-
-using namespace lsst::qserv;
-
-xrdreq::TestEchoQservRequest::Status translate(proto::WorkerCommandTestEchoR::Status status) {
-    switch (status) {
-        case proto::WorkerCommandTestEchoR::SUCCESS:
-            return xrdreq::TestEchoQservRequest::SUCCESS;
-        case proto::WorkerCommandTestEchoR::ERROR:
-            return xrdreq::TestEchoQservRequest::ERROR;
-    }
-    throw domain_error("TestEchoQservRequest::" + string(__func__) + "  no match for Protobuf status: " +
-                       proto::WorkerCommandTestEchoR_Status_Name(status));
-}
 }  // namespace
 
 namespace lsst::qserv::xrdreq {
-
-string TestEchoQservRequest::status2str(Status status) {
-    switch (status) {
-        case SUCCESS:
-            return "SUCCESS";
-        case ERROR:
-            return "ERROR";
-    }
-    throw domain_error("TestEchoQservRequest::" + string(__func__) +
-                       "  no match for status: " + to_string(status));
-}
 
 TestEchoQservRequest::Ptr TestEchoQservRequest::create(string const& value,
                                                        TestEchoQservRequest::CallbackType onFinish) {
@@ -95,7 +69,7 @@ void TestEchoQservRequest::onResponse(proto::FrameBufferView& view) {
 
     LOGS(_log, LOG_LVL_DEBUG,
          "TestEchoQservRequest  ** SERVICE REPLY **  status: "
-                 << proto::WorkerCommandTestEchoR_Status_Name(reply.status()));
+                 << proto::WorkerCommandStatus_Code_Name(reply.status().code()));
 
     if (nullptr != _onFinish) {
         // Clearing the stored callback after finishing the up-stream notification
@@ -104,10 +78,9 @@ void TestEchoQservRequest::onResponse(proto::FrameBufferView& view) {
         // 1. it guaranties (exactly) one time notification
         // 2. it breaks the up-stream dependency on a caller object if a shared
         //    pointer to the object was mentioned as the lambda-function's closure
-
         auto onFinish = move(_onFinish);
         _onFinish = nullptr;
-        onFinish(::translate(reply.status()), reply.error(), _value, reply.value());
+        onFinish(reply.status().code(), reply.status().error(), _value, reply.value());
     }
 }
 
@@ -119,10 +92,9 @@ void TestEchoQservRequest::onError(string const& error) {
         // 1. it guaranties (exactly) one time notification
         // 2. it breaks the up-stream dependency on a caller object if a shared
         //    pointer to the object was mentioned as the lambda-function's closure
-
         auto onFinish = move(_onFinish);
         _onFinish = nullptr;
-        onFinish(Status::ERROR, error, _value, string());
+        onFinish(proto::WorkerCommandStatus::ERROR, error, _value, string());
     }
 }
 

@@ -29,23 +29,10 @@
 using namespace std;
 
 namespace {
-
 LOG_LOGGER _log = LOG_GET("lsst.qserv.xrdreq.GetStatusQservRequest");
-
 }  // namespace
 
 namespace lsst::qserv::xrdreq {
-
-string GetStatusQservRequest::status2str(Status status) {
-    switch (status) {
-        case SUCCESS:
-            return "SUCCESS";
-        case ERROR:
-            return "ERROR";
-    }
-    throw domain_error("GetStatusQservRequest::" + string(__func__) +
-                       "  no match for status: " + to_string(status));
-}
 
 GetStatusQservRequest::Ptr GetStatusQservRequest::create(wbase::TaskSelector const& taskSelector,
                                                          GetStatusQservRequest::CallbackType onFinish) {
@@ -92,10 +79,9 @@ void GetStatusQservRequest::onResponse(proto::FrameBufferView& view) {
         // 1. it guaranties (exactly) one time notification
         // 2. it breaks the up-stream dependency on a caller object if a shared
         //    pointer to the object was mentioned as the lambda-function's closure
-
         auto onFinish = move(_onFinish);
         _onFinish = nullptr;
-        onFinish(Status::SUCCESS, string(), reply.info());
+        onFinish(proto::WorkerCommandStatus::SUCCESS, string(), reply.info());
     }
 }
 
@@ -107,10 +93,9 @@ void GetStatusQservRequest::onError(string const& error) {
         // 1. it guaranties (exactly) one time notification
         // 2. it breaks the up-stream dependency on a caller object if a shared
         //    pointer to the object was mentioned as the lambda-function's closure
-
         auto onFinish = move(_onFinish);
         _onFinish = nullptr;
-        onFinish(Status::ERROR, error, string());
+        onFinish(proto::WorkerCommandStatus::ERROR, error, string());
     }
 }
 

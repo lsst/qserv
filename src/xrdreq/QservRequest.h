@@ -45,7 +45,7 @@ class QservRequest : public XrdSsiRequest {
 public:
     QservRequest(QservRequest const&) = delete;
     QservRequest& operator=(QservRequest const&) = delete;
-    ~QservRequest() override;
+    virtual ~QservRequest() override;
 
     /**
      * Do a proper request cancellation to ensure a pointer to the request gets deleted

@@ -56,7 +56,7 @@ void TestEchoCommand::run() {
     LOGS(_log, LOG_LVL_DEBUG, "TestEchoCommand::" << __func__);
 
     proto::WorkerCommandTestEchoR reply;
-    reply.set_status(proto::WorkerCommandTestEchoR::SUCCESS);
+    reply.mutable_status();
     reply.set_value(_value);
 
     _frameBuf.serialize(reply);

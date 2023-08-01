@@ -22,6 +22,7 @@
 extern XrdSsiProvider* XrdSsiProviderClient;
 
 namespace global = lsst::qserv;
+namespace proto = lsst::qserv::proto;
 namespace util = lsst::qserv::util;
 namespace xrdreq = lsst::qserv::xrdreq;
 
@@ -69,14 +70,13 @@ int test() {
             for (unsigned int i = 0; i < numRequests; ++i) {
                 auto request = xrdreq::GetStatusQservRequest::create(
                         includeTasks, queryIds,
-                        [&finished](xrdreq::GetStatusQservRequest::Status status, string const& error,
+                        [&finished](proto::WorkerCommandStatus::Code code, string const& error,
                                     string const& info) {
-                            if (status != xrdreq::GetStatusQservRequest::Status::SUCCESS) {
-                                cout << "status: " << xrdreq::GetStatusQservRequest::status2str(status)
-                                     << "\n"
-                                     << "error:  " << error << endl;
+                            if (code != proto::WorkerCommandStatu::SUCCESS) {
+                                cout << "code:  " << proto::WorkerCommandStatus_Code_Name(code) << "\n"
+                                     << "error: " << error << endl;
                             } else {
-                                cout << "info:   " << info << endl;
+                                cout << "info:  " << info << endl;
                             }
                             finished--;
                         });
@@ -94,14 +94,13 @@ int test() {
             for (unsigned int j = 0; j < numWorkers; ++j) {
                 string const& worker = workers[j];
                 auto request = xrdreq::GetStatusQservRequest::create(
-                        [&finished](xrdreq::GetStatusQservRequest::Status status, string const& error,
+                        [&finished](proto::WorkerCommandStatus::Code code, string const& error,
                                     string const& info) {
-                            if (status != xrdreq::GetStatusQservRequest::Status::SUCCESS) {
-                                cout << "status: " << xrdreq::GetStatusQservRequest::status2str(status)
-                                     << "\n"
-                                     << "error:  " << error << endl;
+                            if (code != proto::WorkerCommandStatu::SUCCESS) {
+                                cout << "code:  " << proto::WorkerCommandStatus_Code_Name(code) << "\n"
+                                     << "error: " << error << endl;
                             } else {
-                                cout << "info:   " << info << endl;
+                                cout << "info:  " << info << endl;
                             }
                             finished--;
                         });

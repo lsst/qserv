@@ -82,22 +82,6 @@ void SetChunkListCommand::_setChunks(proto::WorkerCommandSetChunkListR& reply,
     }
 }
 
-void SetChunkListCommand::_reportError(proto::WorkerCommandSetChunkListR::Status status,
-                                       string const& message, ChunkInventory::ExistMap const& prevExistMap) {
-    LOGS(_log, LOG_LVL_ERROR, "SetChunkListCommand::" << __func__ << "  " << message);
-
-    proto::WorkerCommandSetChunkListR reply;
-
-    reply.set_status(status);
-    reply.set_error(message);
-    _setChunks(reply, prevExistMap);
-
-    _frameBuf.serialize(reply);
-    string str(_frameBuf.data(), _frameBuf.size());
-    auto streamBuffer = xrdsvc::StreamBuffer::createWithMove(str);
-    _sendChannel->sendStream(streamBuffer, true);
-}
-
 void SetChunkListCommand::run() {
     string const context = "SetChunkListCommand::" + string(__func__) + "  ";
 
@@ -125,9 +109,10 @@ void SetChunkListCommand::run() {
             // Exclude databases which are not in a scope of this command
             if (0 == _databases.count(database)) continue;
             for (auto chunk : entry.second) {
-                if (_resourceMonitor->count(chunk, database)) {
-                    _reportError(proto::WorkerCommandSetChunkListR::IN_USE,
-                                 "some chunks of the group are in use", prevExistMap);
+                if (_resourceMonitor->count(chunk, database) != 0) {
+                    reportError<proto::WorkerCommandSetChunkListR>(
+                            "some chunks of the group are in use", proto::WorkerCommandStatus::IN_USE,
+                            [&](auto& resp) { _setChunks(resp, prevExistMap); });
                     return;
                 }
             }
@@ -163,14 +148,19 @@ void SetChunkListCommand::run() {
                     clusterManager->Removed(resource.c_str());
                 }
             } catch (InvalidParamError const& ex) {
-                _reportError(proto::WorkerCommandSetChunkListR::INVALID, ex.what(), prevExistMap);
+                reportError<proto::WorkerCommandSetChunkListR>(
+                        ex.what(), proto::WorkerCommandStatus::INVALID,
+                        [&](auto& resp) { _setChunks(resp, prevExistMap); });
                 return;
             } catch (QueryError const& ex) {
-                _reportError(proto::WorkerCommandSetChunkListR::ERROR, ex.what(), prevExistMap);
+                reportError<proto::WorkerCommandSetChunkListR>(
+                        ex.what(), proto::WorkerCommandStatus::ERROR,
+                        [&](auto& resp) { _setChunks(resp, prevExistMap); });
                 return;
             } catch (exception const& ex) {
-                _reportError(proto::WorkerCommandSetChunkListR::ERROR,
-                             "failed to remove the chunk: " + string(ex.what()), prevExistMap);
+                reportError<proto::WorkerCommandSetChunkListR>(
+                        "failed to remove the chunk: " + string(ex.what()), proto::WorkerCommandStatus::ERROR,
+                        [&](auto& resp) { _setChunks(resp, prevExistMap); });
                 return;
             }
         }
@@ -198,14 +188,19 @@ void SetChunkListCommand::run() {
                     clusterManager->Added(resource.c_str());
                 }
             } catch (InvalidParamError const& ex) {
-                _reportError(proto::WorkerCommandSetChunkListR::INVALID, ex.what(), prevExistMap);
+                reportError<proto::WorkerCommandSetChunkListR>(
+                        ex.what(), proto::WorkerCommandStatus::INVALID,
+                        [&](auto& resp) { _setChunks(resp, prevExistMap); });
                 return;
             } catch (QueryError const& ex) {
-                _reportError(proto::WorkerCommandSetChunkListR::ERROR, ex.what(), prevExistMap);
+                reportError<proto::WorkerCommandSetChunkListR>(
+                        ex.what(), proto::WorkerCommandStatus::ERROR,
+                        [&](auto& resp) { _setChunks(resp, prevExistMap); });
                 return;
             } catch (exception const& ex) {
-                _reportError(proto::WorkerCommandSetChunkListR::ERROR,
-                             "failed to add the chunk: " + string(ex.what()), prevExistMap);
+                reportError<proto::WorkerCommandSetChunkListR>(
+                        "failed to add the chunk: " + string(ex.what()), proto::WorkerCommandStatus::ERROR,
+                        [&](auto& resp) { _setChunks(resp, prevExistMap); });
                 return;
             }
         }
@@ -213,7 +208,7 @@ void SetChunkListCommand::run() {
 
     // Send back a reply
     proto::WorkerCommandSetChunkListR reply;
-    reply.set_status(proto::WorkerCommandSetChunkListR::SUCCESS);
+    reply.mutable_status();
     _setChunks(reply, prevExistMap);
 
     _frameBuf.serialize(reply);

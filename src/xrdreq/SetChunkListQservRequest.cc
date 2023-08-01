@@ -24,50 +24,18 @@
 #include "xrdreq/SetChunkListQservRequest.h"
 
 // System headers
-#include <stdexcept>
 #include <string>
 
 // LSST headers
 #include "lsst/log/Log.h"
 
 using namespace std;
-using namespace lsst::qserv;
 
 namespace {
-
 LOG_LOGGER _log = LOG_GET("lsst.qserv.xrdreq.SetChunkListQservRequest");
-
-xrdreq::SetChunkListQservRequest::Status translate(proto::WorkerCommandSetChunkListR::Status status) {
-    switch (status) {
-        case proto::WorkerCommandSetChunkListR::SUCCESS:
-            return xrdreq::SetChunkListQservRequest::SUCCESS;
-        case proto::WorkerCommandSetChunkListR::INVALID:
-            return xrdreq::SetChunkListQservRequest::INVALID;
-        case proto::WorkerCommandSetChunkListR::IN_USE:
-            return xrdreq::SetChunkListQservRequest::IN_USE;
-        case proto::WorkerCommandSetChunkListR::ERROR:
-            return xrdreq::SetChunkListQservRequest::ERROR;
-    }
-    throw domain_error("SetChunkListQservRequest::translate  no match for Protobuf status: " +
-                       proto::WorkerCommandSetChunkListR_Status_Name(status));
-}
 }  // namespace
 
 namespace lsst::qserv::xrdreq {
-
-string SetChunkListQservRequest::status2str(Status status) {
-    switch (status) {
-        case SUCCESS:
-            return "SUCCESS";
-        case INVALID:
-            return "INVALID";
-        case IN_USE:
-            return "IN_USE";
-        case ERROR:
-            return "ERROR";
-    }
-    throw domain_error("SetChunkListQservRequest::status2str  no match for status: " + to_string(status));
-}
 
 SetChunkListQservRequest::Ptr SetChunkListQservRequest::create(
         SetChunkListQservRequest::ChunkCollection const& chunks, vector<string> const& databases, bool force,
@@ -114,11 +82,11 @@ void SetChunkListQservRequest::onResponse(proto::FrameBufferView& view) {
 
     LOGS(_log, LOG_LVL_DEBUG,
          context << "** SERVICE REPLY **  status: "
-                 << proto::WorkerCommandSetChunkListR_Status_Name(reply.status()));
+                 << proto::WorkerCommandStatus_Code_Name(reply.status().code()));
 
     ChunkCollection chunks;
 
-    if (reply.status() == proto::WorkerCommandSetChunkListR::SUCCESS) {
+    if (reply.status().code() == proto::WorkerCommandStatus::SUCCESS) {
         int const num = reply.chunks_size();
         for (int i = 0; i < num; i++) {
             proto::WorkerCommandChunk const& chunkEntry = reply.chunks(i);
@@ -134,10 +102,9 @@ void SetChunkListQservRequest::onResponse(proto::FrameBufferView& view) {
         // 1. it guaranties (exactly) one time notification
         // 2. it breaks the up-stream dependency on a caller object if a shared
         //    pointer to the object was mentioned as the lambda-function's closure
-
         auto onFinish = move(_onFinish);
         _onFinish = nullptr;
-        onFinish(::translate(reply.status()), reply.error(), chunks);
+        onFinish(reply.status().code(), reply.status().error(), chunks);
     }
 }
 
@@ -149,10 +116,9 @@ void SetChunkListQservRequest::onError(string const& error) {
         // 1. it guaranties (exactly) one time notification
         // 2. it breaks the up-stream dependency on a caller object if a shared
         //    pointer to the object was mentioned as the lambda-function's closure
-
         auto onFinish = move(_onFinish);
         _onFinish = nullptr;
-        onFinish(Status::ERROR, error, ChunkCollection());
+        onFinish(proto::WorkerCommandStatus::ERROR, error, ChunkCollection());
     }
 }
 

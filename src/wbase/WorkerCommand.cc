@@ -24,8 +24,6 @@
 // Class header
 #include "wbase/WorkerCommand.h"
 
-// Third-party headers
-
 // LSST headers
 #include "lsst/log/Log.h"
 
@@ -40,12 +38,12 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.wbase.WorkerCommand");
 
 namespace lsst::qserv::wbase {
 
-WorkerCommand::WorkerCommand(SendChannel::Ptr const& sendChannel) : _sendChannel(sendChannel) {
-    // Register a function which will run a subclass-specific
-    // implementation of method run()
-    setFunc([this](util::CmdData* data) { this->run(); });
-}
+WorkerCommand::WorkerCommand(SendChannel::Ptr const& sendChannel)
+        : util::Command([this](util::CmdData* data) { this->run(); }), _sendChannel(sendChannel) {}
 
-WorkerCommand::~WorkerCommand() {}
+void WorkerCommand::sendSerializedResponse() {
+    std::string str(_frameBuf.data(), _frameBuf.size());
+    _sendChannel->sendStream(xrdsvc::StreamBuffer::createWithMove(str), true);
+}
 
 }  // namespace lsst::qserv::wbase

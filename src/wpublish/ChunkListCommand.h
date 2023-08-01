@@ -43,12 +43,10 @@ namespace lsst::qserv::wpublish {
  */
 class ChunkListCommand : public wbase::WorkerCommand {
 public:
-    // The default construction and copy semantics are prohibited
     ChunkListCommand() = delete;
     ChunkListCommand& operator=(ChunkListCommand const&) = delete;
     ChunkListCommand(ChunkListCommand const&) = delete;
-
-    ~ChunkListCommand() override = default;
+    virtual ~ChunkListCommand() override = default;
 
 protected:
     /**
@@ -62,17 +60,9 @@ protected:
                      std::shared_ptr<ChunkInventory> const& chunkInventory,
                      mysql::MySqlConfig const& mySqlConfig, bool rebuild, bool reload);
 
-    void run() override;
+    virtual void run() override;
 
 private:
-    /**
-     * Report error condition to the logging stream and reply back to
-     * a service caller.
-     *
-     * @param message  message to be reported
-     */
-    void _reportError(std::string const& message);
-
     // Parameters of the object
 
     std::shared_ptr<ChunkInventory> _chunkInventory;

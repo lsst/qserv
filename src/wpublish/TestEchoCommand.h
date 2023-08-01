@@ -56,6 +56,7 @@ public:
 
     ~TestEchoCommand() override = default;
 
+protected:
     void run() override;
 
 private:

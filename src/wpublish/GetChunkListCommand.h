@@ -59,6 +59,7 @@ public:
                         std::shared_ptr<ChunkInventory> const& chunkInventory,
                         std::shared_ptr<ResourceMonitor> const& resourceMonitor);
 
+protected:
     void run() override;
 
 private:
