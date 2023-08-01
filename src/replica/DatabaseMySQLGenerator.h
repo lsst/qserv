@@ -450,6 +450,11 @@ public:
         return op2(id(col), val(expr), " REGEXP ");
     }
 
+    /// @return "<quoted-col> LIKE <escaped-quoted-expr>"
+    std::string like(std::string const& col, std::string const& expr) const {
+        return op2(id(col), val(expr), " LIKE ");
+    }
+
     /**
      * Pack pairs of column/variable names and their new values into a string which can be
      * further used to form SQL statements of the following kind:

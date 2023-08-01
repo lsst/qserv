@@ -225,6 +225,7 @@ BOOST_AUTO_TEST_CASE(QueryGeneratorTest) {
             {"NOW()>1234567890", g.gt(Sql::NOW, 1234567890)},
             {"`col`>=123", g.geq("col", 123)},
             {"`col` REGEXP '[0-9]+'", g.regexp("col", "[0-9]+")},
+            {"`col` LIKE '%abc%'", g.like("col", "%abc%")},
             {"NOW()<=UNIX_TIMESTAMP(`time`)", g.op2(Sql::NOW, g.UNIX_TIMESTAMP("time"), "<=")},
             {"NOW()=`time`", g.op2(Sql::NOW, g.id("time"), "=")},
 
