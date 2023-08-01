@@ -6,6 +6,7 @@ target_sources(wpublish PRIVATE
     ChunkInventory.cc
     ChunkListCommand.cc
     GetChunkListCommand.cc
+    GetDbStatusCommand.cc
     GetStatusCommand.cc
     QueriesAndChunks.cc
     RemoveChunkGroupCommand.cc

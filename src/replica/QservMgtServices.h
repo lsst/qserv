@@ -30,6 +30,7 @@
 // Qserv headers
 #include "replica/AddReplicaQservMgtRequest.h"
 #include "replica/GetReplicasQservMgtRequest.h"
+#include "replica/GetDbStatusQservMgtRequest.h"
 #include "replica/GetStatusQservMgtRequest.h"
 #include "replica/RemoveReplicaQservMgtRequest.h"
 #include "replica/ServiceProvider.h"
@@ -217,6 +218,23 @@ public:
                                          wbase::TaskSelector const& taskSelector = wbase::TaskSelector(),
                                          GetStatusQservMgtRequest::CallbackType const& onFinish = nullptr,
                                          unsigned int requestExpirationIvalSec = 0);
+
+    /**
+     * Request detailed status on the database service of a Qserv worker
+     *
+     * @param worker  The name of a worker.
+     * @param jobId  An optional identifier of a job specifying a context in which
+     *    a request will be executed.
+     * @param onFinish  A callback function to be called upon request completion.
+     * @param requestExpirationIvalSec  An optional parameter (if differs from 0) allowing it
+     *   to override the default value of the corresponding parameter from the Configuration.
+     * @return  A pointer to the request object if the request was made. Return
+     *   nullptr otherwise.
+     */
+    GetDbStatusQservMgtRequest::Ptr databaseStatus(
+            std::string const& worker, std::string const& jobId = "",
+            GetDbStatusQservMgtRequest::CallbackType const& onFinish = nullptr,
+            unsigned int requestExpirationIvalSec = 0);
 
 private:
     /**
