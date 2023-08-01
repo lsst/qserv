@@ -154,8 +154,8 @@ function(CSSLoader,
       <div class="form-group col-md-1">
         <label for="query-search-mode">Search mode:</label>
         <select id="query-search-mode" class="form-control form-control-selector">
-          <option value="NATURAL" selected>NATURAL</option>
-          <option value="BOOLEAN">BOOLEAN</option>
+          <option value="LIKE" selected>LIKE</option>
+          <option value="REGEXP">REGEXP</option>
         </select>
       </div>
       <div class="form-group col-md-1">
@@ -224,7 +224,7 @@ function(CSSLoader,
                 this._set_min_elapsed("0");
                 this._set_query_type("");
                 this._set_query_search_pattern("");
-                this._set_query_search_mode("NATURAL");
+                this._set_query_search_mode("LIKE");
                 this._set_max_queries("200");
                 this._load();
             });
@@ -307,7 +307,7 @@ function(CSSLoader,
                     min_elapsed_sec: this._get_min_elapsed(),
                     query_type: this._get_query_type(),
                     search_pattern: this._get_query_search_pattern(),
-                    search_boolean_mode: this._get_query_search_mode() == "BOOLEAN" ? 1 : 0,
+                    search_regexp_mode: this._get_query_search_mode() == "REGEXP" ? 1 : 0,
                     limit4past: this._get_max_queries(),
                     timeout_sec: StatusUserQueries._server_proc_timeout_sec()
                 },
