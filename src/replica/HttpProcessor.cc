@@ -236,8 +236,7 @@ void HttpProcessor::registerServices() {
     httpServer()->addHandler("GET", "/replication/qserv/worker/status/:worker",
                              [self](qhttp::Request::Ptr const req, qhttp::Response::Ptr const resp) {
                                  HttpQservMonitorModule::process(self->controller(), self->name(),
-                                                                 self->_processorConfig, req, resp,
-                                                                 "SELECT-WORKER-BY-NAME");
+                                                                 self->_processorConfig, req, resp, "WORKER");
                              });
     httpServer()->addHandler("GET", "/replication/qserv/master/query",
                              [self](qhttp::Request::Ptr const req, qhttp::Response::Ptr const resp) {
@@ -248,14 +247,12 @@ void HttpProcessor::registerServices() {
     httpServer()->addHandler("GET", "/replication/qserv/master/query/:id",
                              [self](qhttp::Request::Ptr const req, qhttp::Response::Ptr const resp) {
                                  HttpQservMonitorModule::process(self->controller(), self->name(),
-                                                                 self->_processorConfig, req, resp,
-                                                                 "SELECT-QUERY-BY-ID");
+                                                                 self->_processorConfig, req, resp, "QUERY");
                              });
     httpServer()->addHandler("GET", "/replication/qserv/css/shared-scan",
                              [self](qhttp::Request::Ptr const req, qhttp::Response::Ptr const resp) {
                                  HttpQservMonitorModule::process(self->controller(), self->name(),
-                                                                 self->_processorConfig, req, resp,
-                                                                 "CSS-SHARED-SCAN");
+                                                                 self->_processorConfig, req, resp, "CSS");
                              });
     httpServer()->addHandler("GET", "/replication/sql/table/schema/:database/:table",
                              [self](qhttp::Request::Ptr const req, qhttp::Response::Ptr const resp) {

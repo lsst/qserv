@@ -38,6 +38,7 @@
 #include "replica/Configuration.h"
 #include "replica/ConfigDatabase.h"
 #include "replica/DatabaseServices.h"
+#include "replica/HttpExceptions.h"
 #include "replica/QservMgtServices.h"
 #include "replica/QservStatusJob.h"
 #include "replica/ServiceProvider.h"
@@ -136,14 +137,14 @@ HttpQservMonitorModule::HttpQservMonitorModule(Controller::Ptr const& controller
 json HttpQservMonitorModule::executeImpl(string const& subModuleName) {
     if (subModuleName == "WORKERS")
         return _workers();
-    else if (subModuleName == "SELECT-WORKER-BY-NAME")
+    else if (subModuleName == "WORKER")
         return _worker();
     else if (subModuleName == "QUERIES")
         return _userQueries();
-    else if (subModuleName == "SELECT-QUERY-BY-ID")
+    else if (subModuleName == "QUERY")
         return _userQuery();
-    else if (subModuleName == "CSS-SHARED-SCAN")
-        return _cssSharedScan();
+    else if (subModuleName == "CSS")
+        return _css();
     throw invalid_argument(context() + "::" + string(__func__) + "  unsupported sub-module: '" +
                            subModuleName + "'");
 }
@@ -535,7 +536,7 @@ json HttpQservMonitorModule::_getQueries(json const& workerInfo) const {
     return result;
 }
 
-json HttpQservMonitorModule::_cssSharedScan() {
+json HttpQservMonitorModule::_css() {
     debug(__func__);
     checkApiVersion(__func__, 12);
 

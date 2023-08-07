@@ -54,11 +54,11 @@ public:
     /**
      * Supported values for parameter 'subModuleName':
      *
-     *   WORKERS                for many workers (possible selected by various criteria)
-     *   SELECT-WORKER-BY-NAME  for a specific worker
-     *   QUERIES                for many queries (selected by various criteria)
-     *   SELECT-QUERY-BY-ID     for a specific query
-     *   CSS-SHARED-SCAN        get CSS configurations of the shared scan for all tables
+     *   WORKERS    get the status info of many workers (possible selected by various criteria)
+     *   WORKER     get the status info of a specific worker
+     *   QUERIES    get user query info (queries selected by various criteria)
+     *   QUERY      get user query info for a specific query
+     *   CSS        get CSS configurations (the shared scan settings, etc.)
      *
      * @throws std::invalid_argument for unknown values of parameter 'subModuleName'
      */
@@ -161,8 +161,8 @@ private:
      */
     nlohmann::json _getQueries(nlohmann::json const& workerInfo) const;
 
-    /// @return The shared scan parameters of all partitioned tables (CSS)
-    nlohmann::json _cssSharedScan();
+    /// @return The CSS info (shared scan parameters of all partitioned tables, etc.)
+    nlohmann::json _css();
 
     /**
      * @param chunks  collection of chunks numbers to be expanded
