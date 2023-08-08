@@ -5,6 +5,7 @@ target_sources(mysql PRIVATE
     LocalInfile.cc
     MySqlConfig.cc
     MySqlConnection.cc
+    MySqlUtils.cc
     RowBuffer.cc
     SchemaFactory.cc
 )

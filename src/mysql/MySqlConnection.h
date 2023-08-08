@@ -33,6 +33,7 @@
 #include <memory>
 #include <mutex>
 #include <string>
+#include <vector>
 
 // Third-party headers
 #include "boost/utility.hpp"
@@ -80,6 +81,7 @@ public:
         assert(_mysql);
         return mysql_field_count(_mysql);
     }
+    std::vector<std::string> getColumnNames() const;
     unsigned int getErrno() const {
         assert(_mysql);
         return mysql_errno(_mysql);
