@@ -1,0 +1,27 @@
+#fwk-czar-mysql-queries-controls label {
+    font-weight:    bold;
+}
+table#fwk-czar-mysql-queries caption {
+    caption-side:   top;
+    text-align:     right;
+    padding-top:    0;
+}
+table#fwk-czar-mysql-queries > thead > tr > th.sticky {
+    position:sticky;
+    top:80px;
+    z-index:2;
+}
+table#fwk-czar-mysql-queries tbody th,
+table#fwk-czar-mysql-queries tbody td {
+    vertical-align:middle;
+}
+table#fwk-czar-mysql-queries pre {
+    padding: 0;
+    margin: 0;
+}
+table#fwk-czar-mysql-queries tbody > tr > td.query_toggler:hover {
+    cursor:pointer;
+}
+table#fwk-czar-mysql-queries caption.updating {
+    background-color: #ffeeba;
+}
