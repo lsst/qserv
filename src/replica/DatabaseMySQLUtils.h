@@ -26,6 +26,9 @@
 #include <memory>
 #include <string>
 
+// Third-party headers
+#include "nlohmann/json.hpp"
+
 // Qserv headers
 #include "replica/Common.h"
 #include "replica/DatabaseMySQLRow.h"
@@ -80,6 +83,20 @@ inline bool selectSingleValue(std::shared_ptr<Connection> const& conn, std::stri
     auto const onEachRow = [&](Row& row) -> bool { return row.get(colName, val); };
     return detail::selectSingleValueImpl(conn, query, onEachRow, noMoreThanOne);
 }
+
+/**
+ * Report info on the on-going queries using 'SHOW [FULL] PROCESSLIST'.
+ * @param A scope of the operaton depends on the user credentials privided
+ *   in the configuration object. Normally, a subset of queries which belong
+ *   to the specified user will be reported.
+ * @param conn The MySQL connection for executing the query.
+ * @param full The optional modifier which (if set) allows seeing the full text
+ *   of the queries.
+ * @return A collection of queries encoded as the JSON object. Please, see the code
+ *   for further details on the schema of the object.
+ * @throws mysql::Error on errors detected during query execution/processing.
+ */
+nlohmann::json processList(std::shared_ptr<Connection> const& conn, bool full = false);
 
 }  // namespace lsst::qserv::replica::database::mysql
 
