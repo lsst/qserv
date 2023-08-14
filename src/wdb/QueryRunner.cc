@@ -121,6 +121,7 @@ bool QueryRunner::_initConnection() {
         _multiError.push_back(error);
         return false;
     }
+    _task->setMySqlThreadId(_mysqlConn->threadId());
     return true;
 }
 

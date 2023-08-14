@@ -236,6 +236,7 @@ MYSQL* MySqlConnection::_connectHelper() {
         mysql_close(m);
         return c;
     }
+    _threadId = mysql_thread_id(m);
     return m;
 }
 

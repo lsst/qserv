@@ -486,6 +486,7 @@ nlohmann::json Task::getJson() const {
     js["queryTime_msec"] = util::TimeUtils::tp2ms(_queryTime);
     js["finishTime_msec"] = util::TimeUtils::tp2ms(_finishTime);
     js["sizeSoFar"] = _totalSize;
+    js["mysqlThreadId"] = _mysqlThreadId.load();
     return js;
 }
 

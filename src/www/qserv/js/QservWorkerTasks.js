@@ -136,6 +136,7 @@ function(CSSLoader,
           <th class="sticky" style="text-align:right;">queried</th>
           <th class="sticky right-aligned"><elem style="color:red;">&rarr;</elem></th>
           <th class="sticky" style="text-align:right;">finished</th>
+          <th class="sticky" style="text-align:right;">MySQL thrd</th>
         </tr>    
       </thead>
       <caption class="updating">Loading...</caption>
@@ -331,6 +332,7 @@ function(CSSLoader,
   <td style="text-align:right;"><pre>${task.queryTime_msec ? QservWorkerTasks._timestamp2hhmmss(task.queryTime_msec) : ""}</pre></td>
   <th style="text-align:right;"><pre>${QservWorkerTasks._timestamps_diff2str(task.queryTime_msec, task.finishTime_msec, snapshotTime_msec)}</pre></th>
   <td style="text-align:right;"><pre>${task.finishTime_msec ? QservWorkerTasks._timestamp2hhmmss(task.finishTime_msec) : ""}</pre></td>
+  <td style="text-align:right;"><pre>${task.mysqlThreadId || "&nbsp;"}</pre></td>
 </tr>`;
                             rowspan++;
                             numTasksDisplayed++;
