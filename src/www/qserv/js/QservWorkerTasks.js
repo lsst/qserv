@@ -51,7 +51,7 @@ function(CSSLoader,
         <label for="num-tasks"># displayed / selected / total:</label>
         <input type="text" id="num-tasks" class="form-control" value="0 / 0 / 0" disabled>
       </div>
-      <div class="form-group col-md-3">
+      <div class="form-group col-md-2">
         <label for="worker">Worker:</label>
         <select id="worker" class="form-control form-control-selector">
         </select>
@@ -62,15 +62,17 @@ function(CSSLoader,
           <option value="" selected>&lt;any&gt;</option>
         </select>
       </div>
-      <div class="form-group col-md-3">
+      <div class="form-group col-md-4">
         <label for="state">State:</label>
         <select id="state" class="form-control form-control-selector">
           <option value="">&lt;any&gt;</option>
           <option value="CREATED">CREATED</option>
           <option value="QUEUED">QUEUED</option>
+          <option value="STARTED">STARTED</option>
           <option value="EXECUTING_QUERY">EXECUTING_QUERY</option>
           <option value="READING_DATA">READING_DATA</option>
-          <option value="EXECUTING_QUERY,READING_DATA" selected>EXECUTING_QUERY | READING_DATA</option>
+          <option value="EXECUTING_QUERY,READING_DATA">EXECUTING_QUERY | READING_DATA</option>
+          <option value="STARTED,EXECUTING_QUERY,READING_DATA" selected>STARTED | EXECUTING_QUERY | READING_DATA</option>
           <option value="FINISHED">FINISHED</option>
           <option value="CREATED,QUEUED,EXECUTING_QUERY,READING_DATA">!FINISHED</option>
         </select>
@@ -133,6 +135,8 @@ function(CSSLoader,
           <th class="sticky right-aligned"><elem style="color:red;">&rarr;</elem></th>
           <th class="sticky" style="text-align:right;">started</th>
           <th class="sticky right-aligned"><elem style="color:red;">&rarr;</elem></th>
+          <th class="sticky" style="text-align:right;">query&nbsp;started</th>
+          <th class="sticky right-aligned"><elem style="color:red;">&rarr;</elem></th>
           <th class="sticky" style="text-align:right;">queried</th>
           <th class="sticky right-aligned"><elem style="color:red;">&rarr;</elem></th>
           <th class="sticky" style="text-align:right;">finished</th>
@@ -150,7 +154,7 @@ function(CSSLoader,
             });
             cont.find("button#reset-tasks-form").click(() => {
                 this._set_query('');
-                this._set_state("EXECUTING_QUERY,READING_DATA");
+                this._set_state("STARTED,EXECUTING_QUERY,READING_DATA");
                 this._set_max_tasks(200);
                 this._set_update_interval_sec(10);
                 this._load();
@@ -328,7 +332,9 @@ function(CSSLoader,
   <td style="text-align:right;"><pre>${task.queueTime_msec ? QservWorkerTasks._timestamp2hhmmss(task.queueTime_msec) : ""}</pre></td>
   <th style="text-align:right;"><pre>${QservWorkerTasks._timestamps_diff2str(task.queueTime_msec, task.startTime_msec, snapshotTime_msec)}</pre></th>
   <td style="text-align:right;"><pre>${task.startTime_msec ? QservWorkerTasks._timestamp2hhmmss(task.startTime_msec) : ""}</pre></td>
-  <th style="text-align:right;"><pre>${QservWorkerTasks._timestamps_diff2str(task.startTime_msec, task.queryTime_msec, snapshotTime_msec)}</pre></th>
+  <th style="text-align:right;"><pre>${QservWorkerTasks._timestamps_diff2str(task.startTime_msec, task.queryExecTime_msec, snapshotTime_msec)}</pre></th>
+  <td style="text-align:right;"><pre>${task.queryExecTime_msec ? QservWorkerTasks._timestamp2hhmmss(task.queryExecTime_msec) : ""}</pre></td>
+  <th style="text-align:right;"><pre>${QservWorkerTasks._timestamps_diff2str(task.queryExecTime_msec, task.queryTime_msec, snapshotTime_msec)}</pre></th>
   <td style="text-align:right;"><pre>${task.queryTime_msec ? QservWorkerTasks._timestamp2hhmmss(task.queryTime_msec) : ""}</pre></td>
   <th style="text-align:right;"><pre>${QservWorkerTasks._timestamps_diff2str(task.queryTime_msec, task.finishTime_msec, snapshotTime_msec)}</pre></th>
   <td style="text-align:right;"><pre>${task.finishTime_msec ? QservWorkerTasks._timestamp2hhmmss(task.finishTime_msec) : ""}</pre></td>
@@ -362,9 +368,10 @@ function(CSSLoader,
             switch (state) {
                 case 0: return 'table-warning';
                 case 1: return 'table-light';
-                case 2: return 'table-primary';
-                case 3: return 'table-info';
-                case 4: return 'table-secondary';
+                case 2: return 'table-danger';
+                case 3: return 'table-primary';
+                case 4: return 'table-info';
+                case 5: return 'table-secondary';
                 default: return 'table-warning';
             }
         }
@@ -372,9 +379,10 @@ function(CSSLoader,
             switch (state) {
                 case 0: return 'CREATED';
                 case 1: return 'QUEUED';
-                case 2: return 'EXECUTING_QUERY';
-                case 3: return 'READING_DATA';
-                case 4: return 'FINISHED';
+                case 2: return 'STARTED';
+                case 3: return 'EXECUTING_QUERY';
+                case 4: return 'READING_DATA';
+                case 5: return 'FINISHED';
                 default: return 'UNKNOWN';
             }
         }

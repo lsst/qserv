@@ -383,6 +383,7 @@ void Task::queued(std::chrono::system_clock::time_point const& now) {
 bool Task::isRunning() const {
     std::lock_guard<std::mutex> lock(_stateMtx);
     switch (_state) {
+        case TaskState::STARTED:
         case TaskState::EXECUTING_QUERY:
         case TaskState::READING_DATA:
             return true;
@@ -391,11 +392,16 @@ bool Task::isRunning() const {
     }
 }
 
-/// Set values associated with the Task being started.
 void Task::started(std::chrono::system_clock::time_point const& now) {
     std::lock_guard<std::mutex> guard(_stateMtx);
-    _state = TaskState::EXECUTING_QUERY;
+    _state = TaskState::STARTED;
     _startTime = now;
+}
+
+void Task::queryExecutionStarted() {
+    std::lock_guard<std::mutex> guard(_stateMtx);
+    _state = TaskState::EXECUTING_QUERY;
+    _queryExecTime = std::chrono::system_clock::now();
 }
 
 void Task::queried() {
@@ -430,6 +436,7 @@ std::chrono::milliseconds Task::getRunTime() const {
     switch (_state) {
         case TaskState::FINISHED:
             return std::chrono::duration_cast<std::chrono::milliseconds>(_finishTime - _startTime);
+        case TaskState::STARTED:
         case TaskState::EXECUTING_QUERY:
         case TaskState::READING_DATA:
             return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() -
@@ -483,6 +490,7 @@ nlohmann::json Task::getJson() const {
     js["createTime_msec"] = util::TimeUtils::tp2ms(_createTime);
     js["queueTime_msec"] = util::TimeUtils::tp2ms(_queueTime);
     js["startTime_msec"] = util::TimeUtils::tp2ms(_startTime);
+    js["queryExecTime_msec"] = util::TimeUtils::tp2ms(_queryExecTime);
     js["queryTime_msec"] = util::TimeUtils::tp2ms(_queryTime);
     js["finishTime_msec"] = util::TimeUtils::tp2ms(_finishTime);
     js["sizeSoFar"] = _totalSize;

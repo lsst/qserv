@@ -252,6 +252,9 @@ public:
     void queued(std::chrono::system_clock::time_point const& now);
     void started(std::chrono::system_clock::time_point const& now);
 
+    /// The actual execution of the corresponding MySQL query (or queries) started.
+    void queryExecutionStarted();
+
     /// MySQL finished executing queries.
     void queried();
 
@@ -335,12 +338,13 @@ private:
     mutable std::mutex _stateMtx;  ///< Mutex to protect state related members _state, _???Time.
     std::atomic<TaskState> _state{TaskState::CREATED};
     std::chrono::system_clock::time_point _createTime =
-            std::chrono::system_clock::now();           ///< task was created
-    std::chrono::system_clock::time_point _queueTime;   ///< task was queued
-    std::chrono::system_clock::time_point _startTime;   ///< task processing started
-    std::chrono::system_clock::time_point _queryTime;   ///< MySQL finished executing queries
-    std::chrono::system_clock::time_point _finishTime;  ///< data transmission to Czar fiished
-    size_t _totalSize = 0;                              ///< Total size of the result so far.
+            std::chrono::system_clock::now();              ///< task was created
+    std::chrono::system_clock::time_point _queueTime;      ///< task was queued
+    std::chrono::system_clock::time_point _startTime;      ///< task processing started
+    std::chrono::system_clock::time_point _queryExecTime;  ///< query execution at MySQL started
+    std::chrono::system_clock::time_point _queryTime;      ///< MySQL finished executing queries
+    std::chrono::system_clock::time_point _finishTime;     ///< data transmission to Czar fiished
+    size_t _totalSize = 0;                                 ///< Total size of the result so far.
 
     /// Stores information on the query's resource usage.
     std::weak_ptr<wpublish::QueryStatistics> _queryStats;
