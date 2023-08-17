@@ -244,6 +244,11 @@ void HttpProcessor::registerServices() {
                                                                  self->_processorConfig, req, resp,
                                                                  "WORKER-DB");
                              });
+    httpServer()->addHandler("GET", "/replication/qserv/master/status",
+                             [self](qhttp::Request::Ptr const req, qhttp::Response::Ptr const resp) {
+                                 HttpQservMonitorModule::process(self->controller(), self->name(),
+                                                                 self->_processorConfig, req, resp, "CZAR");
+                             });
     httpServer()->addHandler("GET", "/replication/qserv/master/db",
                              [self](qhttp::Request::Ptr const req, qhttp::Response::Ptr const resp) {
                                  HttpQservMonitorModule::process(self->controller(), self->name(),
@@ -254,7 +259,19 @@ void HttpProcessor::registerServices() {
                              [self](qhttp::Request::Ptr const req, qhttp::Response::Ptr const resp) {
                                  HttpQservMonitorModule::process(self->controller(), self->name(),
                                                                  self->_processorConfig, req, resp,
-                                                                 "QUERIES");
+                                                                 "QUERIES-ACTIVE");
+                             });
+    httpServer()->addHandler("GET", "/replication/qserv/master/queries/active/progress",
+                             [self](qhttp::Request::Ptr const req, qhttp::Response::Ptr const resp) {
+                                 HttpQservMonitorModule::process(self->controller(), self->name(),
+                                                                 self->_processorConfig, req, resp,
+                                                                 "QUERIES-ACTIVE-PROGRESS");
+                             });
+    httpServer()->addHandler("GET", "/replication/qserv/master/queries/past",
+                             [self](qhttp::Request::Ptr const req, qhttp::Response::Ptr const resp) {
+                                 HttpQservMonitorModule::process(self->controller(), self->name(),
+                                                                 self->_processorConfig, req, resp,
+                                                                 "QUERIES-PAST");
                              });
     httpServer()->addHandler("GET", "/replication/qserv/master/query/:id",
                              [self](qhttp::Request::Ptr const req, qhttp::Response::Ptr const resp) {

@@ -144,10 +144,16 @@ json HttpQservMonitorModule::executeImpl(string const& subModuleName) {
         return _worker();
     else if (subModuleName == "WORKER-DB")
         return _workerDb();
+    else if (subModuleName == "CZAR")
+        return _czar();
     else if (subModuleName == "CZAR-DB")
         return _czarDb();
-    else if (subModuleName == "QUERIES")
-        return _userQueries();
+    else if (subModuleName == "QUERIES-ACTIVE")
+        return _activeQueries();
+    else if (subModuleName == "QUERIES-ACTIVE-PROGRESS")
+        return _activeQueriesProgress();
+    else if (subModuleName == "QUERIES-PAST")
+        return _pastQueries();
     else if (subModuleName == "QUERY")
         return _userQuery();
     else if (subModuleName == "CSS")
@@ -251,6 +257,31 @@ json HttpQservMonitorModule::_workerDb() {
     return result;
 }
 
+json HttpQservMonitorModule::_czar() {
+    debug(__func__);
+    checkApiVersion(__func__, 25);
+
+    // Connect to the Czar's MySQL proxy service.
+    // Execute w/o any transactions since the transcation management isn't supported
+    // by Qserv Czar.
+    auto const conn = Connection::open(Configuration::qservCzarProxyParams());
+    QueryGenerator const g(conn);
+    string const command = "query_proc_stats";
+    string const query = g.call(g.QSERV_MANAGER(command));
+    string response;
+    conn->execute([&query, &response](auto conn) { selectSingleValue<string>(conn, query, response); });
+    string err;
+    if (response.empty() || (response == command)) {
+        err = "no response received from Czar";
+    } else {
+        if (auto const status = json::parse(response); status.is_object()) {
+            return json::object({{"status", status}});
+        }
+        err = "response received from Czar is not a valid JSON object";
+    }
+    throw HttpError(__func__, err + ", query: " + query);
+}
+
 json HttpQservMonitorModule::_czarDb() {
     debug(__func__);
     checkApiVersion(__func__, 24);
@@ -325,35 +356,15 @@ json HttpQservMonitorModule::_schedulers2chunks2json(map<string, set<int>> const
     return result;
 }
 
-json HttpQservMonitorModule::_userQueries() {
+json HttpQservMonitorModule::_activeQueries() {
     debug(__func__);
-    checkApiVersion(__func__, 23);
+    checkApiVersion(__func__, 25);
 
-    auto const config = controller()->serviceProvider()->config();
-
-    string const queryStatus = query().optionalString("query_status", string());
-    string const queryType = query().optionalString("query_type", string());
-    unsigned int const queryAgeSec = query().optionalUInt("query_age", 0);
-    unsigned int const minElapsedSec = query().optionalUInt("min_elapsed_sec", 0);
     unsigned int const timeoutSec = query().optionalUInt("timeout_sec", workerResponseTimeoutSec());
-    unsigned int const limit4past = query().optionalUInt("limit4past", 1);
-    string const searchPattern = query().optionalString("search_pattern", string());
-    bool const searchRegexpMode = query().optionalUInt("search_regexp_mode", 0) != 0;
-    bool const includeMessages = query().optionalUInt("include_messages", 0) != 0;
-
-    debug(__func__, "query_status=" + queryStatus);
-    debug(__func__, "query_type=" + queryType);
-    debug(__func__, "query_age=" + to_string(queryAgeSec));
-    debug(__func__, "min_elapsed_sec=" + to_string(minElapsedSec));
     debug(__func__, "timeout_sec=" + to_string(timeoutSec));
-    debug(__func__, "limit4past=" + to_string(limit4past));
-    debug(__func__, "search_pattern=" + searchPattern);
-    debug(__func__, "search_regexp_mode=" + bool2str(searchRegexpMode));
-    debug(__func__, "include_messages=" + bool2str(includeMessages));
 
     // Check which queries and in which schedulers are being executed
     // by Qserv workers.
-
     bool const allWorkers = true;
     auto const job = QservStatusJob::create(timeoutSec, allWorkers, controller());
     job->start();
@@ -386,6 +397,99 @@ json HttpQservMonitorModule::_userQueries() {
     json result;
     h.conn->executeInOwnTransaction(
             [&](auto conn) { result["queries"] = _currentUserQueries(conn, queryId2scheduler); });
+    return result;
+}
+
+json HttpQservMonitorModule::_activeQueriesProgress() {
+    debug(__func__);
+    checkApiVersion(__func__, 25);
+
+    QueryId const selectQueryId = query().optionalUInt64("query_id", 0);
+    unsigned int const selectLastSeconds = query().optionalUInt("last_seconds", 0);
+
+    debug(__func__, "query_id=" + to_string(selectQueryId));
+    debug(__func__, "last_seconds=" + to_string(selectLastSeconds));
+
+    // Connect to the Czar's MySQL proxy service.
+    auto const conn = Connection::open(Configuration::qservCzarProxyParams());
+    QueryGenerator const g(conn);
+    string const command = "query_info " + to_string(selectQueryId) + " " + to_string(selectLastSeconds);
+    string const query = g.call(g.QSERV_MANAGER(command));
+
+    debug(__func__, "query=" + query);
+
+    // Result set processor populates the JSON object and returns the completion
+    // status of the operation as a string. The empty string indicates success.
+    json queries = json::object();
+    auto const extractResultSet = [&queries, this](auto conn) -> string {
+        debug(__func__, "");
+        // Clear the result in case if the previous retry failed mid-flight.
+        queries = json::object();
+        vector<string> const requiredColumnNames = {"queryId", "timestamp_ms", "num_jobs"};
+        if (conn->columnNames() != requiredColumnNames) {
+            return "unexpected schema of the result set";
+        }
+        string prevQueryIdStr;
+        Row row;
+        while (conn->next(row)) {
+            // Default values indicate NULLs
+            string const queryIdStr = row.getAs<string>(0, string());
+            uint64_t const timestampMs = row.getAs<uint64_t>(1, 0);
+            int const numJobs = row.getAs<int>(2, -1);
+            if (queryIdStr.empty() || (timestampMs == 0) || (numJobs < 0)) {
+                return "NULL values in the result set";
+            }
+            // Group query-specific results into dedicated arrays
+            if (prevQueryIdStr.empty() || (prevQueryIdStr != queryIdStr)) {
+                prevQueryIdStr = queryIdStr;
+                queries[queryIdStr] = json::array();
+            }
+            queries[queryIdStr].push_back(json::array({timestampMs, numJobs}));
+            debug(__func__, "(queryIdStr,timestampMs,numJobs)=(" + queryIdStr + "," + to_string(timestampMs) +
+                                    "," + to_string(numJobs) + ")");
+        }
+        return string();
+    };
+
+    // Execute w/o any transactions since the transcation management isn't supported
+    // by Qserv Czar. Execute the query via the automatic query retry wrapper
+    string error;
+    conn->execute([&query, &error, &extractResultSet](auto conn) {
+        conn->execute(query);
+        // if (conn->hasResult()) error = extractResultSet(conn);
+        error = extractResultSet(conn);
+    });
+    if (error.empty()) return json::object({{"queries", queries}});
+    throw HttpError(__func__, error + ", query: " + query);
+}
+
+json HttpQservMonitorModule::_pastQueries() {
+    debug(__func__);
+    checkApiVersion(__func__, 25);
+
+    auto const config = controller()->serviceProvider()->config();
+    string const queryStatus = query().optionalString("query_status", string());
+    string const queryType = query().optionalString("query_type", string());
+    unsigned int const queryAgeSec = query().optionalUInt("query_age", 0);
+    unsigned int const minElapsedSec = query().optionalUInt("min_elapsed_sec", 0);
+    unsigned int const limit4past = query().optionalUInt("limit4past", 1);
+    string const searchPattern = query().optionalString("search_pattern", string());
+    bool const searchRegexpMode = query().optionalUInt("search_regexp_mode", 0) != 0;
+    bool const includeMessages = query().optionalUInt("include_messages", 0) != 0;
+
+    debug(__func__, "query_status=" + queryStatus);
+    debug(__func__, "query_type=" + queryType);
+    debug(__func__, "query_age=" + to_string(queryAgeSec));
+    debug(__func__, "min_elapsed_sec=" + to_string(minElapsedSec));
+    debug(__func__, "limit4past=" + to_string(limit4past));
+    debug(__func__, "search_pattern=" + searchPattern);
+    debug(__func__, "search_regexp_mode=" + bool2str(searchRegexpMode));
+    debug(__func__, "include_messages=" + bool2str(includeMessages));
+
+    // Connect to the master database. Manage the new connection via the RAII-style
+    // handler to ensure the transaction is automatically rolled-back in case of exceptions.
+    ConnectionHandler const h(Connection::open(Configuration::qservCzarDbParams("qservMeta")));
+    QueryGenerator const g(h.conn);
 
     // Get info on the past queries matching the specified criteria.
     string constraints;
