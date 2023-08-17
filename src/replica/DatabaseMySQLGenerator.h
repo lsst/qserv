@@ -100,6 +100,12 @@ public:
     /// @param lhs Preprocessed identifier of the left column to be selected.
     /// @param rhs Preprocessed identifier of the left column to be selected.
     static Sql TIMESTAMPDIFF(std::string const& resolution, SqlId const& lhs, SqlId const& rhs);
+
+    /// @param sqlVal A value of the required parameter of the procedure. The value is required to
+    ///   be preprocessed.
+    /// @return an object representing the procedure "QSERV_MANAGER(<sqlVal>)"
+    static Sql QSERV_MANAGER(DoNotProcess const& sqlVal);
+
     /// @param str_ the input string
     explicit Sql(std::string const& str_) : DoNotProcess(str_) {}
 
@@ -262,6 +268,8 @@ public:
     Sql TIMESTAMPDIFF(std::string const& resolution, IDTYPE1 const& lhs, IDTYPE2 const& rhs) const {
         return Sql::TIMESTAMPDIFF(resolution, id(lhs), id(rhs));
     }
+
+    Sql QSERV_MANAGER(std::string const& v) const { return Sql::QSERV_MANAGER(val(v)); }
 
     // Generator: [cond1 [AND cond2 [...]]]
 
@@ -1050,6 +1058,24 @@ public:
     std::string setVars(SqlVarScope scope, Targs... Fargs) const {
         return _setVars(scope, packPairs(Fargs...));
     }
+
+    /**
+     * @brief Generator for calling stored procedures.
+     *
+     * For the following sample input:
+     * @code
+     *   call(QSERV_MANAGER("abc"));
+     * @endcode
+     * The generator will produce this statement:
+     * @code
+     *  CALL QSERV_MANAGER('abc')
+     * @code
+     *
+     * @param packedProcAndArgs The well-formed SQL for the procedure and its parameters
+     * @return Well-formed SQL statement.
+     * @throws std::invalid_argument If the input parameter is empty.
+     */
+    std::string call(DoNotProcess const& packedProcAndArgs) const;
 
 private:
     /// @return A string that's ready to be included into the queries.
