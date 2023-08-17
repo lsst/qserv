@@ -59,10 +59,10 @@ public:
         unsigned int chunk;
     };
 
-    // The default construction and copy semantics are prohibited
     SetChunkListCommand& operator=(const SetChunkListCommand&) = delete;
     SetChunkListCommand(const SetChunkListCommand&) = delete;
     SetChunkListCommand() = delete;
+    virtual ~SetChunkListCommand() override = default;
 
     /**
      * @param sendChannel      communication channel for reporting results
@@ -79,29 +79,16 @@ public:
                         mysql::MySqlConfig const& mySqlConfig, std::vector<Chunk> const& chunks,
                         std::vector<std::string> const& databases, bool force);
 
-    ~SetChunkListCommand() override = default;
-
-    void run() override;
+protected:
+    virtual void run() override;
 
 private:
     /**
      * Set the chunk list in the reply
-     *
      * @param reply         message to be initialized
      * @param prevExistMap  previous state of the ChunkList
      */
     void _setChunks(proto::WorkerCommandSetChunkListR& reply, ChunkInventory::ExistMap const& prevExistMap);
-
-    /**
-     * Report error condition to the logging stream and reply back to
-     * a service caller.
-     *
-     * @param status        error status
-     * @param message       message to be reported
-     * @param prevExistMap  previous state of the ChunkList
-     */
-    void _reportError(proto::WorkerCommandSetChunkListR::Status status, std::string const& message,
-                      ChunkInventory::ExistMap const& prevExistMap);
 
     // Parameters of the object
 

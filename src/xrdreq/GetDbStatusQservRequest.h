@@ -19,61 +19,58 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_XRDREQ_QUERY_MANAGEMENT_REQUEST_H
-#define LSST_QSERV_XRDREQ_QUERY_MANAGEMENT_REQUEST_H
+#ifndef LSST_QSERV_XRDREQ_GET_DB_STATUS_QSERV_REQUEST_H
+#define LSST_QSERV_XRDREQ_GET_DB_STATUS_QSERV_REQUEST_H
 
 // System headers
+#include <cstdint>
 #include <functional>
 #include <memory>
 #include <string>
+#include <vector>
 
 // Qserv headers
-#include "global/intTypes.h"
 #include "proto/worker.pb.h"
 #include "xrdreq/QservRequest.h"
 
 namespace lsst::qserv::xrdreq {
 
 /**
- * Class QueryManagementRequest represents requests for managing query
- * completion/cancellation at Qserv workers.
- * @note No actuall responses are expected from these requests beyond
- * the error messages in case of any problems in delivering or processing
- * notifications.
+ * Class GetDbStatusQservRequest represents a request returning various info
+ * on the status of the database service of the Qserv worker.
  */
-class QueryManagementRequest : public QservRequest {
+class GetDbStatusQservRequest : public QservRequest {
 public:
     /// The pointer type for instances of the class
-    typedef std::shared_ptr<QueryManagementRequest> Ptr;
+    typedef std::shared_ptr<GetDbStatusQservRequest> Ptr;
 
     /// The callback function type to be used for notifications on
     /// the operation completion.
     using CallbackType = std::function<void(proto::WorkerCommandStatus::Code,
-                                            std::string const&)>;  // error message (if failed)
+                                            std::string const&,    // error message (if failed)
+                                            std::string const&)>;  // worker info received (if success)
 
     /**
      * Static factory method is needed to prevent issues with the lifespan
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
-     * @param op An operation to be initiated.
-     * @param queryId An uinque identifier of a query affected by the request.
-     *   Note that a cole of the identifier depends on which operation
-     *   was requested.
-     * @param onFinish (optional) callback function to be called upon the completion
+     *
+     * @param onFinish (optional )callback function to be called upon the completion
      *   (successful or not) of the request.
+     * @see wbase::Task::Status
      * @return the smart pointer to the object of the class
      */
-    static Ptr create(proto::QueryManagement::Operation op, QueryId queryId, CallbackType onFinish = nullptr);
+    static Ptr create(CallbackType onFinish = nullptr);
 
-    QueryManagementRequest() = delete;
-    QueryManagementRequest(QueryManagementRequest const&) = delete;
-    QueryManagementRequest& operator=(QueryManagementRequest const&) = delete;
+    GetDbStatusQservRequest() = delete;
+    GetDbStatusQservRequest(GetDbStatusQservRequest const&) = delete;
+    GetDbStatusQservRequest& operator=(GetDbStatusQservRequest const&) = delete;
 
-    virtual ~QueryManagementRequest() override;
+    virtual ~GetDbStatusQservRequest() override;
 
 protected:
-    /// @see QueryManagementRequest::create()
-    QueryManagementRequest(proto::QueryManagement::Operation op, QueryId queryId, CallbackType onFinish);
+    /// @see GetDbStatusQservRequest::create()
+    GetDbStatusQservRequest(CallbackType onFinish);
 
     virtual void onRequest(proto::FrameBuffer& buf) override;
     virtual void onResponse(proto::FrameBufferView& view) override;
@@ -82,11 +79,9 @@ protected:
 private:
     // Parameters of the object
 
-    proto::QueryManagement::Operation _op = proto::QueryManagement::CANCEL_AFTER_RESTART;
-    QueryId _queryId = 0;
     CallbackType _onFinish;
 };
 
 }  // namespace lsst::qserv::xrdreq
 
-#endif  // LSST_QSERV_XRDREQ_QUERY_MANAGEMENT_REQUEST_H
+#endif  // LSST_QSERV_XRDREQ_GET_DB_STATUS_QSERV_REQUEST_H

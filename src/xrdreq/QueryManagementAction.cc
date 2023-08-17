@@ -70,11 +70,11 @@ void QueryManagementAction::notifyAllWorkers(string const& xrootdFrontendUrl,
 }
 
 QueryManagementAction::QueryManagementAction() {
-    LOGS(_log, LOG_LVL_DEBUG, "QueryManagementAction  ** CONSTRUCTED **");
+    LOGS(_log, LOG_LVL_TRACE, "QueryManagementAction  ** CONSTRUCTED **");
 }
 
 QueryManagementAction::~QueryManagementAction() {
-    LOGS(_log, LOG_LVL_DEBUG, "QueryManagementAction  ** DELETED **");
+    LOGS(_log, LOG_LVL_TRACE, "QueryManagementAction  ** DELETED **");
 }
 
 void QueryManagementAction::_notifyAllWorkers(std::string const& xrootdFrontendUrl,
@@ -119,9 +119,8 @@ void QueryManagementAction::_notifyAllWorkers(std::string const& xrootdFrontendU
         // Make and configure the request object
         auto request = xrdreq::QueryManagementRequest::create(
                 op, queryId,
-                [self, workerAddress, onFinish](xrdreq::QueryManagementRequest::Status status,
-                                                string const& error) {
-                    if (status != xrdreq::QueryManagementRequest::Status::SUCCESS) {
+                [self, workerAddress, onFinish](proto::WorkerCommandStatus::Code code, string const& error) {
+                    if (code != proto::WorkerCommandStatus::SUCCESS) {
                         self->_response[workerAddress] = error;
                     }
                     if (++(self->_numWorkerRequestsFinished) == self->_response.size()) {

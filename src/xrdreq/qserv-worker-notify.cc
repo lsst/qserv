@@ -28,6 +28,7 @@
 extern XrdSsiProvider* XrdSsiProviderClient;
 
 namespace global = lsst::qserv;
+namespace proto = lsst::qserv::proto;
 namespace util = lsst::qserv::util;
 namespace xrdreq = lsst::qserv::xrdreq;
 
@@ -109,11 +110,11 @@ int test() {
 
     if ("GET_CHUNK_LIST" == operation) {
         request = xrdreq::GetChunkListQservRequest::create(
-                inUseOnly, [&finished](xrdreq::GetChunkListQservRequest::Status status, string const& error,
+                inUseOnly, [&finished](proto::WorkerCommandStatus::Code code, string const& error,
                                        xrdreq::GetChunkListQservRequest::ChunkCollection const& chunks) {
-                    if (status != xrdreq::GetChunkListQservRequest::Status::SUCCESS) {
-                        cout << "status: " << xrdreq::GetChunkListQservRequest::status2str(status) << "\n"
-                             << "error:  " << error << endl;
+                    if (code != proto::WorkerCommandStatus::SUCCESS) {
+                        cout << "code:  " << proto::WorkerCommandStatus_Code_Name(code) << "\n"
+                             << "error: " << error << endl;
                     } else {
                         cout << "# total chunks: " << chunks.size() << "\n" << endl;
                         if (chunks.size()) {
@@ -137,11 +138,11 @@ int test() {
 
         request = xrdreq::SetChunkListQservRequest::create(
                 chunks, databases, force,
-                [&finished](xrdreq::SetChunkListQservRequest::Status status, string const& error,
+                [&finished](proto::WorkerCommandStatus::Code code, string const& error,
                             xrdreq::SetChunkListQservRequest::ChunkCollection const& chunks) {
-                    if (status != xrdreq::SetChunkListQservRequest::Status::SUCCESS) {
-                        cout << "status: " << xrdreq::SetChunkListQservRequest::status2str(status) << "\n"
-                             << "error:  " << error << endl;
+                    if (code != proto::WorkerCommandStatus::SUCCESS) {
+                        cout << "code:  " << proto::WorkerCommandStatus_Code_Name(code) << "\n"
+                             << "error: " << error << endl;
                     } else {
                         cout << "# total chunks: " << chunks.size() << "\n" << endl;
                         if (chunks.size()) {
@@ -160,12 +161,12 @@ int test() {
 
     } else if ("REBUILD_CHUNK_LIST" == operation) {
         request = xrdreq::RebuildChunkListQservRequest::create(
-                reload, [&finished](xrdreq::ChunkListQservRequest::Status status, string const& error,
+                reload, [&finished](proto::WorkerCommandStatus::Code code, string const& error,
                                     xrdreq::ChunkListQservRequest::ChunkCollection const& added,
                                     xrdreq::ChunkListQservRequest::ChunkCollection const& removed) {
-                    if (status != xrdreq::ChunkListQservRequest::Status::SUCCESS) {
-                        cout << "status: " << xrdreq::ChunkListQservRequest::status2str(status) << "\n"
-                             << "error:  " << error << endl;
+                    if (code != proto::WorkerCommandStatus::SUCCESS) {
+                        cout << "code:  " << proto::WorkerCommandStatus_Code_Name(code) << "\n"
+                             << "error: " << error << endl;
                     } else {
                         cout << "# chunks added:   " << added.size() << "\n"
                              << "# chuks  removed: " << removed.size() << endl;
@@ -175,12 +176,12 @@ int test() {
 
     } else if ("RELOAD_CHUNK_LIST" == operation) {
         request = xrdreq::ReloadChunkListQservRequest::create(
-                [&finished](xrdreq::ChunkListQservRequest::Status status, string const& error,
+                [&finished](proto::WorkerCommandStatus::Code code, string const& error,
                             xrdreq::ChunkListQservRequest::ChunkCollection const& added,
                             xrdreq::ChunkListQservRequest::ChunkCollection const& removed) {
-                    if (status != xrdreq::ChunkListQservRequest::Status::SUCCESS) {
-                        cout << "status: " << xrdreq::ChunkListQservRequest::status2str(status) << "\n"
-                             << "error:  " << error << endl;
+                    if (code != proto::WorkerCommandStatus::SUCCESS) {
+                        cout << "code:  " << proto::WorkerCommandStatus_Code_Name(code) << "\n"
+                             << "error: " << error << endl;
                     } else {
                         cout << "# chunks added:   " << added.size() << "\n"
                              << "# chuks  removed: " << removed.size() << endl;
@@ -190,32 +191,31 @@ int test() {
 
     } else if ("ADD_CHUNK_GROUP" == operation) {
         request = xrdreq::AddChunkGroupQservRequest::create(
-                chunk, dbs, [&finished](xrdreq::ChunkGroupQservRequest::Status status, string const& error) {
-                    if (status != xrdreq::ChunkGroupQservRequest::Status::SUCCESS) {
-                        cout << "status: " << xrdreq::ChunkGroupQservRequest::status2str(status) << "\n"
-                             << "error:  " << error << endl;
+                chunk, dbs, [&finished](proto::WorkerCommandStatus::Code code, string const& error) {
+                    if (code != proto::WorkerCommandStatus::SUCCESS) {
+                        cout << "code:  " << proto::WorkerCommandStatus_Code_Name(code) << "\n"
+                             << "error: " << error << endl;
                     }
                     finished = true;
                 });
 
     } else if ("REMOVE_CHUNK_GROUP" == operation) {
         request = xrdreq::RemoveChunkGroupQservRequest::create(
-                chunk, dbs, force,
-                [&finished](xrdreq::ChunkGroupQservRequest::Status status, string const& error) {
-                    if (status != xrdreq::ChunkGroupQservRequest::Status::SUCCESS) {
-                        cout << "status: " << xrdreq::ChunkGroupQservRequest::status2str(status) << "\n"
-                             << "error:  " << error << endl;
+                chunk, dbs, force, [&finished](proto::WorkerCommandStatus::Code code, string const& error) {
+                    if (code != proto::WorkerCommandStatus::SUCCESS) {
+                        cout << "code:  " << proto::WorkerCommandStatus_Code_Name(code) << "\n"
+                             << "error: " << error << endl;
                     }
                     finished = true;
                 });
 
     } else if ("TEST_ECHO" == operation) {
         request = xrdreq::TestEchoQservRequest::create(
-                value, [&finished](xrdreq::TestEchoQservRequest::Status status, string const& error,
+                value, [&finished](proto::WorkerCommandStatus::Code code, string const& error,
                                    string const& sent, string const& received) {
-                    if (status != xrdreq::TestEchoQservRequest::Status::SUCCESS) {
-                        cout << "status: " << xrdreq::TestEchoQservRequest::status2str(status) << "\n"
-                             << "error:  " << error << endl;
+                    if (code != proto::WorkerCommandStatus::SUCCESS) {
+                        cout << "code:  " << proto::WorkerCommandStatus_Code_Name(code) << "\n"
+                             << "error: " << error << endl;
                     } else {
                         cout << "value sent:     " << sent << "\n"
                              << "value received: " << received << endl;
@@ -226,11 +226,10 @@ int test() {
     } else if ("GET_STATUS" == operation) {
         request = xrdreq::GetStatusQservRequest::create(
                 includeTasks, queryIds,
-                [&finished](xrdreq::GetStatusQservRequest::Status status, string const& error,
-                            string const& info) {
-                    if (status != xrdreq::GetStatusQservRequest::Status::SUCCESS) {
-                        cout << "status: " << xrdreq::GetStatusQservRequest::status2str(status) << "\n"
-                             << "error:  " << error << endl;
+                [&finished](proto::WorkerCommandStatus::Code code, string const& error, string const& info) {
+                    if (code != proto::WorkerCommandStatus::SUCCESS) {
+                        cout << "code:  " << proto::WorkerCommandStatus_Code_Name(code) << "\n"
+                             << "error: " << error << endl;
                     } else {
                         cout << "worker info: " << info << endl;
                     }

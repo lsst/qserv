@@ -121,6 +121,7 @@ bool QueryRunner::_initConnection() {
         _multiError.push_back(error);
         return false;
     }
+    _task->setMySqlThreadId(_mysqlConn->threadId());
     return true;
 }
 
@@ -281,6 +282,7 @@ bool QueryRunner::_dispatchChannel() {
             string const& query = _task->getQueryString();
             util::Timer primeT;
             primeT.start();
+            _task->queryExecutionStarted();
             MYSQL_RES* res = _primeResult(query);  // This runs the SQL query, throws SqlErrorObj on failure.
             primeT.stop();
             needToFreeRes = true;

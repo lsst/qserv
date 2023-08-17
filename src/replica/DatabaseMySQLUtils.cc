@@ -31,8 +31,10 @@
 #include <stdexcept>
 
 using namespace std;
+using json = nlohmann::json;
 
-namespace lsst::qserv::replica::database::mysql::detail {
+namespace lsst::qserv::replica::database::mysql {
+namespace detail {
 
 bool selectSingleValueImpl(shared_ptr<Connection> const& conn, string const& query,
                            function<bool(Row&)> const& onEachRow, bool noMoreThanOne) {
@@ -62,4 +64,28 @@ bool selectSingleValueImpl(shared_ptr<Connection> const& conn, string const& que
     throw logic_error(context + "result set has more than 1 row");
 }
 
-}  // namespace lsst::qserv::replica::database::mysql::detail
+}  // namespace detail
+
+json processList(shared_ptr<Connection> const& conn, bool full) {
+    string const query = "SHOW" + string(full ? " FULL" : "") + " PROCESSLIST";
+    json result;
+    result["queries"] = json::object({{"columns", json::array()}, {"rows", json::array()}});
+    conn->executeInOwnTransaction([&](auto conn) {
+        conn->execute(query);
+        if (conn->hasResult()) {
+            result["queries"]["columns"] = conn->columnNames();
+            auto& rows = result["queries"]["rows"];
+            Row row;
+            while (conn->next(row)) {
+                json resultRow = json::array();
+                for (size_t colIdx = 0, numColumns = row.numColumns(); colIdx < numColumns; ++colIdx) {
+                    resultRow.push_back(row.getAs<string>(colIdx, string()));
+                }
+                rows.push_back(resultRow);
+            }
+        }
+    });
+    return result;
+}
+
+}  // namespace lsst::qserv::replica::database::mysql

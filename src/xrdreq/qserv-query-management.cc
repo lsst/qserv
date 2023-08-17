@@ -93,10 +93,9 @@ int test() {
 
         // Prepare the request
         auto request = xrdreq::QueryManagementRequest::create(
-                operation, queryId,
-                [&finished](xrdreq::QueryManagementRequest::Status status, string const& error) {
-                    cout << "status=" << xrdreq::QueryManagementRequest::status2str(status) << ", error='"
-                         << error << "'" << endl;
+                operation, queryId, [&finished](proto::WorkerCommandStatus::Code code, string const& error) {
+                    cout << "code=" << proto::WorkerCommandStatus_Code_Name(code) << ", error='" << error
+                         << "'" << endl;
                     finished = true;
                 });
 

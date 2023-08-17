@@ -54,13 +54,12 @@
 extern XrdSsiProvider* XrdSsiProviderClient;
 
 namespace global = lsst::qserv;
+namespace proto = lsst::qserv::proto;
 namespace util = lsst::qserv::util;
 namespace xrdreq = lsst::qserv::xrdreq;
 
 using namespace std;
 using namespace std::placeholders;
-
-using RequestT = xrdreq::TestEchoQservRequest;
 
 namespace {
 
@@ -131,7 +130,8 @@ private:
 class RequestManager : public enable_shared_from_this<RequestManager> {
 public:
     typedef shared_ptr<RequestManager> Ptr;
-    typedef function<void(RequestT::Status, string const&, string const&, string const&)> OnFinish;
+    typedef function<void(proto::WorkerCommandStatus::Code, string const&, string const&, string const&)>
+            OnFinish;
 
     static Ptr create(Counter::Ptr const& numRequestsInFlight, XrdSsiService* serviceProvider,
                       string const& resourcePath, string const& payload, OnFinish const& onFinish,
@@ -144,16 +144,17 @@ public:
     RequestManager& operator=(RequestManager const&) = delete;
 
     void start() {
-        _ptr = RequestT::create(_payload,
-                                bind(&RequestManager::_finished, shared_from_this(), _1, _2, _3, _4));
+        _ptr = xrdreq::TestEchoQservRequest::create(
+                _payload, bind(&RequestManager::_finished, shared_from_this(), _1, _2, _3, _4));
         _numRequestsInFlight->inc();
         XrdSsiResource resource(_resourcePath);
         _serviceProvider->ProcessRequest(*_ptr, resource);
     }
 
 private:
-    void _finished(RequestT::Status status, string const& error, string const& sent, string const& received) {
-        _onFinish(status, error, sent, received);
+    void _finished(proto::WorkerCommandStatus::Code code, string const& error, string const& sent,
+                   string const& received) {
+        _onFinish(code, error, sent, received);
         _numRequestsInFlight->dec();
         if (_memoryCleanup) _ptr = nullptr;
     }
@@ -174,7 +175,7 @@ private:
     string const _payload;
     OnFinish const _onFinish;
     bool const _memoryCleanup;
-    RequestT::Ptr _ptr;
+    xrdreq::TestEchoQservRequest::Ptr _ptr;
 };
 
 int test() {
@@ -245,11 +246,11 @@ int test() {
                     for (auto&& resourcePath : jobs) {
                         auto const ptr = RequestManager::create(
                                 numRequestsInFlight, serviceProvider, resourcePath, payload,
-                                [](RequestT::Status status, string const& error, string const& sent,
-                                   string const& received) {
+                                [](proto::WorkerCommandStatus::Code code, string const& error,
+                                   string const& sent, string const& received) {
                                     if (not silent) {
-                                        if (status != RequestT::Status::SUCCESS) {
-                                            cout << "status: " << RequestT::status2str(status)
+                                        if (status != proto::WorkerCommandStatus::SUCCESS) {
+                                            cout << "code: " << proto::WorkerCommandStatus_Code_Name(code)
                                                  << ", error: " << error << endl;
                                         } else {
                                             cout << "value sent: '" << sent << "', received: '" << received

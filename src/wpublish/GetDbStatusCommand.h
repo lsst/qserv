@@ -1,7 +1,6 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2011-2018 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -20,11 +19,11 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_WPUBLISH_TEST_ECHO_COMMAND_H
-#define LSST_QSERV_WPUBLISH_TEST_ECHO_COMMAND_H
+#ifndef LSST_QSERV_WPUBLISH_GET_DB_STATUS_COMMAND_H
+#define LSST_QSERV_WPUBLISH_GET_DB_STATUS_COMMAND_H
 
 // System headers
-#include <string>
+#include <memory>
 
 // Qserv headers
 #include "wbase/WorkerCommand.h"
@@ -38,31 +37,26 @@ class SendChannel;
 namespace lsst::qserv::wpublish {
 
 /**
- * Class TestEchoCommand reloads a list of chunks from the database
+ * Class GetDbStatusCommand returns various info on the status of the database
+ * service of the Qserv worker.
  */
-class TestEchoCommand : public wbase::WorkerCommand {
+class GetDbStatusCommand : public wbase::WorkerCommand {
 public:
-    // The default construction and copy semantics are prohibited
-    TestEchoCommand& operator=(TestEchoCommand const&) = delete;
-    TestEchoCommand(TestEchoCommand const&) = delete;
-    TestEchoCommand() = delete;
-
     /**
-     * @param sendChannel  communication channel for reporting results
-     * @param value        value to be send back to a client
+     * @param sendChannel The communication channel for reporting results.
      */
-    explicit TestEchoCommand(std::shared_ptr<wbase::SendChannel> const& sendChannel,
-                             std::string const& value);
+    GetDbStatusCommand(std::shared_ptr<wbase::SendChannel> const& sendChannel);
 
-    ~TestEchoCommand() override = default;
+    GetDbStatusCommand() = delete;
+    GetDbStatusCommand& operator=(GetDbStatusCommand const&) = delete;
+    GetDbStatusCommand(GetDbStatusCommand const&) = delete;
+
+    virtual ~GetDbStatusCommand() override = default;
 
 protected:
-    void run() override;
-
-private:
-    std::string _value;
+    virtual void run() override;
 };
 
 }  // namespace lsst::qserv::wpublish
 
-#endif  // LSST_QSERV_WPUBLISH_TEST_ECHO_COMMAND_H
+#endif  // LSST_QSERV_WPUBLISH_GET_DB_STATUS_COMMAND_H

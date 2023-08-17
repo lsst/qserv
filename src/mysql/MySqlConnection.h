@@ -33,6 +33,7 @@
 #include <memory>
 #include <mutex>
 #include <string>
+#include <vector>
 
 // Third-party headers
 #include "boost/utility.hpp"
@@ -64,6 +65,8 @@ public:
     static bool checkConnection(mysql::MySqlConfig const& mysqlconfig);
 
     bool connected() const { return _isConnected; }
+    unsigned long threadId() const { return _threadId; }
+
     // instance destruction invalidates this return value
     MYSQL* getMySql() { return _mysql; }
     MySqlConfig const& getMySqlConfig() const { return *_sqlConfig; }
@@ -80,6 +83,7 @@ public:
         assert(_mysql);
         return mysql_field_count(_mysql);
     }
+    std::vector<std::string> getColumnNames() const;
     unsigned int getErrno() const {
         assert(_mysql);
         return mysql_errno(_mysql);
@@ -102,6 +106,7 @@ private:
     MYSQL* _mysql;
     MYSQL_RES* _mysql_res;
     bool _isConnected;
+    unsigned long _threadId = 0;  ///< 0 if not connected
     std::shared_ptr<MySqlConfig> _sqlConfig;
     bool _isExecuting;  ///< true during mysql_real_query and mysql_use_result
     bool _interrupted;  ///< true if cancellation requested

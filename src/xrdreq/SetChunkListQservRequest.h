@@ -30,6 +30,7 @@
 #include <vector>
 
 // Qserv headers
+#include "proto/worker.pb.h"
 #include "xrdreq/QservRequest.h"
 
 namespace lsst::qserv::xrdreq {
@@ -40,17 +41,6 @@ namespace lsst::qserv::xrdreq {
  */
 class SetChunkListQservRequest : public QservRequest {
 public:
-    /// Completion status of the operation
-    enum Status {
-        SUCCESS,  // successful completion of a request
-        INVALID,  // invalid parameters of the request
-        IN_USE,   // request is rejected because one of the chunks is in use
-        ERROR     // an error occurred during command execution
-    };
-
-    /// @return string representation of a status
-    static std::string status2str(Status status);
-
     /// Struct Chunk a value type encapsulating a chunk number and the name
     /// of a database
     struct Chunk {
@@ -67,8 +57,8 @@ public:
 
     /// The callback function type to be used for notifications on
     /// the operation completion.
-    using CallbackType = std::function<void(Status,                    // completion status
-                                            std::string const&,        // error message
+    using CallbackType = std::function<void(proto::WorkerCommandStatus::Code,
+                                            std::string const&,        // error message (if failed)
                                             ChunkCollection const&)>;  // chunks (if success)
 
     /**

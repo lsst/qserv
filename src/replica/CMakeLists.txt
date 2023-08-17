@@ -144,6 +144,8 @@ target_sources(replica PRIVATE
     FixUpJob.h
     GetReplicasQservMgtRequest.cc
     GetReplicasQservMgtRequest.h
+    GetDbStatusQservMgtRequest.cc
+    GetDbStatusQservMgtRequest.h
     GetStatusQservMgtRequest.cc
     GetStatusQservMgtRequest.h
     HealthMonitorTask.cc

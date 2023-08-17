@@ -33,11 +33,15 @@
 // Qserv headers
 #include "css/CssAccess.h"
 #include "css/CssError.h"
+#include "replica/DatabaseMySQL.h"
+#include "replica/DatabaseMySQLTypes.h"
+#include "replica/DatabaseMySQLUtils.h"
 #include "global/intTypes.h"
 #include "replica/Common.h"
 #include "replica/Configuration.h"
 #include "replica/ConfigDatabase.h"
 #include "replica/DatabaseServices.h"
+#include "replica/HttpExceptions.h"
 #include "replica/QservMgtServices.h"
 #include "replica/QservStatusJob.h"
 #include "replica/ServiceProvider.h"
@@ -136,14 +140,18 @@ HttpQservMonitorModule::HttpQservMonitorModule(Controller::Ptr const& controller
 json HttpQservMonitorModule::executeImpl(string const& subModuleName) {
     if (subModuleName == "WORKERS")
         return _workers();
-    else if (subModuleName == "SELECT-WORKER-BY-NAME")
+    else if (subModuleName == "WORKER")
         return _worker();
+    else if (subModuleName == "WORKER-DB")
+        return _workerDb();
+    else if (subModuleName == "CZAR-DB")
+        return _czarDb();
     else if (subModuleName == "QUERIES")
         return _userQueries();
-    else if (subModuleName == "SELECT-QUERY-BY-ID")
+    else if (subModuleName == "QUERY")
         return _userQuery();
-    else if (subModuleName == "CSS-SHARED-SCAN")
-        return _cssSharedScan();
+    else if (subModuleName == "CSS")
+        return _css();
     throw invalid_argument(context() + "::" + string(__func__) + "  unsupported sub-module: '" +
                            subModuleName + "'");
 }
@@ -214,6 +222,44 @@ json HttpQservMonitorModule::_worker() {
     result["schedulers_to_chunks"] = _schedulers2chunks2json(schedulers2chunks);
     result["chunks"] = _chunkInfo(chunks);
     return result;
+}
+
+json HttpQservMonitorModule::_workerDb() {
+    debug(__func__);
+    checkApiVersion(__func__, 24);
+
+    auto const worker = params().at("worker");
+    unsigned int const timeoutSec = query().optionalUInt("timeout_sec", workerResponseTimeoutSec());
+
+    debug(__func__, "worker=" + worker);
+    debug(__func__, "timeout_sec=" + to_string(timeoutSec));
+
+    string const noParentJobId;
+    GetDbStatusQservMgtRequest::CallbackType const onFinish = nullptr;
+
+    auto const request = controller()->serviceProvider()->qservMgtServices()->databaseStatus(
+            worker, noParentJobId, onFinish, timeoutSec);
+    request->wait();
+
+    if (request->extendedState() != QservMgtRequest::ExtendedState::SUCCESS) {
+        string const msg = "database operation failed, error: " +
+                           QservMgtRequest::state2string(request->extendedState());
+        throw HttpError(__func__, msg);
+    }
+    json result = json::object();
+    result["status"] = request->info();
+    return result;
+}
+
+json HttpQservMonitorModule::_czarDb() {
+    debug(__func__);
+    checkApiVersion(__func__, 24);
+
+    // Connect to the master database. Manage the new connection via the RAII-style
+    // handler to ensure the transaction is automatically rolled-back in case of exceptions.
+    ConnectionHandler const h(Connection::open(Configuration::qservCzarDbParams("qservMeta")));
+    bool const full = true;
+    return json::object({{"status", database::mysql::processList(h.conn, full)}});
 }
 
 wbase::TaskSelector HttpQservMonitorModule::_translateTaskSelector(string const& func) const {
@@ -535,7 +581,7 @@ json HttpQservMonitorModule::_getQueries(json const& workerInfo) const {
     return result;
 }
 
-json HttpQservMonitorModule::_cssSharedScan() {
+json HttpQservMonitorModule::_css() {
     debug(__func__);
     checkApiVersion(__func__, 12);
 

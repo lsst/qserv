@@ -42,7 +42,14 @@ namespace lsst::qserv::wbase {
  * introducing an additional (Protobuf) representation for those, or converting
  * the values to strings and vs.
  */
-enum class TaskState : std::uint64_t { CREATED = 0, QUEUED, EXECUTING_QUERY, READING_DATA, FINISHED };
+enum class TaskState : std::uint64_t {
+    CREATED = 0,
+    QUEUED,
+    STARTED,
+    EXECUTING_QUERY,
+    READING_DATA,
+    FINISHED
+};
 
 /// @return The string representation of the input state.
 /// @throw std::invalid_argument If the string can't be parsed into a valid state.
@@ -52,6 +59,8 @@ inline std::string taskState2str(TaskState state) {
             return "CREATED";
         case TaskState::QUEUED:
             return "QUEUED";
+        case TaskState::STARTED:
+            return "STARTED";
         case TaskState::EXECUTING_QUERY:
             return "EXECUTING_QUERY";
         case TaskState::READING_DATA:
@@ -71,6 +80,8 @@ inline TaskState str2taskState(std::string const& state) {
         return TaskState::CREATED;
     else if (state == "QUEUED")
         return TaskState::QUEUED;
+    else if (state == "STARTED")
+        return TaskState::STARTED;
     else if (state == "EXECUTING_QUERY")
         return TaskState::EXECUTING_QUERY;
     else if (state == "READING_DATA")

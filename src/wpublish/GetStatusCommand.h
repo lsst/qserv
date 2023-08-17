@@ -67,6 +67,7 @@ public:
 
     virtual ~GetStatusCommand() override = default;
 
+protected:
     virtual void run() override;
 
 private:

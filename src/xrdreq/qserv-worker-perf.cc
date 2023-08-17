@@ -22,6 +22,7 @@
 extern XrdSsiProvider* XrdSsiProviderClient;
 
 namespace global = lsst::qserv;
+namespace proto = lsst::qserv::proto;
 namespace util = lsst::qserv::util;
 namespace xrdreq = lsst::qserv::xrdreq;
 
@@ -67,11 +68,11 @@ int test() {
 
             for (unsigned int i = 0; i < numRequests; ++i) {
                 auto request = xrdreq::TestEchoQservRequest::create(
-                        value, [&finished](xrdreq::TestEchoQservRequest::Status status, string const& error,
+                        value, [&finished](proto::WorkerCommandStatus::Code code, string const& error,
                                            string const& sent, string const& received) {
-                            if (status != xrdreq::TestEchoQservRequest::Status::SUCCESS) {
-                                cout << "status: " << xrdreq::TestEchoQservRequest::status2str(status) << "\n"
-                                     << "error:  " << error << endl;
+                            if (code != proto::WorkerCommandStatus::SUCCESS) {
+                                cout << "code:  " << proto::WorkerCommandStatus_Code_Name(code) << "\n"
+                                     << "error: " << error << endl;
                             } else {
                                 cout << "value sent:     " << sent << "\n"
                                      << "value received: " << received << endl;
@@ -92,11 +93,11 @@ int test() {
             for (unsigned int j = 0; j < numWorkers; ++j) {
                 string const& worker = workers[j];
                 auto request = xrdreq::TestEchoQservRequest::create(
-                        value, [&finished](xrdreq::TestEchoQservRequest::Status status, string const& error,
+                        value, [&finished](proto::WorkerCommandStatus::Code code, string const& error,
                                            string const& sent, string const& received) {
-                            if (status != xrdreq::TestEchoQservRequest::Status::SUCCESS) {
-                                cout << "status: " << xrdreq::TestEchoQservRequest::status2str(status) << "\n"
-                                     << "error:  " << error << endl;
+                            if (code != proto::WorkerCommandStatus::SUCCESS) {
+                                cout << "code:  " << proto::WorkerCommandStatus_Code_Name(code) << "\n"
+                                     << "error: " << error << endl;
                             } else {
                                 cout << "value sent:     " << sent << "\n"
                                      << "value received: " << received << endl;

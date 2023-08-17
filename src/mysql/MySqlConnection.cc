@@ -188,6 +188,19 @@ bool MySqlConnection::selectDb(std::string const& dbName) {
     return true;
 }
 
+std::vector<std::string> MySqlConnection::getColumnNames() const {
+    assert(_mysql);
+    assert(_mysql_res);
+    std::vector<std::string> names;
+    if (0 != mysql_field_count(_mysql)) {
+        auto fields = mysql_fetch_fields(_mysql_res);
+        for (unsigned int i = 0; i < mysql_num_fields(_mysql_res); i++) {
+            names.push_back(std::string(fields[i].name));
+        }
+    }
+    return names;
+}
+
 ////////////////////////////////////////////////////////////////////////
 // MySqlConnection
 // private:
@@ -223,6 +236,7 @@ MYSQL* MySqlConnection::_connectHelper() {
         mysql_close(m);
         return c;
     }
+    _threadId = mysql_thread_id(m);
     return m;
 }
 

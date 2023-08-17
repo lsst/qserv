@@ -30,6 +30,7 @@
 #include <vector>
 
 // Qserv headers
+#include "proto/worker.pb.h"
 #include "xrdreq/QservRequest.h"
 
 // This header declarations
@@ -41,21 +42,10 @@ namespace lsst::qserv::xrdreq {
  */
 class ChunkGroupQservRequest : public QservRequest {
 public:
-    /// Completion status of the operation
-    enum Status {
-        SUCCESS,  // successful completion of a request
-        INVALID,  // invalid parameters of the request
-        IN_USE,   // request is rejected because one of the chunks is in use
-        ERROR     // an error occurred during command execution
-    };
-
-    /// @return string representation of a status
-    static std::string status2str(Status status);
-
     /// The callback function type to be used for notifications on
     /// the operation completion.
-    using CallbackType = std::function<void(Status,                // completion status
-                                            std::string const&)>;  // error message (depends on a status)
+    using CallbackType = std::function<void(proto::WorkerCommandStatus::Code,
+                                            std::string const&)>;  // error message (if failed)
 
     // Default construction and copy semantics is prohibited
     ChunkGroupQservRequest() = delete;

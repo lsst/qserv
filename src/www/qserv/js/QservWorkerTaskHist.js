@@ -47,15 +47,9 @@ function(CSSLoader,
             'rowsPerTask'
         ];
         static _table_head(histogram) {
-            if (_.isUndefined(histogram)) {
-                return `
-<tr>
-  <th class="sticky">worker</th>
-</tr>`;
-            }
+            if (_.isUndefined(histogram)) return '';
             let html = `
 <tr>
-  <th class="sticky">worker</th>
   <th class="sticky" style="text-align:right;">QID</th>
   <th class="sticky" style="text-align:center;"><i class="bi bi-clipboard-fill"></i></th>
   <th class="sticky" style="text-align:right;">total</th>
@@ -78,6 +72,11 @@ function(CSSLoader,
 <div class="row" id="fwk-qserv-task-hist-controls">
   <div class="col">
     <div class="form-row">
+      <div class="form-group col-md-2">
+        <label for="worker">Worker:</label>
+        <select id="worker" class="form-control form-control-selector">
+        </select>
+      </div>
       <div class="form-group col-md-1">
         <label for="qid">QID:</label>
         <input id="qid" type="number" value="" class="form-control form-control-selector">
@@ -147,10 +146,20 @@ function(CSSLoader,
         _set_histogram_name(val) { this._form_control('select', 'histogram-name').val(val); }
         _update_interval_sec() { return this._form_control('select', 'update-interval').val(); }
         _set_update_interval_sec(val) { this._form_control('select', 'update-interval').val(val); }
-
-        /**
-         * Table for displaying histograms that are being produced at workers.
-         */
+        _worker() { return this._form_control('select', 'worker').val(); }
+        _set_worker(val) { this._form_control('select', 'worker').val(val); }
+        _set_workers(workers) {
+            const prev_worker = this._worker();
+            let html = '';
+            for (let i in workers) {
+                const worker = workers[i];
+                const selected = (_.isEmpty(prev_worker) && (i === 0)) ||
+                                 (!_.isEmpty(prev_worker) && (prev_worker === worker));
+                html += `
+ <option value="${worker}" ${selected ? "selected" : ""}>${worker}</option>`;
+            }
+            this._form_control('select', 'worker').html(html);
+        }
         _table() {
             if (this._table_obj === undefined) {
                 this._table_obj = this.fwk_app_container.find('table#fwk-qserv-task-hist');
@@ -162,18 +171,41 @@ function(CSSLoader,
          * Load data from a web service then render it to the application's page.
          */
         _load() {
-            if (this._loading === undefined) this._loading = false;
-            if (this._loading) return;
-            this._loading = true;
-
-            this._table().children('caption').addClass('updating');
-
+          if (this._loading === undefined) this._loading = false;
+          if (this._loading) return;
+          this._loading = true;
+          this._table().children('caption').addClass('updating');
+          Fwk.web_service_GET(
+              "/replication/config",
+              {version: Common.RestAPIVersion},
+              (data) => {
+                  let workers = [];
+                  for (let i in data.config.workers) {
+                      workers.push(data.config.workers[i].name);
+                  }
+                  this._set_workers(workers);
+                  this._load_histograms();
+              },
+              (msg) => {
+                  console.log('request failed', this.fwk_app_name, msg);
+                  this._table().children('caption').html('<span style="color:maroon">No Response</span>');
+                  this._table().children('caption').removeClass('updating');
+                  this._loading = false;
+              }
+          );
+      }
+      _load_histograms() {
             Fwk.web_service_GET(
-                "/replication/qserv/worker/status",
+                "/replication/qserv/worker/status/" + this._worker(),
                 {timeout_sec: 2, version: Common.RestAPIVersion},
                 (data) => {
-                    this._display(data.status);
-                    Fwk.setLastUpdate(this._table().children('caption'));
+                    if (data.success) {
+                      this._display(data.status);
+                      Fwk.setLastUpdate(this._table().children('caption'));
+                    } else {
+                        console.log('request failed', this.fwk_app_name, data.error);
+                      this._table().children('caption').html('<span style="color:maroon">' + data.error + '</span>');
+                    }
                     this._table().children('caption').removeClass('updating');
                     this._loading = false;
                 },
@@ -190,31 +222,29 @@ function(CSSLoader,
          * Display histograms
          */
         _display(data) {
-            const queryInspectTitle = "Click to see detailed info (progress, messages, etc.) on the query.";
-            const qid = this._qid();
-            const histogram_name = this._histogram_name();
             let thead_html = QservWorkerTaskHist._table_head();
             let tbody_html = '';
-            for (let worker in data) {
-                if (!data[worker].success || _.isUndefined(data[worker].info.processor) ||
-                                             _.isUndefined(data[worker].info.processor.queries) ||
-                                             _.isUndefined(data[worker].info.processor.queries.query_stats)) {
-                    continue; 
-                }
+            const worker = this._worker();
+            if (!data[worker].success || _.isUndefined(data[worker].info.processor) ||
+                                         _.isUndefined(data[worker].info.processor.queries) ||
+                                         _.isUndefined(data[worker].info.processor.queries.query_stats)) {
+                ;
+            } else {
                 let query_stats = data[worker].info.processor.queries.query_stats;
-                if (_.isEmpty(query_stats)) continue;
-                let rowspan = 1;
-                let html   = '';
-                for (let queryId in query_stats) {
-                    if (!_.isEmpty(qid) && (qid !== queryId)) continue;
-                    if (!_.has(query_stats[queryId], "histograms")) continue;
-                    let histograms = query_stats[queryId].histograms;
-                    if (!_.has(histograms, histogram_name)) continue;
-                    let histogram = histograms[histogram_name];
-                    if (_.isEmpty(html)) {
-                        thead_html = QservWorkerTaskHist._table_head(histogram);
-                    }
-                    html += `
+                if (!_.isEmpty(query_stats)) {
+                    const queryInspectTitle = "Click to see detailed info (progress, messages, etc.) on the query.";
+                    const qid = this._qid();
+                    const histogram_name = this._histogram_name();
+                    for (let queryId in query_stats) {
+                        if (!_.isEmpty(qid) && (qid !== queryId)) continue;
+                        if (!_.has(query_stats[queryId], "histograms")) continue;
+                        let histograms = query_stats[queryId].histograms;
+                        if (!_.has(histograms, histogram_name)) continue;
+                        let histogram = histograms[histogram_name];
+                        if (_.isEmpty(thead_html)) {
+                            thead_html = QservWorkerTaskHist._table_head(histogram);
+                        }
+                        tbody_html += `
 <tr id="${queryId}">
   <td style="text-align:right;"><pre>${queryId}</pre></td>
   <td style="text-align:center; padding-top:0; padding-bottom:0">
@@ -223,19 +253,15 @@ function(CSSLoader,
   <td style="text-align:right;"><pre>${histogram.total ? histogram.total.toFixed(3) : ''}</pre></td>
   <td style="text-align:right;"><pre>${histogram.totalCount ? histogram.totalCount : ''}</pre></td>
   <th style="text-align:right;"><pre>${histogram.avg ? histogram.avg.toFixed(3) : ''}</pre></th>`;
-                    for (let i in histogram.buckets) {
-                        let bucket = histogram.buckets[i];
-                        html += `
+                        for (let i in histogram.buckets) {
+                            let bucket = histogram.buckets[i];
+                            tbody_html += `
   <th style="text-align:right;"><pre>${bucket.count ? bucket.count : ''}</pre></th>`;
-                    }
-                    html += `
+                        }
+                        tbody_html += `
 </tr>`;
-rowspan++;
+                    }
                 }
-                tbody_html += `
-<tr>
-  <th rowspan="${rowspan}">${worker}</th>
-</tr>` + html;
             }
             this._table().children('thead').html(thead_html);
             let tbody = this._table().children('tbody').html(tbody_html);

@@ -1,7 +1,6 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2012-2018 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -22,48 +21,59 @@
  */
 
 // Class header
-#include "wpublish/TestEchoCommand.h"
+#include "wpublish/GetDbStatusCommand.h"
 
 // System headers
-#include <sstream>
+#include <stdexcept>
 
-// Third-party headers
-#include "XrdSsi/XrdSsiCluster.hh"
+// Third party headers
+#include "nlohmann/json.hpp"
 
 // Qserv headers
+#include "mysql/MySqlUtils.h"
 #include "proto/worker.pb.h"
 #include "wbase/SendChannel.h"
-#include "xrdsvc/SsiProvider.h"
-#include "xrdsvc/XrdName.h"
+#include "wconfig/WorkerConfig.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
 
 using namespace std;
+using json = nlohmann::json;
 
 namespace {
 
-LOG_LOGGER _log = LOG_GET("lsst.qserv.wpublish.TestEchoCommand");
+LOG_LOGGER _log = LOG_GET("lsst.qserv.wpublish.GetDbStatusCommand");
 
 }  // anonymous namespace
 
 namespace lsst::qserv::wpublish {
 
-TestEchoCommand::TestEchoCommand(shared_ptr<wbase::SendChannel> const& sendChannel, string const& value)
-        : wbase::WorkerCommand(sendChannel), _value(value) {}
+GetDbStatusCommand::GetDbStatusCommand(shared_ptr<wbase::SendChannel> const& sendChannel)
+        : wbase::WorkerCommand(sendChannel) {}
 
-void TestEchoCommand::run() {
-    LOGS(_log, LOG_LVL_DEBUG, "TestEchoCommand::" << __func__);
+void GetDbStatusCommand::run() {
+    string const context = "GetDbStatusCommand::" + string(__func__);
+    LOGS(_log, LOG_LVL_DEBUG, context);
 
-    proto::WorkerCommandTestEchoR reply;
+    json result;
+    try {
+        bool const full = true;
+        result = mysql::MySqlUtils::processList(wconfig::WorkerConfig::instance()->getMySqlConfig(), full);
+    } catch (mysql::MySqlQueryError const& ex) {
+        LOGS(_log, LOG_LVL_ERROR, context << " " << ex.what());
+        reportError<proto::WorkerCommandGetDbStatusR>(ex.what());
+        return;
+    }
+    proto::WorkerCommandGetDbStatusR reply;
     reply.mutable_status();
-    reply.set_value(_value);
+    reply.set_info(result.dump());
 
     _frameBuf.serialize(reply);
     string str(_frameBuf.data(), _frameBuf.size());
     _sendChannel->sendStream(xrdsvc::StreamBuffer::createWithMove(str), true);
 
-    LOGS(_log, LOG_LVL_DEBUG, "TestEchoCommand::" << __func__ << "  ** SENT **");
+    LOGS(_log, LOG_LVL_DEBUG, context << "  ** SENT **");
 }
 
 }  // namespace lsst::qserv::wpublish

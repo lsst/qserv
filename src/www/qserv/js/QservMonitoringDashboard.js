@@ -41,8 +41,10 @@ require([
     'qserv/StatusReplicationLevel',
     'qserv/StatusWorkers',
     'qserv/StatusUserQueries',
+    'qserv/QservCzarMySQLQueries',
     'qserv/QservCss',
     'qserv/QservMySQLConnections',
+    'qserv/QservWorkerMySQLQueries',
     'qserv/QservWorkerQueries',
     'qserv/QservWorkerSchedulers',
     'qserv/QservWorkerSchedulerHist',
@@ -79,8 +81,10 @@ function(CSSLoader,
          StatusReplicationLevel,
          StatusWorkers,
          StatusUserQueries,
+         QservCzarMySQLQueries,
          QservCss,
          QservMySQLConnections,
+         QservWorkerMySQLQueries,
          QservWorkerQueries,
          QservWorkerSchedulers,
          QservWorkerSchedulerHist,
@@ -143,12 +147,12 @@ function(CSSLoader,
             {   name: 'Replication',
                 apps: [
                     new ReplicationController('Controller'),
-                    new ReplicationTools('Tools'),
                     new ReplicationConfigGeneral('Config/General'),
                     new ReplicationConfigWorkers('Config/Workers'),
                     new ReplicationConfigCatalogs('Config/Catalogs'),
                     new ReplicationSchema('Schema'),
-                    new ReplicationTableIndexes('Table Indexes')
+                    new ReplicationTableIndexes('Table Indexes'),
+                    new ReplicationTools('Tools')
                 ]
             },
             {   name: 'Ingest',
@@ -161,22 +165,28 @@ function(CSSLoader,
                     new IngestContribInfo('Contribution Info')
                 ]
             },
-            {   name: 'Tools',
+            {   name: 'Czar',
                 apps: [
-                    new FwkTestApp('Query Qserv'),
-                    new ToolsSql('Query Worker Databases')
+                    new QservCzarMySQLQueries('MySQL Queries'),
+                    new QservCss('CSS')
                 ]
             },
-            {   name: 'Qserv Monitor',
+            {   name: 'Workers',
                 apps: [
                     new QservMySQLConnections('MySQL Connections'),
+                    new QservWorkerMySQLQueries('MySQL Queries'),
                     new QservWorkerQueries('Queries in Worker Queues'),
                     new QservWorkerSchedulers('Schedulers'),
                     new QservWorkerSchedulerHist('Scheduler Histograms'),
                     new QservWorkerTasks('Tasks'),
                     new QservWorkerTaskHist('Task Histograms'),
-                    new QservWorkerResultsFilesystem('Results Filesystem'),
-                    new QservCss('CSS')
+                    new QservWorkerResultsFilesystem('Results Filesystem')
+                ]
+            },
+            {   name: 'Tools',
+                apps: [
+                    new FwkTestApp('Query Qserv'),
+                    new ToolsSql('Query Worker Databases')
                 ]
             }
         ];

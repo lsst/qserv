@@ -58,28 +58,14 @@ AddChunkGroupCommand::AddChunkGroupCommand(shared_ptr<wbase::SendChannel> const&
           _chunk(chunk),
           _databases(databases) {}
 
-void AddChunkGroupCommand::_reportError(proto::WorkerCommandChunkGroupR::Status status,
-                                        string const& message) {
-    LOGS(_log, LOG_LVL_ERROR, "AddChunkGroupCommand::" << __func__ << "  " << message);
-
-    proto::WorkerCommandChunkGroupR reply;
-
-    reply.set_status(status);
-    reply.set_error(message);
-
-    _frameBuf.serialize(reply);
-    string str(_frameBuf.data(), _frameBuf.size());
-    _sendChannel->sendStream(xrdsvc::StreamBuffer::createWithMove(str), true);
-}
-
 void AddChunkGroupCommand::run() {
     string const context = "AddChunkGroupCommand::" + string(__func__) + "  ";
-
     LOGS(_log, LOG_LVL_DEBUG, context);
 
-    if (not _databases.size()) {
-        _reportError(proto::WorkerCommandChunkGroupR::INVALID,
-                     "the list of database names in the group was found empty");
+    if (_databases.empty()) {
+        reportError<proto::WorkerCommandChunkGroupR>(
+                "the list of database names in the group was found empty",
+                proto::WorkerCommandStatus::INVALID);
         return;
     }
 
@@ -87,16 +73,11 @@ void AddChunkGroupCommand::run() {
             dynamic_cast<xrdsvc::SsiProviderServer*>(XrdSsiProviderLookup);
     XrdSsiCluster* clusterManager = providerServer->GetClusterManager();
 
-    proto::WorkerCommandChunkGroupR reply;
-    reply.set_status(proto::WorkerCommandChunkGroupR::SUCCESS);
-
     for (auto&& database : _databases) {
         string const resource = "/chk/" + database + "/" + to_string(_chunk);
-
         LOGS(_log, LOG_LVL_DEBUG,
              context << "  adding the chunk resource: " << resource
                      << " in DataContext=" << clusterManager->DataContext());
-
         try {
             // Notify XRootD/cmsd and (depending on a mode) modify the provider's copy
             // of the inventory.
@@ -104,22 +85,22 @@ void AddChunkGroupCommand::run() {
             if (clusterManager->DataContext()) {
                 providerServer->GetChunkInventory().add(database, _chunk);
             }
-
             // Notify QServ and update the database
             _chunkInventory->add(database, _chunk, _mySqlConfig);
 
         } catch (InvalidParamError const& ex) {
-            _reportError(proto::WorkerCommandChunkGroupR::INVALID, ex.what());
+            reportError<proto::WorkerCommandChunkGroupR>(ex.what(), proto::WorkerCommandStatus::INVALID);
             return;
         } catch (QueryError const& ex) {
-            _reportError(proto::WorkerCommandChunkGroupR::ERROR, ex.what());
+            reportError<proto::WorkerCommandChunkGroupR>(ex.what());
             return;
         } catch (exception const& ex) {
-            _reportError(proto::WorkerCommandChunkGroupR::ERROR,
-                         "failed to add the chunk: " + string(ex.what()));
+            reportError<proto::WorkerCommandChunkGroupR>("failed to add the chunk: " + string(ex.what()));
             return;
         }
     }
+    proto::WorkerCommandChunkGroupR reply;
+    reply.mutable_status();
     _frameBuf.serialize(reply);
     string str(_frameBuf.data(), _frameBuf.size());
     _sendChannel->sendStream(xrdsvc::StreamBuffer::createWithMove(str), true);

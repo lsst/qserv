@@ -21,10 +21,7 @@
  */
 
 // Class header
-#include "xrdreq/TestEchoQservRequest.h"
-
-// System headers
-#include <string>
+#include "xrdreq/GetDbStatusQservRequest.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -32,44 +29,37 @@
 using namespace std;
 
 namespace {
-LOG_LOGGER _log = LOG_GET("lsst.qserv.xrdreq.TestEchoQservRequest");
+
+LOG_LOGGER _log = LOG_GET("lsst.qserv.xrdreq.GetDbStatusQservRequest");
+
 }  // namespace
 
 namespace lsst::qserv::xrdreq {
 
-TestEchoQservRequest::Ptr TestEchoQservRequest::create(string const& value,
-                                                       TestEchoQservRequest::CallbackType onFinish) {
-    TestEchoQservRequest::Ptr ptr(new TestEchoQservRequest(value, onFinish));
+GetDbStatusQservRequest::Ptr GetDbStatusQservRequest::create(GetDbStatusQservRequest::CallbackType onFinish) {
+    GetDbStatusQservRequest::Ptr ptr(new GetDbStatusQservRequest(onFinish));
     ptr->setRefToSelf4keepAlive(ptr);
     return ptr;
 }
 
-TestEchoQservRequest::TestEchoQservRequest(string const& value, TestEchoQservRequest::CallbackType onFinish)
-        : _value(value), _onFinish(onFinish) {
-    LOGS(_log, LOG_LVL_TRACE, "TestEchoQservRequest  ** CONSTRUCTED **");
+GetDbStatusQservRequest::GetDbStatusQservRequest(GetDbStatusQservRequest::CallbackType onFinish)
+        : _onFinish(onFinish) {
+    LOGS(_log, LOG_LVL_TRACE, "GetDbStatusQservRequest  ** CONSTRUCTED **");
 }
 
-TestEchoQservRequest::~TestEchoQservRequest() {
-    LOGS(_log, LOG_LVL_TRACE, "TestEchoQservRequest  ** DELETED **");
+GetDbStatusQservRequest::~GetDbStatusQservRequest() {
+    LOGS(_log, LOG_LVL_TRACE, "GetDbStatusQservRequest  ** DELETED **");
 }
 
-void TestEchoQservRequest::onRequest(proto::FrameBuffer& buf) {
+void GetDbStatusQservRequest::onRequest(proto::FrameBuffer& buf) {
     proto::WorkerCommandH header;
-    header.set_command(proto::WorkerCommandH::TEST_ECHO);
+    header.set_command(proto::WorkerCommandH::GET_DATABASE_STATUS);
     buf.serialize(header);
-
-    proto::WorkerCommandTestEchoM echo;
-    echo.set_value(_value);
-    buf.serialize(echo);
 }
 
-void TestEchoQservRequest::onResponse(proto::FrameBufferView& view) {
-    proto::WorkerCommandTestEchoR reply;
+void GetDbStatusQservRequest::onResponse(proto::FrameBufferView& view) {
+    proto::WorkerCommandGetDbStatusR reply;
     view.parse(reply);
-
-    LOGS(_log, LOG_LVL_TRACE,
-         "TestEchoQservRequest  ** SERVICE REPLY **  status: "
-                 << proto::WorkerCommandStatus_Code_Name(reply.status().code()));
 
     if (nullptr != _onFinish) {
         // Clearing the stored callback after finishing the up-stream notification
@@ -78,13 +68,14 @@ void TestEchoQservRequest::onResponse(proto::FrameBufferView& view) {
         // 1. it guaranties (exactly) one time notification
         // 2. it breaks the up-stream dependency on a caller object if a shared
         //    pointer to the object was mentioned as the lambda-function's closure
+
         auto onFinish = move(_onFinish);
         _onFinish = nullptr;
-        onFinish(reply.status().code(), reply.status().error(), _value, reply.value());
+        onFinish(proto::WorkerCommandStatus::SUCCESS, string(), reply.info());
     }
 }
 
-void TestEchoQservRequest::onError(string const& error) {
+void GetDbStatusQservRequest::onError(string const& error) {
     if (nullptr != _onFinish) {
         // Clearing the stored callback after finishing the up-stream notification
         // has two purposes:
@@ -92,9 +83,10 @@ void TestEchoQservRequest::onError(string const& error) {
         // 1. it guaranties (exactly) one time notification
         // 2. it breaks the up-stream dependency on a caller object if a shared
         //    pointer to the object was mentioned as the lambda-function's closure
+
         auto onFinish = move(_onFinish);
         _onFinish = nullptr;
-        onFinish(proto::WorkerCommandStatus::ERROR, error, _value, string());
+        onFinish(proto::WorkerCommandStatus::ERROR, error, string());
     }
 }
 

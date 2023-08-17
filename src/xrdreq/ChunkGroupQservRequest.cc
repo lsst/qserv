@@ -24,7 +24,6 @@
 #include "xrdreq/ChunkGroupQservRequest.h"
 
 // System headers
-#include <stdexcept>
 #include <string>
 
 // LSST headers
@@ -33,54 +32,20 @@
 using namespace std;
 
 namespace {
-
 LOG_LOGGER _log = LOG_GET("lsst.qserv.xrdreq.ChunkGroupQservRequest");
-
-using namespace lsst::qserv;
-
-xrdreq::ChunkGroupQservRequest::Status translate(proto::WorkerCommandChunkGroupR::Status status) {
-    switch (status) {
-        case proto::WorkerCommandChunkGroupR::SUCCESS:
-            return xrdreq::ChunkGroupQservRequest::SUCCESS;
-        case proto::WorkerCommandChunkGroupR::INVALID:
-            return xrdreq::ChunkGroupQservRequest::INVALID;
-        case proto::WorkerCommandChunkGroupR::IN_USE:
-            return xrdreq::ChunkGroupQservRequest::IN_USE;
-        case proto::WorkerCommandChunkGroupR::ERROR:
-            return xrdreq::ChunkGroupQservRequest::ERROR;
-    }
-    throw domain_error("ChunkGroupQservRequest::" + string(__func__) + "  no match for Protobuf status: " +
-                       proto::WorkerCommandChunkGroupR_Status_Name(status));
-}
-
 }  // namespace
 
 namespace lsst::qserv::xrdreq {
 
-string ChunkGroupQservRequest::status2str(Status status) {
-    switch (status) {
-        case SUCCESS:
-            return "SUCCESS";
-        case INVALID:
-            return "INVALID";
-        case IN_USE:
-            return "IN_USE";
-        case ERROR:
-            return "ERROR";
-    }
-    throw domain_error("ChunkGroupQservRequest::" + string(__func__) +
-                       "  no match for status: " + to_string(status));
-}
-
 ChunkGroupQservRequest::ChunkGroupQservRequest(bool add, unsigned int chunk, vector<string> const& databases,
                                                bool force, CallbackType onFinish)
         : _add(add), _chunk(chunk), _databases(databases), _force(force), _onFinish(onFinish) {
-    LOGS(_log, LOG_LVL_DEBUG,
+    LOGS(_log, LOG_LVL_TRACE,
          "ChunkGroupQservRequest[" << (_add ? "add" : "remove") << "]   ** CONSTRUCTED **");
 }
 
 ChunkGroupQservRequest::~ChunkGroupQservRequest() {
-    LOGS(_log, LOG_LVL_DEBUG, "ChunkGroupQservRequest[" << (_add ? "add" : "remove") << "]  ** DELETED **");
+    LOGS(_log, LOG_LVL_TRACE, "ChunkGroupQservRequest[" << (_add ? "add" : "remove") << "]  ** DELETED **");
 }
 
 void ChunkGroupQservRequest::onRequest(proto::FrameBuffer& buf) {
@@ -102,9 +67,9 @@ void ChunkGroupQservRequest::onResponse(proto::FrameBufferView& view) {
     proto::WorkerCommandChunkGroupR reply;
     view.parse(reply);
 
-    LOGS(_log, LOG_LVL_DEBUG,
+    LOGS(_log, LOG_LVL_TRACE,
          "ChunkGroupQservRequest[" << (_add ? "add" : "remove") << "** SERVICE REPLY **  status: "
-                                   << proto::WorkerCommandChunkGroupR_Status_Name(reply.status()));
+                                   << proto::WorkerCommandStatus_Code_Name(reply.status().code()));
 
     if (nullptr != _onFinish) {
         // Clearing the stored callback after finishing the up-stream notification
@@ -113,10 +78,9 @@ void ChunkGroupQservRequest::onResponse(proto::FrameBufferView& view) {
         // 1. it guaranties (exactly) one time notification
         // 2. it breaks the up-stream dependency on a caller object if a shared
         //    pointer to the object was mentioned as the lambda-function's closure
-
         auto onFinish = move(_onFinish);
         _onFinish = nullptr;
-        onFinish(::translate(reply.status()), reply.error());
+        onFinish(reply.status().code(), reply.status().error());
     }
 }
 
@@ -128,10 +92,9 @@ void ChunkGroupQservRequest::onError(string const& error) {
         // 1. it guaranties (exactly) one time notification
         // 2. it breaks the up-stream dependency on a caller object if a shared
         //    pointer to the object was mentioned as the lambda-function's closure
-
         auto onFinish = move(_onFinish);
         _onFinish = nullptr;
-        onFinish(Status::ERROR, error);
+        onFinish(proto::WorkerCommandStatus::ERROR, error);
     }
 }
 
