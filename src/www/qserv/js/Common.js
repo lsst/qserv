@@ -6,7 +6,7 @@ function(sqlFormatter,
          _) {
 
     class Common {
-        static RestAPIVersion = 24;
+        static RestAPIVersion = 25;
         static query2text(query, expanded) {
             if (expanded) {
                 return sqlFormatter.format(query, Common._sqlFormatterConfig);

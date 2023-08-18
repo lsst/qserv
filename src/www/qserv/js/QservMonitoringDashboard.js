@@ -43,6 +43,7 @@ require([
     'qserv/StatusReplicationLevel',
     'qserv/StatusWorkers',
     'qserv/QservCzarMySQLQueries',
+    'qserv/QservCzarStatistics',
     'qserv/QservCss',
     'qserv/QservMySQLConnections',
     'qserv/QservWorkerMySQLQueries',
@@ -84,6 +85,7 @@ function(CSSLoader,
          StatusReplicationLevel,
          StatusWorkers,
          QservCzarMySQLQueries,
+         QservCzarStatistics,
          QservCss,
          QservMySQLConnections,
          QservWorkerMySQLQueries,
@@ -150,6 +152,7 @@ function(CSSLoader,
             {   name: 'Czar',
                 apps: [
                     new QservCzarMySQLQueries('MySQL Queries'),
+                    new QservCzarStatistics('Statistics'),
                     new QservCss('CSS')
                 ]
             },
