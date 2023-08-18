@@ -56,24 +56,30 @@ public:
      * by values of parameters found in the input encoded string. The string is
      * expected to have the following syntax:
      * @code
-     *   mysql://[user][:password]@[host][:port]/database
+     *   mysql://[user][:password]@[host][:port][/database]
+     * @code
+     * The minimal (though, totally useless) URI would be:
+     * @code
+     *   mysql://@
      * @code
      *
      * @note
-     *   1) all (but the database) keywords are mandatory
-     *   2) default values for other parameters (if missing in the string) will be assumed.
+     *   1) all attributes are optional
+     *   2) default values for the missing attributes will be assumed
      *
      * @param params connection parameters packed into a string
      * @param defaultHost default value for a host name
      * @param defaultPort default port number
      * @param defaultUser default value for a database user account
      * @param defaultPassword default value for a database user account
+     * @param defaultDatabase default value for the database name
      * @throw std::invalid_argument if the string can't be parsed
      */
     static ConnectionParams parse(std::string const& params, std::string const& defaultHost = "localhost",
                                   uint16_t defaultPort = 3306,
                                   std::string const& defaultUser = FileUtils::getEffectiveUser(),
-                                  std::string const& defaultPassword = std::string());
+                                  std::string const& defaultPassword = std::string(),
+                                  std::string const& defaultDatabase = std::string());
 
     /// Initialize connection parameters with default values
     ConnectionParams();
