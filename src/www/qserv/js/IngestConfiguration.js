@@ -65,9 +65,6 @@ function(CSSLoader,
             }
         }
 
-        /**
-         * The first time initialization of the page's layout
-         */
         _init() {
             if (this._initialized === undefined) this._initialized = false;
             if (this._initialized) return;
@@ -89,15 +86,7 @@ function(CSSLoader,
     </select>
   </div>
   <div class="form-group col-md-1">
-    <label for="update-interval">Interval <i class="bi bi-arrow-repeat"></i></label>
-    <select id="update-interval" class="form-control form-control-view">
-    <option value="10">10 sec</option>
-    <option value="20">20 sec</option>
-    <option value="30" selected>30 sec</option>
-    <option value="60">1 min</option>
-    <option value="120">2 min</option>
-    <option value="300">5 min</option>
-    </select>
+    ${Common.html_update_ival('update-interval')}
   </div>
 </div>
 <div class="row">
@@ -125,6 +114,9 @@ function(CSSLoader,
   </div>
 </div>`;
             let cont = this.fwk_app_container.html(html);
+            cont.find("#update-interval").change(() => {
+                this._load();
+            });
             cont.find(".form-control-view").change(() => {
                 this._load();
             });

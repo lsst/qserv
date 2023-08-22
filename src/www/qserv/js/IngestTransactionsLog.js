@@ -129,15 +129,7 @@ function(CSSLoader,
     <select id="trans-id" class="form-control"></select>
   </div>
   <div class="form-group col-md-1">
-    <label for="trans-update-interval">Interval <i class="bi bi-arrow-repeat"></i></label>
-    <select id="trans-update-interval" class="form-control">
-    <option value="10">10 sec</option>
-    <option value="20">20 sec</option>
-    <option value="30" selected>30 sec</option>
-    <option value="60">1 min</option>
-    <option value="120">2 min</option>
-    <option value="300">5 min</option>
-    </select>
+    ${Common.html_update_ival('update-interval')}
   </div>
 </div>
 <div class="row">
@@ -257,7 +249,7 @@ function(CSSLoader,
                 this._form_control('select', 'trans-id').val(current_id);
             }
         }
-        _update_interval_sec() { return this._form_control('select', 'trans-update-interval').val(); }
+        _update_interval_sec() { return this._form_control('select', 'update-interval').val(); }
         _trans_info(attr) {
             if (this._trans_info_obj === undefined) {
                 this._trans_info_obj = this.fwk_app_container.find('div#fwk-ingest-transactions-log-info');

@@ -61,15 +61,7 @@ function(CSSLoader,
     <input type="number" id="contrib-id" class="form-control" value="">
   </div>
   <div class="form-group col-md-1">
-    <label for="contrib-update-interval">Interval <i class="bi bi-arrow-repeat"></i></label>
-    <select id="contrib-update-interval" class="form-control">
-    <option value="10" selected>10 sec</option>
-    <option value="20">20 sec</option>
-    <option value="30">30 sec</option>
-    <option value="60">1 min</option>
-    <option value="120">2 min</option>
-    <option value="300">5 min</option>
-    </select>
+    ${Common.html_update_ival('update-interval', 10)}
   </div>
 </div>
 <div class="row">
@@ -278,7 +270,7 @@ function(CSSLoader,
         }
         _get_contrib_id() { return this._form_control('input', 'contrib-id').val(); }
         _set_contrib_id(contrib_id) { this._form_control('input', 'contrib-id').val(contrib_id); }
-        _update_interval_sec() { return this._form_control('select', 'contrib-update-interval').val(); }
+        _update_interval_sec() { return this._form_control('select', 'update-interval').val(); }
         _table_warnings() {
             if (this._table_warnings_obj === undefined) {
                 this._table_warnings_obj = this.fwk_app_container.find('table#fwk-ingest-contrib-info-warnings');
