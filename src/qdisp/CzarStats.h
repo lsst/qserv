@@ -25,7 +25,6 @@
 #define LSST_QSERV_QDISP_CZARSTATS_H
 
 // System headers
-#include <chrono>
 #include <cstddef>
 #include <functional>
 #include <memory>
@@ -72,11 +71,14 @@ public:
     /// @throws Bug if get() is called before setup()
     static Ptr get();
 
-    /// Add a bytes per second entry for transmits received
-    void addTrmitRecvRate(double bytesPerSec);
+    /// Add a bytes per second entry for query result transmits received over XRootD/SSI
+    void addXRootDSSIRecvRate(double bytesPerSec);
 
-    /// Add a bytes per second entry for merges
+    /// Add a bytes per second entry for result merges
     void addMergeRate(double bytesPerSec);
+
+    /// Add a bytes per second entry for query results read from files
+    void addFileReadRate(double bytesPerSec);
 
     /// Increase the count of requests being setup.
     void startQueryRespConcurrentSetup() { ++_queryRespConcurrentSetup; }
@@ -87,6 +89,48 @@ public:
     void startQueryRespConcurrentWait() { ++_queryRespConcurrentWait; }
     /// Decrease the count and add the time taken to the histogram.
     void endQueryRespConcurrentWait(TIMEPOINT start, TIMEPOINT end);
+
+    /// Increment the total number of queries by 1
+    void addQuery() {
+        ++_totalQueries;
+        ++_numQueries;
+    }
+
+    /// Decrement the total number of queries by 1
+    void deleteQuery() { --_numQueries; }
+
+    /// Increment the total number of incomplete jobs by 1
+    void addJob() {
+        ++_totalJobs;
+        ++_numJobs;
+    }
+
+    /// Decrememnt the total number of incomplete jobs by the specified number
+    void deleteJobs(uint64_t num = 1) { _numJobs -= num; }
+
+    /// Increment the total number of the operatons with result files by 1
+    void addResultFile() {
+        ++_totalResultFiles;
+        ++_numResultFiles;
+    }
+
+    /// Decrement the total number of the operatons with result files by 1
+    void deleteResultFile() { --_numResultFiles; }
+
+    /// Increment the total number of the on-going result merges by 1
+    void addResultMerge() {
+        ++_totalResultMerges;
+        ++_numResultMerges;
+    }
+
+    /// Decrement the total number of the on-going result merges by 1
+    void deleteResultMerge() { --_numResultMerges; }
+
+    /// Increment the total number of bytes received from workers
+    void addTotalBytesRecv(uint64_t bytes) { _totalBytesRecv += bytes; }
+
+    /// Increment the total number of rows received from workers
+    void addTotalRowsRecv(uint64_t rows) { _totalRowsRecv += rows; }
 
     /// Increase the count of requests being processed.
     void startQueryRespConcurrentProcessing() { ++_queryRespConcurrentProcessing; }
@@ -107,18 +151,38 @@ private:
     /// Connection to get information about the czar's pool of dispatch threads.
     std::shared_ptr<qdisp::QdispPool> _qdispPool;
 
-    /// Histogram for tracking receive rate in bytes per second.
-    util::HistogramRolling::Ptr _histTrmitRecvRate;
+    /// The start up time (milliseconds since the UNIX EPOCH) of the status collector.
+    uint64_t const _startTimeMs = 0;
+
+    /// Histogram for tracking XROOTD/SSI receive rate in bytes per second.
+    util::HistogramRolling::Ptr _histXRootDSSIRecvRate;
 
     /// Histogram for tracking merge rate in bytes per second.
     util::HistogramRolling::Ptr _histMergeRate;
 
-    std::atomic<int64_t> _queryRespConcurrentSetup{0};       ///< Number of request currently being setup
-    util::HistogramRolling::Ptr _histRespSetup;              ///< Histogram for setup time
-    std::atomic<int64_t> _queryRespConcurrentWait{0};        ///< Number of requests currently waiting
-    util::HistogramRolling::Ptr _histRespWait;               ///< Histogram for wait time
-    std::atomic<int64_t> _queryRespConcurrentProcessing{0};  ///< Number of requests currently processing
-    util::HistogramRolling::Ptr _histRespProcessing;         ///< Histogram for processing time
+    /// Histogram for tracking result file read rate in bytes per second.
+    util::HistogramRolling::Ptr _histFileReadRate;
+
+    std::atomic<uint64_t> _queryRespConcurrentSetup{0};       ///< Number of request currently being setup
+    util::HistogramRolling::Ptr _histRespSetup;               ///< Histogram for setup time
+    std::atomic<uint64_t> _queryRespConcurrentWait{0};        ///< Number of requests currently waiting
+    util::HistogramRolling::Ptr _histRespWait;                ///< Histogram for wait time
+    std::atomic<uint64_t> _queryRespConcurrentProcessing{0};  ///< Number of requests currently processing
+    util::HistogramRolling::Ptr _histRespProcessing;          ///< Histogram for processing time
+
+    // Integrated totals (since the start time of Czar)
+    std::atomic<uint64_t> _totalQueries{0};       ///< The total number of queries
+    std::atomic<uint64_t> _totalJobs{0};          ///< The total number of registered jobs across all queries
+    std::atomic<uint64_t> _totalResultFiles{0};   ///< The total number of the result files ever read
+    std::atomic<uint64_t> _totalResultMerges{0};  ///< The total number of the results merges ever attempted
+    std::atomic<uint64_t> _totalBytesRecv{0};     ///< The total number of bytes received from workers
+    std::atomic<uint64_t> _totalRowsRecv{0};      ///< The total number of rows received from workers
+
+    // Running counters
+    std::atomic<uint64_t> _numQueries{0};       ///< The current number of queries being processed
+    std::atomic<uint64_t> _numJobs{0};          ///< The current number of incomplete jobs across all queries
+    std::atomic<uint64_t> _numResultFiles{0};   ///< The current number of the result files being read
+    std::atomic<uint64_t> _numResultMerges{0};  ///< The current number of the results being merged
 };
 
 }  // namespace lsst::qserv::qdisp

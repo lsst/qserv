@@ -27,6 +27,7 @@
 // System headers
 #include <algorithm>
 #include <cassert>
+#include <chrono>
 #include <cstring>
 
 // Third-party headers
@@ -37,11 +38,13 @@
 
 // Qserv headers
 #include "ccontrol/msgCode.h"
+#include "global/clock_defs.h"
 #include "global/debugUtil.h"
 #include "global/MsgReceiver.h"
 #include "proto/ProtoHeaderWrap.h"
 #include "proto/ProtoImporter.h"
 #include "proto/WorkerResponse.h"
+#include "qdisp/CzarStats.h"
 #include "qdisp/JobQuery.h"
 #include "replica/HttpClient.h"
 #include "rproc/InfileMerger.h"
@@ -90,12 +93,36 @@ string xrootUrl2path(string const& xrootUrl) {
     throw runtime_error("MergingHandler::" + string(__func__) + " illegal file resource url: " + xrootUrl);
 }
 
+/**
+ * Instances of this class are used to update statistic counter on starting
+ * and finishing operations with the result files.
+ */
+class ResultFileTracker {
+public:
+    ResultFileTracker() { lsst::qserv::qdisp::CzarStats::get()->addResultFile(); }
+    ~ResultFileTracker() { lsst::qserv::qdisp::CzarStats::get()->deleteResultFile(); }
+};
+
+// The logging function employed by the transmit rate tracker to report
+// the data transfer rates in a histogram. The histogram is used in
+// the performance monitoring of the application.
+lsst::qserv::TimeCountTracker<double>::CALLBACKFUNC const reportFileRecvRate =
+        [](lsst::qserv::TIMEPOINT start, lsst::qserv::TIMEPOINT end, double bytes, bool success) {
+            if (!success) return;
+            if (chrono::duration<double> const seconds = end - start; seconds.count() > 0) {
+                lsst::qserv::qdisp::CzarStats::get()->addFileReadRate(bytes / seconds.count());
+            }
+        };
+
 bool readXrootFileResourceAndMerge(lsst::qserv::proto::Result const& result,
                                    function<bool(char const*, uint32_t)> const& messageIsReady) {
     string const context = "MergingHandler::" + string(__func__) + " ";
 
     // Extract data from the input result object before modifying the one.
     string const xrootUrl = result.fileresource_xroot();
+
+    // Track the file while the control flow is staying within the function.
+    ResultFileTracker const resultFileTracker;
 
     // The algorithm will read the input file to locate result objects containing rows
     // and call the provided callback for each such row.
@@ -118,6 +145,9 @@ bool readXrootFileResourceAndMerge(lsst::qserv::proto::Result const& result,
     bool success = true;
     try {
         while (true) {
+            // This starts a timer of the data transmit rate tracker.
+            auto transmitRateTracker = make_unique<lsst::qserv::TimeCountTracker<double>>(reportFileRecvRate);
+
             // Read the frame header that carries a size of the subsequent message.
             uint32_t msgSizeBytes = 0;
             uint32_t bytesRead = 0;
@@ -170,6 +200,14 @@ bool readXrootFileResourceAndMerge(lsst::qserv::proto::Result const& result,
                 offset += bytesRead;
                 bytes2read -= bytesRead;
             }
+
+            // Destroying the tracker will result in stopping the tracker's timer and
+            // reporting the file read rate before proceeding to the merge.
+            transmitRateTracker->addToValue(msgSizeBytes);
+            transmitRateTracker->setSuccess();
+            transmitRateTracker.reset();
+
+            // Proceed to the result merge
             success = messageIsReady(buf.get(), msgSizeBytes);
             if (!success) break;
         }
@@ -200,6 +238,12 @@ bool readHttpFileAndMerge(lsst::qserv::proto::Result const& result,
 
     // Extract data from the input result object before modifying the one.
     string const httpUrl = result.fileresource_http();
+
+    // Track the file while the control flow is staying within the function.
+    ResultFileTracker const resultFileTracker;
+
+    // The data transmit rate tracker is set up before reading each data message.
+    unique_ptr<lsst::qserv::TimeCountTracker<double>> transmitRateTracker;
 
     // A location of the next byte to be read from the input file. The variable
     // is used for error reporting.
@@ -256,6 +300,9 @@ bool readHttpFileAndMerge(lsst::qserv::proto::Result const& result,
                             msgBufSize = msgSizeBytes;
                             msgBuf.reset(new char[msgBufSize]);
                         }
+                        // Starts the tracker to measure the performance of the network I/O.
+                        transmitRateTracker =
+                                make_unique<lsst::qserv::TimeCountTracker<double>>(reportFileRecvRate);
                     }
                 } else {
                     // Continue or finish reading the message body.
@@ -268,6 +315,15 @@ bool readHttpFileAndMerge(lsst::qserv::proto::Result const& result,
                     if (msgBufNext == msgSizeBytes) {
                         // Done reading message body.
                         msgBufNext = 0;
+
+                        // Destroying the tracker will result in stopping the tracker's timer and
+                        // reporting the file read rate before proceeding to the merge.
+                        if (transmitRateTracker != nullptr) {
+                            transmitRateTracker->addToValue(msgSizeBytes);
+                            transmitRateTracker->setSuccess();
+                            transmitRateTracker.reset();
+                        }
+
                         // Parse and evaluate the message.
                         bool const success = messageIsReady(msgBuf.get(), msgSizeBytes);
                         if (!success) {

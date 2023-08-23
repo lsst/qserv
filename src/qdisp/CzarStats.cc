@@ -24,19 +24,18 @@
 // Class header
 #include "qdisp/CzarStats.h"
 
-#include <cstdio>
-#include <float.h>
-#include <set>
+// System headers
+#include <chrono>
 
-// qserv headers
+// Qserv headers
 #include "qdisp/QdispPool.h"
 #include "util/Bug.h"
+#include "util/TimeUtils.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
 
 using namespace std;
-
 using namespace std::chrono_literals;
 
 namespace {
@@ -56,12 +55,17 @@ void CzarStats::setup(qdisp::QdispPool::Ptr const& qdispPool) {
     _globalCzarStats = Ptr(new CzarStats(qdispPool));
 }
 
-CzarStats::CzarStats(qdisp::QdispPool::Ptr const& qdispPool) : _qdispPool(qdispPool) {
-    auto bucketValsRates = {1'000.0, 1'000'000.0, 500'000'000.0, 1'000'000'000.0};
-    _histTrmitRecvRate = util::HistogramRolling::Ptr(
-            new util::HistogramRolling("TransmitRecvRateBytesPerSec", bucketValsRates, 1h, 10000));
+CzarStats::CzarStats(qdisp::QdispPool::Ptr const& qdispPool)
+        : _qdispPool(qdispPool), _startTimeMs(util::TimeUtils::now()) {
+    auto bucketValsRates = {128'000.0,       512'000.0,       1'024'000.0,     16'000'000.0,
+                            128'000'000.0,   256'000'000.0,   512'000'000.0,   768'000'000.0,
+                            1'000'000'000.0, 2'000'000'000.0, 4'000'000'000.0, 8'000'000'000.0};
+    _histXRootDSSIRecvRate = util::HistogramRolling::Ptr(
+            new util::HistogramRolling("XRootDSSIRecvRateBytesPerSec", bucketValsRates, 1h, 10000));
     _histMergeRate = util::HistogramRolling::Ptr(
-            new util::HistogramRolling("MergeRateRateBytesPerSec", bucketValsRates, 1h, 10000));
+            new util::HistogramRolling("MergeRateBytesPerSec", bucketValsRates, 1h, 10000));
+    _histFileReadRate = util::HistogramRolling::Ptr(
+            new util::HistogramRolling("FileReadRateBytesPerSec", bucketValsRates, 1h, 10000));
     auto bucketValsTimes = {0.1, 1.0, 10.0, 100.0, 1000.0};
     _histRespSetup = util::HistogramRolling::Ptr(
             new util::HistogramRolling("RespSetupTime", bucketValsTimes, 1h, 10000));
@@ -97,35 +101,54 @@ void CzarStats::endQueryRespConcurrentProcessing(TIMEPOINT start, TIMEPOINT end)
     _histRespProcessing->addEntry(end, secs.count());
 }
 
-void CzarStats::addTrmitRecvRate(double bytesPerSec) {
-    _histTrmitRecvRate->addEntry(bytesPerSec);
+void CzarStats::addXRootDSSIRecvRate(double bytesPerSec) {
+    _histXRootDSSIRecvRate->addEntry(bytesPerSec);
     LOGS(_log, LOG_LVL_TRACE,
-         "czarstats::addTrmitRecvRate " << bytesPerSec << " " << _histTrmitRecvRate->getString(""));
+         "CzarStats::" << __func__ << " " << bytesPerSec << " " << _histXRootDSSIRecvRate->getString(""));
 }
 
 void CzarStats::addMergeRate(double bytesPerSec) {
     _histMergeRate->addEntry(bytesPerSec);
     LOGS(_log, LOG_LVL_TRACE,
-         "czarstats::addTrmitRecvRate " << bytesPerSec << " " << _histMergeRate->getString("") << " jsonA="
-                                        << getTransmitStatsJson() << " jsonB=" << getQdispStatsJson());
+         "CzarStats::" << __func__ << " " << bytesPerSec << " " << _histMergeRate->getString("")
+                       << " jsonA=" << getTransmitStatsJson() << " jsonB=" << getQdispStatsJson());
+}
+
+void CzarStats::addFileReadRate(double bytesPerSec) {
+    _histFileReadRate->addEntry(bytesPerSec);
+    LOGS(_log, LOG_LVL_TRACE,
+         "CzarStats::" << __func__ << " " << bytesPerSec << " " << _histFileReadRate->getString(""));
 }
 
 nlohmann::json CzarStats::getQdispStatsJson() const {
     nlohmann::json js;
     js["QdispPool"] = _qdispPool->getJson();
-    js["queryRespConcurrentSetupCount"] = static_cast<int16_t>(_queryRespConcurrentSetup);
-    js["queryRespConcurrentWaitCount"] = static_cast<int16_t>(_queryRespConcurrentWait);
-    js["queryRespConcurrentProcessingCount"] = static_cast<int16_t>(_queryRespConcurrentProcessing);
-    js["histRespSetup"] = _histRespSetup->getJson();
-    js["histRespWait"] = _histRespWait->getJson();
-    js["histRespProcessing"] = _histRespProcessing->getJson();
+    js["queryRespConcurrentSetupCount"] = _queryRespConcurrentSetup.load();
+    js["queryRespConcurrentWaitCount"] = _queryRespConcurrentWait.load();
+    js["queryRespConcurrentProcessingCount"] = _queryRespConcurrentProcessing.load();
+    js[_histRespSetup->label()] = _histRespSetup->getJson();
+    js[_histRespWait->label()] = _histRespWait->getJson();
+    js[_histRespProcessing->label()] = _histRespProcessing->getJson();
+    js["totalQueries"] = _totalQueries.load();
+    js["totalJobs"] = _totalJobs.load();
+    js["totalResultFiles"] = _totalResultFiles.load();
+    js["totalResultMerges"] = _totalResultMerges.load();
+    js["totalBytesRecv"] = _totalBytesRecv.load();
+    js["totalRowsRecv"] = _totalRowsRecv.load();
+    js["numQueries"] = _numQueries.load();
+    js["numJobs"] = _numJobs.load();
+    js["numResultFiles"] = _numResultFiles.load();
+    js["numResultMerges"] = _numResultMerges.load();
+    js["startTimeMs"] = _startTimeMs;
+    js["snapshotTimeMs"] = util::TimeUtils::now();
     return js;
 }
 
 nlohmann::json CzarStats::getTransmitStatsJson() const {
     nlohmann::json js;
-    js["TransmitRecvRate"] = _histTrmitRecvRate->getJson();
-    js["histMergeRate"] = _histMergeRate->getJson();
+    js[_histXRootDSSIRecvRate->label()] = _histXRootDSSIRecvRate->getJson();
+    js[_histMergeRate->label()] = _histMergeRate->getJson();
+    js[_histFileReadRate->label()] = _histFileReadRate->getJson();
     return js;
 }
 

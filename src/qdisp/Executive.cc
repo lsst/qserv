@@ -60,6 +60,7 @@
 #include "ccontrol/msgCode.h"
 #include "global/LogContext.h"
 #include "global/ResourceUnit.h"
+#include "qdisp/CzarStats.h"
 #include "qdisp/JobQuery.h"
 #include "qdisp/MessageStore.h"
 #include "qdisp/QueryRequest.h"
@@ -108,9 +109,12 @@ Executive::Executive(ExecutiveConfig const& c, shared_ptr<MessageStore> const& m
     _secondsBetweenQMetaUpdates = chrono::seconds(_config.secondsBetweenChunkUpdates);
     _setup();
     _setupLimit();
+    qdisp::CzarStats::get()->addQuery();
 }
 
 Executive::~Executive() {
+    qdisp::CzarStats::get()->deleteQuery();
+    qdisp::CzarStats::get()->deleteJobs(_incompleteJobs.size());
     // Real XrdSsiService objects are unowned, but mocks are allocated in _setup.
     delete dynamic_cast<XrdSsiServiceMock*>(_xrdSsiService);
 }
@@ -446,6 +450,7 @@ bool Executive::_track(int jobId, shared_ptr<JobQuery> const& r) {
         }
         _incompleteJobs[jobId] = r;
         size = _incompleteJobs.size();
+        qdisp::CzarStats::get()->addJob();
     }
     LOGS(_log, LOG_LVL_DEBUG, "Success TRACKING size=" << size);
     return true;
@@ -464,6 +469,7 @@ void Executive::_unTrack(int jobId) {
             untracked = true;
             incompleteJobs = _incompleteJobs.size();
             if (_incompleteJobs.empty()) _allJobsComplete.notify_all();
+            qdisp::CzarStats::get()->deleteJobs(1);
         }
         auto sz = _incompleteJobs.size();
         logSome = (sz < 50) || (sz % 1000 == 0) || !untracked;

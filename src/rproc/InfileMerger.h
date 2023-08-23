@@ -232,8 +232,8 @@ public:
     size_t getTotalResultSize() const;
 
 private:
-    bool _applyMysqlMyIsam(std::string const& query);
-    bool _applyMysqlInnoDb(std::string const& query);
+    bool _applyMysqlMyIsam(std::string const& query, size_t resultSize);
+    bool _applyMysqlInnoDb(std::string const& query, size_t resultSize);
     bool _merge(std::shared_ptr<proto::WorkerResponse>& response);
     void _setupRow();
     bool _applySql(std::string const& sql);
