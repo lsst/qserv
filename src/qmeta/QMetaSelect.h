@@ -23,6 +23,8 @@
 #define LSST_QSERV_QMETA_QMETASELECT_H
 
 // System headers
+#include <memory>
+#include <mutex>
 #include <string>
 #include <vector>
 
@@ -38,7 +40,6 @@ namespace lsst::qserv::qmeta {
 
 /**
  *  @ingroup qmeta
- *
  *  @brief Select interface for QMeta database.
  *
  *  This is somewhat special class to used for selecting data from
@@ -48,17 +49,14 @@ namespace lsst::qserv::qmeta {
 
 class QMetaSelect {
 public:
-    /**
-     *  @param mysqlConf: Configuration object for mysql connection
-     */
-    QMetaSelect(mysql::MySqlConfig const& mysqlConf);
+    /// @param mysqlConf: Configuration object for mysql connection
+    explicit QMetaSelect(mysql::MySqlConfig const& mysqlConf);
 
-    // Instances cannot be copied
+    QMetaSelect() = delete;
     QMetaSelect(QMetaSelect const&) = delete;
     QMetaSelect& operator=(QMetaSelect const&) = delete;
 
-    // Destructor
-    virtual ~QMetaSelect();
+    ~QMetaSelect() = default;
 
     /**
      *  @brief Run arbitrary select on a table or view.
@@ -71,9 +69,10 @@ public:
      *  @returns SqlResults instance
      *  @throws SqlError
      */
-    virtual std::unique_ptr<sql::SqlResults> select(std::string const& query);
+    std::unique_ptr<sql::SqlResults> select(std::string const& query);
 
 protected:
+    std::mutex _connMtx;  ///< The mutex guarding the database connector
     std::shared_ptr<sql::SqlConnection> _conn;
 };
 

@@ -23,10 +23,6 @@
 // Class header
 #include "qmeta/QMetaSelect.h"
 
-// System headers
-
-// Third-party headers
-
 // LSST headers
 #include "lsst/log/Log.h"
 
@@ -43,23 +39,18 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.qmeta.QMetaSelect");
 
 namespace lsst::qserv::qmeta {
 
-// Constructors
 QMetaSelect::QMetaSelect(mysql::MySqlConfig const& mysqlConf)
         : _conn(sql::SqlConnectionFactory::make(mysqlConf)) {}
 
-// Destructor
-QMetaSelect::~QMetaSelect() {}
-
 std::unique_ptr<sql::SqlResults> QMetaSelect::select(std::string const& query) {
-    // run query
     sql::SqlErrorObject errObj;
     std::unique_ptr<sql::SqlResults> results(new sql::SqlResults);
     LOGS(_log, LOG_LVL_DEBUG, "Executing query: " << query);
-    if (not _conn->runQuery(query, *results, errObj)) {
+    std::lock_guard<std::mutex> const lock(_connMtx);
+    if (!_conn->runQuery(query, *results, errObj)) {
         LOGS(_log, LOG_LVL_ERROR, "SQL query failed: " << query);
-        throw SqlError(ERR_LOC, errObj);
+        throw qmeta::SqlError(ERR_LOC, errObj);
     }
-
     return results;
 }
 
