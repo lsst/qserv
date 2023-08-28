@@ -117,8 +117,8 @@ private:
     nlohmann::json _czarDb();
 
     /**
-     * Process a request for extracting a status on select user queries
-     * launched at Qserv.
+     * Process a request for extracting a status on the active user queries
+     * that are being executed by Qserv.
      */
     nlohmann::json _activeQueries();
 

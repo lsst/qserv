@@ -255,7 +255,7 @@ void HttpProcessor::registerServices() {
                                                                  self->_processorConfig, req, resp,
                                                                  "CZAR-DB");
                              });
-    httpServer()->addHandler("GET", "/replication/qserv/master/query",
+    httpServer()->addHandler("GET", "/replication/qserv/master/queries/active",
                              [self](qhttp::Request::Ptr const req, qhttp::Response::Ptr const resp) {
                                  HttpQservMonitorModule::process(self->controller(), self->name(),
                                                                  self->_processorConfig, req, resp,

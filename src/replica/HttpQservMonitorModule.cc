@@ -361,6 +361,7 @@ json HttpQservMonitorModule::_activeQueries() {
     checkApiVersion(__func__, 25);
 
     unsigned int const timeoutSec = query().optionalUInt("timeout_sec", workerResponseTimeoutSec());
+
     debug(__func__, "timeout_sec=" + to_string(timeoutSec));
 
     // Check which queries and in which schedulers are being executed
@@ -516,6 +517,7 @@ json HttpQservMonitorModule::_pastQueries() {
             g.packCond(constraints, g.like("query", "%" + searchPattern + "%"));
         }
     }
+    json result;
     h.conn->executeInOwnTransaction([&](auto conn) {
         result["queries_past"] = _pastUserQueries(conn, constraints, limit4past, includeMessages);
     });
