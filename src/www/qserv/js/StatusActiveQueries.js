@@ -11,9 +11,9 @@ function(CSSLoader,
          Common,
          _) {
 
-    CSSLoader.load('qserv/css/StatusUserQueries.css');
+    CSSLoader.load('qserv/css/StatusActiveQueries.css');
 
-    class StatusUserQueries extends FwkApplication {
+    class StatusActiveQueries extends FwkApplication {
 
         /// @returns the suggested server-side timeout for retreiving results 
         static _server_proc_timeout_sec() { return 2; }
@@ -26,7 +26,6 @@ function(CSSLoader,
         }
 
         /**
-         * Override event handler defined in the base class
          * @see FwkApplication.fwk_app_on_show
          */
         fwk_app_on_show() {
@@ -35,7 +34,6 @@ function(CSSLoader,
         }
 
         /**
-         * Override event handler defined in the base class
          * @see FwkApplication.fwk_app_on_hide
          */
         fwk_app_on_hide() {
@@ -43,7 +41,6 @@ function(CSSLoader,
         }
 
         /**
-         * Override event handler defined in the base class
          * @see FwkApplication.fwk_app_on_update
          */
         fwk_app_on_update() {
@@ -80,101 +77,9 @@ function(CSSLoader,
             };
 
             let html = `
-<div class="row">
+<div class="row" id="fwk-status-active-queries-controls">
   <div class="col">
-    <table class="table table-sm table-hover" id="fwk-status-queries">
-      <caption class="updating">
-        Loading...
-      </caption>
-      <thead class="thead-light">
-        <tr>
-          <th>Started</th>
-          <th>Progress</th>
-          <th>Sched</th>
-          <th style="text-align:right;">Elapsed</th>
-          <th style="text-align:right;">Left (est.)</th>
-          <th style="text-align:right;">Chunks</th>
-          <th style="text-align:right;">Ch/min</th>
-          <th style="text-align:right;">QID</th>
-          <th style="text-align:center;"><i class="bi bi-clipboard-fill"></i></th>
-          <th class="sticky" style="text-align:center;"><i class="bi bi-info-circle-fill"></i></th>
-          <th>Query</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    </table>
-  </div>
-</div>
-<div class="row" id="fwk-status-queries-controls">
-  <div class="col">
-    <h3>Search past queries</h3>
     <div class="form-row">
-      <div class="form-group col-md-2">
-        <label for="query-age">Submitted:</label>
-        <select id="query-age" class="form-control form-control-selector">
-          <option selected value="0">MOST RECENTLY</option>
-          <option value="300">5 MINUTES AGO</option>
-          <option value="900">15 MINUTES AGO</option>
-          <option value="1800">30 MINUTES AGO</option>
-          <option value="3600">1 HOUR AGO</option>
-          <option value="7200">2 HOURS AGO</option>
-          <option value="14400">4 HOURS AGO</option>
-          <option value="28800">8 HOURS AGO</option>
-          <option value="43200">12 HOURS AGO</option>
-          <option value="86400">1 DAY AGO</option>
-          <option value="172800">2 DAYS AGO</option>
-          <option value="604800">1 WEEK AGO</option>
-        </select>
-      </div>
-      <div class="form-group col-md-1">
-        <label for="query-status">Status:</label>
-        <select id="query-status" class="form-control form-control-selector">
-          <option value="" selected></option>
-          <option value="COMPLETED">COMPLETED</option>
-          <option value="FAILED">FAILED</option>
-          <option value="ABORTED">ABORTED</option>
-        </select>
-      </div>
-      <div class="form-group col-md-1">
-        <label for="min-elapsed">Min.elapsed [sec]:</label>
-        <input type="number" id="min-elapsed" class="form-control form-control-selector" value="0">
-      </div>
-      <div class="form-group col-md-1">
-        <label for="query-type">Type:</label>
-        <select id="query-type" class="form-control form-control-selector">
-          <option value="" selected></option>
-          <option value="SYNC">SYNC</option>
-          <option value="ASYNC">ASYNC</option>
-        </select>
-      </div>
-      <div class="form-group col-md-2">
-        <label for="query-search-pattern">Search pattern:</label>
-        <input type="text" id="query-search-pattern" class="form-control form-control-selector" value="">
-      </div>
-      <div class="form-group col-md-1">
-        <label for="query-search-mode">Search mode:</label>
-        <select id="query-search-mode" class="form-control form-control-selector">
-          <option value="LIKE" selected>LIKE</option>
-          <option value="REGEXP">REGEXP</option>
-        </select>
-      </div>
-      <div class="form-group col-md-1">
-        <label for="max-queries">Max.queries:</label>
-        <select id="max-queries" class="form-control form-control-selector">
-          <option value="10">10</option>
-          <option value="50">50</option>
-          <option value="100">100</option>
-          <option value="200" selected>200</option>
-          <option value="300">300</option>
-          <option value="400">400</option>
-          <option value="500">500</option>
-          <option value="600">600</option>
-          <option value="700">700</option>
-          <option value="800">800</option>
-          <option value="900">900</option>
-          <option value="1000">1,000</option>
-        </select>
-      </div>
       <div class="form-group col-md-1">
         ${Common.html_update_ival('update-interval', 5)}
       </div>
@@ -183,21 +88,26 @@ function(CSSLoader,
         <button id="reset-queries-form" class="btn btn-primary form-control">Reset</button>
       </div>
     </div>
-    <table class="table table-sm table-hover" id="fwk-status-queries-past">
+  </div>
+</div>          
+<div class="row">
+  <div class="col">
+    <table class="table table-sm table-hover" id="fwk-status-active-queries">
+      <caption class="updating">
+        Loading...
+      </caption>
       <thead class="thead-light">
         <tr>
-          <th class="sticky">Submitted</th>
-          <th class="sticky">Status</th>
+          <th class="sticky">Started</th>
+          <th class="sticky">Progress</th>
+          <th class="sticky">Sched</th>
           <th class="sticky" style="text-align:right;">Elapsed</th>
-          <th class="sticky">Type</th>
+          <th class="sticky" style="text-align:right;">Left (est.)</th>
           <th class="sticky" style="text-align:right;">Chunks</th>
           <th class="sticky" style="text-align:right;">Ch/min</th>
-          <th class="sticky" style="text-align:right;">&sum;&nbsp;Bytes</th>
-          <th class="sticky" style="text-align:right;">&sum;&nbsp;Rows</th>
-          <th class="sticky" style="text-align:right;">Rows</th>
           <th class="sticky" style="text-align:right;">QID</th>
           <th class="sticky" style="text-align:center;"><i class="bi bi-clipboard-fill"></i></th>
-          <th class="sticky" style="text-align:center;"><i class="bi bi-info-circle-fill"></i></th>
+          <th class="sticky" class="sticky" style="text-align:center;"><i class="bi bi-info-circle-fill"></i></th>
           <th class="sticky">Query</th>
         </tr>
       </thead>
@@ -210,45 +120,22 @@ function(CSSLoader,
                 this._load();
             });
             cont.find("button#reset-queries-form").click(() => {
-                this._set_query_age("0");
-                this._set_query_status("");
-                this._set_min_elapsed("0");
-                this._set_query_type("");
-                this._set_query_search_pattern("");
-                this._set_query_search_mode("LIKE");
-                this._set_max_queries("200");
+                this._set_update_interval_sec(5);
                 this._load();
-            });
+          });
         }
-
-        /**
-         * Table for displaying the progress of the on-going user queries
-         * @returns JQuery table object
-         */
-        _tableQueries() {
-            if (this._tableQueries_obj === undefined) {
-                this._tableQueries_obj = this.fwk_app_container.find('table#fwk-status-queries');
+        _table() {
+            if (this._table_obj === undefined) {
+                this._table_obj = this.fwk_app_container.find('table#fwk-status-active-queries');
             }
-            return this._tableQueries_obj;
+            return this._table_obj;
         }
         _status() {
             if (this._status_obj === undefined) {
-                this._status_obj = this._tableQueries().children('caption');
+                this._status_obj = this._table().children('caption');
             }
             return this._status_obj;
         }
-
-        /**
-         * Table for displaying the completed, failed, etc. user queries
-         * @returns JQuery table object
-         */
-        _tablePastQueries() {
-            if (this._tablePastQueries_obj === undefined) {
-                this._tablePastQueries_obj = this.fwk_app_container.find('table#fwk-status-queries-past');
-            }
-            return this._tablePastQueries_obj;
-        }
-
         _form_control(elem_type, id) {
             if (this._form_control_obj === undefined) this._form_control_obj = {};
             if (!_.has(this._form_control_obj, id)) {
@@ -256,32 +143,9 @@ function(CSSLoader,
             }
             return this._form_control_obj[id];
         }
-        _get_query_age()       { return this._form_control('select', 'query-age').val(); }
-        _set_query_age(val)    { this._form_control('select', 'query-age').val(val); }
-
-        _get_query_status()    { return this._form_control('select', 'query-status').val(); }
-        _set_query_status(val) { this._form_control('select', 'query-status').val(val); }
-
-        _get_min_elapsed()     { return this._form_control('input', 'min-elapsed').val(); }
-        _set_min_elapsed(val)  { this._form_control('input', 'min-elapsed').val(val); }
-
-        _get_query_type()      { return this._form_control('select', 'query-type').val(); }
-        _set_query_type(val)   { this._form_control('select', 'query-type').val(val); }
-
-        _get_query_search_pattern()    { return this._form_control('input', 'query-search-pattern').val(); }
-        _set_query_search_pattern(val) { this._form_control('input', 'query-search-pattern').val(val); }
-
-        _get_query_search_mode()    { return this._form_control('select', 'query-search-mode').val(); }
-        _set_query_search_mode(val) { this._form_control('select', 'query-search-mode').val(val); }
-
-        _get_max_queries()     { return this._form_control('select', 'max-queries').val(); }
-        _set_max_queries(val)  { this._form_control('select', 'max-queries').val(val); }
         _update_interval_sec() { return this._form_control('select', 'update-interval').val(); }
+        _set_update_interval_sec(val) { this._form_control('select', 'update-interval').val(val); }
 
-        /**
-         * Load data from a web servie then render it to the application's
-         * page.
-         */
         _load() {
             if (this._loading === undefined) {
                 this._loading = false;
@@ -291,18 +155,15 @@ function(CSSLoader,
 
             this._status().addClass('updating');
 
+            console.log('_load:1');
+
             Fwk.web_service_GET(
-                "/replication/qserv/master/query",
-                {   query_age: this._get_query_age(),
-                    query_status: this._get_query_status(),
-                    min_elapsed_sec: this._get_min_elapsed(),
-                    query_type: this._get_query_type(),
-                    search_pattern: this._get_query_search_pattern(),
-                    search_regexp_mode: this._get_query_search_mode() == "REGEXP" ? 1 : 0,
-                    limit4past: this._get_max_queries(),
-                    timeout_sec: StatusUserQueries._server_proc_timeout_sec()
+                "/replication/qserv/master/queries/active",
+                {   version: Common.RestAPIVersion,
+                    timeout_sec: StatusActiveQueries._server_proc_timeout_sec()
                 },
                 (data) => {
+                    console.log('_load:2');
                     if (!data.success) {
                         this._status().html(`<span style="color:maroon">${data.error}</span>`);
                     } else {
@@ -319,10 +180,6 @@ function(CSSLoader,
                 }
             );
         }
-
-        /**
-         * Display the queries
-         */
         _display(data) {
             this._id2query = {};
             const queryToggleTitle = "Click to toggle query formatting.";
@@ -400,43 +257,10 @@ function(CSSLoader,
                 Fwk.find("Status", "Query Inspector").set_query_id(queryId);
                 Fwk.show("Status", "Query Inspector");
             };
-            let tbodyQueries = this._tableQueries().children('tbody').html(html);
+            let tbodyQueries = this._table().children('tbody').html(html);
             tbodyQueries.find("td.query_toggler").click(toggleQueryDisplay);
             tbodyQueries.find("button.copy-query").click(copyQueryToClipboard);
             tbodyQueries.find("button.inspect-query").click(displayQuery);
-            html = '';
-            for (let i in data.queries_past) {
-                let query = data.queries_past[i];
-                this._id2query[query.queryId] = query.query;
-                let elapsed = this._elapsed(query.completed_sec - query.submitted_sec);
-                let failed_query_class = query.status !== "COMPLETED" ? "table-danger" : "";
-                let performance = this._performance(query.chunkCount, query.completed_sec - query.submitted_sec);
-                let expanded = (query.queryId in this._queryId2Expanded) && this._queryId2Expanded[query.queryId];
-                html += `
-<tr class="${failed_query_class}" id="${query.queryId}">
-  <td style="padding-right:10px;"><pre>` + query.submitted + `</pre></td>
-  <td style="padding-right:10px;"><pre>${query.status}</pre></td>
-  <th style="text-align:right; padding-top:0;">${elapsed}</th>
-  <td><pre>` + query.qType + `</pre></td>
-  <th style="text-align:right;"><pre>${query.chunkCount}</pre></th>
-  <td style="text-align:right;" ><pre>${performance > 0 ? performance : ''}</pre></td>
-  <th style="text-align:right;"><pre>${query.collectedBytes}</pre></th>
-  <th style="text-align:right;"><pre>${query.collectedRows}</pre></th>
-  <th style="text-align:right;"><pre>${query.finalRows}</pre></th>
-  <th style="text-align:right;"><pre>${query.queryId}</pre></th>
-  <td style="text-align:right; padding-top:0; padding-bottom:0">
-    <button class="btn btn-outline-dark btn-sm copy-query" style="height:20px; margin:0px;" title="${queryCopyTitle}"></button>
-  </td>
-  <td style="text-align:right; padding-top:0; padding-bottom:0">
-    <button class="btn btn-outline-info btn-sm inspect-query" style="height:20px; margin:0px;" title="${queryInspectTitle}"></button>
-  </td>
-  <td class="query_toggler" title="${queryToggleTitle}"><pre class="query" style="${queryStyle}">` + this._query2text(query.queryId, expanded) + `</pre></td>
-</tr>`;
-            }
-            let tbodyPastQueries = this._tablePastQueries().children('tbody').html(html);
-            tbodyPastQueries.find("td.query_toggler").click(toggleQueryDisplay);
-            tbodyPastQueries.find("button.copy-query").click(copyQueryToClipboard);
-            tbodyPastQueries.find("button.inspect-query").click(displayQuery);
         }
         
         /**
@@ -459,7 +283,6 @@ function(CSSLoader,
         }
         
         /**
-         * 
          * @param {Number} qid  a unique identifier of a qiery. It's used to pull a record
          * for the previously (of any) recorded number of second estimated before the query
          * would expected to finish.
@@ -495,5 +318,5 @@ function(CSSLoader,
             return Common.query2text(this._id2query[queryId], expanded);
         }
     }
-    return StatusUserQueries;
+    return StatusActiveQueries;
 });

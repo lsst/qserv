@@ -1,0 +1,48 @@
+#fwk-status-active-queries-controls {
+    margin-top: 1em;
+    padding-top: 0.5em;
+}
+#fwk-status-active-queries-controls label {
+    font-weight: bold;
+}
+table#fwk-status-active-queries pre {
+    padding:    0;
+    margin:     0;
+}
+table#fwk-status-active-queries th,
+table#fwk-status-active-queries td {
+    vertical-align: top;
+}
+table#fwk-status-active-queries {
+    position: relative;
+}
+table#fwk-status-active-queries > thead > tr > th.sticky {
+    position:sticky;
+    top:80px;
+    z-index:2;
+}
+table#fwk-status-active-queries caption {
+    caption-side:   top;
+    text-align:     right;
+    padding-top:    0;
+}
+table#fwk-status-active-queries caption.updating {
+    background-color: #ffeeba;
+}
+
+table#fwk-status-active-queries tbody > tr > td.query_toggler:hover {
+    cursor:pointer;
+}
+table#fwk-status-active-queries span {
+    font-family: monospace;
+    white-space: pre;
+    font-size:   16px;
+    margin:      0;
+    padding:     0;
+}
+table#fwk-status-active-queries span.trend_down {
+    color:       green;
+}
+table#fwk-status-active-queries span.trend_up {
+    color:       red;
+}
