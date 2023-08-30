@@ -1,6 +1,7 @@
 add_library(util OBJECT)
 
 target_sources(util PRIVATE
+    AsyncTimer.cc
     BlockPost.cc
     Bug.cc
     CmdLineParser.cc

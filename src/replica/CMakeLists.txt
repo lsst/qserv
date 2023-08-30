@@ -23,8 +23,6 @@ target_sources(replica PRIVATE
     ApplicationColl.h
     ApplicationTypes.cc
     ApplicationTypes.h
-    AsyncTimer.cc
-    AsyncTimer.h
     CheckSumApp.cc
     CheckSumApp.h
     ChunkLocker.cc

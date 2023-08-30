@@ -32,11 +32,11 @@
 #include "boost/asio.hpp"
 
 // Qserv headers
-#include "replica/AsyncTimer.h"
 #include "replica/IngestRequest.h"
 #include "replica/IngestRequestMgr.h"
 #include "replica/IngestResourceMgrT.h"
 #include "replica/TransactionContrib.h"
+#include "util/AsyncTimer.h"
 #include "util/TimeUtils.h"
 
 // LSST headers
@@ -130,11 +130,12 @@ BOOST_AUTO_TEST_CASE(IngestRequestMgrSimpleTest) {
     // of the manager. The timer will be fired before each such operation and
     // be cancelled after completing the one.
     chrono::milliseconds const expirationIvalMs(1000);
-    auto const timer = AsyncTimer::create(io_service, expirationIvalMs, [](auto expirationIvalMs) {
-        LOGS_INFO("IngestRequestMgr_simple: test exceeded the time budget of " << expirationIvalMs.count()
-                                                                               << "ms");
-        std::exit(1);
-    });
+    auto const timer =
+            util::AsyncTimer::create(io_service, expirationIvalMs, [](auto expirationIvalMs) -> bool {
+                LOGS_INFO("IngestRequestMgr_simple: test exceeded the time budget of "
+                          << expirationIvalMs.count() << "ms");
+                std::exit(1);
+            });
 
     // Instantiate the manager.
     shared_ptr<IngestRequestMgr> requestScheduler;
@@ -280,11 +281,12 @@ BOOST_AUTO_TEST_CASE(IngestRequestMgrComplexTest) {
     // of the manager. The timer will be fired before each such operation and
     // be cancelled after completing the one.
     chrono::milliseconds const expirationIvalMs(10);
-    auto const timer = AsyncTimer::create(io_service, expirationIvalMs, [](auto expirationIvalMs) {
-        LOGS_INFO("IngestRequestMgr_simple: test exceeded the time budget of " << expirationIvalMs.count()
-                                                                               << "ms");
-        std::exit(1);
-    });
+    auto const timer =
+            util::AsyncTimer::create(io_service, expirationIvalMs, [](auto expirationIvalMs) -> bool {
+                LOGS_INFO("IngestRequestMgr_simple: test exceeded the time budget of "
+                          << expirationIvalMs.count() << "ms");
+                std::exit(1);
+            });
 
     shared_ptr<IngestResourceMgrT> const resourceMgr = IngestResourceMgrT::create();
     shared_ptr<IngestRequestMgr> const requestScheduler = IngestRequestMgr::test(resourceMgr);
