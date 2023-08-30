@@ -28,6 +28,7 @@
 #include <chrono>
 
 // Qserv headers
+#include "cconfig/CzarConfig.h"
 #include "qdisp/QdispPool.h"
 #include "util/Bug.h"
 #include "util/TimeUtils.h"
@@ -120,36 +121,111 @@ void CzarStats::addFileReadRate(double bytesPerSec) {
          "CzarStats::" << __func__ << " " << bytesPerSec << " " << _histFileReadRate->getString(""));
 }
 
+void CzarStats::trackQueryProgress(QueryId qid) {
+    if (qid == 0) return;
+    uint64_t const currentTimestampMs = util::TimeUtils::now();
+    std::lock_guard<util::Mutex> const lock(_queryProgressMtx);
+    if (auto itr = _queryNumIncompleteJobs.find(qid); itr != _queryNumIncompleteJobs.end()) return;
+    _queryNumIncompleteJobs[qid].emplace_back(currentTimestampMs, 0);
+}
+
+void CzarStats::updateQueryProgress(QueryId qid, int numUnfinishedJobs) {
+    if (qid == 0) return;
+    uint64_t const currentTimestampMs = util::TimeUtils::now();
+    std::lock_guard<util::Mutex> const lock(_queryProgressMtx);
+    if (auto itr = _queryNumIncompleteJobs.find(qid); itr != _queryNumIncompleteJobs.end()) {
+        auto&& history = itr->second;
+        if (history.empty() || (history.back().numJobs != numUnfinishedJobs)) {
+            history.emplace_back(currentTimestampMs, numUnfinishedJobs);
+        }
+    } else {
+        _queryNumIncompleteJobs[qid].emplace_back(currentTimestampMs, numUnfinishedJobs);
+    }
+}
+
+void CzarStats::untrackQueryProgress(QueryId qid) {
+    if (qid == 0) return;
+    unsigned int const lastSeconds = cconfig::CzarConfig::instance()->czarStatsRetainPeriodSec();
+    uint64_t const minTimestampMs = util::TimeUtils::now() - 1000 * lastSeconds;
+    std::lock_guard<util::Mutex> const lock(_queryProgressMtx);
+    if (lastSeconds == 0) {
+        // The query gets removed instantaniously if archiving is not enabled.
+        if (auto itr = _queryNumIncompleteJobs.find(qid); itr != _queryNumIncompleteJobs.end()) {
+            _queryNumIncompleteJobs.erase(qid);
+        }
+    } else {
+        // Erase queries with the last recorded timestamp that's older
+        // than the specified cut-off time.
+        for (auto&& [qid, history] : _queryNumIncompleteJobs) {
+            if (history.empty()) continue;
+            if (history.back().timestampMs < minTimestampMs) _queryNumIncompleteJobs.erase(qid);
+        }
+    }
+}
+
+CzarStats::QueryProgress CzarStats::getQueryProgress(QueryId qid, unsigned int lastSeconds) const {
+    uint64_t const minTimestampMs = util::TimeUtils::now() - 1000 * lastSeconds;
+    std::lock_guard<util::Mutex> const lock(_queryProgressMtx);
+    QueryProgress result;
+    if (qid == 0) {
+        if (lastSeconds == 0) {
+            // Full histories of all registered queries
+            result = _queryNumIncompleteJobs;
+        } else {
+            // Age restricted histories of all registered queries
+            for (auto&& [qid, history] : _queryNumIncompleteJobs) {
+                for (auto&& point : history) {
+                    if (point.timestampMs >= minTimestampMs) result[qid].push_back(point);
+                }
+            }
+        }
+    } else {
+        if (auto itr = _queryNumIncompleteJobs.find(qid); itr != _queryNumIncompleteJobs.end()) {
+            auto&& history = itr->second;
+            if (lastSeconds == 0) {
+                // Full history of the specified query
+                result[qid] = history;
+            } else {
+                // Age restricted history of the specified query
+                for (auto&& point : history) {
+                    if (point.timestampMs >= minTimestampMs) result[qid].push_back(point);
+                }
+            }
+        }
+    }
+    return result;
+}
+
 nlohmann::json CzarStats::getQdispStatsJson() const {
-    nlohmann::json js;
-    js["QdispPool"] = _qdispPool->getJson();
-    js["queryRespConcurrentSetupCount"] = _queryRespConcurrentSetup.load();
-    js["queryRespConcurrentWaitCount"] = _queryRespConcurrentWait.load();
-    js["queryRespConcurrentProcessingCount"] = _queryRespConcurrentProcessing.load();
-    js[_histRespSetup->label()] = _histRespSetup->getJson();
-    js[_histRespWait->label()] = _histRespWait->getJson();
-    js[_histRespProcessing->label()] = _histRespProcessing->getJson();
-    js["totalQueries"] = _totalQueries.load();
-    js["totalJobs"] = _totalJobs.load();
-    js["totalResultFiles"] = _totalResultFiles.load();
-    js["totalResultMerges"] = _totalResultMerges.load();
-    js["totalBytesRecv"] = _totalBytesRecv.load();
-    js["totalRowsRecv"] = _totalRowsRecv.load();
-    js["numQueries"] = _numQueries.load();
-    js["numJobs"] = _numJobs.load();
-    js["numResultFiles"] = _numResultFiles.load();
-    js["numResultMerges"] = _numResultMerges.load();
-    js["startTimeMs"] = _startTimeMs;
-    js["snapshotTimeMs"] = util::TimeUtils::now();
-    return js;
+    nlohmann::json result;
+    result["QdispPool"] = _qdispPool->getJson();
+    result["queryRespConcurrentSetupCount"] = _queryRespConcurrentSetup.load();
+    result["queryRespConcurrentWaitCount"] = _queryRespConcurrentWait.load();
+    result["queryRespConcurrentProcessingCount"] = _queryRespConcurrentProcessing.load();
+    result[_histRespSetup->label()] = _histRespSetup->getJson();
+    result[_histRespWait->label()] = _histRespWait->getJson();
+    result[_histRespProcessing->label()] = _histRespProcessing->getJson();
+    result["totalQueries"] = _totalQueries.load();
+    result["totalJobs"] = _totalJobs.load();
+    result["totalResultFiles"] = _totalResultFiles.load();
+    result["totalResultMerges"] = _totalResultMerges.load();
+    result["totalBytesRecv"] = _totalBytesRecv.load();
+    result["totalRowsRecv"] = _totalRowsRecv.load();
+    result["numQueries"] = _numQueries.load();
+    result["numJobs"] = _numJobs.load();
+    result["numResultFiles"] = _numResultFiles.load();
+    result["numResultMerges"] = _numResultMerges.load();
+    result["startTimeMs"] = _startTimeMs;
+    result["snapshotTimeMs"] = util::TimeUtils::now();
+    return result;
 }
 
 nlohmann::json CzarStats::getTransmitStatsJson() const {
-    nlohmann::json js;
-    js[_histXRootDSSIRecvRate->label()] = _histXRootDSSIRecvRate->getJson();
-    js[_histMergeRate->label()] = _histMergeRate->getJson();
-    js[_histFileReadRate->label()] = _histFileReadRate->getJson();
-    return js;
+    nlohmann::json result;
+    result[_histXRootDSSIRecvRate->label()] = _histXRootDSSIRecvRate->getJson();
+    result[_histMergeRate->label()] = _histMergeRate->getJson();
+    result[_histFileReadRate->label()] = _histFileReadRate->getJson();
+    return result;
 }
 
 }  // namespace lsst::qserv::qdisp

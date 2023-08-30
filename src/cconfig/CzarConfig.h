@@ -194,6 +194,18 @@ public:
     /// and the newer queries.
     bool notifyWorkersOnCzarRestart() const { return _notifyWorkersOnCzarRestart != 0; }
 
+    /// @return The desired sampling frequency of the Czar monitoring which is
+    /// based on tracking state changes in various entities. If 0 is returned by
+    /// the method then the monitoring will be disabled.
+    unsigned int czarStatsUpdateIvalSec() const { return _czarStatsUpdateIvalSec; }
+
+    /// @return The maximum retain period for keeping in memory the relevant metrics
+    /// captured by the Czar monitoring system. If 0 is returned by the method then
+    /// query history archiving will be disabled.
+    /// @note Setting the limit too high may be potentially result in runing onto
+    /// the OOM situation.
+    unsigned int czarStatsRetainPeriodSec() const { return _czarStatsRetainPeriodSec; }
+
 private:
     CzarConfig(util::ConfigStore const& ConfigStore);
 
@@ -240,6 +252,10 @@ private:
     // Events sent to workers
     int const _notifyWorkersOnQueryFinish;  ///< Sent by cccontrol::UserQuerySelect
     int const _notifyWorkersOnCzarRestart;  ///< Sent by czar::Czar
+
+    // Parameters used for monitoring Czar
+    unsigned int const _czarStatsUpdateIvalSec;    ///< Used by qdisp::Executive
+    unsigned int const _czarStatsRetainPeriodSec;  ///< Used by qdisp::CzarStats
 };
 
 }  // namespace lsst::qserv::cconfig

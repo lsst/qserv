@@ -193,6 +193,24 @@ UserQueryFactory::UserQueryFactory(qproc::DatabaseModels::Ptr const& dbModels, s
     // Add logging context with czar ID
     qmeta::CzarId qMetaCzarId = _userQuerySharedResources->qMetaCzarId;
     LOG_MDC_INIT([qMetaCzarId]() { LOG_MDC("CZID", std::to_string(qMetaCzarId)); });
+
+    // BOOST ASIO service is started to process asynchronous timer requests
+    // in the dedicated thread. However, before starting the thread we need
+    // to attach the ASIO's "work" object to the ASIO I/O service. This is needed
+    // to keep the latter busy and prevent the servicing thread from exiting before
+    // the destruction of this class  due to a lack of async requests.
+    _asioWork.reset(new boost::asio::io_service::work(_asioIoService));
+
+    // Start the timer servicing thread
+    _asioTimerThread.reset(new std::thread([&]() { _asioIoService.run(); }));
+}
+
+UserQueryFactory::~UserQueryFactory() {
+    // Shut down all ongoing (if any) operations on the I/O service
+    // to unblock the servicing thread.
+    _asioWork.reset();
+    _asioIoService.stop();
+    _asioTimerThread->join();
 }
 
 UserQuery::Ptr UserQueryFactory::newUserQuery(std::string const& aQuery, std::string const& defaultDb,
@@ -288,8 +306,9 @@ UserQuery::Ptr UserQueryFactory::newUserQuery(std::string const& aQuery, std::st
         std::shared_ptr<qdisp::Executive> executive;
         std::shared_ptr<rproc::InfileMergerConfig> infileMergerConfig;
         if (sessionValid) {
-            executive = qdisp::Executive::create(*_executiveConfig, messageStore, qdispSharedResources,
-                                                 _userQuerySharedResources->queryStatsData, qs);
+            executive =
+                    qdisp::Executive::create(*_executiveConfig, messageStore, qdispSharedResources,
+                                             _userQuerySharedResources->queryStatsData, qs, _asioIoService);
             infileMergerConfig =
                     std::make_shared<rproc::InfileMergerConfig>(_userQuerySharedResources->mysqlResultConfig);
             infileMergerConfig->debugNoMerge = _debugNoMerge;

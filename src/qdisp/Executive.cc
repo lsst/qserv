@@ -57,6 +57,7 @@
 #include "lsst/log/Log.h"
 
 // Qserv headers
+#include "cconfig/CzarConfig.h"
 #include "ccontrol/msgCode.h"
 #include "global/LogContext.h"
 #include "global/ResourceUnit.h"
@@ -71,6 +72,7 @@
 #include "qmeta/Exceptions.h"
 #include "qmeta/QStatus.h"
 #include "query/SelectStmt.h"
+#include "util/AsyncTimer.h"
 #include "util/Bug.h"
 #include "util/EventThread.h"
 
@@ -117,20 +119,57 @@ Executive::~Executive() {
     qdisp::CzarStats::get()->deleteJobs(_incompleteJobs.size());
     // Real XrdSsiService objects are unowned, but mocks are allocated in _setup.
     delete dynamic_cast<XrdSsiServiceMock*>(_xrdSsiService);
+    if (_asyncTimer != nullptr) {
+        _asyncTimer->cancel();
+        qdisp::CzarStats::get()->untrackQueryProgress(_id);
+    }
 }
 
 Executive::Ptr Executive::create(ExecutiveConfig const& c, shared_ptr<MessageStore> const& ms,
                                  SharedResources::Ptr const& sharedResources,
                                  shared_ptr<qmeta::QStatus> const& qMeta,
-                                 shared_ptr<qproc::QuerySession> const& querySession) {
-    Executive::Ptr exec(new Executive(c, ms, sharedResources, qMeta,
-                                      querySession));  // make_shared dislikes private constructor.
-    return exec;
+                                 shared_ptr<qproc::QuerySession> const& querySession,
+                                 boost::asio::io_service& asioIoService) {
+    LOGS(_log, LOG_LVL_DEBUG, "Executive::" << __func__);
+    Executive::Ptr ptr(new Executive(c, ms, sharedResources, qMeta, querySession));
+
+    // Start the query progress monitoring timer (if enabled). The query status
+    // will be sampled on each expiration event of the timer. Note that the timer
+    // gets restarted automatically for as long as the context (the current
+    // Executive object) still exists.
+    //
+    // IMPORTANT: The weak pointer dependency (unlike the regular shared pointer)
+    // is required here to allow destroying the Executive object without explicitly
+    // stopping the timer.
+    auto const czarStatsUpdateIvalSec = cconfig::CzarConfig::instance()->czarStatsUpdateIvalSec();
+    if (czarStatsUpdateIvalSec > 0) {
+        ptr->_asyncTimer = util::AsyncTimer::create(
+                asioIoService, std::chrono::milliseconds(czarStatsUpdateIvalSec * 1000),
+                [self = std::weak_ptr<Executive>(ptr)](auto expirationIvalMs) -> bool {
+                    auto ptr = self.lock();
+                    LOGS(_log, LOG_LVL_DEBUG,
+                         "Executive::" << __func__ << " expirationIvalMs: " << expirationIvalMs.count()
+                                       << " ms");
+                    if (ptr != nullptr) {
+                        ptr->_updateStats();
+                        return true;
+                    }
+                    return false;
+                });
+        ptr->_asyncTimer->start();
+    }
+    return ptr;
+}
+
+void Executive::_updateStats() const {
+    LOGS(_log, LOG_LVL_DEBUG, "Executive::" << __func__);
+    qdisp::CzarStats::get()->updateQueryProgress(_id, getNumInflight());
 }
 
 void Executive::setQueryId(QueryId id) {
     _id = id;
     _idStr = QueryIdHelper::makeIdStr(_id);
+    qdisp::CzarStats::get()->trackQueryProgress(_id);
 }
 
 /// Add a new job to executive queue, if not already in. Not thread-safe.
@@ -383,7 +422,7 @@ void Executive::_squashSuperfluous() {
     LOGS(_log, LOG_LVL_DEBUG, "Executive::squashSuperfluous done");
 }
 
-int Executive::getNumInflight() {
+int Executive::getNumInflight() const {
     unique_lock<mutex> lock(_incompleteJobsMutex);
     return _incompleteJobs.size();
 }

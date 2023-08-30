@@ -27,14 +27,17 @@
 // System headers
 #include <cstddef>
 #include <functional>
+#include <list>
 #include <memory>
 #include <ostream>
 #include <queue>
 #include <sys/time.h>
 #include <time.h>
 #include <vector>
+#include <unordered_map>
 
-// qserv headers
+// Qserv headers
+#include "global/intTypes.h"
 #include "util/Histogram.h"
 #include "util/Mutex.h"
 
@@ -56,6 +59,17 @@ class QdispPool;
 class CzarStats : std::enable_shared_from_this<CzarStats> {
 public:
     using Ptr = std::shared_ptr<CzarStats>;
+
+    class HistoryPoint {
+    public:
+        HistoryPoint(uint64_t timestampMs_ = 0, int numJobs_ = 0)
+                : timestampMs(timestampMs_), numJobs(numJobs_) {}
+        HistoryPoint(HistoryPoint const&) = default;
+        HistoryPoint& operator=(HistoryPoint const&) = default;
+        uint64_t timestampMs = 0;
+        int numJobs = 0;
+    };
+    using QueryProgress = std::unordered_map<QueryId, std::list<HistoryPoint>>;
 
     CzarStats() = delete;
     CzarStats(CzarStats const&) = delete;
@@ -134,8 +148,56 @@ public:
 
     /// Increase the count of requests being processed.
     void startQueryRespConcurrentProcessing() { ++_queryRespConcurrentProcessing; }
+
     /// Decrease the count and add the time taken to the histogram.
     void endQueryRespConcurrentProcessing(TIMEPOINT start, TIMEPOINT end);
+
+    /**
+     * Begin tracking the specified query.
+     * @note The method won't do anything if the identifier is set to 0.
+     * @param qid The unique identifier of a query affected by the operation.
+     */
+    void trackQueryProgress(QueryId qid);
+
+    /**
+     * Update the query counter(s).
+     * @note The method won't do anything if the identifier is set to 0.
+     *  The method will only record changes in the counter of jobs if
+     *  the provided number differs from the previously recorded value.
+     * @param qid The unique identifier of a query affected by the operation.
+     * @param numUnfinishedJobs The number of unfinished jobs.
+     */
+    void updateQueryProgress(QueryId qid, int numUnfinishedJobs);
+
+    /**
+     * Finish tracking the specified query or "garbage" collect older
+     * entries in the collection.
+     * @note The method won't do anything if the identifier is set to 0.
+     *  The behaviour of the method depends on a value of the configuraton
+     *  parameter cconfig::CzarConfig::czarStatsRetainPeriodSec() that governs
+     *  the query history archiving in memory. If archiving is not enabled then
+     *  the specified query gets instantaniously removed from the collection.
+     *  Otherwise (if the archiving is enabled) the age of each registered
+     *  (being "tracked") query gets evaluated at each call of this method and
+     *  queries that are found outdated (based on teh age of the last recorded
+     *  event of a query) would be removed from the collection.
+     * @param qid The unique identifier of a query affected by the operation.
+     * @see cconfig::CzarConfig::czarStatsRetainPeriodSec()
+     */
+    void untrackQueryProgress(QueryId qid);
+
+    /**
+     * Get info on a progress of the registered queries.
+     * @param qid The optional unique identifier of a query.
+     *  If 0 is specified as a value of the parameter then all queries will
+     *  be evaluated (given the age restrictin mentioned in the parameter
+     *  lastSeconds)
+     * @param lastSeconds The optional age of the entries to be reported.
+     *  The "age" is interpreted as "-lastSeconds" from a value of the current
+     *  time when the method gets called. If 0 is specified as a value of
+     *  the parameter then all entries of the select queries will be reported.
+     */
+    QueryProgress getQueryProgress(QueryId qid = 0, unsigned int lastSeconds = 0) const;
 
     /// Get a json object describing the current state of the query dispatch thread pool.
     nlohmann::json getQdispStatsJson() const;
@@ -145,6 +207,7 @@ public:
 
 private:
     CzarStats(std::shared_ptr<qdisp::QdispPool> const& qdispPool);
+
     static Ptr _globalCzarStats;    ///< Pointer to the global instance.
     static util::Mutex _globalMtx;  ///< Protects `_globalCzarStats`
 
@@ -183,6 +246,11 @@ private:
     std::atomic<uint64_t> _numJobs{0};          ///< The current number of incomplete jobs across all queries
     std::atomic<uint64_t> _numResultFiles{0};   ///< The current number of the result files being read
     std::atomic<uint64_t> _numResultMerges{0};  ///< The current number of the results being merged
+
+    // Query progress stats are recorded along with timestamps when changes
+    // in previously captured counters are detected.
+    mutable util::Mutex _queryProgressMtx;  ///< Protects _queryNumIncompleteJobs
+    QueryProgress _queryNumIncompleteJobs;
 };
 
 }  // namespace lsst::qserv::qdisp
