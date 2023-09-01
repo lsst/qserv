@@ -47,7 +47,7 @@
 
 namespace lsst::qserv {
 
-namespace czar {
+namespace cconfig {
 class CzarConfig;
 }
 
@@ -149,7 +149,7 @@ private:
     typedef std::map<QueryId, std::weak_ptr<ccontrol::UserQuery>> IdToQuery;
 
     std::string const _czarName;  ///< Unique czar name
-    std::shared_ptr<CzarConfig> const _czarConfig;
+    std::shared_ptr<cconfig::CzarConfig> const _czarConfig;
 
     std::atomic<uint64_t> _idCounter;  ///< Query/task identifier for next query
     std::unique_ptr<ccontrol::UserQueryFactory> _uqFactory;

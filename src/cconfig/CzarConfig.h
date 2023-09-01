@@ -21,8 +21,8 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-#ifndef LSST_QSERV_CZAR_CZARCONFIG_H
-#define LSST_QSERV_CZAR_CZARCONFIG_H
+#ifndef LSST_QSERV_CCONFIG_CZARCONFIG_H
+#define LSST_QSERV_CCONFIG_CZARCONFIG_H
 
 // System headers
 #include <map>
@@ -35,7 +35,7 @@
 #include "mysql/MySqlConfig.h"
 #include "util/ConfigStore.h"
 
-namespace lsst::qserv::czar {
+namespace lsst::qserv::cconfig {
 
 /**
  *  Provide all configuration parameters for a Qserv Czar instance
@@ -242,6 +242,6 @@ private:
     int const _notifyWorkersOnCzarRestart;  ///< Sent by czar::Czar
 };
 
-}  // namespace lsst::qserv::czar
+}  // namespace lsst::qserv::cconfig
 
-#endif  // LSST_QSERV_CZAR_CZARCONFIG_H
+#endif  // LSST_QSERV_CCONFIG_CZARCONFIG_H

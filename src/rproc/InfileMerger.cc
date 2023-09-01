@@ -54,8 +54,7 @@
 #include "lsst/log/Log.h"
 
 // Qserv headers
-#include "czar/Czar.h"
-#include "czar/CzarConfig.h"
+#include "cconfig/CzarConfig.h"
 #include "global/intTypes.h"
 #include "proto/WorkerResponse.h"
 #include "proto/ProtoImporter.h"
@@ -73,6 +72,7 @@
 #include "util/Bug.h"
 #include "util/IterableFormatter.h"
 #include "util/StringHash.h"
+#include "util/Timer.h"
 
 namespace {  // File-scope helpers
 
@@ -120,11 +120,11 @@ InfileMerger::InfileMerger(InfileMergerConfig const& c, std::shared_ptr<qproc::D
           _mysqlConn(_config.mySqlConfig),
           _databaseModels(dm),
           _jobIdColName(JOB_ID_BASE_NAME),
-          _maxSqlConnectionAttempts(czar::CzarConfig::instance()->getMaxSqlConnectionAttempts()),
-          _maxResultTableSizeBytes(czar::CzarConfig::instance()->getMaxTableSizeMB() * MB_SIZE_BYTES),
+          _maxSqlConnectionAttempts(cconfig::CzarConfig::instance()->getMaxSqlConnectionAttempts()),
+          _maxResultTableSizeBytes(cconfig::CzarConfig::instance()->getMaxTableSizeMB() * MB_SIZE_BYTES),
           _semaMgrConn(semaMgrConn) {
     _fixupTargetName();
-    _setEngineFromStr(czar::CzarConfig::instance()->getResultEngine());
+    _setEngineFromStr(cconfig::CzarConfig::instance()->getResultEngine());
     if (_dbEngine == MYISAM) {
         LOGS(_log, LOG_LVL_INFO, "Engine is MYISAM, serial");
         if (!_setupConnectionMyIsam()) {
