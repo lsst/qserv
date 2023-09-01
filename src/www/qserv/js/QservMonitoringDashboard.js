@@ -5,10 +5,17 @@ require.config({
     waitSeconds: 15,
     urlArgs:     "bust="+new Date().getTime(),
 
+    packages: [{
+        name: 'highcharts',
+        main: 'highcharts'
+    }],
+
     paths: {
         'jquery':     'https://code.jquery.com/jquery-3.3.1',
         'bootstrap':  'https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/js/bootstrap.bundle',
         'underscore': 'https://underscorejs.org/underscore-umd-min',
+        'chartjs':    'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min',
+        'highcharts': 'https://code.highcharts.com',
         'webfwk':     'webfwk/js',
         'qserv':      'qserv/js',
         'modules':    'modules/js'
@@ -19,13 +26,7 @@ require.config({
         },
         'bootstrap':  {
             'deps': ['jquery','underscore']
-        },/*
-        'webfwk/*': {
-            'deps': ['underscore']
         },
-        'qserv/*': {
-            'deps': ['underscore']
-        },*/
         'underscore': {
             'exports': '_'
         }
@@ -44,6 +45,7 @@ require([
     'qserv/StatusWorkers',
     'qserv/QservCzarMySQLQueries',
     'qserv/QservCzarStatistics',
+    'qserv/QservCzarQueryProgress',
     'qserv/QservCss',
     'qserv/QservMySQLConnections',
     'qserv/QservWorkerMySQLQueries',
@@ -86,6 +88,7 @@ function(CSSLoader,
          StatusWorkers,
          QservCzarMySQLQueries,
          QservCzarStatistics,
+         QservCzarQueryProgress,
          QservCss,
          QservMySQLConnections,
          QservWorkerMySQLQueries,
@@ -153,6 +156,7 @@ function(CSSLoader,
                 apps: [
                     new QservCzarMySQLQueries('MySQL Queries'),
                     new QservCzarStatistics('Statistics'),
+                    new QservCzarQueryProgress('Query Progress'),
                     new QservCss('CSS')
                 ]
             },

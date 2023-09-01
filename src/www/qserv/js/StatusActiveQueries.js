@@ -108,6 +108,7 @@ function(CSSLoader,
           <th class="sticky" style="text-align:right;">QID</th>
           <th class="sticky" style="text-align:center;"><i class="bi bi-clipboard-fill"></i></th>
           <th class="sticky" class="sticky" style="text-align:center;"><i class="bi bi-info-circle-fill"></i></th>
+          <th class="sticky" class="sticky" style="text-align:center;"><i class="bi bi-bar-chart-steps"></i></th>
           <th class="sticky">Query</th>
         </tr>
       </thead>
@@ -185,6 +186,7 @@ function(CSSLoader,
             const queryToggleTitle = "Click to toggle query formatting.";
             const queryCopyTitle = "Click to copy the query text to the clipboard.";
             const queryInspectTitle = "Click to see detailed info (progress, messages, etc.) on the query.";
+            const queryProgressTitle = "Click to see query progression plot.";
             const queryStyle = "color:#4d4dff;";
             let html = '';
             for (let i in data.queries) {
@@ -227,8 +229,11 @@ function(CSSLoader,
   <td style="text-align:center; padding-top:0; padding-bottom:0">
     <button class="btn btn-outline-dark btn-sm copy-query" style="height:20px; margin:0px;" title="${queryCopyTitle}"></button>
   </td>
-  <td style="text-align:right; padding-top:0; padding-bottom:0">
+  <td style="text-align:center; padding-top:0; padding-bottom:0">
     <button class="btn btn-outline-info btn-sm inspect-query" style="height:20px; margin:0px;" title="${queryInspectTitle}"></button>
+  </td>
+  <td style="text-align:center; padding-top:0; padding-bottom:0">
+    <button class="btn btn-outline-info btn-sm query-progress" style="height:20px; margin:0px;" title="${queryProgressTitle}"></button>
   </td>
   <td class="query_toggler" title="${queryToggleTitle}"><pre class="query" style="${queryStyle}">` + this._query2text(query.queryId, expanded) + `</pre></td>
 </tr>`;
@@ -257,10 +262,17 @@ function(CSSLoader,
                 Fwk.find("Status", "Query Inspector").set_query_id(queryId);
                 Fwk.show("Status", "Query Inspector");
             };
+            let displayQueryProgress  = function(e) {
+                let button = $(e.currentTarget);
+                let queryId = button.parent().parent().attr("id");
+                Fwk.find("Czar", "Query Progress").set_query_id(queryId);
+                Fwk.show("Czar", "Query Progress");
+            };
             let tbodyQueries = this._table().children('tbody').html(html);
             tbodyQueries.find("td.query_toggler").click(toggleQueryDisplay);
             tbodyQueries.find("button.copy-query").click(copyQueryToClipboard);
             tbodyQueries.find("button.inspect-query").click(displayQuery);
+            tbodyQueries.find("button.query-progress").click(displayQueryProgress);
         }
         
         /**

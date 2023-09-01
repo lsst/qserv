@@ -314,10 +314,10 @@ function(CSSLoader,
   <th style="text-align:right;"><pre>${query.collectedRows}</pre></th>
   <th style="text-align:right;"><pre>${query.finalRows}</pre></th>
   <th style="text-align:right;"><pre>${query.queryId}</pre></th>
-  <td style="text-align:right; padding-top:0; padding-bottom:0">
+  <td style="text-align:center; padding-top:0; padding-bottom:0">
     <button class="btn btn-outline-dark btn-sm copy-query" style="height:20px; margin:0px;" title="${queryCopyTitle}"></button>
   </td>
-  <td style="text-align:right; padding-top:0; padding-bottom:0">
+  <td style="text-align:center; padding-top:0; padding-bottom:0">
     <button class="btn btn-outline-info btn-sm inspect-query" style="height:20px; margin:0px;" title="${queryInspectTitle}"></button>
   </td>
   <td class="query_toggler" title="${queryToggleTitle}"><pre class="query" style="${queryStyle}">` + this._query2text(query.queryId, expanded) + `</pre></td>
