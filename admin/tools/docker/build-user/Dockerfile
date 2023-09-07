@@ -19,8 +19,10 @@ ARG UID
 ARG GROUP
 ARG GID
 
-RUN getent group $GID || groupadd --gid $GID $GROUP
-RUN getent passwd $UID || useradd --uid $UID --gid $GROUP $USER
+RUN OGROUP=$(getent group $GID | cut -d: -f1) && if [ "$OGROUP" != "" ]; then groupdel $OGROUP; fi
+RUN groupadd --gid $GID $GROUP
+RUN OUSER=$(getent passwd $UID | cut -d: -f1) && if [ "$OUSER" != "" ]; then userdel $OUSER; fi
+RUN useradd --uid $UID --gid $GROUP $USER
 
 USER $USER
 WORKDIR /home/$USER
