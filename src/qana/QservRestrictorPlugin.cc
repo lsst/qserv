@@ -266,7 +266,9 @@ bool isSecIndexCol(query::QueryContext const& context, std::shared_ptr<query::Co
     }
     std::vector<std::string> sics =
             context.css->getPartTableParams(cr->getDb(), cr->getTable()).secIndexColNames();
-    return std::find(sics.begin(), sics.end(), cr->getColumn()) != sics.end();
+    std::string const& column = cr->getColumn();
+    return std::find_if(sics.begin(), sics.end(),
+                        [&column](auto const& str) { return boost::iequals(column, str); }) != sics.end();
 }
 
 query::ColumnRef::Ptr getCorrespondingDirectorColumn(query::QueryContext const& context,
