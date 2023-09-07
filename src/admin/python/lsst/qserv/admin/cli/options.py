@@ -128,6 +128,26 @@ repl_connection_option = partial(
 )
 
 
+results_dirname_option = partial(
+    click.option,
+    "--results-dirname",
+    help="Path to a folder where worker stores result sets of queries.",
+    default="/qserv/data/results",
+    show_default=True,
+)
+
+
+resultProtocolChoices = ["SSI", "XROOT", "HTTP"]
+results_protocol_option = partial(
+    click.option,
+    "--results-protocol",
+    help=f"Result delivery protocol. Allowed options are [{'|'.join(resultProtocolChoices)}]",
+    default="SSI",
+    type=click.Choice(resultProtocolChoices, case_sensitive=False),
+    show_default=True,
+)
+
+
 run_option = partial(
     click.option,
     "--run/--no-run",
@@ -144,14 +164,6 @@ vnid_config_option = partial(
     "--vnid-config",
     help="The config parameters used by the qserv cmsd to get the vnid from the specified "
     " source (static string, a file or worker database)."
-)
-
-results_dirname_option = partial(
-    click.option,
-    "--results-dirname",
-    help="Path to a folder where worker stores result sets of queries.",
-    default="/qserv/data/results",
-    show_default=True,
 )
 
 

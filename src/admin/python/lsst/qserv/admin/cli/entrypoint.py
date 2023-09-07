@@ -56,6 +56,7 @@ from .options import (
     repl_auth_key_option,
     repl_connection_option,
     results_dirname_option,
+    results_protocol_option,
     run_option,
     run_tests_option,
     targs_options,
@@ -587,6 +588,7 @@ def worker_cmsd(ctx: click.Context, **kwargs: Any) -> None:
 @db_admin_uri_option(help=admin_worker_db_help)
 @vnid_config_option(required=True)
 @results_dirname_option()
+@results_protocol_option()
 @cmsd_manager_name_option()
 @cmsd_manager_count_option()
 @mysql_monitor_password_option()
@@ -609,6 +611,7 @@ def worker_xrootd(ctx: click.Context, **kwargs: Any) -> None:
         db_admin_uri=targs["db_admin_uri"],
         vnid_config=targs["vnid_config"],
         results_dirname=targs["results_dirname"],
+        results_protocol=targs["results_protocol"],
         mysql_monitor_password=targs["mysql_monitor_password"],
         db_qserv_user=targs["db_qserv_user"],
         cmsd_worker_cfg_file=targs["cmsd_worker_cfg_file"],

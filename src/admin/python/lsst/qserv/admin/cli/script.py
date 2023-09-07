@@ -413,6 +413,7 @@ def enter_worker_xrootd(
     db_admin_uri: str,
     vnid_config: str,
     results_dirname: str,
+    results_protocol: str,
     mysql_monitor_password: str,
     db_qserv_user: str,
     cmsd_worker_cfg_file: str,
@@ -439,6 +440,8 @@ def enter_worker_xrootd(
         from the specified source (static string, a file or worker database).
     results_dirname : str
         A path to a folder where query results will be stored.
+    results_protocol : str
+        Result delivery protocol.
     mysql_monitor_password : str
         The password used by applications that monitor via the worker database.
     db_qserv_user : str
