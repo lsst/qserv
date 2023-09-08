@@ -35,10 +35,12 @@
 #include "lsst/log/Log.h"
 
 // Qserv headers
+#include "cconfig/CzarConfig.h"
 #include "qdisp/CzarStats.h"
 #include "qdisp/MessageStore.h"
 #include "sql/SqlBulkInsert.h"
 #include "sql/SqlConnection.h"
+#include "sql/SqlConnectionFactory.h"
 #include "util/StringHelper.h"
 
 using namespace std;
@@ -57,11 +59,16 @@ UserQueryQservManager::UserQueryQservManager(shared_ptr<UserQueryResources> cons
         : _value(value),
           _resultTableName("qserv_manager_" + queryResources->userQueryId),
           _messageStore(make_shared<qdisp::MessageStore>()),
-          _resultDbConn(queryResources->resultDbConn),
           _resultDb(queryResources->resultDb) {}
 
 void UserQueryQservManager::submit() {
     LOGS(_log, LOG_LVL_TRACE, "processing command: " << _value);
+
+    // IMPORTANT: make a new connection each time since a state of the database service
+    // is not deterministic and the SQL library available to Czar is not terribly reliable
+    // (not able to properly handle disconnects).
+    auto const czarConfig = cconfig::CzarConfig::instance();
+    auto const resultDbConn = sql::SqlConnectionFactory::make(czarConfig->getMySqlResultConfig());
 
     // Remove quotes around a value of the input parameter. Also parse the command.
     // Some commands may have optional parameters.
@@ -101,7 +108,7 @@ void UserQueryQservManager::submit() {
     }
     LOGS(_log, LOG_LVL_TRACE, "creating result table: " << createTable);
     sql::SqlErrorObject errObj;
-    if (!_resultDbConn->runQuery(createTable, errObj)) {
+    if (!resultDbConn->runQuery(createTable, errObj)) {
         LOGS(_log, LOG_LVL_ERROR, "failed to create result table: " << errObj.errMsg());
         string const message = "Internal failure, failed to create result table: " + errObj.errMsg();
         _messageStore->addMessage(-1, "SQL", 1051, message, MessageSeverity::MSG_ERROR);
@@ -171,7 +178,7 @@ void UserQueryQservManager::submit() {
 
     // Ingest row(s) into the table.
     bool success = true;
-    sql::SqlBulkInsert bulkInsert(_resultDbConn.get(), _resultTableName, resColumns);
+    sql::SqlBulkInsert bulkInsert(resultDbConn.get(), _resultTableName, resColumns);
     for (auto const& row : rows) {
         success = success && bulkInsert.addRow(row, errObj);
         if (!success) break;
