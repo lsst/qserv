@@ -344,7 +344,6 @@ def enter_xrootd_manager(
 
 def enter_worker_cmsd(
     targs: Targs,
-    debug_port: Optional[int],
     db_uri: str,
     cmsd_worker_cfg_file: str,
     cmsd_worker_cfg_path: str,
@@ -362,8 +361,6 @@ def enter_worker_cmsd(
         from the specified source (static string, a file or worker database).
     targs : Targs
         The arguments for template expansion.
-    debug_port : int or None
-        If not None, indicates that gdbserver should be run on the given port number.
     db_uri : str
         The non-admin URI to the worker's database.
     cmsd_worker_cfg_file : str
@@ -408,14 +405,8 @@ def enter_worker_cmsd(
 
 def enter_worker_xrootd(
     targs: Targs,
-    debug_port: Optional[int],
     db_uri: str,
     db_admin_uri: str,
-    vnid_config: str,
-    results_dirname: str,
-    results_protocol: str,
-    mysql_monitor_password: str,
-    db_qserv_user: str,
     cmsd_worker_cfg_file: str,
     cmsd_worker_cfg_path: str,
     xrdssi_cfg_file: str,
@@ -429,23 +420,10 @@ def enter_worker_xrootd(
     ----------
     targs : Targs
         The arguments for template expansion.
-    debug_port : int or None
-        If not None, indicates that gdbserver should be run on the given port number.
     db_uri : str
         The non-admin URI to the proxy's database.
     db_admin_uri : str
         The admin URI to the proxy's database.
-    vnid_config : str
-        The config parameters used by the qserv cmsd to get the vnid
-        from the specified source (static string, a file or worker database).
-    results_dirname : str
-        A path to a folder where query results will be stored.
-    results_protocol : str
-        Result delivery protocol.
-    mysql_monitor_password : str
-        The password used by applications that monitor via the worker database.
-    db_qserv_user : str
-        The qserv user to use for the mysql database.
     cmsd_worker_cfg_file : str
         The path to the worker cmsd config file.
     cmsd_worker_cfg_path : str
@@ -509,7 +487,6 @@ def enter_worker_xrootd(
 def enter_worker_repl(
     db_admin_uri: str,
     repl_connection: str,
-    debug_port: Optional[int],
     log_cfg_file: str,
     cmd: str,
     run: bool,
@@ -527,8 +504,6 @@ def enter_worker_repl(
         The connection string for the replication manager database for the
         non-admin user (created using the `connection`), the user is typically
         "qsreplica".
-    debug_port : int or None
-        If not None, indicates that gdbserver should be run on the given port number.
     log_cfg_file : `str`
         Location of the log4cxx config file.
     cmd : `str`
