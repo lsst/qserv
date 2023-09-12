@@ -447,6 +447,9 @@ def enter_worker_xrootd(
     # MLOCK_AMOUNT=$(grep MemTotal /proc/meminfo | awk '{printf("%.0f\n", $2 - 1000000)}')
     # ulimit -l "$MLOCK_AMOUNT"
 
+    if not os.path.exists(targs["results_dirname"]):
+        os.makedirs(targs["results_dirname"])
+
     url = _process_uri(
         uri=db_uri,
         query_keys=("socket",),
@@ -470,7 +473,7 @@ def enter_worker_xrootd(
     smig_worker(db_admin_uri, update=False)
 
     # TODO worker (and manager) xrootd+cmsd pair should "share" the cfg file
-    # it's in different pods but should be same source & processing.
+    # it's in different containers but should be same source & processing.
     # Rename these files to be more agnostic.
     apply_template_cfg_file(cmsd_worker_cfg_file, cmsd_worker_cfg_path)
     apply_template_cfg_file(xrdssi_cfg_file, xrdssi_cfg_path)
