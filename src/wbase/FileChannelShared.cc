@@ -54,10 +54,15 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.wbase.FileChannelShared");
 /**
  * Iterate over the result files at the results folder and remove those
  * which satisfy the desired criteria.
+ * @note The folder must exist when this function gets called. Any other
+ *   scenario means a configuration error or a problem with the infrastructure.
+ *   Running into either of these problems should result in the abort of
+ *   the application.
  * @param context The calling context (used for logging purposes).
  * @param fileCanBeRemoved The optional validator to be called for each candidate file.
  *   Note that missing validator means "yes" the candidate file can be removed.
  * @return The total number of removed files.
+ * @throws std::runtime_error If the results folder doesn't exist.
  */
 size_t cleanUpResultsImpl(string const& context, fs::path const& dirPath,
                           function<bool(string const&)> fileCanBeRemoved = nullptr) {
@@ -66,9 +71,10 @@ size_t cleanUpResultsImpl(string const& context, fs::path const& dirPath,
     boost::system::error_code ec;
     auto itr = fs::directory_iterator(dirPath, ec);
     if (ec.value() != 0) {
-        LOGS(_log, LOG_LVL_WARN,
-             context << "failed to open the results folder " << dirPath << ", ec: " << ec << ".");
-        return numFilesRemoved;
+        string const err = context + "failed to open the results folder '" + dirPath.string() +
+                           "', ec: " + to_string(ec.value()) + ".";
+        LOGS(_log, LOG_LVL_ERROR, err);
+        throw runtime_error(err);
     }
     for (auto&& entry : boost::make_iterator_range(itr, {})) {
         auto filePath = entry.path();

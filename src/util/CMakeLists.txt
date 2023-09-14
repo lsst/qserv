@@ -5,6 +5,7 @@ target_sources(util PRIVATE
     Bug.cc
     CmdLineParser.cc
     Command.cc
+    common.cc
     ConfigStore.cc
     DynamicWorkQueue.cc
     Error.cc
@@ -31,6 +32,7 @@ target_sources(util PRIVATE
 )
 
 target_link_libraries(util PUBLIC
+    boost_system
     log
 )
 
