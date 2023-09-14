@@ -188,7 +188,9 @@ SsiService::SsiService(XrdSsiLogger* log)
     // ATTENTION: this is the blocking operation since it needs to be run before accepting
     // new queries to ensure that worker had sufficient resources to process those.
     if (workerConfig->resultsCleanUpOnStart()) {
-        wbase::FileChannelShared::cleanUpResultsOnWorkerRestart();
+        if (workerConfig->resultDeliveryProtocol() != wconfig::WorkerConfig::ResultDeliveryProtocol::SSI) {
+            wbase::FileChannelShared::cleanUpResultsOnWorkerRestart();
+        }
     }
 }
 
