@@ -38,6 +38,23 @@
 
 namespace lsst::qserv::util {
 
+/**
+ * Get the FQDN(s) of the current host.
+ *
+ * If there will be more than one canonical name associated with the host
+ * and if a value of the input parameter is set as "all=true" then the result
+ * will contain all names separated by comma, such as in:
+ * @code
+ *   <fqdn-1>,<fqdn-2>,...
+ * @endcode
+ * @note In most setups there will be just one name.
+ * @param all The optional parameter that allows returning all names instead
+ *   of the first one that was found.
+ * @return The FQDN (or FQDNs)
+ * @throws std::runtime_error In case if the information couldn't be retreived.
+ */
+std::string get_current_host_fqdn(bool all = false);
+
 template <class Map>
 typename Map::mapped_type const& getFromMap(Map const& m, typename Map::key_type const& key,
                                             typename Map::mapped_type const& defValue) {
