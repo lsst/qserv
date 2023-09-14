@@ -37,7 +37,6 @@
 
 // Third-party headers
 #include <boost/algorithm/string/replace.hpp>
-#include "boost/asio.hpp"
 #include "boost/filesystem.hpp"
 
 // LSST headers
@@ -51,6 +50,7 @@
 #include "proto/TaskMsgDigest.h"
 #include "proto/worker.pb.h"
 #include "util/Bug.h"
+#include "util/common.h"
 #include "util/HoldTrack.h"
 #include "util/IterableFormatter.h"
 #include "util/TimeUtils.h"
@@ -68,18 +68,6 @@ namespace fs = boost::filesystem;
 namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.wbase.Task");
-
-string get_hostname() {
-    // Get the short name of the current host.
-    boost::system::error_code ec;
-    string const hostname = boost::asio::ip::host_name(ec);
-    if (ec.value() != 0) {
-        throw runtime_error("Task::" + string(__func__) +
-                            " boost::asio::ip::host_name failed: " + ec.category().name() + string(":") +
-                            to_string(ec.value()) + "[" + ec.message() + "]");
-    }
-    return hostname;
-}
 
 string buildResultFilePath(shared_ptr<lsst::qserv::proto::TaskMsg> const& taskMsg,
                            string const& resultsDirname) {
@@ -155,14 +143,14 @@ Task::Task(TaskMsgPtr const& t, int fragmentNumber, std::shared_ptr<UserQueryInf
     auto const resultDeliveryProtocol = workerConfig->resultDeliveryProtocol();
     if (resultDeliveryProtocol != wconfig::WorkerConfig::ResultDeliveryProtocol::SSI) {
         _resultFilePath = ::buildResultFilePath(t, workerConfig->resultsDirname());
+        auto const fqdn = util::get_current_host_fqdn();
         if (resultDeliveryProtocol == wconfig::WorkerConfig::ResultDeliveryProtocol::XROOT) {
-            // NOTE: one extra '/' after the <server>[:<port>] spec is required to make
+            // NOTE: one extra '/' after the <host>[:<port>] spec is required to make
             // a "valid" XROOTD url.
-            _resultFileXrootUrl = "xroot://" + ::get_hostname() + ":" +
-                                  to_string(workerConfig->resultsXrootdPort()) + "/" + _resultFilePath;
+            _resultFileXrootUrl = "xroot://" + fqdn + ":" + to_string(workerConfig->resultsXrootdPort()) +
+                                  "/" + _resultFilePath;
         } else if (resultDeliveryProtocol == wconfig::WorkerConfig::ResultDeliveryProtocol::HTTP) {
-            _resultFileHttpUrl =
-                    "http://" + ::get_hostname() + ":" + to_string(resultsHttpPort) + _resultFilePath;
+            _resultFileHttpUrl = "http://" + fqdn + ":" + to_string(resultsHttpPort) + _resultFilePath;
         } else {
             throw std::runtime_error("wbase::Task::Task: unsupported results delivery protocol: " +
                                      wconfig::WorkerConfig::protocol2str(resultDeliveryProtocol));
