@@ -12,6 +12,7 @@ target_sources(qproc PRIVATE
 )
 
 target_link_libraries(qproc PRIVATE
+    cconfig
     log
     sphgeom
 )
@@ -20,6 +21,7 @@ FUNCTION(qproc_tests)
     FOREACH(TEST IN ITEMS ${ARGV})
         add_executable(${TEST} ${TEST}.cc ../tests/QueryAnaHelper.cc)
         target_link_libraries(${TEST} PUBLIC
+            cconfig
             ccontrol
             czar
             parser

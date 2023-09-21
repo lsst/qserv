@@ -1,0 +1,30 @@
+#fwk-qserv-czar-stats-controls label {
+    font-weight:    bold;
+}
+table#fwk-qserv-czar-stats-status {
+    margin:0;
+}
+table.fwk-qserv-czar-stats caption {
+    caption-side:   top;
+    text-align:     right;
+    padding-top:    0;
+}
+table.fwk-qserv-czar-stats caption.updating {
+    background-color: #ffeeba;
+}
+table.fwk-qserv-czar-stats > thead > tr > th.sticky {
+    position:sticky;
+    top:80px;
+    z-index:2;
+}
+table.fwk-qserv-czar-stats tbody th,
+table.fwk-qserv-czar-stats tbody td {
+    vertical-align:middle;
+}
+table.fwk-qserv-czar-stats pre {
+    padding: 0;
+    margin: 0;
+}
+table.fwk-qserv-czar-stats pre.perf {
+    color: maroon;
+}

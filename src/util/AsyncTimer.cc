@@ -20,14 +20,14 @@
  */
 
 // Class header
-#include "replica/AsyncTimer.h"
+#include "util/AsyncTimer.h"
 
 // System headers
 #include <stdexcept>
 
 using namespace std;
 
-namespace lsst::qserv::replica {
+namespace lsst::qserv::util {
 
 shared_ptr<AsyncTimer> AsyncTimer::create(boost::asio::io_service& io_service,
                                           chrono::milliseconds expirationIvalMs,
@@ -52,15 +52,17 @@ AsyncTimer::~AsyncTimer() {
     _timer.cancel(ec);
 }
 
-void AsyncTimer::start() {
-    replica::Lock lock(_mtx, "AsyncTimer::" + string(__func__));
+bool AsyncTimer::start() {
+    lock_guard<mutex> lock(_mtx);
+    if (_onFinish == nullptr) return false;
     _timer.expires_from_now(boost::posix_time::milliseconds(_expirationIvalMs.count()));
     _timer.async_wait(
             [self = shared_from_this()](boost::system::error_code const& ec) { self->_expired(ec); });
+    return true;
 }
 
 bool AsyncTimer::cancel() {
-    replica::Lock lock(_mtx, "AsyncTimer::" + string(__func__));
+    lock_guard<mutex> lock(_mtx);
     if (nullptr == _onFinish) return false;
     _onFinish = nullptr;
     _timer.cancel();
@@ -68,11 +70,16 @@ bool AsyncTimer::cancel() {
 }
 
 void AsyncTimer::_expired(boost::system::error_code const& ec) {
-    replica::Lock lock(_mtx, "AsyncTimer::" + string(__func__));
     if (ec == boost::asio::error::operation_aborted) return;
-    if (nullptr == _onFinish) return;
-    _onFinish(_expirationIvalMs);
-    _onFinish = nullptr;
+    CallbackType onFinish;
+    {
+        lock_guard<mutex> lock(_mtx);
+        onFinish = _onFinish;
+    }
+    if (onFinish != nullptr) {
+        bool const restart = onFinish(_expirationIvalMs);
+        if (restart) start();
+    }
 }
 
-}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::util

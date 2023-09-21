@@ -25,6 +25,9 @@
 #include <string>
 #include <unistd.h>
 
+// Third-party headers
+#include "boost/asio.hpp"
+
 // Boost unit test header
 #define BOOST_TEST_MODULE Qdisp_1
 #include <boost/test/unit_test.hpp>
@@ -171,6 +174,7 @@ public:
     qdisp::SharedResources::Ptr sharedResources;
     qdisp::Executive::Ptr ex;
     std::shared_ptr<qdisp::JobQuery> jqTest;  // used only when needed
+    boost::asio::io_service asioIoService;
 
     SetupTest(const char* request) {
         qrMsg = request;
@@ -183,7 +187,7 @@ public:
         sharedResources = qdisp::SharedResources::create(qdispPool, pseudoFifo);
 
         std::shared_ptr<qmeta::QStatus> qStatus;  // No updating QStatus, nullptr
-        ex = qdisp::Executive::create(*conf, ms, sharedResources, qStatus, nullptr);
+        ex = qdisp::Executive::create(*conf, ms, sharedResources, qStatus, nullptr, asioIoService);
     }
     ~SetupTest() {}
 };

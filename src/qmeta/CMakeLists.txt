@@ -9,6 +9,7 @@ target_sources(qserv_meta PRIVATE
 )
 
 target_link_libraries(qserv_meta PUBLIC
+    cconfig
     qdisp
     qserv_common
     log
@@ -21,6 +22,7 @@ install(DIRECTORY schema/ DESTINATION ${CMAKE_INSTALL_PREFIX}/qserv/smig/qmeta/s
 add_executable(testQMeta testQMeta.cc)
 
 target_link_libraries(testQMeta
+    cconfig
     qserv_meta
     Boost::unit_test_framework
     Threads::Threads

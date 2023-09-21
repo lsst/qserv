@@ -8,6 +8,7 @@ target_sources(rproc PRIVATE
 
 target_link_libraries(rproc PUBLIC
     boost_regex
+    cconfig
     log
 )
 
@@ -18,6 +19,7 @@ FUNCTION(rproc_tests)
     FOREACH(TEST IN ITEMS ${ARGV})
         add_executable(${TEST} ${TEST}.cc)
         target_link_libraries(${TEST} PUBLIC
+            cconfig
             ccontrol
             czar
             parser

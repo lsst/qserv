@@ -88,13 +88,7 @@ function(CSSLoader,
     </select>
   </div>
   <div class="form-group col-md-1">
-    <label for="indexes-update-interval">Interval <i class="bi bi-arrow-repeat"></i></label>
-    <select id="indexes-update-interval" class="form-control form-control-view">
-      <option value="60">1 min</option>
-      <option value="120">2 min</option>
-      <option value="300">5 min</option>
-      <option value="600" selected>10 min</option>
-    </select>
+    ${Common.html_update_ival('update-interval', 600)}
   </div>
 </div>
 <div class="row">
@@ -133,7 +127,7 @@ function(CSSLoader,
             cont.find("#indexes-overlap").change(() => {
                 this._load_indexes();
             });
-            cont.find("#indexes-update-interval").change(() => {
+            cont.find("#update-interval").change(() => {
                 this._load();
             });
             this._disable_selectors(true);
@@ -162,7 +156,7 @@ function(CSSLoader,
             }
             return this._form_control_obj[id];
         }
-        _update_interval_sec() { return this._form_control('select', 'indexes-update-interval').val(); }
+        _update_interval_sec() { return this._form_control('select', 'update-interval').val(); }
         _get_database() { return this._form_control('select', 'indexes-database').val(); }
         _set_database(val) { this._form_control('select', 'indexes-database').val(val); }
         _get_table() { return this._form_control('select', 'indexes-table').val(); }

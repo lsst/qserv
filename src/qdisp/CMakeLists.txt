@@ -20,6 +20,7 @@ target_include_directories(qdisp PRIVATE
 )
 
 target_link_libraries(qdisp PUBLIC
+    cconfig
     log
     XrdSsiLib
 )
@@ -31,6 +32,7 @@ target_include_directories(testQDisp PRIVATE
 )
 
 target_link_libraries(testQDisp
+    cconfig
     ccontrol
     czar
     parser

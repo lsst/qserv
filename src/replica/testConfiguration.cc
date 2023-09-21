@@ -65,6 +65,7 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestStaticParameters) {
     LOGS_INFO("Testing static parameters");
 
     BOOST_CHECK_THROW(Configuration::setQservCzarDbUrl(""), std::invalid_argument);
+    BOOST_CHECK_THROW(Configuration::setQservCzarProxyUrl(""), std::invalid_argument);
     BOOST_CHECK_THROW(Configuration::setQservWorkerDbUrl(""), std::invalid_argument);
 
     BOOST_REQUIRE_NO_THROW(Configuration::setDatabaseAllowReconnect(true));
@@ -154,6 +155,7 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestReadingGeneralParameters) {
 
     BOOST_CHECK(config->get<string>("database", "qserv-master-user") == "qsmaster");
     BOOST_CHECK(config->qservCzarDbUrl() == "mysql://qsmaster@localhost:3306/qservMeta");
+    BOOST_CHECK(config->qservCzarProxyUrl() == "mysql://qsmaster@localhost:4040/");
     BOOST_CHECK(config->qservWorkerDbUrl() == "mysql://qsmaster@localhost:3306/qservw_worker");
 
     BOOST_CHECK(config->get<size_t>("database", "services-pool-size") == 2);

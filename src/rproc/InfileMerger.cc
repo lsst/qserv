@@ -54,8 +54,7 @@
 #include "lsst/log/Log.h"
 
 // Qserv headers
-#include "czar/Czar.h"
-#include "czar/CzarConfig.h"
+#include "cconfig/CzarConfig.h"
 #include "global/intTypes.h"
 #include "proto/WorkerResponse.h"
 #include "proto/ProtoImporter.h"
@@ -73,6 +72,7 @@
 #include "util/Bug.h"
 #include "util/IterableFormatter.h"
 #include "util/StringHash.h"
+#include "util/Timer.h"
 
 namespace {  // File-scope helpers
 
@@ -107,6 +107,25 @@ size_t const MB_SIZE_BYTES = 1024 * 1024;
 string lastMysqlError(MYSQL* mysql) {
     return "error: " + string(mysql_error(mysql)) + ", errno: " + to_string(mysql_errno(mysql));
 }
+
+/**
+ * Instances of this class are used to update statistic counter on starting
+ * and finishing operations with merging results into the database.
+ */
+class ResultMergeTracker {
+public:
+    ResultMergeTracker() { lsst::qserv::qdisp::CzarStats::get()->addResultMerge(); }
+    ~ResultMergeTracker() { lsst::qserv::qdisp::CzarStats::get()->deleteResultMerge(); }
+};
+
+lsst::qserv::TimeCountTracker<double>::CALLBACKFUNC const reportMergeRate =
+        [](lsst::qserv::TIMEPOINT start, lsst::qserv::TIMEPOINT end, double bytes, bool success) {
+            if (!success) return;
+            if (chrono::duration<double> const seconds = end - start; seconds.count() > 0) {
+                lsst::qserv::qdisp::CzarStats::get()->addMergeRate(bytes / seconds.count());
+            }
+        };
+
 }  // anonymous namespace
 
 namespace lsst::qserv::rproc {
@@ -120,11 +139,11 @@ InfileMerger::InfileMerger(InfileMergerConfig const& c, std::shared_ptr<qproc::D
           _mysqlConn(_config.mySqlConfig),
           _databaseModels(dm),
           _jobIdColName(JOB_ID_BASE_NAME),
-          _maxSqlConnectionAttempts(czar::CzarConfig::instance()->getMaxSqlConnectionAttempts()),
-          _maxResultTableSizeBytes(czar::CzarConfig::instance()->getMaxTableSizeMB() * MB_SIZE_BYTES),
+          _maxSqlConnectionAttempts(cconfig::CzarConfig::instance()->getMaxSqlConnectionAttempts()),
+          _maxResultTableSizeBytes(cconfig::CzarConfig::instance()->getMaxTableSizeMB() * MB_SIZE_BYTES),
           _semaMgrConn(semaMgrConn) {
     _fixupTargetName();
-    _setEngineFromStr(czar::CzarConfig::instance()->getResultEngine());
+    _setEngineFromStr(cconfig::CzarConfig::instance()->getResultEngine());
     if (_dbEngine == MYISAM) {
         LOGS(_log, LOG_LVL_INFO, "Engine is MYISAM, serial");
         if (!_setupConnectionMyIsam()) {
@@ -255,11 +274,12 @@ bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> const& response)
         semaLock.reset(new util::SemaLock(*_semaMgrConn));
     }
 
-    TimeCountTracker<double>::CALLBACKFUNC cbf = [](TIMEPOINT start, TIMEPOINT end, double sum,
+    TimeCountTracker<double>::CALLBACKFUNC cbf = [](TIMEPOINT start, TIMEPOINT end, double bytes,
                                                     bool success) {
-        qdisp::CzarStats::Ptr cStats = qdisp::CzarStats::get();
-        std::chrono::duration<double> secs = end - start;
-        cStats->addTrmitRecvRate(sum / secs.count());
+        if (!success) return;
+        if (std::chrono::duration<double> const seconds = end - start; seconds.count() > 0) {
+            qdisp::CzarStats::get()->addXRootDSSIRecvRate(bytes / seconds.count());
+        }
     };
     auto tct = make_shared<TimeCountTracker<double>>(cbf);
 
@@ -299,33 +319,28 @@ bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> const& response)
     tct->addToValue(resultSize);
     tct->setSuccess();
     tct.reset();  // stop transmit recieve timer before merging happens.
+
+    qdisp::CzarStats::get()->addTotalBytesRecv(resultSize);
+    qdisp::CzarStats::get()->addTotalRowsRecv(response->result.rowcount());
+
     // Stop here (if requested) after collecting stats on the amount of data collected
     // from workers.
     if (_config.debugNoMerge) {
         return true;
     }
 
-    TimeCountTracker<double>::CALLBACKFUNC cbfMerge = [](TIMEPOINT start, TIMEPOINT end, double sum,
-                                                         bool success) {
-        qdisp::CzarStats::Ptr cStats = qdisp::CzarStats::get();
-        std::chrono::duration<double> secs = end - start;
-        cStats->addMergeRate(sum / secs.count());
-    };
-    TimeCountTracker tctMerge(cbfMerge);
-
     auto start = std::chrono::system_clock::now();
     switch (_dbEngine) {
         case MYISAM:
-            ret = _applyMysqlMyIsam(infileStatement);
+            ret = _applyMysqlMyIsam(infileStatement, resultSize);
             break;
         case INNODB:  // Fallthrough
         case MEMORY:
-            ret = _applyMysqlInnoDb(infileStatement);
+            ret = _applyMysqlInnoDb(infileStatement, resultSize);
             break;
         default:
             throw std::invalid_argument("InfileMerger::_dbEngine is unknown =" + engineToStr(_dbEngine));
     }
-    tctMerge.addToValue(resultSize);
     auto end = std::chrono::system_clock::now();
     auto mergeDur = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
     LOGS(_log, LOG_LVL_DEBUG,
@@ -333,8 +348,6 @@ bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> const& response)
                      << " used=" << _semaMgrConn->getUsedCount() << ")");
     if (not ret) {
         LOGS(_log, LOG_LVL_ERROR, "InfileMerger::merge mysql applyMysql failure");
-    } else {
-        tctMerge.setSuccess();
     }
     _invalidJobAttemptMgr.decrConcurrentMergeCount();
 
@@ -343,7 +356,7 @@ bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> const& response)
     return ret;
 }
 
-bool InfileMerger::_applyMysqlMyIsam(std::string const& query) {
+bool InfileMerger::_applyMysqlMyIsam(std::string const& query, size_t resultSize) {
     std::unique_lock<std::mutex> lock(_mysqlMutex);
     for (int j = 0; !_mysqlConn.connected(); ++j) {
         // should have connected during construction
@@ -361,14 +374,25 @@ bool InfileMerger::_applyMysqlMyIsam(std::string const& query) {
         }
     }
 
+    // Track the operation while the control flow is staying within the function.
+    ::ResultMergeTracker const resultMergeTracker;
+
+    // This starts a timer of the result merge rate tracker. The tracker will report
+    // the counter (if set) upon leaving the method.
+    lsst::qserv::TimeCountTracker<double> mergeRateTracker(::reportMergeRate);
+
     int rc = mysql_real_query(_mysqlConn.getMySql(), query.data(), query.size());
-    if (rc == 0) return true;
+    if (rc == 0) {
+        mergeRateTracker.addToValue(resultSize);
+        mergeRateTracker.setSuccess();
+        return true;
+    }
     LOGS(_log, LOG_LVL_ERROR,
          "InfileMerger::_applyMysqlMyIsam mysql_real_query() " + ::lastMysqlError(_mysqlConn.getMySql()));
     return false;
 }
 
-bool InfileMerger::_applyMysqlInnoDb(std::string const& query) {
+bool InfileMerger::_applyMysqlInnoDb(std::string const& query, size_t resultSize) {
     mysql::MySqlConnection mySConn(_config.mySqlConfig);
     if (!mySConn.connected()) {
         if (!_setupConnectionInnoDb(mySConn)) {
@@ -377,8 +401,19 @@ bool InfileMerger::_applyMysqlInnoDb(std::string const& query) {
         }
     }
 
+    // Track the operation while the control flow is staying within the function.
+    ::ResultMergeTracker const resultMergeTracker;
+
+    // This starts a timer of the result merge rate tracker. The tracker will report
+    // the counter (if set) upon leaving the method.
+    lsst::qserv::TimeCountTracker<double> mergeRateTracker(::reportMergeRate);
+
     int rc = mysql_real_query(mySConn.getMySql(), query.data(), query.size());
-    if (rc == 0) return true;
+    if (rc == 0) {
+        mergeRateTracker.addToValue(resultSize);
+        mergeRateTracker.setSuccess();
+        return true;
+    }
     LOGS(_log, LOG_LVL_ERROR,
          "InfileMerger::_applyMysqlInnoDb mysql_real_query() " + ::lastMysqlError(mySConn.getMySql()));
     return false;

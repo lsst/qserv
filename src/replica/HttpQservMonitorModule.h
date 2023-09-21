@@ -54,13 +54,16 @@ public:
     /**
      * Supported values for parameter 'subModuleName':
      *
-     *   WORKERS    get the status info of many workers (possible selected by various criteria)
-     *   WORKER     get the status info of a specific worker
-     *   WORKER-DB  get the database status of a specific worker
-     *   CZAR-DB    get the database status of Czar
-     *   QUERIES    get user query info (queries selected by various criteria)
-     *   QUERY      get user query info for a specific query
-     *   CSS        get CSS configurations (the shared scan settings, etc.)
+     *   WORKERS    - get the status info of many workers
+     *   WORKER     - get the status info of a specific worker
+     *   WORKER-DB  - get the database status of a specific worker
+     *   CZAR       - get the status info of Czar
+     *   CZAR-DB    - get the database status of Czar
+     *   QUERIES-ACTIVE           - get user query info on the on-going queries
+     *   QUERIES-ACTIVE-PROGRESS  - get the progression history (of the active queries)
+     *   QUERIES-PAST             - search and display info on the past queries
+     *   QUERY                    - get user query info for a specific query
+     *   CSS        - get CSS configurations (the shared scan settings, etc.)
      *
      * @throws std::invalid_argument for unknown values of parameter 'subModuleName'
      */
@@ -103,16 +106,33 @@ private:
     nlohmann::json _workerDb();
 
     /**
+     * Process a request for extracting various status info of Czar.
+     */
+    nlohmann::json _czar();
+
+    /**
      * Process a request for extracting various status info on the database
      * service of Czar.
      */
     nlohmann::json _czarDb();
 
     /**
-     * Process a request for extracting a status on select user queries
-     * launched at Qserv.
+     * Process a request for extracting a status on the active user queries
+     * that are being executed by Qserv.
      */
-    nlohmann::json _userQueries();
+    nlohmann::json _activeQueries();
+
+    /**
+     * Process a request for extracting the progression history on the active
+     * user queries that are being executed by Qserv.
+     */
+    nlohmann::json _activeQueriesProgress();
+
+    /**
+     * Process a request for extracting a status on the past (finished/failed) user
+     * queries submitted to Qserv.
+     */
+    nlohmann::json _pastQueries();
 
     /**
      * Process a request for extracting a status on a specific user query

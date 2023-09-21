@@ -5,10 +5,17 @@ require.config({
     waitSeconds: 15,
     urlArgs:     "bust="+new Date().getTime(),
 
+    packages: [{
+        name: 'highcharts',
+        main: 'highcharts'
+    }],
+
     paths: {
         'jquery':     'https://code.jquery.com/jquery-3.3.1',
         'bootstrap':  'https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/js/bootstrap.bundle',
         'underscore': 'https://underscorejs.org/underscore-umd-min',
+        'chartjs':    'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min',
+        'highcharts': 'https://code.highcharts.com',
         'webfwk':     'webfwk/js',
         'qserv':      'qserv/js',
         'modules':    'modules/js'
@@ -19,13 +26,7 @@ require.config({
         },
         'bootstrap':  {
             'deps': ['jquery','underscore']
-        },/*
-        'webfwk/*': {
-            'deps': ['underscore']
         },
-        'qserv/*': {
-            'deps': ['underscore']
-        },*/
         'underscore': {
             'exports': '_'
         }
@@ -36,12 +37,15 @@ require([
     'webfwk/Fwk',
     'webfwk/FwkTestApp',
     'qserv/StatusCatalogs',
+    'qserv/StatusActiveQueries',
     'qserv/StatusActiveChunksMap',
+    'qserv/StatusPastQueries',
     'qserv/StatusQueryInspector',
     'qserv/StatusReplicationLevel',
     'qserv/StatusWorkers',
-    'qserv/StatusUserQueries',
     'qserv/QservCzarMySQLQueries',
+    'qserv/QservCzarStatistics',
+    'qserv/QservCzarQueryProgress',
     'qserv/QservCss',
     'qserv/QservMySQLConnections',
     'qserv/QservWorkerMySQLQueries',
@@ -76,12 +80,15 @@ function(CSSLoader,
          Fwk,
          FwkTestApp,
          StatusCatalogs,
+         StatusActiveQueries,
          StatusActiveChunksMap,
+         StatusPastQueries,
          StatusQueryInspector,
          StatusReplicationLevel,
          StatusWorkers,
-         StatusUserQueries,
          QservCzarMySQLQueries,
+         QservCzarStatistics,
+         QservCzarQueryProgress,
          QservCss,
          QservMySQLConnections,
          QservWorkerMySQLQueries,
@@ -136,12 +143,33 @@ function(CSSLoader,
         var apps = [
             {   name: 'Status',
                 apps: [
+                    new StatusActiveQueries('Active Queries Monitor'),
+                    new StatusActiveChunksMap('Active Chunks Map'),
+                    new StatusPastQueries('Past Queries'),
+                    new StatusQueryInspector('Query Inspector'),
                     new StatusCatalogs('Catalogs'),
                     new StatusReplicationLevel('Replication Level'),
-                    new StatusWorkers('Workers'),
-                    new StatusUserQueries('User Queries Monitor'),
-                    new StatusActiveChunksMap('Active Chunks Map'),
-                    new StatusQueryInspector('Query Inspector')
+                    new StatusWorkers('Workers')
+                ]
+            },
+            {   name: 'Czar',
+                apps: [
+                    new QservCzarMySQLQueries('MySQL Queries'),
+                    new QservCzarStatistics('Statistics'),
+                    new QservCzarQueryProgress('Query Progress'),
+                    new QservCss('CSS')
+                ]
+            },
+            {   name: 'Workers',
+                apps: [
+                    new QservMySQLConnections('MySQL Connections'),
+                    new QservWorkerMySQLQueries('MySQL Queries'),
+                    new QservWorkerQueries('Queries in Worker Queues'),
+                    new QservWorkerSchedulers('Schedulers'),
+                    new QservWorkerSchedulerHist('Scheduler Histograms'),
+                    new QservWorkerTasks('Tasks'),
+                    new QservWorkerTaskHist('Task Histograms'),
+                    new QservWorkerResultsFilesystem('Results Filesystem')
                 ]
             },
             {   name: 'Replication',
@@ -165,24 +193,6 @@ function(CSSLoader,
                     new IngestContribInfo('Contribution Info')
                 ]
             },
-            {   name: 'Czar',
-                apps: [
-                    new QservCzarMySQLQueries('MySQL Queries'),
-                    new QservCss('CSS')
-                ]
-            },
-            {   name: 'Workers',
-                apps: [
-                    new QservMySQLConnections('MySQL Connections'),
-                    new QservWorkerMySQLQueries('MySQL Queries'),
-                    new QservWorkerQueries('Queries in Worker Queues'),
-                    new QservWorkerSchedulers('Schedulers'),
-                    new QservWorkerSchedulerHist('Scheduler Histograms'),
-                    new QservWorkerTasks('Tasks'),
-                    new QservWorkerTaskHist('Task Histograms'),
-                    new QservWorkerResultsFilesystem('Results Filesystem')
-                ]
-            },
             {   name: 'Tools',
                 apps: [
                     new FwkTestApp('Query Qserv'),
@@ -198,7 +208,7 @@ function(CSSLoader,
                 if (typeof menus !== 'undefined') {
                     Fwk.show(menus[0], menus[1]);
                 } else {
-                    Fwk.show('Status', 'User Queries Monitor');
+                    Fwk.show('Status', 'Active Queries Monitor');
                 }
             }
         );

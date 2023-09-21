@@ -27,7 +27,7 @@
 #include "qmeta/QMeta.h"
 
 // qserv headers
-#include "czar/CzarConfig.h"
+#include "cconfig/CzarConfig.h"
 #include "util/SemaMgr.h"
 
 namespace lsst::qserv::ccontrol {
@@ -50,7 +50,7 @@ UserQuerySharedResources::UserQuerySharedResources(
           resultDbConn(resultDbConn_),
           databaseModels(dbModels_),
           interactiveChunkLimit(interactiveChunkLimit_),
-          semaMgrConnections(new util::SemaMgr(czar::CzarConfig::instance()->getResultMaxConnections())) {
+          semaMgrConnections(new util::SemaMgr(cconfig::CzarConfig::instance()->getResultMaxConnections())) {
     // register czar in QMeta
     // TODO: check that czar with the same name is not active already?
     qMetaCzarId = queryMetadata->registerCzar(czarName);

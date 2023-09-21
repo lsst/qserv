@@ -89,6 +89,8 @@ public:
         double const _maxVal;
     };
 
+    std::string const& label() const { return _label; }
+
     double getAvg() const;    ///< Return the average value of all current entries.
     double getTotal() const;  ///< Return the total value of all entries.
 

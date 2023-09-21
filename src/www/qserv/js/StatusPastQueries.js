@@ -11,9 +11,9 @@ function(CSSLoader,
          Common,
          _) {
 
-    CSSLoader.load('qserv/css/StatusUserQueries.css');
+    CSSLoader.load('qserv/css/StatusPastQueries.css');
 
-    class StatusUserQueries extends FwkApplication {
+    class StatusPastQueries extends FwkApplication {
 
         /// @returns the suggested server-side timeout for retreiving results 
         static _server_proc_timeout_sec() { return 2; }
@@ -26,7 +26,6 @@ function(CSSLoader,
         }
 
         /**
-         * Override event handler defined in the base class
          * @see FwkApplication.fwk_app_on_show
          */
         fwk_app_on_show() {
@@ -35,7 +34,6 @@ function(CSSLoader,
         }
 
         /**
-         * Override event handler defined in the base class
          * @see FwkApplication.fwk_app_on_hide
          */
         fwk_app_on_hide() {
@@ -43,7 +41,6 @@ function(CSSLoader,
         }
 
         /**
-         * Override event handler defined in the base class
          * @see FwkApplication.fwk_app_on_update
          */
         fwk_app_on_update() {
@@ -70,44 +67,10 @@ function(CSSLoader,
             if (this._initialized) return;
             this._initialized = true;
 
-            this._scheduler2color = {
-                'Snail':   '#007bff',
-                'Slow':    '#17a2b8',
-                'Med':     '#28a745',
-                'Fast':    '#ffc107',
-                'Group':   '#dc3545',
-                'Loading': 'default'
-            };
-
             let html = `
-<div class="row">
+<div class="row" id="fwk-status-past-queries-controls">
   <div class="col">
-    <table class="table table-sm table-hover" id="fwk-status-queries">
-      <caption class="updating">
-        Loading...
-      </caption>
-      <thead class="thead-light">
-        <tr>
-          <th>Started</th>
-          <th>Progress</th>
-          <th>Sched</th>
-          <th style="text-align:right;">Elapsed</th>
-          <th style="text-align:right;">Left (est.)</th>
-          <th style="text-align:right;">Chunks</th>
-          <th style="text-align:right;">Ch/min</th>
-          <th style="text-align:right;">QID</th>
-          <th style="text-align:center;"><i class="bi bi-clipboard-fill"></i></th>
-          <th class="sticky" style="text-align:center;"><i class="bi bi-info-circle-fill"></i></th>
-          <th>Query</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    </table>
-  </div>
-</div>
-<div class="row" id="fwk-status-queries-controls">
-  <div class="col">
-    <h3>Search past queries</h3>
+    <h3>Search queries</h3>
     <div class="form-row">
       <div class="form-group col-md-2">
         <label for="query-age">Submitted:</label>
@@ -176,23 +139,17 @@ function(CSSLoader,
         </select>
       </div>
       <div class="form-group col-md-1">
-        <label for="update-interval"><i class="bi bi-arrow-repeat"></i> interval:</label>
-        <select id="update-interval" class="form-control form-control-selector">
-          <option value="5">5 sec</option>
-          <option value="10" selected>10 sec</option>
-          <option value="20">20 sec</option>
-          <option value="30">30 sec</option>
-          <option value="60">1 min</option>
-          <option value="120">2 min</option>
-          <option value="300">5 min</option>
-        </select>
+        ${Common.html_update_ival('update-interval', 5)}
       </div>
       <div class="form-group col-md-1">
         <label for="reset-queries-form">&nbsp;</label>
         <button id="reset-queries-form" class="btn btn-primary form-control">Reset</button>
       </div>
     </div>
-    <table class="table table-sm table-hover" id="fwk-status-queries-past">
+    <table class="table table-sm table-hover" id="fwk-status-past-queries">
+      <caption class="updating">
+        Loading...
+      </caption>
       <thead class="thead-light">
         <tr>
           <th class="sticky">Submitted</th>
@@ -229,35 +186,18 @@ function(CSSLoader,
                 this._load();
             });
         }
-
-        /**
-         * Table for displaying the progress of the on-going user queries
-         * @returns JQuery table object
-         */
-        _tableQueries() {
-            if (this._tableQueries_obj === undefined) {
-                this._tableQueries_obj = this.fwk_app_container.find('table#fwk-status-queries');
+        _table() {
+            if (this._table_obj === undefined) {
+                this._table_obj = this.fwk_app_container.find('table#fwk-status-past-queries');
             }
-            return this._tableQueries_obj;
+            return this._table_obj;
         }
         _status() {
             if (this._status_obj === undefined) {
-                this._status_obj = this._tableQueries().children('caption');
+                this._status_obj = this._table().children('caption');
             }
             return this._status_obj;
         }
-
-        /**
-         * Table for displaying the completed, failed, etc. user queries
-         * @returns JQuery table object
-         */
-        _tablePastQueries() {
-            if (this._tablePastQueries_obj === undefined) {
-                this._tablePastQueries_obj = this.fwk_app_container.find('table#fwk-status-queries-past');
-            }
-            return this._tablePastQueries_obj;
-        }
-
         _form_control(elem_type, id) {
             if (this._form_control_obj === undefined) this._form_control_obj = {};
             if (!_.has(this._form_control_obj, id)) {
@@ -287,10 +227,6 @@ function(CSSLoader,
         _set_max_queries(val)  { this._form_control('select', 'max-queries').val(val); }
         _update_interval_sec() { return this._form_control('select', 'update-interval').val(); }
 
-        /**
-         * Load data from a web servie then render it to the application's
-         * page.
-         */
         _load() {
             if (this._loading === undefined) {
                 this._loading = false;
@@ -301,15 +237,15 @@ function(CSSLoader,
             this._status().addClass('updating');
 
             Fwk.web_service_GET(
-                "/replication/qserv/master/query",
-                {   query_age: this._get_query_age(),
+                "/replication/qserv/master/queries/past",
+                {   version: Common.RestAPIVersion,
+                    query_age: this._get_query_age(),
                     query_status: this._get_query_status(),
                     min_elapsed_sec: this._get_min_elapsed(),
                     query_type: this._get_query_type(),
                     search_pattern: this._get_query_search_pattern(),
                     search_regexp_mode: this._get_query_search_mode() == "REGEXP" ? 1 : 0,
-                    limit4past: this._get_max_queries(),
-                    timeout_sec: StatusUserQueries._server_proc_timeout_sec()
+                    limit4past: this._get_max_queries()
                 },
                 (data) => {
                     if (!data.success) {
@@ -328,10 +264,6 @@ function(CSSLoader,
                 }
             );
         }
-
-        /**
-         * Display the queries
-         */
         _display(data) {
             this._id2query = {};
             const queryToggleTitle = "Click to toggle query formatting.";
@@ -339,52 +271,6 @@ function(CSSLoader,
             const queryInspectTitle = "Click to see detailed info (progress, messages, etc.) on the query.";
             const queryStyle = "color:#4d4dff;";
             let html = '';
-            for (let i in data.queries) {
-                let query = data.queries[i];
-                this._id2query[query.queryId] = query.query;
-                const progress = Math.floor(100. * query.completedChunks  / query.totalChunks);
-                const scheduler = _.isUndefined(query.scheduler) ? 'Loading...' : query.scheduler.substring('Sched'.length);
-                const scheduler_color = _.has(this._scheduler2color, scheduler) ?
-                    this._scheduler2color[scheduler] :
-                    this._scheduler2color['Loading'];
-
-                const elapsed = this._elapsed(query.samplingTime_sec - query.queryBegin_sec);
-                let leftSeconds;
-                if (query.completedChunks > 0 && query.samplingTime_sec - query.queryBegin_sec > 0) {
-                    leftSeconds = Math.floor(
-                            (query.totalChunks - query.completedChunks) /
-                            (query.completedChunks / (query.samplingTime_sec - query.queryBegin_sec))
-                    );
-                }
-                const left = this._elapsed(leftSeconds);
-                const trend = this._trend(query.queryId, leftSeconds);
-                const performance = this._performance(query.completedChunks, query.samplingTime_sec - query.queryBegin_sec);
-                const expanded = (query.queryId in this._queryId2Expanded) && this._queryId2Expanded[query.queryId];
-                html += `
-<tr id="${query.queryId}">
-  <td><pre>` + query.queryBegin + `</pre></td>
-  <th scope="row">
-    <div class="progress" style="height: 22px;">
-      <div class="progress-bar" role="progressbar" style="width: ${progress}%" aria-valuenow="${progress}" aria-valuemin="0" aria-valuemax="100">
-        ${progress}%
-      </div>
-    </div>
-  </th>
-  <td style="background-color:${scheduler_color};">${scheduler}</td>
-  <th style="text-align:right; padding-top:0; padding-left:10px;">${elapsed}</th>
-  <td style="text-align:right; padding-top:0; padding-left:10px;">${left}${trend}</td>
-  <th scope="row" style="text-align:right;  padding-left:10px;"><pre>${query.completedChunks}/${query.totalChunks}</pre></th>
-  <td style="text-align:right;" ><pre>${performance}</pre></td>
-  <th scope="row" style="text-align:right;"><pre>${query.queryId}</pre></th>
-  <td style="text-align:center; padding-top:0; padding-bottom:0">
-    <button class="btn btn-outline-dark btn-sm copy-query" style="height:20px; margin:0px;" title="${queryCopyTitle}"></button>
-  </td>
-  <td style="text-align:right; padding-top:0; padding-bottom:0">
-    <button class="btn btn-outline-info btn-sm inspect-query" style="height:20px; margin:0px;" title="${queryInspectTitle}"></button>
-  </td>
-  <td class="query_toggler" title="${queryToggleTitle}"><pre class="query" style="${queryStyle}">` + this._query2text(query.queryId, expanded) + `</pre></td>
-</tr>`;
-            }
             let that = this;
             let toggleQueryDisplay = function(e) {
                 let td = $(e.currentTarget);
@@ -409,11 +295,6 @@ function(CSSLoader,
                 Fwk.find("Status", "Query Inspector").set_query_id(queryId);
                 Fwk.show("Status", "Query Inspector");
             };
-            let tbodyQueries = this._tableQueries().children('tbody').html(html);
-            tbodyQueries.find("td.query_toggler").click(toggleQueryDisplay);
-            tbodyQueries.find("button.copy-query").click(copyQueryToClipboard);
-            tbodyQueries.find("button.inspect-query").click(displayQuery);
-            html = '';
             for (let i in data.queries_past) {
                 let query = data.queries_past[i];
                 this._id2query[query.queryId] = query.query;
@@ -433,16 +314,16 @@ function(CSSLoader,
   <th style="text-align:right;"><pre>${query.collectedRows}</pre></th>
   <th style="text-align:right;"><pre>${query.finalRows}</pre></th>
   <th style="text-align:right;"><pre>${query.queryId}</pre></th>
-  <td style="text-align:right; padding-top:0; padding-bottom:0">
+  <td style="text-align:center; padding-top:0; padding-bottom:0">
     <button class="btn btn-outline-dark btn-sm copy-query" style="height:20px; margin:0px;" title="${queryCopyTitle}"></button>
   </td>
-  <td style="text-align:right; padding-top:0; padding-bottom:0">
+  <td style="text-align:center; padding-top:0; padding-bottom:0">
     <button class="btn btn-outline-info btn-sm inspect-query" style="height:20px; margin:0px;" title="${queryInspectTitle}"></button>
   </td>
   <td class="query_toggler" title="${queryToggleTitle}"><pre class="query" style="${queryStyle}">` + this._query2text(query.queryId, expanded) + `</pre></td>
 </tr>`;
             }
-            let tbodyPastQueries = this._tablePastQueries().children('tbody').html(html);
+            let tbodyPastQueries = this._table().children('tbody').html(html);
             tbodyPastQueries.find("td.query_toggler").click(toggleQueryDisplay);
             tbodyPastQueries.find("button.copy-query").click(copyQueryToClipboard);
             tbodyPastQueries.find("button.inspect-query").click(displayQuery);
@@ -466,30 +347,6 @@ function(CSSLoader,
                    (displaySeconds ? (seconds < 10 ? '0' : '') + seconds + 's' : '') +
                    '</span>';
         }
-        
-        /**
-         * 
-         * @param {Number} qid  a unique identifier of a qiery. It's used to pull a record
-         * for the previously (of any) recorded number of second estimated before the query
-         * would expected to finish.
-         * @param {Number} totalSeconds
-         * @returns {String} an arrow indicating the trend to slow down or accelerate
-         */
-        _trend(qid, nextTotalSeconds) {
-            if (!_.isUndefined(nextTotalSeconds)) {
-                if (this._prevTotalSeconds === undefined) {
-                    this._prevTotalSeconds = {};
-                }
-                let prevTotalSeconds = _.has(this._prevTotalSeconds, qid) ? this._prevTotalSeconds[qid] : nextTotalSeconds;
-                this._prevTotalSeconds[qid] = nextTotalSeconds;
-                if (prevTotalSeconds < nextTotalSeconds) {
-                    return '<span class="trend_up">&nbsp;&uarr;</span>';
-                } else if (prevTotalSeconds > nextTotalSeconds) {
-                    return '<span class="trend_down">&nbsp;&darr;</span>';
-                }
-            }
-            return '<span>&nbsp;&nbsp;</span>';
-        }
 
         /**
          * @param {integer} chunks
@@ -504,5 +361,5 @@ function(CSSLoader,
             return Common.query2text(this._id2query[queryId], expanded);
         }
     }
-    return StatusUserQueries;
+    return StatusPastQueries;
 });
