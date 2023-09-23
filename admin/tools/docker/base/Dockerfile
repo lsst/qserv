@@ -13,10 +13,10 @@
 # packages are preferred whenever suitable, though some here require source builds.
 #-------------------------------------------------------------------------------------------------------------
 
-FROM almalinux:8 AS lite-build
+FROM almalinux:9 AS lite-build
 
 RUN dnf install -y 'dnf-command(config-manager)' \
-    && dnf config-manager --set-enabled powertools \
+    && dnf config-manager --set-enabled crb \
     && dnf install -y epel-release \
     && dnf config-manager --add-repo=https://download.docker.com/linux/centos/docker-ce.repo \
     && dnf update -y \
@@ -50,22 +50,20 @@ RUN dnf install -y 'dnf-command(config-manager)' \
         patch \
         protobuf-compiler \
         protobuf-devel \
-        python38-devel \
+        python3-devel \
         tree \
         vim \
     && dnf clean all \
     && rm -rf /var/cache/yum
 
-ENV ARROW_VERSION 11.0.0
-
 RUN dnf update -y \
     && dnf install -y \
        https://apache.jfrog.io/artifactory/arrow/almalinux/$(cut -d: -f5 /etc/system-release-cpe | cut -d. -f1)/apache-arrow-release-latest.rpm \
     && dnf config-manager --set-enabled epel \
-    && dnf config-manager --set-enabled powertools \
+    && dnf config-manager --set-enabled crb \
     && dnf install -y \
-      arrow-devel-$ARROW_VERSION \
-      parquet-devel-$ARROW_VERSION \
+      arrow-devel \
+      parquet-devel \
     && dnf clean all \
     && rm -rf /var/cache/yum
 
@@ -121,9 +119,9 @@ RUN cd /tmp \
     && rm -rf mysqlproxy
 
 RUN cd /tmp \
-    && git clone https://github.com/lsst/xrootd.git \
+    && git clone https://github.com/xrootd/xrootd.git \
     && cd xrootd \
-    && git checkout ssi-5.3.x \
+    && git checkout tags/v5.6.2 \
     && mkdir build \
     && cd build \
     && cmake -DENABLE_PYTHON=off .. \
@@ -144,7 +142,6 @@ RUN pip3 install \
     docker-compose \
     documenteer \
     jinja2 \
-    ltd-conveyor \
     "sphinx-rtd-theme>=1.2.0rc3" \
     mypy \
     "mysql-connector-python==8.0.31" \
@@ -177,10 +174,10 @@ CMD ["tail", "-f", "/dev/null"]
 # DO NOT BLOAT THE RUN BASE
 #-------------------------------------------------------------------------------------------------------------
 
-FROM almalinux:8 AS lite-run-base
+FROM almalinux:9 AS lite-run-base
 
 RUN dnf install -y 'dnf-command(config-manager)' \
-    && dnf config-manager --set-enabled powertools \
+    && dnf config-manager --set-enabled crb \
     && dnf install -y epel-release \
     && dnf update -y \
     && dnf install -y \
@@ -202,23 +199,22 @@ RUN dnf install -y 'dnf-command(config-manager)' \
         openssl \
         procps-ng \
         protobuf \
-        python38 \
+        python3 \
+        pip \
         tree \
         vim \
-    && dnf module install -y mariadb/client \
+    && dnf install -y mysql \
     && dnf clean all \
     && rm -rf /var/cache/yum
-
-ENV ARROW_VERSION 11.0.0
 
 # FIXME: Keep only binaries, and not devel libraries
 RUN dnf update -y \
     && dnf install -y \
        https://apache.jfrog.io/artifactory/arrow/almalinux/$(cut -d: -f5 /etc/system-release-cpe | cut -d. -f1)/apache-arrow-release-latest.rpm \
     && dnf config-manager --set-enabled epel \
-    && dnf config-manager --set-enabled powertools \
-    && dnf install -y arrow11-libs-$ARROW_VERSION \
-    && dnf install -y parquet11-libs-$ARROW_VERSION \
+    && dnf config-manager --set-enabled crb \
+    && dnf install -y arrow13-libs \
+    && dnf install -y parquet13-libs \
     && dnf clean all \
     && rm -rf /var/cache/yum
 
@@ -231,7 +227,7 @@ RUN mkdir -p /qserv/data && \
     mkdir -p /var/run/xrootd && \
     chown qserv:qserv /qserv/data /config-etc /qserv/run/tmp /var/run/xrootd
 
-RUN alternatives --set python /usr/bin/python3
+RUN alternatives --install /usr/bin/python python /usr/bin/python3.9 1
 ENV PYTHONPATH "${PYTHONPATH}:/usr/local/python"
 
 COPY --from=lite-build /usr/local/lib/liblog4cxx.so /usr/local/lib/
