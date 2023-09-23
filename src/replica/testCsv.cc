@@ -37,8 +37,8 @@
 #include "replica/protocol.pb.h"
 
 // Boost unit test header
-#define BOOST_TEST_MODULE JsonLibrary
-#include "boost/test/included/unit_test.hpp"
+#define BOOST_TEST_MODULE Csv
+#include "boost/test/unit_test.hpp"
 
 using namespace std;
 namespace test = boost::test_tools;
