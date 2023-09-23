@@ -636,7 +636,7 @@ size_t duplicateObjectRow(std::string &line, part::SphericalBox const &box, std:
     double decl(0.);
 
     int idx = 0;
-    for (std::string const token : tokens) {
+    for (std::string const &token : tokens) {
         if (coldefObject.idxDeepSourceId == idx) {
             deepSourceId = boost::lexical_cast<uint64_t>(token);
         } else if (coldefObject.idxRa == idx) {
@@ -764,7 +764,7 @@ size_t duplicateSourceRow(std::string &line, part::SphericalBox const &box, std:
     double cluster_coord_decl(0.);
 
     int idx = 0;
-    for (std::string const token : tokens) {
+    for (std::string const &token : tokens) {
         if (coldefSource.idxId == idx) {
             id = boost::lexical_cast<uint64_t>(token);
         } else if (coldefSource.idxCoordRa == idx) {
@@ -915,7 +915,7 @@ size_t duplicateForcedSourceRow(std::string &line, part::SphericalBox const &box
     uint64_t deepSourceId(0ULL);
 
     int idx = 0;
-    for (std::string const token : tokens) {
+    for (std::string const &token : tokens) {
         if (coldefForcedSource.idxDeepSourceId == idx) {
             deepSourceId = boost::lexical_cast<uint64_t>(token);
         }
