@@ -56,6 +56,7 @@ from .options import (
     repl_auth_key_option,
     repl_connection_option,
     results_dirname_option,
+    results_protocol_option,
     run_option,
     run_tests_option,
     targs_options,
@@ -553,6 +554,7 @@ def xrootd_manager(ctx: click.Context, **kwargs: Any) -> None:
 @db_uri_option(help=worker_db_help)
 @vnid_config_option(required=True)
 @results_dirname_option()
+@results_protocol_option()
 @cmsd_manager_name_option()
 @cmsd_manager_count_option()
 @debug_option()
@@ -569,7 +571,6 @@ def worker_cmsd(ctx: click.Context, **kwargs: Any) -> None:
     targs = render_targs(targs)
     script.enter_worker_cmsd(
         targs=targs,
-        debug_port=targs["debug_port"],
         db_uri=targs["db_uri"],
         cmsd_worker_cfg_file=targs["cmsd_worker_cfg_file"],
         cmsd_worker_cfg_path=targs["cmsd_worker_cfg_path"],
@@ -587,6 +588,7 @@ def worker_cmsd(ctx: click.Context, **kwargs: Any) -> None:
 @db_admin_uri_option(help=admin_worker_db_help)
 @vnid_config_option(required=True)
 @results_dirname_option()
+@results_protocol_option()
 @cmsd_manager_name_option()
 @cmsd_manager_count_option()
 @mysql_monitor_password_option()
@@ -604,13 +606,8 @@ def worker_xrootd(ctx: click.Context, **kwargs: Any) -> None:
     targs = render_targs(targs)
     script.enter_worker_xrootd(
         targs=targs,
-        debug_port=targs["debug_port"],
         db_uri=targs["db_uri"],
         db_admin_uri=targs["db_admin_uri"],
-        vnid_config=targs["vnid_config"],
-        results_dirname=targs["results_dirname"],
-        mysql_monitor_password=targs["mysql_monitor_password"],
-        db_qserv_user=targs["db_qserv_user"],
         cmsd_worker_cfg_file=targs["cmsd_worker_cfg_file"],
         cmsd_worker_cfg_path=targs["cmsd_worker_cfg_path"],
         xrdssi_cfg_file=targs["xrdssi_cfg_file"],
@@ -649,7 +646,6 @@ def worker_repl(ctx: click.Context, **kwargs: Any) -> None:
     script.enter_worker_repl(
         db_admin_uri=targs["db_admin_uri"],
         repl_connection=targs["repl_connection"],
-        debug_port=targs["debug_port"],
         log_cfg_file=targs["log_cfg_file"],
         cmd=targs["cmd"],
         run=targs["run"],

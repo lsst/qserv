@@ -97,10 +97,10 @@ xrootd_port = 1094
 num_http_threads = 4
 
 # Result delivery protocol. Allowed options:
-#   SSI   - XROOTD/SSI stream (the default mode if no specific choice is proided)
+#   SSI   - XROOTD/SSI stream (the default mode if no specific choice is provided)
 #   XROOT - XROOT file protocol
 #   HTTP  - HTTP protocol
-protocol = SSI
+protocol = {{ results_protocol }}
 
 # Set to any value but 0 if result files (if any) left after the previous run of
 # the worker had to be deleted from the corresponding folder.
