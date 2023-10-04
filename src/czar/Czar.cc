@@ -36,10 +36,10 @@
 #include "lsst/log/Log.h"
 
 // Qserv headers
+#include "cconfig/CzarConfig.h"
 #include "ccontrol/ConfigMap.h"
 #include "ccontrol/UserQuerySelect.h"
 #include "ccontrol/UserQueryType.h"
-#include "czar/CzarConfig.h"
 #include "czar/CzarErrors.h"
 #include "czar/MessageTable.h"
 #include "global/LogContext.h"
@@ -89,7 +89,7 @@ Czar::Ptr Czar::createCzar(string const& configPath, string const& czarName) {
 // Constructors
 Czar::Czar(string const& configPath, string const& czarName)
         : _czarName(czarName),
-          _czarConfig(CzarConfig::create(configPath)),
+          _czarConfig(cconfig::CzarConfig::create(configPath)),
           _idCounter(),
           _uqFactory(),
           _clientToQuery(),

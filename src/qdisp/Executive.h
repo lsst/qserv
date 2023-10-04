@@ -33,6 +33,9 @@
 #include <unordered_map>
 #include <vector>
 
+// Third-party headers
+#include "boost/asio.hpp"
+
 // Qserv headers
 #include "global/intTypes.h"
 #include "global/ResourceUnit.h"
@@ -62,10 +65,16 @@ class QuerySession;
 }
 
 namespace qdisp {
-
 class JobQuery;
 class MessageStore;
 class PseudoFifo;
+}  // namespace qdisp
+
+namespace util {
+class AsyncTimer;
+}
+
+namespace qdisp {
 
 struct ExecutiveConfig {
     typedef std::shared_ptr<ExecutiveConfig> Ptr;
@@ -91,7 +100,8 @@ public:
     static Executive::Ptr create(ExecutiveConfig const& c, std::shared_ptr<MessageStore> const& ms,
                                  SharedResources::Ptr const& sharedResources,
                                  std::shared_ptr<qmeta::QStatus> const& qMeta,
-                                 std::shared_ptr<qproc::QuerySession> const& querySession);
+                                 std::shared_ptr<qproc::QuerySession> const& querySession,
+                                 boost::asio::io_service& asioIoService);
 
     ~Executive();
 
@@ -123,8 +133,8 @@ public:
 
     void setScanInteractive(bool interactive) { _scanInteractive = interactive; }
 
-    /// @return number of items in flight.
-    int getNumInflight();  // non-const, requires a mutex.
+    /// @return number of jobs in flight.
+    int getNumInflight() const;
 
     /// @return a description of the current execution progress.
     std::string getProgressDesc() const;
@@ -183,6 +193,10 @@ private:
     // for debugging
     void _printState(std::ostream& os);
 
+    /// The method performs the non-blocking sampling of the query monitoring stats.
+    /// The stats are pushed to qdisp::CzarStats.
+    void _updateStats() const;
+
     ExecutiveConfig _config;  ///< Personal copy of config
     std::atomic<bool> _empty{true};
     std::shared_ptr<MessageStore> _messageStore;  ///< MessageStore for logging
@@ -209,9 +223,9 @@ private:
     util::Flag<bool> _cancelled{false};  ///< Has execution been cancelled.
 
     // Mutexes
-    std::mutex _incompleteJobsMutex;  ///< protect incompleteJobs map.
+    mutable std::mutex _incompleteJobsMutex;  ///< protect incompleteJobs map.
 
-    /** Used to record execution errors */
+    /// Used to record execution errors
     mutable std::mutex _errorsMutex;
 
     std::condition_variable _allJobsComplete;
@@ -236,7 +250,8 @@ private:
 
     std::atomic<int64_t> _totalResultRows{0};
     std::weak_ptr<qproc::QuerySession> _querySession;
-    int64_t _limit = 0;  ///< Limit to number of rows to return. 0 means no limit.
+    std::shared_ptr<util::AsyncTimer> _asyncTimer;  ///< for non-blocking updates of stats
+    int64_t _limit = 0;                             ///< Limit to number of rows to return. 0 means no limit.
 
     /// true if query can be returned as soon as _limit rows have been read.
     bool _limitSquashApplies = false;

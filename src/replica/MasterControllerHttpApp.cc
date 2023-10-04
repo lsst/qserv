@@ -154,6 +154,8 @@ MasterControllerHttpApp::MasterControllerHttpApp(int argc, char* argv[])
                   _permanentDelete);
     parser().option("qserv-czar-db", "A connection URL to the MySQL server of the Qserv master database.",
                     _qservCzarDbUrl);
+    parser().option("qserv-czar-proxy", "A connection URL for the MySQL proxy service of Czar.",
+                    _qservCzarProxyUrl);
     parser().option("http-root",
                     "The root folder for the static content to be served by the built-in HTTP service.",
                     _httpRoot);
@@ -164,12 +166,16 @@ MasterControllerHttpApp::MasterControllerHttpApp(int argc, char* argv[])
 }
 
 int MasterControllerHttpApp::runImpl() {
+    // IMPORTANT: clear the corresponding member variables after using the URLs
+    // to the Configuration to prevent contamination of the application's log
+    // stream with values of the sensitive command line arguments.
     if (!_qservCzarDbUrl.empty()) {
-        // IMPORTANT: set the connector, then clear it up to avoid
-        // contaminating the log files when logging command line arguments
-        // parsed by the application.
         Configuration::setQservCzarDbUrl(_qservCzarDbUrl);
         _qservCzarDbUrl = "******";
+    }
+    if (!_qservCzarProxyUrl.empty()) {
+        Configuration::setQservCzarProxyUrl(_qservCzarProxyUrl);
+        _qservCzarProxyUrl = "******";
     }
     _controller = Controller::create(serviceProvider());
 

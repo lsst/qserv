@@ -58,6 +58,8 @@ Sql Sql::TIMESTAMPDIFF(string const& resolution, SqlId const& lhs, SqlId const& 
     return Sql("TIMESTAMPDIFF(" + resolution + "," + lhs.str + "," + rhs.str + ")");
 }
 
+Sql Sql::QSERV_MANAGER(DoNotProcess const& sqlVal) { return Sql("QSERV_MANAGER(" + sqlVal.str + ")"); }
+
 QueryGenerator::QueryGenerator(shared_ptr<Connection> conn) : _conn(conn) {}
 
 string QueryGenerator::escape(string const& str) const { return _conn == nullptr ? str : _conn->escape(str); }
@@ -122,6 +124,15 @@ string QueryGenerator::showVars(SqlVarScope scope, string const& pattern) const 
             return "SHOW GLOBAL VARIABLES" + like;
     }
     throwOnInvalidScope(__func__, scope);
+}
+
+string QueryGenerator::call(DoNotProcess const& packedProcAndArgs) const {
+    if (packedProcAndArgs.str.empty()) {
+        string const msg = "QueryGenerator::" + string(__func__) +
+                           " the packed procedure and its arguments can not be empty.";
+        throw invalid_argument(msg);
+    }
+    return "CALL " + packedProcAndArgs.str;
 }
 
 string QueryGenerator::_setVars(SqlVarScope scope, string const& packedVars) const {

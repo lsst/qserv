@@ -27,6 +27,7 @@ target_sources(ccontrol PRIVATE
 
 target_link_libraries(ccontrol PUBLIC
     boost_regex
+    cconfig
     log
     parser
     replica
@@ -39,6 +40,7 @@ FUNCTION(ccontrol_tests)
     FOREACH(TEST IN ITEMS ${ARGV})
         add_executable(${TEST} ${TEST}.cc)
         target_link_libraries(${TEST} PUBLIC
+            cconfig
             ccontrol
             czar
             parser

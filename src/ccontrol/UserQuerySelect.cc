@@ -76,10 +76,10 @@
 #include "lsst/log/Log.h"
 
 // Qserv headers
+#include "cconfig/CzarConfig.h"
 #include "ccontrol/MergingHandler.h"
 #include "ccontrol/TmpTableName.h"
 #include "ccontrol/UserQueryError.h"
-#include "czar/CzarConfig.h"
 #include "global/constants.h"
 #include "global/LogContext.h"
 #include "global/MsgReceiver.h"
@@ -388,7 +388,7 @@ QueryState UserQuerySelect::join() {
         operation = proto::QueryManagement::CANCEL;
         state = ERROR;
     }
-    std::shared_ptr<czar::CzarConfig> const czarConfig = czar::CzarConfig::instance();
+    auto const czarConfig = cconfig::CzarConfig::instance();
     if (czarConfig->notifyWorkersOnQueryFinish()) {
         try {
             xrdreq::QueryManagementAction::notifyAllWorkers(czarConfig->getXrootdFrontendUrl(), operation,

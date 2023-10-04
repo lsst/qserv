@@ -62,9 +62,6 @@ function(CSSLoader,
             if (this._initialized) return;
             this._initialized = true;
             this._prevTimestamp = 0;
-
-            /* <span style="color:maroon">&sum;</span>&nbsp; */
-
             let html = `
 <div class="row" id="fwk-ingest-contributions-controls">
   <div class="col">
@@ -86,15 +83,7 @@ function(CSSLoader,
         <select id="contrib-trans-id" class="form-control loader"></select>
       </div>
       <div class="form-group col-md-1">
-        <label for="contrib-update-interval"><i class="bi bi-arrow-repeat"></i> interval:</label>
-        <select id="contrib-update-interval" class="form-control loader">
-          <option value="10">10 sec</option>
-          <option value="20">20 sec</option>
-          <option value="30">30 sec</option>
-          <option value="60" selected>1 min</option>
-          <option value="120">2 min</option>
-          <option value="300">5 min</option>
-        </select>
+        ${Common.html_update_ival('update-interval', 60)}
       </div>
     </div>
     <div class="form-row">
@@ -262,6 +251,9 @@ function(CSSLoader,
   </div>
 </div>`;
             let cont = this.fwk_app_container.html(html);
+            cont.find("#update-interval").change(() => {
+                this._load();
+            });
             cont.find(".loader").change(() => {
                 this._load();
             });
@@ -367,7 +359,7 @@ function(CSSLoader,
         _get_stage() { return this._form_control('select', 'contrib-stage').val(); }
         _get_sort_by_column() { return this._form_control('select', 'contrib-sort-column').val(); }
         _get_sort_order() { return this._form_control('select', 'contrib-sort-order').val(); }
-        _update_interval_sec() { return this._form_control('select', 'contrib-update-interval').val(); }
+        _update_interval_sec() { return this._form_control('select', 'update-interval').val(); }
 
         _load() {
             if (this._loading === undefined) this._loading = false;

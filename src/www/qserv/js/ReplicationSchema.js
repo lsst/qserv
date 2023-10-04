@@ -86,15 +86,7 @@ function(CSSLoader,
     </select>
   </div>
   <div class="form-group col-md-1">
-    <label for="schema-update-interval">Interval <i class="bi bi-arrow-repeat"></i></label>
-    <select id="schema-update-interval" class="form-control form-control-view">
-      <option value="10">10 sec</option>
-      <option value="20">20 sec</option>
-      <option value="30" selected>30 sec</option>
-      <option value="60">1 min</option>
-      <option value="120">2 min</option>
-      <option value="300">5 min</option>
-    </select>
+    ${Common.html_update_ival('update-interval')}
   </div>
 </div>
 <div class="row">
@@ -122,7 +114,7 @@ function(CSSLoader,
             cont.find("#schema-table").change(() => {
                 this._load_schema();
             });
-            cont.find("#schema-update-interval").change(() => {
+            cont.find("#update-interval").change(() => {
                 this._load();
             });
             this._disable_selectors(true);
@@ -151,7 +143,7 @@ function(CSSLoader,
             }
             return this._form_control_obj[id];
         }
-        _update_interval_sec() { return this._form_control('select', 'schema-update-interval').val(); }
+        _update_interval_sec() { return this._form_control('select', 'update-interval').val(); }
         _get_database() { return this._form_control('select', 'schema-database').val(); }
         _set_database(val) { this._form_control('select', 'schema-database').val(val); }
         _get_table() { return this._form_control('select', 'schema-table').val(); }

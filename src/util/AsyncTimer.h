@@ -18,23 +18,21 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_REPLICA_ASYNCTIMER_H
-#define LSST_QSERV_REPLICA_ASYNCTIMER_H
+#ifndef LSST_QSERV_UTIL_ASYNCTIMER_H
+#define LSST_QSERV_UTIL_ASYNCTIMER_H
 
 // System headers
 #include <chrono>
 #include <functional>
 #include <memory>
+#include <mutex>
 #include <string>
 
 // Third party headers
 #include "boost/asio.hpp"
 
-// Qserv headers
-#include "replica/Mutex.h"
-
 // This header declarations
-namespace lsst::qserv::replica {
+namespace lsst::qserv::util {
 
 /**
  * Class AsyncTimer represents a simple asynchronous timer for initiating time-based
@@ -62,12 +60,17 @@ namespace lsst::qserv::replica {
  * timer->cancel();
  * ...
  * @endcode
+ * @note The call back method gets called in the non-blocking context which allows
+ *   the callback handler to restart or cancel the timer.
  */
 class AsyncTimer : public std::enable_shared_from_this<AsyncTimer> {
 public:
-    /// The function type for notifications on the completion of the operation.
-    /// The only parameter of the function is a value of the expiration interval.
-    typedef std::function<void(std::chrono::milliseconds)> CallbackType;
+    /**
+     * The function type for notifications on the completion of the operation.
+     * The only parameter of the function is a value of the expiration interval.
+     * The function should return 'true' if the timer has to be started again.
+     */
+    typedef std::function<bool(std::chrono::milliseconds)> CallbackType;
 
     /**
      * The factory method.
@@ -81,18 +84,32 @@ public:
     AsyncTimer(AsyncTimer const&) = delete;
     AsyncTimer& operator=(AsyncTimer const&) = delete;
 
-    /// Non-trivial destrictor is needed to cancel the deadline timer when the current
-    /// object gets destroyed in the end of a code block, or when the application
-    /// is exiting.
+    /**
+     * Non-trivial destrictor is needed to cancel the deadline timer when
+     * the current object gets destroyed in the end of a code block, or when
+     * the application is exiting.
+     */
     ~AsyncTimer();
 
-    /// Start (or restart of already running) the timer.
-    /// If the timer gets restarted then it will begin counting again the interval
-    /// specified in the class's constructor.
-    void start();
+    std::chrono::milliseconds const& expirationIvalMs() const { return _expirationIvalMs; }
 
-    /// Cancel the timer.
-    /// @return 'false' if the time expired or was already canceled.
+    /**
+     * Start (or restart if running) the timer.
+     *
+     * If the timer gets restarted then it will begin counting again the interval
+     * specified in the class's constructor.
+     * @note The timer could be also restarted automatically by the user-provided
+     *   callbacks returning 'true'. In most use cases that would be the preferred
+     *   scenario.
+     * @return 'true' if the timer started, or 'false' if the timer was
+     *   already cancelled
+     */
+    bool start();
+
+    /**
+     * Cancel the timer.
+     * @return 'false' if the time expired or it was already canceled.
+     */
     bool cancel();
 
 private:
@@ -114,9 +131,9 @@ private:
 
     /// The mutex for enforcing thread safety of the class public API
     /// and internal operations.
-    mutable replica::Mutex _mtx;
+    mutable std::mutex _mtx;
 };
 
-}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::util
 
-#endif  // LSST_QSERV_REPLICA_ASYNCTIMER_H
+#endif  // LSST_QSERV_UTIL_ASYNCTIMER_H

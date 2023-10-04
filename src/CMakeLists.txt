@@ -43,6 +43,7 @@ add_custom_target(clang-format-check
 #-----------------------------------------------------------------------------
 
 add_subdirectory(admin)
+add_subdirectory(cconfig)
 add_subdirectory(ccontrol)
 add_subdirectory(css)
 add_subdirectory(czar)

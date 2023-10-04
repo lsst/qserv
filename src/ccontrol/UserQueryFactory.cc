@@ -36,6 +36,7 @@
 #include "lsst/log/Log.h"
 
 // Qserv headers
+#include "cconfig/CzarConfig.h"
 #include "ccontrol/ConfigError.h"
 #include "ccontrol/ConfigMap.h"
 #include "ccontrol/ParseRunner.h"
@@ -51,7 +52,6 @@
 #include "ccontrol/UserQueryType.h"
 #include "css/CssAccess.h"
 #include "css/KvInterfaceImplMem.h"
-#include "czar/CzarConfig.h"
 #include "mysql/MySqlConfig.h"
 #include "parser/ParseException.h"
 #include "qdisp/Executive.h"
@@ -151,7 +151,7 @@ bool qmetaHasDataForSelectCountStarQuery(query::SelectStmt::Ptr const& stmt,
     auto const& fromTable = tableRefPtr->getTable();
     rowsTable = fromDb + "__" + fromTable + "__rows";
     // TODO consider using QMetaSelect instead of making a new connection.
-    auto cnx = sql::SqlConnectionFactory::make(czar::CzarConfig::instance()->getMySqlQmetaConfig());
+    auto cnx = sql::SqlConnectionFactory::make(cconfig::CzarConfig::instance()->getMySqlQmetaConfig());
     sql::SqlErrorObject err;
     auto tableExists = cnx->tableExists(rowsTable, err);
     LOGS(_log, LOG_LVL_DEBUG,
@@ -162,7 +162,7 @@ bool qmetaHasDataForSelectCountStarQuery(query::SelectStmt::Ptr const& stmt,
 
 std::shared_ptr<UserQuerySharedResources> makeUserQuerySharedResources(
         std::shared_ptr<qproc::DatabaseModels> const& dbModels, std::string const& czarName) {
-    std::shared_ptr<czar::CzarConfig> const czarConfig = czar::CzarConfig::instance();
+    auto const czarConfig = cconfig::CzarConfig::instance();
     return std::make_shared<UserQuerySharedResources>(
             css::CssAccess::createFromConfig(czarConfig->getCssConfigMap(), czarConfig->getEmptyChunkPath()),
             czarConfig->getMySqlResultConfig(),
@@ -178,8 +178,9 @@ std::shared_ptr<UserQuerySharedResources> makeUserQuerySharedResources(
 ////////////////////////////////////////////////////////////////////////
 UserQueryFactory::UserQueryFactory(qproc::DatabaseModels::Ptr const& dbModels, std::string const& czarName)
         : _userQuerySharedResources(makeUserQuerySharedResources(dbModels, czarName)),
-          _useQservRowCounterOptimization(true) {
-    std::shared_ptr<czar::CzarConfig> const czarConfig = czar::CzarConfig::instance();
+          _useQservRowCounterOptimization(true),
+          _asioIoService() {
+    auto const czarConfig = cconfig::CzarConfig::instance();
     _executiveConfig = std::make_shared<qdisp::ExecutiveConfig>(
             czarConfig->getXrootdFrontendUrl(), czarConfig->getQMetaSecondsBetweenChunkUpdates());
 
@@ -192,6 +193,24 @@ UserQueryFactory::UserQueryFactory(qproc::DatabaseModels::Ptr const& dbModels, s
     // Add logging context with czar ID
     qmeta::CzarId qMetaCzarId = _userQuerySharedResources->qMetaCzarId;
     LOG_MDC_INIT([qMetaCzarId]() { LOG_MDC("CZID", std::to_string(qMetaCzarId)); });
+
+    // BOOST ASIO service is started to process asynchronous timer requests
+    // in the dedicated thread. However, before starting the thread we need
+    // to attach the ASIO's "work" object to the ASIO I/O service. This is needed
+    // to keep the latter busy and prevent the servicing thread from exiting before
+    // the destruction of this class  due to a lack of async requests.
+    _asioWork.reset(new boost::asio::io_service::work(_asioIoService));
+
+    // Start the timer servicing thread
+    _asioTimerThread.reset(new std::thread([&]() { _asioIoService.run(); }));
+}
+
+UserQueryFactory::~UserQueryFactory() {
+    // Shut down all ongoing (if any) operations on the I/O service
+    // to unblock the servicing thread.
+    _asioWork.reset();
+    _asioIoService.stop();
+    _asioTimerThread->join();
 }
 
 UserQuery::Ptr UserQueryFactory::newUserQuery(std::string const& aQuery, std::string const& defaultDb,
@@ -287,8 +306,9 @@ UserQuery::Ptr UserQueryFactory::newUserQuery(std::string const& aQuery, std::st
         std::shared_ptr<qdisp::Executive> executive;
         std::shared_ptr<rproc::InfileMergerConfig> infileMergerConfig;
         if (sessionValid) {
-            executive = qdisp::Executive::create(*_executiveConfig, messageStore, qdispSharedResources,
-                                                 _userQuerySharedResources->queryStatsData, qs);
+            executive =
+                    qdisp::Executive::create(*_executiveConfig, messageStore, qdispSharedResources,
+                                             _userQuerySharedResources->queryStatsData, qs, _asioIoService);
             infileMergerConfig =
                     std::make_shared<rproc::InfileMergerConfig>(_userQuerySharedResources->mysqlResultConfig);
             infileMergerConfig->debugNoMerge = _debugNoMerge;

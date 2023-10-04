@@ -22,9 +22,7 @@
  */
 
 // Class header
-#include "czar/CzarConfig.h"
-
-// System headers
+#include "cconfig/CzarConfig.h"
 
 // Third party headers
 #include "XrdSsi/XrdSsiLogger.hh"
@@ -39,7 +37,7 @@
 
 namespace {
 
-LOG_LOGGER _log = LOG_GET("lsst.qserv.czar.CzarConfig");
+LOG_LOGGER _log = LOG_GET("lsst.qserv.cconfig.CzarConfig");
 
 void QservLogger(struct timeval const& mtime, unsigned long tID, const char* msg, int mlen) {
     static log4cxx::spi::LocationInfo xrdLoc("client", "<xrdssi>", 0);
@@ -56,7 +54,7 @@ void QservLogger(struct timeval const& mtime, unsigned long tID, const char* msg
 bool dummy = XrdSsiLogger::SetMCB(QservLogger, XrdSsiLogger::mcbClient);
 }  // namespace
 
-namespace lsst::qserv::czar {
+namespace lsst::qserv::cconfig {
 
 std::mutex CzarConfig::_mtxOnInstance;
 
@@ -113,7 +111,9 @@ CzarConfig::CzarConfig(util::ConfigStore const& configStore)
           _qdispVectMinRunningSizes(configStore.get("qdisppool.vectMinRunningSizes", "0:1:3:3")),
           _qReqPseudoFifoMaxRunning(configStore.getInt("qdisppool.qReqPseudoFifoMaxRunning", 300)),
           _notifyWorkersOnQueryFinish(configStore.getInt("tuning.notifyWorkersOnQueryFinish", 1)),
-          _notifyWorkersOnCzarRestart(configStore.getInt("tuning.notifyWorkersOnCzarRestart", 1)) {}
+          _notifyWorkersOnCzarRestart(configStore.getInt("tuning.notifyWorkersOnCzarRestart", 1)),
+          _czarStatsUpdateIvalSec(configStore.getInt("tuning.czarStatsUpdateIvalSec", 1)),
+          _czarStatsRetainPeriodSec(configStore.getInt("tuning.czarStatsRetainPeriodSec", 24 * 3600)) {}
 
 std::ostream& operator<<(std::ostream& out, CzarConfig const& czarConfig) {
     out << "[cssConfigMap=" << util::printable(czarConfig._cssConfigMap)
@@ -126,4 +126,4 @@ std::ostream& operator<<(std::ostream& out, CzarConfig const& czarConfig) {
     return out;
 }
 
-}  // namespace lsst::qserv::czar
+}  // namespace lsst::qserv::cconfig

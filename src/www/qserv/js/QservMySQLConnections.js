@@ -48,16 +48,7 @@ function(CSSLoader,
   <div class="col">
     <div class="form-row">
       <div class="form-group col-md-1">
-        <label for="update-interval"><i class="bi bi-arrow-repeat"></i> interval:</label>
-        <select id="update-interval" class="form-control form-control-selector">
-          <option value="5">5 sec</option>
-          <option value="10" selected>10 sec</option>
-          <option value="20">20 sec</option>
-          <option value="30">30 sec</option>
-          <option value="60">1 min</option>
-          <option value="120">2 min</option>
-          <option value="300">5 min</option>
-        </select>
+        ${Common.html_update_ival('update-interval', 10)}
       </div>
       <div class="form-group col-md-1">
         <label for="reset-controls-form">&nbsp;</label>

@@ -58,10 +58,12 @@ ConnectionParams::ConnectionParams(string const& host_, uint16_t port_, string c
 
 ConnectionParams ConnectionParams::parse(string const& params, string const& defaultHost,
                                          uint16_t defaultPort, string const& defaultUser,
-                                         string const& defaultPassword) {
+                                         string const& defaultPassword, string const& defaultDatabase) {
     string const context = "ConnectionParams::" + string(__func__) + "  ";
 
-    regex re("^[ ]*mysql://([^:]+)?(:([^:]?.*[^@]?))?@([^:^/]+)?(:([0-9]+))?(/([^ ]+))[ ]*$",
+    // Further details on the syntax of the connection strings can be found at
+    // the declaration section of the method ConnectionParams::parse.
+    regex re("^[ ]*mysql://([^:]+)?(:([^:]?.*[^@]?))?@([^:^/]+)?(:([0-9]+))?(/([^ ]*))?[ ]*$",
              regex::extended);
     smatch match;
 
@@ -86,11 +88,8 @@ ConnectionParams ConnectionParams::parse(string const& params, string const& def
     string const port = match[6].str();
     connectionParams.port = port.empty() ? defaultPort : (uint16_t)stoul(port);
 
-    // no default option for the database
-    connectionParams.database = match[8].str();
-    if (connectionParams.database.empty()) {
-        throw invalid_argument(context + "database name not found in the encoded parameters string");
-    }
+    string const database = match[8].str();
+    connectionParams.database = database.empty() ? defaultDatabase : database;
 
     LOGS(_log, LOG_LVL_DEBUG, context << connectionParams);
 

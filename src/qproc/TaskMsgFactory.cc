@@ -41,7 +41,7 @@
 #include "lsst/log/Log.h"
 
 // Qserv headers
-#include "czar/CzarConfig.h"
+#include "cconfig/CzarConfig.h"
 #include "global/intTypes.h"
 #include "qmeta/types.h"
 #include "qproc/ChunkQuerySpec.h"
@@ -85,7 +85,7 @@ std::shared_ptr<proto::TaskMsg> TaskMsgFactory::_makeMsg(ChunkQuerySpec const& c
 
     taskMsg->set_scanpriority(chunkQuerySpec.scanInfo.scanRating);
     taskMsg->set_scaninteractive(chunkQuerySpec.scanInteractive);
-    taskMsg->set_maxtablesize_mb(czar::CzarConfig::instance()->getMaxTableSizeMB());
+    taskMsg->set_maxtablesize_mb(cconfig::CzarConfig::instance()->getMaxTableSizeMB());
 
     // per-chunk
     taskMsg->set_chunkid(chunkQuerySpec.chunkId);

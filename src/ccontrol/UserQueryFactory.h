@@ -34,8 +34,10 @@
 // System headers
 #include <cstdint>
 #include <memory>
+#include <thread>
 
 // Third-party headers
+#include "boost/asio.hpp"
 #include "boost/utility.hpp"
 
 // Local headers
@@ -69,6 +71,10 @@ class UserQueryFactory : private boost::noncopyable {
 public:
     UserQueryFactory(std::shared_ptr<qproc::DatabaseModels> const& dbModels, std::string const& czarName);
 
+    /// Non-trivial destructor is needed to stop the BOOST ASIO I/O service
+    /// and join with the timer servicing thread.
+    ~UserQueryFactory();
+
     /// @param query:        Query text
     /// @param defaultDb:    Default database name, may be empty
     /// @param qdispPool:    Thread pool handling qdisp jobs.
@@ -85,6 +91,14 @@ private:
     std::shared_ptr<qdisp::ExecutiveConfig> _executiveConfig;
     bool _useQservRowCounterOptimization;
     bool _debugNoMerge = false;
+    // BOOST ASIO service is started to process asynchronous timer requests
+    // in the dedicated thread. The thread is started by the c-tor of the class.
+    // The "work" object _asioWork is attached to the ASIO I/O service in order to
+    // keep the latter busy and prevent the servicing thread from exiting before
+    // the destruction of this class.
+    boost::asio::io_service _asioIoService;
+    std::unique_ptr<boost::asio::io_service::work> _asioWork;
+    std::unique_ptr<std::thread> _asioTimerThread;
 };
 
 }  // namespace lsst::qserv::ccontrol

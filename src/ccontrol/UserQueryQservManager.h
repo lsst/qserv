@@ -85,7 +85,6 @@ private:
     std::string const _value;
     std::string _resultTableName;
     std::shared_ptr<qdisp::MessageStore> _messageStore;
-    std::shared_ptr<sql::SqlConnection> _resultDbConn;
     QueryState _qState{UNKNOWN};
     std::string _resultDb;
 };

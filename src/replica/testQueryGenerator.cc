@@ -134,6 +134,8 @@ BOOST_AUTO_TEST_CASE(QueryGeneratorTest) {
             {"TIMESTAMPDIFF(SECOND,`submitted`,NOW())", g.TIMESTAMPDIFF("SECOND", "submitted", Sql::NOW).str},
             {"TIMESTAMPDIFF(SECOND,`table`.`submitted`,`table`.`completed`)",
              g.TIMESTAMPDIFF("SECOND", g.id("table", "submitted"), g.id("table", "completed")).str},
+            {"QSERV_MANAGER('abc')", Sql::QSERV_MANAGER(g.val("abc")).str},
+            {"QSERV_MANAGER('abc')", g.QSERV_MANAGER("abc").str},
 
             // Values
             {"1", g.val(true).str},
@@ -423,7 +425,9 @@ BOOST_AUTO_TEST_CASE(QueryGeneratorTest) {
 
             {"SET `var1`=1", g.setVars(SqlVarScope::SESSION, make_pair("var1", 1))},
             {"SET GLOBAL `var2`=2,`var3`='abc'",
-             g.setVars(SqlVarScope::GLOBAL, make_pair("var2", 2), make_pair("var3", "abc"))}};
+             g.setVars(SqlVarScope::GLOBAL, make_pair("var2", 2), make_pair("var3", "abc"))},
+
+            {"CALL QSERV_MANAGER('abc')", g.call(g.QSERV_MANAGER("abc"))}};
 
     for (auto&& test : tests) {
         BOOST_CHECK_EQUAL(test.first, test.second);
