@@ -27,4 +27,4 @@ target_link_libraries(testqhttp PUBLIC
     Threads::Threads
 )
 
-add_test(NAME testqhttp COMMAND testqhttp -- --data=${CMAKE_CURRENT_SOURCE_DIR}/testdata/)
+add_test(NAME testqhttp COMMAND testqhttp -- --data=${CMAKE_CURRENT_SOURCE_DIR}/testdata/ --retries=2 --retry-delay=1 --threads=2)

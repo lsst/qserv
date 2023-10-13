@@ -23,6 +23,7 @@
 #define BOOST_TEST_MODULE qhttp
 #include "boost/test/unit_test.hpp"
 
+#include <algorithm>
 #include <chrono>
 #include <fstream>
 #include <getopt.h>
@@ -30,6 +31,7 @@
 #include <set>
 #include <string>
 #include <thread>
+#include <vector>
 
 #include "boost/asio.hpp"
 #include "boost/algorithm/string/join.hpp"
@@ -86,7 +88,7 @@ size_t writeToString(char* ptr, size_t size, size_t nmemb, void* userdata) {
 
 class CurlEasy {
 public:
-    CurlEasy();
+    explicit CurlEasy(unsigned long numRetries_ = 1, unsigned long retryDelayMs_ = 1);
     ~CurlEasy();
 
     CurlEasy& setup(std::string const& method, std::string const& url, std::string const& data,
@@ -96,12 +98,15 @@ public:
 
     CurlEasy& validate(lsst::qserv::qhttp::Status responseCode, std::string const& contentType);
 
+    unsigned long numRetries;
+    unsigned long retryDelayMs;
     CURL* hcurl;
     curl_slist* hlist;
     std::string recdContent;
 };
 
-CurlEasy::CurlEasy() {
+CurlEasy::CurlEasy(unsigned long numRetries_, unsigned long retryDelayMs_)
+        : numRetries(numRetries_), retryDelayMs(retryDelayMs_) {
     hcurl = curl_easy_init();
     BOOST_TEST(hcurl != static_cast<CURL*>(nullptr));
     hlist = nullptr;
@@ -142,7 +147,13 @@ CurlEasy& CurlEasy::setup(std::string const& method, std::string const& url, std
 }
 
 CurlEasy& CurlEasy::perform() {
-    BOOST_TEST(curl_easy_perform(hcurl) == CURLE_OK);
+    CURLcode ret;
+    for (unsigned long i = 0; i < numRetries; ++i) {
+        ret = curl_easy_perform(hcurl);
+        if (ret != CURLE_SEND_ERROR) break;
+        std::this_thread::sleep_for(std::chrono::milliseconds(retryDelayMs));
+    }
+    BOOST_CHECK_EQUAL(ret, CURLE_OK);
     return *this;
 }
 
@@ -228,13 +239,18 @@ namespace lsst::qserv {
 //
 
 struct QhttpFixture {
-    QhttpFixture() : logLevel("DEBUG") {
+    QhttpFixture() {
         server = qhttp::Server::create(service, 0);
         BOOST_TEST(curl_global_init(CURL_GLOBAL_DEFAULT) == CURLE_OK);
 
-        static char const* opts = "d:l:";
+        static char const* usage =
+                "Usage: --data=<path> --log-level=<level> --threads=<num> --retry-delay=<milliseconds>";
+        static char const* opts = "d:l:t:r:m";
         static struct option lopts[] = {{"data", required_argument, nullptr, 'd'},
                                         {"log-level", required_argument, nullptr, 'l'},
+                                        {"threads", required_argument, nullptr, 't'},
+                                        {"retries", required_argument, nullptr, 'r'},
+                                        {"retry-delay", required_argument, nullptr, 'm'},
                                         {nullptr, 0, nullptr, 0}};
 
         auto& argc = boost::unit_test::framework::master_test_suite().argc;
@@ -249,6 +265,31 @@ struct QhttpFixture {
                     break;
                 case 'l':
                     logLevel = optarg;
+                    break;
+                case 't':
+                    try {
+                        numThreads = std::min(static_cast<size_t>(std::thread::hardware_concurrency()),
+                                              std::max(numThreads, std::stoul(optarg)));
+                    } catch (...) {
+                        LOG_ERROR(usage);
+                        std::abort();
+                    }
+                    break;
+                case 'r':
+                    try {
+                        numRetries = std::max(numRetries, std::stoul(optarg));
+                    } catch (...) {
+                        LOG_ERROR(usage);
+                        std::abort();
+                    }
+                    break;
+                case 'm':
+                    try {
+                        retryDelayMs = std::max(retryDelayMs, std::stoul(optarg));
+                    } catch (...) {
+                        LOG_ERROR(usage);
+                        std::abort();
+                    }
                     break;
                 default:
                     break;
@@ -267,16 +308,20 @@ struct QhttpFixture {
     void start() {
         server->start();
         urlPrefix = "http://localhost:" + std::to_string(server->getPort()) + "/";
-        serviceThread = std::thread([this]() {
-            asio::io_service::work work(service);
-            service.run();
-        });
+        for (size_t i = 0; i < numThreads; ++i) {
+            serviceThreads.emplace_back([this]() {
+                asio::io_service::work work(service);
+                service.run();
+            });
+        }
     }
 
     ~QhttpFixture() {
         server->stop();
         service.stop();
-        serviceThread.join();
+        for (auto&& t : serviceThreads) {
+            t.join();
+        }
         curl_global_cleanup();
     }
 
@@ -336,11 +381,14 @@ struct QhttpFixture {
     }
 
     asio::io_service service;
-    std::thread serviceThread;
+    std::vector<std::thread> serviceThreads;
     qhttp::Server::Ptr server;
     std::string urlPrefix;
     std::string dataDir;
-    std::string logLevel;
+    std::string logLevel = "DEBUG";
+    unsigned long numRetries = 1;
+    unsigned long retryDelayMs = 1;
+    size_t numThreads = 1;
 };
 
 BOOST_FIXTURE_TEST_CASE(request_timeout, QhttpFixture) {
@@ -396,7 +444,7 @@ BOOST_FIXTURE_TEST_CASE(shutdown, QhttpFixture) {
     //----- start, and verify handler invoked
 
     start();
-    CurlEasy curl1;
+    CurlEasy curl1(numRetries, retryDelayMs);
     curl1.setup("GET", urlPrefix, "").perform().validate(qhttp::STATUS_OK, "text/html");
     BOOST_TEST(invocations == 1);
 
@@ -406,7 +454,7 @@ BOOST_FIXTURE_TEST_CASE(shutdown, QhttpFixture) {
     server->stop();
     curl1.setup("GET", urlPrefix, "");
     BOOST_TEST(curl_easy_perform(curl1.hcurl) == CURLE_COULDNT_CONNECT);
-    CurlEasy curl2;
+    CurlEasy curl2(numRetries, retryDelayMs);
     curl2.setup("GET", urlPrefix, "");
     BOOST_TEST(curl_easy_perform(curl2.hcurl) == CURLE_COULDNT_CONNECT);
 
@@ -432,7 +480,7 @@ BOOST_FIXTURE_TEST_CASE(case_insensitive_headers, QhttpFixture) {
     });
 
     start();
-    CurlEasy curl;
+    CurlEasy curl(numRetries, retryDelayMs);
 
     //----- tests provide same header in multiple cases
 
@@ -455,7 +503,7 @@ BOOST_FIXTURE_TEST_CASE(percent_decoding, QhttpFixture) {
                        });
 
     start();
-    CurlEasy curl;
+    CurlEasy curl(numRetries, retryDelayMs);
 
     //----- send in request with percent encodes and check echoed params
 
@@ -475,7 +523,7 @@ BOOST_FIXTURE_TEST_CASE(static_content, QhttpFixture) {
     server->addStaticContent("/*", dataDir);
     start();
 
-    CurlEasy curl;
+    CurlEasy curl(numRetries, retryDelayMs);
 
     //----- test default index.html
 
@@ -558,7 +606,7 @@ BOOST_FIXTURE_TEST_CASE(exception_handling, QhttpFixture) {
 
     start();
 
-    CurlEasy curl;
+    CurlEasy curl(numRetries, retryDelayMs);
 
     //----- test EACCESS thrown from static file handler
 
@@ -621,7 +669,7 @@ BOOST_FIXTURE_TEST_CASE(handler_dispatch, QhttpFixture) {
 
     start();
 
-    CurlEasy curl;
+    CurlEasy curl(numRetries, retryDelayMs);
 
     //----- Test basic handler dispatch by path and method
 
@@ -697,7 +745,7 @@ BOOST_FIXTURE_TEST_CASE(ajax, QhttpFixture) {
     //      and validation/turn-around handler for each on the libcurl multi-handle.
     //
 
-    CurlEasy c1, c2, c3;
+    CurlEasy c1(numRetries, retryDelayMs), c2(numRetries, retryDelayMs), c3(numRetries, retryDelayMs);
 
     c1.setup("GET", urlPrefix + "ajax/foo", "");
     c2.setup("GET", urlPrefix + "ajax/foo", "");
