@@ -113,16 +113,70 @@ CzarConfig::CzarConfig(util::ConfigStore const& configStore)
           _notifyWorkersOnQueryFinish(configStore.getInt("tuning.notifyWorkersOnQueryFinish", 1)),
           _notifyWorkersOnCzarRestart(configStore.getInt("tuning.notifyWorkersOnCzarRestart", 1)),
           _czarStatsUpdateIvalSec(configStore.getInt("tuning.czarStatsUpdateIvalSec", 1)),
-          _czarStatsRetainPeriodSec(configStore.getInt("tuning.czarStatsRetainPeriodSec", 24 * 3600)) {}
+          _czarStatsRetainPeriodSec(configStore.getInt("tuning.czarStatsRetainPeriodSec", 24 * 3600)) {
+    // Cache the cached version of the configuration in the JSON format. The JSON object
+    // contains two collections of parameters: the "input" ones that were passed into
+    // the contructor, and the "actual" ones that were expected by the current implementation
+    // of Czar.
+    _jsonConfig =
+            nlohmann::json::object({{"input", configStore.toJson()}, {"actual", nlohmann::json::object()}});
+
+    // Note that actual collection may contain parameters not mentioned in
+    // the input configuration.
+    nlohmann::json& actualJsonConfig = _jsonConfig["actual"];
+    actualJsonConfig["resultdb"] =
+            nlohmann::json::object({{"user", _mySqlResultConfig.username},
+                                    {"passwd", "xxxxx"},
+                                    {"host", _mySqlResultConfig.hostname},
+                                    {"port", std::to_string(_mySqlResultConfig.port)},
+                                    {"unix_socket", _mySqlResultConfig.socket},
+                                    {"db", _mySqlResultConfig.dbName},
+                                    {"maxtablesize_mb", std::to_string(_maxTableSizeMB)},
+                                    {"maxsqlconnectionattempts", std::to_string(_maxSqlConnectionAttempts)},
+                                    {"engine", _resultEngine},
+                                    {"maxconnections", std::to_string(_resultMaxConnections)},
+                                    {"oldestResultKeptDays", std::to_string(_oldestResultKeptDays)}});
+    actualJsonConfig["css"] = _cssConfigMap;
+    actualJsonConfig["qmeta"] =
+            nlohmann::json::object({{"user", _mySqlQmetaConfig.username},
+                                    {"passwd", "xxxxx"},
+                                    {"host", _mySqlQmetaConfig.hostname},
+                                    {"port", std::to_string(_mySqlQmetaConfig.port)},
+                                    {"unix_socket", _mySqlQmetaConfig.socket},
+                                    {"db", _mySqlQmetaConfig.dbName},
+                                    {"maxMsgSourceStore", std::to_string(_maxMsgSourceStore)}});
+    actualJsonConfig["qstatus"] =
+            nlohmann::json::object({{"user", _mySqlQstatusDataConfig.username},
+                                    {"passwd", "xxxxx"},
+                                    {"host", _mySqlQstatusDataConfig.hostname},
+                                    {"port", std::to_string(_mySqlQstatusDataConfig.port)},
+                                    {"unix_socket", _mySqlQstatusDataConfig.socket},
+                                    {"db", _mySqlQstatusDataConfig.dbName}});
+    actualJsonConfig["frontend"] = nlohmann::json::object({{"xrootd", _xrootdFrontendUrl}});
+    actualJsonConfig["partitioner"] = nlohmann::json::object({{"emptyChunkPath", _emptyChunkPath}});
+    actualJsonConfig["tuning"] = nlohmann::json::object(
+            {{"interactiveChunkLimit", std::to_string(_interactiveChunkLimit)},
+             {"xrootdCBThreadsMax", std::to_string(_xrootdCBThreadsMax)},
+             {"xrootdCBThreadsInit", std::to_string(_xrootdCBThreadsInit)},
+             {"xrootdSpread", std::to_string(_xrootdSpread)},
+             {"qMetaSecsBetweenChunkCompletionUpdates",
+              std::to_string(_qMetaSecsBetweenChunkCompletionUpdates)},
+             {"queryDistributionTestVer", std::to_string(_queryDistributionTestVer)},
+             {"notifyWorkersOnQueryFinish", std::to_string(_notifyWorkersOnQueryFinish)},
+             {"notifyWorkersOnCzarRestart", std::to_string(_notifyWorkersOnCzarRestart)},
+             {"czarStatsUpdateIvalSec", std::to_string(_czarStatsUpdateIvalSec)},
+             {"czarStatsRetainPeriodSec", std::to_string(_czarStatsRetainPeriodSec)}});
+    actualJsonConfig["qdisppool"] = nlohmann::json::object({
+            {"poolSize", std::to_string(_qdispPoolSize)},
+            {"largestPriority", std::to_string(_qdispMaxPriority)},
+            {"vectRunSizes", _qdispVectRunSizes},
+            {"vectMinRunningSizes", _qdispVectMinRunningSizes},
+            {"qReqPseudoFifoMaxRunning", std::to_string(_qReqPseudoFifoMaxRunning)},
+    });
+}
 
 std::ostream& operator<<(std::ostream& out, CzarConfig const& czarConfig) {
-    out << "[cssConfigMap=" << util::printable(czarConfig._cssConfigMap)
-        << ", emptyChunkPath=" << czarConfig._emptyChunkPath
-        << ", mySqlQmetaConfig=" << czarConfig._mySqlQmetaConfig
-        << ", mySqlQStatusDataConfig=" << czarConfig._mySqlQstatusDataConfig
-        << ", mySqlResultConfig=" << czarConfig._mySqlResultConfig
-        << ", xrootdFrontendUrl=" << czarConfig._xrootdFrontendUrl << "]";
-
+    out << czarConfig._jsonConfig.dump();
     return out;
 }
 

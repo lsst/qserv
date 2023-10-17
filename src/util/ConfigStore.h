@@ -37,9 +37,11 @@
 
 // System headers
 #include <map>
+#include <set>
 #include <string>
 
-// Qserv headers
+// Third party headers
+#include <nlohmann/json.hpp>
 
 namespace lsst::qserv::util {
 
@@ -107,6 +109,9 @@ public:
      */
     int getIntRequired(std::string const& key) const;
 
+    /// @return The names of all sections that exiast in the configuration.
+    std::set<std::string> getSections() const;
+
     /** Get a collection of (key, value) related to a configuration section
      * All ConfigStore entries having key like "section.param_key" are returned
      * but all key name are shortened to "param_key"
@@ -115,6 +120,10 @@ public:
      *
      */
     std::map<std::string, std::string> getSectionConfigMap(std::string sectionName) const;
+
+    /// @param scramblePasswords The optional flag telling the method to scramble passwords
+    /// @return the JSON representation of the configuration parameters.
+    nlohmann::json toJson(bool scramblePasswords = true) const;
 
 private:
     static std::map<std::string, std::string> const _parseIniFile(std::string const& configFilePath);

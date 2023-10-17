@@ -30,6 +30,9 @@
 #include <mutex>
 #include <string>
 
+// Third party headers
+#include <nlohmann/json.hpp>
+
 // Qserv headers
 #include "mysql/MySqlConfig.h"
 #include "util/ConfigStore.h"
@@ -193,6 +196,16 @@ public:
     /// had to be deleted from the corresponding folder.
     bool resultsCleanUpOnStart() const { return _resultsCleanUpOnStart; }
 
+    /// @return the JSON representation of the configuration parameters.
+    /// @note The object has two collections of the parameters: 'input' - for
+    /// parameters that were proided to the construction of the class, and
+    /// 'actual' - for parameters that were expected (and set in the transient
+    /// state). These collection may not be the same. For example, some older
+    /// parameters may be phased out while still being present in the configuration
+    /// files. Or, new actual parameters (with some reasonable defaults) might be
+    /// introduced while not being set in the configuration file.
+    nlohmann::json toJson() const { return _jsonConfig; }
+
     /**
      * Dump the configuration object onto the output stream.
      * @param out - the output stream object
@@ -209,11 +222,18 @@ private:
     /// @param configStore
     WorkerConfig(util::ConfigStore const& configStore);
 
+    /// This method is called by both c-tors to populate the JSON configuration with actual
+    /// parameters of the object.
+    /// @param coll The name of a collection to be populated.
+    void _populateJsonConfig(std::string const& coll);
+
     /// This mutex protects the static member _instance.
     static std::mutex _mtxOnInstance;
 
     /// The configuratoon object created by the last call to the method 'test'.
     static std::shared_ptr<WorkerConfig> _instance;
+
+    nlohmann::json _jsonConfig;  ///< JSON-ified initial configuration
 
     mysql::MySqlConfig _mySqlConfig;
 

@@ -25,7 +25,6 @@
 #include "ConfigStore.h"
 
 // System headers
-#include <map>
 #include <sstream>
 
 // Qserv headers
@@ -111,6 +110,16 @@ int ConfigStore::getIntRequired(std::string const& key) const {
     }
     LOGS(_log, LOG_LVL_DEBUG, "[" << key << "] key does not exist or has empty string value");
     throw util::KeyNotFoundError(key);
+}
+
+std::set<std::string> ConfigStore::getSections() const {
+    std::set<std::string> sections;
+    for (auto [key, val] : _configMap) {
+        if (auto const pos = key.find("."); pos != std::string::npos) {
+            sections.insert(key.substr(0, pos));
+        }
+    }
+    return sections;
 }
 
 std::map<std::string, std::string> ConfigStore::getSectionConfigMap(std::string sectionName) const {

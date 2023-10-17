@@ -97,7 +97,9 @@ std::string WorkerConfig::protocol2str(ResultDeliveryProtocol const& p) {
 }
 
 WorkerConfig::WorkerConfig()
-        : _memManClass("MemManReal"),
+        : _jsonConfig(nlohmann::json::object(
+                  {{"input", nlohmann::json::object()}, {"actual", nlohmann::json::object()}})),
+          _memManClass("MemManReal"),
           _memManSizeMb(1000),
           _memManLocation("/qserv/data/mysql"),
           _threadPoolSize(wsched::BlendScheduler::getMinPoolSize()),
@@ -130,10 +132,17 @@ WorkerConfig::WorkerConfig()
           _resultsXrootdPort(1094),
           _resultsNumHttpThreads(1),
           _resultDeliveryProtocol(ResultDeliveryProtocol::SSI),
-          _resultsCleanUpOnStart(true) {}
+          _resultsCleanUpOnStart(true) {
+    // Both collections are the same since we don't have any external configuration
+    // source passed into this c-tor.
+    _populateJsonConfig("input");
+    _populateJsonConfig("actual");
+}
 
 WorkerConfig::WorkerConfig(const util::ConfigStore& configStore)
-        : _memManClass(configStore.get("memman.class", "MemManReal")),
+        : _jsonConfig(nlohmann::json::object(
+                  {{"input", configStore.toJson()}, {"actual", nlohmann::json::object()}})),
+          _memManClass(configStore.get("memman.class", "MemManReal")),
           _memManSizeMb(configStore.getInt("memman.memory", 1000)),
           _memManLocation(configStore.getRequired("memman.location")),
           _threadPoolSize(
@@ -179,22 +188,62 @@ WorkerConfig::WorkerConfig(const util::ConfigStore& configStore)
             mysql::MySqlConfig(configStore.getRequired("mysql.username"), configStore.get("mysql.password"),
                                configStore.getRequired("mysql.hostname"), mysqlPort, mysqlSocket,
                                "");  // dbname
+
+    // Note that actual collection may contain parameters not mentioned in
+    // the input configuration.
+    _populateJsonConfig("actual");
+}
+
+void WorkerConfig::_populateJsonConfig(std::string const& coll) {
+    nlohmann::json& jsonConfigCollection = _jsonConfig[coll];
+    jsonConfigCollection["memman"] = nlohmann::json::object({{"class", _memManClass},
+                                                             {"memory", std::to_string(_memManSizeMb)},
+                                                             {"location", _memManLocation}});
+    jsonConfigCollection["scheduler"] = nlohmann::json::object(
+            {{"thread_pool_size", std::to_string(_threadPoolSize)},
+             {"max_pool_threads", std::to_string(_maxPoolThreads)},
+             {"group_size", std::to_string(_maxGroupSize)},
+             {"required_tasks_completed", std::to_string(_requiredTasksCompleted)},
+             {"priority_slow", std::to_string(_prioritySlow)},
+             {"priority_snail", std::to_string(_prioritySnail)},
+             {"priority_med", std::to_string(_priorityMed)},
+             {"priority_fast", std::to_string(_priorityFast)},
+             {"reserve_slow", std::to_string(_maxReserveSlow)},
+             {"reserve_snail", std::to_string(_maxReserveSnail)},
+             {"reserve_med", std::to_string(_maxReserveMed)},
+             {"reserve_fast", std::to_string(_maxReserveFast)},
+             {"maxactivechunks_slow", std::to_string(_maxActiveChunksSlow)},
+             {"maxactivechunks_snail", std::to_string(_maxActiveChunksSnail)},
+             {"maxactivechunks_med", std::to_string(_maxActiveChunksMed)},
+             {"maxactivechunks_fast", std::to_string(_maxActiveChunksFast)},
+             {"scanmaxminutes_fast", std::to_string(_scanMaxMinutesFast)},
+             {"scanmaxminutes_med", std::to_string(_scanMaxMinutesMed)},
+             {"scanmaxminutes_slow", std::to_string(_scanMaxMinutesSlow)},
+             {"scanmaxminutes_snail", std::to_string(_scanMaxMinutesSnail)},
+             {"maxtasksbootedperuserquery", std::to_string(_maxTasksBootedPerUserQuery)}});
+    jsonConfigCollection["sqlconnections"] = nlohmann::json::object(
+            {{"maxsqlconn", std::to_string(_maxSqlConnections)},
+             {"reservedinteractivesqlconn", std::to_string(_ReservedInteractiveSqlConnections)}});
+    jsonConfigCollection["transmit"] =
+            nlohmann::json::object({{"buffermaxtotalgb", std::to_string(_bufferMaxTotalGB)},
+                                    {"maxtransmits", std::to_string(_maxTransmits)},
+                                    {"maxperqid", std::to_string(_maxPerQid)}});
+    jsonConfigCollection["results"] =
+            nlohmann::json::object({{"dirname", _resultsDirname},
+                                    {"xrootd_port", std::to_string(_resultsXrootdPort)},
+                                    {"num_http_threads", std::to_string(_resultsNumHttpThreads)},
+                                    {"protocol", WorkerConfig::protocol2str(_resultDeliveryProtocol)},
+                                    {"clean_up_on_start", _resultsCleanUpOnStart ? "1" : "0"}});
+    jsonConfigCollection["mysql"] = nlohmann::json::object({{"username", _mySqlConfig.username},
+                                                            {"password", "xxxxx"},
+                                                            {"hostname", _mySqlConfig.hostname},
+                                                            {"port", std::to_string(_mySqlConfig.port)},
+                                                            {"socket", _mySqlConfig.socket},
+                                                            {"db", _mySqlConfig.dbName}});
 }
 
 std::ostream& operator<<(std::ostream& out, WorkerConfig const& workerConfig) {
-    out << "MemManClass=" << workerConfig._memManClass;
-    if (workerConfig._memManClass == "MemManReal") {
-        out << "MemManSizeMb=" << workerConfig._memManSizeMb;
-    }
-    out << " poolSize=" << workerConfig._threadPoolSize << ", maxGroupSize=" << workerConfig._maxGroupSize;
-    out << " requiredTasksCompleted=" << workerConfig._requiredTasksCompleted;
-
-    out << " priority fast=" << workerConfig._priorityFast << " med=" << workerConfig._priorityMed
-        << " slow=" << workerConfig._prioritySlow;
-
-    out << " Reserved threads fast=" << workerConfig._maxReserveFast << " med=" << workerConfig._maxReserveMed
-        << " slow=" << workerConfig._maxReserveSlow;
-
+    out << workerConfig._jsonConfig.dump();
     return out;
 }
 
