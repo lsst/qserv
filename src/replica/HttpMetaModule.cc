@@ -34,7 +34,7 @@ using json = nlohmann::json;
 
 namespace lsst::qserv::replica {
 
-unsigned int const HttpMetaModule::version = 25;
+unsigned int const HttpMetaModule::version = 26;
 
 void HttpMetaModule::process(ServiceProvider::Ptr const& serviceProvider, string const& context,
                              qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp,

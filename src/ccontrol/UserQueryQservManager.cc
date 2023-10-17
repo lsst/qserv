@@ -42,6 +42,7 @@
 #include "sql/SqlConnection.h"
 #include "sql/SqlConnectionFactory.h"
 #include "util/StringHelper.h"
+#include "wconfig/WorkerConfig.h"
 
 using namespace std;
 using json = nlohmann::json;
@@ -93,7 +94,10 @@ void UserQueryQservManager::submit() {
     // Create the table as per the command.
     string createTable;
     vector<string> resColumns;  // This must match the schema in the CREATE TABLE statement.
-    if (command == "query_proc_stats") {
+    if (command == "config") {
+        createTable = "CREATE TABLE " + _resultTableName + "(`config` BLOB)";
+        resColumns.push_back("config");
+    } else if (command == "query_proc_stats") {
         createTable = "CREATE TABLE " + _resultTableName + "(`stats` BLOB)";
         resColumns.push_back("stats");
     } else if (command == "query_info") {
@@ -120,7 +124,11 @@ void UserQueryQservManager::submit() {
     // note that the output string(s) should be quoted.
     auto const stats = qdisp::CzarStats::get();
     list<vector<string>> rows;
-    if (command == "query_proc_stats") {
+    if (command == "config") {
+        json const result = cconfig::CzarConfig::instance()->toJson();
+        vector<string> row = {"'" + result.dump() + "'"};
+        rows.push_back(move(row));
+    } else if (command == "query_proc_stats") {
         json const result = json::object({{"qdisp_stats", stats->getQdispStatsJson()},
                                           {"transmit_stats", stats->getTransmitStatsJson()}});
         vector<string> row = {"'" + result.dump() + "'"};
