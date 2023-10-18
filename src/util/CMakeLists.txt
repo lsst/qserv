@@ -52,6 +52,7 @@ ENDFUNCTION()
 
 util_tests(
     testCommon
+    testConfigStore
     testEventThread
     testIterableFormatter
     testHistogram
