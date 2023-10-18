@@ -1,0 +1,27 @@
+#fwk-worker-config-controls label {
+    font-weight:    bold;
+}
+table#fwk-worker-config caption {
+    caption-side:   top;
+    text-align:     right;
+    padding-top:    0;
+}
+table#fwk-worker-config > thead > tr > th.sticky {
+    position:sticky;
+    top:80px;
+    z-index:2;
+}
+table#fwk-worker-config tbody th,
+table#fwk-worker-config tbody td {
+    vertical-align:middle;
+}
+table#fwk-worker-config pre {
+    padding: 0;
+    margin: 0;
+}
+table#fwk-worker-config tbody > tr > td.query_toggler:hover {
+    cursor:pointer;
+}
+table#fwk-worker-config caption.updating {
+    background-color: #ffeeba;
+}
