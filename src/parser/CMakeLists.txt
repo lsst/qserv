@@ -14,6 +14,10 @@ target_include_directories(parser PRIVATE
     ${ANTLR4_INCLUDE_DIR}
 )
 
+target_compile_options(parser PRIVATE
+    -fno-char8_t -Wno-deprecated
+)
+
 target_sources(parser PRIVATE
     ParseException.cc
     ${ANTLR_QSMySqlLexer_CXX_OUTPUTS}

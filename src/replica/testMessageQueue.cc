@@ -32,7 +32,7 @@
 
 // Boost unit test header
 #define BOOST_TEST_MODULE NamedMutexRegistry
-#include "boost/test/included/unit_test.hpp"
+#include "boost/test/unit_test.hpp"
 
 using namespace std;
 using namespace boost::unit_test;

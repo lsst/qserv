@@ -24,6 +24,8 @@
 
 // System headers
 #include <atomic>
+#include <memory>
+#include <string>
 #include <thread>
 
 namespace lsst::qserv::util {

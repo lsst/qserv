@@ -176,7 +176,7 @@ json HttpIngestModule::_getDatabases() {
     debug(__func__, "isPublished=" + bool2str(isPublished));
 
     json databasesJson = json::array();
-    for (auto const databaseName : config->databases(family, allDatabases, isPublished)) {
+    for (string const& databaseName : config->databases(family, allDatabases, isPublished)) {
         auto const database = config->databaseInfo(databaseName);
         databasesJson.push_back({{"name", database.name},
                                  {"family", database.family},
@@ -397,7 +397,7 @@ json HttpIngestModule::_deleteDatabase() {
         directorTables.insert(tableName);
     }
     if (cssAccess->containsDb(database.name)) {
-        for (auto const tableName : cssAccess->getTableNames(database.name)) {
+        for (string const& tableName : cssAccess->getTableNames(database.name)) {
             auto const partTableParams = cssAccess->getPartTableParams(database.name, tableName);
             if (!partTableParams.dirTable.empty()) directorTables.insert(partTableParams.dirTable);
         }
@@ -414,12 +414,12 @@ json HttpIngestModule::_deleteDatabase() {
         conn->execute(g.dropDb(database.name, ifExists));
         auto const emptyChunkListTable = css::DbInterfaceMySql::getEmptyChunksTableName(database.name);
         conn->execute(g.dropTable(g.id("qservCssData", emptyChunkListTable), ifExists));
-        for (auto const tableName : directorTables) {
+        for (string const& tableName : directorTables) {
             string const query = g.dropTable(
                     g.id("qservMeta", directorIndexTableName(database.name, tableName)), ifExists);
             conn->execute(query);
         }
-        for (auto const tableName : database.tables()) {
+        for (string const& tableName : database.tables()) {
             try {
                 string const query =
                         g.dropTable(g.id("qservMeta", rowCountersTable(database.name, tableName)), ifExists);
@@ -1077,7 +1077,7 @@ void HttpIngestModule::_removeMySQLPartitions(DatabaseInfo const& database, bool
     bool const ignoreNonPartitioned = true;
     string const noParentJobId;
     string error;
-    for (auto const tableName : database.tables()) {
+    for (string const& tableName : database.tables()) {
         auto const& table = database.findTable(tableName);
         // Skip tables that have been published.
         if (table.isPublished) continue;
