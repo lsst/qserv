@@ -879,7 +879,6 @@ bool ConfigTestApp::_testTables() {
     table1.name = "director-1";
     table1.database = database;
     table1.isPartitioned = true;
-    table1.isDirector = true;
     table1.directorTable = DirectorTableRef("", "objectId");
     table1.uniquePrimaryKey = false;
     table1.latitudeColName = "decl";
@@ -905,7 +904,6 @@ bool ConfigTestApp::_testTables() {
     table2.name = "director-2";
     table2.database = database;
     table2.isPartitioned = true;
-    table2.isDirector = true;
     table2.directorTable = DirectorTableRef("", "id");
     table2.latitudeColName = "coord_decl";
     table2.longitudeColName = "coord_ra";

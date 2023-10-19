@@ -358,7 +358,9 @@ GetConfigQservMgtRequest::Ptr QservMgtServices::config(std::string const& worker
         return request;
     } else {
         replica::Lock lock(_mtx, "QservMgtServices::" + string(__func__));
+
         auto const manager = shared_from_this();
+
         request = GetConfigQservMgtRequest::create(
                 serviceProvider(), worker,
                 [manager](QservMgtRequest::Ptr const& request) { manager->_finish(request->id()); });

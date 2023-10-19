@@ -178,7 +178,7 @@ string WorkerDirectorIndexRequest::_query(Connection::Ptr const& conn) const {
     auto const database = config->databaseInfo(_request.database());
     auto const table = database.findTable(_request.director_table());
 
-    if (!table.isDirector) {
+    if (!table.isDirector()) {
         throw invalid_argument("table '" + table.name + "' is not been configured as director in database '" +
                                database.name + "'");
     }

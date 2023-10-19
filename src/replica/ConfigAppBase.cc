@@ -177,8 +177,8 @@ void ConfigAppBase::dumpDatabasesAsTable(string const& indent, string const& cap
             publishTime.push_back(to_string(database.publishTime));
             tableName.push_back(table.name);
             isPartitioned.push_back(table.isPartitioned ? "yes" : "no");
-            isDirector.push_back(table.isDirector ? "yes" : "no");
-            isRefMatch.push_back(table.isRefMatch ? "yes" : "no");
+            isDirector.push_back(table.isDirector() ? "yes" : "no");
+            isRefMatch.push_back(table.isRefMatch() ? "yes" : "no");
             directorTable.push_back(table.directorTable.databaseTableName());
             directorKey.push_back(table.directorTable.primaryKeyColumn());
             directorTable2.push_back(table.directorTable2.databaseTableName());

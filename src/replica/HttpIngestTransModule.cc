@@ -485,7 +485,7 @@ void HttpIngestTransModule::_addPartitionToDirectorIndex(DatabaseInfo const& dat
                                                          TransactionId transactionId,
                                                          string const& directorTableName) const {
     auto const table = database.findTable(directorTableName);
-    if (!table.isDirector) {
+    if (!table.isDirector()) {
         throw logic_error("table '" + table.name + "' is not configured in database '" + database.name +
                           "' as the director table");
     }
@@ -505,7 +505,7 @@ void HttpIngestTransModule::_removePartitionFromDirectorIndex(DatabaseInfo const
                                                               TransactionId transactionId,
                                                               string const& directorTableName) const {
     auto const table = database.findTable(directorTableName);
-    if (!table.isDirector) {
+    if (!table.isDirector()) {
         throw logic_error("table '" + table.name + "' is not configured in database '" + database.name +
                           "' as the director table");
     }

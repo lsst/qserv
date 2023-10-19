@@ -759,7 +759,7 @@ json HttpQservMonitorModule::_css() {
             vector<string> sharedScanTables;
             for (string const& tableName : database.tables()) {
                 auto const table = database.findTable(tableName);
-                if (table.isPartitioned && !table.isRefMatch) {
+                if (table.isPartitioned && !table.isRefMatch()) {
                     sharedScanTables.emplace_back(table.name);
                     // Set the empty object as the default result for each table.
                     resultSharedScan[familyName][database.name][table.name] = json::object();
