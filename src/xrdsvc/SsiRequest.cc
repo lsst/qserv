@@ -53,6 +53,7 @@
 #include "wpublish/AddChunkGroupCommand.h"
 #include "wpublish/ChunkListCommand.h"
 #include "wpublish/GetChunkListCommand.h"
+#include "wpublish/GetConfigCommand.h"
 #include "wpublish/GetDbStatusCommand.h"
 #include "wpublish/GetStatusCommand.h"
 #include "wpublish/RemoveChunkGroupCommand.h"
@@ -395,6 +396,10 @@ wbase::WorkerCommand::Ptr SsiRequest::parseWorkerCommand(
             }
             case proto::WorkerCommandH::GET_DATABASE_STATUS: {
                 command = std::make_shared<wpublish::GetDbStatusCommand>(sendChannel);
+                break;
+            }
+            case proto::WorkerCommandH::GET_CONFIG: {
+                command = std::make_shared<wpublish::GetConfigCommand>(sendChannel);
                 break;
             }
             default:

@@ -5,6 +5,7 @@ target_sources(xrdreq PRIVATE
     ChunkGroupQservRequest.cc
     ChunkListQservRequest.cc
     GetChunkListQservRequest.cc
+    GetConfigQservRequest.cc
     GetDbStatusQservRequest.cc
     GetStatusQservRequest.cc
     QservRequest.cc
