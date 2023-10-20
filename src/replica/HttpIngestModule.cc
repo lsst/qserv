@@ -33,6 +33,7 @@
 
 // Third party headers
 #include "boost/filesystem.hpp"
+#include "boost/algorithm/string.hpp"
 
 // Qserv headers
 #include "css/CssAccess.h"
@@ -95,6 +96,23 @@ string jobCompletionErrorIfAny(SqlJob::Ptr const& job, string const& prefix) {
     }
 
     return error;
+}
+
+/**
+ * Check if the provided type is not prohibited for using in the 'director' tables.
+ * @param func A context for error reporting.
+ * @param colName The name of a column (used for error reporting).
+ * @param colType The column type definition to be evaluated.
+ * @throw lsst::qserv::replica::HttpError if the type validation failed.
+ */
+void validateColumnType(string const& func, string const& colName, string const& colType) {
+    string const colTypeUpperCase = boost::algorithm::to_upper_copy(colType);
+    for (char const* prohibitedType : {"BLOB", "TEXT"}) {
+        if (colTypeUpperCase.find(prohibitedType) == string::npos) continue;
+        string const msg = "the prohibited type '" + colType + "' detected in a definition of the column '" +
+                           colName + "' of the director table";
+        throw HttpError(func, msg);
+    }
 }
 
 }  // namespace
@@ -565,7 +583,13 @@ json HttpIngestModule::_addTable() {
             throw HttpError(__func__, msg);
         }
         string colType = column["type"];
-
+        if (table.isDirector()) {
+            // Schemas of the director tables require reinforced screening of the column
+            // types to prevent large variable size types from being used in column
+            // definitions. Such types will prevent Qserv from materialzing sub-chunks
+            // as the MEMORY tables.
+            ::validateColumnType(__func__, colName, colType);
+        }
         if (_partitionByColumn == colName) {
             string const msg = "reserved column '" + _partitionByColumn + "' is not allowed";
             throw HttpError(__func__, msg);
