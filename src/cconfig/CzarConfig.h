@@ -31,6 +31,9 @@
 #include <ostream>
 #include <string>
 
+// Third party headers
+#include <nlohmann/json.hpp>
+
 // Qserv headers
 #include "mysql/MySqlConfig.h"
 #include "util/ConfigStore.h"
@@ -206,6 +209,16 @@ public:
     /// the OOM situation.
     unsigned int czarStatsRetainPeriodSec() const { return _czarStatsRetainPeriodSec; }
 
+    /// @return the JSON representation of the configuration parameters.
+    /// @note The object has two collections of the parameters: 'input' - for
+    /// parameters that were proided to the construction of the class, and
+    /// 'actual' - for parameters that were expected (and set in the transient
+    /// state). These collection may not be the same. For example, some older
+    /// parameters may be phased out while still being present in the configuration
+    /// files. Or, new actual parameters (with some reasonable defaults) might be
+    /// introduced while not being set in the configuration file.
+    nlohmann::json toJson() const { return _jsonConfig; }
+
 private:
     CzarConfig(util::ConfigStore const& ConfigStore);
 
@@ -214,6 +227,8 @@ private:
 
     /// The configuratoon object created by the last call to the method 'create()'.
     static std::shared_ptr<CzarConfig> _instance;
+
+    nlohmann::json _jsonConfig;  ///< JSON-ified configuration
 
     // Parameters below used in czar::Czar
     mysql::MySqlConfig const _mySqlResultConfig;

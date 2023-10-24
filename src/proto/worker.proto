@@ -158,6 +158,7 @@ message WorkerCommandH {
         SET_CHUNK_LIST      = 6;    // Set a new list of chunks.
         GET_STATUS          = 7;    // Return various status info on a worker.
         GET_DATABASE_STATUS = 8;    // Return various info on the worker database service.
+        GET_CONFIG          = 9;    // Return configuration parameters of the worker database service.
     }
     required Command command = 1;
 }
@@ -280,6 +281,13 @@ message WorkerCommandGetStatusR {
 message WorkerCommandGetDbStatusR {
     required WorkerCommandStatus status = 1;    // Completion status of the operation
     required string info = 2;                   // Status info serialized from a JSON object
+}
+
+// The message to be sent back in response to the 'GET_CONFIG' command
+//
+message WorkerCommandGetConfigR {
+    required WorkerCommandStatus status = 1;    // Completion status of the operation
+    required string info = 2;                   // Configuration info serialized from a JSON object
 }
 
 /////////////////////////////////////////////////////////////////

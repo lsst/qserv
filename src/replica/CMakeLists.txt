@@ -144,6 +144,8 @@ target_sources(replica PRIVATE
     GetReplicasQservMgtRequest.h
     GetDbStatusQservMgtRequest.cc
     GetDbStatusQservMgtRequest.h
+    GetConfigQservMgtRequest.cc
+    GetConfigQservMgtRequest.h
     GetStatusQservMgtRequest.cc
     GetStatusQservMgtRequest.h
     HealthMonitorTask.cc

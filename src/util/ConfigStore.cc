@@ -25,7 +25,6 @@
 #include "ConfigStore.h"
 
 // System headers
-#include <map>
 #include <sstream>
 
 // Qserv headers
@@ -113,25 +112,44 @@ int ConfigStore::getIntRequired(std::string const& key) const {
     throw util::KeyNotFoundError(key);
 }
 
+std::set<std::string> ConfigStore::getSections() const {
+    std::set<std::string> sections;
+    for (auto [key, val] : _configMap) {
+        if (auto const pos = key.find("."); pos != std::string::npos) {
+            sections.insert(key.substr(0, pos));
+        }
+    }
+    return sections;
+}
+
 std::map<std::string, std::string> ConfigStore::getSectionConfigMap(std::string sectionName) const {
-    // find all css.* parameters and copy to new map (dropping css.)
-    std::string section = sectionName + ".";
+    // Copy all parameters matching "<sectionName>.<param>" to new map (dropping "<sectionName>.")
+    std::string const section = sectionName + ".";
     std::map<std::string, std::string> sectionConfigMap;
     int len = section.length();
-    for (auto const& kv : _configMap) {
-        if (kv.first.compare(0, len, section) == 0) {
-            sectionConfigMap.insert(std::make_pair(std::string(kv.first, 4), kv.second));
+    for (auto&& [key, val] : _configMap) {
+        if (key.substr(0, len) == section) {
+            sectionConfigMap[key.substr(len)] = val;
         }
     }
     return sectionConfigMap;
 }
 
-/** Overload output operator for this class
- *
- * @param out
- * @param config
- * @return an output stream
- */
+nlohmann::json ConfigStore::toJson(bool scramblePasswords) const {
+    std::string const passwordBegin = "passw";
+    nlohmann::json result = nlohmann::json::object();
+    for (auto&& sect : this->getSections()) {
+        result[sect] = nlohmann::json::object();
+        nlohmann::json& sectJson = result[sect];
+        for (auto [param, val] : this->getSectionConfigMap(sect)) {
+            bool const scramble =
+                    scramblePasswords && (param.substr(0, passwordBegin.size()) == passwordBegin);
+            sectJson[param] = scramble ? "xxxxx" : val;
+        }
+    }
+    return result;
+}
+
 std::ostream& operator<<(std::ostream& out, ConfigStore const& config) {
     out << util::printable(config._configMap);
     return out;

@@ -37,9 +37,11 @@
 
 // System headers
 #include <map>
+#include <set>
 #include <string>
 
-// Qserv headers
+// Third party headers
+#include <nlohmann/json.hpp>
 
 namespace lsst::qserv::util {
 
@@ -58,13 +60,11 @@ namespace lsst::qserv::util {
 class ConfigStore {
 public:
     /** Build a ConfigStore object from a configuration file
-     *
      * @param configFilePath: path to Qserv configuration file
      */
     ConfigStore(std::string const& configFilePath) : _configMap(_parseIniFile(configFilePath)) {}
 
     /** Build a ConfigStore object from a map
-     *
      * @param kvMap: key-value map
      */
     ConfigStore(std::map<std::string, std::string> const& kvMap) : _configMap(kvMap) {}
@@ -73,7 +73,6 @@ public:
     ConfigStore& operator=(ConfigStore const&) = delete;
 
     /** Output operator for current class
-     *
      * @param out
      * @param config
      * @return an output stream
@@ -81,7 +80,6 @@ public:
     friend std::ostream& operator<<(std::ostream& out, ConfigStore const& config);
 
     /** Get value for a configuration key
-     *
      * @param key configuration key
      * @return the string value for a key
      * @throw KeyNotFoundError if key is not found
@@ -89,7 +87,6 @@ public:
     std::string getRequired(std::string const& key) const;
 
     /** Get value for a configuration key or a default value if key is not found
-     *
      * @param key configuration key
      * @param defaultValue to use if key is not found
      * @return the string value for a key, defaulting to defaultValue
@@ -97,35 +94,36 @@ public:
     std::string get(std::string const& key, std::string const& defaultValue = std::string()) const;
 
     /** Get value for a configuration key or a default value if key is not found
-     *
      * @param key configuration key
-     * @params defaultValue to use if key if not found or associated value is empty string
+     * @param defaultValue to use if key if not found or associated value is empty string
      * @return the integer value for a key, defaulting to defaultValue
-     *
      * @throw InvalidIntegerValue if value can not be converted to an integer
      */
     int getInt(std::string const& key, int const& defaultValue = 0) const;
 
     /** Get value for a configuration key
-     *
      * @param key configuration key
      * @return the integer value for a key
-     *
      * @throw InvalidIntegerValue if value can not be converted to an integer
      * @throw KeyNotFoundError if required is true and key is not found
      */
     int getIntRequired(std::string const& key) const;
 
+    /// @return The names of all sections that exiast in the configuration.
+    std::set<std::string> getSections() const;
+
     /** Get a collection of (key, value) related to a configuration section
-     *
-     *  All ConfigStore entries having key like "section.param_key" are returned
-     *  but all key name are shortened to "param_key"
-     *
+     * All ConfigStore entries having key like "section.param_key" are returned
+     * but all key name are shortened to "param_key"
      * @param sectionName name of configuration section
      * @return a collection of (key, value) related to a configuration section
      *
      */
     std::map<std::string, std::string> getSectionConfigMap(std::string sectionName) const;
+
+    /// @param scramblePasswords The optional flag telling the method to scramble passwords
+    /// @return the JSON representation of the configuration parameters.
+    nlohmann::json toJson(bool scramblePasswords = true) const;
 
 private:
     static std::map<std::string, std::string> const _parseIniFile(std::string const& configFilePath);

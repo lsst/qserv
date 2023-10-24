@@ -142,10 +142,14 @@ json HttpQservMonitorModule::executeImpl(string const& subModuleName) {
         return _workers();
     else if (subModuleName == "WORKER")
         return _worker();
+    else if (subModuleName == "WORKER-CONFIG")
+        return _workerConfig();
     else if (subModuleName == "WORKER-DB")
         return _workerDb();
     else if (subModuleName == "CZAR")
         return _czar();
+    else if (subModuleName == "CZAR-CONFIG")
+        return _czarConfig();
     else if (subModuleName == "CZAR-DB")
         return _czarDb();
     else if (subModuleName == "QUERIES-ACTIVE")
@@ -230,6 +234,33 @@ json HttpQservMonitorModule::_worker() {
     return result;
 }
 
+json HttpQservMonitorModule::_workerConfig() {
+    debug(__func__);
+    checkApiVersion(__func__, 26);
+
+    auto const worker = params().at("worker");
+    unsigned int const timeoutSec = query().optionalUInt("timeout_sec", workerResponseTimeoutSec());
+
+    debug(__func__, "worker=" + worker);
+    debug(__func__, "timeout_sec=" + to_string(timeoutSec));
+
+    string const noParentJobId;
+    GetConfigQservMgtRequest::CallbackType const onFinish = nullptr;
+
+    auto const request = controller()->serviceProvider()->qservMgtServices()->config(worker, noParentJobId,
+                                                                                     onFinish, timeoutSec);
+    request->wait();
+
+    if (request->extendedState() != QservMgtRequest::ExtendedState::SUCCESS) {
+        string const msg = "database operation failed, error: " +
+                           QservMgtRequest::state2string(request->extendedState());
+        throw HttpError(__func__, msg);
+    }
+    json result = json::object();
+    result["config"] = request->info();
+    return result;
+}
+
 json HttpQservMonitorModule::_workerDb() {
     debug(__func__);
     checkApiVersion(__func__, 24);
@@ -276,6 +307,31 @@ json HttpQservMonitorModule::_czar() {
     } else {
         if (auto const status = json::parse(response); status.is_object()) {
             return json::object({{"status", status}});
+        }
+        err = "response received from Czar is not a valid JSON object";
+    }
+    throw HttpError(__func__, err + ", query: " + query);
+}
+
+json HttpQservMonitorModule::_czarConfig() {
+    debug(__func__);
+    checkApiVersion(__func__, 26);
+
+    // Connect to the Czar's MySQL proxy service.
+    // Execute w/o any transactions since the transcation management isn't supported
+    // by Qserv Czar.
+    auto const conn = Connection::open(Configuration::qservCzarProxyParams());
+    QueryGenerator const g(conn);
+    string const command = "config";
+    string const query = g.call(g.QSERV_MANAGER(command));
+    string response;
+    conn->execute([&query, &response](auto conn) { selectSingleValue<string>(conn, query, response); });
+    string err;
+    if (response.empty() || (response == command)) {
+        err = "no response received from Czar";
+    } else {
+        if (auto const config = json::parse(response); config.is_object()) {
+            return json::object({{"config", config}});
         }
         err = "response received from Czar is not a valid JSON object";
     }

@@ -1,0 +1,24 @@
+table#fwk-qserv-czar-config pre {
+    padding:    0;
+    margin:     0;
+}
+table#fwk-qserv-czar-config th,
+table#fwk-qserv-czar-config td {
+    vertical-align: top;
+}
+table#fwk-qserv-czar-config {
+    position: relative;
+}
+table#fwk-qserv-czar-config > thead > tr > th.sticky {
+    position:sticky;
+    top:80px;
+    z-index:2;
+}
+table#fwk-qserv-czar-config caption {
+    caption-side:   top;
+    text-align:     right;
+    padding-top:    0;
+}
+table#fwk-qserv-czar-config caption.updating {
+    background-color: #ffeeba;
+}

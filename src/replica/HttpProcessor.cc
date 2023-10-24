@@ -238,6 +238,12 @@ void HttpProcessor::registerServices() {
                                  HttpQservMonitorModule::process(self->controller(), self->name(),
                                                                  self->_processorConfig, req, resp, "WORKER");
                              });
+    httpServer()->addHandler("GET", "/replication/qserv/worker/config/:worker",
+                             [self](qhttp::Request::Ptr const req, qhttp::Response::Ptr const resp) {
+                                 HttpQservMonitorModule::process(self->controller(), self->name(),
+                                                                 self->_processorConfig, req, resp,
+                                                                 "WORKER-CONFIG");
+                             });
     httpServer()->addHandler("GET", "/replication/qserv/worker/db/:worker",
                              [self](qhttp::Request::Ptr const req, qhttp::Response::Ptr const resp) {
                                  HttpQservMonitorModule::process(self->controller(), self->name(),
@@ -248,6 +254,12 @@ void HttpProcessor::registerServices() {
                              [self](qhttp::Request::Ptr const req, qhttp::Response::Ptr const resp) {
                                  HttpQservMonitorModule::process(self->controller(), self->name(),
                                                                  self->_processorConfig, req, resp, "CZAR");
+                             });
+    httpServer()->addHandler("GET", "/replication/qserv/master/config",
+                             [self](qhttp::Request::Ptr const req, qhttp::Response::Ptr const resp) {
+                                 HttpQservMonitorModule::process(self->controller(), self->name(),
+                                                                 self->_processorConfig, req, resp,
+                                                                 "CZAR-CONFIG");
                              });
     httpServer()->addHandler("GET", "/replication/qserv/master/db",
                              [self](qhttp::Request::Ptr const req, qhttp::Response::Ptr const resp) {
