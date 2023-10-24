@@ -122,11 +122,13 @@ public:
     uint64_t createTime = 0;
     uint64_t publishTime = 0;
 
-    // The type of the table is determined by these flags.
+    // The type of the table is determined by these attributes.
 
     bool isPartitioned = false;
-    bool isDirector = false;
-    bool isRefMatch = false;
+    bool isDirector() const { return isPartitioned && directorTable.tableName().empty(); }
+    bool isRefMatch() const {
+        return isPartitioned && !directorTable.empty() && !directorTable2.tableName().empty();
+    }
 
     /**
      * @brief The "director" table (if any).

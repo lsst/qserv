@@ -138,10 +138,6 @@ void ConfigParserMySQL::_parseDatabases() {
         table.latitudeColName = _parseParam<string>("latitude_key");
         table.longitudeColName = _parseParam<string>("longitude_key");
         table.isPartitioned = _parseParam<int>("is_partitioned") != 0;
-        table.isDirector = table.isPartitioned && table.directorTable.tableName().empty() &&
-                           !table.directorTable.primaryKeyColumn().empty() && table.directorTable2.empty();
-        table.isRefMatch =
-                table.isPartitioned && !table.directorTable.empty() && !table.directorTable2.empty();
         tables.emplace_back(table);
     }
 
@@ -163,10 +159,10 @@ void ConfigParserMySQL::_parseDatabases() {
     // This algorithm will enforce the referential integrity between the partitioned tables.
     // Pushing partitioned tables in the wrong order will fail the registration.
     for (auto&& table : tables) {
-        if (table.isDirector) _databases[table.database].addTable(_databases, table);
+        if (table.isDirector()) _databases[table.database].addTable(_databases, table);
     }
     for (auto&& table : tables) {
-        if (!table.isDirector) _databases[table.database].addTable(_databases, table);
+        if (!table.isDirector()) _databases[table.database].addTable(_databases, table);
     }
 }
 

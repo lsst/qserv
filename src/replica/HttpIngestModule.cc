@@ -33,6 +33,7 @@
 
 // Third party headers
 #include "boost/filesystem.hpp"
+#include "boost/algorithm/string.hpp"
 
 // Qserv headers
 #include "css/CssAccess.h"
@@ -95,6 +96,23 @@ string jobCompletionErrorIfAny(SqlJob::Ptr const& job, string const& prefix) {
     }
 
     return error;
+}
+
+/**
+ * Check if the provided type is not prohibited for using in the 'director' tables.
+ * @param func A context for error reporting.
+ * @param colName The name of a column (used for error reporting).
+ * @param colType The column type definition to be evaluated.
+ * @throw lsst::qserv::replica::HttpError if the type validation failed.
+ */
+void validateColumnType(string const& func, string const& colName, string const& colType) {
+    string const colTypeUpperCase = boost::algorithm::to_upper_copy(colType);
+    for (char const* prohibitedType : {"BLOB", "TEXT"}) {
+        if (colTypeUpperCase.find(prohibitedType) == string::npos) continue;
+        string const msg = "the prohibited type '" + colType + "' detected in a definition of the column '" +
+                           colName + "' of the director table";
+        throw HttpError(func, msg);
+    }
 }
 
 }  // namespace
@@ -565,7 +583,13 @@ json HttpIngestModule::_addTable() {
             throw HttpError(__func__, msg);
         }
         string colType = column["type"];
-
+        if (table.isDirector()) {
+            // Schemas of the director tables require reinforced screening of the column
+            // types to prevent large variable size types from being used in column
+            // definitions. Such types will prevent Qserv from materialzing sub-chunks
+            // as the MEMORY tables.
+            ::validateColumnType(__func__, colName, colType);
+        }
         if (_partitionByColumn == colName) {
             string const msg = "reserved column '" + _partitionByColumn + "' is not allowed";
             throw HttpError(__func__, msg);
@@ -621,7 +645,7 @@ json HttpIngestModule::_addTable() {
     // This operation can be vetoed by a catalog ingest workflow at the database
     // registration time.
     if (autoBuildDirectorIndex(database.name)) {
-        if (table.isDirector) {
+        if (table.isDirector()) {
             _createDirectorIndex(config->databaseInfo(database.name), table.name);
         }
     }
@@ -678,7 +702,7 @@ json HttpIngestModule::_deleteTable() {
         bool const ifExists = true;
         conn->execute(g.dropTable(g.id(database.name, table.name), ifExists));
         // Remove the director index (if any)
-        if (table.isDirector) {
+        if (table.isDirector()) {
             string const query = g.dropTable(
                     g.id("qservMeta", directorIndexTableName(database.name, table.name)), ifExists);
             conn->execute(query);
@@ -1180,7 +1204,7 @@ void HttpIngestModule::_publishDatabaseInMaster(DatabaseInfo const& database) co
         // Skip tables that have been published.
         if (table.isPublished) continue;
         if (!cssAccess->containsTable(database.name, table.name)) {
-            if (table.isRefMatch) {
+            if (table.isRefMatch()) {
                 css::MatchTableParams const matchParams(
                         table.directorTable.databaseTableName(), table.directorTable.primaryKeyColumn(),
                         table.directorTable2.databaseTableName(), table.directorTable2.primaryKeyColumn(),
@@ -1190,9 +1214,9 @@ void HttpIngestModule::_publishDatabaseInMaster(DatabaseInfo const& database) co
                 // These parameters need to be set correctly for the 'director' and dependent
                 // tables to avoid confusing Qserv query analyzer. Also note, that the 'overlap'
                 // is set to be the same for all 'director' tables of the database family.
-                double const overlap = table.isDirector ? databaseFamilyInfo.overlap : 0;
+                double const overlap = table.isDirector() ? databaseFamilyInfo.overlap : 0;
                 bool const isPartitioned = true;
-                bool const hasSubChunks = table.isDirector;
+                bool const hasSubChunks = table.isDirector();
                 css::PartTableParams const partParams(database.name, table.directorTable.tableName(),
                                                       table.directorTable.primaryKeyColumn(),
                                                       table.latitudeColName, table.longitudeColName, overlap,
@@ -1297,7 +1321,7 @@ json HttpIngestModule::_buildEmptyChunksListImpl(string const& databaseName, boo
 void HttpIngestModule::_createDirectorIndex(DatabaseInfo const& database,
                                             string const& directorTableName) const {
     auto const& table = database.findTable(directorTableName);
-    if (!table.isDirector) {
+    if (!table.isDirector()) {
         throw logic_error("table '" + table.name + "' is not configured in database '" + database.name +
                           "' as the director table");
     }
@@ -1355,7 +1379,7 @@ void HttpIngestModule::_createDirectorIndex(DatabaseInfo const& database,
 void HttpIngestModule::_consolidateDirectorIndex(DatabaseInfo const& database,
                                                  string const& directorTableName) const {
     auto const table = database.findTable(directorTableName);
-    if (!table.isDirector) {
+    if (!table.isDirector()) {
         throw logic_error("table '" + table.name + "' is not configured in database '" + database.name +
                           "' as the director table");
     }

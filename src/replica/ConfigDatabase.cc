@@ -92,8 +92,6 @@ DatabaseInfo DatabaseInfo::parse(json const& obj, map<string, DatabaseFamilyInfo
                     table.uniquePrimaryKey = tableJson.at("unique_primary_key").get<int>() != 0;
                     table.latitudeColName = tableJson.at("latitude_key").get<string>();
                     table.longitudeColName = tableJson.at("longitude_key").get<string>();
-                    table.isDirector = table.isPartitioned && table.directorTable.tableName().empty();
-                    table.isRefMatch = table.isPartitioned && !table.directorTable2.tableName().empty();
                 }
                 if (tableJson.count("columns") != 0) {
                     json const& columns = tableJson.at("columns");
@@ -156,16 +154,16 @@ vector<string> DatabaseInfo::partitionedTables() const {
 
 vector<string> DatabaseInfo::directorTables() const {
     vector<string> result;
-    for (auto&& itr : _tables) {
-        if (itr.second.isDirector) result.push_back(itr.first);
+    for (auto&& [name, table] : _tables) {
+        if (table.isDirector()) result.push_back(name);
     }
     return result;
 }
 
 vector<string> DatabaseInfo::refMatchTables() const {
     vector<string> result;
-    for (auto&& itr : _tables) {
-        if (itr.second.isRefMatch) result.push_back(itr.first);
+    for (auto&& [name, table] : _tables) {
+        if (table.isRefMatch()) result.push_back(name);
     }
     return result;
 }
@@ -210,8 +208,8 @@ TableInfo DatabaseInfo::validate(map<std::string, DatabaseInfo> const& databases
     throwIf(!table.isPublished && (table.publishTime != 0),
             "the publish timestamp of the non-published table is not 0");
 
-    bool const isRegularType = !table.isPartitioned && !(table.isDirector || table.isRefMatch);
-    bool const isPartitionedType = table.isPartitioned && !(table.isDirector && table.isRefMatch);
+    bool const isRegularType = !table.isPartitioned && !(table.isDirector() || table.isRefMatch());
+    bool const isPartitionedType = table.isPartitioned && !(table.isDirector() && table.isRefMatch());
     throwIfNot(isRegularType || isPartitionedType, "ambiguous table type definition");
 
     if (table.isPartitioned) {
@@ -219,7 +217,7 @@ TableInfo DatabaseInfo::validate(map<std::string, DatabaseInfo> const& databases
         // the table, depending on its declared type.
         map<string, string> colDefs;
 
-        if (table.isDirector) {
+        if (table.isDirector()) {
             throwIfNot(table.directorTable.tableName().empty() && table.directorTable2.empty(),
                        "the director table can't be the dependant of other director(s)");
 
@@ -241,7 +239,7 @@ TableInfo DatabaseInfo::validate(map<std::string, DatabaseInfo> const& databases
             // This column is required for the director tables to allow Qserv materialize
             // sub-chunks in the near-neighbour queries.
             colDefs.insert({"subChunkIdColName", lsst::qserv::SUB_CHUNK_COLUMN});
-        } else if (table.isRefMatch) {
+        } else if (table.isRefMatch()) {
             throwIf(table.directorTable.empty() || table.directorTable2.empty(),
                     "incomplete definition of the directors for the RefMatch table");
             throwIf(table.directorTable == table.directorTable2,
@@ -262,7 +260,7 @@ TableInfo DatabaseInfo::validate(map<std::string, DatabaseInfo> const& databases
                 throwIfNot(database->tableExists(tableRef.tableName()),
                            "non-existing director '" + tableRef.tableName() +
                                    "' referenced in the RefMatch definition");
-                throwIfNot(database->findTable(tableRef.tableName()).isDirector,
+                throwIfNot(database->findTable(tableRef.tableName()).isDirector(),
                            "table '" + tableRef.tableName() +
                                    "' referenced in the RefMatch definition isn't the director");
             }
@@ -294,7 +292,7 @@ TableInfo DatabaseInfo::validate(map<std::string, DatabaseInfo> const& databases
                        " table spec of the dependent tables");
             throwIfNot(tableExists(table.directorTable.tableName()),
                        "non-existing director table referenced in the dependent table definition");
-            throwIfNot(findTable(table.directorTable.tableName()).isDirector,
+            throwIfNot(findTable(table.directorTable.tableName()).isDirector(),
                        "a table referenced in the dependent table definition isn't the director table");
             throwIfNot(table.directorTable2.empty(), "the dependent table can't have the second director");
 
@@ -350,11 +348,11 @@ TableInfo DatabaseInfo::sanitize(TableInfo const& table_) const {
         table.publishTime = 0;
     }
     if (table.isPartitioned) {
-        if (table.isDirector != table.isRefMatch) {
+        if (table.isDirector() != table.isRefMatch()) {
             // For the known specialization of the partitioned table type sanitize
             // other attributes depending on the type. Note that such explicit
             // specialization always takes precedence.
-            if (table.isDirector) {
+            if (table.isDirector()) {
                 table.directorTable = DirectorTableRef("", table.directorTable.primaryKeyColumn());
                 table.directorTable2 = DirectorTableRef();
                 table.flagColName = string();
@@ -363,7 +361,7 @@ TableInfo DatabaseInfo::sanitize(TableInfo const& table_) const {
                 table.latitudeColName = string();
                 table.longitudeColName = string();
             }
-        } else if (table.isDirector && table.isRefMatch) {
+        } else if (table.isDirector() && table.isRefMatch()) {
             // It's impossible to do anything here due to the explicitly
             // made table type ambiguity.
             ;
@@ -371,30 +369,22 @@ TableInfo DatabaseInfo::sanitize(TableInfo const& table_) const {
             // If neither type flags were set then try deducing the table type based
             // on the presence of the director table columns.
             if (table.directorTable.tableName().empty()) {
-                table.isDirector = true;
-                table.isRefMatch = false;
                 table.directorTable = DirectorTableRef("", table.directorTable.primaryKeyColumn());
                 table.directorTable2 = DirectorTableRef();
                 table.flagColName = string();
                 table.angSep = 0;
             } else {
                 if (table.directorTable2.tableName().empty()) {
-                    table.isDirector = false;
-                    table.isRefMatch = false;
                     table.directorTable2 = DirectorTableRef();
                     table.flagColName = string();
                     table.angSep = 0;
                 } else {
-                    table.isDirector = false;
-                    table.isRefMatch = true;
                     table.latitudeColName = string();
                     table.longitudeColName = string();
                 }
             }
         }
     } else {
-        table.isDirector = false;
-        table.isRefMatch = false;
         table.directorTable = DirectorTableRef();
         table.directorTable2 = DirectorTableRef();
         table.latitudeColName = string();
@@ -414,7 +404,7 @@ void DatabaseInfo::removeTable(string const& tableName) {
                                "'.");
     }
     TableInfo& thisTableInfo = thisTableItr->second;
-    if (thisTableInfo.isDirector) {
+    if (thisTableInfo.isDirector()) {
         // Make sure no dependent tables exists for this director
         // among other partitioned tables.
         for (auto&& itr : _tables) {

@@ -111,8 +111,8 @@ json TableInfo::toJson() const {
     result["create_time"] = createTime;
     result["publish_time"] = publishTime;
     result["is_partitioned"] = isPartitioned ? 1 : 0;
-    result["is_director"] = isDirector ? 1 : 0;
-    result["is_ref_match"] = isRefMatch ? 1 : 0;
+    result["is_director"] = isDirector() ? 1 : 0;
+    result["is_ref_match"] = isRefMatch() ? 1 : 0;
     result["director_table"] = directorTable.databaseTableName();
     result["director_database_name"] = directorTable.databaseName();
     result["director_table_name"] = directorTable.tableName();

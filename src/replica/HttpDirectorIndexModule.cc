@@ -80,7 +80,7 @@ json HttpDirectorIndexModule::_buildDirectorIndex() {
 
     auto const database = config->databaseInfo(databaseName);
     auto const table = database.findTable(directorTableName);
-    if (!table.isDirector) {
+    if (!table.isDirector()) {
         string const msg = "table '" + table.name + "' is not configured as a director table in database '" +
                            database.name + "'";
         throw HttpError(__func__, msg);

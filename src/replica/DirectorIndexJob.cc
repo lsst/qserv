@@ -94,7 +94,7 @@ DirectorIndexJob::DirectorIndexJob(string const& databaseName, string const& dir
           _onFinish(onFinish) {
     try {
         _database = controller->serviceProvider()->config()->databaseInfo(databaseName);
-        if (!_database.findTable(directorTableName).isDirector) {
+        if (!_database.findTable(directorTableName).isDirector()) {
             throw runtime_error(context() + "::" + string(__func__) + " no such director table '" +
                                 directorTableName + "' in the database: '" + _database.name + "'.");
         }
