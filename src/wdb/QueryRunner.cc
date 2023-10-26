@@ -65,6 +65,7 @@
 #include "util/threadSafe.h"
 #include "wbase/Base.h"
 #include "wbase/ChannelShared.h"
+#include "wconfig/WorkerConfig.h"
 #include "wcontrol/SqlConnMgr.h"
 #include "wdb/ChunkResource.h"
 #include "wpublish/QueriesAndChunks.h"
@@ -299,7 +300,9 @@ bool QueryRunner::_dispatchChannel() {
 
             // This thread may have already been removed from the pool for
             // other reasons, such as taking too long.
-            if (not _removedFromThreadPool) {
+            bool const streamingProtocol = wconfig::WorkerConfig::instance()->resultDeliveryProtocol() ==
+                                           wconfig::WorkerConfig::ResultDeliveryProtocol::SSI;
+            if (streamingProtocol && !_removedFromThreadPool) {
                 // This query has been answered by the database and the
                 // scheduler for this worker should stop waiting for it.
                 // leavePool() will tell the scheduler this task is finished
