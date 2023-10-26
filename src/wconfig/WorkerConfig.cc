@@ -132,7 +132,15 @@ WorkerConfig::WorkerConfig()
           _resultsXrootdPort(1094),
           _resultsNumHttpThreads(1),
           _resultDeliveryProtocol(ResultDeliveryProtocol::SSI),
-          _resultsCleanUpOnStart(true) {
+          _resultsCleanUpOnStart(true),
+          _replicationInstanceId(""),
+          _replicationAuthKey(""),
+          _replicationAdminAuthKey(""),
+          _replicationRegistryHost("localhost"),
+          _replicationRegistryPort(8080),
+          _replicationRegistryHearbeatIvalSec(1),
+          _replicationHttpPort(0),
+          _replicationNumHttpThreads(2) {
     // Both collections are the same since we don't have any external configuration
     // source passed into this c-tor.
     _populateJsonConfig("input");
@@ -177,7 +185,16 @@ WorkerConfig::WorkerConfig(const util::ConfigStore& configStore)
           _resultsXrootdPort(configStore.getInt("results.xrootd_port", 1094)),
           _resultsNumHttpThreads(configStore.getInt("results.num_http_threads", 1)),
           _resultDeliveryProtocol(::parseResultDeliveryProtocol(configStore.get("results.protocol", "SSI"))),
-          _resultsCleanUpOnStart(configStore.getInt("results.clean_up_on_start", 1) != 0) {
+          _resultsCleanUpOnStart(configStore.getInt("results.clean_up_on_start", 1) != 0),
+          _replicationInstanceId(configStore.get("replication.instance_id", "")),
+          _replicationAuthKey(configStore.get("replication.auth_key", "")),
+          _replicationAdminAuthKey(configStore.get("replication.admin_auth_key", "")),
+          _replicationRegistryHost(configStore.get("replication.registry_host", "")),
+          _replicationRegistryPort(configStore.getInt("replication.registry_port", 0)),
+          _replicationRegistryHearbeatIvalSec(
+                  configStore.getInt("replication.registry_heartbeat_ival_sec", 1)),
+          _replicationHttpPort(configStore.getInt("replication.http_port", 0)),
+          _replicationNumHttpThreads(configStore.getInt("replication.num_http_threads", 2)) {
     int mysqlPort = configStore.getInt("mysql.port");
     std::string mysqlSocket = configStore.get("mysql.socket");
     if (mysqlPort == 0 && mysqlSocket.empty()) {
@@ -189,9 +206,35 @@ WorkerConfig::WorkerConfig(const util::ConfigStore& configStore)
                                configStore.getRequired("mysql.hostname"), mysqlPort, mysqlSocket,
                                "");  // dbname
 
+    if (_replicationRegistryHost.empty()) {
+        throw std::invalid_argument("WorkerConfig::" + std::string(__func__) +
+                                    ": 'replication.registry_host' is not set.");
+    }
+    if (_replicationRegistryPort == 0) {
+        throw std::invalid_argument("WorkerConfig::" + std::string(__func__) +
+                                    ": 'replication.registry_port' number can't be 0.");
+    }
+    if (_replicationRegistryHearbeatIvalSec == 0) {
+        throw std::invalid_argument("WorkerConfig::" + std::string(__func__) +
+                                    ": 'replication.registry_heartbeat_ival_sec' can't be 0.");
+    }
+    if (_replicationNumHttpThreads == 0) {
+        throw std::invalid_argument("WorkerConfig::" + std::string(__func__) +
+                                    ": 'replication.num_http_threads' can't be 0.");
+    }
+
     // Note that actual collection may contain parameters not mentioned in
     // the input configuration.
     _populateJsonConfig("actual");
+}
+
+void WorkerConfig::setReplicationHttpPort(uint16_t port) {
+    if (port == 0) {
+        throw std::invalid_argument("WorkerConfig::" + std::string(__func__) + ": port number can't be 0.");
+    }
+    _replicationHttpPort = port;
+    // Update the relevant section of the JSON-ified configuration.
+    _jsonConfig["actual"]["replication"]["http_port"] = std::to_string(_replicationHttpPort);
 }
 
 void WorkerConfig::_populateJsonConfig(std::string const& coll) {
@@ -240,6 +283,15 @@ void WorkerConfig::_populateJsonConfig(std::string const& coll) {
                                                             {"port", std::to_string(_mySqlConfig.port)},
                                                             {"socket", _mySqlConfig.socket},
                                                             {"db", _mySqlConfig.dbName}});
+    jsonConfigCollection["replication"] = nlohmann::json::object(
+            {{"instance_id", _replicationInstanceId},
+             {"auth_key", "xxxxx"},
+             {"admin_auth_key", "xxxxx"},
+             {"registry_host", _replicationRegistryHost},
+             {"registry_port", std::to_string(_replicationRegistryPort)},
+             {"registry_heartbeat_ival_sec", std::to_string(_replicationRegistryHearbeatIvalSec)},
+             {"http_port", std::to_string(_replicationHttpPort)},
+             {"num_http_threads", std::to_string(_replicationNumHttpThreads)}});
 }
 
 std::ostream& operator<<(std::ostream& out, WorkerConfig const& workerConfig) {

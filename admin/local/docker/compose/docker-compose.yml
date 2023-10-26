@@ -95,6 +95,11 @@ services:
           --db-uri mysql://qsmaster@127.0.0.1:3306
           --db-admin-uri mysql://root:CHANGEME@127.0.0.1:3306
           --vnid-config "@/usr/local/lib64/libreplica.so {{db_uri}}/qservw_worker 0 0"
+          --repl-instance-id qserv_proj
+          --repl-auth-key replauthkey
+          --repl-admin-auth-key=repladminauthkey
+          --repl-registry-host repl-mgr-registry
+          --repl-registry-port 25082
           --results-dirname /qserv/data/results
           --cmsd-manager-name manager-xrootd
           --cmsd-manager-count 1
@@ -123,6 +128,11 @@ services:
           --db-uri mysql://qsmaster@worker-db-0:3306
           --vnid-config "@/usr/local/lib64/libreplica.so mysql://qsmaster@127.0.0.1:3306/qservw_worker 0 0"
           --results-dirname /qserv/data/results
+          --repl-instance-id qserv_proj
+          --repl-auth-key replauthkey
+          --repl-admin-auth-key=repladminauthkey
+          --repl-registry-host repl-mgr-registry
+          --repl-registry-port 25082
           --cmsd-manager-name manager-xrootd
           --cmsd-manager-count 1
         network_mode: "service:worker-xrootd-0"
@@ -186,6 +196,11 @@ services:
           --db-uri mysql://qsmaster@127.0.0.1:3306?socket={{db_socket}}
           --db-admin-uri mysql://root:CHANGEME@127.0.0.1:3306?socket={{db_socket}}
           --vnid-config "@/usr/local/lib64/libreplica.so mysql://qsmaster@127.0.0.1:3306/qservw_worker 0 0"
+          --repl-instance-id qserv_proj
+          --repl-auth-key replauthkey
+          --repl-admin-auth-key=repladminauthkey
+          --repl-registry-host repl-mgr-registry
+          --repl-registry-port 25082
           --results-dirname /qserv/data/results
           --cmsd-manager-name manager-xrootd
           --cmsd-manager-count 1
@@ -218,6 +233,12 @@ services:
           --db-uri mysql://qsmaster@worker-db-1:3306?socket=/qserv/mariadb/run/mysqld.sock
           --vnid-config "@/usr/local/lib64/libreplica.so mysql://qsmaster@127.0.0.1:3306/qservw_worker 0 0"
           --results-dirname /qserv/data/results
+          --repl-instance-id qserv_proj
+          --repl-auth-key replauthkey
+          --repl-admin-auth-key=repladminauthkey
+          --repl-registry-host repl-mgr-registry
+          --repl-registry-port 25082
+
           --cmsd-manager-name manager-xrootd
           --cmsd-manager-count 1
         network_mode: "service:worker-xrootd-1"

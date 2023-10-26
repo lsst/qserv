@@ -25,6 +25,7 @@
 #define LSST_QSERV_WCONFIG_WORKERCONFIG_H
 
 // System headers
+#include <chrono>
 #include <cstdint>
 #include <memory>
 #include <mutex>
@@ -196,6 +197,23 @@ public:
     /// had to be deleted from the corresponding folder.
     bool resultsCleanUpOnStart() const { return _resultsCleanUpOnStart; }
 
+    // Parameters of the worker management service
+
+    std::string const& replicationInstanceId() const { return _replicationInstanceId; }
+    std::string const& replicationAuthKey() const { return _replicationAuthKey; }
+    std::string const& replicationAdminAuthKey() const { return _replicationAdminAuthKey; }
+    std::string const& replicationRegistryHost() const { return _replicationRegistryHost; }
+    uint16_t replicationRegistryPort() const { return _replicationRegistryPort; }
+    unsigned int replicationRegistryHearbeatIvalSec() const { return _replicationRegistryHearbeatIvalSec; }
+    uint16_t replicationHttpPort() const { return _replicationHttpPort; }
+    size_t replicationNumHttpThreads() const { return _replicationNumHttpThreads; }
+
+    /// The actual port number is set at run time after starting the service on
+    /// the dynamically allocated port (in case when the port number was set
+    /// to 0 in the initial configuration).
+    /// @param port The actual port number.
+    void setReplicationHttpPort(uint16_t port);
+
     /// @return the JSON representation of the configuration parameters.
     /// @note The object has two collections of the parameters: 'input' - for
     /// parameters that were proided to the construction of the class, and
@@ -233,7 +251,7 @@ private:
     /// The configuratoon object created by the last call to the method 'test'.
     static std::shared_ptr<WorkerConfig> _instance;
 
-    nlohmann::json _jsonConfig;  ///< JSON-ified initial configuration
+    nlohmann::json _jsonConfig;  ///< JSON-ified configuration
 
     mysql::MySqlConfig _mySqlConfig;
 
@@ -277,6 +295,17 @@ private:
     size_t const _resultsNumHttpThreads;
     ResultDeliveryProtocol const _resultDeliveryProtocol;
     bool const _resultsCleanUpOnStart;
+
+    std::string const _replicationInstanceId;
+    std::string const _replicationAuthKey;
+    std::string const _replicationAdminAuthKey;
+    std::string const _replicationRegistryHost;
+    uint16_t const _replicationRegistryPort;
+    unsigned int const _replicationRegistryHearbeatIvalSec;
+    /// An actual value of the port is set by setReplicationHttpPort()
+    /// at run time later if the parameter was initialized by 0.
+    uint16_t _replicationHttpPort;
+    size_t const _replicationNumHttpThreads;
 };
 
 }  // namespace lsst::qserv::wconfig

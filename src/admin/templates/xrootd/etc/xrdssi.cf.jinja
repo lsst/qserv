@@ -105,3 +105,55 @@ protocol = {{ results_protocol }}
 # Set to any value but 0 if result files (if any) left after the previous run of
 # the worker had to be deleted from the corresponding folder.
 clean_up_on_start = 1
+
+[replication]
+
+# This section contains parameters related the worker management service
+# that is used by the Replication System to manage Qserv workers or to acquire
+# monitoring stats from the workers. Workers are required to self register
+# themselves with the Replication System's Registry that can be contacted
+# at a location specified via connection parameters 'registry_host' and
+# 'registry_port'. Configuration parameters 'instance_id', 'auth_key'
+# and 'admin_auth_key' represent the security context of the worker control
+# protocol. This context is required to be provided by workers when registering
+# themselves with the Registry. The context is also used by worker management
+# service when processing worker management requests sent to the service by
+# the Replication Controller or relevant applications.
+#
+# Workers are requited to periodically update their registration status at
+# the interval specified at 'registry_heartbeat_ival_sec'. Worker status
+# includes (at least):
+#   - the unique identifier of the worker
+#   - the FQDN of a host (or a pod) where the worker is run
+#   - the HTTP port of the worker management service (parameter 'http_port')
+
+# The unique instance of the Replication System's domain.
+instance_id = {{ repl_instance_id }}
+
+# The authorization key is required by the worker control protocol.
+auth_key = {{ repl_auth_key }}
+admin_auth_key = {{ repl_admin_auth_key }}
+
+# The FQDN of a host where the Replication System's Registry service is run. Workers
+# will self report own connection parameters to the Registry.
+registry_host = {{ repl_registry_host }}
+
+# The port number of the Replication System's Registry service.
+registry_port = {{ repl_registry_port }}
+
+# The hearbeat interval for self-registering worker management services at
+# the Replication System's Registry. Note that the value must be strictly
+# higher than 0.
+registry_heartbeat_ival_sec = 1
+
+# The port number of the worker control service used by the Replication
+# Controller and the worker monitoring apps. If 0 is set as a value of
+# the parameter then the first available port will be assumed. Note that
+# the actual (weather explicitly specified or dynamically allocated) port
+# number will be reported to the Replication Registry service.
+# Note that the value must be strictly higher than 0.
+http_port = {{ repl_http_port }}
+
+# The number of the BOOST ASIO threads for serving HTTP requests.
+# Note that the value must be strictly higher than 0.
+num_http_threads = 2
