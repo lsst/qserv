@@ -22,3 +22,6 @@ table#fwk-qserv-mysql-connections > thead > tr > th.sticky {
     top:80px;
     z-index:2;
 }
+table#fwk-qserv-mysql-connections tbody > tr.display-worker-queries:hover {
+    cursor:pointer;
+}

@@ -136,32 +136,40 @@ function(CSSLoader,
          * Display MySQL connections
          */
         _display(data) {
+            const queryInspectTitle = "Click to see MySQL queries runing on the worker's MySQL server.";
             let html = '';
             for (let worker in data) {
-                if (!data[worker].success) {
-                    html += `
-<tr>
-  <th class="table-warning">${worker}</th>
-  <td class="table-secondary">&nbsp;</td>
-  <td class="table-secondary">&nbsp;</td>
-  <td class="table-secondary">&nbsp;</td>
-  <td class="table-secondary">&nbsp;</td>
-  <td class="table-secondary">&nbsp;</td>
-</tr>`;
-                } else {
+                let totalCount = '';
+                let sqlScanConnCount = '';
+                let maxSqlScanConnections = '';
+                let sqlSharedConnCount = '';
+                let maxSqlSharedConnections = '';
+                if (data[worker].success) {
                     let sql_conn_mgr = data[worker].info.processor.sql_conn_mgr;
-                    html += `
-<tr>
-  <th>${worker}</th>
-  <td style="text-align:right;"><pre>${sql_conn_mgr.totalCount}</pre></td>
-  <td style="text-align:right;"><pre>${sql_conn_mgr.sqlScanConnCount}</pre></td>
-  <td style="text-align:right;"><pre>${sql_conn_mgr.maxSqlScanConnections}</pre></td>
-  <td style="text-align:right;"><pre>${sql_conn_mgr.sqlSharedConnCount}</pre></td>
-  <td style="text-align:right;"><pre>${sql_conn_mgr.maxSqlSharedConnections}</pre></td>
-</tr>`;
+                    totalCount = sql_conn_mgr.totalCount;
+                    sqlScanConnCount = sql_conn_mgr.sqlScanConnCount;
+                    maxSqlScanConnections = sql_conn_mgr.maxSqlScanConnections;
+                    sqlSharedConnCount = sql_conn_mgr.sqlSharedConnCount;
+                    maxSqlSharedConnections = sql_conn_mgr.maxSqlSharedConnections;
                 }
+                html += `
+<tr worker="${worker}" class="display-worker-queries" title="${queryInspectTitle}">
+  <th>${worker}</th>
+  <td style="text-align:right;"><pre>${totalCount}</pre></td>
+  <td style="text-align:right;"><pre>${sqlScanConnCount}</pre></td>
+  <td style="text-align:right;"><pre>${maxSqlScanConnections}</pre></td>
+  <td style="text-align:right;"><pre>${sqlSharedConnCount}</pre></td>
+  <td style="text-align:right;"><pre>${maxSqlSharedConnections}</pre></td>
+</tr>`;
             }
-            this._table().children('tbody').html(html);
+            let tbody = this._table().children('tbody');
+            tbody.html(html);
+            let displayWorkerQueries  = function(e) {
+                const worker = $(e.currentTarget).attr("worker");
+                Fwk.find("Workers", "MySQL Queries").set_worker(worker);
+                Fwk.show("Workers", "MySQL Queries");
+            };
+            tbody.find("tr.display-worker-queries").click(displayWorkerQueries);
         }
     }
     return QservMySQLConnections;
