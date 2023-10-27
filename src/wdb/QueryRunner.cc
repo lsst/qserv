@@ -35,6 +35,7 @@
 #include <cstddef>
 #include <iostream>
 #include <memory>
+#include <thread>
 
 // Third-party headers
 #include <google/protobuf/arena.h>
@@ -82,8 +83,10 @@ namespace lsst::qserv::wdb {
 QueryRunner::Ptr QueryRunner::newQueryRunner(wbase::Task::Ptr const& task,
                                              ChunkResourceMgr::Ptr const& chunkResourceMgr,
                                              mysql::MySqlConfig const& mySqlConfig,
-                                             shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr) {
-    Ptr qr(new QueryRunner(task, chunkResourceMgr, mySqlConfig, sqlConnMgr));  // Private constructor.
+                                             shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr,
+                                             shared_ptr<wpublish::QueriesAndChunks> const& queriesAndChunks) {
+    Ptr qr(new QueryRunner(task, chunkResourceMgr, mySqlConfig, sqlConnMgr,
+                           queriesAndChunks));  // Private constructor.
     // Let the Task know this is its QueryRunner.
     bool cancelled = qr->_task->setTaskQueryRunner(qr);
     if (cancelled) {
@@ -97,11 +100,13 @@ QueryRunner::Ptr QueryRunner::newQueryRunner(wbase::Task::Ptr const& task,
 /// and correct setup of enable_shared_from_this.
 QueryRunner::QueryRunner(wbase::Task::Ptr const& task, ChunkResourceMgr::Ptr const& chunkResourceMgr,
                          mysql::MySqlConfig const& mySqlConfig,
-                         shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr)
+                         shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr,
+                         shared_ptr<wpublish::QueriesAndChunks> const& queriesAndChunks)
         : _task(task),
           _chunkResourceMgr(chunkResourceMgr),
           _mySqlConfig(mySqlConfig),
-          _sqlConnMgr(sqlConnMgr) {
+          _sqlConnMgr(sqlConnMgr),
+          _queriesAndChunks(queriesAndChunks) {
     [[maybe_unused]] int rc = mysql_thread_init();
     assert(rc == 0);
 }
@@ -162,17 +167,26 @@ bool QueryRunner::runQuery() {
         throw util::Bug(ERR_LOC, "runQuery called twice");
     }
 
+    // Start tracking the task.
+    _queriesAndChunks->startedTask(_task);
+
     // Make certain our Task knows that this object is no longer in use when this function exits.
     class Release {
     public:
-        Release(wbase::Task::Ptr t, wbase::TaskQueryRunner* tqr) : _t{t}, _tqr{tqr} {}
-        ~Release() { _t->freeTaskQueryRunner(_tqr); }
+        Release(wbase::Task::Ptr t, wbase::TaskQueryRunner* tqr,
+                shared_ptr<wpublish::QueriesAndChunks> const& queriesAndChunks)
+                : _t{t}, _tqr{tqr}, _queriesAndChunks(queriesAndChunks) {}
+        ~Release() {
+            _queriesAndChunks->finishedTask(_t);
+            _t->freeTaskQueryRunner(_tqr);
+        }
 
     private:
         wbase::Task::Ptr _t;
         wbase::TaskQueryRunner* _tqr;
+        shared_ptr<wpublish::QueriesAndChunks> const _queriesAndChunks;
     };
-    Release release(_task, this);
+    Release release(_task, this, _queriesAndChunks);
 
     if (_task->checkCancelled()) {
         LOGS(_log, LOG_LVL_DEBUG, "runQuery, task was cancelled before it started.");
@@ -258,7 +272,7 @@ public:
     }
 
 private:
-    shared_ptr<ChunkResourceMgr> _mgr;
+    shared_ptr<ChunkResourceMgr> const _mgr;
     wbase::Task& _task;
 };
 
@@ -323,19 +337,6 @@ bool QueryRunner::_dispatchChannel() {
             // Pass all information on to the shared object to add on to
             // an existing message or build a new one as needed.
             erred = _task->getSendChannel()->buildAndTransmitResult(res, _task, _multiError, _cancelled);
-
-            // ATTENTION: This call is needed to record the _actual_ completion time of the task.
-            // It rewrites the finish timestamp within the task that was made when the task got
-            // kicked off the scheduler (see the code block above where a value of _removedFromThreadPool
-            // gets tested) which is happening shortly after MySQL query finishes and before the data
-            // transmission to Czar starts.
-            // NOTE: Tasks would stay in the task "cemetery" (class wpublish::QueriesAndChunks)
-            // for about 5 minutes after they finish transmitting data. After that no info on
-            // the task is available.
-            // TODO: Investigate an option for recording state transitions of the persistent
-            // metadata store of the worker, or keeping the state transisitons in a separate transient
-            // store that won't be affected by the task destruction.
-            _task->finished(std::chrono::system_clock::now());
         }
     } catch (sql::SqlErrorObject const& e) {
         LOGS(_log, LOG_LVL_ERROR, "dispatchChannel " << e.errMsg());

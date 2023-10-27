@@ -45,17 +45,17 @@
 #include "wbase/Task.h"
 #include "wdb/ChunkResource.h"
 
-namespace lsst::qserv {
-
-namespace xrdsvc {
+namespace lsst::qserv::xrdsvc {
 class StreamBuffer;
-}
+}  // namespace lsst::qserv::xrdsvc
 
-namespace wcontrol {
+namespace lsst::qserv::wcontrol {
 class SqlConnMgr;
-}  // namespace wcontrol
+}  // namespace lsst::qserv::wcontrol
 
-}  // namespace lsst::qserv
+namespace lsst::qserv::wpublish {
+class QueriesAndChunks;
+}  // namespace lsst::qserv::wpublish
 
 namespace lsst::qserv::wdb {
 
@@ -64,10 +64,10 @@ namespace lsst::qserv::wdb {
 class QueryRunner : public wbase::TaskQueryRunner, public std::enable_shared_from_this<QueryRunner> {
 public:
     using Ptr = std::shared_ptr<QueryRunner>;
-    static QueryRunner::Ptr newQueryRunner(wbase::Task::Ptr const& task,
-                                           ChunkResourceMgr::Ptr const& chunkResourceMgr,
-                                           mysql::MySqlConfig const& mySqlConfig,
-                                           std::shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr);
+    static QueryRunner::Ptr newQueryRunner(
+            wbase::Task::Ptr const& task, ChunkResourceMgr::Ptr const& chunkResourceMgr,
+            mysql::MySqlConfig const& mySqlConfig, std::shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr,
+            std::shared_ptr<wpublish::QueriesAndChunks> const& queriesAndChunks);
     // Having more than one copy of this would making tracking its progress difficult.
     QueryRunner(QueryRunner const&) = delete;
     QueryRunner& operator=(QueryRunner const&) = delete;
@@ -86,7 +86,8 @@ public:
 protected:
     QueryRunner(wbase::Task::Ptr const& task, ChunkResourceMgr::Ptr const& chunkResourceMgr,
                 mysql::MySqlConfig const& mySqlConfig,
-                std::shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr);
+                std::shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr,
+                std::shared_ptr<wpublish::QueriesAndChunks> const& queriesAndChunks);
 
 private:
     bool _initConnection();
@@ -115,6 +116,7 @@ private:
 
     /// Used to limit the number of open MySQL connections.
     std::shared_ptr<wcontrol::SqlConnMgr> const _sqlConnMgr;
+    std::shared_ptr<wpublish::QueriesAndChunks> const _queriesAndChunks;
     std::atomic<bool> _runQueryCalled{false};  ///< If runQuery gets called twice, the scheduler messed up.
 };
 
