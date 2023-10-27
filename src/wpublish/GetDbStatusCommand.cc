@@ -24,6 +24,7 @@
 #include "wpublish/GetDbStatusCommand.h"
 
 // System headers
+#include <set>
 #include <stdexcept>
 
 // Third party headers
@@ -34,6 +35,7 @@
 #include "proto/worker.pb.h"
 #include "wbase/SendChannel.h"
 #include "wconfig/WorkerConfig.h"
+#include "wpublish/QueriesAndChunks.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -49,8 +51,9 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.wpublish.GetDbStatusCommand");
 
 namespace lsst::qserv::wpublish {
 
-GetDbStatusCommand::GetDbStatusCommand(shared_ptr<wbase::SendChannel> const& sendChannel)
-        : wbase::WorkerCommand(sendChannel) {}
+GetDbStatusCommand::GetDbStatusCommand(shared_ptr<wbase::SendChannel> const& sendChannel,
+                                       shared_ptr<QueriesAndChunks> const& queriesAndChunks)
+        : wbase::WorkerCommand(sendChannel), _queriesAndChunks(queriesAndChunks) {}
 
 void GetDbStatusCommand::run() {
     string const context = "GetDbStatusCommand::" + string(__func__);
@@ -65,6 +68,19 @@ void GetDbStatusCommand::run() {
         reportError<proto::WorkerCommandGetDbStatusR>(ex.what());
         return;
     }
+
+    // Amend the result with a map linking MySQL thread identifiers to the corresponding
+    // tasks that are being (or have been) processed by the worker. Note that only a subset
+    // of tasks is selected for the known MySQL threads. This prevents the monitoring
+    // system from pulling old tasks that may still keep records of the closed threads.
+    set<unsigned long> activeMySqlThreadIds;
+    for (auto const& row : result["queries"]["rows"]) {
+        // The thread identifier is stored as a string at the very first element
+        // of the array. See mysql::MySqlUtils::processList for details.
+        activeMySqlThreadIds.insert(stoul(row[0].get<string>()));
+    }
+    result["mysql_thread_to_task"] = _queriesAndChunks->mySqlThread2task(activeMySqlThreadIds);
+
     proto::WorkerCommandGetDbStatusR reply;
     reply.mutable_status();
     reply.set_info(result.dump());

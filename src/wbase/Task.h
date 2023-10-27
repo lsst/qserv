@@ -285,6 +285,9 @@ public:
     /// Return a reference to the list of subchunk ids.
     const IntVector& getSubchunksVect() const { return _dbTblsAndSubchunks->subchunksVect; }
 
+    /// Return an identifier of the corresponding MySQL query (if any was set).
+    unsigned long getMySqlThreadId() const { return _mysqlThreadId.load(); }
+
     /// Set MySQL thread associated with a MySQL connection open before executing
     /// task's queries. The identifier is sampled by the worker tasks monitoring
     /// system in order to see what MySQL queries are being executed by tasks.

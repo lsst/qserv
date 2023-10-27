@@ -395,7 +395,8 @@ wbase::WorkerCommand::Ptr SsiRequest::parseWorkerCommand(
                 break;
             }
             case proto::WorkerCommandH::GET_DATABASE_STATUS: {
-                command = std::make_shared<wpublish::GetDbStatusCommand>(sendChannel);
+                command = std::make_shared<wpublish::GetDbStatusCommand>(sendChannel,
+                                                                         _foreman->queriesAndChunks());
                 break;
             }
             case proto::WorkerCommandH::GET_CONFIG: {

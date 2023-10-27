@@ -432,6 +432,29 @@ nlohmann::json QueriesAndChunks::statusToJson(wbase::TaskSelector const& taskSel
     return status;
 }
 
+nlohmann::json QueriesAndChunks::mySqlThread2task(set<unsigned long> const& activeMySqlThreadIds) const {
+    nlohmann::json result = nlohmann::json::object();
+    lock_guard<mutex> g(_queryStatsMtx);
+    for (auto&& itr : _queryStats) {
+        QueryStatistics::Ptr const& qStats = itr.second;
+        for (auto&& task : qStats->_tasks) {
+            auto const threadId = task->getMySqlThreadId();
+            if ((threadId != 0) && activeMySqlThreadIds.contains(threadId)) {
+                // Force the identifier to be converted into a string because the JSON library
+                // doesn't support numeric keys in its dictionary class.
+                result[to_string(threadId)] =
+                        nlohmann::json::object({{"query_id", task->getQueryId()},
+                                                {"job_id", task->getJobId()},
+                                                {"chunk_id", task->getChunkId()},
+                                                {"subchunk_id", task->getSubchunkId()},
+                                                {"template_id", task->getTemplateId()},
+                                                {"state", wbase::taskState2str(task->state())}});
+            }
+        }
+    }
+    return result;
+}
+
 /// @return a map that contains time totals for all chunks for tasks running on specific
 /// tables. The map is sorted by table name and contains sub-maps ordered by chunk id.
 /// The sub-maps contain information about how long tasks take to complete on that table
