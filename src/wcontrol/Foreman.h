@@ -119,6 +119,7 @@ public:
 
     std::shared_ptr<wdb::ChunkResourceMgr> const& chunkResourceMgr() const { return _chunkResourceMgr; }
     mysql::MySqlConfig const& mySqlConfig() const { return _mySqlConfig; }
+    std::shared_ptr<wpublish::QueriesAndChunks> const& queriesAndChunks() const { return _queries; }
     std::shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr() const { return _sqlConnMgr; }
     std::shared_ptr<wcontrol::TransmitMgr> const& transmitMgr() const { return _transmitMgr; }
     uint16_t httpPort() const;

@@ -31,6 +31,7 @@
 #include <memory>
 #include <mutex>
 #include <ostream>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -235,11 +236,18 @@ public:
     void examineAll();
 
     /**
-     * Retreive monitoring data for teh worker.
+     * Retreive monitoring data for the worker.
      * @param taskSelector Task selection criterias.
      * @return a JSON representation of the object's status for the monitoring
      */
     nlohmann::json statusToJson(wbase::TaskSelector const& taskSelector) const;
+
+    /**
+     * Retrieve info on tasks that are associated with the specified MySQL threads.
+     * @param activeMySqlThreadIds A collection of the MySQL threads.
+     * @return a JSON object linking the threads to the corresponding tasks.
+     */
+    nlohmann::json mySqlThread2task(std::set<unsigned long> const& activeMySqlThreadIds) const;
 
     // Figure out each chunkTable's percentage of time.
     // Store average time for a task to run on this table for this chunk.

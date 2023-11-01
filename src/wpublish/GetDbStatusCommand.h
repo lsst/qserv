@@ -33,6 +33,11 @@ namespace lsst::qserv::wbase {
 class SendChannel;
 }  // namespace lsst::qserv::wbase
 
+// Forward declarations
+namespace lsst::qserv::wpublish {
+class QueriesAndChunks;
+}  // namespace lsst::qserv::wpublish
+
 // This header declarations
 namespace lsst::qserv::wpublish {
 
@@ -45,7 +50,8 @@ public:
     /**
      * @param sendChannel The communication channel for reporting results.
      */
-    GetDbStatusCommand(std::shared_ptr<wbase::SendChannel> const& sendChannel);
+    GetDbStatusCommand(std::shared_ptr<wbase::SendChannel> const& sendChannel,
+                       std::shared_ptr<QueriesAndChunks> const& queriesAndChunks);
 
     GetDbStatusCommand() = delete;
     GetDbStatusCommand& operator=(GetDbStatusCommand const&) = delete;
@@ -55,6 +61,9 @@ public:
 
 protected:
     virtual void run() override;
+
+private:
+    std::shared_ptr<QueriesAndChunks> const _queriesAndChunks;
 };
 
 }  // namespace lsst::qserv::wpublish
