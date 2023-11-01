@@ -233,6 +233,7 @@ std::vector<Task::Ptr> Task::createTasks(std::shared_ptr<proto::TaskMsg> const& 
                                          std::shared_ptr<wdb::ChunkResourceMgr> const& chunkResourceMgr,
                                          mysql::MySqlConfig const& mySqlConfig,
                                          std::shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr,
+                                         std::shared_ptr<wpublish::QueriesAndChunks> const& queriesAndChunks,
                                          uint16_t resultsHttpPort) {
     QueryId qId = taskMsg->queryid();
     QSERV_LOGCONTEXT_QUERY_JOB(qId, taskMsg->jobid());
@@ -267,8 +268,9 @@ std::vector<Task::Ptr> Task::createTasks(std::shared_ptr<proto::TaskMsg> const& 
     }
     for (auto task : vect) {
         /// Set the function called when it is time to process the task.
-        auto func = [task, chunkResourceMgr, mySqlConfig, sqlConnMgr](util::CmdData*) {
-            auto qr = wdb::QueryRunner::newQueryRunner(task, chunkResourceMgr, mySqlConfig, sqlConnMgr);
+        auto func = [task, chunkResourceMgr, mySqlConfig, sqlConnMgr, queriesAndChunks](util::CmdData*) {
+            auto qr = wdb::QueryRunner::newQueryRunner(task, chunkResourceMgr, mySqlConfig, sqlConnMgr,
+                                                       queriesAndChunks);
             bool success = false;
             try {
                 success = qr->runQuery();

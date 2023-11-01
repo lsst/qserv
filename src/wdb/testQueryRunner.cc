@@ -39,6 +39,7 @@
 #include "wcontrol/TransmitMgr.h"
 #include "wdb/ChunkResource.h"
 #include "wdb/QueryRunner.h"
+#include "wpublish/QueriesAndChunks.h"
 
 // Boost unit test header
 #define BOOST_TEST_MODULE QueryRunner
@@ -70,6 +71,7 @@ using lsst::qserv::wdb::ChunkResource;
 using lsst::qserv::wdb::ChunkResourceMgr;
 using lsst::qserv::wdb::FakeBackend;
 using lsst::qserv::wdb::QueryRunner;
+using lsst::qserv::wpublish::QueriesAndChunks;
 
 TransmitMgr::Ptr locTransmitMgr = make_shared<TransmitMgr>(50, 4);
 
@@ -100,6 +102,10 @@ struct Fixture {
         }
         return mySqlConfig;
     }
+    shared_ptr<QueriesAndChunks> queriesAndChunks() {
+        bool resetForTesting = true;
+        return QueriesAndChunks::setupGlobal(chrono::seconds(1), chrono::seconds(300), 5, resetForTesting);
+    }
 };
 
 BOOST_FIXTURE_TEST_SUITE(Basic, Fixture)
@@ -112,9 +118,10 @@ BOOST_AUTO_TEST_CASE(Simple) {
     FakeBackend::Ptr backend = make_shared<FakeBackend>();
     shared_ptr<ChunkResourceMgr> crm = ChunkResourceMgr::newMgr(backend);
     SqlConnMgr::Ptr sqlConnMgr = make_shared<SqlConnMgr>(20, 15);
-    auto taskVect = Task::createTasks(msg, sc, crm, newMySqlConfig(), sqlConnMgr);
+    auto const queries = queriesAndChunks();
+    auto taskVect = Task::createTasks(msg, sc, crm, newMySqlConfig(), sqlConnMgr, queries);
     Task::Ptr task = taskVect[0];
-    QueryRunner::Ptr a(QueryRunner::newQueryRunner(task, crm, newMySqlConfig(), sqlConnMgr));
+    QueryRunner::Ptr a(QueryRunner::newQueryRunner(task, crm, newMySqlConfig(), sqlConnMgr, queries));
     BOOST_CHECK(a->runQuery());
 }
 
@@ -127,9 +134,10 @@ BOOST_AUTO_TEST_CASE(Output) {
     FakeBackend::Ptr backend = make_shared<FakeBackend>();
     shared_ptr<ChunkResourceMgr> crm = ChunkResourceMgr::newMgr(backend);
     SqlConnMgr::Ptr sqlConnMgr = make_shared<SqlConnMgr>(20, 15);
-    auto taskVect = Task::createTasks(msg, sc, crm, newMySqlConfig(), sqlConnMgr);
+    auto const queries = queriesAndChunks();
+    auto taskVect = Task::createTasks(msg, sc, crm, newMySqlConfig(), sqlConnMgr, queries);
     Task::Ptr task = taskVect[0];
-    QueryRunner::Ptr a(QueryRunner::newQueryRunner(task, crm, newMySqlConfig(), sqlConnMgr));
+    QueryRunner::Ptr a(QueryRunner::newQueryRunner(task, crm, newMySqlConfig(), sqlConnMgr, queries));
     BOOST_CHECK(a->runQuery());
 
     unsigned char phSize = *reinterpret_cast<unsigned char const*>(out.data());

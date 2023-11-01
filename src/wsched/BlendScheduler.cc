@@ -254,8 +254,6 @@ void BlendScheduler::commandStart(util::Command::Ptr const& cmd) {
     } else {
         LOGS(_log, LOG_LVL_ERROR, "BlendScheduler::commandStart scheduler not found");
     }
-
-    _queries->startedTask(t);
     _infoChanged = true;
 }
 
@@ -277,7 +275,6 @@ void BlendScheduler::commandFinish(util::Command::Ptr const& cmd) {
     }
     _infoChanged = true;
     _logChunkStatus();
-    _queries->finishedTask(t);
     notify(true);  // notify all=true
 }
 

@@ -205,7 +205,7 @@ void SsiRequest::execute(XrdSsiRequest& req) {
             }
             auto const tasks = wbase::Task::createTasks(taskMsg, channelShared, _foreman->chunkResourceMgr(),
                                                         _foreman->mySqlConfig(), _foreman->sqlConnMgr(),
-                                                        _foreman->httpPort());
+                                                        _foreman->queriesAndChunks(), _foreman->httpPort());
             for (auto const& task : tasks) {
                 _tasks.push_back(task);
             }

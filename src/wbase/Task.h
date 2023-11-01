@@ -65,8 +65,9 @@ namespace lsst::qserv::wdb {
 class ChunkResourceMgr;
 }
 namespace lsst::qserv::wpublish {
+class QueriesAndChunks;
 class QueryStatistics;
-}
+}  // namespace lsst::qserv::wpublish
 
 namespace lsst::qserv::wbase {
 
@@ -167,6 +168,7 @@ public:
                                         std::shared_ptr<wdb::ChunkResourceMgr> const& chunkResourceMgr,
                                         mysql::MySqlConfig const& mySqlConfig,
                                         std::shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr,
+                                        std::shared_ptr<wpublish::QueriesAndChunks> const& queriesAndChunks,
                                         uint16_t resultsHttpPort = 8080);
 
     void setQueryStatistics(std::shared_ptr<wpublish::QueryStatistics> const& qC);
