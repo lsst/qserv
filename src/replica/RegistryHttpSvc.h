@@ -76,7 +76,7 @@ private:
     /// @see RegistryHttpSvc::create()
     RegistryHttpSvc(ServiceProvider::Ptr const& serviceProvider);
 
-    /// Synchronized collection of workers
+    /// Synchronized collection of the Replication System's workers
     std::unique_ptr<RegistryWorkers> _workers;
 };
 

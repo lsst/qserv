@@ -30,27 +30,23 @@ using json = nlohmann::json;
 
 namespace lsst::qserv::replica {
 
-void RegistryWorkers::insert(json const& worker) {
+void RegistryWorkers::update(string const& name, json const& workerInfo) {
     string const context = "RegistryWorkers::" + string(__func__) + " ";
-    if (!worker.is_object()) {
-        throw invalid_argument(context + "worker definition is not a valid JSON object.");
-    }
-    auto const itr = worker.find("name");
-    if (itr == worker.end()) {
-        throw invalid_argument(context + "attribute 'name' is missing in the worker definition JSON object.");
-    }
-    string const& id = *itr;
+    if (name.empty()) throw invalid_argument(context + "worker name is empty.");
+    if (!workerInfo.is_object()) throw invalid_argument(context + "not a valid JSON object.");
     replica::Lock const lock(_mtx, context);
-    _workers[id] = worker;
+    if (!_workers.contains(name)) _workers[name] = json::object();
+    json& worker = _workers[name];
+    for (auto&& [key, val] : workerInfo.items()) {
+        worker[key] = val;
+    }
 }
 
-void RegistryWorkers::remove(std::string const& id) {
+void RegistryWorkers::remove(std::string const& name) {
     string const context = "RegistryWorkers::" + string(__func__) + " ";
-    if (id.empty()) {
-        throw invalid_argument(context + "worker identifier is empty.");
-    }
+    if (name.empty()) throw invalid_argument(context + "worker name is empty.");
     replica::Lock const lock(_mtx, context);
-    _workers.erase(id);
+    _workers.erase(name);
 }
 
 json RegistryWorkers::workers() const {

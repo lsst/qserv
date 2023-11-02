@@ -67,6 +67,11 @@ void RegistryHttpSvc::registerServices() {
                                     RegistryHttpSvcMod::process(self->serviceProvider(), *(self->_workers),
                                                                 req, resp, "ADD-WORKER");
                                 }},
+                               {"POST", "/qserv-worker",
+                                [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
+                                    RegistryHttpSvcMod::process(self->serviceProvider(), *(self->_workers),
+                                                                req, resp, "ADD-QSERV-WORKER");
+                                }},
                                {"DELETE", "/worker/:name",
                                 [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
                                     RegistryHttpSvcMod::process(self->serviceProvider(), *(self->_workers),

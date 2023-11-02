@@ -39,22 +39,22 @@ namespace lsst::qserv::replica {
 class RegistryWorkers {
 public:
     /**
-     * @brief Insert (or replace if exists) worker entry
-     * @param worker A definition of the worker
-     * @throws std::invalid_argument If the worker definition is not correct.
+     * Merge (complete or partial) worker definition into the worker entry.
+     * @param name A unique identifier of the worker.
+     * @param workerInfo A payload to be merged.
+     * @throws std::invalid_argument If the worker name is empty or if the worker
+     *   definition is not a valid JSON object.
      */
-    void insert(nlohmann::json const& worker);
+    void update(std::string const& name, nlohmann::json const& workerInfo);
 
     /**
-     * @brief Remove (if exists) a worker entry
-     * @param id A unique identifier of the worker
-     * @throws std::invalid_argument If the identifier is empty.
+     * Remove (if exists) a worker entry.
+     * @param name A unique identifier of the worker.
+     * @throws std::invalid_argument If the worker name is empty.
      */
-    void remove(std::string const& id);
+    void remove(std::string const& name);
 
-    /**
-     * @return nlohmann::json All workers
-     */
+    /// @return nlohmann::json The whole collection of workers.
     nlohmann::json workers() const;
 
 private:
@@ -63,7 +63,7 @@ private:
     mutable replica::Mutex _mtx;
 
     /// The collection of workers, where the key is the unique identifier
-    // of a worker.
+    /// of a worker.
     nlohmann::json _workers = nlohmann::json::object();
 };
 

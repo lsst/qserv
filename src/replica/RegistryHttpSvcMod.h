@@ -44,6 +44,8 @@ namespace lsst::qserv::replica {
 /**
  * Class RegistryHttpSvcMod processes worker registration requests made
  * over HTTP. The class is used by the HTTP server build into the Registry service.
+ * @note Each worker entry represents a collection of attributes merged from
+ * from two sources - Replication System's worker and Qserv worker.
  */
 class RegistryHttpSvcMod : public HttpModuleBase {
 public:
@@ -58,9 +60,10 @@ public:
      *
      * Supported values for parameter 'subModuleName':
      *
-     *   WORKERS        return a collection of known workers
-     *   ADD-WORKER     worker registration request
-     *   DELETE-WORKER  remove a worker from the collection
+     *   WORKERS           return a collection of known workers
+     *   ADD-WORKER        worker registration request (Replicaton System)
+     *   ADD-QSERV-WORKER  worker registration request (Qserv)
+     *   DELETE-WORKER     remove a worker from the collection
      *
      * @param serviceProvider The provider of services is needed to access
      *   the identity and the authorization keys of the instance.
@@ -101,8 +104,9 @@ private:
     /// Return a collection of known workers.
     nlohmann::json _getWorkers() const;
 
-    /// Register a worker in the collection.
-    nlohmann::json _addWorker();
+    /// Register/update a worker in the specified collection.
+    /// @param kind A kind of the worker to be updated ("replicaton", "qserv").
+    nlohmann::json _addWorker(std::string const& kind);
 
     /// Remove a worker from the collection.
     nlohmann::json _deleteWorker();
