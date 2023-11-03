@@ -36,7 +36,7 @@
 #include "nlohmann/json.hpp"
 
 // Qserv headers
-#include "replica/HttpAsyncReq.h"
+#include "http/AsyncReq.h"
 
 using namespace std;
 using json = nlohmann::json;
@@ -134,7 +134,7 @@ int HttpAsyncReqApp::runImpl() {
         }
     }
     boost::asio::io_service io_service;
-    auto const ptr = HttpAsyncReq::create(
+    auto const ptr = http::AsyncReq::create(
             io_service, [this, osPtr](auto const& ptr) { this->_dump(ptr, osPtr); }, _method, _url, _data,
             headers, _maxResponseBodySize, _expirationIvalSec);
 
@@ -145,16 +145,16 @@ int HttpAsyncReqApp::runImpl() {
         osPtr->flush();
         if (fs.is_open()) fs.close();
     }
-    return ptr->state() == HttpAsyncReq::State::FINISHED ? 0 : 1;
+    return ptr->state() == http::AsyncReq::State::FINISHED ? 0 : 1;
 }
 
-void HttpAsyncReqApp::_dump(shared_ptr<HttpAsyncReq> const& ptr, ostream* osPtr) const {
+void HttpAsyncReqApp::_dump(shared_ptr<http::AsyncReq> const& ptr, ostream* osPtr) const {
     if (_verbose) {
-        cout << "Request completion state: " << HttpAsyncReq::state2str(ptr->state())
+        cout << "Request completion state: " << http::AsyncReq::state2str(ptr->state())
              << ", error message: " << ptr->errorMessage() << endl;
     }
-    if (ptr->state() == HttpAsyncReq::State::FINISHED ||
-        ptr->state() == HttpAsyncReq::State::BODY_LIMIT_ERROR) {
+    if (ptr->state() == http::AsyncReq::State::FINISHED ||
+        ptr->state() == http::AsyncReq::State::BODY_LIMIT_ERROR) {
         if (_verbose) {
             cout << "  HTTP response code: " << ptr->responseCode() << "\n";
             cout << "  response header:\n";
@@ -162,7 +162,7 @@ void HttpAsyncReqApp::_dump(shared_ptr<HttpAsyncReq> const& ptr, ostream* osPtr)
                 cout << "    " << elem.first << ": " << elem.second << "\n";
             }
         }
-        if (ptr->state() == HttpAsyncReq::State::FINISHED) {
+        if (ptr->state() == http::AsyncReq::State::FINISHED) {
             if (_verbose) {
                 cout << "  response body size: " << ptr->responseBodySize() << endl;
             }

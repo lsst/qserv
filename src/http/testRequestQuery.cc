@@ -27,19 +27,19 @@
 #include <unordered_map>
 
 // Qserv headers
-#include "replica/HttpRequestQuery.h"
+#include "http/RequestQuery.h"
 
 // Boost unit test header
-#define BOOST_TEST_MODULE HttpRequestQuery
+#define BOOST_TEST_MODULE RequestQuery
 #include <boost/test/unit_test.hpp>
 
 using namespace std;
 namespace test = boost::test_tools;
-using namespace lsst::qserv::replica;
+using namespace lsst::qserv::http;
 
 BOOST_AUTO_TEST_SUITE(Suite)
 
-BOOST_AUTO_TEST_CASE(HttpRequestQueryTest) {
+BOOST_AUTO_TEST_CASE(RequestQueryTest) {
     uint16_t const validUInt16Value = numeric_limits<uint16_t>::max();
     unsigned int const validUIntValue = numeric_limits<unsigned int>::max();
     unsigned int const validIntValue = numeric_limits<int>::max();
@@ -80,7 +80,7 @@ BOOST_AUTO_TEST_CASE(HttpRequestQueryTest) {
             {"empty_vec_of_str_1", ""},
             {"empty_vec_of_str_2", ","},
             {"empty_vec_of_str_3", ",,"}};
-    HttpRequestQuery const query(input);
+    RequestQuery const query(input);
 
     // Test names of parameters
 

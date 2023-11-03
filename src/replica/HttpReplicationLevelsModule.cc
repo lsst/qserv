@@ -29,9 +29,9 @@
 #include <vector>
 
 // Qserv headers
+#include "http/Exceptions.h"
 #include "replica/Configuration.h"
 #include "replica/DatabaseServices.h"
-#include "replica/HttpExceptions.h"
 #include "replica/ReplicaInfo.h"
 #include "replica/ServiceProvider.h"
 #include "util/TimeUtils.h"
@@ -84,7 +84,8 @@ json HttpReplicationLevelsModule::_set() {
     debug(__func__);
     checkApiVersion(__func__, 12);
     if (!isAdmin()) {
-        throw HttpError(__func__, "administrator's privileges are required for changing replication levels.");
+        throw http::Error(__func__,
+                          "administrator's privileges are required for changing replication levels.");
     }
     string const familyName = body().required<string>("family");
     size_t const replicationLevel = body().required<size_t>("replication_level");
@@ -114,9 +115,9 @@ json HttpReplicationLevelsModule::_makeReport(bool force) {
     auto const config = controller()->serviceProvider()->config();
     auto const healthMonitorTask = _healthMonitorTask.lock();
     if (nullptr == healthMonitorTask) {
-        throw HttpError(__func__,
-                        "no access to the Health Monitor Task from HttpReplicationLevelsModule."
-                        " The service may be shutting down.");
+        throw http::Error(__func__,
+                          "no access to the Health Monitor Task from HttpReplicationLevelsModule."
+                          " The service may be shutting down.");
     }
     auto const delays = healthMonitorTask->workerResponseDelay();
     vector<string> disabledQservWorkers;

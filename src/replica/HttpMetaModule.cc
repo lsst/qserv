@@ -27,7 +27,6 @@
 
 // Qserv headers
 #include "replica/ConfigParserMySQL.h"
-#include "replica/HttpExceptions.h"
 
 using namespace std;
 using json = nlohmann::json;

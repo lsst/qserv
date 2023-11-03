@@ -26,11 +26,11 @@
 #include <stdexcept>
 
 // Qserv headers
+#include "http/Exceptions.h"
 #include "replica/ChunkedTable.h"
 #include "replica/Configuration.h"
 #include "replica/ConfigWorker.h"
 #include "replica/DatabaseServices.h"
-#include "replica/HttpExceptions.h"
 #include "replica/ReplicaInfo.h"
 #include "replica/ServiceProvider.h"
 
@@ -105,7 +105,7 @@ json HttpExportModule::_getTables() {
     // This operation will throw an exception if the database name is not valid
     auto const database = config->databaseInfo(databaseName);
     if (not database.isPublished) {
-        throw HttpError(__func__, "database '" + database.name + "' is not PUBLISHED");
+        throw http::Error(__func__, "database '" + database.name + "' is not PUBLISHED");
     }
 
     // Get a collection of known workers which are in the 'ENABLED' state
@@ -114,7 +114,7 @@ json HttpExportModule::_getTables() {
         allWorkerInfos.push_back(config->workerInfo(worker));
     }
     if (allWorkerInfos.empty()) {
-        throw HttpError(__func__, "no workers found in the Configuration of the system.");
+        throw http::Error(__func__, "no workers found in the Configuration of the system.");
     }
 
     /**
@@ -217,7 +217,7 @@ json HttpExportModule::_getTables() {
         return result;
 
     } catch (invalid_argument const& ex) {
-        throw HttpError(__func__, ex.what());
+        throw http::Error(__func__, ex.what());
     }
 }
 

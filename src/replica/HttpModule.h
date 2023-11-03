@@ -127,7 +127,7 @@ protected:
      * @return The database info object.
      * @throw std::invalid_argument If neither obe the above-mentioned attributes were
      *    provided in a request.
-     * @throw HttpError If the database is already "published" and a value of
+     * @throw http::Error If the database is already "published" and a value of
      *   the parameter 'throwIfPublished' is set to 'true'.
      */
     DatabaseInfo getDatabaseInfo(std::string const& func, bool throwIfPublished = true) const;

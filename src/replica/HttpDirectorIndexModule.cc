@@ -23,10 +23,10 @@
 #include "replica/HttpDirectorIndexModule.h"
 
 // Qserv headers
+#include "http/Exceptions.h"
 #include "replica/Configuration.h"
 #include "replica/DatabaseMySQL.h"
 #include "replica/DatabaseServices.h"
-#include "replica/HttpExceptions.h"
 #include "replica/DirectorIndexJob.h"
 #include "replica/ServiceProvider.h"
 
@@ -83,12 +83,12 @@ json HttpDirectorIndexModule::_buildDirectorIndex() {
     if (!table.isDirector()) {
         string const msg = "table '" + table.name + "' is not configured as a director table in database '" +
                            database.name + "'";
-        throw HttpError(__func__, msg);
+        throw http::Error(__func__, msg);
     }
     if (!table.isPublished) {
         string const msg = " the director table '" + table.name + "' of the database '" + database.name +
                            "' is not published.";
-        throw HttpError(__func__, msg);
+        throw http::Error(__func__, msg);
     }
     // Look for the optional parameter defining the uniqueness of the index's keys
     // assuming the current configuration of the table as the default.
@@ -102,7 +102,7 @@ json HttpDirectorIndexModule::_buildDirectorIndex() {
     if (table.directorTable.primaryKeyColumn().empty()) {
         string const msg =
                 "director table has not been properly configured in database '" + database.name + "'";
-        throw HttpError(__func__, msg);
+        throw http::Error(__func__, msg);
     }
     string const primaryKeyColumn = table.directorTable.primaryKeyColumn();
     string primaryKeyColumnType = string();
@@ -111,7 +111,7 @@ json HttpDirectorIndexModule::_buildDirectorIndex() {
     if (table.columns.empty()) {
         string const msg =
                 "no schema found for director table '" + table.name + "' of database '" + database.name + "'";
-        throw HttpError(__func__, msg);
+        throw http::Error(__func__, msg);
     }
     for (auto&& column : table.columns) {
         if (column.name == primaryKeyColumn) {
@@ -121,10 +121,10 @@ json HttpDirectorIndexModule::_buildDirectorIndex() {
         }
     }
     if (primaryKeyColumnType.empty() || subChunkIdColNameType.empty()) {
-        throw HttpError(__func__,
-                        "column definitions for the director key or sub-chunk identifier"
-                        " columns are missing in the director table schema for table '" +
-                                table.name + "' of database '" + database.name + "'");
+        throw http::Error(__func__,
+                          "column definitions for the director key or sub-chunk identifier"
+                          " columns are missing in the director table schema for table '" +
+                                  table.name + "' of database '" + database.name + "'");
     }
 
     // Build/rebuild the index(es).
@@ -189,7 +189,7 @@ json HttpDirectorIndexModule::_buildDirectorIndex() {
             }
         }
     }
-    if (failed) throw HttpError(__func__, "index creation failed", extError);
+    if (failed) throw http::Error(__func__, "index creation failed", extError);
     return json::object();
 }
 

@@ -26,8 +26,8 @@
 #include <stdexcept>
 
 // Qserv headers
+#include "http/Exceptions.h"
 #include "replica/DatabaseServices.h"
-#include "replica/HttpExceptions.h"
 #include "replica/ServiceProvider.h"
 
 using namespace std;
@@ -98,7 +98,7 @@ json HttpJobsModule::_oneJob() {
         return result;
 
     } catch (DatabaseServicesNotFound const& ex) {
-        throw HttpError(__func__, "no such job found");
+        throw http::Error(__func__, "no such job found");
     }
 }
 

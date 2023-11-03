@@ -29,8 +29,8 @@
 #include <stdexcept>
 
 // Qserv headers
+#include "http/Exceptions.h"
 #include "replica/Configuration.h"
-#include "replica/HttpExceptions.h"
 #include "replica/SqlCreateIndexesJob.h"
 #include "replica/SqlDropIndexesJob.h"
 #include "replica/SqlGetIndexesJob.h"
@@ -84,7 +84,7 @@ json HttpSqlIndexModule::_getIndexes() {
 
     // This safeguard is needed here because the index management job launched
     // doesn't have this restriction.
-    if (!table.isPublished) throw HttpError(__func__, "table is not published");
+    if (!table.isPublished) throw http::Error(__func__, "table is not published");
 
     bool const allWorkers = true;
     string const noParentJobId;
@@ -98,8 +98,8 @@ json HttpSqlIndexModule::_getIndexes() {
 
     auto const extendedErrorReport = job->getExtendedErrorReport();
     if (!extendedErrorReport.is_null()) {
-        throw HttpError(__func__, "The operation failed. See details in the extended report.",
-                        extendedErrorReport);
+        throw http::Error(__func__, "The operation failed. See details in the extended report.",
+                          extendedErrorReport);
     }
     json result;
     result["status"] = job->indexes().toJson();
@@ -135,7 +135,7 @@ json HttpSqlIndexModule::_createIndexes() {
 
     // This safeguard is needed here because the index management job launched
     // doesn't have this restriction.
-    if (!table.isPublished) throw HttpError(__func__, "table is not published");
+    if (!table.isPublished) throw http::Error(__func__, "table is not published");
 
     // Process the input collection of the column specifications.
     //
@@ -178,8 +178,8 @@ json HttpSqlIndexModule::_createIndexes() {
 
     auto const extendedErrorReport = job->getExtendedErrorReport();
     if (!extendedErrorReport.is_null()) {
-        throw HttpError(__func__, "The operation failed. See details in the extended report.",
-                        extendedErrorReport);
+        throw http::Error(__func__, "The operation failed. See details in the extended report.",
+                          extendedErrorReport);
     }
     return json::object();
 }
@@ -204,7 +204,7 @@ json HttpSqlIndexModule::_dropIndexes() {
 
     // This safeguard is needed here because the index management job launched
     // doesn't have this restriction.
-    if (!table.isPublished) throw HttpError(__func__, "table is not published");
+    if (!table.isPublished) throw http::Error(__func__, "table is not published");
 
     bool const allWorkers = true;
     string const noParentJobId;
@@ -218,8 +218,8 @@ json HttpSqlIndexModule::_dropIndexes() {
 
     auto const extendedErrorReport = job->getExtendedErrorReport();
     if (!extendedErrorReport.is_null()) {
-        throw HttpError(__func__, "The operation failed. See details in the extended report.",
-                        extendedErrorReport);
+        throw http::Error(__func__, "The operation failed. See details in the extended report.",
+                          extendedErrorReport);
     }
     return json::object();
 }

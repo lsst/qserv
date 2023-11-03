@@ -38,12 +38,12 @@
 
 // Qserv headers
 #include "global/constants.h"
+#include "http/Exceptions.h"
 #include "replica/ChunkedTable.h"
 #include "replica/DatabaseMySQL.h"
 #include "replica/DatabaseMySQLTypes.h"
 #include "replica/DatabaseServices.h"
 #include "replica/FileUtils.h"
-#include "replica/HttpExceptions.h"
 #include "replica/ReplicaInfo.h"
 #include "replica/Mutex.h"
 
@@ -139,13 +139,14 @@ string const& IngestFileSvc::openFile(TransactionId transactionId, string const&
                         to_string(_transactionId),
                 "-%%%%-%%%%-%%%%-%%%%", ".csv");
     } catch (exception const& ex) {
-        raiseRetryAllowedError(
+        lsst::qserv::http::raiseRetryAllowedError(
                 context_, "failed to generate a unique name for a temporary file, ex: " + string(ex.what()));
     }
     _file.open(_fileName, ios::out | ios::trunc | ios::binary);
     if (not _file.is_open()) {
-        raiseRetryAllowedError(context_, "failed to create a temporary file '" + _fileName + "', error: '" +
-                                                 strerror(errno) + "', errno: " + to_string(errno));
+        lsst::qserv::http::raiseRetryAllowedError(
+                context_, "failed to create a temporary file '" + _fileName + "', error: '" +
+                                  strerror(errno) + "', errno: " + to_string(errno));
     }
     return _fileName;
 }
@@ -153,9 +154,9 @@ string const& IngestFileSvc::openFile(TransactionId transactionId, string const&
 void IngestFileSvc::writeRowIntoFile(char const* buf, size_t size) {
     if (!_file.write(_transactionIdField.data(), _transactionIdField.size()) || !_file.write(buf, size)) {
         string const context_ = context + string(__func__) + " ";
-        raiseRetryAllowedError(context_, "failed to write into the temporary file '" + _fileName +
-                                                 "', error: '" + strerror(errno) +
-                                                 "', errno: " + to_string(errno) + ".");
+        lsst::qserv::http::raiseRetryAllowedError(
+                context_, "failed to write into the temporary file '" + _fileName + "', error: '" +
+                                  strerror(errno) + "', errno: " + to_string(errno) + ".");
     }
     ++_totalNumRows;
 }

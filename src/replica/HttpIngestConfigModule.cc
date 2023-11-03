@@ -27,10 +27,10 @@
 
 // Qserv headers
 #include "global/stringUtil.h"
+#include "http/Client.h"
+#include "http/Exceptions.h"
 #include "replica/Configuration.h"
 #include "replica/DatabaseServices.h"
-#include "replica/HttpClient.h"
-#include "replica/HttpExceptions.h"
 
 using namespace std;
 using json = nlohmann::json;
@@ -77,55 +77,58 @@ json HttpIngestConfigModule::_get() {
     auto const getUInt = [&databaseServices, &databaseInfo](json& obj, string const& key) {
         try {
             obj[key] = lsst::qserv::stoui(
-                    databaseServices->ingestParam(databaseInfo.name, HttpClientConfig::category, key).value);
+                    databaseServices->ingestParam(databaseInfo.name, http::ClientConfig::category, key)
+                            .value);
         } catch (DatabaseServicesNotFound const&) {
         }
     };
     auto const getInt = [&databaseServices, &databaseInfo](json& obj, string const& key) {
         try {
-            obj[key] = stoi(
-                    databaseServices->ingestParam(databaseInfo.name, HttpClientConfig::category, key).value);
+            obj[key] =
+                    stoi(databaseServices->ingestParam(databaseInfo.name, http::ClientConfig::category, key)
+                                 .value);
         } catch (DatabaseServicesNotFound const&) {
         }
     };
     auto const getLong = [&databaseServices, &databaseInfo](json& obj, string const& key) {
         try {
-            obj[key] = stol(
-                    databaseServices->ingestParam(databaseInfo.name, HttpClientConfig::category, key).value);
+            obj[key] =
+                    stol(databaseServices->ingestParam(databaseInfo.name, http::ClientConfig::category, key)
+                                 .value);
         } catch (DatabaseServicesNotFound const&) {
         }
     };
     auto const getStr = [&databaseServices, &databaseInfo](json& obj, string const& key) {
         try {
             obj[key] =
-                    databaseServices->ingestParam(databaseInfo.name, HttpClientConfig::category, key).value;
+                    databaseServices->ingestParam(databaseInfo.name, http::ClientConfig::category, key).value;
         } catch (DatabaseServicesNotFound const&) {
         }
     };
 
     json result({{"database", databaseInfo.name}});
 
-    getInt(result, HttpClientConfig::sslVerifyHostKey);
-    getInt(result, HttpClientConfig::sslVerifyPeerKey);
-    getStr(result, HttpClientConfig::caPathKey);
-    getStr(result, HttpClientConfig::caInfoKey);
-    getStr(result, HttpClientConfig::caInfoValKey);
+    getInt(result, http::ClientConfig::sslVerifyHostKey);
+    getInt(result, http::ClientConfig::sslVerifyPeerKey);
+    getStr(result, http::ClientConfig::caPathKey);
+    getStr(result, http::ClientConfig::caInfoKey);
+    getStr(result, http::ClientConfig::caInfoValKey);
 
-    getInt(result, HttpClientConfig::proxySslVerifyHostKey);
-    getInt(result, HttpClientConfig::proxySslVerifyPeerKey);
-    getStr(result, HttpClientConfig::proxyCaPathKey);
-    getStr(result, HttpClientConfig::proxyCaInfoKey);
-    getStr(result, HttpClientConfig::proxyCaInfoValKey);
+    getInt(result, http::ClientConfig::proxySslVerifyHostKey);
+    getInt(result, http::ClientConfig::proxySslVerifyPeerKey);
+    getStr(result, http::ClientConfig::proxyCaPathKey);
+    getStr(result, http::ClientConfig::proxyCaInfoKey);
+    getStr(result, http::ClientConfig::proxyCaInfoValKey);
 
-    getStr(result, HttpClientConfig::proxyKey);
-    getStr(result, HttpClientConfig::noProxyKey);
-    getLong(result, HttpClientConfig::httpProxyTunnelKey);
+    getStr(result, http::ClientConfig::proxyKey);
+    getStr(result, http::ClientConfig::noProxyKey);
+    getLong(result, http::ClientConfig::httpProxyTunnelKey);
 
-    getLong(result, HttpClientConfig::connectTimeoutKey);
-    getLong(result, HttpClientConfig::timeoutKey);
-    getLong(result, HttpClientConfig::lowSpeedLimitKey);
-    getLong(result, HttpClientConfig::lowSpeedTimeKey);
-    getUInt(result, HttpClientConfig::asyncProcLimitKey);
+    getLong(result, http::ClientConfig::connectTimeoutKey);
+    getLong(result, http::ClientConfig::timeoutKey);
+    getLong(result, http::ClientConfig::lowSpeedLimitKey);
+    getLong(result, http::ClientConfig::lowSpeedTimeKey);
+    getUInt(result, http::ClientConfig::asyncProcLimitKey);
 
     return json({{"config", result}});
 }
@@ -143,7 +146,7 @@ json HttpIngestConfigModule::_update() {
 
     auto const update = [&](string const& key, string const& val) {
         debug(__func__, key + "=" + val);
-        databaseServices->saveIngestParam(databaseInfo.name, HttpClientConfig::category, key, val);
+        databaseServices->saveIngestParam(databaseInfo.name, http::ClientConfig::category, key, val);
     };
     auto const updateUInt = [&](string const& key) {
         if (body().has(key)) update(key, to_string(body().required<unsigned int>(key)));
@@ -157,27 +160,27 @@ json HttpIngestConfigModule::_update() {
     auto const updateStr = [&](string const& key) {
         if (body().has(key)) update(key, body().required<string>(key));
     };
-    updateInt(HttpClientConfig::sslVerifyHostKey);
-    updateInt(HttpClientConfig::sslVerifyPeerKey);
-    updateStr(HttpClientConfig::caPathKey);
-    updateStr(HttpClientConfig::caInfoKey);
-    updateStr(HttpClientConfig::caInfoValKey);
+    updateInt(http::ClientConfig::sslVerifyHostKey);
+    updateInt(http::ClientConfig::sslVerifyPeerKey);
+    updateStr(http::ClientConfig::caPathKey);
+    updateStr(http::ClientConfig::caInfoKey);
+    updateStr(http::ClientConfig::caInfoValKey);
 
-    updateInt(HttpClientConfig::proxySslVerifyHostKey);
-    updateInt(HttpClientConfig::proxySslVerifyPeerKey);
-    updateStr(HttpClientConfig::proxyCaPathKey);
-    updateStr(HttpClientConfig::proxyCaInfoKey);
-    updateStr(HttpClientConfig::proxyCaInfoValKey);
+    updateInt(http::ClientConfig::proxySslVerifyHostKey);
+    updateInt(http::ClientConfig::proxySslVerifyPeerKey);
+    updateStr(http::ClientConfig::proxyCaPathKey);
+    updateStr(http::ClientConfig::proxyCaInfoKey);
+    updateStr(http::ClientConfig::proxyCaInfoValKey);
 
-    updateStr(HttpClientConfig::proxyKey);
-    updateStr(HttpClientConfig::noProxyKey);
-    updateLong(HttpClientConfig::httpProxyTunnelKey);
+    updateStr(http::ClientConfig::proxyKey);
+    updateStr(http::ClientConfig::noProxyKey);
+    updateLong(http::ClientConfig::httpProxyTunnelKey);
 
-    updateLong(HttpClientConfig::connectTimeoutKey);
-    updateLong(HttpClientConfig::timeoutKey);
-    updateLong(HttpClientConfig::lowSpeedLimitKey);
-    updateLong(HttpClientConfig::lowSpeedTimeKey);
-    updateUInt(HttpClientConfig::asyncProcLimitKey);
+    updateLong(http::ClientConfig::connectTimeoutKey);
+    updateLong(http::ClientConfig::timeoutKey);
+    updateLong(http::ClientConfig::lowSpeedLimitKey);
+    updateLong(http::ClientConfig::lowSpeedTimeKey);
+    updateUInt(http::ClientConfig::asyncProcLimitKey);
 
     return json::object();
 }

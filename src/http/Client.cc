@@ -20,10 +20,10 @@
  */
 
 // Class header
-#include "replica/HttpClient.h"
+#include "http/Client.h"
 
 // Qserv headers
-#include "replica/HttpExceptions.h"
+#include "http/Exceptions.h"
 
 // Standard headers
 #include <algorithm>
@@ -34,55 +34,55 @@
 using namespace std;
 using json = nlohmann::json;
 
-namespace lsst::qserv::replica {
+namespace lsst::qserv::http {
 
-string const HttpClientConfig::category = "worker-http-file-reader";
+string const ClientConfig::category = "worker-http-file-reader";
 
-string const HttpClientConfig::sslVerifyHostKey = "SSL_VERIFYHOST";
-string const HttpClientConfig::sslVerifyPeerKey = "SSL_VERIFYPEER";
-string const HttpClientConfig::caPathKey = "CAPATH";
-string const HttpClientConfig::caInfoKey = "CAINFO";
-string const HttpClientConfig::caInfoValKey = "CAINFO_VAL";
+string const ClientConfig::sslVerifyHostKey = "SSL_VERIFYHOST";
+string const ClientConfig::sslVerifyPeerKey = "SSL_VERIFYPEER";
+string const ClientConfig::caPathKey = "CAPATH";
+string const ClientConfig::caInfoKey = "CAINFO";
+string const ClientConfig::caInfoValKey = "CAINFO_VAL";
 
-string const HttpClientConfig::proxySslVerifyHostKey = "PROXY_SSL_VERIFYHOST";
-string const HttpClientConfig::proxySslVerifyPeerKey = "PROXY_SSL_VERIFYPEER";
-string const HttpClientConfig::proxyCaPathKey = "PROXY_CAPATH";
-string const HttpClientConfig::proxyCaInfoKey = "PROXY_CAINFO";
-string const HttpClientConfig::proxyCaInfoValKey = "PROXY_CAINFO_VAL";
+string const ClientConfig::proxySslVerifyHostKey = "PROXY_SSL_VERIFYHOST";
+string const ClientConfig::proxySslVerifyPeerKey = "PROXY_SSL_VERIFYPEER";
+string const ClientConfig::proxyCaPathKey = "PROXY_CAPATH";
+string const ClientConfig::proxyCaInfoKey = "PROXY_CAINFO";
+string const ClientConfig::proxyCaInfoValKey = "PROXY_CAINFO_VAL";
 
-string const HttpClientConfig::proxyKey = "CURLOPT_PROXY";
-string const HttpClientConfig::noProxyKey = "CURLOPT_NOPROXY";
-string const HttpClientConfig::httpProxyTunnelKey = "CURLOPT_HTTPPROXYTUNNEL";
+string const ClientConfig::proxyKey = "CURLOPT_PROXY";
+string const ClientConfig::noProxyKey = "CURLOPT_NOPROXY";
+string const ClientConfig::httpProxyTunnelKey = "CURLOPT_HTTPPROXYTUNNEL";
 
-string const HttpClientConfig::connectTimeoutKey = "CONNECTTIMEOUT";
-string const HttpClientConfig::timeoutKey = "TIMEOUT";
-string const HttpClientConfig::lowSpeedLimitKey = "LOW_SPEED_LIMIT";
-string const HttpClientConfig::lowSpeedTimeKey = "LOW_SPEED_TIME";
+string const ClientConfig::connectTimeoutKey = "CONNECTTIMEOUT";
+string const ClientConfig::timeoutKey = "TIMEOUT";
+string const ClientConfig::lowSpeedLimitKey = "LOW_SPEED_LIMIT";
+string const ClientConfig::lowSpeedTimeKey = "LOW_SPEED_TIME";
 
-string const HttpClientConfig::asyncProcLimitKey = "ASYNC_PROC_LIMIT";
+string const ClientConfig::asyncProcLimitKey = "ASYNC_PROC_LIMIT";
 
-size_t forwardToHttpClient(char* ptr, size_t size, size_t nmemb, void* userdata) {
+size_t forwardToClient(char* ptr, size_t size, size_t nmemb, void* userdata) {
     size_t const nchars = size * nmemb;
-    HttpClient* reader = reinterpret_cast<HttpClient*>(userdata);
+    Client* reader = reinterpret_cast<Client*>(userdata);
     reader->_store(ptr, nchars);
     return nchars;
 }
 
-HttpClient::HttpClient(string const& method, string const& url, string const& data,
-                       vector<string> const& headers, HttpClientConfig const& clientConfig)
+Client::Client(string const& method, string const& url, string const& data, vector<string> const& headers,
+               ClientConfig const& clientConfig)
         : _method(method), _url(url), _data(data), _headers(headers), _clientConfig(clientConfig) {
     _hcurl = curl_easy_init();
     assert(_hcurl != nullptr);  // curl_easy_init() failed to allocate memory, etc.
 }
 
-HttpClient::~HttpClient() {
+Client::~Client() {
     curl_slist_free_all(_hlist);
     curl_easy_cleanup(_hcurl);
 }
 
-void HttpClient::read(CallbackType const& onDataRead) {
+void Client::read(CallbackType const& onDataRead) {
     assert(onDataRead != nullptr);  // no callback function provided
-    string const context = "HttpClient::" + string(__func__) + " ";
+    string const context = "Client::" + string(__func__) + " ";
     _onDataRead = onDataRead;
     _errorChecked("curl_easy_setopt(CURLOPT_URL)", curl_easy_setopt(_hcurl, CURLOPT_URL, _url.c_str()));
     _errorChecked("curl_easy_setopt(CURLOPT_CUSTOMREQUEST)",
@@ -173,18 +173,18 @@ void HttpClient::read(CallbackType const& onDataRead) {
 
     _errorChecked("curl_easy_setopt(CURLOPT_FAILONERROR)", curl_easy_setopt(_hcurl, CURLOPT_FAILONERROR, 1L));
     _errorChecked("curl_easy_setopt(CURLOPT_WRITEFUNCTION)",
-                  curl_easy_setopt(_hcurl, CURLOPT_WRITEFUNCTION, forwardToHttpClient));
+                  curl_easy_setopt(_hcurl, CURLOPT_WRITEFUNCTION, forwardToClient));
     _errorChecked("curl_easy_setopt(CURLOPT_WRITEDATA)", curl_easy_setopt(_hcurl, CURLOPT_WRITEDATA, this));
     _errorChecked("curl_easy_perform()", curl_easy_perform(_hcurl));
 }
 
-json HttpClient::readAsJson() {
+json Client::readAsJson() {
     vector<char> data;
     this->read([&data](char const* buf, size_t size) { data.insert(data.cend(), buf, buf + size); });
     return json::parse(data);
 }
 
-void HttpClient::_errorChecked(string const& scope, CURLcode errnum) {
+void Client::_errorChecked(string const& scope, CURLcode errnum) {
     if (errnum != CURLE_OK) {
         string errorStr = curl_easy_strerror(errnum);
         long httpResponseCode = 0;
@@ -192,11 +192,11 @@ void HttpClient::_errorChecked(string const& scope, CURLcode errnum) {
             errorStr += " (on HTTP error codes 400 or greater)";
             curl_easy_getinfo(_hcurl, CURLINFO_RESPONSE_CODE, &httpResponseCode);
         }
-        raiseRetryAllowedError(scope, " error: '" + errorStr + "', errnum: " + to_string(errnum),
-                               httpResponseCode);
+        http::raiseRetryAllowedError(scope, " error: '" + errorStr + "', errnum: " + to_string(errnum),
+                                     httpResponseCode);
     }
 }
 
-void HttpClient::_store(char const* ptr, size_t nchars) { _onDataRead(ptr, nchars); }
+void Client::_store(char const* ptr, size_t nchars) { _onDataRead(ptr, nchars); }
 
-}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::http

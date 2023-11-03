@@ -26,8 +26,8 @@
 #include <stdexcept>
 
 // Qserv headers
+#include "http/Exceptions.h"
 #include "replica/DatabaseServices.h"
-#include "replica/HttpExceptions.h"
 #include "replica/ServiceProvider.h"
 
 using namespace std;
@@ -93,7 +93,7 @@ json HttpRequestsModule::_oneRequest() {
         result["request"] = controller()->serviceProvider()->databaseServices()->request(id).toJson();
         return result;
     } catch (DatabaseServicesNotFound const& ex) {
-        throw HttpError(__func__, "no such request found");
+        throw http::Error(__func__, "no such request found");
     }
 }
 

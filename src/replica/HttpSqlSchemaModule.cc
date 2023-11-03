@@ -31,9 +31,9 @@
 // Qserv headers
 #include "css/CssAccess.h"
 #include "css/DbInterfaceMySql.h"
+#include "http/Exceptions.h"
 #include "replica/Configuration.h"
 #include "replica/DatabaseMySQL.h"
-#include "replica/HttpExceptions.h"
 #include "replica/SqlAlterTablesJob.h"
 #include "replica/SqlResultSet.h"
 #include "replica/HttpRequestBody.h"
@@ -149,7 +149,7 @@ json HttpSqlSchemaModule::_alterTableSchema() {
     // they data are still being ingested as it would reault in all sorts of data corruptions
     // or inconsistencies.
     if (not database.isPublished) {
-        throw HttpError(__func__, "database '" + database.name + "' is not published");
+        throw http::Error(__func__, "database '" + database.name + "' is not published");
     }
 
     // Update table definition at Qserv master database. Note this step will
@@ -180,20 +180,21 @@ json HttpSqlSchemaModule::_alterTableSchema() {
     });
     auto const cssAccess = qservCssAccess();
     if (!cssAccess->containsDb(database.name)) {
-        throw HttpError(__func__, "Database '" + database.name + "' is not in CSS.");
+        throw http::Error(__func__, "Database '" + database.name + "' is not in CSS.");
     }
     if (!cssAccess->containsTable(database.name, table.name)) {
-        throw HttpError(__func__, "Table '" + database.name + "'.'" + table.name + "' is not in CSS.");
+        throw http::Error(__func__, "Table '" + database.name + "'.'" + table.name + "' is not in CSS.");
     }
     string const oldCssTableSchema = cssAccess->getTableSchema(database.name, table.name);
     try {
         cssAccess->setTableSchema(database.name, table.name, newCssTableSchema);
     } catch (exception const& ex) {
-        throw HttpError(__func__,
-                        "Failed to update CSS table schema of '" + database.name + "'.'" + table.name + "'.",
-                        json({{"css_error", ex.what()},
-                              {"css_old_schema", oldCssTableSchema},
-                              {"css_new_schema", newCssTableSchema}}));
+        throw http::Error(
+                __func__,
+                "Failed to update CSS table schema of '" + database.name + "'.'" + table.name + "'.",
+                json({{"css_error", ex.what()},
+                      {"css_old_schema", oldCssTableSchema},
+                      {"css_new_schema", newCssTableSchema}}));
     }
 
     // Modify all relevant tables at all Qserv workers
@@ -209,8 +210,8 @@ json HttpSqlSchemaModule::_alterTableSchema() {
 
     auto const extendedErrorReport = job->getExtendedErrorReport();
     if (not extendedErrorReport.is_null()) {
-        throw HttpError(__func__, "The operation failed. See details in the extended report.",
-                        extendedErrorReport);
+        throw http::Error(__func__, "The operation failed. See details in the extended report.",
+                          extendedErrorReport);
     }
     return json::object();
 }

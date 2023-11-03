@@ -34,9 +34,9 @@
 #include "nlohmann/json.hpp"
 
 // Qserv headers
+#include "http/Client.h"
+#include "http/Exceptions.h"
 #include "replica/Configuration.h"
-#include "replica/HttpClient.h"
-#include "replica/HttpExceptions.h"
 #include "replica/ServiceProvider.h"
 
 using namespace std;
@@ -74,7 +74,7 @@ public:
      * @param database The name of a database for which the file gets created.
      * @param cert The certificate bundle to be written into the file.
      * @return A path to the file including its folder.
-     * @throw HttpError If the file couldn't be open for writing.
+     * @throw http::Error If the file couldn't be open for writing.
      */
     string write(string const& baseDir, string const& database, string const& cert) {
         string const prefix = database + "-";
@@ -85,8 +85,8 @@ public:
         ofstream fs;
         fs.open(_fileName, ios::out | ios::trunc);
         if (!fs.is_open()) {
-            raiseRetryAllowedError("TemporaryCertFileRAII::" + string(__func__),
-                                   "failed to open/create file '" + _fileName + "'.");
+            lsst::qserv::http::raiseRetryAllowedError("TemporaryCertFileRAII::" + string(__func__),
+                                                      "failed to open/create file '" + _fileName + "'.");
         }
         fs << cert;
         fs.close();
@@ -285,11 +285,11 @@ IngestRequest::IngestRequest(shared_ptr<ServiceProvider> const& serviceProvider,
     // as failed for further analysis by the ingest workflows.
     try {
         IngestRequest::_validateState(trans, database, _contrib);
-        _resource.reset(new Url(_contrib.url));
+        _resource.reset(new http::Url(_contrib.url));
         switch (_resource->scheme()) {
-            case Url::FILE:
-            case Url::HTTP:
-            case Url::HTTPS:
+            case http::Url::FILE:
+            case http::Url::HTTP:
+            case http::Url::HTTPS:
                 break;
             default:
                 throw invalid_argument(context + "unsupported url '" + _contrib.url + "'");
@@ -309,7 +309,7 @@ IngestRequest::IngestRequest(shared_ptr<ServiceProvider> const& serviceProvider,
         : IngestFileSvc(serviceProvider, workerName), _contrib(contrib) {
     // This constructor assumes a valid contribution object obtained from a database
     // was passed into the method.
-    _resource.reset(new Url(_contrib.url));
+    _resource.reset(new http::Url(_contrib.url));
     _dialect = csv::Dialect(_contrib.dialectInput);
 }
 
@@ -399,7 +399,7 @@ void IngestRequest::_openTmpFileAndStart(replica::Lock const& lock) {
         _contrib.tmpFile = openFile(_contrib.transactionId, _contrib.table, _dialect, _contrib.charsetName,
                                     _contrib.chunk, _contrib.isOverlap);
         _contrib = databaseServices->startedTransactionContrib(_contrib);
-    } catch (HttpError const& ex) {
+    } catch (http::Error const& ex) {
         json const errorExt = ex.errorExt();
         if (!errorExt.empty()) {
             _contrib.httpError = errorExt["http_error"];
@@ -439,11 +439,11 @@ void IngestRequest::_processReadData() {
         }
         try {
             switch (_resource->scheme()) {
-                case Url::FILE:
+                case http::Url::FILE:
                     _readLocalFile(lock);
                     break;
-                case Url::HTTP:
-                case Url::HTTPS:
+                case http::Url::HTTP:
+                case http::Url::HTTPS:
                     _readRemoteFile(lock);
                     break;
                 default:
@@ -451,7 +451,7 @@ void IngestRequest::_processReadData() {
             }
             _contrib = databaseServices->readTransactionContrib(_contrib);
             return;
-        } catch (HttpError const& ex) {
+        } catch (http::Error const& ex) {
             json const errorExt = ex.errorExt();
             if (!errorExt.empty()) {
                 _contrib.httpError = errorExt["http_error"];
@@ -539,17 +539,18 @@ void IngestRequest::_readLocalFile(replica::Lock const& lock) {
     unique_ptr<char[]> const record(new char[defaultRecordSizeBytes]);
     ifstream infile(_resource->filePath(), ios::binary);
     if (!infile.is_open()) {
-        raiseRetryAllowedError(context, "failed to open the file '" + _resource->filePath() + "', error: '" +
-                                                strerror(errno) + "', errno: " + to_string(errno));
+        http::raiseRetryAllowedError(context, "failed to open the file '" + _resource->filePath() +
+                                                      "', error: '" + strerror(errno) +
+                                                      "', errno: " + to_string(errno));
     }
     auto parser = make_unique<csv::Parser>(_dialect);
     bool eof = false;
     do {
         eof = !infile.read(record.get(), defaultRecordSizeBytes);
         if (eof && !infile.eof()) {
-            raiseRetryAllowedError(context, "failed to read the file '" + _resource->filePath() +
-                                                    "', error: '" + strerror(errno) +
-                                                    "', errno: " + to_string(errno));
+            http::raiseRetryAllowedError(context, "failed to read the file '" + _resource->filePath() +
+                                                          "', error: '" + strerror(errno) +
+                                                          "', errno: " + to_string(errno));
         }
         size_t const num = infile.gcount();
         _contrib.numBytes += num;
@@ -599,8 +600,8 @@ void IngestRequest::_readRemoteFile(replica::Lock const& lock) {
     // Read and parse data from the data source
     auto parser = make_unique<csv::Parser>(_dialect);
     bool const flush = true;
-    HttpClient reader(_contrib.httpMethod, _contrib.url, _contrib.httpData, _contrib.httpHeaders,
-                      clientConfig);
+    http::Client reader(_contrib.httpMethod, _contrib.url, _contrib.httpData, _contrib.httpHeaders,
+                        clientConfig);
     reader.read([&](char const* record, size_t size) {
         parser->parse(record, size, !flush, reportRow);
         _contrib.numBytes += size;
@@ -610,11 +611,11 @@ void IngestRequest::_readRemoteFile(replica::Lock const& lock) {
     parser->parse(emptyRecord.data(), emptyRecord.size(), flush, reportRow);
 }
 
-HttpClientConfig IngestRequest::_clientConfig(replica::Lock const& lock) const {
+http::ClientConfig IngestRequest::_clientConfig(replica::Lock const& lock) const {
     auto const databaseServices = serviceProvider()->databaseServices();
     auto const getString = [&](string& val, string const& key) -> bool {
         try {
-            val = databaseServices->ingestParam(_contrib.database, HttpClientConfig::category, key).value;
+            val = databaseServices->ingestParam(_contrib.database, http::ClientConfig::category, key).value;
         } catch (DatabaseServicesNotFound const&) {
             return false;
         }
@@ -628,24 +629,24 @@ HttpClientConfig IngestRequest::_clientConfig(replica::Lock const& lock) const {
         string str;
         if (getString(str, key)) val = stol(str);
     };
-    HttpClientConfig clientConfig;
-    getBool(clientConfig.sslVerifyHost, HttpClientConfig::sslVerifyHostKey);
-    getBool(clientConfig.sslVerifyPeer, HttpClientConfig::sslVerifyPeerKey);
-    getString(clientConfig.caPath, HttpClientConfig::caPathKey);
-    getString(clientConfig.caInfo, HttpClientConfig::caInfoKey);
-    getString(clientConfig.caInfoVal, HttpClientConfig::caInfoValKey);
-    getBool(clientConfig.proxySslVerifyHost, HttpClientConfig::proxySslVerifyHostKey);
-    getBool(clientConfig.proxySslVerifyPeer, HttpClientConfig::proxySslVerifyPeerKey);
-    getString(clientConfig.proxyCaPath, HttpClientConfig::proxyCaPathKey);
-    getString(clientConfig.proxyCaInfo, HttpClientConfig::proxyCaInfoKey);
-    getString(clientConfig.proxyCaInfoVal, HttpClientConfig::proxyCaInfoValKey);
-    getString(clientConfig.proxy, HttpClientConfig::proxyKey);
-    getString(clientConfig.noProxy, HttpClientConfig::noProxyKey);
-    getLong(clientConfig.httpProxyTunnel, HttpClientConfig::httpProxyTunnelKey);
-    getLong(clientConfig.connectTimeout, HttpClientConfig::connectTimeoutKey);
-    getLong(clientConfig.timeout, HttpClientConfig::timeoutKey);
-    getLong(clientConfig.lowSpeedLimit, HttpClientConfig::lowSpeedLimitKey);
-    getLong(clientConfig.lowSpeedTime, HttpClientConfig::lowSpeedTimeKey);
+    http::ClientConfig clientConfig;
+    getBool(clientConfig.sslVerifyHost, http::ClientConfig::sslVerifyHostKey);
+    getBool(clientConfig.sslVerifyPeer, http::ClientConfig::sslVerifyPeerKey);
+    getString(clientConfig.caPath, http::ClientConfig::caPathKey);
+    getString(clientConfig.caInfo, http::ClientConfig::caInfoKey);
+    getString(clientConfig.caInfoVal, http::ClientConfig::caInfoValKey);
+    getBool(clientConfig.proxySslVerifyHost, http::ClientConfig::proxySslVerifyHostKey);
+    getBool(clientConfig.proxySslVerifyPeer, http::ClientConfig::proxySslVerifyPeerKey);
+    getString(clientConfig.proxyCaPath, http::ClientConfig::proxyCaPathKey);
+    getString(clientConfig.proxyCaInfo, http::ClientConfig::proxyCaInfoKey);
+    getString(clientConfig.proxyCaInfoVal, http::ClientConfig::proxyCaInfoValKey);
+    getString(clientConfig.proxy, http::ClientConfig::proxyKey);
+    getString(clientConfig.noProxy, http::ClientConfig::noProxyKey);
+    getLong(clientConfig.httpProxyTunnel, http::ClientConfig::httpProxyTunnelKey);
+    getLong(clientConfig.connectTimeout, http::ClientConfig::connectTimeoutKey);
+    getLong(clientConfig.timeout, http::ClientConfig::timeoutKey);
+    getLong(clientConfig.lowSpeedLimit, http::ClientConfig::lowSpeedLimitKey);
+    getLong(clientConfig.lowSpeedTime, http::ClientConfig::lowSpeedTimeKey);
     return clientConfig;
 }
 

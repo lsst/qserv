@@ -25,7 +25,7 @@
 #include <iostream>
 
 // Qserv headers
-#include "replica/Url.h"
+#include "http/Url.h"
 
 // Boost unit test header
 #define BOOST_TEST_MODULE Url
@@ -33,7 +33,7 @@
 
 using namespace std;
 namespace test = boost::test_tools;
-using namespace lsst::qserv::replica;
+using namespace lsst::qserv::http;
 
 BOOST_AUTO_TEST_SUITE(Suite)
 

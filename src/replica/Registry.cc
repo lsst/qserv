@@ -23,9 +23,9 @@
 #include "replica/Registry.h"
 
 // Qserv headers
+#include "http/Client.h"
 #include "replica/Configuration.h"
 #include "replica/ConfigWorker.h"
-#include "replica/HttpClient.h"
 #include "util/common.h"
 
 // LSST headers
@@ -132,7 +132,7 @@ json Registry::_request(string const& method, string const& resource, json const
     string const url = _baseUrl + resource;
     vector<string> const headers =
             request.empty() ? vector<string>({}) : vector<string>({"Content-Type: application/json"});
-    HttpClient client(method, url, request.empty() ? string() : request.dump(), headers);
+    http::Client client(method, url, request.empty() ? string() : request.dump(), headers);
     json const response = client.readAsJson();
     if (0 == response.at("success").get<int>()) {
         string const msg = ::context(__func__) + "'" + method + "' request to '" + url +

@@ -18,8 +18,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_HTTPCLIENT_H
-#define LSST_QSERV_HTTPCLIENT_H
+#ifndef LSST_QSERV_HTTP_CLIENT_H
+#define LSST_QSERV_HTTP_CLIENT_H
 
 // System headers
 #include <functional>
@@ -31,13 +31,13 @@
 #include "nlohmann/json.hpp"
 
 // This header declarations
-namespace lsst::qserv::replica {
+namespace lsst::qserv::http {
 
 /**
- * Class HttpClientConfig encapsulates configuration parameters related to 'libcurl'
+ * Class ClientConfig encapsulates configuration parameters related to 'libcurl'
  * option setter.
  */
-class HttpClientConfig {
+class ClientConfig {
 public:
     /// The folder where the parameters are stored in the persistent configuration.
     static std::string const category;
@@ -140,10 +140,10 @@ public:
     // The default state of an object corresponds to not having any of the options
     // carried by the class be set when using 'libcurl' API.
 
-    HttpClientConfig() = default;
-    HttpClientConfig(HttpClientConfig const&) = default;
-    HttpClientConfig& operator=(HttpClientConfig const&) = default;
-    ~HttpClientConfig() = default;
+    ClientConfig() = default;
+    ClientConfig(ClientConfig const&) = default;
+    ClientConfig& operator=(ClientConfig const&) = default;
+    ~ClientConfig() = default;
 
     // Values of the parameters
 
@@ -172,14 +172,14 @@ public:
 };
 
 /**
- * Class HttpClient is a simple interface for communicating over the HTTP protocol.
+ * Class Client is a simple interface for communicating over the HTTP protocol.
  * The implementation of the class invokes a user-supplied callback (lambda) function for
  * each sequence of bytes read from the input stream.
  *
  * Here is an example of using the class to pull a file and dump its content on
  * to the standard output stream:
  * @code
- *   HttpClient reader("GET", "http://my.host.domain/data/chunk_0.txt");
+ *   Client reader("GET", "http://my.host.domain/data/chunk_0.txt");
  *   reader.read([](char const* buf, size_t size) {
  *       std::cout << str::string(buf, size);
  *   });
@@ -193,23 +193,23 @@ public:
  *       {"color_id", 123}
  *   });
  *   std::vector<std::string> const headers = {"Content-Type: application/json"};
- *   HttpClient client("POST", "http://svc.domain.net/create", request.dump(), headers);
+ *   Client client("POST", "http://svc.domain.net/create", request.dump(), headers);
  *   nlohmann::json const result = client.readAsJson();
  * @code
  *
  */
-class HttpClient {
+class Client {
 public:
     /// The function type for notifications on each record retrieved from the input stream.
     typedef std::function<void(char const*, size_t)> CallbackType;
 
     // No copy semantics for this class.
-    HttpClient() = delete;
-    HttpClient(HttpClient const&) = delete;
-    HttpClient& operator=(HttpClient const&) = delete;
+    Client() = delete;
+    Client(Client const&) = delete;
+    Client& operator=(Client const&) = delete;
 
     /// Non-trivial destructor is needed to free up allocated resources.
-    ~HttpClient();
+    ~Client();
 
     /**
      * @param method  The name of an HTTP method ('GET', 'POST', 'PUT', 'DELETE').
@@ -218,9 +218,9 @@ public:
      * @param headers Optional HTTP headers to be send with a request.
      * @param clientConfig Optional configuration parameters of the reader.
      */
-    HttpClient(std::string const& method, std::string const& url, std::string const& data = std::string(),
-               std::vector<std::string> const& headers = std::vector<std::string>(),
-               HttpClientConfig const& clientConfig = HttpClientConfig());
+    Client(std::string const& method, std::string const& url, std::string const& data = std::string(),
+           std::vector<std::string> const& headers = std::vector<std::string>(),
+           ClientConfig const& clientConfig = ClientConfig());
 
     /**
      * Begin processing a request. The whole content of the remote data source
@@ -263,10 +263,10 @@ private:
      * See the implementation of the class for further details on the function.
      * See the documentation on lincurl C API for an explanation of the function's parameters.
      */
-    friend size_t forwardToHttpClient(char* ptr, size_t size, size_t nmemb, void* userdata);
+    friend size_t forwardToClient(char* ptr, size_t size, size_t nmemb, void* userdata);
 
     /**
-     * This method is invoked by function forwardToHttpClient() on each chunk of data
+     * This method is invoked by function forwardToClient() on each chunk of data
      * reported by CURL while streaming in data from a remote server.
      *
      * @param ptr A pointer to the beginning of the data buffer.
@@ -280,7 +280,7 @@ private:
     std::string const _url;
     std::string const _data;
     std::vector<std::string> const _headers;
-    HttpClientConfig const _clientConfig;
+    ClientConfig const _clientConfig;
 
     CallbackType _onDataRead;  ///< set by method read() before pulling the data
 
@@ -289,6 +289,6 @@ private:
     curl_slist* _hlist = nullptr;
 };
 
-}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::http
 
-#endif  // LSST_QSERV_HTTPCLIENT_H
+#endif  // LSST_QSERV_HTTP_CLIENT_H

@@ -41,12 +41,12 @@
 #include "global/clock_defs.h"
 #include "global/debugUtil.h"
 #include "global/MsgReceiver.h"
+#include "http/Client.h"
 #include "proto/ProtoHeaderWrap.h"
 #include "proto/ProtoImporter.h"
 #include "proto/WorkerResponse.h"
 #include "qdisp/CzarStats.h"
 #include "qdisp/JobQuery.h"
-#include "replica/HttpClient.h"
 #include "rproc/InfileMerger.h"
 #include "util/Bug.h"
 #include "util/common.h"
@@ -57,7 +57,6 @@ using lsst::qserv::proto::ProtoHeaderWrap;
 using lsst::qserv::proto::ProtoImporter;
 using lsst::qserv::proto::Result;
 using lsst::qserv::proto::WorkerResponse;
-using lsst::qserv::replica::HttpClient;
 
 using namespace std;
 
@@ -265,7 +264,7 @@ bool readHttpFileAndMerge(lsst::qserv::proto::Result const& result,
     uint32_t msgSizeBytes = 0;
     bool success = true;
     try {
-        HttpClient reader("GET", httpUrl);
+        lsst::qserv::http::Client reader("GET", httpUrl);
         reader.read([&](char const* inBuf, size_t inBufSize) {
             char const* next = inBuf;
             char const* const end = inBuf + inBufSize;
@@ -352,7 +351,7 @@ bool readHttpFileAndMerge(lsst::qserv::proto::Result const& result,
     // Remove the file from the worker if it still exists. Report and ignore errors.
     // The files will be garbage-collected by workers.
     try {
-        HttpClient remover("DELETE", httpUrl);
+        lsst::qserv::http::Client remover("DELETE", httpUrl);
         remover.read([](char const* inBuf, size_t inBufSize) {});
     } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_WARN, context << "failed to remove " << httpUrl << ", ex: " << ex.what());

@@ -18,15 +18,15 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_URL_H
-#define LSST_QSERV_URL_H
+#ifndef LSST_QSERV_HTTP_URL_H
+#define LSST_QSERV_HTTP_URL_H
 
 // System headers
 #include <cstdint>
 #include <string>
 
 // This header declarations
-namespace lsst::qserv::replica {
+namespace lsst::qserv::http {
 
 /**
  * Class Url is a helper class for parsing and validating URLs.
@@ -110,6 +110,6 @@ private:
     std::string _target;      ///< the target part of the url
 };
 
-}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::http
 
-#endif  // LSST_QSERV_URL_H
+#endif  // LSST_QSERV_HTTP_URL_H

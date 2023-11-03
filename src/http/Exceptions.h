@@ -18,8 +18,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_HTTPEXCEPTIONS_H
-#define LSST_QSERV_HTTPEXCEPTIONS_H
+#ifndef LSST_QSERV_HTTP_EXCEPTIONS_H
+#define LSST_QSERV_HTTP_EXCEPTIONS_H
 
 // System headers
 #include <stdexcept>
@@ -29,27 +29,27 @@
 #include "nlohmann/json.hpp"
 
 // This header declarations
-namespace lsst::qserv::replica {
+namespace lsst::qserv::http {
 
 /**
- * Class HttpError represents exceptions thrown by HTTP modules in case of
+ * Class Error represents exceptions thrown by HTTP modules in case of
  * any errors which require additional info to be sent back to clients in
  * response to the requests.
  */
-class HttpError : public std::runtime_error {
+class Error : public std::runtime_error {
 public:
     /**
      * @param func A scope in which the error originated.
      * @param errorMsg A reason for the exception.
      * @param errorExt (optional) The additional information on the error.
      */
-    HttpError(std::string const& func, std::string const& errorMsg,
-              nlohmann::json const& errorExt = nlohmann::json::object())
+    Error(std::string const& func, std::string const& errorMsg,
+          nlohmann::json const& errorExt = nlohmann::json::object())
             : std::runtime_error(errorMsg), _func(func), _errorExt(errorExt) {}
 
-    HttpError() = default;
-    HttpError(HttpError const&) = default;
-    HttpError& operator=(HttpError const&) = default;
+    Error() = default;
+    Error(Error const&) = default;
+    Error& operator=(Error const&) = default;
 
     std::string const& func() const { return _func; }
     nlohmann::json const& errorExt() const { return _errorExt; }
@@ -67,10 +67,10 @@ private:
  * @param scope A scope of the error.
  * @param error A human readable error message.
  * @param (optional) HTTP code of an error if applies.
- * @throws HttpError
+ * @throws Error
  */
 void raiseRetryAllowedError(std::string const& scope, std::string const& error, long httpErrCode = 0);
 
-}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::http
 
-#endif  // LSST_QSERV_HTTPEXCEPTIONS_H
+#endif  // LSST_QSERV_HTTP_EXCEPTIONS_H

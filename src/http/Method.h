@@ -18,24 +18,26 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-
-// Class header
-#include "replica/HttpExceptions.h"
+#ifndef LSST_QSERV_HTTP_METHOD_H
+#define LSST_QSERV_HTTP_METHOD_H
 
 // System headers
-#include <cerrno>
+#include <string>
 
-using namespace std;
-using json = nlohmann::json;
+// This header declarations
+namespace lsst::qserv::http {
 
-namespace lsst::qserv::replica {
+/// The type-safe representation of the HTTP methods.
+enum class Method : int { GET, POST, PUT, DELETE };
 
-void raiseRetryAllowedError(string const& scope, string const& error, long httpErrCode) {
-    json errorExt;
-    errorExt["http_error"] = httpErrCode;
-    errorExt["system_error"] = errno;
-    errorExt["retry_allowed"] = 1;
-    throw HttpError(scope, error, errorExt);
-}
+/// @return The string representation.
+/// @throws std::invalid_argument If the method is not valid.
+std::string method2string(Method method);
 
-}  // namespace lsst::qserv::replica
+/// @return The method.
+/// @throws std::invalid_argument If the input value doesn't correspond to any method.
+Method string2method(std::string const& str);
+
+}  // namespace lsst::qserv::http
+
+#endif  // LSST_QSERV_HTTP_METHOD_H

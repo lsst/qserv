@@ -26,7 +26,7 @@
 #include <stdexcept>
 
 // Qserv headers
-#include "replica/HttpExceptions.h"
+#include "http/Exceptions.h"
 #include "replica/SqlQueryRequest.h"
 
 using namespace std;
@@ -75,7 +75,7 @@ json HttpQservSqlModule::_execute() {
     result["result_set"] = request->responseData().toJson();
 
     if (request->extendedState() != Request::SUCCESS) {
-        throw HttpError(__func__, "Query failed. See details in the result set", result);
+        throw http::Error(__func__, "Query failed. See details in the result set", result);
     }
     return result;
 }

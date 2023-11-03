@@ -24,12 +24,12 @@
 
 // Qserv headers
 #include "css/CssAccess.h"
+#include "http/Exceptions.h"
 #include "replica/Configuration.h"
 #include "replica/ConfigDatabase.h"
 #include "replica/Controller.h"
 #include "replica/DatabaseMySQL.h"
 #include "replica/DatabaseServices.h"
-#include "replica/HttpExceptions.h"
 #include "replica/ServiceManagementJob.h"
 #include "replica/ServiceProvider.h"
 
@@ -135,7 +135,8 @@ DatabaseInfo HttpModule::getDatabaseInfo(string const& func, bool throwIfPublish
 
     auto const databaseInfo = config->databaseInfo(database);
     if (throwIfPublished && databaseInfo.isPublished) {
-        throw HttpError(context() + "::" + func, "database '" + databaseInfo.name + " is already published.");
+        throw http::Error(context() + "::" + func,
+                          "database '" + databaseInfo.name + " is already published.");
     }
     return databaseInfo;
 }

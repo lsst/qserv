@@ -150,12 +150,8 @@ target_sources(replica PRIVATE
     GetStatusQservMgtRequest.h
     HealthMonitorTask.cc
     HealthMonitorTask.h
-    HttpAsyncReq.h
-    HttpAsyncReq.cc
     HttpAsyncReqApp.h
     HttpAsyncReqApp.cc
-    HttpClient.cc
-    HttpClient.h
     HttpClientApp.cc
     HttpClientApp.h
     HttpCatalogsModule.cc
@@ -166,8 +162,6 @@ target_sources(replica PRIVATE
     HttpControllersModule.h
     HttpDirectorIndexModule.cc
     HttpDirectorIndexModule.h
-    HttpExceptions.cc
-    HttpExceptions.h
     HttpExportModule.cc
     HttpExportModule.h
     HttpIngestChunksModule.cc
@@ -422,8 +416,6 @@ target_sources(replica PRIVATE
     TransactionContrib.h
     TransactionsApp.cc
     TransactionsApp.h
-    Url.cc
-    Url.h
     VerifyApp.cc
     VerifyApp.h
     VerifyJob.cc
@@ -469,6 +461,7 @@ target_link_libraries(replica PUBLIC
     xrdsvc
     XrdCl
     XrdSsiLib
+    http
     qhttp
     sphgeom
     partition
@@ -481,8 +474,8 @@ target_link_libraries(replica PUBLIC
     curl
 )
 
-FUNCTION(REPLICA_UTILS)
-    FOREACH(UTIL IN ITEMS ${ARGV})
+function(REPLICA_UTILS)
+    foreach(UTIL IN ITEMS ${ARGV})
         add_executable(${UTIL})
         target_sources(${UTIL} PRIVATE tools/${UTIL}.cc)
         target_include_directories(${UTIL} PRIVATE ${XROOTD_INCLUDE_DIRS})
@@ -490,8 +483,8 @@ FUNCTION(REPLICA_UTILS)
             replica
         )
         install(TARGETS ${UTIL})
-    ENDFOREACH()
-ENDFUNCTION()
+    endforeach()
+endfunction()
 
 replica_utils(
     qserv-replica-calc-cs
@@ -514,8 +507,8 @@ install(
     TARGETS replica
 )
 
-FUNCTION(REPLICA_TESTS)
-    FOREACH(TEST IN ITEMS ${ARGV})
+function(REPLICA_TESTS)
+    foreach(TEST IN ITEMS ${ARGV})
         add_executable(${TEST} ${TEST}.cc)
         target_link_libraries(${TEST} PUBLIC
             replica
@@ -523,8 +516,8 @@ FUNCTION(REPLICA_TESTS)
             Threads::Threads
         )
         add_test(NAME ${TEST} COMMAND ${TEST})
-    ENDFOREACH()
-ENDFUNCTION()
+    endforeach()
+endfunction()
 
 replica_tests(
     testApplicationParser
@@ -536,8 +529,6 @@ replica_tests(
     testCsv
     testFileIngestApp
     testFileUtils
-    testHttpAsyncReq
-    testHttpRequestQuery
     testIngestRequestMgr
     testJson
     testMessageQueue
@@ -548,6 +539,5 @@ replica_tests(
     testSqlResultSet
     testSqlSchemaUtils
     testTypes
-    testUrl
     testConfiguration
 )

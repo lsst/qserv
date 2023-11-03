@@ -20,7 +20,7 @@
  */
 
 // Class header
-#include "replica/Url.h"
+#include "http/Url.h"
 
 // System headers
 #include <map>
@@ -31,7 +31,7 @@
 
 using namespace std;
 
-namespace lsst::qserv::replica {
+namespace lsst::qserv::http {
 
 Url::Url(string const& url) : _url(url) { _translate(); }
 
@@ -127,4 +127,4 @@ void Url::_translate() {
     throw invalid_argument(_error(__func__, "invalid url '" + _url + "'"));
 }
 
-}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::http

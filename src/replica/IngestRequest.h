@@ -29,15 +29,19 @@
 #include <vector>
 
 // Qserv headers
+#include "http/Url.h"
 #include "replica/Csv.h"
 #include "replica/DatabaseServices.h"
 #include "replica/IngestFileSvc.h"
-#include "replica/Url.h"
 #include "replica/Mutex.h"
 
 // Forward declarations
+
+namespace lsst::qserv::http {
+class ClientConfig;
+}  // namespace lsst::qserv::http
+
 namespace lsst::qserv::replica {
-class HttpClientConfig;
 class ServiceProvider;
 }  // namespace lsst::qserv::replica
 
@@ -228,7 +232,7 @@ private:
      * Pull file reader's configuration from the config store.
      * @return The configuration object.
      */
-    HttpClientConfig _clientConfig(replica::Lock const& lock) const;
+    http::ClientConfig _clientConfig(replica::Lock const& lock) const;
 
     /// Mutex guarding internal state.
     mutable replica::Mutex _mtx;
@@ -238,7 +242,7 @@ private:
     TransactionContribInfo _contrib;
 
     // These variables are set after completing parameter validation
-    std::unique_ptr<Url> _resource;
+    std::unique_ptr<http::Url> _resource;
     csv::Dialect _dialect;
 
     /// The flag is set by method process(), and once it's set it's never

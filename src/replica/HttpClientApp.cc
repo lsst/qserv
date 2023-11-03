@@ -158,7 +158,7 @@ int HttpClientApp::runImpl() {
             osPtr = &fs;
         }
     }
-    HttpClient reader(_method, _url, _data, headers, _clientConfig);
+    http::Client reader(_method, _url, _data, headers, _clientConfig);
     if (_result2json) {
         if (nullptr != osPtr) *osPtr << reader.readAsJson() << "\n";
     } else {

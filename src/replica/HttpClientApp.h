@@ -22,8 +22,8 @@
 #define LSST_QSERV_REPLICA_HTTPCLIENTAPP_H
 
 // Qserv headers
+#include "http/Client.h"
 #include "replica/Application.h"
-#include "replica/HttpClient.h"
 
 // This header declarations
 namespace lsst::qserv::replica {
@@ -65,7 +65,7 @@ private:
     std::string _url;
     std::string _data;
     std::string _header;
-    HttpClientConfig _clientConfig;
+    http::ClientConfig _clientConfig;
     std::string _file;
     bool _result2json = false;
     bool _silent = false;

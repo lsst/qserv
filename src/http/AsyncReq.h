@@ -18,13 +18,14 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_HTTPASYNCREQ_H
-#define LSST_QSERV_HTTPASYNCREQ_H
+#ifndef LSST_QSERV_HTTP_ASYNCREQ_H
+#define LSST_QSERV_HTTP_ASYNCREQ_H
 
 // System headers
 #include <functional>
 #include <initializer_list>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <vector>
 #include <unordered_map>
@@ -34,14 +35,13 @@
 #include "boost/beast.hpp"
 
 // Qserv headers
-#include "replica/Url.h"
-#include "replica/Mutex.h"
+#include "http/Url.h"
 
 // This header declarations
-namespace lsst::qserv::replica {
+namespace lsst::qserv::http {
 
 /**
- * @brief Class HttpAsyncReq represents a simple asynchronous interface for
+ * @brief Class AsyncReq represents a simple asynchronous interface for
  * communicating over the HTTP protocol.
  *
  * The implementation of the class invokes a user-supplied callback (lambda) function
@@ -51,11 +51,11 @@ namespace lsst::qserv::replica {
  * to the standard output stream:
  * @code
  *   boost::asio::io_service io_service;
- *   std::shared_ptr<HttpAsyncReq> const reader =
- *       HttpAsyncReq::create(
+ *   std::shared_ptr<AsyncReq> const reader =
+ *       http::AsyncReq::create(
  *           [](auto const& reader) {
- *               if (reader->state() != HttpAsyncReq::State::FINISHED) {
- *                   std::cerr << "request failed, state: " << HttpAsyncReq::state2str(reader->state())
+ *               if (reader->state() != http::AsyncReq::State::FINISHED) {
+ *                   std::cerr << "request failed, state: " << AsyncReq::state2str(reader->state())
  *                        << ", error: " << reader->errorMessage() << std::endl;
  *                   return;
  *               }
@@ -80,10 +80,10 @@ namespace lsst::qserv::replica {
  * @note The implementation will open and close a new connection for each request.
  * @note The implementation doesn't support TLS/SSL-based HTTPS protocol.
  */
-class HttpAsyncReq : public std::enable_shared_from_this<HttpAsyncReq> {
+class AsyncReq : public std::enable_shared_from_this<AsyncReq> {
 public:
     /// The function type for notifications on the completion of the operation.
-    typedef std::function<void(std::shared_ptr<HttpAsyncReq> const&)> CallbackType;
+    typedef std::function<void(std::shared_ptr<AsyncReq> const&)> CallbackType;
 
     enum class State : int {
         CREATED = 0,       ///< The object was created and no request was initiated.
@@ -104,9 +104,9 @@ public:
     /// @throw std::invalid_argument For unknown values of the input parameter.
     static std::string state2str(State state);
 
-    HttpAsyncReq() = delete;
-    HttpAsyncReq(HttpAsyncReq const&) = delete;
-    HttpAsyncReq& operator=(HttpAsyncReq const&) = delete;
+    AsyncReq() = delete;
+    AsyncReq(AsyncReq const&) = delete;
+    AsyncReq& operator=(AsyncReq const&) = delete;
 
     /**
      * @brief Static factory for creating objects of the class.
@@ -136,21 +136,20 @@ public:
      * @throw std::invalid_argument If empty or invalid values of the input parameters
      *   were provided.
      */
-    static std::shared_ptr<HttpAsyncReq> create(boost::asio::io_service& io_service,
-                                                CallbackType const& onFinish, std::string const& method,
-                                                std::string const& url,
-                                                std::string const& data = std::string(),
-                                                std::unordered_map<std::string, std::string> const& headers =
-                                                        std::unordered_map<std::string, std::string>(),
-                                                size_t maxResponseBodySize = 0,
-                                                unsigned int expirationIvalSec = 0);
+    static std::shared_ptr<AsyncReq> create(boost::asio::io_service& io_service, CallbackType const& onFinish,
+                                            std::string const& method, std::string const& url,
+                                            std::string const& data = std::string(),
+                                            std::unordered_map<std::string, std::string> const& headers =
+                                                    std::unordered_map<std::string, std::string>(),
+                                            size_t maxResponseBodySize = 0,
+                                            unsigned int expirationIvalSec = 0);
 
     /// Non-trivial destructor is needed to free up allocated resources.
-    virtual ~HttpAsyncReq();
+    virtual ~AsyncReq();
 
     std::string version() const;
     std::string const& method() const { return _method; }
-    Url const& url() const { return _url; }
+    http::Url const& url() const { return _url; }
 
     /// @return The current state of the request.
     State state() const { return _state; }
@@ -198,11 +197,11 @@ public:
     size_t responseBodySize() const;
 
 private:
-    /// @see HttpAsyncReq::create()
-    HttpAsyncReq(boost::asio::io_service& io_service, CallbackType const& onFinish, std::string const& method,
-                 std::string const& url, std::string const& data,
-                 std::unordered_map<std::string, std::string> const& headers, size_t maxResponseBodySize,
-                 unsigned int expirationIvalSec);
+    /// @see AsyncReq::create()
+    AsyncReq(boost::asio::io_service& io_service, CallbackType const& onFinish, std::string const& method,
+             std::string const& url, std::string const& data,
+             std::unordered_map<std::string, std::string> const& headers, size_t maxResponseBodySize,
+             unsigned int expirationIvalSec);
 
     /**
      * @brief Verify the desired state against the current one.
@@ -212,14 +211,14 @@ private:
      * @param desiredStates The desired states (may be more than one) to be verified.
      * @throw std::logic_error If the current state didn't match the desired one.
      */
-    void _assertState(replica::Lock const& lock, std::string const& context,
+    void _assertState(std::lock_guard<std::mutex> const& lock, std::string const& context,
                       std::initializer_list<State> const& desiredStates) const;
 
     // Async operations initiators and handlers.
 
-    void _restart(replica::Lock const& lock);
+    void _restart(std::lock_guard<std::mutex> const& lock);
     void _restarted(boost::system::error_code const& ec);
-    void _resolve(replica::Lock const& lock);
+    void _resolve(std::lock_guard<std::mutex> const& lock);
     void _resolved(boost::system::error_code const& ec,
                    boost::asio::ip::tcp::resolver::results_type const& results);
     void _connected(boost::system::error_code const& ec);
@@ -228,7 +227,7 @@ private:
     void _expired(boost::system::error_code const& ec);
 
     /// Extract the header from the response message and cache it.
-    void _extractCacheHeader(replica::Lock const& lock);
+    void _extractCacheHeader(std::lock_guard<std::mutex> const& lock);
 
     /// Log a error along with the request's parameters in the specified context
     void _logError(std::string const& prefix, boost::system::error_code const& ec) const;
@@ -241,7 +240,8 @@ private:
      * @param finalState The final state to be set.
      * @param error (Optional) The error message to be set.
      */
-    void _finish(replica::Lock const& lock, State finalState, std::string const& error = std::string());
+    void _finish(std::lock_guard<std::mutex> const& lock, State finalState,
+                 std::string const& error = std::string());
 
     // Data members.
 
@@ -250,7 +250,7 @@ private:
     boost::asio::ip::tcp::socket _socket;
     CallbackType _onFinish;
     std::string const _method;
-    Url const _url;
+    http::Url const _url;
     std::string const _data;
     std::unordered_map<std::string, std::string> const _headers;
     size_t const _maxResponseBodySize;
@@ -292,9 +292,9 @@ private:
 
     /// The mutex for enforcing thread safety of the class public API
     /// and internal operations.
-    mutable replica::Mutex _mtx;
+    mutable std::mutex _mtx;
 };
 
-}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::http
 
-#endif  // LSST_QSERV_HTTPASYNCREQ_H
+#endif  // LSST_QSERV_HTTP_ASYNCREQ_H

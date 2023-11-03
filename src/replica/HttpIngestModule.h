@@ -185,7 +185,7 @@ private:
      *
      * @param database database descriptor
      * @param allWorkers  'true' if all workers should be involved into the operation
-     * @throws HttpError if the operation failed
+     * @throws http::Error if the operation failed
      */
     void _grantDatabaseAccess(DatabaseInfo const& database, bool allWorkers) const;
 
@@ -195,7 +195,7 @@ private:
      *
      * @param database database descriptor
      * @param allWorkers 'true' if all workers should be involved into the operation
-     * @throws HttpError if the operation failed
+     * @throws http::Error if the operation failed
      */
     void _enableDatabase(DatabaseInfo const& database, bool allWorkers) const;
 
@@ -208,7 +208,7 @@ private:
      *
      * @param database database descriptor
      * @param allWorkers 'true' if all workers should be involved into the operation
-     * @throws HttpError if the operation failed
+     * @throws http::Error if the operation failed
      */
     void _createMissingChunkTables(DatabaseInfo const& database, bool allWorkers) const;
 
@@ -217,7 +217,7 @@ private:
      *
      * @param database database descriptor
      * @param allWorkers 'true' if all workers should be involved into the operation
-     * @throws HttpError if operation failed
+     * @throws http::Error if operation failed
      */
     void _removeMySQLPartitions(DatabaseInfo const& database, bool allWorkers) const;
 
@@ -271,7 +271,7 @@ private:
      *
      * @param database database descriptor
      * @param allWorkers 'true' if all workers should be involved into the operation
-     * @throws HttpError if the operation failed
+     * @throws http::Error if the operation failed
      */
     void _qservSync(DatabaseInfo const& database, bool allWorkers) const;
 

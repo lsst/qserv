@@ -23,7 +23,7 @@
 #include "replica/HttpModuleBase.h"
 
 // Qserv headers
-#include "replica/HttpExceptions.h"
+#include "http/Exceptions.h"
 #include "replica/HttpMetaModule.h"
 
 // LSST headers
@@ -64,7 +64,7 @@ void HttpModuleBase::execute(string const& subModuleName, HttpAuthType const aut
         _sendData(result);
     } catch (AuthError const& ex) {
         _sendError(__func__, "failed to pass authorization requirements, ex: " + string(ex.what()));
-    } catch (HttpError const& ex) {
+    } catch (http::Error const& ex) {
         _sendError(ex.func(), ex.what(), ex.errorExt());
     } catch (invalid_argument const& ex) {
         _sendError(__func__, "invalid parameters of the request, ex: " + string(ex.what()));
@@ -101,14 +101,14 @@ void HttpModuleBase::checkApiVersion(string const& func, unsigned int minVersion
             version = body().required<unsigned int>(versionAttrName);
         }
     } catch (...) {
-        throw HttpError(func, "The required parameter " + versionAttrName + " is not a number.", errorEx);
+        throw http::Error(func, "The required parameter " + versionAttrName + " is not a number.", errorEx);
     }
     if (!(minVersion <= version && version <= maxVersion)) {
         if (!warning.empty()) warn(warning);
-        throw HttpError(func,
-                        "The requested version " + to_string(version) +
-                                " of the API is not in the range supported by the service.",
-                        errorEx);
+        throw http::Error(func,
+                          "The requested version " + to_string(version) +
+                                  " of the API is not in the range supported by the service.",
+                          errorEx);
     }
 }
 

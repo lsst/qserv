@@ -168,7 +168,7 @@ protected:
      *   allows REST serivices to notify clients on possible problems encountered
      *   when validating parameters of a request.
      *
-     * @throw HttpError if a value of the attribute is not within the expected range.
+     * @throw http::Error if a value of the attribute is not within the expected range.
      */
     void checkApiVersion(std::string const& func, unsigned int minVersion,
                          std::string const& warning = std::string()) const;
@@ -181,7 +181,7 @@ protected:
      *   errors from modules.
      * @return A result to be sent back to a service requester in case of a successful
      *   completion of the requested operation.
-     * @throws HttpExceptions In case if a module needs to pass extra details
+     * @throws http::Error In case if a module needs to pass extra details
      *   on a error back to a service requester.
      */
     virtual nlohmann::json executeImpl(std::string const& subModuleName) = 0;
