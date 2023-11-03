@@ -25,25 +25,32 @@
 #include "xrdsvc/SsiService.h"
 
 // System headers
+#include <algorithm>
 #include <cassert>
+#include <chrono>
 #include <iostream>
 #include <string>
+#include <stdexcept>
 #include <stdlib.h>
+#include <thread>
 #include <unistd.h>
-#include <xrdsvc/SsiRequest.h>
+#include <vector>
 
 // Third-party headers
+#include <nlohmann/json.hpp>
 #include "XrdSsi/XrdSsiLogger.hh"
 
 // LSST headers
 #include "lsst/log/Log.h"
 
 // Qserv headers
+#include "http/Client.h"
 #include "memman/MemMan.h"
 #include "memman/MemManNone.h"
 #include "mysql/MySqlConnection.h"
 #include "sql/SqlConnection.h"
 #include "sql/SqlConnectionFactory.h"
+#include "util/common.h"
 #include "util/FileMonitor.h"
 #include "util/HoldTrack.h"
 #include "wbase/Base.h"
@@ -58,8 +65,10 @@
 #include "wsched/FifoScheduler.h"
 #include "wsched/GroupScheduler.h"
 #include "wsched/ScanScheduler.h"
+#include "xrdsvc/SsiRequest.h"
 #include "xrdsvc/XrdName.h"
 
+using namespace nlohmann;
 using namespace std;
 using namespace std::literals;
 
@@ -71,6 +80,45 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.xrdsvc.SsiService");
 // add LWP to MDC in log messages
 void initMDC() { LOG_MDC("LWP", to_string(lsst::log::lwpID())); }
 int dummyInitMDC = LOG_MDC_INIT(initMDC);
+
+/**
+ * This function will keep periodically updating worker's info in the Replication
+ * System's Registry.
+ * @param id The unique identifier of a worker to be registered.
+ * @note The thread will terminate the process if the registraton request to the Registry
+ * was explicitly denied by the service. This means the application may be misconfigured.
+ * Transient communication errors when attempting to connect or send requests to
+ * the Registry will be posted into the log stream and ignored.
+ */
+void registryUpdateLoop(string const& id) {
+    auto const workerConfig = lsst::qserv::wconfig::WorkerConfig::instance();
+    string const method = "POST";
+    string const url = "http://" + workerConfig->replicationRegistryHost() + ":" +
+                       to_string(workerConfig->replicationRegistryPort()) + "/qserv-worker";
+    vector<string> const headers = {"Content-Type: application/json"};
+    json const request =
+            json::object({{"instance_id", workerConfig->replicationInstanceId()},
+                          {"auth_key", workerConfig->replicationAuthKey()},
+                          {"worker",
+                           {{"name", id},
+                            {"management-port", workerConfig->replicationHttpPort()},
+                            {"management-host-name", lsst::qserv::util::get_current_host_fqdn()}}}});
+    string const requestContext = "SsiService: '" + method + "' request to '" + url + "'";
+    lsst::qserv::http::Client client(method, url, request.dump(), headers);
+    while (true) {
+        try {
+            json const response = client.readAsJson();
+            if (0 == response.at("success").get<int>()) {
+                string const error = response.at("error").get<string>();
+                LOGS(_log, LOG_LVL_ERROR, requestContext + " was denied, error: '" + error + "'.");
+                abort();
+            }
+        } catch (exception const& ex) {
+            LOGS(_log, LOG_LVL_WARN, requestContext + " failed, ex: " + ex.what());
+        }
+        this_thread::sleep_for(chrono::seconds(max(1U, workerConfig->replicationRegistryHearbeatIvalSec())));
+    }
+}
 
 }  // namespace
 
@@ -192,6 +240,11 @@ SsiService::SsiService(XrdSsiLogger* log)
             wbase::FileChannelShared::cleanUpResultsOnWorkerRestart();
         }
     }
+
+    // Begin periodically updating worker's status in the Replication System's registry
+    // in the detached thread. This will continue before the application gets terminated.
+    thread registryUpdateThread(::registryUpdateLoop, _chunkInventory->id());
+    registryUpdateThread.detach();
 }
 
 SsiService::~SsiService() { LOGS(_log, LOG_LVL_DEBUG, "SsiService dying."); }

@@ -17,5 +17,6 @@ target_link_libraries(qserv_xrdsvc PUBLIC
     boost_filesystem
     boost_system
     log
+    http
     XrdSsiLib
 )
