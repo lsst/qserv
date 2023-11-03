@@ -24,6 +24,7 @@
 
 // Qserv headers
 #include "global/constants.h"
+#include "global/stringUtil.h"
 #include "replica/ChunkedTable.h"
 #include "replica/SqlJobResult.h"
 #include "replica/SqlRowStatsRequest.h"
@@ -306,7 +307,7 @@ bool SqlRowStatsJob::_process(string const& context_, bool isPartitioned, SqlJob
                 return !succeeded;
             }
             try {
-                TransactionId const transactionId = lsst::qserv::replica::stoui(row.cells[0]);
+                TransactionId const transactionId = lsst::qserv::stoui(row.cells[0]);
                 size_t const numRows = std::stoul(row.cells[1]);
                 counters[internalTable][transactionId].push_back(numRows);
             } catch (out_of_range const&) {

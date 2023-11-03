@@ -5,6 +5,7 @@ target_sources(global PRIVATE
     debugUtil.cc
     ResourceUnit.cc
     sqltoken.cc
+    stringUtil.cc
 )
 
 target_link_libraries(global PUBLIC

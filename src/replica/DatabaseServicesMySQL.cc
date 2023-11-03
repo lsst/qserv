@@ -31,6 +31,7 @@
 #include <list>
 
 // Qserv headers
+#include "global/stringUtil.h"
 #include "replica/Common.h"
 #include "replica/Configuration.h"
 #include "replica/Controller.h"
@@ -1922,7 +1923,7 @@ vector<TransactionContribInfo> DatabaseServicesMySQL::_transactionContribsImpl(r
                 row.get("val", val);
                 if (val.empty()) continue;
                 if (key == "max_num_warnings")
-                    contrib.maxNumWarnings = stoui(val);
+                    contrib.maxNumWarnings = lsst::qserv::stoui(val);
                 else if (key == "fields_terminated_by")
                     contrib.dialectInput.fieldsTerminatedBy = val;
                 else if (key == "fields_enclosed_by")

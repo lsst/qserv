@@ -25,7 +25,7 @@
 #include <vector>
 
 // Qserv headers
-#include "replica/Common.h"
+#include "global/stringUtil.h"
 #include "replica/Configuration.h"
 #include "replica/DatabaseMySQL.h"
 #include "replica/DatabaseMySQLUtils.h"
@@ -70,14 +70,14 @@ extern "C" string XrdCmsgetVnId(XrdCmsgetVnIdArgs) {
             // if the query fails during execution. If the parameter's value is set to 0 then the default
             // value of the parameter will be pulled by the query processor from the Replication
             // system's Configuration.
-            unsigned int maxReconnects = lsst::qserv::replica::stoui(args[1]);
+            unsigned int maxReconnects = lsst::qserv::stoui(args[1]);
             // Parameter 'timeoutSec' is used both while connecting to the database server and for executing
             // the query. If the MySQl service won't respond to the connection attempts beyond a period of
             // time specified by the parameter then the operation will fail. Similarly, if the query execution
             // will take longer than it's specified in the parameter then the query will fail. If the
             // parameter's value is set to 0 then the default value of the parameter will be pulled by the
             // query processor from the Replication system's Configuration.
-            unsigned int timeoutSec = lsst::qserv::replica::stoui(args[2]);
+            unsigned int timeoutSec = lsst::qserv::stoui(args[2]);
             // This parameter allows the database connector to make reconnects if the MySQL service
             // won't be responding (or not be up) at the initial connection attempt.
             bool const allowReconnects = true;

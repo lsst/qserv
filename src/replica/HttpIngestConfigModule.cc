@@ -26,6 +26,7 @@
 #include <stdexcept>
 
 // Qserv headers
+#include "global/stringUtil.h"
 #include "replica/Configuration.h"
 #include "replica/DatabaseServices.h"
 #include "replica/HttpClient.h"
@@ -75,7 +76,7 @@ json HttpIngestConfigModule::_get() {
 
     auto const getUInt = [&databaseServices, &databaseInfo](json& obj, string const& key) {
         try {
-            obj[key] = stoui(
+            obj[key] = lsst::qserv::stoui(
                     databaseServices->ingestParam(databaseInfo.name, HttpClientConfig::category, key).value);
         } catch (DatabaseServicesNotFound const&) {
         }

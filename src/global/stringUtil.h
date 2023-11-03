@@ -24,13 +24,12 @@
 #define LSST_QSERV_STRINGUTIL_H
 /**
  * @brief  Misc. lightweight string manipulation.
- *
  */
 
 // System headers
-#include <algorithm>
 #include <cctype>
 #include <sstream>
+#include <string>
 
 namespace lsst::qserv {
 
@@ -73,5 +72,15 @@ std::string toString(A&& a) {
     return os.str();
 }
 
+/**
+ * Parse a string into an unsigned integer number.
+ * @note The function that would complement the Standard Library's function std::stoi
+ *   is not present in the Standard library. For unsigned integer types, the library
+ *   only has std::stoul and std::stoull. Further details on this subject can be
+ *   found in an official documentation for the latest C++ Standard.
+ */
+unsigned int stoui(std::string const& str, size_t* idx = 0, int base = 10);
+
 }  // namespace lsst::qserv
+
 #endif  // LSST_QSERV_STRINGUTIL_H

@@ -23,7 +23,7 @@
 #include "replica/IngestResourceMgrP.h"
 
 // Qserv headers
-#include "replica/Common.h"
+#include "global/stringUtil.h"
 #include "replica/DatabaseServices.h"
 #include "replica/HttpClient.h"
 #include "replica/ServiceProvider.h"
@@ -48,7 +48,7 @@ unsigned int IngestResourceMgrP::asyncProcLimit(string const& databaseName) cons
                                    ->ingestParam(databaseName, HttpClientConfig::category,
                                                  HttpClientConfig::asyncProcLimitKey)
                                    .value;
-        return stoui(str);
+        return lsst::qserv::stoui(str);
     } catch (DatabaseServicesNotFound const&) {
         // Assume the default value if no parameter was recorded in
         // the configuration for the database.

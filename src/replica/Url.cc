@@ -27,7 +27,7 @@
 #include <stdexcept>
 
 // Qserv headers
-#include "replica/Common.h"
+#include "global/stringUtil.h"
 
 using namespace std;
 
@@ -109,7 +109,7 @@ void Url::_translate() {
                     string const hostPort = hostPortTarget.substr(0, posTarget);
                     string::size_type const posPort = hostPort.find_first_of(':');
                     if (posPort != string::npos) {
-                        port = stoui(hostPort.substr(posPort + 1));
+                        port = lsst::qserv::stoui(hostPort.substr(posPort + 1));
                     }
                     string const host = hostPort.substr(0, posPort);
                     if (!host.empty()) {
