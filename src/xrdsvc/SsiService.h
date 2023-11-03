@@ -37,17 +37,21 @@
 // Forward declarations
 class XrdSsiLogger;
 
-namespace lsst::qserv {
-namespace util {
+namespace lsst::qserv::util {
 class FileMonitor;
-}
-namespace wcontrol {
+}  // namespace lsst::qserv::util
+
+namespace lsst::qserv::wcontrol {
 class Foreman;
-}  // namespace wcontrol
-namespace wpublish {
+}  // namespace lsst::qserv::wcontrol
+
+namespace lsst::qserv::wpublish {
 class ChunkInventory;
-}
-}  // namespace lsst::qserv
+}  // namespace lsst::qserv::wpublish
+
+namespace lsst::qserv::xrdsvc {
+class HttpSvc;
+}  // namespace lsst::qserv::xrdsvc
 
 namespace lsst::qserv::xrdsvc {
 
@@ -81,7 +85,9 @@ private:
     /// Reloads the log configuration file on log config file change.
     std::shared_ptr<util::FileMonitor> _logFileMonitor;
 
-};  // class SsiService
+    /// The HTTP server processing worker management requests.
+    std::shared_ptr<HttpSvc> _controlHttpSvc;
+};
 
 }  // namespace lsst::qserv::xrdsvc
 

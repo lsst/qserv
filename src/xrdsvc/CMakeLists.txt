@@ -3,6 +3,7 @@ add_dependencies(qserv_xrdsvc proto)
 
 target_sources(qserv_xrdsvc PRIVATE
     ChannelStream.cc
+    HttpSvc.cc
     SsiProvider.cc
     SsiRequest.cc
     SsiService.cc

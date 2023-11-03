@@ -48,6 +48,7 @@
 #include "memman/MemMan.h"
 #include "memman/MemManNone.h"
 #include "mysql/MySqlConnection.h"
+#include "qhttp/Server.h"
 #include "sql/SqlConnection.h"
 #include "sql/SqlConnectionFactory.h"
 #include "util/common.h"
@@ -65,6 +66,7 @@
 #include "wsched/FifoScheduler.h"
 #include "wsched/GroupScheduler.h"
 #include "wsched/ScanScheduler.h"
+#include "xrdsvc/HttpSvc.h"
 #include "xrdsvc/SsiRequest.h"
 #include "xrdsvc/XrdName.h"
 
@@ -241,13 +243,24 @@ SsiService::SsiService(XrdSsiLogger* log)
         }
     }
 
+    // Start the control server for processing worker management requests sent
+    // by the Replication System. Update the port number in the configuration
+    // in case if the server is run on the dynamically allocated port.
+    _controlHttpSvc =
+            HttpSvc::create(workerConfig->replicationHttpPort(), workerConfig->replicationNumHttpThreads());
+    auto const port = _controlHttpSvc->start();
+    workerConfig->setReplicationHttpPort(port);
+
     // Begin periodically updating worker's status in the Replication System's registry
     // in the detached thread. This will continue before the application gets terminated.
     thread registryUpdateThread(::registryUpdateLoop, _chunkInventory->id());
     registryUpdateThread.detach();
 }
 
-SsiService::~SsiService() { LOGS(_log, LOG_LVL_DEBUG, "SsiService dying."); }
+SsiService::~SsiService() {
+    LOGS(_log, LOG_LVL_DEBUG, "SsiService dying.");
+    _controlHttpSvc->stop();
+}
 
 void SsiService::ProcessRequest(XrdSsiRequest& reqRef, XrdSsiResource& resRef) {
     LOGS(_log, LOG_LVL_DEBUG, "Got request call where rName is: " << resRef.rName);
