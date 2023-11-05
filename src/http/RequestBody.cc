@@ -20,7 +20,7 @@
  */
 
 // Class header
-#include "replica/HttpRequestBody.h"
+#include "http/RequestBody.h"
 
 // System headers
 #include <iterator>
@@ -28,9 +28,9 @@
 using namespace std;
 using json = nlohmann::json;
 
-namespace lsst::qserv::replica {
+namespace lsst::qserv::http {
 
-HttpRequestBody::HttpRequestBody(qhttp::Request::Ptr const& req) : objJson(json::object()) {
+RequestBody::RequestBody(qhttp::Request::Ptr const& req) : objJson(json::object()) {
     // This way of parsing the optional body allows requests which have no body.
 
     string const contentType = req->header["Content-Type"];
@@ -54,14 +54,14 @@ HttpRequestBody::HttpRequestBody(qhttp::Request::Ptr const& req) : objJson(json:
     }
 }
 
-bool HttpRequestBody::has(json const& obj, string const& name) const {
+bool RequestBody::has(json const& obj, string const& name) const {
     if (not obj.is_object()) {
-        throw invalid_argument("HttpRequestBody::" + string(__func__) +
+        throw invalid_argument("RequestBody::" + string(__func__) +
                                " parameter 'obj' is not a valid JSON object");
     }
     return obj.find(name) != obj.end();
 }
 
-bool HttpRequestBody::has(string const& name) const { return has(objJson, name); }
+bool RequestBody::has(string const& name) const { return has(objJson, name); }
 
-}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::http

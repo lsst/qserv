@@ -51,7 +51,7 @@ void HttpReplicationLevelsModule::process(Controller::Ptr const& controller, str
                                           HttpProcessorConfig const& processorConfig,
                                           qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp,
                                           HealthMonitorTask::Ptr const& healthMonitorTask,
-                                          string const& subModuleName, HttpAuthType const authType) {
+                                          string const& subModuleName, http::AuthType const authType) {
     HttpReplicationLevelsModule module(controller, taskName, processorConfig, req, resp, healthMonitorTask);
     module.execute(subModuleName, authType);
 }

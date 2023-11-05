@@ -28,6 +28,7 @@
 #include "util/TimeUtils.h"
 
 // System headers
+#include <algorithm>
 #include <sstream>
 #include <stdexcept>
 #include <vector>
@@ -61,27 +62,23 @@ namespace lsst::qserv::replica {
 
 void RegistryHttpSvcMod::process(ServiceProvider::Ptr const& serviceProvider, RegistryWorkers& workers,
                                  qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp,
-                                 string const& subModuleName, HttpAuthType const authType) {
+                                 string const& subModuleName, http::AuthType const authType) {
     RegistryHttpSvcMod module(serviceProvider, workers, req, resp);
     module.execute(subModuleName, authType);
 }
 
 RegistryHttpSvcMod::RegistryHttpSvcMod(ServiceProvider::Ptr const& serviceProvider, RegistryWorkers& workers,
                                        qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp)
-        : HttpModuleBase(serviceProvider->authKey(), serviceProvider->adminAuthKey(), req, resp),
+        : http::ModuleBase(serviceProvider->authKey(), serviceProvider->adminAuthKey(), req, resp),
           _serviceProvider(serviceProvider),
           _workers(workers) {}
 
 string RegistryHttpSvcMod::context() const { return "REGISTRY-HTTP-SVC "; }
 
 json RegistryHttpSvcMod::executeImpl(string const& subModuleName) {
-    debug(__func__, "subModuleName: '" + subModuleName + "'");
-    string const context_ = context() + "::" + string(__func__) + "  ";
-    if (req()->method == "GET") {
-        _enforceInstanceId(context_, query().requiredString("instance_id"));
-    } else {
-        _enforceInstanceId(context_, body().required<string>("instance_id"));
-    }
+    string const func = string(__func__) + "[sub-module='" + subModuleName + "']";
+    debug(func);
+    enforceInstanceId(func, _serviceProvider->instanceId());
     if (subModuleName == "WORKERS")
         return _getWorkers();
     else if (subModuleName == "ADD-WORKER")
@@ -90,13 +87,7 @@ json RegistryHttpSvcMod::executeImpl(string const& subModuleName) {
         return _addWorker("qserv");
     else if (subModuleName == "DELETE-WORKER")
         return _deleteWorker();
-    throw invalid_argument(context_ + "unsupported sub-module: '" + subModuleName + "'");
-}
-
-void RegistryHttpSvcMod::_enforceInstanceId(string const& context_, string const& instanceId) const {
-    if (_serviceProvider->instanceId() == instanceId) return;
-    throw invalid_argument(context_ + "Qserv instance identifier mismatch. Client sent '" + instanceId +
-                           "' instead of '" + _serviceProvider->instanceId() + "'.");
+    throw invalid_argument(context() + "unsupported sub-module: '" + subModuleName + "'");
 }
 
 json RegistryHttpSvcMod::_getWorkers() const { return json::object({{"workers", _workers.workers()}}); }

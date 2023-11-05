@@ -37,7 +37,7 @@ namespace lsst::qserv::replica {
 void IngestHttpSvcMod::process(ServiceProvider::Ptr const& serviceProvider,
                                IngestRequestMgr::Ptr const& ingestRequestMgr, string const& workerName,
                                qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp,
-                               string const& subModuleName, HttpAuthType const authType) {
+                               string const& subModuleName, http::AuthType const authType) {
     IngestHttpSvcMod module(serviceProvider, ingestRequestMgr, workerName, req, resp);
     module.execute(subModuleName, authType);
 }
@@ -45,7 +45,7 @@ void IngestHttpSvcMod::process(ServiceProvider::Ptr const& serviceProvider,
 IngestHttpSvcMod::IngestHttpSvcMod(ServiceProvider::Ptr const& serviceProvider,
                                    IngestRequestMgr::Ptr const& ingestRequestMgr, string const& workerName,
                                    qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp)
-        : HttpModuleBase(serviceProvider->authKey(), serviceProvider->adminAuthKey(), req, resp),
+        : http::ModuleBase(serviceProvider->authKey(), serviceProvider->adminAuthKey(), req, resp),
           _serviceProvider(serviceProvider),
           _ingestRequestMgr(ingestRequestMgr),
           _workerName(workerName) {}

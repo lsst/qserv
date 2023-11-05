@@ -30,12 +30,12 @@
 
 // Qserv headers
 #include "http/Exceptions.h"
+#include "http/RequestBody.h"
 #include "replica/Configuration.h"
 #include "replica/SqlCreateIndexesJob.h"
 #include "replica/SqlDropIndexesJob.h"
 #include "replica/SqlGetIndexesJob.h"
 #include "replica/SqlResultSet.h"
-#include "replica/HttpRequestBody.h"
 
 using namespace std;
 using namespace nlohmann;
@@ -45,7 +45,7 @@ namespace lsst::qserv::replica {
 void HttpSqlIndexModule::process(Controller::Ptr const& controller, string const& taskName,
                                  HttpProcessorConfig const& processorConfig, qhttp::Request::Ptr const& req,
                                  qhttp::Response::Ptr const& resp, string const& subModuleName,
-                                 HttpAuthType const authType) {
+                                 http::AuthType const authType) {
     HttpSqlIndexModule module(controller, taskName, processorConfig, req, resp);
     module.execute(subModuleName, authType);
 }
@@ -154,15 +154,15 @@ json HttpSqlIndexModule::_createIndexes() {
     }
     vector<SqlIndexColumn> indexColumns;
     for (auto&& columnJson : columnsJson) {
-        string const column = HttpRequestBody::required<string>(columnJson, "column");
+        string const column = http::RequestBody::required<string>(columnJson, "column");
         if (!table.columns.empty() and
             table.columns.cend() == find_if(table.columns.cbegin(), table.columns.cend(),
                                             [&column](auto&& c) { return c.name == column; })) {
             throw invalid_argument(context() + "::" + string(__func__) + "  requested column '" + column +
                                    "' has not been found in the table schema.");
         }
-        indexColumns.emplace_back(column, HttpRequestBody::required<size_t>(columnJson, "length"),
-                                  HttpRequestBody::required<int>(columnJson, "ascending"));
+        indexColumns.emplace_back(column, http::RequestBody::required<size_t>(columnJson, "length"),
+                                  http::RequestBody::required<int>(columnJson, "ascending"));
     }
 
     bool const allWorkers = true;

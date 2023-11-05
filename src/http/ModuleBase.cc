@@ -20,11 +20,11 @@
  */
 
 // Class header
-#include "replica/HttpModuleBase.h"
+#include "http/ModuleBase.h"
 
 // Qserv headers
 #include "http/Exceptions.h"
-#include "replica/HttpMetaModule.h"
+#include "http/MetaModule.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -36,7 +36,7 @@ using namespace std;
 using json = nlohmann::json;
 
 namespace {
-LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.HttpModuleBase");
+LOG_LOGGER _log = LOG_GET("lsst.qserv.http.ModuleBase");
 
 string packWarnings(list<string> const& warnings) {
     string packed;
@@ -48,18 +48,18 @@ string packWarnings(list<string> const& warnings) {
 }
 }  // namespace
 
-namespace lsst::qserv::replica {
+namespace lsst::qserv::http {
 
-HttpModuleBase::HttpModuleBase(string const& authKey, string const& adminAuthKey,
-                               qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp)
+ModuleBase::ModuleBase(string const& authKey, string const& adminAuthKey, qhttp::Request::Ptr const& req,
+                       qhttp::Response::Ptr const& resp)
         : _authKey(authKey), _adminAuthKey(adminAuthKey), _req(req), _resp(resp), _query(req->query) {}
 
-HttpModuleBase::~HttpModuleBase() {}
+ModuleBase::~ModuleBase() {}
 
-void HttpModuleBase::execute(string const& subModuleName, HttpAuthType const authType) {
+void ModuleBase::execute(string const& subModuleName, http::AuthType const authType) {
     try {
-        _body = HttpRequestBody(_req);
-        if (authType == HttpAuthType::REQUIRED) _enforceAuthorization();
+        _body = RequestBody(_req);
+        if (authType == http::AuthType::REQUIRED) _enforceAuthorization();
         json result = executeImpl(subModuleName);
         _sendData(result);
     } catch (AuthError const& ex) {
@@ -73,9 +73,8 @@ void HttpModuleBase::execute(string const& subModuleName, HttpAuthType const aut
     }
 }
 
-void HttpModuleBase::checkApiVersion(string const& func, unsigned int minVersion,
-                                     string const& warning) const {
-    unsigned int const maxVersion = HttpMetaModule::version;
+void ModuleBase::checkApiVersion(string const& func, unsigned int minVersion, string const& warning) const {
+    unsigned int const maxVersion = MetaModule::version;
     unsigned int version = 0;
     string const versionAttrName = "version";
     json const errorEx = json::object({{"min_version", minVersion}, {"max_version", maxVersion}});
@@ -112,18 +111,28 @@ void HttpModuleBase::checkApiVersion(string const& func, unsigned int minVersion
     }
 }
 
-void HttpModuleBase::info(string const& msg) const { LOGS(_log, LOG_LVL_INFO, context() << msg); }
+void ModuleBase::enforceInstanceId(string const& func, string const& requiredInstanceId) const {
+    string const instanceId = req()->method == "GET" ? query().requiredString("instance_id")
+                                                     : body().required<string>("instance_id");
+    debug(func, "instance_id: " + instanceId);
+    if (instanceId != requiredInstanceId) {
+        throw invalid_argument(context() + func + " Qserv instance identifier mismatch. Client sent '" +
+                               instanceId + "' instead of '" + requiredInstanceId + "'.");
+    }
+}
 
-void HttpModuleBase::debug(string const& msg) const { LOGS(_log, LOG_LVL_DEBUG, context() << msg); }
+void ModuleBase::info(string const& msg) const { LOGS(_log, LOG_LVL_INFO, context() << msg); }
 
-void HttpModuleBase::warn(string const& msg) const {
+void ModuleBase::debug(string const& msg) const { LOGS(_log, LOG_LVL_DEBUG, context() << msg); }
+
+void ModuleBase::warn(string const& msg) const {
     LOGS(_log, LOG_LVL_WARN, context() << msg);
     _warnings.push_back(msg);
 }
 
-void HttpModuleBase::error(string const& msg) const { LOGS(_log, LOG_LVL_ERROR, context() << msg); }
+void ModuleBase::error(string const& msg) const { LOGS(_log, LOG_LVL_ERROR, context() << msg); }
 
-void HttpModuleBase::_sendError(string const& func, string const& errorMsg, json const& errorExt) const {
+void ModuleBase::_sendError(string const& func, string const& errorMsg, json const& errorExt) const {
     error(func, errorMsg);
     json result;
     result["success"] = 0;
@@ -133,7 +142,7 @@ void HttpModuleBase::_sendError(string const& func, string const& errorMsg, json
     resp()->send(result.dump(), "application/json");
 }
 
-void HttpModuleBase::_sendData(json& result) {
+void ModuleBase::_sendData(json& result) {
     result["success"] = 1;
     result["error"] = "";
     result["error_ext"] = json::object();
@@ -141,7 +150,7 @@ void HttpModuleBase::_sendData(json& result) {
     resp()->send(result.dump(), "application/json");
 }
 
-void HttpModuleBase::_enforceAuthorization() {
+void ModuleBase::_enforceAuthorization() {
     if (body().has("admin_auth_key")) {
         auto const adminAuthKey = body().required<string>("admin_auth_key");
         if (adminAuthKey != _adminAuthKey) {
@@ -166,4 +175,4 @@ void HttpModuleBase::_enforceAuthorization() {
                     " in the request. Please, provide one.");
 }
 
-}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::http

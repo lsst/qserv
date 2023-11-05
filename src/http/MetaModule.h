@@ -18,8 +18,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_HTTPMETAMODULE_H
-#define LSST_QSERV_HTTPMETAMODULE_H
+#ifndef LSST_QSERV_HTTP_METAMODULE_H
+#define LSST_QSERV_HTTP_METAMODULE_H
 
 // System headers
 #include <memory>
@@ -29,19 +29,18 @@
 #include "nlohmann/json.hpp"
 
 // Qserv headers
-#include "replica/HttpModuleBase.h"
-#include "replica/ServiceProvider.h"
+#include "http/ModuleBase.h"
 
 // This header declarations
-namespace lsst::qserv::replica {
+namespace lsst::qserv::http {
 
 /**
- * Class HttpMetaModule implements a handler for the metadata queries
- * on the REST API itself.
+ * Class MetaModule implements a handler for the metadata queries on the REST API itself.
+ * The service responds with an information object provided at the creation time of the module.
  */
-class HttpMetaModule : public HttpModuleBase {
+class MetaModule : public http::ModuleBase {
 public:
-    typedef std::shared_ptr<HttpMetaModule> Ptr;
+    typedef std::shared_ptr<MetaModule> Ptr;
 
     /// The current version of the REST API
     static unsigned int const version;
@@ -50,33 +49,33 @@ public:
      * @note supported values for parameter 'subModuleName' are:
      *   'VERSION' - return a version of the REST API
      *
+     * @param info The information object to be returned to clients of the service.
      * @throws std::invalid_argument for unknown values of parameter 'subModuleName'
      */
-    static void process(ServiceProvider::Ptr const& serviceProvider, std::string const& context,
+    static void process(std::string const& context, nlohmann::json const& info,
                         qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp,
-                        std::string const& subModuleName = std::string(),
-                        HttpAuthType const authType = HttpAuthType::NONE);
+                        std::string const& subModuleName);
 
-    HttpMetaModule() = delete;
-    HttpMetaModule(HttpMetaModule const&) = delete;
-    HttpMetaModule& operator=(HttpMetaModule const&) = delete;
+    MetaModule() = delete;
+    MetaModule(MetaModule const&) = delete;
+    MetaModule& operator=(MetaModule const&) = delete;
 
-    ~HttpMetaModule() final = default;
+    ~MetaModule() final = default;
 
 protected:
     virtual nlohmann::json executeImpl(std::string const& subModuleName) final;
     virtual std::string context() const final;
 
 private:
-    HttpMetaModule(ServiceProvider::Ptr const& serviceProvider, std::string const& context,
-                   qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp);
+    MetaModule(std::string const& context, nlohmann::json const& info, qhttp::Request::Ptr const& req,
+               qhttp::Response::Ptr const& resp);
 
     nlohmann::json _version();
 
     std::string const _context;
-    std::string const _instanceId;
+    nlohmann::json const _info;
 };
 
-}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::http
 
-#endif  // LSST_QSERV_HTTPMETAMODULE_H
+#endif  // LSST_QSERV_HTTP_METAMODULE_H

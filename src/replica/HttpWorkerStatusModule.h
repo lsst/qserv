@@ -47,7 +47,7 @@ public:
                         HttpProcessorConfig const& processorConfig, qhttp::Request::Ptr const& req,
                         qhttp::Response::Ptr const& resp, HealthMonitorTask::Ptr const& healthMonitorTask,
                         std::string const& subModuleName = std::string(),
-                        HttpAuthType const authType = HttpAuthType::NONE);
+                        http::AuthType const authType = http::AuthType::NONE);
 
     HttpWorkerStatusModule() = delete;
     HttpWorkerStatusModule(HttpWorkerStatusModule const&) = delete;

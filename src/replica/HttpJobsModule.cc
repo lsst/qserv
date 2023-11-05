@@ -38,7 +38,7 @@ namespace lsst::qserv::replica {
 void HttpJobsModule::process(Controller::Ptr const& controller, string const& taskName,
                              HttpProcessorConfig const& processorConfig, qhttp::Request::Ptr const& req,
                              qhttp::Response::Ptr const& resp, string const& subModuleName,
-                             HttpAuthType const authType) {
+                             http::AuthType const authType) {
     HttpJobsModule module(controller, taskName, processorConfig, req, resp);
     module.execute(subModuleName, authType);
 }

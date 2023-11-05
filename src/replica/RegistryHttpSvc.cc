@@ -23,13 +23,17 @@
 #include "replica/RegistryHttpSvc.h"
 
 // Qserv headers
+#include "http/MetaModule.h"
 #include "qhttp/Request.h"
 #include "qhttp/Response.h"
 #include "replica/Configuration.h"
-#include "replica/HttpMetaModule.h"
 #include "replica/RegistryHttpSvcMod.h"
 #include "replica/RegistryWorkers.h"
 
+// Third party headers
+#include "nlohmann/json.hpp"
+
+using namespace nlohmann;
 using namespace std;
 
 namespace {
@@ -54,13 +58,16 @@ void RegistryHttpSvc::registerServices() {
     auto const self = shared_from_base<RegistryHttpSvc>();
     httpServer()->addHandlers({{"GET", "/meta/version",
                                 [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
-                                    HttpMetaModule::process(self->serviceProvider(), ::context_, req, resp,
-                                                            "VERSION");
+                                    json const info = json::object(
+                                            {{"kind", "replication-registry"},
+                                             {"id", ""},
+                                             {"instance_id", self->serviceProvider()->instanceId()}});
+                                    http::MetaModule::process(context_, info, req, resp, "VERSION");
                                 }},
                                {"GET", "/workers",
                                 [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
                                     RegistryHttpSvcMod::process(self->serviceProvider(), *(self->_workers),
-                                                                req, resp, "WORKERS", HttpAuthType::NONE);
+                                                                req, resp, "WORKERS", http::AuthType::NONE);
                                 }},
                                {"POST", "/worker",
                                 [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {

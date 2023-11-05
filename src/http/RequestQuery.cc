@@ -20,7 +20,7 @@
  */
 
 // Class header
-#include "replica/HttpRequestQuery.h"
+#include "http/RequestQuery.h"
 
 // System headers
 #include <algorithm>
@@ -36,7 +36,7 @@ namespace {
 
 void throwIf(bool cond, string const& func, string const& param) {
     if (!cond) return;
-    throw invalid_argument("HttpRequestQuery::" + func + " mandatory parameter '" + param + "' is missing");
+    throw invalid_argument("RequestQuery::" + func + " mandatory parameter '" + param + "' is missing");
 }
 
 template <typename T>
@@ -60,93 +60,104 @@ bool parseBool(string const& str) {
     }
     return stoull(str) != 0;
 }
+
+vector<string> parseVectorStr(string const& in) {
+    vector<string> result;
+    stringstream ss(in);
+    while (ss.good()) {
+        string str;
+        getline(ss, str, ',');
+        if (!str.empty()) result.push_back(str);
+    }
+    return result;
+}
+
 }  // namespace
 
-namespace lsst::qserv::replica {
+namespace lsst::qserv::http {
 
-HttpRequestQuery::HttpRequestQuery(std::unordered_map<std::string, std::string> const& query)
-        : _query(query) {}
+RequestQuery::RequestQuery(std::unordered_map<std::string, std::string> const& query) : _query(query) {}
 
-string HttpRequestQuery::requiredString(string const& param) const {
+string RequestQuery::requiredString(string const& param) const {
     auto const val = optionalString(param);
     ::throwIf(val.empty(), __func__, param);
     return val;
 }
 
-string HttpRequestQuery::optionalString(string const& param, string const& defaultValue) const {
+string RequestQuery::optionalString(string const& param, string const& defaultValue) const {
     auto itr = _query.find(param);
     if (itr == _query.end()) return defaultValue;
     return itr->second;
 }
 
-bool HttpRequestQuery::requiredBool(string const& param) const {
+bool RequestQuery::requiredBool(string const& param) const {
     auto itr = _query.find(param);
     ::throwIf(itr == _query.end(), __func__, param);
     return ::parseBool(itr->second);
 }
 
-bool HttpRequestQuery::optionalBool(string const& param, bool defaultValue) const {
+bool RequestQuery::optionalBool(string const& param, bool defaultValue) const {
     auto itr = _query.find(param);
     if (itr == _query.end()) return defaultValue;
     return ::parseBool(itr->second);
 }
 
-uint16_t HttpRequestQuery::requiredUInt16(string const& param) const {
+uint16_t RequestQuery::requiredUInt16(string const& param) const {
     auto itr = _query.find(param);
     ::throwIf(itr == _query.end(), __func__, param);
     return ::parseRestrictedIntegerType<uint16_t>(__func__, param, itr->second);
 }
 
-uint16_t HttpRequestQuery::optionalUInt16(string const& param, uint16_t defaultValue) const {
+uint16_t RequestQuery::optionalUInt16(string const& param, uint16_t defaultValue) const {
     auto itr = _query.find(param);
     if (itr == _query.end()) return defaultValue;
     return ::parseRestrictedIntegerType<uint16_t>(__func__, param, itr->second);
 }
 
-unsigned int HttpRequestQuery::requiredUInt(string const& param) const {
+unsigned int RequestQuery::requiredUInt(string const& param) const {
     auto itr = _query.find(param);
     ::throwIf(itr == _query.end(), __func__, param);
     return ::parseRestrictedIntegerType<unsigned int>(__func__, param, itr->second);
 }
 
-unsigned int HttpRequestQuery::optionalUInt(string const& param, unsigned int defaultValue) const {
+unsigned int RequestQuery::optionalUInt(string const& param, unsigned int defaultValue) const {
     auto itr = _query.find(param);
     if (itr == _query.end()) return defaultValue;
     return ::parseRestrictedIntegerType<unsigned int>(__func__, param, itr->second);
 }
 
-int HttpRequestQuery::requiredInt(string const& param) const {
+int RequestQuery::requiredInt(string const& param) const {
     auto itr = _query.find(param);
     ::throwIf(itr == _query.end(), __func__, param);
     return ::parseRestrictedIntegerType<int>(__func__, param, itr->second);
 }
 
-int HttpRequestQuery::optionalInt(string const& param, int defaultValue) const {
+int RequestQuery::optionalInt(string const& param, int defaultValue) const {
     auto itr = _query.find(param);
     if (itr == _query.end()) return defaultValue;
     return ::parseRestrictedIntegerType<int>(__func__, param, itr->second);
 }
 
-uint64_t HttpRequestQuery::requiredUInt64(string const& param) const {
+uint64_t RequestQuery::requiredUInt64(string const& param) const {
     auto itr = _query.find(param);
     ::throwIf(itr == _query.end(), __func__, param);
     return stoull(itr->second);
 }
 
-uint64_t HttpRequestQuery::optionalUInt64(string const& param, uint64_t defaultValue) const {
+uint64_t RequestQuery::optionalUInt64(string const& param, uint64_t defaultValue) const {
     auto itr = _query.find(param);
     if (itr == _query.end()) return defaultValue;
     return stoull(itr->second);
 }
 
-double HttpRequestQuery::requiredDouble(string const& param) const {
+double RequestQuery::requiredDouble(string const& param) const {
     auto itr = _query.find(param);
     ::throwIf(itr == _query.end(), __func__, param);
     return stod(itr->second);
 }
 
-vector<uint64_t> HttpRequestQuery::optionalVectorUInt64(string const& param,
-                                                        vector<uint64_t> const& defaultValue) const {
+vector<uint64_t> RequestQuery::optionalVectorUInt64(string const& param,
+                                                    vector<uint64_t> const& defaultValue) const {
     auto itr = _query.find(param);
     if (itr == _query.end()) return defaultValue;
     vector<uint64_t> result;
@@ -158,20 +169,19 @@ vector<uint64_t> HttpRequestQuery::optionalVectorUInt64(string const& param,
     return result;
 }
 
-vector<string> HttpRequestQuery::optionalVectorStr(string const& param,
-                                                   vector<string> const& defaultValue) const {
+vector<string> RequestQuery::optionalVectorStr(string const& param,
+                                               vector<string> const& defaultValue) const {
     auto itr = _query.find(param);
     if (itr == _query.end()) return defaultValue;
-    vector<string> result;
-    stringstream ss(itr->second);
-    while (ss.good()) {
-        string str;
-        getline(ss, str, ',');
-        if (!str.empty()) result.push_back(str);
-    }
-    return result;
+    return ::parseVectorStr(itr->second);
 }
 
-bool HttpRequestQuery::has(string const& param) const { return _query.find(param) != _query.end(); }
+vector<string> RequestQuery::requiredVectorStr(string const& param) const {
+    auto itr = _query.find(param);
+    ::throwIf(itr == _query.end(), __func__, param);
+    return ::parseVectorStr(itr->second);
+}
 
-}  // namespace lsst::qserv::replica
+bool RequestQuery::has(string const& param) const { return _query.find(param) != _query.end(); }
+
+}  // namespace lsst::qserv::http

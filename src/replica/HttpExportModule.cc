@@ -27,6 +27,7 @@
 
 // Qserv headers
 #include "http/Exceptions.h"
+#include "http/RequestBody.h"
 #include "replica/ChunkedTable.h"
 #include "replica/Configuration.h"
 #include "replica/ConfigWorker.h"
@@ -73,7 +74,7 @@ namespace lsst::qserv::replica {
 void HttpExportModule::process(Controller::Ptr const& controller, string const& taskName,
                                HttpProcessorConfig const& processorConfig, qhttp::Request::Ptr const& req,
                                qhttp::Response::Ptr const& resp, string const& subModuleName,
-                               HttpAuthType const authType) {
+                               http::AuthType const authType) {
     HttpExportModule module(controller, taskName, processorConfig, req, resp);
     module.execute(subModuleName, authType);
 }
@@ -200,11 +201,11 @@ json HttpExportModule::_getTables() {
 
             for (auto&& tableJson : tablesJson) {
                 TableSpec spec;
-                spec.tableName = HttpRequestBody::required<string>(tableJson, "table");
+                spec.tableName = http::RequestBody::required<string>(tableJson, "table");
                 spec.partitioned = database.findTable(spec.tableName).isPartitioned;
                 if (spec.partitioned) {
-                    spec.overlap = HttpRequestBody::required<unsigned int>(tableJson, "overlap");
-                    spec.chunk = HttpRequestBody::required<unsigned int>(tableJson, "chunk");
+                    spec.overlap = http::RequestBody::required<unsigned int>(tableJson, "overlap");
+                    spec.chunk = http::RequestBody::required<unsigned int>(tableJson, "chunk");
                 }
                 WorkerInfo const worker =
                         spec.partitioned ? findWorkerForChunk(spec.chunk) : allWorkerInfos[0];

@@ -127,7 +127,7 @@ string const HttpIngestModule::_partitionByColumnType = "INT NOT NULL";
 void HttpIngestModule::process(Controller::Ptr const& controller, string const& taskName,
                                HttpProcessorConfig const& processorConfig, qhttp::Request::Ptr const& req,
                                qhttp::Response::Ptr const& resp, string const& subModuleName,
-                               HttpAuthType const authType) {
+                               http::AuthType const authType) {
     HttpIngestModule module(controller, taskName, processorConfig, req, resp);
     module.execute(subModuleName, authType);
 }

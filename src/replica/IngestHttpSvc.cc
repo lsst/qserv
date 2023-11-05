@@ -26,16 +26,21 @@
 #include <functional>
 
 // Qserv headers
+#include "http/MetaModule.h"
 #include "qhttp/Request.h"
 #include "qhttp/Response.h"
 #include "replica/Configuration.h"
 #include "replica/IngestHttpSvcMod.h"
 #include "replica/IngestRequestMgr.h"
-#include "replica/HttpMetaModule.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
 
+// Third party headers
+#include "boost/filesystem.hpp"
+#include "nlohmann/json.hpp"
+
+using namespace nlohmann;
 using namespace std;
 
 namespace {
@@ -65,7 +70,10 @@ void IngestHttpSvc::registerServices() {
     httpServer()->addHandlers(
             {{"GET", "/meta/version",
               [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
-                  HttpMetaModule::process(self->serviceProvider(), ::context_, req, resp, "VERSION");
+                  json const info = json::object({{"kind", "replication-worker-ingest"},
+                                                  {"id", self->_workerName},
+                                                  {"instance_id", self->serviceProvider()->instanceId()}});
+                  http::MetaModule::process(::context_, info, req, resp, "VERSION");
               }},
              {"POST", "/ingest/file",
               [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
@@ -90,7 +98,7 @@ void IngestHttpSvc::registerServices() {
              {"GET", "/ingest/file-async/:id",
               [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
                   IngestHttpSvcMod::process(self->serviceProvider(), self->_requestMgr, self->_workerName,
-                                            req, resp, "ASYNC-STATUS-BY-ID", HttpAuthType::NONE);
+                                            req, resp, "ASYNC-STATUS-BY-ID", http::AuthType::NONE);
               }},
              {"DELETE", "/ingest/file-async/:id",
               [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
@@ -100,7 +108,7 @@ void IngestHttpSvc::registerServices() {
              {"GET", "/ingest/file-async/trans/:id",
               [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
                   IngestHttpSvcMod::process(self->serviceProvider(), self->_requestMgr, self->_workerName,
-                                            req, resp, "ASYNC-STATUS-BY-TRANS-ID", HttpAuthType::NONE);
+                                            req, resp, "ASYNC-STATUS-BY-TRANS-ID", http::AuthType::NONE);
               }},
              {"DELETE", "/ingest/file-async/trans/:id",
               [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {

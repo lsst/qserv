@@ -18,8 +18,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_HTTPREQUESTQUERY_H
-#define LSST_QSERV_HTTPREQUESTQUERY_H
+#ifndef LSST_QSERV_HTTP_REQUESTQUERY_H
+#define LSST_QSERV_HTTP_REQUESTQUERY_H
 
 // System headers
 #include <cstdint>
@@ -28,10 +28,10 @@
 #include <unordered_map>
 
 // This header declarations
-namespace lsst::qserv::replica {
+namespace lsst::qserv::http {
 
 /**
- * Class HttpRequestQuery implements a parser for parameters passed into
+ * Class RequestQuery implements a parser for parameters passed into
  * the Web services via the optional query part of a URL.
  *
  * There are two kinds of the parameter extraction methods in this class:
@@ -47,15 +47,15 @@ namespace lsst::qserv::replica {
  *    a value to be returned if the parameter wasn't found. Note that these
  *    methods may still throw std::out_of_range (for invalid invalid values).
  */
-class HttpRequestQuery {
+class RequestQuery {
 public:
-    explicit HttpRequestQuery(std::unordered_map<std::string, std::string> const& query);
+    explicit RequestQuery(std::unordered_map<std::string, std::string> const& query);
 
-    HttpRequestQuery() = default;
-    HttpRequestQuery(HttpRequestQuery const&) = default;
-    HttpRequestQuery& operator=(HttpRequestQuery const&) = default;
+    RequestQuery() = default;
+    RequestQuery(RequestQuery const&) = default;
+    RequestQuery& operator=(RequestQuery const&) = default;
 
-    ~HttpRequestQuery() = default;
+    ~RequestQuery() = default;
 
     std::string requiredString(std::string const& param) const;
     std::string optionalString(std::string const& param,
@@ -102,6 +102,8 @@ public:
             std::string const& param,
             std::vector<std::string> const& defaultValue = std::vector<std::string>()) const;
 
+    std::vector<std::string> requiredVectorStr(std::string const& param) const;
+
     bool has(std::string const& param) const;
 
 private:
@@ -109,6 +111,6 @@ private:
     std::unordered_map<std::string, std::string> _query;
 };
 
-}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::http
 
-#endif  // LSST_QSERV_HTTPREQUESTQUERY_H
+#endif  // LSST_QSERV_HTTP_REQUESTQUERY_H

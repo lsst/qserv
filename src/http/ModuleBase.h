@@ -19,8 +19,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_HTTPMODULEBASE_H
-#define LSST_QSERV_HTTPMODULEBASE_H
+#ifndef LSST_QSERV_HTTP_MODULEBASE_H
+#define LSST_QSERV_HTTP_MODULEBASE_H
 
 // System headers
 #include <list>
@@ -33,23 +33,23 @@
 #include "nlohmann/json.hpp"
 
 // Qserv headers
+#include "http/RequestBody.h"
+#include "http/RequestQuery.h"
 #include "qhttp/Request.h"
 #include "qhttp/Response.h"
-#include "replica/HttpRequestBody.h"
-#include "replica/HttpRequestQuery.h"
 
 // This header declarations
-namespace lsst::qserv::replica {
+namespace lsst::qserv::http {
 
 /// The enumeration type which is used for configuring/enforcing
 /// module's authorization requirements.
-enum class HttpAuthType { REQUIRED, NONE };
+enum class AuthType { REQUIRED, NONE };
 
 /**
- * Class HttpModuleBase is a base class for requests processing modules
+ * Class ModuleBase is a base class for requests processing modules
  * of the HTTP servers built into the Replication system's services.
  */
-class HttpModuleBase {
+class ModuleBase {
 public:
     /**
      * Class AuthError represent exceptions thrown when the authorization
@@ -60,29 +60,29 @@ public:
         using std::invalid_argument::invalid_argument;
     };
 
-    HttpModuleBase() = delete;
-    HttpModuleBase(HttpModuleBase const&) = delete;
-    HttpModuleBase& operator=(HttpModuleBase const&) = delete;
+    ModuleBase() = delete;
+    ModuleBase(ModuleBase const&) = delete;
+    ModuleBase& operator=(ModuleBase const&) = delete;
 
-    virtual ~HttpModuleBase();
+    virtual ~ModuleBase();
 
     /**
      * Invokes a subclass-specific request processing provided by implementations
-     * of the pure virtual method HttpModuleBase::executeImpl(). The current method
+     * of the pure virtual method ModuleBase::executeImpl(). The current method
      * would also do an optional processing of exceptions thrown by the subclass-specific
-     * implementations of method HttpModuleBase::executeImpl(). These error conditions will
+     * implementations of method ModuleBase::executeImpl(). These error conditions will
      * be reported to as errors to callers.
      *
      * @param subModuleName  this optional parameter allows modules to have
      *   multiple sub-modules. A value of this parameter will be forwarded to
      *   the subclass-specific implementation of the pure virtual method
-     *   HttpModuleBase::executeImpl().
-     * @param authType  Authorization requirements of the module. If HttpAuthType::REQUIRED is
+     *   ModuleBase::executeImpl().
+     * @param authType  Authorization requirements of the module. If 'http::AuthType::REQUIRED' is
      *   requested then the method will enforce the authorization. A lack of required
      *   authorization key in a request, or an incorrect value of such key would result
      *   in a error sent back to a client.
      *
-     * @note For requests with 'HttpAuthType::REQUIRED' authorization keys must be sent
+     * @note For requests with 'http::AuthType::REQUIRED' authorization keys must be sent
      *   by a requestor in the body of a request. There are two types of keys. The normal
      *   authorization level key "auth_key" is required for most operations resulting
      *   in any changes made to a persistent or transient states of Qserv, and its
@@ -94,7 +94,7 @@ public:
      *   use the administrative privileges.
      */
     void execute(std::string const& subModuleName = std::string(),
-                 HttpAuthType const authType = HttpAuthType::NONE);
+                 http::AuthType const authType = http::AuthType::NONE);
 
 protected:
     /**
@@ -103,8 +103,8 @@ protected:
      * @param req  The HTTP request.
      * @param resp  The HTTP response channel.
      */
-    HttpModuleBase(std::string const& authKey, std::string const& adminAuthKey,
-                   qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp);
+    ModuleBase(std::string const& authKey, std::string const& adminAuthKey, qhttp::Request::Ptr const& req,
+               qhttp::Response::Ptr const& resp);
 
     qhttp::Request::Ptr const& req() const { return _req; }
     qhttp::Response::Ptr const& resp() const { return _resp; }
@@ -116,10 +116,10 @@ protected:
     std::unordered_map<std::string, std::string> const& params() const { return _req->params; }
 
     /// @return Parameters of the request's query captured from the request's URL.
-    HttpRequestQuery const& query() const { return _query; }
+    RequestQuery const& query() const { return _query; }
 
     /// @return Optional parameters of a request extracted from the request's body (if any).
-    HttpRequestBody const& body() const { return _body; }
+    RequestBody const& body() const { return _body; }
 
     // Message loggers for the corresponding log levels
 
@@ -157,9 +157,9 @@ protected:
      *
      * @note Services that are calling the method should adjust the minimum version
      *   number to be the same as the current value in the implementation of
-     *   HttpMetaModule::version if the expected JSON schema of the corresponding
+     *   http::MetaModule::version if the expected JSON schema of the corresponding
      *   request changes.
-     * @see HttpMetaModule::version
+     * @see http::MetaModule::version
      *
      * @param func The name of the calling context (it's used for error reporting).
      * @param minVersion The minimum version number of the valid version range.
@@ -172,6 +172,17 @@ protected:
      */
     void checkApiVersion(std::string const& func, unsigned int minVersion,
                          std::string const& warning = std::string()) const;
+
+    /**
+     * @brief Check if the specified identifier of the Qserv instance that was received
+     *   from a client matches the one that is required in the service context. Throw
+     *   an exception in case of mismatch.
+     *
+     * @param func The name of the calling context (it's used for error reporting).
+     * @param requiredInstanceId An instance identifier required in the service context.
+     * @throws std::invalid_argument If the dentifiers didn't match.
+     */
+    void enforceInstanceId(std::string const& func, std::string const& requiredInstanceId) const;
 
     /**
      * To implement a subclass-specific request processing.
@@ -228,17 +239,17 @@ private:
 
     /// The parser for parameters passed into the Web services via the optional
     /// query part of a URL. The object gets initialized from the request.
-    HttpRequestQuery const _query;
+    RequestQuery const _query;
 
     /// The body of a request is initialized/parsed from the request before calling
     /// the overloaded method HttpModule::executeImpl.
-    HttpRequestBody _body;
+    RequestBody _body;
 
     /// The optional warning message to be sent to a caller if the API version
     /// number wasn't mentoned in the request.
     mutable std::list<std::string> _warnings;
 };
 
-}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::http
 
-#endif  // LSST_QSERV_HTTPMODULEBASE_H
+#endif  // LSST_QSERV_HTTP_MODULEBASE_H

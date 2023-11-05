@@ -174,12 +174,8 @@ target_sources(replica PRIVATE
     HttpIngestTransModule.h
     HttpJobsModule.cc
     HttpJobsModule.h
-    HttpMetaModule.cc
-    HttpMetaModule.h
     HttpModule.cc
     HttpModule.h
-    HttpModuleBase.cc
-    HttpModuleBase.h
     HttpProcessor.cc
     HttpProcessor.h
     HttpProcessorConfig.h
@@ -189,10 +185,6 @@ target_sources(replica PRIVATE
     HttpQservSqlModule.h
     HttpReplicationLevelsModule.cc
     HttpReplicationLevelsModule.h
-    HttpRequestBody.cc
-    HttpRequestBody.h
-    HttpRequestQuery.cc
-    HttpRequestQuery.h
     HttpRequestsModule.cc
     HttpRequestsModule.h
     HttpSqlIndexModule.cc

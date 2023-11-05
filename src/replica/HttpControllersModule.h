@@ -54,7 +54,7 @@ public:
     static void process(Controller::Ptr const& controller, std::string const& taskName,
                         HttpProcessorConfig const& processorConfig, qhttp::Request::Ptr const& req,
                         qhttp::Response::Ptr const& resp, std::string const& subModuleName = std::string(),
-                        HttpAuthType const authType = HttpAuthType::NONE);
+                        http::AuthType const authType = http::AuthType::NONE);
 
     HttpControllersModule() = delete;
     HttpControllersModule(HttpControllersModule const&) = delete;

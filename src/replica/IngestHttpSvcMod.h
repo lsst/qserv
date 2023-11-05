@@ -28,9 +28,9 @@
 #include "nlohmann/json.hpp"
 
 // Qserv headers
+#include "http/ModuleBase.h"
 #include "qhttp/Request.h"
 #include "qhttp/Response.h"
-#include "replica/HttpModuleBase.h"
 #include "replica/IngestRequest.h"
 #include "replica/IngestRequestMgr.h"
 #include "replica/ServiceProvider.h"
@@ -42,7 +42,7 @@ namespace lsst::qserv::replica {
  * Class IngestHttpSvcMod processes chunk/table contribution requests made over HTTP.
  * The class is used by the HTTP server build into the worker Ingest service.
  */
-class IngestHttpSvcMod : public HttpModuleBase {
+class IngestHttpSvcMod : public http::ModuleBase {
 public:
     IngestHttpSvcMod() = delete;
     IngestHttpSvcMod(IngestHttpSvcMod const&) = delete;
@@ -83,13 +83,13 @@ public:
                         IngestRequestMgr::Ptr const& ingestRequestMgr, std::string const& workerName,
                         qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp,
                         std::string const& subModuleName,
-                        HttpAuthType const authType = HttpAuthType::REQUIRED);
+                        http::AuthType const authType = http::AuthType::REQUIRED);
 
 protected:
-    /// @see HttpModuleBase::context()
+    /// @see http::ModuleBase::context()
     virtual std::string context() const final;
 
-    /// @see HttpModuleBase::executeImpl()
+    /// @see http::ModuleBase::executeImpl()
     virtual nlohmann::json executeImpl(std::string const& subModuleName) final;
 
 private:

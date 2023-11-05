@@ -23,8 +23,10 @@
 #include "replica/HttpProcessor.h"
 
 // Qserv headers
+#include "http/MetaModule.h"
 #include "qhttp/Request.h"
 #include "qhttp/Response.h"
+#include "replica/ConfigParserMySQL.h"
 #include "replica/HttpCatalogsModule.h"
 #include "replica/HttpConfigurationModule.h"
 #include "replica/HttpControllersModule.h"
@@ -35,7 +37,6 @@
 #include "replica/HttpDirectorIndexModule.h"
 #include "replica/HttpIngestTransModule.h"
 #include "replica/HttpJobsModule.h"
-#include "replica/HttpMetaModule.h"
 #include "replica/HttpQservMonitorModule.h"
 #include "replica/HttpRequestsModule.h"
 #include "replica/HttpReplicationLevelsModule.h"
@@ -50,7 +51,9 @@
 
 // Third party headers
 #include "boost/filesystem.hpp"
+#include "nlohmann/json.hpp"
 
+using namespace nlohmann;
 using namespace std;
 namespace fs = boost::filesystem;
 
@@ -89,11 +92,15 @@ void HttpProcessor::registerServices() {
     auto const self = shared_from_base<HttpProcessor>();
 
     // Register REST services first.
-    httpServer()->addHandler("GET", "/meta/version",
-                             [self](qhttp::Request::Ptr const req, qhttp::Response::Ptr const resp) {
-                                 HttpMetaModule::process(self->controller()->serviceProvider(), ::taskName,
-                                                         req, resp, "VERSION");
-                             });
+    httpServer()->addHandler(
+            "GET", "/meta/version", [self](qhttp::Request::Ptr const req, qhttp::Response::Ptr const resp) {
+                json const info =
+                        json::object({{"kind", "replication-controller"},
+                                      {"id", self->controller()->identity().id},
+                                      {"database_schema_version", ConfigParserMySQL::expectedSchemaVersion},
+                                      {"instance_id", self->serviceProvider()->instanceId()}});
+                http::MetaModule::process(::taskName, info, req, resp, "VERSION");
+            });
     httpServer()->addHandler("GET", "/replication/catalogs",
                              [self](qhttp::Request::Ptr const req, qhttp::Response::Ptr const resp) {
                                  HttpCatalogsModule::process(self->controller(), self->name(),
@@ -109,7 +116,7 @@ void HttpProcessor::registerServices() {
                              [self](qhttp::Request::Ptr const req, qhttp::Response::Ptr const resp) {
                                  HttpReplicationLevelsModule::process(
                                          self->controller(), self->name(), self->_processorConfig, req, resp,
-                                         self->_healthMonitorTask, "SET", HttpAuthType::REQUIRED);
+                                         self->_healthMonitorTask, "SET", http::AuthType::REQUIRED);
                              });
     httpServer()->addHandler("GET", "/replication/worker",
                              [self](qhttp::Request::Ptr const req, qhttp::Response::Ptr const resp) {
@@ -165,67 +172,67 @@ void HttpProcessor::registerServices() {
                              [self](qhttp::Request::Ptr const req, qhttp::Response::Ptr const resp) {
                                  HttpConfigurationModule::process(self->controller(), self->name(),
                                                                   self->_processorConfig, req, resp,
-                                                                  "UPDATE-GENERAL", HttpAuthType::REQUIRED);
+                                                                  "UPDATE-GENERAL", http::AuthType::REQUIRED);
                              });
     httpServer()->addHandler("PUT", "/replication/config/worker/:worker",
                              [self](qhttp::Request::Ptr const req, qhttp::Response::Ptr const resp) {
                                  HttpConfigurationModule::process(self->controller(), self->name(),
                                                                   self->_processorConfig, req, resp,
-                                                                  "UPDATE-WORKER", HttpAuthType::REQUIRED);
+                                                                  "UPDATE-WORKER", http::AuthType::REQUIRED);
                              });
     httpServer()->addHandler("DELETE", "/replication/config/worker/:worker",
                              [self](qhttp::Request::Ptr const req, qhttp::Response::Ptr const resp) {
                                  HttpConfigurationModule::process(self->controller(), self->name(),
                                                                   self->_processorConfig, req, resp,
-                                                                  "DELETE-WORKER", HttpAuthType::REQUIRED);
+                                                                  "DELETE-WORKER", http::AuthType::REQUIRED);
                              });
     httpServer()->addHandler("POST", "/replication/config/worker",
                              [self](qhttp::Request::Ptr const req, qhttp::Response::Ptr const resp) {
                                  HttpConfigurationModule::process(self->controller(), self->name(),
                                                                   self->_processorConfig, req, resp,
-                                                                  "ADD-WORKER", HttpAuthType::REQUIRED);
+                                                                  "ADD-WORKER", http::AuthType::REQUIRED);
                              });
     httpServer()->addHandler("DELETE", "/replication/config/family/:family",
                              [self](qhttp::Request::Ptr const req, qhttp::Response::Ptr const resp) {
                                  HttpConfigurationModule::process(
                                          self->controller(), self->name(), self->_processorConfig, req, resp,
-                                         "DELETE-DATABASE-FAMILY", HttpAuthType::REQUIRED);
+                                         "DELETE-DATABASE-FAMILY", http::AuthType::REQUIRED);
                              });
     httpServer()->addHandler("POST", "/replication/config/family",
                              [self](qhttp::Request::Ptr const req, qhttp::Response::Ptr const resp) {
                                  HttpConfigurationModule::process(
                                          self->controller(), self->name(), self->_processorConfig, req, resp,
-                                         "ADD-DATABASE-FAMILY", HttpAuthType::REQUIRED);
+                                         "ADD-DATABASE-FAMILY", http::AuthType::REQUIRED);
                              });
     httpServer()->addHandler("DELETE", "/replication/config/database/:database",
                              [self](qhttp::Request::Ptr const req, qhttp::Response::Ptr const resp) {
-                                 HttpConfigurationModule::process(self->controller(), self->name(),
-                                                                  self->_processorConfig, req, resp,
-                                                                  "DELETE-DATABASE", HttpAuthType::REQUIRED);
+                                 HttpConfigurationModule::process(
+                                         self->controller(), self->name(), self->_processorConfig, req, resp,
+                                         "DELETE-DATABASE", http::AuthType::REQUIRED);
                              });
     httpServer()->addHandler("POST", "/replication/config/database",
                              [self](qhttp::Request::Ptr const req, qhttp::Response::Ptr const resp) {
                                  HttpConfigurationModule::process(self->controller(), self->name(),
                                                                   self->_processorConfig, req, resp,
-                                                                  "ADD-DATABASE", HttpAuthType::REQUIRED);
+                                                                  "ADD-DATABASE", http::AuthType::REQUIRED);
                              });
     httpServer()->addHandler("PUT", "/replication/config/database/:database",
                              [self](qhttp::Request::Ptr const req, qhttp::Response::Ptr const resp) {
                                  HttpConfigurationModule::process(
                                          self->controller(), self->name(), self->_processorConfig, req, resp,
-                                         "UNPUBLISH-DATABASE", HttpAuthType::REQUIRED);
+                                         "UNPUBLISH-DATABASE", http::AuthType::REQUIRED);
                              });
     httpServer()->addHandler("DELETE", "/replication/config/table/:database/:table",
                              [self](qhttp::Request::Ptr const req, qhttp::Response::Ptr const resp) {
                                  HttpConfigurationModule::process(self->controller(), self->name(),
                                                                   self->_processorConfig, req, resp,
-                                                                  "DELETE-TABLE", HttpAuthType::REQUIRED);
+                                                                  "DELETE-TABLE", http::AuthType::REQUIRED);
                              });
     httpServer()->addHandler("POST", "/replication/config/table",
                              [self](qhttp::Request::Ptr const req, qhttp::Response::Ptr const resp) {
                                  HttpConfigurationModule::process(self->controller(), self->name(),
                                                                   self->_processorConfig, req, resp,
-                                                                  "ADD-TABLE", HttpAuthType::REQUIRED);
+                                                                  "ADD-TABLE", http::AuthType::REQUIRED);
                              });
     httpServer()->addHandler("GET", "/replication/qserv/worker/status",
                              [self](qhttp::Request::Ptr const req, qhttp::Response::Ptr const resp) {
@@ -305,14 +312,14 @@ void HttpProcessor::registerServices() {
                              [self](qhttp::Request::Ptr const req, qhttp::Response::Ptr const resp) {
                                  HttpSqlSchemaModule::process(self->controller(), self->name(),
                                                               self->_processorConfig, req, resp,
-                                                              "ALTER-TABLE-SCHEMA", HttpAuthType::REQUIRED);
+                                                              "ALTER-TABLE-SCHEMA", http::AuthType::REQUIRED);
                              });
     httpServer()->addHandler("POST", "/replication/sql/query",
                              [self](qhttp::Request::Ptr const req, qhttp::Response::Ptr const resp) {
                                  string const defaultSubModule;
                                  HttpQservSqlModule::process(self->controller(), self->name(),
                                                              self->_processorConfig, req, resp,
-                                                             defaultSubModule, HttpAuthType::REQUIRED);
+                                                             defaultSubModule, http::AuthType::REQUIRED);
                              });
     httpServer()->addHandler("GET", "/replication/sql/index/:database/:table",
                              [self](qhttp::Request::Ptr const req, qhttp::Response::Ptr const resp) {
@@ -323,13 +330,13 @@ void HttpProcessor::registerServices() {
                              [self](qhttp::Request::Ptr const req, qhttp::Response::Ptr const resp) {
                                  HttpSqlIndexModule::process(self->controller(), self->name(),
                                                              self->_processorConfig, req, resp,
-                                                             "CREATE-INDEXES", HttpAuthType::REQUIRED);
+                                                             "CREATE-INDEXES", http::AuthType::REQUIRED);
                              });
     httpServer()->addHandler("DELETE", "/replication/sql/index",
                              [self](qhttp::Request::Ptr const req, qhttp::Response::Ptr const resp) {
                                  HttpSqlIndexModule::process(self->controller(), self->name(),
                                                              self->_processorConfig, req, resp,
-                                                             "DROP-INDEXES", HttpAuthType::REQUIRED);
+                                                             "DROP-INDEXES", http::AuthType::REQUIRED);
                              });
     httpServer()->addHandler("GET", "/ingest/config",
                              [self](qhttp::Request::Ptr const req, qhttp::Response::Ptr const resp) {
@@ -339,7 +346,7 @@ void HttpProcessor::registerServices() {
     httpServer()->addHandler(
             "PUT", "/ingest/config", [self](qhttp::Request::Ptr const req, qhttp::Response::Ptr const resp) {
                 HttpIngestConfigModule::process(self->controller(), self->name(), self->_processorConfig, req,
-                                                resp, "UPDATE", HttpAuthType::REQUIRED);
+                                                resp, "UPDATE", http::AuthType::REQUIRED);
             });
     httpServer()->addHandler(
             "GET", "/ingest/trans", [self](qhttp::Request::Ptr const req, qhttp::Response::Ptr const resp) {
@@ -357,14 +364,14 @@ void HttpProcessor::registerServices() {
             "POST", "/ingest/trans", [self](qhttp::Request::Ptr const req, qhttp::Response::Ptr const resp) {
                 HttpIngestTransModule::process(self->controller(), self->_transactionMutexRegistry,
                                                self->name(), self->_processorConfig, req, resp,
-                                               "BEGIN-TRANSACTION", HttpAuthType::REQUIRED);
+                                               "BEGIN-TRANSACTION", http::AuthType::REQUIRED);
             });
     httpServer()->addHandler("PUT", "/ingest/trans/:id",
                              [self](qhttp::Request::Ptr const req, qhttp::Response::Ptr const resp) {
                                  HttpIngestTransModule::process(self->controller(),
                                                                 self->_transactionMutexRegistry, self->name(),
                                                                 self->_processorConfig, req, resp,
-                                                                "END-TRANSACTION", HttpAuthType::REQUIRED);
+                                                                "END-TRANSACTION", http::AuthType::REQUIRED);
                              });
     httpServer()->addHandler("GET", "/ingest/trans/contrib/:id",
                              [self](qhttp::Request::Ptr const req, qhttp::Response::Ptr const resp) {
@@ -381,19 +388,19 @@ void HttpProcessor::registerServices() {
                              [self](qhttp::Request::Ptr const req, qhttp::Response::Ptr const resp) {
                                  HttpIngestModule::process(self->controller(), self->name(),
                                                            self->_processorConfig, req, resp, "ADD-DATABASE",
-                                                           HttpAuthType::REQUIRED);
+                                                           http::AuthType::REQUIRED);
                              });
     httpServer()->addHandler("PUT", "/ingest/database/:database",
                              [self](qhttp::Request::Ptr const req, qhttp::Response::Ptr const resp) {
                                  HttpIngestModule::process(self->controller(), self->name(),
                                                            self->_processorConfig, req, resp,
-                                                           "PUBLISH-DATABASE", HttpAuthType::REQUIRED);
+                                                           "PUBLISH-DATABASE", http::AuthType::REQUIRED);
                              });
     httpServer()->addHandler("DELETE", "/ingest/database/:database",
                              [self](qhttp::Request::Ptr const req, qhttp::Response::Ptr const resp) {
                                  HttpIngestModule::process(self->controller(), self->name(),
                                                            self->_processorConfig, req, resp,
-                                                           "DELETE-DATABASE", HttpAuthType::REQUIRED);
+                                                           "DELETE-DATABASE", http::AuthType::REQUIRED);
                              });
     httpServer()->addHandler("GET", "/ingest/table/:database",
                              [self](qhttp::Request::Ptr const req, qhttp::Response::Ptr const resp) {
@@ -403,25 +410,25 @@ void HttpProcessor::registerServices() {
     httpServer()->addHandler(
             "POST", "/ingest/table", [self](qhttp::Request::Ptr const req, qhttp::Response::Ptr const resp) {
                 HttpIngestModule::process(self->controller(), self->name(), self->_processorConfig, req, resp,
-                                          "ADD-TABLE", HttpAuthType::REQUIRED);
+                                          "ADD-TABLE", http::AuthType::REQUIRED);
             });
     httpServer()->addHandler("DELETE", "/ingest/table/:database/:table",
                              [self](qhttp::Request::Ptr const req, qhttp::Response::Ptr const resp) {
                                  HttpIngestModule::process(self->controller(), self->name(),
                                                            self->_processorConfig, req, resp, "DELETE-TABLE",
-                                                           HttpAuthType::REQUIRED);
+                                                           http::AuthType::REQUIRED);
                              });
     httpServer()->addHandler("POST", "/ingest/table-stats",
                              [self](qhttp::Request::Ptr const req, qhttp::Response::Ptr const resp) {
                                  HttpIngestModule::process(self->controller(), self->name(),
                                                            self->_processorConfig, req, resp,
-                                                           "SCAN-TABLE-STATS", HttpAuthType::REQUIRED);
+                                                           "SCAN-TABLE-STATS", http::AuthType::REQUIRED);
                              });
     httpServer()->addHandler("DELETE", "/ingest/table-stats/:database/:table",
                              [self](qhttp::Request::Ptr const req, qhttp::Response::Ptr const resp) {
                                  HttpIngestModule::process(self->controller(), self->name(),
                                                            self->_processorConfig, req, resp,
-                                                           "DELETE-TABLE-STATS", HttpAuthType::REQUIRED);
+                                                           "DELETE-TABLE-STATS", http::AuthType::REQUIRED);
                              });
     httpServer()->addHandler("GET", "/ingest/table-stats/:database/:table",
                              [self](qhttp::Request::Ptr const req, qhttp::Response::Ptr const resp) {
@@ -431,12 +438,12 @@ void HttpProcessor::registerServices() {
     httpServer()->addHandler(
             "POST", "/ingest/chunk", [self](qhttp::Request::Ptr const req, qhttp::Response::Ptr const resp) {
                 HttpIngestChunksModule::process(self->controller(), self->name(), self->_processorConfig, req,
-                                                resp, "ADD-CHUNK", HttpAuthType::REQUIRED);
+                                                resp, "ADD-CHUNK", http::AuthType::REQUIRED);
             });
     httpServer()->addHandler(
             "POST", "/ingest/chunks", [self](qhttp::Request::Ptr const req, qhttp::Response::Ptr const resp) {
                 HttpIngestChunksModule::process(self->controller(), self->name(), self->_processorConfig, req,
-                                                resp, "ADD-CHUNK-LIST", HttpAuthType::REQUIRED);
+                                                resp, "ADD-CHUNK-LIST", http::AuthType::REQUIRED);
             });
     httpServer()->addHandler(
             "GET", "/ingest/chunks", [self](qhttp::Request::Ptr const req, qhttp::Response::Ptr const resp) {
@@ -447,7 +454,7 @@ void HttpProcessor::registerServices() {
                              [self](qhttp::Request::Ptr const req, qhttp::Response::Ptr const resp) {
                                  HttpIngestModule::process(self->controller(), self->name(),
                                                            self->_processorConfig, req, resp,
-                                                           "BUILD-CHUNK-LIST", HttpAuthType::REQUIRED);
+                                                           "BUILD-CHUNK-LIST", http::AuthType::REQUIRED);
                              });
     httpServer()->addHandler("GET", "/ingest/regular",
                              [self](qhttp::Request::Ptr const req, qhttp::Response::Ptr const resp) {
@@ -458,13 +465,13 @@ void HttpProcessor::registerServices() {
                              [self](qhttp::Request::Ptr const req, qhttp::Response::Ptr const resp) {
                                  HttpDirectorIndexModule::process(self->controller(), self->name(),
                                                                   self->_processorConfig, req, resp, "BUILD",
-                                                                  HttpAuthType::REQUIRED);
+                                                                  http::AuthType::REQUIRED);
                              });
     httpServer()->addHandler("GET", "/export/tables/:database",
                              [self](qhttp::Request::Ptr const req, qhttp::Response::Ptr const resp) {
                                  HttpExportModule::process(self->controller(), self->name(),
                                                            self->_processorConfig, req, resp, "TABLES",
-                                                           HttpAuthType::REQUIRED);
+                                                           http::AuthType::REQUIRED);
                              });
 
     // Pass-through for the static content

@@ -62,7 +62,7 @@ void HttpIngestTransModule::process(Controller::Ptr const& controller,
                                     NamedMutexRegistry& transactionMutexRegistry, string const& taskName,
                                     HttpProcessorConfig const& processorConfig,
                                     qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp,
-                                    string const& subModuleName, HttpAuthType const authType) {
+                                    string const& subModuleName, http::AuthType const authType) {
     HttpIngestTransModule module(controller, transactionMutexRegistry, taskName, processorConfig, req, resp);
     module.execute(subModuleName, authType);
 }

@@ -36,7 +36,6 @@
 #include "replica/DatabaseMySQL.h"
 #include "replica/SqlAlterTablesJob.h"
 #include "replica/SqlResultSet.h"
-#include "replica/HttpRequestBody.h"
 
 using namespace std;
 using json = nlohmann::json;
@@ -48,7 +47,7 @@ using namespace database::mysql;
 void HttpSqlSchemaModule::process(Controller::Ptr const& controller, string const& taskName,
                                   HttpProcessorConfig const& processorConfig, qhttp::Request::Ptr const& req,
                                   qhttp::Response::Ptr const& resp, string const& subModuleName,
-                                  HttpAuthType const authType) {
+                                  http::AuthType const authType) {
     HttpSqlSchemaModule module(controller, taskName, processorConfig, req, resp);
     module.execute(subModuleName, authType);
 }

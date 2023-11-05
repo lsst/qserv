@@ -126,7 +126,7 @@ namespace lsst::qserv::replica {
 void HttpQservMonitorModule::process(Controller::Ptr const& controller, string const& taskName,
                                      HttpProcessorConfig const& processorConfig,
                                      qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp,
-                                     string const& subModuleName, HttpAuthType const authType) {
+                                     string const& subModuleName, http::AuthType const authType) {
     HttpQservMonitorModule module(controller, taskName, processorConfig, req, resp);
     module.execute(subModuleName, authType);
 }

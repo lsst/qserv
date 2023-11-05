@@ -18,8 +18,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_HTTPREQUESTBODY_H
-#define LSST_QSERV_HTTPREQUESTBODY_H
+#ifndef LSST_QSERV_HTTP_REQUESTBODY_H
+#define LSST_QSERV_HTTP_REQUESTBODY_H
 
 // System headers
 #include <algorithm>
@@ -33,10 +33,10 @@
 #include "qhttp/Server.h"
 
 // This header declarations
-namespace lsst::qserv::replica {
+namespace lsst::qserv::http {
 
 /**
- * Helper class HttpRequestBody parses a body of an HTTP request
+ * Helper class RequestBody parses a body of an HTTP request
  * which has the following header:
  *
  *   Content-Type: application/json
@@ -45,16 +45,16 @@ namespace lsst::qserv::replica {
  * the request has an unexpected content type, or if its payload
  * is not a proper JSON object.
  */
-class HttpRequestBody {
+class RequestBody {
 public:
     /// parsed body of the request
     nlohmann::json objJson = nlohmann::json::object();
 
-    HttpRequestBody() = default;
-    HttpRequestBody(HttpRequestBody const&) = default;
-    HttpRequestBody& operator=(HttpRequestBody const&) = default;
+    RequestBody() = default;
+    RequestBody(RequestBody const&) = default;
+    RequestBody& operator=(RequestBody const&) = default;
 
-    ~HttpRequestBody() = default;
+    ~RequestBody() = default;
 
     /**
      * The constructor will parse and evaluate a body of an HTTP request
@@ -65,7 +65,7 @@ public:
      *
      * @param req  The request to be parsed.
      */
-    explicit HttpRequestBody(qhttp::Request::Ptr const& req);
+    explicit RequestBody(qhttp::Request::Ptr const& req);
 
     /**
      * Check if thw specified parameter is present in the input JSON object.
@@ -95,11 +95,11 @@ public:
     template <typename T>
     static T required(nlohmann::json const& obj, std::string const& name) {
         if (not obj.is_object()) {
-            throw std::invalid_argument("HttpRequestBody::" + std::string(__func__) +
+            throw std::invalid_argument("RequestBody::" + std::string(__func__) +
                                         "<T>[static] parameter 'obj' is not a valid JSON object");
         }
         if (obj.find(name) != obj.end()) return obj[name];
-        throw std::invalid_argument("HttpRequestBody::" + std::string(__func__) +
+        throw std::invalid_argument("RequestBody::" + std::string(__func__) +
                                     "<T>[static] required parameter " + name +
                                     " is missing in the request body");
     }
@@ -127,7 +127,7 @@ public:
     T required(std::string const& name, std::vector<T> const& permitted) const {
         auto const value = required<T>(objJson, name);
         if (_in(value, permitted)) return value;
-        throw std::invalid_argument("HttpRequestBody::" + std::string(__func__) +
+        throw std::invalid_argument("RequestBody::" + std::string(__func__) +
                                     "<T>(permitted) a value of parameter " + name + " is not allowed.");
     }
 
@@ -155,7 +155,7 @@ public:
     T optional(std::string const& name, T const& defaultValue, std::vector<T> const& permitted) const {
         auto const value = optional<T>(name, defaultValue);
         if (_in(value, permitted)) return value;
-        throw std::invalid_argument("HttpRequestBody::" + std::string(__func__) +
+        throw std::invalid_argument("RequestBody::" + std::string(__func__) +
                                     "<T>(permitted) a value of parameter " + name + " is not allowed.");
     }
 
@@ -169,11 +169,11 @@ public:
     std::vector<T> requiredColl(std::string const& name) const {
         auto const itr = objJson.find(name);
         if (itr == objJson.end()) {
-            throw std::invalid_argument("HttpRequestBody::" + std::string(__func__) +
-                                        "<T> required parameter " + name + " is missing in the request body");
+            throw std::invalid_argument("RequestBody::" + std::string(__func__) + "<T> required parameter " +
+                                        name + " is missing in the request body");
         }
         if (not itr->is_array()) {
-            throw std::invalid_argument("HttpRequestBody::" + std::string(__func__) +
+            throw std::invalid_argument("RequestBody::" + std::string(__func__) +
                                         "<T> a value of the required parameter " + name + " is not an array");
         }
         std::vector<T> coll;
@@ -211,6 +211,6 @@ private:
     }
 };
 
-}  // namespace lsst::qserv::replica
+}  // namespace lsst::qserv::http
 
-#endif  // LSST_QSERV_HTTPREQUESTBODY_H
+#endif  // LSST_QSERV_HTTP_REQUESTBODY_H

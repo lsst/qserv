@@ -4,7 +4,11 @@ target_sources(http PRIVATE
     AsyncReq.cc
     Client.cc
     Exceptions.cc
+    MetaModule.cc
     Method.cc
+    ModuleBase.cc
+    RequestBody.cc
+    RequestQuery.cc
     Url.cc
 )
 
