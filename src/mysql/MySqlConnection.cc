@@ -30,6 +30,7 @@
 
 // System headers
 #include <cstddef>
+#include <stdexcept>
 #include <sstream>
 
 // Third-party headers
@@ -44,9 +45,6 @@ namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.mysql.MySqlConnection");
 
-}  // namespace
-
-namespace {
 // A class that calls mysql_thread_end when an instance is destroyed.
 struct MySqlThreadJanitor {
     ~MySqlThreadJanitor() { mysql_thread_end(); }
@@ -67,146 +65,13 @@ struct InitializeMysqlLibrary {
         janitor.reset(new MySqlThreadJanitor);
     }
 };
-}  // namespace
 
-namespace lsst::qserv::mysql {
-
-MySqlConnection::MySqlConnection()
-        : _mysql(nullptr),
-          _mysql_res(nullptr),
-          _isConnected(false),
-          _isExecuting(false),
-          _interrupted(false) {}
-
-MySqlConnection::MySqlConnection(MySqlConfig const& sqlConfig)
-        : _mysql(nullptr),
-          _mysql_res(nullptr),
-          _isConnected(false),
-          _sqlConfig(std::make_shared<MySqlConfig>(sqlConfig)),
-          _isExecuting(false),
-          _interrupted(false) {}
-
-MySqlConnection::~MySqlConnection() {
-    if (_mysql) {
-        if (_mysql_res) {
-            MYSQL_ROW row;
-            while ((row = mysql_fetch_row(_mysql_res)))
-                ;  // Drain results.
-            _mysql_res = nullptr;
-        }
-        closeMySqlConn();
-    }
-}
-
-bool MySqlConnection::checkConnection(mysql::MySqlConfig const& mysqlconfig) {
-    MySqlConnection conn(mysqlconfig);
-    if (conn.connect()) {
-        LOGS(_log, LOG_LVL_DEBUG, "Successful MySQL connection check: " << mysqlconfig);
-        return true;
-    } else {
-        LOGS(_log, LOG_LVL_WARN, "Unsuccessful MySQL connection check: " << mysqlconfig);
-        return false;
-    }
-}
-
-void MySqlConnection::closeMySqlConn() {
-    // Close mysql connection and set deallocated pointer to null
-    mysql_close(_mysql);
-    _mysql = nullptr;
-}
-
-bool MySqlConnection::connect() {
-    // Cleanup garbage
-    if (_mysql != nullptr) {
-        closeMySqlConn();
-    }
-    _isConnected = false;
-    // Make myself a thread
-    _mysql = _connectHelper();
-    _isConnected = (_mysql != nullptr);
-    return _isConnected;
-}
-
-bool MySqlConnection::queryUnbuffered(std::string const& query) {
-    // run query, store into list.
-    int rc;
-    {
-        std::lock_guard<std::mutex> lock(_interruptMutex);
-        _isExecuting = true;
-        _interrupted = false;
-    }
-    rc = mysql_real_query(_mysql, query.c_str(), query.length());
-    if (rc) {
-        return false;
-    }
-    _mysql_res = mysql_use_result(_mysql);
-    _isExecuting = false;
-    if (!_mysql_res) {
-        return false;
-    }
-    return true;
-}
-
-/// Cancel existing query
-/// @return 0 on success.
-/// 1 indicates error in connecting. (may try again)
-/// 2 indicates error executing kill query. (do not try again)
-/// -1 indicates NOP: No query in progress or query already interrupted.
-int MySqlConnection::cancel() {
-    std::lock_guard<std::mutex> lock(_interruptMutex);
-    int rc;
-    if (_interrupted) {
-        // Should we log this?
-        return -1;  // No further action needed.
-    }
-    _interrupted = true;  // Prevent others from trying to interrupt
-    MYSQL* killMysql = _connectHelper();
-    if (!killMysql) {
-        _interrupted = false;  // Didn't try
-        return 1;
-        // Handle broken connection
-    }
-    // KILL QUERY only, not KILL CONNECTION.
-    int threadId = mysql_thread_id(_mysql);
-    std::string const killSql = "KILL QUERY " + std::to_string(threadId);
-    rc = mysql_real_query(killMysql, killSql.c_str(), killSql.size());
-    mysql_close(killMysql);
-    if (rc) {
-        LOGS(_log, LOG_LVL_WARN,
-             "failed to kill MySQL thread: " << threadId << ", error: " << std::string(mysql_error(killMysql))
-                                             << ", errno: " << std::to_string(mysql_errno(killMysql)));
-        return 2;
-    }
-    return 0;
-}
-
-bool MySqlConnection::selectDb(std::string const& dbName) {
-    if (!dbName.empty() && mysql_select_db(_mysql, dbName.c_str())) {
-        return false;
-    }
-    _sqlConfig->dbName = dbName;
-    return true;
-}
-
-std::vector<std::string> MySqlConnection::getColumnNames() const {
-    assert(_mysql);
-    assert(_mysql_res);
-    std::vector<std::string> names;
-    if (0 != mysql_field_count(_mysql)) {
-        auto fields = mysql_fetch_fields(_mysql_res);
-        for (unsigned int i = 0; i < mysql_num_fields(_mysql_res); i++) {
-            names.push_back(std::string(fields[i].name));
-        }
-    }
-    return names;
-}
-
-////////////////////////////////////////////////////////////////////////
-// MySqlConnection
-// private:
-////////////////////////////////////////////////////////////////////////
-
-MYSQL* MySqlConnection::_connectHelper() {
+/**
+ * Establish a new MySQL connection.
+ * @param config Parameters of the connection.
+ * @return A pointer to the MySQL connection or nullptr.
+ */
+MYSQL* doConnect(std::shared_ptr<lsst::qserv::mysql::MySqlConfig> const& config) {
     // We must call mysql_library_init() exactly once before calling mysql_init
     // because it is not thread safe. Both mysql_library_init and mysql_init
     // call mysql_thread_init, and so we must arrange to call mysql_thread_end
@@ -217,34 +82,167 @@ MYSQL* MySqlConnection::_connectHelper() {
 
     std::call_once(initialized, InitializeMysqlLibrary(janitor));
     MYSQL* m = mysql_init(nullptr);
-    if (!m) {
-        return m;
-    }
-    if (!janitor.get()) {
-        janitor.reset(new MySqlThreadJanitor);
-    }
-    unsigned long clientFlag = CLIENT_MULTI_STATEMENTS;
+    if (nullptr == m) return m;
+    if (nullptr == janitor) janitor.reset(new MySqlThreadJanitor);
+    unsigned long const clientFlag = CLIENT_MULTI_STATEMENTS;
     mysql_options(m, MYSQL_OPT_LOCAL_INFILE, 0);
-    MYSQL* c =
-            mysql_real_connect(m, _sqlConfig->socket.empty() ? _sqlConfig->hostname.c_str() : 0,
-                               _sqlConfig->username.empty() ? 0 : _sqlConfig->username.c_str(),
-                               _sqlConfig->password.empty() ? 0 : _sqlConfig->password.c_str(),
-                               _sqlConfig->dbName.empty() ? 0 : _sqlConfig->dbName.c_str(), _sqlConfig->port,
-                               _sqlConfig->socket.empty() ? 0 : _sqlConfig->socket.c_str(), clientFlag);
-    if (!c) {
+    MYSQL* c = mysql_real_connect(m, config->socket.empty() ? config->hostname.c_str() : 0,
+                                  config->username.empty() ? 0 : config->username.c_str(),
+                                  config->password.empty() ? 0 : config->password.c_str(),
+                                  config->dbName.empty() ? 0 : config->dbName.c_str(), config->port,
+                                  config->socket.empty() ? 0 : config->socket.c_str(), clientFlag);
+    if (nullptr == c) {
         // Failed to connect: free resources.
         mysql_close(m);
         return c;
     }
-    _threadId = mysql_thread_id(m);
     return m;
+}
+
+}  // namespace
+
+namespace lsst::qserv::mysql {
+
+bool MySqlConnection::checkConnection(mysql::MySqlConfig const& config) {
+    MySqlConnection conn(config);
+    if (conn.connect()) {
+        LOGS(_log, LOG_LVL_DEBUG, "Successful MySQL connection check: " << config);
+        return true;
+    } else {
+        LOGS(_log, LOG_LVL_WARN, "Unsuccessful MySQL connection check: " << config);
+        return false;
+    }
+}
+
+MySqlConnection::MySqlConnection(MySqlConfig const& config)
+        : _config(std::make_shared<MySqlConfig>(config)), _mysql(nullptr), _mysql_res(nullptr) {}
+
+MySqlConnection::~MySqlConnection() { _closeMySqlConnImpl(std::lock_guard<std::mutex>(_mtx)); }
+
+void MySqlConnection::closeMySqlConn() { _closeMySqlConnImpl(std::lock_guard<std::mutex>(_mtx)); }
+
+bool MySqlConnection::connect() {
+    std::lock_guard<std::mutex> const lock(_mtx);
+    _closeMySqlConnImpl(lock);
+    _mysql = ::doConnect(_config);
+    if (nullptr != _mysql) {
+        _threadId = mysql_thread_id(_mysql);
+        return true;
+    }
+    return false;
+}
+
+bool MySqlConnection::queryUnbuffered(std::string const& query) {
+    std::lock_guard<std::mutex> lock(_mtx);
+    if (_mysql == nullptr) return false;
+    int const rc = mysql_real_query(_mysql, query.c_str(), query.length());
+    if (rc) return false;
+    _mysql_res = mysql_use_result(_mysql);
+    if (nullptr == _mysql_res) return false;
+    return true;
+}
+
+MySqlConnection::CancelStatus MySqlConnection::cancel() {
+    unsigned int const threadId = _threadId.load();
+    if (!(connected() && (0 != threadId))) return CancelStatus::CANCEL_NOP;
+    MYSQL* killMysql = ::doConnect(_config);
+    if (nullptr == killMysql) return CancelStatus::CANCEL_CONNECT_ERROR;
+    std::string const killSql = "KILL QUERY " + std::to_string(threadId);
+    int const rc = mysql_real_query(killMysql, killSql.c_str(), killSql.size());
+    mysql_close(killMysql);
+    if (rc) {
+        LOGS(_log, LOG_LVL_WARN,
+             "failed to kill MySQL thread: " << threadId << ", error: " << std::string(mysql_error(killMysql))
+                                             << ", errno: " << std::to_string(mysql_errno(killMysql)));
+        return CancelStatus::CANCEL_FAILED;
+    }
+    return CancelStatus::CANCEL_SUCCESS;
+}
+
+MYSQL* MySqlConnection::getMySql() {
+    _throwIfNotConnected(__func__);
+    return _mysql;
+}
+
+MYSQL_RES* MySqlConnection::getResult() {
+    _throwIfNotConnected(__func__);
+    return _mysql_res;
+}
+
+void MySqlConnection::freeResult() {
+    std::lock_guard<std::mutex> lock(_mtx);
+    _throwIfNotInProcessingResult(__func__);
+    mysql_free_result(_mysql_res);
+    _mysql_res = nullptr;
+}
+
+int MySqlConnection::getResultFieldCount() {
+    std::lock_guard<std::mutex> lock(_mtx);
+    _throwIfNotInProcessingResult(__func__);
+    return mysql_field_count(_mysql);
+}
+
+std::vector<std::string> MySqlConnection::getColumnNames() const {
+    std::lock_guard<std::mutex> lock(_mtx);
+    _throwIfNotInProcessingResult(__func__);
+    std::vector<std::string> names;
+    if (0 != mysql_field_count(_mysql)) {
+        auto fields = mysql_fetch_fields(_mysql_res);
+        for (unsigned int i = 0; i < mysql_num_fields(_mysql_res); i++) {
+            names.push_back(std::string(fields[i].name));
+        }
+    }
+    return names;
+}
+
+unsigned int MySqlConnection::getErrno() const {
+    _throwIfNotConnected(__func__);
+    return mysql_errno(_mysql);
+}
+const std::string MySqlConnection::getError() const {
+    _throwIfNotConnected(__func__);
+    return std::string(mysql_error(_mysql));
+}
+
+bool MySqlConnection::selectDb(std::string const& dbName) {
+    _throwIfNotConnected(__func__);
+    if (!dbName.empty() && (0 != mysql_select_db(_mysql, dbName.c_str()))) {
+        return false;
+    }
+    _config->dbName = dbName;
+    return true;
 }
 
 std::string MySqlConnection::dump() {
     std::ostringstream os;
-    os << "hostN=" << _sqlConfig->hostname << " sock=" << _sqlConfig->socket
-       << " uname=" << _sqlConfig->username << " dbN=" << _sqlConfig->dbName << " port=" << _sqlConfig->port;
+    os << "hostN=" << _config->hostname << " sock=" << _config->socket << " uname=" << _config->username
+       << " dbN=" << _config->dbName << " port=" << _config->port;
     return os.str();
+}
+
+void MySqlConnection::_closeMySqlConnImpl(std::lock_guard<std::mutex> const& lock) {
+    if (nullptr != _mysql) {
+        mysql_close(_mysql);
+        _mysql = nullptr;
+        _threadId = 0;
+        if (nullptr != _mysql_res) {
+            mysql_free_result(_mysql_res);
+            _mysql_res = nullptr;
+        }
+    }
+}
+
+void MySqlConnection::_throwIfNotConnected(std::string const& func) const {
+    if (_mysql == nullptr) {
+        throw std::logic_error("MySqlConnection::" + func + " connection is not open.");
+    }
+}
+
+void MySqlConnection::_throwIfNotInProcessingResult(std::string const& func) const {
+    _throwIfNotConnected(func);
+    if (_mysql_res == nullptr) {
+        throw std::logic_error("MySqlConnection::" + func + " not in the result processing context.");
+    }
 }
 
 }  // namespace lsst::qserv::mysql
