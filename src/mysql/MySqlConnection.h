@@ -28,6 +28,7 @@
 #define LSST_QSERV_MYSQL_MYSQLCONNECTION_H
 
 // System headers
+#include <atomic>
 #include <cassert>
 #include <cstddef>
 #include <memory>
@@ -36,81 +37,134 @@
 #include <vector>
 
 // Third-party headers
-#include "boost/utility.hpp"
 #include <mysql/mysql.h>
 
+// Forward declarations
 namespace lsst::qserv::mysql {
-
-// Forward
 class MySqlConfig;
+}  // namespace lsst::qserv::mysql
+
+namespace lsst::qserv::mysql {
 
 /// MySqlConnection is a thin wrapper around the MySQL C-API that partially
 /// shields clients from the raw API, while still providing raw access for
 /// clients that need it.
-class MySqlConnection : boost::noncopyable {
+class MySqlConnection {
 public:
-    MySqlConnection();
-    MySqlConnection(MySqlConfig const& sqlConfig);
-
-    ~MySqlConnection();
-
-    void closeMySqlConn();
-    bool connect();
+    /// The completion status of the query cancelation operation.
+    enum CancelStatus {
+        CANCEL_SUCCESS = 0,        ///< The operation was succesfull.
+        CANCEL_CONNECT_ERROR = 1,  ///< Failed to establish a separate connection to MySQL.
+        CANCEL_FAILED = 2,         ///< Failed to failure to kill the query.
+        CANCEL_NOP = -1            ///< Connection is not open.
+    };
 
     /**
-     *  Check MySQL connection for a given configuration
-     *
-     * @return: true if MySQL connection succeeded, else false
+     * Check if a MySQL connection could be established for the given configuration.
+     * @return 'true' if MySQL connection succeeded.
      */
-    static bool checkConnection(mysql::MySqlConfig const& mysqlconfig);
+    static bool checkConnection(mysql::MySqlConfig const& config);
 
-    bool connected() const { return _isConnected; }
-    unsigned long threadId() const { return _threadId; }
+    /**
+     * Construct the connector with specifid configuration.
+     * @param sqlConfig Parameters of the connection.
+     */
+    explicit MySqlConnection(MySqlConfig const& config);
 
-    // instance destruction invalidates this return value
-    MYSQL* getMySql() { return _mysql; }
-    MySqlConfig const& getMySqlConfig() const { return *_sqlConfig; }
+    MySqlConnection() = delete;
+    MySqlConnection(MySqlConnection const&) = delete;
+    MySqlConnection& operator=(MySqlConnection const&) = delete;
 
+    /// Non-trivial destructor is needed to close the connection and release resources.
+    ~MySqlConnection();
+
+    MySqlConfig const& getConfig() const { return *_config; }
+
+    /// Close the current connection (if any) and open the new one.
+    /// @return 'true' if the operation was succesfull.
+    bool connect();
+
+    bool connected() const { return nullptr != _mysql; }
+
+    /// @note The identifier is set after making a connection, and it's reset
+    ///   to 0 upon disconnects.
+    /// @return A thread identifier of the last succesfully established connection.
+    unsigned long threadId() const { return _threadId.load(); }
+
+    /// Close the current connection (if any).
+    void closeMySqlConn();
+
+    /**
+     * Execute a query.
+     * @param query The query to be executed.
+     * @return 'true' if the operation was successfull.
+     */
     bool queryUnbuffered(std::string const& query);
-    int cancel();
 
-    MYSQL_RES* getResult() { return _mysql_res; }
-    void freeResult() {
-        mysql_free_result(_mysql_res);
-        _mysql_res = nullptr;
-    }
-    int getResultFieldCount() {
-        assert(_mysql);
-        return mysql_field_count(_mysql);
-    }
-    std::vector<std::string> getColumnNames() const;
-    unsigned int getErrno() const {
-        assert(_mysql);
-        return mysql_errno(_mysql);
-    }
-    const std::string getError() const {
-        assert(_mysql);
-        return std::string(mysql_error(_mysql));
-    }
-    MySqlConfig const& getConfig() const { return *_sqlConfig; }
+    /**
+     * Cancel existing query (if any).
+     * @note The method will only attempt to cancel the ongoing query (if any).
+     *   The connection (if any) will be left intact, and it could be used for
+     *   submitting other queries.
+     * @return CancelStatus The completion status of the operation.
+     */
+    CancelStatus cancel();
+
+    // The following methods require a valid connection.
+    // Otherwise std::logic_error will be thrown.
+
+    MYSQL* getMySql();
+    unsigned int getErrno() const;
+    const std::string getError() const;
     bool selectDb(std::string const& dbName);
+
+    /**
+     * The method requires a valid connection.
+     * @return A pointer to the result descriptor. The method returns nullptr
+     * if the last query failed, if no query submitted after establishing a connection,
+     * or if the result set of the last query was explicitly cleared by calling freeResult().
+     * @throws std::logic_error if the connection is not open.
+     */
+    MYSQL_RES* getResult();
+
+    // The following methods require must be called within the query procesing
+    // context (assuming the connection is open and the last query succeeded).
+    // Otherwise std::logic_error will be thrown.
+
+    void freeResult();
+    int getResultFieldCount();
+    std::vector<std::string> getColumnNames() const;
 
     /// @return a string suitable for logging.
     std::string dump();
 
 private:
-    MYSQL* _connectHelper();
-    static std::mutex _mysqlShared;
-    static bool _mysqlReady;
+    /// Close the current connection (if open).
+    /// @param lock An exclusive lock on the _mtx must  be acquired before calling the method.
+    void _closeMySqlConnImpl(std::lock_guard<std::mutex> const& lock);
+
+    /// Ensure a connection is establushed.
+    /// @param func A context the method was called from (for error reporting).
+    /// @throw std::logic_error If not in the desired state.
+    void _throwIfNotConnected(std::string const& func) const;
+
+    /// Ensure the object in the result processing state (a connection is established and
+    /// the last submitted query succeeded).
+    /// @param func A context the method was called from (for error reporting).
+    /// @throw std::logic_error If not in the desired state.
+    void _throwIfNotInProcessingResult(std::string const& func) const;
+
+    std::shared_ptr<MySqlConfig> _config;  ///< Input parameters of the connections.
+
+    mutable std::mutex _mtx;  ///< Guards state transitions.
+
+    // The current state of the connection. Values of the data members
+    // are modified after establishing a connection, query completion, or
+    // uppon disconnects.
 
     MYSQL* _mysql;
     MYSQL_RES* _mysql_res;
-    bool _isConnected;
-    unsigned long _threadId = 0;  ///< 0 if not connected
-    std::shared_ptr<MySqlConfig> _sqlConfig;
-    bool _isExecuting;  ///< true during mysql_real_query and mysql_use_result
-    bool _interrupted;  ///< true if cancellation requested
-    std::mutex _interruptMutex;
+    std::atomic<unsigned long> _threadId{0};
 };
 
 }  // namespace lsst::qserv::mysql
