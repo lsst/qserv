@@ -35,6 +35,10 @@ namespace lsst::qserv::qhttp {
 class Server;
 }  // namespace lsst::qserv::qhttp
 
+namespace lsst::qserv::wcontrol {
+class Foreman;
+}  // namespace lsst::qserv::wcontrol
+
 // This header declarations
 namespace lsst::qserv::xrdsvc {
 
@@ -72,7 +76,8 @@ public:
      * @param numThreads The number of BOOST ASIO threads.
      * @return The shared pointer to the running server.
      */
-    static std::shared_ptr<HttpSvc> create(uint16_t port, unsigned int numThreads);
+    static std::shared_ptr<HttpSvc> create(std::shared_ptr<wcontrol::Foreman> const& foreman, uint16_t port,
+                                           unsigned int numThreads);
 
     HttpSvc() = delete;
     HttpSvc(HttpSvc const&) = delete;
@@ -108,9 +113,12 @@ private:
      * @param port The number of a port to bind to.
      * @param numThreads The number of BOOST ASIO threads.
      */
-    HttpSvc(uint16_t port, unsigned int numThreads);
+    HttpSvc(std::shared_ptr<wcontrol::Foreman> const& foreman, uint16_t port, unsigned int numThreads);
 
     // Input parameters
+
+    std::shared_ptr<wcontrol::Foreman> const _foreman;
+
     uint16_t const _port;            ///< The input port number (could be 0 to allow autoallocation).
     unsigned int const _numThreads;  ///< The number of the BOOST ASIO service threads.
 

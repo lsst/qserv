@@ -27,15 +27,20 @@
 
 // Qserv headers
 #include "http/MetaModule.h"
-#include "qhttp/Request.h"
-#include "qhttp/Response.h"
 #include "qhttp/Server.h"
-#include "qhttp/Status.h"
 #include "wconfig/WorkerConfig.h"
+#include "wcontrol/Foreman.h"
+#include "wpublish/ChunkInventory.h"
+#include "xrdsvc/HttpMonitorModule.h"
+#include "xrdsvc/HttpReplicaMgtModule.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
 
+// Third party headers
+#include "boost/filesystem.hpp"
+
+using namespace nlohmann;
 using namespace std;
 
 namespace {
@@ -48,11 +53,13 @@ string const serviceName = "WORKER-MANAGEMENT ";
 
 namespace lsst::qserv::xrdsvc {
 
-shared_ptr<HttpSvc> HttpSvc::create(uint16_t port, unsigned int numThreads) {
-    return shared_ptr<HttpSvc>(new HttpSvc(port, numThreads));
+shared_ptr<HttpSvc> HttpSvc::create(shared_ptr<wcontrol::Foreman> const& foreman, uint16_t port,
+                                    unsigned int numThreads) {
+    return shared_ptr<HttpSvc>(new HttpSvc(foreman, port, numThreads));
 }
 
-HttpSvc::HttpSvc(uint16_t port, unsigned int numThreads) : _port(port), _numThreads(numThreads) {}
+HttpSvc::HttpSvc(shared_ptr<wcontrol::Foreman> const& foreman, uint16_t port, unsigned int numThreads)
+        : _foreman(foreman), _port(port), _numThreads(numThreads) {}
 
 uint16_t HttpSvc::start() {
     string const context = "xrdsvc::HttpSvc::" + string(__func__) + " ";
@@ -67,14 +74,64 @@ uint16_t HttpSvc::start() {
     // Make sure the handlers are registered and the server is started before
     // launching any BOOST ASIO threads. This will prevent threads from finishing
     // due to a lack of work to be done.
-    _httpServerPtr->addHandlers({{"GET", "/meta/version",
-                                  [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
-                                      auto const workerConfig = wconfig::WorkerConfig::instance();
-                                      http::MetaModule::process(
-                                              ::serviceName, workerConfig->replicationInstanceId(),
-                                              workerConfig->replicationAuthKey(),
-                                              workerConfig->replicationAdminAuthKey(), req, resp, "VERSION");
-                                  }}});
+    _httpServerPtr->addHandlers(
+            {{"GET", "/meta/version",
+              [self](shared_ptr<qhttp::Request> const& req, shared_ptr<qhttp::Response> const& resp) {
+                  json const info = json::object(
+                          {{"kind", "qserv-worker-manager"},
+                           {"id", self->_foreman->chunkInventory()->id()},
+                           {"instance_id", wconfig::WorkerConfig::instance()->replicationInstanceId()}});
+                  http::MetaModule::process(::serviceName, info, req, resp, "VERSION");
+              }}});
+    _httpServerPtr->addHandlers(
+            {{"GET", "/config",
+              [self](shared_ptr<qhttp::Request> const& req, shared_ptr<qhttp::Response> const& resp) {
+                  HttpMonitorModule::process(::serviceName, self->_foreman, req, resp, "CONFIG");
+              }}});
+    _httpServerPtr->addHandlers(
+            {{"GET", "/mysql",
+              [self](shared_ptr<qhttp::Request> const& req, shared_ptr<qhttp::Response> const& resp) {
+                  HttpMonitorModule::process(::serviceName, self->_foreman, req, resp, "MYSQL");
+              }}});
+    _httpServerPtr->addHandlers(
+            {{"GET", "/status",
+              [self](shared_ptr<qhttp::Request> const& req, shared_ptr<qhttp::Response> const& resp) {
+                  HttpMonitorModule::process(::serviceName, self->_foreman, req, resp, "STATUS");
+              }}});
+    _httpServerPtr->addHandlers(
+            {{"POST", "/echo",
+              [self](shared_ptr<qhttp::Request> const& req, shared_ptr<qhttp::Response> const& resp) {
+                  HttpMonitorModule::process(::serviceName, self->_foreman, req, resp, "ECHO");
+              }}});
+    _httpServerPtr->addHandlers(
+            {{"GET", "/replicas",
+              [self](shared_ptr<qhttp::Request> const& req, shared_ptr<qhttp::Response> const& resp) {
+                  HttpReplicaMgtModule::process(::serviceName, self->_foreman, req, resp, "GET");
+              }}});
+    _httpServerPtr->addHandlers(
+            {{"POST", "/replicas",
+              [self](shared_ptr<qhttp::Request> const& req, shared_ptr<qhttp::Response> const& resp) {
+                  HttpReplicaMgtModule::process(::serviceName, self->_foreman, req, resp, "SET",
+                                                http::AuthType::REQUIRED);
+              }}});
+    _httpServerPtr->addHandlers(
+            {{"POST", "/replica",
+              [self](shared_ptr<qhttp::Request> const& req, shared_ptr<qhttp::Response> const& resp) {
+                  HttpReplicaMgtModule::process(::serviceName, self->_foreman, req, resp, "ADD",
+                                                http::AuthType::REQUIRED);
+              }}});
+    _httpServerPtr->addHandlers(
+            {{"DELETE", "/replica",
+              [self](shared_ptr<qhttp::Request> const& req, shared_ptr<qhttp::Response> const& resp) {
+                  HttpReplicaMgtModule::process(::serviceName, self->_foreman, req, resp, "REMOVE",
+                                                http::AuthType::REQUIRED);
+              }}});
+    _httpServerPtr->addHandlers(
+            {{"PUT", "/inventory",
+              [self](shared_ptr<qhttp::Request> const& req, shared_ptr<qhttp::Response> const& resp) {
+                  HttpReplicaMgtModule::process(::serviceName, self->_foreman, req, resp, "REBUILD",
+                                                http::AuthType::REQUIRED);
+              }}});
     _httpServerPtr->start();
 
     // Initialize the I/O context and start the service threads. At this point

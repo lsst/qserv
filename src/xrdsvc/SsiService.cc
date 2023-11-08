@@ -261,8 +261,8 @@ SsiService::SsiService(XrdSsiLogger* log) {
     // Start the control server for processing worker management requests sent
     // by the Replication System. Update the port number in the configuration
     // in case if the server is run on the dynamically allocated port.
-    _controlHttpSvc =
-            HttpSvc::create(workerConfig->replicationHttpPort(), workerConfig->replicationNumHttpThreads());
+    _controlHttpSvc = HttpSvc::create(_foreman, workerConfig->replicationHttpPort(),
+                                      workerConfig->replicationNumHttpThreads());
     auto const port = _controlHttpSvc->start();
     workerConfig->setReplicationHttpPort(port);
 
