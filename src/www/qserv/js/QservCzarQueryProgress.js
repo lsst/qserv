@@ -233,8 +233,8 @@ function(CSSLoader,
                 let query_data = queries[qid];
                 for (let i in query_data) {
                     const point = query_data[i];
-                    // +1 hr is needed for correcting timestamp mismatch between UNIX and JS timing
-                    const timestampSec = point[0] / 1000 + 3600;
+                    // Convert from milliseconds
+                    const timestampSec = point[0] / 1000;
                     let x = new Date(0);
                     x.setSeconds(timestampSec);
                     points.push([x.getTime(), point[1] + valueDeltaForLogScale]);
@@ -263,7 +263,7 @@ function(CSSLoader,
                 xAxis: {
                     type: 'datetime',
                     title: {
-                        text: 'Time'
+                        text: 'Time [UTC]'
                     },
                     // If auto-zoom is not enabled the plot will go all the way through
                     // the (viewer's) current time on the right.
@@ -280,8 +280,7 @@ function(CSSLoader,
                     pointFormat: '{point.x:%e. %b}: {point.y:.2f} jobs'
                 },
                 time: {
-                    // To ensure the time stamps are displaye din the (viewer's) local timezone.
-                    timezoneOffset: new Date().getTimezoneOffset()
+                    useUTC: true
                 },
                 plotOptions: {
                     series: {
