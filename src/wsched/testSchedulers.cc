@@ -96,8 +96,11 @@ Task::Ptr makeTask(std::shared_ptr<TaskMsg> tm, shared_ptr<QueriesAndChunks> con
 struct SchedulerFixture {
     typedef std::shared_ptr<TaskMsg> TaskMsgPtr;
 
-    SchedulerFixture(void) { counter = 20; }
-    ~SchedulerFixture(void) {}
+    SchedulerFixture() {
+        counter = 20;
+        WorkerConfig::create();
+    }
+    ~SchedulerFixture() {}
 
     void addSomeFragments(TaskMsgPtr const& t, int numberOfFragments) {
         for (int i = 0; i < numberOfFragments; ++i) {

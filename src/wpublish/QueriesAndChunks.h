@@ -307,6 +307,9 @@ private:
     /// Maximum number of tasks that can be booted until entire UserQuery is put on snailScan.
     int _maxTasksBooted = 25;
 
+    /// Controls booting eligible queries into the "Snail" scheduler.
+    bool _bootingToSnailIsEnabled = false;
+
     /// Number of completed Tasks needed before ChunkTableStats::_avgCompletionTime can be
     /// considered valid enough to boot a Task.
     unsigned int _requiredTasksCompleted = 50;

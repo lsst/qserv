@@ -33,6 +33,7 @@
 #include "util/TimeUtils.h"
 #include "wbase/TaskState.h"
 #include "wbase/UserQueryInfo.h"
+#include "wconfig/WorkerConfig.h"
 #include "wsched/BlendScheduler.h"
 #include "wsched/SchedulerBase.h"
 #include "wsched/ScanScheduler.h"
@@ -132,7 +133,10 @@ QueriesAndChunks::Ptr QueriesAndChunks::setupGlobal(chrono::seconds deadAfter, c
 
 QueriesAndChunks::QueriesAndChunks(chrono::seconds deadAfter, chrono::seconds examineAfter,
                                    int maxTasksBooted)
-        : _deadAfter{deadAfter}, _examineAfter{examineAfter}, _maxTasksBooted{maxTasksBooted} {
+        : _deadAfter{deadAfter},
+          _examineAfter{examineAfter},
+          _maxTasksBooted{maxTasksBooted},
+          _bootingToSnailIsEnabled(wconfig::WorkerConfig::instance()->getBootingToSnailIsEnabled()) {
     auto rDead = [this]() {
         while (_loopRemoval) {
             removeDead();
@@ -526,7 +530,7 @@ void QueriesAndChunks::_bootTask(QueryStatistics::Ptr const& uq, wbase::Task::Pt
         }
     } else {
         // Disabled as too aggressive and vulnerable to bad statistics. DM-11526
-        if (false && uq->_tasksBooted > _maxTasksBooted) {
+        if (_bootingToSnailIsEnabled && uq->_tasksBooted > _maxTasksBooted) {
             LOGS(_log, LOG_LVL_INFO,
                  "entire UserQuery booting from " << sched->getName() << " tasksBooted=" << uq->_tasksBooted
                                                   << " maxTasksBooted=" << _maxTasksBooted);
