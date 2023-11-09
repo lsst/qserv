@@ -69,6 +69,18 @@ maxActiveChunks_fast = 4
 # Maximum number of Tasks that can take too long before moving a query to the snail scan.
 # maxtasksbootedperuserquery = 5
 
+# Setting a value of this parameter to any number but 0 will result in "booting"
+# slow tasks (worker side queries) into the "Snail" scheduler. The default behavior
+# of Qserv is the option is not provided is as if 0 was specified as a value of
+# the parameter.
+# Notes:
+# - if a single worker task becomes eligible for the move then ALL unfinished
+#   tasks of the same query known to the given worker will be moved as well.
+# - since a scope of the potential move to the "Snail" scheduler is limited by
+#   a worker where the move is hapening then the whole processing of the corresponding
+#   user query may get delayed.
+booting_to_snail_is_enabled = 1
+
 [sqlconnections]
 # Maximum number of SQL connections for tasks
 maxsqlconn = 980

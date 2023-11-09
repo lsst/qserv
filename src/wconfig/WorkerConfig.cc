@@ -123,6 +123,7 @@ WorkerConfig::WorkerConfig()
           _scanMaxMinutesSlow(60 * 12),
           _scanMaxMinutesSnail(60 * 24),
           _maxTasksBootedPerUserQuery(5),
+          _bootingToSnailIsEnabled(false),
           _maxSqlConnections(800),
           _ReservedInteractiveSqlConnections(50),
           _bufferMaxTotalGB(41),
@@ -167,6 +168,7 @@ WorkerConfig::WorkerConfig(const util::ConfigStore& configStore)
           _scanMaxMinutesSlow(configStore.getInt("scheduler.scanmaxminutes_slow", 60 * 12)),
           _scanMaxMinutesSnail(configStore.getInt("scheduler.scanmaxminutes_snail", 60 * 24)),
           _maxTasksBootedPerUserQuery(configStore.getInt("scheduler.maxtasksbootedperuserquery", 5)),
+          _bootingToSnailIsEnabled(configStore.getInt("scheduler.booting_to_snail_is_enabled", 0) != 0),
           _maxSqlConnections(configStore.getInt("sqlconnections.maxsqlconn", 800)),
           _ReservedInteractiveSqlConnections(
                   configStore.getInt("sqlconnections.reservedinteractivesqlconn", 50)),
@@ -220,7 +222,8 @@ void WorkerConfig::_populateJsonConfig(std::string const& coll) {
              {"scanmaxminutes_med", std::to_string(_scanMaxMinutesMed)},
              {"scanmaxminutes_slow", std::to_string(_scanMaxMinutesSlow)},
              {"scanmaxminutes_snail", std::to_string(_scanMaxMinutesSnail)},
-             {"maxtasksbootedperuserquery", std::to_string(_maxTasksBootedPerUserQuery)}});
+             {"maxtasksbootedperuserquery", std::to_string(_maxTasksBootedPerUserQuery)},
+             {"booting_to_snail_is_enabled", _bootingToSnailIsEnabled ? 1 : 0}});
     jsonConfigCollection["sqlconnections"] = nlohmann::json::object(
             {{"maxsqlconn", std::to_string(_maxSqlConnections)},
              {"reservedinteractivesqlconn", std::to_string(_ReservedInteractiveSqlConnections)}});
