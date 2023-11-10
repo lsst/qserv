@@ -29,7 +29,7 @@
 
 // Qserv headers
 #include "wbase/SendChannel.h"
-#include "wpublish/ResourceMonitor.h"
+#include "wcontrol/ResourceMonitor.h"
 #include "xrdsvc/SsiProvider.h"
 #include "xrdsvc/XrdName.h"
 
@@ -50,7 +50,7 @@ namespace lsst::qserv::wpublish {
 
 SetChunkListCommand::SetChunkListCommand(shared_ptr<wbase::SendChannel> const& sendChannel,
                                          shared_ptr<ChunkInventory> const& chunkInventory,
-                                         shared_ptr<ResourceMonitor> const& resourceMonitor,
+                                         shared_ptr<wcontrol::ResourceMonitor> const& resourceMonitor,
                                          mysql::MySqlConfig const& mySqlConfig,
                                          vector<SetChunkListCommand::Chunk> const& chunks,
                                          vector<string> const& databases, bool force)

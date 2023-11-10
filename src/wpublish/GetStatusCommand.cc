@@ -29,7 +29,7 @@
 #include "wbase/FileChannelShared.h"
 #include "wbase/MsgProcessor.h"
 #include "wbase/SendChannel.h"
-#include "wpublish/ResourceMonitor.h"
+#include "wcontrol/ResourceMonitor.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -46,7 +46,7 @@ namespace lsst::qserv::wpublish {
 
 GetStatusCommand::GetStatusCommand(shared_ptr<wbase::SendChannel> const& sendChannel,
                                    shared_ptr<wbase::MsgProcessor> const& processor,
-                                   shared_ptr<ResourceMonitor> const& resourceMonitor,
+                                   shared_ptr<wcontrol::ResourceMonitor> const& resourceMonitor,
                                    wbase::TaskSelector const& taskSelector)
         : wbase::WorkerCommand(sendChannel),
           _processor(processor),

@@ -47,6 +47,7 @@
 #include "http/Client.h"
 #include "memman/MemMan.h"
 #include "memman/MemManNone.h"
+#include "mysql/MySqlConfig.h"
 #include "mysql/MySqlConnection.h"
 #include "qhttp/Server.h"
 #include "sql/SqlConnection.h"
@@ -70,6 +71,7 @@
 #include "xrdsvc/SsiRequest.h"
 #include "xrdsvc/XrdName.h"
 
+using namespace lsst::qserv;
 using namespace nlohmann;
 using namespace std;
 using namespace std::literals;
@@ -83,6 +85,22 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.xrdsvc.SsiService");
 void initMDC() { LOG_MDC("LWP", to_string(lsst::log::lwpID())); }
 int dummyInitMDC = LOG_MDC_INIT(initMDC);
 
+std::shared_ptr<wpublish::ChunkInventory> makeChunkInventory(mysql::MySqlConfig const& mySqlConfig) {
+    xrdsvc::XrdName x;
+    if (!mySqlConfig.dbName.empty()) {
+        LOGS(_log, LOG_LVL_FATAL, "dbName must be empty to prevent accidental context");
+        throw runtime_error("dbName must be empty to prevent accidental context");
+    }
+    auto conn = sql::SqlConnectionFactory::make(mySqlConfig);
+    assert(conn);
+    auto inventory = make_shared<wpublish::ChunkInventory>(x.getName(), conn);
+    ostringstream os;
+    os << "Paths exported: ";
+    inventory->dbgPrint(os);
+    LOGS(_log, LOG_LVL_DEBUG, os.str());
+    return inventory;
+}
+
 /**
  * This function will keep periodically updating worker's info in the Replication
  * System's Registry.
@@ -93,20 +111,19 @@ int dummyInitMDC = LOG_MDC_INIT(initMDC);
  * the Registry will be posted into the log stream and ignored.
  */
 void registryUpdateLoop(string const& id) {
-    auto const workerConfig = lsst::qserv::wconfig::WorkerConfig::instance();
+    auto const workerConfig = wconfig::WorkerConfig::instance();
     string const method = "POST";
     string const url = "http://" + workerConfig->replicationRegistryHost() + ":" +
                        to_string(workerConfig->replicationRegistryPort()) + "/qserv-worker";
     vector<string> const headers = {"Content-Type: application/json"};
-    json const request =
-            json::object({{"instance_id", workerConfig->replicationInstanceId()},
-                          {"auth_key", workerConfig->replicationAuthKey()},
-                          {"worker",
-                           {{"name", id},
-                            {"management-port", workerConfig->replicationHttpPort()},
-                            {"management-host-name", lsst::qserv::util::get_current_host_fqdn()}}}});
+    json const request = json::object({{"instance_id", workerConfig->replicationInstanceId()},
+                                       {"auth_key", workerConfig->replicationAuthKey()},
+                                       {"worker",
+                                        {{"name", id},
+                                         {"management-port", workerConfig->replicationHttpPort()},
+                                         {"management-host-name", util::get_current_host_fqdn()}}}});
     string const requestContext = "SsiService: '" + method + "' request to '" + url + "'";
-    lsst::qserv::http::Client client(method, url, request.dump(), headers);
+    http::Client client(method, url, request.dump(), headers);
     while (true) {
         try {
             json const response = client.readAsJson();
@@ -126,18 +143,16 @@ void registryUpdateLoop(string const& id) {
 
 namespace lsst::qserv::xrdsvc {
 
-SsiService::SsiService(XrdSsiLogger* log)
-        : _mySqlConfig(wconfig::WorkerConfig::instance()->getMySqlConfig()) {
+SsiService::SsiService(XrdSsiLogger* log) {
     LOGS(_log, LOG_LVL_DEBUG, "SsiService starting...");
 
     util::HoldTrack::setup(10min);
 
-    if (not mysql::MySqlConnection::checkConnection(_mySqlConfig)) {
-        LOGS(_log, LOG_LVL_FATAL, "Unable to connect to MySQL using configuration:" << _mySqlConfig);
+    auto const mySqlConfig = wconfig::WorkerConfig::instance()->getMySqlConfig();
+    if (not mysql::MySqlConnection::checkConnection(mySqlConfig)) {
+        LOGS(_log, LOG_LVL_FATAL, "Unable to connect to MySQL using configuration:" << mySqlConfig);
         throw wconfig::WorkerConfigError("Unable to connect to MySQL");
     }
-    _initInventory();
-
     auto const workerConfig = wconfig::WorkerConfig::instance();
     string cfgMemMan = workerConfig->getMemManClass();
     memman::MemMan::Ptr memMan;
@@ -219,8 +234,8 @@ SsiService::SsiService(XrdSsiLogger* log)
     LOGS(_log, LOG_LVL_WARN, "config transmitMgr" << *transmitMgr);
     LOGS(_log, LOG_LVL_WARN, "maxPoolThreads=" << maxPoolThreads);
 
-    _foreman = make_shared<wcontrol::Foreman>(blendSched, poolSize, maxPoolThreads, _mySqlConfig, queries,
-                                              sqlConnMgr, transmitMgr);
+    _foreman = make_shared<wcontrol::Foreman>(blendSched, poolSize, maxPoolThreads, mySqlConfig, queries,
+                                              ::makeChunkInventory(mySqlConfig), sqlConnMgr, transmitMgr);
 
     // Watch to see if the log configuration is changed.
     // If LSST_LOG_CONFIG is not defined, there's no good way to know what log
@@ -253,7 +268,7 @@ SsiService::SsiService(XrdSsiLogger* log)
 
     // Begin periodically updating worker's status in the Replication System's registry
     // in the detached thread. This will continue before the application gets terminated.
-    thread registryUpdateThread(::registryUpdateLoop, _chunkInventory->id());
+    thread registryUpdateThread(::registryUpdateLoop, _foreman->chunkInventory()->id());
     registryUpdateThread.detach();
 }
 
@@ -264,27 +279,12 @@ SsiService::~SsiService() {
 
 void SsiService::ProcessRequest(XrdSsiRequest& reqRef, XrdSsiResource& resRef) {
     LOGS(_log, LOG_LVL_DEBUG, "Got request call where rName is: " << resRef.rName);
-    auto request = SsiRequest::newSsiRequest(resRef.rName, _chunkInventory, _foreman);
+    auto request = SsiRequest::newSsiRequest(resRef.rName, _foreman);
 
     // Continue execution in the session object as SSI gave us a new thread.
     // Object deletes itself when finished is called.
     //
     request->execute(reqRef);
-}
-
-void SsiService::_initInventory() {
-    XrdName x;
-    if (not _mySqlConfig.dbName.empty()) {
-        LOGS(_log, LOG_LVL_FATAL, "dbName must be empty to prevent accidental context");
-        throw runtime_error("dbName must be empty to prevent accidental context");
-    }
-    auto conn = sql::SqlConnectionFactory::make(_mySqlConfig);
-    assert(conn);
-    _chunkInventory = make_shared<wpublish::ChunkInventory>(x.getName(), conn);
-    ostringstream os;
-    os << "Paths exported: ";
-    _chunkInventory->dbgPrint(os);
-    LOGS(_log, LOG_LVL_DEBUG, os.str());
 }
 
 }  // namespace lsst::qserv::xrdsvc

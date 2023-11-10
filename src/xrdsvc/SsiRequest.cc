@@ -50,14 +50,15 @@
 #include "wbase/Task.h"
 #include "wconfig/WorkerConfig.h"
 #include "wcontrol/Foreman.h"
+#include "wcontrol/ResourceMonitor.h"
 #include "wpublish/AddChunkGroupCommand.h"
+#include "wpublish/ChunkInventory.h"
 #include "wpublish/ChunkListCommand.h"
 #include "wpublish/GetChunkListCommand.h"
 #include "wpublish/GetConfigCommand.h"
 #include "wpublish/GetDbStatusCommand.h"
 #include "wpublish/GetStatusCommand.h"
 #include "wpublish/RemoveChunkGroupCommand.h"
-#include "wpublish/ResourceMonitor.h"
 #include "wpublish/SetChunkListCommand.h"
 #include "wpublish/TestEchoCommand.h"
 #include "xrdsvc/ChannelStream.h"
@@ -88,24 +89,15 @@ wbase::TaskSelector proto2taskSelector(proto::WorkerCommandGetStatusM const& mes
 
 namespace lsst::qserv::xrdsvc {
 
-std::shared_ptr<wpublish::ResourceMonitor> const SsiRequest::_resourceMonitor(
-        new wpublish::ResourceMonitor());
-
 SsiRequest::Ptr SsiRequest::newSsiRequest(std::string const& rname,
-                                          std::shared_ptr<wpublish::ChunkInventory> const& chunkInventory,
                                           std::shared_ptr<wcontrol::Foreman> const& foreman) {
-    auto req = SsiRequest::Ptr(new SsiRequest(rname, chunkInventory, foreman));
+    auto req = SsiRequest::Ptr(new SsiRequest(rname, foreman));
     req->_selfKeepAlive = req;
     return req;
 }
 
-SsiRequest::SsiRequest(std::string const& rname,
-                       std::shared_ptr<wpublish::ChunkInventory> const& chunkInventory,
-                       std::shared_ptr<wcontrol::Foreman> const& foreman)
-        : _chunkInventory(chunkInventory),
-          _validator(_chunkInventory->newValidator()),
-          _foreman(foreman),
-          _resourceName(rname) {}
+SsiRequest::SsiRequest(std::string const& rname, std::shared_ptr<wcontrol::Foreman> const& foreman)
+        : _validator(foreman->chunkInventory()->newValidator()), _foreman(foreman), _resourceName(rname) {}
 
 SsiRequest::~SsiRequest() {
     LOGS(_log, LOG_LVL_DEBUG, "~SsiRequest()");
@@ -157,7 +149,7 @@ void SsiRequest::execute(XrdSsiRequest& req) {
     switch (ru.unitType()) {
         case ResourceUnit::DBCHUNK: {
             // Increment the counter of the database/chunk resources in use
-            _resourceMonitor->increment(_resourceName);
+            _foreman->resourceMonitor()->increment(_resourceName);
 
             // reqData has the entire request, so we can unpack it without waiting for
             // more data.
@@ -344,11 +336,11 @@ wbase::WorkerCommand::Ptr SsiRequest::parseWorkerCommand(
 
                 if (header.command() == proto::WorkerCommandH::ADD_CHUNK_GROUP)
                     command = std::make_shared<wpublish::AddChunkGroupCommand>(
-                            sendChannel, _chunkInventory, _foreman->mySqlConfig(), chunk, dbs);
+                            sendChannel, _foreman->chunkInventory(), _foreman->mySqlConfig(), chunk, dbs);
                 else
                     command = std::make_shared<wpublish::RemoveChunkGroupCommand>(
-                            sendChannel, _chunkInventory, _resourceMonitor, _foreman->mySqlConfig(), chunk,
-                            dbs, force);
+                            sendChannel, _foreman->chunkInventory(), _foreman->resourceMonitor(),
+                            _foreman->mySqlConfig(), chunk, dbs, force);
                 break;
             }
             case proto::WorkerCommandH::UPDATE_CHUNK_LIST: {
@@ -357,15 +349,16 @@ wbase::WorkerCommand::Ptr SsiRequest::parseWorkerCommand(
 
                 if (message.rebuild())
                     command = std::make_shared<wpublish::RebuildChunkListCommand>(
-                            sendChannel, _chunkInventory, _foreman->mySqlConfig(), message.reload());
+                            sendChannel, _foreman->chunkInventory(), _foreman->mySqlConfig(),
+                            message.reload());
                 else
-                    command = std::make_shared<wpublish::ReloadChunkListCommand>(sendChannel, _chunkInventory,
-                                                                                 _foreman->mySqlConfig());
+                    command = std::make_shared<wpublish::ReloadChunkListCommand>(
+                            sendChannel, _foreman->chunkInventory(), _foreman->mySqlConfig());
                 break;
             }
             case proto::WorkerCommandH::GET_CHUNK_LIST: {
-                command = std::make_shared<wpublish::GetChunkListCommand>(sendChannel, _chunkInventory,
-                                                                          _resourceMonitor);
+                command = std::make_shared<wpublish::GetChunkListCommand>(
+                        sendChannel, _foreman->chunkInventory(), _foreman->resourceMonitor());
                 break;
             }
             case proto::WorkerCommandH::SET_CHUNK_LIST: {
@@ -383,15 +376,15 @@ wbase::WorkerCommand::Ptr SsiRequest::parseWorkerCommand(
                 }
                 bool const force = message.force();
                 command = std::make_shared<wpublish::SetChunkListCommand>(
-                        sendChannel, _chunkInventory, _resourceMonitor, _foreman->mySqlConfig(), chunks,
-                        databases, force);
+                        sendChannel, _foreman->chunkInventory(), _foreman->resourceMonitor(),
+                        _foreman->mySqlConfig(), chunks, databases, force);
                 break;
             }
             case proto::WorkerCommandH::GET_STATUS: {
                 proto::WorkerCommandGetStatusM message;
                 view.parse(message);
                 command = std::make_shared<wpublish::GetStatusCommand>(
-                        sendChannel, _foreman, _resourceMonitor, ::proto2taskSelector(message));
+                        sendChannel, _foreman, _foreman->resourceMonitor(), ::proto2taskSelector(message));
                 break;
             }
             case proto::WorkerCommandH::GET_DATABASE_STATUS: {
@@ -472,7 +465,7 @@ void SsiRequest::Finished(XrdSsiRequest& req, XrdSsiRespInfo const& rinfo, bool 
     // Decrement the counter of the database/chunk resources in use
     ResourceUnit ru(_resourceName);
     if (ru.unitType() == ResourceUnit::DBCHUNK) {
-        _resourceMonitor->decrement(_resourceName);
+        _foreman->resourceMonitor()->decrement(_resourceName);
     }
 
     // We can't do much other than close the file.

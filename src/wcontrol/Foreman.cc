@@ -35,13 +35,13 @@
 #include "lsst/log/Log.h"
 
 // Qserv headers
-#include "mysql/MySqlConfig.h"
 #include "qhttp/Request.h"
 #include "qhttp/Response.h"
 #include "qhttp/Server.h"
 #include "qhttp/Status.h"
 #include "wbase/WorkerCommand.h"
 #include "wconfig/WorkerConfig.h"
+#include "wcontrol/ResourceMonitor.h"
 #include "wcontrol/SqlConnMgr.h"
 #include "wcontrol/WorkerStats.h"
 #include "wdb/ChunkResource.h"
@@ -80,13 +80,16 @@ namespace lsst::qserv::wcontrol {
 
 Foreman::Foreman(Scheduler::Ptr const& scheduler, unsigned int poolSize, unsigned int maxPoolThreads,
                  mysql::MySqlConfig const& mySqlConfig, wpublish::QueriesAndChunks::Ptr const& queries,
+                 std::shared_ptr<wpublish::ChunkInventory> const& chunkInventory,
                  std::shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr,
                  std::shared_ptr<wcontrol::TransmitMgr> const& transmitMgr)
         : _scheduler(scheduler),
           _mySqlConfig(mySqlConfig),
           _queries(queries),
+          _chunkInventory(chunkInventory),
           _sqlConnMgr(sqlConnMgr),
           _transmitMgr(transmitMgr),
+          _resourceMonitor(make_shared<ResourceMonitor>()),
           _io_service(),
           _httpServer(qhttp::Server::create(_io_service, 0 /* grab the first available port */)) {
     // Make the chunk resource mgr

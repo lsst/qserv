@@ -36,14 +36,13 @@
 #include "wpublish/ChunkInventory.h"
 
 // Forward declarations
-namespace lsst::qserv {
-namespace wbase {
+namespace lsst::qserv::wbase {
 class SendChannel;
-}
-namespace wpublish {
+}  // namespace lsst::qserv::wbase
+
+namespace lsst::qserv::wcontrol {
 class ResourceMonitor;
-}
-}  // namespace lsst::qserv
+}  // namespace lsst::qserv::wcontrol
 
 // This header declarations
 namespace lsst::qserv::wpublish {
@@ -75,7 +74,7 @@ public:
      */
     SetChunkListCommand(std::shared_ptr<wbase::SendChannel> const& sendChannel,
                         std::shared_ptr<ChunkInventory> const& chunkInventory,
-                        std::shared_ptr<ResourceMonitor> const& resourceMonitor,
+                        std::shared_ptr<wcontrol::ResourceMonitor> const& resourceMonitor,
                         mysql::MySqlConfig const& mySqlConfig, std::vector<Chunk> const& chunks,
                         std::vector<std::string> const& databases, bool force);
 
@@ -93,7 +92,7 @@ private:
     // Parameters of the object
 
     std::shared_ptr<ChunkInventory> const _chunkInventory;
-    std::shared_ptr<ResourceMonitor> const _resourceMonitor;
+    std::shared_ptr<wcontrol::ResourceMonitor> const _resourceMonitor;
     mysql::MySqlConfig const _mySqlConfig;
     std::vector<Chunk> const _chunks;
     std::set<std::string> _databases;

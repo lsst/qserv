@@ -31,15 +31,14 @@
 #include "wbase/WorkerCommand.h"
 
 // Forward declarations
-namespace lsst::qserv {
-namespace wbase {
+namespace lsst::qserv::wbase {
 class MsgProcessor;
 class SendChannel;
-}  // namespace wbase
-namespace wpublish {
+}  // namespace lsst::qserv::wbase
+
+namespace lsst::qserv::wcontrol {
 class ResourceMonitor;
-}
-}  // namespace lsst::qserv
+}  // namespace lsst::qserv::wcontrol
 
 // This header declarations
 namespace lsst::qserv::wpublish {
@@ -58,7 +57,7 @@ public:
      */
     GetStatusCommand(std::shared_ptr<wbase::SendChannel> const& sendChannel,
                      std::shared_ptr<wbase::MsgProcessor> const& processor,
-                     std::shared_ptr<ResourceMonitor> const& resourceMonitor,
+                     std::shared_ptr<wcontrol::ResourceMonitor> const& resourceMonitor,
                      wbase::TaskSelector const& taskSelector);
 
     GetStatusCommand() = delete;
@@ -74,7 +73,7 @@ private:
     // Parameters of the object
 
     std::shared_ptr<wbase::MsgProcessor> const _processor;
-    std::shared_ptr<ResourceMonitor> const _resourceMonitor;
+    std::shared_ptr<wcontrol::ResourceMonitor> const _resourceMonitor;
     wbase::TaskSelector const _taskSelector;
 };
 

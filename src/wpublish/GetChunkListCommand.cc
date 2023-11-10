@@ -27,8 +27,8 @@
 // Qserv headers
 #include "proto/worker.pb.h"
 #include "wbase/SendChannel.h"
+#include "wcontrol/ResourceMonitor.h"
 #include "wpublish/ChunkInventory.h"
-#include "wpublish/ResourceMonitor.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -45,7 +45,7 @@ namespace lsst::qserv::wpublish {
 
 GetChunkListCommand::GetChunkListCommand(shared_ptr<wbase::SendChannel> const& sendChannel,
                                          shared_ptr<ChunkInventory> const& chunkInventory,
-                                         shared_ptr<ResourceMonitor> const& resourceMonitor)
+                                         shared_ptr<wcontrol::ResourceMonitor> const& resourceMonitor)
         : wbase::WorkerCommand(sendChannel),
           _chunkInventory(chunkInventory),
           _resourceMonitor(resourceMonitor) {}

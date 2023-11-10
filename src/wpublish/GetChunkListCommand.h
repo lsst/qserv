@@ -30,9 +30,12 @@
 #include "wbase/WorkerCommand.h"
 
 // Forward declarations
+namespace lsst::qserv::wcontrol {
+class ResourceMonitor;
+}  // namespace lsst::qserv::wcontrol
+
 namespace lsst::qserv::wpublish {
 class ChunkInventory;
-class ResourceMonitor;
 }  // namespace lsst::qserv::wpublish
 
 // This header declarations
@@ -57,7 +60,7 @@ public:
      */
     GetChunkListCommand(std::shared_ptr<wbase::SendChannel> const& sendChannel,
                         std::shared_ptr<ChunkInventory> const& chunkInventory,
-                        std::shared_ptr<ResourceMonitor> const& resourceMonitor);
+                        std::shared_ptr<wcontrol::ResourceMonitor> const& resourceMonitor);
 
 protected:
     void run() override;
@@ -66,7 +69,7 @@ private:
     // Parameters of the object
 
     std::shared_ptr<ChunkInventory> _chunkInventory;
-    std::shared_ptr<ResourceMonitor> _resourceMonitor;
+    std::shared_ptr<wcontrol::ResourceMonitor> _resourceMonitor;
 };
 
 }  // namespace lsst::qserv::wpublish

@@ -20,8 +20,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_WPUBLISH_RESOURCE_MONITOR_H
-#define LSST_QSERV_WPUBLISH_RESOURCE_MONITOR_H
+#ifndef LSST_QSERV_WCONTROL_RESOURCEMONITOR_H
+#define LSST_QSERV_WCONTROL_RESOURCEMONITOR_H
 
 // System headers
 #include <map>
@@ -32,7 +32,7 @@
 // Third party headers
 #include "nlohmann/json.hpp"
 
-namespace lsst::qserv::wpublish {
+namespace lsst::qserv::wcontrol {
 
 /**
  * Class ResourceMonitor is a thread-safe implementation for a counter of resources
@@ -68,34 +68,29 @@ public:
     unsigned int count(std::string const& resource) const;
 
     /**
-     *
      * @param chunk The chunk number.
-     * @param db The name of a database.
+     * @param databaseName The name of a database.
      * @return The counter of resource uses (by database name and chunk number).
      */
-    unsigned int count(int chunk, std::string const& db) const;
+    unsigned int count(int chunk, std::string const& databaseName) const;
 
     /**
      * The method will returns  a sum of counters for all uses of the chunk
      * across all databases.
-     &
      * @param chunk The chunk number.
-     * @param dbs The names of databases.
+     * @param databaseNames The names of databases.
      * @return The counter of a group of related resources uses.
      */
-    unsigned int count(int chunk, std::vector<std::string> const& dbs) const;
+    unsigned int count(int chunk, std::vector<std::string> const& databaseNames) const;
 
     /// @return The JSON representation of the object's status for the monitoring.
     nlohmann::json statusToJson() const;
 
 private:
-    /// Number of uses for each resource
-    ResourceCounter _resourceCounter;
-
-    /// Mutex for thread safaty
-    mutable std::mutex _mtx;
+    ResourceCounter _resourceCounter;  ///< Number of uses for each resource.
+    mutable std::mutex _mtx;           ///< Mutex for thread safe implementation of the public API.
 };
 
-}  // namespace lsst::qserv::wpublish
+}  // namespace lsst::qserv::wcontrol
 
-#endif  // LSST_QSERV_WPUBLISH_RESOURCE_MONITOR_H
+#endif  // LSST_QSERV_WCONTROL_RESOURCEMONITOR_H

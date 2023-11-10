@@ -36,6 +36,7 @@
 #include "boost/asio.hpp"
 
 // Qserv headers
+#include "mysql/MySqlConfig.h"
 #include "util/EventThread.h"
 #include "util/HoldTrack.h"
 #include "wbase/Base.h"
@@ -48,9 +49,11 @@ namespace lsst::qserv::wbase {
 struct TaskSelector;
 }  // namespace lsst::qserv::wbase
 
-namespace lsst::qserv::mysql {
-class MySqlConfig;
-}  // namespace lsst::qserv::mysql
+namespace lsst::qserv::wcontrol {
+class ResourceMonitor;
+class SqlConnMgr;
+class TransmitMgr;
+}  // namespace lsst::qserv::wcontrol
 
 namespace lsst::qserv::qhttp {
 class Server;
@@ -62,13 +65,13 @@ class QueryRunner;
 }  // namespace lsst::qserv::wdb
 
 namespace lsst::qserv::wpublish {
+class ChunkInventory;
 class QueriesAndChunks;
 }  // namespace lsst::qserv::wpublish
 
-namespace lsst::qserv::wcontrol {
+// This header declarations
 
-class SqlConnMgr;
-class TransmitMgr;
+namespace lsst::qserv::wcontrol {
 
 /// An abstract scheduler interface. Foreman objects use Scheduler instances
 /// to determine what tasks to launch upon triggering events.
@@ -102,13 +105,14 @@ public:
      * @param poolSize               - size of the thread pool
      * @param mySqlConfig            - configuration object for the MySQL service
      * @param queries                - query statistics collector
+     * @param chunkInventory         - a collection of the SSI resources published by the worker
      * @param sqlConnMgr             - for limiting the number of MySQL connections used for tasks
      * @param transmitMgr            - for throttling outgoing massages to prevent czars from being overloaded
      */
     Foreman(Scheduler::Ptr const& scheduler, unsigned int poolSize, unsigned int maxPoolThreads,
             mysql::MySqlConfig const& mySqlConfig, std::shared_ptr<wpublish::QueriesAndChunks> const& queries,
-            std::shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr,
-            std::shared_ptr<wcontrol::TransmitMgr> const& transmitMgr);
+            std::shared_ptr<wpublish::ChunkInventory> const& chunkInventory,
+            std::shared_ptr<SqlConnMgr> const& sqlConnMgr, std::shared_ptr<TransmitMgr> const& transmitMgr);
 
     virtual ~Foreman() override;
 
@@ -120,8 +124,11 @@ public:
     std::shared_ptr<wdb::ChunkResourceMgr> const& chunkResourceMgr() const { return _chunkResourceMgr; }
     mysql::MySqlConfig const& mySqlConfig() const { return _mySqlConfig; }
     std::shared_ptr<wpublish::QueriesAndChunks> const& queriesAndChunks() const { return _queries; }
-    std::shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr() const { return _sqlConnMgr; }
-    std::shared_ptr<wcontrol::TransmitMgr> const& transmitMgr() const { return _transmitMgr; }
+    std::shared_ptr<wpublish::ChunkInventory> const& chunkInventory() const { return _chunkInventory; }
+    std::shared_ptr<SqlConnMgr> const& sqlConnMgr() const { return _sqlConnMgr; }
+    std::shared_ptr<TransmitMgr> const& transmitMgr() const { return _transmitMgr; }
+    std::shared_ptr<ResourceMonitor> const& resourceMonitor() const { return _resourceMonitor; }
+
     uint16_t httpPort() const;
 
     /// Process a group of query processing tasks.
@@ -145,16 +152,21 @@ private:
     util::CommandQueue::Ptr _workerCommandQueue;  ///< dedicated queue for the worker commands
     util::ThreadPool::Ptr _workerCommandPool;     ///< dedicated pool for executing worker commands
 
-    mysql::MySqlConfig const& _mySqlConfig;
+    mysql::MySqlConfig const _mySqlConfig;
     std::shared_ptr<wpublish::QueriesAndChunks> const _queries;
+    std::shared_ptr<wpublish::ChunkInventory> const _chunkInventory;
 
     /// For limiting the number of MySQL connections used for tasks.
-    std::shared_ptr<wcontrol::SqlConnMgr> const _sqlConnMgr;
+    std::shared_ptr<SqlConnMgr> const _sqlConnMgr;
 
     util::HoldTrack::Mark::Ptr _mark;
 
     /// Used to throttle outgoing massages to prevent czars from being overloaded.
-    std::shared_ptr<wcontrol::TransmitMgr> const _transmitMgr;
+    std::shared_ptr<TransmitMgr> const _transmitMgr;
+
+    /// A a counter of the XROOTD/SSI resources which are in use at any given moment
+    /// of time by the worker.
+    std::shared_ptr<ResourceMonitor> const _resourceMonitor;
 
     /// BOOST ASIO services needed to run the HTTP server
     boost::asio::io_service _io_service;

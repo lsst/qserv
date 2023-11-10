@@ -22,7 +22,7 @@
  */
 
 // Class header
-#include "wpublish/ResourceMonitor.h"
+#include "wcontrol/ResourceMonitor.h"
 
 // Qserv headers
 #include "global/ResourceUnit.h"
@@ -30,7 +30,7 @@
 using namespace std;
 using namespace nlohmann;
 
-namespace lsst::qserv::wpublish {
+namespace lsst::qserv::wcontrol {
 
 void ResourceMonitor::increment(string const& resource) {
     lock_guard<mutex> lock(_mtx);
@@ -48,14 +48,14 @@ unsigned int ResourceMonitor::count(string const& resource) const {
     return _resourceCounter.count(resource) ? _resourceCounter.at(resource) : 0;
 }
 
-unsigned int ResourceMonitor::count(int chunk, string const& db) const {
-    return count(ResourceUnit::makePath(chunk, db));
+unsigned int ResourceMonitor::count(int chunk, string const& databaseName) const {
+    return count(ResourceUnit::makePath(chunk, databaseName));
 }
 
-unsigned int ResourceMonitor::count(int chunk, vector<string> const& dbs) const {
+unsigned int ResourceMonitor::count(int chunk, vector<string> const& databaseNames) const {
     unsigned int result = 0;
-    for (string const& db : dbs) {
-        result += count(chunk, db);
+    for (string const& database : databaseNames) {
+        result += count(chunk, database);
     }
     return result;
 }
@@ -63,10 +63,10 @@ unsigned int ResourceMonitor::count(int chunk, vector<string> const& dbs) const 
 json ResourceMonitor::statusToJson() const {
     lock_guard<mutex> lock(_mtx);
     json result = json::array();
-    for (auto&& entry : _resourceCounter) {
-        result.push_back({entry.first, entry.second});
+    for (auto&& [resource, counter] : _resourceCounter) {
+        result.push_back({resource, counter});
     }
     return result;
 }
 
-}  // namespace lsst::qserv::wpublish
+}  // namespace lsst::qserv::wcontrol

@@ -29,8 +29,8 @@
 
 // Qserv headers
 #include "wbase/SendChannel.h"
+#include "wcontrol/ResourceMonitor.h"
 #include "wpublish/ChunkInventory.h"
-#include "wpublish/ResourceMonitor.h"
 #include "xrdsvc/SsiProvider.h"
 #include "xrdsvc/XrdName.h"
 
@@ -51,7 +51,7 @@ namespace lsst::qserv::wpublish {
 
 RemoveChunkGroupCommand::RemoveChunkGroupCommand(shared_ptr<wbase::SendChannel> const& sendChannel,
                                                  shared_ptr<ChunkInventory> const& chunkInventory,
-                                                 shared_ptr<ResourceMonitor> const& resourceMonitor,
+                                                 shared_ptr<wcontrol::ResourceMonitor> const& resourceMonitor,
                                                  mysql::MySqlConfig const& mySqlConfig, int chunk,
                                                  vector<string> const& dbs, bool force)
         : wbase::WorkerCommand(sendChannel),

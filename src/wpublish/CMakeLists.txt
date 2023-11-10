@@ -11,7 +11,6 @@ target_sources(wpublish PRIVATE
     GetStatusCommand.cc
     QueriesAndChunks.cc
     RemoveChunkGroupCommand.cc
-    ResourceMonitor.cc
     SetChunkListCommand.cc
     TestEchoCommand.cc
 )

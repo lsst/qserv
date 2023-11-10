@@ -34,15 +34,17 @@
 #include "wbase/WorkerCommand.h"
 
 // Forward declarations
-namespace lsst::qserv {
-namespace wbase {
+namespace lsst::qserv::wbase {
 class SendChannel;
-}
-namespace wpublish {
-class ChunkInventory;
+}  // namespace lsst::qserv::wbase
+
+namespace lsst::qserv::wcontrol {
 class ResourceMonitor;
-}  // namespace wpublish
-}  // namespace lsst::qserv
+}  // namespace lsst::qserv::wcontrol
+
+namespace lsst::qserv::wpublish {
+class ChunkInventory;
+}  // namespace lsst::qserv::wpublish
 
 // This header declarations
 namespace lsst::qserv::wpublish {
@@ -68,7 +70,7 @@ public:
      */
     RemoveChunkGroupCommand(std::shared_ptr<wbase::SendChannel> const& sendChannel,
                             std::shared_ptr<ChunkInventory> const& chunkInventory,
-                            std::shared_ptr<ResourceMonitor> const& resourceMonitor,
+                            std::shared_ptr<wcontrol::ResourceMonitor> const& resourceMonitor,
                             mysql::MySqlConfig const& mySqlConfig, int chunk,
                             std::vector<std::string> const& dbs, bool force);
 
@@ -81,7 +83,7 @@ private:
     // Parameters of the object
 
     std::shared_ptr<ChunkInventory> _chunkInventory;
-    std::shared_ptr<ResourceMonitor> _resourceMonitor;
+    std::shared_ptr<wcontrol::ResourceMonitor> _resourceMonitor;
     mysql::MySqlConfig _mySqlConfig;
     int _chunk;
     std::vector<std::string> _dbs;
