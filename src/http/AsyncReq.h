@@ -22,6 +22,8 @@
 #define LSST_QSERV_HTTP_ASYNCREQ_H
 
 // System headers
+#include <atomic>
+#include <condition_variable>
 #include <functional>
 #include <initializer_list>
 #include <memory>
@@ -174,6 +176,9 @@ public:
      */
     bool cancel();
 
+    /// Wait for the completion of the request
+    void wait();
+
     /// @return The last error (message) in case of a failure.
     /// @note The method should be used in one of the final states of the request.
     std::string errorMessage() const;
@@ -293,6 +298,12 @@ private:
     /// The mutex for enforcing thread safety of the class public API
     /// and internal operations.
     mutable std::mutex _mtx;
+
+    // Synchronization primitives for implementing AsyncRequest::wait()
+
+    std::atomic<bool> _finished{false};
+    std::mutex _onFinishMtx;
+    std::condition_variable _onFinishCv;
 };
 
 }  // namespace lsst::qserv::http

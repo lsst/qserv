@@ -170,6 +170,12 @@ bool AsyncReq::cancel() {
     }
 }
 
+void AsyncReq::wait() {
+    if ((State::CREATED != _state) && (State::IN_PROGRESS != _state)) return;
+    unique_lock<mutex> onFinishLock(_onFinishMtx);
+    _onFinishCv.wait(onFinishLock, [&] { return _finished.load(); });
+}
+
 string AsyncReq::errorMessage() const {
     string const context = "AsyncReq::" + string(__func__) + " ";
     std::lock_guard<std::mutex> const lock(_mtx);
@@ -360,6 +366,12 @@ void AsyncReq::_finish(std::lock_guard<std::mutex> const& lock, State finalState
         _io_service.post([self = shared_from_this(), onFinish = move(_onFinish)] { onFinish(self); });
         _onFinish = nullptr;
     }
+
+    // Unblock a caller that might be blocked while explicitly waiting for
+    // the completion of the request.
+    unique_lock<mutex> onFinishLock(_onFinishMtx);
+    _finished = true;
+    _onFinishCv.notify_one();
 }
 
 void AsyncReq::_assertState(std::lock_guard<std::mutex> const& lock, string const& context,
