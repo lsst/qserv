@@ -26,27 +26,26 @@
 #include <condition_variable>
 #include <functional>
 #include <map>
+#include <list>
 #include <memory>
-#include <mutex>
 #include <string>
 
-// THird party headers
-#include "boost/asio.hpp"
+// Third party headers
+#include "nlohmann/json.hpp"
 
 // Qserv headers
+#include "http/AsyncReq.h"
+#include "http/Method.h"
+#include "replica/Mutex.h"
 #include "replica/Performance.h"
 #include "replica/ServiceProvider.h"
-#include "replica/Mutex.h"
-
-// Forward declarations
-class XrdSsiService;
 
 // This header declarations
 namespace lsst::qserv::replica {
 
 /**
- * Class QservMgtRequest is a base class for a family of the Qserv worker
- * management requests within the master server.
+ * @brief QservMgtRequest is a base class for a family of the Qserv worker
+ *   management requests within the master server.
  */
 class QservMgtRequest : public std::enable_shared_from_this<QservMgtRequest> {
 public:
@@ -57,16 +56,11 @@ public:
 
     /// The type which represents the primary public state of the request
     enum State {
-        /// The request has been constructed, and no attempt to execute it has
-        /// been made.
-        CREATED,
-
-        /// The request is in a progress
-        IN_PROGRESS,
-
-        /// The request is finished. See extended status for more details
-        /// (the completion status, etc.)
-        FINISHED
+        CREATED,      ///< The request has been constructed, and no attempt to execute
+                      ///  it has been made.
+        IN_PROGRESS,  ///< The request is in a progress.
+        FINISHED      ///< The request is finished. See extended status for more details
+                      ///  (the completion status, etc.)
     };
 
     /// @return the string representation of the primary state
@@ -75,35 +69,19 @@ public:
     /// Type ExtendedState represents the refined public sub-state of the request
     /// once it's FINISHED as per the above defined primary state.
     enum ExtendedState {
-        /// No extended state exists at this time
-        NONE,
-
-        /// The request has been fully implemented
-        SUCCESS,
-
-        /// Problems with request configuration found
-        CONFIG_ERROR,
-
-        /// Server reports that the request can not be implemented due to incorrect
-        /// parameters, etc.
-        SERVER_BAD,
-
-        /// Server reports that the request can not be implemented because
-        /// some of the required remote resources (chunks, etc.) are in use.
-        SERVER_CHUNK_IN_USE,
-
-        /// The request could not be implemented due to an unrecoverable
-        /// server-side error.
-        SERVER_ERROR,
-
-        /// Data received from a server can't be correctly interpreted
-        SERVER_BAD_RESPONSE,
-
-        /// Expired due to a timeout (as per the Configuration)
-        TIMEOUT_EXPIRED,
-
-        /// Explicitly cancelled on the client-side (similar to TIMEOUT_EXPIRED)
-        CANCELLED
+        NONE,                 ///< No extended state exists at this time.
+        SUCCESS,              ///< The request has been fully implemented.
+        CONFIG_ERROR,         ///< Problems with request configuration were detected.
+        BODY_LIMIT_ERROR,     ///< Response's body is larger than requested.
+        SERVER_BAD,           ///< Server reports that the request can not be implemented because
+                              ///  of configuration or request's parameters problems.
+        SERVER_CHUNK_IN_USE,  ///< Server reports that the request can not be implemented because
+                              ///  some of the required remote resources (chunks, etc.) are in use.
+        SERVER_ERROR,         ///< The request could not be implemented due to an unrecoverable
+                              ///  server-side error.
+        SERVER_BAD_RESPONSE,  ///< Data received from a server can't be correctly interpreted.
+        TIMEOUT_EXPIRED,      ///< Expired due to a timeout.
+        CANCELLED             ///< Explicitly cancelled on the client-side.
     };
 
     /// @return the string representation of the extended state
@@ -121,7 +99,7 @@ public:
     virtual ~QservMgtRequest();
 
     /// @return reference to a provider of services
-    ServiceProvider::Ptr const& serviceProvider() { return _serviceProvider; }
+    std::shared_ptr<ServiceProvider> const& serviceProvider() { return _serviceProvider; }
 
     /// @return string representing of the request type.
     std::string const& type() const { return _type; }
@@ -148,59 +126,52 @@ public:
     Performance performance() const;
 
     /**
-     * Return an identifier if the owning job (if the request has started)
-     *
-     * @throws std::logic_error - if the request hasn't started
+     * @return An identifier if the owning job (if the request has started).
+     * @throws std::logic_error If the request hasn't started.
      */
     std::string const& jobId() const;
 
     /**
-     * Reset the state (if needed) and begin processing the request.
-     *
-     * This is supposed to be the first operation to be called upon a creation
-     * of the request. A caller is expected to provide a pointer to an instance
-     * of the XrdSsiService class for communications with the remote services.
-     *
-     * @param service  - a pointer to an instance of the API object for
-     *                   submitting requests to remote services
-     * @param jobId    - an optional identifier of a job specifying a context
-     *                   in which a request will be executed.
-     * @param requestExpirationIvalSec - an optional parameter (if differs from 0)
-     *                   allowing to override the default value of
-     *                   the corresponding parameter from the Configuration.
+     * @return The info object returned by the worker.
+     * @throw std::logic_error if called before the request finishes or if it failed.
      */
-    void start(XrdSsiService* service, std::string const& jobId = "",
-               unsigned int requestExpirationIvalSec = 0);
+    nlohmann::json const& info() const;
+
+    /**
+     * @brief Begin processing the request.
+     * @param jobId (Optional) identifier of a job specifying a context of the request.
+     * @param requestExpirationIvalSec (Optional) parameter (if differs from 0) allowing
+     *   to override the default value of the corresponding parameter from the Configuration.
+     */
+    void start(std::string const& jobId = "", unsigned int requestExpirationIvalSec = 0);
 
     /// Wait for the completion of the request
     void wait();
 
     /**
-     * Explicitly cancel any asynchronous operation(s) and put the object into
-     * the FINISHED::CANCELLED state. This operation is very similar to the
-     * timeout-based request expiration, except it's requested explicitly.
+     * @brief Explicitly cancel any asynchronous operation(s) and put the object into
+     *   the FINISHED::CANCELLED state. This operation is very similar to the
+     *   timeout-based request expiration, except it's requested explicitly.
      */
     void cancel();
 
     /// @return The context string for debugging and diagnostic printouts.
     std::string context() const;
 
-    /**
-     * @return A dictionary of parameters and the corresponding values to
-     *   be stored in a database for a request.
-     */
+    /// @return A dictionary of parameters and the corresponding values to be stored
+    ///   in a database for a request.
     virtual std::list<std::pair<std::string, std::string>> extendedPersistentState() const {
         return std::list<std::pair<std::string, std::string>>();
     }
 
 protected:
     /**
-     * Construct the request with the pointer to the services provider.
+     * @brief Construct the request with the pointer to the services provider.
      * @param serviceProvider Is required to access configuration services.
      * @param type The type name of he request (used for debugging and error reporting).
      * @param worker The name of a worker.
      */
-    QservMgtRequest(ServiceProvider::Ptr const& serviceProvider, std::string const& type,
+    QservMgtRequest(std::shared_ptr<ServiceProvider> const& serviceProvider, std::string const& type,
                     std::string const& worker);
 
     /// @return A shared pointer of the desired subclass (no dynamic type checking).
@@ -209,50 +180,80 @@ protected:
         return std::static_pointer_cast<T>(shared_from_this());
     }
 
-    /// @return The API for submitting requests to the remote services.
-    XrdSsiService* service() { return _service; }
-
     /**
-     * This method is supposed to be provided by subclasses for additional
-     * subclass-specific actions to begin processing the request.
-     * @param lock A lock on QservMgtRequest::_mtx must be acquired before calling
-     *   this method.
-     */
-    virtual void startImpl(replica::Lock const& lock) = 0;
-
-    /**
-     * Request expiration timer's handler. The expiration interval (if any)
-     * is configured via the configuration service. When the request expires
-     * it finishes with completion status FINISHED::TIMEOUT_EXPIRED.
-     * @param ec A error code to be checked.
-     */
-    void expired(boost::system::error_code const& ec);
-
-    /**
-     * Finalize request processing (as reported by subclasses)
+     * @brief Create an HTTP request.
      *
-     * This is supposed to be the last operation to be called by subclasses
-     * upon a completion of the request.
+     * This method is required to be provided by subclasses for creating
+     * subclass-specific requests using the coresponding helper methods.
      *
-     * @param lock A lock on QservMgtRequest::_mtx must be acquired before calling
-     *   this method.
+     * @see QservMgtRequest::createHttpReq
+     * @param lock A lock on QservMgtRequest::_mtx must be acquired before
+     *   calling this method.
+     */
+    virtual void createHttpReqImpl(replica::Lock const& lock) = 0;
+
+    /**
+     * @brief Create an HTTP "GET" request, but do not start it yet.
+     * @param lock A lock on QservMgtRequest::_mtx must be acquired before
+     *   calling this method.
+     * @param service The REST service (w/o the query part) to be called.
+     * @param (optional) HTTP query for the request.
+     * @throw std::logic_error If the method is called while the curent state
+     *   is not State::CREATED, or if the HTTP request was already  created.
+     */
+    void createHttpReq(replica::Lock const& lock, std::string const& service,
+                       std::string const& query = std::string());
+
+    /**
+     * @brief Create an HTTP request ("POST", "PUT" or "DELETE") that has the JSON body,
+     *   but do not start it yet.
+     * @param lock A lock on QservMgtRequest::_mtx must be acquired before
+     *   calling this method.
+     * @param method An HTTP method for the request,
+     * @param service The complete target (including the REST service and the query part) to be called.
+     * @param body A JSON object to be sent in the request's body.
+     * @throw std::logic_error If the method is called while the curent state
+     *   is not State::CREATED, or if the HTTP request was already  created.
+     */
+    void createHttpReq(replica::Lock const& lock, http::Method method, std::string const& target,
+                       nlohmann::json const& body);
+
+    /**
+     * @brief Notify a subclass that a data object was was succesfully retrieved
+     *   from the worker.
+     *
+     * This method allows subclasses to implement the optional result validation and processing,
+     * including a translation of the JSON object into the subclas-specific result type.
+     *
+     * @note Any exceptions thrown by the method will result in setting the status
+     *   ExtendedState::SERVER_BAD_RESPONSE to indicate a problem with interpreting the data.
+     *   The method is also required to report its final verdican on the status of the object.
+     *   Normally, it's going to be ExtendedState::SUCCESS. However, a subclass may set
+     *   a different status, depending on its findings.
+     * @param lock A lock on QservMgtRequest::_mtx must be acquired before
+     *   calling this method.
+     * @param data The JSON result to be processed by a subclass.
+     * @return The final verdict made by the subclass on the completion status.
+     */
+    virtual ExtendedState dataReady(replica::Lock const& lock, nlohmann::json const& data) {
+        return ExtendedState::SUCCESS;
+    }
+
+    /**
+     * @brief Finalize request processing (as reported by subclasses)
+     * @note This is supposed to be the last operation to be called by subclasses
+     *   upon a completion of the request.
+     * @param lock A lock on QservMgtRequest::_mtx must be acquired before
+     *   calling this method.
      * @param extendedState The new extended state.
      * @param serverError (optional) error message from a Qserv worker service.
      */
     void finish(replica::Lock const& lock, ExtendedState extendedState, std::string const& serverError = "");
 
     /**
-     * This method is supposed to be provided by subclasses
-     * to finalize request processing as required by the subclass.
-     * @param lock A lock on QservMgtRequest::_mtx must be acquired before calling
-     *   this method.
-     */
-    virtual void finishImpl(replica::Lock const& lock) = 0;
-
-    /**
-     * Start user-notification protocol (in case if user-defined notifiers
-     * were provided to a subclass). The callback is expected to be made
-     * asynchronously in a separate thread to avoid blocking the current thread.
+     * @brief Start user-notification protocol (in case if user-defined notifiers
+     *   were provided to a subclass). The callback is expected to be made
+     *   asynchronously in a separate thread to avoid blocking the current thread.
      *
      * This method has to be provided by subclasses to forward
      * notification on request completion to a client which initiated
@@ -266,14 +267,13 @@ protected:
      *   }
      * @code
      * @see QservMgtRequest::notifyDefaultImpl
-     *
-     * @param lock A lock on QservMgtRequest::_mtx must be acquired before calling
-     *   this method.
+     * @param lock A lock on QservMgtRequest::_mtx must be acquired before
+     *   calling this method.
      */
     virtual void notify(replica::Lock const& lock) = 0;
 
     /**
-     * The helper function which pushes up-stream notifications on behalf of
+     * @brief The helper function which pushes up-stream notifications on behalf of
      * subclasses. Upon a completion of this method the callback function
      * object will get reset to 'nullptr'.
      * @note This default implementation works for callback functions which
@@ -281,8 +281,8 @@ protected:
      *   the corresponding subclass. Subclasses with more complex signatures of
      *   their callbacks should have their own implementations which may look
      *   similarly to this one.
-     * @param lock A lock on QservMgtRequest::_mtx must be acquired before calling
-     *   this method.
+     * @param lock A lock on QservMgtRequest::_mtx must be acquired before
+     *   calling this method.
      * @param onFinish A callback function (if set) to be called.
      */
     template <class T>
@@ -299,40 +299,15 @@ protected:
     }
 
     /**
-     * Ensure the object is in the desired internal state. Throw an
-     * exception otherwise.
-     * @note Normally this condition should never been seen unless there is a problem with
-     *   the application implementation or the underlying run-time system.
-     * @param desiredState The desired state of the request.
-     * @param context A context from which the state test is requested.
-     * @throws std::logic_error
-     */
-    void assertState(State desiredState, std::string const& context) const;
-
-    /**
-     * Set the desired primary and extended state.
-     *
-     * The change of the state is done via a method to allow extra actions
-     * at this step, such as:
-     * - reporting change state in a debug stream
-     * - verifying the correctness of the state transition
-     *
-     * @param lock A lock on QservMgtRequest::_mtx must be acquired before calling
-     *   this method.
-     * @param state The primary state of the request.
-     * @param extendedState The extended state of the request.
-     */
-    void setState(replica::Lock const& lock, State state, ExtendedState extendedState = ExtendedState::NONE);
-
-    /**
-     * @param lock A lock on QservMgtRequest::_mtx must be acquired before calling this method.
+     * @param lock A lock on QservMgtRequest::_mtx must be acquired before
+     *   calling this method.
      * @return A server error string (if any).
      */
     std::string serverError(replica::Lock const& lock) const;
 
     /**
-     * @param lock A lock on QservMgtRequest::_mtx must be acquired before calling
-     *   this method.
+     * @param lock A lock on QservMgtRequest::_mtx must be acquired before
+     *   calling this method.
      * @return The performance info.
      */
     Performance performance(replica::Lock const& lock) const;
@@ -341,42 +316,67 @@ protected:
     mutable replica::Mutex _mtx;
 
 private:
+    /// @return The callback function for tracking connection parameters of the worker.
+    http::AsyncReq::GetHostPort _getHostPortTracker() const;
+
+    /// Extract and process data of the completed request. Notify a subclass in case of success.
+    void _processResponse();
+
+    /**
+     * @brief Ensure the request is in the desired state.
+     * @note The method doesn't require a lock on the mutex _mtx at all as
+     *   the related member variable is atomic.
+     * @param func A context from which the state test is requested (for tracing
+     *   and error reporting).
+     * @param mustBeStarted 'true' if the request is expected to be in any
+     *  state past State::CREATED, or 'false' if it's expected to be exactly
+     *  in State::CREATED.
+     * @throws std::logic_error If the request was not found in the desired state.
+     */
+    void _assertStarted(std::string const& func, bool mustBeStarted) const;
+
+    // Shortcut methods based on the above defined one.
+
+    void _assertStarted(std::string const& func) const { _assertStarted(func, true); }
+    void _assertNotStarted(std::string const& func) const { _assertStarted(func, false); }
+
+    /**
+     * @brief Set the desired primary and extended state.
+     *
+     * The change of the state is done via a method to allow extra actions
+     * at this step, such as: 1) reporting change state in a debug stream,
+     * or 2) verifying the correctness of the state transition.
+     *
+     * @param lock A lock on QservMgtRequest::_mtx must be acquired before
+     *   calling this method.
+     * @param state The primary state of the request.
+     * @param extendedState The extended state of the request.
+     */
+    void _setState(replica::Lock const& lock, State state, ExtendedState extendedState = ExtendedState::NONE);
+
     /// The global counter for the number of instances of any subclass
     static std::atomic<size_t> _numClassInstances;
 
     // Input parameters
 
-    ServiceProvider::Ptr const _serviceProvider;
+    std::shared_ptr<ServiceProvider> const _serviceProvider;
 
     std::string const _type;
     std::string const _id;
     std::string const _worker;
 
     // Two-level state of a request
-
-    std::atomic<State> _state;
-    std::atomic<ExtendedState> _extendedState;
+    std::atomic<State> _state;                  ///< The primary state.
+    std::atomic<ExtendedState> _extendedState;  ///< The sub-state.
 
     /// Error message (if any) reported by the remote service
     std::string _serverError;
 
-    /// Performance counters
-    Performance _performance;
+    Performance _performance;  ///< Performance counters.
+    std::string _jobId;        ///< An identifier of the parent job which started the request.
 
-    /// An identifier of the parent job which started the request
-    std::string _jobId;
-
-    /// An API for submitting requests to the remote services
-    XrdSsiService* _service;
-
-    /// This timer is used (if configured) to limit the total run time
-    /// of a request. The timer starts when the request is started. And it's
-    /// explicitly finished when a request finishes (successfully or not).
-    ///
-    /// If the time has a chance to expire then the request would finish
-    /// with status: FINISHED::TIMEOUT_EXPIRED.
-    unsigned int _requestExpirationIvalSec;
-    boost::asio::deadline_timer _requestExpirationTimer;
+    std::shared_ptr<http::AsyncReq> _httpRequest;  ///< The actual request sent to the worker.
+    nlohmann::json _info;                          ///< The data object returned by the worker.
 
     // Synchronization primitives for implementing QservMgtRequest::wait()
 

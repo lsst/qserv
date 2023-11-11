@@ -22,14 +22,21 @@
 #define LSST_QSERV_REPLICA_ADDREPLICAQSERVMGTREQUEST_H
 
 // System headers
+#include <list>
 #include <memory>
 #include <string>
 #include <vector>
+#include <utility>
+
+// Third party headers
+#include "nlohmann/json.hpp"
 
 // Qserv headers
 #include "replica/QservMgtRequest.h"
-#include "replica/ServiceProvider.h"
-#include "xrdreq/ChunkGroupQservRequest.h"
+
+namespace lsst::qserv::replica {
+class ServiceProvider;
+}  // namespace lsst::qserv::replica
 
 // This header declarations
 
@@ -50,7 +57,7 @@ public:
     AddReplicaQservMgtRequest(AddReplicaQservMgtRequest const&) = delete;
     AddReplicaQservMgtRequest& operator=(AddReplicaQservMgtRequest const&) = delete;
 
-    ~AddReplicaQservMgtRequest() final = default;
+    virtual ~AddReplicaQservMgtRequest() final = default;
 
     /**
      * Static factory method is needed to prevent issues with the lifespan
@@ -65,7 +72,7 @@ public:
      * @param onFinish (optional) callback function to be called upon request completion.
      * @return A pointer to the created object.
      */
-    static Ptr create(ServiceProvider::Ptr const& serviceProvider, std::string const& worker,
+    static Ptr create(std::shared_ptr<ServiceProvider> const& serviceProvider, std::string const& worker,
                       unsigned int chunk, std::vector<std::string> const& databases,
                       CallbackType const& onFinish = nullptr);
 
@@ -76,32 +83,26 @@ public:
     std::vector<std::string> const& databases() const { return _databases; }
 
     /// @see QservMgtRequest::extendedPersistentState()
-    std::list<std::pair<std::string, std::string>> extendedPersistentState() const final;
+    virtual std::list<std::pair<std::string, std::string>> extendedPersistentState() const final;
 
 protected:
-    /// @see QservMgtRequest::startImpl
-    void startImpl(replica::Lock const& lock) final;
-
-    /// @see QservMgtRequest::finishImpl
-    void finishImpl(replica::Lock const& lock) final;
+    /// @see QservMgtRequest::createHttpReqImpl
+    virtual void createHttpReqImpl(replica::Lock const& lock) final;
 
     /// @see QservMgtRequest::notify
-    void notify(replica::Lock const& lock) final;
+    virtual void notify(replica::Lock const& lock) final;
 
 private:
     /// @see AddReplicaQservMgtRequest::create()
-    AddReplicaQservMgtRequest(ServiceProvider::Ptr const& serviceProvider, std::string const& worker,
-                              unsigned int chunk, std::vector<std::string> const& databases,
-                              CallbackType const& onFinish);
+    AddReplicaQservMgtRequest(std::shared_ptr<ServiceProvider> const& serviceProvider,
+                              std::string const& worker, unsigned int chunk,
+                              std::vector<std::string> const& databases, CallbackType const& onFinish);
 
     // Input parameters
 
     unsigned int const _chunk;
     std::vector<std::string> const _databases;
-    CallbackType _onFinish;  /// @note is reset when the request finishes
-
-    /// A request to the remote services
-    xrdreq::AddChunkGroupQservRequest::Ptr _qservRequest;
+    CallbackType _onFinish;  ///< The callback is reset when the request finishes.
 };
 
 }  // namespace lsst::qserv::replica

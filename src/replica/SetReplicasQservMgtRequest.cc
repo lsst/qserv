@@ -27,13 +27,9 @@
 #include <sstream>
 #include <stdexcept>
 
-// Third party headers
-#include "XrdSsi/XrdSsiProvider.hh"
-#include "XrdSsi/XrdSsiService.hh"
-
 // Qserv headers
-#include "global/ResourceUnit.h"
-#include "proto/worker.pb.h"
+#include "http/Method.h"
+#include "replica/Common.h"
 #include "replica/Configuration.h"
 #include "replica/ServiceProvider.h"
 #include "util/IterableFormatter.h"
@@ -41,6 +37,7 @@
 // LSST headers
 #include "lsst/log/Log.h"
 
+using namespace nlohmann;
 using namespace std;
 
 namespace {
@@ -67,8 +64,7 @@ SetReplicasQservMgtRequest::SetReplicasQservMgtRequest(
           _newReplicas(newReplicas),
           _databases(databases),
           _force(force),
-          _onFinish(onFinish),
-          _qservRequest(nullptr) {}
+          _onFinish(onFinish) {}
 
 QservReplicaCollection const& SetReplicasQservMgtRequest::replicas() const {
     if (not((state() == State::FINISHED) and (extendedState() == ExtendedState::SUCCESS))) {
@@ -81,75 +77,45 @@ QservReplicaCollection const& SetReplicasQservMgtRequest::replicas() const {
 list<pair<string, string>> SetReplicasQservMgtRequest::extendedPersistentState() const {
     list<pair<string, string>> result;
     result.emplace_back("num_replicas", to_string(newReplicas().size()));
-    ostringstream databasesStream;
-    databasesStream << util::printable(_databases, "", "", " ");
-    result.emplace_back("databases", databasesStream.str());
-    result.emplace_back("force", bool2str(force()));
+    ostringstream ss;
+    ss << util::printable(_databases, "", "", ",");
+    result.emplace_back("databases", ss.str());
+    result.emplace_back("force", replica::bool2str(force()));
     return result;
 }
 
-void SetReplicasQservMgtRequest::_setReplicas(
-        replica::Lock const& lock, xrdreq::SetChunkListQservRequest::ChunkCollection const& collection) {
+void SetReplicasQservMgtRequest::createHttpReqImpl(replica::Lock const& lock) {
+    // Leave replicas that belong to the requested databases only.
+    set<string> databaseFilter;
+    for (string const& database : _databases) {
+        databaseFilter.insert(database);
+    }
+    json replicas = json::object();
+    for (auto&& replica : _newReplicas) {
+        if (databaseFilter.contains(replica.database)) {
+            replicas[replica.database].push_back(replica.chunk);
+        }
+    }
+    string const target = "/replicas";
+    json const data =
+            json::object({{"replicas", replicas}, {"force", _force ? 1 : 0}, {"databases", _databases}});
+    createHttpReq(lock, http::Method::POST, target, data);
+}
+QservMgtRequest::ExtendedState SetReplicasQservMgtRequest::dataReady(replica::Lock const& lock,
+                                                                     json const& data) {
     _replicas.clear();
-    for (auto&& replica : collection) {
-        _replicas.push_back(QservReplica{replica.chunk, replica.database, replica.use_count});
+    for (auto&& [database, chunks] : data.at("replicas").items()) {
+        for (auto&& chunkEntry : chunks) {
+            unsigned int const chunk = chunkEntry.at(0);
+            unsigned int const useCount = chunkEntry.at(1);
+            _replicas.emplace_back(QservReplica{chunk, database, useCount});
+        }
     }
-}
-
-void SetReplicasQservMgtRequest::startImpl(replica::Lock const& lock) {
-    xrdreq::SetChunkListQservRequest::ChunkCollection chunks;
-    for (auto&& chunkEntry : newReplicas()) {
-        chunks.push_back(xrdreq::SetChunkListQservRequest::Chunk{
-                chunkEntry.chunk, chunkEntry.database, 0 /* UNUSED: use_count */
-        });
-    }
-    auto const request = shared_from_base<SetReplicasQservMgtRequest>();
-
-    _qservRequest = xrdreq::SetChunkListQservRequest::create(
-            chunks, _databases, force(),
-            [request](proto::WorkerCommandStatus::Code code, string const& error,
-                      xrdreq::SetChunkListQservRequest::ChunkCollection const& collection) {
-                if (request->state() == State::FINISHED) return;
-                replica::Lock lock(request->_mtx, request->context() + string(__func__) + "[callback]");
-                if (request->state() == State::FINISHED) return;
-
-                switch (code) {
-                    case proto::WorkerCommandStatus::SUCCESS:
-                        request->_setReplicas(lock, collection);
-                        request->finish(lock, QservMgtRequest::ExtendedState::SUCCESS);
-                        break;
-                    case proto::WorkerCommandStatus::ERROR:
-                        request->finish(lock, QservMgtRequest::ExtendedState::SERVER_ERROR, error);
-                        break;
-                    case proto::WorkerCommandStatus::INVALID:
-                        request->finish(lock, QservMgtRequest::ExtendedState::SERVER_BAD, error);
-                        break;
-                    case proto::WorkerCommandStatus::IN_USE:
-                        request->finish(lock, QservMgtRequest::ExtendedState::SERVER_CHUNK_IN_USE, error);
-                        break;
-                    default:
-                        throw logic_error(
-                                "SetReplicasQservMgtRequest:: " + string(__func__) +
-                                "  unhandled server status: " + proto::WorkerCommandStatus_Code_Name(code));
-                }
-            });
-    XrdSsiResource resource(ResourceUnit::makeWorkerPath(worker()));
-    service()->ProcessRequest(*_qservRequest, resource);
-}
-
-void SetReplicasQservMgtRequest::finishImpl(replica::Lock const& lock) {
-    switch (extendedState()) {
-        case ExtendedState::CANCELLED:
-        case ExtendedState::TIMEOUT_EXPIRED:
-            if (_qservRequest) _qservRequest->cancel();
-            break;
-        default:
-            break;
-    }
+    return QservMgtRequest::ExtendedState::SUCCESS;
 }
 
 void SetReplicasQservMgtRequest::notify(replica::Lock const& lock) {
-    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
+    LOGS(_log, LOG_LVL_TRACE, context() << __func__);
     notifyDefaultImpl<SetReplicasQservMgtRequest>(lock, _onFinish);
 }
 

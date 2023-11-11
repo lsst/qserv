@@ -23,6 +23,7 @@
 
 // System headers
 #include <cstdint>
+#include <ostream>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -71,6 +72,11 @@ inline std::string taskState2str(TaskState state) {
             throw std::invalid_argument("wbase::" + std::string(__func__) + ": unsupported state " +
                                         std::to_string(static_cast<std::uint64_t>(state)));
     }
+}
+
+inline std::ostream& operator<<(std::ostream& os, TaskState state) {
+    os << taskState2str(state);
+    return os;
 }
 
 /// @return The parsed state of the input string.

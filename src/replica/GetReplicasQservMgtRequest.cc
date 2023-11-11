@@ -26,19 +26,15 @@
 #include <set>
 #include <stdexcept>
 
-// Third party headers
-#include "XrdSsi/XrdSsiProvider.hh"
-#include "XrdSsi/XrdSsiService.hh"
-
 // Qserv headers
-#include "global/ResourceUnit.h"
-#include "proto/worker.pb.h"
+#include "replica/Common.h"
 #include "replica/Configuration.h"
 #include "replica/ServiceProvider.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
 
+using namespace nlohmann;
 using namespace std;
 
 namespace {
@@ -62,11 +58,10 @@ GetReplicasQservMgtRequest::GetReplicasQservMgtRequest(
         : QservMgtRequest(serviceProvider, "QSERV_GET_REPLICAS", worker),
           _databaseFamily(databaseFamily),
           _inUseOnly(inUseOnly),
-          _onFinish(onFinish),
-          _qservRequest(nullptr) {}
+          _onFinish(onFinish) {}
 
 QservReplicaCollection const& GetReplicasQservMgtRequest::replicas() const {
-    if (not((state() == State::FINISHED) and (extendedState() == ExtendedState::SUCCESS))) {
+    if (!((state() == State::FINISHED) && (extendedState() == ExtendedState::SUCCESS))) {
         throw logic_error("GetReplicasQservMgtRequest::" + string(__func__) +
                           "  replicas aren't available in state: " + state2string(state(), extendedState()));
     }
@@ -75,81 +70,35 @@ QservReplicaCollection const& GetReplicasQservMgtRequest::replicas() const {
 
 list<pair<string, string>> GetReplicasQservMgtRequest::extendedPersistentState() const {
     list<pair<string, string>> result;
-    result.emplace_back("database_family", databaseFamily());
-    result.emplace_back("in_use_only", bool2str(inUseOnly()));
+    result.emplace_back("database_family", _databaseFamily);
+    result.emplace_back("in_use_only", replica::bool2str(_inUseOnly));
     return result;
 }
 
-void GetReplicasQservMgtRequest::_setReplicas(
-        replica::Lock const& lock, xrdreq::GetChunkListQservRequest::ChunkCollection const& collection) {
-    // Filter results by databases participating in the family
-
-    set<string> databases;
-    for (auto&& database : serviceProvider()->config()->databases(databaseFamily())) {
-        databases.insert(database);
+void GetReplicasQservMgtRequest::createHttpReqImpl(replica::Lock const& lock) {
+    string const service = "/replicas";
+    string query = "?in_use_only=" + string(_inUseOnly ? "1" : "0") + "&databases=";
+    for (auto&& database : serviceProvider()->config()->databases(_databaseFamily)) {
+        query += database + ",";
     }
+    createHttpReq(lock, service, query);
+}
+
+QservMgtRequest::ExtendedState GetReplicasQservMgtRequest::dataReady(replica::Lock const& lock,
+                                                                     json const& data) {
     _replicas.clear();
-    for (auto&& replica : collection) {
-        if (databases.count(replica.database)) {
-            _replicas.emplace_back(QservReplica{replica.chunk, replica.database, replica.use_count});
+    for (auto&& [database, chunks] : data.at("replicas").items()) {
+        for (auto&& chunkEntry : chunks) {
+            unsigned int const chunk = chunkEntry.at(0);
+            unsigned int const useCount = chunkEntry.at(1);
+            _replicas.emplace_back(QservReplica{chunk, database, useCount});
         }
     }
-}
-
-void GetReplicasQservMgtRequest::startImpl(replica::Lock const& lock) {
-    // Check if configuration parameters are valid
-
-    if (not serviceProvider()->config()->isKnownDatabaseFamily(databaseFamily())) {
-        LOGS(_log, LOG_LVL_ERROR,
-             context() << __func__ << "  ** MISCONFIGURED ** "
-                       << " database family: '" << databaseFamily() << "'");
-
-        finish(lock, ExtendedState::CONFIG_ERROR);
-        return;
-    }
-
-    // Submit the actual request
-
-    auto const request = shared_from_base<GetReplicasQservMgtRequest>();
-
-    _qservRequest = xrdreq::GetChunkListQservRequest::create(
-            inUseOnly(), [request](proto::WorkerCommandStatus::Code code, string const& error,
-                                   xrdreq::GetChunkListQservRequest::ChunkCollection const& collection) {
-                if (request->state() == State::FINISHED) return;
-                replica::Lock lock(request->_mtx, request->context() + string(__func__) + "[callback]");
-                if (request->state() == State::FINISHED) return;
-
-                switch (code) {
-                    case proto::WorkerCommandStatus::SUCCESS:
-                        request->_setReplicas(lock, collection);
-                        request->finish(lock, QservMgtRequest::ExtendedState::SUCCESS);
-                        break;
-                    case proto::WorkerCommandStatus::ERROR:
-                        request->finish(lock, QservMgtRequest::ExtendedState::SERVER_ERROR, error);
-                        break;
-                    default:
-                        throw logic_error(
-                                "GetReplicasQservMgtRequest::" + string(__func__) +
-                                "  unhandled server status: " + proto::WorkerCommandStatus_Code_Name(code));
-                }
-            });
-    XrdSsiResource resource(ResourceUnit::makeWorkerPath(worker()));
-    service()->ProcessRequest(*_qservRequest, resource);
-}
-
-void GetReplicasQservMgtRequest::finishImpl(replica::Lock const& lock) {
-    switch (extendedState()) {
-        case ExtendedState::CANCELLED:
-        case ExtendedState::TIMEOUT_EXPIRED:
-            if (_qservRequest) _qservRequest->cancel();
-            break;
-        default:
-            break;
-    }
+    return QservMgtRequest::ExtendedState::SUCCESS;
 }
 
 void GetReplicasQservMgtRequest::notify(replica::Lock const& lock) {
-    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
+    LOGS(_log, LOG_LVL_TRACE, context() << __func__);
     notifyDefaultImpl<GetReplicasQservMgtRequest>(lock, _onFinish);
 }
 

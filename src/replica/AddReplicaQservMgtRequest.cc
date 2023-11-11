@@ -22,19 +22,13 @@
 // Class header
 #include "replica/AddReplicaQservMgtRequest.h"
 
-// Third party headers
-#include "XrdSsi/XrdSsiProvider.hh"
-#include "XrdSsi/XrdSsiService.hh"
-
 // Qserv headers
-#include "global/ResourceUnit.h"
-#include "proto/worker.pb.h"
-#include "replica/Configuration.h"
-#include "replica/ServiceProvider.h"
+#include "http/Method.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
 
+using namespace nlohmann;
 using namespace std;
 
 namespace {
@@ -46,21 +40,20 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.AddReplicaQservMgtRequest");
 namespace lsst::qserv::replica {
 
 AddReplicaQservMgtRequest::Ptr AddReplicaQservMgtRequest::create(
-        ServiceProvider::Ptr const& serviceProvider, string const& worker, unsigned int chunk,
+        shared_ptr<ServiceProvider> const& serviceProvider, string const& worker, unsigned int chunk,
         vector<string> const& databases, AddReplicaQservMgtRequest::CallbackType const& onFinish) {
     return AddReplicaQservMgtRequest::Ptr(
             new AddReplicaQservMgtRequest(serviceProvider, worker, chunk, databases, onFinish));
 }
 
-AddReplicaQservMgtRequest::AddReplicaQservMgtRequest(ServiceProvider::Ptr const& serviceProvider,
+AddReplicaQservMgtRequest::AddReplicaQservMgtRequest(shared_ptr<ServiceProvider> const& serviceProvider,
                                                      string const& worker, unsigned int chunk,
                                                      vector<string> const& databases,
                                                      AddReplicaQservMgtRequest::CallbackType const& onFinish)
         : QservMgtRequest(serviceProvider, "QSERV_ADD_REPLICA", worker),
           _chunk(chunk),
           _databases(databases),
-          _onFinish(onFinish),
-          _qservRequest(nullptr) {}
+          _onFinish(onFinish) {}
 
 list<pair<string, string>> AddReplicaQservMgtRequest::extendedPersistentState() const {
     list<pair<string, string>> result;
@@ -71,52 +64,14 @@ list<pair<string, string>> AddReplicaQservMgtRequest::extendedPersistentState() 
     return result;
 }
 
-void AddReplicaQservMgtRequest::startImpl(replica::Lock const& lock) {
-    auto const request = shared_from_base<AddReplicaQservMgtRequest>();
-
-    _qservRequest = xrdreq::AddChunkGroupQservRequest::create(
-            chunk(), databases(), [request](proto::WorkerCommandStatus::Code code, string const& error) {
-                if (request->state() == State::FINISHED) return;
-                replica::Lock lock(request->_mtx, request->context() + string(__func__) + "[callback]");
-                if (request->state() == State::FINISHED) return;
-
-                switch (code) {
-                    case proto::WorkerCommandStatus::SUCCESS:
-                        request->finish(lock, QservMgtRequest::ExtendedState::SUCCESS);
-                        break;
-                    case proto::WorkerCommandStatus::INVALID:
-                        request->finish(lock, QservMgtRequest::ExtendedState::SERVER_BAD, error);
-                        break;
-                    case proto::WorkerCommandStatus::IN_USE:
-                        request->finish(lock, QservMgtRequest::ExtendedState::SERVER_CHUNK_IN_USE, error);
-                        break;
-                    case proto::WorkerCommandStatus::ERROR:
-                        request->finish(lock, QservMgtRequest::ExtendedState::SERVER_ERROR, error);
-                        break;
-                    default:
-                        throw logic_error("AddReplicaQservMgtRequest::" + string(__func__) +
-                                          "  unhandled request completion code: " +
-                                          proto::WorkerCommandStatus_Code_Name(code));
-                }
-            });
-    XrdSsiResource resource(ResourceUnit::makeWorkerPath(worker()));
-    service()->ProcessRequest(*_qservRequest, resource);
-}
-
-void AddReplicaQservMgtRequest::finishImpl(replica::Lock const& lock) {
-    switch (extendedState()) {
-        case ExtendedState::CANCELLED:
-        case ExtendedState::TIMEOUT_EXPIRED:
-            if (_qservRequest) _qservRequest->cancel();
-            break;
-        default:
-            break;
-    }
+void AddReplicaQservMgtRequest::createHttpReqImpl(replica::Lock const& lock) {
+    string const target = "/replica";
+    json const data = json::object({{"chunk", _chunk}, {"databases", _databases}});
+    createHttpReq(lock, http::Method::POST, target, data);
 }
 
 void AddReplicaQservMgtRequest::notify(replica::Lock const& lock) {
-    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
-
+    LOGS(_log, LOG_LVL_TRACE, context() << __func__);
     notifyDefaultImpl<AddReplicaQservMgtRequest>(lock, _onFinish);
 }
 

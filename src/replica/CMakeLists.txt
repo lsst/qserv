@@ -311,6 +311,7 @@ replica_tests(
     testSemanticMap
     testSqlResultSet
     testSqlSchemaUtils
+    testTaskSelector
     testTypes
     testConfiguration
 )

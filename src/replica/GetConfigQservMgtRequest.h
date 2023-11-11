@@ -25,20 +25,19 @@
 #include <memory>
 #include <string>
 
-// Third party headers
-#include "nlohmann/json.hpp"
-
 // Qserv headers
 #include "replica/QservMgtRequest.h"
-#include "replica/ServiceProvider.h"
-#include "xrdreq/GetConfigQservRequest.h"
+
+namespace lsst::qserv::replica {
+class ServiceProvider;
+}  // namespace lsst::qserv::replica
 
 // This header declarations
 namespace lsst::qserv::replica {
 
 /**
- * Class GetConfigQservMgtRequest is a request for obtaining configuration
- * parameters of the Qserv worker.
+ * Class GetConfigQservMgtRequest is a request for obtaining various info
+ * on the database service of the Qserv worker.
  */
 class GetConfigQservMgtRequest : public QservMgtRequest {
 public:
@@ -51,7 +50,7 @@ public:
     GetConfigQservMgtRequest(GetConfigQservMgtRequest const&) = delete;
     GetConfigQservMgtRequest& operator=(GetConfigQservMgtRequest const&) = delete;
 
-    virtual ~GetConfigQservMgtRequest() = default;
+    virtual ~GetConfigQservMgtRequest() final = default;
 
     /**
      * Static factory method is needed to prevent issues with the lifespan
@@ -63,48 +62,25 @@ public:
      * @param onFinish (optional) callback function to be called upon request completion.
      * @return A pointer to the created object.
      */
-    static Ptr create(ServiceProvider::Ptr const& serviceProvider, std::string const& worker,
-                      CallbackType const& onFinish = nullptr);
-
-    /**
-     * @return The info object returned back by the worker.
-     * @note The method will throw exception std::logic_error if called before
-     *   the request finishes or if it's finished with any status but SUCCESS.
-     */
-    nlohmann::json const& info() const;
+    static std::shared_ptr<GetConfigQservMgtRequest> create(
+            std::shared_ptr<ServiceProvider> const& serviceProvider, std::string const& worker,
+            CallbackType const& onFinish = nullptr);
 
 protected:
-    /// @see QservMgtRequest::startImpl()
-    virtual void startImpl(replica::Lock const& lock);
-
-    /// @see QservMgtRequest::finishImpl()
-    virtual void finishImpl(replica::Lock const& lock);
+    /// @see QservMgtRequest::createHttpReqImpl()
+    virtual void createHttpReqImpl(replica::Lock const& lock) final;
 
     /// @see QservMgtRequest::notify()
-    virtual void notify(replica::Lock const& lock);
+    virtual void notify(replica::Lock const& lock) final;
 
 private:
     /// @see GetConfigQservMgtRequest::create()
-    GetConfigQservMgtRequest(ServiceProvider::Ptr const& serviceProvider, std::string const& worker,
-                             CallbackType const& onFinish);
-
-    /**
-     * Carry over results of the request into a local storage.
-     * @param lock A lock on QservMgtRequest::_mtx must be acquired by a caller of the method.
-     * @param info The data string returned by a worker.
-     */
-    void _setInfo(replica::Lock const& lock, std::string const& info);
+    GetConfigQservMgtRequest(std::shared_ptr<ServiceProvider> const& serviceProvider,
+                             std::string const& worker, CallbackType const& onFinish);
 
     // Input parameters
 
-    std::string const _data;
-    CallbackType _onFinish;  ///< this object is reset after finishing the request
-
-    /// A request to the remote services
-    xrdreq::GetConfigQservRequest::Ptr _qservRequest;
-
-    /// The info object returned by the Qserv worker
-    nlohmann::json _info;
+    CallbackType _onFinish;  ///< This callback is reset after finishing the request.
 };
 
 }  // namespace lsst::qserv::replica
