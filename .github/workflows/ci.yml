@@ -175,7 +175,7 @@ jobs:
       - name: Install python
         uses: actions/setup-python@v3
         with:
-          python-version: '3.x'
+          python-version: '3.11'
 
       - name: Install click
         run: |
@@ -194,7 +194,7 @@ jobs:
         with:
           filters: |
               docs:
-                - '**'
+                - 'doc/**'
 
       - name: Prepare user build image
         if: needs.update-base-images.outputs.build-rebuilt == 'True' || steps.filter.outputs.docs == 'true'
@@ -204,18 +204,30 @@ jobs:
           --build-image ${{ needs.image-names.outputs.build-image }} \
           --user-build-image ${{ needs.image-names.outputs.user-build-image }}
 
-      - name: Build and publish
+      - name: Build docs
         if: needs.update-base-images.outputs.build-rebuilt == 'True' || steps.filter.outputs.docs == 'true'
         run: |
-          ./admin/local/cli/qserv build-docs --cmake --linkcheck --upload \
+          ./admin/local/cli/qserv build-docs --cmake --linkcheck \
           --user-build-image ${{ needs.image-names.outputs.user-build-image }}
         env:
-          QSERV_LTD_USERNAME: ${{ secrets.LTD_USERNAME }}
-          QSERV_LTD_PASSWORD: ${{ secrets.LTD_PASSWORD }}
           QSERV_GH_EVENT_NAME: ${{ github.event_name }}
           QSERV_GH_HEAD_REF: ${{ github.head_ref }}
           QSERV_GH_REF: ${{ github.ref }}
 
+      # Only attempt documentation uploads for tagged releases and pull
+      # requests from ticket branches in the same repository.  This avoids
+      # version clutter in the docs and failures when a PR doesn't have access
+      # to secrets.
+      - name: Upload to LSST the Docs
+        uses: lsst-sqre/ltd-upload@v1
+        with:
+          project: "qserv"
+          dir: "build/doc/html"
+          username: ${{ secrets.LTD_USERNAME }}
+          password: ${{ secrets.LTD_PASSWORD }}
+        if: >
+          (github.event_name != 'pull_request' || startsWith(github.head_ref, 'tickets/'))
+          && (needs.update-base-images.outputs.build-rebuilt == 'True' || steps.filter.outputs.docs == 'true')
 
   update-run-image:
     name: Update Qserv image
