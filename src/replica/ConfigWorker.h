@@ -68,6 +68,25 @@ struct HostInfo {
 std::ostream& operator<<(std::ostream& os, HostInfo const& info);
 
 /**
+ * Class QservWorkerInfo encapsulates various parameters describing
+ * the Qserv worker.
+ */
+class QservWorkerInfo {
+public:
+    HostInfo host;      // The host name (and IP address) of the worker's management service
+    uint16_t port = 0;  // The port number of the worker's management service
+
+    /// @return JSON representation of the object
+    nlohmann::json toJson() const;
+
+    /// @return 'true' if workers objects have the same values of attributes
+    bool operator==(QservWorkerInfo const& other) const;
+
+    /// @return 'true' if workers objects don't have the same values of attributes
+    bool operator!=(QservWorkerInfo const& other) const { return !(operator==(other)); }
+};
+
+/**
  * Class WorkerInfo encapsulates various parameters describing a worker.
  */
 class WorkerInfo {
@@ -107,6 +126,8 @@ public:
     std::string httpLoaderTmpDir;  // An absolute path to the temporary directory which would be used
                                    // by the HTTP-based service. The folder must be write-enabled for a user
                                    // under which the service will be run.
+
+    QservWorkerInfo qservWorker;  // Parameters of the corresponding Qserv worker.
 
     /**
      * This function treats its numeric input as a tri-state variable, where

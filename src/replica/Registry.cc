@@ -71,26 +71,32 @@ vector<WorkerInfo> Registry::workers() const {
         }
         if (workerJson.contains("replication")) {
             json const& replicationWorker = workerJson.at("replication");
-            string const host = replicationWorker.at("host").get<string>();
-            worker.svcHost.addr = host;
+            string const hostAddr = replicationWorker.at("host-addr").get<string>();
+            worker.svcHost.addr = hostAddr;
             worker.svcHost.name = replicationWorker.at("svc-host-name").get<string>();
             worker.svcPort = replicationWorker.at("svc-port").get<uint16_t>();
-            worker.fsHost.addr = host;
+            worker.fsHost.addr = hostAddr;
             worker.fsHost.name = replicationWorker.at("fs-host-name").get<string>();
             worker.fsPort = replicationWorker.at("fs-port").get<uint16_t>();
             worker.dataDir = replicationWorker.at("data-dir").get<string>();
-            worker.loaderHost.addr = host;
+            worker.loaderHost.addr = hostAddr;
             worker.loaderHost.name = replicationWorker.at("loader-host-name").get<string>();
             worker.loaderPort = replicationWorker.at("loader-port").get<uint16_t>();
             worker.loaderTmpDir = replicationWorker.at("loader-tmp-dir").get<string>();
-            worker.exporterHost.addr = host;
+            worker.exporterHost.addr = hostAddr;
             worker.exporterHost.name = replicationWorker.at("exporter-host-name").get<string>();
             worker.exporterPort = replicationWorker.at("exporter-port").get<uint16_t>();
             worker.exporterTmpDir = replicationWorker.at("exporter-tmp-dir").get<string>();
-            worker.httpLoaderHost.addr = host;
+            worker.httpLoaderHost.addr = hostAddr;
             worker.httpLoaderHost.name = replicationWorker.at("http-loader-host-name").get<string>();
             worker.httpLoaderPort = replicationWorker.at("http-loader-port").get<uint16_t>();
             worker.httpLoaderTmpDir = replicationWorker.at("http-loader-tmp-dir").get<string>();
+        }
+        if (workerJson.contains("qserv")) {
+            json const& qservWorker = workerJson.at("qserv");
+            worker.qservWorker.host.addr = qservWorker.at("host-addr").get<string>();
+            worker.qservWorker.host.name = qservWorker.at("management-host-name").get<string>();
+            worker.qservWorker.port = qservWorker.at("management-port").get<uint16_t>();
         }
         coll.push_back(std::move(worker));
     }

@@ -95,16 +95,17 @@ json RegistryHttpSvcMod::_getWorkers() const { return json::object({{"workers", 
 json RegistryHttpSvcMod::_addWorker(string const& kind) {
     json const worker = body().required<json>("worker");
     string const name = worker.at("name").get<string>();
-    string const host = ::senderIpAddr(req());
+    string const hostAddr = ::senderIpAddr(req());
     uint64_t const loggedTime = util::TimeUtils::now();
 
     debug(__func__, "[" + kind + "] name:        " + name);
-    debug(__func__, "[" + kind + "] host:        " + host);
+    debug(__func__, "[" + kind + "] host-addr:   " + hostAddr);
     debug(__func__, "[" + kind + "] logged_time: " + to_string(loggedTime));
 
     // Prepare the payload to be merged into the worker registration entry.
     // Note that the merged payload is cleaned from any security-related contents.
-    json workerEntry = json::object({{kind, json::object({{"host", host}, {"logged_time", loggedTime}})}});
+    json workerEntry =
+            json::object({{kind, json::object({{"host-addr", hostAddr}, {"logged_time", loggedTime}})}});
     for (auto&& [key, val] : worker.items()) {
         if (!::isSecurityContextKey(key)) workerEntry[kind][key] = val;
     }
