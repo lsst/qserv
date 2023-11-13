@@ -214,20 +214,14 @@ jobs:
           QSERV_GH_HEAD_REF: ${{ github.head_ref }}
           QSERV_GH_REF: ${{ github.ref }}
 
-      # Only attempt documentation uploads for tagged releases and pull
-      # requests from ticket branches in the same repository.  This avoids
-      # version clutter in the docs and failures when a PR doesn't have access
-      # to secrets.
       - name: Upload to LSST the Docs
+        if: needs.update-base-images.outputs.build-rebuilt == 'True' || steps.filter.outputs.docs == 'true'
         uses: lsst-sqre/ltd-upload@v1
         with:
-          project: "qserv"
+          project: "Qserv"
           dir: "build/doc/html"
           username: ${{ secrets.LTD_USERNAME }}
           password: ${{ secrets.LTD_PASSWORD }}
-        if: >
-          (github.event_name != 'pull_request' || startsWith(github.head_ref, 'tickets/'))
-          && (needs.update-base-images.outputs.build-rebuilt == 'True' || steps.filter.outputs.docs == 'true')
 
   update-run-image:
     name: Update Qserv image
