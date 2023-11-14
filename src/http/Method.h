@@ -22,10 +22,15 @@
 #define LSST_QSERV_HTTP_METHOD_H
 
 // System headers
+#include <ostream>
 #include <string>
+#include <vector>
 
 // This header declarations
 namespace lsst::qserv::http {
+
+/// The names of the allowed methods.
+static std::vector<std::string> const allowedMethods = {"GET", "POST", "PUT", "DELETE"};
 
 /// The type-safe representation of the HTTP methods.
 enum class Method : int { GET, POST, PUT, DELETE };
@@ -38,6 +43,10 @@ std::string method2string(Method method);
 /// @throws std::invalid_argument If the input value doesn't correspond to any method.
 Method string2method(std::string const& str);
 
+inline std::ostream& operator<<(std::ostream& os, Method method) {
+    os << method2string(method);
+    return os;
+}
 }  // namespace lsst::qserv::http
 
 #endif  // LSST_QSERV_HTTP_METHOD_H

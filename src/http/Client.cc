@@ -68,7 +68,7 @@ size_t forwardToClient(char* ptr, size_t size, size_t nmemb, void* userdata) {
     return nchars;
 }
 
-Client::Client(string const& method, string const& url, string const& data, vector<string> const& headers,
+Client::Client(http::Method method, string const& url, string const& data, vector<string> const& headers,
                ClientConfig const& clientConfig)
         : _method(method), _url(url), _data(data), _headers(headers), _clientConfig(clientConfig) {
     _hcurl = curl_easy_init();
@@ -87,13 +87,13 @@ void Client::read(CallbackType const& onDataRead) {
     _errorChecked("curl_easy_setopt(CURLOPT_URL)", curl_easy_setopt(_hcurl, CURLOPT_URL, _url.c_str()));
     _errorChecked("curl_easy_setopt(CURLOPT_CUSTOMREQUEST)",
                   curl_easy_setopt(_hcurl, CURLOPT_CUSTOMREQUEST, nullptr));
-    if (_method == "GET") {
+    if (_method == http::Method::GET) {
         _errorChecked("curl_easy_setopt(CURLOPT_HTTPGET)", curl_easy_setopt(_hcurl, CURLOPT_HTTPGET, 1L));
-    } else if (_method == "POST") {
+    } else if (_method == http::Method::POST) {
         _errorChecked("curl_easy_setopt(CURLOPT_POST)", curl_easy_setopt(_hcurl, CURLOPT_POST, 1L));
     } else {
         _errorChecked("curl_easy_setopt(CURLOPT_CUSTOMREQUEST)",
-                      curl_easy_setopt(_hcurl, CURLOPT_CUSTOMREQUEST, _method.c_str()));
+                      curl_easy_setopt(_hcurl, CURLOPT_CUSTOMREQUEST, http::method2string(_method).data()));
     }
     if (!_data.empty()) {
         _errorChecked("curl_easy_setopt(CURLOPT_POSTFIELDS)",

@@ -125,7 +125,7 @@ json TransactionContribInfo::toJson() const {
 
     info["dialect_input"] = dialectInput.toJson();
 
-    info["http_method"] = httpMethod;
+    info["http_method"] = http::method2string(httpMethod);
     info["http_data"] = httpData;
     info["http_headers"] = json(httpHeaders);
 

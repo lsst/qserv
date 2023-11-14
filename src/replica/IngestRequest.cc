@@ -105,7 +105,7 @@ shared_ptr<IngestRequest> IngestRequest::create(shared_ptr<ServiceProvider> cons
                                                 string const& table, unsigned int chunk, bool isOverlap,
                                                 string const& url, string const& charsetName, bool async,
                                                 csv::DialectInput const& dialectInput,
-                                                string const& httpMethod, string const& httpData,
+                                                http::Method httpMethod, string const& httpData,
                                                 vector<string> const& httpHeaders,
                                                 unsigned int maxNumWarnings, unsigned int maxRetries) {
     shared_ptr<IngestRequest> ptr(new IngestRequest(
@@ -238,7 +238,7 @@ void IngestRequest::_validateState(TransactionInfo const& trans, DatabaseInfo co
 IngestRequest::IngestRequest(shared_ptr<ServiceProvider> const& serviceProvider, string const& workerName,
                              TransactionId transactionId, string const& table, unsigned int chunk,
                              bool isOverlap, string const& url, string const& charsetName, bool async,
-                             csv::DialectInput const& dialectInput, string const& httpMethod,
+                             csv::DialectInput const& dialectInput, http::Method httpMethod,
                              string const& httpData, vector<string> const& httpHeaders,
                              unsigned int maxNumWarnings, unsigned int maxRetries)
         : IngestFileSvc(serviceProvider, workerName) {

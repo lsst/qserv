@@ -30,6 +30,7 @@
 #include "nlohmann/json.hpp"
 
 // Qserv headers
+#include "http/Method.h"
 #include "replica/ConfigWorker.h"
 #include "replica/ServiceProvider.h"
 
@@ -94,7 +95,7 @@ private:
      * @throw http::Error for specific errors reported by the client library.
      * @throw std::runtime_error In case if a error was received from the server.
      */
-    nlohmann::json _request(std::string const& method, std::string const& resource,
+    nlohmann::json _request(http::Method method, std::string const& resource,
                             nlohmann::json const& request = nlohmann::json()) const;
 
     // Input parameters

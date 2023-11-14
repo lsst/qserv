@@ -37,6 +37,7 @@
 
 // Qserv headers
 #include "http/AsyncReq.h"
+#include "http/Method.h"
 
 using namespace std;
 using json = nlohmann::json;
@@ -52,8 +53,6 @@ string const description =
 bool const injectDatabaseOptions = false;
 bool const boostProtobufVersionCheck = false;
 bool const enableServiceProvider = false;
-
-vector<string> const allowedMethods = {"GET", "POST", "PUT", "DELETE"};
 
 string vector2str(vector<std::string> const& v) {
     ostringstream oss;
@@ -72,8 +71,8 @@ HttpAsyncReqApp::HttpAsyncReqApp(int argc, char* argv[])
         : Application(argc, argv, ::description, ::injectDatabaseOptions, ::boostProtobufVersionCheck,
                       ::enableServiceProvider) {
     parser().required("url", "The URL to read data from.", _url)
-            .option("method", "The HTTP method. Allowed values: " + ::vector2str(::allowedMethods), _method,
-                    ::allowedMethods)
+            .option("method", "The HTTP method. Allowed values: " + ::vector2str(http::allowedMethods),
+                    _method, http::allowedMethods)
             .option("header",
                     "The HTTP header to be sent with a request. Note this test application allows"
                     " only one header. The format of the header is '<key>[:<val>]'.",
@@ -134,10 +133,12 @@ int HttpAsyncReqApp::runImpl() {
         }
     }
     boost::asio::io_service io_service;
+    auto const method = http::string2method(_method);
     auto const ptr = http::AsyncReq::create(
-            io_service, [this, osPtr](auto const& ptr) { this->_dump(ptr, osPtr); }, _method, _url, _data,
-            headers, _maxResponseBodySize, _expirationIvalSec);
-
+            io_service, [this, osPtr](auto const& ptr) { this->_dump(ptr, osPtr); }, method, _url, _data,
+            headers);
+    ptr->setMaxResponseBodySize(_maxResponseBodySize);
+    ptr->setExpirationIval(_expirationIvalSec);
     ptr->start();
     io_service.run();
 

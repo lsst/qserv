@@ -23,6 +23,7 @@
 #include "replica/IngestHttpSvcMod.h"
 
 // Qserv header
+#include "http/Method.h"
 #include "replica/Csv.h"
 
 // System headers
@@ -192,7 +193,7 @@ IngestRequest::Ptr IngestHttpSvcMod::_createRequest(bool async) const {
     dialectInput.linesTerminatedBy =
             getDialectParam("lines_terminated_by", csv::Dialect::defaultLinesTerminatedBy);
 
-    string const httpMethod = body().optional<string>("http_method", "GET");
+    auto const httpMethod = http::string2method(body().optional<string>("http_method", "GET"));
     string const httpData = body().optional<string>("http_data", string());
     vector<string> const httpHeaders = body().optionalColl<string>("http_headers", vector<string>());
 
@@ -216,7 +217,7 @@ IngestRequest::Ptr IngestHttpSvcMod::_createRequest(bool async) const {
     debug(__func__, "overlap: " + string(isOverlap ? "1" : "0"));
     debug(__func__, "url: '" + url + "'");
     debug(__func__, "charset_name: '" + charsetName + "'");
-    debug(__func__, "http_method: '" + httpMethod + "'");
+    debug(__func__, "http_method: '" + http::method2string(httpMethod) + "'");
     debug(__func__, "http_data: '" + httpData + "'");
     debug(__func__, "http_headers.size(): " + to_string(httpHeaders.size()));
     debug(__func__, "max_num_warnings: " + to_string(maxNumWarnings));

@@ -34,22 +34,24 @@
 #include "boost/asio.hpp"
 #include "nlohmann/json.hpp"
 
-// LSST headers
-#include "lsst/log/Log.h"
-
 // Qserv headers
 #include "http/AsyncReq.h"
+#include "http/Method.h"
 #include "qhttp/Request.h"
 #include "qhttp/Response.h"
 #include "qhttp/Server.h"
 #include "qhttp/Status.h"
 #include "util/AsyncTimer.h"
 
+// LSST headers
+#include "lsst/log/Log.h"
+
 // Boost unit test header
 #define BOOST_TEST_MODULE AsyncReq
 #include <boost/test/unit_test.hpp>
 
 using namespace std;
+using namespace std::chrono_literals;
 namespace asio = boost::asio;
 namespace test = boost::test_tools;
 using namespace lsst::qserv::http;
@@ -88,94 +90,117 @@ private:
     qhttp::Server::Ptr const _server;
     unique_ptr<thread> _serviceThread;
 };
-
 }  // namespace
 
-BOOST_AUTO_TEST_SUITE(Suite)
+namespace lsst::qserv {
 
-// Test an ability of the class to correctly parse input parameters.
+/**
+ * The test fixture instantiates a qhttp server, a boost::asio::io_service to run it,
+ * manages a thread that runs the io_service, an asynchronous timer to abort tests
+ * in cae of lockups, and handles global init and cleanup.
+ */
+struct AsyncReqFixture {
+    AsyncReqFixture() {
+        _testAbortTimer = util::AsyncTimer::create(
+                io_service, _testExpirationIvalMs, [](auto expirationIvalMs) -> bool {
+                    LOGS_ERROR("test exceeded the time budget of " << expirationIvalMs.count() << "ms");
+                    std::exit(1);
+                });
 
-BOOST_AUTO_TEST_CASE(AsyncReq_create) {
-    LOGS_INFO("AsyncReq_create");
+        // Async applications need to be started before runing BOOST ASIO I/O service
+        // to avoid premature termination of the service thread.
+        _testAbortTimer->start();
+        _serviceThread = make_unique<thread>([this]() { io_service.run(); });
+    }
+    void createServer(uint16_t port) { httpServer = make_unique<::Server>(port); }
+    void createAndStartServer() {
+        createServer(0);
+        httpServer->start();
+    }
+    void cancelAbortTimer() { _testAbortTimer->cancel(); }
+    ~AsyncReqFixture() { _serviceThread->join(); }
 
+    // BOOST ASIO services.
     asio::io_service io_service;
+
+    // The server is run in the BOOST ASIO thread(s).
+    unique_ptr<::Server> httpServer;
+
+    // The request object is used in async callbacks.
+    shared_ptr<http::AsyncReq> req;
+
+    // Members that are used for testing the dynamic reconnects.
+    vector<http::AsyncReq::HostPort> hostPort;
+    size_t hostPortIndex = 0;
+
+private:
+    // The maximum duration of each test case.
+    chrono::milliseconds _testExpirationIvalMs = 3s;
+
+    // The deadline timer limits the duration of the test to prevent the test from
+    // being stuck for longer than expected.
+    shared_ptr<util::AsyncTimer> _testAbortTimer;
+
+    unique_ptr<thread> _serviceThread;
+};
+
+BOOST_FIXTURE_TEST_CASE(create, AsyncReqFixture) {
+    // Test an ability of the class to correctly parse input parameters.
+    LOGS_INFO("create");
 
     // Callback parameter allows nullptr
     BOOST_REQUIRE_NO_THROW({
-        string const url = "http://127.0.0.1:80/";
-        string const method = "GET";
-        auto req = AsyncReq::create(io_service, nullptr, method, url);
+        auto const url = "http://127.0.0.1:80/";
+        req = http::AsyncReq::create(io_service, nullptr, http::Method::GET, url);
     });
 
     // HTTPS is not supported
     BOOST_CHECK_THROW(
             {
-                string const url = "https://127.0.0.1:80/";
-                string const method = "GET";
-                auto req = AsyncReq::create(
-                        io_service, [](auto const& req) {}, method, url);
+                auto const url = "https://127.0.0.1:80/";
+                req = http::AsyncReq::create(
+                        io_service, [](auto const& req) {}, http::Method::GET, url);
             },
             std::invalid_argument);
 
-    // Unknown HTTP method
-    BOOST_CHECK_THROW(
-            {
-                string const url = "http://127.0.0.1:80/";
-                string const method = "INVALID";
-                auto req = AsyncReq::create(
-                        io_service, [](auto const& req) {}, method, url);
-            },
-            std::invalid_argument);
+    cancelAbortTimer();
 }
 
-// The simplest test that verifies correct serialization/deserialization
-// of the header and the body in requests and responses.
+BOOST_FIXTURE_TEST_CASE(simple, AsyncReqFixture) {
+    // The simplest test that verifies correct serialization/deserialization
+    // of the header and the body in requests and responses.
+    LOGS_INFO("simple");
 
-BOOST_AUTO_TEST_CASE(AsyncReq_simple) {
-    LOGS_INFO("AsyncReq_simple");
+    createAndStartServer();
 
-    asio::io_service io_service;
+    auto const method = http::Method::GET;
+    string const target = "/simple";
+    httpServer->server()->addHandler(http::method2string(method), target,
+                                     [](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
+                                         string const expectedBody = "abcdefg";
+                                         BOOST_CHECK_EQUAL(req->version, "HTTP/1.1");
+                                         BOOST_CHECK(req->header["Content-Type"].empty());
+                                         BOOST_CHECK_EQUAL(req->header["Content-Length"],
+                                                           to_string(expectedBody.size()));
+                                         BOOST_CHECK_EQUAL(req->header["Header-1"], "A");
+                                         BOOST_CHECK_EQUAL(req->header["Header-2"], "B");
+                                         string body;
+                                         req->content >> body;
+                                         BOOST_CHECK_EQUAL(body.size(), expectedBody.size());
+                                         BOOST_CHECK_EQUAL(body, expectedBody);
+                                         string const emptyBody;
+                                         string const contentType = "text/html";
+                                         resp->send(emptyBody, contentType);
+                                     });
 
-    // The deadline timer limits the duration of the test to prevent the test from
-    // being stuck for longer than expected.
-    auto const testAbortTimer = util::AsyncTimer::create(
-            io_service, chrono::milliseconds(100), [](auto expirationIvalMs) -> bool {
-                LOGS_INFO("AsyncReq_simple: test exceeded the time budget of " << expirationIvalMs.count()
-                                                                               << "ms");
-                std::exit(1);
-            });
-    testAbortTimer->start();
-
-    // Set up and start the server
-    ::Server httpServer;
-    httpServer.server()->addHandler(
-            "GET", "/simple", [](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
-                string const expectedBody = "abcdefg";
-                BOOST_CHECK_EQUAL(req->version, "HTTP/1.1");
-                BOOST_CHECK(req->header["Content-Type"].empty());
-                BOOST_CHECK_EQUAL(req->header["Content-Length"], to_string(expectedBody.size()));
-                BOOST_CHECK_EQUAL(req->header["Header-1"], "A");
-                BOOST_CHECK_EQUAL(req->header["Header-2"], "B");
-                string body;
-                req->content >> body;
-                BOOST_CHECK_EQUAL(body.size(), expectedBody.size());
-                BOOST_CHECK_EQUAL(body, expectedBody);
-                string const emptyBody;
-                string const contentType = "text/html";
-                resp->send(emptyBody, contentType);
-            });
-    httpServer.start();
-
-    // Submit a request.
-    string const url = "http://127.0.0.1:" + to_string(httpServer.port()) + "/simple";
-    string const method = "GET";
+    auto const url = "http://127.0.0.1:" + to_string(httpServer->port()) + target;
     string const data = "abcdefg";
     unordered_map<string, string> const headers = {{"Header-1", "A"}, {"Header-2", "B"}};
-    shared_ptr<AsyncReq> const req = AsyncReq::create(
+    req = http::AsyncReq::create(
             io_service,
-            [testAbortTimer](auto const& req) {
-                testAbortTimer->cancel();
-                BOOST_CHECK(req->state() == AsyncReq::State::FINISHED);
+            [this](auto const& req) {
+                cancelAbortTimer();
+                BOOST_CHECK(req->state() == http::AsyncReq::State::FINISHED);
                 BOOST_CHECK(req->errorMessage().empty());
                 BOOST_CHECK_EQUAL(req->responseCode(), qhttp::STATUS_OK);
                 BOOST_CHECK_EQUAL(req->responseHeader().at("Content-Length"), "0");
@@ -183,64 +208,47 @@ BOOST_AUTO_TEST_CASE(AsyncReq_simple) {
                 BOOST_CHECK_EQUAL(req->responseBodySize(), 0U);
             },
             method, url, data, headers);
-    BOOST_CHECK_EQUAL(req->url().url(), url);
+    BOOST_CHECK_EQUAL(req->target(), target);
     BOOST_CHECK_EQUAL(req->method(), method);
     req->start();
-
-    thread serviceThread([&io_service]() { io_service.run(); });
-    serviceThread.join();
 }
 
-// Testing an ability of a request to put a cap on the amount of data expected
-// in the server response's body.
-
 #if 0
-
 // This test is temporary disabled due to changes in the Boost 1.78 (Almalinux 9), where
 // the following Beast library's method doesn't seem to have any effect:
 // boost::beast::http::response_parser<boost::beast::http::string_body>::body_limit(size_t)
-// This isn't critical for Qserv as the below-mentioned status code AsyncReq::State::BODY_LIMIT_ERROR
+// This isn't critical for Qserv as the below-mentioned status code http::AsyncReq::State::BODY_LIMIT_ERROR
 // is not used by the Replication/Ingest system.
 // A solution (or a workaround) to this problem will be found later after further investigation.
 
-BOOST_AUTO_TEST_CASE(AsyncReq_body_limit_error) {
-    LOGS_INFO("AsyncReq_body_limit_error");
+BOOST_FIXTURE_TEST_CASE(body_limit_error, AsyncReqFixture) {
 
-    asio::io_service io_service;
+    // Testing an ability of a request to put a cap on the amount of data expected
+    // in the server response's body.
+    LOGS_INFO("body_limit_error");
 
-    // The deadline timer limits the duration of the test to prevent the test from
-    // being stuck for longer than expected.
-    auto const testAbortTimer = util::AsyncTimer::create(
-            io_service, chrono::milliseconds(100), [](auto expirationIvalMs) -> bool {
-                LOGS_INFO("AsyncReq_body_limit_error: test exceeded the time budget of "
-                          << expirationIvalMs.count() << "ms");
-                std::exit(1);
-            });
-    testAbortTimer->start();
+    createAndStartServer();
 
-    // Set up and start the server
-    ::Server httpServer;
     size_t const serverResponseBodySize = 1024;
-    httpServer.server()->addHandler(
-            "PUT", "/return_large_body",
+    auto const method = http::Method::PUT;
+    string const target = "/return_large_body";
+    httpServer->server()->addHandler(
+            http::method2string(method), target,
             [serverResponseBodySize](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
                 string const largeBody(serverResponseBodySize, 'a');
                 string const contentType = "text/html";
                 resp->send(largeBody, contentType);
             });
-    httpServer.start();
 
-    // Submit a request.
-    string const url = "http://127.0.0.1:" + to_string(httpServer.port()) + "/return_large_body";
-    string const method = "PUT";
+    auto const url = "http://127.0.0.1:" + to_string(httpServer->port()) + target;
     string const data;
     unordered_map<string, string> const headers;
     size_t const maxResponseBodySize = serverResponseBodySize - 1;
-    shared_ptr<AsyncReq> const req = AsyncReq::create(
+    req = http::AsyncReq::create(
             io_service,
-            [testAbortTimer, serverResponseBodySize](auto const& req) {
-                testAbortTimer->cancel();
-                BOOST_CHECK(req->state() == AsyncReq::State::BODY_LIMIT_ERROR);
+            [this, serverResponseBodySize](auto const& req) {
+                cancelAbortTimer();
+                BOOST_CHECK(req->state() == http::AsyncReq::State::BODY_LIMIT_ERROR);
                 BOOST_CHECK(req->errorMessage().empty());
                 BOOST_CHECK_EQUAL(req->responseCode(), qhttp::STATUS_OK);
                 BOOST_CHECK_EQUAL(req->responseHeader().at("Content-Length"),
@@ -249,150 +257,119 @@ BOOST_AUTO_TEST_CASE(AsyncReq_body_limit_error) {
                 BOOST_CHECK_THROW(req->responseBody(), std::logic_error);
                 BOOST_CHECK_THROW(req->responseBodySize(), std::logic_error);
             },
-            method, url, data, headers, maxResponseBodySize);
+            method, url, data, headers);
+
+    BOOST_CHECK_EQUAL(req->maxResponseBodySize(), 0U);
+    BOOST_CHECK_NO_THROW(req->setMaxResponseBodySize(maxResponseBodySize));
+    BOOST_CHECK_EQUAL(req->maxResponseBodySize(), maxResponseBodySize);
+
     req->start();
 
-    thread serviceThread([&io_service]() { io_service.run(); });
-    serviceThread.join();
+    BOOST_CHECK_THROW(req->setMaxResponseBodySize(maxResponseBodySize + 1), std::logic_error);
+    BOOST_CHECK_EQUAL(req->maxResponseBodySize(), maxResponseBodySize);
 }
 #endif
 
-// Testing request expiration due to non-responsive server (which is simulated
-// by introducing a delay into the request handler.)
+BOOST_FIXTURE_TEST_CASE(expired, AsyncReqFixture) {
+    // Testing request expiration due to non-responsive server (which is simulated
+    // by introducing a delay into the request handler.)
+    LOGS_INFO("expired");
 
-BOOST_AUTO_TEST_CASE(AsyncReq_expired) {
-    LOGS_INFO("AsyncReq_expired");
+    createAndStartServer();
 
-    asio::io_service io_service;
+    auto const method = http::Method::POST;
+    string const target = "/delayed_response";
+    httpServer->server()->addHandler(http::method2string(method), target,
+                                     [](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
+                                         this_thread::sleep_for(2s);
+                                         resp->sendStatus(qhttp::STATUS_OK);
+                                     });
 
-    // The deadline timer limits the duration of the test to prevent the test from
-    // being stuck for longer than expected.
-    auto const testAbortTimer = util::AsyncTimer::create(
-            io_service, chrono::milliseconds(3000), [](auto expirationIvalMs) -> bool {
-                LOGS_INFO("AsyncReq_expired: test exceeded the time budget of " << expirationIvalMs.count()
-                                                                                << "ms");
-                std::exit(1);
-            });
-    testAbortTimer->start();
-
-    // Set up and start the server
-    ::Server httpServer;
-    httpServer.server()->addHandler("POST", "/delayed_response",
-                                    [](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
-                                        this_thread::sleep_for(chrono::milliseconds(2500));
-                                        resp->sendStatus(qhttp::STATUS_OK);
-                                    });
-    httpServer.start();
-
-    // Submit a request.
-    string const url = "http://127.0.0.1:" + to_string(httpServer.port()) + "/delayed_response";
-    string const method = "POST";
+    auto const url = "http://127.0.0.1:" + to_string(httpServer->port()) + target;
     string const data;
     unordered_map<string, string> const headers;
     size_t const maxResponseBodySize = 0;
-    unsigned int const expirationIvalSec = 2;
-    shared_ptr<AsyncReq> const req = AsyncReq::create(
+    unsigned int const expirationIvalSec = 1;
+    req = http::AsyncReq::create(
             io_service,
-            [testAbortTimer](auto const& req) {
-                testAbortTimer->cancel();
-                BOOST_CHECK(req->state() == AsyncReq::State::EXPIRED);
+            [this](auto const& req) {
+                cancelAbortTimer();
+                BOOST_CHECK(req->state() == http::AsyncReq::State::EXPIRED);
                 BOOST_REQUIRE_NO_THROW(req->errorMessage());
                 BOOST_CHECK_THROW(req->responseCode(), std::logic_error);
                 BOOST_CHECK_THROW(req->responseHeader(), std::logic_error);
                 BOOST_CHECK_THROW(req->responseBodySize(), std::logic_error);
             },
-            method, url, data, headers, maxResponseBodySize, expirationIvalSec);
+            method, url, data, headers);
+
+    BOOST_CHECK_EQUAL(req->maxResponseBodySize(), 0U);
+    BOOST_CHECK_NO_THROW(req->setMaxResponseBodySize(maxResponseBodySize));
+    BOOST_CHECK_EQUAL(req->maxResponseBodySize(), maxResponseBodySize);
+
+    BOOST_CHECK_EQUAL(req->expirationIval(), 0U);
+    BOOST_CHECK_NO_THROW(req->setExpirationIval(expirationIvalSec));
+    BOOST_CHECK_EQUAL(req->expirationIval(), expirationIvalSec);
+
     req->start();
 
-    thread serviceThread([&io_service]() { io_service.run(); });
-    serviceThread.join();
+    BOOST_CHECK_THROW(req->setMaxResponseBodySize(maxResponseBodySize + 1), std::logic_error);
+    BOOST_CHECK_EQUAL(req->maxResponseBodySize(), maxResponseBodySize);
+
+    BOOST_CHECK_THROW(req->setExpirationIval(expirationIvalSec + 1), std::logic_error);
+    BOOST_CHECK_EQUAL(req->expirationIval(), expirationIvalSec);
 }
 
-// Testing request cancelation for the in-flight request.
+BOOST_FIXTURE_TEST_CASE(cancelled, AsyncReqFixture) {
+    // Testing request cancelation for the in-flight request.
+    LOGS_INFO("cancelled");
 
-BOOST_AUTO_TEST_CASE(AsyncReq_cancelled) {
-    LOGS_INFO("AsyncReq_cancelled");
+    createAndStartServer();
 
-    asio::io_service io_service;
+    auto const method = http::Method::DELETE;
+    string const target = "/delayed_response_too";
+    httpServer->server()->addHandler(http::method2string(method), target,
+                                     [](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
+                                         this_thread::sleep_for(200ms);
+                                         resp->sendStatus(qhttp::STATUS_OK);
+                                     });
 
-    // The deadline timer limits the duration of the test to prevent the test from
-    // being stuck for longer than expected.
-    auto const testAbortTimer = util::AsyncTimer::create(
-            io_service, chrono::milliseconds(3000), [](auto expirationIvalMs) -> bool {
-                LOGS_INFO("AsyncReq_simple: test exceeded the time budget of " << expirationIvalMs.count()
-                                                                               << "ms");
-                std::exit(1);
-            });
-    testAbortTimer->start();
-
-    // Set up and start the server
-    ::Server httpServer;
-    httpServer.server()->addHandler("DELETE", "/delayed_response_too",
-                                    [](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
-                                        this_thread::sleep_for(chrono::milliseconds(2000));
-                                        resp->sendStatus(qhttp::STATUS_OK);
-                                    });
-    httpServer.start();
-
-    // Submit a request.
-    string const url = "http://127.0.0.1:" + to_string(httpServer.port()) + "/delayed_response_too";
-    string const method = "DELETE";
-    shared_ptr<AsyncReq> const req = AsyncReq::create(
+    auto const url = "http://127.0.0.1:" + to_string(httpServer->port()) + target;
+    req = http::AsyncReq::create(
             io_service,
-            [testAbortTimer](auto const& req) {
-                testAbortTimer->cancel();
-                BOOST_CHECK(req->state() == AsyncReq::State::CANCELLED);
+            [this](auto const& req) {
+                cancelAbortTimer();
+                BOOST_CHECK(req->state() == http::AsyncReq::State::CANCELLED);
             },
             method, url);
     req->start();
 
     // The deadline timer for cancelling the request
-    auto const cancelReqTimer = util::AsyncTimer::create(io_service, chrono::milliseconds(1000),
-                                                         [&req](auto expirationIvalMs) -> bool {
-                                                             BOOST_CHECK(req->cancel());
-                                                             return false;
-                                                         });
+    auto const cancelReqTimer =
+            util::AsyncTimer::create(io_service, 100ms, [&](auto expirationIvalMs) -> bool {
+                BOOST_CHECK(req->cancel());
+                return false;
+            });
     cancelReqTimer->start();
-
-    thread serviceThread([&io_service]() { io_service.run(); });
-    serviceThread.join();
 }
 
-// Testing request cancelation before starting the request.
+BOOST_FIXTURE_TEST_CASE(cancelled_before_started, AsyncReqFixture) {
+    // Testing request cancelation before starting the request.
+    LOGS_INFO("cancelled_before_started");
 
-BOOST_AUTO_TEST_CASE(AsyncReq_cancelled_before_started) {
-    LOGS_INFO("AsyncReq_cancelled_before_started");
+    createAndStartServer();
 
-    asio::io_service io_service;
+    auto const method = http::Method::GET;
+    string const target = "/quick";
+    httpServer->server()->addHandler(http::method2string(method), target,
+                                     [](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
+                                         resp->sendStatus(qhttp::STATUS_OK);
+                                     });
 
-    // The deadline timer limits the duration of the test to prevent the test from
-    // being stuck for longer than expected.
-    auto const testAbortTimer = util::AsyncTimer::create(
-            io_service, chrono::milliseconds(300), [](auto expirationIvalMs) -> bool {
-                LOGS_INFO("AsyncReq_cancelled_before_started: test exceeded the time budget of "
-                          << expirationIvalMs.count() << "ms");
-                std::exit(1);
-            });
-    testAbortTimer->start();
-
-    // Set up and start the server
-    ::Server httpServer;
-    httpServer.server()->addHandler("GET", "/quick",
-                                    [](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
-                                        resp->sendStatus(qhttp::STATUS_OK);
-                                    });
-    httpServer.start();
-
-    // Submit a request.
-    string const url = "http://127.0.0.1:" + to_string(httpServer.port()) + "/quick";
-    string const method = "GET";
-    shared_ptr<AsyncReq> const req = AsyncReq::create(
+    auto const url = "http://127.0.0.1:" + to_string(httpServer->port()) + target;
+    req = http::AsyncReq::create(
             io_service,
-            [testAbortTimer](auto const& req) {
-                testAbortTimer->cancel();
-                BOOST_CHECK(req->state() == AsyncReq::State::CANCELLED);
-            },
-            method, url);
+            [](auto const& req) { BOOST_CHECK(req->state() == http::AsyncReq::State::CANCELLED); }, method,
+            url);
 
     // Cancel right away.
     BOOST_CHECK(req->cancel());
@@ -402,16 +379,12 @@ BOOST_AUTO_TEST_CASE(AsyncReq_cancelled_before_started) {
     // It's not allowed to start the cancelled requests
     BOOST_CHECK_THROW(req->start(), std::logic_error);
 
-    thread serviceThread([&io_service]() { io_service.run(); });
-    serviceThread.join();
+    cancelAbortTimer();
 }
 
-// Testing an ability of AsyncReq to wait before the server will start.
-
-BOOST_AUTO_TEST_CASE(AsyncReq_delayed_server_start) {
-    LOGS_INFO("AsyncReq_delayed_server_start");
-
-    asio::io_service io_service;
+BOOST_FIXTURE_TEST_CASE(delayed_server_start, AsyncReqFixture) {
+    // Testing an ability of AsyncReq to wait before the server will start.
+    LOGS_INFO("delayed_server_start");
 
     // Grab the next available port that will be used to configure the REST server
     asio::ip::tcp::socket socket(io_service);
@@ -421,54 +394,45 @@ BOOST_AUTO_TEST_CASE(AsyncReq_delayed_server_start) {
     boost::system::error_code ec;
     socket.bind(boost::asio::ip::tcp::endpoint(boost::asio::ip::tcp::v4(), 0), ec);
     if (ec) {
-        LOGS_INFO("AsyncReq_delayed_server_start: bind failed " << ec);
+        LOGS_INFO("bind failed " << ec);
         std::exit(1);
     }
     uint16_t const port = socket.local_endpoint().port();
-    LOGS_INFO("AsyncReq_delayed_server_start: bind port=" << port);
 
-    // The deadline timer limits the duration of the test to prevent the test from
-    // being stuck for longer than expected.
-    auto const testAbortTimer = util::AsyncTimer::create(
-            io_service, chrono::milliseconds(5000), [](auto expirationIvalMs) -> bool {
-                LOGS_INFO("AsyncReq_delayed_server_start: test exceeded the time budget of "
-                          << expirationIvalMs.count() << "ms");
-                std::exit(1);
+    createServer(port);
+
+    auto const method = http::Method::GET;
+    string const target = "/redirected_from";
+    string const redirectedTarget = "/redirected_to";
+    httpServer->server()->addHandler(
+            http::method2string(method), target,
+            [redirectedTarget](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
+                resp->headers["Location"] = redirectedTarget;
+                resp->sendStatus(qhttp::STATUS_MOVED_PERM);
             });
-    testAbortTimer->start();
-
-    // Set up the server on the allocated port. The server start will be delayed by the timer.
-    ::Server httpServer(port);
-    httpServer.server()->addHandler("GET", "/redirected_from",
-                                    [](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
-                                        resp->headers["Location"] = "/redirected_to";
-                                        resp->sendStatus(qhttp::STATUS_MOVED_PERM);
-                                    });
-
-    // Request object will be created later.
-    shared_ptr<AsyncReq> req;
 
     // Delay server startup before expiration of the timer
-    auto const serverStartDelayTimer = util::AsyncTimer::create(
-            io_service, chrono::milliseconds(3000), [&httpServer, &req](auto expirationIvalMs) -> bool {
-                httpServer.start();
+    auto const serverStartDelayTimer =
+            util::AsyncTimer::create(io_service, 1s, [this](auto expirationIvalMs) -> bool {
+                httpServer->start();
+                LOGS_INFO("server started");
                 return false;
             });
     serverStartDelayTimer->start();
+    LOGS_INFO("server start delay timer started");
 
-    // Submit a request.
-    string const url = "http://127.0.0.1:" + to_string(port) + "/redirected_from";
-    string const method = "GET";
-    req = AsyncReq::create(
+    auto const url = "http://127.0.0.1:" + to_string(port) + target;
+    req = http::AsyncReq::create(
             io_service,
-            [testAbortTimer](auto const& req) {
-                testAbortTimer->cancel();
+            [this, redirectedTarget](auto const& req) {
+                LOGS_INFO("request finished");
+                cancelAbortTimer();
                 switch (req->state()) {
-                    case AsyncReq::State::FINISHED:
+                    case http::AsyncReq::State::FINISHED:
                         BOOST_CHECK_EQUAL(req->responseCode(), qhttp::STATUS_MOVED_PERM);
-                        BOOST_CHECK_EQUAL(req->responseHeader().at("Location"), "/redirected_to");
+                        BOOST_CHECK_EQUAL(req->responseHeader().at("Location"), redirectedTarget);
                         break;
-                    case AsyncReq::State::CANCELLED:
+                    case http::AsyncReq::State::CANCELLED:
                         break;
                     default:
                         BOOST_CHECK(false);
@@ -476,92 +440,115 @@ BOOST_AUTO_TEST_CASE(AsyncReq_delayed_server_start) {
                 }
             },
             method, url);
+    LOGS_INFO("request created");
     req->start();
-
-    thread serviceThread([&io_service]() { io_service.run(); });
-    serviceThread.join();
+    LOGS_INFO("request started");
 }
 
-// Testing the synchronous wait for completion of requests (waiting in the current thread).
+BOOST_FIXTURE_TEST_CASE(dynamic, AsyncReqFixture) {
+    // The test that tests the request configured to allow the dynamic adjustment
+    // of the connection parameters for the server.
+    LOGS_INFO("dynamic");
 
-BOOST_AUTO_TEST_CASE(AsyncReq_wait_current_thread) {
-    LOGS_INFO("AsyncReq_wait_current_thread");
+    createAndStartServer();
 
-    asio::io_service io_service;
+    auto const method = http::Method::GET;
+    string const target = "/simple";
+    httpServer->server()->addHandler(http::method2string(method), target,
+                                     [](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
+                                         string const emptyBody;
+                                         resp->send(emptyBody, "text/html");
+                                     });
 
-    // The deadline timer limits the duration of the test to prevent the test from
-    // being stuck for longer than expected.
-    auto const testAbortTimer = util::AsyncTimer::create(
-            io_service, chrono::milliseconds(300), [](auto expirationIvalMs) -> bool {
-                LOGS_INFO("AsyncReq_cancelled_before_started: test exceeded the time budget of "
-                          << expirationIvalMs.count() << "ms");
-                std::exit(1);
-            });
-    testAbortTimer->start();
-
-    // Set up and start the server
-    ::Server httpServer;
-    httpServer.server()->addHandler("POST", "/delayed_response",
-                                    [](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
-                                        this_thread::sleep_for(chrono::milliseconds(100));
-                                        resp->sendStatus(qhttp::STATUS_OK);
-                                    });
-    httpServer.start();
-
-    // Submit a request.
-    string const url = "http://127.0.0.1:" + to_string(httpServer.port()) + "/delayed_response";
-    string const method = "GET";
-    AsyncReq::CallbackType const noCallbackOnFinish = nullptr;
-    shared_ptr<AsyncReq> const req = AsyncReq::create(io_service, noCallbackOnFinish, method, url);
+    auto const url = "http://127.0.0.1:" + to_string(httpServer->port()) + target;
+    hostPort = {
+            http::AsyncReq::HostPort(),  // invalid connection parameters to be tried first
+            http::AsyncReq::HostPort{
+                    "127.0.0.1", httpServer->port()}  // valid parameters to be used on the secon iteration
+    };
+    hostPortIndex = 0;
+    http::AsyncReq::GetHostPort const getHostPort =
+            [this](http::AsyncReq::HostPort const& prev) -> http::AsyncReq::HostPort {
+        // This function is expected to be called exactly 2 times.
+        BOOST_CHECK(hostPortIndex < 2);
+        // The first time it's called to fetch the first (incorrect) set of parameters.
+        if (0 == hostPortIndex) return hostPort[hostPortIndex++];
+        // The second time it's called to retreive the rigth ones. Note that
+        BOOST_CHECK_EQUAL(prev, hostPort[0]);
+        return hostPort[hostPortIndex++];
+    };
+    req = http::AsyncReq::create(
+            io_service,
+            [this](auto const& req) {
+                cancelAbortTimer();
+                // Make sure the host & port info was requested exactly 2 times and the last
+                // connection attemnpt succeded yealding the expected response from the server.
+                BOOST_CHECK_EQUAL(hostPortIndex, 2U);
+                BOOST_CHECK(req->state() == http::AsyncReq::State::FINISHED);
+                BOOST_CHECK(req->errorMessage().empty());
+                BOOST_CHECK_EQUAL(req->responseCode(), qhttp::STATUS_OK);
+                BOOST_CHECK_EQUAL(req->responseHeader().at("Content-Length"), "0");
+                BOOST_CHECK_EQUAL(req->responseHeader().at("Content-Type"), "text/html");
+                BOOST_CHECK_EQUAL(req->responseBodySize(), 0U);
+            },
+            method, getHostPort, target);
     req->start();
+}
+
+BOOST_FIXTURE_TEST_CASE(wait_current_thread, AsyncReqFixture) {
+    // Testing the synchronous wait for completion of requests (waiting in
+    // the current thread).
+    LOGS_INFO("wait_current_thread");
+
+    createAndStartServer();
+
+    auto const method = http::Method::POST;
+    string const target = "/delayed_response";
+    httpServer->server()->addHandler(http::method2string(method), target,
+                                     [](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
+                                         this_thread::sleep_for(100ms);
+                                         resp->sendStatus(qhttp::STATUS_OK);
+                                     });
+
+    auto const url = "http://127.0.0.1:" + to_string(httpServer->port()) + target;
+    auto const noCallbackOnFinish = nullptr;
+    req = http::AsyncReq::create(io_service, noCallbackOnFinish, method, url);
+    req->start();
+    LOGS_INFO("request started");
+    BOOST_CHECK(req->state() == http::AsyncReq::State::IN_PROGRESS);
     BOOST_CHECK_NO_THROW(req->wait());
-    BOOST_CHECK(req->state() == AsyncReq::State::SUCCESS);
-    testAbortTimer->cancel();
+    BOOST_CHECK(req->state() == http::AsyncReq::State::FINISHED);
+    BOOST_CHECK_EQUAL(req->responseCode(), qhttp::STATUS_OK);
 
-    thread serviceThread([&io_service]() { io_service.run(); });
-    serviceThread.join();
+    cancelAbortTimer();
 }
 
-// Testing the synchronous wait for completion of requests (waiting in a separate thread).
+BOOST_FIXTURE_TEST_CASE(wait_separate_thread, AsyncReqFixture) {
+    // Testing the synchronous wait for completion of requests (waiting in
+    // a separate thread). Note sending a request to the non-existing service.
+    LOGS_INFO("wait_separate_thread");
 
-BOOST_AUTO_TEST_CASE(AsyncReq_wait_separate_thread) {
-    LOGS_INFO("AsyncReq_wait_separate_thread");
+    createAndStartServer();
 
-    asio::io_service io_service;
-
-    // The deadline timer limits the duration of the test to prevent the test from
-    // being stuck for longer than expected.
-    auto const testAbortTimer = util::AsyncTimer::create(
-            io_service, chrono::milliseconds(300), [](auto expirationIvalMs) -> bool {
-                LOGS_INFO("AsyncReq_cancelled_before_started: test exceeded the time budget of "
-                          << expirationIvalMs.count() << "ms");
-                std::exit(1);
-            });
-    testAbortTimer->start();
-
-    // Set up and start the server
-    ::Server httpServer;
-    httpServer.server()->addHandler("POST", "/delayed_response",
-                                    [](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
-                                        this_thread::sleep_for(chrono::milliseconds(100));
-                                        resp->sendStatus(qhttp::STATUS_OK);
-                                    });
-    httpServer.start();
-
-    // Submit a request.
-    string const url = "http://127.0.0.1:" + to_string(httpServer.port()) + "/delayed_response";
-    string const method = "GET";
-    AsyncReq::CallbackType const noCallbackOnFinish = nullptr;
-    shared_ptr<AsyncReq> const req = AsyncReq::create(io_service, noCallbackOnFinish, method, url);
+    string const target = "/delayed_response";
+    httpServer->server()->addHandler("POST", target,
+                                     [](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
+                                         this_thread::sleep_for(100ms);
+                                         resp->sendStatus(qhttp::STATUS_OK);
+                                     });
+    auto const url = "http://127.0.0.1:" + to_string(httpServer->port()) + target;
+    auto const method = http::Method::GET;
+    auto const noCallbackOnFinish = nullptr;
+    req = http::AsyncReq::create(io_service, noCallbackOnFinish, method, url);
     req->start();
 
-    thread waitForRequestCompletionThread([req, testAbortTimer]() {
+    thread waitForRequestCompletionThread([this]() {
         BOOST_CHECK_NO_THROW(req->wait());
-        BOOST_CHECK(req->state() == AsyncReq::State::SUCCESS);
-        testAbortTimer->cancel();
+        BOOST_CHECK(req->state() == http::AsyncReq::State::FINISHED);
+        BOOST_CHECK_EQUAL(req->responseCode(), qhttp::STATUS_NOT_FOUND);
+        cancelAbortTimer();
     });
-    thread serviceThread([&io_service]() { io_service.run(); });
-    serviceThread.join();
+    waitForRequestCompletionThread.join();
 }
 
-BOOST_AUTO_TEST_SUITE_END()
+}  // namespace lsst::qserv

@@ -30,6 +30,9 @@
 // Third-party headers
 #include "nlohmann/json.hpp"
 
+// Qserv headers
+#include "http/Method.h"
+
 // This header declarations
 namespace lsst::qserv::http {
 
@@ -212,13 +215,13 @@ public:
     ~Client();
 
     /**
-     * @param method  The name of an HTTP method ('GET', 'POST', 'PUT', 'DELETE').
+     * @param method An HTTP method.
      * @param url A location of the remote resoure.
      * @param data Optional data to be sent with a request (depends on the HTTP headers).
      * @param headers Optional HTTP headers to be send with a request.
      * @param clientConfig Optional configuration parameters of the reader.
      */
-    Client(std::string const& method, std::string const& url, std::string const& data = std::string(),
+    Client(http::Method method, std::string const& url, std::string const& data = std::string(),
            std::vector<std::string> const& headers = std::vector<std::string>(),
            ClientConfig const& clientConfig = ClientConfig());
 
@@ -276,7 +279,7 @@ private:
 
     // Input parameters
 
-    std::string const _method;
+    http::Method const _method;
     std::string const _url;
     std::string const _data;
     std::vector<std::string> const _headers;

@@ -28,6 +28,7 @@
 #include <initializer_list>
 #include <memory>
 #include <mutex>
+#include <ostream>
 #include <string>
 #include <vector>
 #include <unordered_map>
@@ -37,20 +38,22 @@
 #include "boost/beast.hpp"
 
 // Qserv headers
+#include "http/Method.h"
 #include "http/Url.h"
 
 // This header declarations
 namespace lsst::qserv::http {
 
 /**
- * @brief Class AsyncReq represents a simple asynchronous interface for
+ * Class AsyncReq represents a simple asynchronous interface for
  * communicating over the HTTP protocol.
  *
  * The implementation of the class invokes a user-supplied callback (lambda) function
- * upon a completion or a failure of the request.
+ * upon a completion or a failure of the request. The class has two versions of the factory
+ * methods illustrated below.
  *
  * Here is an example of using the class to pull a file and dump its content on
- * to the standard output stream:
+ * to the standard output stream using a static URL of the file:
  * @code
  *   boost::asio::io_service io_service;
  *   std::shared_ptr<AsyncReq> const reader =
@@ -64,10 +67,69 @@ namespace lsst::qserv::http {
  *               cout << reader->responseBody();
  *           },
  *           io_service,
- *           "GET", "http://my.host.domain/data/chunk_0.txt");
+ *           http::Method::GET, "http://my.host.domain/data/chunk_0.txt");
  *   });
  *   reader->start();
  *   io_service.run();
+ * @code
+ *
+ * The next example is an illustration of using the dynamically retrieved values
+ * of the connection parameters (as needed by the implementation of the class).
+ * In this example, a client provides a function that returns a different combination
+ * of host/port.
+ * @code
+ *   std::vector<AsyncReq::HostPort> const hostPort = {
+ *       AsyncReq::HostPort{"host-a", 8080},
+ *       AsyncReq::HostPort{"host-b", 8081},
+ *       AsyncReq::HostPort{"host-c", 8082},
+ *       AsyncReq::HostPort{"host-d", 8083}
+ *   };
+ *   size_t next = 0;
+ *   AsyncReq::GetHostPort const getHostPort = [&hostPort, &next]() -> AsyncReq::HostPort {
+ *       return hostPort[next++ % hostPort.size()];
+ *   };
+ *   boost::asio::io_service io_service;
+ *   std::shared_ptr<AsyncReq> const reader =
+ *       http::AsyncReq::create(
+ *           [](auto const& reader) {
+ *               if (reader->state() != http::AsyncReq::State::FINISHED) {
+ *                   std::cerr << "request failed, state: " << AsyncReq::state2str(reader->state())
+ *                        << ", error: " << reader->errorMessage() << std::endl;
+ *                   return;
+ *               }
+ *               cout << reader->responseBody();
+ *           },
+ *           io_service,
+ *           http::Method::GET, getHostPort, "/data/chunk_0.txt");
+ *   });
+ *   reader->start();
+ *   io_service.run();
+ * @code
+ *
+ * The client class can also be used for synchronized wait for the completion of
+ * a request. All that is needed here is to call the method AsyncReq::wait() any time
+ * after creating the request. The method can be call within the same thread:
+ * @code
+ *   std::shared_ptr<AsyncReq> const request = http::AsyncReq::create(...);
+ *   request->start();
+ *   ...
+ *   request->wait();
+ * @code
+ *
+ * Waiting could be also done from some other thread:
+ * @code
+ *   std::shared_ptr<AsyncReq> const request = http::AsyncReq::create(...);
+ *   std::thread t([request]() {
+ *       request->wait();
+ *       if (request->state() != http::AsyncReq::State::FINISHED) {
+ *           std::cerr << "request failed, state: " << AsyncReq::state2str(request->state())
+ *                     << ", error: " << request->errorMessage() << std::endl;
+ *           return;
+ *       }
+ *       cout << request->responseBody();
+ *   });
+ *   ...
+ *   request->start();
  * @code
  *
  * @note Once the start() method gets called w/o throwing an exception, the algorithm
@@ -79,11 +141,28 @@ namespace lsst::qserv::http {
  *   2) in case of incorrect data received from the server, or 3) the result is too
  *   large.
  *
+ * @note If the request was created using an alternative technique that require passing
+ *   the AsyncReq::GetHostPort function then the function will get called before
+ *   any attmpt to establish a connection to the specified target. The technique allows
+ *   changing the destination of a request to a different server should the previous one
+ *   failed to respond.
+ *
  * @note The implementation will open and close a new connection for each request.
  * @note The implementation doesn't support TLS/SSL-based HTTPS protocol.
  */
 class AsyncReq : public std::enable_shared_from_this<AsyncReq> {
 public:
+    /// Struct HostPort encapsulates connnection parameters.
+    struct HostPort {
+        std::string host;
+        uint16_t port = 0;
+    };
+
+    /// The function type for getting updates on the connection parameters.
+    /// @param HostPort The previous value of the parameters.
+    /// @return HostPort The new value of the parameters.
+    typedef std::function<HostPort(HostPort const&)> GetHostPort;
+
     /// The function type for notifications on the completion of the operation.
     typedef std::function<void(std::shared_ptr<AsyncReq> const&)> CallbackType;
 
@@ -111,7 +190,30 @@ public:
     AsyncReq& operator=(AsyncReq const&) = delete;
 
     /**
-     * @brief Static factory for creating objects of the class.
+     * Static factory for creating objects of the class (immutable URL).
+     *
+     * Objects created by the method will be in the state State::CREATED. The actual
+     * execution of the request has to be initiated by calling the method start().
+     *
+     * @param io_service BOOST ASIO service.
+     * @param onFinish The callback function to be called upon a completion
+     *   (successfull or not) of a request.
+     * @param method The method.
+     * @param url A location of the remote resoure.
+     * @param data (Optional) Data to be sent in the request's body.
+     * @param headers (Optional) HTTP headers to be send with a request.
+     * @return The shared pointer to the newly created object.
+     * @throw std::invalid_argument If empty or invalid values of the input parameters
+     *   were provided.
+     */
+    static std::shared_ptr<AsyncReq> create(boost::asio::io_service& io_service, CallbackType const& onFinish,
+                                            http::Method method, std::string const& url,
+                                            std::string const& data = std::string(),
+                                            std::unordered_map<std::string, std::string> const& headers =
+                                                    std::unordered_map<std::string, std::string>());
+
+    /**
+     * Static factory for creating objects of the class (dynamic connection parameters).
      *
      * Objects created by the method will be in the state State::CREATED. The actual
      * execution of the request has to be initiated by calling the method start().
@@ -120,41 +222,56 @@ public:
      * @param onFinish The callback function to be called upon a completion
      *   (successfull or not) of a request.
      * @param method The case-sensitive name of the HTTP method ('GET', 'POST', 'PUT', 'DELETE').
-     * @param url A location of the remote resoure.
+     * @param getHostPort A function for retreiving connection parameters of the remote server.
+     * @param target The remote target the remote resoure followed by the optional query.
      * @param data (Optional) Data to be sent in the request's body.
      * @param headers (Optional) HTTP headers to be send with a request.
-     * @param maxResponseBodySize (Optional) The maximum size of the response body.
-     *   If a value of the parameter is set to 0 then the default limit of 8M
-     *   imposed by the Boost.Beast library will be assumed. If the size of the response
-     *   body received from the server will exceed the (explicit or implicit) limit then
-     *   the operation will fail and the object will be put into the state State::BODY_LIMIT_ERROR.
-     * @param expirationIvalSec (Optional) A timeout to wait before the completion of a request.
-     *   The expiration timer starts after the start() method gets called. The timeout
-     *   includes all phases of the request's execution, including establishing a connection
-     *   to the server, sending the request and waiting for the server's response.
-     *   If a value of the parameter is set to 0 then no expiration timeout will be
-     *   assumed for the request.
      * @return The shared pointer to the newly created object.
      * @throw std::invalid_argument If empty or invalid values of the input parameters
      *   were provided.
      */
     static std::shared_ptr<AsyncReq> create(boost::asio::io_service& io_service, CallbackType const& onFinish,
-                                            std::string const& method, std::string const& url,
+                                            http::Method method, GetHostPort const& getHostPort,
+                                            std::string const& target,
                                             std::string const& data = std::string(),
                                             std::unordered_map<std::string, std::string> const& headers =
-                                                    std::unordered_map<std::string, std::string>(),
-                                            size_t maxResponseBodySize = 0,
-                                            unsigned int expirationIvalSec = 0);
+                                                    std::unordered_map<std::string, std::string>());
 
     /// Non-trivial destructor is needed to free up allocated resources.
     virtual ~AsyncReq();
 
     std::string version() const;
-    std::string const& method() const { return _method; }
-    http::Url const& url() const { return _url; }
+    http::Method method() const { return _method; }
+    HostPort const& hostPort() const { return _hostPort; }
+    std::string const& target() const { return _target; }
+    size_t maxResponseBodySize() const { return _maxResponseBodySize; }
+    unsigned int expirationIval() const { return _expirationIvalSec; }
 
     /// @return The current state of the request.
     State state() const { return _state; }
+
+    /**
+     * @brief Set the maximum size of the response body.
+     * If a value of the parameter is set to 0 then the default limit of 8M imposed by
+     * the Boost.Beast library will be assumed. If the size of the response body received
+     * from the server will exceed the (explicit or implicit) limit then the operation
+     * will fail and the object will be put into the state State::BODY_LIMIT_ERROR.
+     * @param bytes The number of bytes.
+     * @throw std::logic_error If the method was called afer staring the request.
+     */
+    void setMaxResponseBodySize(size_t bytes);
+
+    /**
+     * @brief Set a timeout to wait before the completion of a request.
+     * The expiration timer starts after the start() method gets called. The timeout
+     * includes all phases of the request's execution, including establishing a connection
+     * to the server, sending the request and waiting for the server's response.
+     * If a value of the parameter is set to 0 then no expiration timeout will be
+     * assumed for the request.
+     * @param bytes The maximum duration of a request after it was started.
+     * @throw std::logic_error If the method was called afer staring the request.
+     */
+    void setExpirationIval(unsigned int seconds);
 
     /**
      * @brief Begin processing a request.
@@ -203,10 +320,9 @@ public:
 
 private:
     /// @see AsyncReq::create()
-    AsyncReq(boost::asio::io_service& io_service, CallbackType const& onFinish, std::string const& method,
-             std::string const& url, std::string const& data,
-             std::unordered_map<std::string, std::string> const& headers, size_t maxResponseBodySize,
-             unsigned int expirationIvalSec);
+    AsyncReq(boost::asio::io_service& io_service, CallbackType const& onFinish, http::Method method,
+             GetHostPort const& getHostPort, std::string const& target, std::string const& data,
+             std::unordered_map<std::string, std::string> const& headers);
 
     /**
      * @brief Verify the desired state against the current one.
@@ -254,11 +370,12 @@ private:
     boost::asio::ip::tcp::resolver _resolver;
     boost::asio::ip::tcp::socket _socket;
     CallbackType _onFinish;
-    std::string const _method;
-    http::Url const _url;
+    http::Method const _method;
+    GetHostPort _getHostPort;
+    std::string const _target;
     std::string const _data;
     std::unordered_map<std::string, std::string> const _headers;
-    size_t const _maxResponseBodySize;
+    size_t _maxResponseBodySize = 0;
 
     /// This timer is used (if configured) to limit the total run time
     /// of a request. The timer starts when the request is started. And it's
@@ -266,17 +383,21 @@ private:
     ///
     /// If the time has a chance to expire then the request would finish
     /// with status: EXPIRED.
-    unsigned int const _expirationIvalSec;
+    unsigned int _expirationIvalSec = 0;
     boost::asio::deadline_timer _expirationTimer;
 
     /// This timer is used to in the communication protocol for requests
     /// which may require multiple retries or any time spacing between network
     /// operation.
-    unsigned int const _timerIvalSec = 1;
+    unsigned int _timerIvalSec = 1;
     boost::asio::deadline_timer _timer;
 
     /// The current state of the request.
     std::atomic<State> _state{State::CREATED};
+
+    /// The most recently updated (or initialized) connection parameters.
+    /// Values of the parameters are set by _resolve().
+    HostPort _hostPort;
 
     /// A error message from the last failure (if any).
     std::string _error;
@@ -305,6 +426,21 @@ private:
     std::mutex _onFinishMtx;
     std::condition_variable _onFinishCv;
 };
+
+// Operators
+
+inline bool operator==(AsyncReq::HostPort const& lhs, AsyncReq::HostPort const& rhs) {
+    return (lhs.host == rhs.host) && (lhs.port == rhs.port);
+}
+
+inline bool operator!=(AsyncReq::HostPort const& lhs, AsyncReq::HostPort const& rhs) {
+    return !(operator==(lhs, rhs));
+}
+
+inline std::ostream& operator<<(std::ostream& os, AsyncReq::HostPort const& hostPort) {
+    os << hostPort.host << ":" << std::to_string(hostPort.port);
+    return os;
+}
 
 }  // namespace lsst::qserv::http
 

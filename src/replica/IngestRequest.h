@@ -29,6 +29,7 @@
 #include <vector>
 
 // Qserv headers
+#include "http/Method.h"
 #include "http/Url.h"
 #include "replica/Csv.h"
 #include "replica/DatabaseServices.h"
@@ -95,7 +96,7 @@ public:
             std::shared_ptr<ServiceProvider> const& serviceProvider, std::string const& workerName,
             TransactionId transactionId, std::string const& table, unsigned int chunk, bool isOverlap,
             std::string const& url, std::string const& charsetName, bool async,
-            csv::DialectInput const& dialectInput, std::string const& httpMethod = "GET",
+            csv::DialectInput const& dialectInput, http::Method httpMethod = http::Method::GET,
             std::string const& httpData = std::string(),
             std::vector<std::string> const& httpHeaders = std::vector<std::string>(),
             unsigned int maxNumWarnings = 0, unsigned int maxRetries = 0);
@@ -199,9 +200,9 @@ private:
     IngestRequest(std::shared_ptr<ServiceProvider> const& serviceProvider, std::string const& workerName,
                   TransactionId transactionId, std::string const& table, unsigned int chunk, bool isOverlap,
                   std::string const& url, std::string const& charsetName, bool async,
-                  csv::DialectInput const& dialectInput, std::string const& httpMethod,
-                  std::string const& httpData, std::vector<std::string> const& httpHeaders,
-                  unsigned int maxNumWarnings, unsigned int maxRetries);
+                  csv::DialectInput const& dialectInput, http::Method httpMethod, std::string const& httpData,
+                  std::vector<std::string> const& httpHeaders, unsigned int maxNumWarnings,
+                  unsigned int maxRetries);
 
     /// @see method IngestRequest::resume()
     IngestRequest(std::shared_ptr<ServiceProvider> const& serviceProvider, std::string const& workerName,

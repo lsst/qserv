@@ -25,9 +25,10 @@ target_link_libraries(http PUBLIC
 install(TARGETS http)
 
 function(HTTP_TESTS)
-    foreach(TEST IN ITEMS ${argv})
+    foreach(TEST IN ITEMS ${ARGV})
         add_executable(${TEST} ${TEST}.cc)
         target_link_libraries(${TEST} PUBLIC
+            global
             http
             Boost::unit_test_framework
             Threads::Threads

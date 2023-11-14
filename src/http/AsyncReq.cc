@@ -38,22 +38,24 @@
 
 using namespace std;
 namespace asio = boost::asio;
-namespace http = boost::beast::http;
 
 namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.http.AsyncReq");
 
-boost::beast::http::verb method2verb(string const& method) {
-    if (method == "GET")
-        return boost::beast::http::verb::get;
-    else if (method == "POST")
-        return boost::beast::http::verb::post;
-    else if (method == "PUT")
-        return boost::beast::http::verb::put;
-    else if (method == "DELETE")
-        return boost::beast::http::verb::delete_;
-    throw invalid_argument("AsyncReq::" + string(__func__) + " invalid method '" + method + "'.");
+boost::beast::http::verb method2verb(lsst::qserv::http::Method method) {
+    switch (method) {
+        case lsst::qserv::http::Method::GET:
+            return boost::beast::http::verb::get;
+        case lsst::qserv::http::Method::POST:
+            return boost::beast::http::verb::post;
+        case lsst::qserv::http::Method::PUT:
+            return boost::beast::http::verb::put;
+        case lsst::qserv::http::Method::DELETE:
+            return boost::beast::http::verb::delete_;
+    }
+    throw invalid_argument("AsyncReq::" + string(__func__) + " invalid method '" +
+                           to_string(static_cast<int>(method)) + "'.");
 }
 }  // namespace
 
@@ -81,39 +83,46 @@ string AsyncReq::state2str(State state) {
 }
 
 shared_ptr<AsyncReq> AsyncReq::create(asio::io_service& io_service, CallbackType const& onFinish,
-                                      string const& method, string const& url, string const& data,
-                                      std::unordered_map<std::string, std::string> const& headers,
-                                      size_t maxResponseBodySize, unsigned int expirationIvalSec) {
-    return shared_ptr<AsyncReq>(new AsyncReq(io_service, onFinish, method, url, data, headers,
-                                             maxResponseBodySize, expirationIvalSec));
+                                      http::Method method, string const& url, string const& data,
+                                      unordered_map<string, string> const& headers) {
+    string const context = "AsyncReq::" + string(__func__) + " ";
+    Url const url_(url);
+    if (url_.scheme() != Url::Scheme::HTTP) {
+        throw invalid_argument(context + "this implementation only supports urls based on the HTTP scheme.");
+    }
+    GetHostPort const getHostPort = [url_](HostPort const&) -> HostPort {
+        return HostPort{url_.host(), url_.port()};
+    };
+    return shared_ptr<AsyncReq>(
+            new AsyncReq(io_service, onFinish, method, getHostPort, url_.target(), data, headers));
 }
 
-AsyncReq::AsyncReq(asio::io_service& io_service, CallbackType const& onFinish, string const& method,
-                   string const& url, string const& data,
-                   std::unordered_map<std::string, std::string> const& headers, size_t maxResponseBodySize,
-                   unsigned int expirationIvalSec)
+shared_ptr<AsyncReq> AsyncReq::create(asio::io_service& io_service, CallbackType const& onFinish,
+                                      http::Method method, GetHostPort const& getHostPort,
+                                      string const& target, string const& data,
+                                      unordered_map<string, string> const& headers) {
+    return shared_ptr<AsyncReq>(
+            new AsyncReq(io_service, onFinish, method, getHostPort, target, data, headers));
+}
+
+AsyncReq::AsyncReq(asio::io_service& io_service, CallbackType const& onFinish, http::Method method,
+                   GetHostPort const& getHostPort, string const& target, string const& data,
+                   unordered_map<string, string> const& headers)
         : _io_service(io_service),
           _resolver(io_service),
           _socket(io_service),
           _onFinish(onFinish),
           _method(method),
-          _url(url),
+          _getHostPort(getHostPort),
+          _target(target),
           _data(data),
           _headers(headers),
-          _maxResponseBodySize(maxResponseBodySize),
-          _expirationIvalSec(expirationIvalSec),
           _expirationTimer(io_service),
           _timer(io_service) {
-    string const context = "AsyncReq::" + string(__func__) + " ";
-    if (_url.scheme() != Url::Scheme::HTTP) {
-        throw invalid_argument(context + "this implementation only supports urls based on the HTTP scheme.");
-    }
-
     // Prepare the request
     _req.version(11);  // HTTP/1.1
     _req.method(::method2verb(_method));
-    _req.target(_url.target());
-    _req.set(boost::beast::http::field::host, _url.host());
+    _req.target(_target);
     _req.set(boost::beast::http::field::user_agent, BOOST_BEAST_VERSION_STRING);
     _req.body() = _data;
     _req.content_length(_data.size());
@@ -139,9 +148,23 @@ string AsyncReq::version() const {
     }
 }
 
+void AsyncReq::setMaxResponseBodySize(size_t bytes) {
+    string const context = "AsyncReq::" + string(__func__) + " ";
+    lock_guard<mutex> const lock(_mtx);
+    _assertState(lock, context, {State::CREATED});
+    _maxResponseBodySize = bytes;
+}
+
+void AsyncReq::setExpirationIval(unsigned int seconds) {
+    string const context = "AsyncReq::" + string(__func__) + " ";
+    lock_guard<mutex> const lock(_mtx);
+    _assertState(lock, context, {State::CREATED});
+    _expirationIvalSec = seconds;
+}
+
 void AsyncReq::start() {
     string const context = "AsyncReq::" + string(__func__) + " ";
-    std::lock_guard<std::mutex> const lock(_mtx);
+    lock_guard<mutex> const lock(_mtx);
     _assertState(lock, context, {State::CREATED});
     try {
         _resolve(lock);
@@ -159,7 +182,7 @@ void AsyncReq::start() {
 
 bool AsyncReq::cancel() {
     string const context = "AsyncReq::" + string(__func__) + " ";
-    std::lock_guard<std::mutex> const lock(_mtx);
+    lock_guard<mutex> const lock(_mtx);
     switch (_state) {
         case State::CREATED:
         case State::IN_PROGRESS:
@@ -178,13 +201,13 @@ void AsyncReq::wait() {
 
 string AsyncReq::errorMessage() const {
     string const context = "AsyncReq::" + string(__func__) + " ";
-    std::lock_guard<std::mutex> const lock(_mtx);
+    lock_guard<mutex> const lock(_mtx);
     return _error;
 }
 
 int AsyncReq::responseCode() const {
     string const context = "AsyncReq::" + string(__func__) + " ";
-    std::lock_guard<std::mutex> const lock(_mtx);
+    lock_guard<mutex> const lock(_mtx);
     _assertState(lock, context, {State::FINISHED, State::BODY_LIMIT_ERROR});
     auto const& header = _res.get().base();
     return header.result_int();
@@ -192,26 +215,26 @@ int AsyncReq::responseCode() const {
 
 unordered_map<string, string> const& AsyncReq::responseHeader() const {
     string const context = "AsyncReq::" + string(__func__) + " ";
-    std::lock_guard<std::mutex> const lock(_mtx);
+    lock_guard<mutex> const lock(_mtx);
     _assertState(lock, context, {State::FINISHED, State::BODY_LIMIT_ERROR});
     return _responseHeader;
 }
 
 string const& AsyncReq::responseBody() const {
     string const context = "AsyncReq::" + string(__func__) + " ";
-    std::lock_guard<std::mutex> const lock(_mtx);
+    lock_guard<mutex> const lock(_mtx);
     _assertState(lock, context, {State::FINISHED});
     return _res.get().body();
 }
 
 size_t AsyncReq::responseBodySize() const {
     string const context = "AsyncReq::" + string(__func__) + " ";
-    std::lock_guard<std::mutex> const lock(_mtx);
+    lock_guard<mutex> const lock(_mtx);
     _assertState(lock, context, {State::FINISHED});
     return _res.get().body().size();
 }
 
-void AsyncReq::_restart(std::lock_guard<std::mutex> const& lock) {
+void AsyncReq::_restart(lock_guard<mutex> const& lock) {
     _timer.cancel();
     _timer.expires_from_now(boost::posix_time::seconds(_timerIvalSec));
     _timer.async_wait(
@@ -225,15 +248,19 @@ void AsyncReq::_restarted(boost::system::error_code const& ec) {
     if (ec == boost::asio::error::operation_aborted) return;
 
     if (State::IN_PROGRESS != _state) return;
-    std::lock_guard<std::mutex> const lock(_mtx);
+    lock_guard<mutex> const lock(_mtx);
     if (State::IN_PROGRESS != _state) return;
 
     _resolve(lock);
 }
 
-void AsyncReq::_resolve(std::lock_guard<std::mutex> const& lock) {
+void AsyncReq::_resolve(lock_guard<mutex> const& lock) {
+    // Update and cache (for error reporting) values of the connection parameters
+    // in case if there was any change in those.
+    _hostPort = _getHostPort(_hostPort);
+    _req.set(boost::beast::http::field::host, _hostPort.host);
     _resolver.async_resolve(
-            _url.host(), to_string(_url.port() == 0 ? 80 : _url.port()),
+            _hostPort.host, to_string(_hostPort.port == 0 ? 80 : _hostPort.port),
             [self = shared_from_this()](boost::system::error_code const& ec,
                                         asio::ip::tcp::resolver::results_type const& results) {
                 self->_resolved(ec, results);
@@ -245,7 +272,7 @@ void AsyncReq::_resolved(boost::system::error_code const& ec,
     string const context = "AsyncReq::" + string(__func__) + " ";
 
     if (State::IN_PROGRESS != _state) return;
-    std::lock_guard<std::mutex> const lock(_mtx);
+    lock_guard<mutex> const lock(_mtx);
     if (State::IN_PROGRESS != _state) return;
 
     if (ec.value() != 0) {
@@ -263,7 +290,7 @@ void AsyncReq::_connected(boost::system::error_code const& ec) {
     string const context = "AsyncReq::" + string(__func__) + " ";
 
     if (State::IN_PROGRESS != _state) return;
-    std::lock_guard<std::mutex> const lock(_mtx);
+    lock_guard<mutex> const lock(_mtx);
     if (State::IN_PROGRESS != _state) return;
 
     if (ec.value() != 0) {
@@ -282,7 +309,7 @@ void AsyncReq::_sent(boost::system::error_code const& ec, size_t bytesSent) {
     string const context = "AsyncReq::" + string(__func__) + " ";
 
     if (State::IN_PROGRESS != _state) return;
-    std::lock_guard<std::mutex> const lock(_mtx);
+    lock_guard<mutex> const lock(_mtx);
     if (State::IN_PROGRESS != _state) return;
 
     if (ec.value() != 0) {
@@ -304,7 +331,7 @@ void AsyncReq::_received(boost::system::error_code const& ec, size_t bytesReceiv
     string const context = "AsyncReq::" + string(__func__) + " ";
 
     if (_state != State::IN_PROGRESS) return;
-    std::lock_guard<std::mutex> const lock(_mtx);
+    lock_guard<mutex> const lock(_mtx);
     if (_state != State::IN_PROGRESS) return;
 
     State newState = State::FINISHED;
@@ -325,7 +352,7 @@ void AsyncReq::_received(boost::system::error_code const& ec, size_t bytesReceiv
     _finish(lock, newState);
 }
 
-void AsyncReq::_extractCacheHeader(std::lock_guard<std::mutex> const& lock) {
+void AsyncReq::_extractCacheHeader(lock_guard<mutex> const& lock) {
     auto const& header = _res.get().base();
     for (auto itr = header.cbegin(); itr != header.cend(); ++itr) {
         _responseHeader.insert(pair<string, string>(itr->name_string(), itr->value()));
@@ -339,13 +366,13 @@ void AsyncReq::_expired(boost::system::error_code const& ec) {
     if (ec == boost::asio::error::operation_aborted) return;
 
     if (_state != State::IN_PROGRESS) return;
-    std::lock_guard<std::mutex> const lock(_mtx);
+    lock_guard<mutex> const lock(_mtx);
     if (_state != State::IN_PROGRESS) return;
 
     _finish(lock, State::EXPIRED);
 }
 
-void AsyncReq::_finish(std::lock_guard<std::mutex> const& lock, State finalState, string const& error) {
+void AsyncReq::_finish(lock_guard<mutex> const& lock, State finalState, string const& error) {
     _state = finalState;
     _error = error;
 
@@ -374,7 +401,7 @@ void AsyncReq::_finish(std::lock_guard<std::mutex> const& lock, State finalState
     _onFinishCv.notify_one();
 }
 
-void AsyncReq::_assertState(std::lock_guard<std::mutex> const& lock, string const& context,
+void AsyncReq::_assertState(lock_guard<mutex> const& lock, string const& context,
                             initializer_list<State> const& desiredStates) const {
     if (find(desiredStates.begin(), desiredStates.end(), _state) == desiredStates.end()) {
         string states;
@@ -389,9 +416,8 @@ void AsyncReq::_assertState(std::lock_guard<std::mutex> const& lock, string cons
 
 void AsyncReq::_logError(string const& prefix, boost::system::error_code const& ec) const {
     LOGS(_log, LOG_LVL_WARN,
-         prefix << " method: " << _method << " url: " << _url.url() << " host: " << _url.host()
-                << " port: " << _url.port() << " target: " << _url.target() << " ec: " << ec.value() << " ["
-                << ec.message() << "]");
+         prefix << " method: " << _method << " host: " << _hostPort.host << " port: " << _hostPort.port
+                << " target: " << _target << " ec: " << ec.value() << " [" << ec.message() << "]");
 }
 
 }  // namespace lsst::qserv::http

@@ -45,6 +45,7 @@
 
 // Qserv headers
 #include "http/Client.h"
+#include "http/Method.h"
 #include "memman/MemMan.h"
 #include "memman/MemManNone.h"
 #include "mysql/MySqlConfig.h"
@@ -112,7 +113,7 @@ std::shared_ptr<wpublish::ChunkInventory> makeChunkInventory(mysql::MySqlConfig 
  */
 void registryUpdateLoop(string const& id) {
     auto const workerConfig = wconfig::WorkerConfig::instance();
-    string const method = "POST";
+    auto const method = http::Method::POST;
     string const url = "http://" + workerConfig->replicationRegistryHost() + ":" +
                        to_string(workerConfig->replicationRegistryPort()) + "/qserv-worker";
     vector<string> const headers = {"Content-Type: application/json"};
@@ -122,7 +123,8 @@ void registryUpdateLoop(string const& id) {
                                         {{"name", id},
                                          {"management-port", workerConfig->replicationHttpPort()},
                                          {"management-host-name", util::get_current_host_fqdn()}}}});
-    string const requestContext = "SsiService: '" + method + "' request to '" + url + "'";
+    string const requestContext =
+            "SsiService: '" + http::method2string(method) + "' request to '" + url + "'";
     http::Client client(method, url, request.dump(), headers);
     while (true) {
         try {
