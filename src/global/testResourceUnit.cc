@@ -81,13 +81,6 @@ BOOST_AUTO_TEST_CASE(DbChunk) {
     BOOST_CHECK_EQUAL(r[1].path(), "/chk/bar/968");
 }
 
-BOOST_AUTO_TEST_CASE(Worker) {
-    std::string const id = "worker-1";
-    ResourceUnit res("/worker/" + id);
-    BOOST_CHECK_EQUAL(res.unitType(), ResourceUnit::WORKER);
-    BOOST_CHECK_EQUAL(res.workerId(), id);
-}
-
 BOOST_AUTO_TEST_CASE(Query) {
     ResourceUnit const res1("/query");
     BOOST_CHECK_EQUAL(res1.unitType(), ResourceUnit::QUERY);

@@ -2,17 +2,8 @@ add_library(wpublish OBJECT)
 add_dependencies(wpublish proto)
 
 target_sources(wpublish PRIVATE
-    AddChunkGroupCommand.cc
     ChunkInventory.cc
-    ChunkListCommand.cc
-    GetChunkListCommand.cc
-    GetConfigCommand.cc
-    GetDbStatusCommand.cc
-    GetStatusCommand.cc
     QueriesAndChunks.cc
-    RemoveChunkGroupCommand.cc
-    SetChunkListCommand.cc
-    TestEchoCommand.cc
 )
 
 target_include_directories(wpublish PRIVATE

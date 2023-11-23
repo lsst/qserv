@@ -51,16 +51,7 @@
 #include "wconfig/WorkerConfig.h"
 #include "wcontrol/Foreman.h"
 #include "wcontrol/ResourceMonitor.h"
-#include "wpublish/AddChunkGroupCommand.h"
 #include "wpublish/ChunkInventory.h"
-#include "wpublish/ChunkListCommand.h"
-#include "wpublish/GetChunkListCommand.h"
-#include "wpublish/GetConfigCommand.h"
-#include "wpublish/GetDbStatusCommand.h"
-#include "wpublish/GetStatusCommand.h"
-#include "wpublish/RemoveChunkGroupCommand.h"
-#include "wpublish/SetChunkListCommand.h"
-#include "wpublish/TestEchoCommand.h"
 #include "xrdsvc/ChannelStream.h"
 
 namespace proto = lsst::qserv::proto;
@@ -70,21 +61,6 @@ namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.xrdsvc.SsiRequest");
 
-/**
- * Translate the Protobuf message into the task selector.
- */
-wbase::TaskSelector proto2taskSelector(proto::WorkerCommandGetStatusM const& message) {
-    wbase::TaskSelector selector;
-    selector.includeTasks = message.include_tasks();
-    for (int i = 0, num = message.query_ids_size(); i < num; ++i) {
-        selector.queryIds.push_back(message.query_ids(i));
-    }
-    for (int i = 0, num = message.task_states_size(); i < num; ++i) {
-        selector.taskStates.push_back(static_cast<wbase::TaskState>(message.task_states(i)));
-    }
-    selector.maxTasks = message.max_tasks();
-    return selector;
-}
 }  // namespace
 
 namespace lsst::qserv::xrdsvc {
@@ -215,25 +191,6 @@ void SsiRequest::execute(XrdSsiRequest& req) {
                  "Enqueued TaskMsg for " << ru << " in " << t.getElapsed() << " seconds");
             break;
         }
-        case ResourceUnit::WORKER: {
-            LOGS(_log, LOG_LVL_DEBUG, "Parsing WorkerCommand for resource=" << _resourceName);
-
-            wbase::WorkerCommand::Ptr const command = parseWorkerCommand(sendChannel, reqData, reqSize);
-            if (not command) return;
-
-            // The buffer must be released before submitting commands for
-            // further processing.
-            ReleaseRequestBuffer();
-            _foreman->processCommand(command);  // Queues the command to be run later.
-
-            LOGS(_log, LOG_LVL_DEBUG, "Enqueued WorkerCommand for resource=" << _resourceName);
-            ++countLimiter;
-            if (countLimiter % 500 == 0) {
-                LOGS(_log, LOG_LVL_DEBUG, "Forcing instance count to the log");
-                util::InstanceCount ic("ForcingPrint_LDB");  // LockupDB
-            }
-            break;
-        }
         case ResourceUnit::QUERY: {
             LOGS(_log, LOG_LVL_DEBUG, "Parsing request details for resource=" << _resourceName);
             proto::QueryManagement request;
@@ -298,114 +255,6 @@ void SsiRequest::execute(XrdSsiRequest& req) {
 
     // Note that upon exit the _finMutex will be unlocked allowing Finished()
     // to actually do something once everything is actually setup.
-}
-
-wbase::WorkerCommand::Ptr SsiRequest::parseWorkerCommand(
-        std::shared_ptr<wbase::SendChannel> const& sendChannel, char const* reqData, int reqSize) {
-    wbase::WorkerCommand::Ptr command;
-    try {
-        // reqData has the entire request, so we can unpack it without waiting for
-        // more data.
-        proto::FrameBufferView view(reqData, reqSize);
-
-        proto::WorkerCommandH header;
-        view.parse(header);
-
-        LOGS(_log, LOG_LVL_DEBUG,
-             "WorkerCommandH: command=" << proto::WorkerCommandH_Command_Name(header.command())
-                                        << " resource=" << _resourceName);
-
-        switch (header.command()) {
-            case proto::WorkerCommandH::TEST_ECHO: {
-                proto::WorkerCommandTestEchoM echo;
-                view.parse(echo);
-
-                command = std::make_shared<wpublish::TestEchoCommand>(sendChannel, echo.value());
-                break;
-            }
-            case proto::WorkerCommandH::ADD_CHUNK_GROUP:
-            case proto::WorkerCommandH::REMOVE_CHUNK_GROUP: {
-                proto::WorkerCommandChunkGroupM group;
-                view.parse(group);
-
-                std::vector<std::string> dbs;
-                for (int i = 0, num = group.dbs_size(); i < num; ++i) dbs.push_back(group.dbs(i));
-
-                int const chunk = group.chunk();
-                bool const force = group.force();
-
-                if (header.command() == proto::WorkerCommandH::ADD_CHUNK_GROUP)
-                    command = std::make_shared<wpublish::AddChunkGroupCommand>(
-                            sendChannel, _foreman->chunkInventory(), _foreman->mySqlConfig(), chunk, dbs);
-                else
-                    command = std::make_shared<wpublish::RemoveChunkGroupCommand>(
-                            sendChannel, _foreman->chunkInventory(), _foreman->resourceMonitor(),
-                            _foreman->mySqlConfig(), chunk, dbs, force);
-                break;
-            }
-            case proto::WorkerCommandH::UPDATE_CHUNK_LIST: {
-                proto::WorkerCommandUpdateChunkListM message;
-                view.parse(message);
-
-                if (message.rebuild())
-                    command = std::make_shared<wpublish::RebuildChunkListCommand>(
-                            sendChannel, _foreman->chunkInventory(), _foreman->mySqlConfig(),
-                            message.reload());
-                else
-                    command = std::make_shared<wpublish::ReloadChunkListCommand>(
-                            sendChannel, _foreman->chunkInventory(), _foreman->mySqlConfig());
-                break;
-            }
-            case proto::WorkerCommandH::GET_CHUNK_LIST: {
-                command = std::make_shared<wpublish::GetChunkListCommand>(
-                        sendChannel, _foreman->chunkInventory(), _foreman->resourceMonitor());
-                break;
-            }
-            case proto::WorkerCommandH::SET_CHUNK_LIST: {
-                proto::WorkerCommandSetChunkListM message;
-                view.parse(message);
-
-                std::vector<wpublish::SetChunkListCommand::Chunk> chunks;
-                for (int i = 0, num = message.chunks_size(); i < num; ++i) {
-                    chunks.push_back(wpublish::SetChunkListCommand::Chunk{message.chunks(i).db(),
-                                                                          message.chunks(i).chunk()});
-                }
-                std::vector<std::string> databases;
-                for (int i = 0, num = message.databases_size(); i < num; ++i) {
-                    databases.push_back(message.databases(i));
-                }
-                bool const force = message.force();
-                command = std::make_shared<wpublish::SetChunkListCommand>(
-                        sendChannel, _foreman->chunkInventory(), _foreman->resourceMonitor(),
-                        _foreman->mySqlConfig(), chunks, databases, force);
-                break;
-            }
-            case proto::WorkerCommandH::GET_STATUS: {
-                proto::WorkerCommandGetStatusM message;
-                view.parse(message);
-                command = std::make_shared<wpublish::GetStatusCommand>(
-                        sendChannel, _foreman, _foreman->resourceMonitor(), ::proto2taskSelector(message));
-                break;
-            }
-            case proto::WorkerCommandH::GET_DATABASE_STATUS: {
-                command = std::make_shared<wpublish::GetDbStatusCommand>(sendChannel,
-                                                                         _foreman->queriesAndChunks());
-                break;
-            }
-            case proto::WorkerCommandH::GET_CONFIG: {
-                command = std::make_shared<wpublish::GetConfigCommand>(sendChannel);
-                break;
-            }
-            default:
-                reportError("Unsupported command " + proto::WorkerCommandH_Command_Name(header.command()) +
-                            " found in WorkerCommandH on worker resource=" + _resourceName);
-                break;
-        }
-
-    } catch (proto::FrameBufferError const& ex) {
-        reportError("Failed to decode a worker management command, error: " + std::string(ex.what()));
-    }
-    return command;
 }
 
 /// Called by SSI to free resources.

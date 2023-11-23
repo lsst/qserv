@@ -45,7 +45,7 @@ namespace lsst::qserv {
 class ResourceUnit {
 public:
     class Checker;
-    enum UnitType { GARBAGE, DBCHUNK, UNKNOWN, WORKER, QUERY };
+    enum UnitType { GARBAGE, DBCHUNK, UNKNOWN, QUERY };
 
     ResourceUnit() = default;
     explicit ResourceUnit(std::string const& path);
@@ -61,7 +61,6 @@ public:
     UnitType unitType() const { return _unitType; }
     std::string const& db() const { return _db; }
     int chunk() const { return _chunk; }
-    std::string const& workerId() const { return _workerId; }
 
     /// Lookup extended path variables (?k=val syntax)
     std::string var(std::string const& key) const;
@@ -71,9 +70,6 @@ public:
 
     /// @return the path of the database/chunk resource
     static std::string makePath(int chunk, std::string const& db);
-
-    /// @return the path of the worker-specific resource
-    static std::string makeWorkerPath(std::string const& id);
 
     // Setup a path of a certain type.
     void setAsDbChunk(std::string const& db, int chunk = DUMMY_CHUNK);
@@ -88,7 +84,6 @@ private:
     UnitType _unitType = UnitType::GARBAGE;  //< Type of unit
     std::string _db;                         //< for DBCHUNK type
     int _chunk = -1;                         //< for DBCHUNK type
-    std::string _workerId;                   //< for WORKER type
 
     typedef std::map<std::string, std::string> VarMap;
     VarMap _vars;  //< Key-value specifiers
