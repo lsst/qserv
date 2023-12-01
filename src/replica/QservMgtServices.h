@@ -27,10 +27,12 @@
 #include <vector>
 
 // Qserv headers
+#include "global/intTypes.h"
 #include "replica/AddReplicaQservMgtRequest.h"
 #include "replica/GetReplicasQservMgtRequest.h"
 #include "replica/GetDbStatusQservMgtRequest.h"
 #include "replica/GetConfigQservMgtRequest.h"
+#include "replica/GetResultFilesQservMgtRequest.h"
 #include "replica/GetStatusQservMgtRequest.h"
 #include "replica/RemoveReplicaQservMgtRequest.h"
 #include "replica/SetReplicasQservMgtRequest.h"
@@ -293,6 +295,28 @@ public:
     GetConfigQservMgtRequest::Ptr config(std::string const& worker, std::string const& jobId = "",
                                          GetConfigQservMgtRequest::CallbackType const& onFinish = nullptr,
                                          unsigned int requestExpirationIvalSec = 0);
+
+    /**
+     * Request info on the partial result files of a Qserv worker
+     * @param worker  The name of a worker.
+     * @param jobId  An optional identifier of a job specifying a context in which
+     *    a request will be executed.
+     * @param queryIds The optional selector for queries. If empty then all queries will
+     *   be considered.
+     * @param maxFiles The optional limit for maximum number of files to be reported.
+     *   If 0 then no limit is set.
+     * @param onFinish  A callback function to be called upon request completion.
+     * @param requestExpirationIvalSec The maximum amount of time to wait before
+     *   completion of the request. If a value of the parameter is set to 0 then no
+     *   limit will be enforced.
+     * @return  A pointer to the request object if the request was made. Return
+     *   nullptr otherwise.
+     */
+    GetResultFilesQservMgtRequest::Ptr resultFiles(
+            std::string const& worker, std::string const& jobId = "",
+            std::vector<QueryId> const& queryIds = std::vector<QueryId>(), unsigned int maxFiles = 0,
+            GetResultFilesQservMgtRequest::CallbackType const& onFinish = nullptr,
+            unsigned int requestExpirationIvalSec = 0);
 
 private:
     /**
