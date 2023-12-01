@@ -99,6 +99,11 @@ uint16_t HttpSvc::start() {
                   HttpMonitorModule::process(::serviceName, self->_foreman, req, resp, "STATUS");
               }}});
     _httpServerPtr->addHandlers(
+            {{"GET", "/files",
+              [self](shared_ptr<qhttp::Request> const& req, shared_ptr<qhttp::Response> const& resp) {
+                  HttpMonitorModule::process(::serviceName, self->_foreman, req, resp, "FILES");
+              }}});
+    _httpServerPtr->addHandlers(
             {{"POST", "/echo",
               [self](shared_ptr<qhttp::Request> const& req, shared_ptr<qhttp::Response> const& resp) {
                   HttpMonitorModule::process(::serviceName, self->_foreman, req, resp, "ECHO");

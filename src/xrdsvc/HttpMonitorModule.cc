@@ -30,6 +30,7 @@
 #include "http/Exceptions.h"
 #include "http/RequestQuery.h"
 #include "mysql/MySqlUtils.h"
+#include "util/String.h"
 #include "wbase/FileChannelShared.h"
 #include "wbase/TaskState.h"
 #include "wconfig/WorkerConfig.h"
@@ -66,6 +67,8 @@ json HttpMonitorModule::executeImpl(string const& subModuleName) {
         return _mysql();
     else if (subModuleName == "STATUS")
         return _status();
+    else if (subModuleName == "FILES")
+        return _files();
     else if (subModuleName == "ECHO")
         return _echo();
     throw invalid_argument(context() + func + " unsupported sub-module");
@@ -112,6 +115,16 @@ json HttpMonitorModule::_status() {
     result["resources"] = foreman()->resourceMonitor()->statusToJson();
     result["filesystem"] = wbase::FileChannelShared::statusToJson();
     return result;
+}
+
+json HttpMonitorModule::_files() {
+    debug(__func__);
+    checkApiVersion(__func__, 28);
+    auto const queryIds = query().optionalVectorUInt64("query_ids");
+    auto const maxFiles = query().optionalUInt("max_files", 0);
+    debug(__func__, "query_ids=" + util::String::toString(queryIds));
+    debug(__func__, "max_files=" + to_string(maxFiles));
+    return wbase::FileChannelShared::filesToJson(queryIds, maxFiles);
 }
 
 json HttpMonitorModule::_echo() {

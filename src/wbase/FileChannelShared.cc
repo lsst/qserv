@@ -24,6 +24,7 @@
 
 // System headers
 #include <functional>
+#include <set>
 #include <stdexcept>
 
 // Third party headers
@@ -37,7 +38,9 @@
 #include "wconfig/WorkerConfig.h"
 #include "wpublish/QueriesAndChunks.h"
 #include "util/MultiError.h"
+#include "util/String.h"
 #include "util/Timer.h"
+#include "util/TimeUtils.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -45,11 +48,41 @@
 using namespace std;
 using namespace nlohmann;
 namespace fs = boost::filesystem;
+namespace util = lsst::qserv::util;
 namespace wconfig = lsst::qserv::wconfig;
 
 namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.wbase.FileChannelShared");
+
+string const resultFileExt = ".proto";
+
+bool isResultFile(fs::path const& filePath) {
+    return filePath.has_filename() && filePath.has_extension() && (filePath.extension() == resultFileExt);
+}
+
+/**
+ * Extract task attributes from the file path.
+ * The file path is required to have the following format:
+ * @code
+ *   [<folder>/]<query-id>-<job-id>-<chunk-id>-<attemptcount>[.<ext>]
+ * @code
+ * @param filePath The file to be evaluated.
+ * @return nlohmann::json::object Task attributes.
+ * @throw std::invalid_argument If the file path did not match expectations.
+ */
+json file2task(fs::path const& filePath) {
+    vector<std::uint64_t> const taskAttributes =
+            util::String::parseToVectUInt64(filePath.stem().string(), "-");
+    if (taskAttributes.size() != 4) {
+        throw invalid_argument("FileChannelShared::" + string(__func__) +
+                               " not a valid result file: " + filePath.string());
+    }
+    return json::object({{"query_id", taskAttributes[0]},
+                         {"job_id", taskAttributes[1]},
+                         {"chunk_id", taskAttributes[2]},
+                         {"attemptcount", taskAttributes[3]}});
+}
 
 /**
  * Iterate over the result files at the results folder and remove those
@@ -67,7 +100,6 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.wbase.FileChannelShared");
 size_t cleanUpResultsImpl(string const& context, fs::path const& dirPath,
                           function<bool(string const&)> fileCanBeRemoved = nullptr) {
     size_t numFilesRemoved = 0;
-    string const ext = ".proto";
     boost::system::error_code ec;
     auto itr = fs::directory_iterator(dirPath, ec);
     if (ec.value() != 0) {
@@ -79,7 +111,7 @@ size_t cleanUpResultsImpl(string const& context, fs::path const& dirPath,
     for (auto&& entry : boost::make_iterator_range(itr, {})) {
         auto filePath = entry.path();
         bool const removeIsCleared =
-                filePath.has_filename() && filePath.has_extension() && (filePath.extension() == ext) &&
+                ::isResultFile(filePath) &&
                 ((fileCanBeRemoved == nullptr) || fileCanBeRemoved(filePath.filename().string()));
         if (removeIsCleared) {
             fs::remove_all(filePath, ec);
@@ -173,11 +205,10 @@ json FileChannelShared::statusToJson() {
         result["available_bytes"] = space.available;
         uintmax_t sizeResultFilesBytes = 0;
         uintmax_t numResultFiles = 0;
-        string const ext = ".proto";
         auto itr = fs::directory_iterator(dirPath);
         for (auto&& entry : boost::make_iterator_range(itr, {})) {
             auto const filePath = entry.path();
-            if (filePath.has_filename() && filePath.has_extension() && (filePath.extension() == ext)) {
+            if (::isResultFile(filePath)) {
                 numResultFiles++;
                 sizeResultFilesBytes += fs::file_size(filePath);
             }
@@ -189,6 +220,57 @@ json FileChannelShared::statusToJson() {
              context << "failed to get folder stats for " << dirPath << ", ex: " << ex.what());
     }
     return result;
+}
+
+json FileChannelShared::filesToJson(vector<QueryId> const& queryIds, unsigned int maxFiles) {
+    string const context = "FileChannelShared::" + string(__func__) + " ";
+    set<QueryId> queryIdsFilter;
+    for (auto const queryId : queryIds) {
+        queryIdsFilter.insert(queryId);
+    }
+    auto const config = wconfig::WorkerConfig::instance();
+    fs::path const dirPath = config->resultsDirname();
+    unsigned int numTotal = 0;
+    unsigned int numSelected = 0;
+    json files = json::array();
+    lock_guard<mutex> const lock(_resultsDirCleanupMtx);
+    try {
+        auto itr = fs::directory_iterator(dirPath);
+        for (auto&& entry : boost::make_iterator_range(itr, {})) {
+            auto const filePath = entry.path();
+            if (::isResultFile(filePath)) {
+                ++numTotal;
+
+                // Skip files not matching the query criteria if the one was requested.
+                json const jsonTask = ::file2task(filePath);
+                QueryId const queryId = jsonTask.at("query_id");
+                if (!queryIdsFilter.empty() && !queryIdsFilter.contains(queryId)) continue;
+
+                // Stop collecting files after reaching the limit (if any). And keep counting.
+                ++numSelected;
+                if ((maxFiles != 0) && (files.size() >= maxFiles)) continue;
+
+                // A separate exception handler to avoid and ignore race conditions if
+                // the current file gets deleted. In this scenario the file will not be
+                // reported in the result.
+                try {
+                    files.push_back(json::object({{"filename", filePath.filename().string()},
+                                                  {"size", fs::file_size(filePath)},
+                                                  {"ctime", fs::creation_time(filePath)},
+                                                  {"mtime", fs::last_write_time(filePath)},
+                                                  {"current_time_ms", util::TimeUtils::now()},
+                                                  {"task", jsonTask}}));
+                } catch (exception const& ex) {
+                    LOGS(_log, LOG_LVL_WARN,
+                         context << "failed to get info on files at " << dirPath << ", ex: " << ex.what());
+                }
+            }
+        }
+    } catch (exception const& ex) {
+        LOGS(_log, LOG_LVL_WARN,
+             context << "failed to iterate over files at " << dirPath << ", ex: " << ex.what());
+    }
+    return json::object({{"files", files}, {"num_selected", numSelected}, {"num_total", numTotal}});
 }
 
 FileChannelShared::Ptr FileChannelShared::create(shared_ptr<wbase::SendChannel> const& sendChannel,

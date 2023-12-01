@@ -201,7 +201,7 @@ class ReplicationInterface:
         self.repl_ctrl = urlparse(repl_ctrl_uri)
         self.auth_key = auth_key
         self.admin_auth_key = admin_auth_key
-        self.repl_api_version = 27
+        self.repl_api_version = 28
         _log.debug(f"ReplicationInterface %s", self.repl_ctrl)
 
     def version(self) -> str:

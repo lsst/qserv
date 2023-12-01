@@ -28,6 +28,7 @@
 #include <fstream>
 #include <memory>
 #include <mutex>
+#include <vector>
 
 // Third-party headers
 #include <mysql/mysql.h>
@@ -97,6 +98,16 @@ public:
 
     /// @return Status and statistics on the results folder (capacity, usage, etc.)
     static nlohmann::json statusToJson();
+
+    /**
+     * Locate existing result files.
+     * @param queryIds The optional selector for queries. If the collection is empty
+     *   then all queries will be considered.
+     * @param maxFiles The optional limit for maximum number of files to be reported.
+     *   If 0 then no limit is set.
+     * @return A collection of the results files matching the optional filter.
+     */
+    static nlohmann::json filesToJson(std::vector<QueryId> const& queryIds, unsigned int maxFiles);
 
     /// The factory method for the channel class.
     static Ptr create(std::shared_ptr<wbase::SendChannel> const& sendChannel,

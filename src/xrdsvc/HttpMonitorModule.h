@@ -54,6 +54,7 @@ public:
      *   'CONFIG' - get configuration parameters
      *   'MYSQL'  - get the status (running queries) of the worker's MySQL service
      *   'STATUS' - get the status info (tasks, schedulers, etc.)
+     *   'FILES'  - get info on the partial result files
      *   'ECHO'   - send back the received data
      *
      * @throws std::invalid_argument for unknown values of parameter 'subModuleName'
@@ -85,6 +86,9 @@ private:
 
     /// @return The worker status info (tasks, schedulers, etc.).
     nlohmann::json _status();
+
+    /// @return An info on the partial result files.
+    nlohmann::json _files();
 
     /// @return Send back the received data.
     nlohmann::json _echo();
