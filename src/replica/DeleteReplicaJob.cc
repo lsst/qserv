@@ -33,7 +33,7 @@
 #include "replica/QservMgtServices.h"
 #include "replica/ServiceProvider.h"
 #include "replica/StopRequest.h"
-#include "util/IterableFormatter.h"
+#include "util/String.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -293,7 +293,7 @@ void DeleteReplicaJob::_qservRemoveReplica(replica::Lock const& lock, unsigned i
                                            RemoveReplicaQservMgtRequest::CallbackType const& onFinish) {
     LOGS(_log, LOG_LVL_DEBUG,
          context() << __func__ << "  ** START ** Qserv notification on REMOVE replica:"
-                   << "  chunk=" << chunk << ", databases=" << util::printable(databases)
+                   << "  chunk=" << chunk << ", databases=" << util::String::toString(databases)
                    << ", worker=" << worker << ", force=" << (force ? "true" : "false"));
 
     auto self = shared_from_this();
@@ -303,7 +303,7 @@ void DeleteReplicaJob::_qservRemoveReplica(replica::Lock const& lock, unsigned i
                 LOGS(_log, LOG_LVL_DEBUG,
                      self->context() << __func__ << "  ** FINISH ** Qserv notification on REMOVE replica:"
                                      << "  chunk=" << request->chunk()
-                                     << ", databases=" << util::printable(request->databases())
+                                     << ", databases=" << util::String::toString(request->databases())
                                      << ", worker=" << request->worker()
                                      << ", force=" << (request->force() ? "true" : "false")
                                      << ", state=" << request->state2string());

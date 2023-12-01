@@ -29,6 +29,7 @@
 #include "replica/Configuration.h"
 #include "replica/DatabaseMySQL.h"
 #include "replica/DatabaseMySQLUtils.h"
+#include "util/String.h"
 
 // XrootD headers
 #include "XrdCms/XrdCmsVnId.hh"
@@ -38,6 +39,7 @@
 using namespace std;
 using namespace lsst::qserv::replica;
 using namespace lsst::qserv::replica::database::mysql;
+namespace util = lsst::qserv::util;
 
 /**
  * @brief Read a value of the VNID from the Qserv worker database that's
@@ -58,7 +60,8 @@ extern "C" string XrdCmsgetVnId(XrdCmsgetVnIdArgs) {
     string const context = string(__func__) + ": ";
     string vnId;
     try {
-        vector<string> args = lsst::qserv::replica::strsplit(parms);
+        bool const greedy = true;
+        vector<string> args = util::String::split(parms, " ", greedy);
         if (args.size() != 3) {
             eDest.Say(context.data(), "illegal number of parameters for the plugin. ",
                       "Exactly 3 parameters are required: <work-db-conn-url> <max-reconnects> "
