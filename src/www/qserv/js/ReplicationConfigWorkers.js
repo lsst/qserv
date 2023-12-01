@@ -72,14 +72,14 @@ function(CSSLoader,
     <table class="table table-sm table-hover" id="fwk-controller-config-workers">
       <thead class="thead-light">
         <tr>
-          <th class="sticky">name</th>
-          <th class="sticky">enabled</th>
-          <th class="sticky">read-only</th>
-          <th class="sticky">Repl svc</th>
-          <th class="sticky">File svc</th>
-          <th class="sticky">Ingest svc</th>
-          <th class="sticky">Exporter svc</th>
-          <th class="sticky">HTTP Ingest svc</th>
+          <th class="sticky">Worker</th>
+          <th class="sticky">Enabled</th>
+          <th class="sticky">Read-only</th>
+          <th class="sticky">Service </th>
+          <th class="sticky">Protocol </th>
+          <th class="sticky">Port </th>
+          <th class="sticky">IP</th>
+          <th class="sticky">DNS</th>
         </tr>
       </thead>
       <caption class="updating">Loading...</caption>
@@ -140,17 +140,67 @@ function(CSSLoader,
                 let worker = config.workers[i];
                 let workerEnabledCssClass  = worker['is-enabled']   ? '' : 'class="table-warning"';
                 let workerReadOnlyCssClass = worker['is-read-only'] ? 'class="table-warning"' : '';
+                const service = [
+                    {   "name":     "Replica Management",
+                        "protocol": "binary",
+                        "port":      worker['svc-port'],
+                        "ip":        worker['svc-host']['addr'],
+                        "dns":       worker['svc-host']['name'],
+                        "cssClass":  "bg-white"
+                    },
+                    {   "name":     "File Server",
+                        "protocol": "binary",
+                        "port":     worker['fs-port'],
+                        "ip":       worker['fs-host']['addr'],
+                        "dns":      worker['fs-host']['name'],
+                        "cssClass": "bg-white"
+                    },
+                    {   "name":     "Exporter",
+                        "protocol": "binary",
+                        "port":     worker['exporter-port'],
+                        "ip":       worker['exporter-host']['addr'],
+                        "dns":      worker['exporter-host']['name'],
+                        "cssClass": "bg-white"
+                    },
+                    {   "name":     "Ingest",
+                        "protocol": "binary",
+                        "port":     worker['loader-port'],
+                        "ip":       worker['loader-host']['addr'],
+                        "dns":      worker['loader-host']['name'],
+                        "cssClass": "bg-white"
+                    },
+                    {   "name":     "Ingest",
+                        "protocol": "http",
+                        "port":     worker['http-loader-port'],
+                        "ip":       worker['http-loader-host']['addr'],
+                        "dns":      worker['http-loader-host']['name'],
+                        "cssClass": "bg-info"
+                    },
+                    {   "name":     "Qserv Worker Manager",
+                        "protocol": "http",
+                        "port":     worker['qserv-worker']['port'],
+                        "ip":       worker['qserv-worker']['host']['addr'],
+                        "dns":      worker['qserv-worker']['host']['name'],
+                        "cssClass": "bg-info"
+                    }
+                ];
                 html += `
 <tr>
-  <th style="text-align:left" scope="row"><pre>` + worker['name'] + `</pre></th>
-  <td ` + workerEnabledCssClass  + `><pre>` + (worker['is-enabled'] ? 'yes' : 'no') + `</pre></td>
-  <td ` + workerReadOnlyCssClass + `><pre>` + (worker['is-read-only'] ? 'yes' : 'no') + `</pre></td>
-  <td><pre>` + worker['svc-host']['name'] + `:` + worker['svc-port'] + `</pre></td>
-  <td><pre>` + worker['fs-host']['name'] + `:` + worker['fs-port'] + `</pre></td>
-  <td><pre>` + worker['loader-host']['name'] + `:` + worker['loader-port'] + `</pre></td>
-  <td><pre>` + worker['exporter-host']['name'] + `:` + worker['exporter-port'] + `</pre></td>
-  <td><pre>` + worker['http-loader-host']['name'] + `:` + worker['http-loader-port'] + `</pre></td>
+  <th rowspan="${service.length + 1}" style="text-align:left; vertical-align: top;" scope="row">${worker['name']}</th>
+  <td rowspan="${service.length + 1}" style="text-align:left; vertical-align: top;" ${workerEnabledCssClass}><pre>${worker['is-enabled'] ? 'yes' : 'no'}</pre></td>
+  <td rowspan="${service.length + 1}" style="text-align:left; vertical-align: top;" ${workerReadOnlyCssClass}><pre>${worker['is-read-only'] ? 'yes' : 'no'}</pre></td>
 </tr>`;
+                html += _.reduce(service, function(html, svc) {
+                    return html += `
+<tr>
+  <td><pre>${svc.name}</pre></td>
+  <td class="${svc.cssClass}"><pre>${svc.protocol}</pre></td>
+  <td><pre>${svc.port}</pre></td>
+  <td style="opacity: 0.6"><pre>${svc.ip}</pre></td>
+  <td style="opacity: 0.6"><pre>${svc.dns}</pre></td>
+</tr>`;
+
+                }, '');
             }
             this._table().children('tbody').html(html);
         }
