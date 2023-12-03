@@ -6,7 +6,7 @@ function(sqlFormatter,
          _) {
 
     class Common {
-        static RestAPIVersion = 27;
+        static RestAPIVersion = 28;
         static query2text(query, expanded) {
             if (expanded) {
                 return sqlFormatter.format(query, Common._sqlFormatterConfig);
@@ -36,6 +36,16 @@ function(sqlFormatter,
   <option value="${ival.value}" ${ival.value == default_ival ? 'selected' : ''}>${ival.name}</option>`;
             }, '') + `
 </select>`;
+        }
+        static KB = 1000;
+        static MB = 1000 * 1000;
+        static GB = 1000 * 1000 * 1000;
+        static format_data_rate(v) {
+            if (v == 0) return v + "";  // as string
+            else if (v < Common.KB * 10) return v.toFixed(0);
+            else if (v < Common.MB * 10) return (v / Common.KB).toFixed(0) + " KB";
+            else if (v < Common.GB * 10) return (v / Common.MB).toFixed(0) + " MB";
+            else                         return (v / Common.GB).toFixed(0) + " GB";
         }
     }
     return Common;

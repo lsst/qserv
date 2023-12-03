@@ -269,7 +269,7 @@ function(CSSLoader,
                 if (runTimeSec > 0) {
                     const perf = data.qdisp_stats[counter] / runTimeSec;
                     if (QservCzarStatistics._totals_data_rate.has(counter)) {
-                        that._set_counter_perf('totals', counter, QservCzarStatistics._format_data_rate(perf), '_sum');
+                        that._set_counter_perf('totals', counter, Common.format_data_rate(perf), '_sum');
                     } else {
                         that._set_counter_perf('totals', counter, perf.toFixed(0), '_sum');
                     }
@@ -281,7 +281,7 @@ function(CSSLoader,
                     if (deltaT > 0) {
                         const perf = deltaVal / deltaT;
                         if (QservCzarStatistics._totals_data_rate.has(counter)) {
-                            that._set_counter_perf('totals', counter, QservCzarStatistics._format_data_rate(perf));
+                            that._set_counter_perf('totals', counter, Common.format_data_rate(perf));
                         } else {
                             that._set_counter_perf('totals', counter, perf.toFixed(0));
                         }
@@ -366,25 +366,15 @@ function(CSSLoader,
             }, '') + `
 </tbody>`;
         }
-        static _KB = 1000;
-        static _MB = 1000 * 1000;
-        static _GB = 1000 * 1000 * 1000;
         static _format_bucket_limit(v, data_rate=false) {
             if (isNaN(v)) return v;
             if (data_rate) {
-                if (v < QservCzarStatistics._KB) return v + " B/s";
-                else if (v < QservCzarStatistics._MB) return (v / QservCzarStatistics._KB).toFixed(0) + " KB/s";
-                else if (v < QservCzarStatistics._GB) return (v / QservCzarStatistics._MB).toFixed(0) + " MB/s";
-                return (v / QservCzarStatistics._GB).toFixed(0) + " GB/s";
+                if (v < Common.KB) return v + " B/s";
+                else if (v < Common.MB) return (v / Common.KB).toFixed(0) + " KB/s";
+                else if (v < Common.GB) return (v / Common.MB).toFixed(0) + " MB/s";
+                return (v / Common.GB).toFixed(0) + " GB/s";
             }
             return v.toLocaleString();
-        }
-        static _format_data_rate(v) {
-            if (v == 0) return v + "";  // as string
-            else if (v < QservCzarStatistics._KB * 10) return v.toFixed(0);
-            else if (v < QservCzarStatistics._MB * 10) return (v / QservCzarStatistics._KB).toFixed(0) + " KB";
-            else if (v < QservCzarStatistics._GB * 10) return (v / QservCzarStatistics._MB).toFixed(0) + " MB";
-            else                                       return (v / QservCzarStatistics._GB).toFixed(0) + " GB";
         }
 
         /**

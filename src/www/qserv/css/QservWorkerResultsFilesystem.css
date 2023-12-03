@@ -22,3 +22,6 @@ table#fwk-qserv-results-filesystem > thead > tr > th.sticky {
     top:80px;
     z-index:2;
 }
+table#fwk-qserv-results-filesystem tbody > tr.display-worker-files:hover {
+    cursor:pointer;
+}
