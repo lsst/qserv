@@ -28,11 +28,15 @@
 #include <algorithm>
 #include <fstream>
 #include <iostream>
+#include <sstream>
 #include <stdexcept>
 #include <vector>
 
 // Third-party headers
 #include "nlohmann/json.hpp"
+
+// Qserv headers
+#include "http/Method.h"
 
 using namespace std;
 using json = nlohmann::json;
@@ -48,6 +52,12 @@ bool const injectDatabaseOptions = false;
 bool const boostProtobufVersionCheck = false;
 bool const enableServiceProvider = false;
 
+string vector2str(vector<std::string> const& v) {
+    ostringstream oss;
+    copy(v.cbegin(), v.cend(), ostream_iterator<string>(oss, ","));
+    return oss.str();
+}
+
 }  // namespace
 
 namespace lsst::qserv::replica {
@@ -60,7 +70,8 @@ HttpClientApp::HttpClientApp(int argc, char* argv[])
         : Application(argc, argv, ::description, ::injectDatabaseOptions, ::boostProtobufVersionCheck,
                       ::enableServiceProvider) {
     parser().required("url", "The URL to read data from.", _url);
-    parser().option("method", "The HTTP method. Allowed values: GET, POST, PUT, DELETE.", _method);
+    parser().option("method", "The HTTP method. Allowed values: " + ::vector2str(http::allowedMethods) + ".",
+                    _method);
     parser().option("header",
                     "The HTTP header to be sent with a request. Note this application allows "
                     "only one header.",
@@ -139,8 +150,7 @@ HttpClientApp::HttpClientApp(int argc, char* argv[])
 
 int HttpClientApp::runImpl() {
     string const context = "HttpClientApp::" + string(__func__) + "  ";
-    const char* allowedMethods[] = {"GET", "POST", "PUT", "DELETE"};
-    if (count(cbegin(allowedMethods), cend(allowedMethods), _method) == 0) {
+    if (count(cbegin(http::allowedMethods), cend(http::allowedMethods), _method) == 0) {
         throw invalid_argument(context + "unknown HTTP method: " + _method);
     }
     vector<string> headers;
@@ -158,7 +168,8 @@ int HttpClientApp::runImpl() {
             osPtr = &fs;
         }
     }
-    HttpClient reader(_method, _url, _data, headers, _clientConfig);
+    auto const method = http::string2method(_method);
+    http::Client reader(method, _url, _data, headers, _clientConfig);
     if (_result2json) {
         if (nullptr != osPtr) *osPtr << reader.readAsJson() << "\n";
     } else {

@@ -3,6 +3,10 @@ add_dependencies(qserv_xrdsvc proto)
 
 target_sources(qserv_xrdsvc PRIVATE
     ChannelStream.cc
+    HttpModule.cc
+    HttpMonitorModule.cc
+    HttpReplicaMgtModule.cc
+    HttpSvc.cc
     SsiProvider.cc
     SsiRequest.cc
     SsiService.cc
@@ -17,5 +21,6 @@ target_link_libraries(qserv_xrdsvc PUBLIC
     boost_filesystem
     boost_system
     log
+    http
     XrdSsiLib
 )

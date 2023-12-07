@@ -24,7 +24,6 @@
 // System headers
 #include <map>
 #include <memory>
-#include <stdexcept>
 #include <vector>
 
 // Qserv headers
@@ -34,7 +33,6 @@
 #include "replica/GetConfigQservMgtRequest.h"
 #include "replica/GetStatusQservMgtRequest.h"
 #include "replica/RemoveReplicaQservMgtRequest.h"
-#include "replica/ServiceProvider.h"
 #include "replica/SetReplicasQservMgtRequest.h"
 #include "replica/TestEchoQservMgtRequest.h"
 #include "replica/Mutex.h"
@@ -43,26 +41,32 @@
 // Forward declarations
 class XrdSsiService;
 
+namespace lsst::qserv::wbase {
+class TaskSelector;
+}  // namespace lsst::qserv::wbase
+
+namespace lsst::qserv::replica {
+class ServiceProvider;
+}  // namespace lsst::qserv::replica
+
 // This header declarations
 namespace lsst::qserv::replica {
+namespace detail {
 
 /**
- * For exceptions thrown on unrecoverable connection failures to XRootD/SSI services.
- */
-class QservMgtConnectionError : public std::runtime_error {
-public:
-    using std::runtime_error::runtime_error;
-};
-
-/**
- * Structure QservMgtRequestWrapper is an abstract base for implementing requests
+ * Class QservMgtRequestWrapper is an abstract base for implementing requests
  * registry as a polymorphic collection to store active requests. Pure virtual
  * methods of the class will be overridden by request-type-specific implementations
  * (see structure RequestWrappeImplr<REQUEST_TYPE> in the .cc file) capturing
  * type-dependent pointer and a callback function.
  */
-struct QservMgtRequestWrapper {
+class QservMgtRequestWrapper {
+public:
     typedef std::shared_ptr<QservMgtRequestWrapper> Ptr;
+
+    QservMgtRequestWrapper() = default;
+    QservMgtRequestWrapper(QservMgtRequestWrapper const&) = delete;
+    QservMgtRequestWrapper& operator=(QservMgtRequestWrapper const&) = delete;
 
     virtual ~QservMgtRequestWrapper() = default;
 
@@ -77,6 +81,44 @@ struct QservMgtRequestWrapper {
 };
 
 /**
+ * Class QservMgtRequestWrapperImpl represents request-type specific wrappers.
+ */
+template <class T>
+class QservMgtRequestWrapperImpl : public QservMgtRequestWrapper {
+public:
+    QservMgtRequestWrapperImpl() = delete;
+    QservMgtRequestWrapperImpl(QservMgtRequestWrapperImpl const&) = delete;
+    QservMgtRequestWrapperImpl& operator=(QservMgtRequestWrapperImpl const&) = delete;
+
+    QservMgtRequestWrapperImpl(typename T::Ptr const& request, typename T::CallbackType const& onFinish)
+            : QservMgtRequestWrapper(), _request(request), _onFinish(onFinish) {}
+
+    virtual ~QservMgtRequestWrapperImpl() final = default;
+
+    /// The implementation of the virtual method defined in the base class
+    virtual void notify() const final {
+        if (nullptr != _onFinish) {
+            // Clearing the stored callback after finishing the up-stream notification
+            // has two purposes:
+            // 1. it guaranties (exactly) one time notification
+            // 2. it breaks the up-stream dependency on a caller object if a shared
+            //    pointer to the object was mentioned as the lambda-function's closure
+            auto onFinish = std::move(_onFinish);
+            _onFinish = nullptr;
+            onFinish(_request);
+        }
+    }
+
+    /// Implement a virtual method of the base class
+    virtual std::shared_ptr<QservMgtRequest> request() const final { return _request; }
+
+private:
+    typename T::Ptr _request;
+    mutable typename T::CallbackType _onFinish;
+};
+}  // namespace detail
+
+/**
  * Class QservMgtServices is a high-level interface to the Qserv management
  * services used by the replication system.
  */
@@ -87,11 +129,10 @@ public:
     /**
      * The factory method for instantiating a proper service object based
      * on an application configuration.
-     *
      * @param serviceProvider Is required for accessing configuration parameters.
      * @return A pointer to the created object.
      */
-    static Ptr create(ServiceProvider::Ptr const& serviceProvider);
+    static Ptr create(std::shared_ptr<ServiceProvider> const& serviceProvider);
 
     QservMgtServices() = delete;
     QservMgtServices(QservMgtServices const&) = delete;
@@ -100,19 +141,19 @@ public:
     ~QservMgtServices() = default;
 
     /// @return reference to the ServiceProvider object
-    ServiceProvider::Ptr const& serviceProvider() const { return _serviceProvider; }
+    std::shared_ptr<ServiceProvider> const& serviceProvider() const { return _serviceProvider; }
 
     /**
      * Notify Qserv worker on availability of a new replica
-     *
      * @param chunk  The chunk whose replica will be enabled on the Qserv worker.
      * @param databases The names of databases.
      * @param worker  The name of a worker where the replica is residing.
      * @param onFinish  A callback function called on a completion of the operation.
      * @param jobId  An optional identifier of a job specifying a context
      *   in which a request will be executed.
-     * @param requestExpirationIvalSec  An optional parameter (if differs from 0) allowing
-     *   to override the default value of the corresponding parameter from the Configuration.
+     * @param requestExpirationIvalSec The maximum amount of time to wait before
+     *   completion of the request. If a value of the parameter is set to 0 then no
+     *   limit will be enforced.
      * @return A pointer to the request object if the request was made. Return
      *   nullptr otherwise.
      */
@@ -123,7 +164,6 @@ public:
 
     /**
      * Notify Qserv worker on a removal of a replica
-     *
      * @param chunk  The chunk whose replicas will be disabled at the Qserv worker.
      * @param databases  The names of databases.
      * @param worker  The name of a worker where the replica is residing.
@@ -132,8 +172,9 @@ public:
      * @param onFinish  A callback function called on a completion of the operation.
      * @param jobId  An optional identifier of a job specifying a context
      *   in which a request will be executed.
-     * @param requestExpirationIvalSec  An optional parameter (if differs from 0) allowing
-     *   to override the default value of the corresponding parameter from the Configuration.
+     * @param requestExpirationIvalSec The maximum amount of time to wait before
+     *   completion of the request. If a value of the parameter is set to 0 then no
+     *   limit will be enforced.
      * @return  A pointer to the request object if the request was made. Return
      *   nullptr otherwise.
      */
@@ -141,9 +182,9 @@ public:
             unsigned int chunk, std::vector<std::string> const& databases, std::string const& worker,
             bool force, RemoveReplicaQservMgtRequest::CallbackType const& onFinish = nullptr,
             std::string const& jobId = "", unsigned int requestExpirationIvalSec = 0);
+
     /**
      * Fetch replicas known to a Qserv worker
-     *
      * @param databaseFamily  The name of a database family.
      * @param worker  The name of a worker.
      * @param inUseOnly  A flag telling the method to return replicas which are
@@ -151,8 +192,9 @@ public:
      * @param onFinish  A callback function to be called upon request completion.
      * @param jobId  An optional identifier of a job specifying a context in which
      *    a request will be executed.
-     * @param requestExpirationIvalSec  An optional parameter (if differs from 0)  allowing
-     *   to override the default value of the corresponding parameter from the Configuration.
+     * @param requestExpirationIvalSec The maximum amount of time to wait before
+     *   completion of the request. If a value of the parameter is set to 0 then no
+     *   limit will be enforced.
      * @return  A pointer to the request object if the request was made. Return
      *   nullptr otherwise.
      */
@@ -163,7 +205,6 @@ public:
 
     /**
      * Enable a collection of replicas at a Qserv worker
-     *
      * @param worker  The name of a worker.
      * @param newReplicas  A collection of new replicas (NOTE: useCount field is ignored).
      * @param databases  The names of databases to be affected by the request,
@@ -172,9 +213,9 @@ public:
      * @param onFinish  A callback function to be called upon request completion.
      * @param jobId  An optional identifier of a job specifying a context in which
      *    a request will be executed.
-     * @param requestExpirationIvalSec  An optional parameter (if differs from 0)
-     *   allowing to override the default value of the corresponding parameter from
-     *   the Configuration.
+     * @param requestExpirationIvalSec The maximum amount of time to wait before
+     *   completion of the request. If a value of the parameter is set to 0 then no
+     *   limit will be enforced.
      * @return  A pointer to the request object if the request was made. Return
      *   nullptr otherwise.
      */
@@ -186,14 +227,14 @@ public:
 
     /**
      * Send a data string to a Qserv worker and get the same string in response
-     *
      * @param worker  The name of a worker.
      * @param data  The data string to be sent to a worker.
      * @param onFinish  A callback function to be called upon request completion.
      * @param jobId  An optional identifier of a job specifying a context in which
      *    a request will be executed.
-     * @param requestExpirationIvalSec  An optional parameter (if differs from 0) allowing
-     *   to override the default value of the corresponding parameter from the Configuration.
+     * @param requestExpirationIvalSec The maximum amount of time to wait before
+     *   completion of the request. If a value of the parameter is set to 0 then no
+     *   limit will be enforced.
      * @return  A pointer to the request object if the request was made. Return
      *   nullptr otherwise.
      */
@@ -204,14 +245,14 @@ public:
 
     /**
      * Request detailed status of a Qserv worker
-     *
      * @param worker  The name of a worker.
      * @param jobId  An optional identifier of a job specifying a context in which
      *    a request will be executed.
      * @param taskSelector An optional task selection criterias.
      * @param onFinish  A callback function to be called upon request completion.
-     * @param requestExpirationIvalSec  An optional parameter (if differs from 0) allowing
-     *   to override the default value of the corresponding parameter from the Configuration.
+     * @param requestExpirationIvalSec The maximum amount of time to wait before
+     *   completion of the request. If a value of the parameter is set to 0 then no
+     *   limit will be enforced.
      * @return  A pointer to the request object if the request was made. Return
      *   nullptr otherwise.
      */
@@ -222,13 +263,13 @@ public:
 
     /**
      * Request detailed status on the database service of a Qserv worker
-     *
      * @param worker  The name of a worker.
      * @param jobId  An optional identifier of a job specifying a context in which
      *    a request will be executed.
      * @param onFinish  A callback function to be called upon request completion.
-     * @param requestExpirationIvalSec  An optional parameter (if differs from 0) allowing it
-     *   to override the default value of the corresponding parameter from the Configuration.
+     * @param requestExpirationIvalSec The maximum amount of time to wait before
+     *   completion of the request. If a value of the parameter is set to 0 then no
+     *   limit will be enforced.
      * @return  A pointer to the request object if the request was made. Return
      *   nullptr otherwise.
      */
@@ -239,13 +280,13 @@ public:
 
     /**
      * Request configuration parameters of a Qserv worker
-     *
      * @param worker  The name of a worker.
      * @param jobId  An optional identifier of a job specifying a context in which
      *    a request will be executed.
      * @param onFinish  A callback function to be called upon request completion.
-     * @param requestExpirationIvalSec  An optional parameter (if differs from 0) allowing it
-     *   to override the default value of the corresponding parameter from the Configuration.
+     * @param requestExpirationIvalSec The maximum amount of time to wait before
+     *   completion of the request. If a value of the parameter is set to 0 then no
+     *   limit will be enforced.
      * @return  A pointer to the request object if the request was made. Return
      *   nullptr otherwise.
      */
@@ -257,37 +298,38 @@ private:
     /**
      * @param serviceProvider Is required for accessing configuration parameters.
      */
-    explicit QservMgtServices(ServiceProvider::Ptr const& serviceProvider);
+    explicit QservMgtServices(std::shared_ptr<ServiceProvider> const& serviceProvider);
 
     /**
-     * Finalize the completion of the request. This method will notify
-     * a requester on the completion of the operation and it will also
-     * remove the request from the server's registry.
-     *
+     * Register the request (along with its callback) by its unique id in the local registry.
+     * When the request will finish it'll be automatically removed from the registry.
+     * @param func The name of a calling context (for error reporting and logging).
+     * @param request A request to be registered.
+     * @param onFinish A client callback to be called upon completion of the reqeust.
+     */
+    template <typename T>
+    void _register(std::string const& func, std::shared_ptr<T> const& request,
+                   typename T::CallbackType const& onFinish) {
+        replica::Lock const lock(_mtx, "QservMgtServices::" + func);
+        _registry[request->id()] = std::make_shared<detail::QservMgtRequestWrapperImpl<T>>(request, onFinish);
+    }
+
+    /**
+     * Finalize the completion of the request.
+     * This method will notify a requester on the completion of the operation and it will
+     * also remove the request from the server's registry.
      * @param id  A unique identifier of a completed request.
      */
     void _finish(std::string const& id);
 
-    /**
-     * @return  A pointer to the XROOTD/SSI API service for launching worker management
-     *   requests.
-     * @throws QservMgtConnectionError If unable to establish a connection.
-     */
-    XrdSsiService* _xrdSsiService();
-
     // Input parameters
 
-    ServiceProvider::Ptr const _serviceProvider;
+    std::shared_ptr<ServiceProvider> const _serviceProvider;
 
-    /// The cashed pointer to the XROOTD/SSI service gets initialized at a time
-    /// the first request is being made.
-    XrdSsiService* _service = nullptr;
+    /// The registry for the on-going requests.
+    std::map<std::string, std::shared_ptr<detail::QservMgtRequestWrapper>> _registry;
 
-    /// The registry of the on-going requests.
-    std::map<std::string, std::shared_ptr<QservMgtRequestWrapper>> _registry;
-
-    /// The mutex for enforcing thread safety of the class's public API
-    /// and internal operations.
+    /// The mutex for enforcing thread safety of the class's public API and internal operations.
     mutable replica::Mutex _mtx;
 };
 

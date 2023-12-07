@@ -22,23 +22,13 @@
 // Class header
 #include "replica/TestEchoQservMgtRequest.h"
 
-// System headers
-#include <set>
-#include <stdexcept>
-
-// Third party headers
-#include "XrdSsi/XrdSsiProvider.hh"
-#include "XrdSsi/XrdSsiService.hh"
-
 // Qserv headers
-#include "global/ResourceUnit.h"
-#include "proto/worker.pb.h"
-#include "replica/Configuration.h"
-#include "replica/ServiceProvider.h"
+#include "http/Method.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
 
+using namespace nlohmann;
 using namespace std;
 
 namespace {
@@ -49,13 +39,14 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.TestEchoQservMgtRequest");
 
 namespace lsst::qserv::replica {
 
-TestEchoQservMgtRequest::Ptr TestEchoQservMgtRequest::create(
-        ServiceProvider::Ptr const& serviceProvider, string const& worker, string const& data,
+shared_ptr<TestEchoQservMgtRequest> TestEchoQservMgtRequest::create(
+        shared_ptr<ServiceProvider> const& serviceProvider, string const& worker, string const& data,
         TestEchoQservMgtRequest::CallbackType const& onFinish) {
-    return TestEchoQservMgtRequest::Ptr(new TestEchoQservMgtRequest(serviceProvider, worker, data, onFinish));
+    return shared_ptr<TestEchoQservMgtRequest>(
+            new TestEchoQservMgtRequest(serviceProvider, worker, data, onFinish));
 }
 
-TestEchoQservMgtRequest::TestEchoQservMgtRequest(ServiceProvider::Ptr const& serviceProvider,
+TestEchoQservMgtRequest::TestEchoQservMgtRequest(shared_ptr<ServiceProvider> const& serviceProvider,
                                                  string const& worker, string const& data,
                                                  TestEchoQservMgtRequest::CallbackType const& onFinish)
         : QservMgtRequest(serviceProvider, "QSERV_TEST_ECHO", worker), _data(data), _onFinish(onFinish) {}
@@ -74,52 +65,21 @@ list<pair<string, string>> TestEchoQservMgtRequest::extendedPersistentState() co
     return result;
 }
 
-void TestEchoQservMgtRequest::startImpl(replica::Lock const& lock) {
-    // Submit the actual request
-
-    auto const request = shared_from_base<TestEchoQservMgtRequest>();
-
-    _qservRequest = xrdreq::TestEchoQservRequest::create(
-            data(), [request](proto::WorkerCommandStatus::Code code, string const& error, string const& data,
-                              string const& dataEcho) {
-                if (request->state() == State::FINISHED) return;
-                replica::Lock lock(request->_mtx, request->context() + string(__func__) + "[callback]");
-                if (request->state() == State::FINISHED) return;
-
-                switch (code) {
-                    case proto::WorkerCommandStatus::SUCCESS:
-                        request->_setData(lock, dataEcho);
-                        request->finish(lock, QservMgtRequest::ExtendedState::SUCCESS);
-                        break;
-                    case proto::WorkerCommandStatus::ERROR:
-                        request->finish(lock, QservMgtRequest::ExtendedState::SERVER_ERROR, error);
-                        break;
-                    default:
-                        throw logic_error(
-                                "TestEchoQservMgtRequest::" + string(__func__) +
-                                "  unhandled server status: " + proto::WorkerCommandStatus_Code_Name(code));
-                }
-            });
-    XrdSsiResource resource(ResourceUnit::makeWorkerPath(worker()));
-    service()->ProcessRequest(*_qservRequest, resource);
+void TestEchoQservMgtRequest::createHttpReqImpl(replica::Lock const& lock) {
+    string const target = "/echo";
+    json const data = json::object({{"data", _data}});
+    createHttpReq(lock, http::Method::POST, target, data);
 }
 
-void TestEchoQservMgtRequest::finishImpl(replica::Lock const& lock) {
-    switch (extendedState()) {
-        case ExtendedState::CANCELLED:
-        case ExtendedState::TIMEOUT_EXPIRED:
-            if (_qservRequest) _qservRequest->cancel();
-            break;
-        default:
-            break;
-    }
+QservMgtRequest::ExtendedState TestEchoQservMgtRequest::dataReady(replica::Lock const& lock,
+                                                                  json const& data) {
+    _dataEcho = data.at("data");
+    return QservMgtRequest::ExtendedState::SUCCESS;
 }
 
 void TestEchoQservMgtRequest::notify(replica::Lock const& lock) {
-    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
+    LOGS(_log, LOG_LVL_TRACE, context() << __func__);
     notifyDefaultImpl<TestEchoQservMgtRequest>(lock, _onFinish);
 }
-
-void TestEchoQservMgtRequest::_setData(replica::Lock const& lock, string const& data) { _dataEcho = data; }
 
 }  // namespace lsst::qserv::replica

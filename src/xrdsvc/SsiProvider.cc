@@ -160,19 +160,6 @@ XrdSsiProvider::rStat SsiProviderServer::QueryResource(char const* rName, char c
         // Tell the caller we do not have the chunk.
         LOGS(_log, LOG_LVL_DEBUG, "SsiProvider Query " << rName << " absent");
         return notPresent;
-
-    } else if (ru.unitType() == ResourceUnit::WORKER) {
-        // Extract the worker name and alidate it against the one which is
-        // provided through the inventory
-        if (not _chunkInventory.id().empty() and _chunkInventory.id() == ru.workerId()) {
-            LOGS(_log, LOG_LVL_DEBUG, "SsiProvider Query " << rName << " present");
-            return isPresent;
-        }
-
-        // Tell the caller we don't recognize this worker
-        LOGS(_log, LOG_LVL_DEBUG, "SsiProvider Query " << rName << " absent");
-        return notPresent;
-
     } else if (ru.unitType() == ResourceUnit::QUERY) {
         return isPresent;
     }
@@ -201,12 +188,6 @@ void SsiProviderServer::ResourceAdded(const char* rName) {
         _chunkInventory.add(ru.db(), ru.chunk());
         LOGS(_log, LOG_LVL_DEBUG, "SsiProvider ResourceAdded " << rName);
         return;
-
-    } else if (ru.unitType() == ResourceUnit::WORKER) {
-        // Replace the unique identifier of the worker with the new one
-        _chunkInventory.resetId(ru.workerId());
-        LOGS(_log, LOG_LVL_DEBUG, "SsiProvider ResourceAdded " << rName);
-        return;
     }
     LOGS(_log, LOG_LVL_DEBUG, "SsiProvider ResourceAdded " << rName << " invalid");
 }
@@ -219,13 +200,6 @@ void SsiProviderServer::ResourceRemoved(const char* rName) {
         // Extract db and chunk from path and add the resource to the chunk
         // inventory
         _chunkInventory.remove(ru.db(), ru.chunk());
-        LOGS(_log, LOG_LVL_DEBUG, "SsiProvider ResourceRemoved " << rName);
-        return;
-
-    } else if (ru.unitType() == ResourceUnit::WORKER) {
-        // Clear the unique identifier of the worker to prevent any incoming
-        // requests to the worker
-        _chunkInventory.resetId("");
         LOGS(_log, LOG_LVL_DEBUG, "SsiProvider ResourceRemoved " << rName);
         return;
     }

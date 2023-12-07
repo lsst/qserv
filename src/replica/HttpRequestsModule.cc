@@ -26,8 +26,8 @@
 #include <stdexcept>
 
 // Qserv headers
+#include "http/Exceptions.h"
 #include "replica/DatabaseServices.h"
-#include "replica/HttpExceptions.h"
 #include "replica/ServiceProvider.h"
 
 using namespace std;
@@ -38,7 +38,7 @@ namespace lsst::qserv::replica {
 void HttpRequestsModule::process(Controller::Ptr const& controller, string const& taskName,
                                  HttpProcessorConfig const& processorConfig, qhttp::Request::Ptr const& req,
                                  qhttp::Response::Ptr const& resp, string const& subModuleName,
-                                 HttpAuthType const authType) {
+                                 http::AuthType const authType) {
     HttpRequestsModule module(controller, taskName, processorConfig, req, resp);
     module.execute(subModuleName, authType);
 }
@@ -93,7 +93,7 @@ json HttpRequestsModule::_oneRequest() {
         result["request"] = controller()->serviceProvider()->databaseServices()->request(id).toJson();
         return result;
     } catch (DatabaseServicesNotFound const& ex) {
-        throw HttpError(__func__, "no such request found");
+        throw http::Error(__func__, "no such request found");
     }
 }
 

@@ -33,6 +33,7 @@
 #include "nlohmann/json.hpp"
 
 // Qserv headers
+#include "http/Method.h"
 #include "replica/Common.h"
 #include "replica/Csv.h"
 
@@ -88,7 +89,7 @@ public:
     // Optional extended parameters needed for pulling contributions over
     // the HTTP/HTTPS protocol.
 
-    std::string httpMethod;
+    http::Method httpMethod = http::Method::GET;
     std::string httpData;
     std::vector<std::string> httpHeaders;
 

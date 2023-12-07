@@ -52,9 +52,13 @@ from .options import (
     options_file_option,
     mysql_monitor_password_option,
     reload_option,
-    repl_admin_auth_key_option,
     repl_auth_key_option,
+    repl_admin_auth_key_option,
     repl_connection_option,
+    repl_instance_id_option,
+    repl_registry_host_option,
+    repl_registry_port_option,
+    repl_http_port_option,
     results_dirname_option,
     results_protocol_option,
     run_option,
@@ -553,6 +557,13 @@ def xrootd_manager(ctx: click.Context, **kwargs: Any) -> None:
 @pass_context
 @db_uri_option(help=worker_db_help)
 @vnid_config_option(required=True)
+@vnid_config_option(required=True)
+@repl_instance_id_option(required=True)
+@repl_auth_key_option(required=True)
+@repl_admin_auth_key_option(required=True)
+@repl_registry_host_option(required=True)
+@repl_registry_port_option(required=True)
+@repl_http_port_option(required=True)
 @results_dirname_option()
 @results_protocol_option()
 @cmsd_manager_name_option()
@@ -587,6 +598,12 @@ def worker_cmsd(ctx: click.Context, **kwargs: Any) -> None:
 @db_uri_option(help=worker_db_help)
 @db_admin_uri_option(help=admin_worker_db_help)
 @vnid_config_option(required=True)
+@repl_instance_id_option(required=True)
+@repl_auth_key_option(required=True)
+@repl_admin_auth_key_option(required=True)
+@repl_registry_host_option(required=True)
+@repl_registry_port_option(required=True)
+@repl_http_port_option(required=True)
 @results_dirname_option()
 @results_protocol_option()
 @cmsd_manager_name_option()

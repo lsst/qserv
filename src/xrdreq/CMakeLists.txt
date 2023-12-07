@@ -2,17 +2,9 @@ add_library(xrdreq OBJECT)
 add_dependencies(xrdreq proto)
 
 target_sources(xrdreq PRIVATE
-    ChunkGroupQservRequest.cc
-    ChunkListQservRequest.cc
-    GetChunkListQservRequest.cc
-    GetConfigQservRequest.cc
-    GetDbStatusQservRequest.cc
-    GetStatusQservRequest.cc
     QservRequest.cc
     QueryManagementAction.cc
     QueryManagementRequest.cc
-    SetChunkListQservRequest.cc
-    TestEchoQservRequest.cc
 )
 
 target_include_directories(xrdreq PRIVATE
@@ -46,7 +38,6 @@ ENDFUNCTION()
 
 xrdreq_utils(
     qserv-query-management
-    qserv-worker-perf
 )
 
 install(

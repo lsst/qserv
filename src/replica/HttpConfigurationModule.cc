@@ -29,11 +29,11 @@
 #include "boost/lexical_cast.hpp"
 
 // Qserv headers
+#include "http/Exceptions.h"
 #include "replica/Configuration.h"
 #include "replica/ConfigDatabase.h"
 #include "replica/ConfigurationSchema.h"
 #include "replica/DatabaseServices.h"
-#include "replica/HttpExceptions.h"
 #include "replica/ServiceProvider.h"
 
 using namespace std;
@@ -63,7 +63,7 @@ namespace lsst::qserv::replica {
 void HttpConfigurationModule::process(Controller::Ptr const& controller, string const& taskName,
                                       HttpProcessorConfig const& processorConfig,
                                       qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp,
-                                      string const& subModuleName, HttpAuthType const authType) {
+                                      string const& subModuleName, http::AuthType const authType) {
     HttpConfigurationModule module(controller, taskName, processorConfig, req, resp);
     module.execute(subModuleName, authType);
 }
@@ -215,16 +215,16 @@ json HttpConfigurationModule::_addFamily() {
     debug(__func__, "overlap=" + to_string(info.overlap));
 
     if (0 == info.replicationLevel) {
-        throw HttpError(__func__, "'replication_level' can't be equal to 0");
+        throw http::Error(__func__, "'replication_level' can't be equal to 0");
     }
     if (0 == info.numStripes) {
-        throw HttpError(__func__, "'num_stripes' can't be equal to 0");
+        throw http::Error(__func__, "'num_stripes' can't be equal to 0");
     }
     if (0 == info.numSubStripes) {
-        throw HttpError(__func__, "'num_sub_stripes' can't be equal to 0");
+        throw http::Error(__func__, "'num_sub_stripes' can't be equal to 0");
     }
     if (info.overlap <= 0) {
-        throw HttpError(__func__, "'overlap' can't be less or equal to 0");
+        throw http::Error(__func__, "'overlap' can't be less or equal to 0");
     }
 
     json result;
@@ -265,14 +265,14 @@ json HttpConfigurationModule::_unpublishDatabase() {
     auto const database = params().at("database");
     debug(__func__, "database=" + database);
     if (!isAdmin()) {
-        throw HttpError(__func__, "administrator's privileges are required to un-publish databases.");
+        throw http::Error(__func__, "administrator's privileges are required to un-publish databases.");
     }
     DatabaseInfo const databaseInfo = controller()->serviceProvider()->config()->unPublishDatabase(database);
     // This step is needed to get workers' Configuration in-sync with its
     // persistent state.
     bool const allWorkers = true;
     string const error = reconfigureWorkers(databaseInfo, allWorkers, workerReconfigTimeoutSec());
-    if (not error.empty()) throw HttpError(__func__, error);
+    if (not error.empty()) throw http::Error(__func__, error);
     json result;
     result["config"]["databases"][database] = databaseInfo.toJson();
     return result;

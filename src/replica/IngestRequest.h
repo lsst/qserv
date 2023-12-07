@@ -29,15 +29,20 @@
 #include <vector>
 
 // Qserv headers
+#include "http/Method.h"
+#include "http/Url.h"
 #include "replica/Csv.h"
 #include "replica/DatabaseServices.h"
 #include "replica/IngestFileSvc.h"
-#include "replica/Url.h"
 #include "replica/Mutex.h"
 
 // Forward declarations
+
+namespace lsst::qserv::http {
+class ClientConfig;
+}  // namespace lsst::qserv::http
+
 namespace lsst::qserv::replica {
-class HttpClientConfig;
 class ServiceProvider;
 }  // namespace lsst::qserv::replica
 
@@ -91,7 +96,7 @@ public:
             std::shared_ptr<ServiceProvider> const& serviceProvider, std::string const& workerName,
             TransactionId transactionId, std::string const& table, unsigned int chunk, bool isOverlap,
             std::string const& url, std::string const& charsetName, bool async,
-            csv::DialectInput const& dialectInput, std::string const& httpMethod = "GET",
+            csv::DialectInput const& dialectInput, http::Method httpMethod = http::Method::GET,
             std::string const& httpData = std::string(),
             std::vector<std::string> const& httpHeaders = std::vector<std::string>(),
             unsigned int maxNumWarnings = 0, unsigned int maxRetries = 0);
@@ -195,9 +200,9 @@ private:
     IngestRequest(std::shared_ptr<ServiceProvider> const& serviceProvider, std::string const& workerName,
                   TransactionId transactionId, std::string const& table, unsigned int chunk, bool isOverlap,
                   std::string const& url, std::string const& charsetName, bool async,
-                  csv::DialectInput const& dialectInput, std::string const& httpMethod,
-                  std::string const& httpData, std::vector<std::string> const& httpHeaders,
-                  unsigned int maxNumWarnings, unsigned int maxRetries);
+                  csv::DialectInput const& dialectInput, http::Method httpMethod, std::string const& httpData,
+                  std::vector<std::string> const& httpHeaders, unsigned int maxNumWarnings,
+                  unsigned int maxRetries);
 
     /// @see method IngestRequest::resume()
     IngestRequest(std::shared_ptr<ServiceProvider> const& serviceProvider, std::string const& workerName,
@@ -228,7 +233,7 @@ private:
      * Pull file reader's configuration from the config store.
      * @return The configuration object.
      */
-    HttpClientConfig _clientConfig(replica::Lock const& lock) const;
+    http::ClientConfig _clientConfig(replica::Lock const& lock) const;
 
     /// Mutex guarding internal state.
     mutable replica::Mutex _mtx;
@@ -238,7 +243,7 @@ private:
     TransactionContribInfo _contrib;
 
     // These variables are set after completing parameter validation
-    std::unique_ptr<Url> _resource;
+    std::unique_ptr<http::Url> _resource;
     csv::Dialect _dialect;
 
     /// The flag is set by method process(), and once it's set it's never

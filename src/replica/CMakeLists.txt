@@ -10,452 +10,217 @@ target_sources(replica PRIVATE
     ${REPLICA_PB_SRCS}
     ${REPLICA_PB_HDRS}
     AbortTransactionApp.cc
-    AbortTransactionApp.h
     AbortTransactionJob.cc
-    AbortTransactionJob.h
     AddReplicaQservMgtRequest.cc
-    AddReplicaQservMgtRequest.h
     AdminApp.cc
-    AdminApp.h
     Application.cc
-    Application.h
     ApplicationColl.cc
-    ApplicationColl.h
     ApplicationTypes.cc
-    ApplicationTypes.h
     CheckSumApp.cc
-    CheckSumApp.h
     ChunkLocker.cc
-    ChunkLocker.h
     ChunkNumber.cc
-    ChunkNumber.h
     ChunkedTable.cc
-    ChunkedTable.h
     ChunksApp.cc
-    ChunksApp.h
     ClusterHealthApp.cc
-    ClusterHealthApp.h
     ClusterHealthJob.cc
-    ClusterHealthJob.h
     Common.cc
-    Common.h
     ConfigApp.cc
-    ConfigApp.h
     ConfigAppBase.cc
-    ConfigAppBase.h
     ConfigDatabase.cc
-    ConfigDatabase.h
     ConfigDatabaseFamily.cc
-    ConfigDatabaseFamily.h
     ConfigParserJSON.cc
-    ConfigParserJSON.h
     ConfigParserMySQL.cc
-    ConfigParserMySQL.h
     ConfigTable.cc
-    ConfigTable.h
     ConfigTestApp.cc
-    ConfigTestApp.h
     ConfigTestData.cc
-    ConfigTestData.h
     ConfigWorker.cc
-    ConfigWorker.h
     Configuration.cc
-    Configuration.h
-    ConfigurationExceptions.h
     ConfigurationSchema.cc
-    ConfigurationSchema.h
     Controller.cc
-    Controller.h
     ControllerApp.cc
-    ControllerApp.h
     CreateReplicaJob.cc
-    CreateReplicaJob.h
     Csv.cc
-    Csv.h
     DatabaseMySQL.cc
-    DatabaseMySQL.h
-    DatabaseMySQLExceptions.h
-    DatabaseMySQLGenerator.h
     DatabaseMySQLGenerator.cc
     DatabaseMySQLRow.cc
-    DatabaseMySQLRow.h
     DatabaseMySQLTypes.cc
-    DatabaseMySQLTypes.h
     DatabaseMySQLUtils.cc
-    DatabaseMySQLUtils.h
     DatabaseServices.cc
-    DatabaseServices.h
     DatabaseServicesMySQL.cc
-    DatabaseServicesMySQL.h
     DatabaseServicesPool.cc
-    DatabaseServicesPool.h
     DatabaseTestApp.cc
-    DatabaseTestApp.h
     DeleteReplicaJob.cc
-    DeleteReplicaJob.h
     DeleteRequest.cc
-    DeleteRequest.h
     DeleteWorkerApp.cc
-    DeleteWorkerApp.h
     DeleteWorkerJob.cc
-    DeleteWorkerJob.h
     DeleteWorkerTask.cc
-    DeleteWorkerTask.h
     DisposeRequest.cc
-    DisposeRequest.h
     EchoRequest.cc
-    EchoRequest.h
-    ErrorReporting.h
     EventLogger.cc
-    EventLogger.h
     ExportClient.cc
-    ExportClient.h
     ExportServer.cc
-    ExportServer.h
     ExportServerConnection.cc
-    ExportServerConnection.h
     FileClient.cc
-    FileClient.h
     FileExportApp.cc
-    FileExportApp.h
     FileIngestApp.cc
-    FileIngestApp.h
     FileReadApp.cc
-    FileReadApp.h
     FileServer.cc
-    FileServer.h
     FileServerApp.cc
-    FileServerApp.h
     FileServerConnection.cc
-    FileServerConnection.h
     FileUtils.cc
-    FileUtils.h
     FindAllJob.cc
-    FindAllJob.h
     FindAllRequest.cc
-    FindAllRequest.h
     FindRequest.cc
-    FindRequest.h
     FixUpApp.cc
-    FixUpApp.h
     FixUpJob.cc
-    FixUpJob.h
     GetReplicasQservMgtRequest.cc
-    GetReplicasQservMgtRequest.h
     GetDbStatusQservMgtRequest.cc
-    GetDbStatusQservMgtRequest.h
     GetConfigQservMgtRequest.cc
-    GetConfigQservMgtRequest.h
     GetStatusQservMgtRequest.cc
-    GetStatusQservMgtRequest.h
     HealthMonitorTask.cc
-    HealthMonitorTask.h
-    HttpAsyncReq.h
-    HttpAsyncReq.cc
-    HttpAsyncReqApp.h
     HttpAsyncReqApp.cc
-    HttpClient.cc
-    HttpClient.h
     HttpClientApp.cc
-    HttpClientApp.h
     HttpCatalogsModule.cc
-    HttpCatalogsModule.h
     HttpConfigurationModule.cc
-    HttpConfigurationModule.h
     HttpControllersModule.cc
-    HttpControllersModule.h
     HttpDirectorIndexModule.cc
-    HttpDirectorIndexModule.h
-    HttpExceptions.cc
-    HttpExceptions.h
     HttpExportModule.cc
-    HttpExportModule.h
     HttpIngestChunksModule.cc
-    HttpIngestChunksModule.h
     HttpIngestConfigModule.cc
-    HttpIngestConfigModule.h
     HttpIngestModule.cc
-    HttpIngestModule.h
     HttpIngestTransModule.cc
-    HttpIngestTransModule.h
     HttpJobsModule.cc
-    HttpJobsModule.h
-    HttpMetaModule.cc
-    HttpMetaModule.h
     HttpModule.cc
-    HttpModule.h
-    HttpModuleBase.cc
-    HttpModuleBase.h
     HttpProcessor.cc
-    HttpProcessor.h
-    HttpProcessorConfig.h
     HttpQservMonitorModule.cc
-    HttpQservMonitorModule.h
     HttpQservSqlModule.cc
-    HttpQservSqlModule.h
     HttpReplicationLevelsModule.cc
-    HttpReplicationLevelsModule.h
-    HttpRequestBody.cc
-    HttpRequestBody.h
-    HttpRequestQuery.cc
-    HttpRequestQuery.h
     HttpRequestsModule.cc
-    HttpRequestsModule.h
     HttpSqlIndexModule.cc
-    HttpSqlIndexModule.h
     HttpSqlSchemaModule.cc
-    HttpSqlSchemaModule.h
     HttpSvc.cc
-    HttpSvc.h
     HttpWorkerStatusModule.cc
-    HttpWorkerStatusModule.h
     DirectorIndexApp.cc
-    DirectorIndexApp.h
     DirectorIndexJob.cc
-    DirectorIndexJob.h
     DirectorIndexRequest.cc
-    DirectorIndexRequest.h
     IngestClient.cc
-    IngestClient.h
     IngestFileSvc.cc
-    IngestFileSvc.h
     IngestHttpSvc.cc
-    IngestHttpSvc.h
     IngestHttpSvcMod.cc
-    IngestHttpSvcMod.h
 	IngestRequest.cc
-	IngestRequest.h
 	IngestRequestMgr.cc
-	IngestRequestMgr.h
     IngestResourceMgr.cc
-    IngestResourceMgr.h
     IngestResourceMgrP.cc
-    IngestResourceMgrP.h
     IngestResourceMgrT.cc
-    IngestResourceMgrT.h
     IngestSvc.cc
-    IngestSvc.h
     IngestSvcConn.cc
-    IngestSvcConn.h
     Job.cc
-    Job.h
     MasterControllerHttpApp.cc
-    MasterControllerHttpApp.h
-    MessageQueue.h
     Messenger.cc
-    Messenger.h
     MessengerConnector.cc
-    MessengerConnector.h
     MessengerTestApp.cc
-    MessengerTestApp.h
     MoveApp.cc
-    MoveApp.h
     MoveReplicaJob.cc
-    MoveReplicaJob.h
     MySQLTestApp.cc
-    MySQLTestApp.h
-    Mutex.h
     Mutex.cc
     NamedMutexRegistry.cc
-    NamedMutexRegistry.h
-    OneWayFailer.h
     Performance.cc
-    Performance.h
     ProtocolBuffer.cc
-    ProtocolBuffer.h
     PurgeApp.cc
-    PurgeApp.h
     PurgeJob.cc
-    PurgeJob.h
     QhttpTestApp.cc
-    QhttpTestApp.h
     QservGetReplicasJob.cc
-    QservGetReplicasJob.h
     QservMgtRequest.cc
-    QservMgtRequest.h
     QservMgtServices.cc
-    QservMgtServices.h
     QservStatusJob.cc
-    QservStatusJob.h
     QservSyncJob.cc
-    QservSyncJob.h
     QservWorkerApp.cc
-    QservWorkerApp.h
     QservWorkerPingApp.cc
-    QservWorkerPingApp.h
     RebalanceApp.cc
-    RebalanceApp.h
     RebalanceJob.cc
-    RebalanceJob.h
-    Registry.h
     Registry.cc
-    RegistryHttpApp.h
     RegistryHttpApp.cc
-    RegistryHttpSvc.h
     RegistryHttpSvc.cc
-    RegistryHttpSvcMod.h
     RegistryHttpSvcMod.cc
-    RegistryWorkers.h
     RegistryWorkers.cc
     RemoveReplicaQservMgtRequest.cc
-    RemoveReplicaQservMgtRequest.h
     ReplicaInfo.cc
-    ReplicaInfo.h
     ReplicateApp.cc
-    ReplicateApp.h
     ReplicateJob.cc
-    ReplicateJob.h
     ReplicationRequest.cc
-    ReplicationRequest.h
     ReplicationTask.cc
-    ReplicationTask.h
     Request.cc
-    Request.h
     RequestMessenger.cc
-    RequestMessenger.h
     RequestTracker.cc
-    RequestTracker.h
-    SemanticMaps.h
     ServiceManagementJob.cc
-    ServiceManagementJob.h
     ServiceManagementRequest.cc
-    ServiceManagementRequest.h
     ServiceManagementRequestBase.cc
-    ServiceManagementRequestBase.h
     ServiceProvider.cc
-    ServiceProvider.h
     SetReplicasQservMgtRequest.cc
-    SetReplicasQservMgtRequest.h
     SqlAlterTablesJob.cc
-    SqlAlterTablesJob.h
     SqlAlterTablesRequest.cc
-    SqlAlterTablesRequest.h
     SqlApp.cc
-    SqlApp.h
     SqlCreateDbJob.cc
-    SqlCreateDbJob.h
     SqlCreateDbRequest.cc
-    SqlCreateDbRequest.h
     SqlCreateIndexesJob.cc
-    SqlCreateIndexesJob.h
     SqlCreateIndexesRequest.cc
-    SqlCreateIndexesRequest.h
     SqlCreateTableJob.cc
-    SqlCreateTableJob.h
     SqlCreateTableRequest.cc
-    SqlCreateTableRequest.h
     SqlCreateTablesJob.cc
-    SqlCreateTablesJob.h
     SqlCreateTablesRequest.cc
-    SqlCreateTablesRequest.h
     SqlDeleteDbJob.cc
-    SqlDeleteDbJob.h
     SqlDeleteDbRequest.cc
-    SqlDeleteDbRequest.h
     SqlDeleteTableJob.cc
-    SqlDeleteTableJob.h
     SqlDeleteTablePartitionJob.cc
-    SqlDeleteTablePartitionJob.h
     SqlDeleteTablePartitionRequest.cc
-    SqlDeleteTablePartitionRequest.h
     SqlDeleteTableRequest.cc
-    SqlDeleteTableRequest.h
     SqlDisableDbJob.cc
-    SqlDisableDbJob.h
     SqlDisableDbRequest.cc
-    SqlDisableDbRequest.h
     SqlDropIndexesJob.cc
-    SqlDropIndexesJob.h
     SqlDropIndexesRequest.cc
-    SqlDropIndexesRequest.h
     SqlEnableDbJob.cc
-    SqlEnableDbJob.h
     SqlEnableDbRequest.cc
-    SqlEnableDbRequest.h
     SqlGetIndexesJob.cc
-    SqlGetIndexesJob.h
     SqlGetIndexesRequest.cc
-    SqlGetIndexesRequest.h
     SqlGrantAccessJob.cc
-    SqlGrantAccessJob.h
     SqlGrantAccessRequest.cc
-    SqlGrantAccessRequest.h
     SqlJob.cc
-    SqlJob.h
     SqlJobResult.cc
-    SqlJobResult.h
     SqlQueryJob.cc
-    SqlQueryJob.h
     SqlQueryRequest.cc
-    SqlQueryRequest.h
     SqlRemoveTablePartitionsJob.cc
-    SqlRemoveTablePartitionsJob.h
     SqlRemoveTablePartitionsRequest.cc
-    SqlRemoveTablePartitionsRequest.h
     SqlRequest.cc
-    SqlRequest.h
     SqlResultSet.cc
-    SqlResultSet.h
     SqlRowStatsJob.cc
-    SqlRowStatsJob.h
     SqlRowStatsRequest.cc
-    SqlRowStatsRequest.h
     SqlSchemaUtils.cc
-    SqlSchemaUtils.h
     StatusRequest.cc
-    StatusRequest.h
     StatusRequestBase.cc
-    StatusRequestBase.h
     StopRequest.cc
-    StopRequest.h
     StopRequestBase.cc
-    StopRequestBase.h
     SuccessRateGenerator.cc
-    SuccessRateGenerator.h
     SyncApp.cc
-    SyncApp.h
     Task.cc
-    Task.h
     TestEchoQservMgtRequest.cc
-    TestEchoQservMgtRequest.h
     TransactionContrib.cc
-    TransactionContrib.h
     TransactionsApp.cc
-    TransactionsApp.h
-    Url.cc
-    Url.h
     VerifyApp.cc
-    VerifyApp.h
     VerifyJob.cc
-    VerifyJob.h
     WorkerApp.cc
-    WorkerApp.h
     WorkerDeleteRequest.cc
-    WorkerDeleteRequest.h
     WorkerDirectorIndexRequest.cc
-    WorkerDirectorIndexRequest.h
     WorkerEchoRequest.cc
-    WorkerEchoRequest.h
     WorkerFindAllRequest.cc
-    WorkerFindAllRequest.h
     WorkerFindRequest.cc
-    WorkerFindRequest.h
     WorkerProcessor.cc
-    WorkerProcessor.h
     WorkerProcessorThread.cc
-    WorkerProcessorThread.h
     WorkerReplicationRequest.cc
-    WorkerReplicationRequest.h
     WorkerRequest.cc
-    WorkerRequest.h
     WorkerRequestFactory.cc
-    WorkerRequestFactory.h
     WorkerServer.cc
-    WorkerServer.h
     WorkerServerConnection.cc
-    WorkerServerConnection.h
     WorkerSqlRequest.cc
-    WorkerSqlRequest.h
     XrdCmsgetVnId.cc
 )
 
@@ -469,6 +234,7 @@ target_link_libraries(replica PUBLIC
     xrdsvc
     XrdCl
     XrdSsiLib
+    http
     qhttp
     sphgeom
     partition
@@ -481,8 +247,8 @@ target_link_libraries(replica PUBLIC
     curl
 )
 
-FUNCTION(REPLICA_UTILS)
-    FOREACH(UTIL IN ITEMS ${ARGV})
+function(REPLICA_UTILS)
+    foreach(UTIL IN ITEMS ${ARGV})
         add_executable(${UTIL})
         target_sources(${UTIL} PRIVATE tools/${UTIL}.cc)
         target_include_directories(${UTIL} PRIVATE ${XROOTD_INCLUDE_DIRS})
@@ -490,8 +256,8 @@ FUNCTION(REPLICA_UTILS)
             replica
         )
         install(TARGETS ${UTIL})
-    ENDFOREACH()
-ENDFUNCTION()
+    endforeach()
+endfunction()
 
 replica_utils(
     qserv-replica-calc-cs
@@ -514,8 +280,8 @@ install(
     TARGETS replica
 )
 
-FUNCTION(REPLICA_TESTS)
-    FOREACH(TEST IN ITEMS ${ARGV})
+function(REPLICA_TESTS)
+    foreach(TEST IN ITEMS ${ARGV})
         add_executable(${TEST} ${TEST}.cc)
         target_link_libraries(${TEST} PUBLIC
             replica
@@ -523,8 +289,8 @@ FUNCTION(REPLICA_TESTS)
             Threads::Threads
         )
         add_test(NAME ${TEST} COMMAND ${TEST})
-    ENDFOREACH()
-ENDFUNCTION()
+    endforeach()
+endfunction()
 
 replica_tests(
     testApplicationParser
@@ -536,8 +302,6 @@ replica_tests(
     testCsv
     testFileIngestApp
     testFileUtils
-    testHttpAsyncReq
-    testHttpRequestQuery
     testIngestRequestMgr
     testJson
     testMessageQueue
@@ -547,7 +311,7 @@ replica_tests(
     testSemanticMap
     testSqlResultSet
     testSqlSchemaUtils
+    testTaskSelector
     testTypes
-    testUrl
     testConfiguration
 )

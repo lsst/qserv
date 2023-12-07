@@ -36,11 +36,11 @@
 
 // Qserv headers
 #include "global/constants.h"
+#include "http/Exceptions.h"
+#include "http/Url.h"
 #include "replica/Configuration.h"
-#include "replica/HttpExceptions.h"
 #include "replica/ReplicaInfo.h"
 #include "replica/ServiceProvider.h"
-#include "replica/Url.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -191,8 +191,8 @@ void IngestSvcConn::_handshakeReceived(boost::system::error_code const& ec, size
 
     csv::Dialect dialect;
     try {
-        Url const resource(_contrib.url);
-        if (resource.scheme() != Url::FILE) {
+        http::Url const resource(_contrib.url);
+        if (resource.scheme() != http::Url::FILE) {
             throw invalid_argument(context + string(__func__) + " unsupported url '" + _contrib.url + "'");
         }
         dialect = csv::Dialect(_contrib.dialectInput);
@@ -212,7 +212,7 @@ void IngestSvcConn::_handshakeReceived(boost::system::error_code const& ec, size
         _contrib.tmpFile = openFile(_contrib.transactionId, _contrib.table, dialect, _contrib.charsetName,
                                     _contrib.chunk, _contrib.isOverlap);
         _contrib = databaseServices->startedTransactionContrib(_contrib);
-    } catch (HttpError const& ex) {
+    } catch (http::Error const& ex) {
         json const errorExt = ex.errorExt();
         if (!errorExt.empty()) {
             _contrib.httpError = errorExt["http_error"];

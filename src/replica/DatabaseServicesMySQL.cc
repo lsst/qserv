@@ -31,6 +31,8 @@
 #include <list>
 
 // Qserv headers
+#include "global/stringUtil.h"
+#include "http/Method.h"
 #include "replica/Common.h"
 #include "replica/Configuration.h"
 #include "replica/Controller.h"
@@ -1714,8 +1716,8 @@ TransactionContribInfo DatabaseServicesMySQL::createdTransactionContrib(
                                        info.dialectInput.fieldsEscapedBy));
         queries.emplace_back(_g.insert("transaction_contrib_ext", Sql::LAST_INSERT_ID, "lines_terminated_by",
                                        info.dialectInput.linesTerminatedBy));
-        queries.emplace_back(
-                _g.insert("transaction_contrib_ext", Sql::LAST_INSERT_ID, "http_method", info.httpMethod));
+        queries.emplace_back(_g.insert("transaction_contrib_ext", Sql::LAST_INSERT_ID, "http_method",
+                                       http::method2string(info.httpMethod)));
         queries.emplace_back(
                 _g.insert("transaction_contrib_ext", Sql::LAST_INSERT_ID, "http_data", info.httpData));
         for (string const& header : info.httpHeaders) {
@@ -1922,7 +1924,7 @@ vector<TransactionContribInfo> DatabaseServicesMySQL::_transactionContribsImpl(r
                 row.get("val", val);
                 if (val.empty()) continue;
                 if (key == "max_num_warnings")
-                    contrib.maxNumWarnings = stoui(val);
+                    contrib.maxNumWarnings = lsst::qserv::stoui(val);
                 else if (key == "fields_terminated_by")
                     contrib.dialectInput.fieldsTerminatedBy = val;
                 else if (key == "fields_enclosed_by")
@@ -1932,7 +1934,7 @@ vector<TransactionContribInfo> DatabaseServicesMySQL::_transactionContribsImpl(r
                 else if (key == "lines_terminated_by")
                     contrib.dialectInput.linesTerminatedBy = val;
                 else if (key == "http_method")
-                    contrib.httpMethod = val;
+                    contrib.httpMethod = http::string2method(val);
                 else if (key == "http_data")
                     contrib.httpData = val;
                 else if (key == "http_headers")

@@ -33,15 +33,15 @@
 // Qserv headers
 #include "css/CssAccess.h"
 #include "css/CssError.h"
+#include "global/intTypes.h"
+#include "http/Exceptions.h"
 #include "replica/DatabaseMySQL.h"
 #include "replica/DatabaseMySQLTypes.h"
 #include "replica/DatabaseMySQLUtils.h"
-#include "global/intTypes.h"
 #include "replica/Common.h"
 #include "replica/Configuration.h"
 #include "replica/ConfigDatabase.h"
 #include "replica/DatabaseServices.h"
-#include "replica/HttpExceptions.h"
 #include "replica/QservMgtServices.h"
 #include "replica/QservStatusJob.h"
 #include "replica/ServiceProvider.h"
@@ -126,7 +126,7 @@ namespace lsst::qserv::replica {
 void HttpQservMonitorModule::process(Controller::Ptr const& controller, string const& taskName,
                                      HttpProcessorConfig const& processorConfig,
                                      qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp,
-                                     string const& subModuleName, HttpAuthType const authType) {
+                                     string const& subModuleName, http::AuthType const authType) {
     HttpQservMonitorModule module(controller, taskName, processorConfig, req, resp);
     module.execute(subModuleName, authType);
 }
@@ -254,7 +254,7 @@ json HttpQservMonitorModule::_workerConfig() {
     if (request->extendedState() != QservMgtRequest::ExtendedState::SUCCESS) {
         string const msg = "database operation failed, error: " +
                            QservMgtRequest::state2string(request->extendedState());
-        throw HttpError(__func__, msg);
+        throw http::Error(__func__, msg);
     }
     json result = json::object();
     result["config"] = request->info();
@@ -281,7 +281,7 @@ json HttpQservMonitorModule::_workerDb() {
     if (request->extendedState() != QservMgtRequest::ExtendedState::SUCCESS) {
         string const msg = "database operation failed, error: " +
                            QservMgtRequest::state2string(request->extendedState());
-        throw HttpError(__func__, msg);
+        throw http::Error(__func__, msg);
     }
     json result = json::object();
     result["status"] = request->info();
@@ -310,7 +310,7 @@ json HttpQservMonitorModule::_czar() {
         }
         err = "response received from Czar is not a valid JSON object";
     }
-    throw HttpError(__func__, err + ", query: " + query);
+    throw http::Error(__func__, err + ", query: " + query);
 }
 
 json HttpQservMonitorModule::_czarConfig() {
@@ -335,7 +335,7 @@ json HttpQservMonitorModule::_czarConfig() {
         }
         err = "response received from Czar is not a valid JSON object";
     }
-    throw HttpError(__func__, err + ", query: " + query);
+    throw http::Error(__func__, err + ", query: " + query);
 }
 
 json HttpQservMonitorModule::_czarDb() {
@@ -517,7 +517,7 @@ json HttpQservMonitorModule::_activeQueriesProgress() {
         error = extractResultSet(conn);
     });
     if (error.empty()) return json::object({{"queries", queries}});
-    throw HttpError(__func__, error + ", query: " + query);
+    throw http::Error(__func__, error + ", query: " + query);
 }
 
 json HttpQservMonitorModule::_pastQueries() {

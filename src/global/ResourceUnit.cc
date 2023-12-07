@@ -83,9 +83,6 @@ std::string ResourceUnit::path() const {
         case UNKNOWN:
             ss << _pathSep << "UNKNOWN_RESOURCE_UNIT";
             break;
-        case WORKER:
-            ss << _workerId;
-            break;
         default:
             ::abort();
             break;
@@ -107,8 +104,6 @@ std::string ResourceUnit::prefix(UnitType const& r) {
             return "chk";
         case UNKNOWN:
             return "UNKNOWN";
-        case WORKER:
-            return "worker";
         case QUERY:
             return "query";
         case GARBAGE:
@@ -119,10 +114,6 @@ std::string ResourceUnit::prefix(UnitType const& r) {
 
 std::string ResourceUnit::makePath(int chunk, std::string const& db) {
     return _pathSep + prefix(UnitType::DBCHUNK) + _pathSep + db + _pathSep + std::to_string(chunk);
-}
-
-std::string ResourceUnit::makeWorkerPath(std::string const& id) {
-    return _pathSep + prefix(UnitType::WORKER) + _pathSep + id;
 }
 
 void ResourceUnit::setAsDbChunk(std::string const& db, int chunk) {
@@ -173,17 +164,6 @@ void ResourceUnit::_setFromPath(std::string const& path) {
         }
         _chunk = t.tokenAsInt();
         _ingestLeafAndKeys(t.token());
-    } else if (rTypeString == prefix(WORKER)) {
-        _unitType = WORKER;
-        if (_markGarbageIfDone(t)) {
-            return;
-        }
-        t.next();
-        _workerId = t.token();
-        if (_workerId.empty()) {
-            _unitType = GARBAGE;
-            return;
-        }
     } else if (rTypeString == prefix(QUERY)) {
         _unitType = QUERY;
         if (!t.done()) {

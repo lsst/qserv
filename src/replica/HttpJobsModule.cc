@@ -26,8 +26,8 @@
 #include <stdexcept>
 
 // Qserv headers
+#include "http/Exceptions.h"
 #include "replica/DatabaseServices.h"
-#include "replica/HttpExceptions.h"
 #include "replica/ServiceProvider.h"
 
 using namespace std;
@@ -38,7 +38,7 @@ namespace lsst::qserv::replica {
 void HttpJobsModule::process(Controller::Ptr const& controller, string const& taskName,
                              HttpProcessorConfig const& processorConfig, qhttp::Request::Ptr const& req,
                              qhttp::Response::Ptr const& resp, string const& subModuleName,
-                             HttpAuthType const authType) {
+                             http::AuthType const authType) {
     HttpJobsModule module(controller, taskName, processorConfig, req, resp);
     module.execute(subModuleName, authType);
 }
@@ -98,7 +98,7 @@ json HttpJobsModule::_oneJob() {
         return result;
 
     } catch (DatabaseServicesNotFound const& ex) {
-        throw HttpError(__func__, "no such job found");
+        throw http::Error(__func__, "no such job found");
     }
 }
 

@@ -28,9 +28,9 @@
 #include "nlohmann/json.hpp"
 
 // Qserv headers
+#include "http/ModuleBase.h"
 #include "qhttp/Request.h"
 #include "qhttp/Response.h"
-#include "replica/HttpModuleBase.h"
 #include "replica/ServiceProvider.h"
 
 // Forward declarations
@@ -44,8 +44,10 @@ namespace lsst::qserv::replica {
 /**
  * Class RegistryHttpSvcMod processes worker registration requests made
  * over HTTP. The class is used by the HTTP server build into the Registry service.
+ * @note Each worker entry represents a collection of attributes merged from
+ * from two sources - Replication System's worker and Qserv worker.
  */
-class RegistryHttpSvcMod : public HttpModuleBase {
+class RegistryHttpSvcMod : public http::ModuleBase {
 public:
     RegistryHttpSvcMod() = delete;
     RegistryHttpSvcMod(RegistryHttpSvcMod const&) = delete;
@@ -58,9 +60,10 @@ public:
      *
      * Supported values for parameter 'subModuleName':
      *
-     *   WORKERS        return a collection of known workers
-     *   ADD-WORKER     worker registration request
-     *   DELETE-WORKER  remove a worker from the collection
+     *   WORKERS           return a collection of known workers
+     *   ADD-WORKER        worker registration request (Replicaton System)
+     *   ADD-QSERV-WORKER  worker registration request (Qserv)
+     *   DELETE-WORKER     remove a worker from the collection
      *
      * @param serviceProvider The provider of services is needed to access
      *   the identity and the authorization keys of the instance.
@@ -74,13 +77,13 @@ public:
     static void process(ServiceProvider::Ptr const& serviceProvider, RegistryWorkers& workers,
                         qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp,
                         std::string const& subModuleName,
-                        HttpAuthType const authType = HttpAuthType::REQUIRED);
+                        http::AuthType const authType = http::AuthType::REQUIRED);
 
 protected:
-    /// @see HttpModuleBase::context()
+    /// @see http::ModuleBase::context()
     virtual std::string context() const final;
 
-    /// @see HttpModuleBase::executeImpl()
+    /// @see http::ModuleBase::executeImpl()
     virtual nlohmann::json executeImpl(std::string const& subModuleName) final;
 
 private:
@@ -88,21 +91,12 @@ private:
     RegistryHttpSvcMod(ServiceProvider::Ptr const& serviceProvider, RegistryWorkers& workers,
                        qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp);
 
-    /**
-     * @brief Check if the specified identifier of the Qserv instance that was received
-     *   from a client matches the one of the current service. Throw an exception if not.
-     *
-     * @param context_ The calling context to be reported in the exception.
-     * @param instanceId The instance identifier received from a client.
-     * @throws std::invalid_argument If the identifier didn't match expectations.
-     */
-    void _enforceInstanceId(std::string const& context_, std::string const& instanceId) const;
-
     /// Return a collection of known workers.
     nlohmann::json _getWorkers() const;
 
-    /// Register a worker in the collection.
-    nlohmann::json _addWorker();
+    /// Register/update a worker in the specified collection.
+    /// @param kind A kind of the worker to be updated ("replicaton", "qserv").
+    nlohmann::json _addWorker(std::string const& kind);
 
     /// Remove a worker from the collection.
     nlohmann::json _deleteWorker();

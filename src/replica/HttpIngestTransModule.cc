@@ -32,11 +32,11 @@
 #include <unordered_map>
 
 // Qserv headers
+#include "http/Exceptions.h"
 #include "replica/AbortTransactionJob.h"
 #include "replica/Configuration.h"
 #include "replica/DatabaseMySQL.h"
 #include "replica/DatabaseServices.h"
-#include "replica/HttpExceptions.h"
 #include "replica/DirectorIndexJob.h"
 #include "replica/NamedMutexRegistry.h"
 #include "replica/ServiceProvider.h"
@@ -62,7 +62,7 @@ void HttpIngestTransModule::process(Controller::Ptr const& controller,
                                     NamedMutexRegistry& transactionMutexRegistry, string const& taskName,
                                     HttpProcessorConfig const& processorConfig,
                                     qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp,
-                                    string const& subModuleName, HttpAuthType const authType) {
+                                    string const& subModuleName, http::AuthType const authType) {
     HttpIngestTransModule module(controller, transactionMutexRegistry, taskName, processorConfig, req, resp);
     module.execute(subModuleName, authType);
 }
@@ -203,7 +203,7 @@ json HttpIngestTransModule::_beginTransaction() {
 
     auto const database = config->databaseInfo(databaseName);
     if (database.isPublished) {
-        throw HttpError(__func__, "the database is already published");
+        throw http::Error(__func__, "the database is already published");
     }
 
     // Get chunks stats to be reported with the request's result object
@@ -304,10 +304,10 @@ json HttpIngestTransModule::_endTransaction() {
             transaction.state,
             abort ? TransactionInfo::State::IS_ABORTING : TransactionInfo::State::IS_FINISHING);
     if (!operationIsAllowed) {
-        throw HttpError(__func__, "transaction id=" + to_string(transactionId) +
-                                          " can't be ended at this time"
-                                          " because of state=" +
-                                          TransactionInfo::state2string(transaction.state) + ".");
+        throw http::Error(__func__, "transaction id=" + to_string(transactionId) +
+                                            " can't be ended at this time"
+                                            " because of state=" +
+                                            TransactionInfo::state2string(transaction.state) + ".");
     }
 
     string const databaseName = transaction.database;
@@ -360,7 +360,7 @@ json HttpIngestTransModule::_endTransaction() {
             transaction =
                     databaseServices->updateTransaction(transactionId, "end " + transEvent, transEventData);
 
-            if (!success) throw HttpError(__func__, "failed to drop table partitions", error);
+            if (!success) throw http::Error(__func__, "failed to drop table partitions", error);
 
             // This operation in a context of the "director" index table can be vetoed by
             // a catalog ingest workflow at the database registration time.

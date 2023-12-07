@@ -24,19 +24,28 @@
 // System headers
 #include <memory>
 #include <string>
-#include <vector>
-
-// Third party headers
-#include "nlohmann/json.hpp"
 
 // Qserv headers
 #include "replica/QservMgtRequest.h"
-#include "replica/ServiceProvider.h"
 #include "wbase/TaskState.h"
-#include "xrdreq/GetStatusQservRequest.h"
+
+namespace lsst::qserv::replica {
+class ServiceProvider;
+}  // namespace lsst::qserv::replica
 
 // This header declarations
 namespace lsst::qserv::replica {
+
+/**
+ * Stringify the task selector into a complete HTTP query string.
+ * The resulting query will have the following format:
+ * @code
+ * ?include_tasks=<numeric_flag>&max_tasks=<num>[&query_ids=<id1>[,<id2>...][&task_states=<state1>[,<state2>...]
+ * @code
+ * @param taskSelector The selector to be processed.
+ * @return The corresponding query.
+ */
+std::string taskSelectorToHttpQuery(wbase::TaskSelector const& taskSelector);
 
 /**
  * Class GetStatusQservMgtRequest is a request for obtaining various info
@@ -53,7 +62,7 @@ public:
     GetStatusQservMgtRequest(GetStatusQservMgtRequest const&) = delete;
     GetStatusQservMgtRequest& operator=(GetStatusQservMgtRequest const&) = delete;
 
-    ~GetStatusQservMgtRequest() final = default;
+    virtual ~GetStatusQservMgtRequest() final = default;
 
     /**
      * Static factory method is needed to prevent issues with the lifespan
@@ -66,53 +75,28 @@ public:
      * @param onFinish (optional) callback function to be called upon request completion.
      * @return A pointer to the created object.
      */
-    static Ptr create(ServiceProvider::Ptr const& serviceProvider, std::string const& worker,
-                      wbase::TaskSelector const& taskSelector = wbase::TaskSelector(),
-                      CallbackType const& onFinish = nullptr);
-
-    /**
-     * @return The info object returned back by the worker.
-     * @note The method will throw exception std::logic_error if called before
-     *   the request finishes or if it's finished with any status but SUCCESS.
-     */
-    nlohmann::json const& info() const;
-
-    /// @see QservMgtRequest::extendedPersistentState()
-    std::list<std::pair<std::string, std::string>> extendedPersistentState() const override;
+    static std::shared_ptr<GetStatusQservMgtRequest> create(
+            std::shared_ptr<ServiceProvider> const& serviceProvider, std::string const& worker,
+            wbase::TaskSelector const& taskSelector = wbase::TaskSelector(),
+            CallbackType const& onFinish = nullptr);
 
 protected:
-    /// @see QservMgtRequest::startImpl()
-    void startImpl(replica::Lock const& lock) final;
-
-    /// @see QservMgtRequest::finishImpl()
-    void finishImpl(replica::Lock const& lock) final;
+    /// @see QservMgtRequest::createHttpReqImpl()
+    virtual void createHttpReqImpl(replica::Lock const& lock) final;
 
     /// @see QservMgtRequest::notify()
-    void notify(replica::Lock const& lock) final;
+    virtual void notify(replica::Lock const& lock) final;
 
 private:
     /// @see GetStatusQservMgtRequest::create()
-    GetStatusQservMgtRequest(ServiceProvider::Ptr const& serviceProvider, std::string const& worker,
-                             wbase::TaskSelector const& taskSelector, CallbackType const& onFinish);
-
-    /**
-     * Carry over results of the request into a local storage.
-     * @param lock A lock on QservMgtRequest::_mtx must be acquired by a caller of the method.
-     * @param info The data string returned by a worker.
-     */
-    void _setInfo(replica::Lock const& lock, std::string const& info);
+    GetStatusQservMgtRequest(std::shared_ptr<ServiceProvider> const& serviceProvider,
+                             std::string const& worker, wbase::TaskSelector const& taskSelector,
+                             CallbackType const& onFinish);
 
     // Input parameters
 
-    std::string const _data;
     wbase::TaskSelector const _taskSelector;
-    CallbackType _onFinish;  ///< this object is reset after finishing the request
-
-    /// A request to the remote services
-    xrdreq::GetStatusQservRequest::Ptr _qservRequest;
-
-    /// The info object returned by the Qserv worker
-    nlohmann::json _info;
+    CallbackType _onFinish;  ///< This callback is reset after finishing the request.
 };
 
 }  // namespace lsst::qserv::replica

@@ -108,6 +108,7 @@ function(CSSLoader,
           <th colspan="4" style="text-align:right; border-right-color:#A9A9A9">Qserv</th>
           <th colspan="4" style="text-align:right">Replication Sys.</th>
         </tr>
+        <tr>
           <th colspan="2" style="text-align:right">On-line</th>
           <th colspan="2" style="text-align:right; border-right-color:#A9A9A9">&plus;&nbsp;Inactive</th>
           <th colspan="2" style="text-align:right">On-line</th>

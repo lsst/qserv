@@ -31,23 +31,20 @@
 #include "XrdSsi/XrdSsiResource.hh"
 #include "XrdSsi/XrdSsiService.hh"
 
-// Qserv headers
-#include "mysql/MySqlConfig.h"
-
 // Forward declarations
 class XrdSsiLogger;
 
-namespace lsst::qserv {
-namespace util {
+namespace lsst::qserv::util {
 class FileMonitor;
-}
-namespace wcontrol {
+}  // namespace lsst::qserv::util
+
+namespace lsst::qserv::wcontrol {
 class Foreman;
-}  // namespace wcontrol
-namespace wpublish {
-class ChunkInventory;
-}
-}  // namespace lsst::qserv
+}  // namespace lsst::qserv::wcontrol
+
+namespace lsst::qserv::xrdsvc {
+class HttpSvc;
+}  // namespace lsst::qserv::xrdsvc
 
 namespace lsst::qserv::xrdsvc {
 
@@ -59,7 +56,6 @@ public:
      * @param log xrdssi logger
      * @note take ownership of logger for now
      */
-
     SsiService(XrdSsiLogger* log);
     virtual ~SsiService();
 
@@ -67,21 +63,15 @@ public:
     void ProcessRequest(XrdSsiRequest& reqRef, XrdSsiResource& resRef) override;
 
 private:
-    void _initInventory();
-    void _configure();
-
-    /// List of available chunks.
-    std::shared_ptr<wpublish::ChunkInventory> _chunkInventory;
-
     // The Foreman contains essential structures for adding and running tasks.
     std::shared_ptr<wcontrol::Foreman> _foreman;
-
-    mysql::MySqlConfig const _mySqlConfig;
 
     /// Reloads the log configuration file on log config file change.
     std::shared_ptr<util::FileMonitor> _logFileMonitor;
 
-};  // class SsiService
+    /// The HTTP server processing worker management requests.
+    std::shared_ptr<HttpSvc> _controlHttpSvc;
+};
 
 }  // namespace lsst::qserv::xrdsvc
 

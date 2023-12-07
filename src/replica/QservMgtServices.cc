@@ -25,21 +25,8 @@
 // System headers
 #include <stdexcept>
 
-// Third party headers
-#include "XrdSsi/XrdSsiProvider.hh"
-#include "XrdSsi/XrdSsiService.hh"
-
-// Qserv headers
-#include "replica/Configuration.h"
-#include "replica/ServiceProvider.h"
-#include "util/BlockPost.h"
-#include "util/TimeUtils.h"
-
 // LSST headers
 #include "lsst/log/Log.h"
-
-/// This C++ symbol is provided by the SSI shared library
-extern XrdSsiProvider* XrdSsiProviderClient;
 
 using namespace std;
 
@@ -51,90 +38,24 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.QservMgtServices");
 
 namespace lsst::qserv::replica {
 
-//////////////////////////////////////////////////////////////////////////////////
-//////////////////////////  QservMgtRequestWrapperImpl  //////////////////////////
-//////////////////////////////////////////////////////////////////////////////////
-
-/**
- * Request-type specific wrappers
- */
-template <class T>
-struct QservMgtRequestWrapperImpl : QservMgtRequestWrapper {
-    /// The implementation of the virtual method defined in the base class
-    void notify() const final {
-        if (nullptr != _onFinish) {
-            // Clearing the stored callback after finishing the up-stream notification
-            // has two purposes:
-            //
-            // 1. it guaranties (exactly) one time notification
-            // 2. it breaks the up-stream dependency on a caller object if a shared
-            //    pointer to the object was mentioned as the lambda-function's closure
-
-            auto onFinish = move(_onFinish);
-            _onFinish = nullptr;
-            onFinish(_request);
-        }
-    }
-
-    QservMgtRequestWrapperImpl(typename T::Ptr const& request, typename T::CallbackType const& onFinish)
-            : QservMgtRequestWrapper(), _request(request), _onFinish(onFinish) {}
-
-    /// Destructor
-    ~QservMgtRequestWrapperImpl() = default;
-
-    /// Implement a virtual method of the base class
-    shared_ptr<QservMgtRequest> request() const override { return _request; }
-
-private:
-    // The context of the operation
-
-    typename T::Ptr _request;
-    mutable typename T::CallbackType _onFinish;
-};
-
-////////////////////////////////////////////////////////////////////////
-//////////////////////////  QservMgtServices  //////////////////////////
-////////////////////////////////////////////////////////////////////////
-
-QservMgtServices::Ptr QservMgtServices::create(ServiceProvider::Ptr const& serviceProvider) {
+QservMgtServices::Ptr QservMgtServices::create(shared_ptr<ServiceProvider> const& serviceProvider) {
     return QservMgtServices::Ptr(new QservMgtServices(serviceProvider));
 }
 
-QservMgtServices::QservMgtServices(ServiceProvider::Ptr const& serviceProvider)
+QservMgtServices::QservMgtServices(shared_ptr<ServiceProvider> const& serviceProvider)
         : _serviceProvider(serviceProvider) {}
 
 AddReplicaQservMgtRequest::Ptr QservMgtServices::addReplica(
         unsigned int chunk, vector<string> const& databases, string const& worker,
         AddReplicaQservMgtRequest::CallbackType const& onFinish, string const& jobId,
         unsigned int requestExpirationIvalSec) {
-    AddReplicaQservMgtRequest::Ptr request;
-
-    // Make sure the XROOTD/SSI service is available before attempting
-    // any operations on requests
-
-    XrdSsiService* service = _xrdSsiService();
-    if (not service) {
-        return request;
-    } else {
-        replica::Lock lock(_mtx, "QservMgtServices::" + string(__func__));
-
-        auto const manager = shared_from_this();
-
-        request = AddReplicaQservMgtRequest::create(
-                serviceProvider(), worker, chunk, databases,
-                [manager](QservMgtRequest::Ptr const& request) { manager->_finish(request->id()); });
-
-        // Register the request (along with its callback) by its unique
-        // identifier in the local registry. Once it's complete it'll
-        // be automatically removed from the Registry.
-        _registry[request->id()] =
-                make_shared<QservMgtRequestWrapperImpl<AddReplicaQservMgtRequest>>(request, onFinish);
-    }
-
-    // Initiate the request in the lock-free zone to avoid blocking the service
-    // from initiating other requests which this one is starting.
-    request->start(service, jobId, requestExpirationIvalSec);
-
+    auto const request = AddReplicaQservMgtRequest::create(
+            serviceProvider(), worker, chunk, databases,
+            [self = shared_from_this()](QservMgtRequest::Ptr const& request) {
+                self->_finish(request->id());
+            });
+    _register(__func__, request, onFinish);
+    request->start(jobId, requestExpirationIvalSec);
     return request;
 }
 
@@ -142,103 +63,40 @@ RemoveReplicaQservMgtRequest::Ptr QservMgtServices::removeReplica(
         unsigned int chunk, vector<string> const& databases, string const& worker, bool force,
         RemoveReplicaQservMgtRequest::CallbackType const& onFinish, string const& jobId,
         unsigned int requestExpirationIvalSec) {
-    RemoveReplicaQservMgtRequest::Ptr request;
-
-    // Make sure the XROOTD/SSI service is available before attempting
-    // any operations on requests
-
-    XrdSsiService* service = _xrdSsiService();
-    if (not service) {
-        return request;
-    } else {
-        replica::Lock lock(_mtx, "QservMgtServices::" + string(__func__));
-
-        auto const manager = shared_from_this();
-
-        request = RemoveReplicaQservMgtRequest::create(
-                serviceProvider(), worker, chunk, databases, force,
-                [manager](QservMgtRequest::Ptr const& request) { manager->_finish(request->id()); });
-
-        // Register the request (along with its callback) by its unique
-        // identifier in the local registry. Once it's complete it'll
-        // be automatically removed from the Registry.
-        _registry[request->id()] =
-                make_shared<QservMgtRequestWrapperImpl<RemoveReplicaQservMgtRequest>>(request, onFinish);
-    }
-
-    // Initiate the request in the lock-free zone to avoid blocking the service
-    // from initiating other requests which this one is starting.
-    request->start(service, jobId, requestExpirationIvalSec);
-
+    auto const request = RemoveReplicaQservMgtRequest::create(
+            serviceProvider(), worker, chunk, databases, force,
+            [self = shared_from_this()](QservMgtRequest::Ptr const& request) {
+                self->_finish(request->id());
+            });
+    _register(__func__, request, onFinish);
+    request->start(jobId, requestExpirationIvalSec);
     return request;
 }
 
 GetReplicasQservMgtRequest::Ptr QservMgtServices::getReplicas(
         string const& databaseFamily, string const& worker, bool inUseOnly, string const& jobId,
         GetReplicasQservMgtRequest::CallbackType const& onFinish, unsigned int requestExpirationIvalSec) {
-    GetReplicasQservMgtRequest::Ptr request;
-
-    // Make sure the XROOTD/SSI service is available before attempting
-    // any operations on requests
-
-    XrdSsiService* service = _xrdSsiService();
-    if (not service) {
-        return request;
-    } else {
-        replica::Lock lock(_mtx, "QservMgtServices::" + string(__func__));
-
-        auto const manager = shared_from_this();
-
-        request = GetReplicasQservMgtRequest::create(
-                serviceProvider(), worker, databaseFamily, inUseOnly,
-                [manager](QservMgtRequest::Ptr const& request) { manager->_finish(request->id()); });
-
-        // Register the request (along with its callback) by its unique
-        // identifier in the local registry. Once it's complete it'll
-        // be automatically removed from the Registry.
-        _registry[request->id()] =
-                make_shared<QservMgtRequestWrapperImpl<GetReplicasQservMgtRequest>>(request, onFinish);
-    }
-
-    // Initiate the request in the lock-free zone to avoid blocking the service
-    // from initiating other requests which this one is starting.
-    request->start(service, jobId, requestExpirationIvalSec);
-
+    auto const request = GetReplicasQservMgtRequest::create(
+            serviceProvider(), worker, databaseFamily, inUseOnly,
+            [self = shared_from_this()](QservMgtRequest::Ptr const& request) {
+                self->_finish(request->id());
+            });
+    _register(__func__, request, onFinish);
+    request->start(jobId, requestExpirationIvalSec);
     return request;
 }
 
 SetReplicasQservMgtRequest::Ptr QservMgtServices::setReplicas(
-        string const& worker, QservReplicaCollection const& newReplicas,
-        std::vector<std::string> const& databases, bool force, string const& jobId,
-        SetReplicasQservMgtRequest::CallbackType const& onFinish, unsigned int requestExpirationIvalSec) {
-    SetReplicasQservMgtRequest::Ptr request;
-
-    // Make sure the XROOTD/SSI service is available before attempting
-    // any operations on requests
-
-    XrdSsiService* service = _xrdSsiService();
-    if (not service) {
-        return request;
-    } else {
-        replica::Lock lock(_mtx, "QservMgtServices::" + string(__func__));
-
-        auto const manager = shared_from_this();
-
-        request = SetReplicasQservMgtRequest::create(
-                serviceProvider(), worker, newReplicas, databases, force,
-                [manager](QservMgtRequest::Ptr const& request) { manager->_finish(request->id()); });
-
-        // Register the request (along with its callback) by its unique
-        // identifier in the local registry. Once it's complete it'll
-        // be automatically removed from the Registry.
-        _registry[request->id()] =
-                make_shared<QservMgtRequestWrapperImpl<SetReplicasQservMgtRequest>>(request, onFinish);
-    }
-
-    // Initiate the request in the lock-free zone to avoid blocking the service
-    // from initiating other requests which this one is starting.
-    request->start(service, jobId, requestExpirationIvalSec);
-
+        string const& worker, QservReplicaCollection const& newReplicas, vector<string> const& databases,
+        bool force, string const& jobId, SetReplicasQservMgtRequest::CallbackType const& onFinish,
+        unsigned int requestExpirationIvalSec) {
+    auto const request = SetReplicasQservMgtRequest::create(
+            serviceProvider(), worker, newReplicas, databases, force,
+            [self = shared_from_this()](QservMgtRequest::Ptr const& request) {
+                self->_finish(request->id());
+            });
+    _register(__func__, request, onFinish);
+    request->start(jobId, requestExpirationIvalSec);
     return request;
 }
 
@@ -246,212 +104,73 @@ TestEchoQservMgtRequest::Ptr QservMgtServices::echo(string const& worker, string
                                                     string const& jobId,
                                                     TestEchoQservMgtRequest::CallbackType const& onFinish,
                                                     unsigned int requestExpirationIvalSec) {
-    TestEchoQservMgtRequest::Ptr request;
-
-    // Make sure the XROOTD/SSI service is available before attempting
-    // any operations on requests
-
-    XrdSsiService* service = _xrdSsiService();
-    if (not service) {
-        return request;
-    } else {
-        replica::Lock lock(_mtx, "QservMgtServices::" + string(__func__));
-
-        auto const manager = shared_from_this();
-
-        request = TestEchoQservMgtRequest::create(
-                serviceProvider(), worker, data,
-                [manager](QservMgtRequest::Ptr const& request) { manager->_finish(request->id()); });
-
-        // Register the request (along with its callback) by its unique
-        // identifier in the local registry. Once it's complete it'll
-        // be automatically removed from the Registry.
-        _registry[request->id()] =
-                make_shared<QservMgtRequestWrapperImpl<TestEchoQservMgtRequest>>(request, onFinish);
-    }
-
-    // Initiate the request in the lock-free zone to avoid blocking the service
-    // from initiating other requests which this one is starting.
-    request->start(service, jobId, requestExpirationIvalSec);
-
+    auto const request =
+            TestEchoQservMgtRequest::create(serviceProvider(), worker, data,
+                                            [self = shared_from_this()](QservMgtRequest::Ptr const& request) {
+                                                self->_finish(request->id());
+                                            });
+    _register(__func__, request, onFinish);
+    request->start(jobId, requestExpirationIvalSec);
     return request;
 }
 
-GetStatusQservMgtRequest::Ptr QservMgtServices::status(std::string const& worker, std::string const& jobId,
+GetStatusQservMgtRequest::Ptr QservMgtServices::status(string const& worker, string const& jobId,
                                                        wbase::TaskSelector const& taskSelector,
                                                        GetStatusQservMgtRequest::CallbackType const& onFinish,
                                                        unsigned int requestExpirationIvalSec) {
-    GetStatusQservMgtRequest::Ptr request;
-
-    // Make sure the XROOTD/SSI service is available before attempting
-    // any operations on requests
-
-    XrdSsiService* service = _xrdSsiService();
-    if (not service) {
-        return request;
-    } else {
-        replica::Lock lock(_mtx, "QservMgtServices::" + string(__func__));
-
-        auto const manager = shared_from_this();
-
-        request = GetStatusQservMgtRequest::create(
-                serviceProvider(), worker, taskSelector,
-                [manager](QservMgtRequest::Ptr const& request) { manager->_finish(request->id()); });
-
-        // Register the request (along with its callback) by its unique
-        // identifier in the local registry. Once it's complete it'll
-        // be automatically removed from the Registry.
-        _registry[request->id()] =
-                make_shared<QservMgtRequestWrapperImpl<GetStatusQservMgtRequest>>(request, onFinish);
-    }
-
-    // Initiate the request in the lock-free zone to avoid blocking the service
-    // from initiating other requests which this one is starting.
-    request->start(service, jobId, requestExpirationIvalSec);
-
+    auto const request = GetStatusQservMgtRequest::create(
+            serviceProvider(), worker, taskSelector,
+            [self = shared_from_this()](QservMgtRequest::Ptr const& request) {
+                self->_finish(request->id());
+            });
+    _register(__func__, request, onFinish);
+    request->start(jobId, requestExpirationIvalSec);
     return request;
 }
 
 GetDbStatusQservMgtRequest::Ptr QservMgtServices::databaseStatus(
-        std::string const& worker, std::string const& jobId,
-        GetDbStatusQservMgtRequest::CallbackType const& onFinish, unsigned int requestExpirationIvalSec) {
-    GetDbStatusQservMgtRequest::Ptr request;
-
-    // Make sure the XROOTD/SSI service is available before attempting
-    // any operations on requests
-
-    XrdSsiService* service = _xrdSsiService();
-    if (not service) {
-        return request;
-    } else {
-        replica::Lock lock(_mtx, "QservMgtServices::" + string(__func__));
-
-        auto const manager = shared_from_this();
-
-        request = GetDbStatusQservMgtRequest::create(
-                serviceProvider(), worker,
-                [manager](QservMgtRequest::Ptr const& request) { manager->_finish(request->id()); });
-
-        // Register the request (along with its callback) by its unique
-        // identifier in the local registry. Once it's complete it'll
-        // be automatically removed from the Registry.
-        _registry[request->id()] =
-                make_shared<QservMgtRequestWrapperImpl<GetDbStatusQservMgtRequest>>(request, onFinish);
-    }
-
-    // Initiate the request in the lock-free zone to avoid blocking the service
-    // from initiating other requests which this one is starting.
-    request->start(service, jobId, requestExpirationIvalSec);
-
+        string const& worker, string const& jobId, GetDbStatusQservMgtRequest::CallbackType const& onFinish,
+        unsigned int requestExpirationIvalSec) {
+    auto const request = GetDbStatusQservMgtRequest::create(
+            serviceProvider(), worker, [self = shared_from_this()](QservMgtRequest::Ptr const& request) {
+                self->_finish(request->id());
+            });
+    _register(__func__, request, onFinish);
+    request->start(jobId, requestExpirationIvalSec);
     return request;
 }
 
-GetConfigQservMgtRequest::Ptr QservMgtServices::config(std::string const& worker, std::string const& jobId,
+GetConfigQservMgtRequest::Ptr QservMgtServices::config(string const& worker, string const& jobId,
                                                        GetConfigQservMgtRequest::CallbackType const& onFinish,
                                                        unsigned int requestExpirationIvalSec) {
-    GetConfigQservMgtRequest::Ptr request;
-
-    // Make sure the XROOTD/SSI service is available before attempting
-    // any operations on requests
-    XrdSsiService* service = _xrdSsiService();
-    if (not service) {
-        return request;
-    } else {
-        replica::Lock lock(_mtx, "QservMgtServices::" + string(__func__));
-
-        auto const manager = shared_from_this();
-
-        request = GetConfigQservMgtRequest::create(
-                serviceProvider(), worker,
-                [manager](QservMgtRequest::Ptr const& request) { manager->_finish(request->id()); });
-
-        // Register the request (along with its callback) by its unique
-        // identifier in the local registry. Once it's complete it'll
-        // be automatically removed from the Registry.
-        _registry[request->id()] =
-                make_shared<QservMgtRequestWrapperImpl<GetConfigQservMgtRequest>>(request, onFinish);
-    }
-
-    // Initiate the request in the lock-free zone to avoid blocking the service
-    // from initiating other requests which this one is starting.
-    request->start(service, jobId, requestExpirationIvalSec);
+    auto const request = GetConfigQservMgtRequest::create(
+            serviceProvider(), worker, [self = shared_from_this()](QservMgtRequest::Ptr const& request) {
+                self->_finish(request->id());
+            });
+    _register(__func__, request, onFinish);
+    request->start(jobId, requestExpirationIvalSec);
     return request;
 }
 
 void QservMgtServices::_finish(string const& id) {
-    string const context = id + "  QservMgtServices::" + string(__func__) + "  ";
+    string const context = "QservMgtServices::" + string(__func__) + "[" + id + "] ";
+    LOGS(_log, LOG_LVL_TRACE, context);
 
-    LOGS(_log, LOG_LVL_DEBUG, context);
-
-    // IMPORTANT:
-    //
-    //   Make sure the notification is complete before removing
-    //   the request from the registry. This has two reasons:
-    //
-    //   - it will avoid a possibility of deadlocking in case if
-    //     the callback function to be notified will be doing
-    //     any API calls of the service manager.
-    //
-    //   - it will reduce the controller API dead-time due to a prolonged
-    //     execution time of of the callback function.
-
-    QservMgtRequestWrapper::Ptr requestWrapper;
+    // IMPORTANT: Make sure the notification is complete before removing the request
+    // from the registry. This has two reasons:
+    //   - it will avoid a possibility of deadlocking when the callback function
+    //     to be notified will be doing any API calls of the service manager.
+    //   - it will reduce the controller API dead-time due to a prolonged execution
+    //     time of the callback function.
+    detail::QservMgtRequestWrapper::Ptr requestWrapper;
     {
-        replica::Lock lock(_mtx, context);
+        replica::Lock const lock(_mtx, context);
         auto&& itr = _registry.find(id);
-        if (itr == _registry.end()) {
-            throw logic_error("QservMgtServices::" + string(__func__) + "  request identifier " + id +
-                              " is no longer valid. Check the logic of the application.");
-        }
+        if (itr == _registry.end()) throw logic_error(context + "unklnown request.");
         requestWrapper = itr->second;
         _registry.erase(id);
     }
     requestWrapper->notify();
-}
-
-XrdSsiService* QservMgtServices::_xrdSsiService() {
-    replica::Lock lock(_mtx, "QservMgtServices::" + string(__func__));
-
-    if (_service != nullptr) return _service;
-
-    string const serviceProviderLocation =
-            _serviceProvider->config()->get<string>("xrootd", "host") + ":" +
-            to_string(_serviceProvider->config()->get<uint16_t>("xrootd", "port"));
-
-    XrdSsiErrInfo errInfo;
-    unsigned int const intervalBetweenReconnectsMs = 1000;
-    uint64_t const startedConnectionAttemptsSec = util::TimeUtils::now() / 1000;
-    unsigned int numAttempts = 0;
-    while (true) {
-        ++numAttempts;
-        _service = XrdSsiProviderClient->GetService(errInfo, serviceProviderLocation);
-        if (_service != nullptr) break;  // success
-
-        // Allow another try after waiting for the given reconnection interval if
-        // allowed and while the configuration-specified timeout has not been expired.
-
-        uint64_t const timeSinceStartedSec = util::TimeUtils::now() / 1000 - startedConnectionAttemptsSec;
-
-        if (_serviceProvider->config()->get<unsigned int>("xrootd", "allow-reconnect") &&
-            timeSinceStartedSec <
-                    _serviceProvider->config()->get<unsigned int>("xrootd", "reconnect-timeout")) {
-            LOGS(_log, LOG_LVL_WARN,
-                 "QservMgtServices::" << __func__ << "  failed to contact service provider at: "
-                                      << serviceProviderLocation << ", error: " << errInfo.Get()
-                                      << ", total of " << numAttempts << " failed connection attempts.");
-
-            util::BlockPost::wait(intervalBetweenReconnectsMs);
-            continue;
-        }
-        string const errMsg = "QservMgtServices::" + string(__func__) +
-                              "  failed to contact service provider at: " + serviceProviderLocation +
-                              ", error: " +
-                              string(errInfo.Get() + ", aborting after " + to_string(numAttempts) +
-                                     " failed connection attempts.");
-        LOGS(_log, LOG_LVL_ERROR, errMsg);
-        throw QservMgtConnectionError(errMsg);
-    }
-    return _service;
 }
 
 }  // namespace lsst::qserv::replica

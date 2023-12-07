@@ -31,10 +31,10 @@
 #include <vector>
 
 // Qserv headers
+#include "http/Exceptions.h"
 #include "replica/ChunkNumber.h"
 #include "replica/Configuration.h"
 #include "replica/DatabaseServices.h"
-#include "replica/HttpExceptions.h"
 #include "replica/ReplicaInfo.h"
 #include "replica/ServiceProvider.h"
 #include "util/TimeUtils.h"
@@ -129,7 +129,7 @@ replica::Mutex HttpIngestChunksModule::_ingestManagementMtx;
 void HttpIngestChunksModule::process(Controller::Ptr const& controller, string const& taskName,
                                      HttpProcessorConfig const& processorConfig,
                                      qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp,
-                                     string const& subModuleName, HttpAuthType const authType) {
+                                     string const& subModuleName, http::AuthType const authType) {
     HttpIngestChunksModule module(controller, taskName, processorConfig, req, resp);
     module.execute(subModuleName, authType);
 }
@@ -167,7 +167,7 @@ json HttpIngestChunksModule::_addChunk() {
     ChunkNumberQservValidator const validator(databaseFamilyInfo.numStripes,
                                               databaseFamilyInfo.numSubStripes);
     if (not validator.valid(chunk)) {
-        throw HttpError(__func__, "this chunk number is not valid");
+        throw http::Error(__func__, "this chunk number is not valid");
     }
 
     // This locks prevents other invocations of the method from making different
@@ -196,7 +196,7 @@ json HttpIngestChunksModule::_addChunk() {
         }
         json extendedError;
         extendedError["replicas"] = replicasJson;
-        throw HttpError(__func__, "this chunk has too many replicas", extendedError);
+        throw http::Error(__func__, "this chunk has too many replicas", extendedError);
     }
     if (replicas.size() == 1) {
         worker = replicas[0].worker();
@@ -241,7 +241,7 @@ json HttpIngestChunksModule::_addChunk() {
 
     // The sanity check, just to make sure we've found a worker
     if (worker.empty()) {
-        throw HttpError(__func__, "no suitable worker found");
+        throw http::Error(__func__, "no suitable worker found");
     }
     ControllerEvent event;
     event.status = "ADD CHUNK";
@@ -284,7 +284,7 @@ json HttpIngestChunksModule::_addChunks() {
                                               databaseFamilyInfo.numSubStripes);
     for (auto const chunk : chunks) {
         if (not validator.valid(chunk)) {
-            throw HttpError(__func__, "chunk " + to_string(chunk) + " is not valid");
+            throw http::Error(__func__, "chunk " + to_string(chunk) + " is not valid");
         }
     }
 
@@ -324,7 +324,7 @@ json HttpIngestChunksModule::_addChunks() {
         vector<ReplicaInfo> const& replicas = chunk2replicas[chunk];
 
         if (replicas.size() > 1) {
-            throw HttpError(__func__, "chunk " + to_string(chunk) + " has too many replicas");
+            throw http::Error(__func__, "chunk " + to_string(chunk) + " has too many replicas");
         }
         if (replicas.size() == 1) {
             chunk2worker[chunk] = replicas[0].worker();
@@ -377,7 +377,7 @@ json HttpIngestChunksModule::_addChunks() {
 
         // The sanity check, just to make sure we've found a worker
         if (chunk2worker[chunk].empty()) {
-            throw HttpError(__func__, "no suitable worker found for chunk " + to_string(chunk));
+            throw http::Error(__func__, "no suitable worker found for chunk " + to_string(chunk));
         }
     }
 

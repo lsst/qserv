@@ -128,6 +128,62 @@ repl_connection_option = partial(
 )
 
 
+repl_instance_id_option = partial(
+    click.option,
+    "--repl-instance-id",
+    help="The unique identifier of the current Replication System's domain. "
+    "The identifier is a part of the security context preventing accidental 'cross-talks' "
+    "between unrelated domains.",
+    default="",
+    show_default=True,
+)
+
+
+repl_auth_key_option = partial(
+    click.option,
+    "--repl-auth-key",
+    help="The authorization key. The key is a part of the security context "
+    "preventing unauthorized operations witin the current Replication System's "
+    "domain.",
+    default="",
+    show_default=True,
+)
+
+repl_admin_auth_key_option = partial(
+    click.option,
+    "--repl-admin-auth-key",
+    help="The admin authorizaiton key for the replication-ingest system.",
+    default="",
+    show_default=True,
+)
+
+
+repl_registry_host_option = partial(
+    click.option,
+    "--repl-registry-host",
+    help="The FQDN of a host where the Replication System's Registry service is run.",
+)
+
+
+repl_registry_port_option = partial(
+    click.option,
+    "--repl-registry-port",
+    help="The port number of the Replication System's Registry service.",
+    default=8080,
+    show_default=True,
+)
+
+
+repl_http_port_option = partial(
+    click.option,
+    "--repl-http-port",
+    help="The port number of the of the worker control service used by the Replication System "
+    "and worker monitoring applications.",
+    default=0,
+    show_default=True,
+)
+
+
 results_dirname_option = partial(
     click.option,
     "--results-dirname",
@@ -306,18 +362,4 @@ log_cfg_file_option = partial(
     help="Path to the log4cxx config file.",
     default="/config-etc/log/log.cnf",
     show_default=True,
-)
-
-
-repl_auth_key_option = partial(
-    click.option,
-    "--repl-auth-key",
-    help="The authorizaiton key for the replication-ingest system."
-)
-
-
-repl_admin_auth_key_option = partial(
-    click.option,
-    "--repl-admin-auth-key",
-    help="The admin authorizaiton key for the replication-ingest system."
 )

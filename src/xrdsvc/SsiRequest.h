@@ -35,8 +35,6 @@
 // Qserv headers
 #include "global/ResourceUnit.h"
 #include "mysql/MySqlConfig.h"
-#include "wbase/WorkerCommand.h"
-#include "wpublish/ChunkInventory.h"
 #include "xrdsvc/StreamBuffer.h"
 
 // Forward declarations
@@ -49,9 +47,6 @@ class Task;
 }  // namespace wbase
 namespace wcontrol {
 class Foreman;
-}
-namespace wpublish {
-class ResourceMonitor;
 }
 }  // namespace lsst::qserv
 
@@ -73,7 +68,6 @@ public:
 
     /// Use factory to ensure proper construction for enable_shared_from_this.
     static SsiRequest::Ptr newSsiRequest(std::string const& rname,
-                                         std::shared_ptr<wpublish::ChunkInventory> const& chunkInventory,
                                          std::shared_ptr<wcontrol::Foreman> const& processor);
 
     virtual ~SsiRequest();
@@ -82,7 +76,6 @@ public:
 
     /**
      * Implements the virtual method defined in the base class
-     *
      * @see XrdSsiResponder::Finished
      */
     void Finished(XrdSsiRequest& req, XrdSsiRespInfo const& rinfo, bool cancel = false) override;
@@ -107,31 +100,13 @@ public:
     uint64_t getSeq() const;
 
 private:
-    /// Constructor (called by SsiService)
-    SsiRequest(std::string const& rname, std::shared_ptr<wpublish::ChunkInventory> const& chunkInventory,
-               std::shared_ptr<wcontrol::Foreman> const& processor);
+    /// Constructor (called by the static factory method newSsiRequest)
+    SsiRequest(std::string const& rname, std::shared_ptr<wcontrol::Foreman> const& processor);
 
     /// For internal error reporting
     void reportError(std::string const& errStr);
 
-    /**
-     * Parse a Protobuf request into the corresponding command
-     *
-     * @param sendChannel - XROOTD/SSI channel for sending back responses or errors
-     * @param reqData - pointer to the Protobuf data buffer
-     * @param reqSize - size of the data buffer
-     *
-     * @return smart pointer to the corresponding command object or nullptr if failed
-     */
-    wbase::WorkerCommand::Ptr parseWorkerCommand(std::shared_ptr<wbase::SendChannel> const& sendChannel,
-                                                 char const* reqData, int reqSize);
-
 private:
-    /// Counters of the database/chunk requests which are being used
-    static std::shared_ptr<wpublish::ResourceMonitor> const _resourceMonitor;
-
-    std::shared_ptr<wpublish::ChunkInventory> const _chunkInventory;
-
     ValidatorPtr _validator;                            ///< validates request against what's available
     std::shared_ptr<wcontrol::Foreman> const _foreman;  ///< actual msg processor
 

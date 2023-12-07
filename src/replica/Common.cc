@@ -24,7 +24,6 @@
 
 // System headers
 #include <algorithm>
-#include <limits>
 #include <stdexcept>
 #include <sstream>
 #include <type_traits>
@@ -350,12 +349,6 @@ DirectorIndexRequestParams::DirectorIndexRequestParams(ProtocolRequestDirectorIn
           chunk(request.chunk()),
           hasTransactions(request.has_transactions()),
           transactionId(request.transaction_id()) {}
-
-unsigned int stoui(string const& str, size_t* idx, int base) {
-    unsigned long u = stoul(str, idx, base);
-    if (u > numeric_limits<unsigned int>::max()) throw out_of_range(str);
-    return static_cast<unsigned int>(u);
-}
 
 vector<string> strsplit(string const& str, char delimiter) {
     vector<string> words;

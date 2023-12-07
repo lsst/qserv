@@ -23,9 +23,9 @@
 #include "replica/Registry.h"
 
 // Qserv headers
+#include "http/Client.h"
 #include "replica/Configuration.h"
 #include "replica/ConfigWorker.h"
-#include "replica/HttpClient.h"
 #include "util/common.h"
 
 // LSST headers
@@ -60,34 +60,44 @@ Registry::Registry(ServiceProvider::Ptr const& serviceProvider)
 
 vector<WorkerInfo> Registry::workers() const {
     vector<WorkerInfo> coll;
-    json const resultJson = _request("GET", "/workers?instance_id=" + _serviceProvider->instanceId());
+    json const resultJson =
+            _request(http::Method::GET, "/workers?instance_id=" + _serviceProvider->instanceId());
     for (auto const& [name, workerJson] : resultJson.at("workers").items()) {
-        string const host = workerJson.at("host").get<string>();
         WorkerInfo worker;
         if (_serviceProvider->config()->isKnownWorker(name)) {
             worker = _serviceProvider->config()->workerInfo(name);
         } else {
             worker.name = name;
         }
-        worker.svcHost.addr = host;
-        worker.svcHost.name = workerJson.at("svc-host-name").get<string>();
-        worker.svcPort = workerJson.at("svc-port").get<uint16_t>();
-        worker.fsHost.addr = host;
-        worker.fsHost.name = workerJson.at("fs-host-name").get<string>();
-        worker.fsPort = workerJson.at("fs-port").get<uint16_t>();
-        worker.dataDir = workerJson.at("data-dir").get<string>();
-        worker.loaderHost.addr = host;
-        worker.loaderHost.name = workerJson.at("loader-host-name").get<string>();
-        worker.loaderPort = workerJson.at("loader-port").get<uint16_t>();
-        worker.loaderTmpDir = workerJson.at("loader-tmp-dir").get<string>();
-        worker.exporterHost.addr = host;
-        worker.exporterHost.name = workerJson.at("exporter-host-name").get<string>();
-        worker.exporterPort = workerJson.at("exporter-port").get<uint16_t>();
-        worker.exporterTmpDir = workerJson.at("exporter-tmp-dir").get<string>();
-        worker.httpLoaderHost.addr = host;
-        worker.httpLoaderHost.name = workerJson.at("http-loader-host-name").get<string>();
-        worker.httpLoaderPort = workerJson.at("http-loader-port").get<uint16_t>();
-        worker.httpLoaderTmpDir = workerJson.at("http-loader-tmp-dir").get<string>();
+        if (workerJson.contains("replication")) {
+            json const& replicationWorker = workerJson.at("replication");
+            string const hostAddr = replicationWorker.at("host-addr").get<string>();
+            worker.svcHost.addr = hostAddr;
+            worker.svcHost.name = replicationWorker.at("svc-host-name").get<string>();
+            worker.svcPort = replicationWorker.at("svc-port").get<uint16_t>();
+            worker.fsHost.addr = hostAddr;
+            worker.fsHost.name = replicationWorker.at("fs-host-name").get<string>();
+            worker.fsPort = replicationWorker.at("fs-port").get<uint16_t>();
+            worker.dataDir = replicationWorker.at("data-dir").get<string>();
+            worker.loaderHost.addr = hostAddr;
+            worker.loaderHost.name = replicationWorker.at("loader-host-name").get<string>();
+            worker.loaderPort = replicationWorker.at("loader-port").get<uint16_t>();
+            worker.loaderTmpDir = replicationWorker.at("loader-tmp-dir").get<string>();
+            worker.exporterHost.addr = hostAddr;
+            worker.exporterHost.name = replicationWorker.at("exporter-host-name").get<string>();
+            worker.exporterPort = replicationWorker.at("exporter-port").get<uint16_t>();
+            worker.exporterTmpDir = replicationWorker.at("exporter-tmp-dir").get<string>();
+            worker.httpLoaderHost.addr = hostAddr;
+            worker.httpLoaderHost.name = replicationWorker.at("http-loader-host-name").get<string>();
+            worker.httpLoaderPort = replicationWorker.at("http-loader-port").get<uint16_t>();
+            worker.httpLoaderTmpDir = replicationWorker.at("http-loader-tmp-dir").get<string>();
+        }
+        if (workerJson.contains("qserv")) {
+            json const& qservWorker = workerJson.at("qserv");
+            worker.qservWorker.host.addr = qservWorker.at("host-addr").get<string>();
+            worker.qservWorker.host.name = qservWorker.at("management-host-name").get<string>();
+            worker.qservWorker.port = qservWorker.at("management-port").get<uint16_t>();
+        }
         coll.push_back(std::move(worker));
     }
     return coll;
@@ -116,23 +126,23 @@ void Registry::add(string const& name) const {
                             {"http-loader-host-name", hostName},
                             {"http-loader-port", config->get<uint16_t>("worker", "http-loader-port")},
                             {"http-loader-tmp-dir", config->get<string>("worker", "http-loader-tmp-dir")}}}});
-    _request("POST", "/worker", request);
+    _request(http::Method::POST, "/worker", request);
 }
 
 void Registry::remove(string const& name) const {
     json const request = json::object(
             {{"instance_id", _serviceProvider->instanceId()}, {"auth_key", _serviceProvider->authKey()}});
-    _request("DELETE", "/worker/" + name, request);
+    _request(http::Method::DELETE, "/worker/" + name, request);
 }
 
-json Registry::_request(string const& method, string const& resource, json const& request) const {
+json Registry::_request(http::Method method, string const& resource, json const& request) const {
     string const url = _baseUrl + resource;
     vector<string> const headers =
             request.empty() ? vector<string>({}) : vector<string>({"Content-Type: application/json"});
-    HttpClient client(method, url, request.empty() ? string() : request.dump(), headers);
+    http::Client client(method, url, request.empty() ? string() : request.dump(), headers);
     json const response = client.readAsJson();
     if (0 == response.at("success").get<int>()) {
-        string const msg = ::context(__func__) + "'" + method + "' request to '" + url +
+        string const msg = ::context(__func__) + "'" + http::method2string(method) + "' request to '" + url +
                            "' failed, error: '" + response.at("error").get<string>() + "'.";
         LOGS(_log, LOG_LVL_ERROR, msg);
         throw runtime_error(msg);

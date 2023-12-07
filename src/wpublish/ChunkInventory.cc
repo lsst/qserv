@@ -140,8 +140,6 @@ public:
         switch (ru.unitType()) {
             case lsst::qserv::ResourceUnit::DBCHUNK:
                 return chunkInventory.has(ru.db(), ru.chunk());
-            case lsst::qserv::ResourceUnit::WORKER:
-                return chunkInventory.id() == ru.workerId();
             case lsst::qserv::ResourceUnit::QUERY:
                 return true;
             default:
@@ -358,21 +356,22 @@ void ChunkInventory::_rebuild(SqlConnection& sc) {
 }
 
 ChunkInventory::ExistMap ChunkInventory::existMap() const {
-    ChunkInventory::ExistMap result;
-
     lock_guard<mutex> lock(_mtx);
+    return _existMap;
+}
 
-    // Make this copy while holding the mutex too guarantee a consistent
-    // result o fthe operation.
-    result = _existMap;
-
+set<string> ChunkInventory::databases() const {
+    set<string> result;
+    lock_guard<mutex> lock(_mtx);
+    for (auto&& [database, chunks] : _existMap) {
+        result.insert(database);
+    }
     return result;
 }
 
 ChunkInventory::ExistMap operator-(ChunkInventory const& lhs, ChunkInventory const& rhs) {
     // The comparision will be made based on two self-consistent copies of
     // the maps obtained by calling the thread-safe accessor methods.
-
     ChunkInventory::ExistMap const lhs_existMap = lhs.existMap();
     ChunkInventory::ExistMap const rhs_existMap = rhs.existMap();
     ChunkInventory::ExistMap result;

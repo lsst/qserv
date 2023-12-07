@@ -26,11 +26,11 @@
 #include <string>
 
 // Qserv headers
+#include "http/ModuleBase.h"
 #include "qhttp/Request.h"
 #include "qhttp/Response.h"
 #include "replica/Configuration.h"
 #include "replica/EventLogger.h"
-#include "replica/HttpModuleBase.h"
 #include "replica/HttpProcessorConfig.h"
 
 // Forward declarations
@@ -53,7 +53,7 @@ namespace lsst::qserv::replica {
  * Class HttpModule is a base class for requests processing modules
  * of an HTTP server built into the Master Replication Controller.
  */
-class HttpModule : public EventLogger, public HttpModuleBase {
+class HttpModule : public EventLogger, public http::ModuleBase {
 public:
     HttpModule() = delete;
     HttpModule(HttpModule const&) = delete;
@@ -78,7 +78,7 @@ protected:
     unsigned int qservSyncTimeoutSec() const { return _processorConfig.qservSyncTimeoutSec; }
     unsigned int workerReconfigTimeoutSec() const { return _processorConfig.workerReconfigTimeoutSec; }
 
-    /// @see HttpModuleBase::context()
+    /// @see http::ModuleBase::context()
     virtual std::string context() const final;
 
     /// @param database The name of a database to connect to.
@@ -127,7 +127,7 @@ protected:
      * @return The database info object.
      * @throw std::invalid_argument If neither obe the above-mentioned attributes were
      *    provided in a request.
-     * @throw HttpError If the database is already "published" and a value of
+     * @throw http::Error If the database is already "published" and a value of
      *   the parameter 'throwIfPublished' is set to 'true'.
      */
     DatabaseInfo getDatabaseInfo(std::string const& func, bool throwIfPublished = true) const;

@@ -25,25 +25,35 @@
 #include "xrdsvc/SsiService.h"
 
 // System headers
+#include <algorithm>
 #include <cassert>
+#include <chrono>
 #include <iostream>
 #include <string>
+#include <stdexcept>
 #include <stdlib.h>
+#include <thread>
 #include <unistd.h>
-#include <xrdsvc/SsiRequest.h>
+#include <vector>
 
 // Third-party headers
+#include <nlohmann/json.hpp>
 #include "XrdSsi/XrdSsiLogger.hh"
 
 // LSST headers
 #include "lsst/log/Log.h"
 
 // Qserv headers
+#include "http/Client.h"
+#include "http/Method.h"
 #include "memman/MemMan.h"
 #include "memman/MemManNone.h"
+#include "mysql/MySqlConfig.h"
 #include "mysql/MySqlConnection.h"
+#include "qhttp/Server.h"
 #include "sql/SqlConnection.h"
 #include "sql/SqlConnectionFactory.h"
+#include "util/common.h"
 #include "util/FileMonitor.h"
 #include "util/HoldTrack.h"
 #include "wbase/Base.h"
@@ -58,8 +68,12 @@
 #include "wsched/FifoScheduler.h"
 #include "wsched/GroupScheduler.h"
 #include "wsched/ScanScheduler.h"
+#include "xrdsvc/HttpSvc.h"
+#include "xrdsvc/SsiRequest.h"
 #include "xrdsvc/XrdName.h"
 
+using namespace lsst::qserv;
+using namespace nlohmann;
 using namespace std;
 using namespace std::literals;
 
@@ -72,22 +86,75 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.xrdsvc.SsiService");
 void initMDC() { LOG_MDC("LWP", to_string(lsst::log::lwpID())); }
 int dummyInitMDC = LOG_MDC_INIT(initMDC);
 
+std::shared_ptr<wpublish::ChunkInventory> makeChunkInventory(mysql::MySqlConfig const& mySqlConfig) {
+    xrdsvc::XrdName x;
+    if (!mySqlConfig.dbName.empty()) {
+        LOGS(_log, LOG_LVL_FATAL, "dbName must be empty to prevent accidental context");
+        throw runtime_error("dbName must be empty to prevent accidental context");
+    }
+    auto conn = sql::SqlConnectionFactory::make(mySqlConfig);
+    assert(conn);
+    auto inventory = make_shared<wpublish::ChunkInventory>(x.getName(), conn);
+    ostringstream os;
+    os << "Paths exported: ";
+    inventory->dbgPrint(os);
+    LOGS(_log, LOG_LVL_DEBUG, os.str());
+    return inventory;
+}
+
+/**
+ * This function will keep periodically updating worker's info in the Replication
+ * System's Registry.
+ * @param id The unique identifier of a worker to be registered.
+ * @note The thread will terminate the process if the registraton request to the Registry
+ * was explicitly denied by the service. This means the application may be misconfigured.
+ * Transient communication errors when attempting to connect or send requests to
+ * the Registry will be posted into the log stream and ignored.
+ */
+void registryUpdateLoop(string const& id) {
+    auto const workerConfig = wconfig::WorkerConfig::instance();
+    auto const method = http::Method::POST;
+    string const url = "http://" + workerConfig->replicationRegistryHost() + ":" +
+                       to_string(workerConfig->replicationRegistryPort()) + "/qserv-worker";
+    vector<string> const headers = {"Content-Type: application/json"};
+    json const request = json::object({{"instance_id", workerConfig->replicationInstanceId()},
+                                       {"auth_key", workerConfig->replicationAuthKey()},
+                                       {"worker",
+                                        {{"name", id},
+                                         {"management-port", workerConfig->replicationHttpPort()},
+                                         {"management-host-name", util::get_current_host_fqdn()}}}});
+    string const requestContext =
+            "SsiService: '" + http::method2string(method) + "' request to '" + url + "'";
+    http::Client client(method, url, request.dump(), headers);
+    while (true) {
+        try {
+            json const response = client.readAsJson();
+            if (0 == response.at("success").get<int>()) {
+                string const error = response.at("error").get<string>();
+                LOGS(_log, LOG_LVL_ERROR, requestContext + " was denied, error: '" + error + "'.");
+                abort();
+            }
+        } catch (exception const& ex) {
+            LOGS(_log, LOG_LVL_WARN, requestContext + " failed, ex: " + ex.what());
+        }
+        this_thread::sleep_for(chrono::seconds(max(1U, workerConfig->replicationRegistryHearbeatIvalSec())));
+    }
+}
+
 }  // namespace
 
 namespace lsst::qserv::xrdsvc {
 
-SsiService::SsiService(XrdSsiLogger* log)
-        : _mySqlConfig(wconfig::WorkerConfig::instance()->getMySqlConfig()) {
+SsiService::SsiService(XrdSsiLogger* log) {
     LOGS(_log, LOG_LVL_DEBUG, "SsiService starting...");
 
     util::HoldTrack::setup(10min);
 
-    if (not mysql::MySqlConnection::checkConnection(_mySqlConfig)) {
-        LOGS(_log, LOG_LVL_FATAL, "Unable to connect to MySQL using configuration:" << _mySqlConfig);
+    auto const mySqlConfig = wconfig::WorkerConfig::instance()->getMySqlConfig();
+    if (not mysql::MySqlConnection::checkConnection(mySqlConfig)) {
+        LOGS(_log, LOG_LVL_FATAL, "Unable to connect to MySQL using configuration:" << mySqlConfig);
         throw wconfig::WorkerConfigError("Unable to connect to MySQL");
     }
-    _initInventory();
-
     auto const workerConfig = wconfig::WorkerConfig::instance();
     string cfgMemMan = workerConfig->getMemManClass();
     memman::MemMan::Ptr memMan;
@@ -169,8 +236,8 @@ SsiService::SsiService(XrdSsiLogger* log)
     LOGS(_log, LOG_LVL_WARN, "config transmitMgr" << *transmitMgr);
     LOGS(_log, LOG_LVL_WARN, "maxPoolThreads=" << maxPoolThreads);
 
-    _foreman = make_shared<wcontrol::Foreman>(blendSched, poolSize, maxPoolThreads, _mySqlConfig, queries,
-                                              sqlConnMgr, transmitMgr);
+    _foreman = make_shared<wcontrol::Foreman>(blendSched, poolSize, maxPoolThreads, mySqlConfig, queries,
+                                              ::makeChunkInventory(mySqlConfig), sqlConnMgr, transmitMgr);
 
     // Watch to see if the log configuration is changed.
     // If LSST_LOG_CONFIG is not defined, there's no good way to know what log
@@ -192,33 +259,34 @@ SsiService::SsiService(XrdSsiLogger* log)
             wbase::FileChannelShared::cleanUpResultsOnWorkerRestart();
         }
     }
+
+    // Start the control server for processing worker management requests sent
+    // by the Replication System. Update the port number in the configuration
+    // in case if the server is run on the dynamically allocated port.
+    _controlHttpSvc = HttpSvc::create(_foreman, workerConfig->replicationHttpPort(),
+                                      workerConfig->replicationNumHttpThreads());
+    auto const port = _controlHttpSvc->start();
+    workerConfig->setReplicationHttpPort(port);
+
+    // Begin periodically updating worker's status in the Replication System's registry
+    // in the detached thread. This will continue before the application gets terminated.
+    thread registryUpdateThread(::registryUpdateLoop, _foreman->chunkInventory()->id());
+    registryUpdateThread.detach();
 }
 
-SsiService::~SsiService() { LOGS(_log, LOG_LVL_DEBUG, "SsiService dying."); }
+SsiService::~SsiService() {
+    LOGS(_log, LOG_LVL_DEBUG, "SsiService dying.");
+    _controlHttpSvc->stop();
+}
 
 void SsiService::ProcessRequest(XrdSsiRequest& reqRef, XrdSsiResource& resRef) {
     LOGS(_log, LOG_LVL_DEBUG, "Got request call where rName is: " << resRef.rName);
-    auto request = SsiRequest::newSsiRequest(resRef.rName, _chunkInventory, _foreman);
+    auto request = SsiRequest::newSsiRequest(resRef.rName, _foreman);
 
     // Continue execution in the session object as SSI gave us a new thread.
     // Object deletes itself when finished is called.
     //
     request->execute(reqRef);
-}
-
-void SsiService::_initInventory() {
-    XrdName x;
-    if (not _mySqlConfig.dbName.empty()) {
-        LOGS(_log, LOG_LVL_FATAL, "dbName must be empty to prevent accidental context");
-        throw runtime_error("dbName must be empty to prevent accidental context");
-    }
-    auto conn = sql::SqlConnectionFactory::make(_mySqlConfig);
-    assert(conn);
-    _chunkInventory = make_shared<wpublish::ChunkInventory>(x.getName(), conn);
-    ostringstream os;
-    os << "Paths exported: ";
-    _chunkInventory->dbgPrint(os);
-    LOGS(_log, LOG_LVL_DEBUG, os.str());
 }
 
 }  // namespace lsst::qserv::xrdsvc

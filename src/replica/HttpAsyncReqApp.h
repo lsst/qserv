@@ -28,9 +28,9 @@
 #include <ostream>
 
 // Forward declarations
-namespace lsst::qserv::replica {
-class HttpAsyncReq;
-}  // namespace lsst::qserv::replica
+namespace lsst::qserv::http {
+class AsyncReq;
+}  // namespace lsst::qserv::http
 
 // This header declarations
 namespace lsst::qserv::replica {
@@ -40,9 +40,9 @@ namespace lsst::qserv::replica {
  * the HTTP/HTTPS protocol using the asynchronous client API. If option '--out=<file>'
  * is present the result will be writted to the specified file. Otherwise the content
  * will be printed to the standard output stream.
- * @note Unlike a similar tool HttpClientApp, this one uses the asynchronous
- *   API class HttpAsyncReq.
- * @see class HttpClient
+ * @note Unlike a similar tool HttpClientApp, this one uses the asynchronous API.
+ * @see class http::AsyncReq
+ * @see class http::Client
  * @see class HttpClientApp
  */
 class HttpAsyncReqApp : public Application {
@@ -73,7 +73,7 @@ private:
     HttpAsyncReqApp(int argc, char* argv[]);
 
     /// Dump results (status, header and body) of a request.
-    void _dump(std::shared_ptr<HttpAsyncReq> const& ptr, std::ostream* osPtr) const;
+    void _dump(std::shared_ptr<http::AsyncReq> const& ptr, std::ostream* osPtr) const;
 
     std::string _method = "GET";
     std::string _url;

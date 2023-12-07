@@ -40,12 +40,12 @@
 #include "css/CssError.h"
 #include "css/DbInterfaceMySql.h"
 #include "global/constants.h"
+#include "http/Exceptions.h"
 #include "replica/ChunkedTable.h"
 #include "replica/Configuration.h"
 #include "replica/DatabaseMySQL.h"
 #include "replica/DatabaseServices.h"
 #include "replica/FindAllJob.h"
-#include "replica/HttpExceptions.h"
 #include "replica/QservSyncJob.h"
 #include "replica/ReplicaInfo.h"
 #include "replica/ServiceProvider.h"
@@ -103,7 +103,7 @@ string jobCompletionErrorIfAny(SqlJob::Ptr const& job, string const& prefix) {
  * @param func A context for error reporting.
  * @param colName The name of a column (used for error reporting).
  * @param colType The column type definition to be evaluated.
- * @throw lsst::qserv::replica::HttpError if the type validation failed.
+ * @throw lsst::qserv::http::Error if the type validation failed.
  */
 void validateColumnType(string const& func, string const& colName, string const& colType) {
     string const colTypeUpperCase = boost::algorithm::to_upper_copy(colType);
@@ -111,7 +111,7 @@ void validateColumnType(string const& func, string const& colName, string const&
         if (colTypeUpperCase.find(prohibitedType) == string::npos) continue;
         string const msg = "the prohibited type '" + colType + "' detected in a definition of the column '" +
                            colName + "' of the director table";
-        throw HttpError(func, msg);
+        throw lsst::qserv::http::Error(func, msg);
     }
 }
 
@@ -127,7 +127,7 @@ string const HttpIngestModule::_partitionByColumnType = "INT NOT NULL";
 void HttpIngestModule::process(Controller::Ptr const& controller, string const& taskName,
                                HttpProcessorConfig const& processorConfig, qhttp::Request::Ptr const& req,
                                qhttp::Response::Ptr const& resp, string const& subModuleName,
-                               HttpAuthType const authType) {
+                               http::AuthType const authType) {
     HttpIngestModule module(controller, taskName, processorConfig, req, resp);
     module.execute(subModuleName, authType);
 }
@@ -226,7 +226,7 @@ json HttpIngestModule::_addDatabase() {
     debug(__func__, "overlap=" + to_string(overlap));
     debug(__func__, "auto_build_secondary_index=" + to_string(enableAutoBuildDirectorIndex ? 1 : 0));
 
-    if (overlap < 0) throw HttpError(__func__, "overlap can't have a negative value");
+    if (overlap < 0) throw http::Error(__func__, "overlap can't have a negative value");
 
     // Find an appropriate database family for the database. If none
     // found then create a new one named after the database.
@@ -267,7 +267,7 @@ json HttpIngestModule::_addDatabase() {
     logJobFinishedEvent(SqlCreateDbJob::typeName(), job, family);
 
     string error = ::jobCompletionErrorIfAny(job, "database creation failed");
-    if (!error.empty()) throw HttpError(__func__, error);
+    if (!error.empty()) throw http::Error(__func__, error);
 
     // Register the new database in the Configuration.
     // Note, this operation will fail if the database with the name
@@ -285,7 +285,7 @@ json HttpIngestModule::_addDatabase() {
 
     // Tell workers to reload their configurations
     error = reconfigureWorkers(database, allWorkers, workerReconfigTimeoutSec());
-    if (!error.empty()) throw HttpError(__func__, error);
+    if (!error.empty()) throw http::Error(__func__, error);
 
     json result;
     result["database"] = database.toJson();
@@ -309,19 +309,19 @@ json HttpIngestModule::_publishDatabase() {
     debug(__func__, "row_counters_deploy_at_qserv=" + bool2str(rowCountersDeployAtQserv));
 
     auto const database = config->databaseInfo(databaseName);
-    if (database.isPublished) throw HttpError(__func__, "the database is already published");
+    if (database.isPublished) throw http::Error(__func__, "the database is already published");
 
     // Scan super-transactions to make sure none is still open
     for (auto&& t : databaseServices->transactions(database.name)) {
         if (!(t.state == TransactionInfo::State::FINISHED || t.state == TransactionInfo::State::ABORTED)) {
-            throw HttpError(__func__, "database has uncommitted transactions");
+            throw http::Error(__func__, "database has uncommitted transactions");
         }
     }
 
     // Refuse the operation if no chunks were registered
     vector<unsigned int> chunks;
     databaseServices->findDatabaseChunks(chunks, database.name, allWorkers);
-    if (chunks.empty()) throw HttpError(__func__, "the database doesn't have any chunks");
+    if (chunks.empty()) throw http::Error(__func__, "the database doesn't have any chunks");
 
     // The operation can be vetoed by the corresponding workflow parameter requested
     // by a catalog ingest workflow at the database creation time.
@@ -348,7 +348,7 @@ json HttpIngestModule::_publishDatabase() {
                     SqlRowStatsJob::StateUpdatePolicy::ENABLED, rowCountersDeployAtQserv, forceRescan,
                     allWorkers, config->get<int>("controller", "ingest-priority-level"));
             if (!errorExt.empty()) {
-                throw HttpError(__func__, "Table rows scanning/deployment failed.", errorExt);
+                throw http::Error(__func__, "Table rows scanning/deployment failed.", errorExt);
             }
         }
     }
@@ -372,7 +372,7 @@ json HttpIngestModule::_publishDatabase() {
     // This step is needed to get workers' Configuration in-sync with its
     // persistent state.
     auto const error = reconfigureWorkers(database, allWorkers, workerReconfigTimeoutSec());
-    if (!error.empty()) throw HttpError(__func__, error);
+    if (!error.empty()) throw http::Error(__func__, error);
 
     // Run the chunks scanner to ensure new chunks are registered in the persistent
     // store of the Replication system and synchronized with the Qserv workers.
@@ -402,7 +402,7 @@ json HttpIngestModule::_deleteDatabase() {
     auto database = config->databaseInfo(databaseName);
     if (database.isPublished) {
         if (!isAdmin()) {
-            throw HttpError(__func__, "deleting published databases requires administrator's privileges.");
+            throw http::Error(__func__, "deleting published databases requires administrator's privileges.");
         }
     }
 
@@ -473,7 +473,7 @@ json HttpIngestModule::_deleteDatabase() {
     logJobFinishedEvent(SqlDeleteDbJob::typeName(), deleteDbJob, database.family);
 
     string error = ::jobCompletionErrorIfAny(deleteDbJob, "database deletion failed");
-    if (!error.empty()) throw HttpError(__func__, error);
+    if (!error.empty()) throw http::Error(__func__, error);
 
     // Remove database entry from the Configuration. This will also eliminate all
     // dependent metadata, such as replicas info
@@ -482,7 +482,7 @@ json HttpIngestModule::_deleteDatabase() {
     // This step is needed to get workers' Configuration in-sync with its
     // persistent state.
     error = reconfigureWorkers(database, allWorkers, workerReconfigTimeoutSec());
-    if (!error.empty()) throw HttpError(__func__, error);
+    if (!error.empty()) throw http::Error(__func__, error);
 
     return json::object();
 }
@@ -552,12 +552,12 @@ json HttpIngestModule::_addTable() {
 
     auto const config = controller()->serviceProvider()->config();
     auto database = config->databaseInfo(table.database);
-    if (database.isPublished) throw HttpError(__func__, "the database is already published");
-    if (database.tableExists(table.name)) throw HttpError(__func__, "table already exists");
+    if (database.isPublished) throw http::Error(__func__, "the database is already published");
+    if (database.tableExists(table.name)) throw http::Error(__func__, "table already exists");
 
     // Translate table schema
-    if (schema.is_null()) throw HttpError(__func__, "table schema is empty");
-    if (!schema.is_array()) throw HttpError(__func__, "table schema is not defined as an array");
+    if (schema.is_null()) throw http::Error(__func__, "table schema is empty");
+    if (!schema.is_array()) throw http::Error(__func__, "table schema is not defined as an array");
 
     // The name of a special column for the super-transaction-based ingest.
     // Always insert this column as the very first one into the schema.
@@ -565,14 +565,14 @@ json HttpIngestModule::_addTable() {
 
     for (auto&& column : schema) {
         if (!column.is_object()) {
-            throw HttpError(__func__, "columns definitions in table schema are not JSON objects");
+            throw http::Error(__func__, "columns definitions in table schema are not JSON objects");
         }
         if (0 == column.count("name")) {
             string const msg =
                     "column attribute 'name' is missing in table schema for "
                     "column number: " +
                     to_string(table.columns.size() + 1);
-            throw HttpError(__func__, msg);
+            throw http::Error(__func__, msg);
         }
         string colName = column["name"];
         if (0 == column.count("type")) {
@@ -580,7 +580,7 @@ json HttpIngestModule::_addTable() {
                     "column attribute 'type' is missing in table schema for "
                     "column number: " +
                     to_string(table.columns.size() + 1);
-            throw HttpError(__func__, msg);
+            throw http::Error(__func__, msg);
         }
         string colType = column["type"];
         if (table.isDirector()) {
@@ -592,7 +592,7 @@ json HttpIngestModule::_addTable() {
         }
         if (_partitionByColumn == colName) {
             string const msg = "reserved column '" + _partitionByColumn + "' is not allowed";
-            throw HttpError(__func__, msg);
+            throw http::Error(__func__, msg);
         }
         table.columns.emplace_back(colName, colType);
     }
@@ -636,7 +636,7 @@ json HttpIngestModule::_addTable() {
 
         string const error =
                 ::jobCompletionErrorIfAny(job, "table creation failed for: '" + thisTableName + "'");
-        if (!error.empty()) throw HttpError(__func__, error);
+        if (!error.empty()) throw http::Error(__func__, error);
     }
 
     // Create the "director" index table using an updated version of
@@ -653,7 +653,7 @@ json HttpIngestModule::_addTable() {
     // This step is needed to get workers' Configuration in-sync with its
     // persistent state.
     string const error = reconfigureWorkers(database, allWorkers, workerReconfigTimeoutSec());
-    if (!error.empty()) throw HttpError(__func__, error);
+    if (!error.empty()) throw http::Error(__func__, error);
 
     return result;
 }
@@ -676,9 +676,9 @@ json HttpIngestModule::_deleteTable() {
 
     if (database.isPublished) {
         if (!isAdmin()) {
-            throw HttpError(__func__,
-                            "deleting tables of published databases requires administrator's"
-                            " privileges.");
+            throw http::Error(__func__,
+                              "deleting tables of published databases requires administrator's"
+                              " privileges.");
         }
     }
 
@@ -730,7 +730,7 @@ json HttpIngestModule::_deleteTable() {
     logJobFinishedEvent(SqlDeleteTableJob::typeName(), job, database.family);
 
     string error = ::jobCompletionErrorIfAny(job, "table deletion failed");
-    if (!error.empty()) throw HttpError(__func__, error);
+    if (!error.empty()) throw http::Error(__func__, error);
 
     // Remove table entry from the Configuration. This will also eliminate all
     // dependent metadata, such as replicas info
@@ -739,7 +739,7 @@ json HttpIngestModule::_deleteTable() {
     // This step is needed to get workers' Configuration in-sync with its
     // persistent state.
     error = reconfigureWorkers(database, allWorkers, workerReconfigTimeoutSec());
-    if (!error.empty()) throw HttpError(__func__, error);
+    if (!error.empty()) throw http::Error(__func__, error);
 
     return json::object();
 }
@@ -782,7 +782,7 @@ json HttpIngestModule::_scanTableStats() {
             databaseName, tableName, overlapSelector, rowCountersStateUpdatePolicy, rowCountersDeployAtQserv,
             forceRescan, allWorkers, config->get<int>("controller", "catalog-management-priority-level"));
     if (!errorExt.empty()) {
-        throw HttpError(__func__, "Table rows scanning/deployment failed.", errorExt);
+        throw http::Error(__func__, "Table rows scanning/deployment failed.", errorExt);
     }
     return json::object();
 }
@@ -959,8 +959,9 @@ json HttpIngestModule::_deleteTableStats() {
         string const msg = "Failed to delete metadata table with counters for table '" + table.name +
                            "' of database '" + table.database + "' from Qserv, ex: " + string(ex.what());
         error(__func__, msg);
-        throw HttpError(__func__, msg,
-                        json::object({{"operation", "Deploy table row counters in Qserv."}, {"error", msg}}));
+        throw http::Error(
+                __func__, msg,
+                json::object({{"operation", "Deploy table row counters in Qserv."}, {"error", msg}}));
     }
 
     // Delete stats from the Replication system's persistent state if requested.
@@ -1046,7 +1047,7 @@ void HttpIngestModule::_grantDatabaseAccess(DatabaseInfo const& database, bool a
     logJobFinishedEvent(SqlGrantAccessJob::typeName(), job, database.family);
 
     string const error = ::jobCompletionErrorIfAny(job, "grant access to a database failed");
-    if (!error.empty()) throw HttpError(__func__, error);
+    if (!error.empty()) throw http::Error(__func__, error);
 }
 
 void HttpIngestModule::_enableDatabase(DatabaseInfo const& database, bool allWorkers) const {
@@ -1062,7 +1063,7 @@ void HttpIngestModule::_enableDatabase(DatabaseInfo const& database, bool allWor
     logJobFinishedEvent(SqlEnableDbJob::typeName(), job, database.family);
 
     string const error = ::jobCompletionErrorIfAny(job, "enabling database failed");
-    if (!error.empty()) throw HttpError(__func__, error);
+    if (!error.empty()) throw http::Error(__func__, error);
 }
 
 void HttpIngestModule::_createMissingChunkTables(DatabaseInfo const& database, bool allWorkers) const {
@@ -1076,7 +1077,7 @@ void HttpIngestModule::_createMissingChunkTables(DatabaseInfo const& database, b
         // Skip tables that have been published.
         if (table.isPublished) continue;
         if (table.columns.empty()) {
-            throw HttpError(__func__, "schema is empty for table: '" + table.name + "'");
+            throw http::Error(__func__, "schema is empty for table: '" + table.name + "'");
         }
         auto const job = SqlCreateTablesJob::create(
                 database.name, table.name, engine, _partitionByColumn, table.columns, allWorkers,
@@ -1089,7 +1090,7 @@ void HttpIngestModule::_createMissingChunkTables(DatabaseInfo const& database, b
 
         string const error =
                 ::jobCompletionErrorIfAny(job, "table creation failed for: '" + table.name + "'");
-        if (!error.empty()) throw HttpError(__func__, error);
+        if (!error.empty()) throw http::Error(__func__, error);
     }
 }
 
@@ -1117,7 +1118,7 @@ void HttpIngestModule::_removeMySQLPartitions(DatabaseInfo const& database, bool
         error += ::jobCompletionErrorIfAny(job, "MySQL partitions removal failed for database: " +
                                                         database.name + ", table: " + table.name);
     }
-    if (!error.empty()) throw HttpError(__func__, error);
+    if (!error.empty()) throw http::Error(__func__, error);
 }
 
 void HttpIngestModule::_publishDatabaseInMaster(DatabaseInfo const& database) const {
@@ -1407,7 +1408,7 @@ void HttpIngestModule::_qservSync(DatabaseInfo const& database, bool allWorkers)
     logJobFinishedEvent(FindAllJob::typeName(), findAlljob, database.family);
 
     if (findAlljob->extendedState() != Job::SUCCESS) {
-        throw HttpError(__func__, "replica lookup stage failed");
+        throw http::Error(__func__, "replica lookup stage failed");
     }
 
     bool const force = false;
@@ -1419,7 +1420,7 @@ void HttpIngestModule::_qservSync(DatabaseInfo const& database, bool allWorkers)
     logJobFinishedEvent(QservSyncJob::typeName(), qservSyncJob, database.family);
 
     if (qservSyncJob->extendedState() != Job::SUCCESS) {
-        throw HttpError(__func__, "Qserv synchronization failed");
+        throw http::Error(__func__, "Qserv synchronization failed");
     }
 }
 

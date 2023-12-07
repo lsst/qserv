@@ -26,8 +26,8 @@
 #include <stdexcept>
 
 // Qserv headers
+#include "http/Exceptions.h"
 #include "replica/DatabaseServices.h"
-#include "replica/HttpExceptions.h"
 #include "replica/ServiceProvider.h"
 
 using namespace std;
@@ -38,7 +38,7 @@ namespace lsst::qserv::replica {
 void HttpControllersModule::process(Controller::Ptr const& controller, string const& taskName,
                                     HttpProcessorConfig const& processorConfig,
                                     qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp,
-                                    string const& subModuleName, HttpAuthType const authType) {
+                                    string const& subModuleName, http::AuthType const authType) {
     HttpControllersModule module(controller, taskName, processorConfig, req, resp);
     module.execute(subModuleName, authType);
 }
@@ -137,7 +137,7 @@ json HttpControllersModule::_oneController() {
         result["log"] = jsonLog;
 
     } catch (DatabaseServicesNotFound const& ex) {
-        throw HttpError(__func__, "no such controller found");
+        throw http::Error(__func__, "no such controller found");
     }
     return result;
 }
@@ -158,7 +158,7 @@ json HttpControllersModule::_eventLogDict() {
         result["controller"] = controllerInfo.toJson(isCurrent);
         result["log_dict"] = databaseServices->readControllerEventDict(logCurrentController ? id : string());
     } catch (DatabaseServicesNotFound const& ex) {
-        throw HttpError(__func__, "no such controller found");
+        throw http::Error(__func__, "no such controller found");
     }
     return result;
 }

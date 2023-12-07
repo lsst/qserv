@@ -22,20 +22,26 @@
 #define LSST_QSERV_REPLICA_TESTECHOQSERVMGTREQUEST_H
 
 // System headers
+#include <list>
 #include <memory>
 #include <string>
-#include <vector>
+#include <utility>
+
+// Third party headers
+#include "nlohmann/json.hpp"
 
 // Qserv headers
 #include "replica/QservMgtRequest.h"
-#include "replica/ServiceProvider.h"
-#include "xrdreq/TestEchoQservRequest.h"
+
+namespace lsst::qserv::replica {
+class ServiceProvider;
+}  // namespace lsst::qserv::replica
 
 // This header declarations
 namespace lsst::qserv::replica {
 
 /**
- * Class TestEchoQservMgtRequest implements a special kind of requests
+ * Class TestEchoQservMgtRequest a special kind of requests
  * for testing Qserv workers.
  */
 class TestEchoQservMgtRequest : public QservMgtRequest {
@@ -49,7 +55,7 @@ public:
     TestEchoQservMgtRequest(TestEchoQservMgtRequest const&) = delete;
     TestEchoQservMgtRequest& operator=(TestEchoQservMgtRequest const&) = delete;
 
-    ~TestEchoQservMgtRequest() final = default;
+    virtual ~TestEchoQservMgtRequest() final = default;
 
     /**
      * Static factory method is needed to prevent issues with the lifespan
@@ -62,8 +68,9 @@ public:
      * @param onFinish (optional) callback function to be called upon request completion.
      * @return A pointer to the created object.
      */
-    static Ptr create(ServiceProvider::Ptr const& serviceProvider, std::string const& worker,
-                      std::string const& data, CallbackType const& onFinish = nullptr);
+    static std::shared_ptr<TestEchoQservMgtRequest> create(
+            std::shared_ptr<ServiceProvider> const& serviceProvider, std::string const& worker,
+            std::string const& data, CallbackType const& onFinish = nullptr);
 
     /// @return input data string sent to the worker
     std::string const& data() const { return _data; }
@@ -76,38 +83,28 @@ public:
     std::string const& dataEcho() const;
 
     /// @see QservMgtRequest::extendedPersistentState()
-    std::list<std::pair<std::string, std::string>> extendedPersistentState() const override;
+    virtual std::list<std::pair<std::string, std::string>> extendedPersistentState() const final;
 
 protected:
-    /// @see QservMgtRequest::startImpl
-    void startImpl(replica::Lock const& lock) final;
+    /// @see QservMgtRequest::createHttpReqImpl()
+    virtual void createHttpReqImpl(replica::Lock const& lock) final;
 
-    /// @see QservMgtRequest::finishImpl
-    void finishImpl(replica::Lock const& lock) final;
+    /// @see QservMgtRequest::dataReady()
+    virtual QservMgtRequest::ExtendedState dataReady(replica::Lock const& lock,
+                                                     nlohmann::json const& data) final;
 
-    /// @see QservMgtRequest::notify
-    void notify(replica::Lock const& lock) final;
+    /// @see QservMgtRequest::notify()
+    virtual void notify(replica::Lock const& lock) final;
 
 private:
     /// @see TestEchoQservMgtRequest::create()
-    TestEchoQservMgtRequest(ServiceProvider::Ptr const& serviceProvider, std::string const& worker,
-                            std::string const& data, CallbackType const& onFinish);
-
-    /**
-     * Carry over results of the request into a local storage.
-     * @param lock A lock on QservMgtRequest::_mtx must be acquired by a caller
-     *   of the method.
-     * @param data The data string returned by a worker.
-     */
-    void _setData(replica::Lock const& lock, std::string const& data);
+    TestEchoQservMgtRequest(std::shared_ptr<ServiceProvider> const& serviceProvider,
+                            std::string const& worker, std::string const& data, CallbackType const& onFinish);
 
     // Input parameters
 
     std::string const _data;
-    CallbackType _onFinish;  ///< @note this object is reset after finishing the request
-
-    /// A request to the remote services
-    xrdreq::TestEchoQservRequest::Ptr _qservRequest;
+    CallbackType _onFinish;  ///< This callback is reset after finishing the request.
 
     /// The data string returned by the Qserv worker
     std::string _dataEcho;

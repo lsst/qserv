@@ -113,6 +113,9 @@ public:
     /// @return a copy of the map in a thread-safe way
     ExistMap existMap() const;
 
+    /// @return a collection of databases mentioned in the exist map.
+    std::set<std::string> databases() const;
+
     void dbgPrint(std::ostream& os) const;
 
     friend ChunkInventory::ExistMap operator-(ChunkInventory const& lhs, ChunkInventory const& rhs);

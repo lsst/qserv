@@ -26,7 +26,7 @@
 #include <stdexcept>
 
 // Qserv headers
-#include "replica/HttpExceptions.h"
+#include "http/Exceptions.h"
 #include "replica/SqlQueryRequest.h"
 
 using namespace std;
@@ -37,7 +37,7 @@ namespace lsst::qserv::replica {
 void HttpQservSqlModule::process(Controller::Ptr const& controller, string const& taskName,
                                  HttpProcessorConfig const& processorConfig, qhttp::Request::Ptr const& req,
                                  qhttp::Response::Ptr const& resp, string const& subModuleName,
-                                 HttpAuthType const authType) {
+                                 http::AuthType const authType) {
     HttpQservSqlModule module(controller, taskName, processorConfig, req, resp);
     module.execute(subModuleName, authType);
 }
@@ -75,7 +75,7 @@ json HttpQservSqlModule::_execute() {
     result["result_set"] = request->responseData().toJson();
 
     if (request->extendedState() != Request::SUCCESS) {
-        throw HttpError(__func__, "Query failed. See details in the result set", result);
+        throw http::Error(__func__, "Query failed. See details in the result set", result);
     }
     return result;
 }

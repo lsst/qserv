@@ -352,11 +352,6 @@ public:
 };
 
 /**
- * The function that is not present in the Standard library.
- */
-unsigned int stoui(std::string const& str, size_t* idx = 0, int base = 10);
-
-/**
  * @brief Split the input string into words separated by the delimiter.
  *
  * @param str The input string.

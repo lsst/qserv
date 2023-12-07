@@ -22,15 +22,21 @@
 #define LSST_QSERV_REPLICA_GET_REPLICAS_QSERVMGTREQUEST_H
 
 // System headers
+#include <list>
 #include <memory>
 #include <string>
-#include <vector>
+#include <utility>
+
+// Third party headers
+#include "nlohmann/json.hpp"
 
 // Qserv headers
 #include "replica/QservMgtRequest.h"
 #include "replica/ReplicaInfo.h"
-#include "replica/ServiceProvider.h"
-#include "xrdreq/GetChunkListQservRequest.h"
+
+namespace lsst::qserv::replica {
+class ServiceProvider;
+}  // namespace lsst::qserv::replica
 
 // This header declarations
 namespace lsst::qserv::replica {
@@ -50,7 +56,7 @@ public:
     GetReplicasQservMgtRequest(GetReplicasQservMgtRequest const&) = delete;
     GetReplicasQservMgtRequest& operator=(GetReplicasQservMgtRequest const&) = delete;
 
-    ~GetReplicasQservMgtRequest() final = default;
+    virtual ~GetReplicasQservMgtRequest() final = default;
 
     /**
      * Static factory method is needed to prevent issues with the lifespan
@@ -86,14 +92,15 @@ public:
     std::list<std::pair<std::string, std::string>> extendedPersistentState() const override;
 
 protected:
-    /// @see QservMgtRequest::startImpl
-    void startImpl(replica::Lock const& lock) final;
+    /// @see QservMgtRequest::createHttpReqImpl()
+    virtual void createHttpReqImpl(replica::Lock const& lock) final;
 
-    /// @see QservMgtRequest::finishImpl
-    void finishImpl(replica::Lock const& lock) final;
+    /// @see QservMgtRequest::dataReady()
+    virtual QservMgtRequest::ExtendedState dataReady(replica::Lock const& lock,
+                                                     nlohmann::json const& data) final;
 
     /// @see QservMgtRequest::notify
-    void notify(replica::Lock const& lock) final;
+    virtual void notify(replica::Lock const& lock) final;
 
 private:
     /// @see GetReplicasQservMgtRequest::create()
@@ -101,24 +108,11 @@ private:
                                std::string const& databaseFamily, bool inUseOnly,
                                CallbackType const& onFinish);
 
-    /**
-     * Carry over results of the request into a local collection. Filter results
-     * by databases participating in the family.
-     *
-     * @param lock A lock on QservMgtRequest::_mtx must be acquired before calling this method
-     * @param collection The input collection of replicas.
-     */
-    void _setReplicas(replica::Lock const& lock,
-                      xrdreq::GetChunkListQservRequest::ChunkCollection const& collection);
-
     // Input parameters
 
     std::string const _databaseFamily;
     bool const _inUseOnly;
-    CallbackType _onFinish;  /// @note is reset when the request finishes
-
-    /// A request to the remote services
-    xrdreq::GetChunkListQservRequest::Ptr _qservRequest;
+    CallbackType _onFinish;  ///< The callback function is reset when the request finishes.
 
     /// A collection of replicas reported by the Qserr worker
     QservReplicaCollection _replicas;
