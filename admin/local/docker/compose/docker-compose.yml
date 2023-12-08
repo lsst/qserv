@@ -348,6 +348,11 @@ services:
           --targs db_socket=/qserv/mariadb/run/mysqld.sock
           --xrootd-manager manager-xrootd
           --log-cfg-file=/config-etc/log/log-czar-proxy.cnf
+          --repl-instance-id qserv_proj
+          --repl-auth-key replauthkey
+          --repl-admin-auth-key=repladminauthkey
+          --repl-registry-host repl-mgr-registry
+          --repl-registry-port 25082
         volumes:
             - type: volume
               source: czar_0_data

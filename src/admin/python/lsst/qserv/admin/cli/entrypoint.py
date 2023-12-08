@@ -465,6 +465,12 @@ def delete_database(
     show_default=True,
 )
 @log_cfg_file_option()
+@repl_instance_id_option(required=True)
+@repl_auth_key_option(required=True)
+@repl_admin_auth_key_option(required=True)
+@repl_registry_host_option(required=True)
+@repl_registry_port_option(required=True)
+@repl_http_port_option(required=True)
 @targs_options()
 @cmd_options()
 @options_file_option()
