@@ -24,6 +24,7 @@
 #include "czar/Czar.h"
 
 // System headers
+#include <chrono>
 #include <stdexcept>
 #include <sys/time.h>
 #include <thread>
@@ -31,6 +32,7 @@
 // Third-party headers
 #include "boost/format.hpp"
 #include "boost/lexical_cast.hpp"
+#include <nlohmann/json.hpp>
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -43,6 +45,8 @@
 #include "czar/CzarErrors.h"
 #include "czar/MessageTable.h"
 #include "global/LogContext.h"
+#include "http/Client.h"
+#include "http/Method.h"
 #include "proto/worker.pb.h"
 #include "qdisp/CzarStats.h"
 #include "qdisp/PseudoFifo.h"
@@ -60,6 +64,8 @@
 #include "xrdreq/QueryManagementAction.h"
 #include "XrdSsi/XrdSsiProvider.hh"
 
+using namespace lsst::qserv;
+using namespace nlohmann;
 using namespace std;
 
 extern XrdSsiProvider* XrdSsiProviderClient;
@@ -74,6 +80,44 @@ string const createAsyncResultTmpl(
         "VALUES (%2%, '%3%')");
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.czar.Czar");
+
+/**
+ * This function will keep periodically updating Czar's info in the Replication
+ * System's Registry.
+ * @param name The unique identifier of the Czar to be registered.
+ * @note The thread will terminate the process if the registraton request to the Registry
+ * was explicitly denied by the service. This means the application may be misconfigured.
+ * Transient communication errors when attempting to connect or send requests to
+ * the Registry will be posted into the log stream and ignored.
+ */
+void registryUpdateLoop(string const& name) {
+    auto const czarConfig = cconfig::CzarConfig::instance();
+    auto const method = http::Method::POST;
+    string const url = "http://" + czarConfig->replicationRegistryHost() + ":" +
+                       to_string(czarConfig->replicationRegistryPort()) + "/czar";
+    vector<string> const headers = {"Content-Type: application/json"};
+    json const request = json::object({{"instance_id", czarConfig->replicationInstanceId()},
+                                       {"auth_key", czarConfig->replicationAuthKey()},
+                                       {"czar",
+                                        {{"name", name},
+                                         {"management-port", czarConfig->replicationHttpPort()},
+                                         {"management-host-name", util::get_current_host_fqdn()}}}});
+    string const requestContext = "Czar: '" + http::method2string(method) + "' request to '" + url + "'";
+    http::Client client(method, url, request.dump(), headers);
+    while (true) {
+        try {
+            json const response = client.readAsJson();
+            if (0 == response.at("success").get<int>()) {
+                string const error = response.at("error").get<string>();
+                LOGS(_log, LOG_LVL_ERROR, requestContext + " was denied, error: '" + error + "'.");
+                abort();
+            }
+        } catch (exception const& ex) {
+            LOGS(_log, LOG_LVL_WARN, requestContext + " failed, ex: " + ex.what());
+        }
+        this_thread::sleep_for(chrono::seconds(max(1U, czarConfig->replicationRegistryHearbeatIvalSec())));
+    }
+}
 
 }  // anonymous namespace
 
@@ -164,6 +208,11 @@ Czar::Czar(string const& configPath, string const& czarName)
         LOGS(_log, LOG_LVL_WARN, "logConfigFile=" << logConfigFile);
         _logFileMonitor = make_shared<util::FileMonitor>(logConfigFile);
     }
+
+    // Begin periodically updating worker's status in the Replication System's registry
+    // in the detached thread. This will continue before the application gets terminated.
+    thread registryUpdateThread(::registryUpdateLoop, "default");
+    registryUpdateThread.detach();
 }
 
 SubmitResult Czar::submitQuery(string const& query, map<string, string> const& hints) {

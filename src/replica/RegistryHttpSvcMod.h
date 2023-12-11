@@ -35,7 +35,7 @@
 
 // Forward declarations
 namespace lsst::qserv::replica {
-class RegistryWorkers;
+class RegistryServices;
 }  // namespace lsst::qserv::replica
 
 // This header declarations
@@ -60,21 +60,23 @@ public:
      *
      * Supported values for parameter 'subModuleName':
      *
-     *   WORKERS           return a collection of known workers
+     *   SERVICES          return info on all known services
      *   ADD-WORKER        worker registration request (Replicaton System)
      *   ADD-QSERV-WORKER  worker registration request (Qserv)
      *   DELETE-WORKER     remove a worker from the collection
+     *   ADD-CZAR          czar registration request (Replicaton System)
+     *   DELETE-CZAR       remove a czar from the collection
      *
      * @param serviceProvider The provider of services is needed to access
      *   the identity and the authorization keys of the instance.
-     * @param workers The synchronized collection of workers.
+     * @param services The synchronized collection of services.
      * @param req The HTTP request.
      * @param resp The HTTP response channel.
      * @param subModuleName The name of a submodule to be called.
      * @param authType The authorization requirements for the module
      * @throws std::invalid_argument for unknown values of parameter 'subModuleName'
      */
-    static void process(ServiceProvider::Ptr const& serviceProvider, RegistryWorkers& workers,
+    static void process(ServiceProvider::Ptr const& serviceProvider, RegistryServices& services,
                         qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp,
                         std::string const& subModuleName,
                         http::AuthType const authType = http::AuthType::REQUIRED);
@@ -88,11 +90,11 @@ protected:
 
 private:
     /// @see method RegistryHttpSvcMod::create()
-    RegistryHttpSvcMod(ServiceProvider::Ptr const& serviceProvider, RegistryWorkers& workers,
+    RegistryHttpSvcMod(ServiceProvider::Ptr const& serviceProvider, RegistryServices& services,
                        qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp);
 
-    /// Return a collection of known workers.
-    nlohmann::json _getWorkers() const;
+    /// Return a collection of known services.
+    nlohmann::json _getServices() const;
 
     /// Register/update a worker in the specified collection.
     /// @param kind A kind of the worker to be updated ("replicaton", "qserv").
@@ -101,9 +103,15 @@ private:
     /// Remove a worker from the collection.
     nlohmann::json _deleteWorker();
 
+    /// Register/update a Czar.
+    nlohmann::json _addCzar();
+
+    /// Remove a Czar from the collection.
+    nlohmann::json _deleteCzar();
+
     // Input parameters
     ServiceProvider::Ptr const _serviceProvider;
-    RegistryWorkers& _workers;
+    RegistryServices& _services;
 };
 
 }  // namespace lsst::qserv::replica

@@ -28,7 +28,7 @@
 #include "qhttp/Response.h"
 #include "replica/Configuration.h"
 #include "replica/RegistryHttpSvcMod.h"
-#include "replica/RegistryWorkers.h"
+#include "replica/RegistryServices.h"
 
 // Third party headers
 #include "nlohmann/json.hpp"
@@ -50,7 +50,7 @@ RegistryHttpSvc::RegistryHttpSvc(ServiceProvider::Ptr const& serviceProvider)
         : HttpSvc(serviceProvider, serviceProvider->config()->get<uint16_t>("registry", "port"),
                   serviceProvider->config()->get<unsigned int>("registry", "max-listen-conn"),
                   serviceProvider->config()->get<size_t>("registry", "threads")),
-          _workers(new RegistryWorkers()) {}
+          _services(new RegistryServices()) {}
 
 string const& RegistryHttpSvc::context() const { return ::context_; }
 
@@ -64,25 +64,35 @@ void RegistryHttpSvc::registerServices() {
                                              {"instance_id", self->serviceProvider()->instanceId()}});
                                     http::MetaModule::process(context_, info, req, resp, "VERSION");
                                 }},
-                               {"GET", "/workers",
+                               {"GET", "/services",
                                 [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
-                                    RegistryHttpSvcMod::process(self->serviceProvider(), *(self->_workers),
-                                                                req, resp, "WORKERS", http::AuthType::NONE);
+                                    RegistryHttpSvcMod::process(self->serviceProvider(), *(self->_services),
+                                                                req, resp, "SERVICES", http::AuthType::NONE);
                                 }},
                                {"POST", "/worker",
                                 [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
-                                    RegistryHttpSvcMod::process(self->serviceProvider(), *(self->_workers),
+                                    RegistryHttpSvcMod::process(self->serviceProvider(), *(self->_services),
                                                                 req, resp, "ADD-WORKER");
                                 }},
                                {"POST", "/qserv-worker",
                                 [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
-                                    RegistryHttpSvcMod::process(self->serviceProvider(), *(self->_workers),
+                                    RegistryHttpSvcMod::process(self->serviceProvider(), *(self->_services),
                                                                 req, resp, "ADD-QSERV-WORKER");
                                 }},
                                {"DELETE", "/worker/:name",
                                 [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
-                                    RegistryHttpSvcMod::process(self->serviceProvider(), *(self->_workers),
+                                    RegistryHttpSvcMod::process(self->serviceProvider(), *(self->_services),
                                                                 req, resp, "DELETE-WORKER");
+                                }},
+                               {"POST", "/czar",
+                                [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
+                                    RegistryHttpSvcMod::process(self->serviceProvider(), *(self->_services),
+                                                                req, resp, "ADD-CZAR");
+                                }},
+                               {"DELETE", "/czar/:name",
+                                [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
+                                    RegistryHttpSvcMod::process(self->serviceProvider(), *(self->_services),
+                                                                req, resp, "DELETE-CZAR");
                                 }}});
 }
 

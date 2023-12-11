@@ -143,7 +143,7 @@ target_sources(replica PRIVATE
     RegistryHttpApp.cc
     RegistryHttpSvc.cc
     RegistryHttpSvcMod.cc
-    RegistryWorkers.cc
+    RegistryServices.cc
     RemoveReplicaQservMgtRequest.cc
     ReplicaInfo.cc
     ReplicateApp.cc

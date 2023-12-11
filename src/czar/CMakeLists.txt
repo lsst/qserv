@@ -11,6 +11,8 @@ target_include_directories(czar PRIVATE
 
 target_link_libraries(czar PUBLIC
     cconfig
+    http
+    util
     log
     XrdSsiLib
 )

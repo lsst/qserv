@@ -31,7 +31,7 @@
 
 // Forward declarations
 namespace lsst::qserv::replica {
-class RegistryWorkers;
+class RegistryServices;
 }  // namespace lsst::qserv::replica
 
 // This header declarations
@@ -77,7 +77,7 @@ private:
     RegistryHttpSvc(ServiceProvider::Ptr const& serviceProvider);
 
     /// Synchronized collection of the Replication System's workers
-    std::unique_ptr<RegistryWorkers> _workers;
+    std::unique_ptr<RegistryServices> _services;
 };
 
 }  // namespace lsst::qserv::replica

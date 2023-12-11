@@ -23,8 +23,9 @@
 #include "replica/RegistryHttpSvcMod.h"
 
 // Qserv header
+#include "global/stringUtil.h"
 #include "qhttp/Request.h"
-#include "replica/RegistryWorkers.h"
+#include "replica/RegistryServices.h"
 #include "util/TimeUtils.h"
 
 // System headers
@@ -47,7 +48,7 @@ string senderIpAddr(qhttp::Request::Ptr const& req) {
 
 /**
  * Check if a key is one of the special attributes related to the security
- * context of the workers registration protocol.
+ * context of the services registration protocol.
  * @param key The key to be checked.
  * @return 'true' if the key is one of the special keys.
  */
@@ -60,18 +61,19 @@ bool isSecurityContextKey(string const& key) {
 
 namespace lsst::qserv::replica {
 
-void RegistryHttpSvcMod::process(ServiceProvider::Ptr const& serviceProvider, RegistryWorkers& workers,
+void RegistryHttpSvcMod::process(ServiceProvider::Ptr const& serviceProvider, RegistryServices& services,
                                  qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp,
                                  string const& subModuleName, http::AuthType const authType) {
-    RegistryHttpSvcMod module(serviceProvider, workers, req, resp);
+    RegistryHttpSvcMod module(serviceProvider, services, req, resp);
     module.execute(subModuleName, authType);
 }
 
-RegistryHttpSvcMod::RegistryHttpSvcMod(ServiceProvider::Ptr const& serviceProvider, RegistryWorkers& workers,
-                                       qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp)
+RegistryHttpSvcMod::RegistryHttpSvcMod(ServiceProvider::Ptr const& serviceProvider,
+                                       RegistryServices& services, qhttp::Request::Ptr const& req,
+                                       qhttp::Response::Ptr const& resp)
         : http::ModuleBase(serviceProvider->authKey(), serviceProvider->adminAuthKey(), req, resp),
           _serviceProvider(serviceProvider),
-          _workers(workers) {}
+          _services(services) {}
 
 string RegistryHttpSvcMod::context() const { return "REGISTRY-HTTP-SVC "; }
 
@@ -79,45 +81,76 @@ json RegistryHttpSvcMod::executeImpl(string const& subModuleName) {
     string const func = string(__func__) + "[sub-module='" + subModuleName + "']";
     debug(func);
     enforceInstanceId(func, _serviceProvider->instanceId());
-    if (subModuleName == "WORKERS")
-        return _getWorkers();
+    if (subModuleName == "SERVICES")
+        return _getServices();
     else if (subModuleName == "ADD-WORKER")
         return _addWorker("replication");
     else if (subModuleName == "ADD-QSERV-WORKER")
         return _addWorker("qserv");
     else if (subModuleName == "DELETE-WORKER")
         return _deleteWorker();
+    else if (subModuleName == "ADD-CZAR")
+        return _addCzar();
+    else if (subModuleName == "DELETE-CZAR")
+        return _deleteCzar();
     throw invalid_argument(context() + "unsupported sub-module: '" + subModuleName + "'");
 }
 
-json RegistryHttpSvcMod::_getWorkers() const { return json::object({{"workers", _workers.workers()}}); }
+json RegistryHttpSvcMod::_getServices() const { return json::object({{"services", _services.toJson()}}); }
 
 json RegistryHttpSvcMod::_addWorker(string const& kind) {
     json const worker = body().required<json>("worker");
     string const name = worker.at("name").get<string>();
     string const hostAddr = ::senderIpAddr(req());
-    uint64_t const loggedTime = util::TimeUtils::now();
+    uint64_t const updateTimeMs = util::TimeUtils::now();
 
-    debug(__func__, "[" + kind + "] name:        " + name);
-    debug(__func__, "[" + kind + "] host-addr:   " + hostAddr);
-    debug(__func__, "[" + kind + "] logged_time: " + to_string(loggedTime));
+    debug(__func__, "[" + kind + "] name:           " + name);
+    debug(__func__, "[" + kind + "] host-addr:      " + hostAddr);
+    debug(__func__, "[" + kind + "] update-time-ms: " + to_string(updateTimeMs));
 
     // Prepare the payload to be merged into the worker registration entry.
     // Note that the merged payload is cleaned from any security-related contents.
     json workerEntry =
-            json::object({{kind, json::object({{"host-addr", hostAddr}, {"logged_time", loggedTime}})}});
+            json::object({{kind, json::object({{"host-addr", hostAddr}, {"update-time-ms", updateTimeMs}})}});
     for (auto&& [key, val] : worker.items()) {
         if (!::isSecurityContextKey(key)) workerEntry[kind][key] = val;
     }
-    _workers.update(name, workerEntry);
-    return json::object({{"workers", _workers.workers()}});
+    _services.updateWorker(name, workerEntry);
+    return json::object({{"services", _services.toJson()}});
 }
 
 json RegistryHttpSvcMod::_deleteWorker() {
     string const name = params().at("name");
     debug(__func__, " name: " + name);
-    _workers.remove(name);
-    return json::object({{"workers", _workers.workers()}});
+    _services.removeWorker(name);
+    return json::object({{"services", _services.toJson()}});
+}
+
+json RegistryHttpSvcMod::_addCzar() {
+    json const czar = body().required<json>("czar");
+    string const name = czar.at("name");
+    string const hostAddr = ::senderIpAddr(req());
+    uint64_t const updateTimeMs = util::TimeUtils::now();
+
+    debug(__func__, "name:           " + name);
+    debug(__func__, "host-addr:      " + hostAddr);
+    debug(__func__, "update-time-ms: " + to_string(updateTimeMs));
+
+    // Prepare the payload to be merged into the czar registration entry.
+    // Note that the merged payload is cleaned from any security-related contents.
+    json czarEntry = json::object({{"host-addr", hostAddr}, {"update-time-ms", updateTimeMs}});
+    for (auto&& [key, val] : czar.items()) {
+        if (!::isSecurityContextKey(key)) czarEntry[key] = val;
+    }
+    _services.updateCzar(name, czarEntry);
+    return json::object({{"services", _services.toJson()}});
+}
+
+json RegistryHttpSvcMod::_deleteCzar() {
+    string const name = params().at("name");
+    debug(__func__, " name: " + name);
+    _services.removeCzar(name);
+    return json::object({{"services", _services.toJson()}});
 }
 
 }  // namespace lsst::qserv::replica

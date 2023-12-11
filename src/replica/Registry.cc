@@ -60,9 +60,9 @@ Registry::Registry(ServiceProvider::Ptr const& serviceProvider)
 
 vector<WorkerInfo> Registry::workers() const {
     vector<WorkerInfo> coll;
-    json const resultJson =
-            _request(http::Method::GET, "/workers?instance_id=" + _serviceProvider->instanceId());
-    for (auto const& [name, workerJson] : resultJson.at("workers").items()) {
+    string const resource = "/services?instance_id=" + _serviceProvider->instanceId();
+    json const resultJson = _request(http::Method::GET, resource);
+    for (auto const& [name, workerJson] : resultJson.at("services").at("workers").items()) {
         WorkerInfo worker;
         if (_serviceProvider->config()->isKnownWorker(name)) {
             worker = _serviceProvider->config()->workerInfo(name);
@@ -103,7 +103,7 @@ vector<WorkerInfo> Registry::workers() const {
     return coll;
 }
 
-void Registry::add(string const& name) const {
+void Registry::addWorker(string const& name) const {
     bool const all = true;
     string const hostName = util::get_current_host_fqdn(all);
     auto const config = _serviceProvider->config();
@@ -129,7 +129,7 @@ void Registry::add(string const& name) const {
     _request(http::Method::POST, "/worker", request);
 }
 
-void Registry::remove(string const& name) const {
+void Registry::removeWorker(string const& name) const {
     json const request = json::object(
             {{"instance_id", _serviceProvider->instanceId()}, {"auth_key", _serviceProvider->authKey()}});
     _request(http::Method::DELETE, "/worker/" + name, request);
